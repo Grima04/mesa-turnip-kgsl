@@ -958,8 +958,10 @@ nir_src_index(compiler_context *ctx, nir_src *src)
 {
         if (src->is_ssa)
                 return src->ssa->index;
-        else
+        else {
+                assert(!src->reg.indirect);
                 return ctx->func->impl->ssa_alloc + src->reg.reg->index;
+        }
 }
 
 static unsigned
@@ -967,8 +969,10 @@ nir_dest_index(compiler_context *ctx, nir_dest *dst)
 {
         if (dst->is_ssa)
                 return dst->ssa.index;
-        else
+        else {
+                assert(!dst->reg.indirect);
                 return ctx->func->impl->ssa_alloc + dst->reg.reg->index;
+        }
 }
 
 static unsigned
