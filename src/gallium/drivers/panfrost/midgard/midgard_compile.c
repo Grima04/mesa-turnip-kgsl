@@ -962,10 +962,15 @@ nir_alu_src_index(compiler_context *ctx, nir_alu_src *src)
  * a conditional test) into that register */
 
 static void
-emit_condition(compiler_context *ctx, nir_src *src, bool for_branch)
+emit_condition(compiler_context *ctx, nir_src *src, bool for_branch, unsigned component)
 {
-        /* XXX: Force component correct */
         int condition = nir_src_index(ctx, src);
+
+        /* Source to swizzle the desired component into w */
+
+        const midgard_vector_alu_src alu_src = {
+                .swizzle = SWIZZLE(component, component, component, component),
+        };
 
         /* There is no boolean move instruction. Instead, we simulate a move by
          * ANDing the condition with itself to get it into r31.w */
@@ -983,8 +988,8 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch)
                         .reg_mode = midgard_reg_mode_full,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
-                        .src1 = vector_alu_srco_unsigned(blank_alu_src_xxxx),
-                        .src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx)
+                        .src1 = vector_alu_srco_unsigned(alu_src),
+                        .src2 = vector_alu_srco_unsigned(alu_src)
                 },
         };
 
@@ -1161,7 +1166,17 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* csel works as a two-arg in Midgard, since the condition is hardcoded in r31.w */
                 nr_inputs = 2;
 
-                emit_condition(ctx, &instr->src[0].src, false);
+                /* Figure out which component the condition is in */
+
+                unsigned comp = instr->src[0].swizzle[0];
+
+                /* Make sure NIR isn't throwing a mixed condition at us */
+
+                for (unsigned c = 1; c < nr_components; ++c)
+                        assert(instr->src[0].swizzle[c] == comp);
+
+                /* Emit the condition into r31.w */
+                emit_condition(ctx, &instr->src[0].src, false, comp);
 
                 /* The condition is the first argument; move the other
                  * arguments up one to be a binary instruction for
@@ -1346,7 +1361,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         switch (instr->intrinsic) {
         case nir_intrinsic_discard_if:
-                emit_condition(ctx, &instr->src[0], true);
+                emit_condition(ctx, &instr->src[0], true, COMPONENT_X);
 
         /* fallthrough */
 
@@ -3283,7 +3298,7 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
 {
         /* Conditional branches expect the condition in r31.w; emit a move for
          * that in the _previous_ block (which is the current block). */
-        emit_condition(ctx, &nif->condition, true);
+        emit_condition(ctx, &nif->condition, true, COMPONENT_X);
 
         /* Speculatively emit the branch, but we can't fill it in until later */
         EMIT(branch, true, true);
