@@ -3363,8 +3363,6 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
          * now that we can allocate a block number for them */
 
         list_for_each_entry_from(struct midgard_block, block, start_block, &ctx->blocks, link) {
-		if (midgard_debug & MIDGARD_DBG_SHADERS)
-	                print_mir_block(block);
                 mir_foreach_instr_in_block(block, ins) {
                         if (ins->type != TAG_ALU_4) continue;
                         if (!ins->compact_branch) continue;
