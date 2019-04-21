@@ -177,6 +177,19 @@ static bool gpir_lower_complex(gpir_block *block, gpir_node *node)
    gpir_alu_node *alu = gpir_node_to_alu(node);
    gpir_node *child = alu->children[0];
 
+   if (node->op == gpir_op_exp2) {
+      gpir_alu_node *preexp2 = gpir_node_create(block, gpir_op_preexp2);
+      if (unlikely(!preexp2))
+         return false;
+
+      preexp2->children[0] = child;
+      preexp2->num_child = 1;
+      gpir_node_add_dep(&preexp2->node, child, GPIR_DEP_INPUT);
+      list_addtail(&preexp2->node.list, &node->list);
+
+      child = &preexp2->node;
+   }
+
    gpir_alu_node *complex2 = gpir_node_create(block, gpir_op_complex2);
    if (unlikely(!complex2))
       return false;
@@ -194,6 +207,12 @@ static bool gpir_lower_complex(gpir_block *block, gpir_node *node)
    case gpir_op_rsqrt:
       impl_op = gpir_op_rsqrt_impl;
       break;
+   case gpir_op_exp2:
+      impl_op = gpir_op_exp2_impl;
+      break;
+   case gpir_op_log2:
+      impl_op = gpir_op_log2_impl;
+      break;
    default:
       assert(0);
    }
@@ -207,14 +226,33 @@ static bool gpir_lower_complex(gpir_block *block, gpir_node *node)
    gpir_node_add_dep(&impl->node, child, GPIR_DEP_INPUT);
    list_addtail(&impl->node.list, &node->list);
 
-   /* change node to complex1 node */
-   node->op = gpir_op_complex1;
-   alu->children[0] = &impl->node;
-   alu->children[1] = &complex2->node;
-   alu->children[2] = child;
-   alu->num_child = 3;
-   gpir_node_add_dep(node, &impl->node, GPIR_DEP_INPUT);
-   gpir_node_add_dep(node, &complex2->node, GPIR_DEP_INPUT);
+   gpir_alu_node *complex1 = gpir_node_create(block, gpir_op_complex1);
+   complex1->children[0] = &impl->node;
+   complex1->children[1] = &complex2->node;
+   complex1->children[2] = child;
+   complex1->num_child = 3;
+   gpir_node_add_dep(&complex1->node, child, GPIR_DEP_INPUT);
+   gpir_node_add_dep(&complex1->node, &impl->node, GPIR_DEP_INPUT);
+   gpir_node_add_dep(&complex1->node, &complex2->node, GPIR_DEP_INPUT);
+   list_addtail(&complex1->node.list, &node->list);
+
+   gpir_node *result = &complex1->node;
+
+   if (node->op == gpir_op_log2) {
+      gpir_alu_node *postlog2 = gpir_node_create(block, gpir_op_postlog2);
+      if (unlikely(!postlog2))
+         return false;
+
+      postlog2->children[0] = result;
+      postlog2->num_child = 1;
+      gpir_node_add_dep(&postlog2->node, result, GPIR_DEP_INPUT);
+      list_addtail(&postlog2->node.list, &node->list);
+
+      result = &postlog2->node;
+   }
+
+   gpir_node_replace_succ(result, node);
+   gpir_node_delete(node);
 
    return true;
 }
@@ -384,6 +422,8 @@ static bool (*gpir_post_rsched_lower_funcs[gpir_op_num])(gpir_block *, gpir_node
    [gpir_op_neg] = gpir_lower_neg,
    [gpir_op_rcp] = gpir_lower_complex,
    [gpir_op_rsqrt] = gpir_lower_complex,
+   [gpir_op_exp2] = gpir_lower_complex,
+   [gpir_op_log2] = gpir_lower_complex,
    [gpir_op_eq] = gpir_lower_eq_ne,
    [gpir_op_ne] = gpir_lower_eq_ne,
    [gpir_op_abs] = gpir_lower_abs,

@@ -376,6 +376,8 @@ static void gpir_codegen_complex_slot(gpir_codegen_instr *code, gpir_instr *inst
    case gpir_op_mov:
    case gpir_op_rcp_impl:
    case gpir_op_rsqrt_impl:
+   case gpir_op_exp2_impl:
+   case gpir_op_log2_impl:
    {
       gpir_alu_node *alu = gpir_node_to_alu(node);
       code->complex_src = gpir_get_alu_input(node, alu->children[0]);
@@ -395,6 +397,12 @@ static void gpir_codegen_complex_slot(gpir_codegen_instr *code, gpir_instr *inst
    case gpir_op_rsqrt_impl:
       code->complex_op = gpir_codegen_complex_op_rsqrt;
       break;
+   case gpir_op_exp2_impl:
+      code->complex_op = gpir_codegen_complex_op_exp2;
+      break;
+   case gpir_op_log2_impl:
+      code->complex_op = gpir_codegen_complex_op_log2;
+      break;
    default:
       assert(0);
    }
@@ -410,14 +418,19 @@ static void gpir_codegen_pass_slot(gpir_codegen_instr *code, gpir_instr *instr)
       return;
    }
 
+   gpir_alu_node *alu = gpir_node_to_alu(node);
+   code->pass_src = gpir_get_alu_input(node, alu->children[0]);
+
    switch (node->op) {
    case gpir_op_mov:
-   {
-      gpir_alu_node *alu = gpir_node_to_alu(node);
-      code->pass_src = gpir_get_alu_input(node, alu->children[0]);
       code->pass_op = gpir_codegen_pass_op_pass;
       break;
-   }
+   case gpir_op_preexp2:
+      code->pass_op = gpir_codegen_pass_op_preexp2;
+      break;
+   case gpir_op_postlog2:
+      code->pass_op = gpir_codegen_pass_op_postlog2;
+      break;
    default:
       assert(0);
    }

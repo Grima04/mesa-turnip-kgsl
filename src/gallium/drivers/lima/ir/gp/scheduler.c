@@ -627,23 +627,26 @@ static bool schedule_try_place_node(sched_ctx *ctx, gpir_node *node,
    return true;
 }
 
-static gpir_node *create_move(sched_ctx *ctx, gpir_node *node)
+/* Create a new node with "node" as the child, replace all uses of "node" with
+ * this new node, and replace "node" with it in the ready list.
+ */
+static gpir_node *create_replacement(sched_ctx *ctx, gpir_node *node,
+                                     gpir_op op)
 {
-   gpir_alu_node *move = gpir_node_create(node->block, gpir_op_mov);
-   if (unlikely(!move))
+
+   gpir_alu_node *new_node = gpir_node_create(node->block, op);
+   if (unlikely(!new_node))
       return NULL;
 
-   move->children[0] = node;
-   move->num_child = 1;
+   new_node->children[0] = node;
+   new_node->num_child = 1;
 
-   move->node.sched.instr = NULL;
-   move->node.sched.pos = -1;
-   move->node.sched.dist = node->sched.dist;
-   move->node.sched.max_node = node->sched.max_node;
-   move->node.sched.next_max_node = node->sched.next_max_node;
-   move->node.sched.complex_allowed = node->sched.complex_allowed;
-
-   gpir_debug("create move %d for %d\n", move->node.index, node->index);
+   new_node->node.sched.instr = NULL;
+   new_node->node.sched.pos = -1;
+   new_node->node.sched.dist = node->sched.dist;
+   new_node->node.sched.max_node = node->sched.max_node;
+   new_node->node.sched.next_max_node = node->sched.next_max_node;
+   new_node->node.sched.complex_allowed = node->sched.complex_allowed;
 
    ctx->ready_list_slots--;
    list_del(&node->list);
@@ -651,12 +654,26 @@ static gpir_node *create_move(sched_ctx *ctx, gpir_node *node)
    node->sched.next_max_node = false;
    node->sched.ready = false;
    node->sched.inserted = false;
-   gpir_node_replace_succ(&move->node, node);
-   gpir_node_add_dep(&move->node, node, GPIR_DEP_INPUT);
-   schedule_insert_ready_list(ctx, &move->node);
-   return &move->node;
+   gpir_node_replace_succ(&new_node->node, node);
+   gpir_node_add_dep(&new_node->node, node, GPIR_DEP_INPUT);
+   schedule_insert_ready_list(ctx, &new_node->node);
+   return &new_node->node;
 }
 
+static gpir_node *create_move(sched_ctx *ctx, gpir_node *node)
+{
+   gpir_node *move = create_replacement(ctx, node, gpir_op_mov);
+   gpir_debug("create move %d for %d\n", move->index, node->index);
+   return move;
+}
+
+static gpir_node *create_postlog2(sched_ctx *ctx, gpir_node *node)
+{
+   assert(node->op == gpir_op_complex1);
+   gpir_node *postlog2 = create_replacement(ctx, node, gpir_op_postlog2);
+   gpir_debug("create postlog2 %d for %d\n", postlog2->index, node->index);
+   return postlog2;
+}
 
 /* Once we schedule the successor, would the predecessor be fully ready? */
 static bool pred_almost_ready(gpir_dep *dep)
@@ -936,7 +953,22 @@ static bool used_by_store(gpir_node *node, gpir_instr *instr)
    return false;
 }
 
+static gpir_node *consuming_postlog2(gpir_node *node)
+{
+   if (node->op != gpir_op_complex1)
+      return NULL;
 
+   gpir_node_foreach_succ(node, dep) {
+      if (dep->type != GPIR_DEP_INPUT)
+         continue;
+      if (dep->succ->op == gpir_op_postlog2)
+         return dep->succ;
+      else
+         return NULL;
+   }
+
+   return NULL;
+}
 
 static bool try_spill_node(sched_ctx *ctx, gpir_node *node)
 {
@@ -960,6 +992,16 @@ static bool try_spill_node(sched_ctx *ctx, gpir_node *node)
 
       if (available == 0)
          return false;
+
+      /* Don't spill complex1 if it's used postlog2, turn the postlog2 into a
+       * move, replace the complex1 with postlog2 and spill that instead. The
+       * store needs a move anyways so the postlog2 is usually free.
+       */
+      gpir_node *postlog2 = consuming_postlog2(node);
+      if (postlog2) {
+         postlog2->op = gpir_op_mov;
+         node = create_postlog2(ctx, node);
+      }
 
       /* TODO: use a better heuristic for choosing an available register? */
       int physreg = ffsll(available) - 1;
@@ -1305,7 +1347,17 @@ static bool sched_move(sched_ctx *ctx)
 {
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
       if (node->sched.max_node) {
-         place_move(ctx, node);
+         /* For complex1 that is consumed by a postlog2, we cannot allow any
+          * moves in between. Convert the postlog2 to a move and insert a new
+          * postlog2, and try to schedule it again in try_node().
+          */
+         gpir_node *postlog2 = consuming_postlog2(node);
+         if (postlog2) {
+            postlog2->op = gpir_op_mov;
+            create_postlog2(ctx, node);
+         } else {
+            place_move(ctx, node);
+         }
          return true;
       }
    }
