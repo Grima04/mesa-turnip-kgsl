@@ -3402,8 +3402,10 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
         br_back.branch.target_block = start_idx;
         emit_mir_instruction(ctx, br_back);
 
-        /* Mark down that branch in the graph */
-        midgard_block_add_successor(ctx->current_block, start_block);
+        /* Mark down that branch in the graph. Note that we're really branching
+         * to the block *after* we started in. TODO: Why doesn't the branch
+         * itself have an off-by-one then...? */
+        midgard_block_add_successor(ctx->current_block, start_block->successors[0]);
 
         /* Find the index of the block about to follow us (note: we don't add
          * one; blocks are 0-indexed so we get a fencepost problem) */
