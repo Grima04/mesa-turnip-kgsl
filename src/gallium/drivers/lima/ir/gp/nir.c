@@ -153,37 +153,36 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
    return true;
 }
 
+static gpir_node *gpir_create_load(gpir_block *block, nir_dest *dest,
+                                   int op, int index, int component)
+{
+   gpir_load_node *load = gpir_node_create_dest(block, op, dest);
+   if (unlikely(!load))
+      return NULL;
+
+   load->index = index;
+   load->component = component;
+   return &load->node;
+}
+
 static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
 {
    nir_intrinsic_instr *instr = nir_instr_as_intrinsic(ni);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_input:
-   {
-      gpir_load_node *load =
-         gpir_node_create_dest(block, gpir_op_load_attribute, &instr->dest);
-      if (unlikely(!load))
-         return false;
-
-      load->index = nir_intrinsic_base(instr);
-      load->component = nir_intrinsic_component(instr);
-
-      return true;
-   }
+      return gpir_create_load(block, &instr->dest,
+                              gpir_op_load_attribute,
+                              nir_intrinsic_base(instr),
+                              nir_intrinsic_component(instr)) != NULL;
    case nir_intrinsic_load_uniform:
    {
-      gpir_load_node *load =
-         gpir_node_create_dest(block, gpir_op_load_uniform, &instr->dest);
-      if (unlikely(!load))
-         return false;
-
       int offset = nir_intrinsic_base(instr);
       offset += (int)nir_src_as_float(instr->src[0]);
 
-      load->index = offset / 4;
-      load->component = offset % 4;
-
-      return true;
+      return gpir_create_load(block, &instr->dest,
+                              gpir_op_load_uniform,
+                              offset / 4, offset % 4) != NULL;
    }
    case nir_intrinsic_store_output:
    {
