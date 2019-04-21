@@ -1594,6 +1594,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
                        VkFence _fence)
 {
    ANV_FROM_HANDLE(anv_fence, fence, _fence);
+   UNUSED struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    struct anv_execbuf execbuf;
    anv_execbuf_init(&execbuf);
@@ -1608,6 +1609,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
 
       switch (impl->type) {
       case ANV_SEMAPHORE_TYPE_BO:
+         assert(!pdevice->has_syncobj);
          result = anv_execbuf_add_bo(&execbuf, impl->bo, NULL,
                                      0, &device->alloc);
          if (result != VK_SUCCESS)
@@ -1615,6 +1617,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
          break;
 
       case ANV_SEMAPHORE_TYPE_SYNC_FILE:
+         assert(!pdevice->has_syncobj);
          if (in_fence == -1) {
             in_fence = impl->fd;
          } else {
@@ -1664,6 +1667,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
 
       switch (impl->type) {
       case ANV_SEMAPHORE_TYPE_BO:
+         assert(!pdevice->has_syncobj);
          result = anv_execbuf_add_bo(&execbuf, impl->bo, NULL,
                                      EXEC_OBJECT_WRITE, &device->alloc);
          if (result != VK_SUCCESS)
@@ -1671,6 +1675,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
          break;
 
       case ANV_SEMAPHORE_TYPE_SYNC_FILE:
+         assert(!pdevice->has_syncobj);
          need_out_fence = true;
          break;
 
@@ -1705,6 +1710,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
 
       switch (impl->type) {
       case ANV_FENCE_TYPE_BO:
+         assert(!pdevice->has_syncobj_wait);
          result = anv_execbuf_add_bo(&execbuf, &impl->bo.bo, NULL,
                                      EXEC_OBJECT_WRITE, &device->alloc);
          if (result != VK_SUCCESS)
@@ -1778,6 +1784,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
    }
 
    if (fence && fence->permanent.type == ANV_FENCE_TYPE_BO) {
+      assert(!pdevice->has_syncobj_wait);
       /* BO fences can't be shared, so they can't be temporary. */
       assert(fence->temporary.type == ANV_FENCE_TYPE_NONE);
 
@@ -1795,6 +1802,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
    }
 
    if (result == VK_SUCCESS && need_out_fence) {
+      assert(!pdevice->has_syncobj_wait);
       int out_fence = execbuf.execbuf.rsvd2 >> 32;
       for (uint32_t i = 0; i < num_out_semaphores; i++) {
          ANV_FROM_HANDLE(anv_semaphore, semaphore, out_semaphores[i]);
