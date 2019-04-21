@@ -525,13 +525,6 @@ mir_next_op(struct midgard_instruction *ins)
         return list_first_entry(&(ins->link), midgard_instruction, link);
 }
 
-static midgard_block *
-mir_next_block(struct midgard_block *blk)
-{
-        return list_first_entry(&(blk->link), midgard_block, link);
-}
-
-
 #define mir_foreach_block(ctx, v) list_for_each_entry(struct midgard_block, v, &ctx->blocks, link) 
 #define mir_foreach_block_from(ctx, from, v) list_for_each_entry_from(struct midgard_block, v, from, &ctx->blocks, link)
 
