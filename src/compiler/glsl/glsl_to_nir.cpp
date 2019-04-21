@@ -316,6 +316,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       break;
 
    case GLSL_TYPE_FLOAT:
+   case GLSL_TYPE_FLOAT16:
    case GLSL_TYPE_DOUBLE:
       if (cols > 1) {
          ret->elements = ralloc_array(mem_ctx, nir_constant *, cols);
@@ -327,6 +328,11 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
             case GLSL_TYPE_FLOAT:
                for (unsigned r = 0; r < rows; r++)
                   col_const->values[r].f32 = ir->value.f[c * rows + r];
+               break;
+
+            case GLSL_TYPE_FLOAT16:
+               for (unsigned r = 0; r < rows; r++)
+                  col_const->values[r].u16 = ir->value.f16[c * rows + r];
                break;
 
             case GLSL_TYPE_DOUBLE:
@@ -344,6 +350,11 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
          case GLSL_TYPE_FLOAT:
             for (unsigned r = 0; r < rows; r++)
                ret->values[r].f32 = ir->value.f[r];
+            break;
+
+         case GLSL_TYPE_FLOAT16:
+            for (unsigned r = 0; r < rows; r++)
+               ret->values[r].u16 = ir->value.f16[r];
             break;
 
          case GLSL_TYPE_DOUBLE:

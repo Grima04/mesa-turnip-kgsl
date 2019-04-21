@@ -773,6 +773,7 @@ ir_swizzle::constant_expression_value(void *mem_ctx,
          case GLSL_TYPE_UINT:
          case GLSL_TYPE_INT:   data.u[i] = v->value.u[swiz_idx[i]]; break;
          case GLSL_TYPE_FLOAT: data.f[i] = v->value.f[swiz_idx[i]]; break;
+         case GLSL_TYPE_FLOAT16: data.f16[i] = v->value.f16[swiz_idx[i]]; break;
          case GLSL_TYPE_BOOL:  data.b[i] = v->value.b[swiz_idx[i]]; break;
          case GLSL_TYPE_DOUBLE:data.d[i] = v->value.d[swiz_idx[i]]; break;
          case GLSL_TYPE_UINT64:data.u64[i] = v->value.u64[swiz_idx[i]]; break;

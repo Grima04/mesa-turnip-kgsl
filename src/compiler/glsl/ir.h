@@ -2180,6 +2180,7 @@ union ir_constant_data {
       float f[16];
       bool b[16];
       double d[16];
+      uint16_t f16[16];
       uint64_t u64[16];
       int64_t i64[16];
 };
@@ -2244,6 +2245,7 @@ public:
    /*@{*/
    bool get_bool_component(unsigned i) const;
    float get_float_component(unsigned i) const;
+   uint16_t get_float16_component(unsigned i) const;
    double get_double_component(unsigned i) const;
    int get_int_component(unsigned i) const;
    unsigned get_uint_component(unsigned i) const;
