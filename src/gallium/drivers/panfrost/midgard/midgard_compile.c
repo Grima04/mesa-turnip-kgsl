@@ -1093,7 +1093,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 /* XXX: Use fmov, not imov, since imov was causing major
                  * issues with texture precision? XXX research */
-                ALU_CASE(imov, fmov);
+                ALU_CASE(imov, imov);
 
                 ALU_CASE(feq32, feq);
                 ALU_CASE(fne32, fne);
