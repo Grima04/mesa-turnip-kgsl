@@ -169,8 +169,27 @@ typedef struct midgard_block {
         /* Number of quadwords _actually_ emitted, as determined after scheduling */
         unsigned quadword_count;
 
-        struct midgard_block *next_fallthrough;
+        /* Successors: always one forward (the block after us), maybe
+         * one backwards (for a backward branch). No need for a second
+         * forward, since graph traversal would get there eventually
+         * anyway */
+        struct midgard_block *successors[2];
+        unsigned nr_successors;
+
+        /* The successors pointer form a graph, and in the case of
+         * complex control flow, this graph has a cycles. To aid
+         * traversal during liveness analysis, we have a visited?
+         * boolean for passes to use as they see fit, provided they
+         * clean up later */
+        bool visited;
 } midgard_block;
+
+static void
+midgard_block_add_successor(midgard_block *block, midgard_block *successor)
+{
+        block->successors[block->nr_successors++] = successor;
+        assert(block->nr_successors <= ARRAY_SIZE(block->successors));
+}
 
 /* Helpers to generate midgard_instruction's using macro magic, since every
  * driver seems to do it that way */
@@ -1868,26 +1887,58 @@ midgard_is_live_in_instr(midgard_instruction *ins, int src)
         return false;
 }
 
+/* Determine if a variable is live in the successors of a block */
+static bool
+is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
+{
+        for (unsigned i = 0; i < bl->nr_successors; ++i) {
+                midgard_block *succ = bl->successors[i];
+
+                /* If we already visited, the value we're seeking
+                 * isn't down this path (or we would have short
+                 * circuited */
+
+                if (succ->visited) continue;
+
+                /* Otherwise (it's visited *now*), check the block */
+
+                succ->visited = true;
+
+                mir_foreach_instr_in_block(succ, ins) {
+                        if (midgard_is_live_in_instr(ins, src))
+                                return true;
+                }
+
+                /* ...and also, check *its* successors */
+                if (is_live_after_successors(ctx, succ, src))
+                        return true;
+
+        }
+
+        /* Welp. We're really not live. */
+
+        return false;
+}
+
 static bool
 is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src)
 {
         /* Check the rest of the block for liveness */
+
         mir_foreach_instr_in_block_from(block, ins, mir_next_op(start)) {
                 if (midgard_is_live_in_instr(ins, src))
                         return true;
         }
 
-        /* Check the rest of the blocks for liveness */
-        mir_foreach_block_from(ctx, mir_next_block(block), b) {
-                mir_foreach_instr_in_block(b, ins) {
-                        if (midgard_is_live_in_instr(ins, src))
-                                return true;
-                }
+        /* Check the rest of the blocks for liveness recursively */
+
+        bool succ = is_live_after_successors(ctx, block, src);
+
+        mir_foreach_block(ctx, block) {
+                block->visited = false;
         }
 
-        /* TODO: How does control flow interact in complex shaders? */
-
-        return false;
+        return succ;
 }
 
 static void
@@ -3234,7 +3285,7 @@ emit_blend_epilogue(compiler_context *ctx)
 static midgard_block *
 emit_block(compiler_context *ctx, nir_block *block)
 {
-        midgard_block *this_block = malloc(sizeof(midgard_block));
+        midgard_block *this_block = calloc(sizeof(midgard_block), 1);
         list_addtail(&this_block->link, &ctx->blocks);
 
         this_block->is_scheduled = false;
@@ -3242,6 +3293,10 @@ emit_block(compiler_context *ctx, nir_block *block)
 
         ctx->texture_index[0] = -1;
         ctx->texture_index[1] = -1;
+
+        /* Add us as a successor to the block we are following */
+        if (ctx->current_block)
+                midgard_block_add_successor(ctx->current_block, this_block);
 
         /* Set up current block */
         list_inithead(&this_block->instructions);
@@ -3271,9 +3326,6 @@ emit_block(compiler_context *ctx, nir_block *block)
                                 emit_fragment_epilogue(ctx);
                 }
         }
-
-        /* Fallthrough save */
-        this_block->next_fallthrough = ctx->previous_source_block;
 
         if (block == nir_start_block(ctx->func->impl))
                 ctx->initial_block = this_block;
@@ -3354,6 +3406,9 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
         struct midgard_instruction br_back = v_branch(false, false);
         br_back.branch.target_block = start_idx;
         emit_mir_instruction(ctx, br_back);
+
+        /* Mark down that branch in the graph */
+        midgard_block_add_successor(ctx->current_block, start_block);
 
         /* Find the index of the block about to follow us (note: we don't add
          * one; blocks are 0-indexed so we get a fencepost problem) */
