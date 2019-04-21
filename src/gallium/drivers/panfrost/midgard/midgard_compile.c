@@ -424,8 +424,9 @@ typedef struct compiler_context {
         /* List of midgard_instructions emitted for the current block */
         midgard_block *current_block;
 
-        /* The index corresponding to the current loop, e.g. for breaks/contineus */
-        int current_loop;
+        /* The current "depth" of the loop, for disambiguating breaks/continues
+         * when using nested loops */
+        int current_loop_depth;
 
         /* Constants which have been loaded, for later inlining */
         struct hash_table_u64 *ssa_constants;
@@ -1787,7 +1788,7 @@ emit_jump(compiler_context *ctx, nir_jump_instr *instr)
                         /* Emit a branch out of the loop */
                         struct midgard_instruction br = v_branch(false, false);
                         br.branch.target_type = TARGET_BREAK;
-                        br.branch.target_break = ctx->current_loop;
+                        br.branch.target_break = ctx->current_loop_depth;
                         emit_mir_instruction(ctx, br);
 
                         DBG("break..\n");
@@ -3387,10 +3388,8 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
         /* Remember where we are */
         midgard_block *start_block = ctx->current_block;
 
-        /* Allocate a loop number for this. TODO: Nested loops. Instead of a
-         * single current_loop variable, maybe we need a stack */
-
-        int loop_idx = ++ctx->current_loop;
+        /* Allocate a loop number, growing the current inner loop depth */
+        int loop_idx = ++ctx->current_loop_depth;
 
         /* Get index from before the body so we can loop back later */
         int start_idx = ctx->block_count;
@@ -3432,6 +3431,10 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
                         ins->branch.target_block = break_block_idx;
                 }
         }
+
+        /* Now that we've finished emitting the loop, free up the depth again
+         * so we play nice with recursion amid nested loops */
+        --ctx->current_loop_depth;
 }
 
 static midgard_block *
