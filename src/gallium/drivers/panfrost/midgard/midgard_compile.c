@@ -643,8 +643,6 @@ print_mir_block(midgard_block *block)
         printf("}\n");
 }
 
-
-
 static void
 attach_constants(compiler_context *ctx, midgard_instruction *ins, void *constants, int name)
 {
@@ -3045,26 +3043,18 @@ map_ssa_to_alias(compiler_context *ctx, int *ref)
         }
 }
 
-#define AS_SRC(to, u) \
-	int q##to = ins->alu.src2; \
-	midgard_vector_alu_src *to = (midgard_vector_alu_src *) &q##to;
-
-/* Removing unused moves is necessary to clean up the texture pipeline results.
- *
- * To do so, we find moves in the MIR. We check if their destination is live later. If it's not, the move is redundant. */
+/* Basic dead code elimination on the MIR itself, which cleans up e.g. the
+ * texture pipeline */
 
 static void
-midgard_eliminate_orphan_moves(compiler_context *ctx, midgard_block *block)
+midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
 {
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
-
-                if (ins->alu.op != midgard_alu_op_fmov) continue;
+                if (ins->compact_branch) continue;
 
                 if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
-
                 if (midgard_is_pinned(ctx, ins->ssa_args.dest)) continue;
-
                 if (is_live_after(ctx, block, ins, ins->ssa_args.dest)) continue;
 
                 mir_remove_instruction(ins);
@@ -3321,7 +3311,6 @@ emit_block(compiler_context *ctx, nir_block *block)
         actualise_ssa_to_alias(ctx);
 
         midgard_emit_store(ctx, this_block);
-        midgard_eliminate_orphan_moves(ctx, this_block);
         midgard_pair_load_store(ctx, this_block);
 
         /* Append fragment shader epilogue (value writeout) */
@@ -3607,6 +3596,12 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         }
 
         util_dynarray_init(compiled, NULL);
+
+        /* Peephole optimizations */
+
+        mir_foreach_block(ctx, block) {
+                midgard_opt_dead_code_eliminate(ctx, block);
+        }
 
         /* Schedule! */
         schedule_program(ctx);
