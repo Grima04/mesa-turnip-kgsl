@@ -2842,6 +2842,9 @@ inline_alu_constants(compiler_context *ctx)
                 /* If there is already a constant here, we can do nothing */
                 if (alu->has_constants) continue;
 
+                /* It makes no sense to inline constants on a branch */
+                if (alu->compact_branch || alu->prepacked_branch) continue;
+
                 CONDITIONAL_ATTACH(src0);
 
                 if (!alu->has_constants) {
