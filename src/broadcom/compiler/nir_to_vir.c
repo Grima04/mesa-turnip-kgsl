@@ -1737,6 +1737,9 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_input:
+                /* Use ldvpmv (uniform offset) or ldvpmd (non-uniform offset)
+                 * and enable PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR.
+                 */
                 offset = (nir_intrinsic_base(instr) +
                           nir_src_as_uint(instr->src[0]));
                 if (c->s->info.stage != MESA_SHADER_FRAGMENT &&
@@ -1778,6 +1781,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_store_output:
+                /* XXX perf: Use stvpmv with uniform non-constant offsets and
+                 * stvpmd with non-uniform offsets and enable
+                 * PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR.
+                 */
                 if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
                         offset = ((nir_intrinsic_base(instr) +
                                    nir_src_as_uint(instr->src[1])) * 4 +
