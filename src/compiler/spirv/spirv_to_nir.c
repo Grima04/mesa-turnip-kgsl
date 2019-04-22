@@ -500,6 +500,7 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpDecorate:
+   case SpvOpDecorateId:
    case SpvOpMemberDecorate:
    case SpvOpDecorateStringGOOGLE:
    case SpvOpMemberDecorateStringGOOGLE:
@@ -510,6 +511,7 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
       struct vtn_decoration *dec = rzalloc(b, struct vtn_decoration);
       switch (opcode) {
       case SpvOpDecorate:
+      case SpvOpDecorateId:
       case SpvOpDecorateStringGOOGLE:
          dec->scope = VTN_DEC_DECORATION;
          break;
@@ -3812,6 +3814,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpExecutionModeId:
    case SpvOpDecorationGroup:
    case SpvOpDecorate:
+   case SpvOpDecorateId:
    case SpvOpMemberDecorate:
    case SpvOpGroupDecorate:
    case SpvOpGroupMemberDecorate:
@@ -4021,6 +4024,7 @@ vtn_handle_variable_or_type_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpMemberName:
    case SpvOpDecorationGroup:
    case SpvOpDecorate:
+   case SpvOpDecorateId:
    case SpvOpMemberDecorate:
    case SpvOpGroupDecorate:
    case SpvOpGroupMemberDecorate:
