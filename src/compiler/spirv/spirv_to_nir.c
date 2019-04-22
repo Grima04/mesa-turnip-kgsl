@@ -1926,6 +1926,7 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
          switch (opcode) {
          case SpvOpSConvert:
          case SpvOpFConvert:
+         case SpvOpUConvert:
             /* We have a source in a conversion */
             src_alu_type =
                nir_get_nir_type_for_glsl_type(
