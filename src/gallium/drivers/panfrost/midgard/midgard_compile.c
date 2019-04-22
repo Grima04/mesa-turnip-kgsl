@@ -254,8 +254,7 @@ vector_alu_modifiers(nir_alu_src *src)
         if (!src) return blank_alu_src;
 
         midgard_vector_alu_src alu_src = {
-                .abs = src->abs,
-                .negate = src->negate,
+                .mod = (src->abs << 0) | (src->negate << 1),
                 .rep_low = 0,
                 .rep_high = 0,
                 .half = 0, /* TODO */
@@ -1474,10 +1473,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                         emit_mir_instruction(ctx, ins);
                                 }
 
-                                /* vadd.u2f hr2, abs(hr2), #0 */
+                                /* vadd.u2f hr2, zext(hr2), #0 */
 
                                 midgard_vector_alu_src alu_src = blank_alu_src;
-                                alu_src.abs = true;
+                                alu_src.mod = midgard_int_zero_extend;
                                 alu_src.half = true;
 
                                 midgard_instruction u2f = {
@@ -1502,7 +1501,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                                 /* vmul.fmul.sat r1, hr2, #0.00392151 */
 
-                                alu_src.abs = false;
+                                alu_src.mod = 0;
 
                                 midgard_instruction fmul = {
                                         .type = TAG_ALU_4,
@@ -2183,9 +2182,11 @@ vector_to_scalar_source(unsigned u)
         midgard_vector_alu_src v;
         memcpy(&v, &u, sizeof(v));
 
+        /* TODO: Integers */
+
         midgard_scalar_alu_src s = {
-                .abs = v.abs,
-                .negate = v.negate,
+                .abs = v.mod & MIDGARD_FLOAT_MOD_ABS,
+                .negate = v.mod & MIDGARD_FLOAT_MOD_NEG,
                 .full = !v.half,
                 .component = (v.swizzle & 3) << 1
         };
@@ -2975,7 +2976,7 @@ embedded_to_inline_constant(compiler_context *ctx)
 
                         /* We don't know how to handle these with a constant */
 
-                        if (src->abs || src->negate || src->half || src->rep_low || src->rep_high) {
+                        if (src->mod || src->half || src->rep_low || src->rep_high) {
                                 DBG("Bailing inline constant...\n");
                                 continue;
                         }

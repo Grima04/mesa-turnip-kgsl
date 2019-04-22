@@ -161,11 +161,22 @@ typedef enum {
         midgard_dest_override_none = 2
 } midgard_dest_override;
 
+typedef enum {
+        midgard_int_sign_extend = 0,
+        midgard_int_zero_extend = 1,
+        midgard_int_normal = 2,
+        midgard_int_reserved = 3
+} midgard_int_mod;
+
+#define MIDGARD_FLOAT_MOD_ABS (1 << 0)
+#define MIDGARD_FLOAT_MOD_NEG (1 << 1)
+
 typedef struct
 __attribute__((__packed__))
 {
-        bool abs         : 1;
-        bool negate      : 1;
+        /* Either midgard_int_mod or from midgard_float_mod_*, depending on the
+         * type of op */
+        unsigned mod : 2;
 
         /* replicate lower half if dest = half, or low/high half selection if
          * dest = full
