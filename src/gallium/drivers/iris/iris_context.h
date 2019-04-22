@@ -299,14 +299,7 @@ struct iris_shader_state {
    struct iris_state_ref ssbo_surf_state[PIPE_MAX_SHADER_BUFFERS];
 
    /** Shader Storage Images (image load store) */
-   struct {
-      struct pipe_resource *res;
-      struct iris_state_ref surface_state;
-      unsigned access;
-
-      /** Gen8-only uniform data for image lowering */
-      struct brw_image_param param;
-   } image[PIPE_MAX_SHADER_IMAGES];
+   struct iris_image_view image[PIPE_MAX_SHADER_IMAGES];
 
    struct iris_state_ref sampler_table;
    struct iris_sampler_state *samplers[IRIS_MAX_TEXTURE_SAMPLERS];

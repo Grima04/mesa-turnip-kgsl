@@ -177,6 +177,16 @@ struct iris_sampler_view {
 };
 
 /**
+ * Image view representation.
+ */
+struct iris_image_view {
+   struct pipe_image_view base;
+
+   /** The resource (BO) holding our SURFACE_STATE. */
+   struct iris_state_ref surface_state;
+};
+
+/**
  * Gallium CSO for surfaces (framebuffer attachments).
  *
  * A view of a surface that can be bound to a color render target or

@@ -825,6 +825,12 @@ struct iris_genx_state {
    struct iris_depth_buffer_state depth_buffer;
 
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
+
+   struct {
+#if GEN_GEN == 8
+      struct brw_image_param image_param[PIPE_MAX_SHADER_IMAGES];
+#endif
+   } shaders[MESA_SHADER_STAGES];
 };
 
 /**
@@ -1923,28 +1929,34 @@ iris_set_shader_images(struct pipe_context *ctx,
    const struct gen_device_info *devinfo = &screen->devinfo;
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
+#if GEN_GEN == 8
+   struct iris_genx_state *genx = ice->state.genx;
+   struct brw_image_param *image_params = genx->shaders[stage].image_param;
+#endif
 
    shs->bound_image_views &= ~u_bit_consecutive(start_slot, count);
 
    for (unsigned i = 0; i < count; i++) {
+      struct iris_image_view *iv = &shs->image[start_slot + i];
+
       if (p_images && p_images[i].resource) {
          const struct pipe_image_view *img = &p_images[i];
          struct iris_resource *res = (void *) img->resource;
-         pipe_resource_reference(&shs->image[start_slot + i].res, &res->base);
-
-         shs->bound_image_views |= 1 << (start_slot + i);
-
-         res->bind_history |= PIPE_BIND_SHADER_IMAGE;
 
          // XXX: these are not retained forever, use a separate uploader?
          void *map =
             alloc_surface_states(ice->state.surface_uploader,
-                                 &shs->image[start_slot + i].surface_state,
-                                 1 << ISL_AUX_USAGE_NONE);
-         if (!unlikely(map)) {
-            pipe_resource_reference(&shs->image[start_slot + i].res, NULL);
+                                 &iv->surface_state, 1 << ISL_AUX_USAGE_NONE);
+         if (!unlikely(map))
             return;
-         }
+
+         iv->base = *img;
+         iv->base.resource = NULL;
+         pipe_resource_reference(&iv->base.resource, &res->base);
+
+         shs->bound_image_views |= 1 << (start_slot + i);
+
+         res->bind_history |= PIPE_BIND_SHADER_IMAGE;
 
          isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
          enum isl_format isl_fmt =
@@ -1965,8 +1977,6 @@ iris_set_shader_images(struct pipe_context *ctx,
             else
                isl_fmt = isl_lower_storage_image_format(devinfo, isl_fmt);
          }
-
-         shs->image[start_slot + i].access = img->shader_access;
 
          if (res->base.target != PIPE_BUFFER) {
             struct isl_view view = {
@@ -1996,20 +2006,19 @@ iris_set_shader_images(struct pipe_context *ctx,
             }
 
             isl_surf_fill_image_param(&screen->isl_dev,
-                                      &shs->image[start_slot + i].param,
+                                      &image_params[start_slot + i],
                                       &res->surf, &view);
          } else {
             fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
                                       isl_fmt, ISL_SWIZZLE_IDENTITY,
                                       img->u.buf.offset, img->u.buf.size);
-            fill_buffer_image_param(&shs->image[start_slot + i].param,
+            fill_buffer_image_param(&image_params[start_slot + i],
                                     img->format, img->u.buf.size);
          }
       } else {
-         pipe_resource_reference(&shs->image[start_slot + i].res, NULL);
-         pipe_resource_reference(&shs->image[start_slot + i].surface_state.res,
-                                 NULL);
-         fill_default_image_param(&shs->image[start_slot + i].param);
+         pipe_resource_reference(&iv->base.resource, NULL);
+         pipe_resource_reference(&iv->surface_state.res, NULL);
+         fill_default_image_param(&image_params[start_slot + i]);
       }
    }
 
@@ -2508,6 +2517,7 @@ static void
 upload_uniforms(struct iris_context *ice,
                 gl_shader_stage stage)
 {
+   UNUSED struct iris_genx_state *genx = ice->state.genx;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    struct pipe_shader_buffer *cbuf = &shs->constbuf[0];
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
@@ -2527,12 +2537,15 @@ upload_uniforms(struct iris_context *ice,
       uint32_t value = 0;
 
       if (BRW_PARAM_DOMAIN(sysval) == BRW_PARAM_DOMAIN_IMAGE) {
+#if GEN_GEN == 8
          unsigned img = BRW_PARAM_IMAGE_IDX(sysval);
          unsigned offset = BRW_PARAM_IMAGE_OFFSET(sysval);
-         struct brw_image_param *param = &shs->image[img].param;
+         struct brw_image_param *param =
+            &genx->shaders[stage].image_param[img];
 
          assert(offset < sizeof(struct brw_image_param));
          value = ((uint32_t *) param)[offset];
+#endif
       } else if (sysval == BRW_PARAM_BUILTIN_ZERO) {
          value = 0;
       } else if (BRW_PARAM_BUILTIN_IS_CLIP_PLANE(sysval)) {
@@ -3922,20 +3935,21 @@ static uint32_t
 use_image(struct iris_batch *batch, struct iris_context *ice,
           struct iris_shader_state *shs, int i)
 {
-   if (!shs->image[i].res)
+   struct iris_image_view *iv = &shs->image[i];
+   struct iris_resource *res = (void *) iv->base.resource;
+
+   if (!res)
       return use_null_surface(batch, ice);
 
-   struct iris_resource *res = (void *) shs->image[i].res;
-   struct iris_state_ref *surf_state = &shs->image[i].surface_state;
-   bool write = shs->image[i].access & PIPE_IMAGE_ACCESS_WRITE;
+   bool write = iv->base.shader_access & PIPE_IMAGE_ACCESS_WRITE;
 
    iris_use_pinned_bo(batch, res->bo, write);
-   iris_use_pinned_bo(batch, iris_resource_bo(surf_state->res), false);
+   iris_use_pinned_bo(batch, iris_resource_bo(iv->surface_state.res), false);
 
    if (res->aux.bo)
       iris_use_pinned_bo(batch, res->aux.bo, write);
 
-   return surf_state->offset;
+   return iv->surface_state.offset;
 }
 
 #define push_bt_entry(addr) \
@@ -5417,7 +5431,7 @@ iris_destroy_state(struct iris_context *ice)
          pipe_resource_reference(&shs->constbuf_surf_state[i].res, NULL);
       }
       for (int i = 0; i < PIPE_MAX_SHADER_IMAGES; i++) {
-         pipe_resource_reference(&shs->image[i].res, NULL);
+         pipe_resource_reference(&shs->image[i].base.resource, NULL);
          pipe_resource_reference(&shs->image[i].surface_state.res, NULL);
       }
       for (int i = 0; i < PIPE_MAX_SHADER_BUFFERS; i++) {

@@ -124,7 +124,7 @@ resolve_image_views(struct iris_context *ice,
 
    while (views) {
       const int i = u_bit_scan(&views);
-      struct iris_resource *res = (void *) shs->image[i].res;
+      struct iris_resource *res = (void *) shs->image[i].base.resource;
 
       if (res->base.target != PIPE_BUFFER) {
          if (consider_framebuffer) {
