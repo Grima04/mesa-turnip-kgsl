@@ -504,9 +504,9 @@ void genX(CmdBeginQueryIndexedEXT)(
 void genX(CmdEndQuery)(
     VkCommandBuffer                             commandBuffer,
     VkQueryPool                                 queryPool,
-    VkQueryControlFlags                         flags)
+    uint32_t                                    query)
 {
-   genX(CmdEndQueryIndexedEXT)(commandBuffer, queryPool, flags, 0);
+   genX(CmdEndQueryIndexedEXT)(commandBuffer, queryPool, query, 0);
 }
 
 void genX(CmdEndQueryIndexedEXT)(
