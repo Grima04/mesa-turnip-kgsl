@@ -205,7 +205,6 @@ drm_create_adapter( int fd,
     struct d3dadapter9drm_context *ctx = CALLOC_STRUCT(d3dadapter9drm_context);
     HRESULT hr;
     bool different_device;
-    const struct drm_conf_ret *throttle_ret = NULL;
     const struct drm_conf_ret *dmabuf_ret = NULL;
     driOptionCache defaultInitOptions;
     driOptionCache userInitOptions;
@@ -237,7 +236,6 @@ drm_create_adapter( int fd,
     }
 
     dmabuf_ret = pipe_loader_configuration(ctx->dev, DRM_CONF_SHARE_FD);
-    throttle_ret = pipe_loader_configuration(ctx->dev, DRM_CONF_THROTTLE);
     if (!dmabuf_ret || !dmabuf_ret->val.val_bool) {
         ERR("The driver is not capable of dma-buf sharing."
             "Abandon to load nine state tracker\n");
@@ -245,11 +243,9 @@ drm_create_adapter( int fd,
         return D3DERR_DRIVERINTERNALERROR;
     }
 
-    if (throttle_ret && throttle_ret->val.val_int != -1) {
-        ctx->base.throttling = TRUE;
-        ctx->base.throttling_value = throttle_ret->val.val_int;
-    } else
-        ctx->base.throttling = FALSE;
+    ctx->base.throttling_value =
+       ctx->base.hal->get_param(ctx->base.hal, PIPE_CAP_MAX_FRAMES_IN_FLIGHT);
+    ctx->base.throttling = ctx->base.throttling_value > 0;
 
     driParseOptionInfo(&defaultInitOptions, __driConfigOptionsNine);
     driParseConfigFiles(&userInitOptions, &defaultInitOptions, 0, "nine", NULL);

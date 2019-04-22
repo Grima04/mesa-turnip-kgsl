@@ -306,6 +306,9 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_ENDIANNESS:
 		return PIPE_ENDIAN_LITTLE;
 
+	case PIPE_CAP_MAX_FRAMES_IN_FLIGHT:
+		return 2;
+
 	case PIPE_CAP_VENDOR_ID:
 		return ATI_VENDOR_ID;
 	case PIPE_CAP_DEVICE_ID:

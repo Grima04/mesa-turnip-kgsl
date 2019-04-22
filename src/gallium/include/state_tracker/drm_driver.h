@@ -15,8 +15,6 @@ struct pipe_resource;
  * Configuration queries.
  */
 enum drm_conf {
-   /* How many frames to allow before throttling. Or -1 to indicate any number */
-   DRM_CONF_THROTTLE, /* DRM_CONF_INT. */
    /* Can this driver, running on this kernel, import and export dma-buf fds? */
    DRM_CONF_SHARE_FD, /* DRM_CONF_BOOL. */
    /* XML string describing the available config options. */
@@ -28,7 +26,6 @@ enum drm_conf {
  * Type of configuration answer
  */
 enum drm_conf_type {
-   DRM_CONF_INT,
    DRM_CONF_BOOL,
    DRM_CONF_FLOAT,
    DRM_CONF_POINTER
@@ -40,7 +37,6 @@ enum drm_conf_type {
 struct drm_conf_ret {
    enum drm_conf_type type;
    union {
-      int val_int;
       bool val_bool;
       float val_float;
       void *val_pointer;

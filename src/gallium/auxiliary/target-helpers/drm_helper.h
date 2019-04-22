@@ -7,11 +7,6 @@
 #include "state_tracker/drm_driver.h"
 #include "util/xmlpool.h"
 
-static const struct drm_conf_ret throttle_ret = {
-   .type = DRM_CONF_INT,
-   .val.val_int = 2,
-};
-
 static const struct drm_conf_ret share_fd_ret = {
    .type = DRM_CONF_BOOL,
    .val.val_bool = true,
@@ -21,8 +16,6 @@ const struct drm_conf_ret *
 pipe_default_configuration_query(enum drm_conf conf)
 {
    switch (conf) {
-   case DRM_CONF_THROTTLE:
-      return &throttle_ret;
    case DRM_CONF_SHARE_FD:
       return &share_fd_ret;
    default:
