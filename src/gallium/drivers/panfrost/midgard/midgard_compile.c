@@ -249,17 +249,26 @@ vector_alu_srco_unsigned(midgard_vector_alu_src src)
  * the corresponding Midgard source */
 
 static midgard_vector_alu_src
-vector_alu_modifiers(nir_alu_src *src)
+vector_alu_modifiers(nir_alu_src *src, bool is_int)
 {
         if (!src) return blank_alu_src;
 
         midgard_vector_alu_src alu_src = {
-                .mod = (src->abs << 0) | (src->negate << 1),
                 .rep_low = 0,
                 .rep_high = 0,
                 .half = 0, /* TODO */
                 .swizzle = SWIZZLE_FROM_ARRAY(src->swizzle)
         };
+
+        if (is_int) {
+                /* TODO: sign-extend/zero-extend */
+                alu_src.mod = midgard_int_normal;
+
+                /* These should have been lowered away */
+                assert(!(src->abs || src->negate));
+        } else {
+                alu_src.mod = (src->abs << 0) | (src->negate << 1);
+        }
 
         return alu_src;
 }
@@ -1243,6 +1252,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 assert(0);
         }
 
+        bool is_int = midgard_is_integer_op(op);
+
         midgard_vector_alu alu = {
                 .op = op,
                 .reg_mode = midgard_reg_mode_full,
@@ -1252,8 +1263,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* Writemask only valid for non-SSA NIR */
                 .mask = expand_writemask((1 << nr_components) - 1),
 
-                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0])),
-                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1])),
+                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int)),
+                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int)),
         };
 
         /* Apply writemask if non-SSA, keeping in mind that we can't write to components that don't exist */
@@ -1306,7 +1317,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         for (int j = 0; j < 4; ++j)
                                 nirmods[0]->swizzle[j] = original_swizzle[i]; /* Pull from the correct component */
 
-                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0]));
+                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int));
                         emit_mir_instruction(ctx, ins);
                 }
         } else {
@@ -2177,7 +2188,7 @@ swizzle_to_access_mask(unsigned swizzle)
 }
 
 static unsigned
-vector_to_scalar_source(unsigned u)
+vector_to_scalar_source(unsigned u, bool is_int)
 {
         midgard_vector_alu_src v;
         memcpy(&v, &u, sizeof(v));
@@ -2185,11 +2196,16 @@ vector_to_scalar_source(unsigned u)
         /* TODO: Integers */
 
         midgard_scalar_alu_src s = {
-                .abs = v.mod & MIDGARD_FLOAT_MOD_ABS,
-                .negate = v.mod & MIDGARD_FLOAT_MOD_NEG,
                 .full = !v.half,
                 .component = (v.swizzle & 3) << 1
         };
+
+        if (is_int) {
+                /* TODO */
+        } else {
+                s.abs = v.mod & MIDGARD_FLOAT_MOD_ABS;
+                s.negate = v.mod & MIDGARD_FLOAT_MOD_NEG;
+        }
 
         unsigned o;
         memcpy(&o, &s, sizeof(s));
@@ -2200,11 +2216,13 @@ vector_to_scalar_source(unsigned u)
 static midgard_scalar_alu
 vector_to_scalar_alu(midgard_vector_alu v, midgard_instruction *ins)
 {
+        bool is_int = midgard_is_integer_op(v.op);
+
         /* The output component is from the mask */
         midgard_scalar_alu s = {
                 .op = v.op,
-                .src1 = vector_to_scalar_source(v.src1),
-                .src2 = vector_to_scalar_source(v.src2),
+                .src1 = vector_to_scalar_source(v.src1, is_int),
+                .src2 = vector_to_scalar_source(v.src2, is_int),
                 .unknown = 0,
                 .outmod = v.outmod,
                 .output_full = 1, /* TODO: Half */
