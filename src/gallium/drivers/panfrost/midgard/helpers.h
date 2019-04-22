@@ -32,6 +32,11 @@
                 op == midgard_op_store_cubemap_coords \
 	)
 
+#define OP_IS_MOVE(op) ( \
+                op == midgard_alu_op_fmov || \
+                op == midgard_alu_op_imov \
+        )
+
 /* ALU control words are single bit fields with a lot of space */
 
 #define ALU_ENAB_VEC_MUL  (1 << 17)

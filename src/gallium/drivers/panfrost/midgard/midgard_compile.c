@@ -245,6 +245,14 @@ vector_alu_srco_unsigned(midgard_vector_alu_src src)
         return u;
 }
 
+static midgard_vector_alu_src
+vector_alu_from_unsigned(unsigned u)
+{
+        midgard_vector_alu_src s;
+        memcpy(&s, &u, sizeof(s));
+        return s;
+}
+
 /* Inputs a NIR ALU source, with modifiers attached if necessary, and outputs
  * the corresponding Midgard source */
 
@@ -271,6 +279,21 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int)
         }
 
         return alu_src;
+}
+
+static bool
+mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
+{
+        /* abs or neg */
+        if (!is_int && src.mod) return true;
+
+        /* swizzle */
+        for (unsigned c = 0; c < 4; ++c) {
+                if (!(mask & (1 << c))) continue;
+                if (((src.swizzle >> (2*c)) & 3) != c) return true;
+        }
+
+        return false;
 }
 
 /* 'Intrinsic' move for misc aliasing uses independent of actual NIR ALU code */
@@ -542,6 +565,7 @@ mir_next_op(struct midgard_instruction *ins)
 #define mir_foreach_instr_in_block_safe(block, v) list_for_each_entry_safe(struct midgard_instruction, v, &block->instructions, link) 
 #define mir_foreach_instr_in_block_safe_rev(block, v) list_for_each_entry_safe_rev(struct midgard_instruction, v, &block->instructions, link) 
 #define mir_foreach_instr_in_block_from(block, v, from) list_for_each_entry_from(struct midgard_instruction, v, from, &block->instructions, link) 
+#define mir_foreach_instr_in_block_from_rev(block, v, from) list_for_each_entry_from_rev(struct midgard_instruction, v, from, &block->instructions, link) 
 
 
 static midgard_instruction *
@@ -3059,9 +3083,11 @@ map_ssa_to_alias(compiler_context *ctx, int *ref)
 /* Basic dead code elimination on the MIR itself, which cleans up e.g. the
  * texture pipeline */
 
-static void
+static bool
 midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
 {
+        bool progress = false;
+
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
                 if (ins->compact_branch) continue;
@@ -3071,7 +3097,52 @@ midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
                 if (is_live_after(ctx, block, ins, ins->ssa_args.dest)) continue;
 
                 mir_remove_instruction(ins);
+                progress = true;
         }
+
+        return progress;
+}
+
+static bool
+midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != TAG_ALU_4) continue;
+                if (!OP_IS_MOVE(ins->alu.op)) continue;
+
+                unsigned from = ins->ssa_args.src1;
+                unsigned to = ins->ssa_args.dest;
+
+                /* We only work on pure SSA */
+
+                if (to >= SSA_FIXED_MINIMUM) continue;
+                if (from >= SSA_FIXED_MINIMUM) continue;
+
+                /* Also, if the move has side effects, we're helpless */
+
+                midgard_vector_alu_src src =
+                        vector_alu_from_unsigned(ins->alu.src2);
+                unsigned mask = squeeze_writemask(ins->alu.mask);
+                bool is_int = midgard_is_integer_op(ins->alu.op);
+
+                if (mir_nontrivial_mod(src, is_int, mask)) continue;
+
+                mir_foreach_instr_in_block_from(block, v, mir_next_op(ins)) {
+                        if (v->ssa_args.src0 == to) {
+                                v->ssa_args.src0 = from;
+                                progress = true;
+                        }
+
+                        if (v->ssa_args.src1 == to && !v->ssa_args.inline_constant) {
+                                v->ssa_args.src1 = from;
+                                progress = true;
+                        }
+                }
+        }
+
+        return progress;
 }
 
 /* The following passes reorder MIR instructions to enable better scheduling */
@@ -3617,6 +3688,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         /* Peephole optimizations */
 
         mir_foreach_block(ctx, block) {
+                midgard_opt_copy_prop(ctx, block);
                 midgard_opt_dead_code_eliminate(ctx, block);
         }
 
