@@ -22,8 +22,6 @@
  * THE SOFTWARE.
  */
 
-/* Some constants and macros not found in the disassembler */
-
 #define OP_IS_STORE_VARY(op) (\
 		op == midgard_op_store_vary_16 || \
 		op == midgard_op_store_vary_32 \
@@ -119,7 +117,8 @@
 
 #define LDST_NOP (3)
 
-/* Is this opcode that of an integer? */
+/* Is this opcode that of an integer (regardless of signedness)? */
+
 static bool
 midgard_is_integer_op(int op)
 {
@@ -129,7 +128,9 @@ midgard_is_integer_op(int op)
         case midgard_alu_op_isub:
         case midgard_alu_op_imul:
         case midgard_alu_op_imin:
+        case midgard_alu_op_umin:
         case midgard_alu_op_imax:
+        case midgard_alu_op_umax:
         case midgard_alu_op_iasr:
         case midgard_alu_op_ilsr:
         case midgard_alu_op_ishl:
@@ -138,20 +139,30 @@ midgard_is_integer_op(int op)
         case midgard_alu_op_inot:
         case midgard_alu_op_iandnot:
         case midgard_alu_op_ixor:
+        case midgard_alu_op_ilzcnt:
+        case midgard_alu_op_ibitcount8:
         case midgard_alu_op_imov:
-
-        //case midgard_alu_op_f2i:
-        //case midgard_alu_op_f2u:
-        case midgard_alu_op_ieq:
         case midgard_alu_op_iabs:
+        case midgard_alu_op_ieq:
         case midgard_alu_op_ine:
+        case midgard_alu_op_ult:
+        case midgard_alu_op_ule:
         case midgard_alu_op_ilt:
         case midgard_alu_op_ile:
         case midgard_alu_op_iball_eq:
+        case midgard_alu_op_ball:
+        case midgard_alu_op_uball_lt:
+        case midgard_alu_op_uball_lte:
+        case midgard_alu_op_iball_lt:
+        case midgard_alu_op_iball_lte:
+        case midgard_alu_op_ibany_eq:
         case midgard_alu_op_ibany_neq:
-
-        //case midgard_alu_op_i2f:
-        //case midgard_alu_op_u2f:
+        case midgard_alu_op_ubany_lt:
+        case midgard_alu_op_ubany_lte:
+        case midgard_alu_op_ibany_lt:
+        case midgard_alu_op_ibany_lte:
+        case midgard_alu_op_i2f:
+        case midgard_alu_op_u2f:
         case midgard_alu_op_icsel:
                 return true;
 
