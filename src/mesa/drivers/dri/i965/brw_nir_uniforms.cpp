@@ -180,34 +180,32 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
           storage->type->is_image())
          continue;
 
-      {
-         gl_constant_value *components = storage->storage;
-         unsigned vector_count = (MAX2(storage->array_elements, 1) *
-                                  storage->type->matrix_columns);
-         unsigned vector_size = storage->type->vector_elements;
-         unsigned max_vector_size = 4;
-         if (storage->type->base_type == GLSL_TYPE_DOUBLE ||
-             storage->type->base_type == GLSL_TYPE_UINT64 ||
-             storage->type->base_type == GLSL_TYPE_INT64) {
-            vector_size *= 2;
-            if (vector_size > 4)
-               max_vector_size = 8;
+      gl_constant_value *components = storage->storage;
+      unsigned vector_count = (MAX2(storage->array_elements, 1) *
+                               storage->type->matrix_columns);
+      unsigned vector_size = storage->type->vector_elements;
+      unsigned max_vector_size = 4;
+      if (storage->type->base_type == GLSL_TYPE_DOUBLE ||
+          storage->type->base_type == GLSL_TYPE_UINT64 ||
+          storage->type->base_type == GLSL_TYPE_INT64) {
+         vector_size *= 2;
+         if (vector_size > 4)
+            max_vector_size = 8;
+      }
+
+      for (unsigned s = 0; s < vector_count; s++) {
+         unsigned i;
+         for (i = 0; i < vector_size; i++) {
+            uint32_t idx = components - prog->sh.data->UniformDataSlots;
+            stage_prog_data->param[uniform_index++] = BRW_PARAM_UNIFORM(idx);
+            components++;
          }
 
-         for (unsigned s = 0; s < vector_count; s++) {
-            unsigned i;
-            for (i = 0; i < vector_size; i++) {
-               uint32_t idx = components - prog->sh.data->UniformDataSlots;
-               stage_prog_data->param[uniform_index++] = BRW_PARAM_UNIFORM(idx);
-               components++;
-            }
-
-            if (!is_scalar) {
-               /* Pad out with zeros if needed (only needed for vec4) */
-               for (; i < max_vector_size; i++) {
-                  stage_prog_data->param[uniform_index++] =
-                     BRW_PARAM_BUILTIN_ZERO;
-               }
+         if (!is_scalar) {
+            /* Pad out with zeros if needed (only needed for vec4) */
+            for (; i < max_vector_size; i++) {
+               stage_prog_data->param[uniform_index++] =
+                  BRW_PARAM_BUILTIN_ZERO;
             }
          }
       }
