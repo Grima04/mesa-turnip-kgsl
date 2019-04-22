@@ -205,7 +205,6 @@ drm_create_adapter( int fd,
     struct d3dadapter9drm_context *ctx = CALLOC_STRUCT(d3dadapter9drm_context);
     HRESULT hr;
     bool different_device;
-    const struct drm_conf_ret *dmabuf_ret = NULL;
     driOptionCache defaultInitOptions;
     driOptionCache userInitOptions;
     int throttling_value_user = -2;
@@ -235,8 +234,7 @@ drm_create_adapter( int fd,
         return D3DERR_DRIVERINTERNALERROR;
     }
 
-    dmabuf_ret = pipe_loader_configuration(ctx->dev, DRM_CONF_SHARE_FD);
-    if (!dmabuf_ret || !dmabuf_ret->val.val_bool) {
+    if (!ctx->base.hal->get_param(ctx->base.hal, PIPE_CAP_DMABUF)) {
         ERR("The driver is not capable of dma-buf sharing."
             "Abandon to load nine state tracker\n");
         drm_destroy(&ctx->base);

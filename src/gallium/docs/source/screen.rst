@@ -519,6 +519,8 @@ The integer capabilities:
 * ``PIPE_CAP_MAX_FRAMES_IN_FLIGHT``: Maximum number of frames that state
   trackers should allow to be in flight before throttling pipe_context
   execution. 0 = throttling is disabled.
+* ``PIPE_CAP_DMABUF``: Whether Linux DMABUF handles are supported by
+  resource_from_handle and resource_get_handle.
 
 .. _pipe_capf:
 

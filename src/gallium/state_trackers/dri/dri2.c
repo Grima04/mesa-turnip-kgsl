@@ -1908,7 +1908,6 @@ dri2_init_screen(__DRIscreen * sPriv)
    const __DRIconfig **configs;
    struct dri_screen *screen;
    struct pipe_screen *pscreen = NULL;
-   const struct drm_conf_ret *dmabuf_ret;
 
    screen = CALLOC_STRUCT(dri_screen);
    if (!screen)
@@ -1932,13 +1931,11 @@ dri2_init_screen(__DRIscreen * sPriv)
    screen->default_throttle_frames =
       pscreen->get_param(pscreen, PIPE_CAP_MAX_FRAMES_IN_FLIGHT);
 
-   dmabuf_ret = pipe_loader_configuration(screen->dev, DRM_CONF_SHARE_FD);
-
    if (pscreen->resource_create_with_modifiers)
       dri2ImageExtension.createImageWithModifiers =
          dri2_create_image_with_modifiers;
 
-   if (dmabuf_ret && dmabuf_ret->val.val_bool) {
+   if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF)) {
       uint64_t cap;
 
       if (drmGetCap(sPriv->fd, DRM_CAP_PRIME, &cap) == 0 &&

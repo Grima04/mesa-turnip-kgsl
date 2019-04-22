@@ -355,6 +355,13 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_MAX_FRAMES_IN_FLIGHT:
       return 0;
 
+   case PIPE_CAP_DMABUF:
+#ifdef PIPE_OS_LINUX
+      return 1;
+#else
+      return 0;
+#endif
+
    default:
       unreachable("bad PIPE_CAP_*");
    }

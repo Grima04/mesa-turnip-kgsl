@@ -15,8 +15,6 @@ struct pipe_resource;
  * Configuration queries.
  */
 enum drm_conf {
-   /* Can this driver, running on this kernel, import and export dma-buf fds? */
-   DRM_CONF_SHARE_FD, /* DRM_CONF_BOOL. */
    /* XML string describing the available config options. */
    DRM_CONF_XML_OPTIONS, /* DRM_CONF_POINTER */
    DRM_CONF_MAX
@@ -26,8 +24,6 @@ enum drm_conf {
  * Type of configuration answer
  */
 enum drm_conf_type {
-   DRM_CONF_BOOL,
-   DRM_CONF_FLOAT,
    DRM_CONF_POINTER
 };
 
@@ -37,8 +33,6 @@ enum drm_conf_type {
 struct drm_conf_ret {
    enum drm_conf_type type;
    union {
-      bool val_bool;
-      float val_float;
       void *val_pointer;
    } val;
 };
