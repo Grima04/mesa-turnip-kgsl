@@ -1556,8 +1556,8 @@ apply_var_decoration(struct vtn_builder *b,
       }
       break;
 
-   case SpvDecorationHlslSemanticGOOGLE:
-      /* HLSL semantic decorations can safely be ignored by the driver. */
+   case SpvDecorationUserSemantic:
+      /* User semantic decorations can safely be ignored by the driver. */
       break;
 
    case SpvDecorationRestrictPointerEXT:
@@ -1615,8 +1615,8 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
    case SpvDecorationCoherent:
       vtn_var->access |= ACCESS_COHERENT;
       break;
-   case SpvDecorationHlslCounterBufferGOOGLE:
-      /* HLSL semantic decorations can safely be ignored by the driver. */
+   case SpvDecorationCounterBuffer:
+      /* Counter buffer decorations can safely be ignored by the driver. */
       break;
    default:
       break;

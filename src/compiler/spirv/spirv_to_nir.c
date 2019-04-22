@@ -502,8 +502,8 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
    case SpvOpDecorate:
    case SpvOpDecorateId:
    case SpvOpMemberDecorate:
-   case SpvOpDecorateStringGOOGLE:
-   case SpvOpMemberDecorateStringGOOGLE:
+   case SpvOpDecorateString:
+   case SpvOpMemberDecorateString:
    case SpvOpExecutionMode:
    case SpvOpExecutionModeId: {
       struct vtn_value *val = vtn_untyped_value(b, target);
@@ -512,11 +512,11 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
       switch (opcode) {
       case SpvOpDecorate:
       case SpvOpDecorateId:
-      case SpvOpDecorateStringGOOGLE:
+      case SpvOpDecorateString:
          dec->scope = VTN_DEC_DECORATION;
          break;
       case SpvOpMemberDecorate:
-      case SpvOpMemberDecorateStringGOOGLE:
+      case SpvOpMemberDecorateString:
          dec->scope = VTN_DEC_STRUCT_MEMBER0 + *(w++);
          vtn_fail_if(dec->scope < VTN_DEC_STRUCT_MEMBER0, /* overflow */
                      "Member argument of OpMemberDecorate too large");
@@ -851,8 +851,8 @@ struct_member_decoration_cb(struct vtn_builder *b,
       }
       break;
 
-   case SpvDecorationHlslSemanticGOOGLE:
-      /* HLSL semantic decorations can safely be ignored by the driver. */
+   case SpvDecorationUserSemantic:
+      /* User semantic decorations can safely be ignored by the driver. */
       break;
 
    default:
@@ -985,7 +985,7 @@ type_decoration_cb(struct vtn_builder *b,
    case SpvDecorationOffset:
    case SpvDecorationXfbBuffer:
    case SpvDecorationXfbStride:
-   case SpvDecorationHlslSemanticGOOGLE:
+   case SpvDecorationUserSemantic:
       vtn_warn("Decoration only allowed for struct members: %s",
                spirv_decoration_to_string(dec->decoration));
       break;
@@ -3819,8 +3819,8 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpMemberDecorate:
    case SpvOpGroupDecorate:
    case SpvOpGroupMemberDecorate:
-   case SpvOpDecorateStringGOOGLE:
-   case SpvOpMemberDecorateStringGOOGLE:
+   case SpvOpDecorateString:
+   case SpvOpMemberDecorateString:
       vtn_handle_decoration(b, opcode, w, count);
       break;
 
@@ -4029,8 +4029,8 @@ vtn_handle_variable_or_type_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpMemberDecorate:
    case SpvOpGroupDecorate:
    case SpvOpGroupMemberDecorate:
-   case SpvOpDecorateStringGOOGLE:
-   case SpvOpMemberDecorateStringGOOGLE:
+   case SpvOpDecorateString:
+   case SpvOpMemberDecorateString:
       vtn_fail("Invalid opcode types and variables section");
       break;
 
