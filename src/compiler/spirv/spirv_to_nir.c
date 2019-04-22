@@ -4084,6 +4084,28 @@ vtn_handle_variable_or_type_instruction(struct vtn_builder *b, SpvOp opcode,
    return true;
 }
 
+static struct vtn_ssa_value *
+vtn_nir_select(struct vtn_builder *b, struct vtn_ssa_value *src0,
+               struct vtn_ssa_value *src1, struct vtn_ssa_value *src2)
+{
+   struct vtn_ssa_value *dest = rzalloc(b, struct vtn_ssa_value);
+   dest->type = src1->type;
+
+   if (glsl_type_is_vector_or_scalar(src1->type)) {
+      dest->def = nir_bcsel(&b->nb, src0->def, src1->def, src2->def);
+   } else {
+      unsigned elems = glsl_get_length(src1->type);
+
+      dest->elems = ralloc_array(b, struct vtn_ssa_value *, elems);
+      for (unsigned i = 0; i < elems; i++) {
+         dest->elems[i] = vtn_nir_select(b, src0,
+                                         src1->elems[i], src2->elems[i]);
+      }
+   }
+
+   return dest;
+}
+
 static void
 vtn_handle_select(struct vtn_builder *b, SpvOp opcode,
                   const uint32_t *w, unsigned count)
@@ -4092,59 +4114,47 @@ vtn_handle_select(struct vtn_builder *b, SpvOp opcode,
     * pointers and not just regular vectors and scalars.
     */
    struct vtn_value *res_val = vtn_untyped_value(b, w[2]);
-   struct vtn_value *sel_val = vtn_untyped_value(b, w[3]);
+   struct vtn_value *cond_val = vtn_untyped_value(b, w[3]);
    struct vtn_value *obj1_val = vtn_untyped_value(b, w[4]);
    struct vtn_value *obj2_val = vtn_untyped_value(b, w[5]);
-
-   const struct glsl_type *sel_type;
-   switch (res_val->type->base_type) {
-   case vtn_base_type_scalar:
-      sel_type = glsl_bool_type();
-      break;
-   case vtn_base_type_vector:
-      sel_type = glsl_vector_type(GLSL_TYPE_BOOL, res_val->type->length);
-      break;
-   case vtn_base_type_pointer:
-      /* We need to have actual storage for pointer types */
-      vtn_fail_if(res_val->type->type == NULL,
-                  "Invalid pointer result type for OpSelect");
-      sel_type = glsl_bool_type();
-      break;
-   default:
-      vtn_fail("Result type of OpSelect must be a scalar, vector, or pointer");
-   }
-
-   if (unlikely(sel_val->type->type != sel_type)) {
-      if (sel_val->type->type == glsl_bool_type()) {
-         /* This case is illegal but some older versions of GLSLang produce
-          * it.  The GLSLang issue was fixed on March 30, 2017:
-          *
-          * https://github.com/KhronosGroup/glslang/issues/809
-          *
-          * Unfortunately, there are applications in the wild which are
-          * shipping with this bug so it isn't nice to fail on them so we
-          * throw a warning instead.  It's not actually a problem for us as
-          * nir_builder will just splat the condition out which is most
-          * likely what the client wanted anyway.
-          */
-         vtn_warn("Condition type of OpSelect must have the same number "
-                  "of components as Result Type");
-      } else {
-         vtn_fail("Condition type of OpSelect must be a scalar or vector "
-                  "of Boolean type. It must have the same number of "
-                  "components as Result Type");
-      }
-   }
 
    vtn_fail_if(obj1_val->type != res_val->type ||
                obj2_val->type != res_val->type,
                "Object types must match the result type in OpSelect");
 
+   vtn_fail_if((cond_val->type->base_type != vtn_base_type_scalar &&
+                cond_val->type->base_type != vtn_base_type_vector) ||
+               !glsl_type_is_boolean(cond_val->type->type),
+               "OpSelect must have either a vector of booleans or "
+               "a boolean as Condition type");
+
+   vtn_fail_if(cond_val->type->base_type == vtn_base_type_vector &&
+               (res_val->type->base_type != vtn_base_type_vector ||
+                res_val->type->length != cond_val->type->length),
+               "When Condition type in OpSelect is a vector, the Result "
+               "type must be a vector of the same length");
+
+   switch (res_val->type->base_type) {
+   case vtn_base_type_scalar:
+   case vtn_base_type_vector:
+   case vtn_base_type_matrix:
+   case vtn_base_type_array:
+   case vtn_base_type_struct:
+      /* OK. */
+      break;
+   case vtn_base_type_pointer:
+      /* We need to have actual storage for pointer types. */
+      vtn_fail_if(res_val->type->type == NULL,
+                  "Invalid pointer result type for OpSelect");
+      break;
+   default:
+      vtn_fail("Result type of OpSelect must be a scalar, composite, or pointer");
+   }
+
    struct vtn_type *res_type = vtn_value(b, w[1], vtn_value_type_type)->type;
-   struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, res_type->type);
-   ssa->def = nir_bcsel(&b->nb, vtn_ssa_value(b, w[3])->def,
-                        vtn_ssa_value(b, w[4])->def,
-                        vtn_ssa_value(b, w[5])->def);
+   struct vtn_ssa_value *ssa = vtn_nir_select(b,
+      vtn_ssa_value(b, w[3]), vtn_ssa_value(b, w[4]), vtn_ssa_value(b, w[5]));
+
    vtn_push_ssa(b, w[2], res_type, ssa);
 }
 
