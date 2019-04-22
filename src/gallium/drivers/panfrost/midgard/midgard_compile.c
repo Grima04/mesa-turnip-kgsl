@@ -2058,6 +2058,9 @@ allocate_registers(compiler_context *ctx)
 	                print_mir_block(block);
         }
 
+        if (!ctx->temp_count)
+                return;
+
         /* Let's actually do register allocation */
         int nodes = ctx->temp_count;
         struct ra_graph *g = ra_alloc_interference_graph(regs, nodes);
