@@ -157,7 +157,8 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
                         continue;
                 struct v3d_sampler_view *view = v3d_sampler_view(pview);
 
-                if (view->texture != view->base.texture)
+                if (view->texture != view->base.texture &&
+                    view->base.format != PIPE_FORMAT_X32_S8X24_UINT)
                         v3d_update_shadow_texture(pctx, &view->base);
 
                 v3d_flush_jobs_writing_resource(v3d, view->texture);
