@@ -367,4 +367,6 @@ iris_bo_offset_from_base_address(struct iris_bo *bo)
    return bo->gtt_offset;
 }
 
+enum iris_memory_zone iris_memzone_for_address(uint64_t address);
+
 #endif /* IRIS_BUFMGR_H */

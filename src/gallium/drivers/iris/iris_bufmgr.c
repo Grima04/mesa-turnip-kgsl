@@ -256,8 +256,8 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size)
           &bufmgr->cache_bucket[index] : NULL;
 }
 
-static enum iris_memory_zone
-memzone_for_address(uint64_t address)
+enum iris_memory_zone
+iris_memzone_for_address(uint64_t address)
 {
    STATIC_ASSERT(IRIS_MEMZONE_OTHER_START   > IRIS_MEMZONE_DYNAMIC_START);
    STATIC_ASSERT(IRIS_MEMZONE_DYNAMIC_START > IRIS_MEMZONE_SURFACE_START);
@@ -336,7 +336,7 @@ bucket_vma_alloc(struct iris_bufmgr *bufmgr,
 static void
 bucket_vma_free(struct bo_cache_bucket *bucket, uint64_t address)
 {
-   enum iris_memory_zone memzone = memzone_for_address(address);
+   enum iris_memory_zone memzone = iris_memzone_for_address(address);
    struct util_dynarray *vma_list = &bucket->vma_list[memzone];
    const uint64_t node_bytes = 64ull * bucket->size;
    struct vma_bucket_node *node = NULL;
@@ -448,7 +448,7 @@ vma_free(struct iris_bufmgr *bufmgr,
    if (address == 0ull)
       return;
 
-   enum iris_memory_zone memzone = memzone_for_address(address);
+   enum iris_memory_zone memzone = iris_memzone_for_address(address);
 
    /* The binder handles its own allocations. */
    if (memzone == IRIS_MEMZONE_BINDER)
@@ -595,7 +595,7 @@ retry:
       /* If the cached BO isn't in the right memory zone, free the old
        * memory and assign it a new address.
        */
-      if (memzone != memzone_for_address(bo->gtt_offset)) {
+      if (memzone != iris_memzone_for_address(bo->gtt_offset)) {
          vma_free(bufmgr, bo->gtt_offset, bo->size);
          bo->gtt_offset = 0ull;
       }
