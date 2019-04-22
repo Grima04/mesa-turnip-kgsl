@@ -3685,12 +3685,18 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         util_dynarray_init(compiled, NULL);
 
-        /* Peephole optimizations */
+        /* MIR-level optimizations */
 
-        mir_foreach_block(ctx, block) {
-                midgard_opt_copy_prop(ctx, block);
-                midgard_opt_dead_code_eliminate(ctx, block);
-        }
+        bool progress = false;
+
+        do {
+                progress = false;
+
+                mir_foreach_block(ctx, block) {
+                        progress |= midgard_opt_copy_prop(ctx, block);
+                        progress |= midgard_opt_dead_code_eliminate(ctx, block);
+                }
+        } while (progress);
 
         /* Schedule! */
         schedule_program(ctx);
