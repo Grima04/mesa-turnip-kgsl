@@ -336,6 +336,9 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
                 return V3D_MAX_TEXTURE_SAMPLERS;
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
+                if (shader == PIPE_SHADER_VERTEX)
+                        return 0;
+
                 return PIPE_MAX_SHADER_BUFFERS;
 
         case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
