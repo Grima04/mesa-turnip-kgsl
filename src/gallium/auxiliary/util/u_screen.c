@@ -356,7 +356,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 0;
 
    case PIPE_CAP_MAX_FRAMES_IN_FLIGHT:
-      return 2;
+      return 1;
 
    case PIPE_CAP_DMABUF:
 #ifdef PIPE_OS_LINUX
