@@ -1933,10 +1933,8 @@ dri2_init_screen(__DRIscreen * sPriv)
    throttle_ret = pipe_loader_configuration(screen->dev, DRM_CONF_THROTTLE);
    dmabuf_ret = pipe_loader_configuration(screen->dev, DRM_CONF_SHARE_FD);
 
-   if (throttle_ret && throttle_ret->val.val_int != -1) {
-      screen->throttling_enabled = TRUE;
+   if (throttle_ret && throttle_ret->val.val_int > 0)
       screen->default_throttle_frames = throttle_ret->val.val_int;
-   }
 
    if (pscreen->resource_create_with_modifiers)
       dri2ImageExtension.createImageWithModifiers =

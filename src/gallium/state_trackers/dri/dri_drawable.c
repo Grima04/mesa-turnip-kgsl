@@ -547,7 +547,7 @@ dri_flush(__DRIcontext *cPriv,
       flush_flags |= ST_FLUSH_END_OF_FRAME;
 
    /* Flush the context and throttle if needed. */
-   if (dri_screen(ctx->sPriv)->throttling_enabled &&
+   if (dri_screen(ctx->sPriv)->default_throttle_frames &&
        drawable &&
        (reason == __DRI2_THROTTLE_SWAPBUFFER ||
         reason == __DRI2_THROTTLE_FLUSHFRONT)) {
