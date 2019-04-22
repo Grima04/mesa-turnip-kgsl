@@ -37,6 +37,7 @@ files_libiris = files(
   'iris_formats.c',
   'iris_genx_macros.h',
   'iris_genx_protos.h',
+  'iris_monitor.c',
   'iris_pipe.h',
   'iris_pipe_control.c',
   'iris_program.c',
@@ -89,7 +90,7 @@ libiris = static_library(
   dependencies : [dep_libdrm, dep_valgrind, idep_genxml, idep_libintel_common],
   link_with : [
     iris_gen_libs, libintel_compiler, libintel_dev, libisl,
-    libblorp
+    libblorp, libintel_perf
   ],
 )
 

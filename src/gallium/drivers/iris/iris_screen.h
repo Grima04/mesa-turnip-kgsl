@@ -33,6 +33,7 @@
 #include "iris_bufmgr.h"
 
 struct iris_bo;
+struct iris_monitor_config;
 
 #define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 #define WRITE_ONCE(x, v) *(volatile __typeof__(x) *)&(x) = (v)
@@ -75,6 +76,7 @@ struct iris_screen {
    struct isl_device isl_dev;
    struct iris_bufmgr *bufmgr;
    struct brw_compiler *compiler;
+   struct iris_monitor_config *monitor_cfg;
 
    /**
     * A buffer containing nothing useful, for hardware workarounds that

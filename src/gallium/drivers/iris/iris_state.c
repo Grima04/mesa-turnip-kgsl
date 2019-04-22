@@ -6450,6 +6450,18 @@ iris_lost_genx_state(struct iris_context *ice, struct iris_batch *batch)
    memset(genx->last_index_buffer, 0, sizeof(genx->last_index_buffer));
 }
 
+static void
+iris_emit_mi_report_perf_count(struct iris_batch *batch,
+                               struct iris_bo *bo,
+                               uint32_t offset_in_bytes,
+                               uint32_t report_id)
+{
+   iris_emit_cmd(batch, GENX(MI_REPORT_PERF_COUNT), mi_rpc) {
+      mi_rpc.MemoryAddress = rw_bo(bo, offset_in_bytes);
+      mi_rpc.ReportID = report_id;
+   }
+}
+
 void
 genX(init_state)(struct iris_context *ice)
 {
@@ -6502,6 +6514,7 @@ genX(init_state)(struct iris_context *ice)
    ice->vtbl.update_surface_base_address = iris_update_surface_base_address;
    ice->vtbl.upload_compute_state = iris_upload_compute_state;
    ice->vtbl.emit_raw_pipe_control = iris_emit_raw_pipe_control;
+   ice->vtbl.emit_mi_report_perf_count = iris_emit_mi_report_perf_count;
    ice->vtbl.rebind_buffer = iris_rebind_buffer;
    ice->vtbl.load_register_reg32 = iris_load_register_reg32;
    ice->vtbl.load_register_reg64 = iris_load_register_reg64;

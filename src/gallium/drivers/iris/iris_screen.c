@@ -53,6 +53,7 @@
 #include "iris_screen.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/gen_gem.h"
+#include "iris_monitor.h"
 
 static void
 iris_flush_frontbuffer(struct pipe_screen *_screen,
@@ -683,6 +684,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->flush_frontbuffer = iris_flush_frontbuffer;
    pscreen->get_timestamp = iris_get_timestamp;
    pscreen->query_memory_info = iris_query_memory_info;
+   pscreen->get_driver_query_group_info = iris_get_monitor_group_info;
+   pscreen->get_driver_query_info = iris_get_monitor_info;
 
    return pscreen;
 }

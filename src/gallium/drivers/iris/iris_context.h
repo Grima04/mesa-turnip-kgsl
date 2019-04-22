@@ -460,6 +460,11 @@ struct iris_vtable {
                                  struct iris_bo *bo, uint32_t offset,
                                  uint64_t imm);
 
+   void (*emit_mi_report_perf_count)(struct iris_batch *batch,
+                                     struct iris_bo *bo,
+                                     uint32_t offset_in_bytes,
+                                     uint32_t report_id);
+
    unsigned (*derived_program_state_size)(enum iris_program_cache_id id);
    void (*store_derived_program_state)(struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
@@ -886,6 +891,11 @@ void iris_render_cache_add_bo(struct iris_batch *batch,
                               enum isl_aux_usage aux_usage);
 void iris_cache_flush_for_depth(struct iris_batch *batch, struct iris_bo *bo);
 void iris_depth_cache_add_bo(struct iris_batch *batch, struct iris_bo *bo);
+int iris_get_driver_query_info(struct pipe_screen *pscreen, unsigned index,
+                               struct pipe_driver_query_info *info);
+int iris_get_driver_query_group_info(struct pipe_screen *pscreen,
+                                     unsigned index,
+                                     struct pipe_driver_query_group_info *info);
 
 /* iris_state.c */
 void gen9_toggle_preemption(struct iris_context *ice,
