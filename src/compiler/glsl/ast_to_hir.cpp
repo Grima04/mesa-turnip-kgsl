@@ -7360,7 +7360,6 @@ ast_process_struct_or_iface_block_members(exec_list *instructions,
          fields[i].centroid = qual->flags.q.centroid ? 1 : 0;
          fields[i].sample = qual->flags.q.sample ? 1 : 0;
          fields[i].patch = qual->flags.q.patch ? 1 : 0;
-         fields[i].precision = qual->precision;
          fields[i].offset = -1;
          fields[i].explicit_xfb_buffer = explicit_xfb_buffer;
          fields[i].xfb_buffer = xfb_buffer;
@@ -7556,6 +7555,16 @@ ast_process_struct_or_iface_block_members(exec_list *instructions,
                   fields[i].image_format = GL_NONE;
                }
             }
+         }
+
+         /* Precision qualifiers do not hold any meaning in Desktop GLSL */
+         if (state->es_shader) {
+            fields[i].precision = select_gles_precision(qual->precision,
+                                                        field_type,
+                                                        state,
+                                                        &loc);
+         } else {
+            fields[i].precision = qual->precision;
          }
 
          i++;
