@@ -137,7 +137,7 @@ GEN_DRIINFO_INPUTS := \
 
 MERGE_DRIINFO := $(MESA_TOP)/src/util/merge_driinfo.py
 
-$(intermediates)/iris/si_driinfo.h: $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS)
+$(intermediates)/iris/iris_driinfo.h: $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS)
 	@mkdir -p $(dir $@)
 	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
 	$(hide) $(MESA_PYTHON2) $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS) > $@ || ($(RM) $@; false)
