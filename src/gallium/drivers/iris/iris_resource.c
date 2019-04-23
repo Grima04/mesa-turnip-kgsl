@@ -1397,6 +1397,11 @@ iris_transfer_flush_region(struct pipe_context *ctx,
          iris_flush_and_dirty_for_history(ice, &ice->batches[i], res);
       }
    }
+
+   /* Make sure we flag constants dirty even if there's no need to emit
+    * any PIPE_CONTROLs to a batch.
+    */
+   iris_flush_and_dirty_for_history(ice, NULL, res);
 }
 
 static void
@@ -1435,7 +1440,7 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
    /* We've likely used the rendering engine (i.e. BLORP) to write to this
     * surface.  Flush the render cache so the data actually lands.
     */
-   if (batch->name != IRIS_BATCH_COMPUTE)
+   if (batch && batch->name != IRIS_BATCH_COMPUTE)
       flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
 
    uint64_t dirty = 0ull;
@@ -1461,7 +1466,8 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
    if (res->bind_history & (PIPE_BIND_SHADER_BUFFER | PIPE_BIND_SHADER_IMAGE))
       flush |= PIPE_CONTROL_DATA_CACHE_FLUSH;
 
-   iris_emit_pipe_control_flush(batch, flush);
+   if (batch)
+      iris_emit_pipe_control_flush(batch, flush);
 
    ice->state.dirty |= dirty;
 }
