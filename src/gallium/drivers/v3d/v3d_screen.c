@@ -142,7 +142,15 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 return 0;
 
         case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
-           return 0;
+                /* XXX perf: we don't want to emit these extra blits for
+                 * glReadPixels(), since we still have to do an uncached read
+                 * from the GPU of the result after waiting for the TFU blit
+                 * to happen.  However, disabling this introduces instability
+                 * in
+                 * dEQP-GLES31.functional.image_load_store.early_fragment_tests.*
+                 * and corruption in chromium's rendering.
+                 */
+                return 1;
 
         case PIPE_CAP_COMPUTE:
                 return screen->has_csd && screen->devinfo.ver >= 41;
