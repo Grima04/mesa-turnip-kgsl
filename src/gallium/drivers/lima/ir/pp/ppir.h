@@ -78,6 +78,7 @@ typedef enum {
    ppir_op_mod,
    ppir_op_min,
    ppir_op_max,
+   ppir_op_trunc,
 
    ppir_op_dot2,
    ppir_op_dot3,

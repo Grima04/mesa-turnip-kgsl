@@ -389,6 +389,17 @@ static bool ppir_lower_select(ppir_block *block, ppir_node *node)
    return true;
 }
 
+static bool ppir_lower_trunc(ppir_block *block, ppir_node *node)
+{
+   /* Turn it into a mov with a round to integer output modifier */
+   ppir_alu_node *alu = ppir_node_to_alu(node);
+   ppir_dest *move_dest = &alu->dest;
+   move_dest->modifier = ppir_outmod_round;
+   node->op = ppir_op_mov;
+
+   return true;
+}
+
 static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_const] = ppir_lower_const,
    [ppir_op_dot2] = ppir_lower_dot,
@@ -405,6 +416,7 @@ static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_le] = ppir_lower_swap_args,
    [ppir_op_load_texture] = ppir_lower_texture,
    [ppir_op_select] = ppir_lower_select,
+   [ppir_op_trunc] = ppir_lower_trunc,
 };
 
 bool ppir_lower_prog(ppir_compiler *comp)
