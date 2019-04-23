@@ -13,10 +13,5 @@ create_screen(int fd, const struct pipe_screen_config *config)
    return rw ? debug_screen_wrap(rw->screen) : NULL;
 }
 
-static const struct drm_conf_ret *drm_configuration(enum drm_conf conf)
-{
-   return NULL;
-}
-
 PUBLIC
-DRM_DRIVER_DESCRIPTOR("r600", create_screen, drm_configuration)
+DRM_DRIVER_DESCRIPTOR("r600", NULL, create_screen)

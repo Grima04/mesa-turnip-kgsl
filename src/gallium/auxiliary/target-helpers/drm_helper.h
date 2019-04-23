@@ -7,12 +7,6 @@
 #include "state_tracker/drm_driver.h"
 #include "util/xmlpool.h"
 
-const struct drm_conf_ret *
-pipe_default_configuration_query(enum drm_conf conf)
-{
-   return NULL;
-}
-
 #ifdef GALLIUM_I915
 #include "i915/drm/i915_drm_public.h"
 #include "i915/i915_public.h"
@@ -54,23 +48,9 @@ pipe_iris_create_screen(int fd, const struct pipe_screen_config *config)
    return screen ? debug_screen_wrap(screen) : NULL;
 }
 
-const struct drm_conf_ret *
-pipe_iris_configuration_query(enum drm_conf conf)
-{
-   static const struct drm_conf_ret xml_options_ret = {
-      .type = DRM_CONF_POINTER,
-      .val.val_pointer =
-#include "iris/iris_driinfo.h"
-   };
-
-   switch (conf) {
-   case DRM_CONF_XML_OPTIONS:
-      return &xml_options_ret;
-   default:
-      break;
-   }
-   return pipe_default_configuration_query(conf);
-}
+const char *iris_driconf_xml =
+      #include "iris/iris_driinfo.h"
+      ;
 
 #else
 
@@ -81,11 +61,7 @@ pipe_iris_create_screen(int fd, const struct pipe_screen_config *config)
    return NULL;
 }
 
-const struct drm_conf_ret *
-pipe_iris_configuration_query(enum drm_conf conf)
-{
-   return NULL;
-}
+const char *iris_driconf_xml = NULL;
 
 #endif
 
@@ -204,23 +180,9 @@ pipe_radeonsi_create_screen(int fd, const struct pipe_screen_config *config)
    return rw ? debug_screen_wrap(rw->screen) : NULL;
 }
 
-const struct drm_conf_ret *
-pipe_radeonsi_configuration_query(enum drm_conf conf)
-{
-   static const struct drm_conf_ret xml_options_ret = {
-      .type = DRM_CONF_POINTER,
-      .val.val_pointer =
-#include "radeonsi/si_driinfo.h"
-   };
-
-   switch (conf) {
-   case DRM_CONF_XML_OPTIONS:
-      return &xml_options_ret;
-   default:
-      break;
-   }
-   return pipe_default_configuration_query(conf);
-}
+const char *radeonsi_driconf_xml =
+      #include "radeonsi/si_driinfo.h"
+      ;
 
 #else
 
@@ -231,11 +193,7 @@ pipe_radeonsi_create_screen(int fd, const struct pipe_screen_config *config)
    return NULL;
 }
 
-const struct drm_conf_ret *
-pipe_radeonsi_configuration_query(enum drm_conf conf)
-{
-   return NULL;
-}
+const char *radeonsi_driconf_xml = NULL;
 
 #endif
 
