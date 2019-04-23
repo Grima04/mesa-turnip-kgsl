@@ -794,8 +794,8 @@ void radv_GetPhysicalDeviceFeatures2(
 	RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
 	vk_foreach_struct(ext, pFeatures->pNext) {
 		switch (ext->sType) {
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
-			VkPhysicalDeviceVariablePointerFeatures *features = (void *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
+			VkPhysicalDeviceVariablePointersFeatures *features = (void *)ext;
 			features->variablePointersStorageBuffer = true;
 			features->variablePointers = true;
 			break;
@@ -807,9 +807,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->multiviewTessellationShader = true;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES: {
-			VkPhysicalDeviceShaderDrawParameterFeatures *features =
-			    (VkPhysicalDeviceShaderDrawParameterFeatures*)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
+			VkPhysicalDeviceShaderDrawParametersFeatures *features =
+			    (VkPhysicalDeviceShaderDrawParametersFeatures*)ext;
 			features->shaderDrawParameters = true;
 			break;
 		}
@@ -893,9 +893,9 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->memoryPriority = VK_TRUE;
 			break;
 		}
-		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT: {
-			VkPhysicalDeviceBufferAddressFeaturesEXT *features =
-				(VkPhysicalDeviceBufferAddressFeaturesEXT *)ext;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
+			VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *features =
+				(VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *)ext;
 			features->bufferDeviceAddress = true;
 			features->bufferDeviceAddressCaptureReplay = false;
 			features->bufferDeviceAddressMultiDevice = false;
