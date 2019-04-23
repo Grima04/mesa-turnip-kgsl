@@ -269,7 +269,13 @@ fast_clear_color(struct iris_context *ice,
    iris_blorp_surf_for_resource(&ice->vtbl, &surf, p_res, res->aux.usage,
                                 level, true);
 
-   blorp_fast_clear(&blorp_batch, &surf, format,
+   /* In newer gens (> 9), the hardware will do a linear -> sRGB conversion of
+    * the clear color during the fast clear, if the surface format is of sRGB
+    * type. We use the linear version of the surface format here to prevent
+    * that from happening, since we already do our own linear -> sRGB
+    * conversion in convert_fast_clear_color().
+    */
+   blorp_fast_clear(&blorp_batch, &surf, isl_format_srgb_to_linear(format),
                     level, box->z, box->depth,
                     box->x, box->y, box->x + box->width,
                     box->y + box->height);
