@@ -1386,17 +1386,25 @@ isl_calc_row_pitch(const struct isl_device *dev,
       isl_calc_min_row_pitch(dev, surf_info, tile_info, phys_total_el,
                              alignment_B);
 
-   uint32_t row_pitch_B = min_row_pitch_B;
-
    if (surf_info->row_pitch_B != 0) {
-      row_pitch_B = surf_info->row_pitch_B;
-
-      if (row_pitch_B < min_row_pitch_B)
+      if (surf_info->row_pitch_B < min_row_pitch_B)
          return false;
 
-      if (row_pitch_B % alignment_B != 0)
+      if (surf_info->row_pitch_B % alignment_B != 0)
          return false;
    }
+
+   const uint32_t row_pitch_B =
+      surf_info->row_pitch_B != 0 ?
+         surf_info->row_pitch_B :
+      /* According to BSpec: 44930, Gen12's CCS-compressed surface pitches
+       * must be 512B-aligned.
+       */
+      ISL_DEV_GEN(dev) >= 12 &&
+      isl_format_supports_ccs_e(dev->info, surf_info->format) ?
+         isl_align(min_row_pitch_B, 512) :
+      /* Else */
+         min_row_pitch_B;
 
    const uint32_t row_pitch_tl = row_pitch_B / tile_info->phys_extent_B.width;
 
