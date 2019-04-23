@@ -777,6 +777,38 @@ static bool si_has_displayable_dcc(struct si_texture *tex)
 	return false;
 }
 
+static void si_texture_get_info(struct pipe_screen* screen,
+				struct pipe_resource *resource,
+				unsigned *pstride,
+				unsigned *poffset)
+{
+	struct si_screen *sscreen = (struct si_screen*)screen;
+	struct si_texture *tex = (struct si_texture*)resource;
+	unsigned stride = 0;
+	unsigned offset = 0;
+
+	if (!sscreen || !tex)
+		return;
+
+	if (resource->target != PIPE_BUFFER) {
+		if (sscreen->info.chip_class >= GFX9) {
+			offset = tex->surface.u.gfx9.surf_offset;
+			stride = tex->surface.u.gfx9.surf_pitch *
+					tex->surface.bpe;
+		} else {
+			offset = tex->surface.u.legacy.level[0].offset;
+			stride = tex->surface.u.legacy.level[0].nblk_x *
+					tex->surface.bpe;
+		}
+	}
+
+	if (pstride)
+		*pstride = stride;
+
+	if (poffset)
+		*poffset = offset;
+}
+
 static boolean si_texture_get_handle(struct pipe_screen* screen,
 				     struct pipe_context *ctx,
 				     struct pipe_resource *resource,
@@ -851,14 +883,8 @@ static boolean si_texture_get_handle(struct pipe_screen* screen,
 			si_set_tex_bo_metadata(sscreen, tex);
 
 		if (sscreen->info.chip_class >= GFX9) {
-			offset = tex->surface.u.gfx9.surf_offset;
-			stride = tex->surface.u.gfx9.surf_pitch *
-				 tex->surface.bpe;
 			slice_size = tex->surface.u.gfx9.surf_slice_size;
 		} else {
-			offset = tex->surface.u.legacy.level[0].offset;
-			stride = tex->surface.u.legacy.level[0].nblk_x *
-				 tex->surface.bpe;
 			slice_size = (uint64_t)tex->surface.u.legacy.level[0].slice_size_dw * 4;
 		}
 	} else {
@@ -894,10 +920,10 @@ static boolean si_texture_get_handle(struct pipe_screen* screen,
 		}
 
 		/* Buffers */
-		offset = 0;
-		stride = 0;
 		slice_size = 0;
 	}
+
+	si_texture_get_info(screen, resource, &stride, &offset);
 
 	if (flush)
 		sctx->b.flush(&sctx->b, NULL, 0);
@@ -2615,6 +2641,7 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
 {
 	sscreen->b.resource_from_handle = si_texture_from_handle;
 	sscreen->b.resource_get_handle = si_texture_get_handle;
+	sscreen->b.resource_get_info = si_texture_get_info;
 	sscreen->b.resource_from_memobj = si_texture_from_memobj;
 	sscreen->b.memobj_create_from_handle = si_memobj_from_handle;
 	sscreen->b.memobj_destroy = si_memobj_destroy;
