@@ -997,6 +997,7 @@ extern "C" {
 #endif
 
 struct glcpp_parser;
+struct _mesa_glsl_parse_state;
 
 typedef void (*glcpp_extension_iterator)(
               struct _mesa_glsl_parse_state *state,

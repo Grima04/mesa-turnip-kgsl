@@ -150,6 +150,9 @@ static void si_destroy_context(struct pipe_context *context)
 	struct si_context *sctx = (struct si_context *)context;
 	int i;
 
+	util_queue_finish(&sctx->screen->shader_compiler_queue);
+	util_queue_finish(&sctx->screen->shader_compiler_queue_low_priority);
+
 	/* Unreference the framebuffer normally to disable related logic
 	 * properly.
 	 */
@@ -702,6 +705,9 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 	if (!sscreen->ws->unref(sscreen->ws))
 		return;
 
+	mtx_destroy(&sscreen->aux_context_lock);
+	sscreen->aux_context->destroy(sscreen->aux_context);
+
 	util_queue_destroy(&sscreen->shader_compiler_queue);
 	util_queue_destroy(&sscreen->shader_compiler_queue_low_priority);
 
@@ -728,8 +734,6 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 	si_gpu_load_kill_thread(sscreen);
 
 	mtx_destroy(&sscreen->gpu_load_mutex);
-	mtx_destroy(&sscreen->aux_context_lock);
-	sscreen->aux_context->destroy(sscreen->aux_context);
 
 	slab_destroy_parent(&sscreen->pool_transfers);
 
