@@ -739,8 +739,8 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
                                  gl_linked_shader *consumer)
 {
    glsl_symbol_table parameters;
-   struct explicit_location_info output_explicit_locations[MAX_VARYING][4] = { 0 };
-   struct explicit_location_info input_explicit_locations[MAX_VARYING][4] = { 0 };
+   struct explicit_location_info output_explicit_locations[MAX_VARYING][4] = {};
+   struct explicit_location_info input_explicit_locations[MAX_VARYING][4] = {};
 
    /* Find all shader outputs in the "producer" stage.
     */
