@@ -2233,6 +2233,7 @@ compute_pipeline_create(
     * of various prog_data pointers.  Make them NULL by default.
     */
    memset(pipeline->shaders, 0, sizeof(pipeline->shaders));
+   pipeline->num_executables = 0;
 
    pipeline->needs_data_cache = false;
 

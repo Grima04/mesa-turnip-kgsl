@@ -30,6 +30,7 @@
 #include "util/mesa-sha1.h"
 #include "util/os_time.h"
 #include "common/gen_l3_config.h"
+#include "common/gen_disasm.h"
 #include "anv_private.h"
 #include "compiler/brw_nir.h"
 #include "anv_nir.h"
@@ -529,6 +530,7 @@ struct anv_pipeline_stage {
 
    uint32_t num_stats;
    struct brw_compile_stats stats[3];
+   char *disasm[3];
 
    VkPipelineCreationFeedbackEXT feedback;
 
@@ -1063,6 +1065,77 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
    }
 }
 
+static void
+anv_pipeline_add_executable(struct anv_pipeline *pipeline,
+                            struct anv_pipeline_stage *stage,
+                            struct brw_compile_stats *stats,
+                            uint32_t code_offset)
+{
+   char *disasm = NULL;
+   if (stage->code &&
+       (pipeline->flags &
+        VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR)) {
+      char *stream_data = NULL;
+      size_t stream_size = 0;
+      FILE *stream = open_memstream(&stream_data, &stream_size);
+
+      /* Creating this is far cheaper than it looks.  It's perfectly fine to
+       * do it for every binary.
+       */
+      struct gen_disasm *d = gen_disasm_create(&pipeline->device->info);
+      gen_disasm_disassemble(d, stage->code, code_offset, stream);
+      gen_disasm_destroy(d);
+
+      fclose(stream);
+
+      /* Copy it to a ralloc'd thing */
+      disasm = ralloc_size(pipeline->mem_ctx, stream_size + 1);
+      memcpy(disasm, stream_data, stream_size);
+      disasm[stream_size] = 0;
+
+      free(stream_data);
+   }
+
+   pipeline->executables[pipeline->num_executables++] =
+      (struct anv_pipeline_executable) {
+         .stage = stage->stage,
+         .stats = *stats,
+         .disasm = disasm,
+      };
+}
+
+static void
+anv_pipeline_add_executables(struct anv_pipeline *pipeline,
+                             struct anv_pipeline_stage *stage,
+                             struct anv_shader_bin *bin)
+{
+   if (stage->stage == MESA_SHADER_FRAGMENT) {
+      /* We pull the prog data and stats out of the anv_shader_bin because
+       * the anv_pipeline_stage may not be fully populated if we successfully
+       * looked up the shader in a cache.
+       */
+      const struct brw_wm_prog_data *wm_prog_data =
+         (const struct brw_wm_prog_data *)bin->prog_data;
+      struct brw_compile_stats *stats = bin->stats;
+
+      if (wm_prog_data->dispatch_8) {
+         anv_pipeline_add_executable(pipeline, stage, stats++, 0);
+      }
+
+      if (wm_prog_data->dispatch_16) {
+         anv_pipeline_add_executable(pipeline, stage, stats++,
+                                     wm_prog_data->prog_offset_16);
+      }
+
+      if (wm_prog_data->dispatch_32) {
+         anv_pipeline_add_executable(pipeline, stage, stats++,
+                                     wm_prog_data->prog_offset_32);
+      }
+   } else {
+      anv_pipeline_add_executable(pipeline, stage, bin->stats, 0);
+   }
+}
+
 static VkResult
 anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
                               struct anv_pipeline_cache *cache,
@@ -1182,6 +1255,13 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
                VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
          }
          /* We found all our shaders in the cache.  We're done. */
+         for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
+            if (!stages[s].entrypoint)
+               continue;
+
+            anv_pipeline_add_executables(pipeline, &stages[s],
+                                         pipeline->shaders[s]);
+         }
          goto done;
       } else if (found > 0) {
          /* We found some but not all of our shaders.  This shouldn't happen
@@ -1335,6 +1415,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          goto fail;
       }
 
+      anv_pipeline_add_executables(pipeline, &stages[s], bin);
+
       pipeline->shaders[s] = bin;
       ralloc_free(stage_ctx);
 
@@ -1455,6 +1537,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
                                          &cache_hit);
    }
 
+   void *mem_ctx = ralloc_context(NULL);
    if (bin == NULL) {
       int64_t stage_start = os_time_get_nano();
 
@@ -1468,8 +1551,6 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       stage.bind_map.surface_to_descriptor[0] = (struct anv_pipeline_binding) {
          .set = ANV_DESCRIPTOR_SET_NUM_WORK_GROUPS,
       };
-
-      void *mem_ctx = ralloc_context(NULL);
 
       stage.nir = anv_pipeline_stage_get_nir(pipeline, cache, mem_ctx, &stage);
       if (stage.nir == NULL) {
@@ -1511,10 +1592,12 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
-      ralloc_free(mem_ctx);
-
       stage.feedback.duration = os_time_get_nano() - stage_start;
    }
+
+   anv_pipeline_add_executables(pipeline, &stage, bin);
+
+   ralloc_free(mem_ctx);
 
    if (cache_hit) {
       stage.feedback.flags |=
@@ -1823,6 +1906,7 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
     * of various prog_data pointers.  Make them NULL by default.
     */
    memset(pipeline->shaders, 0, sizeof(pipeline->shaders));
+   pipeline->num_executables = 0;
 
    result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
@@ -1908,4 +1992,188 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
       pipeline->topology = vk_to_gen_primitive_type[ia_info->topology];
 
    return VK_SUCCESS;
+}
+
+#define WRITE_STR(field, ...) ({                               \
+   memset(field, 0, sizeof(field));                            \
+   UNUSED int i = snprintf(field, sizeof(field), __VA_ARGS__); \
+   assert(i > 0 && i < sizeof(field));                         \
+})
+
+VkResult anv_GetPipelineExecutablePropertiesKHR(
+    VkDevice                                    device,
+    const VkPipelineInfoKHR*                    pPipelineInfo,
+    uint32_t*                                   pExecutableCount,
+    VkPipelineExecutablePropertiesKHR*          pProperties)
+{
+   ANV_FROM_HANDLE(anv_pipeline, pipeline, pPipelineInfo->pipeline);
+   VK_OUTARRAY_MAKE(out, pProperties, pExecutableCount);
+
+   for (uint32_t i = 0; i < pipeline->num_executables; i++) {
+      vk_outarray_append(&out, props) {
+         gl_shader_stage stage = pipeline->executables[i].stage;
+         props->stages = mesa_to_vk_shader_stage(stage);
+
+         unsigned simd_width = pipeline->executables[i].stats.dispatch_width;
+         if (stage == MESA_SHADER_FRAGMENT) {
+            WRITE_STR(props->name, "%s%d %s",
+                      simd_width ? "SIMD" : "vec",
+                      simd_width ? simd_width : 4,
+                      _mesa_shader_stage_to_string(stage));
+         } else {
+            WRITE_STR(props->name, "%s", _mesa_shader_stage_to_string(stage));
+         }
+         WRITE_STR(props->description, "%s%d %s shader",
+                   simd_width ? "SIMD" : "vec",
+                   simd_width ? simd_width : 4,
+                   _mesa_shader_stage_to_string(stage));
+
+         /* The compiler gives us a dispatch width of 0 for vec4 but Vulkan
+          * wants a subgroup size of 1.
+          */
+         props->subgroupSize = MAX2(simd_width, 1);
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+VkResult anv_GetPipelineExecutableStatisticsKHR(
+    VkDevice                                    device,
+    const VkPipelineExecutableInfoKHR*          pExecutableInfo,
+    uint32_t*                                   pStatisticCount,
+    VkPipelineExecutableStatisticKHR*           pStatistics)
+{
+   ANV_FROM_HANDLE(anv_pipeline, pipeline, pExecutableInfo->pipeline);
+   VK_OUTARRAY_MAKE(out, pStatistics, pStatisticCount);
+
+   assert(pExecutableInfo->executableIndex < pipeline->num_executables);
+   const struct anv_pipeline_executable *exe =
+      &pipeline->executables[pExecutableInfo->executableIndex];
+   const struct brw_stage_prog_data *prog_data =
+      pipeline->shaders[exe->stage]->prog_data;
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Instruction Count");
+      WRITE_STR(stat->description,
+                "Number of GEN instructions in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.instructions;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Loop Count");
+      WRITE_STR(stat->description,
+                "Number of loops (not unrolled) in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.loops;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Cycle Count");
+      WRITE_STR(stat->description,
+                "Estimate of the number of EU cycles required to execute "
+                "the final generated executable.  This is an estimate only "
+                "and may vary greatly from actual run-time performance.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.cycles;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Spill Count");
+      WRITE_STR(stat->description,
+                "Number of scratch spill operations.  This gives a rough "
+                "estimate of the cost incurred due to spilling temporary "
+                "values to memory.  If this is non-zero, you may want to "
+                "adjust your shader to reduce register pressure.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.spills;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Fill Count");
+      WRITE_STR(stat->description,
+                "Number of scratch fill operations.  This gives a rough "
+                "estimate of the cost incurred due to spilling temporary "
+                "values to memory.  If this is non-zero, you may want to "
+                "adjust your shader to reduce register pressure.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.fills;
+   }
+
+   vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Scratch Memory Size");
+      WRITE_STR(stat->description,
+                "Number of bytes of scratch memory required by the "
+                "generated shader executable.  If this is non-zero, you "
+                "may want to adjust your shader to reduce register "
+                "pressure.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = prog_data->total_scratch;
+   }
+
+   if (exe->stage == MESA_SHADER_COMPUTE) {
+      vk_outarray_append(&out, stat) {
+         WRITE_STR(stat->name, "Workgroup Memory Size");
+         WRITE_STR(stat->description,
+                   "Number of bytes of workgroup shared memory used by this "
+                   "compute shader including any padding.");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = prog_data->total_scratch;
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+static bool
+write_ir_text(VkPipelineExecutableInternalRepresentationKHR* ir,
+              const char *data)
+{
+   ir->isText = VK_TRUE;
+
+   size_t data_len = strlen(data) + 1;
+
+   if (ir->pData == NULL) {
+      ir->dataSize = data_len;
+      return true;
+   }
+
+   strncpy(ir->pData, data, ir->dataSize);
+   if (ir->dataSize < data_len)
+      return false;
+
+   ir->dataSize = data_len;
+   return true;
+}
+
+VkResult anv_GetPipelineExecutableInternalRepresentationsKHR(
+    VkDevice                                    device,
+    const VkPipelineExecutableInfoKHR*          pExecutableInfo,
+    uint32_t*                                   pInternalRepresentationCount,
+    VkPipelineExecutableInternalRepresentationKHR* pInternalRepresentations)
+{
+   ANV_FROM_HANDLE(anv_pipeline, pipeline, pExecutableInfo->pipeline);
+   VK_OUTARRAY_MAKE(out, pInternalRepresentations,
+                    pInternalRepresentationCount);
+   bool incomplete_text = false;
+
+   assert(pExecutableInfo->executableIndex < pipeline->num_executables);
+   const struct anv_pipeline_executable *exe =
+      &pipeline->executables[pExecutableInfo->executableIndex];
+
+   if (exe->disasm) {
+      vk_outarray_append(&out, ir) {
+         WRITE_STR(ir->name, "GEN Assembly");
+         WRITE_STR(ir->description,
+                   "Final GEN assembly for the generated shader binary");
+
+         if (!write_ir_text(ir, exe->disasm))
+            incomplete_text = true;
+      }
+   }
+
+   return incomplete_text ? VK_INCOMPLETE : vk_outarray_status(&out);
 }

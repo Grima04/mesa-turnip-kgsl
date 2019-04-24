@@ -1126,6 +1126,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: {
+         VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *features =
+            (VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *)ext;
+         features->pipelineExecutableInfo = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
          VkPhysicalDeviceProtectedMemoryFeatures *features = (void *)ext;
          features->protectedMemory = false;
