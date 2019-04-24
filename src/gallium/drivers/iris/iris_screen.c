@@ -90,7 +90,7 @@ iris_get_name(struct pipe_screen *pscreen)
    }
 
    snprintf(buf, sizeof(buf), "Mesa %s", chipset);
-   return chipset;
+   return buf;
 }
 
 static int
