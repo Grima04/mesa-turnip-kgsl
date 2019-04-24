@@ -107,6 +107,12 @@ typedef struct midgard_branch {
         };
 } midgard_branch;
 
+static bool
+midgard_is_branch_unit(unsigned unit)
+{
+        return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
+}
+
 /* Generic in-memory data type repesenting a single logical instruction, rather
  * than a single instruction group. This is the preferred form for code gen.
  * Multiple midgard_insturctions will later be combined during scheduling,
@@ -612,7 +618,7 @@ print_mir_instruction(midgard_instruction *ins)
         switch (ins->type) {
         case TAG_ALU_4: {
                 midgard_alu_op op = ins->alu.op;
-                const char *name = alu_opcode_names[op];
+                const char *name = alu_opcode_props[op].name;
 
                 if (ins->unit)
                         printf("%d.", ins->unit);
@@ -946,7 +952,7 @@ effective_writemask(midgard_vector_alu *alu)
         /* Channel count is off-by-one to fit in two-bits (0 channel makes no
          * sense) */
 
-        unsigned channel_count = GET_CHANNEL_COUNT(alu_opcode_props[alu->op]);
+        unsigned channel_count = GET_CHANNEL_COUNT(alu_opcode_props[alu->op].props);
 
         /* If there is a fixed channel count, construct the appropriate mask */
 
@@ -1240,7 +1246,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         }
 
         /* Fetch unit, quirks, etc information */
-        unsigned opcode_props = alu_opcode_props[op];
+        unsigned opcode_props = alu_opcode_props[op].props;
         bool quirk_flipped_r24 = opcode_props & QUIRK_FLIPPED_R24;
 
         /* Initialise fields common between scalar/vector instructions */
@@ -2422,7 +2428,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                         if (!unit) {
                                 int op = ains->alu.op;
-                                int units = alu_opcode_props[op];
+                                int units = alu_opcode_props[op].props;
 
                                 /* TODO: Promotion of scalars to vectors */
                                 int vector = ((!is_single_component_mask(ains->alu.mask)) || ((units & UNITS_SCALAR) == 0)) && (units & UNITS_ANY_VECTOR);
@@ -2953,7 +2959,7 @@ embedded_to_inline_constant(compiler_context *ctx)
                         case midgard_alu_op_fcsel:
                         case midgard_alu_op_icsel:
                         case midgard_alu_op_isub:
-                                DBG("Missed non-commutative flip (%s)\n", alu_opcode_names[op]);
+                                DBG("Missed non-commutative flip (%s)\n", alu_opcode_props[op].name);
                                 break;
 
                         /* These ops are commutative and Just Flip */

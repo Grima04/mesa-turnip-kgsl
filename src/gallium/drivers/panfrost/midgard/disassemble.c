@@ -44,10 +44,10 @@ print_alu_opcode(midgard_alu_op op)
 {
         bool int_op = false;
 
-        if (alu_opcode_names[op]) {
-                printf("%s", alu_opcode_names[op]);
+        if (alu_opcode_props[op].name) {
+                printf("%s", alu_opcode_props[op].name);
 
-                int_op = alu_opcode_names[op][0] == 'i';
+                int_op = midgard_is_integer_op(op);
         } else
                 printf("alu_op_%02X", op);
 

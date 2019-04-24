@@ -122,67 +122,6 @@
 
 #define LDST_NOP (3)
 
-/* Is this opcode that of an integer (regardless of signedness)? */
-
-static bool
-midgard_is_integer_op(int op)
-{
-        switch (op) {
-        case midgard_alu_op_iadd:
-        case midgard_alu_op_ishladd:
-        case midgard_alu_op_isub:
-        case midgard_alu_op_imul:
-        case midgard_alu_op_imin:
-        case midgard_alu_op_umin:
-        case midgard_alu_op_imax:
-        case midgard_alu_op_umax:
-        case midgard_alu_op_iasr:
-        case midgard_alu_op_ilsr:
-        case midgard_alu_op_ishl:
-        case midgard_alu_op_iand:
-        case midgard_alu_op_ior:
-        case midgard_alu_op_inot:
-        case midgard_alu_op_iandnot:
-        case midgard_alu_op_ixor:
-        case midgard_alu_op_ilzcnt:
-        case midgard_alu_op_ibitcount8:
-        case midgard_alu_op_imov:
-        case midgard_alu_op_iabs:
-        case midgard_alu_op_ieq:
-        case midgard_alu_op_ine:
-        case midgard_alu_op_ult:
-        case midgard_alu_op_ule:
-        case midgard_alu_op_ilt:
-        case midgard_alu_op_ile:
-        case midgard_alu_op_iball_eq:
-        case midgard_alu_op_ball:
-        case midgard_alu_op_uball_lt:
-        case midgard_alu_op_uball_lte:
-        case midgard_alu_op_iball_lt:
-        case midgard_alu_op_iball_lte:
-        case midgard_alu_op_ibany_eq:
-        case midgard_alu_op_ibany_neq:
-        case midgard_alu_op_ubany_lt:
-        case midgard_alu_op_ubany_lte:
-        case midgard_alu_op_ibany_lt:
-        case midgard_alu_op_ibany_lte:
-        case midgard_alu_op_i2f:
-        case midgard_alu_op_u2f:
-        case midgard_alu_op_icsel:
-                return true;
-
-        default:
-                return false;
-        }
-}
-
-/* Is this unit a branch? */
-static bool
-midgard_is_branch_unit(unsigned unit)
-{
-        return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
-}
-
 /* There are five ALU units: VMUL, VADD, SMUL, SADD, LUT. A given opcode is
  * implemented on some subset of these units (or occassionally all of them).
  * This table encodes a bit mask of valid units for each opcode, so the
@@ -205,80 +144,120 @@ midgard_is_branch_unit(unsigned unit)
 #define UNITS_VECTOR (UNIT_VMUL | UNIT_VADD)
 #define UNITS_ANY_VECTOR (UNITS_VECTOR | UNIT_VLUT)
 
-static unsigned alu_opcode_props[256] = {
-        [midgard_alu_op_fadd]		 = UNITS_ADD,
-        [midgard_alu_op_fmul]		 = UNITS_MUL | UNIT_VLUT,
-        [midgard_alu_op_fmin]		 = UNITS_MUL | UNITS_ADD,
-        [midgard_alu_op_fmax]		 = UNITS_MUL | UNITS_ADD,
-        [midgard_alu_op_imin]		 = UNITS_MOST,
-        [midgard_alu_op_imax]		 = UNITS_MOST,
-        [midgard_alu_op_umin]		 = UNITS_MOST,
-        [midgard_alu_op_umax]		 = UNITS_MOST,
-        [midgard_alu_op_fmov]		 = UNITS_ALL | QUIRK_FLIPPED_R24,
-        [midgard_alu_op_fround]          = UNITS_ADD,
-        [midgard_alu_op_froundeven]      = UNITS_ADD,
-        [midgard_alu_op_ftrunc]          = UNITS_ADD,
-        [midgard_alu_op_ffloor]		 = UNITS_ADD,
-        [midgard_alu_op_fceil]		 = UNITS_ADD,
-        [midgard_alu_op_ffma]		 = UNIT_VLUT,
+/* Table of mapping opcodes to accompanying properties relevant to
+ * scheduling/emission/etc */
+
+static struct {
+        const char *name;
+        unsigned props;
+} alu_opcode_props[256] = {
+        [midgard_alu_op_fadd]		 = {"fadd", UNITS_ADD},
+        [midgard_alu_op_fmul]		 = {"fmul", UNITS_MUL | UNIT_VLUT},
+        [midgard_alu_op_fmin]		 = {"fmin", UNITS_MUL | UNITS_ADD},
+        [midgard_alu_op_fmax]		 = {"fmax", UNITS_MUL | UNITS_ADD},
+        [midgard_alu_op_imin]		 = {"imin", UNITS_MOST},
+        [midgard_alu_op_imax]		 = {"imax", UNITS_MOST},
+        [midgard_alu_op_umin]		 = {"umin", UNITS_MOST},
+        [midgard_alu_op_umax]		 = {"umax", UNITS_MOST},
+        [midgard_alu_op_fmov]		 = {"fmov", UNITS_ALL | QUIRK_FLIPPED_R24},
+        [midgard_alu_op_fround]          = {"fround", UNITS_ADD},
+        [midgard_alu_op_froundeven]      = {"froundeven", UNITS_ADD},
+        [midgard_alu_op_ftrunc]          = {"ftrunc", UNITS_ADD},
+        [midgard_alu_op_ffloor]		 = {"ffloor", UNITS_ADD},
+        [midgard_alu_op_fceil]		 = {"fceil", UNITS_ADD},
+        [midgard_alu_op_ffma]		 = {"ffma", UNIT_VLUT},
 
         /* Though they output a scalar, they need to run on a vector unit
          * since they process vectors */
-        [midgard_alu_op_fdot3]		 = UNIT_VMUL | OP_CHANNEL_COUNT(3),
-        [midgard_alu_op_fdot4]		 = UNIT_VMUL | OP_CHANNEL_COUNT(4),
+        [midgard_alu_op_fdot3]		 = {"fdot3", UNIT_VMUL | OP_CHANNEL_COUNT(3)},
+        [midgard_alu_op_fdot3r]		 = {"fdot3r", UNIT_VMUL | OP_CHANNEL_COUNT(3)},
+        [midgard_alu_op_fdot4]		 = {"fdot4", UNIT_VMUL | OP_CHANNEL_COUNT(4)},
 
         /* Incredibly, iadd can run on vmul, etc */
-        [midgard_alu_op_iadd]		 = UNITS_MOST,
-        [midgard_alu_op_iabs]		 = UNITS_MOST,
-        [midgard_alu_op_isub]		 = UNITS_MOST,
-        [midgard_alu_op_imul]		 = UNITS_MUL,
-        [midgard_alu_op_imov]		 = UNITS_MOST | QUIRK_FLIPPED_R24,
+        [midgard_alu_op_iadd]		 = {"iadd", UNITS_MOST},
+        [midgard_alu_op_iabs]		 = {"iabs", UNITS_MOST},
+        [midgard_alu_op_isub]		 = {"isub", UNITS_MOST},
+        [midgard_alu_op_imul]		 = {"imul", UNITS_MUL},
+        [midgard_alu_op_imov]		 = {"imov", UNITS_MOST | QUIRK_FLIPPED_R24},
 
         /* For vector comparisons, use ball etc */
-        [midgard_alu_op_feq]		 = UNITS_MOST,
-        [midgard_alu_op_fne]		 = UNITS_MOST,
-        [midgard_alu_op_fle]		 = UNITS_MOST,
-        [midgard_alu_op_flt]		 = UNITS_MOST,
-        [midgard_alu_op_ieq]		 = UNITS_MOST,
-        [midgard_alu_op_ine]		 = UNITS_MOST,
-        [midgard_alu_op_ilt]		 = UNITS_MOST,
-        [midgard_alu_op_ile]		 = UNITS_MOST,
-        [midgard_alu_op_ule]		 = UNITS_MOST,
-        [midgard_alu_op_ult]		 = UNITS_MOST,
+        [midgard_alu_op_feq]		 = {"feq", UNITS_MOST},
+        [midgard_alu_op_fne]		 = {"fne", UNITS_MOST},
+        [midgard_alu_op_fle]		 = {"fle", UNITS_MOST},
+        [midgard_alu_op_flt]		 = {"flt", UNITS_MOST},
+        [midgard_alu_op_ieq]		 = {"ieq", UNITS_MOST},
+        [midgard_alu_op_ine]		 = {"ine", UNITS_MOST},
+        [midgard_alu_op_ilt]		 = {"ilt", UNITS_MOST},
+        [midgard_alu_op_ile]		 = {"ile", UNITS_MOST},
+        [midgard_alu_op_ult]		 = {"ult", UNITS_MOST},
+        [midgard_alu_op_ule]		 = {"ule", UNITS_MOST},
 
-        [midgard_alu_op_icsel]		 = UNITS_ADD,
-        [midgard_alu_op_fcsel_i]	 = UNITS_ADD,
-        [midgard_alu_op_fcsel]		 = UNITS_ADD | UNIT_SMUL,
+        [midgard_alu_op_icsel]		 = {"icsel", UNITS_ADD},
+        [midgard_alu_op_fcsel_i]	 = {"fcsel_i", UNITS_ADD},
+        [midgard_alu_op_fcsel]		 = {"fcsel", UNITS_ADD | UNIT_SMUL},
 
-        [midgard_alu_op_frcp]		 = UNIT_VLUT,
-        [midgard_alu_op_frsqrt]		 = UNIT_VLUT,
-        [midgard_alu_op_fsqrt]		 = UNIT_VLUT,
-        [midgard_alu_op_fpow_pt1]	 = UNIT_VLUT,
-        [midgard_alu_op_fexp2]		 = UNIT_VLUT,
-        [midgard_alu_op_flog2]		 = UNIT_VLUT,
+        [midgard_alu_op_frcp]		 = {"frcp", UNIT_VLUT},
+        [midgard_alu_op_frsqrt]		 = {"frsqrt", UNIT_VLUT},
+        [midgard_alu_op_fsqrt]		 = {"fsqrt", UNIT_VLUT},
+        [midgard_alu_op_fpow_pt1]	 = {"fpow_pt1", UNIT_VLUT},
+        [midgard_alu_op_fexp2]		 = {"fexp2", UNIT_VLUT},
+        [midgard_alu_op_flog2]		 = {"flog2", UNIT_VLUT},
 
-        [midgard_alu_op_f2i]		 = UNITS_ADD,
-        [midgard_alu_op_f2u]		 = UNITS_ADD,
-        [midgard_alu_op_f2u8]		 = UNITS_ADD,
-        [midgard_alu_op_i2f]		 = UNITS_ADD,
-        [midgard_alu_op_u2f]		 = UNITS_ADD,
+        [midgard_alu_op_f2i]		 = {"f2i", UNITS_ADD},
+        [midgard_alu_op_f2u]		 = {"f2u", UNITS_ADD},
+        [midgard_alu_op_f2u8]		 = {"f2u8", UNITS_ADD},
+        [midgard_alu_op_i2f]		 = {"i2f", UNITS_ADD},
+        [midgard_alu_op_u2f]		 = {"u2f", UNITS_ADD},
 
-        [midgard_alu_op_fsin]		 = UNIT_VLUT,
-        [midgard_alu_op_fcos]		 = UNIT_VLUT,
+        [midgard_alu_op_fsin]		 = {"fsin", UNIT_VLUT},
+        [midgard_alu_op_fcos]		 = {"fcos", UNIT_VLUT},
 
-        [midgard_alu_op_iand]		 = UNITS_ADD, /* XXX: Test case where it's right on smul but not sadd */
-        [midgard_alu_op_ior]		 = UNITS_ADD,
-        [midgard_alu_op_ixor]		 = UNITS_ADD,
-        [midgard_alu_op_ilzcnt]		 = UNITS_ADD,
-        [midgard_alu_op_ibitcount8]	 = UNITS_ADD,
-        [midgard_alu_op_inot]		 = UNITS_MOST,
-        [midgard_alu_op_ishl]		 = UNITS_ADD,
-        [midgard_alu_op_iasr]		 = UNITS_ADD,
-        [midgard_alu_op_ilsr]		 = UNITS_ADD,
-        [midgard_alu_op_ilsr]		 = UNITS_ADD,
+        /* XXX: Test case where it's right on smul but not sadd */
+        [midgard_alu_op_iand]		 = {"iand", UNITS_ADD}, 
 
-        [midgard_alu_op_fball_eq]	 = UNITS_VECTOR,
-        [midgard_alu_op_fbany_neq]	 = UNITS_VECTOR,
-        [midgard_alu_op_iball_eq]	 = UNITS_VECTOR,
-        [midgard_alu_op_ibany_neq]	 = UNITS_VECTOR
+        [midgard_alu_op_ior]		 = {"ior", UNITS_ADD},
+        [midgard_alu_op_ixor]		 = {"ixor", UNITS_ADD},
+        [midgard_alu_op_ilzcnt]		 = {"ilzcnt", UNITS_ADD},
+        [midgard_alu_op_ibitcount8]	 = {"ibitcount8", UNITS_ADD},
+        [midgard_alu_op_inot]		 = {"inot", UNITS_MOST},
+        [midgard_alu_op_ishl]		 = {"ishl", UNITS_ADD},
+        [midgard_alu_op_iasr]		 = {"iasr", UNITS_ADD},
+        [midgard_alu_op_ilsr]		 = {"ilsr", UNITS_ADD},
+
+        [midgard_alu_op_fball_eq]	 = {"fball_eq", UNITS_VECTOR},
+        [midgard_alu_op_fbany_neq]	 = {"fbany_neq", UNITS_VECTOR},
+        [midgard_alu_op_iball_eq]	 = {"iball_eq", UNITS_VECTOR},
+        [midgard_alu_op_iball_neq]	 = {"iball_neq", UNITS_VECTOR},
+        [midgard_alu_op_ibany_eq]	 = {"ibany_eq", UNITS_VECTOR},
+        [midgard_alu_op_ibany_neq]	 = {"ibany_neq", UNITS_VECTOR},
+
+        /* These instructions are not yet emitted by the compiler, so
+         * don't speculate about units yet */ 
+        [midgard_alu_op_ishladd]        = {"ishladd", 0},
+        [midgard_alu_op_iandnot]        = {"iandnot", 0},
+
+        [midgard_alu_op_uball_lt]       = {"uball_lt", 0},
+        [midgard_alu_op_uball_lte]      = {"uball_lte", 0},
+        [midgard_alu_op_iball_lt]       = {"iball_lt", 0},
+        [midgard_alu_op_iball_lte]      = {"iball_lte", 0},
+        [midgard_alu_op_ubany_lt]       = {"ubany_lt", 0},
+        [midgard_alu_op_ubany_lte]      = {"ubany_lte", 0},
+        [midgard_alu_op_ibany_lt]       = {"ibany_lt", 0},
+        [midgard_alu_op_ibany_lte]      = {"ibany_lte", 0},
+
+        [midgard_alu_op_freduce]        = {"freduce", 0},
+        [midgard_alu_op_bball_eq]       = {"bball_eq", 0},
+        [midgard_alu_op_bbany_neq]      = {"bball_eq", 0},
+        [midgard_alu_op_fatan2_pt1]     = {"fatan2_pt1", 0},
+        [midgard_alu_op_fatan_pt2]      = {"fatan_pt2", 0},
 };
+
+/* Is this opcode that of an integer (regardless of signedness)? Instruction
+ * names authoritatively determine types */
+
+static bool
+midgard_is_integer_op(int op)
+{
+        char prefix = alu_opcode_props[op].name[0];
+        return (prefix == 'i') || (prefix == 'u');
+}
