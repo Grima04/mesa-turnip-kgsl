@@ -1398,6 +1398,11 @@ void st_init_extensions(struct pipe_screen *screen,
 
    if (max_fb_fetch_rts > 0) {
       extensions->KHR_blend_equation_advanced = true;
+
+      if (max_fb_fetch_rts >=
+          screen->get_param(screen, PIPE_CAP_MAX_RENDER_TARGETS)) {
+         extensions->EXT_shader_framebuffer_fetch_non_coherent = true;
+      }
    }
 
    consts->MaxViewports = screen->get_param(screen, PIPE_CAP_MAX_VIEWPORTS);
