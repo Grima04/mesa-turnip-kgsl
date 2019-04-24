@@ -58,7 +58,7 @@
 
 
 /**
- * Map --with-platforms names to platform types.
+ * Map build-system platform names to platform types.
  */
 static const struct {
    _EGLPlatformType platform;
