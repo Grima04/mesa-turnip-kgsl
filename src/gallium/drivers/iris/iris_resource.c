@@ -1443,7 +1443,7 @@ iris_transfer_map(struct pipe_context *ctx,
       no_gpu = true;
    }
 
-   if (map_would_stall && !no_gpu) {
+   if ((map_would_stall || res->aux.usage == ISL_AUX_USAGE_CCS_E) && !no_gpu) {
       /* If we need a synchronous mapping and the resource is busy,
        * we copy to/from a linear temporary buffer using the GPU.
        */
