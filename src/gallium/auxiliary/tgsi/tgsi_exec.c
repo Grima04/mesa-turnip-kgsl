@@ -5168,6 +5168,43 @@ micro_umsb(union tgsi_exec_channel *dst,
    dst->i[3] = util_last_bit(src->u[3]) - 1;
 }
 
+
+static void
+exec_interp_at_sample(struct tgsi_exec_machine *mach,
+                      const struct tgsi_full_instruction *inst)
+{
+   union tgsi_exec_channel index;
+   union tgsi_exec_channel index2D;
+   union tgsi_exec_channel result[TGSI_NUM_CHANNELS];
+   const struct tgsi_full_src_register *reg = &inst->Src[0];
+
+   assert(reg->Register.File == TGSI_FILE_INPUT);
+   assert(inst->Src[1].Register.File == TGSI_FILE_IMMEDIATE);
+
+   get_index_registers(mach, reg, &index, &index2D);
+   float sample = mach->Imms[inst->Src[1].Register.Index][inst->Src[1].Register.SwizzleX];
+
+   /* Short cut: sample 0 is like a normal fetch */
+   for (unsigned chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
+      if (!(inst->Dst[0].Register.WriteMask & (1 << chan)))
+         continue;
+
+      fetch_src_file_channel(mach, TGSI_FILE_INPUT, chan, &index, &index2D,
+                             &result[chan]);
+      if (sample != 0.0f) {
+
+      /* TODO: define the samples > 0, but so far we only do fake MSAA */
+         float x = 0;
+         float y = 0;
+
+         unsigned pos = index2D.i[chan] * TGSI_EXEC_MAX_INPUT_ATTRIBS + index.i[chan];
+         assert(pos >= 0);
+         assert(pos < TGSI_MAX_PRIM_VERTICES * PIPE_MAX_ATTRIBS);
+         mach->InputSampleOffsetApply[pos](mach, pos, chan, x, y, &result[chan]);
+      }
+      store_dest(mach, &result[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
+   }
+}
 /**
  * Execute a TGSI instruction.
  * Returns TRUE if a barrier instruction is hit,
@@ -6212,7 +6249,9 @@ exec_instruction(
    case TGSI_OPCODE_I642D:
       exec_double_unary(mach, inst, micro_i642d);
       break;
-
+   case TGSI_OPCODE_INTERP_SAMPLE:
+      exec_interp_at_sample(mach, inst);
+      break;
    default:
       assert( 0 );
    }
