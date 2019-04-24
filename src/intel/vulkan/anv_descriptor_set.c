@@ -745,17 +745,17 @@ void anv_DestroyDescriptorPool(
    if (!pool)
       return;
 
+   list_for_each_entry_safe(struct anv_descriptor_set, set,
+                            &pool->desc_sets, pool_link) {
+      anv_descriptor_set_destroy(device, pool, set);
+   }
+
    if (pool->bo.size) {
       anv_gem_munmap(pool->bo.map, pool->bo.size);
       anv_vma_free(device, &pool->bo);
       anv_gem_close(device, pool->bo.gem_handle);
    }
    anv_state_stream_finish(&pool->surface_state_stream);
-
-   list_for_each_entry_safe(struct anv_descriptor_set, set,
-                            &pool->desc_sets, pool_link) {
-      anv_descriptor_set_destroy(device, pool, set);
-   }
 
    util_vma_heap_finish(&pool->bo_heap);
 
