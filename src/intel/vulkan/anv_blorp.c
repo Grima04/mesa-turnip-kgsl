@@ -74,7 +74,7 @@ upload_blorp_shader(struct blorp_batch *batch,
                                        key, key_size, kernel, kernel_size,
                                        NULL, 0,
                                        prog_data, prog_data_size,
-                                       NULL, &bind_map);
+                                       NULL, 0, NULL, &bind_map);
 
    if (!bin)
       return false;

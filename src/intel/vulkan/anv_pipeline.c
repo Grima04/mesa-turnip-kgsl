@@ -524,6 +524,9 @@ struct anv_pipeline_stage {
 
    union brw_any_prog_data prog_data;
 
+   uint32_t num_stats;
+   struct brw_compile_stats stats[3];
+
    VkPipelineCreationFeedbackEXT feedback;
 
    const unsigned *code;
@@ -749,10 +752,12 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
                        vs_stage->nir->info.outputs_written,
                        vs_stage->nir->info.separate_shader);
 
+   vs_stage->num_stats = 1;
    vs_stage->code = brw_compile_vs(compiler, device, mem_ctx,
                                    &vs_stage->key.vs,
                                    &vs_stage->prog_data.vs,
-                                   vs_stage->nir, -1, NULL, NULL);
+                                   vs_stage->nir, -1,
+                                   vs_stage->stats, NULL);
 }
 
 static void
@@ -834,10 +839,12 @@ anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
    tcs_stage->key.tcs.patch_outputs_written =
       tcs_stage->nir->info.patch_outputs_written;
 
+   tcs_stage->num_stats = 1;
    tcs_stage->code = brw_compile_tcs(compiler, device, mem_ctx,
                                      &tcs_stage->key.tcs,
                                      &tcs_stage->prog_data.tcs,
-                                     tcs_stage->nir, -1, NULL, NULL);
+                                     tcs_stage->nir, -1,
+                                     tcs_stage->stats, NULL);
 }
 
 static void
@@ -861,11 +868,13 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
    tes_stage->key.tes.patch_inputs_read =
       tcs_stage->nir->info.patch_outputs_written;
 
+   tes_stage->num_stats = 1;
    tes_stage->code = brw_compile_tes(compiler, device, mem_ctx,
                                      &tes_stage->key.tes,
                                      &tcs_stage->prog_data.tcs.base.vue_map,
                                      &tes_stage->prog_data.tes,
-                                     tes_stage->nir, NULL, -1, NULL, NULL);
+                                     tes_stage->nir, NULL, -1,
+                                     tes_stage->stats, NULL);
 }
 
 static void
@@ -889,10 +898,12 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
                        gs_stage->nir->info.outputs_written,
                        gs_stage->nir->info.separate_shader);
 
+   gs_stage->num_stats = 1;
    gs_stage->code = brw_compile_gs(compiler, device, mem_ctx,
                                    &gs_stage->key.gs,
                                    &gs_stage->prog_data.gs,
-                                   gs_stage->nir, NULL, -1, NULL, NULL);
+                                   gs_stage->nir, NULL, -1,
+                                   gs_stage->stats, NULL);
 }
 
 static void
@@ -1028,7 +1039,12 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
                                    &fs_stage->key.wm,
                                    &fs_stage->prog_data.wm,
                                    fs_stage->nir, NULL, -1, -1, -1,
-                                   true, false, NULL, NULL, NULL);
+                                   true, false, NULL,
+                                   fs_stage->stats, NULL);
+
+   fs_stage->num_stats = (uint32_t)fs_stage->prog_data.wm.dispatch_8 +
+                         (uint32_t)fs_stage->prog_data.wm.dispatch_16 +
+                         (uint32_t)fs_stage->prog_data.wm.dispatch_32;
 
    if (fs_stage->key.wm.nr_color_regions == 0 &&
        !fs_stage->prog_data.wm.has_side_effects &&
@@ -1298,6 +1314,7 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
                                   stages[s].nir->constant_data_size,
                                   &stages[s].prog_data.base,
                                   brw_prog_data_size(s),
+                                  stages[s].stats, stages[s].num_stats,
                                   xfb_info, &stages[s].bind_map);
       if (!bin) {
          ralloc_free(stage_ctx);
@@ -1449,9 +1466,10 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       NIR_PASS_V(stage.nir, nir_lower_explicit_io,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
 
+      stage.num_stats = 1;
       stage.code = brw_compile_cs(compiler, pipeline->device, mem_ctx,
                                   &stage.key.cs, &stage.prog_data.cs,
-                                  stage.nir, -1, NULL, NULL);
+                                  stage.nir, -1, stage.stats, NULL);
       if (stage.code == NULL) {
          ralloc_free(mem_ctx);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1465,6 +1483,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
                                      stage.nir->constant_data_size,
                                      &stage.prog_data.base,
                                      sizeof(stage.prog_data.cs),
+                                     stage.stats, stage.num_stats,
                                      NULL, &stage.bind_map);
       if (!bin) {
          ralloc_free(mem_ctx);
