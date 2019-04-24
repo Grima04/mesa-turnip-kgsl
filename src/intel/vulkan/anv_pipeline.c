@@ -525,6 +525,8 @@ struct anv_pipeline_stage {
    union brw_any_prog_data prog_data;
 
    VkPipelineCreationFeedbackEXT feedback;
+
+   const unsigned *code;
 };
 
 static void
@@ -736,7 +738,7 @@ anv_pipeline_link_vs(const struct brw_compiler *compiler,
       brw_nir_link_shaders(compiler, vs_stage->nir, next_stage->nir);
 }
 
-static const unsigned *
+static void
 anv_pipeline_compile_vs(const struct brw_compiler *compiler,
                         void *mem_ctx,
                         struct anv_device *device,
@@ -747,9 +749,10 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
                        vs_stage->nir->info.outputs_written,
                        vs_stage->nir->info.separate_shader);
 
-   return brw_compile_vs(compiler, device, mem_ctx, &vs_stage->key.vs,
-                         &vs_stage->prog_data.vs, vs_stage->nir, -1,
-                         NULL, NULL);
+   vs_stage->code = brw_compile_vs(compiler, device, mem_ctx,
+                                   &vs_stage->key.vs,
+                                   &vs_stage->prog_data.vs,
+                                   vs_stage->nir, -1, NULL, NULL);
 }
 
 static void
@@ -819,7 +822,7 @@ anv_pipeline_link_tcs(const struct brw_compiler *compiler,
       tes_stage->nir->info.tess.spacing == TESS_SPACING_EQUAL;
 }
 
-static const unsigned *
+static void
 anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
                          void *mem_ctx,
                          struct anv_device *device,
@@ -831,9 +834,10 @@ anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
    tcs_stage->key.tcs.patch_outputs_written =
       tcs_stage->nir->info.patch_outputs_written;
 
-   return brw_compile_tcs(compiler, device, mem_ctx, &tcs_stage->key.tcs,
-                          &tcs_stage->prog_data.tcs, tcs_stage->nir,
-                          -1, NULL, NULL);
+   tcs_stage->code = brw_compile_tcs(compiler, device, mem_ctx,
+                                     &tcs_stage->key.tcs,
+                                     &tcs_stage->prog_data.tcs,
+                                     tcs_stage->nir, -1, NULL, NULL);
 }
 
 static void
@@ -845,7 +849,7 @@ anv_pipeline_link_tes(const struct brw_compiler *compiler,
       brw_nir_link_shaders(compiler, tes_stage->nir, next_stage->nir);
 }
 
-static const unsigned *
+static void
 anv_pipeline_compile_tes(const struct brw_compiler *compiler,
                          void *mem_ctx,
                          struct anv_device *device,
@@ -857,10 +861,11 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
    tes_stage->key.tes.patch_inputs_read =
       tcs_stage->nir->info.patch_outputs_written;
 
-   return brw_compile_tes(compiler, device, mem_ctx, &tes_stage->key.tes,
-                          &tcs_stage->prog_data.tcs.base.vue_map,
-                          &tes_stage->prog_data.tes, tes_stage->nir,
-                          NULL, -1, NULL, NULL);
+   tes_stage->code = brw_compile_tes(compiler, device, mem_ctx,
+                                     &tes_stage->key.tes,
+                                     &tcs_stage->prog_data.tcs.base.vue_map,
+                                     &tes_stage->prog_data.tes,
+                                     tes_stage->nir, NULL, -1, NULL, NULL);
 }
 
 static void
@@ -872,7 +877,7 @@ anv_pipeline_link_gs(const struct brw_compiler *compiler,
       brw_nir_link_shaders(compiler, gs_stage->nir, next_stage->nir);
 }
 
-static const unsigned *
+static void
 anv_pipeline_compile_gs(const struct brw_compiler *compiler,
                         void *mem_ctx,
                         struct anv_device *device,
@@ -884,9 +889,10 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
                        gs_stage->nir->info.outputs_written,
                        gs_stage->nir->info.separate_shader);
 
-   return brw_compile_gs(compiler, device, mem_ctx, &gs_stage->key.gs,
-                         &gs_stage->prog_data.gs, gs_stage->nir,
-                         NULL, -1, NULL, NULL);
+   gs_stage->code = brw_compile_gs(compiler, device, mem_ctx,
+                                   &gs_stage->key.gs,
+                                   &gs_stage->prog_data.gs,
+                                   gs_stage->nir, NULL, -1, NULL, NULL);
 }
 
 static void
@@ -1004,7 +1010,7 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
    stage->bind_map.surface_count += num_rts;
 }
 
-static const unsigned *
+static void
 anv_pipeline_compile_fs(const struct brw_compiler *compiler,
                         void *mem_ctx,
                         struct anv_device *device,
@@ -1018,10 +1024,11 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
    fs_stage->key.wm.input_slots_valid =
       prev_stage->prog_data.vue.vue_map.slots_valid;
 
-   const unsigned *code =
-      brw_compile_fs(compiler, device, mem_ctx, &fs_stage->key.wm,
-                     &fs_stage->prog_data.wm, fs_stage->nir,
-                     NULL, -1, -1, -1, true, false, NULL, NULL, NULL);
+   fs_stage->code = brw_compile_fs(compiler, device, mem_ctx,
+                                   &fs_stage->key.wm,
+                                   &fs_stage->prog_data.wm,
+                                   fs_stage->nir, NULL, -1, -1, -1,
+                                   true, false, NULL, NULL, NULL);
 
    if (fs_stage->key.wm.nr_color_regions == 0 &&
        !fs_stage->prog_data.wm.has_side_effects &&
@@ -1035,8 +1042,6 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
        */
       memset(&fs_stage->prog_data, 0, sizeof(fs_stage->prog_data));
    }
-
-   return code;
 }
 
 static VkResult
@@ -1253,32 +1258,31 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
 
       anv_pipeline_lower_nir(pipeline, stage_ctx, &stages[s], layout);
 
-      const unsigned *code;
       switch (s) {
       case MESA_SHADER_VERTEX:
-         code = anv_pipeline_compile_vs(compiler, stage_ctx, pipeline->device,
-                                        &stages[s]);
+         anv_pipeline_compile_vs(compiler, stage_ctx, pipeline->device,
+                                 &stages[s]);
          break;
       case MESA_SHADER_TESS_CTRL:
-         code = anv_pipeline_compile_tcs(compiler, stage_ctx, pipeline->device,
-                                         &stages[s], prev_stage);
+         anv_pipeline_compile_tcs(compiler, stage_ctx, pipeline->device,
+                                  &stages[s], prev_stage);
          break;
       case MESA_SHADER_TESS_EVAL:
-         code = anv_pipeline_compile_tes(compiler, stage_ctx, pipeline->device,
-                                         &stages[s], prev_stage);
+         anv_pipeline_compile_tes(compiler, stage_ctx, pipeline->device,
+                                  &stages[s], prev_stage);
          break;
       case MESA_SHADER_GEOMETRY:
-         code = anv_pipeline_compile_gs(compiler, stage_ctx, pipeline->device,
-                                        &stages[s], prev_stage);
+         anv_pipeline_compile_gs(compiler, stage_ctx, pipeline->device,
+                                 &stages[s], prev_stage);
          break;
       case MESA_SHADER_FRAGMENT:
-         code = anv_pipeline_compile_fs(compiler, stage_ctx, pipeline->device,
-                                        &stages[s], prev_stage);
+         anv_pipeline_compile_fs(compiler, stage_ctx, pipeline->device,
+                                 &stages[s], prev_stage);
          break;
       default:
          unreachable("Invalid graphics shader stage");
       }
-      if (code == NULL) {
+      if (stages[s].code == NULL) {
          ralloc_free(stage_ctx);
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
@@ -1288,7 +1292,8 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          anv_device_upload_kernel(pipeline->device, cache,
                                   &stages[s].cache_key,
                                   sizeof(stages[s].cache_key),
-                                  code, stages[s].prog_data.base.program_size,
+                                  stages[s].code,
+                                  stages[s].prog_data.base.program_size,
                                   stages[s].nir->constant_data,
                                   stages[s].nir->constant_data_size,
                                   &stages[s].prog_data.base,
@@ -1444,10 +1449,10 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       NIR_PASS_V(stage.nir, nir_lower_explicit_io,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
 
-      const unsigned *shader_code =
-         brw_compile_cs(compiler, pipeline->device, mem_ctx, &stage.key.cs,
-                        &stage.prog_data.cs, stage.nir, -1, NULL, NULL);
-      if (shader_code == NULL) {
+      stage.code = brw_compile_cs(compiler, pipeline->device, mem_ctx,
+                                  &stage.key.cs, &stage.prog_data.cs,
+                                  stage.nir, -1, NULL, NULL);
+      if (stage.code == NULL) {
          ralloc_free(mem_ctx);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
       }
@@ -1455,7 +1460,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       const unsigned code_size = stage.prog_data.base.program_size;
       bin = anv_device_upload_kernel(pipeline->device, cache,
                                      &stage.cache_key, sizeof(stage.cache_key),
-                                     shader_code, code_size,
+                                     stage.code, code_size,
                                      stage.nir->constant_data,
                                      stage.nir->constant_data_size,
                                      &stage.prog_data.base,
