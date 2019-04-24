@@ -840,8 +840,6 @@ anv_descriptor_pool_free_set(struct anv_descriptor_pool *pool,
       entry->size = set->size;
       pool->free_list = (char *) entry - pool->data;
    }
-
-   list_del(&set->pool_link);
 }
 
 struct surface_state_free_list_entry {
@@ -971,6 +969,8 @@ anv_descriptor_set_create(struct anv_device *device,
          anv_descriptor_pool_alloc_state(pool);
    }
 
+   list_addtail(&set->pool_link, &pool->desc_sets);
+
    *out_set = set;
 
    return VK_SUCCESS;
@@ -992,6 +992,8 @@ anv_descriptor_set_destroy(struct anv_device *device,
 
    for (uint32_t b = 0; b < set->buffer_view_count; b++)
       anv_descriptor_pool_free_state(pool, set->buffer_views[b].surface_state);
+
+   list_del(&set->pool_link);
 
    anv_descriptor_pool_free_set(pool, set);
 }
@@ -1015,8 +1017,6 @@ VkResult anv_AllocateDescriptorSets(
       result = anv_descriptor_set_create(device, pool, layout, &set);
       if (result != VK_SUCCESS)
          break;
-
-      list_addtail(&set->pool_link, &pool->desc_sets);
 
       pDescriptorSets[i] = anv_descriptor_set_to_handle(set);
    }
