@@ -676,10 +676,10 @@ VkResult anv_CreateDescriptorPool(
     * of them to 32B.
     */
    descriptor_bo_size += 32 * pCreateInfo->maxSets;
-   descriptor_bo_size = ALIGN(descriptor_bo_size, 4096);
    /* We align inline uniform blocks to 32B */
    if (inline_info)
       descriptor_bo_size += 32 * inline_info->maxInlineUniformBlockBindings;
+   descriptor_bo_size = ALIGN(descriptor_bo_size, 4096);
 
    const size_t pool_size =
       pCreateInfo->maxSets * sizeof(struct anv_descriptor_set) +
