@@ -90,7 +90,7 @@ brw_codegen_cs_prog(struct brw_context *brw,
 
    char *error_str;
    program = brw_compile_cs(brw->screen->compiler, brw, mem_ctx, key,
-                            &prog_data, nir, st_index, &error_str);
+                            &prog_data, nir, st_index, NULL, &error_str);
    if (program == NULL) {
       cp->program.sh.data->LinkStatus = LINKING_FAILURE;
       ralloc_strcat(&cp->program.sh.data->InfoLog, error_str);

@@ -1235,6 +1235,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
                 nir_shader *nir,
                 struct gl_program *prog,
                 int shader_time_index,
+                struct brw_compile_stats *stats,
                 char **error_str)
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
@@ -1345,7 +1346,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
                                         nir->info.name));
       }
 
-      g.generate_code(v.cfg, 8);
+      g.generate_code(v.cfg, 8, stats);
 
       assembly = g.get_assembly();
    } else {
@@ -1361,7 +1362,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 	 v.dump_instructions();
 
       assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,
-                                            &prog_data->base, v.cfg);
+                                            &prog_data->base, v.cfg, stats);
    }
 
    return assembly;

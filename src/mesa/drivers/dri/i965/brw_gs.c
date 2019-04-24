@@ -93,7 +93,8 @@ brw_codegen_gs_prog(struct brw_context *brw,
    char *error_str;
    const unsigned *program =
       brw_compile_gs(brw->screen->compiler, brw, mem_ctx, key,
-                     &prog_data, nir, &gp->program, st_index, &error_str);
+                     &prog_data, nir, &gp->program, st_index,
+                     NULL, &error_str);
    if (program == NULL) {
       ralloc_strcat(&gp->program.sh.data->InfoLog, error_str);
       _mesa_problem(NULL, "Failed to compile geometry shader: %s\n", error_str);

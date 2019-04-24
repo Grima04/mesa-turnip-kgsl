@@ -428,7 +428,8 @@ public:
    ~fs_generator();
 
    void enable_debug(const char *shader_name);
-   int generate_code(const cfg_t *cfg, int dispatch_width);
+   int generate_code(const cfg_t *cfg, int dispatch_width,
+                     struct brw_compile_stats *stats);
    const unsigned *get_assembly();
 
 private:

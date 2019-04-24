@@ -206,7 +206,7 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
    const unsigned *program =
       brw_compile_fs(compiler, blorp->driver_ctx, mem_ctx, wm_key,
                      wm_prog_data, nir, NULL, -1, -1, -1, false, use_repclear,
-                     NULL, NULL);
+                     NULL, NULL, NULL);
 
    return program;
 }
@@ -235,7 +235,7 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
 
    const unsigned *program =
       brw_compile_vs(compiler, blorp->driver_ctx, mem_ctx,
-                     &vs_key, vs_prog_data, nir, -1, NULL);
+                     &vs_key, vs_prog_data, nir, -1, NULL, NULL);
 
    return program;
 }

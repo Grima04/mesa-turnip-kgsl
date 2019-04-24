@@ -941,7 +941,7 @@ iris_compile_vs(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_vs(compiler, &ice->dbg, mem_ctx, &key_no_ucp, vs_prog_data,
-                     nir, -1, &error_str);
+                     nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile vertex shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1151,7 +1151,7 @@ iris_compile_tcs(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_tcs(compiler, &ice->dbg, mem_ctx, key, tcs_prog_data, nir,
-                      -1, &error_str);
+                      -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile control shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1271,7 +1271,7 @@ iris_compile_tes(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_tes(compiler, &ice->dbg, mem_ctx, key, &input_vue_map,
-                      tes_prog_data, nir, NULL, -1, &error_str);
+                      tes_prog_data, nir, NULL, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1391,7 +1391,7 @@ iris_compile_gs(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_gs(compiler, &ice->dbg, mem_ctx, key, gs_prog_data, nir,
-                     NULL, -1, &error_str);
+                     NULL, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile geometry shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1493,7 +1493,8 @@ iris_compile_fs(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_fs(compiler, &ice->dbg, mem_ctx, key, fs_prog_data,
-                     nir, NULL, -1, -1, -1, true, false, vue_map, &error_str);
+                     nir, NULL, -1, -1, -1, true, false, vue_map,
+                     NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile fragment shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1737,7 +1738,7 @@ iris_compile_cs(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_cs(compiler, &ice->dbg, mem_ctx, key, cs_prog_data,
-                     nir, -1, &error_str);
+                     nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile compute shader: %s\n", error_str);
       ralloc_free(mem_ctx);

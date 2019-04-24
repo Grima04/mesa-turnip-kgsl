@@ -748,7 +748,8 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
                        vs_stage->nir->info.separate_shader);
 
    return brw_compile_vs(compiler, device, mem_ctx, &vs_stage->key.vs,
-                         &vs_stage->prog_data.vs, vs_stage->nir, -1, NULL);
+                         &vs_stage->prog_data.vs, vs_stage->nir, -1,
+                         NULL, NULL);
 }
 
 static void
@@ -832,7 +833,7 @@ anv_pipeline_compile_tcs(const struct brw_compiler *compiler,
 
    return brw_compile_tcs(compiler, device, mem_ctx, &tcs_stage->key.tcs,
                           &tcs_stage->prog_data.tcs, tcs_stage->nir,
-                          -1, NULL);
+                          -1, NULL, NULL);
 }
 
 static void
@@ -859,7 +860,7 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
    return brw_compile_tes(compiler, device, mem_ctx, &tes_stage->key.tes,
                           &tcs_stage->prog_data.tcs.base.vue_map,
                           &tes_stage->prog_data.tes, tes_stage->nir,
-                          NULL, -1, NULL);
+                          NULL, -1, NULL, NULL);
 }
 
 static void
@@ -885,7 +886,7 @@ anv_pipeline_compile_gs(const struct brw_compiler *compiler,
 
    return brw_compile_gs(compiler, device, mem_ctx, &gs_stage->key.gs,
                          &gs_stage->prog_data.gs, gs_stage->nir,
-                         NULL, -1, NULL);
+                         NULL, -1, NULL, NULL);
 }
 
 static void
@@ -1020,7 +1021,7 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
    const unsigned *code =
       brw_compile_fs(compiler, device, mem_ctx, &fs_stage->key.wm,
                      &fs_stage->prog_data.wm, fs_stage->nir,
-                     NULL, -1, -1, -1, true, false, NULL, NULL);
+                     NULL, -1, -1, -1, true, false, NULL, NULL, NULL);
 
    if (fs_stage->key.wm.nr_color_regions == 0 &&
        !fs_stage->prog_data.wm.has_side_effects &&
@@ -1445,7 +1446,7 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
       const unsigned *shader_code =
          brw_compile_cs(compiler, pipeline->device, mem_ctx, &stage.key.cs,
-                        &stage.prog_data.cs, stage.nir, -1, NULL);
+                        &stage.prog_data.cs, stage.nir, -1, NULL, NULL);
       if (shader_code == NULL) {
          ralloc_free(mem_ctx);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);

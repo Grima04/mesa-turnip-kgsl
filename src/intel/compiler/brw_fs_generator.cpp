@@ -1664,7 +1664,8 @@ fs_generator::enable_debug(const char *shader_name)
 }
 
 int
-fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
+fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
+                            struct brw_compile_stats *stats)
 {
    /* align to 64 byte boundary. */
    while (p->next_insn_offset % 64)
@@ -2336,6 +2337,14 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
                               shader_stats.scheduler_mode,
                               shader_stats.promoted_constants,
                               before_size, after_size);
+   if (stats) {
+      stats->dispatch_width = dispatch_width;
+      stats->instructions = before_size / 16;
+      stats->loops = loop_count;
+      stats->cycles = cfg->cycle_count;
+      stats->spills = spill_count;
+      stats->fills = fill_count;
+   }
 
    return start_offset;
 }

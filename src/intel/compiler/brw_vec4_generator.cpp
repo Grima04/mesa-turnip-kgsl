@@ -1497,7 +1497,8 @@ generate_code(struct brw_codegen *p,
               void *log_data,
               const nir_shader *nir,
               struct brw_vue_prog_data *prog_data,
-              const struct cfg_t *cfg)
+              const struct cfg_t *cfg,
+              struct brw_compile_stats *stats)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const char *stage_abbrev = _mesa_shader_stage_to_abbrev(nir->info.stage);
@@ -2208,7 +2209,14 @@ generate_code(struct brw_codegen *p,
                               stage_abbrev, before_size / 16,
                               loop_count, cfg->cycle_count, spill_count,
                               fill_count, before_size, after_size);
-
+   if (stats) {
+      stats->dispatch_width = 0;
+      stats->instructions = before_size / 16;
+      stats->loops = loop_count;
+      stats->cycles = cfg->cycle_count;
+      stats->spills = spill_count;
+      stats->fills = fill_count;
+   }
 }
 
 extern "C" const unsigned *
@@ -2217,13 +2225,14 @@ brw_vec4_generate_assembly(const struct brw_compiler *compiler,
                            void *mem_ctx,
                            const nir_shader *nir,
                            struct brw_vue_prog_data *prog_data,
-                           const struct cfg_t *cfg)
+                           const struct cfg_t *cfg,
+                           struct brw_compile_stats *stats)
 {
    struct brw_codegen *p = rzalloc(mem_ctx, struct brw_codegen);
    brw_init_codegen(compiler->devinfo, p, mem_ctx);
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   generate_code(p, compiler, log_data, nir, prog_data, cfg);
+   generate_code(p, compiler, log_data, nir, prog_data, cfg, stats);
 
    return brw_get_program(p, &prog_data->base.program_size);
 }

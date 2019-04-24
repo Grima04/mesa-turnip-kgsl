@@ -8033,6 +8033,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                int shader_time_index8, int shader_time_index16,
                int shader_time_index32, bool allow_spilling,
                bool use_rep_send, struct brw_vue_map *vue_map,
+               struct brw_compile_stats *stats,
                char **error_str)
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
@@ -8196,17 +8197,20 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    if (simd8_cfg) {
       prog_data->dispatch_8 = true;
-      g.generate_code(simd8_cfg, 8);
+      g.generate_code(simd8_cfg, 8, stats);
+      stats = stats ? stats + 1 : NULL;
    }
 
    if (simd16_cfg) {
       prog_data->dispatch_16 = true;
-      prog_data->prog_offset_16 = g.generate_code(simd16_cfg, 16);
+      prog_data->prog_offset_16 = g.generate_code(simd16_cfg, 16, stats);
+      stats = stats ? stats + 1 : NULL;
    }
 
    if (simd32_cfg) {
       prog_data->dispatch_32 = true;
-      prog_data->prog_offset_32 = g.generate_code(simd32_cfg, 32);
+      prog_data->prog_offset_32 = g.generate_code(simd32_cfg, 32, stats);
+      stats = stats ? stats + 1 : NULL;
    }
 
    return g.get_assembly();
@@ -8317,6 +8321,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                struct brw_cs_prog_data *prog_data,
                const nir_shader *src_shader,
                int shader_time_index,
+               struct brw_compile_stats *stats,
                char **error_str)
 {
    prog_data->base.total_shared = src_shader->info.cs.shared_size;
@@ -8457,7 +8462,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
          g.enable_debug(name);
       }
 
-      g.generate_code(v->cfg, prog_data->simd_size);
+      g.generate_code(v->cfg, prog_data->simd_size, stats);
 
       ret = g.get_assembly();
    }
