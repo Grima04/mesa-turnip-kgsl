@@ -378,6 +378,8 @@ get_register_queries_function(const struct gen_device_info *devinfo)
    }
    if (devinfo->is_cannonlake)
       return gen_oa_register_queries_cnl;
+   if (devinfo->gen == 11)
+      return gen_oa_register_queries_icl;
 
    return NULL;
 }
