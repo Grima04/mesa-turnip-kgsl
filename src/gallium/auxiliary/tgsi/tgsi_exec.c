@@ -1613,13 +1613,11 @@ fetch_src_file_channel(const struct tgsi_exec_machine *mach,
 }
 
 static void
-fetch_source_d(const struct tgsi_exec_machine *mach,
-               union tgsi_exec_channel *chan,
-               const struct tgsi_full_src_register *reg,
-	       const uint chan_index)
+get_index_registers(const struct tgsi_exec_machine *mach,
+                    const struct tgsi_full_src_register *reg,
+                    union tgsi_exec_channel *index,
+                    union tgsi_exec_channel *index2D)
 {
-   union tgsi_exec_channel index;
-   union tgsi_exec_channel index2D;
    uint swizzle;
 
    /* We start with a direct index into a register file.
@@ -1629,10 +1627,10 @@ fetch_source_d(const struct tgsi_exec_machine *mach,
     *       file = Register.File
     *       [1] = Register.Index
     */
-   index.i[0] =
-   index.i[1] =
-   index.i[2] =
-   index.i[3] = reg->Register.Index;
+   index->i[0] =
+   index->i[1] =
+   index->i[2] =
+   index->i[3] = reg->Register.Index;
 
    /* There is an extra source register that indirectly subscripts
     * a register file. The direct index now becomes an offset
@@ -1665,17 +1663,17 @@ fetch_source_d(const struct tgsi_exec_machine *mach,
                              &indir_index);
 
       /* add value of address register to the offset */
-      index.i[0] += indir_index.i[0];
-      index.i[1] += indir_index.i[1];
-      index.i[2] += indir_index.i[2];
-      index.i[3] += indir_index.i[3];
+      index->i[0] += indir_index.i[0];
+      index->i[1] += indir_index.i[1];
+      index->i[2] += indir_index.i[2];
+      index->i[3] += indir_index.i[3];
 
       /* for disabled execution channels, zero-out the index to
        * avoid using a potential garbage value.
        */
       for (i = 0; i < TGSI_QUAD_SIZE; i++) {
          if ((execmask & (1 << i)) == 0)
-            index.i[i] = 0;
+            index->i[i] = 0;
       }
    }
 
@@ -1688,10 +1686,10 @@ fetch_source_d(const struct tgsi_exec_machine *mach,
     *       [3] = Dimension.Index
     */
    if (reg->Register.Dimension) {
-      index2D.i[0] =
-      index2D.i[1] =
-      index2D.i[2] =
-      index2D.i[3] = reg->Dimension.Index;
+      index2D->i[0] =
+      index2D->i[1] =
+      index2D->i[2] =
+      index2D->i[3] = reg->Dimension.Index;
 
       /* Again, the second subscript index can be addressed indirectly
        * identically to the first one.
@@ -1723,17 +1721,17 @@ fetch_source_d(const struct tgsi_exec_machine *mach,
                                 &ZeroVec,
                                 &indir_index);
 
-         index2D.i[0] += indir_index.i[0];
-         index2D.i[1] += indir_index.i[1];
-         index2D.i[2] += indir_index.i[2];
-         index2D.i[3] += indir_index.i[3];
+         index2D->i[0] += indir_index.i[0];
+         index2D->i[1] += indir_index.i[1];
+         index2D->i[2] += indir_index.i[2];
+         index2D->i[3] += indir_index.i[3];
 
          /* for disabled execution channels, zero-out the index to
           * avoid using a potential garbage value.
           */
          for (i = 0; i < TGSI_QUAD_SIZE; i++) {
             if ((execmask & (1 << i)) == 0) {
-               index2D.i[i] = 0;
+               index2D->i[i] = 0;
             }
          }
       }
@@ -1743,11 +1741,26 @@ fetch_source_d(const struct tgsi_exec_machine *mach,
        * by a dimension register and continue the saga.
        */
    } else {
-      index2D.i[0] =
-      index2D.i[1] =
-      index2D.i[2] =
-      index2D.i[3] = 0;
+      index2D->i[0] =
+      index2D->i[1] =
+      index2D->i[2] =
+      index2D->i[3] = 0;
    }
+}
+
+
+static void
+fetch_source_d(const struct tgsi_exec_machine *mach,
+               union tgsi_exec_channel *chan,
+               const struct tgsi_full_src_register *reg,
+	       const uint chan_index)
+{
+   union tgsi_exec_channel index;
+   union tgsi_exec_channel index2D;
+   uint swizzle;
+
+   get_index_registers(mach, reg, &index, &index2D);
+
 
    swizzle = tgsi_util_get_full_src_register_swizzle( reg, chan_index );
    fetch_src_file_channel(mach,
