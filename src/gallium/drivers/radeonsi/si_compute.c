@@ -885,9 +885,6 @@ static void si_launch_grid(
 		si_decompress_textures(sctx, 1 << PIPE_SHADER_COMPUTE);
 	}
 
-	if (sctx->bo_list_add_all_compute_resources)
-		si_compute_resources_add_all_to_bo_list(sctx);
-
 	/* Add buffer sizes for memory checking in need_cs_space. */
 	si_context_add_resource_size(sctx, &program->shader.bo->b.b);
 	/* TODO: add the scratch buffer */
@@ -904,6 +901,9 @@ static void si_launch_grid(
 	}
 
 	si_need_gfx_cs_space(sctx);
+
+	if (sctx->bo_list_add_all_compute_resources)
+		si_compute_resources_add_all_to_bo_list(sctx);
 
 	if (!sctx->cs_shader_state.initialized)
 		si_initialize_compute(sctx);
