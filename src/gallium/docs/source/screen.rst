@@ -382,6 +382,8 @@ The integer capabilities:
   current framebuffer can be read in the shader.  0 means framebuffer fetch
   is not supported.  1 means that only the first render target can be read,
   and a larger value would mean that multiple render targets are supported.
+* ``PIPE_CAP_FBFETCH_COHERENT``: Whether framebuffer fetches from the fragment
+  shader can be guaranteed to be coherent with framebuffer writes.
 * ``PIPE_CAP_TGSI_MUL_ZERO_WINS``: Whether TGSI shaders support the
   ``TGSI_PROPERTY_MUL_ZERO_WINS`` shader property.
 * ``PIPE_CAP_DOUBLES``: Whether double precision floating-point operations

@@ -1395,13 +1395,17 @@ void st_init_extensions(struct pipe_screen *screen,
    }
 
    unsigned max_fb_fetch_rts = screen->get_param(screen, PIPE_CAP_FBFETCH);
+   bool coherent_fb_fetch =
+      screen->get_param(screen, PIPE_CAP_FBFETCH_COHERENT);
 
    if (max_fb_fetch_rts > 0) {
       extensions->KHR_blend_equation_advanced = true;
+      extensions->KHR_blend_equation_advanced_coherent = coherent_fb_fetch;
 
       if (max_fb_fetch_rts >=
           screen->get_param(screen, PIPE_CAP_MAX_RENDER_TARGETS)) {
          extensions->EXT_shader_framebuffer_fetch_non_coherent = true;
+         extensions->EXT_shader_framebuffer_fetch = coherent_fb_fetch;
       }
    }
 
