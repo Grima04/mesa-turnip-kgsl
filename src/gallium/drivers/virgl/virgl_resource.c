@@ -132,6 +132,43 @@ void virgl_init_screen_resource_functions(struct pipe_screen *screen)
     screen->resource_destroy = u_resource_destroy_vtbl;
 }
 
+static bool virgl_buffer_transfer_extend(struct pipe_context *ctx,
+                                         struct pipe_resource *resource,
+                                         unsigned usage,
+                                         const struct pipe_box *box,
+                                         const void *data)
+{
+   struct virgl_context *vctx = virgl_context(ctx);
+   struct virgl_resource *vbuf = virgl_resource(resource);
+   struct virgl_transfer dummy_trans = { 0 };
+   bool flush;
+   struct virgl_transfer *queued;
+
+   /*
+    * Attempts to short circuit the entire process of mapping and unmapping
+    * a resource if there is an existing transfer that can be extended.
+    * Pessimestically falls back if a flush is required.
+    */
+   dummy_trans.base.resource = resource;
+   dummy_trans.base.usage = usage;
+   dummy_trans.base.box = *box;
+   dummy_trans.base.stride = vbuf->metadata.stride[0];
+   dummy_trans.base.layer_stride = vbuf->metadata.layer_stride[0];
+   dummy_trans.offset = box->x;
+
+   flush = virgl_res_needs_flush(vctx, &dummy_trans);
+   if (flush)
+      return false;
+
+   queued = virgl_transfer_queue_extend(&vctx->queue, &dummy_trans);
+   if (!queued || !queued->hw_res_map)
+      return false;
+
+   memcpy(queued->hw_res_map + dummy_trans.offset, data, box->width);
+
+   return true;
+}
+
 static void virgl_buffer_subdata(struct pipe_context *pipe,
                                  struct pipe_resource *resource,
                                  unsigned usage, unsigned offset,
@@ -139,12 +176,21 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
 {
    struct pipe_box box;
 
+   assert(!(usage & PIPE_TRANSFER_READ));
+
+   /* the write flag is implicit by the nature of buffer_subdata */
+   usage |= PIPE_TRANSFER_WRITE;
+
    if (offset == 0 && size == resource->width0)
       usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
    else
       usage |= PIPE_TRANSFER_DISCARD_RANGE;
 
    u_box_1d(offset, size, &box);
+
+   if (usage & PIPE_TRANSFER_DISCARD_RANGE &&
+       virgl_buffer_transfer_extend(pipe, resource, usage, &box, data))
+      return;
 
    if (resource->width0 >= getpagesize())
       u_default_buffer_subdata(pipe, resource, usage, offset, size, data);
