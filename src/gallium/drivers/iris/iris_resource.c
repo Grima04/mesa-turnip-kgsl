@@ -1247,6 +1247,7 @@ iris_map_copy_region(struct iris_transfer *map)
       .nr_samples = xfer->resource->nr_samples,
       .nr_storage_samples = xfer->resource->nr_storage_samples,
       .array_size = box->depth,
+      .format = res->internal_format,
    };
 
    if (xfer->resource->target == PIPE_BUFFER)
@@ -1255,22 +1256,6 @@ iris_map_copy_region(struct iris_transfer *map)
       templ.target = PIPE_TEXTURE_2D_ARRAY;
    else
       templ.target = PIPE_TEXTURE_2D;
-
-   /* Depth, stencil, and ASTC can't be linear surfaces, so we can't use
-    * xfer->resource->format directly.  Pick a bpb compatible format so
-    * resource creation will succeed; blorp_copy will override it anyway.
-    */
-   switch (util_format_get_blocksizebits(res->internal_format)) {
-   case 8:   templ.format = PIPE_FORMAT_R8_UINT;           break;
-   case 16:  templ.format = PIPE_FORMAT_R8G8_UINT;         break;
-   case 24:  templ.format = PIPE_FORMAT_R8G8B8_UINT;       break;
-   case 32:  templ.format = PIPE_FORMAT_R8G8B8A8_UINT;     break;
-   case 48:  templ.format = PIPE_FORMAT_R16G16B16_UINT;    break;
-   case 64:  templ.format = PIPE_FORMAT_R16G16B16A16_UINT; break;
-   case 96:  templ.format = PIPE_FORMAT_R32G32B32_UINT;    break;
-   case 128: templ.format = PIPE_FORMAT_R32G32B32A32_UINT; break;
-   default: unreachable("Invalid bpb");
-   }
 
    map->staging = iris_resource_create(pscreen, &templ);
    assert(map->staging);
@@ -1789,6 +1774,10 @@ iris_transfer_map(struct pipe_context *ctx,
        res->aux.usage != ISL_AUX_USAGE_CCS_D) {
       no_gpu = true;
    }
+
+   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
+   if (fmtl->txc == ISL_TXC_ASTC)
+      no_gpu = true;
 
    if ((map_would_stall || res->aux.usage == ISL_AUX_USAGE_CCS_E) && !no_gpu) {
       /* If we need a synchronous mapping and the resource is busy,
