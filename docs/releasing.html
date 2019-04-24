@@ -136,7 +136,7 @@ well contained. Thus it cannot affect more than one driver/subsystem.
 
 <p>The following must pass:</p>
 <ul>
-<li>make distcheck, scons and scons check
+<li>meson test, scons and scons check
 <li>Testing with different version of system components - LLVM and others is also
 performed where possible.
 <li>As a general rule, testing with various combinations of configure
@@ -251,7 +251,7 @@ stabilisation and bugfixing.
 </p>
 
 <p>
-Note: Before doing a branch ensure that basic build and <code>make check</code>
+Note: Before doing a branch ensure that basic build and <code>meson test</code>
 testing is done and there are little to-no issues.
 <br>
 Ideally all of those should be tackled already.
