@@ -105,7 +105,7 @@ void util_compute_blit(struct pipe_context *ctx, struct pipe_blit_info *blit_inf
                       blit_info->dst.box.z,
                       0};
 
-   struct pipe_constant_buffer cb = {};
+   struct pipe_constant_buffer cb = {0};
    cb.buffer_size = sizeof(data);
    cb.user_buffer = data;
    ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, &cb);
