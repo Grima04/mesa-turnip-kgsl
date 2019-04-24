@@ -3279,7 +3279,7 @@ _mesa_MapNamedBufferRange_no_error(GLuint buffer, GLintptr offset,
 
 static void *
 map_named_buffer_range(GLuint buffer, GLintptr offset, GLsizeiptr length,
-                       GLbitfield access, bool dst_ext, const char *func)
+                       GLbitfield access, bool dsa_ext, const char *func)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_buffer_object *bufObj = NULL;
@@ -3290,7 +3290,7 @@ map_named_buffer_range(GLuint buffer, GLintptr offset, GLsizeiptr length,
       return NULL;
    }
 
-   if (dst_ext) {
+   if (dsa_ext) {
       bufObj = _mesa_lookup_bufferobj(ctx, buffer);
       if (!_mesa_handle_bind_buffer_gen(ctx, buffer, &bufObj, func))
          return NULL;
