@@ -1785,6 +1785,10 @@ blorp_update_clear_color(struct blorp_batch *batch,
             sdi.Address = info->clear_color_addr;
             sdi.Address.offset += i * 4;
             sdi.ImmediateData = info->clear_color.u32[i];
+#if GEN_GEN >= 12
+            if (i == 3)
+               sdi.ForceWriteCompletionCheck = true;
+#endif
          }
       }
 #elif GEN_GEN >= 7
