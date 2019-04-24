@@ -1418,7 +1418,7 @@ iris_resource_get_tile_offsets(const struct iris_resource *res,
  *    mesa: Fix return type of  _mesa_get_format_bytes() (#37351)
  */
 static intptr_t
-s8_offset(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
+s8_offset(uint32_t stride, uint32_t x, uint32_t y)
 {
    uint32_t tile_size = 4096;
    uint32_t tile_width = 64;
@@ -1443,17 +1443,6 @@ s8_offset(uint32_t stride, uint32_t x, uint32_t y, bool swizzled)
                +   2 * (byte_y % 2)
                +   1 * (byte_x % 2);
 
-   if (swizzled) {
-      /* adjust for bit6 swizzling */
-      if (((byte_x / 8) % 2) == 1) {
-         if (((byte_y / 8) % 2) == 0) {
-            u += 64;
-         } else {
-            u -= 64;
-         }
-      }
-   }
-
    return u;
 }
 
@@ -1464,7 +1453,6 @@ iris_unmap_s8(struct iris_transfer *map)
    const struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
-   const bool has_swizzling = false;
 
    if (xfer->usage & PIPE_TRANSFER_WRITE) {
       uint8_t *untiled_s8_map = map->ptr;
@@ -1479,8 +1467,7 @@ iris_unmap_s8(struct iris_transfer *map)
             for (uint32_t x = 0; x < box->width; x++) {
                ptrdiff_t offset = s8_offset(surf->row_pitch_B,
                                             x0_el + box->x + x,
-                                            y0_el + box->y + y,
-                                            has_swizzling);
+                                            y0_el + box->y + y);
                tiled_s8_map[offset] =
                   untiled_s8_map[s * xfer->layer_stride + y * xfer->stride + x];
             }
@@ -1509,8 +1496,6 @@ iris_map_s8(struct iris_transfer *map)
    map->buffer = map->ptr = malloc(xfer->layer_stride * box->depth);
    assert(map->buffer);
 
-   const bool has_swizzling = false;
-
    /* One of either READ_BIT or WRITE_BIT or both is set.  READ_BIT implies no
     * INVALIDATE_RANGE_BIT.  WRITE_BIT needs the original values read in unless
     * invalidate is set, since we'll be writing the whole rectangle from our
@@ -1529,8 +1514,7 @@ iris_map_s8(struct iris_transfer *map)
             for (uint32_t x = 0; x < box->width; x++) {
                ptrdiff_t offset = s8_offset(surf->row_pitch_B,
                                             x0_el + box->x + x,
-                                            y0_el + box->y + y,
-                                            has_swizzling);
+                                            y0_el + box->y + y);
                untiled_s8_map[s * xfer->layer_stride + y * xfer->stride + x] =
                   tiled_s8_map[offset];
             }
