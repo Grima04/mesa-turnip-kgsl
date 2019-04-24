@@ -1113,6 +1113,7 @@ void st_init_extensions(struct pipe_screen *screen,
        * pipe cap.
        */
       extensions->EXT_gpu_shader4 = GL_TRUE;
+      extensions->EXT_texture_buffer_object = GL_TRUE;
 
       if (screen->get_param(screen, PIPE_CAP_TGSI_ARRAY_COMPONENTS))
          extensions->ARB_enhanced_layouts = GL_TRUE;
