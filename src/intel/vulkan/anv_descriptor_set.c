@@ -754,10 +754,9 @@ void anv_DestroyDescriptorPool(
       anv_gem_munmap(pool->bo.map, pool->bo.size);
       anv_vma_free(device, &pool->bo);
       anv_gem_close(device, pool->bo.gem_handle);
+      util_vma_heap_finish(&pool->bo_heap);
    }
    anv_state_stream_finish(&pool->surface_state_stream);
-
-   util_vma_heap_finish(&pool->bo_heap);
 
    vk_free2(&device->alloc, pAllocator, pool);
 }
