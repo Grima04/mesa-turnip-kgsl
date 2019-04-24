@@ -653,6 +653,24 @@ iris_emit_default_l3_config(struct iris_batch *batch,
    iris_emit_l3_config(batch, cfg, has_slm, wants_dc_cache);
 }
 
+#if GEN_GEN >= 9
+static void
+iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
+{
+   uint32_t reg_val;
+
+   /* A fixed function pipe flush is required before modifying this field */
+   iris_emit_end_of_pipe_sync(batch, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+
+   /* enable object level preemption */
+   iris_pack_state(GENX(CS_CHICKEN1), &reg_val, reg) {
+      reg.ReplayMode = enable;
+      reg.ReplayModeMask = true;
+   }
+   iris_emit_lri(batch, CS_CHICKEN1, reg_val);
+}
+#endif
+
 /**
  * Upload the initial GPU state for a render context.
  *
@@ -775,6 +793,11 @@ iris_init_render_context(struct iris_screen *screen,
          alloc.ConstantBufferSize = i == MESA_SHADER_FRAGMENT ? 8 : 6;
       }
    }
+
+#if GEN_GEN == 10
+   /* Gen11+ is enabled for us by the kernel. */
+   iris_enable_obj_preemption(batch, true);
+#endif
 }
 
 static void
@@ -825,6 +848,11 @@ struct iris_genx_state {
    struct iris_depth_buffer_state depth_buffer;
 
    uint32_t so_buffers[4 * GENX(3DSTATE_SO_BUFFER_length)];
+
+#if GEN_GEN == 9
+   /* Is object level preemption enabled? */
+   bool object_preemption;
+#endif
 
    struct {
 #if GEN_GEN == 8
@@ -6180,6 +6208,74 @@ genX(emit_urb_setup)(struct iris_context *ice,
    }
 }
 
+#if GEN_GEN == 9
+/**
+ * Preemption on Gen9 has to be enabled or disabled in various cases.
+ *
+ * See these workarounds for preemption:
+ *  - WaDisableMidObjectPreemptionForGSLineStripAdj
+ *  - WaDisableMidObjectPreemptionForTrifanOrPolygon
+ *  - WaDisableMidObjectPreemptionForLineLoop
+ *  - WA#0798
+ *
+ * We don't put this in the vtable because it's only used on Gen9.
+ */
+void
+gen9_toggle_preemption(struct iris_context *ice,
+                       struct iris_batch *batch,
+                       const struct pipe_draw_info *draw)
+{
+   struct iris_genx_state *genx = ice->state.genx;
+   bool object_preemption = true;
+
+   /* WaDisableMidObjectPreemptionForGSLineStripAdj
+    *
+    *    "WA: Disable mid-draw preemption when draw-call is a linestrip_adj
+    *     and GS is enabled."
+    */
+   if (draw->mode == PIPE_PRIM_LINE_STRIP_ADJACENCY &&
+       ice->shaders.prog[MESA_SHADER_GEOMETRY])
+      object_preemption = false;
+
+   /* WaDisableMidObjectPreemptionForTrifanOrPolygon
+    *
+    *    "TriFan miscompare in Execlist Preemption test. Cut index that is
+    *     on a previous context. End the previous, the resume another context
+    *     with a tri-fan or polygon, and the vertex count is corrupted. If we
+    *     prempt again we will cause corruption.
+    *
+    *     WA: Disable mid-draw preemption when draw-call has a tri-fan."
+    */
+   if (draw->mode == PIPE_PRIM_TRIANGLE_FAN)
+      object_preemption = false;
+
+   /* WaDisableMidObjectPreemptionForLineLoop
+    *
+    *    "VF Stats Counters Missing a vertex when preemption enabled.
+    *
+    *     WA: Disable mid-draw preemption when the draw uses a lineloop
+    *     topology."
+    */
+   if (draw->mode == PIPE_PRIM_LINE_LOOP)
+      object_preemption = false;
+
+   /* WA#0798
+    *
+    *    "VF is corrupting GAFS data when preempted on an instance boundary
+    *     and replayed with instancing enabled.
+    *
+    *     WA: Disable preemption when using instanceing."
+    */
+   if (draw->instance_count > 1)
+      object_preemption = false;
+
+   if (genx->object_preemption != object_preemption) {
+      iris_enable_obj_preemption(batch, object_preemption);
+      genx->object_preemption = object_preemption;
+   }
+}
+#endif
+
 void
 genX(init_state)(struct iris_context *ice)
 {
@@ -6278,32 +6374,3 @@ genX(init_state)(struct iris_context *ice)
       };
    }
 }
-
-#if GEN_GEN >= 9
-/* not called externally */
-void gen11_iris_enable_obj_preemption(struct iris_context *ice, struct iris_batch *batch, bool enable);
-
-void
-genX(iris_enable_obj_preemption)(struct iris_context *ice, struct iris_batch *batch, bool enable)
-{
-   uint32_t reg_val;
-   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-
-   assert(screen->devinfo.gen >= 9);
-
-   if (enable == ice->state.object_preemption)
-      return;
-   ice->state.object_preemption = enable;
-
-   /* A fixed function pipe flush is required before modifying this field */
-   iris_emit_end_of_pipe_sync(batch,
-                              PIPE_CONTROL_RENDER_TARGET_FLUSH);
-
-   /* enable object level preemption */
-   iris_pack_state(GENX(CS_CHICKEN1), &reg_val, reg) {
-      reg.ReplayMode = enable;
-      reg.ReplayModeMask = true;
-   }
-   iris_emit_lri(batch, CS_CHICKEN1, reg_val);
-}
-#endif
