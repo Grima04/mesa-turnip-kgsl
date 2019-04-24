@@ -212,6 +212,7 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_L32A32_FLOAT]            = ISL_FORMAT_R32G32_FLOAT,
 
       /* Sadly, we have to use luminance[-alpha] formats for sRGB decoding. */
+      [PIPE_FORMAT_R8_SRGB]                 = ISL_FORMAT_L8_UNORM_SRGB,
       [PIPE_FORMAT_L8_SRGB]                 = ISL_FORMAT_L8_UNORM_SRGB,
       [PIPE_FORMAT_L8A8_SRGB]               = ISL_FORMAT_L8A8_UNORM_SRGB,
 
