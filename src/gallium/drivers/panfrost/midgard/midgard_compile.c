@@ -1082,6 +1082,20 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
 		op = midgard_alu_op_##_op; \
 		break;
 
+static bool
+nir_is_fzero_constant(nir_src src)
+{
+        if (!nir_src_is_const(src))
+                return false;
+
+        for (unsigned c = 0; c < nir_src_num_components(src); ++c) {
+                if (nir_src_comp_as_float(src, c) != 0.0)
+                        return false;
+        }
+
+        return true;
+}
+
 static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
@@ -1245,12 +1259,28 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 return;
         }
 
+        /* Midgard can perform certain modifiers on output ofa n ALU op */
+        midgard_outmod outmod =
+                instr->dest.saturate ? midgard_outmod_sat : midgard_outmod_none;
+
+        /* fmax(a, 0.0) can turn into a .pos modifier as an optimization */
+
+        if (instr->op == nir_op_fmax) {
+                if (nir_is_fzero_constant(instr->src[0].src)) {
+                        op = midgard_alu_op_fmov;
+                        nr_inputs = 1;
+                        outmod = midgard_outmod_pos;
+                        instr->src[0] = instr->src[1];
+                } else if (nir_is_fzero_constant(instr->src[1].src)) {
+                        op = midgard_alu_op_fmov;
+                        nr_inputs = 1;
+                        outmod = midgard_outmod_pos;
+                }
+        }
+
         /* Fetch unit, quirks, etc information */
         unsigned opcode_props = alu_opcode_props[op].props;
         bool quirk_flipped_r24 = opcode_props & QUIRK_FLIPPED_R24;
-
-        /* Initialise fields common between scalar/vector instructions */
-        midgard_outmod outmod = instr->dest.saturate ? midgard_outmod_sat : midgard_outmod_none;
 
         /* src0 will always exist afaik, but src1 will not for 1-argument
          * instructions. The latter can only be fetched if the instruction
