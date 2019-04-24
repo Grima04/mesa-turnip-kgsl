@@ -341,9 +341,6 @@ i915_get_param(struct pipe_screen *screen, enum pipe_cap cap)
    case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
       return 0;
 
-   case PIPE_CAP_MAX_FRAMES_IN_FLIGHT:
-      return 2;
-
    case PIPE_CAP_MAX_GS_INVOCATIONS:
       return 32;
 
