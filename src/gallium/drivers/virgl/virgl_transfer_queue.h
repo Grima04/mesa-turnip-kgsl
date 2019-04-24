@@ -51,3 +51,10 @@ int virgl_transfer_queue_clear(struct virgl_transfer_queue *queue,
 
 bool virgl_transfer_queue_is_queued(struct virgl_transfer_queue *queue,
                                     struct virgl_transfer *transfer);
+
+/*
+ * Search the transfer queue for a transfer suitable for extension and
+ * extend it to include the new transfer.
+ */
+struct virgl_transfer * virgl_transfer_queue_extend(
+   struct virgl_transfer_queue *queue, struct virgl_transfer *transfer);

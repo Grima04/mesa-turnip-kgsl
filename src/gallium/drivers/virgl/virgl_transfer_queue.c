@@ -106,6 +106,14 @@ static void set_true(UNUSED struct virgl_transfer_queue *queue,
    *val = true;
 }
 
+static void set_queued(UNUSED struct virgl_transfer_queue *queue,
+                       struct list_action_args *args)
+{
+   struct virgl_transfer *queued = args->queued;
+   struct virgl_transfer **val = args->data;
+   *val = queued;
+}
+
 static void remove_transfer(struct virgl_transfer_queue *queue,
                             struct list_action_args *args)
 {
@@ -171,6 +179,26 @@ static void compare_and_perform_action(struct virgl_transfer_queue *queue,
       if (iter->compare(queued, iter->current)) {
          args.queued = queued;
          iter->action(queue, &args);
+      }
+   }
+}
+
+static void intersect_and_set_queued_once(struct virgl_transfer_queue *queue,
+                                          struct list_iteration_args *iter)
+{
+   struct list_action_args args;
+   struct virgl_transfer *queued, *tmp;
+   enum virgl_transfer_queue_lists type = iter->type;
+
+   memset(&args, 0, sizeof(args));
+   args.current = iter->current;
+   args.data = iter->data;
+
+   LIST_FOR_EACH_ENTRY_SAFE(queued, tmp, &queue->lists[type], queue_link) {
+      if (transfers_intersect(queued, iter->current)) {
+         args.queued = queued;
+         set_queued(queue, &args);
+         return;
       }
    }
 }
@@ -328,6 +356,29 @@ bool virgl_transfer_queue_is_queued(struct virgl_transfer_queue *queue,
 
    iter.type = COMPLETED_LIST;
    compare_and_perform_action(queue, &iter);
+
+   return queued;
+}
+
+struct virgl_transfer *
+virgl_transfer_queue_extend(struct virgl_transfer_queue *queue,
+                            struct virgl_transfer *transfer)
+{
+   struct virgl_transfer *queued = NULL;
+   struct list_iteration_args iter;
+
+   if (transfer->base.resource->target == PIPE_BUFFER) {
+      memset(&iter, 0, sizeof(iter));
+      iter.current = transfer;
+      iter.data = &queued;
+      iter.type = PENDING_LIST;
+      intersect_and_set_queued_once(queue, &iter);
+   }
+
+   if (queued) {
+      u_box_union_2d(&queued->base.box, &queued->base.box, &transfer->base.box);
+      queued->offset = queued->base.box.x;
+   }
 
    return queued;
 }
