@@ -5234,6 +5234,45 @@ exec_interp_at_offset(struct tgsi_exec_machine *mach,
       store_dest(mach, &result, &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
    }
 }
+
+
+static void
+exec_interp_at_centroid(struct tgsi_exec_machine *mach,
+                        const struct tgsi_full_instruction *inst)
+{
+   union tgsi_exec_channel index;
+   union tgsi_exec_channel index2D;
+   union tgsi_exec_channel result[TGSI_NUM_CHANNELS];
+   const struct tgsi_full_src_register *reg = &inst->Src[0];
+
+   assert(reg->Register.File == TGSI_FILE_INPUT);
+   get_index_registers(mach, reg, &index, &index2D);
+
+   for (unsigned chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
+      if (!(inst->Dst[0].Register.WriteMask & (1 << chan)))
+         continue;
+
+      /* Here we should add the change to use a sample that lies within the
+       * primitive (Section 15.2):
+       *
+       * "When interpolating variables declared using centroid in ,
+       * the variable is sampled at a location within the pixel covered
+       * by the primitive generating the fragment.
+       * ...
+       * The built-in functions interpolateAtCentroid ... will sample
+       * variables as though they were declared with the centroid ...
+       * qualifier[s]."
+       *
+       * Since we only support 1 sample currently, this is just a pass-through.
+       */
+      fetch_src_file_channel(mach, TGSI_FILE_INPUT, chan, &index, &index2D,
+                             &result[chan]);
+      store_dest(mach, &result[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
+   }
+
+}
+
+
 /**
  * Execute a TGSI instruction.
  * Returns TRUE if a barrier instruction is hit,
@@ -6283,6 +6322,9 @@ exec_instruction(
       break;
    case TGSI_OPCODE_INTERP_OFFSET:
       exec_interp_at_offset(mach, inst);
+      break;
+   case TGSI_OPCODE_INTERP_CENTROID:
+      exec_interp_at_centroid(mach, inst);
       break;
    default:
       assert( 0 );
