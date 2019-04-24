@@ -1495,7 +1495,7 @@ iris_transfer_flush_region(struct pipe_context *ctx,
    /* Make sure we flag constants dirty even if there's no need to emit
     * any PIPE_CONTROLs to a batch.
     */
-   iris_flush_and_dirty_for_history(ice, NULL, res);
+   iris_dirty_for_history(ice, res);
 }
 
 static void
@@ -1521,27 +1521,16 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
    slab_free(&ice->transfer_pool, map);
 }
 
+/**
+ * Mark state dirty that needs to be re-emitted when a resource is written.
+ */
 void
-iris_flush_and_dirty_for_history(struct iris_context *ice,
-                                 struct iris_batch *batch,
-                                 struct iris_resource *res)
+iris_dirty_for_history(struct iris_context *ice,
+                       struct iris_resource *res)
 {
-   if (res->base.target != PIPE_BUFFER)
-      return;
-
-   unsigned flush = PIPE_CONTROL_CS_STALL;
-
-   /* We've likely used the rendering engine (i.e. BLORP) to write to this
-    * surface.  Flush the render cache so the data actually lands.
-    */
-   if (batch && batch->name != IRIS_BATCH_COMPUTE)
-      flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
-
    uint64_t dirty = 0ull;
 
    if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
-      flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE |
-               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
       dirty |= IRIS_DIRTY_CONSTANTS_VS |
                IRIS_DIRTY_CONSTANTS_TCS |
                IRIS_DIRTY_CONSTANTS_TES |
@@ -1549,6 +1538,23 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
                IRIS_DIRTY_CONSTANTS_FS |
                IRIS_DIRTY_CONSTANTS_CS |
                IRIS_ALL_DIRTY_BINDINGS;
+   }
+
+   ice->state.dirty |= dirty;
+}
+
+/**
+ * Produce a set of PIPE_CONTROL bits which ensure data written to a
+ * resource becomes visible, and any stale read cache data is invalidated.
+ */
+uint32_t
+iris_flush_bits_for_history(struct iris_resource *res)
+{
+   uint32_t flush = PIPE_CONTROL_CS_STALL;
+
+   if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
+      flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE |
+               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
    }
 
    if (res->bind_history & PIPE_BIND_SAMPLER_VIEW)
@@ -1560,10 +1566,26 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
    if (res->bind_history & (PIPE_BIND_SHADER_BUFFER | PIPE_BIND_SHADER_IMAGE))
       flush |= PIPE_CONTROL_DATA_CACHE_FLUSH;
 
-   if (batch)
-      iris_emit_pipe_control_flush(batch, flush);
+   return flush;
+}
 
-   ice->state.dirty |= dirty;
+void
+iris_flush_and_dirty_for_history(struct iris_context *ice,
+                                 struct iris_batch *batch,
+                                 struct iris_resource *res)
+{
+   if (res->base.target != PIPE_BUFFER)
+      return;
+
+   uint32_t flush = iris_flush_bits_for_history(res);
+
+   /* We've likely used the rendering engine (i.e. BLORP) to write to this
+    * surface.  Flush the render cache so the data actually lands.
+    */
+   if (batch->name != IRIS_BATCH_COMPUTE)
+      flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
+
+   iris_emit_pipe_control_flush(batch, flush);
 }
 
 bool
