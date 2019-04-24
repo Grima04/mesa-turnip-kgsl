@@ -68,6 +68,9 @@
 
 #define QUIRK_FLIPPED_R24 (1 << 2)
 
+/* Is the op commutative? */
+#define OP_COMMUTES (1 << 3)
+
 /* Vector-independant shorthands for the above; these numbers are arbitrary and
  * not from the ISA. Convert to the above with unit_enum_to_midgard */
 
@@ -151,14 +154,14 @@ static struct {
         const char *name;
         unsigned props;
 } alu_opcode_props[256] = {
-        [midgard_alu_op_fadd]		 = {"fadd", UNITS_ADD},
-        [midgard_alu_op_fmul]		 = {"fmul", UNITS_MUL | UNIT_VLUT},
-        [midgard_alu_op_fmin]		 = {"fmin", UNITS_MUL | UNITS_ADD},
-        [midgard_alu_op_fmax]		 = {"fmax", UNITS_MUL | UNITS_ADD},
-        [midgard_alu_op_imin]		 = {"imin", UNITS_MOST},
-        [midgard_alu_op_imax]		 = {"imax", UNITS_MOST},
-        [midgard_alu_op_umin]		 = {"umin", UNITS_MOST},
-        [midgard_alu_op_umax]		 = {"umax", UNITS_MOST},
+        [midgard_alu_op_fadd]		 = {"fadd", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_fmul]		 = {"fmul", UNITS_MUL | UNIT_VLUT | OP_COMMUTES},
+        [midgard_alu_op_fmin]		 = {"fmin", UNITS_MUL | UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_fmax]		 = {"fmax", UNITS_MUL | UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_imin]		 = {"imin", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_imax]		 = {"imax", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_umin]		 = {"umin", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_umax]		 = {"umax", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_fmov]		 = {"fmov", UNITS_ALL | QUIRK_FLIPPED_R24},
         [midgard_alu_op_fround]          = {"fround", UNITS_ADD},
         [midgard_alu_op_froundeven]      = {"froundeven", UNITS_ADD},
@@ -169,24 +172,24 @@ static struct {
 
         /* Though they output a scalar, they need to run on a vector unit
          * since they process vectors */
-        [midgard_alu_op_fdot3]		 = {"fdot3", UNIT_VMUL | OP_CHANNEL_COUNT(3)},
-        [midgard_alu_op_fdot3r]		 = {"fdot3r", UNIT_VMUL | OP_CHANNEL_COUNT(3)},
-        [midgard_alu_op_fdot4]		 = {"fdot4", UNIT_VMUL | OP_CHANNEL_COUNT(4)},
+        [midgard_alu_op_fdot3]		 = {"fdot3", UNIT_VMUL | OP_CHANNEL_COUNT(3) | OP_COMMUTES},
+        [midgard_alu_op_fdot3r]		 = {"fdot3r", UNIT_VMUL | OP_CHANNEL_COUNT(3) | OP_COMMUTES},
+        [midgard_alu_op_fdot4]		 = {"fdot4", UNIT_VMUL | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
 
         /* Incredibly, iadd can run on vmul, etc */
-        [midgard_alu_op_iadd]		 = {"iadd", UNITS_MOST},
+        [midgard_alu_op_iadd]		 = {"iadd", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_iabs]		 = {"iabs", UNITS_MOST},
         [midgard_alu_op_isub]		 = {"isub", UNITS_MOST},
-        [midgard_alu_op_imul]		 = {"imul", UNITS_MUL},
+        [midgard_alu_op_imul]		 = {"imul", UNITS_MUL | OP_COMMUTES},
         [midgard_alu_op_imov]		 = {"imov", UNITS_MOST | QUIRK_FLIPPED_R24},
 
         /* For vector comparisons, use ball etc */
-        [midgard_alu_op_feq]		 = {"feq", UNITS_MOST},
-        [midgard_alu_op_fne]		 = {"fne", UNITS_MOST},
+        [midgard_alu_op_feq]		 = {"feq", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_fne]		 = {"fne", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_fle]		 = {"fle", UNITS_MOST},
         [midgard_alu_op_flt]		 = {"flt", UNITS_MOST},
-        [midgard_alu_op_ieq]		 = {"ieq", UNITS_MOST},
-        [midgard_alu_op_ine]		 = {"ine", UNITS_MOST},
+        [midgard_alu_op_ieq]		 = {"ieq", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_ine]		 = {"ine", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_ilt]		 = {"ilt", UNITS_MOST},
         [midgard_alu_op_ile]		 = {"ile", UNITS_MOST},
         [midgard_alu_op_ult]		 = {"ult", UNITS_MOST},
@@ -213,10 +216,10 @@ static struct {
         [midgard_alu_op_fcos]		 = {"fcos", UNIT_VLUT},
 
         /* XXX: Test case where it's right on smul but not sadd */
-        [midgard_alu_op_iand]		 = {"iand", UNITS_ADD}, 
+        [midgard_alu_op_iand]		 = {"iand", UNITS_ADD | OP_COMMUTES}, 
 
-        [midgard_alu_op_ior]		 = {"ior", UNITS_ADD},
-        [midgard_alu_op_ixor]		 = {"ixor", UNITS_ADD},
+        [midgard_alu_op_ior]		 = {"ior", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_ixor]		 = {"ixor", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_ilzcnt]		 = {"ilzcnt", UNITS_ADD},
         [midgard_alu_op_ibitcount8]	 = {"ibitcount8", UNITS_ADD},
         [midgard_alu_op_inot]		 = {"inot", UNITS_MOST},
@@ -224,12 +227,12 @@ static struct {
         [midgard_alu_op_iasr]		 = {"iasr", UNITS_ADD},
         [midgard_alu_op_ilsr]		 = {"ilsr", UNITS_ADD},
 
-        [midgard_alu_op_fball_eq]	 = {"fball_eq", UNITS_VECTOR},
-        [midgard_alu_op_fbany_neq]	 = {"fbany_neq", UNITS_VECTOR},
-        [midgard_alu_op_iball_eq]	 = {"iball_eq", UNITS_VECTOR},
-        [midgard_alu_op_iball_neq]	 = {"iball_neq", UNITS_VECTOR},
-        [midgard_alu_op_ibany_eq]	 = {"ibany_eq", UNITS_VECTOR},
-        [midgard_alu_op_ibany_neq]	 = {"ibany_neq", UNITS_VECTOR},
+        [midgard_alu_op_fball_eq]	 = {"fball_eq", UNITS_VECTOR | OP_COMMUTES},
+        [midgard_alu_op_fbany_neq]	 = {"fbany_neq", UNITS_VECTOR | OP_COMMUTES},
+        [midgard_alu_op_iball_eq]	 = {"iball_eq", UNITS_VECTOR | OP_COMMUTES},
+        [midgard_alu_op_iball_neq]	 = {"iball_neq", UNITS_VECTOR | OP_COMMUTES},
+        [midgard_alu_op_ibany_eq]	 = {"ibany_eq", UNITS_VECTOR | OP_COMMUTES},
+        [midgard_alu_op_ibany_neq]	 = {"ibany_neq", UNITS_VECTOR | OP_COMMUTES},
 
         /* These instructions are not yet emitted by the compiler, so
          * don't speculate about units yet */ 
@@ -246,8 +249,8 @@ static struct {
         [midgard_alu_op_ibany_lte]      = {"ibany_lte", 0},
 
         [midgard_alu_op_freduce]        = {"freduce", 0},
-        [midgard_alu_op_bball_eq]       = {"bball_eq", 0},
-        [midgard_alu_op_bbany_neq]      = {"bball_eq", 0},
+        [midgard_alu_op_bball_eq]       = {"bball_eq", 0 | OP_COMMUTES},
+        [midgard_alu_op_bbany_neq]      = {"bball_eq", 0 | OP_COMMUTES},
         [midgard_alu_op_fatan2_pt1]     = {"fatan2_pt1", 0},
         [midgard_alu_op_fatan_pt2]      = {"fatan_pt2", 0},
 };
