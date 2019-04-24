@@ -50,13 +50,13 @@
 
 static bool
 cmod_propagate_cmp_to_add(const gen_device_info *devinfo, bblock_t *block,
-                          fs_inst *inst, unsigned dispatch_width)
+                          fs_inst *inst)
 {
    bool read_flag = false;
 
    foreach_inst_in_block_reverse_starting_from(fs_inst, scan_inst, inst) {
       if (scan_inst->opcode == BRW_OPCODE_ADD &&
-          !scan_inst->is_partial_var_write(dispatch_width) &&
+          !scan_inst->is_partial_write() &&
           scan_inst->exec_size == inst->exec_size) {
          bool negate;
 
@@ -126,7 +126,7 @@ cmod_propagate_cmp_to_add(const gen_device_info *devinfo, bblock_t *block,
  */
 static bool
 cmod_propagate_not(const gen_device_info *devinfo, bblock_t *block,
-                   fs_inst *inst, unsigned dispatch_width)
+                   fs_inst *inst)
 {
    const enum brw_conditional_mod cond = brw_negate_cmod(inst->conditional_mod);
    bool read_flag = false;
@@ -141,7 +141,7 @@ cmod_propagate_not(const gen_device_info *devinfo, bblock_t *block,
              scan_inst->opcode != BRW_OPCODE_AND)
             break;
 
-         if (scan_inst->is_partial_var_write(dispatch_width) ||
+         if (scan_inst->is_partial_write() ||
              scan_inst->dst.offset != inst->src[0].offset ||
              scan_inst->exec_size != inst->exec_size)
             break;
@@ -166,9 +166,7 @@ cmod_propagate_not(const gen_device_info *devinfo, bblock_t *block,
 }
 
 static bool
-opt_cmod_propagation_local(const gen_device_info *devinfo,
-                           bblock_t *block,
-                           unsigned dispatch_width)
+opt_cmod_propagation_local(const gen_device_info *devinfo, bblock_t *block)
 {
    bool progress = false;
    int ip = block->end_ip + 1;
@@ -221,14 +219,14 @@ opt_cmod_propagation_local(const gen_device_info *devinfo,
        */
       if (inst->opcode == BRW_OPCODE_CMP && !inst->src[1].is_zero()) {
          if (brw_reg_type_is_floating_point(inst->src[0].type) &&
-             cmod_propagate_cmp_to_add(devinfo, block, inst, dispatch_width))
+             cmod_propagate_cmp_to_add(devinfo, block, inst))
             progress = true;
 
          continue;
       }
 
       if (inst->opcode == BRW_OPCODE_NOT) {
-         progress = cmod_propagate_not(devinfo, block, inst, dispatch_width) || progress;
+         progress = cmod_propagate_not(devinfo, block, inst) || progress;
          continue;
       }
 
@@ -236,7 +234,7 @@ opt_cmod_propagation_local(const gen_device_info *devinfo,
       foreach_inst_in_block_reverse_starting_from(fs_inst, scan_inst, inst) {
          if (regions_overlap(scan_inst->dst, scan_inst->size_written,
                              inst->src[0], inst->size_read(0))) {
-            if (scan_inst->is_partial_var_write(dispatch_width) ||
+            if (scan_inst->is_partial_write() ||
                 scan_inst->dst.offset != inst->src[0].offset ||
                 scan_inst->exec_size != inst->exec_size)
                break;
@@ -371,7 +369,7 @@ fs_visitor::opt_cmod_propagation()
    bool progress = false;
 
    foreach_block_reverse(block, cfg) {
-      progress = opt_cmod_propagation_local(devinfo, block, dispatch_width) || progress;
+      progress = opt_cmod_propagation_local(devinfo, block) || progress;
    }
 
    if (progress)
