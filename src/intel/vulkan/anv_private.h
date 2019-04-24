@@ -2802,6 +2802,8 @@ struct anv_pipeline {
    anv_cmd_dirty_mask_t                         dynamic_state_mask;
    struct anv_dynamic_state                     dynamic_state;
 
+   void *                                       mem_ctx;
+
    VkPipelineCreateFlags                        flags;
    struct anv_subpass *                         subpass;
 

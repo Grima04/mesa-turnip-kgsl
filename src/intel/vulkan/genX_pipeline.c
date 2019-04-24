@@ -2226,6 +2226,7 @@ compute_pipeline_create(
    pipeline->batch.relocs = &pipeline->batch_relocs;
    pipeline->batch.status = VK_SUCCESS;
 
+   pipeline->mem_ctx = ralloc_context(NULL);
    pipeline->flags = pCreateInfo->flags;
 
    /* When we free the pipeline, we detect stages based on the NULL status
@@ -2242,6 +2243,7 @@ compute_pipeline_create(
                                     pCreateInfo->stage.pName,
                                     pCreateInfo->stage.pSpecializationInfo);
    if (result != VK_SUCCESS) {
+      ralloc_free(pipeline->mem_ctx);
       vk_free2(&device->alloc, pAllocator, pipeline);
       return result;
    }

@@ -297,6 +297,9 @@ void anv_DestroyPipeline(
 
    anv_reloc_list_finish(&pipeline->batch_relocs,
                          pAllocator ? pAllocator : &device->alloc);
+
+   ralloc_free(pipeline->mem_ctx);
+
    if (pipeline->blend_state.map)
       anv_state_pool_free(&device->dynamic_state_pool, pipeline->blend_state);
 
@@ -1794,6 +1797,7 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
    pipeline->batch.relocs = &pipeline->batch_relocs;
    pipeline->batch.status = VK_SUCCESS;
 
+   pipeline->mem_ctx = ralloc_context(NULL);
    pipeline->flags = pCreateInfo->flags;
 
    copy_non_dynamic_state(pipeline, pCreateInfo);
@@ -1822,6 +1826,7 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
 
    result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
+      ralloc_free(pipeline->mem_ctx);
       anv_reloc_list_finish(&pipeline->batch_relocs, alloc);
       return result;
    }
