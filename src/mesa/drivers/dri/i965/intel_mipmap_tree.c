@@ -766,8 +766,8 @@ intel_miptree_create(struct brw_context *brw,
     */
    if (mt->aux_usage != ISL_AUX_USAGE_CCS_D &&
        !intel_miptree_alloc_aux(brw, mt)) {
-      intel_miptree_release(&mt);
-      return NULL;
+      mt->aux_usage = ISL_AUX_USAGE_NONE;
+      mt->supports_fast_clear = false;
    }
 
    return mt;
@@ -854,8 +854,8 @@ intel_miptree_create_for_bo(struct brw_context *brw,
        */
       if (mt->aux_usage != ISL_AUX_USAGE_CCS_D &&
           !intel_miptree_alloc_aux(brw, mt)) {
-         intel_miptree_release(&mt);
-         return NULL;
+         mt->aux_usage = ISL_AUX_USAGE_NONE;
+         mt->supports_fast_clear = false;
       }
    }
 
@@ -1830,7 +1830,8 @@ intel_miptree_alloc_aux(struct brw_context *brw,
    }
 
    /* We should have a valid aux_surf. */
-   assert(aux_surf_ok);
+   if (!aux_surf_ok)
+      return false;
 
    /* No work is needed for a zero-sized auxiliary buffer. */
    if (aux_surf.size_B == 0)
