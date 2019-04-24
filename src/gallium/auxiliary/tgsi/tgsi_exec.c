@@ -5205,6 +5205,35 @@ exec_interp_at_sample(struct tgsi_exec_machine *mach,
       store_dest(mach, &result[chan], &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
    }
 }
+
+
+static void
+exec_interp_at_offset(struct tgsi_exec_machine *mach,
+                      const struct tgsi_full_instruction *inst)
+{
+   union tgsi_exec_channel index;
+   union tgsi_exec_channel index2D;
+   union tgsi_exec_channel ofsx;
+   union tgsi_exec_channel ofsy;
+   const struct tgsi_full_src_register *reg = &inst->Src[0];
+
+   assert(reg->Register.File == TGSI_FILE_INPUT);
+
+   get_index_registers(mach, reg, &index, &index2D);
+   unsigned pos = index2D.i[0] * TGSI_EXEC_MAX_INPUT_ATTRIBS + index.i[0];
+
+   fetch_source(mach, &ofsx, &inst->Src[1], TGSI_CHAN_X, TGSI_EXEC_DATA_FLOAT);
+   fetch_source(mach, &ofsy, &inst->Src[1], TGSI_CHAN_Y, TGSI_EXEC_DATA_FLOAT);
+
+   for (int chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
+      if (!(inst->Dst[0].Register.WriteMask & (1 << chan)))
+         continue;
+      union tgsi_exec_channel result;
+      fetch_src_file_channel(mach, TGSI_FILE_INPUT, chan, &index, &index2D, &result);
+      mach->InputSampleOffsetApply[pos](mach, pos, chan, ofsx.f[chan], ofsy.f[chan], &result);
+      store_dest(mach, &result, &inst->Dst[0], inst, chan, TGSI_EXEC_DATA_FLOAT);
+   }
+}
 /**
  * Execute a TGSI instruction.
  * Returns TRUE if a barrier instruction is hit,
@@ -6251,6 +6280,9 @@ exec_instruction(
       break;
    case TGSI_OPCODE_INTERP_SAMPLE:
       exec_interp_at_sample(mach, inst);
+      break;
+   case TGSI_OPCODE_INTERP_OFFSET:
+      exec_interp_at_offset(mach, inst);
       break;
    default:
       assert( 0 );
