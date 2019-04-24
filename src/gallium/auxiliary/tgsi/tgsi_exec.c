@@ -1324,6 +1324,12 @@ tgsi_exec_machine_create(enum pipe_shader_type shader_type)
          goto fail;
    }
 
+   if (shader_type == PIPE_SHADER_FRAGMENT) {
+      mach->InputSampleOffsetApply = align_malloc(sizeof(apply_sample_offset_func) * PIPE_MAX_SHADER_INPUTS, 16);
+      if (!mach->InputSampleOffsetApply)
+         goto fail;
+   }
+
    /* Setup constants needed by the SSE2 executor. */
    for( i = 0; i < 4; i++ ) {
       mach->Temps[TGSI_EXEC_TEMP_00000000_I].xyzw[TGSI_EXEC_TEMP_00000000_C].u[i] = 0x00000000;
@@ -1348,6 +1354,7 @@ tgsi_exec_machine_create(enum pipe_shader_type shader_type)
 
 fail:
    if (mach) {
+      align_free(mach->InputSampleOffsetApply);
       align_free(mach->Inputs);
       align_free(mach->Outputs);
       align_free(mach);
@@ -1364,6 +1371,7 @@ tgsi_exec_machine_destroy(struct tgsi_exec_machine *mach)
       FREE(mach->Declarations);
       FREE(mach->Imms);
 
+      align_free(mach->InputSampleOffsetApply);
       align_free(mach->Inputs);
       align_free(mach->Outputs);
 
@@ -2924,21 +2932,50 @@ eval_constant_coef(
    }
 }
 
+static void
+interp_constant_offset(
+      UNUSED const struct tgsi_exec_machine *mach,
+      UNUSED unsigned attrib,
+      UNUSED unsigned chan,
+      UNUSED float ofs_x,
+      UNUSED float ofs_y,
+      UNUSED union tgsi_exec_channel *out_chan)
+{
+}
+
 /**
  * Evaluate a linear-valued coefficient at the position of the
  * current quad.
  */
 static void
-eval_linear_coef(
-   struct tgsi_exec_machine *mach,
-   unsigned attrib,
-   unsigned chan )
+interp_linear_offset(
+      const struct tgsi_exec_machine *mach,
+      unsigned attrib,
+      unsigned chan,
+      float ofs_x,
+      float ofs_y,
+      union tgsi_exec_channel *out_chan)
+{
+   const float dadx = mach->InterpCoefs[attrib].dadx[chan];
+   const float dady = mach->InterpCoefs[attrib].dady[chan];
+   const float delta = ofs_x * dadx + ofs_y * dady;
+   out_chan->f[0] += delta;
+   out_chan->f[1] += delta;
+   out_chan->f[2] += delta;
+   out_chan->f[3] += delta;
+}
+
+static void
+eval_linear_coef(struct tgsi_exec_machine *mach,
+                 unsigned attrib,
+                 unsigned chan)
 {
    const float x = mach->QuadPos.xyzw[0].f[0];
    const float y = mach->QuadPos.xyzw[1].f[0];
    const float dadx = mach->InterpCoefs[attrib].dadx[chan];
    const float dady = mach->InterpCoefs[attrib].dady[chan];
    const float a0 = mach->InterpCoefs[attrib].a0[chan] + dadx * x + dady * y;
+
    mach->Inputs[attrib].xyzw[chan].f[0] = a0;
    mach->Inputs[attrib].xyzw[chan].f[1] = a0 + dadx;
    mach->Inputs[attrib].xyzw[chan].f[2] = a0 + dady;
@@ -2949,6 +2986,26 @@ eval_linear_coef(
  * Evaluate a perspective-valued coefficient at the position of the
  * current quad.
  */
+
+static void
+interp_perspective_offset(
+   const struct tgsi_exec_machine *mach,
+   unsigned attrib,
+   unsigned chan,
+   float ofs_x,
+   float ofs_y,
+   union tgsi_exec_channel *out_chan)
+{
+   const float dadx = mach->InterpCoefs[attrib].dadx[chan];
+   const float dady = mach->InterpCoefs[attrib].dady[chan];
+   const float *w = mach->QuadPos.xyzw[3].f;
+   const float delta = ofs_x * dadx + ofs_y * dady;
+   out_chan->f[0] += delta / w[0];
+   out_chan->f[1] += delta / w[1];
+   out_chan->f[2] += delta / w[2];
+   out_chan->f[3] += delta / w[3];
+}
+
 static void
 eval_perspective_coef(
    struct tgsi_exec_machine *mach,
@@ -3009,19 +3066,23 @@ exec_declaration(struct tgsi_exec_machine *mach,
             }
          } else {
             eval_coef_func eval;
+            apply_sample_offset_func interp;
             uint i, j;
 
             switch (decl->Interp.Interpolate) {
             case TGSI_INTERPOLATE_CONSTANT:
                eval = eval_constant_coef;
+               interp = interp_constant_offset;
                break;
 
             case TGSI_INTERPOLATE_LINEAR:
                eval = eval_linear_coef;
+               interp = interp_linear_offset;
                break;
 
             case TGSI_INTERPOLATE_PERSPECTIVE:
                eval = eval_perspective_coef;
+               interp = interp_perspective_offset;
                break;
 
             case TGSI_INTERPOLATE_COLOR:
@@ -3032,6 +3093,9 @@ exec_declaration(struct tgsi_exec_machine *mach,
                assert(0);
                return;
             }
+
+            for (i = first; i <= last; i++)
+               mach->InputSampleOffsetApply[i] = interp;
 
             for (j = 0; j < TGSI_NUM_CHANNELS; j++) {
                if (mask & (1 << j)) {

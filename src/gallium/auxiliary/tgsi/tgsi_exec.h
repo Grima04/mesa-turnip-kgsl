@@ -351,6 +351,16 @@ enum tgsi_break_type {
 
 typedef float float4[4];
 
+struct tgsi_exec_machine;
+
+typedef void (* apply_sample_offset_func)(
+   const struct tgsi_exec_machine *mach,
+   unsigned attrib,
+   unsigned chan,
+   float ofs_x,
+   float ofs_y,
+   union tgsi_exec_channel *out_chan);
+
 /**
  * Run-time virtual machine state for executing TGSI shader.
  */
@@ -366,6 +376,7 @@ struct tgsi_exec_machine
 
    struct tgsi_exec_vector       *Inputs;
    struct tgsi_exec_vector       *Outputs;
+   apply_sample_offset_func           *InputSampleOffsetApply;
 
    /* System values */
    unsigned                      SysSemanticToIndex[TGSI_SEMANTIC_COUNT];
