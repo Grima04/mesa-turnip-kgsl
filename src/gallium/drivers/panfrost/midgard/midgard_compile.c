@@ -3123,6 +3123,36 @@ midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
+/* Combines the two outmods if possible. Returns whether the combination was
+ * successful */
+
+static bool
+midgard_combine_outmod(midgard_outmod *main, midgard_outmod overlay)
+{
+        if (overlay == midgard_outmod_none)
+                return true;
+
+        if (*main == overlay)
+                return true;
+
+        if (*main == midgard_outmod_none) {
+                *main = overlay;
+                return true;
+        }
+
+        if (*main == midgard_outmod_pos && overlay == midgard_outmod_sat) {
+                *main = midgard_outmod_sat;
+                return true;
+        }
+
+        if (overlay == midgard_outmod_pos && *main == midgard_outmod_sat) {
+                *main = midgard_outmod_sat;
+                return true;
+        }
+
+        return false;
+}
+
 static bool
 midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 {
@@ -3139,8 +3169,12 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
                 if (to >= SSA_FIXED_MINIMUM) continue;
                 if (from >= SSA_FIXED_MINIMUM) continue;
+                if (to >= ctx->func->impl->ssa_alloc) continue;
+                if (from >= ctx->func->impl->ssa_alloc) continue;
 
-                /* Also, if the move has side effects, we're helpless */
+                /* Also, if the move has source side effects, we're not sure
+                 * what to do. Destination side effects we can handle, though.
+                 */
 
                 midgard_vector_alu_src src =
                         vector_alu_from_unsigned(ins->alu.src2);
@@ -3149,17 +3183,23 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
                 if (mir_nontrivial_mod(src, is_int, mask)) continue;
 
-                mir_foreach_instr_in_block_from(block, v, mir_next_op(ins)) {
-                        if (v->ssa_args.src0 == to) {
-                                v->ssa_args.src0 = from;
-                                progress = true;
-                        }
+                mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
+                        if (v->ssa_args.dest == from) {
+                                if (v->type == TAG_ALU_4) {
+                                        midgard_outmod final = v->alu.outmod;
 
-                        if (v->ssa_args.src1 == to && !v->ssa_args.inline_constant) {
-                                v->ssa_args.src1 = from;
+                                        if (!midgard_combine_outmod(&final, ins->alu.outmod))
+                                                continue;
+
+                                        v->alu.outmod = final;
+                                }
+
+                                v->ssa_args.dest = to;
                                 progress = true;
                         }
                 }
+
+                mir_remove_instruction(ins);
         }
 
         return progress;
