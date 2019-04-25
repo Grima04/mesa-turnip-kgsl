@@ -296,6 +296,9 @@ next_regid(uint32_t reg, uint32_t increment)
 		return reg + increment;
 }
 
+#define VALIDREG(r)      ((r) != regid(63,0))
+#define CONDREG(r, val)  COND(VALIDREG(r), (val))
+
 static void
 setup_stateobj(struct fd_ringbuffer *ring,
                struct fd6_program_state *state, bool binning_pass)
@@ -427,10 +430,10 @@ setup_stateobj(struct fd_ringbuffer *ring,
 	OUT_RING(ring, ~varmask[3]);  /* VPC_VAR[3].DISABLE */
 
 	/* a6xx appends pos/psize to end of the linkage map: */
-	if (pos_regid != regid(63,0))
+	if (VALIDREG(pos_regid))
 		ir3_link_add(&l, pos_regid, 0xf, l.max_loc);
 
-	if (psize_regid != regid(63,0)) {
+	if (VALIDREG(psize_regid)) {
 		psize_loc = l.max_loc;
 		ir3_link_add(&l, psize_regid, 0x1, l.max_loc);
 	}
@@ -492,7 +495,7 @@ setup_stateobj(struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_1, 1);
 	OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_1_STRIDE_IN_VPC(l.max_loc) |
-			 COND(psize_regid != regid(63,0), 0x100));
+			 CONDREG(psize_regid, 0x100));
 
 	if (binning_pass) {
 		OUT_PKT4(ring, REG_A6XX_SP_FS_OBJ_START_LO, 2);
@@ -565,10 +568,8 @@ setup_stateobj(struct fd_ringbuffer *ring,
 			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
 
 	OUT_RING(ring,
-			COND(samp_mask_regid != regid(63, 0),
-				A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
-			COND(samp_id_regid != regid(63, 0),
-				A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
+			CONDREG(samp_mask_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
+			CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
 			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
