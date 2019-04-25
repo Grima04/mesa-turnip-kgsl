@@ -476,8 +476,6 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 		break;
 	}
 
-	iassert_type(dst, type_size(instr->cat5.type) == 32)
-
 	assume(src1 || !src2);
 
 	if (src1) {
