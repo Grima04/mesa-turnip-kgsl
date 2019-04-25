@@ -82,7 +82,7 @@ typedef enum {
         midgard_alu_op_ishl       = 0x6E,
         midgard_alu_op_iand       = 0x70,
         midgard_alu_op_ior        = 0x71,
-        midgard_alu_op_inot       = 0x72,
+        midgard_alu_op_inand      = 0x72, /* ~(a & b), for inot let a = b */
         midgard_alu_op_iandnot    = 0x74, /* (a, b) -> a & ~b, used for not/b2f */
         midgard_alu_op_ixor       = 0x76,
         midgard_alu_op_ilzcnt     = 0x78, /* Number of zeroes on left. 31 - ilzcnt(x) = findMSB(x) */

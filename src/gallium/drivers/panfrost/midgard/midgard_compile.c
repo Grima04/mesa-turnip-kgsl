@@ -1184,7 +1184,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(iand, iand);
                 ALU_CASE(ior, ior);
                 ALU_CASE(ixor, ixor);
-                ALU_CASE(inot, inot);
+                ALU_CASE(inot, inand);
                 ALU_CASE(ishl, ishl);
                 ALU_CASE(ishr, iasr);
                 ALU_CASE(ushr, ilsr);
@@ -1376,6 +1376,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.has_constants = true;
                 ins.constants[0] = 0.0f;
                 ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
+        } else if (instr->op == nir_op_inot) {
+                /* ~b = ~(b & b), so duplicate the source */
+                ins.ssa_args.src1 = ins.ssa_args.src0;
+                ins.alu.src2 = ins.alu.src1;
         }
 
         if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {

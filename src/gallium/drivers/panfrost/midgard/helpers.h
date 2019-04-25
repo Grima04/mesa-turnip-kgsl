@@ -223,7 +223,7 @@ static struct {
         [midgard_alu_op_ixor]		 = {"ixor", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_ilzcnt]		 = {"ilzcnt", UNITS_ADD},
         [midgard_alu_op_ibitcount8]	 = {"ibitcount8", UNITS_ADD},
-        [midgard_alu_op_inot]		 = {"inot", UNITS_MOST},
+        [midgard_alu_op_inand]		 = {"inand", UNITS_MOST},
         [midgard_alu_op_ishl]		 = {"ishl", UNITS_ADD},
         [midgard_alu_op_iasr]		 = {"iasr", UNITS_ADD},
         [midgard_alu_op_ilsr]		 = {"ilsr", UNITS_ADD},
