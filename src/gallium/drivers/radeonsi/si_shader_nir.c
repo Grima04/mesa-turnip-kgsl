@@ -811,6 +811,47 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	}
 }
 
+void
+si_nir_opts(struct nir_shader *nir)
+{
+	bool progress;
+	do {
+		progress = false;
+
+		NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+
+		NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+		NIR_PASS(progress, nir, nir_opt_dead_write_vars);
+
+		NIR_PASS_V(nir, nir_lower_alu_to_scalar);
+		NIR_PASS_V(nir, nir_lower_phis_to_scalar);
+
+		/* (Constant) copy propagation is needed for txf with offsets. */
+		NIR_PASS(progress, nir, nir_copy_prop);
+		NIR_PASS(progress, nir, nir_opt_remove_phis);
+		NIR_PASS(progress, nir, nir_opt_dce);
+		if (nir_opt_trivial_continues(nir)) {
+			progress = true;
+			NIR_PASS(progress, nir, nir_copy_prop);
+			NIR_PASS(progress, nir, nir_opt_dce);
+		}
+		NIR_PASS(progress, nir, nir_opt_if, true);
+		NIR_PASS(progress, nir, nir_opt_dead_cf);
+		NIR_PASS(progress, nir, nir_opt_cse);
+		NIR_PASS(progress, nir, nir_opt_peephole_select, 8, true, true);
+
+		/* Needed for algebraic lowering */
+		NIR_PASS(progress, nir, nir_opt_algebraic);
+		NIR_PASS(progress, nir, nir_opt_constant_folding);
+
+		NIR_PASS(progress, nir, nir_opt_undef);
+		NIR_PASS(progress, nir, nir_opt_conditional_discard);
+		if (nir->options->max_unroll_iterations) {
+			NIR_PASS(progress, nir, nir_opt_loop_unroll, 0);
+		}
+	} while (progress);
+}
+
 /**
  * Perform "lowering" operations on the NIR that are run once when the shader
  * selector is created.
@@ -861,42 +902,7 @@ si_lower_nir(struct si_shader_selector* sel)
 
 	ac_lower_indirect_derefs(sel->nir, sel->screen->info.chip_class);
 
-	bool progress;
-	do {
-		progress = false;
-
-		NIR_PASS_V(sel->nir, nir_lower_vars_to_ssa);
-
-		NIR_PASS(progress, sel->nir, nir_opt_copy_prop_vars);
-		NIR_PASS(progress, sel->nir, nir_opt_dead_write_vars);
-
-		NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar);
-		NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar);
-
-		/* (Constant) copy propagation is needed for txf with offsets. */
-		NIR_PASS(progress, sel->nir, nir_copy_prop);
-		NIR_PASS(progress, sel->nir, nir_opt_remove_phis);
-		NIR_PASS(progress, sel->nir, nir_opt_dce);
-		if (nir_opt_trivial_continues(sel->nir)) {
-			progress = true;
-			NIR_PASS(progress, sel->nir, nir_copy_prop);
-			NIR_PASS(progress, sel->nir, nir_opt_dce);
-		}
-		NIR_PASS(progress, sel->nir, nir_opt_if, true);
-		NIR_PASS(progress, sel->nir, nir_opt_dead_cf);
-		NIR_PASS(progress, sel->nir, nir_opt_cse);
-		NIR_PASS(progress, sel->nir, nir_opt_peephole_select, 8, true, true);
-
-		/* Needed for algebraic lowering */
-		NIR_PASS(progress, sel->nir, nir_opt_algebraic);
-		NIR_PASS(progress, sel->nir, nir_opt_constant_folding);
-
-		NIR_PASS(progress, sel->nir, nir_opt_undef);
-		NIR_PASS(progress, sel->nir, nir_opt_conditional_discard);
-		if (sel->nir->options->max_unroll_iterations) {
-			NIR_PASS(progress, sel->nir, nir_opt_loop_unroll, 0);
-		}
-	} while (progress);
+	si_nir_opts(sel->nir);
 
 	NIR_PASS_V(sel->nir, nir_lower_bool_to_int32);
 
