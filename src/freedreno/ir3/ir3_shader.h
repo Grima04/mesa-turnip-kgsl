@@ -154,6 +154,8 @@ struct ir3_shader_key {
 			/*
 			 * Fragment shader variant parameters:
 			 */
+			unsigned sample_shading : 1;
+			unsigned msaa           : 1;
 			unsigned color_two_side : 1;
 			unsigned half_precision : 1;
 			/* used when shader needs to handle flat varyings (a4xx)
@@ -389,7 +391,7 @@ struct ir3_shader_variant {
 		uint8_t slot;
 		uint8_t regid;
 	} outputs[16 + 2];  /* +POSITION +PSIZE */
-	bool writes_pos, writes_psize;
+	bool writes_pos, writes_smask, writes_psize;
 
 	/* attributes (VS) / varyings (FS):
 	 * Note that sysval's should come *after* normal inputs.
@@ -438,6 +440,8 @@ struct ir3_shader_variant {
 
 	/* do we have kill, image write, etc (which prevents early-z): */
 	bool no_earlyz;
+
+	bool per_samp;
 
 	/* Layout of constant registers, each section (in vec4). Pointer size
 	 * is 32b (a3xx, a4xx), or 64b (a5xx+), which effects the size of the

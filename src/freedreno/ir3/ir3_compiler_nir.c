@@ -1127,6 +1127,55 @@ static void add_sysval_input(struct ir3_context *ctx, gl_system_value slot,
 	add_sysval_input_compmask(ctx, slot, 0x1, instr);
 }
 
+static struct ir3_instruction *
+get_barycentric_centroid(struct ir3_context *ctx)
+{
+	if (!ctx->ij_centroid) {
+		struct ir3_instruction *xy[2];
+		struct ir3_instruction *ij;
+
+		ij = create_input_compmask(ctx, 0, 0x3);
+		ir3_split_dest(ctx->block, xy, ij, 0, 2);
+
+		ctx->ij_centroid = ir3_create_collect(ctx, xy, 2);
+
+		add_sysval_input_compmask(ctx,
+				SYSTEM_VALUE_BARYCENTRIC_CENTROID,
+				0x3, ij);
+	}
+
+	return ctx->ij_centroid;
+}
+
+static struct ir3_instruction *
+get_barycentric_sample(struct ir3_context *ctx)
+{
+	if (!ctx->ij_sample) {
+		struct ir3_instruction *xy[2];
+		struct ir3_instruction *ij;
+
+		ij = create_input_compmask(ctx, 0, 0x3);
+		ir3_split_dest(ctx->block, xy, ij, 0, 2);
+
+		ctx->ij_sample = ir3_create_collect(ctx, xy, 2);
+
+		add_sysval_input_compmask(ctx,
+				SYSTEM_VALUE_BARYCENTRIC_SAMPLE,
+				0x3, ij);
+	}
+
+	return ctx->ij_sample;
+}
+
+static struct ir3_instruction  *
+get_barycentric_pixel(struct ir3_context *ctx)
+{
+	/* TODO when tgsi_to_nir supports "new-style" FS inputs switch
+	 * this to create ij_pixel only on demand:
+	 */
+	return ctx->ij_pixel;
+}
+
 static void
 emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
@@ -1168,13 +1217,40 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
 		break;
-	case nir_intrinsic_load_barycentric_centroid:
-	case nir_intrinsic_load_barycentric_pixel:
-		/* NOTE: we still pre-create ij_pixel just to keep things working with
-		 * nir producers that create "old style" frag shader inputs (ie. just
-		 * load_input, vs load_barycentric_* + load_interpolated_input)
+	case nir_intrinsic_load_sample_pos_from_id: {
+		/* NOTE: blob seems to always use TYPE_F16 and then cov.f16f32,
+		 * but that doesn't seem necessary.
 		 */
-		ir3_split_dest(b, dst, ctx->ij_pixel, 0, 2);
+		struct ir3_instruction *offset =
+			ir3_RGETPOS(b, ir3_get_src(ctx, &intr->src[0])[0], 0);
+		offset->regs[0]->wrmask = 0x3;
+		offset->cat5.type = TYPE_F32;
+
+		ir3_split_dest(b, dst, offset, 0, 2);
+
+		break;
+	}
+	case nir_intrinsic_load_size_ir3:
+		if (!ctx->ij_size) {
+			ctx->ij_size = create_input(ctx, 0);
+
+			add_sysval_input(ctx, SYSTEM_VALUE_BARYCENTRIC_SIZE,
+					ctx->ij_size);
+		}
+		dst[0] = ctx->ij_size;
+		break;
+	case nir_intrinsic_load_barycentric_centroid:
+		ir3_split_dest(b, dst, get_barycentric_centroid(ctx), 0, 2);
+		break;
+	case nir_intrinsic_load_barycentric_sample:
+		if (ctx->so->key.msaa) {
+			ir3_split_dest(b, dst, get_barycentric_sample(ctx), 0, 2);
+		} else {
+			ir3_split_dest(b, dst, get_barycentric_pixel(ctx), 0, 2);
+		}
+		break;
+	case nir_intrinsic_load_barycentric_pixel:
+		ir3_split_dest(b, dst, get_barycentric_pixel(ctx), 0, 2);
 		break;
 	case nir_intrinsic_load_interpolated_input:
 		idx = nir_intrinsic_base(intr);
@@ -1345,6 +1421,8 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		dst[0] = ctx->instance_id;
 		break;
 	case nir_intrinsic_load_sample_id:
+		ctx->so->per_samp = true;
+		/* fall-thru */
 	case nir_intrinsic_load_sample_id_no_per_sample:
 		if (!ctx->samp_id) {
 			ctx->samp_id = create_input(ctx, 0);
@@ -2282,6 +2360,12 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	so->inputs[n].interpolate = in->data.interpolation;
 
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
+
+		/* if any varyings have 'sample' qualifer, that triggers us
+		 * to run in per-sample mode:
+		 */
+		so->per_samp |= in->data.sample;
+
 		for (int i = 0; i < ncomp; i++) {
 			struct ir3_instruction *instr = NULL;
 			unsigned idx = (n * 4) + i + frac;
@@ -2456,6 +2540,9 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 			break;
 		case FRAG_RESULT_COLOR:
 			so->color0_mrt = 1;
+			break;
+		case FRAG_RESULT_SAMPLE_MASK:
+			so->writes_smask = true;
 			break;
 		default:
 			if (slot >= FRAG_RESULT_DATA0)

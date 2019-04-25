@@ -1311,6 +1311,9 @@ INSTR1(SQRT)
 /* cat5 instructions: */
 INSTR1(DSX)
 INSTR1(DSY)
+INSTR1F(3D, DSX)
+INSTR1F(3D, DSY)
+INSTR1(RGETPOS)
 
 static inline struct ir3_instruction *
 ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,

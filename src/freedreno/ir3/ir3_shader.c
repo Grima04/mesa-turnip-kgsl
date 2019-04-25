@@ -262,8 +262,15 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir)
 	NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size,
 			   (nir_lower_io_options)0);
 
-	if (nir->info.stage == MESA_SHADER_FRAGMENT)
+	if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+		/* NOTE: lower load_barycentric_at_sample first, since it
+		 * produces load_barycentric_at_offset:
+		 */
+		NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_sample);
+		NIR_PASS_V(nir, ir3_nir_lower_load_barycentric_at_offset);
+
 		NIR_PASS_V(nir, ir3_nir_move_varying_inputs);
+	}
 
 	NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
@@ -409,6 +416,10 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	case MESA_SHADER_FRAGMENT:
 		dump_reg(out, "pos (ij_pixel)",
 			ir3_find_sysval_regid(so, SYSTEM_VALUE_BARYCENTRIC_PIXEL));
+		dump_reg(out, "pos (ij_centroid)",
+			ir3_find_sysval_regid(so, SYSTEM_VALUE_BARYCENTRIC_CENTROID));
+		dump_reg(out, "pos (ij_size)",
+			ir3_find_sysval_regid(so, SYSTEM_VALUE_BARYCENTRIC_SIZE));
 		dump_output(out, so, FRAG_RESULT_DEPTH, "posz");
 		if (so->color0_mrt) {
 			dump_output(out, so, FRAG_RESULT_COLOR, "color");

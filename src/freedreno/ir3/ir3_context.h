@@ -65,7 +65,7 @@ struct ir3_context {
 	 * inputs.  So we do all the input tracking normally and fix
 	 * things up after compile_instructions()
 	 */
-	struct ir3_instruction *ij_pixel;
+	struct ir3_instruction *ij_pixel, *ij_sample, *ij_centroid, *ij_size;
 
 	/* for fragment shaders, for gl_FrontFacing and gl_FragCoord: */
 	struct ir3_instruction *frag_face, *frag_coord;
