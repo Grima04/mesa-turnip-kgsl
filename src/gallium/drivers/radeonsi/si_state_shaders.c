@@ -2247,6 +2247,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 		sel->nir = state->ir.nir;
 
+		si_nir_opts(sel->nir);
 		si_nir_scan_shader(sel->nir, &sel->info);
 		si_nir_scan_tess_ctrl(sel->nir, &sel->tcs_info);
 	}
