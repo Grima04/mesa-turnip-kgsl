@@ -637,7 +637,12 @@ llvmpipe_fence_finish(struct pipe_screen *screen,
    if (!timeout)
       return lp_fence_signalled(f);
 
-   lp_fence_wait(f);
+   if (!lp_fence_signalled(f)) {
+      if (timeout != PIPE_TIMEOUT_INFINITE)
+         return lp_fence_timedwait(f, timeout);
+
+      lp_fence_wait(f);
+   }
    return TRUE;
 }
 
