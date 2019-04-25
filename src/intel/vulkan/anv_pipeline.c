@@ -1135,6 +1135,14 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
    unsigned char sha1[20];
    anv_pipeline_hash_graphics(pipeline, layout, stages, sha1);
 
+   for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
+      if (!stages[s].entrypoint)
+         continue;
+
+      stages[s].cache_key.stage = s;
+      memcpy(stages[s].cache_key.sha1, sha1, sizeof(sha1));
+   }
+
    unsigned found = 0;
    unsigned cache_hits = 0;
    for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
@@ -1142,9 +1150,6 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
          continue;
 
       int64_t stage_start = os_time_get_nano();
-
-      stages[s].cache_key.stage = s;
-      memcpy(stages[s].cache_key.sha1, sha1, sizeof(sha1));
 
       bool cache_hit;
       struct anv_shader_bin *bin =
