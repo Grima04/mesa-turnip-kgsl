@@ -2802,6 +2802,7 @@ struct anv_pipeline {
    anv_cmd_dirty_mask_t                         dynamic_state_mask;
    struct anv_dynamic_state                     dynamic_state;
 
+   VkPipelineCreateFlags                        flags;
    struct anv_subpass *                         subpass;
 
    bool                                         needs_data_cache;

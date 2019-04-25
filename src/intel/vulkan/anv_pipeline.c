@@ -1143,65 +1143,70 @@ anv_pipeline_compile_graphics(struct anv_pipeline *pipeline,
       memcpy(stages[s].cache_key.sha1, sha1, sizeof(sha1));
    }
 
-   unsigned found = 0;
-   unsigned cache_hits = 0;
-   for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
-      if (!stages[s].entrypoint)
-         continue;
+   const bool skip_cache_lookup =
+      (pipeline->flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR);
 
-      int64_t stage_start = os_time_get_nano();
-
-      bool cache_hit;
-      struct anv_shader_bin *bin =
-         anv_device_search_for_kernel(pipeline->device, cache,
-                                      &stages[s].cache_key,
-                                      sizeof(stages[s].cache_key), &cache_hit);
-      if (bin) {
-         found++;
-         pipeline->shaders[s] = bin;
-      }
-
-      if (cache_hit) {
-         cache_hits++;
-         stages[s].feedback.flags |=
-            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
-      }
-      stages[s].feedback.duration += os_time_get_nano() - stage_start;
-   }
-
-   if (found == __builtin_popcount(pipeline->active_stages)) {
-      if (cache_hits == found) {
-         pipeline_feedback.flags |=
-            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
-      }
-      /* We found all our shaders in the cache.  We're done. */
-      goto done;
-   } else if (found > 0) {
-      /* We found some but not all of our shaders.  This shouldn't happen
-       * most of the time but it can if we have a partially populated
-       * pipeline cache.
-       */
-      assert(found < __builtin_popcount(pipeline->active_stages));
-
-      vk_debug_report(&pipeline->device->instance->debug_report_callbacks,
-                      VK_DEBUG_REPORT_WARNING_BIT_EXT |
-                      VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
-                      VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT,
-                      (uint64_t)(uintptr_t)cache,
-                      0, 0, "anv",
-                      "Found a partial pipeline in the cache.  This is "
-                      "most likely caused by an incomplete pipeline cache "
-                      "import or export");
-
-      /* We're going to have to recompile anyway, so just throw away our
-       * references to the shaders in the cache.  We'll get them out of the
-       * cache again as part of the compilation process.
-       */
+   if (!skip_cache_lookup) {
+      unsigned found = 0;
+      unsigned cache_hits = 0;
       for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
-         stages[s].feedback.flags = 0;
-         if (pipeline->shaders[s]) {
-            anv_shader_bin_unref(pipeline->device, pipeline->shaders[s]);
-            pipeline->shaders[s] = NULL;
+         if (!stages[s].entrypoint)
+            continue;
+
+         int64_t stage_start = os_time_get_nano();
+
+         bool cache_hit;
+         struct anv_shader_bin *bin =
+            anv_device_search_for_kernel(pipeline->device, cache,
+                                         &stages[s].cache_key,
+                                         sizeof(stages[s].cache_key), &cache_hit);
+         if (bin) {
+            found++;
+            pipeline->shaders[s] = bin;
+         }
+
+         if (cache_hit) {
+            cache_hits++;
+            stages[s].feedback.flags |=
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+         }
+         stages[s].feedback.duration += os_time_get_nano() - stage_start;
+      }
+
+      if (found == __builtin_popcount(pipeline->active_stages)) {
+         if (cache_hits == found) {
+            pipeline_feedback.flags |=
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+         }
+         /* We found all our shaders in the cache.  We're done. */
+         goto done;
+      } else if (found > 0) {
+         /* We found some but not all of our shaders.  This shouldn't happen
+          * most of the time but it can if we have a partially populated
+          * pipeline cache.
+          */
+         assert(found < __builtin_popcount(pipeline->active_stages));
+
+         vk_debug_report(&pipeline->device->instance->debug_report_callbacks,
+                         VK_DEBUG_REPORT_WARNING_BIT_EXT |
+                         VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
+                         VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT,
+                         (uint64_t)(uintptr_t)cache,
+                         0, 0, "anv",
+                         "Found a partial pipeline in the cache.  This is "
+                         "most likely caused by an incomplete pipeline cache "
+                         "import or export");
+
+         /* We're going to have to recompile anyway, so just throw away our
+          * references to the shaders in the cache.  We'll get them out of the
+          * cache again as part of the compilation process.
+          */
+         for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
+            stages[s].feedback.flags = 0;
+            if (pipeline->shaders[s]) {
+               anv_shader_bin_unref(pipeline->device, pipeline->shaders[s]);
+               pipeline->shaders[s] = NULL;
+            }
          }
       }
    }
@@ -1434,10 +1439,18 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
 
+   const bool skip_cache_lookup =
+      (pipeline->flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR);
+
    anv_pipeline_hash_compute(pipeline, layout, &stage, stage.cache_key.sha1);
-   bool cache_hit;
-   bin = anv_device_search_for_kernel(pipeline->device, cache, &stage.cache_key,
-                                      sizeof(stage.cache_key), &cache_hit);
+
+   bool cache_hit = false;
+   if (!skip_cache_lookup) {
+      bin = anv_device_search_for_kernel(pipeline->device, cache,
+                                         &stage.cache_key,
+                                         sizeof(stage.cache_key),
+                                         &cache_hit);
+   }
 
    if (bin == NULL) {
       int64_t stage_start = os_time_get_nano();
@@ -1780,6 +1793,8 @@ anv_pipeline_init(struct anv_pipeline *pipeline,
    pipeline->batch.end = pipeline->batch.start + sizeof(pipeline->batch_data);
    pipeline->batch.relocs = &pipeline->batch_relocs;
    pipeline->batch.status = VK_SUCCESS;
+
+   pipeline->flags = pCreateInfo->flags;
 
    copy_non_dynamic_state(pipeline, pCreateInfo);
    pipeline->depth_clamp_enable = pCreateInfo->pRasterizationState &&

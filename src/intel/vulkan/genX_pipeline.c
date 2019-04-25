@@ -2226,6 +2226,8 @@ compute_pipeline_create(
    pipeline->batch.relocs = &pipeline->batch_relocs;
    pipeline->batch.status = VK_SUCCESS;
 
+   pipeline->flags = pCreateInfo->flags;
+
    /* When we free the pipeline, we detect stages based on the NULL status
     * of various prog_data pointers.  Make them NULL by default.
     */
