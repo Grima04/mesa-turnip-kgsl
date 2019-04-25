@@ -868,7 +868,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			nr = 0;
 
 		OUT_PKT4(ring, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
-		OUT_RING(ring, COND(fp->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z));
+		OUT_RING(ring, COND(fp->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
+				COND(fp->writes_smask && pfb->samples > 1,
+						A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK));
 		OUT_RING(ring, A6XX_RB_FS_OUTPUT_CNTL1_MRT(nr));
 
 		OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL1, 1);

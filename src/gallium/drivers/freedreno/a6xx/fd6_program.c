@@ -300,18 +300,22 @@ next_regid(uint32_t reg, uint32_t increment)
 #define CONDREG(r, val)  COND(VALIDREG(r), (val))
 
 static void
-setup_stateobj(struct fd_ringbuffer *ring,
-               struct fd6_program_state *state, bool binning_pass)
+setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
+		const struct ir3_shader_key *key, bool binning_pass)
 {
 	struct stage s[MAX_STAGES];
 	uint32_t pos_regid, psize_regid, color_regid[8], posz_regid;
-	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid, samp_mask_regid;
-	uint32_t vcoord_regid, vertex_regid, instance_regid;
+	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
+	uint32_t smask_in_regid, smask_regid;
+	uint32_t vertex_regid, instance_regid;
+	uint32_t ij_pix_regid, ij_samp_regid, ij_cent_regid, ij_size_regid;
 	enum a3xx_threadsize fssz;
 	uint8_t psize_loc = ~0;
 	int i, j;
 
 	setup_stages(state, s, binning_pass);
+
+	bool sample_shading = s[FS].v->per_samp | key->sample_shading;
 
 	fssz = FOUR_QUADS;
 
@@ -336,12 +340,22 @@ setup_stateobj(struct fd_ringbuffer *ring,
 	}
 
 	samp_id_regid   = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_ID);
-	samp_mask_regid = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_MASK_IN);
+	smask_in_regid  = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_MASK_IN);
 	face_regid      = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRONT_FACE);
 	coord_regid     = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRAG_COORD);
 	zwcoord_regid   = next_regid(coord_regid, 2);
-	vcoord_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PIXEL);
+	ij_pix_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PIXEL);
+	ij_samp_regid   = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_SAMPLE);
+	ij_cent_regid   = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_CENTROID);
+	ij_size_regid   = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_SIZE);
 	posz_regid      = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DEPTH);
+	smask_regid     = ir3_find_output_regid(s[FS].v, FRAG_RESULT_SAMPLE_MASK);
+
+	/* we can't write gl_SampleMask for !msaa..  if b0 is zero then we
+	 * end up masking the single sample!!
+	 */
+	if (!key->msaa)
+		smask_regid = regid(63, 0);
 
 	/* we could probably divide this up into things that need to be
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
@@ -390,7 +404,8 @@ setup_stateobj(struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL0, 1);
 	OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
-			 0xfcfc0000);
+			 A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
+			 0xfc000000);
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
 	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(s[VS].constlen) |
@@ -510,13 +525,15 @@ setup_stateobj(struct fd_ringbuffer *ring,
 	OUT_RING(ring, 0x7);                /* XXX */
 	OUT_RING(ring, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
 			 A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
-			 A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(samp_mask_regid) |
-			 0xfc000000);               /* XXX */
-	OUT_RING(ring, A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_PIXEL(vcoord_regid) |
-			0xfcfcfc00);               /* XXX */
+			 A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
+			 A6XX_HLSQ_CONTROL_2_REG_SIZE(ij_size_regid));
+	OUT_RING(ring, A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_PIXEL(ij_pix_regid) |
+			 A6XX_HLSQ_CONTROL_3_REG_BARY_IJ_CENTROID(ij_cent_regid) |
+			 0xfc00fc00);               /* XXX */
 	OUT_RING(ring, A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
-			A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
-			0x0000fcfc);               /* XXX */
+			 A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
+			 A6XX_HLSQ_CONTROL_4_REG_BARY_IJ_PIXEL_PERSAMP(ij_samp_regid) |
+			 0x0000fc00);               /* XXX */
 	OUT_RING(ring, 0xfc);              /* XXX */
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
@@ -547,7 +564,12 @@ setup_stateobj(struct fd_ringbuffer *ring,
 #endif
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_CNTL, 1);
-	OUT_RING(ring, COND(enable_varyings, A6XX_GRAS_CNTL_VARYING) |
+	OUT_RING(ring,
+			CONDREG(ij_pix_regid, A6XX_GRAS_CNTL_VARYING) |
+			CONDREG(ij_cent_regid, A6XX_GRAS_CNTL_CENTROID) |
+			CONDREG(ij_samp_regid, A6XX_GRAS_CNTL_PERSAMP_VARYING) |
+			COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_GRAS_CNTL_SIZE) |
+			COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_GRAS_CNTL_SIZE_PERSAMP) |
 			COND(s[FS].v->frag_coord,
 					A6XX_GRAS_CNTL_SIZE |
 					A6XX_GRAS_CNTL_XCOORD |
@@ -557,8 +579,13 @@ setup_stateobj(struct fd_ringbuffer *ring,
 			COND(s[FS].v->frag_face, A6XX_GRAS_CNTL_SIZE));
 
 	OUT_PKT4(ring, REG_A6XX_RB_RENDER_CONTROL0, 2);
-	OUT_RING(ring, COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_VARYING |
-			A6XX_RB_RENDER_CONTROL0_UNK10) |
+	OUT_RING(ring,
+			CONDREG(ij_pix_regid, A6XX_RB_RENDER_CONTROL0_VARYING) |
+			CONDREG(ij_cent_regid, A6XX_RB_RENDER_CONTROL0_CENTROID) |
+			CONDREG(ij_samp_regid, A6XX_RB_RENDER_CONTROL0_PERSAMP_VARYING) |
+			COND(enable_varyings, A6XX_RB_RENDER_CONTROL0_UNK10) |
+			COND(VALIDREG(ij_size_regid) && !sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE) |
+			COND(VALIDREG(ij_size_regid) &&  sample_shading, A6XX_RB_RENDER_CONTROL0_SIZE_PERSAMP) |
 			COND(s[FS].v->frag_coord,
 					A6XX_RB_RENDER_CONTROL0_SIZE |
 					A6XX_RB_RENDER_CONTROL0_XCOORD |
@@ -568,9 +595,20 @@ setup_stateobj(struct fd_ringbuffer *ring,
 			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL0_SIZE));
 
 	OUT_RING(ring,
-			CONDREG(samp_mask_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
+			CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
+			COND(sample_shading, A6XX_RB_RENDER_CONTROL1_UNK4 | A6XX_RB_RENDER_CONTROL1_UNK5) |
 			CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
+			CONDREG(ij_size_regid, A6XX_RB_RENDER_CONTROL1_SIZE) |
 			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));
+
+	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_CNTL, 1);
+	OUT_RING(ring, COND(sample_shading, A6XX_RB_SAMPLE_CNTL_PER_SAMP_MODE));
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_UNKNOWN_8101, 1);
+	OUT_RING(ring, COND(sample_shading, 0x6));  // XXX
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_SAMPLE_CNTL, 1);
+	OUT_RING(ring, COND(sample_shading, A6XX_GRAS_SAMPLE_CNTL_PER_SAMP_MODE));
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
 	for (i = 0; i < 8; i++) {
@@ -743,8 +781,8 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	state->binning_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 
-	setup_stateobj(state->binning_stateobj, state, true);
-	setup_stateobj(state->stateobj, state, false);
+	setup_stateobj(state->binning_stateobj, state, key, true);
+	setup_stateobj(state->stateobj, state, key, false);
 
 	return &state->base;
 }

@@ -307,6 +307,10 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
 		return 0;
 
+	case PIPE_CAP_SAMPLE_SHADING:
+		if (is_a6xx(screen)) return 1;
+		return 0;
+
 	case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
 		return 0;
 
