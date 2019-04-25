@@ -261,9 +261,11 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         v3d->prog.vs->prog_data.vs->separate_segments;
 
                 shader.coordinate_shader_input_vpm_segment_size =
-                        v3d->prog.cs->prog_data.vs->vpm_input_size;
+                        v3d->prog.cs->prog_data.vs->separate_segments ?
+                        v3d->prog.cs->prog_data.vs->vpm_input_size : 1;
                 shader.vertex_shader_input_vpm_segment_size =
-                        v3d->prog.vs->prog_data.vs->vpm_input_size;
+                        v3d->prog.vs->prog_data.vs->separate_segments ?
+                        v3d->prog.vs->prog_data.vs->vpm_input_size : 1;
 
                 shader.coordinate_shader_output_vpm_segment_size =
                         v3d->prog.cs->prog_data.vs->vpm_output_size;
