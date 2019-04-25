@@ -36,11 +36,11 @@
 static bool
 is_last_ldtmu(struct qinst *inst, struct qblock *block)
 {
-        list_for_each_entry_from(struct qinst, scan_inst, inst,
+        list_for_each_entry_from(struct qinst, scan_inst, inst->link.next,
                                  &block->instructions, link) {
-                if (inst->qpu.sig.ldtmu)
+                if (scan_inst->qpu.sig.ldtmu)
                         return false;
-                if (v3d_qpu_writes_tmu(&inst->qpu))
+                if (v3d_qpu_writes_tmu(&scan_inst->qpu))
                         return true;
         }
 
