@@ -33,6 +33,13 @@
 #define PHYS_INDEX    (ACC_INDEX + ACC_COUNT)
 #define PHYS_COUNT    64
 
+static inline bool
+qinst_writes_tmu(struct qinst *inst)
+{
+        return (inst->dst.file == QFILE_MAGIC &&
+                v3d_qpu_magic_waddr_is_tmu(inst->dst.index));
+}
+
 static bool
 is_last_ldtmu(struct qinst *inst, struct qblock *block)
 {
@@ -40,7 +47,7 @@ is_last_ldtmu(struct qinst *inst, struct qblock *block)
                                  &block->instructions, link) {
                 if (scan_inst->qpu.sig.ldtmu)
                         return false;
-                if (v3d_qpu_writes_tmu(&scan_inst->qpu))
+                if (qinst_writes_tmu(scan_inst))
                         return true;
         }
 
@@ -138,7 +145,7 @@ v3d_choose_spill_node(struct v3d_compile *c, struct ra_graph *g,
                             inst->qpu.alu.add.op == V3D_QPU_A_TMUWT)
                                 in_tmu_operation = false;
 
-                        if (v3d_qpu_writes_tmu(&inst->qpu))
+                        if (qinst_writes_tmu(inst))
                                 in_tmu_operation = true;
                 }
         }
