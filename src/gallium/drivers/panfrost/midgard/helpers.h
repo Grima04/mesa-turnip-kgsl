@@ -216,11 +216,14 @@ static struct {
         [midgard_alu_op_fcos]		 = {"fcos", UNIT_VLUT},
 
         /* XXX: Test case where it's right on smul but not sadd */
-        [midgard_alu_op_iand]		 = {"iand", UNITS_ADD | OP_COMMUTES}, 
-        [midgard_alu_op_iandnot]         = {"iandnot", UNITS_ADD},
+        [midgard_alu_op_iand]		 = {"iand", UNITS_MOST | OP_COMMUTES}, 
+        [midgard_alu_op_iandnot]         = {"iandnot", UNITS_MOST},
 
-        [midgard_alu_op_ior]		 = {"ior", UNITS_ADD | OP_COMMUTES},
-        [midgard_alu_op_ixor]		 = {"ixor", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_ior]		 = {"ior", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_iornot]		 = {"iornot", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_inor]		 = {"inor", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_ixor]		 = {"ixor", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_inxor]		 = {"inxor", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_ilzcnt]		 = {"ilzcnt", UNITS_ADD},
         [midgard_alu_op_ibitcount8]	 = {"ibitcount8", UNITS_ADD},
         [midgard_alu_op_inand]		 = {"inand", UNITS_MOST},

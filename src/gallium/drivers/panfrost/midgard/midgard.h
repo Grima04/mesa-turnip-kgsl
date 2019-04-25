@@ -57,8 +57,10 @@ typedef enum {
 typedef enum {
         midgard_alu_op_fadd       = 0x10,
         midgard_alu_op_fmul       = 0x14,
+
         midgard_alu_op_fmin       = 0x28,
         midgard_alu_op_fmax       = 0x2C,
+
         midgard_alu_op_fmov       = 0x30,
         midgard_alu_op_froundeven = 0x34,
         midgard_alu_op_ftrunc     = 0x35,
@@ -69,10 +71,13 @@ typedef enum {
         midgard_alu_op_fdot3r     = 0x3D,
         midgard_alu_op_fdot4      = 0x3E,
         midgard_alu_op_freduce    = 0x3F,
+
         midgard_alu_op_iadd       = 0x40,
         midgard_alu_op_ishladd    = 0x41,
         midgard_alu_op_isub       = 0x46,
+
         midgard_alu_op_imul       = 0x58,
+
         midgard_alu_op_imin       = 0x60,
         midgard_alu_op_umin       = 0x61,
         midgard_alu_op_imax       = 0x62,
@@ -80,15 +85,20 @@ typedef enum {
         midgard_alu_op_iasr       = 0x68,
         midgard_alu_op_ilsr       = 0x69,
         midgard_alu_op_ishl       = 0x6E,
+
         midgard_alu_op_iand       = 0x70,
         midgard_alu_op_ior        = 0x71,
         midgard_alu_op_inand      = 0x72, /* ~(a & b), for inot let a = b */
-        midgard_alu_op_iandnot    = 0x74, /* (a, b) -> a & ~b, used for not/b2f */
+        midgard_alu_op_inor       = 0x73, /* ~(a | b) */
+        midgard_alu_op_iandnot    = 0x74, /* (a & ~b), used for not/b2f */
+        midgard_alu_op_iornot     = 0x75, /* (a | ~b) */
         midgard_alu_op_ixor       = 0x76,
+        midgard_alu_op_inxor      = 0x77, /* ~(a & b) */
         midgard_alu_op_ilzcnt     = 0x78, /* Number of zeroes on left. 31 - ilzcnt(x) = findMSB(x) */
         midgard_alu_op_ibitcount8 = 0x7A, /* Counts bits in 8-bit increments */
         midgard_alu_op_imov       = 0x7B,
         midgard_alu_op_iabs       = 0x7C,
+
         midgard_alu_op_feq        = 0x80,
         midgard_alu_op_fne        = 0x81,
         midgard_alu_op_flt        = 0x82,
@@ -97,6 +107,7 @@ typedef enum {
         midgard_alu_op_bball_eq   = 0x89,
         midgard_alu_op_fball_lt   = 0x8A, /* all(lessThan(.., ..)) */
         midgard_alu_op_fball_lte  = 0x8B, /* all(lessThanEqual(.., ..)) */
+
         midgard_alu_op_bbany_neq  = 0x90, /* used for bvec4(1) */
         midgard_alu_op_fbany_neq  = 0x91, /* bvec4(0) also */
         midgard_alu_op_fbany_lt   = 0x92, /* any(lessThan(.., ..)) */
@@ -117,6 +128,7 @@ typedef enum {
         midgard_alu_op_uball_lte  = 0xAB,
         midgard_alu_op_iball_lt   = 0xAC,
         midgard_alu_op_iball_lte  = 0xAD,
+
         midgard_alu_op_ibany_eq   = 0xB0,
         midgard_alu_op_ibany_neq  = 0xB1,
         midgard_alu_op_ubany_lt   = 0xB2,
@@ -125,12 +137,15 @@ typedef enum {
         midgard_alu_op_ibany_lte  = 0xB5, /* any(lessThanEqual(.., ..)) */
         midgard_alu_op_i2f        = 0xB8,
         midgard_alu_op_u2f        = 0xBC,
+
         midgard_alu_op_icsel      = 0xC1,
         midgard_alu_op_fcsel_i    = 0xC4,
         midgard_alu_op_fcsel      = 0xC5,
         midgard_alu_op_fround     = 0xC6,
+
         midgard_alu_op_fatan_pt2  = 0xE8,
         midgard_alu_op_fpow_pt1   = 0xEC,
+
         midgard_alu_op_frcp       = 0xF0,
         midgard_alu_op_frsqrt     = 0xF2,
         midgard_alu_op_fsqrt      = 0xF3,
