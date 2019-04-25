@@ -2954,8 +2954,22 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
        * may have missed emitting it earlier, so do so now.  (We're already
        * taking a stall to update 3DSTATE_SO_BUFFERS anyway...)
        */
-      if (active)
+      if (active) {
          ice->state.dirty |= IRIS_DIRTY_SO_DECL_LIST;
+      } else {
+         uint32_t flush = 0;
+         for (int i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+            struct iris_stream_output_target *tgt =
+               (void *) ice->state.so_target[i];
+            if (tgt) {
+               struct iris_resource *res = (void *) tgt->base.buffer;
+
+               flush |= iris_flush_bits_for_history(res);
+               iris_dirty_for_history(ice, res);
+            }
+         }
+         iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER], flush);
+      }
    }
 
    for (int i = 0; i < 4; i++) {
@@ -4980,15 +4994,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                                  PIPE_CONTROL_CS_STALL;
                   ice->state.last_vbo_high_bits[i] = high_bits;
                }
-
-               /* If the buffer was written to by streamout, we may need
-                * to stall so those writes land and become visible to the
-                * vertex fetcher.
-                *
-                * TODO: This may stall more than necessary.
-                */
-               if (res->bind_history & PIPE_BIND_STREAM_OUTPUT)
-                  flush_flags |= PIPE_CONTROL_CS_STALL;
             }
          }
 
