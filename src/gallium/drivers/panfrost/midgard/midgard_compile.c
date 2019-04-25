@@ -1788,8 +1788,6 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                                 emit_mir_instruction(ctx, ins);
                         }
 
-                        //midgard_pin_output(ctx, index, REGISTER_TEXTURE_BASE + in_reg);
-
                         break;
                 }
 
@@ -3220,6 +3218,40 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
+static bool
+midgard_opt_copy_prop_tex(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != TAG_ALU_4) continue;
+                if (!OP_IS_MOVE(ins->alu.op)) continue;
+
+                unsigned from = ins->ssa_args.src1;
+                unsigned to = ins->ssa_args.dest;
+
+                /* Make sure it's a familiar type of special move. Basically we
+                 * just handle the special dummy moves emitted by the texture
+                 * pipeline. TODO: verify. TODO: why does this break varyings?
+                 */
+
+                if (from >= SSA_FIXED_MINIMUM) continue;
+                if (to < SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE)) continue;
+                if (to > SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + 1)) continue;
+
+                mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
+                        if (v->ssa_args.dest == from) {
+                                v->ssa_args.dest = to;
+                                progress = true;
+                        }
+                }
+
+                mir_remove_instruction(ins);
+        }
+
+        return progress;
+}
+
 /* The following passes reorder MIR instructions to enable better scheduling */
 
 static void
@@ -3769,6 +3801,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
                 mir_foreach_block(ctx, block) {
                         progress |= midgard_opt_copy_prop(ctx, block);
+                        progress |= midgard_opt_copy_prop_tex(ctx, block);
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
                 }
         } while (progress);
