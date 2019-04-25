@@ -186,6 +186,16 @@ optimizations = [
    # If x > 1: 1 - fsat(x) => 1 - 1 => 0 and fsat(1 - x) => fsat(< 0) => 0
    (('~fadd', ('fneg(is_used_once)', ('fsat(is_used_once)', 'a(is_not_fmul)')), 1.0), ('fsat', ('fadd', 1.0, ('fneg', a)))),
 
+   # 1 - ((1 - a) * (1 - b))
+   # 1 - (1 - a - b + a*b)
+   # 1 - 1 + a + b - a*b
+   # a + b - a*b
+   # a + b*(1 - a)
+   # b*(1 - a) + 1*a
+   # flrp(b, 1, a)
+   (('~fadd@32', 1.0, ('fneg', ('fmul', ('fadd', 1.0, ('fneg', a)), ('fadd', 1.0, ('fneg', b))))),
+    ('flrp', b, 1.0, a), '!options->lower_flrp32'),
+
    # (a * #b + #c) << #d
    # ((a * #b) << #d) + (#c << #d)
    # (a * (#b << #d)) + (#c << #d)
