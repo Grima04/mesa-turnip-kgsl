@@ -1185,7 +1185,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			idx += nir_src_as_uint(intr->src[1]);
 			for (int i = 0; i < intr->num_components; i++) {
 				unsigned inloc = idx * 4 + i + comp;
-				if (ctx->so->inputs[idx * 4].bary) {
+				if (ctx->so->inputs[idx].bary) {
 					dst[i] = ir3_BARY_F(b, create_immed(b, inloc), 0, coord, 0);
 				} else {
 					/* for non-varyings use the pre-setup input, since
