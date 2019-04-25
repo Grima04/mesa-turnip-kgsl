@@ -573,7 +573,7 @@ static void si_flush_from_st(struct pipe_context *ctx,
 	}
 	assert(!fine.buf);
 finish:
-	if (!(flags & PIPE_FLUSH_DEFERRED)) {
+	if (!(flags & (PIPE_FLUSH_DEFERRED | PIPE_FLUSH_ASYNC))) {
 		if (sctx->dma_cs)
 			ws->cs_sync_flush(sctx->dma_cs);
 		ws->cs_sync_flush(sctx->gfx_cs);
