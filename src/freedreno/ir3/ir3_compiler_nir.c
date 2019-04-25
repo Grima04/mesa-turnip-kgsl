@@ -95,7 +95,7 @@ create_frag_input(struct ir3_context *ctx, bool use_ldlv, unsigned n)
 		instr->cat6.type = TYPE_U32;
 		instr->cat6.iim_val = 1;
 	} else {
-		instr = ir3_BARY_F(block, inloc, 0, ctx->frag_vcoord, 0);
+		instr = ir3_BARY_F(block, inloc, 0, ctx->ij_pixel, 0);
 		instr->regs[2]->wrmask = 0x3;
 	}
 
@@ -1170,7 +1170,11 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_load_barycentric_centroid:
 	case nir_intrinsic_load_barycentric_pixel:
-		ir3_split_dest(b, dst, ctx->frag_vcoord, 0, 2);
+		/* NOTE: we still pre-create ij_pixel just to keep things working with
+		 * nir producers that create "old style" frag shader inputs (ie. just
+		 * load_input, vs load_barycentric_* + load_interpolated_input)
+		 */
+		ir3_split_dest(b, dst, ctx->ij_pixel, 0, 2);
 		break;
 	case nir_intrinsic_load_interpolated_input:
 		idx = nir_intrinsic_base(intr);
@@ -2557,6 +2561,12 @@ emit_instructions(struct ir3_context *ctx)
 
 	/* for fragment shader, the vcoord input register is used as the
 	 * base for bary.f varying fetch instrs:
+	 *
+	 * TODO defer creating ctx->ij_pixel and corresponding sysvals
+	 * until emit_intrinsic when we know they are actually needed.
+	 * For now, we defer creating ctx->ij_centroid, etc, since we
+	 * only need ij_pixel for "old style" varying inputs (ie.
+	 * tgsi_to_nir)
 	 */
 	struct ir3_instruction *vcoord = NULL;
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
@@ -2565,7 +2575,7 @@ emit_instructions(struct ir3_context *ctx)
 		vcoord = create_input_compmask(ctx, 0, 0x3);
 		ir3_split_dest(ctx->block, xy, vcoord, 0, 2);
 
-		ctx->frag_vcoord = ir3_create_collect(ctx, xy, 2);
+		ctx->ij_pixel = ir3_create_collect(ctx, xy, 2);
 	}
 
 	/* Setup inputs: */
