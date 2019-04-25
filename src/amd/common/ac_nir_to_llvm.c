@@ -2897,14 +2897,12 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 	LLVMValueRef result;
 	LLVMValueRef src = get_src(ctx, instr->src[src_idx]);
 
+	const char *sync_scope = HAVE_LLVM >= 0x0900 ? "workgroup-one-as" : "workgroup";
+
 	if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap ||
 	    instr->intrinsic == nir_intrinsic_deref_atomic_comp_swap) {
 		LLVMValueRef src1 = get_src(ctx, instr->src[src_idx + 1]);
-		result = LLVMBuildAtomicCmpXchg(ctx->ac.builder,
-						ptr, src, src1,
-						LLVMAtomicOrderingSequentiallyConsistent,
-						LLVMAtomicOrderingSequentiallyConsistent,
-						false);
+		result = ac_build_atomic_cmp_xchg(&ctx->ac, ptr, src, src1, sync_scope);
 		result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
 	} else {
 		LLVMAtomicRMWBinOp op;
@@ -2949,9 +2947,7 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 			return NULL;
 		}
 
-		result = LLVMBuildAtomicRMW(ctx->ac.builder, op, ptr, ac_to_integer(&ctx->ac, src),
-					    LLVMAtomicOrderingSequentiallyConsistent,
-					    false);
+		result = ac_build_atomic_rmw(&ctx->ac, op, ptr, ac_to_integer(&ctx->ac, src), sync_scope);
 	}
 	return result;
 }
