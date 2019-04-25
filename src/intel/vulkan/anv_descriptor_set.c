@@ -747,7 +747,7 @@ void anv_DestroyDescriptorPool(
 
    list_for_each_entry_safe(struct anv_descriptor_set, set,
                             &pool->desc_sets, pool_link) {
-      anv_descriptor_set_destroy(device, pool, set);
+      anv_descriptor_set_layout_unref(device, set->layout);
    }
 
    if (pool->bo.size) {
@@ -771,8 +771,9 @@ VkResult anv_ResetDescriptorPool(
 
    list_for_each_entry_safe(struct anv_descriptor_set, set,
                             &pool->desc_sets, pool_link) {
-      anv_descriptor_set_destroy(device, pool, set);
+      anv_descriptor_set_layout_unref(device, set->layout);
    }
+   list_inithead(&pool->desc_sets);
 
    pool->next = 0;
    pool->free_list = EMPTY;
