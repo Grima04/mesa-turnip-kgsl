@@ -126,6 +126,7 @@ enum fd_dirty_3d_state {
 	FD_DIRTY_VIEWPORT    = BIT(8),
 	FD_DIRTY_VTXSTATE    = BIT(9),
 	FD_DIRTY_VTXBUF      = BIT(10),
+	FD_DIRTY_MIN_SAMPLES = BIT(11),
 
 	FD_DIRTY_SCISSOR     = BIT(12),
 	FD_DIRTY_STREAMOUT   = BIT(13),
@@ -285,6 +286,7 @@ struct fd_context {
 	struct pipe_blend_color blend_color;
 	struct pipe_stencil_ref stencil_ref;
 	unsigned sample_mask;
+	unsigned min_samples;
 	/* local context fb state, for when ctx->batch is null: */
 	struct pipe_framebuffer_state framebuffer;
 	struct pipe_poly_stipple stipple;
