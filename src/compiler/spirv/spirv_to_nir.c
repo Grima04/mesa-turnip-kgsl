@@ -3252,6 +3252,7 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
                                       w + 5, count - 5);
       break;
 
+   case SpvOpCopyLogical:
    case SpvOpCopyObject:
       val->ssa = vtn_composite_copy(b, vtn_ssa_value(b, w[3]));
       break;
@@ -4445,6 +4446,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpCompositeConstruct:
    case SpvOpCompositeExtract:
    case SpvOpCompositeInsert:
+   case SpvOpCopyLogical:
    case SpvOpCopyObject:
       vtn_handle_composite(b, opcode, w, count);
       break;
