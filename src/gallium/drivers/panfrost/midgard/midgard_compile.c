@@ -1227,29 +1227,44 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 break;
         }
 
+        /* For a few special csel cases not handled by NIR, we can opt to
+         * bitwise. Otherwise, we emit the condition and do a real csel */
+
         case nir_op_b32csel: {
-                op = midgard_alu_op_fcsel;
+                if (nir_is_fzero_constant(instr->src[2].src)) {
+                        /* (b ? v : 0) = (b & v) */
+                        op = midgard_alu_op_iand;
+                        nr_inputs = 2;
+                } else if (nir_is_fzero_constant(instr->src[1].src)) {
+                        /* (b ? 0 : v) = (!b ? v : 0) = (~b & v) = (v & ~b) */
+                        op = midgard_alu_op_iandnot;
+                        nr_inputs = 2;
+                        instr->src[1] = instr->src[0];
+                        instr->src[0] = instr->src[2];
+                } else {
+                        op = midgard_alu_op_fcsel;
 
-                /* csel works as a two-arg in Midgard, since the condition is hardcoded in r31.w */
-                nr_inputs = 2;
+                        /* csel works as a two-arg in Midgard, since the condition is hardcoded in r31.w */
+                        nr_inputs = 2;
 
-                /* Figure out which component the condition is in */
+                        /* Figure out which component the condition is in */
 
-                unsigned comp = instr->src[0].swizzle[0];
+                        unsigned comp = instr->src[0].swizzle[0];
 
-                /* Make sure NIR isn't throwing a mixed condition at us */
+                        /* Make sure NIR isn't throwing a mixed condition at us */
 
-                for (unsigned c = 1; c < nr_components; ++c)
-                        assert(instr->src[0].swizzle[c] == comp);
+                        for (unsigned c = 1; c < nr_components; ++c)
+                                assert(instr->src[0].swizzle[c] == comp);
 
-                /* Emit the condition into r31.w */
-                emit_condition(ctx, &instr->src[0].src, false, comp);
+                        /* Emit the condition into r31.w */
+                        emit_condition(ctx, &instr->src[0].src, false, comp);
 
-                /* The condition is the first argument; move the other
-                 * arguments up one to be a binary instruction for
-                 * Midgard */
+                        /* The condition is the first argument; move the other
+                         * arguments up one to be a binary instruction for
+                         * Midgard */
 
-                memmove(instr->src, instr->src + 1, 2 * sizeof(nir_alu_src));
+                        memmove(instr->src, instr->src + 1, 2 * sizeof(nir_alu_src));
+                }
                 break;
         }
 

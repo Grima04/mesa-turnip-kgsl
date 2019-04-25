@@ -217,6 +217,7 @@ static struct {
 
         /* XXX: Test case where it's right on smul but not sadd */
         [midgard_alu_op_iand]		 = {"iand", UNITS_ADD | OP_COMMUTES}, 
+        [midgard_alu_op_iandnot]         = {"iandnot", UNITS_ADD},
 
         [midgard_alu_op_ior]		 = {"ior", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_ixor]		 = {"ixor", UNITS_ADD | OP_COMMUTES},
@@ -237,7 +238,6 @@ static struct {
         /* These instructions are not yet emitted by the compiler, so
          * don't speculate about units yet */ 
         [midgard_alu_op_ishladd]        = {"ishladd", 0},
-        [midgard_alu_op_iandnot]        = {"iandnot", 0},
 
         [midgard_alu_op_uball_lt]       = {"uball_lt", 0},
         [midgard_alu_op_uball_lte]      = {"uball_lte", 0},
