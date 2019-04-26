@@ -53,7 +53,7 @@ static int query_queue_param(struct fd_pipe *pipe, uint32_t param,
 {
 	struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
 	struct drm_msm_submitqueue_query req = {
-			.data = value,
+			.data = VOID2U64(value),
 			.id = msm_pipe->queue_id,
 			.param = param,
 			.len = sizeof(*value),
