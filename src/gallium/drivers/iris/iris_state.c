@@ -653,7 +653,7 @@ iris_emit_default_l3_config(struct iris_batch *batch,
    iris_emit_l3_config(batch, cfg, has_slm, wants_dc_cache);
 }
 
-#if GEN_GEN >= 9
+#if GEN_GEN == 9 || GEN_GEN == 10
 static void
 iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
 {
