@@ -98,6 +98,7 @@ typedef enum {
    ppir_op_load_uniform,
    ppir_op_load_varying,
    ppir_op_load_coords,
+   ppir_op_load_fragcoord,
    ppir_op_load_texture,
    ppir_op_load_temp,
 

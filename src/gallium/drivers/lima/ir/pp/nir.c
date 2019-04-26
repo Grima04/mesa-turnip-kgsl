@@ -224,6 +224,17 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       lnode->index = nir_intrinsic_base(instr) * 4 + nir_intrinsic_component(instr);
       return &lnode->node;
 
+   case nir_intrinsic_load_frag_coord:
+      if (!instr->dest.is_ssa)
+         mask = u_bit_consecutive(0, instr->num_components);
+
+      lnode = ppir_node_create_dest(block, ppir_op_load_fragcoord, &instr->dest, mask);
+      if (!lnode)
+         return NULL;
+
+      lnode->num_components = instr->num_components;
+      return &lnode->node;
+
    case nir_intrinsic_load_uniform:
       if (!instr->dest.is_ssa)
          mask = u_bit_consecutive(0, instr->num_components);

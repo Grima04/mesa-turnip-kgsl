@@ -124,6 +124,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
 {
    bool progress;
 
+   NIR_PASS_V(s, nir_lower_fragcoord_wtrans);
    NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
    NIR_PASS_V(s, nir_lower_regs_to_ssa);
    NIR_PASS_V(s, nir_lower_bool_to_float);

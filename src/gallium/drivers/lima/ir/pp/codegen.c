@@ -54,7 +54,9 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
    int num_components = load->num_components;
 
    if (num_components) {
-      assert(node->op == ppir_op_load_varying || node->op == ppir_op_load_coords);
+      assert(node->op == ppir_op_load_varying ||
+             node->op == ppir_op_load_coords ||
+             node->op == ppir_op_load_fragcoord);
 
       f->imm.dest = index >> 2;
       f->imm.mask = dest->write_mask << (index & 0x3);
@@ -67,6 +69,11 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
          f->imm.index = load->index >> 2;
       else
          f->imm.index = load->index >> alignment;
+
+      if (node->op == ppir_op_load_fragcoord) {
+         f->imm.source_type = 2;
+         f->imm.perspective = 3;
+      }
    }
    else {
       assert(node->op == ppir_op_load_coords);
