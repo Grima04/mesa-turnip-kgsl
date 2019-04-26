@@ -899,9 +899,9 @@ anv_descriptor_set_create(struct anv_device *device,
       /* Align the size to 32 so that alignment gaps don't cause extra holes
        * in the heap which can lead to bad performance.
        */
+      uint32_t set_buffer_size = ALIGN(layout->descriptor_buffer_size, 32);
       uint64_t pool_vma_offset =
-         util_vma_heap_alloc(&pool->bo_heap,
-                             ALIGN(layout->descriptor_buffer_size, 32), 32);
+         util_vma_heap_alloc(&pool->bo_heap, set_buffer_size, 32);
       if (pool_vma_offset == 0) {
          anv_descriptor_pool_free_set(pool, set);
          return vk_error(VK_ERROR_FRAGMENTED_POOL);
@@ -909,7 +909,7 @@ anv_descriptor_set_create(struct anv_device *device,
       assert(pool_vma_offset >= POOL_HEAP_OFFSET &&
              pool_vma_offset - POOL_HEAP_OFFSET <= INT32_MAX);
       set->desc_mem.offset = pool_vma_offset - POOL_HEAP_OFFSET;
-      set->desc_mem.alloc_size = layout->descriptor_buffer_size;
+      set->desc_mem.alloc_size = set_buffer_size;
       set->desc_mem.map = pool->bo.map + set->desc_mem.offset;
 
       set->desc_surface_state = anv_descriptor_pool_alloc_state(pool);
