@@ -1176,6 +1176,46 @@ get_barycentric_pixel(struct ir3_context *ctx)
 	return ctx->ij_pixel;
 }
 
+static struct ir3_instruction *
+get_frag_coord(struct ir3_context *ctx)
+{
+	if (!ctx->frag_coord) {
+		struct ir3_block *b = ctx->block;
+		struct ir3_instruction *xyzw[4];
+		struct ir3_instruction *hw_frag_coord;
+
+		hw_frag_coord = create_input_compmask(ctx, 0, 0xf);
+		ir3_split_dest(ctx->block, xyzw, hw_frag_coord, 0, 4);
+
+		/* for frag_coord.xy, we get unsigned values.. we need
+		 * to subtract (integer) 8 and divide by 16 (right-
+		 * shift by 4) then convert to float:
+		 *
+		 *    sub.s tmp, src, 8
+		 *    shr.b tmp, tmp, 4
+		 *    mov.u32f32 dst, tmp
+		 *
+		 */
+		for (int i = 0; i < 2; i++) {
+			xyzw[i] = ir3_SUB_S(b, xyzw[i], 0,
+					create_immed(b, 8), 0);
+			xyzw[i] = ir3_SHR_B(b, xyzw[i], 0,
+					create_immed(b, 4), 0);
+			xyzw[i] = ir3_COV(b, xyzw[i], TYPE_U32, TYPE_F32);
+		}
+
+		ctx->frag_coord = ir3_create_collect(ctx, xyzw, 4);
+
+		add_sysval_input_compmask(ctx,
+				SYSTEM_VALUE_FRAG_COORD,
+				0xf, hw_frag_coord);
+
+		ctx->so->frag_coord = true;
+	}
+
+	return ctx->frag_coord;
+}
+
 static void
 emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 {
@@ -1216,6 +1256,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
+		break;
+	case nir_intrinsic_load_frag_coord:
+		ir3_split_dest(b, dst, get_frag_coord(ctx), 0, 4);
 		break;
 	case nir_intrinsic_load_sample_pos_from_id: {
 		/* NOTE: blob seems to always use TYPE_F16 and then cov.f16f32,
@@ -2298,46 +2341,6 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 	ir3_END(ctx->block);
 }
 
-static struct ir3_instruction *
-create_frag_coord(struct ir3_context *ctx, unsigned comp)
-{
-	struct ir3_block *block = ctx->block;
-	struct ir3_instruction *instr;
-
-	if (!ctx->frag_coord) {
-		ctx->frag_coord = create_input_compmask(ctx, 0, 0xf);
-		/* defer add_sysval_input() until after all inputs created */
-	}
-
-	ir3_split_dest(block, &instr, ctx->frag_coord, comp, 1);
-
-	switch (comp) {
-	case 0: /* .x */
-	case 1: /* .y */
-		/* for frag_coord, we get unsigned values.. we need
-		 * to subtract (integer) 8 and divide by 16 (right-
-		 * shift by 4) then convert to float:
-		 *
-		 *    sub.s tmp, src, 8
-		 *    shr.b tmp, tmp, 4
-		 *    mov.u32f32 dst, tmp
-		 *
-		 */
-		instr = ir3_SUB_S(block, instr, 0,
-				create_immed(block, 8), 0);
-		instr = ir3_SHR_B(block, instr, 0,
-				create_immed(block, 4), 0);
-		instr = ir3_COV(block, instr, TYPE_U32, TYPE_F32);
-
-		return instr;
-	case 2: /* .z */
-	case 3: /* .w */
-	default:
-		/* seems that we can use these as-is: */
-		return instr;
-	}
-}
-
 static void
 setup_input(struct ir3_context *ctx, nir_variable *in)
 {
@@ -2371,9 +2374,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 			unsigned idx = (n * 4) + i + frac;
 
 			if (slot == VARYING_SLOT_POS) {
-				so->inputs[n].bary = false;
-				so->frag_coord = true;
-				instr = create_frag_coord(ctx, i);
+				ir3_context_error(ctx, "fragcoord should be a sysval!\n");
 			} else if (slot == VARYING_SLOT_PNTC) {
 				/* see for example st_nir_fixup_varying_slots().. this is
 				 * maybe a bit mesa/st specific.  But we need things to line
@@ -2676,11 +2677,6 @@ emit_instructions(struct ir3_context *ctx)
 	if (vcoord) {
 		add_sysval_input_compmask(ctx, SYSTEM_VALUE_BARYCENTRIC_PIXEL,
 				0x3, vcoord);
-	}
-
-	if (ctx->frag_coord) {
-		add_sysval_input_compmask(ctx, SYSTEM_VALUE_FRAG_COORD,
-				0xf, ctx->frag_coord);
 	}
 
 	/* Setup outputs: */
