@@ -751,6 +751,7 @@ struct_member_decoration_cb(struct vtn_builder *b,
    switch (dec->decoration) {
    case SpvDecorationRelaxedPrecision:
    case SpvDecorationUniform:
+   case SpvDecorationUniformId:
       break; /* FIXME: Do nothing with this for now. */
    case SpvDecorationNonWritable:
       vtn_handle_access_qualifier(b, ctx->type, member, ACCESS_NON_WRITEABLE);
@@ -980,6 +981,7 @@ type_decoration_cb(struct vtn_builder *b,
    case SpvDecorationNonWritable:
    case SpvDecorationNonReadable:
    case SpvDecorationUniform:
+   case SpvDecorationUniformId:
    case SpvDecorationLocation:
    case SpvDecorationComponent:
    case SpvDecorationOffset:
