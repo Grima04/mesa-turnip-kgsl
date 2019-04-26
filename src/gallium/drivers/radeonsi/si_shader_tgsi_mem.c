@@ -783,6 +783,7 @@ static void atomic_emit_memory(struct si_shader_context *ctx,
 	LLVMBuilderRef builder = ctx->ac.builder;
 	const struct tgsi_full_instruction * inst = emit_data->inst;
 	LLVMValueRef ptr, result, arg;
+	const char *sync_scope = HAVE_LLVM >= 0x0900 ? "workgroup-one-as" : "workgroup";
 
 	ptr = get_memory_ptr(ctx, inst, ctx->i32, 1);
 
@@ -796,11 +797,8 @@ static void atomic_emit_memory(struct si_shader_context *ctx,
 
 		new_data = ac_to_integer(&ctx->ac, new_data);
 
-		result = LLVMBuildAtomicCmpXchg(builder, ptr, arg, new_data,
-		                       LLVMAtomicOrderingSequentiallyConsistent,
-		                       LLVMAtomicOrderingSequentiallyConsistent,
-		                       false);
-
+		result = ac_build_atomic_cmp_xchg(&ctx->ac, ptr, arg, new_data,
+						  sync_scope);
 		result = LLVMBuildExtractValue(builder, result, 0, "");
 	} else {
 		LLVMAtomicRMWBinOp op;
@@ -837,9 +835,7 @@ static void atomic_emit_memory(struct si_shader_context *ctx,
 				unreachable("unknown atomic opcode");
 		}
 
-		result = LLVMBuildAtomicRMW(builder, op, ptr, arg,
-		                       LLVMAtomicOrderingSequentiallyConsistent,
-		                       false);
+		result = ac_build_atomic_rmw(&ctx->ac, op, ptr, arg, sync_scope);
 	}
 	emit_data->output[emit_data->chan] =
 		LLVMBuildBitCast(builder, result, ctx->f32, "");
