@@ -2742,6 +2742,35 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_value;
       _mesa_get_device_uuid(ctx, v->value_int_4);
       return TYPE_INT_4;
+   /* GL_EXT_direct_state_access */
+   case GL_TEXTURE_1D:
+   case GL_TEXTURE_2D:
+   case GL_TEXTURE_3D:
+   case GL_TEXTURE_CUBE_MAP:
+   case GL_TEXTURE_GEN_S:
+   case GL_TEXTURE_GEN_T:
+   case GL_TEXTURE_GEN_R:
+   case GL_TEXTURE_GEN_Q:
+   case GL_TEXTURE_RECTANGLE_ARB: {
+      GLuint curTexUnitSave;
+      if (index >= _mesa_max_tex_unit(ctx))
+         goto invalid_enum;
+      curTexUnitSave = ctx->Texture.CurrentUnit;
+      _mesa_ActiveTexture_no_error(GL_TEXTURE0 + index);
+      v->value_int = _mesa_IsEnabled(pname);
+      _mesa_ActiveTexture_no_error(GL_TEXTURE0 + curTexUnitSave);
+      return TYPE_INT;
+   }
+   case GL_TEXTURE_COORD_ARRAY: {
+      GLuint curTexUnitSave;
+      if (index >= ctx->Const.MaxTextureCoordUnits)
+         goto invalid_enum;
+      curTexUnitSave = ctx->Array.ActiveTexture;
+      _mesa_ClientActiveTexture(GL_TEXTURE0 + index);
+      v->value_int = _mesa_IsEnabled(pname);
+      _mesa_ClientActiveTexture(GL_TEXTURE0 + curTexUnitSave);
+      return TYPE_INT;
+   }
    }
 
  invalid_enum:
