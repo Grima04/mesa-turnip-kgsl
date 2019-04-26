@@ -132,41 +132,12 @@ memzone_name(enum iris_memory_zone memzone)
    return names[memzone];
 }
 
-/**
- * Iris fixed-size bucketing VMA allocator.
- *
- * The BO cache maintains "cache buckets" for buffers of various sizes.
- * All buffers in a given bucket are identically sized - when allocating,
- * we always round up to the bucket size.  This means that virtually all
- * allocations are fixed-size; only buffers which are too large to fit in
- * a bucket can be variably-sized.
- *
- * We create an allocator for each bucket.  Each contains a free-list, where
- * each node contains a <starting address, 64-bit bitmap> pair.  Each bit
- * represents a bucket-sized block of memory.  (At the first level, each
- * bit corresponds to a page.  For the second bucket, bits correspond to
- * two pages, and so on.)  1 means a block is free, and 0 means it's in-use.
- * The lowest bit in the bitmap is for the first block.
- *
- * This makes allocations cheap - any bit of any node will do.  We can pick
- * the head of the list and use ffs() to find a free block.  If there are
- * none, we allocate 64 blocks from a larger allocator - either a bigger
- * bucketing allocator, or a fallback top-level allocator for large objects.
- */
-struct vma_bucket_node {
-   uint64_t start_address;
-   uint64_t bitmap;
-};
-
 struct bo_cache_bucket {
    /** List of cached BOs. */
    struct list_head head;
 
    /** Size of this bucket, in bytes. */
    uint64_t size;
-
-   /** List of vma_bucket_nodes. */
-   struct util_dynarray vma_list[IRIS_MEMZONE_COUNT];
 };
 
 struct iris_bufmgr {
@@ -283,121 +254,6 @@ iris_memzone_for_address(uint64_t address)
    return IRIS_MEMZONE_SHADER;
 }
 
-static uint64_t
-bucket_vma_alloc(struct iris_bufmgr *bufmgr,
-                 struct bo_cache_bucket *bucket,
-                 enum iris_memory_zone memzone)
-{
-   struct util_dynarray *vma_list = &bucket->vma_list[memzone];
-   struct vma_bucket_node *node;
-
-   if (vma_list->size == 0) {
-      /* This bucket allocator is out of space - allocate a new block of
-       * memory for 64 blocks from a larger allocator (either a larger
-       * bucket or util_vma).
-       *
-       * We align the address to the node size (64 blocks) so that
-       * bucket_vma_free can easily compute the starting address of this
-       * block by rounding any address we return down to the node size.
-       *
-       * Set the first bit used, and return the start address.
-       */
-      const uint64_t node_size = 64ull * bucket->size;
-      node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
-
-      if (unlikely(!node))
-         return 0ull;
-
-      uint64_t addr = vma_alloc(bufmgr, memzone, node_size, node_size);
-      node->start_address = gen_48b_address(addr);
-      node->bitmap = ~1ull;
-      return node->start_address;
-   }
-
-   /* Pick any bit from any node - they're all the right size and free. */
-   node = util_dynarray_top_ptr(vma_list, struct vma_bucket_node);
-   int bit = ffsll(node->bitmap) - 1;
-   assert(bit >= 0 && bit <= 63);
-
-   /* Reserve the memory by clearing the bit. */
-   assert((node->bitmap & (1ull << bit)) != 0ull);
-   node->bitmap &= ~(1ull << bit);
-
-   uint64_t addr = node->start_address + bit * bucket->size;
-
-   /* If this node is now completely full, remove it from the free list. */
-   if (node->bitmap == 0ull) {
-      (void) util_dynarray_pop(vma_list, struct vma_bucket_node);
-   }
-
-   return addr;
-}
-
-static void
-bucket_vma_free(struct bo_cache_bucket *bucket, uint64_t address)
-{
-   enum iris_memory_zone memzone = iris_memzone_for_address(address);
-   struct util_dynarray *vma_list = &bucket->vma_list[memzone];
-   const uint64_t node_bytes = 64ull * bucket->size;
-   struct vma_bucket_node *node = NULL;
-
-   /* bucket_vma_alloc allocates 64 blocks at a time, and aligns it to
-    * that 64 block size.  So, we can round down to get the starting address.
-    */
-   uint64_t start = (address / node_bytes) * node_bytes;
-
-   /* Dividing the offset from start by bucket size gives us the bit index. */
-   int bit = (address - start) / bucket->size;
-
-   assert(start + bit * bucket->size == address);
-
-   util_dynarray_foreach(vma_list, struct vma_bucket_node, cur) {
-      if (cur->start_address == start) {
-         node = cur;
-         break;
-      }
-   }
-
-   if (!node) {
-      /* No node - the whole group of 64 blocks must have been in-use. */
-      node = util_dynarray_grow(vma_list, sizeof(struct vma_bucket_node));
-
-      if (unlikely(!node))
-         return; /* bogus, leaks some GPU VMA, but nothing we can do... */
-
-      node->start_address = start;
-      node->bitmap = 0ull;
-   }
-
-   /* Set the bit to return the memory. */
-   assert((node->bitmap & (1ull << bit)) == 0ull);
-   node->bitmap |= 1ull << bit;
-
-   /* The block might be entirely free now, and if so, we could return it
-    * to the larger allocator.  But we may as well hang on to it, in case
-    * we get more allocations at this block size.
-    */
-}
-
-static struct bo_cache_bucket *
-get_bucket_allocator(struct iris_bufmgr *bufmgr,
-                     enum iris_memory_zone memzone,
-                     uint64_t size)
-{
-   /* Skip using the bucket allocator for very large sizes, as it allocates
-    * 64 of them and this can balloon rather quickly.
-    */
-   if (size > 1024 * PAGE_SIZE)
-      return NULL;
-
-   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size);
-
-   if (bucket && bucket->size == size)
-      return bucket;
-
-   return NULL;
-}
-
 /**
  * Allocate a section of virtual memory for a buffer, assigning an address.
  *
@@ -420,16 +276,8 @@ vma_alloc(struct iris_bufmgr *bufmgr,
    if (memzone == IRIS_MEMZONE_BINDER)
       return IRIS_MEMZONE_BINDER_START;
 
-   struct bo_cache_bucket *bucket =
-      get_bucket_allocator(bufmgr, memzone, size);
-   uint64_t addr;
-
-   if (bucket) {
-      addr = bucket_vma_alloc(bufmgr, bucket, memzone);
-   } else {
-      addr = util_vma_heap_alloc(&bufmgr->vma_allocator[memzone], size,
-                                 alignment);
-   }
+   uint64_t addr =
+      util_vma_heap_alloc(&bufmgr->vma_allocator[memzone], size, alignment);
 
    assert((addr >> 48ull) == 0);
    assert((addr % alignment) == 0);
@@ -457,14 +305,7 @@ vma_free(struct iris_bufmgr *bufmgr,
    if (memzone == IRIS_MEMZONE_BINDER)
       return;
 
-   struct bo_cache_bucket *bucket =
-      get_bucket_allocator(bufmgr, memzone, size);
-
-   if (bucket) {
-      bucket_vma_free(bucket, address);
-   } else {
-      util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
-   }
+   util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
 }
 
 int
@@ -1321,9 +1162,6 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
 
          bo_free(bo);
       }
-
-      for (int z = 0; z < IRIS_MEMZONE_COUNT; z++)
-         util_dynarray_fini(&bucket->vma_list[z]);
    }
 
    _mesa_hash_table_destroy(bufmgr->name_table, NULL);
@@ -1529,8 +1367,6 @@ add_bucket(struct iris_bufmgr *bufmgr, int size)
    assert(i < ARRAY_SIZE(bufmgr->cache_bucket));
 
    list_inithead(&bufmgr->cache_bucket[i].head);
-   for (int z = 0; z < IRIS_MEMZONE_COUNT; z++)
-      util_dynarray_init(&bufmgr->cache_bucket[i].vma_list[z], NULL);
    bufmgr->cache_bucket[i].size = size;
    bufmgr->num_buckets++;
 
