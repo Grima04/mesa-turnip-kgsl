@@ -1500,6 +1500,10 @@ offsets = {
     "GetTextureImageEXT": 1464,
     "GetTextureLevelParameterivEXT": 1465,
     "GetTextureLevelParameterfvEXT": 1466,
+    "GetNamedBufferSubDataEXT": 1467,
+    "GetNamedBufferPointervEXT": 1468,
+    "GetNamedBufferParameterivEXT": 1469,
+    "FlushMappedNamedBufferRangeEXT": 1470,
 }
 
 functions = [

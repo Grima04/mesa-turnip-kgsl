@@ -1129,9 +1129,9 @@ const struct function common_desktop_functions_possible[] = {
    { "glNamedBufferSubDataEXT", 15, -1 },
    { "glMapNamedBufferEXT", 15, -1 },
    { "glUnmapNamedBufferEXT", 15, -1 },
-   //{ "glGetNamedBufferParameterivEXT", 15, -1 },
-   //{ "glGetNamedBufferPointervEXT", 15, -1 },
-   //{ "glGetNamedBufferSubDataEXT", 15, -1 },
+   { "glGetNamedBufferParameterivEXT", 15, -1 },
+   { "glGetNamedBufferPointervEXT", 15, -1 },
+   { "glGetNamedBufferSubDataEXT", 15, -1 },
    /* GL_EXT_direct_state_access - GL 2.0 */
    //{ "glProgramUniform1iEXT", 20, -1 },
    //{ "glProgramUniform1ivEXT", 20, -1 },
@@ -1222,7 +1222,7 @@ const struct function common_desktop_functions_possible[] = {
    //{ "glGetVertexArrayIntegeri_vEXT", 30, -1 },
    //{ "glGetVertexArrayPointeri_vEXT", 30, -1 },
    { "glMapNamedBufferRangeEXT", 30, -1 },
-   //{ "glFlushMappedNamedBufferRangeEXT", 30, -1 },
+   { "glFlushMappedNamedBufferRangeEXT", 30, -1 },
 
    /* GL_ARB_internalformat_query */
    { "glGetInternalformativ", 30, -1 },

@@ -375,6 +375,31 @@
       <param name="buffer" type="GLuint" />
    </function>
 
+   <function name="GetNamedBufferSubDataEXT">
+      <param name="buffer" type="GLuint" />
+      <param name="offset" type="GLintptr" />
+      <param name="size" type="GLsizeiptr" />
+      <param name="data" type="GLvoid *" />
+   </function>
+
+   <function name="GetNamedBufferPointervEXT">
+      <param name="buffer" type="GLuint" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLvoid **" />
+   </function>
+
+   <function name="GetNamedBufferParameterivEXT">
+      <param name="buffer" type="GLuint" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLint *" />
+   </function>
+
+   <function name="FlushMappedNamedBufferRangeEXT">
+      <param name="buffer" type="GLuint" />
+      <param name="offset" type="GLintptr" />
+      <param name="length" type="GLsizeiptr" />
+   </function>
+
    <!-- OpenGL 3.0 -->
 
    <function name="MapNamedBufferRangeEXT">
