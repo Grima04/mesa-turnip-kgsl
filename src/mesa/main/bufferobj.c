@@ -2189,8 +2189,15 @@ _mesa_NamedBufferDataEXT(GLuint buffer, GLsizeiptr size, const GLvoid *data,
                          GLenum usage)
 {
    GET_CURRENT_CONTEXT(ctx);
+   struct gl_buffer_object *bufObj;
 
-   struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
+   if (!buffer) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glNamedBufferDataEXT(invalid buffer 0)");
+      return;
+   }
+
+   bufObj = _mesa_lookup_bufferobj(ctx, buffer);
    if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
                                      &bufObj, "glNamedBufferDataEXT"))
       return;
@@ -2331,8 +2338,15 @@ _mesa_NamedBufferSubDataEXT(GLuint buffer, GLintptr offset,
                             GLsizeiptr size, const GLvoid *data)
 {
    GET_CURRENT_CONTEXT(ctx);
+   struct gl_buffer_object *bufObj;
 
-   struct gl_buffer_object *bufObj = _mesa_lookup_bufferobj(ctx, buffer);
+   if (!buffer) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glNamedBufferSubDataEXT(invalid buffer 0)");
+      return;
+   }
+
+   bufObj = _mesa_lookup_bufferobj(ctx, buffer);
    if (!_mesa_handle_bind_buffer_gen(ctx, buffer,
                                      &bufObj, "glNamedBufferSubDataEXT"))
       return;
@@ -2701,6 +2715,12 @@ _mesa_UnmapNamedBufferEXT(GLuint buffer)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_buffer_object *bufObj;
+
+   if (!buffer) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glUnmapNamedBufferEXT(invalid buffer 0)");
+      return GL_FALSE;
+   }
 
    bufObj = _mesa_lookup_bufferobj_err(ctx, buffer, "glUnmapNamedBuffer");
    if (!bufObj)
@@ -3310,6 +3330,12 @@ void * GLAPIENTRY
 _mesa_MapNamedBufferRangeEXT(GLuint buffer, GLintptr offset, GLsizeiptr length,
                              GLbitfield access)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   if (!buffer) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glMapNamedBufferRangeEXT(invalid buffer 0)");
+      return NULL;
+   }
    return map_named_buffer_range(buffer, offset, length, access, true,
                                  "glMapNamedBufferRangeEXT");
 }
@@ -3431,6 +3457,11 @@ _mesa_MapNamedBufferEXT(GLuint buffer, GLenum access)
    GET_CURRENT_CONTEXT(ctx);
 
    GLbitfield accessFlags;
+   if (!buffer) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "glMapNamedBufferEXT(invalid buffer 0)");
+      return NULL;
+   }
    if (!get_map_buffer_access_flags(ctx, access, &accessFlags)) {
       _mesa_error(ctx, GL_INVALID_ENUM, "glMapNamedBufferEXT(invalid access)");
       return NULL;
