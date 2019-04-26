@@ -883,6 +883,9 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    case nir_texop_txf_ms:
       fprintf(fp, "txf_ms ");
       break;
+   case nir_texop_txf_ms_fb:
+      fprintf(fp, "txf_ms_fb ");
+      break;
    case nir_texop_txf_ms_mcs:
       fprintf(fp, "txf_ms_mcs ");
       break;
@@ -995,12 +998,14 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
       fprintf(fp, " } (offsets)");
    }
 
-   if (!has_texture_deref) {
-      fprintf(fp, ", %u (texture)", instr->texture_index);
-   }
+   if (instr->op != nir_texop_txf_ms_fb) {
+      if (!has_texture_deref) {
+         fprintf(fp, ", %u (texture)", instr->texture_index);
+      }
 
-   if (!has_sampler_deref) {
-      fprintf(fp, ", %u (sampler)", instr->sampler_index);
+      if (!has_sampler_deref) {
+         fprintf(fp, ", %u (sampler)", instr->sampler_index);
+      }
    }
 }
 

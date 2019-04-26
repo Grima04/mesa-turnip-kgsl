@@ -1444,7 +1444,8 @@ typedef enum {
    nir_texop_txl,                /**< Texture look-up with explicit LOD */
    nir_texop_txd,                /**< Texture look-up with partial derivatives */
    nir_texop_txf,                /**< Texel fetch with explicit LOD */
-   nir_texop_txf_ms,                /**< Multisample texture fetch */
+   nir_texop_txf_ms,             /**< Multisample texture fetch */
+   nir_texop_txf_ms_fb,          /**< Multisample texture fetch from framebuffer */
    nir_texop_txf_ms_mcs,         /**< Multisample compression value fetch */
    nir_texop_txs,                /**< Texture size */
    nir_texop_lod,                /**< Texture lod query */
@@ -1579,6 +1580,7 @@ nir_tex_instr_is_query(const nir_tex_instr *instr)
    case nir_texop_txd:
    case nir_texop_txf:
    case nir_texop_txf_ms:
+   case nir_texop_txf_ms_fb:
    case nir_texop_tg4:
       return false;
    default:
@@ -1618,6 +1620,7 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
       switch (instr->op) {
       case nir_texop_txf:
       case nir_texop_txf_ms:
+      case nir_texop_txf_ms_fb:
       case nir_texop_txf_ms_mcs:
       case nir_texop_samples_identical:
          return nir_type_int;
@@ -3393,6 +3396,8 @@ typedef struct nir_lower_wpos_ytransform_options {
 bool nir_lower_wpos_ytransform(nir_shader *shader,
                                const nir_lower_wpos_ytransform_options *options);
 bool nir_lower_wpos_center(nir_shader *shader, const bool for_sample_shading);
+
+bool nir_lower_fb_read(nir_shader *shader);
 
 typedef struct nir_lower_drawpixels_options {
    gl_state_index16 texcoord_state_tokens[STATE_LENGTH];

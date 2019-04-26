@@ -2200,6 +2200,9 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    case nir_texop_samples_identical:
       /* These don't */
       break;
+   case nir_texop_txf_ms_fb:
+      vtn_fail("unexpected nir_texop_txf_ms_fb");
+      break;
    case nir_texop_txf_ms_mcs:
       vtn_fail("unexpected nir_texop_txf_ms_mcs");
    }
