@@ -1512,18 +1512,17 @@ ac_build_llvm8_tbuffer_load(struct ac_llvm_context *ctx,
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, dfmt | (nfmt << 4), 0);
 	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
-	unsigned func = CLAMP(num_channels, 1, 3) - 1;
-
-	LLVMTypeRef types[] = {ctx->i32, ctx->v2i32, ctx->v4i32};
-	const char *type_names[] = {"i32", "v2i32", "v4i32"};
+	unsigned func = num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
-	char name[256];
+	char name[256], type_name[8];
+
+	LLVMTypeRef type = func > 1 ? LLVMVectorType(ctx->i32, func) : ctx->i32;
+	ac_build_type_name_for_intr(type, type_name, sizeof(type_name));
 
 	snprintf(name, sizeof(name), "llvm.amdgcn.%s.tbuffer.load.%s",
-		 indexing_kind, type_names[func]);
+		 indexing_kind, type_name);
 
-	return ac_build_intrinsic(ctx, name, types[func], args,
-				  idx,
+	return ac_build_intrinsic(ctx, name, type, args, idx,
 				  ac_get_load_intr_attribs(can_speculate));
 }
 
@@ -1699,14 +1698,15 @@ ac_build_llvm8_tbuffer_store(struct ac_llvm_context *ctx,
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, dfmt | (nfmt << 4), 0);
 	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
-	unsigned func = CLAMP(num_channels, 1, 3) - 1;
-
-	const char *type_names[] = {"i32", "v2i32", "v4i32"};
+	unsigned func = num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
-	char name[256];
+	char name[256], type_name[8];
+
+	LLVMTypeRef type = func > 1 ? LLVMVectorType(ctx->i32, func) : ctx->i32;
+	ac_build_type_name_for_intr(type, type_name, sizeof(type_name));
 
 	snprintf(name, sizeof(name), "llvm.amdgcn.%s.tbuffer.store.%s",
-		 indexing_kind, type_names[func]);
+		 indexing_kind, type_name);
 
 	ac_build_intrinsic(ctx, name, ctx->voidt, args, idx,
 			   ac_get_store_intr_attribs(writeonly_memory));
