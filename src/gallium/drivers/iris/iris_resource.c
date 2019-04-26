@@ -1707,21 +1707,29 @@ iris_transfer_map(struct pipe_context *ctx,
       usage |= PIPE_TRANSFER_DISCARD_RANGE;
    }
 
-   bool map_would_stall = false;
-
-   if (resource->target != PIPE_BUFFER) {
-      iris_resource_access_raw(ice, &ice->batches[IRIS_BATCH_RENDER], res,
-                               level, box->z, box->depth,
-                               usage & PIPE_TRANSFER_WRITE);
-   }
-
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
        can_promote_to_async(res, box, usage)) {
       usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
    }
 
+   bool need_resolve = false;
+   bool need_color_resolve = false;
+
+   if (resource->target != PIPE_BUFFER) {
+      bool need_hiz_resolve = iris_resource_level_has_hiz(res, level);
+
+      need_color_resolve =
+         (res->aux.usage == ISL_AUX_USAGE_CCS_D ||
+          res->aux.usage == ISL_AUX_USAGE_CCS_E) &&
+         iris_has_color_unresolved(res, level, 1, box->z, box->depth);
+
+      need_resolve = need_color_resolve || need_hiz_resolve;
+   }
+
+   bool map_would_stall = false;
+
    if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
-      map_would_stall = resource_is_busy(ice, res);
+      map_would_stall = need_resolve || resource_is_busy(ice, res);
 
       if (map_would_stall && (usage & PIPE_TRANSFER_DONTBLOCK) &&
                              (usage & PIPE_TRANSFER_MAP_DIRECTLY))
@@ -1769,25 +1777,29 @@ iris_transfer_map(struct pipe_context *ctx,
     * temporary and map that, to avoid the resolve.  (It might be better to
     * a tiled temporary and use the tiled_memcpy paths...)
     */
-   if (!(usage & PIPE_TRANSFER_DISCARD_RANGE) &&
-       res->aux.usage != ISL_AUX_USAGE_CCS_E &&
-       res->aux.usage != ISL_AUX_USAGE_CCS_D) {
+   if (!(usage & PIPE_TRANSFER_DISCARD_RANGE) && !need_color_resolve)
       no_gpu = true;
-   }
 
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
    if (fmtl->txc == ISL_TXC_ASTC)
       no_gpu = true;
 
    if ((map_would_stall || res->aux.usage == ISL_AUX_USAGE_CCS_E) && !no_gpu) {
-      /* If we need a synchronous mapping and the resource is busy,
-       * we copy to/from a linear temporary buffer using the GPU.
+      /* If we need a synchronous mapping and the resource is busy, or needs
+       * resolving, we copy to/from a linear temporary buffer using the GPU.
        */
       map->batch = &ice->batches[IRIS_BATCH_RENDER];
       map->blorp = &ice->blorp;
       iris_map_copy_region(map);
    } else {
-      /* Otherwise we're free to map on the CPU.  Flush if needed. */
+      /* Otherwise we're free to map on the CPU. */
+
+      if (need_resolve) {
+         iris_resource_access_raw(ice, &ice->batches[IRIS_BATCH_RENDER], res,
+                                  level, box->z, box->depth,
+                                  usage & PIPE_TRANSFER_WRITE);
+      }
+
       if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
          for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
             if (iris_batch_references(&ice->batches[i], res->bo))
