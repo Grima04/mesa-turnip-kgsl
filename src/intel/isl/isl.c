@@ -1686,15 +1686,29 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
                       struct isl_surf *mcs_surf)
 {
-   assert(ISL_DEV_GEN(dev) >= 7);
-
-   /* It must be multisampled with an array layout */
-   assert(surf->samples > 1 && surf->msaa_layout == ISL_MSAA_LAYOUT_ARRAY);
-
    /* The following are true of all multisampled surfaces */
+   assert(surf->samples > 1);
    assert(surf->dim == ISL_SURF_DIM_2D);
    assert(surf->levels == 1);
    assert(surf->logical_level0_px.depth == 1);
+
+   /* It must be multisampled with an array layout */
+   if (surf->msaa_layout != ISL_MSAA_LAYOUT_ARRAY)
+      return false;
+
+   /* From the Ivy Bridge PRM, Vol4 Part1 p77 ("MCS Enable"):
+    *
+    *   This field must be set to 0 for all SINT MSRTs when all RT channels
+    *   are not written
+    *
+    * In practice this means that we have to disable MCS for all signed
+    * integer MSAA buffers.  The alternative, to disable MCS only when one
+    * of the render target channels is disabled, is impractical because it
+    * would require converting between CMS and UMS MSAA layouts on the fly,
+    * which is expensive.
+    */
+   if (ISL_DEV_GEN(dev) == 7 && isl_format_has_sint_channel(surf->format))
+      return false;
 
    /* The "Auxiliary Surface Pitch" field in RENDER_SURFACE_STATE is only 9
     * bits which means the maximum pitch of a compression surface is 512
