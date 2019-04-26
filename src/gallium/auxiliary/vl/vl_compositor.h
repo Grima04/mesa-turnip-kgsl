@@ -122,6 +122,7 @@ struct vl_compositor
    void *cs_rgba;
 
    bool pipe_cs_composit_supported;
+   bool pipe_gfx_supported;
 
    struct {
       struct {
