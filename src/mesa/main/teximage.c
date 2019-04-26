@@ -3196,6 +3196,21 @@ _mesa_TexImage1D( GLenum target, GLint level, GLint internalFormat,
                 border, format, type, 0, pixels);
 }
 
+void GLAPIENTRY
+_mesa_TextureImage1DEXT(GLuint texture, GLenum target, GLint level,
+                      GLint internalFormat, GLsizei width, GLint border,
+                      GLenum format, GLenum type, const GLvoid *pixels )
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
+                                           "glTextureImage1DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_FALSE, 1, texObj, target, level, internalFormat,
+            width, 1, 1, border, format, type, 0, pixels, false);
+}
 
 void GLAPIENTRY
 _mesa_TexImage2D( GLenum target, GLint level, GLint internalFormat,
@@ -3208,6 +3223,22 @@ _mesa_TexImage2D( GLenum target, GLint level, GLint internalFormat,
                 border, format, type, 0, pixels);
 }
 
+void GLAPIENTRY
+_mesa_TextureImage2DEXT(GLuint texture, GLenum target, GLint level,
+                      GLint internalFormat, GLsizei width, GLsizei height,
+                      GLint border,
+                      GLenum format, GLenum type, const GLvoid *pixels )
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
+                                           "glTextureImage2DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_FALSE, 2, texObj, target, level, internalFormat,
+            width, height, 1, border, format, type, 0, pixels, false);
+}
 
 /*
  * Called by the API or display list executor.
@@ -3222,6 +3253,23 @@ _mesa_TexImage3D( GLenum target, GLint level, GLint internalFormat,
    GET_CURRENT_CONTEXT(ctx);
    teximage_err(ctx, GL_FALSE, 3, target, level, internalFormat,
                 width, height, depth, border, format, type, 0, pixels);
+}
+
+void GLAPIENTRY
+_mesa_TextureImage3DEXT(GLuint texture, GLenum target, GLint level,
+                      GLint internalFormat, GLsizei width, GLsizei height,
+                      GLsizei depth, GLint border,
+                      GLenum format, GLenum type, const GLvoid *pixels )
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
+                                           "glTextureImage3DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_FALSE, 3, texObj, target, level, internalFormat,
+            width, height, depth, border, format, type, 0, pixels, false);
 }
 
 
@@ -3699,6 +3747,19 @@ _mesa_TextureSubImage1D_no_error(GLuint texture, GLint level, GLint xoffset,
 
 
 void GLAPIENTRY
+_mesa_TextureSubImage1DEXT(GLuint texture, GLenum target, GLint level,
+                        GLint xoffset, GLsizei width,
+                        GLenum format, GLenum type,
+                        const GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   texturesubimage_error(ctx, 1, texture, target, level, xoffset, 0, 0, width, 1,
+                         1, format, type, pixels, "glTextureSubImage1DEXT",
+                         false);
+}
+
+
+void GLAPIENTRY
 _mesa_TextureSubImage1D(GLuint texture, GLint level,
                         GLint xoffset, GLsizei width,
                         GLenum format, GLenum type,
@@ -3763,6 +3824,17 @@ _mesa_TextureSubImage3D_no_error(GLuint texture, GLint level, GLint xoffset,
                             pixels, "glTextureSubImage3D", false);
 }
 
+void GLAPIENTRY
+_mesa_TextureSubImage3DEXT(GLuint texture, GLenum target, GLint level,
+                           GLint xoffset, GLint yoffset, GLint zoffset,
+                           GLsizei width, GLsizei height, GLsizei depth,
+                           GLenum format, GLenum type, const GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   texturesubimage_error(ctx, 3, texture, target, level, xoffset, yoffset,
+                         zoffset, width, height, depth, format, type,
+                         pixels, "glTextureSubImage3DEXT", true);
+}
 
 void GLAPIENTRY
 _mesa_TextureSubImage3D(GLuint texture, GLint level,
@@ -4170,6 +4242,23 @@ _mesa_CopyTexImage1D( GLenum target, GLint level,
 
 
 void GLAPIENTRY
+_mesa_CopyTextureImage1DEXT( GLuint texture, GLenum target, GLint level,
+                             GLenum internalFormat,
+                             GLint x, GLint y,
+                             GLsizei width, GLint border )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object* texObj =
+      _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
+                                     "glCopyTextureImage1DEXT");
+   if (!texObj)
+      return;
+   copyteximage(ctx, 1, texObj, target, level, internalFormat, x, y, width, 1,
+                border, false);
+}
+
+
+void GLAPIENTRY
 _mesa_CopyTexImage2D( GLenum target, GLint level, GLenum internalFormat,
                       GLint x, GLint y, GLsizei width, GLsizei height,
                       GLint border )
@@ -4177,6 +4266,24 @@ _mesa_CopyTexImage2D( GLenum target, GLint level, GLenum internalFormat,
    GET_CURRENT_CONTEXT(ctx);
    copyteximage_err(ctx, 2, target, level, internalFormat,
                     x, y, width, height, border);
+}
+
+
+void GLAPIENTRY
+_mesa_CopyTextureImage2DEXT( GLuint texture, GLenum target, GLint level,
+                             GLenum internalFormat,
+                             GLint x, GLint y,
+                             GLsizei width, GLsizei height,
+                             GLint border )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object* texObj =
+      _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
+                                     "glCopyTextureImage2DEXT");
+   if (!texObj)
+      return;
+   copyteximage(ctx, 2, texObj, target, level, internalFormat, x, y, width, height,
+                border, false);
 }
 
 
@@ -4306,6 +4413,31 @@ _mesa_CopyTextureSubImage1D(GLuint texture, GLint level,
 
 
 void GLAPIENTRY
+_mesa_CopyTextureSubImage1DEXT(GLuint texture, GLenum target, GLint level,
+                               GLint xoffset, GLint x, GLint y, GLsizei width)
+{
+   struct gl_texture_object* texObj;
+   const char *self = "glCopyTextureSubImage1DEXT";
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
+                                           self);
+   if (!texObj)
+      return;
+
+   /* Check target (proxies not allowed). */
+   if (!legal_texsubimage_target(ctx, 1, texObj->Target, true)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid target %s)", self,
+                  _mesa_enum_to_string(texObj->Target));
+      return;
+   }
+
+   copy_texture_sub_image_err(ctx, 1, texObj, texObj->Target, level, xoffset, 0,
+                              0, x, y, width, 1, self);
+}
+
+
+void GLAPIENTRY
 _mesa_CopyTextureSubImage2D(GLuint texture, GLint level,
                             GLint xoffset, GLint yoffset,
                             GLint x, GLint y, GLsizei width, GLsizei height)
@@ -4331,6 +4463,31 @@ _mesa_CopyTextureSubImage2D(GLuint texture, GLint level,
 
 
 void GLAPIENTRY
+_mesa_CopyTextureSubImage2DEXT(GLuint texture, GLenum target, GLint level,
+                               GLint xoffset, GLint yoffset,
+                               GLint x, GLint y, GLsizei width, GLsizei height)
+{
+   struct gl_texture_object* texObj;
+   const char *self = "glCopyTextureSubImage2DEXT";
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true, self);
+   if (!texObj)
+      return;
+
+   /* Check target (proxies not allowed). */
+   if (!legal_texsubimage_target(ctx, 2, texObj->Target, true)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid target %s)", self,
+                  _mesa_enum_to_string(texObj->Target));
+      return;
+   }
+
+   copy_texture_sub_image_err(ctx, 2, texObj, texObj->Target, level, xoffset,
+                              yoffset, 0, x, y, width, height, self);
+}
+
+
+void GLAPIENTRY
 _mesa_CopyTextureSubImage3D(GLuint texture, GLint level,
                             GLint xoffset, GLint yoffset, GLint zoffset,
                             GLint x, GLint y, GLsizei width, GLsizei height)
@@ -4340,6 +4497,39 @@ _mesa_CopyTextureSubImage3D(GLuint texture, GLint level,
    GET_CURRENT_CONTEXT(ctx);
 
    texObj = _mesa_lookup_texture_err(ctx, texture, self);
+   if (!texObj)
+      return;
+
+   /* Check target (proxies not allowed). */
+   if (!legal_texsubimage_target(ctx, 3, texObj->Target, true)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid target %s)", self,
+                  _mesa_enum_to_string(texObj->Target));
+      return;
+   }
+
+   if (texObj->Target == GL_TEXTURE_CUBE_MAP) {
+      /* Act like CopyTexSubImage2D */
+      copy_texture_sub_image_err(ctx, 2, texObj,
+                                GL_TEXTURE_CUBE_MAP_POSITIVE_X + zoffset,
+                                level, xoffset, yoffset, 0, x, y, width, height,
+                                self);
+   }
+   else
+      copy_texture_sub_image_err(ctx, 3, texObj, texObj->Target, level, xoffset,
+                                 yoffset, zoffset, x, y, width, height, self);
+}
+
+
+void GLAPIENTRY
+_mesa_CopyTextureSubImage3DEXT(GLuint texture, GLenum target, GLint level,
+                               GLint xoffset, GLint yoffset, GLint zoffset,
+                               GLint x, GLint y, GLsizei width, GLsizei height)
+{
+   struct gl_texture_object* texObj;
+   const char *self = "glCopyTextureSubImage3D";
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true, self);
    if (!texObj)
       return;
 

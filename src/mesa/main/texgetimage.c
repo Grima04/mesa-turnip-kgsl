@@ -1525,6 +1525,25 @@ _mesa_GetTextureImage(GLuint texture, GLint level, GLenum format, GLenum type,
 
 
 void GLAPIENTRY
+_mesa_GetTextureImageEXT(GLuint texture, GLenum target, GLint level,
+                         GLenum format, GLenum type, GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   static const char *caller = "glGetTextureImageEXT";
+   struct gl_texture_object *texObj =
+      _mesa_lookup_or_create_texture(ctx, target, texture,
+                                     false, true, caller);
+
+   if (!texObj) {
+      return;
+   }
+
+   _get_texture_image(ctx, texObj, target, level, format, type,
+                      INT_MAX, pixels, caller);
+}
+
+
+void GLAPIENTRY
 _mesa_GetTextureSubImage(GLuint texture, GLint level,
                          GLint xoffset, GLint yoffset, GLint zoffset,
                          GLsizei width, GLsizei height, GLsizei depth,
