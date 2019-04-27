@@ -93,32 +93,48 @@ supported_buffer_bitmask(const struct gl_context *ctx,
 static GLbitfield
 draw_buffer_enum_to_bitmask(const struct gl_context *ctx, GLenum buffer)
 {
+   /* If the front buffer is the only buffer, GL_BACK and all other flags
+    * that include BACK select the front buffer for drawing. There are
+    * several reasons we want to do this.
+    *
+    * 1) OpenGL ES 3.0 requires it:
+    *
+    *   Page 181 (page 192 of the PDF) in section 4.2.1 of the OpenGL
+    *   ES 3.0.1 specification says:
+    *
+    *     "When draw buffer zero is BACK, color values are written
+    *     into the sole buffer for single-buffered contexts, or into
+    *     the back buffer for double-buffered contexts."
+    *
+    *   We also do this for GLES 1 and 2 because those APIs have no
+    *   concept of selecting the front and back buffer anyway and it's
+    *   convenient to be able to maintain the magic behaviour of
+    *   GL_BACK in that case.
+    *
+    * 2) Pbuffers are back buffers from the application point of view,
+    *    but they are front buffers from the Mesa point of view,
+    *    because they are always single buffered.
+    */
+   if (!ctx->DrawBuffer->Visual.doubleBufferMode) {
+      switch (buffer) {
+      case GL_BACK:
+         buffer = GL_FRONT;
+         break;
+      case GL_BACK_RIGHT:
+         buffer = GL_FRONT_RIGHT;
+         break;
+      case GL_BACK_LEFT:
+         buffer = GL_FRONT_LEFT;
+         break;
+      }
+   }
+
    switch (buffer) {
       case GL_NONE:
          return 0;
       case GL_FRONT:
          return BUFFER_BIT_FRONT_LEFT | BUFFER_BIT_FRONT_RIGHT;
       case GL_BACK:
-         if (_mesa_is_gles(ctx)) {
-            /* Page 181 (page 192 of the PDF) in section 4.2.1 of the OpenGL
-             * ES 3.0.1 specification says:
-             *
-             *     "When draw buffer zero is BACK, color values are written
-             *     into the sole buffer for single-buffered contexts, or into
-             *     the back buffer for double-buffered contexts."
-             *
-             * Since there is no stereo rendering in ES 3.0, only return the
-             * LEFT bits.  This also satisfies the "n must be 1" requirement.
-             *
-             * We also do this for GLES 1 and 2 because those APIs have no
-             * concept of selecting the front and back buffer anyway and it's
-             * convenient to be able to maintain the magic behaviour of
-             * GL_BACK in that case.
-             */
-            if (ctx->DrawBuffer->Visual.doubleBufferMode)
-               return BUFFER_BIT_BACK_LEFT;
-            return BUFFER_BIT_FRONT_LEFT;
-         }
          return BUFFER_BIT_BACK_LEFT | BUFFER_BIT_BACK_RIGHT;
       case GL_RIGHT:
          return BUFFER_BIT_FRONT_RIGHT | BUFFER_BIT_BACK_RIGHT;
