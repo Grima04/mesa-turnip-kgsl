@@ -112,6 +112,7 @@ radv_get_device_name(enum radeon_family family, char *name, size_t name_len)
 	case CHIP_VEGAM: chip_string = "AMD RADV VEGA M"; break;
 	case CHIP_VEGA10: chip_string = "AMD RADV VEGA10"; break;
 	case CHIP_VEGA12: chip_string = "AMD RADV VEGA12"; break;
+	case CHIP_VEGA20: chip_string = "AMD RADV VEGA20"; break;
 	case CHIP_RAVEN: chip_string = "AMD RADV RAVEN"; break;
 	case CHIP_RAVEN2: chip_string = "AMD RADV RAVEN2"; break;
 	default: chip_string = "AMD RADV unknown"; break;
