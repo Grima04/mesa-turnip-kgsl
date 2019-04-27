@@ -59,50 +59,6 @@ static void *intel_miptree_map_raw(struct brw_context *brw,
 static void intel_miptree_unmap_raw(struct intel_mipmap_tree *mt);
 
 static bool
-intel_miptree_supports_mcs(struct brw_context *brw,
-                           const struct intel_mipmap_tree *mt)
-{
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-
-   /* MCS compression only applies to multisampled miptrees */
-   if (mt->surf.samples <= 1)
-      return false;
-
-   /* Prior to Gen7, all MSAA surfaces used IMS layout. */
-   if (devinfo->gen < 7)
-      return false;
-
-   /* See isl_surf_get_mcs_surf for details. */
-   if (mt->surf.samples == 16 && mt->surf.logical_level0_px.width > 8192)
-      return false;
-
-   /* In Gen7, IMS layout is only used for depth and stencil buffers. */
-   switch (_mesa_get_format_base_format(mt->format)) {
-   case GL_DEPTH_COMPONENT:
-   case GL_STENCIL_INDEX:
-   case GL_DEPTH_STENCIL:
-      return false;
-   default:
-      /* From the Ivy Bridge PRM, Vol4 Part1 p77 ("MCS Enable"):
-       *
-       *   This field must be set to 0 for all SINT MSRTs when all RT channels
-       *   are not written
-       *
-       * In practice this means that we have to disable MCS for all signed
-       * integer MSAA buffers.  The alternative, to disable MCS only when one
-       * of the render target channels is disabled, is impractical because it
-       * would require converting between CMS and UMS MSAA layouts on the fly,
-       * which is expensive.
-       */
-      if (devinfo->gen == 7 && _mesa_get_format_datatype(mt->format) == GL_INT) {
-         return false;
-      } else {
-         return true;
-      }
-   }
-}
-
-static bool
 intel_tiling_supports_ccs(const struct brw_context *brw,
                           enum isl_tiling tiling)
 {
@@ -364,8 +320,7 @@ intel_miptree_choose_aux_usage(struct brw_context *brw,
 {
    assert(mt->aux_usage == ISL_AUX_USAGE_NONE);
 
-   if (intel_miptree_supports_mcs(brw, mt)) {
-      assert(mt->surf.msaa_layout == ISL_MSAA_LAYOUT_ARRAY);
+   if (_mesa_is_format_color_format(mt->format) && mt->surf.samples > 1) {
       mt->aux_usage = ISL_AUX_USAGE_MCS;
    } else if (intel_tiling_supports_ccs(brw, mt->surf.tiling) &&
               intel_miptree_supports_ccs(brw, mt)) {
