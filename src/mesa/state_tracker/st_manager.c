@@ -1130,9 +1130,19 @@ st_manager_flush_frontbuffer(struct st_context *st)
    struct st_framebuffer *stfb = st_ws_framebuffer(st->ctx->DrawBuffer);
    struct st_renderbuffer *strb = NULL;
 
-   if (stfb)
-      strb = st_renderbuffer(stfb->Base.Attachment[BUFFER_FRONT_LEFT].
-                             Renderbuffer);
+   if (!stfb)
+      return;
+
+   /* If the context uses a doublebuffered visual, but the buffer is
+    * single-buffered, guess that it's a pbuffer, which doesn't need
+    * flushing.
+    */
+   if (st->ctx->Visual.doubleBufferMode &&
+       !stfb->Base.Visual.doubleBufferMode)
+      return;
+
+   strb = st_renderbuffer(stfb->Base.Attachment[BUFFER_FRONT_LEFT].
+                          Renderbuffer);
 
    /* Do we have a front color buffer and has it been drawn to since last
     * frontbuffer flush?
