@@ -497,6 +497,14 @@ static const char *const math_function[16] = {
    [GEN8_MATH_FUNCTION_RSQRTM] = "rsqrtm",
 };
 
+static const char *const sync_function[16] = {
+   [TGL_SYNC_NOP] = "nop",
+   [TGL_SYNC_ALLRD] = "allrd",
+   [TGL_SYNC_ALLWR] = "allwr",
+   [TGL_SYNC_BAR] = "bar",
+   [TGL_SYNC_HOST] = "host",
+};
+
 static const char *const math_saturate[2] = {
    [0] = "",
    [1] = "sat"
@@ -1651,6 +1659,12 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       string(file, " ");
       err |= control(file, "function", math_function,
                      brw_inst_math_function(devinfo, inst), NULL);
+
+   } else if (opcode == BRW_OPCODE_SYNC) {
+      string(file, " ");
+      err |= control(file, "function", sync_function,
+                     brw_inst_cond_modifier(devinfo, inst), NULL);
+
    } else if (!is_send(opcode)) {
       err |= control(file, "conditional modifier", conditional_modifier,
                      brw_inst_cond_modifier(devinfo, inst), NULL);
