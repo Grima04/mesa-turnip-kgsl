@@ -3165,6 +3165,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 bool is_int = midgard_is_integer_op(ins->alu.op);
 
                 if (mir_nontrivial_mod(src, is_int, mask)) continue;
+                if (ins->alu.outmod != midgard_outmod_none) continue;
 
                 mir_foreach_instr_in_block_from(block, v, mir_next_op(ins)) {
                         if (v->ssa_args.src0 == to) {
