@@ -410,6 +410,9 @@ vma_alloc(struct iris_bufmgr *bufmgr,
           uint64_t size,
           uint64_t alignment)
 {
+   /* Force alignment to be some number of pages */
+   alignment = ALIGN(alignment, PAGE_SIZE);
+
    if (memzone == IRIS_MEMZONE_BORDER_COLOR_POOL)
       return IRIS_BORDER_COLOR_POOL_ADDRESS;
 
