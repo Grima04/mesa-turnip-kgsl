@@ -1717,6 +1717,9 @@ brw_bufmgr_init(struct gen_device_info *devinfo, int fd)
 
    const uint64_t _4GB = 4ull << 30;
 
+   /* The STATE_BASE_ADDRESS size field can only hold 1 page shy of 4GB */
+   const uint64_t _4GB_minus_1 = _4GB - PAGE_SIZE;
+
    if (devinfo->gen >= 8 && gtt_size > _4GB) {
       bufmgr->initial_kflags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
 
@@ -1726,7 +1729,7 @@ brw_bufmgr_init(struct gen_device_info *devinfo, int fd)
          bufmgr->initial_kflags |= EXEC_OBJECT_PINNED;
 
          util_vma_heap_init(&bufmgr->vma_allocator[BRW_MEMZONE_LOW_4G],
-                            PAGE_SIZE, _4GB);
+                            PAGE_SIZE, _4GB_minus_1);
          util_vma_heap_init(&bufmgr->vma_allocator[BRW_MEMZONE_OTHER],
                             1 * _4GB, gtt_size - 1 * _4GB);
       } else if (devinfo->gen >= 10) {
