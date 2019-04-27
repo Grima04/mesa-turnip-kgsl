@@ -1750,7 +1750,10 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
                       uint32_t row_pitch_B)
 {
    assert(surf->samples == 1 && surf->msaa_layout == ISL_MSAA_LAYOUT_NONE);
-   assert(ISL_DEV_GEN(dev) >= 7);
+
+   /* CCS support does not exist prior to Gen7 */
+   if (ISL_DEV_GEN(dev) <= 6)
+      return false;
 
    if (surf->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)
       return false;
@@ -1784,6 +1787,19 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
 
    /* TODO: More conditions where it can fail. */
 
+   /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
+    * Target(s)", beneath the "Fast Color Clear" bullet (p326):
+    *
+    *     - Support is limited to tiled render targets.
+    *     - MCS buffer for non-MSRT is supported only for RT formats 32bpp,
+    *       64bpp, and 128bpp.
+    *
+    * From the Skylake documentation, it is made clear that X-tiling is no
+    * longer supported:
+    *
+    *     - MCS and Lossless compression is supported for
+    *     TiledY/TileYs/TileYf non-MSRTs only.
+    */
    enum isl_format ccs_format;
    if (ISL_DEV_GEN(dev) >= 9) {
       if (!isl_tiling_is_any_y(surf->tiling))
