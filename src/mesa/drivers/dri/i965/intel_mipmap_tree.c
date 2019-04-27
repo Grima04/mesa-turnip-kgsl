@@ -59,120 +59,6 @@ static void *intel_miptree_map_raw(struct brw_context *brw,
 static void intel_miptree_unmap_raw(struct intel_mipmap_tree *mt);
 
 static bool
-intel_tiling_supports_ccs(const struct brw_context *brw,
-                          enum isl_tiling tiling)
-{
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-
-   /* From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render
-    * Target(s)", beneath the "Fast Color Clear" bullet (p326):
-    *
-    *     - Support is limited to tiled render targets.
-    *
-    * Gen9 changes the restriction to Y-tile only.
-    */
-   if (devinfo->gen >= 9)
-      return tiling == ISL_TILING_Y0;
-   else if (devinfo->gen >= 7)
-      return tiling != ISL_TILING_LINEAR;
-   else
-      return false;
-}
-
-/**
- * For a single-sampled render target ("non-MSRT"), determine if an MCS buffer
- * can be used. This doesn't (and should not) inspect any of the properties of
- * the miptree's BO.
- *
- * From the Ivy Bridge PRM, Vol2 Part1 11.7 "MCS Buffer for Render Target(s)",
- * beneath the "Fast Color Clear" bullet (p326):
- *
- *     - Support is for non-mip-mapped and non-array surface types only.
- *
- * And then later, on p327:
- *
- *     - MCS buffer for non-MSRT is supported only for RT formats 32bpp,
- *       64bpp, and 128bpp.
- *
- * From the Skylake documentation, it is made clear that X-tiling is no longer
- * supported:
- *
- *     - MCS and Lossless compression is supported for TiledY/TileYs/TileYf
- *     non-MSRTs only.
- */
-static bool
-intel_miptree_supports_ccs(struct brw_context *brw,
-                           const struct intel_mipmap_tree *mt)
-{
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-
-   /* MCS support does not exist prior to Gen7 */
-   if (devinfo->gen < 7)
-      return false;
-
-   /* This function applies only to non-multisampled render targets. */
-   if (mt->surf.samples > 1)
-      return false;
-
-   /* MCS is only supported for color buffers */
-   if (!_mesa_is_format_color_format(mt->format))
-      return false;
-
-   if (mt->cpp != 4 && mt->cpp != 8 && mt->cpp != 16)
-      return false;
-
-   const bool mip_mapped = mt->first_level != 0 || mt->last_level != 0;
-   const bool arrayed = mt->surf.logical_level0_px.array_len > 1 ||
-                        mt->surf.logical_level0_px.depth > 1;
-
-   if (arrayed) {
-       /* Multisample surfaces with the CMS layout are not layered surfaces,
-        * yet still have physical_depth0 > 1. Assert that we don't
-        * accidentally reject a multisampled surface here. We should have
-        * rejected it earlier by explicitly checking the sample count.
-        */
-      assert(mt->surf.samples == 1);
-   }
-
-   /* Handle the hardware restrictions...
-    *
-    * All GENs have the following restriction: "MCS buffer for non-MSRT is
-    * supported only for RT formats 32bpp, 64bpp, and 128bpp."
-    *
-    * From the HSW PRM Volume 7: 3D-Media-GPGPU, page 652: (Color Clear of
-    * Non-MultiSampler Render Target Restrictions) Support is for
-    * non-mip-mapped and non-array surface types only.
-    *
-    * From the BDW PRM Volume 7: 3D-Media-GPGPU, page 649: (Color Clear of
-    * Non-MultiSampler Render Target Restriction). Mip-mapped and arrayed
-    * surfaces are supported with MCS buffer layout with these alignments in
-    * the RT space: Horizontal Alignment = 256 and Vertical Alignment = 128.
-    *
-    * From the SKL PRM Volume 7: 3D-Media-GPGPU, page 632: (Color Clear of
-    * Non-MultiSampler Render Target Restriction). Mip-mapped and arrayed
-    * surfaces are supported with MCS buffer layout with these alignments in
-    * the RT space: Horizontal Alignment = 128 and Vertical Alignment = 64.
-    */
-   if (devinfo->gen < 8 && (mip_mapped || arrayed))
-      return false;
-
-   /* The PRM doesn't say this explicitly, but fast-clears don't appear to
-    * work for 3D textures until gen9 where the layout of 3D textures changes
-    * to match 2D array textures.
-    */
-   if (devinfo->gen <= 8 && mt->surf.dim != ISL_SURF_DIM_2D)
-      return false;
-
-   /* There's no point in using an MCS buffer if the surface isn't in a
-    * renderable format.
-    */
-   if (!brw->mesa_format_supports_render[mt->format])
-      return false;
-
-   return true;
-}
-
-static bool
 intel_tiling_supports_hiz(const struct brw_context *brw,
                           enum isl_tiling tiling)
 {
@@ -241,9 +127,6 @@ intel_miptree_supports_ccs_e(struct brw_context *brw,
     * to improve things.
     */
    if (_mesa_get_format_datatype(mt->format) == GL_FLOAT)
-      return false;
-
-   if (!intel_miptree_supports_ccs(brw, mt))
       return false;
 
    /* Many window system buffers are sRGB even if they are never rendered as
@@ -320,14 +203,13 @@ intel_miptree_choose_aux_usage(struct brw_context *brw,
 {
    assert(mt->aux_usage == ISL_AUX_USAGE_NONE);
 
-   if (_mesa_is_format_color_format(mt->format) && mt->surf.samples > 1) {
-      mt->aux_usage = ISL_AUX_USAGE_MCS;
-   } else if (intel_tiling_supports_ccs(brw, mt->surf.tiling) &&
-              intel_miptree_supports_ccs(brw, mt)) {
-      if (!unlikely(INTEL_DEBUG & DEBUG_NO_RBC) &&
-          intel_miptree_supports_ccs_e(brw, mt)) {
+   if (_mesa_is_format_color_format(mt->format)) {
+      if (mt->surf.samples > 1) {
+         mt->aux_usage = ISL_AUX_USAGE_MCS;
+      } else if (!unlikely(INTEL_DEBUG & DEBUG_NO_RBC) &&
+                 intel_miptree_supports_ccs_e(brw, mt)) {
          mt->aux_usage = ISL_AUX_USAGE_CCS_E;
-      } else {
+      } else if (brw->mesa_format_supports_render[mt->format]) {
          mt->aux_usage = ISL_AUX_USAGE_CCS_D;
       }
    } else if (intel_tiling_supports_hiz(brw, mt->surf.tiling) &&
