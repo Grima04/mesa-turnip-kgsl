@@ -402,6 +402,8 @@ vma_alloc(struct brw_bufmgr *bufmgr,
    /* Without softpin support, we let the kernel assign addresses. */
    assert(brw_using_softpin(bufmgr));
 
+   alignment = ALIGN(alignment, PAGE_SIZE);
+
    struct bo_cache_bucket *bucket = get_bucket_allocator(bufmgr, size);
    uint64_t addr;
 
