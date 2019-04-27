@@ -3870,8 +3870,14 @@ brw_nir_reduction_op_identity(const fs_builder &bld,
 {
    nir_const_value value = nir_alu_binop_identity(op, type_sz(type) * 8);
    switch (type_sz(type)) {
+   case 1:
+      if (type == BRW_REGISTER_TYPE_UB) {
+         return brw_imm_uw(value.u8);
+      } else {
+         assert(type == BRW_REGISTER_TYPE_B);
+         return brw_imm_w(value.i8);
+      }
    case 2:
-      assert(type != BRW_REGISTER_TYPE_HF);
       return retype(brw_imm_uw(value.u16), type);
    case 4:
       return retype(brw_imm_ud(value.u32), type);
