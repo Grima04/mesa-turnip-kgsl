@@ -308,18 +308,18 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
 static void
 emit_urb_setup(struct anv_pipeline *pipeline)
 {
+   unsigned entry_size[4];
    for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
       const struct brw_vue_prog_data *prog_data =
          !anv_pipeline_has_stage(pipeline, i) ? NULL :
          (const struct brw_vue_prog_data *) pipeline->shaders[i]->prog_data;
 
-      pipeline->urb.entry_size[i] = prog_data ? prog_data->urb_entry_size : 1;
+      entry_size[i] = prog_data ? prog_data->urb_entry_size : 1;
    }
 
    genX(emit_urb_setup)(pipeline->device, &pipeline->batch,
                         pipeline->urb.l3_config,
-                        pipeline->active_stages,
-                        pipeline->urb.entry_size);
+                        pipeline->active_stages, entry_size);
 }
 
 static void

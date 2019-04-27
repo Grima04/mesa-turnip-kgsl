@@ -202,13 +202,6 @@ blorp_emit_urb_config(struct blorp_batch *batch,
 
    assert(sf_entry_size == 0);
 
-   /* If the last used gfx pipeline in the command buffer has enough VS URB
-    * space for what the blorp operation needs, skip reconfiguration.
-    */
-   if (cmd_buffer->state.gfx.base.pipeline &&
-       cmd_buffer->state.gfx.base.pipeline->urb.entry_size[MESA_SHADER_VERTEX] >= vs_entry_size)
-      return;
-
    const unsigned entry_size[4] = { vs_entry_size, 1, 1, 1 };
 
    genX(emit_urb_setup)(device, &cmd_buffer->batch,

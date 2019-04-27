@@ -2747,7 +2747,6 @@ struct anv_pipeline {
    struct {
       const struct gen_l3_config *              l3_config;
       uint32_t                                  total_size;
-      unsigned                                  entry_size[4];
    } urb;
 
    VkShaderStageFlags                           active_stages;
