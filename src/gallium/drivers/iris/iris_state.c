@@ -2984,20 +2984,30 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
    for (unsigned i = 0; i < 4; i++,
         so_buffers += GENX(3DSTATE_SO_BUFFER_length)) {
 
-      if (i >= num_targets || !targets[i]) {
+      struct iris_stream_output_target *tgt = (void *) ice->state.so_target[i];
+      unsigned offset = offsets[i];
+
+      if (!tgt) {
          iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob)
             sob.SOBufferIndex = i;
          continue;
       }
 
-      struct iris_stream_output_target *tgt = (void *) targets[i];
       struct iris_resource *res = (void *) tgt->base.buffer;
 
       /* Note that offsets[i] will either be 0, causing us to zero
        * the value in the buffer, or 0xFFFFFFFF, which happens to mean
        * "continue appending at the existing offset."
        */
-      assert(offsets[i] == 0 || offsets[i] == 0xFFFFFFFF);
+      assert(offset == 0 || offset == 0xFFFFFFFF);
+
+      /* We might be called by Begin (offset = 0), Pause, then Resume
+       * (offset = 0xFFFFFFFF) before ever drawing (where these commands
+       * will actually be sent to the GPU).  In this case, we don't want
+       * to append - we still want to do our initial zeroing.
+       */
+      if (!tgt->zeroed)
+         offset = 0;
 
       iris_pack_command(GENX(3DSTATE_SO_BUFFER), so_buffers, sob) {
          sob.SurfaceBaseAddress =
@@ -3010,7 +3020,7 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
          sob.SurfaceSize = MAX2(tgt->base.buffer_size / 4, 1) - 1;
 
          sob.SOBufferIndex = i;
-         sob.StreamOffset = offsets[i];
+         sob.StreamOffset = offset;
          sob.StreamOutputBufferOffsetAddress =
             rw_bo(NULL, iris_resource_bo(tgt->offset.res)->gtt_offset +
                         tgt->offset.offset);
@@ -4717,6 +4727,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             struct iris_stream_output_target *tgt =
                (void *) ice->state.so_target[i];
             if (tgt) {
+               tgt->zeroed = true;
                iris_use_pinned_bo(batch, iris_resource_bo(tgt->base.buffer),
                                   true);
                iris_use_pinned_bo(batch, iris_resource_bo(tgt->offset.res),
