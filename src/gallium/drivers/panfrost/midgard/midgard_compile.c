@@ -1135,9 +1135,11 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(imul, imul);
                 ALU_CASE(iabs, iabs);
 
-                /* XXX: Use fmov, not imov, since imov was causing major
-                 * issues with texture precision? XXX research */
-                ALU_CASE(imov, imov);
+                /* XXX: Use fmov, not imov for now, since NIR does not
+                 * differentiate well (it'll happily emits imov for floats,
+                 * which the hardware rather dislikes and breaks e.g
+                 * -bjellyfish */
+                ALU_CASE(imov, fmov);
 
                 ALU_CASE(feq32, feq);
                 ALU_CASE(fne32, fne);
@@ -3156,6 +3158,8 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
                 if (to >= SSA_FIXED_MINIMUM) continue;
                 if (from >= SSA_FIXED_MINIMUM) continue;
+                if (to >= ctx->func->impl->ssa_alloc) continue;
+                if (from >= ctx->func->impl->ssa_alloc) continue;
 
                 /* Also, if the move has side effects, we're helpless */
 
