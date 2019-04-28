@@ -3199,23 +3199,38 @@ midgard_opt_copy_prop_tex(compiler_context *ctx, midgard_block *block)
                 unsigned from = ins->ssa_args.src1;
                 unsigned to = ins->ssa_args.dest;
 
-                /* Make sure it's a familiar type of special move. Basically we
-                 * just handle the special dummy moves emitted by the texture
-                 * pipeline. TODO: verify. TODO: why does this break varyings?
-                 */
+                /* Make sure it's simple enough for us to handle */
 
                 if (from >= SSA_FIXED_MINIMUM) continue;
+                if (from >= ctx->func->impl->ssa_alloc) continue;
                 if (to < SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE)) continue;
                 if (to > SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + 1)) continue;
 
+                bool eliminated = false;
+
                 mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
+                        /* The texture registers are not SSA so be careful.
+                         * Conservatively, just stop if we hit a texture op
+                         * (even if it may not write) to where we are */
+
+                        if (v->type != TAG_ALU_4)
+                                break;
+
                         if (v->ssa_args.dest == from) {
-                                v->ssa_args.dest = to;
-                                progress = true;
+                                /* We don't want to track partial writes ... */
+                                if (v->alu.mask == 0xF) {
+                                        v->ssa_args.dest = to;
+                                        eliminated = true;
+                                }
+
+                                break;
                         }
                 }
 
-                mir_remove_instruction(ins);
+                if (eliminated)
+                        mir_remove_instruction(ins);
+
+                progress |= eliminated;
         }
 
         return progress;
