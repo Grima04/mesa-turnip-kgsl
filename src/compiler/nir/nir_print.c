@@ -913,7 +913,11 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       print_src(&instr->src[i].src, state);
 
-      fprintf(fp, " ");
+      if (i == 0) {
+         fprintf(fp, " ");
+      } else {
+         fprintf(fp, ", ");
+      }
 
       switch(instr->src[i].src_type) {
       case nir_tex_src_coord:
@@ -977,28 +981,26 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
          unreachable("Invalid texture source type");
          break;
       }
-
-      fprintf(fp, ", ");
    }
 
    if (instr->op == nir_texop_tg4) {
-      fprintf(fp, "%u (gather_component), ", instr->component);
+      fprintf(fp, ", %u (gather_component), ", instr->component);
    }
 
    if (nir_tex_instr_has_explicit_tg4_offsets(instr)) {
-      fprintf(fp, "{ (%i, %i)", instr->tg4_offsets[0][0], instr->tg4_offsets[0][1]);
+      fprintf(fp, ", { (%i, %i)", instr->tg4_offsets[0][0], instr->tg4_offsets[0][1]);
       for (unsigned i = 1; i < 4; ++i)
          fprintf(fp, ", (%i, %i)", instr->tg4_offsets[i][0],
                  instr->tg4_offsets[i][1]);
-      fprintf(fp, " } (offsets), ");
+      fprintf(fp, " } (offsets)");
    }
 
    if (!has_texture_deref) {
-      fprintf(fp, "%u (texture), ", instr->texture_index);
+      fprintf(fp, ", %u (texture)", instr->texture_index);
    }
 
    if (!has_sampler_deref) {
-      fprintf(fp, "%u (sampler), ", instr->sampler_index);
+      fprintf(fp, ", %u (sampler)", instr->sampler_index);
    }
 }
 
