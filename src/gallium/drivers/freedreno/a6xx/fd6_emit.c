@@ -436,9 +436,7 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 			OUT_RING(state, view->texconst0);
 			OUT_RING(state, view->texconst1);
 			OUT_RING(state, view->texconst2);
-			OUT_RING(state, view->texconst3 |
-				COND(rsc && view->ubwc_enabled,
-					A6XX_TEX_CONST_3_FLAG | A6XX_TEX_CONST_3_UNK27));
+			OUT_RING(state, view->texconst3);
 
 			if (rsc) {
 				if (view->base.format == PIPE_FORMAT_X32_S8X24_UINT)
