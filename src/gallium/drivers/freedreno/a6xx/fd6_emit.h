@@ -201,10 +201,9 @@ fd6_stage2shadersb(gl_shader_stage type)
 }
 
 bool fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
-		enum a6xx_state_block sb, struct fd_texture_stateobj *tex,
+		enum pipe_shader_type type, struct fd_texture_stateobj *tex,
 		unsigned bcolor_offset,
-		const struct ir3_shader_variant *v, struct fd_shaderbuf_stateobj *buf,
-		struct fd_shaderimg_stateobj *img);
+		const struct ir3_shader_variant *v, struct fd_context *ctx);
 
 void fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit);
 
