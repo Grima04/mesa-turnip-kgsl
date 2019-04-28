@@ -3047,7 +3047,20 @@ embedded_to_inline_constant(compiler_context *ctx)
                                 if (scaled_constant != iconstants[component])
                                         continue;
                         } else {
-                                scaled_constant = _mesa_float_to_half((float) ins->constants[component]);
+                                float original = (float) ins->constants[component];
+                                scaled_constant = _mesa_float_to_half(original);
+
+                                /* Check for loss of precision. If this is
+                                 * mediump, we don't care, but for a highp
+                                 * shader, we need to pay attention. NIR
+                                 * doesn't yet tell us which mode we're in!
+                                 * Practically this prevents most constants
+                                 * from being inlined, sadly. */
+
+                                float fp32 = _mesa_half_to_float(scaled_constant);
+
+                                if (fp32 != original)
+                                        continue;
                         }
 
                         /* We don't know how to handle these with a constant */
