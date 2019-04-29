@@ -1273,11 +1273,6 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
       }
    }
 
-   /* FINISHME: Debug and enable fast clears */
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   if (devinfo->gen >= 11)
-      can_fast_clear = false;
-
    if (can_fast_clear) {
       const enum isl_aux_state aux_state =
          intel_miptree_get_aux_state(irb->mt, irb->mt_level, irb->mt_layer);
@@ -1285,13 +1280,13 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
          brw_meta_convert_fast_clear_color(brw, irb->mt,
                                            &ctx->Color.ClearColor);
 
-      intel_miptree_set_clear_color(brw, irb->mt, clear_color);
-
-      /* If the buffer is already in ISL_AUX_STATE_CLEAR, the clear
-       * is redundant and can be skipped.
+      /* If the buffer is already in ISL_AUX_STATE_CLEAR and the clear color
+       * hasn't changed, the clear is redundant and can be skipped.
        */
-      if (aux_state == ISL_AUX_STATE_CLEAR)
+      if (!intel_miptree_set_clear_color(brw, irb->mt, clear_color) &&
+          aux_state == ISL_AUX_STATE_CLEAR) {
          return;
+      }
 
       DBG("%s (fast) to mt %p level %d layers %d+%d\n", __FUNCTION__,
           irb->mt, irb->mt_level, irb->mt_layer, num_layers);
@@ -1316,11 +1311,9 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
       brw_emit_end_of_pipe_sync(brw, PIPE_CONTROL_RENDER_TARGET_FLUSH);
 
       struct blorp_batch batch;
-      blorp_batch_init(&brw->blorp, &batch, brw,
-                       BLORP_BATCH_NO_UPDATE_CLEAR_COLOR);
-      blorp_fast_clear(&batch, &surf, isl_format,
-                       level, irb->mt_layer, num_layers,
-                       x0, y0, x1, y1);
+      blorp_batch_init(&brw->blorp, &batch, brw, 0);
+      blorp_fast_clear(&batch, &surf, isl_format_srgb_to_linear(isl_format),
+                       level, irb->mt_layer, num_layers, x0, y0, x1, y1);
       blorp_batch_finish(&batch);
 
       brw_emit_end_of_pipe_sync(brw, PIPE_CONTROL_RENDER_TARGET_FLUSH);
