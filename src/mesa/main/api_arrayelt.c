@@ -1450,10 +1450,7 @@ _mesa_array_element(struct gl_context *ctx, GLint elt)
       const gl_vert_attrib attrib = VERT_ATTRIB_GENERIC0;
       const struct gl_array_attributes *array = &vao->VertexAttrib[attrib];
       const void *src = attrib_src(vao, array, elt);
-      /* Use glVertex(v) instead of glVertexAttrib(0, v) to be sure it's
-       * issued as the last (provoking) attribute).
-       */
-      func_nv(&array->Format)(0, src);
+      func_arb(&array->Format)(0, src);
    } else if (vao->Enabled & VERT_BIT_POS) {
       const gl_vert_attrib attrib = VERT_ATTRIB_POS;
       const struct gl_array_attributes *array = &vao->VertexAttrib[attrib];
