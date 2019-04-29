@@ -560,6 +560,12 @@ bool gpir_codegen_prog(gpir_compiler *comp)
       num_instr += list_length(&block->instr_list);
    }
 
+   if (num_instr > 512) {
+      gpir_error("shader too big (%d), GP has a 512 instruction limit.\n",
+                 num_instr);
+      return false;
+   }
+
    gpir_codegen_instr *code = rzalloc_array(comp->prog, gpir_codegen_instr, num_instr);
    if (!code)
       return false;
