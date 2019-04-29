@@ -5259,7 +5259,7 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
 			int count = nbytes - line;
 			const char *nl = memchr(disasm + line, '\n', nbytes - line);
 			if (nl)
-				count = nl - disasm;
+				count = nl - (disasm + line);
 
 			if (count) {
 				pipe_debug_message(debug, SHADER_INFO,
