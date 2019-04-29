@@ -335,9 +335,12 @@ VkResult radv_EnumerateInstanceVersion(
 uint32_t
 radv_physical_device_api_version(struct radv_physical_device *dev)
 {
+    uint32_t override = vk_get_version_override();
+    uint32_t version = VK_MAKE_VERSION(1, 0, 68);
     if (dev->rad_info.has_syncobj_wait_for_submit)
-        return ${MAX_API_VERSION.c_vk_version()};
-    return VK_MAKE_VERSION(1, 0, 68);
+        version = ${MAX_API_VERSION.c_vk_version()};
+
+    return override ? MIN2(override, version) : version;
 }
 """)
 
