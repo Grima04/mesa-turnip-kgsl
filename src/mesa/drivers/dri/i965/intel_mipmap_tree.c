@@ -58,37 +58,6 @@ static void *intel_miptree_map_raw(struct brw_context *brw,
 
 static void intel_miptree_unmap_raw(struct intel_mipmap_tree *mt);
 
-static bool
-intel_tiling_supports_hiz(const struct brw_context *brw,
-                          enum isl_tiling tiling)
-{
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-
-   if (devinfo->gen < 6)
-      return false;
-
-   return tiling == ISL_TILING_Y0;
-}
-
-static bool
-intel_miptree_supports_hiz(const struct brw_context *brw,
-                           const struct intel_mipmap_tree *mt)
-{
-   if (!brw->has_hiz)
-      return false;
-
-   switch (mt->format) {
-   case MESA_FORMAT_Z_FLOAT32:
-   case MESA_FORMAT_Z32_FLOAT_S8X24_UINT:
-   case MESA_FORMAT_Z24_UNORM_X8_UINT:
-   case MESA_FORMAT_Z24_UNORM_S8_UINT:
-   case MESA_FORMAT_Z_UNORM16:
-      return true;
-   default:
-      return false;
-   }
-}
-
 /**
  * Return true if the format that will be used to access the miptree is
  * CCS_E-compatible with the miptree's linear/non-sRGB format.
@@ -189,8 +158,7 @@ needs_separate_stencil(const struct brw_context *brw,
    if (devinfo->must_use_separate_stencil)
       return true;
 
-   return brw->has_separate_stencil &&
-          intel_miptree_supports_hiz(brw, mt);
+   return brw->has_separate_stencil && brw->has_hiz;
 }
 
 /**
@@ -212,8 +180,7 @@ intel_miptree_choose_aux_usage(struct brw_context *brw,
       } else if (brw->mesa_format_supports_render[mt->format]) {
          mt->aux_usage = ISL_AUX_USAGE_CCS_D;
       }
-   } else if (intel_tiling_supports_hiz(brw, mt->surf.tiling) &&
-              intel_miptree_supports_hiz(brw, mt)) {
+   } else if (isl_surf_usage_is_depth(mt->surf.usage) && brw->has_hiz) {
       mt->aux_usage = ISL_AUX_USAGE_HIZ;
    }
 
