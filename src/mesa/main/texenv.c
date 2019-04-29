@@ -545,7 +545,6 @@ _mesa_TexEnvf( GLenum target, GLenum pname, GLfloat param )
 }
 
 
-
 void GLAPIENTRY
 _mesa_TexEnvi( GLenum target, GLenum pname, GLint param )
 {
@@ -572,6 +571,59 @@ _mesa_TexEnviv( GLenum target, GLenum pname, const GLint *param )
    }
    _mesa_TexEnvfv( target, pname, p );
 }
+
+
+void GLAPIENTRY
+_mesa_MultiTexEnvfEXT( GLenum texunit, GLenum target,
+                       GLenum pname, GLfloat param )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLfloat p[4];
+   p[0] = param;
+   p[1] = p[2] = p[3] = 0.0;
+   _mesa_texenvfv_indexed(ctx, texunit - GL_TEXTURE0, target, pname, p);
+}
+
+void GLAPIENTRY
+_mesa_MultiTexEnvfvEXT( GLenum texunit, GLenum target,
+                        GLenum pname, const GLfloat *param )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   _mesa_texenvfv_indexed(ctx, texunit - GL_TEXTURE0, target, pname, param);
+}
+
+
+void GLAPIENTRY
+_mesa_MultiTexEnviEXT( GLenum texunit, GLenum target,
+                       GLenum pname, GLint param )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLfloat p[4];
+   p[0] = (GLfloat) param;
+   p[1] = p[2] = p[3] = 0.0;
+   _mesa_texenvfv_indexed( ctx, texunit - GL_TEXTURE0, target, pname, p );
+}
+
+
+void GLAPIENTRY
+_mesa_MultiTexEnvivEXT( GLenum texunit, GLenum target,
+                        GLenum pname, const GLint *param )
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLfloat p[4];
+   if (pname == GL_TEXTURE_ENV_COLOR) {
+      p[0] = INT_TO_FLOAT( param[0] );
+      p[1] = INT_TO_FLOAT( param[1] );
+      p[2] = INT_TO_FLOAT( param[2] );
+      p[3] = INT_TO_FLOAT( param[3] );
+   }
+   else {
+      p[0] = (GLfloat) param[0];
+      p[1] = p[2] = p[3] = 0;  /* init to zero, just to be safe */
+   }
+   _mesa_texenvfv_indexed( ctx, texunit - GL_TEXTURE0, target, pname, p );
+}
+
 
 
 
@@ -824,8 +876,24 @@ _mesa_GetTexEnvfv( GLenum target, GLenum pname, GLfloat *params )
 
 
 void GLAPIENTRY
+_mesa_GetMultiTexEnvfvEXT( GLenum texunit, GLenum target,
+                           GLenum pname, GLfloat *params )
+{
+   _mesa_gettexenvfv_indexed(texunit - GL_TEXTURE0, target, pname, params);
+}
+
+
+void GLAPIENTRY
 _mesa_GetTexEnviv( GLenum target, GLenum pname, GLint *params )
 {
    GET_CURRENT_CONTEXT(ctx);
    _mesa_gettexenviv_indexed(ctx->Texture.CurrentUnit, target, pname, params);
+}
+
+
+void GLAPIENTRY
+_mesa_GetMultiTexEnvivEXT( GLenum texunit, GLenum target,
+                           GLenum pname, GLint *params )
+{
+   _mesa_gettexenviv_indexed(texunit - GL_TEXTURE0, target, pname, params);
 }

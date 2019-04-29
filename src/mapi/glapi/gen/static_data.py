@@ -1517,6 +1517,12 @@ offsets = {
     "EnableClientStateiEXT": 1481,
     "DisableClientStateiEXT": 1482,
     "GetPointerIndexedvEXT": 1483,
+    "MultiTexEnviEXT": 1484,
+    "MultiTexEnvivEXT": 1485,
+    "MultiTexEnvfEXT": 1486,
+    "MultiTexEnvfvEXT": 1487,
+    "GetMultiTexEnvivEXT": 1488,
+    "GetMultiTexEnvfvEXT": 1489,
 }
 
 functions = [

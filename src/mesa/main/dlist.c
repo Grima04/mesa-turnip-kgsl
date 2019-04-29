@@ -581,6 +581,7 @@ typedef enum
    OPCODE_COPY_TEXTURE_SUB_IMAGE1D,
    OPCODE_COPY_TEXTURE_SUB_IMAGE2D,
    OPCODE_COPY_TEXTURE_SUB_IMAGE3D,
+   OPCODE_MULTITEXENV,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D,
 
    /* The following three are meta instructions */
@@ -9906,6 +9907,73 @@ save_CopyTextureSubImage3DEXT(GLuint texture, GLenum target, GLint level,
    }
 }
 
+
+static void GLAPIENTRY
+save_MultiTexEnvfvEXT(GLenum texunit, GLenum target, GLenum pname, const GLfloat *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_MULTITEXENV, 7);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].e = pname;
+      if (pname == GL_TEXTURE_ENV_COLOR) {
+         n[4].f = params[0];
+         n[5].f = params[1];
+         n[6].f = params[2];
+         n[7].f = params[3];
+      }
+      else {
+         n[4].f = params[0];
+         n[5].f = n[6].f = n[7].f = 0.0F;
+      }
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexEnvfvEXT(ctx->Exec, (texunit, target, pname, params));
+   }
+}
+
+
+static void GLAPIENTRY
+save_MultiTexEnvfEXT(GLenum texunit, GLenum target, GLenum pname, GLfloat param)
+{
+   GLfloat parray[4];
+   parray[0] = (GLfloat) param;
+   parray[1] = parray[2] = parray[3] = 0.0F;
+   save_MultiTexEnvfvEXT(texunit, target, pname, parray);
+}
+
+
+static void GLAPIENTRY
+save_MultiTexEnviEXT(GLenum texunit, GLenum target, GLenum pname, GLint param)
+{
+   GLfloat p[4];
+   p[0] = (GLfloat) param;
+   p[1] = p[2] = p[3] = 0.0F;
+   save_MultiTexEnvfvEXT(texunit, target, pname, p);
+}
+
+
+static void GLAPIENTRY
+save_MultiTexEnvivEXT(GLenum texunit, GLenum target, GLenum pname, const GLint * param)
+{
+   GLfloat p[4];
+   if (pname == GL_TEXTURE_ENV_COLOR) {
+      p[0] = INT_TO_FLOAT(param[0]);
+      p[1] = INT_TO_FLOAT(param[1]);
+      p[2] = INT_TO_FLOAT(param[2]);
+      p[3] = INT_TO_FLOAT(param[3]);
+   }
+   else {
+      p[0] = (GLfloat) param[0];
+      p[1] = p[2] = p[3] = 0.0F;
+   }
+   save_MultiTexEnvfvEXT(texunit, target, pname, p);
+}
+
+
 static void GLAPIENTRY
 save_CompressedTextureSubImage2DEXT(GLuint texture, GLenum target, GLint level, GLint xoffset,
                                     GLint yoffset, GLsizei width, GLsizei height,
@@ -11634,6 +11702,16 @@ execute_list(struct gl_context *ctx, GLuint list)
                                                       n[7].i, n[8].i, n[9].i,
                                                       n[10].i));
             break;
+         case OPCODE_MULTITEXENV:
+            {
+               GLfloat params[4];
+               params[0] = n[4].f;
+               params[1] = n[5].f;
+               params[2] = n[6].f;
+               params[3] = n[7].f;
+               CALL_MultiTexEnvfvEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
+            }
+            break;
          case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D:
             CALL_CompressedTextureSubImage2DEXT(ctx->Exec,
                                                 (n[1].ui, n[2].e, n[3].i, n[4].i,
@@ -12647,6 +12725,10 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_CopyTextureSubImage1DEXT(table, save_CopyTextureSubImage1DEXT);
    SET_CopyTextureSubImage2DEXT(table, save_CopyTextureSubImage2DEXT);
    SET_CopyTextureSubImage3DEXT(table, save_CopyTextureSubImage3DEXT);
+   SET_MultiTexEnvfEXT(table, save_MultiTexEnvfEXT);
+   SET_MultiTexEnvfvEXT(table, save_MultiTexEnvfvEXT);
+   SET_MultiTexEnviEXT(table, save_MultiTexEnviEXT);
+   SET_MultiTexEnvivEXT(table, save_MultiTexEnvivEXT);
    SET_CompressedTextureSubImage2DEXT(table, save_CompressedTextureSubImage2DEXT);
 }
 
