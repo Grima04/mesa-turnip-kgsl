@@ -129,6 +129,18 @@ handle_special(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
       return nir_uabs_diff(nb, srcs[0], srcs[1]);
    case OpenCLstd_Bitselect:
       return nir_bitselect(nb, srcs[0], srcs[1], srcs[2]);
+   case OpenCLstd_SMad_hi:
+      return nir_imad_hi(nb, srcs[0], srcs[1], srcs[2]);
+   case OpenCLstd_UMad_hi:
+      return nir_umad_hi(nb, srcs[0], srcs[1], srcs[2]);
+   case OpenCLstd_SMul24:
+      return nir_imul24(nb, srcs[0], srcs[1]);
+   case OpenCLstd_UMul24:
+      return nir_umul24(nb, srcs[0], srcs[1]);
+   case OpenCLstd_SMad24:
+      return nir_imad24(nb, srcs[0], srcs[1], srcs[2]);
+   case OpenCLstd_UMad24:
+      return nir_umad24(nb, srcs[0], srcs[1], srcs[2]);
    case OpenCLstd_FClamp:
       return nir_fclamp(nb, srcs[0], srcs[1], srcs[2]);
    case OpenCLstd_SClamp:
@@ -288,6 +300,12 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
       return true;
    case OpenCLstd_SAbs_diff:
    case OpenCLstd_UAbs_diff:
+   case OpenCLstd_SMad_hi:
+   case OpenCLstd_UMad_hi:
+   case OpenCLstd_SMad24:
+   case OpenCLstd_UMad24:
+   case OpenCLstd_SMul24:
+   case OpenCLstd_UMul24:
    case OpenCLstd_Bitselect:
    case OpenCLstd_FClamp:
    case OpenCLstd_SClamp:
