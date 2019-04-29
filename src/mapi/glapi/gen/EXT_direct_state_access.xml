@@ -410,5 +410,71 @@
       <param name="access" type="GLbitfield" />
    </function>
 
+   <function name="FramebufferDrawBufferEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="mode" type="GLenum" />
+   </function>
+
+   <function name="FramebufferDrawBuffersEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="n" type="GLsizei" />
+      <param name="bufs" type="const GLenum *" />
+   </function>
+
+   <function name="FramebufferReadBufferEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="mode" type="GLenum" />
+   </function>
+
+   <function name="GetFramebufferParameterivEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLint *" />
+   </function>
+
+   <function name="CheckNamedFramebufferStatusEXT">
+      <return type="GLenum" />
+      <param name="framebuffer" type="GLuint" />
+      <param name="target" type="GLenum" />
+   </function>
+
+   <function name="NamedFramebufferTexture1DEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="attachment" type="GLenum" />
+      <param name="textarget" type="GLenum" />
+      <param name="texture" type="GLuint" />
+      <param name="level" type="GLint" />
+   </function>
+
+   <function name="NamedFramebufferTexture2DEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="attachment" type="GLenum" />
+      <param name="textarget" type="GLenum" />
+      <param name="texture" type="GLuint" />
+      <param name="level" type="GLint" />
+   </function>
+
+   <function name="NamedFramebufferTexture3DEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="attachment" type="GLenum" />
+      <param name="textarget" type="GLenum" />
+      <param name="texture" type="GLuint" />
+      <param name="level" type="GLint" />
+      <param name="zoffset" type="GLint" />
+   </function>
+
+   <function name="NamedFramebufferRenderbufferEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="attachment" type="GLenum" />
+      <param name="renderbuffertarget" type="GLenum" />
+      <param name="renderbuffer" type="GLuint" />
+   </function>
+
+   <function name="GetNamedFramebufferAttachmentParameterivEXT">
+      <param name="framebuffer" type="GLuint" />
+      <param name="attachment" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLint *" />
+   </function>
 </category>
 </OpenGLAPI>

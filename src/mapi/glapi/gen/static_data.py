@@ -1504,6 +1504,17 @@ offsets = {
     "GetNamedBufferPointervEXT": 1468,
     "GetNamedBufferParameterivEXT": 1469,
     "FlushMappedNamedBufferRangeEXT": 1470,
+    "FramebufferDrawBufferEXT": 1471,
+    "FramebufferDrawBuffersEXT": 1472,
+    "FramebufferReadBufferEXT": 1473,
+    "GetFramebufferParameterivEXT": 1474,
+    "CheckNamedFramebufferStatusEXT": 1475,
+    "NamedFramebufferTexture1DEXT": 1476,
+    "NamedFramebufferTexture2DEXT": 1477,
+    "NamedFramebufferTexture3DEXT": 1478,
+    "NamedFramebufferRenderbufferEXT": 1479,
+    "GetNamedFramebufferAttachmentParameterivEXT": 1480,
+
 }
 
 functions = [
