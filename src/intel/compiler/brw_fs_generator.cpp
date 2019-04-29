@@ -363,6 +363,7 @@ fs_generator::generate_fb_write(fs_inst *inst, struct brw_reg payload)
 {
    if (devinfo->gen < 8 && !devinfo->is_haswell) {
       brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+      brw_set_default_flag_reg(p, 0, 0);
    }
 
    const struct brw_reg implied_header =
