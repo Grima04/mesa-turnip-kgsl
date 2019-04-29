@@ -195,6 +195,18 @@ if with_tests
     suite : ['util'],
   )
 
+  test(
+    'bitset',
+    executable(
+       'bitset_test',
+       files('bitset_test.cpp'),
+       include_directories : inc_common,
+       dependencies : [dep_thread, dep_dl, idep_gtest],
+       link_with : libmesa_util,
+     ),
+     suite : ['util'],
+  )
+
   subdir('tests/fast_idiv_by_const')
   subdir('tests/hash_table')
   subdir('tests/string_buffer')
