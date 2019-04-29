@@ -5237,13 +5237,8 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
 	if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm, &nbytes))
 		goto out;
 
-	fprintf(file, "Shader %s disassembly:\n", name);
-	if (nbytes > INT_MAX) {
-		fprintf(file, "too long\n");
+	if (nbytes > INT_MAX)
 		goto out;
-	}
-
-	fprintf(file, "%*s", (int)nbytes, disasm);
 
 	if (debug && debug->debug_message) {
 		/* Very long debug messages are cut off, so send the
@@ -5271,6 +5266,11 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
 
 		pipe_debug_message(debug, SHADER_INFO,
 				   "Shader Disassembly End");
+	}
+
+	if (file) {
+		fprintf(file, "Shader %s disassembly:\n", name);
+		fprintf(file, "%*s", (int)nbytes, disasm);
 	}
 
 out:
@@ -5337,6 +5337,9 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen,
 					struct pipe_debug_callback *debug)
 {
 	const struct ac_shader_config *conf = &shader->config;
+
+	if (screen->options.debug_disassembly)
+		si_shader_dump_disassembly(screen, &shader->binary, debug, "main", NULL);
 
 	pipe_debug_message(debug, SHADER_INFO,
 			   "Shader Stats: SGPRS: %d VGPRS: %d Code Size: %d "
