@@ -174,6 +174,7 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
 
 	tex->sampler_dim = old_tex->sampler_dim;
 	tex->dest_type = old_tex->dest_type;
+	tex->is_array = old_tex->is_array;
 
 	tex->op = old_tex->op;
 	tex->coord_components = old_tex->coord_components;
