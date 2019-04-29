@@ -408,7 +408,7 @@ _mesa_TexEnvfv( GLenum target, GLenum pname, const GLfloat *param )
 
    if (target == GL_TEXTURE_ENV) {
       struct gl_fixedfunc_texture_unit *texUnit =
-         _mesa_get_current_fixedfunc_tex_unit(ctx);
+         _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
       /* The GL spec says that we should report an error if the unit is greater
        * than GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, but in practice, only
@@ -670,7 +670,7 @@ _mesa_GetTexEnvfv( GLenum target, GLenum pname, GLfloat *params )
 
    if (target == GL_TEXTURE_ENV) {
       struct gl_fixedfunc_texture_unit *texUnit =
-         _mesa_get_current_fixedfunc_tex_unit(ctx);
+         _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
       /* The GL spec says that we should report an error if the unit is greater
        * than GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, but in practice, only
@@ -747,7 +747,7 @@ _mesa_GetTexEnviv( GLenum target, GLenum pname, GLint *params )
 
    if (target == GL_TEXTURE_ENV) {
       struct gl_fixedfunc_texture_unit *texUnit =
-         _mesa_get_current_fixedfunc_tex_unit(ctx);
+         _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
       /* The GL spec says that we should report an error if the unit is greater
        * than GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, but in practice, only

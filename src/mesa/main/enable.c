@@ -247,7 +247,7 @@ static GLboolean
 enable_texture(struct gl_context *ctx, GLboolean state, GLbitfield texBit)
 {
    struct gl_fixedfunc_texture_unit *texUnit =
-      _mesa_get_current_fixedfunc_tex_unit(ctx);
+      _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
    if (!texUnit)
       return GL_FALSE;
 
@@ -1401,7 +1401,7 @@ static GLboolean
 is_texture_enabled(struct gl_context *ctx, GLbitfield bit)
 {
    const struct gl_fixedfunc_texture_unit *const texUnit =
-      _mesa_get_current_fixedfunc_tex_unit(ctx);
+      _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
    if (!texUnit)
       return GL_FALSE;

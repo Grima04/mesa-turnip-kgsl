@@ -85,7 +85,7 @@ _mesa_TexGenfv( GLenum coord, GLenum pname, const GLfloat *params )
       return;
    }
 
-   texUnit = _mesa_get_current_fixedfunc_tex_unit(ctx);
+   texUnit = _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
    texgen = get_texgen(ctx, texUnit, coord);
    if (!texgen) {
@@ -297,7 +297,7 @@ _mesa_GetTexGendv( GLenum coord, GLenum pname, GLdouble *params )
       return;
    }
 
-   texUnit = _mesa_get_current_fixedfunc_tex_unit(ctx);
+   texUnit = _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
    texgen = get_texgen(ctx, texUnit, coord);
    if (!texgen) {
@@ -334,7 +334,7 @@ _mesa_GetTexGenfv( GLenum coord, GLenum pname, GLfloat *params )
       return;
    }
 
-   texUnit = _mesa_get_current_fixedfunc_tex_unit(ctx);
+   texUnit = _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
    texgen = get_texgen(ctx, texUnit, coord);
    if (!texgen) {
@@ -379,7 +379,7 @@ _mesa_GetTexGeniv( GLenum coord, GLenum pname, GLint *params )
       return;
    }
 
-   texUnit = _mesa_get_current_fixedfunc_tex_unit(ctx);
+   texUnit = _mesa_get_fixedfunc_tex_unit(ctx, ctx->Texture.CurrentUnit);
 
    texgen = get_texgen(ctx, texUnit, coord);
    if (!texgen) {
