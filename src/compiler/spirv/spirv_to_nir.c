@@ -3716,10 +3716,24 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(storage_8bit, cap);
          break;
 
+      case SpvCapabilityShaderNonUniformEXT:
+         spv_check_supported(descriptor_indexing, cap);
+         break;
+
       case SpvCapabilityInputAttachmentArrayDynamicIndexingEXT:
       case SpvCapabilityUniformTexelBufferArrayDynamicIndexingEXT:
       case SpvCapabilityStorageTexelBufferArrayDynamicIndexingEXT:
          spv_check_supported(descriptor_array_dynamic_indexing, cap);
+         break;
+
+      case SpvCapabilityUniformBufferArrayNonUniformIndexingEXT:
+      case SpvCapabilitySampledImageArrayNonUniformIndexingEXT:
+      case SpvCapabilityStorageBufferArrayNonUniformIndexingEXT:
+      case SpvCapabilityStorageImageArrayNonUniformIndexingEXT:
+      case SpvCapabilityInputAttachmentArrayNonUniformIndexingEXT:
+      case SpvCapabilityUniformTexelBufferArrayNonUniformIndexingEXT:
+      case SpvCapabilityStorageTexelBufferArrayNonUniformIndexingEXT:
+         spv_check_supported(descriptor_array_non_uniform_indexing, cap);
          break;
 
       case SpvCapabilityRuntimeDescriptorArrayEXT:
