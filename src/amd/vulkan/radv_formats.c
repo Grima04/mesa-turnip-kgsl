@@ -1094,6 +1094,7 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 	uint32_t maxMipLevels;
 	uint32_t maxArraySize;
 	VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+	const struct vk_format_description *desc = vk_format_description(info->format);
 
 	radv_physical_device_get_format_properties(physical_device, info->format,
 						   &format_props);
@@ -1135,6 +1136,12 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 		maxMipLevels = 12; /* log2(maxWidth) + 1 */
 		maxArraySize = 1;
 		break;
+	}
+
+	if (desc->layout == VK_FORMAT_LAYOUT_SUBSAMPLED) {
+		/* Might be able to support but the entire format support is
+		 * messy, so taking the lazy way out. */
+		maxArraySize = 1;
 	}
 
 	if (info->tiling == VK_IMAGE_TILING_OPTIMAL &&
