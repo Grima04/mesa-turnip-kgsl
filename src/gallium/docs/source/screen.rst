@@ -34,8 +34,7 @@ The integer capabilities:
 * ``PIPE_CAP_QUERY_TIME_ELAPSED``: Whether PIPE_QUERY_TIME_ELAPSED queries are available.
 * ``PIPE_CAP_TEXTURE_SWIZZLE``: Whether swizzling through sampler views is
   supported.
-* ``PIPE_CAP_MAX_TEXTURE_2D_LEVELS``: The maximum number of mipmap levels available
-  for a 2D texture.
+* ``PIPE_CAP_MAX_TEXTURE_2D_SIZE``: The maximum size of 2D (and 1D) textures.
 * ``PIPE_CAP_MAX_TEXTURE_3D_LEVELS``: The maximum number of mipmap levels available
   for a 3D texture.
 * ``PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS``: The maximum number of mipmap levels available

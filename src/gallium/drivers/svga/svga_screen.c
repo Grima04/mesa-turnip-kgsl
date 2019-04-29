@@ -221,18 +221,18 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 256;
 
-   case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+   case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       {
-         unsigned levels = SVGA_MAX_TEXTURE_LEVELS;
+         unsigned size = 1 << (SVGA_MAX_TEXTURE_LEVELS - 1);
          if (sws->get_cap(sws, SVGA3D_DEVCAP_MAX_TEXTURE_WIDTH, &result))
-            levels = MIN2(util_logbase2(result.u) + 1, levels);
+            size = MIN2(result.u, size);
          else
-            levels = 12 /* 2048x2048 */;
+            size = 2048;
          if (sws->get_cap(sws, SVGA3D_DEVCAP_MAX_TEXTURE_HEIGHT, &result))
-            levels = MIN2(util_logbase2(result.u) + 1, levels);
+            size = MIN2(result.u, size);
          else
-            levels = 12 /* 2048x2048 */;
-         return levels;
+            size = 2048;
+         return size;
       }
 
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
@@ -245,7 +245,7 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
        * No mechanism to query the host, and at least limited to 2048x2048 on
        * certain hardware.
        */
-      return MIN2(screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_2D_LEVELS),
+      return MIN2(util_last_bit(screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_2D_SIZE)),
                   12 /* 2048x2048 */);
 
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:

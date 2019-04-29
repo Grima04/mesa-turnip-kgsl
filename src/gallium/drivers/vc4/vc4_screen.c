@@ -171,7 +171,8 @@ vc4_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 return 1;
 
                 /* Texturing. */
-        case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+        case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+                return 2048;
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
                 return VC4_MAX_MIP_LEVELS;
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:

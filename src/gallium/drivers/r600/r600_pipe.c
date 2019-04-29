@@ -497,7 +497,11 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		return 2048;
 
 	/* Texturing. */
-	case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+	case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+		if (family >= CHIP_CEDAR)
+			return 16384;
+		else
+			return 8192;
 	case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
 		if (family >= CHIP_CEDAR)
 			return 15;

@@ -318,7 +318,8 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 255;
 
    /* Texturing. */
-   case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+   case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+      return screen->specs.max_texture_size;
    case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
    {
       int log2_max_tex_size = util_last_bit(screen->specs.max_texture_size);

@@ -202,7 +202,8 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
    case PIPE_CAP_MAX_RENDER_TARGETS:
       return BRW_MAX_DRAW_BUFFERS;
-   case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+   case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+      return 16384;
    case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
       return IRIS_MAX_MIPLEVELS; /* 16384x16384 */
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:

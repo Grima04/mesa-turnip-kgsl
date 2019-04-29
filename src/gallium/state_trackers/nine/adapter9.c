@@ -685,7 +685,7 @@ NineAdapter9_GetDeviceCaps( struct NineAdapter9 *This,
         D3DNPIPECAP(NPOT_TEXTURES, D3DPTEXTURECAPS_NONPOW2CONDITIONAL) |
         D3DNPIPECAP(NPOT_TEXTURES, D3DPTEXTURECAPS_CUBEMAP_POW2) |
         D3DNPIPECAP(NPOT_TEXTURES, D3DPTEXTURECAPS_VOLUMEMAP_POW2) |
-        D3DPIPECAP(MAX_TEXTURE_2D_LEVELS, D3DPTEXTURECAPS_MIPMAP) |
+        D3DPIPECAP(MAX_TEXTURE_2D_SIZE, D3DPTEXTURECAPS_MIPMAP) |
         D3DPIPECAP(MAX_TEXTURE_3D_LEVELS, D3DPTEXTURECAPS_MIPVOLUMEMAP) |
         D3DPIPECAP(MAX_TEXTURE_CUBE_LEVELS, D3DPTEXTURECAPS_MIPCUBEMAP);
 
@@ -726,8 +726,8 @@ NineAdapter9_GetDeviceCaps( struct NineAdapter9 *This,
         pCaps->LineCaps |= D3DLINECAPS_ANTIALIAS;
     }
 
-    pCaps->MaxTextureWidth =
-        1 << (screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_2D_LEVELS) - 1);
+    pCaps->MaxTextureWidth =screen->get_param(screen,
+                                              PIPE_CAP_MAX_TEXTURE_2D_SIZE);
     pCaps->MaxTextureHeight = pCaps->MaxTextureWidth;
     pCaps->MaxVolumeExtent =
         1 << (screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_3D_LEVELS) - 1);

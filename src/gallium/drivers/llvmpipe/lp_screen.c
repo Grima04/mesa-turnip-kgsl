@@ -140,8 +140,8 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
    case PIPE_CAP_MAX_TEXTURE_UPLOAD_MEMORY_BUDGET:
       return 0;
-   case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
-      return LP_MAX_TEXTURE_2D_LEVELS;
+   case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+      return 1 << (LP_MAX_TEXTURE_2D_LEVELS - 1);
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
       return LP_MAX_TEXTURE_3D_LEVELS;
    case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:

@@ -276,7 +276,8 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return 2048;
 
 	/* Texturing. */
-	case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+	case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+		return 16384;
 	case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
 		return 15; /* 16384 */
 	case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:

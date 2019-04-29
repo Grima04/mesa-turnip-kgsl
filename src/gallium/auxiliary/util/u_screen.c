@@ -51,7 +51,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_TEXTURE_SWIZZLE:
       return 0;
 
-   case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+   case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
    case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
       unreachable("driver must implement these.");

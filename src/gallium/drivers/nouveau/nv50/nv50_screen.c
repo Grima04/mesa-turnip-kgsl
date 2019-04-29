@@ -94,8 +94,8 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    switch (param) {
    /* non-boolean caps */
-   case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
-      return 14;
+   case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+      return 8192;
    case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
       return 12;
    case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:

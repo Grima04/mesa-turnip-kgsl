@@ -205,7 +205,11 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 return V3D_MAX_FS_INPUTS / 4;
 
                 /* Texturing. */
-        case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+        case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+                if (screen->devinfo.ver < 40)
+                        return 2048;
+                else
+                        return 4096;
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
                 if (screen->devinfo.ver < 40)

@@ -885,9 +885,7 @@ OSMesaGetIntegerv(GLint pname, GLint *value)
    case OSMESA_MAX_HEIGHT:
       {
          struct pipe_screen *screen = get_st_manager()->screen;
-         int maxLevels = screen->get_param(screen,
-                                           PIPE_CAP_MAX_TEXTURE_2D_LEVELS);
-         *value = 1 << (maxLevels - 1);
+         *value = screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_2D_SIZE);
       }
       return;
    default:

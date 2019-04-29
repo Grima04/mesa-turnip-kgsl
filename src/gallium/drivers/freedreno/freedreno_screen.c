@@ -371,7 +371,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return 0;
 
 	/* Texturing. */
-	case PIPE_CAP_MAX_TEXTURE_2D_LEVELS:
+	case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+		return 1 << (MAX_MIP_LEVELS - 1);
 	case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
 		return MAX_MIP_LEVELS;
 	case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
