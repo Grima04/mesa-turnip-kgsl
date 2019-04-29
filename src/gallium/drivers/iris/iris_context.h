@@ -504,6 +504,9 @@ struct iris_context {
 
       unsigned urb_size;
 
+      /** Is a GS or TES outputting points or lines? */
+      bool output_topology_is_points_or_lines;
+
       /* Track last VS URB entry size */
       unsigned last_vs_entry_size;
 
@@ -548,6 +551,7 @@ struct iris_context {
       bool primitive_restart;
       unsigned cut_index;
       enum pipe_prim_type prim_mode:8;
+      bool prim_is_points_or_lines;
       uint8_t vertices_per_patch;
 
       /** The last compute grid size */

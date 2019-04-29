@@ -1182,6 +1182,7 @@ struct iris_rasterizer_state {
    bool multisample;
    bool force_persample_interp;
    bool conservative_rasterization;
+   bool fill_mode_point_or_line;
    enum pipe_sprite_coord_mode sprite_coord_mode; /* PIPE_SPRITE_* */
    uint16_t sprite_coord_enable;
 };
@@ -1243,6 +1244,12 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    cso->poly_stipple_enable = state->poly_stipple_enable;
    cso->conservative_rasterization =
       state->conservative_raster_mode == PIPE_CONSERVATIVE_RASTER_POST_SNAP;
+
+   cso->fill_mode_point_or_line =
+      state->fill_front == PIPE_POLYGON_MODE_LINE ||
+      state->fill_front == PIPE_POLYGON_MODE_POINT ||
+      state->fill_back == PIPE_POLYGON_MODE_LINE ||
+      state->fill_back == PIPE_POLYGON_MODE_POINT;
 
    if (state->clip_plane_enable != 0)
       cso->num_clip_plane_consts = util_logbase2(state->clip_plane_enable) + 1;
@@ -1308,7 +1315,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
       cl.APIMode = state->clip_halfz ? APIMODE_D3D : APIMODE_OGL;
       cl.GuardbandClipTestEnable = true;
       cl.ClipEnable = true;
-      cl.ViewportXYClipTestEnable = state->point_tri_clip;
       cl.MinimumPointWidth = 0.125;
       cl.MaximumPointWidth = 255.875;
 
@@ -4770,11 +4776,19 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
       struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
+      bool gs_or_tes = ice->shaders.prog[MESA_SHADER_GEOMETRY] ||
+                       ice->shaders.prog[MESA_SHADER_TESS_EVAL];
+      bool points_or_lines = cso_rast->fill_mode_point_or_line ||
+         (gs_or_tes ? ice->shaders.output_topology_is_points_or_lines
+                    : ice->state.prim_is_points_or_lines);
+
       uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
       iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
          cl.StatisticsEnable = ice->state.statistics_counters_enabled;
          cl.ClipMode = cso_rast->rasterizer_discard ? CLIPMODE_REJECT_ALL
                                                     : CLIPMODE_NORMAL;
+         cl.ViewportXYClipTestEnable = !points_or_lines;
+
          if (wm_prog_data->barycentric_interp_modes &
              BRW_BARYCENTRIC_NONPERSPECTIVE_BITS)
             cl.NonPerspectiveBarycentricEnable = true;

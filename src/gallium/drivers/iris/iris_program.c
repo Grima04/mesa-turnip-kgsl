@@ -1241,6 +1241,33 @@ iris_update_compiled_shaders(struct iris_context *ice)
    if (dirty & IRIS_DIRTY_UNCOMPILED_GS)
       iris_update_compiled_gs(ice);
 
+   if (dirty & (IRIS_DIRTY_UNCOMPILED_GS | IRIS_DIRTY_UNCOMPILED_TES)) {
+      const struct iris_compiled_shader *gs =
+         ice->shaders.prog[MESA_SHADER_GEOMETRY];
+      const struct iris_compiled_shader *tes =
+         ice->shaders.prog[MESA_SHADER_TESS_EVAL];
+
+      bool points_or_lines = false;
+
+      if (gs) {
+         const struct brw_gs_prog_data *gs_prog_data = (void *) gs->prog_data;
+         points_or_lines =
+            gs_prog_data->output_topology == _3DPRIM_POINTLIST ||
+            gs_prog_data->output_topology == _3DPRIM_LINESTRIP;
+      } else if (tes) {
+         const struct brw_tes_prog_data *tes_data = (void *) tes->prog_data;
+         points_or_lines =
+            tes_data->output_topology == BRW_TESS_OUTPUT_TOPOLOGY_LINE ||
+            tes_data->output_topology == BRW_TESS_OUTPUT_TOPOLOGY_POINT;
+      }
+
+      if (ice->shaders.output_topology_is_points_or_lines != points_or_lines) {
+         /* Outbound to XY Clip enables */
+         ice->shaders.output_topology_is_points_or_lines = points_or_lines;
+         ice->state.dirty |= IRIS_DIRTY_CLIP;
+      }
+   }
+
    gl_shader_stage last_stage = last_vue_stage(ice);
    struct iris_compiled_shader *shader = ice->shaders.prog[last_stage];
    struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[last_stage];
@@ -1261,7 +1288,6 @@ iris_update_compiled_shaders(struct iris_context *ice)
 
    if (dirty & IRIS_DIRTY_UNCOMPILED_FS)
       iris_update_compiled_fs(ice);
-   // ...
 
    /* Changing shader interfaces may require a URB configuration. */
    if (!(dirty & IRIS_DIRTY_URB)) {
