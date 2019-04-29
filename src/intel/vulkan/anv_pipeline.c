@@ -141,6 +141,8 @@ anv_shader_compile_to_nir(struct anv_device *device,
       .caps = {
          .derivative_group = true,
          .descriptor_array_dynamic_indexing = true,
+         .descriptor_array_non_uniform_indexing = true,
+         .descriptor_indexing = true,
          .device_group = true,
          .draw_parameters = true,
          .float16 = pdevice->info.gen >= 8,
