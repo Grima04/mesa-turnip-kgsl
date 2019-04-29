@@ -116,7 +116,6 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
    case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER:
    case PIPE_CAP_DEPTH_CLIP_DISABLE:
-   case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
    case PIPE_CAP_TGSI_INSTANCEID:
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
    case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
@@ -185,6 +184,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_FS_FBFETCH:
    case PIPE_CAP_POST_DEPTH_COVERAGE:
    case PIPE_CAP_SHADER_STENCIL_EXPORT:
+   case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
       return devinfo->gen >= 9;
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       return 1;
