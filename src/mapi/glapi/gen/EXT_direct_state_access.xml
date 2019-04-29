@@ -313,6 +313,16 @@
       <param name="texture" type="GLuint" />
    </function>
 
+  <function name="EnableClientStateIndexedEXT" alias="EnableClientStateiEXT">
+      <param name="array" type="GLenum" />
+      <param name="index" type="GLuint" />
+   </function>
+
+  <function name="DisableClientStateIndexedEXT" alias="DisableClientStateiEXT">
+      <param name="array" type="GLenum" />
+      <param name="index" type="GLuint" />
+   </function>
+
    <!-- OpenGL 1.3 -->
 
    <function name="MatrixLoadTransposefEXT" offset="assign">
@@ -475,6 +485,16 @@
       <param name="attachment" type="GLenum" />
       <param name="pname" type="GLenum" />
       <param name="params" type="GLint *" />
+   </function>
+
+   <function name="EnableClientStateiEXT">
+      <param name="array" type="GLenum" />
+      <param name="index" type="GLuint" />
+   </function>
+
+   <function name="DisableClientStateiEXT">
+      <param name="array" type="GLenum" />
+      <param name="index" type="GLuint" />
    </function>
 </category>
 </OpenGLAPI>

@@ -1092,8 +1092,8 @@ const struct function common_desktop_functions_possible[] = {
    //{ "glMultiTexImage3DEXT", 12, -1 },
    //{ "glMultiTexSubImage3DEXT", 12, -1 },
    //{ "glCopyMultiTexSubImage3DEXT", 12, -1 },
-   //{ "glEnableClientStateIndexedEXT", 12, -1 },
-   //{ "glDisableClientStateIndexedEXT", 12, -1 },
+   { "glEnableClientStateIndexedEXT", 12, -1 },
+   { "glDisableClientStateIndexedEXT", 12, -1 },
    //{ "glGetPointerIndexedvEXT", 12, -1 },
    /* GL_EXT_direct_state_access - ARB_vertex_program */
    //{ "glNamedProgramStringEXT", 10, -1 },

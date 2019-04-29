@@ -1514,6 +1514,8 @@ offsets = {
     "NamedFramebufferTexture3DEXT": 1478,
     "NamedFramebufferRenderbufferEXT": 1479,
     "GetNamedFramebufferAttachmentParameterivEXT": 1480,
+    "EnableClientStateiEXT": 1481,
+    "DisableClientStateiEXT": 1482,
 
 }
 
