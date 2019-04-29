@@ -4380,14 +4380,18 @@ radv_initialise_color_surface(struct radv_device *device,
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		const struct vk_format_description *format_desc = vk_format_description(iview->image->vk_format);
+
 		unsigned mip0_depth = iview->image->type == VK_IMAGE_TYPE_3D ?
 		  (iview->extent.depth - 1) : (iview->image->info.array_size - 1);
+		unsigned width = iview->extent.width / (iview->plane_id ? format_desc->width_divisor : 1);
+		unsigned height = iview->extent.height / (iview->plane_id ? format_desc->height_divisor : 1);
 
 		cb->cb_color_view |= S_028C6C_MIP_LEVEL(iview->base_mip);
 		cb->cb_color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
 			S_028C74_RESOURCE_TYPE(surf->u.gfx9.resource_type);
-		cb->cb_color_attrib2 = S_028C68_MIP0_WIDTH(iview->extent.width - 1) |
-			S_028C68_MIP0_HEIGHT(iview->extent.height - 1) |
+		cb->cb_color_attrib2 = S_028C68_MIP0_WIDTH(width - 1) |
+			S_028C68_MIP0_HEIGHT(height - 1) |
 			S_028C68_MAX_MIP(iview->image->info.levels - 1);
 	}
 }
