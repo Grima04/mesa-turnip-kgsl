@@ -94,8 +94,9 @@ static bool ppir_lower_dot(ppir_block *block, ppir_node *node)
    dest->write_mask = u_bit_consecutive(0, num_components);
 
    ppir_node_foreach_pred_safe(node, dep) {
+      ppir_node *pred = dep->pred;
       ppir_node_remove_dep(dep);
-      ppir_node_add_dep(&mul->node, dep->pred);
+      ppir_node_add_dep(&mul->node, pred);
    }
    ppir_node_add_dep(node, &mul->node);
 
