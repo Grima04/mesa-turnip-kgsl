@@ -253,6 +253,7 @@ struct radv_shader_info {
 		uint8_t num_stream_output_components[4];
 		uint8_t output_streams[VARYING_SLOT_VAR31 + 1];
 		uint8_t max_stream;
+		bool writes_memory;
 		unsigned gsvs_vertex_size;
 		unsigned max_gsvs_emit_size;
 		unsigned vertices_in;

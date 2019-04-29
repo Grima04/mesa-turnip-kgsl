@@ -1761,13 +1761,17 @@ visit_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVMValueRef *addr
 				       "");
 
 	/* If this thread has already emitted the declared maximum number of
-	 * vertices, kill it: excessive vertex emissions are not supposed to
-	 * have any effect, and GS threads have no externally observable
-	 * effects other than emitting vertices.
+	 * vertices, don't emit any more: excessive vertex emissions are not
+	 * supposed to have any effect.
 	 */
 	can_emit = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, gs_next_vertex,
 				 LLVMConstInt(ctx->ac.i32, ctx->shader->info.gs.vertices_out, false), "");
-	ac_build_kill_if_false(&ctx->ac, can_emit);
+
+	bool use_kill = !ctx->shader_info->gs.writes_memory;
+	if (use_kill)
+		ac_build_kill_if_false(&ctx->ac, can_emit);
+	else
+		ac_build_ifcc(&ctx->ac, can_emit, 6505);
 
 	for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
 		unsigned output_usage_mask =
@@ -1814,6 +1818,9 @@ visit_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVMValueRef *addr
 	ac_build_sendmsg(&ctx->ac,
 			 AC_SENDMSG_GS_OP_EMIT | AC_SENDMSG_GS | (stream << 8),
 			 ctx->gs_wave_id);
+
+	if (!use_kill)
+		ac_build_endif(&ctx->ac, 6505);
 }
 
 static void
