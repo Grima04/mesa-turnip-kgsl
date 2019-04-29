@@ -88,6 +88,15 @@ out:
 static void
 fd_texture_barrier(struct pipe_context *pctx, unsigned flags)
 {
+	if (flags == PIPE_TEXTURE_BARRIER_FRAMEBUFFER) {
+		struct fd_context *ctx = fd_context(pctx);
+
+		if (ctx->framebuffer_barrier) {
+			ctx->framebuffer_barrier(ctx);
+			return;
+		}
+	}
+
 	/* On devices that could sample from GMEM we could possibly do better.
 	 * Or if we knew that we were doing GMEM bypass we could just emit a
 	 * cache flush, perhaps?  But we don't know if future draws would cause

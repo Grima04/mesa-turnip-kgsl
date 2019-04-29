@@ -352,6 +352,9 @@ struct fd_context {
 			unsigned dst_off, struct pipe_resource *src, unsigned src_off,
 			unsigned sizedwords);
 
+	/* handling for barriers: */
+	void (*framebuffer_barrier)(struct fd_context *ctx);
+
 	/*
 	 * Common pre-cooked VBO state (used for a3xx and later):
 	 */

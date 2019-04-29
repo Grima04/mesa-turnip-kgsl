@@ -1297,6 +1297,41 @@ fd6_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
 	}
 }
 
+/* this is *almost* the same as fd6_cache_flush().. which I guess
+ * could be re-worked to be something a bit more generic w/ param
+ * indicating what needs to be flushed..  although that would mean
+ * figuring out which events trigger what state to flush..
+ */
+static void
+fd6_framebuffer_barrier(struct fd_context *ctx)
+{
+	struct fd6_context *fd6_ctx = fd6_context(ctx);
+	struct fd_batch *batch = ctx->batch;
+	struct fd_ringbuffer *ring = batch->draw;
+	unsigned seqno;
+
+	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_AND_INV_EVENT, true);
+
+	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
+	OUT_RING(ring, 0x00000013);
+	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RING(ring, seqno);
+	OUT_RING(ring, 0xffffffff);
+	OUT_RING(ring, 0x00000010);
+
+	fd6_event_write(batch, ring, UNK_1D, true);
+	fd6_event_write(batch, ring, UNK_1C, true);
+
+	seqno = fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
+
+	fd6_event_write(batch, ring, 0x31, false);
+
+	OUT_PKT7(ring, CP_UNK_A6XX_14, 4);
+	OUT_RING(ring, 0x00000000);
+	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RING(ring, seqno);
+}
+
 void
 fd6_emit_init(struct pipe_context *pctx)
 {
@@ -1305,4 +1340,5 @@ fd6_emit_init(struct pipe_context *pctx)
 	ctx->emit_const_bo = fd6_emit_const_bo;
 	ctx->emit_ib = fd6_emit_ib;
 	ctx->mem_to_mem = fd6_mem_to_mem;
+	ctx->framebuffer_barrier = fd6_framebuffer_barrier;
 }
