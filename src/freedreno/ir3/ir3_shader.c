@@ -63,7 +63,7 @@ delete_variant(struct ir3_shader_variant *v)
  * the reg off.
  */
 static void
-fixup_regfootprint(struct ir3_shader_variant *v)
+fixup_regfootprint(struct ir3_shader_variant *v, uint32_t gpu_id)
 {
 	unsigned i;
 
@@ -83,14 +83,30 @@ fixup_regfootprint(struct ir3_shader_variant *v)
 
 		if (v->inputs[i].compmask) {
 			unsigned n = util_last_bit(v->inputs[i].compmask) - 1;
-			int32_t regid = (v->inputs[i].regid + n) >> 2;
-			v->info.max_reg = MAX2(v->info.max_reg, regid);
+			int32_t regid = v->inputs[i].regid + n;
+			if (v->inputs[i].half) {
+				if (gpu_id < 500) {
+					v->info.max_half_reg = MAX2(v->info.max_half_reg, regid >> 2);
+				} else {
+					v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
+				}
+			} else {
+				v->info.max_reg = MAX2(v->info.max_reg, regid >> 2);
+			}
 		}
 	}
 
 	for (i = 0; i < v->outputs_count; i++) {
-		int32_t regid = (v->outputs[i].regid + 3) >> 2;
-		v->info.max_reg = MAX2(v->info.max_reg, regid);
+		int32_t regid = v->outputs[i].regid + 3;
+		if (v->outputs[i].half) {
+			if (gpu_id < 500) {
+				v->info.max_half_reg = MAX2(v->info.max_half_reg, regid >> 2);
+			} else {
+				v->info.max_reg = MAX2(v->info.max_reg, regid >> 3);
+			}
+		} else {
+			v->info.max_reg = MAX2(v->info.max_reg, regid >> 2);
+		}
 	}
 }
 
@@ -117,7 +133,7 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id)
 	 */
 	v->constlen = MIN2(255, MAX2(v->constlen, v->info.max_const + 1));
 
-	fixup_regfootprint(v);
+	fixup_regfootprint(v, gpu_id);
 
 	return bin;
 }

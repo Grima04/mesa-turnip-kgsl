@@ -2954,6 +2954,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 			struct ir3_instruction *instr = ir->outputs[(i*4) + j];
 			if (instr) {
 				so->outputs[i].regid = instr->regs[0]->num;
+				so->outputs[i].half  = !!(instr->regs[0]->flags & IR3_REG_HALF);
 				break;
 			}
 		}
@@ -2962,14 +2963,21 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	/* Note that some or all channels of an input may be unused: */
 	for (i = 0; i < so->inputs_count; i++) {
 		unsigned j, reg = regid(63,0);
+		bool half = false;
 		for (j = 0; j < 4; j++) {
 			struct ir3_instruction *in = inputs[(i*4) + j];
 
 			if (in && !(in->flags & IR3_INSTR_UNUSED)) {
 				reg = in->regs[0]->num - j;
+				if (half) {
+					compile_assert(ctx, in->regs[0]->flags & IR3_REG_HALF);
+				} else {
+					half = !!(in->regs[0]->flags & IR3_REG_HALF);
+				}
 			}
 		}
 		so->inputs[i].regid = reg;
+		so->inputs[i].half  = half;
 	}
 
 	if (ctx->astc_srgb)

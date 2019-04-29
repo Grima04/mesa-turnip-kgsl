@@ -104,28 +104,28 @@ static uint32_t reg(struct ir3_register *reg, struct ir3_info *info,
 		if (reg->flags & IR3_REG_RELATIV) {
 			components = reg->size;
 			val.idummy10 = reg->array.offset;
-			max = (reg->array.offset + repeat + components - 1) >> 2;
+			max = (reg->array.offset + repeat + components - 1);
 		} else {
 			components = util_last_bit(reg->wrmask);
 			val.comp = reg->num & 0x3;
 			val.num  = reg->num >> 2;
-			max = (reg->num + repeat + components - 1) >> 2;
+			max = (reg->num + repeat + components - 1);
 		}
 
 		if (reg->flags & IR3_REG_CONST) {
-			info->max_const = MAX2(info->max_const, max);
+			info->max_const = MAX2(info->max_const, max >> 2);
 		} else if (val.num == 63) {
 			/* ignore writes to dummy register r63.x */
-		} else if (max < 48) {
+		} else if (max < regid(48, 0)) {
 			if (reg->flags & IR3_REG_HALF) {
 				if (info->gpu_id >= 600) {
 					/* starting w/ a6xx, half regs conflict with full regs: */
-					info->max_reg = MAX2(info->max_reg, (max+1)/2);
+					info->max_reg = MAX2(info->max_reg, max >> 3);
 				} else {
-					info->max_half_reg = MAX2(info->max_half_reg, max);
+					info->max_half_reg = MAX2(info->max_half_reg, max >> 2);
 				}
 			} else {
-				info->max_reg = MAX2(info->max_reg, max);
+				info->max_reg = MAX2(info->max_reg, max >> 2);
 			}
 		}
 	}

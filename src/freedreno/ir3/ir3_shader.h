@@ -390,6 +390,7 @@ struct ir3_shader_variant {
 	struct {
 		uint8_t slot;
 		uint8_t regid;
+		bool    half : 1;
 	} outputs[16 + 2];  /* +POSITION +PSIZE */
 	bool writes_pos, writes_smask, writes_psize;
 
@@ -413,6 +414,7 @@ struct ir3_shader_variant {
 		/* fragment shader specific: */
 		bool    bary       : 1;   /* fetched varying (vs one loaded into reg) */
 		bool    rasterflat : 1;   /* special handling for emit->rasterflat */
+		bool    half       : 1;
 		enum glsl_interp_mode interpolate;
 	} inputs[16 + 2];  /* +POSITION +FACE */
 
