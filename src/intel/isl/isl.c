@@ -1607,6 +1607,31 @@ isl_surf_get_hiz_surf(const struct isl_device *dev,
 {
    assert(ISL_DEV_GEN(dev) >= 5 && ISL_DEV_USE_SEPARATE_STENCIL(dev));
 
+   /* HiZ only works with Y-tiled depth buffers */
+   if (!isl_tiling_is_any_y(surf->tiling))
+      return false;
+
+   /* On SNB+, compressed depth buffers cannot be interleaved with stencil. */
+   switch (surf->format) {
+   case ISL_FORMAT_R24_UNORM_X8_TYPELESS:
+      if (isl_surf_usage_is_depth_and_stencil(surf->usage)) {
+         assert(ISL_DEV_GEN(dev) == 5);
+         unreachable("This should work, but is untested");
+      }
+      /* Fall through */
+   case ISL_FORMAT_R16_UNORM:
+   case ISL_FORMAT_R32_FLOAT:
+      break;
+   case ISL_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+      if (ISL_DEV_GEN(dev) == 5) {
+         assert(isl_surf_usage_is_depth_and_stencil(surf->usage));
+         unreachable("This should work, but is untested");
+      }
+      /* Fall through */
+   default:
+      return false;
+   }
+
    /* Multisampled depth is always interleaved */
    assert(surf->msaa_layout == ISL_MSAA_LAYOUT_NONE ||
           surf->msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED);
