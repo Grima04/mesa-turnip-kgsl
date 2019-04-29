@@ -1198,6 +1198,8 @@ vbo_save_NotifyBegin(struct gl_context *ctx, GLenum mode,
    struct vbo_save_context *save = &vbo_context(ctx)->save;
    const GLuint i = save->prim_count++;
 
+   ctx->Driver.CurrentSavePrimitive = mode;
+
    assert(i < save->prim_max);
    save->prims[i].mode = mode & VBO_SAVE_PRIM_MODE_MASK;
    save->prims[i].begin = 1;
