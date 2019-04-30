@@ -1278,7 +1278,20 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
 
 #ifndef BIFROST
                                 pandecode_prop("unk1 = 0x%" PRIx64, b->unk1);
-                                pandecode_replay_blend_equation(&b->blend_equation_1, "_1");
+
+                                /* Depending on unk1, we determine if there's a
+                                 * blend shader */
+
+                                if ((b->unk1 & 0xF) >= 0x2) {
+                                        blend_shader = true;
+                                        pandecode_replay_shader_address("blend_shader", b->blend_shader);
+                                } else {
+                                        pandecode_replay_blend_equation(&b->blend_equation_1, "_1");
+                                }
+
+                                /* This is always an equation, I think. If
+                                 * there's a shader, it just defaults to
+                                 * REPLACE (0x122) */
                                 pandecode_replay_blend_equation(&b->blend_equation_2, "_2");
 
                                 if (b->zero2) {

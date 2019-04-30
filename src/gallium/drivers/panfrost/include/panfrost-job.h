@@ -424,8 +424,10 @@ struct mali_blend_meta {
 
         u64 unk1;
 
-        /* For programmable blending, these turn into the blend_shader address */
-        struct mali_blend_equation blend_equation_1;
+        union {
+                struct mali_blend_equation blend_equation_1;
+                mali_ptr blend_shader;
+        };
 
         u64 zero2;
         struct mali_blend_equation blend_equation_2;
