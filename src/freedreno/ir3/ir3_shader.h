@@ -434,6 +434,12 @@ struct ir3_shader_variant {
 	/* number of samplers/textures (which are currently 1:1): */
 	int num_samp;
 
+	/* is there an implicit sampler to read framebuffer (FS only).. if
+	 * so the sampler-idx is 'num_samp - 1' (ie. it is appended after
+	 * the last "real" texture)
+	 */
+	bool fb_read;
+
 	/* do we have one or more SSBO instructions: */
 	bool has_ssbo;
 

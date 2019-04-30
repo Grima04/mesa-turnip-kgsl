@@ -216,6 +216,12 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 		 * and not again on any potential 2nd variant lowering pass:
 		 */
 		OPT_V(s, ir3_nir_apply_trig_workarounds);
+
+		/* This wouldn't hurt to run multiple times, but there is
+		 * no need to:
+		 */
+		if (shader->type == MESA_SHADER_FRAGMENT)
+			OPT_V(s, nir_lower_fb_read);
 	}
 
 	OPT_V(s, nir_lower_tex, &tex_options);

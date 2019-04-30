@@ -1756,12 +1756,9 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 		case 3:              opc = OPC_GATHER4A; break;
 		}
 		break;
+	case nir_texop_txf_ms_fb:
 	case nir_texop_txf_ms:   opc = OPC_ISAMM;    break;
-	case nir_texop_txs:
-	case nir_texop_query_levels:
-	case nir_texop_texture_samples:
-	case nir_texop_samples_identical:
-	case nir_texop_txf_ms_mcs:
+	default:
 		ir3_context_error(ctx, "Unhandled NIR tex type: %d\n", tex->op);
 		return;
 	}
@@ -1838,7 +1835,7 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	/* NOTE a3xx (and possibly a4xx?) might be different, using isaml
 	 * with scaled x coord according to requested sample:
 	 */
-	if (tex->op == nir_texop_txf_ms) {
+	if (opc == OPC_ISAMM) {
 		if (ctx->compiler->txf_ms_with_isaml) {
 			/* the samples are laid out in x dimension as
 			 *     0 1 2 3
@@ -1897,7 +1894,24 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	if (opc == OPC_GETLOD)
 		type = TYPE_U32;
 
-	struct ir3_instruction *samp_tex = get_tex_samp_tex_src(ctx, tex);
+	struct ir3_instruction *samp_tex;
+
+	if (tex->op == nir_texop_txf_ms_fb) {
+		/* only expect a single txf_ms_fb per shader: */
+		compile_assert(ctx, !ctx->so->fb_read);
+		compile_assert(ctx, ctx->so->type == MESA_SHADER_FRAGMENT);
+
+		ctx->so->fb_read = true;
+		samp_tex = ir3_create_collect(ctx, (struct ir3_instruction*[]){
+			create_immed_typed(ctx->block, ctx->so->num_samp, TYPE_U16),
+			create_immed_typed(ctx->block, ctx->so->num_samp, TYPE_U16),
+		}, 2);
+
+		ctx->so->num_samp++;
+	} else {
+		samp_tex = get_tex_samp_tex_src(ctx, tex);
+	}
+
 	struct ir3_instruction *col0 = ir3_create_collect(ctx, src0, nsrc0);
 	struct ir3_instruction *col1 = ir3_create_collect(ctx, src1, nsrc1);
 
