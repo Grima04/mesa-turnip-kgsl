@@ -260,10 +260,21 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
                         mask = alu_field->mask >> 4;
                 }
         } else {
+                /* For full 32-bit, every other bit is duplicated, so we only
+                 * pick every other to find the effective mask */
+
                 mask = alu_field->mask & 1;
                 mask |= (alu_field->mask & 4) >> 1;
                 mask |= (alu_field->mask & 16) >> 2;
                 mask |= (alu_field->mask & 64) >> 3;
+
+                /* ... but verify! */
+
+                unsigned checked = alu_field->mask & 0x55;
+                unsigned opposite = alu_field->mask & 0xAA;
+
+                if ((checked << 1) != opposite)
+                        printf("/* %X */ ", alu_field->mask);
         }
 
         out_half = half;
