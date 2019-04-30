@@ -80,6 +80,9 @@ static int msm_pipe_get_param(struct fd_pipe *pipe,
 	case FD_GMEM_SIZE:
 		*value = msm_pipe->gmem;
 		return 0;
+	case FD_GMEM_BASE:
+		*value = msm_pipe->gmem_base;
+		return 0;
 	case FD_CHIP_ID:
 		*value = msm_pipe->chip_id;
 		return 0;
@@ -226,6 +229,9 @@ struct fd_pipe * msm_pipe_new(struct fd_device *dev,
 	msm_pipe->gpu_id = get_param(pipe, MSM_PARAM_GPU_ID);
 	msm_pipe->gmem   = get_param(pipe, MSM_PARAM_GMEM_SIZE);
 	msm_pipe->chip_id = get_param(pipe, MSM_PARAM_CHIP_ID);
+
+	if (fd_device_version(pipe->dev) >= FD_VERSION_GMEM_BASE)
+		msm_pipe->gmem_base = get_param(pipe, MSM_PARAM_GMEM_BASE);
 
 	if (! msm_pipe->gpu_id)
 		goto fail;
