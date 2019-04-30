@@ -570,6 +570,69 @@
       <param name="height" type="GLsizei" />
    </function>
 
+   <function name="MultiTexGendEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLdouble" />
+   </function>
+
+   <function name="MultiTexGendvEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="const GLdouble*" />
+   </function>
+
+   <function name="MultiTexGenfEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLfloat" />
+   </function>
+
+   <function name="MultiTexGenfvEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="const GLfloat *" />
+   </function>
+
+   <function name="MultiTexGeniEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLint" />
+   </function>
+
+   <function name="MultiTexGenivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="const GLint *" />
+   </function>
+
+   <function name="GetMultiTexGendvEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLdouble *" />
+   </function>
+
+   <function name="GetMultiTexGenfvEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLfloat *" />
+   </function>
+
+   <function name="GetMultiTexGenivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="coord" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLint *" />
+   </function>
+
    <!-- OpenGL 1.3 -->
 
    <function name="MatrixLoadTransposefEXT" offset="assign">

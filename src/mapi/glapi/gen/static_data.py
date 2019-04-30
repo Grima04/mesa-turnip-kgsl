@@ -1541,6 +1541,15 @@ offsets = {
     "CopyMultiTexSubImage1DEXT": 1505,
     "CopyMultiTexSubImage2DEXT": 1506,
     "CopyMultiTexSubImage3DEXT": 1507,
+    "MultiTexGendEXT": 1508,
+    "MultiTexGendvEXT": 1509,
+    "MultiTexGenfEXT": 1510,
+    "MultiTexGenfvEXT": 1511,
+    "MultiTexGeniEXT": 1512,
+    "MultiTexGenivEXT": 1513,
+    "GetMultiTexGendvEXT": 1514,
+    "GetMultiTexGenfvEXT": 1515,
+    "GetMultiTexGenivEXT": 1516,
 }
 
 functions = [
