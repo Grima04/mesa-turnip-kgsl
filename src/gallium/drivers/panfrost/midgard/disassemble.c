@@ -107,7 +107,7 @@ print_reg(unsigned reg, unsigned bits)
 static char *outmod_names[4] = {
         "",
         ".pos",
-        "",
+        ".int",
         ".sat"
 };
 
