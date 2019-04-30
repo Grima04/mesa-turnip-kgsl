@@ -94,7 +94,7 @@ typedef enum {
         midgard_alu_op_iornot     = 0x75, /* (a | ~b) */
         midgard_alu_op_ixor       = 0x76,
         midgard_alu_op_inxor      = 0x77, /* ~(a & b) */
-        midgard_alu_op_ilzcnt     = 0x78, /* Number of zeroes on left. 31 - ilzcnt(x) = findMSB(x) */
+        midgard_alu_op_iclz       = 0x78, /* Number of zeroes on left */
         midgard_alu_op_ibitcount8 = 0x7A, /* Counts bits in 8-bit increments */
         midgard_alu_op_imov       = 0x7B,
         midgard_alu_op_iabs       = 0x7C,
