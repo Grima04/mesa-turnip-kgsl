@@ -1531,6 +1531,9 @@ offsets = {
     "MultiTexImage1DEXT": 1495,
     "MultiTexImage2DEXT": 1496,
     "MultiTexImage3DEXT": 1497,
+    "MultiTexSubImage1DEXT": 1498,
+    "MultiTexSubImage2DEXT": 1499,
+    "MultiTexSubImage3DEXT": 1500,
 }
 
 functions = [

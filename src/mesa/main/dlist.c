@@ -587,6 +587,9 @@ typedef enum
    OPCODE_MULTITEX_IMAGE1D,
    OPCODE_MULTITEX_IMAGE2D,
    OPCODE_MULTITEX_IMAGE3D,
+   OPCODE_MULTITEX_SUB_IMAGE1D,
+   OPCODE_MULTITEX_SUB_IMAGE2D,
+   OPCODE_MULTITEX_SUB_IMAGE3D,
    OPCODE_MULTITEXENV,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D,
 
@@ -1236,13 +1239,16 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             free(get_pointer(&n[11]));
             break;
          case OPCODE_TEXTURE_SUB_IMAGE1D:
+         case OPCODE_MULTITEX_SUB_IMAGE1D:
             free(get_pointer(&n[8]));
             break;
          case OPCODE_TEXTURE_SUB_IMAGE2D:
+         case OPCODE_MULTITEX_SUB_IMAGE2D:
          case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D:
             free(get_pointer(&n[10]));
             break;
          case OPCODE_TEXTURE_SUB_IMAGE3D:
+         case OPCODE_MULTITEX_SUB_IMAGE3D:
             free(get_pointer(&n[12]));
             break;
          case OPCODE_CONTINUE:
@@ -10115,6 +10121,105 @@ save_MultiTexImage3DEXT(GLenum texunit, GLenum target,
 }
 
 
+static void GLAPIENTRY
+save_MultiTexSubImage1DEXT(GLenum texunit, GLenum target, GLint level, GLint xoffset,
+                   GLsizei width, GLenum format, GLenum type,
+                   const GLvoid * pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_MULTITEX_SUB_IMAGE1D, 7 + POINTER_DWORDS);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = (GLint) width;
+      n[6].e = format;
+      n[7].e = type;
+      save_pointer(&n[8],
+                   unpack_image(ctx, 1, width, 1, 1, format, type,
+                                pixels, &ctx->Unpack));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexSubImage1DEXT(ctx->Exec, (texunit, target, level, xoffset, width,
+                                            format, type, pixels));
+   }
+}
+
+
+static void GLAPIENTRY
+save_MultiTexSubImage2DEXT(GLenum texunit, GLenum target, GLint level,
+                          GLint xoffset, GLint yoffset,
+                          GLsizei width, GLsizei height,
+                          GLenum format, GLenum type, const GLvoid * pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_MULTITEX_SUB_IMAGE2D, 9 + POINTER_DWORDS);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = yoffset;
+      n[6].i = (GLint) width;
+      n[7].i = (GLint) height;
+      n[8].e = format;
+      n[9].e = type;
+      save_pointer(&n[10],
+                   unpack_image(ctx, 2, width, height, 1, format, type,
+                                pixels, &ctx->Unpack));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexSubImage2DEXT(ctx->Exec, (texunit, target, level, xoffset, yoffset,
+                                            width, height, format, type, pixels));
+   }
+}
+
+
+static void GLAPIENTRY
+save_MultiTexSubImage3DEXT(GLenum texunit, GLenum target, GLint level,
+                          GLint xoffset, GLint yoffset, GLint zoffset,
+                          GLsizei width, GLsizei height, GLsizei depth,
+                          GLenum format, GLenum type, const GLvoid * pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_MULTITEX_SUB_IMAGE3D, 11 + POINTER_DWORDS);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = yoffset;
+      n[6].i = zoffset;
+      n[7].i = (GLint) width;
+      n[8].i = (GLint) height;
+      n[9].i = (GLint) depth;
+      n[10].e = format;
+      n[11].e = type;
+      save_pointer(&n[12],
+                   unpack_image(ctx, 3, width, height, depth, format, type,
+                                pixels, &ctx->Unpack));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexSubImage3DEXT(ctx->Exec, (texunit, target, level,
+                                            xoffset, yoffset, zoffset,
+                                            width, height, depth, format, type,
+                                            pixels));
+   }
+}
+
 
 static void GLAPIENTRY
 save_MultiTexEnvfvEXT(GLenum texunit, GLenum target, GLenum pname, const GLfloat *params)
@@ -11984,6 +12089,39 @@ execute_list(struct gl_context *ctx, GLuint list)
                ctx->Unpack = save;      /* restore */
             }
             break;
+         case OPCODE_MULTITEX_SUB_IMAGE1D:
+            {
+               const struct gl_pixelstore_attrib save = ctx->Unpack;
+               ctx->Unpack = ctx->DefaultPacking;
+               CALL_MultiTexSubImage1DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                     n[4].i, n[5].i, n[6].e,
+                                                     n[7].e, get_pointer(&n[8])));
+               ctx->Unpack = save;      /* restore */
+            }
+            break;
+         case OPCODE_MULTITEX_SUB_IMAGE2D:
+            {
+               const struct gl_pixelstore_attrib save = ctx->Unpack;
+               ctx->Unpack = ctx->DefaultPacking;
+               CALL_MultiTexSubImage2DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                     n[4].i, n[5].i, n[6].e,
+                                                     n[7].i, n[8].e, n[9].e,
+                                                     get_pointer(&n[10])));
+               ctx->Unpack = save;      /* restore */
+            }
+            break;
+         case OPCODE_MULTITEX_SUB_IMAGE3D:
+            {
+               const struct gl_pixelstore_attrib save = ctx->Unpack;
+               ctx->Unpack = ctx->DefaultPacking;
+               CALL_MultiTexSubImage3DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                     n[4].i, n[5].i, n[6].i,
+                                                     n[7].i, n[8].i, n[9].i,
+                                                     n[10].e, n[11].e,
+                                                     get_pointer(&n[12])));
+               ctx->Unpack = save;      /* restore */
+            }
+            break;
          case OPCODE_MULTITEXENV:
             {
                GLfloat params[4];
@@ -13015,6 +13153,9 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_MultiTexImage1DEXT(table, save_MultiTexImage1DEXT);
    SET_MultiTexImage2DEXT(table, save_MultiTexImage2DEXT);
    SET_MultiTexImage3DEXT(table, save_MultiTexImage3DEXT);
+   SET_MultiTexSubImage1DEXT(table, save_MultiTexSubImage1DEXT);
+   SET_MultiTexSubImage2DEXT(table, save_MultiTexSubImage2DEXT);
+   SET_MultiTexSubImage3DEXT(table, save_MultiTexSubImage3DEXT);
    SET_MultiTexEnvfEXT(table, save_MultiTexEnvfEXT);
    SET_MultiTexEnvfvEXT(table, save_MultiTexEnvfvEXT);
    SET_MultiTexEnviEXT(table, save_MultiTexEnviEXT);

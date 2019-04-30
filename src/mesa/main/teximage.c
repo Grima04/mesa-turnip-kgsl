@@ -3815,6 +3815,28 @@ _mesa_TextureSubImage1DEXT(GLuint texture, GLenum target, GLint level,
 
 
 void GLAPIENTRY
+_mesa_MultiTexSubImage1DEXT(GLenum texunit, GLenum target, GLint level,
+                            GLint xoffset, GLsizei width,
+                            GLenum format, GLenum type,
+                            const GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object *texObj;
+   struct gl_texture_image *texImage;
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   "glMultiTexImage1DEXT");
+   texImage = _mesa_select_tex_image(texObj, target, level);
+
+   texture_sub_image(ctx, 1, texObj, texImage, target, level,
+                     xoffset, 0, 0, width, 1, 1,
+                     format, type, pixels);
+}
+
+
+void GLAPIENTRY
 _mesa_TextureSubImage1D(GLuint texture, GLint level,
                         GLint xoffset, GLsizei width,
                         GLenum format, GLenum type,
@@ -3854,6 +3876,28 @@ _mesa_TextureSubImage2DEXT(GLuint texture, GLenum target, GLint level,
 
 
 void GLAPIENTRY
+_mesa_MultiTexSubImage2DEXT(GLenum texunit, GLenum target, GLint level,
+                            GLint xoffset, GLint yoffset, GLsizei width,
+                            GLsizei height, GLenum format, GLenum type,
+                            const GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object *texObj;
+   struct gl_texture_image *texImage;
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   "glMultiTexImage2DEXT");
+   texImage = _mesa_select_tex_image(texObj, target, level);
+
+   texture_sub_image(ctx, 2, texObj, texImage, target, level,
+                     xoffset, yoffset, 0, width, height, 1,
+                     format, type, pixels);
+}
+
+
+void GLAPIENTRY
 _mesa_TextureSubImage2D(GLuint texture, GLint level,
                         GLint xoffset, GLint yoffset,
                         GLsizei width, GLsizei height,
@@ -3879,6 +3923,7 @@ _mesa_TextureSubImage3D_no_error(GLuint texture, GLint level, GLint xoffset,
                             pixels, "glTextureSubImage3D", false);
 }
 
+
 void GLAPIENTRY
 _mesa_TextureSubImage3DEXT(GLuint texture, GLenum target, GLint level,
                            GLint xoffset, GLint yoffset, GLint zoffset,
@@ -3890,6 +3935,29 @@ _mesa_TextureSubImage3DEXT(GLuint texture, GLenum target, GLint level,
                          zoffset, width, height, depth, format, type,
                          pixels, "glTextureSubImage3DEXT", true);
 }
+
+
+void GLAPIENTRY
+_mesa_MultiTexSubImage3DEXT(GLenum texunit, GLenum target, GLint level,
+                           GLint xoffset, GLint yoffset, GLint zoffset,
+                           GLsizei width, GLsizei height, GLsizei depth,
+                           GLenum format, GLenum type, const GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object *texObj;
+   struct gl_texture_image *texImage;
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   "glMultiTexImage3DEXT");
+   texImage = _mesa_select_tex_image(texObj, target, level);
+
+   texture_sub_image(ctx, 3, texObj, texImage, target, level,
+                     xoffset, yoffset, zoffset, width, height, depth,
+                     format, type, pixels);
+}
+
 
 void GLAPIENTRY
 _mesa_TextureSubImage3D(GLuint texture, GLint level,
