@@ -298,27 +298,30 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
 
         out_half = half;
 
-        if (alu_field->dest_override != midgard_dest_override_none) {
-                if (out_half)
-                        printf("/* half */ ");
+        /* First, print the destination */
+        {
+                int out_reg = reg_info->out_reg;
+                unsigned bits = 32;
 
-                out_half = true;
+                if (alu_field->dest_override != midgard_dest_override_none) {
+                        printf("/* do%d */ ", alu_field->dest_override);
+                }
 
-                if (alu_field->dest_override == midgard_dest_override_lower)
-                        out_high = false;
-                else if (alu_field->dest_override == midgard_dest_override_upper)
-                        out_high = true;
-                else
-                        assert(0);
+                if (alu_field->reg_mode == midgard_reg_mode_16) {
+                        bits = 16;
+                        out_reg *= 2;
+                        out_reg += out_high;
+                } else if (alu_field->reg_mode == midgard_reg_mode_8) {
+                        bits = 8;
+                        out_reg *= 4;
+                        out_reg += out_high;
+                } else if (alu_field->reg_mode == midgard_reg_mode_64) {
+                        bits = 64;
+                        /* TODO */
+                }
+
+                print_reg(out_reg, bits);
         }
-
-        if (out_half) {
-                if (out_high)
-                        print_reg(2 * reg_info->out_reg + 1, 16);
-                else
-                        print_reg(2 * reg_info->out_reg, 16);
-        } else
-                print_reg(reg_info->out_reg, 32);
 
         if (mask != 0xF) {
                 unsigned i;
