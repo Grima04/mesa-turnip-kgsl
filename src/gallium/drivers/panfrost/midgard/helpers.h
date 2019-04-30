@@ -264,6 +264,10 @@ static struct {
 static bool
 midgard_is_integer_op(int op)
 {
-        char prefix = alu_opcode_props[op].name[0];
-        return (prefix == 'i') || (prefix == 'u');
+        const char *name = alu_opcode_props[op].name;
+
+        if (!name)
+                return false;
+
+        return (name[0] == 'i') || (name[0] == 'u');
 }
