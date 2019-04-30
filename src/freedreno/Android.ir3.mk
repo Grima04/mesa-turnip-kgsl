@@ -1,7 +1,6 @@
 # Mesa 3-D graphics library
 #
-# Copyright (C) 2010-2011 Chia-I Wu <olvaffe@gmail.com>
-# Copyright (C) 2010-2011 LunarG Inc.
+# Copyright (C)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -21,15 +20,32 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-# src/gallium/Android.common.mk
+# Android.mk for libfreedreno_ir3.a
 
-LOCAL_C_INCLUDES += \
-	$(GALLIUM_TOP)/include \
-	$(GALLIUM_TOP)/auxiliary \
-	$(GALLIUM_TOP)/winsys \
-	$(GALLIUM_TOP)/drivers \
-	$(MESA_TOP)/src/freedreno \
-	$(MESA_TOP)/src/freedreno/ir3 \
-	$(MESA_TOP)/src/freedreno/registers
+# ---------------------------------------
+# Build libfreedreno_ir3
+# ---------------------------------------
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	$(ir3_SOURCES)
+
+LOCAL_C_INCLUDES := \
+	$(MESA_TOP)/src/compiler/nir \
+	$(MESA_TOP)/src/gallium/include \
+	$(MESA_TOP)/src/gallium/auxiliary \
+	$(MESA_TOP)/prebuilt-intermediates/nir \
+
+# We need libmesa_nir to get NIR's generated include directories.
+LOCAL_STATIC_LIBRARIES := \
+	libmesa_nir
+
+LOCAL_MODULE := libfreedreno_ir3
+
+LOCAL_GENERATED_SOURCES := \
+	$(MESA_GEN_GLSL_H) \
+	$(MESA_GEN_NIR_H)
 
 include $(MESA_COMMON_MK)
+include $(BUILD_STATIC_LIBRARY)

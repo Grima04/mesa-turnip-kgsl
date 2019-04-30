@@ -1,7 +1,6 @@
 # Mesa 3-D graphics library
 #
-# Copyright (C) 2010-2011 Chia-I Wu <olvaffe@gmail.com>
-# Copyright (C) 2010-2011 LunarG Inc.
+# Copyright (C)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -21,15 +20,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-# src/gallium/Android.common.mk
+# Android.mk for libfreedreno_*
 
-LOCAL_C_INCLUDES += \
-	$(GALLIUM_TOP)/include \
-	$(GALLIUM_TOP)/auxiliary \
-	$(GALLIUM_TOP)/winsys \
-	$(GALLIUM_TOP)/drivers \
-	$(MESA_TOP)/src/freedreno \
-	$(MESA_TOP)/src/freedreno/ir3 \
-	$(MESA_TOP)/src/freedreno/registers
+LOCAL_PATH := $(call my-dir)
 
-include $(MESA_COMMON_MK)
+include $(LOCAL_PATH)/Makefile.sources
+include $(MESA_TOP)/src/gallium/drivers/freedreno/Android.gen.mk
+include $(LOCAL_PATH)/Android.drm.mk
+include $(LOCAL_PATH)/Android.ir3.mk
