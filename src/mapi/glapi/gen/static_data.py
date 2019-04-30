@@ -1536,6 +1536,11 @@ offsets = {
     "MultiTexSubImage3DEXT": 1500,
     "GetMultiTexParameterivEXT": 1501,
     "GetMultiTexParameterfvEXT": 1502,
+    "CopyMultiTexImage1DEXT": 1503,
+    "CopyMultiTexImage2DEXT": 1504,
+    "CopyMultiTexSubImage1DEXT": 1505,
+    "CopyMultiTexSubImage2DEXT": 1506,
+    "CopyMultiTexSubImage3DEXT": 1507,
 }
 
 functions = [

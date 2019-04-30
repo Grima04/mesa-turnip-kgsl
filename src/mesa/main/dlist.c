@@ -590,6 +590,11 @@ typedef enum
    OPCODE_MULTITEX_SUB_IMAGE1D,
    OPCODE_MULTITEX_SUB_IMAGE2D,
    OPCODE_MULTITEX_SUB_IMAGE3D,
+   OPCODE_COPY_MULTITEX_IMAGE1D,
+   OPCODE_COPY_MULTITEX_IMAGE2D,
+   OPCODE_COPY_MULTITEX_SUB_IMAGE1D,
+   OPCODE_COPY_MULTITEX_SUB_IMAGE2D,
+   OPCODE_COPY_MULTITEX_SUB_IMAGE3D,
    OPCODE_MULTITEXENV,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D,
 
@@ -10222,6 +10227,143 @@ save_MultiTexSubImage3DEXT(GLenum texunit, GLenum target, GLint level,
 
 
 static void GLAPIENTRY
+save_CopyMultiTexImage1DEXT(GLenum texunit, GLenum target, GLint level,
+                           GLenum internalformat, GLint x, GLint y,
+                           GLsizei width, GLint border)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_COPY_MULTITEX_IMAGE1D, 8);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].e = internalformat;
+      n[5].i = x;
+      n[6].i = y;
+      n[7].i = width;
+      n[8].i = border;
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CopyMultiTexImage1DEXT(ctx->Exec, (texunit, target, level,
+                                             internalformat, x, y,
+                                             width, border));
+   }
+}
+
+
+static void GLAPIENTRY
+save_CopyMultiTexImage2DEXT(GLenum texunit, GLenum target, GLint level,
+                           GLenum internalformat,
+                           GLint x, GLint y, GLsizei width,
+                           GLsizei height, GLint border)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_COPY_MULTITEX_IMAGE2D, 9);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].e = internalformat;
+      n[5].i = x;
+      n[6].i = y;
+      n[7].i = width;
+      n[8].i = height;
+      n[9].i = border;
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CopyMultiTexImage2DEXT(ctx->Exec, (texunit, target, level,
+                                             internalformat, x, y,
+                                             width, height, border));
+   }
+}
+
+
+static void GLAPIENTRY
+save_CopyMultiTexSubImage1DEXT(GLenum texunit, GLenum target, GLint level,
+                              GLint xoffset, GLint x, GLint y, GLsizei width)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_COPY_MULTITEX_SUB_IMAGE1D, 7);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = x;
+      n[6].i = y;
+      n[7].i = width;
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CopyMultiTexSubImage1DEXT(ctx->Exec,
+                             (texunit, target, level, xoffset, x, y, width));
+   }
+}
+
+
+static void GLAPIENTRY
+save_CopyMultiTexSubImage2DEXT(GLenum texunit, GLenum target, GLint level,
+                              GLint xoffset, GLint yoffset,
+                              GLint x, GLint y, GLsizei width, GLint height)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_COPY_MULTITEX_SUB_IMAGE2D, 9);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = yoffset;
+      n[6].i = x;
+      n[7].i = y;
+      n[8].i = width;
+      n[9].i = height;
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CopyMultiTexSubImage2DEXT(ctx->Exec, (texunit, target, level,
+                                                xoffset, yoffset,
+                                                x, y, width, height));
+   }
+}
+
+
+static void GLAPIENTRY
+save_CopyMultiTexSubImage3DEXT(GLenum texunit, GLenum target, GLint level,
+                              GLint xoffset, GLint yoffset, GLint zoffset,
+                              GLint x, GLint y, GLsizei width, GLint height)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_COPY_MULTITEX_SUB_IMAGE3D, 10);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = yoffset;
+      n[6].i = zoffset;
+      n[7].i = x;
+      n[8].i = y;
+      n[9].i = width;
+      n[10].i = height;
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CopyMultiTexSubImage3DEXT(ctx->Exec, (texunit, target, level,
+                                                xoffset, yoffset, zoffset,
+                                                x, y, width, height));
+   }
+}
+
+
+static void GLAPIENTRY
 save_MultiTexEnvfvEXT(GLenum texunit, GLenum target, GLenum pname, const GLfloat *params)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -12122,6 +12264,32 @@ execute_list(struct gl_context *ctx, GLuint list)
                ctx->Unpack = save;      /* restore */
             }
             break;
+         case OPCODE_COPY_MULTITEX_IMAGE1D:
+            CALL_CopyMultiTexImage1DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                   n[4].e, n[5].i, n[6].i,
+                                                   n[7].i, n[8].i));
+            break;
+         case OPCODE_COPY_MULTITEX_IMAGE2D:
+            CALL_CopyMultiTexImage2DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                   n[4].e, n[5].i, n[6].i,
+                                                   n[7].i, n[8].i, n[9].i));
+            break;
+         case OPCODE_COPY_MULTITEX_SUB_IMAGE1D:
+            CALL_CopyMultiTexSubImage1DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                      n[4].i, n[5].i, n[6].i,
+                                                      n[7].i));
+            break;
+         case OPCODE_COPY_MULTITEX_SUB_IMAGE2D:
+            CALL_CopyMultiTexSubImage2DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                      n[4].i, n[5].i, n[6].i,
+                                                      n[7].i, n[8].i, n[9].i));
+            break;
+         case OPCODE_COPY_MULTITEX_SUB_IMAGE3D:
+            CALL_CopyMultiTexSubImage3DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                      n[4].i, n[5].i, n[6].i,
+                                                      n[7].i, n[8].i, n[9].i,
+                                                      n[10].i));
+            break;
          case OPCODE_MULTITEXENV:
             {
                GLfloat params[4];
@@ -13156,6 +13324,11 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_MultiTexSubImage1DEXT(table, save_MultiTexSubImage1DEXT);
    SET_MultiTexSubImage2DEXT(table, save_MultiTexSubImage2DEXT);
    SET_MultiTexSubImage3DEXT(table, save_MultiTexSubImage3DEXT);
+   SET_CopyMultiTexImage1DEXT(table, save_CopyMultiTexImage1DEXT);
+   SET_CopyMultiTexImage2DEXT(table, save_CopyMultiTexImage2DEXT);
+   SET_CopyMultiTexSubImage1DEXT(table, save_CopyMultiTexSubImage1DEXT);
+   SET_CopyMultiTexSubImage2DEXT(table, save_CopyMultiTexSubImage2DEXT);
+   SET_CopyMultiTexSubImage3DEXT(table, save_CopyMultiTexSubImage3DEXT);
    SET_MultiTexEnvfEXT(table, save_MultiTexEnvfEXT);
    SET_MultiTexEnvfvEXT(table, save_MultiTexEnvfvEXT);
    SET_MultiTexEnviEXT(table, save_MultiTexEnviEXT);
