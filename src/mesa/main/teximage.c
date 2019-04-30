@@ -3211,6 +3211,24 @@ _mesa_TextureImage1DEXT(GLuint texture, GLenum target, GLint level,
 }
 
 void GLAPIENTRY
+_mesa_MultiTexImage1DEXT(GLenum texunit, GLenum target, GLint level,
+                         GLint internalFormat, GLsizei width, GLint border,
+                         GLenum format, GLenum type, const GLvoid *pixels )
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glMultiTexImage1DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_FALSE, 1, texObj, target, level, internalFormat, width, 1, 1,
+                border, format, type, 0, pixels, false);
+}
+
+void GLAPIENTRY
 _mesa_TexImage2D( GLenum target, GLint level, GLint internalFormat,
                   GLsizei width, GLsizei height, GLint border,
                   GLenum format, GLenum type,
@@ -3236,6 +3254,25 @@ _mesa_TextureImage2DEXT(GLuint texture, GLenum target, GLint level,
       return;
    teximage(ctx, GL_FALSE, 2, texObj, target, level, internalFormat,
             width, height, 1, border, format, type, 0, pixels, false);
+}
+
+void GLAPIENTRY
+_mesa_MultiTexImage2DEXT(GLenum texunit, GLenum target, GLint level,
+                         GLint internalFormat, GLsizei width, GLsizei height,
+                         GLint border,
+                         GLenum format, GLenum type, const GLvoid *pixels )
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glMultiTexImage2DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_FALSE, 2, texObj, target, level, internalFormat, width, height, 1,
+                border, format, type, 0, pixels, false);
 }
 
 /*
@@ -3268,6 +3305,26 @@ _mesa_TextureImage3DEXT(GLuint texture, GLenum target, GLint level,
       return;
    teximage(ctx, GL_FALSE, 3, texObj, target, level, internalFormat,
             width, height, depth, border, format, type, 0, pixels, false);
+}
+
+
+void GLAPIENTRY
+_mesa_MultiTexImage3DEXT(GLenum texunit, GLenum target, GLint level,
+                         GLint internalFormat, GLsizei width, GLsizei height,
+                         GLsizei depth, GLint border, GLenum format, GLenum type,
+                         const GLvoid *pixels )
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glMultiTexImage3DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_FALSE, 3, texObj, target, level, internalFormat,
+                width, height, depth, border, format, type, 0, pixels, false);
 }
 
 

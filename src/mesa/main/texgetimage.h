@@ -66,6 +66,10 @@ _mesa_GetTextureImageEXT( GLuint texture, GLenum target, GLint level,
                           GLenum format, GLenum type, GLvoid *pixels);
 
 extern void GLAPIENTRY
+_mesa_GetMultiTexImageEXT(GLenum texunit, GLenum target, GLint level,
+                          GLenum format, GLenum type, GLvoid *pixels);
+
+extern void GLAPIENTRY
 _mesa_GetTextureSubImage(GLuint texture, GLint level,
                          GLint xoffset, GLint yoffset, GLint zoffset,
                          GLsizei width, GLsizei height, GLsizei depth,

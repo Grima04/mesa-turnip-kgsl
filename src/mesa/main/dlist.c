@@ -584,6 +584,9 @@ typedef enum
    OPCODE_BIND_MULTITEXTURE,
    OPCODE_MULTITEXPARAMETER_F,
    OPCODE_MULTITEXPARAMETER_I,
+   OPCODE_MULTITEX_IMAGE1D,
+   OPCODE_MULTITEX_IMAGE2D,
+   OPCODE_MULTITEX_IMAGE3D,
    OPCODE_MULTITEXENV,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D,
 
@@ -1221,12 +1224,15 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             free(get_pointer(&n[3]));
             break;
          case OPCODE_TEXTURE_IMAGE1D:
+         case OPCODE_MULTITEX_IMAGE1D:
             free(get_pointer(&n[9]));
             break;
          case OPCODE_TEXTURE_IMAGE2D:
+         case OPCODE_MULTITEX_IMAGE2D:
             free(get_pointer(&n[10]));
             break;
          case OPCODE_TEXTURE_IMAGE3D:
+         case OPCODE_MULTITEX_IMAGE3D:
             free(get_pointer(&n[11]));
             break;
          case OPCODE_TEXTURE_SUB_IMAGE1D:
@@ -9578,7 +9584,7 @@ save_TextureImage1DEXT(GLuint texture, GLenum target,
       ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
       n = alloc_instruction(ctx, OPCODE_TEXTURE_IMAGE1D, 8 + POINTER_DWORDS);
       if (n) {
-         n[1].e = texture;
+         n[1].ui = texture;
          n[2].e = target;
          n[3].i = level;
          n[4].i = components;
@@ -9990,6 +9996,124 @@ save_MultiTexParameteriEXT(GLenum texunit, GLenum target, GLenum pname, GLint pa
    fparam[1] = fparam[2] = fparam[3] = 0;
    save_MultiTexParameterivEXT(texunit, target, pname, fparam);
 }
+
+
+static void GLAPIENTRY
+save_MultiTexImage1DEXT(GLenum texunit, GLenum target,
+                        GLint level, GLint components,
+                        GLsizei width, GLint border,
+                        GLenum format, GLenum type, const GLvoid * pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_1D) {
+      /* don't compile, execute immediately */
+      CALL_MultiTexImage1DEXT(ctx->Exec, (texunit, target, level, components, width,
+                                         border, format, type, pixels));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+      n = alloc_instruction(ctx, OPCODE_MULTITEX_IMAGE1D, 8 + POINTER_DWORDS);
+      if (n) {
+         n[1].e = texunit;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].i = components;
+         n[5].i = (GLint) width;
+         n[6].i = border;
+         n[7].e = format;
+         n[8].e = type;
+         save_pointer(&n[9],
+                      unpack_image(ctx, 1, width, 1, 1, format, type,
+                                   pixels, &ctx->Unpack));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_MultiTexImage1DEXT(ctx->Exec, (texunit, target, level, components, width,
+                                            border, format, type, pixels));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_MultiTexImage2DEXT(GLenum texunit, GLenum target,
+                       GLint level, GLint components,
+                       GLsizei width, GLsizei height, GLint border,
+                       GLenum format, GLenum type, const GLvoid * pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_2D) {
+      /* don't compile, execute immediately */
+      CALL_MultiTexImage2DEXT(ctx->Exec, (texunit, target, level, components, width,
+                                         height, border, format, type, pixels));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+      n = alloc_instruction(ctx, OPCODE_MULTITEX_IMAGE2D, 9 + POINTER_DWORDS);
+      if (n) {
+         n[1].e = texunit;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].i = components;
+         n[5].i = (GLint) width;
+         n[6].i = (GLint) height;
+         n[7].i = border;
+         n[8].e = format;
+         n[9].e = type;
+         save_pointer(&n[10],
+                      unpack_image(ctx, 2, width, height, 1, format, type,
+                                   pixels, &ctx->Unpack));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_MultiTexImage2DEXT(ctx->Exec, (texunit, target, level, components, width,
+                                            height, border, format, type, pixels));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_MultiTexImage3DEXT(GLenum texunit, GLenum target,
+                       GLint level, GLint internalFormat,
+                       GLsizei width, GLsizei height, GLsizei depth,
+                       GLint border,
+                       GLenum format, GLenum type, const GLvoid * pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_3D) {
+      /* don't compile, execute immediately */
+      CALL_MultiTexImage3DEXT(ctx->Exec, (texunit, target, level, internalFormat, width,
+                                         height, depth, border, format, type,
+                                         pixels));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+      n = alloc_instruction(ctx, OPCODE_MULTITEX_IMAGE3D, 10 + POINTER_DWORDS);
+      if (n) {
+         n[1].e = texunit;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].i = (GLint) internalFormat;
+         n[5].i = (GLint) width;
+         n[6].i = (GLint) height;
+         n[7].i = (GLint) depth;
+         n[8].i = border;
+         n[9].e = format;
+         n[10].e = type;
+         save_pointer(&n[11],
+                      unpack_image(ctx, 3, width, height, depth, format, type,
+                                   pixels, &ctx->Unpack));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_MultiTexImage3DEXT(ctx->Exec, (texunit, target, level, internalFormat,
+                                            width, height, depth, border, format,
+                                            type, pixels));
+      }
+   }
+}
+
 
 
 static void GLAPIENTRY
@@ -11809,6 +11933,57 @@ execute_list(struct gl_context *ctx, GLuint list)
                CALL_MultiTexParameterivEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
             }
             break;
+         case OPCODE_MULTITEX_IMAGE1D:
+            {
+               const struct gl_pixelstore_attrib save = ctx->Unpack;
+               ctx->Unpack = ctx->DefaultPacking;
+               CALL_MultiTexImage1DEXT(ctx->Exec, (n[1].e, /* texture */
+                                                  n[2].e,  /* target */
+                                                  n[3].i,  /* level */
+                                                  n[4].i,  /* components */
+                                                  n[5].i,  /* width */
+                                                  n[6].e,  /* border */
+                                                  n[7].e,  /* format */
+                                                  n[8].e,  /* type */
+                                                  get_pointer(&n[9])));
+               ctx->Unpack = save;      /* restore */
+            }
+            break;
+         case OPCODE_MULTITEX_IMAGE2D:
+            {
+               const struct gl_pixelstore_attrib save = ctx->Unpack;
+               ctx->Unpack = ctx->DefaultPacking;
+               CALL_MultiTexImage2DEXT(ctx->Exec, (n[1].e, /* texture */
+                                                  n[2].e,  /* target */
+                                                  n[3].i,  /* level */
+                                                  n[4].i,  /* components */
+                                                  n[5].i,  /* width */
+                                                  n[6].i,  /* height */
+                                                  n[7].e,  /* border */
+                                                  n[8].e,  /* format */
+                                                  n[9].e,  /* type */
+                                                  get_pointer(&n[10])));
+               ctx->Unpack = save;      /* restore */
+            }
+            break;
+         case OPCODE_MULTITEX_IMAGE3D:
+            {
+               const struct gl_pixelstore_attrib save = ctx->Unpack;
+               ctx->Unpack = ctx->DefaultPacking;
+               CALL_MultiTexImage3DEXT(ctx->Exec, (n[1].e, /* texture */
+                                                  n[2].e,  /* target */
+                                                  n[3].i,  /* level */
+                                                  n[4].i,  /* components */
+                                                  n[5].i,  /* width */
+                                                  n[6].i,  /* height */
+                                                  n[7].i,  /* depth  */
+                                                  n[8].e,  /* border */
+                                                  n[9].e,  /* format */
+                                                  n[10].e, /* type */
+                                                  get_pointer(&n[11])));
+               ctx->Unpack = save;      /* restore */
+            }
+            break;
          case OPCODE_MULTITEXENV:
             {
                GLfloat params[4];
@@ -12837,6 +13012,9 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_MultiTexParameterivEXT(table, save_MultiTexParameterivEXT);
    SET_MultiTexParameterfEXT(table, save_MultiTexParameterfEXT);
    SET_MultiTexParameterfvEXT(table, save_MultiTexParameterfvEXT);
+   SET_MultiTexImage1DEXT(table, save_MultiTexImage1DEXT);
+   SET_MultiTexImage2DEXT(table, save_MultiTexImage2DEXT);
+   SET_MultiTexImage3DEXT(table, save_MultiTexImage3DEXT);
    SET_MultiTexEnvfEXT(table, save_MultiTexEnvfEXT);
    SET_MultiTexEnvfvEXT(table, save_MultiTexEnvfvEXT);
    SET_MultiTexEnviEXT(table, save_MultiTexEnviEXT);

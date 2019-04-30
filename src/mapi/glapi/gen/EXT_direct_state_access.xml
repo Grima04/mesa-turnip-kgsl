@@ -411,6 +411,54 @@
       <param name="param" type="const GLfloat*" />
    </function>
 
+   <function name="GetMultiTexImageEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="format" type="GLenum" />
+      <param name="type" type="GLenum" />
+      <param name="pixels" type="GLvoid*" />
+   </function>
+
+   <function name="MultiTexImage1DEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="internalformat" type="GLint" />
+      <param name="width" type="GLsizei" />
+      <param name="border" type="GLint" />
+      <param name="format" type="GLenum" />
+      <param name="type" type="GLenum" />
+      <param name="pixels" type="const GLvoid*" />
+   </function>
+
+   <function name="MultiTexImage2DEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="internalformat" type="GLint" />
+      <param name="width" type="GLsizei" />
+      <param name="height" type="GLsizei" />
+      <param name="border" type="GLint" />
+      <param name="format" type="GLenum" />
+      <param name="type" type="GLenum" />
+      <param name="pixels" type="const GLvoid*" />
+   </function>
+
+   <function name="MultiTexImage3DEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="internalformat" type="GLint" />
+      <param name="width" type="GLsizei" />
+      <param name="height" type="GLsizei" />
+      <param name="depth" type="GLsizei" />
+      <param name="border" type="GLint" />
+      <param name="format" type="GLenum" />
+      <param name="type" type="GLenum" />
+      <param name="pixels" type="const GLvoid*" />
+   </function>
+
    <!-- OpenGL 1.3 -->
 
    <function name="MatrixLoadTransposefEXT" offset="assign">

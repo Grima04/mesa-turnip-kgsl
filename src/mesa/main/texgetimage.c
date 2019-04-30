@@ -1560,6 +1560,44 @@ _mesa_GetTextureImageEXT(GLuint texture, GLenum target, GLint level,
 
 
 void GLAPIENTRY
+_mesa_GetMultiTexImageEXT(GLenum texunit, GLenum target, GLint level,
+                          GLenum format, GLenum type, GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLsizei width, height, depth;
+   static const char *caller = "glGetMultiTexImageEXT";
+
+   struct gl_texture_object *texObj =
+      _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                             texunit - GL_TEXTURE0,
+                                             false,
+                                             caller);
+
+   if (!texObj) {
+      return;
+   }
+
+   if (!legal_getteximage_target(ctx, texObj->Target, true)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s", caller);
+      return;
+   }
+
+   get_texture_image_dims(texObj, texObj->Target, level,
+                          &width, &height, &depth);
+
+   if (getteximage_error_check(ctx, texObj, texObj->Target, level,
+                               width, height, depth,
+                               format, type, INT_MAX, pixels, caller)) {
+      return;
+   }
+
+   get_texture_image(ctx, texObj, texObj->Target, level,
+                     0, 0, 0, width, height, depth,
+                     format, type, pixels, caller);
+}
+
+
+void GLAPIENTRY
 _mesa_GetTextureSubImage(GLuint texture, GLint level,
                          GLint xoffset, GLint yoffset, GLint zoffset,
                          GLsizei width, GLsizei height, GLsizei depth,
