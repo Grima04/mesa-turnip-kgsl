@@ -54,7 +54,6 @@
 
 static const struct debug_named_value debug_options[] = {
 	{"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
-	{"shaders",   PAN_DBG_SHADERS,	"Dump shaders in NIR"},
 	DEBUG_NAMED_VALUE_END
 };
 

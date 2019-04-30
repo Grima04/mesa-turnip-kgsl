@@ -131,14 +131,10 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
         /* Build a trivial blend shader */
         nir_store_var(b, c_out, nir_blending_f(blend, b, s_src, s_dst, s_con), 0xFF);
 
-	if (pan_debug & PAN_DBG_SHADERS)
-	        nir_print_shader(shader, stdout);
-
         /* Compile the built shader */
 
         midgard_program program;
         midgard_compile_shader_nir(shader, &program, true);
-
 
         /* Upload the shader */
 

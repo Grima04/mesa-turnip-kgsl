@@ -79,9 +79,6 @@ panfrost_build_wallpaper_program()
 
         nir_store_var(b, c_out, texel, 0xFF);
 
-	if (pan_debug & PAN_DBG_SHADERS)
-	        nir_print_shader(shader, stdout);
-
         return shader;
 }
 
