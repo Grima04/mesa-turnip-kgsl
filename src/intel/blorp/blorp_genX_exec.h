@@ -1519,6 +1519,9 @@ blorp_emit_surface_states(struct blorp_batch *batch,
        */
       blorp_emit(batch, GENX(PIPE_CONTROL), pipe) {
          pipe.StateCacheInvalidationEnable = true;
+#if GEN_GEN >= 12
+         pipe.TileCacheFlushEnable = true;
+#endif
       }
    }
 #endif
