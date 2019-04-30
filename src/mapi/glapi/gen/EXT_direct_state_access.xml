@@ -411,6 +411,20 @@
       <param name="param" type="const GLfloat*" />
    </function>
 
+   <function name="GetMultiTexParameterivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLint*" />
+   </function>
+
+   <function name="GetMultiTexParameterfvEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLfloat*" />
+   </function>
+
    <function name="GetMultiTexImageEXT">
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />
