@@ -164,10 +164,10 @@ typedef enum {
 } midgard_outmod;
 
 typedef enum {
-        midgard_reg_mode_quarter = 0,
-        midgard_reg_mode_half = 1,
-        midgard_reg_mode_full = 2,
-        midgard_reg_mode_double = 3 /* TODO: verify */
+        midgard_reg_mode_8 = 0,
+        midgard_reg_mode_16 = 1,
+        midgard_reg_mode_32 = 2,
+        midgard_reg_mode_64 = 3 /* TODO: verify */
 } midgard_reg_mode;
 
 typedef enum {

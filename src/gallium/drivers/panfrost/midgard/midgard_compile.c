@@ -316,7 +316,7 @@ v_fmov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
                 },
                 .alu = {
                         .op = midgard_alu_op_fmov,
-                        .reg_mode = midgard_reg_mode_full,
+                        .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = 0xFF,
                         .src1 = vector_alu_srco_unsigned(zero_alu_src),
@@ -1038,7 +1038,7 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch, unsigned co
                 },
                 .alu = {
                         .op = midgard_alu_op_iand,
-                        .reg_mode = midgard_reg_mode_full,
+                        .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
                         .src1 = vector_alu_srco_unsigned(alu_src),
@@ -1066,7 +1066,7 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
                 },
                 .alu = {
                         .op = midgard_alu_op_imov,
-                        .reg_mode = midgard_reg_mode_full,
+                        .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
                         .src1 = vector_alu_srco_unsigned(zero_alu_src),
@@ -1328,7 +1328,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         midgard_vector_alu alu = {
                 .op = op,
-                .reg_mode = midgard_reg_mode_full,
+                .reg_mode = midgard_reg_mode_32,
                 .dest_override = midgard_dest_override_none,
                 .outmod = outmod,
 
@@ -1576,7 +1576,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                         },
                                         .alu = {
                                                 .op = midgard_alu_op_u2f,
-                                                .reg_mode = midgard_reg_mode_half,
+                                                .reg_mode = midgard_reg_mode_16,
                                                 .dest_override = midgard_dest_override_none,
                                                 .mask = 0xF,
                                                 .src1 = vector_alu_srco_unsigned(alu_src),
@@ -1601,7 +1601,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                         },
                                         .alu = {
                                                 .op = midgard_alu_op_fmul,
-                                                .reg_mode = midgard_reg_mode_full,
+                                                .reg_mode = midgard_reg_mode_32,
                                                 .dest_override = midgard_dest_override_none,
                                                 .outmod = midgard_outmod_sat,
                                                 .mask = 0xFF,
@@ -3433,7 +3433,7 @@ emit_blend_epilogue(compiler_context *ctx)
                 },
                 .alu = {
                         .op = midgard_alu_op_fmul,
-                        .reg_mode = midgard_reg_mode_full,
+                        .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_lower,
                         .mask = 0xFF,
                         .src1 = vector_alu_srco_unsigned(blank_alu_src),
@@ -3458,7 +3458,7 @@ emit_blend_epilogue(compiler_context *ctx)
                 },
                 .alu = {
                         .op = midgard_alu_op_f2u8,
-                        .reg_mode = midgard_reg_mode_half,
+                        .reg_mode = midgard_reg_mode_16,
                         .dest_override = midgard_dest_override_lower,
                         .outmod = midgard_outmod_pos,
                         .mask = 0xF,
@@ -3480,7 +3480,7 @@ emit_blend_epilogue(compiler_context *ctx)
                 },
                 .alu = {
                         .op = midgard_alu_op_imov,
-                        .reg_mode = midgard_reg_mode_quarter,
+                        .reg_mode = midgard_reg_mode_8,
                         .dest_override = midgard_dest_override_none,
                         .mask = 0xFF,
                         .src1 = vector_alu_srco_unsigned(blank_alu_src),

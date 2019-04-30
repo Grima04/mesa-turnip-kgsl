@@ -229,8 +229,8 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
 
-        if (alu_field->reg_mode != midgard_reg_mode_half &&
-                        alu_field->reg_mode != midgard_reg_mode_full) {
+        if (alu_field->reg_mode != midgard_reg_mode_16 &&
+                        alu_field->reg_mode != midgard_reg_mode_32) {
                 printf("unknown reg mode %u\n", alu_field->reg_mode);
         }
 
@@ -245,7 +245,7 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
         bool half, out_half, out_high = false;
         unsigned mask;
 
-        half = (alu_field->reg_mode == midgard_reg_mode_half);
+        half = (alu_field->reg_mode == midgard_reg_mode_16);
 
         if (half) {
                 if (alu_field->mask & 0xF) {
