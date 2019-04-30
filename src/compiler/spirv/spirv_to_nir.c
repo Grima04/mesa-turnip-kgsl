@@ -2437,6 +2437,7 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpAtomicCompareExchange:
+   case SpvOpAtomicCompareExchangeWeak:
       src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[8])->def);
       src[1] = nir_src_for_ssa(vtn_ssa_value(b, w[7])->def);
       break;
@@ -2564,24 +2565,25 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    nir_intrinsic_op op;
    switch (opcode) {
 #define OP(S, N) case SpvOp##S: op = nir_intrinsic_image_deref_##N; break;
-   OP(ImageQuerySize,         size)
-   OP(ImageRead,              load)
-   OP(ImageWrite,             store)
-   OP(AtomicLoad,             load)
-   OP(AtomicStore,            store)
-   OP(AtomicExchange,         atomic_exchange)
-   OP(AtomicCompareExchange,  atomic_comp_swap)
-   OP(AtomicIIncrement,       atomic_add)
-   OP(AtomicIDecrement,       atomic_add)
-   OP(AtomicIAdd,             atomic_add)
-   OP(AtomicISub,             atomic_add)
-   OP(AtomicSMin,             atomic_min)
-   OP(AtomicUMin,             atomic_min)
-   OP(AtomicSMax,             atomic_max)
-   OP(AtomicUMax,             atomic_max)
-   OP(AtomicAnd,              atomic_and)
-   OP(AtomicOr,               atomic_or)
-   OP(AtomicXor,              atomic_xor)
+   OP(ImageQuerySize,            size)
+   OP(ImageRead,                 load)
+   OP(ImageWrite,                store)
+   OP(AtomicLoad,                load)
+   OP(AtomicStore,               store)
+   OP(AtomicExchange,            atomic_exchange)
+   OP(AtomicCompareExchange,     atomic_comp_swap)
+   OP(AtomicCompareExchangeWeak, atomic_comp_swap)
+   OP(AtomicIIncrement,          atomic_add)
+   OP(AtomicIDecrement,          atomic_add)
+   OP(AtomicIAdd,                atomic_add)
+   OP(AtomicISub,                atomic_add)
+   OP(AtomicSMin,                atomic_min)
+   OP(AtomicUMin,                atomic_min)
+   OP(AtomicSMax,                atomic_max)
+   OP(AtomicUMax,                atomic_max)
+   OP(AtomicAnd,                 atomic_and)
+   OP(AtomicOr,                  atomic_or)
+   OP(AtomicXor,                 atomic_xor)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid image opcode", opcode);
@@ -2618,6 +2620,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpAtomicCompareExchange:
+   case SpvOpAtomicCompareExchangeWeak:
    case SpvOpAtomicIIncrement:
    case SpvOpAtomicIDecrement:
    case SpvOpAtomicExchange:
@@ -2666,22 +2669,23 @@ static nir_intrinsic_op
 get_ssbo_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
 {
    switch (opcode) {
-   case SpvOpAtomicLoad:      return nir_intrinsic_load_ssbo;
-   case SpvOpAtomicStore:     return nir_intrinsic_store_ssbo;
+   case SpvOpAtomicLoad:         return nir_intrinsic_load_ssbo;
+   case SpvOpAtomicStore:        return nir_intrinsic_store_ssbo;
 #define OP(S, N) case SpvOp##S: return nir_intrinsic_ssbo_##N;
-   OP(AtomicExchange,         atomic_exchange)
-   OP(AtomicCompareExchange,  atomic_comp_swap)
-   OP(AtomicIIncrement,       atomic_add)
-   OP(AtomicIDecrement,       atomic_add)
-   OP(AtomicIAdd,             atomic_add)
-   OP(AtomicISub,             atomic_add)
-   OP(AtomicSMin,             atomic_imin)
-   OP(AtomicUMin,             atomic_umin)
-   OP(AtomicSMax,             atomic_imax)
-   OP(AtomicUMax,             atomic_umax)
-   OP(AtomicAnd,              atomic_and)
-   OP(AtomicOr,               atomic_or)
-   OP(AtomicXor,              atomic_xor)
+   OP(AtomicExchange,            atomic_exchange)
+   OP(AtomicCompareExchange,     atomic_comp_swap)
+   OP(AtomicCompareExchangeWeak, atomic_comp_swap)
+   OP(AtomicIIncrement,          atomic_add)
+   OP(AtomicIDecrement,          atomic_add)
+   OP(AtomicIAdd,                atomic_add)
+   OP(AtomicISub,                atomic_add)
+   OP(AtomicSMin,                atomic_imin)
+   OP(AtomicUMin,                atomic_umin)
+   OP(AtomicSMax,                atomic_imax)
+   OP(AtomicUMax,                atomic_umax)
+   OP(AtomicAnd,                 atomic_and)
+   OP(AtomicOr,                  atomic_or)
+   OP(AtomicXor,                 atomic_xor)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid SSBO atomic", opcode);
@@ -2693,18 +2697,19 @@ get_uniform_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
 {
    switch (opcode) {
 #define OP(S, N) case SpvOp##S: return nir_intrinsic_atomic_counter_ ##N;
-   OP(AtomicLoad,             read_deref)
-   OP(AtomicExchange,         exchange)
-   OP(AtomicCompareExchange,  comp_swap)
-   OP(AtomicIIncrement,       inc_deref)
-   OP(AtomicIDecrement,       post_dec_deref)
-   OP(AtomicIAdd,             add_deref)
-   OP(AtomicISub,             add_deref)
-   OP(AtomicUMin,             min_deref)
-   OP(AtomicUMax,             max_deref)
-   OP(AtomicAnd,              and_deref)
-   OP(AtomicOr,               or_deref)
-   OP(AtomicXor,              xor_deref)
+   OP(AtomicLoad,                read_deref)
+   OP(AtomicExchange,            exchange)
+   OP(AtomicCompareExchange,     comp_swap)
+   OP(AtomicCompareExchangeWeak, comp_swap)
+   OP(AtomicIIncrement,          inc_deref)
+   OP(AtomicIDecrement,          post_dec_deref)
+   OP(AtomicIAdd,                add_deref)
+   OP(AtomicISub,                add_deref)
+   OP(AtomicUMin,                min_deref)
+   OP(AtomicUMax,                max_deref)
+   OP(AtomicAnd,                 and_deref)
+   OP(AtomicOr,                  or_deref)
+   OP(AtomicXor,                 xor_deref)
 #undef OP
    default:
       /* We left the following out: AtomicStore, AtomicSMin and
@@ -2721,22 +2726,23 @@ static nir_intrinsic_op
 get_shared_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
 {
    switch (opcode) {
-   case SpvOpAtomicLoad:      return nir_intrinsic_load_shared;
-   case SpvOpAtomicStore:     return nir_intrinsic_store_shared;
+   case SpvOpAtomicLoad:         return nir_intrinsic_load_shared;
+   case SpvOpAtomicStore:        return nir_intrinsic_store_shared;
 #define OP(S, N) case SpvOp##S: return nir_intrinsic_shared_##N;
-   OP(AtomicExchange,         atomic_exchange)
-   OP(AtomicCompareExchange,  atomic_comp_swap)
-   OP(AtomicIIncrement,       atomic_add)
-   OP(AtomicIDecrement,       atomic_add)
-   OP(AtomicIAdd,             atomic_add)
-   OP(AtomicISub,             atomic_add)
-   OP(AtomicSMin,             atomic_imin)
-   OP(AtomicUMin,             atomic_umin)
-   OP(AtomicSMax,             atomic_imax)
-   OP(AtomicUMax,             atomic_umax)
-   OP(AtomicAnd,              atomic_and)
-   OP(AtomicOr,               atomic_or)
-   OP(AtomicXor,              atomic_xor)
+   OP(AtomicExchange,            atomic_exchange)
+   OP(AtomicCompareExchange,     atomic_comp_swap)
+   OP(AtomicCompareExchangeWeak, atomic_comp_swap)
+   OP(AtomicIIncrement,          atomic_add)
+   OP(AtomicIDecrement,          atomic_add)
+   OP(AtomicIAdd,                atomic_add)
+   OP(AtomicISub,                atomic_add)
+   OP(AtomicSMin,                atomic_imin)
+   OP(AtomicUMin,                atomic_umin)
+   OP(AtomicSMax,                atomic_imax)
+   OP(AtomicUMax,                atomic_umax)
+   OP(AtomicAnd,                 atomic_and)
+   OP(AtomicOr,                  atomic_or)
+   OP(AtomicXor,                 atomic_xor)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid shared atomic", opcode);
@@ -2747,22 +2753,23 @@ static nir_intrinsic_op
 get_deref_nir_atomic_op(struct vtn_builder *b, SpvOp opcode)
 {
    switch (opcode) {
-   case SpvOpAtomicLoad:      return nir_intrinsic_load_deref;
-   case SpvOpAtomicStore:     return nir_intrinsic_store_deref;
+   case SpvOpAtomicLoad:         return nir_intrinsic_load_deref;
+   case SpvOpAtomicStore:        return nir_intrinsic_store_deref;
 #define OP(S, N) case SpvOp##S: return nir_intrinsic_deref_##N;
-   OP(AtomicExchange,         atomic_exchange)
-   OP(AtomicCompareExchange,  atomic_comp_swap)
-   OP(AtomicIIncrement,       atomic_add)
-   OP(AtomicIDecrement,       atomic_add)
-   OP(AtomicIAdd,             atomic_add)
-   OP(AtomicISub,             atomic_add)
-   OP(AtomicSMin,             atomic_imin)
-   OP(AtomicUMin,             atomic_umin)
-   OP(AtomicSMax,             atomic_imax)
-   OP(AtomicUMax,             atomic_umax)
-   OP(AtomicAnd,              atomic_and)
-   OP(AtomicOr,               atomic_or)
-   OP(AtomicXor,              atomic_xor)
+   OP(AtomicExchange,            atomic_exchange)
+   OP(AtomicCompareExchange,     atomic_comp_swap)
+   OP(AtomicCompareExchangeWeak, atomic_comp_swap)
+   OP(AtomicIIncrement,          atomic_add)
+   OP(AtomicIDecrement,          atomic_add)
+   OP(AtomicIAdd,                atomic_add)
+   OP(AtomicISub,                atomic_add)
+   OP(AtomicSMin,                atomic_imin)
+   OP(AtomicUMin,                atomic_umin)
+   OP(AtomicSMax,                atomic_imax)
+   OP(AtomicUMax,                atomic_umax)
+   OP(AtomicAnd,                 atomic_and)
+   OP(AtomicOr,                  atomic_or)
+   OP(AtomicXor,                 atomic_xor)
 #undef OP
    default:
       vtn_fail_with_opcode("Invalid shared atomic", opcode);
