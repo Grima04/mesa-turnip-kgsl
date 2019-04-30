@@ -482,7 +482,7 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
 
 binop("fadd", tfloat, commutative + associative, "src0 + src1")
 binop("iadd", tint, commutative + associative, "src0 + src1")
-binop("iadd_sat", tint, commutative + associative, """
+binop("iadd_sat", tint, commutative, """
       src1 > 0 ?
          (src0 + src1 < src0 ? (1ull << (bit_size - 1)) - 1 : src0 + src1) :
          (src0 < src0 + src1 ? (1ull << (bit_size - 1))     : src0 + src1)
