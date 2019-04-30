@@ -67,20 +67,39 @@ print_ld_st_opcode(midgard_load_store_op op)
 static bool is_embedded_constant_half = false;
 static bool is_embedded_constant_int = false;
 
+static char
+prefix_for_bits(unsigned bits)
+{
+        switch (bits) {
+                case 8:
+                        return 'q';
+                case 16:
+                        return 'h';
+                default:
+                        return 0;
+        }
+}
+
 static void
-print_reg(unsigned reg, bool half)
+print_reg(unsigned reg, unsigned bits)
 {
         /* Perform basic static analysis for expanding constants correctly */
 
-        if (half && (reg >> 1) == 26) {
+        if ((bits == 16) && (reg >> 1) == 26) {
                 is_embedded_constant_half = true;
                 is_embedded_constant_int = is_instruction_int;
-        } else if (!half && reg == 26) {
+        } else if ((bits == 32) && reg == 26) {
                 is_embedded_constant_int = is_instruction_int;
+        } else if (bits == 8) {
+                /* TODO */
+        } else if (bits == 64) {
+                /* TODO */
         }
 
-        if (half)
-                printf("h");
+        char prefix = prefix_for_bits(bits);
+
+        if (prefix)
+                putchar(prefix);
 
         printf("r%u", reg);
 }
@@ -169,18 +188,18 @@ print_vector_src(unsigned src_binary, bool out_high,
                                 printf(" /* rep_low */ ");
                 }
 
-                print_reg(half_reg, true);
+                print_reg(half_reg, 16);
         } else {
                 if (src->rep_high)
                         printf(" /* rep_high */ ");
 
                 if (src->half)
-                        print_reg(reg * 2 + src->rep_low, true);
+                        print_reg(reg * 2 + src->rep_low, 16);
                 else {
                         if (src->rep_low)
                                 printf(" /* rep_low */ ");
 
-                        print_reg(reg, false);
+                        print_reg(reg, 32);
                 }
         }
 
@@ -295,11 +314,11 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
 
         if (out_half) {
                 if (out_high)
-                        print_reg(2 * reg_info->out_reg + 1, true);
+                        print_reg(2 * reg_info->out_reg + 1, 16);
                 else
-                        print_reg(2 * reg_info->out_reg, true);
+                        print_reg(2 * reg_info->out_reg, 16);
         } else
-                print_reg(reg_info->out_reg, false);
+                print_reg(reg_info->out_reg, 32);
 
         if (mask != 0xF) {
                 unsigned i;
@@ -342,9 +361,9 @@ print_scalar_src(unsigned src_binary, unsigned reg)
                 printf("abs(");
 
         if (src->full)
-                print_reg(reg, false);
+                print_reg(reg, 32);
         else
-                print_reg(reg * 2 + (src->component >> 2), true);
+                print_reg(reg * 2 + (src->component >> 2), 16);
 
         static const char c[4] = "xyzw";
         \
@@ -383,10 +402,10 @@ print_scalar_field(const char *name, uint16_t *words, uint16_t reg_word,
         printf(" ");
 
         if (alu_field->output_full)
-                print_reg(reg_info->out_reg, false);
+                print_reg(reg_info->out_reg, 32);
         else
                 print_reg(reg_info->out_reg * 2 + (alu_field->output_component >> 2),
-                          true);
+                          16);
 
         static const char c[4] = "xyzw";
         printf(".%c, ",
