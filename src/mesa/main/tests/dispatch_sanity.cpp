@@ -1056,7 +1056,7 @@ const struct function common_desktop_functions_possible[] = {
    { "glCopyTextureSubImage3DEXT", 12, -1 },
    /* GL_EXT_direct_state_access - GL 1.2.1 */
    { "glBindMultiTextureEXT", 12, -1 },
-   //{ "glMultiTexCoordPointerEXT", 12, -1 },
+   { "glMultiTexCoordPointerEXT", 12, -1 },
    { "glMultiTexEnvfEXT", 12, -1 },
    { "glMultiTexEnvfvEXT", 12, -1 },
    { "glMultiTexEnviEXT", 12, -1 },

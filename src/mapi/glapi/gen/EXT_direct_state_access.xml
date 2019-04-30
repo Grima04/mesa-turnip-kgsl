@@ -633,6 +633,14 @@
       <param name="param" type="GLint *" />
    </function>
 
+   <function name="MultiTexCoordPointerEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="size" type="GLint" />
+      <param name="type" type="GLenum" />
+      <param name="stride" type="GLsizei" />
+      <param name="pointer" type="const GLvoid *" />
+   </function>
+
    <!-- OpenGL 1.3 -->
 
    <function name="MatrixLoadTransposefEXT" offset="assign">
