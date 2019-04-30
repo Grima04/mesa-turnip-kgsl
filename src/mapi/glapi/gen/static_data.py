@@ -1523,6 +1523,10 @@ offsets = {
     "MultiTexEnvfvEXT": 1487,
     "GetMultiTexEnvivEXT": 1488,
     "GetMultiTexEnvfvEXT": 1489,
+    "MultiTexParameteriEXT": 1490,
+    "MultiTexParameterivEXT": 1491,
+    "MultiTexParameterfEXT": 1492,
+    "MultiTexParameterfvEXT": 1493,
 }
 
 functions = [

@@ -581,6 +581,8 @@ typedef enum
    OPCODE_COPY_TEXTURE_SUB_IMAGE1D,
    OPCODE_COPY_TEXTURE_SUB_IMAGE2D,
    OPCODE_COPY_TEXTURE_SUB_IMAGE3D,
+   OPCODE_MULTITEXPARAMETER_F,
+   OPCODE_MULTITEXPARAMETER_I,
    OPCODE_MULTITEXENV,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D,
 
@@ -9909,6 +9911,69 @@ save_CopyTextureSubImage3DEXT(GLuint texture, GLenum target, GLint level,
 
 
 static void GLAPIENTRY
+save_MultiTexParameterfvEXT(GLenum texunit, GLenum target, GLenum pname,
+                           const GLfloat *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_MULTITEXPARAMETER_F, 7);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].f = params[0];
+      n[5].f = params[1];
+      n[6].f = params[2];
+      n[7].f = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexParameterfvEXT(ctx->Exec, (texunit, target, pname, params));
+   }
+}
+
+
+static void GLAPIENTRY
+save_MultiTexParameterfEXT(GLenum texunit, GLenum target, GLenum pname, GLfloat param)
+{
+   GLfloat parray[4];
+   parray[0] = param;
+   parray[1] = parray[2] = parray[3] = 0.0F;
+   save_MultiTexParameterfvEXT(texunit, target, pname, parray);
+}
+
+static void GLAPIENTRY
+save_MultiTexParameterivEXT(GLenum texunit, GLenum target, GLenum pname, const GLint *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_MULTITEXPARAMETER_I, 7);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].i = params[0];
+      n[5].i = params[1];
+      n[6].i = params[2];
+      n[7].i = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexParameterivEXT(ctx->Exec, (texunit, target, pname, params));
+   }
+}
+
+static void GLAPIENTRY
+save_MultiTexParameteriEXT(GLenum texunit, GLenum target, GLenum pname, GLint param)
+{
+   GLint fparam[4];
+   fparam[0] = param;
+   fparam[1] = fparam[2] = fparam[3] = 0;
+   save_MultiTexParameterivEXT(texunit, target, pname, fparam);
+}
+
+
+static void GLAPIENTRY
 save_MultiTexEnvfvEXT(GLenum texunit, GLenum target, GLenum pname, const GLfloat *params)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -11702,6 +11767,26 @@ execute_list(struct gl_context *ctx, GLuint list)
                                                       n[7].i, n[8].i, n[9].i,
                                                       n[10].i));
             break;
+         case OPCODE_MULTITEXPARAMETER_F:
+            {
+               GLfloat params[4];
+               params[0] = n[4].f;
+               params[1] = n[5].f;
+               params[2] = n[6].f;
+               params[3] = n[7].f;
+               CALL_MultiTexParameterfvEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
+            }
+            break;
+         case OPCODE_MULTITEXPARAMETER_I:
+            {
+               GLint params[4];
+               params[0] = n[4].i;
+               params[1] = n[5].i;
+               params[2] = n[6].i;
+               params[3] = n[7].i;
+               CALL_MultiTexParameterivEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
+            }
+            break;
          case OPCODE_MULTITEXENV:
             {
                GLfloat params[4];
@@ -12725,6 +12810,10 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_CopyTextureSubImage1DEXT(table, save_CopyTextureSubImage1DEXT);
    SET_CopyTextureSubImage2DEXT(table, save_CopyTextureSubImage2DEXT);
    SET_CopyTextureSubImage3DEXT(table, save_CopyTextureSubImage3DEXT);
+   SET_MultiTexParameteriEXT(table, save_MultiTexParameteriEXT);
+   SET_MultiTexParameterivEXT(table, save_MultiTexParameterivEXT);
+   SET_MultiTexParameterfEXT(table, save_MultiTexParameterfEXT);
+   SET_MultiTexParameterfvEXT(table, save_MultiTexParameterfvEXT);
    SET_MultiTexEnvfEXT(table, save_MultiTexEnvfEXT);
    SET_MultiTexEnvfvEXT(table, save_MultiTexEnvfvEXT);
    SET_MultiTexEnviEXT(table, save_MultiTexEnviEXT);

@@ -1196,6 +1196,27 @@ _mesa_TextureParameterfv(GLuint texture, GLenum pname, const GLfloat *params)
 }
 
 void GLAPIENTRY
+_mesa_MultiTexParameterfvEXT(GLenum texunit, GLenum target, GLenum pname, const GLfloat *params)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   "glMultiTexParameterfvEXT");
+   if (!texObj)
+      return;
+
+   if (!is_texparameteri_target_valid(texObj->Target)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glMultiTexParameterifvEXT(target)");
+      return;
+   }
+
+   _mesa_texture_parameterfv(ctx, texObj, pname, params, true);
+}
+
+void GLAPIENTRY
 _mesa_TextureParameterfEXT(GLuint texture, GLenum target, GLenum pname, GLfloat param)
 {
    struct gl_texture_object *texObj;
@@ -1208,6 +1229,28 @@ _mesa_TextureParameterfEXT(GLuint texture, GLenum target, GLenum pname, GLfloat 
 
    if (!is_texparameteri_target_valid(texObj->Target)) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "glTextureParameterfEXT");
+      return;
+   }
+
+   _mesa_texture_parameterf(ctx, texObj, pname, param, true);
+}
+
+void GLAPIENTRY
+_mesa_MultiTexParameterfEXT(GLenum texunit, GLenum target, GLenum pname,
+                            GLfloat param)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   "glMultiTexParameterfEXT");
+   if (!texObj)
+      return;
+
+   if (!is_texparameteri_target_valid(texObj->Target)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glMultiTexParameterfEXT");
       return;
    }
 
@@ -1247,6 +1290,28 @@ _mesa_TextureParameteriEXT(GLuint texture, GLenum target, GLenum pname, GLint pa
 }
 
 void GLAPIENTRY
+_mesa_MultiTexParameteriEXT(GLenum texunit, GLenum target, GLenum pname,
+                            GLint param)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   "glMultiTexParameteriEXT");
+   if (!texObj)
+      return;
+
+   if (!is_texparameteri_target_valid(texObj->Target)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glMultiTexParameteriEXT(target)");
+      return;
+   }
+
+   _mesa_texture_parameteri(ctx, texObj, pname, param, true);
+}
+
+void GLAPIENTRY
 _mesa_TextureParameteri(GLuint texture, GLenum pname, GLint param)
 {
    struct gl_texture_object *texObj;
@@ -1273,6 +1338,28 @@ _mesa_TextureParameterivEXT(GLuint texture, GLenum target, GLenum pname,
 
    if (!is_texparameteri_target_valid(texObj->Target)) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "glTextureParameterivEXT(target)");
+      return;
+   }
+
+   _mesa_texture_parameteriv(ctx, texObj, pname, params, true);
+}
+
+void GLAPIENTRY
+_mesa_MultiTexParameterivEXT(GLenum texunit, GLenum target, GLenum pname,
+                             const GLint *params)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   "glMultiTexParameterivEXT");
+   if (!texObj)
+      return;
+
+   if (!is_texparameteri_target_valid(texObj->Target)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glMultiTexParameterivEXT(target)");
       return;
    }
 

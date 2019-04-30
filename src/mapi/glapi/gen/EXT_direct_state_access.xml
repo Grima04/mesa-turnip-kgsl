@@ -383,6 +383,34 @@
       <param name="param" type="GLfloat *" />
    </function>
 
+   <function name="MultiTexParameteriEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLint" />
+   </function>
+
+   <function name="MultiTexParameterivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="const GLint*" />
+   </function>
+
+   <function name="MultiTexParameterfEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="GLfloat" />
+   </function>
+
+   <function name="MultiTexParameterfvEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="param" type="const GLfloat*" />
+   </function>
+
    <!-- OpenGL 1.3 -->
 
    <function name="MatrixLoadTransposefEXT" offset="assign">
