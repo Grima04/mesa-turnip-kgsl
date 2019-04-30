@@ -596,7 +596,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 
 	OUT_RING(ring,
 			CONDREG(smask_in_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
-			COND(sample_shading, A6XX_RB_RENDER_CONTROL1_UNK4 | A6XX_RB_RENDER_CONTROL1_UNK5) |
 			CONDREG(samp_id_regid, A6XX_RB_RENDER_CONTROL1_SAMPLEID) |
 			CONDREG(ij_size_regid, A6XX_RB_RENDER_CONTROL1_SIZE) |
 			COND(s[FS].v->frag_face, A6XX_RB_RENDER_CONTROL1_FACENESS));

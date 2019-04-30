@@ -89,6 +89,7 @@ batch_init(struct fd_batch *batch)
 	fd_reset_wfi(batch);
 
 	util_dynarray_init(&batch->draw_patches, NULL);
+	util_dynarray_init(&batch->fb_read_patches, NULL);
 
 	if (is_a2xx(ctx->screen)) {
 		util_dynarray_init(&batch->shader_patches, NULL);
@@ -168,6 +169,7 @@ batch_fini(struct fd_batch *batch)
 	fd_submit_del(batch->submit);
 
 	util_dynarray_fini(&batch->draw_patches);
+	util_dynarray_fini(&batch->fb_read_patches);
 
 	if (is_a2xx(batch->ctx->screen)) {
 		util_dynarray_fini(&batch->shader_patches);

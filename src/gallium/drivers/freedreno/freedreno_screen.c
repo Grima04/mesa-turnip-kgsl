@@ -307,6 +307,11 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
 		return 0;
 
+	case PIPE_CAP_TGSI_FS_FBFETCH:
+		if (fd_device_version(screen->dev) >= FD_VERSION_GMEM_BASE &&
+				is_a6xx(screen))
+			return 1;
+		return 0;
 	case PIPE_CAP_SAMPLE_SHADING:
 		if (is_a6xx(screen)) return 1;
 		return 0;
@@ -783,6 +788,10 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 		goto fail;
 	}
 	screen->gmemsize_bytes = val;
+
+	if (fd_device_version(dev) >= FD_VERSION_GMEM_BASE) {
+		fd_pipe_get_param(screen->pipe, FD_GMEM_BASE, &screen->gmem_base);
+	}
 
 	if (fd_pipe_get_param(screen->pipe, FD_DEVICE_ID, &val)) {
 		DBG("could not get device-id");

@@ -59,6 +59,7 @@ struct fd_screen {
 
 	struct slab_parent_pool transfer_pool;
 
+	uint64_t gmem_base;
 	uint32_t gmemsize_bytes;
 	uint32_t device_id;
 	uint32_t gpu_id;         /* 220, 305, etc */

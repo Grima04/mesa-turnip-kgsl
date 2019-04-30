@@ -265,6 +265,18 @@ use_hw_binning(struct fd_batch *batch)
 }
 
 static void
+patch_fb_read(struct fd_batch *batch)
+{
+	struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
+
+	for (unsigned i = 0; i < fd_patch_num_elements(&batch->fb_read_patches); i++) {
+		struct fd_cs_patch *patch = fd_patch_element(&batch->fb_read_patches, i);
+		*patch->cs = patch->val | A6XX_TEX_CONST_2_PITCH(gmem->bin_w * gmem->cbuf_cpp[0]);
+	}
+	util_dynarray_resize(&batch->fb_read_patches, 0);
+}
+
+static void
 patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
 {
 	unsigned i;
@@ -518,6 +530,7 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	emit_zs(ring, pfb->zsbuf, &ctx->gmem);
 	emit_mrt(ring, pfb, &ctx->gmem);
 	emit_msaa(ring, pfb->samples);
+	patch_fb_read(batch);
 
 	if (use_hw_binning(batch)) {
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h,

@@ -340,11 +340,49 @@ emit_border_color(struct fd_context *ctx, struct fd_ringbuffer *ring)
 	u_upload_unmap(fd6_ctx->border_color_uploader);
 }
 
+static void
+fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx)
+{
+	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
+	struct pipe_surface *psurf = pfb->cbufs[0];
+	struct fd_resource *rsc = fd_resource(psurf->texture);
+
+	uint32_t texconst0 = fd6_tex_const_0(psurf->texture, psurf->u.tex.level,
+			psurf->format, PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
+			PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W);
+
+	/* always TILE6_2 mode in GMEM.. which also means no swap: */
+	texconst0 &= ~(A6XX_TEX_CONST_0_SWAP__MASK | A6XX_TEX_CONST_0_TILE_MODE__MASK);
+	texconst0 |= A6XX_TEX_CONST_0_TILE_MODE(TILE6_2);
+
+	OUT_RING(state, texconst0);
+	OUT_RING(state, A6XX_TEX_CONST_1_WIDTH(pfb->width) |
+			A6XX_TEX_CONST_1_HEIGHT(pfb->height));
+	OUT_RINGP(state, A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
+			A6XX_TEX_CONST_2_FETCHSIZE(TFETCH6_2_BYTE),
+			&ctx->batch->fb_read_patches);
+	OUT_RING(state, A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size));
+
+	OUT_RING(state, A6XX_TEX_CONST_4_BASE_LO(ctx->screen->gmem_base));
+	OUT_RING(state, A6XX_TEX_CONST_5_BASE_HI(ctx->screen->gmem_base >> 32) |
+			A6XX_TEX_CONST_5_DEPTH(1));
+	OUT_RING(state, 0);   /* texconst6 */
+	OUT_RING(state, 0);   /* texconst7 */
+	OUT_RING(state, 0);   /* texconst8 */
+	OUT_RING(state, 0);   /* texconst9 */
+	OUT_RING(state, 0);   /* texconst10 */
+	OUT_RING(state, 0);   /* texconst11 */
+	OUT_RING(state, 0);
+	OUT_RING(state, 0);
+	OUT_RING(state, 0);
+	OUT_RING(state, 0);
+}
+
 bool
 fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 		enum pipe_shader_type type, struct fd_texture_stateobj *tex,
 		unsigned bcolor_offset,
-		/* can be NULL if no image/SSBO state to merge in: */
+		/* can be NULL if no image/SSBO/fb state to merge in: */
 		const struct ir3_shader_variant *v, struct fd_context *ctx)
 {
 	bool needs_border = false;
@@ -411,6 +449,9 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 	unsigned num_textures = tex->num_textures;
 	if (v) {
 		num_merged_textures += v->image_mapping.num_tex;
+
+		if (v->fb_read)
+			num_merged_textures++;
 
 		/* There could be more bound textures than what the shader uses.
 		 * Which isn't known at shader compile time.  So in the case we
@@ -479,6 +520,10 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 					fd6_emit_image_tex(state, &img->si[idx]);
 				}
 			}
+
+			if (v->fb_read) {
+				fd6_emit_fb_tex(state, ctx);
+			}
 		}
 
 		/* emit texture state: */
@@ -528,10 +573,20 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 
 	debug_assert(state_id[type]);
 
-	if (!v->image_mapping.num_tex) {
+	if (!v->image_mapping.num_tex && !v->fb_read) {
 		/* in the fast-path, when we don't have to mix in any image/SSBO
 		 * related texture state, we can just lookup the stateobj and
 		 * re-emit that:
+		 *
+		 * Also, framebuffer-read is a slow-path because an extra
+		 * texture needs to be inserted.
+		 *
+		 * TODO we can probably simmplify things if we also treated
+		 * border_color as a slow-path.. this way the tex state key
+		 * wouldn't depend on bcolor_offset.. but fb_read might rather
+		 * be *somehow* a fast-path if we eventually used it for PLS.
+		 * I suppose there would be no harm in just *always* inserting
+		 * an fb_read texture?
 		 */
 		if ((ctx->dirty_shader[type] & FD_DIRTY_SHADER_TEX) &&
 				ctx->tex[type].num_textures > 0) {
@@ -546,9 +601,10 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 		/* In the slow-path, create a one-shot texture state object
 		 * if either TEX|PROG|SSBO|IMAGE state is dirty:
 		 */
-		if (ctx->dirty_shader[type] &
+		if ((ctx->dirty_shader[type] &
 				(FD_DIRTY_SHADER_TEX | FD_DIRTY_SHADER_PROG |
-				 FD_DIRTY_SHADER_IMAGE | FD_DIRTY_SHADER_SSBO)) {
+				 FD_DIRTY_SHADER_IMAGE | FD_DIRTY_SHADER_SSBO)) ||
+				v->fb_read) {
 			struct fd_texture_stateobj *tex = &ctx->tex[type];
 			struct fd_ringbuffer *stateobj =
 				fd_submit_new_ringbuffer(ctx->batch->submit,
@@ -737,6 +793,13 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	bool needs_border = false;
 
 	emit_marker6(ring, 5);
+
+	/* NOTE: we track fb_read differently than _BLEND_ENABLED since
+	 * we might at some point decide to do sysmem in some cases when
+	 * blend is enabled:
+	 */
+	if (fp->fb_read)
+		ctx->batch->gmem_reason |= FD_GMEM_FB_READ;
 
 	if (emit->dirty & (FD_DIRTY_VTXBUF | FD_DIRTY_VTXSTATE)) {
 		struct fd_ringbuffer *state;
