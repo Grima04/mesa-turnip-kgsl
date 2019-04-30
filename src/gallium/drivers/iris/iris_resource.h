@@ -68,6 +68,9 @@ struct iris_resource {
    /** Backing storage for the resource */
    struct iris_bo *bo;
 
+   /** offset at which data starts in the BO */
+   uint64_t offset;
+
    /**
     * A bitfield of PIPE_BIND_* indicating how this resource was bound
     * in the past.  Only meaningful for PIPE_BUFFER; used for flushing.

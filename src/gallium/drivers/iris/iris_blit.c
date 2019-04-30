@@ -246,7 +246,7 @@ iris_blorp_surf_for_resource(struct iris_vtable *vtbl,
       .surf = &res->surf,
       .addr = (struct blorp_address) {
          .buffer = res->bo,
-         .offset = 0, // XXX: ???
+         .offset = res->offset,
          .reloc_flags = is_render_target ? EXEC_OBJECT_WRITE : 0,
          .mocs = vtbl->mocs(res->bo),
       },

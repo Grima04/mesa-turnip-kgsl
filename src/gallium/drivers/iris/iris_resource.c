@@ -759,12 +759,6 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
-   if (whandle->offset != 0) {
-      dbg_printf("Attempt to import unsupported winsys offset %u\n",
-                 whandle->offset);
-      goto fail;
-   }
-
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_FD:
       res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle);
@@ -778,6 +772,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    }
    if (!res->bo)
       return NULL;
+
+   res->offset = whandle->offset;
 
    uint64_t modifier = whandle->modifier;
    if (modifier == DRM_FORMAT_MOD_INVALID) {

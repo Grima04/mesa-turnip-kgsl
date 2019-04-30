@@ -1724,7 +1724,7 @@ fill_surface_state(struct isl_device *isl_dev,
       .surf = &res->surf,
       .view = view,
       .mocs = mocs(res->bo),
-      .address = res->bo->gtt_offset,
+      .address = res->bo->gtt_offset + res->offset,
    };
 
    if (aux_usage != ISL_AUX_USAGE_NONE) {
@@ -2505,7 +2505,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
          view.usage |= ISL_SURF_USAGE_DEPTH_BIT;
 
          info.depth_surf = &zres->surf;
-         info.depth_address = zres->bo->gtt_offset;
+         info.depth_address = zres->bo->gtt_offset + zres->offset;
          info.mocs = mocs(zres->bo);
 
          view.format = zres->surf.format;
@@ -2520,7 +2520,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       if (stencil_res) {
          view.usage |= ISL_SURF_USAGE_STENCIL_BIT;
          info.stencil_surf = &stencil_res->surf;
-         info.stencil_address = stencil_res->bo->gtt_offset;
+         info.stencil_address = stencil_res->bo->gtt_offset + stencil_res->offset;
          if (!zres) {
             view.format = stencil_res->surf.format;
             info.mocs = mocs(stencil_res->bo);
@@ -2592,8 +2592,9 @@ upload_ubo_ssbo_surf_state(struct iris_context *ice,
    surf_state->offset += iris_bo_offset_from_base_address(surf_bo);
 
    isl_buffer_fill_state(&screen->isl_dev, map,
-                         .address = res->bo->gtt_offset + buf->buffer_offset,
-                         .size_B = buf->buffer_size,
+                         .address = res->bo->gtt_offset + res->offset +
+                                    buf->buffer_offset,
+                         .size_B = buf->buffer_size - res->offset,
                          .format = ssbo ? ISL_FORMAT_RAW
                                         : ISL_FORMAT_R32G32B32A32_FLOAT,
                          .swizzle = ISL_SWIZZLE_IDENTITY,
