@@ -140,6 +140,9 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
       pc.DepthCacheFlushEnable = true;
       pc.CommandStreamerStallEnable = true;
       pc.RenderTargetCacheFlushEnable = true;
+#if GEN_GEN >= 12
+      pc.TileCacheFlushEnable = true;
+#endif
    }
 
 #if GEN_GEN == 9
@@ -179,6 +182,9 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
       pc.DepthStallEnable = true;
       pc.DepthCacheFlushEnable = true;
       pc.RenderTargetCacheFlushEnable = true;
+#if GEN_GEN >= 12
+      pc.TileCacheFlushEnable = true;
+#endif
    }
 }
 
