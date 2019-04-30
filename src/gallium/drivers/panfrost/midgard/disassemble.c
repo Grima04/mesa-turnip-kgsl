@@ -75,6 +75,8 @@ prefix_for_bits(unsigned bits)
                         return 'q';
                 case 16:
                         return 'h';
+                case 64:
+                        return 'd';
                 default:
                         return 0;
         }
@@ -219,7 +221,19 @@ print_vector_src(unsigned src_binary, bool out_high,
                         print_reg(reg, 32);
                 }
         } else if (mode == midgard_reg_mode_64) {
-                /* TODO */
+                if (src->rep_high)
+                        printf(" /* rep_high */ ");
+
+                if (src->rep_low)
+                        printf(" /* rep_low */ ");
+
+                if (src->half)
+                        printf(" /* half */ ");
+
+                if (out_high)
+                        printf(" /* out_high */ ");
+
+                print_reg(reg, 64);
         }
 
         //swizzle
@@ -267,10 +281,6 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
         midgard_reg_mode mode = alu_field->reg_mode;
-
-        if (mode == midgard_reg_mode_64) {
-                printf("unknown reg mode %u\n", alu_field->reg_mode);
-        }
 
         /* For now, prefix instruction names with their unit, until we
          * understand how this works on a deeper level */
