@@ -475,10 +475,6 @@ supports_mcs(const struct isl_surf *surf)
    if (surf->samples <= 1)
       return false;
 
-   /* See isl_surf_get_mcs_surf for details. */
-   if (surf->samples == 16 && surf->logical_level0_px.width > 8192)
-      return false;
-
    /* Depth and stencil buffers use the IMS (interleaved) layout. */
    if (isl_surf_usage_is_depth_or_stencil(surf->usage))
       return false;
@@ -490,19 +486,8 @@ static bool
 supports_ccs(const struct gen_device_info *devinfo,
              const struct isl_surf *surf)
 {
-   /* Gen9+ only supports CCS for Y-tiled buffers. */
-   if (surf->tiling != ISL_TILING_Y0)
-      return false;
-
    /* CCS only supports singlesampled resources. */
    if (surf->samples > 1)
-      return false;
-
-   /* The PRM doesn't say this explicitly, but fast-clears don't appear to
-    * work for 3D textures until Gen9 where the layout of 3D textures changes
-    * to match 2D array textures.
-    */
-   if (devinfo->gen < 9 && surf->dim != ISL_SURF_DIM_2D)
       return false;
 
    /* Note: still need to check the format! */
