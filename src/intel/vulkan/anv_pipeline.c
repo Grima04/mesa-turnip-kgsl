@@ -134,8 +134,6 @@ anv_shader_compile_to_nir(struct anv_device *device,
       }
    }
 
-   nir_address_format ssbo_addr_format =
-      anv_nir_ssbo_addr_format(pdevice, device->robust_buffer_access);
    struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
       .caps = {
@@ -172,11 +170,17 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .transform_feedback = pdevice->info.gen >= 8,
          .variable_pointers = true,
       },
-      .ubo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
-      .ssbo_ptr_type = nir_address_format_to_glsl_type(ssbo_addr_format),
-      .phys_ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT64, 1),
-      .push_const_ptr_type = glsl_uint_type(),
-      .shared_ptr_type = glsl_uint_type(),
+      .ubo_addr_format = nir_address_format_32bit_index_offset,
+      .ssbo_addr_format =
+          anv_nir_ssbo_addr_format(pdevice, device->robust_buffer_access),
+      .phys_ssbo_addr_format = nir_address_format_64bit_global,
+      .push_const_addr_format = nir_address_format_logical,
+
+      /* TODO: Consider changing this to an address format that has the NULL
+       * pointer equals to 0.  That might be a better format to play nice
+       * with certain code / code generators.
+       */
+      .shared_addr_format = nir_address_format_32bit_offset,
    };
 
 

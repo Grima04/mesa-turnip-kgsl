@@ -99,14 +99,18 @@ vk_desc_type_for_mode(struct vtn_builder *b, enum vtn_variable_mode mode)
 static const struct glsl_type *
 vtn_ptr_type_for_mode(struct vtn_builder *b, enum vtn_variable_mode mode)
 {
+   nir_address_format addr_format;
    switch (mode) {
    case vtn_variable_mode_ubo:
-      return b->options->ubo_ptr_type;
+      addr_format = b->options->ubo_addr_format;
+      break;
    case vtn_variable_mode_ssbo:
-      return b->options->ssbo_ptr_type;
+      addr_format = b->options->ssbo_addr_format;
+      break;
    default:
       vtn_fail("Invalid mode for vulkan_resource_index");
    }
+   return nir_address_format_to_glsl_type(addr_format);
 }
 
 static nir_ssa_def *

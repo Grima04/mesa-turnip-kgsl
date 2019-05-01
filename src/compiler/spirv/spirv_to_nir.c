@@ -1364,36 +1364,38 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          /* These can actually be stored to nir_variables and used as SSA
           * values so they need a real glsl_type.
           */
+         nir_address_format addr_format = nir_address_format_logical;
          switch (storage_class) {
          case SpvStorageClassUniform:
-            val->type->type = b->options->ubo_ptr_type;
+            addr_format = b->options->ubo_addr_format;
             break;
          case SpvStorageClassStorageBuffer:
-            val->type->type = b->options->ssbo_ptr_type;
+            addr_format = b->options->ssbo_addr_format;
             break;
          case SpvStorageClassPhysicalStorageBufferEXT:
-            val->type->type = b->options->phys_ssbo_ptr_type;
+            addr_format = b->options->phys_ssbo_addr_format;
             break;
          case SpvStorageClassPushConstant:
-            val->type->type = b->options->push_const_ptr_type;
+            addr_format = b->options->push_const_addr_format;
             break;
          case SpvStorageClassWorkgroup:
-            val->type->type = b->options->shared_ptr_type;
+            addr_format = b->options->shared_addr_format;
             break;
          case SpvStorageClassCrossWorkgroup:
-            val->type->type = b->options->global_ptr_type;
+            addr_format = b->options->global_addr_format;
             break;
          case SpvStorageClassFunction:
             if (b->physical_ptrs)
-               val->type->type = b->options->temp_ptr_type;
+               addr_format = b->options->temp_addr_format;
             break;
          default:
             /* In this case, no variable pointers are allowed so all deref
              * chains are complete back to the variable and it doesn't matter
-             * what type gets used so we leave it NULL.
+             * what type gets.
              */
             break;
          }
+         val->type->type = nir_address_format_to_glsl_type(addr_format);
       } else {
          vtn_fail_if(val->type->storage_class != storage_class,
                      "The storage classes of an OpTypePointer and any "
@@ -3774,18 +3776,18 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
                      "AddressingModelPhysical32 only supported for kernels");
          b->shader->info.cs.ptr_size = 32;
          b->physical_ptrs = true;
-         b->options->shared_ptr_type = glsl_uint_type();
-         b->options->global_ptr_type = glsl_uint_type();
-         b->options->temp_ptr_type = glsl_uint_type();
+         b->options->shared_addr_format = nir_address_format_32bit_global;
+         b->options->global_addr_format = nir_address_format_32bit_global;
+         b->options->temp_addr_format = nir_address_format_32bit_global;
          break;
       case SpvAddressingModelPhysical64:
          vtn_fail_if(b->shader->info.stage != MESA_SHADER_KERNEL,
                      "AddressingModelPhysical64 only supported for kernels");
          b->shader->info.cs.ptr_size = 64;
          b->physical_ptrs = true;
-         b->options->shared_ptr_type = glsl_uint64_t_type();
-         b->options->global_ptr_type = glsl_uint64_t_type();
-         b->options->temp_ptr_type = glsl_uint64_t_type();
+         b->options->shared_addr_format = nir_address_format_64bit_global;
+         b->options->global_addr_format = nir_address_format_64bit_global;
+         b->options->temp_addr_format = nir_address_format_64bit_global;
          break;
       case SpvAddressingModelLogical:
          vtn_fail_if(b->shader->info.stage >= MESA_SHADER_STAGES,
