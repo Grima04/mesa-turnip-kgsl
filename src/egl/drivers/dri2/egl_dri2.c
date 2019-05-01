@@ -1354,7 +1354,8 @@ dri2_destroy_context(_EGLDriver *drv, _EGLDisplay *disp, _EGLContext *ctx)
 
 EGLBoolean
 dri2_init_surface(_EGLSurface *surf, _EGLDisplay *disp, EGLint type,
-        _EGLConfig *conf, const EGLint *attrib_list, EGLBoolean enable_out_fence)
+        _EGLConfig *conf, const EGLint *attrib_list,
+        EGLBoolean enable_out_fence, void *native_surface)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -1368,7 +1369,7 @@ dri2_init_surface(_EGLSurface *surf, _EGLDisplay *disp, EGLint type,
       dri2_surf->enable_out_fence = enable_out_fence;
    }
 
-   return _eglInitSurface(surf, disp, type, conf, attrib_list);
+   return _eglInitSurface(surf, disp, type, conf, attrib_list, native_surface);
 }
 
 static void

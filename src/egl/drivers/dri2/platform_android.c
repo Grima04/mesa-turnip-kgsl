@@ -354,7 +354,8 @@ droid_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
       return NULL;
    }
 
-   if (!dri2_init_surface(&dri2_surf->base, disp, type, conf, attrib_list, true))
+   if (!dri2_init_surface(&dri2_surf->base, disp, type, conf, attrib_list,
+                          true, native_window))
       goto cleanup_surface;
 
    if (type == EGL_WINDOW_BIT) {

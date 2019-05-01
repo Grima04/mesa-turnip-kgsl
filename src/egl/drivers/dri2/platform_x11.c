@@ -267,7 +267,8 @@ dri2_x11_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
       return NULL;
    }
    
-   if (!dri2_init_surface(&dri2_surf->base, disp, type, conf, attrib_list, false))
+   if (!dri2_init_surface(&dri2_surf->base, disp, type, conf, attrib_list,
+                          false, native_surface))
       goto cleanup_surf;
 
    dri2_surf->region = XCB_NONE;

@@ -155,7 +155,8 @@ dri3_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
       return NULL;
    }
 
-   if (!dri2_init_surface(&dri3_surf->surf.base, disp, type, conf, attrib_list, false))
+   if (!dri2_init_surface(&dri3_surf->surf.base, disp, type, conf,
+                          attrib_list, false, native_surface))
       goto cleanup_surf;
 
    if (type == EGL_PBUFFER_BIT) {

@@ -124,7 +124,8 @@ dri2_surfaceless_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
       return NULL;
    }
 
-   if (!dri2_init_surface(&dri2_surf->base, disp, type, conf, attrib_list, false))
+   if (!dri2_init_surface(&dri2_surf->base, disp, type, conf, attrib_list,
+                          false, NULL))
       goto cleanup_surface;
 
    config = dri2_get_dri_config(dri2_conf, type,

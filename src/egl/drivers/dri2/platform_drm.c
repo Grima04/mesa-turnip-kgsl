@@ -149,7 +149,7 @@ dri2_drm_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
    }
 
    if (!dri2_init_surface(&dri2_surf->base, disp, EGL_WINDOW_BIT, conf,
-                          attrib_list, false))
+                          attrib_list, false, native_surface))
       goto cleanup_surf;
 
    config = dri2_get_dri_config(dri2_conf, EGL_WINDOW_BIT,
