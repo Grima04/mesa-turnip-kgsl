@@ -58,6 +58,7 @@ struct virgl_transfer {
    struct util_range range;
    struct list_head queue_link;
    struct pipe_transfer *resolve_transfer;
+   void *hw_res_map;
 };
 
 void virgl_resource_destroy(struct pipe_screen *screen,

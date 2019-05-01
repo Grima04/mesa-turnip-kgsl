@@ -146,14 +146,14 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
    if (readback || flush)
       vws->resource_wait(vws, vtex->hw_res);
 
-   void *ptr = vws->resource_map(vws, vtex->hw_res);
-   if (!ptr) {
+   trans->hw_res_map = vws->resource_map(vws, vtex->hw_res);
+   if (!trans->hw_res_map) {
       virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
       return NULL;
    }
 
    *transfer = &trans->base;
-   return ptr + trans->offset;
+   return trans->hw_res_map + trans->offset;
 }
 
 static void *texture_transfer_map_resolve(struct pipe_context *ctx,
