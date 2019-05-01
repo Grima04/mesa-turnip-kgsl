@@ -3165,6 +3165,8 @@ nir_address_format_to_glsl_type(nir_address_format addr_format)
                            nir_address_format_num_components(addr_format));
 }
 
+const nir_const_value *nir_address_format_null_value(nir_address_format addr_format);
+
 nir_ssa_def * nir_explicit_io_address_from_deref(struct nir_builder *b,
                                                  nir_deref_instr *deref,
                                                  nir_ssa_def *base_addr,

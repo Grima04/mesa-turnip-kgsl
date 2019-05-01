@@ -1230,3 +1230,23 @@ nir_get_io_vertex_index_src(nir_intrinsic_instr *instr)
       return NULL;
    }
 }
+
+/**
+ * Return the numeric constant that identify a NULL pointer for each address
+ * format.
+ */
+const nir_const_value *
+nir_address_format_null_value(nir_address_format addr_format)
+{
+   const static nir_const_value null_values[][NIR_MAX_VEC_COMPONENTS] = {
+      [nir_address_format_32bit_global] = {{0}},
+      [nir_address_format_64bit_global] = {{0}},
+      [nir_address_format_64bit_bounded_global] = {{0}},
+      [nir_address_format_32bit_index_offset] = {{.u32 = ~0}, {.u32 = ~0}},
+      [nir_address_format_32bit_offset] = {{.u32 = ~0}},
+      [nir_address_format_logical] = {{.u32 = ~0}},
+   };
+
+   assert(addr_format < ARRAY_SIZE(null_values));
+   return null_values[addr_format];
+}
