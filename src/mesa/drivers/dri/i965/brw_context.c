@@ -477,11 +477,11 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.MaxImageUnits = MAX_IMAGE_UNITS;
    if (devinfo->gen >= 7) {
       ctx->Const.MaxRenderbufferSize = 16384;
-      ctx->Const.MaxTextureLevels = MIN2(15 /* 16384 */, MAX_TEXTURE_LEVELS);
+      ctx->Const.MaxTextureSize = 16384;
       ctx->Const.MaxCubeTextureLevels = 15; /* 16384 */
    } else {
       ctx->Const.MaxRenderbufferSize = 8192;
-      ctx->Const.MaxTextureLevels = MIN2(14 /* 8192 */, MAX_TEXTURE_LEVELS);
+      ctx->Const.MaxTextureSize = 8192;
       ctx->Const.MaxCubeTextureLevels = 14; /* 8192 */
    }
    ctx->Const.Max3DTextureLevels = 12; /* 2048 */

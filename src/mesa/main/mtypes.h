@@ -3654,7 +3654,7 @@ struct gl_program_constants
 struct gl_constants
 {
    GLuint MaxTextureMbytes;      /**< Max memory per image, in MB */
-   GLuint MaxTextureLevels;      /**< Max mipmap levels. */
+   GLuint MaxTextureSize;        /**< Max 1D/2D texture size, in pixels*/
    GLuint Max3DTextureLevels;    /**< Max mipmap levels for 3D textures */
    GLuint MaxCubeTextureLevels;  /**< Max mipmap levels for cube textures */
    GLuint MaxArrayTextureLayers; /**< Max layers in array textures */
