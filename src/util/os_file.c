@@ -6,11 +6,11 @@
 #include "os_file.h"
 
 #include <errno.h>
+#include <stdlib.h>
 
 #if defined(__linux__)
 
 #include <fcntl.h>
-#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
