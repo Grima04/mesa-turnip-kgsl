@@ -917,6 +917,16 @@ init_logging(struct pipe_screen *screen)
 }
 
 
+/**
+ * no-op logging function to use when SVGA_NO_LOGGING is set.
+ */
+static void
+nop_host_log(struct svga_winsys_screen *sws, const char *message)
+{
+   /* nothing */
+}
+
+
 static void
 svga_destroy_screen( struct pipe_screen *screen )
 {
@@ -1134,7 +1144,11 @@ svga_screen_create(struct svga_winsys_screen *sws)
 
    svga_screen_cache_init(svgascreen);
 
-   init_logging(screen);
+   if (debug_get_bool_option("SVGA_NO_LOGGING", FALSE) == TRUE) {
+      svgascreen->sws->host_log = nop_host_log;
+   } else {
+      init_logging(screen);
+   }
 
    return screen;
 error2:
