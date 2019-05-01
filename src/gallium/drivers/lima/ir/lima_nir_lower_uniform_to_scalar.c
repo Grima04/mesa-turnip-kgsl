@@ -71,8 +71,7 @@ lima_nir_lower_uniform_to_scalar(nir_shader *shader)
 
                nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
-               if (intr->intrinsic != nir_intrinsic_load_uniform ||
-                   intr->num_components == 1)
+               if (intr->intrinsic != nir_intrinsic_load_uniform)
                   continue;
 
                lower_load_uniform_to_scalar(&b, intr);
