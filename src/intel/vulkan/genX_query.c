@@ -346,14 +346,23 @@ emit_ps_depth_count(struct anv_cmd_buffer *cmd_buffer,
 }
 
 static void
-emit_query_availability(struct anv_cmd_buffer *cmd_buffer,
-                        struct anv_address addr)
+emit_query_mi_availability(struct gen_mi_builder *b,
+                           struct anv_address addr,
+                           bool available)
+{
+   gen_mi_store(b, gen_mi_mem64(addr), gen_mi_imm(available));
+}
+
+static void
+emit_query_pc_availability(struct anv_cmd_buffer *cmd_buffer,
+                           struct anv_address addr,
+                           bool available)
 {
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
       pc.DestinationAddressType  = DAT_PPGTT;
       pc.PostSyncOperation       = WriteImmediateData;
       pc.Address                 = addr;
-      pc.ImmediateData           = 1;
+      pc.ImmediateData           = available;
    }
 }
 
@@ -366,11 +375,39 @@ emit_zero_queries(struct anv_cmd_buffer *cmd_buffer,
                   struct gen_mi_builder *b, struct anv_query_pool *pool,
                   uint32_t first_index, uint32_t num_queries)
 {
-   for (uint32_t i = 0; i < num_queries; i++) {
-      struct anv_address slot_addr =
-         anv_query_address(pool, first_index + i);
-      gen_mi_memset(b, anv_address_add(slot_addr, 8), 0, pool->stride - 8);
-      emit_query_availability(cmd_buffer, slot_addr);
+   switch (pool->type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      /* These queries are written with a PIPE_CONTROL so clear them using the
+       * PIPE_CONTROL as well so we don't have to synchronize between 2 types
+       * of operations.
+       */
+      assert((pool->stride % 8) == 0);
+      for (uint32_t i = 0; i < num_queries; i++) {
+         struct anv_address slot_addr =
+            anv_query_address(pool, first_index + i);
+
+         for (uint32_t qword = 1; qword < (pool->stride / 8); qword++) {
+            emit_query_pc_availability(cmd_buffer,
+                                       anv_address_add(slot_addr, qword * 8),
+                                       false);
+         }
+         emit_query_pc_availability(cmd_buffer, slot_addr, true);
+      }
+      break;
+
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+      for (uint32_t i = 0; i < num_queries; i++) {
+         struct anv_address slot_addr =
+            anv_query_address(pool, first_index + i);
+         gen_mi_memset(b, anv_address_add(slot_addr, 8), 0, pool->stride - 8);
+         emit_query_mi_availability(b, slot_addr, true);
+      }
+      break;
+
+   default:
+      unreachable("Unsupported query type");
    }
 }
 
@@ -383,11 +420,28 @@ void genX(CmdResetQueryPool)(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
 
-   for (uint32_t i = 0; i < queryCount; i++) {
-      anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdm) {
-         sdm.Address = anv_query_address(pool, firstQuery + i);
-         sdm.ImmediateData = 0;
+   switch (pool->type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+   case VK_QUERY_TYPE_TIMESTAMP:
+      for (uint32_t i = 0; i < queryCount; i++) {
+         emit_query_pc_availability(cmd_buffer,
+                                    anv_query_address(pool, firstQuery + i),
+                                    false);
       }
+      break;
+
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT: {
+      struct gen_mi_builder b;
+      gen_mi_builder_init(&b, &cmd_buffer->batch);
+
+      for (uint32_t i = 0; i < queryCount; i++)
+         emit_query_mi_availability(&b, anv_query_address(pool, firstQuery + i), false);
+      break;
+   }
+
+   default:
+      unreachable("Unsupported query type");
    }
 }
 
@@ -525,7 +579,7 @@ void genX(CmdEndQueryIndexedEXT)(
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
       emit_ps_depth_count(cmd_buffer, anv_address_add(query_addr, 16));
-      emit_query_availability(cmd_buffer, query_addr);
+      emit_query_pc_availability(cmd_buffer, query_addr, true);
       break;
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
@@ -543,7 +597,7 @@ void genX(CmdEndQueryIndexedEXT)(
          offset += 16;
       }
 
-      emit_query_availability(cmd_buffer, query_addr);
+      emit_query_mi_availability(&b, query_addr, true);
       break;
    }
 
@@ -554,7 +608,7 @@ void genX(CmdEndQueryIndexedEXT)(
       }
 
       emit_xfb_query(&b, index, anv_address_add(query_addr, 16));
-      emit_query_availability(cmd_buffer, query_addr);
+      emit_query_mi_availability(&b, query_addr, true);
       break;
 
    default:
@@ -613,7 +667,7 @@ void genX(CmdWriteTimestamp)(
       break;
    }
 
-   emit_query_availability(cmd_buffer, query_addr);
+   emit_query_pc_availability(cmd_buffer, query_addr, true);
 
    /* When multiview is active the spec requires that N consecutive query
     * indices are used, where N is the number of active views in the subpass.
@@ -684,7 +738,20 @@ void genX(CmdCopyQueryPoolResults)(
    }
 
    if ((flags & VK_QUERY_RESULT_WAIT_BIT) ||
-       (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_FLUSH_BITS)) {
+       (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_FLUSH_BITS) ||
+       /* Occlusion & timestamp queries are written using a PIPE_CONTROL and
+        * because we're about to copy values from MI commands, we need to
+        * stall the command streamer to make sure the PIPE_CONTROL values have
+        * landed, otherwise we could see inconsistent values & availability.
+        *
+        *  From the vulkan spec:
+        *
+        *     "vkCmdCopyQueryPoolResults is guaranteed to see the effect of
+        *     previous uses of vkCmdResetQueryPool in the same queue, without
+        *     any additional synchronization."
+        */
+       pool->type == VK_QUERY_TYPE_OCCLUSION ||
+       pool->type == VK_QUERY_TYPE_TIMESTAMP) {
       cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
    }
