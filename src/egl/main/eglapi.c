@@ -890,6 +890,32 @@ eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 }
 
 
+/* In EGL specs 1.4 and 1.5, at the end of sections 3.5.1 and 3.5.4, it says
+ * that if native_surface was already used to create a window or pixmap, we
+ * can't create a new one. This is what this function checks for.
+ */
+static bool
+_eglNativeSurfaceAlreadyUsed(_EGLDisplay *disp, void *native_surface)
+{
+   _EGLResource *list;
+
+   list = disp->ResourceLists[_EGL_RESOURCE_SURFACE];
+   while (list) {
+      _EGLSurface *surf = (_EGLSurface *) list;
+
+      list = list->Next;
+
+      if (surf->Type == EGL_PBUFFER_BIT)
+         continue;
+
+      if (surf->NativeSurface == native_surface)
+         return true;
+   }
+
+   return false;
+}
+
+
 static EGLSurface
 _eglCreateWindowSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
                               void *native_window, const EGLint *attrib_list)
@@ -925,6 +951,9 @@ _eglCreateWindowSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
 
    if ((conf->SurfaceType & EGL_WINDOW_BIT) == 0)
       RETURN_EGL_ERROR(disp, EGL_BAD_MATCH, EGL_NO_SURFACE);
+
+   if (_eglNativeSurfaceAlreadyUsed(disp, native_window))
+      RETURN_EGL_ERROR(disp, EGL_BAD_ALLOC, EGL_NO_SURFACE);
 
    surf = drv->API.CreateWindowSurface(drv, disp, conf, native_window,
                                        attrib_list);
@@ -1050,6 +1079,9 @@ _eglCreatePixmapSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
 
    if (native_pixmap == NULL)
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_PIXMAP, EGL_NO_SURFACE);
+
+   if (_eglNativeSurfaceAlreadyUsed(disp, native_pixmap))
+      RETURN_EGL_ERROR(disp, EGL_BAD_ALLOC, EGL_NO_SURFACE);
 
    surf = drv->API.CreatePixmapSurface(drv, disp, conf, native_pixmap,
                                        attrib_list);
