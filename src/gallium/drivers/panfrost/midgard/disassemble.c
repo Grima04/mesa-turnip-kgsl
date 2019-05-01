@@ -274,6 +274,70 @@ print_immediate(uint16_t imm)
                 printf("#%g", _mesa_half_to_float(imm));
 }
 
+static int
+bits_for_mode(midgard_reg_mode mode)
+{
+        switch (mode) {
+                case midgard_reg_mode_8:
+                        return 8;
+                case midgard_reg_mode_16:
+                        return 16;
+                case midgard_reg_mode_32:
+                        return 32;
+                case midgard_reg_mode_64:
+                        return 64;
+                default:
+                        return 0;
+        }
+}
+
+static void
+print_dest(unsigned reg, midgard_reg_mode mode, midgard_dest_override override, bool out_high)
+{
+        bool overriden = override != midgard_dest_override_none;
+        bool overriden_up = override == midgard_dest_override_upper;
+
+        /* Depending on the mode and override, we determine the type of
+         * destination addressed. Absent an override, we address just the
+         * type of the operation itself, directly at the out_reg register
+         * (scaled if necessary to disambiguate, raised if necessary) */
+
+        unsigned bits = bits_for_mode(mode);
+
+        if (overriden)
+                bits /= 2;
+
+        /* Sanity check the override */
+
+        if (overriden) {
+                bool modeable = (mode == midgard_reg_mode_32) || (mode == midgard_reg_mode_16);
+                bool known = override != 0x3; /* Unused value */
+                bool uppable = !overriden_up || (mode == midgard_reg_mode_32);
+
+                if (!(modeable && known && uppable))
+                        printf("/* do%d */ ", override);
+        }
+
+        switch (mode) {
+                case midgard_reg_mode_8:
+                case midgard_reg_mode_16:
+                        reg = reg * 2 + out_high;
+                        break;
+
+                case midgard_reg_mode_32:
+                        if (overriden) {
+                                reg = (reg * 2) + overriden_up;
+                        }
+
+                        break;
+
+                default:
+                        break;
+        }
+
+        print_reg(reg, bits);
+}
+
 static void
 print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
                    unsigned tabs)
@@ -329,29 +393,11 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
         }
 
         /* First, print the destination */
-        {
-                int out_reg = reg_info->out_reg;
-                unsigned bits = 32;
+        print_dest(reg_info->out_reg, mode, alu_field->dest_override, out_high);
 
-                if (alu_field->dest_override != midgard_dest_override_none) {
-                        printf("/* do%d */ ", alu_field->dest_override);
-                }
-
-                if (mode == midgard_reg_mode_16) {
-                        bits = 16;
-                        out_reg *= 2;
-                        out_reg += out_high;
-                } else if (mode == midgard_reg_mode_8) {
-                        bits = 8;
-                        out_reg *= 2;
-                        out_reg += out_high;
-                } else if (mode == midgard_reg_mode_64) {
-                        bits = 64;
-                        /* TODO */
-                }
-
-                print_reg(out_reg, bits);
-        }
+        /* The semantics here are not totally grokked yet */
+        if (alu_field->dest_override == midgard_dest_override_upper)
+                out_high = true;
 
         if (mask != 0xF) {
                 unsigned i;
