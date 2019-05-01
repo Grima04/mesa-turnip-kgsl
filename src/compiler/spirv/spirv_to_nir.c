@@ -1532,15 +1532,23 @@ vtn_null_constant(struct vtn_builder *b, struct vtn_type *type)
       /* Nothing to do here.  It's already initialized to zero */
       break;
 
-   case vtn_base_type_pointer:
+   case vtn_base_type_pointer: {
+      enum vtn_variable_mode mode = vtn_storage_class_to_mode(
+         b, type->storage_class, type->deref, NULL);
+      nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
+
+      const nir_const_value *null_value = nir_address_format_null_value(addr_format);
+      memcpy(c->values[0], null_value,
+             sizeof(nir_const_value) * nir_address_format_num_components(addr_format));
+      break;
+   }
+
    case vtn_base_type_void:
    case vtn_base_type_image:
    case vtn_base_type_sampler:
    case vtn_base_type_sampled_image:
    case vtn_base_type_function:
-      /* For pointers and other things, we have to return something but it
-       * doesn't matter what.
-       */
+      /* For those we have to return something but it doesn't matter what. */
       break;
 
    case vtn_base_type_matrix:
