@@ -3691,6 +3691,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		ac_init_exec_full_mask(&ctx.ac);
 
 	if (ctx.ac.chip_class == GFX9 &&
+	    ctx.ac.family != CHIP_VEGA20 &&
 	    shaders[shader_count - 1]->info.stage == MESA_SHADER_TESS_CTRL)
 		ac_nir_fixup_ls_hs_input_vgprs(&ctx);
 
