@@ -351,6 +351,7 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_NONE:
       res->aux.surf.size_B = 0;
+      ok = true;
       break;
    case ISL_AUX_USAGE_HIZ:
       initial_state = ISL_AUX_STATE_AUX_INVALID;
@@ -392,12 +393,13 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
       break;
    }
 
+   /* We should have a valid aux_surf. */
+   if (!ok)
+      return false;
+
    /* No work is needed for a zero-sized auxiliary buffer. */
    if (res->aux.surf.size_B == 0)
       return true;
-
-   /* Assert that ISL gave us a valid aux surf */
-   assert(ok);
 
    /* Create the aux_state for the auxiliary buffer. */
    res->aux.state = create_aux_state_map(res, initial_state);
@@ -684,7 +686,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       goto fail;
 
    if (!iris_resource_alloc_aux(screen, res))
-      goto fail;
+      iris_resource_disable_aux(res);
 
    return &res->base;
 
