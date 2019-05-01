@@ -423,23 +423,15 @@ get_proxy_tex_image(struct gl_context *ctx, GLenum target, GLint level)
 
    switch (target) {
    case GL_PROXY_TEXTURE_1D:
-      if (level >= ctx->Const.MaxTextureLevels)
-         return NULL;
       texIndex = TEXTURE_1D_INDEX;
       break;
    case GL_PROXY_TEXTURE_2D:
-      if (level >= ctx->Const.MaxTextureLevels)
-         return NULL;
       texIndex = TEXTURE_2D_INDEX;
       break;
    case GL_PROXY_TEXTURE_3D:
-      if (level >= ctx->Const.Max3DTextureLevels)
-         return NULL;
       texIndex = TEXTURE_3D_INDEX;
       break;
    case GL_PROXY_TEXTURE_CUBE_MAP:
-      if (level >= ctx->Const.MaxCubeTextureLevels)
-         return NULL;
       texIndex = TEXTURE_CUBE_INDEX;
       break;
    case GL_PROXY_TEXTURE_RECTANGLE_NV:
@@ -448,28 +440,18 @@ get_proxy_tex_image(struct gl_context *ctx, GLenum target, GLint level)
       texIndex = TEXTURE_RECT_INDEX;
       break;
    case GL_PROXY_TEXTURE_1D_ARRAY_EXT:
-      if (level >= ctx->Const.MaxTextureLevels)
-         return NULL;
       texIndex = TEXTURE_1D_ARRAY_INDEX;
       break;
    case GL_PROXY_TEXTURE_2D_ARRAY_EXT:
-      if (level >= ctx->Const.MaxTextureLevels)
-         return NULL;
       texIndex = TEXTURE_2D_ARRAY_INDEX;
       break;
    case GL_PROXY_TEXTURE_CUBE_MAP_ARRAY:
-      if (level >= ctx->Const.MaxCubeTextureLevels)
-         return NULL;
       texIndex = TEXTURE_CUBE_ARRAY_INDEX;
       break;
    case GL_PROXY_TEXTURE_2D_MULTISAMPLE:
-      if (level > 0)
-         return 0;
       texIndex = TEXTURE_2D_MULTISAMPLE_INDEX;
       break;
    case GL_PROXY_TEXTURE_2D_MULTISAMPLE_ARRAY:
-      if (level > 0)
-         return 0;
       texIndex = TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX;
       break;
    default:
