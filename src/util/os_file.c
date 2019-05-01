@@ -92,6 +92,17 @@ os_read_file(const char *filename)
    if (actually_read > 0)
       offset += actually_read;
 
+   /* Final resize to actual size */
+   len = offset + 1;
+   char *newbuf = realloc(buf, len);
+   if (!newbuf) {
+      free(buf);
+      close(fd);
+      errno = -ENOMEM;
+      return NULL;
+   }
+   buf = newbuf;
+
    buf[offset] = '\0';
 
    return buf;
