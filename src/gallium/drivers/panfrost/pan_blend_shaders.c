@@ -96,7 +96,6 @@ void
 panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_state *cso, const struct pipe_blend_color *blend_color)
 {
         const struct pipe_rt_blend_state *blend = &cso->base.rt[0];
-        mali_ptr *out = &cso->blend_shader;
 
         /* Build the shader */
 
@@ -150,7 +149,7 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
                         hot_color[c] = blend_color->color[c];
         }
 
-        *out = panfrost_upload(&ctx->shaders, dst, size, true) | program.first_tag;
+        cso->blend_shader = panfrost_upload(&ctx->shaders, dst, size, true) | program.first_tag;
 
         /* We need to switch to shader mode */
         cso->has_blend_shader = true;

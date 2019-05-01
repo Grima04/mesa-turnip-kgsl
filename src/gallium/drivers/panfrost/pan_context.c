@@ -960,15 +960,22 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 			(ctx->blend->equation.alpha_mode == 0x122) &&
 			(ctx->blend->equation.color_mask == 0xf);
 
+                /* Even on MFBD, the shader descriptor gets blend shaders. It's
+                 * *also* copied to the blend_meta appended (by convention),
+                 * but this is the field actually read by the hardware. (Or
+                 * maybe both are read...?) */
+
+                if (ctx->blend->has_blend_shader) {
+                        ctx->fragment_shader_core.blend_shader = ctx->blend->blend_shader;
+                }
+
                 if (ctx->require_sfbd) {
                         /* When only a single render target platform is used, the blend
                          * information is inside the shader meta itself. We
                          * additionally need to signal CAN_DISCARD for nontrivial blend
                          * modes (so we're able to read back the destination buffer) */
 
-                        if (ctx->blend->has_blend_shader) {
-                                ctx->fragment_shader_core.blend_shader = ctx->blend->blend_shader;
-                        } else {
+                        if (!ctx->blend->has_blend_shader) {
                                 memcpy(&ctx->fragment_shader_core.blend_equation, &ctx->blend->equation, sizeof(ctx->blend->equation));
                         }
 
@@ -1018,8 +1025,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 },
                         };
 
-                        if (ctx->blend->has_blend_shader)
-                                memcpy(&blend_meta[0].blend_equation_1, &ctx->blend->blend_shader, sizeof(ctx->blend->blend_shader));
+                        if (ctx->blend->has_blend_shader) {
+                                blend_meta[0].blend_shader = ctx->blend->blend_shader;
+                        }
 
                         memcpy(transfer.cpu + sizeof(struct mali_shader_meta), blend_meta, sizeof(blend_meta));
                 }
