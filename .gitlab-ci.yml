@@ -148,6 +148,7 @@ meson-clang:
     UNWIND: "true"
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "auto"
+    VULKAN_DRIVERS: intel,amd,freedreno
     CC: "ccache clang-8"
     CXX: "ccache clang++-8"
   before_script:
