@@ -38,10 +38,28 @@ readN(int fd, char *buf, size_t len)
    return total ? total : err;
 }
 
-static char *
-read_grow(int fd)
+char *
+os_read_file(const char *filename)
 {
+   /* Note that this also serves as a slight margin to avoid a 2x grow when
+    * the file is just a few bytes larger when we read it than when we
+    * fstat'ed it.
+    * The string's NULL terminator is also included in here.
+    */
    size_t len = 64;
+
+   int fd = open(filename, O_RDONLY);
+   if (fd == -1) {
+      /* errno set by open() */
+      return NULL;
+   }
+
+   /* Pre-allocate a buffer at least the size of the file if we can read
+    * that information.
+    */
+   struct stat stat;
+   if (fstat(fd, &stat) == 0)
+      len += stat.st_size;
 
    char *buf = malloc(len);
    if (!buf) {
@@ -73,46 +91,6 @@ read_grow(int fd)
       offset += read;
 
    buf[offset] = '\0';
-
-   return buf;
-}
-
-char *
-os_read_file(const char *filename)
-{
-   size_t len = 0;
-
-   int fd = open(filename, O_RDONLY);
-   if (fd == -1) {
-      /* errno set by open() */
-      return NULL;
-   }
-
-   struct stat stat;
-   if (fstat(fd, &stat) == 0)
-      len = stat.st_size;
-
-   if (!len)
-      return read_grow(fd);
-
-   /* add NULL terminator */
-   len++;
-
-   char *buf = malloc(len);
-   if (!buf) {
-      close(fd);
-      errno = -ENOMEM;
-      return NULL;
-   }
-
-   ssize_t read = readN(fd, buf, len - 1);
-
-   close(fd);
-
-   if (read == -1)
-      return NULL;
-
-   buf[read] = '\0';
 
    return buf;
 }
