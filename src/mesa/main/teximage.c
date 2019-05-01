@@ -503,7 +503,7 @@ get_proxy_tex_image(struct gl_context *ctx, GLenum target, GLint level)
  * \sa gl_constants.
  */
 GLint
-_mesa_max_texture_levels(struct gl_context *ctx, GLenum target)
+_mesa_max_texture_levels(const struct gl_context *ctx, GLenum target)
 {
    switch (target) {
    case GL_TEXTURE_1D:
