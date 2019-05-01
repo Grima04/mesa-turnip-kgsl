@@ -618,6 +618,8 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
       assert(addr->num_components == 2);
       return nir_vec2(b, nir_channel(b, addr, 0),
                          nir_iadd(b, nir_channel(b, addr, 1), offset));
+   case nir_address_format_logical:
+      unreachable("Unsupported address format");
    }
    unreachable("Invalid address format");
 }
@@ -673,6 +675,7 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
                          nir_u2u64(b, nir_channel(b, addr, 3)));
 
    case nir_address_format_32bit_index_offset:
+   case nir_address_format_logical:
       unreachable("Cannot get a 64-bit address with this address format");
    }
 

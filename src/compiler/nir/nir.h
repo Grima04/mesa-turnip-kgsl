@@ -3112,6 +3112,15 @@ typedef enum {
     * component is a buffer index and the second is an offset.
     */
    nir_address_format_32bit_index_offset,
+
+   /**
+    * An address format representing a purely logical addressing model.  In
+    * this model, all deref chains must be complete from the dereference
+    * operation to the variable.  Cast derefs are not allowed.  These
+    * addresses will be 32-bit scalars but the format is immaterial because
+    * you can always chase the chain.
+    */
+   nir_address_format_logical,
 } nir_address_format;
 
 static inline unsigned
@@ -3122,6 +3131,7 @@ nir_address_format_bit_size(nir_address_format addr_format)
    case nir_address_format_64bit_global:           return 64;
    case nir_address_format_64bit_bounded_global:   return 32;
    case nir_address_format_32bit_index_offset:     return 32;
+   case nir_address_format_logical:                return 32;
    }
    unreachable("Invalid address format");
 }
@@ -3134,6 +3144,7 @@ nir_address_format_num_components(nir_address_format addr_format)
    case nir_address_format_64bit_global:           return 1;
    case nir_address_format_64bit_bounded_global:   return 4;
    case nir_address_format_32bit_index_offset:     return 2;
+   case nir_address_format_logical:                return 1;
    }
    unreachable("Invalid address format");
 }
