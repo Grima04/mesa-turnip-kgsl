@@ -36,6 +36,7 @@
 #include "util/u_screen.h"
 #include "util/u_transfer_helper.h"
 #include "util/ralloc.h"
+#include "util/xmlconfig.h"
 
 #include <xf86drm.h>
 #include "v3d_screen.h"
@@ -208,6 +209,8 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
                 if (screen->devinfo.ver < 40)
                         return 2048;
+                else if (screen->nonmsaa_texture_size_limit)
+                        return 7680;
                 else
                         return 4096;
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
@@ -665,7 +668,8 @@ v3d_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
 }
 
 struct pipe_screen *
-v3d_screen_create(int fd, struct renderonly *ro)
+v3d_screen_create(int fd, const struct pipe_screen_config *config,
+                  struct renderonly *ro)
 {
         struct v3d_screen *screen = rzalloc(NULL, struct v3d_screen);
         struct pipe_screen *pscreen;
@@ -699,6 +703,14 @@ v3d_screen_create(int fd, struct renderonly *ro)
 
         if (!v3d_get_device_info(screen))
                 goto fail;
+
+        /* We have to driCheckOption for the simulator mode to not assertion
+         * fail on not having our XML config.
+         */
+        const char *nonmsaa_name = "v3d_nonmsaa_texture_size_limit";
+        screen->nonmsaa_texture_size_limit =
+                driCheckOption(config->options, nonmsaa_name, DRI_BOOL) &&
+                driQueryOptionb(config->options, nonmsaa_name);
 
         slab_create_parent(&screen->transfer_pool, sizeof(struct v3d_transfer), 16);
 

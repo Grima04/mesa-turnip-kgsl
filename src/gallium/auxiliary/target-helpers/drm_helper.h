@@ -96,7 +96,7 @@ pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
 
-   screen = kmsro_drm_screen_create(fd);
+   screen = kmsro_drm_screen_create(fd, config);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
 
@@ -281,10 +281,9 @@ pipe_vc4_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
 
-   screen = vc4_drm_screen_create(fd);
+   screen = vc4_drm_screen_create(fd, config);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
-
 #else
 
 struct pipe_screen *
@@ -304,9 +303,13 @@ pipe_v3d_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
 
-   screen = v3d_drm_screen_create(fd);
+   screen = v3d_drm_screen_create(fd, config);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
+
+const char *v3d_driconf_xml =
+      #include "v3d/v3d_driinfo.h"
+      ;
 
 #else
 
@@ -316,6 +319,8 @@ pipe_v3d_create_screen(int fd, const struct pipe_screen_config *config)
    fprintf(stderr, "v3d: driver missing\n");
    return NULL;
 }
+
+const char *v3d_driconf_xml = NULL;
 
 #endif
 
