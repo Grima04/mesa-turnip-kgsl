@@ -26,17 +26,16 @@
  * Author:
  *   Sinclair Yeh <syeh@vmware.com>
  */
-#ifndef _SVGA_MSG_H
-#define _SVGA_MSG_H
+#ifndef _VMW_MSG_H
+#define _VMW_MSG_H
 
 /**
- * svga_host_log: Sends a log message to the host
+ * vmw_host_log: Sends a log message to the host
  *
  * @log: NULL terminated string
  *
- * Returns: PIPE_OK on success
  */
-enum pipe_error svga_host_log(const char *log);
+void vmw_svga_winsys_host_log(struct svga_winsys_screen *sws, const char *log);
 
 #endif
 

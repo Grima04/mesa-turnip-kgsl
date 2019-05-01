@@ -29,7 +29,8 @@
 #include "util/u_memory.h"
 #include "util/u_string.h"
 #include "pipe/p_defines.h"
-#include "svga_msg.h"
+#include "svga_winsys.h"
+#include "vmw_msg.h"
 
 
 #define MESSAGE_STATUS_SUCCESS  0x0001
@@ -83,7 +84,7 @@
          port_num, magic,                  \
          ax, bx, cx, dx, si, di)           \
 ({                                         \
-   __asm__ volatile ("inl %%dx, %%eax;" :  \
+   __asm__ volatile ("inl %%dx, %%eax;" :      \
       "=a"(ax),                            \
       "=b"(bx),                            \
       "=c"(cx),                            \
@@ -128,7 +129,7 @@ typedef uint64_t VMW_REG;
          port_num, magic, bp,                     \
          ax, bx, cx, dx, si, di)                  \
 ({                                                \
-   __asm__ volatile ("push %%rbp;"                \
+   __asm__ volatile ("push %%rbp;"                    \
       "movq %12, %%rbp;"                          \
       "rep outsb;"                                \
       "pop %%rbp;" :                              \
@@ -152,7 +153,7 @@ typedef uint64_t VMW_REG;
          port_num, magic, bp,                     \
          ax, bx, cx, dx, si, di)                  \
 ({                                                \
-   __asm__ volatile ("push %%rbp;"                \
+   __asm__ volatile ("push %%rbp;"                    \
       "movq %12, %%rbp;"                          \
       "rep insb;"                                 \
       "pop %%rbp" :                               \
@@ -183,7 +184,7 @@ typedef uint32_t VMW_REG;
          port_num, magic, bp,                     \
          ax, bx, cx, dx, si, di)                  \
 ({                                                \
-   __asm__ volatile ("push %%ebp;"                \
+   __asm__ volatile ("push %%ebp;"                    \
       "mov %12, %%ebp;"                           \
       "rep outsb;"                                \
       "pop %%ebp;" :                              \
@@ -208,7 +209,7 @@ typedef uint32_t VMW_REG;
          port_num, magic, bp,                     \
          ax, bx, cx, dx, si, di)                  \
 ({                                                \
-   __asm__ volatile ("push %%ebp;"                \
+   __asm__ volatile ("push %%ebp;"                    \
       "mov %12, %%ebp;"                           \
       "rep insb;"                                 \
       "pop %%ebp" :                               \
@@ -252,7 +253,7 @@ typedef uint32_t VMW_REG;
          (void) in_cx; (void) bp;                 \
          (void) ax; (void) bx; (void) cx;         \
          (void) dx; (void) si; (void) di;
-			
+
 
 #define VMW_PORT_HB_IN(cmd, in_cx, in_si, in_di,  \
          port_num, magic, bp,                     \
@@ -283,7 +284,7 @@ struct rpc_channel {
 
 
 /**
- * svga_open_channel
+ * vmw_open_channel
  *
  * @channel: RPC channel
  * @protocol:
@@ -291,7 +292,7 @@ struct rpc_channel {
  * Returns: PIPE_OK on success, PIPE_ERROR otherwise
  */
 static enum pipe_error
-svga_open_channel(struct rpc_channel *channel, unsigned protocol)
+vmw_open_channel(struct rpc_channel *channel, unsigned protocol)
 {
    VMW_REG ax = 0, bx = 0, cx = 0, dx = 0, si = 0, di = 0;
 
@@ -321,7 +322,7 @@ svga_open_channel(struct rpc_channel *channel, unsigned protocol)
  * Returns: PIPE_OK on success, PIPE_ERROR otherwises
  */
 static enum pipe_error
-svga_close_channel(struct rpc_channel *channel)
+vmw_close_channel(struct rpc_channel *channel)
 {
    VMW_REG ax = 0, bx = 0, cx = 0, dx = 0, si, di;
 
@@ -344,7 +345,7 @@ svga_close_channel(struct rpc_channel *channel)
 
 
 /**
- * svga_send_msg: Sends a message to the host
+ * vmw_send_msg: Sends a message to the host
  *
  * @channel: RPC channel
  * @logmsg: NULL terminated string
@@ -352,7 +353,7 @@ svga_close_channel(struct rpc_channel *channel)
  * Returns: PIPE_OK on success
  */
 static enum pipe_error
-svga_send_msg(struct rpc_channel *channel, const char *msg)
+vmw_send_msg(struct rpc_channel *channel, const char *msg)
 {
    VMW_REG ax = 0, bx = 0, cx = 0, dx = 0, si, di, bp;
    size_t msg_len = strlen(msg);
@@ -406,46 +407,42 @@ svga_send_msg(struct rpc_channel *channel, const char *msg)
 
 
 /**
- * svga_host_log: Sends a log message to the host
+ * vmw_svga_winsys_host_log: Sends a log message to the host
  *
  * @log: NULL terminated string
  *
- * Returns: PIPE_OK on success
  */
-enum pipe_error
-svga_host_log(const char *log)
+void
+vmw_svga_winsys_host_log(struct svga_winsys_screen *sws, const char *log)
 {
    struct rpc_channel channel;
    char *msg;
    int msg_len;
-   enum pipe_error ret = PIPE_OK;
 
 #ifdef MSG_NOT_IMPLEMENTED
-   return ret;
+   return;
 #endif
 
    if (!log)
-      return ret;
+      return;
 
    msg_len = strlen(log) + strlen("log ") + 1;
    msg = CALLOC(1, msg_len);
    if (msg == NULL) {
       debug_printf("Cannot allocate memory for log message\n");
-      return PIPE_ERROR_OUT_OF_MEMORY;
+      return;
    }
 
    util_sprintf(msg, "log %s", log);
 
-   if (svga_open_channel(&channel, RPCI_PROTOCOL_NUM) ||
-       svga_send_msg(&channel, msg) ||
-       svga_close_channel(&channel)) {
+   if (vmw_open_channel(&channel, RPCI_PROTOCOL_NUM) ||
+       vmw_send_msg(&channel, msg) ||
+       vmw_close_channel(&channel)) {
       debug_printf("Failed to send log\n");
-
-      ret = PIPE_ERROR;
    }
 
    FREE(msg);
 
-   return ret;
+   return;
 }
 
