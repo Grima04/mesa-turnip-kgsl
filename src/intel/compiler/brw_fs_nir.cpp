@@ -454,7 +454,7 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
       break;
 
    case nir_instr_type_deref:
-      /* Derefs can exist for images but they do nothing */
+      unreachable("All derefs should've been lowered");
       break;
 
    case nir_instr_type_intrinsic:
