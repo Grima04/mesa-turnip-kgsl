@@ -1189,6 +1189,8 @@ radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask)
 		return vk_format_stencil_only(image->vk_format);
 	case VK_IMAGE_ASPECT_DEPTH_BIT:
 		return vk_format_depth_only(image->vk_format);
+	case VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT:
+		return vk_format_depth_only(image->vk_format);
 	default:
 		return image->vk_format;
 	}
