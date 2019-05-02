@@ -1716,7 +1716,7 @@ ptr_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
    }
 }
 
-static enum vtn_variable_mode
+enum vtn_variable_mode
 vtn_storage_class_to_mode(struct vtn_builder *b,
                           SpvStorageClass class,
                           struct vtn_type *interface_type,

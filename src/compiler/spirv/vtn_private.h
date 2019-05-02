@@ -799,6 +799,11 @@ void vtn_handle_entry_point(struct vtn_builder *b, const uint32_t *w,
 void vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
                            const uint32_t *w, unsigned count);
 
+enum vtn_variable_mode vtn_storage_class_to_mode(struct vtn_builder *b,
+                                                 SpvStorageClass class,
+                                                 struct vtn_type *interface_type,
+                                                 nir_variable_mode *nir_mode_out);
+
 static inline uint32_t
 vtn_align_u32(uint32_t v, uint32_t a)
 {
