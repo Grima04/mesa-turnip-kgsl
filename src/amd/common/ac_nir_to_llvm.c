@@ -1574,9 +1574,9 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 
 		u_bit_scan_consecutive_range(&writemask, &start, &count);
 
-		/* Due to an LLVM limitation, split 3-element writes
-		 * into a 2-element and a 1-element write. */
-		if (count == 3) {
+		/* Due to an LLVM limitation with LLVM < 9, split 3-element
+		 * writes into a 2-element and a 1-element write. */
+		if (count == 3 && (elem_size_bytes != 4 || HAVE_LLVM < 0x900)) {
 			writemask |= 1 << (start + 2);
 			count = 2;
 		}
@@ -1617,6 +1617,9 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 			switch (num_bytes) {
 			case 16: /* v4f32 */
 				data_type = ctx->ac.v4f32;
+				break;
+			case 12: /* v3f32 */
+				data_type = ctx->ac.v3f32;
 				break;
 			case 8: /* v2f32 */
 				data_type = ctx->ac.v2f32;

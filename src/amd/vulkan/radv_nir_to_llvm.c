@@ -2768,7 +2768,9 @@ radv_emit_stream_output(struct radv_shader_context *ctx,
 		/* fall through */
 	case 4: /* as v4i32 */
 		vdata = ac_build_gather_values(&ctx->ac, out,
-					       util_next_power_of_two(num_comps));
+					       HAVE_LLVM < 0x900 ?
+					       util_next_power_of_two(num_comps) :
+					       num_comps);
 		break;
 	}
 
