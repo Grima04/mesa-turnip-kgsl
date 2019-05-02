@@ -2678,8 +2678,6 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
    case GL_TEXTURE_BINDING_RECTANGLE: {
       int target;
 
-      if (ctx->API != API_OPENGL_CORE)
-         goto invalid_enum;
       target = tex_binding_to_index(ctx, pname);
       if (target < 0)
          goto invalid_enum;
@@ -2771,6 +2769,16 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
       _mesa_ClientActiveTexture(GL_TEXTURE0 + curTexUnitSave);
       return TYPE_INT;
    }
+   case GL_TEXTURE_MATRIX:
+      if (index >= ARRAY_SIZE(ctx->TextureMatrixStack))
+         goto invalid_enum;
+      v->value_matrix = ctx->TextureMatrixStack[index].Top;
+      return TYPE_MATRIX;
+   case GL_TRANSPOSE_TEXTURE_MATRIX:
+      if (index >= ARRAY_SIZE(ctx->TextureMatrixStack))
+         goto invalid_enum;
+      v->value_matrix = ctx->TextureMatrixStack[index].Top;
+      return TYPE_MATRIX_T;
    }
 
  invalid_enum:

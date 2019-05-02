@@ -1094,7 +1094,7 @@ const struct function common_desktop_functions_possible[] = {
    //{ "glCopyMultiTexSubImage3DEXT", 12, -1 },
    { "glEnableClientStateIndexedEXT", 12, -1 },
    { "glDisableClientStateIndexedEXT", 12, -1 },
-   //{ "glGetPointerIndexedvEXT", 12, -1 },
+   { "glGetPointerIndexedvEXT", 12, -1 },
    /* GL_EXT_direct_state_access - ARB_vertex_program */
    //{ "glNamedProgramStringEXT", 10, -1 },
    //{ "glNamedProgramLocalParameter4dEXT", 10, -1 },
@@ -1185,7 +1185,6 @@ const struct function common_desktop_functions_possible[] = {
    /* GL_EXT_direct_state_access - GL 3.0 */
    //{ "glGetFloati_vEXT", 30, -1 },
    //{ "glGetDoublei_vEXT", 30, -1 },
-   //{ "glGetPointeri_vEXT", 30, -1 },
    //{ "glNamedRenderbufferStorageEXT", 30, -1 },
    //{ "glGetNamedRenderbufferParameterivEXT", 30, -1 },
    //{ "glNamedRenderbufferStorageMultisampleEXT", 30, -1 },

@@ -1516,7 +1516,7 @@ offsets = {
     "GetNamedFramebufferAttachmentParameterivEXT": 1480,
     "EnableClientStateiEXT": 1481,
     "DisableClientStateiEXT": 1482,
-
+    "GetPointerIndexedvEXT": 1483,
 }
 
 functions = [

@@ -323,6 +323,24 @@
       <param name="index" type="GLuint" />
    </function>
 
+   <function name="GetFloatIndexedvEXT" alias="GetFloati_v">
+      <param name="target" type="GLenum" />
+      <param name="index" type="GLuint" />
+      <param name="params" type="GLfloat*" />
+   </function>
+
+   <function name="GetDoubleIndexedvEXT" alias="GetDoublei_v">
+      <param name="target" type="GLenum" />
+      <param name="index" type="GLuint" />
+      <param name="params" type="GLdouble*" />
+   </function>
+
+   <function name="GetPointerIndexedvEXT">
+      <param name="target" type="GLenum" />
+      <param name="index" type="GLuint" />
+      <param name="params" type="GLvoid**" />
+   </function>
+
    <!-- OpenGL 1.3 -->
 
    <function name="MatrixLoadTransposefEXT" offset="assign">
@@ -495,6 +513,12 @@
    <function name="DisableClientStateiEXT">
       <param name="array" type="GLenum" />
       <param name="index" type="GLuint" />
+   </function>
+
+   <function name="GetPointeri_vEXT" alias="GetPointerIndexedvEXT">
+      <param name="target" type="GLenum" />
+      <param name="index" type="GLuint" />
+      <param name="params" type="GLvoid**" />
    </function>
 </category>
 </OpenGLAPI>
