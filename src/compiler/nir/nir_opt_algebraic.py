@@ -782,7 +782,7 @@ optimizations.extend([
    (('usub_borrow@32', a, b), ('b2i', ('ult', a, b)), 'options->lower_usub_borrow'),
 
    (('bitfield_insert', 'base', 'insert', 'offset', 'bits'),
-    ('bcsel', ('ilt', 31, 'bits'), 'insert',
+    ('bcsel', ('ult', 31, 'bits'), 'insert',
               ('bfi', ('bfm', 'bits', 'offset'), 'insert', 'base')),
     'options->lower_bitfield_insert'),
    (('ihadd', a, b), ('iadd', ('iand', a, b), ('ishr', ('ixor', a, b), 1)), 'options->lower_hadd'),
@@ -800,7 +800,7 @@ optimizations.extend([
     'options->lower_bitfield_insert_to_shifts'),
 
    (('ibitfield_extract', 'value', 'offset', 'bits'),
-    ('bcsel', ('ilt', 31, 'bits'), 'value',
+    ('bcsel', ('ult', 31, 'bits'), 'value',
               ('ibfe', 'value', 'offset', 'bits')),
     'options->lower_bitfield_extract'),
 
