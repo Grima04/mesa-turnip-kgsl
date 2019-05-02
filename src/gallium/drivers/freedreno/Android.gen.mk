@@ -25,7 +25,7 @@ LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 endif
 
 ir3_nir_trig_deps := \
-	$(LOCAL_PATH)/ir3/ir3_nir_trig.py \
+	$(MESA_TOP)/src/freedreno/ir3/ir3_nir_trig.py \
 	$(MESA_TOP)/src/compiler/nir/nir_algebraic.py
 
 intermediates := $(call local-generated-sources-dir)
