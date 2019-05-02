@@ -79,15 +79,10 @@ format_ccs_e_compat_with_miptree(const struct gen_device_info *devinfo,
    return isl_formats_are_ccs_e_compatible(devinfo, isl_format, access_format);
 }
 
+/* Determine if CCS_E is supported for a given platform and mesa format. */
 static bool
-intel_miptree_supports_ccs_e(struct brw_context *brw,
-                             const struct intel_mipmap_tree *mt)
+format_supports_ccs_e(const struct brw_context *brw, mesa_format format)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-
-   if (devinfo->gen < 9)
-      return false;
-
    /* For now compression is only enabled for integer formats even though
     * there exist supported floating point formats also. This is a heuristic
     * decision based on current public benchmarks. In none of the cases these
@@ -95,14 +90,14 @@ intel_miptree_supports_ccs_e(struct brw_context *brw,
     * Hence these are left to to be enabled in the future when they are known
     * to improve things.
     */
-   if (_mesa_get_format_datatype(mt->format) == GL_FLOAT)
+   if (_mesa_get_format_datatype(format) == GL_FLOAT)
       return false;
 
    /* Many window system buffers are sRGB even if they are never rendered as
     * sRGB.  For those, we want CCS_E for when sRGBEncode is false.  When the
     * surface is used as sRGB, we fall back to CCS_D.
     */
-   mesa_format linear_format = _mesa_get_srgb_format_linear(mt->format);
+   mesa_format linear_format = _mesa_get_srgb_format_linear(format);
    enum isl_format isl_format = brw_isl_format_for_mesa_format(linear_format);
    return isl_format_supports_ccs_e(&brw->screen->devinfo, isl_format);
 }
@@ -175,7 +170,7 @@ intel_miptree_choose_aux_usage(struct brw_context *brw,
       if (mt->surf.samples > 1) {
          mt->aux_usage = ISL_AUX_USAGE_MCS;
       } else if (!unlikely(INTEL_DEBUG & DEBUG_NO_RBC) &&
-                 intel_miptree_supports_ccs_e(brw, mt)) {
+                 format_supports_ccs_e(brw, mt->format)) {
          mt->aux_usage = ISL_AUX_USAGE_CCS_E;
       } else if (brw->mesa_format_supports_render[mt->format]) {
          mt->aux_usage = ISL_AUX_USAGE_CCS_D;
