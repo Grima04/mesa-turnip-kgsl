@@ -914,13 +914,12 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
 
    bool has_texture_deref = false, has_sampler_deref = false;
    for (unsigned i = 0; i < instr->num_srcs; i++) {
-      print_src(&instr->src[i].src, state);
-
-      if (i == 0) {
-         fprintf(fp, " ");
-      } else {
+      if (i > 0) {
          fprintf(fp, ", ");
       }
+
+      print_src(&instr->src[i].src, state);
+      fprintf(fp, " ");
 
       switch(instr->src[i].src_type) {
       case nir_tex_src_coord:
@@ -987,7 +986,7 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    }
 
    if (instr->op == nir_texop_tg4) {
-      fprintf(fp, ", %u (gather_component), ", instr->component);
+      fprintf(fp, ", %u (gather_component)", instr->component);
    }
 
    if (nir_tex_instr_has_explicit_tg4_offsets(instr)) {
