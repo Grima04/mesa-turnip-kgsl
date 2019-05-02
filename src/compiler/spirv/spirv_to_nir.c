@@ -1542,49 +1542,43 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 }
 
 static nir_constant *
-vtn_null_constant(struct vtn_builder *b, const struct glsl_type *type)
+vtn_null_constant(struct vtn_builder *b, struct vtn_type *type)
 {
    nir_constant *c = rzalloc(b, nir_constant);
 
-   /* For pointers and other typeless things, we have to return something but
-    * it doesn't matter what.
-    */
-   if (!type)
-      return c;
-
-   switch (glsl_get_base_type(type)) {
-   case GLSL_TYPE_INT:
-   case GLSL_TYPE_UINT:
-   case GLSL_TYPE_INT16:
-   case GLSL_TYPE_UINT16:
-   case GLSL_TYPE_UINT8:
-   case GLSL_TYPE_INT8:
-   case GLSL_TYPE_INT64:
-   case GLSL_TYPE_UINT64:
-   case GLSL_TYPE_BOOL:
-   case GLSL_TYPE_FLOAT:
-   case GLSL_TYPE_FLOAT16:
-   case GLSL_TYPE_DOUBLE:
+   switch (type->base_type) {
+   case vtn_base_type_scalar:
+   case vtn_base_type_vector:
       /* Nothing to do here.  It's already initialized to zero */
       break;
 
-   case GLSL_TYPE_ARRAY:
-      vtn_assert(glsl_get_length(type) > 0);
-      c->num_elements = glsl_get_length(type);
+   case vtn_base_type_pointer:
+   case vtn_base_type_void:
+   case vtn_base_type_image:
+   case vtn_base_type_sampler:
+   case vtn_base_type_sampled_image:
+   case vtn_base_type_function:
+      /* For pointers and other things, we have to return something but it
+       * doesn't matter what.
+       */
+      break;
+
+   case vtn_base_type_matrix:
+   case vtn_base_type_array:
+      vtn_assert(type->length > 0);
+      c->num_elements = type->length;
       c->elements = ralloc_array(b, nir_constant *, c->num_elements);
 
-      c->elements[0] = vtn_null_constant(b, glsl_get_array_element(type));
+      c->elements[0] = vtn_null_constant(b, type->array_element);
       for (unsigned i = 1; i < c->num_elements; i++)
          c->elements[i] = c->elements[0];
       break;
 
-   case GLSL_TYPE_STRUCT:
-      c->num_elements = glsl_get_length(type);
+   case vtn_base_type_struct:
+      c->num_elements = type->length;
       c->elements = ralloc_array(b, nir_constant *, c->num_elements);
-
-      for (unsigned i = 0; i < c->num_elements; i++) {
-         c->elements[i] = vtn_null_constant(b, glsl_get_struct_field(type, i));
-      }
+      for (unsigned i = 0; i < c->num_elements; i++)
+         c->elements[i] = vtn_null_constant(b, type->members[i]);
       break;
 
    default:
@@ -1747,7 +1741,7 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
                         "only constants or undefs allowed for "
                         "SpvOpConstantComposite");
             /* to make it easier, just insert a NULL constant for now */
-            elems[i] = vtn_null_constant(b, val->type->type);
+            elems[i] = vtn_null_constant(b, val->type);
          }
       }
 
@@ -2006,7 +2000,7 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpConstantNull:
-      val->constant = vtn_null_constant(b, val->type->type);
+      val->constant = vtn_null_constant(b, val->type);
       break;
 
    case SpvOpConstantSampler:
