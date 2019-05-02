@@ -31,7 +31,7 @@
  * we're simply testing for version 7.x here.
  */
 #if defined(__MINGW32__) && __GNUC__ == 7
-#warning "disabling optimizations for this file to work around compiler bug in MiGW gcc 7.x"
+#warning "disabling optimizations for this file to work around compiler bug in MinGW gcc 7.x"
 #pragma GCC optimize("O1")
 #endif
 
