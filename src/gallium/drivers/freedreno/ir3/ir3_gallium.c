@@ -265,10 +265,13 @@ emit_user_consts(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		if (state->range[i].start < state->range[i].end &&
 			constbuf->enabled_mask & (1 << i)) {
 
+			uint32_t size = state->range[i].end - state->range[i].start;
+			uint32_t offset = cb->buffer_offset + state->range[i].start;
+			debug_assert((state->range[i].offset % 16) == 0);
+			debug_assert((size % 16) == 0);
+			debug_assert((offset % 16) == 0);
 			ctx->emit_const(ring, v->type, state->range[i].offset / 4,
-							cb->buffer_offset + state->range[i].start,
-							(state->range[i].end - state->range[i].start) / 4,
-							cb->user_buffer, cb->buffer);
+							offset, size / 4, cb->user_buffer, cb->buffer);
 		}
 	}
 }
