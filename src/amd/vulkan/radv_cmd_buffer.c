@@ -2202,6 +2202,7 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer,
 	ia_multi_vgt_param =
 		si_get_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1,
 					  draw_info->indirect,
+					  !!draw_info->strmout_buffer,
 					  draw_info->indirect ? 0 : draw_info->count);
 
 	if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
