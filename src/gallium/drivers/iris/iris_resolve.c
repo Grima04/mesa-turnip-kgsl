@@ -83,10 +83,11 @@ static void
 resolve_sampler_views(struct iris_context *ice,
                       struct iris_batch *batch,
                       struct iris_shader_state *shs,
+                      const struct shader_info *info,
                       bool *draw_aux_buffer_disabled,
                       bool consider_framebuffer)
 {
-   uint32_t views = shs->bound_sampler_views;
+   uint32_t views = info ? (shs->bound_sampler_views & info->textures_used) : 0;
 
    unsigned astc5x5_wa_bits = 0; // XXX: actual tracking
 
@@ -120,6 +121,7 @@ resolve_image_views(struct iris_context *ice,
                     bool *draw_aux_buffer_disabled,
                     bool consider_framebuffer)
 {
+   /* TODO: Consider images used by program */
    uint32_t views = shs->bound_image_views;
 
    while (views) {
@@ -154,12 +156,13 @@ iris_predraw_resolve_inputs(struct iris_context *ice,
                             bool consider_framebuffer)
 {
    struct iris_shader_state *shs = &ice->state.shaders[stage];
+   const struct shader_info *info = iris_get_shader_info(ice, stage);
 
    uint64_t dirty = (IRIS_DIRTY_BINDINGS_VS << stage) |
                     (consider_framebuffer ? IRIS_DIRTY_BINDINGS_FS : 0);
 
    if (ice->state.dirty & dirty) {
-      resolve_sampler_views(ice, batch, shs, draw_aux_buffer_disabled,
+      resolve_sampler_views(ice, batch, shs, info, draw_aux_buffer_disabled,
                             consider_framebuffer);
       resolve_image_views(ice, batch, shs, draw_aux_buffer_disabled,
                           consider_framebuffer);
