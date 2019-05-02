@@ -445,11 +445,11 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return FALSE;
 
         if (bind & PIPE_BIND_RENDER_TARGET) {
-                /* We don't support rendering into anything but RGBA8 yet. We
-                 * need more formats for spec compliance, but for now, honesty
-                 * is the best policy <3 */
+                /* TODO: Support all the formats! :) */
+                bool supported = util_format_is_rgba8_variant(format_desc);
+                supported |= format == PIPE_FORMAT_B5G6R5_UNORM;
 
-                if (!util_format_is_rgba8_variant(format_desc))
+                if (!supported)
                         return FALSE;
 
                 if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS)

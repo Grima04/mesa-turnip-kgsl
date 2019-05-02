@@ -40,6 +40,7 @@
 #include "util/u_format.h"
 #include "indices/u_primconvert.h"
 #include "tgsi/tgsi_parse.h"
+#include "util/u_math.h"
 
 #include "pan_screen.h"
 #include "pan_blending.h"
@@ -52,6 +53,22 @@ extern const char *pan_counters_base;
 
 /* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
 //#define DRY_RUN
+
+/* Can a given format support AFBC? Not all can. */
+
+static bool
+panfrost_can_afbc(enum pipe_format format)
+{
+        const struct util_format_description *desc =
+                util_format_description(format);
+
+        if (util_format_is_rgba8_variant(desc))
+                return true;
+
+        /* TODO: AFBC of other formats */
+
+        return false;
+}
 
 /* AFBC is enabled on a per-resource basis (AFBC enabling is theoretically
  * indepdent between color buffers and depth/stencil). To enable, we allocate
@@ -228,11 +245,38 @@ panfrost_is_scanout(struct panfrost_context *ctx)
                ctx->pipe_framebuffer.cbufs[0]->texture->bind & PIPE_BIND_SHARED;
 }
 
-/* Maps float 0.0-1.0 to int 0x00-0xFF */
-static uint8_t
-normalised_float_to_u8(float f)
+static uint32_t
+pan_pack_color(const union pipe_color_union *color, enum pipe_format format)
 {
-        return (uint8_t) (int) (f * 255.0f);
+        /* Alpha magicked to 1.0 if there is no alpha */
+
+        bool has_alpha = util_format_has_alpha(format);
+        float clear_alpha = has_alpha ? color->f[3] : 1.0f;
+
+        /* Packed color depends on the framebuffer format */
+
+        const struct util_format_description *desc =
+                util_format_description(format);
+
+        if (util_format_is_rgba8_variant(desc)) {
+                return (float_to_ubyte(clear_alpha) << 24) |
+                       (float_to_ubyte(color->f[2]) << 16) |
+                       (float_to_ubyte(color->f[1]) <<  8) |
+                       (float_to_ubyte(color->f[0]) <<  0);
+        } else if (format == PIPE_FORMAT_B5G6R5_UNORM) {
+                /* First, we convert the components to R5, G6, B5 separately */
+                unsigned r5 = CLAMP(color->f[0], 0.0, 1.0) * 31.0;
+                unsigned g6 = CLAMP(color->f[1], 0.0, 1.0) * 63.0;
+                unsigned b5 = CLAMP(color->f[2], 0.0, 1.0) * 31.0;
+
+                /* Then we pack into a sparse u32. TODO: Why these shifts? */
+                return (b5 << 25) | (g6 << 14) | (r5 << 5);
+        } else {
+                /* Unknown format */
+                assert(0);
+        }
+
+        return 0;
 }
 
 static void
@@ -246,18 +290,8 @@ panfrost_clear(
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
         if (buffers & PIPE_CLEAR_COLOR) {
-                /* Alpha clear only meaningful without alpha channel, TODO less ad hoc */
-                bool has_alpha = util_format_has_alpha(ctx->pipe_framebuffer.cbufs[0]->format);
-                float clear_alpha = has_alpha ? color->f[3] : 1.0f;
-
-                uint32_t packed_color =
-                        (normalised_float_to_u8(clear_alpha) << 24) |
-                        (normalised_float_to_u8(color->f[2]) << 16) |
-                        (normalised_float_to_u8(color->f[1]) <<  8) |
-                        (normalised_float_to_u8(color->f[0]) <<  0);
-
-                job->clear_color = packed_color;
-
+                enum pipe_format format = ctx->pipe_framebuffer.cbufs[0]->format;
+                job->clear_color = pan_pack_color(color, format);
         }
 
         if (buffers & PIPE_CLEAR_DEPTH) {
@@ -2071,9 +2105,10 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 panfrost_attach_vt_framebuffer(ctx);
 
                 struct panfrost_resource *tex = ((struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[i]->texture);
+                enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
                 bool is_scanout = panfrost_is_scanout(ctx);
 
-                if (!is_scanout && tex->bo->layout != PAN_AFBC) {
+                if (!is_scanout && tex->bo->layout != PAN_AFBC && panfrost_can_afbc(format)) {
                         /* The blob is aggressive about enabling AFBC. As such,
                          * it's pretty much necessary to use it here, since we
                          * have no traces of non-compressed FBO. */

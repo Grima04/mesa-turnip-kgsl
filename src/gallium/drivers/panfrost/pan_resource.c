@@ -416,15 +416,24 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
         *out_transfer = &transfer->base;
 
-        if (resource->bind & PIPE_BIND_DISPLAY_TARGET ||
-            resource->bind & PIPE_BIND_SCANOUT ||
-            resource->bind & PIPE_BIND_SHARED) {
-                /* Mipmapped readpixels?! */
-                assert(level == 0);
+        /* Check if we're bound for rendering and this is a read pixels. If so,
+         * we need to flush */
 
-                /* Force a flush -- kill the pipeline */
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
+
+        bool is_bound = false;
+
+        for (unsigned c = 0; c < fb->nr_cbufs; ++c) {
+                is_bound |= fb->cbufs[c]->texture == resource;
+        }
+
+        if (is_bound && (usage & PIPE_TRANSFER_READ)) {
+                assert(level == 0);
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
         }
+
+        /* TODO: Respect usage flags */
 
         if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
                 /* TODO: reallocate */

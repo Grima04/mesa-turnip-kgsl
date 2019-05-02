@@ -36,7 +36,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
         const struct util_format_description *desc =
                 util_format_description(surf->texture->format);
 
-        /* Fill in accordingly */
+        /* Fill in accordingly, defaulting to RGBA8888 (UNORM) */
 
         struct mali_rt_format fmt = {
                 .unk1 = 0x4000000,
@@ -46,6 +46,14 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
                 .unk4 = 0x8
         };
+
+        /* Set flags for alternative formats */
+
+        if (surf->texture->format == PIPE_FORMAT_B5G6R5_UNORM) {
+                fmt.unk1 = 0x14000000;
+                fmt.nr_channels = MALI_POSITIVE(2);
+                fmt.flags |= 0x1;
+        }
 
         return fmt;
 }
@@ -95,7 +103,6 @@ panfrost_mfbd_set_cbuf(
                         stride = -stride;
                 }
 
-                /* MFBD specifies stride in tiles */
                 rt->framebuffer = framebuffer;
                 rt->framebuffer_stride = stride / 16;
         } else if (rsrc->bo->layout == PAN_AFBC) {
