@@ -993,11 +993,13 @@ static const uint16_t CONST_STATE = 1;
 % endfor
 
 % for state_id, state_xforms in enumerate(automaton.state_patterns):
+% if state_xforms: # avoid emitting a 0-length array for MSVC
 static const struct transform ${pass_name}_state${state_id}_xforms[] = {
 % for i in state_xforms:
   { ${xforms[i].search.c_ptr(cache)}, ${xforms[i].replace.c_value_ptr(cache)}, ${xforms[i].condition_index} },
 % endfor
 };
+% endif
 % endfor
 
 static const struct per_op_table ${pass_name}_table[nir_num_search_ops] = {
@@ -1080,6 +1082,7 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
       switch (states[alu->dest.dest.ssa.index]) {
 % for i in range(len(automaton.state_patterns)):
       case ${i}:
+         % if automaton.state_patterns[i]:
          for (unsigned i = 0; i < ARRAY_SIZE(${pass_name}_state${i}_xforms); i++) {
             const struct transform *xform = &${pass_name}_state${i}_xforms[i];
             if (condition_flags[xform->condition_offset] &&
@@ -1088,6 +1091,7 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
                break;
             }
          }
+         % endif
          break;
 % endfor
       default: assert(0);
