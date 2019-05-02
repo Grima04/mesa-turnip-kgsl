@@ -54,7 +54,19 @@ Requirements
    to be built with a matching CRT as Mesa, and you'll need to pass
    ``-DLLVM_USE_CRT_xxx=yyy`` as described below.
 
-   LLVM build-type
+
+   +-----------------+----------------------------------------------------------------+
+   | LLVM build-type | Mesa build-type                                                |
+   |                 +--------------------------------+-------------------------------+
+   |                 | debug,checked                  | release,profile               |
+   +=================+================================+===============================+
+   | Debug           | ``-DLLVM_USE_CRT_DEBUG=MTd``   | ``-DLLVM_USE_CRT_DEBUG=MT``   |
+   +-----------------+--------------------------------+-------------------------------+
+   | Release         | ``-DLLVM_USE_CRT_RELEASE=MTd`` | ``-DLLVM_USE_CRT_RELEASE=MT`` |
+   +-----------------+--------------------------------+-------------------------------+
+
+   You can build only the x86 target by passing
+   ``-DLLVM_TARGETS_TO_BUILD=X86`` to cmake.
 
 -  scons (optional)
 
