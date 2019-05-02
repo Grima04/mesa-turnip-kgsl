@@ -1,3 +1,5 @@
+.. include:: contents.rst
+
 News
 ====
 
