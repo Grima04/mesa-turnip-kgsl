@@ -126,7 +126,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader)
 	struct ir3_ubo_analysis_state *state = &shader->ubo_state;
 
 	memset(state, 0, sizeof(*state));
-	state->range[0].end = nir->num_uniforms * 16;
+	state->range[0].end = align(nir->num_uniforms * 16, 16 * 4); /* align to 4*vec4 */
 
 	nir_foreach_function(function, nir) {
 		if (function->impl) {
