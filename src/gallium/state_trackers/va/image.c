@@ -251,23 +251,26 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
    }
 
    mtx_lock(&drv->mutex);
-   screen->resource_get_info(screen, surfaces[0]->texture, &stride, &offset);
-   if (!stride)
-      offset = 0;
+   if (screen->resource_get_info) {
+      screen->resource_get_info(screen, surfaces[0]->texture, &stride,
+                                &offset);
+      if (!stride)
+         offset = 0;
+   }
 
    switch (img->format.fourcc) {
    case VA_FOURCC('U','Y','V','Y'):
    case VA_FOURCC('Y','U','Y','V'):
-      assert(stride >= (w * 2));
       img->pitches[0] = stride > 0 ? stride : w * 2;
+      assert(img->pitches[0] >= (w * 2));
       break;
 
    case VA_FOURCC('B','G','R','A'):
    case VA_FOURCC('R','G','B','A'):
    case VA_FOURCC('B','G','R','X'):
    case VA_FOURCC('R','G','B','X'):
-      assert(stride >= (w * 4));
       img->pitches[0] = stride > 0 ? stride : w * 4;
+      assert(img->pitches[0] >= (w * 4));
       break;
 
    default:
