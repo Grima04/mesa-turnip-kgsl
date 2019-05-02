@@ -396,6 +396,8 @@ bool vtn_type_contains_block(struct vtn_builder *b, struct vtn_type *type);
 bool vtn_types_compatible(struct vtn_builder *b,
                           struct vtn_type *t1, struct vtn_type *t2);
 
+struct vtn_type *vtn_type_without_array(struct vtn_type *type);
+
 struct vtn_variable;
 
 enum vtn_access_mode {

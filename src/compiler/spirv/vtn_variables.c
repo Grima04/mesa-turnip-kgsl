@@ -1864,14 +1864,13 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
 {
    vtn_assert(ptr_type->base_type == vtn_base_type_pointer);
 
-   struct vtn_type *interface_type = ptr_type->deref;
-   while (interface_type->base_type == vtn_base_type_array)
-      interface_type = interface_type->array_element;
-
    struct vtn_pointer *ptr = rzalloc(b, struct vtn_pointer);
+   struct vtn_type *without_array =
+      vtn_type_without_array(ptr_type->deref);
+
    nir_variable_mode nir_mode;
    ptr->mode = vtn_storage_class_to_mode(b, ptr_type->storage_class,
-                                         interface_type, &nir_mode);
+                                         without_array, &nir_mode);
    ptr->type = ptr_type->deref;
    ptr->ptr_type = ptr_type;
 
@@ -2009,9 +2008,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    vtn_assert(ptr_type->base_type == vtn_base_type_pointer);
    struct vtn_type *type = ptr_type->deref;
 
-   struct vtn_type *without_array = type;
-   while(glsl_type_is_array(without_array->type))
-      without_array = without_array->array_element;
+   struct vtn_type *without_array = vtn_type_without_array(ptr_type->deref);
 
    enum vtn_variable_mode mode;
    nir_variable_mode nir_mode;

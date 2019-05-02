@@ -648,6 +648,14 @@ vtn_types_compatible(struct vtn_builder *b,
    vtn_fail("Invalid base type");
 }
 
+struct vtn_type *
+vtn_type_without_array(struct vtn_type *type)
+{
+   while (type->base_type == vtn_base_type_array)
+      type = type->array_element;
+   return type;
+}
+
 /* does a shallow copy of a vtn_type */
 
 static struct vtn_type *
