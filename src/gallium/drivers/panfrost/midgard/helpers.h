@@ -178,7 +178,7 @@ static struct {
 
         /* Incredibly, iadd can run on vmul, etc */
         [midgard_alu_op_iadd]		 = {"iadd", UNITS_MOST | OP_COMMUTES},
-        [midgard_alu_op_iabs]		 = {"iabs", UNITS_MOST},
+        [midgard_alu_op_iabs]		 = {"iabs", UNITS_ADD},
         [midgard_alu_op_isub]		 = {"isub", UNITS_MOST},
         [midgard_alu_op_imul]		 = {"imul", UNITS_MUL | OP_COMMUTES},
         [midgard_alu_op_imov]		 = {"imov", UNITS_MOST | QUIRK_FLIPPED_R24},
