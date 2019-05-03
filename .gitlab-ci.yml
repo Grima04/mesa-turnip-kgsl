@@ -137,27 +137,18 @@ meson-clang:
      # clang++ breaks if it picks up the GCC 8 directory without libstdc++.so
     - apt-get remove -y libgcc-8-dev
 
-meson-vulkan:
-  extends: .meson-build
+scons-swr:
+  extends: .scons-build
   variables:
-    UNWIND: "false"
-    DRI_LOADERS: >
-      -D glx=disabled
-      -D gbm=false
-      -D egl=false
-      -D platforms=x11,wayland,drm
-      -D osmesa=none
-    GALLIUM_ST: >
-      -D dri3=true
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
-      -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
-      -D gallium-nine=false
-      -D gallium-opencl=disabled
-    VULKAN_DRIVERS: intel,amd,freedreno
-    LLVM_VERSION: "7"
+    SCONS_TARGET: "swr=1"
+    SCONS_CHECK_COMMAND: "true"
+    LLVM_VERSION: "6.0"
+
+scons-win64:
+  extends: .scons-build
+  variables:
+    SCONS_TARGET: platform=windows machine=x86_64
+    SCONS_CHECK_COMMAND: "true"
 
 meson-main:
   extends: .meson-build
@@ -210,6 +201,28 @@ meson-clover:
     - LLVM_VERSION=5.0 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=6.0 .gitlab-ci/meson-build.sh
 
+meson-vulkan:
+  extends: .meson-build
+  variables:
+    UNWIND: "false"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D gbm=false
+      -D egl=false
+      -D platforms=x11,wayland,drm
+      -D osmesa=none
+    GALLIUM_ST: >
+      -D dri3=true
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+    VULKAN_DRIVERS: intel,amd,freedreno
+    LLVM_VERSION: "7"
+
 scons-nollvm:
   extends: .scons-build
   variables:
@@ -224,16 +237,3 @@ scons-llvm:
     LLVM_VERSION: "3.4"
     # LLVM 3.4 packages were built with an old libstdc++ ABI
     CXX: "g++ -D_GLIBCXX_USE_CXX11_ABI=0"
-
-scons-swr:
-  extends: .scons-build
-  variables:
-    SCONS_TARGET: "swr=1"
-    SCONS_CHECK_COMMAND: "true"
-    LLVM_VERSION: "6.0"
-
-scons-win64:
-  extends: .scons-build
-  variables:
-    SCONS_TARGET: platform=windows machine=x86_64
-    SCONS_CHECK_COMMAND: "true"
