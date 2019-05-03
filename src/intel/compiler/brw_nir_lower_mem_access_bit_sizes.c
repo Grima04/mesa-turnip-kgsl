@@ -179,16 +179,17 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
    const unsigned const_offset =
       offset_is_const ? nir_src_as_uint(*offset_src) : 0;
 
-   assert(num_components * (bit_size / 8) <= 32);
+   const unsigned byte_size = bit_size / 8;
+   assert(num_components * byte_size <= 32);
    uint32_t byte_mask = 0;
    for (unsigned i = 0; i < num_components; i++) {
-      if (writemask & (1 << i))
-         byte_mask |= ((1 << (bit_size / 8)) - 1) << i * (bit_size / 8);
+      if (writemask & (1u << i))
+         byte_mask |= ((1 << byte_size) - 1) << i * byte_size;
    }
 
    while (byte_mask) {
       const int start = ffs(byte_mask) - 1;
-      assert(start % (bit_size / 8) == 0);
+      assert(start % byte_size == 0);
 
       int end;
       for (end = start + 1; end < bytes_written; end++) {
@@ -217,9 +218,9 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
       }
 
       const unsigned store_bytes = store_comps * (store_bit_size / 8);
-      assert(store_bytes % (bit_size / 8) == 0);
-      const unsigned store_first_src_comp = start / (bit_size / 8);
-      const unsigned store_src_comps = store_bytes / (bit_size / 8);
+      assert(store_bytes % byte_size == 0);
+      const unsigned store_first_src_comp = start / byte_size;
+      const unsigned store_src_comps = store_bytes / byte_size;
       assert(store_first_src_comp + store_src_comps <= num_components);
 
       unsigned src_swiz[4] = { 0, };
