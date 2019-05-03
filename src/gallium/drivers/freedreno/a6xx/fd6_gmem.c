@@ -280,7 +280,7 @@ patch_fb_read(struct fd_batch *batch)
 		struct fd_cs_patch *patch = fd_patch_element(&batch->fb_read_patches, i);
 		*patch->cs = patch->val | A6XX_TEX_CONST_2_PITCH(gmem->bin_w * gmem->cbuf_cpp[0]);
 	}
-	util_dynarray_resize(&batch->fb_read_patches, 0);
+	util_dynarray_clear(&batch->fb_read_patches);
 }
 
 static void
@@ -291,7 +291,7 @@ patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
 		struct fd_cs_patch *patch = fd_patch_element(&batch->draw_patches, i);
 		*patch->cs = patch->val | DRAW4(0, 0, 0, vismode);
 	}
-	util_dynarray_resize(&batch->draw_patches, 0);
+	util_dynarray_clear(&batch->draw_patches);
 }
 
 static void

@@ -711,7 +711,7 @@ patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
 		struct fd_cs_patch *patch = fd_patch_element(&batch->draw_patches, i);
 		*patch->cs = patch->val | DRAW(0, 0, 0, vismode, 0);
 	}
-	util_dynarray_resize(&batch->draw_patches, 0);
+	util_dynarray_clear(&batch->draw_patches);
 }
 
 static void
@@ -722,7 +722,7 @@ patch_rbrc(struct fd_batch *batch, uint32_t val)
 		struct fd_cs_patch *patch = fd_patch_element(&batch->rbrc_patches, i);
 		*patch->cs = patch->val | val;
 	}
-	util_dynarray_resize(&batch->rbrc_patches, 0);
+	util_dynarray_clear(&batch->rbrc_patches);
 }
 
 /* for rendering directly to system memory: */

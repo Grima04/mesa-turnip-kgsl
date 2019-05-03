@@ -404,7 +404,7 @@ patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
 			struct fd_cs_patch *patch = fd_patch_element(&batch->draw_patches, i);
 			*patch->cs = patch->val | DRAW(0, 0, 0, vismode, 0);
 		}
-		util_dynarray_resize(&batch->draw_patches, 0);
+		util_dynarray_clear(&batch->draw_patches);
 		return;
 	}
 
@@ -472,8 +472,8 @@ fd2_emit_sysmem_prep(struct fd_batch *batch)
 			A2XX_PA_SC_WINDOW_OFFSET_Y(0));
 
 	patch_draws(batch, IGNORE_VISIBILITY);
-	util_dynarray_resize(&batch->draw_patches, 0);
-	util_dynarray_resize(&batch->shader_patches, 0);
+	util_dynarray_clear(&batch->draw_patches);
+	util_dynarray_clear(&batch->shader_patches);
 }
 
 /* before first tile */
@@ -551,7 +551,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		patch->cs[5] = A2XX_RB_DEPTH_INFO_DEPTH_BASE(depth_base) |
 			A2XX_RB_DEPTH_INFO_DEPTH_FORMAT(1);
 	}
-	util_dynarray_resize(&batch->gmem_patches, 0);
+	util_dynarray_clear(&batch->gmem_patches);
 
 	/* set to zero, for some reason hardware doesn't like certain values */
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
@@ -656,8 +656,8 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		patch_draws(batch, IGNORE_VISIBILITY);
 	}
 
-	util_dynarray_resize(&batch->draw_patches, 0);
-	util_dynarray_resize(&batch->shader_patches, 0);
+	util_dynarray_clear(&batch->draw_patches);
+	util_dynarray_clear(&batch->shader_patches);
 }
 
 /* before mem2gmem */
