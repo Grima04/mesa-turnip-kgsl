@@ -10,9 +10,11 @@ if test -n "$LLVM_VERSION"; then
     echo -e "[binaries]\nllvm-config = '`which $LLVM_CONFIG`'" > native.file
     $LLVM_CONFIG --version
 else
+    rm -f native.file
     touch native.file
 fi
 
+rm -rf _build
 meson _build --native-file=native.file \
       -D buildtype=debug \
       -D build-tests=true \

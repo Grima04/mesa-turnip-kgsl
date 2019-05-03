@@ -26,12 +26,18 @@ apt-get install -y -t stretch-backports \
       llvm-3.4-dev \
       llvm-3.9-dev \
       libclang-3.9-dev \
+      llvm-4.0-dev \
+      libclang-4.0-dev \
       llvm-5.0-dev \
+      libclang-5.0-dev \
       llvm-6.0-dev \
+      libclang-6.0-dev \
       llvm-7-dev \
+      libclang-7-dev \
+      llvm-8-dev \
+      libclang-8-dev \
       g++ \
-      clang-8 \
-      libclang-7-dev
+      clang-8
 
 # Install remaining packages from Debian buster to get newer versions
 add-apt-repository "deb https://deb.debian.org/debian/ buster main"

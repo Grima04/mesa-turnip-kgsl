@@ -14,7 +14,7 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-05-01"
+  DEBIAN_TAG: "2019-05-08"
   DEBIAN_VERSION: stretch-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
 
@@ -183,7 +183,7 @@ meson-main:
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,svga,v3d,vc4,virgl,etnaviv,panfrost,lima"
     LLVM_VERSION: "7"
 
-meson-clover-llvm:
+meson-clover:
   extends: .meson-build
   variables:
     UNWIND: "true"
@@ -200,13 +200,15 @@ meson-clover-llvm:
       -D gallium-xa=false
       -D gallium-nine=false
       -D gallium-opencl=icd
-    GALLIUM_DRIVERS: "r600,radeonsi"
-
-meson-clover-llvm39:
-  extends: meson-clover-llvm
-  variables:
-    GALLIUM_DRIVERS: "i915,r600"
-    LLVM_VERSION: "3.9"
+  script:
+    - export GALLIUM_DRIVERS="r600,radeonsi"
+    - .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
+    - export GALLIUM_DRIVERS="i915,r600"
+    - LLVM_VERSION=3.9 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=4.0 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=5.0 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=6.0 .gitlab-ci/meson-build.sh
 
 scons-nollvm:
   extends: .scons-build
