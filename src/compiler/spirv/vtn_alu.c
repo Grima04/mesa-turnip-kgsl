@@ -646,9 +646,7 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
          val->ssa->def =
             nir_ishr(&b->nb, src[0], nir_imm_int(&b->nb, src_bit_size - 1));
 
-      if (src_bit_size != 32)
-         val->ssa->def = nir_u2u32(&b->nb, val->ssa->def);
-
+      val->ssa->def = nir_i2b(&b->nb, val->ssa->def);
       break;
    }
 
