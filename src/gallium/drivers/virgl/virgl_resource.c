@@ -174,6 +174,8 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
                                  unsigned usage, unsigned offset,
                                  unsigned size, const void *data)
 {
+   struct pipe_transfer *transfer;
+   uint8_t *map;
    struct pipe_box box;
 
    assert(!(usage & PIPE_TRANSFER_READ));
@@ -192,10 +194,11 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
        virgl_buffer_transfer_extend(pipe, resource, usage, &box, data))
       return;
 
-   if (resource->width0 >= getpagesize())
-      u_default_buffer_subdata(pipe, resource, usage, offset, size, data);
-   else
-      virgl_transfer_inline_write(pipe, resource, 0, usage, &box, data, 0, 0);
+   map = pipe->transfer_map(pipe, resource, 0, usage, &box, &transfer);
+   if (map) {
+      memcpy(map, data, size);
+      pipe_transfer_unmap(pipe, transfer);
+   }
 }
 
 void virgl_init_context_resource_functions(struct pipe_context *ctx)
