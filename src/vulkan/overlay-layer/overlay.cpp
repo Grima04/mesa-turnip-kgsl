@@ -375,7 +375,7 @@ static struct queue_data *new_queue_data(VkQueue queue,
    data->device = device_data;
    data->queue = queue;
    data->flags = family_props->queueFlags;
-   data->timestamp_mask = (1ul << family_props->timestampValidBits) - 1;
+   data->timestamp_mask = (1ull << family_props->timestampValidBits) - 1;
    data->family_index = family_index;
    LIST_INITHEAD(&data->running_command_buffer);
    map_object(data->queue, data);
@@ -2011,9 +2011,9 @@ static VkResult overlay_AllocateCommandBuffers(
    }
 
    if (pipeline_query_pool)
-      map_object(pipeline_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
+      map_object((void *) pipeline_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
    if (timestamp_query_pool)
-      map_object(timestamp_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
+      map_object((void *) timestamp_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
 
    return result;
 }
@@ -2030,19 +2030,19 @@ static void overlay_FreeCommandBuffers(
          FIND_CMD_BUFFER_DATA(pCommandBuffers[i]);
       uint64_t count = (uintptr_t)find_object_data((void *)cmd_buffer_data->pipeline_query_pool);
       if (count == 1) {
-         unmap_object(cmd_buffer_data->pipeline_query_pool);
+         unmap_object((void *) cmd_buffer_data->pipeline_query_pool);
          device_data->vtable.DestroyQueryPool(device_data->device,
                                               cmd_buffer_data->pipeline_query_pool, NULL);
       } else if (count != 0) {
-         map_object(cmd_buffer_data->pipeline_query_pool, (void *)(uintptr_t)(count - 1));
+         map_object((void *) cmd_buffer_data->pipeline_query_pool, (void *)(uintptr_t)(count - 1));
       }
       count = (uintptr_t)find_object_data((void *)cmd_buffer_data->timestamp_query_pool);
       if (count == 1) {
-         unmap_object(cmd_buffer_data->timestamp_query_pool);
+         unmap_object((void *) cmd_buffer_data->timestamp_query_pool);
          device_data->vtable.DestroyQueryPool(device_data->device,
                                               cmd_buffer_data->timestamp_query_pool, NULL);
       } else if (count != 0) {
-         map_object(cmd_buffer_data->timestamp_query_pool, (void *)(uintptr_t)(count - 1));
+         map_object((void *) cmd_buffer_data->timestamp_query_pool, (void *)(uintptr_t)(count - 1));
       }
       destroy_command_buffer_data(cmd_buffer_data);
    }
