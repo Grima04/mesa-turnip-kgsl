@@ -699,10 +699,11 @@ unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index,
 				       unsigned is_varying);
 bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
 			     uint64_t scratch_va);
-void si_shader_dump(struct si_screen *sscreen, const struct si_shader *shader,
+void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
 		    struct pipe_debug_callback *debug, unsigned processor,
 		    FILE *f, bool check_debug_option);
-void si_shader_dump_stats_for_shader_db(const struct si_shader *shader,
+void si_shader_dump_stats_for_shader_db(struct si_screen *screen,
+					struct si_shader *shader,
 					struct pipe_debug_callback *debug);
 void si_multiwave_lds_size_workaround(struct si_screen *sscreen,
 				      unsigned *lds_size);

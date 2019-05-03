@@ -99,7 +99,7 @@ void si_destroy_saved_cs(struct si_saved_cs *scs)
 
 static void si_dump_shader(struct si_screen *sscreen,
 			   enum pipe_shader_type processor,
-			   const struct si_shader *shader, FILE *f)
+			   struct si_shader *shader, FILE *f)
 {
 	if (shader->shader_log)
 		fwrite(shader->shader_log, shader->shader_log_size, 1, f);
@@ -935,13 +935,18 @@ struct si_shader_inst {
  * The caller must keep \p rtld_binary alive as long as \p instructions are
  * used and then close it afterwards.
  */
-static void si_add_split_disasm(struct ac_rtld_binary *rtld_binary,
+static void si_add_split_disasm(struct si_screen *screen,
+				struct ac_rtld_binary *rtld_binary,
 				struct si_shader_binary *binary,
 				uint64_t *addr,
 				unsigned *num,
 				struct si_shader_inst *instructions)
 {
-	if (!ac_rtld_open(rtld_binary, 1, &binary->elf_buffer, &binary->elf_size))
+	if (!ac_rtld_open(rtld_binary, (struct ac_rtld_open_info){
+			.info = &screen->info,
+			.num_parts = 1,
+			.elf_ptrs = &binary->elf_buffer,
+			.elf_sizes = &binary->elf_size }))
 		return;
 
 	const char *disasm;
@@ -987,6 +992,7 @@ static void si_print_annotated_shader(struct si_shader *shader,
 	if (!shader)
 		return;
 
+	struct si_screen *screen = shader->selector->screen;
 	uint64_t start_addr = shader->bo->gpu_address;
 	uint64_t end_addr = start_addr + shader->bo->b.b.width0;
 	unsigned i;
@@ -1013,21 +1019,21 @@ static void si_print_annotated_shader(struct si_shader *shader,
 		calloc(shader->bo->b.b.width0 / 4, sizeof(struct si_shader_inst));
 
 	if (shader->prolog) {
-		si_add_split_disasm(&rtld_binaries[0], &shader->prolog->binary,
+		si_add_split_disasm(screen, &rtld_binaries[0], &shader->prolog->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
 	if (shader->previous_stage) {
-		si_add_split_disasm(&rtld_binaries[1], &shader->previous_stage->binary,
+		si_add_split_disasm(screen, &rtld_binaries[1], &shader->previous_stage->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
 	if (shader->prolog2) {
-		si_add_split_disasm(&rtld_binaries[2], &shader->prolog2->binary,
+		si_add_split_disasm(screen, &rtld_binaries[2], &shader->prolog2->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
-	si_add_split_disasm(&rtld_binaries[3], &shader->binary,
+	si_add_split_disasm(screen, &rtld_binaries[3], &shader->binary,
 			    &inst_addr, &num_inst, instructions);
 	if (shader->epilog) {
-		si_add_split_disasm(&rtld_binaries[4], &shader->epilog->binary,
+		si_add_split_disasm(screen, &rtld_binaries[4], &shader->epilog->binary,
 				    &inst_addr, &num_inst, instructions);
 	}
 

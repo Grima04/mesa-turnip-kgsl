@@ -64,8 +64,11 @@ static const amd_kernel_code_t *si_compute_get_code_object(
 	}
 
 	struct ac_rtld_binary rtld;
-	if (!ac_rtld_open(&rtld, 1, &program->shader.binary.elf_buffer,
-			  &program->shader.binary.elf_size))
+	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
+			.info = &program->screen->info,
+			.num_parts = 1,
+			.elf_ptrs = &program->shader.binary.elf_buffer,
+			.elf_sizes = &program->shader.binary.elf_size }))
 		return NULL;
 
 	const amd_kernel_code_t *result = NULL;
@@ -160,7 +163,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	    si_shader_cache_load_shader(sscreen, ir_binary, shader)) {
 		mtx_unlock(&sscreen->shader_cache_mutex);
 
-		si_shader_dump_stats_for_shader_db(shader, debug);
+		si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
 		si_shader_dump(sscreen, shader, debug, PIPE_SHADER_COMPUTE,
 			       stderr, true);
 

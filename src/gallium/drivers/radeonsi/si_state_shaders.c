@@ -2116,7 +2116,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		if (ir_binary &&
 		    si_shader_cache_load_shader(sscreen, ir_binary, shader)) {
 			mtx_unlock(&sscreen->shader_cache_mutex);
-			si_shader_dump_stats_for_shader_db(shader, debug);
+			si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
 		} else {
 			mtx_unlock(&sscreen->shader_cache_mutex);
 

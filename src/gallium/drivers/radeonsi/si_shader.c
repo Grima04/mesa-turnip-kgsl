@@ -5051,7 +5051,8 @@ static void si_llvm_emit_polygon_stipple(struct si_shader_context *ctx,
 #define DEBUGGER_END_OF_CODE_MARKER	0xbf9f0000 /* invalid instruction */
 #define DEBUGGER_NUM_MARKERS		5
 
-static bool si_shader_binary_open(const struct si_shader *shader,
+static bool si_shader_binary_open(struct si_screen *screen,
+				  struct si_shader *shader,
 				  struct ac_rtld_binary *rtld)
 {
 	const char *part_elfs[5];
@@ -5073,13 +5074,25 @@ static bool si_shader_binary_open(const struct si_shader *shader,
 
 #undef add_part
 
-	return ac_rtld_open(rtld, num_parts, part_elfs, part_sizes);
+	bool ok = ac_rtld_open(rtld, (struct ac_rtld_open_info){
+			.info = &screen->info,
+			.num_parts = num_parts,
+			.elf_ptrs = part_elfs,
+			.elf_sizes = part_sizes });
+
+	if (rtld->lds_size > 0) {
+		unsigned alloc_granularity = screen->info.chip_class >= GFX7 ? 512 : 256;
+		shader->config.lds_size =
+			align(rtld->lds_size, alloc_granularity) / alloc_granularity;
+	}
+
+	return ok;
 }
 
-static unsigned si_get_shader_binary_size(const struct si_shader *shader)
+static unsigned si_get_shader_binary_size(struct si_screen *screen, struct si_shader *shader)
 {
 	struct ac_rtld_binary rtld;
-	si_shader_binary_open(shader, &rtld);
+	si_shader_binary_open(screen, shader, &rtld);
 	return rtld.rx_size;
 }
 
@@ -5111,7 +5124,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
 			     uint64_t scratch_va)
 {
 	struct ac_rtld_binary binary;
-	if (!si_shader_binary_open(shader, &binary))
+	if (!si_shader_binary_open(sscreen, shader, &binary))
 		return false;
 
 	si_resource_reference(&shader->bo, NULL);
@@ -5145,13 +5158,18 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
 	return ok;
 }
 
-static void si_shader_dump_disassembly(const struct si_shader_binary *binary,
+static void si_shader_dump_disassembly(struct si_screen *screen,
+				       const struct si_shader_binary *binary,
 				       struct pipe_debug_callback *debug,
 				       const char *name, FILE *file)
 {
 	struct ac_rtld_binary rtld_binary;
 
-	if (!ac_rtld_open(&rtld_binary, 1, &binary->elf_buffer, &binary->elf_size))
+	if (!ac_rtld_open(&rtld_binary, (struct ac_rtld_open_info){
+			.info = &screen->info,
+			.num_parts = 1,
+			.elf_ptrs = &binary->elf_buffer,
+			.elf_sizes = &binary->elf_size }))
 		return;
 
 	const char *disasm;
@@ -5255,7 +5273,8 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 	shader->info.max_simd_waves = max_simd_waves;
 }
 
-void si_shader_dump_stats_for_shader_db(const struct si_shader *shader,
+void si_shader_dump_stats_for_shader_db(struct si_screen *screen,
+					struct si_shader *shader,
 					struct pipe_debug_callback *debug)
 {
 	const struct ac_shader_config *conf = &shader->config;
@@ -5265,14 +5284,14 @@ void si_shader_dump_stats_for_shader_db(const struct si_shader *shader,
 			   "LDS: %d Scratch: %d Max Waves: %d Spilled SGPRs: %d "
 			   "Spilled VGPRs: %d PrivMem VGPRs: %d",
 			   conf->num_sgprs, conf->num_vgprs,
-			   si_get_shader_binary_size(shader),
+			   si_get_shader_binary_size(screen, shader),
 			   conf->lds_size, conf->scratch_bytes_per_wave,
 			   shader->info.max_simd_waves, conf->spilled_sgprs,
 			   conf->spilled_vgprs, shader->info.private_mem_vgprs);
 }
 
 static void si_shader_dump_stats(struct si_screen *sscreen,
-				 const struct si_shader *shader,
+				 struct si_shader *shader,
 			         unsigned processor,
 				 FILE *file,
 				 bool check_debug_option)
@@ -5302,7 +5321,7 @@ static void si_shader_dump_stats(struct si_screen *sscreen,
 			conf->num_sgprs, conf->num_vgprs,
 			conf->spilled_sgprs, conf->spilled_vgprs,
 			shader->info.private_mem_vgprs,
-			si_get_shader_binary_size(shader),
+			si_get_shader_binary_size(sscreen, shader),
 			conf->lds_size, conf->scratch_bytes_per_wave,
 			shader->info.max_simd_waves);
 	}
@@ -5341,7 +5360,7 @@ const char *si_get_shader_name(const struct si_shader *shader, unsigned processo
 	}
 }
 
-void si_shader_dump(struct si_screen *sscreen, const struct si_shader *shader,
+void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
 		    struct pipe_debug_callback *debug, unsigned processor,
 		    FILE *file, bool check_debug_option)
 {
@@ -5368,19 +5387,19 @@ void si_shader_dump(struct si_screen *sscreen, const struct si_shader *shader,
 		fprintf(file, "\n%s:\n", si_get_shader_name(shader, processor));
 
 		if (shader->prolog)
-			si_shader_dump_disassembly(&shader->prolog->binary,
+			si_shader_dump_disassembly(sscreen, &shader->prolog->binary,
 						   debug, "prolog", file);
 		if (shader->previous_stage)
-			si_shader_dump_disassembly(&shader->previous_stage->binary,
+			si_shader_dump_disassembly(sscreen, &shader->previous_stage->binary,
 						   debug, "previous stage", file);
 		if (shader->prolog2)
-			si_shader_dump_disassembly(&shader->prolog2->binary,
+			si_shader_dump_disassembly(sscreen, &shader->prolog2->binary,
 						   debug, "prolog2", file);
 
-		si_shader_dump_disassembly(&shader->binary, debug, "main", file);
+		si_shader_dump_disassembly(sscreen, &shader->binary, debug, "main", file);
 
 		if (shader->epilog)
-			si_shader_dump_disassembly(&shader->epilog->binary,
+			si_shader_dump_disassembly(sscreen, &shader->epilog->binary,
 						   debug, "epilog", file);
 		fprintf(file, "\n");
 	}
@@ -5425,7 +5444,11 @@ static int si_compile_llvm(struct si_screen *sscreen,
 	}
 
 	struct ac_rtld_binary rtld;
-	if (!ac_rtld_open(&rtld, 1, &binary->elf_buffer, &binary->elf_size))
+	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
+			.info = &sscreen->info,
+			.num_parts = 1,
+			.elf_ptrs = &binary->elf_buffer,
+			.elf_sizes = &binary->elf_size }))
 		return -1;
 
 	bool ok = ac_rtld_read_config(&rtld, conf);
@@ -6892,7 +6915,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 	}
 
 	si_calculate_max_simd_waves(shader);
-	si_shader_dump_stats_for_shader_db(shader, debug);
+	si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
 	return 0;
 }
 

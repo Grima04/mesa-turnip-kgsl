@@ -28,8 +28,19 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "util/u_dynarray.h"
+
 struct ac_rtld_part;
 struct ac_shader_config;
+struct radeon_info;
+
+struct ac_rtld_symbol {
+	const char *name;
+	uint32_t size;
+	uint32_t align;
+	uint64_t offset; /* filled in by ac_rtld_open */
+	unsigned part_idx; /* shader part in which this symbol appears */
+};
 
 /* Lightweight wrapper around underlying ELF objects. */
 struct ac_rtld_binary {
@@ -40,6 +51,9 @@ struct ac_rtld_binary {
 
 	unsigned num_parts;
 	struct ac_rtld_part *parts;
+
+	struct util_dynarray lds_symbols;
+	uint32_t lds_size;
 };
 
 /**
@@ -54,9 +68,28 @@ struct ac_rtld_binary {
 typedef bool (*ac_rtld_get_external_symbol_cb)(
 	void *cb_data, const char *symbol, uint64_t *value);
 
-bool ac_rtld_open(struct ac_rtld_binary *binary, unsigned num_parts,
-		  const char * const *elf_ptrs,
-		  const size_t *elf_sizes);
+/**
+ * Lifetimes of \ref info, in-memory ELF objects, and the names of
+ * \ref shared_lds_symbols must extend until \ref ac_rtld_close is called on
+ * the opened binary.
+ */
+struct ac_rtld_open_info {
+	const struct radeon_info *info;
+
+	unsigned num_parts;
+	const char * const *elf_ptrs; /* in-memory ELF objects of each part */
+	const size_t *elf_sizes; /* sizes of corresponding in-memory ELF objects in bytes */
+
+	/* Shared LDS symbols are layouted such that they are accessible from
+	 * all shader parts. Non-shared (private) LDS symbols of one part may
+	 * overlap private LDS symbols of another shader part.
+	 */
+	unsigned num_shared_lds_symbols;
+	const struct ac_rtld_symbol *shared_lds_symbols;
+};
+
+bool ac_rtld_open(struct ac_rtld_binary *binary,
+		  struct ac_rtld_open_info i);
 
 void ac_rtld_close(struct ac_rtld_binary *binary);
 
