@@ -92,7 +92,7 @@ public:
 
    bool run_fs(bool allow_spilling, bool do_rep_send);
    bool run_vs();
-   bool run_tcs_single_patch();
+   bool run_tcs();
    bool run_tes();
    bool run_gs();
    bool run_cs(unsigned min_dispatch_width);
@@ -110,7 +110,7 @@ public:
    void assign_urb_setup();
    void convert_attr_sources_to_hw_regs(fs_inst *inst);
    void assign_vs_urb_setup();
-   void assign_tcs_single_patch_urb_setup();
+   void assign_tcs_urb_setup();
    void assign_tes_urb_setup();
    void assign_gs_urb_setup();
    bool assign_regs(bool allow_spilling, bool spill_all);
@@ -251,6 +251,9 @@ public:
    fs_reg get_indirect_offset(nir_intrinsic_instr *instr);
    fs_reg get_tcs_single_patch_icp_handle(const brw::fs_builder &bld,
                                           nir_intrinsic_instr *instr);
+   fs_reg get_tcs_eight_patch_icp_handle(const brw::fs_builder &bld,
+                                         nir_intrinsic_instr *instr);
+   struct brw_reg get_tcs_output_urb_handle();
 
    void emit_percomp(const brw::fs_builder &bld, const fs_inst &inst,
                      unsigned wr_mask);

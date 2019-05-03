@@ -1526,6 +1526,7 @@ iris_create_tcs_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
+   const struct brw_compiler *compiler = screen->compiler;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
@@ -1543,6 +1544,14 @@ iris_create_tcs_state(struct pipe_context *ctx,
          .outputs_written = info->outputs_written,
          .patch_outputs_written = info->patch_outputs_written,
       };
+
+      /* 8_PATCH mode needs the key to contain the input patch dimensionality.
+       * We don't have that information, so we randomly guess that the input
+       * and output patches are the same size.  This is a bad guess, but we
+       * can't do much better.
+       */
+      if (compiler->use_tcs_8_patch)
+         key.input_vertices = info->tess.tcs_vertices_out;
 
       iris_compile_tcs(ice, ish, &key);
    }

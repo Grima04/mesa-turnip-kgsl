@@ -160,6 +160,7 @@ brw_tcs_populate_key(struct brw_context *brw,
                      struct brw_tcs_prog_key *key)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct brw_compiler *compiler = brw->screen->compiler;
    struct brw_program *tcp =
       (struct brw_program *) brw->programs[MESA_SHADER_TESS_CTRL];
    struct brw_program *tep =
@@ -177,7 +178,7 @@ brw_tcs_populate_key(struct brw_context *brw,
       per_patch_slots |= prog->info.patch_outputs_written;
    }
 
-   if (devinfo->gen < 8 || !tcp)
+   if (devinfo->gen < 8 || !tcp || compiler->use_tcs_8_patch)
       key->input_vertices = brw->ctx.TessCtrlProgram.patch_vertices;
    key->outputs_written = per_vertex_slots;
    key->patch_outputs_written = per_patch_slots;
@@ -251,7 +252,7 @@ brw_tcs_populate_default_key(const struct brw_compiler *compiler,
    brw_setup_tex_for_precompile(devinfo, &key->tex, prog);
 
    /* Guess that the input and output patches have the same dimensionality. */
-   if (devinfo->gen < 8)
+   if (devinfo->gen < 8 || compiler->use_tcs_8_patch)
       key->input_vertices = prog->info.tess.tcs_vertices_out;
 
    if (tes) {

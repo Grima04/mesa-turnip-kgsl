@@ -3651,6 +3651,11 @@ iris_store_tcs_state(struct iris_context *ice,
       hs.InstanceCount = tcs_prog_data->instances - 1;
       hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
       hs.IncludeVertexHandles = true;
+
+#if GEN_GEN >= 9
+      hs.DispatchMode = vue_prog_data->dispatch_mode;
+      hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
+#endif
    }
 }
 

@@ -1434,6 +1434,11 @@ emit_3dstate_hs_te_ds(struct anv_pipeline *pipeline,
       hs.PerThreadScratchSpace = get_scratch_space(tcs_bin);
       hs.ScratchSpaceBasePointer =
          get_scratch_address(pipeline, MESA_SHADER_TESS_CTRL, tcs_bin);
+
+#if GEN_GEN >= 9
+      hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
+      hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
+#endif
    }
 
    const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =

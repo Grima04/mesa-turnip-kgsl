@@ -93,6 +93,7 @@ struct brw_compiler {
    void (*shader_perf_log)(void *, const char *str, ...) PRINTFLIKE(2, 3);
 
    bool scalar_stage[MESA_SHADER_STAGES];
+   bool use_tcs_8_patch;
    struct gl_shader_compiler_options glsl_compiler_options[MESA_SHADER_STAGES];
 
    /**
@@ -1002,6 +1003,9 @@ enum shader_dispatch_mode {
    DISPATCH_MODE_4X2_DUAL_INSTANCE = 1,
    DISPATCH_MODE_4X2_DUAL_OBJECT = 2,
    DISPATCH_MODE_SIMD8 = 3,
+
+   DISPATCH_MODE_TCS_SINGLE_PATCH = 0,
+   DISPATCH_MODE_TCS_8_PATCH = 2,
 };
 
 /**
@@ -1073,6 +1077,9 @@ struct brw_vs_prog_data {
 struct brw_tcs_prog_data
 {
    struct brw_vue_prog_data base;
+
+   /** Should the non-SINGLE_PATCH payload provide primitive ID? */
+   bool include_primitive_id;
 
    /** Number vertices in output patch */
    int instances;

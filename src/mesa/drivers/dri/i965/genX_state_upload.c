@@ -4111,6 +4111,11 @@ genX(upload_hs_state)(struct brw_context *brw)
          hs.IncludeVertexHandles = true;
 
          hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
+
+#if GEN_GEN >= 9
+         hs.DispatchMode = vue_prog_data->dispatch_mode;
+         hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
+#endif
       }
    }
 }

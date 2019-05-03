@@ -1805,7 +1805,7 @@ fs_visitor::assign_vs_urb_setup()
 }
 
 void
-fs_visitor::assign_tcs_single_patch_urb_setup()
+fs_visitor::assign_tcs_urb_setup()
 {
    assert(stage == MESA_SHADER_TESS_CTRL);
 
@@ -7396,11 +7396,27 @@ void
 fs_visitor::set_tcs_invocation_id()
 {
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
+   struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
 
    const unsigned instance_id_mask =
       devinfo->gen >= 11 ? INTEL_MASK(22, 16) : INTEL_MASK(23, 17);
    const unsigned instance_id_shift =
       devinfo->gen >= 11 ? 16 : 17;
+
+   /* Get instance number from g0.2 bits 22:16 or 23:17 */
+   fs_reg t = bld.vgrf(BRW_REGISTER_TYPE_UD);
+   bld.AND(t, fs_reg(retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD)),
+           brw_imm_ud(instance_id_mask));
+
+   invocation_id = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+   if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH) {
+      /* gl_InvocationID is just the thread number */
+      bld.SHR(invocation_id, t, brw_imm_ud(instance_id_shift));
+      return;
+   }
+
+   assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH);
 
    fs_reg channels_uw = bld.vgrf(BRW_REGISTER_TYPE_UW);
    fs_reg channels_ud = bld.vgrf(BRW_REGISTER_TYPE_UD);
@@ -7410,26 +7426,36 @@ fs_visitor::set_tcs_invocation_id()
    if (tcs_prog_data->instances == 1) {
       invocation_id = channels_ud;
    } else {
-      invocation_id = bld.vgrf(BRW_REGISTER_TYPE_UD);
-
-      /* Get instance number from g0.2 bits 23:17, and multiply it by 8. */
-      fs_reg t = bld.vgrf(BRW_REGISTER_TYPE_UD);
       fs_reg instance_times_8 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      bld.AND(t, fs_reg(retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD)),
-              brw_imm_ud(instance_id_mask));
       bld.SHR(instance_times_8, t, brw_imm_ud(instance_id_shift - 3));
-
       bld.ADD(invocation_id, instance_times_8, channels_ud);
    }
 }
 
 bool
-fs_visitor::run_tcs_single_patch()
+fs_visitor::run_tcs()
 {
    assert(stage == MESA_SHADER_TESS_CTRL);
 
-   /* r1-r4 contain the ICP handles. */
-   payload.num_regs = 5;
+   struct brw_vue_prog_data *vue_prog_data = brw_vue_prog_data(prog_data);
+   struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
+   struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) key;
+
+   assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH ||
+          vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH);
+
+   if (vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH) {
+      /* r1-r4 contain the ICP handles. */
+      payload.num_regs = 5;
+   } else {
+      assert(vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_8_PATCH);
+      assert(tcs_key->input_vertices > 0);
+      /* r1 contains output handles, r2 may contain primitive ID, then the
+       * ICP handles occupy the next 1-32 registers.
+       */
+      payload.num_regs = 2 + tcs_prog_data->include_primitive_id +
+                         tcs_key->input_vertices;
+   }
 
    if (shader_time_index >= 0)
       emit_shader_time_begin();
@@ -7438,6 +7464,7 @@ fs_visitor::run_tcs_single_patch()
    set_tcs_invocation_id();
 
    const bool fix_dispatch_mask =
+      vue_prog_data->dispatch_mode == DISPATCH_MODE_TCS_SINGLE_PATCH &&
       (nir->info.tess.tcs_vertices_out % 8) != 0;
 
    /* Fix the disptach mask */
@@ -7455,7 +7482,7 @@ fs_visitor::run_tcs_single_patch()
 
    /* Emit EOT write; set TR DS Cache bit */
    fs_reg srcs[3] = {
-      fs_reg(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD)),
+      fs_reg(get_tcs_output_urb_handle()),
       fs_reg(brw_imm_ud(WRITEMASK_X << 16)),
       fs_reg(brw_imm_ud(0)),
    };
@@ -7478,7 +7505,7 @@ fs_visitor::run_tcs_single_patch()
    optimize();
 
    assign_curb_setup();
-   assign_tcs_single_patch_urb_setup();
+   assign_tcs_urb_setup();
 
    fixup_3src_null_dest();
    allocate_registers(8, true);

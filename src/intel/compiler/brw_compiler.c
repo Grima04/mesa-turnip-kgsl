@@ -99,6 +99,9 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
 
    compiler->precise_trig = env_var_as_boolean("INTEL_PRECISE_TRIG", false);
 
+   compiler->use_tcs_8_patch =
+      devinfo->gen >= 9 && (INTEL_DEBUG & DEBUG_TCS_EIGHT_PATCH);
+
    if (devinfo->gen >= 10) {
       /* We don't support vec4 mode on Cannonlake. */
       for (int i = MESA_SHADER_VERTEX; i < MESA_SHADER_STAGES; i++)
