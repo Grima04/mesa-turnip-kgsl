@@ -421,10 +421,8 @@ anv_physical_device_init(struct anv_physical_device *device,
       intel_logw("Ivy Bridge Vulkan support is incomplete");
    } else if (device->info.gen == 7 && device->info.is_baytrail) {
       intel_logw("Bay Trail Vulkan support is incomplete");
-   } else if (device->info.gen >= 8 && device->info.gen <= 10) {
-      /* Gen8-10 fully supported */
-   } else if (device->info.gen == 11) {
-      intel_logw("Vulkan is not yet fully supported on gen11.");
+   } else if (device->info.gen >= 8 && device->info.gen <= 11) {
+      /* Gen8-11 fully supported */
    } else {
       result = vk_errorf(device->instance, device,
                          VK_ERROR_INCOMPATIBLE_DRIVER,
