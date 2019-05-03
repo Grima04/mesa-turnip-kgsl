@@ -984,12 +984,15 @@ iris_create_blend_state(struct pipe_context *ctx,
    }
 
    iris_pack_command(GENX(3DSTATE_PS_BLEND), cso->ps_blend, pb) {
-      /* pb.HasWriteableRT is filled in at draw time. */
-      /* pb.AlphaTestEnable is filled in at draw time. */
+      /* pb.HasWriteableRT is filled in at draw time.
+       * pb.AlphaTestEnable is filled in at draw time.
+       *
+       * pb.ColorBufferBlendEnable is filled in at draw time so we can avoid
+       * setting it when dual color blending without an appropriate shader.
+       */
+
       pb.AlphaToCoverageEnable = state->alpha_to_coverage;
       pb.IndependentAlphaBlendEnable = indep_alpha_blend;
-
-      pb.ColorBufferBlendEnable = state->rt[0].blend_enable;
 
       pb.SourceBlendFactor =
          fix_blendfactor(state->rt[0].rgb_src_factor, state->alpha_to_one);
@@ -4851,6 +4854,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       iris_pack_command(GENX(3DSTATE_PS_BLEND), &dynamic_pb, pb) {
          pb.HasWriteableRT = has_writeable_rt(cso_blend, fs_info);
          pb.AlphaTestEnable = cso_zsa->alpha.enabled;
+
+         /* The dual source blending docs caution against using SRC1 factors
+          * when the shader doesn't use a dual source render target write.
+          * Empirically, this can lead to GPU hangs, and the results are
+          * undefined anyway, so simply disable blending to avoid the hang.
+          */
+         pb.ColorBufferBlendEnable = (cso_blend->blend_enables & 1) &&
+            (!cso_blend->dual_color_blending || wm_prog_data->dual_src_blend);
       }
 
       iris_emit_merge(batch, cso_blend->ps_blend, dynamic_pb,
