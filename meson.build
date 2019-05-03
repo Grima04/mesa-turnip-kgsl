@@ -1400,12 +1400,14 @@ if with_platform_x11
       dep_xshmfence = dependency('xshmfence', version : '>= 1.1')
     endif
   endif
-  if with_glx == 'dri'
+  if with_glx == 'dri' or with_glx == 'gallium-xlib'
+    dep_glproto = dependency('glproto', version : '>= 1.4.14')
+  endif
+  if with_glx == 'dri' 
     if with_dri_platform == 'drm'
       dep_dri2proto = dependency('dri2proto', version : '>= 2.8')
       dep_xxf86vm = dependency('xxf86vm')
     endif
-    dep_glproto = dependency('glproto', version : '>= 1.4.14')
   endif
   if (with_egl or (
       with_gallium_vdpau or with_gallium_xvmc or with_gallium_xa or
