@@ -604,6 +604,7 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
    switch (addr_format) {
    case nir_address_format_32bit_global:
    case nir_address_format_64bit_global:
+   case nir_address_format_32bit_offset:
       assert(addr->num_components == 1);
       return nir_iadd(b, addr, offset);
 
@@ -675,6 +676,7 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
                          nir_u2u64(b, nir_channel(b, addr, 3)));
 
    case nir_address_format_32bit_index_offset:
+   case nir_address_format_32bit_offset:
    case nir_address_format_logical:
       unreachable("Cannot get a 64-bit address with this address format");
    }
