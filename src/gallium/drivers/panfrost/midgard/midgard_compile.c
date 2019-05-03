@@ -1239,7 +1239,16 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         instr->src[1] = instr->src[0];
                         instr->src[0] = instr->src[2];
                 } else {
-                        op = midgard_alu_op_fcsel;
+                        /* Midgard features both fcsel and icsel, depending on
+                         * the type of the arguments/output. However, as long
+                         * as we're careful we can _always_ use icsel and
+                         * _never_ need fcsel, since the latter does additional
+                         * floating-point-specific processing whereas the
+                         * former just moves bits on the wire. It's not obvious
+                         * why these are separate opcodes, save for the ability
+                         * to do things like sat/pos/abs/neg for free */
+
+                        op = midgard_alu_op_icsel;
 
                         /* csel works as a two-arg in Midgard, since the condition is hardcoded in r31.w */
                         nr_inputs = 2;
