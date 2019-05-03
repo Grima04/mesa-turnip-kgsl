@@ -715,6 +715,58 @@ midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
 }
 
+/* Lower csel with mixed condition channels to mulitple csel instructions. For
+ * context, the csel ops on Midgard are vector in *outputs*, but not in
+ * *conditions*. So, if the condition is e.g. yyyy, a single op can select a
+ * vec4. But if the condition is e.g. xyzw, four ops are needed as the ISA
+ * can't cope with the divergent channels.*/
+
+static void
+midgard_nir_lower_mixed_csel_body(nir_builder *b, nir_alu_instr *alu)
+{
+        if (alu->op != nir_op_bcsel)
+                return;
+
+        b->cursor = nir_before_instr(&alu->instr);
+
+        /* Must be run before registering */
+        assert(alu->dest.dest.is_ssa);
+
+        /* Check for mixed condition */
+
+        unsigned comp = alu->src[0].swizzle[0];
+        unsigned nr_components = alu->dest.dest.ssa.num_components;
+
+        bool mixed = false;
+
+        for (unsigned c = 1; c < nr_components; ++c)
+                mixed |= (alu->src[0].swizzle[c] != comp);
+
+        if (!mixed)
+                return;
+
+        /* We're mixed, so lower */
+
+        assert(nr_components <= 4);
+        nir_ssa_def *results[4];
+
+        nir_ssa_def *cond = nir_ssa_for_alu_src(b, alu, 0);
+        nir_ssa_def *choice0 = nir_ssa_for_alu_src(b, alu, 1);
+        nir_ssa_def *choice1 = nir_ssa_for_alu_src(b, alu, 2);
+
+        for (unsigned c = 0; c < nr_components; ++c) {
+                results[c] = nir_bcsel(b,
+                                nir_channel(b, cond, c),
+                                nir_channel(b, choice0, c),
+                                nir_channel(b, choice1, c));
+        }
+
+        /* Replace with our scalarized version */
+
+        nir_ssa_def *result = nir_vec(b, results, nr_components);
+        nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(result));
+}
+
 static int
 midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
 {
@@ -799,6 +851,36 @@ midgard_nir_lower_fdot2(nir_shader *shader)
         return progress;
 }
 
+static bool
+midgard_nir_lower_mixed_csel(nir_shader *shader)
+{
+        bool progress = false;
+
+        nir_foreach_function(function, shader) {
+                if (!function->impl) continue;
+
+                nir_builder _b;
+                nir_builder *b = &_b;
+                nir_builder_init(b, function->impl);
+
+                nir_foreach_block(block, function->impl) {
+                        nir_foreach_instr_safe(instr, block) {
+                                if (instr->type != nir_instr_type_alu) continue;
+
+                                nir_alu_instr *alu = nir_instr_as_alu(instr);
+                                midgard_nir_lower_mixed_csel_body(b, alu);
+
+                                progress |= true;
+                        }
+                }
+
+                nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
+
+        }
+
+        return progress;
+}
+
 static void
 optimise_nir(nir_shader *nir)
 {
@@ -806,6 +888,7 @@ optimise_nir(nir_shader *nir)
 
         NIR_PASS(progress, nir, nir_lower_regs_to_ssa);
         NIR_PASS(progress, nir, midgard_nir_lower_fdot2);
+        NIR_PASS(progress, nir, midgard_nir_lower_mixed_csel);
 
         nir_lower_tex_options lower_tex_options = {
                 .lower_rect = true
