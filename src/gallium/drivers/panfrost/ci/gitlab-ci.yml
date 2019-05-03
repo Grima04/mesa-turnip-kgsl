@@ -7,37 +7,51 @@ stages:
   - test
 
 # Build Docker image with deqp, the rootfs and the build deps for Mesa
-build-container:
+.build-container:
   stage: build-container
   when: always
   services:
     - docker:dind
   image: docker:latest
-  before_script:
-    - mkdir -p results
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
-    - time docker pull $CI_REGISTRY_IMAGE:latest || true
+    - time docker pull $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest || true
     - time docker build
-             -t $CI_REGISTRY_IMAGE
-             --cache-from $CI_REGISTRY_IMAGE:latest
+             -t $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}
+             --cache-from $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
+             --build-arg DEBIAN_ARCH=${DEBIAN_ARCH}
+             --build-arg GCC_ARCH=${GCC_ARCH}
+             --build-arg KERNEL_ARCH=${KERNEL_ARCH}
+             --build-arg DEFCONFIG=${DEFCONFIG}
+             --build-arg DEVICE_TREES=${DEVICE_TREES}
+             --build-arg KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
              src/gallium/drivers/panfrost/ci
-             2>&1 | tee results/docker_build_log.txt
-    - time docker push $CI_REGISTRY_IMAGE:latest 2>&1 | tee results/docker_push_log.txt
+    - time docker push $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
+    - docker history $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
 
-    - docker history $CI_REGISTRY_IMAGE:latest
+build-container-armhf:
+  extends: .build-container
+  variables:
+    DEBIAN_ARCH: "armhf"
+    GCC_ARCH: "arm-linux-gnueabihf"
+    KERNEL_ARCH: "arm"
+    DEFCONFIG: "arch/arm/configs/multi_v7_defconfig"
+    DEVICE_TREES: "arch/arm/boot/dts/rk3288-veyron-jaq.dtb"
+    KERNEL_IMAGE_NAME: "zImage"
 
-    - "grep -o 'digest: sha256:[0-9a-f]\\+' results/docker_push_log.txt |
-       cut -f 2 -d ' ' |
-       tee results/docker_image_digest.txt"
-  artifacts:
-    when: always
-    paths:
-      - results/
+build-container-arm64:
+  extends: .build-container
+  variables:
+    DEBIAN_ARCH: "arm64"
+    GCC_ARCH: "aarch64-linux-gnu"
+    KERNEL_ARCH: "arm64"
+    DEFCONFIG: "arch/arm64/configs/defconfig"
+    DEVICE_TREES: "arch/arm64/boot/dts/rockchip/rk3399-gru-kevin.dtb"
+    KERNEL_IMAGE_NAME: "Image"
 
-build:
+.build:
   stage: build
-  image: $CI_REGISTRY_IMAGE:latest
+  image: $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
   cache:
     paths:
       - ccache
@@ -50,10 +64,11 @@ build:
     - export PATH="/usr/lib/ccache:$PATH"
     - ccache -s
 
-    - /usr/share/meson/debcrossgen --arch arm64 -o /tmp/cross_file.txt
+    # Build Mesa
+    - /usr/share/meson/debcrossgen --arch ${DEBIAN_ARCH} -o /tmp/cross_file.txt
     - meson . mesa-build
         --cross-file /tmp/cross_file.txt
-        --libdir /artifacts/rootfs/mesa/lib/aarch64-linux-gnu
+        --libdir /artifacts/rootfs/mesa/lib/
         --buildtype release
         -Dgallium-drivers=kmsro,panfrost
         -Ddri-drivers=
@@ -61,24 +76,50 @@ build:
     - ninja -C mesa-build install
     - du -sh /artifacts/rootfs/mesa/*
     - rm -rf /artifacts/rootfs/mesa/include
+
+    # Pack rootfs
     - cp src/gallium/drivers/panfrost/ci/deqp-runner.sh /artifacts/rootfs/deqp/.
     - du -sh /artifacts/rootfs/deqp/*
     - find /artifacts/rootfs/ -type f -printf "%s\t%p\n" | sort -n
-    - cd /artifacts/rootfs/ ; find -H  |  cpio -H newc -v -o | gzip -c - > $CI_PROJECT_DIR/results/panfrost-rootfs.cpio.gz
-    - cp /artifacts/Image /artifacts/rk3399-gru-kevin.dtb $CI_PROJECT_DIR/results/.
+    - cd /artifacts/rootfs/ ; find -H  |  cpio -H newc -v -o | gzip -c - > $CI_PROJECT_DIR/results/panfrost-rootfs-${DEBIAN_ARCH}.cpio.gz
 
+    # Copy kernel and DT
+    - cp /artifacts/${KERNEL_IMAGE_NAME} /artifacts/*.dtb $CI_PROJECT_DIR/results/.
+
+    # Generate LAVA job
     - cd $CI_PROJECT_DIR
     - src/gallium/drivers/panfrost/ci/generate_lava.py
         --template src/gallium/drivers/panfrost/ci/lava-deqp.yml.jinja2
+        --arch ${DEBIAN_ARCH}
         --base-artifacts-url $CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/results
+        --device-type ${DEVICE_TYPE}
+        --kernel-image-name ${KERNEL_IMAGE_NAME}
         > results/lava-deqp.yml
   artifacts:
     when: always
     paths:
       - results/
 
-test:
+build-armhf:
+  extends: .build
+  variables:
+    DEBIAN_ARCH: "armhf"
+    GCC_ARCH: "arm-linux-gnueabihf"
+    DEVICE_TYPE: "rk3288-veyron-jaq"
+    KERNEL_IMAGE_NAME: "zImage"
+
+build-arm64:
+  extends: .build
+  variables:
+    DEBIAN_ARCH: "arm64"
+    GCC_ARCH: "aarch64-linux-gnu"
+    DEVICE_TYPE: "rk3399-gru-kevin"
+    KERNEL_IMAGE_NAME: "Image"
+
+.test:
   stage: test
+  tags:
+    - idle-jobs
   image: $CI_REGISTRY_IMAGE:latest
   script:
     - mkdir -p ~/.config/
@@ -89,14 +130,14 @@ test:
         username: jenkins-fdo
         token: $LAVA_TOKEN
       " > ~/.config/lavacli.yaml
-    - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp.yml`
-    - echo $lava_job_id
+    - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp.yml` || echo $lava_job_id
     - lavacli jobs logs $lava_job_id | grep -a -v "{'case':" | tee results/lava-deqp-$lava_job_id.log
     - lavacli jobs show $lava_job_id
     - curl "https://lava.collabora.co.uk/results/$lava_job_id/csv?user=jenkins-fdo&token=$LAVA_TOKEN" > raw_results.csv
     - cat raw_results.csv | csvcut -c 12,3 | grep dEQP-GLES2 | sort > results/results-$lava_job_id.csv
 
     # FIXME: Remove flip-flops from comparison files
+    - sed -i '/dEQP-GLES2.functional.shaders.random.all_features.fragment.12/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
     - sed -i '/dEQP-GLES2.functional.shaders.invariance.highp.loop_4/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
     - sed -i '/dEQP-GLES2.functional.texture.units.2_units.mixed.1/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
     - sed -i '/dEQP-GLES2.functional.texture.units.4_units.mixed.5/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
@@ -115,3 +156,14 @@ test:
     when: always
     paths:
       - results/
+
+test-armhf:
+  extends: .test
+  dependencies:
+    - build-armhf
+
+test-arm64:
+  extends: .test
+  dependencies:
+    - build-arm64
+

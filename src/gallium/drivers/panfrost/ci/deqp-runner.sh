@@ -6,8 +6,8 @@ set -x
 BATCH_SIZE=5000
 
 export XDG_RUNTIME_DIR=/tmp
-export LIBGL_DRIVERS_PATH=/mesa/lib/aarch64-linux-gnu/dri/
-export LD_LIBRARY_PATH=/mesa/lib/aarch64-linux-gnu
+export LIBGL_DRIVERS_PATH=/mesa/lib/dri/
+export LD_LIBRARY_PATH=/mesa/lib/
 export XDG_CONFIG_HOME=$(pwd)
 
 echo "[core]\nidle-time=0\nrequire-input=false\n[shell]\nlocking=false" > weston.ini
