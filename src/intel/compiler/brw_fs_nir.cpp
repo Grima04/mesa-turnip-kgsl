@@ -2562,6 +2562,49 @@ fs_visitor::nir_emit_vs_intrinsic(const fs_builder &bld,
    }
 }
 
+fs_reg
+fs_visitor::get_tcs_single_patch_icp_handle(const fs_builder &bld,
+                                            nir_intrinsic_instr *instr)
+{
+   struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
+   const nir_src &vertex_src = instr->src[0];
+   nir_intrinsic_instr *vertex_intrin = nir_src_as_intrinsic(vertex_src);
+   fs_reg icp_handle;
+
+   if (nir_src_is_const(vertex_src)) {
+      /* Emit a MOV to resolve <0,1,0> regioning. */
+      icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+      unsigned vertex = nir_src_as_uint(vertex_src);
+      bld.MOV(icp_handle,
+              retype(brw_vec1_grf(1 + (vertex >> 3), vertex & 7),
+                     BRW_REGISTER_TYPE_UD));
+   } else if (tcs_prog_data->instances == 1 && vertex_intrin &&
+              vertex_intrin->intrinsic == nir_intrinsic_load_invocation_id) {
+      /* For the common case of only 1 instance, an array index of
+       * gl_InvocationID means reading g1.  Skip all the indirect work.
+       */
+      icp_handle = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
+   } else {
+      /* The vertex index is non-constant.  We need to use indirect
+       * addressing to fetch the proper URB handle.
+       */
+      icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+
+      /* Each ICP handle is a single DWord (4 bytes) */
+      fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
+      bld.SHL(vertex_offset_bytes,
+              retype(get_nir_src(vertex_src), BRW_REGISTER_TYPE_UD),
+              brw_imm_ud(2u));
+
+      /* Start at g1.  We might read up to 4 registers. */
+      bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle,
+               retype(brw_vec8_grf(1, 0), icp_handle.type), vertex_offset_bytes,
+               brw_imm_ud(4 * REG_SIZE));
+   }
+
+   return icp_handle;
+}
+
 void
 fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                                    nir_intrinsic_instr *instr)
@@ -2630,44 +2673,9 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
    case nir_intrinsic_load_per_vertex_input: {
       fs_reg indirect_offset = get_indirect_offset(instr);
       unsigned imm_offset = instr->const_index[0];
-
-      const nir_src &vertex_src = instr->src[0];
-
       fs_inst *inst;
 
-      fs_reg icp_handle;
-
-      if (nir_src_is_const(vertex_src)) {
-         /* Emit a MOV to resolve <0,1,0> regioning. */
-         icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-         unsigned vertex = nir_src_as_uint(vertex_src);
-         bld.MOV(icp_handle,
-                 retype(brw_vec1_grf(1 + (vertex >> 3), vertex & 7),
-                        BRW_REGISTER_TYPE_UD));
-      } else if (tcs_prog_data->instances == 1 &&
-                 nir_src_as_intrinsic(vertex_src) != NULL &&
-                 nir_src_as_intrinsic(vertex_src)->intrinsic == nir_intrinsic_load_invocation_id) {
-         /* For the common case of only 1 instance, an array index of
-          * gl_InvocationID means reading g1.  Skip all the indirect work.
-          */
-         icp_handle = retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UD);
-      } else {
-         /* The vertex index is non-constant.  We need to use indirect
-          * addressing to fetch the proper URB handle.
-          */
-         icp_handle = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-
-         /* Each ICP handle is a single DWord (4 bytes) */
-         fs_reg vertex_offset_bytes = bld.vgrf(BRW_REGISTER_TYPE_UD, 1);
-         bld.SHL(vertex_offset_bytes,
-                 retype(get_nir_src(vertex_src), BRW_REGISTER_TYPE_UD),
-                 brw_imm_ud(2u));
-
-         /* Start at g1.  We might read up to 4 registers. */
-         bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle,
-                  retype(brw_vec8_grf(1, 0), icp_handle.type), vertex_offset_bytes,
-                  brw_imm_ud(4 * REG_SIZE));
-      }
+      fs_reg icp_handle = get_tcs_single_patch_icp_handle(bld, instr);
 
       /* We can only read two double components with each URB read, so
        * we send two read messages in that case, each one loading up to
