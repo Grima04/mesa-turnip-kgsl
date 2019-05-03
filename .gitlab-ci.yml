@@ -12,9 +12,6 @@
 # main repository, it's recommended to remove the image from the source
 # repository's container registry, so that the image from the main
 # repository's registry will be used there as well.
-#
-# The format of the tag is "%Y-%m-%d-${counter}" where ${counter} stays
-# at "01" unless you have multiple updates on the same day :)
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_TAG: "2019-05-01"
