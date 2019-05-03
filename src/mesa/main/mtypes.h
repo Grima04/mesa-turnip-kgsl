@@ -5118,7 +5118,6 @@ struct gl_context
    void *swtnl_context;
    struct vbo_context *vbo_context;
    struct st_context *st;
-   void *aelt_context;
    /*@}*/
 
    /**

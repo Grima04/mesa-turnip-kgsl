@@ -45,38 +45,7 @@
 #include "main/dispatch.h"
 #include "varray.h"
 
-typedef void (GLAPIENTRY *array_func)( const void * );
-
-typedef struct {
-   const struct gl_array_attributes *array;
-   const struct gl_vertex_buffer_binding *binding;
-   int offset;
-} AEarray;
-
 typedef void (GLAPIENTRY *attrib_func)( GLuint indx, const void *data );
-
-typedef struct {
-   const struct gl_array_attributes *array;
-   const struct gl_vertex_buffer_binding *binding;
-   attrib_func func;
-   GLuint index;
-} AEattrib;
-
-typedef struct {
-   AEarray arrays[32];
-   AEattrib attribs[VERT_ATTRIB_MAX + 1];
-
-   bool dirty_state;
-} AEcontext;
-
-
-/** Cast wrapper */
-static inline AEcontext *
-AE_CONTEXT(struct gl_context *ctx)
-{
-   return (AEcontext *) ctx->aelt_context;
-}
-
 
 /*
  * Convert GL_BYTE, GL_UNSIGNED_BYTE, .. GL_DOUBLE into an integer
@@ -104,13 +73,6 @@ vertex_format_to_index(const struct gl_vertex_format *vformat)
       return 1;
    else
       return 0;
-}
-
-
-bool
-_ae_is_state_dirty(struct gl_context *ctx)
-{
-   return AE_CONTEXT(ctx)->dirty_state;
 }
 
 
@@ -1529,26 +1491,6 @@ _ae_ArrayElement(GLint elt)
    _mesa_array_element(ctx, (struct _glapi_table *)disp, elt);
 
    _mesa_vao_unmap_arrays(ctx, vao);
-}
-
-
-void
-_ae_invalidate_state(struct gl_context *ctx)
-{
-   AEcontext *actx = AE_CONTEXT(ctx);
-
-   /* Only interested in this subset of mesa state.  Need to prune
-    * this down as both tnl/ and the drivers can raise statechanges
-    * for arcane reasons in the middle of seemingly atomic operations
-    * like DrawElements, over which we'd like to keep a known set of
-    * arrays and vbo's mapped.
-    *
-    * Luckily, neither the drivers nor tnl muck with the state that
-    * concerns us here:
-    */
-   assert(ctx->NewState & _NEW_ARRAY);
-
-   actx->dirty_state = true;
 }
 
 
