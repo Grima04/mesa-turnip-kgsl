@@ -75,9 +75,7 @@ apt-get install -y \
       make
 
 # for 64bit windows cross-builds
-apt-get install -y \
-      wine64 \
-      mingw-w64
+apt-get install -y mingw-w64
 
 # dependencies where we want a specific version
 export              XORG_RELEASES=https://xorg.freedesktop.org/releases/individual
