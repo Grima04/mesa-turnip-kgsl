@@ -132,7 +132,6 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id)
 	 * the assembler what the max addr reg value can be:
 	 */
 	v->constlen = MAX2(v->constlen, v->info.max_const + 1);
-	debug_assert(v->constlen < 256);
 
 	fixup_regfootprint(v, gpu_id);
 
