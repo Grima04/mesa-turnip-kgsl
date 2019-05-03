@@ -1732,8 +1732,12 @@ brw_bufmgr_init(struct gen_device_info *devinfo, int fd)
 
          util_vma_heap_init(&bufmgr->vma_allocator[BRW_MEMZONE_LOW_4G],
                             PAGE_SIZE, _4GB_minus_1);
+
+         /* Leave the last 4GB out of the high vma range, so that no state
+          * base address + size can overflow 48 bits.
+          */
          util_vma_heap_init(&bufmgr->vma_allocator[BRW_MEMZONE_OTHER],
-                            1 * _4GB, gtt_size - 1 * _4GB);
+                            1 * _4GB, gtt_size - 2 * _4GB);
       } else if (devinfo->gen >= 10) {
          /* Softpin landed in 4.5, but GVT used an aliasing PPGTT until
           * kernel commit 6b3816d69628becb7ff35978aa0751798b4a940a in
