@@ -2417,10 +2417,12 @@ static void get_image_coords(struct ac_nir_context *ctx,
 }
 
 static LLVMValueRef get_image_buffer_descriptor(struct ac_nir_context *ctx,
-                                                const nir_intrinsic_instr *instr, bool write)
+                                                const nir_intrinsic_instr *instr,
+						bool write, bool atomic)
 {
 	LLVMValueRef rsrc = get_image_descriptor(ctx, instr, AC_DESC_BUFFER, write);
-	if (ctx->abi->gfx9_stride_size_workaround) {
+	if (ctx->abi->gfx9_stride_size_workaround ||
+	    (ctx->abi->gfx9_stride_size_workaround_for_atomic && atomic)) {
 		LLVMValueRef elem_count = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 2, 0), "");
 		LLVMValueRef stride = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 1, 0), "");
 		stride = LLVMBuildLShr(ctx->ac.builder, stride, LLVMConstInt(ctx->ac.i32, 16, 0), "");
@@ -2466,7 +2468,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 		unsigned num_channels = util_last_bit(mask);
 		LLVMValueRef rsrc, vindex;
 
-		rsrc = get_image_buffer_descriptor(ctx, instr, false);
+		rsrc = get_image_buffer_descriptor(ctx, instr, false, false);
 		vindex = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 						 ctx->ac.i32_0, "");
 
@@ -2520,7 +2522,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 	args.cache_policy = get_cache_policy(ctx, access, true, writeonly_memory);
 
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
-		LLVMValueRef rsrc = get_image_buffer_descriptor(ctx, instr, true);
+		LLVMValueRef rsrc = get_image_buffer_descriptor(ctx, instr, true, false);
 		LLVMValueRef src = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));
 		unsigned src_channels = ac_get_llvm_num_components(src);
 		LLVMValueRef vindex;
@@ -2632,7 +2634,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 	params[param_count++] = get_src(ctx, instr->src[3]);
 
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
-		params[param_count++] = get_image_buffer_descriptor(ctx, instr, true);
+		params[param_count++] = get_image_buffer_descriptor(ctx, instr, true, true);
 		params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 								ctx->ac.i32_0, ""); /* vindex */
 		params[param_count++] = ctx->ac.i32_0; /* voffset */
