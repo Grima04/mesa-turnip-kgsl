@@ -707,8 +707,6 @@ void si_shader_dump_stats_for_shader_db(const struct si_shader *shader,
 void si_multiwave_lds_size_workaround(struct si_screen *sscreen,
 				      unsigned *lds_size);
 const char *si_get_shader_name(const struct si_shader *shader, unsigned processor);
-bool si_shader_binary_read_config(struct si_shader_binary *binary,
-				  struct ac_shader_config *conf);
 void si_shader_binary_clean(struct si_shader_binary *binary);
 
 /* si_shader_nir.c */

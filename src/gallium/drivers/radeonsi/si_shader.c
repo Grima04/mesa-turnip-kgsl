@@ -5389,19 +5389,6 @@ void si_shader_dump(struct si_screen *sscreen, const struct si_shader *shader,
 			     check_debug_option);
 }
 
-bool si_shader_binary_read_config(struct si_shader_binary *binary,
-				  struct ac_shader_config *conf)
-{
-	struct ac_rtld_binary rtld;
-	if (!ac_rtld_open(&rtld, 1, &binary->elf_buffer, &binary->elf_size))
-		return false;
-
-	bool ok = ac_rtld_read_config(&rtld, conf);
-
-	ac_rtld_close(&rtld);
-	return ok;
-}
-
 static int si_compile_llvm(struct si_screen *sscreen,
 			   struct si_shader_binary *binary,
 			   struct ac_shader_config *conf,
@@ -5437,7 +5424,13 @@ static int si_compile_llvm(struct si_screen *sscreen,
 			return r;
 	}
 
-	if (!si_shader_binary_read_config(binary, conf))
+	struct ac_rtld_binary rtld;
+	if (!ac_rtld_open(&rtld, 1, &binary->elf_buffer, &binary->elf_size))
+		return -1;
+
+	bool ok = ac_rtld_read_config(&rtld, conf);
+	ac_rtld_close(&rtld);
+	if (!ok)
 		return -1;
 
 	/* Enable 64-bit and 16-bit denormals, because there is no performance
