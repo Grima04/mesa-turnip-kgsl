@@ -813,6 +813,9 @@ enum vtn_variable_mode vtn_storage_class_to_mode(struct vtn_builder *b,
                                                  struct vtn_type *interface_type,
                                                  nir_variable_mode *nir_mode_out);
 
+nir_address_format vtn_mode_to_address_format(struct vtn_builder *b,
+                                              enum vtn_variable_mode);
+
 static inline uint32_t
 vtn_align_u32(uint32_t v, uint32_t a)
 {

@@ -96,23 +96,6 @@ vk_desc_type_for_mode(struct vtn_builder *b, enum vtn_variable_mode mode)
    }
 }
 
-static const struct glsl_type *
-vtn_ptr_type_for_mode(struct vtn_builder *b, enum vtn_variable_mode mode)
-{
-   nir_address_format addr_format;
-   switch (mode) {
-   case vtn_variable_mode_ubo:
-      addr_format = b->options->ubo_addr_format;
-      break;
-   case vtn_variable_mode_ssbo:
-      addr_format = b->options->ssbo_addr_format;
-      break;
-   default:
-      vtn_fail("Invalid mode for vulkan_resource_index");
-   }
-   return nir_address_format_to_glsl_type(addr_format);
-}
-
 static nir_ssa_def *
 vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
                             nir_ssa_def *desc_array_index)
@@ -130,9 +113,14 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
    nir_intrinsic_set_binding(instr, var->binding);
    nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, var->mode));
 
+   vtn_fail_if(var->mode != vtn_variable_mode_ubo &&
+               var->mode != vtn_variable_mode_ssbo,
+               "Invalid mode for vulkan_resource_index");
+
+   nir_address_format addr_format = vtn_mode_to_address_format(b, var->mode);
    const struct glsl_type *index_type =
       b->options->lower_ubo_ssbo_access_to_offsets ?
-      glsl_uint_type() : vtn_ptr_type_for_mode(b, var->mode);
+      glsl_uint_type() : nir_address_format_to_glsl_type(addr_format);
 
    instr->num_components = glsl_get_vector_elements(index_type);
    nir_ssa_dest_init(&instr->instr, &instr->dest, instr->num_components,
@@ -153,9 +141,13 @@ vtn_resource_reindex(struct vtn_builder *b, enum vtn_variable_mode mode,
    instr->src[1] = nir_src_for_ssa(offset_index);
    nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, mode));
 
+   vtn_fail_if(mode != vtn_variable_mode_ubo && mode != vtn_variable_mode_ssbo,
+               "Invalid mode for vulkan_resource_reindex");
+
+   nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
    const struct glsl_type *index_type =
       b->options->lower_ubo_ssbo_access_to_offsets ?
-      glsl_uint_type() : vtn_ptr_type_for_mode(b, mode);
+      glsl_uint_type() : nir_address_format_to_glsl_type(addr_format);
 
    instr->num_components = glsl_get_vector_elements(index_type);
    nir_ssa_dest_init(&instr->instr, &instr->dest, instr->num_components,
@@ -175,7 +167,12 @@ vtn_descriptor_load(struct vtn_builder *b, enum vtn_variable_mode mode,
    desc_load->src[0] = nir_src_for_ssa(desc_index);
    nir_intrinsic_set_desc_type(desc_load, vk_desc_type_for_mode(b, mode));
 
-   const struct glsl_type *ptr_type = vtn_ptr_type_for_mode(b, mode);
+   vtn_fail_if(mode != vtn_variable_mode_ubo && mode != vtn_variable_mode_ssbo,
+               "Invalid mode for load_vulkan_descriptor");
+
+   nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
+   const struct glsl_type *ptr_type =
+      nir_address_format_to_glsl_type(addr_format);
 
    desc_load->num_components = glsl_get_vector_elements(ptr_type);
    nir_ssa_dest_init(&desc_load->instr, &desc_load->dest,
@@ -1792,6 +1789,43 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       *nir_mode_out = nir_mode;
 
    return mode;
+}
+
+nir_address_format
+vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
+{
+   switch (mode) {
+   case vtn_variable_mode_ubo:
+      return b->options->ubo_addr_format;
+
+   case vtn_variable_mode_ssbo:
+      return b->options->ssbo_addr_format;
+
+   case vtn_variable_mode_phys_ssbo:
+      return b->options->phys_ssbo_addr_format;
+
+   case vtn_variable_mode_push_constant:
+      return b->options->push_const_addr_format;
+
+   case vtn_variable_mode_workgroup:
+      return b->options->shared_addr_format;
+
+   case vtn_variable_mode_cross_workgroup:
+      return b->options->global_addr_format;
+
+   case vtn_variable_mode_function:
+      if (b->physical_ptrs)
+         return b->options->temp_addr_format;
+      /* Fall through. */
+
+   case vtn_variable_mode_private:
+   case vtn_variable_mode_uniform:
+   case vtn_variable_mode_input:
+   case vtn_variable_mode_output:
+      return nir_address_format_logical;
+   }
+
+   unreachable("Invalid variable mode");
 }
 
 nir_ssa_def *
