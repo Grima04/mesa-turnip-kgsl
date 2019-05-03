@@ -1394,6 +1394,7 @@ dEQP-GLES2.functional.shaders.linkage.varying_7
 dEQP-GLES2.functional.shaders.linkage.varying_type_mat2
 dEQP-GLES2.functional.shaders.linkage.varying_type_mat3
 dEQP-GLES2.functional.shaders.linkage.varying_type_mat4
+dEQP-GLES2.functional.shaders.loops.custom.continue_in_fragment_for_loop
 dEQP-GLES2.functional.shaders.matrix.add.dynamic_highp_mat2_float_fragment
 dEQP-GLES2.functional.shaders.matrix.add.dynamic_highp_mat2_float_vertex
 dEQP-GLES2.functional.shaders.matrix.add.dynamic_highp_mat2_mat2_fragment

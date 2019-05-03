@@ -1931,6 +1931,7 @@ dealias_register(compiler_context *ctx, struct ra_graph *g, int reg, int maxreg)
 
         if (reg >= 0) {
                 assert(reg < maxreg);
+                assert(g);
                 int r = ra_get_node_reg(g, reg);
                 ctx->work_registers = MAX2(ctx->work_registers, r);
                 return r;
@@ -2030,7 +2031,68 @@ is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *
         return succ;
 }
 
+/* Once registers have been decided via register allocation
+ * (allocate_registers), we need to rewrite the MIR to use registers instead of
+ * SSA */
+
 static void
+install_registers(compiler_context *ctx, struct ra_graph *g)
+{
+        mir_foreach_block(ctx, block) {
+                mir_foreach_instr_in_block(block, ins) {
+                        if (ins->compact_branch) continue;
+
+                        ssa_args args = ins->ssa_args;
+
+                        switch (ins->type) {
+                        case TAG_ALU_4:
+                                ins->registers.src1_reg = dealias_register(ctx, g, args.src0, ctx->temp_count);
+
+                                ins->registers.src2_imm = args.inline_constant;
+
+                                if (args.inline_constant) {
+                                        /* Encode inline 16-bit constant as a vector by default */
+
+                                        ins->registers.src2_reg = ins->inline_constant >> 11;
+
+                                        int lower_11 = ins->inline_constant & ((1 << 12) - 1);
+
+                                        uint16_t imm = ((lower_11 >> 8) & 0x7) | ((lower_11 & 0xFF) << 3);
+                                        ins->alu.src2 = imm << 2;
+                                } else {
+                                        ins->registers.src2_reg = dealias_register(ctx, g, args.src1, ctx->temp_count);
+                                }
+
+                                ins->registers.out_reg = dealias_register(ctx, g, args.dest, ctx->temp_count);
+
+                                break;
+
+                        case TAG_LOAD_STORE_4: {
+                                if (OP_IS_STORE_VARY(ins->load_store.op)) {
+                                        /* TODO: use ssa_args for store_vary */
+                                        ins->load_store.reg = 0;
+                                } else {
+                                        bool has_dest = args.dest >= 0;
+                                        int ssa_arg = has_dest ? args.dest : args.src0;
+
+                                        ins->load_store.reg = dealias_register(ctx, g, ssa_arg, ctx->temp_count);
+                                }
+
+                                break;
+                        }
+
+                        default:
+                                break;
+                        }
+                }
+        }
+
+}
+
+/* This routine performs the actual register allocation. It should be succeeded
+ * by install_registers */
+
+static struct ra_graph *
 allocate_registers(compiler_context *ctx)
 {
         /* First, initialize the RA */
@@ -2067,8 +2129,10 @@ allocate_registers(compiler_context *ctx)
 	                print_mir_block(block);
         }
 
+        /* No register allocation to do with no SSA */
+
         if (!ctx->temp_count)
-                return;
+                return NULL;
 
         /* Let's actually do register allocation */
         int nodes = ctx->temp_count;
@@ -2186,54 +2250,7 @@ allocate_registers(compiler_context *ctx)
         free(live_start);
         free(live_end);
 
-        mir_foreach_block(ctx, block) {
-                mir_foreach_instr_in_block(block, ins) {
-                        if (ins->compact_branch) continue;
-
-                        ssa_args args = ins->ssa_args;
-
-                        switch (ins->type) {
-                        case TAG_ALU_4:
-                                ins->registers.src1_reg = dealias_register(ctx, g, args.src0, nodes);
-
-                                ins->registers.src2_imm = args.inline_constant;
-
-                                if (args.inline_constant) {
-                                        /* Encode inline 16-bit constant as a vector by default */
-
-                                        ins->registers.src2_reg = ins->inline_constant >> 11;
-
-                                        int lower_11 = ins->inline_constant & ((1 << 12) - 1);
-
-                                        uint16_t imm = ((lower_11 >> 8) & 0x7) | ((lower_11 & 0xFF) << 3);
-                                        ins->alu.src2 = imm << 2;
-                                } else {
-                                        ins->registers.src2_reg = dealias_register(ctx, g, args.src1, nodes);
-                                }
-
-                                ins->registers.out_reg = dealias_register(ctx, g, args.dest, nodes);
-
-                                break;
-
-                        case TAG_LOAD_STORE_4: {
-                                if (OP_IS_STORE_VARY(ins->load_store.op)) {
-                                        /* TODO: use ssa_args for store_vary */
-                                        ins->load_store.reg = 0;
-                                } else {
-                                        bool has_dest = args.dest >= 0;
-                                        int ssa_arg = has_dest ? args.dest : args.src0;
-
-                                        ins->load_store.reg = dealias_register(ctx, g, ssa_arg, nodes);
-                                }
-
-                                break;
-                        }
-
-                        default:
-                                break;
-                        }
-                }
-        }
+        return g;
 }
 
 /* Midgard IR only knows vector ALU types, but we sometimes need to actually
@@ -2813,7 +2830,9 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 static void
 schedule_program(compiler_context *ctx)
 {
-        allocate_registers(ctx);
+        /* We run RA prior to scheduling */
+        struct ra_graph *g = allocate_registers(ctx);
+        install_registers(ctx, g);
 
         mir_foreach_block(ctx, block) {
                 schedule_block(ctx, block);
