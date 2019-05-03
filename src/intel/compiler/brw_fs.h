@@ -194,6 +194,8 @@ public:
    bool opt_cmod_propagation();
    bool opt_zero_samples();
 
+   void set_tcs_invocation_id();
+
    void emit_nir_code();
    void nir_setup_outputs();
    void nir_setup_uniforms();

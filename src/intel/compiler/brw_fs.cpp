@@ -7392,20 +7392,16 @@ fs_visitor::run_vs()
    return !failed;
 }
 
-bool
-fs_visitor::run_tcs_single_patch()
+void
+fs_visitor::set_tcs_invocation_id()
 {
-   assert(stage == MESA_SHADER_TESS_CTRL);
-
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
 
-   /* r1-r4 contain the ICP handles. */
-   payload.num_regs = 5;
+   const unsigned invocation_id_mask =
+      devinfo->gen >= 11 ? INTEL_MASK(22, 16) : INTEL_MASK(23, 17);
+   const unsigned invocation_id_shift =
+      devinfo->gen >= 11 ? 16 : 17;
 
-   if (shader_time_index >= 0)
-      emit_shader_time_begin();
-
-   /* Initialize gl_InvocationID */
    fs_reg channels_uw = bld.vgrf(BRW_REGISTER_TYPE_UW);
    fs_reg channels_ud = bld.vgrf(BRW_REGISTER_TYPE_UD);
    bld.MOV(channels_uw, fs_reg(brw_imm_uv(0x76543210)));
@@ -7414,10 +7410,6 @@ fs_visitor::run_tcs_single_patch()
    if (tcs_prog_data->instances == 1) {
       invocation_id = channels_ud;
    } else {
-      const unsigned invocation_id_mask = devinfo->gen >= 11 ?
-         INTEL_MASK(22, 16) : INTEL_MASK(23, 17);
-      const unsigned invocation_id_shift = devinfo->gen >= 11 ? 16 : 17;
-
       invocation_id = bld.vgrf(BRW_REGISTER_TYPE_UD);
 
       /* Get instance number from g0.2 bits 23:17, and multiply it by 8. */
@@ -7429,6 +7421,21 @@ fs_visitor::run_tcs_single_patch()
 
       bld.ADD(invocation_id, instance_times_8, channels_ud);
    }
+}
+
+bool
+fs_visitor::run_tcs_single_patch()
+{
+   assert(stage == MESA_SHADER_TESS_CTRL);
+
+   /* r1-r4 contain the ICP handles. */
+   payload.num_regs = 5;
+
+   if (shader_time_index >= 0)
+      emit_shader_time_begin();
+
+   /* Initialize gl_InvocationID */
+   set_tcs_invocation_id();
 
    /* Fix the disptach mask */
    if (nir->info.tess.tcs_vertices_out % 8) {
