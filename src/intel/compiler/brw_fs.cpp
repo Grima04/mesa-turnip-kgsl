@@ -7397,9 +7397,9 @@ fs_visitor::set_tcs_invocation_id()
 {
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
 
-   const unsigned invocation_id_mask =
+   const unsigned instance_id_mask =
       devinfo->gen >= 11 ? INTEL_MASK(22, 16) : INTEL_MASK(23, 17);
-   const unsigned invocation_id_shift =
+   const unsigned instance_id_shift =
       devinfo->gen >= 11 ? 16 : 17;
 
    fs_reg channels_uw = bld.vgrf(BRW_REGISTER_TYPE_UW);
@@ -7416,8 +7416,8 @@ fs_visitor::set_tcs_invocation_id()
       fs_reg t = bld.vgrf(BRW_REGISTER_TYPE_UD);
       fs_reg instance_times_8 = bld.vgrf(BRW_REGISTER_TYPE_UD);
       bld.AND(t, fs_reg(retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD)),
-              brw_imm_ud(invocation_id_mask));
-      bld.SHR(instance_times_8, t, brw_imm_ud(invocation_id_shift - 3));
+              brw_imm_ud(instance_id_mask));
+      bld.SHR(instance_times_8, t, brw_imm_ud(instance_id_shift - 3));
 
       bld.ADD(invocation_id, instance_times_8, channels_ud);
    }
