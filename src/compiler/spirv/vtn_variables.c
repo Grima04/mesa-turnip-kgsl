@@ -45,14 +45,14 @@ vtn_access_chain_create(struct vtn_builder *b, unsigned length)
 }
 
 bool
-vtn_pointer_uses_ssa_offset(struct vtn_builder *b,
-                            struct vtn_pointer *ptr)
+vtn_mode_uses_ssa_offset(struct vtn_builder *b,
+                         enum vtn_variable_mode mode)
 {
-   return ((ptr->mode == vtn_variable_mode_ubo ||
-            ptr->mode == vtn_variable_mode_ssbo) &&
+   return ((mode == vtn_variable_mode_ubo ||
+            mode == vtn_variable_mode_ssbo) &&
            b->options->lower_ubo_ssbo_access_to_offsets) ||
-          ptr->mode == vtn_variable_mode_push_constant ||
-          (ptr->mode == vtn_variable_mode_workgroup &&
+          mode == vtn_variable_mode_push_constant ||
+          (mode == vtn_variable_mode_workgroup &&
            b->options->lower_workgroup_access_to_offsets);
 }
 

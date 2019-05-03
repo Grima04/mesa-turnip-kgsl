@@ -473,8 +473,15 @@ struct vtn_pointer {
    enum gl_access_qualifier access;
 };
 
-bool vtn_pointer_uses_ssa_offset(struct vtn_builder *b,
-                                 struct vtn_pointer *ptr);
+bool vtn_mode_uses_ssa_offset(struct vtn_builder *b,
+                              enum vtn_variable_mode mode);
+
+static inline bool vtn_pointer_uses_ssa_offset(struct vtn_builder *b,
+                                               struct vtn_pointer *ptr)
+{
+   return vtn_mode_uses_ssa_offset(b, ptr->mode);
+}
+
 
 struct vtn_variable {
    enum vtn_variable_mode mode;
