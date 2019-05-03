@@ -1681,9 +1681,13 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_DYNAMIC],
                       IRIS_MEMZONE_DYNAMIC_START + IRIS_BORDER_COLOR_POOL_SIZE,
                       _4GB_minus_1 - IRIS_BORDER_COLOR_POOL_SIZE);
+
+   /* Leave the last 4GB out of the high vma range, so that no state
+    * base address + size can overflow 48 bits.
+    */
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
                       IRIS_MEMZONE_OTHER_START,
-                      gtt_size - IRIS_MEMZONE_OTHER_START);
+                      (gtt_size - _4GB) - IRIS_MEMZONE_OTHER_START);
 
    // XXX: driconf
    bufmgr->bo_reuse = env_var_as_boolean("bo_reuse", true);
