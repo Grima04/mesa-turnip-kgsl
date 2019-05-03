@@ -7437,8 +7437,11 @@ fs_visitor::run_tcs_single_patch()
    /* Initialize gl_InvocationID */
    set_tcs_invocation_id();
 
+   const bool fix_dispatch_mask =
+      (nir->info.tess.tcs_vertices_out % 8) != 0;
+
    /* Fix the disptach mask */
-   if (nir->info.tess.tcs_vertices_out % 8) {
+   if (fix_dispatch_mask) {
       bld.CMP(bld.null_reg_ud(), invocation_id,
               brw_imm_ud(nir->info.tess.tcs_vertices_out), BRW_CONDITIONAL_L);
       bld.IF(BRW_PREDICATE_NORMAL);
@@ -7446,7 +7449,7 @@ fs_visitor::run_tcs_single_patch()
 
    emit_nir_code();
 
-   if (nir->info.tess.tcs_vertices_out % 8) {
+   if (fix_dispatch_mask) {
       bld.emit(BRW_OPCODE_ENDIF);
    }
 
