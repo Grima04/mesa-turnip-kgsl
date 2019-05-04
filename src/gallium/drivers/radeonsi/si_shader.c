@@ -991,13 +991,13 @@ static LLVMValueRef buffer_load(struct lp_build_tgsi_context *bld_base,
 }
 
 /**
- * Load from LDS.
+ * Load from LSHS LDS storage.
  *
  * \param type		output value type
  * \param swizzle	offset (typically 0..3); it can be ~0, which loads a vec4
  * \param dw_addr	address in dwords
  */
-static LLVMValueRef lds_load(struct lp_build_tgsi_context *bld_base,
+static LLVMValueRef lshs_lds_load(struct lp_build_tgsi_context *bld_base,
 			     LLVMTypeRef type, unsigned swizzle,
 			     LLVMValueRef dw_addr)
 {
@@ -1008,7 +1008,7 @@ static LLVMValueRef lds_load(struct lp_build_tgsi_context *bld_base,
 		LLVMValueRef values[TGSI_NUM_CHANNELS];
 
 		for (unsigned chan = 0; chan < TGSI_NUM_CHANNELS; chan++)
-			values[chan] = lds_load(bld_base, type, chan, dw_addr);
+			values[chan] = lshs_lds_load(bld_base, type, chan, dw_addr);
 
 		return ac_build_gather_values(&ctx->ac, values,
 					      TGSI_NUM_CHANNELS);
@@ -1018,8 +1018,8 @@ static LLVMValueRef lds_load(struct lp_build_tgsi_context *bld_base,
 	if (llvm_type_is_64bit(ctx, type)) {
 		LLVMValueRef lo, hi;
 
-		lo = lds_load(bld_base, ctx->i32, swizzle, dw_addr);
-		hi = lds_load(bld_base, ctx->i32, swizzle + 1, dw_addr);
+		lo = lshs_lds_load(bld_base, ctx->i32, swizzle, dw_addr);
+		hi = lshs_lds_load(bld_base, ctx->i32, swizzle + 1, dw_addr);
 		return si_llvm_emit_fetch_64bit(bld_base, type, lo, hi);
 	}
 
@@ -1032,13 +1032,13 @@ static LLVMValueRef lds_load(struct lp_build_tgsi_context *bld_base,
 }
 
 /**
- * Store to LDS.
+ * Store to LSHS LDS storage.
  *
  * \param swizzle	offset (typically 0..3)
  * \param dw_addr	address in dwords
  * \param value		value to store
  */
-static void lds_store(struct si_shader_context *ctx,
+static void lshs_lds_store(struct si_shader_context *ctx,
 		      unsigned dw_offset_imm, LLVMValueRef dw_addr,
 		      LLVMValueRef value)
 {
@@ -1102,7 +1102,7 @@ static LLVMValueRef fetch_input_tcs(
 	dw_addr = get_tcs_in_current_patch_offset(ctx);
 	dw_addr = get_dw_address(ctx, NULL, reg, stride, dw_addr);
 
-	return lds_load(bld_base, tgsi2llvmtype(bld_base, type), swizzle, dw_addr);
+	return lshs_lds_load(bld_base, tgsi2llvmtype(bld_base, type), swizzle, dw_addr);
 }
 
 static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
@@ -1169,7 +1169,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 			offset *= 2;
 
 		offset += component;
-		value[i + component] = lds_load(bld_base, type, offset, dw_addr);
+		value[i + component] = lshs_lds_load(bld_base, type, offset, dw_addr);
 	}
 
 	return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
@@ -1193,7 +1193,7 @@ static LLVMValueRef fetch_output_tcs(
 		dw_addr = get_dw_address(ctx, NULL, reg, NULL, dw_addr);
 	}
 
-	return lds_load(bld_base, tgsi2llvmtype(bld_base, type), swizzle, dw_addr);
+	return lshs_lds_load(bld_base, tgsi2llvmtype(bld_base, type), swizzle, dw_addr);
 }
 
 static LLVMValueRef fetch_input_tes(
@@ -1343,7 +1343,7 @@ static void store_output_tcs(struct lp_build_tgsi_context *bld_base,
 
 		/* Skip LDS stores if there is no LDS read of this output. */
 		if (!skip_lds_store)
-			lds_store(ctx, chan_index, dw_addr, value);
+			lshs_lds_store(ctx, chan_index, dw_addr, value);
 
 		value = ac_to_integer(&ctx->ac, value);
 		values[chan_index] = value;
@@ -1470,7 +1470,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 
 		/* Skip LDS stores if there is no LDS read of this output. */
 		if (!skip_lds_store)
-			lds_store(ctx, chan, dw_addr, value);
+			lshs_lds_store(ctx, chan, dw_addr, value);
 
 		value = ac_to_integer(&ctx->ac, value);
 		values[chan] = value;
@@ -3051,8 +3051,7 @@ static void si_copy_tcs_inputs(struct lp_build_tgsi_context *bld_base)
 		                              invocation_id,
 		                              LLVMConstInt(ctx->i32, i, 0));
 
-		LLVMValueRef value = lds_load(bld_base, ctx->ac.i32, ~0,
-		                              lds_ptr);
+		LLVMValueRef value = lshs_lds_load(bld_base, ctx->ac.i32, ~0, lds_ptr);
 
 		ac_build_buffer_store_dword(&ctx->ac, buffer, value, 4, buffer_addr,
 					    buffer_offset, 0, 1, 0, true, false);
@@ -3138,11 +3137,11 @@ static void si_write_tess_factors(struct lp_build_tgsi_context *bld_base,
 
 		for (i = 0; i < outer_comps; i++) {
 			outer[i] = out[i] =
-				lds_load(bld_base, ctx->ac.i32, i, lds_outer);
+				lshs_lds_load(bld_base, ctx->ac.i32, i, lds_outer);
 		}
 		for (i = 0; i < inner_comps; i++) {
 			inner[i] = out[outer_comps+i] =
-				lds_load(bld_base, ctx->ac.i32, i, lds_inner);
+				lshs_lds_load(bld_base, ctx->ac.i32, i, lds_inner);
 		}
 	}
 
@@ -3474,7 +3473,7 @@ static void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi,
 			if (!(info->output_usagemask[i] & (1 << chan)))
 				continue;
 
-			lds_store(ctx, chan, dw_addr,
+			lshs_lds_store(ctx, chan, dw_addr,
 				  LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], ""));
 		}
 	}
