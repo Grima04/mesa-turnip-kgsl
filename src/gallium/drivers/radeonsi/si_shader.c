@@ -2217,7 +2217,7 @@ void si_declare_compute_memory(struct si_shader_context *ctx)
 	                                  LLVMArrayType(ctx->i8, lds_size),
 	                                  "compute_lds",
 	                                  AC_ADDR_SPACE_LDS);
-	LLVMSetAlignment(var, 4);
+	LLVMSetAlignment(var, 64 * 1024);
 
 	ctx->ac.lds = LLVMBuildBitCast(ctx->ac.builder, var, i8p, "");
 }
