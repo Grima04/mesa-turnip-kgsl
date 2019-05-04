@@ -126,7 +126,7 @@ static void dd_screen_query_memory_info(struct pipe_screen *_screen,
 {
    struct pipe_screen *screen = dd_screen(_screen)->screen;
 
-   return screen->query_memory_info(screen, info);
+   screen->query_memory_info(screen, info);
 }
 
 static struct pipe_context *
