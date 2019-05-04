@@ -646,17 +646,9 @@ static unsigned si_conv_prim_to_gs_out(unsigned mode)
 	return prim_conv[mode];
 }
 
-struct gfx9_gs_info {
-	unsigned es_verts_per_subgroup;
-	unsigned gs_prims_per_subgroup;
-	unsigned gs_inst_prims_in_subgroup;
-	unsigned max_prims_per_subgroup;
-	unsigned lds_size;
-};
-
-static void gfx9_get_gs_info(struct si_shader_selector *es,
-				   struct si_shader_selector *gs,
-				   struct gfx9_gs_info *out)
+void gfx9_get_gs_info(struct si_shader_selector *es,
+		      struct si_shader_selector *gs,
+		      struct gfx9_gs_info *out)
 {
 	unsigned gs_num_invocations = MAX2(gs->gs_num_invocations, 1);
 	unsigned input_prim = gs->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
@@ -747,7 +739,7 @@ static void gfx9_get_gs_info(struct si_shader_selector *es,
 	out->gs_inst_prims_in_subgroup = gs_prims * gs_num_invocations;
 	out->max_prims_per_subgroup = out->gs_inst_prims_in_subgroup *
 				      gs->gs_max_out_vertices;
-	out->lds_size = align(esgs_lds_size, 128) / 128;
+	out->esgs_ring_size = 4 * esgs_lds_size;
 
 	assert(out->max_prims_per_subgroup <= max_out_prims);
 }
@@ -876,7 +868,6 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 		unsigned input_prim = sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
 		unsigned es_type = shader->key.part.gs.es->type;
 		unsigned es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
-		struct gfx9_gs_info gs_info;
 
 		if (es_type == PIPE_SHADER_VERTEX)
 			/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
@@ -904,8 +895,6 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 		else
 			num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
 
-		gfx9_get_gs_info(shader->key.part.gs.es, sel, &gs_info);
-
 		si_pm4_set_reg(pm4, R_00B210_SPI_SHADER_PGM_LO_ES, va >> 8);
 		si_pm4_set_reg(pm4, R_00B214_SPI_SHADER_PGM_HI_ES, S_00B214_MEM_BASE(va >> 40));
 
@@ -920,15 +909,15 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 			       S_00B22C_USER_SGPR_MSB(num_user_sgprs >> 5) |
 			       S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
 			       S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
-			       S_00B22C_LDS_SIZE(gs_info.lds_size) |
+			       S_00B22C_LDS_SIZE(shader->config.lds_size) |
 			       S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
 
 		shader->ctx_reg.gs.vgt_gs_onchip_cntl =
-			S_028A44_ES_VERTS_PER_SUBGRP(gs_info.es_verts_per_subgroup) |
-			S_028A44_GS_PRIMS_PER_SUBGRP(gs_info.gs_prims_per_subgroup) |
-			S_028A44_GS_INST_PRIMS_IN_SUBGRP(gs_info.gs_inst_prims_in_subgroup);
+			S_028A44_ES_VERTS_PER_SUBGRP(shader->gs_info.es_verts_per_subgroup) |
+			S_028A44_GS_PRIMS_PER_SUBGRP(shader->gs_info.gs_prims_per_subgroup) |
+			S_028A44_GS_INST_PRIMS_IN_SUBGRP(shader->gs_info.gs_inst_prims_in_subgroup);
 		shader->ctx_reg.gs.vgt_gs_max_prims_per_subgroup =
-			S_028A94_MAX_PRIMS_PER_SUBGROUP(gs_info.max_prims_per_subgroup);
+			S_028A94_MAX_PRIMS_PER_SUBGROUP(shader->gs_info.max_prims_per_subgroup);
 		shader->ctx_reg.gs.vgt_esgs_ring_itemsize =
 			shader->key.part.gs.es->esgs_itemsize / 4;
 

@@ -143,6 +143,10 @@
 
 #include <stdio.h>
 
+// Use LDS symbols when supported by LLVM. Can be disabled for testing the old
+// path on newer LLVM for now. Should be removed in the long term.
+#define USE_LDS_SYMBOLS (true)
+
 struct nir_shader;
 struct si_shader;
 struct si_context;
@@ -595,6 +599,14 @@ struct si_shader_binary {
 	char *llvm_ir_string;
 };
 
+struct gfx9_gs_info {
+	unsigned es_verts_per_subgroup;
+	unsigned gs_prims_per_subgroup;
+	unsigned gs_inst_prims_in_subgroup;
+	unsigned max_prims_per_subgroup;
+	unsigned esgs_ring_size; /* in bytes */
+};
+
 struct si_shader {
 	struct si_compiler_ctx_state	compiler_ctx_state;
 
@@ -628,6 +640,8 @@ struct si_shader {
 	 */
 	char				*shader_log;
 	size_t				shader_log_size;
+
+	struct gfx9_gs_info gs_info;
 
 	/* For save precompute context registers values. */
 	union {
@@ -717,6 +731,11 @@ void si_nir_scan_tess_ctrl(const struct nir_shader *nir,
 			   struct tgsi_tessctrl_info *out);
 void si_lower_nir(struct si_shader_selector *sel);
 void si_nir_opts(struct nir_shader *nir);
+
+/* si_state_shaders.c */
+void gfx9_get_gs_info(struct si_shader_selector *es,
+		      struct si_shader_selector *gs,
+		      struct gfx9_gs_info *out);
 
 /* Inline helpers. */
 

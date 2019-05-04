@@ -1543,9 +1543,22 @@ LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi,
 			return NULL;
 		}
 
+		unsigned offset = param * 4 + swizzle;
 		vtx_offset = LLVMBuildAdd(ctx->ac.builder, vtx_offset,
-					  LLVMConstInt(ctx->i32, param * 4, 0), "");
-		return lds_load(bld_base, type, swizzle, vtx_offset);
+					  LLVMConstInt(ctx->i32, offset, false), "");
+
+		LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->esgs_ring, vtx_offset);
+		LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, ptr, "");
+		if (llvm_type_is_64bit(ctx, type)) {
+			ptr = LLVMBuildGEP(ctx->ac.builder, ptr,
+					   &ctx->ac.i32_1, 1, "");
+			LLVMValueRef values[2] = {
+				value,
+				LLVMBuildLoad(ctx->ac.builder, ptr, "")
+			};
+			value = ac_build_gather_values(&ctx->ac, values, 2);
+		}
+		return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
 	}
 
 	/* GFX6: input load from the ESGS ring in memory. */
@@ -3513,7 +3526,9 @@ static void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi,
 
 			/* GFX9 has the ESGS ring in LDS. */
 			if (ctx->screen->info.chip_class >= GFX9) {
-				lds_store(ctx, param * 4 + chan, lds_base, out_val);
+				LLVMValueRef idx = LLVMConstInt(ctx->i32, param * 4 + chan, false);
+				idx = LLVMBuildAdd(ctx->ac.builder, lds_base, idx, "");
+				ac_build_indexed_store(&ctx->ac, ctx->esgs_ring, idx, out_val);
 				continue;
 			}
 
@@ -4911,10 +4926,7 @@ static void create_function(struct si_shader_context *ctx)
 	assert(shader->info.num_input_vgprs >= num_prolog_vgprs);
 	shader->info.num_input_vgprs -= num_prolog_vgprs;
 
-	if (shader->key.as_ls ||
-	    ctx->type == PIPE_SHADER_TESS_CTRL ||
-	    /* GFX9 has the ESGS ring buffer in LDS. */
-	    type == SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY)
+	if (shader->key.as_ls || ctx->type == PIPE_SHADER_TESS_CTRL)
 		ac_declare_lds_as_pointer(&ctx->ac);
 }
 
@@ -4929,15 +4941,33 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 	LLVMValueRef buf_ptr = LLVMGetParam(ctx->main_fn,
 					    ctx->param_rw_buffers);
 
-	if (ctx->screen->info.chip_class <= GFX8 &&
-	    (ctx->shader->key.as_es || ctx->type == PIPE_SHADER_GEOMETRY)) {
-		unsigned ring =
-			ctx->type == PIPE_SHADER_GEOMETRY ? SI_GS_RING_ESGS
-							     : SI_ES_RING_ESGS;
-		LLVMValueRef offset = LLVMConstInt(ctx->i32, ring, 0);
+	if (ctx->shader->key.as_es || ctx->type == PIPE_SHADER_GEOMETRY) {
+		if (ctx->screen->info.chip_class <= GFX8) {
+			unsigned ring =
+				ctx->type == PIPE_SHADER_GEOMETRY ? SI_GS_RING_ESGS
+								  : SI_ES_RING_ESGS;
+			LLVMValueRef offset = LLVMConstInt(ctx->i32, ring, 0);
 
-		ctx->esgs_ring =
-			ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
+			ctx->esgs_ring =
+				ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
+		} else {
+			if (USE_LDS_SYMBOLS && HAVE_LLVM >= 0x0900) {
+				/* Declare the ESGS ring as an explicit LDS symbol.
+				 * For monolithic shaders, we declare the ring only once.
+				 *
+				 * We declare it with 64KB alignment as a hint that the
+				 * pointer value will always be 0.
+				 */
+				ctx->esgs_ring = LLVMAddGlobalInAddressSpace(
+					ctx->ac.module, LLVMArrayType(ctx->i32, 0),
+					"esgs_ring",
+					AC_ADDR_SPACE_LDS);
+				LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
+			} else {
+				ac_declare_lds_as_pointer(&ctx->ac);
+				ctx->esgs_ring = ctx->ac.lds;
+			}
+		}
 	}
 
 	if (ctx->shader->is_gs_copy_shader) {
@@ -5055,6 +5085,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 				  struct si_shader *shader,
 				  struct ac_rtld_binary *rtld)
 {
+	const struct si_shader_selector *sel = shader->selector;
 	const char *part_elfs[5];
 	size_t part_sizes[5];
 	unsigned num_parts = 0;
@@ -5074,11 +5105,27 @@ static bool si_shader_binary_open(struct si_screen *screen,
 
 #undef add_part
 
+	struct ac_rtld_symbol lds_symbols[1];
+	unsigned num_lds_symbols = 0;
+
+	if (sel && screen->info.chip_class >= GFX9 &&
+	    sel->type == PIPE_SHADER_GEOMETRY && !shader->is_gs_copy_shader) {
+		/* We add this symbol even on LLVM <= 8 to ensure that
+		 * shader->config.lds_size is set correctly below.
+		 */
+		struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
+		sym->name = "esgs_ring";
+		sym->size = shader->gs_info.esgs_ring_size;
+		sym->align = 64 * 1024;
+	}
+
 	bool ok = ac_rtld_open(rtld, (struct ac_rtld_open_info){
 			.info = &screen->info,
 			.num_parts = num_parts,
 			.elf_ptrs = part_elfs,
-			.elf_sizes = part_sizes });
+			.elf_sizes = part_sizes,
+			.num_shared_lds_symbols = num_lds_symbols,
+			.shared_lds_symbols = lds_symbols });
 
 	if (rtld->lds_size > 0) {
 		unsigned alloc_granularity = screen->info.chip_class >= GFX7 ? 512 : 256;
@@ -8012,6 +8059,9 @@ bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 		}
 		si_calculate_max_simd_waves(shader);
 	}
+
+	if (sscreen->info.chip_class >= GFX9 && sel->type == PIPE_SHADER_GEOMETRY)
+		gfx9_get_gs_info(shader->previous_stage_sel, sel, &shader->gs_info);
 
 	si_fix_resource_usage(sscreen, shader);
 	si_shader_dump(sscreen, shader, debug, sel->info.processor,
