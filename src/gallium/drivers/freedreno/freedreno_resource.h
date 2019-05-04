@@ -59,8 +59,6 @@ struct fd_resource_slice {
 	uint32_t size0;          /* size of first layer in slice */
 };
 
-struct set;
-
 struct fd_resource {
 	struct pipe_resource base;
 	struct fd_bo *bo;
