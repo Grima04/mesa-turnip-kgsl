@@ -278,13 +278,12 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		 */
 		OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 10);
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(RB6_R8_UNORM) |
-				A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(src->tile_mode) |
+				A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(TILE6_LINEAR) |
 				 A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(WZYX) |
-				 COND(fd6_ubwc_enabled(src, src->tile_mode), A6XX_SP_PS_2D_SRC_INFO_FLAGS) |
 				 0x500000);
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(sshift + w) |
 				 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(1)); /* SP_PS_2D_SRC_SIZE */
-		OUT_RELOC(ring, src->bo, soff + src->offset, 0, 0);    /* SP_PS_2D_SRC_LO/HI */
+		OUT_RELOC(ring, src->bo, soff, 0, 0);    /* SP_PS_2D_SRC_LO/HI */
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_PITCH_PITCH(p));
 
 		OUT_RING(ring, 0x00000000);
@@ -293,25 +292,14 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
 
-		if (fd6_ubwc_enabled(src, src->tile_mode)) {
-			OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_FLAGS_LO, 6);
-			OUT_RELOC(ring, src->bo, soff + src->ubwc_offset, 0, 0);
-			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(src->ubwc_pitch) |
-					 A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(src->ubwc_size));
-			OUT_RING(ring, 0x00000000);
-			OUT_RING(ring, 0x00000000);
-			OUT_RING(ring, 0x00000000);
-		}
-
 		/*
 		 * Emit destination:
 		 */
 		OUT_PKT4(ring, REG_A6XX_RB_2D_DST_INFO, 9);
 		OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(RB6_R8_UNORM) |
-				 A6XX_RB_2D_DST_INFO_TILE_MODE(dst->tile_mode) |
-				 A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX) |
-				 COND(fd6_ubwc_enabled(dst, dst->tile_mode), A6XX_RB_2D_DST_INFO_FLAGS));
-		OUT_RELOCW(ring, dst->bo, doff + dst->offset, 0, 0);    /* RB_2D_DST_LO/HI */
+				 A6XX_RB_2D_DST_INFO_TILE_MODE(TILE6_LINEAR) |
+				 A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
+		OUT_RELOCW(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
 		OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(p));
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
@@ -319,15 +307,6 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
 
-		if (fd6_ubwc_enabled(dst, dst->tile_mode)) {
-			OUT_PKT4(ring, REG_A6XX_RB_2D_DST_FLAGS_LO, 6);
-			OUT_RELOCW(ring, dst->bo, doff + dst->ubwc_offset, 0, 0);
-			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(dst->ubwc_pitch) |
-					 A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(dst->ubwc_size));
-			OUT_RING(ring, 0x00000000);
-			OUT_RING(ring, 0x00000000);
-			OUT_RING(ring, 0x00000000);
-		}
 		/*
 		 * Blit command:
 		 */
