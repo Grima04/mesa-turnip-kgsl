@@ -1000,7 +1000,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                  * maybe both are read...?) */
 
                 if (ctx->blend->has_blend_shader) {
-                        ctx->fragment_shader_core.blend_shader = ctx->blend->blend_shader;
+                        ctx->fragment_shader_core.blend.shader = ctx->blend->blend_shader;
                 }
 
                 if (ctx->require_sfbd) {
@@ -1010,7 +1010,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                          * modes (so we're able to read back the destination buffer) */
 
                         if (!ctx->blend->has_blend_shader) {
-                                memcpy(&ctx->fragment_shader_core.blend_equation, &ctx->blend->equation, sizeof(ctx->blend->equation));
+                                ctx->fragment_shader_core.blend.equation = ctx->blend->equation;
                         }
 
                         if (!no_blending) {
@@ -1018,7 +1018,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         }
                 }
 
-                size_t size = sizeof(struct mali_shader_meta) + sizeof(struct mali_blend_meta);
+                size_t size = sizeof(struct mali_shader_meta) + sizeof(struct midgard_blend_rt);
                 struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
                 memcpy(transfer.cpu, &ctx->fragment_shader_core, sizeof(struct mali_shader_meta));
 
@@ -1027,7 +1027,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 if (!ctx->require_sfbd) {
                         /* Additional blend descriptor tacked on for jobs using MFBD */
 
-                        unsigned blend_count = 0;
+                        unsigned blend_count = 0x200;
 
                         if (ctx->blend->has_blend_shader) {
                                 /* For a blend shader, the bottom nibble corresponds to
@@ -1045,25 +1045,20 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                         blend_count |= 0x1;
                         }
 
-                        /* Second blend equation is always a simple replace */
+                        struct midgard_blend_rt rts[4];
 
-                        uint64_t replace_magic = 0xf0122122;
-                        struct mali_blend_equation replace_mode;
-                        memcpy(&replace_mode, &replace_magic, sizeof(replace_mode));
+                        /* TODO: MRT */
 
-                        struct mali_blend_meta blend_meta[] = {
-                                {
-                                        .unk1 = 0x200 | blend_count,
-                                        .blend_equation_1 = ctx->blend->equation,
-                                        .blend_equation_2 = replace_mode
-                                },
-                        };
+                        for (unsigned i = 0; i < 1; ++i) {
+                                rts[i].flags = blend_count;
 
-                        if (ctx->blend->has_blend_shader) {
-                                blend_meta[0].blend_shader = ctx->blend->blend_shader;
+                                if (ctx->blend->has_blend_shader)
+                                        rts[i].blend.shader = ctx->blend->blend_shader;
+                                else
+                                        rts[i].blend.equation = ctx->blend->equation;
                         }
 
-                        memcpy(transfer.cpu + sizeof(struct mali_shader_meta), blend_meta, sizeof(blend_meta));
+                        memcpy(transfer.cpu + sizeof(struct mali_shader_meta), rts, sizeof(rts[0]) * 1);
                 }
         }
 

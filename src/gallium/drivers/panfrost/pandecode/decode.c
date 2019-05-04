@@ -857,12 +857,12 @@ pandecode_replay_stencil(const char *name, const struct mali_stencil_test *stenc
 }
 
 static void
-pandecode_replay_blend_equation(const struct mali_blend_equation *blend, const char *suffix)
+pandecode_replay_blend_equation(const struct mali_blend_equation *blend)
 {
         if (blend->zero1)
                 pandecode_msg("Blend zero tripped: %X\n", blend->zero1);
 
-        pandecode_log(".blend_equation%s = {\n", suffix);
+        pandecode_log(".equation = {\n");
         pandecode_indent++;
 
         pandecode_prop("rgb_mode = 0x%X", blend->rgb_mode);
@@ -874,6 +874,69 @@ pandecode_replay_blend_equation(const struct mali_blend_equation *blend, const c
 
         pandecode_indent--;
         pandecode_log("},\n");
+}
+
+static mali_ptr
+pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
+{
+        struct bifrost_blend_rt *b =
+                ((struct bifrost_blend_rt *) descs) + rt_no;
+
+        pandecode_log("struct bifrost_blend_rt blend_rt_%d_%d = {\n", job_no, rt_no);
+        pandecode_indent++;
+
+        pandecode_prop("unk1 = 0x%" PRIx32, b->unk1);
+        /* TODO figure out blend shader enable bit */
+        pandecode_replay_blend_equation(&b->equation);
+        pandecode_prop("unk2 = 0x%" PRIx16, b->unk2);
+        pandecode_prop("index = 0x%" PRIx16, b->index);
+        pandecode_prop("shader = 0x%" PRIx32, b->shader);
+
+        pandecode_indent--;
+        pandecode_log("},\n");
+        
+        return 0;
+}
+
+static mali_ptr
+pandecode_midgard_blend(union midgard_blend *blend, bool is_shader)
+{
+        pandecode_log(".blend = {\n");
+        pandecode_indent++;
+
+        if (is_shader) {
+                pandecode_replay_shader_address("shader", blend->shader);
+        } else {
+                pandecode_replay_blend_equation(&blend->equation);
+        }
+
+        pandecode_indent--;
+        pandecode_log("},\n");
+
+        /* Return blend shader to disassemble if present */
+        return is_shader ? (blend->shader & ~0xF) : 0;
+}
+
+static mali_ptr
+pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
+{
+        struct midgard_blend_rt *b =
+                ((struct midgard_blend_rt *) descs) + rt_no;
+
+        /* Flags determine presence of blend shader */
+        bool is_shader = (b->flags & 0xF) >= 0x2;
+
+        pandecode_log("struct midgard_blend_rt blend_rt_%d_%d = {\n", job_no, rt_no);
+        pandecode_indent++;
+
+        pandecode_prop("flags = 0x%" PRIx64, b->flags); 
+
+        mali_ptr shader = pandecode_midgard_blend(&b->blend, is_shader);
+
+        pandecode_indent--;
+        pandecode_log("};\n");
+
+        return shader;
 }
 
 static int
@@ -1248,95 +1311,35 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
 
                 pandecode_prop("unknown2_8 = 0x%" PRIx32, s->unknown2_8);
 
-                bool blend_shader = false;
-
                 if (!is_bifrost) {
-                        if (s->unknown2_3 & MALI_HAS_BLEND_SHADER) {
-                                blend_shader = true;
-                                pandecode_replay_shader_address("blend_shader", s->blend_shader);
-                        } else {
-                                pandecode_replay_blend_equation(&s->blend_equation, "");
-                        }
+                        /* TODO: Blend shaders routing/disasm */
+
+                        pandecode_midgard_blend(&s->blend, false);
                 }
 
                 pandecode_indent--;
                 pandecode_log("};\n");
 
-                /* MRT blend fields are used whenever MFBD is used */
+                /* MRT blend fields are used whenever MFBD is used, with
+                 * per-RT descriptors */
 
                 if (job_type == JOB_TYPE_TILER) {
-                        pandecode_log("struct mali_blend_meta blend_meta_%d[] = {\n",
-                                    job_no);
-                        pandecode_indent++;
+                        void* blend_base = (void *) (s + 1);
 
-                        int i;
+                        for (unsigned i = 0; i < 4; i++) {
+                                mali_ptr shader = 0;
 
-                        for (i = 0; i < 4; i++) {
-                                const struct mali_blend_meta *b = &s->blend_meta[i];
-                                pandecode_log("{\n");
-                                pandecode_indent++;
+                                if (is_bifrost)
+                                        shader = pandecode_bifrost_blend(blend_base, job_no, i);
+                                else
+                                        shader = pandecode_midgard_blend_mrt(blend_base, job_no, i);
 
-#ifndef BIFROST
-                                pandecode_prop("unk1 = 0x%" PRIx64, b->unk1);
-
-                                /* Depending on unk1, we determine if there's a
-                                 * blend shader */
-
-                                if ((b->unk1 & 0xF) >= 0x2) {
-                                        blend_shader = true;
-                                        pandecode_replay_shader_address("blend_shader", b->blend_shader);
-                                } else {
-                                        pandecode_replay_blend_equation(&b->blend_equation_1, "_1");
-                                }
-
-                                /* This is always an equation, I think. If
-                                 * there's a shader, it just defaults to
-                                 * REPLACE (0x122) */
-                                pandecode_replay_blend_equation(&b->blend_equation_2, "_2");
-
-                                if (b->zero2) {
-                                        pandecode_msg("blend zero tripped\n");
-                                        pandecode_prop("zero2 = 0x%x", b->zero2);
-                                }
-
-#else
-
-                                pandecode_prop("unk1 = 0x%" PRIx32, b->unk1);
-                                /* TODO figure out blend shader enable bit */
-                                pandecode_replay_blend_equation(&b->blend_equation);
-                                pandecode_prop("unk2 = 0x%" PRIx16, b->unk2);
-                                pandecode_prop("index = 0x%" PRIx16, b->index);
-                                pandecode_prop("unk3 = 0x%" PRIx32, b->unk3);
-#endif
-
-                                pandecode_indent--;
-                                pandecode_log("},\n");
-
-#ifdef BIFROST
-                                if (b->unk2 == 3)
-                                        break;
-#else
-                                /* TODO: What's this supposed to be? */
-                                if (b->unk1 & 0x200)
-                                        break;
-#endif
-
+                                if (shader)
+                                        pandecode_shader_disassemble(shader, job_no, job_type, false);
                         }
-
-                        pandecode_indent--;
-                        pandecode_log("};\n");
-
-                        /* This needs to be uploaded right after the
-                         * shader_meta since it's technically part of the same
-                         * (variable-size) structure.
-                         */
                 }
 
                 pandecode_shader_disassemble(shader_ptr, job_no, job_type, is_bifrost);
-
-                if (!is_bifrost && blend_shader)
-                        pandecode_shader_disassemble(s->blend_shader & ~0xF, job_no, job_type, false);
-
         } else
                 pandecode_msg("<no shader>\n");
 

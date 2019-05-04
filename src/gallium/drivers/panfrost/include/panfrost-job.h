@@ -415,25 +415,37 @@ enum mali_format {
 #define MALI_READS_ZS (1 << 12)
 #define MALI_READS_TILEBUFFER (1 << 16)
 
-struct mali_blend_meta {
-#ifndef BIFROST
-        /* Base value of 0x200.
+/* The raw Midgard blend payload can either be an equation or a shader
+ * address, depending on the context */
+
+union midgard_blend {
+        mali_ptr shader;
+        struct mali_blend_equation equation;
+};
+
+/* On MRT Midgard systems (using an MFBD), each render target gets its own
+ * blend descriptor */
+
+struct midgard_blend_rt {
+        /* Flags base value of 0x200 to enable the render target.
          * OR with 0x1 for blending (anything other than REPLACE).
-         * OR with 0x2 for programmable blending
+         * OR with 0x2 for programmable blending with 0-2 registers
+         * OR with 0x3 for programmable blending with 2+ registers
          */
 
-        u64 unk1;
+        u64 flags;
+        union midgard_blend blend;
+} __attribute__((packed));
 
-        union {
-                struct mali_blend_equation blend_equation_1;
-                mali_ptr blend_shader;
-        };
+/* On Bifrost systems (all MRT), each render target gets one of these
+ * descriptors */
 
-        u64 zero2;
-        struct mali_blend_equation blend_equation_2;
-#else
+struct bifrost_blend_rt {
+        /* This is likely an analogue of the flags on
+         * midgard_blend_rt */
+
         u32 unk1; // = 0x200
-        struct mali_blend_equation blend_equation;
+        struct mali_blend_equation equation;
         /*
          * - 0x19 normally
          * - 0x3 when this slot is unused (everything else is 0 except the index)
@@ -479,10 +491,12 @@ struct mali_blend_meta {
 		 * in the same pool as the original shader. The kernel will
 		 * make sure this allocation is aligned to 2^24 bytes.
 		 */
-		u32 blend_shader;
+		u32 shader;
 	};
-#endif
 } __attribute__((packed));
+
+/* Descriptor for the shader. Following this is at least one, up to four blend
+ * descriptors for each active render target */
 
 struct mali_shader_meta {
         mali_ptr shader;
@@ -584,17 +598,7 @@ struct mali_shader_meta {
          * MALI_HAS_BLEND_SHADER to decide how to interpret.
          */
 
-        union {
-                mali_ptr blend_shader;
-                struct mali_blend_equation blend_equation;
-        };
-
-        /* There can be up to 4 blend_meta's. None of them are required for
-         * vertex shaders or the non-MRT case for Midgard (so the blob doesn't
-         * allocate any space).
-         */
-        struct mali_blend_meta blend_meta[];
-
+        union midgard_blend blend;
 } __attribute__((packed));
 
 /* This only concerns hardware jobs */
