@@ -153,6 +153,12 @@ struct iris_bufmgr {
    struct hash_table *name_table;
    struct hash_table *handle_table;
 
+   /**
+    * List of BOs which we've effectively freed, but are hanging on to
+    * until they're idle before closing and returning the VMA.
+    */
+   struct list_head zombie_list;
+
    struct util_vma_heap vma_allocator[IRIS_MEMZONE_COUNT];
 
    bool has_llc:1;
@@ -701,6 +707,25 @@ err_unref:
 }
 
 static void
+bo_close(struct iris_bo *bo)
+{
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+
+   /* Close this object */
+   struct drm_gem_close close = { .handle = bo->gem_handle };
+   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
+   if (ret != 0) {
+      DBG("DRM_IOCTL_GEM_CLOSE %d failed (%s): %s\n",
+          bo->gem_handle, bo->name, strerror(errno));
+   }
+
+   /* Return the VMA for reuse */
+   vma_free(bo->bufmgr, bo->gtt_offset, bo->size);
+
+   free(bo);
+}
+
+static void
 bo_free(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
@@ -730,17 +755,14 @@ bo_free(struct iris_bo *bo)
       _mesa_hash_table_remove(bufmgr->handle_table, entry);
    }
 
-   /* Close this object */
-   struct drm_gem_close close = { .handle = bo->gem_handle };
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
-   if (ret != 0) {
-      DBG("DRM_IOCTL_GEM_CLOSE %d failed (%s): %s\n",
-          bo->gem_handle, bo->name, strerror(errno));
+   if (bo->idle) {
+      bo_close(bo);
+   } else {
+      /* Defer closing the GEM BO and returning the VMA for reuse until the
+       * BO is idle.  Just move it to the dead list for now.
+       */
+      list_addtail(&bo->head, &bufmgr->zombie_list);
    }
-
-   vma_free(bo->bufmgr, bo->gtt_offset, bo->size);
-
-   free(bo);
 }
 
 /** Frees all cached buffers significantly older than @time. */
@@ -763,6 +785,17 @@ cleanup_bo_cache(struct iris_bufmgr *bufmgr, time_t time)
 
          bo_free(bo);
       }
+   }
+
+   list_for_each_entry_safe(struct iris_bo, bo, &bufmgr->zombie_list, head) {
+      /* Stop once we reach a busy BO - all others past this point were
+       * freed more recently so are likely also busy.
+       */
+      if (!bo->idle && iris_bo_busy(bo))
+         break;
+
+      list_del(&bo->head);
+      bo_close(bo);
    }
 
    bufmgr->time = time;
@@ -1177,6 +1210,12 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
       }
    }
 
+   /* Close any buffer objects on the dead list. */
+   list_for_each_entry_safe(struct iris_bo, bo, &bufmgr->zombie_list, head) {
+      list_del(&bo->head);
+      bo_close(bo);
+   }
+
    _mesa_hash_table_destroy(bufmgr->name_table, NULL);
    _mesa_hash_table_destroy(bufmgr->handle_table, NULL);
 
@@ -1562,6 +1601,8 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
       free(bufmgr);
       return NULL;
    }
+
+   list_inithead(&bufmgr->zombie_list);
 
    bufmgr->has_llc = devinfo->has_llc;
 
