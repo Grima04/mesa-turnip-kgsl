@@ -627,7 +627,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
 	for (i = 0; i < 8; i++) {
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_REG_REGID(color_regid[i]) |
-				COND(s[FS].v->outputs[i].half, A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION));
+				COND(color_regid[i] & HALF_REG_ID, A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION));
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VPC_PACK, 1);
