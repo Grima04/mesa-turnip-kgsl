@@ -482,7 +482,7 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 			if (rsc) {
 				if (view->base.format == PIPE_FORMAT_X32_S8X24_UINT)
 					rsc = rsc->stencil;
-				OUT_RELOC(state, rsc->bo, view->offset + rsc->offset,
+				OUT_RELOC(state, rsc->bo, view->offset,
 					(uint64_t)view->texconst5 << 32, 0);
 			} else {
 				OUT_RING(state, 0x00000000);
@@ -492,7 +492,7 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 			OUT_RING(state, view->texconst6);
 
 			if (rsc && view->ubwc_enabled) {
-				OUT_RELOC(state, rsc->bo, view->offset + rsc->ubwc_offset, 0, 0);
+				OUT_RELOC(state, rsc->bo, view->ubwc_offset, 0, 0);
 			} else {
 				OUT_RING(state, 0);
 				OUT_RING(state, 0);

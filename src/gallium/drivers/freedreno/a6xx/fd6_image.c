@@ -96,8 +96,8 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 		unsigned lvl = pimg->u.tex.level;
 		unsigned layers = pimg->u.tex.last_layer - pimg->u.tex.first_layer + 1;
 
-		img->ubwc_offset = rsc->ubwc_offset; // TODO helper
-		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer) + rsc->offset;
+		img->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, pimg->u.tex.first_layer);
+		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer);
 		img->pitch  = rsc->slices[lvl].pitch * rsc->cpp;
 
 		switch (prsc->target) {

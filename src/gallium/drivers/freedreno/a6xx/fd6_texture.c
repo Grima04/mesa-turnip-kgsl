@@ -265,6 +265,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 					util_format_get_nblocksx(
 							format, rsc->slices[lvl].pitch) * rsc->cpp);
 		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
+		so->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
 
 		so->ubwc_enabled = rsc->ubwc_size && !fd_resource_level_linear(prsc, lvl);
 	}
