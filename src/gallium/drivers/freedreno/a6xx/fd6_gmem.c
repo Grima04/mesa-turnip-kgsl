@@ -102,12 +102,6 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		else
 			tile_mode = rsc->tile_mode;
 
-		if (rsc->tile_mode &&
-			fd_resource_level_linear(psurf->texture, psurf->u.tex.level))
-			tile_mode = TILE6_LINEAR;
-		else
-			tile_mode = rsc->tile_mode;
-
 		debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 		debug_assert((offset + slice->size0) <= fd_bo_size(rsc->bo));
 
