@@ -196,6 +196,13 @@ fd_resource_level_linear(struct pipe_resource *prsc, int level)
 	return false;
 }
 
+static inline bool
+fd_resource_ubwc_enabled(struct fd_resource *rsc, int level)
+{
+	return rsc->ubwc_size && rsc->tile_mode &&
+			!fd_resource_level_linear(&rsc->base, level);
+}
+
 /* access # of samples, with 0 normalized to 1 (which is what we care about
  * most of the time)
  */

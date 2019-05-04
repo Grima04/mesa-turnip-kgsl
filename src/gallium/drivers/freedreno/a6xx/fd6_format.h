@@ -119,10 +119,4 @@ fd6_ifmt(enum a6xx_color_fmt fmt)
 	}
 }
 
-static inline bool
-fd6_ubwc_enabled(struct fd_resource *rsc, enum a6xx_tile_mode tile_mode)
-{
-	return rsc->ubwc_size && tile_mode == TILE6_3;
-}
-
 #endif /* FD6_UTIL_H_ */

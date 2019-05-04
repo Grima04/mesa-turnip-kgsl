@@ -442,6 +442,8 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		unsigned doff = fd_resource_offset(dst, info->dst.level, dbox->z + i);
 		unsigned subwcoff = fd_resource_ubwc_offset(src, info->src.level, sbox->z + i);
 		unsigned dubwcoff = fd_resource_ubwc_offset(dst, info->dst.level, dbox->z + i);
+		bool subwc_enabled = fd_resource_ubwc_enabled(src, info->src.level);
+		bool dubwc_enabled = fd_resource_ubwc_enabled(dst, info->dst.level);
 
 		/*
 		 * Emit source:
@@ -457,7 +459,7 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 				A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(stile) |
 				A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(sswap) |
 				 A6XX_SP_PS_2D_SRC_INFO_SAMPLES(samples) |
-				 COND(fd6_ubwc_enabled(src, stile), A6XX_SP_PS_2D_SRC_INFO_FLAGS) |
+				 COND(subwc_enabled, A6XX_SP_PS_2D_SRC_INFO_FLAGS) |
 				 0x500000 | filter);
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(width) |
 				 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(height)); /* SP_PS_2D_SRC_SIZE */
@@ -470,7 +472,7 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
 
-		if (fd6_ubwc_enabled(src, stile)) {
+		if (subwc_enabled) {
 			OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_FLAGS_LO, 6);
 			OUT_RELOC(ring, src->bo, subwcoff, 0, 0);
 			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(src->ubwc_pitch) |
@@ -487,7 +489,7 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(dfmt) |
 				 A6XX_RB_2D_DST_INFO_TILE_MODE(dtile) |
 				 A6XX_RB_2D_DST_INFO_COLOR_SWAP(dswap) |
-				 COND(fd6_ubwc_enabled(dst, dtile), A6XX_RB_2D_DST_INFO_FLAGS));
+				 COND(dubwc_enabled, A6XX_RB_2D_DST_INFO_FLAGS));
 		OUT_RELOCW(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
 		OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(dpitch));
 		OUT_RING(ring, 0x00000000);
@@ -496,7 +498,7 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
 
-		if (fd6_ubwc_enabled(dst, dtile)) {
+		if (dubwc_enabled) {
 			OUT_PKT4(ring, REG_A6XX_RB_2D_DST_FLAGS_LO, 6);
 			OUT_RELOCW(ring, dst->bo, dubwcoff, 0, 0);
 			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(dst->ubwc_pitch) |

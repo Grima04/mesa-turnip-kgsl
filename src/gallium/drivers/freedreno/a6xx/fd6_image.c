@@ -168,8 +168,7 @@ static void translate_buf(struct fd6_image *img, const struct pipe_shader_buffer
 static void emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
 	struct fd_resource *rsc = fd_resource(img->prsc);
-	bool ubwc_enabled = rsc->ubwc_size &&
-			!fd_resource_level_linear(img->prsc, img->level);
+	bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, img->level);
 
 	OUT_RING(ring, fd6_tex_const_0(img->prsc, img->level, img->pfmt,
 			PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
@@ -230,8 +229,7 @@ static void emit_image_ssbo(struct fd_ringbuffer *ring, struct fd6_image *img)
 {
 	struct fd_resource *rsc = fd_resource(img->prsc);
 	enum a6xx_tile_mode tile_mode = TILE6_LINEAR;
-	bool ubwc_enabled = rsc->ubwc_size &&
-			!fd_resource_level_linear(img->prsc, img->level);
+	bool ubwc_enabled = fd_resource_ubwc_enabled(rsc, img->level);
 
 	if (rsc->tile_mode && !fd_resource_level_linear(img->prsc, img->level)) {
 		tile_mode = rsc->tile_mode;
