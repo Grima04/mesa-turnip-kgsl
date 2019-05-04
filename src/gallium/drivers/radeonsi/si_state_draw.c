@@ -252,6 +252,11 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 				  C_VS_STATE_LS_OUT_VERTEX_SIZE;
 	sctx->current_vs_state |= tcs_in_layout;
 
+	/* We should be able to support in-shader LDS use with LLVM >= 9
+	 * by just adding the lds_sizes together, but it has never
+	 * been tested. */
+	assert(ls_current->config.lds_size == 0);
+
 	if (sctx->chip_class >= GFX9) {
 		unsigned hs_rsrc2 = ls_current->config.rsrc2 |
 				    S_00B42C_LDS_SIZE(lds_size);

@@ -4925,8 +4925,21 @@ static void create_function(struct si_shader_context *ctx)
 	assert(shader->info.num_input_vgprs >= num_prolog_vgprs);
 	shader->info.num_input_vgprs -= num_prolog_vgprs;
 
-	if (shader->key.as_ls || ctx->type == PIPE_SHADER_TESS_CTRL)
-		ac_declare_lds_as_pointer(&ctx->ac);
+	if (shader->key.as_ls || ctx->type == PIPE_SHADER_TESS_CTRL) {
+		if (USE_LDS_SYMBOLS && HAVE_LLVM >= 0x0900) {
+			/* The LSHS size is not known until draw time, so we append it
+			 * at the end of whatever LDS use there may be in the rest of
+			 * the shader (currently none, unless LLVM decides to do its
+			 * own LDS-based lowering).
+			 */
+			ctx->ac.lds = LLVMAddGlobalInAddressSpace(
+				ctx->ac.module, LLVMArrayType(ctx->i32, 0),
+				"__lds_end", AC_ADDR_SPACE_LDS);
+			LLVMSetAlignment(ctx->ac.lds, 256);
+		} else {
+			ac_declare_lds_as_pointer(&ctx->ac);
+		}
+	}
 }
 
 /**
