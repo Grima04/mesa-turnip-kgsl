@@ -50,7 +50,6 @@ static const nir_shader_compiler_options vs_nir_options = {
    .lower_ftrunc = true,
    /* could be implemented by clamp */
    .lower_fsat = true,
-   .native_integers = true,
 };
 
 static const nir_shader_compiler_options fs_nir_options = {
@@ -60,7 +59,6 @@ static const nir_shader_compiler_options fs_nir_options = {
    .lower_flrp32 = true,
    .lower_flrp64 = true,
    .lower_fsign = true,
-   .native_integers = true,
 };
 
 const void *

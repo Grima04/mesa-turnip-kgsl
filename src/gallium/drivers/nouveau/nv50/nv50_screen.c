@@ -899,7 +899,6 @@ static const nir_shader_compiler_options nir_options = {
    .lower_extract_byte = true,
    .lower_extract_word = true,
    .lower_all_io_to_temps = false,
-   .native_integers = true,
    .lower_cs_local_index_from_id = true,
    .use_interpolated_input_intrinsics = true,
    .max_unroll_iterations = 32,

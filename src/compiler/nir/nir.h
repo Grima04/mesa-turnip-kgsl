@@ -2300,12 +2300,6 @@ typedef struct nir_shader_compiler_options {
    bool lower_all_io_to_temps;
    bool lower_all_io_to_elements;
 
-   /**
-    * Does the driver support real 32-bit integers?  (Otherwise, integers
-    * are simulated by floats.)
-    */
-   bool native_integers;
-
    /* Indicates that the driver only has zero-based vertex id */
    bool vertex_id_zero_based;
 

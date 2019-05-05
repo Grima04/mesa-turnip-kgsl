@@ -941,7 +941,6 @@ static const nir_shader_compiler_options nir_options = {
    .lower_extract_byte = true,
    .lower_extract_word = true,
    .lower_all_io_to_temps = false,
-   .native_integers = true,
    .vertex_id_zero_based = false,
    .lower_base_vertex = false,
    .lower_helper_invocation = false,

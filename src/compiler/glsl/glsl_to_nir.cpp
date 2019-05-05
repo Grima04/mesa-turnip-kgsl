@@ -263,7 +263,7 @@ glsl_to_nir(struct gl_context *ctx,
 
 nir_visitor::nir_visitor(gl_context *ctx, nir_shader *shader)
 {
-   this->supports_ints = shader->options->native_integers;
+   this->supports_ints = true;
    this->supports_std430 = ctx->Const.UseSTD430AsDefaultPacking;
    this->shader = shader;
    this->is_global = true;

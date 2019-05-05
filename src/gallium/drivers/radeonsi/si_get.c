@@ -498,7 +498,6 @@ static const struct nir_shader_compiler_options nir_options = {
 	.lower_extract_word = true,
 	.optimize_sample_mask_in = true,
 	.max_unroll_iterations = 32,
-	.native_integers = true,
 };
 
 static const void *

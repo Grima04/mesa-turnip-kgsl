@@ -362,18 +362,10 @@ ptn_lit(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
       nir_ssa_def *pow = nir_fpow(b, nir_fmax(b, src0_y, nir_imm_float(b, 0.0)),
                                   wclamp);
 
-      nir_ssa_def *z;
-      if (b->shader->options->native_integers) {
-         z = nir_bcsel(b,
-                       nir_fge(b, nir_imm_float(b, 0.0), ptn_channel(b, src[0], X)),
-                       nir_imm_float(b, 0.0),
-                       pow);
-      } else {
-         z = nir_fcsel(b,
-                       nir_sge(b, nir_imm_float(b, 0.0), ptn_channel(b, src[0], X)),
-                       nir_imm_float(b, 0.0),
-                       pow);
-      }
+      nir_ssa_def *z = nir_bcsel(b,
+                                 nir_fge(b, nir_imm_float(b, 0.0), ptn_channel(b, src[0], X)),
+                                 nir_imm_float(b, 0.0),
+                                 pow);
 
       ptn_move_dest_masked(b, dest, z, WRITEMASK_Z);
    }
@@ -402,11 +394,7 @@ ptn_scs(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 static void
 ptn_slt(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 {
-   if (b->shader->options->native_integers) {
-      ptn_move_dest(b, dest, nir_b2f32(b, nir_flt(b, src[0], src[1])));
-   } else {
-      ptn_move_dest(b, dest, nir_slt(b, src[0], src[1]));
-   }
+   ptn_move_dest(b, dest, nir_b2f32(b, nir_flt(b, src[0], src[1])));
 }
 
 /**
@@ -415,11 +403,7 @@ ptn_slt(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 static void
 ptn_sge(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 {
-   if (b->shader->options->native_integers) {
-      ptn_move_dest(b, dest, nir_b2f32(b, nir_fge(b, src[0], src[1])));
-   } else {
-      ptn_move_dest(b, dest, nir_sge(b, src[0], src[1]));
-   }
+   ptn_move_dest(b, dest, nir_b2f32(b, nir_fge(b, src[0], src[1])));
 }
 
 static void
@@ -464,15 +448,9 @@ ptn_dph(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 static void
 ptn_cmp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 {
-   if (b->shader->options->native_integers) {
-      ptn_move_dest(b, dest, nir_bcsel(b,
-                                       nir_flt(b, src[0], nir_imm_float(b, 0.0)),
-                                       src[1], src[2]));
-   } else {
-      ptn_move_dest(b, dest, nir_fcsel(b,
-                                       nir_slt(b, src[0], nir_imm_float(b, 0.0)),
-                                       src[1], src[2]));
-   }
+   ptn_move_dest(b, dest, nir_bcsel(b,
+                                    nir_flt(b, src[0], nir_imm_float(b, 0.0)),
+                                    src[1], src[2]));
 }
 
 static void
@@ -484,9 +462,7 @@ ptn_lrp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 static void
 ptn_kil(nir_builder *b, nir_ssa_def **src)
 {
-   nir_ssa_def *cmp = b->shader->options->native_integers ?
-      nir_bany(b, nir_flt(b, src[0], nir_imm_float(b, 0.0))) :
-      nir_fany_nequal4(b, nir_slt(b, src[0], nir_imm_float(b, 0.0)), nir_imm_float(b, 0.0));
+   nir_ssa_def *cmp = nir_bany(b, nir_flt(b, src[0], nir_imm_float(b, 0.0)));
 
    nir_intrinsic_instr *discard =
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard_if);
