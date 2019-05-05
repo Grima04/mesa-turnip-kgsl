@@ -32,7 +32,7 @@
  * 12.5 (p356).
  */
 
-#define ACP_HASH_SIZE 16
+#define ACP_HASH_SIZE 64
 
 #include "util/bitset.h"
 #include "brw_fs.h"
