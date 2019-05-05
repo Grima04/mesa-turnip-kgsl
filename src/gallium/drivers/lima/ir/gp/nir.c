@@ -201,7 +201,8 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
       return true;
    }
    default:
-      gpir_error("unsupported nir_intrinsic_instr %d\n", instr->intrinsic);
+      gpir_error("unsupported nir_intrinsic_instr %s\n",
+                 nir_intrinsic_infos[instr->intrinsic].name);
       return false;
    }
 }

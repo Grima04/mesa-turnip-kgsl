@@ -266,7 +266,8 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
       return &snode->node;
 
    default:
-      ppir_error("unsupported nir_intrinsic_instr %d\n", instr->intrinsic);
+      ppir_error("unsupported nir_intrinsic_instr %s\n",
+                 nir_intrinsic_infos[instr->intrinsic].name);
       return NULL;
    }
 }
