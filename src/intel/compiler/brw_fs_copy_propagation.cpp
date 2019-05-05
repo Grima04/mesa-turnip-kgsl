@@ -886,6 +886,25 @@ fs_visitor::opt_copy_propagation()
    foreach_block (block, cfg) {
       progress = opt_copy_propagation_local(copy_prop_ctx, block,
                                             out_acp[block->num]) || progress;
+
+      /* If the destination of an ACP entry exists only within this block,
+       * then there's no need to keep it for dataflow analysis.  We can delete
+       * it from the out_acp table and avoid growing the bitsets any bigger
+       * than we absolutely have to.
+       *
+       * Because nothing in opt_copy_propagation_local touches the block
+       * start/end IPs and opt_copy_propagation_local is incapable of
+       * extending the live range of an ACP destination beyond the block,
+       * it's safe to use the liveness information in this way.
+       */
+      for (unsigned a = 0; a < ACP_HASH_SIZE; a++) {
+         foreach_in_list_safe(acp_entry, entry, &out_acp[block->num][a]) {
+            assert(entry->dst.file == VGRF);
+            if (block->start_ip <= virtual_grf_start[entry->dst.nr] &&
+                virtual_grf_end[entry->dst.nr] <= block->end_ip)
+               entry->remove();
+         }
+      }
    }
 
    /* Do dataflow analysis for those available copies. */
