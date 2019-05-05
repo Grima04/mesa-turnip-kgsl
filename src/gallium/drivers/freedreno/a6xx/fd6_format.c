@@ -485,8 +485,8 @@ fd6_tex_const_0(struct pipe_resource *prsc,
 		texconst0 |= A6XX_TEX_CONST_0_SRGB;
 	}
 
-	if (rsc->tile_mode && !fd_resource_level_linear(prsc, level)) {
-		texconst0 |= A6XX_TEX_CONST_0_TILE_MODE(rsc->tile_mode);
+	if (rsc->layout.tile_mode && !fd_resource_level_linear(prsc, level)) {
+		texconst0 |= A6XX_TEX_CONST_0_TILE_MODE(rsc->layout.tile_mode);
 		swap = WZYX;
 	} else {
 		swap = fd6_pipe2swap(format);

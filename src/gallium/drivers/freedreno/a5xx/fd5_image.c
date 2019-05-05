@@ -75,7 +75,7 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 	img->fetchsize = fd5_pipe2fetchsize(format);
 	img->type      = fd5_tex_type(prsc->target);
 	img->srgb      = util_format_is_srgb(format);
-	img->cpp       = rsc->cpp;
+	img->cpp       = rsc->layout.cpp;
 	img->bo        = rsc->bo;
 
 	if (prsc->target == PIPE_BUFFER) {
@@ -86,7 +86,7 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 		lvl = pimg->u.tex.level;
 		slice = fd_resource_slice(rsc, lvl);
 		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer);
-		img->pitch  = slice->pitch * rsc->cpp;
+		img->pitch  = slice->pitch * rsc->layout.cpp;
 	}
 
 	img->width     = u_minify(prsc->width0, lvl);
@@ -98,17 +98,17 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 	case PIPE_TEXTURE_RECT:
 	case PIPE_TEXTURE_1D:
 	case PIPE_TEXTURE_2D:
-		img->array_pitch = rsc->layer_size;
+		img->array_pitch = rsc->layout.layer_size;
 		img->depth = 1;
 		break;
 	case PIPE_TEXTURE_1D_ARRAY:
 	case PIPE_TEXTURE_2D_ARRAY:
-		img->array_pitch = rsc->layer_size;
+		img->array_pitch = rsc->layout.layer_size;
 		img->depth = layers;
 		break;
 	case PIPE_TEXTURE_CUBE:
 	case PIPE_TEXTURE_CUBE_ARRAY:
-		img->array_pitch = rsc->layer_size;
+		img->array_pitch = rsc->layout.layer_size;
 		img->depth = layers;
 		break;
 	case PIPE_TEXTURE_3D:

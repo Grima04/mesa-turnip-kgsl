@@ -67,7 +67,7 @@ fd2_setup_slices(struct fd_resource *rsc)
 		blocks = util_format_get_nblocks(format, width, height);
 
 		/* 4k aligned size */
-		slice->size0 = align(blocks * rsc->cpp, 4096);
+		slice->size0 = align(blocks * rsc->layout.cpp, 4096);
 
 		size += slice->size0 * depth * prsc->array_size;
 

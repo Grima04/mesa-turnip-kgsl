@@ -314,7 +314,7 @@ fd3_emit_gmem_restore_tex(struct fd_ringbuffer *ring,
 
 		debug_assert(psurf[i]->u.tex.first_layer == psurf[i]->u.tex.last_layer);
 
-		OUT_RING(ring, A3XX_TEX_CONST_0_TILE_MODE(rsc->tile_mode) |
+		OUT_RING(ring, A3XX_TEX_CONST_0_TILE_MODE(rsc->layout.tile_mode) |
 				 A3XX_TEX_CONST_0_FMT(fd3_pipe2tex(format)) |
 				 A3XX_TEX_CONST_0_TYPE(A3XX_TEX_2D) |
 				 fd3_tex_swiz(format,  PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
@@ -322,7 +322,7 @@ fd3_emit_gmem_restore_tex(struct fd_ringbuffer *ring,
 		OUT_RING(ring, A3XX_TEX_CONST_1_FETCHSIZE(TFETCH_DISABLE) |
 				 A3XX_TEX_CONST_1_WIDTH(psurf[i]->width) |
 				 A3XX_TEX_CONST_1_HEIGHT(psurf[i]->height));
-		OUT_RING(ring, A3XX_TEX_CONST_2_PITCH(slice->pitch * rsc->cpp) |
+		OUT_RING(ring, A3XX_TEX_CONST_2_PITCH(slice->pitch * rsc->layout.cpp) |
 				 A3XX_TEX_CONST_2_INDX(BASETABLE_SZ * i));
 		OUT_RING(ring, 0x00000000);
 	}

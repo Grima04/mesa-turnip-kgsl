@@ -72,7 +72,7 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 	img->fetchsize = fd6_pipe2fetchsize(format);
 	img->type      = fd6_tex_type(prsc->target);
 	img->srgb      = util_format_is_srgb(format);
-	img->cpp       = rsc->cpp;
+	img->cpp       = rsc->layout.cpp;
 	img->bo        = rsc->bo;
 
 	/* Treat cube textures as 2d-array: */
@@ -102,20 +102,20 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 
 		img->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, pimg->u.tex.first_layer);
 		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer);
-		img->pitch  = slice->pitch * rsc->cpp;
+		img->pitch  = slice->pitch * rsc->layout.cpp;
 
 		switch (prsc->target) {
 		case PIPE_TEXTURE_RECT:
 		case PIPE_TEXTURE_1D:
 		case PIPE_TEXTURE_2D:
-			img->array_pitch = rsc->layer_size;
+			img->array_pitch = rsc->layout.layer_size;
 			img->depth = 1;
 			break;
 		case PIPE_TEXTURE_1D_ARRAY:
 		case PIPE_TEXTURE_2D_ARRAY:
 		case PIPE_TEXTURE_CUBE:
 		case PIPE_TEXTURE_CUBE_ARRAY:
-			img->array_pitch = rsc->layer_size;
+			img->array_pitch = rsc->layout.layer_size;
 			// TODO the CUBE/CUBE_ARRAY might need to be layers/6 for tex state,
 			// but empirically for ibo state it shouldn't be divided.
 			img->depth = layers;
@@ -151,7 +151,7 @@ static void translate_buf(struct fd6_image *img, const struct pipe_shader_buffer
 	img->fetchsize = fd6_pipe2fetchsize(format);
 	img->type      = fd6_tex_type(prsc->target);
 	img->srgb      = util_format_is_srgb(format);
-	img->cpp       = rsc->cpp;
+	img->cpp       = rsc->layout.cpp;
 	img->bo        = rsc->bo;
 	img->buffer    = true;
 
@@ -197,8 +197,8 @@ static void emit_image_tex(struct fd_ringbuffer *ring, struct fd6_image *img)
 
 	if (ubwc_enabled) {
 		OUT_RELOC(ring, rsc->bo, img->ubwc_offset, 0, 0);
-		OUT_RING(ring, A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->ubwc_size));
-		OUT_RING(ring, A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(rsc->ubwc_pitch));
+		OUT_RING(ring, A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_size));
+		OUT_RING(ring, A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(rsc->layout.ubwc_pitch));
 	} else {
 		OUT_RING(ring, 0x00000000);   /* texconst7 */
 		OUT_RING(ring, 0x00000000);   /* texconst8 */
@@ -255,8 +255,8 @@ static void emit_image_ssbo(struct fd_ringbuffer *ring, struct fd6_image *img)
 
 	if (ubwc_enabled) {
 		OUT_RELOCW(ring, rsc->bo, img->ubwc_offset, 0, 0);
-		OUT_RING(ring, A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(rsc->ubwc_size));
-		OUT_RING(ring, A6XX_IBO_10_FLAG_BUFFER_PITCH(rsc->ubwc_pitch));
+		OUT_RING(ring, A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_size));
+		OUT_RING(ring, A6XX_IBO_10_FLAG_BUFFER_PITCH(rsc->layout.ubwc_pitch));
 	} else {
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);

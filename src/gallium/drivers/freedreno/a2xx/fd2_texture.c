@@ -188,7 +188,7 @@ fd2_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		A2XX_SQ_TEX_0_SIGN_Z(fmt.sign) |
 		A2XX_SQ_TEX_0_SIGN_W(fmt.sign) |
 		A2XX_SQ_TEX_0_PITCH(slice0->pitch) |
-		COND(rsc->tile_mode, A2XX_SQ_TEX_0_TILED);
+		COND(rsc->layout.tile_mode, A2XX_SQ_TEX_0_TILED);
 	so->tex1 =
 		A2XX_SQ_TEX_1_FORMAT(fmt.format) |
 		A2XX_SQ_TEX_1_CLAMP_POLICY(SQ_TEX_CLAMP_POLICY_OGL);

@@ -250,7 +250,7 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 			A5XX_TEX_CONST_1_HEIGHT(1);
 		so->texconst2 =
 			A5XX_TEX_CONST_2_FETCHSIZE(fd5_pipe2fetchsize(format)) |
-			A5XX_TEX_CONST_2_PITCH(elements * rsc->cpp);
+			A5XX_TEX_CONST_2_PITCH(elements * rsc->layout.cpp);
 		so->offset = cso->u.buf.offset;
 	} else {
 		unsigned miplevels;
@@ -267,7 +267,7 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->texconst2 =
 			A5XX_TEX_CONST_2_FETCHSIZE(fd5_pipe2fetchsize(format)) |
 			A5XX_TEX_CONST_2_PITCH(
-				util_format_get_nblocksx(format, slice->pitch) * rsc->cpp);
+				util_format_get_nblocksx(format, slice->pitch) * rsc->layout.cpp);
 		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
 	}
 
@@ -278,21 +278,21 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	case PIPE_TEXTURE_1D:
 	case PIPE_TEXTURE_2D:
 		so->texconst3 =
-			A5XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size);
+			A5XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
 		so->texconst5 =
 			A5XX_TEX_CONST_5_DEPTH(1);
 		break;
 	case PIPE_TEXTURE_1D_ARRAY:
 	case PIPE_TEXTURE_2D_ARRAY:
 		so->texconst3 =
-			A5XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size);
+			A5XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
 		so->texconst5 =
 			A5XX_TEX_CONST_5_DEPTH(layers);
 		break;
 	case PIPE_TEXTURE_CUBE:
 	case PIPE_TEXTURE_CUBE_ARRAY:
 		so->texconst3 =
-			A5XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size);
+			A5XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
 		so->texconst5 =
 			A5XX_TEX_CONST_5_DEPTH(layers / 6);
 		break;

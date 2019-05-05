@@ -267,7 +267,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->texconst2 =
 			A6XX_TEX_CONST_2_FETCHSIZE(fd6_pipe2fetchsize(format)) |
 			A6XX_TEX_CONST_2_PITCH(
-				util_format_get_nblocksx(format, slice->pitch) * rsc->cpp);
+				util_format_get_nblocksx(format, slice->pitch) * rsc->layout.cpp);
 		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
 		so->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
 		so->ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
@@ -278,8 +278,8 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 				cso->swizzle_b, cso->swizzle_a);
 
 	if (so->ubwc_enabled) {
-		so->texconst9 |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->ubwc_size);
-		so->texconst10 |= A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(rsc->ubwc_pitch);
+		so->texconst9 |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_size);
+		so->texconst10 |= A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(rsc->layout.ubwc_pitch);
 	}
 
 	so->texconst2 |= A6XX_TEX_CONST_2_TYPE(fd6_tex_type(cso->target));
@@ -289,21 +289,21 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	case PIPE_TEXTURE_1D:
 	case PIPE_TEXTURE_2D:
 		so->texconst3 =
-			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size);
+			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
 		so->texconst5 =
 			A6XX_TEX_CONST_5_DEPTH(1);
 		break;
 	case PIPE_TEXTURE_1D_ARRAY:
 	case PIPE_TEXTURE_2D_ARRAY:
 		so->texconst3 =
-			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size);
+			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
 		so->texconst5 =
 			A6XX_TEX_CONST_5_DEPTH(layers);
 		break;
 	case PIPE_TEXTURE_CUBE:
 	case PIPE_TEXTURE_CUBE_ARRAY:
 		so->texconst3 =
-			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size);
+			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size);
 		so->texconst5 =
 			A6XX_TEX_CONST_5_DEPTH(layers / 6);
 		break;

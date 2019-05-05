@@ -217,8 +217,8 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	src = fd_resource(info->src.resource);
 	dst = fd_resource(info->dst.resource);
 
-	debug_assert(src->cpp == 1);
-	debug_assert(dst->cpp == 1);
+	debug_assert(src->layout.cpp == 1);
+	debug_assert(dst->layout.cpp == 1);
 	debug_assert(info->src.resource->format == info->dst.resource->format);
 	debug_assert((sbox->y == 0) && (sbox->height == 1));
 	debug_assert((dbox->y == 0) && (dbox->height == 1));
@@ -395,8 +395,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		nelements = (dst->base.nr_samples ? dst->base.nr_samples : 1);
 	}
 
-	spitch = DIV_ROUND_UP(sslice->pitch, blockwidth) * src->cpp;
-	dpitch = DIV_ROUND_UP(dslice->pitch, blockwidth) * dst->cpp;
+	spitch = DIV_ROUND_UP(sslice->pitch, blockwidth) * src->layout.cpp;
+	dpitch = DIV_ROUND_UP(dslice->pitch, blockwidth) * dst->layout.cpp;
 
 	sx1 = sbox->x / blockwidth * nelements;
 	sy1 = sbox->y / blockheight;
@@ -537,8 +537,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		if (subwc_enabled) {
 			OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_FLAGS_LO, 6);
 			OUT_RELOC(ring, src->bo, subwcoff, 0, 0);
-			OUT_RING(ring, A6XX_SP_PS_2D_SRC_FLAGS_PITCH_PITCH(src->ubwc_pitch) |
-					 A6XX_SP_PS_2D_SRC_FLAGS_PITCH_ARRAY_PITCH(src->ubwc_size));
+			OUT_RING(ring, A6XX_SP_PS_2D_SRC_FLAGS_PITCH_PITCH(src->layout.ubwc_pitch) |
+					 A6XX_SP_PS_2D_SRC_FLAGS_PITCH_ARRAY_PITCH(src->layout.ubwc_size));
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
@@ -563,8 +563,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		if (dubwc_enabled) {
 			OUT_PKT4(ring, REG_A6XX_RB_2D_DST_FLAGS_LO, 6);
 			OUT_RELOCW(ring, dst->bo, dubwcoff, 0, 0);
-			OUT_RING(ring, A6XX_RB_2D_DST_FLAGS_PITCH_PITCH(dst->ubwc_pitch) |
-					 A6XX_RB_2D_DST_FLAGS_PITCH_ARRAY_PITCH(dst->ubwc_size));
+			OUT_RING(ring, A6XX_RB_2D_DST_FLAGS_PITCH_PITCH(dst->layout.ubwc_pitch) |
+					 A6XX_RB_2D_DST_FLAGS_PITCH_ARRAY_PITCH(dst->layout.ubwc_size));
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
@@ -767,8 +767,8 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	if ((info->src.resource->target == PIPE_BUFFER) &&
 			(info->dst.resource->target == PIPE_BUFFER)) {
-		assert(fd_resource(info->src.resource)->tile_mode == TILE6_LINEAR);
-		assert(fd_resource(info->dst.resource)->tile_mode == TILE6_LINEAR);
+		assert(fd_resource(info->src.resource)->layout.tile_mode == TILE6_LINEAR);
+		assert(fd_resource(info->dst.resource)->layout.tile_mode == TILE6_LINEAR);
 		emit_blit_buffer(ctx, batch->draw, info);
 	} else {
 		/* I don't *think* we need to handle blits between buffer <-> !buffer */

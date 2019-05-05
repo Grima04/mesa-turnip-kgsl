@@ -98,8 +98,8 @@ can_do_blit(const struct pipe_blit_info *info)
 	 * untiling by setting both src and dst COLOR_SWAP=WZYX, but that
 	 * means the formats must match:
 	 */
-	if ((fd_resource(info->dst.resource)->tile_mode ||
-				fd_resource(info->src.resource)->tile_mode) &&
+	if ((fd_resource(info->dst.resource)->layout.tile_mode ||
+				fd_resource(info->src.resource)->layout.tile_mode) &&
 			info->dst.format != info->src.format)
 		return false;
 
@@ -215,8 +215,8 @@ emit_blit_buffer(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	src = fd_resource(info->src.resource);
 	dst = fd_resource(info->dst.resource);
 
-	debug_assert(src->cpp == 1);
-	debug_assert(dst->cpp == 1);
+	debug_assert(src->layout.cpp == 1);
+	debug_assert(dst->layout.cpp == 1);
 	debug_assert(info->src.resource->format == info->dst.resource->format);
 	debug_assert((sbox->y == 0) && (sbox->height == 1));
 	debug_assert((dbox->y == 0) && (dbox->height == 1));
@@ -348,8 +348,8 @@ emit_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	sswap = fd5_pipe2swap(info->src.format);
 	dswap = fd5_pipe2swap(info->dst.format);
 
-	spitch = sslice->pitch * src->cpp;
-	dpitch = dslice->pitch * dst->cpp;
+	spitch = sslice->pitch * src->layout.cpp;
+	dpitch = dslice->pitch * dst->layout.cpp;
 
 	/* if dtile, then dswap ignored by hw, and likewise if stile then sswap
 	 * ignored by hw.. but in this case we have already rejected the blit
@@ -374,12 +374,12 @@ emit_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	if (info->src.resource->target == PIPE_TEXTURE_3D)
 		ssize = sslice->size0;
 	else
-		ssize = src->layer_size;
+		ssize = src->layout.layer_size;
 
 	if (info->dst.resource->target == PIPE_TEXTURE_3D)
 		dsize = dslice->size0;
 	else
-		dsize = dst->layer_size;
+		dsize = dst->layout.layer_size;
 
 	for (unsigned i = 0; i < info->dst.box.depth; i++) {
 		unsigned soff = fd_resource_offset(src, info->src.level, sbox->z + i);
@@ -466,8 +466,8 @@ fd5_blitter_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	if ((info->src.resource->target == PIPE_BUFFER) &&
 			(info->dst.resource->target == PIPE_BUFFER)) {
-		assert(fd_resource(info->src.resource)->tile_mode == TILE5_LINEAR);
-		assert(fd_resource(info->dst.resource)->tile_mode == TILE5_LINEAR);
+		assert(fd_resource(info->src.resource)->layout.tile_mode == TILE5_LINEAR);
+		assert(fd_resource(info->dst.resource)->layout.tile_mode == TILE5_LINEAR);
 		emit_blit_buffer(batch->draw, info);
 	} else {
 		/* I don't *think* we need to handle blits between buffer <-> !buffer */

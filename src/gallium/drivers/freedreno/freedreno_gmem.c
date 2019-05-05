@@ -130,9 +130,9 @@ calculate_tiles(struct fd_batch *batch)
 
 	if (has_zs) {
 		struct fd_resource *rsc = fd_resource(pfb->zsbuf->texture);
-		zsbuf_cpp[0] = rsc->cpp;
+		zsbuf_cpp[0] = rsc->layout.cpp;
 		if (rsc->stencil)
-			zsbuf_cpp[1] = rsc->stencil->cpp;
+			zsbuf_cpp[1] = rsc->stencil->layout.cpp;
 	} else {
 		/* we might have a zsbuf, but it isn't used */
 		batch->restore &= ~(FD_BUFFER_DEPTH | FD_BUFFER_STENCIL);

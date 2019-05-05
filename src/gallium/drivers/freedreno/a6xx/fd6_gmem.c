@@ -97,8 +97,8 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 				psurf->u.tex.first_layer);
 		ubwc_enabled = fd_resource_ubwc_enabled(rsc, psurf->u.tex.level);
 
-		stride = slice->pitch * rsc->cpp * pfb->samples;
-		swap = rsc->tile_mode ? WZYX : fd6_pipe2swap(pformat);
+		stride = slice->pitch * rsc->layout.cpp * pfb->samples;
+		swap = rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(pformat);
 
 		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
 
@@ -134,8 +134,8 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		OUT_PKT4(ring, REG_A6XX_RB_MRT_FLAG_BUFFER(i), 3);
 		if (ubwc_enabled) {
 			OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);	/* BASE_LO/HI */
-			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(rsc->ubwc_pitch) |
-				A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->ubwc_size));
+			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(rsc->layout.ubwc_pitch) |
+				A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->layout.ubwc_size));
 		} else {
 			OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_LO */
 			OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_HI */
@@ -183,7 +183,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		struct fd_resource *rsc = fd_resource(zsbuf->texture);
 		enum a6xx_depth_format fmt = fd6_pipe2depth(zsbuf->format);
 		struct fdl_slice *slice = fd_resource_slice(rsc, 0);
-		uint32_t stride = slice->pitch * rsc->cpp;
+		uint32_t stride = slice->pitch * rsc->layout.cpp;
 		uint32_t size = slice->size0;
 		uint32_t base = gmem ? gmem->zsbuf_base[0] : 0;
 		uint32_t offset = fd_resource_offset(rsc, zsbuf->u.tex.level,
@@ -206,8 +206,8 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE_LO, 3);
 		if (ubwc_enabled) {
 			OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);	/* BASE_LO/HI */
-			OUT_RING(ring, A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_PITCH(rsc->ubwc_pitch) |
-				A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->ubwc_size));
+			OUT_RING(ring, A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_PITCH(rsc->layout.ubwc_pitch) |
+				A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->layout.ubwc_size));
 		} else {
 			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_LO */
 			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_HI */
@@ -239,7 +239,7 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
 		if (rsc->stencil) {
 			struct fdl_slice *slice = fd_resource_slice(rsc->stencil, 0);
-			stride = slice->pitch * rsc->stencil->cpp;
+			stride = slice->pitch * rsc->stencil->layout.cpp;
 			size = slice->size0;
 			uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
 
@@ -990,9 +990,9 @@ emit_blit(struct fd_batch *batch,
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
 	enum a6xx_color_fmt format = fd6_pipe2color(pfmt);
-	uint32_t stride = slice->pitch * rsc->cpp;
+	uint32_t stride = slice->pitch * rsc->layout.cpp;
 	uint32_t size = slice->size0;
-	enum a3xx_color_swap swap = rsc->tile_mode ? WZYX : fd6_pipe2swap(pfmt);
+	enum a3xx_color_swap swap = rsc->layout.tile_mode ? WZYX : fd6_pipe2swap(pfmt);
 	enum a3xx_msaa_samples samples =
 			fd_msaa_samples(rsc->base.nr_samples);
 	uint32_t tile_mode = fd_resource_tile_mode(&rsc->base, psurf->u.tex.level);
@@ -1014,8 +1014,8 @@ emit_blit(struct fd_batch *batch,
 	if (ubwc_enabled) {
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
 		OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);
-		OUT_RING(ring, A6XX_RB_BLIT_FLAG_DST_PITCH_PITCH(rsc->ubwc_pitch) |
-				 A6XX_RB_BLIT_FLAG_DST_PITCH_ARRAY_PITCH(rsc->ubwc_size));
+		OUT_RING(ring, A6XX_RB_BLIT_FLAG_DST_PITCH_PITCH(rsc->layout.ubwc_pitch) |
+				 A6XX_RB_BLIT_FLAG_DST_PITCH_ARRAY_PITCH(rsc->layout.ubwc_size));
 	}
 
 	fd6_emit_blit(batch, ring);

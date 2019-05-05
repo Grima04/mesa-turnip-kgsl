@@ -344,7 +344,7 @@ fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx)
 	OUT_RINGP(state, A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D) |
 			A6XX_TEX_CONST_2_FETCHSIZE(TFETCH6_2_BYTE),
 			&ctx->batch->fb_read_patches);
-	OUT_RING(state, A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layer_size));
+	OUT_RING(state, A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size));
 
 	OUT_RING(state, A6XX_TEX_CONST_4_BASE_LO(ctx->screen->gmem_base));
 	OUT_RING(state, A6XX_TEX_CONST_5_BASE_HI(ctx->screen->gmem_base >> 32) |

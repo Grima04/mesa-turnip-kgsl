@@ -58,9 +58,9 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 	/* in layer_first layout, the level (slice) contains just one
 	 * layer (since in fact the layer contains the slices)
 	 */
-	uint32_t layers_in_level = rsc->layer_first ? 1 : prsc->array_size;
+	uint32_t layers_in_level = rsc->layout.layer_first ? 1 : prsc->array_size;
 
-	heightalign = tile_alignment[rsc->cpp].heightalign;
+	heightalign = tile_alignment[rsc->layout.cpp].heightalign;
 
 	for (level = 0; level <= prsc->last_level; level++) {
 		struct fdl_slice *slice = fd_resource_slice(rsc, level);
@@ -68,7 +68,7 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		uint32_t blocks;
 
 		if (fd_resource_tile_mode(prsc, level)) {
-			pitchalign = tile_alignment[rsc->cpp].pitchalign;
+			pitchalign = tile_alignment[rsc->layout.cpp].pitchalign;
 			aligned_height = align(aligned_height, heightalign);
 		} else {
 			pitchalign = 64;
@@ -102,17 +102,17 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		if (prsc->target == PIPE_TEXTURE_3D && (
 					level == 1 ||
 					(level > 1 && fd_resource_slice(rsc, level - 1)->size0 > 0xf000)))
-			slice->size0 = align(blocks * rsc->cpp, alignment);
-		else if (level == 0 || rsc->layer_first || alignment == 1)
-			slice->size0 = align(blocks * rsc->cpp, alignment);
+			slice->size0 = align(blocks * rsc->layout.cpp, alignment);
+		else if (level == 0 || rsc->layout.layer_first || alignment == 1)
+			slice->size0 = align(blocks * rsc->layout.cpp, alignment);
 		else
 			slice->size0 = fd_resource_slice(rsc, level - 1)->size0;
 
 #if 0
 		debug_printf("%s: %ux%ux%u@%u: %2u: stride=%4u, size=%7u, aligned_height=%3u\n",
 				util_format_name(prsc->format),
-				prsc->width0, prsc->height0, prsc->depth0, rsc->cpp,
-				level, slice->pitch * rsc->cpp,
+				prsc->width0, prsc->height0, prsc->depth0, rsc->layout.cpp,
+				level, slice->pitch * rsc->layout.cpp,
 				slice->size0 * depth * layers_in_level,
 				aligned_height);
 #endif
@@ -134,11 +134,11 @@ fd5_setup_slices(struct fd_resource *rsc)
 
 	switch (rsc->base.target) {
 	case PIPE_TEXTURE_3D:
-		rsc->layer_first = false;
+		rsc->layout.layer_first = false;
 		alignment = 4096;
 		break;
 	default:
-		rsc->layer_first = true;
+		rsc->layout.layer_first = true;
 		alignment = 1;
 		break;
 	}
