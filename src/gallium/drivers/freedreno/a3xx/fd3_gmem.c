@@ -738,7 +738,10 @@ fd3_emit_sysmem_prep(struct fd_batch *batch)
 		struct pipe_surface *psurf = pfb->cbufs[i];
 		if (!psurf)
 			continue;
-		pitch = fd_resource(psurf->texture)->slices[psurf->u.tex.level].pitch;
+		struct fd_resource_slice *slice =
+			fd_resource_slice(fd_resource(psurf->texture),
+				psurf->u.tex.level);
+		pitch = slice->pitch;
 	}
 
 	fd3_emit_restore(batch, ring);

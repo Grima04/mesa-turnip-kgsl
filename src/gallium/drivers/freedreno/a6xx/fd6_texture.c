@@ -220,6 +220,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 {
 	struct fd6_pipe_sampler_view *so = CALLOC_STRUCT(fd6_pipe_sampler_view);
 	struct fd_resource *rsc = fd_resource(prsc);
+	struct fd_resource_slice *slice = NULL;
 	enum pipe_format format = cso->format;
 	unsigned lvl, layers = 0;
 
@@ -255,6 +256,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		unsigned miplevels;
 
 		lvl = fd_sampler_first_level(cso);
+		slice = fd_resource_slice(rsc, lvl);
 		miplevels = fd_sampler_last_level(cso) - lvl;
 		layers = cso->u.tex.last_layer - cso->u.tex.first_layer + 1;
 
@@ -265,8 +267,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->texconst2 =
 			A6XX_TEX_CONST_2_FETCHSIZE(fd6_pipe2fetchsize(format)) |
 			A6XX_TEX_CONST_2_PITCH(
-					util_format_get_nblocksx(
-							format, rsc->slices[lvl].pitch) * rsc->cpp);
+				util_format_get_nblocksx(format, slice->pitch) * rsc->cpp);
 		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
 		so->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
 		so->ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
@@ -308,8 +309,9 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		break;
 	case PIPE_TEXTURE_3D:
 		so->texconst3 =
-			A6XX_TEX_CONST_3_MIN_LAYERSZ(rsc->slices[prsc->last_level].size0) |
-			A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->slices[lvl].size0);
+			A6XX_TEX_CONST_3_MIN_LAYERSZ(
+				fd_resource_slice(rsc, prsc->last_level)->size0) |
+			A6XX_TEX_CONST_3_ARRAY_PITCH(slice->size0);
 		so->texconst5 =
 			A6XX_TEX_CONST_5_DEPTH(u_minify(prsc->depth0, lvl));
 		break;

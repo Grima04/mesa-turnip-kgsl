@@ -222,7 +222,6 @@ fd3_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	struct fd3_pipe_sampler_view *so = CALLOC_STRUCT(fd3_pipe_sampler_view);
 	struct fd_resource *rsc = fd_resource(prsc);
 	unsigned lvl;
-	uint32_t sz2 = 0;
 
 	if (!so)
 		return NULL;
@@ -264,22 +263,22 @@ fd3_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 			A3XX_TEX_CONST_1_HEIGHT(u_minify(prsc->height0, lvl));
 	}
 	/* when emitted, A3XX_TEX_CONST_2_INDX() must be OR'd in: */
+	struct fd_resource_slice *slice = fd_resource_slice(rsc, lvl);
 	so->texconst2 =
-			A3XX_TEX_CONST_2_PITCH(fd3_pipe2nblocksx(cso->format, rsc->slices[lvl].pitch) * rsc->cpp);
+			A3XX_TEX_CONST_2_PITCH(fd3_pipe2nblocksx(cso->format, slice->pitch) * rsc->cpp);
 	switch (prsc->target) {
 	case PIPE_TEXTURE_1D_ARRAY:
 	case PIPE_TEXTURE_2D_ARRAY:
 		so->texconst3 =
 				A3XX_TEX_CONST_3_DEPTH(prsc->array_size - 1) |
-				A3XX_TEX_CONST_3_LAYERSZ1(rsc->slices[0].size0);
+				A3XX_TEX_CONST_3_LAYERSZ1(slice->size0);
 		break;
 	case PIPE_TEXTURE_3D:
 		so->texconst3 =
 				A3XX_TEX_CONST_3_DEPTH(u_minify(prsc->depth0, lvl)) |
-				A3XX_TEX_CONST_3_LAYERSZ1(rsc->slices[lvl].size0);
-		while (lvl < cso->u.tex.last_level && sz2 != rsc->slices[lvl+1].size0)
-			sz2 = rsc->slices[++lvl].size0;
-		so->texconst3 |= A3XX_TEX_CONST_3_LAYERSZ2(sz2);
+				A3XX_TEX_CONST_3_LAYERSZ1(slice->size0);
+		so->texconst3 |= A3XX_TEX_CONST_3_LAYERSZ2(
+				fd_resource_slice(rsc, prsc->last_level)->size0);
 		break;
 	default:
 		so->texconst3 = 0x00000000;

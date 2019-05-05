@@ -133,10 +133,10 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		 * range gets into range, we stop reducing it.
 		 */
 		if (prsc->target == PIPE_TEXTURE_3D) {
-			if (level < 1 || (rsc->slices[level - 1].size0 > 0xf000)) {
+			if (level < 1 || fd_resource_slice(rsc, level - 1)->size0 > 0xf000) {
 				slice->size0 = align(blocks * rsc->cpp, alignment);
 			} else {
-				slice->size0 = rsc->slices[level - 1].size0;
+				slice->size0 = fd_resource_slice(rsc, level - 1)->size0;
 			}
 		} else {
 			slice->size0 = align(blocks * rsc->cpp, alignment);

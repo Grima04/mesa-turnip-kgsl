@@ -544,12 +544,14 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 
 		staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 		if (staging_rsc) {
+			struct fd_resource_slice *staging_slice =
+				fd_resource_slice(staging_rsc, 0);
 			// TODO for PIPE_TRANSFER_READ, need to do untiling blit..
 			trans->staging_prsc = &staging_rsc->base;
 			trans->base.stride = util_format_get_nblocksx(format,
-				staging_rsc->slices[0].pitch) * staging_rsc->cpp;
+				staging_slice->pitch) * staging_rsc->cpp;
 			trans->base.layer_stride = staging_rsc->layer_first ?
-				staging_rsc->layer_size : staging_rsc->slices[0].size0;
+				staging_rsc->layer_size : staging_slice->size0;
 			trans->staging_box = *box;
 			trans->staging_box.x = 0;
 			trans->staging_box.y = 0;
@@ -660,11 +662,13 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 				 */
 				staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 				if (staging_rsc) {
+					struct fd_resource_slice *staging_slice =
+						fd_resource_slice(staging_rsc, 0);
 					trans->staging_prsc = &staging_rsc->base;
 					trans->base.stride = util_format_get_nblocksx(format,
-						staging_rsc->slices[0].pitch) * staging_rsc->cpp;
+						staging_slice->pitch) * staging_rsc->cpp;
 					trans->base.layer_stride = staging_rsc->layer_first ?
-						staging_rsc->layer_size : staging_rsc->slices[0].size0;
+						staging_rsc->layer_size : staging_slice->size0;
 					trans->staging_box = *box;
 					trans->staging_box.x = 0;
 					trans->staging_box.y = 0;
@@ -759,7 +763,7 @@ fd_resource_get_handle(struct pipe_screen *pscreen,
 	handle->modifier = fd_resource_modifier(rsc);
 
 	return fd_screen_bo_get_handle(pscreen, rsc->bo, rsc->scanout,
-			rsc->slices[0].pitch * rsc->cpp, handle);
+			fd_resource_slice(rsc, 0)->pitch * rsc->cpp, handle);
 }
 
 static uint32_t
@@ -797,12 +801,12 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		 */
 		if (prsc->target == PIPE_TEXTURE_3D && (
 					level == 1 ||
-					(level > 1 && rsc->slices[level - 1].size0 > 0xf000)))
+					(level > 1 && fd_resource_slice(rsc, level - 1)->size0 > 0xf000)))
 			slice->size0 = align(blocks * rsc->cpp, alignment);
 		else if (level == 0 || rsc->layer_first || alignment == 1)
 			slice->size0 = align(blocks * rsc->cpp, alignment);
 		else
-			slice->size0 = rsc->slices[level - 1].size0;
+			slice->size0 = fd_resource_slice(rsc, level - 1)->size0;
 
 		size += slice->size0 * depth * layers_in_level;
 
@@ -1090,7 +1094,7 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 	struct fd_resource *rsc = CALLOC_STRUCT(fd_resource);
-	struct fd_resource_slice *slice = &rsc->slices[0];
+	struct fd_resource_slice *slice = fd_resource_slice(rsc, 0);
 	struct pipe_resource *prsc = &rsc->base;
 	uint32_t pitchalign = fd_screen(pscreen)->gmem_alignw;
 

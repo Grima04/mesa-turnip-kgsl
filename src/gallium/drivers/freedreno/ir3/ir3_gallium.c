@@ -343,18 +343,19 @@ ir3_emit_image_dims(struct fd_screen *screen, const struct ir3_shader_variant *v
 
 			dims[off + 0] = util_format_get_blocksize(img->format);
 			if (img->resource->target != PIPE_BUFFER) {
-				unsigned lvl = img->u.tex.level;
+				struct fd_resource_slice *slice =
+					fd_resource_slice(rsc, img->u.tex.level);
 				/* note for 2d/cube/etc images, even if re-interpreted
 				 * as a different color format, the pixel size should
 				 * be the same, so use original dimensions for y and z
 				 * stride:
 				 */
-				dims[off + 1] = rsc->slices[lvl].pitch * rsc->cpp;
+				dims[off + 1] = slice->pitch * rsc->cpp;
 				/* see corresponding logic in fd_resource_offset(): */
 				if (rsc->layer_first) {
 					dims[off + 2] = rsc->layer_size;
 				} else {
-					dims[off + 2] = rsc->slices[lvl].size0;
+					dims[off + 2] = slice->size0;
 				}
 			} else {
 				/* For buffer-backed images, the log2 of the format's

@@ -164,7 +164,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, bool stencil,
 		pformat = rsc->base.format;
 	}
 
-	slice = &rsc->slices[psurf->u.tex.level];
+	slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	offset = fd_resource_offset(rsc, psurf->u.tex.level,
 			psurf->u.tex.first_layer);
 

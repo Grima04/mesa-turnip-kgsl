@@ -97,11 +97,12 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 		img->buffer = false;
 
 		unsigned lvl = pimg->u.tex.level;
+		struct fd_resource_slice *slice = fd_resource_slice(rsc, lvl);
 		unsigned layers = pimg->u.tex.last_layer - pimg->u.tex.first_layer + 1;
 
 		img->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, pimg->u.tex.first_layer);
 		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer);
-		img->pitch  = rsc->slices[lvl].pitch * rsc->cpp;
+		img->pitch  = slice->pitch * rsc->cpp;
 
 		switch (prsc->target) {
 		case PIPE_TEXTURE_RECT:
@@ -120,7 +121,7 @@ static void translate_image(struct fd6_image *img, const struct pipe_image_view 
 			img->depth = layers;
 			break;
 		case PIPE_TEXTURE_3D:
-			img->array_pitch = rsc->slices[lvl].size0;
+			img->array_pitch = slice->size0;
 			img->depth  = u_minify(prsc->depth0, lvl);
 			break;
 		default:

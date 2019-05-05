@@ -181,12 +181,13 @@ fd2_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	so->base.reference.count = 1;
 	so->base.context = pctx;
 
+	struct fd_resource_slice *slice0 = fd_resource_slice(rsc, 0);
 	so->tex0 =
 		A2XX_SQ_TEX_0_SIGN_X(fmt.sign) |
 		A2XX_SQ_TEX_0_SIGN_Y(fmt.sign) |
 		A2XX_SQ_TEX_0_SIGN_Z(fmt.sign) |
 		A2XX_SQ_TEX_0_SIGN_W(fmt.sign) |
-		A2XX_SQ_TEX_0_PITCH(rsc->slices[0].pitch) |
+		A2XX_SQ_TEX_0_PITCH(slice0->pitch) |
 		COND(rsc->tile_mode, A2XX_SQ_TEX_0_TILED);
 	so->tex1 =
 		A2XX_SQ_TEX_1_FORMAT(fmt.format) |
