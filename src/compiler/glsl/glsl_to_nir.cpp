@@ -90,7 +90,6 @@ private:
    nir_alu_instr *emit(nir_op op, unsigned dest_size, nir_ssa_def *src1,
                        nir_ssa_def *src2, nir_ssa_def *src3);
 
-   bool supports_ints;
    bool supports_std430;
 
    nir_shader *shader;
@@ -263,7 +262,6 @@ glsl_to_nir(struct gl_context *ctx,
 
 nir_visitor::nir_visitor(gl_context *ctx, nir_shader *shader)
 {
-   this->supports_ints = true;
    this->supports_std430 = ctx->Const.UseSTD430AsDefaultPacking;
    this->shader = shader;
    this->is_global = true;
@@ -307,10 +305,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         if (supports_ints)
-            ret->values[0][r].u32 = ir->value.u[r];
-         else
-            ret->values[0][r].f32 = ir->value.u[r];
+         ret->values[0][r].u32 = ir->value.u[r];
 
       break;
 
@@ -319,10 +314,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         if (supports_ints)
-            ret->values[0][r].i32 = ir->value.i[r];
-         else
-            ret->values[0][r].f32 = ir->value.i[r];
+         ret->values[0][r].i32 = ir->value.i[r];
 
       break;
 
@@ -1860,16 +1852,9 @@ nir_visitor::visit(ir_expression *ir)
 
    glsl_base_type types[4];
    for (unsigned i = 0; i < ir->num_operands; i++)
-      if (supports_ints || !type_is_int(ir->operands[i]->type->base_type))
-         types[i] = ir->operands[i]->type->base_type;
-      else
-         types[i] = GLSL_TYPE_FLOAT;
+      types[i] = ir->operands[i]->type->base_type;
 
-   glsl_base_type out_type;
-   if (supports_ints || !type_is_int(ir->type->base_type))
-      out_type = ir->type->base_type;
-   else
-      out_type = GLSL_TYPE_FLOAT;
+   glsl_base_type out_type = ir->type->base_type;
 
    switch (ir->operation) {
    case ir_unop_bit_not: result = nir_inot(&b, srcs[0]); break;
@@ -1900,19 +1885,19 @@ nir_visitor::visit(ir_expression *ir)
    case ir_unop_exp2: result = nir_fexp2(&b, srcs[0]); break;
    case ir_unop_log2: result = nir_flog2(&b, srcs[0]); break;
    case ir_unop_i2f:
-      result = supports_ints ? nir_i2f32(&b, srcs[0]) : nir_fmov(&b, srcs[0]);
+      result = nir_i2f32(&b, srcs[0]);
       break;
    case ir_unop_u2f:
-      result = supports_ints ? nir_u2f32(&b, srcs[0]) : nir_fmov(&b, srcs[0]);
+      result = nir_u2f32(&b, srcs[0]);
       break;
    case ir_unop_b2f:
       result = nir_b2f32(&b, srcs[0]);
       break;
    case ir_unop_f2i:
-      result = supports_ints ? nir_f2i32(&b, srcs[0]) : nir_ftrunc(&b, srcs[0]);
+      result = nir_f2i32(&b, srcs[0]);
       break;
    case ir_unop_f2u:
-      result = supports_ints ? nir_f2u32(&b, srcs[0]) : nir_ftrunc(&b, srcs[0]);
+      result = nir_f2u32(&b, srcs[0]);
       break;
    case ir_unop_f2b:
    case ir_unop_i2b:
