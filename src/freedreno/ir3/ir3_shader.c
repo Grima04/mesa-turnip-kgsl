@@ -47,8 +47,8 @@ delete_variant(struct ir3_shader_variant *v)
 		ir3_destroy(v->ir);
 	if (v->bo)
 		fd_bo_del(v->bo);
-	if (v->immediates)
-		free(v->immediates);
+	if (v->const_state.immediates)
+		free(v->const_state.immediates);
 	free(v);
 }
 
@@ -351,13 +351,13 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	}
 
 	struct ir3_const_state *const_state = &so->const_state;
-	for (i = 0; i < so->immediates_count; i++) {
+	for (i = 0; i < const_state->immediates_count; i++) {
 		fprintf(out, "@const(c%d.x)\t", const_state->offsets.immediate + i);
 		fprintf(out, "0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
-				so->immediates[i].val[0],
-				so->immediates[i].val[1],
-				so->immediates[i].val[2],
-				so->immediates[i].val[3]);
+				const_state->immediates[i].val[0],
+				const_state->immediates[i].val[1],
+				const_state->immediates[i].val[2],
+				const_state->immediates[i].val[3]);
 	}
 
 	disasm_a3xx(bin, so->info.sizedwords, 0, out, ir->compiler->gpu_id);

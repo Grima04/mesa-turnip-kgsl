@@ -148,6 +148,13 @@ struct ir3_const_state {
 		 */
 		uint32_t off[IR3_MAX_SHADER_IMAGES];
 	} image_dims;
+
+	unsigned immediate_idx;
+	unsigned immediates_count;
+	unsigned immediates_size;
+	struct {
+		uint32_t val[4];
+	} *immediates;
 };
 
 /**
@@ -489,12 +496,6 @@ struct ir3_shader_variant {
 	bool no_earlyz;
 
 	bool per_samp;
-
-	unsigned immediates_count;
-	unsigned immediates_size;
-	struct {
-		uint32_t val[4];
-	} *immediates;
 
 	/* for astc srgb workaround, the number/base of additional
 	 * alpha tex states we need, and index of original tex states

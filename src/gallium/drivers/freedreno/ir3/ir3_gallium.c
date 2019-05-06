@@ -388,7 +388,7 @@ emit_immediates(struct fd_context *ctx, const struct ir3_shader_variant *v,
 {
 	const struct ir3_const_state *const_state = &v->const_state;
 	uint32_t base = const_state->offsets.immediate;
-	int size = v->immediates_count;
+	int size = const_state->immediates_count;
 
 	/* truncate size to avoid writing constants that shader
 	 * does not use:
@@ -402,7 +402,7 @@ emit_immediates(struct fd_context *ctx, const struct ir3_shader_variant *v,
 	if (size > 0) {
 		ring_wfi(ctx->batch, ring);
 		ctx->emit_const(ring, v->type, base,
-			0, size, v->immediates[0].val, NULL);
+			0, size, const_state->immediates[0].val, NULL);
 	}
 }
 
