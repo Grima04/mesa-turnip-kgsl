@@ -62,7 +62,7 @@ struct ptn_compile {
 
 #define SWIZ(X, Y, Z, W) \
    (unsigned[4]){ SWIZZLE_##X, SWIZZLE_##Y, SWIZZLE_##Z, SWIZZLE_##W }
-#define ptn_channel(b, src, ch) nir_swizzle(b, src, SWIZ(ch, ch, ch, ch), 1, true)
+#define ptn_channel(b, src, ch) nir_channel(b, src, SWIZZLE_##ch)
 
 static nir_ssa_def *
 ptn_src_for_dest(struct ptn_compile *c, nir_alu_dest *dest)

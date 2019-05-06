@@ -109,7 +109,7 @@ struct ttn_compile {
 #define ttn_swizzle(b, src, x, y, z, w) \
    nir_swizzle(b, src, SWIZ(x, y, z, w), 4, false)
 #define ttn_channel(b, src, swiz) \
-   nir_swizzle(b, src, SWIZ(swiz, swiz, swiz, swiz), 1, false)
+   nir_channel(b, src, TGSI_SWIZZLE_##swiz)
 
 static gl_varying_slot
 tgsi_varying_semantic_to_slot(unsigned semantic, unsigned index)
