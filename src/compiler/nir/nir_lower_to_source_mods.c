@@ -33,6 +33,20 @@
  * easier to not have them when we're doing optimizations.
  */
 
+static void
+alu_src_consume_abs(nir_alu_src *src)
+{
+   src->abs = true;
+}
+
+static void
+alu_src_consume_negate(nir_alu_src *src)
+{
+   /* If abs is set on the source, the negate goes away */
+   if (!src->abs)
+      src->negate = !src->negate;
+}
+
 static bool
 nir_lower_to_source_mods_block(nir_block *block,
                                nir_lower_to_source_mods_flags options)
@@ -88,12 +102,10 @@ nir_lower_to_source_mods_block(nir_block *block,
             continue;
 
          nir_instr_rewrite_src(instr, &alu->src[i].src, parent->src[0].src);
-         if (alu->src[i].abs) {
-            /* abs trumps both neg and abs, do nothing */
-         } else {
-            alu->src[i].negate = (alu->src[i].negate != parent->src[0].negate);
-            alu->src[i].abs |= parent->src[0].abs;
-         }
+         if (parent->src[0].negate)
+            alu_src_consume_negate(&alu->src[i]);
+         if (parent->src[0].abs)
+            alu_src_consume_abs(&alu->src[i]);
 
          for (int j = 0; j < 4; ++j) {
             if (!nir_alu_instr_channel_used(alu, i, j))
