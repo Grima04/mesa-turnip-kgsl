@@ -51,6 +51,9 @@
 #include "drivers/common/meta.h"
 #include "util/ralloc.h"
 
+static struct gl_texture_object *
+texture_object_from_renderbuffer(struct gl_context *, struct gl_renderbuffer *);
+
 /** Return offset in bytes of the field within a vertex struct */
 #define OFFSET(FIELD) ((void *) offsetof(struct vertex, FIELD))
 
@@ -444,7 +447,7 @@ blitframebuffer_texture(struct gl_context *ctx,
       srcLevel = readAtt->TextureLevel;
       texObj = readAtt->Texture;
    } else if (!readAtt->Texture && ctx->Driver.BindRenderbufferTexImage) {
-      texObj = _mesa_meta_texture_object_from_renderbuffer(ctx, rb);
+      texObj = texture_object_from_renderbuffer(ctx, rb);
       if (texObj == NULL)
          return false;
 
@@ -685,9 +688,9 @@ _mesa_meta_fb_tex_blit_end(struct gl_context *ctx, GLenum target,
    _mesa_delete_nameless_texture(ctx, blit->temp_tex_obj);
 }
 
-struct gl_texture_object *
-_mesa_meta_texture_object_from_renderbuffer(struct gl_context *ctx,
-                                            struct gl_renderbuffer *rb)
+static struct gl_texture_object *
+texture_object_from_renderbuffer(struct gl_context *ctx,
+                                 struct gl_renderbuffer *rb)
 {
    struct gl_texture_image *texImage;
    struct gl_texture_object *texObj;
