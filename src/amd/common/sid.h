@@ -153,7 +153,7 @@
 #define PKT3_INDIRECT_BUFFER_CIK               0x3F /* new on CIK */
 #define   R_3F0_IB_BASE_LO                     0x3F0
 #define   R_3F1_IB_BASE_HI                     0x3F1
-#define   R_3F2_CONTROL                        0x3F2
+#define   R_3F2_IB_CONTROL                        0x3F2
 #define     S_3F2_IB_SIZE(x)                   (((unsigned)(x) & 0xfffff) << 0)
 #define     G_3F2_IB_SIZE(x)                   (((unsigned)(x) >> 0) & 0xfffff)
 #define     S_3F2_CHAIN(x)                     (((unsigned)(x) & 0x1) << 20)

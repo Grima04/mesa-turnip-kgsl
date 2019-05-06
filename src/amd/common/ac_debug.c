@@ -393,7 +393,7 @@ static void ac_parse_packet3(FILE *f, uint32_t header, struct ac_ib_parser *ib,
 		uint32_t base_hi_dw = ac_ib_get(ib);
 		ac_dump_reg(f, ib->chip_class, R_3F1_IB_BASE_HI, base_hi_dw, ~0);
 		uint32_t control_dw = ac_ib_get(ib);
-		ac_dump_reg(f, ib->chip_class, R_3F2_CONTROL, control_dw, ~0);
+		ac_dump_reg(f, ib->chip_class, R_3F2_IB_CONTROL, control_dw, ~0);
 
 		if (!ib->addr_callback)
 			break;
