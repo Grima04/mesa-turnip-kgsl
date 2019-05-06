@@ -435,7 +435,6 @@ typedef struct compiler_context {
         bool is_blend;
 
         /* Tracking for blend constant patching */
-        int blend_constant_number;
         int blend_constant_offset;
 
         /* Current NIR function */
@@ -671,11 +670,6 @@ attach_constants(compiler_context *ctx, midgard_instruction *ins, void *constant
 {
         ins->has_constants = true;
         memcpy(&ins->constants, constants, 16);
-
-        /* If this is the special blend constant, mark this instruction */
-
-        if (ctx->is_blend && ctx->blend_constant_number == name)
-                ins->has_blend_constant = true;
 }
 
 static int
@@ -1521,6 +1515,79 @@ emit_sysval_read(compiler_context *ctx, nir_intrinsic_instr *instr)
         emit_uniform_read(ctx, dest, uniform, NULL);
 }
 
+/* Reads RGBA8888 value from the tilebuffer and converts to a RGBA32F register,
+ * using scalar ops functional on earlier Midgard generations. Newer Midgard
+ * generations have faster vectorized reads. This operation is for blend
+ * shaders in particular; reading the tilebuffer from the fragment shader
+ * remains an open problem. */
+
+static void
+emit_fb_read_blend_scalar(compiler_context *ctx, unsigned reg)
+{
+        midgard_instruction ins = m_ld_color_buffer_8(reg, 0);
+        ins.load_store.swizzle = 0; /* xxxx */
+
+        /* Read each component sequentially */
+
+        for (unsigned c = 0; c < 4; ++c) {
+                ins.load_store.mask = (1 << c);
+                ins.load_store.unknown = c;
+                emit_mir_instruction(ctx, ins);
+        }
+
+        /* vadd.u2f hr2, zext(hr2), #0 */
+
+        midgard_vector_alu_src alu_src = blank_alu_src;
+        alu_src.mod = midgard_int_zero_extend;
+        alu_src.half = true;
+
+        midgard_instruction u2f = {
+                .type = TAG_ALU_4,
+                .ssa_args = {
+                        .src0 = reg,
+                        .src1 = SSA_UNUSED_0,
+                        .dest = reg,
+                        .inline_constant = true
+                },
+                .alu = {
+                        .op = midgard_alu_op_u2f,
+                        .reg_mode = midgard_reg_mode_16,
+                        .dest_override = midgard_dest_override_none,
+                        .mask = 0xF,
+                        .src1 = vector_alu_srco_unsigned(alu_src),
+                        .src2 = vector_alu_srco_unsigned(blank_alu_src),
+                }
+        };
+
+        emit_mir_instruction(ctx, u2f);
+
+        /* vmul.fmul.sat r1, hr2, #0.00392151 */
+
+        alu_src.mod = 0;
+
+        midgard_instruction fmul = {
+                .type = TAG_ALU_4,
+                .inline_constant = _mesa_float_to_half(1.0 / 255.0),
+                .ssa_args = {
+                        .src0 = reg,
+                        .dest = reg,
+                        .src1 = SSA_UNUSED_0,
+                        .inline_constant = true
+                },
+                .alu = {
+                        .op = midgard_alu_op_fmul,
+                        .reg_mode = midgard_reg_mode_32,
+                        .dest_override = midgard_dest_override_none,
+                        .outmod = midgard_outmod_sat,
+                        .mask = 0xFF,
+                        .src1 = vector_alu_srco_unsigned(alu_src),
+                        .src2 = vector_alu_srco_unsigned(blank_alu_src),
+                }
+        };
+
+        emit_mir_instruction(ctx, fmul);
+}
+
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1583,105 +1650,12 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         }
 
                         emit_mir_instruction(ctx, ins);
-                } else if (ctx->is_blend && instr->intrinsic == nir_intrinsic_load_uniform) {
-                        /* Constant encoded as a pinned constant */
-
-                        midgard_instruction ins = v_fmov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, reg);
-                        ins.has_constants = true;
-                        ins.has_blend_constant = true;
-                        emit_mir_instruction(ctx, ins);
                 } else if (ctx->is_blend) {
-                        /* For blend shaders, a load might be
-                         * translated various ways depending on what
-                         * we're loading. Figure out how this is used */
+                        /* For blend shaders, load the input color, which is
+                         * preloaded to r0 */
 
-                        nir_variable *out = NULL;
-
-                        nir_foreach_variable(var, &ctx->nir->inputs) {
-                                int drvloc = var->data.driver_location;
-
-                                if (nir_intrinsic_base(instr) == drvloc) {
-                                        out = var;
-                                        break;
-                                }
-                        }
-
-                        assert(out);
-
-                        if (out->data.location == VARYING_SLOT_COL0) {
-                                /* Source color preloaded to r0 */
-
-                                midgard_pin_output(ctx, reg, 0);
-                        } else if (out->data.location == VARYING_SLOT_COL1) {
-                                /* Destination color must be read from framebuffer */
-
-                                midgard_instruction ins = m_ld_color_buffer_8(reg, 0);
-                                ins.load_store.swizzle = 0; /* xxxx */
-
-                                /* Read each component sequentially */
-
-                                for (int c = 0; c < 4; ++c) {
-                                        ins.load_store.mask = (1 << c);
-                                        ins.load_store.unknown = c;
-                                        emit_mir_instruction(ctx, ins);
-                                }
-
-                                /* vadd.u2f hr2, zext(hr2), #0 */
-
-                                midgard_vector_alu_src alu_src = blank_alu_src;
-                                alu_src.mod = midgard_int_zero_extend;
-                                alu_src.half = true;
-
-                                midgard_instruction u2f = {
-                                        .type = TAG_ALU_4,
-                                        .ssa_args = {
-                                                .src0 = reg,
-                                                .src1 = SSA_UNUSED_0,
-                                                .dest = reg,
-                                                .inline_constant = true
-                                        },
-                                        .alu = {
-                                                .op = midgard_alu_op_u2f,
-                                                .reg_mode = midgard_reg_mode_16,
-                                                .dest_override = midgard_dest_override_none,
-                                                .mask = 0xF,
-                                                .src1 = vector_alu_srco_unsigned(alu_src),
-                                                .src2 = vector_alu_srco_unsigned(blank_alu_src),
-                                        }
-                                };
-
-                                emit_mir_instruction(ctx, u2f);
-
-                                /* vmul.fmul.sat r1, hr2, #0.00392151 */
-
-                                alu_src.mod = 0;
-
-                                midgard_instruction fmul = {
-                                        .type = TAG_ALU_4,
-                                        .inline_constant = _mesa_float_to_half(1.0 / 255.0),
-                                        .ssa_args = {
-                                                .src0 = reg,
-                                                .dest = reg,
-                                                .src1 = SSA_UNUSED_0,
-                                                .inline_constant = true
-                                        },
-                                        .alu = {
-                                                .op = midgard_alu_op_fmul,
-                                                .reg_mode = midgard_reg_mode_32,
-                                                .dest_override = midgard_dest_override_none,
-                                                .outmod = midgard_outmod_sat,
-                                                .mask = 0xFF,
-                                                .src1 = vector_alu_srco_unsigned(alu_src),
-                                                .src2 = vector_alu_srco_unsigned(blank_alu_src),
-                                        }
-                                };
-
-                                emit_mir_instruction(ctx, fmul);
-                        } else {
-                                DBG("Unknown input in blend shader\n");
-                                assert(0);
-                        }
-                } else if (ctx->stage == MESA_SHADER_VERTEX) {
+                        midgard_pin_output(ctx, reg, 0);
+                }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
                         ins.load_store.mask = (1 << instr->num_components) - 1;
@@ -1692,6 +1666,34 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }
 
                 break;
+
+        case nir_intrinsic_load_output:
+                assert(nir_src_is_const(instr->src[0]));
+                reg = nir_dest_index(ctx, &instr->dest);
+
+                if (ctx->is_blend) {
+                        /* TODO: MRT */
+                        emit_fb_read_blend_scalar(ctx, reg);
+                } else {
+                        DBG("Unknown output load\n");
+                        assert(0);
+                }
+
+                break;
+
+        case nir_intrinsic_load_blend_const_color_rgba: {
+                assert(ctx->is_blend);
+                reg = nir_dest_index(ctx, &instr->dest);
+
+                /* Blend constants are embedded directly in the shader and
+                 * patched in, so we use some magic routing */
+
+                midgard_instruction ins = v_fmov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, reg);
+                ins.has_constants = true;
+                ins.has_blend_constant = true;
+                emit_mir_instruction(ctx, ins);
+                break;
+        }
 
         case nir_intrinsic_store_output:
                 assert(nir_src_is_const(instr->src[1]) && "no indirect outputs");
@@ -1707,7 +1709,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                          * framebuffer writeout dance. TODO: Defer
                          * writes */
 
-                        midgard_pin_output(ctx, reg, 0);
+                        midgard_instruction move = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
+                        emit_mir_instruction(ctx, move);
+
+                        //midgard_pin_output(ctx, reg, 0);
 
                         /* Save the index we're writing to for later reference
                          * in the epilogue */
@@ -2637,6 +2642,13 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                         if (ains->has_constants) {
                                 if (bundle.has_embedded_constants) {
+                                        /* The blend constant needs to be
+                                         * alone, since it conflicts with
+                                         * everything by definition*/
+
+                                        if (ains->has_blend_constant || bundle.has_blend_constant)
+                                                break;
+
                                         /* ...but if there are already
                                          * constants but these are the
                                          * *same* constants, we let it
@@ -2649,8 +2661,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                         memcpy(bundle.constants, ains->constants, sizeof(bundle.constants));
 
                                         /* If this is a blend shader special constant, track it for patching */
-                                        if (ains->has_blend_constant)
-                                                bundle.has_blend_constant = true;
+                                        bundle.has_blend_constant |= ains->has_blend_constant;
                                 }
                         }
 
