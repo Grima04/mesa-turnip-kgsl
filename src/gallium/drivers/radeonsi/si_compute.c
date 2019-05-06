@@ -324,16 +324,16 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
 	radeon_set_sh_reg_seq(cs, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, 2);
 	/* R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 / SE1 */
 	radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) | S_00B858_SH1_CU_EN(0xffff));
-	radeon_emit(cs, S_00B85C_SH0_CU_EN(0xffff) | S_00B85C_SH1_CU_EN(0xffff));
+	radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) | S_00B858_SH1_CU_EN(0xffff));
 
 	if (sctx->chip_class >= GFX7) {
 		/* Also set R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE2 / SE3 */
 		radeon_set_sh_reg_seq(cs,
 		                     R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2, 2);
-		radeon_emit(cs, S_00B864_SH0_CU_EN(0xffff) |
-		                S_00B864_SH1_CU_EN(0xffff));
-		radeon_emit(cs, S_00B868_SH0_CU_EN(0xffff) |
-		                S_00B868_SH1_CU_EN(0xffff));
+		radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) |
+		                S_00B858_SH1_CU_EN(0xffff));
+		radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) |
+		                S_00B858_SH1_CU_EN(0xffff));
 	}
 
 	/* This register has been moved to R_00CD20_COMPUTE_MAX_WAVE_ID
