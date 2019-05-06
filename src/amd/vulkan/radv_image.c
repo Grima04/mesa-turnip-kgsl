@@ -31,9 +31,9 @@
 #include "vk_util.h"
 #include "radv_radeon_winsys.h"
 #include "sid.h"
-#include "gfx9d.h"
 #include "util/debug.h"
 #include "util/u_atomic.h"
+
 static unsigned
 radv_choose_tiling(struct radv_device *device,
 		   const struct radv_image_create_info *create_info)

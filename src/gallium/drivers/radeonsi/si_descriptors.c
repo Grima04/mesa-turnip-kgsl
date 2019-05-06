@@ -55,7 +55,6 @@
 
 #include "si_pipe.h"
 #include "sid.h"
-#include "gfx9d.h"
 
 #include "util/hash_table.h"
 #include "util/u_idalloc.h"

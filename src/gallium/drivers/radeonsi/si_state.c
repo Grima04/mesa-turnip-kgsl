@@ -23,7 +23,7 @@
  */
 
 #include "si_build_pm4.h"
-#include "gfx9d.h"
+#include "sid.h"
 #include "si_query.h"
 
 #include "util/u_dual_blend.h"

@@ -36,8 +36,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include "state_tracker/drm_driver.h"
-#include "amd/common/sid.h"
-#include "amd/common/gfx9d.h"
+#include "sid.h"
 
 static enum radeon_surf_mode
 si_choose_tiling(struct si_screen *sscreen,

@@ -31,7 +31,6 @@
 #include "radv_shader.h"
 #include "radv_cs.h"
 #include "sid.h"
-#include "gfx9d.h"
 #include "radv_util.h"
 #include "main/macros.h"
 

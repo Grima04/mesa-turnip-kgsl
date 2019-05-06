@@ -40,7 +40,6 @@
 #include <sys/stat.h>
 #include "amd/common/ac_llvm_util.h"
 #include "amd/common/sid.h"
-#include "amd/common/gfx9d.h"
 
 #ifndef AMDGPU_INFO_NUM_VRAM_CPU_PAGE_FAULTS
 #define AMDGPU_INFO_NUM_VRAM_CPU_PAGE_FAULTS	0x1E

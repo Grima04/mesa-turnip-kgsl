@@ -47,6 +47,9 @@ $(LOCAL_GENERATED_SOURCES): PRIVATE_CUSTOM_TOOL = $(PRIVATE_PYTHON) $^ > $@
 $(intermediates)/common/sid_tables.h: $(LOCAL_PATH)/common/sid_tables.py $(LOCAL_PATH)/common/sid.h $(LOCAL_PATH)/registers/amdgfxregs.json $(LOCAL_PATH)/registers/pkt3.json
 	$(transform-generated-source)
 
+$(intermediates)/common/amdgfxregs.h: $(LOCAL_PATH)/registers/makeregheader.py $(LOCAL_PATH)/registers/amdgfxregs.json $(LOCAL_PATH)/registers/pkt3.json
+	$(transform-generated-source) --sort address --guard AMDGFXREGS_H
+
 LOCAL_C_INCLUDES := \
 	$(MESA_TOP)/include \
 	$(MESA_TOP)/src \

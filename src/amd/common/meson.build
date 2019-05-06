@@ -26,6 +26,14 @@ sid_tables_h = custom_target(
   capture : true,
 )
 
+amdgfxregs_h = custom_target(
+  'amdgfxregs_h',
+  input : ['../registers/makeregheader.py', '../registers/amdgfxregs.json', '../registers/pkt3.json'],
+  output : 'amdgfxregs.h',
+  command : [prog_python, '@INPUT@', '--sort', 'address', '--guard', 'AMDGFXREGS_H'],
+  capture : true,
+)
+
 amd_common_files = files(
   'ac_binary.c',
   'ac_binary.h',
@@ -52,7 +60,7 @@ amd_common_files = files(
 
 libamd_common = static_library(
   'amd_common',
-  [amd_common_files, sid_tables_h],
+  [amd_common_files, sid_tables_h, amdgfxregs_h],
   include_directories : [
     inc_common, inc_compiler, inc_mesa, inc_mapi, inc_amd,
   ],
@@ -63,3 +71,5 @@ libamd_common = static_library(
   c_args : [c_vis_args],
   cpp_args : [cpp_vis_args],
 )
+
+idep_amdgfxregs_h = declare_dependency(sources : [amdgfxregs_h])

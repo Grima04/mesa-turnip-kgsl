@@ -23,7 +23,7 @@
  */
 
 #include "si_build_pm4.h"
-#include "gfx9d.h"
+#include "sid.h"
 
 #include "compiler/nir/nir_serialize.h"
 #include "tgsi/tgsi_parse.h"

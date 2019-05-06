@@ -25,7 +25,6 @@
 #include "si_pipe.h"
 #include "si_compute.h"
 #include "sid.h"
-#include "gfx9d.h"
 #include "sid_tables.h"
 #include "driver_ddebug/dd_util.h"
 #include "util/u_dump.h"

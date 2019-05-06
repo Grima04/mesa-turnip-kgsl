@@ -107,7 +107,7 @@ libradeonsi = static_library(
   ],
   c_args : ['-Wstrict-overflow=0', c_vis_args],
   cpp_args : [cpp_vis_args],
-  dependencies : [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers],
+  dependencies : [dep_llvm, dep_clock, dep_libdrm_radeon, idep_nir_headers, idep_amdgfxregs_h],
 )
 
 driver_radeonsi = declare_dependency(
