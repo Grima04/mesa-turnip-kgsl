@@ -20,7 +20,7 @@
 
 sid_tables_h = custom_target(
   'sid_tables_h',
-  input : ['sid_tables.py', 'sid.h', 'gfx9d.h'],
+  input : ['sid_tables.py', 'sid.h', '../registers/amdgfxregs.json', '../registers/pkt3.json'],
   output : 'sid_tables.h',
   command : [prog_python, '@INPUT@'],
   capture : true,
