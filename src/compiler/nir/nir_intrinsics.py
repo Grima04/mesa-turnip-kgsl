@@ -568,11 +568,14 @@ system_value("viewport_z_offset", 1)
 system_value("viewport_scale", 3)
 system_value("viewport_offset", 3)
 
-# Blend constant color values.  Float values are clamped.#
+# Blend constant color values.  Float values are clamped. Vectored versions are
+# provided as well for driver convenience
+
 system_value("blend_const_color_r_float", 1)
 system_value("blend_const_color_g_float", 1)
 system_value("blend_const_color_b_float", 1)
 system_value("blend_const_color_a_float", 1)
+system_value("blend_const_color_rgba", 4)
 system_value("blend_const_color_rgba8888_unorm", 1)
 system_value("blend_const_color_aaaa8888_unorm", 1)
 
