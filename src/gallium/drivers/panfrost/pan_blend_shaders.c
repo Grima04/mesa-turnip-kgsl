@@ -28,6 +28,7 @@
 #include "midgard/midgard_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "midgard/nir_lower_blend.h"
+#include "gallium/auxiliary/util/u_blend.h"
 
 /*
  * Implements the command stream portion of programmatic blend shaders.
@@ -82,21 +83,40 @@
  * (compilation).
  */
 
-static nir_ssa_def *
-nir_blending_f(const struct pipe_rt_blend_state *blend, nir_builder *b,
-                nir_ssa_def *s_src, nir_ssa_def *s_dst, nir_ssa_def *s_con)
+static nir_lower_blend_options
+nir_make_options(const struct pipe_blend_state *blend, unsigned nr_cbufs)
 {
-        /* Stub, to be replaced by the real implementation when that is
-         * upstream (pending on a rewrite to be Gallium agnostic) */
+        nir_lower_blend_options options;
 
-        return s_src;
+        for (unsigned i = 0; i < nr_cbufs; ++i) {
+                nir_lower_blend_channel rgb = {
+                        .func = util_blend_func_to_shader(blend->rt[i].rgb_func),
+                        .src_factor = util_blend_factor_to_shader(blend->rt[i].rgb_src_factor),
+                        .dst_factor = util_blend_factor_to_shader(blend->rt[i].rgb_dst_factor),
+                        .invert_src_factor = util_blend_factor_is_inverted(blend->rt[i].rgb_src_factor),
+                        .invert_dst_factor = util_blend_factor_is_inverted(blend->rt[i].rgb_dst_factor)
+                };
+
+                nir_lower_blend_channel alpha = {
+                        .func = util_blend_func_to_shader(blend->rt[i].alpha_func),
+                        .src_factor = util_blend_factor_to_shader(blend->rt[i].alpha_src_factor),
+                        .dst_factor = util_blend_factor_to_shader(blend->rt[i].alpha_dst_factor),
+                        .invert_src_factor = util_blend_factor_is_inverted(blend->rt[i].alpha_src_factor),
+                        .invert_dst_factor = util_blend_factor_is_inverted(blend->rt[i].alpha_dst_factor)
+                };
+
+                options.rt[i].rgb = rgb;
+                options.rt[i].alpha = alpha;
+
+                options.rt[i].colormask = blend->rt[i].colormask;
+        }
+
+        return options;
 }
 
 void
 panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_state *cso, const struct pipe_blend_color *blend_color)
 {
-        const struct pipe_rt_blend_state *blend = &cso->base.rt[0];
-
         /* Build the shader */
 
         nir_shader *shader = nir_shader_create(NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
@@ -106,12 +126,9 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
         /* Create the blend variables */
 
         nir_variable *c_src = nir_variable_create(shader, nir_var_shader_in, glsl_vector_type(GLSL_TYPE_FLOAT, 4), "gl_Color");
-        nir_variable *c_dst = nir_variable_create(shader, nir_var_shader_in, glsl_vector_type(GLSL_TYPE_FLOAT, 4), "gl_SecondaryColor");
         nir_variable *c_out = nir_variable_create(shader, nir_var_shader_out, glsl_vector_type(GLSL_TYPE_FLOAT, 4), "gl_FragColor");
-        nir_variable *c_con = nir_variable_create(shader, nir_var_uniform, glsl_vector_type(GLSL_TYPE_FLOAT, 4), "constant");
 
         c_src->data.location = VARYING_SLOT_COL0;
-        c_dst->data.location = VARYING_SLOT_COL1;
         c_out->data.location = FRAG_RESULT_COLOR;
 
         /* Setup nir_builder */
@@ -124,11 +141,13 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
         /* Setup inputs */
 
         nir_ssa_def *s_src = nir_load_var(b, c_src);
-        nir_ssa_def *s_dst = nir_load_var(b, c_dst);
-        nir_ssa_def *s_con = nir_load_var(b, c_con);
 
         /* Build a trivial blend shader */
-        nir_store_var(b, c_out, nir_blending_f(blend, b, s_src, s_dst, s_con), 0xFF);
+        nir_store_var(b, c_out, s_src, 0xFF);
+
+        nir_lower_blend_options options =
+                nir_make_options(&cso->base, 1);
+        NIR_PASS_V(shader, nir_lower_blend, options);
 
         /* Compile the built shader */
 
