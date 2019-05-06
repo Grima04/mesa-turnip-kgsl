@@ -1112,6 +1112,28 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_fsat:
+      inst = bld.MOV(result, op[0]);
+      inst->saturate = true;
+      break;
+
+   case nir_op_fneg:
+   case nir_op_ineg:
+      op[0].negate = true;
+      inst = bld.MOV(result, op[0]);
+      if (instr->op == nir_op_fneg)
+         inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_fabs:
+   case nir_op_iabs:
+      op[0].negate = false;
+      op[0].abs = true;
+      inst = bld.MOV(result, op[0]);
+      if (instr->op == nir_op_fabs)
+         inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_fsign:
       emit_fsign(bld, instr, result, op, 0);
       break;

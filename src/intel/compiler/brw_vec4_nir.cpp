@@ -1123,6 +1123,28 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       emit_conversion_to_double(dst, op[0], instr->dest.saturate);
       break;
 
+   case nir_op_fsat:
+      inst = emit(MOV(dst, op[0]));
+      inst->saturate = true;
+      break;
+
+   case nir_op_fneg:
+   case nir_op_ineg:
+      op[0].negate = true;
+      inst = emit(MOV(dst, op[0]));
+      if (instr->op == nir_op_fneg)
+         inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_fabs:
+   case nir_op_iabs:
+      op[0].negate = false;
+      op[0].abs = true;
+      inst = emit(MOV(dst, op[0]));
+      if (instr->op == nir_op_fabs)
+         inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_iadd:
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
       /* fall through */
@@ -1888,15 +1910,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst = emit(BRW_OPCODE_DPH, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
-
-   case nir_op_iabs:
-   case nir_op_ineg:
-      assert(nir_dest_bit_size(instr->dest.dest) < 64);
-      /* fall through */
-   case nir_op_fabs:
-   case nir_op_fneg:
-   case nir_op_fsat:
-      unreachable("not reached: should be lowered by lower_source mods");
 
    case nir_op_fdiv:
       unreachable("not reached: should be lowered by DIV_TO_MUL_RCP in the compiler");
