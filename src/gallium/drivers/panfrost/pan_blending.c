@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include "pan_blending.h"
 #include "pan_context.h"
+#include "gallium/auxiliary/util/u_blend.h"
 
 /*
  * Implements fixed-function blending on Midgard.
@@ -90,7 +91,7 @@
  *
  * 	- negate source (for REVERSE_SUBTRACT)
  * 	- dominant factor "source alpha"
- * 		- compliment dominant
+ * 		- complement dominant
  * 		- source dominant
  * 	- force destination to ONE
  *
@@ -141,7 +142,7 @@ uncomplement_factor(int factor)
  * as necessary */
 
 static bool
-panfrost_make_dominant_factor(unsigned src_factor, enum mali_dominant_factor *factor, bool *invert)
+panfrost_make_dominant_factor(unsigned src_factor, enum mali_dominant_factor *factor)
 {
         switch (src_factor) {
         case PIPE_BLENDFACTOR_SRC_COLOR:
@@ -181,24 +182,6 @@ panfrost_make_dominant_factor(unsigned src_factor, enum mali_dominant_factor *fa
                 return false;
         }
 
-        /* Set invert flags */
-
-        switch (src_factor) {
-        case PIPE_BLENDFACTOR_ONE:
-        case PIPE_BLENDFACTOR_INV_SRC_COLOR:
-        case PIPE_BLENDFACTOR_INV_SRC_ALPHA:
-        case PIPE_BLENDFACTOR_INV_DST_ALPHA:
-        case PIPE_BLENDFACTOR_INV_DST_COLOR:
-        case PIPE_BLENDFACTOR_INV_CONST_ALPHA:
-        case PIPE_BLENDFACTOR_INV_CONST_COLOR:
-        case PIPE_BLENDFACTOR_INV_SRC1_COLOR:
-        case PIPE_BLENDFACTOR_INV_SRC1_ALPHA:
-                *invert = true;
-
-        default:
-                break;
-        }
-
         return true;
 }
 
@@ -220,16 +203,18 @@ panfrost_make_fixed_blend_part(unsigned func, unsigned src_factor, unsigned dst_
 {
         struct mali_blend_mode part = { 0 };
 
-        /* Make sure that the blend function is representible with negate flags */
+        /* Make sure that the blend function is representible */
 
-        if (func == PIPE_BLEND_ADD) {
-                /* Default, no modifiers needed */
-        } else if (func == PIPE_BLEND_SUBTRACT)
-                part.negate_dest = true;
-        else if (func == PIPE_BLEND_REVERSE_SUBTRACT)
-                part.negate_source = true;
-        else
-                return false;
+        switch (func) {
+                case PIPE_BLEND_ADD:
+                        break;
+
+                /* TODO: Reenable subtraction modes when those fixed */
+                case PIPE_BLEND_SUBTRACT:
+                case PIPE_BLEND_REVERSE_SUBTRACT:
+                default:
+                        return false;
+        }
 
         part.clip_modifier = MALI_BLEND_MOD_NORMAL;
 
@@ -250,21 +235,29 @@ panfrost_make_fixed_blend_part(unsigned func, unsigned src_factor, unsigned dst_
 
                 if (src_factor == PIPE_BLENDFACTOR_ONE)
                         part.clip_modifier = MALI_BLEND_MOD_SOURCE_ONE;
-
         } else if (src_factor == dst_factor) {
-                part.dominant = MALI_BLEND_DOM_DESTINATION; /* Ought to be an arbitrary choice, but we need to set destination for some reason? Align with the blob until we understand more */
+                /* XXX: Why? */
+                part.dominant = func == PIPE_BLEND_ADD ?
+                        MALI_BLEND_DOM_DESTINATION : MALI_BLEND_DOM_SOURCE;
+
                 part.nondominant_mode = MALI_BLEND_NON_MIRROR;
         } else if (src_factor == complement_factor(dst_factor)) {
                 /* TODO: How does this work exactly? */
                 part.dominant = MALI_BLEND_DOM_SOURCE;
                 part.nondominant_mode = MALI_BLEND_NON_MIRROR;
                 part.clip_modifier = MALI_BLEND_MOD_DEST_ONE;
+
+                /* The complement is handled by the clip modifier, don't set a
+                 * complement flag */
+
+                dst_factor = src_factor;
         } else if (dst_factor == complement_factor(src_factor)) {
                 part.dominant = MALI_BLEND_DOM_SOURCE;
                 part.nondominant_mode = MALI_BLEND_NON_MIRROR;
-                part.clip_modifier = /*MALI_BLEND_MOD_SOURCE_ONE*/MALI_BLEND_MOD_DEST_ONE; /* Which modifier should it be? */
+                part.clip_modifier = MALI_BLEND_MOD_SOURCE_ONE;
+
+                src_factor = dst_factor;
         } else {
-                printf("Failed to find dominant factor?\n");
                 return false;
         }
 
@@ -276,14 +269,19 @@ panfrost_make_fixed_blend_part(unsigned func, unsigned src_factor, unsigned dst_
                 in_dominant_factor = PIPE_BLENDFACTOR_ZERO;
         }
 
-        bool invert_dominant = false;
         enum mali_dominant_factor dominant_factor;
 
-        if (!panfrost_make_dominant_factor(in_dominant_factor, &dominant_factor, &invert_dominant))
+        if (!panfrost_make_dominant_factor(in_dominant_factor, &dominant_factor))
                 return false;
 
         part.dominant_factor = dominant_factor;
-        part.complement_dominant = invert_dominant;
+        part.complement_dominant = util_blend_factor_is_inverted(in_dominant_factor);
+
+        /* It's not clear what this does, but fixes some ADD blending tests.
+         * More research is needed XXX */
+
+        if ((part.clip_modifier == MALI_BLEND_MOD_SOURCE_ONE) && (part.dominant == MALI_BLEND_DOM_SOURCE))
+                part.negate_dest = true;
 
         /* Write out mode */
         memcpy(out, &part, sizeof(part));
