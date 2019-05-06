@@ -88,6 +88,10 @@ extern void GLAPIENTRY
 _mesa_GetCompressedTextureImage(GLuint texture, GLint level, GLsizei bufSize,
                                 GLvoid *pixels);
 
+extern void GLAPIENTRY
+_mesa_GetCompressedTextureImageEXT(GLuint texture, GLenum target, GLint level,
+                                   GLvoid *pixels);
+
 extern void APIENTRY
 _mesa_GetCompressedTextureSubImage(GLuint texture, GLint level,
                                    GLint xoffset, GLint yoffset,
