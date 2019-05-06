@@ -1672,6 +1672,11 @@ radv_init_metadata(struct radv_device *device,
 		   struct radv_image *image,
 		   struct radeon_bo_metadata *metadata);
 
+void
+radv_image_override_offset_stride(struct radv_device *device,
+                                  struct radv_image *image,
+                                  uint64_t offset, uint32_t stride);
+
 union radv_descriptor {
 	struct {
 		uint32_t plane0_descriptor[8];
