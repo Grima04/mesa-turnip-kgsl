@@ -684,7 +684,7 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	 * account for nir_lower_uniforms_to_ubo rebasing the UBOs such that UBO 0
 	 * is the uniforms: */
 	unsigned ubo = regid(ctx->so->constbase.ubo, 0) - 2;
-	const unsigned ptrsz = ir3_pointer_size(ctx);
+	const unsigned ptrsz = ir3_pointer_size(ctx->compiler);
 
 	int off = 0;
 

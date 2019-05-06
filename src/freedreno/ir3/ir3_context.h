@@ -140,13 +140,6 @@ struct ir3_context * ir3_context_init(struct ir3_compiler *compiler,
 		struct ir3_shader_variant *so);
 void ir3_context_free(struct ir3_context *ctx);
 
-/* gpu pointer size in units of 32bit registers/slots */
-static inline
-unsigned ir3_pointer_size(struct ir3_context *ctx)
-{
-	return (ctx->compiler->gpu_id >= 500) ? 2 : 1;
-}
-
 struct ir3_instruction ** ir3_get_dst_ssa(struct ir3_context *ctx, nir_ssa_def *dst, unsigned n);
 struct ir3_instruction ** ir3_get_dst(struct ir3_context *ctx, nir_dest *dst, unsigned n);
 struct ir3_instruction * const * ir3_get_src(struct ir3_context *ctx, nir_src *src);

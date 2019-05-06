@@ -128,7 +128,7 @@ ir3_context_init(struct ir3_compiler *compiler,
 	 */
 	debug_assert((ctx->so->shader->ubo_state.size % 16) == 0);
 	unsigned constoff = align(ctx->so->shader->ubo_state.size / 16, 4);
-	unsigned ptrsz = ir3_pointer_size(ctx);
+	unsigned ptrsz = ir3_pointer_size(ctx->compiler);
 
 	memset(&so->constbase, ~0, sizeof(so->constbase));
 
