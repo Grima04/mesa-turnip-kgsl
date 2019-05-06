@@ -177,7 +177,7 @@ ttn_src_for_dest(nir_builder *b, nir_alu_dest *dest)
    for (int i = 0; i < 4; i++)
       src.swizzle[i] = i;
 
-   return nir_fmov_alu(b, src, 4);
+   return nir_mov_alu(b, src, 4);
 }
 
 static enum glsl_interp_mode
@@ -681,7 +681,7 @@ ttn_src_for_indirect(struct ttn_compile *c, struct tgsi_ind_register *indirect)
                                         indirect->File,
                                         indirect->Index,
                                         NULL, NULL, NULL);
-   return nir_imov_alu(b, src, 1);
+   return nir_mov_alu(b, src, 1);
 }
 
 static nir_alu_dest
@@ -793,7 +793,7 @@ ttn_get_src(struct ttn_compile *c, struct tgsi_full_src_register *tgsi_fsrc,
    src.swizzle[2] = tgsi_src->SwizzleZ;
    src.swizzle[3] = tgsi_src->SwizzleW;
 
-   nir_ssa_def *def = nir_fmov_alu(b, src, 4);
+   nir_ssa_def *def = nir_mov_alu(b, src, 4);
 
    if (tgsi_src->Absolute) {
       if (src_is_float)
@@ -1446,7 +1446,7 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
       instr->src[src_number].src_type = nir_tex_src_offset;
       instr->src[src_number].src = nir_src_for_ssa(
-         nir_fmov_alu(b, src, nir_tex_instr_src_size(instr, src_number)));
+         nir_mov_alu(b, src, nir_tex_instr_src_size(instr, src_number)));
       src_number++;
    }
 

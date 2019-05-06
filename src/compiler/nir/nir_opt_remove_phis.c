@@ -124,9 +124,7 @@ remove_phis_block(nir_block *block, nir_builder *b)
           */
 
          b->cursor = nir_after_phis(block);
-         def = mov->op == nir_op_imov ?
-            nir_imov_alu(b, mov->src[0], def->num_components) :
-            nir_fmov_alu(b, mov->src[0], def->num_components);
+         def = nir_mov_alu(b, mov->src[0], def->num_components);
       }
 
       assert(phi->dest.is_ssa);

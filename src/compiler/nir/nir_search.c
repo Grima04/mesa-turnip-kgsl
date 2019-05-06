@@ -669,7 +669,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
     * and rewrite swizzles ourselves.
     */
    nir_ssa_def *ssa_val =
-      nir_imov_alu(build, val, instr->dest.dest.ssa.num_components);
+      nir_mov_alu(build, val, instr->dest.dest.ssa.num_components);
    nir_ssa_def_rewrite_uses(&instr->dest.dest.ssa, nir_src_for_ssa(ssa_val));
 
    /* We know this one has no more uses because we just rewrote them all,

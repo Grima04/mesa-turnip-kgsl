@@ -83,7 +83,7 @@ ptn_src_for_dest(struct ptn_compile *c, nir_alu_dest *dest)
    for (int i = 0; i < 4; i++)
       src.swizzle[i] = i;
 
-   return nir_fmov_alu(b, src, 4);
+   return nir_mov_alu(b, src, 4);
 }
 
 static nir_alu_dest
@@ -205,7 +205,7 @@ ptn_get_src(struct ptn_compile *c, const struct prog_src_register *prog_src)
       for (int i = 0; i < 4; i++)
          src.swizzle[i] = GET_SWZ(prog_src->Swizzle, i);
 
-      def = nir_fmov_alu(b, src, 4);
+      def = nir_mov_alu(b, src, 4);
 
       if (prog_src->Negate)
          def = nir_fneg(b, def);
