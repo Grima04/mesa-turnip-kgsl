@@ -675,6 +675,15 @@ update_buffers(struct dri2_egl_surface *dri2_surf)
    return 0;
 }
 
+static int
+update_buffers_if_needed(struct dri2_egl_surface *dri2_surf)
+{
+   if (dri2_surf->back != NULL)
+      return 0;
+
+   return update_buffers(dri2_surf);
+}
+
 static __DRIbuffer *
 dri2_wl_get_buffers_with_format(__DRIdrawable * driDrawable,
                                 int *width, int *height,
@@ -992,7 +1001,7 @@ dri2_wl_swap_buffers_with_damage(_EGLDriver *drv,
 
    /* Make sure we have a back buffer in case we're swapping without ever
     * rendering. */
-   if (get_back_bo(dri2_surf) < 0)
+   if (update_buffers_if_needed(dri2_surf) < 0)
       return _eglError(EGL_BAD_ALLOC, "dri2_swap_buffers");
 
    if (draw->SwapInterval > 0) {
@@ -1078,7 +1087,7 @@ dri2_wl_query_buffer_age(_EGLDriver *drv,
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surface);
 
-   if (get_back_bo(dri2_surf) < 0) {
+   if (update_buffers_if_needed(dri2_surf) < 0) {
       _eglError(EGL_BAD_ALLOC, "dri2_query_buffer_age");
       return -1;
    }
