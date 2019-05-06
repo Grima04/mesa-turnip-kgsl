@@ -54,6 +54,10 @@
 static struct gl_texture_object *
 texture_object_from_renderbuffer(struct gl_context *, struct gl_renderbuffer *);
 
+static struct gl_sampler_object *
+setup_sampler(struct gl_context *, struct gl_texture_object *, GLenum target,
+              GLenum filter, GLuint srcLevel);
+
 /** Return offset in bytes of the field within a vertex struct */
 #define OFFSET(FIELD) ((void *) offsetof(struct vertex, FIELD))
 
@@ -525,8 +529,7 @@ blitframebuffer_texture(struct gl_context *ctx,
      printf("  srcTex %p  dstText %p\n", texObj, drawAtt->Texture);
    */
 
-   fb_tex_blit.samp_obj = _mesa_meta_setup_sampler(ctx, texObj, target, filter,
-                                                   srcLevel);
+   fb_tex_blit.samp_obj = setup_sampler(ctx, texObj, target, filter, srcLevel);
 
    if (ctx->Extensions.EXT_texture_sRGB_decode) {
       /* The GL 4.4 spec, section 18.3.1 ("Blitting Pixel Rectangles") says:
@@ -713,10 +716,9 @@ texture_object_from_renderbuffer(struct gl_context *ctx,
    return texObj;
 }
 
-struct gl_sampler_object *
-_mesa_meta_setup_sampler(struct gl_context *ctx,
-                         struct gl_texture_object *texObj,
-                         GLenum target, GLenum filter, GLuint srcLevel)
+static struct gl_sampler_object *
+setup_sampler(struct gl_context *ctx, struct gl_texture_object *texObj,
+              GLenum target, GLenum filter, GLuint srcLevel)
 {
    struct gl_sampler_object *samp_obj;
    GLenum tex_filter = (filter == GL_SCALED_RESOLVE_FASTEST_EXT ||

@@ -455,11 +455,6 @@ extern void
 _mesa_meta_fb_tex_blit_end(struct gl_context *ctx, GLenum target,
                            struct fb_tex_blit_state *blit);
 
-struct gl_sampler_object *
-_mesa_meta_setup_sampler(struct gl_context *ctx,
-                         struct gl_texture_object *texObj,
-                         GLenum target, GLenum filter, GLuint srcLevel);
-
 extern GLbitfield
 _mesa_meta_BlitFramebuffer(struct gl_context *ctx,
                            const struct gl_framebuffer *readFb,
