@@ -1456,7 +1456,19 @@ void radv_GetImageSubresourceLayout(
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
 		pLayout->offset = plane->offset + surface->u.gfx9.offset[level] + surface->u.gfx9.surf_slice_size * layer;
-		pLayout->rowPitch = surface->u.gfx9.surf_pitch * surface->bpe;
+		if (image->vk_format == VK_FORMAT_R32G32B32_UINT ||
+		    image->vk_format == VK_FORMAT_R32G32B32_SINT ||
+		    image->vk_format == VK_FORMAT_R32G32B32_SFLOAT) {
+			/* Adjust the number of bytes between each row because
+			 * the pitch is actually the number of components per
+			 * row.
+			 */
+			pLayout->rowPitch = surface->u.gfx9.surf_pitch * surface->bpe / 3;
+		} else {
+			assert(util_is_power_of_two_nonzero(surface->bpe));
+			pLayout->rowPitch = surface->u.gfx9.surf_pitch * surface->bpe;
+		}
+
 		pLayout->arrayPitch = surface->u.gfx9.surf_slice_size;
 		pLayout->depthPitch = surface->u.gfx9.surf_slice_size;
 		pLayout->size = surface->u.gfx9.surf_slice_size;
