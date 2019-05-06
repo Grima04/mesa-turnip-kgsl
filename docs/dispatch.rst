@@ -64,7 +64,8 @@ conceptually simple:
 This can be implemented in just a few lines of C code. The file
 ``src/mesa/glapi/glapitemp.h`` contains code very similar to this.
 
-::
+.. code-block:: c
+   :caption: Sample dispatch function
 
    void glVertex3f(GLfloat x, GLfloat y, GLfloat z)
    {
@@ -72,8 +73,6 @@ This can be implemented in just a few lines of C code. The file
 
        (*dispatch->Vertex3f)(x, y, z);
    }
-
-Sample dispatch function
 
 The problem with this simple implementation is the large amount of
 overhead that it adds to every GL function call.
@@ -118,13 +117,12 @@ resulting implementation of ``GET_DISPATCH`` is slightly more complex,
 but it avoids the expensive ``pthread_getspecific`` call in the common
 case.
 
-::
+.. code-block:: c
+   :caption: Improved ``GET_DISPATCH`` Implementation
 
    #define GET_DISPATCH() \
        (_glapi_Dispatch != NULL) \
            ? _glapi_Dispatch : pthread_getspecific(&_glapi_Dispatch_key)
-
-Improved ``GET_DISPATCH`` Implementation
 
 3.2. ELF TLS
 ~~~~~~~~~~~~
@@ -142,14 +140,13 @@ with direct rendering drivers that use either interface. Once the
 pointer is properly declared, ``GET_DISPACH`` becomes a simple variable
 reference.
 
-::
+.. code-block:: c
+   :caption: TLS ``GET_DISPATCH`` Implementation
 
    extern __thread struct _glapi_table *_glapi_tls_Dispatch
        __attribute__((tls_model("initial-exec")));
 
    #define GET_DISPATCH() _glapi_tls_Dispatch
-
-TLS ``GET_DISPATCH`` Implementation
 
 Use of this path is controlled by the preprocessor define
 ``USE_ELF_TLS``. Any platform capable of using ELF TLS should use this
@@ -198,11 +195,10 @@ the assembly source file different implementations of the macro are
 selected based on the defined preprocessor variables. The assembly code
 then consists of a series of invocations of the macros such as:
 
-::
+.. code-block:: c
+   :caption: SPARC Assembly Implementation of ``glColor3fv``
 
    GL_STUB(Color3fv, _gloffset_Color3fv)
-
-SPARC Assembly Implementation of ``glColor3fv``
 
 The benefit of this technique is that changes to the calling pattern
 (i.e., addition of a new dispatch table pointer access method) require
