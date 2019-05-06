@@ -33,7 +33,7 @@
 
 #include "ir3_shader.h"
 
-void ir3_nir_scan_driver_consts(nir_shader *shader, struct ir3_driver_const_layout *layout);
+void ir3_nir_scan_driver_consts(nir_shader *shader, struct ir3_const_state *layout);
 
 bool ir3_nir_apply_trig_workarounds(nir_shader *shader);
 bool ir3_nir_lower_tg4_to_tex(nir_shader *shader);

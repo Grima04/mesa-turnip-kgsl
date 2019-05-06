@@ -107,7 +107,8 @@ create_driver_param(struct ir3_context *ctx, enum ir3_driver_param dp)
 {
 	/* first four vec4 sysval's reserved for UBOs: */
 	/* NOTE: dp is in scalar, but there can be >4 dp components: */
-	unsigned n = ctx->so->constbase.driver_param;
+	struct ir3_const_state *const_state = &ctx->so->const_state;
+	unsigned n = const_state->offsets.driver_param;
 	unsigned r = regid(n + dp / 4, dp % 4);
 	return create_uniform(ctx->block, r);
 }
@@ -683,7 +684,8 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	/* UBO addresses are the first driver params, but subtract 2 here to
 	 * account for nir_lower_uniforms_to_ubo rebasing the UBOs such that UBO 0
 	 * is the uniforms: */
-	unsigned ubo = regid(ctx->so->constbase.ubo, 0) - 2;
+	struct ir3_const_state *const_state = &ctx->so->const_state;
+	unsigned ubo = regid(const_state->offsets.ubo, 0) - 2;
 	const unsigned ptrsz = ir3_pointer_size(ctx->compiler);
 
 	int off = 0;
@@ -751,11 +753,12 @@ emit_intrinsic_ssbo_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		struct ir3_instruction **dst)
 {
 	/* SSBO size stored as a const starting at ssbo_sizes: */
+	struct ir3_const_state *const_state = &ctx->so->const_state;
 	unsigned blk_idx = nir_src_as_uint(intr->src[0]);
-	unsigned idx = regid(ctx->so->constbase.ssbo_sizes, 0) +
-		ctx->so->const_layout.ssbo_size.off[blk_idx];
+	unsigned idx = regid(const_state->offsets.ssbo_sizes, 0) +
+		const_state->ssbo_size.off[blk_idx];
 
-	debug_assert(ctx->so->const_layout.ssbo_size.mask & (1 << blk_idx));
+	debug_assert(const_state->ssbo_size.mask & (1 << blk_idx));
 
 	dst[0] = create_uniform(ctx->block, idx);
 }
@@ -1006,8 +1009,9 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		 * bytes-per-pixel should have been emitted in 2nd slot of
 		 * image_dims. See ir3_shader::emit_image_dims().
 		 */
-		unsigned cb = regid(ctx->so->constbase.image_dims, 0) +
-			ctx->so->const_layout.image_dims.off[var->data.driver_location];
+		struct ir3_const_state *const_state = &ctx->so->const_state;
+		unsigned cb = regid(const_state->offsets.image_dims, 0) +
+			const_state->image_dims.off[var->data.driver_location];
 		struct ir3_instruction *aux = create_uniform(b, cb + 1);
 
 		tmp[0] = ir3_SHR_B(b, tmp[0], 0, aux, 0);
@@ -2225,7 +2229,6 @@ emit_cf_list(struct ir3_context *ctx, struct exec_list *list)
 static void
 emit_stream_out(struct ir3_context *ctx)
 {
-	struct ir3_shader_variant *v = ctx->so;
 	struct ir3 *ir = ctx->ir;
 	struct ir3_stream_output_info *strmout =
 			&ctx->so->shader->stream_output;
@@ -2283,10 +2286,11 @@ emit_stream_out(struct ir3_context *ctx)
 	 * stripped out in the backend.
 	 */
 	for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
+		struct ir3_const_state *const_state = &ctx->so->const_state;
 		unsigned stride = strmout->stride[i];
 		struct ir3_instruction *base, *off;
 
-		base = create_uniform(ctx->block, regid(v->constbase.tfbo, i));
+		base = create_uniform(ctx->block, regid(const_state->offsets.tfbo, i));
 
 		/* 24-bit should be enough: */
 		off = ir3_MUL_U(ctx->block, vtxcnt, 0,

@@ -323,10 +323,12 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_register *reg, unsigned new_flags
 		ctx->immediate_idx++;
 	}
 
+	struct ir3_const_state *const_state = &ctx->so->const_state;
+
 	new_flags &= ~IR3_REG_IMMED;
 	new_flags |= IR3_REG_CONST;
 	reg->flags = new_flags;
-	reg->num = i + (4 * ctx->so->constbase.immediate);
+	reg->num = i + (4 * const_state->offsets.immediate);
 
 	return reg;
 }

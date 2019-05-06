@@ -278,7 +278,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 
 void
 ir3_nir_scan_driver_consts(nir_shader *shader,
-		struct ir3_driver_const_layout *layout)
+		struct ir3_const_state *layout)
 {
 	nir_foreach_function(function, shader) {
 		if (!function->impl)
