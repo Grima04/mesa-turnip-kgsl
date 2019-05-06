@@ -2458,7 +2458,7 @@ get_image_coord(struct vtn_builder *b, uint32_t value)
    for (unsigned i = 0; i < 4; i++)
       swizzle[i] = MIN2(i, dim - 1);
 
-   return nir_swizzle(&b->nb, coord->def, swizzle, 4, false);
+   return nir_swizzle(&b->nb, coord->def, swizzle, 4);
 }
 
 static nir_ssa_def *
@@ -2470,7 +2470,7 @@ expand_to_vec4(nir_builder *b, nir_ssa_def *value)
    unsigned swiz[4];
    for (unsigned i = 0; i < 4; i++)
       swiz[i] = i < value->num_components ? i : 0;
-   return nir_swizzle(b, value, swiz, 4, false);
+   return nir_swizzle(b, value, swiz, 4);
 }
 
 static void

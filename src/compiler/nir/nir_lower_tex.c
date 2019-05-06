@@ -589,20 +589,20 @@ lower_gradient_cube_map(nir_builder *b, nir_tex_instr *tex)
    Q = nir_bcsel(b, cond_z,
                  p,
                  nir_bcsel(b, cond_y,
-                           nir_swizzle(b, p, xzy, 3, false),
-                           nir_swizzle(b, p, yzx, 3, false)));
+                           nir_swizzle(b, p, xzy, 3),
+                           nir_swizzle(b, p, yzx, 3)));
 
    dQdx = nir_bcsel(b, cond_z,
                     dPdx,
                     nir_bcsel(b, cond_y,
-                              nir_swizzle(b, dPdx, xzy, 3, false),
-                              nir_swizzle(b, dPdx, yzx, 3, false)));
+                              nir_swizzle(b, dPdx, xzy, 3),
+                              nir_swizzle(b, dPdx, yzx, 3)));
 
    dQdy = nir_bcsel(b, cond_z,
                     dPdy,
                     nir_bcsel(b, cond_y,
-                              nir_swizzle(b, dPdy, xzy, 3, false),
-                              nir_swizzle(b, dPdy, yzx, 3, false)));
+                              nir_swizzle(b, dPdy, xzy, 3),
+                              nir_swizzle(b, dPdy, yzx, 3)));
 
    /* 2. quotient rule */
 
@@ -780,7 +780,7 @@ swizzle_tg4_broadcom(nir_builder *b, nir_tex_instr *tex)
 
    assert(nir_tex_instr_dest_size(tex) == 4);
    unsigned swiz[4] = { 2, 3, 1, 0 };
-   nir_ssa_def *swizzled = nir_swizzle(b, &tex->dest.ssa, swiz, 4, false);
+   nir_ssa_def *swizzled = nir_swizzle(b, &tex->dest.ssa, swiz, 4);
 
    nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(swizzled),
                                   swizzled->parent_instr);
@@ -808,7 +808,7 @@ swizzle_result(nir_builder *b, nir_tex_instr *tex, const uint8_t swizzle[4])
           swizzle[2] < 4 && swizzle[3] < 4) {
          unsigned swiz[4] = { swizzle[0], swizzle[1], swizzle[2], swizzle[3] };
          /* We have no 0s or 1s, just emit a swizzling MOV */
-         swizzled = nir_swizzle(b, &tex->dest.ssa, swiz, 4, false);
+         swizzled = nir_swizzle(b, &tex->dest.ssa, swiz, 4);
       } else {
          nir_ssa_def *srcs[4];
          for (unsigned i = 0; i < 4; i++) {

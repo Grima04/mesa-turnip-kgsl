@@ -230,7 +230,7 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin)
       for (unsigned i = 0; i < store_src_comps; i++)
          src_swiz[i] = store_first_src_comp + i;
       nir_ssa_def *store_value =
-         nir_swizzle(b, value, src_swiz, store_src_comps, false);
+         nir_swizzle(b, value, src_swiz, store_src_comps);
       nir_ssa_def *packed = nir_bitcast_vector(b, store_value, store_bit_size);
 
       dup_mem_intrinsic(b, intrin, packed, start,

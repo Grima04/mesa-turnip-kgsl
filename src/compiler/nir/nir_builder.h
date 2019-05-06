@@ -528,7 +528,7 @@ nir_imov_alu(nir_builder *build, nir_alu_src src, unsigned num_components)
  */
 static inline nir_ssa_def *
 nir_swizzle(nir_builder *build, nir_ssa_def *src, const unsigned *swiz,
-            unsigned num_components, bool use_fmov)
+            unsigned num_components)
 {
    assert(num_components <= NIR_MAX_VEC_COMPONENTS);
    nir_alu_src alu_src = { NIR_SRC_INIT };
@@ -544,8 +544,7 @@ nir_swizzle(nir_builder *build, nir_ssa_def *src, const unsigned *swiz,
    if (num_components == src->num_components && is_identity_swizzle)
       return src;
 
-   return use_fmov ? nir_fmov_alu(build, alu_src, num_components) :
-                     nir_imov_alu(build, alu_src, num_components);
+   return nir_imov_alu(build, alu_src, num_components);
 }
 
 /* Selects the right fdot given the number of components in each source. */
@@ -587,7 +586,7 @@ nir_bany(nir_builder *b, nir_ssa_def *src)
 static inline nir_ssa_def *
 nir_channel(nir_builder *b, nir_ssa_def *def, unsigned c)
 {
-   return nir_swizzle(b, def, &c, 1, false);
+   return nir_swizzle(b, def, &c, 1);
 }
 
 static inline nir_ssa_def *
@@ -601,7 +600,7 @@ nir_channels(nir_builder *b, nir_ssa_def *def, nir_component_mask_t mask)
       swizzle[num_channels++] = i;
    }
 
-   return nir_swizzle(b, def, swizzle, num_channels, false);
+   return nir_swizzle(b, def, swizzle, num_channels);
 }
 
 static inline nir_ssa_def *

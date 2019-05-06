@@ -1464,7 +1464,7 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
                b.cursor = nir_before_instr(&intrin->instr);
 
                nir_ssa_def *swizzled =
-                  nir_swizzle(&b, intrin->src[1].ssa, swizzle, c, false);
+                  nir_swizzle(&b, intrin->src[1].ssa, swizzle, c);
 
                /* Rewrite to use the compacted source */
                nir_instr_rewrite_src(&intrin->instr, &intrin->src[1],

@@ -1634,7 +1634,7 @@ nir_visitor::visit(ir_assignment *ir)
       for (unsigned i = 0; i < 4; i++) {
          swiz[i] = ir->write_mask & (1 << i) ? component++ : 0;
       }
-      src = nir_swizzle(&b, src, swiz, num_components, false);
+      src = nir_swizzle(&b, src, swiz, num_components);
    }
 
    if (ir->condition) {
@@ -1816,7 +1816,7 @@ nir_visitor::visit(ir_expression *ir)
          };
 
          result = nir_swizzle(&b, result, swiz,
-                              swizzle->type->vector_elements, false);
+                              swizzle->type->vector_elements);
       }
 
       return;
@@ -2276,7 +2276,7 @@ nir_visitor::visit(ir_swizzle *ir)
 {
    unsigned swizzle[4] = { ir->mask.x, ir->mask.y, ir->mask.z, ir->mask.w };
    result = nir_swizzle(&b, evaluate_rvalue(ir->val), swizzle,
-                        ir->type->vector_elements, false);
+                        ir->type->vector_elements);
 }
 
 void

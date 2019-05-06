@@ -107,7 +107,7 @@ struct ttn_compile {
 };
 
 #define ttn_swizzle(b, src, x, y, z, w) \
-   nir_swizzle(b, src, SWIZ(x, y, z, w), 4, false)
+   nir_swizzle(b, src, SWIZ(x, y, z, w), 4)
 #define ttn_channel(b, src, swiz) \
    nir_channel(b, src, TGSI_SWIZZLE_##swiz)
 
@@ -1357,7 +1357,7 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
    instr->src[src_number].src =
       nir_src_for_ssa(nir_swizzle(b, src[0], SWIZ(X, Y, Z, W),
-                                  instr->coord_components, false));
+                                  instr->coord_components));
    instr->src[src_number].src_type = nir_tex_src_coord;
    src_number++;
 
@@ -1404,14 +1404,12 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       instr->src[src_number].src_type = nir_tex_src_ddx;
       instr->src[src_number].src =
          nir_src_for_ssa(nir_swizzle(b, src[1], SWIZ(X, Y, Z, W),
-				     nir_tex_instr_src_size(instr, src_number),
-				     false));
+				     nir_tex_instr_src_size(instr, src_number)));
       src_number++;
       instr->src[src_number].src_type = nir_tex_src_ddy;
       instr->src[src_number].src =
          nir_src_for_ssa(nir_swizzle(b, src[2], SWIZ(X, Y, Z, W),
-				     nir_tex_instr_src_size(instr, src_number),
-				     false));
+				     nir_tex_instr_src_size(instr, src_number)));
       src_number++;
    }
 

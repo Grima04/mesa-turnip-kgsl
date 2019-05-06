@@ -589,7 +589,7 @@ rename_variables(struct lower_variables_state *state)
                   swiz[i] = i < intrin->num_components ? i : 0;
 
                new_def = nir_swizzle(&b, value, swiz,
-                                     intrin->num_components, false);
+                                     intrin->num_components);
             } else {
                nir_ssa_def *old_def =
                   nir_phi_builder_value_get_block_def(node->pb_value, block);

@@ -412,11 +412,11 @@ ptn_xpd(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
    ptn_move_dest_masked(b, dest,
                         nir_fsub(b,
                                  nir_fmul(b,
-                                          nir_swizzle(b, src[0], SWIZ(Y, Z, X, W), 3, true),
-                                          nir_swizzle(b, src[1], SWIZ(Z, X, Y, W), 3, true)),
+                                          nir_swizzle(b, src[0], SWIZ(Y, Z, X, W), 3),
+                                          nir_swizzle(b, src[1], SWIZ(Z, X, Y, W), 3)),
                                  nir_fmul(b,
-                                          nir_swizzle(b, src[1], SWIZ(Y, Z, X, W), 3, true),
-                                          nir_swizzle(b, src[0], SWIZ(Z, X, Y, W), 3, true))),
+                                          nir_swizzle(b, src[1], SWIZ(Y, Z, X, W), 3),
+                                          nir_swizzle(b, src[0], SWIZ(Z, X, Y, W), 3))),
                         WRITEMASK_XYZ);
    ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_W);
 }
@@ -580,7 +580,7 @@ ptn_tex(struct ptn_compile *c, nir_alu_dest dest, nir_ssa_def **src,
 
    instr->src[src_number].src =
       nir_src_for_ssa(nir_swizzle(b, src[0], SWIZ(X, Y, Z, W),
-                                  instr->coord_components, true));
+                                  instr->coord_components));
    instr->src[src_number].src_type = nir_tex_src_coord;
    src_number++;
 
