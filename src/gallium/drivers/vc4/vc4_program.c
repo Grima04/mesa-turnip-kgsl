@@ -1128,8 +1128,7 @@ ntq_emit_alu(struct vc4_compile *c, nir_alu_instr *instr)
         struct qreg result;
 
         switch (instr->op) {
-        case nir_op_fmov:
-        case nir_op_imov:
+        case nir_op_mov:
                 result = qir_MOV(c, src[0]);
                 break;
         case nir_op_fmul:

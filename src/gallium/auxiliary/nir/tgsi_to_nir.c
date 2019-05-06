@@ -833,7 +833,7 @@ ttn_move_dest_masked(nir_builder *b, nir_alu_dest dest,
    if (!(dest.write_mask & write_mask))
       return;
 
-   nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_imov);
+   nir_alu_instr *mov = nir_alu_instr_create(b->shader, nir_op_mov);
    mov->dest = dest;
    mov->dest.write_mask &= write_mask;
    mov->src[0].src = nir_src_for_ssa(def);
@@ -904,8 +904,8 @@ ttn_dst(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
 {
    ttn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), TGSI_WRITEMASK_X);
    ttn_move_dest_masked(b, dest, nir_fmul(b, src[0], src[1]), TGSI_WRITEMASK_Y);
-   ttn_move_dest_masked(b, dest, nir_fmov(b, src[0]), TGSI_WRITEMASK_Z);
-   ttn_move_dest_masked(b, dest, nir_fmov(b, src[1]), TGSI_WRITEMASK_W);
+   ttn_move_dest_masked(b, dest, nir_mov(b, src[0]), TGSI_WRITEMASK_Z);
+   ttn_move_dest_masked(b, dest, nir_mov(b, src[1]), TGSI_WRITEMASK_W);
 }
 
 /* LIT - Light Coefficients
@@ -1520,7 +1520,7 @@ ttn_txq(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
 static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_ARL] = 0,
-   [TGSI_OPCODE_MOV] = nir_op_fmov,
+   [TGSI_OPCODE_MOV] = nir_op_mov,
    [TGSI_OPCODE_LIT] = 0,
    [TGSI_OPCODE_RCP] = nir_op_frcp,
    [TGSI_OPCODE_RSQ] = nir_op_frsq,
@@ -1648,7 +1648,7 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
 
    /* XXX: SAMPLE opcodes */
 
-   [TGSI_OPCODE_UARL] = nir_op_imov,
+   [TGSI_OPCODE_UARL] = nir_op_mov,
    [TGSI_OPCODE_UCMP] = 0,
    [TGSI_OPCODE_IABS] = nir_op_iabs,
    [TGSI_OPCODE_ISSG] = nir_op_isign,

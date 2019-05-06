@@ -178,7 +178,7 @@ nir_lower_to_source_mods_block(nir_block *block,
          assert(child_src->is_ssa);
          nir_alu_instr *child_alu = nir_instr_as_alu(child_src->parent_instr);
 
-         child_alu->op = nir_op_fmov;
+         child_alu->op = nir_op_mov;
          child_alu->dest.saturate = false;
          /* We could propagate the dest of our instruction to the
           * destinations of the uses here.  However, one quick round of

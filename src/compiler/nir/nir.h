@@ -866,7 +866,7 @@ static inline nir_op
 nir_op_vec(unsigned components)
 {
    switch (components) {
-   case  1: return nir_op_imov;
+   case  1: return nir_op_mov;
    case  2: return nir_op_vec2;
    case  3: return nir_op_vec3;
    case  4: return nir_op_vec4;

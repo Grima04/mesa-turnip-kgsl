@@ -2845,8 +2845,7 @@ Converter::visit(nir_alu_instr *insn)
    // those are weird ALU ops and need special handling, because
    //   1. they are always componend based
    //   2. they basically just merge multiple values into one data type
-   case nir_op_imov:
-   case nir_op_fmov:
+   case nir_op_mov:
       if (!insn->dest.dest.is_ssa && insn->dest.dest.reg.reg->num_array_elems) {
          nir_reg_dest& reg = insn->dest.dest.reg;
          uint32_t goffset = regToLmemOffset[reg.reg->index];

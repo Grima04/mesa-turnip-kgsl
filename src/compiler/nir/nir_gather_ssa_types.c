@@ -102,8 +102,7 @@ nir_gather_ssa_types(nir_function_impl *impl,
                assert(alu->dest.dest.is_ssa);
                const nir_op_info *info = &nir_op_infos[alu->op];
                switch (alu->op) {
-               case nir_op_imov:
-               case nir_op_fmov:
+               case nir_op_mov:
                case nir_op_vec2:
                case nir_op_vec3:
                case nir_op_vec4:

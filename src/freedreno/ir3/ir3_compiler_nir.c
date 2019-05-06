@@ -332,8 +332,8 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	/* We also get mov's with more than one component for mov's so
 	 * handle those specially:
 	 */
-	if ((alu->op == nir_op_imov) || (alu->op == nir_op_fmov)) {
-		type_t type = (alu->op == nir_op_imov) ? TYPE_U32 : TYPE_F32;
+	if (alu->op == nir_op_mov) {
+		type_t type = TYPE_U32;
 		nir_alu_src *asrc = &alu->src[0];
 		struct ir3_instruction *const *src0 = ir3_get_src(ctx, &asrc->src);
 

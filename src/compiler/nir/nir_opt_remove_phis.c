@@ -35,7 +35,7 @@ get_parent_mov(nir_ssa_def *ssa)
       return NULL;
 
    nir_alu_instr *alu = nir_instr_as_alu(ssa->parent_instr);
-   return (alu->op == nir_op_imov || alu->op == nir_op_fmov) ? alu : NULL;
+   return (alu->op == nir_op_mov) ? alu : NULL;
 }
 
 static bool

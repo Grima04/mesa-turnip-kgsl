@@ -60,10 +60,10 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       /* These we expect to have integers or booleans but the opcode doesn't change */
       break;
 
-   case nir_op_b2f32: alu->op = nir_op_fmov; break;
-   case nir_op_b2i32: alu->op = nir_op_fmov; break;
-   case nir_op_i2f32: alu->op = nir_op_fmov; break;
-   case nir_op_f2i32: alu->op = nir_op_fmov; break;
+   case nir_op_b2f32: alu->op = nir_op_mov; break;
+   case nir_op_b2i32: alu->op = nir_op_mov; break;
+   case nir_op_i2f32: alu->op = nir_op_mov; break;
+   case nir_op_f2i32: alu->op = nir_op_mov; break;
    case nir_op_f2i1:
    case nir_op_f2b1:
    case nir_op_i2b1:
@@ -101,7 +101,6 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_iadd: alu->op = nir_op_fadd; break;
    case nir_op_isub: alu->op = nir_op_fsub; break;
    case nir_op_imul: alu->op = nir_op_fmul; break;
-   case nir_op_imov: alu->op = nir_op_fmov; break;
    case nir_op_iand: alu->op = nir_op_fmul; break;
    case nir_op_ixor: alu->op = nir_op_sne; break;
    case nir_op_ior: alu->op = nir_op_fmax; break;

@@ -531,7 +531,7 @@ rename_variables(struct lower_variables_state *state)
                continue;
 
             nir_alu_instr *mov = nir_alu_instr_create(state->shader,
-                                                      nir_op_imov);
+                                                      nir_op_mov);
             mov->src[0].src = nir_src_for_ssa(
                nir_phi_builder_value_get_block_def(node->pb_value, block));
             for (unsigned i = intrin->num_components; i < NIR_MAX_VEC_COMPONENTS; i++)

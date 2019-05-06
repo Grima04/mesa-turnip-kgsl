@@ -185,10 +185,7 @@ def unop_reduce(name, output_size, output_type, input_type, prereduce_expr,
 def unop_numeric_convert(name, out_type, in_type, const_expr):
    opcode(name, 0, out_type, [0], [in_type], True, "", const_expr)
 
-# These two move instructions differ in what modifiers they support and what
-# the negate modifier means. Otherwise, they are identical.
-unop("fmov", tfloat, "src0")
-unop("imov", tint, "src0")
+unop("mov", tuint, "src0")
 
 unop("ineg", tint, "-src0")
 unop("fneg", tfloat, "-src0")

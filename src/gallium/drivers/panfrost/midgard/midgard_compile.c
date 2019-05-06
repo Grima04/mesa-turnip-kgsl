@@ -786,7 +786,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(imax, imax);
                 ALU_CASE(umin, umin);
                 ALU_CASE(umax, umax);
-                ALU_CASE(fmov, fmov);
                 ALU_CASE(ffloor, ffloor);
                 ALU_CASE(fround_even, froundeven);
                 ALU_CASE(ftrunc, ftrunc);
@@ -797,7 +796,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(isub, isub);
                 ALU_CASE(imul, imul);
                 ALU_CASE(iabs, iabs);
-                ALU_CASE(imov, imov);
+                ALU_CASE(mov, imov);
 
                 ALU_CASE(feq32, feq);
                 ALU_CASE(fne32, fne);

@@ -58,8 +58,8 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
       /* These we expect to have booleans but the opcode doesn't change */
       break;
 
-   case nir_op_b2f32: alu->op = nir_op_fmov; break;
-   case nir_op_b2i32: alu->op = nir_op_fmov; break;
+   case nir_op_b2f32: alu->op = nir_op_mov; break;
+   case nir_op_b2i32: alu->op = nir_op_mov; break;
    case nir_op_f2b1:
    case nir_op_i2b1:
       rep = nir_sne(b, nir_ssa_for_alu_src(b, alu, 0),
@@ -92,7 +92,6 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
 
    case nir_op_bcsel: alu->op = nir_op_fcsel; break;
 
-   case nir_op_imov: alu->op = nir_op_fmov; break;
    case nir_op_iand: alu->op = nir_op_fmul; break;
    case nir_op_ixor: alu->op = nir_op_sne; break;
    case nir_op_ior: alu->op = nir_op_fmax; break;

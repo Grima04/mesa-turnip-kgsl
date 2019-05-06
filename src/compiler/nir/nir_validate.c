@@ -217,7 +217,7 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 {
    nir_alu_src *src = &instr->src[index];
 
-   if (instr->op == nir_op_fmov || instr->op == nir_op_imov)
+   if (instr->op == nir_op_mov)
       assert(!src->abs && !src->negate);
 
    unsigned num_components = nir_src_num_components(src->src);
@@ -322,7 +322,7 @@ validate_alu_dest(nir_alu_instr *instr, validate_state *state)
 {
    nir_alu_dest *dest = &instr->dest;
 
-   if (instr->op == nir_op_fmov || instr->op == nir_op_imov)
+   if (instr->op == nir_op_mov)
       assert(!dest->saturate);
 
    unsigned dest_size = nir_dest_num_components(dest->dest);

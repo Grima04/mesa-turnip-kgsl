@@ -711,8 +711,7 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
     * instructions.
     */
    switch (instr->op) {
-   case nir_op_imov:
-   case nir_op_fmov:
+   case nir_op_mov:
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
@@ -991,8 +990,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    fs_reg result = prepare_alu_destination_and_sources(bld, instr, op, true);
 
    switch (instr->op) {
-   case nir_op_imov:
-   case nir_op_fmov:
+   case nir_op_mov:
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4: {
@@ -1011,7 +1009,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
          if (!(instr->dest.write_mask & (1 << i)))
             continue;
 
-         if (instr->op == nir_op_imov || instr->op == nir_op_fmov) {
+         if (instr->op == nir_op_mov) {
             inst = bld.MOV(offset(temp, bld, i),
                            offset(op[0], bld, instr->src[0].swizzle[i]));
          } else {

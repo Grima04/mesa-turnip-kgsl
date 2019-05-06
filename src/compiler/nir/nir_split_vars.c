@@ -1062,8 +1062,7 @@ get_non_self_referential_store_comps(nir_intrinsic_instr *store)
 
    nir_alu_instr *src_alu = nir_instr_as_alu(src_instr);
 
-   if (src_alu->op == nir_op_imov ||
-       src_alu->op == nir_op_fmov) {
+   if (src_alu->op == nir_op_mov) {
       /* If it's just a swizzle of a load from the same deref, discount any
        * channels that don't move in the swizzle.
        */

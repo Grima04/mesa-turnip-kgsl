@@ -1091,8 +1091,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    switch (instr->op) {
-   case nir_op_imov:
-   case nir_op_fmov:
+   case nir_op_mov:
       inst = emit(MOV(dst, op[0]));
       inst->saturate = instr->dest.saturate;
       break;

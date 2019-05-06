@@ -129,7 +129,7 @@ analyze_boolean_resolves_block(nir_block *block)
             resolve_status = BRW_NIR_BOOLEAN_NO_RESOLVE;
             break;
 
-         case nir_op_imov:
+         case nir_op_mov:
          case nir_op_inot:
             /* This is a single-source instruction.  Just copy the resolve
              * status from the source.

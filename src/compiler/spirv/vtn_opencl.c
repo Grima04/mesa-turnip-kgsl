@@ -98,7 +98,7 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b, enum OpenCLstd opcode)
    case USub_sat: return nir_op_usub_sat;
    case Trunc: return nir_op_ftrunc;
    /* uhm... */
-   case UAbs: return nir_op_imov;
+   case UAbs: return nir_op_mov;
    default:
       vtn_fail("No NIR equivalent");
    }

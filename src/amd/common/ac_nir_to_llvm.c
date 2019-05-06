@@ -572,8 +572,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		src[i] = get_alu_src(ctx, instr->src[i], src_components);
 
 	switch (instr->op) {
-	case nir_op_fmov:
-	case nir_op_imov:
+	case nir_op_mov:
 		result = src[0];
 		break;
 	case nir_op_fneg:

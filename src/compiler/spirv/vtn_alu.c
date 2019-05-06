@@ -410,7 +410,7 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
    switch (opcode) {
    case SpvOpAny:
       if (src[0]->num_components == 1) {
-         val->ssa->def = nir_imov(&b->nb, src[0]);
+         val->ssa->def = nir_mov(&b->nb, src[0]);
       } else {
          nir_op op;
          switch (src[0]->num_components) {
@@ -427,7 +427,7 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpAll:
       if (src[0]->num_components == 1) {
-         val->ssa->def = nir_imov(&b->nb, src[0]);
+         val->ssa->def = nir_mov(&b->nb, src[0]);
       } else {
          nir_op op;
          switch (src[0]->num_components) {

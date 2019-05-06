@@ -1945,7 +1945,7 @@ nir_visitor::visit(ir_expression *ir)
    case ir_unop_bitcast_d2u64:
    case ir_unop_subroutine_to_int:
       /* no-op */
-      result = nir_imov(&b, srcs[0]);
+      result = nir_mov(&b, srcs[0]);
       break;
    case ir_unop_trunc: result = nir_ftrunc(&b, srcs[0]); break;
    case ir_unop_ceil:  result = nir_fceil(&b, srcs[0]); break;
