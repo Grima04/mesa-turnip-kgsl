@@ -656,6 +656,7 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
 		uint32_t tiling = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
 		                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
 		                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+		                  VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT |
 		                  VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT;
 
 		/* The subsampled formats have no support for linear filters. */

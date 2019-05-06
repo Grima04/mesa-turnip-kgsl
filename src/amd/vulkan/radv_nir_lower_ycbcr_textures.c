@@ -157,16 +157,96 @@ convert_ycbcr(struct ycbcr_state *state,
 }
 
 static nir_ssa_def *
+get_texture_size(struct ycbcr_state *state, nir_deref_instr *texture)
+{
+	nir_builder *b = state->builder;
+	const struct glsl_type *type = texture->type;
+	nir_tex_instr *tex = nir_tex_instr_create(b->shader, 1);
+
+	tex->op = nir_texop_txs;
+	tex->sampler_dim = glsl_get_sampler_dim(type);
+	tex->is_array = glsl_sampler_type_is_array(type);
+	tex->is_shadow = glsl_sampler_type_is_shadow(type);
+	tex->dest_type = nir_type_int;
+
+	tex->src[0].src_type = nir_tex_src_texture_deref;
+	tex->src[0].src = nir_src_for_ssa(&texture->dest.ssa);
+
+	nir_ssa_dest_init(&tex->instr, &tex->dest,
+	                  nir_tex_instr_dest_size(tex), 32, NULL);
+	nir_builder_instr_insert(b, &tex->instr);
+
+	return nir_i2f32(b, &tex->dest.ssa);
+}
+
+static nir_ssa_def *
+implicit_downsampled_coord(nir_builder *b,
+                           nir_ssa_def *value,
+                           nir_ssa_def *max_value,
+                           int div_scale)
+{
+	return nir_fadd(b,
+	                value,
+	                nir_fdiv(b,
+	                         nir_imm_float(b, 1.0f),
+	                         nir_fmul(b,
+	                                  nir_imm_float(b, div_scale),
+	                                  max_value)));
+}
+
+static nir_ssa_def *
+implicit_downsampled_coords(struct ycbcr_state *state,
+                            nir_ssa_def *old_coords)
+{
+	nir_builder *b = state->builder;
+	const struct radv_sampler_ycbcr_conversion *conversion = state->conversion;
+	nir_ssa_def *image_size = NULL;
+	nir_ssa_def *comp[4] = { NULL, };
+	const struct vk_format_description *fmt_desc = vk_format_description(state->conversion->format);
+	const unsigned divisors[2] = {fmt_desc->width_divisor, fmt_desc->height_divisor};
+
+	for (int c = 0; c < old_coords->num_components; c++) {
+		if (c < ARRAY_SIZE(divisors) && divisors[c] > 1 &&
+		    conversion->chroma_offsets[c] == VK_CHROMA_LOCATION_COSITED_EVEN) {
+			if (!image_size)
+				image_size = get_texture_size(state, state->tex_deref);
+
+			comp[c] = implicit_downsampled_coord(b,
+			                                     nir_channel(b, old_coords, c),
+			                                     nir_channel(b, image_size, c),
+			                                     divisors[c]);
+		} else {
+			comp[c] = nir_channel(b, old_coords, c);
+		}
+	}
+
+	return nir_vec(b, comp, old_coords->num_components);
+}
+
+static nir_ssa_def *
 create_plane_tex_instr_implicit(struct ycbcr_state *state,
                                 uint32_t plane)
 {
 	nir_builder *b = state->builder;
 	nir_tex_instr *old_tex = state->origin_tex;
 	nir_tex_instr *tex = nir_tex_instr_create(b->shader, old_tex->num_srcs+ 1);
-
 	for (uint32_t i = 0; i < old_tex->num_srcs; i++) {
 		tex->src[i].src_type = old_tex->src[i].src_type;
-		nir_src_copy(&tex->src[i].src, &old_tex->src[i].src, tex);
+
+		switch (old_tex->src[i].src_type) {
+		case nir_tex_src_coord:
+			if (plane && true/*state->conversion->chroma_reconstruction*/) {
+				assert(old_tex->src[i].src.is_ssa);
+				tex->src[i].src =
+					nir_src_for_ssa(implicit_downsampled_coords(state,
+					                                            old_tex->src[i].src.ssa));
+				break;
+			}
+		/* fall through */
+		default:
+			nir_src_copy(&tex->src[i].src, &old_tex->src[i].src, tex);
+			break;
+		}
 	}
 
 	tex->src[tex->num_srcs - 1].src = nir_src_for_ssa(nir_imm_int(b, plane));
