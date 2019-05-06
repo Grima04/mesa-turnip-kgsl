@@ -27,7 +27,7 @@
 #include "pan_util.h"
 #include "midgard/midgard_compile.h"
 #include "compiler/nir/nir_builder.h"
-//#include "gallium/auxiliary/nir/nir_lower_blend.h"
+#include "midgard/nir_lower_blend.h"
 
 /*
  * Implements the command stream portion of programmatic blend shaders.
