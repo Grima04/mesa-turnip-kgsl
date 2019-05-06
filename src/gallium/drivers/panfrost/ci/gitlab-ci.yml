@@ -137,11 +137,54 @@ build-arm64:
     - cat raw_results.csv | csvcut -c 12,3 | grep dEQP-GLES2 | sort > results/results-$lava_job_id.csv
 
     # FIXME: Remove flip-flops from comparison files
-    - sed -i '/dEQP-GLES2.functional.shaders.random.all_features.fragment.12/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
-    - sed -i '/dEQP-GLES2.functional.shaders.invariance.highp.loop_4/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
-    - sed -i '/dEQP-GLES2.functional.texture.units.2_units.mixed.1/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
-    - sed -i '/dEQP-GLES2.functional.texture.units.4_units.mixed.5/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
-    - sed -i '/dEQP-GLES2.functional.texture.units.all_units.only_cube.7/d' src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv
+    - |
+      FLIP_FLOPS="
+        dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_neg_x_neg_z_and_pos_x_pos_z_and_neg_x_neg_y_pos_z
+        dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_pos_y_pos_z_and_neg_x_neg_y_pos_z_and_pos_x_pos_y_neg_z
+        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgb5_a1
+        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgb5_a1_depth_component16
+        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgba4
+        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgba4_depth_component16
+        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgb5_a1
+        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgb5_a1_depth_component16
+        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgba4
+        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgba4_depth_component16
+        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgb5_a1
+        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgb5_a1_depth_component16
+        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgb5_a1_stencil_index8
+        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgba4_depth_component16
+        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgba4_stencil_index8
+        dEQP-GLES2.functional.fbo.render.recreate_depthbuffer.
+        dEQP-GLES2.functional.fbo.render.recreate_stencilbuffer.
+        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.rbo_rgb5_a1
+        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.rbo_rgba4
+        dEQP-GLES2.functional.fbo.render.shared_colorbuffer.rbo_rgb5_a1
+        dEQP-GLES2.functional.fbo.render.shared_colorbuffer.rbo_rgba4
+        dEQP-GLES2.functional.fbo.render.shared_depthbuffer.rbo_rgb5_a1_depth_component16
+        dEQP-GLES2.functional.fbo.render.shared_depthbuffer.rbo_rgba4_depth_component16
+        dEQP-GLES2.functional.fbo.render.stencil_clear.rbo_rgb5_a1_stencil_index8
+        dEQP-GLES2.functional.fbo.render.stencil.npot_rbo_rgb5_a1_stencil_index8
+        dEQP-GLES2.functional.fbo.render.stencil.npot_rbo_rgba4_stencil_index8
+        dEQP-GLES2.functional.fbo.render.stencil.rbo_rgb5_a1_stencil_index8
+        dEQP-GLES2.functional.fbo.render.stencil.rbo_rgba4_stencil_index8
+        dEQP-GLES2.functional.lifetime.attach.deleted_input.renderbuffer_framebuffer
+        dEQP-GLES2.functional.lifetime.attach.deleted_output.renderbuffer_framebuffer
+        dEQP-GLES2.functional.polygon_offset.fixed16_factor_0_slope
+        dEQP-GLES2.functional.polygon_offset.fixed16_factor_1_slope
+        dEQP-GLES2.functional.shaders.invariance.highp.loop_4
+        dEQP-GLES2.functional.shaders.operator.common_functions.smoothstep.mediump_vec3_vertex
+        dEQP-GLES2.functional.shaders.random.all_features.fragment.12
+        dEQP-GLES2.functional.shaders.random.all_features.fragment.37
+        dEQP-GLES2.functional.texture.units.2_units.mixed.1
+        dEQP-GLES2.functional.texture.units.2_units.mixed.3
+        dEQP-GLES2.functional.texture.units.2_units.only_2d.2
+        dEQP-GLES2.functional.texture.units.4_units.mixed.5
+        dEQP-GLES2.functional.texture.units.4_units.only_2d.0
+        dEQP-GLES2.functional.texture.units.all_units.only_cube.4
+        dEQP-GLES2.functional.texture.units.all_units.only_cube.7
+        dEQP-GLES2.functional.texture.units.all_units.only_cube.8
+        "
+    - for test in $FLIP_FLOPS; do sed -i "/$test/d" src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv; done
 
     - PASSED=$(grep pass$ results/results-$lava_job_id.csv | wc -l)
     - FAILED=$(grep fail$ results/results-$lava_job_id.csv | wc -l)
