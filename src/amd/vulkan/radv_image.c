@@ -398,14 +398,14 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 
 	if (chip_class >= GFX9) {
 		state[3] &= C_008F1C_SW_MODE;
-		state[4] &= C_008F20_PITCH_GFX9;
+		state[4] &= C_008F20_PITCH;
 
 		if (is_stencil) {
 			state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.stencil.swizzle_mode);
-			state[4] |= S_008F20_PITCH_GFX9(plane->surface.u.gfx9.stencil.epitch);
+			state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.stencil.epitch);
 		} else {
 			state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.surf.swizzle_mode);
-			state[4] |= S_008F20_PITCH_GFX9(plane->surface.u.gfx9.surf.epitch);
+			state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.surf.epitch);
 		}
 
 		state[5] &= C_008F24_META_DATA_ADDRESS &
@@ -430,8 +430,8 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 
 		state[3] &= C_008F1C_TILING_INDEX;
 		state[3] |= S_008F1C_TILING_INDEX(index);
-		state[4] &= C_008F20_PITCH_GFX6;
-		state[4] |= S_008F20_PITCH_GFX6(pitch - 1);
+		state[4] &= C_008F20_PITCH;
+		state[4] |= S_008F20_PITCH(pitch - 1);
 	}
 }
 
@@ -674,13 +674,13 @@ si_make_texture_descriptor(struct radv_device *device,
 		if (device->physical_device->rad_info.chip_class >= GFX9) {
 			fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode);
 			fmask_state[4] |= S_008F20_DEPTH(last_layer) |
-					  S_008F20_PITCH_GFX9(image->planes[0].surface.u.gfx9.fmask.epitch);
+					  S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask.epitch);
 			fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(image->planes[0].surface.u.gfx9.cmask.pipe_aligned) |
 					  S_008F24_META_RB_ALIGNED(image->planes[0].surface.u.gfx9.cmask.rb_aligned);
 		} else {
 			fmask_state[3] |= S_008F1C_TILING_INDEX(image->fmask.tile_mode_index);
 			fmask_state[4] |= S_008F20_DEPTH(depth - 1) |
-				S_008F20_PITCH_GFX6(image->fmask.pitch_in_pixels - 1);
+				S_008F20_PITCH(image->fmask.pitch_in_pixels - 1);
 			fmask_state[5] |= S_008F24_LAST_ARRAY(last_layer);
 		}
 	} else if (fmask_state)

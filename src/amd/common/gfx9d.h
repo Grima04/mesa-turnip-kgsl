@@ -1446,9 +1446,9 @@
 #define   S_008F20_DEPTH(x)                                           (((unsigned)(x) & 0x1FFF) << 0)
 #define   G_008F20_DEPTH(x)                                           (((x) >> 0) & 0x1FFF)
 #define   C_008F20_DEPTH                                              0xFFFFE000
-#define   S_008F20_PITCH_GFX9(x)                                      (((unsigned)(x) & 0xFFFF) << 13)
-#define   G_008F20_PITCH_GFX9(x)                                      (((x) >> 13) & 0xFFFF)
-#define   C_008F20_PITCH_GFX9                                         0xE0001FFF
+#define   S_008F20_PITCH(x)                                           (((unsigned)(x) & 0xFFFF) << 13)
+#define   G_008F20_PITCH(x)                                           (((x) >> 13) & 0xFFFF)
+#define   C_008F20_PITCH                                              0xE0001FFF
 #define   S_008F20_BC_SWIZZLE(x)                                      (((unsigned)(x) & 0x07) << 29)
 #define   G_008F20_BC_SWIZZLE(x)                                      (((x) >> 29) & 0x07)
 #define   C_008F20_BC_SWIZZLE                                         0x1FFFFFFF

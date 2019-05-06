@@ -2326,9 +2326,9 @@
 #define   S_008F20_DEPTH(x)                                           (((unsigned)(x) & 0x1FFF) << 0)
 #define   G_008F20_DEPTH(x)                                           (((x) >> 0) & 0x1FFF)
 #define   C_008F20_DEPTH                                              0xFFFFE000
-#define   S_008F20_PITCH_GFX6(x)                                      (((unsigned)(x) & 0x3FFF) << 13)
-#define   G_008F20_PITCH_GFX6(x)                                      (((x) >> 13) & 0x3FFF)
-#define   C_008F20_PITCH_GFX6                                         0xF8001FFF
+#define   S_008F20_PITCH(x)                                           (((unsigned)(x) & 0xFFFF) << 13)
+#define   G_008F20_PITCH(x)                                           (((x) >> 13) & 0xFFFF)
+#define   C_008F20_PITCH                                              0xE0001FFF
 #define R_008F24_SQ_IMG_RSRC_WORD5                                      0x008F24
 #define   S_008F24_BASE_ARRAY(x)                                      (((unsigned)(x) & 0x1FFF) << 0)
 #define   G_008F24_BASE_ARRAY(x)                                      (((x) >> 0) & 0x1FFF)
