@@ -217,6 +217,9 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 {
    nir_alu_src *src = &instr->src[index];
 
+   if (instr->op == nir_op_fmov || instr->op == nir_op_imov)
+      assert(!src->abs && !src->negate);
+
    unsigned num_components = nir_src_num_components(src->src);
    for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
       validate_assert(state, src->swizzle[i] < NIR_MAX_VEC_COMPONENTS);
@@ -318,6 +321,9 @@ static void
 validate_alu_dest(nir_alu_instr *instr, validate_state *state)
 {
    nir_alu_dest *dest = &instr->dest;
+
+   if (instr->op == nir_op_fmov || instr->op == nir_op_imov)
+      assert(!dest->saturate);
 
    unsigned dest_size = nir_dest_num_components(dest->dest);
    /*
