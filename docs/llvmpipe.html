@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <title>llvmpipe</title>
+  <title>Gallium LLVMpipe Driver</title>
   <link rel="stylesheet" type="text/css" href="mesa.css">
 </head>
 <body>
@@ -14,7 +14,9 @@
 <iframe src="contents.html"></iframe>
 <div class="content">
 
-<h1>Introduction</h1>
+<h1>Gallium LLVMpipe Driver</h1>
+
+<h2>Introduction</h2>
 
 <p>
 The Gallium llvmpipe driver is a software rasterizer that uses LLVM to
@@ -28,7 +30,7 @@ It's the fastest software rasterizer for Mesa.
 </p>
 
 
-<h1>Requirements</h1>
+<h2>Requirements</h2>
 
 <ul>
 <li>
@@ -112,7 +114,7 @@ It's the fastest software rasterizer for Mesa.
 </ul>
 
 
-<h1>Building</h1>
+<h2>Building</h2>
 
 To build everything on Linux invoke scons as:
 
@@ -137,9 +139,9 @@ For Windows the procedure is similar except the target:
 </pre>
 
 
-<h1>Using</h1>
+<h2>Using</h2>
 
-<h2>Linux</h2>
+<h3>Linux</h3>
 
 <p>On Linux, building will create a drop-in alternative for libGL.so into</p>
 
@@ -157,7 +159,7 @@ or
 lib directory without the "-debug" suffix.</p>
 
 
-<h2>Windows</h2>
+<h3>Windows</h3>
 
 <p>
 On Windows, building will create
@@ -192,7 +194,7 @@ any OpenGL drivers):
 </ul>
 
 
-<h1>Profiling</h1>
+<h2>Profiling</h2>
 
 <p>
 To profile llvmpipe you should build as
@@ -206,7 +208,7 @@ This will ensure that frame pointers are used both in C and JIT functions, and
 that no tail call optimizations are done by gcc.
 </p>
 
-<h2>Linux perf integration</h2>
+<h3>Linux perf integration</h3>
 
 <p>
 On Linux, it is possible to have symbol resolution of JIT code with <a href="https://perf.wiki.kernel.org/">Linux perf</a>:
@@ -228,7 +230,7 @@ the generated code annotated with the samples.
 <a href="https://github.com/jrfonseca/gprof2dot#linux-perf">Gprof2Dot</a>.</p>
 
 
-<h1>Unit testing</h1>
+<h2>Unit testing</h2>
 
 <p>
 Building will also create several unit tests in
@@ -250,7 +252,7 @@ for later analysis, e.g.:
 </pre>
 
 
-<h1>Development Notes</h1>
+<h2>Development Notes</h2>
 
 <ul>
 <li>
@@ -272,7 +274,7 @@ for later analysis, e.g.:
 </li>
 </ul>
 
-<h1 id="recommended_reading">Recommended Reading</h1>
+<h2 id="recommended_reading">Recommended Reading</h2>
 
 <ul>
   <li>
