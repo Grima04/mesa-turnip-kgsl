@@ -1558,6 +1558,13 @@ offsets = {
     "CompressedTextureSubImage2DEXT": 1522,
     "CompressedTextureSubImage3DEXT": 1523,
     "GetCompressedTextureImageEXT": 1524,
+    "CompressedMultiTexImage1DEXT": 1525,
+    "CompressedMultiTexImage2DEXT": 1526,
+    "CompressedMultiTexImage3DEXT": 1527,
+    "CompressedMultiTexSubImage1DEXT": 1528,
+    "CompressedMultiTexSubImage2DEXT": 1529,
+    "CompressedMultiTexSubImage3DEXT": 1530,
+    "GetCompressedMultiTexImageEXT": 1531,
 }
 
 functions = [

@@ -1895,6 +1895,36 @@ _mesa_GetCompressedTextureImageEXT(GLuint texture, GLenum target, GLint level,
 
    texObj = _mesa_lookup_or_create_texture(ctx, target, texture,
                                            false, true, caller);
+
+   get_texture_image_dims(texObj, texObj->Target, level,
+                          &width, &height, &depth);
+
+   if (getcompressedteximage_error_check(ctx, texObj, texObj->Target, level,
+                                         0, 0, 0, width, height, depth,
+                                         INT_MAX, pixels, caller)) {
+      return;
+   }
+
+   get_compressed_texture_image(ctx, texObj, texObj->Target, level,
+                                0, 0, 0, width, height, depth,
+                                pixels, caller);
+}
+
+
+void GLAPIENTRY
+_mesa_GetCompressedMultiTexImageEXT(GLenum texunit, GLenum target, GLint level,
+                                    GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_texture_object*  texObj;
+   GLsizei width, height, depth;
+   static const char *caller = "glGetCompressedMultiTexImageEXT";
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   false,
+                                                   caller);
+
    get_texture_image_dims(texObj, texObj->Target, level,
                           &width, &height, &depth);
 

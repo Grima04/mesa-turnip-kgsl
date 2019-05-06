@@ -5377,6 +5377,26 @@ _mesa_CompressedTextureImage1DEXT(GLuint texture, GLenum target, GLint level,
 
 
 void GLAPIENTRY
+_mesa_CompressedMultiTexImage1DEXT(GLenum texunit, GLenum target, GLint level,
+                                   GLenum internalFormat, GLsizei width,
+                                   GLint border, GLsizei imageSize,
+                                   const GLvoid *pixels)
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glCompressedMultiTexImage1DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_TRUE, 1, texObj, target, level, internalFormat,
+            width, 1, 1, border, GL_NONE, GL_NONE, imageSize, pixels, false);
+}
+
+
+void GLAPIENTRY
 _mesa_CompressedTexImage2D(GLenum target, GLint level,
                               GLenum internalFormat, GLsizei width,
                               GLsizei height, GLint border, GLsizei imageSize,
@@ -5399,6 +5419,26 @@ _mesa_CompressedTextureImage2DEXT(GLuint texture, GLenum target, GLint level,
 
    texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
                                            "glCompressedTextureImage2DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_TRUE, 2, texObj, target, level, internalFormat,
+            width, height, 1, border, GL_NONE, GL_NONE, imageSize, pixels, false);
+}
+
+
+void GLAPIENTRY
+_mesa_CompressedMultiTexImage2DEXT(GLenum texunit, GLenum target, GLint level,
+                                   GLenum internalFormat, GLsizei width,
+                                   GLsizei height, GLint border, GLsizei imageSize,
+                                   const GLvoid *pixels)
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glCompressedMultiTexImage2DEXT");
    if (!texObj)
       return;
    teximage(ctx, GL_TRUE, 2, texObj, target, level, internalFormat,
@@ -5435,6 +5475,25 @@ _mesa_CompressedTextureImage3DEXT(GLuint texture, GLenum target, GLint level,
             width, height, depth, border, GL_NONE, GL_NONE, imageSize, pixels, false);
 }
 
+
+void GLAPIENTRY
+_mesa_CompressedMultiTexImage3DEXT(GLenum texunit, GLenum target, GLint level,
+                                   GLenum internalFormat, GLsizei width,
+                                   GLsizei height, GLsizei depth, GLint border,
+                                   GLsizei imageSize, const GLvoid *pixels)
+{
+   struct gl_texture_object*  texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glCompressedMultiTexImage3DEXT");
+   if (!texObj)
+      return;
+   teximage(ctx, GL_TRUE, 3, texObj, target, level, internalFormat,
+            width, height, depth, border, GL_NONE, GL_NONE, imageSize, pixels, false);
+}
 
 
 void GLAPIENTRY
@@ -5516,11 +5575,13 @@ enum tex_mode {
    TEX_MODE_DSA_ERROR,
    /* Use the specified texture name + target */
    TEX_MODE_EXT_DSA_TEXTURE,
+   /* Use the specified texture unit + target */
+   TEX_MODE_EXT_DSA_TEXUNIT,
 };
 
 
 static void
-compressed_tex_sub_image(unsigned dim, GLenum target, GLuint texture,
+compressed_tex_sub_image(unsigned dim, GLenum target, GLuint textureOrIndex,
                          GLint level, GLint xoffset, GLint yoffset,
                          GLint zoffset, GLsizei width, GLsizei height,
                          GLsizei depth, GLenum format, GLsizei imageSize,
@@ -5535,26 +5596,32 @@ compressed_tex_sub_image(unsigned dim, GLenum target, GLuint texture,
    switch (mode) {
       case TEX_MODE_DSA_ERROR:
          assert(target == 0);
-         texObj = _mesa_lookup_texture_err(ctx, texture, caller);
+         texObj = _mesa_lookup_texture_err(ctx, textureOrIndex, caller);
          if (texObj)
             target = texObj->Target;
          break;
       case TEX_MODE_DSA_NO_ERROR:
          assert(target == 0);
-         texObj = _mesa_lookup_texture(ctx, texture);
+         texObj = _mesa_lookup_texture(ctx, textureOrIndex);
          if (texObj)
             target = texObj->Target;
          no_error = true;
          break;
       case TEX_MODE_EXT_DSA_TEXTURE:
-         texObj = _mesa_lookup_or_create_texture(ctx, target, texture,
+         texObj = _mesa_lookup_or_create_texture(ctx, target, textureOrIndex,
                                                  false, true, caller);
+         break;
+      case TEX_MODE_EXT_DSA_TEXUNIT:
+         texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                         textureOrIndex,
+                                                         false,
+                                                         caller);
          break;
       case TEX_MODE_CURRENT_ERROR:
          no_error = true;
       case TEX_MODE_CURRENT_NO_ERROR:
       default:
-         assert(texture == 0);
+         assert(textureOrIndex == 0);
          texObj = _mesa_get_current_tex_object(ctx, target);
          break;
    }
@@ -5696,6 +5763,20 @@ _mesa_CompressedTextureSubImage1DEXT(GLuint texture, GLenum target,
 
 
 void GLAPIENTRY
+_mesa_CompressedMultiTexSubImage1DEXT(GLenum texunit, GLenum target,
+                                      GLint level, GLint xoffset,
+                                      GLsizei width, GLenum format,
+                                      GLsizei imageSize, const GLvoid *data)
+{
+   compressed_tex_sub_image(1, target, texunit - GL_TEXTURE0, level,
+                            xoffset, 0, 0, width, 1, 1, format, imageSize,
+                            data,
+                            TEX_MODE_EXT_DSA_TEXUNIT,
+                            "glCompressedMultiTexSubImage1DEXT");
+}
+
+
+void GLAPIENTRY
 _mesa_CompressedTexSubImage2D_no_error(GLenum target, GLint level,
                                        GLint xoffset, GLint yoffset,
                                        GLsizei width, GLsizei height,
@@ -5736,6 +5817,20 @@ _mesa_CompressedTextureSubImage2DEXT(GLuint texture, GLenum target,
                             imageSize, data,
                             TEX_MODE_EXT_DSA_TEXTURE,
                             "glCompressedTextureSubImage2DEXT");
+}
+
+
+void GLAPIENTRY
+_mesa_CompressedMultiTexSubImage2DEXT(GLenum texunit, GLenum target,
+                                      GLint level, GLint xoffset, GLint yoffset,
+                                      GLsizei width, GLsizei height, GLenum format,
+                                      GLsizei imageSize, const GLvoid *data)
+{
+   compressed_tex_sub_image(2, target, texunit - GL_TEXTURE0, level,
+                            xoffset, yoffset, 0, width, height, 1, format,
+                            imageSize, data,
+                            TEX_MODE_EXT_DSA_TEXUNIT,
+                            "glCompressedMultiTexSubImage2DEXT");
 }
 
 
@@ -5837,6 +5932,21 @@ _mesa_CompressedTextureSubImage3DEXT(GLuint texture, GLenum target,
                             imageSize, data,
                             TEX_MODE_EXT_DSA_TEXTURE,
                             "glCompressedTextureSubImage3DEXT");
+}
+
+
+void GLAPIENTRY
+_mesa_CompressedMultiTexSubImage3DEXT(GLenum texunit, GLenum target,
+                                      GLint level, GLint xoffset, GLint yoffset,
+                                      GLint zoffset, GLsizei width, GLsizei height,
+                                      GLsizei depth, GLenum format,
+                                      GLsizei imageSize, const GLvoid *data)
+{
+   compressed_tex_sub_image(3, target, texunit - GL_TEXTURE0, level,
+                            xoffset, yoffset, zoffset, width, height, depth,
+                            format, imageSize, data,
+                            TEX_MODE_EXT_DSA_TEXUNIT,
+                            "glCompressedMultiTexSubImage3DEXT");
 }
 
 
