@@ -184,11 +184,12 @@ brw_upload_tes_prog(struct brw_context *brw)
 }
 
 void
-brw_tes_populate_default_key(const struct gen_device_info *devinfo,
+brw_tes_populate_default_key(const struct brw_compiler *compiler,
                              struct brw_tes_prog_key *key,
                              struct gl_shader_program *sh_prog,
                              struct gl_program *prog)
 {
+   const struct gen_device_info *devinfo = compiler->devinfo;
    struct brw_program *btep = brw_program(prog);
 
    memset(key, 0, sizeof(*key));
@@ -214,6 +215,7 @@ brw_tes_precompile(struct gl_context *ctx,
                    struct gl_program *prog)
 {
    struct brw_context *brw = brw_context(ctx);
+   const struct brw_compiler *compiler = brw->screen->compiler;
    struct brw_tes_prog_key key;
    uint32_t old_prog_offset = brw->tes.base.prog_offset;
    struct brw_stage_prog_data *old_prog_data = brw->tes.base.prog_data;
@@ -221,7 +223,7 @@ brw_tes_precompile(struct gl_context *ctx,
 
    struct brw_program *btep = brw_program(prog);
 
-   brw_tes_populate_default_key(&brw->screen->devinfo, &key, shader_prog, prog);
+   brw_tes_populate_default_key(compiler, &key, shader_prog, prog);
 
    success = brw_codegen_tes_prog(brw, btep, &key);
 

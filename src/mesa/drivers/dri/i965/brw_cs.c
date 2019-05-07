@@ -185,10 +185,11 @@ brw_upload_cs_prog(struct brw_context *brw)
 }
 
 void
-brw_cs_populate_default_key(const struct gen_device_info *devinfo,
+brw_cs_populate_default_key(const struct brw_compiler *compiler,
                             struct brw_cs_prog_key *key,
                             struct gl_program *prog)
 {
+   const struct gen_device_info *devinfo = compiler->devinfo;
    memset(key, 0, sizeof(*key));
    key->program_string_id = brw_program(prog)->id;
 
@@ -203,7 +204,7 @@ brw_cs_precompile(struct gl_context *ctx, struct gl_program *prog)
 
    struct brw_program *bcp = brw_program(prog);
 
-   brw_cs_populate_default_key(&brw->screen->devinfo, &key, prog);
+   brw_cs_populate_default_key(brw->screen->compiler, &key, prog);
 
    uint32_t old_prog_offset = brw->cs.base.prog_offset;
    struct brw_stage_prog_data *old_prog_data = brw->cs.base.prog_data;

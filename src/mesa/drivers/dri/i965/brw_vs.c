@@ -318,10 +318,11 @@ brw_upload_vs_prog(struct brw_context *brw)
 }
 
 void
-brw_vs_populate_default_key(const struct gen_device_info *devinfo,
+brw_vs_populate_default_key(const struct brw_compiler *compiler,
                             struct brw_vs_prog_key *key,
                             struct gl_program *prog)
 {
+   const struct gen_device_info *devinfo = compiler->devinfo;
    struct brw_program *bvp = brw_program(prog);
 
    memset(key, 0, sizeof(*key));
@@ -345,7 +346,7 @@ brw_vs_precompile(struct gl_context *ctx, struct gl_program *prog)
 
    struct brw_program *bvp = brw_program(prog);
 
-   brw_vs_populate_default_key(&brw->screen->devinfo, &key, prog);
+   brw_vs_populate_default_key(brw->screen->compiler, &key, prog);
 
    success = brw_codegen_vs_prog(brw, bvp, &key);
 

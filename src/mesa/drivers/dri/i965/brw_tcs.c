@@ -235,11 +235,12 @@ brw_upload_tcs_prog(struct brw_context *brw)
 }
 
 void
-brw_tcs_populate_default_key(const struct gen_device_info *devinfo,
+brw_tcs_populate_default_key(const struct brw_compiler *compiler,
                              struct brw_tcs_prog_key *key,
                              struct gl_shader_program *sh_prog,
                              struct gl_program *prog)
 {
+   const struct gen_device_info *devinfo = compiler->devinfo;
    struct brw_program *btcp = brw_program(prog);
    const struct gl_linked_shader *tes =
       sh_prog->_LinkedShaders[MESA_SHADER_TESS_EVAL];
@@ -272,6 +273,7 @@ brw_tcs_precompile(struct gl_context *ctx,
                    struct gl_program *prog)
 {
    struct brw_context *brw = brw_context(ctx);
+   const struct brw_compiler *compiler = brw->screen->compiler;
    struct brw_tcs_prog_key key;
    uint32_t old_prog_offset = brw->tcs.base.prog_offset;
    struct brw_stage_prog_data *old_prog_data = brw->tcs.base.prog_data;
@@ -282,7 +284,7 @@ brw_tcs_precompile(struct gl_context *ctx,
       shader_prog->_LinkedShaders[MESA_SHADER_TESS_EVAL];
    struct brw_program *btep = tes ? brw_program(tes->Program) : NULL;
 
-   brw_tcs_populate_default_key(&brw->screen->devinfo, &key, shader_prog, prog);
+   brw_tcs_populate_default_key(compiler, &key, shader_prog, prog);
 
    success = brw_codegen_tcs_prog(brw, btcp, btep, &key);
 

@@ -524,10 +524,12 @@ brw_upload_wm_prog(struct brw_context *brw)
 }
 
 void
-brw_wm_populate_default_key(const struct gen_device_info *devinfo,
+brw_wm_populate_default_key(const struct brw_compiler *compiler,
                             struct brw_wm_prog_key *key,
                             struct gl_program *prog)
 {
+   const struct gen_device_info *devinfo = compiler->devinfo;
+
    memset(key, 0, sizeof(*key));
 
    uint64_t outputs_written = prog->info.outputs_written;
@@ -571,7 +573,7 @@ brw_fs_precompile(struct gl_context *ctx, struct gl_program *prog)
 
    struct brw_program *bfp = brw_program(prog);
 
-   brw_wm_populate_default_key(&brw->screen->devinfo, &key, prog);
+   brw_wm_populate_default_key(brw->screen->compiler, &key, prog);
 
    /* check brw_wm_populate_default_key coherent_fb_fetch setting */
    assert(key.coherent_fb_fetch ==
