@@ -3646,16 +3646,11 @@ si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 			  uint32_t *state)
 {
 	const struct util_format_description *desc;
-	int first_non_void;
 	unsigned stride;
 	unsigned num_records;
-	unsigned num_format, data_format;
 
 	desc = util_format_description(format);
-	first_non_void = util_format_get_first_non_void_channel(format);
 	stride = desc->block.bits / 8;
-	num_format = si_translate_buffer_numformat(&screen->b, desc, first_non_void);
-	data_format = si_translate_buffer_dataformat(&screen->b, desc, first_non_void);
 
 	num_records = size / stride;
 	num_records = MIN2(num_records, (buf->b.b.width0 - offset) / stride);
@@ -3663,7 +3658,7 @@ si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 	/* The NUM_RECORDS field has a different meaning depending on the chip,
 	 * instruction type, STRIDE, and SWIZZLE_ENABLE.
 	 *
-	 * GFX6-GFX7:
+	 * GFX6-7,10:
 	 * - If STRIDE == 0, it's in byte units.
 	 * - If STRIDE != 0, it's in units of STRIDE, used with inst.IDXEN.
 	 *
@@ -3683,7 +3678,7 @@ si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 	 * - For VMEM and inst.IDXEN == 0 or STRIDE == 0, it's in byte units.
 	 * - For VMEM and inst.IDXEN == 1 and STRIDE != 0, it's in units of STRIDE.
 	 */
-	if (screen->info.chip_class >= GFX9 && HAVE_LLVM < 0x0800)
+	if (screen->info.chip_class == GFX9 && HAVE_LLVM < 0x0800)
 		/* When vindex == 0, LLVM < 8.0 sets IDXEN = 0, thus changing units
 		 * from STRIDE to bytes. This works around it by setting
 		 * NUM_RECORDS to at least the size of one element, so that
@@ -3699,9 +3694,32 @@ si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 	state[7] = S_008F0C_DST_SEL_X(si_map_swizzle(desc->swizzle[0])) |
 		   S_008F0C_DST_SEL_Y(si_map_swizzle(desc->swizzle[1])) |
 		   S_008F0C_DST_SEL_Z(si_map_swizzle(desc->swizzle[2])) |
-		   S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3])) |
-		   S_008F0C_NUM_FORMAT(num_format) |
-		   S_008F0C_DATA_FORMAT(data_format);
+		   S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3]));
+
+	if (screen->info.chip_class >= GFX10) {
+		const struct gfx10_format *fmt = &gfx10_format_table[format];
+
+		/* OOB_SELECT chooses the out-of-bounds check:
+		 *  - 0: (index >= NUM_RECORDS) || (offset >= STRIDE)
+		 *  - 1: index >= NUM_RECORDS
+		 *  - 2: NUM_RECORDS == 0
+		 *  - 3: if SWIZZLE_ENABLE == 0: offset >= NUM_RECORDS
+		 *       else: swizzle_address >= NUM_RECORDS
+		 */
+		state[7] |= S_008F0C_FORMAT(fmt->img_format) |
+			    S_008F0C_OOB_SELECT(0) |
+			    S_008F0C_RESOURCE_LEVEL(1);
+	} else {
+		int first_non_void;
+		unsigned num_format, data_format;
+
+		first_non_void = util_format_get_first_non_void_channel(format);
+		num_format = si_translate_buffer_numformat(&screen->b, desc, first_non_void);
+		data_format = si_translate_buffer_dataformat(&screen->b, desc, first_non_void);
+
+		state[7] |= S_008F0C_NUM_FORMAT(num_format) |
+			    S_008F0C_DATA_FORMAT(data_format);
+	}
 }
 
 static unsigned gfx9_border_color_swizzle(const unsigned char swizzle[4])
