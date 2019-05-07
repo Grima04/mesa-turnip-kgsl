@@ -24,8 +24,6 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include "util/u_math.h"
-
 #include "ir3_compiler.h"
 #include "ir3_context.h"
 #include "ir3_image.h"
@@ -103,53 +101,7 @@ ir3_context_init(struct ir3_compiler *compiler,
 
 	ir3_ibo_mapping_init(&so->image_mapping, ctx->s->info.num_textures);
 
-	struct ir3_const_state *const_state = &so->const_state;
-	memset(&const_state->offsets, ~0, sizeof(const_state->offsets));
-
-	ir3_nir_scan_driver_consts(ctx->s, const_state);
-
-	const_state->num_uniforms = ctx->s->num_uniforms;
-	const_state->num_ubos = ctx->s->info.num_ubos;
-
-	debug_assert((ctx->so->shader->ubo_state.size % 16) == 0);
-	unsigned constoff = align(ctx->so->shader->ubo_state.size / 16, 4);
-	unsigned ptrsz = ir3_pointer_size(ctx->compiler);
-
-	if (const_state->num_ubos > 0) {
-		const_state->offsets.ubo = constoff;
-		constoff += align(ctx->s->info.num_ubos * ptrsz, 4) / 4;
-	}
-
-	if (const_state->ssbo_size.count > 0) {
-		unsigned cnt = const_state->ssbo_size.count;
-		const_state->offsets.ssbo_sizes = constoff;
-		constoff += align(cnt, 4) / 4;
-	}
-
-	if (const_state->image_dims.count > 0) {
-		unsigned cnt = const_state->image_dims.count;
-		const_state->offsets.image_dims = constoff;
-		constoff += align(cnt, 4) / 4;
-	}
-
-	unsigned num_driver_params = 0;
-	if (so->type == MESA_SHADER_VERTEX) {
-		num_driver_params = IR3_DP_VS_COUNT;
-	} else if (so->type == MESA_SHADER_COMPUTE) {
-		num_driver_params = IR3_DP_CS_COUNT;
-	}
-
-	const_state->offsets.driver_param = constoff;
-	constoff += align(num_driver_params, 4) / 4;
-
-	if ((so->type == MESA_SHADER_VERTEX) &&
-			(compiler->gpu_id < 500) &&
-			so->shader->stream_output.num_outputs > 0) {
-		const_state->offsets.tfbo = constoff;
-		constoff += align(IR3_MAX_SO_BUFFERS * ptrsz, 4) / 4;
-	}
-
-	const_state->offsets.immediate = constoff;
+	ir3_setup_const_state(so);
 
 	return ctx;
 }

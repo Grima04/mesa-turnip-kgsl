@@ -26,6 +26,7 @@
 
 
 #include "util/debug.h"
+#include "util/u_math.h"
 
 #include "ir3_nir.h"
 #include "ir3_compiler.h"
@@ -276,7 +277,7 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	return s;
 }
 
-void
+static void
 ir3_nir_scan_driver_consts(nir_shader *shader,
 		struct ir3_const_state *layout)
 {
@@ -327,4 +328,60 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 			}
 		}
 	}
+}
+
+void
+ir3_setup_const_state(struct ir3_shader_variant *v)
+{
+	struct ir3_shader *shader = v->shader;
+	struct ir3_compiler *compiler = shader->compiler;
+	struct ir3_const_state *const_state = &v->const_state;
+	nir_shader *nir = shader->nir;
+
+	memset(&const_state->offsets, ~0, sizeof(const_state->offsets));
+
+	ir3_nir_scan_driver_consts(nir, const_state);
+
+	const_state->num_uniforms = nir->num_uniforms;
+	const_state->num_ubos = nir->info.num_ubos;
+
+	debug_assert((shader->ubo_state.size % 16) == 0);
+	unsigned constoff = align(shader->ubo_state.size / 16, 4);
+	unsigned ptrsz = ir3_pointer_size(compiler);
+
+	if (const_state->num_ubos > 0) {
+		const_state->offsets.ubo = constoff;
+		constoff += align(nir->info.num_ubos * ptrsz, 4) / 4;
+	}
+
+	if (const_state->ssbo_size.count > 0) {
+		unsigned cnt = const_state->ssbo_size.count;
+		const_state->offsets.ssbo_sizes = constoff;
+		constoff += align(cnt, 4) / 4;
+	}
+
+	if (const_state->image_dims.count > 0) {
+		unsigned cnt = const_state->image_dims.count;
+		const_state->offsets.image_dims = constoff;
+		constoff += align(cnt, 4) / 4;
+	}
+
+	unsigned num_driver_params = 0;
+	if (shader->type == MESA_SHADER_VERTEX) {
+		num_driver_params = IR3_DP_VS_COUNT;
+	} else if (shader->type == MESA_SHADER_COMPUTE) {
+		num_driver_params = IR3_DP_CS_COUNT;
+	}
+
+	const_state->offsets.driver_param = constoff;
+	constoff += align(num_driver_params, 4) / 4;
+
+	if ((shader->type == MESA_SHADER_VERTEX) &&
+			(compiler->gpu_id < 500) &&
+			shader->stream_output.num_outputs > 0) {
+		const_state->offsets.tfbo = constoff;
+		constoff += align(IR3_MAX_SO_BUFFERS * ptrsz, 4) / 4;
+	}
+
+	const_state->offsets.immediate = constoff;
 }

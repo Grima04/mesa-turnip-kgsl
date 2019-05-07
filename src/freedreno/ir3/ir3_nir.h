@@ -33,8 +33,6 @@
 
 #include "ir3_shader.h"
 
-void ir3_nir_scan_driver_consts(nir_shader *shader, struct ir3_const_state *layout);
-
 bool ir3_nir_apply_trig_workarounds(nir_shader *shader);
 bool ir3_nir_lower_tg4_to_tex(nir_shader *shader);
 bool ir3_nir_lower_io_offsets(nir_shader *shader);
@@ -51,5 +49,7 @@ bool ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader);
 
 nir_ssa_def *
 ir3_nir_try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shift);
+
+void ir3_setup_const_state(struct ir3_shader_variant *v);
 
 #endif /* IR3_NIR_H_ */
