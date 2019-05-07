@@ -172,6 +172,8 @@ replace_with_fast(struct nir_builder *bld, struct u_vector *dead_flrp,
 
 /**
  * Replace flrp(a, b, c) with (b*c ± c) + a
+ *
+ * \note: This only works if a = ±1.
  */
 static void
 replace_with_expanded_ffma_and_add(struct nir_builder *bld,
@@ -182,7 +184,7 @@ replace_with_expanded_ffma_and_add(struct nir_builder *bld,
    nir_ssa_def *const b = nir_ssa_for_alu_src(bld, alu, 1);
    nir_ssa_def *const c = nir_ssa_for_alu_src(bld, alu, 2);
 
-   nir_ssa_def *const b_times_c = nir_fadd(bld, b, c);
+   nir_ssa_def *const b_times_c = nir_fmul(bld, b, c);
    nir_instr_as_alu(b_times_c->parent_instr)->exact = alu->exact;
 
    nir_ssa_def *inner_sum;
