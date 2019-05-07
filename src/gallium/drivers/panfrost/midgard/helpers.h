@@ -196,7 +196,8 @@ static struct {
         [midgard_alu_op_ule]		 = {"ule", UNITS_MOST},
 
         [midgard_alu_op_icsel]		 = {"icsel", UNITS_ADD},
-        [midgard_alu_op_fcsel_i]	 = {"fcsel_i", UNITS_ADD},
+        [midgard_alu_op_icsel_v]         = {"icsel_v", UNITS_ADD},
+        [midgard_alu_op_fcsel_v]	 = {"fcsel_v", UNITS_ADD},
         [midgard_alu_op_fcsel]		 = {"fcsel", UNITS_ADD | UNIT_SMUL},
 
         [midgard_alu_op_frcp]		 = {"frcp", UNIT_VLUT},

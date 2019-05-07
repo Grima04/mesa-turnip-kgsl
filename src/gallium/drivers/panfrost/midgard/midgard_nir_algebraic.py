@@ -28,6 +28,7 @@ import math
 
 a = 'a'
 b = 'b'
+c = 'c'
 
 algebraic_late = [
     # ineg must be lowered late, but only for integers; floats will try to
@@ -35,8 +36,13 @@ algebraic_late = [
     # a more standard lower_negate approach
 
     (('ineg', a), ('isub', 0, a)),
-]
 
+    # These two special-cases save space/an op than the actual csel op +
+    # scheduler flexibility
+
+    (('b32csel', a, 'b@32', 0), ('iand', a, b)),
+    (('b32csel', a, 0, 'b@32'), ('iand', ('inot', a), b)),
+]
 
 # Midgard scales fsin/fcos arguments by pi.
 # Pass must be run only once, after the main loop

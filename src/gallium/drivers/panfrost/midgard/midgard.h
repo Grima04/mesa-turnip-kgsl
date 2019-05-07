@@ -138,8 +138,9 @@ typedef enum {
         midgard_alu_op_i2f        = 0xB8,
         midgard_alu_op_u2f        = 0xBC,
 
-        midgard_alu_op_icsel      = 0xC1,
-        midgard_alu_op_fcsel_i    = 0xC4,
+        midgard_alu_op_icsel_v    = 0xC0, /* condition code r31 */
+        midgard_alu_op_icsel      = 0xC1, /* condition code r31.w */
+        midgard_alu_op_fcsel_v    = 0xC4,
         midgard_alu_op_fcsel      = 0xC5,
         midgard_alu_op_fround     = 0xC6,
 
