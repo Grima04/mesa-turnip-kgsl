@@ -192,6 +192,7 @@ build-arm64:
     - 'echo "Passed: $PASSED ($(expr $PASSED \* 100 / $TOTAL)%)"'
     - 'echo "Failed: $FAILED ($(expr $FAILED \* 100 / $TOTAL)%)"'
     - 'echo "Total: $TOTAL"'
+    - 'if [ $TOTAL != 17439 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
 
     - sed '/,pass/d' results/results-$lava_job_id.csv | sed 's/,fail//' > results/failures-$lava_job_id.txt
     - diff -u src/gallium/drivers/panfrost/ci/expected-failures.txt results/failures-$lava_job_id.txt
