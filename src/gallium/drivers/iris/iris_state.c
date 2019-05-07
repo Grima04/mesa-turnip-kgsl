@@ -1648,7 +1648,7 @@ fmt_swizzle(const struct iris_format_info *fmt, enum pipe_swizzle swz)
 
 static void
 fill_buffer_surface_state(struct isl_device *isl_dev,
-                          struct iris_bo *bo,
+                          struct iris_resource *res,
                           void *map,
                           enum isl_format format,
                           struct isl_swizzle swizzle,
@@ -1675,15 +1675,16 @@ fill_buffer_surface_state(struct isl_device *isl_dev,
     * texel count is clamped to MAX_TEXTURE_BUFFER_SIZE.
     */
    unsigned final_size =
-      MIN3(size, bo->size - offset, IRIS_MAX_TEXTURE_BUFFER_SIZE * cpp);
+      MIN3(size, res->bo->size - res->offset - offset,
+           IRIS_MAX_TEXTURE_BUFFER_SIZE * cpp);
 
    isl_buffer_fill_state(isl_dev, map,
-                         .address = bo->gtt_offset + offset,
+                         .address = res->bo->gtt_offset + res->offset + offset,
                          .size_B = final_size,
                          .format = format,
                          .swizzle = swizzle,
                          .stride_B = cpp,
-                         .mocs = mocs(bo));
+                         .mocs = mocs(res->bo));
 }
 
 #define SURFACE_STATE_ALIGNMENT 64
@@ -1830,7 +1831,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
          map += SURFACE_STATE_ALIGNMENT;
       }
    } else {
-      fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
+      fill_buffer_surface_state(&screen->isl_dev, isv->res, map,
                                 isv->view.format, isv->view.swizzle,
                                 tmpl->u.buf.offset, tmpl->u.buf.size);
    }
@@ -2130,7 +2131,7 @@ iris_set_shader_images(struct pipe_context *ctx,
             };
 
             if (untyped_fallback) {
-               fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
+               fill_buffer_surface_state(&screen->isl_dev, res, map,
                                          isl_fmt, ISL_SWIZZLE_IDENTITY,
                                          0, res->bo->size);
             } else {
@@ -2152,7 +2153,7 @@ iris_set_shader_images(struct pipe_context *ctx,
             util_range_add(&res->valid_buffer_range, img->u.buf.offset,
                            img->u.buf.offset + img->u.buf.size);
 
-            fill_buffer_surface_state(&screen->isl_dev, res->bo, map,
+            fill_buffer_surface_state(&screen->isl_dev, res, map,
                                       isl_fmt, ISL_SWIZZLE_IDENTITY,
                                       img->u.buf.offset, img->u.buf.size);
             fill_buffer_image_param(&image_params[start_slot + i],
@@ -5758,7 +5759,7 @@ iris_rebind_buffer(struct iris_context *ice,
                                                 &isv->surface_state,
                                                 isv->res->aux.sampler_usages);
                assert(map);
-               fill_buffer_surface_state(&screen->isl_dev, isv->res->bo, map,
+               fill_buffer_surface_state(&screen->isl_dev, isv->res, map,
                                          isv->view.format, isv->view.swizzle,
                                          isv->base.u.buf.offset,
                                          isv->base.u.buf.size);
