@@ -54,7 +54,7 @@ __glXSendError(Display * dpy, int_fast8_t errorCode, uint_fast32_t resourceID,
       error.errorCode = glx_dpy->codes->first_error + errorCode;
    }
 
-   error.sequenceNumber = dpy->last_request_read;
+   error.sequenceNumber = dpy->request;
    error.resourceID = resourceID;
    error.minorCode = minorCode;
    error.majorCode = glx_dpy->majorOpcode;
@@ -73,7 +73,7 @@ __glXSendErrorForXcb(Display * dpy, const xcb_generic_error_t *err)
 
    error.type = X_Error;
    error.errorCode = err->error_code;
-   error.sequenceNumber = dpy->last_request_read;
+   error.sequenceNumber = err->sequence;
    error.resourceID = err->resource_id;
    error.minorCode = err->minor_code;
    error.majorCode = err->major_code;
