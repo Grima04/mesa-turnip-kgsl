@@ -445,6 +445,7 @@ ac_build_ddxy(struct ac_llvm_context *ctx,
 
 #define AC_SENDMSG_GS 2
 #define AC_SENDMSG_GS_DONE 3
+#define AC_SENDMSG_GS_ALLOC_REQ 9
 
 #define AC_SENDMSG_GS_OP_NOP      (0 << 4)
 #define AC_SENDMSG_GS_OP_CUT      (1 << 4)
