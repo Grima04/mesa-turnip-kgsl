@@ -17,7 +17,7 @@ cd /deqp/modules/gles2
 # Generate test case list file
 weston --tty=7 &
 sleep 1  # Give some time for Weston to start up
-./deqp-gles2 --deqp-runmode=stdout-caselist | grep dEQP-GLES2 | cut -d ' ' -f 2 > /tmp/case-list.txt
+./deqp-gles2 --deqp-runmode=stdout-caselist | grep "TEST: dEQP-GLES2" | cut -d ' ' -f 2 > /tmp/case-list.txt
 
 # Disable for now tests that are very slow, either by just using lots of CPU or by crashing
 sed -i '/dEQP-GLES2.performance/d' /tmp/case-list.txt
@@ -30,7 +30,7 @@ touch /tmp/result.txt
 tail -f /tmp/result.txt &
 
 while [ -s /tmp/case-list.txt ]; do
-    head -$BATCH_SIZE /tmp/case-list.txt > /tmp/next-batch.txt
+	head -$BATCH_SIZE /tmp/case-list.txt > /tmp/next-batch.txt
 	./deqp-gles2 --deqp-log-filename=/dev/null --deqp-caselist-file=/tmp/next-batch.txt --deqp-watchdog=enable --deqp-crashhandler=enable >> /tmp/result.txt
 	deqp_status=$?
 
