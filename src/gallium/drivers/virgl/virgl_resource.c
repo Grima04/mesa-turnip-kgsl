@@ -56,9 +56,6 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
       readback = false;
    else if (usage & PIPE_TRANSFER_DISCARD_RANGE)
       readback = false;
-   else if ((usage & (PIPE_TRANSFER_WRITE | PIPE_TRANSFER_FLUSH_EXPLICIT)) ==
-            (PIPE_TRANSFER_WRITE | PIPE_TRANSFER_FLUSH_EXPLICIT))
-      readback = false;
    return readback;
 }
 
