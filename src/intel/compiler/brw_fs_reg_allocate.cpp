@@ -1051,32 +1051,36 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
 bool
 fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
 {
-   build_interference_graph(fs->spilled_any_registers);
+   while (1) {
+      build_interference_graph(fs->spilled_any_registers);
 
-   /* Debug of register spilling: Go spill everything. */
-   if (unlikely(spill_all)) {
-      int reg = choose_spill_reg();
-
-      if (reg != -1) {
-         spill_reg(reg);
-         return false;
+      /* Debug of register spilling: Go spill everything. */
+      if (unlikely(spill_all)) {
+         int reg = choose_spill_reg();
+         if (reg != -1) {
+            spill_reg(reg);
+            ralloc_free(g);
+            g = NULL;
+            continue;
+         }
       }
-   }
 
-   if (!ra_allocate(g)) {
+      if (ra_allocate(g))
+         break;
+
+      if (!allow_spilling)
+         return false;
+
       /* Failed to allocate registers.  Spill a reg, and the caller will
        * loop back into here to try again.
        */
       int reg = choose_spill_reg();
+      if (reg == -1)
+         return false;
 
-      if (reg == -1) {
-         fs->fail("no register to spill:\n");
-         fs->dump_instructions(NULL);
-      } else if (allow_spilling) {
-         spill_reg(reg);
-      }
-
-      return false;
+      spill_reg(reg);
+      ralloc_free(g);
+      g = NULL;
    }
 
    /* Get the chosen virtual registers for each node, and map virtual
@@ -1109,5 +1113,10 @@ bool
 fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
 {
    fs_reg_alloc alloc(this);
-   return alloc.assign_regs(allow_spilling, spill_all);
+   bool success = alloc.assign_regs(allow_spilling, spill_all);
+   if (!success && allow_spilling) {
+      fail("no register to spill:\n");
+      dump_instructions(NULL);
+   }
+   return success;
 }

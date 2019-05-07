@@ -7279,9 +7279,7 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
       /* We should only spill registers on the last scheduling. */
       assert(!spilled_any_registers);
 
-      do {
-         allocated = assign_regs(can_spill, spill_all);
-      } while (!allocated && can_spill && !failed);
+      allocated = assign_regs(can_spill, spill_all);
       if (allocated)
          break;
    }
