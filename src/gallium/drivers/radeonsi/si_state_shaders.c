@@ -3356,14 +3356,22 @@ static struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen,
 		if (key.u.gs)
 			stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS) |
 				  S_028B54_GS_EN(1);
+		else if (key.u.ngg)
+			stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS);
 		else
 			stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_DS);
 	} else if (key.u.gs) {
 		stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL) |
 			  S_028B54_GS_EN(1);
+	} else if (key.u.ngg) {
+		stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL);
 	}
 
-	if (key.u.gs)
+	if (key.u.ngg) {
+		stages |= S_028B54_PRIMGEN_EN(1);
+		if (key.u.streamout)
+			stages |= S_028B54_NGG_WAVE_ID_EN(1);
+	} else if (key.u.gs)
 		stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 
 	if (screen->info.chip_class >= GFX9)
