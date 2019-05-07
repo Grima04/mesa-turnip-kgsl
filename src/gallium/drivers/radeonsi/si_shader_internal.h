@@ -346,6 +346,8 @@ void si_declare_compute_memory(struct si_shader_context *ctx);
 void si_tgsi_declare_compute_memory(struct si_shader_context *ctx,
 				    const struct tgsi_full_declaration *decl);
 
+LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
+				 unsigned swizzle);
 void si_llvm_export_vs(struct si_shader_context *ctx,
 		       struct si_shader_output_values *outputs,
 		       unsigned noutput);

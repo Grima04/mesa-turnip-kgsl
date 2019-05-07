@@ -639,8 +639,8 @@ static void declare_input_vs(
 	si_llvm_load_input_vs(ctx, input_index, out);
 }
 
-static LLVMValueRef get_primitive_id(struct si_shader_context *ctx,
-				     unsigned swizzle)
+LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx,
+				 unsigned swizzle)
 {
 	if (swizzle > 0)
 		return ctx->i32_0;
@@ -1625,7 +1625,7 @@ static LLVMValueRef fetch_input_gs(
 
 	unsigned semantic_name = info->input_semantic_name[reg->Register.Index];
 	if (swizzle != ~0 && semantic_name == TGSI_SEMANTIC_PRIMID)
-		return get_primitive_id(ctx, swizzle);
+		return si_get_primitive_id(ctx, swizzle);
 
 	if (!reg->Register.Dimension)
 		return NULL;
@@ -2111,7 +2111,7 @@ void si_load_system_value(struct si_shader_context *ctx,
 	}
 
 	case TGSI_SEMANTIC_PRIMID:
-		value = get_primitive_id(ctx, 0);
+		value = si_get_primitive_id(ctx, 0);
 		break;
 
 	case TGSI_SEMANTIC_GRID_SIZE:
@@ -3608,7 +3608,7 @@ static void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi,
 	if (ctx->shader->key.mono.u.vs_export_prim_id) {
 		outputs[i].semantic_name = TGSI_SEMANTIC_PRIMID;
 		outputs[i].semantic_index = 0;
-		outputs[i].values[0] = ac_to_float(&ctx->ac, get_primitive_id(ctx, 0));
+		outputs[i].values[0] = ac_to_float(&ctx->ac, si_get_primitive_id(ctx, 0));
 		for (j = 1; j < 4; j++)
 			outputs[i].values[j] = LLVMConstReal(ctx->f32, 0);
 
