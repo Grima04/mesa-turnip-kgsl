@@ -393,7 +393,6 @@ struct ir3_shader_variant {
 	bool binning_pass;
 	struct ir3_shader_variant *binning;
 
-	struct ir3_const_state const_state;
 	struct ir3_info info;
 	struct ir3 *ir;
 
@@ -539,6 +538,7 @@ struct ir3_shader {
 	struct ir3_compiler *compiler;
 
 	struct ir3_ubo_analysis_state ubo_state;
+	struct ir3_const_state const_state;
 
 	struct nir_shader *nir;
 	struct ir3_stream_output_info stream_output;

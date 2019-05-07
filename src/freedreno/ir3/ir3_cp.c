@@ -298,7 +298,7 @@ lower_immed(struct ir3_cp_ctx *ctx, struct ir3_register *reg, unsigned new_flags
 	}
 
 	/* Reallocate for 4 more elements whenever it's necessary */
-	struct ir3_const_state *const_state = &ctx->so->const_state;
+	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
 	if (const_state->immediate_idx == const_state->immediates_size * 4) {
 		const_state->immediates_size += 4;
 		const_state->immediates = realloc (const_state->immediates,

@@ -101,8 +101,6 @@ ir3_context_init(struct ir3_compiler *compiler,
 
 	ir3_ibo_mapping_init(&so->image_mapping, ctx->s->info.num_textures);
 
-	ir3_setup_const_state(so);
-
 	return ctx;
 }
 

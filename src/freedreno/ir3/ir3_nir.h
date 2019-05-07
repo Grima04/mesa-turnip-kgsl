@@ -50,6 +50,4 @@ bool ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader *shader);
 nir_ssa_def *
 ir3_nir_try_propagate_bit_shift(nir_builder *b, nir_ssa_def *offset, int32_t shift);
 
-void ir3_setup_const_state(struct ir3_shader_variant *v);
-
 #endif /* IR3_NIR_H_ */

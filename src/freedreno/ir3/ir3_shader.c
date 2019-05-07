@@ -47,8 +47,6 @@ delete_variant(struct ir3_shader_variant *v)
 		ir3_destroy(v->ir);
 	if (v->bo)
 		fd_bo_del(v->bo);
-	if (v->const_state.immediates)
-		free(v->const_state.immediates);
 	free(v);
 }
 
@@ -262,6 +260,7 @@ ir3_shader_destroy(struct ir3_shader *shader)
 		v = v->next;
 		delete_variant(t);
 	}
+	free(shader->const_state.immediates);
 	ralloc_free(shader->nir);
 	free(shader);
 }
@@ -350,7 +349,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 				(regid >> 2), "xyzw"[regid & 0x3], i);
 	}
 
-	struct ir3_const_state *const_state = &so->const_state;
+	struct ir3_const_state *const_state = &so->shader->const_state;
 	for (i = 0; i < const_state->immediates_count; i++) {
 		fprintf(out, "@const(c%d.x)\t", const_state->offsets.immediate + i);
 		fprintf(out, "0x%08x, 0x%08x, 0x%08x, 0x%08x\n",

@@ -32,6 +32,8 @@
 #include "ir3_compiler.h"
 #include "ir3_shader.h"
 
+static void ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir);
+
 static const nir_shader_compiler_options options = {
 		.lower_fpow = true,
 		.lower_scmp = true,
@@ -274,6 +276,14 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 
 	nir_sweep(s);
 
+	/* The first time thru, when not creating variant, do the one-time
+	 * const_state layout setup.  This should be done after ubo range
+	 * analysis.
+	 */
+	if (!key) {
+		ir3_setup_const_state(shader, s);
+	}
+
 	return s;
 }
 
@@ -330,13 +340,11 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 	}
 }
 
-void
-ir3_setup_const_state(struct ir3_shader_variant *v)
+static void
+ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 {
-	struct ir3_shader *shader = v->shader;
 	struct ir3_compiler *compiler = shader->compiler;
-	struct ir3_const_state *const_state = &v->const_state;
-	nir_shader *nir = shader->nir;
+	struct ir3_const_state *const_state = &shader->const_state;
 
 	memset(&const_state->offsets, ~0, sizeof(const_state->offsets));
 

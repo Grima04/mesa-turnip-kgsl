@@ -196,10 +196,10 @@ tu_shader_destroy(struct tu_device *dev,
    for (uint32_t i = 0; i < 1 + shader->has_binning_pass; i++) {
       if (shader->variants[i].ir)
          ir3_destroy(shader->variants[i].ir);
-      if (shader->variants[i].const_state.immediates)
-         free(shader->variants[i].const_state.immediates);
    }
 
+   if (shader->ir3_shader.const_state.immediates)
+	   free(shader->ir3_shader.const_state.immediates);
    if (shader->binary)
       free(shader->binary);
    if (shader->binning_binary)

@@ -107,7 +107,7 @@ create_driver_param(struct ir3_context *ctx, enum ir3_driver_param dp)
 {
 	/* first four vec4 sysval's reserved for UBOs: */
 	/* NOTE: dp is in scalar, but there can be >4 dp components: */
-	struct ir3_const_state *const_state = &ctx->so->const_state;
+	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
 	unsigned n = const_state->offsets.driver_param;
 	unsigned r = regid(n + dp / 4, dp % 4);
 	return create_uniform(ctx->block, r);
@@ -684,7 +684,7 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	/* UBO addresses are the first driver params, but subtract 2 here to
 	 * account for nir_lower_uniforms_to_ubo rebasing the UBOs such that UBO 0
 	 * is the uniforms: */
-	struct ir3_const_state *const_state = &ctx->so->const_state;
+	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
 	unsigned ubo = regid(const_state->offsets.ubo, 0) - 2;
 	const unsigned ptrsz = ir3_pointer_size(ctx->compiler);
 
@@ -753,7 +753,7 @@ emit_intrinsic_ssbo_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		struct ir3_instruction **dst)
 {
 	/* SSBO size stored as a const starting at ssbo_sizes: */
-	struct ir3_const_state *const_state = &ctx->so->const_state;
+	struct ir3_const_state *const_state = &ctx->so->shader->const_state;
 	unsigned blk_idx = nir_src_as_uint(intr->src[0]);
 	unsigned idx = regid(const_state->offsets.ssbo_sizes, 0) +
 		const_state->ssbo_size.off[blk_idx];
@@ -1009,7 +1009,7 @@ emit_intrinsic_image_size(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		 * bytes-per-pixel should have been emitted in 2nd slot of
 		 * image_dims. See ir3_shader::emit_image_dims().
 		 */
-		struct ir3_const_state *const_state = &ctx->so->const_state;
+		struct ir3_const_state *const_state = &ctx->so->shader->const_state;
 		unsigned cb = regid(const_state->offsets.image_dims, 0) +
 			const_state->image_dims.off[var->data.driver_location];
 		struct ir3_instruction *aux = create_uniform(b, cb + 1);
@@ -2286,7 +2286,7 @@ emit_stream_out(struct ir3_context *ctx)
 	 * stripped out in the backend.
 	 */
 	for (unsigned i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
-		struct ir3_const_state *const_state = &ctx->so->const_state;
+		struct ir3_const_state *const_state = &ctx->so->shader->const_state;
 		unsigned stride = strmout->stride[i];
 		struct ir3_instruction *base, *off;
 

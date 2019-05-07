@@ -241,7 +241,7 @@ emit_user_consts(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		 * the user consts early to avoid HLSQ lockup caused by
 		 * writing too many consts
 		 */
-		const struct ir3_const_state *const_state = &v->const_state;
+		const struct ir3_const_state *const_state = &v->shader->const_state;
 		uint32_t max_const = MIN2(const_state->num_uniforms, v->constlen);
 
 		/* and even if the start of the const buffer is before
@@ -281,7 +281,7 @@ static void
 emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
 {
-	const struct ir3_const_state *const_state = &v->const_state;
+	const struct ir3_const_state *const_state = &v->shader->const_state;
 	uint32_t offset = const_state->offsets.ubo;
 	if (v->constlen > offset) {
 		uint32_t params = const_state->num_ubos;
@@ -311,7 +311,7 @@ static void
 emit_ssbo_sizes(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_shaderbuf_stateobj *sb)
 {
-	const struct ir3_const_state *const_state = &v->const_state;
+	const struct ir3_const_state *const_state = &v->shader->const_state;
 	uint32_t offset = const_state->offsets.ssbo_sizes;
 	if (v->constlen > offset) {
 		uint32_t sizes[align(const_state->ssbo_size.count, 4)];
@@ -333,7 +333,7 @@ static void
 emit_image_dims(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_shaderimg_stateobj *si)
 {
-	const struct ir3_const_state *const_state = &v->const_state;
+	const struct ir3_const_state *const_state = &v->shader->const_state;
 	uint32_t offset = const_state->offsets.image_dims;
 	if (v->constlen > offset) {
 		uint32_t dims[align(const_state->image_dims.count, 4)];
@@ -386,7 +386,7 @@ static void
 emit_immediates(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring)
 {
-	const struct ir3_const_state *const_state = &v->const_state;
+	const struct ir3_const_state *const_state = &v->shader->const_state;
 	uint32_t base = const_state->offsets.immediate;
 	int size = const_state->immediates_count;
 
@@ -412,7 +412,7 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring)
 {
 	/* streamout addresses after driver-params: */
-	const struct ir3_const_state *const_state = &v->const_state;
+	const struct ir3_const_state *const_state = &v->shader->const_state;
 	uint32_t offset = const_state->offsets.tfbo;
 	if (v->constlen > offset) {
 		struct fd_streamout_stateobj *so = &ctx->streamout;
@@ -540,7 +540,7 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	/* emit driver params every time: */
 	/* TODO skip emit if shader doesn't use driver params to avoid WFI.. */
 	if (info) {
-		const struct ir3_const_state *const_state = &v->const_state;
+		const struct ir3_const_state *const_state = &v->shader->const_state;
 		uint32_t offset = const_state->offsets.driver_param;
 		if (v->constlen > offset) {
 			uint32_t vertex_params[IR3_DP_VS_COUNT] = {
@@ -635,7 +635,7 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_COMPUTE);
 
 	/* emit compute-shader driver-params: */
-	const struct ir3_const_state *const_state = &v->const_state;
+	const struct ir3_const_state *const_state = &v->shader->const_state;
 	uint32_t offset = const_state->offsets.driver_param;
 	if (v->constlen > offset) {
 		ring_wfi(ctx->batch, ring);
