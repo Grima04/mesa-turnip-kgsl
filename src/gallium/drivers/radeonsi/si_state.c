@@ -1620,6 +1620,8 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen,
 	bool uniform = true;
 	int i;
 
+	assert(sscreen->info.chip_class <= GFX9);
+
 	/* Colorspace (return non-RGB formats directly). */
 	switch (desc->colorspace) {
 	/* Depth stencil formats */
@@ -1996,6 +1998,8 @@ static uint32_t si_translate_buffer_dataformat(struct pipe_screen *screen,
 {
 	int i;
 
+	assert(((struct si_screen *)screen)->info.chip_class <= GFX9);
+
 	if (desc->format == PIPE_FORMAT_R11G11B10_FLOAT)
 		return V_008F0C_BUF_DATA_FORMAT_10_11_11;
 
@@ -2071,6 +2075,8 @@ static uint32_t si_translate_buffer_numformat(struct pipe_screen *screen,
 					      const struct util_format_description *desc,
 					      int first_non_void)
 {
+	assert(((struct si_screen *)screen)->info.chip_class <= GFX9);
+
 	if (desc->format == PIPE_FORMAT_R11G11B10_FLOAT)
 		return V_008F0C_BUF_NUM_FORMAT_FLOAT;
 
