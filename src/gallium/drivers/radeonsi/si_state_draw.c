@@ -549,6 +549,30 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 	return ia_multi_vgt_param;
 }
 
+static unsigned si_conv_prim_to_gs_out(unsigned mode)
+{
+	static const int prim_conv[] = {
+		[PIPE_PRIM_POINTS]			= V_028A6C_OUTPRIM_TYPE_POINTLIST,
+		[PIPE_PRIM_LINES]			= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
+		[PIPE_PRIM_LINE_LOOP]			= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
+		[PIPE_PRIM_LINE_STRIP]			= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
+		[PIPE_PRIM_TRIANGLES]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_TRIANGLE_STRIP]		= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_TRIANGLE_FAN]		= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_QUADS]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_QUAD_STRIP]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_POLYGON]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_LINES_ADJACENCY]		= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
+		[PIPE_PRIM_LINE_STRIP_ADJACENCY]	= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
+		[PIPE_PRIM_TRIANGLES_ADJACENCY]		= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY]	= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
+		[PIPE_PRIM_PATCHES]			= V_028A6C_OUTPRIM_TYPE_POINTLIST,
+	};
+	assert(mode < ARRAY_SIZE(prim_conv));
+
+	return prim_conv[mode];
+}
+
 /* rast_prim is the primitive type after GS. */
 static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 {
@@ -556,24 +580,34 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 	enum pipe_prim_type rast_prim = sctx->current_rast_prim;
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
-	/* Skip this if not rendering lines. */
-	if (!util_prim_is_lines(rast_prim))
+	if (likely(rast_prim == sctx->last_rast_prim &&
+		   rs->pa_sc_line_stipple == sctx->last_sc_line_stipple))
 		return;
 
-	if (rast_prim == sctx->last_rast_prim &&
-	    rs->pa_sc_line_stipple == sctx->last_sc_line_stipple)
-		return;
+	if (util_prim_is_lines(rast_prim)) {
+		/* For lines, reset the stipple pattern at each primitive. Otherwise,
+		 * reset the stipple pattern at each packet (line strips, line loops).
+		 */
+		radeon_set_context_reg(cs, R_028A0C_PA_SC_LINE_STIPPLE,
+			rs->pa_sc_line_stipple |
+			S_028A0C_AUTO_RESET_CNTL(rast_prim == PIPE_PRIM_LINES ? 1 : 2));
+		sctx->context_roll = true;
+	}
 
-	/* For lines, reset the stipple pattern at each primitive. Otherwise,
-	 * reset the stipple pattern at each packet (line strips, line loops).
-	 */
-	radeon_set_context_reg(cs, R_028A0C_PA_SC_LINE_STIPPLE,
-		rs->pa_sc_line_stipple |
-		S_028A0C_AUTO_RESET_CNTL(rast_prim == PIPE_PRIM_LINES ? 1 : 2));
+	if (rast_prim != sctx->last_rast_prim &&
+	    (sctx->ngg || sctx->gs_shader.cso)) {
+		unsigned gs_out = si_conv_prim_to_gs_out(sctx->current_rast_prim);
+		radeon_set_context_reg(cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
+		sctx->context_roll = true;
+
+		if (sctx->chip_class >= GFX10) {
+			sctx->current_vs_state &= C_VS_STATE_OUTPRIM;
+			sctx->current_vs_state |= S_VS_STATE_OUTPRIM(gs_out);
+		}
+	}
 
 	sctx->last_rast_prim = rast_prim;
 	sctx->last_sc_line_stipple = rs->pa_sc_line_stipple;
-	sctx->context_roll = true;
 }
 
 static void si_emit_vs_state(struct si_context *sctx,

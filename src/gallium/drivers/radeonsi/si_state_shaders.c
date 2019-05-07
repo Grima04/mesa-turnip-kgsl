@@ -622,30 +622,6 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
 	polaris_set_vgt_vertex_reuse(sscreen, shader->selector, shader, pm4);
 }
 
-static unsigned si_conv_prim_to_gs_out(unsigned mode)
-{
-	static const int prim_conv[] = {
-		[PIPE_PRIM_POINTS]			= V_028A6C_OUTPRIM_TYPE_POINTLIST,
-		[PIPE_PRIM_LINES]			= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
-		[PIPE_PRIM_LINE_LOOP]			= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
-		[PIPE_PRIM_LINE_STRIP]			= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
-		[PIPE_PRIM_TRIANGLES]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_TRIANGLE_STRIP]		= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_TRIANGLE_FAN]		= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_QUADS]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_QUAD_STRIP]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_POLYGON]			= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_LINES_ADJACENCY]		= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
-		[PIPE_PRIM_LINE_STRIP_ADJACENCY]	= V_028A6C_OUTPRIM_TYPE_LINESTRIP,
-		[PIPE_PRIM_TRIANGLES_ADJACENCY]		= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY]	= V_028A6C_OUTPRIM_TYPE_TRISTRIP,
-		[PIPE_PRIM_PATCHES]			= V_028A6C_OUTPRIM_TYPE_POINTLIST,
-	};
-	assert(mode < ARRAY_SIZE(prim_conv));
-
-	return prim_conv[mode];
-}
-
 void gfx9_get_gs_info(struct si_shader_selector *es,
 		      struct si_shader_selector *gs,
 		      struct gfx9_gs_info *out)
@@ -753,14 +729,12 @@ static void si_emit_shader_gs(struct si_context *sctx)
 		return;
 
 	/* R_028A60_VGT_GSVS_RING_OFFSET_1, R_028A64_VGT_GSVS_RING_OFFSET_2
-	 * R_028A68_VGT_GSVS_RING_OFFSET_3, R_028A6C_VGT_GS_OUT_PRIM_TYPE */
-	radeon_opt_set_context_reg4(sctx, R_028A60_VGT_GSVS_RING_OFFSET_1,
+	 * R_028A68_VGT_GSVS_RING_OFFSET_3 */
+	radeon_opt_set_context_reg3(sctx, R_028A60_VGT_GSVS_RING_OFFSET_1,
 				    SI_TRACKED_VGT_GSVS_RING_OFFSET_1,
 				    shader->ctx_reg.gs.vgt_gsvs_ring_offset_1,
 				    shader->ctx_reg.gs.vgt_gsvs_ring_offset_2,
-				    shader->ctx_reg.gs.vgt_gsvs_ring_offset_3,
-				    shader->ctx_reg.gs.vgt_gs_out_prim_type);
-
+				    shader->ctx_reg.gs.vgt_gsvs_ring_offset_3);
 
 	/* R_028AB0_VGT_GSVS_RING_ITEMSIZE */
 	radeon_opt_set_context_reg(sctx, R_028AB0_VGT_GSVS_RING_ITEMSIZE,
@@ -840,9 +814,6 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 	if (max_stream >= 2)
 		offset += num_components[2] * sel->gs_max_out_vertices;
 	shader->ctx_reg.gs.vgt_gsvs_ring_offset_3 = offset;
-
-	shader->ctx_reg.gs.vgt_gs_out_prim_type =
-		si_conv_prim_to_gs_out(sel->gs_output_prim);
 
 	if (max_stream >= 3)
 		offset += num_components[3] * sel->gs_max_out_vertices;

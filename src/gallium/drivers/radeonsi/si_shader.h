@@ -246,6 +246,8 @@ enum {
 #define C_VS_STATE_CLAMP_VERTEX_COLOR		0xFFFFFFFE
 #define S_VS_STATE_INDEXED(x)			(((unsigned)(x) & 0x1) << 1)
 #define C_VS_STATE_INDEXED			0xFFFFFFFD
+#define S_VS_STATE_OUTPRIM(x)			(((unsigned)(x) & 0x3) << 2)
+#define C_VS_STATE_OUTPRIM			0xFFFFFFF3
 #define S_VS_STATE_LS_OUT_PATCH_SIZE(x)		(((unsigned)(x) & 0x1FFF) << 8)
 #define C_VS_STATE_LS_OUT_PATCH_SIZE		0xFFE000FF
 #define S_VS_STATE_LS_OUT_VERTEX_SIZE(x)	(((unsigned)(x) & 0xFF) << 24)
@@ -666,7 +668,6 @@ struct si_shader {
 			unsigned	vgt_gsvs_ring_offset_1;
 			unsigned	vgt_gsvs_ring_offset_2;
 			unsigned	vgt_gsvs_ring_offset_3;
-			unsigned	vgt_gs_out_prim_type;
 			unsigned	vgt_gsvs_ring_itemsize;
 			unsigned	vgt_gs_max_vert_out;
 			unsigned	vgt_gs_vert_itemsize;
