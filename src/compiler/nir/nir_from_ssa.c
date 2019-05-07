@@ -942,6 +942,23 @@ dest_replace_ssa_with_reg(nir_dest *dest, void *void_state)
    return true;
 }
 
+static bool
+ssa_def_is_local_to_block(nir_ssa_def *def, UNUSED void *state)
+{
+   nir_block *block = def->parent_instr->block;
+   nir_foreach_use(use_src, def) {
+      if (use_src->parent_instr->block != block ||
+          use_src->parent_instr->type == nir_instr_type_phi) {
+         return false;
+      }
+   }
+
+   if (!list_empty(&def->if_uses))
+      return false;
+
+   return true;
+}
+
 /** Lower all of the SSA defs in a block to registers
  *
  * This performs the very simple operation of blindly replacing all of the SSA
@@ -977,12 +994,11 @@ nir_lower_ssa_defs_to_regs_block(nir_block *block)
          mov->dest.dest = nir_dest_for_reg(reg);
          mov->dest.write_mask = (1 << reg->num_components) - 1;
          nir_instr_insert(nir_after_instr(&load->instr), &mov->instr);
-      } else if (instr->type == nir_instr_type_deref) {
-         /* Derefs should always be SSA values, don't rewrite them. */
-         nir_deref_instr *deref = nir_instr_as_deref(instr);
-         nir_foreach_use_safe(use, &deref->dest.ssa)
-            assert(use->parent_instr->block == block);
-         assert(list_empty(&deref->dest.ssa.if_uses));
+      } else if (nir_foreach_ssa_def(instr, ssa_def_is_local_to_block, NULL)) {
+         /* If the SSA def produced by this instruction is only in the block
+          * in which it is defined and is not used by ifs or phis, then we
+          * don't have a reason to convert it to a register.
+          */
       } else {
          nir_foreach_dest(instr, dest_replace_ssa_with_reg, &state);
       }
