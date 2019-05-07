@@ -525,6 +525,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    pci_id = 0x%x\n", info->pci_id);
 	printf("    family = %i\n", info->family);
 	printf("    chip_class = %i\n", info->chip_class);
+	printf("    chip_external_rev = %i\n", info->chip_external_rev);
 	printf("    num_compute_rings = %u\n", info->num_compute_rings);
 	printf("    num_sdma_rings = %i\n", info->num_sdma_rings);
 	printf("    clock_crystal_freq = %i\n", info->clock_crystal_freq);

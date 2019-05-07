@@ -671,6 +671,21 @@ struct si_shader {
 		} gs;
 
 		struct {
+			unsigned	ge_max_output_per_subgroup;
+			unsigned	ge_ngg_subgrp_cntl;
+			unsigned	vgt_primitiveid_en;
+			unsigned	vgt_gs_onchip_cntl;
+			unsigned	vgt_gs_instance_cnt;
+			unsigned	vgt_esgs_ring_itemsize;
+			unsigned	vgt_reuse_off;
+			unsigned	spi_vs_out_config;
+			unsigned	spi_shader_idx_format;
+			unsigned	spi_shader_pos_format;
+			unsigned	pa_cl_vte_cntl;
+			unsigned	vgt_gs_max_vert_out; /* for API GS */
+		} ngg;
+
+		struct {
 			unsigned	vgt_gs_mode;
 			unsigned	vgt_primitiveid_en;
 			unsigned	vgt_reuse_off;
@@ -693,6 +708,7 @@ struct si_shader {
 	/*For save precompute registers value */
 	unsigned vgt_tf_param; /* VGT_TF_PARAM */
 	unsigned vgt_vertex_reuse_block_cntl; /* VGT_VERTEX_REUSE_BLOCK_CNTL */
+	unsigned ge_cntl;
 };
 
 struct si_shader_part {
