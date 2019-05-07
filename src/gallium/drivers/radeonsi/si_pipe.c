@@ -950,6 +950,10 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 			   sizeof(struct si_transfer), 64);
 
 	sscreen->force_aniso = MIN2(16, debug_get_num_option("R600_TEX_ANISO", -1));
+	if (sscreen->force_aniso == -1) {
+		sscreen->force_aniso = MIN2(16, debug_get_num_option("AMD_TEX_ANISO", -1));
+	}
+
 	if (sscreen->force_aniso >= 0) {
 		printf("radeonsi: Forcing anisotropy filter to %ix\n",
 		       /* round down to a power of two */
