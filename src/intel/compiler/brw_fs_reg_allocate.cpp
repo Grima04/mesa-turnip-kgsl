@@ -721,76 +721,6 @@ build_interference_graph(fs_visitor *fs)
    return g;
 }
 
-bool
-fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
-{
-   /* Most of this allocation was written for a reg_width of 1
-    * (dispatch_width == 8).  In extending to SIMD16, the code was
-    * left in place and it was converted to have the hardware
-    * registers it's allocating be contiguous physical pairs of regs
-    * for reg_width == 2.
-    */
-   int reg_width = dispatch_width / 8;
-   int rsi = _mesa_logbase2(reg_width); /* Which compiler->fs_reg_sets[] to use */
-   ra_graph *g = build_interference_graph(this);
-
-   /* Debug of register spilling: Go spill everything. */
-   if (unlikely(spill_all)) {
-      int reg = choose_spill_reg(g);
-
-      if (reg != -1) {
-         spill_reg(reg);
-         ralloc_free(g);
-         return false;
-      }
-   }
-
-   if (!ra_allocate(g)) {
-      /* Failed to allocate registers.  Spill a reg, and the caller will
-       * loop back into here to try again.
-       */
-      int reg = choose_spill_reg(g);
-
-      if (reg == -1) {
-         fail("no register to spill:\n");
-         dump_instructions(NULL);
-      } else if (allow_spilling) {
-         spill_reg(reg);
-      }
-
-      ralloc_free(g);
-
-      return false;
-   }
-
-   /* Get the chosen virtual registers for each node, and map virtual
-    * regs in the register classes back down to real hardware reg
-    * numbers.
-    */
-   unsigned hw_reg_mapping[alloc.count];
-   this->grf_used = this->first_non_payload_grf;
-   for (unsigned i = 0; i < this->alloc.count; i++) {
-      int reg = ra_get_node_reg(g, i);
-
-      hw_reg_mapping[i] = compiler->fs_reg_sets[rsi].ra_reg_to_grf[reg];
-      this->grf_used = MAX2(this->grf_used,
-			    hw_reg_mapping[i] + this->alloc.sizes[i]);
-   }
-
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
-      assign_reg(hw_reg_mapping, &inst->dst);
-      for (int i = 0; i < inst->sources; i++) {
-         assign_reg(hw_reg_mapping, &inst->src[i]);
-      }
-   }
-
-   this->alloc.count = this->grf_used;
-
-   ralloc_free(g);
-
-   return true;
-}
-
 namespace {
    /**
     * Maximum spill block size we expect to encounter in 32B units.
@@ -1091,4 +1021,74 @@ fs_visitor::spill_reg(unsigned spill_reg)
    }
 
    invalidate_live_intervals();
+}
+
+bool
+fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
+{
+   /* Most of this allocation was written for a reg_width of 1
+    * (dispatch_width == 8).  In extending to SIMD16, the code was
+    * left in place and it was converted to have the hardware
+    * registers it's allocating be contiguous physical pairs of regs
+    * for reg_width == 2.
+    */
+   int reg_width = dispatch_width / 8;
+   int rsi = _mesa_logbase2(reg_width); /* Which compiler->fs_reg_sets[] to use */
+   ra_graph *g = build_interference_graph(this);
+
+   /* Debug of register spilling: Go spill everything. */
+   if (unlikely(spill_all)) {
+      int reg = choose_spill_reg(g);
+
+      if (reg != -1) {
+         spill_reg(reg);
+         ralloc_free(g);
+         return false;
+      }
+   }
+
+   if (!ra_allocate(g)) {
+      /* Failed to allocate registers.  Spill a reg, and the caller will
+       * loop back into here to try again.
+       */
+      int reg = choose_spill_reg(g);
+
+      if (reg == -1) {
+         fail("no register to spill:\n");
+         dump_instructions(NULL);
+      } else if (allow_spilling) {
+         spill_reg(reg);
+      }
+
+      ralloc_free(g);
+
+      return false;
+   }
+
+   /* Get the chosen virtual registers for each node, and map virtual
+    * regs in the register classes back down to real hardware reg
+    * numbers.
+    */
+   unsigned hw_reg_mapping[alloc.count];
+   this->grf_used = this->first_non_payload_grf;
+   for (unsigned i = 0; i < this->alloc.count; i++) {
+      int reg = ra_get_node_reg(g, i);
+
+      hw_reg_mapping[i] = compiler->fs_reg_sets[rsi].ra_reg_to_grf[reg];
+      this->grf_used = MAX2(this->grf_used,
+			    hw_reg_mapping[i] + this->alloc.sizes[i]);
+   }
+
+   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      assign_reg(hw_reg_mapping, &inst->dst);
+      for (int i = 0; i < inst->sources; i++) {
+         assign_reg(hw_reg_mapping, &inst->src[i]);
+      }
+   }
+
+   this->alloc.count = this->grf_used;
+
+   ralloc_free(g);
+
+   return true;
 }
