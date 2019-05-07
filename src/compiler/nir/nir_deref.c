@@ -601,6 +601,8 @@ rematerialize_deref_src(nir_src *src, void *_state)
  * used.  After this pass has been run, every use of a deref will be of a
  * deref in the same block as the use.  Also, all unused derefs will be
  * deleted as a side-effect.
+ *
+ * Derefs used as sources of phi instructions are not rematerialized.
  */
 bool
 nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
@@ -618,6 +620,12 @@ nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl)
       nir_foreach_instr_safe(instr, block) {
          if (instr->type == nir_instr_type_deref &&
              nir_deref_instr_remove_if_unused(nir_instr_as_deref(instr)))
+            continue;
+
+         /* If a deref is used in a phi, we can't rematerialize it, as the new
+          * derefs would appear before the phi, which is not valid.
+          */
+         if (instr->type == nir_instr_type_phi)
             continue;
 
          state.builder.cursor = nir_before_instr(instr);
