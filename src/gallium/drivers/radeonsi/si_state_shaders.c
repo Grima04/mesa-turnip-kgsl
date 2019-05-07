@@ -1454,6 +1454,7 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx,
 /* Compute the key for the hw shader variant */
 static inline void si_shader_selector_key(struct pipe_context *ctx,
 					  struct si_shader_selector *sel,
+					  union si_vgt_stages_key stages_key,
 					  struct si_shader_key *key)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
@@ -1469,6 +1470,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 		else if (sctx->gs_shader.cso)
 			key->as_es = 1;
 		else {
+			key->as_ngg = stages_key.u.ngg;
 			si_shader_selector_key_hw_vs(sctx, sel, key);
 
 			if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
@@ -1510,6 +1512,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 		if (sctx->gs_shader.cso)
 			key->as_es = 1;
 		else {
+			key->as_ngg = stages_key.u.ngg;
 			si_shader_selector_key_hw_vs(sctx, sel, key);
 
 			if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
@@ -1526,6 +1529,8 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 				key->part.gs.es = sctx->vs_shader.cso;
 				key->part.gs.prolog.gfx9_prev_is_vs = 1;
 			}
+
+			key->as_ngg = stages_key.u.ngg;
 
 			/* Merged ES-GS can have unbalanced wave usage.
 			 *
@@ -1765,6 +1770,7 @@ static bool si_check_missing_main_part(struct si_screen *sscreen,
 		main_part->selector = sel;
 		main_part->key.as_es = key->as_es;
 		main_part->key.as_ls = key->as_ls;
+		main_part->key.as_ngg = key->as_ngg;
 		main_part->is_monolithic = false;
 
 		if (si_compile_tgsi_shader(sscreen, compiler_state->compiler,
@@ -1898,11 +1904,14 @@ current_not_ready:
 	 */
 	if (!is_pure_monolithic &&
 	    !key->opt.vs_as_prim_discard_cs) {
-		bool ok;
+		bool ok = true;
 
 		/* Make sure the main shader part is present. This is needed
 		 * for shaders that can be compiled as VS, LS, or ES, and only
 		 * one of them is compiled at creation.
+		 *
+		 * It is also needed for GS, which can be compiled as non-NGG
+		 * and NGG.
 		 *
 		 * For merged shaders, check that the starting shader's main
 		 * part is present.
@@ -1922,10 +1931,13 @@ current_not_ready:
 							previous_stage_sel,
 							compiler_state, &shader1_key);
 			mtx_unlock(&previous_stage_sel->mutex);
-		} else {
+		}
+
+		if (ok) {
 			ok = si_check_missing_main_part(sscreen, sel,
 							compiler_state, key);
 		}
+
 		if (!ok) {
 			FREE(shader);
 			mtx_unlock(&sel->mutex);
@@ -2008,12 +2020,13 @@ current_not_ready:
 
 static int si_shader_select(struct pipe_context *ctx,
 			    struct si_shader_ctx_state *state,
+			    union si_vgt_stages_key stages_key,
 			    struct si_compiler_ctx_state *compiler_state)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_shader_key key;
 
-	si_shader_selector_key(ctx, state->cso, &key);
+	si_shader_selector_key(ctx, state->cso, stages_key, &key);
 	return si_shader_select_with_key(sctx->screen, state, compiler_state,
 					 &key, -1, false);
 }
@@ -2095,6 +2108,13 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		si_parse_next_shader_property(&sel->info,
 					      sel->so.num_outputs != 0,
 					      &shader->key);
+		if (sscreen->info.chip_class >= GFX10 &&
+		    !sscreen->options.disable_ngg &&
+		    (((sel->type == PIPE_SHADER_VERTEX ||
+		       sel->type == PIPE_SHADER_TESS_EVAL) &&
+		      !shader->key.as_ls && !shader->key.as_es) ||
+		     sel->type == PIPE_SHADER_GEOMETRY))
+			shader->key.as_ngg = 1;
 
 		if (sel->tokens || sel->nir)
 			ir_binary = si_get_ir_binary(sel);
@@ -2808,6 +2828,8 @@ void si_destroy_shader_selector(struct si_context *sctx,
 		si_delete_shader(sctx, sel->main_shader_part_ls);
 	if (sel->main_shader_part_es)
 		si_delete_shader(sctx, sel->main_shader_part_es);
+	if (sel->main_shader_part_ngg)
+		si_delete_shader(sctx, sel->main_shader_part_ngg);
 	if (sel->gs_copy_shader)
 		si_delete_shader(sctx, sel->gs_copy_shader);
 
@@ -3435,7 +3457,7 @@ bool si_update_shaders(struct si_context *sctx)
 		}
 
 		if (sctx->tcs_shader.cso) {
-			r = si_shader_select(ctx, &sctx->tcs_shader,
+			r = si_shader_select(ctx, &sctx->tcs_shader, key,
 					     &compiler_state);
 			if (r)
 				return false;
@@ -3449,7 +3471,7 @@ bool si_update_shaders(struct si_context *sctx)
 			}
 
 			r = si_shader_select(ctx, &sctx->fixed_func_tcs_shader,
-					     &compiler_state);
+					     key, &compiler_state);
 			if (r)
 				return false;
 			si_pm4_bind_state(sctx, hs,
@@ -3457,7 +3479,7 @@ bool si_update_shaders(struct si_context *sctx)
 		}
 
 		if (!sctx->gs_shader.cso || sctx->chip_class <= GFX8) {
-			r = si_shader_select(ctx, &sctx->tes_shader, &compiler_state);
+			r = si_shader_select(ctx, &sctx->tes_shader, key, &compiler_state);
 			if (r)
 				return false;
 
@@ -3479,7 +3501,7 @@ bool si_update_shaders(struct si_context *sctx)
 
 	/* Update GS. */
 	if (sctx->gs_shader.cso) {
-		r = si_shader_select(ctx, &sctx->gs_shader, &compiler_state);
+		r = si_shader_select(ctx, &sctx->gs_shader, key, &compiler_state);
 		if (r)
 			return false;
 		si_pm4_bind_state(sctx, gs, sctx->gs_shader.current->pm4);
@@ -3501,7 +3523,7 @@ bool si_update_shaders(struct si_context *sctx)
 
 	/* Update VS. */
 	if ((!key.u.tess && !key.u.gs) || sctx->chip_class <= GFX8) {
-		r = si_shader_select(ctx, &sctx->vs_shader, &compiler_state);
+		r = si_shader_select(ctx, &sctx->vs_shader, key, &compiler_state);
 		if (r)
 			return false;
 
@@ -3528,7 +3550,7 @@ bool si_update_shaders(struct si_context *sctx)
 	if (sctx->ps_shader.cso) {
 		unsigned db_shader_control;
 
-		r = si_shader_select(ctx, &sctx->ps_shader, &compiler_state);
+		r = si_shader_select(ctx, &sctx->ps_shader, key, &compiler_state);
 		if (r)
 			return false;
 		si_pm4_bind_state(sctx, ps, sctx->ps_shader.current->pm4);

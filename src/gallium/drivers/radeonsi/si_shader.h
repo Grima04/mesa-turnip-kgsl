@@ -331,6 +331,7 @@ struct si_shader_selector {
 	struct si_shader	*main_shader_part;
 	struct si_shader	*main_shader_part_ls; /* as_ls is set in the key */
 	struct si_shader	*main_shader_part_es; /* as_es is set in the key */
+	struct si_shader	*main_shader_part_ngg; /* as_ngg is set in the key */
 
 	struct si_shader	*gs_copy_shader;
 
@@ -469,6 +470,7 @@ union si_shader_part_key {
 		unsigned	last_input:4;
 		unsigned	as_ls:1;
 		unsigned	as_es:1;
+		unsigned	as_ngg:1;
 		/* Prologs for monolithic shaders shouldn't set EXEC. */
 		unsigned	is_monolithic:1;
 	} vs_prolog;
@@ -524,11 +526,12 @@ struct si_shader_key {
 		} ps;
 	} part;
 
-	/* These two are initially set according to the NEXT_SHADER property,
+	/* These three are initially set according to the NEXT_SHADER property,
 	 * or guessed if the property doesn't seem correct.
 	 */
 	unsigned as_es:1; /* export shader, which precedes GS */
 	unsigned as_ls:1; /* local shader, which precedes TCS */
+	unsigned as_ngg:1; /* VS, TES, or GS compiled as NGG primitive shader */
 
 	/* Flags for monolithic compilation only. */
 	struct {
@@ -753,6 +756,8 @@ si_get_main_shader_part(struct si_shader_selector *sel,
 		return &sel->main_shader_part_ls;
 	if (key->as_es)
 		return &sel->main_shader_part_es;
+	if (key->as_ngg)
+		return &sel->main_shader_part_ngg;
 	return &sel->main_shader_part;
 }
 

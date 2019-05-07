@@ -6080,6 +6080,7 @@ static void si_get_vs_prolog_key(const struct tgsi_shader_info *info,
 	key->vs_prolog.last_input = MAX2(1, info->num_inputs) - 1;
 	key->vs_prolog.as_ls = shader_out->key.as_ls;
 	key->vs_prolog.as_es = shader_out->key.as_es;
+	key->vs_prolog.as_ngg = shader_out->key.as_ngg;
 
 	if (shader_out->selector->type == PIPE_SHADER_TESS_CTRL) {
 		key->vs_prolog.as_ls = 1;
@@ -7046,6 +7047,7 @@ si_get_shader_part(struct si_screen *sscreen,
 	case PIPE_SHADER_VERTEX:
 		shader.key.as_ls = key->vs_prolog.as_ls;
 		shader.key.as_es = key->vs_prolog.as_es;
+		shader.key.as_ngg = key->vs_prolog.as_ngg;
 		break;
 	case PIPE_SHADER_TESS_CTRL:
 		assert(!prolog);
@@ -7973,6 +7975,9 @@ bool si_shader_create(struct si_screen *sscreen, struct ac_llvm_compiler *compil
 
 	/* LS, ES, VS are compiled on demand if the main part hasn't been
 	 * compiled for that stage.
+	 *
+	 * GS are compiled on demand if the main part hasn't been compiled
+	 * for the chosen NGG-ness.
 	 *
 	 * Vertex shaders are compiled on demand when a vertex fetch
 	 * workaround must be applied.
