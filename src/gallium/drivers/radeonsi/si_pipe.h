@@ -1041,6 +1041,7 @@ struct si_context {
 	bool			gs_tri_strip_adj_fix:1;
 	bool			ls_vgpr_fix:1;
 	bool			prim_discard_cs_instancing:1;
+	bool			ngg:1;
 	int			last_index_size;
 	int			last_base_vertex;
 	int			last_start_instance;

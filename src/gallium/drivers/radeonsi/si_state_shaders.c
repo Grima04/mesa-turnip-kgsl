@@ -2588,6 +2588,27 @@ static void si_update_tess_uses_prim_id(struct si_context *sctx)
 		 sctx->ps_shader.cso->info.uses_primid);
 }
 
+static bool si_update_ngg(struct si_context *sctx)
+{
+	if (sctx->chip_class <= GFX9 ||
+	    sctx->screen->options.disable_ngg)
+		return false;
+
+	bool new_ngg = true;
+
+	/* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation. */
+	if (sctx->gs_shader.cso && sctx->tes_shader.cso &&
+	    sctx->gs_shader.cso->gs_num_invocations * sctx->gs_shader.cso->gs_max_out_vertices > 256)
+		new_ngg = false;
+
+	if (new_ngg != sctx->ngg) {
+		sctx->ngg = new_ngg;
+		sctx->last_rast_prim = -1; /* reset this so that it gets updated */
+		return true;
+	}
+	return false;
+}
+
 static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
@@ -2595,6 +2616,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
 	struct si_shader *old_hw_vs_variant = si_get_vs_state(sctx);
 	struct si_shader_selector *sel = state;
 	bool enable_changed = !!sctx->gs_shader.cso != !!sel;
+	bool ngg_changed;
 
 	if (sctx->gs_shader.cso == sel)
 		return;
@@ -2606,8 +2628,10 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
 	si_update_common_shader_state(sctx);
 	sctx->last_rast_prim = -1; /* reset this so that it gets updated */
 
-	if (enable_changed) {
+	ngg_changed = si_update_ngg(sctx);
+	if (ngg_changed || enable_changed)
 		si_shader_change_notify(sctx);
+	if (enable_changed) {
 		if (sctx->ia_multi_vgt_param_key.u.uses_tess)
 			si_update_tess_uses_prim_id(sctx);
 	}
@@ -2659,6 +2683,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
 	sctx->last_rast_prim = -1; /* reset this so that it gets updated */
 
 	if (enable_changed) {
+		si_update_ngg(sctx);
 		si_shader_change_notify(sctx);
 		sctx->last_tes_sh_base = -1; /* invalidate derived tess state */
 	}
