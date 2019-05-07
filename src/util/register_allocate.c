@@ -426,6 +426,31 @@ ra_add_node_adjacency(struct ra_graph *g, unsigned int n1, unsigned int n2)
 }
 
 static void
+ra_node_remove_adjacency(struct ra_graph *g, unsigned int n1, unsigned int n2)
+{
+   BITSET_CLEAR(g->nodes[n1].adjacency, n2);
+
+   assert(n1 != n2);
+
+   int n1_class = g->nodes[n1].class;
+   int n2_class = g->nodes[n2].class;
+   g->nodes[n1].q_total -= g->regs->classes[n1_class]->q[n2_class];
+
+   unsigned int i;
+   for (i = 0; i < g->nodes[n1].adjacency_count; i++) {
+      if (g->nodes[n1].adjacency_list[i] == n2) {
+         memmove(&g->nodes[n1].adjacency_list[i],
+                 &g->nodes[n1].adjacency_list[i + 1],
+                 (g->nodes[n1].adjacency_count - i - 1) *
+                 sizeof(g->nodes[n1].adjacency_list[0]));
+         break;
+      }
+   }
+   assert(i < g->nodes[n1].adjacency_count);
+   g->nodes[n1].adjacency_count--;
+}
+
+static void
 ra_realloc_interference_graph(struct ra_graph *g, unsigned int alloc)
 {
    if (alloc <= g->alloc)
@@ -534,6 +559,17 @@ ra_add_node_interference(struct ra_graph *g,
       ra_add_node_adjacency(g, n1, n2);
       ra_add_node_adjacency(g, n2, n1);
    }
+}
+
+void
+ra_reset_node_interference(struct ra_graph *g, unsigned int n)
+{
+   for (unsigned int i = 0; i < g->nodes[n].adjacency_count; i++)
+      ra_node_remove_adjacency(g, g->nodes[n].adjacency_list[i], n);
+
+   memset(g->nodes[n].adjacency, 0,
+          BITSET_WORDS(g->count) * sizeof(BITSET_WORD));
+   g->nodes[n].adjacency_count = 0;
 }
 
 static void

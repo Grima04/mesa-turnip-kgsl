@@ -84,6 +84,7 @@ void ra_set_select_reg_callback(struct ra_graph *g,
                                 void *data);
 void ra_add_node_interference(struct ra_graph *g,
                               unsigned int n1, unsigned int n2);
+void ra_reset_node_interference(struct ra_graph *g, unsigned int n);
 /** @} */
 
 /** @{ Graph-coloring register allocation */
