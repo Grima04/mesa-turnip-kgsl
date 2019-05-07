@@ -2526,12 +2526,12 @@ static void si_initialize_color_surface(struct si_context *sctx,
 	}
 
 	unsigned color_view = S_028C6C_SLICE_START(surf->base.u.tex.first_layer) |
-			      S_028C6C_SLICE_MAX(surf->base.u.tex.last_layer);
+			      S_028C6C_SLICE_MAX_GFX6(surf->base.u.tex.last_layer);
 
 	if (sctx->chip_class >= GFX9) {
 		unsigned mip0_depth = util_max_layer(&tex->buffer.b.b, 0);
 
-		color_view |= S_028C6C_MIP_LEVEL(surf->base.u.tex.level);
+		color_view |= S_028C6C_MIP_LEVEL_GFX9(surf->base.u.tex.level);
 		color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
 				S_028C74_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type);
 		surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(surf->width0 - 1) |
@@ -4371,7 +4371,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
 			  S_008F38_MIP_POINT_PRECLAMP(0) |
 			  S_008F38_DISABLE_LSB_CEIL(sctx->chip_class <= GFX8) |
 			  S_008F38_FILTER_PREC_FIX(1) |
-			  S_008F38_ANISO_OVERRIDE(sctx->chip_class >= GFX8));
+			  S_008F38_ANISO_OVERRIDE_GFX6(sctx->chip_class >= GFX8));
 	rstate->val[3] = si_translate_border_color(sctx, state, &state->border_color, false);
 
 	/* Create sampler resource for integer textures. */

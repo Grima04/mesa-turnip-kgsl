@@ -259,7 +259,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 
 	if (sctx->chip_class >= GFX9) {
 		unsigned hs_rsrc2 = ls_current->config.rsrc2 |
-				    S_00B42C_LDS_SIZE(lds_size);
+				    S_00B42C_LDS_SIZE_GFX9(lds_size);
 
 		radeon_set_sh_reg(cs, R_00B42C_SPI_SHADER_PGM_RSRC2_HS, hs_rsrc2);
 

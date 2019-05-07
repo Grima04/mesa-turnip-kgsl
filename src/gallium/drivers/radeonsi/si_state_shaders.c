@@ -522,7 +522,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 
 		shader->config.rsrc2 =
 			S_00B42C_USER_SGPR(num_user_sgprs) |
-			S_00B42C_USER_SGPR_MSB(num_user_sgprs >> 5) |
+			S_00B42C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5) |
 			S_00B42C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 	} else {
 		si_pm4_set_reg(pm4, R_00B420_SPI_SHADER_PGM_LO_HS, va >> 8);
@@ -906,7 +906,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 			       S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt));
 		si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
 			       S_00B22C_USER_SGPR(num_user_sgprs) |
-			       S_00B22C_USER_SGPR_MSB(num_user_sgprs >> 5) |
+			       S_00B22C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5) |
 			       S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
 			       S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
 			       S_00B22C_LDS_SIZE(shader->config.lds_size) |

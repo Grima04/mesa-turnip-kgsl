@@ -4356,7 +4356,7 @@ radv_initialise_color_surface(struct radv_device *device,
 
 	uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
 	cb->cb_color_view = S_028C6C_SLICE_START(iview->base_layer) |
-		S_028C6C_SLICE_MAX(max_slice);
+		S_028C6C_SLICE_MAX_GFX6(max_slice);
 
 	if (iview->image->info.samples > 1) {
 		unsigned log_samples = util_logbase2(iview->image->info.samples);
@@ -4461,7 +4461,7 @@ radv_initialise_color_surface(struct radv_device *device,
 		unsigned width = iview->extent.width / (iview->plane_id ? format_desc->width_divisor : 1);
 		unsigned height = iview->extent.height / (iview->plane_id ? format_desc->height_divisor : 1);
 
-		cb->cb_color_view |= S_028C6C_MIP_LEVEL(iview->base_mip);
+		cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX9(iview->base_mip);
 		cb->cb_color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
 			S_028C74_RESOURCE_TYPE(surf->u.gfx9.resource_type);
 		cb->cb_color_attrib2 = S_028C68_MIP0_WIDTH(width - 1) |
@@ -4908,7 +4908,7 @@ radv_init_sampler(struct radv_device *device,
 			     S_008F38_MIP_POINT_PRECLAMP(0) |
 			     S_008F38_DISABLE_LSB_CEIL(device->physical_device->rad_info.chip_class <= GFX8) |
 			     S_008F38_FILTER_PREC_FIX(1) |
-			     S_008F38_ANISO_OVERRIDE(is_vi));
+			     S_008F38_ANISO_OVERRIDE_GFX6(is_vi));
 	sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR(0) |
 			     S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(pCreateInfo->borderColor)));
 }

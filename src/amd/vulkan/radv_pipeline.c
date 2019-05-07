@@ -3094,7 +3094,7 @@ radv_pipeline_generate_hw_hs(struct radeon_cmdbuf *cs,
 		radeon_set_sh_reg_seq(cs, R_00B428_SPI_SHADER_PGM_RSRC1_HS, 2);
 		radeon_emit(cs, shader->rsrc1);
 		radeon_emit(cs, shader->rsrc2 |
-		                S_00B42C_LDS_SIZE(tess->lds_size));
+		                S_00B42C_LDS_SIZE_GFX9(tess->lds_size));
 	} else {
 		radeon_set_sh_reg_seq(cs, R_00B420_SPI_SHADER_PGM_LO_HS, 4);
 		radeon_emit(cs, va >> 8);
