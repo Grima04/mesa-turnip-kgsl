@@ -415,7 +415,7 @@ private:
                                    int first_payload_node);
    void setup_mrf_hack_interference(int first_mrf_node,
                                     int *first_used_mrf);
-   void build_interference_graph();
+   void build_interference_graph(bool allow_spilling);
 
    int choose_spill_reg();
    void spill_reg(unsigned spill_reg);
@@ -530,6 +530,47 @@ get_used_mrfs(fs_visitor *v, bool *mrf_used)
    }
 }
 
+namespace {
+   /**
+    * Maximum spill block size we expect to encounter in 32B units.
+    *
+    * This is somewhat arbitrary and doesn't necessarily limit the maximum
+    * variable size that can be spilled -- A higher value will allow a
+    * variable of a given size to be spilled more efficiently with a smaller
+    * number of scratch messages, but will increase the likelihood of a
+    * collision between the MRFs reserved for spilling and other MRFs used by
+    * the program (and possibly increase GRF register pressure on platforms
+    * without hardware MRFs), what could cause register allocation to fail.
+    *
+    * For the moment reserve just enough space so a register of 32 bit
+    * component type and natural region width can be spilled without splitting
+    * into multiple (force_writemask_all) scratch messages.
+    */
+   unsigned
+   spill_max_size(const backend_shader *s)
+   {
+      /* FINISHME - On Gen7+ it should be possible to avoid this limit
+       *            altogether by spilling directly from the temporary GRF
+       *            allocated to hold the result of the instruction (and the
+       *            scratch write header).
+       */
+      /* FINISHME - The shader's dispatch width probably belongs in
+       *            backend_shader (or some nonexistent fs_shader class?)
+       *            rather than in the visitor class.
+       */
+      return static_cast<const fs_visitor *>(s)->dispatch_width / 8;
+   }
+
+   /**
+    * First MRF register available for spilling.
+    */
+   unsigned
+   spill_base_mrf(const backend_shader *s)
+   {
+      return BRW_MAX_MRF(s->devinfo->gen) - spill_max_size(s) - 1;
+   }
+}
+
 /**
  * Sets interference between virtual GRFs and usage of the high GRFs for SEND
  * messages (treated as MRFs in code generation).
@@ -538,11 +579,8 @@ void
 fs_reg_alloc::setup_mrf_hack_interference(int first_mrf_node,
                                           int *first_used_mrf)
 {
-   bool mrf_used[BRW_MAX_MRF(fs->devinfo->gen)];
-   get_used_mrfs(fs, mrf_used);
-
-   *first_used_mrf = BRW_MAX_MRF(devinfo->gen);
-   for (int i = 0; i < BRW_MAX_MRF(devinfo->gen); i++) {
+   *first_used_mrf = spill_base_mrf(fs);
+   for (int i = spill_base_mrf(fs); i < BRW_MAX_MRF(devinfo->gen); i++) {
       /* Mark each MRF reg node as being allocated to its physical register.
        *
        * The alternative would be to have per-physical-register classes, which
@@ -550,22 +588,13 @@ fs_reg_alloc::setup_mrf_hack_interference(int first_mrf_node,
        */
       ra_set_node_reg(g, first_mrf_node + i, GEN7_MRF_HACK_START + i);
 
-      /* Since we don't have any live/dead analysis on the MRFs, just mark all
-       * that are used as conflicting with all virtual GRFs.
-       */
-      if (mrf_used[i]) {
-         if (i < *first_used_mrf)
-            *first_used_mrf = i;
-
-         for (unsigned j = 0; j < fs->alloc.count; j++) {
-            ra_add_node_interference(g, first_mrf_node + i, j);
-         }
-      }
+      for (unsigned j = 0; j < fs->alloc.count; j++)
+         ra_add_node_interference(g, first_mrf_node + i, j);
    }
 }
 
 void
-fs_reg_alloc::build_interference_graph()
+fs_reg_alloc::build_interference_graph(bool allow_spilling)
 {
    const gen_device_info *devinfo = fs->devinfo;
    const brw_compiler *compiler = fs->compiler;
@@ -643,8 +672,8 @@ fs_reg_alloc::build_interference_graph()
    setup_payload_interference(payload_node_count, first_payload_node);
    if (devinfo->gen >= 7) {
       int first_used_mrf = BRW_MAX_MRF(devinfo->gen);
-      setup_mrf_hack_interference(first_mrf_hack_node,
-                                  &first_used_mrf);
+      if (allow_spilling)
+         setup_mrf_hack_interference(first_mrf_hack_node, &first_used_mrf);
 
       foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
          /* When we do send-from-GRF for FB writes, we need to ensure that
@@ -755,47 +784,6 @@ fs_reg_alloc::build_interference_graph()
             ra_add_node_interference(g, inst->src[2].nr,
                                      inst->src[3].nr);
       }
-   }
-}
-
-namespace {
-   /**
-    * Maximum spill block size we expect to encounter in 32B units.
-    *
-    * This is somewhat arbitrary and doesn't necessarily limit the maximum
-    * variable size that can be spilled -- A higher value will allow a
-    * variable of a given size to be spilled more efficiently with a smaller
-    * number of scratch messages, but will increase the likelihood of a
-    * collision between the MRFs reserved for spilling and other MRFs used by
-    * the program (and possibly increase GRF register pressure on platforms
-    * without hardware MRFs), what could cause register allocation to fail.
-    *
-    * For the moment reserve just enough space so a register of 32 bit
-    * component type and natural region width can be spilled without splitting
-    * into multiple (force_writemask_all) scratch messages.
-    */
-   unsigned
-   spill_max_size(const backend_shader *s)
-   {
-      /* FINISHME - On Gen7+ it should be possible to avoid this limit
-       *            altogether by spilling directly from the temporary GRF
-       *            allocated to hold the result of the instruction (and the
-       *            scratch write header).
-       */
-      /* FINISHME - The shader's dispatch width probably belongs in
-       *            backend_shader (or some nonexistent fs_shader class?)
-       *            rather than in the visitor class.
-       */
-      return static_cast<const fs_visitor *>(s)->dispatch_width / 8;
-   }
-
-   /**
-    * First MRF register available for spilling.
-    */
-   unsigned
-   spill_base_mrf(const backend_shader *s)
-   {
-      return BRW_MAX_MRF(s->devinfo->gen) - spill_max_size(s) - 1;
    }
 }
 
@@ -1063,7 +1051,7 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
 bool
 fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
 {
-   build_interference_graph();
+   build_interference_graph(fs->spilled_any_registers);
 
    /* Debug of register spilling: Go spill everything. */
    if (unlikely(spill_all)) {
