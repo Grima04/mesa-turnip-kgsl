@@ -527,22 +527,24 @@ setup_mrf_hack_interference(fs_visitor *v, struct ra_graph *g,
    }
 }
 
-bool
-fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
+static ra_graph *
+build_interference_graph(fs_visitor *fs)
 {
+   const gen_device_info *devinfo = fs->devinfo;
+   const brw_compiler *compiler = fs->compiler;
+
    /* Most of this allocation was written for a reg_width of 1
     * (dispatch_width == 8).  In extending to SIMD16, the code was
     * left in place and it was converted to have the hardware
     * registers it's allocating be contiguous physical pairs of regs
     * for reg_width == 2.
     */
-   int reg_width = dispatch_width / 8;
-   unsigned hw_reg_mapping[this->alloc.count];
-   int payload_node_count = ALIGN(this->first_non_payload_grf, reg_width);
+   int reg_width = fs->dispatch_width / 8;
+   int payload_node_count = ALIGN(fs->first_non_payload_grf, reg_width);
    int rsi = _mesa_logbase2(reg_width); /* Which compiler->fs_reg_sets[] to use */
-   calculate_live_intervals();
+   fs->calculate_live_intervals();
 
-   int node_count = this->alloc.count;
+   int node_count = fs->alloc.count;
    int first_payload_node = node_count;
    node_count += payload_node_count;
    int first_mrf_hack_node = node_count;
@@ -554,8 +556,8 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
    struct ra_graph *g =
       ra_alloc_interference_graph(compiler->fs_reg_sets[rsi].regs, node_count);
 
-   for (unsigned i = 0; i < this->alloc.count; i++) {
-      unsigned size = this->alloc.sizes[i];
+   for (unsigned i = 0; i < fs->alloc.count; i++) {
+      unsigned size = fs->alloc.sizes[i];
       int c;
 
       assert(size <= ARRAY_SIZE(compiler->fs_reg_sets[rsi].classes) &&
@@ -566,21 +568,21 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
        * second operand of a PLN instruction needs to be an
        * even-numbered register, so we have a special register class
        * wm_aligned_pairs_class to handle this case.  pre-GEN6 always
-       * uses this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL] as the
+       * uses fs->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL] as the
        * second operand of a PLN instruction (since it doesn't support
        * any other interpolation modes).  So all we need to do is find
        * that register and set it to the appropriate class.
        */
       if (compiler->fs_reg_sets[rsi].aligned_pairs_class >= 0 &&
-          this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL].file == VGRF &&
-          this->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL].nr == i) {
+          fs->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL].file == VGRF &&
+          fs->delta_xy[BRW_BARYCENTRIC_PERSPECTIVE_PIXEL].nr == i) {
          c = compiler->fs_reg_sets[rsi].aligned_pairs_class;
       }
 
       ra_set_node_class(g, i, c);
 
       for (unsigned j = 0; j < i; j++) {
-	 if (virtual_grf_interferes(i, j)) {
+	 if (fs->virtual_grf_interferes(i, j)) {
 	    ra_add_node_interference(g, i, j);
 	 }
       }
@@ -589,7 +591,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
    /* Certain instructions can't safely use the same register for their
     * sources and destination.  Add interference.
     */
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+   foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
       if (inst->dst.file == VGRF && inst->has_source_and_destination_hazard()) {
          for (unsigned i = 0; i < inst->sources; i++) {
             if (inst->src[i].file == VGRF) {
@@ -599,13 +601,13 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
       }
    }
 
-   setup_payload_interference(g, payload_node_count, first_payload_node);
+   fs->setup_payload_interference(g, payload_node_count, first_payload_node);
    if (devinfo->gen >= 7) {
       int first_used_mrf = BRW_MAX_MRF(devinfo->gen);
-      setup_mrf_hack_interference(this, g, first_mrf_hack_node,
+      setup_mrf_hack_interference(fs, g, first_mrf_hack_node,
                                   &first_used_mrf);
 
-      foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
          /* When we do send-from-GRF for FB writes, we need to ensure that
           * the last write instruction sends from a high register.  This is
           * because the vertex fetcher wants to start filling the low
@@ -619,7 +621,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
          if (inst->eot) {
             const int vgrf = inst->opcode == SHADER_OPCODE_SEND ?
                              inst->src[2].nr : inst->src[0].nr;
-            int size = alloc.sizes[vgrf];
+            int size = fs->alloc.sizes[vgrf];
             int reg = compiler->fs_reg_sets[rsi].class_to_ra_reg_range[size] - 1;
 
             /* If something happened to spill, we want to push the EOT send
@@ -645,7 +647,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
     * about this level of granularity, we simply make the source and
     * destination interfere.
     */
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+   foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
       if (inst->exec_size < 16 || inst->dst.file != VGRF)
          continue;
 
@@ -671,14 +673,14 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
        * any register overlap between sources and destination.
        */
       ra_set_node_reg(g, grf127_send_hack_node, 127);
-      foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
          if (inst->exec_size < 16 && inst->is_send_from_grf() &&
              inst->dst.file == VGRF)
             ra_add_node_interference(g, inst->dst.nr, grf127_send_hack_node);
       }
 
-      if (spilled_any_registers) {
-         foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      if (fs->spilled_any_registers) {
+         foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
             /* Spilling instruction are genereated as SEND messages from MRF
              * but as Gen7+ supports sending from GRF the driver will maps
              * assingn these MRF registers to a GRF. Implementations reuses
@@ -706,7 +708,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
     * interference here.
     */
    if (devinfo->gen >= 9) {
-      foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
          if (inst->opcode == SHADER_OPCODE_SEND && inst->ex_mlen > 0 &&
              inst->src[2].file == VGRF &&
              inst->src[3].file == VGRF &&
@@ -715,6 +717,22 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
                                      inst->src[3].nr);
       }
    }
+
+   return g;
+}
+
+bool
+fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
+{
+   /* Most of this allocation was written for a reg_width of 1
+    * (dispatch_width == 8).  In extending to SIMD16, the code was
+    * left in place and it was converted to have the hardware
+    * registers it's allocating be contiguous physical pairs of regs
+    * for reg_width == 2.
+    */
+   int reg_width = dispatch_width / 8;
+   int rsi = _mesa_logbase2(reg_width); /* Which compiler->fs_reg_sets[] to use */
+   ra_graph *g = build_interference_graph(this);
 
    /* Debug of register spilling: Go spill everything. */
    if (unlikely(spill_all)) {
@@ -749,6 +767,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
     * regs in the register classes back down to real hardware reg
     * numbers.
     */
+   unsigned hw_reg_mapping[alloc.count];
    this->grf_used = this->first_non_payload_grf;
    for (unsigned i = 0; i < this->alloc.count; i++) {
       int reg = ra_get_node_reg(g, i);
