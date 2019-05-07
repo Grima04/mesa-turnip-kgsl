@@ -3535,16 +3535,8 @@ anv_cmd_buffer_push_base_group_id(struct anv_cmd_buffer *cmd_buffer,
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
-   VkResult result =
-      anv_cmd_buffer_ensure_push_constant_field(cmd_buffer, MESA_SHADER_COMPUTE,
-                                                base_work_group_id);
-   if (result != VK_SUCCESS) {
-      cmd_buffer->batch.status = result;
-      return;
-   }
-
    struct anv_push_constants *push =
-      cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
+      &cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
    if (push->base_work_group_id[0] != baseGroupX ||
        push->base_work_group_id[1] != baseGroupY ||
        push->base_work_group_id[2] != baseGroupZ) {
