@@ -43,11 +43,8 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vbuf->metadata, level, usage, box);
-   if (usage & PIPE_TRANSFER_READ)
-      flush = true;
-   else
-      flush = virgl_res_needs_flush(vctx, trans);
 
+   flush = virgl_res_needs_flush(vctx, trans);
    if (flush)
       ctx->flush(ctx, NULL, 0);
 
