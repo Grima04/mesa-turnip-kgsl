@@ -2019,16 +2019,34 @@ static LLVMValueRef radv_get_sampler_desc(struct ac_shader_abi *abi,
 
 	assert(stride % type_size == 0);
 
-	if (!index)
-		index = ctx->ac.i32_0;
+	LLVMValueRef adjusted_index = index;
+	if (!adjusted_index)
+		adjusted_index = ctx->ac.i32_0;
 
-	index = LLVMBuildMul(builder, index, LLVMConstInt(ctx->ac.i32, stride / type_size, 0), "");
+	adjusted_index = LLVMBuildMul(builder, adjusted_index, LLVMConstInt(ctx->ac.i32, stride / type_size, 0), "");
 
 	list = ac_build_gep0(&ctx->ac, list, LLVMConstInt(ctx->ac.i32, offset, 0));
 	list = LLVMBuildPointerCast(builder, list,
 				    ac_array_in_const32_addr_space(type), "");
 
-	return ac_build_load_to_sgpr(&ctx->ac, list, index);
+	LLVMValueRef descriptor = ac_build_load_to_sgpr(&ctx->ac, list, adjusted_index);
+
+	/* 3 plane formats always have same size and format for plane 1 & 2, so
+	 * use the tail from plane 1 so that we can store only the first 16 bytes
+	 * of the last plane. */
+	if (desc_type == AC_DESC_PLANE_2) {
+		LLVMValueRef descriptor2 = radv_get_sampler_desc(abi, descriptor_set, base_index, constant_index, index, AC_DESC_PLANE_1,image, write, bindless);
+
+		LLVMValueRef components[8];
+		for (unsigned i = 0; i < 4; ++i)
+			components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor, i);
+
+		for (unsigned i = 4; i < 8; ++i)
+			components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor2, i);
+		descriptor = ac_build_gather_values(&ctx->ac, components, 8);
+	}
+
+	return descriptor;
 }
 
 /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.

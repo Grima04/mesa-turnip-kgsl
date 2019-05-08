@@ -200,7 +200,7 @@ VkResult radv_CreateDescriptorSetLayout(
 			break;
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			/* main descriptor + fmask descriptor + sampler */
-			set_layout->binding[b].size = 32 + 32 * max_sampled_image_descriptors;
+			set_layout->binding[b].size = 96;
 			binding_buffer_count = 1;
 			alignment = 32;
 			break;
@@ -247,7 +247,8 @@ VkResult radv_CreateDescriptorSetLayout(
 
 			/* Don't reserve space for the samplers if they're not accessed. */
 			if (set_layout->binding[b].immutable_samplers_equal) {
-				if (binding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				if (binding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER &&
+				    max_sampled_image_descriptors <= 2)
 					set_layout->binding[b].size -= 32;
 				else if (binding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
 					set_layout->binding[b].size -= 16;

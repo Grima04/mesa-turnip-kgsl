@@ -104,7 +104,7 @@ radv_immutable_samplers(const struct radv_descriptor_set_layout *set,
 static inline unsigned
 radv_combined_image_descriptor_sampler_offset(const struct radv_descriptor_set_binding_layout *binding)
 {
-	return binding->size - ((!binding->immutable_samplers_equal) ? 32 : 0);
+	return binding->size - ((!binding->immutable_samplers_equal) ? 16 : 0);
 }
 
 static inline const struct radv_sampler_ycbcr_conversion *
