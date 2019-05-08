@@ -32,8 +32,6 @@
  *
  *  - synchronization is disabled
  *  - the resource is not referenced by the current cmdbuf
- *  - the current cmdbuf has no draw/compute command that accesses the
- *    resource (XXX there are also clear or blit commands)
  */
 static bool virgl_res_needs_flush(struct virgl_context *vctx,
                                   struct virgl_transfer *trans)
@@ -46,19 +44,6 @@ static bool virgl_res_needs_flush(struct virgl_context *vctx,
 
    if (!vws->res_is_referenced(vws, vctx->cbuf, res->hw_res))
       return false;
-
-   if (res->clean_mask & (1 << trans->base.level)) {
-      /* XXX Consider
-       *
-       *   glCopyBufferSubData(src, dst, ...);
-       *   glBufferSubData(src, ...);
-       *
-       * at the beginning of a cmdbuf.  glBufferSubData will be incorrectly
-       * reordered before glCopyBufferSubData.
-       */
-      if (vctx->num_draws == 0 && vctx->num_compute == 0)
-         return false;
-   }
 
    return true;
 }
