@@ -201,7 +201,7 @@ static void virgl_attach_res_atomic_buffers(struct virgl_context *vctx)
  * after flushing, the hw context still has a bunch of
  * resources bound, so we need to rebind those here.
  */
-static void virgl_reemit_res(struct virgl_context *vctx)
+static void virgl_reemit_draw_resources(struct virgl_context *vctx)
 {
    enum pipe_shader_type shader_type;
 
@@ -209,7 +209,7 @@ static void virgl_reemit_res(struct virgl_context *vctx)
    /* framebuffer, sampler views, vertex/index/uniform/stream buffers */
    virgl_attach_res_framebuffer(vctx);
 
-   for (shader_type = 0; shader_type < PIPE_SHADER_TYPES; shader_type++) {
+   for (shader_type = 0; shader_type < PIPE_SHADER_COMPUTE; shader_type++) {
       virgl_attach_res_sampler_views(vctx, shader_type);
       virgl_attach_res_uniform_buffers(vctx, shader_type);
       virgl_attach_res_shader_buffers(vctx, shader_type);
@@ -218,6 +218,16 @@ static void virgl_reemit_res(struct virgl_context *vctx)
    virgl_attach_res_atomic_buffers(vctx);
    virgl_attach_res_vertex_buffers(vctx);
    virgl_attach_res_so_targets(vctx);
+}
+
+static void virgl_reemit_compute_resources(struct virgl_context *vctx)
+{
+   virgl_attach_res_sampler_views(vctx, PIPE_SHADER_COMPUTE);
+   virgl_attach_res_uniform_buffers(vctx, PIPE_SHADER_COMPUTE);
+   virgl_attach_res_shader_buffers(vctx, PIPE_SHADER_COMPUTE);
+   virgl_attach_res_shader_images(vctx, PIPE_SHADER_COMPUTE);
+
+   virgl_attach_res_atomic_buffers(vctx);
 }
 
 static struct pipe_surface *virgl_create_surface(struct pipe_context *ctx,
@@ -672,6 +682,10 @@ static void virgl_clear(struct pipe_context *ctx,
 {
    struct virgl_context *vctx = virgl_context(ctx);
 
+   if (!vctx->num_draws)
+      virgl_reemit_draw_resources(vctx);
+   vctx->num_draws++;
+
    virgl_encode_clear(vctx, buffers, color, depth, stencil);
 }
 
@@ -706,7 +720,10 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
            }
    }
 
+   if (!vctx->num_draws)
+      virgl_reemit_draw_resources(vctx);
    vctx->num_draws++;
+
    virgl_hw_set_vertex_buffers(vctx);
    if (info.index_size)
       virgl_hw_set_index_buffer(vctx, &ib);
@@ -742,9 +759,6 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
       ctx->cbuf->cdw = VIRGL_MAX_TBUF_DWORDS;
 
    virgl_encoder_set_sub_ctx(ctx, ctx->hw_sub_ctx_id);
-
-   /* add back current framebuffer resources to reference list? */
-   virgl_reemit_res(ctx);
 
    ctx->cbuf_initial_cdw = ctx->cbuf->cdw;
 }
@@ -1140,8 +1154,12 @@ static void virgl_launch_grid(struct pipe_context *ctx,
                               const struct pipe_grid_info *info)
 {
    struct virgl_context *vctx = virgl_context(ctx);
-   virgl_encode_launch_grid(vctx, info);
+
+   if (!vctx->num_compute)
+      virgl_reemit_compute_resources(vctx);
    vctx->num_compute++;
+
+   virgl_encode_launch_grid(vctx, info);
 }
 
 static void
