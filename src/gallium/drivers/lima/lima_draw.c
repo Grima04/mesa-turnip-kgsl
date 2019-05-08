@@ -1675,9 +1675,9 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
    ctx->plb_index = (ctx->plb_index + 1) % lima_ctx_num_plb;
 
    if (ctx->framebuffer.base.nr_cbufs) {
-      /* this surface may need reload when next draw if not end of frame */
+      /* Set reload flag for next draw. It'll be unset if buffer is cleared */
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
-      surf->reload = !end_of_frame;
+      surf->reload = true;
    }
 }
 

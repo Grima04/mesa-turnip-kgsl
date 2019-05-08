@@ -382,6 +382,8 @@ lima_surface_create(struct pipe_context *pctx,
    surf->tiled_w = align(psurf->width, 16) >> 4;
    surf->tiled_h = align(psurf->height, 16) >> 4;
 
+   surf->reload = true;
+
    struct lima_context *ctx = lima_context(pctx);
    if (ctx->plb_pp_stream) {
       struct lima_ctx_plb_pp_stream_key key = {
