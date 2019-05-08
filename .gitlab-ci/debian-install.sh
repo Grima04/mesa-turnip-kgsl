@@ -10,6 +10,7 @@ apt-get install -y \
       ca-certificates \
       curl \
       wget \
+      unzip \
       gnupg \
       software-properties-common
 
@@ -76,6 +77,13 @@ apt-get install -y \
 
 # for 64bit windows cross-builds
 apt-get install -y mingw-w64
+
+# for the vulkan overlay layer
+wget https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-linux-Release.zip
+unzip glslang-master-linux-Release.zip bin/glslangValidator
+install -m755 bin/glslangValidator /usr/local/bin/
+rm bin/glslangValidator glslang-master-linux-Release.zip
+
 
 # dependencies where we want a specific version
 export              XORG_RELEASES=https://xorg.freedesktop.org/releases/individual
@@ -179,6 +187,7 @@ apt-get purge -y \
       libtool \
       make \
       curl \
+      unzip \
       wget \
       gnupg \
       software-properties-common
