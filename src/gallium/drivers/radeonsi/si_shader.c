@@ -5078,18 +5078,27 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 			ring = LLVMBuildInsertElement(builder, ring,
 					LLVMConstInt(ctx->i32, num_records, 0),
 					LLVMConstInt(ctx->i32, 2, 0), "");
+
+			uint32_t rsrc3 =
+					S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+					S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+					S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+					S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+					S_008F0C_INDEX_STRIDE(1) | /* index_stride = 16 (elements) */
+					S_008F0C_ADD_TID_ENABLE(1);
+
+			if (ctx->ac.chip_class >= GFX10) {
+				rsrc3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+					 S_008F0C_OOB_SELECT(2) |
+					 S_008F0C_RESOURCE_LEVEL(1);
+			} else {
+				rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+					 S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+					 S_008F0C_ELEMENT_SIZE(1); /* element_size = 4 (bytes) */
+			}
+
 			ring = LLVMBuildInsertElement(builder, ring,
-				LLVMConstInt(ctx->i32,
-					     S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-					     S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-					     S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-					     S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-					     S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-					     S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-					     S_008F0C_ELEMENT_SIZE(1) | /* element_size = 4 (bytes) */
-					     S_008F0C_INDEX_STRIDE(1) | /* index_stride = 16 (elements) */
-					     S_008F0C_ADD_TID_ENABLE(1),
-					     0),
+				LLVMConstInt(ctx->i32, rsrc3, false),
 				LLVMConstInt(ctx->i32, 3, 0), "");
 
 			ctx->gsvs_ring[stream] = ring;
