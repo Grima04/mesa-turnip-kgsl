@@ -5391,10 +5391,6 @@ static void si_init_config(struct si_context *sctx)
 	bool has_clear_state = sscreen->has_clear_state;
 	struct si_pm4_state *pm4 = CALLOC_STRUCT(si_pm4_state);
 
-       /* GFX6, radeon kernel disabled CLEAR_STATE. */
-       assert(has_clear_state || sscreen->info.chip_class == GFX6 ||
-              !sscreen->info.is_amdgpu);
-
 	if (!pm4)
 		return;
 
