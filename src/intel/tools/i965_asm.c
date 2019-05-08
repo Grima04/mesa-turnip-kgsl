@@ -102,7 +102,7 @@ int main(int argc, char **argv)
    int offset = 0, err;
    int start_offset = 0;
    struct disasm_info *disasm_info;
-   struct gen_device_info *devinfo;
+   struct gen_device_info *devinfo = NULL;
    int result = EXIT_FAILURE;
 
    const struct option i965_asm_opts[] = {
