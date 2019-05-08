@@ -866,22 +866,36 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 		else
 			num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
 
-		si_pm4_set_reg(pm4, R_00B210_SPI_SHADER_PGM_LO_ES, va >> 8);
-		si_pm4_set_reg(pm4, R_00B214_SPI_SHADER_PGM_HI_ES, S_00B214_MEM_BASE(va >> 40));
+		if (sscreen->info.chip_class >= GFX10) {
+			si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
+			si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES, S_00B324_MEM_BASE(va >> 40));
+		} else {
+			si_pm4_set_reg(pm4, R_00B210_SPI_SHADER_PGM_LO_ES, va >> 8);
+			si_pm4_set_reg(pm4, R_00B214_SPI_SHADER_PGM_HI_ES, S_00B214_MEM_BASE(va >> 40));
+		}
 
-		si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
-			       S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) |
-			       S_00B228_SGPRS((shader->config.num_sgprs - 1) / 8) |
-			       S_00B228_DX10_CLAMP(1) |
-			       S_00B228_FLOAT_MODE(shader->config.float_mode) |
-			       S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt));
-		si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
-			       S_00B22C_USER_SGPR(num_user_sgprs) |
-			       S_00B22C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5) |
-			       S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
-			       S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
-			       S_00B22C_LDS_SIZE(shader->config.lds_size) |
-			       S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
+		uint32_t rsrc1 =
+			S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) |
+			S_00B228_DX10_CLAMP(1) |
+			S_00B228_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+			S_00B228_FLOAT_MODE(shader->config.float_mode) |
+			S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
+		uint32_t rsrc2 =
+			S_00B22C_USER_SGPR(num_user_sgprs) |
+			S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
+			S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
+			S_00B22C_LDS_SIZE(shader->config.lds_size) |
+			S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
+
+		if (sscreen->info.chip_class >= GFX10) {
+			rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
+		} else {
+			rsrc1 |= S_00B228_SGPRS((shader->config.num_sgprs - 1) / 8);
+			rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
+		}
+
+		si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS, rsrc1);
+		si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS, rsrc2);
 
 		shader->ctx_reg.gs.vgt_gs_onchip_cntl =
 			S_028A44_ES_VERTS_PER_SUBGRP(shader->gs_info.es_verts_per_subgroup) |
