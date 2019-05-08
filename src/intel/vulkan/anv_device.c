@@ -2995,15 +2995,15 @@ void anv_FreeMemory(
    if (mem->map)
       anv_UnmapMemory(_device, _mem);
 
+   p_atomic_add(&pdevice->memory.heaps[mem->type->heapIndex].used,
+                -mem->bo->size);
+
    anv_bo_cache_release(device, &device->bo_cache, mem->bo);
 
 #if defined(ANDROID) && ANDROID_API_LEVEL >= 26
    if (mem->ahw)
       AHardwareBuffer_release(mem->ahw);
 #endif
-
-   p_atomic_add(&pdevice->memory.heaps[mem->type->heapIndex].used,
-                -mem->bo->size);
 
    vk_free2(&device->alloc, pAllocator, mem);
 }
