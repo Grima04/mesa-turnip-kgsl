@@ -915,7 +915,7 @@ optimise_nir(nir_shader *nir)
                 NIR_PASS(progress, nir, nir_opt_constant_folding);
 
                 if (lower_flrp != 0) {
-                        bool lower_flrp_progress;
+                        bool lower_flrp_progress = false;
                         NIR_PASS(lower_flrp_progress,
                                  nir,
                                  nir_lower_flrp,

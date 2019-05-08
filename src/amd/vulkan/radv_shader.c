@@ -170,7 +170,7 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively,
                 NIR_PASS(progress, shader, nir_opt_algebraic);
 
                 if (lower_flrp != 0) {
-                        bool lower_flrp_progress;
+                        bool lower_flrp_progress = false;
                         NIR_PASS(lower_flrp_progress,
                                  shader,
                                  nir_lower_flrp,
