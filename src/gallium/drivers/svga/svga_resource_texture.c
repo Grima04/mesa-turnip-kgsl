@@ -753,6 +753,9 @@ svga_texture_transfer_unmap_dma(struct svga_context *svga,
    if (st->base.usage & PIPE_TRANSFER_WRITE) {
       /* Use DMA to transfer texture data */
       SVGA3dSurfaceDMAFlags flags;
+      struct pipe_resource *texture = st->base.resource;
+      struct svga_texture *tex = svga_texture(texture);
+
 
       memset(&flags, 0, sizeof flags);
       if (st->base.usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
@@ -763,6 +766,7 @@ svga_texture_transfer_unmap_dma(struct svga_context *svga,
       }
 
       svga_transfer_dma(svga, st, SVGA3D_WRITE_HOST_VRAM, flags);
+      svga_set_texture_rendered_to(tex, st->slice, st->base.level);
    }
 
    FREE(st->swbuf);
