@@ -816,7 +816,6 @@ vmw_svga_winsys_context_create(struct svga_winsys_screen *sws)
    vswc->base.flush = vmw_swc_flush;
    vswc->base.surface_map = vmw_svga_winsys_surface_map;
    vswc->base.surface_unmap = vmw_svga_winsys_surface_unmap;
-   vswc->base.surface_invalidate = vmw_svga_winsys_surface_invalidate;
 
    vswc->base.shader_create = vmw_svga_winsys_vgpu10_shader_create;
    vswc->base.shader_destroy = vmw_svga_winsys_vgpu10_shader_destroy;

@@ -412,13 +412,6 @@ struct svga_winsys_context
                     boolean *rebind);
 
    /**
-    * Invalidate the content of this surface
-    */
-   enum pipe_error
-   (*surface_invalidate)(struct svga_winsys_context *swc,
-                         struct svga_winsys_surface *surface);
-
-   /**
     * Create and define a DX GB shader that resides in the device COTable.
     * Caller of this function will issue the DXDefineShader command.
     */

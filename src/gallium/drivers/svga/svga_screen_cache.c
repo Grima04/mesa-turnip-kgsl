@@ -33,7 +33,7 @@
 #include "svga_screen.h"
 #include "svga_screen_cache.h"
 #include "svga_context.h"
-
+#include "svga_cmd.h"
 
 #define SVGA_SURFACE_CACHE_ENABLED 1
 
@@ -291,7 +291,12 @@ svga_screen_cache_add(struct svga_screen *svgascreen,
 
       SVGA_DBG(DEBUG_CACHE|DEBUG_DMA,
                "cache sid %p\n", entry->handle);
-      LIST_ADD(&entry->head, &cache->validated);
+
+      /* If we don't have gb objects, we don't need to invalidate. */
+      if (sws->have_gb_objects)
+         LIST_ADD(&entry->head, &cache->validated);
+      else
+         LIST_ADD(&entry->head, &cache->invalidated);
 
       cache->total_size += surf_size;
    }
@@ -355,6 +360,7 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
       entry = LIST_ENTRY(struct svga_host_surface_cache_entry, curr, head);
 
       assert(entry->handle);
+      assert(svga_have_gb_objects(svga));
 
       if (sws->surface_is_flushed(sws, entry->handle)) {
          /* remove entry from the validated list */
@@ -363,7 +369,7 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
          /* It is now safe to invalidate the surface content.
           * It will be done using the current context.
           */
-         if (svga->swc->surface_invalidate(svga->swc, entry->handle) != PIPE_OK) {
+         if (SVGA3D_InvalidateGBSurface(svga->swc, entry->handle) != PIPE_OK) {
             MAYBE_UNUSED enum pipe_error ret;
 
             /* Even though surface invalidation here is done after the command
@@ -375,7 +381,7 @@ svga_screen_cache_flush(struct svga_screen *svgascreen,
              * this function itself is called inside svga_context_flush().
              */
             svga->swc->flush(svga->swc, NULL);
-            ret = svga->swc->surface_invalidate(svga->swc, entry->handle);
+            ret = SVGA3D_InvalidateGBSurface(svga->swc, entry->handle);
             assert(ret == PIPE_OK);
          }
 
