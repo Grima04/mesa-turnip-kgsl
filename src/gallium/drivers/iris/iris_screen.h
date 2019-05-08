@@ -68,6 +68,8 @@ struct iris_screen {
 
    unsigned subslice_total;
 
+   uint64_t aperture_bytes;
+
    struct gen_device_info devinfo;
    struct isl_device isl_dev;
    struct iris_bufmgr *bufmgr;
