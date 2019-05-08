@@ -448,6 +448,7 @@ private:
    int first_payload_node;
    int first_mrf_hack_node;
    int grf127_send_hack_node;
+   int first_vgrf_node;
 };
 
 /**
@@ -558,10 +559,11 @@ fs_reg_alloc::setup_live_interference(unsigned node,
     * node's.  We only need to look at nodes below this one as the reflexivity
     * of interference will take care of the rest.
     */
-   for (unsigned i = 0; i < node; i++) {
-      if (!(node_end_ip <= fs->virtual_grf_start[i] ||
-            fs->virtual_grf_end[i] <= node_start_ip))
-         ra_add_node_interference(g, node, i);
+   for (unsigned n2 = first_vgrf_node; n2 < node; n2++) {
+      unsigned vgrf = n2 - first_vgrf_node;
+      if (!(node_end_ip <= fs->virtual_grf_start[vgrf] ||
+            fs->virtual_grf_end[vgrf] <= node_start_ip))
+         ra_add_node_interference(g, node, n2);
    }
 }
 
@@ -574,7 +576,8 @@ fs_reg_alloc::setup_inst_interference(fs_inst *inst)
    if (inst->dst.file == VGRF && inst->has_source_and_destination_hazard()) {
       for (unsigned i = 0; i < inst->sources; i++) {
          if (inst->src[i].file == VGRF) {
-            ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
+            ra_add_node_interference(g, first_vgrf_node + inst->dst.nr,
+                                        first_vgrf_node + inst->src[i].nr);
          }
       }
    }
@@ -593,7 +596,8 @@ fs_reg_alloc::setup_inst_interference(fs_inst *inst)
    if (inst->exec_size >= 16 && inst->dst.file == VGRF) {
       for (int i = 0; i < inst->sources; ++i) {
          if (inst->src[i].file == VGRF) {
-            ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
+            ra_add_node_interference(g, first_vgrf_node + inst->dst.nr,
+                                        first_vgrf_node + inst->src[i].nr);
          }
       }
    }
@@ -614,7 +618,8 @@ fs_reg_alloc::setup_inst_interference(fs_inst *inst)
        */
       if (inst->exec_size < 16 && inst->is_send_from_grf() &&
           inst->dst.file == VGRF)
-         ra_add_node_interference(g, inst->dst.nr, grf127_send_hack_node);
+         ra_add_node_interference(g, first_vgrf_node + inst->dst.nr,
+                                     grf127_send_hack_node);
 
       /* Spilling instruction are genereated as SEND messages from MRF but as
        * Gen7+ supports sending from GRF the driver will maps assingn these
@@ -625,7 +630,8 @@ fs_reg_alloc::setup_inst_interference(fs_inst *inst)
       if ((inst->opcode == SHADER_OPCODE_GEN7_SCRATCH_READ ||
            inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_READ) &&
           inst->dst.file == VGRF)
-         ra_add_node_interference(g, inst->dst.nr, grf127_send_hack_node);
+         ra_add_node_interference(g, first_vgrf_node + inst->dst.nr,
+                                     grf127_send_hack_node);
    }
 
    /* From the Skylake PRM Vol. 2a docs for sends:
@@ -643,8 +649,8 @@ fs_reg_alloc::setup_inst_interference(fs_inst *inst)
       if (inst->opcode == SHADER_OPCODE_SEND && inst->ex_mlen > 0 &&
           inst->src[2].file == VGRF && inst->src[3].file == VGRF &&
           inst->src[2].nr != inst->src[3].nr)
-         ra_add_node_interference(g, inst->src[2].nr,
-                                  inst->src[3].nr);
+         ra_add_node_interference(g, first_vgrf_node + inst->src[2].nr,
+                                     first_vgrf_node + inst->src[3].nr);
    }
 
    /* When we do send-from-GRF for FB writes, we need to ensure that the last
@@ -669,7 +675,7 @@ fs_reg_alloc::setup_inst_interference(fs_inst *inst)
       if (first_mrf_hack_node >= 0)
          reg -= BRW_MAX_MRF(devinfo->gen) - spill_base_mrf(fs);
 
-      ra_set_node_reg(g, vgrf, reg);
+      ra_set_node_reg(g, first_vgrf_node + vgrf, reg);
    }
 }
 
@@ -680,7 +686,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    const brw_compiler *compiler = fs->compiler;
 
    /* Compute the RA node layout */
-   node_count = fs->alloc.count;
+   node_count = 0;
    first_payload_node = node_count;
    node_count += payload_node_count;
    if (devinfo->gen >= 7 && allow_spilling) {
@@ -695,6 +701,8 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    } else {
       grf127_send_hack_node = -1;
    }
+   first_vgrf_node = node_count;
+   node_count += fs->alloc.count;
 
    fs->calculate_live_intervals();
    fs->calculate_payload_ranges(payload_node_count,
@@ -762,11 +770,12 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
          c = compiler->fs_reg_sets[rsi].aligned_pairs_class;
       }
 
-      ra_set_node_class(g, i, c);
+      ra_set_node_class(g, first_vgrf_node + i, c);
 
       /* Add interference based on the live range of the register */
-      setup_live_interference(i, fs->virtual_grf_start[i],
-                                 fs->virtual_grf_end[i]);
+      setup_live_interference(first_vgrf_node + i,
+                              fs->virtual_grf_start[i],
+                              fs->virtual_grf_end[i]);
    }
 
    /* Add interference based on the instructions in which a register is used.
@@ -902,10 +911,15 @@ fs_reg_alloc::choose_spill_reg()
        */
       float adjusted_cost = spill_costs[i] / logf(live_length);
       if (!no_spill[i])
-	 ra_set_node_spill_cost(g, i, adjusted_cost);
+	 ra_set_node_spill_cost(g, first_vgrf_node + i, adjusted_cost);
    }
 
-   return ra_get_best_spill_node(g);
+   int node = ra_get_best_spill_node(g);
+   if (node < 0)
+      return -1;
+
+   assert(node >= first_vgrf_node);
+   return node - first_vgrf_node;
 }
 
 void
@@ -1078,7 +1092,7 @@ fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
    unsigned hw_reg_mapping[fs->alloc.count];
    fs->grf_used = fs->first_non_payload_grf;
    for (unsigned i = 0; i < fs->alloc.count; i++) {
-      int reg = ra_get_node_reg(g, i);
+      int reg = ra_get_node_reg(g, first_vgrf_node + i);
 
       hw_reg_mapping[i] = compiler->fs_reg_sets[rsi].ra_reg_to_grf[reg];
       fs->grf_used = MAX2(fs->grf_used,
