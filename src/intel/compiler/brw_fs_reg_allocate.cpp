@@ -749,7 +749,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
     * regs in the register classes back down to real hardware reg
     * numbers.
     */
-   this->grf_used = payload_node_count;
+   this->grf_used = this->first_non_payload_grf;
    for (unsigned i = 0; i < this->alloc.count; i++) {
       int reg = ra_get_node_reg(g, i);
 
