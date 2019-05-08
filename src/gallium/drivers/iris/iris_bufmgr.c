@@ -1412,6 +1412,28 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr)
       return 0;
    }
 
+   /* Upon declaring a GPU hang, the kernel will zap the guilty context
+    * back to the default logical HW state and attempt to continue on to
+    * our next submitted batchbuffer.  However, our render batches assume
+    * the previous GPU state is preserved, and only emit commands needed
+    * to incrementally change that state.  In particular, we inherit the
+    * STATE_BASE_ADDRESS and PIPELINE_SELECT settings, which are critical.
+    * With default base addresses, our next batches will almost certainly
+    * cause more GPU hangs, leading to repeated hangs until we're banned
+    * or the machine is dead.
+    *
+    * Here we tell the kernel not to attempt to recover our context but
+    * immediately (on the next batchbuffer submission) report that the
+    * context is lost, and we will do the recovery ourselves.  Ideally,
+    * we'll have two lost batches instead of a continual stream of hangs.
+    */
+   struct drm_i915_gem_context_param p = {
+      .ctx_id = create.ctx_id,
+      .param = I915_CONTEXT_PARAM_RECOVERABLE,
+      .value = false,
+   };
+   drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p);
+
    return create.ctx_id;
 }
 
