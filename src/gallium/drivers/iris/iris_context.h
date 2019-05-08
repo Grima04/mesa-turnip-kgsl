@@ -440,6 +440,9 @@ struct iris_context {
    /** A debug callback for KHR_debug output. */
    struct pipe_debug_callback dbg;
 
+   /** A device reset status callback for notifying that the GPU is hosed. */
+   struct pipe_device_reset_callback reset;
+
    /** Slab allocator for iris_transfer_map objects. */
    struct slab_child_pool transfer_pool;
 

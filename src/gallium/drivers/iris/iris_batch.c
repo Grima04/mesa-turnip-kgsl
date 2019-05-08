@@ -163,6 +163,7 @@ iris_init_batch(struct iris_batch *batch,
                 struct iris_screen *screen,
                 struct iris_vtable *vtbl,
                 struct pipe_debug_callback *dbg,
+                struct pipe_device_reset_callback *reset,
                 struct iris_batch *all_batches,
                 enum iris_batch_name name,
                 uint8_t engine,
@@ -171,6 +172,7 @@ iris_init_batch(struct iris_batch *batch,
    batch->screen = screen;
    batch->vtbl = vtbl;
    batch->dbg = dbg;
+   batch->reset = reset;
    batch->name = name;
 
    /* engine should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
@@ -611,6 +613,11 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
     * dubiously claim success...
     */
    if (ret == -EIO && replace_hw_ctx(batch)) {
+      if (batch->reset->reset) {
+         /* Tell the state tracker the device is lost and it was our fault. */
+         batch->reset->reset(batch->reset->data, PIPE_GUILTY_CONTEXT_RESET);
+      }
+
       ret = 0;
    }
 

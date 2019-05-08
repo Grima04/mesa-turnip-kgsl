@@ -102,6 +102,18 @@ iris_lost_context_state(struct iris_batch *batch)
 }
 
 static void
+iris_set_device_reset_callback(struct pipe_context *ctx,
+                               const struct pipe_device_reset_callback *cb)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+
+   if (cb)
+      ice->reset = *cb;
+   else
+      memset(&ice->reset, 0, sizeof(ice->reset));
+}
+
+static void
 iris_get_sample_position(struct pipe_context *ctx,
                          unsigned sample_count,
                          unsigned sample_index,
@@ -210,6 +222,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->destroy = iris_destroy_context;
    ctx->set_debug_callback = iris_set_debug_callback;
+   ctx->set_device_reset_callback = iris_set_device_reset_callback;
    ctx->get_sample_position = iris_get_sample_position;
 
    ice->shaders.urb_size = devinfo->urb.size;
@@ -250,7 +263,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
       iris_init_batch(&ice->batches[i], screen, &ice->vtbl, &ice->dbg,
-                      ice->batches, (enum iris_batch_name) i,
+                      &ice->reset, ice->batches, (enum iris_batch_name) i,
                       I915_EXEC_RENDER, priority);
    }
 
