@@ -1372,38 +1372,10 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          /* These can actually be stored to nir_variables and used as SSA
           * values so they need a real glsl_type.
           */
-         nir_address_format addr_format = nir_address_format_logical;
-         switch (storage_class) {
-         case SpvStorageClassUniform:
-            addr_format = b->options->ubo_addr_format;
-            break;
-         case SpvStorageClassStorageBuffer:
-            addr_format = b->options->ssbo_addr_format;
-            break;
-         case SpvStorageClassPhysicalStorageBufferEXT:
-            addr_format = b->options->phys_ssbo_addr_format;
-            break;
-         case SpvStorageClassPushConstant:
-            addr_format = b->options->push_const_addr_format;
-            break;
-         case SpvStorageClassWorkgroup:
-            addr_format = b->options->shared_addr_format;
-            break;
-         case SpvStorageClassCrossWorkgroup:
-            addr_format = b->options->global_addr_format;
-            break;
-         case SpvStorageClassFunction:
-            if (b->physical_ptrs)
-               addr_format = b->options->temp_addr_format;
-            break;
-         default:
-            /* In this case, no variable pointers are allowed so all deref
-             * chains are complete back to the variable and it doesn't matter
-             * what type gets.
-             */
-            break;
-         }
-         val->type->type = nir_address_format_to_glsl_type(addr_format);
+         enum vtn_variable_mode mode = vtn_storage_class_to_mode(
+            b, storage_class, NULL, NULL);
+         val->type->type = nir_address_format_to_glsl_type(
+            vtn_mode_to_address_format(b, mode));
       } else {
          vtn_fail_if(val->type->storage_class != storage_class,
                      "The storage classes of an OpTypePointer and any "

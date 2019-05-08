@@ -1723,7 +1723,8 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
    nir_variable_mode nir_mode;
    switch (class) {
    case SpvStorageClassUniform:
-      if (interface_type->block) {
+      /* Assume it's an UBO if we lack the interface_type. */
+      if (!interface_type || interface_type->block) {
          mode = vtn_variable_mode_ubo;
          nir_mode = nir_var_mem_ubo;
       } else if (interface_type->buffer_block) {
