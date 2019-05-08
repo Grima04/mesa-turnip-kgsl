@@ -561,7 +561,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_opt_combine_stores, nir_var_all);
 
       if (is_scalar) {
-         OPT(nir_lower_alu_to_scalar);
+         OPT(nir_lower_alu_to_scalar, NULL);
       }
 
       OPT(nir_copy_prop);
@@ -701,7 +701,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    const bool is_scalar = compiler->scalar_stage[nir->info.stage];
 
    if (is_scalar) {
-      OPT(nir_lower_alu_to_scalar);
+      OPT(nir_lower_alu_to_scalar, NULL);
    }
 
    if (nir->info.stage == MESA_SHADER_GEOMETRY)

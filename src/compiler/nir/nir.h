@@ -3178,7 +3178,7 @@ bool nir_lower_alu(nir_shader *shader);
 bool nir_lower_flrp(nir_shader *shader, unsigned lowering_mask,
                     bool always_precise, bool have_ffma);
 
-bool nir_lower_alu_to_scalar(nir_shader *shader);
+bool nir_lower_alu_to_scalar(nir_shader *shader, BITSET_WORD *lower_set);
 bool nir_lower_bool_to_float(nir_shader *shader);
 bool nir_lower_bool_to_int32(nir_shader *shader);
 bool nir_lower_int_to_float(nir_shader *shader);
