@@ -566,7 +566,15 @@ vmw_swc_surface_relocation(struct svga_winsys_context *swc,
 
       mtx_lock(&vsurf->mutex);
       assert(vsurf->buf != NULL);
-      
+
+      /*
+       * An internal reloc means that the surface transfer direction
+       * is opposite to the MOB transfer direction...
+       */
+      if ((flags & SVGA_RELOC_INTERNAL) &&
+          (flags & (SVGA_RELOC_READ | SVGA_RELOC_WRITE)) !=
+          (SVGA_RELOC_READ | SVGA_RELOC_WRITE))
+         flags ^= (SVGA_RELOC_READ | SVGA_RELOC_WRITE);
       vmw_swc_mob_relocation(swc, mobid, NULL, (struct svga_winsys_buffer *)
                              vsurf->buf, 0, flags);
       mtx_unlock(&vsurf->mutex);
