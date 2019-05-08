@@ -134,6 +134,9 @@ struct ra_node {
 
    unsigned int class;
 
+   /* Client-assigned register, if assigned, or NO_REG. */
+   unsigned int forced_reg;
+
    /* Register, if assigned, or NO_REG. */
    unsigned int reg;
 
@@ -147,6 +150,15 @@ struct ra_node {
     * approximate cost of spilling this node.
     */
    float spill_cost;
+
+   /* Temporary data for the algorithm to scratch around in */
+   struct {
+      /**
+       * Temporary version of q_total which we decrement as things are placed
+       * into the stack.
+       */
+      unsigned int q_total;
+   } tmp;
 };
 
 struct ra_graph {
@@ -159,36 +171,39 @@ struct ra_graph {
 
    unsigned int alloc; /**< count of nodes allocated. */
 
-   unsigned int *stack;
-   unsigned int stack_count;
-
-   /** Bit-set indicating, for each register, if it's in the stack */
-   BITSET_WORD *in_stack;
-
-   /** Bit-set indicating, for each register, if it pre-assigned */
-   BITSET_WORD *reg_assigned;
-
-   /** Bit-set indicating, for each register, the value of the pq test */
-   BITSET_WORD *pq_test;
-
-   /** For each BITSET_WORD, the minimum q value or ~0 if unknown */
-   unsigned int *min_q_total;
-
-   /*
-    * * For each BITSET_WORD, the node with the minimum q_total if
-    * min_q_total[i] != ~0.
-    */
-   unsigned int *min_q_node;
-
-   /**
-    * Tracks the start of the set of optimistically-colored registers in the
-    * stack.
-    */
-   unsigned int stack_optimistic_start;
-
    unsigned int (*select_reg_callback)(struct ra_graph *g, BITSET_WORD *regs,
                                        void *data);
    void *select_reg_callback_data;
+
+   /* Temporary data for the algorithm to scratch around in */
+   struct {
+      unsigned int *stack;
+      unsigned int stack_count;
+
+      /** Bit-set indicating, for each register, if it's in the stack */
+      BITSET_WORD *in_stack;
+
+      /** Bit-set indicating, for each register, if it pre-assigned */
+      BITSET_WORD *reg_assigned;
+
+      /** Bit-set indicating, for each register, the value of the pq test */
+      BITSET_WORD *pq_test;
+
+      /** For each BITSET_WORD, the minimum q value or ~0 if unknown */
+      unsigned int *min_q_total;
+
+      /*
+       * * For each BITSET_WORD, the node with the minimum q_total if
+       * min_q_total[i] != ~0.
+       */
+      unsigned int *min_q_node;
+
+      /**
+       * Tracks the start of the set of optimistically-colored registers in the
+       * stack.
+       */
+      unsigned int stack_optimistic_start;
+   } tmp;
 };
 
 /**
@@ -483,21 +498,23 @@ ra_realloc_interference_graph(struct ra_graph *g, unsigned int alloc)
       g->nodes[i].adjacency_count = 0;
       g->nodes[i].q_total = 0;
 
+      g->nodes[i].forced_reg = NO_REG;
       g->nodes[i].reg = NO_REG;
    }
 
-   g->stack = reralloc(g, g->stack, unsigned int, alloc);
-   g->in_stack = rerzalloc(g, g->in_stack, BITSET_WORD,
-                           g_bitset_count, bitset_count);
+   /* These are scratch values and don't need to be zeroed.  We'll clear them
+    * as part of ra_select() setup.
+    */
+   g->tmp.stack = reralloc(g, g->tmp.stack, unsigned int, alloc);
+   g->tmp.in_stack = reralloc(g, g->tmp.in_stack, BITSET_WORD, bitset_count);
 
-   g->reg_assigned = rerzalloc(g, g->reg_assigned, BITSET_WORD,
-                               g_bitset_count, bitset_count);
-   g->pq_test = rerzalloc(g, g->pq_test, BITSET_WORD,
-                          g_bitset_count, bitset_count);
-   g->min_q_total = rerzalloc(g, g->min_q_total, unsigned int,
-                              g_bitset_count, bitset_count);
-   g->min_q_node = rerzalloc(g, g->min_q_node, unsigned int,
-                             g_bitset_count, bitset_count);
+   g->tmp.reg_assigned = reralloc(g, g->tmp.reg_assigned, BITSET_WORD,
+                                  bitset_count);
+   g->tmp.pq_test = reralloc(g, g->tmp.pq_test, BITSET_WORD, bitset_count);
+   g->tmp.min_q_total = reralloc(g, g->tmp.min_q_total, unsigned int,
+                                 bitset_count);
+   g->tmp.min_q_node = reralloc(g, g->tmp.min_q_node, unsigned int,
+                                bitset_count);
 
    g->alloc = alloc;
 }
@@ -577,20 +594,20 @@ update_pq_info(struct ra_graph *g, unsigned int n)
 {
    int i = n / BITSET_WORDBITS;
    int n_class = g->nodes[n].class;
-   if (g->nodes[n].q_total < g->regs->classes[n_class]->p) {
-      BITSET_SET(g->pq_test, n);
-   } else if (g->min_q_total[i] != UINT_MAX) {
+   if (g->nodes[n].tmp.q_total < g->regs->classes[n_class]->p) {
+      BITSET_SET(g->tmp.pq_test, n);
+   } else if (g->tmp.min_q_total[i] != UINT_MAX) {
       /* Only update min_q_total and min_q_node if min_q_total != UINT_MAX so
        * that we don't update while we have stale data and accidentally mark
        * it as non-stale.  Also, in order to remain consistent with the old
        * naive implementation of the algorithm, we do a lexicographical sort
        * to ensure that we always choose the node with the highest node index.
        */
-      if (g->nodes[n].q_total < g->min_q_total[i] ||
-          (g->nodes[n].q_total == g->min_q_total[i] &&
-           n > g->min_q_node[i])) {
-         g->min_q_total[i] = g->nodes[n].q_total;
-         g->min_q_node[i] = n;
+      if (g->nodes[n].tmp.q_total < g->tmp.min_q_total[i] ||
+          (g->nodes[n].tmp.q_total == g->tmp.min_q_total[i] &&
+           n > g->tmp.min_q_node[i])) {
+         g->tmp.min_q_total[i] = g->nodes[n].tmp.q_total;
+         g->tmp.min_q_node[i] = n;
       }
    }
 }
@@ -601,25 +618,26 @@ add_node_to_stack(struct ra_graph *g, unsigned int n)
    unsigned int i;
    int n_class = g->nodes[n].class;
 
-   assert(!BITSET_TEST(g->in_stack, n));
+   assert(!BITSET_TEST(g->tmp.in_stack, n));
 
    for (i = 0; i < g->nodes[n].adjacency_count; i++) {
       unsigned int n2 = g->nodes[n].adjacency_list[i];
       unsigned int n2_class = g->nodes[n2].class;
 
-      if (!BITSET_TEST(g->in_stack, n2) && !BITSET_TEST(g->reg_assigned, n2)) {
-         assert(g->nodes[n2].q_total >= g->regs->classes[n2_class]->q[n_class]);
-         g->nodes[n2].q_total -= g->regs->classes[n2_class]->q[n_class];
+      if (!BITSET_TEST(g->tmp.in_stack, n2) &&
+          !BITSET_TEST(g->tmp.reg_assigned, n2)) {
+         assert(g->nodes[n2].tmp.q_total >= g->regs->classes[n2_class]->q[n_class]);
+         g->nodes[n2].tmp.q_total -= g->regs->classes[n2_class]->q[n_class];
          update_pq_info(g, n2);
       }
    }
 
-   g->stack[g->stack_count] = n;
-   g->stack_count++;
-   BITSET_SET(g->in_stack, n);
+   g->tmp.stack[g->tmp.stack_count] = n;
+   g->tmp.stack_count++;
+   BITSET_SET(g->tmp.in_stack, n);
 
    /* Flag the min_q_total for n's block as dirty so it gets recalculated */
-   g->min_q_total[n / BITSET_WORDBITS] = UINT_MAX;
+   g->tmp.min_q_total[n / BITSET_WORDBITS] = UINT_MAX;
 }
 
 /**
@@ -644,14 +662,20 @@ ra_simplify(struct ra_graph *g)
    const unsigned int top_word_high_bit = (g->count - 1) % BITSET_WORDBITS;
 
    /* Do a quick pre-pass to set things up */
+   g->tmp.stack_count = 0;
    for (int i = BITSET_WORDS(g->count) - 1, high_bit = top_word_high_bit;
         i >= 0; i--, high_bit = BITSET_WORDBITS - 1) {
-      g->min_q_total[i] = UINT_MAX;
-      g->min_q_node[i] = UINT_MAX;
+      g->tmp.in_stack[i] = 0;
+      g->tmp.reg_assigned[i] = 0;
+      g->tmp.pq_test[i] = 0;
+      g->tmp.min_q_total[i] = UINT_MAX;
+      g->tmp.min_q_node[i] = UINT_MAX;
       for (int j = high_bit; j >= 0; j--) {
          unsigned int n = i * BITSET_WORDBITS + j;
+         g->nodes[n].reg = g->nodes[n].forced_reg;
+         g->nodes[n].tmp.q_total = g->nodes[n].q_total;
          if (g->nodes[n].reg != NO_REG)
-            g->reg_assigned[i] |= BITSET_BIT(j);
+            g->tmp.reg_assigned[i] |= BITSET_BIT(j);
          update_pq_info(g, n);
       }
    }
@@ -666,11 +690,11 @@ ra_simplify(struct ra_graph *g)
            i >= 0; i--, high_bit = BITSET_WORDBITS - 1) {
          BITSET_WORD mask = ~(BITSET_WORD)0 >> (31 - high_bit);
 
-         BITSET_WORD skip = g->in_stack[i] | g->reg_assigned[i];
+         BITSET_WORD skip = g->tmp.in_stack[i] | g->tmp.reg_assigned[i];
          if (skip == mask)
             continue;
 
-         BITSET_WORD pq = g->pq_test[i] & ~skip;
+         BITSET_WORD pq = g->tmp.pq_test[i] & ~skip;
          if (pq) {
             /* In this case, we have stuff we can immediately take off the
              * stack.  This also means that we're guaranteed to make progress
@@ -686,12 +710,12 @@ ra_simplify(struct ra_graph *g)
                   /* add_node_to_stack() may update pq_test for this word so
                    * we need to update our local copy.
                    */
-                  pq = g->pq_test[i] & ~skip;
+                  pq = g->tmp.pq_test[i] & ~skip;
                   progress = true;
                }
             }
          } else if (!progress) {
-            if (g->min_q_total[i] == UINT_MAX) {
+            if (g->tmp.min_q_total[i] == UINT_MAX) {
                /* The min_q_total and min_q_node are dirty because we added
                 * one of these nodes to the stack.  It needs to be
                 * recalculated.
@@ -702,29 +726,29 @@ ra_simplify(struct ra_graph *g)
 
                   unsigned int n = i * BITSET_WORDBITS + j;
                   assert(n < g->count);
-                  if (g->nodes[n].q_total < g->min_q_total[i]) {
-                     g->min_q_total[i] = g->nodes[n].q_total;
-                     g->min_q_node[i] = n;
+                  if (g->nodes[n].tmp.q_total < g->tmp.min_q_total[i]) {
+                     g->tmp.min_q_total[i] = g->nodes[n].tmp.q_total;
+                     g->tmp.min_q_node[i] = n;
                   }
                }
             }
-            if (g->min_q_total[i] < min_q_total) {
-               min_q_node = g->min_q_node[i];
-               min_q_total = g->min_q_total[i];
+            if (g->tmp.min_q_total[i] < min_q_total) {
+               min_q_node = g->tmp.min_q_node[i];
+               min_q_total = g->tmp.min_q_total[i];
             }
          }
       }
 
       if (!progress && min_q_total != UINT_MAX) {
          if (stack_optimistic_start == UINT_MAX)
-            stack_optimistic_start = g->stack_count;
+            stack_optimistic_start = g->tmp.stack_count;
 
          add_node_to_stack(g, min_q_node);
          progress = true;
       }
    }
 
-   g->stack_optimistic_start = stack_optimistic_start;
+   g->tmp.stack_optimistic_start = stack_optimistic_start;
 }
 
 static bool
@@ -735,7 +759,7 @@ ra_any_neighbors_conflict(struct ra_graph *g, unsigned int n, unsigned int r)
    for (i = 0; i < g->nodes[n].adjacency_count; i++) {
       unsigned int n2 = g->nodes[n].adjacency_list[i];
 
-      if (!BITSET_TEST(g->in_stack, n2) &&
+      if (!BITSET_TEST(g->tmp.in_stack, n2) &&
           BITSET_TEST(g->regs->regs[r].conflicts, g->nodes[n2].reg)) {
          return true;
       }
@@ -765,7 +789,7 @@ ra_compute_available_regs(struct ra_graph *g, unsigned int n, BITSET_WORD *regs)
       unsigned int n2 = g->nodes[n].adjacency_list[i];
       unsigned int r = g->nodes[n2].reg;
 
-      if (!BITSET_TEST(g->in_stack, n2)) {
+      if (!BITSET_TEST(g->tmp.in_stack, n2)) {
          for (int j = 0; j < BITSET_WORDS(g->regs->count); j++)
             regs[j] &= ~g->regs->regs[r].conflicts[j];
       }
@@ -795,16 +819,16 @@ ra_select(struct ra_graph *g)
    if (g->select_reg_callback)
       select_regs = malloc(BITSET_WORDS(g->regs->count) * sizeof(BITSET_WORD));
 
-   while (g->stack_count != 0) {
+   while (g->tmp.stack_count != 0) {
       unsigned int ri;
       unsigned int r = -1;
-      int n = g->stack[g->stack_count - 1];
+      int n = g->tmp.stack[g->tmp.stack_count - 1];
       struct ra_class *c = g->regs->classes[g->nodes[n].class];
 
       /* set this to false even if we return here so that
        * ra_get_best_spill_node() considers this node later.
        */
-      BITSET_CLEAR(g->in_stack, n);
+      BITSET_CLEAR(g->tmp.in_stack, n);
 
       if (g->select_reg_callback) {
          if (!ra_compute_available_regs(g, n, select_regs)) {
@@ -831,7 +855,7 @@ ra_select(struct ra_graph *g)
       }
 
       g->nodes[n].reg = r;
-      g->stack_count--;
+      g->tmp.stack_count--;
 
       /* Rotate the starting point except for any nodes above the lowest
        * optimistically colorable node.  The likelihood that we will succeed
@@ -843,7 +867,7 @@ ra_select(struct ra_graph *g)
        * dense packing strategy.
        */
       if (g->regs->round_robin &&
-          g->stack_count - 1 <= g->stack_optimistic_start)
+          g->tmp.stack_count - 1 <= g->tmp.stack_optimistic_start)
          start_search_reg = r + 1;
    }
 
@@ -862,7 +886,10 @@ ra_allocate(struct ra_graph *g)
 unsigned int
 ra_get_node_reg(struct ra_graph *g, unsigned int n)
 {
-   return g->nodes[n].reg;
+   if (g->nodes[n].forced_reg != NO_REG)
+      return g->nodes[n].forced_reg;
+   else
+      return g->nodes[n].reg;
 }
 
 /**
@@ -881,8 +908,7 @@ ra_get_node_reg(struct ra_graph *g, unsigned int n)
 void
 ra_set_node_reg(struct ra_graph *g, unsigned int n, unsigned int reg)
 {
-   g->nodes[n].reg = reg;
-   BITSET_CLEAR(g->in_stack, n);
+   g->nodes[n].forced_reg = reg;
 }
 
 static float
@@ -930,7 +956,7 @@ ra_get_best_spill_node(struct ra_graph *g)
       if (cost <= 0.0f)
          continue;
 
-      if (BITSET_TEST(g->in_stack, n))
+      if (BITSET_TEST(g->tmp.in_stack, n))
          continue;
 
       benefit = ra_get_spill_benefit(g, n);
