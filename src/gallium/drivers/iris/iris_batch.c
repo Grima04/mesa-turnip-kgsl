@@ -452,6 +452,28 @@ iris_finish_batch(struct iris_batch *batch)
 }
 
 /**
+ * Replace our current GEM context with a new one (in case it got banned).
+ */
+static bool
+replace_hw_ctx(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+
+   uint32_t new_ctx = iris_clone_hw_context(bufmgr, batch->hw_ctx_id);
+   if (!new_ctx)
+      return false;
+
+   iris_destroy_hw_context(bufmgr, batch->hw_ctx_id);
+   batch->hw_ctx_id = new_ctx;
+
+   /* Notify the context that state must be re-initialized. */
+   iris_lost_context_state(batch);
+
+   return true;
+}
+
+/**
  * Submit the batch to the GPU via execbuffer2.
  */
 static int
@@ -582,6 +604,15 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    /* Start a new batch buffer. */
    iris_batch_reset(batch);
+
+   /* EIO means our context is banned.  In this case, try and replace it
+    * with a new logical context, and inform iris_context that all state
+    * has been lost and needs to be re-initialized.  If this succeeds,
+    * dubiously claim success...
+    */
+   if (ret == -EIO && replace_hw_ctx(batch)) {
+      ret = 0;
+   }
 
    if (ret >= 0) {
       //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)

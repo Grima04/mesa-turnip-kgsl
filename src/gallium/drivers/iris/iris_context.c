@@ -63,6 +63,44 @@ iris_set_debug_callback(struct pipe_context *ctx,
       memset(&ice->dbg, 0, sizeof(ice->dbg));
 }
 
+/**
+ * Called from the batch module when it detects a GPU hang.
+ *
+ * In this case, we've lost our GEM context, and can't rely on any existing
+ * state on the GPU.  We must mark everything dirty and wipe away any saved
+ * assumptions about the last known state of the GPU.
+ */
+void
+iris_lost_context_state(struct iris_batch *batch)
+{
+   /* The batch module doesn't have an iris_context, because we want to
+    * avoid introducing lots of layering violations.  Unfortunately, here
+    * we do need to inform the context of batch catastrophe.  We know the
+    * batch is one of our context's, so hackily claw our way back.
+    */
+   struct iris_context *ice = NULL;
+   struct iris_screen *screen;
+
+   if (batch->name == IRIS_BATCH_RENDER) {
+      ice = container_of(batch, ice, batches[IRIS_BATCH_RENDER]);
+      assert(&ice->batches[IRIS_BATCH_RENDER] == batch);
+      screen = (void *) ice->ctx.screen;
+
+      ice->vtbl.init_render_context(screen, batch, &ice->vtbl, &ice->dbg);
+   } else if (batch->name == IRIS_BATCH_COMPUTE) {
+      ice = container_of(batch, ice, batches[IRIS_BATCH_COMPUTE]);
+      assert(&ice->batches[IRIS_BATCH_COMPUTE] == batch);
+      screen = (void *) ice->ctx.screen;
+
+      ice->vtbl.init_compute_context(screen, batch, &ice->vtbl, &ice->dbg);
+   } else {
+      unreachable("unhandled batch reset");
+   }
+
+   ice->state.dirty = ~0ull;
+   memset(ice->state.last_grid, 0, sizeof(ice->state.last_grid));
+}
+
 static void
 iris_get_sample_position(struct pipe_context *ctx,
                          unsigned sample_count,
