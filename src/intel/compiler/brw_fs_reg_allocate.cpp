@@ -393,6 +393,44 @@ void fs_visitor::calculate_payload_ranges(int payload_node_count,
    }
 }
 
+class fs_reg_alloc {
+public:
+   fs_reg_alloc(fs_visitor *fs):
+      fs(fs), devinfo(fs->devinfo), compiler(fs->compiler), g(NULL)
+   {
+      mem_ctx = ralloc_context(NULL);
+      int reg_width = fs->dispatch_width / 8;
+      rsi = _mesa_logbase2(reg_width);
+   }
+
+   ~fs_reg_alloc()
+   {
+      ralloc_free(mem_ctx);
+   }
+
+   bool assign_regs(bool allow_spilling, bool spill_all);
+
+private:
+   void setup_payload_interference(int payload_node_count,
+                                   int first_payload_node);
+   void setup_mrf_hack_interference(int first_mrf_node,
+                                    int *first_used_mrf);
+   void build_interference_graph();
+
+   int choose_spill_reg();
+   void spill_reg(unsigned spill_reg);
+
+   void *mem_ctx;
+   fs_visitor *fs;
+   const gen_device_info *devinfo;
+   const brw_compiler *compiler;
+
+   /* Which compiler->fs_reg_sets[] to use */
+   int rsi;
+
+   ra_graph *g;
+};
+
 
 /**
  * Sets up interference between thread payload registers and the virtual GRFs
@@ -412,12 +450,11 @@ void fs_visitor::calculate_payload_ranges(int payload_node_count,
  * (note that in SIMD16, a node is two registers).
  */
 void
-fs_visitor::setup_payload_interference(struct ra_graph *g,
-                                       int payload_node_count,
-                                       int first_payload_node)
+fs_reg_alloc::setup_payload_interference(int payload_node_count,
+                                         int first_payload_node)
 {
    int payload_last_use_ip[payload_node_count];
-   calculate_payload_ranges(payload_node_count, payload_last_use_ip);
+   fs->calculate_payload_ranges(payload_node_count, payload_last_use_ip);
 
    for (int i = 0; i < payload_node_count; i++) {
       if (payload_last_use_ip[i] == -1)
@@ -427,12 +464,12 @@ fs_visitor::setup_payload_interference(struct ra_graph *g,
        * live between the start of the program and our last use of the payload
        * node.
        */
-      for (unsigned j = 0; j < this->alloc.count; j++) {
+      for (unsigned j = 0; j < fs->alloc.count; j++) {
          /* Note that we use a <= comparison, unlike virtual_grf_interferes(),
           * in order to not have to worry about the uniform issue described in
           * calculate_live_intervals().
           */
-         if (this->virtual_grf_start[j] <= payload_last_use_ip[i]) {
+         if (fs->virtual_grf_start[j] <= payload_last_use_ip[i]) {
             ra_add_node_interference(g, first_payload_node + i, j);
          }
       }
@@ -444,7 +481,7 @@ fs_visitor::setup_payload_interference(struct ra_graph *g,
        * The alternative would be to have per-physical-register classes, which
        * would just be silly.
        */
-      if (devinfo->gen <= 5 && dispatch_width >= 16) {
+      if (devinfo->gen <= 5 && fs->dispatch_width >= 16) {
          /* We have to divide by 2 here because we only have even numbered
           * registers.  Some of the payload registers will be odd, but
           * that's ok because their physical register numbers have already
@@ -497,15 +534,15 @@ get_used_mrfs(fs_visitor *v, bool *mrf_used)
  * Sets interference between virtual GRFs and usage of the high GRFs for SEND
  * messages (treated as MRFs in code generation).
  */
-static void
-setup_mrf_hack_interference(fs_visitor *v, struct ra_graph *g,
-                            int first_mrf_node, int *first_used_mrf)
+void
+fs_reg_alloc::setup_mrf_hack_interference(int first_mrf_node,
+                                          int *first_used_mrf)
 {
-   bool mrf_used[BRW_MAX_MRF(v->devinfo->gen)];
-   get_used_mrfs(v, mrf_used);
+   bool mrf_used[BRW_MAX_MRF(fs->devinfo->gen)];
+   get_used_mrfs(fs, mrf_used);
 
-   *first_used_mrf = BRW_MAX_MRF(v->devinfo->gen);
-   for (int i = 0; i < BRW_MAX_MRF(v->devinfo->gen); i++) {
+   *first_used_mrf = BRW_MAX_MRF(devinfo->gen);
+   for (int i = 0; i < BRW_MAX_MRF(devinfo->gen); i++) {
       /* Mark each MRF reg node as being allocated to its physical register.
        *
        * The alternative would be to have per-physical-register classes, which
@@ -520,15 +557,15 @@ setup_mrf_hack_interference(fs_visitor *v, struct ra_graph *g,
          if (i < *first_used_mrf)
             *first_used_mrf = i;
 
-         for (unsigned j = 0; j < v->alloc.count; j++) {
+         for (unsigned j = 0; j < fs->alloc.count; j++) {
             ra_add_node_interference(g, first_mrf_node + i, j);
          }
       }
    }
 }
 
-static ra_graph *
-build_interference_graph(fs_visitor *fs)
+void
+fs_reg_alloc::build_interference_graph()
 {
    const gen_device_info *devinfo = fs->devinfo;
    const brw_compiler *compiler = fs->compiler;
@@ -541,7 +578,7 @@ build_interference_graph(fs_visitor *fs)
     */
    int reg_width = fs->dispatch_width / 8;
    int payload_node_count = ALIGN(fs->first_non_payload_grf, reg_width);
-   int rsi = _mesa_logbase2(reg_width); /* Which compiler->fs_reg_sets[] to use */
+
    fs->calculate_live_intervals();
 
    int node_count = fs->alloc.count;
@@ -553,8 +590,10 @@ build_interference_graph(fs_visitor *fs)
    int grf127_send_hack_node = node_count;
    if (devinfo->gen >= 8)
       node_count ++;
-   struct ra_graph *g =
-      ra_alloc_interference_graph(compiler->fs_reg_sets[rsi].regs, node_count);
+
+   assert(g == NULL);
+   g = ra_alloc_interference_graph(compiler->fs_reg_sets[rsi].regs, node_count);
+   ralloc_steal(mem_ctx, g);
 
    for (unsigned i = 0; i < fs->alloc.count; i++) {
       unsigned size = fs->alloc.sizes[i];
@@ -601,10 +640,10 @@ build_interference_graph(fs_visitor *fs)
       }
    }
 
-   fs->setup_payload_interference(g, payload_node_count, first_payload_node);
+   setup_payload_interference(payload_node_count, first_payload_node);
    if (devinfo->gen >= 7) {
       int first_used_mrf = BRW_MAX_MRF(devinfo->gen);
-      setup_mrf_hack_interference(fs, g, first_mrf_hack_node,
+      setup_mrf_hack_interference(first_mrf_hack_node,
                                   &first_used_mrf);
 
       foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
@@ -717,8 +756,6 @@ build_interference_graph(fs_visitor *fs)
                                      inst->src[3].nr);
       }
    }
-
-   return g;
 }
 
 namespace {
@@ -816,13 +853,13 @@ emit_spill(const fs_builder &bld, fs_reg src,
 }
 
 int
-fs_visitor::choose_spill_reg(struct ra_graph *g)
+fs_reg_alloc::choose_spill_reg()
 {
    float block_scale = 1.0;
-   float spill_costs[this->alloc.count];
-   bool no_spill[this->alloc.count];
+   float spill_costs[fs->alloc.count];
+   bool no_spill[fs->alloc.count];
 
-   for (unsigned i = 0; i < this->alloc.count; i++) {
+   for (unsigned i = 0; i < fs->alloc.count; i++) {
       spill_costs[i] = 0.0;
       no_spill[i] = false;
    }
@@ -831,7 +868,7 @@ fs_visitor::choose_spill_reg(struct ra_graph *g)
     * spill/unspill we'll have to do, and guess that the insides of
     * loops run 10 times.
     */
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+   foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
       for (unsigned int i = 0; i < inst->sources; i++) {
 	 if (inst->src[i].file == VGRF)
             spill_costs[inst->src[i].nr] += regs_read(inst, i) * block_scale;
@@ -875,8 +912,8 @@ fs_visitor::choose_spill_reg(struct ra_graph *g)
       }
    }
 
-   for (unsigned i = 0; i < this->alloc.count; i++) {
-      int live_length = virtual_grf_end[i] - virtual_grf_start[i];
+   for (unsigned i = 0; i < fs->alloc.count; i++) {
+      int live_length = fs->virtual_grf_end[i] - fs->virtual_grf_start[i];
       if (live_length <= 0)
          continue;
 
@@ -896,10 +933,10 @@ fs_visitor::choose_spill_reg(struct ra_graph *g)
 }
 
 void
-fs_visitor::spill_reg(unsigned spill_reg)
+fs_reg_alloc::spill_reg(unsigned spill_reg)
 {
-   int size = alloc.sizes[spill_reg];
-   unsigned int spill_offset = last_scratch;
+   int size = fs->alloc.sizes[spill_reg];
+   unsigned int spill_offset = fs->last_scratch;
    assert(ALIGN(spill_offset, 16) == spill_offset); /* oword read/write req. */
 
    /* Spills may use MRFs 13-15 in the SIMD16 case.  Our texturing is done
@@ -909,29 +946,29 @@ fs_visitor::spill_reg(unsigned spill_reg)
     * depth), starting from m1.  In summary: We may not be able to spill in
     * SIMD16 mode, because we'd stomp the FB writes.
     */
-   if (!spilled_any_registers) {
+   if (!fs->spilled_any_registers) {
       bool mrf_used[BRW_MAX_MRF(devinfo->gen)];
-      get_used_mrfs(this, mrf_used);
+      get_used_mrfs(fs, mrf_used);
 
-      for (int i = spill_base_mrf(this); i < BRW_MAX_MRF(devinfo->gen); i++) {
+      for (int i = spill_base_mrf(fs); i < BRW_MAX_MRF(devinfo->gen); i++) {
          if (mrf_used[i]) {
-            fail("Register spilling not supported with m%d used", i);
+            fs->fail("Register spilling not supported with m%d used", i);
           return;
          }
       }
 
-      spilled_any_registers = true;
+      fs->spilled_any_registers = true;
    }
 
-   last_scratch += size * REG_SIZE;
+   fs->last_scratch += size * REG_SIZE;
 
    /* Generate spill/unspill instructions for the objects being
     * spilled.  Right now, we spill or unspill the whole thing to a
     * virtual grf of the same size.  For most instructions, though, we
     * could just spill/unspill the GRF being accessed.
     */
-   foreach_block_and_inst (block, fs_inst, inst, cfg) {
-      const fs_builder ibld = fs_builder(this, block, inst);
+   foreach_block_and_inst (block, fs_inst, inst, fs->cfg) {
+      const fs_builder ibld = fs_builder(fs, block, inst);
 
       for (unsigned int i = 0; i < inst->sources; i++) {
 	 if (inst->src[i].file == VGRF &&
@@ -939,7 +976,7 @@ fs_visitor::spill_reg(unsigned spill_reg)
             int count = regs_read(inst, i);
             int subset_spill_offset = spill_offset +
                ROUND_DOWN_TO(inst->src[i].offset, REG_SIZE);
-            fs_reg unspill_dst(VGRF, alloc.allocate(count));
+            fs_reg unspill_dst(VGRF, fs->alloc.allocate(count));
 
             inst->src[i].nr = unspill_dst.nr;
             inst->src[i].offset %= REG_SIZE;
@@ -967,7 +1004,7 @@ fs_visitor::spill_reg(unsigned spill_reg)
           inst->dst.nr == spill_reg) {
          int subset_spill_offset = spill_offset +
             ROUND_DOWN_TO(inst->dst.offset, REG_SIZE);
-         fs_reg spill_src(VGRF, alloc.allocate(regs_written(inst)));
+         fs_reg spill_src(VGRF, fs->alloc.allocate(regs_written(inst)));
 
          inst->dst.nr = spill_src.nr;
          inst->dst.offset %= REG_SIZE;
@@ -989,7 +1026,7 @@ fs_visitor::spill_reg(unsigned spill_reg)
           */
          const unsigned width = 8 * MIN2(
             DIV_ROUND_UP(inst->dst.component_size(inst->exec_size), REG_SIZE),
-            spill_max_size(this));
+            spill_max_size(fs));
 
          /* Spills should only write data initialized by the instruction for
           * whichever channels are enabled in the excution mask.  If that's
@@ -1020,29 +1057,20 @@ fs_visitor::spill_reg(unsigned spill_reg)
       }
    }
 
-   invalidate_live_intervals();
+   fs->invalidate_live_intervals();
 }
 
 bool
-fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
+fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
 {
-   /* Most of this allocation was written for a reg_width of 1
-    * (dispatch_width == 8).  In extending to SIMD16, the code was
-    * left in place and it was converted to have the hardware
-    * registers it's allocating be contiguous physical pairs of regs
-    * for reg_width == 2.
-    */
-   int reg_width = dispatch_width / 8;
-   int rsi = _mesa_logbase2(reg_width); /* Which compiler->fs_reg_sets[] to use */
-   ra_graph *g = build_interference_graph(this);
+   build_interference_graph();
 
    /* Debug of register spilling: Go spill everything. */
    if (unlikely(spill_all)) {
-      int reg = choose_spill_reg(g);
+      int reg = choose_spill_reg();
 
       if (reg != -1) {
          spill_reg(reg);
-         ralloc_free(g);
          return false;
       }
    }
@@ -1051,16 +1079,14 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
       /* Failed to allocate registers.  Spill a reg, and the caller will
        * loop back into here to try again.
        */
-      int reg = choose_spill_reg(g);
+      int reg = choose_spill_reg();
 
       if (reg == -1) {
-         fail("no register to spill:\n");
-         dump_instructions(NULL);
+         fs->fail("no register to spill:\n");
+         fs->dump_instructions(NULL);
       } else if (allow_spilling) {
          spill_reg(reg);
       }
-
-      ralloc_free(g);
 
       return false;
    }
@@ -1069,26 +1095,31 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
     * regs in the register classes back down to real hardware reg
     * numbers.
     */
-   unsigned hw_reg_mapping[alloc.count];
-   this->grf_used = this->first_non_payload_grf;
-   for (unsigned i = 0; i < this->alloc.count; i++) {
+   unsigned hw_reg_mapping[fs->alloc.count];
+   fs->grf_used = fs->first_non_payload_grf;
+   for (unsigned i = 0; i < fs->alloc.count; i++) {
       int reg = ra_get_node_reg(g, i);
 
       hw_reg_mapping[i] = compiler->fs_reg_sets[rsi].ra_reg_to_grf[reg];
-      this->grf_used = MAX2(this->grf_used,
-			    hw_reg_mapping[i] + this->alloc.sizes[i]);
+      fs->grf_used = MAX2(fs->grf_used,
+			  hw_reg_mapping[i] + fs->alloc.sizes[i]);
    }
 
-   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+   foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
       assign_reg(hw_reg_mapping, &inst->dst);
       for (int i = 0; i < inst->sources; i++) {
          assign_reg(hw_reg_mapping, &inst->src[i]);
       }
    }
 
-   this->alloc.count = this->grf_used;
-
-   ralloc_free(g);
+   fs->alloc.count = fs->grf_used;
 
    return true;
+}
+
+bool
+fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
+{
+   fs_reg_alloc alloc(this);
+   return alloc.assign_regs(allow_spilling, spill_all);
 }
