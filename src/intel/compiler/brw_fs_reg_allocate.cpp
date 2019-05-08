@@ -710,14 +710,9 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
          if (inst->opcode == SHADER_OPCODE_SEND && inst->ex_mlen > 0 &&
              inst->src[2].file == VGRF &&
              inst->src[3].file == VGRF &&
-             inst->src[2].nr != inst->src[3].nr) {
-            for (unsigned i = 0; i < inst->mlen; i++) {
-               for (unsigned j = 0; j < inst->ex_mlen; j++) {
-                  ra_add_node_interference(g, inst->src[2].nr + i,
-                                           inst->src[3].nr + j);
-               }
-            }
-         }
+             inst->src[2].nr != inst->src[3].nr)
+            ra_add_node_interference(g, inst->src[2].nr,
+                                     inst->src[3].nr);
       }
    }
 
