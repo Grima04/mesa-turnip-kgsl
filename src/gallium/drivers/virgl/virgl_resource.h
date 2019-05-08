@@ -73,6 +73,13 @@ struct virgl_transfer {
    struct list_head queue_link;
    struct pipe_transfer *resolve_transfer;
    void *hw_res_map;
+   /* If not NULL, denotes that this is a copy transfer, i.e.,
+    * that the transfer source data should be taken from this
+    * resource instead of the original transfer resource.
+    */
+   struct pipe_resource *copy_src_res;
+   /* The offset in the copy source resource to copy data from. */
+   uint32_t copy_src_offset;
 };
 
 void virgl_resource_destroy(struct pipe_screen *screen,

@@ -292,5 +292,8 @@ int virgl_encode_get_query_result_qbo(struct virgl_context *ctx,
 void virgl_encode_transfer(struct virgl_screen *vs, struct virgl_cmd_buf *buf,
                            struct virgl_transfer *trans, uint32_t direction);
 
+void virgl_encode_copy_transfer(struct virgl_context *ctx,
+                                struct virgl_transfer *trans);
+
 void virgl_encode_end_transfers(struct virgl_cmd_buf *buf);
 #endif

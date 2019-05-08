@@ -401,6 +401,8 @@ virgl_resource_create_transfer(struct slab_child_pool *pool,
    trans->base.layer_stride = metadata->layer_stride[level];
    trans->offset = offset;
    util_range_init(&trans->range);
+   trans->copy_src_res = NULL;
+   trans->copy_src_offset = 0;
 
    if (trans->base.resource->target != PIPE_TEXTURE_3D &&
        trans->base.resource->target != PIPE_TEXTURE_CUBE &&
@@ -417,6 +419,7 @@ virgl_resource_create_transfer(struct slab_child_pool *pool,
 void virgl_resource_destroy_transfer(struct slab_child_pool *pool,
                                      struct virgl_transfer *trans)
 {
+   pipe_resource_reference(&trans->copy_src_res, NULL);
    util_range_destroy(&trans->range);
    slab_free(pool, trans);
 }

@@ -223,6 +223,7 @@ static void add_internal(struct virgl_transfer_queue *queue,
                          struct virgl_transfer *transfer)
 {
    uint32_t dwords = VIRGL_TRANSFER3D_SIZE + 1;
+
    if (queue->tbuf) {
       if (queue->num_dwords + dwords >= VIRGL_MAX_TBUF_DWORDS) {
          struct list_iteration_args iter;
@@ -296,6 +297,10 @@ int virgl_transfer_queue_unmap(struct virgl_transfer_queue *queue,
    res = transfer->base.resource;
    pipe_resource_reference(&pres, res);
 
+   /* We don't support copy transfers in the transfer queue. */
+   assert(!transfer->copy_src_res);
+
+   /* Attempt to merge multiple intersecting transfers into a single one. */
    if (res->target == PIPE_BUFFER) {
       memset(&iter, 0, sizeof(iter));
       iter.current = transfer;
@@ -366,6 +371,9 @@ virgl_transfer_queue_extend(struct virgl_transfer_queue *queue,
 {
    struct virgl_transfer *queued = NULL;
    struct list_iteration_args iter;
+
+   /* We don't support extending from copy transfers. */
+   assert(!transfer->copy_src_res);
 
    if (transfer->base.resource->target == PIPE_BUFFER) {
       memset(&iter, 0, sizeof(iter));
