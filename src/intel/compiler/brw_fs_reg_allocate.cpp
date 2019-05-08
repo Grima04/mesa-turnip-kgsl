@@ -412,6 +412,10 @@ public:
 
       /* Get payload IP information */
       payload_last_use_ip = ralloc_array(mem_ctx, int, payload_node_count);
+
+      spill_vgrf_ip = NULL;
+      spill_vgrf_ip_alloc = 0;
+      spill_node_count = 0;
    }
 
    ~fs_reg_alloc()
@@ -428,7 +432,9 @@ private:
 
    void build_interference_graph(bool allow_spilling);
 
+   void set_spill_costs();
    int choose_spill_reg();
+   fs_reg alloc_spill_reg(unsigned size, int ip);
    void spill_reg(unsigned spill_reg);
 
    void *mem_ctx;
@@ -449,6 +455,11 @@ private:
    int first_mrf_hack_node;
    int grf127_send_hack_node;
    int first_vgrf_node;
+   int first_spill_node;
+
+   int *spill_vgrf_ip;
+   int spill_vgrf_ip_alloc;
+   int spill_node_count;
 };
 
 /**
@@ -559,7 +570,8 @@ fs_reg_alloc::setup_live_interference(unsigned node,
     * node's.  We only need to look at nodes below this one as the reflexivity
     * of interference will take care of the rest.
     */
-   for (unsigned n2 = first_vgrf_node; n2 < node; n2++) {
+   for (unsigned n2 = first_vgrf_node;
+        n2 < (unsigned)first_spill_node && n2 < node; n2++) {
       unsigned vgrf = n2 - first_vgrf_node;
       if (!(node_end_ip <= fs->virtual_grf_start[vgrf] ||
             fs->virtual_grf_end[vgrf] <= node_start_ip))
@@ -703,6 +715,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    }
    first_vgrf_node = node_count;
    node_count += fs->alloc.count;
+   first_spill_node = node_count;
 
    fs->calculate_live_intervals();
    fs->calculate_payload_ranges(payload_node_count,
@@ -782,6 +795,9 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
     */
    foreach_block_and_inst(block, fs_inst, inst, fs->cfg)
       setup_inst_interference(inst);
+
+   if (allow_spilling)
+      set_spill_costs();
 }
 
 static void
@@ -837,8 +853,8 @@ emit_spill(const fs_builder &bld, fs_reg src,
    }
 }
 
-int
-fs_reg_alloc::choose_spill_reg()
+void
+fs_reg_alloc::set_spill_costs()
 {
    float block_scale = 1.0;
    float spill_costs[fs->alloc.count];
@@ -913,13 +929,49 @@ fs_reg_alloc::choose_spill_reg()
       if (!no_spill[i])
 	 ra_set_node_spill_cost(g, first_vgrf_node + i, adjusted_cost);
    }
+}
 
+int
+fs_reg_alloc::choose_spill_reg()
+{
    int node = ra_get_best_spill_node(g);
    if (node < 0)
       return -1;
 
    assert(node >= first_vgrf_node);
    return node - first_vgrf_node;
+}
+
+fs_reg
+fs_reg_alloc::alloc_spill_reg(unsigned size, int ip)
+{
+   int vgrf = fs->alloc.allocate(size);
+   int n = ra_add_node(g, compiler->fs_reg_sets[rsi].classes[size - 1]);
+   assert(n == first_vgrf_node + vgrf);
+   assert(n == first_spill_node + spill_node_count);
+
+   setup_live_interference(n, ip - 1, ip + 1);
+
+   /* Add interference between this spill node and any other spill nodes for
+    * the same instruction.
+    */
+   for (int s = 0; s < spill_node_count; s++) {
+      if (spill_vgrf_ip[s] == ip)
+         ra_add_node_interference(g, n, first_spill_node + s);
+   }
+
+   /* Add this spill node to the list for next time */
+   if (spill_node_count >= spill_vgrf_ip_alloc) {
+      if (spill_vgrf_ip_alloc == 0)
+         spill_vgrf_ip_alloc = 16;
+      else
+         spill_vgrf_ip_alloc *= 2;
+      spill_vgrf_ip = reralloc(mem_ctx, spill_vgrf_ip, int,
+                               spill_vgrf_ip_alloc);
+   }
+   spill_vgrf_ip[spill_node_count++] = ip;
+
+   return fs_reg(VGRF, vgrf);
 }
 
 void
@@ -952,13 +1004,22 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
 
    fs->last_scratch += size * REG_SIZE;
 
+   /* We're about to replace all uses of this register.  It no longer
+    * conflicts with anything so we can get rid of its interference.
+    */
+   ra_set_node_spill_cost(g, first_vgrf_node + spill_reg, 0);
+   ra_reset_node_interference(g, first_vgrf_node + spill_reg);
+
    /* Generate spill/unspill instructions for the objects being
     * spilled.  Right now, we spill or unspill the whole thing to a
     * virtual grf of the same size.  For most instructions, though, we
     * could just spill/unspill the GRF being accessed.
     */
+   int ip = 0;
    foreach_block_and_inst (block, fs_inst, inst, fs->cfg) {
       const fs_builder ibld = fs_builder(fs, block, inst);
+      exec_node *before = inst->prev;
+      exec_node *after = inst->next;
 
       for (unsigned int i = 0; i < inst->sources; i++) {
 	 if (inst->src[i].file == VGRF &&
@@ -966,7 +1027,7 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
             int count = regs_read(inst, i);
             int subset_spill_offset = spill_offset +
                ROUND_DOWN_TO(inst->src[i].offset, REG_SIZE);
-            fs_reg unspill_dst(VGRF, fs->alloc.allocate(count));
+            fs_reg unspill_dst = alloc_spill_reg(count, ip);
 
             inst->src[i].nr = unspill_dst.nr;
             inst->src[i].offset %= REG_SIZE;
@@ -994,7 +1055,7 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
           inst->dst.nr == spill_reg) {
          int subset_spill_offset = spill_offset +
             ROUND_DOWN_TO(inst->dst.offset, REG_SIZE);
-         fs_reg spill_src(VGRF, fs->alloc.allocate(regs_written(inst)));
+         fs_reg spill_src = alloc_spill_reg(regs_written(inst), ip);
 
          inst->dst.nr = spill_src.nr;
          inst->dst.offset %= REG_SIZE;
@@ -1045,24 +1106,34 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
          emit_spill(ubld.at(block, inst->next), spill_src,
                     subset_spill_offset, regs_written(inst));
       }
-   }
 
-   fs->invalidate_live_intervals();
+      for (fs_inst *inst = (fs_inst *)before->next;
+           inst != after; inst = (fs_inst *)inst->next)
+         setup_inst_interference(inst);
+
+      /* We don't advance the ip for scratch read/write instructions
+       * because we consider them to have the same ip as instruction we're
+       * spilling around for the purposes of interference.
+       */
+      if (inst->opcode != SHADER_OPCODE_GEN4_SCRATCH_WRITE &&
+          inst->opcode != SHADER_OPCODE_GEN4_SCRATCH_READ &&
+          inst->opcode != SHADER_OPCODE_GEN7_SCRATCH_READ)
+         ip++;
+   }
 }
 
 bool
 fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
 {
-   while (1) {
-      build_interference_graph(fs->spilled_any_registers);
+   build_interference_graph(fs->spilled_any_registers || spill_all);
 
+   bool spilled = false;
+   while (1) {
       /* Debug of register spilling: Go spill everything. */
       if (unlikely(spill_all)) {
          int reg = choose_spill_reg();
          if (reg != -1) {
             spill_reg(reg);
-            ralloc_free(g);
-            g = NULL;
             continue;
          }
       }
@@ -1073,6 +1144,17 @@ fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
       if (!allow_spilling)
          return false;
 
+      /* If we're going to spill but we've never spilled before, we need to
+       * re-build the interference graph with MRFs enabled to allow spilling.
+       */
+      if (!fs->spilled_any_registers) {
+         ralloc_free(g);
+         g = NULL;
+         build_interference_graph(true);
+      }
+
+      spilled = true;
+
       /* Failed to allocate registers.  Spill a reg, and the caller will
        * loop back into here to try again.
        */
@@ -1081,9 +1163,10 @@ fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
          return false;
 
       spill_reg(reg);
-      ralloc_free(g);
-      g = NULL;
    }
+
+   if (spilled)
+      fs->invalidate_live_intervals();
 
    /* Get the chosen virtual registers for each node, and map virtual
     * regs in the register classes back down to real hardware reg
