@@ -378,7 +378,8 @@ static bool amdgpu_cs_has_user_fence(struct amdgpu_cs_context *cs)
           cs->ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCE &&
           cs->ib[IB_MAIN].ip_type != AMDGPU_HW_IP_UVD_ENC &&
           cs->ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_DEC &&
-          cs->ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_ENC;
+          cs->ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_ENC &&
+          cs->ib[IB_MAIN].ip_type != AMDGPU_HW_IP_VCN_JPEG;
 }
 
 static bool amdgpu_cs_has_chaining(struct amdgpu_cs *cs)
