@@ -399,8 +399,19 @@ public:
       fs(fs), devinfo(fs->devinfo), compiler(fs->compiler), g(NULL)
    {
       mem_ctx = ralloc_context(NULL);
+
+      /* Most of this allocation was written for a reg_width of 1
+       * (dispatch_width == 8).  In extending to SIMD16, the code was
+       * left in place and it was converted to have the hardware
+       * registers it's allocating be contiguous physical pairs of regs
+       * for reg_width == 2.
+       */
       int reg_width = fs->dispatch_width / 8;
       rsi = _mesa_logbase2(reg_width);
+      payload_node_count = ALIGN(fs->first_non_payload_grf, reg_width);
+
+      /* Get payload IP information */
+      payload_last_use_ip = ralloc_array(mem_ctx, int, payload_node_count);
    }
 
    ~fs_reg_alloc()
@@ -411,10 +422,10 @@ public:
    bool assign_regs(bool allow_spilling, bool spill_all);
 
 private:
-   void setup_payload_interference(int payload_node_count,
-                                   int first_payload_node);
-   void setup_mrf_hack_interference(int first_mrf_node,
-                                    int *first_used_mrf);
+   void setup_live_interference(unsigned node,
+                                int node_start_ip, int node_end_ip);
+   void setup_inst_interference(fs_inst *inst);
+
    void build_interference_graph(bool allow_spilling);
 
    int choose_spill_reg();
@@ -429,70 +440,15 @@ private:
    int rsi;
 
    ra_graph *g;
+
+   int payload_node_count;
+   int *payload_last_use_ip;
+
+   int node_count;
+   int first_payload_node;
+   int first_mrf_hack_node;
+   int grf127_send_hack_node;
 };
-
-
-/**
- * Sets up interference between thread payload registers and the virtual GRFs
- * to be allocated for program temporaries.
- *
- * We want to be able to reallocate the payload for our virtual GRFs, notably
- * because the setup coefficients for a full set of 16 FS inputs takes up 8 of
- * our 128 registers.
- *
- * The layout of the payload registers is:
- *
- * 0..payload.num_regs-1: fixed function setup (including bary coordinates).
- * payload.num_regs..payload.num_regs+curb_read_lengh-1: uniform data
- * payload.num_regs+curb_read_lengh..first_non_payload_grf-1: setup coefficients.
- *
- * And we have payload_node_count nodes covering these registers in order
- * (note that in SIMD16, a node is two registers).
- */
-void
-fs_reg_alloc::setup_payload_interference(int payload_node_count,
-                                         int first_payload_node)
-{
-   int payload_last_use_ip[payload_node_count];
-   fs->calculate_payload_ranges(payload_node_count, payload_last_use_ip);
-
-   for (int i = 0; i < payload_node_count; i++) {
-      if (payload_last_use_ip[i] == -1)
-         continue;
-
-      /* Mark the payload node as interfering with any virtual grf that is
-       * live between the start of the program and our last use of the payload
-       * node.
-       */
-      for (unsigned j = 0; j < fs->alloc.count; j++) {
-         /* Note that we use a <= comparison, unlike virtual_grf_interferes(),
-          * in order to not have to worry about the uniform issue described in
-          * calculate_live_intervals().
-          */
-         if (fs->virtual_grf_start[j] <= payload_last_use_ip[i]) {
-            ra_add_node_interference(g, first_payload_node + i, j);
-         }
-      }
-   }
-
-   for (int i = 0; i < payload_node_count; i++) {
-      /* Mark each payload node as being allocated to its physical register.
-       *
-       * The alternative would be to have per-physical-register classes, which
-       * would just be silly.
-       */
-      if (devinfo->gen <= 5 && fs->dispatch_width >= 16) {
-         /* We have to divide by 2 here because we only have even numbered
-          * registers.  Some of the payload registers will be odd, but
-          * that's ok because their physical register numbers have already
-          * been assigned.  The only thing this is used for is interference.
-          */
-         ra_set_node_reg(g, first_payload_node + i, i / 2);
-      } else {
-         ra_set_node_reg(g, first_payload_node + i, i);
-      }
-   }
-}
 
 /**
  * Sets the mrf_used array to indicate which MRFs are used by the shader IR
@@ -571,25 +527,149 @@ namespace {
    }
 }
 
-/**
- * Sets interference between virtual GRFs and usage of the high GRFs for SEND
- * messages (treated as MRFs in code generation).
- */
 void
-fs_reg_alloc::setup_mrf_hack_interference(int first_mrf_node,
-                                          int *first_used_mrf)
+fs_reg_alloc::setup_live_interference(unsigned node,
+                                      int node_start_ip, int node_end_ip)
 {
-   *first_used_mrf = spill_base_mrf(fs);
-   for (int i = spill_base_mrf(fs); i < BRW_MAX_MRF(devinfo->gen); i++) {
-      /* Mark each MRF reg node as being allocated to its physical register.
-       *
-       * The alternative would be to have per-physical-register classes, which
-       * would just be silly.
-       */
-      ra_set_node_reg(g, first_mrf_node + i, GEN7_MRF_HACK_START + i);
+   /* Mark any virtual grf that is live between the start of the program and
+    * the last use of a payload node interfering with that payload node.
+    */
+   for (int i = 0; i < payload_node_count; i++) {
+      if (payload_last_use_ip[i] == -1)
+         continue;
 
-      for (unsigned j = 0; j < fs->alloc.count; j++)
-         ra_add_node_interference(g, first_mrf_node + i, j);
+      /* Note that we use a <= comparison, unlike virtual_grf_interferes(),
+       * in order to not have to worry about the uniform issue described in
+       * calculate_live_intervals().
+       */
+      if (node_start_ip <= payload_last_use_ip[i])
+         ra_add_node_interference(g, node, first_payload_node + i);
+   }
+
+   /* If we have the MRF hack enabled, mark this node as interfering with all
+    * MRF registers.
+    */
+   if (first_mrf_hack_node >= 0) {
+      for (int i = spill_base_mrf(fs); i < BRW_MAX_MRF(devinfo->gen); i++)
+         ra_add_node_interference(g, node, first_mrf_hack_node + i);
+   }
+
+   /* Add interference with every vgrf whose live range intersects this
+    * node's.  We only need to look at nodes below this one as the reflexivity
+    * of interference will take care of the rest.
+    */
+   for (unsigned i = 0; i < node; i++) {
+      if (!(node_end_ip <= fs->virtual_grf_start[i] ||
+            fs->virtual_grf_end[i] <= node_start_ip))
+         ra_add_node_interference(g, node, i);
+   }
+}
+
+void
+fs_reg_alloc::setup_inst_interference(fs_inst *inst)
+{
+   /* Certain instructions can't safely use the same register for their
+    * sources and destination.  Add interference.
+    */
+   if (inst->dst.file == VGRF && inst->has_source_and_destination_hazard()) {
+      for (unsigned i = 0; i < inst->sources; i++) {
+         if (inst->src[i].file == VGRF) {
+            ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
+         }
+      }
+   }
+
+   /* In 16-wide instructions we have an issue where a compressed
+    * instruction is actually two instructions executed simultaneously.
+    * It's actually ok to have the source and destination registers be
+    * the same.  In this case, each instruction over-writes its own
+    * source and there's no problem.  The real problem here is if the
+    * source and destination registers are off by one.  Then you can end
+    * up in a scenario where the first instruction over-writes the
+    * source of the second instruction.  Since the compiler doesn't know
+    * about this level of granularity, we simply make the source and
+    * destination interfere.
+    */
+   if (inst->exec_size >= 16 && inst->dst.file == VGRF) {
+      for (int i = 0; i < inst->sources; ++i) {
+         if (inst->src[i].file == VGRF) {
+            ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
+         }
+      }
+   }
+
+   if (grf127_send_hack_node >= 0) {
+      /* At Intel Broadwell PRM, vol 07, section "Instruction Set Reference",
+       * subsection "EUISA Instructions", Send Message (page 990):
+       *
+       * "r127 must not be used for return address when there is a src and
+       * dest overlap in send instruction."
+       *
+       * We are avoiding using grf127 as part of the destination of send
+       * messages adding a node interference to the grf127_send_hack_node.
+       * This node has a fixed asignment to grf127.
+       *
+       * We don't apply it to SIMD16 instructions because previous code avoids
+       * any register overlap between sources and destination.
+       */
+      if (inst->exec_size < 16 && inst->is_send_from_grf() &&
+          inst->dst.file == VGRF)
+         ra_add_node_interference(g, inst->dst.nr, grf127_send_hack_node);
+
+      /* Spilling instruction are genereated as SEND messages from MRF but as
+       * Gen7+ supports sending from GRF the driver will maps assingn these
+       * MRF registers to a GRF. Implementations reuses the dest of the send
+       * message as source. So as we will have an overlap for sure, we create
+       * an interference between destination and grf127.
+       */
+      if ((inst->opcode == SHADER_OPCODE_GEN7_SCRATCH_READ ||
+           inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_READ) &&
+          inst->dst.file == VGRF)
+         ra_add_node_interference(g, inst->dst.nr, grf127_send_hack_node);
+   }
+
+   /* From the Skylake PRM Vol. 2a docs for sends:
+    *
+    *    "It is required that the second block of GRFs does not overlap with
+    *    the first block."
+    *
+    * Normally, this is taken care of by fixup_sends_duplicate_payload() but
+    * in the case where one of the registers is an undefined value, the
+    * register allocator may decide that they don't interfere even though
+    * they're used as sources in the same instruction.  We also need to add
+    * interference here.
+    */
+   if (devinfo->gen >= 9) {
+      if (inst->opcode == SHADER_OPCODE_SEND && inst->ex_mlen > 0 &&
+          inst->src[2].file == VGRF && inst->src[3].file == VGRF &&
+          inst->src[2].nr != inst->src[3].nr)
+         ra_add_node_interference(g, inst->src[2].nr,
+                                  inst->src[3].nr);
+   }
+
+   /* When we do send-from-GRF for FB writes, we need to ensure that the last
+    * write instruction sends from a high register.  This is because the
+    * vertex fetcher wants to start filling the low payload registers while
+    * the pixel data port is still working on writing out the memory.  If we
+    * don't do this, we get rendering artifacts.
+    *
+    * We could just do "something high".  Instead, we just pick the highest
+    * register that works.
+    */
+   if (inst->eot) {
+      const int vgrf = inst->opcode == SHADER_OPCODE_SEND ?
+                       inst->src[2].nr : inst->src[0].nr;
+      int size = fs->alloc.sizes[vgrf];
+      int reg = compiler->fs_reg_sets[rsi].class_to_ra_reg_range[size] - 1;
+
+      /* If something happened to spill, we want to push the EOT send
+       * register early enough in the register file that we don't
+       * conflict with any used MRF hack registers.
+       */
+      if (first_mrf_hack_node >= 0)
+         reg -= BRW_MAX_MRF(devinfo->gen) - spill_base_mrf(fs);
+
+      ra_set_node_reg(g, vgrf, reg);
    }
 }
 
@@ -599,30 +679,65 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    const gen_device_info *devinfo = fs->devinfo;
    const brw_compiler *compiler = fs->compiler;
 
-   /* Most of this allocation was written for a reg_width of 1
-    * (dispatch_width == 8).  In extending to SIMD16, the code was
-    * left in place and it was converted to have the hardware
-    * registers it's allocating be contiguous physical pairs of regs
-    * for reg_width == 2.
-    */
-   int reg_width = fs->dispatch_width / 8;
-   int payload_node_count = ALIGN(fs->first_non_payload_grf, reg_width);
+   /* Compute the RA node layout */
+   node_count = fs->alloc.count;
+   first_payload_node = node_count;
+   node_count += payload_node_count;
+   if (devinfo->gen >= 7 && allow_spilling) {
+      first_mrf_hack_node = node_count;
+      node_count += BRW_MAX_GRF - GEN7_MRF_HACK_START;
+   } else {
+      first_mrf_hack_node = -1;
+   }
+   if (devinfo->gen >= 8) {
+      grf127_send_hack_node = node_count;
+      node_count ++;
+   } else {
+      grf127_send_hack_node = -1;
+   }
 
    fs->calculate_live_intervals();
-
-   int node_count = fs->alloc.count;
-   int first_payload_node = node_count;
-   node_count += payload_node_count;
-   int first_mrf_hack_node = node_count;
-   if (devinfo->gen >= 7)
-      node_count += BRW_MAX_GRF - GEN7_MRF_HACK_START;
-   int grf127_send_hack_node = node_count;
-   if (devinfo->gen >= 8)
-      node_count ++;
+   fs->calculate_payload_ranges(payload_node_count,
+                                payload_last_use_ip);
 
    assert(g == NULL);
    g = ra_alloc_interference_graph(compiler->fs_reg_sets[rsi].regs, node_count);
    ralloc_steal(mem_ctx, g);
+
+   /* Set up the payload nodes */
+   for (int i = 0; i < payload_node_count; i++) {
+      /* Mark each payload node as being allocated to its physical register.
+       *
+       * The alternative would be to have per-physical-register classes, which
+       * would just be silly.
+       */
+      if (devinfo->gen <= 5 && fs->dispatch_width >= 16) {
+         /* We have to divide by 2 here because we only have even numbered
+          * registers.  Some of the payload registers will be odd, but
+          * that's ok because their physical register numbers have already
+          * been assigned.  The only thing this is used for is interference.
+          */
+         ra_set_node_reg(g, first_payload_node + i, i / 2);
+      } else {
+         ra_set_node_reg(g, first_payload_node + i, i);
+      }
+   }
+
+   if (first_mrf_hack_node >= 0) {
+      /* Mark each MRF reg node as being allocated to its physical
+       * register.
+       *
+       * The alternative would be to have per-physical-register classes,
+       * which would just be silly.
+       */
+      for (int i = 0; i < BRW_MAX_MRF(devinfo->gen); i++) {
+         ra_set_node_reg(g, first_mrf_hack_node + i,
+                            GEN7_MRF_HACK_START + i);
+      }
+   }
+
+   if (grf127_send_hack_node >= 0)
+      ra_set_node_reg(g, grf127_send_hack_node, 127);
 
    for (unsigned i = 0; i < fs->alloc.count; i++) {
       unsigned size = fs->alloc.sizes[i];
@@ -649,142 +764,15 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
 
       ra_set_node_class(g, i, c);
 
-      for (unsigned j = 0; j < i; j++) {
-	 if (fs->virtual_grf_interferes(i, j)) {
-	    ra_add_node_interference(g, i, j);
-	 }
-      }
+      /* Add interference based on the live range of the register */
+      setup_live_interference(i, fs->virtual_grf_start[i],
+                                 fs->virtual_grf_end[i]);
    }
 
-   /* Certain instructions can't safely use the same register for their
-    * sources and destination.  Add interference.
+   /* Add interference based on the instructions in which a register is used.
     */
-   foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
-      if (inst->dst.file == VGRF && inst->has_source_and_destination_hazard()) {
-         for (unsigned i = 0; i < inst->sources; i++) {
-            if (inst->src[i].file == VGRF) {
-               ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
-            }
-         }
-      }
-   }
-
-   setup_payload_interference(payload_node_count, first_payload_node);
-   if (devinfo->gen >= 7) {
-      int first_used_mrf = BRW_MAX_MRF(devinfo->gen);
-      if (allow_spilling)
-         setup_mrf_hack_interference(first_mrf_hack_node, &first_used_mrf);
-
-      foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
-         /* When we do send-from-GRF for FB writes, we need to ensure that
-          * the last write instruction sends from a high register.  This is
-          * because the vertex fetcher wants to start filling the low
-          * payload registers while the pixel data port is still working on
-          * writing out the memory.  If we don't do this, we get rendering
-          * artifacts.
-          *
-          * We could just do "something high".  Instead, we just pick the
-          * highest register that works.
-          */
-         if (inst->eot) {
-            const int vgrf = inst->opcode == SHADER_OPCODE_SEND ?
-                             inst->src[2].nr : inst->src[0].nr;
-            int size = fs->alloc.sizes[vgrf];
-            int reg = compiler->fs_reg_sets[rsi].class_to_ra_reg_range[size] - 1;
-
-            /* If something happened to spill, we want to push the EOT send
-             * register early enough in the register file that we don't
-             * conflict with any used MRF hack registers.
-             */
-            reg -= BRW_MAX_MRF(devinfo->gen) - first_used_mrf;
-
-            ra_set_node_reg(g, vgrf, reg);
-            break;
-         }
-      }
-   }
-
-   /* In 16-wide instructions we have an issue where a compressed
-    * instruction is actually two instructions executed simultaneously.
-    * It's actually ok to have the source and destination registers be
-    * the same.  In this case, each instruction over-writes its own
-    * source and there's no problem.  The real problem here is if the
-    * source and destination registers are off by one.  Then you can end
-    * up in a scenario where the first instruction over-writes the
-    * source of the second instruction.  Since the compiler doesn't know
-    * about this level of granularity, we simply make the source and
-    * destination interfere.
-    */
-   foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
-      if (inst->exec_size < 16 || inst->dst.file != VGRF)
-         continue;
-
-      for (int i = 0; i < inst->sources; ++i) {
-         if (inst->src[i].file == VGRF) {
-            ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
-         }
-      }
-   }
-
-   if (devinfo->gen >= 8) {
-      /* At Intel Broadwell PRM, vol 07, section "Instruction Set Reference",
-       * subsection "EUISA Instructions", Send Message (page 990):
-       *
-       * "r127 must not be used for return address when there is a src and
-       * dest overlap in send instruction."
-       *
-       * We are avoiding using grf127 as part of the destination of send
-       * messages adding a node interference to the grf127_send_hack_node.
-       * This node has a fixed asignment to grf127.
-       *
-       * We don't apply it to SIMD16 instructions because previous code avoids
-       * any register overlap between sources and destination.
-       */
-      ra_set_node_reg(g, grf127_send_hack_node, 127);
-      foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
-         if (inst->exec_size < 16 && inst->is_send_from_grf() &&
-             inst->dst.file == VGRF)
-            ra_add_node_interference(g, inst->dst.nr, grf127_send_hack_node);
-      }
-
-      if (fs->spilled_any_registers) {
-         foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
-            /* Spilling instruction are genereated as SEND messages from MRF
-             * but as Gen7+ supports sending from GRF the driver will maps
-             * assingn these MRF registers to a GRF. Implementations reuses
-             * the dest of the send message as source. So as we will have an
-             * overlap for sure, we create an interference between destination
-             * and grf127.
-             */
-            if ((inst->opcode == SHADER_OPCODE_GEN7_SCRATCH_READ ||
-                 inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_READ) &&
-                inst->dst.file == VGRF)
-               ra_add_node_interference(g, inst->dst.nr, grf127_send_hack_node);
-         }
-      }
-   }
-
-   /* From the Skylake PRM Vol. 2a docs for sends:
-    *
-    *    "It is required that the second block of GRFs does not overlap with
-    *    the first block."
-    *
-    * Normally, this is taken care of by fixup_sends_duplicate_payload() but
-    * in the case where one of the registers is an undefined value, the
-    * register allocator may decide that they don't interfere even though
-    * they're used as sources in the same instruction.  We also need to add
-    * interference here.
-    */
-   if (devinfo->gen >= 9) {
-      foreach_block_and_inst(block, fs_inst, inst, fs->cfg) {
-         if (inst->opcode == SHADER_OPCODE_SEND && inst->ex_mlen > 0 &&
-             inst->src[2].file == VGRF &&
-             inst->src[3].file == VGRF &&
-             inst->src[2].nr != inst->src[3].nr)
-            ra_add_node_interference(g, inst->src[2].nr,
-                                     inst->src[3].nr);
-      }
-   }
+   foreach_block_and_inst(block, fs_inst, inst, fs->cfg)
+      setup_inst_interference(inst);
 }
 
 static void
