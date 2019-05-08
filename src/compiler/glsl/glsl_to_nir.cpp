@@ -1877,20 +1877,10 @@ nir_visitor::visit(ir_expression *ir)
    case ir_unop_exp2: result = nir_fexp2(&b, srcs[0]); break;
    case ir_unop_log2: result = nir_flog2(&b, srcs[0]); break;
    case ir_unop_i2f:
-      result = nir_i2f32(&b, srcs[0]);
-      break;
    case ir_unop_u2f:
-      result = nir_u2f32(&b, srcs[0]);
-      break;
    case ir_unop_b2f:
-      result = nir_b2f32(&b, srcs[0]);
-      break;
    case ir_unop_f2i:
-      result = nir_f2i32(&b, srcs[0]);
-      break;
    case ir_unop_f2u:
-      result = nir_f2u32(&b, srcs[0]);
-      break;
    case ir_unop_f2b:
    case ir_unop_i2b:
    case ir_unop_b2i:

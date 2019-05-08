@@ -388,22 +388,16 @@ ptn_scs(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
    ptn_move_dest_masked(b, dest, nir_imm_float(b, 1.0), WRITEMASK_W);
 }
 
-/**
- * Emit SLT.  For platforms with integers, prefer b2f(flt(...)).
- */
 static void
 ptn_slt(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 {
-   ptn_move_dest(b, dest, nir_b2f32(b, nir_flt(b, src[0], src[1])));
+   ptn_move_dest(b, dest, nir_slt(b, src[0], src[1]));
 }
 
-/**
- * Emit SGE.  For platforms with integers, prefer b2f(fge(...)).
- */
 static void
 ptn_sge(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 {
-   ptn_move_dest(b, dest, nir_b2f32(b, nir_fge(b, src[0], src[1])));
+   ptn_move_dest(b, dest, nir_sge(b, src[0], src[1]));
 }
 
 static void
