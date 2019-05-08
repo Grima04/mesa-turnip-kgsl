@@ -81,6 +81,8 @@ struct virgl_context {
    struct slab_child_pool transfer_pool;
    struct virgl_transfer_queue queue;
    struct u_upload_mgr *uploader;
+   struct u_upload_mgr *transfer_uploader;
+   bool transfer_uploader_in_use;
    bool encoded_transfers;
 
    struct pipe_vertex_buffer vertex_buffer[PIPE_MAX_ATTRIBS];

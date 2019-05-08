@@ -23,6 +23,7 @@
 #include "util/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
+#include "util/u_upload_mgr.h"
 #include "virgl_context.h"
 #include "virgl_resource.h"
 #include "virgl_screen.h"
@@ -76,12 +77,17 @@ enum virgl_transfer_map_type
 virgl_resource_transfer_prepare(struct virgl_context *vctx,
                                 struct virgl_transfer *xfer)
 {
-   struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
+   struct virgl_screen *vs = virgl_screen(vctx->base.screen);
+   struct virgl_winsys *vws = vs->vws;
    struct virgl_resource *res = virgl_resource(xfer->base.resource);
    enum virgl_transfer_map_type map_type = VIRGL_TRANSFER_MAP_HW_RES;
+   bool unsynchronized = xfer->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED;
+   bool discard = xfer->base.usage & (PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE |
+                                      PIPE_TRANSFER_DISCARD_RANGE);
    bool flush;
    bool readback;
    bool wait;
+   bool copy_transfer;
 
    /* there is no way to map the host storage currently */
    if (xfer->base.usage & PIPE_TRANSFER_MAP_DIRECTLY)
@@ -98,10 +104,20 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    flush = virgl_res_needs_flush(vctx, xfer);
    readback = virgl_res_needs_readback(vctx, res, xfer->base.usage,
                                        xfer->base.level);
+
+   /* Check if we should perform a copy transfer through the transfer_uploader. */
+   copy_transfer = res->u.b.target == PIPE_BUFFER &&
+                   discard &&
+                   !readback &&
+                   !unsynchronized &&
+                   vctx->transfer_uploader &&
+                   !vctx->transfer_uploader_in_use &&
+                   (flush || vws->resource_is_busy(vws, res->hw_res));
+
    /* We need to wait for all cmdbufs, current or previous, that access the
     * resource to finish unless synchronization is disabled.
     */
-   wait = !(xfer->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED);
+   wait = !unsynchronized;
 
    /* When the transfer range consists of only uninitialized data, we can
     * assume the GPU is not accessing the range and readback is unnecessary.
@@ -113,6 +129,15 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
             xfer->base.box.x + xfer->base.box.width)) {
       flush = false;
       readback = false;
+      wait = false;
+      copy_transfer = false;
+   }
+
+   /* When performing a copy transfer there is no need to flush or wait for
+    * the target resource.
+    */
+   if (copy_transfer) {
+      flush = false;
       wait = false;
    }
 
@@ -165,6 +190,9 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
 
    if (wait)
       vws->resource_wait(vws, res->hw_res);
+
+   if (copy_transfer)
+      map_type = VIRGL_TRANSFER_MAP_STAGING;
 
    return map_type;
 }
@@ -460,4 +488,56 @@ void virgl_resource_dirty(struct virgl_resource *res, uint32_t level)
       else
          res->clean_mask &= ~(1 << level);
    }
+}
+
+void *virgl_transfer_uploader_map(struct virgl_context *vctx,
+                                  struct virgl_transfer *vtransfer)
+{
+   struct virgl_resource *vres = virgl_resource(vtransfer->base.resource);
+   unsigned size;
+   unsigned align_offset;
+   void *map_addr;
+
+   assert(vctx->transfer_uploader);
+   assert(!vctx->transfer_uploader_in_use);
+
+   size = vtransfer->base.box.width;
+
+   /* For buffers we need to ensure that the start of the buffer would be
+    * aligned to VIRGL_MAP_BUFFER_ALIGNMENT, even if our transfer doesn't
+    * actually include it. To achieve this we may need to allocate a slightly
+    * larger range from the upload buffer, and later update the uploader
+    * resource offset and map address to point to the requested x coordinate
+    * within that range.
+    *
+    * 0       A       2A      3A
+    * |-------|---bbbb|bbbbb--|
+    *             |--------|    ==> size
+    *         |---|             ==> align_offset
+    *         |------------|    ==> allocation of size + align_offset
+    */
+   align_offset = vtransfer->base.box.x % VIRGL_MAP_BUFFER_ALIGNMENT;
+
+   u_upload_alloc(vctx->transfer_uploader, 0, size + align_offset,
+                  VIRGL_MAP_BUFFER_ALIGNMENT,
+                  &vtransfer->copy_src_offset,
+                  &vtransfer->copy_src_res, &map_addr);
+   if (map_addr) {
+      /* Update source offset and address to point to the requested x coordinate
+       * if we have an align_offset (see above for more information). */
+      vtransfer->copy_src_offset += align_offset;
+      map_addr += align_offset;
+
+      /* Mark as dirty, since we are updating the host side resource
+       * without going through the corresponding guest side resource, and
+       * hence the two will diverge.
+       */
+      virgl_resource_dirty(vres, vtransfer->base.level);
+
+      /* The pointer returned by u_upload_alloc already has +offset
+       * applied. */
+      vctx->transfer_uploader_in_use = true;
+   }
+
+   return map_addr;
 }

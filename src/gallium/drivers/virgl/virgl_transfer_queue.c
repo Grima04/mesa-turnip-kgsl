@@ -223,7 +223,6 @@ static void add_internal(struct virgl_transfer_queue *queue,
                          struct virgl_transfer *transfer)
 {
    uint32_t dwords = VIRGL_TRANSFER3D_SIZE + 1;
-
    if (queue->tbuf) {
       if (queue->num_dwords + dwords >= VIRGL_MAX_TBUF_DWORDS) {
          struct list_iteration_args iter;
