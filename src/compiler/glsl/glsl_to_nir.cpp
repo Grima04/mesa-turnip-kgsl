@@ -1728,15 +1728,6 @@ type_is_signed(glsl_base_type type)
       type == GLSL_TYPE_INT16;
 }
 
-static bool
-type_is_int(glsl_base_type type)
-{
-   return type == GLSL_TYPE_UINT || type == GLSL_TYPE_INT ||
-      type == GLSL_TYPE_UINT8 || type == GLSL_TYPE_INT8 ||
-      type == GLSL_TYPE_UINT16 || type == GLSL_TYPE_INT16 ||
-      type == GLSL_TYPE_UINT64 || type == GLSL_TYPE_INT64;
-}
-
 void
 nir_visitor::visit(ir_expression *ir)
 {
