@@ -164,10 +164,10 @@ panfrost_texture_swizzle(unsigned off_x,
 
         /* Use fast path if available */
         if (!(off_x || off_y) && (width == dest_width)) {
-                if (bytes_per_pixel == 4 /* && (ALIGN(width, 16) == width) */) {
+                if (bytes_per_pixel == 4 && (ALIGN(width, 16) == width)) {
                         swizzle_bpp4_align16(width, height, source_stride >> 2, (block_pitch * 256 >> 4), (const uint32_t *) pixels, (uint32_t *) ldest);
                         return;
-                } else if (bytes_per_pixel == 1 /* && (ALIGN(width, 16) == width) */) {
+                } else if (bytes_per_pixel == 1 && (ALIGN(width, 16) == width)) {
                         swizzle_bpp1_align16(width, height, source_stride, (block_pitch * 256 >> 4), pixels, (uint8_t *) ldest);
                         return;
                 }
