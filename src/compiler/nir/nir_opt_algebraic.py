@@ -29,6 +29,7 @@ from collections import OrderedDict
 import nir_algebraic
 from nir_opcodes import type_sizes
 import itertools
+from math import pi
 
 # Convenience variables
 a = 'a'
@@ -73,6 +74,12 @@ e = 'e'
 # than nir_replace_instr can handle.  If this special condition is needed with
 # another condition, the two can be separated by a comma (e.g.,
 # "(many-comm-expr,is_used_once)").
+
+# based on https://web.archive.org/web/20180105155939/http://forum.devmaster.net/t/fast-and-accurate-sine-cosine/9648
+def lowered_sincos(c):
+    x = ('fsub', ('fmul', 2.0, ('ffract', ('fadd', ('fmul', 0.5 / pi, a), c))), 1.0)
+    x = ('fmul', ('fsub', x, ('fmul', x, ('fabs', x))), 4.0)
+    return ('ffma', ('ffma', x, ('fabs', x), ('fneg', x)), 0.225, x)
 
 optimizations = [
 
@@ -645,6 +652,9 @@ optimizations = [
    (('~frcp', ('fsqrt', a)), ('frsq', a)),
    (('fsqrt', a), ('frcp', ('frsq', a)), 'options->lower_fsqrt'),
    (('~frcp', ('frsq', a)), ('fsqrt', a), '!options->lower_fsqrt'),
+   # Trig
+   (('fsin', a), lowered_sincos(0.5), 'options->lower_sincos'),
+   (('fcos', a), lowered_sincos(0.75), 'options->lower_sincos'),
    # Boolean simplifications
    (('i2b32(is_used_by_if)', a), ('ine32', a, 0)),
    (('i2b1(is_used_by_if)', a), ('ine', a, 0)),
