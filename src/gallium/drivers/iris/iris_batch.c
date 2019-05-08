@@ -475,6 +475,40 @@ replace_hw_ctx(struct iris_batch *batch)
    return true;
 }
 
+enum pipe_reset_status
+iris_batch_check_for_reset(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+   enum pipe_reset_status status = PIPE_NO_RESET;
+   struct drm_i915_reset_stats stats = { .ctx_id = batch->hw_ctx_id };
+
+   if (drmIoctl(screen->fd, DRM_IOCTL_I915_GET_RESET_STATS, &stats))
+      DBG("DRM_IOCTL_I915_GET_RESET_STATS failed: %s\n", strerror(errno));
+
+   if (stats.batch_active != 0) {
+      /* A reset was observed while a batch from this hardware context was
+       * executing.  Assume that this context was at fault.
+       */
+      status = PIPE_GUILTY_CONTEXT_RESET;
+   } else if (stats.batch_pending != 0) {
+      /* A reset was observed while a batch from this context was in progress,
+       * but the batch was not executing.  In this case, assume that the
+       * context was not at fault.
+       */
+      status = PIPE_INNOCENT_CONTEXT_RESET;
+   }
+
+   if (status != PIPE_NO_RESET) {
+      /* Our context is likely banned, or at least in an unknown state.
+       * Throw it away and start with a fresh context.  Ideally this may
+       * catch the problem before our next execbuf fails with -EIO.
+       */
+      replace_hw_ctx(batch);
+   }
+
+   return status;
+}
+
 /**
  * Submit the batch to the GPU via execbuffer2.
  */

@@ -150,6 +150,8 @@ bool iris_batch_references(struct iris_batch *batch, struct iris_bo *bo);
 void iris_use_pinned_bo(struct iris_batch *batch, struct iris_bo *bo,
                         bool writable);
 
+enum pipe_reset_status iris_batch_check_for_reset(struct iris_batch *batch);
+
 static inline unsigned
 iris_batch_bytes_used(struct iris_batch *batch)
 {
