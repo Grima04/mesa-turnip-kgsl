@@ -1437,6 +1437,17 @@ iris_create_hw_context(struct iris_bufmgr *bufmgr)
    return create.ctx_id;
 }
 
+static int
+iris_hw_context_get_priority(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
+{
+   struct drm_i915_gem_context_param p = {
+      .ctx_id = ctx_id,
+      .param = I915_CONTEXT_PARAM_PRIORITY,
+   };
+   drmIoctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p);
+   return p.value; /* on error, return 0 i.e. default priority */
+}
+
 int
 iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
                             uint32_t ctx_id,
@@ -1454,6 +1465,19 @@ iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
       err = -errno;
 
    return err;
+}
+
+uint32_t
+iris_clone_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
+{
+   uint32_t new_ctx = iris_create_hw_context(bufmgr);
+
+   if (new_ctx) {
+      int priority = iris_hw_context_get_priority(bufmgr, ctx_id);
+      iris_hw_context_set_priority(bufmgr, new_ctx, priority);
+   }
+
+   return new_ctx;
 }
 
 void
