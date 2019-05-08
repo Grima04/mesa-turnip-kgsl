@@ -222,6 +222,8 @@ meson-vulkan:
       -D gallium-opencl=disabled
     VULKAN_DRIVERS: intel,amd,freedreno
     LLVM_VERSION: "7"
+    EXTRA_OPTION: >
+      -D vulkan-overlay-layer=true
 
 scons-nollvm:
   extends: .scons-build
