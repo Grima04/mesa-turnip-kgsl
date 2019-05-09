@@ -117,11 +117,9 @@ static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs, unsigne
    return outbind;
 }
 
-bool virgl_res_needs_flush(struct virgl_context *vctx,
-                           struct virgl_transfer *transfer);
-bool virgl_res_needs_readback(struct virgl_context *vctx,
-                              struct virgl_resource *res,
-                              unsigned usage, unsigned level);
+void
+virgl_resource_transfer_prepare(struct virgl_context *vctx,
+                                struct virgl_transfer *xfer);
 
 void virgl_resource_layout(struct pipe_resource *pt,
                            struct virgl_resource_metadata *metadata);

@@ -38,33 +38,11 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
    struct virgl_screen *vs = virgl_screen(ctx->screen);
    struct virgl_resource *vbuf = virgl_resource(resource);
    struct virgl_transfer *trans;
-   bool readback;
-   bool flush = false;
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vbuf->metadata, level, usage, box);
 
-   flush = virgl_res_needs_flush(vctx, trans);
-   if (flush)
-      ctx->flush(ctx, NULL, 0);
-
-   readback = virgl_res_needs_readback(vctx, vbuf, usage, 0);
-   if (readback)
-      vs->vws->transfer_get(vs->vws, vbuf->hw_res, box, trans->base.stride,
-                            trans->l_stride, trans->offset, level);
-
-   /* XXX Consider
-    *
-    *   glBufferSubData(GL_ARRAY_BUFFER, 0, 12, data1);
-    *   glDrawArrays(..);
-    *   glFlush();
-    *   glBufferSubData(GL_ARRAY_BUFFER, 0, 12, data2)
-    *
-    * readback and flush are both false in the second glBufferSubData call.
-    * The draw call might end up seeing data2.
-    */
-   if (readback || flush)
-      vs->vws->resource_wait(vs->vws, vbuf->hw_res);
+   virgl_resource_transfer_prepare(vctx, trans);
 
    trans->hw_res_map = vs->vws->resource_map(vs->vws, vbuf->hw_res);
    if (!trans->hw_res_map) {

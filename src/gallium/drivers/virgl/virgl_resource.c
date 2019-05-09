@@ -38,8 +38,8 @@
  *    cmdbuf has no command that accesses the region (XXX we cannot just check
  *    for overlapping transfers)
  */
-bool virgl_res_needs_flush(struct virgl_context *vctx,
-                           struct virgl_transfer *trans)
+static bool virgl_res_needs_flush(struct virgl_context *vctx,
+                                  struct virgl_transfer *trans)
 {
    struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
    struct virgl_resource *res = virgl_resource(trans->base.resource);
@@ -89,9 +89,9 @@ bool virgl_res_needs_flush(struct virgl_context *vctx,
  * PIPE_TRANSFER_READ becomes irrelevant.  PIPE_TRANSFER_UNSYNCHRONIZED and
  * PIPE_TRANSFER_FLUSH_EXPLICIT are also irrelevant.
  */
-bool virgl_res_needs_readback(struct virgl_context *vctx,
-                              struct virgl_resource *res,
-                              unsigned usage, unsigned level)
+static bool virgl_res_needs_readback(struct virgl_context *vctx,
+                                     struct virgl_resource *res,
+                                     unsigned usage, unsigned level)
 {
    if (usage & (PIPE_TRANSFER_DISCARD_RANGE |
                 PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE))
@@ -101,6 +101,45 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
       return false;
 
    return true;
+}
+
+void
+virgl_resource_transfer_prepare(struct virgl_context *vctx,
+                                struct virgl_transfer *xfer)
+{
+   struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
+   struct virgl_resource *res = virgl_resource(xfer->base.resource);
+   bool flush;
+   bool readback;
+   bool wait;
+
+   flush = virgl_res_needs_flush(vctx, xfer);
+   readback = virgl_res_needs_readback(vctx, res, xfer->base.usage,
+                                       xfer->base.level);
+
+   /* XXX This is incorrect.  Consider
+    *
+    *   glTexImage2D(..., data1);
+    *   glDrawArrays();
+    *   glFlush();
+    *   glTexImage2D(..., data2);
+    *
+    * readback and flush are both false in the second glTexImage2D call.  The
+    * draw call might end up seeing data2.  Same applies to buffers with
+    * glBufferSubData.
+    */
+   wait = flush || readback;
+
+   if (flush)
+      vctx->base.flush(&vctx->base, NULL, 0);
+
+   if (readback) {
+      vws->transfer_get(vws, res->hw_res, &xfer->base.box, xfer->base.stride,
+                        xfer->l_stride, xfer->offset, xfer->base.level);
+   }
+
+   if (wait)
+      vws->resource_wait(vws, res->hw_res);
 }
 
 static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,

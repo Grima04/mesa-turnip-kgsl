@@ -126,7 +126,6 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
    struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
    struct virgl_resource *vtex = virgl_resource(resource);
    struct virgl_transfer *trans;
-   bool flush, readback;
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vtex->metadata, level, usage, box);
@@ -134,27 +133,7 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
 
    assert(resource->nr_samples <= 1);
 
-   flush = virgl_res_needs_flush(vctx, trans);
-   if (flush)
-      ctx->flush(ctx, NULL, 0);
-
-   readback = virgl_res_needs_readback(vctx, vtex, usage, level);
-   if (readback)
-      vws->transfer_get(vws, vtex->hw_res, box, trans->base.stride,
-                        trans->l_stride, trans->offset, level);
-
-   /* XXX Consider
-    *
-    *   glTexImage2D(..., data1);
-    *   glDrawArrays();
-    *   glFlush();
-    *   glTexImage2D(..., data2);
-    *
-    * readback and flush are both false in the second glTexImage2D call.  The
-    * draw call might end up seeing data2.
-    */
-   if (readback || flush)
-      vws->resource_wait(vws, vtex->hw_res);
+   virgl_resource_transfer_prepare(vctx, trans);
 
    trans->hw_res_map = vws->resource_map(vws, vtex->hw_res);
    if (!trans->hw_res_map) {
