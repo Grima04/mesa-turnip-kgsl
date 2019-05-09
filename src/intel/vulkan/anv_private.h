@@ -744,7 +744,7 @@ struct anv_state_table {
    struct anv_free_entry *map;
    uint32_t size;
    struct anv_block_state state;
-   struct u_vector mmap_cleanups;
+   struct u_vector cleanups;
 };
 
 struct anv_state_pool {

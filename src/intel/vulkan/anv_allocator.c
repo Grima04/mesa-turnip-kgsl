@@ -165,7 +165,7 @@ anv_state_table_init(struct anv_state_table *table,
       goto fail_fd;
    }
 
-   if (!u_vector_init(&table->mmap_cleanups,
+   if (!u_vector_init(&table->cleanups,
                       round_to_power_of_two(sizeof(struct anv_state_table_cleanup)),
                       128)) {
       result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
@@ -179,12 +179,12 @@ anv_state_table_init(struct anv_state_table *table,
    uint32_t initial_size = initial_entries * ANV_STATE_ENTRY_SIZE;
    result = anv_state_table_expand_range(table, initial_size);
    if (result != VK_SUCCESS)
-      goto fail_mmap_cleanups;
+      goto fail_cleanups;
 
    return VK_SUCCESS;
 
- fail_mmap_cleanups:
-   u_vector_finish(&table->mmap_cleanups);
+ fail_cleanups:
+   u_vector_finish(&table->cleanups);
  fail_fd:
    close(table->fd);
 
@@ -195,7 +195,7 @@ static VkResult
 anv_state_table_expand_range(struct anv_state_table *table, uint32_t size)
 {
    void *map;
-   struct anv_mmap_cleanup *cleanup;
+   struct anv_state_table_cleanup *cleanup;
 
    /* Assert that we only ever grow the pool */
    assert(size >= table->state.end);
@@ -204,11 +204,11 @@ anv_state_table_expand_range(struct anv_state_table *table, uint32_t size)
    if (size > BLOCK_POOL_MEMFD_SIZE)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   cleanup = u_vector_add(&table->mmap_cleanups);
+   cleanup = u_vector_add(&table->cleanups);
    if (!cleanup)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   *cleanup = ANV_MMAP_CLEANUP_INIT;
+   *cleanup = ANV_STATE_TABLE_CLEANUP_INIT;
 
    /* Just leak the old map until we destroy the pool.  We can't munmap it
     * without races or imposing locking on the block allocate fast path. On
@@ -272,12 +272,12 @@ anv_state_table_finish(struct anv_state_table *table)
 {
    struct anv_state_table_cleanup *cleanup;
 
-   u_vector_foreach(cleanup, &table->mmap_cleanups) {
+   u_vector_foreach(cleanup, &table->cleanups) {
       if (cleanup->map)
          munmap(cleanup->map, cleanup->size);
    }
 
-   u_vector_finish(&table->mmap_cleanups);
+   u_vector_finish(&table->cleanups);
 
    close(table->fd);
 }
