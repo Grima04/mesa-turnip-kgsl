@@ -484,7 +484,7 @@ decrement_q(struct ra_graph *g, unsigned int n)
       unsigned int n2 = g->nodes[n].adjacency_list[i];
       unsigned int n2_class = g->nodes[n2].class;
 
-      if (!BITSET_TEST(g->in_stack, n2)) {
+      if (!BITSET_TEST(g->in_stack, n2) && g->nodes[n2].reg == NO_REG) {
          assert(g->nodes[n2].q_total >= g->regs->classes[n2_class]->q[n_class]);
          g->nodes[n2].q_total -= g->regs->classes[n2_class]->q[n_class];
       }
