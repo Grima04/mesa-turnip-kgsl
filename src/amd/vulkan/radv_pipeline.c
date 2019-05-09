@@ -1417,11 +1417,13 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 
 	const  VkPipelineDiscardRectangleStateCreateInfoEXT *discard_rectangle_info =
 			vk_find_struct_const(pCreateInfo->pNext, PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT);
-	if (states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
+	if (needed_states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
 		dynamic->discard_rectangle.count = discard_rectangle_info->discardRectangleCount;
-		typed_memcpy(dynamic->discard_rectangle.rectangles,
-		             discard_rectangle_info->pDiscardRectangles,
-		             discard_rectangle_info->discardRectangleCount);
+		if (states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
+			typed_memcpy(dynamic->discard_rectangle.rectangles,
+			             discard_rectangle_info->pDiscardRectangles,
+			             discard_rectangle_info->discardRectangleCount);
+		}
 	}
 
 	pipeline->dynamic_state.mask = states;
