@@ -7246,7 +7246,7 @@ fs_visitor::fixup_3src_null_dest()
 void
 fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
 {
-   bool allocated_without_spills;
+   bool allocated;
 
    static const enum instruction_scheduler_mode pre_modes[] = {
       SCHEDULE_PRE,
@@ -7265,15 +7265,28 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
 
       if (0) {
          assign_regs_trivial();
-         allocated_without_spills = true;
-      } else {
-         allocated_without_spills = assign_regs(false, spill_all);
+         allocated = true;
+         break;
       }
-      if (allocated_without_spills)
+
+      /* We only allow spilling for the last schedule mode and only if the
+       * allow_spilling parameter and dispatch width work out ok.
+       */
+      bool can_spill = allow_spilling &&
+                       (i == ARRAY_SIZE(pre_modes) - 1) &&
+                       dispatch_width == min_dispatch_width;
+
+      /* We should only spill registers on the last scheduling. */
+      assert(!spilled_any_registers);
+
+      do {
+         allocated = assign_regs(can_spill, spill_all);
+      } while (!allocated && can_spill && !failed);
+      if (allocated)
          break;
    }
 
-   if (!allocated_without_spills) {
+   if (!allocated) {
       if (!allow_spilling)
          fail("Failure to register allocate and spilling is not allowed.");
 
@@ -7284,21 +7297,16 @@ fs_visitor::allocate_registers(unsigned min_dispatch_width, bool allow_spilling)
       if (dispatch_width > min_dispatch_width) {
          fail("Failure to register allocate.  Reduce number of "
               "live scalar values to avoid this.");
-      } else {
-         compiler->shader_perf_log(log_data,
-                                   "%s shader triggered register spilling.  "
-                                   "Try reducing the number of live scalar "
-                                   "values to improve performance.\n",
-                                   stage_name);
       }
 
-      /* Since we're out of heuristics, just go spill registers until we
-       * get an allocation.
-       */
-      while (!assign_regs(true, spill_all)) {
-         if (failed)
-            break;
-      }
+      /* If we failed to allocate, we must have a reason */
+      assert(failed);
+   } else if (spilled_any_registers) {
+      compiler->shader_perf_log(log_data,
+                                "%s shader triggered register spilling.  "
+                                "Try reducing the number of live scalar "
+                                "values to improve performance.\n",
+                                stage_name);
    }
 
    /* This must come after all optimization and register allocation, since
