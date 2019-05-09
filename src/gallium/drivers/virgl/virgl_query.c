@@ -114,6 +114,10 @@ static struct pipe_query *virgl_create_query(struct pipe_context *ctx,
    query->result_size = (query_type == PIPE_QUERY_TIMESTAMP ||
                          query_type == PIPE_QUERY_TIME_ELAPSED) ? 8 : 4;
 
+   util_range_add(&query->buf->valid_buffer_range, 0,
+                  sizeof(struct virgl_host_query_state));
+   virgl_resource_dirty(query->buf, 0);
+
    virgl_encoder_create_query(vctx, query->handle,
          pipe_to_virgl_query(query_type), index, query->buf, 0);
 
@@ -156,7 +160,6 @@ static bool virgl_end_query(struct pipe_context *ctx,
       return false;
 
    host_state->query_state = VIRGL_QUERY_STATE_WAIT_HOST;
-   virgl_resource_dirty(query->buf, 0);
    query->ready = false;
 
    virgl_encoder_end_query(vctx, query->handle);

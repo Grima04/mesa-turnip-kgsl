@@ -50,6 +50,9 @@ struct virgl_resource {
    uint16_t clean_mask;
    struct virgl_hw_res *hw_res;
    struct virgl_resource_metadata metadata;
+
+   /* For PIPE_BUFFER only.  Data outside of this range are uninitialized. */
+   struct util_range valid_buffer_range;
 };
 
 enum virgl_transfer_map_type {

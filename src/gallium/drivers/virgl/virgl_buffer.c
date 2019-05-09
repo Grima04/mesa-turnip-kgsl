@@ -59,6 +59,9 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
       return NULL;
    }
 
+   if (usage & PIPE_TRANSFER_WRITE)
+       util_range_add(&vbuf->valid_buffer_range, box->x, box->x + box->width);
+
    *transfer = &trans->base;
    return trans->hw_res_map + trans->offset;
 }

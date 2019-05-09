@@ -34,9 +34,6 @@
  *  - the resource is not referenced by the current cmdbuf
  *  - the current cmdbuf has no draw/compute command that accesses the
  *    resource (XXX there are also clear or blit commands)
- *  - the transfer is to an undefined region and we can assume the current
- *    cmdbuf has no command that accesses the region (XXX we cannot just check
- *    for overlapping transfers)
  */
 static bool virgl_res_needs_flush(struct virgl_context *vctx,
                                   struct virgl_transfer *trans)
@@ -60,19 +57,6 @@ static bool virgl_res_needs_flush(struct virgl_context *vctx,
        * reordered before glCopyBufferSubData.
        */
       if (vctx->num_draws == 0 && vctx->num_compute == 0)
-         return false;
-
-      /* XXX Consider
-       *
-       *   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 3, data1);
-       *   glFlush();
-       *   glDrawArrays(GL_TRIANGLES, 0, 3);
-       *   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 3, data2);
-       *   glDrawArrays(GL_TRIANGLES, 0, 3);
-       *
-       * Both draws will see data2.
-       */
-      if (!virgl_transfer_queue_is_queued(&vctx->queue, trans))
          return false;
    }
 
@@ -121,6 +105,26 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    flush = virgl_res_needs_flush(vctx, xfer);
    readback = virgl_res_needs_readback(vctx, res, xfer->base.usage,
                                        xfer->base.level);
+
+   /* We need to wait for all cmdbufs, current or previous, that access the
+    * resource to finish, unless synchronization is disabled.  Readback, which
+    * is yet another command and is transparent to the state trackers, should
+    * also be waited for.
+    */
+   wait = !(xfer->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED) || readback;
+
+   /* When the transfer range consists of only uninitialized data, we can
+    * assume the GPU is not accessing the range and readback is unnecessary.
+    * We can proceed as if PIPE_TRANSFER_UNSYNCHRONIZED and
+    * PIPE_TRANSFER_DISCARD_RANGE are set.
+    */
+   if (res->u.b.target == PIPE_BUFFER &&
+         !util_ranges_intersect(&res->valid_buffer_range, xfer->base.box.x,
+            xfer->base.box.x + xfer->base.box.width)) {
+      flush = false;
+      readback = false;
+      wait = false;
+   }
 
    /* XXX This is incorrect.  Consider
     *
@@ -185,10 +189,12 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
 
    res->clean_mask = (1 << VR_MAX_TEXTURE_2D_LEVELS) - 1;
 
-   if (templ->target == PIPE_BUFFER)
+   if (templ->target == PIPE_BUFFER) {
+      util_range_init(&res->valid_buffer_range);
       virgl_buffer_init(res);
-   else
+   } else {
       virgl_texture_init(res);
+   }
 
    return &res->u.b;
 
@@ -252,7 +258,8 @@ static bool virgl_buffer_transfer_extend(struct pipe_context *ctx,
    dummy_trans.offset = box->x;
 
    flush = virgl_res_needs_flush(vctx, &dummy_trans);
-   if (flush)
+   if (flush && util_ranges_intersect(&vbuf->valid_buffer_range,
+                                      box->x, box->x + box->width))
       return false;
 
    queued = virgl_transfer_queue_extend(&vctx->queue, &dummy_trans);
@@ -260,6 +267,7 @@ static bool virgl_buffer_transfer_extend(struct pipe_context *ctx,
       return false;
 
    memcpy(queued->hw_res_map + dummy_trans.offset, data, box->width);
+   util_range_add(&vbuf->valid_buffer_range, box->x, box->x + box->width);
 
    return true;
 }
@@ -410,6 +418,10 @@ void virgl_resource_destroy(struct pipe_screen *screen,
 {
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = virgl_resource(resource);
+
+   if (res->u.b.target == PIPE_BUFFER)
+      util_range_destroy(&res->valid_buffer_range);
+
    vs->vws->resource_unref(vs->vws, res->hw_res);
    FREE(res);
 }

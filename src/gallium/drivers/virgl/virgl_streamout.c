@@ -48,7 +48,11 @@ static struct pipe_stream_output_target *virgl_create_so_target(
    t->base.buffer_offset = buffer_offset;
    t->base.buffer_size = buffer_size;
    t->handle = handle;
+
+   util_range_add(&res->valid_buffer_range, buffer_offset,
+                  buffer_offset + buffer_size);
    virgl_resource_dirty(res, 0);
+
    virgl_encoder_create_so_target(vctx, handle, res, buffer_offset, buffer_size);
    return &t->base;
 }
