@@ -398,6 +398,11 @@ panfrost_get_paramf(struct pipe_screen *screen, enum pipe_capf param)
         case PIPE_CAPF_MAX_TEXTURE_LOD_BIAS:
                 return 16.0; /* arbitrary */
 
+        case PIPE_CAPF_MIN_CONSERVATIVE_RASTER_DILATE:
+        case PIPE_CAPF_MAX_CONSERVATIVE_RASTER_DILATE:
+        case PIPE_CAPF_CONSERVATIVE_RASTER_DILATE_GRANULARITY:
+                return 0.0f;
+
         default:
                 debug_printf("Unexpected PIPE_CAPF %d query\n", param);
                 return 0.0;
