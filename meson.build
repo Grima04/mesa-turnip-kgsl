@@ -1445,6 +1445,9 @@ if with_platform_x11
         with_gallium_omx != 'disabled'))
     dep_xcb = dependency('xcb')
     dep_x11_xcb = dependency('x11-xcb')
+    if not dep_libdrm.found()
+      error('libdrm required for gallium video statetrackers when using x11')
+    endif
   endif
   if with_any_vk or with_egl or (with_glx == 'dri' and with_dri_platform == 'drm')
     dep_xcb_dri2 = dependency('xcb-dri2', version : '>= 1.8')
