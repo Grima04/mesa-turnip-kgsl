@@ -796,12 +796,12 @@ class TreeAutomaton(object):
       self.opcodes = self.IndexMap()
 
       def get_item(opcode, children, pattern=None):
-         commutative = len(children) == 2 \
+         commutative = len(children) >= 2 \
                and "2src_commutative" in opcodes[opcode].algebraic_properties
          item = self.items.setdefault((opcode, children),
                                       self.Item(opcode, children))
          if commutative:
-            self.items[opcode, (children[1], children[0])] = item
+            self.items[opcode, (children[1], children[0]) + children[2:]] = item
          if pattern is not None:
             item.patterns.append(pattern)
          return item
