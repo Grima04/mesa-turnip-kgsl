@@ -141,6 +141,58 @@ iris_update_draw_parameters(struct iris_context *ice,
    }
 }
 
+static void
+iris_indirect_draw_vbo(struct iris_context *ice,
+                       const struct pipe_draw_info *dinfo)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   struct pipe_draw_info info = *dinfo;
+
+   if (info.indirect->indirect_draw_count &&
+       ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
+      /* Upload MI_PREDICATE_RESULT to GPR2.*/
+      ice->vtbl.load_register_reg64(batch, CS_GPR(2), MI_PREDICATE_RESULT);
+   }
+
+   uint64_t orig_dirty = ice->state.dirty;
+
+   for (int i = 0; i < info.indirect->draw_count; i++) {
+      info.drawid = i;
+
+      iris_batch_maybe_flush(batch, 1500);
+
+      iris_update_draw_parameters(ice, &info);
+
+      ice->vtbl.upload_render_state(ice, batch, &info);
+
+      ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_RENDER;
+
+      info.indirect->offset += info.indirect->stride;
+   }
+
+   if (info.indirect->indirect_draw_count &&
+       ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
+      /* Restore MI_PREDICATE_RESULT. */
+      ice->vtbl.load_register_reg64(batch, MI_PREDICATE_RESULT, CS_GPR(2));
+   }
+
+   /* Put this back for post-draw resolves, we'll clear it again after. */
+   ice->state.dirty = orig_dirty;
+}
+
+static void
+iris_simple_draw_vbo(struct iris_context *ice,
+                     const struct pipe_draw_info *draw)
+{
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   iris_batch_maybe_flush(batch, 1500);
+
+   iris_update_draw_parameters(ice, draw);
+
+   ice->vtbl.upload_render_state(ice, batch, draw);
+}
+
 /**
  * The pipe->draw_vbo() driver hook.  Performs a draw on the GPU.
  */
@@ -161,10 +213,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    if (unlikely(INTEL_DEBUG & DEBUG_REEMIT))
       ice->state.dirty |= IRIS_ALL_DIRTY_FOR_RENDER & ~IRIS_DIRTY_SO_BUFFERS;
 
-   iris_batch_maybe_flush(batch, 1500);
-
    iris_update_draw_info(ice, info);
-   iris_update_draw_parameters(ice, dinfo);
 
    if (devinfo->gen == 9)
       gen9_toggle_preemption(ice, batch, info);
@@ -184,7 +233,11 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    iris_binder_reserve_3d(ice);
 
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
-   ice->vtbl.upload_render_state(ice, batch, info);
+
+   if (info->indirect)
+      iris_indirect_draw_vbo(ice, info);
+   else
+      iris_simple_draw_vbo(ice, info);
 
    iris_postdraw_update_resolve_tracking(ice, batch);
 

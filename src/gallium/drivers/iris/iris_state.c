@@ -5288,6 +5288,8 @@ iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw)
 {
+   bool use_predicate = ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
+
    /* Always pin the binder.  If we're emitting new binding table pointers,
     * we need it.  If not, we're probably inheriting old tables via the
     * context, and need it anyway.  Since true zero-bindings cases are
@@ -5344,9 +5346,81 @@ iris_upload_render_state(struct iris_context *ice,
 #define _3DPRIM_BASE_VERTEX         0x2440
 
    if (draw->indirect) {
-      /* We don't support this MultidrawIndirect. */
-      assert(!draw->indirect->indirect_draw_count);
+      if (draw->indirect->indirect_draw_count) {
+         use_predicate = true;
 
+         struct iris_bo *draw_count_bo =
+            iris_resource_bo(draw->indirect->indirect_draw_count);
+         unsigned draw_count_offset =
+            draw->indirect->indirect_draw_count_offset;
+
+         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_FLUSH_ENABLE);
+
+         if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
+            static const uint32_t math[] = {
+               MI_MATH | (9 - 2),
+               /* Compute (draw index < draw count).
+                * We do this by subtracting and storing the carry bit.
+                */
+               MI_ALU2(LOAD, SRCA, R0),
+               MI_ALU2(LOAD, SRCB, R1),
+               MI_ALU0(SUB),
+               MI_ALU2(STORE, R3, CF),
+               /* Compute (subtracting result & MI_PREDICATE). */
+               MI_ALU2(LOAD, SRCA, R3),
+               MI_ALU2(LOAD, SRCB, R2),
+               MI_ALU0(AND),
+               MI_ALU2(STORE, R3, ACCU),
+            };
+
+            /* Upload the current draw count from the draw parameters
+             * buffer to GPR1.
+             */
+            ice->vtbl.load_register_mem32(batch, CS_GPR(1), draw_count_bo,
+                                          draw_count_offset);
+            /* Zero the top 32-bits of GPR1. */
+            ice->vtbl.load_register_imm32(batch, CS_GPR(1) + 4, 0);
+            /* Upload the id of the current primitive to GPR0. */
+            ice->vtbl.load_register_imm64(batch, CS_GPR(0), draw->drawid);
+
+            iris_batch_emit(batch, math, sizeof(math));
+
+            /* Store result of MI_MATH computations to MI_PREDICATE_RESULT. */
+            ice->vtbl.load_register_reg64(batch,
+                                          MI_PREDICATE_RESULT, CS_GPR(3));
+         } else {
+            uint32_t mi_predicate;
+
+            /* Upload the id of the current primitive to MI_PREDICATE_SRC1. */
+            ice->vtbl.load_register_imm64(batch, MI_PREDICATE_SRC1,
+                                          draw->drawid);
+            /* Upload the current draw count from the draw parameters buffer
+             * to MI_PREDICATE_SRC0.
+             */
+            ice->vtbl.load_register_mem32(batch, MI_PREDICATE_SRC0,
+                                          draw_count_bo, draw_count_offset);
+            /* Zero the top 32-bits of MI_PREDICATE_SRC0 */
+            ice->vtbl.load_register_imm32(batch, MI_PREDICATE_SRC0 + 4, 0);
+
+            if (draw->drawid == 0) {
+               mi_predicate = MI_PREDICATE | MI_PREDICATE_LOADOP_LOADINV |
+                              MI_PREDICATE_COMBINEOP_SET |
+                              MI_PREDICATE_COMPAREOP_SRCS_EQUAL;
+            } else {
+               /* While draw_index < draw_count the predicate's result will be
+                *  (draw_index == draw_count) ^ TRUE = TRUE
+                * When draw_index == draw_count the result is
+                *  (TRUE) ^ TRUE = FALSE
+                * After this all results will be:
+                *  (FALSE) ^ FALSE = FALSE
+                */
+               mi_predicate = MI_PREDICATE | MI_PREDICATE_LOADOP_LOAD |
+                              MI_PREDICATE_COMBINEOP_XOR |
+                              MI_PREDICATE_COMPAREOP_SRCS_EQUAL;
+            }
+            iris_batch_emit(batch, &mi_predicate, sizeof(uint32_t));
+         }
+      }
       struct iris_bo *bo = iris_resource_bo(draw->indirect->buffer);
       assert(bo);
 
@@ -5406,8 +5480,7 @@ iris_upload_render_state(struct iris_context *ice,
 
    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
-      prim.PredicateEnable =
-         ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT;
+      prim.PredicateEnable = use_predicate;
 
       if (draw->indirect || draw->count_from_stream_output) {
          prim.IndirectParameterEnable = true;

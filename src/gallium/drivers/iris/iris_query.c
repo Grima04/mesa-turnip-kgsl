@@ -74,26 +74,11 @@
 #define MI_ALU_STORE     0x180
 #define MI_ALU_STOREINV  0x580
 
-#define MI_ALU_R0        0x00
-#define MI_ALU_R1        0x01
-#define MI_ALU_R2        0x02
-#define MI_ALU_R3        0x03
-#define MI_ALU_R4        0x04
 #define MI_ALU_SRCA      0x20
 #define MI_ALU_SRCB      0x21
 #define MI_ALU_ACCU      0x31
 #define MI_ALU_ZF        0x32
 #define MI_ALU_CF        0x33
-
-#define _MI_ALU(op, x, y)  (((op) << 20) | ((x) << 10) | (y))
-
-#define _MI_ALU0(op)       _MI_ALU(MI_ALU_##op, 0, 0)
-#define _MI_ALU1(op, x)    _MI_ALU(MI_ALU_##op, x, 0)
-#define _MI_ALU2(op, x, y) _MI_ALU(MI_ALU_##op, x, y)
-
-#define MI_ALU0(op)        _MI_ALU0(op)
-#define MI_ALU1(op, x)     _MI_ALU1(op, MI_ALU_##x)
-#define MI_ALU2(op, x, y)  _MI_ALU2(op, MI_ALU_##x, MI_ALU_##y)
 
 #define emit_lri32 ice->vtbl.load_register_imm32
 #define emit_lri64 ice->vtbl.load_register_imm64
