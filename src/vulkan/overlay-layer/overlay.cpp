@@ -194,49 +194,45 @@ static const VkQueryPipelineStatisticFlags overlay_query_flags =
    VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
 #define OVERLAY_QUERY_COUNT (11)
 
-static struct hash_table *vk_object_to_data = NULL;
+static struct hash_table_u64 *vk_object_to_data = NULL;
 static simple_mtx_t vk_object_to_data_mutex = _SIMPLE_MTX_INITIALIZER_NP;
 
 thread_local ImGuiContext* __MesaImGui;
 
 static inline void ensure_vk_object_map(void)
 {
-   if (!vk_object_to_data) {
-      vk_object_to_data = _mesa_hash_table_create(NULL,
-                                                  _mesa_hash_pointer,
-                                                  _mesa_key_pointer_equal);
-   }
+   if (!vk_object_to_data)
+      vk_object_to_data = _mesa_hash_table_u64_create(NULL);
 }
 
-#define FIND_SWAPCHAIN_DATA(obj) ((struct swapchain_data *)find_object_data((void *) obj))
-#define FIND_CMD_BUFFER_DATA(obj) ((struct command_buffer_data *)find_object_data((void *) obj))
-#define FIND_DEVICE_DATA(obj) ((struct device_data *)find_object_data((void *) obj))
-#define FIND_QUEUE_DATA(obj) ((struct queue_data *)find_object_data((void *) obj))
-#define FIND_PHYSICAL_DEVICE_DATA(obj) ((struct instance_data *)find_object_data((void *) obj))
-#define FIND_INSTANCE_DATA(obj) ((struct instance_data *)find_object_data((void *) obj))
-static void *find_object_data(void *obj)
+#define HKEY(obj) ((uint64_t)(obj))
+#define FIND_SWAPCHAIN_DATA(obj) ((struct swapchain_data *)find_object_data(HKEY(obj)))
+#define FIND_CMD_BUFFER_DATA(obj) ((struct command_buffer_data *)find_object_data(HKEY(obj)))
+#define FIND_DEVICE_DATA(obj) ((struct device_data *)find_object_data(HKEY(obj)))
+#define FIND_QUEUE_DATA(obj) ((struct queue_data *)find_object_data(HKEY(obj)))
+#define FIND_PHYSICAL_DEVICE_DATA(obj) ((struct instance_data *)find_object_data(HKEY(obj)))
+#define FIND_INSTANCE_DATA(obj) ((struct instance_data *)find_object_data(HKEY(obj)))
+static void *find_object_data(uint64_t obj)
 {
    simple_mtx_lock(&vk_object_to_data_mutex);
    ensure_vk_object_map();
-   struct hash_entry *entry = _mesa_hash_table_search(vk_object_to_data, obj);
-   void *data = entry ? entry->data : NULL;
+   void *data = _mesa_hash_table_u64_search(vk_object_to_data, obj);
    simple_mtx_unlock(&vk_object_to_data_mutex);
    return data;
 }
 
-static void map_object(void *obj, void *data)
+static void map_object(uint64_t obj, void *data)
 {
    simple_mtx_lock(&vk_object_to_data_mutex);
    ensure_vk_object_map();
-   _mesa_hash_table_insert(vk_object_to_data, obj, data);
+   _mesa_hash_table_u64_insert(vk_object_to_data, obj, data);
    simple_mtx_unlock(&vk_object_to_data_mutex);
 }
 
-static void unmap_object(void *obj)
+static void unmap_object(uint64_t obj)
 {
    simple_mtx_lock(&vk_object_to_data_mutex);
-   struct hash_entry *entry = _mesa_hash_table_search(vk_object_to_data, obj);
-   _mesa_hash_table_remove(vk_object_to_data, entry);
+   _mesa_hash_table_u64_remove(vk_object_to_data, obj);
    simple_mtx_unlock(&vk_object_to_data_mutex);
 }
 
@@ -321,7 +317,7 @@ static struct instance_data *new_instance_data(VkInstance instance)
 {
    struct instance_data *data = rzalloc(NULL, struct instance_data);
    data->instance = instance;
-   map_object(data->instance, data);
+   map_object(HKEY(data->instance), data);
    return data;
 }
 
@@ -329,7 +325,7 @@ static void destroy_instance_data(struct instance_data *data)
 {
    if (data->params.output_file)
       fclose(data->params.output_file);
-   unmap_object(data->instance);
+   unmap_object(HKEY(data->instance));
    ralloc_free(data);
 }
 
@@ -348,9 +344,9 @@ static void instance_data_map_physical_devices(struct instance_data *instance_da
 
    for (uint32_t i = 0; i < physicalDeviceCount; i++) {
       if (map)
-         map_object(physicalDevices[i], instance_data);
+         map_object(HKEY(physicalDevices[i]), instance_data);
       else
-         unmap_object(physicalDevices[i]);
+         unmap_object(HKEY(physicalDevices[i]));
    }
 
    free(physicalDevices);
@@ -362,7 +358,7 @@ static struct device_data *new_device_data(VkDevice device, struct instance_data
    struct device_data *data = rzalloc(NULL, struct device_data);
    data->instance = instance;
    data->device = device;
-   map_object(data->device, data);
+   map_object(HKEY(data->device), data);
    return data;
 }
 
@@ -378,7 +374,7 @@ static struct queue_data *new_queue_data(VkQueue queue,
    data->timestamp_mask = (1ull << family_props->timestampValidBits) - 1;
    data->family_index = family_index;
    LIST_INITHEAD(&data->running_command_buffer);
-   map_object(data->queue, data);
+   map_object(HKEY(data->queue), data);
 
    /* Fence synchronizing access to queries on that queue. */
    VkFenceCreateInfo fence_info = {};
@@ -400,7 +396,7 @@ static void destroy_queue(struct queue_data *data)
 {
    struct device_data *device_data = data->device;
    device_data->vtable.DestroyFence(device_data->device, data->queries_fence, NULL);
-   unmap_object(data->queue);
+   unmap_object(HKEY(data->queue));
    ralloc_free(data);
 }
 
@@ -449,7 +445,7 @@ static void device_unmap_queues(struct device_data *data)
 
 static void destroy_device_data(struct device_data *data)
 {
-   unmap_object(data->device);
+   unmap_object(HKEY(data->device));
    ralloc_free(data);
 }
 
@@ -469,13 +465,13 @@ static struct command_buffer_data *new_command_buffer_data(VkCommandBuffer cmd_b
    data->timestamp_query_pool = timestamp_query_pool;
    data->query_index = query_index;
    list_inithead(&data->link);
-   map_object((void *) data->cmd_buffer, data);
+   map_object(HKEY(data->cmd_buffer), data);
    return data;
 }
 
 static void destroy_command_buffer_data(struct command_buffer_data *data)
 {
-   unmap_object((void *) data->cmd_buffer);
+   unmap_object(HKEY(data->cmd_buffer));
    list_delinit(&data->link);
    ralloc_free(data);
 }
@@ -489,13 +485,13 @@ static struct swapchain_data *new_swapchain_data(VkSwapchainKHR swapchain,
    data->device = device_data;
    data->swapchain = swapchain;
    data->window_size = ImVec2(instance_data->params.width, instance_data->params.height);
-   map_object((void *) data->swapchain, data);
+   map_object(HKEY(data->swapchain), data);
    return data;
 }
 
 static void destroy_swapchain_data(struct swapchain_data *data)
 {
-   unmap_object((void *) data->swapchain);
+   unmap_object(HKEY(data->swapchain));
    ralloc_free(data);
 }
 
@@ -2011,9 +2007,9 @@ static VkResult overlay_AllocateCommandBuffers(
    }
 
    if (pipeline_query_pool)
-      map_object((void *) pipeline_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
+      map_object(HKEY(pipeline_query_pool), (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
    if (timestamp_query_pool)
-      map_object((void *) timestamp_query_pool, (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
+      map_object(HKEY(timestamp_query_pool), (void *)(uintptr_t) pAllocateInfo->commandBufferCount);
 
    return result;
 }
@@ -2028,21 +2024,21 @@ static void overlay_FreeCommandBuffers(
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       struct command_buffer_data *cmd_buffer_data =
          FIND_CMD_BUFFER_DATA(pCommandBuffers[i]);
-      uint64_t count = (uintptr_t)find_object_data((void *)cmd_buffer_data->pipeline_query_pool);
+      uint64_t count = (uintptr_t)find_object_data(HKEY(cmd_buffer_data->pipeline_query_pool));
       if (count == 1) {
-         unmap_object((void *) cmd_buffer_data->pipeline_query_pool);
+         unmap_object(HKEY(cmd_buffer_data->pipeline_query_pool));
          device_data->vtable.DestroyQueryPool(device_data->device,
                                               cmd_buffer_data->pipeline_query_pool, NULL);
       } else if (count != 0) {
-         map_object((void *) cmd_buffer_data->pipeline_query_pool, (void *)(uintptr_t)(count - 1));
+         map_object(HKEY(cmd_buffer_data->pipeline_query_pool), (void *)(uintptr_t)(count - 1));
       }
-      count = (uintptr_t)find_object_data((void *)cmd_buffer_data->timestamp_query_pool);
+      count = (uintptr_t)find_object_data(HKEY(cmd_buffer_data->timestamp_query_pool));
       if (count == 1) {
-         unmap_object((void *) cmd_buffer_data->timestamp_query_pool);
+         unmap_object(HKEY(cmd_buffer_data->timestamp_query_pool));
          device_data->vtable.DestroyQueryPool(device_data->device,
                                               cmd_buffer_data->timestamp_query_pool, NULL);
       } else if (count != 0) {
-         map_object((void *) cmd_buffer_data->timestamp_query_pool, (void *)(uintptr_t)(count - 1));
+         map_object(HKEY(cmd_buffer_data->timestamp_query_pool), (void *)(uintptr_t)(count - 1));
       }
       destroy_command_buffer_data(cmd_buffer_data);
    }
