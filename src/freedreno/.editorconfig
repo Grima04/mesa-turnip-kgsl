@@ -1,4 +1,4 @@
-[*.{c,h}]
+[*.{c,h,cpp,hpp,cc,hh}]
 indent_style = tab
 indent_size = 4
 tab_width = 4
