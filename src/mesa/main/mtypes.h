@@ -2956,8 +2956,13 @@ struct gl_shader_program
 
    /**
     * Is the application intending to glGetProgramBinary this program?
+    *
+    * BinaryRetrievableHint is the currently active hint that gets set
+    * during initialization and after linking and BinaryRetrievableHintPending
+    * is the hint set by the user to be active when program is linked next time.
     */
-   GLboolean BinaryRetreivableHint;
+   GLboolean BinaryRetrievableHint;
+   GLboolean BinaryRetrievableHintPending;
 
    /**
     * Indicates whether program can be bound for individual pipeline stages
