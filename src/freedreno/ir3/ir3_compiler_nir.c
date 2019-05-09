@@ -1308,7 +1308,8 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			idx += nir_src_as_uint(intr->src[1]);
 			for (int i = 0; i < intr->num_components; i++) {
 				unsigned inloc = idx * 4 + i + comp;
-				if (ctx->so->inputs[idx].bary) {
+				if (ctx->so->inputs[idx].bary &&
+						!ctx->so->inputs[idx].use_ldlv) {
 					dst[i] = ir3_BARY_F(b, create_immed(b, inloc), 0, coord, 0);
 				} else {
 					/* for non-varyings use the pre-setup input, since
@@ -2406,8 +2407,6 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 				so->inputs[n].bary = true;
 				instr = create_frag_input(ctx, false, idx);
 			} else {
-				bool use_ldlv = false;
-
 				/* detect the special case for front/back colors where
 				 * we need to do flat vs smooth shading depending on
 				 * rast state:
@@ -2428,12 +2427,12 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 				if (ctx->compiler->flat_bypass) {
 					if ((so->inputs[n].interpolate == INTERP_MODE_FLAT) ||
 							(so->inputs[n].rasterflat && ctx->so->key.rasterflat))
-						use_ldlv = true;
+						so->inputs[n].use_ldlv = true;
 				}
 
 				so->inputs[n].bary = true;
 
-				instr = create_frag_input(ctx, use_ldlv, idx);
+				instr = create_frag_input(ctx, so->inputs[n].use_ldlv, idx);
 			}
 
 			compile_assert(ctx, idx < ctx->ir->ninputs);
