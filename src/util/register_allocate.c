@@ -138,14 +138,6 @@ struct ra_node {
    unsigned int reg;
 
    /**
-    * Set when the node is in the trivially colorable stack.  When
-    * set, the adjacency to this node is ignored, to implement the
-    * "remove the edge from the graph" in simplification without
-    * having to actually modify the adjacency_list.
-    */
-   bool in_stack;
-
-   /**
     * The q total, as defined in the Runeson/Nyström paper, for all the
     * interfering nodes not in the stack.
     */
@@ -167,6 +159,9 @@ struct ra_graph {
 
    unsigned int *stack;
    unsigned int stack_count;
+
+   /** Bit-set indicating, for each register, if it's in the stack */
+   BITSET_WORD *in_stack;
 
    /**
     * Tracks the start of the set of optimistically-colored registers in the
@@ -426,8 +421,10 @@ ra_alloc_interference_graph(struct ra_regs *regs, unsigned int count)
 
    g->stack = rzalloc_array(g, unsigned int, count);
 
+   int bitset_count = BITSET_WORDS(count);
+   g->in_stack = rzalloc_array(g, BITSET_WORD, bitset_count);
+
    for (i = 0; i < count; i++) {
-      int bitset_count = BITSET_WORDS(count);
       g->nodes[i].adjacency = rzalloc_array(g, BITSET_WORD, bitset_count);
 
       g->nodes[i].adjacency_list_size = 4;
@@ -487,7 +484,7 @@ decrement_q(struct ra_graph *g, unsigned int n)
       unsigned int n2 = g->nodes[n].adjacency_list[i];
       unsigned int n2_class = g->nodes[n2].class;
 
-      if (!g->nodes[n2].in_stack) {
+      if (!BITSET_TEST(g->in_stack, n2)) {
          assert(g->nodes[n2].q_total >= g->regs->classes[n2_class]->q[n_class]);
          g->nodes[n2].q_total -= g->regs->classes[n2_class]->q[n_class];
       }
@@ -518,14 +515,14 @@ ra_simplify(struct ra_graph *g)
       progress = false;
 
       for (i = g->count - 1; i >= 0; i--) {
-         if (g->nodes[i].in_stack || g->nodes[i].reg != NO_REG)
+         if (BITSET_TEST(g->in_stack, i) || g->nodes[i].reg != NO_REG)
             continue;
 
          if (pq_test(g, i)) {
             decrement_q(g, i);
             g->stack[g->stack_count] = i;
             g->stack_count++;
-            g->nodes[i].in_stack = true;
+            BITSET_SET(g->in_stack, i);
             progress = true;
          } else {
             unsigned int new_q_total = g->nodes[i].q_total;
@@ -543,7 +540,7 @@ ra_simplify(struct ra_graph *g)
          decrement_q(g, best_optimistic_node);
          g->stack[g->stack_count] = best_optimistic_node;
          g->stack_count++;
-         g->nodes[best_optimistic_node].in_stack = true;
+         BITSET_SET(g->in_stack, best_optimistic_node);
          progress = true;
       }
    }
@@ -559,7 +556,7 @@ ra_any_neighbors_conflict(struct ra_graph *g, unsigned int n, unsigned int r)
    for (i = 0; i < g->nodes[n].adjacency_count; i++) {
       unsigned int n2 = g->nodes[n].adjacency_list[i];
 
-      if (!g->nodes[n2].in_stack &&
+      if (!BITSET_TEST(g->in_stack, n2) &&
           BITSET_TEST(g->regs->regs[r].conflicts, g->nodes[n2].reg)) {
          return true;
       }
@@ -589,7 +586,7 @@ ra_compute_available_regs(struct ra_graph *g, unsigned int n, BITSET_WORD *regs)
       unsigned int n2 = g->nodes[n].adjacency_list[i];
       unsigned int r = g->nodes[n2].reg;
 
-      if (!g->nodes[n2].in_stack) {
+      if (!BITSET_TEST(g->in_stack, n2)) {
          for (int j = 0; j < BITSET_WORDS(g->regs->count); j++)
             regs[j] &= ~g->regs->regs[r].conflicts[j];
       }
@@ -628,7 +625,7 @@ ra_select(struct ra_graph *g)
       /* set this to false even if we return here so that
        * ra_get_best_spill_node() considers this node later.
        */
-      g->nodes[n].in_stack = false;
+      BITSET_CLEAR(g->in_stack, n);
 
       if (g->select_reg_callback) {
          if (!ra_compute_available_regs(g, n, select_regs)) {
@@ -706,7 +703,7 @@ void
 ra_set_node_reg(struct ra_graph *g, unsigned int n, unsigned int reg)
 {
    g->nodes[n].reg = reg;
-   g->nodes[n].in_stack = false;
+   BITSET_CLEAR(g->in_stack, n);
 }
 
 static float
@@ -754,7 +751,7 @@ ra_get_best_spill_node(struct ra_graph *g)
       if (cost <= 0.0f)
          continue;
 
-      if (g->nodes[n].in_stack)
+      if (BITSET_TEST(g->in_stack, n))
          continue;
 
       benefit = ra_get_spill_benefit(g, n);
