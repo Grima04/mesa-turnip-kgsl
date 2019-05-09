@@ -859,7 +859,6 @@ struct si_context {
 
 	unsigned			num_gfx_cs_flushes;
 	unsigned			initial_gfx_cs_size;
-	unsigned			gpu_reset_counter;
 	unsigned			last_dirty_tex_counter;
 	unsigned			last_dirty_buf_counter;
 	unsigned			last_compressed_colortex_counter;

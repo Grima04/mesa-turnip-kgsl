@@ -379,7 +379,6 @@ bool ac_query_gpu_info(int fd, amdgpu_device_handle dev,
 	info->si_TA_CS_BC_BASE_ADDR_allowed = true;
 	info->has_bo_metadata = true;
 	info->has_gpu_reset_status_query = true;
-	info->has_gpu_reset_counter_query = false;
 	info->has_eqaa_surface_allocator = true;
 	info->has_format_bc1_through_bc7 = true;
 	/* DRM 3.1.0 doesn't flush TC for GFX8 correctly. */
@@ -568,7 +567,6 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    si_TA_CS_BC_BASE_ADDR_allowed = %u\n", info->si_TA_CS_BC_BASE_ADDR_allowed);
 	printf("    has_bo_metadata = %u\n", info->has_bo_metadata);
 	printf("    has_gpu_reset_status_query = %u\n", info->has_gpu_reset_status_query);
-	printf("    has_gpu_reset_counter_query = %u\n", info->has_gpu_reset_counter_query);
 	printf("    has_eqaa_surface_allocator = %u\n", info->has_eqaa_surface_allocator);
 	printf("    has_format_bc1_through_bc7 = %u\n", info->has_format_bc1_through_bc7);
 	printf("    kernel_flushes_tc_l2_after_ib = %u\n", info->kernel_flushes_tc_l2_after_ib);

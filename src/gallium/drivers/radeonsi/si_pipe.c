@@ -286,21 +286,7 @@ static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 
-	if (sctx->screen->info.has_gpu_reset_status_query)
-		return sctx->ws->ctx_query_reset_status(sctx->ctx);
-
-	if (sctx->screen->info.has_gpu_reset_counter_query) {
-		unsigned latest = sctx->ws->query_value(sctx->ws,
-							RADEON_GPU_RESET_COUNTER);
-
-		if (sctx->gpu_reset_counter == latest)
-			return PIPE_NO_RESET;
-
-		sctx->gpu_reset_counter = latest;
-		return PIPE_UNKNOWN_CONTEXT_RESET;
-	}
-
-	return PIPE_NO_RESET;
+	return sctx->ws->ctx_query_reset_status(sctx->ctx);
 }
 
 static void si_set_device_reset_callback(struct pipe_context *ctx,
@@ -322,10 +308,7 @@ bool si_check_device_reset(struct si_context *sctx)
 	if (!sctx->device_reset_callback.reset)
 		return false;
 
-	if (!sctx->b.get_device_reset_status)
-		return false;
-
-	status = sctx->b.get_device_reset_status(&sctx->b);
+	status = sctx->ws->ctx_query_reset_status(sctx->ctx);
 	if (status == PIPE_NO_RESET)
 		return false;
 
@@ -421,12 +404,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	sctx->ws = sscreen->ws;
 	sctx->family = sscreen->info.family;
 	sctx->chip_class = sscreen->info.chip_class;
-
-	if (sscreen->info.has_gpu_reset_counter_query) {
-		sctx->gpu_reset_counter =
-			sctx->ws->query_value(sctx->ws, RADEON_GPU_RESET_COUNTER);
-	}
-
 
 	if (sctx->chip_class == GFX7 ||
 	    sctx->chip_class == GFX8 ||

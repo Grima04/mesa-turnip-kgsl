@@ -546,14 +546,8 @@ void radeon_clear_saved_cs(struct radeon_saved_cs *saved)
 static enum pipe_reset_status r600_get_reset_status(struct pipe_context *ctx)
 {
 	struct r600_common_context *rctx = (struct r600_common_context *)ctx;
-	unsigned latest = rctx->ws->query_value(rctx->ws,
-						RADEON_GPU_RESET_COUNTER);
 
-	if (rctx->gpu_reset_counter == latest)
-		return PIPE_NO_RESET;
-
-	rctx->gpu_reset_counter = latest;
-	return PIPE_UNKNOWN_CONTEXT_RESET;
+	return rctx->ws->ctx_query_reset_status(rctx->ctx);
 }
 
 static void r600_set_debug_callback(struct pipe_context *ctx,
@@ -673,13 +667,7 @@ bool r600_common_context_init(struct r600_common_context *rctx,
 	else
 		rctx->b.buffer_subdata = r600_buffer_subdata;
 
-	if (rscreen->info.drm_major == 2 && rscreen->info.drm_minor >= 43) {
-		rctx->b.get_device_reset_status = r600_get_reset_status;
-		rctx->gpu_reset_counter =
-			rctx->ws->query_value(rctx->ws,
-					      RADEON_GPU_RESET_COUNTER);
-	}
-
+	rctx->b.get_device_reset_status = r600_get_reset_status;
 	rctx->b.set_device_reset_callback = r600_set_device_reset_callback;
 
 	r600_init_context_texture_functions(rctx);

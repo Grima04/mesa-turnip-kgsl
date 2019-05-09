@@ -110,7 +110,6 @@ struct radeon_info {
 	bool                        si_TA_CS_BC_BASE_ADDR_allowed;
 	bool                        has_bo_metadata;
 	bool                        has_gpu_reset_status_query;
-	bool                        has_gpu_reset_counter_query;
 	bool                        has_eqaa_surface_allocator;
 	bool                        has_format_bc1_through_bc7;
 	bool                        kernel_flushes_tc_l2_after_ib;

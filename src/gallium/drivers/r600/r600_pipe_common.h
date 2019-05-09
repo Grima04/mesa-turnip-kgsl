@@ -517,7 +517,6 @@ struct r600_common_context {
 	struct r600_resource		*eop_bug_scratch;
 	unsigned			num_gfx_cs_flushes;
 	unsigned			initial_gfx_cs_size;
-	unsigned			gpu_reset_counter;
 	unsigned			last_dirty_tex_counter;
 	unsigned			last_compressed_colortex_counter;
 	unsigned			last_num_draw_calls;

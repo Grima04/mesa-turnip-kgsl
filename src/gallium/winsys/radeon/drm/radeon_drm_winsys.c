@@ -573,7 +573,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     ws->info.si_TA_CS_BC_BASE_ADDR_allowed = ws->info.drm_minor >= 48;
     ws->info.has_bo_metadata = false;
     ws->info.has_gpu_reset_status_query = ws->info.drm_minor >= 43;
-    ws->info.has_gpu_reset_counter_query = ws->info.drm_minor >= 43;
     ws->info.has_eqaa_surface_allocator = false;
     ws->info.has_format_bc1_through_bc7 = ws->info.drm_minor >= 31;
     ws->info.kernel_flushes_tc_l2_after_ib = true;
@@ -729,10 +728,6 @@ static uint64_t radeon_query_value(struct radeon_winsys *rws,
     case RADEON_CURRENT_MCLK:
         radeon_get_drm_value(ws->fd, RADEON_INFO_CURRENT_GPU_MCLK,
                              "current-gpu-mclk", (uint32_t*)&retval);
-        return retval;
-    case RADEON_GPU_RESET_COUNTER:
-        radeon_get_drm_value(ws->fd, RADEON_INFO_GPU_RESET_COUNTER,
-                             "gpu-reset-counter", (uint32_t*)&retval);
         return retval;
     case RADEON_CS_THREAD_TIME:
         return util_queue_get_thread_time_nano(&ws->cs_queue, 0);
