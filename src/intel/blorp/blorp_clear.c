@@ -232,10 +232,12 @@ get_fast_clear_rect(const struct isl_device *dev,
 
       x_align *= 16;
 
-      /* SKL+ line alignment requirement for Y-tiled are half those of the prior
-       * generations.
+      /* The line alignment requirement for Y-tiled is halved at SKL and again
+       * at TGL.
        */
-      if (dev->info->gen >= 9)
+      if (dev->info->gen >= 12)
+         y_align *= 8;
+      else if (dev->info->gen >= 9)
          y_align *= 16;
       else
          y_align *= 32;
@@ -990,7 +992,10 @@ blorp_ccs_resolve(struct blorp_batch *batch,
    assert(aux_fmtl->txc == ISL_TXC_CCS);
 
    unsigned x_scaledown, y_scaledown;
-   if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 9) {
+   if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 12) {
+      x_scaledown = aux_fmtl->bw * 8;
+      y_scaledown = aux_fmtl->bh * 4;
+   } else if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 9) {
       x_scaledown = aux_fmtl->bw * 8;
       y_scaledown = aux_fmtl->bh * 8;
    } else if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 8) {
