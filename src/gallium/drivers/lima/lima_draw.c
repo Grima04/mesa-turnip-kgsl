@@ -140,7 +140,7 @@ struct lima_render_state {
    PLBU_CMD(((shift_min) << 28) | ((shift_h) << 16) | (shift_w), 0x1000010C)
 #define PLBU_CMD_TILED_DIMENSIONS(tiled_w, tiled_h) \
    PLBU_CMD((((tiled_w) - 1) << 24) | (((tiled_h) - 1) << 8), 0x10000109)
-#define PLBU_CMD_BLOCK_STRIDE(block_w) PLBU_CMD(block_w, 0x30000000)
+#define PLBU_CMD_BLOCK_STRIDE(block_w) PLBU_CMD((block_w) & 0xff, 0x30000000)
 #define PLBU_CMD_ARRAY_ADDRESS(gp_stream, block_num) \
    PLBU_CMD(gp_stream, 0x28000000 | ((block_num) - 1) | 1)
 #define PLBU_CMD_VIEWPORT_X(v) PLBU_CMD(v, 0x10000107)
