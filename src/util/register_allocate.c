@@ -524,7 +524,11 @@ ra_simplify(struct ra_graph *g)
             g->stack_count++;
             BITSET_SET(g->in_stack, i);
             progress = true;
-         } else {
+         } else if (!progress) {
+            /* We only need to do this if we haven't made progress.  If we
+             * have made progress, we'll throw the data away and loop again
+             * anyway.
+             */
             unsigned int new_q_total = g->nodes[i].q_total;
             if (new_q_total < lowest_q_total) {
                best_optimistic_node = i;
