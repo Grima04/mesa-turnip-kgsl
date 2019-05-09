@@ -56,7 +56,7 @@ hash_alu(uint32_t hash, const nir_alu_instr *instr)
    hash = HASH(hash, instr->dest.dest.ssa.bit_size);
    /* We explicitly don't hash instr->dest.dest.exact */
 
-   if (nir_op_infos[instr->op].algebraic_properties & NIR_OP_IS_COMMUTATIVE) {
+   if (nir_op_infos[instr->op].algebraic_properties & NIR_OP_IS_2SRC_COMMUTATIVE) {
       assert(nir_op_infos[instr->op].num_inputs == 2);
       uint32_t hash0 = hash_alu_src(hash, &instr->src[0],
                                     nir_ssa_alu_instr_src_components(instr, 0));
@@ -528,7 +528,7 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
 
       /* We explicitly don't hash instr->dest.dest.exact */
 
-      if (nir_op_infos[alu1->op].algebraic_properties & NIR_OP_IS_COMMUTATIVE) {
+      if (nir_op_infos[alu1->op].algebraic_properties & NIR_OP_IS_2SRC_COMMUTATIVE) {
          assert(nir_op_infos[alu1->op].num_inputs == 2);
          return (nir_alu_srcs_equal(alu1, alu2, 0, 0) &&
                  nir_alu_srcs_equal(alu1, alu2, 1, 1)) ||

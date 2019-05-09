@@ -340,7 +340,7 @@ class Expression(Value):
       """
       self.comm_exprs = 0
       if self.opcode not in conv_opcode_types and \
-         "commutative" in opcodes[self.opcode].algebraic_properties:
+         "2src_commutative" in opcodes[self.opcode].algebraic_properties:
          self.comm_expr_idx = base_idx
          self.comm_exprs += 1
       else:
@@ -797,7 +797,7 @@ class TreeAutomaton(object):
 
       def get_item(opcode, children, pattern=None):
          commutative = len(children) == 2 \
-               and "commutative" in opcodes[opcode].algebraic_properties
+               and "2src_commutative" in opcodes[opcode].algebraic_properties
          item = self.items.setdefault((opcode, children),
                                       self.Item(opcode, children))
          if commutative:

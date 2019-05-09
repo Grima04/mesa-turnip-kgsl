@@ -875,7 +875,14 @@ nir_op_vec(unsigned components)
 }
 
 typedef enum {
-   NIR_OP_IS_COMMUTATIVE = (1 << 0),
+   /**
+    * Operation where the first two sources are commutative.
+    *
+    * For 2-source operations, this just mathematical commutativity.  Some
+    * 3-source operations, like ffma, are only commutative in the first two
+    * sources.
+    */
+   NIR_OP_IS_2SRC_COMMUTATIVE = (1 << 0),
    NIR_OP_IS_ASSOCIATIVE = (1 << 1),
 } nir_op_algebraic_property;
 
