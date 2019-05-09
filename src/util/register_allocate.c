@@ -518,33 +518,33 @@ ra_simplify(struct ra_graph *g)
       progress = false;
 
       for (i = g->count - 1; i >= 0; i--) {
-	 if (g->nodes[i].in_stack || g->nodes[i].reg != NO_REG)
-	    continue;
+         if (g->nodes[i].in_stack || g->nodes[i].reg != NO_REG)
+            continue;
 
-	 if (pq_test(g, i)) {
-	    decrement_q(g, i);
-	    g->stack[g->stack_count] = i;
-	    g->stack_count++;
-	    g->nodes[i].in_stack = true;
-	    progress = true;
-	 } else {
-	    unsigned int new_q_total = g->nodes[i].q_total;
-	    if (new_q_total < lowest_q_total) {
-	       best_optimistic_node = i;
-	       lowest_q_total = new_q_total;
-	    }
-	 }
+         if (pq_test(g, i)) {
+            decrement_q(g, i);
+            g->stack[g->stack_count] = i;
+            g->stack_count++;
+            g->nodes[i].in_stack = true;
+            progress = true;
+         } else {
+            unsigned int new_q_total = g->nodes[i].q_total;
+            if (new_q_total < lowest_q_total) {
+               best_optimistic_node = i;
+               lowest_q_total = new_q_total;
+            }
+         }
       }
 
       if (!progress && best_optimistic_node != ~0U) {
          if (stack_optimistic_start == UINT_MAX)
             stack_optimistic_start = g->stack_count;
 
-	 decrement_q(g, best_optimistic_node);
-	 g->stack[g->stack_count] = best_optimistic_node;
-	 g->stack_count++;
-	 g->nodes[best_optimistic_node].in_stack = true;
-	 progress = true;
+         decrement_q(g, best_optimistic_node);
+         g->stack[g->stack_count] = best_optimistic_node;
+         g->stack_count++;
+         g->nodes[best_optimistic_node].in_stack = true;
+         progress = true;
       }
    }
 
@@ -752,7 +752,7 @@ ra_get_best_spill_node(struct ra_graph *g)
       float benefit;
 
       if (cost <= 0.0f)
-	 continue;
+         continue;
 
       if (g->nodes[n].in_stack)
          continue;
@@ -760,8 +760,8 @@ ra_get_best_spill_node(struct ra_graph *g)
       benefit = ra_get_spill_benefit(g, n);
 
       if (benefit / cost > best_benefit) {
-	 best_benefit = benefit / cost;
-	 best_node = n;
+         best_benefit = benefit / cost;
+         best_node = n;
       }
    }
 
