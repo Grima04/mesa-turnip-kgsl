@@ -572,7 +572,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
                                              ws->info.drm_minor >= 38;
     ws->info.si_TA_CS_BC_BASE_ADDR_allowed = ws->info.drm_minor >= 48;
     ws->info.has_bo_metadata = false;
-    ws->info.has_gpu_reset_status_query = false;
+    ws->info.has_gpu_reset_status_query = ws->info.drm_minor >= 43;
     ws->info.has_gpu_reset_counter_query = ws->info.drm_minor >= 43;
     ws->info.has_eqaa_surface_allocator = false;
     ws->info.has_format_bc1_through_bc7 = ws->info.drm_minor >= 31;
@@ -654,6 +654,18 @@ static bool radeon_cs_request_feature(struct radeon_cmdbuf *rcs,
                                     enable);
     }
     return false;
+}
+
+uint32_t radeon_drm_get_gpu_reset_counter(struct radeon_drm_winsys *ws)
+{
+    uint64_t retval = 0;
+
+    if (!ws->info.has_gpu_reset_status_query)
+        return 0;
+
+    radeon_get_drm_value(ws->fd, RADEON_INFO_GPU_RESET_COUNTER,
+                         "gpu-reset-counter", (uint32_t*)&retval);
+    return retval;
 }
 
 static uint64_t radeon_query_value(struct radeon_winsys *rws,
