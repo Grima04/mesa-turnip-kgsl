@@ -1170,6 +1170,11 @@ void anv_GetPhysicalDeviceFeatures2(
    }
 }
 
+#define MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS   64
+
+#define MAX_PER_STAGE_DESCRIPTOR_INPUT_ATTACHMENTS 64
+#define MAX_DESCRIPTOR_SET_INPUT_ATTACHMENTS       256
+
 void anv_GetPhysicalDeviceProperties(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceProperties*                 pProperties)
@@ -1215,20 +1220,20 @@ void anv_GetPhysicalDeviceProperties(
       .sparseAddressSpaceSize                   = 0,
       .maxBoundDescriptorSets                   = MAX_SETS,
       .maxPerStageDescriptorSamplers            = max_samplers,
-      .maxPerStageDescriptorUniformBuffers      = 64,
+      .maxPerStageDescriptorUniformBuffers      = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS,
       .maxPerStageDescriptorStorageBuffers      = max_ssbos,
       .maxPerStageDescriptorSampledImages       = max_textures,
       .maxPerStageDescriptorStorageImages       = max_images,
-      .maxPerStageDescriptorInputAttachments    = 64,
+      .maxPerStageDescriptorInputAttachments    = MAX_PER_STAGE_DESCRIPTOR_INPUT_ATTACHMENTS,
       .maxPerStageResources                     = max_per_stage,
       .maxDescriptorSetSamplers                 = 6 * max_samplers, /* number of stages * maxPerStageDescriptorSamplers */
-      .maxDescriptorSetUniformBuffers           = 6 * 64,           /* number of stages * maxPerStageDescriptorUniformBuffers */
+      .maxDescriptorSetUniformBuffers           = 6 * MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS,           /* number of stages * maxPerStageDescriptorUniformBuffers */
       .maxDescriptorSetUniformBuffersDynamic    = MAX_DYNAMIC_BUFFERS / 2,
       .maxDescriptorSetStorageBuffers           = 6 * max_ssbos,    /* number of stages * maxPerStageDescriptorStorageBuffers */
       .maxDescriptorSetStorageBuffersDynamic    = MAX_DYNAMIC_BUFFERS / 2,
       .maxDescriptorSetSampledImages            = 6 * max_textures, /* number of stages * maxPerStageDescriptorSampledImages */
       .maxDescriptorSetStorageImages            = 6 * max_images,   /* number of stages * maxPerStageDescriptorStorageImages */
-      .maxDescriptorSetInputAttachments         = 256,
+      .maxDescriptorSetInputAttachments         = MAX_DESCRIPTOR_SET_INPUT_ATTACHMENTS,
       .maxVertexInputAttributes                 = MAX_VBS,
       .maxVertexInputBindings                   = MAX_VBS,
       .maxVertexInputAttributeOffset            = 2047,
@@ -1393,20 +1398,20 @@ void anv_GetPhysicalDeviceProperties2(
          props->robustBufferAccessUpdateAfterBind = true;
          props->quadDivergentImplicitLod = false;
          props->maxPerStageDescriptorUpdateAfterBindSamplers = max_bindless_views;
-         props->maxPerStageDescriptorUpdateAfterBindUniformBuffers = 0;
+         props->maxPerStageDescriptorUpdateAfterBindUniformBuffers = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS;
          props->maxPerStageDescriptorUpdateAfterBindStorageBuffers = UINT32_MAX;
          props->maxPerStageDescriptorUpdateAfterBindSampledImages = max_bindless_views;
          props->maxPerStageDescriptorUpdateAfterBindStorageImages = max_bindless_views;
-         props->maxPerStageDescriptorUpdateAfterBindInputAttachments = 0;
+         props->maxPerStageDescriptorUpdateAfterBindInputAttachments = MAX_PER_STAGE_DESCRIPTOR_INPUT_ATTACHMENTS;
          props->maxPerStageUpdateAfterBindResources = UINT32_MAX;
          props->maxDescriptorSetUpdateAfterBindSamplers = max_bindless_views;
-         props->maxDescriptorSetUpdateAfterBindUniformBuffers = 0;
-         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = 0;
+         props->maxDescriptorSetUpdateAfterBindUniformBuffers = 6 * MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS;
+         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DYNAMIC_BUFFERS / 2;
          props->maxDescriptorSetUpdateAfterBindStorageBuffers = UINT32_MAX;
          props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DYNAMIC_BUFFERS / 2;
          props->maxDescriptorSetUpdateAfterBindSampledImages = max_bindless_views;
          props->maxDescriptorSetUpdateAfterBindStorageImages = max_bindless_views;
-         props->maxDescriptorSetUpdateAfterBindInputAttachments = 0;
+         props->maxDescriptorSetUpdateAfterBindInputAttachments = MAX_DESCRIPTOR_SET_INPUT_ATTACHMENTS;
          break;
       }
 
