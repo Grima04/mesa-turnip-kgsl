@@ -884,6 +884,7 @@ struct pipe_grid_info
 struct pipe_llvm_program_header
 {
    uint32_t num_bytes; /**< Number of bytes in the LLVM bytecode program. */
+   char blob[];
 };
 
 struct pipe_compute_state

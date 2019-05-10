@@ -625,8 +625,7 @@ clover::spirv::link_program(const std::vector<module> &modules,
                          sec.type == module::section::text_library;
                }, mod.secs);
 
-      const auto c_il = msec.data.data() +
-                        sizeof(struct pipe_llvm_program_header);
+      const auto c_il = ((struct pipe_llvm_program_header*)msec.data.data())->blob;
       const auto length = msec.size;
 
       sections.push_back(reinterpret_cast<const uint32_t *>(c_il));

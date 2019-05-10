@@ -257,9 +257,7 @@ static void *si_create_compute_state(
 					    program, si_create_compute_state_async);
 	} else {
 		const struct pipe_llvm_program_header *header;
-		const char *code;
 		header = cso->prog;
-		code = cso->prog + sizeof(struct pipe_llvm_program_header);
 
 		program->shader.binary.elf_size = header->num_bytes;
 		program->shader.binary.elf_buffer = malloc(header->num_bytes);
@@ -267,7 +265,7 @@ static void *si_create_compute_state(
 			FREE(program);
 			return NULL;
 		}
-		memcpy((void *)program->shader.binary.elf_buffer, code, header->num_bytes);
+		memcpy((void *)program->shader.binary.elf_buffer, header->blob, header->num_bytes);
 
 		const amd_kernel_code_t *code_object =
 			si_compute_get_code_object(program, 0);
