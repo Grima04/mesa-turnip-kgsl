@@ -183,7 +183,9 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
        */
       .reloc_flags = RELOC_32BIT,
 
-#if GEN_GEN == 10
+#if GEN_GEN == 11
+      .mocs = ICL_MOCS_WB,
+#elif GEN_GEN == 10
       .mocs = CNL_MOCS_WB,
 #elif GEN_GEN == 9
       .mocs = SKL_MOCS_WB,
@@ -191,6 +193,8 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
       .mocs = BDW_MOCS_WB,
 #elif GEN_GEN == 7
       .mocs = GEN7_MOCS_L3,
+#elif GEN_GEN > 6
+#error "Missing MOCS setting!"
 #endif
    };
 
