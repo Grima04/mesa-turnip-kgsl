@@ -121,6 +121,7 @@ optimizations = [
    (('~ffma', 0.0, a, b), b),
    (('~ffma', a, b, 0.0), ('fmul', a, b)),
    (('ffma', 1.0, a, b), ('fadd', a, b)),
+   (('ffma', -1.0, a, b), ('fadd', ('fneg', a), b)),
    (('~flrp', a, b, 0.0), a),
    (('~flrp', a, b, 1.0), b),
    (('~flrp', a, a, b), a),
