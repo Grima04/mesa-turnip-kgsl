@@ -370,24 +370,15 @@ vmw_swc_add_validate_buffer(struct vmw_svga_winsys_context *vswc,
 			    struct pb_buffer *pb_buf,
 			    unsigned flags)
 {
-   enum pipe_error ret;
+   MAYBE_UNUSED enum pipe_error ret;
    unsigned translated_flags;
+   boolean already_present;
 
-   /*
-    * TODO: Update pb_validate to provide a similar functionality
-    * (Check buffer already present before adding)
-    */
-   if (util_hash_table_get(vswc->hash, pb_buf) != pb_buf) {
-      translated_flags = vmw_translate_to_pb_flags(flags);
-      ret = pb_validate_add_buffer(vswc->validate, pb_buf, translated_flags);
-      /* TODO: Update pipebuffer to reserve buffers and not fail here */
-      assert(ret == PIPE_OK);
-      (void)ret;
-      (void)util_hash_table_set(vswc->hash, pb_buf, pb_buf);
-      return TRUE;
-   }
-
-   return FALSE;
+   translated_flags = vmw_translate_to_pb_flags(flags);
+   ret = pb_validate_add_buffer(vswc->validate, pb_buf, translated_flags,
+                                vswc->hash, &already_present);
+   assert(ret == PIPE_OK);
+   return !already_present;
 }
 
 static void
