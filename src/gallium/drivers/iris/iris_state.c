@@ -631,6 +631,7 @@ iris_emit_l3_config(struct iris_batch *batch, const struct gen_l3_config *cfg,
        * desirable behavior.
        */
       reg.ErrorDetectionBehaviorControl = true;
+      reg.UseFullWays = true;
 #endif
       reg.URBAllocation = cfg->n[GEN_L3P_URB];
       reg.ROAllocation = cfg->n[GEN_L3P_RO];
