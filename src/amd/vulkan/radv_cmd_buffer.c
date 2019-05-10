@@ -301,7 +301,6 @@ radv_cmd_buffer_destroy(struct radv_cmd_buffer *cmd_buffer)
 static VkResult
 radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 {
-
 	cmd_buffer->device->ws->cs_reset(cmd_buffer->cs);
 
 	list_for_each_entry_safe(struct radv_cmd_buffer_upload, up,
@@ -325,6 +324,8 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	cmd_buffer->upload.offset = 0;
 
 	cmd_buffer->record_result = VK_SUCCESS;
+
+	memset(cmd_buffer->vertex_bindings, 0, sizeof(cmd_buffer->vertex_bindings));
 
 	for (unsigned i = 0; i < VK_PIPELINE_BIND_POINT_RANGE_SIZE; i++) {
 		cmd_buffer->descriptors[i].dirty = 0;
