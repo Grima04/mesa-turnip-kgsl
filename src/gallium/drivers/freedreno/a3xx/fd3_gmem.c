@@ -1016,7 +1016,7 @@ fd3_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 	if (use_hw_binning(batch)) {
 		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[tile->p];
 
-		assert(pipe->w * pipe->h);
+		assert(pipe->w && pipe->h);
 
 		fd_event_write(batch, ring, HLSQ_FLUSH);
 		fd_wfi(batch, ring);
