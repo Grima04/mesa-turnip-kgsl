@@ -1311,7 +1311,7 @@ radv_load_resource(struct ac_shader_abi *abi, LLVMValueRef index,
 		offset = ac_build_imad(&ctx->ac, index, stride, offset);
 	}
 
-	desc_ptr = ac_build_gep0(&ctx->ac, desc_ptr, offset);
+	desc_ptr = LLVMBuildGEP(ctx->ac.builder, desc_ptr, &offset, 1, "");
 	desc_ptr = ac_cast_ptr(&ctx->ac, desc_ptr, ctx->ac.v4i32);
 	LLVMSetMetadata(desc_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
 
@@ -1755,7 +1755,8 @@ static LLVMValueRef load_sample_position(struct ac_shader_abi *abi,
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 
 	LLVMValueRef result;
-	LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->ring_offsets, LLVMConstInt(ctx->ac.i32, RING_PS_SAMPLE_POSITIONS, false));
+	LLVMValueRef index = LLVMConstInt(ctx->ac.i32, RING_PS_SAMPLE_POSITIONS, false);
+	LLVMValueRef ptr = LLVMBuildGEP(ctx->ac.builder, ctx->ring_offsets, &index, 1, "");
 
 	ptr = LLVMBuildBitCast(ctx->ac.builder, ptr,
 			       ac_array_in_const_addr_space(ctx->ac.v2f32), "");
@@ -2025,7 +2026,8 @@ static LLVMValueRef radv_get_sampler_desc(struct ac_shader_abi *abi,
 
 	adjusted_index = LLVMBuildMul(builder, adjusted_index, LLVMConstInt(ctx->ac.i32, stride / type_size, 0), "");
 
-	list = ac_build_gep0(&ctx->ac, list, LLVMConstInt(ctx->ac.i32, offset, 0));
+	LLVMValueRef val_offset = LLVMConstInt(ctx->ac.i32, offset, 0);
+	list = LLVMBuildGEP(builder, list, &val_offset, 1, "");
 	list = LLVMBuildPointerCast(builder, list,
 				    ac_array_in_const32_addr_space(type), "");
 

@@ -1439,7 +1439,7 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx,
 		}
 	}
 
-	ptr = ac_build_gep0(&ctx->ac, ctx->abi->push_constants, addr);
+	ptr = LLVMBuildGEP(ctx->ac.builder, ctx->abi->push_constants, &addr, 1, "");
 
 	if (instr->dest.ssa.bit_size == 8) {
 		unsigned load_dwords = instr->dest.ssa.num_components > 1 ? 2 : 1;

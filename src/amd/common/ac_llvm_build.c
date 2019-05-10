@@ -1016,7 +1016,7 @@ LLVMValueRef ac_build_pointer_add(struct ac_llvm_context *ctx, LLVMValueRef ptr,
 				  LLVMValueRef index)
 {
 	return LLVMBuildPointerCast(ctx->builder,
-				    ac_build_gep0(ctx, ptr, index),
+				    LLVMBuildGEP(ctx->builder, ptr, &index, 1, ""),
 				    LLVMTypeOf(ptr), "");
 }
 
@@ -1063,13 +1063,12 @@ ac_build_load_custom(struct ac_llvm_context *ctx, LLVMValueRef base_ptr,
 		     bool no_unsigned_wraparound)
 {
 	LLVMValueRef pointer, result;
-	LLVMValueRef indices[2] = {ctx->i32_0, index};
 
 	if (no_unsigned_wraparound &&
 	    LLVMGetPointerAddressSpace(LLVMTypeOf(base_ptr)) == AC_ADDR_SPACE_CONST_32BIT)
-		pointer = LLVMBuildInBoundsGEP(ctx->builder, base_ptr, indices, 2, "");
+		pointer = LLVMBuildInBoundsGEP(ctx->builder, base_ptr, &index, 1, "");
 	else
-		pointer = LLVMBuildGEP(ctx->builder, base_ptr, indices, 2, "");
+		pointer = LLVMBuildGEP(ctx->builder, base_ptr, &index, 1, "");
 
 	if (uniform)
 		LLVMSetMetadata(pointer, ctx->uniform_md_kind, ctx->empty_md);
@@ -3314,7 +3313,7 @@ void ac_declare_lds_as_pointer(struct ac_llvm_context *ctx)
 LLVMValueRef ac_lds_load(struct ac_llvm_context *ctx,
 			 LLVMValueRef dw_addr)
 {
-	return ac_build_load(ctx, ctx->lds, dw_addr);
+	return LLVMBuildLoad(ctx->builder, ac_build_gep0(ctx, ctx->lds, dw_addr), "");
 }
 
 void ac_lds_store(struct ac_llvm_context *ctx,
@@ -3395,14 +3394,12 @@ LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx,
 
 LLVMTypeRef ac_array_in_const_addr_space(LLVMTypeRef elem_type)
 {
-	return LLVMPointerType(LLVMArrayType(elem_type, 0),
-			       AC_ADDR_SPACE_CONST);
+	return LLVMPointerType(elem_type, AC_ADDR_SPACE_CONST);
 }
 
 LLVMTypeRef ac_array_in_const32_addr_space(LLVMTypeRef elem_type)
 {
-	return LLVMPointerType(LLVMArrayType(elem_type, 0),
-			       AC_ADDR_SPACE_CONST_32BIT);
+	return LLVMPointerType(elem_type, AC_ADDR_SPACE_CONST_32BIT);
 }
 
 static struct ac_llvm_flow *
