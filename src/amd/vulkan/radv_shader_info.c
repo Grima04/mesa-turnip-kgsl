@@ -224,7 +224,7 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 		      struct radv_shader_info *info)
 {
 	switch (instr->intrinsic) {
-	case nir_intrinsic_interp_deref_at_sample:
+	case nir_intrinsic_load_barycentric_at_sample:
 		info->ps.needs_sample_positions = true;
 		break;
 	case nir_intrinsic_load_draw_id:

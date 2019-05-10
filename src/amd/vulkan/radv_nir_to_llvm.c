@@ -2311,131 +2311,6 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 	}
 }
 
-static void interp_fs_input(struct radv_shader_context *ctx,
-			    unsigned attr,
-			    LLVMValueRef interp_param,
-			    LLVMValueRef prim_mask,
-			    bool float16,
-			    LLVMValueRef result[4])
-{
-	LLVMValueRef attr_number;
-	unsigned chan;
-	LLVMValueRef i, j;
-	bool interp = !LLVMIsUndef(interp_param);
-
-	attr_number = LLVMConstInt(ctx->ac.i32, attr, false);
-
-	/* fs.constant returns the param from the middle vertex, so it's not
-	 * really useful for flat shading. It's meant to be used for custom
-	 * interpolation (but the intrinsic can't fetch from the other two
-	 * vertices).
-	 *
-	 * Luckily, it doesn't matter, because we rely on the FLAT_SHADE state
-	 * to do the right thing. The only reason we use fs.constant is that
-	 * fs.interp cannot be used on integers, because they can be equal
-	 * to NaN.
-	 */
-	if (interp) {
-		interp_param = LLVMBuildBitCast(ctx->ac.builder, interp_param,
-						ctx->ac.v2f32, "");
-
-		i = LLVMBuildExtractElement(ctx->ac.builder, interp_param,
-						ctx->ac.i32_0, "");
-		j = LLVMBuildExtractElement(ctx->ac.builder, interp_param,
-						ctx->ac.i32_1, "");
-	}
-
-	for (chan = 0; chan < 4; chan++) {
-		LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, chan, false);
-
-		if (interp && float16) {
-			result[chan] = ac_build_fs_interp_f16(&ctx->ac,
-							      llvm_chan,
-							      attr_number,
-							      prim_mask, i, j);
-		} else if (interp) {
-			result[chan] = ac_build_fs_interp(&ctx->ac,
-							  llvm_chan,
-							  attr_number,
-							  prim_mask, i, j);
-		} else {
-			result[chan] = ac_build_fs_interp_mov(&ctx->ac,
-							      LLVMConstInt(ctx->ac.i32, 2, false),
-							      llvm_chan,
-							      attr_number,
-							      prim_mask);
-			result[chan] = LLVMBuildBitCast(ctx->ac.builder, result[chan], ctx->ac.i32, "");
-			result[chan] = LLVMBuildTruncOrBitCast(ctx->ac.builder, result[chan], float16 ? ctx->ac.i16 : ctx->ac.i32, "");
-		}
-	}
-}
-
-static void mark_16bit_fs_input(struct radv_shader_context *ctx,
-                                const struct glsl_type *type,
-                                int location)
-{
-	if (glsl_type_is_scalar(type) || glsl_type_is_vector(type) || glsl_type_is_matrix(type)) {
-		unsigned attrib_count = glsl_count_attribute_slots(type, false);
-		if (glsl_type_is_16bit(type)) {
-			ctx->float16_shaded_mask |= ((1ull << attrib_count) - 1) << location;
-		}
-	} else if (glsl_type_is_array(type)) {
-		unsigned stride = glsl_count_attribute_slots(glsl_get_array_element(type), false);
-		for (unsigned i = 0; i < glsl_get_length(type); ++i) {
-			mark_16bit_fs_input(ctx, glsl_get_array_element(type), location + i * stride);
-		}
-	} else {
-		assert(glsl_type_is_struct_or_ifc(type));
-		for (unsigned i = 0; i < glsl_get_length(type); i++) {
-			mark_16bit_fs_input(ctx, glsl_get_struct_field(type, i), location);
-			location += glsl_count_attribute_slots(glsl_get_struct_field(type, i), false);
-		}
-	}
-}
-
-static void
-handle_fs_input_decl(struct radv_shader_context *ctx,
-		     struct nir_variable *variable)
-{
-	int idx = variable->data.location;
-	unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
-	LLVMValueRef interp = NULL;
-	uint64_t mask;
-
-	variable->data.driver_location = idx * 4;
-
-
-	if (variable->data.compact) {
-		unsigned component_count = variable->data.location_frac +
-		                           glsl_get_length(variable->type);
-		attrib_count = (component_count + 3) / 4;
-	} else
-		mark_16bit_fs_input(ctx, variable->type, idx);
-
-	mask = ((1ull << attrib_count) - 1) << variable->data.location;
-
-	if (glsl_get_base_type(glsl_without_array(variable->type)) == GLSL_TYPE_FLOAT ||
-	    glsl_get_base_type(glsl_without_array(variable->type)) == GLSL_TYPE_FLOAT16 ||
-	    glsl_get_base_type(glsl_without_array(variable->type)) == GLSL_TYPE_STRUCT) {
-		unsigned interp_type;
-		if (variable->data.sample)
-			interp_type = INTERP_SAMPLE;
-		else if (variable->data.centroid)
-			interp_type = INTERP_CENTROID;
-		else
-			interp_type = INTERP_CENTER;
-
-		interp = lookup_interp_param(&ctx->abi, variable->data.interpolation, interp_type);
-	}
-	if (interp == NULL)
-		interp = LLVMGetUndef(ctx->ac.i32);
-
-	for (unsigned i = 0; i < attrib_count; ++i)
-		ctx->inputs[ac_llvm_reg_index_soa(idx + i, 0)] = interp;
-
-	ctx->input_mask |= mask;
-}
-
 static void
 handle_vs_inputs(struct radv_shader_context *ctx,
                  struct nir_shader *nir) {
@@ -2465,64 +2340,6 @@ prepare_interp_optimize(struct radv_shader_context *ctx,
 		ctx->persp_centroid = LLVMBuildSelect(ctx->ac.builder, sel, ctx->persp_center, ctx->persp_centroid, "");
 		ctx->linear_centroid = LLVMBuildSelect(ctx->ac.builder, sel, ctx->linear_center, ctx->linear_centroid, "");
 	}
-}
-
-static void
-handle_fs_inputs(struct radv_shader_context *ctx,
-                 struct nir_shader *nir)
-{
-	prepare_interp_optimize(ctx, nir);
-
-	nir_foreach_variable(variable, &nir->inputs)
-		handle_fs_input_decl(ctx, variable);
-
-	unsigned index = 0;
-
-	if (ctx->shader_info->info.needs_multiview_view_index ||
-	    ctx->shader_info->info.ps.layer_input) {
-		ctx->input_mask |= 1ull << VARYING_SLOT_LAYER;
-		ctx->inputs[ac_llvm_reg_index_soa(VARYING_SLOT_LAYER, 0)] = LLVMGetUndef(ctx->ac.i32);
-	}
-
-	for (unsigned i = 0; i < RADEON_LLVM_MAX_INPUTS; ++i) {
-		LLVMValueRef interp_param;
-		LLVMValueRef *inputs = ctx->inputs +ac_llvm_reg_index_soa(i, 0);
-
-		if (!(ctx->input_mask & (1ull << i)))
-			continue;
-
-		if (i >= VARYING_SLOT_VAR0 || i == VARYING_SLOT_PNTC ||
-		    i == VARYING_SLOT_PRIMITIVE_ID || i == VARYING_SLOT_LAYER) {
-			interp_param = *inputs;
-			bool float16 = (ctx->float16_shaded_mask >> i) & 1;
-			interp_fs_input(ctx, index, interp_param, ctx->abi.prim_mask, float16,
-					inputs);
-
-			if (LLVMIsUndef(interp_param))
-				ctx->shader_info->fs.flat_shaded_mask |= 1u << index;
-			if (float16)
-				ctx->shader_info->fs.float16_shaded_mask |= 1u << index;
-			if (i >= VARYING_SLOT_VAR0)
-				ctx->abi.fs_input_attr_indices[i - VARYING_SLOT_VAR0] = index;
-			++index;
-		} else if (i == VARYING_SLOT_CLIP_DIST0) {
-			int length = ctx->shader_info->info.ps.num_input_clips_culls;
-
-			for (unsigned j = 0; j < length; j += 4) {
-				inputs = ctx->inputs + ac_llvm_reg_index_soa(i, j);
-
-				interp_param = *inputs;
-				interp_fs_input(ctx, index, interp_param,
-						ctx->abi.prim_mask, false, inputs);
-				++index;
-			}
-		}
-	}
-	ctx->shader_info->fs.num_interp = index;
-	ctx->shader_info->fs.input_mask = ctx->input_mask >> VARYING_SLOT_VAR0;
-
-	if (ctx->shader_info->info.needs_multiview_view_index)
-		ctx->abi.view_index = ctx->inputs[ac_llvm_reg_index_soa(VARYING_SLOT_LAYER, 0)];
 }
 
 static void
@@ -3877,8 +3694,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 	ctx.ac.builder = ac_create_builder(ctx.context, float_mode);
 
-	memset(shader_info, 0, sizeof(*shader_info));
-
 	radv_nir_shader_info_init(&shader_info->info);
 
 	for(int i = 0; i < shader_count; ++i)
@@ -4004,7 +3819,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		}
 
 		if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT)
-			handle_fs_inputs(&ctx, shaders[i]);
+			prepare_interp_optimize(&ctx, shaders[i]);
 		else if(shaders[i]->info.stage == MESA_SHADER_VERTEX)
 			handle_vs_inputs(&ctx, shaders[i]);
 		else if(shader_count >= 2 && shaders[i]->info.stage == MESA_SHADER_GEOMETRY)
