@@ -1779,6 +1779,10 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       mode = vtn_variable_mode_cross_workgroup;
       nir_mode = nir_var_mem_global;
       break;
+   case SpvStorageClassImage:
+      mode = vtn_variable_mode_image;
+      nir_mode = nir_var_mem_ubo;
+      break;
    case SpvStorageClassGeneric:
    default:
       vtn_fail("Unhandled variable storage class: %s (%u)",
@@ -1822,6 +1826,7 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
    case vtn_variable_mode_uniform:
    case vtn_variable_mode_input:
    case vtn_variable_mode_output:
+   case vtn_variable_mode_image:
       return nir_address_format_logical;
    }
 
@@ -2082,6 +2087,10 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       b->shader->num_uniforms = vtn_type_block_size(b, type);
       break;
 
+   case vtn_variable_mode_image:
+      vtn_fail("Cannot create a variable with the Image storage class");
+      break;
+
    case vtn_variable_mode_phys_ssbo:
       vtn_fail("Cannot create a variable with the "
                "PhysicalStorageBufferEXT storage class");
@@ -2244,6 +2253,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       /* These don't need actual variables. */
       break;
 
+   case vtn_variable_mode_image:
    case vtn_variable_mode_phys_ssbo:
       unreachable("Should have been caught before");
    }
