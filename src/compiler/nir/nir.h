@@ -3143,6 +3143,11 @@ void nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 void nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer);
 bool nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer);
 
+
+void nir_assign_io_var_locations(struct exec_list *var_list,
+                                 unsigned *size,
+                                 gl_shader_stage stage);
+
 typedef enum {
    /* If set, this forces all non-flat fragment shader inputs to be
     * interpolated as if with the "sample" qualifier.  This requires

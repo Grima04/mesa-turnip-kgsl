@@ -970,3 +970,112 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
 
    return progress;
 }
+
+/* TODO any better helper somewhere to sort a list? */
+
+static void
+insert_sorted(struct exec_list *var_list, nir_variable *new_var)
+{
+   nir_foreach_variable(var, var_list) {
+      if (var->data.location > new_var->data.location) {
+         exec_node_insert_node_before(&var->node, &new_var->node);
+         return;
+      }
+   }
+   exec_list_push_tail(var_list, &new_var->node);
+}
+
+static void
+sort_varyings(struct exec_list *var_list)
+{
+   struct exec_list new_list;
+   exec_list_make_empty(&new_list);
+   nir_foreach_variable_safe(var, var_list) {
+      exec_node_remove(&var->node);
+      insert_sorted(&new_list, var);
+   }
+   exec_list_move_nodes_to(&new_list, var_list);
+}
+
+void
+nir_assign_io_var_locations(struct exec_list *var_list, unsigned *size,
+                            gl_shader_stage stage)
+{
+   unsigned location = 0;
+   unsigned assigned_locations[VARYING_SLOT_TESS_MAX];
+   uint64_t processed_locs[2] = {0};
+
+   sort_varyings(var_list);
+
+   const int base = stage == MESA_SHADER_FRAGMENT ?
+      (int) FRAG_RESULT_DATA0 : (int) VARYING_SLOT_VAR0;
+
+   int UNUSED last_loc = 0;
+   nir_foreach_variable(var, var_list) {
+
+      const struct glsl_type *type = var->type;
+      if (nir_is_per_vertex_io(var, stage)) {
+         assert(glsl_type_is_array(type));
+         type = glsl_get_array_element(type);
+      }
+
+      unsigned var_size = glsl_count_attribute_slots(type, false);
+
+      /* Builtins don't allow component packing so we only need to worry about
+       * user defined varyings sharing the same location.
+       */
+      bool processed = false;
+      if (var->data.location >= base) {
+         unsigned glsl_location = var->data.location - base;
+
+         for (unsigned i = 0; i < var_size; i++) {
+            if (processed_locs[var->data.index] &
+                ((uint64_t)1 << (glsl_location + i)))
+               processed = true;
+            else
+               processed_locs[var->data.index] |=
+                  ((uint64_t)1 << (glsl_location + i));
+         }
+      }
+
+      /* Because component packing allows varyings to share the same location
+       * we may have already have processed this location.
+       */
+      if (processed) {
+         unsigned driver_location = assigned_locations[var->data.location];
+         var->data.driver_location = driver_location;
+         *size += glsl_count_attribute_slots(type, false);
+
+         /* An array may be packed such that is crosses multiple other arrays
+          * or variables, we need to make sure we have allocated the elements
+          * consecutively if the previously proccessed var was shorter than
+          * the current array we are processing.
+          *
+          * NOTE: The code below assumes the var list is ordered in ascending
+          * location order.
+          */
+         assert(last_loc <= var->data.location);
+         last_loc = var->data.location;
+         unsigned last_slot_location = driver_location + var_size;
+         if (last_slot_location > location) {
+            unsigned num_unallocated_slots = last_slot_location - location;
+            unsigned first_unallocated_slot = var_size - num_unallocated_slots;
+            for (unsigned i = first_unallocated_slot; i < num_unallocated_slots; i++) {
+               assigned_locations[var->data.location + i] = location;
+               location++;
+            }
+         }
+         continue;
+      }
+
+      for (unsigned i = 0; i < var_size; i++) {
+         assigned_locations[var->data.location + i] = location + i;
+      }
+
+      var->data.driver_location = location;
+      location += var_size;
+   }
+
+   *size += location;
+}
+
