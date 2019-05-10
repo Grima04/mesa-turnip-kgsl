@@ -143,6 +143,16 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
       vws->transfer_get(vws, vtex->hw_res, box, trans->base.stride,
                         trans->l_stride, trans->offset, level);
 
+   /* XXX Consider
+    *
+    *   glTexImage2D(..., data1);
+    *   glDrawArrays();
+    *   glFlush();
+    *   glTexImage2D(..., data2);
+    *
+    * readback and flush are both false in the second glTexImage2D call.  The
+    * draw call might end up seeing data2.
+    */
    if (readback || flush)
       vws->resource_wait(vws, vtex->hw_res);
 

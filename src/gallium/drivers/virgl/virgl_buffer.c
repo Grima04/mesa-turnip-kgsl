@@ -53,6 +53,16 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
       vs->vws->transfer_get(vs->vws, vbuf->hw_res, box, trans->base.stride,
                             trans->l_stride, trans->offset, level);
 
+   /* XXX Consider
+    *
+    *   glBufferSubData(GL_ARRAY_BUFFER, 0, 12, data1);
+    *   glDrawArrays(..);
+    *   glFlush();
+    *   glBufferSubData(GL_ARRAY_BUFFER, 0, 12, data2)
+    *
+    * readback and flush are both false in the second glBufferSubData call.
+    * The draw call might end up seeing data2.
+    */
    if (readback || flush)
       vs->vws->resource_wait(vs->vws, vbuf->hw_res);
 
