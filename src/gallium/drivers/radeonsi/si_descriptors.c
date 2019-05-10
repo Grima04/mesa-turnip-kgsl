@@ -953,7 +953,7 @@ static void si_bind_sampler_states(struct pipe_context *ctx,
 		    sstates[i] == samplers->sampler_states[slot])
 			continue;
 
-#ifdef DEBUG
+#ifndef NDEBUG
 		assert(sstates[i]->magic == SI_SAMPLER_STATE_MAGIC);
 #endif
 		samplers->sampler_states[slot] = sstates[i];

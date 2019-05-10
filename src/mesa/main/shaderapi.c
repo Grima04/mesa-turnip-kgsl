@@ -474,7 +474,7 @@ detach_shader(struct gl_context *ctx, GLuint program, GLuint shader,
          shProg->Shaders = newList;
          shProg->NumShaders = n - 1;
 
-#ifdef DEBUG
+#ifndef NDEBUG
          /* sanity check - make sure the new list's entries are sensible */
          for (j = 0; j < shProg->NumShaders; j++) {
             assert(shProg->Shaders[j]->Stage == MESA_SHADER_VERTEX ||

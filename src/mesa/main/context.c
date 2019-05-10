@@ -939,7 +939,7 @@ nop_handler(const char *name)
    if (ctx) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid call)", name);
    }
-#if defined(DEBUG)
+#ifndef NDEBUG
    else if (getenv("MESA_DEBUG") || getenv("LIBGL_DEBUG")) {
       fprintf(stderr,
               "GL User Error: gl%s called without a rendering context\n",

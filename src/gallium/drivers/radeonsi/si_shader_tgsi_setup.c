@@ -651,7 +651,7 @@ static void emit_declaration(struct lp_build_tgsi_context *bld_base,
 		}
 		if (!array_alloca) {
 			for (i = 0; i < decl_size; ++i) {
-#ifdef DEBUG
+#ifndef NDEBUG
 				snprintf(name, sizeof(name), "TEMP%d.%c",
 					 first + i / 4, "xyzw"[i % 4]);
 #endif
@@ -681,7 +681,7 @@ static void emit_declaration(struct lp_build_tgsi_context *bld_base,
 			for (i = 0; i < decl_size; ++i) {
 				LLVMValueRef ptr;
 				if (writemask & (1 << (i % 4))) {
-#ifdef DEBUG
+#ifndef NDEBUG
 					snprintf(name, sizeof(name), "TEMP%d.%c",
 						 first + i / 4, "xyzw"[i % 4]);
 #endif
@@ -735,7 +735,7 @@ static void emit_declaration(struct lp_build_tgsi_context *bld_base,
 			if (ctx->outputs[idx][0])
 				continue;
 			for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-#ifdef DEBUG
+#ifndef NDEBUG
 				snprintf(name, sizeof(name), "OUT%d.%c",
 					 idx, "xyzw"[chan % 4]);
 #endif

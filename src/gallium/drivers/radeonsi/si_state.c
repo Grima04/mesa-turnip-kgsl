@@ -4328,7 +4328,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
 		return NULL;
 	}
 
-#ifdef DEBUG
+#ifndef NDEBUG
 	rstate->magic = SI_SAMPLER_STATE_MAGIC;
 #endif
 	rstate->val[0] = (S_008F30_CLAMP_X(si_tex_wrap(state->wrap_s)) |
@@ -4407,7 +4407,7 @@ static void si_emit_sample_mask(struct si_context *sctx)
 
 static void si_delete_sampler_state(struct pipe_context *ctx, void *state)
 {
-#ifdef DEBUG
+#ifndef NDEBUG
 	struct si_sampler_state *s = state;
 
 	assert(s->magic == SI_SAMPLER_STATE_MAGIC);

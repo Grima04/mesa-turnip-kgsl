@@ -5172,7 +5172,7 @@ struct gl_memory_info
    unsigned nr_device_memory_evictions; /**< # of evictions (monotonic counter) */
 };
 
-#ifdef DEBUG
+#ifndef NDEBUG
 extern int MESA_VERBOSE;
 extern int MESA_DEBUG_FLAGS;
 #else

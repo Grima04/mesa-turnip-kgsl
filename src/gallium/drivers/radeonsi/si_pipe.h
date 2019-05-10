@@ -607,7 +607,7 @@ struct si_sampler_view {
 #define SI_SAMPLER_STATE_MAGIC 0x34f1c35a
 
 struct si_sampler_state {
-#ifdef DEBUG
+#ifndef NDEBUG
 	unsigned			magic;
 #endif
 	uint32_t			val[4];
