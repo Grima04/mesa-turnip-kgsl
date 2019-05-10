@@ -61,6 +61,8 @@ typedef struct {
 } ssa_def_validate_state;
 
 typedef struct {
+   void *mem_ctx;
+
    /* map of register -> validation state (struct above) */
    struct hash_table *regs;
 
@@ -1135,9 +1137,8 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
       validate_var_decl(var, false, state);
    }
 
-   state->regs_found = realloc(state->regs_found,
-                               BITSET_WORDS(impl->reg_alloc) *
-                               sizeof(BITSET_WORD));
+   state->regs_found = reralloc(state->mem_ctx, state->regs_found,
+                                BITSET_WORD, BITSET_WORDS(impl->reg_alloc));
    memset(state->regs_found, 0, BITSET_WORDS(impl->reg_alloc) *
                                 sizeof(BITSET_WORD));
    exec_list_validate(&impl->registers);
@@ -1145,9 +1146,8 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
       prevalidate_reg_decl(reg, state);
    }
 
-   state->ssa_defs_found = realloc(state->ssa_defs_found,
-                                   BITSET_WORDS(impl->ssa_alloc) *
-                                   sizeof(BITSET_WORD));
+   state->ssa_defs_found = reralloc(state->mem_ctx, state->ssa_defs_found,
+                                    BITSET_WORD, BITSET_WORDS(impl->ssa_alloc));
    memset(state->ssa_defs_found, 0, BITSET_WORDS(impl->ssa_alloc) *
                                     sizeof(BITSET_WORD));
    exec_list_validate(&impl->body);
@@ -1177,12 +1177,13 @@ validate_function(nir_function *func, validate_state *state)
 static void
 init_validate_state(validate_state *state)
 {
-   state->regs = _mesa_pointer_hash_table_create(NULL);
-   state->ssa_defs = _mesa_pointer_hash_table_create(NULL);
+   state->mem_ctx = ralloc_context(NULL);
+   state->regs = _mesa_pointer_hash_table_create(state->mem_ctx);
+   state->ssa_defs = _mesa_pointer_hash_table_create(state->mem_ctx);
    state->ssa_defs_found = NULL;
    state->regs_found = NULL;
-   state->var_defs = _mesa_pointer_hash_table_create(NULL);
-   state->errors = _mesa_pointer_hash_table_create(NULL);
+   state->var_defs = _mesa_pointer_hash_table_create(state->mem_ctx);
+   state->errors = _mesa_pointer_hash_table_create(state->mem_ctx);
 
    state->loop = NULL;
    state->instr = NULL;
@@ -1192,12 +1193,7 @@ init_validate_state(validate_state *state)
 static void
 destroy_validate_state(validate_state *state)
 {
-   _mesa_hash_table_destroy(state->regs, NULL);
-   _mesa_hash_table_destroy(state->ssa_defs, NULL);
-   free(state->ssa_defs_found);
-   free(state->regs_found);
-   _mesa_hash_table_destroy(state->var_defs, NULL);
-   _mesa_hash_table_destroy(state->errors, NULL);
+   ralloc_free(state->mem_ctx);
 }
 
 mtx_t fail_dump_mutex = _MTX_INITIALIZER_NP;
