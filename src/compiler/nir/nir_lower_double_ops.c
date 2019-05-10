@@ -550,6 +550,9 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
    case nir_op_ffma:
       name = "__ffma64";
       break;
+   case nir_op_fsat:
+      name = "__fsat64";
+      break;
    default:
       return false;
    }
