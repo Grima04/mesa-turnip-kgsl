@@ -87,13 +87,9 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    struct virgl_winsys *vws = vs->vws;
    struct virgl_resource *res = virgl_resource(xfer->base.resource);
    enum virgl_transfer_map_type map_type = VIRGL_TRANSFER_MAP_HW_RES;
-   bool unsynchronized = xfer->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED;
-   bool discard = xfer->base.usage & (PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE |
-                                      PIPE_TRANSFER_DISCARD_RANGE);
    bool flush;
    bool readback;
    bool wait;
-   bool copy_transfer;
 
    /* there is no way to map the host storage currently */
    if (xfer->base.usage & PIPE_TRANSFER_MAP_DIRECTLY)
@@ -110,19 +106,10 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    flush = virgl_res_needs_flush(vctx, xfer);
    readback = virgl_res_needs_readback(vctx, res, xfer->base.usage,
                                        xfer->base.level);
-
-   /* Check if we should perform a copy transfer through the transfer_uploader. */
-   copy_transfer = discard &&
-                   !readback &&
-                   !unsynchronized &&
-                   vctx->transfer_uploader &&
-                   !vctx->transfer_uploader_in_use &&
-                   (flush || vws->resource_is_busy(vws, res->hw_res));
-
    /* We need to wait for all cmdbufs, current or previous, that access the
     * resource to finish unless synchronization is disabled.
     */
-   wait = !unsynchronized;
+   wait = !(xfer->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED);
 
    /* When the transfer range consists of only uninitialized data, we can
     * assume the GPU is not accessing the range and readback is unnecessary.
@@ -135,17 +122,42 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
       flush = false;
       readback = false;
       wait = false;
-      copy_transfer = false;
    }
 
-   /* When performing a copy transfer there is no need wait for the target
-    * resource. There is normally no need to flush either, unless the amount of
-    * memory we are using for staging resources starts growing, in which case
-    * we want to flush to keep our memory consumption in check.
+   /* When the resource is busy but its content can be discarded, we can
+    * replace its HW resource or use a staging buffer to avoid waiting.
     */
-   if (copy_transfer) {
-      flush = (vctx->queued_staging_res_size > VIRGL_QUEUED_STAGING_RES_SIZE_LIMIT);
-      wait = false;
+   if (wait && (xfer->base.usage & (PIPE_TRANSFER_DISCARD_RANGE |
+                                    PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE))) {
+      const bool can_realloc =
+         (xfer->base.usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) &&
+         virgl_can_rebind_resource(vctx, &res->u.b);
+      const bool can_staging = vctx->transfer_uploader &&
+                               !vctx->transfer_uploader_in_use;
+
+      /* discard implies no readback */
+      assert(!readback);
+
+      if (can_realloc || can_staging) {
+         /* Both map types have some costs.  Do them only when the resource is
+          * (or will be) busy for real.  Otherwise, set wait to false.
+          */
+         wait = (flush || vws->resource_is_busy(vws, res->hw_res));
+         if (wait) {
+            map_type = (can_realloc) ?
+               VIRGL_TRANSFER_MAP_REALLOC :
+               VIRGL_TRANSFER_MAP_STAGING;
+            wait = false;
+
+            /* There is normally no need to flush either, unless the amount of
+             * memory we are using for staging resources starts growing, in
+             * which case we want to flush to keep our memory consumption in
+             * check.
+             */
+            flush = (vctx->queued_staging_res_size >
+               VIRGL_QUEUED_STAGING_RES_SIZE_LIMIT);
+         }
+      }
    }
 
    /* readback has some implications */
@@ -184,9 +196,6 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
 
    if (wait)
       vws->resource_wait(vws, res->hw_res);
-
-   if (copy_transfer)
-      map_type = VIRGL_TRANSFER_MAP_STAGING;
 
    return map_type;
 }
@@ -597,4 +606,40 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
    }
 
    return map_addr;
+}
+
+bool
+virgl_resource_realloc(struct virgl_context *vctx, struct virgl_resource *res)
+{
+   struct virgl_screen *vs = virgl_screen(vctx->base.screen);
+   const struct pipe_resource *templ = &res->u.b;
+   unsigned vbind;
+   struct virgl_hw_res *hw_res;
+
+   vbind = pipe_to_virgl_bind(vs, templ->bind, templ->flags);
+   hw_res = vs->vws->resource_create(vs->vws,
+                                     templ->target,
+                                     templ->format,
+                                     vbind,
+                                     templ->width0,
+                                     templ->height0,
+                                     templ->depth0,
+                                     templ->array_size,
+                                     templ->last_level,
+                                     templ->nr_samples,
+                                     res->metadata.total_size);
+   if (!hw_res)
+      return false;
+
+   vs->vws->resource_reference(vs->vws, &res->hw_res, NULL);
+   res->hw_res = hw_res;
+
+   util_range_set_empty(&res->valid_buffer_range);
+
+   /* count toward the staging resource size limit */
+   vctx->queued_staging_res_size += res->metadata.total_size;
+
+   virgl_rebind_resource(vctx, &res->u.b);
+
+   return true;
 }

@@ -134,6 +134,13 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
 
    map_type = virgl_resource_transfer_prepare(vctx, trans);
    switch (map_type) {
+   case VIRGL_TRANSFER_MAP_REALLOC:
+      if (!virgl_resource_realloc(vctx, vtex)) {
+         map_addr = NULL;
+         break;
+      }
+      vws->resource_reference(vws, &trans->hw_res, vtex->hw_res);
+      /* fall through */
    case VIRGL_TRANSFER_MAP_HW_RES:
       trans->hw_res_map = vws->resource_map(vws, vtex->hw_res);
       if (trans->hw_res_map)

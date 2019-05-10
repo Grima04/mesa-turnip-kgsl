@@ -73,10 +73,14 @@ struct virgl_resource {
 enum virgl_transfer_map_type {
    VIRGL_TRANSFER_MAP_ERROR = -1,
    VIRGL_TRANSFER_MAP_HW_RES,
+
    /* Map a range of a staging buffer. The updated contents should be transferred
     * with a copy transfer.
     */
    VIRGL_TRANSFER_MAP_STAGING,
+
+   /* Reallocate the underlying virgl_hw_res. */
+   VIRGL_TRANSFER_MAP_REALLOC,
 };
 
 struct virgl_transfer {
@@ -186,5 +190,9 @@ void virgl_resource_dirty(struct virgl_resource *res, uint32_t level);
 
 void *virgl_transfer_uploader_map(struct virgl_context *vctx,
                                   struct virgl_transfer *vtransfer);
+
+bool
+virgl_resource_realloc(struct virgl_context *vctx,
+                       struct virgl_resource *res);
 
 #endif

@@ -47,6 +47,13 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
 
    map_type = virgl_resource_transfer_prepare(vctx, trans);
    switch (map_type) {
+   case VIRGL_TRANSFER_MAP_REALLOC:
+      if (!virgl_resource_realloc(vctx, vbuf)) {
+         map_addr = NULL;
+         break;
+      }
+      vs->vws->resource_reference(vs->vws, &trans->hw_res, vbuf->hw_res);
+      /* fall through */
    case VIRGL_TRANSFER_MAP_HW_RES:
       trans->hw_res_map = vs->vws->resource_map(vs->vws, vbuf->hw_res);
       if (trans->hw_res_map)
