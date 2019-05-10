@@ -98,7 +98,7 @@ msm_dump_submit(struct drm_msm_gem_submit *req)
 			struct drm_msm_gem_submit_reloc *r = &relocs[j];
 			ERROR_MSG("    reloc[%d]: submit_offset=%u, or=%08x, shift=%d, reloc_idx=%u"
 					", reloc_offset=%"PRIu64, j, r->submit_offset, r->or, r->shift,
-					r->reloc_idx, r->reloc_offset);
+					r->reloc_idx, (uint64_t)r->reloc_offset);
 		}
 	}
 }
