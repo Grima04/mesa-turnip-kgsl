@@ -1421,7 +1421,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 	struct pipe_resource *indexbuf = info->index.resource;
-	unsigned dirty_tex_counter;
+	unsigned dirty_tex_counter, dirty_buf_counter;
 	enum pipe_prim_type rast_prim, prim = info->mode;
 	unsigned index_size = info->index_size;
 	unsigned index_offset = info->indirect ? info->start * index_size : 0;
@@ -1462,6 +1462,13 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		sctx->framebuffer.dirty_zsbuf = true;
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
 		si_update_all_texture_descriptors(sctx);
+	}
+
+	dirty_buf_counter = p_atomic_read(&sctx->screen->dirty_buf_counter);
+	if (unlikely(dirty_buf_counter != sctx->last_dirty_buf_counter)) {
+		sctx->last_dirty_buf_counter = dirty_buf_counter;
+		/* Rebind all buffers unconditionally. */
+		si_rebind_buffer(sctx, NULL);
 	}
 
 	si_decompress_textures(sctx, u_bit_consecutive(0, SI_NUM_GRAPHICS_SHADERS));

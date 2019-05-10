@@ -530,6 +530,7 @@ struct si_screen {
 	 * the counter before drawing and re-emit the states accordingly.
 	 */
 	unsigned			dirty_tex_counter;
+	unsigned			dirty_buf_counter;
 
 	/* Atomically increment this counter when an existing texture's
 	 * metadata is enabled or disabled in a way that requires changing
@@ -860,6 +861,7 @@ struct si_context {
 	unsigned			initial_gfx_cs_size;
 	unsigned			gpu_reset_counter;
 	unsigned			last_dirty_tex_counter;
+	unsigned			last_dirty_buf_counter;
 	unsigned			last_compressed_colortex_counter;
 	unsigned			last_num_draw_calls;
 	unsigned			flags; /* flush flags */
