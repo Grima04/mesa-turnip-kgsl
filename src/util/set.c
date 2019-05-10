@@ -247,7 +247,7 @@ _mesa_set_search_pre_hashed(const struct set *set, uint32_t hash,
 }
 
 static struct set_entry *
-set_add(struct set *ht, uint32_t hash, const void *key);
+set_add(struct set *ht, uint32_t hash, const void *key, bool *replaced);
 
 static void
 set_rehash(struct set *ht, unsigned new_size_index)
@@ -274,7 +274,7 @@ set_rehash(struct set *ht, unsigned new_size_index)
    ht->deleted_entries = 0;
 
    set_foreach(&old_ht, entry) {
-      set_add(ht, entry->hash, entry->key);
+      set_add(ht, entry->hash, entry->key, NULL);
    }
 
    ralloc_free(old_ht.table);
@@ -287,7 +287,7 @@ set_rehash(struct set *ht, unsigned new_size_index)
  * so previously found hash_entries are no longer valid after this function.
  */
 static struct set_entry *
-set_add(struct set *ht, uint32_t hash, const void *key)
+set_add(struct set *ht, uint32_t hash, const void *key, bool *replaced)
 {
    uint32_t hash_address;
    struct set_entry *available_entry = NULL;
@@ -325,6 +325,8 @@ set_add(struct set *ht, uint32_t hash, const void *key)
           entry->hash == hash &&
           ht->key_equals_function(key, entry->key)) {
          entry->key = key;
+         if (replaced)
+            *replaced = true;
          return entry;
       }
 
@@ -339,6 +341,8 @@ set_add(struct set *ht, uint32_t hash, const void *key)
       available_entry->hash = hash;
       available_entry->key = key;
       ht->entries++;
+      if (replaced)
+         *replaced = false;
       return available_entry;
    }
 
@@ -352,7 +356,7 @@ struct set_entry *
 _mesa_set_add(struct set *set, const void *key)
 {
    assert(set->key_hash_function);
-   return set_add(set, set->key_hash_function(key), key);
+   return set_add(set, set->key_hash_function(key), key, NULL);
 }
 
 struct set_entry *
@@ -360,7 +364,23 @@ _mesa_set_add_pre_hashed(struct set *set, uint32_t hash, const void *key)
 {
    assert(set->key_hash_function == NULL ||
           hash == set->key_hash_function(key));
-   return set_add(set, hash, key);
+   return set_add(set, hash, key, NULL);
+}
+
+struct set_entry *
+_mesa_set_search_and_add(struct set *set, const void *key, bool *replaced)
+{
+   assert(set->key_hash_function);
+   return set_add(set, set->key_hash_function(key), key, replaced);
+}
+
+struct set_entry *
+_mesa_set_search_and_add_pre_hashed(struct set *set, uint32_t hash,
+                                    const void *key, bool *replaced)
+{
+   assert(set->key_hash_function == NULL ||
+          hash == set->key_hash_function(key));
+   return set_add(set, hash, key, replaced);
 }
 
 /**
