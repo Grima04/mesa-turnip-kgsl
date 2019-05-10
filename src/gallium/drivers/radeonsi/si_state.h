@@ -447,6 +447,7 @@ struct si_descriptors {
 
 struct si_buffer_resources {
 	struct pipe_resource		**buffers; /* this has num_buffers elements */
+	unsigned			*offsets; /* this has num_buffers elements */
 
 	enum radeon_bo_priority		priority:6;
 	enum radeon_bo_priority		priority_constbuf:6;
@@ -525,8 +526,7 @@ struct pb_slab *si_bindless_descriptor_slab_alloc(void *priv, unsigned heap,
 						  unsigned entry_size,
 						  unsigned group_index);
 void si_bindless_descriptor_slab_free(void *priv, struct pb_slab *pslab);
-void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf,
-		      uint64_t old_va);
+void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf);
 /* si_state.c */
 void si_init_state_compute_functions(struct si_context *sctx);
 void si_init_state_functions(struct si_context *sctx);
