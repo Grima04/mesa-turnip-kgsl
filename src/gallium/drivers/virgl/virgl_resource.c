@@ -79,16 +79,27 @@ bool virgl_res_needs_flush(struct virgl_context *vctx,
    return true;
 }
 
+/* We need to read back from the host storage to make sure the guest storage
+ * is up-to-date.  But there are cases where the readback can be skipped:
+ *
+ *  - the content can be discarded
+ *  - the host storage is read-only
+ *
+ * Note that PIPE_TRANSFER_WRITE without discard bits requires readback.
+ * PIPE_TRANSFER_READ becomes irrelevant.  PIPE_TRANSFER_UNSYNCHRONIZED and
+ * PIPE_TRANSFER_FLUSH_EXPLICIT are also irrelevant.
+ */
 bool virgl_res_needs_readback(struct virgl_context *vctx,
                               struct virgl_resource *res,
                               unsigned usage, unsigned level)
 {
-   bool readback = true;
+   if (usage & PIPE_TRANSFER_DISCARD_RANGE)
+      return false;
+
    if (res->clean_mask & (1 << level))
-      readback = false;
-   else if (usage & PIPE_TRANSFER_DISCARD_RANGE)
-      readback = false;
-   return readback;
+      return false;
+
+   return true;
 }
 
 static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
