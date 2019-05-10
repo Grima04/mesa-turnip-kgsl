@@ -81,6 +81,7 @@ clover_files = files(
   'api/sampler.cpp',
   'api/transfer.cpp',
   'api/util.hpp',
+  'core/compiler.hpp',
   'core/context.cpp',
   'core/context.hpp',
   'core/device.cpp',
