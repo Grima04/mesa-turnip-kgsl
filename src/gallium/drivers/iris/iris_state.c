@@ -110,12 +110,16 @@
 #include "iris_genx_macros.h"
 #include "intel/common/gen_guardband.h"
 
-#if GEN_GEN == 8
-#define MOCS_PTE 0x18
-#define MOCS_WB 0x78
-#else
+#if GEN_GEN >= 12
+/* TODO: Set PTE to MOCS 61 when the kernel is ready */
+#define MOCS_PTE (3 << 1)
+#define MOCS_WB (2 << 1)
+#elif GEN_GEN >= 9
 #define MOCS_PTE (1 << 1)
 #define MOCS_WB  (2 << 1)
+#elif GEN_GEN == 8
+#define MOCS_PTE 0x18
+#define MOCS_WB 0x78
 #endif
 
 static uint32_t
