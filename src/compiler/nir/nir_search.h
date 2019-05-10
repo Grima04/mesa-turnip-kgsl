@@ -29,6 +29,7 @@
 #define _NIR_SEARCH_
 
 #include "nir.h"
+#include "util/u_dynarray.h"
 
 #define NIR_SEARCH_MAX_VARIABLES 16
 
@@ -198,6 +199,8 @@ NIR_DEFINE_CAST(nir_search_value_as_expression, nir_search_value,
 nir_ssa_def *
 nir_replace_instr(struct nir_builder *b, nir_alu_instr *instr,
                   struct hash_table *range_ht,
+                  struct util_dynarray *states,
+                  const struct per_op_table *pass_op_table,
                   const nir_search_expression *search,
                   const nir_search_value *replace);
 bool
