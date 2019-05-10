@@ -280,6 +280,20 @@ set_rehash(struct set *ht, unsigned new_size_index)
    ralloc_free(old_ht.table);
 }
 
+void
+_mesa_set_resize(struct set *set, uint32_t entries)
+{
+   /* You can't shrink a set below its number of entries */
+   if (set->entries > entries)
+      entries = set->entries;
+
+   unsigned size_index = 0;
+   while (hash_sizes[size_index].max_entries < entries)
+      size_index++;
+
+   set_rehash(set, size_index);
+}
+
 /**
  * Inserts the key with the given hash into the table.
  *
