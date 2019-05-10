@@ -27,19 +27,51 @@
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
+/* We need to flush to properly sync the transfer with the current cmdbuf.
+ * But there are cases where the flushing can be skipped:
+ *
+ *  - synchronization is disabled
+ *  - the resource is not referenced by the current cmdbuf
+ *  - the current cmdbuf has no draw/compute command that accesses the
+ *    resource (XXX there are also clear or blit commands)
+ *  - the transfer is to an undefined region and we can assume the current
+ *    cmdbuf has no command that accesses the region (XXX we cannot just check
+ *    for overlapping transfers)
+ */
 bool virgl_res_needs_flush(struct virgl_context *vctx,
                            struct virgl_transfer *trans)
 {
-   struct virgl_screen *vs = virgl_screen(vctx->base.screen);
+   struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
    struct virgl_resource *res = virgl_resource(trans->base.resource);
 
    if (trans->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED)
       return false;
-   if (!vs->vws->res_is_referenced(vs->vws, vctx->cbuf, res->hw_res))
+
+   if (!vws->res_is_referenced(vws, vctx->cbuf, res->hw_res))
       return false;
+
    if (res->clean_mask & (1 << trans->base.level)) {
+      /* XXX Consider
+       *
+       *   glCopyBufferSubData(src, dst, ...);
+       *   glBufferSubData(src, ...);
+       *
+       * at the beginning of a cmdbuf.  glBufferSubData will be incorrectly
+       * reordered before glCopyBufferSubData.
+       */
       if (vctx->num_draws == 0 && vctx->num_compute == 0)
          return false;
+
+      /* XXX Consider
+       *
+       *   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 3, data1);
+       *   glFlush();
+       *   glDrawArrays(GL_TRIANGLES, 0, 3);
+       *   glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 3, data2);
+       *   glDrawArrays(GL_TRIANGLES, 0, 3);
+       *
+       * Both draws will see data2.
+       */
       if (!virgl_transfer_queue_is_queued(&vctx->queue, trans))
          return false;
    }
