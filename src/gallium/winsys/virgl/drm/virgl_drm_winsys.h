@@ -50,6 +50,9 @@ struct virgl_hw_res {
 
    /* true when the resource is imported or exported */
    int external;
+
+   /* false when the resource is known to be idle */
+   int maybe_busy;
 };
 
 struct virgl_drm_winsys

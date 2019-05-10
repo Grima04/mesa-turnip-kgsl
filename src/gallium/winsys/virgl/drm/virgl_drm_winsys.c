@@ -87,6 +87,9 @@ static boolean virgl_drm_resource_is_busy(struct virgl_winsys *vws,
    struct drm_virtgpu_3d_wait waitcmd;
    int ret;
 
+   if (!p_atomic_read(&res->maybe_busy) && !p_atomic_read(&res->external))
+      return false;
+
    memset(&waitcmd, 0, sizeof(waitcmd));
    waitcmd.handle = res->bo_handle;
    waitcmd.flags = VIRTGPU_WAIT_NOWAIT;
@@ -94,6 +97,9 @@ static boolean virgl_drm_resource_is_busy(struct virgl_winsys *vws,
    ret = drmIoctl(vdws->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
    if (ret && errno == EBUSY)
       return TRUE;
+
+   p_atomic_set(&res->maybe_busy, false);
+
    return FALSE;
 }
 
@@ -229,6 +235,12 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->external, false);
    p_atomic_set(&res->num_cs_references, 0);
+
+   /* A newly created resource is consdiered busy by the kernel until the
+    * command is retired.
+    */
+   p_atomic_set(&res->maybe_busy, true);
+
    return res;
 }
 
@@ -263,6 +275,8 @@ virgl_bo_transfer_put(struct virgl_winsys *vws,
    struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
    struct drm_virtgpu_3d_transfer_to_host tohostcmd;
 
+   p_atomic_set(&res->maybe_busy, true);
+
    memset(&tohostcmd, 0, sizeof(tohostcmd));
    tohostcmd.bo_handle = res->bo_handle;
    tohostcmd.box.x = box->x;
@@ -287,6 +301,8 @@ virgl_bo_transfer_get(struct virgl_winsys *vws,
 {
    struct virgl_drm_winsys *vdws = virgl_drm_winsys(vws);
    struct drm_virtgpu_3d_transfer_from_host fromhostcmd;
+
+   p_atomic_set(&res->maybe_busy, true);
 
    memset(&fromhostcmd, 0, sizeof(fromhostcmd));
    fromhostcmd.bo_handle = res->bo_handle;
@@ -552,12 +568,17 @@ static void virgl_drm_resource_wait(struct virgl_winsys *qws,
    struct drm_virtgpu_3d_wait waitcmd;
    int ret;
 
+   if (!p_atomic_read(&res->maybe_busy) && !p_atomic_read(&res->external))
+      return;
+
    memset(&waitcmd, 0, sizeof(waitcmd));
    waitcmd.handle = res->bo_handle;
  again:
    ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
    if (ret == -EAGAIN)
       goto again;
+
+   p_atomic_set(&res->maybe_busy, false);
 }
 
 static bool virgl_drm_alloc_res_list(struct virgl_drm_cmd_buf *cbuf,
@@ -658,6 +679,9 @@ static void virgl_drm_clear_res_list(struct virgl_drm_cmd_buf *cbuf)
    int i;
 
    for (i = 0; i < cbuf->cres; i++) {
+      /* mark all BOs busy after submission */
+      p_atomic_set(&cbuf->res_bo[i]->maybe_busy, true);
+
       p_atomic_dec(&cbuf->res_bo[i]->num_cs_references);
       virgl_drm_resource_reference(qdws, &cbuf->res_bo[i], NULL);
    }
