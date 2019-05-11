@@ -95,7 +95,7 @@ namespace {
    module::section
    make_text_section(const std::vector<char> &code,
                      enum module::section::type section_type) {
-      const pipe_llvm_program_header header { uint32_t(code.size()) };
+      const pipe_binary_program_header header { uint32_t(code.size()) };
       module::section text { 0, section_type, header.num_bytes, {} };
 
       text.data.insert(text.data.end(), reinterpret_cast<const char *>(&header),
@@ -625,7 +625,7 @@ clover::spirv::link_program(const std::vector<module> &modules,
                          sec.type == module::section::text_library;
                }, mod.secs);
 
-      const auto c_il = ((struct pipe_llvm_program_header*)msec.data.data())->blob;
+      const auto c_il = ((struct pipe_binary_program_header*)msec.data.data())->blob;
       const auto length = msec.size;
 
       sections.push_back(reinterpret_cast<const uint32_t *>(c_il));

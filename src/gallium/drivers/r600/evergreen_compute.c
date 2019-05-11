@@ -429,7 +429,7 @@ static void *evergreen_create_compute_state(struct pipe_context *ctx,
 	struct r600_context *rctx = (struct r600_context *)ctx;
 	struct r600_pipe_compute *shader = CALLOC_STRUCT(r600_pipe_compute);
 #ifdef HAVE_OPENCL
-	const struct pipe_llvm_program_header *header;
+	const struct pipe_binary_program_header *header;
 	void *p;
 	boolean use_kill;
 #endif

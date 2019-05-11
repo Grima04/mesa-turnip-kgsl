@@ -256,7 +256,7 @@ static void *si_create_compute_state(
 					    &sel->compiler_ctx_state,
 					    program, si_create_compute_state_async);
 	} else {
-		const struct pipe_llvm_program_header *header;
+		const struct pipe_binary_program_header *header;
 		header = cso->prog;
 
 		program->shader.binary.elf_size = header->num_bytes;
