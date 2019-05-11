@@ -1974,8 +1974,6 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 struct radv_fence {
 	struct radeon_winsys_fence *fence;
 	struct wsi_fence *fence_wsi;
-	bool submitted;
-	bool signalled;
 
 	uint32_t syncobj;
 	uint32_t temp_syncobj;
