@@ -507,6 +507,42 @@ static void ppir_codegen_encode_const(ppir_const *constant, uint16_t *code)
       code[i] = util_float_to_half(constant->value[i].f);
 }
 
+static void ppir_codegen_encode_discard(ppir_node *node, void *code)
+{
+   ppir_codegen_field_branch *b = code;
+   assert(node->op = ppir_op_discard);
+
+   b->discard.word0 = PPIR_CODEGEN_DISCARD_WORD0;
+   b->discard.word1 = PPIR_CODEGEN_DISCARD_WORD1;
+   b->discard.word2 = PPIR_CODEGEN_DISCARD_WORD2;
+}
+
+static void ppir_codegen_encode_branch(ppir_node *node, void *code)
+{
+   ppir_codegen_field_branch *b = code;
+   ppir_branch_node *branch;
+   ppir_instr *target_instr;
+   if (node->op == ppir_op_discard) {
+      ppir_codegen_encode_discard(node, code);
+      return;
+   }
+
+   assert(node->op = ppir_op_branch);
+   branch = ppir_node_to_branch(node);
+
+   b->branch.unknown_0 = 0x0;
+   b->branch.arg0_source = ppir_target_get_src_reg_index(&branch->src[0]);
+   b->branch.arg1_source = ppir_target_get_src_reg_index(&branch->src[1]);
+   b->branch.cond_gt = branch->cond_gt;
+   b->branch.cond_eq = branch->cond_eq;
+   b->branch.cond_lt = branch->cond_lt;
+   b->branch.unknown_1 = 0x0;
+   b->branch.unknown_2 = 0x3;
+
+   target_instr = list_first_entry(&branch->target->instr_list, ppir_instr, list);
+   b->branch.target = target_instr->offset - node->instr->offset;
+}
+
 typedef void (*ppir_codegen_instr_slot_encode_func)(ppir_node *, void *);
 
 static const ppir_codegen_instr_slot_encode_func
@@ -520,6 +556,7 @@ ppir_codegen_encode_slot[PPIR_INSTR_SLOT_NUM] = {
    [PPIR_INSTR_SLOT_ALU_SCL_ADD] = ppir_codegen_encode_scl_add,
    [PPIR_INSTR_SLOT_ALU_COMBINE] = ppir_codegen_encode_combine,
    [PPIR_INSTR_SLOT_STORE_TEMP] = ppir_codegen_encode_store_temp,
+   [PPIR_INSTR_SLOT_BRANCH] = ppir_codegen_encode_branch,
 };
 
 static const int ppir_codegen_field_size[] = {
@@ -634,7 +671,7 @@ static void ppir_codegen_print_prog(ppir_compiler *comp)
    printf("========ppir codegen========\n");
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
-         printf("%03d: ", instr->index);
+         printf("%03d (@%6ld): ", instr->index, instr->offset);
          int n = prog[0] & 0x1f;
          for (int i = 0; i < n; i++) {
             if (i && i % 6 == 0)
@@ -655,6 +692,7 @@ bool ppir_codegen_prog(ppir_compiler *comp)
    int size = 0;
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
+         instr->offset = size;
          size += get_instr_encode_size(instr);
       }
    }

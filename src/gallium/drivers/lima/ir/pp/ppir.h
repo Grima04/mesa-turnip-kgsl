@@ -108,6 +108,9 @@ typedef enum {
 
    ppir_op_const,
 
+   ppir_op_discard,
+   ppir_op_branch,
+
    ppir_op_num,
 } ppir_op;
 
@@ -117,6 +120,8 @@ typedef enum {
    ppir_node_type_load,
    ppir_node_type_store,
    ppir_node_type_load_texture,
+   ppir_node_type_discard,
+   ppir_node_type_branch,
 } ppir_node_type;
 
 typedef struct {
@@ -254,6 +259,10 @@ typedef struct {
    int sampler_dim;
 } ppir_load_texture_node;
 
+typedef struct {
+   ppir_node node;
+} ppir_discard_node;
+
 enum ppir_instr_slot {
    PPIR_INSTR_SLOT_VARYING,
    PPIR_INSTR_SLOT_TEXLD,
@@ -264,6 +273,7 @@ enum ppir_instr_slot {
    PPIR_INSTR_SLOT_ALU_SCL_ADD,
    PPIR_INSTR_SLOT_ALU_COMBINE,
    PPIR_INSTR_SLOT_STORE_TEMP,
+   PPIR_INSTR_SLOT_BRANCH,
    PPIR_INSTR_SLOT_NUM,
    PPIR_INSTR_SLOT_END,
    PPIR_INSTR_SLOT_ALU_START = PPIR_INSTR_SLOT_ALU_VEC_MUL,
@@ -287,6 +297,7 @@ typedef struct ppir_instr {
    int est; /* earliest start time */
    int parent_index;
    bool scheduled;
+   off_t offset;
 } ppir_instr;
 
 typedef struct ppir_block {
@@ -299,6 +310,15 @@ typedef struct ppir_block {
    int sched_instr_index;
    int sched_instr_base;
 } ppir_block;
+
+typedef struct {
+   ppir_node node;
+   ppir_src src[2];
+   bool cond_gt;
+   bool cond_eq;
+   bool cond_lt;
+   ppir_block *target;
+} ppir_branch_node;
 
 struct ra_regs;
 struct lima_fs_shader_state;
@@ -322,6 +342,8 @@ typedef struct ppir_compiler {
 
    /* for regalloc spilling debug */
    int force_spilling;
+
+   ppir_block *discard_block;
 } ppir_compiler;
 
 void *ppir_node_create(ppir_block *block, ppir_op op, int index, unsigned mask);
@@ -377,6 +399,8 @@ static inline ppir_node *ppir_node_first_pred(ppir_node *node)
 #define ppir_node_to_load(node) ((ppir_load_node *)(node))
 #define ppir_node_to_store(node) ((ppir_store_node *)(node))
 #define ppir_node_to_load_texture(node) ((ppir_load_texture_node *)(node))
+#define ppir_node_to_discard(node) ((ppir_discard_node *)(node))
+#define ppir_node_to_branch(node) ((ppir_branch_node *)(node))
 
 static inline ppir_dest *ppir_node_get_dest(ppir_node *node)
 {

@@ -93,7 +93,8 @@ static bool insert_to_each_succ_instr(ppir_block *block, ppir_node *node)
 
    ppir_node_foreach_succ_safe(node, dep) {
       ppir_node *succ = dep->succ;
-      assert(succ->type == ppir_node_type_alu);
+      assert(succ->type == ppir_node_type_alu ||
+             succ->type == ppir_node_type_branch);
 
       if (!ppir_instr_insert_node(succ->instr, node)) {
          /* create a move node to insert for failed node */
@@ -323,6 +324,15 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
       node = move;
       break;
    }
+   case ppir_node_type_discard:
+      if (!create_new_instr(block, node))
+         return false;
+      node->instr->is_end = true;
+      break;
+   case ppir_node_type_branch:
+      if (!create_new_instr(block, node))
+         return false;
+      break;
    default:
       return false;
    }
