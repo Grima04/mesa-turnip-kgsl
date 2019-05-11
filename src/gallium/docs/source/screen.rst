@@ -522,6 +522,8 @@ The integer capabilities:
   resource_from_handle and resource_get_handle.
 * ``PIPE_CAP_PREFER_COMPUTE_BLIT_FOR_MULTIMEDIA``: Whether VDPAU, VAAPI, and
   OpenMAX should use a compute-based blit instead of pipe_context::blit.
+* ``PIPE_CAP_FRAGMENT_SHADER_INTERLOCK``: True if fragment shader interlock
+  functionality is supported.
 
 .. _pipe_capf:
 
