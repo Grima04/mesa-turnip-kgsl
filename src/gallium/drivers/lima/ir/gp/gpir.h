@@ -174,6 +174,7 @@ typedef struct gpir_node {
          bool ready;
          bool inserted;
          bool max_node, next_max_node;
+         bool complex_allowed;
       } sched;
       struct {
          int parent_index;
@@ -288,16 +289,22 @@ typedef struct gpir_instr {
     * (3) There is a store instruction scheduled, but not its child.
     *
     * The complex slot cannot be used for a move in case (1), since it only
-    * has a FIFO depth of 1, but it can be used for (2) and (3). In order to
-    * ensure that we have enough space for all three, we maintain the
-    * following invariants:
+    * has a FIFO depth of 1, but it can be used for (2) as well as (3) as long
+    * as the uses aren't in certain slots. It turns out that we don't have to
+    * worry about nodes that can't use the complex slot for (2), since there
+    * are at most 4 uses 1 cycle ago that can't use the complex slot, but we
+    * do have to worry about (3). This means tracking stores whose children
+    * cannot be in the complex slot. In order to ensure that we have enough
+    * space for all three, we maintain the following invariants:
     *
     * (1) alu_num_slot_free >= alu_num_slot_needed_by_store +
     *       alu_num_slot_needed_by_max +
     *       alu_num_slot_needed_by_next_max
-    * (2) alu_non_cplx_slot_free >= alu_num_slot_needed_by_max
+    * (2) alu_non_cplx_slot_free >= alu_num_slot_needed_by_max +
+    *       alu_num_slot_neede_by_non_cplx_store
     */
    int alu_num_slot_needed_by_store;
+   int alu_num_slot_needed_by_non_cplx_store;
    int alu_num_slot_needed_by_max;
    int alu_num_slot_needed_by_next_max;
 

@@ -640,6 +640,7 @@ static gpir_node *create_move(sched_ctx *ctx, gpir_node *node)
    move->node.sched.dist = node->sched.dist;
    move->node.sched.max_node = node->sched.max_node;
    move->node.sched.next_max_node = node->sched.next_max_node;
+   move->node.sched.complex_allowed = node->sched.complex_allowed;
 
    gpir_debug("create move %d for %d\n", move->node.index, node->index);
 
@@ -974,6 +975,7 @@ static bool try_spill_node(sched_ctx *ctx, gpir_node *node)
       store->child = node;
       store->node.sched.max_node = false;
       store->node.sched.next_max_node = false;
+      store->node.sched.complex_allowed = false;
       store->node.sched.pos = -1;
       store->node.sched.instr = NULL;
       store->node.sched.inserted = false;
@@ -1086,6 +1088,44 @@ static int gpir_get_min_end_as_move(gpir_node *node)
    return min;
 }
 
+/* The second source for add0, add1, mul0, and mul1 units cannot be complex.
+ * The hardware overwrites the add second sources with 0 and mul second
+ * sources with 1. This can be a problem if we need to insert more next-max
+ * moves but we only have values that can't use the complex unit for moves.
+ *
+ * Fortunately, we only need to insert a next-max move if there are more than
+ * 5 next-max nodes, but there are only 4 sources in the previous instruction
+ * that make values not complex-capable, which means there can be at most 4
+ * non-complex-capable values. Hence there will always be at least two values
+ * that can be rewritten to use a move in the complex slot. However, we have
+ * to be careful not to waste those values by putting both of them in a
+ * non-complex slot. This is handled for us by gpir_instr, which will reject
+ * such instructions. We just need to tell it which nodes can use complex, and
+ * it will do the accounting to figure out what is safe.
+ */
+
+static bool can_use_complex(gpir_node *node)
+{
+   gpir_node_foreach_succ(node, dep) {
+      if (dep->type != GPIR_DEP_INPUT)
+         continue;
+
+      gpir_node *succ = dep->succ;
+      if (succ->type != gpir_node_type_alu)
+         continue;
+
+      gpir_alu_node *alu = gpir_node_to_alu(succ);
+      if (alu->num_child >= 2 && alu->children[1] == node)
+         return false;
+
+      /* complex1 puts its third source in the fourth slot */
+      if (alu->node.op == gpir_op_complex1 && alu->children[2] == node)
+         return false;
+   }
+
+   return true;
+}
+
 /* Initialize node->sched.max_node and node->sched.next_max_node for every
  * input node on the ready list. We should only need to do this once per
  * instruction, at the beginning, since we never add max nodes to the ready
@@ -1104,6 +1144,8 @@ static void sched_find_max_nodes(sched_ctx *ctx)
       int min_end_move = gpir_get_min_end_as_move(node);
       node->sched.max_node = (min_end_move == ctx->instr->index);
       node->sched.next_max_node = (min_end_move == ctx->instr->index + 1);
+      if (node->sched.next_max_node)
+         node->sched.complex_allowed = can_use_complex(node);
 
       if (node->sched.max_node)
          ctx->instr->alu_num_slot_needed_by_max++;
@@ -1120,6 +1162,7 @@ static void verify_max_nodes(sched_ctx *ctx)
    int alu_num_slot_needed_by_max = 0;
    int alu_num_slot_needed_by_next_max = -5;
    int alu_num_slot_needed_by_store = 0;
+   int alu_num_slot_needed_by_non_cplx_store = 0;
 
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
       if (!gpir_is_input_node(node))
@@ -1129,15 +1172,20 @@ static void verify_max_nodes(sched_ctx *ctx)
          alu_num_slot_needed_by_max++;
       if (node->sched.next_max_node)
          alu_num_slot_needed_by_next_max++;
-      if (used_by_store(node, ctx->instr))
+      if (used_by_store(node, ctx->instr)) {
          alu_num_slot_needed_by_store++;
+         if (node->sched.next_max_node && !node->sched.complex_allowed)
+            alu_num_slot_needed_by_non_cplx_store++;
+      }
    }
 
    assert(ctx->instr->alu_num_slot_needed_by_max == alu_num_slot_needed_by_max);
    assert(ctx->instr->alu_num_slot_needed_by_next_max == alu_num_slot_needed_by_next_max);
    assert(ctx->instr->alu_num_slot_needed_by_store == alu_num_slot_needed_by_store);
-   assert(ctx->instr->alu_num_slot_free >= alu_num_slot_needed_by_store + alu_num_slot_needed_by_max + alu_num_slot_needed_by_next_max);
-   assert(ctx->instr->alu_non_cplx_slot_free >= alu_num_slot_needed_by_max);
+   assert(ctx->instr->alu_num_slot_needed_by_non_cplx_store ==
+          alu_num_slot_needed_by_non_cplx_store);
+   assert(ctx->instr->alu_num_slot_free >= alu_num_slot_needed_by_store + alu_num_slot_needed_by_max + MAX2(alu_num_slot_needed_by_next_max, 0));
+   assert(ctx->instr->alu_non_cplx_slot_free >= alu_num_slot_needed_by_max + alu_num_slot_needed_by_non_cplx_store);
 }
 
 static bool try_node(sched_ctx *ctx)
@@ -1207,6 +1255,22 @@ static void place_move(sched_ctx *ctx, gpir_node *node)
    assert(score != INT_MIN);
 }
 
+/* For next-max nodes, not every node can be offloaded to a move in the
+ * complex slot. If we run out of non-complex slots, then such nodes cannot
+ * have moves placed for them. There should always be sufficient
+ * complex-capable nodes so that this isn't a problem.
+ */
+static bool can_place_move(sched_ctx *ctx, gpir_node *node)
+{
+   if (!node->sched.next_max_node)
+      return true;
+
+   if (node->sched.complex_allowed)
+      return true;
+
+   return ctx->instr->alu_non_cplx_slot_free > 0;
+}
+
 static bool sched_move(sched_ctx *ctx)
 {
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
@@ -1250,6 +1314,9 @@ static bool sched_move(sched_ctx *ctx)
     */
    if (ctx->instr->alu_num_slot_free > 0) {
       list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
+         if (!can_place_move(ctx, node))
+            continue;
+
          if (node->sched.next_max_node && node->op == gpir_op_complex1 &&
              node->sched.ready) {
             bool skip = true;
@@ -1284,6 +1351,9 @@ static bool sched_move(sched_ctx *ctx)
     */
    if (ctx->instr->alu_num_slot_free > 0) {
       list_for_each_entry_rev(gpir_node, node, &ctx->ready_list, list) {
+         if (!can_place_move(ctx, node))
+            continue;
+
          if (node->sched.next_max_node &&
              !(node->op == gpir_op_complex1 && node->sched.ready)) {
             place_move(ctx, node);
@@ -1298,6 +1368,9 @@ static bool sched_move(sched_ctx *ctx)
 
    if (ctx->instr->alu_num_slot_needed_by_next_max > 0) {
       list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
+         if (!can_place_move(ctx, node))
+            continue;
+
          if (node->sched.next_max_node) {
             place_move(ctx, node);
             return true;
@@ -1546,6 +1619,7 @@ bool gpir_schedule_prog(gpir_compiler *comp)
          node->sched.physreg_store = NULL;
          node->sched.ready = false;
          node->sched.inserted = false;
+         node->sched.complex_allowed = false;
          node->sched.max_node = false;
          node->sched.next_max_node = false;
       }

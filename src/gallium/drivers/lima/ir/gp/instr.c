@@ -85,10 +85,15 @@ static bool gpir_instr_insert_alu_check(gpir_instr *instr, gpir_node *node)
    if (!gpir_instr_check_acc_same_op(instr, node, node->sched.pos))
       return false;
 
+   if (node->sched.next_max_node && !node->sched.complex_allowed &&
+       node->sched.pos == GPIR_INSTR_SLOT_COMPLEX)
+      return false;
+
    int consume_slot = gpir_instr_get_consume_slot(instr, node);
    int non_cplx_consume_slot =
       node->sched.pos == GPIR_INSTR_SLOT_COMPLEX ? 0 : consume_slot;
    int store_reduce_slot = 0;
+   int non_cplx_store_reduce_slot = 0;
    int max_reduce_slot = node->sched.max_node ? 1 : 0;
    int next_max_reduce_slot = node->sched.next_max_node ? 1 : 0;
 
@@ -100,6 +105,8 @@ static bool gpir_instr_insert_alu_check(gpir_instr *instr, gpir_node *node)
       gpir_store_node *s = gpir_node_to_store(instr->slots[i]);
       if (s && s->child == node) {
          store_reduce_slot = 1;
+         if (node->sched.next_max_node && !node->sched.complex_allowed)
+            non_cplx_store_reduce_slot = 1;
          break;
       }
    }
@@ -118,7 +125,8 @@ static bool gpir_instr_insert_alu_check(gpir_instr *instr, gpir_node *node)
    }
 
    int non_cplx_slot_difference =
-       instr->alu_num_slot_needed_by_max - max_reduce_slot -
+       instr->alu_num_slot_needed_by_max - max_reduce_slot +
+       instr->alu_num_slot_needed_by_non_cplx_store - non_cplx_store_reduce_slot -
        (instr->alu_non_cplx_slot_free - non_cplx_consume_slot);
    if (non_cplx_slot_difference > 0) {
       gpir_debug("failed %d because of alu slot\n", node->index);
@@ -131,6 +139,7 @@ static bool gpir_instr_insert_alu_check(gpir_instr *instr, gpir_node *node)
    instr->alu_num_slot_free -= consume_slot;
    instr->alu_non_cplx_slot_free -= non_cplx_consume_slot;
    instr->alu_num_slot_needed_by_store -= store_reduce_slot;
+   instr->alu_num_slot_needed_by_non_cplx_store -= non_cplx_store_reduce_slot;
    instr->alu_num_slot_needed_by_max -= max_reduce_slot;
    instr->alu_num_slot_needed_by_next_max -= next_max_reduce_slot;
    return true;
@@ -144,6 +153,8 @@ static void gpir_instr_remove_alu(gpir_instr *instr, gpir_node *node)
       gpir_store_node *s = gpir_node_to_store(instr->slots[i]);
       if (s && s->child == node) {
          instr->alu_num_slot_needed_by_store++;
+         if (node->sched.next_max_node && !node->sched.complex_allowed)
+            instr->alu_num_slot_needed_by_non_cplx_store++;
          break;
       }
    }
@@ -296,7 +307,7 @@ static bool gpir_instr_insert_store_check(gpir_instr *instr, gpir_node *node)
    }
 
    /* Check the invariants documented in gpir.h, similar to the ALU case.
-    * Since the only thing that changes is alu_num_slot_needed_by_store, we
+    * When the only thing that changes is alu_num_slot_needed_by_store, we
     * can get away with just checking the first one.
     */
    int slot_difference = instr->alu_num_slot_needed_by_store + 1
@@ -306,6 +317,25 @@ static bool gpir_instr_insert_store_check(gpir_instr *instr, gpir_node *node)
    if (slot_difference > 0) {
       instr->slot_difference = slot_difference;
       return false;
+   }
+
+   if (store->child->sched.next_max_node &&
+       !store->child->sched.complex_allowed) {
+      /* The child of the store is already partially ready, and has a use one
+       * cycle ago that disqualifies it (or a move replacing it) from being
+       * put in the complex slot. Therefore we have to check the non-complex
+       * invariant.
+       */
+      int non_cplx_slot_difference =
+          instr->alu_num_slot_needed_by_max +
+          instr->alu_num_slot_needed_by_non_cplx_store + 1 -
+          instr->alu_non_cplx_slot_free;
+      if (non_cplx_slot_difference > 0) {
+         instr->non_cplx_slot_difference = non_cplx_slot_difference;
+         return false;
+      }
+
+      instr->alu_num_slot_needed_by_non_cplx_store++;
    }
 
    instr->alu_num_slot_needed_by_store++;
@@ -345,6 +375,11 @@ static void gpir_instr_remove_store(gpir_instr *instr, gpir_node *node)
    }
 
    instr->alu_num_slot_needed_by_store--;
+
+   if (store->child->sched.next_max_node &&
+       !store->child->sched.complex_allowed) {
+      instr->alu_num_slot_needed_by_non_cplx_store--;
+   }
 
 out:
    if (!instr->slots[other_slot])
