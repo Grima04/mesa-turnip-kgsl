@@ -38,6 +38,7 @@
 #include "util/slab.h"
 #include "util/u_dynarray.h"
 #include "util/u_helpers.h"
+#include "compiler/nir/nir.h"
 
 struct etna_bo;
 
@@ -87,6 +88,8 @@ struct etna_screen {
    /* set of resources used by currently-unsubmitted renders */
    mtx_t lock;
    struct set *used_resources;
+
+   nir_shader_compiler_options options;
 };
 
 static inline struct etna_screen *

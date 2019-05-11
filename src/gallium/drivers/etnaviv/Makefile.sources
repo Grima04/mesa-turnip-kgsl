@@ -18,6 +18,8 @@ C_SOURCES :=  \
 	etnaviv_clear_blit.h \
 	etnaviv_compiler.c \
 	etnaviv_compiler.h \
+	etnaviv_compiler_nir.c \
+	etnaviv_compiler_nir_emit.h \
 	etnaviv_context.c \
 	etnaviv_context.h \
 	etnaviv_debug.h \

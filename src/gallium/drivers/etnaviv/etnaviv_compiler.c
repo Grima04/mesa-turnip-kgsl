@@ -2286,6 +2286,9 @@ copy_uniform_state_to_shader(struct etna_compile *c, struct etna_shader_variant 
 bool
 etna_compile_shader(struct etna_shader_variant *v)
 {
+   if (DBG_ENABLED(ETNA_DBG_NIR))
+      return etna_compile_shader_nir(v);
+
    /* Create scratch space that may be too large to fit on stack
     */
    bool ret;
@@ -2449,11 +2452,12 @@ etna_compile_shader(struct etna_shader_variant *v)
    etna_compile_fill_in_labels(c);
 
    /* fill in output structure */
-   v->processor = c->info.processor;
+   v->stage = c->info.processor == PIPE_SHADER_FRAGMENT ? MESA_SHADER_FRAGMENT : MESA_SHADER_VERTEX;
    v->code_size = c->inst_ptr * 4;
    v->code = mem_dup(c->code, c->inst_ptr * 16);
    v->num_loops = c->num_loops;
    v->num_temps = c->next_free_native;
+   v->vs_id_in_reg = -1;
    v->vs_pos_out_reg = -1;
    v->vs_pointsize_out_reg = -1;
    v->ps_color_out_reg = -1;
@@ -2483,7 +2487,7 @@ extern const char *tgsi_swizzle_names[];
 void
 etna_dump_shader(const struct etna_shader_variant *shader)
 {
-   if (shader->processor == PIPE_SHADER_VERTEX)
+   if (shader->stage == MESA_SHADER_VERTEX)
       printf("VERT\n");
    else
       printf("FRAG\n");
@@ -2502,22 +2506,42 @@ etna_dump_shader(const struct etna_shader_variant *shader)
              shader->uniforms.imm_data[idx],
              shader->uniforms.imm_contents[idx]);
    }
-   printf("inputs:\n");
-   for (int idx = 0; idx < shader->infile.num_reg; ++idx) {
-      printf(" [%i] name=%s index=%i comps=%i\n", shader->infile.reg[idx].reg,
-             tgsi_semantic_names[shader->infile.reg[idx].semantic.Name],
-             shader->infile.reg[idx].semantic.Index,
-             shader->infile.reg[idx].num_components);
-   }
-   printf("outputs:\n");
-   for (int idx = 0; idx < shader->outfile.num_reg; ++idx) {
-      printf(" [%i] name=%s index=%i comps=%i\n", shader->outfile.reg[idx].reg,
-             tgsi_semantic_names[shader->outfile.reg[idx].semantic.Name],
-             shader->outfile.reg[idx].semantic.Index,
-             shader->outfile.reg[idx].num_components);
+
+   if (DBG_ENABLED(ETNA_DBG_NIR)) {
+      printf("inputs:\n");
+      for (int idx = 0; idx < shader->infile.num_reg; ++idx) {
+         printf(" [%i] name=%s comps=%i\n", shader->infile.reg[idx].reg,
+                (shader->stage == MESA_SHADER_VERTEX) ?
+                  gl_vert_attrib_name(shader->infile.reg[idx].slot) :
+                  gl_varying_slot_name(shader->infile.reg[idx].slot),
+                shader->infile.reg[idx].num_components);
+      }
+      printf("outputs:\n");
+      for (int idx = 0; idx < shader->outfile.num_reg; ++idx) {
+         printf(" [%i] name=%s comps=%i\n", shader->outfile.reg[idx].reg,
+                (shader->stage == MESA_SHADER_VERTEX) ?
+                  gl_varying_slot_name(shader->outfile.reg[idx].slot) :
+                  gl_frag_result_name(shader->outfile.reg[idx].slot),
+                shader->outfile.reg[idx].num_components);
+      }
+   } else {
+      printf("inputs:\n");
+      for (int idx = 0; idx < shader->infile.num_reg; ++idx) {
+         printf(" [%i] name=%s index=%i comps=%i\n", shader->infile.reg[idx].reg,
+                tgsi_semantic_names[shader->infile.reg[idx].semantic.Name],
+                shader->infile.reg[idx].semantic.Index,
+                shader->infile.reg[idx].num_components);
+      }
+      printf("outputs:\n");
+      for (int idx = 0; idx < shader->outfile.num_reg; ++idx) {
+         printf(" [%i] name=%s index=%i comps=%i\n", shader->outfile.reg[idx].reg,
+                tgsi_semantic_names[shader->outfile.reg[idx].semantic.Name],
+                shader->outfile.reg[idx].semantic.Index,
+                shader->outfile.reg[idx].num_components);
+      }
    }
    printf("special:\n");
-   if (shader->processor == PIPE_SHADER_VERTEX) {
+   if (shader->stage == MESA_SHADER_VERTEX) {
       printf("  vs_pos_out_reg=%i\n", shader->vs_pos_out_reg);
       printf("  vs_pointsize_out_reg=%i\n", shader->vs_pointsize_out_reg);
       printf("  vs_load_balancing=0x%08x\n", shader->vs_load_balancing);
@@ -2531,6 +2555,9 @@ etna_dump_shader(const struct etna_shader_variant *shader)
 void
 etna_destroy_shader(struct etna_shader_variant *shader)
 {
+   if (DBG_ENABLED(ETNA_DBG_NIR))
+      return etna_destroy_shader_nir(shader);
+
    assert(shader);
 
    FREE(shader->code);
@@ -2554,6 +2581,9 @@ bool
 etna_link_shader(struct etna_shader_link_info *info,
                  const struct etna_shader_variant *vs, const struct etna_shader_variant *fs)
 {
+   if (DBG_ENABLED(ETNA_DBG_NIR))
+      return etna_link_shader_nir(info, vs, fs);
+
    int comp_ofs = 0;
    /* For each fragment input we need to find the associated vertex shader
     * output, which can be found by matching on semantic name and index. A
