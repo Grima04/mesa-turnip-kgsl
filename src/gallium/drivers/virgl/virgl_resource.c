@@ -103,15 +103,20 @@ static bool virgl_res_needs_readback(struct virgl_context *vctx,
    return true;
 }
 
-void
+enum virgl_transfer_map_type
 virgl_resource_transfer_prepare(struct virgl_context *vctx,
                                 struct virgl_transfer *xfer)
 {
    struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
    struct virgl_resource *res = virgl_resource(xfer->base.resource);
+   enum virgl_transfer_map_type map_type = VIRGL_TRANSFER_MAP_HW_RES;
    bool flush;
    bool readback;
    bool wait;
+
+   /* there is no way to map the host storage currently */
+   if (xfer->base.usage & PIPE_TRANSFER_MAP_DIRECTLY)
+      return VIRGL_TRANSFER_MAP_ERROR;
 
    flush = virgl_res_needs_flush(vctx, xfer);
    readback = virgl_res_needs_readback(vctx, res, xfer->base.usage,
@@ -138,8 +143,18 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
                         xfer->l_stride, xfer->offset, xfer->base.level);
    }
 
-   if (wait)
+   if (wait) {
+      /* fail the mapping after flush and readback so that it will succeed in
+       * the future
+       */
+      if ((xfer->base.usage & PIPE_TRANSFER_DONTBLOCK) &&
+          vws->resource_is_busy(vws, res->hw_res))
+         return VIRGL_TRANSFER_MAP_ERROR;
+
       vws->resource_wait(vws, res->hw_res);
+   }
+
+   return map_type;
 }
 
 static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,

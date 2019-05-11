@@ -126,6 +126,7 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
    struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
    struct virgl_resource *vtex = virgl_resource(resource);
    struct virgl_transfer *trans;
+   enum virgl_transfer_map_type map_type;
 
    trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
                                           &vtex->metadata, level, usage, box);
@@ -133,9 +134,17 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
 
    assert(resource->nr_samples <= 1);
 
-   virgl_resource_transfer_prepare(vctx, trans);
+   map_type = virgl_resource_transfer_prepare(vctx, trans);
+   switch (map_type) {
+   case VIRGL_TRANSFER_MAP_HW_RES:
+      trans->hw_res_map = vws->resource_map(vws, vtex->hw_res);
+      break;
+   case VIRGL_TRANSFER_MAP_ERROR:
+   default:
+      trans->hw_res_map = NULL;
+      break;
+   }
 
-   trans->hw_res_map = vws->resource_map(vws, vtex->hw_res);
    if (!trans->hw_res_map) {
       virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
       return NULL;
