@@ -423,8 +423,11 @@ _mesa_update_state( struct gl_context *ctx )
 static void
 set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs)
 {
-   if (ctx->API != API_OPENGL_COMPAT &&
-       ctx->API != API_OPENGLES)
+   /*
+    * The gl_context::varying_vp_inputs value is only used when in
+    * VP_MODE_FF mode.
+    */
+   if (VP_MODE_FF != ctx->VertexProgram._VPMode)
       return;
 
    if (ctx->varying_vp_inputs != varying_inputs) {
@@ -471,6 +474,12 @@ set_vertex_processing_mode(struct gl_context *ctx, gl_vertex_processing_mode m)
 
    /* Finally memorize the value */
    ctx->VertexProgram._VPMode = m;
+
+   /* Since we only track the varying inputs while being in fixed function
+    * vertex processing mode, we may need to recheck for the
+    * _NEW_VARYING_VP_INPUTS bit.
+    */
+   set_varying_vp_inputs(ctx, ctx->Array._DrawVAOEnabledAttribs);
 }
 
 
