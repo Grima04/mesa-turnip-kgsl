@@ -348,12 +348,30 @@ lima_screen_get_compiler_options(struct pipe_screen *pscreen,
 static bool
 lima_screen_set_plb_max_blk(struct lima_screen *screen)
 {
-   if (lima_plb_max_blk)
+   if (lima_plb_max_blk) {
       screen->plb_max_blk = lima_plb_max_blk;
-   else if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI450)
+      return true;
+   }
+
+   if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI450)
       screen->plb_max_blk = 4096;
    else
       screen->plb_max_blk = 512;
+
+   drmDevicePtr devinfo;
+
+   if (drmGetDevice2(screen->fd, 0, &devinfo))
+      return false;
+
+   if (devinfo->bustype == DRM_BUS_PLATFORM && devinfo->deviceinfo.platform) {
+      char **compatible = devinfo->deviceinfo.platform->compatible;
+
+      if (compatible && *compatible)
+         if (!strcmp("allwinner,sun50i-h5-mali", *compatible))
+            screen->plb_max_blk = 2048;
+   }
+
+   drmFreeDevice(&devinfo);
 
    return true;
 }
