@@ -559,6 +559,12 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 			dst[0] = ir3_MUL_S(b, src[0], 0, src[1], 0);
 		}
 		break;
+	case nir_op_umul_low:
+		dst[0] = ir3_MULL_U(b, src[0], 0, src[1], 0);
+		break;
+	case nir_op_imadsh_mix16:
+		dst[0] = ir3_MADSH_M16(b, src[0], 0, src[1], 0, src[2], 0);
+		break;
 	case nir_op_ineg:
 		dst[0] = ir3_ABSNEG_S(b, src[0], IR3_REG_SNEG);
 		break;
