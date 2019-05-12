@@ -55,6 +55,9 @@ prim_is_points_or_lines(const struct pipe_draw_info *draw)
 /**
  * Record the current primitive mode and restart information, flagging
  * related packets as dirty if necessary.
+ *
+ * This must be called before updating compiled shaders, because the patch
+ * information informs the TCS key.
  */
 static void
 iris_update_draw_info(struct iris_context *ice,
@@ -94,7 +97,15 @@ iris_update_draw_info(struct iris_context *ice,
       ice->state.primitive_restart = info->primitive_restart;
       ice->state.cut_index = info->restart_index;
    }
+}
 
+/**
+ * Update shader draw parameters, flagging VF packets as dirty if necessary.
+ */
+static void
+iris_update_draw_parameters(struct iris_context *ice,
+                            const struct pipe_draw_info *info)
+{
    if (info->indirect) {
       pipe_resource_reference(&ice->draw.draw_params_res,
                               info->indirect->buffer);
@@ -153,6 +164,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
    iris_batch_maybe_flush(batch, 1500);
 
    iris_update_draw_info(ice, info);
+   iris_update_draw_parameters(ice, dinfo);
 
    if (devinfo->gen == 9)
       gen9_toggle_preemption(ice, batch, info);
