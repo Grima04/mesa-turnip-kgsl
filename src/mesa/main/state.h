@@ -47,7 +47,7 @@ _mesa_set_vp_override(struct gl_context *ctx, GLboolean flag);
 
 
 /**
- * Update ctx->VertexProgram._VertexProgramMode.
+ * Update ctx->VertexProgram._VPMode.
  */
 extern void
 _mesa_update_vertex_processing_mode(struct gl_context *ctx);
