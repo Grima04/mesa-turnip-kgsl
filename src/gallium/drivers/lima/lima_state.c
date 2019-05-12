@@ -58,13 +58,15 @@ lima_set_framebuffer_state(struct pipe_context *pctx,
    int width = align(framebuffer->width, 16) >> 4;
    int height = align(framebuffer->height, 16) >> 4;
    if (fb->tiled_w != width || fb->tiled_h != height) {
+      struct lima_screen *screen = lima_screen(ctx->base.screen);
+
       fb->tiled_w = width;
       fb->tiled_h = height;
 
       fb->shift_h = 0;
       fb->shift_w = 0;
 
-      int limit = ctx->plb_max_blk;
+      int limit = screen->plb_max_blk;
       while ((width * height) > limit) {
          if (width >= height) {
             width = (width + 1) >> 1;

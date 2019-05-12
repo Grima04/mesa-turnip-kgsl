@@ -214,12 +214,8 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    util_dynarray_init(&ctx->vs_cmd_array, ctx);
    util_dynarray_init(&ctx->plbu_cmd_array, ctx);
 
-   if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI450)
-      ctx->plb_max_blk = 4096;
-   else
-      ctx->plb_max_blk = 512;
-   ctx->plb_size = ctx->plb_max_blk * LIMA_CTX_PLB_BLK_SIZE;
-   ctx->plb_gp_size = ctx->plb_max_blk * 4;
+   ctx->plb_size = screen->plb_max_blk * LIMA_CTX_PLB_BLK_SIZE;
+   ctx->plb_gp_size = screen->plb_max_blk * 4;
 
    for (int i = 0; i < lima_ctx_num_plb; i++) {
       ctx->plb[i] = lima_bo_create(screen, ctx->plb_size, 0);
@@ -241,7 +237,7 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    /* plb gp stream is static for any framebuffer */
    for (int i = 0; i < lima_ctx_num_plb; i++) {
       uint32_t *plb_gp_stream = ctx->plb_gp_stream->map + i * ctx->plb_gp_size;
-      for (int j = 0; j < ctx->plb_max_blk; j++)
+      for (int j = 0; j < screen->plb_max_blk; j++)
          plb_gp_stream[j] = ctx->plb[i]->va + LIMA_CTX_PLB_BLK_SIZE * j;
    }
 

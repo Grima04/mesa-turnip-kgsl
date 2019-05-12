@@ -42,6 +42,8 @@
 
 #include "xf86drm.h"
 
+int lima_plb_max_blk = 0;
+
 static void
 lima_screen_destroy(struct pipe_screen *pscreen)
 {
@@ -344,6 +346,19 @@ lima_screen_get_compiler_options(struct pipe_screen *pscreen,
 }
 
 static bool
+lima_screen_set_plb_max_blk(struct lima_screen *screen)
+{
+   if (lima_plb_max_blk)
+      screen->plb_max_blk = lima_plb_max_blk;
+   else if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI450)
+      screen->plb_max_blk = 4096;
+   else
+      screen->plb_max_blk = 512;
+
+   return true;
+}
+
+static bool
 lima_screen_query_info(struct lima_screen *screen)
 {
    struct drm_lima_get_param param;
@@ -368,6 +383,8 @@ lima_screen_query_info(struct lima_screen *screen)
       return false;
 
    screen->num_pp = param.value;
+
+   lima_screen_set_plb_max_blk(screen);
 
    return true;
 }
@@ -431,6 +448,13 @@ lima_screen_parse_env(void)
       lima_ctx_num_plb = LIMA_CTX_PLB_DEF_NUM;
    }
 
+   lima_plb_max_blk = debug_get_num_option("LIMA_PLB_MAX_BLK", 0);
+   if (lima_plb_max_blk < 0 || lima_plb_max_blk > 65536) {
+      fprintf(stderr, "lima: LIMA_PLB_MAX_BLK %d out of range [%d %d], "
+              "reset to default %d\n", lima_plb_max_blk, 0, 65536, 0);
+      lima_plb_max_blk = 0;
+   }
+
    lima_ppir_force_spilling = debug_get_num_option("LIMA_PPIR_FORCE_SPILLING", 0);
    if (lima_ppir_force_spilling < 0) {
       fprintf(stderr, "lima: LIMA_PPIR_FORCE_SPILLING %d less than 0, "
@@ -449,6 +473,8 @@ lima_screen_create(int fd, struct renderonly *ro)
       return NULL;
 
    screen->fd = fd;
+
+   lima_screen_parse_env();
 
    if (!lima_screen_query_info(screen))
       goto err_out0;
@@ -531,8 +557,6 @@ lima_screen_create(int fd, struct renderonly *ro)
    slab_create_parent(&screen->transfer_pool, sizeof(struct lima_transfer), 16);
 
    screen->refcnt = 1;
-
-   lima_screen_parse_env();
 
    return &screen->base;
 
