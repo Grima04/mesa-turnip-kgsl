@@ -1337,7 +1337,7 @@ bool Converter::assignSlots() {
    }
 
    info->numSysVals = 0;
-   for (uint8_t i = 0; i < 64; ++i) {
+   for (uint8_t i = 0; i < SYSTEM_VALUE_MAX; ++i) {
       if (!(nir->info.system_values_read & 1ull << i))
          continue;
 
