@@ -430,14 +430,9 @@ set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs)
    if (ctx->varying_vp_inputs != varying_inputs) {
       ctx->varying_vp_inputs = varying_inputs;
 
-      /* Only the fixed-func generated programs need to use the flag
-       * and the fixed-func fragment program uses it only if there is also
-       * a fixed-func vertex program, so this only depends on the latter.
-       *
-       * It's okay to check the VP pointer here, because this is called after
-       * _mesa_update_state in the vbo module. */
-      if (ctx->VertexProgram._TnlProgram ||
-          ctx->FragmentProgram._TexEnvProgram) {
+      /* Only fixed-func generated programs ever use varying_vp_inputs. */
+      if (ctx->VertexProgram._MaintainTnlProgram ||
+          ctx->FragmentProgram._MaintainTexEnvProgram) {
          ctx->NewState |= _NEW_VARYING_VP_INPUTS;
       }
       /*printf("%s %x\n", __func__, varying_inputs);*/
