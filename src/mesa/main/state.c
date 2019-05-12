@@ -420,9 +420,8 @@ _mesa_update_state( struct gl_context *ctx )
  * may vary or otherwise differ from the ctx->Current values.
  * Otherwise, the fp should track them as state values instead.
  */
-void
-_mesa_set_varying_vp_inputs( struct gl_context *ctx,
-                             GLbitfield varying_inputs )
+static void
+set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs)
 {
    if (ctx->API != API_OPENGL_COMPAT &&
        ctx->API != API_OPENGLES)
@@ -535,5 +534,5 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
       ctx->NewDriverState |= ctx->DriverFlags.NewArray;
 
    ctx->Array._DrawVAOEnabledAttribs = enabled;
-   _mesa_set_varying_vp_inputs(ctx, enabled);
+   set_varying_vp_inputs(ctx, enabled);
 }
