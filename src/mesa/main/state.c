@@ -430,15 +430,14 @@ set_varying_vp_inputs(struct gl_context *ctx, GLbitfield varying_inputs)
    if (VP_MODE_FF != ctx->VertexProgram._VPMode)
       return;
 
+   /* Only fixed-func generated programs ever uses varying_vp_inputs. */
+   if (!ctx->VertexProgram._MaintainTnlProgram &&
+       !ctx->FragmentProgram._MaintainTexEnvProgram)
+      return;
+
    if (ctx->varying_vp_inputs != varying_inputs) {
       ctx->varying_vp_inputs = varying_inputs;
-
-      /* Only fixed-func generated programs ever use varying_vp_inputs. */
-      if (ctx->VertexProgram._MaintainTnlProgram ||
-          ctx->FragmentProgram._MaintainTexEnvProgram) {
-         ctx->NewState |= _NEW_VARYING_VP_INPUTS;
-      }
-      /*printf("%s %x\n", __func__, varying_inputs);*/
+      ctx->NewState |= _NEW_VARYING_VP_INPUTS;
    }
 }
 
