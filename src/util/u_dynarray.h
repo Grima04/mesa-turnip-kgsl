@@ -77,21 +77,23 @@ util_dynarray_clear(struct util_dynarray *buf)
 
 #define DYN_ARRAY_INITIAL_SIZE 64
 
-static inline void *
+MUST_CHECK static inline void *
 util_dynarray_ensure_cap(struct util_dynarray *buf, unsigned newcap)
 {
    if (newcap > buf->capacity) {
-      if (buf->capacity == 0)
-         buf->capacity = DYN_ARRAY_INITIAL_SIZE;
-
-      while (newcap > buf->capacity)
-         buf->capacity *= 2;
+      unsigned capacity = MAX3(DYN_ARRAY_INITIAL_SIZE, buf->capacity * 2, newcap);
+      void *data;
 
       if (buf->mem_ctx) {
-         buf->data = reralloc_size(buf->mem_ctx, buf->data, buf->capacity);
+         data = reralloc_size(buf->mem_ctx, buf->data, capacity);
       } else {
-         buf->data = realloc(buf->data, buf->capacity);
+         data = realloc(buf->data, capacity);
       }
+      if (!data)
+         return 0;
+
+      buf->data = data;
+      buf->capacity = capacity;
    }
 
    return (void *)((char *)buf->data + buf->size);
