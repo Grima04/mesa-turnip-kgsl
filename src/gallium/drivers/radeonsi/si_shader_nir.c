@@ -444,17 +444,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 			continue;
 		}
 
-		/* Fragment shader position is a system value. */
-		if (nir->info.stage == MESA_SHADER_FRAGMENT &&
-		    variable->data.location == VARYING_SLOT_POS) {
-			if (nir->info.fs.pixel_center_integer)
-				info->properties[TGSI_PROPERTY_FS_COORD_PIXEL_CENTER] =
-					TGSI_FS_COORD_PIXEL_CENTER_INTEGER;
-
-			num_inputs++;
-			continue;
-		}
-
 		for (unsigned j = 0; j < attrib_count; j++, i++) {
 
 			if (processed_inputs & ((uint64_t)1 << i))
