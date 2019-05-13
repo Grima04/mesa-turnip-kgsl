@@ -130,6 +130,10 @@ drm_shim_ioctl_version(int fd, unsigned long request, void *arg)
    const char *date = "20190320";
    const char *desc = "shim";
 
+   args->version_major = shim_device.version_major;
+   args->version_minor = shim_device.version_minor;
+   args->version_patchlevel = shim_device.version_patchlevel;
+
    if (args->name)
       strncpy(args->name, shim_device.driver_name, args->name_len);
    if (args->date)

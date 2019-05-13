@@ -43,6 +43,7 @@ struct shim_device {
 
    /* Returned by drmGetVersion(). */
    const char *driver_name;
+   int version_major, version_minor, version_patchlevel;
 };
 
 extern struct shim_device shim_device;
