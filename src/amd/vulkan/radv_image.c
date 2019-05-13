@@ -128,6 +128,22 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 }
 
 static bool
+radv_surface_has_scanout(struct radv_device *device, const struct radv_image_create_info *info)
+{
+	if (info->scanout)
+		return true;
+
+	if (!info->bo_metadata)
+		return false;
+
+	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		return info->bo_metadata->u.gfx9.swizzle_mode == 0 || info->bo_metadata->u.gfx9.swizzle_mode % 4 == 2;
+	} else {
+		return info->bo_metadata->u.legacy.scanout;
+	}
+}
+
+static bool
 radv_use_dcc_for_image(struct radv_device *device,
 		       const struct radv_image *image,
 		       const struct radv_image_create_info *create_info,
@@ -164,7 +180,7 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (pCreateInfo->mipLevels > 1 || pCreateInfo->arrayLayers > 1)
 		return false;
 
-	if (create_info->scanout)
+	if (radv_surface_has_scanout(device, create_info))
 		return false;
 
 	/* FIXME: DCC for MSAA with 4x and 8x samples doesn't work yet, while
@@ -206,6 +222,37 @@ radv_use_dcc_for_image(struct radv_device *device,
 	return true;
 }
 
+static void
+radv_prefill_surface_from_metadata(struct radv_device *device,
+                                   struct radeon_surf *surface,
+                                   const struct radv_image_create_info *create_info)
+{
+	const struct radeon_bo_metadata *md = create_info->bo_metadata;
+	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		if (md->u.gfx9.swizzle_mode > 0)
+			surface->flags |= RADEON_SURF_SET(RADEON_SURF_MODE_2D, MODE);
+		else
+			surface->flags |= RADEON_SURF_SET(RADEON_SURF_MODE_LINEAR_ALIGNED, MODE);
+
+		surface->u.gfx9.surf.swizzle_mode = md->u.gfx9.swizzle_mode;
+	} else {
+		surface->u.legacy.pipe_config = md->u.legacy.pipe_config;
+		surface->u.legacy.bankw = md->u.legacy.bankw;
+		surface->u.legacy.bankh = md->u.legacy.bankh;
+		surface->u.legacy.tile_split = md->u.legacy.tile_split;
+		surface->u.legacy.mtilea = md->u.legacy.mtilea;
+		surface->u.legacy.num_banks = md->u.legacy.num_banks;
+
+		if (md->u.legacy.macrotile == RADEON_LAYOUT_TILED)
+			surface->flags |= RADEON_SURF_SET(RADEON_SURF_MODE_2D, MODE);
+		else if (md->u.legacy.microtile == RADEON_LAYOUT_TILED)
+			surface->flags |= RADEON_SURF_SET(RADEON_SURF_MODE_1D, MODE);
+		else
+			surface->flags |= RADEON_SURF_SET(RADEON_SURF_MODE_LINEAR_ALIGNED, MODE);
+
+	}
+}
+
 static int
 radv_init_surface(struct radv_device *device,
 		  const struct radv_image *image,
@@ -230,7 +277,11 @@ radv_init_surface(struct radv_device *device,
 	if (surface->bpe == 3) {
 		surface->bpe = 4;
 	}
-	surface->flags = RADEON_SURF_SET(array_mode, MODE);
+	if (create_info->bo_metadata) {
+		radv_prefill_surface_from_metadata(device, surface, create_info);
+	} else {
+		surface->flags = RADEON_SURF_SET(array_mode, MODE);
+	}
 
 	switch (pCreateInfo->imageType){
 	case VK_IMAGE_TYPE_1D:
@@ -272,8 +323,9 @@ radv_init_surface(struct radv_device *device,
 	if (!radv_use_dcc_for_image(device, image, create_info, pCreateInfo))
 		surface->flags |= RADEON_SURF_DISABLE_DCC;
 
-	if (create_info->scanout)
+	if (radv_surface_has_scanout(device, create_info))
 		surface->flags |= RADEON_SURF_SCANOUT;
+
 	return 0;
 }
 
@@ -1057,7 +1109,8 @@ radv_image_create(VkDevice _device,
 
 	image->shareable = vk_find_struct_const(pCreateInfo->pNext,
 	                                        EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
-	if (!vk_format_is_depth_or_stencil(pCreateInfo->format) && !create_info->scanout && !image->shareable) {
+	if (!vk_format_is_depth_or_stencil(pCreateInfo->format) &&
+	    !radv_surface_has_scanout(device, create_info) && !image->shareable) {
 		image->info.surf_index = &device->image_mrt_offset_counter;
 	}
 
