@@ -204,7 +204,11 @@ iris_resource_get_separate_stencil(struct pipe_resource *p_res)
    /* For packed depth-stencil, we treat depth as the primary resource
     * and store S8 as the "second plane" resource.
     */
-   return p_res->next;
+   if (p_res->next && p_res->next->format == PIPE_FORMAT_S8_UINT)
+      return p_res->next;
+
+   return NULL;
+
 }
 
 static void
