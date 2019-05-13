@@ -963,7 +963,7 @@ int virgl_encode_set_shader_buffers(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, shader);
    virgl_encoder_write_dword(ctx->cbuf, start_slot);
    for (i = 0; i < count; i++) {
-      if (buffers) {
+      if (buffers && buffers[i].buffer) {
          struct virgl_resource *res = virgl_resource(buffers[i].buffer);
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_offset);
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_size);
@@ -987,7 +987,7 @@ int virgl_encode_set_hw_atomic_buffers(struct virgl_context *ctx,
 
    virgl_encoder_write_dword(ctx->cbuf, start_slot);
    for (i = 0; i < count; i++) {
-      if (buffers) {
+      if (buffers && buffers[i].buffer) {
          struct virgl_resource *res = virgl_resource(buffers[i].buffer);
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_offset);
          virgl_encoder_write_dword(ctx->cbuf, buffers[i].buffer_size);
@@ -1013,7 +1013,7 @@ int virgl_encode_set_shader_images(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, shader);
    virgl_encoder_write_dword(ctx->cbuf, start_slot);
    for (i = 0; i < count; i++) {
-      if (images) {
+      if (images && images[i].resource) {
          struct virgl_resource *res = virgl_resource(images[i].resource);
          virgl_encoder_write_dword(ctx->cbuf, images[i].format);
          virgl_encoder_write_dword(ctx->cbuf, images[i].access);
