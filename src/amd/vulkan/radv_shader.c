@@ -290,6 +290,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.phys_ssbo_addr_format = nir_address_format_64bit_global,
 			.push_const_addr_format = nir_address_format_logical,
 			.shared_addr_format = nir_address_format_32bit_offset,
+			.frag_coord_is_sysval = true,
 		};
 		nir = spirv_to_nir(spirv, module->size / 4,
 				   spec_entries, num_spec_entries,
@@ -335,7 +336,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		NIR_PASS_V(nir, nir_split_per_member_structs);
 
 		if (nir->info.stage == MESA_SHADER_FRAGMENT)
-			NIR_PASS_V(nir, nir_lower_input_attachments);
+			NIR_PASS_V(nir, nir_lower_input_attachments, true);
 
 		NIR_PASS_V(nir, nir_remove_dead_variables,
 		           nir_var_shader_in | nir_var_shader_out | nir_var_system_value);

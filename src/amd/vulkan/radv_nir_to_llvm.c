@@ -2516,12 +2516,6 @@ handle_fs_inputs(struct radv_shader_context *ctx,
 						ctx->abi.prim_mask, false, inputs);
 				++index;
 			}
-		} else if (i == VARYING_SLOT_POS) {
-			for(int i = 0; i < 3; ++i)
-				inputs[i] = ctx->abi.frag_pos[i];
-
-			inputs[3] = ac_build_fdiv(&ctx->ac, ctx->ac.f32_1,
-						  ctx->abi.frag_pos[3]);
 		}
 	}
 	ctx->shader_info->fs.num_interp = index;

@@ -48,7 +48,8 @@ load_frag_coord(nir_builder *b)
 }
 
 static bool
-try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load)
+try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load,
+                     bool use_fragcoord_sysval)
 {
    nir_deref_instr *deref = nir_src_as_deref(load->src[0]);
    assert(glsl_type_is_image(deref->type));
@@ -64,7 +65,9 @@ try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load)
    nir_builder_init(&b, impl);
    b.cursor = nir_instr_remove(&load->instr);
 
-   nir_ssa_def *frag_coord = nir_f2i32(&b, load_frag_coord(&b));
+   nir_ssa_def *frag_coord = use_fragcoord_sysval ? nir_load_frag_coord(&b)
+                                                  : load_frag_coord(&b);
+   frag_coord = nir_f2i32(&b, frag_coord);
    nir_ssa_def *offset = nir_ssa_for_src(&b, load->src[1], 2);
    nir_ssa_def *pos = nir_iadd(&b, frag_coord, offset);
 
@@ -122,7 +125,7 @@ try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load)
 }
 
 bool
-nir_lower_input_attachments(nir_shader *shader)
+nir_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
    bool progress = false;
@@ -141,7 +144,8 @@ nir_lower_input_attachments(nir_shader *shader)
             if (load->intrinsic != nir_intrinsic_image_deref_load)
                continue;
 
-            progress |= try_lower_input_load(function->impl, load);
+            progress |= try_lower_input_load(function->impl, load,
+                                             use_fragcoord_sysval);
          }
       }
    }
