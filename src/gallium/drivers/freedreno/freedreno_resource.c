@@ -1078,7 +1078,7 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	if (handle->modifier == DRM_FORMAT_MOD_QCOM_COMPRESSED) {
 		if (!is_supported_modifier(pscreen, tmpl->format,
 				DRM_FORMAT_MOD_QCOM_COMPRESSED)) {
-			DBG("bad modifier: %llx", handle->modifier);
+			DBG("bad modifier: %"PRIx64, handle->modifier);
 			goto fail;
 		}
 		debug_assert(screen->fill_ubwc_buffer_sizes);
