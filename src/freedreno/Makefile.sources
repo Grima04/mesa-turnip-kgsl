@@ -12,7 +12,6 @@ drm_SOURCES := \
 	drm/msm_priv.h \
 	drm/freedreno_device.c \
 	drm/freedreno_priv.h \
-	drm/msm_drm.h \
 	drm/msm_ringbuffer.c
 
 ir3_SOURCES := \

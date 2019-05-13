@@ -33,7 +33,7 @@
 #  define __user
 #endif
 
-#include "msm_drm.h"
+#include "drm-uapi/msm_drm.h"
 
 struct msm_device {
 	struct fd_device base;
