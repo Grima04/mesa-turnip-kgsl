@@ -3,7 +3,7 @@
 set -x
 
 # To prevent memory leaks from slowing throughput, restart everything between batches
-BATCH_SIZE=5000
+BATCH_SIZE=3000
 
 DEQP_OPTIONS="--deqp-surface-width=256 --deqp-surface-height=256"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
