@@ -1295,8 +1295,13 @@ vtn_get_builtin_location(struct vtn_builder *b,
       set_mode_system_value(b, mode);
       break;
    case SpvBuiltInFragCoord:
-      *location = VARYING_SLOT_POS;
       vtn_assert(*mode == nir_var_shader_in);
+      if (b->options && b->options->frag_coord_is_sysval) {
+         *mode = nir_var_system_value;
+         *location = SYSTEM_VALUE_FRAG_COORD;
+      } else {
+         *location = VARYING_SLOT_POS;
+      }
       break;
    case SpvBuiltInPointCoord:
       *location = VARYING_SLOT_PNTC;
