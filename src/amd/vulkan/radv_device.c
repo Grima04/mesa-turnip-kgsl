@@ -960,6 +960,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->ycbcrImageArrays = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+			VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *features =
+				(VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
+			features->uniformBufferStandardLayout = true;
+			break;
+		}
 		default:
 			break;
 		}
