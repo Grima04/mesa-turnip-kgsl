@@ -530,7 +530,7 @@ _mesa_max_texture_levels(const struct gl_context *ctx, GLenum target)
          && ctx->Extensions.ARB_texture_multisample
          ? 1 : 0;
    case GL_TEXTURE_EXTERNAL_OES:
-      /* fall-through */
+      return _mesa_has_OES_EGL_image_external(ctx) ? 1 : 0;
    default:
       return 0; /* bad target */
    }
