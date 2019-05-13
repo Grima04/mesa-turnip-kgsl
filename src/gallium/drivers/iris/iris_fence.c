@@ -93,7 +93,7 @@ iris_batch_add_syncpt(struct iris_batch *batch,
                       unsigned flags)
 {
    struct drm_i915_gem_exec_fence *fence =
-      util_dynarray_grow(&batch->exec_fences, sizeof(*fence));
+      util_dynarray_grow(&batch->exec_fences, struct drm_i915_gem_exec_fence, 1);
 
    *fence = (struct drm_i915_gem_exec_fence) {
       .handle = syncpt->handle,
@@ -101,7 +101,7 @@ iris_batch_add_syncpt(struct iris_batch *batch,
    };
 
    struct iris_syncpt **store =
-      util_dynarray_grow(&batch->syncpts, sizeof(*store));
+      util_dynarray_grow(&batch->syncpts, struct iris_syncpt *, 1);
 
    *store = NULL;
    iris_syncpt_reference(batch->screen, store, syncpt);

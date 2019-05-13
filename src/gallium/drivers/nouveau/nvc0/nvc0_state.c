@@ -1370,10 +1370,9 @@ nvc0_set_global_bindings(struct pipe_context *pipe,
 
    if (nvc0->global_residents.size <= (end * sizeof(struct pipe_resource *))) {
       const unsigned old_size = nvc0->global_residents.size;
-      const unsigned req_size = end * sizeof(struct pipe_resource *);
-      util_dynarray_resize(&nvc0->global_residents, req_size);
+      util_dynarray_resize(&nvc0->global_residents, struct pipe_resource *, end);
       memset((uint8_t *)nvc0->global_residents.data + old_size, 0,
-             req_size - old_size);
+             nvc0->global_residents.size - old_size);
    }
 
    if (resources) {

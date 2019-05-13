@@ -123,7 +123,7 @@ struct lima_render_state {
 /* plbu commands */
 #define PLBU_CMD_BEGIN(max) { \
    int i = 0, max_n = max; \
-   uint32_t *plbu_cmd = util_dynarray_grow_cap(&ctx->plbu_cmd_array, max_n * 4);
+   uint32_t *plbu_cmd = util_dynarray_ensure_cap(&ctx->plbu_cmd_array, ctx->plbu_cmd_array.size + max_n * 4);
 
 #define PLBU_CMD_END() \
    assert(i <= max_n); \
@@ -172,7 +172,7 @@ struct lima_render_state {
 /* vs commands */
 #define VS_CMD_BEGIN(max) { \
    int i = 0, max_n = max; \
-   uint32_t *vs_cmd = util_dynarray_grow_cap(&ctx->vs_cmd_array, max_n * 4);
+   uint32_t *vs_cmd = util_dynarray_ensure_cap(&ctx->vs_cmd_array, ctx->vs_cmd_array.size + max_n * 4);
 
 #define VS_CMD_END() \
    assert(i <= max_n); \
@@ -1425,7 +1425,7 @@ static void
 lima_finish_plbu_cmd(struct lima_context *ctx)
 {
    int i = 0;
-   uint32_t *plbu_cmd = util_dynarray_grow_cap(&ctx->plbu_cmd_array, 2 * 4);
+   uint32_t *plbu_cmd = util_dynarray_ensure_cap(&ctx->plbu_cmd_array, ctx->plbu_cmd_array.size + 2 * 4);
 
    plbu_cmd[i++] = 0x00000000;
    plbu_cmd[i++] = 0x50000000; /* END */
