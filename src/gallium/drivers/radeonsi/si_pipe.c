@@ -897,6 +897,12 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	sscreen->ws = ws;
 	ws->query_info(ws, &sscreen->info);
 
+	if (sscreen->info.chip_class == GFX10 && HAVE_LLVM < 0x0900) {
+		fprintf(stderr, "radeonsi: Navi family support requires LLVM 9 or higher\n");
+		FREE(sscreen);
+		return NULL;
+	}
+
 	if (sscreen->info.chip_class >= GFX9) {
 		sscreen->se_tile_repeat = 32 * sscreen->info.max_se;
 	} else {
