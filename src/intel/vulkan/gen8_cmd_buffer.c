@@ -553,6 +553,34 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.gfx.dirty = 0;
 }
 
+static uint32_t vk_to_gen_index_type(VkIndexType type)
+{
+   switch (type) {
+   case VK_INDEX_TYPE_UINT8_EXT:
+      return INDEX_BYTE;
+   case VK_INDEX_TYPE_UINT16:
+      return INDEX_WORD;
+   case VK_INDEX_TYPE_UINT32:
+      return INDEX_DWORD;
+   default:
+      unreachable("invalid index type");
+   }
+}
+
+static uint32_t restart_index_for_type(VkIndexType type)
+{
+   switch (type) {
+   case VK_INDEX_TYPE_UINT8_EXT:
+      return UINT8_MAX;
+   case VK_INDEX_TYPE_UINT16:
+      return UINT16_MAX;
+   case VK_INDEX_TYPE_UINT32:
+      return UINT32_MAX;
+   default:
+      unreachable("invalid index type");
+   }
+}
+
 void genX(CmdBindIndexBuffer)(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    _buffer,
@@ -562,20 +590,10 @@ void genX(CmdBindIndexBuffer)(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
 
-   static const uint32_t vk_to_gen_index_type[] = {
-      [VK_INDEX_TYPE_UINT16]                    = INDEX_WORD,
-      [VK_INDEX_TYPE_UINT32]                    = INDEX_DWORD,
-   };
-
-   static const uint32_t restart_index_for_type[] = {
-      [VK_INDEX_TYPE_UINT16]                    = UINT16_MAX,
-      [VK_INDEX_TYPE_UINT32]                    = UINT32_MAX,
-   };
-
-   cmd_buffer->state.restart_index = restart_index_for_type[indexType];
+   cmd_buffer->state.restart_index = restart_index_for_type(indexType);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-      ib.IndexFormat                = vk_to_gen_index_type[indexType];
+      ib.IndexFormat                = vk_to_gen_index_type(indexType);
       ib.MOCS                       = anv_mocs_for_bo(cmd_buffer->device,
                                                       buffer->address.bo);
       ib.BufferStartingAddress      = anv_address_add(buffer->address, offset);
