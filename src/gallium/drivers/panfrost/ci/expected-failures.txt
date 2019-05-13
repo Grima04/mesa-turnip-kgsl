@@ -1294,7 +1294,6 @@ dEQP-GLES2.functional.shaders.functions.control_flow.return_after_continue_verte
 dEQP-GLES2.functional.shaders.functions.control_flow.return_after_loop_sequence_vertex
 dEQP-GLES2.functional.shaders.functions.control_flow.return_in_loop_if_fragment
 dEQP-GLES2.functional.shaders.functions.control_flow.return_in_loop_if_vertex
-dEQP-GLES2.functional.shaders.functions.control_flow.return_in_nested_loop_fragment
 dEQP-GLES2.functional.shaders.functions.datatypes.float_mat2_fragment
 dEQP-GLES2.functional.shaders.functions.datatypes.float_mat2_vertex
 dEQP-GLES2.functional.shaders.functions.datatypes.float_mat3_fragment
@@ -1332,7 +1331,6 @@ dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_loop_subscr
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_loop_subscript_write_static_loop_subscript_read_vertex
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_loop_subscript_write_static_subscript_read_fragment
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec4_dynamic_loop_subscript_write_static_subscript_read_vertex
-dEQP-GLES2.functional.shaders.linkage.varying_7
 dEQP-GLES2.functional.shaders.linkage.varying_type_mat2
 dEQP-GLES2.functional.shaders.linkage.varying_type_mat3
 dEQP-GLES2.functional.shaders.linkage.varying_type_mat4
