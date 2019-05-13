@@ -2,23 +2,29 @@ variables:
   DOCKER_DRIVER: overlay2
 
 stages:
-  - build-container
+  - containers
   - build
   - test
 
 # Build Docker image with deqp, the rootfs and the build deps for Mesa
-.build-container:
-  stage: build-container
-  when: always
+.container:
+  stage: containers
+  image: docker:stable
+  only:
+    changes:
+      - src/gallium/drivers/panfrost/ci/gitlab-ci.yml
+      - src/gallium/drivers/panfrost/ci/Dockerfile
+      - src/gallium/drivers/panfrost/ci/create-rootfs.sh
+      - src/gallium/drivers/panfrost/ci/${KERNEL_ARCH}.config
   services:
     - docker:dind
-  image: docker:latest
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
-    - time docker pull $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest || true
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - time docker build
-             -t $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}
-             --cache-from $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
+             -t $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}
              --build-arg DEBIAN_ARCH=${DEBIAN_ARCH}
              --build-arg GCC_ARCH=${GCC_ARCH}
              --build-arg KERNEL_ARCH=${KERNEL_ARCH}
@@ -26,11 +32,11 @@ stages:
              --build-arg DEVICE_TREES=${DEVICE_TREES}
              --build-arg KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
              src/gallium/drivers/panfrost/ci
-    - time docker push $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
-    - docker history $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
+    - time docker push $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}
+    - docker history $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}
 
-build-container-armhf:
-  extends: .build-container
+container:armhf:
+  extends: .container
   variables:
     DEBIAN_ARCH: "armhf"
     GCC_ARCH: "arm-linux-gnueabihf"
@@ -39,8 +45,8 @@ build-container-armhf:
     DEVICE_TREES: "arch/arm/boot/dts/rk3288-veyron-jaq.dtb"
     KERNEL_IMAGE_NAME: "zImage"
 
-build-container-arm64:
-  extends: .build-container
+container:arm64:
+  extends: .container
   variables:
     DEBIAN_ARCH: "arm64"
     GCC_ARCH: "aarch64-linux-gnu"
@@ -51,7 +57,7 @@ build-container-arm64:
 
 .build:
   stage: build
-  image: $CI_REGISTRY_IMAGE/${DEBIAN_ARCH}:latest
+  image: $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}:latest
   cache:
     paths:
       - ccache
@@ -100,7 +106,7 @@ build-container-arm64:
     paths:
       - results/
 
-build-armhf:
+build:armhf:
   extends: .build
   variables:
     DEBIAN_ARCH: "armhf"
@@ -108,7 +114,7 @@ build-armhf:
     DEVICE_TYPE: "rk3288-veyron-jaq"
     KERNEL_IMAGE_NAME: "zImage"
 
-build-arm64:
+build:arm64:
   extends: .build
   variables:
     DEBIAN_ARCH: "arm64"
@@ -120,7 +126,7 @@ build-arm64:
   stage: test
   tags:
     - idle-jobs
-  image: $CI_REGISTRY_IMAGE:latest
+  image: $CI_REGISTRY/$CI_PROJECT_PATH/arm64:latest  # Any of the images will be fine
   script:
     - mkdir -p ~/.config/
     - |
@@ -201,13 +207,13 @@ build-arm64:
     paths:
       - results/
 
-test-armhf:
+test:armhf:
   extends: .test
   dependencies:
-    - build-armhf
+    - build:armhf
 
-test-arm64:
+test:arm64:
   extends: .test
   dependencies:
-    - build-arm64
+    - build:arm64
 
