@@ -489,14 +489,11 @@ int virgl_encoder_create_surface(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, handle);
    virgl_encoder_write_res(ctx, res);
    virgl_encoder_write_dword(ctx->cbuf, templat->format);
-   if (templat->texture->target == PIPE_BUFFER) {
-      virgl_encoder_write_dword(ctx->cbuf, templat->u.buf.first_element);
-      virgl_encoder_write_dword(ctx->cbuf, templat->u.buf.last_element);
 
-   } else {
-      virgl_encoder_write_dword(ctx->cbuf, templat->u.tex.level);
-      virgl_encoder_write_dword(ctx->cbuf, templat->u.tex.first_layer | (templat->u.tex.last_layer << 16));
-   }
+   assert(templat->texture->target != PIPE_BUFFER);
+   virgl_encoder_write_dword(ctx->cbuf, templat->u.tex.level);
+   virgl_encoder_write_dword(ctx->cbuf, templat->u.tex.first_layer | (templat->u.tex.last_layer << 16));
+
    return 0;
 }
 

@@ -229,6 +229,10 @@ static struct pipe_surface *virgl_create_surface(struct pipe_context *ctx,
    struct virgl_resource *res = virgl_resource(resource);
    uint32_t handle;
 
+   /* no support for buffer surfaces */
+   if (resource->target == PIPE_BUFFER)
+      return NULL;
+
    surf = CALLOC_STRUCT(virgl_surface);
    if (!surf)
       return NULL;
@@ -244,18 +248,13 @@ static struct pipe_surface *virgl_create_surface(struct pipe_context *ctx,
    pipe_resource_reference(&surf->base.texture, resource);
    surf->base.context = ctx;
    surf->base.format = templ->format;
-   if (resource->target != PIPE_BUFFER) {
-      surf->base.width = u_minify(resource->width0, templ->u.tex.level);
-      surf->base.height = u_minify(resource->height0, templ->u.tex.level);
-      surf->base.u.tex.level = templ->u.tex.level;
-      surf->base.u.tex.first_layer = templ->u.tex.first_layer;
-      surf->base.u.tex.last_layer = templ->u.tex.last_layer;
-   } else {
-      surf->base.width = templ->u.buf.last_element - templ->u.buf.first_element + 1;
-      surf->base.height = resource->height0;
-      surf->base.u.buf.first_element = templ->u.buf.first_element;
-      surf->base.u.buf.last_element = templ->u.buf.last_element;
-   }
+
+   surf->base.width = u_minify(resource->width0, templ->u.tex.level);
+   surf->base.height = u_minify(resource->height0, templ->u.tex.level);
+   surf->base.u.tex.level = templ->u.tex.level;
+   surf->base.u.tex.first_layer = templ->u.tex.first_layer;
+   surf->base.u.tex.last_layer = templ->u.tex.last_layer;
+
    virgl_encoder_create_surface(vctx, handle, res, &surf->base);
    surf->handle = handle;
    return &surf->base;
