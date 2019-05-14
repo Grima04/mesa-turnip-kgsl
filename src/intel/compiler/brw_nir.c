@@ -29,75 +29,6 @@
 #include "util/u_math.h"
 
 static bool
-is_input(nir_intrinsic_instr *intrin)
-{
-   return intrin->intrinsic == nir_intrinsic_load_input ||
-          intrin->intrinsic == nir_intrinsic_load_per_vertex_input ||
-          intrin->intrinsic == nir_intrinsic_load_interpolated_input ||
-          intrin->intrinsic == nir_intrinsic_load_fs_input_interp_deltas;
-}
-
-static bool
-is_output(nir_intrinsic_instr *intrin)
-{
-   return intrin->intrinsic == nir_intrinsic_load_output ||
-          intrin->intrinsic == nir_intrinsic_load_per_vertex_output ||
-          intrin->intrinsic == nir_intrinsic_store_output ||
-          intrin->intrinsic == nir_intrinsic_store_per_vertex_output;
-}
-
-/**
- * In many cases, we just add the base and offset together, so there's no
- * reason to keep them separate.  Sometimes, combining them is essential:
- * if a shader only accesses part of a compound variable (such as a matrix
- * or array), the variable's base may not actually exist in the VUE map.
- *
- * This pass adds constant offsets to instr->const_index[0], and resets
- * the offset source to 0.  Non-constant offsets remain unchanged - since
- * we don't know what part of a compound variable is accessed, we allocate
- * storage for the entire thing.
- */
-
-static bool
-add_const_offset_to_base_block(nir_block *block, nir_builder *b,
-                               nir_variable_mode mode)
-{
-   nir_foreach_instr_safe(instr, block) {
-      if (instr->type != nir_instr_type_intrinsic)
-         continue;
-
-      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
-      if ((mode == nir_var_shader_in && is_input(intrin)) ||
-          (mode == nir_var_shader_out && is_output(intrin))) {
-         nir_src *offset = nir_get_io_offset_src(intrin);
-
-         if (nir_src_is_const(*offset)) {
-            intrin->const_index[0] += nir_src_as_uint(*offset);
-            b->cursor = nir_before_instr(&intrin->instr);
-            nir_instr_rewrite_src(&intrin->instr, offset,
-                                  nir_src_for_ssa(nir_imm_int(b, 0)));
-         }
-      }
-   }
-   return true;
-}
-
-static void
-add_const_offset_to_base(nir_shader *nir, nir_variable_mode mode)
-{
-   nir_foreach_function(f, nir) {
-      if (f->impl) {
-         nir_builder b;
-         nir_builder_init(&b, f->impl);
-         nir_foreach_block(block, f->impl) {
-            add_const_offset_to_base_block(block, &b, mode);
-         }
-      }
-   }
-}
-
-static bool
 remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
                   GLenum primitive_mode)
 {
@@ -151,6 +82,24 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
 
    return true;
 }
+
+static bool
+is_input(nir_intrinsic_instr *intrin)
+{
+   return intrin->intrinsic == nir_intrinsic_load_input ||
+          intrin->intrinsic == nir_intrinsic_load_per_vertex_input ||
+          intrin->intrinsic == nir_intrinsic_load_interpolated_input;
+}
+
+static bool
+is_output(nir_intrinsic_instr *intrin)
+{
+   return intrin->intrinsic == nir_intrinsic_load_output ||
+          intrin->intrinsic == nir_intrinsic_load_per_vertex_output ||
+          intrin->intrinsic == nir_intrinsic_store_output ||
+          intrin->intrinsic == nir_intrinsic_store_per_vertex_output;
+}
+
 
 static bool
 remap_patch_urb_offsets(nir_block *block, nir_builder *b,
@@ -227,7 +176,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
 
-   add_const_offset_to_base(nir, nir_var_shader_in);
+   nir_io_add_const_offset_to_base(nir, nir_var_shader_in);
 
    brw_nir_apply_attribute_workarounds(nir, vs_attrib_wa_flags);
 
@@ -350,7 +299,7 @@ brw_nir_lower_vue_inputs(nir_shader *nir,
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
 
-   add_const_offset_to_base(nir, nir_var_shader_in);
+   nir_io_add_const_offset_to_base(nir, nir_var_shader_in);
 
    nir_foreach_function(function, nir) {
       if (!function->impl)
@@ -401,7 +350,7 @@ brw_nir_lower_tes_inputs(nir_shader *nir, const struct brw_vue_map *vue_map)
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
 
-   add_const_offset_to_base(nir, nir_var_shader_in);
+   nir_io_add_const_offset_to_base(nir, nir_var_shader_in);
 
    nir_foreach_function(function, nir) {
       if (function->impl) {
@@ -458,7 +407,7 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
 
-   add_const_offset_to_base(nir, nir_var_shader_in);
+   nir_io_add_const_offset_to_base(nir, nir_var_shader_in);
 }
 
 void
@@ -484,7 +433,7 @@ brw_nir_lower_tcs_outputs(nir_shader *nir, const struct brw_vue_map *vue_map,
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
 
-   add_const_offset_to_base(nir, nir_var_shader_out);
+   nir_io_add_const_offset_to_base(nir, nir_var_shader_out);
 
    nir_foreach_function(function, nir) {
       if (function->impl) {

@@ -3171,6 +3171,8 @@ bool nir_lower_io(nir_shader *shader,
                   int (*type_size)(const struct glsl_type *, bool),
                   nir_lower_io_options);
 
+bool nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode mode);
+
 typedef enum {
    /**
     * An address format which is a simple 32-bit global GPU address.
