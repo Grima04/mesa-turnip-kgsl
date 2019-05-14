@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include "mmap.h"
+#include "util/u_math.h"
 
 #include "../pan_pretty_print.h"
 #include "../midgard/disassemble.h"
@@ -1456,6 +1457,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", t->height + 1);
                                         pandecode_prop("depth = MALI_POSITIVE(%" PRId16 ")", t->depth + 1);
 
+                                        pandecode_prop("unknown1 = %" PRId16, t->unknown1);
                                         pandecode_prop("unknown3 = %" PRId16, t->unknown3);
                                         pandecode_prop("unknown3A = %" PRId8, t->unknown3A);
                                         pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
@@ -1492,6 +1494,12 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         pandecode_log(".swizzled_bitmaps = {\n");
                                         pandecode_indent++;
 
+                                        /* A bunch of bitmap pointers follow.
+                                         * We work out the correct number,
+                                         * based on the mipmap/cubemap
+                                         * properties, but dump extra
+                                         * possibilities to futureproof */
+
                                         int bitmap_count = MALI_NEGATIVE(t->nr_mipmap_levels);
 
                                         if (!f.is_not_cubemap) {
@@ -1506,9 +1514,12 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                                 bitmap_count = max_count;
                                         }
 
-                                        for (int i = 0; i < bitmap_count; ++i) {
+                                        /* Dump more to be safe, but not _that_ much more */
+                                        int safe_count = MIN2(bitmap_count * 2, max_count);
+
+                                        for (int i = 0; i < safe_count; ++i) {
                                                 char *a = pointer_as_memory_reference(t->swizzled_bitmaps[i]);
-                                                pandecode_log("%s, \n", a);
+                                                pandecode_log("%s%s, \n", (i >= bitmap_count) ? "// " : "", a);
                                                 free(a);
                                         }
 
