@@ -1115,6 +1115,17 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                         }
                                 }
 
+                                /* Inject the strides */
+                                unsigned usage2 = ctx->sampler_views[t][i]->hw.format.usage2;
+
+                                if (usage2 & MALI_TEX_MANUAL_STRIDE) {
+                                        unsigned idx = tex_rsrc->last_level * tex_rsrc->array_size;
+                                        idx += tex_rsrc->array_size;
+
+                                        ctx->sampler_views[t][i]->hw.swizzled_bitmaps[idx] =
+                                                rsrc->bo->slices[0].stride;
+                                }
+
                                 trampolines[i] = panfrost_upload_transient(ctx, &ctx->sampler_views[t][i]->hw, sizeof(struct mali_texture_descriptor));
                         }
 
@@ -1951,6 +1962,7 @@ panfrost_create_sampler_view(
         pipe_reference(NULL, &texture->reference);
 
         struct panfrost_resource *prsrc = (struct panfrost_resource *) texture;
+        assert(prsrc->bo);
 
         so->base = *template;
         so->base.texture = texture;
@@ -1993,6 +2005,19 @@ panfrost_create_sampler_view(
                 default:
                         assert(0);
                         break;
+        }
+
+        /* Check if we need to set a custom stride by computing the "expected"
+         * stride and comparing it to what the BO actually wants. Only applies
+         * to linear textures TODO: Mipmap? */
+
+        unsigned actual_stride = prsrc->bo->slices[0].stride;
+
+        if (prsrc->bo->layout == PAN_LINEAR &&
+            template->u.tex.last_level == 0 &&
+            template->u.tex.first_level == 0 &&
+            (texture->width0 * bytes_per_pixel) != actual_stride) {
+                usage2_layout |= MALI_TEX_MANUAL_STRIDE;
         }
 
         struct mali_texture_descriptor texture_descriptor = {
