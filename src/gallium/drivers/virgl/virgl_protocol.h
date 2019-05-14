@@ -96,6 +96,7 @@ enum virgl_context_cmd {
    VIRGL_CCMD_GET_QUERY_RESULT_QBO,
    VIRGL_CCMD_TRANSFER3D,
    VIRGL_CCMD_END_TRANSFERS,
+   VIRGL_CCMD_COPY_TRANSFER3D,
 };
 
 /*
@@ -576,5 +577,12 @@ enum virgl_context_cmd {
 /* The first 11 dwords are the same as VIRGL_RESOURCE_IW_*  */
 #define VIRGL_TRANSFER3D_DATA_OFFSET 12
 #define VIRGL_TRANSFER3D_DIRECTION 13
+
+/* Copy transfer */
+#define VIRGL_COPY_TRANSFER3D_SIZE 14
+/* The first 11 dwords are the same as VIRGL_RESOURCE_IW_*  */
+#define VIRGL_COPY_TRANSFER3D_SRC_RES_HANDLE 12
+#define VIRGL_COPY_TRANSFER3D_SRC_RES_OFFSET 13
+#define VIRGL_COPY_TRANSFER3D_SYNCHRONIZED 14
 
 #endif
