@@ -510,6 +510,7 @@ static const struct nir_shader_compiler_options nir_options = {
 	.lower_rotate = true,
 	.optimize_sample_mask_in = true,
 	.max_unroll_iterations = 32,
+	.use_interpolated_input_intrinsics = true,
 };
 
 static const void *

@@ -3341,6 +3341,12 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_load_helper_invocation:
 		result = ac_build_load_helper_invocation(&ctx->ac);
 		break;
+	case nir_intrinsic_load_color0:
+		result = ctx->abi->color0;
+		break;
+	case nir_intrinsic_load_color1:
+		result = ctx->abi->color1;
+		break;
 	case nir_intrinsic_load_instance_id:
 		result = ctx->abi->instance_id;
 		break;
