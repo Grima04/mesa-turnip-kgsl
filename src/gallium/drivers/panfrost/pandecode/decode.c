@@ -1507,6 +1507,20 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                                 bitmap_count *= 6;
                                         }
 
+                                        if (f.usage2 & MALI_TEX_MANUAL_STRIDE) {
+                                                /* Stride for each... what exactly? TODO More traces */
+
+                                                if (bitmap_count > 1) {
+                                                        pandecode_msg("Manual stride with mip/cubemaps, decode uncertain");
+                                                }
+
+                                                /* This is a guess, we've only
+                                                 * seen for 1-level non-mip 2D
+                                                 * */
+
+                                                bitmap_count += 1;
+                                        }
+
                                         int max_count = sizeof(t->swizzled_bitmaps) / sizeof(t->swizzled_bitmaps[0]);
 
                                         if (bitmap_count > max_count) {
@@ -1518,9 +1532,22 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         int safe_count = MIN2(bitmap_count * 2, max_count);
 
                                         for (int i = 0; i < safe_count; ++i) {
-                                                char *a = pointer_as_memory_reference(t->swizzled_bitmaps[i]);
-                                                pandecode_log("%s%s, \n", (i >= bitmap_count) ? "// " : "", a);
-                                                free(a);
+                                                char *prefix = (i >= bitmap_count) ? "// " : "";
+
+                                                /* How we dump depends if this is a stride or a pointer */
+
+                                                if ((f.usage2 & MALI_TEX_MANUAL_STRIDE) && ((i + 1) == bitmap_count)) {
+                                                        /* signed 32-bit snuck in as a 64-bit pointer */
+                                                        uint64_t stride_set = t->swizzled_bitmaps[i];
+                                                        uint32_t clamped_stride = stride_set;
+                                                        int32_t stride = clamped_stride;
+                                                        assert(stride_set == clamped_stride);
+                                                        pandecode_log("%s(mali_ptr) %d /* stride */, \n", prefix, stride);
+                                                } else {
+                                                        char *a = pointer_as_memory_reference(t->swizzled_bitmaps[i]);
+                                                        pandecode_log("%s%s, \n", prefix, a);
+                                                        free(a);
+                                                }
                                         }
 
                                         pandecode_indent--;

@@ -1106,6 +1106,9 @@ enum mali_wrap_mode {
 
 /* Corresponds to the type passed to glTexImage2D and so forth */
 
+/* Flags for usage2 */
+#define MALI_TEX_MANUAL_STRIDE (0x20)
+
 struct mali_texture_format {
         unsigned swizzle : 12;
         enum mali_format format : 8;
