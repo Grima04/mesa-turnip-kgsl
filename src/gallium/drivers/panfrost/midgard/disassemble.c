@@ -855,10 +855,10 @@ static bool
 is_op_varying(unsigned op)
 {
         switch (op) {
-        case midgard_op_store_vary_16:
-        case midgard_op_store_vary_32:
-        case midgard_op_load_vary_16:
-        case midgard_op_load_vary_32:
+        case midgard_op_st_vary_16:
+        case midgard_op_st_vary_32:
+        case midgard_op_ld_vary_16:
+        case midgard_op_ld_vary_32:
                 return true;
         }
 
@@ -881,7 +881,7 @@ print_load_store_instr(uint64_t data,
 
         int address = word->address;
 
-        if (word->op == midgard_op_load_uniform_32) {
+        if (word->op == midgard_op_ld_uniform_32) {
                 /* Uniforms use their own addressing scheme */
 
                 int lo = word->varying_parameters >> 7;

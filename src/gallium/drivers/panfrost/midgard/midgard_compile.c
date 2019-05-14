@@ -323,16 +323,16 @@ v_fmov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
  * don't support half-floats -- this requires changes in other parts of the
  * compiler -- therefore the 16-bit versions are commented out. */
 
-//M_LOAD(load_attr_16);
-M_LOAD(load_attr_32);
-//M_LOAD(load_vary_16);
-M_LOAD(load_vary_32);
-//M_LOAD(load_uniform_16);
-M_LOAD(load_uniform_32);
-M_LOAD(load_color_buffer_8);
-//M_STORE(store_vary_16);
-M_STORE(store_vary_32);
-M_STORE(store_cubemap_coords);
+//M_LOAD(ld_attr_16);
+M_LOAD(ld_attr_32);
+//M_LOAD(ld_vary_16);
+M_LOAD(ld_vary_32);
+//M_LOAD(ld_uniform_16);
+M_LOAD(ld_uniform_32);
+M_LOAD(ld_color_buffer_8);
+//M_STORE(st_vary_16);
+M_STORE(st_vary_32);
+M_STORE(st_cubemap_coords);
 
 static midgard_instruction
 v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, unsigned cond)
@@ -1487,7 +1487,7 @@ emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset, nir_src
                  * higher-indexed uniforms, at a performance cost. More
                  * generally, we're emitting a UBO read instruction. */
 
-                midgard_instruction ins = m_load_uniform_32(dest, offset);
+                midgard_instruction ins = m_ld_uniform_32(dest, offset);
 
                 /* TODO: Don't split */
                 ins.load_store.varying_parameters = (offset & 7) << 7;
@@ -1560,7 +1560,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         /* XXX: Half-floats? */
                         /* TODO: swizzle, mask */
 
-                        midgard_instruction ins = m_load_vary_32(reg, offset);
+                        midgard_instruction ins = m_ld_vary_32(reg, offset);
 
                         midgard_varying_parameter p = {
                                 .is_varying = 1,
@@ -1615,7 +1615,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         } else if (out->data.location == VARYING_SLOT_COL1) {
                                 /* Destination color must be read from framebuffer */
 
-                                midgard_instruction ins = m_load_color_buffer_8(reg, 0);
+                                midgard_instruction ins = m_ld_color_buffer_8(reg, 0);
                                 ins.load_store.swizzle = 0; /* xxxx */
 
                                 /* Read each component sequentially */
@@ -1682,7 +1682,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 assert(0);
                         }
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
-                        midgard_instruction ins = m_load_attr_32(reg, offset);
+                        midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
                         ins.load_store.mask = (1 << instr->num_components) - 1;
                         emit_mir_instruction(ctx, ins);
@@ -1745,7 +1745,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 attach_constants(ctx, &ins, constant_value, reg + 1);
                                 emit_mir_instruction(ctx, ins);
 
-                                midgard_instruction st = m_store_vary_32(SSA_FIXED_REGISTER(0), offset);
+                                midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(0), offset);
                                 st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
                                 emit_mir_instruction(ctx, st);
                         } else {
@@ -1842,7 +1842,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                                 midgard_instruction move = v_fmov(index, alu_src, SSA_FIXED_REGISTER(27));
                                 emit_mir_instruction(ctx, move);
 
-                                midgard_instruction st = m_store_cubemap_coords(reg, 0);
+                                midgard_instruction st = m_st_cubemap_coords(reg, 0);
                                 st.load_store.unknown = 0x24; /* XXX: What is this? */
                                 st.load_store.mask = 0x3; /* xy? */
                                 st.load_store.swizzle = alu_src.swizzle;
@@ -2126,7 +2126,7 @@ install_registers(compiler_context *ctx, struct ra_graph *g)
 
                         case TAG_LOAD_STORE_4: {
                                 if (OP_IS_STORE_VARY(ins->load_store.op)) {
-                                        /* TODO: use ssa_args for store_vary */
+                                        /* TODO: use ssa_args for st_vary */
                                         ins->load_store.reg = 0;
                                 } else {
                                         bool has_dest = args.dest >= 0;
@@ -2239,7 +2239,7 @@ allocate_registers(compiler_context *ctx)
                 mir_foreach_instr_in_block(block, ins) {
                         if (ins->compact_branch) continue;
 
-                        /* Dest is < 0 for store_vary instructions, which break
+                        /* Dest is < 0 for st_vary instructions, which break
                          * the usual SSA conventions. Liveness analysis doesn't
                          * make sense on these instructions, so skip them to
                          * avoid memory corruption */
@@ -3432,7 +3432,7 @@ midgard_emit_store(compiler_context *ctx, midgard_block *block) {
 
                 midgard_instruction mov = v_fmov(idx, blank_alu_src, SSA_FIXED_REGISTER(REGISTER_VARYING_BASE + high_varying_register));
 
-                midgard_instruction st = m_store_vary_32(SSA_FIXED_REGISTER(high_varying_register), varying);
+                midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(high_varying_register), varying);
                 st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
 
                 mir_insert_instruction_before(mir_next_op(ins), st);

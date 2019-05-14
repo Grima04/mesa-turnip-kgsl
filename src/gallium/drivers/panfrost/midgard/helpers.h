@@ -23,13 +23,13 @@
  */
 
 #define OP_IS_STORE_VARY(op) (\
-		op == midgard_op_store_vary_16 || \
-		op == midgard_op_store_vary_32 \
+		op == midgard_op_st_vary_16 || \
+		op == midgard_op_st_vary_32 \
 	)
 
 #define OP_IS_STORE(op) (\
                 OP_IS_STORE_VARY(op) || \
-                op == midgard_op_store_cubemap_coords \
+                op == midgard_op_st_cubemap_coords \
 	)
 
 #define OP_IS_MOVE(op) ( \
