@@ -52,7 +52,7 @@ dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug
 	pipe_debug_message(debug, SHADER_INFO,
 			"%s shader: %u inst, %u dwords, "
 			"%u half, %u full, %u const, %u constlen, "
-			"%u (ss), %u (sy), %d max_sun\n",
+			"%u (ss), %u (sy), %d max_sun, %d loops\n",
 			ir3_shader_stage(v->shader),
 			v->info.instrs_count,
 			v->info.sizedwords,
@@ -61,7 +61,7 @@ dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug
 			v->info.max_const + 1,
 			v->constlen,
 			v->info.ss, v->info.sy,
-			v->max_sun);
+			v->max_sun, v->loops);
 }
 
 struct ir3_shader_variant *

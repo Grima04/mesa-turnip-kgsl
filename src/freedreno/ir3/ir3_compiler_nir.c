@@ -2168,6 +2168,7 @@ static void
 emit_loop(struct ir3_context *ctx, nir_loop *nloop)
 {
 	emit_cf_list(ctx, &nloop->body);
+	ctx->so->loops++;
 }
 
 static void
