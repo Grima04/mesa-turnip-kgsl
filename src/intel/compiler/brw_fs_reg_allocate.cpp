@@ -591,7 +591,7 @@ fs_visitor::assign_regs(bool allow_spilling, bool spill_all)
     */
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
       if (inst->dst.file == VGRF && inst->has_source_and_destination_hazard()) {
-         for (unsigned i = 0; i < 3; i++) {
+         for (unsigned i = 0; i < inst->sources; i++) {
             if (inst->src[i].file == VGRF) {
                ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
             }
