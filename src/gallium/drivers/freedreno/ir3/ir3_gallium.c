@@ -49,29 +49,18 @@ dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug
 	if (!unlikely(fd_mesa_debug & FD_DBG_SHADERDB))
 		return;
 
-	pipe_debug_message(debug, SHADER_INFO, "\n"
-			"SHADER-DB: %s prog %d/%d: %u instructions, %u dwords\n"
-			"SHADER-DB: %s prog %d/%d: %u half, %u full\n"
-			"SHADER-DB: %s prog %d/%d: %u const, %u constlen\n"
-			"SHADER-DB: %s prog %d/%d: %u (ss), %u (sy)\n"
-			"SHADER-DB: %s prog %d/%d: max_sun=%u\n",
+	pipe_debug_message(debug, SHADER_INFO,
+			"%s shader: %u inst, %u dwords, "
+			"%u half, %u full, %u const, %u constlen, "
+			"%u (ss), %u (sy), %d max_sun\n",
 			ir3_shader_stage(v->shader),
-			v->shader->id, v->id,
 			v->info.instrs_count,
 			v->info.sizedwords,
-			ir3_shader_stage(v->shader),
-			v->shader->id, v->id,
 			v->info.max_half_reg + 1,
 			v->info.max_reg + 1,
-			ir3_shader_stage(v->shader),
-			v->shader->id, v->id,
 			v->info.max_const + 1,
 			v->constlen,
-			ir3_shader_stage(v->shader),
-			v->shader->id, v->id,
 			v->info.ss, v->info.sy,
-			ir3_shader_stage(v->shader),
-			v->shader->id, v->id,
 			v->max_sun);
 }
 
