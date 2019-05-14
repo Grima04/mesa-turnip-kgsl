@@ -93,7 +93,8 @@ bool virgl_res_needs_readback(struct virgl_context *vctx,
                               struct virgl_resource *res,
                               unsigned usage, unsigned level)
 {
-   if (usage & PIPE_TRANSFER_DISCARD_RANGE)
+   if (usage & (PIPE_TRANSFER_DISCARD_RANGE |
+                PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE))
       return false;
 
    if (res->clean_mask & (1 << level))
