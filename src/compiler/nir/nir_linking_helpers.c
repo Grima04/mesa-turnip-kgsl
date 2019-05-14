@@ -1011,15 +1011,35 @@ nir_assign_io_var_locations(struct exec_list *var_list, unsigned *size,
       (int) FRAG_RESULT_DATA0 : (int) VARYING_SLOT_VAR0;
 
    int UNUSED last_loc = 0;
+   bool last_partial = false;
    nir_foreach_variable(var, var_list) {
-
       const struct glsl_type *type = var->type;
       if (nir_is_per_vertex_io(var, stage)) {
          assert(glsl_type_is_array(type));
          type = glsl_get_array_element(type);
       }
 
-      unsigned var_size = glsl_count_attribute_slots(type, false);
+      unsigned var_size;
+      if (var->data.compact) {
+         /* compact variables must be arrays of scalars */
+         assert(glsl_type_is_array(type));
+         assert(glsl_type_is_scalar(glsl_get_array_element(type)));
+         unsigned start = 4 * location + var->data.location_frac;
+         unsigned end = start + glsl_get_length(type);
+         var_size = end / 4 - location;
+         last_partial = end % 4 != 0;
+      } else {
+         /* Compact variables bypass the normal varying compacting pass,
+          * which means they cannot be in the same vec4 slot as a normal
+          * variable. If part of the current slot is taken up by a compact
+          * variable, we need to go to the next one.
+          */
+         if (last_partial) {
+            location++;
+            last_partial = false;
+         }
+         var_size = glsl_count_attribute_slots(type, false);
+      }
 
       /* Builtins don't allow component packing so we only need to worry about
        * user defined varyings sharing the same location.
