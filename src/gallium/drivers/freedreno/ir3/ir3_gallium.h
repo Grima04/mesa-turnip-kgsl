@@ -43,9 +43,6 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 struct ir3_shader_variant * ir3_shader_variant(struct ir3_shader *shader,
 		struct ir3_shader_key key, bool binning_pass,
 		struct pipe_debug_callback *debug);
-struct nir_shader * ir3_tgsi_to_nir(struct ir3_compiler *compiler,
-		const struct tgsi_token *tokens,
-		struct pipe_screen *screen);
 
 struct fd_ringbuffer;
 struct fd_context;

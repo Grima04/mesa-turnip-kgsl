@@ -133,7 +133,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			tgsi_dump(cso->tokens, 0);
 		}
-		nir = ir3_tgsi_to_nir(compiler, cso->tokens, screen);
+		nir = tgsi_to_nir(cso->tokens, screen);
 	}
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir);
@@ -170,26 +170,12 @@ ir3_shader_create_compute(struct ir3_compiler *compiler,
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
 			tgsi_dump(cso->prog, 0);
 		}
-		nir = ir3_tgsi_to_nir(compiler, cso->prog, screen);
+		nir = tgsi_to_nir(cso->prog, screen);
 	}
 
 	struct ir3_shader *shader = ir3_shader_from_nir(compiler, nir);
 
 	return shader;
-}
-
-struct nir_shader *
-ir3_tgsi_to_nir(struct ir3_compiler *compiler,
-		const struct tgsi_token *tokens,
-		struct pipe_screen *screen)
-{
-	if (!screen) {
-		const nir_shader_compiler_options *options =
-			ir3_get_compiler_options(compiler);
-		return tgsi_to_nir_noscreen(tokens, options);
-	}
-
-	return tgsi_to_nir(tokens, screen);
 }
 
 /* This has to reach into the fd_context a bit more than the rest of
