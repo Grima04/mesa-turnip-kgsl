@@ -572,6 +572,7 @@ void
 ra_add_node_interference(struct ra_graph *g,
                          unsigned int n1, unsigned int n2)
 {
+   assert(n1 < g->count && n2 < g->count);
    if (n1 != n2 && !BITSET_TEST(g->nodes[n1].adjacency, n2)) {
       ra_add_node_adjacency(g, n1, n2);
       ra_add_node_adjacency(g, n2, n1);
