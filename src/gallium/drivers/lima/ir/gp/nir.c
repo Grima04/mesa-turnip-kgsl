@@ -214,6 +214,10 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
                               gpir_op_load_uniform,
                               offset / 4, offset % 4) != NULL;
    }
+   case nir_intrinsic_load_viewport_scale:
+      return gpir_create_vector_load(block, &instr->dest, GPIR_VECTOR_SSA_VIEWPORT_SCALE);
+   case nir_intrinsic_load_viewport_offset:
+      return gpir_create_vector_load(block, &instr->dest, GPIR_VECTOR_SSA_VIEWPORT_OFFSET);
    case nir_intrinsic_store_output:
    {
       gpir_store_node *store = gpir_node_create(block, gpir_op_store_varying);
@@ -408,6 +412,9 @@ bool gpir_compile_nir(struct lima_vs_shader_state *prog, struct nir_shader *nir)
 
    gpir_node_print_prog_seq(comp);
    gpir_node_print_prog_dep(comp);
+
+   /* increase for viewport uniforms */
+   comp->constant_base += GPIR_VECTOR_SSA_NUM;
 
    if (!gpir_pre_rsched_lower_prog(comp))
       goto err_out0;
