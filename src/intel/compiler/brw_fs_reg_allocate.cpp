@@ -431,6 +431,7 @@ private:
    void setup_inst_interference(fs_inst *inst);
 
    void build_interference_graph(bool allow_spilling);
+   void discard_interference_graph();
 
    void set_spill_costs();
    int choose_spill_reg();
@@ -800,6 +801,13 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
       set_spill_costs();
 }
 
+void
+fs_reg_alloc::discard_interference_graph()
+{
+   ralloc_free(g);
+   g = NULL;
+}
+
 static void
 emit_unspill(const fs_builder &bld, fs_reg dst,
              uint32_t spill_offset, unsigned count)
@@ -1148,8 +1156,7 @@ fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
        * re-build the interference graph with MRFs enabled to allow spilling.
        */
       if (!fs->spilled_any_registers) {
-         ralloc_free(g);
-         g = NULL;
+         discard_interference_graph();
          build_interference_graph(true);
       }
 
