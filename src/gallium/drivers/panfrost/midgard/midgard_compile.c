@@ -3362,31 +3362,6 @@ midgard_opt_copy_prop_tex(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
-/* We don't really understand the imov/fmov split, so always use fmov (but let
- * it be imov in the IR so we don't do unsafe floating point "optimizations"
- * and break things */
-
-static void
-midgard_imov_workaround(compiler_context *ctx, midgard_block *block)
-{
-        mir_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != TAG_ALU_4) continue;
-                if (ins->alu.op != midgard_alu_op_imov) continue;
-
-                ins->alu.op = midgard_alu_op_fmov;
-                ins->alu.outmod = midgard_outmod_none;
-
-                /* Remove flags that don't make sense */
-
-                midgard_vector_alu_src s =
-                        vector_alu_from_unsigned(ins->alu.src2);
-
-                s.mod = 0;
-
-                ins->alu.src2 = vector_alu_srco_unsigned(s);
-        }
-}
-
 /* The following passes reorder MIR instructions to enable better scheduling */
 
 static void
@@ -3638,7 +3613,6 @@ emit_block(compiler_context *ctx, nir_block *block)
 
         midgard_emit_store(ctx, this_block);
         midgard_pair_load_store(ctx, this_block);
-        midgard_imov_workaround(ctx, this_block);
 
         /* Append fragment shader epilogue (value writeout) */
         if (ctx->stage == MESA_SHADER_FRAGMENT) {
