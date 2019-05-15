@@ -66,6 +66,9 @@ DRI_CONF_END;
  */
 #define MAX_DEBUG_MESSAGE_LENGTH    4096
 
+/* Render engine timestamp register */
+#define TIMESTAMP 0x2358
+
 static void
 compiler_debug_log(void *data, const char *fmt, ...)
 {
@@ -471,6 +474,11 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->has_bindless_samplers = device->info.gen >= 8;
 
    device->has_implicit_ccs = device->info.has_aux_map;
+
+   /* Check if we can read the GPU timestamp register from the CPU */
+   uint64_t u64_ignore;
+   device->has_reg_timestamp = anv_gem_reg_read(fd, TIMESTAMP | I915_REG_READ_8B_WA,
+                                                &u64_ignore) == 0;
 
    device->has_mem_available = get_available_system_memory() != 0;
 
@@ -4426,8 +4434,6 @@ anv_clock_gettime(clockid_t clock_id)
 
    return (uint64_t) current.tv_sec * 1000000000ULL + current.tv_nsec;
 }
-
-#define TIMESTAMP 0x2358
 
 VkResult anv_GetCalibratedTimestampsEXT(
    VkDevice                                     _device,

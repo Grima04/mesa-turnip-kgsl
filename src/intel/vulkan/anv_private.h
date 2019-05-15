@@ -1092,6 +1092,13 @@ struct anv_physical_device {
     /** True if we can use bindless access for samplers */
     bool                                        has_bindless_samplers;
 
+    /** True if we can read the GPU timestamp register
+     *
+     * When running in a virtual context, the timestamp register is unreadable
+     * on Gen12+.
+     */
+    bool                                        has_reg_timestamp;
+
     /** True if this device has implicit AUX
      *
      * If true, CCS is handled as an implicit attachment to the BO rather than
