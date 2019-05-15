@@ -130,7 +130,7 @@ nir_lower_non_uniform_access_impl(nir_function_impl *impl,
    nir_builder_init(&b, impl);
 
    nir_foreach_block(block, impl) {
-      nir_foreach_instr(instr, block) {
+      nir_foreach_instr_safe(instr, block) {
          switch (instr->type) {
          case nir_instr_type_tex: {
             nir_tex_instr *tex = nir_instr_as_tex(instr);
