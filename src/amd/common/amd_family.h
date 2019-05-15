@@ -83,7 +83,6 @@ enum radeon_family {
     CHIP_KAVERI,
     CHIP_KABINI,
     CHIP_HAWAII,
-    CHIP_MULLINS,
     CHIP_TONGA,    /* GFX8 (Volcanic Islands & Polaris) */
     CHIP_ICELAND,
     CHIP_CARRIZO,

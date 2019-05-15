@@ -7932,8 +7932,7 @@ void si_multiwave_lds_size_workaround(struct si_screen *sscreen,
 	 *   It applies to workgroup sizes of more than one wavefront.
 	 */
 	if (sscreen->info.family == CHIP_BONAIRE ||
-	    sscreen->info.family == CHIP_KABINI ||
-	    sscreen->info.family == CHIP_MULLINS)
+	    sscreen->info.family == CHIP_KABINI)
 		*lds_size = MAX2(*lds_size, 8);
 }
 

@@ -275,7 +275,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     case CHIP_KAVERI:
     case CHIP_KABINI:
     case CHIP_HAWAII:
-    case CHIP_MULLINS:
         ws->info.chip_class = GFX7;
         break;
     }
@@ -296,7 +295,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     case CHIP_ARUBA:
     case CHIP_KAVERI:
     case CHIP_KABINI:
-    case CHIP_MULLINS:
        ws->info.has_dedicated_vram = false;
        break;
 
@@ -482,7 +480,6 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     switch (ws->info.family) {
     case CHIP_HAINAN:
     case CHIP_KABINI:
-    case CHIP_MULLINS:
         ws->info.num_tcc_blocks = 2;
         break;
     case CHIP_VERDE:

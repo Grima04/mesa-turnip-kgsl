@@ -100,7 +100,6 @@ radv_get_device_name(enum radeon_family family, char *name, size_t name_len)
 	case CHIP_KAVERI: chip_string = "AMD RADV KAVERI"; break;
 	case CHIP_KABINI: chip_string = "AMD RADV KABINI"; break;
 	case CHIP_HAWAII: chip_string = "AMD RADV HAWAII"; break;
-	case CHIP_MULLINS: chip_string = "AMD RADV MULLINS"; break;
 	case CHIP_TONGA: chip_string = "AMD RADV TONGA"; break;
 	case CHIP_ICELAND: chip_string = "AMD RADV ICELAND"; break;
 	case CHIP_CARRIZO: chip_string = "AMD RADV CARRIZO"; break;

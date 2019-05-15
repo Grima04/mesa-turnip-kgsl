@@ -272,8 +272,7 @@ static bool cik_sdma_copy_texture(struct si_context *sctx,
 
 		if ((sctx->family == CHIP_BONAIRE ||
 		     sctx->family == CHIP_KAVERI ||
-		     sctx->family == CHIP_KABINI ||
-		     sctx->family == CHIP_MULLINS) &&
+		     sctx->family == CHIP_KABINI) &&
 		    (tiled_x + copy_width == (1 << 14) ||
 		     tiled_y + copy_height == (1 << 14)))
 			return false;
@@ -442,8 +441,7 @@ static bool cik_sdma_copy_texture(struct si_context *sctx,
 		    /* HW limitation - some GFX7 parts: */
 		    ((sctx->family != CHIP_BONAIRE &&
 		      sctx->family != CHIP_KAVERI &&
-		      sctx->family != CHIP_KABINI &&
-		      sctx->family != CHIP_MULLINS) ||
+		      sctx->family != CHIP_KABINI) ||
 		     (srcx + copy_width_aligned != (1 << 14) &&
 		      srcy + copy_height_aligned != (1 << 14) &&
 		      dstx + copy_width != (1 << 14)))) {

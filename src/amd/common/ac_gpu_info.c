@@ -654,7 +654,6 @@ ac_get_gs_table_depth(enum chip_class chip_class, enum radeon_family family)
 	case CHIP_HAINAN:
 	case CHIP_KAVERI:
 	case CHIP_KABINI:
-	case CHIP_MULLINS:
 	case CHIP_ICELAND:
 	case CHIP_CARRIZO:
 	case CHIP_STONEY:
@@ -688,7 +687,6 @@ ac_get_raster_config(struct radeon_info *info,
 	/* 1 SE / 1 RB */
 	case CHIP_HAINAN:
 	case CHIP_KABINI:
-	case CHIP_MULLINS:
 	case CHIP_STONEY:
 		raster_config = 0x00000000;
 		raster_config_1 = 0x00000000;

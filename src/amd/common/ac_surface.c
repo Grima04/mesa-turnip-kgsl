@@ -95,10 +95,6 @@ static void addrlib_family_rev_id(enum radeon_family family,
 		*addrlib_family = FAMILY_CI;
 		*addrlib_revid = get_first(AMDGPU_HAWAII_RANGE);
 		break;
-	case CHIP_MULLINS:
-		*addrlib_family = FAMILY_KV;
-		*addrlib_revid = get_first(AMDGPU_GODAVARI_RANGE);
-		break;
 	case CHIP_TONGA:
 		*addrlib_family = FAMILY_VI;
 		*addrlib_revid = get_first(AMDGPU_TONGA_RANGE);

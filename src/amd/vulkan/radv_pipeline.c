@@ -1600,8 +1600,7 @@ static void si_multiwave_lds_size_workaround(struct radv_device *device,
 	 *   It applies to workgroup sizes of more than one wavefront.
 	 */
 	if (device->physical_device->rad_info.family == CHIP_BONAIRE ||
-	    device->physical_device->rad_info.family == CHIP_KABINI ||
-	    device->physical_device->rad_info.family == CHIP_MULLINS)
+	    device->physical_device->rad_info.family == CHIP_KABINI)
 		*lds_size = MAX2(*lds_size, 8);
 }
 
