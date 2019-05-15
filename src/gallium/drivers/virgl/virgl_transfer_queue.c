@@ -120,9 +120,7 @@ static void remove_transfer(struct virgl_transfer_queue *queue,
                             struct list_action_args *args)
 {
    struct virgl_transfer *queued = args->queued;
-   struct pipe_resource *pres = queued->base.resource;
    list_del(&queued->queue_link);
-   pipe_resource_reference(&pres, NULL);
    virgl_resource_destroy_transfer(queue->vctx, queued);
 }
 
@@ -292,12 +290,8 @@ void virgl_transfer_queue_fini(struct virgl_transfer_queue *queue)
 int virgl_transfer_queue_unmap(struct virgl_transfer_queue *queue,
                                struct virgl_transfer *transfer)
 {
-   struct pipe_resource *res, *pres;
+   struct pipe_resource *res = transfer->base.resource;
    struct list_iteration_args iter;
-
-   pres = NULL;
-   res = transfer->base.resource;
-   pipe_resource_reference(&pres, res);
 
    /* We don't support copy transfers in the transfer queue. */
    assert(!transfer->copy_src_res);

@@ -415,7 +415,9 @@ virgl_resource_create_transfer(struct virgl_context *vctx,
    if (!trans)
       return NULL;
 
-   trans->base.resource = pres;
+   /* note that trans is not zero-initialized */
+   trans->base.resource = NULL;
+   pipe_resource_reference(&trans->base.resource, pres);
    trans->base.level = level;
    trans->base.usage = usage;
    trans->base.box = *box;
@@ -442,7 +444,9 @@ void virgl_resource_destroy_transfer(struct virgl_context *vctx,
                                      struct virgl_transfer *trans)
 {
    pipe_resource_reference(&trans->copy_src_res, NULL);
+
    util_range_destroy(&trans->range);
+   pipe_resource_reference(&trans->base.resource, NULL);
    slab_free(&vctx->transfer_pool, trans);
 }
 
