@@ -34,6 +34,7 @@ read_first_invocation(nir_builder *b, nir_ssa_def *x)
    first->src[0] = nir_src_for_ssa(x);
    nir_ssa_dest_init(&first->instr, &first->dest,
                      x->num_components, x->bit_size, NULL);
+   nir_builder_instr_insert(b, &first->instr);
    return &first->dest.ssa;
 }
 
