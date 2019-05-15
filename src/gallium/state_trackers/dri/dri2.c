@@ -115,20 +115,22 @@ static const struct dri2_format_mapping dri2_format_table[] = {
 };
 
 static const struct dri2_format_mapping *
-dri2_get_mapping_by_fourcc(int fourcc) {
+dri2_get_mapping_by_fourcc(int fourcc)
+{
    for (unsigned i = 0; i < ARRAY_SIZE(dri2_format_table); i++) {
       if (dri2_format_table[i].dri_fourcc == fourcc)
-               return &dri2_format_table[i];
+         return &dri2_format_table[i];
    }
 
    return NULL;
 }
 
 static const struct dri2_format_mapping *
-dri2_get_mapping_by_format(int format) {
+dri2_get_mapping_by_format(int format)
+{
    for (unsigned i = 0; i < ARRAY_SIZE(dri2_format_table); i++) {
       if (dri2_format_table[i].dri_format == format)
-               return &dri2_format_table[i];
+         return &dri2_format_table[i];
    }
 
    return NULL;
