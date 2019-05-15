@@ -228,6 +228,17 @@ typedef struct nir_variable {
       unsigned invariant:1;
 
       /**
+       * Can this variable be coalesced with another?
+       *
+       * This is set by nir_lower_io_to_temporaries to say that any
+       * copies involving this variable should stay put. Propagating it can
+       * duplicate the resulting load/store, which is not wanted, and may
+       * result in a load/store of the variable with an indirect offset which
+       * the backend may not be able to handle.
+       */
+      unsigned cannot_coalesce:1;
+
+      /**
        * When separate shader programs are enabled, only input/outputs between
        * the stages of a multi-stage separate program can be safely removed
        * from the shader interface. Other input/outputs must remains active.

@@ -123,6 +123,7 @@ create_shadow_temp(struct lower_io_state *state, nir_variable *var)
 {
    nir_variable *nvar = ralloc(state->shader, nir_variable);
    memcpy(nvar, var, sizeof *nvar);
+   nvar->data.cannot_coalesce = true;
 
    /* The original is now the temporary */
    nir_variable *temp = var;
