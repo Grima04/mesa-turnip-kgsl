@@ -459,7 +459,7 @@ void virgl_resource_destroy(struct pipe_screen *screen,
    if (res->u.b.target == PIPE_BUFFER)
       util_range_destroy(&res->valid_buffer_range);
 
-   vs->vws->resource_unref(vs->vws, res->hw_res);
+   vs->vws->resource_reference(vs->vws, &res->hw_res, NULL);
    FREE(res);
 }
 

@@ -121,11 +121,13 @@ virgl_drm_winsys_destroy(struct virgl_winsys *qws)
    FREE(qdws);
 }
 
-static void virgl_drm_resource_reference(struct virgl_drm_winsys *qdws,
-                                       struct virgl_hw_res **dres,
-                                       struct virgl_hw_res *sres)
+static void virgl_drm_resource_reference(struct virgl_winsys *qws,
+                                         struct virgl_hw_res **dres,
+                                         struct virgl_hw_res *sres)
 {
+   struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct virgl_hw_res *old = *dres;
+
    if (pipe_reference(&(*dres)->reference, &sres->reference)) {
 
       if (!can_cache_resource_with_bind(old->bind) ||
@@ -338,7 +340,7 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
 
    if (res) {
       struct virgl_hw_res *r = NULL;
-      virgl_drm_resource_reference(qdws, &r, res);
+      virgl_drm_resource_reference(&qdws->base, &r, res);
       goto done;
    }
 
@@ -429,14 +431,6 @@ static boolean virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
    return TRUE;
 }
 
-static void virgl_drm_winsys_resource_unref(struct virgl_winsys *qws,
-                                            struct virgl_hw_res *hres)
-{
-   struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
-
-   virgl_drm_resource_reference(qdws, &hres, NULL);
-}
-
 static void *virgl_drm_resource_map(struct virgl_winsys *qws,
                                     struct virgl_hw_res *res)
 {
@@ -503,12 +497,11 @@ static bool virgl_drm_alloc_res_list(struct virgl_drm_cmd_buf *cbuf,
 
 static void virgl_drm_free_res_list(struct virgl_drm_cmd_buf *cbuf)
 {
-   struct virgl_drm_winsys *qdws = virgl_drm_winsys(cbuf->ws);
    int i;
 
    for (i = 0; i < cbuf->cres; i++) {
       p_atomic_dec(&cbuf->res_bo[i]->num_cs_references);
-      virgl_drm_resource_reference(qdws, &cbuf->res_bo[i], NULL);
+      virgl_drm_resource_reference(cbuf->ws, &cbuf->res_bo[i], NULL);
    }
    FREE(cbuf->res_hlist);
    FREE(cbuf->res_bo);
@@ -564,7 +557,7 @@ static void virgl_drm_add_res(struct virgl_drm_winsys *qdws,
    }
 
    cbuf->res_bo[cbuf->cres] = NULL;
-   virgl_drm_resource_reference(qdws, &cbuf->res_bo[cbuf->cres], res);
+   virgl_drm_resource_reference(&qdws->base, &cbuf->res_bo[cbuf->cres], res);
    cbuf->res_hlist[cbuf->cres] = res->bo_handle;
    cbuf->is_handle_added[hash] = TRUE;
 
@@ -576,7 +569,6 @@ static void virgl_drm_add_res(struct virgl_drm_winsys *qdws,
 /* This is called after the cbuf is submitted. */
 static void virgl_drm_clear_res_list(struct virgl_drm_cmd_buf *cbuf)
 {
-   struct virgl_drm_winsys *qdws = virgl_drm_winsys(cbuf->ws);
    int i;
 
    for (i = 0; i < cbuf->cres; i++) {
@@ -584,7 +576,7 @@ static void virgl_drm_clear_res_list(struct virgl_drm_cmd_buf *cbuf)
       p_atomic_set(&cbuf->res_bo[i]->maybe_busy, true);
 
       p_atomic_dec(&cbuf->res_bo[i]->num_cs_references);
-      virgl_drm_resource_reference(qdws, &cbuf->res_bo[i], NULL);
+      virgl_drm_resource_reference(cbuf->ws, &cbuf->res_bo[i], NULL);
    }
 
    cbuf->cres = 0;
@@ -983,7 +975,7 @@ virgl_drm_winsys_create(int drmFD)
    qdws->base.transfer_put = virgl_bo_transfer_put;
    qdws->base.transfer_get = virgl_bo_transfer_get;
    qdws->base.resource_create = virgl_drm_winsys_resource_cache_create;
-   qdws->base.resource_unref = virgl_drm_winsys_resource_unref;
+   qdws->base.resource_reference = virgl_drm_resource_reference;
    qdws->base.resource_create_from_handle = virgl_drm_winsys_resource_create_handle;
    qdws->base.resource_get_handle = virgl_drm_winsys_resource_get_handle;
    qdws->base.resource_map = virgl_drm_resource_map;

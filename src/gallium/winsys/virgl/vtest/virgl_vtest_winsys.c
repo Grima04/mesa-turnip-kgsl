@@ -202,11 +202,13 @@ static boolean virgl_vtest_resource_is_busy(struct virgl_winsys *vws,
    return ret == 1 ? TRUE : FALSE;
 }
 
-static void virgl_vtest_resource_reference(struct virgl_vtest_winsys *vtws,
+static void virgl_vtest_resource_reference(struct virgl_winsys *vws,
                                            struct virgl_hw_res **dres,
                                            struct virgl_hw_res *sres)
 {
+   struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
    struct virgl_hw_res *old = *dres;
+
    if (pipe_reference(&(*dres)->reference, &sres->reference)) {
       if (!can_cache_resource_with_bind(old->bind)) {
          virgl_hw_res_destroy(vtws, old);
@@ -294,13 +296,6 @@ out:
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->num_cs_references, 0);
    return res;
-}
-
-static void virgl_vtest_winsys_resource_unref(struct virgl_winsys *vws,
-                                              struct virgl_hw_res *hres)
-{
-   struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
-   virgl_vtest_resource_reference(vtws, &hres, NULL);
 }
 
 static void *virgl_vtest_resource_map(struct virgl_winsys *vws,
@@ -409,7 +404,7 @@ static void virgl_vtest_release_all_res(struct virgl_vtest_winsys *vtws,
 
    for (i = 0; i < cbuf->cres; i++) {
       p_atomic_dec(&cbuf->res_bo[i]->num_cs_references);
-      virgl_vtest_resource_reference(vtws, &cbuf->res_bo[i], NULL);
+      virgl_vtest_resource_reference(&vtws->base, &cbuf->res_bo[i], NULL);
    }
    cbuf->cres = 0;
 }
@@ -435,7 +430,7 @@ static void virgl_vtest_add_res(struct virgl_vtest_winsys *vtws,
    }
 
    cbuf->res_bo[cbuf->cres] = NULL;
-   virgl_vtest_resource_reference(vtws, &cbuf->res_bo[cbuf->cres], res);
+   virgl_vtest_resource_reference(&vtws->base, &cbuf->res_bo[cbuf->cres], res);
    cbuf->is_handle_added[hash] = TRUE;
 
    cbuf->reloc_indices_hashlist[hash] = cbuf->cres;
@@ -586,7 +581,7 @@ static void virgl_fence_reference(struct virgl_winsys *vws,
                                   struct pipe_fence_handle *src)
 {
    struct virgl_vtest_winsys *vdws = virgl_vtest_winsys(vws);
-   virgl_vtest_resource_reference(vdws, (struct virgl_hw_res **)dst,
+   virgl_vtest_resource_reference(&vdws->base, (struct virgl_hw_res **)dst,
                                   virgl_hw_res(src));
 }
 
@@ -678,7 +673,7 @@ virgl_vtest_winsys_wrap(struct sw_winsys *sws)
    vtws->base.transfer_get = virgl_vtest_transfer_get;
 
    vtws->base.resource_create = virgl_vtest_winsys_resource_cache_create;
-   vtws->base.resource_unref = virgl_vtest_winsys_resource_unref;
+   vtws->base.resource_reference = virgl_vtest_resource_reference;
    vtws->base.resource_map = virgl_vtest_resource_map;
    vtws->base.resource_wait = virgl_vtest_resource_wait;
    vtws->base.resource_is_busy = virgl_vtest_resource_is_busy;
