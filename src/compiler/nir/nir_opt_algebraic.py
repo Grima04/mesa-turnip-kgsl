@@ -621,9 +621,6 @@ optimizations = [
    (('bcsel', True, b, c), b),
    (('bcsel', False, b, c), c),
    (('bcsel', a, ('b2f(is_used_once)', 'b@32'), ('b2f', 'c@32')), ('b2f', ('bcsel', a, b, c))),
-   # The result of this should be hit by constant propagation and, in the
-   # next round of opt_algebraic, get picked up by one of the above two.
-   (('bcsel', '#a', b, c), ('bcsel', ('ine', 'a', 0), b, c)),
 
    (('bcsel', a, b, b), b),
    (('fcsel', a, b, b), b),
