@@ -436,13 +436,13 @@ anv_gem_fd_to_handle(struct anv_device *device, int fd)
 }
 
 int
-anv_gem_reg_read(struct anv_device *device, uint32_t offset, uint64_t *result)
+anv_gem_reg_read(int fd, uint32_t offset, uint64_t *result)
 {
    struct drm_i915_reg_read args = {
       .offset = offset
    };
 
-   int ret = gen_ioctl(device->fd, DRM_IOCTL_I915_REG_READ, &args);
+   int ret = gen_ioctl(fd, DRM_IOCTL_I915_REG_READ, &args);
 
    *result = args.val;
    return ret;

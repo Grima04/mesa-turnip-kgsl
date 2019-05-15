@@ -242,8 +242,7 @@ anv_gem_syncobj_wait(struct anv_device *device,
 }
 
 int
-anv_gem_reg_read(struct anv_device *device,
-                 uint32_t offset, uint64_t *result)
+anv_gem_reg_read(int fd, uint32_t offset, uint64_t *result)
 {
    unreachable("Unused");
 }
