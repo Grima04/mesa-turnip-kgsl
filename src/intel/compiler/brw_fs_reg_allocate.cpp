@@ -396,7 +396,8 @@ void fs_visitor::calculate_payload_ranges(int payload_node_count,
 class fs_reg_alloc {
 public:
    fs_reg_alloc(fs_visitor *fs):
-      fs(fs), devinfo(fs->devinfo), compiler(fs->compiler), g(NULL)
+      fs(fs), devinfo(fs->devinfo), compiler(fs->compiler), g(NULL),
+      have_spill_costs(false)
    {
       mem_ctx = ralloc_context(NULL);
 
@@ -447,6 +448,7 @@ private:
    int rsi;
 
    ra_graph *g;
+   bool have_spill_costs;
 
    int payload_node_count;
    int *payload_last_use_ip;
@@ -796,9 +798,6 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
     */
    foreach_block_and_inst(block, fs_inst, inst, fs->cfg)
       setup_inst_interference(inst);
-
-   if (allow_spilling)
-      set_spill_costs();
 }
 
 void
@@ -806,6 +805,7 @@ fs_reg_alloc::discard_interference_graph()
 {
    ralloc_free(g);
    g = NULL;
+   have_spill_costs = false;
 }
 
 static void
@@ -937,11 +937,16 @@ fs_reg_alloc::set_spill_costs()
       if (!no_spill[i])
 	 ra_set_node_spill_cost(g, first_vgrf_node + i, adjusted_cost);
    }
+
+   have_spill_costs = true;
 }
 
 int
 fs_reg_alloc::choose_spill_reg()
 {
+   if (!have_spill_costs)
+      set_spill_costs();
+
    int node = ra_get_best_spill_node(g);
    if (node < 0)
       return -1;
