@@ -27,6 +27,7 @@
 #include "virgl_protocol.h"
 #include "virgl_screen.h"
 #include "virgl_encode.h"
+#include "virgl_resource.h"
 #include "virgl_transfer_queue.h"
 
 struct list_action_args

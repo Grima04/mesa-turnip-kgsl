@@ -21,7 +21,16 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "virgl_resource.h"
+#ifndef VIRGL_TRANSFER_QUEUE_H
+#define VIRGL_TRANSFER_QUEUE_H
+
+#include "pipe/p_defines.h"
+#include "util/list.h"
+
+struct virgl_cmd_buf;
+struct virgl_screen;
+struct virgl_slab_child_pool;
+struct virgl_transfer;
 
 enum virgl_transfer_queue_lists {
    PENDING_LIST = 0,
@@ -58,3 +67,5 @@ bool virgl_transfer_queue_is_queued(struct virgl_transfer_queue *queue,
  */
 struct virgl_transfer * virgl_transfer_queue_extend(
    struct virgl_transfer_queue *queue, struct virgl_transfer *transfer);
+
+#endif /* VIRGL_TRANSFER_QUEUE_H */
