@@ -1157,6 +1157,13 @@ fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
       if (!allow_spilling)
          return false;
 
+      /* Failed to allocate registers.  Spill a reg, and the caller will
+       * loop back into here to try again.
+       */
+      int reg = choose_spill_reg();
+      if (reg == -1)
+         return false;
+
       /* If we're going to spill but we've never spilled before, we need to
        * re-build the interference graph with MRFs enabled to allow spilling.
        */
@@ -1166,13 +1173,6 @@ fs_reg_alloc::assign_regs(bool allow_spilling, bool spill_all)
       }
 
       spilled = true;
-
-      /* Failed to allocate registers.  Spill a reg, and the caller will
-       * loop back into here to try again.
-       */
-      int reg = choose_spill_reg();
-      if (reg == -1)
-         return false;
 
       spill_reg(reg);
    }
