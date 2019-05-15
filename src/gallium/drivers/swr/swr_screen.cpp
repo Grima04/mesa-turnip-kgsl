@@ -331,7 +331,7 @@ swr_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
    case PIPE_CAP_NATIVE_FENCE_FD:
    case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-   case PIPE_CAP_TGSI_FS_FBFETCH:
+   case PIPE_CAP_FBFETCH:
    case PIPE_CAP_TGSI_MUL_ZERO_WINS:
    case PIPE_CAP_INT64:
    case PIPE_CAP_INT64_DIVMOD:

@@ -246,8 +246,9 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_FB_NO_ATTACH;
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
       return vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_ROBUST_BUFFER_ACCESS;
-   case PIPE_CAP_TGSI_FS_FBFETCH:
-      return vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_TGSI_FBFETCH;
+   case PIPE_CAP_FBFETCH:
+      return (vscreen->caps.caps.v2.capability_bits &
+              VIRGL_CAP_TGSI_FBFETCH) ? 1 : 0;
    case PIPE_CAP_TGSI_CLOCK:
       return vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_SHADER_CLOCK;
    case PIPE_CAP_TGSI_ARRAY_COMPONENTS:

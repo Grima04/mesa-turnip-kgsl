@@ -229,7 +229,7 @@ static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
         case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
         case PIPE_CAP_NATIVE_FENCE_FD:
         case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-        case PIPE_CAP_TGSI_FS_FBFETCH:
+        case PIPE_CAP_FBFETCH:
         case PIPE_CAP_TGSI_MUL_ZERO_WINS:
         case PIPE_CAP_DOUBLES:
         case PIPE_CAP_INT64:

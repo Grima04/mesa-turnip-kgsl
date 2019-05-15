@@ -747,8 +747,6 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(ARB_transform_feedback_overflow_query), PIPE_CAP_QUERY_SO_OVERFLOW           },
       { o(ARB_fragment_shader_interlock),    PIPE_CAP_FRAGMENT_SHADER_INTERLOCK        },
 
-      { o(KHR_blend_equation_advanced),      PIPE_CAP_TGSI_FS_FBFETCH                  },
-
       { o(EXT_blend_equation_separate),      PIPE_CAP_BLEND_EQUATION_SEPARATE          },
       { o(EXT_depth_bounds_test),            PIPE_CAP_DEPTH_BOUNDS_TEST                },
       { o(EXT_disjoint_timer_query),         PIPE_CAP_QUERY_TIMESTAMP                  },
@@ -1394,6 +1392,12 @@ void st_init_extensions(struct pipe_screen *screen,
        */
       if (!extensions->EXT_transform_feedback)
          consts->DisableVaryingPacking = GL_TRUE;
+   }
+
+   unsigned max_fb_fetch_rts = screen->get_param(screen, PIPE_CAP_FBFETCH);
+
+   if (max_fb_fetch_rts > 0) {
+      extensions->KHR_blend_equation_advanced = true;
    }
 
    consts->MaxViewports = screen->get_param(screen, PIPE_CAP_MAX_VIEWPORTS);

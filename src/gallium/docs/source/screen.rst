@@ -378,8 +378,10 @@ The integer capabilities:
 * ``PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY``: Tell the GLSL compiler to use
   the minimum amount of optimizations just to be able to do all the linking
   and lowering.
-* ``PIPE_CAP_TGSI_FS_FBFETCH``: Whether a fragment shader can use the FBFETCH
-  opcode to retrieve the current value in the framebuffer.
+* ``PIPE_CAP_FBFETCH``: The number of render targets whose value in the
+  current framebuffer can be read in the shader.  0 means framebuffer fetch
+  is not supported.  1 means that only the first render target can be read,
+  and a larger value would mean that multiple render targets are supported.
 * ``PIPE_CAP_TGSI_MUL_ZERO_WINS``: Whether TGSI shaders support the
   ``TGSI_PROPERTY_MUL_ZERO_WINS`` shader property.
 * ``PIPE_CAP_DOUBLES``: Whether double precision floating-point operations
