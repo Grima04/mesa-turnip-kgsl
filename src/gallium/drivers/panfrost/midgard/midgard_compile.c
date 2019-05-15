@@ -1336,8 +1336,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 return;
         }
 
-        /* Midgard can perform certain modifiers on output ofa n ALU op */
+        /* Midgard can perform certain modifiers on output of an ALU op */
         midgard_outmod outmod =
+                midgard_is_integer_out_op(op) ? midgard_outmod_int :
                 instr->dest.saturate ? midgard_outmod_sat : midgard_outmod_none;
 
         /* fmax(a, 0.0) can turn into a .pos modifier as an optimization */
