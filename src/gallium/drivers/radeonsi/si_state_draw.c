@@ -78,7 +78,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	struct si_shader_selector *tcs =
 		sctx->tcs_shader.cso ? sctx->tcs_shader.cso : sctx->tes_shader.cso;
 	unsigned tess_uses_primid = sctx->ia_multi_vgt_param_key.u.tess_uses_prim_id;
-	bool has_primid_instancing_bug = sctx->chip_class == SI &&
+	bool has_primid_instancing_bug = sctx->chip_class == GFX6 &&
 					 sctx->screen->info.max_se == 1;
 	unsigned tes_sh_base = sctx->shader_pointers.sh_base[PIPE_SHADER_TESS_EVAL];
 	unsigned num_tcs_input_cp = info->vertices_per_patch;
@@ -152,7 +152,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	/* Make sure that the data fits in LDS. This assumes the shaders only
 	 * use LDS for the inputs and outputs.
 	 *
-	 * While CIK can use 64K per threadgroup, there is a hang on Stoney
+	 * While GFX7 can use 64K per threadgroup, there is a hang on Stoney
 	 * with 2 CUs if we use more than 32K. The closed Vulkan driver also
 	 * uses 32K at most on all GCN chips.
 	 */
@@ -185,8 +185,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	if (temp_verts_per_tg > 64 && temp_verts_per_tg % 64 < 48)
 		*num_patches = (temp_verts_per_tg & ~63) / max_verts_per_patch;
 
-	if (sctx->chip_class == SI) {
-		/* SI bug workaround, related to power management. Limit LS-HS
+	if (sctx->chip_class == GFX6) {
+		/* GFX6 bug workaround, related to power management. Limit LS-HS
 		 * threadgroups to only one wave.
 		 */
 		unsigned one_wave = 64 / max_verts_per_patch;
@@ -200,7 +200,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	 * The intended solution is to restrict threadgroups to
 	 * a single instance by setting SWITCH_ON_EOI, which
 	 * should cause IA to split instances up. However, this
-	 * doesn't work correctly on SI when there is no other
+	 * doesn't work correctly on GFX6 when there is no other
 	 * SE to switch to.
 	 */
 	if (has_primid_instancing_bug && tess_uses_primid)
@@ -238,7 +238,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	/* Compute the LDS size. */
 	lds_size = output_patch0_offset + output_patch_size * *num_patches;
 
-	if (sctx->chip_class >= CIK) {
+	if (sctx->chip_class >= GFX7) {
 		assert(lds_size <= 65536);
 		lds_size = align(lds_size, 512) / 512;
 	} else {
@@ -272,7 +272,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 
 		/* Due to a hw bug, RSRC2_LS must be written twice with another
 		 * LS register written in between. */
-		if (sctx->chip_class == CIK && sctx->family != CHIP_HAWAII)
+		if (sctx->chip_class == GFX7 && sctx->family != CHIP_HAWAII)
 			radeon_set_sh_reg(cs, R_00B52C_SPI_SHADER_PGM_RSRC2_LS, ls_rsrc2);
 		radeon_set_sh_reg_seq(cs, R_00B528_SPI_SHADER_PGM_RSRC1_LS, 2);
 		radeon_emit(cs, ls_current->config.rsrc1);
@@ -297,7 +297,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 		       S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
 
 	if (sctx->last_ls_hs_config != ls_hs_config) {
-		if (sctx->chip_class >= CIK) {
+		if (sctx->chip_class >= GFX7) {
 			radeon_set_context_reg_idx(cs, R_028B58_VGT_LS_HS_CONFIG, 2,
 						   ls_hs_config);
 		} else {
@@ -349,10 +349,10 @@ si_get_init_multi_vgt_param(struct si_screen *sscreen,
 		    key->u.uses_gs)
 			partial_vs_wave = true;
 
-		/* Needed for 028B6C_DISTRIBUTION_MODE != 0. (implies >= VI) */
+		/* Needed for 028B6C_DISTRIBUTION_MODE != 0. (implies >= GFX8) */
 		if (sscreen->has_distributed_tess) {
 			if (key->u.uses_gs) {
-				if (sscreen->info.chip_class == VI)
+				if (sscreen->info.chip_class == GFX8)
 					partial_es_wave = true;
 			} else {
 				partial_vs_wave = true;
@@ -367,7 +367,7 @@ si_get_init_multi_vgt_param(struct si_screen *sscreen,
 		wd_switch_on_eop = true;
 	}
 
-	if (sscreen->info.chip_class >= CIK) {
+	if (sscreen->info.chip_class >= GFX7) {
 		/* WD_SWITCH_ON_EOP has no effect on GPUs with less than
 		 * 4 shader engines. Set 1 to pass the assertion below.
 		 * The other cases are hardware requirements.
@@ -400,12 +400,12 @@ si_get_init_multi_vgt_param(struct si_screen *sscreen,
 		 * Assume indirect draws always use small instances.
 		 * This is needed for good VS wave utilization.
 		 */
-		if (sscreen->info.chip_class <= VI &&
+		if (sscreen->info.chip_class <= GFX8 &&
 		    sscreen->info.max_se == 4 &&
 		    key->u.multi_instances_smaller_than_primgroup)
 			wd_switch_on_eop = true;
 
-		/* Required on CIK and later. */
+		/* Required on GFX7 and later. */
 		if (sscreen->info.max_se == 4 && !wd_switch_on_eop)
 			ia_switch_on_eoi = true;
 
@@ -421,10 +421,10 @@ si_get_init_multi_vgt_param(struct si_screen *sscreen,
 		     sscreen->info.family == CHIP_VEGAM))
 			partial_vs_wave = true;
 
-		/* Required by Hawaii and, for some special cases, by VI. */
+		/* Required by Hawaii and, for some special cases, by GFX8. */
 		if (ia_switch_on_eoi &&
 		    (sscreen->info.family == CHIP_HAWAII ||
-		     (sscreen->info.chip_class == VI &&
+		     (sscreen->info.chip_class == GFX8 &&
 		      (key->u.uses_gs || max_primgroup_in_wave != 2))))
 			partial_vs_wave = true;
 
@@ -444,16 +444,16 @@ si_get_init_multi_vgt_param(struct si_screen *sscreen,
 	}
 
 	/* If SWITCH_ON_EOI is set, PARTIAL_ES_WAVE must be set too. */
-	if (sscreen->info.chip_class <= VI && ia_switch_on_eoi)
+	if (sscreen->info.chip_class <= GFX8 && ia_switch_on_eoi)
 		partial_es_wave = true;
 
 	return S_028AA8_SWITCH_ON_EOP(ia_switch_on_eop) |
 		S_028AA8_SWITCH_ON_EOI(ia_switch_on_eoi) |
 		S_028AA8_PARTIAL_VS_WAVE_ON(partial_vs_wave) |
 		S_028AA8_PARTIAL_ES_WAVE_ON(partial_es_wave) |
-		S_028AA8_WD_SWITCH_ON_EOP(sscreen->info.chip_class >= CIK ? wd_switch_on_eop : 0) |
+		S_028AA8_WD_SWITCH_ON_EOP(sscreen->info.chip_class >= GFX7 ? wd_switch_on_eop : 0) |
 		/* The following field was moved to VGT_SHADER_STAGES_EN in GFX9. */
-		S_028AA8_MAX_PRIMGRP_IN_WAVE(sscreen->info.chip_class == VI ?
+		S_028AA8_MAX_PRIMGRP_IN_WAVE(sscreen->info.chip_class == GFX8 ?
 					     max_primgroup_in_wave : 0) |
 		S_030960_EN_INST_OPT_BASIC(sscreen->info.chip_class >= GFX9) |
 		S_030960_EN_INST_OPT_ADV(sscreen->info.chip_class >= GFX9);
@@ -519,7 +519,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 
 	if (sctx->gs_shader.cso) {
 		/* GS requirement. */
-		if (sctx->chip_class <= VI &&
+		if (sctx->chip_class <= GFX8 &&
 		    SI_GS_PER_ES / primgroup_size >= sctx->screen->gs_table_depth - 3)
 			ia_multi_vgt_param |= S_028AA8_PARTIAL_ES_WAVE_ON(1);
 
@@ -625,7 +625,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 			radeon_set_uconfig_reg_idx(cs, sctx->screen,
 						   R_030960_IA_MULTI_VGT_PARAM, 4,
 						   ia_multi_vgt_param);
-		else if (sctx->chip_class >= CIK)
+		else if (sctx->chip_class >= GFX7)
 			radeon_set_context_reg_idx(cs, R_028AA8_IA_MULTI_VGT_PARAM, 1, ia_multi_vgt_param);
 		else
 			radeon_set_context_reg(cs, R_028AA8_IA_MULTI_VGT_PARAM, ia_multi_vgt_param);
@@ -633,7 +633,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 		sctx->last_multi_vgt_param = ia_multi_vgt_param;
 	}
 	if (prim != sctx->last_prim) {
-		if (sctx->chip_class >= CIK)
+		if (sctx->chip_class >= GFX7)
 			radeon_set_uconfig_reg_idx(cs, sctx->screen,
 						   R_030908_VGT_PRIMITIVE_TYPE, 1, prim);
 		else
@@ -700,12 +700,12 @@ static void si_emit_draw_packets(struct si_context *sctx,
 				break;
 			case 2:
 				index_type = V_028A7C_VGT_INDEX_16 |
-					     (SI_BIG_ENDIAN && sctx->chip_class <= CIK ?
+					     (SI_BIG_ENDIAN && sctx->chip_class <= GFX7 ?
 						      V_028A7C_VGT_DMA_SWAP_16_BIT : 0);
 				break;
 			case 4:
 				index_type = V_028A7C_VGT_INDEX_32 |
-					     (SI_BIG_ENDIAN && sctx->chip_class <= CIK ?
+					     (SI_BIG_ENDIAN && sctx->chip_class <= GFX7 ?
 						      V_028A7C_VGT_DMA_SWAP_32_BIT : 0);
 				break;
 			default:
@@ -733,10 +733,10 @@ static void si_emit_draw_packets(struct si_context *sctx,
 				      si_resource(indexbuf),
 				      RADEON_USAGE_READ, RADEON_PRIO_INDEX_BUFFER);
 	} else {
-		/* On CI and later, non-indexed draws overwrite VGT_INDEX_TYPE,
+		/* On GFX7 and later, non-indexed draws overwrite VGT_INDEX_TYPE,
 		 * so the state must be re-emitted before the next indexed draw.
 		 */
-		if (sctx->chip_class >= CIK)
+		if (sctx->chip_class >= GFX7)
 			sctx->last_index_size = -1;
 	}
 
@@ -918,7 +918,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 	if (flags & SI_CONTEXT_FLUSH_AND_INV_DB)
 		sctx->num_db_cache_flushes++;
 
-	/* SI has a bug that it always flushes ICACHE and KCACHE if either
+	/* GFX6 has a bug that it always flushes ICACHE and KCACHE if either
 	 * bit is set. An alternative way is to write SQC_CACHES, but that
 	 * doesn't seem to work reliably. Since the bug doesn't affect
 	 * correctness (it only does more work than necessary) and
@@ -931,7 +931,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 	if (flags & SI_CONTEXT_INV_SMEM_L1)
 		cp_coher_cntl |= S_0085F0_SH_KCACHE_ACTION_ENA(1);
 
-	if (sctx->chip_class <= VI) {
+	if (sctx->chip_class <= GFX8) {
 		if (flags & SI_CONTEXT_FLUSH_AND_INV_CB) {
 			cp_coher_cntl |= S_0085F0_CB_ACTION_ENA(1) |
 					 S_0085F0_CB0_DEST_BASE_ENA(1) |
@@ -944,7 +944,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 					 S_0085F0_CB7_DEST_BASE_ENA(1);
 
 			/* Necessary for DCC */
-			if (sctx->chip_class == VI)
+			if (sctx->chip_class == GFX8)
 				si_cp_release_mem(sctx,
 						  V_028A90_FLUSH_AND_INV_CB_DATA_TS,
 						  0, EOP_DST_SEL_MEM, EOP_INT_SEL_NONE,
@@ -1085,25 +1085,25 @@ void si_emit_cache_flush(struct si_context *sctx)
 		radeon_emit(cs, 0);
 	}
 
-	/* SI-CI-VI only:
+	/* GFX6-GFX8 only:
 	 *   When one of the CP_COHER_CNTL.DEST_BASE flags is set, SURFACE_SYNC
 	 *   waits for idle, so it should be last. SURFACE_SYNC is done in PFP.
 	 *
 	 * cp_coher_cntl should contain all necessary flags except TC flags
 	 * at this point.
 	 *
-	 * SI-CIK don't support L2 write-back.
+	 * GFX6-GFX7 don't support L2 write-back.
 	 */
 	if (flags & SI_CONTEXT_INV_GLOBAL_L2 ||
-	    (sctx->chip_class <= CIK &&
+	    (sctx->chip_class <= GFX7 &&
 	     (flags & SI_CONTEXT_WRITEBACK_GLOBAL_L2))) {
-		/* Invalidate L1 & L2. (L1 is always invalidated on SI)
-		 * WB must be set on VI+ when TC_ACTION is set.
+		/* Invalidate L1 & L2. (L1 is always invalidated on GFX6)
+		 * WB must be set on GFX8+ when TC_ACTION is set.
 		 */
 		si_emit_surface_sync(sctx, cp_coher_cntl |
 				     S_0085F0_TC_ACTION_ENA(1) |
 				     S_0085F0_TCL1_ACTION_ENA(1) |
-				     S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= VI));
+				     S_0301F0_TC_WB_ACTION_ENA(sctx->chip_class >= GFX8));
 		cp_coher_cntl = 0;
 		sctx->num_L2_invalidates++;
 	} else {
@@ -1260,7 +1260,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	unsigned index_offset = info->indirect ? info->start * index_size : 0;
 
 	if (likely(!info->indirect)) {
-		/* SI-CI treat instance_count==0 as instance_count==1. There is
+		/* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
 		 * no workaround for indirect draws, but we can at least skip
 		 * direct draws.
 		 */
@@ -1362,8 +1362,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 	if (index_size) {
 		/* Translate or upload, if needed. */
-		/* 8-bit indices are supported on VI. */
-		if (sctx->chip_class <= CIK && index_size == 1) {
+		/* 8-bit indices are supported on GFX8. */
+		if (sctx->chip_class <= GFX7 && index_size == 1) {
 			unsigned start, count, start_offset, size, offset;
 			void *ptr;
 
@@ -1403,9 +1403,9 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 			/* info->start will be added by the drawing code */
 			index_offset -= start_offset;
-		} else if (sctx->chip_class <= CIK &&
+		} else if (sctx->chip_class <= GFX7 &&
 			   si_resource(indexbuf)->TC_L2_dirty) {
-			/* VI reads index buffers through TC L2, so it doesn't
+			/* GFX8 reads index buffers through TC L2, so it doesn't
 			 * need this. */
 			sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
 			si_resource(indexbuf)->TC_L2_dirty = false;
@@ -1419,7 +1419,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		si_context_add_resource_size(sctx, indirect->buffer);
 
 		/* Indirect buffers use TC L2 on GFX9, but not older hw. */
-		if (sctx->chip_class <= VI) {
+		if (sctx->chip_class <= GFX8) {
 			if (si_resource(indirect->buffer)->TC_L2_dirty) {
 				sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
 				si_resource(indirect->buffer)->TC_L2_dirty = false;
@@ -1498,7 +1498,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		/* Start prefetches after the draw has been started. Both will run
 		 * in parallel, but starting the draw first is more important.
 		 */
-		if (sctx->chip_class >= CIK && sctx->prefetch_L2_mask)
+		if (sctx->chip_class >= GFX7 && sctx->prefetch_L2_mask)
 			cik_emit_prefetch_L2(sctx, false);
 	} else {
 		/* If we don't wait for idle, start prefetches first, then set
@@ -1508,7 +1508,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			si_emit_cache_flush(sctx);
 
 		/* Only prefetch the API VS and VBO descriptors. */
-		if (sctx->chip_class >= CIK && sctx->prefetch_L2_mask)
+		if (sctx->chip_class >= GFX7 && sctx->prefetch_L2_mask)
 			cik_emit_prefetch_L2(sctx, true);
 
 		if (!si_upload_graphics_shader_descriptors(sctx))
@@ -1527,7 +1527,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
 		/* Prefetch the remaining shaders after the draw has been
 		 * started. */
-		if (sctx->chip_class >= CIK && sctx->prefetch_L2_mask)
+		if (sctx->chip_class >= GFX7 && sctx->prefetch_L2_mask)
 			cik_emit_prefetch_L2(sctx, false);
 	}
 

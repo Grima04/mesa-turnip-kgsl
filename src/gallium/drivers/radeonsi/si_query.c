@@ -1019,7 +1019,7 @@ static void si_emit_query_predication(struct si_context *ctx)
 	/* Use the value written by compute shader as a workaround. Note that
 	 * the wait flag does not apply in this predication mode.
 	 *
-	 * The shader outputs the result value to L2. Workarounds only affect VI
+	 * The shader outputs the result value to L2. Workarounds only affect GFX8
 	 * and later, where the CP reads data from L2, so we don't need an
 	 * additional flush.
 	 */
@@ -1608,11 +1608,11 @@ static void si_render_condition(struct pipe_context *ctx,
 	if (query) {
 		bool needs_workaround = false;
 
-		/* There was a firmware regression in VI which causes successive
+		/* There was a firmware regression in GFX8 which causes successive
 		 * SET_PREDICATION packets to give the wrong answer for
 		 * non-inverted stream overflow predication.
 		 */
-		if (((sctx->chip_class == VI && sctx->screen->info.pfp_fw_feature < 49) ||
+		if (((sctx->chip_class == GFX8 && sctx->screen->info.pfp_fw_feature < 49) ||
 		     (sctx->chip_class == GFX9 && sctx->screen->info.pfp_fw_feature < 38)) &&
 		    !condition &&
 		    (squery->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE ||
@@ -1786,7 +1786,7 @@ static unsigned si_get_num_queries(struct si_screen *sscreen)
 {
 	/* amdgpu */
 	if (sscreen->info.drm_major == 3) {
-		if (sscreen->info.chip_class >= VI)
+		if (sscreen->info.chip_class >= GFX8)
 			return ARRAY_SIZE(si_driver_query_list);
 		else
 			return ARRAY_SIZE(si_driver_query_list) - 7;
@@ -1794,7 +1794,7 @@ static unsigned si_get_num_queries(struct si_screen *sscreen)
 
 	/* radeon */
 	if (sscreen->info.has_read_registers_query) {
-		if (sscreen->info.chip_class == CIK)
+		if (sscreen->info.chip_class == GFX7)
 			return ARRAY_SIZE(si_driver_query_list) - 6;
 		else
 			return ARRAY_SIZE(si_driver_query_list) - 7;

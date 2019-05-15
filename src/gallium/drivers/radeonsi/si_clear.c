@@ -313,7 +313,7 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen,
 			assert(!"unexpected micro mode");
 			return;
 		}
-	} else if (sscreen->info.chip_class >= CIK) {
+	} else if (sscreen->info.chip_class >= GFX7) {
 		/* These magic numbers were copied from addrlib. It doesn't use
 		 * any definitions for them either. They are all 2D_TILED_THIN1
 		 * modes with different bpp and micro tile mode.
@@ -332,7 +332,7 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen,
 			assert(!"unexpected micro mode");
 			return;
 		}
-	} else { /* SI */
+	} else { /* GFX6 */
 		switch (tex->last_msaa_resolve_target_micro_mode) {
 		case RADEON_MICRO_MODE_DISPLAY:
 			switch (tex->surface.bpe) {
@@ -434,7 +434,7 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 		    !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH))
 			continue;
 
-		if (sctx->chip_class <= VI &&
+		if (sctx->chip_class <= GFX8 &&
 		    tex->surface.u.legacy.level[0].mode == RADEON_SURF_MODE_1D &&
 		    !sctx->screen->info.htile_cmask_support_1d_tiling)
 			continue;
@@ -474,7 +474,7 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 				continue;
 
 			/* This can happen with mipmapping or MSAA. */
-			if (sctx->chip_class == VI &&
+			if (sctx->chip_class == GFX8 &&
 			    !tex->surface.u.legacy.level[level].dcc_fast_clear_size)
 				continue;
 

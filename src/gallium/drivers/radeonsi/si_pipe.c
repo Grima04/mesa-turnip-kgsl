@@ -115,7 +115,7 @@ static void si_init_compiler(struct si_screen *sscreen,
 	/* Only create the less-optimizing version of the compiler on APUs
 	 * predating Ryzen (Raven). */
 	bool create_low_opt_compiler = !sscreen->info.has_dedicated_vram &&
-				       sscreen->info.chip_class <= VI;
+				       sscreen->info.chip_class <= GFX8;
 
 	enum ac_target_machine_options tm_options =
 		(sscreen->debug_flags & DBG(SI_SCHED) ? AC_TM_SISCHED : 0) |
@@ -394,7 +394,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (!sctx)
 		return NULL;
 
-	sctx->has_graphics = sscreen->info.chip_class == SI ||
+	sctx->has_graphics = sscreen->info.chip_class == GFX6 ||
 			     !(flags & PIPE_CONTEXT_COMPUTE_ONLY);
 
 	if (flags & PIPE_CONTEXT_DEBUG)
@@ -419,8 +419,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	}
 
 
-	if (sctx->chip_class == CIK ||
-	    sctx->chip_class == VI ||
+	if (sctx->chip_class == GFX7 ||
+	    sctx->chip_class == GFX8 ||
 	    sctx->chip_class == GFX9) {
 		sctx->eop_bug_scratch = si_resource(
 			pipe_buffer_create(&sscreen->b, 0, PIPE_USAGE_DEFAULT,
@@ -536,7 +536,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	}
 
 	/* Initialize SDMA functions. */
-	if (sctx->chip_class >= CIK)
+	if (sctx->chip_class >= GFX7)
 		cik_init_sdma_functions(sctx);
 	else
 		si_init_dma_functions(sctx);
@@ -563,9 +563,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 				 V_370_MEM, V_370_ME, &sctx->wait_mem_number);
 	}
 
-	/* CIK cannot unbind a constant buffer (S_BUFFER_LOAD doesn't skip loads
+	/* GFX7 cannot unbind a constant buffer (S_BUFFER_LOAD doesn't skip loads
 	 * if NUM_RECORDS == 0). We need to use a dummy buffer instead. */
-	if (sctx->chip_class == CIK) {
+	if (sctx->chip_class == GFX7) {
 		sctx->null_const_buf.buffer =
 			pipe_aligned_buffer_create(screen,
 						   SI_RESOURCE_FLAG_32BIT,
@@ -638,7 +638,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	/* this must be last */
 	si_begin_new_gfx_cs(sctx);
 
-	if (sctx->chip_class == CIK) {
+	if (sctx->chip_class == GFX7) {
 		/* Clear the NULL constant buffer, because loads should return zeros.
 		 * Note that this forces CP DMA to be used, because clover deadlocks
 		 * for some reason when the compute codepath is used.
@@ -1017,11 +1017,11 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 		si_init_perfcounters(sscreen);
 
 	/* Determine tessellation ring info. */
-	bool double_offchip_buffers = sscreen->info.chip_class >= CIK &&
+	bool double_offchip_buffers = sscreen->info.chip_class >= GFX7 &&
 				      sscreen->info.family != CHIP_CARRIZO &&
 				      sscreen->info.family != CHIP_STONEY;
 	/* This must be one less than the maximum number due to a hw limitation.
-	 * Various hardware bugs in SI, CIK, and GFX9 need this.
+	 * Various hardware bugs need this.
 	 */
 	unsigned max_offchip_buffers_per_se;
 
@@ -1052,8 +1052,8 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 	sscreen->tess_offchip_ring_size = max_offchip_buffers *
 					  sscreen->tess_offchip_block_dw_size * 4;
 
-	if (sscreen->info.chip_class >= CIK) {
-		if (sscreen->info.chip_class >= VI)
+	if (sscreen->info.chip_class >= GFX7) {
+		if (sscreen->info.chip_class >= GFX8)
 			--max_offchip_buffers;
 		sscreen->vgt_hs_offchip_param =
 			S_03093C_OFFCHIP_BUFFERING(max_offchip_buffers) |
@@ -1065,28 +1065,28 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 	}
 
 	/* The mere presense of CLEAR_STATE in the IB causes random GPU hangs
-        * on SI. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
-        * SPI_VS_OUT_CONFIG. So only enable CI CLEAR_STATE on amdgpu kernel.*/
-       sscreen->has_clear_state = sscreen->info.chip_class >= CIK &&
+        * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
+        * SPI_VS_OUT_CONFIG. So only enable GFX7 CLEAR_STATE on amdgpu kernel.*/
+       sscreen->has_clear_state = sscreen->info.chip_class >= GFX7 &&
                                   sscreen->info.drm_major == 3;
 
 	sscreen->has_distributed_tess =
-		sscreen->info.chip_class >= VI &&
+		sscreen->info.chip_class >= GFX8 &&
 		sscreen->info.max_se >= 2;
 
 	sscreen->has_draw_indirect_multi =
 		(sscreen->info.family >= CHIP_POLARIS10) ||
-		(sscreen->info.chip_class == VI &&
+		(sscreen->info.chip_class == GFX8 &&
 		 sscreen->info.pfp_fw_version >= 121 &&
 		 sscreen->info.me_fw_version >= 87) ||
-		(sscreen->info.chip_class == CIK &&
+		(sscreen->info.chip_class == GFX7 &&
 		 sscreen->info.pfp_fw_version >= 211 &&
 		 sscreen->info.me_fw_version >= 173) ||
-		(sscreen->info.chip_class == SI &&
+		(sscreen->info.chip_class == GFX6 &&
 		 sscreen->info.pfp_fw_version >= 79 &&
 		 sscreen->info.me_fw_version >= 142);
 
-	sscreen->has_out_of_order_rast = sscreen->info.chip_class >= VI &&
+	sscreen->has_out_of_order_rast = sscreen->info.chip_class >= GFX8 &&
 					 sscreen->info.max_se >= 2 &&
 					 !(sscreen->debug_flags & DBG(NO_OUT_OF_ORDER));
 	sscreen->assume_no_z_fights =
@@ -1137,7 +1137,7 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 	 * by the reality that LLVM 5.0 doesn't have working VGPR indexing
 	 * on GFX9.
 	 */
-	sscreen->llvm_has_working_vgpr_indexing = sscreen->info.chip_class <= VI;
+	sscreen->llvm_has_working_vgpr_indexing = sscreen->info.chip_class <= GFX8;
 
 	/* Some chips have RB+ registers, but don't support RB+. Those must
 	 * always disable it.
@@ -1157,7 +1157,7 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 	sscreen->dcc_msaa_allowed =
 		!(sscreen->debug_flags & DBG(NO_DCC_MSAA));
 
-	sscreen->cpdma_prefetch_writes_memory = sscreen->info.chip_class <= VI;
+	sscreen->cpdma_prefetch_writes_memory = sscreen->info.chip_class <= GFX8;
 
 	(void) mtx_init(&sscreen->shader_parts_mutex, mtx_plain);
 	sscreen->use_monolithic_shaders =
@@ -1165,7 +1165,7 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 
 	sscreen->barrier_flags.cp_to_L2 = SI_CONTEXT_INV_SMEM_L1 |
 					    SI_CONTEXT_INV_VMEM_L1;
-	if (sscreen->info.chip_class <= VI) {
+	if (sscreen->info.chip_class <= GFX8) {
 		sscreen->barrier_flags.cp_to_L2 |= SI_CONTEXT_INV_GLOBAL_L2;
 		sscreen->barrier_flags.L2_to_cp |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
 	}

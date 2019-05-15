@@ -384,7 +384,7 @@ static bool amdgpu_cs_has_user_fence(struct amdgpu_cs_context *cs)
 
 static bool amdgpu_cs_has_chaining(struct amdgpu_cs *cs)
 {
-   return cs->ctx->ws->info.chip_class >= CIK &&
+   return cs->ctx->ws->info.chip_class >= GFX7 &&
           (cs->ring_type == RING_GFX || cs->ring_type == RING_COMPUTE);
 }
 
@@ -1523,7 +1523,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    switch (cs->ring_type) {
    case RING_DMA:
       /* pad DMA ring to 8 DWs */
-      if (ws->info.chip_class <= SI) {
+      if (ws->info.chip_class <= GFX6) {
          while (rcs->current.cdw & 7)
             radeon_emit(rcs, 0xf0000000); /* NOP packet */
       } else {

@@ -254,10 +254,10 @@ static int si_init_surface(struct si_screen *sscreen,
 		     array_mode == RADEON_SURF_MODE_2D)) {
 			/* TC-compatible HTILE only supports Z32_FLOAT.
 			 * GFX9 also supports Z16_UNORM.
-			 * On VI, promote Z16 to Z32. DB->CB copies will convert
+			 * On GFX8, promote Z16 to Z32. DB->CB copies will convert
 			 * the format for transfers.
 			 */
-			if (sscreen->info.chip_class == VI)
+			if (sscreen->info.chip_class == GFX8)
 				bpe = 4;
 
 			flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
@@ -267,7 +267,7 @@ static int si_init_surface(struct si_screen *sscreen,
 			flags |= RADEON_SURF_SBUFFER;
 	}
 
-	if (sscreen->info.chip_class >= VI &&
+	if (sscreen->info.chip_class >= GFX8 &&
 	    (ptex->flags & SI_RESOURCE_FLAG_DISABLE_DCC ||
 	     ptex->format == PIPE_FORMAT_R9G9B9E5_FLOAT ||
 	     (ptex->nr_samples >= 2 && !sscreen->dcc_msaa_allowed)))
@@ -278,8 +278,8 @@ static int si_init_surface(struct si_screen *sscreen,
 	    bpe == 16 && ptex->nr_samples >= 2)
 		flags |= RADEON_SURF_DISABLE_DCC;
 
-	/* VI: DCC clear for 4x and 8x MSAA array textures unimplemented. */
-	if (sscreen->info.chip_class == VI &&
+	/* GFX8: DCC clear for 4x and 8x MSAA array textures unimplemented. */
+	if (sscreen->info.chip_class == GFX8 &&
 	    ptex->nr_storage_samples >= 4 &&
 	    ptex->array_size > 1)
 		flags |= RADEON_SURF_DISABLE_DCC;
@@ -700,7 +700,7 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 	md.size_metadata = 10 * 4;
 
 	/* Dwords [10:..] contain the mipmap level offsets. */
-	if (sscreen->info.chip_class <= VI) {
+	if (sscreen->info.chip_class <= GFX8) {
 		for (unsigned i = 0; i <= res->last_level; i++)
 			md.metadata[10+i] = tex->surface.u.legacy.level[i].offset >> 8;
 
@@ -716,7 +716,7 @@ static void si_get_opaque_metadata(struct si_screen *sscreen,
 {
 	uint32_t *desc = &md->metadata[2];
 
-	if (sscreen->info.chip_class < VI)
+	if (sscreen->info.chip_class < GFX8)
 		return;
 
 	/* Return if DCC is enabled. The texture should be set up with it
@@ -757,7 +757,7 @@ static bool si_has_displayable_dcc(struct si_texture *tex)
 {
 	struct si_screen *sscreen = (struct si_screen*)tex->buffer.b.b.screen;
 
-	if (sscreen->info.chip_class <= VI)
+	if (sscreen->info.chip_class <= GFX8)
 		return false;
 
 	/* This needs a cache flush before scanout.
@@ -849,7 +849,7 @@ static boolean si_texture_get_handle(struct pipe_screen* screen,
 			assert(tex->surface.tile_swizzle == 0);
 		}
 
-		/* Since shader image stores don't support DCC on VI,
+		/* Since shader image stores don't support DCC on GFX8,
 		 * disable it for external clients that want write
 		 * access.
 		 */
@@ -974,7 +974,7 @@ static void si_texture_get_htile_size(struct si_screen *sscreen,
 	unsigned slice_elements, slice_bytes, pipe_interleave_bytes, base_align;
 	unsigned num_pipes = sscreen->info.num_tile_pipes;
 
-	assert(sscreen->info.chip_class <= VI);
+	assert(sscreen->info.chip_class <= GFX8);
 
 	tex->surface.htile_size = 0;
 
@@ -989,7 +989,7 @@ static void si_texture_get_htile_size(struct si_screen *sscreen,
 	 * are always reproducible. I think I have seen the test hang
 	 * on Carrizo too, though it was very rare there.
 	 */
-	if (sscreen->info.chip_class >= CIK && num_pipes < 4)
+	if (sscreen->info.chip_class >= GFX7 && num_pipes < 4)
 		num_pipes = 4;
 
 	switch (num_pipes) {
@@ -1036,7 +1036,7 @@ static void si_texture_get_htile_size(struct si_screen *sscreen,
 static void si_texture_allocate_htile(struct si_screen *sscreen,
 				      struct si_texture *tex)
 {
-	if (sscreen->info.chip_class <= VI && !tex->tc_compatible_htile)
+	if (sscreen->info.chip_class <= GFX8 && !tex->tc_compatible_htile)
 		si_texture_get_htile_size(sscreen, tex);
 
 	if (!tex->surface.htile_size)
@@ -1229,7 +1229,7 @@ si_texture_create_object(struct pipe_screen *screen,
 				    RADEON_SURF_TC_COMPATIBLE_HTILE);
 
 	/* TC-compatible HTILE:
-	 * - VI only supports Z32_FLOAT.
+	 * - GFX8 only supports Z32_FLOAT.
 	 * - GFX9 only supports Z32_FLOAT and Z16_UNORM. */
 	if (tex->tc_compatible_htile) {
 		if (sscreen->info.chip_class >= GFX9 &&
@@ -1506,10 +1506,10 @@ si_choose_tiling(struct si_screen *sscreen,
 	if (templ->flags & SI_RESOURCE_FLAG_TRANSFER)
 		return RADEON_SURF_MODE_LINEAR_ALIGNED;
 
-	/* Avoid Z/S decompress blits by forcing TC-compatible HTILE on VI,
+	/* Avoid Z/S decompress blits by forcing TC-compatible HTILE on GFX8,
 	 * which requires 2D tiling.
 	 */
-	if (sscreen->info.chip_class == VI && tc_compatible_htile)
+	if (sscreen->info.chip_class == GFX8 && tc_compatible_htile)
 		return RADEON_SURF_MODE_2D;
 
 	/* Handle common candidates for the linear mode.
@@ -1525,7 +1525,7 @@ si_choose_tiling(struct si_screen *sscreen,
 		if (desc->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED)
 			return RADEON_SURF_MODE_LINEAR_ALIGNED;
 
-		/* Cursors are linear on SI.
+		/* Cursors are linear on AMD GCN.
 		 * (XXX double-check, maybe also use RADEON_SURF_SCANOUT) */
 		if (templ->bind & PIPE_BIND_CURSOR)
 			return RADEON_SURF_MODE_LINEAR_ALIGNED;
@@ -1582,7 +1582,7 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 	struct radeon_surf surface = {0};
 	bool is_flushed_depth = templ->flags & SI_RESOURCE_FLAG_FLUSHED_DEPTH;
 	bool tc_compatible_htile =
-		sscreen->info.chip_class >= VI &&
+		sscreen->info.chip_class >= GFX8 &&
 		/* There are issues with TC-compatible HTILE on Tonga (and
 		 * Iceland is the same design), and documented bug workarounds
 		 * don't help. For example, this fails:
@@ -2450,7 +2450,7 @@ void vi_separate_dcc_try_enable(struct si_context *sctx,
 	    sctx->screen->debug_flags & DBG(NO_DCC_FB))
 		return;
 
-	assert(sctx->chip_class >= VI);
+	assert(sctx->chip_class >= GFX8);
 
 	if (tex->dcc_offset)
 		return; /* already enabled */

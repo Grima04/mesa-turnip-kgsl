@@ -314,7 +314,7 @@ static void si_dump_debug_registers(struct si_context *sctx, FILE *f)
 	si_dump_mmapped_reg(sctx, f, R_00803C_GRBM_STATUS_SE3);
 	si_dump_mmapped_reg(sctx, f, R_00D034_SDMA0_STATUS_REG);
 	si_dump_mmapped_reg(sctx, f, R_00D834_SDMA1_STATUS_REG);
-	if (sctx->chip_class <= VI) {
+	if (sctx->chip_class <= GFX8) {
 		si_dump_mmapped_reg(sctx, f, R_000E50_SRBM_STATUS);
 		si_dump_mmapped_reg(sctx, f, R_000E4C_SRBM_STATUS2);
 		si_dump_mmapped_reg(sctx, f, R_000E54_SRBM_STATUS3);

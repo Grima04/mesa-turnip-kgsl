@@ -82,7 +82,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 		wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
 			      SI_CONTEXT_CS_PARTIAL_FLUSH |
 			      SI_CONTEXT_INV_GLOBAL_L2;
-	} else if (ctx->chip_class == SI) {
+	} else if (ctx->chip_class == GFX6) {
 		/* The kernel flushes L2 before shaders are finished. */
 		wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
 			      SI_CONTEXT_CS_PARTIAL_FLUSH;
@@ -147,7 +147,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 
 	/* Make sure CP DMA is idle at the end of IBs after L2 prefetches
 	 * because the kernel doesn't wait for it. */
-	if (ctx->chip_class >= CIK)
+	if (ctx->chip_class >= GFX7)
 		si_cp_dma_wait_for_idle(ctx);
 
 	/* Wait for draw calls to finish if needed. */
@@ -407,7 +407,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		ctx->tracked_regs.reg_value[SI_TRACKED_SPI_SHADER_COL_FORMAT]  = 0x00000000;
 		ctx->tracked_regs.reg_value[SI_TRACKED_CB_SHADER_MASK]  = 0xffffffff;
 		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_TF_PARAM]  = 0x00000000;
-		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL]  = 0x0000001e; /* From VI */
+		ctx->tracked_regs.reg_value[SI_TRACKED_VGT_VERTEX_REUSE_BLOCK_CNTL]  = 0x0000001e; /* From GFX8 */
 
 		/* Set all saved registers state to saved. */
 		ctx->tracked_regs.reg_saved = 0xffffffffffffffff;

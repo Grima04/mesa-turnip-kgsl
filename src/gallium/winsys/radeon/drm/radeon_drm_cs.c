@@ -552,7 +552,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
     switch (cs->ring_type) {
     case RING_DMA:
         /* pad DMA ring to 8 DWs */
-        if (cs->ws->info.chip_class <= SI) {
+        if (cs->ws->info.chip_class <= GFX6) {
             while (rcs->current.cdw & 7)
                 radeon_emit(&cs->base, 0xf0000000); /* NOP packet */
         } else {

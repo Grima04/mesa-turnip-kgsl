@@ -347,7 +347,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 	    base_level_info->mode == RADEON_SURF_MODE_2D)
 		state[0] |= tex->surface.tile_swizzle;
 
-	if (sscreen->info.chip_class >= VI) {
+	if (sscreen->info.chip_class >= GFX8) {
 		state[6] &= C_008F28_COMPRESSION_EN;
 		state[7] = 0;
 
@@ -355,7 +355,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 			meta_va = (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) +
 				  tex->dcc_offset;
 
-			if (sscreen->info.chip_class == VI) {
+			if (sscreen->info.chip_class == GFX8) {
 				meta_va += base_level_info->dcc_offset;
 				assert(base_level_info->mode == RADEON_SURF_MODE_2D);
 			}
@@ -399,7 +399,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 				    S_008F24_META_RB_ALIGNED(meta.rb_aligned);
 		}
 	} else {
-		/* SI-CI-VI */
+		/* GFX6-GFX8 */
 		unsigned pitch = base_level_info->nblk_x * block_width;
 		unsigned index = si_tile_mode_index(tex, base_level, is_stencil);
 
@@ -1141,7 +1141,7 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 		uint64_t va = buf->gpu_address + offset;
 
 		int64_t num_records = (int64_t)buf->b.b.width0 - offset;
-		if (sctx->chip_class != VI && vb->stride) {
+		if (sctx->chip_class != GFX8 && vb->stride) {
 			/* Round up by rounding down and adding 1 */
 			num_records = (num_records - velems->format_size[i]) /
 				      vb->stride + 1;
@@ -1210,9 +1210,9 @@ static void si_set_constant_buffer(struct si_context *sctx,
 	assert(slot < descs->num_elements);
 	pipe_resource_reference(&buffers->buffers[slot], NULL);
 
-	/* CIK cannot unbind a constant buffer (S_BUFFER_LOAD is buggy
+	/* GFX7 cannot unbind a constant buffer (S_BUFFER_LOAD is buggy
 	 * with a NULL buffer). We need to use a dummy buffer instead. */
-	if (sctx->chip_class == CIK &&
+	if (sctx->chip_class == GFX7 &&
 	    (!input || (!input->buffer && !input->user_buffer)))
 		input = &sctx->null_const_buf;
 
@@ -1467,7 +1467,7 @@ void si_set_ring_buffer(struct si_context *sctx, uint slot,
 			break;
 		}
 
-		if (sctx->chip_class >= VI && stride)
+		if (sctx->chip_class >= GFX8 && stride)
 			num_records *= stride;
 
 		/* Set the descriptor. */

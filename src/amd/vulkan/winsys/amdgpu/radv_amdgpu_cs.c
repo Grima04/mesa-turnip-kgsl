@@ -1037,7 +1037,7 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 	uint32_t pad_word = 0xffff1000U;
 	bool emit_signal_sem = sem_info->cs_emit_signal;
 
-	if (radv_amdgpu_winsys(ws)->info.chip_class == SI)
+	if (radv_amdgpu_winsys(ws)->info.chip_class == GFX6)
 		pad_word = 0x80000000;
 
 	assert(cs_count);

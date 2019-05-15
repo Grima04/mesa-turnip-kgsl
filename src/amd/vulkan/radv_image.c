@@ -47,7 +47,7 @@ radv_choose_tiling(struct radv_device *device,
 
 	if (!vk_format_is_compressed(pCreateInfo->format) &&
 	    !vk_format_is_depth_or_stencil(pCreateInfo->format)
-	    && device->physical_device->rad_info.chip_class <= VI) {
+	    && device->physical_device->rad_info.chip_class <= GFX8) {
 		/* this causes hangs in some VK CTS tests on GFX9. */
 		/* Textures with a very small height are recommended to be linear. */
 		if (pCreateInfo->imageType == VK_IMAGE_TYPE_1D ||
@@ -69,7 +69,7 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 				   const VkImageCreateInfo *pCreateInfo)
 {
 	/* TC-compat HTILE is only available for GFX8+. */
-	if (device->physical_device->rad_info.chip_class < VI)
+	if (device->physical_device->rad_info.chip_class < GFX8)
 		return false;
 
 	if ((pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT) ||
@@ -130,7 +130,7 @@ radv_use_dcc_for_image(struct radv_device *device,
 	bool blendable;
 
 	/* DCC (Delta Color Compression) is only available for GFX8+. */
-	if (device->physical_device->rad_info.chip_class < VI)
+	if (device->physical_device->rad_info.chip_class < GFX8)
 		return false;
 
 	if (device->instance->debug_flags & RADV_DEBUG_NO_DCC)
@@ -328,7 +328,7 @@ radv_make_buffer_descriptor(struct radv_device *device,
 	state[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) |
 		S_008F04_STRIDE(stride);
 
-	if (device->physical_device->rad_info.chip_class != VI && stride) {
+	if (device->physical_device->rad_info.chip_class != GFX8 && stride) {
 		range /= stride;
 	}
 
@@ -370,12 +370,12 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 	state[1] &= C_008F14_BASE_ADDRESS_HI;
 	state[1] |= S_008F14_BASE_ADDRESS_HI(va >> 40);
 
-	if (chip_class >= VI) {
+	if (chip_class >= GFX8) {
 		state[6] &= C_008F28_COMPRESSION_EN;
 		state[7] = 0;
 		if (!is_storage_image && radv_dcc_enabled(image, first_level)) {
 			meta_va = gpu_address + image->dcc_offset;
-			if (chip_class <= VI)
+			if (chip_class <= GFX8)
 				meta_va += base_level_info->dcc_offset;
 		} else if (!is_storage_image &&
 			   radv_image_is_tc_compat_htile(image)) {
@@ -417,7 +417,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 				    S_008F24_META_RB_ALIGNED(meta.rb_aligned);
 		}
 	} else {
-		/* SI-CI-VI */
+		/* GFX6-GFX8 */
 		unsigned pitch = base_level_info->nblk_x * block_width;
 		unsigned index = si_tile_mode_index(plane, base_level, is_stencil);
 
@@ -596,7 +596,7 @@ si_make_texture_descriptor(struct radv_device *device,
 		/* The last dword is unused by hw. The shader uses it to clear
 		 * bits in the first dword of sampler state.
 		 */
-		if (device->physical_device->rad_info.chip_class <= CIK && image->info.samples <= 1) {
+		if (device->physical_device->rad_info.chip_class <= GFX7 && image->info.samples <= 1) {
 			if (first_level == last_level)
 				state[7] = C_008F30_MAX_ANISO_RATIO;
 			else
@@ -725,7 +725,7 @@ radv_query_opaque_metadata(struct radv_device *device,
 	memcpy(&md->metadata[2], desc, sizeof(desc));
 
 	/* Dwords [10:..] contain the mipmap level offsets. */
-	if (device->physical_device->rad_info.chip_class <= VI) {
+	if (device->physical_device->rad_info.chip_class <= GFX8) {
 		for (i = 0; i <= image->info.levels - 1; i++)
 			md->metadata[10+i] = image->planes[0].surface.u.legacy.level[i].offset >> 8;
 		md->size_metadata = (11 + image->info.levels - 1) * 4;

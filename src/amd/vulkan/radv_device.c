@@ -220,11 +220,11 @@ radv_handle_env_var_force_family(struct radv_physical_device *device)
 			if (i >= CHIP_VEGA10)
 				device->rad_info.chip_class = GFX9;
 			else if (i >= CHIP_TONGA)
-				device->rad_info.chip_class = VI;
+				device->rad_info.chip_class = GFX8;
 			else if (i >= CHIP_BONAIRE)
-				device->rad_info.chip_class = CIK;
+				device->rad_info.chip_class = GFX7;
 			else
-				device->rad_info.chip_class = SI;
+				device->rad_info.chip_class = GFX6;
 
 			return;
 		}
@@ -332,7 +332,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 	disk_cache_format_hex_id(buf, device->cache_uuid, VK_UUID_SIZE * 2);
 	device->disk_cache = disk_cache_create(device->name, buf, shader_env_flags);
 
-	if (device->rad_info.chip_class < VI ||
+	if (device->rad_info.chip_class < GFX8 ||
 	    device->rad_info.chip_class > GFX9)
 		fprintf(stderr, "WARNING: radv is not a conformant vulkan implementation, testing use only.\n");
 
@@ -349,18 +349,18 @@ radv_physical_device_init(struct radv_physical_device *device,
 	}
 
 	/* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
-	 * on SI.
+	 * on GFX6.
 	 */
-	device->has_clear_state = device->rad_info.chip_class >= CIK;
+	device->has_clear_state = device->rad_info.chip_class >= GFX7;
 
-	device->cpdma_prefetch_writes_memory = device->rad_info.chip_class <= VI;
+	device->cpdma_prefetch_writes_memory = device->rad_info.chip_class <= GFX8;
 
 	/* Vega10/Raven need a special workaround for a hardware bug. */
 	device->has_scissor_bug = device->rad_info.family == CHIP_VEGA10 ||
 				  device->rad_info.family == CHIP_RAVEN;
 
 	/* Out-of-order primitive rasterization. */
-	device->has_out_of_order_rast = device->rad_info.chip_class >= VI &&
+	device->has_out_of_order_rast = device->rad_info.chip_class >= GFX8 &&
 					device->rad_info.max_se >= 2;
 	device->out_of_order_rast_allowed = device->has_out_of_order_rast &&
 					    !(device->instance->debug_flags & RADV_DEBUG_NO_OUT_OF_ORDER);
@@ -368,9 +368,9 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->dcc_msaa_allowed =
 		(device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
-	/* TODO: Figure out how to use LOAD_CONTEXT_REG on SI/CIK. */
+	/* TODO: Figure out how to use LOAD_CONTEXT_REG on GFX6-GFX7. */
 	device->has_load_ctx_reg_pkt = device->rad_info.chip_class >= GFX9 ||
-				       (device->rad_info.chip_class >= VI &&
+				       (device->rad_info.chip_class >= GFX8 &&
 				        device->rad_info.me_fw_feature >= 41);
 
 	radv_physical_device_init_mem_types(device);
@@ -769,7 +769,7 @@ void radv_GetPhysicalDeviceFeatures(
 		.shaderTessellationAndGeometryPointSize   = true,
 		.shaderImageGatherExtended                = true,
 		.shaderStorageImageExtendedFormats        = true,
-		.shaderStorageImageMultisample            = pdevice->rad_info.chip_class >= VI,
+		.shaderStorageImageMultisample            = pdevice->rad_info.chip_class >= GFX8,
 		.shaderUniformBufferArrayDynamicIndexing  = true,
 		.shaderSampledImageArrayDynamicIndexing   = true,
 		.shaderStorageBufferArrayDynamicIndexing  = true,
@@ -822,7 +822,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
 			VkPhysicalDevice16BitStorageFeatures *features =
 			    (VkPhysicalDevice16BitStorageFeatures*)ext;
-			bool enabled = pdevice->rad_info.chip_class >= VI;
+			bool enabled = pdevice->rad_info.chip_class >= GFX8;
 			features->storageBuffer16BitAccess = enabled;
 			features->uniformAndStorageBuffer16BitAccess = enabled;
 			features->storagePushConstant16 = enabled;
@@ -884,7 +884,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
 			VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
 				(VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
-			features->scalarBlockLayout = pdevice->rad_info.chip_class >= CIK;
+			features->scalarBlockLayout = pdevice->rad_info.chip_class >= GFX7;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: {
@@ -916,7 +916,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
 			VkPhysicalDevice8BitStorageFeaturesKHR *features =
 			    (VkPhysicalDevice8BitStorageFeaturesKHR*)ext;
-			bool enabled = pdevice->rad_info.chip_class >= VI;
+			bool enabled = pdevice->rad_info.chip_class >= GFX8;
 			features->storageBuffer8BitAccess = enabled;
 			features->uniformAndStorageBuffer8BitAccess = enabled;
 			features->storagePushConstant8 = enabled;
@@ -925,7 +925,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
 			VkPhysicalDeviceFloat16Int8FeaturesKHR *features =
 				(VkPhysicalDeviceFloat16Int8FeaturesKHR*)ext;
-			features->shaderFloat16 = pdevice->rad_info.chip_class >= VI && HAVE_LLVM >= 0x0800;
+			features->shaderFloat16 = pdevice->rad_info.chip_class >= GFX8 && HAVE_LLVM >= 0x0800;
 			features->shaderInt8 = true;
 			break;
 		}
@@ -1087,7 +1087,7 @@ void radv_GetPhysicalDeviceProperties(
 		.sampledImageIntegerSampleCounts          = VK_SAMPLE_COUNT_1_BIT,
 		.sampledImageDepthSampleCounts            = sample_counts,
 		.sampledImageStencilSampleCounts          = sample_counts,
-		.storageImageSampleCounts                 = pdevice->rad_info.chip_class >= VI ? sample_counts : VK_SAMPLE_COUNT_1_BIT,
+		.storageImageSampleCounts                 = pdevice->rad_info.chip_class >= GFX8 ? sample_counts : VK_SAMPLE_COUNT_1_BIT,
 		.maxSampleMaskWords                       = 1,
 		.timestampComputeAndGraphics              = true,
 		.timestampPeriod                          = 1000000.0 / pdevice->rad_info.clock_crystal_freq,
@@ -1176,7 +1176,7 @@ void radv_GetPhysicalDeviceProperties2(
 							VK_SUBGROUP_FEATURE_BALLOT_BIT |
 							VK_SUBGROUP_FEATURE_QUAD_BIT |
 							VK_SUBGROUP_FEATURE_VOTE_BIT;
-			if (pdevice->rad_info.chip_class >= VI) {
+			if (pdevice->rad_info.chip_class >= GFX8) {
 				properties->supportedOperations |=
 							VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
 							VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
@@ -1228,12 +1228,12 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->sgprsPerSimd =
 				ac_get_num_physical_sgprs(pdevice->rad_info.chip_class);
 			properties->minSgprAllocation =
-				pdevice->rad_info.chip_class >= VI ? 16 : 8;
+				pdevice->rad_info.chip_class >= GFX8 ? 16 : 8;
 			properties->maxSgprAllocation =
 				pdevice->rad_info.family == CHIP_TONGA ||
 				pdevice->rad_info.family == CHIP_ICELAND ? 96 : 104;
 			properties->sgprAllocationGranularity =
-				pdevice->rad_info.chip_class >= VI ? 16 : 8;
+				pdevice->rad_info.chip_class >= GFX8 ? 16 : 8;
 
 			/* VGPR. */
 			properties->vgprsPerSimd = RADV_NUM_PHYSICAL_VGPRS;
@@ -1868,7 +1868,7 @@ VkResult radv_CreateDevice(
 
 	device->dispatch_initiator = S_00B800_COMPUTE_SHADER_EN(1);
 
-	if (device->physical_device->rad_info.chip_class >= CIK) {
+	if (device->physical_device->rad_info.chip_class >= GFX7) {
 		/* If the KMD allows it (there is a KMD hw register for it),
 		 * allow launching waves out-of-order.
 		 */
@@ -1880,7 +1880,7 @@ VkResult radv_CreateDevice(
 	device->tess_offchip_block_dw_size =
 		device->physical_device->rad_info.family == CHIP_HAWAII ? 4096 : 8192;
 	device->has_distributed_tess =
-		device->physical_device->rad_info.chip_class >= VI &&
+		device->physical_device->rad_info.chip_class >= GFX8 &&
 		device->physical_device->rad_info.max_se >= 2;
 
 	if (getenv("RADV_TRACE_FILE")) {
@@ -1923,7 +1923,7 @@ VkResult radv_CreateDevice(
 		device->ws->cs_finalize(device->empty_cs[family]);
 	}
 
-	if (device->physical_device->rad_info.chip_class >= CIK)
+	if (device->physical_device->rad_info.chip_class >= GFX7)
 		cik_create_gfx_config(device);
 
 	VkPipelineCacheCreateInfo ci;
@@ -2223,7 +2223,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 static unsigned
 radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buffers_p)
 {
-	bool double_offchip_buffers = device->physical_device->rad_info.chip_class >= CIK &&
+	bool double_offchip_buffers = device->physical_device->rad_info.chip_class >= GFX7 &&
 		device->physical_device->rad_info.family != CHIP_CARRIZO &&
 		device->physical_device->rad_info.family != CHIP_STONEY;
 	unsigned max_offchip_buffers_per_se = double_offchip_buffers ? 128 : 64;
@@ -2234,7 +2234,7 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 	/*
 	 * Per RadeonSI:
 	 * This must be one less than the maximum number due to a hw limitation.
-         * Various hardware bugs in SI, CIK, and GFX9 need this.
+         * Various hardware bugs need thGFX7
 	 *
 	 * Per AMDVLK:
 	 * Vega10 should limit max_offchip_buffers to 508 (4 * 127).
@@ -2244,8 +2244,8 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 	 * Follow AMDVLK here.
 	 */
 	if (device->physical_device->rad_info.family == CHIP_VEGA10 ||
-	    device->physical_device->rad_info.chip_class == CIK ||
-	    device->physical_device->rad_info.chip_class == SI)
+	    device->physical_device->rad_info.chip_class == GFX7 ||
+	    device->physical_device->rad_info.chip_class == GFX6)
 		--max_offchip_buffers_per_se;
 
 	max_offchip_buffers = max_offchip_buffers_per_se *
@@ -2263,11 +2263,11 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 	}
 
 	switch (device->physical_device->rad_info.chip_class) {
-	case SI:
+	case GFX6:
 		max_offchip_buffers = MIN2(max_offchip_buffers, 126);
 		break;
-	case CIK:
-	case VI:
+	case GFX7:
+	case GFX8:
 	case GFX9:
 	default:
 		max_offchip_buffers = MIN2(max_offchip_buffers, 508);
@@ -2275,8 +2275,8 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 	}
 
 	*max_offchip_buffers_p = max_offchip_buffers;
-	if (device->physical_device->rad_info.chip_class >= CIK) {
-		if (device->physical_device->rad_info.chip_class >= VI)
+	if (device->physical_device->rad_info.chip_class >= GFX7) {
+		if (device->physical_device->rad_info.chip_class >= GFX8)
 			--max_offchip_buffers;
 		hs_offchip_param =
 			S_03093C_OFFCHIP_BUFFERING(max_offchip_buffers) |
@@ -2304,7 +2304,7 @@ radv_emit_gs_ring_sizes(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 	if (gsvs_ring_bo)
 		radv_cs_add_buffer(queue->device->ws, cs, gsvs_ring_bo);
 
-	if (queue->device->physical_device->rad_info.chip_class >= CIK) {
+	if (queue->device->physical_device->rad_info.chip_class >= GFX7) {
 		radeon_set_uconfig_reg_seq(cs, R_030900_VGT_ESGS_RING_SIZE, 2);
 		radeon_emit(cs, esgs_ring_size >> 8);
 		radeon_emit(cs, gsvs_ring_size >> 8);
@@ -2329,7 +2329,7 @@ radv_emit_tess_factor_ring(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 
 	radv_cs_add_buffer(queue->device->ws, cs, tess_rings_bo);
 
-	if (queue->device->physical_device->rad_info.chip_class >= CIK) {
+	if (queue->device->physical_device->rad_info.chip_class >= GFX7) {
 		radeon_set_uconfig_reg(cs, R_030938_VGT_TF_RING_SIZE,
 				       S_030938_SIZE(tf_ring_size / 4));
 		radeon_set_uconfig_reg(cs, R_030940_VGT_TF_MEMORY_BASE,
@@ -2649,7 +2649,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			                       queue->device->physical_device->rad_info.chip_class,
 					       NULL, 0,
 			                       queue->queue_family_index == RING_COMPUTE &&
-			                         queue->device->physical_device->rad_info.chip_class >= CIK,
+			                         queue->device->physical_device->rad_info.chip_class >= GFX7,
 			                       (queue->queue_family_index == RADV_QUEUE_COMPUTE ? RADV_CMD_FLAG_CS_PARTIAL_FLUSH : (RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH)) |
 			                       RADV_CMD_FLAG_INV_ICACHE |
 			                       RADV_CMD_FLAG_INV_SMEM_L1 |
@@ -2661,7 +2661,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			                       queue->device->physical_device->rad_info.chip_class,
 					       NULL, 0,
 			                       queue->queue_family_index == RING_COMPUTE &&
-			                         queue->device->physical_device->rad_info.chip_class >= CIK,
+			                         queue->device->physical_device->rad_info.chip_class >= GFX7,
 			                       RADV_CMD_FLAG_INV_ICACHE |
 			                       RADV_CMD_FLAG_INV_SMEM_L1 |
 			                       RADV_CMD_FLAG_INV_VMEM_L1 |
@@ -4274,13 +4274,13 @@ radv_initialise_color_surface(struct radv_device *device,
 		cb->cb_color_attrib |= S_028C74_TILE_MODE_INDEX(tile_mode_index);
 
 		if (radv_image_has_fmask(iview->image)) {
-			if (device->physical_device->rad_info.chip_class >= CIK)
+			if (device->physical_device->rad_info.chip_class >= GFX7)
 				cb->cb_color_pitch |= S_028C64_FMASK_TILE_MAX(iview->image->fmask.pitch_in_pixels / 8 - 1);
 			cb->cb_color_attrib |= S_028C74_FMASK_TILE_MODE_INDEX(iview->image->fmask.tile_mode_index);
 			cb->cb_color_fmask_slice = S_028C88_TILE_MAX(iview->image->fmask.slice_tile_max);
 		} else {
 			/* This must be set for fast clear to work without FMASK. */
-			if (device->physical_device->rad_info.chip_class >= CIK)
+			if (device->physical_device->rad_info.chip_class >= GFX7)
 				cb->cb_color_pitch |= S_028C64_FMASK_TILE_MAX(pitch_tile_max);
 			cb->cb_color_attrib |= S_028C74_FMASK_TILE_MODE_INDEX(tile_mode_index);
 			cb->cb_color_fmask_slice = S_028C88_TILE_MAX(slice_tile_max);
@@ -4360,7 +4360,7 @@ radv_initialise_color_surface(struct radv_device *device,
 		S_028C70_ENDIAN(endian);
 	if (radv_image_has_fmask(iview->image)) {
 		cb->cb_color_info |= S_028C70_COMPRESSION(1);
-		if (device->physical_device->rad_info.chip_class == SI) {
+		if (device->physical_device->rad_info.chip_class == GFX6) {
 			unsigned fmask_bankh = util_logbase2(iview->image->fmask.bank_height);
 			cb->cb_color_attrib |= S_028C74_FMASK_BANK_HEIGHT(fmask_bankh);
 		}
@@ -4377,7 +4377,7 @@ radv_initialise_color_surface(struct radv_device *device,
 
 	/* This must be set for fast clear to work without FMASK. */
 	if (!radv_image_has_fmask(iview->image) &&
-	    device->physical_device->rad_info.chip_class == SI) {
+	    device->physical_device->rad_info.chip_class == GFX6) {
 		unsigned bankh = util_logbase2(surf->u.legacy.bankh);
 		cb->cb_color_attrib |= S_028C74_FMASK_BANK_HEIGHT(bankh);
 	}
@@ -4548,7 +4548,7 @@ radv_initialise_ds_surface(struct radv_device *device,
 		if (iview->image->info.samples > 1)
 			ds->db_z_info |= S_028040_NUM_SAMPLES(util_logbase2(iview->image->info.samples));
 
-		if (device->physical_device->rad_info.chip_class >= CIK) {
+		if (device->physical_device->rad_info.chip_class >= GFX7) {
 			struct radeon_info *info = &device->physical_device->rad_info;
 			unsigned tiling_index = surf->u.legacy.tiling_index[level];
 			unsigned stencil_index = surf->u.legacy.stencil_tiling_index[level];
@@ -4807,7 +4807,7 @@ radv_init_sampler(struct radv_device *device,
 {
 	uint32_t max_aniso = radv_get_max_anisotropy(device, pCreateInfo);
 	uint32_t max_aniso_ratio = radv_tex_aniso_filter(max_aniso);
-	bool is_vi = (device->physical_device->rad_info.chip_class >= VI);
+	bool is_vi = (device->physical_device->rad_info.chip_class >= GFX8);
 	unsigned filter_mode = V_008F30_SQ_IMG_FILTER_MODE_BLEND;
 
 	const struct VkSamplerReductionModeCreateInfoEXT *sampler_reduction =
@@ -4835,7 +4835,7 @@ radv_init_sampler(struct radv_device *device,
 			     S_008F38_XY_MIN_FILTER(radv_tex_filter(pCreateInfo->minFilter, max_aniso)) |
 			     S_008F38_MIP_FILTER(radv_tex_mipfilter(pCreateInfo->mipmapMode)) |
 			     S_008F38_MIP_POINT_PRECLAMP(0) |
-			     S_008F38_DISABLE_LSB_CEIL(device->physical_device->rad_info.chip_class <= VI) |
+			     S_008F38_DISABLE_LSB_CEIL(device->physical_device->rad_info.chip_class <= GFX8) |
 			     S_008F38_FILTER_PREC_FIX(1) |
 			     S_008F38_ANISO_OVERRIDE(is_vi));
 	sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR(0) |

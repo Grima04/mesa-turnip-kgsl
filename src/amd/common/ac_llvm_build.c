@@ -826,14 +826,14 @@ ac_prepare_cube_coords(struct ac_llvm_context *ctx,
 		 *     helper invocation which happens to fall on a different
 		 *     layer due to extrapolation."
 		 *
-		 * VI and earlier attempt to implement this in hardware by
+		 * GFX8 and earlier attempt to implement this in hardware by
 		 * clamping the value of coords[2] = (8 * layer) + face.
 		 * Unfortunately, this means that the we end up with the wrong
 		 * face when clamping occurs.
 		 *
 		 * Clamp the layer earlier to work around the issue.
 		 */
-		if (ctx->chip_class <= VI) {
+		if (ctx->chip_class <= GFX8) {
 			LLVMValueRef ge0;
 			ge0 = LLVMBuildFCmp(builder, LLVMRealOGE, tmp, ctx->f32_0, "");
 			tmp = LLVMBuildSelect(builder, ge0, tmp, ctx->f32_0, "");
@@ -1392,7 +1392,7 @@ ac_build_buffer_load(struct ac_llvm_context *ctx,
 		offset = LLVMBuildAdd(ctx->builder, offset, soffset, "");
 
 	if (allow_smem && !slc &&
-	    (!glc || (HAVE_LLVM >= 0x0800 && ctx->chip_class >= VI))) {
+	    (!glc || (HAVE_LLVM >= 0x0800 && ctx->chip_class >= GFX8))) {
 		assert(vindex == NULL);
 
 		LLVMValueRef result[8];
@@ -1783,7 +1783,7 @@ ac_build_opencoded_load_format(struct ac_llvm_context *ctx,
 	}
 
 	int log_recombine = 0;
-	if (ctx->chip_class == SI && !known_aligned) {
+	if (ctx->chip_class == GFX6 && !known_aligned) {
 		/* Avoid alignment restrictions by loading one byte at a time. */
 		load_num_channels <<= load_log_size;
 		log_recombine = load_log_size;
@@ -1819,7 +1819,7 @@ ac_build_opencoded_load_format(struct ac_llvm_context *ctx,
 	}
 
 	if (log_recombine > 0) {
-		/* Recombine bytes if necessary (SI only) */
+		/* Recombine bytes if necessary (GFX6 only) */
 		LLVMTypeRef dst_type = log_recombine == 2 ? ctx->i32 : ctx->i16;
 
 		for (unsigned src = 0, dst = 0; src < load_num_channels; ++dst) {
@@ -2212,7 +2212,7 @@ ac_get_thread_id(struct ac_llvm_context *ctx)
 }
 
 /*
- * SI implements derivatives using the local data store (LDS)
+ * AMD GCN implements derivatives using the local data store (LDS)
  * All writes to the LDS happen in all executing threads at
  * the same time. TID is the Thread ID for the current
  * thread and is a value between 0 and 63, representing
@@ -3304,7 +3304,7 @@ void ac_init_exec_full_mask(struct ac_llvm_context *ctx)
 
 void ac_declare_lds_as_pointer(struct ac_llvm_context *ctx)
 {
-	unsigned lds_size = ctx->chip_class >= CIK ? 65536 : 32768;
+	unsigned lds_size = ctx->chip_class >= GFX7 ? 65536 : 32768;
 	ctx->lds = LLVMBuildIntToPtr(ctx->builder, ctx->i32_0,
 				     LLVMPointerType(LLVMArrayType(ctx->i32, lds_size / 4), AC_ADDR_SPACE_LDS),
 				     "lds");
@@ -4034,7 +4034,7 @@ ac_build_alu_op(struct ac_llvm_context *ctx, LLVMValueRef lhs, LLVMValueRef rhs,
  * \param maxprefix specifies that the result only needs to be correct for a
  *     prefix of this many threads
  *
- * TODO: add inclusive and excluse scan functions for SI chip class.
+ * TODO: add inclusive and excluse scan functions for GFX6.
  */
 static LLVMValueRef
 ac_build_scan(struct ac_llvm_context *ctx, nir_op op, LLVMValueRef src, LLVMValueRef identity,
@@ -4142,28 +4142,28 @@ ac_build_reduce(struct ac_llvm_context *ctx, LLVMValueRef src, nir_op op, unsign
 	result = ac_build_alu_op(ctx, result, swap, op);
 	if (cluster_size == 4) return ac_build_wwm(ctx, result);
 
-	if (ctx->chip_class >= VI)
+	if (ctx->chip_class >= GFX8)
 		swap = ac_build_dpp(ctx, identity, result, dpp_row_half_mirror, 0xf, 0xf, false);
 	else
 		swap = ac_build_ds_swizzle(ctx, result, ds_pattern_bitmode(0x1f, 0, 0x04));
 	result = ac_build_alu_op(ctx, result, swap, op);
 	if (cluster_size == 8) return ac_build_wwm(ctx, result);
 
-	if (ctx->chip_class >= VI)
+	if (ctx->chip_class >= GFX8)
 		swap = ac_build_dpp(ctx, identity, result, dpp_row_mirror, 0xf, 0xf, false);
 	else
 		swap = ac_build_ds_swizzle(ctx, result, ds_pattern_bitmode(0x1f, 0, 0x08));
 	result = ac_build_alu_op(ctx, result, swap, op);
 	if (cluster_size == 16) return ac_build_wwm(ctx, result);
 
-	if (ctx->chip_class >= VI && cluster_size != 32)
+	if (ctx->chip_class >= GFX8 && cluster_size != 32)
 		swap = ac_build_dpp(ctx, identity, result, dpp_row_bcast15, 0xa, 0xf, false);
 	else
 		swap = ac_build_ds_swizzle(ctx, result, ds_pattern_bitmode(0x1f, 0, 0x10));
 	result = ac_build_alu_op(ctx, result, swap, op);
 	if (cluster_size == 32) return ac_build_wwm(ctx, result);
 
-	if (ctx->chip_class >= VI) {
+	if (ctx->chip_class >= GFX8) {
 		swap = ac_build_dpp(ctx, identity, result, dpp_row_bcast31, 0xc, 0xf, false);
 		result = ac_build_alu_op(ctx, result, swap, op);
 		result = ac_build_readlane(ctx, result, LLVMConstInt(ctx->i32, 63, 0));
@@ -4350,7 +4350,7 @@ ac_build_quad_swizzle(struct ac_llvm_context *ctx, LLVMValueRef src,
 		unsigned lane0, unsigned lane1, unsigned lane2, unsigned lane3)
 {
 	unsigned mask = dpp_quad_perm(lane0, lane1, lane2, lane3);
-	if (ctx->chip_class >= VI) {
+	if (ctx->chip_class >= GFX8) {
 		return ac_build_dpp(ctx, src, src, mask, 0xf, 0xf, false);
 	} else {
 		return ac_build_ds_swizzle(ctx, src, (1 << 15) | mask);

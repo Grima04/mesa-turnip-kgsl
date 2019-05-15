@@ -105,7 +105,7 @@ static bool llvm_type_is_64bit(struct si_shader_context *ctx,
 
 static bool is_merged_shader(struct si_shader_context *ctx)
 {
-	if (ctx->screen->info.chip_class <= VI)
+	if (ctx->screen->info.chip_class <= GFX8)
 		return false;
 
 	return ctx->shader->key.as_ls ||
@@ -3082,7 +3082,7 @@ static void si_write_tess_factors(struct lp_build_tgsi_context *bld_base,
 
 	/* Store the dynamic HS control word. */
 	offset = 0;
-	if (ctx->screen->info.chip_class <= VI) {
+	if (ctx->screen->info.chip_class <= GFX8) {
 		ac_build_buffer_store_dword(&ctx->ac, buffer,
 					    LLVMConstInt(ctx->i32, 0x80000000, 0),
 					    1, ctx->i32_0, tf_base,
@@ -3719,7 +3719,7 @@ static void si_llvm_return_fs_outputs(struct ac_shader_abi *abi,
 						   addrs[4 * i + 0], "");
 			break;
 		default:
-			fprintf(stderr, "Warning: SI unhandled fs output type:%d\n",
+			fprintf(stderr, "Warning: GFX6 unhandled fs output type:%d\n",
 				semantic_name);
 		}
 	}
@@ -4215,11 +4215,11 @@ static void si_llvm_emit_barrier(const struct lp_build_tgsi_action *action,
 {
 	struct si_shader_context *ctx = si_shader_context(bld_base);
 
-	/* SI only (thanks to a hw bug workaround):
+	/* GFX6 only (thanks to a hw bug workaround):
 	 * The real barrier instruction isn’t needed, because an entire patch
 	 * always fits into a single wave.
 	 */
-	if (ctx->screen->info.chip_class == SI &&
+	if (ctx->screen->info.chip_class == GFX6 &&
 	    ctx->type == PIPE_SHADER_TESS_CTRL) {
 		ac_build_waitcnt(&ctx->ac, LGKM_CNT & VM_CNT);
 		return;
@@ -4327,7 +4327,7 @@ static unsigned si_get_max_workgroup_size(const struct si_shader *shader)
 	case PIPE_SHADER_TESS_CTRL:
 		/* Return this so that LLVM doesn't remove s_barrier
 		 * instructions on chips where we use s_barrier. */
-		return shader->selector->screen->info.chip_class >= CIK ? 128 : 64;
+		return shader->selector->screen->info.chip_class >= GFX7 ? 128 : 64;
 
 	case PIPE_SHADER_GEOMETRY:
 		return shader->selector->screen->info.chip_class >= GFX9 ? 128 : 64;
@@ -4536,7 +4536,7 @@ static void create_function(struct si_shader_context *ctx)
 		declare_vs_input_vgprs(ctx, &fninfo, &num_prolog_vgprs);
 		break;
 
-	case PIPE_SHADER_TESS_CTRL: /* SI-CI-VI */
+	case PIPE_SHADER_TESS_CTRL: /* GFX6-GFX8 */
 		declare_global_desc_pointers(ctx, &fninfo);
 		declare_per_stage_desc_pointers(ctx, &fninfo, true);
 		ctx->param_tcs_offchip_layout = add_arg(&fninfo, ARG_SGPR, ctx->i32);
@@ -4851,7 +4851,7 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 	LLVMValueRef buf_ptr = LLVMGetParam(ctx->main_fn,
 					    ctx->param_rw_buffers);
 
-	if (ctx->screen->info.chip_class <= VI &&
+	if (ctx->screen->info.chip_class <= GFX8 &&
 	    (ctx->shader->key.as_es || ctx->type == PIPE_SHADER_GEOMETRY)) {
 		unsigned ring =
 			ctx->type == PIPE_SHADER_GEOMETRY ? SI_GS_RING_ESGS
@@ -4897,7 +4897,7 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 
 			stride = 4 * num_components * sel->gs_max_out_vertices;
 
-			/* Limit on the stride field for <= CIK. */
+			/* Limit on the stride field for <= GFX7. */
 			assert(stride < (1 << 14));
 
 			num_records = 64;
@@ -5222,7 +5222,7 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 	struct si_screen *sscreen = shader->selector->screen;
 	struct si_shader_config *conf = &shader->config;
 	unsigned num_inputs = shader->selector->info.num_inputs;
-	unsigned lds_increment = sscreen->info.chip_class >= CIK ? 512 : 256;
+	unsigned lds_increment = sscreen->info.chip_class >= GFX7 ? 512 : 256;
 	unsigned lds_per_wave = 0;
 	unsigned max_simd_waves;
 
@@ -5452,7 +5452,7 @@ static int si_compile_llvm(struct si_screen *sscreen,
 	 * - Floating-point output modifiers would be ignored by the hw.
 	 * - Some opcodes don't support denormals, such as v_mad_f32. We would
 	 *   have to stop using those.
-	 * - SI & CI would be very slow.
+	 * - GFX6 & GFX7 would be very slow.
 	 */
 	conf->float_mode |= V_00B028_FP_64_DENORMS;
 
@@ -6576,7 +6576,7 @@ static bool si_should_optimize_less(struct ac_llvm_compiler *compiler,
 
 	/* Assume a slow CPU. */
 	assert(!sel->screen->info.has_dedicated_vram &&
-	       sel->screen->info.chip_class <= VI);
+	       sel->screen->info.chip_class <= GFX8);
 
 	/* For a crazy dEQP test containing 2597 memory opcodes, mostly
 	 * buffer stores. */
@@ -6831,7 +6831,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 	if (sel->type == PIPE_SHADER_COMPUTE) {
 		unsigned wave_size = 64;
 		unsigned max_vgprs = 256;
-		unsigned max_sgprs = sscreen->info.chip_class >= VI ? 800 : 512;
+		unsigned max_sgprs = sscreen->info.chip_class >= GFX8 ? 800 : 512;
 		unsigned max_sgprs_per_wave = 128;
 		unsigned max_block_threads = si_get_max_workgroup_size(shader);
 		unsigned min_waves_per_cu = DIV_ROUND_UP(max_block_threads, wave_size);
@@ -7263,7 +7263,7 @@ static void si_build_tcs_epilog_function(struct si_shader_context *ctx,
 
 	/* Create the function. */
 	si_create_function(ctx, "tcs_epilog", NULL, 0, &fninfo,
-			   ctx->screen->info.chip_class >= CIK ? 128 : 64);
+			   ctx->screen->info.chip_class >= GFX7 ? 128 : 64);
 	ac_declare_lds_as_pointer(&ctx->ac);
 	func = ctx->main_fn;
 

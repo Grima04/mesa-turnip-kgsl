@@ -110,9 +110,9 @@ enum chip_class {
     R700,
     EVERGREEN,
     CAYMAN,
-    SI,  /* GFX6 */
-    CIK, /* GFX7 */
-    VI,  /* GFX8 */
+    GFX6,
+    GFX7,
+    GFX8,
     GFX9,
 };
 

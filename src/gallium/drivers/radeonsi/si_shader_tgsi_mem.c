@@ -48,8 +48,8 @@ static LLVMValueRef get_buffer_size(
 		LLVMBuildExtractElement(builder, descriptor,
 					LLVMConstInt(ctx->i32, 2, 0), "");
 
-	if (ctx->screen->info.chip_class == VI) {
-		/* On VI, the descriptor contains the size in bytes,
+	if (ctx->screen->info.chip_class == GFX8) {
+		/* On GFX8, the descriptor contains the size in bytes,
 		 * but TXQ must return the size in elements.
 		 * The stride is always non-zero for resources using TXQ.
 		 */
@@ -132,7 +132,7 @@ ac_image_dim_from_tgsi_target(struct si_screen *screen, enum tgsi_texture_type t
 
 	/* Match the resource type set in the descriptor. */
 	if (dim == ac_image_cube ||
-	    (screen->info.chip_class <= VI && dim == ac_image_3d))
+	    (screen->info.chip_class <= GFX8 && dim == ac_image_3d))
 		dim = ac_image_2darray;
 	else if (target == TGSI_TEXTURE_2D && screen->info.chip_class >= GFX9) {
 		/* When a single layer of a 3D texture is bound, the shader
@@ -161,7 +161,7 @@ ac_image_dim_from_tgsi_target(struct si_screen *screen, enum tgsi_texture_type t
 static LLVMValueRef force_dcc_off(struct si_shader_context *ctx,
 				  LLVMValueRef rsrc)
 {
-	if (ctx->screen->info.chip_class <= CIK) {
+	if (ctx->screen->info.chip_class <= GFX7) {
 		return rsrc;
 	} else {
 		LLVMValueRef i32_6 = LLVMConstInt(ctx->i32, 6, 0);
@@ -327,11 +327,11 @@ static unsigned get_cache_policy(struct si_shader_context *ctx,
 	unsigned cache_policy = 0;
 
 	if (!atomic &&
-	    /* SI has a TC L1 bug causing corruption of 8bit/16bit stores.
+	    /* GFX6 has a TC L1 bug causing corruption of 8bit/16bit stores.
 	     * All store opcodes not aligned to a dword are affected.
 	     * The only way to get unaligned stores in radeonsi is through
 	     * shader images. */
-	    ((may_store_unaligned && ctx->screen->info.chip_class == SI) ||
+	    ((may_store_unaligned && ctx->screen->info.chip_class == GFX6) ||
 	     /* If this is write-only, don't keep data in L1 to prevent
 	      * evicting L1 cache lines that may be needed by other
 	      * instructions. */
@@ -1099,13 +1099,13 @@ LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx,
 
 /* Disable anisotropic filtering if BASE_LEVEL == LAST_LEVEL.
  *
- * SI-CI:
+ * GFX6-GFX7:
  *   If BASE_LEVEL == LAST_LEVEL, the shader must disable anisotropic
  *   filtering manually. The driver sets img7 to a mask clearing
  *   MAX_ANISO_RATIO if BASE_LEVEL == LAST_LEVEL. The shader must do:
  *     s_and_b32 samp0, samp0, img7
  *
- * VI:
+ * GFX8:
  *   The ANISO_OVERRIDE sampler field enables this fix in TA.
  */
 static LLVMValueRef sici_fix_sampler_aniso(struct si_shader_context *ctx,
@@ -1113,7 +1113,7 @@ static LLVMValueRef sici_fix_sampler_aniso(struct si_shader_context *ctx,
 {
 	LLVMValueRef img7, samp0;
 
-	if (ctx->screen->info.chip_class >= VI)
+	if (ctx->screen->info.chip_class >= GFX8)
 		return samp;
 
 	img7 = LLVMBuildExtractElement(ctx->ac.builder, res,
@@ -1446,7 +1446,7 @@ static void build_tex_intrinsic(const struct lp_build_tgsi_action *action,
 		 * so the depth comparison value isn't clamped for Z16 and
 		 * Z24 anymore. Do it manually here.
 		 */
-		if (ctx->screen->info.chip_class >= VI) {
+		if (ctx->screen->info.chip_class >= GFX8) {
 			LLVMValueRef upgraded;
 			LLVMValueRef clamped;
 			upgraded = LLVMBuildExtractElement(ctx->ac.builder, args.sampler,
@@ -1530,7 +1530,7 @@ static void build_tex_intrinsic(const struct lp_build_tgsi_action *action,
 	} else if (tgsi_is_array_sampler(target) &&
 		   opcode != TGSI_OPCODE_TXF &&
 		   opcode != TGSI_OPCODE_TXF_LZ &&
-		   ctx->screen->info.chip_class <= VI) {
+		   ctx->screen->info.chip_class <= GFX8) {
 		unsigned array_coord = target == TGSI_TEXTURE_1D_ARRAY ? 1 : 2;
 		args.coords[array_coord] = ac_build_round(&ctx->ac, args.coords[array_coord]);
 	}
@@ -1687,7 +1687,7 @@ static void build_tex_intrinsic(const struct lp_build_tgsi_action *action,
 	/* The hardware needs special lowering for Gather4 with integer formats. */
 	LLVMValueRef gather4_int_result_workaround = NULL;
 
-	if (ctx->screen->info.chip_class <= VI &&
+	if (ctx->screen->info.chip_class <= GFX8 &&
 	    opcode == TGSI_OPCODE_TG4) {
 		assert(inst->Texture.ReturnType != TGSI_RETURN_TYPE_UNKNOWN);
 

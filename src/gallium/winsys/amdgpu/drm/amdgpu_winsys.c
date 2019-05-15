@@ -68,11 +68,11 @@ static void handle_env_var_force_family(struct amdgpu_winsys *ws)
             if (i >= CHIP_VEGA10)
                ws->info.chip_class = GFX9;
             else if (i >= CHIP_TONGA)
-               ws->info.chip_class = VI;
+               ws->info.chip_class = GFX8;
             else if (i >= CHIP_BONAIRE)
-               ws->info.chip_class = CIK;
+               ws->info.chip_class = GFX7;
             else
-               ws->info.chip_class = SI;
+               ws->info.chip_class = GFX6;
 
             /* Don't submit any IBs. */
             setenv("RADEON_NOOP", "1", 1);

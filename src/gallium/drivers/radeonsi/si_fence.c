@@ -115,8 +115,8 @@ void si_cp_release_mem(struct si_context *ctx,
 		radeon_emit(cs, 0); /* immediate data hi */
 		radeon_emit(cs, 0); /* unused */
 	} else {
-		if (ctx->chip_class == CIK ||
-		    ctx->chip_class == VI) {
+		if (ctx->chip_class == GFX7 ||
+		    ctx->chip_class == GFX8) {
 			struct si_resource *scratch = ctx->eop_bug_scratch;
 			uint64_t va = scratch->gpu_address;
 
@@ -153,8 +153,8 @@ unsigned si_cp_write_fence_dwords(struct si_screen *screen)
 {
 	unsigned dwords = 6;
 
-	if (screen->info.chip_class == CIK ||
-	    screen->info.chip_class == VI)
+	if (screen->info.chip_class == GFX7 ||
+	    screen->info.chip_class == GFX8)
 		dwords *= 2;
 
 	return dwords;

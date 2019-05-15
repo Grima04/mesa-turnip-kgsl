@@ -112,7 +112,7 @@ get_ac_image_dim(const struct ac_llvm_context *ctx, enum glsl_sampler_dim sdim,
 	enum ac_image_dim dim = get_ac_sampler_dim(ctx, sdim, is_array);
 
 	if (dim == ac_image_cube ||
-	    (ctx->chip_class <= VI && dim == ac_image_3d))
+	    (ctx->chip_class <= GFX8 && dim == ac_image_3d))
 		dim = ac_image_2darray;
 
 	return dim;
@@ -371,7 +371,7 @@ static LLVMValueRef emit_f2f16(struct ac_llvm_context *ctx,
 	src0 = ac_to_float(ctx, src0);
 	result = LLVMBuildFPTrunc(ctx->builder, src0, ctx->f16, "");
 
-	if (ctx->chip_class >= VI) {
+	if (ctx->chip_class >= GFX8) {
 		LLVMValueRef args[2];
 		/* Check if the result is a denormal - and flush to 0 if so. */
 		args[0] = result;
@@ -382,10 +382,10 @@ static LLVMValueRef emit_f2f16(struct ac_llvm_context *ctx,
 	/* need to convert back up to f32 */
 	result = LLVMBuildFPExt(ctx->builder, result, ctx->f32, "");
 
-	if (ctx->chip_class >= VI)
+	if (ctx->chip_class >= GFX8)
 		result = LLVMBuildSelect(ctx->builder, cond, ctx->f32_0, result, "");
 	else {
-		/* for SI/CIK */
+		/* for GFX6-GFX7 */
 		/* 0x38800000 is smallest half float value (2^-14) in 32-bit float,
 		 * so compare the result and flush to 0 if it's smaller.
 		 */
@@ -1169,9 +1169,9 @@ get_buffer_size(struct ac_nir_context *ctx, LLVMValueRef descriptor, bool in_ele
 		LLVMBuildExtractElement(ctx->ac.builder, descriptor,
 					LLVMConstInt(ctx->ac.i32, 2, false), "");
 
-	/* VI only */
-	if (ctx->ac.chip_class == VI && in_elements) {
-		/* On VI, the descriptor contains the size in bytes,
+	/* GFX8 only */
+	if (ctx->ac.chip_class == GFX8 && in_elements) {
+		/* On GFX8, the descriptor contains the size in bytes,
 		 * but TXQ must return the size in elements.
 		 * The stride is always non-zero for resources using TXQ.
 		 */
@@ -1376,7 +1376,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 		break;
 	}
 
-	if (instr->op == nir_texop_tg4 && ctx->ac.chip_class <= VI) {
+	if (instr->op == nir_texop_tg4 && ctx->ac.chip_class <= GFX8) {
 		nir_deref_instr *texture_deref_instr = get_tex_texture_deref(instr);
 		nir_variable *var = nir_deref_instr_get_variable(texture_deref_instr);
 		const struct glsl_type *type = glsl_without_array(var->type);
@@ -1535,11 +1535,11 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx,
 {
 	unsigned cache_policy = 0;
 
-	/* SI has a TC L1 bug causing corruption of 8bit/16bit stores.  All
+	/* GFX6 has a TC L1 bug causing corruption of 8bit/16bit stores.  All
 	 * store opcodes not aligned to a dword are affected. The only way to
 	 * get unaligned stores is through shader images.
 	 */
-	if (((may_store_unaligned && ctx->ac.chip_class == SI) ||
+	if (((may_store_unaligned && ctx->ac.chip_class == GFX6) ||
 	     /* If this is write-only, don't keep data in L1 to prevent
 	      * evicting L1 cache lines that may be needed by other
 	      * instructions.
@@ -2773,11 +2773,11 @@ static void emit_membar(struct ac_llvm_context *ac,
 
 void ac_emit_barrier(struct ac_llvm_context *ac, gl_shader_stage stage)
 {
-	/* SI only (thanks to a hw bug workaround):
+	/* GFX6 only (thanks to a hw bug workaround):
 	 * The real barrier instruction isn’t needed, because an entire patch
 	 * always fits into a single wave.
 	 */
-	if (ac->chip_class == SI && stage == MESA_SHADER_TESS_CTRL) {
+	if (ac->chip_class == GFX6 && stage == MESA_SHADER_TESS_CTRL) {
 		ac_build_waitcnt(ac, LGKM_CNT & VM_CNT);
 		return;
 	}
@@ -3557,13 +3557,13 @@ static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
 
 /* Disable anisotropic filtering if BASE_LEVEL == LAST_LEVEL.
  *
- * SI-CI:
+ * GFX6-GFX7:
  *   If BASE_LEVEL == LAST_LEVEL, the shader must disable anisotropic
  *   filtering manually. The driver sets img7 to a mask clearing
  *   MAX_ANISO_RATIO if BASE_LEVEL == LAST_LEVEL. The shader must do:
  *     s_and_b32 samp0, samp0, img7
  *
- * VI:
+ * GFX8:
  *   The ANISO_OVERRIDE sampler field enables this fix in TA.
  */
 static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx,
@@ -3572,7 +3572,7 @@ static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx,
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef img7, samp0;
 
-	if (ctx->ac.chip_class >= VI)
+	if (ctx->ac.chip_class >= GFX8)
 		return samp;
 
 	img7 = LLVMBuildExtractElement(builder, res,
@@ -3756,7 +3756,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 	 * It's unnecessary if the original texture format was
 	 * Z32_FLOAT, but we don't know that here.
 	 */
-	if (args.compare && ctx->ac.chip_class >= VI && ctx->abi->clamp_shadow_reference)
+	if (args.compare && ctx->ac.chip_class >= GFX8 && ctx->abi->clamp_shadow_reference)
 		args.compare = ac_build_clamp(&ctx->ac, ac_to_float(&ctx->ac, args.compare));
 
 	/* pack derivatives */
@@ -4396,7 +4396,7 @@ ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class)
 	 * by the reality that LLVM 5.0 doesn't have working VGPR indexing
 	 * on GFX9.
 	 */
-	bool llvm_has_working_vgpr_indexing = chip_class <= VI;
+	bool llvm_has_working_vgpr_indexing = chip_class <= GFX8;
 
 	/* TODO: Indirect indexing of GS inputs is unimplemented.
 	 *

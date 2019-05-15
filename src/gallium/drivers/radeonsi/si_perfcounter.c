@@ -1284,11 +1284,11 @@ void si_init_perfcounters(struct si_screen *screen)
 	unsigned i;
 
 	switch (screen->info.chip_class) {
-	case CIK:
+	case GFX7:
 		blocks = groups_CIK;
 		num_blocks = ARRAY_SIZE(groups_CIK);
 		break;
-	case VI:
+	case GFX8:
 		blocks = groups_VI;
 		num_blocks = ARRAY_SIZE(groups_VI);
 		break;
@@ -1296,13 +1296,13 @@ void si_init_perfcounters(struct si_screen *screen)
 		blocks = groups_gfx9;
 		num_blocks = ARRAY_SIZE(groups_gfx9);
 		break;
-	case SI:
+	case GFX6:
 	default:
 		return; /* not implemented */
 	}
 
 	if (screen->info.max_sh_per_se != 1) {
-		/* This should not happen on non-SI chips. */
+		/* This should not happen on non-GFX6 chips. */
 		fprintf(stderr, "si_init_perfcounters: max_sh_per_se = %d not "
 			"supported (inaccurate performance counters)\n",
 			screen->info.max_sh_per_se);

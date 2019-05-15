@@ -72,7 +72,7 @@
 /* Used by everything except CB/DB, can be bypassed (SLC=1). Other names: TC L2 */
 #define SI_CONTEXT_INV_GLOBAL_L2	(1 << 6)
 /* Write dirty L2 lines back to memory (shader and CP DMA stores), but don't
- * invalidate L2. SI-CIK can't do it, so they will do complete invalidation. */
+ * invalidate L2. GFX6-GFX7 can't do it, so they will do complete invalidation. */
 #define SI_CONTEXT_WRITEBACK_GLOBAL_L2	(1 << 7)
 /* Writeback & invalidate the L2 metadata cache. It can only be coupled with
  * a CB or DB flush. */
@@ -366,7 +366,7 @@ struct si_surface {
 	unsigned cb_color_view;
 	unsigned cb_color_attrib;
 	unsigned cb_color_attrib2;	/* GFX9 and later */
-	unsigned cb_dcc_control;	/* VI and later */
+	unsigned cb_dcc_control;	/* GFX8 and later */
 	unsigned spi_shader_col_format:8;	/* no blending, no alpha-to-coverage. */
 	unsigned spi_shader_col_format_alpha:8;	/* alpha-to-coverage */
 	unsigned spi_shader_col_format_blend:8;	/* blending without alpha. */
@@ -923,7 +923,7 @@ struct si_context {
 	bool				bo_list_add_all_compute_resources;
 
 	/* other shader resources */
-	struct pipe_constant_buffer	null_const_buf; /* used for set_constant_buffer(NULL) on CIK */
+	struct pipe_constant_buffer	null_const_buf; /* used for set_constant_buffer(NULL) on GFX7 */
 	struct pipe_resource		*esgs_ring;
 	struct pipe_resource		*gsvs_ring;
 	struct pipe_resource		*tess_rings;
@@ -1572,7 +1572,7 @@ si_make_CB_shader_coherent(struct si_context *sctx, unsigned num_samples,
 		else if (shaders_read_metadata)
 			sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
 	} else {
-		/* SI-CI-VI */
+		/* GFX6-GFX8 */
 		sctx->flags |= SI_CONTEXT_INV_GLOBAL_L2;
 	}
 }
@@ -1594,7 +1594,7 @@ si_make_DB_shader_coherent(struct si_context *sctx, unsigned num_samples,
 		else if (shaders_read_metadata)
 			sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
 	} else {
-		/* SI-CI-VI */
+		/* GFX6-GFX8 */
 		sctx->flags |= SI_CONTEXT_INV_GLOBAL_L2;
 	}
 }

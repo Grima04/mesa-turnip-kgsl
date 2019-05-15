@@ -112,11 +112,11 @@ void si_test_dma_perf(struct si_screen *sscreen)
 			unsigned cs_dwords_per_thread =
 				test_cs ? cs_dwords_per_thread_list[cs_method % NUM_SHADERS] : 0;
 
-			if (sctx->chip_class == SI) {
-				/* SI doesn't support CP DMA operations through L2. */
+			if (sctx->chip_class == GFX6) {
+				/* GFX6 doesn't support CP DMA operations through L2. */
 				if (test_cp && cache_policy != L2_BYPASS)
 					continue;
-				/* WAVES_PER_SH is in multiples of 16 on SI. */
+				/* WAVES_PER_SH is in multiples of 16 on GFX6. */
 				if (test_cs && cs_waves_per_sh % 16 != 0)
 					continue;
 			}
@@ -151,7 +151,7 @@ void si_test_dma_perf(struct si_screen *sscreen)
 				unsigned query_type = PIPE_QUERY_TIME_ELAPSED;
 
 				if (test_sdma) {
-					if (sctx->chip_class == SI)
+					if (sctx->chip_class == GFX6)
 						query_type = SI_QUERY_TIME_ELAPSED_SDMA_SI;
 					else
 						query_type = SI_QUERY_TIME_ELAPSED_SDMA;
@@ -346,10 +346,10 @@ void si_test_dma_perf(struct si_screen *sscreen)
 					if (!r->is_valid)
 						continue;
 
-					/* Ban CP DMA clears via MC on <= VI. They are super slow
+					/* Ban CP DMA clears via MC on <= GFX8. They are super slow
 					 * on GTT, which we can get due to BO evictions.
 					 */
-					if (sctx->chip_class <= VI && placement == 1 &&
+					if (sctx->chip_class <= GFX8 && placement == 1 &&
 					    r->is_cp && r->cache_policy == L2_BYPASS)
 						continue;
 

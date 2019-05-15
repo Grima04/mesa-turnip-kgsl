@@ -103,7 +103,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 		 * to flush it.
 		 *
 		 * The only cases which requires flushing it is VGT DMA index
-		 * fetching (on <= CIK) and indirect draw data, which are rare
+		 * fetching (on <= GFX7) and indirect draw data, which are rare
 		 * cases. Thus, flag the TC L2 dirtiness in the resource and
 		 * handle it at draw call time.
 		 */
@@ -195,7 +195,7 @@ static void si_flush_vgt_streamout(struct si_context *sctx)
 	unsigned reg_strmout_cntl;
 
 	/* The register is at different places on different ASICs. */
-	if (sctx->chip_class >= CIK) {
+	if (sctx->chip_class >= GFX7) {
 		reg_strmout_cntl = R_0300FC_CP_STRMOUT_CNTL;
 		radeon_set_uconfig_reg(cs, reg_strmout_cntl, 0);
 	} else {
@@ -230,7 +230,7 @@ static void si_emit_streamout_begin(struct si_context *sctx)
 
 		t[i]->stride_in_dw = stride_in_dw[i];
 
-		/* SI binds streamout buffers as shader resources.
+		/* AMD GCN binds streamout buffers as shader resources.
 		 * VGT only counts primitives and tells the shader
 		 * through SGPRs what to do. */
 		radeon_set_context_reg_seq(cs, R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16*i, 2);

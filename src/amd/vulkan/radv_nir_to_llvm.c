@@ -262,7 +262,7 @@ get_tcs_num_patches(struct radv_shader_context *ctx)
 	 *
 	 * Test: dEQP-VK.tessellation.shader_input_output.barrier
 	 */
-	if (ctx->options->chip_class >= CIK && ctx->options->family != CHIP_STONEY)
+	if (ctx->options->chip_class >= GFX7 && ctx->options->family != CHIP_STONEY)
 		hardware_lds_size = 65536;
 
 	num_patches = MIN2(num_patches, hardware_lds_size / (input_patch_size + output_patch_size));
@@ -273,8 +273,8 @@ get_tcs_num_patches(struct radv_shader_context *ctx)
 	 */
 	num_patches = MIN2(num_patches, 40);
 
-	/* SI bug workaround - limit LS-HS threadgroups to only one wave. */
-	if (ctx->options->chip_class == SI) {
+	/* GFX6 bug workaround - limit LS-HS threadgroups to only one wave. */
+	if (ctx->options->chip_class == GFX6) {
 		unsigned one_wave = 64 / MAX2(num_tcs_input_cp, num_tcs_output_cp);
 		num_patches = MIN2(num_patches, one_wave);
 	}
@@ -3276,7 +3276,7 @@ write_tess_factors(struct radv_shader_context *ctx)
 				  LLVMConstInt(ctx->ac.i32, 4 * stride, false), "");
 	unsigned tf_offset = 0;
 
-	if (ctx->options->chip_class <= VI) {
+	if (ctx->options->chip_class <= GFX8) {
 		ac_nir_build_if(&inner_if_ctx, ctx,
 		                LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ,
 		                              rel_patch_id, ctx->ac.i32_0, ""));
@@ -3518,7 +3518,7 @@ ac_nir_eliminate_const_vs_outputs(struct radv_shader_context *ctx)
 static void
 ac_setup_rings(struct radv_shader_context *ctx)
 {
-	if (ctx->options->chip_class <= VI &&
+	if (ctx->options->chip_class <= GFX8 &&
 	    (ctx->stage == MESA_SHADER_GEOMETRY ||
 	     ctx->options->key.vs.as_es || ctx->options->key.tes.as_es)) {
 		unsigned ring = ctx->stage == MESA_SHADER_GEOMETRY ? RING_ESGS_GS
@@ -3568,7 +3568,7 @@ ac_setup_rings(struct radv_shader_context *ctx)
 
 			stride = 4 * num_components * ctx->gs_max_out_vertices;
 
-			/* Limit on the stride field for <= CIK. */
+			/* Limit on the stride field for <= GFX7. */
 			assert(stride < (1 << 14));
 
 			ring = LLVMBuildBitCast(ctx->ac.builder,
@@ -3616,7 +3616,7 @@ radv_nir_get_max_workgroup_size(enum chip_class chip_class,
 {
 	switch (nir->info.stage) {
 	case MESA_SHADER_TESS_CTRL:
-		return chip_class >= CIK ? 128 : 64;
+		return chip_class >= GFX7 ? 128 : 64;
 	case MESA_SHADER_GEOMETRY:
 		return chip_class >= GFX9 ? 128 : 64;
 	case MESA_SHADER_COMPUTE:
@@ -3961,7 +3961,7 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 	 * - Floating-point output modifiers would be ignored by the hw.
 	 * - Some opcodes don't support denormals, such as v_mad_f32. We would
 	 *   have to stop using those.
-	 * - SI & CI would be very slow.
+	 * - GFX6 & GFX7 would be very slow.
 	 */
 	config->float_mode |= V_00B028_FP_64_DENORMS;
 }

@@ -126,10 +126,10 @@ static void si_emit_one_scissor(struct si_context *ctx,
 	if (scissor)
 		si_clip_scissor(&final, scissor);
 
-	/* Workaround for a hw bug on SI that occurs when PA_SU_HARDWARE_-
+	/* Workaround for a hw bug on GFX6 that occurs when PA_SU_HARDWARE_-
 	 * SCREEN_OFFSET != 0 and any_scissor.BR_X/Y <= 0.
 	 */
-	if (ctx->chip_class == SI && (final.maxx == 0 || final.maxy == 0)) {
+	if (ctx->chip_class == GFX6 && (final.maxx == 0 || final.maxy == 0)) {
 		radeon_emit(cs, S_028250_TL_X(1) |
 				S_028250_TL_Y(1) |
 				S_028250_WINDOW_OFFSET_DISABLE(1));
@@ -180,9 +180,9 @@ static void si_emit_guardband(struct si_context *ctx)
 	int hw_screen_offset_x = (vp_as_scissor.maxx + vp_as_scissor.minx) / 2;
 	int hw_screen_offset_y = (vp_as_scissor.maxy + vp_as_scissor.miny) / 2;
 
-	/* SI-CI need to align the offset to an ubertile consisting of all SEs. */
+	/* GFX6-GFX7 need to align the offset to an ubertile consisting of all SEs. */
 	const unsigned hw_screen_offset_alignment =
-		ctx->chip_class >= VI ? 16 : MAX2(ctx->screen->se_tile_repeat, 16);
+		ctx->chip_class >= GFX8 ? 16 : MAX2(ctx->screen->se_tile_repeat, 16);
 
 	/* Indexed by quantization modes */
 	static int max_viewport_size[] = {65535, 16383, 4095};

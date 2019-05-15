@@ -1151,7 +1151,7 @@ static bool do_hardware_msaa_resolve(struct pipe_context *ctx,
 				goto resolve_to_temp;
 
 			/* This can happen with mipmapping. */
-			if (sctx->chip_class == VI &&
+			if (sctx->chip_class == GFX8 &&
 			    !dst->surface.u.legacy.level[info->dst.level].dcc_fast_clear_size)
 				goto resolve_to_temp;
 

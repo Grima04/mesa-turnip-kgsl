@@ -25,7 +25,7 @@
  * IN THE SOFTWARE.
  */
 
-/* command buffer handling for SI */
+/* command buffer handling for AMD GCN */
 
 #include "radv_private.h"
 #include "radv_shader.h"
@@ -51,8 +51,8 @@ si_write_harvested_raster_configs(struct radv_physical_device *physical_device,
 				 raster_config_se);
 
 	for (se = 0; se < num_se; se++) {
-		/* GRBM_GFX_INDEX has a different offset on SI and CI+ */
-		if (physical_device->rad_info.chip_class < CIK)
+		/* GRBM_GFX_INDEX has a different offset on GFX6 and GFX7+ */
+		if (physical_device->rad_info.chip_class < GFX7)
 			radeon_set_config_reg(cs, R_00802C_GRBM_GFX_INDEX,
 					      S_00802C_SE_INDEX(se) |
 					      S_00802C_SH_BROADCAST_WRITES(1) |
@@ -64,8 +64,8 @@ si_write_harvested_raster_configs(struct radv_physical_device *physical_device,
 		radeon_set_context_reg(cs, R_028350_PA_SC_RASTER_CONFIG, raster_config_se[se]);
 	}
 
-	/* GRBM_GFX_INDEX has a different offset on SI and CI+ */
-	if (physical_device->rad_info.chip_class < CIK)
+	/* GRBM_GFX_INDEX has a different offset on GFX6 and GFX7+ */
+	if (physical_device->rad_info.chip_class < GFX7)
 		radeon_set_config_reg(cs, R_00802C_GRBM_GFX_INDEX,
 				      S_00802C_SE_BROADCAST_WRITES(1) |
 				      S_00802C_SH_BROADCAST_WRITES(1) |
@@ -75,7 +75,7 @@ si_write_harvested_raster_configs(struct radv_physical_device *physical_device,
 				       S_030800_SE_BROADCAST_WRITES(1) | S_030800_SH_BROADCAST_WRITES(1) |
 				       S_030800_INSTANCE_BROADCAST_WRITES(1));
 
-	if (physical_device->rad_info.chip_class >= CIK)
+	if (physical_device->rad_info.chip_class >= GFX7)
 		radeon_set_context_reg(cs, R_028354_PA_SC_RASTER_CONFIG_1, raster_config_1);
 }
 
@@ -93,7 +93,7 @@ si_emit_compute(struct radv_physical_device *physical_device,
 	radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) | S_00B858_SH1_CU_EN(0xffff));
 	radeon_emit(cs, S_00B85C_SH0_CU_EN(0xffff) | S_00B85C_SH1_CU_EN(0xffff));
 
-	if (physical_device->rad_info.chip_class >= CIK) {
+	if (physical_device->rad_info.chip_class >= GFX7) {
 		/* Also set R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE2 / SE3 */
 		radeon_set_sh_reg_seq(cs,
 				      R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2, 2);
@@ -108,7 +108,7 @@ si_emit_compute(struct radv_physical_device *physical_device,
 	 * kernel if we want to use something other than the default value,
 	 * which is now 0x22f.
 	 */
-	if (physical_device->rad_info.chip_class <= SI) {
+	if (physical_device->rad_info.chip_class <= GFX6) {
 		/* XXX: This should be:
 		 * (number of compute units) * 4 * (waves per simd) - 1 */
 
@@ -142,7 +142,7 @@ si_set_raster_config(struct radv_physical_device *physical_device,
 	if (!rb_mask || util_bitcount(rb_mask) >= num_rb) {
 		radeon_set_context_reg(cs, R_028350_PA_SC_RASTER_CONFIG,
 				       raster_config);
-		if (physical_device->rad_info.chip_class >= CIK)
+		if (physical_device->rad_info.chip_class >= GFX7)
 			radeon_set_context_reg(cs, R_028354_PA_SC_RASTER_CONFIG_1,
 					       raster_config_1);
 	} else {
@@ -158,9 +158,9 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 {
 	int i;
 
-	/* Only SI can disable CLEAR_STATE for now. */
+	/* Only GFX6 can disable CLEAR_STATE for now. */
 	assert(physical_device->has_clear_state ||
-	       physical_device->rad_info.chip_class == SI);
+	       physical_device->rad_info.chip_class == GFX6);
 
 	radeon_emit(cs, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
 	radeon_emit(cs, CONTEXT_CONTROL_LOAD_ENABLE(1));
@@ -171,7 +171,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 		radeon_emit(cs, 0);
 	}
 
-	if (physical_device->rad_info.chip_class <= VI)
+	if (physical_device->rad_info.chip_class <= GFX8)
 		si_set_raster_config(physical_device, cs);
 
 	radeon_set_context_reg(cs, R_028A18_VGT_HOS_MAX_TESS_LEVEL, fui(64));
@@ -179,7 +179,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 		radeon_set_context_reg(cs, R_028A1C_VGT_HOS_MIN_TESS_LEVEL, fui(0));
 
 	/* FIXME calculate these values somehow ??? */
-	if (physical_device->rad_info.chip_class <= VI) {
+	if (physical_device->rad_info.chip_class <= GFX8) {
 		radeon_set_context_reg(cs, R_028A54_VGT_GS_PER_ES, SI_GS_PER_ES);
 		radeon_set_context_reg(cs, R_028A58_VGT_ES_PER_GS, 0x40);
 	}
@@ -193,7 +193,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	radeon_set_context_reg(cs, R_028AA0_VGT_INSTANCE_STEP_RATE_0, 1);
 	if (!physical_device->has_clear_state)
 		radeon_set_context_reg(cs, R_028AB8_VGT_VTX_CNT_EN, 0x0);
-	if (physical_device->rad_info.chip_class < CIK)
+	if (physical_device->rad_info.chip_class < GFX7)
 		radeon_set_config_reg(cs, R_008A14_PA_CL_ENHANCE, S_008A14_NUM_CLIP_SEQ(3) |
 				      S_008A14_CLIP_VTX_REORDER_ENA(1));
 
@@ -206,7 +206,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	/* CLEAR_STATE doesn't clear these correctly on certain generations.
 	 * I don't know why. Deduced by trial and error.
 	 */
-	if (physical_device->rad_info.chip_class <= CIK) {
+	if (physical_device->rad_info.chip_class <= GFX7) {
 		radeon_set_context_reg(cs, R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET, 0);
 		radeon_set_context_reg(cs, R_028204_PA_SC_WINDOW_SCISSOR_TL,
 				       S_028204_WINDOW_OFFSET_DISABLE(1));
@@ -229,7 +229,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	if (!physical_device->has_clear_state) {
 		radeon_set_context_reg(cs, R_02820C_PA_SC_CLIPRECT_RULE, 0xFFFF);
 		radeon_set_context_reg(cs, R_028230_PA_SC_EDGERULE, 0xAAAAAAAA);
-		/* PA_SU_HARDWARE_SCREEN_OFFSET must be 0 due to hw bug on SI */
+		/* PA_SU_HARDWARE_SCREEN_OFFSET must be 0 due to hw bug on GFX6 */
 		radeon_set_context_reg(cs, R_028234_PA_SU_HARDWARE_SCREEN_OFFSET, 0);
 		radeon_set_context_reg(cs, R_028820_PA_CL_NANINF_CNTL, 0);
 		radeon_set_context_reg(cs, R_028AC0_DB_SRESULTS_COMPARE_STATE0, 0x0);
@@ -256,7 +256,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 		radeon_set_context_reg(cs, R_028408_VGT_INDX_OFFSET, 0);
 	}
 
-	if (physical_device->rad_info.chip_class >= CIK) {
+	if (physical_device->rad_info.chip_class >= GFX7) {
 		if (physical_device->rad_info.chip_class >= GFX9) {
 			radeon_set_sh_reg(cs, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
 					  S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F));
@@ -303,7 +303,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 				  S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
 	}
 
-	if (physical_device->rad_info.chip_class >= VI) {
+	if (physical_device->rad_info.chip_class >= GFX8) {
 		uint32_t vgt_tess_distribution;
 
 		vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(32) |
@@ -586,7 +586,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 	ia_switch_on_eoi = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.ia_switch_on_eoi;
 	partial_vs_wave = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.partial_vs_wave;
 
-	if (chip_class >= CIK) {
+	if (chip_class >= GFX7) {
 		wd_switch_on_eop = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.wd_switch_on_eop;
 
 		/* Hawaii hangs if instancing is enabled and WD_SWITCH_ON_EOP is 0.
@@ -601,19 +601,19 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 		 * Assume indirect draws always use small instances.
 		 * This is needed for good VS wave utilization.
 		 */
-		if (chip_class <= VI &&
+		if (chip_class <= GFX8 &&
 		    info->max_se == 4 &&
 		    multi_instances_smaller_than_primgroup)
 			wd_switch_on_eop = true;
 
-		/* Required on CIK and later. */
+		/* Required on GFX7 and later. */
 		if (info->max_se > 2 && !wd_switch_on_eop)
 			ia_switch_on_eoi = true;
 
-		/* Required by Hawaii and, for some special cases, by VI. */
+		/* Required by Hawaii and, for some special cases, by GFX8. */
 		if (ia_switch_on_eoi &&
 		    (family == CHIP_HAWAII ||
-		     (chip_class == VI &&
+		     (chip_class == GFX8 &&
 		      /* max primgroup in wave is always 2 - leave this for documentation */
 		      (radv_pipeline_has_gs(cmd_buffer->state.pipeline) || max_primgroup_in_wave != 2))))
 			partial_vs_wave = true;
@@ -633,7 +633,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 		assert(wd_switch_on_eop || !ia_switch_on_eop);
 	}
 	/* If SWITCH_ON_EOI is set, PARTIAL_ES_WAVE must be set too. */
-	if (chip_class <= VI && ia_switch_on_eoi)
+	if (chip_class <= GFX8 && ia_switch_on_eoi)
 		partial_es_wave = true;
 
 	if (radv_pipeline_has_gs(cmd_buffer->state.pipeline)) {
@@ -658,7 +658,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 		S_028AA8_SWITCH_ON_EOI(ia_switch_on_eoi) |
 		S_028AA8_PARTIAL_VS_WAVE_ON(partial_vs_wave) |
 		S_028AA8_PARTIAL_ES_WAVE_ON(partial_es_wave) |
-		S_028AA8_WD_SWITCH_ON_EOP(chip_class >= CIK ? wd_switch_on_eop : 0);
+		S_028AA8_WD_SWITCH_ON_EOP(chip_class >= GFX7 ? wd_switch_on_eop : 0);
 
 }
 
@@ -704,8 +704,8 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 		if (!is_gfx8_mec)
 			radeon_emit(cs, 0); /* unused */
 	} else {
-		if (chip_class == CIK ||
-		    chip_class == VI) {
+		if (chip_class == GFX7 ||
+		    chip_class == GFX8) {
 			/* Two EOP events are required to make all engines go idle
 			 * (and optional cache flushes executed) before the timestamp
 			 * is written.
@@ -788,7 +788,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 	if (flush_bits & RADV_CMD_FLAG_INV_SMEM_L1)
 		cp_coher_cntl |= S_0085F0_SH_KCACHE_ACTION_ENA(1);
 
-	if (chip_class <= VI) {
+	if (chip_class <= GFX8) {
 		if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_CB) {
 			cp_coher_cntl |= S_0085F0_CB_ACTION_ENA(1) |
 				S_0085F0_CB0_DEST_BASE_ENA(1) |
@@ -801,7 +801,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 				S_0085F0_CB7_DEST_BASE_ENA(1);
 
 			/* Necessary for DCC */
-			if (chip_class >= VI) {
+			if (chip_class >= GFX8) {
 				si_cs_emit_write_event_eop(cs,
 							   chip_class,
 							   is_mec,
@@ -911,12 +911,12 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 	}
 
 	if ((flush_bits & RADV_CMD_FLAG_INV_GLOBAL_L2) ||
-	    (chip_class <= CIK && (flush_bits & RADV_CMD_FLAG_WRITEBACK_GLOBAL_L2))) {
+	    (chip_class <= GFX7 && (flush_bits & RADV_CMD_FLAG_WRITEBACK_GLOBAL_L2))) {
 		si_emit_acquire_mem(cs, is_mec, chip_class >= GFX9,
 				    cp_coher_cntl |
 				    S_0085F0_TC_ACTION_ENA(1) |
 				    S_0085F0_TCL1_ACTION_ENA(1) |
-				    S_0301F0_TC_WB_ACTION_ENA(chip_class >= VI));
+				    S_0301F0_TC_WB_ACTION_ENA(chip_class >= GFX8));
 		cp_coher_cntl = 0;
 	} else {
 		if(flush_bits & RADV_CMD_FLAG_WRITEBACK_GLOBAL_L2) {
@@ -1099,7 +1099,7 @@ static void si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer,
 	else if (flags & CP_DMA_USE_L2)
 		header |= S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2);
 
-	if (cmd_buffer->device->physical_device->rad_info.chip_class >= CIK) {
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7) {
 		radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, cmd_buffer->state.predicating));
 		radeon_emit(cs, header);
 		radeon_emit(cs, src_va);		/* SRC_ADDR_LO [31:0] */
@@ -1281,7 +1281,7 @@ void si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va,
 
 void si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer)
 {
-	if (cmd_buffer->device->physical_device->rad_info.chip_class < CIK)
+	if (cmd_buffer->device->physical_device->rad_info.chip_class < GFX7)
 		return;
 
 	if (!cmd_buffer->state.dma_is_busy)
