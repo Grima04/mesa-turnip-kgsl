@@ -387,6 +387,7 @@ virgl_resource_create_transfer(struct virgl_context *vctx,
                                unsigned level, unsigned usage,
                                const struct pipe_box *box)
 {
+   struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
    struct virgl_transfer *trans;
    enum pipe_format format = pres->format;
    const unsigned blocksy = box->y / util_format_get_blockheight(format);
@@ -418,6 +419,9 @@ virgl_resource_create_transfer(struct virgl_context *vctx,
    /* note that trans is not zero-initialized */
    trans->base.resource = NULL;
    pipe_resource_reference(&trans->base.resource, pres);
+   trans->hw_res = NULL;
+   vws->resource_reference(vws, &trans->hw_res, virgl_resource(pres)->hw_res);
+
    trans->base.level = level;
    trans->base.usage = usage;
    trans->base.box = *box;
@@ -443,9 +447,12 @@ virgl_resource_create_transfer(struct virgl_context *vctx,
 void virgl_resource_destroy_transfer(struct virgl_context *vctx,
                                      struct virgl_transfer *trans)
 {
+   struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
+
    pipe_resource_reference(&trans->copy_src_res, NULL);
 
    util_range_destroy(&trans->range);
+   vws->resource_reference(vws, &trans->hw_res, NULL);
    pipe_resource_reference(&trans->base.resource, NULL);
    slab_free(&vctx->transfer_pool, trans);
 }

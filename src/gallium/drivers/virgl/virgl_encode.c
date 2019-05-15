@@ -527,7 +527,6 @@ static void virgl_encoder_transfer3d_common(struct virgl_screen *vs,
 
 {
    struct pipe_transfer *transfer = &xfer->base;
-   struct virgl_resource *res = virgl_resource(transfer->resource);
    unsigned stride;
    unsigned layer_stride;
 
@@ -541,7 +540,11 @@ static void virgl_encoder_transfer3d_common(struct virgl_screen *vs,
       assert(!"Invalid virgl_transfer3d_encode_stride value");
    }
 
-   virgl_encoder_emit_resource(vs, buf, res);
+   /* We cannot use virgl_encoder_emit_resource with transfer->resource here
+    * because transfer->resource might have a different virgl_hw_res than what
+    * this transfer targets, which is saved in xfer->hw_res.
+    */
+   vs->vws->emit_res(vs->vws, buf, xfer->hw_res, TRUE);
    virgl_encoder_write_dword(buf, transfer->level);
    virgl_encoder_write_dword(buf, transfer->usage);
    virgl_encoder_write_dword(buf, stride);
@@ -567,6 +570,7 @@ int virgl_encoder_inline_write(struct virgl_context *ctx,
    struct virgl_screen *vs = virgl_screen(ctx->base.screen);
 
    transfer.base.resource = &res->u.b;
+   transfer.hw_res = res->hw_res;
    transfer.base.level = level;
    transfer.base.usage = usage;
    transfer.base.box = *box;

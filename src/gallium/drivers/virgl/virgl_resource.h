@@ -76,6 +76,8 @@ struct virgl_transfer {
    struct util_range range;
    struct list_head queue_link;
    struct pipe_transfer *resolve_transfer;
+
+   struct virgl_hw_res *hw_res;
    void *hw_res_map;
    /* If not NULL, denotes that this is a copy transfer, i.e.,
     * that the transfer source data should be taken from this

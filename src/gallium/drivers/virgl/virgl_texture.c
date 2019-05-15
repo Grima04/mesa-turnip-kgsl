@@ -296,7 +296,7 @@ static void flush_data(struct pipe_context *ctx,
                        const struct pipe_box *box)
 {
    struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
-   vws->transfer_put(vws, virgl_resource(trans->base.resource)->hw_res, box,
+   vws->transfer_put(vws, trans->hw_res, box,
                      trans->base.stride, trans->l_stride, trans->offset,
                      trans->base.level);
 }

@@ -57,10 +57,8 @@ static bool transfers_intersect(struct virgl_transfer *queued,
                                 struct virgl_transfer *current)
 {
    boolean tmp;
-   struct pipe_resource *queued_res = queued->base.resource;
-   struct pipe_resource *current_res = current->base.resource;
 
-   if (queued_res != current_res)
+   if (queued->hw_res != current->hw_res)
       return false;
 
    tmp = u_box_test_intersection_2d(&queued->base.box, &current->base.box);
@@ -71,10 +69,8 @@ static bool transfers_overlap(struct virgl_transfer *queued,
                               struct virgl_transfer *current)
 {
    boolean tmp;
-   struct pipe_resource *queued_res = queued->base.resource;
-   struct pipe_resource *current_res = current->base.resource;
 
-   if (queued_res != current_res)
+   if (queued->hw_res != current->hw_res)
       return false;
 
    if (queued->base.level != current->base.level)
@@ -89,7 +85,7 @@ static bool transfers_overlap(struct virgl_transfer *queued,
    /*
     * Special case for boxes with [x: 0, width: 1] and [x: 1, width: 1].
     */
-   if (queued_res->target == PIPE_BUFFER) {
+   if (queued->base.resource->target == PIPE_BUFFER) {
       if (queued->base.box.x + queued->base.box.width == current->base.box.x)
          return false;
 
@@ -141,9 +137,9 @@ static void transfer_put(struct virgl_transfer_queue *queue,
                          struct list_action_args *args)
 {
    struct virgl_transfer *queued = args->queued;
-   struct virgl_resource *res = virgl_resource(queued->base.resource);
 
-   queue->vs->vws->transfer_put(queue->vs->vws, res->hw_res, &queued->base.box,
+   queue->vs->vws->transfer_put(queue->vs->vws, queued->hw_res,
+                                &queued->base.box,
                                 queued->base.stride, queued->l_stride,
                                 queued->offset, queued->base.level);
 
@@ -290,14 +286,13 @@ void virgl_transfer_queue_fini(struct virgl_transfer_queue *queue)
 int virgl_transfer_queue_unmap(struct virgl_transfer_queue *queue,
                                struct virgl_transfer *transfer)
 {
-   struct pipe_resource *res = transfer->base.resource;
    struct list_iteration_args iter;
 
    /* We don't support copy transfers in the transfer queue. */
    assert(!transfer->copy_src_res);
 
    /* Attempt to merge multiple intersecting transfers into a single one. */
-   if (res->target == PIPE_BUFFER) {
+   if (transfer->base.resource->target == PIPE_BUFFER) {
       memset(&iter, 0, sizeof(iter));
       iter.current = transfer;
       iter.compare = transfers_intersect;
