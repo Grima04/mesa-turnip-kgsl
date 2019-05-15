@@ -72,12 +72,22 @@ static void *gpir_node_create_dest(gpir_block *block, gpir_op op, nir_dest *dest
       return gpir_node_create_reg(block, op, &dest->reg);
 }
 
-static gpir_node *gpir_node_find(gpir_block *block, gpir_node *succ, nir_src *src)
+static gpir_node *gpir_node_find(gpir_block *block, gpir_node *succ, nir_src *src,
+                                 int channel)
 {
-   gpir_node *pred;
+   gpir_node *pred = NULL;
 
    if (src->is_ssa) {
-      pred = block->comp->var_nodes[src->ssa->index];
+      if (src->ssa->num_components > 1) {
+         for (int i = 0; i < GPIR_VECTOR_SSA_NUM; i++) {
+            if (block->comp->vector_ssa[i].ssa == src->ssa->index) {
+               pred = block->comp->vector_ssa[i].nodes[channel];
+               break;
+            }
+         }
+      } else
+         pred = block->comp->var_nodes[src->ssa->index];
+
       assert(pred);
    }
    else {
@@ -144,7 +154,7 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
       nir_alu_src *src = instr->src + i;
       node->children_negate[i] = src->negate;
 
-      gpir_node *child = gpir_node_find(block, &node->node, &src->src);
+      gpir_node *child = gpir_node_find(block, &node->node, &src->src, src->swizzle[0]);
       node->children[i] = child;
 
       gpir_node_add_dep(&node->node, child, GPIR_DEP_INPUT);
@@ -163,6 +173,26 @@ static gpir_node *gpir_create_load(gpir_block *block, nir_dest *dest,
    load->index = index;
    load->component = component;
    return &load->node;
+}
+
+static bool gpir_create_vector_load(gpir_block *block, nir_dest *dest, int index)
+{
+   assert(dest->is_ssa);
+   assert(index < GPIR_VECTOR_SSA_NUM);
+
+   block->comp->vector_ssa[index].ssa = dest->ssa.index;
+
+   for (int i = 0; i < dest->ssa.num_components; i++) {
+      gpir_node *node = gpir_create_load(block, dest, gpir_op_load_uniform,
+                                         block->comp->constant_base + index, i);
+      if (!node)
+         return false;
+
+      block->comp->vector_ssa[index].nodes[i] = node;
+      snprintf(node->name, sizeof(node->name), "ssa%d.%c", dest->ssa.index, "xyzw"[i]);
+   }
+
+   return true;
 }
 
 static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
@@ -194,7 +224,7 @@ static bool gpir_emit_intrinsic(gpir_block *block, nir_instr *ni)
       store->index = nir_intrinsic_base(instr);
       store->component = nir_intrinsic_component(instr);
 
-      gpir_node *child = gpir_node_find(block, &store->node, instr->src);
+      gpir_node *child = gpir_node_find(block, &store->node, instr->src, 0);
       store->child = child;
       gpir_node_add_dep(&store->node, child, GPIR_DEP_INPUT);
 
@@ -347,6 +377,9 @@ static gpir_compiler *gpir_compiler_create(void *prog, unsigned num_reg, unsigne
 
    for (int i = 0; i < num_reg; i++)
       gpir_create_reg(comp);
+
+   for (int i = 0; i < GPIR_VECTOR_SSA_NUM; i++)
+      comp->vector_ssa[i].ssa = -1;
 
    comp->var_nodes = rzalloc_array(comp, gpir_node *, num_ssa);
    comp->prog = prog;

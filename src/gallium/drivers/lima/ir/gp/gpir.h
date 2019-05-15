@@ -319,6 +319,8 @@ typedef struct {
 
 struct lima_vs_shader_state;
 
+#define GPIR_VECTOR_SSA_NUM 0
+
 typedef struct gpir_compiler {
    struct list_head block_list;
    int cur_index;
@@ -329,6 +331,12 @@ typedef struct gpir_compiler {
    /* for physical reg */
    struct list_head reg_list;
    int cur_reg;
+
+   /* lookup for vector ssa */
+   struct {
+      int ssa;
+      gpir_node *nodes[4];
+   } vector_ssa[GPIR_VECTOR_SSA_NUM];
 
    struct lima_vs_shader_state *prog;
    int constant_base;
