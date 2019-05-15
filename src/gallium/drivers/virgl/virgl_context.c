@@ -1372,7 +1372,7 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    virgl_init_so_functions(vctx);
 
    slab_create_child(&vctx->transfer_pool, &rs->transfer_pool);
-   virgl_transfer_queue_init(&vctx->queue, rs, &vctx->transfer_pool);
+   virgl_transfer_queue_init(&vctx->queue, vctx);
    vctx->encoded_transfers = (rs->vws->supports_encoded_transfers &&
                        (rs->caps.caps.v2.capability_bits & VIRGL_CAP_TRANSFER));
 

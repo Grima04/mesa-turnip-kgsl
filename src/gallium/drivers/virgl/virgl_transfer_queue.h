@@ -29,7 +29,7 @@
 
 struct virgl_cmd_buf;
 struct virgl_screen;
-struct virgl_slab_child_pool;
+struct virgl_context;
 struct virgl_transfer;
 
 enum virgl_transfer_queue_lists {
@@ -41,14 +41,13 @@ enum virgl_transfer_queue_lists {
 struct virgl_transfer_queue {
    struct list_head lists[MAX_LISTS];
    struct virgl_screen *vs;
-   struct slab_child_pool *pool;
+   struct virgl_context *vctx;
    struct virgl_cmd_buf *tbuf;
    uint32_t num_dwords;
 };
 
 void virgl_transfer_queue_init(struct virgl_transfer_queue *queue,
-                               struct virgl_screen *vs,
-                               struct slab_child_pool *pool);
+                               struct virgl_context *vctx);
 
 void virgl_transfer_queue_fini(struct virgl_transfer_queue *queue);
 
