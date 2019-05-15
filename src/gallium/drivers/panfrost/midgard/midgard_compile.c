@@ -3134,11 +3134,7 @@ embedded_to_inline_constant(compiler_context *ctx)
                         /* Scale constant appropriately, if we can legally */
                         uint16_t scaled_constant = 0;
 
-                        /* XXX: Check legality */
                         if (midgard_is_integer_op(op)) {
-                                /* TODO: Inline integer */
-                                continue;
-
                                 unsigned int *iconstants = (unsigned int *) ins->constants;
                                 scaled_constant = (uint16_t) iconstants[component];
 
