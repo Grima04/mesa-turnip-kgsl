@@ -123,7 +123,7 @@ static void remove_transfer(struct virgl_transfer_queue *queue,
    struct pipe_resource *pres = queued->base.resource;
    list_del(&queued->queue_link);
    pipe_resource_reference(&pres, NULL);
-   virgl_resource_destroy_transfer(&queue->vctx->transfer_pool, queued);
+   virgl_resource_destroy_transfer(queue->vctx, queued);
 }
 
 static void replace_unmapped_transfer(struct virgl_transfer_queue *queue,

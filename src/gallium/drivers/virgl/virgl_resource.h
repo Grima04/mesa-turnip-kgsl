@@ -155,13 +155,13 @@ void virgl_resource_layout(struct pipe_resource *pt,
                            struct virgl_resource_metadata *metadata);
 
 struct virgl_transfer *
-virgl_resource_create_transfer(struct slab_child_pool *pool,
+virgl_resource_create_transfer(struct virgl_context *vctx,
                                struct pipe_resource *pres,
                                const struct virgl_resource_metadata *metadata,
                                unsigned level, unsigned usage,
                                const struct pipe_box *box);
 
-void virgl_resource_destroy_transfer(struct slab_child_pool *pool,
+void virgl_resource_destroy_transfer(struct virgl_context *vctx,
                                      struct virgl_transfer *trans);
 
 void virgl_resource_destroy(struct pipe_screen *screen,

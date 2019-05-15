@@ -126,7 +126,7 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
    enum virgl_transfer_map_type map_type;
    void *map_addr;
 
-   trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
+   trans = virgl_resource_create_transfer(vctx, resource,
                                           &vtex->metadata, level, usage, box);
    trans->resolve_transfer = NULL;
 
@@ -154,7 +154,7 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
    }
 
    if (!map_addr) {
-      virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+      virgl_resource_destroy_transfer(vctx, trans);
       return NULL;
    }
 
@@ -174,7 +174,7 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
    struct pipe_resource templ, *resolve_tmp;
    struct virgl_transfer *trans;
 
-   trans = virgl_resource_create_transfer(&vctx->transfer_pool, resource,
+   trans = virgl_resource_create_transfer(vctx, resource,
                                           &vtex->metadata, level, usage, box);
    if (!trans)
       return NULL;
@@ -260,7 +260,7 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
 
 fail:
    pipe_resource_reference(&resolve_tmp, NULL);
-   virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+   virgl_resource_destroy_transfer(vctx, trans);
    return NULL;
 }
 
@@ -313,7 +313,7 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    /* We don't need to transfer the contents of staging buffers, since they
     * don't have any host-side storage. */
    if (pipe_to_virgl_bind(vs, res->bind, res->flags) == VIRGL_BIND_STAGING) {
-      virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+      virgl_resource_destroy_transfer(vctx, trans);
       return;
    }
 
@@ -343,7 +343,7 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
 
    if (trans->resolve_transfer) {
       pipe_resource_reference(&trans->resolve_transfer->resource, NULL);
-      virgl_resource_destroy_transfer(&vctx->transfer_pool,
+      virgl_resource_destroy_transfer(vctx,
                                       virgl_transfer(trans->resolve_transfer));
    }
 
@@ -352,14 +352,13 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
          virgl_encode_copy_transfer(vctx, trans);
          /* It's now safe for other mappings to use the transfer_uploader. */
          vctx->transfer_uploader_in_use = false;
-         virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+         virgl_resource_destroy_transfer(vctx, trans);
       } else {
          virgl_transfer_queue_unmap(&vctx->queue, trans);
       }
    } else {
-      virgl_resource_destroy_transfer(&vctx->transfer_pool, trans);
+      virgl_resource_destroy_transfer(vctx, trans);
    }
-
 }
 
 static const struct u_resource_vtbl virgl_texture_vtbl =
