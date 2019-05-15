@@ -69,6 +69,7 @@ static void radeon_enc_session_info(struct radeon_encoder *enc)
 	RADEON_ENC_BEGIN(enc->cmd.session_info);
 	RADEON_ENC_CS(enc->enc_pic.session_info.interface_version);
 	RADEON_ENC_READWRITE(enc->si->res->buf, enc->si->res->domains, 0x0);
+	RADEON_ENC_CS(RENCODE_ENGINE_TYPE_ENCODE);
 	RADEON_ENC_END();
 }
 
