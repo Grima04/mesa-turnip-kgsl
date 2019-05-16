@@ -53,8 +53,7 @@ panfrost_translate_swizzle(enum pipe_swizzle s)
                 return MALI_CHANNEL_ONE;
 
         default:
-                assert(0);
-                return 0;
+                unreachable("INvalid swizzle");
         }
 }
 
@@ -100,9 +99,7 @@ panfrost_translate_channel_width(unsigned size)
                 case 32:
                         return MALI_CHANNEL_32;
                 default:
-                        fprintf(stderr, "Unknown width %d\n", size);
-                        assert(0);
-                        return 0;
+                        unreachable("Invalid width");
         }
 }
 
@@ -128,8 +125,7 @@ panfrost_translate_channel_type(unsigned type, unsigned size, bool norm) {
                         }
 
                 default:
-                        assert(0);
-                        return 0;
+                        unreachable("Invalid type");
         }
 }
 
@@ -232,9 +228,7 @@ panfrost_find_format(const struct util_format_description *desc)
                         break;
 
                 default:
-                        fprintf(stderr, "Unknown format type in %s\n", desc->name);
-                        assert(0);
-                        break;
+                        unreachable("Invalid format type");
         }
 
         return (enum mali_format) format;

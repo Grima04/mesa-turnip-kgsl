@@ -438,8 +438,7 @@ translate_tex_wrap(enum pipe_tex_wrap w)
                 return MALI_WRAP_MIRRORED_REPEAT;
 
         default:
-                assert(0);
-                return 0;
+                unreachable("Invalid wrap");
         }
 }
 
@@ -454,8 +453,7 @@ translate_tex_filter(enum pipe_tex_filter f)
                 return MALI_LINEAR;
 
         default:
-                assert(0);
-                return 0;
+                unreachable("Invalid filter");
         }
 }
 
@@ -492,10 +490,10 @@ panfrost_translate_compare_func(enum pipe_compare_func in)
 
         case PIPE_FUNC_ALWAYS:
                 return MALI_FUNC_ALWAYS;
-        }
 
-        assert (0);
-        return 0; /* Unreachable */
+        default:
+                unreachable("Invalid func");
+        }
 }
 
 static unsigned
@@ -525,10 +523,10 @@ panfrost_translate_alt_compare_func(enum pipe_compare_func in)
 
         case PIPE_FUNC_ALWAYS:
                 return MALI_ALT_FUNC_ALWAYS;
-        }
 
-        assert (0);
-        return 0; /* Unreachable */
+        default:
+                unreachable("Invalid alt func");
+        }
 }
 
 static unsigned
@@ -558,10 +556,10 @@ panfrost_translate_stencil_op(enum pipe_stencil_op in)
 
         case PIPE_STENCIL_OP_INVERT:
                 return MALI_STENCIL_INVERT;
-        }
 
-        assert (0);
-        return 0; /* Unreachable */
+        default:
+                unreachable("Invalid stencil op");
+        }
 }
 
 static void
@@ -1200,8 +1198,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         break;
 
                 default:
-                        DBG("Unknown shader stage %d in uniform upload\n", i);
-                        assert(0);
+                        unreachable("Invalid shader stage\n");
                 }
 
                 /* Also attach the same buffer as a UBO for extended access */
@@ -1432,9 +1429,7 @@ g2m_draw_mode(enum pipe_prim_type mode)
                 DEFINE_CASE(POLYGON);
 
         default:
-                DBG("Illegal draw mode %d\n", mode);
-                assert(0);
-                return MALI_LINE_LOOP;
+                unreachable("Invalid draw mode");
         }
 }
 
@@ -1454,9 +1449,7 @@ panfrost_translate_index_size(unsigned size)
                 return MALI_DRAW_INDEXED_UINT32;
 
         default:
-                DBG("Unknown index size %d\n", size);
-                assert(0);
-                return 0;
+                unreachable("Invalid index size");
         }
 }
 
