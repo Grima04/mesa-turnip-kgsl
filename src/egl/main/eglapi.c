@@ -340,22 +340,16 @@ _eglConvertIntsToAttribs(const EGLint *int_list, EGLAttrib **out_attrib_list)
 static EGLint *
 _eglConvertAttribsToInt(const EGLAttrib *attr_list)
 {
+   size_t size = _eglNumAttribs(attr_list);
    EGLint *int_attribs = NULL;
 
    /* Convert attributes from EGLAttrib[] to EGLint[] */
-   if (attr_list) {
-      int i, size = 0;
-
-      while (attr_list[size] != EGL_NONE)
-         size += 2;
-
-      size += 1; /* add space for EGL_NONE */
-
+   if (size) {
       int_attribs = calloc(size, sizeof(int_attribs[0]));
       if (!int_attribs)
          return NULL;
 
-      for (i = 0; i < size; i++)
+      for (size_t i = 0; i < size; i++)
          int_attribs[i] = attr_list[i];
    }
    return int_attribs;

@@ -274,6 +274,19 @@ _eglIsResourceLinked(_EGLResource *res)
    return res->IsLinked;
 }
 
+static inline size_t
+_eglNumAttribs(const EGLAttrib *attribs)
+{
+   size_t len = 0;
+
+   if (attribs) {
+      while (attribs[len] != EGL_NONE)
+         len += 2;
+      len++;
+   }
+   return len;
+}
+
 #ifdef HAVE_X11_PLATFORM
 _EGLDisplay*
 _eglGetX11Display(Display *native_display, const EGLAttrib *attrib_list);
