@@ -1375,6 +1375,11 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 	case nir_texop_lod:
 		args->opcode = ac_image_get_lod;
 		break;
+	case nir_texop_fragment_fetch:
+	case nir_texop_fragment_mask_fetch:
+		args->opcode = ac_image_load;
+		args->level_zero = false;
+		break;
 	default:
 		break;
 	}
@@ -3978,6 +3983,13 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx,
 		main_descriptor = AC_DESC_PLANE_0 + plane;
 	}
 
+	if (instr->op == nir_texop_fragment_mask_fetch) {
+		/* The fragment mask is fetched from the compressed
+		 * multisampled surface.
+		 */
+		main_descriptor = AC_DESC_FMASK;
+	}
+
 	*res_ptr = get_sampler_desc(ctx, texture_deref_instr, main_descriptor, &instr->instr, false, false);
 
 	if (samp_ptr) {
@@ -4195,7 +4207,10 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 	     instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS ||
 	     instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
 	    instr->is_array &&
-	    instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms) {
+	    instr->op != nir_texop_txf &&
+	    instr->op != nir_texop_txf_ms &&
+	    instr->op != nir_texop_fragment_fetch &&
+	    instr->op != nir_texop_fragment_mask_fetch) {
 		args.coords[2] = apply_round_slice(&ctx->ac, args.coords[2]);
 	}
 
@@ -4214,7 +4229,8 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 	}
 
 	/* Pack sample index */
-	if (instr->op == nir_texop_txf_ms && sample_index)
+	if (sample_index && (instr->op == nir_texop_txf_ms ||
+			     instr->op == nir_texop_fragment_fetch))
 		args.coords[instr->coord_components] = sample_index;
 
 	if (instr->op == nir_texop_samples_identical) {
@@ -4233,7 +4249,9 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 
 	if ((instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS ||
 	     instr->sampler_dim == GLSL_SAMPLER_DIM_MS) &&
-	    instr->op != nir_texop_txs) {
+	    instr->op != nir_texop_txs &&
+	    instr->op != nir_texop_fragment_fetch &&
+	    instr->op != nir_texop_fragment_mask_fetch) {
 		unsigned sample_chan = instr->is_array ? 3 : 2;
 		args.coords[sample_chan] = adjust_sample_index_using_fmask(
 			&ctx->ac, args.coords[0], args.coords[1],
@@ -4271,6 +4289,20 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 		args.dim = ac_get_sampler_dim(ctx->ac.chip_class, instr->sampler_dim, instr->is_array);
 		args.unorm = instr->sampler_dim == GLSL_SAMPLER_DIM_RECT;
 	}
+
+	/* Adjust the number of coordinates because we only need (x,y) for 2D
+	 * multisampled images and (x,y,layer) for 2D multisampled layered
+	 * images or for multisampled input attachments.
+	 */
+	if (instr->op == nir_texop_fragment_mask_fetch) {
+		if (args.dim == ac_image_2dmsaa) {
+			args.dim = ac_image_2d;
+		} else {
+			assert(args.dim == ac_image_2darraymsaa);
+			args.dim = ac_image_2darray;
+		}
+	}
+
 	result = build_tex_intrinsic(ctx, instr, &args);
 
 	if (instr->op == nir_texop_query_levels)
