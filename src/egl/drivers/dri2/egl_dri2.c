@@ -874,6 +874,9 @@ dri2_initialize(_EGLDriver *drv, _EGLDisplay *disp)
    case _EGL_PLATFORM_SURFACELESS:
       ret = dri2_initialize_surfaceless(drv, disp);
       break;
+   case _EGL_PLATFORM_DEVICE:
+      ret = dri2_initialize_device(drv, disp);
+      break;
    case _EGL_PLATFORM_X11:
       ret = dri2_initialize_x11(drv, disp);
       break;

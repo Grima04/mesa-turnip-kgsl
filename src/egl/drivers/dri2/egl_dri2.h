@@ -331,10 +331,10 @@ struct dri2_egl_surface
    } color_buffers[3], *back;
 #endif
 
-#if defined(HAVE_SURFACELESS_PLATFORM)
-      __DRIimage           *front;
-      unsigned int         visual;
-#endif
+   /* surfaceless and device */
+   __DRIimage           *front;
+   unsigned int         visual;
+
    int out_fence_fd;
    EGLBoolean enable_out_fence;
 };
@@ -491,6 +491,11 @@ dri2_initialize_surfaceless(_EGLDriver *drv, _EGLDisplay *disp)
    return _eglError(EGL_NOT_INITIALIZED, "Surfaceless platform not built");
 }
 #endif
+
+EGLBoolean
+dri2_initialize_device(_EGLDriver *drv, _EGLDisplay *disp);
+static inline void
+dri2_teardown_device(struct dri2_egl_display *dri2_dpy) { /* noop */ }
 
 void
 dri2_flush_drawable_for_swapbuffers(_EGLDisplay *disp, _EGLSurface *draw);

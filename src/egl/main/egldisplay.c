@@ -35,12 +35,14 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include "c11/threads.h"
 #include "util/u_atomic.h"
 
 #include "eglcontext.h"
 #include "eglcurrent.h"
 #include "eglsurface.h"
+#include "egldevice.h"
 #include "egldisplay.h"
 #include "egldriver.h"
 #include "eglglobals.h"
@@ -201,6 +203,13 @@ _eglFiniDisplay(void)
             break;
          }
       }
+
+
+      /* The fcntl() code in _eglGetDeviceDisplay() ensures that valid fd >= 3,
+       * and invalid one is 0.
+       */
+      if (disp->Options.fd)
+         close(disp->Options.fd);
 
       free(disp->Options.Attribs);
       free(disp);
@@ -557,3 +566,61 @@ _eglGetSurfacelessDisplay(void *native_display,
                           attrib_list);
 }
 #endif /* HAVE_SURFACELESS_PLATFORM */
+
+
+_EGLDisplay*
+_eglGetDeviceDisplay(void *native_display,
+                     const EGLAttrib *attrib_list)
+{
+   _EGLDevice *dev;
+   _EGLDisplay *display;
+   int fd = -1;
+
+   dev = _eglLookupDevice(native_display);
+   if (!dev) {
+      _eglError(EGL_BAD_PARAMETER, "eglGetPlatformDisplay");
+      return NULL;
+   }
+
+   if (attrib_list) {
+      for (int i = 0; attrib_list[i] != EGL_NONE; i += 2) {
+         EGLAttrib attrib = attrib_list[i];
+         EGLAttrib value = attrib_list[i + 1];
+
+         /* EGL_EXT_platform_device does not recognize any attributes,
+          * EGL_EXT_device_drm adds the optional EGL_DRM_MASTER_FD_EXT.
+          */
+
+         if (!_eglDeviceSupports(dev, _EGL_DEVICE_DRM) ||
+             attrib != EGL_DRM_MASTER_FD_EXT) {
+            _eglError(EGL_BAD_ATTRIBUTE, "eglGetPlatformDisplay");
+            return NULL;
+         }
+
+         fd = (int) value;
+      }
+   }
+
+   display = _eglFindDisplay(_EGL_PLATFORM_DEVICE, native_display, attrib_list);
+   if (!display) {
+      _eglError(EGL_BAD_ALLOC, "eglGetPlatformDisplay");
+      return NULL;
+   }
+
+   /* If the fd is explicitly provided and we did not dup() it yet, do so.
+    * The spec mandates that we do so, since we'll need it past the
+    * eglGetPlatformDispay call.
+    *
+    * The new fd is guaranteed to be 3 or greater.
+    */
+   if (fd != -1 && display->Options.fd == 0) {
+      display->Options.fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+      if (display->Options.fd == -1) {
+         /* Do not (really) need to teardown the display */
+         _eglError(EGL_BAD_ALLOC, "eglGetPlatformDisplay");
+         return NULL;
+      }
+   }
+
+   return display;
+}

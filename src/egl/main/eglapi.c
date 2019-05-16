@@ -406,6 +406,9 @@ _eglGetPlatformDisplayCommon(EGLenum platform, void *native_display,
       disp = _eglGetSurfacelessDisplay(native_display, attrib_list);
       break;
 #endif
+   case EGL_PLATFORM_DEVICE_EXT:
+      disp = _eglGetDeviceDisplay(native_display, attrib_list);
+      break;
    default:
       RETURN_EGL_ERROR(NULL, EGL_BAD_PARAMETER, NULL);
    }
@@ -923,8 +926,8 @@ _eglCreateWindowSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
    if (native_window == NULL)
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_WINDOW, EGL_NO_SURFACE);
 
-#ifdef HAVE_SURFACELESS_PLATFORM
-   if (disp && disp->Platform == _EGL_PLATFORM_SURFACELESS) {
+   if (disp && (disp->Platform == _EGL_PLATFORM_SURFACELESS ||
+                disp->Platform == _EGL_PLATFORM_DEVICE)) {
       /* From the EGL_MESA_platform_surfaceless spec (v1):
        *
        *    eglCreatePlatformWindowSurface fails when called with a <display>
@@ -939,7 +942,6 @@ _eglCreateWindowSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
        */
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_WINDOW, EGL_NO_SURFACE);
    }
-#endif
 
    _EGL_CHECK_CONFIG(disp, conf, EGL_NO_SURFACE, drv);
 
@@ -1050,8 +1052,8 @@ _eglCreatePixmapSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
    _EGLSurface *surf;
    EGLSurface ret;
 
-#if HAVE_SURFACELESS_PLATFORM
-   if (disp && disp->Platform == _EGL_PLATFORM_SURFACELESS) {
+   if (disp && (disp->Platform == _EGL_PLATFORM_SURFACELESS ||
+                disp->Platform == _EGL_PLATFORM_DEVICE)) {
       /* From the EGL_MESA_platform_surfaceless spec (v1):
        *
        *   [Like eglCreatePlatformWindowSurface,] eglCreatePlatformPixmapSurface
@@ -1064,7 +1066,6 @@ _eglCreatePixmapSurfaceCommon(_EGLDisplay *disp, EGLConfig config,
        */
       RETURN_EGL_ERROR(disp, EGL_BAD_NATIVE_PIXMAP, EGL_NO_SURFACE);
    }
-#endif
 
    _EGL_CHECK_CONFIG(disp, conf, EGL_NO_SURFACE, drv);
 

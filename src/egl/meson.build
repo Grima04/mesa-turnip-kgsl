@@ -96,6 +96,7 @@ if with_dri2
   link_for_egl += [libloader, libxmlconfig]
   incs_for_egl += inc_loader
 
+  files_egl += files('drivers/dri2/platform_device.c')
   if with_platform_x11
     files_egl += files('drivers/dri2/platform_x11.c')
     if with_dri3
