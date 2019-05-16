@@ -162,13 +162,16 @@ static void virgl_attach_res_shader_buffers(struct virgl_context *vctx,
                                             enum pipe_shader_type shader_type)
 {
    struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
+   const struct virgl_shader_binding_state *binding =
+      &vctx->shader_bindings[shader_type];
+   uint32_t remaining_mask = binding->ssbo_enabled_mask;
    struct virgl_resource *res;
-   unsigned i;
-   for (i = 0; i < PIPE_MAX_SHADER_BUFFERS; i++) {
-      res = virgl_resource(vctx->ssbos[shader_type][i]);
-      if (res) {
-         vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
-      }
+
+   while (remaining_mask) {
+      int i = u_bit_scan(&remaining_mask);
+      res = virgl_resource(binding->ssbos[i].buffer);
+      assert(res);
+      vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
    }
 }
 
@@ -1024,17 +1027,19 @@ static void virgl_set_shader_buffers(struct pipe_context *ctx,
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
+   struct virgl_shader_binding_state *binding =
+      &vctx->shader_bindings[shader];
 
+   binding->ssbo_enabled_mask &= ~u_bit_consecutive(start_slot, count);
    for (unsigned i = 0; i < count; i++) {
       unsigned idx = start_slot + i;
-
-      if (buffers) {
-         if (buffers[i].buffer) {
-            pipe_resource_reference(&vctx->ssbos[shader][idx], buffers[i].buffer);
-            continue;
-         }
+      if (buffers && buffers[i].buffer) {
+         pipe_resource_reference(&binding->ssbos[idx].buffer, buffers[i].buffer);
+         binding->ssbos[idx] = buffers[i];
+         binding->ssbo_enabled_mask |= 1 << idx;
+      } else {
+         pipe_resource_reference(&binding->ssbos[idx].buffer, NULL);
       }
-      pipe_resource_reference(&vctx->ssbos[shader][idx], NULL);
    }
 
    uint32_t max_shader_buffer = (shader == PIPE_SHADER_FRAGMENT || shader == PIPE_SHADER_COMPUTE) ?
@@ -1171,6 +1176,11 @@ virgl_release_shader_binding(struct virgl_context *vctx,
    while (binding->ubo_enabled_mask) {
       int i = u_bit_scan(&binding->ubo_enabled_mask);
       pipe_resource_reference(&binding->ubos[i].buffer, NULL);
+   }
+
+   while (binding->ssbo_enabled_mask) {
+      int i = u_bit_scan(&binding->ssbo_enabled_mask);
+      pipe_resource_reference(&binding->ssbos[i].buffer, NULL);
    }
 }
 
