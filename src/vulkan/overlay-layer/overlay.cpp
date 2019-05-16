@@ -312,12 +312,6 @@ free_chain(struct VkBaseOutStructure *chain)
 
 /**/
 
-static void check_vk_result(VkResult err)
-{
-   if (err != VK_SUCCESS)
-      printf("ERROR!\n");
-}
-
 static struct instance_data *new_instance_data(VkInstance instance)
 {
    struct instance_data *data = rzalloc(NULL, struct instance_data);
@@ -385,11 +379,10 @@ static struct queue_data *new_queue_data(VkQueue queue,
    VkFenceCreateInfo fence_info = {};
    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-   VkResult err = device_data->vtable.CreateFence(device_data->device,
-                                                  &fence_info,
-                                                  NULL,
-                                                  &data->queries_fence);
-   check_vk_result(err);
+   VK_CHECK(device_data->vtable.CreateFence(device_data->device,
+                                            &fence_info,
+                                            NULL,
+                                            &data->queries_fence));
 
    if (data->flags & VK_QUEUE_GRAPHICS_BIT)
       device_data->graphic_queue = data;
@@ -1584,15 +1577,12 @@ static VkResult overlay_QueuePresentKHR(
       /* Before getting the query results, make sure the operations have
        * completed.
        */
-      VkResult err = device_data->vtable.ResetFences(device_data->device,
-                                                     1, &queue_data->queries_fence);
-      check_vk_result(err);
-      err = device_data->vtable.QueueSubmit(queue, 0, NULL, queue_data->queries_fence);
-      check_vk_result(err);
-      err = device_data->vtable.WaitForFences(device_data->device,
-                                              1, &queue_data->queries_fence,
-                                              VK_FALSE, UINT64_MAX);
-      check_vk_result(err);
+      VK_CHECK(device_data->vtable.ResetFences(device_data->device,
+                                               1, &queue_data->queries_fence));
+      VK_CHECK(device_data->vtable.QueueSubmit(queue, 0, NULL, queue_data->queries_fence));
+      VK_CHECK(device_data->vtable.WaitForFences(device_data->device,
+                                                 1, &queue_data->queries_fence,
+                                                 VK_FALSE, UINT64_MAX));
 
       /* Now get the results. */
       list_for_each_entry_safe(struct command_buffer_data, cmd_buffer_data,
@@ -1601,13 +1591,11 @@ static VkResult overlay_QueuePresentKHR(
 
          if (cmd_buffer_data->pipeline_query_pool) {
             memset(query_results, 0, sizeof(query_results));
-            err =
-               device_data->vtable.GetQueryPoolResults(device_data->device,
-                                                       cmd_buffer_data->pipeline_query_pool,
-                                                       cmd_buffer_data->query_index, 1,
-                                                       sizeof(uint32_t) * OVERLAY_QUERY_COUNT,
-                                                       query_results, 0, VK_QUERY_RESULT_WAIT_BIT);
-            check_vk_result(err);
+            VK_CHECK(device_data->vtable.GetQueryPoolResults(device_data->device,
+                                                             cmd_buffer_data->pipeline_query_pool,
+                                                             cmd_buffer_data->query_index, 1,
+                                                             sizeof(uint32_t) * OVERLAY_QUERY_COUNT,
+                                                             query_results, 0, VK_QUERY_RESULT_WAIT_BIT));
 
             for (uint32_t i = OVERLAY_PARAM_ENABLED_vertices;
                  i <= OVERLAY_PARAM_ENABLED_compute_invocations; i++) {
@@ -1616,13 +1604,11 @@ static VkResult overlay_QueuePresentKHR(
          }
          if (cmd_buffer_data->timestamp_query_pool) {
             uint64_t gpu_timestamps[2] = { 0 };
-            err =
-               device_data->vtable.GetQueryPoolResults(device_data->device,
-                                                       cmd_buffer_data->timestamp_query_pool,
-                                                       cmd_buffer_data->query_index * 2, 2,
-                                                       2 * sizeof(uint64_t), gpu_timestamps, sizeof(uint64_t),
-                                                       VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_64_BIT);
-            check_vk_result(err);
+            VK_CHECK(device_data->vtable.GetQueryPoolResults(device_data->device,
+                                                             cmd_buffer_data->timestamp_query_pool,
+                                                             cmd_buffer_data->query_index * 2, 2,
+                                                             2 * sizeof(uint64_t), gpu_timestamps, sizeof(uint64_t),
+                                                             VK_QUERY_RESULT_WAIT_BIT | VK_QUERY_RESULT_64_BIT));
 
             gpu_timestamps[0] &= queue_data->timestamp_mask;
             gpu_timestamps[1] &= queue_data->timestamp_mask;
@@ -1998,10 +1984,8 @@ static VkResult overlay_AllocateCommandBuffers(
          pAllocateInfo->commandBufferCount,
          overlay_query_flags,
       };
-      VkResult err =
-         device_data->vtable.CreateQueryPool(device_data->device, &pool_info,
-                                             NULL, &pipeline_query_pool);
-      check_vk_result(err);
+      VK_CHECK(device_data->vtable.CreateQueryPool(device_data->device, &pool_info,
+                                                   NULL, &pipeline_query_pool));
    }
    if (device_data->instance->params.enabled[OVERLAY_PARAM_ENABLED_gpu_timing]) {
       VkQueryPoolCreateInfo pool_info = {
@@ -2012,10 +1996,8 @@ static VkResult overlay_AllocateCommandBuffers(
          pAllocateInfo->commandBufferCount * 2,
          0,
       };
-      VkResult err =
-         device_data->vtable.CreateQueryPool(device_data->device, &pool_info,
-                                             NULL, &timestamp_query_pool);
-      check_vk_result(err);
+      VK_CHECK(device_data->vtable.CreateQueryPool(device_data->device, &pool_info,
+                                                   NULL, &timestamp_query_pool));
    }
 
    for (uint32_t i = 0; i < pAllocateInfo->commandBufferCount; i++) {
