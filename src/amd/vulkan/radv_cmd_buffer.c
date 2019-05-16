@@ -4585,17 +4585,28 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
 		}
 	} else if (radv_image_has_cmask(image) || radv_image_has_fmask(image)) {
+		bool fce_eliminate = false, fmask_expand = false;
+
 		if (radv_layout_can_fast_clear(image, src_layout, src_queue_mask) &&
 		    !radv_layout_can_fast_clear(image, dst_layout, dst_queue_mask)) {
-			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
+			fce_eliminate = true;
 		}
 
 		if (radv_image_has_fmask(image)) {
 			if (src_layout != VK_IMAGE_LAYOUT_GENERAL &&
 			    dst_layout == VK_IMAGE_LAYOUT_GENERAL) {
-				radv_expand_fmask_image_inplace(cmd_buffer, image, range);
+				/* A FMASK decompress is required before doing
+				 * a MSAA decompress using FMASK.
+				 */
+				fmask_expand = true;
 			}
 		}
+
+		if (fce_eliminate || fmask_expand)
+			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
+
+		if (fmask_expand)
+			radv_expand_fmask_image_inplace(cmd_buffer, image, range);
 	}
 }
 
