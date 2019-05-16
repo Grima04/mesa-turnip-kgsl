@@ -487,45 +487,22 @@ _eglUnlinkResource(_EGLResource *res, _EGLResourceType type)
 }
 
 #ifdef HAVE_X11_PLATFORM
-static EGLBoolean
-_eglParseX11DisplayAttribList(_EGLDisplay *display,
-                              const EGLAttrib *attrib_list)
-{
-   int i;
-
-   if (attrib_list == NULL) {
-      return EGL_TRUE;
-   }
-
-   /* EGL_EXT_platform_x11 recognizes exactly one attribute,
-    * EGL_PLATFORM_X11_SCREEN_EXT, which is optional.
-    */
-   for (i = 0; attrib_list[i] != EGL_NONE; i += 2) {
-      if (attrib_list[i] != EGL_PLATFORM_X11_SCREEN_EXT)
-         return _eglError(EGL_BAD_ATTRIBUTE, "eglGetPlatformDisplay");
-   }
-
-   return EGL_TRUE;
-}
-
 _EGLDisplay*
 _eglGetX11Display(Display *native_display,
                   const EGLAttrib *attrib_list)
 {
-   _EGLDisplay *display = _eglFindDisplay(_EGL_PLATFORM_X11,
-                                          native_display,
-                                          attrib_list);
-
-   if (!display) {
-      _eglError(EGL_BAD_ALLOC, "eglGetPlatformDisplay");
-      return NULL;
+   /* EGL_EXT_platform_x11 recognizes exactly one attribute,
+    * EGL_PLATFORM_X11_SCREEN_EXT, which is optional.
+    */
+   if (attrib_list != NULL) {
+      for (int i = 0; attrib_list[i] != EGL_NONE; i += 2) {
+         if (attrib_list[i] != EGL_PLATFORM_X11_SCREEN_EXT) {
+            _eglError(EGL_BAD_ATTRIBUTE, "eglGetPlatformDisplay");
+            return NULL;
+         }
+      }
    }
-
-   if (!_eglParseX11DisplayAttribList(display, attrib_list)) {
-      return NULL;
-   }
-
-   return display;
+   return _eglFindDisplay(_EGL_PLATFORM_X11, native_display, attrib_list);
 }
 #endif /* HAVE_X11_PLATFORM */
 
