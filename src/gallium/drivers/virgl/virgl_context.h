@@ -60,6 +60,9 @@ struct virgl_shader_binding_state {
 
    struct pipe_shader_buffer ssbos[PIPE_MAX_SHADER_BUFFERS];
    uint32_t ssbo_enabled_mask;
+
+   struct pipe_image_view images[PIPE_MAX_SHADER_IMAGES];
+   uint32_t image_enabled_mask;
 };
 
 struct virgl_context {
@@ -86,7 +89,6 @@ struct virgl_context {
    struct virgl_so_target so_targets[PIPE_MAX_SO_BUFFERS];
    unsigned num_so_targets;
 
-   struct pipe_resource *images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
    uint32_t num_draws, num_compute;
 
    struct pipe_resource *atomic_buffers[PIPE_MAX_HW_ATOMIC_BUFFERS];
