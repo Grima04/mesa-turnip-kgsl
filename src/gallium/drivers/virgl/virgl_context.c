@@ -145,13 +145,16 @@ static void virgl_attach_res_uniform_buffers(struct virgl_context *vctx,
                                              enum pipe_shader_type shader_type)
 {
    struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
+   const struct virgl_shader_binding_state *binding =
+      &vctx->shader_bindings[shader_type];
+   uint32_t remaining_mask = binding->ubo_enabled_mask;
    struct virgl_resource *res;
-   unsigned i;
-   for (i = 0; i < PIPE_MAX_CONSTANT_BUFFERS; i++) {
-      res = virgl_resource(vctx->ubos[shader_type][i]);
-      if (res) {
-         vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
-      }
+
+   while (remaining_mask) {
+      int i = u_bit_scan(&remaining_mask);
+      res = virgl_resource(binding->ubos[i].buffer);
+      assert(res);
+      vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
    }
 }
 
@@ -505,20 +508,28 @@ static void virgl_set_constant_buffer(struct pipe_context *ctx,
                                      const struct pipe_constant_buffer *buf)
 {
    struct virgl_context *vctx = virgl_context(ctx);
+   struct virgl_shader_binding_state *binding =
+      &vctx->shader_bindings[shader];
 
-   if (buf) {
-      if (!buf->user_buffer){
-         struct virgl_resource *res = virgl_resource(buf->buffer);
-         virgl_encoder_set_uniform_buffer(vctx, shader, index, buf->buffer_offset,
-                                          buf->buffer_size, res);
-         pipe_resource_reference(&vctx->ubos[shader][index], buf->buffer);
-         return;
-      }
-      pipe_resource_reference(&vctx->ubos[shader][index], NULL);
-      virgl_encoder_write_constant_buffer(vctx, shader, index, buf->buffer_size / 4, buf->user_buffer);
+   if (buf && buf->buffer) {
+      struct virgl_resource *res = virgl_resource(buf->buffer);
+      virgl_encoder_set_uniform_buffer(vctx, shader, index,
+                                       buf->buffer_offset,
+                                       buf->buffer_size, res);
+
+      pipe_resource_reference(&binding->ubos[index].buffer, buf->buffer);
+      binding->ubos[index] = *buf;
+      binding->ubo_enabled_mask |= 1 << index;
    } else {
-      virgl_encoder_write_constant_buffer(vctx, shader, index, 0, NULL);
-      pipe_resource_reference(&vctx->ubos[shader][index], NULL);
+      static const struct pipe_constant_buffer dummy_ubo;
+      if (!buf)
+         buf = &dummy_ubo;
+      virgl_encoder_write_constant_buffer(vctx, shader, index,
+                                          buf->buffer_size / 4,
+                                          buf->user_buffer);
+
+      pipe_resource_reference(&binding->ubos[index].buffer, NULL);
+      binding->ubo_enabled_mask &= ~(1 << index);
    }
 }
 
@@ -1155,6 +1166,11 @@ virgl_release_shader_binding(struct virgl_context *vctx,
       int i = u_bit_scan(&binding->view_enabled_mask);
       pipe_sampler_view_reference(
             (struct pipe_sampler_view **)&binding->views[i], NULL);
+   }
+
+   while (binding->ubo_enabled_mask) {
+      int i = u_bit_scan(&binding->ubo_enabled_mask);
+      pipe_resource_reference(&binding->ubos[i].buffer, NULL);
    }
 }
 
