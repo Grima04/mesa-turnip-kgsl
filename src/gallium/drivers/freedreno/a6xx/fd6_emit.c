@@ -1050,7 +1050,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_COUNT, 1);
 		OUT_RING(obj, mapping->num_ibo);
 
-		fd6_emit_add_group(emit, obj, FD6_GROUP_IBO, 0x7);
+		fd6_emit_add_group(emit, obj, FD6_GROUP_IBO, 0x6);
 		fd_ringbuffer_del(obj);
 		fd_ringbuffer_del(state);
 	}
