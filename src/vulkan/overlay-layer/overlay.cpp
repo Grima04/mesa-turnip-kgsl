@@ -1893,10 +1893,6 @@ static VkResult overlay_BeginCommandBuffer(
       return result;
    }
 
-   /* Primary command buffers with no queries. */
-   if (!cmd_buffer_data->pipeline_query_pool && cmd_buffer_data->timestamp_query_pool)
-      return device_data->vtable.BeginCommandBuffer(commandBuffer, pBeginInfo);
-
    /* Otherwise record a begin query as first command. */
    VkResult result = device_data->vtable.BeginCommandBuffer(commandBuffer, pBeginInfo);
 
