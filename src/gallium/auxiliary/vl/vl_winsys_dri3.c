@@ -438,6 +438,7 @@ dri3_set_drawable(struct vl_dri3_screen *scrn, Drawable drawable)
          ret = false;
       else {
          scrn->is_pixmap = true;
+         scrn->base.set_back_texture_from_output = NULL;
          if (scrn->front_buffer) {
             dri3_free_front_buffer(scrn, scrn->front_buffer);
             scrn->front_buffer = NULL;
