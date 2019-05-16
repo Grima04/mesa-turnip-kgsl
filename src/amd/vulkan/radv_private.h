@@ -701,7 +701,6 @@ struct radv_device {
 	float sample_locations_2x[2][2];
 	float sample_locations_4x[4][2];
 	float sample_locations_8x[8][2];
-	float sample_locations_16x[16][2];
 
 	/* GFX7 and later */
 	uint32_t gfx_init_size_dw;
