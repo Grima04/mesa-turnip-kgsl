@@ -2575,6 +2575,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       intrin->src[2] = nir_src_for_ssa(image.sample);
    }
 
+   nir_intrinsic_set_access(intrin, image.image->access);
+
    switch (opcode) {
    case SpvOpAtomicLoad:
    case SpvOpImageQuerySize:

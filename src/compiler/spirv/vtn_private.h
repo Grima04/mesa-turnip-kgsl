@@ -269,6 +269,9 @@ struct vtn_ssa_value {
    struct vtn_ssa_value *transposed;
 
    const struct glsl_type *type;
+
+   /* Access qualifiers */
+   enum gl_access_qualifier access;
 };
 
 enum vtn_base_type {
@@ -417,6 +420,9 @@ struct vtn_access_chain {
     * true if this access chain came from an OpPtrAccessChain.
     */
    bool ptr_as_array;
+
+   /* Access qualifiers */
+   enum gl_access_qualifier access;
 
    /** Struct elements and array offsets.
     *
@@ -722,6 +728,34 @@ vtn_constant_int(struct vtn_builder *b, uint32_t value_id)
    case 64: return val->constant->values[0].i64;
    default: unreachable("Invalid bit size");
    }
+}
+
+static inline enum gl_access_qualifier vtn_value_access(struct vtn_value *value)
+{
+   switch (value->value_type) {
+   case vtn_value_type_invalid:
+   case vtn_value_type_undef:
+   case vtn_value_type_string:
+   case vtn_value_type_decoration_group:
+   case vtn_value_type_constant:
+   case vtn_value_type_function:
+   case vtn_value_type_block:
+   case vtn_value_type_extension:
+      return 0;
+   case vtn_value_type_type:
+      return value->type->access;
+   case vtn_value_type_pointer:
+      return value->pointer->access;
+   case vtn_value_type_ssa:
+      return value->ssa->access;
+   case vtn_value_type_image_pointer:
+      return value->image->image->access;
+   case vtn_value_type_sampled_image:
+      return value->sampled_image->image->access |
+         value->sampled_image->sampler->access;
+   }
+
+   unreachable("invalid type");
 }
 
 struct vtn_ssa_value *vtn_ssa_value(struct vtn_builder *b, uint32_t value_id);
