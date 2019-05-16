@@ -566,12 +566,15 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 	struct fd_context *ctx = emit->ctx;
 	bool needs_border = false;
 
-	static const enum fd6_state_id state_id[PIPE_SHADER_TYPES] = {
-		[PIPE_SHADER_VERTEX]    = FD6_GROUP_VS_TEX,
-		[PIPE_SHADER_FRAGMENT]  = FD6_GROUP_FS_TEX,
+	static const struct {
+		enum fd6_state_id state_id;
+		unsigned enable_mask;
+	} s[PIPE_SHADER_TYPES] = {
+		[PIPE_SHADER_VERTEX]    = { FD6_GROUP_VS_TEX, 0x7 },
+		[PIPE_SHADER_FRAGMENT]  = { FD6_GROUP_FS_TEX, 0x6 },
 	};
 
-	debug_assert(state_id[type]);
+	debug_assert(s[type].state_id);
 
 	if (!v->image_mapping.num_tex && !v->fb_read) {
 		/* in the fast-path, when we don't have to mix in any image/SSBO
@@ -595,7 +598,8 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 
 			needs_border |= tex->needs_border;
 
-			fd6_emit_add_group(emit, tex->stateobj, state_id[type], 0x7);
+			fd6_emit_add_group(emit, tex->stateobj, s[type].state_id,
+					s[type].enable_mask);
 		}
 	} else {
 		/* In the slow-path, create a one-shot texture state object
@@ -615,7 +619,8 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 			needs_border |= fd6_emit_textures(ctx->pipe, stateobj, type, tex,
 					bcolor_offset, v, ctx);
 
-			fd6_emit_add_group(emit, stateobj, state_id[type], 0x7);
+			fd6_emit_add_group(emit, stateobj, s[type].state_id,
+					s[type].enable_mask);
 
 			fd_ringbuffer_del(stateobj);
 		}
