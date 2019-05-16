@@ -497,17 +497,12 @@ _eglParseX11DisplayAttribList(_EGLDisplay *display,
       return EGL_TRUE;
    }
 
+   /* EGL_EXT_platform_x11 recognizes exactly one attribute,
+    * EGL_PLATFORM_X11_SCREEN_EXT, which is optional.
+    */
    for (i = 0; attrib_list[i] != EGL_NONE; i += 2) {
-      EGLAttrib attrib = attrib_list[i];
-      EGLAttrib value = attrib_list[i + 1];
-
-      /* EGL_EXT_platform_x11 recognizes exactly one attribute,
-       * EGL_PLATFORM_X11_SCREEN_EXT, which is optional.
-       */
-      if (attrib != EGL_PLATFORM_X11_SCREEN_EXT)
+      if (attrib_list[i] != EGL_PLATFORM_X11_SCREEN_EXT)
          return _eglError(EGL_BAD_ATTRIBUTE, "eglGetPlatformDisplay");
-
-      display->Options.Platform = (void *)(uintptr_t)value;
    }
 
    return EGL_TRUE;

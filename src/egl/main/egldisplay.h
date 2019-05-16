@@ -167,7 +167,6 @@ struct _egl_display
    /* options that affect how the driver initializes the display */
    struct {
       EGLBoolean ForceSoftware; /**< Use software path only */
-      void *Platform;         /**< Platform-specific options */
       EGLAttrib *Attribs;     /**< Platform-specific options */
    } Options;
 
