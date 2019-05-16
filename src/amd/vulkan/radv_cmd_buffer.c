@@ -669,7 +669,7 @@ radv_update_multisample_state(struct radv_cmd_buffer *cmd_buffer,
 
 	radeon_set_context_reg(cmd_buffer->cs, R_028A48_PA_SC_MODE_CNTL_0, ms->pa_sc_mode_cntl_0);
 
-	radv_cayman_emit_msaa_sample_locs(cmd_buffer->cs, num_samples);
+	radv_emit_default_sample_locations(cmd_buffer->cs, num_samples);
 
 	/* GFX9: Flush DFSM when the AA mode changes. */
 	if (cmd_buffer->device->dfsm_allowed) {
