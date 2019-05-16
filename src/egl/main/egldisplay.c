@@ -202,20 +202,49 @@ _eglFiniDisplay(void)
          }
       }
 
+      free(disp->Options.Attribs);
       free(disp);
    }
    _eglGlobal.DisplayList = NULL;
 }
 
+static EGLBoolean
+_eglSameAttribs(const EGLAttrib *a, const EGLAttrib *b)
+{
+   size_t na = _eglNumAttribs(a);
+   size_t nb = _eglNumAttribs(b);
+
+   /* different numbers of attributes must be different */
+   if (na != nb)
+      return EGL_FALSE;
+
+   /* both lists NULL are the same */
+   if (!a && !b)
+      return EGL_TRUE;
+
+   /* otherwise, compare the lists */
+   return memcmp(a, b, na) == 0 ? EGL_TRUE : EGL_FALSE;
+}
 
 /**
  * Find the display corresponding to the specified native display, or create a
- * new one.
+ * new one. EGL 1.5 says:
+ *
+ *     Multiple calls made to eglGetPlatformDisplay with the same parameters
+ *     will return the same EGLDisplay handle.
+ *
+ * We read this extremely strictly, and treat a call with NULL attribs as
+ * different from a call with attribs only equal to { EGL_NONE }. Similarly
+ * we do not sort the attribute list, so even if all attribute _values_ are
+ * identical, different attribute orders will be considered different
+ * parameters.
  */
 _EGLDisplay *
-_eglFindDisplay(_EGLPlatformType plat, void *plat_dpy)
+_eglFindDisplay(_EGLPlatformType plat, void *plat_dpy,
+                const EGLAttrib *attrib_list)
 {
    _EGLDisplay *disp;
+   size_t num_attribs;
 
    if (plat == _EGL_INVALID_PLATFORM)
       return NULL;
@@ -225,7 +254,8 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy)
    /* search the display list first */
    disp = _eglGlobal.DisplayList;
    while (disp) {
-      if (disp->Platform == plat && disp->PlatformDisplay == plat_dpy)
+      if (disp->Platform == plat && disp->PlatformDisplay == plat_dpy &&
+          _eglSameAttribs(disp->Options.Attribs, attrib_list))
          break;
       disp = disp->Next;
    }
@@ -237,13 +267,24 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy)
          mtx_init(&disp->Mutex, mtx_plain);
          disp->Platform = plat;
          disp->PlatformDisplay = plat_dpy;
-
-         /* add to the display list */ 
+         num_attribs = _eglNumAttribs(attrib_list);
+         if (num_attribs) {
+            disp->Options.Attribs = calloc(num_attribs, sizeof(EGLAttrib));
+            if (!disp->Options.Attribs) {
+               free(disp);
+               disp = NULL;
+               goto out;
+            }
+            memcpy(disp->Options.Attribs, attrib_list,
+                   num_attribs * sizeof(EGLAttrib));
+         }
+         /* add to the display list */
          disp->Next = _eglGlobal.DisplayList;
          _eglGlobal.DisplayList = disp;
       }
    }
 
+out:
    mtx_unlock(_eglGlobal.Mutex);
 
    return disp;
@@ -477,7 +518,8 @@ _eglGetX11Display(Display *native_display,
                   const EGLAttrib *attrib_list)
 {
    _EGLDisplay *display = _eglFindDisplay(_EGL_PLATFORM_X11,
-                                          native_display);
+                                          native_display,
+                                          attrib_list);
 
    if (!display) {
       _eglError(EGL_BAD_ALLOC, "eglGetPlatformDisplay");
@@ -503,7 +545,7 @@ _eglGetGbmDisplay(struct gbm_device *native_display,
       return NULL;
    }
 
-   return _eglFindDisplay(_EGL_PLATFORM_DRM, native_display);
+   return _eglFindDisplay(_EGL_PLATFORM_DRM, native_display, attrib_list);
 }
 #endif /* HAVE_DRM_PLATFORM */
 
@@ -518,7 +560,7 @@ _eglGetWaylandDisplay(struct wl_display *native_display,
       return NULL;
    }
 
-   return _eglFindDisplay(_EGL_PLATFORM_WAYLAND, native_display);
+   return _eglFindDisplay(_EGL_PLATFORM_WAYLAND, native_display, attrib_list);
 }
 #endif /* HAVE_WAYLAND_PLATFORM */
 
@@ -539,6 +581,7 @@ _eglGetSurfacelessDisplay(void *native_display,
       return NULL;
    }
 
-   return _eglFindDisplay(_EGL_PLATFORM_SURFACELESS, native_display);
+   return _eglFindDisplay(_EGL_PLATFORM_SURFACELESS, native_display,
+                          attrib_list);
 }
 #endif /* HAVE_SURFACELESS_PLATFORM */

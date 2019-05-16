@@ -168,6 +168,7 @@ struct _egl_display
    struct {
       EGLBoolean ForceSoftware; /**< Use software path only */
       void *Platform;         /**< Platform-specific options */
+      EGLAttrib *Attribs;     /**< Platform-specific options */
    } Options;
 
    /* these fields are set by the driver during init */
@@ -202,7 +203,7 @@ _eglFiniDisplay(void);
 
 
 extern _EGLDisplay *
-_eglFindDisplay(_EGLPlatformType plat, void *plat_dpy);
+_eglFindDisplay(_EGLPlatformType plat, void *plat_dpy, const EGLAttrib *attr);
 
 
 extern void

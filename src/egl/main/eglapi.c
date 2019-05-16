@@ -373,7 +373,7 @@ eglGetDisplay(EGLNativeDisplayType nativeDisplay)
    native_display_ptr = (void*) nativeDisplay;
 
    plat = _eglGetNativePlatform(native_display_ptr);
-   disp = _eglFindDisplay(plat, native_display_ptr);
+   disp = _eglFindDisplay(plat, native_display_ptr, NULL);
    return _eglGetDisplayHandle(disp);
 }
 
