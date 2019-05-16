@@ -72,7 +72,7 @@ os_read_file(const char *filename)
 
    ssize_t actually_read;
    size_t offset = 0, remaining = len - 1;
-   while ((actually_read = readN(fd, buf + offset, remaining)) == remaining) {
+   while ((actually_read = readN(fd, buf + offset, remaining)) == (ssize_t)remaining) {
       char *newbuf = realloc(buf, 2 * len);
       if (!newbuf) {
          free(buf);
