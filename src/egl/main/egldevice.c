@@ -293,11 +293,23 @@ _eglQueryDevicesEXT(EGLint max_devices,
       goto out;
    }
 
+   /* Push the first device (the software one) to the end of the list.
+    * Sending it to the user only if they've requested the full list.
+    *
+    * By default, the user is likely to pick the first device so having the
+    * software (aka least performant) one is not a good idea.
+    */
    *num_devices = MIN2(num_devs, max_devices);
 
-   for (i = 0, dev = devs; i < *num_devices; i++) {
+   for (i = 0, dev = devs->Next; dev && i < max_devices; i++) {
       devices[i] = dev;
       dev = dev->Next;
+   }
+
+   /* User requested the full device list, add the sofware device. */
+   if (max_devices >= num_devs) {
+      assert(_eglDeviceSupports(devs, _EGL_DEVICE_SOFTWARE));
+      devices[num_devs - 1] = devs;
    }
 
 out:
