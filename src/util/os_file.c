@@ -37,7 +37,7 @@ readN(int fd, char *buf, size_t len)
       total += ret;
    } while (total != len);
 
-   return total ? total : err;
+   return total ? (ssize_t)total : err;
 }
 
 char *
