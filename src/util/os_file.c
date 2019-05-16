@@ -29,8 +29,10 @@ readN(int fd, char *buf, size_t len)
       if (ret == -EINTR || ret == -EAGAIN)
          continue;
 
-      if (ret <= 0)
+      if (ret <= 0) {
+         err = ret;
          break;
+      }
 
       total += ret;
    } while (total != len);
