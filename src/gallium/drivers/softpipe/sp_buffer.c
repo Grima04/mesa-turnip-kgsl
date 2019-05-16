@@ -55,8 +55,7 @@ sp_tgsi_load(const struct tgsi_buffer *buffer,
    struct pipe_shader_buffer *bview;
    struct softpipe_resource *spr;
    unsigned width;
-   unsigned ncomp;
-   unsigned c, j;
+   int c, j;
    unsigned char *data_ptr;
    const struct util_format_description *format_desc = util_format_description(PIPE_FORMAT_R32_UINT);
 
@@ -64,8 +63,6 @@ sp_tgsi_load(const struct tgsi_buffer *buffer,
       goto fail_write_all_zero;
 
    bview = &sp_buf->sp_bview[params->unit];
-   ncomp = util_format_get_nr_components(bview->buffer->format);
-
    spr = softpipe_resource(bview->buffer);
    if (!spr)
       goto fail_write_all_zero;
@@ -91,7 +88,7 @@ sp_tgsi_load(const struct tgsi_buffer *buffer,
          continue;
       }
       data_ptr = (unsigned char *)spr->data + bview->buffer_offset + s_coord;
-      for (c = 0; c < ncomp; c++) {
+      for (c = 0; c < 4; c++) {
          format_desc->fetch_rgba_uint(sdata, data_ptr, 0, 0);
          ((uint32_t *)rgba[c])[j] = sdata[0];
          data_ptr += 4;
