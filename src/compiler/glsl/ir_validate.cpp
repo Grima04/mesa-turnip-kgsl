@@ -299,9 +299,18 @@ ir_validate::visit_leave(ir_expression *ir)
       assert(ir->operands[0]->type->is_float());
       assert(ir->type->is_boolean());
       break;
+   case ir_unop_f162b:
+      assert(ir->operands[0]->type->base_type ==
+             GLSL_TYPE_FLOAT16);
+      assert(ir->type->is_boolean());
+      break;
    case ir_unop_b2f:
       assert(ir->operands[0]->type->is_boolean());
       assert(ir->type->is_float());
+      break;
+   case ir_unop_b2f16:
+      assert(ir->operands[0]->type->is_boolean());
+      assert(ir->type->base_type == GLSL_TYPE_FLOAT16);
       break;
    case ir_unop_i2b:
       assert(ir->operands[0]->type->base_type == GLSL_TYPE_INT);
