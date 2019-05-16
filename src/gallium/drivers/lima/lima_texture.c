@@ -119,19 +119,17 @@ lima_texture_desc_set_res(struct lima_context *ctx, uint32_t *desc,
 
    uint32_t base_va = lima_res->bo->va;
 
-   /* attach level 0 */
-   desc[6] |= (base_va << 24) | (layout << 13);
-   desc[7] |= base_va >> 8;
+   /* attach first level */
+   uint32_t first_va = base_va + lima_res->levels[first_level].offset;
+   desc[6] |= (first_va << 24) | (layout << 13);
+   desc[7] |= first_va >> 8;
 
    /* Attach remaining levels.
     * Each subsequent mipmap address is specified using the 26 msbs.
     * These addresses are then packed continuously in memory */
    unsigned current_desc_index = 7;
    unsigned current_desc_bit_index = 24;
-   for (i = 1; i < LIMA_MAX_MIP_LEVELS; i++) {
-      if (first_level + i > last_level)
-         break;
-
+   for (i = first_level + 1; i <= last_level; i++) {
       uint32_t address = base_va + lima_res->levels[i].offset;
       address = (address >> 6);
       desc[current_desc_index] |= (address << current_desc_bit_index);
@@ -163,32 +161,21 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    /* 2D texture */
    desc[1] |= 0x400;
 
-   desc[1] &= ~0xff000000;
+   first_level = texture->base.u.tex.first_level;
+   last_level = texture->base.u.tex.last_level;
+   if (last_level - first_level >= LIMA_MAX_MIP_LEVELS)
+      last_level = first_level + LIMA_MAX_MIP_LEVELS - 1;
+
    switch (sampler->base.min_mip_filter) {
-      case PIPE_TEX_MIPFILTER_NEAREST:
-         first_level = texture->base.u.tex.first_level;
-         last_level = texture->base.u.tex.last_level;
-         if (last_level - first_level >= LIMA_MAX_MIP_LEVELS)
-            last_level = first_level + LIMA_MAX_MIP_LEVELS - 1;
-         mipmapping = true;
-         desc[1] |= ((last_level - first_level) << 24);
-         desc[2] &= ~0x0600;
-         break;
       case PIPE_TEX_MIPFILTER_LINEAR:
-         first_level = texture->base.u.tex.first_level;
-         last_level = texture->base.u.tex.last_level;
-         if (last_level - first_level >= LIMA_MAX_MIP_LEVELS)
-            last_level = first_level + LIMA_MAX_MIP_LEVELS - 1;
+         desc[2] |= 0x0600;
+      case PIPE_TEX_MIPFILTER_NEAREST:
          mipmapping = true;
          desc[1] |= ((last_level - first_level) << 24);
-         desc[2] |= 0x0600;
          break;
       case PIPE_TEX_MIPFILTER_NONE:
       default:
-         first_level = 0;
-         last_level = 0;
          mipmapping = false;
-         desc[2] &= ~0x0600;
          break;
    }
 
