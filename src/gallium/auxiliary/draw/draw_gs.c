@@ -753,8 +753,10 @@ void draw_gs_destroy( struct draw_context *draw )
 {
    int i;
    if (draw->gs.tgsi.machine) {
-      for (i = 0; i < TGSI_MAX_VERTEX_STREAMS; i++)
+      for (i = 0; i < TGSI_MAX_VERTEX_STREAMS; i++) {
          align_free(draw->gs.tgsi.machine->Primitives[i]);
+         align_free(draw->gs.tgsi.machine->PrimitiveOffsets[i]);
+      }
       tgsi_exec_machine_destroy(draw->gs.tgsi.machine);
    }
 }
