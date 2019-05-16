@@ -290,21 +290,8 @@ dri2_x11_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
       goto cleanup_pixmap;
    }
 
-   if (dri2_dpy->dri2) {
-      dri2_surf->dri_drawable =
-         dri2_dpy->dri2->createNewDrawable(dri2_dpy->dri_screen, config,
-                                           dri2_surf);
-   } else {
-      assert(dri2_dpy->swrast);
-      dri2_surf->dri_drawable = 
-         dri2_dpy->swrast->createNewDrawable(dri2_dpy->dri_screen, config,
-                                             dri2_surf);
-   }
-
-   if (dri2_surf->dri_drawable == NULL) {
-      _eglError(EGL_BAD_ALLOC, "dri2->createNewDrawable");
+   if (!dri2_create_drawable(dri2_dpy, config, dri2_surf))
       goto cleanup_pixmap;
-   }
 
    if (type != EGL_PBUFFER_BIT) {
       cookie = xcb_get_geometry (dri2_dpy->conn, dri2_surf->drawable);
