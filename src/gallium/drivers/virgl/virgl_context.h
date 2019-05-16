@@ -46,14 +46,14 @@ struct virgl_so_target {
    uint32_t handle;
 };
 
-struct virgl_textures_info {
-   struct virgl_sampler_view *views[16];
-   uint32_t enabled_mask;
-};
-
 struct virgl_rasterizer_state {
    struct pipe_rasterizer_state rs;
    uint32_t handle;
+};
+
+struct virgl_shader_binding_state {
+   struct pipe_sampler_view *views[16];
+   uint32_t view_enabled_mask;
 };
 
 struct virgl_context {
@@ -61,7 +61,8 @@ struct virgl_context {
    struct virgl_cmd_buf *cbuf;
    unsigned cbuf_initial_cdw;
 
-   struct virgl_textures_info samplers[PIPE_SHADER_TYPES];
+   struct virgl_shader_binding_state shader_bindings[PIPE_SHADER_TYPES];
+
    struct virgl_vertex_elements_state *vertex_elements;
 
    struct pipe_framebuffer_state framebuffer;
