@@ -361,6 +361,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		const struct spirv_to_nir_options spirv_options = {
 			.lower_ubo_ssbo_access_to_offsets = true,
 			.caps = {
+				.amd_fragment_mask = true,
 				.amd_gcn_shader = true,
 				.amd_image_read_write_lod = true,
 				.amd_shader_ballot = device->physical_device->use_shader_ballot,
