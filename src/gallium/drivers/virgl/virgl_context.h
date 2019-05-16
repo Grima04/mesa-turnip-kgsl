@@ -71,6 +71,8 @@ struct virgl_context {
    unsigned cbuf_initial_cdw;
 
    struct virgl_shader_binding_state shader_bindings[PIPE_SHADER_TYPES];
+   struct pipe_shader_buffer atomic_buffers[PIPE_MAX_HW_ATOMIC_BUFFERS];
+   uint32_t atomic_buffer_enabled_mask;
 
    struct virgl_vertex_elements_state *vertex_elements;
 
@@ -90,8 +92,6 @@ struct virgl_context {
    unsigned num_so_targets;
 
    uint32_t num_draws, num_compute;
-
-   struct pipe_resource *atomic_buffers[PIPE_MAX_HW_ATOMIC_BUFFERS];
 
    struct primconvert_context *primconvert;
    uint32_t hw_sub_ctx_id;

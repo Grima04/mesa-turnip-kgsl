@@ -195,13 +195,14 @@ static void virgl_attach_res_shader_images(struct virgl_context *vctx,
 static void virgl_attach_res_atomic_buffers(struct virgl_context *vctx)
 {
    struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
+   uint32_t remaining_mask = vctx->atomic_buffer_enabled_mask;
    struct virgl_resource *res;
-   unsigned i;
-   for (i = 0; i < PIPE_MAX_HW_ATOMIC_BUFFERS; i++) {
-      res = virgl_resource(vctx->atomic_buffers[i]);
-      if (res) {
-         vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
-      }
+
+   while (remaining_mask) {
+      int i = u_bit_scan(&remaining_mask);
+      res = virgl_resource(vctx->atomic_buffers[i].buffer);
+      assert(res);
+      vws->emit_res(vws, vctx->cbuf, res->hw_res, FALSE);
    }
 }
 
@@ -1007,18 +1008,19 @@ static void virgl_set_hw_atomic_buffers(struct pipe_context *ctx,
 {
    struct virgl_context *vctx = virgl_context(ctx);
 
+   vctx->atomic_buffer_enabled_mask &= ~u_bit_consecutive(start_slot, count);
    for (unsigned i = 0; i < count; i++) {
       unsigned idx = start_slot + i;
-
-      if (buffers) {
-         if (buffers[i].buffer) {
-            pipe_resource_reference(&vctx->atomic_buffers[idx],
-                                    buffers[i].buffer);
-            continue;
-         }
+      if (buffers && buffers[i].buffer) {
+         pipe_resource_reference(&vctx->atomic_buffers[idx].buffer,
+                                 buffers[i].buffer);
+         vctx->atomic_buffers[idx] = buffers[i];
+         vctx->atomic_buffer_enabled_mask |= 1 << idx;
+      } else {
+         pipe_resource_reference(&vctx->atomic_buffers[idx].buffer, NULL);
       }
-      pipe_resource_reference(&vctx->atomic_buffers[idx], NULL);
    }
+
    virgl_encode_set_hw_atomic_buffers(vctx, start_slot, count, buffers);
 }
 
@@ -1209,6 +1211,11 @@ virgl_context_destroy( struct pipe_context *ctx )
 
    for (shader_type = 0; shader_type < PIPE_SHADER_TYPES; shader_type++)
       virgl_release_shader_binding(vctx, shader_type);
+
+   while (vctx->atomic_buffer_enabled_mask) {
+      int i = u_bit_scan(&vctx->atomic_buffer_enabled_mask);
+      pipe_resource_reference(&vctx->atomic_buffers[i].buffer, NULL);
+   }
 
    rs->vws->cmd_buf_destroy(vctx->cbuf);
    if (vctx->uploader)
