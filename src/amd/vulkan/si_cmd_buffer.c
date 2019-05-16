@@ -1335,7 +1335,7 @@ static const uint32_t sample_locs_8x[] = {
 	0,
 	0,
 };
-static const unsigned max_dist_8x = 8;
+static const unsigned max_dist_8x = 7;
 static const uint64_t centroid_priority_8x = 0x7654321076543210ull;
 
 unsigned radv_get_default_max_sample_dist(int log_samples)
