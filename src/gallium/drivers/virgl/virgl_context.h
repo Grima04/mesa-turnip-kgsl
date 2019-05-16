@@ -128,4 +128,12 @@ void virgl_init_so_functions(struct virgl_context *vctx);
 
 struct tgsi_token *virgl_tgsi_transform(struct virgl_context *vctx, const struct tgsi_token *tokens_in);
 
+bool
+virgl_can_rebind_resource(struct virgl_context *vctx,
+                          struct pipe_resource *res);
+
+void
+virgl_rebind_resource(struct virgl_context *vctx,
+                      struct pipe_resource *res);
+
 #endif

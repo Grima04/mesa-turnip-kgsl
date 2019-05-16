@@ -59,6 +59,15 @@ struct virgl_resource {
 
    /* For PIPE_BUFFER only.  Data outside of this range are uninitialized. */
    struct util_range valid_buffer_range;
+
+   /* This mask indicates where the resource has been bound to, excluding
+    * pipe_surface binds.
+    *
+    * This is more accurate than pipe_resource::bind.  Besides,
+    * pipe_resource::bind can be 0 with direct state access, and is not
+    * usable.
+    */
+   unsigned bind_history;
 };
 
 enum virgl_transfer_map_type {
