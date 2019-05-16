@@ -1367,6 +1367,27 @@ void radv_GetPhysicalDeviceProperties2(
 			props->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_INLINE_UNIFORM_BLOCK_COUNT;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+			VkPhysicalDeviceSampleLocationsPropertiesEXT *properties =
+				(VkPhysicalDeviceSampleLocationsPropertiesEXT *)ext;
+			/* TODO: The ext is currently disabled because the
+			 * driver needs to handle sample locations during
+			 * layout transitions for depth/stencil surfaces and
+			 * HTILE.
+			 */
+			properties->sampleLocationSampleCounts = VK_SAMPLE_COUNT_1_BIT;
+			/*
+			properties->sampleLocationSampleCounts = VK_SAMPLE_COUNT_2_BIT |
+								 VK_SAMPLE_COUNT_4_BIT |
+								 VK_SAMPLE_COUNT_8_BIT;
+			*/
+			properties->maxSampleLocationGridSize = (VkExtent2D){ 2 , 2 };
+			properties->sampleLocationCoordinateRange[0] = 0.0f;
+			properties->sampleLocationCoordinateRange[1] = 0.9375f;
+			properties->sampleLocationSubPixelBits = 4;
+			properties->variableSampleLocations = VK_FALSE;
+			break;
+		}
 		default:
 			break;
 		}
@@ -5367,4 +5388,18 @@ VkResult radv_GetCalibratedTimestampsEXT(
         *pMaxDeviation = sample_interval + max_clock_period;
 
 	return VK_SUCCESS;
+}
+
+void radv_GetPhysicalDeviceMultisamplePropertiesEXT(
+    VkPhysicalDevice                            physicalDevice,
+    VkSampleCountFlagBits                       samples,
+    VkMultisamplePropertiesEXT*                 pMultisampleProperties)
+{
+	if (samples & (VK_SAMPLE_COUNT_2_BIT |
+		       VK_SAMPLE_COUNT_4_BIT |
+		       VK_SAMPLE_COUNT_8_BIT)) {
+		pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 2, 2 };
+	} else {
+		pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 0, 0 };
+	}
 }

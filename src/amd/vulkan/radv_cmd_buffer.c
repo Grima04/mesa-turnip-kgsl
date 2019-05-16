@@ -105,6 +105,7 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 	dest->viewport.count = src->viewport.count;
 	dest->scissor.count = src->scissor.count;
 	dest->discard_rectangle.count = src->discard_rectangle.count;
+	dest->sample_location.count = src->sample_location.count;
 
 	if (copy_mask & RADV_DYNAMIC_VIEWPORT) {
 		if (memcmp(&dest->viewport.viewports, &src->viewport.viewports,
@@ -189,6 +190,22 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 				     src->discard_rectangle.rectangles,
 				     src->discard_rectangle.count);
 			dest_mask |= RADV_DYNAMIC_DISCARD_RECTANGLE;
+		}
+	}
+
+	if (copy_mask & RADV_DYNAMIC_SAMPLE_LOCATIONS) {
+		if (dest->sample_location.per_pixel != src->sample_location.per_pixel ||
+		    dest->sample_location.grid_size.width != src->sample_location.grid_size.width ||
+		    dest->sample_location.grid_size.height != src->sample_location.grid_size.height ||
+		    memcmp(&dest->sample_location.locations,
+			   &src->sample_location.locations,
+			   src->sample_location.count * sizeof(VkSampleLocationEXT))) {
+			dest->sample_location.per_pixel = src->sample_location.per_pixel;
+			dest->sample_location.grid_size = src->sample_location.grid_size;
+			typed_memcpy(dest->sample_location.locations,
+				     src->sample_location.locations,
+				     src->sample_location.count);
+			dest_mask |= RADV_DYNAMIC_SAMPLE_LOCATIONS;
 		}
 	}
 
@@ -630,6 +647,190 @@ radv_emit_descriptor_pointers(struct radv_cmd_buffer *cmd_buffer,
 			radv_emit_shader_pointer_body(device, cs, set->va, true);
 		}
 	}
+}
+
+/**
+ * Convert the user sample locations to hardware sample locations (the values
+ * that will be emitted by PA_SC_AA_SAMPLE_LOCS_PIXEL_*).
+ */
+static void
+radv_convert_user_sample_locs(struct radv_sample_locations_state *state,
+			      uint32_t x, uint32_t y, VkOffset2D *sample_locs)
+{
+	uint32_t x_offset = x % state->grid_size.width;
+	uint32_t y_offset = y % state->grid_size.height;
+	uint32_t num_samples = (uint32_t)state->per_pixel;
+	VkSampleLocationEXT *user_locs;
+	uint32_t pixel_offset;
+
+	pixel_offset = (x_offset + y_offset * state->grid_size.width) * num_samples;
+
+	assert(pixel_offset <= MAX_SAMPLE_LOCATIONS);
+	user_locs = &state->locations[pixel_offset];
+
+	for (uint32_t i = 0; i < num_samples; i++) {
+		float shifted_pos_x = user_locs[i].x - 0.5;
+		float shifted_pos_y = user_locs[i].y - 0.5;
+
+		int32_t scaled_pos_x = floor(shifted_pos_x * 16);
+		int32_t scaled_pos_y = floor(shifted_pos_y * 16);
+
+		sample_locs[i].x = CLAMP(scaled_pos_x, -8, 7);
+		sample_locs[i].y = CLAMP(scaled_pos_y, -8, 7);
+	}
+}
+
+/**
+ * Compute the PA_SC_AA_SAMPLE_LOCS_PIXEL_* mask based on hardware sample
+ * locations.
+ */
+static void
+radv_compute_sample_locs_pixel(uint32_t num_samples, VkOffset2D *sample_locs,
+			       uint32_t *sample_locs_pixel)
+{
+	for (uint32_t i = 0; i < num_samples; i++) {
+		uint32_t sample_reg_idx = i / 4;
+		uint32_t sample_loc_idx = i % 4;
+		int32_t pos_x = sample_locs[i].x;
+		int32_t pos_y = sample_locs[i].y;
+
+		uint32_t shift_x = 8 * sample_loc_idx;
+		uint32_t shift_y = shift_x + 4;
+
+		sample_locs_pixel[sample_reg_idx] |= (pos_x & 0xf) << shift_x;
+		sample_locs_pixel[sample_reg_idx] |= (pos_y & 0xf) << shift_y;
+	}
+}
+
+/**
+ * Compute the PA_SC_CENTROID_PRIORITY_* mask based on the top left hardware
+ * sample locations.
+ */
+static uint64_t
+radv_compute_centroid_priority(struct radv_cmd_buffer *cmd_buffer,
+			       VkOffset2D *sample_locs,
+			       uint32_t num_samples)
+{
+	uint32_t centroid_priorities[num_samples];
+	uint32_t sample_mask = num_samples - 1;
+	uint32_t distances[num_samples];
+	uint64_t centroid_priority = 0;
+
+	/* Compute the distances from center for each sample. */
+	for (int i = 0; i < num_samples; i++) {
+		distances[i] = (sample_locs[i].x * sample_locs[i].x) +
+			       (sample_locs[i].y * sample_locs[i].y);
+	}
+
+	/* Compute the centroid priorities by looking at the distances array. */
+	for (int i = 0; i < num_samples; i++) {
+		uint32_t min_idx = 0;
+
+		for (int j = 1; j < num_samples; j++) {
+			if (distances[j] < distances[min_idx])
+				min_idx = j;
+		}
+
+		centroid_priorities[i] = min_idx;
+		distances[min_idx] = 0xffffffff;
+	}
+
+	/* Compute the final centroid priority. */
+	for (int i = 0; i < 8; i++) {
+		centroid_priority |=
+			centroid_priorities[i & sample_mask] << (i * 4);
+	}
+
+	return centroid_priority << 32 | centroid_priority;
+}
+
+/**
+ * Emit the sample locations that are specified with VK_EXT_sample_locations.
+ */
+static void
+radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+	struct radv_multisample_state *ms = &pipeline->graphics.ms;
+	struct radv_sample_locations_state *sample_location =
+		&cmd_buffer->state.dynamic.sample_location;
+	uint32_t num_samples = (uint32_t)sample_location->per_pixel;
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	uint32_t sample_locs_pixel[4][2] = {};
+	VkOffset2D sample_locs[4][8]; /* 8 is the max. sample count supported */
+	uint32_t max_sample_dist = 0;
+	uint64_t centroid_priority;
+
+	if (!cmd_buffer->state.dynamic.sample_location.count)
+		return;
+
+	/* Convert the user sample locations to hardware sample locations. */
+	radv_convert_user_sample_locs(sample_location, 0, 0, sample_locs[0]);
+	radv_convert_user_sample_locs(sample_location, 1, 0, sample_locs[1]);
+	radv_convert_user_sample_locs(sample_location, 0, 1, sample_locs[2]);
+	radv_convert_user_sample_locs(sample_location, 1, 1, sample_locs[3]);
+
+	/* Compute the PA_SC_AA_SAMPLE_LOCS_PIXEL_* mask. */
+	for (uint32_t i = 0; i < 4; i++) {
+		radv_compute_sample_locs_pixel(num_samples, sample_locs[i],
+					       sample_locs_pixel[i]);
+	}
+
+	/* Compute the PA_SC_CENTROID_PRIORITY_* mask. */
+	centroid_priority =
+		radv_compute_centroid_priority(cmd_buffer, sample_locs[0],
+					       num_samples);
+
+	/* Compute the maximum sample distance from the specified locations. */
+	for (uint32_t i = 0; i < num_samples; i++) {
+		VkOffset2D offset = sample_locs[0][i];
+		max_sample_dist = MAX2(max_sample_dist,
+				       MAX2(abs(offset.x), abs(offset.y)));
+	}
+
+	/* Emit the specified user sample locations. */
+	switch (num_samples) {
+	case 2:
+	case 4:
+		radeon_set_context_reg(cs, R_028BF8_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_0, sample_locs_pixel[0][0]);
+		radeon_set_context_reg(cs, R_028C08_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y0_0, sample_locs_pixel[1][0]);
+		radeon_set_context_reg(cs, R_028C18_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y1_0, sample_locs_pixel[2][0]);
+		radeon_set_context_reg(cs, R_028C28_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y1_0, sample_locs_pixel[3][0]);
+		break;
+	case 8:
+		radeon_set_context_reg(cs, R_028BF8_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_0, sample_locs_pixel[0][0]);
+		radeon_set_context_reg(cs, R_028C08_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y0_0, sample_locs_pixel[1][0]);
+		radeon_set_context_reg(cs, R_028C18_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y1_0, sample_locs_pixel[2][0]);
+		radeon_set_context_reg(cs, R_028C28_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y1_0, sample_locs_pixel[3][0]);
+		radeon_set_context_reg(cs, R_028BFC_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_1, sample_locs_pixel[0][1]);
+		radeon_set_context_reg(cs, R_028C0C_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y0_1, sample_locs_pixel[1][1]);
+		radeon_set_context_reg(cs, R_028C1C_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y1_1, sample_locs_pixel[2][1]);
+		radeon_set_context_reg(cs, R_028C2C_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y1_1, sample_locs_pixel[3][1]);
+		break;
+	default:
+		unreachable("invalid number of samples");
+	}
+
+	/* Emit the maximum sample distance and the centroid priority. */
+	uint32_t pa_sc_aa_config = ms->pa_sc_aa_config;
+
+	pa_sc_aa_config &= C_028BE0_MAX_SAMPLE_DIST;
+	pa_sc_aa_config |= S_028BE0_MAX_SAMPLE_DIST(max_sample_dist);
+
+	radeon_set_context_reg_seq(cs, R_028BE0_PA_SC_AA_CONFIG, 1);
+	radeon_emit(cs, pa_sc_aa_config);
+
+	radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
+	radeon_emit(cs, centroid_priority);
+	radeon_emit(cs, centroid_priority >> 32);
+
+	/* GFX9: Flush DFSM when the AA mode changes. */
+	if (cmd_buffer->device->dfsm_allowed) {
+		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+		radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_DFSM) | EVENT_INDEX(0));
+	}
+
+	cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
 
 static void
@@ -1774,6 +1975,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
 	if (states & RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE)
 		radv_emit_discard_rectangle(cmd_buffer);
+
+	if (states & RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)
+		radv_emit_sample_locations(cmd_buffer);
 
 	cmd_buffer->state.dirty &= ~states;
 }
@@ -3270,6 +3474,25 @@ void radv_CmdSetDiscardRectangleEXT(
 	             pDiscardRectangles, discardRectangleCount);
 
 	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE;
+}
+
+void radv_CmdSetSampleLocationsEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkSampleLocationsInfoEXT*             pSampleLocationsInfo)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+
+	assert(pSampleLocationsInfo->sampleLocationsCount <= MAX_SAMPLE_LOCATIONS);
+
+	state->dynamic.sample_location.per_pixel = pSampleLocationsInfo->sampleLocationsPerPixel;
+	state->dynamic.sample_location.grid_size = pSampleLocationsInfo->sampleLocationGridSize;
+	state->dynamic.sample_location.count = pSampleLocationsInfo->sampleLocationsCount;
+	typed_memcpy(&state->dynamic.sample_location.locations[0],
+		     pSampleLocationsInfo->pSampleLocations,
+		     pSampleLocationsInfo->sampleLocationsCount);
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
 }
 
 void radv_CmdExecuteCommands(

@@ -91,6 +91,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_VIEWPORTS   16
 #define MAX_SCISSORS    16
 #define MAX_DISCARD_RECTANGLES 4
+#define MAX_SAMPLE_LOCATIONS 32
 #define MAX_PUSH_CONSTANTS_SIZE 128
 #define MAX_PUSH_DESCRIPTORS 32
 #define MAX_DYNAMIC_UNIFORM_BUFFERS 16
@@ -852,7 +853,8 @@ enum radv_dynamic_state_bits {
 	RADV_DYNAMIC_STENCIL_WRITE_MASK   = 1 << 7,
 	RADV_DYNAMIC_STENCIL_REFERENCE    = 1 << 8,
 	RADV_DYNAMIC_DISCARD_RECTANGLE    = 1 << 9,
-	RADV_DYNAMIC_ALL                  = (1 << 10) - 1,
+	RADV_DYNAMIC_SAMPLE_LOCATIONS     = 1 << 10,
+	RADV_DYNAMIC_ALL                  = (1 << 11) - 1,
 };
 
 enum radv_cmd_dirty_bits {
@@ -868,12 +870,13 @@ enum radv_cmd_dirty_bits {
 	RADV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK        = 1 << 7,
 	RADV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE         = 1 << 8,
 	RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE         = 1 << 9,
-	RADV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 10) - 1,
-	RADV_CMD_DIRTY_PIPELINE                          = 1 << 10,
-	RADV_CMD_DIRTY_INDEX_BUFFER                      = 1 << 11,
-	RADV_CMD_DIRTY_FRAMEBUFFER                       = 1 << 12,
-	RADV_CMD_DIRTY_VERTEX_BUFFER                     = 1 << 13,
-	RADV_CMD_DIRTY_STREAMOUT_BUFFER                  = 1 << 14,
+	RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS          = 1 << 10,
+	RADV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 11) - 1,
+	RADV_CMD_DIRTY_PIPELINE                          = 1 << 11,
+	RADV_CMD_DIRTY_INDEX_BUFFER                      = 1 << 12,
+	RADV_CMD_DIRTY_FRAMEBUFFER                       = 1 << 13,
+	RADV_CMD_DIRTY_VERTEX_BUFFER                     = 1 << 14,
+	RADV_CMD_DIRTY_STREAMOUT_BUFFER                  = 1 << 15,
 };
 
 enum radv_cmd_flush_bits {
@@ -950,6 +953,13 @@ struct radv_discard_rectangle_state {
 	VkRect2D                                          rectangles[MAX_DISCARD_RECTANGLES];
 };
 
+struct radv_sample_locations_state {
+	VkSampleCountFlagBits per_pixel;
+	VkExtent2D grid_size;
+	uint32_t count;
+	VkSampleLocationEXT locations[MAX_SAMPLE_LOCATIONS];
+};
+
 struct radv_dynamic_state {
 	/**
 	 * Bitmask of (1 << VK_DYNAMIC_STATE_*).
@@ -992,6 +1002,8 @@ struct radv_dynamic_state {
 	} stencil_reference;
 
 	struct radv_discard_rectangle_state               discard_rectangle;
+
+	struct radv_sample_locations_state                sample_location;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

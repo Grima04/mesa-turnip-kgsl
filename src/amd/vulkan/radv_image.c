@@ -76,6 +76,13 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 	    (pCreateInfo->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT))
 		return false;
 
+	/* TODO: Implement layout transitions with variable sample locations
+	 * before enabling HTILE for depth/stencil images created with this
+	 * flags because the depth decompress pass needs to know them.
+	 */
+	if (pCreateInfo->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)
+		return false;
+
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
 		return false;
 
