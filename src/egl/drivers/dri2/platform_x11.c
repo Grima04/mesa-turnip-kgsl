@@ -1277,21 +1277,34 @@ static const __DRIextension *swrast_loader_extensions[] = {
    NULL,
 };
 
+static int
+dri2_find_screen_for_display(const _EGLDisplay *disp, int fallback_screen)
+{
+   const EGLAttrib *attr;
+
+   for (attr = disp->Options.Attribs; attr; attr += 2) {
+      if (attr[0] == EGL_PLATFORM_X11_SCREEN_EXT)
+         return attr[1];
+   }
+
+   return fallback_screen;
+}
+
 static EGLBoolean
 dri2_get_xcb_connection(_EGLDriver *drv, _EGLDisplay *disp,
                         struct dri2_egl_display *dri2_dpy)
 {
    xcb_screen_iterator_t s;
-   int screen = (uintptr_t)disp->Options.Platform;
+   int screen;
    const char *msg;
 
    disp->DriverData = (void *) dri2_dpy;
    if (disp->PlatformDisplay == NULL) {
       dri2_dpy->conn = xcb_connect(NULL, &screen);
       dri2_dpy->own_device = true;
+      screen = dri2_find_screen_for_display(disp, screen);
    } else {
       Display *dpy = disp->PlatformDisplay;
-
       dri2_dpy->conn = XGetXCBConnection(dpy);
       screen = DefaultScreen(dpy);
    }
