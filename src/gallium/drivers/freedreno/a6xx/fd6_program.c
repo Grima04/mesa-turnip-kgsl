@@ -326,6 +326,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 	uint8_t psize_loc = ~0;
 	int i, j;
 
+	OUT_WFI5(ring);
+
 	setup_stages(state, s, binning_pass);
 
 	bool sample_shading = s[FS].v->per_samp | key->sample_shading;
