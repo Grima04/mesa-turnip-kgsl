@@ -130,6 +130,7 @@ EXTENSIONS = [
     Extension('VK_EXT_display_surface_counter',           1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_EXT_external_memory_dma_buf',           1, True),
     Extension('VK_EXT_external_memory_host',              1, True),
+    Extension('VK_EXT_fragment_shader_interlock',         1, 'device->info.gen >= 9'),
     Extension('VK_EXT_global_priority',                   1,
               'device->has_context_priority'),
     Extension('VK_EXT_host_query_reset',                  1, True),
