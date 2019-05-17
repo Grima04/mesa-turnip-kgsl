@@ -3744,6 +3744,14 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(float16, cap);
          break;
 
+      case SpvCapabilityFragmentShaderSampleInterlockEXT:
+         spv_check_supported(fragment_shader_sample_interlock, cap);
+         break;
+
+      case SpvCapabilityFragmentShaderPixelInterlockEXT:
+         spv_check_supported(fragment_shader_pixel_interlock, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
@@ -3998,6 +4006,26 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
    case SpvExecutionModeDerivativeGroupLinearNV:
       vtn_assert(b->shader->info.stage == MESA_SHADER_COMPUTE);
       b->shader->info.cs.derivative_group = DERIVATIVE_GROUP_LINEAR;
+      break;
+
+   case SpvExecutionModePixelInterlockOrderedEXT:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+      b->shader->info.fs.pixel_interlock_ordered = true;
+      break;
+
+   case SpvExecutionModePixelInterlockUnorderedEXT:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+      b->shader->info.fs.pixel_interlock_unordered = true;
+      break;
+
+   case SpvExecutionModeSampleInterlockOrderedEXT:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+      b->shader->info.fs.sample_interlock_ordered = true;
+      break;
+
+   case SpvExecutionModeSampleInterlockUnorderedEXT:
+      vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+      b->shader->info.fs.sample_interlock_unordered = true;
       break;
 
    default:
@@ -4503,6 +4531,14 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpPtrEqual:
    case SpvOpPtrNotEqual:
       vtn_handle_ptr(b, opcode, w, count);
+      break;
+
+   case SpvOpBeginInvocationInterlockEXT:
+      vtn_emit_barrier(b, nir_intrinsic_begin_invocation_interlock);
+      break;
+
+   case SpvOpEndInvocationInterlockEXT:
+      vtn_emit_barrier(b, nir_intrinsic_end_invocation_interlock);
       break;
 
    default:
