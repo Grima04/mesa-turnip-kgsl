@@ -899,12 +899,97 @@ tex_instr_get_and_remove_plane_src(nir_tex_instr *tex)
    return plane;
 }
 
+static nir_ssa_def *
+build_def_array_select(nir_builder *b, nir_ssa_def **srcs, nir_ssa_def *idx,
+                       unsigned start, unsigned end)
+{
+   if (start == end - 1) {
+      return srcs[start];
+   } else {
+      unsigned mid = start + (end - start) / 2;
+      return nir_bcsel(b, nir_ilt(b, idx, nir_imm_int(b, mid)),
+                       build_def_array_select(b, srcs, idx, start, mid),
+                       build_def_array_select(b, srcs, idx, mid, end));
+   }
+}
+
+static void
+lower_gen7_tex_swizzle(nir_tex_instr *tex, unsigned plane,
+                       struct apply_pipeline_layout_state *state)
+{
+   assert(state->pdevice->info.gen == 7 && !state->pdevice->info.is_haswell);
+   if (tex->sampler_dim == GLSL_SAMPLER_DIM_BUF ||
+       nir_tex_instr_is_query(tex) ||
+       tex->op == nir_texop_tg4 || /* We can't swizzle TG4 */
+       (tex->is_shadow && tex->is_new_style_shadow))
+      return;
+
+   int deref_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
+   assert(deref_src_idx >= 0);
+
+   nir_deref_instr *deref = nir_src_as_deref(tex->src[deref_src_idx].src);
+   UNUSED nir_variable *var = nir_deref_instr_get_variable(deref);
+
+   UNUSED unsigned set = var->data.descriptor_set;
+   UNUSED unsigned binding = var->data.binding;
+   UNUSED const struct anv_descriptor_set_binding_layout *bind_layout =
+      &state->layout->set[set].layout->binding[binding];
+   assert(bind_layout->data & ANV_DESCRIPTOR_TEXTURE_SWIZZLE);
+
+   nir_builder *b = &state->builder;
+   b->cursor = nir_before_instr(&tex->instr);
+
+   const unsigned plane_offset =
+      plane * sizeof(struct anv_texture_swizzle_descriptor);
+   nir_ssa_def *swiz =
+      build_descriptor_load(deref, plane_offset, 1, 32, state);
+
+   b->cursor = nir_after_instr(&tex->instr);
+
+   assert(tex->dest.ssa.bit_size == 32);
+   assert(tex->dest.ssa.num_components == 4);
+
+   /* Initializing to undef is ok; nir_opt_undef will clean it up. */
+   nir_ssa_def *undef = nir_ssa_undef(b, 1, 32);
+   nir_ssa_def *comps[8];
+   for (unsigned i = 0; i < ARRAY_SIZE(comps); i++)
+      comps[i] = undef;
+
+   comps[ISL_CHANNEL_SELECT_ZERO] = nir_imm_int(b, 0);
+   if (nir_alu_type_get_base_type(tex->dest_type) == nir_type_float)
+      comps[ISL_CHANNEL_SELECT_ONE] = nir_imm_float(b, 1);
+   else
+      comps[ISL_CHANNEL_SELECT_ONE] = nir_imm_int(b, 1);
+   comps[ISL_CHANNEL_SELECT_RED] = nir_channel(b, &tex->dest.ssa, 0);
+   comps[ISL_CHANNEL_SELECT_GREEN] = nir_channel(b, &tex->dest.ssa, 1);
+   comps[ISL_CHANNEL_SELECT_BLUE] = nir_channel(b, &tex->dest.ssa, 2);
+   comps[ISL_CHANNEL_SELECT_ALPHA] = nir_channel(b, &tex->dest.ssa, 3);
+
+   nir_ssa_def *swiz_comps[4];
+   for (unsigned i = 0; i < 4; i++) {
+      nir_ssa_def *comp_swiz = nir_extract_u8(b, swiz, nir_imm_int(b, i));
+      swiz_comps[i] = build_def_array_select(b, comps, comp_swiz, 0, 8);
+   }
+   nir_ssa_def *swiz_tex_res = nir_vec(b, swiz_comps, 4);
+
+   /* Rewrite uses before we insert so we don't rewrite this use */
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa,
+                                  nir_src_for_ssa(swiz_tex_res),
+                                  swiz_tex_res->parent_instr);
+}
+
 static void
 lower_tex(nir_tex_instr *tex, struct apply_pipeline_layout_state *state)
 {
-   state->builder.cursor = nir_before_instr(&tex->instr);
-
    unsigned plane = tex_instr_get_and_remove_plane_src(tex);
+
+   /* On Ivy Bridge and Bay Trail, we have to swizzle in the shader.  Do this
+    * before we lower the derefs away so we can still find the descriptor.
+    */
+   if (state->pdevice->info.gen == 7 && !state->pdevice->info.is_haswell)
+      lower_gen7_tex_swizzle(tex, plane, state);
+
+   state->builder.cursor = nir_before_instr(&tex->instr);
 
    lower_tex_deref(tex, nir_tex_src_texture_deref,
                    &tex->texture_index, plane, state);

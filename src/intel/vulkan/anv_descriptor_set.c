@@ -103,6 +103,12 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
         type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC))
       data |= ANV_DESCRIPTOR_ADDRESS_RANGE;
 
+   /* On Ivy Bridge and Bay Trail, we need swizzles textures in the shader */
+   if (device->info.gen == 7 && !device->info.is_haswell &&
+       (type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+        type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER))
+      data |= ANV_DESCRIPTOR_TEXTURE_SWIZZLE;
+
    return data;
 }
 
@@ -122,6 +128,9 @@ anv_descriptor_data_size(enum anv_descriptor_data data)
 
    if (data & ANV_DESCRIPTOR_ADDRESS_RANGE)
       size += sizeof(struct anv_address_range_descriptor);
+
+   if (data & ANV_DESCRIPTOR_TEXTURE_SWIZZLE)
+      size += sizeof(struct anv_texture_swizzle_descriptor);
 
    return size;
 }
@@ -1183,6 +1192,26 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
          &image_view->planes[0].storage_image_param;
 
       anv_descriptor_set_write_image_param(desc_map, image_param);
+   }
+
+   if (bind_layout->data & ANV_DESCRIPTOR_TEXTURE_SWIZZLE) {
+      assert(!(bind_layout->data & ANV_DESCRIPTOR_SAMPLED_IMAGE));
+      assert(image_view);
+      struct anv_texture_swizzle_descriptor desc_data[3];
+      memset(desc_data, 0, sizeof(desc_data));
+
+      for (unsigned p = 0; p < image_view->n_planes; p++) {
+         desc_data[p] = (struct anv_texture_swizzle_descriptor) {
+            .swizzle = {
+               (uint8_t)image_view->planes[p].isl.swizzle.r,
+               (uint8_t)image_view->planes[p].isl.swizzle.g,
+               (uint8_t)image_view->planes[p].isl.swizzle.b,
+               (uint8_t)image_view->planes[p].isl.swizzle.a,
+            },
+         };
+      }
+      memcpy(desc_map, desc_data,
+             MAX2(1, bind_layout->max_plane_count) * sizeof(desc_data[0]));
    }
 }
 

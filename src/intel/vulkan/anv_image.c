@@ -1278,6 +1278,10 @@ anv_image_fill_surface_state(struct anv_device *device,
    if (view_usage == ISL_SURF_USAGE_RENDER_TARGET_BIT)
       view.swizzle = anv_swizzle_for_render(view.swizzle);
 
+   /* On Ivy Bridge and Bay Trail we do the swizzle in the shader */
+   if (device->info.gen == 7 && !device->info.is_haswell)
+      view.swizzle = ISL_SWIZZLE_IDENTITY;
+
    /* If this is a HiZ buffer we can sample from with a programmable clear
     * value (SKL+), define the clear value to the optimal constant.
     */
