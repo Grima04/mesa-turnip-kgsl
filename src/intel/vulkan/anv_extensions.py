@@ -113,6 +113,7 @@ EXTENSIONS = [
     Extension('VK_KHR_shader_float16_int8',               1, 'device->info.gen >= 8'),
     Extension('VK_KHR_shader_float_controls',             1, 'device->info.gen >= 8'),
     Extension('VK_KHR_shader_subgroup_extended_types',    1, 'device->info.gen >= 8'),
+    Extension('VK_KHR_spirv_1_4',                         1, True),
     Extension('VK_KHR_storage_buffer_storage_class',      1, True),
     Extension('VK_KHR_surface',                          25, 'ANV_HAS_SURFACE'),
     Extension('VK_KHR_surface_protected_capabilities',    1, 'ANV_HAS_SURFACE'),
