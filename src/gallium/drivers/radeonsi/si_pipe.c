@@ -42,6 +42,10 @@
 #include "vl/vl_decoder.h"
 #include "driver_ddebug/dd_util.h"
 
+#include "gallium/winsys/radeon/drm/radeon_drm_public.h"
+#include "gallium/winsys/amdgpu/drm/amdgpu_public.h"
+#include <xf86drm.h>
+
 static const struct debug_named_value debug_options[] = {
 	/* Shader logging options: */
 	{ "vs", DBG(VS), "Print vertex shaders" },
@@ -879,8 +883,9 @@ static bool si_is_parallel_shader_compilation_finished(struct pipe_screen *scree
 	return util_queue_fence_is_signalled(&sel->ready);
 }
 
-struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
-					   const struct pipe_screen_config *config)
+static struct pipe_screen *
+radeonsi_screen_create_impl(struct radeon_winsys *ws,
+			    const struct pipe_screen_config *config)
 {
 	struct si_screen *sscreen = CALLOC_STRUCT(si_screen);
 	unsigned hw_threads, num_comp_hi_threads, num_comp_lo_threads, i;
@@ -1224,4 +1229,22 @@ struct pipe_screen *radeonsi_screen_create(struct radeon_winsys *ws,
 	}
 
 	return &sscreen->b;
+}
+
+struct pipe_screen *radeonsi_screen_create(int fd, const struct pipe_screen_config *config)
+{
+	drmVersionPtr version = drmGetVersion(fd);
+	struct radeon_winsys *rw = NULL;
+
+	switch (version->version_major) {
+	case 2:
+		rw = radeon_drm_winsys_create(fd, config, radeonsi_screen_create_impl);
+		break;
+	case 3:
+		rw = amdgpu_winsys_create(fd, config, radeonsi_screen_create_impl);
+		break;
+	}
+
+	drmFreeVersion(version);
+	return rw ? rw->screen : NULL;
 }

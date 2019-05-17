@@ -284,16 +284,8 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 		     radeon_screen_create_t screen_create)
 {
    struct amdgpu_winsys *ws;
-   drmVersionPtr version = drmGetVersion(fd);
    amdgpu_device_handle dev;
    uint32_t drm_major, drm_minor, r;
-
-   /* The DRM driver version of amdgpu is 3.x.x. */
-   if (version->version_major != 3) {
-      drmFreeVersion(version);
-      return NULL;
-   }
-   drmFreeVersion(version);
 
    /* Look up the winsys from the dev table. */
    simple_mtx_lock(&dev_tab_mutex);
