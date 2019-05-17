@@ -548,7 +548,7 @@ static char *load_store_opcode_names[256] = {
         [midgard_op_atomic_umin] = "atomic_umin",
         [midgard_op_atomic_imax] = "atomic_imax",
         [midgard_op_atomic_umax] = "atomic_umax",
-        [midgard_op_atomic_umax] = "atomic_xchg",
+        [midgard_op_atomic_xchg] = "atomic_xchg",
 
         [midgard_op_ld_char] = "ld_char",
         [midgard_op_ld_char2] = "ld_char2",
