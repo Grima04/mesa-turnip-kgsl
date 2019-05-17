@@ -270,6 +270,7 @@ nir_visitor::nir_visitor(gl_context *ctx, nir_shader *shader)
    this->result = NULL;
    this->impl = NULL;
    this->deref = NULL;
+   this->sig = NULL;
    memset(&this->b, 0, sizeof(this->b));
 }
 
