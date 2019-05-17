@@ -164,60 +164,62 @@ init_pipe_state(struct vl_compositor *c)
    sampler.mag_img_filter = PIPE_TEX_FILTER_NEAREST;
    c->sampler_nearest = c->pipe->create_sampler_state(c->pipe, &sampler);
 
-   memset(&blend, 0, sizeof blend);
-   blend.independent_blend_enable = 0;
-   blend.rt[0].blend_enable = 0;
-   blend.logicop_enable = 0;
-   blend.logicop_func = PIPE_LOGICOP_CLEAR;
-   blend.rt[0].colormask = PIPE_MASK_RGBA;
-   blend.dither = 0;
-   c->blend_clear = c->pipe->create_blend_state(c->pipe, &blend);
+   if (c->pipe_gfx_supported) {
+           memset(&blend, 0, sizeof blend);
+           blend.independent_blend_enable = 0;
+           blend.rt[0].blend_enable = 0;
+           blend.logicop_enable = 0;
+           blend.logicop_func = PIPE_LOGICOP_CLEAR;
+           blend.rt[0].colormask = PIPE_MASK_RGBA;
+           blend.dither = 0;
+           c->blend_clear = c->pipe->create_blend_state(c->pipe, &blend);
 
-   blend.rt[0].blend_enable = 1;
-   blend.rt[0].rgb_func = PIPE_BLEND_ADD;
-   blend.rt[0].rgb_src_factor = PIPE_BLENDFACTOR_SRC_ALPHA;
-   blend.rt[0].rgb_dst_factor = PIPE_BLENDFACTOR_INV_SRC_ALPHA;
-   blend.rt[0].alpha_func = PIPE_BLEND_ADD;
-   blend.rt[0].alpha_src_factor = PIPE_BLENDFACTOR_ONE;
-   blend.rt[0].alpha_dst_factor = PIPE_BLENDFACTOR_ONE;
-   c->blend_add = c->pipe->create_blend_state(c->pipe, &blend);
+           blend.rt[0].blend_enable = 1;
+           blend.rt[0].rgb_func = PIPE_BLEND_ADD;
+           blend.rt[0].rgb_src_factor = PIPE_BLENDFACTOR_SRC_ALPHA;
+           blend.rt[0].rgb_dst_factor = PIPE_BLENDFACTOR_INV_SRC_ALPHA;
+           blend.rt[0].alpha_func = PIPE_BLEND_ADD;
+           blend.rt[0].alpha_src_factor = PIPE_BLENDFACTOR_ONE;
+           blend.rt[0].alpha_dst_factor = PIPE_BLENDFACTOR_ONE;
+           c->blend_add = c->pipe->create_blend_state(c->pipe, &blend);
 
-   memset(&rast, 0, sizeof rast);
-   rast.flatshade = 0;
-   rast.front_ccw = 1;
-   rast.cull_face = PIPE_FACE_NONE;
-   rast.fill_back = PIPE_POLYGON_MODE_FILL;
-   rast.fill_front = PIPE_POLYGON_MODE_FILL;
-   rast.scissor = 1;
-   rast.line_width = 1;
-   rast.point_size_per_vertex = 1;
-   rast.offset_units = 1;
-   rast.offset_scale = 1;
-   rast.half_pixel_center = 1;
-   rast.bottom_edge_rule = 1;
-   rast.depth_clip_near = 1;
-   rast.depth_clip_far = 1;
+           memset(&rast, 0, sizeof rast);
+           rast.flatshade = 0;
+           rast.front_ccw = 1;
+           rast.cull_face = PIPE_FACE_NONE;
+           rast.fill_back = PIPE_POLYGON_MODE_FILL;
+           rast.fill_front = PIPE_POLYGON_MODE_FILL;
+           rast.scissor = 1;
+           rast.line_width = 1;
+           rast.point_size_per_vertex = 1;
+           rast.offset_units = 1;
+           rast.offset_scale = 1;
+           rast.half_pixel_center = 1;
+           rast.bottom_edge_rule = 1;
+           rast.depth_clip_near = 1;
+           rast.depth_clip_far = 1;
 
-   c->rast = c->pipe->create_rasterizer_state(c->pipe, &rast);
+           c->rast = c->pipe->create_rasterizer_state(c->pipe, &rast);
 
-   memset(&dsa, 0, sizeof dsa);
-   dsa.depth.enabled = 0;
-   dsa.depth.writemask = 0;
-   dsa.depth.func = PIPE_FUNC_ALWAYS;
-   for (i = 0; i < 2; ++i) {
-      dsa.stencil[i].enabled = 0;
-      dsa.stencil[i].func = PIPE_FUNC_ALWAYS;
-      dsa.stencil[i].fail_op = PIPE_STENCIL_OP_KEEP;
-      dsa.stencil[i].zpass_op = PIPE_STENCIL_OP_KEEP;
-      dsa.stencil[i].zfail_op = PIPE_STENCIL_OP_KEEP;
-      dsa.stencil[i].valuemask = 0;
-      dsa.stencil[i].writemask = 0;
+           memset(&dsa, 0, sizeof dsa);
+           dsa.depth.enabled = 0;
+           dsa.depth.writemask = 0;
+           dsa.depth.func = PIPE_FUNC_ALWAYS;
+           for (i = 0; i < 2; ++i) {
+                   dsa.stencil[i].enabled = 0;
+                   dsa.stencil[i].func = PIPE_FUNC_ALWAYS;
+                   dsa.stencil[i].fail_op = PIPE_STENCIL_OP_KEEP;
+                   dsa.stencil[i].zpass_op = PIPE_STENCIL_OP_KEEP;
+                   dsa.stencil[i].zfail_op = PIPE_STENCIL_OP_KEEP;
+                   dsa.stencil[i].valuemask = 0;
+                   dsa.stencil[i].writemask = 0;
+           }
+           dsa.alpha.enabled = 0;
+           dsa.alpha.func = PIPE_FUNC_ALWAYS;
+           dsa.alpha.ref_value = 0;
+           c->dsa = c->pipe->create_depth_stencil_alpha_state(c->pipe, &dsa);
+           c->pipe->bind_depth_stencil_alpha_state(c->pipe, c->dsa);
    }
-   dsa.alpha.enabled = 0;
-   dsa.alpha.func = PIPE_FUNC_ALWAYS;
-   dsa.alpha.ref_value = 0;
-   c->dsa = c->pipe->create_depth_stencil_alpha_state(c->pipe, &dsa);
-   c->pipe->bind_depth_stencil_alpha_state(c->pipe, c->dsa);
 
    return true;
 }
@@ -226,16 +228,18 @@ static void cleanup_pipe_state(struct vl_compositor *c)
 {
    assert(c);
 
-   /* Asserted in softpipe_delete_fs_state() for some reason */
-   c->pipe->bind_vs_state(c->pipe, NULL);
-   c->pipe->bind_fs_state(c->pipe, NULL);
+   if (c->pipe_gfx_supported) {
+           /* Asserted in softpipe_delete_fs_state() for some reason */
+           c->pipe->bind_vs_state(c->pipe, NULL);
+           c->pipe->bind_fs_state(c->pipe, NULL);
 
-   c->pipe->delete_depth_stencil_alpha_state(c->pipe, c->dsa);
+           c->pipe->delete_depth_stencil_alpha_state(c->pipe, c->dsa);
+           c->pipe->delete_blend_state(c->pipe, c->blend_clear);
+           c->pipe->delete_blend_state(c->pipe, c->blend_add);
+           c->pipe->delete_rasterizer_state(c->pipe, c->rast);
+   }
    c->pipe->delete_sampler_state(c->pipe, c->sampler_linear);
    c->pipe->delete_sampler_state(c->pipe, c->sampler_nearest);
-   c->pipe->delete_blend_state(c->pipe, c->blend_clear);
-   c->pipe->delete_blend_state(c->pipe, c->blend_add);
-   c->pipe->delete_rasterizer_state(c->pipe, c->rast);
 }
 
 static bool
@@ -253,19 +257,21 @@ init_buffers(struct vl_compositor *c)
    c->vertex_buf.buffer.resource = NULL;
    c->vertex_buf.is_user_buffer = false;
 
-   vertex_elems[0].src_offset = 0;
-   vertex_elems[0].instance_divisor = 0;
-   vertex_elems[0].vertex_buffer_index = 0;
-   vertex_elems[0].src_format = PIPE_FORMAT_R32G32_FLOAT;
-   vertex_elems[1].src_offset = sizeof(struct vertex2f);
-   vertex_elems[1].instance_divisor = 0;
-   vertex_elems[1].vertex_buffer_index = 0;
-   vertex_elems[1].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
-   vertex_elems[2].src_offset = sizeof(struct vertex2f) + sizeof(struct vertex4f);
-   vertex_elems[2].instance_divisor = 0;
-   vertex_elems[2].vertex_buffer_index = 0;
-   vertex_elems[2].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
-   c->vertex_elems_state = c->pipe->create_vertex_elements_state(c->pipe, 3, vertex_elems);
+   if (c->pipe_gfx_supported) {
+           vertex_elems[0].src_offset = 0;
+           vertex_elems[0].instance_divisor = 0;
+           vertex_elems[0].vertex_buffer_index = 0;
+           vertex_elems[0].src_format = PIPE_FORMAT_R32G32_FLOAT;
+           vertex_elems[1].src_offset = sizeof(struct vertex2f);
+           vertex_elems[1].instance_divisor = 0;
+           vertex_elems[1].vertex_buffer_index = 0;
+           vertex_elems[1].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
+           vertex_elems[2].src_offset = sizeof(struct vertex2f) + sizeof(struct vertex4f);
+           vertex_elems[2].instance_divisor = 0;
+           vertex_elems[2].vertex_buffer_index = 0;
+           vertex_elems[2].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
+           c->vertex_elems_state = c->pipe->create_vertex_elements_state(c->pipe, 3, vertex_elems);
+   }
 
    return true;
 }
@@ -275,7 +281,9 @@ cleanup_buffers(struct vl_compositor *c)
 {
    assert(c);
 
-   c->pipe->delete_vertex_elements_state(c->pipe, c->vertex_elems_state);
+   if (c->pipe_gfx_supported) {
+           c->pipe->delete_vertex_elements_state(c->pipe, c->vertex_elems_state);
+   }
    pipe_resource_reference(&c->vertex_buf.buffer.resource, NULL);
 }
 
