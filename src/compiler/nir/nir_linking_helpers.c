@@ -1064,7 +1064,6 @@ nir_assign_io_var_locations(struct exec_list *var_list, unsigned *size,
       if (processed) {
          unsigned driver_location = assigned_locations[var->data.location];
          var->data.driver_location = driver_location;
-         *size += glsl_count_attribute_slots(type, false);
 
          /* An array may be packed such that is crosses multiple other arrays
           * or variables, we need to make sure we have allocated the elements
@@ -1096,6 +1095,9 @@ nir_assign_io_var_locations(struct exec_list *var_list, unsigned *size,
       location += var_size;
    }
 
-   *size += location;
+   if (last_partial)
+      location++;
+
+   *size = location;
 }
 
