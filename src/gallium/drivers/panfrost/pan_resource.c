@@ -353,8 +353,14 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
         }
 
         if (bo->has_checksum) {
-                /* TODO */
-                DBG("--leaking checksum (%zd bytes)--\n", bo->checksum_slab.size);
+                struct panfrost_memory mem = {
+                        .cpu = bo->checksum_slab.cpu,
+                        .gpu = bo->checksum_slab.gpu,
+                        .size = bo->checksum_slab.size,
+                        .gem_handle = bo->checksum_slab.gem_handle,
+                };
+
+                screen->driver->free_slab(screen, &mem);
         }
 
         if (bo->imported) {

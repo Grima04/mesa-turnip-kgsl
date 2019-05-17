@@ -1669,15 +1669,6 @@ panfrost_bind_vertex_elements_state(
         ctx->dirty |= PAN_DIRTY_VERTEX;
 }
 
-static void
-panfrost_delete_vertex_elements_state(struct pipe_context *pctx, void *hwcso)
-{
-        struct panfrost_vertex_state *so = (struct panfrost_vertex_state *) hwcso;
-        unsigned bytes = sizeof(struct mali_attr_meta) * so->num_elements;
-        DBG("Vertex elements delete leaks descriptor (%d bytes)\n", bytes);
-        free(hwcso);
-}
-
 static void *
 panfrost_create_shader_state(
         struct pipe_context *pctx,
@@ -1704,9 +1695,6 @@ panfrost_delete_shader_state(
         if (cso->base.type == PIPE_SHADER_IR_TGSI) {
                 DBG("Deleting TGSI shader leaks duplicated tokens\n");
         }
-
-        unsigned leak = cso->variant_count * sizeof(struct mali_shader_meta);
-        DBG("Deleting shader state leaks descriptors (%d bytes), and shader bytecode\n", leak);
 
         free(so);
 }
@@ -2567,7 +2555,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         gallium->create_vertex_elements_state = panfrost_create_vertex_elements_state;
         gallium->bind_vertex_elements_state = panfrost_bind_vertex_elements_state;
-        gallium->delete_vertex_elements_state = panfrost_delete_vertex_elements_state;
+        gallium->delete_vertex_elements_state = panfrost_generic_cso_delete;
 
         gallium->create_fs_state = panfrost_create_shader_state;
         gallium->delete_fs_state = panfrost_delete_shader_state;

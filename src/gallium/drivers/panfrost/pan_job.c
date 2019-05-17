@@ -30,7 +30,6 @@
 struct panfrost_job *
 panfrost_create_job(struct panfrost_context *ctx)
 {
-        /* TODO: Don't leak */
         struct panfrost_job *job = rzalloc(NULL, struct panfrost_job);
 
         job->ctx = ctx;
