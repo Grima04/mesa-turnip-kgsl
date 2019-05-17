@@ -400,12 +400,12 @@ populate_wm_prog_key(const struct gen_device_info *devinfo,
        * harmless to compute it and then let dead-code take care of it.
        */
       if (ms_info->rasterizationSamples > 1) {
-         key->persample_interp =
+         key->persample_interp = ms_info->sampleShadingEnable &&
             (ms_info->minSampleShading * ms_info->rasterizationSamples) > 1;
          key->multisample_fbo = true;
       }
 
-      key->frag_coord_adds_sample_pos = ms_info->sampleShadingEnable;
+      key->frag_coord_adds_sample_pos = key->persample_interp;
    }
 }
 
