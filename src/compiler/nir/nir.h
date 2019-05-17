@@ -961,7 +961,14 @@ typedef struct nir_alu_instr {
     * it must ensure that the resulting value is bit-for-bit identical to the
     * original.
     */
-   bool exact;
+   bool exact:1;
+
+   /**
+    * Indicates that this instruction do not cause wrapping to occur, in the
+    * form of overflow or underflow.
+    */
+   bool no_signed_wrap:1;
+   bool no_unsigned_wrap:1;
 
    nir_alu_dest dest;
    nir_alu_src src[];
