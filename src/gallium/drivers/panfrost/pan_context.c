@@ -1009,6 +1009,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                         if (!ctx->blend->has_blend_shader) {
                                 ctx->fragment_shader_core.blend.equation = ctx->blend->equation;
+                                ctx->fragment_shader_core.blend.constant = ctx->blend->constant;
                         }
 
                         if (!no_blending) {
@@ -1050,10 +1051,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         for (unsigned i = 0; i < 1; ++i) {
                                 rts[i].flags = blend_count;
 
-                                if (ctx->blend->has_blend_shader)
+                                if (ctx->blend->has_blend_shader) {
                                         rts[i].blend.shader = ctx->blend->blend_shader;
-                                else
+                                } else {
                                         rts[i].blend.equation = ctx->blend->equation;
+                                        rts[i].blend.constant = ctx->blend->constant;
+                                }
                         }
 
                         memcpy(transfer.cpu + sizeof(struct mali_shader_meta), rts, sizeof(rts[0]) * 1);
@@ -2160,7 +2163,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
         /* Compile the blend state, first as fixed-function if we can */
 
-        if (panfrost_make_fixed_blend_mode(&blend->rt[0], &so->equation, blend->rt[0].colormask, &ctx->blend_color))
+        if (panfrost_make_fixed_blend_mode(&blend->rt[0], so, blend->rt[0].colormask, &ctx->blend_color))
                 return so;
 
         /* If we can't, compile a blend shader instead */

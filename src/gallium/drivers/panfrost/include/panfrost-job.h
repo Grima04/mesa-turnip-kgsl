@@ -228,12 +228,6 @@ struct mali_blend_equation {
         /* Corresponds to MALI_MASK_* above and glColorMask arguments */
 
         unsigned color_mask : 4;
-
-        /* Attached constant for CONSTANT_ALPHA, etc */
-
-#ifndef BIFROST
-        float constant;
-#endif
 } __attribute__((packed));
 
 /* Used with channel swizzling */
@@ -420,7 +414,11 @@ enum mali_format {
 
 union midgard_blend {
         mali_ptr shader;
-        struct mali_blend_equation equation;
+
+        struct {
+                struct mali_blend_equation equation;
+                float constant;
+        };
 };
 
 /* On MRT Midgard systems (using an MFBD), each render target gets its own

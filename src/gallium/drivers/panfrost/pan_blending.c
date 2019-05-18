@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include "pan_blending.h"
+#include "pan_context.h"
 
 /*
  * Implements fixed-function blending on Midgard.
@@ -360,12 +361,14 @@ static const struct pipe_rt_blend_state default_blend = {
 };
 
 bool
-panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct mali_blend_equation *out, unsigned colormask, const struct pipe_blend_color *blend_color)
+panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct panfrost_blend_state *so, unsigned colormask, const struct pipe_blend_color *blend_color)
 {
+        struct mali_blend_equation *out = &so->equation;
+
         /* If no blending is enabled, default back on `replace` mode */
 
         if (!blend->blend_enable)
-                return panfrost_make_fixed_blend_mode(&default_blend, out, colormask, blend_color);
+                return panfrost_make_fixed_blend_mode(&default_blend, so, colormask, blend_color);
 
         /* We have room only for a single float32 constant between the four
          * components. If we need more, spill to the programmable pipeline. */
@@ -375,7 +378,7 @@ panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct m
                 blend->alpha_src_factor, blend->alpha_dst_factor,
         };
 
-        if (!panfrost_make_constant(factors, ARRAY_SIZE(factors), blend_color, &out->constant))
+        if (!panfrost_make_constant(factors, ARRAY_SIZE(factors), blend_color, &so->constant))
                 return false;
 
         unsigned rgb_mode = 0;

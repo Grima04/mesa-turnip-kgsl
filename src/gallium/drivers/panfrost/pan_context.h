@@ -240,6 +240,7 @@ struct panfrost_blend_state {
 
         /* Compiled fixed function command */
         struct mali_blend_equation equation;
+        float constant;
 
         /* Compiled blend shader */
         mali_ptr blend_shader;

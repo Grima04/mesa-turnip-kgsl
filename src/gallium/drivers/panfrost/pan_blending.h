@@ -29,6 +29,8 @@
 #include "pipe/p_defines.h"
 #include <panfrost-job.h>
 
-bool panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct mali_blend_equation *out, unsigned colormask, const struct pipe_blend_color *blend_color);
+struct panfrost_blend_state;
+
+bool panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct panfrost_blend_state *so, unsigned colormask, const struct pipe_blend_color *blend_color);
 
 #endif

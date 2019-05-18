@@ -222,6 +222,4 @@ panfrost_print_blend_equation(struct mali_blend_equation eq)
                (eq.color_mask & MALI_MASK_G) ? "G" : "",
                (eq.color_mask & MALI_MASK_B) ? "B" : "",
                (eq.color_mask & MALI_MASK_A) ? "A" : "");
-
-        printf("Constant: %f\n", eq.constant);
 }
