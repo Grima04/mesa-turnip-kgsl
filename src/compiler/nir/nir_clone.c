@@ -151,9 +151,11 @@ nir_variable_clone(const nir_variable *var, nir_shader *shader)
    nvar->name = ralloc_strdup(nvar, var->name);
    nvar->data = var->data;
    nvar->num_state_slots = var->num_state_slots;
-   nvar->state_slots = ralloc_array(nvar, nir_state_slot, var->num_state_slots);
-   memcpy(nvar->state_slots, var->state_slots,
-          var->num_state_slots * sizeof(nir_state_slot));
+   if (var->num_state_slots) {
+      nvar->state_slots = ralloc_array(nvar, nir_state_slot, var->num_state_slots);
+      memcpy(nvar->state_slots, var->state_slots,
+             var->num_state_slots * sizeof(nir_state_slot));
+   }
    if (var->constant_initializer) {
       nvar->constant_initializer =
          nir_constant_clone(var->constant_initializer, nvar);
