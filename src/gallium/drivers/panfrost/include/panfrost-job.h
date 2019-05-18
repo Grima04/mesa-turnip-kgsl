@@ -1032,13 +1032,6 @@ struct mali_vertex_tiler_postfix {
          * in vertex and tiler jobs.
          */
         mali_ptr framebuffer;
-
-#ifdef __LP64__
-#ifdef BIFROST
-        /* most likely padding to make this a multiple of 64 bytes */
-        u64 zero7;
-#endif
-#endif
 } __attribute__((packed));
 
 struct midgard_payload_vertex_tiler {
@@ -1082,6 +1075,7 @@ struct bifrost_payload_fused {
         struct mali_vertex_tiler_prefix prefix;
         struct bifrost_tiler_only tiler;
         struct mali_vertex_tiler_postfix tiler_postfix;
+        u64 padding; /* zero */
         struct bifrost_vertex_only vertex;
         struct mali_vertex_tiler_postfix vertex_postfix;
 } __attribute__((packed));
