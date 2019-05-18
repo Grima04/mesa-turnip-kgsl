@@ -1220,11 +1220,8 @@ struct mali_sampler_descriptor {
         float border_color[4];
 } __attribute__((packed));
 
-/* TODO: What are the floats? Apparently always { -inf, -inf, inf, inf },
- * unless the scissor test is enabled.
- *
- * viewport0/viewport1 form the arguments to glViewport. viewport1 is modified
- * by MALI_POSITIVE; viewport0 is as-is.
+/* viewport0/viewport1 form the arguments to glViewport. viewport1 is
+ * modified by MALI_POSITIVE; viewport0 is as-is.
  */
 
 struct mali_viewport {
@@ -1290,7 +1287,7 @@ struct mali_payload_fragment {
         mali_ptr framebuffer;
 } __attribute__((packed));
 
-/* (Single?) Framebuffer Descriptor */
+/* Single Framebuffer Descriptor */
 
 /* Flags apply to format. With just MSAA_A and MSAA_B, the framebuffer is
  * configured for 4x. With MSAA_8, it is configured for 8x. */
