@@ -878,6 +878,17 @@ pandecode_replay_blend_equation(const struct mali_blend_equation *blend)
         pandecode_log("},\n");
 }
 
+/* Decodes a Bifrost blend constant. See the notes in bifrost_blend_rt */
+
+static unsigned
+decode_bifrost_constant(u16 constant)
+{
+        float lo = (float) (constant & 0xFF);
+        float hi = (float) (constant >> 8);
+
+        return (hi / 255.0) + (lo / 65535.0);
+}
+
 static mali_ptr
 pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
 {
@@ -887,7 +898,10 @@ pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
         pandecode_log("struct bifrost_blend_rt blend_rt_%d_%d = {\n", job_no, rt_no);
         pandecode_indent++;
 
-        pandecode_prop("unk1 = 0x%" PRIx32, b->unk1);
+        pandecode_prop("flags = 0x%" PRIx16, b->flags);
+        pandecode_prop("constant = 0x%" PRIx8 " /* %f */",
+                        b->constant, decode_bifrost_constant(b->constant));
+
         /* TODO figure out blend shader enable bit */
         pandecode_replay_blend_equation(&b->equation);
         pandecode_prop("unk2 = 0x%" PRIx16, b->unk2);
@@ -910,6 +924,7 @@ pandecode_midgard_blend(union midgard_blend *blend, bool is_shader)
                 pandecode_replay_shader_address("shader", blend->shader);
         } else {
                 pandecode_replay_blend_equation(&blend->equation);
+                pandecode_prop("constant = %f", blend->constant);
         }
 
         pandecode_indent--;

@@ -442,7 +442,21 @@ struct bifrost_blend_rt {
         /* This is likely an analogue of the flags on
          * midgard_blend_rt */
 
-        u32 unk1; // = 0x200
+        u16 flags; // = 0x200
+
+        /* Single-channel blend constants are encoded in a sort of
+         * fixed-point. Basically, the float is mapped to a byte, becoming
+         * a high byte, and then the lower-byte is added for precision.
+         * For the original float f:
+         *
+         * f = (constant_hi / 255) + (constant_lo / 65535)
+         *
+         * constant_hi = int(f / 255)
+         * constant_lo = 65535*f - (65535/255) * constant_hi
+         */
+
+        u16 constant;
+
         struct mali_blend_equation equation;
         /*
          * - 0x19 normally
