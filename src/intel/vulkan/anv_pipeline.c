@@ -212,7 +212,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
 
    /* Pick off the single entrypoint that we want */
    foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (func != entry_point)
+      if (!func->is_entrypoint)
          exec_node_remove(&func->node);
    }
    assert(exec_list_length(&nir->functions) == 1);
@@ -238,7 +238,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
 
    NIR_PASS_V(nir, nir_propagate_invariant);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
-              entry_point->impl, true, false);
+              nir_shader_get_entrypoint(nir), true, false);
 
    NIR_PASS_V(nir, nir_lower_frexp);
 
