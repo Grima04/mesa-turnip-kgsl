@@ -33,6 +33,7 @@
 
 #include "../pan_pretty_print.h"
 #include "../midgard/disassemble.h"
+#include "../bifrost/disassemble.h"
 int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
 
 #define MEMORY_PROP(obj, p) {\
@@ -1155,17 +1156,17 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
         /* Compute maximum possible size */
         size_t sz = mem->length - (shader_ptr - mem->gpu_va);
 
-        /* TODO: When Bifrost is upstreamed, disassemble that too */
-        if (is_bifrost) {
-                pandecode_msg("Bifrost disassembler not yet upstreamed");
-                return;
-        }
-
         /* Print some boilerplate to clearly denote the assembly (which doesn't
          * obey indentation rules), and actually do the disassembly! */
 
         printf("\n\n");
-        disassemble_midgard(code, sz);
+
+        if (is_bifrost) {
+                disassemble_bifrost(code, sz, false);
+        } else {
+                disassemble_midgard(code, sz);
+        }
+
         printf("\n\n");
 }
 

@@ -151,7 +151,8 @@ files_pandecode = files(
 
   'pan_pretty_print.c',
 
-  'midgard/disassemble.c'
+  'midgard/disassemble.c',
+  'bifrost/disassemble.c',
 )
 
 pandecode = executable(
