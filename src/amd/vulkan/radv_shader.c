@@ -210,7 +210,6 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   const struct radv_pipeline_layout *layout)
 {
 	nir_shader *nir;
-	nir_function *entry_point;
 	if (module->nir) {
 		/* Some things such as our meta clear/blit code will give us a NIR
 		 * shader directly.  In that case, we just ignore the SPIR-V entirely
@@ -220,8 +219,6 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		nir_validate_shader(nir, "in internal shader");
 
 		assert(exec_list_length(&nir->functions) == 1);
-		struct exec_node *node = exec_list_get_head(&nir->functions);
-		entry_point = exec_node_data(nir_function, node, node);
 	} else {
 		uint32_t *spirv = (uint32_t *) module->data;
 		assert(module->size % 4 == 0);
@@ -290,10 +287,10 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.push_const_addr_format = nir_address_format_logical,
 			.shared_addr_format = nir_address_format_32bit_offset,
 		};
-		entry_point = spirv_to_nir(spirv, module->size / 4,
-					   spec_entries, num_spec_entries,
-					   stage, entrypoint_name,
-					   &spirv_options, &nir_options);
+		nir_function *entry_point = spirv_to_nir(spirv, module->size / 4,
+							 spec_entries, num_spec_entries,
+							 stage, entrypoint_name,
+							 &spirv_options, &nir_options);
 		nir = entry_point->shader;
 		assert(nir->info.stage == stage);
 		nir_validate_shader(nir, "after spirv_to_nir");
@@ -311,11 +308,12 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 		/* Pick off the single entrypoint that we want */
 		foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-			if (func != entry_point)
+			if (func->is_entrypoint)
+				func->name = ralloc_strdup(func, "main");
+			else
 				exec_node_remove(&func->node);
 		}
 		assert(exec_list_length(&nir->functions) == 1);
-		entry_point->name = ralloc_strdup(entry_point, "main");
 
 		/* Make sure we lower constant initializers on output variables so that
 		 * nir_remove_dead_variables below sees the corresponding stores
@@ -344,7 +342,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	/* Vulkan uses the separate-shader linking model */
 	nir->info.separate_shader = true;
 
-	nir_shader_gather_info(nir, entry_point->impl);
+	nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
 	static const nir_lower_tex_options tex_options = {
 	  .lower_txp = ~0,
