@@ -94,12 +94,12 @@ bool gl_spirv_validation(const uint32_t *words, size_t word_count,
                          struct nir_spirv_specialization *spec, unsigned num_spec,
                          gl_shader_stage stage, const char *entry_point_name);
 
-nir_function *spirv_to_nir(const uint32_t *words, size_t word_count,
-                           struct nir_spirv_specialization *specializations,
-                           unsigned num_specializations,
-                           gl_shader_stage stage, const char *entry_point_name,
-                           const struct spirv_to_nir_options *options,
-                           const nir_shader_compiler_options *nir_options);
+nir_shader *spirv_to_nir(const uint32_t *words, size_t word_count,
+                         struct nir_spirv_specialization *specializations,
+                         unsigned num_specializations,
+                         gl_shader_stage stage, const char *entry_point_name,
+                         const struct spirv_to_nir_options *options,
+                         const nir_shader_compiler_options *nir_options);
 
 #ifdef __cplusplus
 }

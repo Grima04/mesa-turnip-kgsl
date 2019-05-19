@@ -186,8 +186,6 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
                    gl_shader_stage stage,
                    const nir_shader_compiler_options *options)
 {
-   nir_shader *nir = NULL;
-
    struct gl_linked_shader *linked_shader = prog->_LinkedShaders[stage];
    assert (linked_shader);
 
@@ -217,7 +215,7 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
       .caps = ctx->Const.SpirVCapabilities
    };
 
-   nir_function *entry_point =
+   nir_shader *nir =
       spirv_to_nir((const uint32_t *) &spirv_module->Binary[0],
                    spirv_module->Length / 4,
                    spec_entries, spirv_data->NumSpecializationConstants,
@@ -226,8 +224,7 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
                    options);
    free(spec_entries);
 
-   assert (entry_point);
-   nir = entry_point->shader;
+   assert(nir);
    assert(nir->info.stage == stage);
 
    nir->options = options;

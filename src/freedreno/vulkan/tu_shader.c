@@ -68,16 +68,16 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
       num_spec = spec_info->mapEntryCount;
    }
 
-   nir_function *entry_point =
+   nir_shader *nir =
       spirv_to_nir(words, word_count, spec, num_spec, stage, entry_point_name,
                    &spirv_options, nir_options);
 
    free(spec);
 
-   assert(entry_point->shader->info.stage == stage);
-   nir_validate_shader(entry_point->shader, "after spirv_to_nir");
+   assert(nir->info.stage == stage);
+   nir_validate_shader(nir, "after spirv_to_nir");
 
-   return entry_point->shader;
+   return nir;
 }
 
 static void

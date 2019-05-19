@@ -287,11 +287,10 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.push_const_addr_format = nir_address_format_logical,
 			.shared_addr_format = nir_address_format_32bit_offset,
 		};
-		nir_function *entry_point = spirv_to_nir(spirv, module->size / 4,
-							 spec_entries, num_spec_entries,
-							 stage, entrypoint_name,
-							 &spirv_options, &nir_options);
-		nir = entry_point->shader;
+		nir = spirv_to_nir(spirv, module->size / 4,
+				   spec_entries, num_spec_entries,
+				   stage, entrypoint_name,
+				   &spirv_options, &nir_options);
 		assert(nir->info.stage == stage);
 		nir_validate_shader(nir, "after spirv_to_nir");
 

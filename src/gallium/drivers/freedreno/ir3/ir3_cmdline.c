@@ -242,21 +242,21 @@ load_spirv(const char *filename, const char *entry, gl_shader_stage stage)
 			.func = debug_func,
 		}
 	};
-	nir_function *entry_point;
+	nir_shader *nir;
 	void *buf;
 	size_t size;
 
 	read_file(filename, &buf, &size);
 
-	entry_point = spirv_to_nir(buf, size / 4,
+	nir = spirv_to_nir(buf, size / 4,
 			NULL, 0, /* spec_entries */
 			stage, entry,
 			&spirv_options,
 			ir3_get_compiler_options(compiler));
 
-	nir_print_shader(entry_point->shader, stdout);
+	nir_print_shader(nir, stdout);
 
-	return entry_point->shader;
+	return nir;
 }
 
 static void print_usage(void)

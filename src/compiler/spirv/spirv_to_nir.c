@@ -4552,7 +4552,7 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
    return main_entry_point;
 }
 
-nir_function *
+nir_shader *
 spirv_to_nir(const uint32_t *words, size_t word_count,
              struct nir_spirv_specialization *spec, unsigned num_spec,
              gl_shader_stage stage, const char *entry_point_name,
@@ -4669,7 +4669,8 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    /* Unparent the shader from the vtn_builder before we delete the builder */
    ralloc_steal(NULL, b->shader);
 
+   nir_shader *shader = b->shader;
    ralloc_free(b);
 
-   return entry_point;
+   return shader;
 }

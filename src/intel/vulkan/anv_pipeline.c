@@ -184,11 +184,10 @@ anv_shader_compile_to_nir(struct anv_device *device,
    };
 
 
-   nir_function *entry_point =
+   nir_shader *nir =
       spirv_to_nir(spirv, module->size / 4,
                    spec_entries, num_spec_entries,
                    stage, entrypoint_name, &spirv_options, nir_options);
-   nir_shader *nir = entry_point->shader;
    assert(nir->info.stage == stage);
    nir_validate_shader(nir, "after spirv_to_nir");
    ralloc_steal(mem_ctx, nir);
