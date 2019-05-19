@@ -28,7 +28,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#if defined(MAJOR_IN_SYSMACROS)
 #include <sys/sysmacros.h>
+#elif defined(MAJOR_IN_MKDEV)
+#include <sys/mkdev.h>
+#endif
 
 #include "util/hash_table.h"
 #include "compiler/glsl/list.h"
