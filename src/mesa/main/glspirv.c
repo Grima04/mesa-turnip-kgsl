@@ -251,7 +251,7 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
 
    /* Pick off the single entrypoint that we want */
    foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (func != entry_point)
+      if (!func->is_entrypoint)
          exec_node_remove(&func->node);
    }
    assert(exec_list_length(&nir->functions) == 1);
