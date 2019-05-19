@@ -100,36 +100,9 @@ driver_panfrost = declare_dependency(
   link_with : [libpanfrost, libpanfrostwinsys],
 )
 
-files_midgard = files(
-  'midgard/midgard_compile.c',
-  'midgard/midgard_print.c',
-  'midgard/midgard_ra.c',
-  'midgard/midgard_liveness.c',
-  'midgard/midgard_ops.c',
-  'midgard/cppwrap.cpp',
-  'midgard/disassemble.c',
-  'midgard/cmdline.c',
-)
-
 files_bifrost = files(
   'bifrost/disassemble.c',
   'bifrost/cmdline.c',
-)
-
-midgard_compiler = executable(
-  'midgard_compiler',
-  [files_midgard, midgard_nir_algebraic_c],
-  include_directories : inc_panfrost,
-  dependencies : [
-    dep_thread,
-    idep_nir
-  ],
-  link_with : [
-    libgallium,
-    libglsl_standalone,
-    libmesa_util
-  ],
-  build_by_default : true
 )
 
 bifrost_compiler = executable(
