@@ -1105,10 +1105,17 @@ st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
    else {
       GET_CURRENT_CONTEXT(ctx);
 
-      ret = _mesa_make_current(NULL, NULL, NULL);
-
-      if (ctx)
+      if (ctx) {
+         /* Before releasing the context, release its associated
+          * winsys buffers first. Then purge the context's winsys buffers list
+          * to free the resources of any winsys buffers that no longer have
+          * an existing drawable.
+          */
+         ret = _mesa_make_current(ctx, NULL, NULL);
          st_framebuffers_purge(ctx->st);
+      }
+
+      ret = _mesa_make_current(NULL, NULL, NULL);
    }
 
    return ret;
