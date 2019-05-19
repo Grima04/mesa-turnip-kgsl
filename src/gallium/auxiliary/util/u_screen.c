@@ -360,7 +360,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 1;
 
    case PIPE_CAP_DMABUF:
-#ifdef PIPE_OS_LINUX
+#if defined(PIPE_OS_LINUX) || defined(PIPE_OS_BSD)
       return 1;
 #else
       return 0;
