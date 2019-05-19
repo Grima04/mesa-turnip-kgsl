@@ -27,6 +27,11 @@ files_panfrost = files(
   'pan_resource.h',
 
   'midgard/midgard_compile.c',
+  'midgard/midgard_print.c',
+  'midgard/midgard_ra.c',
+  'midgard/midgard_liveness.c',
+  'midgard/midgard_ops.c',
+
   'midgard/nir_lower_blend.c',
   'midgard/cppwrap.cpp',
   'midgard/disassemble.c',
@@ -97,6 +102,10 @@ driver_panfrost = declare_dependency(
 
 files_midgard = files(
   'midgard/midgard_compile.c',
+  'midgard/midgard_print.c',
+  'midgard/midgard_ra.c',
+  'midgard/midgard_liveness.c',
+  'midgard/midgard_ops.c',
   'midgard/cppwrap.cpp',
   'midgard/disassemble.c',
   'midgard/cmdline.c',
@@ -153,6 +162,7 @@ files_pandecode = files(
   'pan_pretty_print.c',
 
   'midgard/disassemble.c',
+  'midgard/midgard_ops.c',
   'bifrost/disassemble.c',
 )
 

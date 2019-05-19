@@ -31,6 +31,7 @@
 #include <string.h>
 #include "midgard.h"
 #include "midgard-parse.h"
+#include "midgard_ops.h"
 #include "disassemble.h"
 #include "helpers.h"
 #include "util/half_float.h"
