@@ -28,7 +28,7 @@
 static bool
 assert_ssa_def_is_not_int(nir_ssa_def *def, void *arg)
 {
-   BITSET_WORD *int_types = arg;
+   MAYBE_UNUSED BITSET_WORD *int_types = arg;
    assert(!BITSET_TEST(int_types, def->index));
    return true;
 }
