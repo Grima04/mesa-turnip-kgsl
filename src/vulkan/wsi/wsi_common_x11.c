@@ -1091,6 +1091,16 @@ x11_manage_fifo_queues(void *state)
          return NULL;
       }
 
+      if (chain->base.present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+         result = chain->base.wsi->WaitForFences(chain->base.device, 1,
+                                        &chain->base.fences[image_index],
+                                        true, UINT64_MAX);
+         if (result != VK_SUCCESS) {
+            result = VK_ERROR_OUT_OF_DATE_KHR;
+            goto fail;
+         }
+      }
+
       uint64_t target_msc = 0;
       if (chain->has_acquire_queue)
          target_msc = chain->last_present_msc + 1;
@@ -1503,7 +1513,8 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
          goto fail_init_images;
    }
 
-   if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR) {
+   if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR ||
+       chain->base.present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
       chain->has_present_queue = true;
 
       /* Initialize our queues.  We make them base.image_count + 1 because we will
