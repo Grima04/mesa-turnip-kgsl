@@ -1176,7 +1176,7 @@ struct isl_surf {
 
    /**
     * Physical extent of the surface's base level, in units of physical
-    * surface samples and aligned to the format's compression block.
+    * surface samples.
     *
     * Consider isl_dim_layout as an operator that transforms a logical surface
     * layout to a physical surface layout. Then
@@ -1907,13 +1907,9 @@ isl_surf_get_phys_level0_el(const struct isl_surf *surf)
 {
    const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
 
-   assert(surf->phys_level0_sa.w % fmtl->bw == 0);
-   assert(surf->phys_level0_sa.h % fmtl->bh == 0);
-   assert(surf->phys_level0_sa.d % fmtl->bd == 0);
-
-   return isl_extent4d(surf->phys_level0_sa.w / fmtl->bw,
-                       surf->phys_level0_sa.h / fmtl->bh,
-                       surf->phys_level0_sa.d / fmtl->bd,
+   return isl_extent4d(DIV_ROUND_UP(surf->phys_level0_sa.w, fmtl->bw),
+                       DIV_ROUND_UP(surf->phys_level0_sa.h, fmtl->bh),
+                       DIV_ROUND_UP(surf->phys_level0_sa.d, fmtl->bd),
                        surf->phys_level0_sa.a);
 }
 
