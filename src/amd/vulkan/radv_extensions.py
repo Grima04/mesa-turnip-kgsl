@@ -55,6 +55,7 @@ EXTENSIONS = [
     Extension('VK_KHR_bind_memory2',                      1, True),
     Extension('VK_KHR_create_renderpass2',                1, True),
     Extension('VK_KHR_dedicated_allocation',              1, True),
+    Extension('VK_KHR_depth_stencil_resolve',             1, True),
     Extension('VK_KHR_descriptor_update_template',        1, True),
     Extension('VK_KHR_device_group',                      1, True),
     Extension('VK_KHR_device_group_creation',             1, True),

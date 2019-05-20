@@ -1383,6 +1383,27 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->variableSampleLocations = VK_FALSE;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES_KHR: {
+			VkPhysicalDeviceDepthStencilResolvePropertiesKHR *properties =
+				(VkPhysicalDeviceDepthStencilResolvePropertiesKHR *)ext;
+
+			/* We support all of the depth resolve modes */
+			properties->supportedDepthResolveModes =
+				VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
+				VK_RESOLVE_MODE_AVERAGE_BIT_KHR |
+				VK_RESOLVE_MODE_MIN_BIT_KHR |
+				VK_RESOLVE_MODE_MAX_BIT_KHR;
+
+			/* Average doesn't make sense for stencil so we don't support that */
+			properties->supportedStencilResolveModes =
+				VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
+				VK_RESOLVE_MODE_MIN_BIT_KHR |
+				VK_RESOLVE_MODE_MAX_BIT_KHR;
+
+			properties->independentResolveNone = VK_TRUE;
+			properties->independentResolve = VK_TRUE;
+			break;
+		}
 		default:
 			break;
 		}
