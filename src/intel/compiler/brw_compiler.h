@@ -1230,6 +1230,9 @@ brw_prog_data_size(gl_shader_stage stage);
 unsigned
 brw_prog_key_size(gl_shader_stage stage);
 
+void
+brw_prog_key_set_id(union brw_any_prog_key *key, gl_shader_stage, unsigned id);
+
 /**
  * Compile a vertex shader.
  *

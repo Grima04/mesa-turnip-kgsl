@@ -82,10 +82,6 @@ brw_assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
                                         uint32_t next_binding_table_offset);
 
 void
-brw_prog_key_set_id(union brw_any_prog_key *key, gl_shader_stage stage,
-                    unsigned id);
-
-void
 brw_populate_default_key(const struct brw_compiler *compiler,
                          union brw_any_prog_key *prog_key,
                          struct gl_shader_program *sh_prog,
