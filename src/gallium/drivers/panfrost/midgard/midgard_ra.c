@@ -154,16 +154,6 @@ allocate_registers(compiler_context *ctx)
                 }
         }
 
-        for (int index = 0; index <= ctx->max_hash; ++index) {
-                unsigned temp = (uintptr_t) _mesa_hash_table_u64_search(ctx->ssa_to_register, index + 1);
-
-                if (temp) {
-                        unsigned reg = temp - 1;
-                        int t = find_or_allocate_temp(ctx, index);
-                        ra_set_node_reg(g, t, reg);
-                }
-        }
-
         /* Determine liveness */
 
         int *live_start = malloc(nodes * sizeof(int));

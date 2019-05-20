@@ -519,18 +519,6 @@ unalias_ssa(compiler_context *ctx, int dest)
         /* TODO: Remove from leftover or no? */
 }
 
-static void
-midgard_pin_output(compiler_context *ctx, int index, int reg)
-{
-        _mesa_hash_table_u64_insert(ctx->ssa_to_register, index + 1, (void *) ((uintptr_t) reg + 1));
-}
-
-static bool
-midgard_is_pinned(compiler_context *ctx, int index)
-{
-        return _mesa_hash_table_u64_search(ctx->ssa_to_register, index + 1) != NULL;
-}
-
 /* Do not actually emit a load; instead, cache the constant for inlining */
 
 static void
@@ -1267,7 +1255,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
 
-                        midgard_pin_output(ctx, reg, 0);
+                        midgard_instruction move = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
+                        emit_mir_instruction(ctx, move);
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
@@ -1324,8 +1313,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         midgard_instruction move = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
                         emit_mir_instruction(ctx, move);
-
-                        //midgard_pin_output(ctx, reg, 0);
 
                         /* Save the index we're writing to for later reference
                          * in the epilogue */
@@ -2527,7 +2514,6 @@ midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
                 if (ins->compact_branch) continue;
 
                 if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
-                if (midgard_is_pinned(ctx, ins->ssa_args.dest)) continue;
                 if (mir_is_live_after(ctx, block, ins, ins->ssa_args.dest)) continue;
 
                 mir_remove_instruction(ins);
@@ -3120,7 +3106,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);
         ctx->ssa_varyings = _mesa_hash_table_u64_create(NULL);
         ctx->ssa_to_alias = _mesa_hash_table_u64_create(NULL);
-        ctx->ssa_to_register = _mesa_hash_table_u64_create(NULL);
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
         ctx->sysval_to_id = _mesa_hash_table_u64_create(NULL);
         ctx->leftover_ssa_to_alias = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
