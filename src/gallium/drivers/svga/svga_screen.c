@@ -1079,7 +1079,8 @@ svga_screen_create(struct svga_winsys_screen *sws)
       /* Maximum number of constant buffers */
       svgascreen->max_const_buffers =
          get_uint_cap(sws, SVGA3D_DEVCAP_DX_MAX_CONSTANT_BUFFERS, 1);
-      assert(svgascreen->max_const_buffers <= SVGA_MAX_CONST_BUFS);
+      svgascreen->max_const_buffers = MIN2(svgascreen->max_const_buffers,
+                                           SVGA_MAX_CONST_BUFS);
 
       screen->is_format_supported = svga_is_dx_format_supported;
    }
