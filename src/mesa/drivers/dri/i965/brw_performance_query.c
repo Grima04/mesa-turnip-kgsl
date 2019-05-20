@@ -459,6 +459,13 @@ brw_oa_batchbuffer_flush(void *c, const char *file, int line)
    _intel_batchbuffer_flush_fence(ctx, -1, NULL, file,  line);
 }
 
+static void
+brw_oa_emit_stall_at_pixel_scoreboard(void *c)
+{
+   struct brw_context *brw = c;
+   brw_emit_end_of_pipe_sync(brw, PIPE_CONTROL_STALL_AT_SCOREBOARD);
+}
+
 typedef void (*capture_frequency_stat_register_t)(void *, void *, uint32_t );
 typedef void (*store_register_mem64_t)(void *ctx, void *bo,
                                        uint32_t reg, uint32_t offset);
@@ -487,7 +494,8 @@ brw_init_perf_query_info(struct gl_context *ctx)
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
    perf_cfg->vtbl.bo_map = (bo_map_t)brw_bo_map;
    perf_cfg->vtbl.bo_unmap = (bo_unmap_t)brw_bo_unmap;
-   perf_cfg->vtbl.emit_mi_flush = (emit_mi_flush_t)brw_emit_mi_flush;
+   perf_cfg->vtbl.emit_stall_at_pixel_scoreboard =
+      (emit_mi_flush_t)brw_oa_emit_stall_at_pixel_scoreboard;
    perf_cfg->vtbl.emit_mi_report_perf_count =
       (emit_mi_report_t)brw_oa_emit_mi_report_perf_count;
    perf_cfg->vtbl.batchbuffer_flush = brw_oa_batchbuffer_flush;

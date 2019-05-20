@@ -31,18 +31,11 @@ iris_oa_bo_alloc(void *bufmgr, const char *name, uint64_t size)
 }
 
 static void
-iris_perf_emit_mi_flush(struct iris_context *ice)
+iris_perf_emit_stall_at_pixel_scoreboard(struct iris_context *ice)
 {
-   const int flags = PIPE_CONTROL_RENDER_TARGET_FLUSH |
-                     PIPE_CONTROL_INSTRUCTION_INVALIDATE |
-                     PIPE_CONTROL_CONST_CACHE_INVALIDATE |
-                     PIPE_CONTROL_DATA_CACHE_FLUSH |
-                     PIPE_CONTROL_DEPTH_CACHE_FLUSH |
-                     PIPE_CONTROL_VF_CACHE_INVALIDATE |
-                     PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
-                     PIPE_CONTROL_CS_STALL;
-   iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
-                                "OA metrics", flags);
+   iris_emit_end_of_pipe_sync(&ice->batches[IRIS_BATCH_RENDER],
+                              "OA metrics",
+                              PIPE_CONTROL_STALL_AT_SCOREBOARD);
 }
 
 static void
@@ -106,7 +99,8 @@ iris_perf_init_vtbl(struct gen_perf_config *perf_cfg)
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)iris_bo_unreference;
    perf_cfg->vtbl.bo_map = (bo_map_t)iris_bo_map;
    perf_cfg->vtbl.bo_unmap = (bo_unmap_t)iris_bo_unmap;
-   perf_cfg->vtbl.emit_mi_flush = (emit_mi_flush_t)iris_perf_emit_mi_flush;
+   perf_cfg->vtbl.emit_stall_at_pixel_scoreboard =
+      (emit_mi_flush_t)iris_perf_emit_stall_at_pixel_scoreboard;
 
    perf_cfg->vtbl.emit_mi_report_perf_count =
       (emit_mi_report_t)iris_perf_emit_mi_report_perf_count;

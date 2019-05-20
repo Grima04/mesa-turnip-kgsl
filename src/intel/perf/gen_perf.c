@@ -1716,15 +1716,9 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
     * end snapshot - otherwise the results won't be a complete representation
     * of the work.
     *
-    * Theoretically there could be opportunities to minimize how much of the
-    * GPU pipeline is drained, or that we stall for, when we know what specific
-    * units the performance counters being queried relate to but we don't
-    * currently attempt to be clever here.
-    *
-    * Note: with our current simple approach here then for back-to-back queries
-    * we will redundantly emit duplicate commands to synchronize the command
-    * streamer with the rest of the GPU pipeline, but we assume that in HW the
-    * second synchronization is effectively a NOOP.
+    * To achieve this, we stall the pipeline at pixel scoreboard (prevent any
+    * additional work to be processed by the pipeline until all pixels of the
+    * previous draw has be completed).
     *
     * N.B. The final results are based on deltas of counters between (inside)
     * Begin/End markers so even though the total wall clock time of the
@@ -1738,7 +1732,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
     * This is our Begin synchronization point to drain current work on the
     * GPU before we capture our first counter snapshot...
     */
-   perf_cfg->vtbl.emit_mi_flush(perf_ctx->ctx);
+   perf_cfg->vtbl.emit_stall_at_pixel_scoreboard(perf_ctx->ctx);
 
    switch (queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
@@ -1920,7 +1914,7 @@ gen_perf_end_query(struct gen_perf_context *perf_ctx,
     * For more details see comment in brw_begin_perf_query for
     * corresponding flush.
     */
-  perf_cfg->vtbl.emit_mi_flush(perf_ctx->ctx);
+   perf_cfg->vtbl.emit_stall_at_pixel_scoreboard(perf_ctx->ctx);
 
    switch (query->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
