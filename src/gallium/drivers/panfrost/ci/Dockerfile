@@ -112,12 +112,11 @@ ARG KERNEL_ARCH
 ARG DEFCONFIG
 ARG DEVICE_TREES
 ARG KERNEL_IMAGE_NAME
-# TODO: Switch to 5.2-rc* when the time comes
+ENV KERNEL_URL="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux/+archive/refs/tags/v5.2-rc2.tar.gz"
+
 COPY ${KERNEL_ARCH}.config /panfrost-ci/
 RUN mkdir -p /kernel                                                                   && \
-  wget https://github.com/freedesktop/drm-misc/archive/drm-misc-next-2019-04-18.tar.gz && \
-  tar xfz drm-misc-next-2019-04-18.tar.gz -C /kernel --strip-components=1              && \
-  rm drm-misc-next-2019-04-18.tar.gz                                                   && \
+  wget -qO- ${KERNEL_URL} | tar -xvz -C /kernel                                        && \
   cd /kernel                                                                           && \
   ARCH=${KERNEL_ARCH} CROSS_COMPILE="${GCC_ARCH}-" ./scripts/kconfig/merge_config.sh ${DEFCONFIG} /panfrost-ci/${KERNEL_ARCH}.config && \
   ARCH=${KERNEL_ARCH} CROSS_COMPILE="${GCC_ARCH}-" make -j12 ${KERNEL_IMAGE_NAME} dtbs && \
