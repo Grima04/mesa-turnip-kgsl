@@ -47,6 +47,8 @@ struct set {
    bool (*key_equals_function)(const void *a, const void *b);
    uint32_t size;
    uint32_t rehash;
+   uint64_t size_magic;
+   uint64_t rehash_magic;
    uint32_t max_entries;
    uint32_t size_index;
    uint32_t entries;
