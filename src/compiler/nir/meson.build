@@ -96,6 +96,7 @@ files_libnir = files(
   'nir_control_flow_private.h',
   'nir_deref.c',
   'nir_deref.h',
+  'nir_divergence_analysis.c',
   'nir_dominance.c',
   'nir_format_convert.h',
   'nir_from_ssa.c',

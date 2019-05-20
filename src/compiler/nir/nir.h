@@ -2506,6 +2506,13 @@ typedef enum {
    nir_lower_fp64_full_software = (1 << 11),
 } nir_lower_doubles_options;
 
+typedef enum {
+   nir_divergence_single_prim_per_subgroup = (1 << 0),
+   nir_divergence_single_patch_per_tcs_subgroup = (1 << 1),
+   nir_divergence_single_patch_per_tes_subgroup = (1 << 2),
+   nir_divergence_view_index_uniform = (1 << 3),
+} nir_divergence_options;
+
 typedef struct nir_shader_compiler_options {
    bool lower_fdiv;
    bool lower_ffma;
@@ -3924,6 +3931,7 @@ bool nir_repair_ssa(nir_shader *shader);
 
 void nir_convert_loop_to_lcssa(nir_loop *loop);
 bool nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants, bool skip_bool_invariants);
+bool* nir_divergence_analysis(nir_shader *shader, nir_divergence_options options);
 
 /* If phi_webs_only is true, only convert SSA values involved in phi nodes to
  * registers.  If false, convert all values (even those not involved in a phi
