@@ -1953,6 +1953,9 @@ struct radv_subpass {
 	struct radv_subpass_attachment *             color_attachments;
 	struct radv_subpass_attachment *             resolve_attachments;
 	struct radv_subpass_attachment *             depth_stencil_attachment;
+	struct radv_subpass_attachment *             ds_resolve_attachment;
+	VkResolveModeFlagBitsKHR                     depth_resolve_mode;
+	VkResolveModeFlagBitsKHR                     stencil_resolve_mode;
 
 	/** Subpass has at least one color resolve attachment */
 	bool                                         has_color_resolve;
