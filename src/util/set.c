@@ -245,8 +245,26 @@ _mesa_set_search_pre_hashed(const struct set *set, uint32_t hash,
    return set_search(set, hash, key);
 }
 
-static struct set_entry *
-set_add(struct set *ht, uint32_t hash, const void *key);
+static void
+set_add_rehash(struct set *ht, uint32_t hash, const void *key)
+{
+   uint32_t size = ht->size;
+   uint32_t start_address = hash % size;
+   uint32_t double_hash = hash % ht->rehash + 1;
+   uint32_t hash_address = start_address;
+   do {
+      struct set_entry *entry = ht->table + hash_address;
+      if (likely(entry->key == NULL)) {
+         entry->hash = hash;
+         entry->key = key;
+         return;
+      }
+
+      hash_address = hash_address + double_hash;
+      if (hash_address >= size)
+         hash_address -= size;
+   } while (true);
+}
 
 static void
 set_rehash(struct set *ht, unsigned new_size_index)
@@ -273,8 +291,10 @@ set_rehash(struct set *ht, unsigned new_size_index)
    ht->deleted_entries = 0;
 
    set_foreach(&old_ht, entry) {
-      set_add(ht, entry->hash, entry->key);
+      set_add_rehash(ht, entry->hash, entry->key);
    }
+
+   ht->entries = old_ht.entries;
 
    ralloc_free(old_ht.table);
 }
