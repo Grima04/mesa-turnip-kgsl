@@ -1498,6 +1498,8 @@ offsets = {
     "TextureParameterfEXT": 1462,
     "TextureParameterfvEXT": 1463,
     "GetTextureImageEXT": 1464,
+    "GetTextureLevelParameterivEXT": 1465,
+    "GetTextureLevelParameterfvEXT": 1466,
 }
 
 functions = [

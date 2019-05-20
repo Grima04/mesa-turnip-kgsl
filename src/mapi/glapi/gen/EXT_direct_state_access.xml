@@ -116,6 +116,22 @@
        <param name="params" type="float *" />
     </function>
 
+    <function name="GetTextureLevelParameterivEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="level" type="GLint" />
+       <param name="pname" type="GLenum" />
+       <param name="params" type="GLint *" />
+    </function>
+
+    <function name="GetTextureLevelParameterfvEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="level" type="GLint" />
+       <param name="pname" type="GLenum" />
+       <param name="params" type="float *" />
+    </function>
+
     <function name="TextureParameteriEXT">
        <param name="texture" type="GLuint" />
        <param name="target" type="GLenum" />

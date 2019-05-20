@@ -1048,8 +1048,8 @@ const struct function common_desktop_functions_possible[] = {
    { "glGetTextureImageEXT", 11, -1 },
    { "glGetTextureParameterfvEXT", 11, -1 },
    { "glGetTextureParameterivEXT", 11, -1 },
-   //{ "glGetTextureLevelParameterfvEXT", 11, -1 },
-   //{ "glGetTextureLevelParameterivEXT", 11, -1 },
+   { "glGetTextureLevelParameterfvEXT", 11, -1 },
+   { "glGetTextureLevelParameterivEXT", 11, -1 },
    /* GL_EXT_direct_state_access - GL 1.2 */
    { "glTextureImage3DEXT", 12, -1 },
    { "glTextureSubImage3DEXT", 12, -1 },
