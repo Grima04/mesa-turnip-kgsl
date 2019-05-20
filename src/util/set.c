@@ -206,12 +206,11 @@ _mesa_set_clear(struct set *set, void (*delete_function)(struct set_entry *entry
 static struct set_entry *
 set_search(const struct set *ht, uint32_t hash, const void *key)
 {
-   uint32_t hash_address;
-
-   hash_address = hash % ht->size;
+   uint32_t size = ht->size;
+   uint32_t start_address = hash % size;
+   uint32_t double_hash = hash % ht->rehash + 1;
+   uint32_t hash_address = start_address;
    do {
-      uint32_t double_hash;
-
       struct set_entry *entry = ht->table + hash_address;
 
       if (entry_is_free(entry)) {
@@ -222,10 +221,10 @@ set_search(const struct set *ht, uint32_t hash, const void *key)
          }
       }
 
-      double_hash = 1 + hash % ht->rehash;
-
-      hash_address = (hash_address + double_hash) % ht->size;
-   } while (hash_address != hash % ht->size);
+      hash_address += double_hash;
+      if (hash_address >= size)
+         hash_address -= size;
+   } while (hash_address != start_address);
 
    return NULL;
 }
@@ -304,7 +303,6 @@ _mesa_set_resize(struct set *set, uint32_t entries)
 static struct set_entry *
 set_search_or_add(struct set *ht, uint32_t hash, const void *key, bool *found)
 {
-   uint32_t hash_address;
    struct set_entry *available_entry = NULL;
 
    if (ht->entries >= ht->max_entries) {
@@ -313,10 +311,12 @@ set_search_or_add(struct set *ht, uint32_t hash, const void *key, bool *found)
       set_rehash(ht, ht->size_index);
    }
 
-   hash_address = hash % ht->size;
+   uint32_t size = ht->size;
+   uint32_t start_address = hash % size;
+   uint32_t double_hash = hash % ht->rehash + 1;
+   uint32_t hash_address = start_address;
    do {
       struct set_entry *entry = ht->table + hash_address;
-      uint32_t double_hash;
 
       if (!entry_is_present(entry)) {
          /* Stash the first available entry we find */
@@ -334,10 +334,10 @@ set_search_or_add(struct set *ht, uint32_t hash, const void *key, bool *found)
          return entry;
       }
 
-      double_hash = 1 + hash % ht->rehash;
-
-      hash_address = (hash_address + double_hash) % ht->size;
-   } while (hash_address != hash % ht->size);
+      hash_address = hash_address + double_hash;
+      if (hash_address >= size)
+         hash_address -= size;
+   } while (hash_address != start_address);
 
    if (available_entry) {
       /* There is no matching entry, create it. */
