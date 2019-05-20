@@ -1404,10 +1404,13 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    struct x11_swapchain *chain;
    xcb_void_cookie_t cookie;
    VkResult result;
+   VkPresentModeKHR present_mode = wsi_swapchain_get_present_mode(wsi_device, pCreateInfo);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR);
 
-   const unsigned num_images = pCreateInfo->minImageCount;
+   unsigned num_images = pCreateInfo->minImageCount;
+   if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
+      num_images = MAX2(num_images, 5);
 
    xcb_connection_t *conn = x11_surface_get_connection(icd_surface);
    struct wsi_x11_connection *wsi_conn =
@@ -1439,7 +1442,7 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->base.get_wsi_image = x11_get_wsi_image;
    chain->base.acquire_next_image = x11_acquire_next_image;
    chain->base.queue_present = x11_queue_present;
-   chain->base.present_mode = wsi_swapchain_get_present_mode(wsi_device, pCreateInfo);
+   chain->base.present_mode = present_mode;
    chain->base.image_count = num_images;
    chain->conn = conn;
    chain->window = window;
