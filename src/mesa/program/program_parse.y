@@ -124,7 +124,7 @@ static struct asm_instruction *asm_instruction_copy_ctor(
 %locations
 %lex-param   { struct asm_parser_state *state }
 %parse-param { struct asm_parser_state *state }
-%error-verbose
+%define parse.error verbose
 
 %union {
    struct asm_instruction *inst;
