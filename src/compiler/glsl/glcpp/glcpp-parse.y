@@ -155,7 +155,7 @@ add_builtin_define(glcpp_parser_t *parser, const char *name, int value);
 %}
 
 %pure-parser
-%define parse.error verbose
+%error-verbose
 
 %locations
 %initial-action {

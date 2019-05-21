@@ -81,7 +81,7 @@ static bool match_layout_qualifier(const char *s1, const char *s2,
 %expect 0
 
 %pure-parser
-%define parse.error verbose
+%error-verbose
 
 %locations
 %initial-action {
