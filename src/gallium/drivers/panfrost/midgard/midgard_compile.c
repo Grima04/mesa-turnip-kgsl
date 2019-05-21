@@ -1785,8 +1785,10 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 int op = ains->alu.op;
                                 int units = alu_opcode_props[op].props;
 
-                                /* TODO: Promotion of scalars to vectors */
-                                int vector = ((!is_single_component_mask(ains->alu.mask)) || ((units & UNITS_SCALAR) == 0)) && (units & UNITS_ANY_VECTOR);
+                                bool vectorable = units & UNITS_ANY_VECTOR;
+                                bool scalarable = units & UNITS_SCALAR;
+                                bool could_scalar = is_single_component_mask(ains->alu.mask);
+                                bool vector = vectorable && !(could_scalar && scalarable);
 
                                 if (!vector)
                                         assert(units & UNITS_SCALAR);
@@ -1932,11 +1934,9 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                                 }
 
 
-                                                /* ERRATA (?): In a bundle ending in a fragment writeout, the register dependencies of r0 cannot be written within this bundle (discovered in -bshading:shading=phong) */
-                                                if (register_dep_mask & written_mask) {
-                                                        DBG("ERRATA WORKAROUND: Breakup for writeout dependency masks %X vs %X (common %X)\n", register_dep_mask, written_mask, register_dep_mask & written_mask);
+                                                /* Register dependencies of r0 must be out of fragment writeout bundle */
+                                                if (register_dep_mask & written_mask)
                                                         break;
-                                                }
 
                                                 if (written_late)
                                                         break;

@@ -313,17 +313,37 @@ mir_next_op(struct midgard_instruction *ins)
         return list_first_entry(&(ins->link), midgard_instruction, link);
 }
 
-#define mir_foreach_block(ctx, v) list_for_each_entry(struct midgard_block, v, &ctx->blocks, link) 
-#define mir_foreach_block_from(ctx, from, v) list_for_each_entry_from(struct midgard_block, v, from, &ctx->blocks, link)
+#define mir_foreach_block(ctx, v) \
+        list_for_each_entry(struct midgard_block, v, &ctx->blocks, link) 
 
-#define mir_foreach_instr(ctx, v) list_for_each_entry(struct midgard_instruction, v, &ctx->current_block->instructions, link) 
-#define mir_foreach_instr_safe(ctx, v) list_for_each_entry_safe(struct midgard_instruction, v, &ctx->current_block->instructions, link) 
-#define mir_foreach_instr_in_block(block, v) list_for_each_entry(struct midgard_instruction, v, &block->instructions, link) 
-#define mir_foreach_instr_in_block_safe(block, v) list_for_each_entry_safe(struct midgard_instruction, v, &block->instructions, link) 
-#define mir_foreach_instr_in_block_safe_rev(block, v) list_for_each_entry_safe_rev(struct midgard_instruction, v, &block->instructions, link) 
-#define mir_foreach_instr_in_block_from(block, v, from) list_for_each_entry_from(struct midgard_instruction, v, from, &block->instructions, link) 
-#define mir_foreach_instr_in_block_from_rev(block, v, from) list_for_each_entry_from_rev(struct midgard_instruction, v, from, &block->instructions, link) 
+#define mir_foreach_block_from(ctx, from, v) \
+        list_for_each_entry_from(struct midgard_block, v, from, &ctx->blocks, link)
 
+/* The following routines are for use before the scheduler has run */
+
+#define mir_foreach_instr(ctx, v) \
+        list_for_each_entry(struct midgard_instruction, v, &ctx->current_block->instructions, link) 
+
+#define mir_foreach_instr_safe(ctx, v) \
+        list_for_each_entry_safe(struct midgard_instruction, v, &ctx->current_block->instructions, link) 
+
+#define mir_foreach_instr_in_block(block, v) \
+        list_for_each_entry(struct midgard_instruction, v, &block->instructions, link) 
+
+#define mir_foreach_instr_in_block_safe(block, v) \
+        list_for_each_entry_safe(struct midgard_instruction, v, &block->instructions, link) 
+
+#define mir_foreach_instr_in_block_safe_rev(block, v) \
+        list_for_each_entry_safe_rev(struct midgard_instruction, v, &block->instructions, link) 
+
+#define mir_foreach_instr_in_block_from(block, v, from) \
+        list_for_each_entry_from(struct midgard_instruction, v, from, &block->instructions, link) 
+
+#define mir_foreach_instr_in_block_from_rev(block, v, from) \
+        list_for_each_entry_from_rev(struct midgard_instruction, v, from, &block->instructions, link) 
+
+#define mir_foreach_bundle_in_block(block, v) \
+        util_dynarray_foreach(&block->bundles, midgard_bundle, v)
 
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
