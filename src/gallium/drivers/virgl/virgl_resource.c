@@ -87,16 +87,21 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    if (xfer->base.usage & PIPE_TRANSFER_MAP_DIRECTLY)
       return VIRGL_TRANSFER_MAP_ERROR;
 
+   /* We break the logic down into four steps
+    *
+    * step 1: determine the required operations independently
+    * step 2: look for chances to skip the operations
+    * step 3: resolve dependencies between the operations
+    * step 4: execute the operations
+    */
+
    flush = virgl_res_needs_flush(vctx, xfer);
    readback = virgl_res_needs_readback(vctx, res, xfer->base.usage,
                                        xfer->base.level);
-
    /* We need to wait for all cmdbufs, current or previous, that access the
-    * resource to finish, unless synchronization is disabled.  Readback, which
-    * is yet another command and is transparent to the state trackers, should
-    * also be waited for.
+    * resource to finish unless synchronization is disabled.
     */
-   wait = !(xfer->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED) || readback;
+   wait = !(xfer->base.usage & PIPE_TRANSFER_UNSYNCHRONIZED);
 
    /* When the transfer range consists of only uninitialized data, we can
     * assume the GPU is not accessing the range and readback is unnecessary.
@@ -111,7 +116,22 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
       wait = false;
    }
 
-   /* XXX This is incorrect.  Consider
+   /* readback has some implications */
+   if (readback) {
+      /* Readback is yet another command and is transparent to the state
+       * trackers.  It should be waited for in all cases, including when
+       * PIPE_TRANSFER_UNSYNCHRONIZED is set.
+       */
+      wait = true;
+
+      /* When the transfer queue has pending writes to this transfer's region,
+       * we have to flush before readback.
+       */
+      if (!flush && virgl_transfer_queue_is_queued(&vctx->queue, xfer))
+         flush = true;
+   }
+
+   /* XXX This is incorrect and will be removed.  Consider
     *
     *   glTexImage2D(..., data1);
     *   glDrawArrays();
