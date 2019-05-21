@@ -242,12 +242,12 @@ _mesa_hash_table_set_deleted_key(struct hash_table *ht, const void *deleted_key)
 static struct hash_entry *
 hash_table_search(struct hash_table *ht, uint32_t hash, const void *key)
 {
-   uint32_t start_hash_address = hash % ht->size;
+   uint32_t size = ht->size;
+   uint32_t start_hash_address = hash % size;
    uint32_t hash_address = start_hash_address;
+   uint32_t double_hash = 1 + hash % ht->rehash;
 
    do {
-      uint32_t double_hash;
-
       struct hash_entry *entry = ht->table + hash_address;
 
       if (entry_is_free(entry)) {
@@ -258,9 +258,9 @@ hash_table_search(struct hash_table *ht, uint32_t hash, const void *key)
          }
       }
 
-      double_hash = 1 + hash % ht->rehash;
-
-      hash_address = (hash_address + double_hash) % ht->size;
+      hash_address += double_hash;
+      if (hash_address >= size)
+         hash_address -= size;
    } while (hash_address != start_hash_address);
 
    return NULL;
@@ -326,7 +326,6 @@ static struct hash_entry *
 hash_table_insert(struct hash_table *ht, uint32_t hash,
                   const void *key, void *data)
 {
-   uint32_t start_hash_address, hash_address;
    struct hash_entry *available_entry = NULL;
 
    assert(key != NULL);
@@ -337,11 +336,12 @@ hash_table_insert(struct hash_table *ht, uint32_t hash,
       _mesa_hash_table_rehash(ht, ht->size_index);
    }
 
-   start_hash_address = hash % ht->size;
-   hash_address = start_hash_address;
+   uint32_t size = ht->size;
+   uint32_t start_hash_address = hash % size;
+   uint32_t hash_address = start_hash_address;
+   uint32_t double_hash = 1 + hash % ht->rehash;
    do {
       struct hash_entry *entry = ht->table + hash_address;
-      uint32_t double_hash;
 
       if (!entry_is_present(ht, entry)) {
          /* Stash the first available entry we find */
@@ -370,10 +370,9 @@ hash_table_insert(struct hash_table *ht, uint32_t hash,
          return entry;
       }
 
-
-      double_hash = 1 + hash % ht->rehash;
-
-      hash_address = (hash_address + double_hash) % ht->size;
+      hash_address += double_hash;
+      if (hash_address >= size)
+         hash_address -= size;
    } while (hash_address != start_hash_address);
 
    if (available_entry) {
