@@ -24,6 +24,7 @@
 #include "compiler/glsl/ir.h"
 #include "brw_fs.h"
 #include "brw_nir.h"
+#include "brw_eu.h"
 #include "nir_search_helpers.h"
 #include "util/u_math.h"
 #include "util/bitscan.h"
@@ -3503,15 +3504,54 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
        * condition, we emit a CMP of g0 != g0, so all currently executing
        * channels will get turned off.
        */
-      fs_inst *cmp;
+      fs_inst *cmp = NULL;
       if (instr->intrinsic == nir_intrinsic_discard_if) {
-         cmp = bld.CMP(bld.null_reg_f(), get_nir_src(instr->src[0]),
-                       brw_imm_d(0), BRW_CONDITIONAL_Z);
+         nir_alu_instr *alu = nir_src_as_alu_instr(instr->src[0]);
+
+         if (alu != NULL &&
+             alu->op != nir_op_bcsel &&
+             alu->op != nir_op_inot) {
+            /* Re-emit the instruction that generated the Boolean value, but
+             * do not store it.  Since this instruction will be conditional,
+             * other instructions that want to use the real Boolean value may
+             * get garbage.  This was a problem for piglit's fs-discard-exit-2
+             * test.
+             *
+             * Ideally we'd detect that the instruction cannot have a
+             * conditional modifier before emitting the instructions.  Alas,
+             * that is nigh impossible.  Instead, we're going to assume the
+             * instruction (or last instruction) generated can have a
+             * conditional modifier.  If it cannot, fallback to the old-style
+             * compare, and hope dead code elimination will clean up the
+             * extra instructions generated.
+             */
+            nir_emit_alu(bld, alu, false);
+
+            cmp = (fs_inst *) instructions.get_tail();
+            if (cmp->conditional_mod == BRW_CONDITIONAL_NONE) {
+               if (cmp->can_do_cmod())
+                  cmp->conditional_mod = BRW_CONDITIONAL_Z;
+               else
+                  cmp = NULL;
+            } else {
+               /* The old sequence that would have been generated is,
+                * basically, bool_result == false.  This is equivalent to
+                * !bool_result, so negate the old modifier.
+                */
+               cmp->conditional_mod = brw_negate_cmod(cmp->conditional_mod);
+            }
+         }
+
+         if (cmp == NULL) {
+            cmp = bld.CMP(bld.null_reg_f(), get_nir_src(instr->src[0]),
+                          brw_imm_d(0), BRW_CONDITIONAL_Z);
+         }
       } else {
          fs_reg some_reg = fs_reg(retype(brw_vec8_grf(0, 0),
                                        BRW_REGISTER_TYPE_UW));
          cmp = bld.CMP(bld.null_reg_f(), some_reg, some_reg, BRW_CONDITIONAL_NZ);
       }
+
       cmp->predicate = BRW_PREDICATE_NORMAL;
       cmp->flag_subreg = 1;
 
