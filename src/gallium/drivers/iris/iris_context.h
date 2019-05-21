@@ -260,6 +260,10 @@ struct iris_uncompiled_shader {
 
    struct pipe_stream_output_info stream_output;
 
+   /* The serialized NIR (for the disk cache) and size in bytes. */
+   void *ir_cache_binary;
+   uint32_t ir_cache_binary_size;
+
    unsigned program_id;
 
    /** Bitfield of (1 << IRIS_NOS_*) flags. */

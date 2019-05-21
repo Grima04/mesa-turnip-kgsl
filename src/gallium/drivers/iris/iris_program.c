@@ -38,6 +38,7 @@
 #include "util/u_atomic.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_serialize.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/compiler/brw_nir.h"
 #include "iris_context.h"
@@ -1456,6 +1457,26 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
    if (so_info) {
       memcpy(&ish->stream_output, so_info, sizeof(*so_info));
       update_so_info(&ish->stream_output, nir->info.outputs_written);
+   }
+
+   if (screen->disk_cache) {
+      /* Serialize the NIR to a binary blob that we can hash for the disk
+       * cache.  First, drop unnecessary information (like variable names)
+       * so the serialized NIR is smaller, and also to let us detect more
+       * isomorphic shaders when hashing, increasing cache hits.
+       *
+       * We skip this step when not using the disk cache, as variable names
+       * are useful for inspecting and debugging shaders.
+       */
+      nir_strip(nir);
+
+      struct blob blob;
+      blob_init(&blob);
+      nir_serialize(&blob, ish->nir);
+      ish->ir_cache_binary = malloc(blob.size);
+      ish->ir_cache_binary_size = blob.size;
+      memcpy(ish->ir_cache_binary, blob.data, blob.size);
+      blob_finish(&blob);
    }
 
    return ish;
