@@ -112,6 +112,9 @@ void si_test_dma_perf(struct si_screen *sscreen)
 			unsigned cs_dwords_per_thread =
 				test_cs ? cs_dwords_per_thread_list[cs_method % NUM_SHADERS] : 0;
 
+			if (test_sdma && !sctx->dma_cs)
+				continue;
+
 			if (sctx->chip_class == GFX6) {
 				/* GFX6 doesn't support CP DMA operations through L2. */
 				if (test_cp && cache_policy != L2_BYPASS)
