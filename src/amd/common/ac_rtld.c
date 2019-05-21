@@ -280,7 +280,13 @@ bool ac_rtld_open(struct ac_rtld_binary *binary,
 	util_dynarray_foreach(&binary->lds_symbols, struct ac_rtld_symbol, symbol)
 		symbol->part_idx = ~0u;
 
-	unsigned max_lds_size = i.info->chip_class >= GFX7 ? 64 * 1024 : 32 * 1024;
+	unsigned max_lds_size = 64 * 1024;
+
+	if (i.info->chip_class == GFX6 ||
+	    (i.shader_type != MESA_SHADER_COMPUTE &&
+	     i.shader_type != MESA_SHADER_FRAGMENT))
+		max_lds_size = 32 * 1024;
+
 	uint64_t shared_lds_size = 0;
 	if (!layout_symbols(binary->lds_symbols.data, i.num_shared_lds_symbols, &shared_lds_size))
 		goto fail;

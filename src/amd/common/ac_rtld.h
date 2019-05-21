@@ -29,6 +29,7 @@
 #include <stddef.h>
 
 #include "util/u_dynarray.h"
+#include "compiler/shader_enums.h"
 
 struct ac_rtld_part;
 struct ac_shader_config;
@@ -84,6 +85,7 @@ typedef bool (*ac_rtld_get_external_symbol_cb)(
 struct ac_rtld_open_info {
 	const struct radeon_info *info;
 	struct ac_rtld_options options;
+	gl_shader_stage shader_type;
 
 	unsigned num_parts;
 	const char * const *elf_ptrs; /* in-memory ELF objects of each part */

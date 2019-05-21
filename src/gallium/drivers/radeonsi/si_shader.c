@@ -28,6 +28,7 @@
 #include "tgsi/tgsi_strings.h"
 #include "tgsi/tgsi_util.h"
 #include "tgsi/tgsi_dump.h"
+#include "tgsi/tgsi_from_mesa.h"
 
 #include "ac_binary.h"
 #include "ac_exp_param.h"
@@ -5098,6 +5099,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 				  struct ac_rtld_binary *rtld)
 {
 	const struct si_shader_selector *sel = shader->selector;
+	enum pipe_shader_type shader_type = sel ? sel->type : PIPE_SHADER_COMPUTE;
 	const char *part_elfs[5];
 	size_t part_sizes[5];
 	unsigned num_parts = 0;
@@ -5136,6 +5138,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 			.options = {
 				.halt_at_entry = screen->options.halt_shaders,
 			},
+			.shader_type = tgsi_processor_to_shader_stage(shader_type),
 			.num_parts = num_parts,
 			.elf_ptrs = part_elfs,
 			.elf_sizes = part_sizes,
