@@ -292,6 +292,30 @@ hash_table_insert(struct hash_table *ht, uint32_t hash,
                   const void *key, void *data);
 
 static void
+hash_table_insert_rehash(struct hash_table *ht, uint32_t hash,
+                         const void *key, void *data)
+{
+   uint32_t size = ht->size;
+   uint32_t start_hash_address = hash % size;
+   uint32_t hash_address = start_hash_address;
+   uint32_t double_hash = 1 + hash % ht->rehash;
+   do {
+      struct hash_entry *entry = ht->table + hash_address;
+
+      if (likely(entry->key == NULL)) {
+         entry->hash = hash;
+         entry->key = key;
+         entry->data = data;
+         return;
+      }
+
+      hash_address += double_hash;
+      if (hash_address >= size)
+         hash_address -= size;
+   } while (true);
+}
+
+static void
 _mesa_hash_table_rehash(struct hash_table *ht, unsigned new_size_index)
 {
    struct hash_table old_ht;
@@ -316,8 +340,10 @@ _mesa_hash_table_rehash(struct hash_table *ht, unsigned new_size_index)
    ht->deleted_entries = 0;
 
    hash_table_foreach(&old_ht, entry) {
-      hash_table_insert(ht, entry->hash, entry->key, entry->data);
+      hash_table_insert_rehash(ht, entry->hash, entry->key, entry->data);
    }
+
+   ht->entries = old_ht.entries;
 
    ralloc_free(old_ht.table);
 }
