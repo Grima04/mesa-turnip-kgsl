@@ -543,8 +543,7 @@ iris_compile_vs(struct iris_context *ice,
       nir_shader_gather_info(nir, impl);
    }
 
-   if (nir->info.name && strncmp(nir->info.name, "ARB", 3) == 0)
-      prog_data->use_alt_mode = true;
+   prog_data->use_alt_mode = ish->use_alt_mode;
 
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values, &num_cbufs);
@@ -1061,8 +1060,7 @@ iris_compile_fs(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
-   if (nir->info.name && strncmp(nir->info.name, "ARB", 3) == 0)
-      prog_data->use_alt_mode = true;
+   prog_data->use_alt_mode = ish->use_alt_mode;
 
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values, &num_cbufs);
@@ -1489,6 +1487,10 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
       memcpy(&ish->stream_output, so_info, sizeof(*so_info));
       update_so_info(&ish->stream_output, nir->info.outputs_written);
    }
+
+   /* Save this now before potentially dropping nir->info.name */
+   if (nir->info.name && strncmp(nir->info.name, "ARB", 3) == 0)
+      ish->use_alt_mode = true;
 
    if (screen->disk_cache) {
       /* Serialize the NIR to a binary blob that we can hash for the disk
