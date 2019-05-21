@@ -55,29 +55,6 @@ get_new_program_id(struct iris_screen *screen)
    return p_atomic_inc_return(&screen->program_id);
 }
 
-/**
- * An uncompiled, API-facing shader.  This is the Gallium CSO for shaders.
- * It primarily contains the NIR for the shader.
- *
- * Each API-facing shader can be compiled into multiple shader variants,
- * based on non-orthogonal state dependencies, recorded in the shader key.
- *
- * See iris_compiled_shader, which represents a compiled shader variant.
- */
-struct iris_uncompiled_shader {
-   nir_shader *nir;
-
-   struct pipe_stream_output_info stream_output;
-
-   unsigned program_id;
-
-   /** Bitfield of (1 << IRIS_NOS_*) flags. */
-   unsigned nos;
-
-   /** Have any shader variants been compiled yet? */
-   bool compiled_once;
-};
-
 static nir_ssa_def *
 get_aoa_deref_offset(nir_builder *b,
                      nir_deref_instr *deref,
