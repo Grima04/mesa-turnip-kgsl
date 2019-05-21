@@ -450,7 +450,7 @@ fs_visitor::nir_emit_instr(nir_instr *instr)
 
    switch (instr->type) {
    case nir_instr_type_alu:
-      nir_emit_alu(abld, nir_instr_as_alu(instr));
+      nir_emit_alu(abld, nir_instr_as_alu(instr), true);
       break;
 
    case nir_instr_type_deref:
@@ -981,13 +981,14 @@ can_fuse_fmul_fsign(nir_alu_instr *instr, unsigned fsign_src)
 }
 
 void
-fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
+fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
+                         bool need_dest)
 {
    struct brw_wm_prog_key *fs_key = (struct brw_wm_prog_key *) this->key;
    fs_inst *inst;
 
    fs_reg op[4];
-   fs_reg result = prepare_alu_destination_and_sources(bld, instr, op, true);
+   fs_reg result = prepare_alu_destination_and_sources(bld, instr, op, need_dest);
 
    switch (instr->op) {
    case nir_op_mov:
@@ -1836,6 +1837,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
     * to sign extend the low bit to 0/~0
     */
    if (devinfo->gen <= 5 &&
+       !result.is_null() &&
        (instr->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) == BRW_NIR_BOOLEAN_NEEDS_RESOLVE) {
       fs_reg masked = vgrf(glsl_type::int_type);
       bld.AND(masked, result, brw_imm_d(1));
