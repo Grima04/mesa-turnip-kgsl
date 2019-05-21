@@ -1705,7 +1705,8 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 				unsigned i = u_bit_scan(&mask);
 				struct pipe_resource *buffer = samplers->views[i]->texture;
 
-				if (buffer && (!buf || buffer == buf)) {
+				if (buffer && buffer->target == PIPE_BUFFER &&
+				    (!buf || buffer == buf)) {
 					unsigned desc_slot = si_get_sampler_slot(i);
 
 					si_set_buf_desc_address(si_resource(buffer),
@@ -1735,7 +1736,8 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 				unsigned i = u_bit_scan(&mask);
 				struct pipe_resource *buffer = images->views[i].resource;
 
-				if (buffer && (!buf || buffer == buf)) {
+				if (buffer && buffer->target == PIPE_BUFFER &&
+				    (!buf || buffer == buf)) {
 					unsigned desc_slot = si_get_image_slot(i);
 
 					if (images->views[i].access & PIPE_IMAGE_ACCESS_WRITE)
@@ -1766,7 +1768,8 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 			unsigned desc_slot = (*tex_handle)->desc_slot;
 			struct pipe_resource *buffer = view->texture;
 
-			if (buffer && (!buf || buffer == buf)) {
+			if (buffer && buffer->target == PIPE_BUFFER &&
+			    (!buf || buffer == buf)) {
 				si_set_buf_desc_address(si_resource(buffer),
 							view->u.buf.offset,
 							descs->list +
@@ -1793,7 +1796,8 @@ void si_rebind_buffer(struct si_context *sctx, struct pipe_resource *buf)
 			unsigned desc_slot = (*img_handle)->desc_slot;
 			struct pipe_resource *buffer = view->resource;
 
-			if (buffer && (!buf || buffer == buf)) {
+			if (buffer && buffer->target == PIPE_BUFFER &&
+			    (!buf || buffer == buf)) {
 				if (view->access & PIPE_IMAGE_ACCESS_WRITE)
 					si_mark_image_range_valid(view);
 
