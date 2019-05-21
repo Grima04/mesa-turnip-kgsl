@@ -532,6 +532,13 @@ iris_get_compiler_options(struct pipe_screen *pscreen,
    return screen->compiler->glsl_compiler_options[stage].NirOptions;
 }
 
+static struct disk_cache *
+iris_get_disk_shader_cache(struct pipe_screen *pscreen)
+{
+   struct iris_screen *screen = (struct iris_screen *) pscreen;
+   return screen->disk_cache;
+}
+
 static int
 iris_getparam(struct iris_screen *screen, int param, int *value)
 {
@@ -661,6 +668,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->get_compute_param = iris_get_compute_param;
    pscreen->get_paramf = iris_get_paramf;
    pscreen->get_compiler_options = iris_get_compiler_options;
+   pscreen->get_disk_shader_cache = iris_get_disk_shader_cache;
    pscreen->is_format_supported = iris_is_format_supported;
    pscreen->context_create = iris_create_context;
    pscreen->flush_frontbuffer = iris_flush_frontbuffer;
