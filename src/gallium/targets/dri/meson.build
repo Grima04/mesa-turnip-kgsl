@@ -39,7 +39,7 @@ endif
 
 libgallium_dri = shared_library(
   'gallium_dri',
-  [files('target.c'), xmlpool_options_h],
+  files('target.c'),
   include_directories : [
     inc_common, inc_util, inc_dri_common, inc_gallium_drivers,
     inc_gallium_winsys, include_directories('../../state_trackers/dri'),
@@ -54,7 +54,7 @@ libgallium_dri = shared_library(
     libswkmsdri,
   ],
   dependencies : [
-    dep_selinux, dep_expat, dep_libdrm, dep_llvm, dep_thread,
+    dep_selinux, dep_libdrm, dep_llvm, dep_thread, idep_xmlconfig,
     driver_swrast, driver_r300, driver_r600, driver_radeonsi, driver_nouveau,
     driver_kmsro, driver_v3d, driver_vc4, driver_freedreno, driver_etnaviv,
     driver_tegra, driver_i915, driver_svga, driver_virgl,
