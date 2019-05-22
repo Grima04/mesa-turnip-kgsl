@@ -342,20 +342,28 @@ static void radv_pick_resolve_method_images(struct radv_image *src_image,
 	                                                   cmd_buffer->queue_family_index,
 	                                                   cmd_buffer->queue_family_index);
 
-	if (src_format == VK_FORMAT_R16G16_UNORM ||
-	    src_format == VK_FORMAT_R16G16_SNORM)
-		*method = RESOLVE_COMPUTE;
-	else if (vk_format_is_int(src_format))
-		*method = RESOLVE_COMPUTE;
-	else if (src_image->info.array_size > 1 ||
-		 dest_image->info.array_size > 1)
-		*method = RESOLVE_COMPUTE;
+	if (vk_format_is_color(src_format)) {
+		if (src_format == VK_FORMAT_R16G16_UNORM ||
+		    src_format == VK_FORMAT_R16G16_SNORM)
+			*method = RESOLVE_COMPUTE;
+		else if (vk_format_is_int(src_format))
+			*method = RESOLVE_COMPUTE;
+		else if (src_image->info.array_size > 1 ||
+			 dest_image->info.array_size > 1)
+			*method = RESOLVE_COMPUTE;
 	
-	if (radv_layout_dcc_compressed(dest_image, dest_image_layout, queue_mask)) {
-		*method = RESOLVE_FRAGMENT;
-	} else if (dest_image->planes[0].surface.micro_tile_mode !=
-	           src_image->planes[0].surface.micro_tile_mode) {
-		*method = RESOLVE_COMPUTE;
+		if (radv_layout_dcc_compressed(dest_image, dest_image_layout, queue_mask)) {
+			*method = RESOLVE_FRAGMENT;
+		} else if (dest_image->planes[0].surface.micro_tile_mode !=
+		           src_image->planes[0].surface.micro_tile_mode) {
+			*method = RESOLVE_COMPUTE;
+		}
+	} else {
+		if (src_image->info.array_size > 1 ||
+		    dest_image->info.array_size > 1)
+			*method = RESOLVE_COMPUTE;
+		else
+			*method = RESOLVE_FRAGMENT;
 	}
 }
 
@@ -628,6 +636,50 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
 	struct radv_meta_saved_state saved_state;
 	enum radv_resolve_method resolve_method = RESOLVE_HW;
+
+	if (subpass->ds_resolve_attachment) {
+		struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
+		struct radv_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
+		struct radv_image_view *src_iview =
+			cmd_buffer->state.framebuffer->attachments[src_att.attachment].attachment;
+		struct radv_image_view *dst_iview =
+			cmd_buffer->state.framebuffer->attachments[dst_att.attachment].attachment;
+
+		radv_pick_resolve_method_images(src_iview->image,
+						src_iview->vk_format,
+						dst_iview->image,
+						dst_att.layout,
+						cmd_buffer,
+						&resolve_method);
+
+		if ((src_iview->aspect_mask & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+		    subpass->depth_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
+			if (resolve_method == RESOLVE_FRAGMENT) {
+				radv_depth_stencil_resolve_subpass_fs(cmd_buffer,
+								      VK_IMAGE_ASPECT_DEPTH_BIT,
+								      subpass->depth_resolve_mode);
+			} else {
+				assert(resolve_method == RESOLVE_COMPUTE);
+				radv_depth_stencil_resolve_subpass_cs(cmd_buffer,
+								      VK_IMAGE_ASPECT_DEPTH_BIT,
+								      subpass->depth_resolve_mode);
+			}
+		}
+
+		if ((src_iview->aspect_mask & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+		    subpass->stencil_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
+			if (resolve_method == RESOLVE_FRAGMENT) {
+				radv_depth_stencil_resolve_subpass_fs(cmd_buffer,
+								      VK_IMAGE_ASPECT_STENCIL_BIT,
+								      subpass->stencil_resolve_mode);
+			} else {
+				assert(resolve_method == RESOLVE_COMPUTE);
+				radv_depth_stencil_resolve_subpass_cs(cmd_buffer,
+								      VK_IMAGE_ASPECT_STENCIL_BIT,
+								      subpass->stencil_resolve_mode);
+			}
+		}
+	}
 
 	if (!subpass->has_color_resolve)
 		return;
