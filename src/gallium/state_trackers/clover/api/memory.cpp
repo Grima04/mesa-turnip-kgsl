@@ -426,3 +426,18 @@ clEnqueueFillImage(cl_command_queue command_queue, cl_mem image,
    CLOVER_NOT_SUPPORTED_UNTIL("1.2");
    return CL_INVALID_VALUE;
 }
+
+CLOVER_API void *
+clSVMAlloc(cl_context d_ctx,
+           cl_svm_mem_flags flags,
+           size_t size,
+           unsigned int alignment) {
+   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
+   return nullptr;
+}
+
+CLOVER_API void
+clSVMFree(cl_context d_ctx,
+          void *svm_pointer) {
+   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
+}

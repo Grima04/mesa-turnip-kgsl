@@ -333,3 +333,20 @@ clEnqueueNativeKernel(cl_command_queue d_q, void (*func)(void *),
                       const cl_event *d_deps, cl_event *rd_ev) {
    return CL_INVALID_OPERATION;
 }
+
+CLOVER_API cl_int
+clSetKernelArgSVMPointer(cl_kernel d_kern,
+                         cl_uint arg_index,
+                         const void *arg_value) {
+   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
+   return CL_INVALID_VALUE;
+}
+
+CLOVER_API cl_int
+clSetKernelExecInfo(cl_kernel d_kern,
+                    cl_kernel_exec_info param_name,
+                    size_t param_value_size,
+                    const void *param_value) {
+   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
+   return CL_INVALID_VALUE;
+}
