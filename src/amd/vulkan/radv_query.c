@@ -1121,13 +1121,6 @@ VkResult radv_GetQueryPoolResults(
 		char *src = pool->ptr + query * pool->stride;
 		uint32_t available;
 
-		if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
-			if (flags & VK_QUERY_RESULT_WAIT_BIT)
-				while(!*(volatile uint32_t*)(pool->ptr + pool->availability_offset + 4 * query))
-					;
-			available = *(uint32_t*)(pool->ptr + pool->availability_offset + 4 * query);
-		}
-
 		switch (pool->type) {
 		case VK_QUERY_TYPE_TIMESTAMP: {
 			available = *(uint64_t *)src != TIMESTAMP_NOT_READY;
@@ -1187,6 +1180,11 @@ VkResult radv_GetQueryPoolResults(
 			break;
 		}
 		case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
+			if (flags & VK_QUERY_RESULT_WAIT_BIT)
+				while(!*(volatile uint32_t*)(pool->ptr + pool->availability_offset + 4 * query))
+					;
+			available = *(uint32_t*)(pool->ptr + pool->availability_offset + 4 * query);
+
 			if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
 				result = VK_NOT_READY;
 
