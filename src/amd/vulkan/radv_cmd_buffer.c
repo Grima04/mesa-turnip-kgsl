@@ -4389,19 +4389,14 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
 {
 	assert(range->baseMipLevel == 0);
 	assert(range->levelCount == 1 || range->levelCount == VK_REMAINING_ARRAY_LAYERS);
-	unsigned layer_count = radv_get_layerCount(image, range);
-	uint64_t size = image->planes[0].surface.htile_slice_size * layer_count;
 	VkImageAspectFlags aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
-	uint64_t offset = image->offset + image->htile_offset +
-	                  image->planes[0].surface.htile_slice_size * range->baseArrayLayer;
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	VkClearDepthStencilValue value = {};
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 
-	state->flush_bits |= radv_fill_buffer(cmd_buffer, image->bo, offset,
-					      size, clear_word);
+	state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, clear_word);
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 

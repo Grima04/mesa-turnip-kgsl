@@ -1344,6 +1344,18 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 				image->planes[0].surface.dcc_size, value);
 }
 
+uint32_t
+radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
+		 const VkImageSubresourceRange *range, uint32_t value)
+{
+	unsigned layer_count = radv_get_layerCount(image, range);
+	uint64_t size = image->planes[0].surface.htile_slice_size * layer_count;
+	uint64_t offset = image->offset + image->htile_offset +
+	                  image->planes[0].surface.htile_slice_size * range->baseArrayLayer;
+
+	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
+}
+
 static void vi_get_fast_clear_parameters(VkFormat format,
 					 const VkClearColorValue *clear_value,
 					 uint32_t* reset_value,

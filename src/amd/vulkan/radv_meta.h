@@ -211,6 +211,9 @@ uint32_t radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
 			  struct radv_image *image, uint32_t value);
 uint32_t radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 			struct radv_image *image, uint32_t value);
+uint32_t radv_clear_htile(struct radv_cmd_buffer *cmd_buffer,
+			  struct radv_image *image,
+			  const VkImageSubresourceRange *range, uint32_t value);
 
 /* common nir builder helpers */
 #include "nir/nir_builder.h"
