@@ -114,10 +114,11 @@ cmod_propagate_cmp_to_add(const gen_device_info *devinfo, bblock_t *block,
       }
 
    not_match:
-      if (scan_inst->flags_written())
+      if ((scan_inst->flags_written() & flags_written) != 0)
          break;
 
-      read_flag = read_flag || scan_inst->flags_read(devinfo);
+      read_flag = read_flag ||
+                  (scan_inst->flags_read(devinfo) & flags_written) != 0;
    }
 
    return false;
@@ -180,10 +181,11 @@ cmod_propagate_not(const gen_device_info *devinfo, bblock_t *block,
          break;
       }
 
-      if (scan_inst->flags_written())
+      if ((scan_inst->flags_written() & flags_written) != 0)
          break;
 
-      read_flag = read_flag || scan_inst->flags_read(devinfo);
+      read_flag = read_flag ||
+                  (scan_inst->flags_read(devinfo) & flags_written) != 0;
    }
 
    return false;
@@ -423,10 +425,11 @@ opt_cmod_propagation_local(const gen_device_info *devinfo, bblock_t *block)
             break;
          }
 
-         if (scan_inst->flags_written())
+         if ((scan_inst->flags_written() & flags_written) != 0)
             break;
 
-         read_flag = read_flag || scan_inst->flags_read(devinfo);
+         read_flag = read_flag ||
+                     (scan_inst->flags_read(devinfo) & flags_written) != 0;
       }
    }
 
