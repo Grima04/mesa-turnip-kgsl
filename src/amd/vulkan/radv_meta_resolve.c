@@ -800,6 +800,22 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 		radv_decompress_resolve_src(cmd_buffer, src_image,
 					    src_att.layout, 1, &region);
 	}
+
+	if (subpass->ds_resolve_attachment) {
+		struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
+		struct radv_image_view *src_iview =
+			fb->attachments[src_att.attachment].attachment;
+		struct radv_image *src_image = src_iview->image;
+
+		VkImageResolve region = {};
+		region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		region.srcSubresource.mipLevel = 0;
+		region.srcSubresource.baseArrayLayer = src_iview->base_layer;
+		region.srcSubresource.layerCount = layer_count;
+
+		radv_decompress_resolve_src(cmd_buffer, src_image,
+					    src_att.layout, 1, &region);
+	}
 }
 
 /**
@@ -825,7 +841,7 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer,
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		barrier.image = radv_image_to_handle(src_image);
 		barrier.subresourceRange = (VkImageSubresourceRange) {
-			.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.aspectMask = region->srcSubresource.aspectMask,
 			.baseMipLevel = region->srcSubresource.mipLevel,
 			.levelCount = 1,
 			.baseArrayLayer = src_base_layer,
