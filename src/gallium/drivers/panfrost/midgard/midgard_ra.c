@@ -22,7 +22,101 @@
  */
 
 #include "compiler.h"
+#include "midgard_ops.h"
 #include "util/register_allocate.h"
+#include "util/u_math.h"
+
+/* For work registers, we can subdivide in various ways. So we create
+ * classes for the various sizes and conflict accordingly, keeping in
+ * mind that physical registers are divided along 128-bit boundaries.
+ * The important part is that 128-bit boundaries are not crossed.
+ *
+ * For each 128-bit register, we can subdivide to 32-bits 10 ways
+ *
+ * vec4: xyzw
+ * vec3: xyz, yzw
+ * vec2: xy, yz, zw,
+ * vec1: x, y, z, w
+ *
+ * For each 64-bit register, we can subdivide similarly to 16-bit
+ * (TODO: half-float RA, not that we support fp16 yet)
+ */
+
+#define WORK_STRIDE 10
+
+/* Prepacked masks/swizzles for virtual register types */
+static unsigned reg_type_to_mask[WORK_STRIDE] = {
+        0xF,                                    /* xyzw */
+        0x7, 0x7 << 1,                          /* xyz */
+        0x3, 0x3 << 1, 0x3 << 2,                /* xy */
+        0x1, 0x1 << 1, 0x1 << 2, 0x1 << 3       /* x */
+};
+
+static unsigned reg_type_to_swizzle[WORK_STRIDE] = {
+        SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+
+        SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+        SWIZZLE(COMPONENT_Y, COMPONENT_Z, COMPONENT_W, COMPONENT_W),
+
+        SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+        SWIZZLE(COMPONENT_Y, COMPONENT_Z, COMPONENT_Z, COMPONENT_W),
+        SWIZZLE(COMPONENT_Z, COMPONENT_W, COMPONENT_Z, COMPONENT_W),
+
+        SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+        SWIZZLE(COMPONENT_Y, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+        SWIZZLE(COMPONENT_Z, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+        SWIZZLE(COMPONENT_W, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+};
+
+struct phys_reg {
+        unsigned reg;
+        unsigned mask;
+        unsigned swizzle;
+};
+
+/* Given the mask/swizzle of both the register and the original source,
+ * compose to find the actual mask/swizzle to give the hardware */
+
+static unsigned
+compose_writemask(unsigned mask, struct phys_reg reg)
+{
+        /* Note: the reg mask is guaranteed to be contiguous. So we shift
+         * into the X place, compose via a simple AND, and shift back */
+
+        unsigned shift = __builtin_ctz(reg.mask);
+        return ((reg.mask >> shift) & mask) << shift;
+}
+
+static unsigned
+compose_swizzle(unsigned swizzle, unsigned mask, struct phys_reg reg, struct phys_reg dst)
+{
+        unsigned out = 0;
+
+        for (unsigned c = 0; c < 4; ++c) {
+                unsigned s = (swizzle >> (2*c)) & 0x3;
+                unsigned q = (reg.swizzle >> (2*s)) & 0x3;
+
+                out |= (q << (2*c));
+        }
+
+        /* Based on the register mask, we need to adjust over. E.g if we're
+         * writing to yz, a base swizzle of xy__ becomes _xy_. Save the
+         * original first component (x). But to prevent duplicate shifting
+         * (only applies to ALU -- mask param is set to xyzw out on L/S to
+         * prevent changes), we have to account for the shift inherent to the
+         * original writemask */
+
+        unsigned rep = out & 0x3;
+        unsigned shift = __builtin_ctz(dst.mask) - __builtin_ctz(mask);
+        unsigned shifted = out << (2*shift);
+
+        /* ..but we fill in the gaps so it appears to replicate */
+
+        for (unsigned s = 0; s < shift; ++s)
+                shifted |= rep << (2*s);
+
+        return shifted;
+}
 
 /* When we're 'squeezing down' the values in the IR, we maintain a hash
  * as such */
@@ -54,7 +148,7 @@ midgard_ra_select_callback(struct ra_graph *g, BITSET_WORD *regs, void *data)
 {
         /* Choose the first available register to minimise reported register pressure */
 
-        for (int i = 0; i < 16; ++i) {
+        for (int i = 0; i < (16 * WORK_STRIDE); ++i) {
                 if (BITSET_TEST(regs, i)) {
                         return i;
                 }
@@ -64,30 +158,48 @@ midgard_ra_select_callback(struct ra_graph *g, BITSET_WORD *regs, void *data)
         return 0;
 }
 
-/* Determine the actual hardware from the index based on the RA results or special values */
+/* Helper to return the default phys_reg for a given register */
 
-static int
-dealias_register(compiler_context *ctx, struct ra_graph *g, int reg, int maxreg)
+static struct phys_reg
+default_phys_reg(int reg)
 {
+        struct phys_reg r = {
+                .reg = reg,
+                .mask = 0xF, /* xyzw */
+                .swizzle = 0xE4 /* xyzw */
+        };
+
+        return r;
+}
+
+/* Determine which physical register, swizzle, and mask a virtual
+ * register corresponds to */
+
+static struct phys_reg
+index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
+{
+        /* Check for special cases */
         if (reg >= SSA_FIXED_MINIMUM)
-                return SSA_REG_FROM_FIXED(reg);
+                return default_phys_reg(SSA_REG_FROM_FIXED(reg));
+        else if ((reg < 0) || !g)
+                return default_phys_reg(REGISTER_UNUSED);
 
-        if (reg >= 0) {
-                assert(reg < maxreg);
-                assert(g);
-                int r = ra_get_node_reg(g, reg);
-                ctx->work_registers = MAX2(ctx->work_registers, r);
-                return r;
-        }
+        /* Special cases aside, we pick the underlying register */
+        int virt = ra_get_node_reg(g, reg);
 
-        switch (reg) {
-        case SSA_UNUSED_0:
-        case SSA_UNUSED_1:
-                return REGISTER_UNUSED;
+        /* Divide out the register and classification */
+        int phys = virt / WORK_STRIDE;
+        int type = virt % WORK_STRIDE;
 
-        default:
-                unreachable("Unknown SSA register alias");
-        }
+        struct phys_reg r = {
+                .reg = phys,
+                .mask = reg_type_to_mask[type],
+                .swizzle = reg_type_to_swizzle[type]
+        };
+
+        /* Report that we actually use this register, and return it */
+        ctx->work_registers = MAX2(ctx->work_registers, phys);
+        return r;
 }
 
 /* This routine performs the actual register allocation. It should be succeeded
@@ -96,23 +208,54 @@ dealias_register(compiler_context *ctx, struct ra_graph *g, int reg, int maxreg)
 struct ra_graph *
 allocate_registers(compiler_context *ctx)
 {
+        /* The number of vec4 work registers available depends on when the
+         * uniforms start, so compute that first */
+
+        int work_count = 16 - MAX2((ctx->uniform_cutoff - 8), 0);
+
+        int virtual_count = work_count * WORK_STRIDE;
+
         /* First, initialize the RA */
-        struct ra_regs *regs = ra_alloc_reg_set(NULL, 32, true);
+        struct ra_regs *regs = ra_alloc_reg_set(NULL, virtual_count, true);
 
-        /* Create a primary (general purpose) class, as well as special purpose
-         * pipeline register classes */
+        int work_vec4 = ra_alloc_reg_class(regs);
+        int work_vec3 = ra_alloc_reg_class(regs);
+        int work_vec2 = ra_alloc_reg_class(regs);
+        int work_vec1 = ra_alloc_reg_class(regs);
 
-        int primary_class = ra_alloc_reg_class(regs);
-        int varying_class  = ra_alloc_reg_class(regs);
+        unsigned classes[4] = {
+                work_vec1,
+                work_vec2,
+                work_vec3,
+                work_vec4
+        };
 
         /* Add the full set of work registers */
-        int work_count = 16 - MAX2((ctx->uniform_cutoff - 8), 0);
-        for (int i = 0; i < work_count; ++i)
-                ra_class_add_reg(regs, primary_class, i);
+        for (int i = 0; i < work_count; ++i) {
+                int base = WORK_STRIDE * i;
 
-        /* Add special registers */
-        ra_class_add_reg(regs, varying_class, REGISTER_VARYING_BASE);
-        ra_class_add_reg(regs, varying_class, REGISTER_VARYING_BASE + 1);
+                /* Build a full set of subdivisions */
+                ra_class_add_reg(regs, work_vec4, base);
+                ra_class_add_reg(regs, work_vec3, base + 1);
+                ra_class_add_reg(regs, work_vec3, base + 2);
+                ra_class_add_reg(regs, work_vec2, base + 3);
+                ra_class_add_reg(regs, work_vec2, base + 4);
+                ra_class_add_reg(regs, work_vec2, base + 5);
+                ra_class_add_reg(regs, work_vec1, base + 6);
+                ra_class_add_reg(regs, work_vec1, base + 7);
+                ra_class_add_reg(regs, work_vec1, base + 8);
+                ra_class_add_reg(regs, work_vec1, base + 9);
+
+                for (unsigned i = 0; i < 10; ++i) {
+                        for (unsigned j = 0; j < 10; ++j) {
+                                unsigned mask1 = reg_type_to_mask[i];
+                                unsigned mask2 = reg_type_to_mask[j];
+
+                                if (mask1 & mask2)
+                                        ra_add_reg_conflict(regs, base + i, base + j);
+                        }
+                }
+        }
 
         /* We're done setting up */
         ra_set_finalize(regs, NULL);
@@ -122,9 +265,12 @@ allocate_registers(compiler_context *ctx)
                 mir_foreach_instr_in_block(block, ins) {
                         if (ins->compact_branch) continue;
 
-                        ins->ssa_args.src0 = find_or_allocate_temp(ctx, ins->ssa_args.src0);
-                        ins->ssa_args.src1 = find_or_allocate_temp(ctx, ins->ssa_args.src1);
                         ins->ssa_args.dest = find_or_allocate_temp(ctx, ins->ssa_args.dest);
+                        ins->ssa_args.src0 = find_or_allocate_temp(ctx, ins->ssa_args.src0);
+
+                        if (!ins->ssa_args.inline_constant)
+                                ins->ssa_args.src1 = find_or_allocate_temp(ctx, ins->ssa_args.src1);
+
                 }
         }
 
@@ -137,21 +283,40 @@ allocate_registers(compiler_context *ctx)
         int nodes = ctx->temp_count;
         struct ra_graph *g = ra_alloc_interference_graph(regs, nodes);
 
-        /* Set everything to the work register class, unless it has somewhere
-         * special to go */
+        /* Determine minimum size needed to hold values, to indirectly
+         * determine class */
+
+        unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_block(ctx, block) {
                 mir_foreach_instr_in_block(block, ins) {
                         if (ins->compact_branch) continue;
-
                         if (ins->ssa_args.dest < 0) continue;
-
                         if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
 
-                        int class = primary_class;
+                        /* Default to vec4 if we're not sure */
 
-                        ra_set_node_class(g, ins->ssa_args.dest, class);
+                        int mask = 0xF;
+
+                        if (ins->type == TAG_ALU_4)
+                                mask = squeeze_writemask(ins->alu.mask);
+                        else if (ins->type == TAG_LOAD_STORE_4)
+                                mask = ins->load_store.mask;
+
+                        int class = util_logbase2(mask) + 1;
+
+                        /* Use the largest class if there's ambiguity, this
+                         * handles partial writes */
+
+                        int dest = ins->ssa_args.dest;
+                        found_class[dest] = MAX2(found_class[dest], class);
                 }
+        }
+
+        for (unsigned i = 0; i < ctx->temp_count; ++i) {
+                unsigned class = found_class[i];
+                if (!class) continue;
+                ra_set_node_class(g, i, classes[class - 1]);
         }
 
         /* Determine liveness */
@@ -243,7 +408,85 @@ allocate_registers(compiler_context *ctx)
 
 /* Once registers have been decided via register allocation
  * (allocate_registers), we need to rewrite the MIR to use registers instead of
- * SSA */
+ * indices */
+
+static void
+install_registers_instr(
+                compiler_context *ctx,
+                struct ra_graph *g,
+                midgard_instruction *ins)
+{
+        ssa_args args = ins->ssa_args;
+
+        switch (ins->type) {
+        case TAG_ALU_4: {
+                int adjusted_src = args.inline_constant ? -1 : args.src1;
+                struct phys_reg src1 = index_to_reg(ctx, g, args.src0);
+                struct phys_reg src2 = index_to_reg(ctx, g, adjusted_src);
+                struct phys_reg dest = index_to_reg(ctx, g, args.dest);
+
+                unsigned mask = squeeze_writemask(ins->alu.mask);
+                ins->alu.mask = expand_writemask(compose_writemask(mask, dest));
+
+                /* Adjust the dest mask if necessary. Mostly this is a no-op
+                 * but it matters for dot products */
+                dest.mask = effective_writemask(&ins->alu);
+
+                midgard_vector_alu_src mod1 =
+                        vector_alu_from_unsigned(ins->alu.src1);
+                mod1.swizzle = compose_swizzle(mod1.swizzle, mask, src1, dest);
+                ins->alu.src1 = vector_alu_srco_unsigned(mod1);
+
+                ins->registers.src1_reg = src1.reg;
+
+                ins->registers.src2_imm = args.inline_constant;
+
+                if (args.inline_constant) {
+                        /* Encode inline 16-bit constant as a vector by default */
+
+                        ins->registers.src2_reg = ins->inline_constant >> 11;
+
+                        int lower_11 = ins->inline_constant & ((1 << 12) - 1);
+
+                        uint16_t imm = ((lower_11 >> 8) & 0x7) | ((lower_11 & 0xFF) << 3);
+                        ins->alu.src2 = imm << 2;
+                } else {
+                        midgard_vector_alu_src mod2 =
+                                vector_alu_from_unsigned(ins->alu.src2);
+                        mod2.swizzle = compose_swizzle(mod2.swizzle, mask, src2, dest);
+                        ins->alu.src2 = vector_alu_srco_unsigned(mod2);
+
+                        ins->registers.src2_reg = src2.reg;
+                }
+
+                ins->registers.out_reg = dest.reg;
+                break;
+        }
+
+        case TAG_LOAD_STORE_4: {
+                if (OP_IS_STORE(ins->load_store.op)) {
+                        /* TODO: use ssa_args for st_vary */
+                        ins->load_store.reg = 0;
+                } else {
+                        struct phys_reg src = index_to_reg(ctx, g, args.dest);
+
+                        ins->load_store.reg = src.reg;
+
+                        ins->load_store.swizzle = compose_swizzle(
+                                        ins->load_store.swizzle, 0xF,
+                                        default_phys_reg(0), src);
+
+                        ins->load_store.mask = compose_writemask(
+                                        ins->load_store.mask, src);
+                }
+
+                break;
+        }
+
+        default:
+                break;
+        }
+}
 
 void
 install_registers(compiler_context *ctx, struct ra_graph *g)
@@ -251,49 +494,7 @@ install_registers(compiler_context *ctx, struct ra_graph *g)
         mir_foreach_block(ctx, block) {
                 mir_foreach_instr_in_block(block, ins) {
                         if (ins->compact_branch) continue;
-
-                        ssa_args args = ins->ssa_args;
-
-                        switch (ins->type) {
-                        case TAG_ALU_4:
-                                ins->registers.src1_reg = dealias_register(ctx, g, args.src0, ctx->temp_count);
-
-                                ins->registers.src2_imm = args.inline_constant;
-
-                                if (args.inline_constant) {
-                                        /* Encode inline 16-bit constant as a vector by default */
-
-                                        ins->registers.src2_reg = ins->inline_constant >> 11;
-
-                                        int lower_11 = ins->inline_constant & ((1 << 12) - 1);
-
-                                        uint16_t imm = ((lower_11 >> 8) & 0x7) | ((lower_11 & 0xFF) << 3);
-                                        ins->alu.src2 = imm << 2;
-                                } else {
-                                        ins->registers.src2_reg = dealias_register(ctx, g, args.src1, ctx->temp_count);
-                                }
-
-                                ins->registers.out_reg = dealias_register(ctx, g, args.dest, ctx->temp_count);
-
-                                break;
-
-                        case TAG_LOAD_STORE_4: {
-                                if (OP_IS_STORE_VARY(ins->load_store.op)) {
-                                        /* TODO: use ssa_args for st_vary */
-                                        ins->load_store.reg = 0;
-                                } else {
-                                        bool has_dest = args.dest >= 0;
-                                        int ssa_arg = has_dest ? args.dest : args.src0;
-
-                                        ins->load_store.reg = dealias_register(ctx, g, ssa_arg, ctx->temp_count);
-                                }
-
-                                break;
-                        }
-
-                        default:
-                                break;
-                        }
+                        install_registers_instr(ctx, g, ins);
                 }
         }
 
