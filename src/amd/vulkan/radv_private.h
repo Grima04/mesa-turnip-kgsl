@@ -587,6 +587,21 @@ struct radv_meta_state {
 			VkRenderPass render_pass[NUM_META_FS_KEYS][RADV_META_DST_LAYOUT_COUNT];
 			VkPipeline   pipeline[NUM_META_FS_KEYS];
 		} rc[MAX_SAMPLES_LOG2];
+
+		VkRenderPass depth_render_pass;
+		VkPipeline depth_zero_pipeline;
+		struct {
+			VkPipeline average_pipeline;
+			VkPipeline max_pipeline;
+			VkPipeline min_pipeline;
+		} depth[MAX_SAMPLES_LOG2];
+
+		VkRenderPass stencil_render_pass;
+		VkPipeline stencil_zero_pipeline;
+		struct {
+			VkPipeline max_pipeline;
+			VkPipeline min_pipeline;
+		} stencil[MAX_SAMPLES_LOG2];
 	} resolve_fragment;
 
 	struct {
@@ -1242,6 +1257,9 @@ void radv_cmd_buffer_clear_subpass(struct radv_cmd_buffer *cmd_buffer);
 void radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer);
 void radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer);
 void radv_cmd_buffer_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer);
+void radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
+					   VkImageAspectFlags aspects,
+					   VkResolveModeFlagBitsKHR resolve_mode);
 void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples);
 unsigned radv_get_default_max_sample_dist(int log_samples);
 void radv_device_init_msaa(struct radv_device *device);
