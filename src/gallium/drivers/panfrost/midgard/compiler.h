@@ -169,7 +169,7 @@ typedef struct midgard_bundle {
 
         /* Instructions contained by the bundle */
         int instruction_count;
-        midgard_instruction instructions[5];
+        midgard_instruction *instructions[5];
 
         /* Bundle-wide ALU configuration */
         int padding;
@@ -177,13 +177,6 @@ typedef struct midgard_bundle {
         bool has_embedded_constants;
         float constants[4];
         bool has_blend_constant;
-
-        uint16_t register_words[8];
-        int register_words_count;
-
-        uint64_t body_words[8];
-        size_t body_size[8];
-        int body_words_count;
 } midgard_bundle;
 
 typedef struct compiler_context {
@@ -422,4 +415,11 @@ struct ra_graph* allocate_registers(compiler_context *ctx);
 void install_registers(compiler_context *ctx, struct ra_graph *g);
 bool mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src);
 
+/* Final emission */
+
+void emit_binary_bundle(
+                compiler_context *ctx,
+                midgard_bundle *bundle,
+                struct util_dynarray *emission,
+                int next_tag);
 #endif

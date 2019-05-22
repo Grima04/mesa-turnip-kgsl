@@ -28,6 +28,8 @@ files_panfrost = files(
 
   'midgard/midgard_compile.c',
   'midgard/midgard_print.c',
+  'midgard/midgard_schedule.c',
+  'midgard/midgard_emit.c',
   'midgard/midgard_ra.c',
   'midgard/midgard_liveness.c',
   'midgard/midgard_ops.c',

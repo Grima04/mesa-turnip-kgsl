@@ -22,6 +22,7 @@
 #ifndef __MDG_HELPERS_H
 #define __MDG_HELPERS_H
 
+#include "util/macros.h"
 #include <string.h>
 
 #define OP_IS_STORE_VARY(op) (\
@@ -91,6 +92,25 @@
 #define TAG_ALU_8 0x9
 #define TAG_ALU_12 0xA
 #define TAG_ALU_16 0xB
+
+static inline int
+quadword_size(int tag)
+{
+        switch (tag) {
+        case TAG_ALU_4:
+        case TAG_LOAD_STORE_4:
+        case TAG_TEXTURE_4:
+                return 1;
+        case TAG_ALU_8:
+                return 2;
+        case TAG_ALU_12:
+                return 3;
+        case TAG_ALU_16:
+                return 4;
+        default:
+                unreachable("Unknown tag");
+        }
+}
 
 /* Special register aliases */
 
