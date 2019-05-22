@@ -434,6 +434,22 @@
       <param name="pixels" type="GLvoid*" />
    </function>
 
+   <function name="GetMultiTexLevelParameterivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLint*" />
+   </function>
+
+   <function name="GetMultiTexLevelParameterfvEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="level" type="GLint" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLfloat*" />
+   </function>
+
    <function name="MultiTexImage1DEXT">
       <param name="texunit" type="GLenum" />
       <param name="target" type="GLenum" />

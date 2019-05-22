@@ -1978,6 +1978,30 @@ _mesa_GetTextureLevelParameterfvEXT(GLuint texture, GLenum target, GLint level,
 }
 
 void GLAPIENTRY
+_mesa_GetMultiTexLevelParameterfvEXT(GLenum texunit, GLenum target, GLint level,
+                                     GLenum pname, GLfloat *params)
+{
+   struct gl_texture_object *texObj;
+   GLint iparam;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glGetMultiTexLevelParameterfvEXT");
+   if (!texObj)
+      return;
+
+   if (!valid_tex_level_parameteriv_target(ctx, texObj->Target, true))
+      return;
+
+   get_tex_level_parameteriv(ctx, texObj, texObj->Target, level,
+                             pname, &iparam, true);
+
+   *params = (GLfloat) iparam;
+}
+
+void GLAPIENTRY
 _mesa_GetTextureLevelParameteriv(GLuint texture, GLint level,
                                  GLenum pname, GLint *params)
 {
@@ -2005,6 +2029,27 @@ _mesa_GetTextureLevelParameterivEXT(GLuint texture, GLenum target, GLint level,
 
    texObj = _mesa_lookup_or_create_texture(ctx, target, texture, false, true,
                                            "glGetTextureLevelParameterivEXT");
+   if (!texObj)
+      return;
+
+   if (!valid_tex_level_parameteriv_target(ctx, texObj->Target, true))
+      return;
+
+   get_tex_level_parameteriv(ctx, texObj, texObj->Target, level,
+                             pname, params, true);
+}
+
+void GLAPIENTRY
+_mesa_GetMultiTexLevelParameterivEXT(GLenum texunit, GLenum target, GLint level,
+                                     GLenum pname, GLint *params)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glGetMultiTexLevelParameterivEXT");
    if (!texObj)
       return;
 
