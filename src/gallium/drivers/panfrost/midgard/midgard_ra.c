@@ -88,7 +88,8 @@ compose_writemask(unsigned mask, struct phys_reg reg)
 }
 
 static unsigned
-compose_swizzle(unsigned swizzle, unsigned mask, struct phys_reg reg, struct phys_reg dst)
+compose_swizzle(unsigned swizzle, unsigned mask,
+                struct phys_reg reg, struct phys_reg dst)
 {
         unsigned out = 0;
 
@@ -127,7 +128,8 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
         if ((hash < 0) || (hash >= SSA_FIXED_MINIMUM))
                 return hash;
 
-        unsigned temp = (uintptr_t) _mesa_hash_table_u64_search(ctx->hash_to_temp, hash + 1);
+        unsigned temp = (uintptr_t) _mesa_hash_table_u64_search(
+                        ctx->hash_to_temp, hash + 1);
 
         if (temp)
                 return temp - 1;
@@ -136,7 +138,8 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
         temp = ctx->temp_count++;
         ctx->max_hash = MAX2(ctx->max_hash, hash);
 
-        _mesa_hash_table_u64_insert(ctx->hash_to_temp, hash + 1, (void *) ((uintptr_t) temp + 1));
+        _mesa_hash_table_u64_insert(ctx->hash_to_temp,
+                        hash + 1, (void *) ((uintptr_t) temp + 1));
 
         return temp;
 }
@@ -146,7 +149,7 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
 static unsigned int
 midgard_ra_select_callback(struct ra_graph *g, BITSET_WORD *regs, void *data)
 {
-        /* Choose the first available register to minimise reported register pressure */
+        /* Choose the first available register to minimise register pressure */
 
         for (int i = 0; i < (16 * WORK_STRIDE); ++i) {
                 if (BITSET_TEST(regs, i)) {
@@ -231,7 +234,7 @@ allocate_registers(compiler_context *ctx)
         };
 
         /* Add the full set of work registers */
-        for (int i = 0; i < work_count; ++i) {
+        for (unsigned i = 0; i < work_count; ++i) {
                 int base = WORK_STRIDE * i;
 
                 /* Build a full set of subdivisions */
@@ -246,13 +249,15 @@ allocate_registers(compiler_context *ctx)
                 ra_class_add_reg(regs, work_vec1, base + 8);
                 ra_class_add_reg(regs, work_vec1, base + 9);
 
-                for (unsigned i = 0; i < 10; ++i) {
-                        for (unsigned j = 0; j < 10; ++j) {
-                                unsigned mask1 = reg_type_to_mask[i];
-                                unsigned mask2 = reg_type_to_mask[j];
+                for (unsigned a = 0; a < 10; ++a) {
+                        unsigned mask1 = reg_type_to_mask[a];
+
+                        for (unsigned b = 0; b < 10; ++b) {
+                                unsigned mask2 = reg_type_to_mask[b];
 
                                 if (mask1 & mask2)
-                                        ra_add_reg_conflict(regs, base + i, base + j);
+                                        ra_add_reg_conflict(regs,
+                                                        base + a, base + b);
                         }
                 }
         }
@@ -344,7 +349,8 @@ allocate_registers(compiler_context *ctx)
                         if (ins->ssa_args.dest < 0) continue;
 
                         if (ins->ssa_args.dest < SSA_FIXED_MINIMUM) {
-                                /* If this destination is not yet live, it is now since we just wrote it */
+                                /* If this destination is not yet live, it is
+                                 * now since we just wrote it */
 
                                 int dest = ins->ssa_args.dest;
 
@@ -357,7 +363,9 @@ allocate_registers(compiler_context *ctx)
                          * invocations, and if there are none, the source dies
                          * */
 
-                        int sources[2] = { ins->ssa_args.src0, ins->ssa_args.src1 };
+                        int sources[2] = {
+                                ins->ssa_args.src0, ins->ssa_args.src1
+                        };
 
                         for (int src = 0; src < 2; ++src) {
                                 int s = sources[src];
@@ -388,7 +396,10 @@ allocate_registers(compiler_context *ctx)
 
         for (int i = 0; i < nodes; ++i) {
                 for (int j = i + 1; j < nodes; ++j) {
-                        if (!(live_start[i] >= live_end[j] || live_start[j] >= live_end[i]))
+                        bool j_overlaps_i = live_start[j] < live_end[i];
+                        bool i_overlaps_j = live_end[j] < live_start[i];
+
+                        if (i_overlaps_j || j_overlaps_i)
                                 ra_add_node_interference(g, i, j);
                 }
         }
@@ -442,18 +453,21 @@ install_registers_instr(
                 ins->registers.src2_imm = args.inline_constant;
 
                 if (args.inline_constant) {
-                        /* Encode inline 16-bit constant as a vector by default */
+                        /* Encode inline 16-bit constant. See disassembler for
+                         * where the algorithm is from */
 
                         ins->registers.src2_reg = ins->inline_constant >> 11;
 
                         int lower_11 = ins->inline_constant & ((1 << 12) - 1);
+                        uint16_t imm = ((lower_11 >> 8) & 0x7) |
+                                ((lower_11 & 0xFF) << 3);
 
-                        uint16_t imm = ((lower_11 >> 8) & 0x7) | ((lower_11 & 0xFF) << 3);
                         ins->alu.src2 = imm << 2;
                 } else {
                         midgard_vector_alu_src mod2 =
                                 vector_alu_from_unsigned(ins->alu.src2);
-                        mod2.swizzle = compose_swizzle(mod2.swizzle, mask, src2, dest);
+                        mod2.swizzle = compose_swizzle(
+                                        mod2.swizzle, mask, src2, dest);
                         ins->alu.src2 = vector_alu_srco_unsigned(mod2);
 
                         ins->registers.src2_reg = src2.reg;
