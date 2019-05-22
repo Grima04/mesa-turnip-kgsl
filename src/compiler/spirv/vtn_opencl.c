@@ -213,25 +213,34 @@ _handle_v_load_store(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
 
    const struct glsl_type *dest_type = type->type;
    unsigned components = glsl_get_vector_elements(dest_type);
-   unsigned stride = components * glsl_get_bit_size(dest_type) / 8;
 
    nir_ssa_def *offset = vtn_ssa_value(b, w[5 + a])->def;
    struct vtn_value *p = vtn_value(b, w[6 + a], vtn_value_type_pointer);
 
+   struct vtn_ssa_value *comps[NIR_MAX_VEC_COMPONENTS];
+   nir_ssa_def *ncomps[NIR_MAX_VEC_COMPONENTS];
+
+   nir_ssa_def *moffset = nir_imul_imm(&b->nb, offset, components);
    nir_deref_instr *deref = vtn_pointer_to_deref(b, p->pointer);
 
-   /* 1. cast to vec type with adjusted stride */
-   deref = nir_build_deref_cast(&b->nb, &deref->dest.ssa, deref->mode,
-                                dest_type, stride);
-   /* 2. deref ptr_as_array */
-   deref = nir_build_deref_ptr_as_array(&b->nb, deref, offset);
+   for (int i = 0; i < components; i++) {
+      nir_ssa_def *coffset = nir_iadd_imm(&b->nb, moffset, i);
+      nir_deref_instr *arr_deref = nir_build_deref_ptr_as_array(&b->nb, deref, coffset);
 
+      if (load) {
+         comps[i] = vtn_local_load(b, arr_deref, p->type->access);
+         ncomps[i] = comps[i]->def;
+      } else {
+         struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, glsl_scalar_type(glsl_get_base_type(dest_type)));
+         struct vtn_ssa_value *val = vtn_ssa_value(b, w[5]);
+         ssa->def = vtn_vector_extract(b, val->def, i);
+         vtn_local_store(b, ssa, arr_deref, p->type->access);
+      }
+   }
    if (load) {
-      struct vtn_ssa_value *val = vtn_local_load(b, deref, p->type->access);
-      vtn_push_ssa(b, w[2], type, val);
-   } else {
-      struct vtn_ssa_value *val = vtn_ssa_value(b, w[5]);
-      vtn_local_store(b, val, deref, p->type->access);
+      struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, dest_type);
+      ssa->def = nir_vec(&b->nb, ncomps, components);
+      vtn_push_ssa(b, w[2], type, ssa);
    }
 }
 
