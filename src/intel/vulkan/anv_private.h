@@ -1947,13 +1947,52 @@ enum anv_cmd_dirty_bits {
    ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK      = 1 << 6, /* VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK */
    ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK        = 1 << 7, /* VK_DYNAMIC_STATE_STENCIL_WRITE_MASK */
    ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE         = 1 << 8, /* VK_DYNAMIC_STATE_STENCIL_REFERENCE */
-   ANV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 9) - 1,
    ANV_CMD_DIRTY_PIPELINE                          = 1 << 9,
    ANV_CMD_DIRTY_INDEX_BUFFER                      = 1 << 10,
    ANV_CMD_DIRTY_RENDER_TARGETS                    = 1 << 11,
    ANV_CMD_DIRTY_XFB_ENABLE                        = 1 << 12,
 };
 typedef uint32_t anv_cmd_dirty_mask_t;
+
+#define ANV_CMD_DIRTY_DYNAMIC_ALL                  \
+   (ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |               \
+    ANV_CMD_DIRTY_DYNAMIC_SCISSOR |                \
+    ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |             \
+    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |             \
+    ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS |        \
+    ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |           \
+    ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |   \
+    ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |     \
+    ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE)
+
+static inline enum anv_cmd_dirty_bits
+anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
+{
+   switch (vk_state) {
+   case VK_DYNAMIC_STATE_VIEWPORT:
+      return ANV_CMD_DIRTY_DYNAMIC_VIEWPORT;
+   case VK_DYNAMIC_STATE_SCISSOR:
+      return ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
+   case VK_DYNAMIC_STATE_LINE_WIDTH:
+      return ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
+   case VK_DYNAMIC_STATE_DEPTH_BIAS:
+      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
+   case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
+      return ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS;
+   case VK_DYNAMIC_STATE_DEPTH_BOUNDS:
+      return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS;
+   case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
+      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK;
+   case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
+      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
+   case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
+      return ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
+   default:
+      assert(!"Unsupported dynamic state");
+      return 0;
+   }
+}
+
 
 enum anv_pipe_bits {
    ANV_PIPE_DEPTH_CACHE_FLUSH_BIT            = (1 << 0),
@@ -2737,7 +2776,7 @@ struct anv_pipeline {
    struct anv_batch                             batch;
    uint32_t                                     batch_data[512];
    struct anv_reloc_list                        batch_relocs;
-   uint32_t                                     dynamic_state_mask;
+   anv_cmd_dirty_mask_t                         dynamic_state_mask;
    struct anv_dynamic_state                     dynamic_state;
 
    struct anv_subpass *                         subpass;

@@ -1505,8 +1505,10 @@ copy_non_dynamic_state(struct anv_pipeline *pipeline,
    if (pCreateInfo->pDynamicState) {
       /* Remove all of the states that are marked as dynamic */
       uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-      for (uint32_t s = 0; s < count; s++)
-         states &= ~(1 << pCreateInfo->pDynamicState->pDynamicStates[s]);
+      for (uint32_t s = 0; s < count; s++) {
+         states &= ~anv_cmd_dirty_bit_for_vk_dynamic_state(
+            pCreateInfo->pDynamicState->pDynamicStates[s]);
+      }
    }
 
    struct anv_dynamic_state *dynamic = &pipeline->dynamic_state;
@@ -1520,26 +1522,26 @@ copy_non_dynamic_state(struct anv_pipeline *pipeline,
       assert(pCreateInfo->pViewportState);
 
       dynamic->viewport.count = pCreateInfo->pViewportState->viewportCount;
-      if (states & (1 << VK_DYNAMIC_STATE_VIEWPORT)) {
+      if (states & ANV_CMD_DIRTY_DYNAMIC_VIEWPORT) {
          typed_memcpy(dynamic->viewport.viewports,
                      pCreateInfo->pViewportState->pViewports,
                      pCreateInfo->pViewportState->viewportCount);
       }
 
       dynamic->scissor.count = pCreateInfo->pViewportState->scissorCount;
-      if (states & (1 << VK_DYNAMIC_STATE_SCISSOR)) {
+      if (states & ANV_CMD_DIRTY_DYNAMIC_SCISSOR) {
          typed_memcpy(dynamic->scissor.scissors,
                      pCreateInfo->pViewportState->pScissors,
                      pCreateInfo->pViewportState->scissorCount);
       }
    }
 
-   if (states & (1 << VK_DYNAMIC_STATE_LINE_WIDTH)) {
+   if (states & ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH) {
       assert(pCreateInfo->pRasterizationState);
       dynamic->line_width = pCreateInfo->pRasterizationState->lineWidth;
    }
 
-   if (states & (1 << VK_DYNAMIC_STATE_DEPTH_BIAS)) {
+   if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS) {
       assert(pCreateInfo->pRasterizationState);
       dynamic->depth_bias.bias =
          pCreateInfo->pRasterizationState->depthBiasConstantFactor;
@@ -1567,7 +1569,7 @@ copy_non_dynamic_state(struct anv_pipeline *pipeline,
        !pCreateInfo->pRasterizationState->rasterizerDiscardEnable) {
       assert(pCreateInfo->pColorBlendState);
 
-      if (states & (1 << VK_DYNAMIC_STATE_BLEND_CONSTANTS))
+      if (states & ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS)
          typed_memcpy(dynamic->blend_constants,
                      pCreateInfo->pColorBlendState->blendConstants, 4);
    }
@@ -1588,28 +1590,28 @@ copy_non_dynamic_state(struct anv_pipeline *pipeline,
        subpass->depth_stencil_attachment) {
       assert(pCreateInfo->pDepthStencilState);
 
-      if (states & (1 << VK_DYNAMIC_STATE_DEPTH_BOUNDS)) {
+      if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS) {
          dynamic->depth_bounds.min =
             pCreateInfo->pDepthStencilState->minDepthBounds;
          dynamic->depth_bounds.max =
             pCreateInfo->pDepthStencilState->maxDepthBounds;
       }
 
-      if (states & (1 << VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK)) {
+      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK) {
          dynamic->stencil_compare_mask.front =
             pCreateInfo->pDepthStencilState->front.compareMask;
          dynamic->stencil_compare_mask.back =
             pCreateInfo->pDepthStencilState->back.compareMask;
       }
 
-      if (states & (1 << VK_DYNAMIC_STATE_STENCIL_WRITE_MASK)) {
+      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK) {
          dynamic->stencil_write_mask.front =
             pCreateInfo->pDepthStencilState->front.writeMask;
          dynamic->stencil_write_mask.back =
             pCreateInfo->pDepthStencilState->back.writeMask;
       }
 
-      if (states & (1 << VK_DYNAMIC_STATE_STENCIL_REFERENCE)) {
+      if (states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE) {
          dynamic->stencil_reference.front =
             pCreateInfo->pDepthStencilState->front.reference;
          dynamic->stencil_reference.back =
