@@ -140,6 +140,40 @@ TEST_F(cmod_propagation_test, basic)
    EXPECT_EQ(BRW_CONDITIONAL_GE, instruction(block0, 0)->conditional_mod);
 }
 
+TEST_F(cmod_propagation_test, basic_other_flag)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   fs_reg zero(brw_imm_f(0.0f));
+   bld.ADD(dest, src0, src1);
+   bld.CMP(bld.null_reg_f(), dest, zero, BRW_CONDITIONAL_GE)
+      ->flag_subreg = 1;
+
+   /* = Before =
+    *
+    * 0: add(8)         dest  src0  src1
+    * 1: cmp.ge.f0.1(8) null  dest  0.0f
+    *
+    * = After =
+    * 0: add.ge.f0.1(8) dest  src0  src1
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_TRUE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(0, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_EQ(1, instruction(block0, 0)->flag_subreg);
+   EXPECT_EQ(BRW_CONDITIONAL_GE, instruction(block0, 0)->conditional_mod);
+}
+
 TEST_F(cmod_propagation_test, cmp_nonzero)
 {
    const fs_builder &bld = v->bld;
@@ -862,6 +896,84 @@ TEST_F(cmod_propagation_test, subtract_delete_compare)
    EXPECT_EQ(BRW_CONDITIONAL_L, instruction(block0, 0)->conditional_mod);
    EXPECT_EQ(BRW_OPCODE_MOV, instruction(block0, 1)->opcode);
    EXPECT_EQ(BRW_PREDICATE_NORMAL, instruction(block0, 1)->predicate);
+}
+
+TEST_F(cmod_propagation_test, subtract_delete_compare_other_flag)
+{
+   /* This test is the same as subtract_delete_compare but it explicitly used
+    * flag f0.1 for the subtraction and the comparison.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::float_type);
+   fs_reg dest1 = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   fs_reg src2 = v->vgrf(glsl_type::float_type);
+
+   set_condmod(BRW_CONDITIONAL_L, bld.ADD(dest, src0, negate(src1)))
+      ->flag_subreg = 1;
+   set_predicate(BRW_PREDICATE_NORMAL, bld.MOV(dest1, src2));
+   bld.CMP(bld.null_reg_f(), src0, src1, BRW_CONDITIONAL_L)
+      ->flag_subreg = 1;
+
+   /* = Before =
+    * 0: add.l.f0.1(8)   dest0:F src0:F  -src1:F
+    * 1: (+f0) mov(0)    dest1:F src2:F
+    * 2: cmp.l.f0.1(8)   null:F  src0:F  src1:F
+    *
+    * = After =
+    * 0: add.l.f0.1(8)   dest:F  src0:F  -src1:F
+    * 1: (+f0) mov(0)    dest1:F src2:F
+    */
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(2, block0->end_ip);
+
+   EXPECT_TRUE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_L, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(1, instruction(block0, 0)->flag_subreg);
+   EXPECT_EQ(BRW_OPCODE_MOV, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_PREDICATE_NORMAL, instruction(block0, 1)->predicate);
+}
+
+TEST_F(cmod_propagation_test, subtract_to_mismatch_flag)
+{
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+
+   set_condmod(BRW_CONDITIONAL_L, bld.ADD(dest, src0, negate(src1)));
+   bld.CMP(bld.null_reg_f(), src0, src1, BRW_CONDITIONAL_L)
+      ->flag_subreg = 1;
+
+   /* = Before =
+    * 0: add.l.f0(8)     dest0:F src0:F  -src1:F
+    * 1: cmp.l.f0.1(8)   null:F  src0:F  src1:F
+    *
+    * = After =
+    * No changes
+    */
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_L, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(0, instruction(block0, 0)->flag_subreg);
+   EXPECT_EQ(BRW_OPCODE_CMP, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_L, instruction(block0, 1)->conditional_mod);
+   EXPECT_EQ(1, instruction(block0, 1)->flag_subreg);
 }
 
 TEST_F(cmod_propagation_test, subtract_delete_compare_derp)
@@ -1641,6 +1753,53 @@ TEST_F(cmod_propagation_test, not_to_or_intervening_flag_read_compatible_value)
    EXPECT_EQ(BRW_CONDITIONAL_Z, instruction(block0, 0)->conditional_mod);
    EXPECT_EQ(BRW_OPCODE_SEL, instruction(block0, 1)->opcode);
    EXPECT_EQ(BRW_PREDICATE_NORMAL, instruction(block0, 1)->predicate);
+}
+
+TEST_F(cmod_propagation_test,
+       not_to_or_intervening_flag_read_compatible_value_mismatch_flag)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest0 = v->vgrf(glsl_type::uint_type);
+   fs_reg dest1 = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::uint_type);
+   fs_reg src1 = v->vgrf(glsl_type::uint_type);
+   fs_reg src2 = v->vgrf(glsl_type::float_type);
+   fs_reg zero(brw_imm_f(0.0f));
+   set_condmod(BRW_CONDITIONAL_Z, bld.OR(dest0, src0, src1))
+      ->flag_subreg = 1;
+   set_predicate(BRW_PREDICATE_NORMAL, bld.SEL(dest1, src2, zero));
+   set_condmod(BRW_CONDITIONAL_NZ, bld.NOT(bld.null_reg_ud(), dest0));
+
+   /* = Before =
+    *
+    * 0: or.z.f0.1(8)  dest0 src0  src1
+    * 1: (+f0) sel(8)  dest1 src2  0.0f
+    * 2: not.nz.f0(8)  null  dest0
+    *
+    * = After =
+    * No changes
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(2, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(2, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_OR, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_Z, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(1, instruction(block0, 0)->flag_subreg);
+   EXPECT_EQ(BRW_OPCODE_SEL, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_PREDICATE_NORMAL, instruction(block0, 1)->predicate);
+   EXPECT_EQ(BRW_OPCODE_NOT, instruction(block0, 2)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NZ, instruction(block0, 2)->conditional_mod);
+   EXPECT_EQ(0, instruction(block0, 2)->flag_subreg);
 }
 
 TEST_F(cmod_propagation_test, not_to_or_intervening_flag_read_incompatible_value)
