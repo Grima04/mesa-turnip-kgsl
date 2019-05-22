@@ -361,7 +361,8 @@ clSetKernelExecInfo(cl_kernel d_kern,
       return CL_INVALID_VALUE;
 
    switch (param_name) {
-   case CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM: {
+   case CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM:
+   case CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM_ARM: {
       if (param_value_size != sizeof(cl_bool))
          return CL_INVALID_VALUE;
 
@@ -373,6 +374,7 @@ clSetKernelExecInfo(cl_kernel d_kern,
    }
 
    case CL_KERNEL_EXEC_INFO_SVM_PTRS:
+   case CL_KERNEL_EXEC_INFO_SVM_PTRS_ARM:
       if (has_system_svm)
          return CL_SUCCESS;
 

@@ -406,6 +406,7 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       break;
 
    case CL_DEVICE_SVM_CAPABILITIES:
+   case CL_DEVICE_SVM_CAPABILITIES_ARM:
       buf.as_scalar<cl_device_svm_capabilities>() = dev.svm_support();
       break;
 

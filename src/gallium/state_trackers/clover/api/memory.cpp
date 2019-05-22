@@ -322,7 +322,8 @@ clGetMemObjectInfo(cl_mem d_mem, cl_mem_info param,
       buf.as_scalar<size_t>() = (sub ? sub->offset() : 0);
       break;
    }
-   case CL_MEM_USES_SVM_POINTER: {
+   case CL_MEM_USES_SVM_POINTER:
+   case CL_MEM_USES_SVM_POINTER_ARM: {
       // with system SVM all host ptrs are SVM pointers
       // TODO: once we support devices with lower levels of SVM, we have to
       // check the ptr in more detail

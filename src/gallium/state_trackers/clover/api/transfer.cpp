@@ -24,6 +24,7 @@
 
 #include "util/bitscan.h"
 
+#include "api/dispatch.hpp"
 #include "api/util.hpp"
 #include "core/event.hpp"
 #include "core/memory.hpp"
@@ -767,17 +768,19 @@ clEnqueueMigrateMemObjects(cl_command_queue command_queue,
    return CL_INVALID_VALUE;
 }
 
-CLOVER_API cl_int
-clEnqueueSVMFree(cl_command_queue d_q,
-                 cl_uint num_svm_pointers,
-                 void *svm_pointers[],
-                 void (CL_CALLBACK *pfn_free_func) (
-                    cl_command_queue queue, cl_uint num_svm_pointers,
-                    void *svm_pointers[], void *user_data),
-                 void *user_data,
-                 cl_uint num_events_in_wait_list,
-                 const cl_event *event_wait_list,
-                 cl_event *event) try {
+cl_int
+clover::EnqueueSVMFree(cl_command_queue d_q,
+                       cl_uint num_svm_pointers,
+                       void *svm_pointers[],
+                       void (CL_CALLBACK *pfn_free_func) (
+                           cl_command_queue queue, cl_uint num_svm_pointers,
+                           void *svm_pointers[], void *user_data),
+                       void *user_data,
+                       cl_uint num_events_in_wait_list,
+                       const cl_event *event_wait_list,
+                       cl_event *event,
+                       cl_int cmd) try {
+
    if (bool(num_svm_pointers) != bool(svm_pointers))
       return CL_INVALID_VALUE;
 
@@ -801,7 +804,7 @@ clEnqueueSVMFree(cl_command_queue d_q,
       };
    }
 
-   auto hev = create<hard_event>(q, CL_COMMAND_SVM_FREE, deps,
+   auto hev = create<hard_event>(q, cmd, deps,
       [=](clover::event &) mutable {
          pfn_free_func(d_q, num_svm_pointers, svm_pointers_cpy.data(),
                        user_data);
@@ -815,14 +818,32 @@ clEnqueueSVMFree(cl_command_queue d_q,
 }
 
 CLOVER_API cl_int
-clEnqueueSVMMemcpy(cl_command_queue d_q,
-                   cl_bool blocking_copy,
-                   void *dst_ptr,
-                   const void *src_ptr,
-                   size_t size,
-                   cl_uint num_events_in_wait_list,
-                   const cl_event *event_wait_list,
-                   cl_event *event) try {
+clEnqueueSVMFree(cl_command_queue d_q,
+                 cl_uint num_svm_pointers,
+                 void *svm_pointers[],
+                 void (CL_CALLBACK *pfn_free_func) (
+                    cl_command_queue queue, cl_uint num_svm_pointers,
+                    void *svm_pointers[], void *user_data),
+                 void *user_data,
+                 cl_uint num_events_in_wait_list,
+                 const cl_event *event_wait_list,
+                 cl_event *event) {
+
+   return EnqueueSVMFree(d_q, num_svm_pointers, svm_pointers,
+                         pfn_free_func, user_data, num_events_in_wait_list,
+                         event_wait_list, event, CL_COMMAND_SVM_FREE);
+}
+
+cl_int
+clover::EnqueueSVMMemcpy(cl_command_queue d_q,
+                         cl_bool blocking_copy,
+                         void *dst_ptr,
+                         const void *src_ptr,
+                         size_t size,
+                         cl_uint num_events_in_wait_list,
+                         const cl_event *event_wait_list,
+                         cl_event *event,
+                         cl_int cmd) try {
 
    if (dst_ptr == nullptr || src_ptr == nullptr)
       return CL_INVALID_VALUE;
@@ -838,7 +859,7 @@ clEnqueueSVMMemcpy(cl_command_queue d_q,
    validate_common(q, deps);
 
    if (can_emulate) {
-      auto hev = create<hard_event>(q, CL_COMMAND_SVM_MEMCPY, deps,
+      auto hev = create<hard_event>(q, cmd, deps,
          [=](clover::event &) {
             memcpy(dst_ptr, src_ptr, size);
          });
@@ -857,14 +878,31 @@ clEnqueueSVMMemcpy(cl_command_queue d_q,
 }
 
 CLOVER_API cl_int
-clEnqueueSVMMemFill(cl_command_queue d_q,
-                    void *svm_ptr,
-                    const void *pattern,
-                    size_t pattern_size,
-                    size_t size,
-                    cl_uint num_events_in_wait_list,
-                    const cl_event *event_wait_list,
-                    cl_event *event) try {
+clEnqueueSVMMemcpy(cl_command_queue d_q,
+                   cl_bool blocking_copy,
+                   void *dst_ptr,
+                   const void *src_ptr,
+                   size_t size,
+                   cl_uint num_events_in_wait_list,
+                   const cl_event *event_wait_list,
+                   cl_event *event) {
+
+   return EnqueueSVMMemcpy(d_q, blocking_copy, dst_ptr, src_ptr,
+                           size, num_events_in_wait_list, event_wait_list,
+                           event, CL_COMMAND_SVM_MEMCPY);
+}
+
+cl_int
+clover::EnqueueSVMMemFill(cl_command_queue d_q,
+                          void *svm_ptr,
+                          const void *pattern,
+                          size_t pattern_size,
+                          size_t size,
+                          cl_uint num_events_in_wait_list,
+                          const cl_event *event_wait_list,
+                          cl_event *event,
+                          cl_int cmd) try {
+
    if (svm_ptr == nullptr || pattern == nullptr ||
        !util_is_power_of_two_nonzero(pattern_size) ||
        pattern_size > 128 ||
@@ -879,7 +917,7 @@ clEnqueueSVMMemFill(cl_command_queue d_q,
    validate_common(q, deps);
 
    if (can_emulate) {
-      auto hev = create<hard_event>(q, CL_COMMAND_SVM_MEMFILL, deps,
+      auto hev = create<hard_event>(q, cmd, deps,
          [=](clover::event &) {
             void *ptr = svm_ptr;
             for (size_t s = size; s; s -= pattern_size) {
@@ -900,14 +938,30 @@ clEnqueueSVMMemFill(cl_command_queue d_q,
 }
 
 CLOVER_API cl_int
-clEnqueueSVMMap(cl_command_queue d_q,
-                cl_bool blocking_map,
-                cl_map_flags map_flags,
-                void *svm_ptr,
-                size_t size,
-                cl_uint num_events_in_wait_list,
-                const cl_event *event_wait_list,
-                cl_event *event) try {
+clEnqueueSVMMemFill(cl_command_queue d_q,
+                    void *svm_ptr,
+                    const void *pattern,
+                    size_t pattern_size,
+                    size_t size,
+                    cl_uint num_events_in_wait_list,
+                    const cl_event *event_wait_list,
+                    cl_event *event) {
+
+   return EnqueueSVMMemFill(d_q, svm_ptr, pattern, pattern_size,
+                            size, num_events_in_wait_list, event_wait_list,
+                            event, CL_COMMAND_SVM_MEMFILL);
+}
+
+cl_int
+clover::EnqueueSVMMap(cl_command_queue d_q,
+                      cl_bool blocking_map,
+                      cl_map_flags map_flags,
+                      void *svm_ptr,
+                      size_t size,
+                      cl_uint num_events_in_wait_list,
+                      const cl_event *event_wait_list,
+                      cl_event *event,
+                      cl_int cmd) try {
 
    if (svm_ptr == nullptr || size == 0)
       return CL_INVALID_VALUE;
@@ -919,7 +973,54 @@ clEnqueueSVMMap(cl_command_queue d_q,
    validate_common(q, deps);
 
    if (can_emulate) {
-      auto hev = create<hard_event>(q, CL_COMMAND_SVM_MAP, deps,
+      auto hev = create<hard_event>(q, cmd, deps,
+         [](clover::event &) { });
+
+      ret_object(event, hev);
+      return CL_SUCCESS;
+   }
+
+   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
+   return CL_INVALID_VALUE;
+
+} catch (error &e) {
+   return e.get();
+}
+
+CLOVER_API cl_int
+clEnqueueSVMMap(cl_command_queue d_q,
+                cl_bool blocking_map,
+                cl_map_flags map_flags,
+                void *svm_ptr,
+                size_t size,
+                cl_uint num_events_in_wait_list,
+                const cl_event *event_wait_list,
+                cl_event *event) {
+
+   return EnqueueSVMMap(d_q, blocking_map, map_flags, svm_ptr, size,
+                        num_events_in_wait_list, event_wait_list, event,
+                        CL_COMMAND_SVM_MAP);
+}
+
+cl_int
+clover::EnqueueSVMUnmap(cl_command_queue d_q,
+                        void *svm_ptr,
+                        cl_uint num_events_in_wait_list,
+                        const cl_event *event_wait_list,
+                        cl_event *event,
+                        cl_int cmd) try {
+
+   if (svm_ptr == nullptr)
+      return CL_INVALID_VALUE;
+
+   auto &q = obj(d_q);
+   bool can_emulate = q.device().has_system_svm();
+   auto deps = objs<wait_list_tag>(event_wait_list, num_events_in_wait_list);
+
+   validate_common(q, deps);
+
+   if (can_emulate) {
+      auto hev = create<hard_event>(q, cmd, deps,
          [](clover::event &) { });
 
       ret_object(event, hev);
@@ -938,30 +1039,10 @@ clEnqueueSVMUnmap(cl_command_queue d_q,
                   void *svm_ptr,
                   cl_uint num_events_in_wait_list,
                   const cl_event *event_wait_list,
-                  cl_event *event) try {
+                  cl_event *event) {
 
-   if (svm_ptr == nullptr)
-      return CL_INVALID_VALUE;
-
-   auto &q = obj(d_q);
-   bool can_emulate = q.device().has_system_svm();
-   auto deps = objs<wait_list_tag>(event_wait_list, num_events_in_wait_list);
-
-   validate_common(q, deps);
-
-   if (can_emulate) {
-      auto hev = create<hard_event>(q, CL_COMMAND_SVM_UNMAP, deps,
-         [](clover::event &) { });
-
-      ret_object(event, hev);
-      return CL_SUCCESS;
-   }
-
-   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
-   return CL_INVALID_VALUE;
-
-} catch (error &e) {
-   return e.get();
+   return EnqueueSVMUnmap(d_q, svm_ptr, num_events_in_wait_list,
+                          event_wait_list, event, CL_COMMAND_SVM_UNMAP);
 }
 
 CLOVER_API cl_int
