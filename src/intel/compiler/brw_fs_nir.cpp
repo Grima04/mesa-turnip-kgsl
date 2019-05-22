@@ -4273,7 +4273,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_memory_barrier: {
       const fs_builder ubld = bld.group(8, 0);
       const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
-      ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp)
+      ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp, brw_vec8_grf(0, 0))
          ->size_written = 2 * REG_SIZE;
       break;
    }
@@ -5074,9 +5074,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const fs_builder ubld = bld.group(8, 0);
       const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
 
-      ubld.emit(SHADER_OPCODE_INTERLOCK, tmp)->size_written = 2 *
-         REG_SIZE;
-
+      ubld.emit(SHADER_OPCODE_INTERLOCK, tmp, brw_vec8_grf(0, 0))
+         ->size_written = 2 * REG_SIZE;
       break;
    }
 

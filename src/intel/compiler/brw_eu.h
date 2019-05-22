@@ -1113,6 +1113,7 @@ brw_untyped_surface_write(struct brw_codegen *p,
 void
 brw_memory_fence(struct brw_codegen *p,
                  struct brw_reg dst,
+                 struct brw_reg src,
                  enum opcode send_op);
 
 void
