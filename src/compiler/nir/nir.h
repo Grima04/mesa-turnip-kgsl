@@ -3584,7 +3584,6 @@ bool nir_remove_dead_variables(nir_shader *shader, nir_variable_mode modes);
 bool nir_lower_constant_initializers(nir_shader *shader,
                                      nir_variable_mode modes);
 
-bool nir_move_load_const(nir_shader *shader);
 bool nir_move_vec_src_uses_to_dest(nir_shader *shader);
 bool nir_lower_vec_to_movs(nir_shader *shader);
 void nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
@@ -3964,6 +3963,17 @@ bool nir_opt_large_constants(nir_shader *shader,
                              unsigned threshold);
 
 bool nir_opt_loop_unroll(nir_shader *shader, nir_variable_mode indirect_mask);
+
+typedef enum {
+    nir_move_const_undef = (1 << 0),
+    nir_move_load_ubo    = (1 << 1),
+    nir_move_load_input  = (1 << 2),
+    nir_move_comparisons = (1 << 3),
+} nir_move_options;
+
+bool nir_can_move_instr(nir_instr *instr, nir_move_options options);
+
+bool nir_opt_sink(nir_shader *shader, nir_move_options options);
 
 bool nir_opt_move_comparisons(nir_shader *shader);
 
