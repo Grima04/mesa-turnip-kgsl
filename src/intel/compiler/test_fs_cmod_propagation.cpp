@@ -1407,3 +1407,281 @@ TEST_F(cmod_propagation_test, int_saturate_ge_mov)
     */
    test_negative_int_saturate_prop(BRW_CONDITIONAL_GE, BRW_OPCODE_MOV);
 }
+
+TEST_F(cmod_propagation_test, not_to_or)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::uint_type);
+   fs_reg src0 = v->vgrf(glsl_type::uint_type);
+   fs_reg src1 = v->vgrf(glsl_type::uint_type);
+   bld.OR(dest, src0, src1);
+   set_condmod(BRW_CONDITIONAL_NZ, bld.NOT(bld.null_reg_ud(), dest));
+
+   /* = Before =
+    *
+    * 0: or(8)         dest  src0  src1
+    * 1: not.nz.f0(8)  null  dest
+    *
+    * = After =
+    * 0: or.z.f0(8)    dest  src0  src1
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_TRUE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(0, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_OR, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_Z, instruction(block0, 0)->conditional_mod);
+}
+
+TEST_F(cmod_propagation_test, not_to_and)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::uint_type);
+   fs_reg src0 = v->vgrf(glsl_type::uint_type);
+   fs_reg src1 = v->vgrf(glsl_type::uint_type);
+   bld.AND(dest, src0, src1);
+   set_condmod(BRW_CONDITIONAL_NZ, bld.NOT(bld.null_reg_ud(), dest));
+
+   /* = Before =
+    *
+    * 0: and(8)        dest  src0  src1
+    * 1: not.nz.f0(8)  null  dest
+    *
+    * = After =
+    * 0: and.z.f0(8)   dest  src0  src1
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_TRUE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(0, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_AND, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_Z, instruction(block0, 0)->conditional_mod);
+}
+
+TEST_F(cmod_propagation_test, not_to_uadd)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    *
+    * The optimization pass currently restricts to just OR and AND.  It's
+    * possible that this is too restrictive, and the actual, necessary
+    * restriction is just the the destination type of the ALU instruction is
+    * the same as the source type of the NOT instruction.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::uint_type);
+   fs_reg src0 = v->vgrf(glsl_type::uint_type);
+   fs_reg src1 = v->vgrf(glsl_type::uint_type);
+   bld.ADD(dest, src0, src1);
+   set_condmod(BRW_CONDITIONAL_NZ, bld.NOT(bld.null_reg_ud(), dest));
+
+   /* = Before =
+    *
+    * 0: add(8)        dest  src0  src1
+    * 1: not.nz.f0(8)  null  dest
+    *
+    * = After =
+    * No changes
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NONE, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(BRW_OPCODE_NOT, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NZ, instruction(block0, 1)->conditional_mod);
+}
+
+TEST_F(cmod_propagation_test, not_to_fadd_to_ud)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    *
+    * The optimization pass currently restricts to just OR and AND.  It's
+    * possible that this is too restrictive, and the actual, necessary
+    * restriction is just the the destination type of the ALU instruction is
+    * the same as the source type of the NOT instruction.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::uint_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   bld.ADD(dest, src0, src1);
+   set_condmod(BRW_CONDITIONAL_NZ, bld.NOT(bld.null_reg_ud(), dest));
+
+   /* = Before =
+    *
+    * 0: add(8)        dest.ud src0.f  src1.f
+    * 1: not.nz.f0(8)  null    dest.ud
+    *
+    * = After =
+    * No changes
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NONE, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(BRW_OPCODE_NOT, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NZ, instruction(block0, 1)->conditional_mod);
+}
+
+TEST_F(cmod_propagation_test, not_to_fadd)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    *
+    * The optimization pass currently restricts to just OR and AND.  It's
+    * possible that this is too restrictive, and the actual, necessary
+    * restriction is just the the destination type of the ALU instruction is
+    * the same as the source type of the NOT instruction.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::float_type);
+   fs_reg src1 = v->vgrf(glsl_type::float_type);
+   bld.ADD(dest, src0, src1);
+   set_condmod(BRW_CONDITIONAL_NZ,
+               bld.NOT(bld.null_reg_ud(),
+                       retype(dest, BRW_REGISTER_TYPE_UD)));
+
+   /* = Before =
+    *
+    * 0: add(8)        dest.f  src0.f  src1.f
+    * 1: not.nz.f0(8)  null    dest.ud
+    *
+    * = After =
+    * No changes
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_ADD, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NONE, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(BRW_OPCODE_NOT, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NZ, instruction(block0, 1)->conditional_mod);
+}
+
+TEST_F(cmod_propagation_test, not_to_or_intervening_flag_read_compatible_value)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest0 = v->vgrf(glsl_type::uint_type);
+   fs_reg dest1 = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::uint_type);
+   fs_reg src1 = v->vgrf(glsl_type::uint_type);
+   fs_reg src2 = v->vgrf(glsl_type::float_type);
+   fs_reg zero(brw_imm_f(0.0f));
+   set_condmod(BRW_CONDITIONAL_Z, bld.OR(dest0, src0, src1));
+   set_predicate(BRW_PREDICATE_NORMAL, bld.SEL(dest1, src2, zero));
+   set_condmod(BRW_CONDITIONAL_NZ, bld.NOT(bld.null_reg_ud(), dest0));
+
+   /* = Before =
+    *
+    * 0: or.z.f0(8)    dest0 src0  src1
+    * 1: (+f0) sel(8)  dest1 src2  0.0f
+    * 2: not.nz.f0(8)  null  dest0
+    *
+    * = After =
+    * 0: or.z.f0(8)    dest0 src0  src1
+    * 1: (+f0) sel(8)  dest1 src2  0.0f
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(2, block0->end_ip);
+
+   EXPECT_TRUE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(1, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_OR, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_Z, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(BRW_OPCODE_SEL, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_PREDICATE_NORMAL, instruction(block0, 1)->predicate);
+}
+
+TEST_F(cmod_propagation_test, not_to_or_intervening_flag_read_incompatible_value)
+{
+   /* Exercise propagation of conditional modifier from a NOT instruction to
+    * another ALU instruction as performed by cmod_propagate_not.
+    */
+   const fs_builder &bld = v->bld;
+   fs_reg dest0 = v->vgrf(glsl_type::uint_type);
+   fs_reg dest1 = v->vgrf(glsl_type::float_type);
+   fs_reg src0 = v->vgrf(glsl_type::uint_type);
+   fs_reg src1 = v->vgrf(glsl_type::uint_type);
+   fs_reg src2 = v->vgrf(glsl_type::float_type);
+   fs_reg zero(brw_imm_f(0.0f));
+   set_condmod(BRW_CONDITIONAL_NZ, bld.OR(dest0, src0, src1));
+   set_predicate(BRW_PREDICATE_NORMAL, bld.SEL(dest1, src2, zero));
+   set_condmod(BRW_CONDITIONAL_NZ, bld.NOT(bld.null_reg_ud(), dest0));
+
+   /* = Before =
+    *
+    * 0: or.nz.f0(8)   dest0 src0  src1
+    * 1: (+f0) sel(8)  dest1 src2  0.0f
+    * 2: not.nz.f0(8)  null  dest0
+    *
+    * = After =
+    * No changes
+    */
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(2, block0->end_ip);
+
+   EXPECT_FALSE(cmod_propagation(v));
+   EXPECT_EQ(0, block0->start_ip);
+   EXPECT_EQ(2, block0->end_ip);
+   EXPECT_EQ(BRW_OPCODE_OR, instruction(block0, 0)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NZ, instruction(block0, 0)->conditional_mod);
+   EXPECT_EQ(BRW_OPCODE_SEL, instruction(block0, 1)->opcode);
+   EXPECT_EQ(BRW_PREDICATE_NORMAL, instruction(block0, 1)->predicate);
+   EXPECT_EQ(BRW_OPCODE_NOT, instruction(block0, 2)->opcode);
+   EXPECT_EQ(BRW_CONDITIONAL_NZ, instruction(block0, 2)->conditional_mod);
+}
