@@ -107,21 +107,6 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 #define M_LOAD(name) M_LOAD_STORE(name, dest, src0)
 #define M_STORE(name) M_LOAD_STORE(name, src0, dest)
 
-const midgard_vector_alu_src blank_alu_src = {
-        .swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
-};
-
-const midgard_vector_alu_src blank_alu_src_xxxx = {
-        .swizzle = SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X),
-};
-
-const midgard_scalar_alu_src blank_scalar_alu_src = {
-        .full = true
-};
-
-/* Used for encoding the unused source of 1-op instructions */
-const midgard_vector_alu_src zero_alu_src = { 0 };
-
 /* Inputs a NIR ALU source, with modifiers attached if necessary, and outputs
  * the corresponding Midgard source */
 
@@ -148,31 +133,6 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int)
         }
 
         return alu_src;
-}
-
-/* 'Intrinsic' move for misc aliasing uses independent of actual NIR ALU code */
-
-static midgard_instruction
-v_fmov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
-{
-        midgard_instruction ins = {
-                .type = TAG_ALU_4,
-                .ssa_args = {
-                        .src0 = SSA_UNUSED_1,
-                        .src1 = src,
-                        .dest = dest,
-                },
-                .alu = {
-                        .op = midgard_alu_op_fmov,
-                        .reg_mode = midgard_reg_mode_32,
-                        .dest_override = midgard_dest_override_none,
-                        .mask = 0xFF,
-                        .src1 = vector_alu_srco_unsigned(zero_alu_src),
-                        .src2 = vector_alu_srco_unsigned(mod)
-                },
-        };
-
-        return ins;
 }
 
 /* load/store instructions have both 32-bit and 16-bit variants, depending on
