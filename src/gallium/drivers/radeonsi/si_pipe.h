@@ -1265,7 +1265,7 @@ void si_init_buffer_functions(struct si_context *sctx);
 
 /* si_clear.c */
 enum pipe_format si_simplify_cb_format(enum pipe_format format);
-bool vi_alpha_is_on_msb(enum pipe_format format);
+bool vi_alpha_is_on_msb(struct si_screen *sscreen, enum pipe_format format);
 void vi_dcc_clear_level(struct si_context *sctx,
 			struct si_texture *tex,
 			unsigned level, unsigned clear_value);
@@ -1486,7 +1486,8 @@ void si_print_texture_info(struct si_screen *sscreen,
 			   struct si_texture *tex, struct u_log_context *log);
 struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 					const struct pipe_resource *templ);
-bool vi_dcc_formats_compatible(enum pipe_format format1,
+bool vi_dcc_formats_compatible(struct si_screen *sscreen,
+			       enum pipe_format format1,
 			       enum pipe_format format2);
 bool vi_dcc_formats_are_incompatible(struct pipe_resource *tex,
 				     unsigned level,

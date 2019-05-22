@@ -99,18 +99,23 @@ enum pipe_format si_simplify_cb_format(enum pipe_format format)
 	return util_format_intensity_to_red(format);
 }
 
-bool vi_alpha_is_on_msb(enum pipe_format format)
+bool vi_alpha_is_on_msb(struct si_screen *sscreen, enum pipe_format format)
 {
 	format = si_simplify_cb_format(format);
+	const struct util_format_description *desc = util_format_description(format);
 
 	/* Formats with 3 channels can't have alpha. */
-	if (util_format_description(format)->nr_channels == 3)
+	if (desc->nr_channels == 3)
 		return true; /* same as xxxA; is any value OK here? */
+
+	if (sscreen->info.chip_class >= GFX10 && desc->nr_channels == 1)
+		return desc->swizzle[3] == PIPE_SWIZZLE_X;
 
 	return si_translate_colorswap(format, false) <= 1;
 }
 
-static bool vi_get_fast_clear_parameters(enum pipe_format base_format,
+static bool vi_get_fast_clear_parameters(struct si_screen *sscreen,
+					 enum pipe_format base_format,
 					 enum pipe_format surface_format,
 					 const union pipe_color_union *color,
 					 uint32_t* clear_value,
@@ -142,8 +147,8 @@ static bool vi_get_fast_clear_parameters(enum pipe_format base_format,
 	if (desc->layout != UTIL_FORMAT_LAYOUT_PLAIN)
 		return true; /* need ELIMINATE_FAST_CLEAR */
 
-	bool base_alpha_is_on_msb = vi_alpha_is_on_msb(base_format);
-	bool surf_alpha_is_on_msb = vi_alpha_is_on_msb(surface_format);
+	bool base_alpha_is_on_msb = vi_alpha_is_on_msb(sscreen, base_format);
+	bool surf_alpha_is_on_msb = vi_alpha_is_on_msb(sscreen, surface_format);
 
 	/* Formats with 3 channels can't have alpha. */
 	if (desc->nr_channels == 3)
@@ -483,7 +488,8 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 			    !tex->surface.u.legacy.level[level].dcc_fast_clear_size)
 				continue;
 
-			if (!vi_get_fast_clear_parameters(tex->buffer.b.b.format,
+			if (!vi_get_fast_clear_parameters(sctx->screen,
+							  tex->buffer.b.b.format,
 							  fb->cbufs[i]->format,
 							  color, &reset_value,
 							  &eliminate_needed))

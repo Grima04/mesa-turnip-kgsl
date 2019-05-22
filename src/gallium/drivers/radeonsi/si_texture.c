@@ -2056,7 +2056,8 @@ static const struct u_resource_vtbl si_texture_vtbl =
 
 /* Return if it's allowed to reinterpret one format as another with DCC enabled.
  */
-bool vi_dcc_formats_compatible(enum pipe_format format1,
+bool vi_dcc_formats_compatible(struct si_screen *sscreen,
+			       enum pipe_format format1,
 			       enum pipe_format format2)
 {
 	const struct util_format_description *desc1, *desc2;
@@ -2098,7 +2099,7 @@ bool vi_dcc_formats_compatible(enum pipe_format format1,
 
 	/* If the clear values are all 1 or all 0, this constraint can be
 	 * ignored. */
-	if (vi_alpha_is_on_msb(format1) != vi_alpha_is_on_msb(format2))
+	if (vi_alpha_is_on_msb(sscreen, format1) != vi_alpha_is_on_msb(sscreen, format2))
 		return false;
 
 	/* Channel types must match if the clear value of 1 is used.
@@ -2120,7 +2121,8 @@ bool vi_dcc_formats_are_incompatible(struct pipe_resource *tex,
 	struct si_texture *stex = (struct si_texture *)tex;
 
 	return vi_dcc_enabled(stex, level) &&
-	       !vi_dcc_formats_compatible(tex->format, view_format);
+	       !vi_dcc_formats_compatible((struct si_screen*)tex->screen,
+					  tex->format, view_format);
 }
 
 /* This can't be merged with the above function, because
