@@ -586,6 +586,7 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch, unsigned co
                 },
                 .alu = {
                         .op = midgard_alu_op_iand,
+                        .outmod = midgard_outmod_int,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
@@ -624,6 +625,7 @@ emit_condition_mixed(compiler_context *ctx, nir_alu_src *src, unsigned nr_comp)
                 },
                 .alu = {
                         .op = midgard_alu_op_iand,
+                        .outmod = midgard_outmod_int,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = expand_writemask((1 << nr_comp) - 1),
@@ -654,6 +656,7 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
                 },
                 .alu = {
                         .op = midgard_alu_op_imov,
+                        .outmod = midgard_outmod_int,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
@@ -2775,6 +2778,7 @@ emit_blend_epilogue(compiler_context *ctx)
                         .op = midgard_alu_op_imov,
                         .reg_mode = midgard_reg_mode_8,
                         .dest_override = midgard_dest_override_none,
+                        .outmod = midgard_outmod_int,
                         .mask = 0xFF,
                         .src1 = vector_alu_srco_unsigned(blank_alu_src),
                         .src2 = vector_alu_srco_unsigned(blank_alu_src),
