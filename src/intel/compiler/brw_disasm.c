@@ -1102,23 +1102,14 @@ src0_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
    if (is_align1) {
-      if (devinfo->gen >= 12) {
+      if (devinfo->gen >= 12 && !brw_inst_3src_a1_src0_is_imm(devinfo, inst)) {
          _file = brw_inst_3src_a1_src0_reg_file(devinfo, inst);
-         reg_nr = brw_inst_3src_src0_reg_nr(devinfo, inst);
-         subreg_nr = brw_inst_3src_a1_src0_subreg_nr(devinfo, inst);
-         type = brw_inst_3src_a1_src0_type(devinfo, inst);
       } else if (brw_inst_3src_a1_src0_reg_file(devinfo, inst) ==
                  BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
          _file = BRW_GENERAL_REGISTER_FILE;
-         reg_nr = brw_inst_3src_src0_reg_nr(devinfo, inst);
-         subreg_nr = brw_inst_3src_a1_src0_subreg_nr(devinfo, inst);
-         type = brw_inst_3src_a1_src0_type(devinfo, inst);
       } else if (brw_inst_3src_a1_src0_type(devinfo, inst) ==
                  BRW_REGISTER_TYPE_NF) {
          _file = BRW_ARCHITECTURE_REGISTER_FILE;
-         reg_nr = brw_inst_3src_src0_reg_nr(devinfo, inst);
-         subreg_nr = brw_inst_3src_a1_src0_subreg_nr(devinfo, inst);
-         type = brw_inst_3src_a1_src0_type(devinfo, inst);
       } else {
          _file = BRW_IMMEDIATE_VALUE;
          uint16_t imm_val = brw_inst_3src_a1_src0_imm(devinfo, inst);
@@ -1129,11 +1120,14 @@ src0_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
          } else if (type == BRW_REGISTER_TYPE_UW) {
             format(file, "0x%04xUW", imm_val);
          } else if (type == BRW_REGISTER_TYPE_HF) {
-            format(file, "%-gF", _mesa_half_to_float(imm_val));
+            format(file, "0x%04xHF", imm_val);
          }
          return 0;
       }
 
+      reg_nr = brw_inst_3src_src0_reg_nr(devinfo, inst);
+      subreg_nr = brw_inst_3src_a1_src0_subreg_nr(devinfo, inst);
+      type = brw_inst_3src_a1_src0_type(devinfo, inst);
       _vert_stride = vstride_from_align1_3src_vstride(
          devinfo, brw_inst_3src_a1_src0_vstride(devinfo, inst));
       _horiz_stride = hstride_from_align1_3src_hstride(
@@ -1261,17 +1255,11 @@ src2_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
    if (is_align1) {
-      if (devinfo->gen >= 12) {
+      if (devinfo->gen >= 12 && !brw_inst_3src_a1_src2_is_imm(devinfo, inst)) {
          _file = brw_inst_3src_a1_src2_reg_file(devinfo, inst);
-         reg_nr = brw_inst_3src_src2_reg_nr(devinfo, inst);
-         subreg_nr = brw_inst_3src_a1_src2_subreg_nr(devinfo, inst);
-         type = brw_inst_3src_a1_src2_type(devinfo, inst);
       } else if (brw_inst_3src_a1_src2_reg_file(devinfo, inst) ==
                  BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
          _file = BRW_GENERAL_REGISTER_FILE;
-         reg_nr = brw_inst_3src_src2_reg_nr(devinfo, inst);
-         subreg_nr = brw_inst_3src_a1_src2_subreg_nr(devinfo, inst);
-         type = brw_inst_3src_a1_src2_type(devinfo, inst);
       } else {
          _file = BRW_IMMEDIATE_VALUE;
          uint16_t imm_val = brw_inst_3src_a1_src2_imm(devinfo, inst);
@@ -1282,11 +1270,14 @@ src2_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
          } else if (type == BRW_REGISTER_TYPE_UW) {
             format(file, "0x%04xUW", imm_val);
          } else if (type == BRW_REGISTER_TYPE_HF) {
-            format(file, "%-gF", _mesa_half_to_float(imm_val));
+            format(file, "0x%04xHF", imm_val);
          }
          return 0;
       }
 
+      reg_nr = brw_inst_3src_src2_reg_nr(devinfo, inst);
+      subreg_nr = brw_inst_3src_a1_src2_subreg_nr(devinfo, inst);
+      type = brw_inst_3src_a1_src2_type(devinfo, inst);
       /* FINISHME: No vertical stride on src2. Is using the hstride in place
        *           correct? Doesn't seem like it, since there's hstride=1 but
        *           no vstride=1.
