@@ -61,6 +61,8 @@ struct deref_node {
    struct deref_node *children[0];
 };
 
+#define UNDEF_NODE ((struct deref_node *)(uintptr_t)1)
+
 struct lower_variables_state {
    nir_shader *shader;
    void *dead_ctx;
@@ -169,7 +171,7 @@ get_deref_node_recur(nir_deref_instr *deref,
           * somewhat gracefully.
           */
          if (index >= glsl_get_length(parent->type))
-            return NULL;
+            return UNDEF_NODE;
 
          if (parent->children[index] == NULL) {
             parent->children[index] =
@@ -508,7 +510,7 @@ rename_variables(struct lower_variables_state *state)
                continue;
 
             struct deref_node *node = get_deref_node(deref, state);
-            if (node == NULL) {
+            if (node == UNDEF_NODE) {
                /* If we hit this path then we are referencing an invalid
                 * value.  Most likely, we unrolled something and are
                 * reading past the end of some array.  In any case, this
@@ -562,7 +564,7 @@ rename_variables(struct lower_variables_state *state)
             assert(intrin->src[1].is_ssa);
             nir_ssa_def *value = intrin->src[1].ssa;
 
-            if (node == NULL) {
+            if (node == UNDEF_NODE) {
                /* Probably an out-of-bounds array store.  That should be a
                 * no-op. */
                nir_instr_remove(&intrin->instr);
