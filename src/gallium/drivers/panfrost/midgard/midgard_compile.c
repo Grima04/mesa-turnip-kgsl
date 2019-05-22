@@ -1153,6 +1153,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_input:
                 offset = nir_intrinsic_base(instr);
 
+                unsigned nr_comp = nir_intrinsic_dest_components(instr);
                 bool direct = nir_src_is_const(instr->src[0]);
 
                 if (direct) {
@@ -1168,6 +1169,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         /* TODO: swizzle, mask */
 
                         midgard_instruction ins = m_ld_vary_32(reg, offset);
+                        ins.load_store.mask = (1 << nr_comp) - 1;
 
                         midgard_varying_parameter p = {
                                 .is_varying = 1,
@@ -1199,7 +1201,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
-                        ins.load_store.mask = (1 << instr->num_components) - 1;
+                        ins.load_store.mask = (1 << nr_comp) - 1;
                         emit_mir_instruction(ctx, ins);
                 } else {
                         DBG("Unknown load\n");
