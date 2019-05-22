@@ -929,13 +929,15 @@ lower_gen7_tex_swizzle(nir_tex_instr *tex, unsigned plane,
    assert(deref_src_idx >= 0);
 
    nir_deref_instr *deref = nir_src_as_deref(tex->src[deref_src_idx].src);
-   UNUSED nir_variable *var = nir_deref_instr_get_variable(deref);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
 
-   UNUSED unsigned set = var->data.descriptor_set;
-   UNUSED unsigned binding = var->data.binding;
-   UNUSED const struct anv_descriptor_set_binding_layout *bind_layout =
+   unsigned set = var->data.descriptor_set;
+   unsigned binding = var->data.binding;
+   const struct anv_descriptor_set_binding_layout *bind_layout =
       &state->layout->set[set].layout->binding[binding];
-   assert(bind_layout->data & ANV_DESCRIPTOR_TEXTURE_SWIZZLE);
+
+   if ((bind_layout->data & ANV_DESCRIPTOR_TEXTURE_SWIZZLE) == 0)
+      return;
 
    nir_builder *b = &state->builder;
    b->cursor = nir_before_instr(&tex->instr);

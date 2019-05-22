@@ -103,7 +103,11 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
         type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC))
       data |= ANV_DESCRIPTOR_ADDRESS_RANGE;
 
-   /* On Ivy Bridge and Bay Trail, we need swizzles textures in the shader */
+   /* On Ivy Bridge and Bay Trail, we need swizzles textures in the shader
+    * Do not handle VK_DESCRIPTOR_TYPE_STORAGE_IMAGE and
+    * VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT because they already must
+    * have identity swizzle.
+    */
    if (device->info.gen == 7 && !device->info.is_haswell &&
        (type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
         type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER))
