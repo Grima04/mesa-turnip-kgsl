@@ -122,24 +122,6 @@ const midgard_scalar_alu_src blank_scalar_alu_src = {
 /* Used for encoding the unused source of 1-op instructions */
 const midgard_vector_alu_src zero_alu_src = { 0 };
 
-/* Coerce structs to integer */
-
-static unsigned
-vector_alu_srco_unsigned(midgard_vector_alu_src src)
-{
-        unsigned u;
-        memcpy(&u, &src, sizeof(src));
-        return u;
-}
-
-static midgard_vector_alu_src
-vector_alu_from_unsigned(unsigned u)
-{
-        midgard_vector_alu_src s;
-        memcpy(&s, &u, sizeof(s));
-        return s;
-}
-
 /* Inputs a NIR ALU source, with modifiers attached if necessary, and outputs
  * the corresponding Midgard source */
 
@@ -529,52 +511,6 @@ emit_load_const(compiler_context *ctx, nir_load_const_instr *instr)
         float *v = rzalloc_array(NULL, float, 4);
         nir_const_load_to_arr(v, instr, f32);
         _mesa_hash_table_u64_insert(ctx->ssa_constants, def.index + 1, v);
-}
-
-/* Duplicate bits to convert sane 4-bit writemask to obscure 8-bit format (or
- * do the inverse) */
-
-static unsigned
-expand_writemask(unsigned mask)
-{
-        unsigned o = 0;
-
-        for (int i = 0; i < 4; ++i)
-                if (mask & (1 << i))
-                        o |= (3 << (2 * i));
-
-        return o;
-}
-
-static unsigned
-squeeze_writemask(unsigned mask)
-{
-        unsigned o = 0;
-
-        for (int i = 0; i < 4; ++i)
-                if (mask & (3 << (2 * i)))
-                        o |= (1 << i);
-
-        return o;
-
-}
-
-/* Determines effective writemask, taking quirks and expansion into account */
-static unsigned
-effective_writemask(midgard_vector_alu *alu)
-{
-        /* Channel count is off-by-one to fit in two-bits (0 channel makes no
-         * sense) */
-
-        unsigned channel_count = GET_CHANNEL_COUNT(alu_opcode_props[alu->op].props);
-
-        /* If there is a fixed channel count, construct the appropriate mask */
-
-        if (channel_count)
-                return (1 << channel_count) - 1;
-
-        /* Otherwise, just squeeze the existing mask */
-        return squeeze_writemask(alu->mask);
 }
 
 static unsigned

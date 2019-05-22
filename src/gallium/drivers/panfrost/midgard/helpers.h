@@ -22,6 +22,8 @@
 #ifndef __MDG_HELPERS_H
 #define __MDG_HELPERS_H
 
+#include <string.h>
+
 #define OP_IS_STORE_VARY(op) (\
 		op == midgard_op_st_vary_16 || \
 		op == midgard_op_st_vary_32 \
@@ -157,5 +159,53 @@ struct mir_op_props {
 
 /* This file is common, so don't define the tables themselves. #include
  * midgard_op.h if you need that, or edit midgard_ops.c directly */
+
+/* Duplicate bits to convert standard 4-bit writemask to duplicated 8-bit
+ * format (or do the inverse). The 8-bit format only really matters for
+ * int8, as far as I know, where performance can be improved by using a
+ * vec8 output */
+
+static inline unsigned
+expand_writemask(unsigned mask)
+{
+        unsigned o = 0;
+
+        for (int i = 0; i < 4; ++i)
+                if (mask & (1 << i))
+                        o |= (3 << (2 * i));
+
+        return o;
+}
+
+static inline unsigned
+squeeze_writemask(unsigned mask)
+{
+        unsigned o = 0;
+
+        for (int i = 0; i < 4; ++i)
+                if (mask & (3 << (2 * i)))
+                        o |= (1 << i);
+
+        return o;
+
+}
+
+/* Coerce structs to integer */
+
+static inline unsigned
+vector_alu_srco_unsigned(midgard_vector_alu_src src)
+{
+        unsigned u;
+        memcpy(&u, &src, sizeof(src));
+        return u;
+}
+
+static inline midgard_vector_alu_src
+vector_alu_from_unsigned(unsigned u)
+{
+        midgard_vector_alu_src s;
+        memcpy(&s, &u, sizeof(s));
+        return s;
+}
 
 #endif
