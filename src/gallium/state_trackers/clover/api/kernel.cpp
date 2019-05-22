@@ -352,7 +352,37 @@ CLOVER_API cl_int
 clSetKernelExecInfo(cl_kernel d_kern,
                     cl_kernel_exec_info param_name,
                     size_t param_value_size,
-                    const void *param_value) {
-   CLOVER_NOT_SUPPORTED_UNTIL("2.0");
-   return CL_INVALID_VALUE;
+                    const void *param_value) try {
+   auto &kern = obj(d_kern);
+   const bool has_system_svm = all_of(std::mem_fn(&device::has_system_svm),
+                                      kern.program().context().devices());
+
+   if (!param_value)
+      return CL_INVALID_VALUE;
+
+   switch (param_name) {
+   case CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM: {
+      if (param_value_size != sizeof(cl_bool))
+         return CL_INVALID_VALUE;
+
+      cl_bool val = *static_cast<const cl_bool*>(param_value);
+      if (val == CL_TRUE && !has_system_svm)
+         return CL_INVALID_OPERATION;
+      else
+         return CL_SUCCESS;
+   }
+
+   case CL_KERNEL_EXEC_INFO_SVM_PTRS:
+      if (has_system_svm)
+         return CL_SUCCESS;
+
+      CLOVER_NOT_SUPPORTED_UNTIL("2.0");
+      return CL_INVALID_VALUE;
+
+   default:
+      return CL_INVALID_VALUE;
+   }
+
+} catch (error &e) {
+   return e.get();
 }

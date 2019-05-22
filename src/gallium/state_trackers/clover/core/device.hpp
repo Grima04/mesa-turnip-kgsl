@@ -95,6 +95,11 @@ namespace clover {
 
       clover::platform &platform;
 
+      inline bool
+      has_system_svm() const {
+         return svm_support() & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
+      }
+
    private:
       pipe_screen *pipe;
       pipe_loader_device *ldev;
