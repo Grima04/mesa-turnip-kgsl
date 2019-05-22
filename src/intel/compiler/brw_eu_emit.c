@@ -3038,10 +3038,11 @@ void
 brw_memory_fence(struct brw_codegen *p,
                  struct brw_reg dst,
                  struct brw_reg src,
-                 enum opcode send_op)
+                 enum opcode send_op,
+                 bool stall)
 {
    const struct gen_device_info *devinfo = p->devinfo;
-   const bool commit_enable =
+   const bool commit_enable = stall ||
       devinfo->gen >= 10 || /* HSD ES # 1404612949 */
       (devinfo->gen == 7 && !devinfo->is_haswell);
    struct brw_inst *insn;
@@ -3079,6 +3080,9 @@ brw_memory_fence(struct brw_codegen *p,
        */
       brw_MOV(p, dst, offset(dst, 1));
    }
+
+   if (stall)
+      brw_MOV(p, retype(brw_null_reg(), BRW_REGISTER_TYPE_UW), dst);
 
    brw_pop_insn_state(p);
 }

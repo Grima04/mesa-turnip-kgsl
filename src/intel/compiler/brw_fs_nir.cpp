@@ -4273,7 +4273,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_memory_barrier: {
       const fs_builder ubld = bld.group(8, 0);
       const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
-      ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp, brw_vec8_grf(0, 0))
+      ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
+                brw_vec8_grf(0, 0), brw_imm_ud(0))
          ->size_written = 2 * REG_SIZE;
       break;
    }
@@ -5080,7 +5081,20 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    }
 
    case nir_intrinsic_end_invocation_interlock: {
-      /* We don't need to do anything here */
+      /* For endInvocationInterlock(), we need to insert a memory fence which
+       * stalls in the shader until the memory transactions prior to that
+       * fence are complete.  This ensures that the shader does not end before
+       * any writes from its critical section have landed.  Otherwise, you can
+       * end up with a case where the next invocation on that pixel properly
+       * stalls for previous FS invocation on its pixel to complete but
+       * doesn't actually wait for the dataport memory transactions from that
+       * thread to land before submitting its own.
+       */
+      const fs_builder ubld = bld.group(8, 0);
+      const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
+      ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
+                brw_vec8_grf(0, 0), brw_imm_ud(1))
+         ->size_written = 2 * REG_SIZE;
       break;
    }
 
