@@ -1,4 +1,4 @@
-# Copyright © 2017 Intel Corporation
+# Copyright © 2017-2019 Intel Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,10 +29,33 @@ if with_ld_version_script
   opencl_link_deps += files('opencl.sym')
 endif
 
+_clang_modules = [
+  'clangCodeGen',
+  'clangFrontendTool',
+  'clangFrontend',
+  'clangDriver',
+  'clangSerialization',
+  'clangParse', 
+  'clangSema',
+  'clangAnalysis',
+  'clangAST',
+  'clangEdit',
+  'clangLex',
+  'clangBasic',
+]
+
+dep_clang = null_dep
 if meson.version().version_compare('>=0.51')
-  llvm_libdir = dep_llvm.get_variable(configtool : 'libdir', cmake : 'LLVM_LIBRARY_DIR')
+  dep_clang = dependency('Clang', modules : _clang_modules, required : false)
+  _llvm_libdir = dep_llvm.get_variable(configtool : 'libdir', cmake : 'LLVM_LIBRARY_DIR')
 else
-  llvm_libdir = dep_llvm.get_configtool_variable('libdir')
+  _llvm_libdir = dep_llvm.get_configtool_variable('libdir')
+endif
+if not dep_clang.found()
+  dep_clang = []
+  foreach m : _clang_modules
+    dep_clang += cpp.find_library(m, dirs : _llvm_libdir)
+  endforeach
 endif
 
 opencl_libname = with_opencl_icd ? 'MesaOpenCL' : 'OpenCL'
@@ -45,19 +68,7 @@ libopencl = shared_library(
   link_whole : libclover,
   link_with : [libpipe_loader_dynamic, libgallium, libmesa_util],
   dependencies : [
-    dep_thread, dep_clock, dep_dl, dep_unwind, dep_elf, dep_expat,
-    cpp.find_library('clangCodeGen', dirs : llvm_libdir),
-    cpp.find_library('clangFrontendTool', dirs : llvm_libdir),
-    cpp.find_library('clangFrontend', dirs : llvm_libdir),
-    cpp.find_library('clangDriver', dirs : llvm_libdir),
-    cpp.find_library('clangSerialization', dirs : llvm_libdir),
-    cpp.find_library('clangParse', dirs : llvm_libdir),
-    cpp.find_library('clangSema', dirs : llvm_libdir),
-    cpp.find_library('clangAnalysis', dirs : llvm_libdir),
-    cpp.find_library('clangAST', dirs : llvm_libdir),
-    cpp.find_library('clangEdit', dirs : llvm_libdir),
-    cpp.find_library('clangLex', dirs : llvm_libdir),
-    cpp.find_library('clangBasic', dirs : llvm_libdir),
+    dep_thread, dep_clock, dep_dl, dep_unwind, dep_elf, dep_expat, dep_clang,
   ],
   version : '@0@.0.0'.format(opencl_version),
   install : true,
