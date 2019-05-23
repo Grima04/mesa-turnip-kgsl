@@ -470,10 +470,14 @@ void
 schedule_program(compiler_context *ctx)
 {
         /* We run RA prior to scheduling */
-        struct ra_graph *g = allocate_registers(ctx);
-        install_registers(ctx, g);
 
         mir_foreach_block(ctx, block) {
                 schedule_block(ctx, block);
         }
+
+        /* Pipeline registers creation is a prepass before RA */
+        mir_create_pipeline_registers(ctx);
+
+        struct ra_graph *g = allocate_registers(ctx);
+        install_registers(ctx, g);
 }

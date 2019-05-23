@@ -32,6 +32,7 @@ files_panfrost = files(
   'midgard/midgard_schedule.c',
   'midgard/midgard_emit.c',
   'midgard/midgard_ra.c',
+  'midgard/midgard_ra_pipeline.c',
   'midgard/midgard_liveness.c',
   'midgard/midgard_ops.c',
 
