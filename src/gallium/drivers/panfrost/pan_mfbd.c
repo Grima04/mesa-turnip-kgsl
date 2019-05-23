@@ -85,8 +85,7 @@ panfrost_mfbd_clear(
 static void
 panfrost_mfbd_set_cbuf(
                 struct bifrost_render_target *rt,
-                struct pipe_surface *surf,
-                bool flip_y)
+                struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
         int stride = rsrc->bo->slices[0].stride;
@@ -96,14 +95,7 @@ panfrost_mfbd_set_cbuf(
         /* Now, we set the layout specific pieces */
 
         if (rsrc->bo->layout == PAN_LINEAR) {
-                mali_ptr framebuffer = rsrc->bo->gpu;
-
-                if (flip_y) {
-                        framebuffer += stride * (surf->texture->height0 - 1);
-                        stride = -stride;
-                }
-
-                rt->framebuffer = framebuffer;
+                rt->framebuffer = rsrc->bo->gpu;
                 rt->framebuffer_stride = stride / 16;
         } else if (rsrc->bo->layout == PAN_AFBC) {
                 rt->afbc.metadata = rsrc->bo->afbc_slab.gpu;
@@ -211,7 +203,7 @@ panfrost_mfbd_upload(
 /* Creates an MFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr
-panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y)
+panfrost_mfbd_fragment(struct panfrost_context *ctx)
 {
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
@@ -228,7 +220,7 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y)
 
         for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
                 struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
-                panfrost_mfbd_set_cbuf(&rts[cb], surf, flip_y);
+                panfrost_mfbd_set_cbuf(&rts[cb], surf);
         }
 
         if (ctx->pipe_framebuffer.zsbuf) {

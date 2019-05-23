@@ -87,8 +87,7 @@ panfrost_sfbd_clear(
 static void
 panfrost_sfbd_set_cbuf(
                 struct mali_single_framebuffer *fb,
-                struct pipe_surface *surf,
-                bool flip_y)
+                struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
@@ -97,15 +96,7 @@ panfrost_sfbd_set_cbuf(
         fb->format = panfrost_sfbd_format(surf);
 
         if (rsrc->bo->layout == PAN_LINEAR) {
-                mali_ptr framebuffer = rsrc->bo->gpu;
-
-                /* The default is upside down from OpenGL's perspective. */
-                if (flip_y) {
-                        framebuffer += stride * (surf->texture->height0 - 1);
-                        stride = -stride;
-                }
-
-                fb->framebuffer = framebuffer;
+                fb->framebuffer = rsrc->bo->gpu;
                 fb->stride = stride;
         } else {
                 fprintf(stderr, "Invalid render layout\n");
@@ -116,7 +107,7 @@ panfrost_sfbd_set_cbuf(
 /* Creates an SFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr
-panfrost_sfbd_fragment(struct panfrost_context *ctx, bool flip_y)
+panfrost_sfbd_fragment(struct panfrost_context *ctx)
 {
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
         struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx);
@@ -125,7 +116,7 @@ panfrost_sfbd_fragment(struct panfrost_context *ctx, bool flip_y)
 
         /* SFBD does not support MRT natively; sanity check */
         assert(ctx->pipe_framebuffer.nr_cbufs == 1);
-        panfrost_sfbd_set_cbuf(&fb, ctx->pipe_framebuffer.cbufs[0], flip_y);
+        panfrost_sfbd_set_cbuf(&fb, ctx->pipe_framebuffer.cbufs[0]);
 
         if (ctx->pipe_framebuffer.zsbuf) {
                 /* TODO */

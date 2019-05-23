@@ -1174,15 +1174,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
 
-        /* For flipped-Y buffers (signaled by negative scale), the translate is
-         * flipped as well */
-
-        bool invert_y = vp->scale[1] < 0.0;
-        float translate_y = vp->translate[1];
-
-        if (invert_y)
-                translate_y = ctx->pipe_framebuffer.height - translate_y;
-
         for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
                 struct panfrost_constant_buffer *buf = &ctx->constant_buffer[i];
 
@@ -1202,11 +1193,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                         if (sysval == PAN_SYSVAL_VIEWPORT_SCALE) {
                                 uniforms[4*i + 0] = vp->scale[0];
-                                uniforms[4*i + 1] = fabsf(vp->scale[1]);
+                                uniforms[4*i + 1] = vp->scale[1];
                                 uniforms[4*i + 2] = vp->scale[2];
                         } else if (sysval == PAN_SYSVAL_VIEWPORT_OFFSET) {
                                 uniforms[4*i + 0] = vp->translate[0];
-                                uniforms[4*i + 1] = translate_y;
+                                uniforms[4*i + 1] = vp->translate[1];
                                 uniforms[4*i + 2] = vp->translate[2];
                         } else {
                                 assert(0);
@@ -1276,23 +1267,27 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         view.viewport0[0] = (int) (vp->translate[0] - vp->scale[0]);
         view.viewport1[0] = MALI_POSITIVE((int) (vp->translate[0] + vp->scale[0]));
 
-        view.viewport0[1] = (int) (translate_y - fabs(vp->scale[1]));
-        view.viewport1[1] = MALI_POSITIVE((int) (translate_y + fabs(vp->scale[1])));
+        int miny = (int) (vp->translate[1] - vp->scale[1]);
+        int maxy = (int) (vp->translate[1] + vp->scale[1]);
 
         if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor) {
-                /* Invert scissor if needed */
-                unsigned miny = invert_y ?
-                        ctx->pipe_framebuffer.height - ss->maxy : ss->miny;
-
-                unsigned maxy = invert_y ?
-                        ctx->pipe_framebuffer.height - ss->miny : ss->maxy;
-
-                /* Set the actual scissor */
                 view.viewport0[0] = ss->minx;
-                view.viewport0[1] = miny;
                 view.viewport1[0] = MALI_POSITIVE(ss->maxx);
-                view.viewport1[1] = MALI_POSITIVE(maxy);
+
+                miny = ss->miny;
+                maxy = ss->maxy;
         } 
+
+        /* Hardware needs the min/max to be strictly ordered, so flip if we
+         * need to */
+        if (miny > maxy) {
+                int temp = miny;
+                miny = maxy;
+                maxy = temp;
+        }
+
+        view.viewport0[1] = miny;
+        view.viewport1[1] = MALI_POSITIVE(maxy);
 
         ctx->payload_tiler.postfix.viewport =
                 panfrost_upload_transient(ctx,
@@ -1583,8 +1578,8 @@ panfrost_create_rasterizer_state(
         /* Bitmask, unknown meaning of the start value */
         so->tiler_gl_enables = ctx->is_t6xx ? 0x105 : 0x7;
 
-        so->tiler_gl_enables |= MALI_FRONT_FACE(
-                                        cso->front_ccw ? MALI_CCW : MALI_CW);
+        if (cso->front_ccw)
+                so->tiler_gl_enables |= MALI_FRONT_CCW_TOP;
 
         if (cso->cull_face & PIPE_FACE_FRONT)
                 so->tiler_gl_enables |= MALI_CULL_FACE_FRONT;
@@ -2288,15 +2283,6 @@ panfrost_set_viewport_states(struct pipe_context *pipe,
         assert(num_viewports == 1);
 
         ctx->pipe_viewport = *viewports;
-
-#if 0
-        /* TODO: What if not centered? */
-        float w = abs(viewports->scale[0]) * 2.0;
-        float h = abs(viewports->scale[1]) * 2.0;
-
-        ctx->viewport.viewport1[0] = MALI_POSITIVE((int) w);
-        ctx->viewport.viewport1[1] = MALI_POSITIVE((int) h);
-#endif
 }
 
 static void

@@ -147,10 +147,11 @@ pandecode_log_decoded_flags(const struct pandecode_flag_info *flag_info,
 
 #define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
 static const struct pandecode_flag_info gl_enable_flag_info[] = {
-        FLAG_INFO(CULL_FACE_FRONT),
-        FLAG_INFO(CULL_FACE_BACK),
         FLAG_INFO(OCCLUSION_QUERY),
         FLAG_INFO(OCCLUSION_PRECISE),
+        FLAG_INFO(FRONT_CCW_TOP),
+        FLAG_INFO(CULL_FACE_FRONT),
+        FLAG_INFO(CULL_FACE_BACK),
         {}
 };
 #undef FLAG_INFO
@@ -1762,13 +1763,6 @@ static void
 pandecode_replay_gl_enables(uint32_t gl_enables, int job_type)
 {
         pandecode_log(".gl_enables = ");
-
-        if (job_type == JOB_TYPE_TILER) {
-                pandecode_log_cont("MALI_FRONT_FACE(MALI_%s) | ",
-                                 gl_enables & MALI_FRONT_FACE(MALI_CW) ? "CW" : "CCW");
-
-                gl_enables &= ~(MALI_FRONT_FACE(1));
-        }
 
         pandecode_log_decoded_flags(gl_enable_flag_info, gl_enables);
 

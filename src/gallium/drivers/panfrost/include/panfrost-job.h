@@ -73,9 +73,11 @@ enum mali_draw_mode {
 #define MALI_OCCLUSION_QUERY    (1 << 3)
 #define MALI_OCCLUSION_PRECISE  (1 << 4)
 
-#define MALI_FRONT_FACE(v)      (v << 5)
-#define MALI_CCW (0)
-#define MALI_CW  (1)
+/* Set for a glFrontFace(GL_CCW) in a Y=0=TOP coordinate system (like Gallium).
+ * In OpenGL, this would corresponds to glFrontFace(GL_CW). Mesa and the blob
+ * disagree about how to do viewport flipping, so the blob actually sets this
+ * for GL_CW but then has a negative viewport stride */
+#define MALI_FRONT_CCW_TOP      (1 << 5)
 
 #define MALI_CULL_FACE_FRONT    (1 << 6)
 #define MALI_CULL_FACE_BACK     (1 << 7)

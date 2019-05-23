@@ -340,11 +340,8 @@ panfrost_flush(
 bool
 panfrost_is_scanout(struct panfrost_context *ctx);
 
-mali_ptr
-panfrost_sfbd_fragment(struct panfrost_context *ctx, bool flip_y);
-
-mali_ptr
-panfrost_mfbd_fragment(struct panfrost_context *ctx, bool flip_y);
+mali_ptr panfrost_sfbd_fragment(struct panfrost_context *ctx);
+mali_ptr panfrost_mfbd_fragment(struct panfrost_context *ctx);
 
 struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_context *ctx);
