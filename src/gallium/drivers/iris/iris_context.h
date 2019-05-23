@@ -680,6 +680,9 @@ struct iris_context {
          struct pipe_resource *blend;
          struct pipe_resource *index_buffer;
       } last_res;
+
+      /** Records the size of variable-length state for INTEL_DEBUG=bat */
+      struct hash_table_u64 *sizes;
    } state;
 };
 

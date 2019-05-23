@@ -147,6 +147,25 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
    return (struct gen_batch_decode_bo) { };
 }
 
+static unsigned
+decode_get_state_size(void *v_batch, uint32_t offset_from_base)
+{
+   struct iris_batch *batch = v_batch;
+
+   /* The decoder gives us offsets from a base address, which is not great.
+    * Binding tables are relative to surface state base address, and other
+    * state is relative to dynamic state base address.  These could alias,
+    * but in practice it's unlikely because surface offsets are always in
+    * the [0, 64K) range, and we assign dynamic state addresses starting at
+    * the top of the 4GB range.  We should fix this but it's likely good
+    * enough for now.
+    */
+   unsigned size = (uintptr_t)
+      _mesa_hash_table_u64_search(batch->state_sizes, offset_from_base);
+
+   return size;
+}
+
 /**
  * Decode the current batch.
  */
@@ -164,6 +183,7 @@ iris_init_batch(struct iris_batch *batch,
                 struct iris_vtable *vtbl,
                 struct pipe_debug_callback *dbg,
                 struct pipe_device_reset_callback *reset,
+                struct hash_table_u64 *state_sizes,
                 struct iris_batch *all_batches,
                 enum iris_batch_name name,
                 uint8_t engine,
@@ -173,6 +193,7 @@ iris_init_batch(struct iris_batch *batch,
    batch->vtbl = vtbl;
    batch->dbg = dbg;
    batch->reset = reset;
+   batch->state_sizes = state_sizes;
    batch->name = name;
 
    /* engine should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
@@ -214,10 +235,9 @@ iris_init_batch(struct iris_batch *batch,
          GEN_BATCH_DECODE_OFFSETS |
          GEN_BATCH_DECODE_FLOATS;
 
-      /* TODO: track state size so we can print the right # of entries */
       gen_batch_decode_ctx_init(&batch->decoder, &screen->devinfo,
                                 stderr, decode_flags, NULL,
-                                decode_get_bo, NULL, batch);
+                                decode_get_bo, decode_get_state_size, batch);
       batch->decoder.max_vbo_decoded_lines = 32;
    }
 

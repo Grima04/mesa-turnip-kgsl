@@ -122,6 +122,7 @@ struct iris_batch {
    } cache;
 
    struct gen_batch_decode_ctx decoder;
+   struct hash_table_u64 *state_sizes;
 
    /** Have we emitted any draw calls to this batch? */
    bool contains_draw;
@@ -132,6 +133,7 @@ void iris_init_batch(struct iris_batch *batch,
                      struct iris_vtable *vtbl,
                      struct pipe_debug_callback *dbg,
                      struct pipe_device_reset_callback *reset,
+                     struct hash_table_u64 *state_sizes,
                      struct iris_batch *all_batches,
                      enum iris_batch_name name,
                      uint8_t ring,
@@ -214,6 +216,20 @@ iris_batch_reference_signal_syncpt(struct iris_batch *batch,
    struct iris_syncpt *syncpt =
       ((struct iris_syncpt **) util_dynarray_begin(&batch->syncpts))[0];
    iris_syncpt_reference(batch->screen, out_syncpt, syncpt);
+}
+
+/**
+ * Record the size of a piece of state for use in INTEL_DEBUG=bat printing.
+ */
+static inline void
+iris_record_state_size(struct hash_table_u64 *ht,
+                       uint32_t offset_from_base,
+                       uint32_t size)
+{
+   if (ht) {
+      _mesa_hash_table_u64_insert(ht, offset_from_base,
+                                  (void *)(uintptr_t) size);
+   }
 }
 
 #endif

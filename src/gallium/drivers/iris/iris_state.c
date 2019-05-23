@@ -426,6 +426,8 @@ stream_state(struct iris_batch *batch,
 
    *out_offset += iris_bo_offset_from_base_address(bo);
 
+   iris_record_state_size(batch->state_sizes, *out_offset, size);
+
    return ptr;
 }
 
@@ -1562,15 +1564,17 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
     * in the dynamic state memory zone, so we can point to it via the
     * 3DSTATE_SAMPLER_STATE_POINTERS_* commands.
     */
+   unsigned size = count * 4 * GENX(SAMPLER_STATE_length);
    uint32_t *map =
-      upload_state(ice->state.dynamic_uploader, &shs->sampler_table,
-                   count * 4 * GENX(SAMPLER_STATE_length), 32);
+      upload_state(ice->state.dynamic_uploader, &shs->sampler_table, size, 32);
    if (unlikely(!map))
       return;
 
    struct pipe_resource *res = shs->sampler_table.res;
    shs->sampler_table.offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(res));
+
+   iris_record_state_size(ice->state.sizes, shs->sampler_table.offset, size);
 
    /* Make sure all land in the same BO */
    iris_border_color_pool_reserve(ice, IRIS_MAX_TEXTURE_SAMPLERS);
