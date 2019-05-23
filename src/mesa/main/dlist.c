@@ -596,7 +596,12 @@ typedef enum
    OPCODE_COPY_MULTITEX_SUB_IMAGE2D,
    OPCODE_COPY_MULTITEX_SUB_IMAGE3D,
    OPCODE_MULTITEXENV,
+   OPCODE_COMPRESSED_TEXTURE_IMAGE_1D,
+   OPCODE_COMPRESSED_TEXTURE_IMAGE_2D,
+   OPCODE_COMPRESSED_TEXTURE_IMAGE_3D,
+   OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_1D,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D,
+   OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_3D,
 
    /* The following three are meta instructions */
    OPCODE_ERROR,                /* raise compiled-in error */
@@ -1245,6 +1250,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             break;
          case OPCODE_TEXTURE_SUB_IMAGE1D:
          case OPCODE_MULTITEX_SUB_IMAGE1D:
+         case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_1D:
             free(get_pointer(&n[8]));
             break;
          case OPCODE_TEXTURE_SUB_IMAGE2D:
@@ -1254,7 +1260,17 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
             break;
          case OPCODE_TEXTURE_SUB_IMAGE3D:
          case OPCODE_MULTITEX_SUB_IMAGE3D:
+         case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_3D:
             free(get_pointer(&n[12]));
+            break;
+         case OPCODE_COMPRESSED_TEXTURE_IMAGE_1D:
+            free(get_pointer(&n[8]));
+            break;
+         case OPCODE_COMPRESSED_TEXTURE_IMAGE_2D:
+            free(get_pointer(&n[9]));
+            break;
+         case OPCODE_COMPRESSED_TEXTURE_IMAGE_3D:
+            free(get_pointer(&n[10]));
             break;
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
@@ -10430,6 +10446,158 @@ save_MultiTexEnvivEXT(GLenum texunit, GLenum target, GLenum pname, const GLint *
 
 
 static void GLAPIENTRY
+save_CompressedTextureImage1DEXT(GLuint texture, GLenum target, GLint level,
+                                 GLenum internalFormat, GLsizei width,
+                                 GLint border, GLsizei imageSize,
+                                 const GLvoid * data)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_1D) {
+      /* don't compile, execute immediately */
+      CALL_CompressedTextureImage1DEXT(ctx->Exec, (texture, target, level,
+                                                   internalFormat, width,
+                                                   border, imageSize,
+                                                   data));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+      n = alloc_instruction(ctx, OPCODE_COMPRESSED_TEXTURE_IMAGE_1D,
+                            7 + POINTER_DWORDS);
+      if (n) {
+         n[1].ui = texture;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].e = internalFormat;
+         n[5].i = (GLint) width;
+         n[6].i = border;
+         n[7].i = imageSize;
+         save_pointer(&n[8],
+                      copy_data(data, imageSize, "glCompressedTextureImage1DEXT"));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_CompressedTextureImage1DEXT(ctx->Exec,
+                                          (texture, target, level, internalFormat,
+                                           width, border, imageSize, data));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedTextureImage2DEXT(GLuint texture, GLenum target, GLint level,
+                                 GLenum internalFormat, GLsizei width,
+                                 GLsizei height, GLint border, GLsizei imageSize,
+                                 const GLvoid * data)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_2D) {
+      /* don't compile, execute immediately */
+      CALL_CompressedTextureImage2DEXT(ctx->Exec, (texture, target, level,
+                                                   internalFormat, width, height,
+                                                   border, imageSize, data));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+      n = alloc_instruction(ctx, OPCODE_COMPRESSED_TEXTURE_IMAGE_2D,
+                            8 + POINTER_DWORDS);
+      if (n) {
+         n[1].ui = texture;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].e = internalFormat;
+         n[5].i = (GLint) width;
+         n[6].i = (GLint) height;
+         n[7].i = border;
+         n[8].i = imageSize;
+         save_pointer(&n[9],
+                      copy_data(data, imageSize, "glCompressedTextureImage2DEXT"));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_CompressedTextureImage2DEXT(ctx->Exec,
+                                          (texture, target, level, internalFormat,
+                                           width, height, border, imageSize, data));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedTextureImage3DEXT(GLuint texture, GLenum target, GLint level,
+                                 GLenum internalFormat, GLsizei width,
+                                 GLsizei height, GLsizei depth, GLint border,
+                                 GLsizei imageSize, const GLvoid * data)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_3D) {
+      /* don't compile, execute immediately */
+      CALL_CompressedTextureImage3DEXT(ctx->Exec, (texture, target, level,
+                                                   internalFormat, width,
+                                                   height, depth, border,
+                                                   imageSize, data));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+      n = alloc_instruction(ctx, OPCODE_COMPRESSED_TEXTURE_IMAGE_3D,
+                            9 + POINTER_DWORDS);
+      if (n) {
+         n[1].ui = texture;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].e = internalFormat;
+         n[5].i = (GLint) width;
+         n[6].i = (GLint) height;
+         n[7].i = (GLint) depth;
+         n[8].i = border;
+         n[9].i = imageSize;
+         save_pointer(&n[10],
+                      copy_data(data, imageSize, "glCompressedTextureImage3DEXT"));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_CompressedTextureImage3DEXT(ctx->Exec,
+                                          (texture, target, level, internalFormat,
+                                           width, height, depth, border, imageSize,
+                                           data));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedTextureSubImage1DEXT(GLuint texture, GLenum target, GLint level, GLint xoffset,
+                                    GLsizei width, GLenum format,
+                                    GLsizei imageSize, const GLvoid * data)
+{
+   Node *n;
+   GET_CURRENT_CONTEXT(ctx);
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_1D,
+                         7 + POINTER_DWORDS);
+   if (n) {
+      n[1].ui = texture;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = (GLint) width;
+      n[6].e = format;
+      n[7].i = imageSize;
+      save_pointer(&n[8],
+                   copy_data(data, imageSize, "glCompressedTextureSubImage1DEXT"));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CompressedTextureSubImage1DEXT(ctx->Exec, (texture, target, level, xoffset,
+                                                      width, format, imageSize, data));
+   }
+}
+
+
+static void GLAPIENTRY
 save_CompressedTextureSubImage2DEXT(GLuint texture, GLenum target, GLint level, GLint xoffset,
                                     GLint yoffset, GLsizei width, GLsizei height,
                                     GLenum format, GLsizei imageSize,
@@ -10458,6 +10626,42 @@ save_CompressedTextureSubImage2DEXT(GLuint texture, GLenum target, GLint level, 
       CALL_CompressedTextureSubImage2DEXT(ctx->Exec,
                                           (texture, target, level, xoffset, yoffset,
                                            width, height, format, imageSize, data));
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedTextureSubImage3DEXT(GLuint texture, GLenum target, GLint level, GLint xoffset,
+                                    GLint yoffset, GLint zoffset, GLsizei width,
+                                    GLsizei height, GLsizei depth, GLenum format,
+                                    GLsizei imageSize, const GLvoid * data)
+{
+   Node *n;
+   GET_CURRENT_CONTEXT(ctx);
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_3D,
+                         11 + POINTER_DWORDS);
+   if (n) {
+      n[1].ui = texture;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = yoffset;
+      n[6].i = zoffset;
+      n[7].i = (GLint) width;
+      n[8].i = (GLint) height;
+      n[9].i = (GLint) depth;
+      n[10].e = format;
+      n[11].i = imageSize;
+      save_pointer(&n[12],
+                   copy_data(data, imageSize, "glCompressedTextureSubImage3DEXT"));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CompressedTextureSubImage3DEXT(ctx->Exec,
+                                          (texture, target, level, xoffset, yoffset,
+                                           zoffset, width, height, depth, format,
+                                           imageSize, data));
    }
 }
 
@@ -12300,11 +12504,41 @@ execute_list(struct gl_context *ctx, GLuint list)
                CALL_MultiTexEnvfvEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
             }
             break;
+         case OPCODE_COMPRESSED_TEXTURE_IMAGE_1D:
+            CALL_CompressedTextureImage1DEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].i,
+                                                         n[4].e, n[5].i, n[6].i,
+                                                         n[7].i, get_pointer(&n[8])));
+            break;
+         case OPCODE_COMPRESSED_TEXTURE_IMAGE_2D:
+            CALL_CompressedTextureImage2DEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].i,
+                                                         n[4].e, n[5].i, n[6].i,
+                                                         n[7].i, n[8].i,
+                                                         get_pointer(&n[9])));
+            break;
+         case OPCODE_COMPRESSED_TEXTURE_IMAGE_3D:
+            CALL_CompressedTextureImage3DEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].i,
+                                                         n[4].e, n[5].i, n[6].i,
+                                                         n[7].i, n[8].i, n[9].i,
+                                                         get_pointer(&n[10])));
+            break;
+         case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_1D:
+            CALL_CompressedTextureSubImage1DEXT(ctx->Exec,
+                                                (n[1].ui, n[2].e, n[3].i, n[4].i,
+                                                 n[5].i, n[6].e, n[7].i,
+                                                 get_pointer(&n[8])));
+            break;
          case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D:
             CALL_CompressedTextureSubImage2DEXT(ctx->Exec,
                                                 (n[1].ui, n[2].e, n[3].i, n[4].i,
                                                  n[5].i, n[6].i, n[7].i, n[8].e,
                                                  n[9].i, get_pointer(&n[10])));
+            break;
+         case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_3D:
+            CALL_CompressedTextureSubImage3DEXT(ctx->Exec,
+                                                (n[1].ui, n[2].e, n[3].i, n[4].i,
+                                                 n[5].i, n[6].i, n[7].i, n[8].i,
+                                                 n[9].i, n[10].e, n[11].i,
+                                                 get_pointer(&n[12])));
             break;
 
          case OPCODE_CONTINUE:
@@ -13333,7 +13567,12 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_MultiTexEnvfvEXT(table, save_MultiTexEnvfvEXT);
    SET_MultiTexEnviEXT(table, save_MultiTexEnviEXT);
    SET_MultiTexEnvivEXT(table, save_MultiTexEnvivEXT);
+   SET_CompressedTextureImage1DEXT(table, save_CompressedTextureImage1DEXT);
+   SET_CompressedTextureImage2DEXT(table, save_CompressedTextureImage2DEXT);
+   SET_CompressedTextureImage3DEXT(table, save_CompressedTextureImage3DEXT);
+   SET_CompressedTextureSubImage1DEXT(table, save_CompressedTextureSubImage1DEXT);
    SET_CompressedTextureSubImage2DEXT(table, save_CompressedTextureSubImage2DEXT);
+   SET_CompressedTextureSubImage3DEXT(table, save_CompressedTextureSubImage3DEXT);
 }
 
 
