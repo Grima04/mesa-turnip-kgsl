@@ -1569,6 +1569,8 @@ offsets = {
     "GetMultiTexLevelParameterfvEXT": 1533,
     "FramebufferParameteriMESA": 1534,
     "GetFramebufferParameterivMESA": 1535,
+    "NamedRenderbufferStorageEXT": 1536,
+    "GetNamedRenderbufferParameterivEXT": 1537,
 }
 
 functions = [

@@ -190,6 +190,9 @@ _es_RenderbufferStorageEXT(GLenum target, GLenum internalFormat,
 extern void GLAPIENTRY
 _mesa_NamedRenderbufferStorage(GLuint renderbuffer, GLenum internalformat,
                                GLsizei width, GLsizei height);
+extern void GLAPIENTRY
+_mesa_NamedRenderbufferStorageEXT(GLuint renderbuffer, GLenum internalformat,
+                                  GLsizei width, GLsizei height);
 
 extern void GLAPIENTRY
 _mesa_NamedRenderbufferStorageMultisample(GLuint renderbuffer, GLsizei samples,
@@ -359,6 +362,10 @@ _mesa_GetNamedFramebufferAttachmentParameterivEXT(GLuint framebuffer,
 extern void GLAPIENTRY
 _mesa_NamedFramebufferParameteri(GLuint framebuffer, GLenum pname,
                                  GLint param);
+
+extern void GLAPIENTRY
+_mesa_GetNamedRenderbufferParameterivEXT(GLuint renderbuffer, GLenum pname,
+                                         GLint *params);
 
 extern void GLAPIENTRY
 _mesa_GetFramebufferParameterivEXT(GLuint framebuffer, GLenum pname,

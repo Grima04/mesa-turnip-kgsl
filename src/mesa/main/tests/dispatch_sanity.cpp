@@ -1185,8 +1185,8 @@ const struct function common_desktop_functions_possible[] = {
    /* GL_EXT_direct_state_access - GL 3.0 */
    //{ "glGetFloati_vEXT", 30, -1 },
    //{ "glGetDoublei_vEXT", 30, -1 },
-   //{ "glNamedRenderbufferStorageEXT", 30, -1 },
-   //{ "glGetNamedRenderbufferParameterivEXT", 30, -1 },
+   { "glNamedRenderbufferStorageEXT", 30, -1 },
+   { "glGetNamedRenderbufferParameterivEXT", 30, -1 },
    //{ "glNamedRenderbufferStorageMultisampleEXT", 30, -1 },
    { "glCheckNamedFramebufferStatusEXT", 30, -1 },
    { "glNamedFramebufferTexture1DEXT", 30, -1 },
