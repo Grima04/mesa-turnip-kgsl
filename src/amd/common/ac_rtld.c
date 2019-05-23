@@ -290,7 +290,12 @@ bool ac_rtld_open(struct ac_rtld_binary *binary,
 	uint64_t shared_lds_size = 0;
 	if (!layout_symbols(binary->lds_symbols.data, i.num_shared_lds_symbols, &shared_lds_size))
 		goto fail;
-	report_if(shared_lds_size > max_lds_size);
+
+	if (shared_lds_size > max_lds_size) {
+		fprintf(stderr, "ac_rtld error(1): too much LDS (used = %u, max = %u)\n",
+			(unsigned)shared_lds_size, max_lds_size);
+		goto fail;
+	}
 	binary->lds_size = shared_lds_size;
 
 	/* First pass over all parts: open ELFs, pre-determine the placement of
@@ -391,7 +396,11 @@ bool ac_rtld_open(struct ac_rtld_binary *binary,
 		lds_end->part_idx = ~0u;
 	}
 
-	report_elf_if(binary->lds_size > max_lds_size);
+	if (binary->lds_size > max_lds_size) {
+		fprintf(stderr, "ac_rtld error(2): too much LDS (used = %u, max = %u)\n",
+			(unsigned)binary->lds_size, max_lds_size);
+		goto fail;
+	}
 
 	/* Second pass: Adjust offsets of non-pasted text sections. */
 	binary->rx_size = pasted_text_size;
