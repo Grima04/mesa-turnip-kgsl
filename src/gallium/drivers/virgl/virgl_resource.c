@@ -147,21 +147,24 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    if (flush)
       vctx->base.flush(&vctx->base, NULL, 0);
 
+   /* If we are not allowed to block, and we know that we will have to wait,
+    * either because the resource is busy, or because it will become busy due
+    * to a readback, return early to avoid performing an incomplete
+    * transfer_get. Such an incomplete transfer_get may finish at any time,
+    * during which another unsynchronized map could write to the resource
+    * contents, leaving the contents in an undefined state.
+    */
+   if ((xfer->base.usage & PIPE_TRANSFER_DONTBLOCK) &&
+       (readback || (wait && vws->resource_is_busy(vws, res->hw_res))))
+      return VIRGL_TRANSFER_MAP_ERROR;
+
    if (readback) {
       vws->transfer_get(vws, res->hw_res, &xfer->base.box, xfer->base.stride,
                         xfer->l_stride, xfer->offset, xfer->base.level);
    }
 
-   if (wait) {
-      /* fail the mapping after flush and readback so that it will succeed in
-       * the future
-       */
-      if ((xfer->base.usage & PIPE_TRANSFER_DONTBLOCK) &&
-          vws->resource_is_busy(vws, res->hw_res))
-         return VIRGL_TRANSFER_MAP_ERROR;
-
+   if (wait)
       vws->resource_wait(vws, res->hw_res);
-   }
 
    return map_type;
 }
