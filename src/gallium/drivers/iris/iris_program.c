@@ -548,9 +548,6 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
    nir_validate_shader(nir, "after remap");
 
-   if (nir->info.stage != MESA_SHADER_COMPUTE)
-      brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
-
    /* We don't use params[], but fs_visitor::nir_setup_uniforms() asserts
     * about it for compute shaders, so go ahead and make some fake ones
     * which the backend will dead code eliminate.
@@ -643,6 +640,8 @@ iris_compile_vs(struct iris_context *ice,
 
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0,
                                        num_system_values, num_cbufs);
+
+   brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
 
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
@@ -822,6 +821,7 @@ iris_compile_tcs(struct iris_context *ice,
                           &num_system_values, &num_cbufs);
       assign_common_binding_table_offsets(devinfo, nir, prog_data, 0,
                                           num_system_values, num_cbufs);
+      brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
    } else {
       nir = brw_nir_create_passthrough_tcs(mem_ctx, compiler, options, key);
 
@@ -953,6 +953,8 @@ iris_compile_tes(struct iris_context *ice,
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0,
                                        num_system_values, num_cbufs);
 
+   brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
+
    struct brw_vue_map input_vue_map;
    brw_compute_tess_vue_map(&input_vue_map, key->inputs_read,
                             key->patch_inputs_read);
@@ -1059,6 +1061,8 @@ iris_compile_gs(struct iris_context *ice,
    assign_common_binding_table_offsets(devinfo, nir, prog_data, 0,
                                        num_system_values, num_cbufs);
 
+   brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
+
    brw_compute_vue_map(devinfo,
                        &vue_prog_data->vue_map, nir->info.outputs_written,
                        nir->info.separate_shader);
@@ -1161,6 +1165,9 @@ iris_compile_fs(struct iris_context *ice,
    assign_common_binding_table_offsets(devinfo, nir, prog_data,
                                        MAX2(key->nr_color_regions, 1),
                                        num_system_values, num_cbufs);
+
+   brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
+
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_fs(compiler, &ice->dbg, mem_ctx, key, fs_prog_data,
