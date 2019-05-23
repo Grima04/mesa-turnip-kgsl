@@ -706,6 +706,8 @@ decode_dynamic_state_pointers(struct gen_batch_decode_ctx *ctx,
       state = gen_spec_find_struct(ctx->spec, struct_type);
    }
 
+   count = update_count(ctx, state_offset, state->dw_length, count);
+
    for (int i = 0; i < count; i++) {
       fprintf(ctx->fp, "%s %d\n", struct_type, i);
       ctx_print_group(ctx, state, state_addr, state_map);
