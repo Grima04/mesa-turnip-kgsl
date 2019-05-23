@@ -3566,7 +3566,7 @@ KSP(const struct iris_compiled_shader *shader)
 #define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix, stage)                   \
    pkt.KernelStartPointer = KSP(shader);                                  \
    pkt.BindingTableEntryCount = GEN_GEN == 11 ? 0 :                       \
-      prog_data->binding_table.size_bytes / 4;                            \
+      shader->bt.size_bytes / 4;                                          \
    pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
                                                                           \
    pkt.DispatchGRFStartRegisterForURBData =                               \
@@ -3735,7 +3735,7 @@ iris_store_fs_state(struct iris_context *ice,
       ps.VectorMaskEnable = true;
       // XXX: WABTPPrefetchDisable, see above, drop at C0
       ps.BindingTableEntryCount = GEN_GEN == 11 ? 0 :
-         prog_data->binding_table.size_bytes / 4;
+         shader->bt.size_bytes / 4;
       ps.FloatingPointMode = prog_data->use_alt_mode;
       ps.MaximumNumberofThreadsPerPSD = 64 - (GEN_GEN == 8 ? 2 : 1);
 
@@ -4099,12 +4099,11 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
 
 #define push_bt_entry(addr) \
    assert(addr >= binder_addr); \
-   assert(s < prog_data->binding_table.size_bytes / sizeof(uint32_t)); \
+   assert(s < shader->bt.size_bytes / sizeof(uint32_t)); \
    if (!pin_only) bt_map[s++] = (addr) - binder_addr;
 
 #define bt_assert(section, exists)                           \
-   if (!pin_only) assert(prog_data->binding_table.section == \
-                         (exists) ? s : 0xd0d0d0d0)
+   if (!pin_only) assert(shader->bt.section == (exists) ? s : 0xd0d0d0d0)
 
 /**
  * Populate the binding table for a given shader stage.
@@ -4336,7 +4335,10 @@ iris_restore_render_saved_bos(struct iris_context *ice,
          if (range->length == 0)
             continue;
 
-         struct pipe_shader_buffer *cbuf = &shs->constbuf[range->block];
+         /* Range block is a binding table index, map back to UBO index. */
+         unsigned block_index = range->block - shader->bt.ubo_start;
+
+         struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
          struct iris_resource *res = (void *) cbuf->buffer;
 
          if (res)
@@ -4421,7 +4423,10 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
          const struct brw_ubo_range *range = &prog_data->ubo_ranges[0];
 
          if (range->length > 0) {
-            struct pipe_shader_buffer *cbuf = &shs->constbuf[range->block];
+            /* Range block is a binding table index, map back to UBO index. */
+            unsigned block_index = range->block - shader->bt.ubo_start;
+
+            struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
             struct iris_resource *res = (void *) cbuf->buffer;
 
             if (res)
@@ -4694,7 +4699,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                if (range->length == 0)
                   continue;
 
-               struct pipe_shader_buffer *cbuf = &shs->constbuf[range->block];
+               /* Range block is a binding table index, map back to UBO index. */
+               unsigned block_index = range->block - shader->bt.ubo_start;
+
+               struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
                struct iris_resource *res = (void *) cbuf->buffer;
 
                assert(cbuf->buffer_offset % 32 == 0);

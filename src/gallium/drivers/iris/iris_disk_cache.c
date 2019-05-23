@@ -109,6 +109,7 @@ iris_disk_cache_store(struct disk_cache *cache,
     * 3. Number of entries in the system value array
     * 4. System value array
     * 5. Legacy param array (only used for compute workgroup ID)
+    * 6. Binding table
     */
    blob_write_bytes(&blob, shader->prog_data, brw_prog_data_size(stage));
    blob_write_bytes(&blob, shader->map, shader->prog_data->program_size);
@@ -117,6 +118,7 @@ iris_disk_cache_store(struct disk_cache *cache,
                     shader->num_system_values * sizeof(enum brw_param_builtin));
    blob_write_bytes(&blob, prog_data->param,
                     prog_data->nr_params * sizeof(uint32_t));
+   blob_write_bytes(&blob, &shader->bt, sizeof(shader->bt));
 
    disk_cache_put(cache, cache_key, blob.data, blob.size, NULL);
    blob_finish(&blob);
@@ -189,6 +191,9 @@ iris_disk_cache_retrieve(struct iris_context *ice,
                       prog_data->nr_params * sizeof(uint32_t));
    }
 
+   struct iris_binding_table bt;
+   blob_copy_bytes(&blob, &bt, sizeof(bt));
+
    if (stage == MESA_SHADER_VERTEX ||
        stage == MESA_SHADER_TESS_EVAL ||
        stage == MESA_SHADER_GEOMETRY) {
@@ -210,7 +215,7 @@ iris_disk_cache_retrieve(struct iris_context *ice,
     */
    return iris_upload_shader(ice, stage, key_size, prog_key, assembly,
                              prog_data, so_decls, system_values,
-                             num_system_values, num_cbufs);
+                             num_system_values, num_cbufs, &bt);
 #else
    return NULL;
 #endif

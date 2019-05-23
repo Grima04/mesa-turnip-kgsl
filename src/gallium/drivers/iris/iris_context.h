@@ -281,6 +281,15 @@ struct iris_uncompiled_shader {
    struct iris_state_ref const_data_state;
 };
 
+struct iris_binding_table {
+   uint32_t size_bytes;
+
+   uint32_t texture_start;
+   uint32_t ubo_start;
+   uint32_t ssbo_start;
+   uint32_t image_start;
+};
+
 /**
  * A compiled shader variant, containing a pointer to the GPU assembly,
  * as well as program data and other packets needed by state upload.
@@ -310,6 +319,8 @@ struct iris_compiled_shader {
     * (the VUE-based information for transform feedback outputs).
     */
    uint32_t *streamout;
+
+   struct iris_binding_table bt;
 
    /**
     * Shader packets and other data derived from prog_data.  These must be
@@ -827,7 +838,8 @@ struct iris_compiled_shader *iris_upload_shader(struct iris_context *ice,
                                                 uint32_t *streamout,
                                                 enum brw_param_builtin *sysv,
                                                 unsigned num_system_values,
-                                                unsigned num_cbufs);
+                                                unsigned num_cbufs,
+                                                const struct iris_binding_table *bt);
 const void *iris_find_previous_compile(const struct iris_context *ice,
                                        enum iris_program_cache_id cache_id,
                                        unsigned program_string_id);
