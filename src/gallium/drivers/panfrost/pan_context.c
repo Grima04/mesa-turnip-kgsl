@@ -2057,13 +2057,10 @@ panfrost_set_sampler_views(
 static void
 panfrost_sampler_view_destroy(
         struct pipe_context *pctx,
-        struct pipe_sampler_view *views)
+        struct pipe_sampler_view *view)
 {
-        //struct panfrost_context *ctx = pan_context(pctx);
-
-        /* TODO */
-
-        free(views);
+        pipe_resource_reference(&view->texture, NULL);
+        free(view);
 }
 
 static void
