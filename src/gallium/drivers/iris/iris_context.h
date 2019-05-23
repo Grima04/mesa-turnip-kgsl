@@ -292,10 +292,22 @@ enum iris_surface_group {
    IRIS_SURFACE_GROUP_COUNT,
 };
 
+enum {
+   /* Invalid value for a binding table index. */
+   IRIS_SURFACE_NOT_USED = 0xa0a0a0a0,
+};
+
 struct iris_binding_table {
    uint32_t size_bytes;
 
+   /** Number of surfaces in each group, before compacting. */
+   uint32_t sizes[IRIS_SURFACE_GROUP_COUNT];
+
+   /** Initial offset of each group. */
    uint32_t offsets[IRIS_SURFACE_GROUP_COUNT];
+
+   /** Mask of surfaces used in each group. */
+   uint64_t used_mask[IRIS_SURFACE_GROUP_COUNT];
 };
 
 /**
@@ -814,6 +826,12 @@ const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
 struct iris_bo *iris_get_scratch_space(struct iris_context *ice,
                                        unsigned per_thread_scratch,
                                        gl_shader_stage stage);
+uint32_t iris_group_index_to_bti(const struct iris_binding_table *bt,
+                                 enum iris_surface_group group,
+                                 uint32_t index);
+uint32_t iris_bti_to_group_index(const struct iris_binding_table *bt,
+                                 enum iris_surface_group group,
+                                 uint32_t bti);
 
 /* iris_disk_cache.c */
 

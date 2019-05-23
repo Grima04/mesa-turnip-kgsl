@@ -37,6 +37,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_atomic.h"
 #include "util/u_upload_mgr.h"
+#include "util/debug.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_serialize.h"
@@ -501,30 +502,103 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    *out_num_cbufs = num_cbufs;
 }
 
+enum {
+   /* Max elements in a surface group. */
+   SURFACE_GROUP_MAX_ELEMENTS = 64,
+};
+
+/**
+ * Map a <group, index> pair to a binding table index.
+ *
+ * For example: <UBO, 5> => binding table index 12
+ */
+uint32_t
+iris_group_index_to_bti(const struct iris_binding_table *bt,
+                        enum iris_surface_group group, uint32_t index)
+{
+   assert(index < bt->sizes[group]);
+   uint64_t mask = bt->used_mask[group];
+   uint64_t bit = 1ull << index;
+   if (bit & mask) {
+      return bt->offsets[group] + util_bitcount64((bit - 1) & mask);
+   } else {
+      return IRIS_SURFACE_NOT_USED;
+   }
+}
+
+/**
+ * Map a binding table index back to a <group, index> pair.
+ *
+ * For example: binding table index 12 => <UBO, 5>
+ */
+uint32_t
+iris_bti_to_group_index(const struct iris_binding_table *bt,
+                        enum iris_surface_group group, uint32_t bti)
+{
+   uint64_t used_mask = bt->used_mask[group];
+   assert(bti >= bt->offsets[group]);
+
+   uint32_t c = bti - bt->offsets[group];
+   while (used_mask) {
+      int i = u_bit_scan64(&used_mask);
+      if (c == 0)
+         return i;
+      c--;
+   }
+
+   return IRIS_SURFACE_NOT_USED;
+}
+
 static void
 rewrite_src_with_bti(nir_builder *b, struct iris_binding_table *bt,
                      nir_instr *instr, nir_src *src,
                      enum iris_surface_group group)
 {
-   assert(bt->offsets[group] != 0xd0d0d0d0);
+   assert(bt->sizes[group] > 0);
 
    b->cursor = nir_before_instr(instr);
    nir_ssa_def *bti;
    if (nir_src_is_const(*src)) {
-      bti = nir_imm_intN_t(b, nir_src_as_uint(*src) + bt->offsets[group],
+      uint32_t index = nir_src_as_uint(*src);
+      bti = nir_imm_intN_t(b, iris_group_index_to_bti(bt, group, index),
                            src->ssa->bit_size);
    } else {
+      /* Indirect usage makes all the surfaces of the group to be available,
+       * so we can just add the base.
+       */
+      assert(bt->used_mask[group] == BITFIELD64_MASK(bt->sizes[group]));
       bti = nir_iadd_imm(b, src->ssa, bt->offsets[group]);
    }
    nir_instr_rewrite_src(instr, src, nir_src_for_ssa(bti));
 }
 
+static void
+mark_used_with_src(struct iris_binding_table *bt, nir_src *src,
+                   enum iris_surface_group group)
+{
+   assert(bt->sizes[group] > 0);
+
+   if (nir_src_is_const(*src)) {
+      uint64_t index = nir_src_as_uint(*src);
+      assert(index < bt->sizes[group]);
+      bt->used_mask[group] |= 1ull << index;
+   } else {
+      /* There's an indirect usage, we need all the surfaces. */
+      bt->used_mask[group] = BITFIELD64_MASK(bt->sizes[group]);
+   }
+}
+
+static bool
+skip_compacting_binding_tables(void)
+{
+   static int skip = -1;
+   if (skip < 0)
+      skip = env_var_as_boolean("INTEL_DISABLE_COMPACT_BINDING_TABLE", false);
+   return skip;
+}
+
 /**
  * Set up the binding table indices and apply to the shader.
- *
- * Unused groups are initialized to 0xd0d0d0d0 to make it obvious that they're
- * unused but also make sure that addition of small offsets to them will
- * trigger some of our asserts that surface indices are < BRW_MAX_SURFACES.
  */
 static void
 iris_setup_binding_table(struct nir_shader *nir,
@@ -536,31 +610,24 @@ iris_setup_binding_table(struct nir_shader *nir,
    const struct shader_info *info = &nir->info;
 
    memset(bt, 0, sizeof(*bt));
-   for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++)
-      bt->offsets[i] = 0xd0d0d0d0;
 
-   /* Calculate the initial binding table index for each group. */
-   uint32_t next_offset;
+   /* Set the sizes for each surface group.  For some groups, we already know
+    * upfront how many will be used, so mark them.
+    */
    if (info->stage == MESA_SHADER_FRAGMENT) {
-      next_offset = num_render_targets;
-      bt->offsets[IRIS_SURFACE_GROUP_RENDER_TARGET] = 0;
+      bt->sizes[IRIS_SURFACE_GROUP_RENDER_TARGET] = num_render_targets;
+      /* All render targets used. */
+      bt->used_mask[IRIS_SURFACE_GROUP_RENDER_TARGET] =
+         BITFIELD64_MASK(num_render_targets);
    } else if (info->stage == MESA_SHADER_COMPUTE) {
-      next_offset = 1;
-      bt->offsets[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 0;
-   } else {
-      next_offset = 0;
+      bt->sizes[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
+      bt->used_mask[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
    }
 
-   unsigned num_textures = util_last_bit(info->textures_used);
-   if (num_textures) {
-      bt->offsets[IRIS_SURFACE_GROUP_TEXTURE] = next_offset;
-      next_offset += num_textures;
-   }
+   bt->sizes[IRIS_SURFACE_GROUP_TEXTURE] = util_last_bit(info->textures_used);
+   bt->used_mask[IRIS_SURFACE_GROUP_TEXTURE] = info->textures_used;
 
-   if (info->num_images) {
-      bt->offsets[IRIS_SURFACE_GROUP_IMAGE] = next_offset;
-      next_offset += info->num_images;
-   }
+   bt->sizes[IRIS_SURFACE_GROUP_IMAGE] = info->num_images;
 
    /* Allocate a slot in the UBO section for NIR constants if present.
     * We don't include them in iris_compiled_shader::num_cbufs because
@@ -569,22 +636,93 @@ iris_setup_binding_table(struct nir_shader *nir,
     */
    if (nir->constant_data_size > 0)
       num_cbufs++;
+   bt->sizes[IRIS_SURFACE_GROUP_UBO] = num_cbufs;
 
-   if (num_cbufs) {
-      //assert(info->num_ubos <= BRW_MAX_UBO);
-      bt->offsets[IRIS_SURFACE_GROUP_UBO] = next_offset;
-      next_offset += num_cbufs;
-   }
+   /* The first IRIS_MAX_ABOs indices in the SSBO group are for atomics, real
+    * SSBOs start after that.  Compaction will remove unused ABOs.
+    */
+   bt->sizes[IRIS_SURFACE_GROUP_SSBO] = IRIS_MAX_ABOS + info->num_ssbos;
 
-   if (info->num_ssbos || info->num_abos) {
-      bt->offsets[IRIS_SURFACE_GROUP_SSBO] = next_offset;
-      // XXX: see iris_state "wasting 16 binding table slots for ABOs" comment
-      next_offset += IRIS_MAX_ABOS + info->num_ssbos;
-   }
+   for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++)
+      assert(bt->sizes[i] <= SURFACE_GROUP_MAX_ELEMENTS);
 
-   bt->size_bytes = next_offset * 4;
-
+   /* Mark surfaces used for the cases we don't have the information available
+    * upfront.
+    */
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   nir_foreach_block (block, impl) {
+      nir_foreach_instr (instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_image_size:
+         case nir_intrinsic_image_load:
+         case nir_intrinsic_image_store:
+         case nir_intrinsic_image_atomic_add:
+         case nir_intrinsic_image_atomic_min:
+         case nir_intrinsic_image_atomic_max:
+         case nir_intrinsic_image_atomic_and:
+         case nir_intrinsic_image_atomic_or:
+         case nir_intrinsic_image_atomic_xor:
+         case nir_intrinsic_image_atomic_exchange:
+         case nir_intrinsic_image_atomic_comp_swap:
+         case nir_intrinsic_image_load_raw_intel:
+         case nir_intrinsic_image_store_raw_intel:
+            mark_used_with_src(bt, &intrin->src[0], IRIS_SURFACE_GROUP_IMAGE);
+            break;
+
+         case nir_intrinsic_load_ubo:
+            mark_used_with_src(bt, &intrin->src[0], IRIS_SURFACE_GROUP_UBO);
+            break;
+
+         case nir_intrinsic_store_ssbo:
+            mark_used_with_src(bt, &intrin->src[1], IRIS_SURFACE_GROUP_SSBO);
+            break;
+
+         case nir_intrinsic_get_buffer_size:
+         case nir_intrinsic_ssbo_atomic_add:
+         case nir_intrinsic_ssbo_atomic_imin:
+         case nir_intrinsic_ssbo_atomic_umin:
+         case nir_intrinsic_ssbo_atomic_imax:
+         case nir_intrinsic_ssbo_atomic_umax:
+         case nir_intrinsic_ssbo_atomic_and:
+         case nir_intrinsic_ssbo_atomic_or:
+         case nir_intrinsic_ssbo_atomic_xor:
+         case nir_intrinsic_ssbo_atomic_exchange:
+         case nir_intrinsic_ssbo_atomic_comp_swap:
+         case nir_intrinsic_ssbo_atomic_fmin:
+         case nir_intrinsic_ssbo_atomic_fmax:
+         case nir_intrinsic_ssbo_atomic_fcomp_swap:
+         case nir_intrinsic_load_ssbo:
+            mark_used_with_src(bt, &intrin->src[0], IRIS_SURFACE_GROUP_SSBO);
+            break;
+
+         default:
+            break;
+         }
+      }
+   }
+
+   /* When disable we just mark everything as used. */
+   if (unlikely(skip_compacting_binding_tables())) {
+      for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++)
+         bt->used_mask[i] = BITFIELD64_MASK(bt->sizes[i]);
+   }
+
+   /* Calculate the offsets and the binding table size based on the used
+    * surfaces.  After this point, the functions to go between "group indices"
+    * and binding table indices can be used.
+    */
+   uint32_t next = 0;
+   for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++) {
+      if (bt->used_mask[i] != 0) {
+         bt->offsets[i] = next;
+         next += util_bitcount64(bt->used_mask[i]);
+      }
+   }
+   bt->size_bytes = next * 4;
 
    /* Apply the binding table indices.  The backend compiler is not expected
     * to change those, as we haven't set any of the *_start entries in brw
@@ -596,9 +734,10 @@ iris_setup_binding_table(struct nir_shader *nir,
    nir_foreach_block (block, impl) {
       nir_foreach_instr (instr, block) {
          if (instr->type == nir_instr_type_tex) {
-            assert(bt->offsets[IRIS_SURFACE_GROUP_TEXTURE] != 0xd0d0d0d0);
-            nir_instr_as_tex(instr)->texture_index +=
-               bt->offsets[IRIS_SURFACE_GROUP_TEXTURE];
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            tex->texture_index =
+               iris_group_index_to_bti(bt, IRIS_SURFACE_GROUP_TEXTURE,
+                                       tex->texture_index);
             continue;
          }
 
@@ -935,6 +1074,8 @@ iris_compile_tcs(struct iris_context *ice,
 
       /* Manually setup the TCS binding table. */
       memset(&bt, 0, sizeof(bt));
+      bt.sizes[IRIS_SURFACE_GROUP_UBO] = 1;
+      bt.used_mask[IRIS_SURFACE_GROUP_UBO] = 1;
       bt.size_bytes = 4;
 
       prog_data->ubo_ranges[0].length = 1;
