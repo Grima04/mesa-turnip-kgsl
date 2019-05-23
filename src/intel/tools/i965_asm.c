@@ -26,9 +26,15 @@
 #include <getopt.h>
 #include "i965_asm.h"
 
+enum opt_output_type {
+   OPT_OUTPUT_HEX,
+   OPT_OUTPUT_C_LITERAL,
+   OPT_OUTPUT_BIN,
+};
+
 extern FILE *yyin;
 struct brw_codegen *p;
-static int c_literal_output = 0;
+static enum opt_output_type output_type = OPT_OUTPUT_BIN;
 char *input_filename = NULL;
 int errors;
 
@@ -39,13 +45,14 @@ print_help(const char *progname, FILE *file)
            "Usage: %s [OPTION] inputfile\n"
            "Assemble i965 instructions from input file.\n\n"
            "    -h, --help             display this help and exit\n"
-           "    -l, --c-literal        C literal\n"
+           "    -t, --type=OUTPUT_TYPE OUTPUT_TYPE can be 'bin' (default if omitted),\n"
+           "                           'c_literal', or 'hex'\n"
            "    -o, --output           specify output file\n"
            "        --compact          print compacted instructions\n"
            "    -g, --gen=platform     assemble instructions for given \n"
            "                           platform (3 letter platform name)\n"
            "Example:\n"
-           "    i965_asm -g kbl input.asm -o output\n",
+           "    i965_asm -g kbl input.asm -t hex -o output\n",
            progname);
 }
 
@@ -56,18 +63,31 @@ print_instruction(FILE *output, bool compact, const brw_inst *instruction)
 
    byte_limit = (compact == true) ? 8 : 16;
 
-   if (c_literal_output) {
-      fprintf(output, "\t0x%02x,", ((unsigned char *)instruction)[0]);
-
-      for (unsigned i = 1; i < byte_limit; i++)
-         fprintf(output, " 0x%02x,", ((unsigned char *)instruction)[i]);
-   } else {
+   switch (output_type) {
+   case OPT_OUTPUT_HEX: {
       fprintf(output, "%02x", ((unsigned char *)instruction)[0]);
 
-      for (unsigned i = 1; i < byte_limit; i++)
+      for (unsigned i = 1; i < byte_limit; i++) {
          fprintf(output, " %02x", ((unsigned char *)instruction)[i]);
+      }
+      break;
    }
-   fprintf(output, "\n");
+   case OPT_OUTPUT_C_LITERAL: {
+      fprintf(output, "\t0x%02x,", ((unsigned char *)instruction)[0]);
+
+      for (unsigned i = 1; i < byte_limit; i++) {
+         fprintf(output, " 0x%02x,", ((unsigned char *)instruction)[i]);
+      }
+      break;
+   }
+   case OPT_OUTPUT_BIN:
+      fwrite(instruction, 1, byte_limit, output);
+      break;
+   }
+
+   if (output_type != OPT_OUTPUT_BIN) {
+      fprintf(output, "\n");
+   }
 }
 
 static struct gen_device_info *
@@ -107,14 +127,14 @@ int main(int argc, char **argv)
 
    const struct option i965_asm_opts[] = {
       { "help",          no_argument,       (int *) &help,      true },
-      { "c-literal",     no_argument,       NULL,               'c' },
+      { "type",          required_argument, NULL,               't' },
       { "gen",           required_argument, NULL,               'g' },
       { "output",        required_argument, NULL,               'o' },
       { "compact",       no_argument,       (int *) &compact,   true },
       { NULL,            0,                 NULL,               0 }
    };
 
-   while ((c = getopt_long(argc, argv, ":g:o:lh", i965_asm_opts, NULL)) != -1) {
+   while ((c = getopt_long(argc, argv, ":t:g:o:h", i965_asm_opts, NULL)) != -1) {
       switch (c) {
       case 'g': {
          const int id = gen_device_name_to_pci_device_id(optarg);
@@ -131,9 +151,19 @@ int main(int argc, char **argv)
          help = true;
          print_help(argv[0], stderr);
          goto end;
-      case 'l':
-         c_literal_output = 1;
+      case 't': {
+         if (strcmp(optarg, "hex") == 0) {
+            output_type = OPT_OUTPUT_HEX;
+         } else if (strcmp(optarg, "c_literal") == 0) {
+            output_type = OPT_OUTPUT_C_LITERAL;
+         } else if (strcmp(optarg, "bin") == 0) {
+            output_type = OPT_OUTPUT_BIN;
+         } else {
+            fprintf(stderr, "invalid value for --type: %s\n", optarg);
+            goto end;
+         }
          break;
+      }
       case 'o':
          output_file = strdup(optarg);
          break;
@@ -200,7 +230,7 @@ int main(int argc, char **argv)
       goto end;
    }
 
-   if (c_literal_output)
+   if (output_type == OPT_OUTPUT_C_LITERAL)
       fprintf(output, "static const char gen_eu_bytes[] = {\n");
 
    brw_validate_instructions(p->devinfo, p->store, 0,
@@ -227,7 +257,7 @@ int main(int argc, char **argv)
 
    ralloc_free(disasm_info);
 
-   if (c_literal_output)
+   if (output_type == OPT_OUTPUT_C_LITERAL)
       fprintf(output, "}");
 
    result = EXIT_SUCCESS;

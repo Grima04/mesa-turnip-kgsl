@@ -16,7 +16,7 @@ fi
 for file in ${SRCDIR}/${test}/*.asm; do
    if [ -f "$file" ]; then
       filename="${file%.*}"
-      "${I965_ASM}" -g ${gen} -o "${file}.out" "${file}"
+      "${I965_ASM}" -t hex -g ${gen} -o "${file}.out" "${file}"
       if cmp "${file}.out" "${filename}.expected" 2> /dev/null; then
          echo "${file} : PASS"
       else
