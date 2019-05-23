@@ -30,6 +30,7 @@
 
 #include <xf86drm.h>
 #include "GL/mesa_glinterop.h"
+#include "util/disk_cache.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "util/u_format.h"
@@ -1868,6 +1869,32 @@ static const __DRI2configQueryExtension dri2GalliumConfigQueryExtension = {
    .configQueryf        = dri2GalliumConfigQueryf,
 };
 
+/**
+ * \brief the DRI2blobExtension set_cache_funcs method
+ */
+static void
+set_blob_cache_funcs(__DRIscreen *sPriv, __DRIblobCacheSet set,
+                     __DRIblobCacheGet get)
+{
+   struct dri_screen *screen = dri_screen(sPriv);
+   struct pipe_screen *pscreen = screen->base.screen;
+
+   if (!pscreen->get_disk_shader_cache)
+      return;
+
+   struct disk_cache *cache = pscreen->get_disk_shader_cache(pscreen);
+
+   if (!cache)
+      return;
+
+   disk_cache_set_callbacks(cache, set, get);
+}
+
+static const __DRI2blobExtension driBlobExtension = {
+   .base = { __DRI2_BLOB, 1 },
+   .set_cache_funcs = set_blob_cache_funcs
+};
+
 /*
  * Backend function init_screen.
  */
@@ -1882,6 +1909,7 @@ static const __DRIextension *dri_screen_extensions[] = {
    &dri2FenceExtension.base,
    &dri2InteropExtension.base,
    &dri2NoErrorExtension.base,
+   &driBlobExtension.base,
    NULL
 };
 
@@ -1896,6 +1924,7 @@ static const __DRIextension *dri_robust_screen_extensions[] = {
    &dri2InteropExtension.base,
    &dri2Robustness.base,
    &dri2NoErrorExtension.base,
+   &driBlobExtension.base,
    NULL
 };
 
