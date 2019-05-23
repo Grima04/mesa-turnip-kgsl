@@ -1737,6 +1737,18 @@ mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
 }
 
 static bool
+mir_nontrivial_source2_mod(midgard_instruction *ins)
+{
+        unsigned mask = squeeze_writemask(ins->alu.mask);
+        bool is_int = midgard_is_integer_op(ins->alu.op);
+
+        midgard_vector_alu_src src2 =
+                vector_alu_from_unsigned(ins->alu.src2);
+
+        return mir_nontrivial_mod(src2, is_int, mask);
+}
+
+static bool
 midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 {
         bool progress = false;
@@ -1759,20 +1771,71 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (ins->ssa_args.inline_constant) continue;
                 if (ins->has_constants) continue;
 
-                /* Also, if the move has side effects, we're helpless */
-
-                midgard_vector_alu_src src =
-                        vector_alu_from_unsigned(ins->alu.src2);
-                unsigned mask = squeeze_writemask(ins->alu.mask);
-                bool is_int = midgard_is_integer_op(ins->alu.op);
-
-                if (mir_nontrivial_mod(src, is_int, mask)) continue;
+                if (mir_nontrivial_source2_mod(ins)) continue;
                 if (ins->alu.outmod != midgard_outmod_none) continue;
 
                 /* We're clear -- rewrite */
                 mir_rewrite_index_src(ctx, to, from);
                 mir_remove_instruction(ins);
                 progress |= true;
+        }
+
+        return progress;
+}
+
+/* fmov.pos is an idiom for fpos. Propoagate the .pos up to the source, so then
+ * the move can be propagated away entirely */
+
+static bool
+mir_compose_outmod(midgard_outmod *outmod, midgard_outmod comp)
+{
+        /* Nothing to do */
+        if (comp == midgard_outmod_none)
+                return true;
+
+        if (*outmod == midgard_outmod_none) {
+                *outmod = comp;
+                return true;
+        }
+
+        /* TODO: Compose rules */
+        return false;
+}
+
+static bool
+midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != TAG_ALU_4) continue;
+                if (ins->alu.op != midgard_alu_op_fmov) continue;
+                if (ins->alu.outmod != midgard_outmod_pos) continue;
+
+                /* TODO: Registers? */
+                unsigned src = ins->ssa_args.src1;
+                if (src >= ctx->func->impl->ssa_alloc) continue;
+
+                /* There might be a source modifier, too */
+                if (mir_nontrivial_source2_mod(ins)) continue;
+
+                /* Backpropagate the modifier */
+                mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
+                        if (v->type != TAG_ALU_4) continue;
+                        if (v->ssa_args.dest != src) continue;
+
+                        midgard_outmod temp = v->alu.outmod;
+                        progress |= mir_compose_outmod(&temp, ins->alu.outmod);
+
+                        /* Throw in the towel.. */
+                        if (!progress) break;
+
+                        /* Otherwise, transfer the modifier */
+                        v->alu.outmod = temp;
+                        ins->alu.outmod = midgard_outmod_none;
+
+                        break;
+                }
         }
 
         return progress;
@@ -2375,6 +2438,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 progress = false;
 
                 mir_foreach_block(ctx, block) {
+                        progress |= midgard_opt_pos_propagate(ctx, block);
                         progress |= midgard_opt_copy_prop(ctx, block);
                         progress |= midgard_opt_copy_prop_tex(ctx, block);
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
