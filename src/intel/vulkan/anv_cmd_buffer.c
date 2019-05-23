@@ -72,6 +72,10 @@ const struct anv_dynamic_state default_dynamic_state = {
       .front = 0u,
       .back = 0u,
    },
+   .line_stipple = {
+      .factor = 0u,
+      .pattern = 0u,
+   },
 };
 
 void
@@ -111,6 +115,9 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
 
    if (copy_mask & ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE)
       dest->stencil_reference = src->stencil_reference;
+
+   if (copy_mask & ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE)
+      dest->line_stipple = src->line_stipple;
 }
 
 static void
@@ -512,6 +519,19 @@ void anv_CmdSetStencilReference(
       cmd_buffer->state.gfx.dynamic.stencil_reference.back = reference;
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
+}
+
+void anv_CmdSetLineStippleEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    lineStippleFactor,
+    uint16_t                                    lineStipplePattern)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   cmd_buffer->state.gfx.dynamic.line_stipple.factor = lineStippleFactor;
+   cmd_buffer->state.gfx.dynamic.line_stipple.pattern = lineStipplePattern;
+
+   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
 }
 
 static void

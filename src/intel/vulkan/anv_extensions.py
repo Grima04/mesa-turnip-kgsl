@@ -137,6 +137,7 @@ EXTENSIONS = [
     Extension('VK_EXT_host_query_reset',                  1, True),
     Extension('VK_EXT_index_type_uint8',                  1, True),
     Extension('VK_EXT_inline_uniform_block',              1, True),
+    Extension('VK_EXT_line_rasterization',                1, True),
     Extension('VK_EXT_memory_budget',                     1, 'device->has_mem_available'),
     Extension('VK_EXT_pci_bus_info',                      2, True),
     Extension('VK_EXT_pipeline_creation_feedback',        1, True),

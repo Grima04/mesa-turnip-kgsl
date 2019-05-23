@@ -542,6 +542,15 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 #endif
 
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_LINE_STIPPLE), ls) {
+         ls.LineStipplePattern = d->line_stipple.pattern;
+         ls.LineStippleInverseRepeatCount =
+            1.0f / MAX2(1, d->line_stipple.factor);
+         ls.LineStippleRepeatCount = d->line_stipple.factor;
+      }
+   }
+
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_INDEX_BUFFER)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF), vf) {

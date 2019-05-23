@@ -1951,6 +1951,7 @@ enum anv_cmd_dirty_bits {
    ANV_CMD_DIRTY_INDEX_BUFFER                      = 1 << 10,
    ANV_CMD_DIRTY_RENDER_TARGETS                    = 1 << 11,
    ANV_CMD_DIRTY_XFB_ENABLE                        = 1 << 12,
+   ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE              = 1 << 13, /* VK_DYNAMIC_STATE_LINE_STIPPLE_EXT */
 };
 typedef uint32_t anv_cmd_dirty_mask_t;
 
@@ -1963,7 +1964,8 @@ typedef uint32_t anv_cmd_dirty_mask_t;
     ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |           \
     ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |   \
     ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |     \
-    ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE)
+    ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE |      \
+    ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE)
 
 static inline enum anv_cmd_dirty_bits
 anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
@@ -1987,6 +1989,8 @@ anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
       return ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK;
    case VK_DYNAMIC_STATE_STENCIL_REFERENCE:
       return ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
+   case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
+      return ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
    default:
       assert(!"Unsupported dynamic state");
       return 0;
@@ -2256,6 +2260,11 @@ struct anv_dynamic_state {
       uint32_t                                  front;
       uint32_t                                  back;
    } stencil_reference;
+
+   struct {
+      uint32_t                                  factor;
+      uint16_t                                  pattern;
+   } line_stipple;
 };
 
 extern const struct anv_dynamic_state default_dynamic_state;
