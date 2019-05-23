@@ -24,6 +24,7 @@
 #include "brw_cfg.h"
 #include "brw_eu.h"
 #include "dev/gen_debug.h"
+#include "util/mesa-sha1.h"
 
 using namespace brw;
 
@@ -2174,17 +2175,29 @@ generate_code(struct brw_codegen *p,
    int after_size = p->next_insn_offset;
 
    if (unlikely(debug_flag)) {
-      fprintf(stderr, "Native code for %s %s shader %s:\n",
-              nir->info.label ? nir->info.label : "unnamed",
-              _mesa_shader_stage_to_string(nir->info.stage), nir->info.name);
+      unsigned char sha1[21];
+      char sha1buf[41];
+
+      _mesa_sha1_compute(p->store, p->next_insn_offset, sha1);
+      _mesa_sha1_format(sha1buf, sha1);
+
+      fprintf(stderr, "Native code for %s %s shader %s (sha1 %s):\n",
+            nir->info.label ? nir->info.label : "unnamed",
+            _mesa_shader_stage_to_string(nir->info.stage), nir->info.name,
+            sha1buf);
 
       fprintf(stderr, "%s vec4 shader: %d instructions. %d loops. %u cycles. %d:%d "
-                      "spills:fills. Compacted %d to %d bytes (%.0f%%)\n",
-              stage_abbrev, before_size / 16, loop_count, cfg->cycle_count,
-              spill_count, fill_count, before_size, after_size,
-              100.0f * (before_size - after_size) / before_size);
+                     "spills:fills. Compacted %d to %d bytes (%.0f%%)\n",
+            stage_abbrev, before_size / 16, loop_count, cfg->cycle_count,
+            spill_count, fill_count, before_size, after_size,
+            100.0f * (before_size - after_size) / before_size);
 
-      dump_assembly(p->store, disasm_info);
+      /* overriding the shader makes disasm_info invalid */
+      if (!brw_try_override_assembly(p, 0, sha1buf)) {
+         dump_assembly(p->store, disasm_info);
+      } else {
+         fprintf(stderr, "Successfully overrode shader with sha1 %s\n\n", sha1buf);
+      }
    }
    ralloc_free(disasm_info);
    assert(validated);

@@ -29,6 +29,8 @@
   *   Keith Whitwell <keithw@vmware.com>
   */
 
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "brw_eu_defines.h"
 #include "brw_eu.h"
@@ -347,6 +349,47 @@ const unsigned *brw_get_program( struct brw_codegen *p,
 {
    *sz = p->next_insn_offset;
    return (const unsigned *)p->store;
+}
+
+bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
+                               const char *identifier)
+{
+   const char *read_path = getenv("INTEL_SHADER_ASM_READ_PATH");
+   if (!read_path) {
+      return false;
+   }
+
+   char *name = ralloc_asprintf(NULL, "%s/%s.bin", read_path, identifier);
+
+   int fd = open(name, O_RDONLY);
+   ralloc_free(name);
+
+   if (fd == -1) {
+      return false;
+   }
+
+   struct stat sb;
+   if (fstat(fd, &sb) != 0 || (!S_ISREG(sb.st_mode))) {
+      return false;
+   }
+
+   p->nr_insn -= (p->next_insn_offset - start_offset) / sizeof(brw_inst);
+   p->nr_insn += sb.st_size / sizeof(brw_inst);
+
+   p->next_insn_offset = start_offset + sb.st_size;
+   p->store_size = (start_offset + sb.st_size) / sizeof(brw_inst);
+   p->store = reralloc_size(p->mem_ctx, p->store, p->next_insn_offset);
+   assert(p->store);
+
+   read(fd, p->store + start_offset, sb.st_size);
+   close(fd);
+
+   bool valid = brw_validate_instructions(p->devinfo, p->store,
+                                          start_offset, p->next_insn_offset,
+                                          0);
+   assert(valid);
+
+   return true;
 }
 
 void
