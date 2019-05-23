@@ -130,9 +130,9 @@ static int compare_symbol_by_align(const void *lhsp, const void *rhsp)
 	const struct ac_rtld_symbol *lhs = lhsp;
 	const struct ac_rtld_symbol *rhs = rhsp;
 	if (rhs->align > lhs->align)
-		return -1;
-	if (rhs->align < lhs->align)
 		return 1;
+	if (rhs->align < lhs->align)
+		return -1;
 	return 0;
 }
 
