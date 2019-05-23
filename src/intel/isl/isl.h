@@ -1886,6 +1886,38 @@ isl_surf_get_image_alignment_sa(const struct isl_surf *surf)
 }
 
 /**
+ * Logical extent of level 0 in units of surface elements.
+ */
+static inline struct isl_extent4d
+isl_surf_get_logical_level0_el(const struct isl_surf *surf)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
+
+   return isl_extent4d(DIV_ROUND_UP(surf->logical_level0_px.w, fmtl->bw),
+                       DIV_ROUND_UP(surf->logical_level0_px.h, fmtl->bh),
+                       DIV_ROUND_UP(surf->logical_level0_px.d, fmtl->bd),
+                       surf->logical_level0_px.a);
+}
+
+/**
+ * Physical extent of level 0 in units of surface elements.
+ */
+static inline struct isl_extent4d
+isl_surf_get_phys_level0_el(const struct isl_surf *surf)
+{
+   const struct isl_format_layout *fmtl = isl_format_get_layout(surf->format);
+
+   assert(surf->phys_level0_sa.w % fmtl->bw == 0);
+   assert(surf->phys_level0_sa.h % fmtl->bh == 0);
+   assert(surf->phys_level0_sa.d % fmtl->bd == 0);
+
+   return isl_extent4d(surf->phys_level0_sa.w / fmtl->bw,
+                       surf->phys_level0_sa.h / fmtl->bh,
+                       surf->phys_level0_sa.d / fmtl->bd,
+                       surf->phys_level0_sa.a);
+}
+
+/**
  * Pitch between vertically adjacent surface elements, in bytes.
  */
 static inline uint32_t

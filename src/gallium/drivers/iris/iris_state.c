@@ -2012,12 +2012,8 @@ iris_create_surface(struct pipe_context *ctx,
    const struct isl_format_layout *fmtl =
       isl_format_get_layout(res->surf.format);
    isl_surf.format = fmt.fmt;
-   isl_surf.logical_level0_px.width =
-      DIV_ROUND_UP(isl_surf.logical_level0_px.width, fmtl->bw);
-   isl_surf.logical_level0_px.height =
-      DIV_ROUND_UP(isl_surf.logical_level0_px.height, fmtl->bh);
-   isl_surf.phys_level0_sa.width /= fmtl->bw;
-   isl_surf.phys_level0_sa.height /= fmtl->bh;
+   isl_surf.logical_level0_px = isl_surf_get_logical_level0_el(&isl_surf);
+   isl_surf.phys_level0_sa = isl_surf_get_phys_level0_el(&isl_surf);
    tile_x_sa /= fmtl->bw;
    tile_y_sa /= fmtl->bh;
 

@@ -1389,12 +1389,9 @@ anv_image_fill_surface_state(struct anv_device *device,
          const struct isl_format_layout *fmtl =
             isl_format_get_layout(surface->isl.format);
          tmp_surf.format = view.format;
-         tmp_surf.logical_level0_px.width =
-            DIV_ROUND_UP(tmp_surf.logical_level0_px.width, fmtl->bw);
-         tmp_surf.logical_level0_px.height =
-            DIV_ROUND_UP(tmp_surf.logical_level0_px.height, fmtl->bh);
-         tmp_surf.phys_level0_sa.width /= fmtl->bw;
-         tmp_surf.phys_level0_sa.height /= fmtl->bh;
+         tmp_surf.logical_level0_px =
+            isl_surf_get_logical_level0_el(&tmp_surf);
+         tmp_surf.phys_level0_sa = isl_surf_get_phys_level0_el(&tmp_surf);
          tile_x_sa /= fmtl->bw;
          tile_y_sa /= fmtl->bh;
 
