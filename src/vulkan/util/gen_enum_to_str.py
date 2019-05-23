@@ -90,6 +90,8 @@ C_TEMPLATE = Template(textwrap.dedent(u"""\
 
     size_t vk_structure_type_size(const struct VkBaseInStructure *item)
     {
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wswitch"
         switch(item->sType) {
     % for struct in structs:
         % if struct.extension is not None and struct.extension.define is not None:
@@ -100,9 +102,9 @@ C_TEMPLATE = Template(textwrap.dedent(u"""\
         case ${struct.stype}: return sizeof(${struct.name});
         % endif
     %endfor
-        default:
-            unreachable("Undefined struct type.");
         }
+        #pragma GCC diagnostic pop
+        unreachable("Undefined struct type.");
     }
 
     void vk_load_instance_commands(VkInstance instance,
