@@ -4103,7 +4103,7 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
    if (!pin_only) bt_map[s++] = (addr) - binder_addr;
 
 #define bt_assert(section, exists)                           \
-   if (!pin_only) assert(shader->bt.section == (exists) ? s : 0xd0d0d0d0)
+   if (!pin_only) assert(shader->bt.offsets[section] == (exists) ? s : 0xd0d0d0d0)
 
 /**
  * Populate the binding table for a given shader stage.
@@ -4170,7 +4170,7 @@ iris_populate_binding_table(struct iris_context *ice,
 
    unsigned num_textures = util_last_bit(info->textures_used);
 
-   bt_assert(texture_start, num_textures > 0);
+   bt_assert(IRIS_SURFACE_GROUP_TEXTURE, num_textures > 0);
 
    for (int i = 0; i < num_textures; i++) {
       struct iris_sampler_view *view = shs->textures[i];
@@ -4179,14 +4179,14 @@ iris_populate_binding_table(struct iris_context *ice,
       push_bt_entry(addr);
    }
 
-   bt_assert(image_start, info->num_images > 0);
+   bt_assert(IRIS_SURFACE_GROUP_IMAGE, info->num_images > 0);
 
    for (int i = 0; i < info->num_images; i++) {
       uint32_t addr = use_image(batch, ice, shs, i);
       push_bt_entry(addr);
    }
 
-   bt_assert(ubo_start, shader->num_cbufs > 0);
+   bt_assert(IRIS_SURFACE_GROUP_UBO, shader->num_cbufs > 0);
 
    for (int i = 0; i < shader->num_cbufs; i++) {
       uint32_t addr = use_ubo_ssbo(batch, ice, &shs->constbuf[i],
@@ -4202,7 +4202,7 @@ iris_populate_binding_table(struct iris_context *ice,
       push_bt_entry(addr);
    }
 
-   bt_assert(ssbo_start, info->num_abos + info->num_ssbos > 0);
+   bt_assert(IRIS_SURFACE_GROUP_SSBO, info->num_abos + info->num_ssbos > 0);
 
    /* XXX: st is wasting 16 binding table slots for ABOs.  Should add a cap
     * for changing nir_lower_atomics_to_ssbos setting and buffer_base offset
@@ -4336,7 +4336,7 @@ iris_restore_render_saved_bos(struct iris_context *ice,
             continue;
 
          /* Range block is a binding table index, map back to UBO index. */
-         unsigned block_index = range->block - shader->bt.ubo_start;
+         unsigned block_index = range->block - shader->bt.offsets[IRIS_SURFACE_GROUP_UBO];
 
          struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
          struct iris_resource *res = (void *) cbuf->buffer;
@@ -4424,7 +4424,7 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
 
          if (range->length > 0) {
             /* Range block is a binding table index, map back to UBO index. */
-            unsigned block_index = range->block - shader->bt.ubo_start;
+            unsigned block_index = range->block - shader->bt.offsets[IRIS_SURFACE_GROUP_UBO];
 
             struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
             struct iris_resource *res = (void *) cbuf->buffer;
@@ -4700,7 +4700,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                   continue;
 
                /* Range block is a binding table index, map back to UBO index. */
-               unsigned block_index = range->block - shader->bt.ubo_start;
+               unsigned block_index = range->block - shader->bt.offsets[IRIS_SURFACE_GROUP_UBO];
 
                struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
                struct iris_resource *res = (void *) cbuf->buffer;

@@ -281,13 +281,21 @@ struct iris_uncompiled_shader {
    struct iris_state_ref const_data_state;
 };
 
+enum iris_surface_group {
+   IRIS_SURFACE_GROUP_RENDER_TARGET,
+   IRIS_SURFACE_GROUP_CS_WORK_GROUPS,
+   IRIS_SURFACE_GROUP_TEXTURE,
+   IRIS_SURFACE_GROUP_IMAGE,
+   IRIS_SURFACE_GROUP_UBO,
+   IRIS_SURFACE_GROUP_SSBO,
+
+   IRIS_SURFACE_GROUP_COUNT,
+};
+
 struct iris_binding_table {
    uint32_t size_bytes;
 
-   uint32_t texture_start;
-   uint32_t ubo_start;
-   uint32_t ssbo_start;
-   uint32_t image_start;
+   uint32_t offsets[IRIS_SURFACE_GROUP_COUNT];
 };
 
 /**

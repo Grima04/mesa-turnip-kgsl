@@ -502,18 +502,19 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 }
 
 static void
-rewrite_src_with_bti(nir_builder *b, nir_instr *instr,
-                     nir_src *src, uint32_t offset)
+rewrite_src_with_bti(nir_builder *b, struct iris_binding_table *bt,
+                     nir_instr *instr, nir_src *src,
+                     enum iris_surface_group group)
 {
-   assert(offset != 0xd0d0d0d0);
+   assert(bt->offsets[group] != 0xd0d0d0d0);
 
    b->cursor = nir_before_instr(instr);
    nir_ssa_def *bti;
    if (nir_src_is_const(*src)) {
-      bti = nir_imm_intN_t(b, nir_src_as_uint(*src) + offset,
+      bti = nir_imm_intN_t(b, nir_src_as_uint(*src) + bt->offsets[group],
                            src->ssa->bit_size);
    } else {
-      bti = nir_iadd_imm(b, src->ssa, offset);
+      bti = nir_iadd_imm(b, src->ssa, bt->offsets[group]);
    }
    nir_instr_rewrite_src(instr, src, nir_src_for_ssa(bti));
 }
@@ -535,30 +536,30 @@ iris_setup_binding_table(struct nir_shader *nir,
    const struct shader_info *info = &nir->info;
 
    memset(bt, 0, sizeof(*bt));
+   for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++)
+      bt->offsets[i] = 0xd0d0d0d0;
 
    /* Calculate the initial binding table index for each group. */
    uint32_t next_offset;
    if (info->stage == MESA_SHADER_FRAGMENT) {
       next_offset = num_render_targets;
+      bt->offsets[IRIS_SURFACE_GROUP_RENDER_TARGET] = 0;
    } else if (info->stage == MESA_SHADER_COMPUTE) {
       next_offset = 1;
+      bt->offsets[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 0;
    } else {
       next_offset = 0;
    }
 
    unsigned num_textures = util_last_bit(info->textures_used);
    if (num_textures) {
-      bt->texture_start = next_offset;
+      bt->offsets[IRIS_SURFACE_GROUP_TEXTURE] = next_offset;
       next_offset += num_textures;
-   } else {
-      bt->texture_start = 0xd0d0d0d0;
    }
 
    if (info->num_images) {
-      bt->image_start = next_offset;
+      bt->offsets[IRIS_SURFACE_GROUP_IMAGE] = next_offset;
       next_offset += info->num_images;
-   } else {
-      bt->image_start = 0xd0d0d0d0;
    }
 
    /* Allocate a slot in the UBO section for NIR constants if present.
@@ -571,18 +572,14 @@ iris_setup_binding_table(struct nir_shader *nir,
 
    if (num_cbufs) {
       //assert(info->num_ubos <= BRW_MAX_UBO);
-      bt->ubo_start = next_offset;
+      bt->offsets[IRIS_SURFACE_GROUP_UBO] = next_offset;
       next_offset += num_cbufs;
-   } else {
-      bt->ubo_start = 0xd0d0d0d0;
    }
 
    if (info->num_ssbos || info->num_abos) {
-      bt->ssbo_start = next_offset;
+      bt->offsets[IRIS_SURFACE_GROUP_SSBO] = next_offset;
       // XXX: see iris_state "wasting 16 binding table slots for ABOs" comment
       next_offset += IRIS_MAX_ABOS + info->num_ssbos;
-   } else {
-      bt->ssbo_start = 0xd0d0d0d0;
    }
 
    bt->size_bytes = next_offset * 4;
@@ -599,8 +596,9 @@ iris_setup_binding_table(struct nir_shader *nir,
    nir_foreach_block (block, impl) {
       nir_foreach_instr (instr, block) {
          if (instr->type == nir_instr_type_tex) {
-            assert(bt->texture_start != 0xd0d0d0d0);
-            nir_instr_as_tex(instr)->texture_index += bt->texture_start;
+            assert(bt->offsets[IRIS_SURFACE_GROUP_TEXTURE] != 0xd0d0d0d0);
+            nir_instr_as_tex(instr)->texture_index +=
+               bt->offsets[IRIS_SURFACE_GROUP_TEXTURE];
             continue;
          }
 
@@ -622,15 +620,18 @@ iris_setup_binding_table(struct nir_shader *nir,
          case nir_intrinsic_image_atomic_comp_swap:
          case nir_intrinsic_image_load_raw_intel:
          case nir_intrinsic_image_store_raw_intel:
-            rewrite_src_with_bti(&b, instr, &intrin->src[0], bt->image_start);
+            rewrite_src_with_bti(&b, bt, instr, &intrin->src[0],
+                                 IRIS_SURFACE_GROUP_IMAGE);
             break;
 
          case nir_intrinsic_load_ubo:
-            rewrite_src_with_bti(&b, instr, &intrin->src[0], bt->ubo_start);
+            rewrite_src_with_bti(&b, bt, instr, &intrin->src[0],
+                                 IRIS_SURFACE_GROUP_UBO);
             break;
 
          case nir_intrinsic_store_ssbo:
-            rewrite_src_with_bti(&b, instr, &intrin->src[1], bt->ssbo_start);
+            rewrite_src_with_bti(&b, bt, instr, &intrin->src[1],
+                                 IRIS_SURFACE_GROUP_SSBO);
             break;
 
          case nir_intrinsic_get_buffer_size:
@@ -648,7 +649,8 @@ iris_setup_binding_table(struct nir_shader *nir,
          case nir_intrinsic_ssbo_atomic_fmax:
          case nir_intrinsic_ssbo_atomic_fcomp_swap:
          case nir_intrinsic_load_ssbo:
-            rewrite_src_with_bti(&b, instr, &intrin->src[0], bt->ssbo_start);
+            rewrite_src_with_bti(&b, bt, instr, &intrin->src[0],
+                                 IRIS_SURFACE_GROUP_SSBO);
             break;
 
          default:
