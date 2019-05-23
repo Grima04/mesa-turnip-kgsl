@@ -691,7 +691,8 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 			     &(VkExtent2D) { fb->width, fb->height });
 	}
 
-	cmd_buffer->state.subpass = subpass;
+	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
+
 	radv_meta_restore(&saved_state, cmd_buffer);
 }
 
