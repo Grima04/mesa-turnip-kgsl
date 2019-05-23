@@ -803,6 +803,11 @@ optimizations.extend([
    (('i2b', ('iabs', a)), ('i2b', a)),
    (('inot', ('f2b1', a)), ('feq', a, 0.0)),
 
+   # The C spec says, "If the value of the integral part cannot be represented
+   # by the integer type, the behavior is undefined."  "Undefined" can mean
+   # "the conversion doesn't happen at all."
+   (('~i2f32', ('f2i32', 'a@32')), ('ftrunc', a)),
+
    # Ironically, mark these as imprecise because removing the conversions may
    # preserve more precision than doing the conversions (e.g.,
    # uint(float(0x81818181u)) == 0x81818200).
