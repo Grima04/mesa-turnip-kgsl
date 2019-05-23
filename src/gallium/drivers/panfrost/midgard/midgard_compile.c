@@ -1769,17 +1769,10 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (mir_nontrivial_mod(src, is_int, mask)) continue;
                 if (ins->alu.outmod != midgard_outmod_none) continue;
 
-                mir_foreach_instr_in_block_from(block, v, mir_next_op(ins)) {
-                        if (v->ssa_args.src0 == to) {
-                                v->ssa_args.src0 = from;
-                                progress = true;
-                        }
-
-                        if (v->ssa_args.src1 == to && !v->ssa_args.inline_constant) {
-                                v->ssa_args.src1 = from;
-                                progress = true;
-                        }
-                }
+                /* We're clear -- rewrite */
+                mir_rewrite_index_src(ctx, to, from);
+                mir_remove_instruction(ins);
+                progress |= true;
         }
 
         return progress;
