@@ -85,6 +85,7 @@ extern uint64_t INTEL_DEBUG;
 #define DEBUG_REEMIT              (1ull << 41)
 #define DEBUG_SOFT64              (1ull << 42)
 #define DEBUG_TCS_EIGHT_PATCH     (1ull << 43)
+#define DEBUG_BT                  (1ull << 44)
 
 /* These flags are not compatible with the disk shader cache */
 #define DEBUG_DISK_CACHE_DISABLE_MASK DEBUG_SHADER_TIME

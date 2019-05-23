@@ -87,6 +87,7 @@ static const struct debug_control debug_control[] = {
    { "reemit",      DEBUG_REEMIT },
    { "soft64",      DEBUG_SOFT64 },
    { "tcs8",        DEBUG_TCS_EIGHT_PATCH },
+   { "bt",          DEBUG_BT },
    { NULL,    0 }
 };
 

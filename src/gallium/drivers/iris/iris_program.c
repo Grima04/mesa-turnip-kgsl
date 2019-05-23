@@ -502,6 +502,55 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    *out_num_cbufs = num_cbufs;
 }
 
+static const char *surface_group_names[] = {
+   [IRIS_SURFACE_GROUP_RENDER_TARGET]      = "render target",
+   [IRIS_SURFACE_GROUP_CS_WORK_GROUPS]     = "CS work groups",
+   [IRIS_SURFACE_GROUP_TEXTURE]            = "texture",
+   [IRIS_SURFACE_GROUP_UBO]                = "ubo",
+   [IRIS_SURFACE_GROUP_SSBO]               = "ssbo",
+   [IRIS_SURFACE_GROUP_IMAGE]              = "image",
+};
+
+static void
+iris_print_binding_table(FILE *fp, const char *name,
+                         const struct iris_binding_table *bt)
+{
+   STATIC_ASSERT(ARRAY_SIZE(surface_group_names) == IRIS_SURFACE_GROUP_COUNT);
+
+   uint32_t total = 0;
+   uint32_t compacted = 0;
+
+   for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++) {
+      uint32_t size = bt->sizes[i];
+      total += size;
+      if (size)
+         compacted += util_bitcount64(bt->used_mask[i]);
+   }
+
+   if (total == 0) {
+      fprintf(fp, "Binding table for %s is empty\n\n", name);
+      return;
+   }
+
+   if (total != compacted) {
+      fprintf(fp, "Binding table for %s "
+              "(compacted to %u entries from %u entries)\n",
+              name, compacted, total);
+   } else {
+      fprintf(fp, "Binding table for %s (%u entries)\n", name, total);
+   }
+
+   uint32_t entry = 0;
+   for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++) {
+      uint64_t mask = bt->used_mask[i];
+      while (mask) {
+         int index = u_bit_scan64(&mask);
+         fprintf(fp, "  [%u] %s #%d\n", entry++, surface_group_names[i], index);
+      }
+   }
+   fprintf(fp, "\n");
+}
+
 enum {
    /* Max elements in a surface group. */
    SURFACE_GROUP_MAX_ELEMENTS = 64,
@@ -723,6 +772,10 @@ iris_setup_binding_table(struct nir_shader *nir,
       }
    }
    bt->size_bytes = next * 4;
+
+   if (unlikely(INTEL_DEBUG & DEBUG_BT)) {
+      iris_print_binding_table(stderr, gl_shader_stage_name(info->stage), bt);
+   }
 
    /* Apply the binding table indices.  The backend compiler is not expected
     * to change those, as we haven't set any of the *_start entries in brw
