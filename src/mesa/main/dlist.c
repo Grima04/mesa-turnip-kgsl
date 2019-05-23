@@ -602,6 +602,12 @@ typedef enum
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_1D,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D,
    OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_3D,
+   OPCODE_COMPRESSED_MULTITEX_IMAGE_1D,
+   OPCODE_COMPRESSED_MULTITEX_IMAGE_2D,
+   OPCODE_COMPRESSED_MULTITEX_IMAGE_3D,
+   OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_1D,
+   OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_2D,
+   OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_3D,
 
    /* The following three are meta instructions */
    OPCODE_ERROR,                /* raise compiled-in error */
@@ -1251,27 +1257,34 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
          case OPCODE_TEXTURE_SUB_IMAGE1D:
          case OPCODE_MULTITEX_SUB_IMAGE1D:
          case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_1D:
+         case OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_1D:
             free(get_pointer(&n[8]));
             break;
          case OPCODE_TEXTURE_SUB_IMAGE2D:
          case OPCODE_MULTITEX_SUB_IMAGE2D:
          case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_2D:
+         case OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_2D:
             free(get_pointer(&n[10]));
             break;
          case OPCODE_TEXTURE_SUB_IMAGE3D:
          case OPCODE_MULTITEX_SUB_IMAGE3D:
          case OPCODE_COMPRESSED_TEXTURE_SUB_IMAGE_3D:
+         case OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_3D:
             free(get_pointer(&n[12]));
             break;
          case OPCODE_COMPRESSED_TEXTURE_IMAGE_1D:
+         case OPCODE_COMPRESSED_MULTITEX_IMAGE_1D:
             free(get_pointer(&n[8]));
             break;
          case OPCODE_COMPRESSED_TEXTURE_IMAGE_2D:
+         case OPCODE_COMPRESSED_MULTITEX_IMAGE_2D:
             free(get_pointer(&n[9]));
             break;
          case OPCODE_COMPRESSED_TEXTURE_IMAGE_3D:
+         case OPCODE_COMPRESSED_MULTITEX_IMAGE_3D:
             free(get_pointer(&n[10]));
             break;
+
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
             free(block);
@@ -10666,6 +10679,227 @@ save_CompressedTextureSubImage3DEXT(GLuint texture, GLenum target, GLint level, 
 }
 
 
+static void GLAPIENTRY
+save_CompressedMultiTexImage1DEXT(GLenum texunit, GLenum target, GLint level,
+                                  GLenum internalFormat, GLsizei width,
+                                  GLint border, GLsizei imageSize,
+                                  const GLvoid * data)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_1D) {
+      /* don't compile, execute immediately */
+      CALL_CompressedMultiTexImage1DEXT(ctx->Exec, (texunit, target, level,
+                                                   internalFormat, width,
+                                                   border, imageSize,
+                                                   data));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+      n = alloc_instruction(ctx, OPCODE_COMPRESSED_MULTITEX_IMAGE_1D,
+                            7 + POINTER_DWORDS);
+      if (n) {
+         n[1].e = texunit;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].e = internalFormat;
+         n[5].i = (GLint) width;
+         n[6].i = border;
+         n[7].i = imageSize;
+         save_pointer(&n[8],
+                      copy_data(data, imageSize, "glCompressedMultiTexImage1DEXT"));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_CompressedMultiTexImage1DEXT(ctx->Exec,
+                                           (texunit, target, level, internalFormat,
+                                            width, border, imageSize, data));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedMultiTexImage2DEXT(GLenum texunit, GLenum target, GLint level,
+                                  GLenum internalFormat, GLsizei width,
+                                  GLsizei height, GLint border, GLsizei imageSize,
+                                  const GLvoid * data)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_2D) {
+      /* don't compile, execute immediately */
+      CALL_CompressedMultiTexImage2DEXT(ctx->Exec, (texunit, target, level,
+                                                   internalFormat, width, height,
+                                                   border, imageSize, data));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+      n = alloc_instruction(ctx, OPCODE_COMPRESSED_MULTITEX_IMAGE_2D,
+                            8 + POINTER_DWORDS);
+      if (n) {
+         n[1].e = texunit;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].e = internalFormat;
+         n[5].i = (GLint) width;
+         n[6].i = (GLint) height;
+         n[7].i = border;
+         n[8].i = imageSize;
+         save_pointer(&n[9],
+                      copy_data(data, imageSize, "glCompressedMultiTexImage2DEXT"));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_CompressedMultiTexImage2DEXT(ctx->Exec,
+                                           (texunit, target, level, internalFormat,
+                                            width, height, border, imageSize, data));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedMultiTexImage3DEXT(GLenum texunit, GLenum target, GLint level,
+                                  GLenum internalFormat, GLsizei width,
+                                  GLsizei height, GLsizei depth, GLint border,
+                                  GLsizei imageSize, const GLvoid * data)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   if (target == GL_PROXY_TEXTURE_3D) {
+      /* don't compile, execute immediately */
+      CALL_CompressedMultiTexImage3DEXT(ctx->Exec, (texunit, target, level,
+                                                   internalFormat, width,
+                                                   height, depth, border,
+                                                   imageSize, data));
+   }
+   else {
+      Node *n;
+      ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+      n = alloc_instruction(ctx, OPCODE_COMPRESSED_MULTITEX_IMAGE_3D,
+                            9 + POINTER_DWORDS);
+      if (n) {
+         n[1].e = texunit;
+         n[2].e = target;
+         n[3].i = level;
+         n[4].e = internalFormat;
+         n[5].i = (GLint) width;
+         n[6].i = (GLint) height;
+         n[7].i = (GLint) depth;
+         n[8].i = border;
+         n[9].i = imageSize;
+         save_pointer(&n[10],
+                      copy_data(data, imageSize, "glCompressedMultiTexImage3DEXT"));
+      }
+      if (ctx->ExecuteFlag) {
+         CALL_CompressedMultiTexImage3DEXT(ctx->Exec,
+                                           (texunit, target, level, internalFormat,
+                                            width, height, depth, border, imageSize,
+                                            data));
+      }
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedMultiTexSubImage1DEXT(GLenum texunit, GLenum target, GLint level, GLint xoffset,
+                                     GLsizei width, GLenum format,
+                                     GLsizei imageSize, const GLvoid * data)
+{
+   Node *n;
+   GET_CURRENT_CONTEXT(ctx);
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_1D,
+                         7 + POINTER_DWORDS);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = (GLint) width;
+      n[6].e = format;
+      n[7].i = imageSize;
+      save_pointer(&n[8],
+                   copy_data(data, imageSize, "glCompressedMultiTexSubImage1DEXT"));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CompressedMultiTexSubImage1DEXT(ctx->Exec, (texunit, target, level, xoffset,
+                                                       width, format, imageSize, data));
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedMultiTexSubImage2DEXT(GLenum texunit, GLenum target, GLint level, GLint xoffset,
+                                     GLint yoffset, GLsizei width, GLsizei height,
+                                     GLenum format, GLsizei imageSize,
+                                     const GLvoid * data)
+{
+   Node *n;
+   GET_CURRENT_CONTEXT(ctx);
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_2D,
+                         9 + POINTER_DWORDS);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = yoffset;
+      n[6].i = (GLint) width;
+      n[7].i = (GLint) height;
+      n[8].e = format;
+      n[9].i = imageSize;
+      save_pointer(&n[10],
+                   copy_data(data, imageSize, "glCompressedMultiTexSubImage2DEXT"));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CompressedMultiTexSubImage2DEXT(ctx->Exec,
+                                           (texunit, target, level, xoffset, yoffset,
+                                            width, height, format, imageSize, data));
+   }
+}
+
+
+static void GLAPIENTRY
+save_CompressedMultiTexSubImage3DEXT(GLenum texunit, GLenum target, GLint level, GLint xoffset,
+                                     GLint yoffset, GLint zoffset, GLsizei width,
+                                     GLsizei height, GLsizei depth, GLenum format,
+                                     GLsizei imageSize, const GLvoid * data)
+{
+   Node *n;
+   GET_CURRENT_CONTEXT(ctx);
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_3D,
+                         11 + POINTER_DWORDS);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].i = level;
+      n[4].i = xoffset;
+      n[5].i = yoffset;
+      n[6].i = zoffset;
+      n[7].i = (GLint) width;
+      n[8].i = (GLint) height;
+      n[9].i = (GLint) depth;
+      n[10].e = format;
+      n[11].i = imageSize;
+      save_pointer(&n[12],
+                   copy_data(data, imageSize, "glCompressedMultiTexSubImage3DEXT"));
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_CompressedMultiTexSubImage3DEXT(ctx->Exec,
+                                           (texunit, target, level, xoffset, yoffset,
+                                            zoffset, width, height, depth, format,
+                                            imageSize, data));
+   }
+}
+
+
 /**
  * Save an error-generating command into display list.
  *
@@ -12540,6 +12774,42 @@ execute_list(struct gl_context *ctx, GLuint list)
                                                  n[9].i, n[10].e, n[11].i,
                                                  get_pointer(&n[12])));
             break;
+         case OPCODE_COMPRESSED_MULTITEX_IMAGE_1D:
+            CALL_CompressedMultiTexImage1DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                         n[4].e, n[5].i, n[6].i,
+                                                         n[7].i, get_pointer(&n[8])));
+            break;
+         case OPCODE_COMPRESSED_MULTITEX_IMAGE_2D:
+            CALL_CompressedMultiTexImage2DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                         n[4].e, n[5].i, n[6].i,
+                                                         n[7].i, n[8].i,
+                                                         get_pointer(&n[9])));
+            break;
+         case OPCODE_COMPRESSED_MULTITEX_IMAGE_3D:
+            CALL_CompressedMultiTexImage3DEXT(ctx->Exec, (n[1].e, n[2].e, n[3].i,
+                                                         n[4].e, n[5].i, n[6].i,
+                                                         n[7].i, n[8].i, n[9].i,
+                                                         get_pointer(&n[10])));
+            break;
+         case OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_1D:
+            CALL_CompressedMultiTexSubImage1DEXT(ctx->Exec,
+                                                (n[1].e, n[2].e, n[3].i, n[4].i,
+                                                 n[5].i, n[6].e, n[7].i,
+                                                 get_pointer(&n[8])));
+            break;
+         case OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_2D:
+            CALL_CompressedMultiTexSubImage2DEXT(ctx->Exec,
+                                                (n[1].e, n[2].e, n[3].i, n[4].i,
+                                                 n[5].i, n[6].i, n[7].i, n[8].e,
+                                                 n[9].i, get_pointer(&n[10])));
+            break;
+         case OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_3D:
+            CALL_CompressedMultiTexSubImage3DEXT(ctx->Exec,
+                                                (n[1].e, n[2].e, n[3].i, n[4].i,
+                                                 n[5].i, n[6].i, n[7].i, n[8].i,
+                                                 n[9].i, n[10].e, n[11].i,
+                                                 get_pointer(&n[12])));
+            break;
 
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
@@ -13573,6 +13843,12 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_CompressedTextureSubImage1DEXT(table, save_CompressedTextureSubImage1DEXT);
    SET_CompressedTextureSubImage2DEXT(table, save_CompressedTextureSubImage2DEXT);
    SET_CompressedTextureSubImage3DEXT(table, save_CompressedTextureSubImage3DEXT);
+   SET_CompressedMultiTexImage1DEXT(table, save_CompressedMultiTexImage1DEXT);
+   SET_CompressedMultiTexImage2DEXT(table, save_CompressedMultiTexImage2DEXT);
+   SET_CompressedMultiTexImage3DEXT(table, save_CompressedMultiTexImage3DEXT);
+   SET_CompressedMultiTexSubImage1DEXT(table, save_CompressedMultiTexSubImage1DEXT);
+   SET_CompressedMultiTexSubImage2DEXT(table, save_CompressedMultiTexSubImage2DEXT);
+   SET_CompressedMultiTexSubImage3DEXT(table, save_CompressedMultiTexSubImage3DEXT);
 }
 
 
