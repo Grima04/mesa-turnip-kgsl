@@ -1484,13 +1484,6 @@ emit_instr(compiler_context *ctx, struct nir_instr *instr)
         }
 }
 
-/* Midgard prefetches instruction types, so during emission we need to
- * lookahead too. Unless this is the last instruction, in which we return 1. Or
- * if this is the second to last and the last is an ALU, then it's also 1... */
-
-#define IS_ALU(tag) (tag == TAG_ALU_4 || tag == TAG_ALU_8 ||  \
-		     tag == TAG_ALU_12 || tag == TAG_ALU_16)
-
 
 /* ALU instructions can inline or embed constants, which decreases register
  * pressure and saves space. */
@@ -2543,6 +2536,11 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         }
 
         int current_bundle = 0;
+
+        /* Midgard prefetches instruction types, so during emission we
+         * need to lookahead. Unless this is the last instruction, in
+         * which we return 1. Or if this is the second to last and the
+         * last is an ALU, then it's also 1... */
 
         mir_foreach_block(ctx, block) {
                 util_dynarray_foreach(&block->bundles, midgard_bundle, bundle) {

@@ -27,6 +27,7 @@ files_panfrost = files(
   'pan_resource.h',
 
   'midgard/midgard_compile.c',
+  'midgard/mir.c',
   'midgard/midgard_print.c',
   'midgard/midgard_schedule.c',
   'midgard/midgard_emit.c',

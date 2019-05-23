@@ -312,8 +312,6 @@ mir_next_op(struct midgard_instruction *ins)
 #define mir_foreach_block_from(ctx, from, v) \
         list_for_each_entry_from(struct midgard_block, v, from, &ctx->blocks, link)
 
-/* The following routines are for use before the scheduler has run */
-
 #define mir_foreach_instr(ctx, v) \
         list_for_each_entry(struct midgard_instruction, v, &ctx->current_block->instructions, link) 
 
@@ -338,6 +336,11 @@ mir_next_op(struct midgard_instruction *ins)
 #define mir_foreach_bundle_in_block(block, v) \
         util_dynarray_foreach(&block->bundles, midgard_bundle, v)
 
+#define mir_foreach_instr_global(ctx, v) \
+        mir_foreach_block(ctx, v_block) \
+                mir_foreach_instr_in_block(v_block, v)
+
+
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
 {
@@ -354,6 +357,18 @@ mir_get_block(compiler_context *ctx, int idx)
 
         return (struct midgard_block *) lst;
 }
+
+static inline bool
+mir_is_alu_bundle(midgard_bundle *bundle)
+{
+        return IS_ALU(bundle->tag);
+}
+
+/* MIR manipulation */
+
+void mir_rewrite_index(compiler_context *ctx, unsigned old, unsigned new);
+void mir_rewrite_index_src(compiler_context *ctx, unsigned old, unsigned new);
+void mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new);
 
 /* MIR printing */
 

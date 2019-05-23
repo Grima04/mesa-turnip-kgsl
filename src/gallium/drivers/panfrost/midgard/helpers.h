@@ -112,6 +112,9 @@ quadword_size(int tag)
         }
 }
 
+#define IS_ALU(tag) (tag == TAG_ALU_4 || tag == TAG_ALU_8 ||  \
+		     tag == TAG_ALU_12 || tag == TAG_ALU_16)
+
 /* Special register aliases */
 
 #define MAX_WORK_REGISTERS 16
