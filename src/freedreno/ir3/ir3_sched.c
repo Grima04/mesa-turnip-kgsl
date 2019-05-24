@@ -87,6 +87,8 @@ unuse_each_src(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	}
 }
 
+static void use_instr(struct ir3_instruction *instr);
+
 static void
 use_each_src(struct ir3_instruction *instr)
 {
@@ -95,13 +97,17 @@ use_each_src(struct ir3_instruction *instr)
 	foreach_ssa_src_n(src, n, instr) {
 		if (__is_false_dep(instr, n))
 			continue;
-		if (instr->block != src->block)
-			continue;
-		if ((src->opc == OPC_META_FI) || (src->opc == OPC_META_FO)) {
-			use_each_src(src);
-		} else {
-			src->use_count++;
-		}
+		use_instr(src);
+	}
+}
+
+static void
+use_instr(struct ir3_instruction *instr)
+{
+	if ((instr->opc == OPC_META_FI) || (instr->opc == OPC_META_FO)) {
+		use_each_src(instr);
+	} else {
+		instr->use_count++;
 	}
 }
 
@@ -115,23 +121,33 @@ update_live_values(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	unuse_each_src(ctx, instr);
 }
 
-/* This is *slightly* different than how ir3_cp uses use_count, in that
- * we just track it per block (because we schedule a block at a time) and
- * because we don't track meta instructions and false dependencies (since
- * they don't contribute real register pressure).
- */
 static void
-update_use_count(struct ir3_block *block)
+update_use_count(struct ir3 *ir)
 {
-	list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
-		instr->use_count = 0;
+	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
+		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+			instr->use_count = 0;
+		}
 	}
 
-	list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
-		if ((instr->opc == OPC_META_FI) || (instr->opc == OPC_META_FO))
+	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
+		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
+			if ((instr->opc == OPC_META_FI) || (instr->opc == OPC_META_FO))
+				continue;
+
+			use_each_src(instr);
+		}
+	}
+
+	/* Shader outputs are also used:
+	 */
+	for (unsigned i = 0; i <  ir->noutputs; i++) {
+		struct ir3_instruction  *out = ir->outputs[i];
+
+		if (!out)
 			continue;
 
-		use_each_src(instr);
+		use_instr(out);
 	}
 }
 
@@ -790,10 +806,10 @@ int ir3_sched(struct ir3 *ir)
 	struct ir3_sched_ctx ctx = {0};
 
 	ir3_clear_mark(ir);
+	update_use_count(ir);
 
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
 		ctx.live_values = 0;
-		update_use_count(block);
 		sched_block(&ctx, block);
 	}
 
