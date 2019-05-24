@@ -1119,7 +1119,7 @@ brw_begin_perf_query(struct gl_context *ctx,
       }
 
       if (obj->oa.bo) {
-         brw_bo_unreference(obj->oa.bo);
+         brw->perfquery.perf->vtbl.bo_unreference(obj->oa.bo);
          obj->oa.bo = NULL;
       }
 
@@ -1178,7 +1178,7 @@ brw_begin_perf_query(struct gl_context *ctx,
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
       if (obj->pipeline_stats.bo) {
-         brw_bo_unreference(obj->pipeline_stats.bo);
+         brw->perfquery.perf->vtbl.bo_unreference(obj->pipeline_stats.bo);
          obj->pipeline_stats.bo = NULL;
       }
 
@@ -1545,6 +1545,7 @@ brw_delete_perf_query(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
+   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
 
    /* We can assume that the frontend waits for a query to complete
     * before ever calling into here, so we don't have to worry about
@@ -1564,7 +1565,7 @@ brw_delete_perf_query(struct gl_context *ctx,
             dec_n_oa_users(brw);
          }
 
-         brw_bo_unreference(obj->oa.bo);
+         perf_cfg->vtbl.bo_unreference(obj->oa.bo);
          obj->oa.bo = NULL;
       }
 
@@ -1573,7 +1574,7 @@ brw_delete_perf_query(struct gl_context *ctx,
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
       if (obj->pipeline_stats.bo) {
-         brw_bo_unreference(obj->pipeline_stats.bo);
+         perf_cfg->vtbl.bo_unreference(obj->pipeline_stats.bo);
          obj->pipeline_stats.bo = NULL;
       }
       break;
@@ -1731,6 +1732,8 @@ brw_oa_bo_alloc(void *bufmgr, const char *name, uint64_t size)
    return brw_bo_alloc(bufmgr, name, size, BRW_MEMZONE_OTHER);
 }
 
+typedef void (*bo_unreference_t)(void *);
+
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
 {
@@ -1745,6 +1748,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
 
    struct gen_perf_config *perf_cfg = brw->perfquery.perf;
    perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
+   perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
 
    init_pipeline_statistic_query_registers(brw);
    brw_perf_query_register_mdapi_statistic_query(brw);

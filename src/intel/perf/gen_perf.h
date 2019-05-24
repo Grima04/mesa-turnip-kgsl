@@ -191,6 +191,7 @@ struct gen_perf_config {
 
    struct {
       void *(*bo_alloc)(void *bufmgr, const char *name, uint64_t size);
+      void (*bo_unreference)(void *bo);
    } vtbl;
 };
 
