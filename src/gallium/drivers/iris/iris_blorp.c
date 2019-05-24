@@ -332,6 +332,7 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                          IRIS_DIRTY_UNCOMPILED_GS |
                          IRIS_DIRTY_UNCOMPILED_FS |
                          IRIS_DIRTY_VF |
+                         IRIS_DIRTY_URB |
                          IRIS_DIRTY_SF_CL_VIEWPORT |
                          IRIS_DIRTY_SAMPLER_STATES_VS |
                          IRIS_DIRTY_SAMPLER_STATES_TCS |
