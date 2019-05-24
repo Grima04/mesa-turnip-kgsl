@@ -1107,6 +1107,15 @@ LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx,
 	return ac_build_load_custom(ctx, base_ptr, index, true, true, false);
 }
 
+static LLVMValueRef get_cache_policy(struct ac_llvm_context *ctx,
+				     bool load, bool glc, bool slc)
+{
+	return LLVMConstInt(ctx->i32,
+			    (glc ? ac_glc : 0) +
+			    (slc ? ac_slc : 0) +
+			    (ctx->chip_class >= GFX10 && glc && load ? ac_dlc : 0), 0);
+}
+
 static void
 ac_build_llvm7_buffer_store_common(struct ac_llvm_context *ctx,
 				   LLVMValueRef rsrc,
@@ -1165,7 +1174,7 @@ ac_build_llvm8_buffer_store_common(struct ac_llvm_context *ctx,
 		args[idx++] = vindex ? vindex : ctx->i32_0;
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
-	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
+	args[idx++] = get_cache_policy(ctx, false, glc, slc);
 	unsigned func = !ac_has_vec3_support(ctx->chip_class, use_format) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
@@ -1350,7 +1359,7 @@ ac_build_llvm8_buffer_load_common(struct ac_llvm_context *ctx,
 		args[idx++] = vindex ? vindex : ctx->i32_0;
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
-	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
+	args[idx++] = get_cache_policy(ctx, true, glc, slc);
 	unsigned func = !ac_has_vec3_support(ctx->chip_class, use_format) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
@@ -1404,6 +1413,8 @@ ac_build_buffer_load(struct ac_llvm_context *ctx,
 				HAVE_LLVM >= 0x0800 ? "llvm.amdgcn.s.buffer.load.f32"
 						    : "llvm.SI.load.const.v4i32";
 			unsigned num_args = HAVE_LLVM >= 0x0800 ? 3 : 2;
+			/* TODO: set glc+dlc on GFX10 (LLVM support is missing) */
+			assert(!glc || ctx->chip_class < GFX10);
 			LLVMValueRef args[3] = {
 				rsrc,
 				offset,
@@ -1551,7 +1562,7 @@ ac_build_llvm8_tbuffer_load(struct ac_llvm_context *ctx,
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx, dfmt, nfmt), 0);
-	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
+	args[idx++] = get_cache_policy(ctx, true, glc, slc);
 	unsigned func = !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
@@ -2049,7 +2060,7 @@ ac_build_llvm8_tbuffer_store(struct ac_llvm_context *ctx,
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx, dfmt, nfmt), 0);
-	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
+	args[idx++] = get_cache_policy(ctx, false, glc, slc);
 	unsigned func = !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];

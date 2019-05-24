@@ -527,8 +527,9 @@ enum ac_image_dim {
 
 /* These cache policy bits match the definitions used by the LLVM intrinsics. */
 enum ac_image_cache_policy {
-	ac_glc = 1 << 0,
-	ac_slc = 1 << 1,
+	ac_glc = 1 << 0, /* per-CU cache control */
+	ac_slc = 1 << 1, /* global L2 cache control */
+	ac_dlc = 1 << 2, /* per-shader-array cache control */
 };
 
 struct ac_image_args {
@@ -536,7 +537,7 @@ struct ac_image_args {
 	enum ac_atomic_op atomic : 4; /* for the ac_image_atomic opcode */
 	enum ac_image_dim dim : 3;
 	unsigned dmask : 4;
-	unsigned cache_policy : 2;
+	unsigned cache_policy : 3;
 	bool unorm : 1;
 	bool level_zero : 1;
 	unsigned attributes; /* additional call-site specific AC_FUNC_ATTRs */
