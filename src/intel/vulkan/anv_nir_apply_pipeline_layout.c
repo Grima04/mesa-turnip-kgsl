@@ -857,8 +857,21 @@ lower_tex_deref(nir_tex_instr *tex, nir_tex_src_type deref_src_type,
          assert(deref->deref_type == nir_deref_type_array);
 
          if (nir_src_is_const(deref->arr.index)) {
-            unsigned arr_index = nir_src_as_uint(deref->arr.index);
-            *base_index += MIN2(arr_index, array_size - 1);
+            unsigned arr_index = MIN2(nir_src_as_uint(deref->arr.index), array_size - 1);
+            struct anv_sampler **immutable_samplers =
+               state->layout->set[set].layout->binding[binding].immutable_samplers;
+            if (immutable_samplers) {
+               /* Array of YCbCr samplers are tightly packed in the binding
+                * tables, compute the offset of an element in the array by
+                * adding the number of planes of all preceding elements.
+                */
+               unsigned desc_arr_index = 0;
+               for (int i = 0; i < arr_index; i++)
+                  desc_arr_index += immutable_samplers[i]->n_planes;
+               *base_index += desc_arr_index;
+            } else {
+               *base_index += arr_index;
+            }
          } else {
             /* From VK_KHR_sampler_ycbcr_conversion:
              *
