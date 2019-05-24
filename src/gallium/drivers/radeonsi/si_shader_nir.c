@@ -1020,7 +1020,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 			 * 16-dword slots for now.
 			 */
 			dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
-					     LLVMConstInt(ctx->i32, 2, 0), "");
+					     LLVMConstInt(ctx->i64, 2, 0), "");
 
 			return si_load_image_desc(ctx, list, dynamic_index, desc_type,
 						  dcc_off, true);
@@ -1032,7 +1032,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 		 * to prevent incorrect code generation and hangs.
 		 */
 		dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
-					     LLVMConstInt(ctx->i32, 2, 0), "");
+					     LLVMConstInt(ctx->i64, 2, 0), "");
 		list = ac_build_pointer_add(&ctx->ac, list, dynamic_index);
 		return si_load_sampler_desc(ctx, list, ctx->i32_0, desc_type);
 	}
