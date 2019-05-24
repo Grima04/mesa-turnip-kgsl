@@ -118,7 +118,9 @@ void ac_dump_reg(FILE *file, enum chip_class chip_class, unsigned offset,
 {
 	const struct si_reg *reg = NULL;
 
-	if (chip_class >= GFX9)
+	if (chip_class >= GFX10)
+		reg = find_register(gfx10_reg_table, ARRAY_SIZE(gfx10_reg_table), offset);
+	else if (chip_class >= GFX9)
 		reg = find_register(gfx9_reg_table, ARRAY_SIZE(gfx9_reg_table), offset);
 	else if (chip_class >= GFX8)
 		reg = find_register(gfx8_reg_table, ARRAY_SIZE(gfx8_reg_table), offset);
