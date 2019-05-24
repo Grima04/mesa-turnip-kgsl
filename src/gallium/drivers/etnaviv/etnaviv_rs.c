@@ -553,7 +553,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
    assert(blit_info->dst.level <= dst->base.last_level);
 
    if (!translate_samples_to_xyscale(src->base.nr_samples, &msaa_xscale, &msaa_yscale, NULL))
-      return FALSE;
+      return false;
 
    /* The width/height are in pixels; they do not change as a result of
     * multi-sampling. So, when blitting from a 4x multisampled surface
@@ -564,14 +564,14 @@ etna_try_rs_blit(struct pipe_context *pctx,
       DBG("scaling requested: source %dx%d destination %dx%d",
           blit_info->src.box.width, blit_info->src.box.height,
           blit_info->dst.box.width, blit_info->dst.box.height);
-      return FALSE;
+      return false;
    }
 
    /* No masks - RS can't copy specific channels */
    unsigned mask = util_format_get_mask(blit_info->dst.format);
    if ((blit_info->mask & mask) != mask) {
       DBG("sub-mask requested: 0x%02x vs format mask 0x%02x", blit_info->mask, mask);
-      return FALSE;
+      return false;
    }
 
    unsigned src_format = etna_compatible_rs_format(blit_info->src.format);
@@ -581,18 +581,18 @@ etna_try_rs_blit(struct pipe_context *pctx,
        blit_info->scissor_enable ||
        blit_info->dst.box.depth != blit_info->src.box.depth ||
        blit_info->dst.box.depth != 1) {
-      return FALSE;
+      return false;
    }
 
    unsigned w_mask, h_mask;
 
    etna_get_rs_alignment_mask(ctx, src->layout, &w_mask, &h_mask);
    if ((blit_info->src.box.x & w_mask) || (blit_info->src.box.y & h_mask))
-      return FALSE;
+      return false;
 
    etna_get_rs_alignment_mask(ctx, dst->layout, &w_mask, &h_mask);
    if ((blit_info->dst.box.x & w_mask) || (blit_info->dst.box.y & h_mask))
-      return FALSE;
+      return false;
 
    /* Ensure that the Z coordinate is sane */
    if (dst->base.target != PIPE_TEXTURE_CUBE)
@@ -746,7 +746,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
    dst->levels[blit_info->dst.level].ts_valid = false;
    ctx->dirty |= ETNA_DIRTY_DERIVE_TS;
 
-   return TRUE;
+   return true;
 
 manual:
    if (src->layout == ETNA_LAYOUT_TILED && dst->layout == ETNA_LAYOUT_TILED) {
@@ -756,7 +756,7 @@ manual:
       return etna_manual_blit(dst, dst_lev, dst_offset, src, src_lev, src_offset, blit_info);
    }
 
-   return FALSE;
+   return false;
 }
 
 static void
