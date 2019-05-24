@@ -106,8 +106,7 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
                                        xfer->base.level);
 
    /* Check if we should perform a copy transfer through the transfer_uploader. */
-   copy_transfer = res->u.b.target == PIPE_BUFFER &&
-                   discard &&
+   copy_transfer = discard &&
                    !readback &&
                    !unsynchronized &&
                    vctx->transfer_uploader &&
@@ -490,18 +489,58 @@ void virgl_resource_dirty(struct virgl_resource *res, uint32_t level)
    }
 }
 
+/* Calculate the minimum size of the memory required to service a resource
+ * transfer map. Also return the stride and layer_stride for the corresponding
+ * layout.
+ */
+static unsigned virgl_transfer_map_size(struct virgl_transfer *vtransfer,
+                                        unsigned *out_stride,
+                                        unsigned *out_layer_stride)
+{
+   struct pipe_resource *pres = vtransfer->base.resource;
+   struct pipe_box *box = &vtransfer->base.box;
+   unsigned stride;
+   unsigned layer_stride;
+   unsigned size;
+
+   assert(out_stride);
+   assert(out_layer_stride);
+
+   stride = util_format_get_stride(pres->format, box->width);
+   layer_stride = util_format_get_2d_size(pres->format, stride, box->height);
+
+   if (pres->target == PIPE_TEXTURE_CUBE ||
+       pres->target == PIPE_TEXTURE_CUBE_ARRAY ||
+       pres->target == PIPE_TEXTURE_3D ||
+       pres->target == PIPE_TEXTURE_2D_ARRAY) {
+      size = box->depth * layer_stride;
+   } else if (pres->target == PIPE_TEXTURE_1D_ARRAY) {
+      size = box->depth * stride;
+   } else {
+      size = layer_stride;
+   }
+
+   *out_stride = stride;
+   *out_layer_stride = layer_stride;
+
+   return size;
+}
+
+/* Maps a region from the transfer uploader to service the transfer. */
 void *virgl_transfer_uploader_map(struct virgl_context *vctx,
                                   struct virgl_transfer *vtransfer)
 {
    struct virgl_resource *vres = virgl_resource(vtransfer->base.resource);
    unsigned size;
    unsigned align_offset;
+   unsigned stride;
+   unsigned layer_stride;
    void *map_addr;
 
    assert(vctx->transfer_uploader);
    assert(!vctx->transfer_uploader_in_use);
 
-   size = vtransfer->base.box.width;
+   size = virgl_transfer_map_size(vtransfer, &stride, &layer_stride);
 
    /* For buffers we need to ensure that the start of the buffer would be
     * aligned to VIRGL_MAP_BUFFER_ALIGNMENT, even if our transfer doesn't
@@ -516,7 +555,9 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
     *         |---|             ==> align_offset
     *         |------------|    ==> allocation of size + align_offset
     */
-   align_offset = vtransfer->base.box.x % VIRGL_MAP_BUFFER_ALIGNMENT;
+   align_offset = vres->u.b.target == PIPE_BUFFER ?
+                  vtransfer->base.box.x % VIRGL_MAP_BUFFER_ALIGNMENT :
+                  0;
 
    u_upload_alloc(vctx->transfer_uploader, 0, size + align_offset,
                   VIRGL_MAP_BUFFER_ALIGNMENT,
@@ -537,6 +578,13 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
       /* The pointer returned by u_upload_alloc already has +offset
        * applied. */
       vctx->transfer_uploader_in_use = true;
+
+      /* We are using the minimum required size to hold the contents,
+       * possibly using a layout different from the layout of the resource,
+       * so update the transfer strides accordingly.
+       */
+      vtransfer->base.stride = stride;
+      vtransfer->base.layer_stride = layer_stride;
    }
 
    return map_addr;
