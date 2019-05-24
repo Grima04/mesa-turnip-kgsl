@@ -37,7 +37,11 @@ enum {
 static void si_alloc_separate_cmask(struct si_screen *sscreen,
 				    struct si_texture *tex)
 {
-	if (tex->cmask_buffer || !tex->surface.cmask_size)
+	/* CMASK for MSAA is allocated in advance or always disabled
+	 * by "nofmask" option.
+	 */
+	if (tex->cmask_buffer || !tex->surface.cmask_size ||
+	    tex->buffer.b.b.nr_samples >= 2)
                 return;
 
 	tex->cmask_buffer =

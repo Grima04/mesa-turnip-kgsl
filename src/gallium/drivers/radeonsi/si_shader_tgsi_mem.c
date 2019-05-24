@@ -1534,8 +1534,9 @@ static void build_tex_intrinsic(const struct lp_build_tgsi_action *action,
 		}
 	}
 
-	if (target == TGSI_TEXTURE_2D_MSAA ||
-	    target == TGSI_TEXTURE_2D_ARRAY_MSAA) {
+	if ((target == TGSI_TEXTURE_2D_MSAA ||
+	     target == TGSI_TEXTURE_2D_ARRAY_MSAA) &&
+	    !(ctx->screen->debug_flags & DBG(NO_FMASK))) {
 		ac_apply_fmask_to_sample(&ctx->ac, fmask_ptr, args.coords,
 					 target == TGSI_TEXTURE_2D_ARRAY_MSAA);
 	}
@@ -1734,7 +1735,8 @@ static void si_llvm_emit_fbfetch(const struct lp_build_tgsi_action *action,
 	if (ctx->shader->key.mono.u.ps.fbfetch_msaa)
 		args.coords[chan++] = si_get_sample_id(ctx);
 
-	if (ctx->shader->key.mono.u.ps.fbfetch_msaa) {
+	if (ctx->shader->key.mono.u.ps.fbfetch_msaa &&
+	    !(ctx->screen->debug_flags & DBG(NO_FMASK))) {
 		fmask = ac_build_load_to_sgpr(&ctx->ac, ptr,
 			LLVMConstInt(ctx->i32, SI_PS_IMAGE_COLORBUF0_FMASK / 2, 0));
 

@@ -1076,7 +1076,7 @@ void si_print_texture_info(struct si_screen *sscreen,
 			tex->surface.u.gfx9.surf.epitch,
 			tex->surface.u.gfx9.surf_pitch);
 
-		if (tex->surface.fmask_size) {
+		if (tex->fmask_offset) {
 			u_log_printf(log, "  FMASK: offset=%"PRIu64", size=%"PRIu64", "
 				"alignment=%u, swmode=%u, epitch=%u\n",
 				tex->fmask_offset,
@@ -1131,7 +1131,7 @@ void si_print_texture_info(struct si_screen *sscreen,
 		tex->surface.u.legacy.tile_split, tex->surface.u.legacy.pipe_config,
 		(tex->surface.flags & RADEON_SURF_SCANOUT) != 0);
 
-	if (tex->surface.fmask_size)
+	if (tex->fmask_offset)
 		u_log_printf(log, "  FMask: offset=%"PRIu64", size=%"PRIu64", alignment=%u, pitch_in_pixels=%u, "
 			"bankh=%u, slice_tile_max=%u, tile_mode_index=%u\n",
 			tex->fmask_offset, tex->surface.fmask_size, tex->surface.fmask_alignment,
