@@ -196,6 +196,8 @@ struct gen_perf_config {
                                         void *bo,
                                         uint32_t offset_in_bytes,
                                         uint32_t report_id);
+      void (*batchbuffer_flush)(void *ctx,
+                                const char *file, int line);
    } vtbl;
 };
 

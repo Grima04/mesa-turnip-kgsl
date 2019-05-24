@@ -962,6 +962,7 @@ brw_begin_perf_query(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
    const struct gen_perf_query_info *query = obj->query;
+   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
 
    /* We can assume the frontend hides mistaken attempts to Begin a
     * query object multiple times before its End. Similarly if an
@@ -1143,7 +1144,7 @@ brw_begin_perf_query(struct gl_context *ctx,
        * scheduler to load a new request into the hardware. This is manifested in
        * tools like frameretrace by spikes in the "GPU Core Clocks" counter.
        */
-      intel_batchbuffer_flush(brw);
+      perf_cfg->vtbl.batchbuffer_flush(brw, __FILE__, __LINE__);
 
       /* Take a starting OA counter snapshot. */
       brw->perfquery.perf->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
@@ -1267,6 +1268,7 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
    struct brw_bo *bo = NULL;
+   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
 
    assert(!o->Ready);
 
@@ -1292,7 +1294,7 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
     * flush first...
     */
    if (brw_batch_references(&brw->batch, bo))
-      intel_batchbuffer_flush(brw);
+      perf_cfg->vtbl.batchbuffer_flush(brw, __FILE__, __LINE__);
 
    brw_bo_wait_rendering(bo);
 
@@ -1748,6 +1750,13 @@ brw_oa_emit_mi_report_perf_count(void *c,
 typedef void (*bo_unreference_t)(void *);
 typedef void (* emit_mi_report_t)(void *, void *, uint32_t, uint32_t);
 
+static void
+brw_oa_batchbuffer_flush(void *c, const char *file, int line)
+{
+   struct brw_context *ctx = c;
+   _intel_batchbuffer_flush_fence(ctx, -1, NULL, file,  line);
+}
+
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
 {
@@ -1755,22 +1764,23 @@ brw_init_perf_query_info(struct gl_context *ctx)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    __DRIscreen *screen = brw->screen->driScrnPriv;
 
-   if (brw->perfquery.perf)
+   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   if (perf_cfg)
       return brw->perfquery.perf->n_queries;
 
-   brw->perfquery.perf = gen_perf_new(brw);
-
-   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   perf_cfg = gen_perf_new(brw);
+   brw->perfquery.perf = perf_cfg;
    perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
    perf_cfg->vtbl.emit_mi_report_perf_count =
       (emit_mi_report_t)brw_oa_emit_mi_report_perf_count;
+   perf_cfg->vtbl.batchbuffer_flush = brw_oa_batchbuffer_flush;
 
    init_pipeline_statistic_query_registers(brw);
    brw_perf_query_register_mdapi_statistic_query(brw);
 
    if ((oa_metrics_kernel_support(screen->fd, devinfo)) &&
-       (gen_perf_load_oa_metrics(brw->perfquery.perf, screen->fd, devinfo)))
+       (gen_perf_load_oa_metrics(perf_cfg, screen->fd, devinfo)))
       brw_perf_query_register_mdapi_oa_query(brw);
 
    brw->perfquery.unaccumulated =
@@ -1793,7 +1803,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
 
    brw->perfquery.next_query_start_report_id = 1000;
 
-   return brw->perfquery.perf->n_queries;
+   return perf_cfg->n_queries;
 }
 
 void
