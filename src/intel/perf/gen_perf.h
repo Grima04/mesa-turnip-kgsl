@@ -198,6 +198,8 @@ struct gen_perf_config {
                                         uint32_t report_id);
       void (*batchbuffer_flush)(void *ctx,
                                 const char *file, int line);
+      void (*capture_frequency_stat_register)(void *ctx, void *bo,
+                                              uint32_t bo_offset);
    } vtbl;
 };
 

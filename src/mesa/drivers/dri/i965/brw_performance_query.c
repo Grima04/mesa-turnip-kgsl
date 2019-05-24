@@ -1149,7 +1149,8 @@ brw_begin_perf_query(struct gl_context *ctx,
       /* Take a starting OA counter snapshot. */
       brw->perfquery.perf->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
                                                           obj->oa.begin_report_id);
-      capture_frequency_stat_register(brw, obj->oa.bo, MI_FREQ_START_OFFSET_BYTES);
+      perf_cfg->vtbl.capture_frequency_stat_register(brw, obj->oa.bo,
+                                                     MI_FREQ_START_OFFSET_BYTES);
 
       ++brw->perfquery.n_active_oa_queries;
 
@@ -1214,6 +1215,7 @@ brw_end_perf_query(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
+   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
 
    DBG("End(%d)\n", o->Id);
 
@@ -1236,7 +1238,8 @@ brw_end_perf_query(struct gl_context *ctx,
        */
       if (!obj->oa.results_accumulated) {
          /* Take an ending OA counter snapshot. */
-         capture_frequency_stat_register(brw, obj->oa.bo, MI_FREQ_END_OFFSET_BYTES);
+         perf_cfg->vtbl.capture_frequency_stat_register(brw, obj->oa.bo,
+                                                        MI_FREQ_END_OFFSET_BYTES);
          brw->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo,
                                              MI_RPC_BO_END_OFFSET_BYTES,
                                              obj->oa.begin_report_id + 1);
@@ -1757,6 +1760,8 @@ brw_oa_batchbuffer_flush(void *c, const char *file, int line)
    _intel_batchbuffer_flush_fence(ctx, -1, NULL, file,  line);
 }
 
+typedef void (*capture_frequency_stat_register_t)(void *, void *, uint32_t );
+
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
 {
@@ -1775,6 +1780,8 @@ brw_init_perf_query_info(struct gl_context *ctx)
    perf_cfg->vtbl.emit_mi_report_perf_count =
       (emit_mi_report_t)brw_oa_emit_mi_report_perf_count;
    perf_cfg->vtbl.batchbuffer_flush = brw_oa_batchbuffer_flush;
+   perf_cfg->vtbl.capture_frequency_stat_register =
+      (capture_frequency_stat_register_t) capture_frequency_stat_register;
 
    init_pipeline_statistic_query_registers(brw);
    brw_perf_query_register_mdapi_statistic_query(brw);
