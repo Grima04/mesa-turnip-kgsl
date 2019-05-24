@@ -592,21 +592,22 @@ static void store_emit_buffer(struct si_shader_context *ctx,
 
 	while (writemask) {
 		int start, count;
-		const char *intrinsic_name;
 		LLVMValueRef data, voff;
 
 		u_bit_scan_consecutive_range(&writemask, &start, &count);
 
-		/* Due to an LLVM limitation, split 3-element writes
-		 * into a 2-element and a 1-element write. */
-		if (count == 3) {
-			writemask |= 1 << (start + 2);
-			count = 2;
-		}
-
-		if (count == 4) {
+		if (count == 3 && ac_has_vec3_support(ctx->ac.chip_class, false)) {
+			LLVMValueRef values[3] = {
+				LLVMBuildExtractElement(builder, base_data,
+							LLVMConstInt(ctx->i32, start, 0), ""),
+				LLVMBuildExtractElement(builder, base_data,
+							LLVMConstInt(ctx->i32, start + 1, 0), ""),
+				LLVMBuildExtractElement(builder, base_data,
+							LLVMConstInt(ctx->i32, start + 2, 0), ""),
+			};
+			data = ac_build_gather_values(&ctx->ac, values, 3);
+		} else if (count >= 3) {
 			data = base_data;
-			intrinsic_name = "llvm.amdgcn.buffer.store.v4f32";
 		} else if (count == 2) {
 			LLVMValueRef values[2] = {
 				LLVMBuildExtractElement(builder, base_data,
@@ -616,13 +617,11 @@ static void store_emit_buffer(struct si_shader_context *ctx,
 			};
 
 			data = ac_build_gather_values(&ctx->ac, values, 2);
-			intrinsic_name = "llvm.amdgcn.buffer.store.v2f32";
 		} else {
 			assert(count == 1);
 			data = LLVMBuildExtractElement(
 				builder, base_data,
 				LLVMConstInt(ctx->i32, start, 0), "");
-			intrinsic_name = "llvm.amdgcn.buffer.store.f32";
 		}
 
 		voff = base_offset;
@@ -632,16 +631,11 @@ static void store_emit_buffer(struct si_shader_context *ctx,
 				LLVMConstInt(ctx->i32, start * 4, 0), "");
 		}
 
-		LLVMValueRef args[] = {
-			data,
-			resource,
-			ctx->i32_0, /* vindex */
-			voff,
-			LLVMConstInt(ctx->i1, !!(cache_policy & ac_glc), 0),
-			LLVMConstInt(ctx->i1, !!(cache_policy & ac_slc), 0),
-		};
-		ac_build_intrinsic(&ctx->ac, intrinsic_name, ctx->voidt, args, 6,
-				   ac_get_store_intr_attribs(writeonly_memory));
+		ac_build_buffer_store_dword(&ctx->ac, resource, data, count,
+					    voff, ctx->i32_0, 0,
+					    !!(cache_policy & ac_glc),
+					    !!(cache_policy & ac_slc),
+					    writeonly_memory, false);
 	}
 }
 
