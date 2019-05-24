@@ -608,7 +608,7 @@ finished:
     */
 
    for (index = 0; index < PIPE_MAX_COLOR_BUFS; ++index) {
-      const struct lp_tgsi_channel_info null_output[4];
+      static const struct lp_tgsi_channel_info null_output[4];
       info->cbuf[index] = null_output;
    }
 
