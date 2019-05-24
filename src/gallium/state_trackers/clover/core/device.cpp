@@ -327,7 +327,8 @@ device::supported_extensions() const {
       + std::string(has_int64_atomics() ? " cl_khr_int64_base_atomics" : "")
       + std::string(has_int64_atomics() ? " cl_khr_int64_extended_atomics" : "")
       + std::string(has_doubles() ? " cl_khr_fp64" : "")
-      + std::string(has_halves() ? " cl_khr_fp16" : "");
+      + std::string(has_halves() ? " cl_khr_fp16" : "")
+      + std::string(svm_support() ? " cl_arm_shared_virtual_memory" : "");
 }
 
 const void *
