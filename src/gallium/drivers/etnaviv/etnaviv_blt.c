@@ -367,7 +367,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
    assert(blit_info->dst.level <= dst->base.last_level);
 
    if (!translate_samples_to_xyscale(src->base.nr_samples, &msaa_xscale, &msaa_yscale, NULL))
-      return FALSE;
+      return false;
 
    /* The width/height are in pixels; they do not change as a result of
     * multi-sampling. So, when blitting from a 4x multisampled surface
@@ -379,14 +379,14 @@ etna_try_blt_blit(struct pipe_context *pctx,
       DBG("scaling requested: source %dx%d destination %dx%d",
           blit_info->src.box.width, blit_info->src.box.height,
           blit_info->dst.box.width, blit_info->dst.box.height);
-      return FALSE;
+      return false;
    }
 
    /* No masks - not sure if BLT can copy individual channels */
    unsigned mask = util_format_get_mask(blit_info->dst.format);
    if ((blit_info->mask & mask) != mask) {
       DBG("sub-mask requested: 0x%02x vs format mask 0x%02x", blit_info->mask, mask);
-      return FALSE;
+      return false;
    }
 
    /* TODO: 1 byte per pixel formats aren't handled by etna_compatible_rs_format nor
@@ -402,7 +402,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
        blit_info->scissor_enable ||
        blit_info->dst.box.depth != blit_info->src.box.depth ||
        blit_info->dst.box.depth != 1) {
-      return FALSE;
+      return false;
    }
 
    /* Ensure that the Z coordinate is sane */
@@ -419,7 +419,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
       /* Resolve-in-place */
       assert(!memcmp(&blit_info->src, &blit_info->dst, sizeof(blit_info->src)));
       if (!src_lev->ts_size || !src_lev->ts_valid) /* No TS, no worries */
-         return TRUE;
+         return true;
       struct blt_inplace_op op = {};
 
       op.addr.bo = src->bo;
@@ -516,7 +516,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
    dst->seqno++;
    dst_lev->ts_valid = false;
 
-   return TRUE;
+   return true;
 }
 
 static void
