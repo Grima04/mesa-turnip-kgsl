@@ -1651,7 +1651,7 @@ genX(upload_sf)(struct brw_context *brw)
       if (ctx->Line.SmoothFlag) {
          sf.LineEndCapAntialiasingRegionWidth = _10pixels;
 #if GEN_GEN <= 7
-         sf.AntiAliasingEnable = true;
+         sf.AntialiasingEnable = true;
 #endif
       }
 
