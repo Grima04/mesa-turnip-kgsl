@@ -260,7 +260,10 @@ def generate(env):
             if '-fno-rtti' in cxxflags:
                 env.Append(CXXFLAGS = ['-fno-rtti'])
 
-            components = ['engine', 'mcjit', 'bitwriter', 'x86asmprinter', 'mcdisassembler', 'irreader']
+            if llvm_version < distutils.version.LooseVersion('9.0'):
+               components = ['engine', 'mcjit', 'bitwriter', 'x86asmprinter', 'mcdisassembler', 'irreader']
+            else:
+               components = ['engine', 'mcjit', 'bitwriter', 'mcdisassembler', 'irreader']
 
             env.ParseConfig('%s --libs ' % llvm_config + ' '.join(components))
             env.ParseConfig('%s --ldflags' % llvm_config)
