@@ -134,7 +134,7 @@ ac_image_dim_from_tgsi_target(struct si_screen *screen, enum tgsi_texture_type t
 	if (dim == ac_image_cube ||
 	    (screen->info.chip_class <= GFX8 && dim == ac_image_3d))
 		dim = ac_image_2darray;
-	else if (target == TGSI_TEXTURE_2D && screen->info.chip_class >= GFX9) {
+	else if (target == TGSI_TEXTURE_2D && screen->info.chip_class == GFX9) {
 		/* When a single layer of a 3D texture is bound, the shader
 		 * will refer to a 2D target, but the descriptor has a 3D type.
 		 * Since the HW ignores BASE_ARRAY in this case, we need to
@@ -294,7 +294,8 @@ static void image_fetch_coords(
 		} else if (target == TGSI_TEXTURE_1D_ARRAY) {
 			coords[2] = coords[1];
 			coords[1] = ctx->i32_0;
-		} else if (target == TGSI_TEXTURE_2D) {
+		} else if (ctx->screen->info.chip_class == GFX9 &&
+			   target == TGSI_TEXTURE_2D) {
 			/* The hw can't bind a slice of a 3D image as a 2D
 			 * image, because it ignores BASE_ARRAY if the target
 			 * is 3D. The workaround is to read BASE_ARRAY and set
