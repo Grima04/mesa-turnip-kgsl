@@ -488,19 +488,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
          goto err;
    }
 
-   bo->name = name;
-   p_atomic_set(&bo->refcount, 1);
-   bo->reusable = bucket && bufmgr->bo_reuse;
-   bo->cache_coherent = bufmgr->has_llc;
-   bo->index = -1;
-   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
-
-   /* By default, capture all driver-internal buffers like shader kernels,
-    * surface states, dynamic states, border colors, and so on.
-    */
-   if (memzone < IRIS_MEMZONE_OTHER)
-      bo->kflags |= EXEC_OBJECT_CAPTURE;
-
    if (bo->gtt_offset == 0ull) {
       bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, 1);
 
@@ -527,6 +514,19 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    }
 
    mtx_unlock(&bufmgr->lock);
+
+   bo->name = name;
+   p_atomic_set(&bo->refcount, 1);
+   bo->reusable = bucket && bufmgr->bo_reuse;
+   bo->cache_coherent = bufmgr->has_llc;
+   bo->index = -1;
+   bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+
+   /* By default, capture all driver-internal buffers like shader kernels,
+    * surface states, dynamic states, border colors, and so on.
+    */
+   if (memzone < IRIS_MEMZONE_OTHER)
+      bo->kflags |= EXEC_OBJECT_CAPTURE;
 
    if ((flags & BO_ALLOC_COHERENT) && !bo->cache_coherent) {
       struct drm_i915_gem_caching arg = {
