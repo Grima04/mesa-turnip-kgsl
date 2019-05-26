@@ -118,9 +118,8 @@ stw_init(const struct stw_winsys *stw_winsys)
    stw_dev->smapi->get_param = stw_get_param;
    stw_dev->screen = screen;
 
-   stw_dev->max_2d_levels = util_last_bit(screen->get_param(screen,
-                                                            PIPE_CAP_MAX_TEXTURE_2D_SIZE));
-   stw_dev->max_2d_length = 1 << (stw_dev->max_2d_levels - 1);
+   stw_dev->max_2d_length = screen->get_param(screen,
+                                              PIPE_CAP_MAX_TEXTURE_2D_SIZE);
 
    InitializeCriticalSection(&stw_dev->ctx_mutex);
    InitializeCriticalSection(&stw_dev->fb_mutex);
