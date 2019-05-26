@@ -376,6 +376,7 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    bool alloc_from_cache;
    uint64_t bo_size;
    bool zeroed = false;
+   bool alloc_pages = false;
 
    if (flags & BO_ALLOC_ZEROED)
       zeroed = true;
@@ -410,11 +411,6 @@ retry:
          if (!iris_bo_madvise(bo, I915_MADV_WILLNEED)) {
             bo_free(bo);
             iris_bo_cache_purge_bucket(bufmgr, bucket);
-            goto retry;
-         }
-
-         if (bo_set_tiling_internal(bo, tiling_mode, stride)) {
-            bo_free(bo);
             goto retry;
          }
 
@@ -464,21 +460,7 @@ retry:
       bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
       bo->stride = 0;
 
-      if (bo_set_tiling_internal(bo, tiling_mode, stride))
-         goto err_free;
-
-      /* Calling set_domain() will allocate pages for the BO outside of the
-       * struct mutex lock in the kernel, which is more efficient than waiting
-       * to create them during the first execbuf that uses the BO.
-       */
-      struct drm_i915_gem_set_domain sd = {
-         .handle = bo->gem_handle,
-         .read_domains = I915_GEM_DOMAIN_CPU,
-         .write_domain = 0,
-      };
-
-      if (drm_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0)
-         goto err_free;
+      alloc_pages = true;
    }
 
    bo->name = name;
@@ -498,6 +480,24 @@ retry:
       bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, 1);
 
       if (bo->gtt_offset == 0ull)
+         goto err_free;
+   }
+
+   if (bo_set_tiling_internal(bo, tiling_mode, stride))
+      goto err_free;
+
+   if (alloc_pages) {
+      /* Calling set_domain() will allocate pages for the BO outside of the
+       * struct mutex lock in the kernel, which is more efficient than waiting
+       * to create them during the first execbuf that uses the BO.
+       */
+      struct drm_i915_gem_set_domain sd = {
+         .handle = bo->gem_handle,
+         .read_domains = I915_GEM_DOMAIN_CPU,
+         .write_domain = 0,
+      };
+
+      if (drm_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0)
          goto err_free;
    }
 
