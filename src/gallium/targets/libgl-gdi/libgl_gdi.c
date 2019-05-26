@@ -89,7 +89,9 @@ gdi_screen_create(HDC hDC)
    if(!winsys)
       goto no_winsys;
 
-#ifdef GALLIUM_LLVMPIPE
+#ifdef GALLIUM_D3D12
+   default_driver = "d3d12";
+#elif defined(GALLIUM_LLVMPIPE)
    default_driver = "llvmpipe";
 #elif GALLIUM_SWR
    default_driver = "swr";
