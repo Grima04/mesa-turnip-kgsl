@@ -313,6 +313,9 @@ stw_pixelformat_init(void)
 uint
 stw_pixelformat_get_count(void)
 {
+   if (!stw_init_screen())
+      return 0;
+
    return stw_dev->pixelformat_count;
 }
 
@@ -320,6 +323,9 @@ stw_pixelformat_get_count(void)
 uint
 stw_pixelformat_get_extended_count(void)
 {
+   if (!stw_init_screen())
+      return 0;
+
    return stw_dev->pixelformat_extended_count;
 }
 

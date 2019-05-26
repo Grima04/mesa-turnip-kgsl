@@ -125,9 +125,7 @@ stw_init(const struct stw_winsys *stw_winsys)
 
    stw_dev->smapi->get_param = stw_get_param;
 
-   if (!init_screen(stw_winsys))
-      goto error1;
-
+   InitializeCriticalSection(&stw_dev->screen_mutex);
    InitializeCriticalSection(&stw_dev->ctx_mutex);
    InitializeCriticalSection(&stw_dev->fb_mutex);
 
@@ -135,8 +133,6 @@ stw_init(const struct stw_winsys *stw_winsys)
    if (!stw_dev->ctx_table) {
       goto error1;
    }
-
-   stw_pixelformat_init();
 
    /* env var override for WGL_EXT_swap_control, useful for testing/debugging */
    const char *s = os_get_option("WGL_SWAP_INTERVAL");
@@ -158,6 +154,23 @@ error1:
    return FALSE;
 }
 
+boolean
+stw_init_screen()
+{
+   EnterCriticalSection(&stw_dev->screen_mutex);
+
+   if (!stw_dev->screen_initialized) {
+      stw_dev->screen_initialized = true;
+      if (!init_screen(stw_dev->stw_winsys)) {
+         LeaveCriticalSection(&stw_dev->screen_mutex);
+         return false;
+      }
+      stw_pixelformat_init();
+   }
+
+   LeaveCriticalSection(&stw_dev->screen_mutex);
+   return stw_dev->screen != NULL;
+}
 
 boolean
 stw_init_thread(void)
@@ -202,6 +215,7 @@ stw_cleanup(void)
 
    DeleteCriticalSection(&stw_dev->fb_mutex);
    DeleteCriticalSection(&stw_dev->ctx_mutex);
+   DeleteCriticalSection(&stw_dev->screen_mutex);
 
    if (stw_dev->smapi->destroy)
       stw_dev->smapi->destroy(stw_dev->smapi);
