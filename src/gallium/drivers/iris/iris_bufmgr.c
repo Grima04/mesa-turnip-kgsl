@@ -581,7 +581,11 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
 
    bo->bufmgr = bufmgr;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
+
+   mtx_lock(&bufmgr->lock);
    bo->gtt_offset = vma_alloc(bufmgr, memzone, size, 1);
+   mtx_unlock(&bufmgr->lock);
+
    if (bo->gtt_offset == 0ull)
       goto err_close;
 
