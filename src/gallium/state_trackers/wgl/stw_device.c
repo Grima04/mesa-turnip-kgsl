@@ -89,8 +89,6 @@ stw_init(const struct stw_winsys *stw_winsys)
 
    debug_disable_error_message_boxes();
 
-   debug_printf("%s\n", __FUNCTION__);
-
    assert(!stw_dev);
 
    stw_tls_init();
