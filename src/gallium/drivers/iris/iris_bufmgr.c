@@ -361,6 +361,34 @@ bo_calloc(void)
 }
 
 static struct iris_bo *
+alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
+{
+   struct iris_bo *bo = bo_calloc();
+   if (!bo)
+      return NULL;
+
+   struct drm_i915_gem_create create = { .size = bo_size };
+
+   /* All new BOs we get from the kernel are zeroed, so we don't need to
+    * worry about that here.
+    */
+   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE, &create) != 0) {
+      free(bo);
+      return NULL;
+   }
+
+   bo->gem_handle = create.handle;
+   bo->bufmgr = bufmgr;
+   bo->size = bo_size;
+   bo->idle = true;
+   bo->tiling_mode = I915_TILING_NONE;
+   bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
+   bo->stride = 0;
+
+   return bo;
+}
+
+static struct iris_bo *
 bo_alloc_internal(struct iris_bufmgr *bufmgr,
                   const char *name,
                   uint64_t size,
@@ -371,7 +399,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 {
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
-   int ret;
    struct bo_cache_bucket *bucket;
    bool alloc_from_cache;
    uint64_t bo_size;
@@ -434,33 +461,10 @@ retry:
          bo->gtt_offset = 0ull;
       }
    } else {
-      bo = bo_calloc();
+      alloc_pages = true;
+      bo = alloc_fresh_bo(bufmgr, bo_size);
       if (!bo)
          goto err;
-
-      bo->size = bo_size;
-      bo->idle = true;
-
-      struct drm_i915_gem_create create = { .size = bo_size };
-
-      /* All new BOs we get from the kernel are zeroed, so we don't need to
-       * worry about that here.
-       */
-      ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE, &create);
-      if (ret != 0) {
-         free(bo);
-         goto err;
-      }
-
-      bo->gem_handle = create.handle;
-
-      bo->bufmgr = bufmgr;
-
-      bo->tiling_mode = I915_TILING_NONE;
-      bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
-      bo->stride = 0;
-
-      alloc_pages = true;
    }
 
    bo->name = name;
