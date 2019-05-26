@@ -254,7 +254,19 @@ etna_rs_gen_clear_surface(struct etna_context *ctx, struct etna_surface *surf,
                           uint32_t clear_value)
 {
    struct etna_resource *dst = etna_resource(surf->base.texture);
-   uint32_t format = translate_rs_format(surf->base.format);
+   uint32_t format;
+
+   switch (util_format_get_blocksizebits(surf->base.format)) {
+   case 16:
+      format = RS_FORMAT_A4R4G4B4;
+      break;
+   case 32:
+      format = RS_FORMAT_A8R8G8B8;
+      break;
+   default:
+      format = ETNA_NO_MATCH;
+      break;
+   }
 
    if (format == ETNA_NO_MATCH) {
       BUG("etna_rs_gen_clear_surface: Unhandled clear fmt %s", util_format_name(surf->base.format));
