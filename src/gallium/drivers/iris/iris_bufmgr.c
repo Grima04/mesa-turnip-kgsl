@@ -460,21 +460,14 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 {
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
-   struct bo_cache_bucket *bucket;
-   uint64_t bo_size;
    bool alloc_pages = false;
+   struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size);
 
-   /* Round the allocated size up to a power of two number of pages. */
-   bucket = bucket_for_size(bufmgr, size);
-
-   /* If we don't have caching at this size, don't actually round the
-    * allocation up.
+   /* Round the size up to the bucket size, or if we don't have caching
+    * at this size, a multiple of the page size.
     */
-   if (bucket == NULL) {
-      bo_size = MAX2(ALIGN(size, page_size), page_size);
-   } else {
-      bo_size = bucket->size;
-   }
+   uint64_t bo_size =
+      bucket ? bucket->size : MAX2(ALIGN(size, page_size), page_size);
 
    mtx_lock(&bufmgr->lock);
 
