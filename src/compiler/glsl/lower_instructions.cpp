@@ -123,6 +123,7 @@
 #include "ir.h"
 #include "ir_builder.h"
 #include "ir_optimization.h"
+#include "util/half_float.h"
 
 using namespace ir_builder;
 
@@ -172,6 +173,11 @@ private:
    void mul64_to_mul_and_mul_high(ir_expression *ir);
 
    ir_expression *_carry(operand a, operand b);
+
+   static ir_constant *_imm_fp(void *mem_ctx,
+                               const glsl_type *type,
+                               double f,
+                               unsigned vector_elements=1);
 };
 
 } /* anonymous namespace */
@@ -273,7 +279,7 @@ lower_instructions_visitor::int_div_to_mul_rcp(ir_expression *ir)
 void
 lower_instructions_visitor::exp_to_exp2(ir_expression *ir)
 {
-   ir_constant *log2_e = new(ir) ir_constant(float(M_LOG2E));
+   ir_constant *log2_e = _imm_fp(ir, ir->type, M_LOG2E);
 
    ir->operation = ir_unop_exp2;
    ir->init_num_operands();
@@ -304,7 +310,7 @@ lower_instructions_visitor::log_to_log2(ir_expression *ir)
    ir->init_num_operands();
    ir->operands[0] = new(ir) ir_expression(ir_unop_log2, ir->operands[0]->type,
 					   ir->operands[0], NULL);
-   ir->operands[1] = new(ir) ir_constant(float(1.0 / M_LOG2E));
+   ir->operands[1] = _imm_fp(ir, ir->operands[0]->type, 1.0 / M_LOG2E);
    this->progress = true;
 }
 
@@ -837,10 +843,11 @@ lower_instructions_visitor::sat_to_clamp(ir_expression *ir)
 
    ir->operation = ir_binop_min;
    ir->init_num_operands();
+
+   ir_constant *zero = _imm_fp(ir, ir->operands[0]->type, 0.0);
    ir->operands[0] = new(ir) ir_expression(ir_binop_max, ir->operands[0]->type,
-                                           ir->operands[0],
-                                           new(ir) ir_constant(0.0f));
-   ir->operands[1] = new(ir) ir_constant(1.0f);
+                                           ir->operands[0], zero);
+   ir->operands[1] = _imm_fp(ir, ir->operands[0]->type, 1.0);
 
    this->progress = true;
 }
@@ -1513,6 +1520,25 @@ lower_instructions_visitor::_carry(operand a, operand b)
                           a.val->clone(ralloc_parent(a.val), NULL))));
    else
       return carry(a, b);
+}
+
+ir_constant *
+lower_instructions_visitor::_imm_fp(void *mem_ctx,
+                                    const glsl_type *type,
+                                    double f,
+                                    unsigned vector_elements)
+{
+   switch (type->base_type) {
+   case GLSL_TYPE_FLOAT:
+      return new(mem_ctx) ir_constant((float) f, vector_elements);
+   case GLSL_TYPE_DOUBLE:
+      return new(mem_ctx) ir_constant((double) f, vector_elements);
+   case GLSL_TYPE_FLOAT16:
+      return new(mem_ctx) ir_constant(float16_t(f), vector_elements);
+   default:
+      assert(!"unknown float type for immediate");
+      return NULL;
+   }
 }
 
 void
