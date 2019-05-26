@@ -443,11 +443,12 @@ retry:
 
          if (zeroed) {
             void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
-            if (!map) {
+            if (map) {
+               memset(map, 0, bo_size);
+            } else {
+               alloc_from_cache = false;
                bo_free(bo);
-               goto retry;
             }
-            memset(map, 0, bo_size);
          }
       }
    }
