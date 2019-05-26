@@ -39,6 +39,7 @@ libopengl32 = shared_library(
   ],
   dependencies : [
     dep_ws2_32, idep_nir, idep_mesautil, driver_swrast, driver_swr,
+    driver_d3d12
   ],
   name_prefix : '',  # otherwise mingw will create libopengl32.dll
   install : true,

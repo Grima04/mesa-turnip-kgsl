@@ -91,6 +91,9 @@ endif
 if with_any_intel
   subdir('intel')
 endif
+if with_gallium_d3d12
+  subdir('microsoft')
+endif
 subdir('mesa')
 subdir('loader')
 if with_platform_haiku
