@@ -361,6 +361,67 @@ bo_calloc(void)
 }
 
 static struct iris_bo *
+alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
+                    struct bo_cache_bucket *bucket,
+                    enum iris_memory_zone memzone,
+                    unsigned flags)
+{
+   if (!bucket)
+      return NULL;
+
+   struct iris_bo *bo = NULL;
+
+   while (!list_empty(&bucket->head)) {
+      struct iris_bo *cur = LIST_ENTRY(struct iris_bo, bucket->head.next, head);
+
+      /* If the last BO in the cache is busy, there are no idle BOs.
+       * Fall back to allocating a fresh buffer.
+       */
+      if (iris_bo_busy(cur))
+         return NULL;
+
+      list_del(&cur->head);
+
+      /* Tell the kernel we need this BO.  If it still exists, we're done! */
+      if (iris_bo_madvise(cur, I915_MADV_WILLNEED)) {
+         bo = cur;
+         break;
+      }
+
+      /* This BO was purged, clean up any others and retry */
+      bo_free(cur);
+
+      iris_bo_cache_purge_bucket(bufmgr, bucket);
+   }
+
+   if (!bo)
+      return NULL;
+
+   /* If the cached BO isn't in the right memory zone, free the old
+    * memory and assign it a new address.
+    */
+   if (memzone != iris_memzone_for_address(bo->gtt_offset)) {
+      vma_free(bufmgr, bo->gtt_offset, bo->size);
+      bo->gtt_offset = 0ull;
+   }
+
+   /* Zero the contents if necessary.  If this fails, fall back to
+    * allocating a fresh BO, which will always be zeroed by the kernel.
+    */
+   if (flags & BO_ALLOC_ZEROED) {
+      void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
+      if (map) {
+         memset(map, 0, bo->size);
+      } else {
+         bo_free(bo);
+         return NULL;
+      }
+   }
+
+   return bo;
+}
+
+static struct iris_bo *
 alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
 {
    struct iris_bo *bo = bo_calloc();
@@ -400,13 +461,8 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
    struct bo_cache_bucket *bucket;
-   bool alloc_from_cache;
    uint64_t bo_size;
-   bool zeroed = false;
    bool alloc_pages = false;
-
-   if (flags & BO_ALLOC_ZEROED)
-      zeroed = true;
 
    /* Round the allocated size up to a power of two number of pages. */
    bucket = bucket_for_size(bufmgr, size);
@@ -421,47 +477,11 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    }
 
    mtx_lock(&bufmgr->lock);
+
    /* Get a buffer out of the cache if available */
-retry:
-   alloc_from_cache = false;
-   if (bucket != NULL && !list_empty(&bucket->head)) {
-      /* If the last BO in the cache is idle, then reuse it.  Otherwise,
-       * allocate a fresh buffer to avoid stalling.
-       */
-      bo = LIST_ENTRY(struct iris_bo, bucket->head.next, head);
-      if (!iris_bo_busy(bo)) {
-         alloc_from_cache = true;
-         list_del(&bo->head);
-      }
+   bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags);
 
-      if (alloc_from_cache) {
-         if (!iris_bo_madvise(bo, I915_MADV_WILLNEED)) {
-            bo_free(bo);
-            iris_bo_cache_purge_bucket(bufmgr, bucket);
-            goto retry;
-         }
-
-         if (zeroed) {
-            void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
-            if (map) {
-               memset(map, 0, bo_size);
-            } else {
-               alloc_from_cache = false;
-               bo_free(bo);
-            }
-         }
-      }
-   }
-
-   if (alloc_from_cache) {
-      /* If the cached BO isn't in the right memory zone, free the old
-       * memory and assign it a new address.
-       */
-      if (memzone != iris_memzone_for_address(bo->gtt_offset)) {
-         vma_free(bufmgr, bo->gtt_offset, bo->size);
-         bo->gtt_offset = 0ull;
-      }
-   } else {
+   if (!bo) {
       alloc_pages = true;
       bo = alloc_fresh_bo(bufmgr, bo_size);
       if (!bo)
