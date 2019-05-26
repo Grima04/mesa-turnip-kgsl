@@ -80,12 +80,28 @@ get_refresh_rate(void)
    }
 }
 
+static bool
+init_screen(const struct stw_winsys *stw_winsys)
+{
+   struct pipe_screen *screen = stw_winsys->create_screen();
+   if (!screen)
+      return false;
+
+   if (stw_winsys->get_adapter_luid)
+      stw_winsys->get_adapter_luid(screen, &stw_dev->AdapterLuid);
+
+   stw_dev->smapi->screen = screen;
+   stw_dev->screen = screen;
+
+   stw_dev->max_2d_length = screen->get_param(screen,
+                                              PIPE_CAP_MAX_TEXTURE_2D_SIZE);
+   return true;
+}
 
 boolean
 stw_init(const struct stw_winsys *stw_winsys)
 {
    static struct stw_device stw_dev_storage;
-   struct pipe_screen *screen;
 
    debug_disable_error_message_boxes();
 
@@ -107,19 +123,10 @@ stw_init(const struct stw_winsys *stw_winsys)
    if (!stw_dev->stapi || !stw_dev->smapi)
       goto error1;
 
-   screen = stw_winsys->create_screen();
-   if (!screen)
-      goto error1;
-
-   if (stw_winsys->get_adapter_luid)
-      stw_winsys->get_adapter_luid(screen, &stw_dev->AdapterLuid);
-
-   stw_dev->smapi->screen = screen;
    stw_dev->smapi->get_param = stw_get_param;
-   stw_dev->screen = screen;
 
-   stw_dev->max_2d_length = screen->get_param(screen,
-                                              PIPE_CAP_MAX_TEXTURE_2D_SIZE);
+   if (!init_screen(stw_winsys))
+      goto error1;
 
    InitializeCriticalSection(&stw_dev->ctx_mutex);
    InitializeCriticalSection(&stw_dev->fb_mutex);
