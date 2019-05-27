@@ -595,13 +595,30 @@ virgl_is_vertex_format_supported(struct pipe_screen *screen,
 
 static boolean
 virgl_format_check_bitmask(enum pipe_format format,
-                           uint32_t bitmask[16])
+                           uint32_t bitmask[16],
+                           boolean may_emulate_bgra)
 {
    int big = format / 32;
    int small = format % 32;
    if ((bitmask[big] & (1 << small)))
       return TRUE;
 
+   /* On GLES hosts we don't advertise BGRx_SRGB, but we may be able
+    * emulate it by using a swizzled RGBx */
+   if (may_emulate_bgra) {
+      if (format == PIPE_FORMAT_B8G8R8A8_SRGB)
+         format = PIPE_FORMAT_R8G8B8A8_SRGB;
+      else if (format == PIPE_FORMAT_B8G8R8X8_SRGB)
+         format = PIPE_FORMAT_R8G8B8X8_SRGB;
+      else {
+         return FALSE;
+      }
+
+      big = format / 32;
+      small = format % 32;
+      if (bitmask[big] & (1 << small))
+         return TRUE;
+   }
    return FALSE;
 }
 
@@ -693,7 +710,8 @@ virgl_is_format_supported( struct pipe_screen *screen,
          return FALSE;
 
       if (!virgl_format_check_bitmask(format,
-                                      vscreen->caps.caps.v1.render.bitmask))
+                                      vscreen->caps.caps.v1.render.bitmask,
+                                      may_emulate_bgra))
          return FALSE;
    }
 
@@ -738,7 +756,8 @@ virgl_is_format_supported( struct pipe_screen *screen,
 
  out_lookup:
    return virgl_format_check_bitmask(format,
-                                     vscreen->caps.caps.v1.sampler.bitmask);
+                                     vscreen->caps.caps.v1.sampler.bitmask,
+                                     may_emulate_bgra);
 }
 
 static void virgl_flush_frontbuffer(struct pipe_screen *screen,

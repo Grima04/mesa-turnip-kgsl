@@ -46,6 +46,7 @@ struct virgl_screen {
    struct slab_parent_pool transfer_pool;
 
    uint32_t sub_ctx_id;
+   bool tweak_gles_emulate_bgra;
 };
 
 
