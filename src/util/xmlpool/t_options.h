@@ -374,3 +374,8 @@ DRI_CONF_OPT_END
 DRI_CONF_OPT_BEGIN_B(gles_apply_bgra_dest_swizzle, def) \
         DRI_CONF_DESC(en,gettext("When the BGRA formats are emulated by using swizzled RGBA formats on GLES apply the swizzle when writing")) \
 DRI_CONF_OPT_END
+
+#define DRI_CONF_GLES_SAMPLES_PASSED_VALUE(def, minimum, maximum) \
+DRI_CONF_OPT_BEGIN_V(gles_samples_passed_value, def, minimum, maximum) \
+        DRI_CONF_DESC(en,gettext("GL_SAMPLES_PASSED value when emulated by GL_ANY_SAMPLES_PASSED")) \
+DRI_CONF_OPT_END

@@ -856,6 +856,8 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
 
    const char *VIRGL_GLES_EMULATE_BGRA = "gles_emulate_bgra";
    const char *VIRGL_GLES_APPLY_BGRA_DEST_SWIZZLE = "gles_apply_bgra_dest_swizzle";
+   const char *VIRGL_GLES_SAMPLES_PASSED_VALUE = "gles_samples_passed_value";
+
    if (!screen)
       return NULL;
 
@@ -866,7 +868,10 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
             driQueryOptionb(config->options, VIRGL_GLES_EMULATE_BGRA);
       screen->tweak_gles_apply_bgra_dest_swizzle =
             driQueryOptionb(config->options, VIRGL_GLES_APPLY_BGRA_DEST_SWIZZLE);
+      screen->tweak_gles_tf3_value =
+            driQueryOptioni(config->options, VIRGL_GLES_SAMPLES_PASSED_VALUE);
    }
+
    screen->vws = vws;
    screen->base.get_name = virgl_get_name;
    screen->base.get_vendor = virgl_get_vendor;

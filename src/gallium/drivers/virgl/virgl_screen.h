@@ -48,6 +48,7 @@ struct virgl_screen {
    uint32_t sub_ctx_id;
    bool tweak_gles_emulate_bgra;
    bool tweak_gles_apply_bgra_dest_swizzle;
+   int32_t tweak_gles_tf3_value;
 };
 
 
