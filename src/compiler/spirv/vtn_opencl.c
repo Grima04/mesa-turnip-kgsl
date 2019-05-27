@@ -25,7 +25,6 @@
  */
 
 #include "math.h"
-
 #include "nir/nir_builtin_builder.h"
 
 #include "vtn_private.h"
@@ -267,6 +266,52 @@ handle_printf(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
    return nir_imm_int(&b->nb, -1);
 }
 
+static nir_ssa_def *
+handle_shuffle(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode, unsigned num_srcs,
+               nir_ssa_def **srcs, const struct glsl_type *dest_type)
+{
+   struct nir_ssa_def *input = srcs[0];
+   struct nir_ssa_def *mask = srcs[1];
+
+   unsigned out_elems = glsl_get_vector_elements(dest_type);
+   nir_ssa_def *outres[NIR_MAX_VEC_COMPONENTS];
+   unsigned in_elems = input->num_components;
+   if (mask->bit_size != 32)
+      mask = nir_u2u32(&b->nb, mask);
+   mask = nir_iand(&b->nb, mask, nir_imm_intN_t(&b->nb, in_elems - 1, mask->bit_size));
+   for (unsigned i = 0; i < out_elems; i++)
+      outres[i] = nir_vector_extract(&b->nb, input, nir_channel(&b->nb, mask, i));
+
+   return nir_vec(&b->nb, outres, out_elems);
+}
+
+static nir_ssa_def *
+handle_shuffle2(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode, unsigned num_srcs,
+                nir_ssa_def **srcs, const struct glsl_type *dest_type)
+{
+   struct nir_ssa_def *input0 = srcs[0];
+   struct nir_ssa_def *input1 = srcs[1];
+   struct nir_ssa_def *mask = srcs[2];
+
+   unsigned out_elems = glsl_get_vector_elements(dest_type);
+   nir_ssa_def *outres[NIR_MAX_VEC_COMPONENTS];
+   unsigned in_elems = input0->num_components;
+   unsigned total_mask = 2 * in_elems - 1;
+   unsigned half_mask = in_elems - 1;
+   if (mask->bit_size != 32)
+      mask = nir_u2u32(&b->nb, mask);
+   mask = nir_iand(&b->nb, mask, nir_imm_intN_t(&b->nb, total_mask, mask->bit_size));
+   for (unsigned i = 0; i < out_elems; i++) {
+      nir_ssa_def *this_mask = nir_channel(&b->nb, mask, i);
+      nir_ssa_def *vmask = nir_iand(&b->nb, this_mask, nir_imm_intN_t(&b->nb, half_mask, mask->bit_size));
+      nir_ssa_def *val0 = nir_vector_extract(&b->nb, input0, vmask);
+      nir_ssa_def *val1 = nir_vector_extract(&b->nb, input1, vmask);
+      nir_ssa_def *sel = nir_ilt(&b->nb, this_mask, nir_imm_intN_t(&b->nb, in_elems, mask->bit_size));
+      outres[i] = nir_bcsel(&b->nb, sel, val0, val1);
+   }
+   return nir_vec(&b->nb, outres, out_elems);
+}
+
 bool
 vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
                               const uint32_t *w, unsigned count)
@@ -350,6 +395,12 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
       return true;
    case OpenCLstd_Vstoren:
       vtn_handle_opencl_vstore(b, ext_opcode, w, count);
+      return true;
+   case OpenCLstd_Shuffle:
+      handle_instr(b, ext_opcode, w, count, handle_shuffle);
+      return true;
+   case OpenCLstd_Shuffle2:
+      handle_instr(b, ext_opcode, w, count, handle_shuffle2);
       return true;
    case OpenCLstd_Printf:
       handle_instr(b, ext_opcode, w, count, handle_printf);
