@@ -29,6 +29,9 @@
 
 #define VIRGL_DEBUG_VERBOSE 1
 #define VIRGL_DEBUG_TGSI    2
+#define VIRGL_DEBUG_EMULATE_BGRA 4
+#define VIRGL_DEBUG_BGRA_DEST_SWIZZLE 4
+
 extern int virgl_debug;
 
 struct virgl_screen {

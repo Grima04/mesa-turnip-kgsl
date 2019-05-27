@@ -43,6 +43,8 @@ int virgl_debug = 0;
 static const struct debug_named_value debug_options[] = {
    { "verbose", VIRGL_DEBUG_VERBOSE, NULL },
    { "tgsi", VIRGL_DEBUG_TGSI, NULL },
+   { "emubgra", VIRGL_DEBUG_EMULATE_BGRA, "Enable tweak to emulate BGRA as RGBA on GLES hosts"},
+   { "bgraswz", VIRGL_DEBUG_BGRA_DEST_SWIZZLE, "Enable tweak to swizzle emulated BGRA on GLES hosts" },
    DEBUG_NAMED_VALUE_END
 };
 DEBUG_GET_ONCE_FLAGS_OPTION(virgl_debug, "VIRGL_DEBUG", debug_options, 0)
@@ -871,6 +873,9 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
       screen->tweak_gles_tf3_value =
             driQueryOptioni(config->options, VIRGL_GLES_SAMPLES_PASSED_VALUE);
    }
+
+   screen->tweak_gles_emulate_bgra |= !!(virgl_debug & VIRGL_DEBUG_EMULATE_BGRA);
+   screen->tweak_gles_apply_bgra_dest_swizzle |= !!(virgl_debug & VIRGL_DEBUG_BGRA_DEST_SWIZZLE);
 
    screen->vws = vws;
    screen->base.get_name = virgl_get_name;
