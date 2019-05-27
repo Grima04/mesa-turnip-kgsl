@@ -1413,12 +1413,10 @@ ac_build_buffer_load(struct ac_llvm_context *ctx,
 				HAVE_LLVM >= 0x0800 ? "llvm.amdgcn.s.buffer.load.f32"
 						    : "llvm.SI.load.const.v4i32";
 			unsigned num_args = HAVE_LLVM >= 0x0800 ? 3 : 2;
-			/* TODO: set glc+dlc on GFX10 (LLVM support is missing) */
-			assert(!glc || ctx->chip_class < GFX10);
 			LLVMValueRef args[3] = {
 				rsrc,
 				offset,
-				glc ? ctx->i32_1 : ctx->i32_0,
+				get_cache_policy(ctx, true, glc, false),
 			};
 			result[i] = ac_build_intrinsic(ctx, intrname,
 						       ctx->f32, args, num_args,
