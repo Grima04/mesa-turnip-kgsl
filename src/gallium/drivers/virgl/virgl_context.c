@@ -1406,6 +1406,9 @@ static void virgl_send_tweaks(struct virgl_context *vctx, struct virgl_screen *r
 {
    if (rs->tweak_gles_emulate_bgra)
       virgl_encode_tweak(vctx, virgl_tweak_gles_brga_emulate, 1);
+
+   if (rs->tweak_gles_apply_bgra_dest_swizzle)
+      virgl_encode_tweak(vctx, virgl_tweak_gles_brga_apply_dest_swizzle, 1);
 }
 
 struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,

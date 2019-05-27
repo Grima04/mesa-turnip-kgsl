@@ -593,6 +593,7 @@ enum virgl_context_cmd {
 
 enum vrend_tweak_type {
    virgl_tweak_gles_brga_emulate,
+   virgl_tweak_gles_brga_apply_dest_swizzle,
    virgl_tweak_undefined
 };
 

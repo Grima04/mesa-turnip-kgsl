@@ -370,3 +370,7 @@ DRI_CONF_OPT_BEGIN_B(gles_emulate_bgra, def) \
         DRI_CONF_DESC(en,gettext("On GLES emulate BGRA formats by using a swizzled RGBA format")) \
 DRI_CONF_OPT_END
 
+#define DRI_CONF_GLES_APPLY_BGRA_DEST_SWIZZLE(def) \
+DRI_CONF_OPT_BEGIN_B(gles_apply_bgra_dest_swizzle, def) \
+        DRI_CONF_DESC(en,gettext("When the BGRA formats are emulated by using swizzled RGBA formats on GLES apply the swizzle when writing")) \
+DRI_CONF_OPT_END
