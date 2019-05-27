@@ -1402,6 +1402,10 @@ static void virgl_get_sample_position(struct pipe_context *ctx,
                    index, sample_count, out_value[0], out_value[1]);
 }
 
+static void virgl_send_tweaks(struct virgl_context *vctx, struct virgl_screen *rs)
+{
+}
+
 struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
                                           void *priv,
                                           unsigned flags)
@@ -1540,6 +1544,9 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
       if (host_debug_flagstring)
          virgl_encode_host_debug_flagstring(vctx, host_debug_flagstring);
    }
+
+   if (rs->caps.caps.v2.capability_bits & VIRGL_CAP_APP_TWEAK_SUPPORT)
+      virgl_send_tweaks(vctx, rs);
 
    return &vctx->base;
 fail:

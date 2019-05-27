@@ -1126,6 +1126,15 @@ int virgl_encode_host_debug_flagstring(struct virgl_context *ctx,
    return 0;
 }
 
+int virgl_encode_tweak(struct virgl_context *ctx, enum vrend_tweak_type tweak, uint32_t value)
+{
+   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_SET_TWEAKS, 0, VIRGL_SET_TWEAKS_SIZE));
+   virgl_encoder_write_dword(ctx->cbuf, tweak);
+   virgl_encoder_write_dword(ctx->cbuf, value);
+   return 0;
+}
+
+
 int virgl_encode_get_query_result_qbo(struct virgl_context *ctx,
                                       uint32_t handle,
                                       struct virgl_resource *res, boolean wait,

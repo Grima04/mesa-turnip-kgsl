@@ -97,6 +97,7 @@ enum virgl_context_cmd {
    VIRGL_CCMD_TRANSFER3D,
    VIRGL_CCMD_END_TRANSFERS,
    VIRGL_CCMD_COPY_TRANSFER3D,
+   VIRGL_CCMD_SET_TWEAKS,
 };
 
 /*
@@ -584,5 +585,14 @@ enum virgl_context_cmd {
 #define VIRGL_COPY_TRANSFER3D_SRC_RES_HANDLE 12
 #define VIRGL_COPY_TRANSFER3D_SRC_RES_OFFSET 13
 #define VIRGL_COPY_TRANSFER3D_SYNCHRONIZED 14
+
+/* set tweak flags */
+#define VIRGL_SET_TWEAKS_SIZE 2
+#define VIRGL_SET_TWEAKS_ID 1
+#define VIRGL_SET_TWEAKS_VALUE 2
+
+enum vrend_tweak_type {
+   virgl_tweak_undefined
+};
 
 #endif

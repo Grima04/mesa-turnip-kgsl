@@ -27,6 +27,7 @@
 #include "pipe/p_state.h"
 
 #include "virgl_winsys.h"
+#include "virgl_protocol.h"
 
 struct tgsi_token;
 
@@ -296,4 +297,7 @@ void virgl_encode_copy_transfer(struct virgl_context *ctx,
                                 struct virgl_transfer *trans);
 
 void virgl_encode_end_transfers(struct virgl_cmd_buf *buf);
+
+int virgl_encode_tweak(struct virgl_context *ctx, enum vrend_tweak_type tweak, uint32_t value);
+
 #endif

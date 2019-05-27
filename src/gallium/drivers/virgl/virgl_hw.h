@@ -255,6 +255,7 @@ enum virgl_formats {
 #define VIRGL_CAP_INDIRECT_INPUT_ADDR  (1 << 25)
 #define VIRGL_CAP_COPY_TRANSFER        (1 << 26)
 #define VIRGL_CAP_CLIP_HALFZ           (1 << 27)
+#define VIRGL_CAP_APP_TWEAK_SUPPORT    (1 << 28)
 
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
  * but are fixed, no other should be passed to virgl either.
