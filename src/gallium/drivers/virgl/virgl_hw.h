@@ -222,7 +222,12 @@ enum virgl_formats {
    VIRGL_FORMAT_A4B4G4R4_UNORM          = 311,
 
    VIRGL_FORMAT_R8_SRGB                 = 312,
-   VIRGL_FORMAT_MAX,
+   VIRGL_FORMAT_MAX /* = PIPE_FORMAT_COUNT */,
+
+   /* Below formats must not be used in the guest. */
+   VIRGL_FORMAT_B8G8R8X8_UNORM_EMULATED,
+   VIRGL_FORMAT_B8G8R8A8_UNORM_EMULATED,
+   VIRGL_FORMAT_MAX_EXTENDED
 };
 
 /* These are used by the capability_bits field in virgl_caps_v2. */
@@ -256,6 +261,7 @@ enum virgl_formats {
 #define VIRGL_CAP_COPY_TRANSFER        (1 << 26)
 #define VIRGL_CAP_CLIP_HALFZ           (1 << 27)
 #define VIRGL_CAP_APP_TWEAK_SUPPORT    (1 << 28)
+#define VIRGL_CAP_BGRA_SRGB_IS_EMULATED (1 << 29)
 
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
  * but are fixed, no other should be passed to virgl either.
@@ -279,6 +285,9 @@ enum virgl_formats {
  */
 #define VIRGL_BIND_STAGING       (1 << 19)
 #define VIRGL_BIND_SHARED        (1 << 20)
+
+/* Extra flags that may be passed  */
+#define VIRGL_BIND_PREFER_EMULATED_BGRA  (1 << 21)
 
 struct virgl_caps_bool_set1 {
         unsigned indep_blend_enable:1;

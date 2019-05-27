@@ -639,6 +639,8 @@ virgl_is_format_supported( struct pipe_screen *screen,
    const struct util_format_description *format_desc;
    int i;
 
+   boolean may_emulate_bgra = false;
+
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
 
@@ -691,6 +693,10 @@ virgl_is_format_supported( struct pipe_screen *screen,
         format_desc->layout == UTIL_FORMAT_LAYOUT_S3TC) &&
        target == PIPE_TEXTURE_3D)
       return FALSE;
+
+   may_emulate_bgra = (vscreen->caps.caps.v2.capability_bits &
+                       VIRGL_CAP_APP_TWEAK_SUPPORT) &&
+                      vscreen->tweak_gles_emulate_bgra;
 
    if (bind & PIPE_BIND_RENDER_TARGET) {
       /* For ARB_framebuffer_no_attachments. */

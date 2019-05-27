@@ -222,6 +222,16 @@ static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
    pipe_reference_init(&res->u.b.reference, 1);
    vbind = pipe_to_virgl_bind(vs, templ->bind, templ->flags);
    virgl_resource_layout(&res->u.b, &res->metadata);
+
+   if ((vs->caps.caps.v2.capability_bits & VIRGL_CAP_APP_TWEAK_SUPPORT) &&
+       vs->tweak_gles_emulate_bgra &&
+      (templ->format == PIPE_FORMAT_B8G8R8A8_SRGB ||
+        templ->format == PIPE_FORMAT_B8G8R8A8_UNORM ||
+        templ->format == PIPE_FORMAT_B8G8R8X8_SRGB ||
+        templ->format == PIPE_FORMAT_B8G8R8X8_UNORM)) {
+      vbind |= VIRGL_BIND_PREFER_EMULATED_BGRA;
+   }
+
    res->hw_res = vs->vws->resource_create(vs->vws, templ->target,
                                           templ->format, vbind,
                                           templ->width0,
