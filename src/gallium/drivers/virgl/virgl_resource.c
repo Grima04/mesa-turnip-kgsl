@@ -155,19 +155,6 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
          flush = true;
    }
 
-   /* XXX This is incorrect and will be removed.  Consider
-    *
-    *   glTexImage2D(..., data1);
-    *   glDrawArrays();
-    *   glFlush();
-    *   glTexImage2D(..., data2);
-    *
-    * readback and flush are both false in the second glTexImage2D call.  The
-    * draw call might end up seeing data2.  Same applies to buffers with
-    * glBufferSubData.
-    */
-   wait = flush || readback;
-
    if (flush)
       vctx->base.flush(&vctx->base, NULL, 0);
 
