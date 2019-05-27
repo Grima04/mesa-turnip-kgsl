@@ -618,15 +618,6 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 	struct radv_meta_saved_state saved_state;
 	enum radv_resolve_method resolve_method = RESOLVE_HW;
 
-	/* FINISHME(perf): Skip clears for resolve attachments.
-	 *
-	 * From the Vulkan 1.0 spec:
-	 *
-	 *    If the first use of an attachment in a render pass is as a resolve
-	 *    attachment, then the loadOp is effectively ignored as the resolve is
-	 *    guaranteed to overwrite all pixels in the render area.
-	 */
-
 	if (!subpass->has_resolve)
 		return;
 
@@ -636,6 +627,9 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 
 		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
+
+		/* Make sure to not clear color attachments after resolves. */
+		cmd_buffer->state.attachments[dest_att.attachment].pending_clear_aspects = 0;
 
 		struct radv_image *dst_img = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment->image;
 		struct radv_image *src_img = cmd_buffer->state.framebuffer->attachments[src_att.attachment].attachment->image;
