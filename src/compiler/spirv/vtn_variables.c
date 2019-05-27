@@ -1945,7 +1945,7 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
       const struct glsl_type *deref_type = ptr_type->deref->type;
       if (!vtn_pointer_is_external_block(b, ptr)) {
          ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
-                                           deref_type, 0);
+                                           deref_type, ptr_type->stride);
       } else if (vtn_type_contains_block(b, ptr->type) &&
                  ptr->mode != vtn_variable_mode_phys_ssbo) {
          /* This is a pointer to somewhere in an array of blocks, not a
