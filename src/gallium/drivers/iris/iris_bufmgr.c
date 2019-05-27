@@ -364,18 +364,22 @@ static struct iris_bo *
 alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
                     struct bo_cache_bucket *bucket,
                     enum iris_memory_zone memzone,
-                    unsigned flags)
+                    unsigned flags,
+                    bool match_zone)
 {
    if (!bucket)
       return NULL;
 
    struct iris_bo *bo = NULL;
 
-   while (!list_empty(&bucket->head)) {
-      struct iris_bo *cur = LIST_ENTRY(struct iris_bo, bucket->head.next, head);
+   list_for_each_entry_safe(struct iris_bo, cur, &bucket->head, head) {
+      /* Try a little harder to find one that's already in the right memzone */
+      if (match_zone && memzone != iris_memzone_for_address(cur->gtt_offset))
+         continue;
 
-      /* If the last BO in the cache is busy, there are no idle BOs.
-       * Fall back to allocating a fresh buffer.
+      /* If the last BO in the cache is busy, there are no idle BOs.  Bail,
+       * either falling back to a non-matching memzone, or if that fails,
+       * allocating a fresh buffer.
        */
       if (iris_bo_busy(cur))
          return NULL;
@@ -471,8 +475,14 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 
    mtx_lock(&bufmgr->lock);
 
-   /* Get a buffer out of the cache if available */
-   bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags);
+   /* Get a buffer out of the cache if available.  First, we try to find
+    * one with a matching memory zone so we can avoid reallocating VMA.
+    */
+   bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags, true);
+
+   /* If that fails, we try for any cached BO, without matching memzone. */
+   if (!bo)
+      bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags, false);
 
    if (!bo) {
       alloc_pages = true;
