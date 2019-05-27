@@ -594,6 +594,12 @@ system_value("blend_const_color_rgba", 4)
 system_value("blend_const_color_rgba8888_unorm", 1)
 system_value("blend_const_color_aaaa8888_unorm", 1)
 
+# System values for gl_Color, for radeonsi which interpolates these in the
+# shader prolog to handle two-sided color without recompiles and therefore
+# doesn't handle these in the main shader part like normal varyings.
+system_value("color0", 4)
+system_value("color1", 4)
+
 # Barycentric coordinate intrinsics.
 #
 # These set up the barycentric coordinates for a particular interpolation.

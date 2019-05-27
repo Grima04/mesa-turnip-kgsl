@@ -1848,6 +1848,10 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_patch_vertices_in;
    case SYSTEM_VALUE_HELPER_INVOCATION:
       return nir_intrinsic_load_helper_invocation;
+   case SYSTEM_VALUE_COLOR0:
+      return nir_intrinsic_load_color0;
+   case SYSTEM_VALUE_COLOR1:
+      return nir_intrinsic_load_color1;
    case SYSTEM_VALUE_VIEW_INDEX:
       return nir_intrinsic_load_view_index;
    case SYSTEM_VALUE_SUBGROUP_SIZE:
@@ -1933,6 +1937,10 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_VERTICES_IN;
    case nir_intrinsic_load_helper_invocation:
       return SYSTEM_VALUE_HELPER_INVOCATION;
+   case nir_intrinsic_load_color0:
+      return SYSTEM_VALUE_COLOR0;
+   case nir_intrinsic_load_color1:
+      return SYSTEM_VALUE_COLOR1;
    case nir_intrinsic_load_view_index:
       return SYSTEM_VALUE_VIEW_INDEX;
    case nir_intrinsic_load_subgroup_size:
