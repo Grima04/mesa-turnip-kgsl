@@ -201,7 +201,7 @@ swr_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
       return 65536;
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
-      return 0;
+      return 1;
    case PIPE_CAP_MAX_VIEWPORTS:
       return 1;
    case PIPE_CAP_ENDIANNESS:
