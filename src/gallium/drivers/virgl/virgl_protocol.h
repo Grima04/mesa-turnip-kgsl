@@ -592,6 +592,7 @@ enum virgl_context_cmd {
 #define VIRGL_SET_TWEAKS_VALUE 2
 
 enum vrend_tweak_type {
+   virgl_tweak_gles_brga_emulate,
    virgl_tweak_undefined
 };
 

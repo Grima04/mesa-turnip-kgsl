@@ -27,6 +27,7 @@
 #include "util/u_video.h"
 #include "util/u_math.h"
 #include "util/os_time.h"
+#include "util/xmlconfig.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 
@@ -36,6 +37,7 @@
 #include "virgl_resource.h"
 #include "virgl_public.h"
 #include "virgl_context.h"
+#include "virgl_protocol.h"
 
 int virgl_debug = 0;
 static const struct debug_named_value debug_options[] = {
@@ -852,11 +854,16 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
 {
    struct virgl_screen *screen = CALLOC_STRUCT(virgl_screen);
 
+   const char *VIRGL_GLES_EMULATE_BGRA = "gles_emulate_bgra";
    if (!screen)
       return NULL;
 
    virgl_debug = debug_get_option_virgl_debug();
 
+   if (config && config->options) {
+      screen->tweak_gles_emulate_bgra =
+            driQueryOptionb(config->options, VIRGL_GLES_EMULATE_BGRA);
+   }
    screen->vws = vws;
    screen->base.get_name = virgl_get_name;
    screen->base.get_vendor = virgl_get_vendor;

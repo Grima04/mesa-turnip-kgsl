@@ -1404,6 +1404,8 @@ static void virgl_get_sample_position(struct pipe_context *ctx,
 
 static void virgl_send_tweaks(struct virgl_context *vctx, struct virgl_screen *rs)
 {
+   if (rs->tweak_gles_emulate_bgra)
+      virgl_encode_tweak(vctx, virgl_tweak_gles_brga_emulate, 1);
 }
 
 struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
