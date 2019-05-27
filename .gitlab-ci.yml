@@ -9,6 +9,7 @@ include:
   - local: '.gitlab-ci/test-source-dep.yml'
 
 stages:
+  - deploy
   - container
   - container-2
   - meson-x86_64
@@ -23,6 +24,18 @@ stages:
   - virgl
   - success
 
+pages:
+  image: alpine
+  stage: deploy
+  script:
+  - apk --no-cache add py3-pip
+  - pip3 install sphinx sphinx_rtd_theme
+  - sphinx-build -b html docs public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
 
 # When to automatically run the CI
 .ci-run-policy:
