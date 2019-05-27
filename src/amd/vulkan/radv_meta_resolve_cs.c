@@ -313,6 +313,39 @@ radv_device_finish_meta_resolve_compute_state(struct radv_device *device)
 				   &state->alloc);
 }
 
+static VkPipeline *
+radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer,
+			  struct radv_image *src_image)
+{
+	struct radv_device *device = cmd_buffer->device;
+	struct radv_meta_state *state = &device->meta_state;
+	uint32_t samples = src_image->info.samples;
+	uint32_t samples_log2 = ffs(samples) - 1;
+	VkPipeline *pipeline;
+
+	if (vk_format_is_int(src_image->vk_format))
+		pipeline = &state->resolve_compute.rc[samples_log2].i_pipeline;
+	else if (vk_format_is_srgb(src_image->vk_format))
+		pipeline = &state->resolve_compute.rc[samples_log2].srgb_pipeline;
+	else
+		pipeline = &state->resolve_compute.rc[samples_log2].pipeline;
+
+	if (!*pipeline) {
+		VkResult ret;
+
+		ret = create_resolve_pipeline(device, samples,
+					      vk_format_is_int(src_image->vk_format),
+					      vk_format_is_srgb(src_image->vk_format),
+					      pipeline);
+		if (ret != VK_SUCCESS) {
+			cmd_buffer->record_result = ret;
+			return NULL;
+		}
+	}
+
+	return pipeline;
+}
+
 static void
 emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 	     struct radv_image_view *src_iview,
@@ -322,8 +355,8 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
              const VkExtent2D *resolve_extent)
 {
 	struct radv_device *device = cmd_buffer->device;
-	const uint32_t samples = src_iview->image->info.samples;
-	const uint32_t samples_log2 = ffs(samples) - 1;
+	VkPipeline *pipeline;
+
 	radv_meta_push_descriptor_set(cmd_buffer,
 				      VK_PIPELINE_BIND_POINT_COMPUTE,
 				      device->meta_state.resolve_compute.p_layout,
@@ -359,24 +392,7 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 			      }
 				      });
 
-	VkPipeline *pipeline;
-	if (vk_format_is_int(src_iview->image->vk_format))
-		pipeline = &device->meta_state.resolve_compute.rc[samples_log2].i_pipeline;
-	else if (vk_format_is_srgb(src_iview->image->vk_format))
-		pipeline = &device->meta_state.resolve_compute.rc[samples_log2].srgb_pipeline;
-	else
-		pipeline = &device->meta_state.resolve_compute.rc[samples_log2].pipeline;
-
-	if (!*pipeline) {
-		VkResult ret = create_resolve_pipeline(device, samples,
-		                                       vk_format_is_int(src_iview->image->vk_format),
-		                                       vk_format_is_srgb(src_iview->image->vk_format),
-		                                       pipeline);
-		if (ret != VK_SUCCESS) {
-			cmd_buffer->record_result = ret;
-			return;
-		}
-	}
+	pipeline = radv_get_resolve_pipeline(cmd_buffer, src_iview->image);
 
 	radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer),
 			     VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
