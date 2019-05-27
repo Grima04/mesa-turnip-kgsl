@@ -79,8 +79,11 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 	unsigned sel = EOP_DST_SEL(dst_sel) |
 		       EOP_INT_SEL(int_sel) |
 		       EOP_DATA_SEL(data_sel);
+	bool compute_ib = !ctx->has_graphics ||
+			  cs == ctx->prim_discard_compute_cs;
 
-	if (ctx->chip_class >= GFX9 || cs == ctx->prim_discard_compute_cs) {
+	if (ctx->chip_class >= GFX9 ||
+	    (compute_ib && ctx->chip_class >= GFX7)) {
 		/* A ZPASS_DONE or PIXEL_STAT_DUMP_EVENT (of the DB occlusion
 		 * counters) must immediately precede every timestamp event to
 		 * prevent a GPU hang on GFX9.
@@ -88,8 +91,7 @@ void si_cp_release_mem(struct si_context *ctx, struct radeon_cmdbuf *cs,
 		 * Occlusion queries don't need to do it here, because they
 		 * always do ZPASS_DONE before the timestamp.
 		 */
-		if (ctx->chip_class == GFX9 &&
-		    cs != ctx->prim_discard_compute_cs &&
+		if (ctx->chip_class == GFX9 && !compute_ib &&
 		    query_type != PIPE_QUERY_OCCLUSION_COUNTER &&
 		    query_type != PIPE_QUERY_OCCLUSION_PREDICATE &&
 		    query_type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
