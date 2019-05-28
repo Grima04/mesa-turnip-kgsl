@@ -630,20 +630,33 @@ static void si_emit_vs_state(struct si_context *sctx,
 	if (sctx->current_vs_state != sctx->last_vs_state) {
 		struct radeon_cmdbuf *cs = sctx->gfx_cs;
 
-		/* For the API vertex shader (VS_STATE_INDEXED). */
+		/* For the API vertex shader (VS_STATE_INDEXED, LS_OUT_*). */
 		radeon_set_sh_reg(cs,
 			sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX] +
 			SI_SGPR_VS_STATE_BITS * 4,
 			sctx->current_vs_state);
 
-		/* For vertex color clamping, which is done in the last stage
-		 * before the rasterizer. */
-		if (sctx->gs_shader.cso || sctx->tes_shader.cso) {
-			/* GS copy shader or TES if GS is missing. */
+		/* Set CLAMP_VERTEX_COLOR and OUTPRIM in the last stage
+		 * before the rasterizer.
+		 *
+		 * For TES or the GS copy shader without NGG:
+		 */
+		if (sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX] !=
+		    R_00B130_SPI_SHADER_USER_DATA_VS_0) {
 			radeon_set_sh_reg(cs,
 				R_00B130_SPI_SHADER_USER_DATA_VS_0 +
 				SI_SGPR_VS_STATE_BITS * 4,
 				sctx->current_vs_state);
+		}
+
+		/* For NGG: */
+		if (sctx->chip_class >= GFX10 &&
+		    sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX] !=
+		    R_00B230_SPI_SHADER_USER_DATA_GS_0) {
+			radeon_set_sh_reg(cs,
+					  R_00B230_SPI_SHADER_USER_DATA_GS_0 +
+					  SI_SGPR_VS_STATE_BITS * 4,
+					  sctx->current_vs_state);
 		}
 
 		sctx->last_vs_state = sctx->current_vs_state;
