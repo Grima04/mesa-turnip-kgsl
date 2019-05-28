@@ -1929,6 +1929,9 @@ NineDevice9_SetDepthStencilSurface( struct NineDevice9 *This,
     struct NineSurface9 *ds = NineSurface9(pNewZStencil);
     DBG("This=%p pNewZStencil=%p\n", This, pNewZStencil);
 
+    user_assert(!ds || util_format_is_depth_or_stencil(ds->base.info.format),
+                D3DERR_INVALIDCALL);
+
     if (This->state.ds != ds) {
         nine_bind(&This->state.ds, ds);
         nine_context_set_depth_stencil(This, ds);
