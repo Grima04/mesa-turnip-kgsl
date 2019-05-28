@@ -291,34 +291,34 @@ If you need a deeper you can modify the parameters to
 
 <h3>3.3 Why Isn't depth buffering working at all?</h3>
 <p>
-Be sure you're requesting a depth buffered-visual.  If you set the MESA_DEBUG
-environment variable it will warn you about trying to enable depth testing
-when you don't have a depth buffer.
+Be sure you're requesting a depth buffered-visual.  If you set the
+<code>MESA_DEBUG</code> environment variable it will warn you about trying
+to enable depth testing when you don't have a depth buffer.
 </p>
 <p>Specifically, make sure <code>glutInitDisplayMode</code> is being called
 with <code>GLUT_DEPTH</code> or <code>glXChooseVisual</code> is being
-called with a non-zero value for GLX_DEPTH_SIZE.
+called with a non-zero value for <code>GLX_DEPTH_SIZE</code>.
 </p>
 <p>This discussion applies to stencil buffers, accumulation buffers and
 alpha channels too.
 </p>
 
 
-<h3>3.4 Why does glGetString() always return NULL?</h3>
+<h3>3.4 Why does <code>glGetString()</code> always return <code>NULL</code>?</h3>
 <p>
 Be sure you have an active/current OpenGL rendering context before
-calling glGetString.
+calling <code>glGetString</code>.
 </p>
 
 
-<h3>3.5 GL_POINTS and GL_LINES don't touch the right pixels</h3>
+<h3>3.5 <code>GL_POINTS</code> and <code>GL_LINES</code> don't touch the
+right pixels</h3>
 <p>
-If you're trying to draw a filled region by using GL_POINTS or GL_LINES
-and seeing holes or gaps it's because of a float-to-int rounding problem.
-But this is not a bug.
-See Appendix H of the OpenGL Programming Guide - "OpenGL Correctness Tips".
-Basically, applying a translation of (0.375, 0.375, 0.0) to your coordinates
-will fix the problem.
+If you're trying to draw a filled region by using <code>GL_POINTS</code> or
+<code>GL_LINES</code> and seeing holes or gaps it's because of a float-to-int
+rounding problem. But this is not a bug. See Appendix H of the OpenGL
+Programming Guide - "OpenGL Correctness Tips". Basically, applying a
+translation of (0.375, 0.375, 0.0) to your coordinates will fix the problem.
 </p>
 
 <br>
@@ -365,7 +365,8 @@ the archives) is a good way to get information.
 </p>
 
 
-<h3>4.3 Why isn't GL_EXT_texture_compression_s3tc implemented in Mesa?</h3>
+<h3>4.3 Why isn't <code>GL_EXT_texture_compression_s3tc</code> implemented in
+Mesa?</h3>
 <p>
 Oh but it is! Prior to 2nd October 2017, the Mesa project did not include s3tc
 support due to intellectual property (IP) and/or patent issues around the s3tc
