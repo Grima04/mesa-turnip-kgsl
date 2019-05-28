@@ -1571,6 +1571,8 @@ offsets = {
     "GetFramebufferParameterivMESA": 1535,
     "NamedRenderbufferStorageEXT": 1536,
     "GetNamedRenderbufferParameterivEXT": 1537,
+    "ClientAttribDefaultEXT": 1538,
+    "PushClientAttribDefaultEXT": 1539,
 }
 
 functions = [

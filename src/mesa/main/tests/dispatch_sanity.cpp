@@ -1031,8 +1031,8 @@ const struct function common_desktop_functions_possible[] = {
    { "glMatrixPushEXT", 10, -1 },
    { "glMatrixPopEXT", 10, -1 },
    /* GL_EXT_direct_state_access - GL 1.1 */
-   //{ "glClientAttribDefaultEXT", 11, -1 },
-   //{ "glPushClientAttribDefaultEXT", 11, -1 },
+   { "glClientAttribDefaultEXT", 11, -1 },
+   { "glPushClientAttribDefaultEXT", 11, -1 },
    { "glTextureParameteriEXT", 11, -1 },
    { "glTextureParameterivEXT", 11, -1 },
    { "glTextureParameterfEXT", 11, -1 },

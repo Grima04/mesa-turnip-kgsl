@@ -102,6 +102,14 @@
 
    <!-- OpenGL 1.1 -->
 
+    <function name="ClientAttribDefaultEXT">
+       <param name="mask" type="GLbitfield" />
+    </function>
+
+    <function name="PushClientAttribDefaultEXT">
+       <param name="mask" type="GLbitfield" />
+    </function>
+
     <function name="GetTextureParameterivEXT">
        <param name="texture" type="GLuint" />
        <param name="target" type="GLenum" />
