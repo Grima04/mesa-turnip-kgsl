@@ -301,6 +301,11 @@ static bool ppir_lower_sat(ppir_block *block, ppir_node *node)
 static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
 {
    ppir_branch_node *branch = ppir_node_to_branch(node);
+
+   /* Unconditional branch */
+   if (branch->num_src == 0)
+      return true;
+
    ppir_const_node *zero = ppir_node_create(block, ppir_op_const, -1, 0);
 
    if (!zero)
@@ -322,8 +327,14 @@ static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
     */
    ppir_node_target_assign(&branch->src[1], &zero->node);
 
-   branch->cond_gt = true;
-   branch->cond_lt = true;
+   if (branch->negate)
+      branch->cond_eq = true;
+   else {
+      branch->cond_gt = true;
+      branch->cond_lt = true;
+   }
+
+   branch->num_src = 2;
 
    ppir_node_add_dep(&branch->node, &zero->node);
    list_addtail(&zero->node.list, &node->list);

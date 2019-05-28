@@ -318,9 +318,11 @@ typedef struct ppir_block {
 typedef struct {
    ppir_node node;
    ppir_src src[2];
+   int num_src;
    bool cond_gt;
    bool cond_eq;
    bool cond_lt;
+   bool negate;
    ppir_block *target;
 } ppir_branch_node;
 
@@ -434,7 +436,7 @@ static inline int ppir_node_get_src_num(ppir_node *node)
    case ppir_node_type_alu:
       return ppir_node_to_alu(node)->num_src;
    case ppir_node_type_branch:
-      return 2;
+      return ppir_node_to_branch(node)->num_src;
    case ppir_node_type_load_texture:
    case ppir_node_type_load:
    case ppir_node_type_store:

@@ -565,12 +565,24 @@ static void ppir_codegen_encode_branch(ppir_node *node, void *code)
    branch = ppir_node_to_branch(node);
 
    b->branch.unknown_0 = 0x0;
-   b->branch.arg0_source = get_scl_reg_index(&branch->src[0], 0);
-   b->branch.arg1_source = get_scl_reg_index(&branch->src[1], 0);
-   b->branch.cond_gt = branch->cond_gt;
-   b->branch.cond_eq = branch->cond_eq;
-   b->branch.cond_lt = branch->cond_lt;
    b->branch.unknown_1 = 0x0;
+
+   if (branch->num_src == 2) {
+      b->branch.arg0_source = get_scl_reg_index(&branch->src[0], 0);
+      b->branch.arg1_source = get_scl_reg_index(&branch->src[1], 0);
+      b->branch.cond_gt = branch->cond_gt;
+      b->branch.cond_eq = branch->cond_eq;
+      b->branch.cond_lt = branch->cond_lt;
+   } else if (branch->num_src == 0) {
+      /* Unconditional branch */
+      b->branch.arg0_source = 0;
+      b->branch.arg1_source = 0;
+      b->branch.cond_gt = true;
+      b->branch.cond_eq = true;
+      b->branch.cond_lt = true;
+   } else {
+      assert(false);
+   }
 
    target_instr = list_first_entry(&branch->target->instr_list, ppir_instr, list);
    b->branch.target = target_instr->offset - node->instr->offset;

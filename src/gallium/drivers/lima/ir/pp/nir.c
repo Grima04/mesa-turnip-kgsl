@@ -259,6 +259,7 @@ static ppir_node *ppir_emit_discard_if(ppir_block *block, nir_instr *ni)
    /* second src and condition will be updated during lowering */
    ppir_node_add_src(block->comp, node, &branch->src[0],
                      &instr->src[0], u_bit_consecutive(0, instr->num_components));
+   branch->num_src = 1;
    branch->target = comp->discard_block;
 
    return node;
