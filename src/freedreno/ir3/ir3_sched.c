@@ -571,6 +571,9 @@ find_eligible_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 		if (!candidate)
 			continue;
 
+		if (is_meta(candidate))
+			return candidate;
+
 		deepest = MAX2(deepest, candidate->depth);
 	}
 
