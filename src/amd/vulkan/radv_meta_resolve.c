@@ -439,8 +439,10 @@ void radv_CmdResolveImage(
 	if (resolve_method == RESOLVE_COMPUTE) {
 		radv_meta_resolve_compute_image(cmd_buffer,
 						src_image,
+						src_image->vk_format,
 						src_image_layout,
 						dest_image,
+						dest_image->vk_format,
 						dest_image_layout,
 						region_count, regions);
 		return;
@@ -658,7 +660,8 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
-		struct radv_image *dst_img = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment->image;
+		struct radv_image_view *dest_iview = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment;
+		struct radv_image *dst_img = dest_iview->image;
 
 		if (radv_image_has_dcc(dst_img)) {
 			radv_initialize_dcc(cmd_buffer, dst_img, 0xffffffff);
@@ -673,14 +676,14 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 
 		radv_cmd_buffer_set_subpass(cmd_buffer, &resolve_subpass);
 
-		VkResult ret = build_resolve_pipeline(cmd_buffer->device, radv_format_meta_fs_key(dst_img->vk_format));
+		VkResult ret = build_resolve_pipeline(cmd_buffer->device, radv_format_meta_fs_key(dest_iview->vk_format));
 		if (ret != VK_SUCCESS) {
 			cmd_buffer->record_result = ret;
 			continue;
 		}
 
 		emit_resolve(cmd_buffer,
-			     dst_img->vk_format,
+			     dest_iview->vk_format,
 			     &(VkOffset2D) { 0, 0 },
 			     &(VkExtent2D) { fb->width, fb->height });
 	}

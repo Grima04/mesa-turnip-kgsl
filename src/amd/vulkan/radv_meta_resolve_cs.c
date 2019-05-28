@@ -315,17 +315,17 @@ radv_device_finish_meta_resolve_compute_state(struct radv_device *device)
 
 static VkPipeline *
 radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer,
-			  struct radv_image *src_image)
+			  struct radv_image_view *src_iview)
 {
 	struct radv_device *device = cmd_buffer->device;
 	struct radv_meta_state *state = &device->meta_state;
-	uint32_t samples = src_image->info.samples;
+	uint32_t samples = src_iview->image->info.samples;
 	uint32_t samples_log2 = ffs(samples) - 1;
 	VkPipeline *pipeline;
 
-	if (vk_format_is_int(src_image->vk_format))
+	if (vk_format_is_int(src_iview->vk_format))
 		pipeline = &state->resolve_compute.rc[samples_log2].i_pipeline;
-	else if (vk_format_is_srgb(src_image->vk_format))
+	else if (vk_format_is_srgb(src_iview->vk_format))
 		pipeline = &state->resolve_compute.rc[samples_log2].srgb_pipeline;
 	else
 		pipeline = &state->resolve_compute.rc[samples_log2].pipeline;
@@ -334,8 +334,8 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer,
 		VkResult ret;
 
 		ret = create_resolve_pipeline(device, samples,
-					      vk_format_is_int(src_image->vk_format),
-					      vk_format_is_srgb(src_image->vk_format),
+					      vk_format_is_int(src_iview->vk_format),
+					      vk_format_is_srgb(src_iview->vk_format),
 					      pipeline);
 		if (ret != VK_SUCCESS) {
 			cmd_buffer->record_result = ret;
@@ -392,7 +392,7 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 			      }
 				      });
 
-	pipeline = radv_get_resolve_pipeline(cmd_buffer, src_iview->image);
+	pipeline = radv_get_resolve_pipeline(cmd_buffer, src_iview);
 
 	radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer),
 			     VK_PIPELINE_BIND_POINT_COMPUTE, *pipeline);
@@ -413,8 +413,10 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 
 void radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer,
 				     struct radv_image *src_image,
+				     VkFormat src_format,
 				     VkImageLayout src_image_layout,
 				     struct radv_image *dest_image,
+				     VkFormat dest_format,
 				     VkImageLayout dest_image_layout,
 				     uint32_t region_count,
 				     const VkImageResolve *regions)
@@ -460,7 +462,7 @@ void radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer,
 						     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 							     .image = radv_image_to_handle(src_image),
 							     .viewType = radv_meta_get_view_type(src_image),
-							     .format = src_image->vk_format,
+							     .format = src_format,
 							     .subresourceRange = {
 							     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 							     .baseMipLevel = region->srcSubresource.mipLevel,
@@ -476,7 +478,7 @@ void radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer,
 						     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 							     .image = radv_image_to_handle(dest_image),
 							     .viewType = radv_meta_get_view_type(dest_image),
-							     .format = vk_to_non_srgb_format(dest_image->vk_format),
+							     .format = vk_to_non_srgb_format(dest_format),
 							     .subresourceRange = {
 							     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 							     .baseMipLevel = region->dstSubresource.mipLevel,
@@ -544,8 +546,10 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
 
 		radv_meta_resolve_compute_image(cmd_buffer,
 						src_iview->image,
+						src_iview->vk_format,
 						src_att.layout,
 						dst_iview->image,
+						dst_iview->vk_format,
 						dst_att.layout,
 						1, &region);
 	}
