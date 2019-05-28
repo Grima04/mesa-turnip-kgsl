@@ -1496,18 +1496,20 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
       /* Serialize the NIR to a binary blob that we can hash for the disk
        * cache.  First, drop unnecessary information (like variable names)
        * so the serialized NIR is smaller, and also to let us detect more
-       * isomorphic shaders when hashing, increasing cache hits.
-       *
-       * We skip this step when not using the disk cache, as variable names
-       * are useful for inspecting and debugging shaders.
+       * isomorphic shaders when hashing, increasing cache hits.  We clone
+       * the NIR before stripping away this info because it can be useful
+       * when inspecting and debugging shaders.
        */
-      nir_strip(nir);
+      nir_shader *clone = nir_shader_clone(NULL, nir);
+      nir_strip(clone);
 
       struct blob blob;
       blob_init(&blob);
-      nir_serialize(&blob, ish->nir);
+      nir_serialize(&blob, clone);
       _mesa_sha1_compute(blob.data, blob.size, ish->nir_sha1);
       blob_finish(&blob);
+
+      ralloc_free(clone);
    }
 
    return ish;
