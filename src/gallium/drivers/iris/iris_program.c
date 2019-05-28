@@ -1506,9 +1506,7 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
       struct blob blob;
       blob_init(&blob);
       nir_serialize(&blob, ish->nir);
-      ish->ir_cache_binary = malloc(blob.size);
-      ish->ir_cache_binary_size = blob.size;
-      memcpy(ish->ir_cache_binary, blob.data, blob.size);
+      _mesa_sha1_compute(blob.data, blob.size, ish->nir_sha1);
       blob_finish(&blob);
    }
 

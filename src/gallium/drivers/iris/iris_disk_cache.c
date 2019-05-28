@@ -61,16 +61,13 @@ iris_disk_cache_compute_key(struct disk_cache *cache,
    memcpy(&prog_key, orig_prog_key, prog_key_size);
    brw_prog_key_set_id(&prog_key, stage, 0);
 
-   uint32_t data_size = prog_key_size + ish->ir_cache_binary_size;
+   uint8_t data[sizeof(prog_key) + sizeof(ish->nir_sha1)];
+   uint32_t data_size = prog_key_size + sizeof(ish->nir_sha1);
 
-   void *data = malloc(data_size);
-   memcpy(data, &prog_key, prog_key_size);
-   memcpy(data + prog_key_size, ish->ir_cache_binary,
-          ish->ir_cache_binary_size);
+   memcpy(data, ish->nir_sha1, sizeof(ish->nir_sha1));
+   memcpy(data + sizeof(ish->nir_sha1), &prog_key, prog_key_size);
 
    disk_cache_compute_key(cache, data, data_size, cache_key);
-
-   free(data);
 }
 
 /**
