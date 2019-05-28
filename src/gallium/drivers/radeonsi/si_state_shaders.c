@@ -3849,7 +3849,9 @@ bool si_update_shaders(struct si_context *sctx)
 			sctx->ps_shader.cso->db_shader_control |
 			S_02880C_KILL_ENABLE(si_get_alpha_test_func(sctx) != PIPE_FUNC_ALWAYS);
 
-		if (si_pm4_state_changed(sctx, ps) || si_pm4_state_changed(sctx, vs) ||
+		if (si_pm4_state_changed(sctx, ps) ||
+		    si_pm4_state_changed(sctx, vs) ||
+		    (key.u.ngg && si_pm4_state_changed(sctx, gs)) ||
 		    sctx->sprite_coord_enable != rs->sprite_coord_enable ||
 		    sctx->flatshade != rs->flatshade) {
 			sctx->sprite_coord_enable = rs->sprite_coord_enable;
