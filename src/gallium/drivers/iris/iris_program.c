@@ -36,6 +36,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
 #include "util/u_atomic.h"
+#include "util/u_upload_mgr.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_serialize.h"
@@ -54,6 +55,50 @@ static unsigned
 get_new_program_id(struct iris_screen *screen)
 {
    return p_atomic_inc_return(&screen->program_id);
+}
+
+static void *
+upload_state(struct u_upload_mgr *uploader,
+             struct iris_state_ref *ref,
+             unsigned size,
+             unsigned alignment)
+{
+   void *p = NULL;
+   u_upload_alloc(uploader, 0, size, alignment, &ref->offset, &ref->res, &p);
+   return p;
+}
+
+void
+iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
+                                struct pipe_shader_buffer *buf,
+                                struct iris_state_ref *surf_state,
+                                bool ssbo)
+{
+   struct pipe_context *ctx = &ice->ctx;
+   struct iris_screen *screen = (struct iris_screen *) ctx->screen;
+
+   // XXX: these are not retained forever, use a separate uploader?
+   void *map =
+      upload_state(ice->state.surface_uploader, surf_state,
+                   screen->isl_dev.ss.size, 64);
+   if (!unlikely(map)) {
+      surf_state->res = NULL;
+      return;
+   }
+
+   struct iris_resource *res = (void *) buf->buffer;
+   struct iris_bo *surf_bo = iris_resource_bo(surf_state->res);
+   surf_state->offset += iris_bo_offset_from_base_address(surf_bo);
+
+   isl_buffer_fill_state(&screen->isl_dev, map,
+                         .address = res->bo->gtt_offset + res->offset +
+                                    buf->buffer_offset,
+                         .size_B = buf->buffer_size - res->offset,
+                         .format = ssbo ? ISL_FORMAT_RAW
+                                        : ISL_FORMAT_R32G32B32A32_FLOAT,
+                         .swizzle = ISL_SWIZZLE_IDENTITY,
+                         .stride_B = 1,
+                         .mocs = ice->vtbl.mocs(res->bo));
 }
 
 static nir_ssa_def *

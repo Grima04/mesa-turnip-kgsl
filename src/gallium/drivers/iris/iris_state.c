@@ -2575,40 +2575,6 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 #endif
 }
 
-static void
-upload_ubo_ssbo_surf_state(struct iris_context *ice,
-                           struct pipe_shader_buffer *buf,
-                           struct iris_state_ref *surf_state,
-                           bool ssbo)
-{
-   struct pipe_context *ctx = &ice->ctx;
-   struct iris_screen *screen = (struct iris_screen *) ctx->screen;
-
-   // XXX: these are not retained forever, use a separate uploader?
-   void *map =
-      upload_state(ice->state.surface_uploader, surf_state,
-                   4 * GENX(RENDER_SURFACE_STATE_length), 64);
-   if (!unlikely(map)) {
-      surf_state->res = NULL;
-      return;
-   }
-
-   struct iris_resource *res = (void *) buf->buffer;
-   struct iris_bo *surf_bo = iris_resource_bo(surf_state->res);
-   surf_state->offset += iris_bo_offset_from_base_address(surf_bo);
-
-   isl_buffer_fill_state(&screen->isl_dev, map,
-                         .address = res->bo->gtt_offset + res->offset +
-                                    buf->buffer_offset,
-                         .size_B = buf->buffer_size - res->offset,
-                         .format = ssbo ? ISL_FORMAT_RAW
-                                        : ISL_FORMAT_R32G32B32A32_FLOAT,
-                         .swizzle = ISL_SWIZZLE_IDENTITY,
-                         .stride_B = 1,
-                         .mocs = mocs(res->bo))
-
-}
-
 /**
  * The pipe->set_constant_buffer() driver hook.
  *
@@ -2639,8 +2605,9 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       struct iris_resource *res = (void *) cbuf->buffer;
       res->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
 
-      upload_ubo_ssbo_surf_state(ice, cbuf, &shs->constbuf_surf_state[index],
-                                 false);
+      iris_upload_ubo_ssbo_surf_state(ice, cbuf,
+                                      &shs->constbuf_surf_state[index],
+                                      false);
    } else {
       shs->bound_cbufs &= ~(1u << index);
       pipe_resource_reference(&cbuf->buffer, NULL);
@@ -2734,7 +2701,8 @@ upload_uniforms(struct iris_context *ice,
    }
 
    cbuf->buffer_size = upload_size;
-   upload_ubo_ssbo_surf_state(ice, cbuf, &shs->constbuf_surf_state[0], false);
+   iris_upload_ubo_ssbo_surf_state(ice, cbuf,
+                                   &shs->constbuf_surf_state[0], false);
 }
 
 /**
@@ -2773,7 +2741,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
 
          shs->bound_ssbos |= 1 << (start_slot + i);
 
-         upload_ubo_ssbo_surf_state(ice, ssbo, surf_state, true);
+         iris_upload_ubo_ssbo_surf_state(ice, ssbo, surf_state, true);
 
          res->bind_history |= PIPE_BIND_SHADER_BUFFER;
 
@@ -5807,7 +5775,7 @@ iris_rebind_buffer(struct iris_context *ice,
             struct iris_state_ref *surf_state = &shs->constbuf_surf_state[i];
 
             if (res->bo == iris_resource_bo(cbuf->buffer)) {
-               upload_ubo_ssbo_surf_state(ice, cbuf, surf_state, false);
+               iris_upload_ubo_ssbo_surf_state(ice, cbuf, surf_state, false);
                ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << s;
             }
          }

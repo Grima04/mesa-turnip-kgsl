@@ -780,6 +780,10 @@ void gen11_emit_urb_setup(struct iris_context *ice,
                           bool tess_present, bool gs_present);
 
 /* iris_program.c */
+void iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
+                                     struct pipe_shader_buffer *buf,
+                                     struct iris_state_ref *surf_state,
+                                     bool ssbo);
 const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
                                                gl_shader_stage stage);
 struct iris_bo *iris_get_scratch_space(struct iris_context *ice,
