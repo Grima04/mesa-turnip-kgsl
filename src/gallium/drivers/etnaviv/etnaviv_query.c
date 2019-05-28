@@ -134,8 +134,17 @@ etna_get_driver_query_group_info(struct pipe_screen *pscreen, unsigned index,
 }
 
 static void
-etna_set_active_query_state(struct pipe_context *pipe, boolean enable)
+etna_set_active_query_state(struct pipe_context *pctx, boolean enable)
 {
+   struct etna_context *ctx = etna_context(pctx);
+
+   if (enable) {
+      list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
+         etna_hw_query_resume(hq, ctx);
+   } else {
+      list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
+         etna_hw_query_suspend(hq, ctx);
+   }
 }
 
 void
