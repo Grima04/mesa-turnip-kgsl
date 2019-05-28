@@ -455,7 +455,7 @@ void cik_emit_prefetch_L2(struct si_context *sctx, bool vertex_stage_only)
 	/* Prefetch shaders and VBO descriptors to TC L2. */
 	if (sctx->chip_class >= GFX9) {
 		/* Choose the right spot for the VBO prefetch. */
-		if (sctx->tes_shader.cso) {
+		if (sctx->queued.named.hs) {
 			if (mask & SI_PREFETCH_HS)
 				cik_prefetch_shader_async(sctx, sctx->queued.named.hs);
 			if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
@@ -470,7 +470,7 @@ void cik_emit_prefetch_L2(struct si_context *sctx, bool vertex_stage_only)
 				cik_prefetch_shader_async(sctx, sctx->queued.named.gs);
 			if (mask & SI_PREFETCH_VS)
 				cik_prefetch_shader_async(sctx, sctx->queued.named.vs);
-		} else if (sctx->gs_shader.cso) {
+		} else if (sctx->queued.named.gs) {
 			if (mask & SI_PREFETCH_GS)
 				cik_prefetch_shader_async(sctx, sctx->queued.named.gs);
 			if (mask & SI_PREFETCH_VBO_DESCRIPTORS)
