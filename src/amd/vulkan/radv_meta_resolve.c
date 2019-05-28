@@ -331,6 +331,7 @@ enum radv_resolve_method {
 };
 
 static void radv_pick_resolve_method_images(struct radv_image *src_image,
+					    VkFormat src_format,
 					    struct radv_image *dest_image,
 					    VkImageLayout dest_image_layout,
 					    struct radv_cmd_buffer *cmd_buffer,
@@ -341,10 +342,10 @@ static void radv_pick_resolve_method_images(struct radv_image *src_image,
 	                                                   cmd_buffer->queue_family_index,
 	                                                   cmd_buffer->queue_family_index);
 
-	if (src_image->vk_format == VK_FORMAT_R16G16_UNORM ||
-	    src_image->vk_format == VK_FORMAT_R16G16_SNORM)
+	if (src_format == VK_FORMAT_R16G16_UNORM ||
+	    src_format == VK_FORMAT_R16G16_SNORM)
 		*method = RESOLVE_COMPUTE;
-	else if (vk_format_is_int(src_image->vk_format))
+	else if (vk_format_is_int(src_format))
 		*method = RESOLVE_COMPUTE;
 	else if (src_image->info.array_size > 1 ||
 		 dest_image->info.array_size > 1)
@@ -422,9 +423,9 @@ void radv_CmdResolveImage(
 	} else
 		resolve_method = RESOLVE_COMPUTE;
 
-	radv_pick_resolve_method_images(src_image, dest_image,
-					dest_image_layout, cmd_buffer,
-					&resolve_method);
+	radv_pick_resolve_method_images(src_image, src_image->vk_format,
+					dest_image, dest_image_layout,
+					cmd_buffer, &resolve_method);
 
 	if (resolve_method == RESOLVE_FRAGMENT) {
 		radv_meta_resolve_fragment_image(cmd_buffer,
@@ -634,9 +635,13 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		cmd_buffer->state.attachments[dest_att.attachment].pending_clear_aspects = 0;
 
 		struct radv_image *dst_img = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment->image;
-		struct radv_image *src_img = cmd_buffer->state.framebuffer->attachments[src_att.attachment].attachment->image;
+		struct radv_image_view *src_iview= cmd_buffer->state.framebuffer->attachments[src_att.attachment].attachment;
+		struct radv_image *src_img = src_iview->image;
 
-		radv_pick_resolve_method_images(src_img, dst_img, dest_att.layout, cmd_buffer, &resolve_method);
+		radv_pick_resolve_method_images(src_img, src_iview->vk_format,
+						dst_img, dest_att.layout,
+						cmd_buffer, &resolve_method);
+
 		if (resolve_method == RESOLVE_FRAGMENT) {
 			break;
 		}
