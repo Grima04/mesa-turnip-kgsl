@@ -989,6 +989,11 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 	if (unlikely(cmd_buffer->device->trace_bo))
 		radv_cmd_buffer_trace_emit(cmd_buffer);
 
+	/* Clear the caches that have been flushed to avoid syncing too much
+	 * when there is some pending active queries.
+	 */
+	cmd_buffer->active_query_flush_bits &= ~cmd_buffer->state.flush_bits;
+
 	cmd_buffer->state.flush_bits = 0;
 
 	/* If the driver used a compute shader for resetting a query pool, it

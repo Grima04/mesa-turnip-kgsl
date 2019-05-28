@@ -1142,6 +1142,11 @@ struct radv_cmd_buffer {
 	 * Whether a query pool has been resetted and we have to flush caches.
 	 */
 	bool pending_reset_query;
+
+	/**
+	 * Bitmask of pending active query flushes.
+	 */
+	enum radv_cmd_flush_bits active_query_flush_bits;
 };
 
 struct radv_image;

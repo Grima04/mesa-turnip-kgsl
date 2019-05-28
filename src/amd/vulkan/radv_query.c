@@ -1419,6 +1419,12 @@ void radv_CmdResetQueryPool(
 			 ? TIMESTAMP_NOT_READY : 0;
 	uint32_t flush_bits = 0;
 
+	/* Make sure to sync all previous work if the given command buffer has
+	 * pending active queries. Otherwise the GPU might write queries data
+	 * after the reset operation.
+	 */
+	cmd_buffer->state.flush_bits |= cmd_buffer->active_query_flush_bits;
+
 	flush_bits |= radv_fill_buffer(cmd_buffer, pool->bo,
 				       firstQuery * pool->stride,
 				       queryCount * pool->stride, value);
@@ -1614,6 +1620,11 @@ static void emit_end_query(struct radv_cmd_buffer *cmd_buffer,
 	default:
 		unreachable("ending unhandled query type");
 	}
+
+	cmd_buffer->active_query_flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH |
+					       RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
+					       RADV_CMD_FLAG_INV_GLOBAL_L2 |
+					       RADV_CMD_FLAG_INV_VMEM_L1;
 }
 
 void radv_CmdBeginQueryIndexedEXT(

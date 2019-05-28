@@ -2950,6 +2950,12 @@ VkResult radv_EndCommandBuffer(
 	if (cmd_buffer->queue_family_index != RADV_QUEUE_TRANSFER) {
 		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX6)
 			cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_WRITEBACK_GLOBAL_L2;
+
+		/* Make sure to sync all pending active queries at the end of
+		 * command buffer.
+		 */
+		cmd_buffer->state.flush_bits |= cmd_buffer->active_query_flush_bits;
+
 		si_emit_cache_flush(cmd_buffer);
 	}
 
