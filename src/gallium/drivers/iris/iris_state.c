@@ -4120,6 +4120,7 @@ iris_populate_binding_table(struct iris_context *ice,
                             bool pin_only)
 {
    const struct iris_binder *binder = &ice->state.binder;
+   struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[stage];
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    if (!shader)
       return;
@@ -4191,6 +4192,14 @@ iris_populate_binding_table(struct iris_context *ice,
    for (int i = 0; i < shader->num_cbufs; i++) {
       uint32_t addr = use_ubo_ssbo(batch, ice, &shs->constbuf[i],
                                    &shs->constbuf_surf_state[i], false);
+      push_bt_entry(addr);
+   }
+
+   if (ish->const_data) {
+      iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data), false);
+      iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data_state.res),
+                         false);
+      uint32_t addr = ish->const_data_state.offset;
       push_bt_entry(addr);
    }
 

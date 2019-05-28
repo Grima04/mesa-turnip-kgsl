@@ -273,6 +273,12 @@ struct iris_uncompiled_shader {
 
    /** Should we use ALT mode for math?  Useful for ARB programs. */
    bool use_alt_mode;
+
+   /** Constant data scraped from the shader by nir_opt_large_constants */
+   struct pipe_resource *const_data;
+
+   /** Surface state for const_data */
+   struct iris_state_ref const_data_state;
 };
 
 /**
