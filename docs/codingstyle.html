@@ -48,8 +48,8 @@ For example:
    }
 </pre>
 
-<li>Put a space before/after operators.  For example, <tt>a = b + c;</tt>
-and not <tt>a=b+c;</tt>
+<li>Put a space before/after operators.  For example, <code>a = b + c;</code>
+and not <code>a=b+c;</code>
 
 <li>This GNU indent command generally does the right thing for formatting:
 <pre>
@@ -127,11 +127,11 @@ while gallium typically uses underscores (Ex: "local_var_name").
 <li>Global variables are almost never used because Mesa should be thread-safe.
 
 <li>Booleans.  Places that are not directly visible to the GL API
-should prefer the use of <tt>bool</tt>, <tt>true</tt>, and
-<tt>false</tt> over <tt>GLboolean</tt>, <tt>GL_TRUE</tt>, and
-<tt>GL_FALSE</tt>.  In C code, this may mean that
-<tt>#include &lt;stdbool.h&gt;</tt> needs to be added.  The
-<tt>try_emit_</tt>* methods in src/mesa/program/ir_to_mesa.cpp and
+should prefer the use of <code>bool</code>, <code>true</code>, and
+<code>false</code> over <code>GLboolean</code>, <code>GL_TRUE</code>, and
+<code>GL_FALSE</code>.  In C code, this may mean that
+<code>#include &lt;stdbool.h&gt;</code> needs to be added.  The
+<code>try_emit_</code>* methods in src/mesa/program/ir_to_mesa.cpp and
 src/mesa/state_tracker/st_glsl_to_tgsi.cpp can serve as examples.
 
 </ul>
