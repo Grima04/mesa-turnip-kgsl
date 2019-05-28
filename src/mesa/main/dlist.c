@@ -608,6 +608,8 @@ typedef enum
    OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_1D,
    OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_2D,
    OPCODE_COMPRESSED_MULTITEX_SUB_IMAGE_3D,
+   OPCODE_NAMED_PROGRAM_STRING,
+   OPCODE_NAMED_PROGRAM_LOCAL_PARAMETER,
 
    /* The following three are meta instructions */
    OPCODE_ERROR,                /* raise compiled-in error */
@@ -1289,7 +1291,9 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
          case OPCODE_COMPRESSED_MULTITEX_IMAGE_3D:
             free(get_pointer(&n[10]));
             break;
-
+         case OPCODE_NAMED_PROGRAM_STRING:
+            free(get_pointer(&n[5]));
+            break;
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
             free(block);
@@ -10905,6 +10909,87 @@ save_CompressedMultiTexSubImage3DEXT(GLenum texunit, GLenum target, GLint level,
 }
 
 
+static void GLAPIENTRY
+save_NamedProgramStringEXT(GLuint program, GLenum target, GLenum format, GLsizei len,
+                           const GLvoid * string)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+
+   n = alloc_instruction(ctx, OPCODE_NAMED_PROGRAM_STRING, 4 + POINTER_DWORDS);
+   if (n) {
+      GLubyte *programCopy = malloc(len);
+      if (!programCopy) {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "glNamedProgramStringEXT");
+         return;
+      }
+      memcpy(programCopy, string, len);
+      n[1].ui = program;
+      n[2].e = target;
+      n[3].e = format;
+      n[4].i = len;
+      save_pointer(&n[5], programCopy);
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_NamedProgramStringEXT(ctx->Exec, (program, target, format, len, string));
+   }
+}
+
+
+static void GLAPIENTRY
+save_NamedProgramLocalParameter4fEXT(GLuint program, GLenum target, GLuint index,
+                                     GLfloat x, GLfloat y, GLfloat z, GLfloat w)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_NAMED_PROGRAM_LOCAL_PARAMETER, 7);
+   if (n) {
+      n[1].ui = program;
+      n[2].e = target;
+      n[3].ui = index;
+      n[4].f = x;
+      n[5].f = y;
+      n[6].f = z;
+      n[7].f = w;
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_NamedProgramLocalParameter4fEXT(ctx->Exec, (program, target, index, x, y, z, w));
+   }
+}
+
+
+static void GLAPIENTRY
+save_NamedProgramLocalParameter4fvEXT(GLuint program, GLenum target, GLuint index,
+                                      const GLfloat *params)
+{
+   save_NamedProgramLocalParameter4fEXT(program, target, index, params[0],
+                                        params[1], params[2], params[3]);
+}
+
+
+static void GLAPIENTRY
+save_NamedProgramLocalParameter4dEXT(GLuint program, GLenum target, GLuint index,
+                                    GLdouble x, GLdouble y,
+                                    GLdouble z, GLdouble w)
+{
+      save_NamedProgramLocalParameter4fEXT(program, target, index, (GLfloat) x,
+                                           (GLfloat) y, (GLfloat) z, (GLfloat) w);
+}
+
+
+static void GLAPIENTRY
+save_NamedProgramLocalParameter4dvEXT(GLuint program, GLenum target, GLuint index,
+                                      const GLdouble *params)
+{
+   save_NamedProgramLocalParameter4fEXT(program, target, index, (GLfloat) params[0],
+                                        (GLfloat) params[1], (GLfloat) params[2],
+                                        (GLfloat) params[3]);
+}
+
+
 /**
  * Save an error-generating command into display list.
  *
@@ -12815,6 +12900,16 @@ execute_list(struct gl_context *ctx, GLuint list)
                                                  n[9].i, n[10].e, n[11].i,
                                                  get_pointer(&n[12])));
             break;
+         case OPCODE_NAMED_PROGRAM_STRING:
+            CALL_NamedProgramStringEXT(ctx->Exec,
+                                  (n[1].ui, n[2].e, n[3].e, n[4].i,
+                                   get_pointer(&n[5])));
+            break;
+         case OPCODE_NAMED_PROGRAM_LOCAL_PARAMETER:
+            CALL_NamedProgramLocalParameter4fEXT(ctx->Exec,
+                                            (n[1].ui, n[2].e, n[3].ui, n[4].f,
+                                             n[5].f, n[6].f, n[7].f));
+            break;
 
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
@@ -13854,6 +13949,11 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_CompressedMultiTexSubImage1DEXT(table, save_CompressedMultiTexSubImage1DEXT);
    SET_CompressedMultiTexSubImage2DEXT(table, save_CompressedMultiTexSubImage2DEXT);
    SET_CompressedMultiTexSubImage3DEXT(table, save_CompressedMultiTexSubImage3DEXT);
+   SET_NamedProgramStringEXT(table, save_NamedProgramStringEXT);
+   SET_NamedProgramLocalParameter4dEXT(table, save_NamedProgramLocalParameter4dEXT);
+   SET_NamedProgramLocalParameter4dvEXT(table, save_NamedProgramLocalParameter4dvEXT);
+   SET_NamedProgramLocalParameter4fEXT(table, save_NamedProgramLocalParameter4fEXT);
+   SET_NamedProgramLocalParameter4fvEXT(table, save_NamedProgramLocalParameter4fvEXT);
 }
 
 

@@ -1573,6 +1573,15 @@ offsets = {
     "GetNamedRenderbufferParameterivEXT": 1537,
     "ClientAttribDefaultEXT": 1538,
     "PushClientAttribDefaultEXT": 1539,
+    "NamedProgramStringEXT": 1540,
+    "GetNamedProgramStringEXT": 1541,
+    "NamedProgramLocalParameter4fEXT": 1542,
+    "NamedProgramLocalParameter4fvEXT": 1543,
+    "GetNamedProgramLocalParameterfvEXT": 1544,
+    "NamedProgramLocalParameter4dEXT": 1545,
+    "NamedProgramLocalParameter4dvEXT": 1546,
+    "GetNamedProgramLocalParameterdvEXT": 1547,
+    "GetNamedProgramivEXT": 1548,
 }
 
 functions = [
