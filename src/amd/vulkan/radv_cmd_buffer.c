@@ -4782,7 +4782,7 @@ static void write_event(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_cs_add_buffer(cmd_buffer->device->ws, cs, event->bo);
 
-	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 18);
+	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 21);
 
 	/* Flags that only require a top-of-pipe event. */
 	VkPipelineStageFlags top_of_pipe_flags =
