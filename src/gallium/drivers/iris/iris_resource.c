@@ -782,20 +782,21 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    if (templ->target == PIPE_BUFFER) {
       res->surf.tiling = ISL_TILING_LINEAR;
    } else {
-      isl_surf_init(&screen->isl_dev, &res->surf,
-                    .dim = target_to_isl_surf_dim(templ->target),
-                    .format = fmt.fmt,
-                    .width = templ->width0,
-                    .height = templ->height0,
-                    .depth = templ->depth0,
-                    .levels = templ->last_level + 1,
-                    .array_len = templ->array_size,
-                    .samples = MAX2(templ->nr_samples, 1),
-                    .min_alignment_B = 0,
-                    .row_pitch_B = whandle->stride,
-                    .usage = isl_usage,
-                    .tiling_flags = 1 << res->mod_info->tiling);
-
+      UNUSED const bool isl_surf_created_successfully =
+         isl_surf_init(&screen->isl_dev, &res->surf,
+                       .dim = target_to_isl_surf_dim(templ->target),
+                       .format = fmt.fmt,
+                       .width = templ->width0,
+                       .height = templ->height0,
+                       .depth = templ->depth0,
+                       .levels = templ->last_level + 1,
+                       .array_len = templ->array_size,
+                       .samples = MAX2(templ->nr_samples, 1),
+                       .min_alignment_B = 0,
+                       .row_pitch_B = whandle->stride,
+                       .usage = isl_usage,
+                       .tiling_flags = 1 << res->mod_info->tiling);
+      assert(isl_surf_created_successfully);
       assert(res->bo->tiling_mode ==
              isl_tiling_to_i915_tiling(res->surf.tiling));
 
