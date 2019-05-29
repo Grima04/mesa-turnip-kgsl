@@ -491,7 +491,8 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             if (load->src[0].ssa == temp_ubo_name) {
                nir_instr_rewrite_src(instr, &load->src[0],
                                      nir_src_for_ssa(nir_imm_int(&b, 0)));
-            } else if (nir_src_as_uint(load->src[0]) == 0) {
+            } else if (nir_src_is_const(load->src[0]) &&
+                       nir_src_as_uint(load->src[0]) == 0) {
                nir_ssa_def *offset =
                   nir_iadd(&b, load->src[1].ssa,
                            nir_imm_int(&b, 4 * num_system_values));
