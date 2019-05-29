@@ -495,6 +495,19 @@ get_sampler_view_format(struct st_context *st,
    case PIPE_FORMAT_IYUV:
       format = PIPE_FORMAT_R8_UNORM;
       break;
+   case PIPE_FORMAT_P016:
+      format = PIPE_FORMAT_R16_UNORM;
+      break;
+   case PIPE_FORMAT_YUYV:
+   case PIPE_FORMAT_UYVY:
+      format = PIPE_FORMAT_R8G8_UNORM;
+      break;
+   case PIPE_FORMAT_AYUV:
+      format = PIPE_FORMAT_RGBA8888_UNORM;
+      break;
+   case PIPE_FORMAT_XYUV:
+      format = PIPE_FORMAT_RGBX8888_UNORM;
+      break;
    default:
       break;
    }

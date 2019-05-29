@@ -67,52 +67,164 @@ dri2_buffer(__DRIbuffer * driBufferPriv)
 
 struct dri2_format_mapping {
    int dri_fourcc;
-   int dri_format;
+   int dri_format; /* image format */
    int dri_components;
    enum pipe_format pipe_format;
+   int nplanes;
+   struct {
+      int buffer_index;
+      int width_shift;
+      int height_shift;
+      uint32_t dri_format; /* plane format */
+      int cpp;
+   } planes[3];
 };
 
 static const struct dri2_format_mapping dri2_format_table[] = {
       { __DRI_IMAGE_FOURCC_ARGB2101010,   __DRI_IMAGE_FORMAT_ARGB2101010,
-        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_B10G10R10A2_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_B10G10R10A2_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_ARGB2101010, 4 } } },
       { __DRI_IMAGE_FOURCC_XRGB2101010,   __DRI_IMAGE_FORMAT_XRGB2101010,
-        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_B10G10R10X2_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_B10G10R10X2_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_XRGB2101010, 4 } } },
       { __DRI_IMAGE_FOURCC_ABGR2101010,   __DRI_IMAGE_FORMAT_ABGR2101010,
-        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_R10G10B10A2_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_R10G10B10A2_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR2101010, 4 } } },
       { __DRI_IMAGE_FOURCC_XBGR2101010,   __DRI_IMAGE_FORMAT_XBGR2101010,
-        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_R10G10B10X2_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_R10G10B10X2_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_XBGR2101010, 4 } } },
       { __DRI_IMAGE_FOURCC_ARGB8888,      __DRI_IMAGE_FORMAT_ARGB8888,
-        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_BGRA8888_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_BGRA8888_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 } } },
       { __DRI_IMAGE_FOURCC_ABGR8888,      __DRI_IMAGE_FORMAT_ABGR8888,
-        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_RGBA8888_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_RGBA8888_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR8888, 4 } } },
       { __DRI_IMAGE_FOURCC_SARGB8888,     __DRI_IMAGE_FORMAT_SARGB8,
-        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_BGRA8888_SRGB },
+        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_BGRA8888_SRGB, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_SARGB8, 4 } } },
       { __DRI_IMAGE_FOURCC_XRGB8888,      __DRI_IMAGE_FORMAT_XRGB8888,
-        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_BGRX8888_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_BGRX8888_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_XRGB8888, 4 }, } },
       { __DRI_IMAGE_FOURCC_XBGR8888,      __DRI_IMAGE_FORMAT_XBGR8888,
-        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_RGBX8888_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_RGBX8888_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_XBGR8888, 4 }, } },
       { __DRI_IMAGE_FOURCC_ARGB1555,      __DRI_IMAGE_FORMAT_ARGB1555,
-        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_B5G5R5A1_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_B5G5R5A1_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_ARGB1555, 2 } } },
       { __DRI_IMAGE_FOURCC_RGB565,        __DRI_IMAGE_FORMAT_RGB565,
-        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_B5G6R5_UNORM },
+        __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_B5G6R5_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_RGB565, 2 } } },
       { __DRI_IMAGE_FOURCC_R8,            __DRI_IMAGE_FORMAT_R8,
-        __DRI_IMAGE_COMPONENTS_R,         PIPE_FORMAT_R8_UNORM },
+        __DRI_IMAGE_COMPONENTS_R,         PIPE_FORMAT_R8_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 }, } },
       { __DRI_IMAGE_FOURCC_R16,           __DRI_IMAGE_FORMAT_R16,
-        __DRI_IMAGE_COMPONENTS_R,         PIPE_FORMAT_R16_UNORM },
+        __DRI_IMAGE_COMPONENTS_R,         PIPE_FORMAT_R16_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R16, 1 }, } },
       { __DRI_IMAGE_FOURCC_GR88,          __DRI_IMAGE_FORMAT_GR88,
-        __DRI_IMAGE_COMPONENTS_RG,        PIPE_FORMAT_RG88_UNORM },
+        __DRI_IMAGE_COMPONENTS_RG,        PIPE_FORMAT_RG88_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88, 2 }, } },
       { __DRI_IMAGE_FOURCC_GR1616,        __DRI_IMAGE_FORMAT_GR1616,
-        __DRI_IMAGE_COMPONENTS_RG,        PIPE_FORMAT_RG1616_UNORM },
+        __DRI_IMAGE_COMPONENTS_RG,        PIPE_FORMAT_RG1616_UNORM, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR1616, 2 }, } },
+
+      { __DRI_IMAGE_FOURCC_YUV410, __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_IYUV, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 } } },
+      { __DRI_IMAGE_FOURCC_YUV411, __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_IYUV, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
       { __DRI_IMAGE_FOURCC_YUV420,        __DRI_IMAGE_FORMAT_NONE,
-        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_IYUV },
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_IYUV, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 } } },
+      { __DRI_IMAGE_FOURCC_YUV422,        __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_IYUV, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
+      { __DRI_IMAGE_FOURCC_YUV444,        __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_IYUV, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
+
+      { __DRI_IMAGE_FOURCC_YVU410,        __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_YV12, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 } } },
+      { __DRI_IMAGE_FOURCC_YVU411,        __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_YV12, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
       { __DRI_IMAGE_FOURCC_YVU420,        __DRI_IMAGE_FORMAT_NONE,
-        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_YV12 },
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_YV12, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 } } },
+      { __DRI_IMAGE_FOURCC_YVU422,        __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_YV12, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
+      { __DRI_IMAGE_FOURCC_YVU444,        __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_YV12, 3,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 2, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
+
       { __DRI_IMAGE_FOURCC_NV12,          __DRI_IMAGE_FORMAT_NONE,
-        __DRI_IMAGE_COMPONENTS_Y_UV,      PIPE_FORMAT_NV12 },
-      { __DRI_IMAGE_FOURCC_YUYV,          __DRI_IMAGE_FORMAT_YUYV,
-        __DRI_IMAGE_COMPONENTS_Y_XUXV,    PIPE_FORMAT_YUYV },
-      { __DRI_IMAGE_FOURCC_UYVY,          __DRI_IMAGE_FORMAT_UYVY,
-        __DRI_IMAGE_COMPONENTS_Y_UXVX,    PIPE_FORMAT_UYVY },
+        __DRI_IMAGE_COMPONENTS_Y_UV,      PIPE_FORMAT_NV12, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 1, 1, __DRI_IMAGE_FORMAT_GR88, 2 } } },
+
+      { __DRI_IMAGE_FOURCC_P010,          __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_UV,      PIPE_FORMAT_P016, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R16, 2 },
+          { 1, 1, 1, __DRI_IMAGE_FORMAT_GR1616, 4 } } },
+      { __DRI_IMAGE_FOURCC_P012,          __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_UV,      PIPE_FORMAT_P016, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R16, 2 },
+          { 1, 1, 1, __DRI_IMAGE_FORMAT_GR1616, 4 } } },
+      { __DRI_IMAGE_FOURCC_P016,          __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_UV,      PIPE_FORMAT_P016, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R16, 2 },
+          { 1, 1, 1, __DRI_IMAGE_FORMAT_GR1616, 4 } } },
+
+      { __DRI_IMAGE_FOURCC_NV16,          __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_UV,      PIPE_FORMAT_NV12, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+          { 1, 1, 0, __DRI_IMAGE_FORMAT_GR88, 2 } } },
+
+      { __DRI_IMAGE_FOURCC_AYUV,      __DRI_IMAGE_FORMAT_ABGR8888,
+        __DRI_IMAGE_COMPONENTS_AYUV,      PIPE_FORMAT_AYUV, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR8888, 4 } } },
+      { __DRI_IMAGE_FOURCC_XYUV8888,      __DRI_IMAGE_FORMAT_XBGR8888,
+        __DRI_IMAGE_COMPONENTS_XYUV,      PIPE_FORMAT_XYUV, 1,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_XBGR8888, 4 } } },
+
+      /* For YUYV and UYVY buffers, we set up two overlapping DRI images
+       * and treat them as planar buffers in the compositors.
+       * Plane 0 is GR88 and samples YU or YV pairs and places Y into
+       * the R component, while plane 1 is ARGB/ABGR and samples YUYV/UYVY
+       * clusters and places pairs and places U into the G component and
+       * V into A.  This lets the texture sampler interpolate the Y
+       * components correctly when sampling from plane 0, and interpolate
+       * U and V correctly when sampling from plane 1. */
+      { __DRI_IMAGE_FOURCC_YUYV,          __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_XUXV,    PIPE_FORMAT_YUYV, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88, 2 },
+          { 0, 1, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 } } },
+      { __DRI_IMAGE_FOURCC_UYVY,          __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_UXVX,    PIPE_FORMAT_UYVY, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88, 2 },
+          { 0, 1, 0, __DRI_IMAGE_FORMAT_ABGR8888, 4 } } }
 };
 
 static const struct dri2_format_mapping *
@@ -135,6 +247,17 @@ dri2_get_mapping_by_format(int format)
    }
 
    return NULL;
+}
+
+static enum pipe_format
+dri2_get_pipe_format_for_dri_format(int format)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(dri2_format_table); i++) {
+      if (dri2_format_table[i].dri_format == format)
+         return dri2_format_table[i].pipe_format;
+   }
+
+   return PIPE_FORMAT_NONE;
 }
 
 /**
@@ -791,22 +914,25 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    struct pipe_resource templ;
    unsigned tex_usage = 0;
    int i;
-   enum pipe_format pf = map->pipe_format;
+   bool is_yuv = util_format_is_yuv(map->pipe_format);
 
-   if (pscreen->is_format_supported(pscreen, pf, screen->target, 0, 0,
+   if (pscreen->is_format_supported(pscreen, map->pipe_format, screen->target, 0, 0,
                                     PIPE_BIND_RENDER_TARGET))
       tex_usage |= PIPE_BIND_RENDER_TARGET;
-   if (pscreen->is_format_supported(pscreen, pf, screen->target, 0, 0,
+   if (pscreen->is_format_supported(pscreen, map->pipe_format, screen->target, 0, 0,
                                     PIPE_BIND_SAMPLER_VIEW))
       tex_usage |= PIPE_BIND_SAMPLER_VIEW;
 
-   if (!tex_usage && util_format_is_yuv(pf)) {
+   if (!tex_usage && is_yuv) {
       /* YUV format sampling can be emulated by the Mesa state tracker by
-       * using multiple R8/RG88 samplers. So try to rewrite the pipe format.
+       * using multiple samplers of varying formats.
+       * If no tex_usage is set and we detect a YUV format,
+       * test for support of the first plane's sampler format and
+       * add sampler view usage.
        */
-      pf = PIPE_FORMAT_R8_UNORM;
-
-      if (pscreen->is_format_supported(pscreen, pf, screen->target, 0, 0,
+      if (pscreen->is_format_supported(pscreen,
+                                       dri2_get_pipe_format_for_dri_format(map->planes[0].dri_format),
+                                       screen->target, 0, 0,
                                        PIPE_BIND_SAMPLER_VIEW))
          tex_usage |= PIPE_BIND_SAMPLER_VIEW;
    }
@@ -828,28 +954,13 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    for (i = num_handles - 1; i >= 0; i--) {
       struct pipe_resource *tex;
 
-      /* TODO: something a lot less ugly */
-      switch (i) {
-      case 0:
-         templ.width0 = width;
-         templ.height0 = height;
-         templ.format = pf;
-         break;
-      case 1:
-         templ.width0 = width / 2;
-         templ.height0 = height / 2;
-         templ.format = (num_handles == 2) ?
-               PIPE_FORMAT_RG88_UNORM :   /* NV12, etc */
-               PIPE_FORMAT_R8_UNORM;      /* I420, etc */
-         break;
-      case 2:
-         templ.width0 = width / 2;
-         templ.height0 = height / 2;
-         templ.format = PIPE_FORMAT_R8_UNORM;
-         break;
-      default:
-         unreachable("too many planes!");
-      }
+      templ.width0 = width >> map->planes[i].width_shift;
+      templ.height0 = height >> map->planes[i].height_shift;
+      if (is_yuv)
+         templ.format = dri2_get_pipe_format_for_dri_format(map->planes[i].dri_format);
+      else
+         templ.format = map->pipe_format;
+      assert(templ.format != PIPE_FORMAT_NONE);
 
       tex = pscreen->resource_from_handle(pscreen,
             &templ, &whandle[i], PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE);
@@ -914,7 +1025,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    const struct dri2_format_mapping *map = dri2_get_mapping_by_fourcc(fourcc);
    __DRIimage *img = NULL;
    unsigned err = __DRI_IMAGE_ERROR_SUCCESS;
-   int expected_num_fds, i;
+   int i, expected_num_fds;
 
    if (!map) {
       err = __DRI_IMAGE_ERROR_BAD_MATCH;
@@ -922,15 +1033,12 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    }
 
    switch (fourcc) {
-   case __DRI_IMAGE_FOURCC_YUV420:
-   case __DRI_IMAGE_FOURCC_YVU420:
-      expected_num_fds = 3;
-      break;
-   case __DRI_IMAGE_FOURCC_NV12:
-      expected_num_fds = 2;
+   case __DRI_IMAGE_FOURCC_YUYV:
+   case __DRI_IMAGE_FOURCC_UYVY:
+      expected_num_fds = 1;
       break;
    default:
-      expected_num_fds = 1;
+      expected_num_fds = map->nplanes;
       break;
    }
 
@@ -941,30 +1049,23 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
 
    memset(whandles, 0, sizeof(whandles));
 
-   for (i = 0; i < num_fds; i++) {
-      if (fds[i] < 0) {
+   for (i = 0; i < map->nplanes; i++) {
+      int fdnum = i >= num_fds ? 0 : i;
+      int index = map->planes[i].buffer_index;
+      if (fds[fdnum] < 0) {
          err = __DRI_IMAGE_ERROR_BAD_ALLOC;
          goto exit;
       }
 
       whandles[i].type = WINSYS_HANDLE_TYPE_FD;
-      whandles[i].handle = (unsigned)fds[i];
-      whandles[i].stride = (unsigned)strides[i];
-      whandles[i].offset = (unsigned)offsets[i];
+      whandles[i].handle = (unsigned)fds[fdnum];
+      whandles[i].stride = (unsigned)strides[index];
+      whandles[i].offset = (unsigned)offsets[index];
       whandles[i].modifier = modifier;
    }
 
-   if (fourcc == __DRI_IMAGE_FOURCC_YVU420) {
-      /* convert to YUV420 by swapping 2nd and 3rd planes: */
-      struct winsys_handle tmp = whandles[1];
-      whandles[1] = whandles[2];
-      whandles[2] = tmp;
-      fourcc = __DRI_IMAGE_FOURCC_YUV420;
-      map = dri2_get_mapping_by_fourcc(fourcc);
-   }
-
    img = dri2_create_image_from_winsys(_screen, width, height, map,
-                                       num_fds, whandles, loaderPrivate);
+                                       map->nplanes, whandles, loaderPrivate);
    if(img == NULL) {
       err = __DRI_IMAGE_ERROR_BAD_ALLOC;
       goto exit;

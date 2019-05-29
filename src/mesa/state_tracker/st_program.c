@@ -1201,20 +1201,28 @@ st_create_fp_variant(struct st_context *st,
          NIR_PASS_V(tgsi.ir.nir, nir_lower_drawpixels, &options);
       }
 
-      if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv)) {
+      if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
+                   key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
+                   key->external.lower_ayuv || key->external.lower_xyuv)) {
          nir_lower_tex_options options = {0};
          options.lower_y_uv_external = key->external.lower_nv12;
          options.lower_y_u_v_external = key->external.lower_iyuv;
+         options.lower_xy_uxvx_external = key->external.lower_xy_uxvx;
+         options.lower_yx_xuxv_external = key->external.lower_yx_xuxv;
+         options.lower_ayuv_external = key->external.lower_ayuv;
+         options.lower_xyuv_external = key->external.lower_xyuv;
          NIR_PASS_V(tgsi.ir.nir, nir_lower_tex, &options);
       }
 
       st_finalize_nir(st, &stfp->Base, stfp->shader_program, tgsi.ir.nir);
 
-      if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv)) {
+      if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
+                   key->external.lower_xy_uxvx || key->external.lower_yx_xuxv)) {
          /* This pass needs to happen *after* nir_lower_sampler */
          NIR_PASS_V(tgsi.ir.nir, st_nir_lower_tex_src_plane,
                     ~stfp->Base.SamplersUsed,
-                    key->external.lower_nv12,
+                    key->external.lower_nv12 || key->external.lower_xy_uxvx ||
+                       key->external.lower_yx_xuxv,
                     key->external.lower_iyuv);
       }
 
@@ -1318,7 +1326,8 @@ st_create_fp_variant(struct st_context *st,
          fprintf(stderr, "mesa: cannot create a shader for glDrawPixels\n");
    }
 
-   if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv)) {
+   if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
+                key->external.lower_xy_uxvx || key->external.lower_yx_xuxv)) {
       const struct tgsi_token *tokens;
 
       /* samplers inserted would conflict, but this should be unpossible: */
@@ -1326,7 +1335,9 @@ st_create_fp_variant(struct st_context *st,
 
       tokens = st_tgsi_lower_yuv(tgsi.tokens,
                                  ~stfp->Base.SamplersUsed,
-                                 key->external.lower_nv12,
+                                 key->external.lower_nv12 ||
+                                    key->external.lower_xy_uxvx ||
+                                    key->external.lower_yx_xuxv,
                                  key->external.lower_iyuv);
       if (tokens) {
          if (tgsi.tokens != stfp->tgsi.tokens)

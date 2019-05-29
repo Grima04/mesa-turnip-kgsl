@@ -438,7 +438,22 @@ dri_get_egl_image(struct st_manager *smapi,
       stimg->format = PIPE_FORMAT_IYUV;
       break;
    case __DRI_IMAGE_COMPONENTS_Y_UV:
-      stimg->format = PIPE_FORMAT_NV12;
+      if (img->texture->format == PIPE_FORMAT_R8_UNORM)
+         stimg->format = PIPE_FORMAT_NV12;
+      else /* P0XX uses R16 for first texture */
+         stimg->format = PIPE_FORMAT_P016;
+      break;
+   case __DRI_IMAGE_COMPONENTS_AYUV:
+      stimg->format = PIPE_FORMAT_RGBA8888_UNORM;
+      break;
+   case __DRI_IMAGE_COMPONENTS_XYUV:
+      stimg->format = PIPE_FORMAT_RGBX8888_UNORM;
+      break;
+   case __DRI_IMAGE_COMPONENTS_Y_XUXV:
+      stimg->format = PIPE_FORMAT_YUYV;
+      break;
+   case __DRI_IMAGE_COMPONENTS_Y_UXVX:
+      stimg->format = PIPE_FORMAT_UYVY;
       break;
    default:
       stimg->format = img->texture->format;
