@@ -38,6 +38,7 @@ struct ac_nir_context {
 	struct ac_shader_abi *abi;
 
 	gl_shader_stage stage;
+	shader_info *info;
 
 	LLVMValueRef *ssa_defs;
 
@@ -1394,6 +1395,22 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 	}
 
 	args->attributes = AC_FUNC_ATTR_READNONE;
+	bool cs_derivs = ctx->stage == MESA_SHADER_COMPUTE &&
+			 ctx->info->cs.derivative_group != DERIVATIVE_GROUP_NONE;
+	if (ctx->stage == MESA_SHADER_FRAGMENT || cs_derivs) {
+		/* Prevent texture instructions with implicit derivatives from being
+		 * sinked into branches. */
+		switch (instr->op) {
+		case nir_texop_tex:
+		case nir_texop_txb:
+		case nir_texop_lod:
+			args->attributes |= AC_FUNC_ATTR_CONVERGENT;
+			break;
+		default:
+			break;
+		}
+	}
+
 	return ac_build_image_opcode(&ctx->ac, args);
 }
 
@@ -4354,6 +4371,7 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 	ctx.abi = abi;
 
 	ctx.stage = nir->info.stage;
+	ctx.info = &nir->info;
 
 	ctx.main_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ctx.ac.builder));
 
