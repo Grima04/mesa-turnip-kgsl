@@ -1796,6 +1796,16 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       case BRW_OPCODE_SHL:
 	 brw_SHL(p, dst, src[0], src[1]);
 	 break;
+      case BRW_OPCODE_ROL:
+	 assert(devinfo->gen >= 11);
+	 assert(src[0].type == dst.type);
+	 brw_ROL(p, dst, src[0], src[1]);
+	 break;
+      case BRW_OPCODE_ROR:
+	 assert(devinfo->gen >= 11);
+	 assert(src[0].type == dst.type);
+	 brw_ROR(p, dst, src[0], src[1]);
+	 break;
       case BRW_OPCODE_F32TO16:
          assert(devinfo->gen >= 7);
          brw_F32TO16(p, dst, src[0]);

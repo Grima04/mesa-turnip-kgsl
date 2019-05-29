@@ -488,7 +488,13 @@ static const struct opcode_desc opcode_descs[128] = {
    [BRW_OPCODE_ASR] = {
       .name = "asr",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
    },
-   /* Reserved - 13-15 */
+   /* Reserved - 13 */
+   [BRW_OPCODE_ROR] = {
+      .name = "ror",     .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN11),
+   },
+   [BRW_OPCODE_ROL] = {
+      .name = "rol",     .nsrc = 2, .ndst = 1, .gens = GEN_GE(GEN11),
+   },
    [BRW_OPCODE_CMP] = {
       .name = "cmp",     .nsrc = 2, .ndst = 1, .gens = GEN_ALL,
    },

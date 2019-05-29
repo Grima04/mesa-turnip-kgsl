@@ -210,7 +210,9 @@ enum opcode {
    BRW_OPCODE_SMOV =	10,  /**< Gen8+       */ /* Reused */
    /* Reserved - 11 */
    BRW_OPCODE_ASR =	12,
-   /* Reserved - 13-15 */
+   /* Reserved - 13 */
+   BRW_OPCODE_ROR =	14,  /**< Gen11+ */
+   BRW_OPCODE_ROL =	15,  /**< Gen11+ */
    BRW_OPCODE_CMP =	16,
    BRW_OPCODE_CMPN =	17,
    BRW_OPCODE_CSEL =	18,  /**< Gen8+ */
