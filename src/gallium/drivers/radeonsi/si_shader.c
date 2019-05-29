@@ -3446,6 +3446,10 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 	ret = si_insert_input_ptr(ctx, ret,
 				  ctx->param_bindless_samplers_and_images,
 				  8 + SI_SGPR_BINDLESS_SAMPLERS_AND_IMAGES);
+	if (ctx->screen->info.chip_class >= GFX10) {
+		ret = si_insert_input_ptr(ctx, ret, ctx->param_vs_state_bits,
+					  8 + SI_SGPR_VS_STATE_BITS);
+	}
 
 	unsigned vgpr;
 	if (ctx->type == PIPE_SHADER_VERTEX)
