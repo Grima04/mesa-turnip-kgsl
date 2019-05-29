@@ -278,6 +278,8 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	}
 
 	if (last_input) {
+		assert(block == list_first_entry(&block->shader->block_list,
+				struct ir3_block, node));
 		/* special hack.. if using ldlv to bypass interpolation,
 		 * we need to insert a dummy bary.f on which we can set
 		 * the (ei) flag:
