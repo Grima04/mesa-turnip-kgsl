@@ -4191,11 +4191,16 @@ iris_populate_binding_table(struct iris_context *ice,
    foreach_surface_used(i, IRIS_SURFACE_GROUP_UBO) {
       uint32_t addr;
 
-      if ((i == bt->sizes[IRIS_SURFACE_GROUP_UBO] - 1) && ish->const_data) {
-         iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data), false);
-         iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data_state.res),
-                            false);
-         addr = ish->const_data_state.offset;
+      if (i == bt->sizes[IRIS_SURFACE_GROUP_UBO] - 1) {
+         if (ish->const_data) {
+            iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data), false);
+            iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data_state.res),
+                               false);
+            addr = ish->const_data_state.offset;
+         } else {
+            /* This can only happen with INTEL_DISABLE_COMPACT_BINDING_TABLE=1. */
+            addr = use_null_surface(batch, ice);
+         }
       } else {
          addr = use_ubo_ssbo(batch, ice, &shs->constbuf[i],
                              &shs->constbuf_surf_state[i], false);

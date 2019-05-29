@@ -678,14 +678,14 @@ iris_setup_binding_table(struct nir_shader *nir,
 
    bt->sizes[IRIS_SURFACE_GROUP_IMAGE] = info->num_images;
 
-   /* Allocate a slot in the UBO section for NIR constants if present.
+   /* Allocate an extra slot in the UBO section for NIR constants.
+    * Binding table compaction will remove it if unnecessary.
+    *
     * We don't include them in iris_compiled_shader::num_cbufs because
     * they are uploaded separately from shs->constbuf[], but from a shader
     * point of view, they're another UBO (at the end of the section).
     */
-   if (nir->constant_data_size > 0)
-      num_cbufs++;
-   bt->sizes[IRIS_SURFACE_GROUP_UBO] = num_cbufs;
+   bt->sizes[IRIS_SURFACE_GROUP_UBO] = num_cbufs + 1;
 
    /* The first IRIS_MAX_ABOs indices in the SSBO group are for atomics, real
     * SSBOs start after that.  Compaction will remove unused ABOs.
