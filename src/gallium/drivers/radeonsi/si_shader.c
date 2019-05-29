@@ -1253,8 +1253,20 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 	LLVMValueRef value[4];
 	for (unsigned i = 0; i < num_components; i++) {
 		unsigned offset = i;
-		if (llvm_type_is_64bit(ctx, type))
+		if (llvm_type_is_64bit(ctx, type)) {
 			offset *= 2;
+			if (offset == 4) {
+                                addr = get_tcs_tes_buffer_address_from_generic_indices(ctx,
+                                                                                       vertex_index,
+                                                                                       param_index,
+                                                                                       driver_location + 1,
+                                                                                       info->input_semantic_name,
+                                                                                       info->input_semantic_index,
+                                                                                       is_patch);
+			}
+
+                        offset = offset % 4;
+		}
 
 		offset += component;
 		value[i + component] = buffer_load(&ctx->bld_base, type, offset,
@@ -1376,7 +1388,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 	unsigned driver_location = var->data.driver_location;
 	LLVMValueRef dw_addr, stride;
 	LLVMValueRef buffer, base, addr;
-	LLVMValueRef values[4];
+	LLVMValueRef values[8];
 	bool skip_lds_store;
 	bool is_tess_factor = false, is_tess_inner = false;
 
@@ -1438,10 +1450,21 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 							       info->output_semantic_index,
 							       is_patch);
 
-	for (unsigned chan = 0; chan < 4; chan++) {
+	for (unsigned chan = 0; chan < 8; chan++) {
 		if (!(writemask & (1 << chan)))
 			continue;
 		LLVMValueRef value = ac_llvm_extract_elem(&ctx->ac, src, chan - component);
+
+		unsigned buffer_store_offset = chan % 4;
+		if (chan == 4) {
+                        addr = get_tcs_tes_buffer_address_from_generic_indices(ctx,
+                                                                               vertex_index,
+                                                                               param_index,
+                                                                               driver_location + 1,
+                                                                               info->output_semantic_name,
+                                                                               info->output_semantic_index,
+                                                                               is_patch);
+		}
 
 		/* Skip LDS stores if there is no LDS read of this output. */
 		if (!skip_lds_store)
@@ -1453,7 +1476,8 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 		if (writemask != 0xF && !is_tess_factor) {
 			ac_build_buffer_store_dword(&ctx->ac, buffer, value, 1,
 						    addr, base,
-						    4 * chan, 1, 0, true, false);
+						    4 * buffer_store_offset,
+                                                    1, 0, true, false);
 		}
 
 		/* Write tess factors into VGPRs for the epilog. */
