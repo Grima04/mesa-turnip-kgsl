@@ -1802,7 +1802,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		}
 	}
 
-	if (sctx->gs_shader.cso) {
+	if (sctx->chip_class <= GFX9 && sctx->gs_shader.cso) {
 		/* Determine whether the GS triangle strip adjacency fix should
 		 * be applied. Rotate every other triangle if
 		 * - triangle strips with adjacency are fed to the GS and
