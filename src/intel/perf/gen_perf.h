@@ -31,6 +31,7 @@
 #include <sys/sysmacros.h>
 
 #include "util/hash_table.h"
+#include "compiler/glsl/list.h"
 #include "util/ralloc.h"
 
 struct gen_device_info;
@@ -90,6 +91,9 @@ struct gen_pipeline_stat {
 #define STATS_BO_SIZE               4096
 #define STATS_BO_END_OFFSET_BYTES   (STATS_BO_SIZE / 2)
 #define MAX_STAT_COUNTERS           (STATS_BO_END_OFFSET_BYTES / 8)
+
+#define I915_PERF_OA_SAMPLE_SIZE (8 +   /* drm_i915_perf_record_header */ \
+                                  256)  /* OA counter report */
 
 struct gen_perf_query_result {
    /**
@@ -223,6 +227,127 @@ struct gen_perf_config {
                                               uint32_t bo_offset);
    } vtbl;
 };
+
+/**
+ * Periodic OA samples are read() into these buffer structures via the
+ * i915 perf kernel interface and appended to the
+ * brw->perfquery.sample_buffers linked list. When we process the
+ * results of an OA metrics query we need to consider all the periodic
+ * samples between the Begin and End MI_REPORT_PERF_COUNT command
+ * markers.
+ *
+ * 'Periodic' is a simplification as there are other automatic reports
+ * written by the hardware also buffered here.
+ *
+ * Considering three queries, A, B and C:
+ *
+ *  Time ---->
+ *                ________________A_________________
+ *                |                                |
+ *                | ________B_________ _____C___________
+ *                | |                | |           |   |
+ *
+ * And an illustration of sample buffers read over this time frame:
+ * [HEAD ][     ][     ][     ][     ][     ][     ][     ][TAIL ]
+ *
+ * These nodes may hold samples for query A:
+ * [     ][     ][  A  ][  A  ][  A  ][  A  ][  A  ][     ][     ]
+ *
+ * These nodes may hold samples for query B:
+ * [     ][     ][  B  ][  B  ][  B  ][     ][     ][     ][     ]
+ *
+ * These nodes may hold samples for query C:
+ * [     ][     ][     ][     ][     ][  C  ][  C  ][  C  ][     ]
+ *
+ * The illustration assumes we have an even distribution of periodic
+ * samples so all nodes have the same size plotted against time:
+ *
+ * Note, to simplify code, the list is never empty.
+ *
+ * With overlapping queries we can see that periodic OA reports may
+ * relate to multiple queries and care needs to be take to keep
+ * track of sample buffers until there are no queries that might
+ * depend on their contents.
+ *
+ * We use a node ref counting system where a reference ensures that a
+ * node and all following nodes can't be freed/recycled until the
+ * reference drops to zero.
+ *
+ * E.g. with a ref of one here:
+ * [  0  ][  0  ][  1  ][  0  ][  0  ][  0  ][  0  ][  0  ][  0  ]
+ *
+ * These nodes could be freed or recycled ("reaped"):
+ * [  0  ][  0  ]
+ *
+ * These must be preserved until the leading ref drops to zero:
+ *               [  1  ][  0  ][  0  ][  0  ][  0  ][  0  ][  0  ]
+ *
+ * When a query starts we take a reference on the current tail of
+ * the list, knowing that no already-buffered samples can possibly
+ * relate to the newly-started query. A pointer to this node is
+ * also saved in the query object's ->oa.samples_head.
+ *
+ * E.g. starting query A while there are two nodes in .sample_buffers:
+ *                ________________A________
+ *                |
+ *
+ * [  0  ][  1  ]
+ *           ^_______ Add a reference and store pointer to node in
+ *                    A->oa.samples_head
+ *
+ * Moving forward to when the B query starts with no new buffer nodes:
+ * (for reference, i915 perf reads() are only done when queries finish)
+ *                ________________A_______
+ *                | ________B___
+ *                | |
+ *
+ * [  0  ][  2  ]
+ *           ^_______ Add a reference and store pointer to
+ *                    node in B->oa.samples_head
+ *
+ * Once a query is finished, after an OA query has become 'Ready',
+ * once the End OA report has landed and after we we have processed
+ * all the intermediate periodic samples then we drop the
+ * ->oa.samples_head reference we took at the start.
+ *
+ * So when the B query has finished we have:
+ *                ________________A________
+ *                | ______B___________
+ *                | |                |
+ * [  0  ][  1  ][  0  ][  0  ][  0  ]
+ *           ^_______ Drop B->oa.samples_head reference
+ *
+ * We still can't free these due to the A->oa.samples_head ref:
+ *        [  1  ][  0  ][  0  ][  0  ]
+ *
+ * When the A query finishes: (note there's a new ref for C's samples_head)
+ *                ________________A_________________
+ *                |                                |
+ *                |                    _____C_________
+ *                |                    |           |
+ * [  0  ][  0  ][  0  ][  0  ][  1  ][  0  ][  0  ]
+ *           ^_______ Drop A->oa.samples_head reference
+ *
+ * And we can now reap these nodes up to the C->oa.samples_head:
+ * [  X  ][  X  ][  X  ][  X  ]
+ *                  keeping -> [  1  ][  0  ][  0  ]
+ *
+ * We reap old sample buffers each time we finish processing an OA
+ * query by iterating the sample_buffers list from the head until we
+ * find a referenced node and stop.
+ *
+ * Reaped buffers move to a perfquery.free_sample_buffers list and
+ * when we come to read() we first look to recycle a buffer from the
+ * free_sample_buffers list before allocating a new buffer.
+ */
+struct oa_sample_buf {
+   struct exec_node link;
+   int refcount;
+   int len;
+   uint8_t buf[I915_PERF_OA_SAMPLE_SIZE * 10];
+   uint32_t last_timestamp;
+};
+
 
 static inline size_t
 gen_perf_query_counter_get_size(const struct gen_perf_query_counter *counter)
