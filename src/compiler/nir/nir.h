@@ -2888,6 +2888,9 @@ void nir_print_shader_annotated(nir_shader *shader, FILE *fp, struct hash_table 
 void nir_print_instr(const nir_instr *instr, FILE *fp);
 void nir_print_deref(const nir_deref_instr *deref, FILE *fp);
 
+/** Shallow clone of a single ALU instruction. */
+nir_alu_instr *nir_alu_instr_clone(nir_shader *s, const nir_alu_instr *orig);
+
 nir_shader *nir_shader_clone(void *mem_ctx, const nir_shader *s);
 nir_function_impl *nir_function_impl_clone(nir_shader *shader,
                                            const nir_function_impl *fi);

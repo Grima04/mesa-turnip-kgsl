@@ -265,6 +265,26 @@ __clone_dst(clone_state *state, nir_instr *ninstr,
    }
 }
 
+nir_alu_instr *
+nir_alu_instr_clone(nir_shader *shader, const nir_alu_instr *orig)
+{
+   nir_alu_instr *clone = nir_alu_instr_create(shader, orig->op);
+
+   clone->exact = orig->exact;
+
+   for (unsigned i = 0; i < nir_op_infos[orig->op].num_inputs; i++)
+      nir_alu_src_copy(&clone->src[i], &orig->src[i], clone);
+
+   nir_ssa_dest_init(&clone->instr,
+                     &clone->dest.dest,
+                     orig->dest.dest.ssa.num_components,
+                     orig->dest.dest.ssa.bit_size,
+                     orig->dest.dest.ssa.name);
+   clone->dest.write_mask = orig->dest.write_mask;
+
+   return clone;
+}
+
 static nir_alu_instr *
 clone_alu(clone_state *state, const nir_alu_instr *alu)
 {
