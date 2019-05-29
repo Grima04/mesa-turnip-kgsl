@@ -791,7 +791,7 @@ static void radeon_enc_slice_header_hevc(struct radeon_encoder *enc)
 	}
 
 	if ((enc->enc_pic.nal_unit_type != 19) && (enc->enc_pic.nal_unit_type != 20)) {
-		radeon_enc_code_fixed_bits(enc, enc->enc_pic.frame_num % enc->enc_pic.max_poc, enc->enc_pic.log2_max_poc);
+		radeon_enc_code_fixed_bits(enc, enc->enc_pic.pic_order_cnt, enc->enc_pic.log2_max_poc);
 		if (enc->enc_pic.picture_type == PIPE_H264_ENC_PICTURE_TYPE_P)
 			radeon_enc_code_fixed_bits(enc, 0x1, 1);
 		else {
