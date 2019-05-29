@@ -323,6 +323,14 @@ enum opcode {
    SHADER_OPCODE_SEND,
 
    /**
+    * An "undefined" write which does nothing but indicates to liveness that
+    * we don't care about any values in the register which predate this
+    * instruction.  Used to prevent partial writes from causing issues with
+    * live ranges.
+    */
+   SHADER_OPCODE_UNDEF,
+
+   /**
     * Texture sampling opcodes.
     *
     * LOGICAL opcodes are eventually translated to the matching non-LOGICAL

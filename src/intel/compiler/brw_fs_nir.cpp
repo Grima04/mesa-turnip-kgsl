@@ -1951,6 +1951,7 @@ fs_visitor::get_nir_dest(const nir_dest &dest)
                                     BRW_REGISTER_TYPE_F);
       nir_ssa_values[dest.ssa.index] =
          bld.vgrf(reg_type, dest.ssa.num_components);
+      bld.UNDEF(nir_ssa_values[dest.ssa.index]);
       return nir_ssa_values[dest.ssa.index];
    } else {
       /* We don't handle indirects on locals */

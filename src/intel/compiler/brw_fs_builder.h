@@ -706,6 +706,17 @@ namespace brw {
          return inst;
       }
 
+      instruction *
+      UNDEF(const dst_reg &dst) const
+      {
+         assert(dst.file == VGRF);
+         instruction *inst = emit(SHADER_OPCODE_UNDEF,
+                                  retype(dst, BRW_REGISTER_TYPE_UD));
+         inst->size_written = shader->alloc.sizes[dst.nr] * REG_SIZE;
+
+         return inst;
+      }
+
       backend_shader *shader;
 
    private:

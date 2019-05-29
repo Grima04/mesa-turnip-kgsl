@@ -217,6 +217,9 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case SHADER_OPCODE_SEND:
       return "send";
 
+   case SHADER_OPCODE_UNDEF:
+      return "undef";
+
    case SHADER_OPCODE_TEX:
       return "tex";
    case SHADER_OPCODE_TEX_LOGICAL:
