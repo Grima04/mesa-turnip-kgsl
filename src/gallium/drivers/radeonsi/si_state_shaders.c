@@ -3040,6 +3040,11 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
 	util_queue_fence_destroy(&shader->ready);
 
 	if (shader->pm4) {
+		/* If destroyed shaders were not unbound, the next compiled
+		 * shader variant could get the same pointer address and so
+		 * binding it to the same shader stage would be considered
+		 * a no-op, causing random behavior.
+		 */
 		switch (shader->selector->type) {
 		case PIPE_SHADER_VERTEX:
 			if (shader->key.as_ls) {
@@ -3048,6 +3053,8 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
 			} else if (shader->key.as_es) {
 				assert(sctx->chip_class <= GFX8);
 				si_pm4_delete_state(sctx, es, shader->pm4);
+			} else if (shader->key.as_ngg) {
+				si_pm4_delete_state(sctx, gs, shader->pm4);
 			} else {
 				si_pm4_delete_state(sctx, vs, shader->pm4);
 			}
@@ -3059,6 +3066,8 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
 			if (shader->key.as_es) {
 				assert(sctx->chip_class <= GFX8);
 				si_pm4_delete_state(sctx, es, shader->pm4);
+			} else if (shader->key.as_ngg) {
+				si_pm4_delete_state(sctx, gs, shader->pm4);
 			} else {
 				si_pm4_delete_state(sctx, vs, shader->pm4);
 			}
