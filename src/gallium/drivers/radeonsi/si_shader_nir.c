@@ -709,7 +709,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		enum glsl_base_type base_type =
 			glsl_get_base_type(glsl_without_array(type));
 		unsigned aoa_size = MAX2(1, glsl_get_aoa_size(type));
-		unsigned loc = variable->data.location;
+		unsigned loc = variable->data.driver_location / 4;
 		int slot_count = glsl_count_attribute_slots(type, false);
 		int max_slot = MAX2(info->const_file_max[0], (int) loc) + slot_count;
 
