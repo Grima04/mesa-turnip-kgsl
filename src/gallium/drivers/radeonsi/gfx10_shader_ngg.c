@@ -621,32 +621,35 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	build_sendmsg_gs_alloc_req(ctx, ngg_get_vtx_cnt(ctx), ngg_get_prim_cnt(ctx));
 
 	/* Update query buffer */
-	tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
-	ac_build_ifcc(&ctx->ac, tmp, 5030);
-	tmp = LLVMBuildICmp(builder, LLVMIntULE, ac_get_thread_id(&ctx->ac),
-			    sel->so.num_outputs ? ctx->ac.i32_1 : ctx->ac.i32_0, "");
-	ac_build_ifcc(&ctx->ac, tmp, 5031);
-	{
-		LLVMValueRef args[] = {
-			ngg_get_prim_cnt(ctx),
-			ngg_get_query_buf(ctx),
-			LLVMConstInt(ctx->i32, 16, false), /* offset of stream[0].generated_primitives */
-			ctx->i32_0, /* soffset */
-			ctx->i32_0, /* cachepolicy */
-		};
+	/* TODO: this won't catch 96-bit clear_buffer via transform feedback. */
+	if (!info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS]) {
+		tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
+		ac_build_ifcc(&ctx->ac, tmp, 5030);
+		tmp = LLVMBuildICmp(builder, LLVMIntULE, ac_get_thread_id(&ctx->ac),
+				    sel->so.num_outputs ? ctx->ac.i32_1 : ctx->ac.i32_0, "");
+		ac_build_ifcc(&ctx->ac, tmp, 5031);
+		{
+			LLVMValueRef args[] = {
+				ngg_get_prim_cnt(ctx),
+				ngg_get_query_buf(ctx),
+				LLVMConstInt(ctx->i32, 16, false), /* offset of stream[0].generated_primitives */
+				ctx->i32_0, /* soffset */
+				ctx->i32_0, /* cachepolicy */
+			};
 
-		if (sel->so.num_outputs) {
-			args[0] = ac_build_writelane(&ctx->ac, args[0], emitted_prims, ctx->i32_1);
-			args[2] = ac_build_writelane(&ctx->ac, args[2],
-					LLVMConstInt(ctx->i32, 24, false), ctx->i32_1);
+			if (sel->so.num_outputs) {
+				args[0] = ac_build_writelane(&ctx->ac, args[0], emitted_prims, ctx->i32_1);
+				args[2] = ac_build_writelane(&ctx->ac, args[2],
+						LLVMConstInt(ctx->i32, 24, false), ctx->i32_1);
+			}
+
+			/* TODO: should this be 64-bit atomics? */
+			ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32",
+					   ctx->i32, args, 5, 0);
 		}
-
-		/* TODO: should this be 64-bit atomics? */
-		ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32",
-				   ctx->i32, args, 5, 0);
+		ac_build_endif(&ctx->ac, 5031);
+		ac_build_endif(&ctx->ac, 5030);
 	}
-	ac_build_endif(&ctx->ac, 5031);
-	ac_build_endif(&ctx->ac, 5030);
 
 	/* Export primitive data to the index buffer. Format is:
 	 *  - bits 0..8: index 0
