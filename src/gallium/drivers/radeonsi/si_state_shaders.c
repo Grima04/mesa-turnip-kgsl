@@ -2828,7 +2828,8 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx,
 	unsigned j, offset, ps_input_cntl = 0;
 
 	if (interpolate == TGSI_INTERPOLATE_CONSTANT ||
-	    (interpolate == TGSI_INTERPOLATE_COLOR && sctx->flatshade))
+	    (interpolate == TGSI_INTERPOLATE_COLOR && sctx->flatshade) ||
+	    name == TGSI_SEMANTIC_PRIMID)
 		ps_input_cntl |= S_028644_FLAT_SHADE(1);
 
 	if (name == TGSI_SEMANTIC_PCOORD ||
