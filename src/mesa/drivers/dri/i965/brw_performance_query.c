@@ -1784,11 +1784,13 @@ brw_init_perf_query_info(struct gl_context *ctx)
       (capture_frequency_stat_register_t) capture_frequency_stat_register;
 
    init_pipeline_statistic_query_registers(brw);
-   brw_perf_query_register_mdapi_statistic_query(brw);
+   gen_perf_query_register_mdapi_statistic_query(&brw->screen->devinfo,
+                                                 brw->perfquery.perf);
 
    if ((oa_metrics_kernel_support(screen->fd, devinfo)) &&
        (gen_perf_load_oa_metrics(perf_cfg, screen->fd, devinfo)))
-      brw_perf_query_register_mdapi_oa_query(brw);
+      gen_perf_query_register_mdapi_oa_query(&brw->screen->devinfo,
+                                             brw->perfquery.perf);
 
    brw->perfquery.unaccumulated =
       ralloc_array(brw, struct brw_perf_query_object *, 2);

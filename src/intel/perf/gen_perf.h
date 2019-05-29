@@ -316,6 +316,10 @@ void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                                       const uint32_t *start,
                                       const uint32_t *end);
 void gen_perf_query_result_clear(struct gen_perf_query_result *result);
+void gen_perf_query_register_mdapi_statistic_query(const struct gen_device_info *devinfo,
+                                                   struct gen_perf_config *perf);
+void gen_perf_query_register_mdapi_oa_query(const struct gen_device_info *devinfo,
+                                            struct gen_perf_config *perf);
 
 
 #endif /* GEN_PERF_H */

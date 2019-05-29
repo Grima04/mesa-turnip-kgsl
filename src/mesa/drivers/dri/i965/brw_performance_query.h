@@ -106,7 +106,5 @@ struct brw_perf_query_object
    };
 };
 
-void brw_perf_query_register_mdapi_oa_query(struct brw_context *brw);
-void brw_perf_query_register_mdapi_statistic_query(struct brw_context *brw);
 
 #endif /* BRW_PERFORMANCE_QUERY_H */
