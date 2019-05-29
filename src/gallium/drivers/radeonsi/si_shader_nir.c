@@ -779,17 +779,8 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 					u_bit_consecutive(variable->data.binding, aoa_size);
 			}
 		} else if (base_type != GLSL_TYPE_ATOMIC_UINT) {
-			if (strncmp(variable->name, "state.", 6) == 0 ||
-			    strncmp(variable->name, "gl_", 3) == 0) {
-				/* FIXME: figure out why piglit tests with builtin
-				 * uniforms are failing without this.
-				 */
-				info->const_buffers_declared =
-					u_bit_consecutive(0, SI_NUM_CONST_BUFFERS);
-			} else {
-				info->const_buffers_declared |= 1;
-				info->const_file_max[0] = max_slot;
-			}
+			info->const_buffers_declared |= 1;
+			info->const_file_max[0] = max_slot;
 		}
 	}
 
