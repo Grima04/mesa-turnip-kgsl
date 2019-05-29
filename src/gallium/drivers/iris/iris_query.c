@@ -33,6 +33,7 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include "perf/gen_perf.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"

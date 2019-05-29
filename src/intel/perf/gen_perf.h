@@ -70,6 +70,27 @@ struct gen_pipeline_stat {
  */
 #define MAX_OA_REPORT_COUNTERS 62
 
+#define IA_VERTICES_COUNT          0x2310
+#define IA_PRIMITIVES_COUNT        0x2318
+#define VS_INVOCATION_COUNT        0x2320
+#define HS_INVOCATION_COUNT        0x2300
+#define DS_INVOCATION_COUNT        0x2308
+#define GS_INVOCATION_COUNT        0x2328
+#define GS_PRIMITIVES_COUNT        0x2330
+#define CL_INVOCATION_COUNT        0x2338
+#define CL_PRIMITIVES_COUNT        0x2340
+#define PS_INVOCATION_COUNT        0x2348
+#define CS_INVOCATION_COUNT        0x2290
+#define PS_DEPTH_COUNT             0x2350
+
+/*
+ * When currently allocate only one page for pipeline statistics queries. Here
+ * we derived the maximum number of counters for that amount.
+ */
+#define STATS_BO_SIZE               4096
+#define STATS_BO_END_OFFSET_BYTES   (STATS_BO_SIZE / 2)
+#define MAX_STAT_COUNTERS           (STATS_BO_END_OFFSET_BYTES / 8)
+
 struct gen_perf_query_result {
    /**
     * Storage for the final accumulated OA counters.

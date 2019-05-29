@@ -1523,20 +1523,6 @@ enum brw_pixel_shader_coverage_mask_mode {
 #define BR13_16161616		(0x4 << 24)
 #define BR13_32323232		(0x5 << 24)
 
-/* Pipeline Statistics Counter Registers */
-#define IA_VERTICES_COUNT               0x2310
-#define IA_PRIMITIVES_COUNT             0x2318
-#define VS_INVOCATION_COUNT             0x2320
-#define HS_INVOCATION_COUNT             0x2300
-#define DS_INVOCATION_COUNT             0x2308
-#define GS_INVOCATION_COUNT             0x2328
-#define GS_PRIMITIVES_COUNT             0x2330
-#define CL_INVOCATION_COUNT             0x2338
-#define CL_PRIMITIVES_COUNT             0x2340
-#define PS_INVOCATION_COUNT             0x2348
-#define CS_INVOCATION_COUNT             0x2290
-#define PS_DEPTH_COUNT                  0x2350
-
 #define GEN6_SO_PRIM_STORAGE_NEEDED     0x2280
 #define GEN7_SO_PRIM_STORAGE_NEEDED(n)  (0x5240 + (n) * 8)
 

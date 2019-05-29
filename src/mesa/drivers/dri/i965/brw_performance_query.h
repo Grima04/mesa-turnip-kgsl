@@ -32,14 +32,6 @@
 
 struct gen_perf_query_info;
 
-/*
- * When currently allocate only one page for pipeline statistics queries. Here
- * we derived the maximum number of counters for that amount.
- */
-#define STATS_BO_SIZE               4096
-#define STATS_BO_END_OFFSET_BYTES   (STATS_BO_SIZE / 2)
-#define MAX_STAT_COUNTERS           (STATS_BO_END_OFFSET_BYTES / 8)
-
 /**
  * i965 representation of a performance query object.
  *
