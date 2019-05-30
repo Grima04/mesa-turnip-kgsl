@@ -981,6 +981,9 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx,
 	radeon_opt_set_context_reg(sctx, R_028818_PA_CL_VTE_CNTL,
 				   SI_TRACKED_PA_CL_VTE_CNTL,
 				   shader->ctx_reg.ngg.pa_cl_vte_cntl);
+	radeon_opt_set_context_reg(sctx, R_028838_PA_CL_NGG_CNTL,
+				   SI_TRACKED_PA_CL_NGG_CNTL,
+				   shader->ctx_reg.ngg.pa_cl_ngg_cntl);
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
@@ -1111,9 +1114,13 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 
 	/* If offsets 4, 5 are used, GS_VGPR_COMP_CNT is ignored and
 	 * VGPR[0:4] are always loaded.
+	 *
+	 * Vertex shaders always need to load VGPR3, because they need to
+	 * pass edge flags for decomposed primitives (such as quads) to the PA
+	 * for the GL_LINE polygon mode to skip rendering lines on inner edges.
 	 */
-	if (gs_info->uses_invocationid)
-		gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
+	if (gs_info->uses_invocationid || gs_type == PIPE_SHADER_VERTEX)
+		gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID, edge flags. */
 	else if (gs_info->uses_primid)
 		gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
 	else if (input_prim >= PIPE_PRIM_TRIANGLES)
@@ -1184,6 +1191,18 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		S_028B90_ENABLE(gs_num_invocations > 1) |
 		S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(
 			shader->ngg.max_vert_out_per_gs_instance);
+
+	/* User edge flags are set by the pos exports. If user edge flags are
+	 * not used, we must use hw-generated edge flags and pass them via
+	 * the prim export to prevent drawing lines on internal edges of
+	 * decomposed primitives (such as quads) with polygon mode = lines.
+	 *
+	 * TODO: We should combine hw-generated edge flags with user edge
+	 *       flags in the shader.
+	 */
+	shader->ctx_reg.ngg.pa_cl_ngg_cntl =
+		S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX &&
+						 !gs_info->writes_edgeflag);
 
 	shader->ge_cntl =
 		S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
