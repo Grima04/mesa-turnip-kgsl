@@ -4782,3 +4782,114 @@ VkResult radv_CreateComputePipelines(
 
 	return result;
 }
+
+
+static uint32_t radv_get_executable_count(const struct radv_pipeline *pipeline)
+{
+	uint32_t ret = 0;
+	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
+		if (pipeline->shaders[i])
+			ret += i == MESA_SHADER_GEOMETRY ? 2u : 1u;
+		
+	}
+	return ret;
+}
+
+/* Basically strlcpy (which does not exist on linux) specialized for
+ * descriptions. */
+static void desc_copy(char *desc, const char *src) {
+	int len = strlen(src);
+	assert(len < VK_MAX_DESCRIPTION_SIZE);
+	memcpy(desc, src, len);
+	memset(desc + len, 0, VK_MAX_DESCRIPTION_SIZE - len);
+}
+
+VkResult radv_GetPipelineExecutablePropertiesKHR(
+    VkDevice                                    _device,
+    const VkPipelineInfoKHR*                    pPipelineInfo,
+    uint32_t*                                   pExecutableCount,
+    VkPipelineExecutablePropertiesKHR*          pProperties)
+{
+	RADV_FROM_HANDLE(radv_pipeline, pipeline, pPipelineInfo->pipeline);
+	const uint32_t total_count = radv_get_executable_count(pipeline);
+
+	if (!pProperties) {
+		*pExecutableCount = total_count;
+		return VK_SUCCESS;
+	}
+
+	const uint32_t count = MIN2(total_count, *pExecutableCount);
+	for (unsigned i = 0, executable_idx = 0;
+	     i < MESA_SHADER_STAGES && executable_idx < count; ++i) {
+		if (pipeline->shaders[i])
+			continue;
+		pProperties[executable_idx].stages = mesa_to_vk_shader_stage(i);
+		const char *name = NULL;
+		const char *description = NULL;
+		switch(i) {
+		case MESA_SHADER_VERTEX:
+			name = "Vertex Shader";
+			description = "Vulkan Vertex Shader";
+			break;
+		case MESA_SHADER_TESS_CTRL:
+			if (!pipeline->shaders[MESA_SHADER_VERTEX]) {
+				pProperties[executable_idx].stages |= VK_SHADER_STAGE_VERTEX_BIT;
+				name = "Vertex + Tessellation Control Shaders";
+				description = "Combined Vulkan Vertex and Tessellation Control Shaders";
+			} else {
+				name = "Tessellation Control Shader";
+				description = "Vulkan Tessellation Control Shader";
+			}
+			break;
+		case MESA_SHADER_TESS_EVAL:
+			name = "Tessellation Evaluation Shader";
+			description = "Vulkan Tessellation Evaluation Shader";
+			break;
+		case MESA_SHADER_GEOMETRY:
+			if (radv_pipeline_has_tess(pipeline) && !pipeline->shaders[MESA_SHADER_TESS_EVAL]) {
+				pProperties[executable_idx].stages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+				name = "Tessellation Evaluation + Geometry Shaders";
+				description = "Combined Vulkan Tessellation Evaluation and Geometry Shaders";
+			} else if (!radv_pipeline_has_tess(pipeline) && !pipeline->shaders[MESA_SHADER_VERTEX]) {
+				pProperties[executable_idx].stages |= VK_SHADER_STAGE_VERTEX_BIT;
+				name = "Vertex + Geometry Shader";
+				description = "Combined Vulkan Vertex and Geometry Shaders";
+			} else {
+				name = "Geometry Shader";
+				description = "Vulkan Geometry Shader";
+			}
+			break;
+		case MESA_SHADER_FRAGMENT:
+			name = "Fragment Shader";
+			description = "Vulkan Fragment Shader";
+			break;
+		case MESA_SHADER_COMPUTE:
+			name = "Compute Shader";
+			description = "Vulkan Compute Shader";
+			break;
+		}
+
+		desc_copy(pProperties[executable_idx].name, name);
+		desc_copy(pProperties[executable_idx].description, description);
+
+		++executable_idx;
+		if (i == MESA_SHADER_GEOMETRY) {
+			assert(pipeline->gs_copy_shader);
+			if (executable_idx >= count)
+				break;
+
+			pProperties[executable_idx].stages = VK_SHADER_STAGE_GEOMETRY_BIT;
+			snprintf(pProperties[executable_idx].name, VK_MAX_DESCRIPTION_SIZE,
+				 "GS Copy Shader");
+			snprintf(pProperties[executable_idx].description, VK_MAX_DESCRIPTION_SIZE,
+				 "Extra shader stage that loads the GS output ringbuffer into the rasterizer");
+		}
+	}
+
+	for (unsigned i = 0; i < count; ++i)
+		pProperties[i].subgroupSize = 64;
+
+	VkResult result = *pExecutableCount < total_count ? VK_INCOMPLETE : VK_SUCCESS;
+	*pExecutableCount = count;
+	return result;
+}
