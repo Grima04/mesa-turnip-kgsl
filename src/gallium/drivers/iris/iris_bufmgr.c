@@ -482,14 +482,18 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
    if (!bo)
       bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags, false);
 
+   mtx_unlock(&bufmgr->lock);
+
    if (!bo) {
       bo = alloc_fresh_bo(bufmgr, bo_size);
       if (!bo)
-         goto err;
+         return NULL;
    }
 
    if (bo->gtt_offset == 0ull) {
+      mtx_lock(&bufmgr->lock);
       bo->gtt_offset = vma_alloc(bufmgr, memzone, bo->size, 1);
+      mtx_unlock(&bufmgr->lock);
 
       if (bo->gtt_offset == 0ull)
          goto err_free;
@@ -497,8 +501,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 
    if (bo_set_tiling_internal(bo, tiling_mode, stride))
       goto err_free;
-
-   mtx_unlock(&bufmgr->lock);
 
    bo->name = name;
    p_atomic_set(&bo->refcount, 1);
@@ -531,8 +533,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 
 err_free:
    bo_free(bo);
-err:
-   mtx_unlock(&bufmgr->lock);
    return NULL;
 }
 
