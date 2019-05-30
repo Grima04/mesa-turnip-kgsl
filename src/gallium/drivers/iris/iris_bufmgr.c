@@ -434,6 +434,21 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
    bo->swizzle_mode = I915_BIT_6_SWIZZLE_NONE;
    bo->stride = 0;
 
+   /* Calling set_domain() will allocate pages for the BO outside of the
+    * struct mutex lock in the kernel, which is more efficient than waiting
+    * to create them during the first execbuf that uses the BO.
+    */
+   struct drm_i915_gem_set_domain sd = {
+      .handle = bo->gem_handle,
+      .read_domains = I915_GEM_DOMAIN_CPU,
+      .write_domain = 0,
+   };
+
+   if (drm_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0) {
+      bo_free(bo);
+      return NULL;
+   }
+
    return bo;
 }
 
@@ -448,7 +463,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 {
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
-   bool alloc_pages = false;
    struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size);
 
    /* Round the size up to the bucket size, or if we don't have caching
@@ -469,7 +483,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
       bo = alloc_bo_from_cache(bufmgr, bucket, memzone, flags, false);
 
    if (!bo) {
-      alloc_pages = true;
       bo = alloc_fresh_bo(bufmgr, bo_size);
       if (!bo)
          goto err;
@@ -484,21 +497,6 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
 
    if (bo_set_tiling_internal(bo, tiling_mode, stride))
       goto err_free;
-
-   if (alloc_pages) {
-      /* Calling set_domain() will allocate pages for the BO outside of the
-       * struct mutex lock in the kernel, which is more efficient than waiting
-       * to create them during the first execbuf that uses the BO.
-       */
-      struct drm_i915_gem_set_domain sd = {
-         .handle = bo->gem_handle,
-         .read_domains = I915_GEM_DOMAIN_CPU,
-         .write_domain = 0,
-      };
-
-      if (drm_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0)
-         goto err_free;
-   }
 
    mtx_unlock(&bufmgr->lock);
 
