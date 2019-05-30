@@ -101,7 +101,7 @@ static const struct dri2_format_mapping dri2_format_table[] = {
         __DRI_IMAGE_COMPONENTS_R,         PIPE_FORMAT_R16_UNORM },
       { __DRI_IMAGE_FOURCC_GR88,          __DRI_IMAGE_FORMAT_GR88,
         __DRI_IMAGE_COMPONENTS_RG,        PIPE_FORMAT_RG88_UNORM },
-      { __DRI_IMAGE_FOURCC_GR1616,        __DRI_IMAGE_FORMAT_GR88,
+      { __DRI_IMAGE_FOURCC_GR1616,        __DRI_IMAGE_FORMAT_GR1616,
         __DRI_IMAGE_COMPONENTS_RG,        PIPE_FORMAT_RG1616_UNORM },
       { __DRI_IMAGE_FOURCC_YUV420,        __DRI_IMAGE_FORMAT_NONE,
         __DRI_IMAGE_COMPONENTS_Y_U_V,     PIPE_FORMAT_IYUV },
