@@ -2423,6 +2423,9 @@ typedef struct nir_shader_compiler_options {
    /* Lowers when 32x32->64 bit multiplication is not supported */
    bool lower_mul_2x32_64;
 
+   /* Lowers when rotate instruction is not supported */
+   bool lower_rotate;
+
    unsigned max_unroll_iterations;
 
    nir_lower_int64_options lower_int64_options;
