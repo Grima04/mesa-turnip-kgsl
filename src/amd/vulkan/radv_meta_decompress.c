@@ -126,6 +126,11 @@ create_pipeline(struct radv_device *device,
 		goto cleanup;
 	}
 
+	const VkPipelineSampleLocationsStateCreateInfoEXT sample_locs_create_info = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT,
+		.sampleLocationsEnable = false,
+	};
+
 	const VkGraphicsPipelineCreateInfo pipeline_create_info = {
 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 		.stageCount = 2,
@@ -168,6 +173,7 @@ create_pipeline(struct radv_device *device,
 		},
 		.pMultisampleState = &(VkPipelineMultisampleStateCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+			.pNext = &sample_locs_create_info,
 			.rasterizationSamples = samples,
 			.sampleShadingEnable = false,
 			.pSampleMask = NULL,
@@ -189,10 +195,11 @@ create_pipeline(struct radv_device *device,
 		},
 		.pDynamicState = &(VkPipelineDynamicStateCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-			.dynamicStateCount = 2,
+			.dynamicStateCount = 3,
 			.pDynamicStates = (VkDynamicState[]) {
 				VK_DYNAMIC_STATE_VIEWPORT,
 				VK_DYNAMIC_STATE_SCISSOR,
+				VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT,
 			},
 		},
 		.layout = layout,
