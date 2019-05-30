@@ -687,6 +687,17 @@ opcode("ishr", 0, tint, [0, 0], [tint, tuint32], False, "",
 opcode("ushr", 0, tuint, [0, 0], [tuint, tuint32], False, "",
        "src0 >> (src1 & (sizeof(src0) * 8 - 1))")
 
+opcode("urol", 0, tuint, [0, 0], [tuint, tuint32], False, "", """
+   uint32_t rotate_mask = sizeof(src0) * 8 - 1;
+   dst = (src0 << (src1 & rotate_mask)) |
+         (src0 >> (-src1 & rotate_mask));
+""")
+opcode("uror", 0, tuint, [0, 0], [tuint, tuint32], False, "", """
+   uint32_t rotate_mask = sizeof(src0) * 8 - 1;
+   dst = (src0 >> (src1 & rotate_mask)) |
+         (src0 << (-src1 & rotate_mask));
+""")
+
 # bitwise logic operators
 #
 # These are also used as boolean and, or, xor for hardware supporting
