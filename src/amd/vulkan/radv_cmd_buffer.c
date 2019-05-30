@@ -2654,7 +2654,7 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 	range.baseArrayLayer = view->base_layer;
 	range.layerCount = cmd_buffer->state.framebuffer->layers;
 
-	if (cmd_buffer->state.subpass && cmd_buffer->state.subpass->view_mask) {
+	if (cmd_buffer->state.subpass->view_mask) {
 		/* If the current subpass uses multiview, the driver might have
 		 * performed a fast color/depth clear to the whole image
 		 * (including all layers). To make sure the driver will
@@ -3691,6 +3691,8 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_subpass_barrier(cmd_buffer, &subpass->start_barrier);
 
+	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
+
 	for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
 		const uint32_t a = subpass->attachments[i].attachment;
 		if (a == VK_ATTACHMENT_UNUSED)
@@ -3700,7 +3702,6 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 						     subpass->attachments[i]);
 	}
 
-	radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 	radv_cmd_buffer_clear_subpass(cmd_buffer);
 
 	assert(cmd_buffer->cs->cdw <= cdw_max);
