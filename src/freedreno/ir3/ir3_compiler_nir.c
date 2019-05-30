@@ -1048,6 +1048,7 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		barrier->cat7.g = true;
 		barrier->cat7.r = true;
 		barrier->cat7.w = true;
+		barrier->cat7.l = true;
 		barrier->barrier_class = IR3_BARRIER_IMAGE_W |
 				IR3_BARRIER_BUFFER_W;
 		barrier->barrier_conflict =
