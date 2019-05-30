@@ -336,20 +336,6 @@ iris_bo_madvise(struct iris_bo *bo, int state)
    return madv.retained;
 }
 
-/* drop the oldest entries that have been purged by the kernel */
-static void
-iris_bo_cache_purge_bucket(struct iris_bufmgr *bufmgr,
-                          struct bo_cache_bucket *bucket)
-{
-   list_for_each_entry_safe(struct iris_bo, bo, &bucket->head, head) {
-      if (iris_bo_madvise(bo, I915_MADV_DONTNEED))
-         break;
-
-      list_del(&bo->head);
-      bo_free(bo);
-   }
-}
-
 static struct iris_bo *
 bo_calloc(void)
 {
@@ -392,10 +378,8 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
          break;
       }
 
-      /* This BO was purged, clean up any others and retry */
+      /* This BO was purged, throw it out and keep looking. */
       bo_free(cur);
-
-      iris_bo_cache_purge_bucket(bufmgr, bucket);
    }
 
    if (!bo)
