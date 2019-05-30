@@ -127,8 +127,8 @@ radv_meta_restore(const struct radv_meta_saved_state *state,
 			     state->scissor.scissors,
 			     MAX_SCISSORS);
 
-		cmd_buffer->state.dirty |= 1 << VK_DYNAMIC_STATE_VIEWPORT |
-					   1 << VK_DYNAMIC_STATE_SCISSOR;
+		cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
+					   RADV_CMD_DIRTY_DYNAMIC_SCISSOR;
 	}
 
 	if (state->flags & RADV_META_SAVE_COMPUTE_PIPELINE) {
