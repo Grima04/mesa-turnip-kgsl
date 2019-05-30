@@ -234,9 +234,6 @@ anv_shader_compile_to_nir(struct anv_device *device,
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_shader_in | nir_var_shader_out | nir_var_system_value);
 
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
-              nir_address_format_64bit_global);
-
    NIR_PASS_V(nir, nir_propagate_invariant);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, false);
@@ -618,6 +615,9 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
       pipeline->needs_data_cache = true;
 
    NIR_PASS_V(nir, brw_nir_lower_image_load_store, compiler->devinfo);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
+              nir_address_format_64bit_global);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    if (layout) {
