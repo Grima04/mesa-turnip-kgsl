@@ -394,7 +394,8 @@ radv_destroy_shader_slabs(struct radv_device *device);
 
 struct radv_shader_variant *
 radv_shader_variant_create(struct radv_device *device,
-			   const struct radv_shader_binary *binary);
+			   const struct radv_shader_binary *binary,
+			   bool keep_shader_info);
 struct radv_shader_variant *
 radv_shader_variant_compile(struct radv_device *device,
 			    struct radv_shader_module *module,
@@ -402,12 +403,13 @@ radv_shader_variant_compile(struct radv_device *device,
 			    int shader_count,
 			    struct radv_pipeline_layout *layout,
 			    const struct radv_shader_variant_key *key,
+			    bool keep_shader_info,
 			    struct radv_shader_binary **binary_out);
 
 struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
 			   struct radv_shader_binary **binary_out,
-			   bool multiview);
+			   bool multiview,  bool keep_shader_info);
 
 void
 radv_shader_variant_destroy(struct radv_device *device,

@@ -960,7 +960,8 @@ static void radv_init_llvm_once(void)
 
 struct radv_shader_variant *
 radv_shader_variant_create(struct radv_device *device,
-			   const struct radv_shader_binary *binary)
+			   const struct radv_shader_binary *binary,
+			   bool keep_shader_info)
 {
 	struct ac_shader_config config = {0};
 	struct ac_rtld_binary rtld_binary = {0};
@@ -1065,7 +1066,7 @@ radv_shader_variant_create(struct radv_device *device,
 			return NULL;
 		}
 
-		if (device->keep_shader_info ||
+		if (keep_shader_info ||
 		    (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS)) {
 			const char *disasm_data;
 			size_t disasm_size;
@@ -1128,6 +1129,7 @@ shader_variant_compile(struct radv_device *device,
 		       gl_shader_stage stage,
 		       struct radv_nir_compiler_options *options,
 		       bool gs_copy_shader,
+		       bool keep_shader_info,
 		       struct radv_shader_binary **binary_out)
 {
 	enum radeon_family chip_family = device->physical_device->rad_info.family;
@@ -1145,7 +1147,7 @@ shader_variant_compile(struct radv_device *device,
 	options->dump_shader = radv_can_dump_shader(device, module, gs_copy_shader);
 	options->dump_preoptir = options->dump_shader &&
 				 device->instance->debug_flags & RADV_DEBUG_PREOPTIR;
-	options->record_llvm_ir = device->keep_shader_info;
+	options->record_llvm_ir = keep_shader_info;
 	options->check_ir = device->instance->debug_flags & RADV_DEBUG_CHECKIR;
 	options->tess_offchip_block_dw_size = device->tess_offchip_block_dw_size;
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
@@ -1187,7 +1189,8 @@ shader_variant_compile(struct radv_device *device,
 
 	radv_destroy_llvm_compiler(&ac_llvm, thread_compiler);
 
-	struct radv_shader_variant *variant = radv_shader_variant_create(device, binary);
+	struct radv_shader_variant *variant = radv_shader_variant_create(device, binary,
+									 keep_shader_info);
 	if (!variant) {
 		free(binary);
 		return NULL;
@@ -1198,7 +1201,7 @@ shader_variant_compile(struct radv_device *device,
 	}
 
 
-	if (device->keep_shader_info) {
+	if (keep_shader_info) {
 		variant->nir_string = radv_dump_nir_shaders(shaders, shader_count);
 		if (!gs_copy_shader && !module->nir) {
 			variant->spirv = (uint32_t *)module->data;
@@ -1221,6 +1224,7 @@ radv_shader_variant_compile(struct radv_device *device,
 			   int shader_count,
 			   struct radv_pipeline_layout *layout,
 			   const struct radv_shader_variant_key *key,
+			   bool keep_shader_info,
 			   struct radv_shader_binary **binary_out)
 {
 	struct radv_nir_compiler_options options = {0};
@@ -1234,13 +1238,14 @@ radv_shader_variant_compile(struct radv_device *device,
 	options.robust_buffer_access = device->robust_buffer_access;
 
 	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage,
-				     &options, false, binary_out);
+				     &options, false, keep_shader_info, binary_out);
 }
 
 struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device,
 			   struct nir_shader *shader,
 			   struct radv_shader_binary **binary_out,
+			   bool keep_shader_info,
 			   bool multiview)
 {
 	struct radv_nir_compiler_options options = {0};
@@ -1248,7 +1253,7 @@ radv_create_gs_copy_shader(struct radv_device *device,
 	options.key.has_multiview_view_index = multiview;
 
 	return shader_variant_compile(device, NULL, &shader, 1, MESA_SHADER_VERTEX,
-				     &options, true, binary_out);
+				     &options, true, keep_shader_info, binary_out);
 }
 
 void
