@@ -1351,7 +1351,7 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->maxTransformFeedbackBufferDataSize = UINT32_MAX;
 			properties->maxTransformFeedbackBufferDataStride = 512;
 			properties->transformFeedbackQueries = true;
-			properties->transformFeedbackStreamsLinesTriangles = false;
+			properties->transformFeedbackStreamsLinesTriangles = true;
 			properties->transformFeedbackRasterizationStreamSelect = false;
 			properties->transformFeedbackDraw = true;
 			break;
