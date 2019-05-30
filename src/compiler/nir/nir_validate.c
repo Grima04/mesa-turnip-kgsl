@@ -505,7 +505,8 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
       if (use->parent_instr->type == nir_instr_type_phi) {
          validate_assert(state, instr->mode == nir_var_mem_ubo ||
                                 instr->mode == nir_var_mem_ssbo ||
-                                instr->mode == nir_var_mem_shared);
+                                instr->mode == nir_var_mem_shared ||
+                                instr->mode == nir_var_mem_global);
       }
    }
 }
