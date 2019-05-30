@@ -1359,7 +1359,7 @@ void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples
 	default:
 	case 1:
 		radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
-		radeon_emit(cs, centroid_priority_1x);
+		radeon_emit(cs, (uint32_t)centroid_priority_1x);
 		radeon_emit(cs, centroid_priority_1x >> 32);
 		radeon_set_context_reg(cs, R_028BF8_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_0, sample_locs_1x);
 		radeon_set_context_reg(cs, R_028C08_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y0_0, sample_locs_1x);
@@ -1368,7 +1368,7 @@ void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples
 		break;
 	case 2:
 		radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
-		radeon_emit(cs, centroid_priority_2x);
+		radeon_emit(cs, (uint32_t)centroid_priority_2x);
 		radeon_emit(cs, centroid_priority_2x >> 32);
 		radeon_set_context_reg(cs, R_028BF8_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_0, sample_locs_2x);
 		radeon_set_context_reg(cs, R_028C08_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y0_0, sample_locs_2x);
@@ -1377,7 +1377,7 @@ void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples
 		break;
 	case 4:
 		radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
-		radeon_emit(cs, centroid_priority_4x);
+		radeon_emit(cs, (uint32_t)centroid_priority_4x);
 		radeon_emit(cs, centroid_priority_4x >> 32);
 		radeon_set_context_reg(cs, R_028BF8_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_0, sample_locs_4x);
 		radeon_set_context_reg(cs, R_028C08_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y0_0, sample_locs_4x);
@@ -1386,7 +1386,7 @@ void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples
 		break;
 	case 8:
 		radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
-		radeon_emit(cs, centroid_priority_8x);
+		radeon_emit(cs, (uint32_t)centroid_priority_8x);
 		radeon_emit(cs, centroid_priority_8x >> 32);
 		radeon_set_context_reg_seq(cs, R_028BF8_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_0, 14);
 		radeon_emit_array(cs, sample_locs_8x, 4);
