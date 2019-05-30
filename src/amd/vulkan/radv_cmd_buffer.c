@@ -2644,11 +2644,67 @@ void radv_subpass_barrier(struct radv_cmd_buffer *cmd_buffer,
 	                                                      NULL);
 }
 
+static uint32_t
+radv_get_subpass_id(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	uint32_t subpass_id = state->subpass - state->pass->subpasses;
+
+	/* The id of this subpass shouldn't exceed the number of subpasses in
+	 * this render pass minus 1.
+	 */
+	assert(subpass_id < state->pass->subpass_count);
+	return subpass_id;
+}
+
+static struct radv_sample_locations_state *
+radv_get_attachment_sample_locations(struct radv_cmd_buffer *cmd_buffer,
+				     uint32_t att_idx,
+				     bool begin_subpass)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	uint32_t subpass_id = radv_get_subpass_id(cmd_buffer);
+	struct radv_image_view *view = state->framebuffer->attachments[att_idx].attachment;
+
+	if (view->image->info.samples == 1)
+		return NULL;
+
+	if (state->pass->attachments[att_idx].first_subpass_idx == subpass_id) {
+		/* Return the initial sample locations if this is the initial
+		 * layout transition of the given subpass attachemnt.
+		 */
+		if (state->attachments[att_idx].sample_location.count > 0)
+			return &state->attachments[att_idx].sample_location;
+	} else {
+		/* Otherwise return the subpass sample locations if defined. */
+		if (state->subpass_sample_locs) {
+			/* Because the driver sets the current subpass before
+			 * initial layout transitions, we should use the sample
+			 * locations from the previous subpass to avoid an
+			 * off-by-one problem. Otherwise, use the sample
+			 * locations for the current subpass for final layout
+			 * transitions.
+			 */
+			if (begin_subpass)
+				subpass_id--;
+
+			for (uint32_t i = 0; i < state->num_subpass_sample_locs; i++) {
+				if (state->subpass_sample_locs[i].subpass_idx == subpass_id)
+					return &state->subpass_sample_locs[i].sample_location;
+			}
+		}
+	}
+
+	return NULL;
+}
+
 static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buffer,
-						 struct radv_subpass_attachment att)
+						 struct radv_subpass_attachment att,
+						 bool begin_subpass)
 {
 	unsigned idx = att.attachment;
 	struct radv_image_view *view = cmd_buffer->state.framebuffer->attachments[idx].attachment;
+	struct radv_sample_locations_state *sample_locs;
 	VkImageSubresourceRange range;
 	range.aspectMask = 0;
 	range.baseMipLevel = view->base_mip;
@@ -2667,10 +2723,16 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 		range.layerCount = util_last_bit(cmd_buffer->state.subpass->view_mask);
 	}
 
+	/* Get the subpass sample locations for the given attachment, if NULL
+	 * is returned the driver will use the default HW locations.
+	 */
+	sample_locs = radv_get_attachment_sample_locations(cmd_buffer, idx,
+							   begin_subpass);
+
 	radv_handle_image_transition(cmd_buffer,
 				     view->image,
 				     cmd_buffer->state.attachments[idx].current_layout,
-				     att.layout, 0, 0, &range, NULL);
+				     att.layout, 0, 0, &range, sample_locs);
 
 	cmd_buffer->state.attachments[idx].current_layout = att.layout;
 
@@ -2684,6 +2746,89 @@ radv_cmd_buffer_set_subpass(struct radv_cmd_buffer *cmd_buffer,
 	cmd_buffer->state.subpass = subpass;
 
 	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
+}
+
+static VkResult
+radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
+				      struct radv_render_pass *pass,
+				      const VkRenderPassBeginInfo *info)
+{
+	const struct VkRenderPassSampleLocationsBeginInfoEXT *sample_locs =
+		vk_find_struct_const(info->pNext,
+				     RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	struct radv_framebuffer *framebuffer = state->framebuffer;
+
+	if (!sample_locs) {
+		state->subpass_sample_locs = NULL;
+		return VK_SUCCESS;
+	}
+
+	for (uint32_t i = 0; i < sample_locs->attachmentInitialSampleLocationsCount; i++) {
+		const VkAttachmentSampleLocationsEXT *att_sample_locs =
+			&sample_locs->pAttachmentInitialSampleLocations[i];
+		uint32_t att_idx = att_sample_locs->attachmentIndex;
+		struct radv_attachment_info *att = &framebuffer->attachments[att_idx];
+		struct radv_image *image = att->attachment->image;
+
+		assert(vk_format_is_depth_or_stencil(image->vk_format));
+
+		/* From the Vulkan spec 1.1.108:
+		 *
+		 * "If the image referenced by the framebuffer attachment at
+		 *  index attachmentIndex was not created with
+		 *  VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT
+		 *  then the values specified in sampleLocationsInfo are
+		 *  ignored."
+		 */
+		if (!(image->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT))
+			continue;
+
+		const VkSampleLocationsInfoEXT *sample_locs_info =
+			&att_sample_locs->sampleLocationsInfo;
+
+		state->attachments[att_idx].sample_location.per_pixel =
+			sample_locs_info->sampleLocationsPerPixel;
+		state->attachments[att_idx].sample_location.grid_size =
+			sample_locs_info->sampleLocationGridSize;
+		state->attachments[att_idx].sample_location.count =
+			sample_locs_info->sampleLocationsCount;
+		typed_memcpy(&state->attachments[att_idx].sample_location.locations[0],
+			     sample_locs_info->pSampleLocations,
+			     sample_locs_info->sampleLocationsCount);
+	}
+
+	state->subpass_sample_locs = vk_alloc(&cmd_buffer->pool->alloc,
+					      sample_locs->postSubpassSampleLocationsCount *
+					      sizeof(state->subpass_sample_locs[0]),
+					      8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+	if (state->subpass_sample_locs == NULL) {
+		cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+		return cmd_buffer->record_result;
+	}
+
+	state->num_subpass_sample_locs = sample_locs->postSubpassSampleLocationsCount;
+
+	for (uint32_t i = 0; i < sample_locs->postSubpassSampleLocationsCount; i++) {
+		const VkSubpassSampleLocationsEXT *subpass_sample_locs_info =
+			&sample_locs->pPostSubpassSampleLocations[i];
+		const VkSampleLocationsInfoEXT *sample_locs_info =
+			&subpass_sample_locs_info->sampleLocationsInfo;
+
+		state->subpass_sample_locs[i].subpass_idx =
+			subpass_sample_locs_info->subpassIndex;
+		state->subpass_sample_locs[i].sample_location.per_pixel =
+			sample_locs_info->sampleLocationsPerPixel;
+		state->subpass_sample_locs[i].sample_location.grid_size =
+			sample_locs_info->sampleLocationGridSize;
+		state->subpass_sample_locs[i].sample_location.count =
+			sample_locs_info->sampleLocationsCount;
+		typed_memcpy(&state->subpass_sample_locs[i].sample_location.locations[0],
+			     sample_locs_info->pSampleLocations,
+			     sample_locs_info->sampleLocationsCount);
+	}
+
+	return VK_SUCCESS;
 }
 
 static VkResult
@@ -2740,6 +2885,7 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer,
 		}
 
 		state->attachments[i].current_layout = att->initial_layout;
+		state->attachments[i].sample_location.count = 0;
 	}
 
 	return VK_SUCCESS;
@@ -3170,6 +3316,7 @@ VkResult radv_EndCommandBuffer(
 	si_cp_dma_wait_for_idle(cmd_buffer);
 
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);
 
 	if (!cmd_buffer->device->ws->cs_finalize(cmd_buffer->cs))
 		return vk_error(cmd_buffer->device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -3668,19 +3815,6 @@ void radv_TrimCommandPool(
 	}
 }
 
-static uint32_t
-radv_get_subpass_id(struct radv_cmd_buffer *cmd_buffer)
-{
-	struct radv_cmd_state *state = &cmd_buffer->state;
-	uint32_t subpass_id = state->subpass - state->pass->subpasses;
-
-	/* The id of this subpass shouldn't exceed the number of subpasses in
-	 * this render pass minus 1.
-	 */
-	assert(subpass_id < state->pass->subpass_count);
-	return subpass_id;
-}
-
 static void
 radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 			      uint32_t subpass_id)
@@ -3701,7 +3835,8 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 			continue;
 
 		radv_handle_subpass_image_transition(cmd_buffer,
-						     subpass->attachments[i]);
+						     subpass->attachments[i],
+						     true);
 	}
 
 	radv_cmd_buffer_clear_subpass(cmd_buffer);
@@ -3727,8 +3862,8 @@ radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
 			continue;
 
 		VkImageLayout layout = state->pass->attachments[a].final_layout;
-		radv_handle_subpass_image_transition(cmd_buffer,
-		                      (struct radv_subpass_attachment){a, layout});
+		struct radv_subpass_attachment att = { a, layout };
+		radv_handle_subpass_image_transition(cmd_buffer, att, false);
 	}
 }
 
@@ -3747,6 +3882,10 @@ void radv_CmdBeginRenderPass(
 	cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
 
 	result = radv_cmd_state_setup_attachments(cmd_buffer, pass, pRenderPassBegin);
+	if (result != VK_SUCCESS)
+		return;
+
+	result = radv_cmd_state_setup_sample_locations(cmd_buffer, pass, pRenderPassBegin);
 	if (result != VK_SUCCESS)
 		return;
 
@@ -4592,11 +4731,13 @@ void radv_CmdEndRenderPass(
 	radv_cmd_buffer_end_subpass(cmd_buffer);
 
 	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+	vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);
 
 	cmd_buffer->state.pass = NULL;
 	cmd_buffer->state.subpass = NULL;
 	cmd_buffer->state.attachments = NULL;
 	cmd_buffer->state.framebuffer = NULL;
+	cmd_buffer->state.subpass_sample_locs = NULL;
 }
 
 void radv_CmdEndRenderPass2KHR(

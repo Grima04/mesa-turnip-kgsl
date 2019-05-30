@@ -1024,6 +1024,7 @@ struct radv_attachment_state {
 	uint32_t                                     cleared_views;
 	VkClearValue                                 clear_value;
 	VkImageLayout                                current_layout;
+	struct radv_sample_locations_state	     sample_location;
 };
 
 struct radv_descriptor_state {
@@ -1033,6 +1034,11 @@ struct radv_descriptor_state {
 	struct radv_push_descriptor_set push_set;
 	bool push_dirty;
 	uint32_t dynamic_buffers[4 * MAX_DYNAMIC_BUFFERS];
+};
+
+struct radv_subpass_sample_locs_state {
+	uint32_t subpass_idx;
+	struct radv_sample_locations_state sample_location;
 };
 
 struct radv_cmd_state {
@@ -1056,6 +1062,9 @@ struct radv_cmd_state {
 	struct radv_attachment_state *                attachments;
 	struct radv_streamout_state                  streamout;
 	VkRect2D                                     render_area;
+
+	uint32_t                                     num_subpass_sample_locs;
+	struct radv_subpass_sample_locs_state *      subpass_sample_locs;
 
 	/* Index buffer */
 	struct radv_buffer                           *index_buffer;
