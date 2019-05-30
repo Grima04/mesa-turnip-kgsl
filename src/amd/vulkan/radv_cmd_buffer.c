@@ -31,6 +31,7 @@
 #include "radv_cs.h"
 #include "sid.h"
 #include "vk_format.h"
+#include "vk_util.h"
 #include "radv_debug.h"
 #include "radv_meta.h"
 
@@ -56,7 +57,8 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					 VkImageLayout dst_layout,
 					 uint32_t src_family,
 					 uint32_t dst_family,
-					 const VkImageSubresourceRange *range);
+					 const VkImageSubresourceRange *range,
+					 struct radv_sample_locations_state *sample_locs);
 
 const struct radv_dynamic_state default_dynamic_state = {
 	.viewport = {
@@ -2668,7 +2670,7 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 	radv_handle_image_transition(cmd_buffer,
 				     view->image,
 				     cmd_buffer->state.attachments[idx].current_layout,
-				     att.layout, 0, 0, &range);
+				     att.layout, 0, 0, &range, NULL);
 
 	cmd_buffer->state.attachments[idx].current_layout = att.layout;
 
@@ -4650,7 +4652,8 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 					       VkImageLayout dst_layout,
 					       unsigned src_queue_mask,
 					       unsigned dst_queue_mask,
-					       const VkImageSubresourceRange *range)
+					       const VkImageSubresourceRange *range,
+					       struct radv_sample_locations_state *sample_locs)
 {
 	if (!radv_image_has_htile(image))
 		return;
@@ -4679,7 +4682,7 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 		                                RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 
 		radv_decompress_depth_image_inplace(cmd_buffer, image,
-						    &local_range, NULL);
+						    &local_range, sample_locs);
 
 		cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
 		                                RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
@@ -4841,7 +4844,8 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					 VkImageLayout dst_layout,
 					 uint32_t src_family,
 					 uint32_t dst_family,
-					 const VkImageSubresourceRange *range)
+					 const VkImageSubresourceRange *range,
+					 struct radv_sample_locations_state *sample_locs)
 {
 	if (image->exclusive && src_family != dst_family) {
 		/* This is an acquire or a release operation and there will be
@@ -4874,7 +4878,7 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 		radv_handle_depth_image_transition(cmd_buffer, image,
 						   src_layout, dst_layout,
 						   src_queue_mask, dst_queue_mask,
-						   range);
+						   range, sample_locs);
 	} else {
 		radv_handle_color_image_transition(cmd_buffer, image,
 						   src_layout, dst_layout,
@@ -4956,12 +4960,29 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer,
 
 	for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
 		RADV_FROM_HANDLE(radv_image, image, pImageMemoryBarriers[i].image);
+
+		const struct VkSampleLocationsInfoEXT *sample_locs_info =
+			vk_find_struct_const(pImageMemoryBarriers[i].pNext,
+					     SAMPLE_LOCATIONS_INFO_EXT);
+		struct radv_sample_locations_state sample_locations = {};
+
+		if (sample_locs_info) {
+			assert(image->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
+			sample_locations.per_pixel = sample_locs_info->sampleLocationsPerPixel;
+			sample_locations.grid_size = sample_locs_info->sampleLocationGridSize;
+			sample_locations.count = sample_locs_info->sampleLocationsCount;
+			typed_memcpy(&sample_locations.locations[0],
+				     sample_locs_info->pSampleLocations,
+				     sample_locs_info->sampleLocationsCount);
+		}
+
 		radv_handle_image_transition(cmd_buffer, image,
 					     pImageMemoryBarriers[i].oldLayout,
 					     pImageMemoryBarriers[i].newLayout,
 					     pImageMemoryBarriers[i].srcQueueFamilyIndex,
 					     pImageMemoryBarriers[i].dstQueueFamilyIndex,
-					     &pImageMemoryBarriers[i].subresourceRange);
+					     &pImageMemoryBarriers[i].subresourceRange,
+					     sample_locs_info ? &sample_locations : NULL);
 	}
 
 	/* Make sure CP DMA is idle because the driver might have performed a
