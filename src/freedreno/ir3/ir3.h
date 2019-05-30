@@ -292,6 +292,11 @@ struct ir3_instruction {
 	};
 
 	/* used for per-pass extra instruction data.
+	 *
+	 * TODO we should remove the per-pass data like this and 'use_count'
+	 * and do something similar to what RA does w/ ir3_ra_instr_data..
+	 * ie. use the ir3_count_instructions pass, and then use instr->ip
+	 * to index into a table of pass-private data.
 	 */
 	void *data;
 
