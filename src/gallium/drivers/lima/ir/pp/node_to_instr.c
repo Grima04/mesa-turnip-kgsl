@@ -240,7 +240,8 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
          load->dest.pipeline = ppir_pipeline_reg_uniform;
       }
       else if (node->op == ppir_op_load_varying ||
-               node->op == ppir_op_load_fragcoord) {
+               node->op == ppir_op_load_fragcoord ||
+               node->op == ppir_op_load_pointcoord) {
          /* delay the load varying dup to scheduler */
          if (!create_new_instr(block, node))
             return false;

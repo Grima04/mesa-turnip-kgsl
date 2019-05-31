@@ -117,6 +117,7 @@ lima_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
+   case PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL:
       return 1;
 
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
