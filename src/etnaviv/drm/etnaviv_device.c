@@ -24,21 +24,24 @@
  *    Christian Gmeiner <christian.gmeiner@gmail.com>
  */
 
-#include <stdlib.h>
-#include <linux/stddef.h>
-#include <linux/types.h>
-#include <errno.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <pthread.h>
-
-#include <xf86drm.h>
+#include "util/hash_table.h"
 
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
+
+static uint32_t
+u32_hash(const void *key)
+{
+	return _mesa_hash_data(key, sizeof(uint32_t));
+}
+
+static bool
+u32_equals(const void *key1, const void *key2)
+{
+	return *(const uint32_t *)key1 == *(const uint32_t *)key2;
+}
 
 struct etna_device *etna_device_new(int fd)
 {
@@ -49,8 +52,8 @@ struct etna_device *etna_device_new(int fd)
 
 	p_atomic_set(&dev->refcnt, 1);
 	dev->fd = fd;
-	dev->handle_table = drmHashCreate();
-	dev->name_table = drmHashCreate();
+	dev->handle_table = _mesa_hash_table_create(NULL, u32_hash, u32_equals);
+	dev->name_table = _mesa_hash_table_create(NULL, u32_hash, u32_equals);
 	etna_bo_cache_init(&dev->bo_cache);
 
 	return dev;
@@ -81,8 +84,8 @@ struct etna_device *etna_device_ref(struct etna_device *dev)
 static void etna_device_del_impl(struct etna_device *dev)
 {
 	etna_bo_cache_cleanup(&dev->bo_cache, 0);
-	drmHashDestroy(dev->handle_table);
-	drmHashDestroy(dev->name_table);
+	_mesa_hash_table_destroy(dev->handle_table, NULL);
+	_mesa_hash_table_destroy(dev->name_table, NULL);
 
 	if (dev->closefd)
 		close(dev->fd);

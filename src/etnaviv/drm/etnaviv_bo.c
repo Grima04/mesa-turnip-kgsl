@@ -25,6 +25,7 @@
  */
 
 #include "os/os_mman.h"
+#include "util/hash_table.h"
 
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
@@ -37,7 +38,7 @@ static void set_name(struct etna_bo *bo, uint32_t name)
 {
 	bo->name = name;
 	/* add ourself into the name table: */
-	drmHashInsert(bo->dev->name_table, name, bo);
+	_mesa_hash_table_insert(bo->dev->name_table, &bo->name, bo);
 }
 
 /* Called under table_lock */
@@ -47,14 +48,14 @@ void bo_del(struct etna_bo *bo)
 		os_munmap(bo->map, bo->size);
 
 	if (bo->name)
-		drmHashDelete(bo->dev->name_table, bo->name);
+		_mesa_hash_table_remove_key(bo->dev->name_table, &bo->name);
 
 	if (bo->handle) {
 		struct drm_gem_close req = {
 			.handle = bo->handle,
 		};
 
-		drmHashDelete(bo->dev->handle_table, bo->handle);
+		_mesa_hash_table_remove_key(bo->dev->handle_table, &bo->handle);
 		drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
 	}
 
@@ -65,10 +66,11 @@ void bo_del(struct etna_bo *bo)
 static struct etna_bo *lookup_bo(void *tbl, uint32_t handle)
 {
 	struct etna_bo *bo = NULL;
+	struct hash_entry *entry = _mesa_hash_table_search(tbl, &handle);
 
-	if (!drmHashLookup(tbl, handle, (void **)&bo)) {
+	if (entry) {
 		/* found, incr refcnt and return: */
-		bo = etna_bo_ref(bo);
+		bo = etna_bo_ref(entry->data);
 
 		/* don't break the bucket if this bo was found in one */
 		list_delinit(&bo->list);
@@ -100,7 +102,7 @@ static struct etna_bo *bo_from_handle(struct etna_device *dev,
 	p_atomic_set(&bo->refcnt, 1);
 	list_inithead(&bo->list);
 	/* add ourselves to the handle table: */
-	drmHashInsert(dev->handle_table, handle, bo);
+	_mesa_hash_table_insert(dev->handle_table, &bo->handle, bo);
 
 	return bo;
 }
