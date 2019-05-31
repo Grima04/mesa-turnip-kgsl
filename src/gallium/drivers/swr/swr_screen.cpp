@@ -152,6 +152,21 @@ swr_is_format_supported(struct pipe_screen *_screen,
       return FALSE;
    }
 
+   if ((bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) &&
+       ((bind & PIPE_BIND_DISPLAY_TARGET) == 0)) {
+      /* Disable all 3-channel formats, where channel size != 32 bits.
+       * In some cases we run into crashes (in generate_unswizzled_blend()),
+       * for 3-channel RGB16 variants, there was an apparent LLVM bug.
+       * In any case, disabling the shallower 3-channel formats avoids a
+       * number of issues with GL_ARB_copy_image support.
+       */
+      if (format_desc->is_array &&
+          format_desc->nr_channels == 3 &&
+          format_desc->block.bits != 96) {
+         return FALSE;
+      }
+   }
+
    return TRUE;
 }
 
@@ -257,6 +272,7 @@ swr_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_CUBE_MAP_ARRAY:
    case PIPE_CAP_DOUBLES:
    case PIPE_CAP_TEXTURE_QUERY_LOD:
+   case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
       return 1;
 
    /* MSAA support
@@ -300,7 +316,6 @@ swr_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_FORCE_PERSAMPLE_INTERP:
    case PIPE_CAP_SHAREABLE_SHADERS:
-   case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
    case PIPE_CAP_DRAW_PARAMETERS:
    case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
