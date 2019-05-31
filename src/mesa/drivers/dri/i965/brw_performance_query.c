@@ -140,7 +140,7 @@ dump_perf_queries(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
    DBG("Queries: (Open queries = %d, OA users = %d)\n",
-       brw->perfquery.n_active_oa_queries, brw->perfquery.n_oa_users);
+       brw->perf_ctx.n_active_oa_queries, brw->perf_ctx.n_oa_users);
    _mesa_HashWalk(ctx->PerfQuery.Objects, dump_perf_query_callback, brw);
 }
 
@@ -149,7 +149,7 @@ dump_perf_queries(struct brw_context *brw)
 static struct oa_sample_buf *
 get_free_sample_buf(struct brw_context *brw)
 {
-   struct exec_node *node = exec_list_pop_head(&brw->perfquery.free_sample_buffers);
+   struct exec_node *node = exec_list_pop_head(&brw->perf_ctx.free_sample_buffers);
    struct oa_sample_buf *buf;
 
    if (node)
@@ -169,7 +169,7 @@ static void
 reap_old_sample_buffers(struct brw_context *brw)
 {
    struct exec_node *tail_node =
-      exec_list_get_tail(&brw->perfquery.sample_buffers);
+      exec_list_get_tail(&brw->perf_ctx.sample_buffers);
    struct oa_sample_buf *tail_buf =
       exec_node_data(struct oa_sample_buf, tail_node, link);
 
@@ -179,11 +179,11 @@ reap_old_sample_buffers(struct brw_context *brw)
     * a new query.
     */
    foreach_list_typed_safe(struct oa_sample_buf, buf, link,
-                           &brw->perfquery.sample_buffers)
+                           &brw->perf_ctx.sample_buffers)
    {
       if (buf->refcount == 0 && buf != tail_buf) {
          exec_node_remove(&buf->link);
-         exec_list_push_head(&brw->perfquery.free_sample_buffers, &buf->link);
+         exec_list_push_head(&brw->perf_ctx.free_sample_buffers, &buf->link);
       } else
          return;
    }
@@ -193,10 +193,10 @@ static void
 free_sample_bufs(struct brw_context *brw)
 {
    foreach_list_typed_safe(struct oa_sample_buf, buf, link,
-                           &brw->perfquery.free_sample_buffers)
+                           &brw->perf_ctx.free_sample_buffers)
       ralloc_free(buf);
 
-   exec_list_make_empty(&brw->perfquery.free_sample_buffers);
+   exec_list_make_empty(&brw->perf_ctx.free_sample_buffers);
 }
 
 /******************************************************************************/
@@ -214,7 +214,7 @@ brw_get_perf_query_info(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_perf_query_info *query =
-      &brw->perfquery.perf->queries[query_index];
+      &brw->perf_ctx.perf->queries[query_index];
 
    *name = query->name;
    *data_size = query->data_size;
@@ -223,11 +223,11 @@ brw_get_perf_query_info(struct gl_context *ctx,
    switch (query->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
    case GEN_PERF_QUERY_TYPE_RAW:
-      *n_active = brw->perfquery.n_active_oa_queries;
+      *n_active = brw->perf_ctx.n_active_oa_queries;
       break;
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
-      *n_active = brw->perfquery.n_active_pipeline_stats_queries;
+      *n_active = brw->perf_ctx.n_active_pipeline_stats_queries;
       break;
 
    default:
@@ -282,7 +282,7 @@ brw_get_perf_counter_info(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_perf_query_info *query =
-      &brw->perfquery.perf->queries[query_index];
+      &brw->perf_ctx.perf->queries[query_index];
    const struct gen_perf_query_counter *counter =
       &query->counters[counter_index];
 
@@ -331,17 +331,17 @@ static void
 add_to_unaccumulated_query_list(struct brw_context *brw,
                                 struct brw_perf_query_object *obj)
 {
-   if (brw->perfquery.unaccumulated_elements >=
-       brw->perfquery.unaccumulated_array_size)
+   if (brw->perf_ctx.unaccumulated_elements >=
+       brw->perf_ctx.unaccumulated_array_size)
    {
-      brw->perfquery.unaccumulated_array_size *= 1.5;
-      brw->perfquery.unaccumulated =
-         reralloc(brw, brw->perfquery.unaccumulated,
+      brw->perf_ctx.unaccumulated_array_size *= 1.5;
+      brw->perf_ctx.unaccumulated =
+         reralloc(brw, brw->perf_ctx.unaccumulated,
                   struct brw_perf_query_object *,
-                  brw->perfquery.unaccumulated_array_size);
+                  brw->perf_ctx.unaccumulated_array_size);
    }
 
-   brw->perfquery.unaccumulated[brw->perfquery.unaccumulated_elements++] = obj;
+   brw->perf_ctx.unaccumulated[brw->perf_ctx.unaccumulated_elements++] = obj;
 }
 
 /**
@@ -354,15 +354,15 @@ static void
 drop_from_unaccumulated_query_list(struct brw_context *brw,
                                    struct brw_perf_query_object *obj)
 {
-   for (int i = 0; i < brw->perfquery.unaccumulated_elements; i++) {
-      if (brw->perfquery.unaccumulated[i] == obj) {
-         int last_elt = --brw->perfquery.unaccumulated_elements;
+   for (int i = 0; i < brw->perf_ctx.unaccumulated_elements; i++) {
+      if (brw->perf_ctx.unaccumulated[i] == obj) {
+         int last_elt = --brw->perf_ctx.unaccumulated_elements;
 
          if (i == last_elt)
-            brw->perfquery.unaccumulated[i] = NULL;
+            brw->perf_ctx.unaccumulated[i] = NULL;
          else {
-            brw->perfquery.unaccumulated[i] =
-               brw->perfquery.unaccumulated[last_elt];
+            brw->perf_ctx.unaccumulated[i] =
+               brw->perf_ctx.unaccumulated[last_elt];
          }
 
          break;
@@ -388,13 +388,13 @@ drop_from_unaccumulated_query_list(struct brw_context *brw,
 static bool
 inc_n_oa_users(struct brw_context *brw)
 {
-   if (brw->perfquery.n_oa_users == 0 &&
-       drmIoctl(brw->perfquery.oa_stream_fd,
+   if (brw->perf_ctx.n_oa_users == 0 &&
+       drmIoctl(brw->perf_ctx.oa_stream_fd,
                 I915_PERF_IOCTL_ENABLE, 0) < 0)
    {
       return false;
    }
-   ++brw->perfquery.n_oa_users;
+   ++brw->perf_ctx.n_oa_users;
 
    return true;
 }
@@ -407,9 +407,9 @@ dec_n_oa_users(struct brw_context *brw)
     * MI_RPC commands at this point since they could stall the CS
     * indefinitely once OACONTROL is disabled.
     */
-   --brw->perfquery.n_oa_users;
-   if (brw->perfquery.n_oa_users == 0 &&
-       drmIoctl(brw->perfquery.oa_stream_fd, I915_PERF_IOCTL_DISABLE, 0) < 0)
+   --brw->perf_ctx.n_oa_users;
+   if (brw->perf_ctx.n_oa_users == 0 &&
+       drmIoctl(brw->perf_ctx.oa_stream_fd, I915_PERF_IOCTL_DISABLE, 0) < 0)
    {
       DBG("WARNING: Error disabling i915 perf stream: %m\n");
    }
@@ -423,11 +423,11 @@ dec_n_oa_users(struct brw_context *brw)
 static void
 discard_all_queries(struct brw_context *brw)
 {
-   while (brw->perfquery.unaccumulated_elements) {
-      struct brw_perf_query_object *obj = brw->perfquery.unaccumulated[0];
+   while (brw->perf_ctx.unaccumulated_elements) {
+      struct brw_perf_query_object *obj = brw->perf_ctx.unaccumulated[0];
 
       obj->oa.results_accumulated = true;
-      drop_from_unaccumulated_query_list(brw, brw->perfquery.unaccumulated[0]);
+      drop_from_unaccumulated_query_list(brw, brw->perf_ctx.unaccumulated[0]);
 
       dec_n_oa_users(brw);
    }
@@ -445,7 +445,7 @@ read_oa_samples_until(struct brw_context *brw,
                       uint32_t end_timestamp)
 {
    struct exec_node *tail_node =
-      exec_list_get_tail(&brw->perfquery.sample_buffers);
+      exec_list_get_tail(&brw->perf_ctx.sample_buffers);
    struct oa_sample_buf *tail_buf =
       exec_node_data(struct oa_sample_buf, tail_node, link);
    uint32_t last_timestamp = tail_buf->last_timestamp;
@@ -455,12 +455,12 @@ read_oa_samples_until(struct brw_context *brw,
       uint32_t offset;
       int len;
 
-      while ((len = read(brw->perfquery.oa_stream_fd, buf->buf,
+      while ((len = read(brw->perf_ctx.oa_stream_fd, buf->buf,
                          sizeof(buf->buf))) < 0 && errno == EINTR)
          ;
 
       if (len <= 0) {
-         exec_list_push_tail(&brw->perfquery.free_sample_buffers, &buf->link);
+         exec_list_push_tail(&brw->perf_ctx.free_sample_buffers, &buf->link);
 
          if (len < 0) {
             if (errno == EAGAIN)
@@ -478,7 +478,7 @@ read_oa_samples_until(struct brw_context *brw,
       }
 
       buf->len = len;
-      exec_list_push_tail(&brw->perfquery.sample_buffers, &buf->link);
+      exec_list_push_tail(&brw->perf_ctx.sample_buffers, &buf->link);
 
       /* Go through the reports and update the last timestamp. */
       offset = 0;
@@ -598,7 +598,7 @@ accumulate_oa_reports(struct brw_context *brw,
    /* See if we have any periodic reports to accumulate too... */
 
    /* N.B. The oa.samples_head was set when the query began and
-    * pointed to the tail of the brw->perfquery.sample_buffers list at
+    * pointed to the tail of the brw->perf_ctx.sample_buffers list at
     * the time the query started. Since the buffer existed before the
     * first MI_REPORT_PERF_COUNT command was emitted we therefore know
     * that no data in this particular node's buffer can possibly be
@@ -607,7 +607,7 @@ accumulate_oa_reports(struct brw_context *brw,
    first_samples_node = obj->oa.samples_head->next;
 
    foreach_list_typed_from(struct oa_sample_buf, buf, link,
-                           &brw->perfquery.sample_buffers,
+                           &brw->perf_ctx.sample_buffers,
                            first_samples_node)
    {
       int offset = 0;
@@ -756,10 +756,10 @@ open_i915_perf_oa_stream(struct brw_context *brw,
       return false;
    }
 
-   brw->perfquery.oa_stream_fd = fd;
+   brw->perf_ctx.oa_stream_fd = fd;
 
-   brw->perfquery.current_oa_metrics_set_id = metrics_set_id;
-   brw->perfquery.current_oa_format = report_format;
+   brw->perf_ctx.current_oa_metrics_set_id = metrics_set_id;
+   brw->perf_ctx.current_oa_format = report_format;
 
    return true;
 }
@@ -768,9 +768,9 @@ static void
 close_perf(struct brw_context *brw,
            const struct gen_perf_query_info *query)
 {
-   if (brw->perfquery.oa_stream_fd != -1) {
-      close(brw->perfquery.oa_stream_fd);
-      brw->perfquery.oa_stream_fd = -1;
+   if (brw->perf_ctx.oa_stream_fd != -1) {
+      close(brw->perf_ctx.oa_stream_fd);
+      brw->perf_ctx.oa_stream_fd = -1;
    }
    if (query->kind == GEN_PERF_QUERY_TYPE_RAW) {
       struct gen_perf_query_info *raw_query =
@@ -804,7 +804,7 @@ brw_begin_perf_query(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
    const struct gen_perf_query_info *query = obj->query;
-   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    /* We can assume the frontend hides mistaken attempts to Begin a
     * query object multiple times before its End. Similarly if an
@@ -873,21 +873,21 @@ brw_begin_perf_query(struct gl_context *ctx,
        * require a different counter set or format unless we get an opportunity
        * to close the stream and open a new one...
        */
-      uint64_t metric_id = gen_perf_query_get_metric_id(brw->perfquery.perf, query);
+      uint64_t metric_id = gen_perf_query_get_metric_id(brw->perf_ctx.perf, query);
 
-      if (brw->perfquery.oa_stream_fd != -1 &&
-          brw->perfquery.current_oa_metrics_set_id != metric_id) {
+      if (brw->perf_ctx.oa_stream_fd != -1 &&
+          brw->perf_ctx.current_oa_metrics_set_id != metric_id) {
 
-         if (brw->perfquery.n_oa_users != 0) {
+         if (brw->perf_ctx.n_oa_users != 0) {
             DBG("WARNING: Begin(%d) failed already using perf config=%i/%"PRIu64"\n",
-                o->Id, brw->perfquery.current_oa_metrics_set_id, metric_id);
+                o->Id, brw->perf_ctx.current_oa_metrics_set_id, metric_id);
             return false;
          } else
             close_perf(brw, query);
       }
 
       /* If the OA counters aren't already on, enable them. */
-      if (brw->perfquery.oa_stream_fd == -1) {
+      if (brw->perf_ctx.oa_stream_fd == -1) {
          __DRIscreen *screen = brw->screen->driScrnPriv;
          const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
@@ -915,12 +915,12 @@ brw_begin_perf_query(struct gl_context *ctx,
             a_counter_in_bits = 40;
 
          uint64_t overflow_period = pow(2, a_counter_in_bits) /
-            (brw->perfquery.perf->sys_vars.n_eus *
+            (brw->perf_ctx.perf->sys_vars.n_eus *
              /* drop 1GHz freq to have units in nanoseconds */
              2);
 
          DBG("A counter overflow period: %"PRIu64"ns, %"PRIu64"ms (n_eus=%"PRIu64")\n",
-             overflow_period, overflow_period / 1000000ul, brw->perfquery.perf->sys_vars.n_eus);
+             overflow_period, overflow_period / 1000000ul, brw->perf_ctx.perf->sys_vars.n_eus);
 
          int period_exponent = 0;
          uint64_t prev_sample_period, next_sample_period;
@@ -952,8 +952,8 @@ brw_begin_perf_query(struct gl_context *ctx,
                                        brw->hw_ctx))
             return false;
       } else {
-         assert(brw->perfquery.current_oa_metrics_set_id == metric_id &&
-                brw->perfquery.current_oa_format == query->oa_format);
+         assert(brw->perf_ctx.current_oa_metrics_set_id == metric_id &&
+                brw->perf_ctx.current_oa_format == query->oa_format);
       }
 
       if (!inc_n_oa_users(brw)) {
@@ -962,12 +962,12 @@ brw_begin_perf_query(struct gl_context *ctx,
       }
 
       if (obj->oa.bo) {
-         brw->perfquery.perf->vtbl.bo_unreference(obj->oa.bo);
+         brw->perf_ctx.perf->vtbl.bo_unreference(obj->oa.bo);
          obj->oa.bo = NULL;
       }
 
       obj->oa.bo =
-         brw->perfquery.perf->vtbl.bo_alloc(brw->bufmgr,
+         brw->perf_ctx.perf->vtbl.bo_alloc(brw->bufmgr,
                                             "perf. query OA MI_RPC bo",
                                             MI_RPC_BO_SIZE);
 #ifdef DEBUG
@@ -977,8 +977,8 @@ brw_begin_perf_query(struct gl_context *ctx,
       brw_bo_unmap(obj->oa.bo);
 #endif
 
-      obj->oa.begin_report_id = brw->perfquery.next_query_start_report_id;
-      brw->perfquery.next_query_start_report_id += 2;
+      obj->oa.begin_report_id = brw->perf_ctx.next_query_start_report_id;
+      brw->perf_ctx.next_query_start_report_id += 2;
 
       /* We flush the batchbuffer here to minimize the chances that MI_RPC
        * delimiting commands end up in different batchbuffers. If that's the
@@ -989,20 +989,20 @@ brw_begin_perf_query(struct gl_context *ctx,
       perf_cfg->vtbl.batchbuffer_flush(brw, __FILE__, __LINE__);
 
       /* Take a starting OA counter snapshot. */
-      brw->perfquery.perf->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
+      brw->perf_ctx.perf->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
                                                           obj->oa.begin_report_id);
       perf_cfg->vtbl.capture_frequency_stat_register(brw, obj->oa.bo,
                                                      MI_FREQ_START_OFFSET_BYTES);
 
-      ++brw->perfquery.n_active_oa_queries;
+      ++brw->perf_ctx.n_active_oa_queries;
 
       /* No already-buffered samples can possibly be associated with this query
        * so create a marker within the list of sample buffers enabling us to
        * easily ignore earlier samples when processing this query after
        * completion.
        */
-      assert(!exec_list_is_empty(&brw->perfquery.sample_buffers));
-      obj->oa.samples_head = exec_list_get_tail(&brw->perfquery.sample_buffers);
+      assert(!exec_list_is_empty(&brw->perf_ctx.sample_buffers));
+      obj->oa.samples_head = exec_list_get_tail(&brw->perf_ctx.sample_buffers);
 
       struct oa_sample_buf *buf =
          exec_node_data(struct oa_sample_buf, obj->oa.samples_head, link);
@@ -1022,19 +1022,19 @@ brw_begin_perf_query(struct gl_context *ctx,
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
       if (obj->pipeline_stats.bo) {
-         brw->perfquery.perf->vtbl.bo_unreference(obj->pipeline_stats.bo);
+         brw->perf_ctx.perf->vtbl.bo_unreference(obj->pipeline_stats.bo);
          obj->pipeline_stats.bo = NULL;
       }
 
       obj->pipeline_stats.bo =
-         brw->perfquery.perf->vtbl.bo_alloc(brw->bufmgr,
+         brw->perf_ctx.perf->vtbl.bo_alloc(brw->bufmgr,
                                             "perf. query pipeline stats bo",
                                             STATS_BO_SIZE);
 
       /* Take starting snapshots. */
       snapshot_statistics_registers(brw, obj, 0);
 
-      ++brw->perfquery.n_active_pipeline_stats_queries;
+      ++brw->perf_ctx.n_active_pipeline_stats_queries;
       break;
 
    default:
@@ -1057,7 +1057,7 @@ brw_end_perf_query(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
-   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    DBG("End(%d)\n", o->Id);
 
@@ -1087,7 +1087,7 @@ brw_end_perf_query(struct gl_context *ctx,
                                              obj->oa.begin_report_id + 1);
       }
 
-      --brw->perfquery.n_active_oa_queries;
+      --brw->perf_ctx.n_active_oa_queries;
 
       /* NB: even though the query has now ended, it can't be accumulated
        * until the end MI_REPORT_PERF_COUNT snapshot has been written
@@ -1098,7 +1098,7 @@ brw_end_perf_query(struct gl_context *ctx,
    case GEN_PERF_QUERY_TYPE_PIPELINE:
       snapshot_statistics_registers(brw, obj,
                                     STATS_BO_END_OFFSET_BYTES);
-      --brw->perfquery.n_active_pipeline_stats_queries;
+      --brw->perf_ctx.n_active_pipeline_stats_queries;
       break;
 
    default:
@@ -1113,7 +1113,7 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
    struct brw_bo *bo = NULL;
-   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    assert(!o->Ready);
 
@@ -1232,7 +1232,7 @@ get_oa_counter_data(struct brw_context *brw,
                     size_t data_size,
                     uint8_t *data)
 {
-   struct gen_perf_config *perf = brw->perfquery.perf;
+   struct gen_perf_config *perf = brw->perf_ctx.perf;
    const struct gen_perf_query_info *query = obj->query;
    int n_counters = query->n_counters;
    int written = 0;
@@ -1369,7 +1369,7 @@ brw_new_perf_query_object(struct gl_context *ctx, unsigned query_index)
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_perf_query_info *query =
-      &brw->perfquery.perf->queries[query_index];
+      &brw->perf_ctx.perf->queries[query_index];
    struct brw_perf_query_object *obj =
       calloc(1, sizeof(struct brw_perf_query_object));
 
@@ -1378,7 +1378,7 @@ brw_new_perf_query_object(struct gl_context *ctx, unsigned query_index)
 
    obj->query = query;
 
-   brw->perfquery.n_query_instances++;
+   brw->perf_ctx.n_query_instances++;
 
    return &obj->base;
 }
@@ -1392,7 +1392,7 @@ brw_delete_perf_query(struct gl_context *ctx,
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *obj = brw_perf_query(o);
-   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    /* We can assume that the frontend waits for a query to complete
     * before ever calling into here, so we don't have to worry about
@@ -1435,7 +1435,7 @@ brw_delete_perf_query(struct gl_context *ctx,
     * longer in use, it's a good time to free our cache of sample
     * buffers and close any current i915-perf stream.
     */
-   if (--brw->perfquery.n_query_instances == 0) {
+   if (--brw->perf_ctx.n_query_instances == 0) {
       free_sample_bufs(brw);
       close_perf(brw, obj->query);
    }
@@ -1449,7 +1449,7 @@ static void
 init_pipeline_statistic_query_registers(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   struct gen_perf_config *perf = brw->perfquery.perf;
+   struct gen_perf_config *perf = brw->perf_ctx.perf;
    struct gen_perf_query_info *query =
       gen_perf_query_append_query_info(perf, MAX_STAT_COUNTERS);
 
@@ -1611,12 +1611,12 @@ brw_init_perf_query_info(struct gl_context *ctx)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    __DRIscreen *screen = brw->screen->driScrnPriv;
 
-   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
    if (perf_cfg)
-      return brw->perfquery.perf->n_queries;
+      return perf_cfg->n_queries;
 
    perf_cfg = gen_perf_new(brw);
-   brw->perfquery.perf = perf_cfg;
+   brw->perf_ctx.perf = perf_cfg;
    perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
    perf_cfg->vtbl.emit_mi_report_perf_count =
@@ -1627,20 +1627,20 @@ brw_init_perf_query_info(struct gl_context *ctx)
 
    init_pipeline_statistic_query_registers(brw);
    gen_perf_query_register_mdapi_statistic_query(&brw->screen->devinfo,
-                                                 brw->perfquery.perf);
+                                                 brw->perf_ctx.perf);
 
    if ((oa_metrics_kernel_support(screen->fd, devinfo)) &&
        (gen_perf_load_oa_metrics(perf_cfg, screen->fd, devinfo)))
       gen_perf_query_register_mdapi_oa_query(&brw->screen->devinfo,
-                                             brw->perfquery.perf);
+                                             brw->perf_ctx.perf);
 
-   brw->perfquery.unaccumulated =
+   brw->perf_ctx.unaccumulated =
       ralloc_array(brw, struct brw_perf_query_object *, 2);
-   brw->perfquery.unaccumulated_elements = 0;
-   brw->perfquery.unaccumulated_array_size = 2;
+   brw->perf_ctx.unaccumulated_elements = 0;
+   brw->perf_ctx.unaccumulated_array_size = 2;
 
-   exec_list_make_empty(&brw->perfquery.sample_buffers);
-   exec_list_make_empty(&brw->perfquery.free_sample_buffers);
+   exec_list_make_empty(&brw->perf_ctx.sample_buffers);
+   exec_list_make_empty(&brw->perf_ctx.free_sample_buffers);
 
    /* It's convenient to guarantee that this linked list of sample
     * buffers is never empty so we add an empty head so when we
@@ -1648,11 +1648,11 @@ brw_init_perf_query_info(struct gl_context *ctx)
     * in this list.
     */
    struct oa_sample_buf *buf = get_free_sample_buf(brw);
-   exec_list_push_head(&brw->perfquery.sample_buffers, &buf->link);
+   exec_list_push_head(&brw->perf_ctx.sample_buffers, &buf->link);
 
-   brw->perfquery.oa_stream_fd = -1;
+   brw->perf_ctx.oa_stream_fd = -1;
 
-   brw->perfquery.next_query_start_report_id = 1000;
+   brw->perf_ctx.next_query_start_report_id = 1000;
 
    return perf_cfg->n_queries;
 }
