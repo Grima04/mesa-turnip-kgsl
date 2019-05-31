@@ -396,6 +396,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
 		needs_border |= sampler->needs_border;
 	}
 
+	key.type = type;
 	key.bcolor_offset = fd6_border_color_offset(ctx, type, tex);
 
 	uint32_t hash = key_hash(&key);
