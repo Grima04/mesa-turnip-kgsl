@@ -699,6 +699,13 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	} else {
 		base_lo = create_uniform_indirect(b, ubo, ir3_get_addr(ctx, src0, ptrsz));
 		base_hi = create_uniform_indirect(b, ubo + 1, ir3_get_addr(ctx, src0, ptrsz));
+
+		/* NOTE: since relative addressing is used, make sure constlen is
+		 * at least big enough to cover all the UBO addresses, since the
+		 * assembler won't know what the max address reg is.
+		 */
+		ctx->so->constlen = MAX2(ctx->so->constlen,
+			const_state->offsets.ubo + (ctx->s->info.num_ubos * ptrsz));
 	}
 
 	/* note: on 32bit gpu's base_hi is ignored and DCE'd */
@@ -1256,7 +1263,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			 * since we don't know in the assembler what the max
 			 * addr reg value can be:
 			 */
-			ctx->so->constlen = ctx->s->num_uniforms;
+			ctx->so->constlen = MAX2(ctx->so->constlen, ctx->s->num_uniforms);
 		}
 		break;
 	case nir_intrinsic_load_ubo:
