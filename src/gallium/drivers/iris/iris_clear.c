@@ -75,9 +75,6 @@ can_fast_clear_color(struct iris_context *ice,
 {
    struct iris_resource *res = (void *) p_res;
 
-   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
-
    if (res->aux.usage == ISL_AUX_USAGE_NONE)
       return false;
 
