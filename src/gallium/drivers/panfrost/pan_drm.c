@@ -337,7 +337,7 @@ panfrost_drm_query_gpu_version(struct panfrost_screen *screen)
         struct drm_panfrost_get_param get_param = {0,};
         int ret;
 
-	get_param.param = DRM_PANFROST_PARAM_GPU_ID;
+	get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
         ret = drmIoctl(drm->fd, DRM_IOCTL_PANFROST_GET_PARAM, &get_param);
         assert(!ret);
 
