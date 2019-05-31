@@ -24,6 +24,8 @@
  *    Christian Gmeiner <christian.gmeiner@gmail.com>
  */
 
+#include "os/os_mman.h"
+
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
 
@@ -42,7 +44,7 @@ static void set_name(struct etna_bo *bo, uint32_t name)
 void bo_del(struct etna_bo *bo)
 {
 	if (bo->map)
-		drm_munmap(bo->map, bo->size);
+		os_munmap(bo->map, bo->size);
 
 	if (bo->name)
 		drmHashDelete(bo->dev->name_table, bo->name);
@@ -314,8 +316,8 @@ void *etna_bo_map(struct etna_bo *bo)
 			get_buffer_info(bo);
 		}
 
-		bo->map = drm_mmap(0, bo->size, PROT_READ | PROT_WRITE,
-				MAP_SHARED, bo->dev->fd, bo->offset);
+		bo->map = os_mmap(0, bo->size, PROT_READ | PROT_WRITE,
+				  MAP_SHARED, bo->dev->fd, bo->offset);
 		if (bo->map == MAP_FAILED) {
 			ERROR_MSG("mmap failed: %s", strerror(errno));
 			bo->map = NULL;
