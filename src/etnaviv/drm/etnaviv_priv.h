@@ -85,7 +85,7 @@ struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache,
 		uint32_t *size, uint32_t flags);
 int etna_bo_cache_free(struct etna_bo_cache *cache, struct etna_bo *bo);
 
-/* for where @table_lock is already held: */
+/* for where @etna_drm_table_lock is already held: */
 void etna_device_del_locked(struct etna_device *dev);
 
 /* a GEM buffer object allocated from the DRM device */
