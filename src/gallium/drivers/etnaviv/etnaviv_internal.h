@@ -31,7 +31,7 @@
 #include "hw/state.xml.h"
 #include "hw/state_3d.xml.h"
 
-#include <etnaviv_drmif.h>
+#include "drm/etnaviv_drmif.h"
 
 #define ETNA_NUM_INPUTS (16)
 #define ETNA_NUM_VARYINGS 8

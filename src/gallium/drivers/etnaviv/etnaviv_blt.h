@@ -30,7 +30,7 @@
 #include "etnaviv_tiling.h"
 
 #include <stdbool.h>
-#include <etnaviv_drmif.h>
+#include "drm/etnaviv_drmif.h"
 
 struct pipe_context;
 

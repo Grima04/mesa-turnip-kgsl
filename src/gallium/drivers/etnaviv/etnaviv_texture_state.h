@@ -27,7 +27,7 @@
 #ifndef H_ETNAVIV_TEXTURE_PLAIN
 #define H_ETNAVIV_TEXTURE_PLAIN
 
-#include <etnaviv_drmif.h>
+#include "drm/etnaviv_drmif.h"
 
 #include "etnaviv_texture.h"
 
