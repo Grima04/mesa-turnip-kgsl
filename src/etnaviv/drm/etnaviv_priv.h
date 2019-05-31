@@ -38,11 +38,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "libdrm_macros.h"
-#include "xf86drm.h"
-#include "xf86atomic.h"
-
-#include "util_double_list.h"
+#include <xf86drm.h>
 
 #include "etnaviv_drmif.h"
 #include "etnaviv_drm.h"
