@@ -485,9 +485,9 @@ etna_pm_query_get(struct etna_cmd_stream *stream, struct etna_query *q,
    assert(flags);
 
    if (flags == ETNA_PM_PROCESS_PRE)
-      offset = 2;
+      offset = 1;
    else
-      offset = 3;
+      offset = 2;
 
    struct etna_perf p = {
       .flags = flags,
@@ -639,6 +639,10 @@ etna_pm_get_driver_query_info(struct pipe_screen *pscreen, unsigned index,
    info->name = query_config[i].name;
    info->query_type = query_config[i].type;
    info->group_id = query_config[i].group_id;
+   info->type = PIPE_DRIVER_QUERY_TYPE_UINT;
+   info->result_type = PIPE_DRIVER_QUERY_RESULT_TYPE_AVERAGE;
+   info->max_value.u32 = 0;
+   info->flags = 0;
 
    return 1;
 }
