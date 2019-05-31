@@ -146,25 +146,6 @@ dump_perf_queries(struct brw_context *brw)
 
 /******************************************************************************/
 
-static struct oa_sample_buf *
-get_free_sample_buf(struct brw_context *brw)
-{
-   struct exec_node *node = exec_list_pop_head(&brw->perf_ctx.free_sample_buffers);
-   struct oa_sample_buf *buf;
-
-   if (node)
-      buf = exec_node_data(struct oa_sample_buf, node, link);
-   else {
-      buf = ralloc_size(brw, sizeof(*buf));
-
-      exec_node_init(&buf->link);
-      buf->refcount = 0;
-      buf->len = 0;
-   }
-
-   return buf;
-}
-
 static void
 reap_old_sample_buffers(struct brw_context *brw)
 {
@@ -451,7 +432,7 @@ read_oa_samples_until(struct brw_context *brw,
    uint32_t last_timestamp = tail_buf->last_timestamp;
 
    while (1) {
-      struct oa_sample_buf *buf = get_free_sample_buf(brw);
+      struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(&brw->perf_ctx);
       uint32_t offset;
       int len;
 
@@ -1647,7 +1628,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
     * Begin an OA query we can always take a reference on a buffer
     * in this list.
     */
-   struct oa_sample_buf *buf = get_free_sample_buf(brw);
+   struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(&brw->perf_ctx);
    exec_list_push_head(&brw->perf_ctx.sample_buffers, &buf->link);
 
    brw->perf_ctx.oa_stream_fd = -1;

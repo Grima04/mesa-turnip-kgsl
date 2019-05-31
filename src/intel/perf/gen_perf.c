@@ -824,3 +824,22 @@ gen_perf_query_get_metric_id(struct gen_perf_config *perf,
    }
    return query->oa_metrics_set_id;
 }
+
+struct oa_sample_buf *
+gen_perf_get_free_sample_buf(struct gen_perf_context *perf_ctx)
+{
+   struct exec_node *node = exec_list_pop_head(&perf_ctx->free_sample_buffers);
+   struct oa_sample_buf *buf;
+
+   if (node)
+      buf = exec_node_data(struct oa_sample_buf, node, link);
+   else {
+      buf = ralloc_size(perf_ctx->perf, sizeof(*buf));
+
+      exec_node_init(&buf->link);
+      buf->refcount = 0;
+      buf->len = 0;
+   }
+
+   return buf;
+}
