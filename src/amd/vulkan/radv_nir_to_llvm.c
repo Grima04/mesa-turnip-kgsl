@@ -518,11 +518,8 @@ create_llvm_function(LLVMContextRef ctx, LLVMModuleRef module,
 						     options->address32_hi);
 	}
 
-	if (max_workgroup_size) {
-		ac_llvm_add_target_dep_function_attr(main_function,
-						     "amdgpu-max-work-group-size",
-						     max_workgroup_size);
-	}
+	ac_llvm_set_workgroup_size(main_function, max_workgroup_size);
+
 	if (options->unsafe_math) {
 		/* These were copied from some LLVM test. */
 		LLVMAddTargetDependentFunctionAttr(main_function,

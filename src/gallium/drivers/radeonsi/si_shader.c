@@ -4307,11 +4307,8 @@ void si_create_function(struct si_shader_context *ctx,
 						     ctx->screen->info.address32_hi);
 	}
 
-	if (max_workgroup_size) {
-		ac_llvm_add_target_dep_function_attr(ctx->main_fn,
-						     "amdgpu-max-work-group-size",
-						     max_workgroup_size);
-	}
+	ac_llvm_set_workgroup_size(ctx->main_fn, max_workgroup_size);
+
 	LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
 					   "no-signed-zeros-fp-math",
 					   "true");

@@ -109,6 +109,7 @@ LLVMBuilderRef ac_create_builder(LLVMContextRef ctx,
 void
 ac_llvm_add_target_dep_function_attr(LLVMValueRef F,
 				     const char *name, unsigned value);
+void ac_llvm_set_workgroup_size(LLVMValueRef F, unsigned size);
 
 static inline unsigned
 ac_get_load_intr_attribs(bool can_speculate)
