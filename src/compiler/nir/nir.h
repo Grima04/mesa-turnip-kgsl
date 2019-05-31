@@ -1289,6 +1289,11 @@ typedef enum {
     */
    NIR_INTRINSIC_DESC_TYPE = 19,
 
+   /**
+    * The nir_alu_type of a uniform/input/output
+    */
+   NIR_INTRINSIC_TYPE = 20,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
@@ -1393,6 +1398,7 @@ INTRINSIC_IDX_ACCESSORS(format, FORMAT, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_mul, ALIGN_MUL, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_offset, ALIGN_OFFSET, unsigned)
 INTRINSIC_IDX_ACCESSORS(desc_type, DESC_TYPE, unsigned)
+INTRINSIC_IDX_ACCESSORS(type, TYPE, nir_alu_type)
 
 static inline void
 nir_intrinsic_set_align(nir_intrinsic_instr *intrin,
