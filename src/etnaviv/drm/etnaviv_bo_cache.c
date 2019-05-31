@@ -27,7 +27,7 @@
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
 
-void bo_del(struct etna_bo *bo);
+void _etna_bo_del(struct etna_bo *bo);
 extern pthread_mutex_t etna_drm_table_lock;
 
 static void add_bucket(struct etna_bo_cache *cache, int size)
@@ -86,7 +86,7 @@ void etna_bo_cache_cleanup(struct etna_bo_cache *cache, time_t time)
 				break;
 
 			list_del(&bo->list);
-			bo_del(bo);
+			_etna_bo_del(bo);
 		}
 	}
 

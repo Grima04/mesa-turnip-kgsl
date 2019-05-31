@@ -31,7 +31,7 @@
 #include "etnaviv_drmif.h"
 
 pthread_mutex_t etna_drm_table_lock = PTHREAD_MUTEX_INITIALIZER;
-void bo_del(struct etna_bo *bo);
+void _etna_bo_del(struct etna_bo *bo);
 
 /* set buffer name, and add to table, call w/ etna_drm_table_lock held: */
 static void set_name(struct etna_bo *bo, uint32_t name)
@@ -42,7 +42,7 @@ static void set_name(struct etna_bo *bo, uint32_t name)
 }
 
 /* Called under etna_drm_table_lock */
-void bo_del(struct etna_bo *bo)
+void _etna_bo_del(struct etna_bo *bo)
 {
 	if (bo->map)
 		os_munmap(bo->map, bo->size);
@@ -251,7 +251,7 @@ void etna_bo_del(struct etna_bo *bo)
 	if (bo->reuse && (etna_bo_cache_free(&dev->bo_cache, bo) == 0))
 		goto out;
 
-	bo_del(bo);
+	_etna_bo_del(bo);
 	etna_device_del_locked(dev);
 out:
 	pthread_mutex_unlock(&etna_drm_table_lock);
