@@ -41,6 +41,7 @@
 #include <xf86drm.h>
 
 #include "util/list.h"
+#include "util/macros.h"
 #include "util/u_atomic.h"
 
 #include "etnaviv_drmif.h"
@@ -176,7 +177,6 @@ struct etna_perfmon_signal
 };
 
 #define ALIGN(v,a) (((v) + (a) - 1) & ~((a) - 1))
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #define enable_debug 1  /* TODO make dynamic */
 
