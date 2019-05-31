@@ -2381,6 +2381,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	so->inputs[n].compmask = (1 << (ncomp + frac)) - 1;
 	so->inputs_count = MAX2(so->inputs_count, n + 1);
 	so->inputs[n].interpolate = in->data.interpolation;
+	so->inputs[n].ncomp = ncomp;
 
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 
