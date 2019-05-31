@@ -448,7 +448,8 @@ print_var_decl(nir_variable *var, print_state *state)
    const char *const restr = (access & ACCESS_RESTRICT) ? "restrict " : "";
    const char *const ronly = (access & ACCESS_NON_WRITEABLE) ? "readonly " : "";
    const char *const wonly = (access & ACCESS_NON_READABLE) ? "writeonly " : "";
-   fprintf(fp, "%s%s%s%s%s", coher, volat, restr, ronly, wonly);
+   const char *const reorder = (access & ACCESS_CAN_REORDER) ? "reorderable " : "";
+   fprintf(fp, "%s%s%s%s%s%s", coher, volat, restr, ronly, wonly, reorder);
 
 #define FORMAT_CASE(x) case x: fprintf(stderr, #x " "); break
    switch (var->data.image.format) {
