@@ -43,6 +43,7 @@
 #include "util/list.h"
 #include "util/macros.h"
 #include "util/u_atomic.h"
+#include "util/u_debug.h"
 
 #include "etnaviv_drmif.h"
 #include "etnaviv_drm.h"
@@ -178,19 +179,19 @@ struct etna_perfmon_signal
 
 #define ALIGN(v,a) (((v) + (a) - 1) & ~((a) - 1))
 
-#define enable_debug 1  /* TODO make dynamic */
+#define enable_debug 0  /* TODO make dynamic */
 
 #define INFO_MSG(fmt, ...) \
-		do { drmMsg("[I] "fmt " (%s:%d)\n", \
+		do { debug_printf("[I] "fmt " (%s:%d)\n", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define DEBUG_MSG(fmt, ...) \
-		do if (enable_debug) { drmMsg("[D] "fmt " (%s:%d)\n", \
+		do if (enable_debug) { debug_printf("[D] "fmt " (%s:%d)\n", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define WARN_MSG(fmt, ...) \
-		do { drmMsg("[W] "fmt " (%s:%d)\n", \
+		do { debug_printf("[W] "fmt " (%s:%d)\n", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 #define ERROR_MSG(fmt, ...) \
-		do { drmMsg("[E] " fmt " (%s:%d)\n", \
+		do { debug_printf("[E] " fmt " (%s:%d)\n", \
 				##__VA_ARGS__, __FUNCTION__, __LINE__); } while (0)
 
 #define VOID2U64(x) ((uint64_t)(unsigned long)(x))
