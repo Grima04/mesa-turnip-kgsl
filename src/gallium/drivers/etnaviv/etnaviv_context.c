@@ -316,8 +316,8 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
       etna_hw_query_suspend(hq, ctx);
 
    etna_cmd_stream_flush2(ctx->stream, ctx->in_fence_fd,
-			  (flags & PIPE_FLUSH_FENCE_FD) ? &out_fence_fd :
-			  NULL);
+                              (flags & PIPE_FLUSH_FENCE_FD) ? &out_fence_fd :
+                              NULL);
 
    list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
       etna_hw_query_resume(hq, ctx);

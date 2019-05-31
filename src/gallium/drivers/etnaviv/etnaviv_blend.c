@@ -173,7 +173,7 @@ etna_update_blend_color(struct etna_context *ctx)
          VIVS_PE_ALPHA_BLEND_COLOR_G(etna_cfloat_to_uint8(cs->color[1])) |
          VIVS_PE_ALPHA_BLEND_COLOR_B(etna_cfloat_to_uint8(cs->color[2])) |
          VIVS_PE_ALPHA_BLEND_COLOR_A(etna_cfloat_to_uint8(cs->color[3]));
-	}
+   }
 
-	return true;
+   return true;
 }
