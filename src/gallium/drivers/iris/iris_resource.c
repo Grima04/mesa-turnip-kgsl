@@ -823,7 +823,9 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       bo_size = res->surf.size_B;
    }
 
-   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, bo_size, 4096, memzone,
+   uint32_t alignment = MAX2(4096, res->surf.alignment_B);
+   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, bo_size, alignment,
+                                 memzone,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
                                  res->surf.row_pitch_B, flags);
 
