@@ -1073,6 +1073,7 @@ ir2_nir_compile(struct ir2_context *ctx, bool binning)
 	OPT_V(ctx->nir, nir_opt_move_comparisons);
 
 	OPT_V(ctx->nir, nir_lower_bool_to_float);
+	OPT_V(ctx->nir, nir_lower_int_to_float);
 
 	/* lower to scalar instructions that can only be scalar on a2xx */
 	OPT_V(ctx->nir, ir2_nir_lower_scalar);
