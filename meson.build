@@ -1163,13 +1163,11 @@ dep_m = cc.find_library('m', required : false)
 dep_libdrm_amdgpu = null_dep
 dep_libdrm_radeon = null_dep
 dep_libdrm_nouveau = null_dep
-dep_libdrm_etnaviv = null_dep
 dep_libdrm_intel = null_dep
 
 _drm_amdgpu_ver = '2.4.97'
 _drm_radeon_ver = '2.4.71'
 _drm_nouveau_ver = '2.4.66'
-_drm_etnaviv_ver = '2.4.89'
 _drm_intel_ver = '2.4.75'
 _drm_ver = '2.4.75'
 
@@ -1179,12 +1177,16 @@ _libdrm_checks = [
   ['radeon', (with_gallium_radeonsi or with_dri_r100 or with_dri_r200 or
               with_gallium_r300 or with_gallium_r600)],
   ['nouveau', (with_gallium_nouveau or with_dri_nouveau)],
-  ['etnaviv', with_gallium_etnaviv],
 ]
 
 # VC4 only needs core libdrm support of this version, not a libdrm_vc4
 # library.
 if with_gallium_vc4
+  _drm_ver = '2.4.89'
+endif
+
+# etnaviv only needs core libdrm
+if with_gallium_etnaviv
   _drm_ver = '2.4.89'
 endif
 

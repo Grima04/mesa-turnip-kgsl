@@ -1,4 +1,4 @@
-# Copyright © 2017 Intel Corporation
+# Copyright © 2019 Purism SPC
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,13 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-libetnavivdrm = static_library(
-  'etnavivdrm',
-  'etnaviv_drm_winsys.c',
-  include_directories : [
-    inc_include, inc_src, inc_gallium, inc_gallium_aux, inc_gallium_drivers,
-    inc_etnaviv,
-  ],
-  link_with: libetnaviv_drm,
-  dependencies : [dep_libdrm],
-)
+inc_etnaviv = include_directories(['.'])
+
+subdir('drm')
