@@ -4795,6 +4795,32 @@ static uint32_t radv_get_executable_count(const struct radv_pipeline *pipeline)
 	return ret;
 }
 
+static struct radv_shader_variant *
+radv_get_shader_from_executable_index(const struct radv_pipeline *pipeline, int index, gl_shader_stage *stage)
+{
+	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
+		if (!pipeline->shaders[i])
+			continue;
+		if (!index) {
+			*stage = i;
+			return pipeline->shaders[i];
+		}
+
+		--index;
+
+		if (i == MESA_SHADER_GEOMETRY) {
+			if (!index) {
+				*stage = i;
+				return pipeline->gs_copy_shader;
+			}
+			--index;
+		}
+	}
+
+	*stage = -1;
+	return NULL;
+}
+
 /* Basically strlcpy (which does not exist on linux) specialized for
  * descriptions. */
 static void desc_copy(char *desc, const char *src) {
@@ -4821,7 +4847,7 @@ VkResult radv_GetPipelineExecutablePropertiesKHR(
 	const uint32_t count = MIN2(total_count, *pExecutableCount);
 	for (unsigned i = 0, executable_idx = 0;
 	     i < MESA_SHADER_STAGES && executable_idx < count; ++i) {
-		if (pipeline->shaders[i])
+		if (!pipeline->shaders[i])
 			continue;
 		pProperties[executable_idx].stages = mesa_to_vk_shader_stage(i);
 		const char *name = NULL;
@@ -4879,10 +4905,11 @@ VkResult radv_GetPipelineExecutablePropertiesKHR(
 				break;
 
 			pProperties[executable_idx].stages = VK_SHADER_STAGE_GEOMETRY_BIT;
-			snprintf(pProperties[executable_idx].name, VK_MAX_DESCRIPTION_SIZE,
-				 "GS Copy Shader");
-			snprintf(pProperties[executable_idx].description, VK_MAX_DESCRIPTION_SIZE,
-				 "Extra shader stage that loads the GS output ringbuffer into the rasterizer");
+			desc_copy(pProperties[executable_idx].name, "GS Copy Shader");
+			desc_copy(pProperties[executable_idx].description,
+				  "Extra shader stage that loads the GS output ringbuffer into the rasterizer");
+
+			++executable_idx;
 		}
 	}
 
@@ -4891,5 +4918,77 @@ VkResult radv_GetPipelineExecutablePropertiesKHR(
 
 	VkResult result = *pExecutableCount < total_count ? VK_INCOMPLETE : VK_SUCCESS;
 	*pExecutableCount = count;
+	return result;
+}
+
+static VkResult radv_copy_representation(void *data, size_t *data_size, const char *src)
+{
+	size_t total_size  = strlen(src) + 1;
+
+	if (!data) {
+		*data_size = total_size;
+		return VK_SUCCESS;
+	}
+
+	size_t size = MIN2(total_size, *data_size);
+
+	memcpy(data, src, size);
+	if (size)
+		*((char*)data + size - 1) = 0;
+	return size < total_size ? VK_INCOMPLETE : VK_SUCCESS;
+}
+
+VkResult radv_GetPipelineExecutableInternalRepresentationsKHR(
+    VkDevice                                    device,
+    const VkPipelineExecutableInfoKHR*          pExecutableInfo,
+    uint32_t*                                   pInternalRepresentationCount,
+    VkPipelineExecutableInternalRepresentationKHR* pInternalRepresentations)
+{
+	RADV_FROM_HANDLE(radv_pipeline, pipeline, pExecutableInfo->pipeline);
+	gl_shader_stage stage;
+	struct radv_shader_variant *shader = radv_get_shader_from_executable_index(pipeline, pExecutableInfo->executableIndex, &stage);
+
+	VkPipelineExecutableInternalRepresentationKHR *p = pInternalRepresentations;
+	VkPipelineExecutableInternalRepresentationKHR *end = p + (pInternalRepresentations ? *pInternalRepresentationCount : 0);
+	VkResult result = VK_SUCCESS;
+	/* optimized NIR */
+	if (p < end) {
+		p->isText = true;
+		desc_copy(p->name, "NIR Shader(s)");
+		desc_copy(p->description, "The optimized NIR shader(s)");
+		if (radv_copy_representation(p->pData, &p->dataSize, shader->nir_string) != VK_SUCCESS)
+			result = VK_INCOMPLETE;
+	}
+	++p;
+
+	/* LLVM IR */
+	if (p < end) {
+		p->isText = true;
+		desc_copy(p->name, "LLVM IR");
+		desc_copy(p->description, "The LLVM IR after some optimizations");
+		if (radv_copy_representation(p->pData, &p->dataSize, shader->llvm_ir_string) != VK_SUCCESS)
+			result = VK_INCOMPLETE;
+	}
+	++p;
+
+	/* Disassembler */
+	if (p < end) {
+		p->isText = true;
+		desc_copy(p->name, "Assembly");
+		desc_copy(p->description, "Final Assembly");
+		if (radv_copy_representation(p->pData, &p->dataSize, shader->disasm_string) != VK_SUCCESS)
+			result = VK_INCOMPLETE;
+	}
+	++p;
+
+	if (!pInternalRepresentations)
+		*pInternalRepresentationCount = p - pInternalRepresentations;
+	else if(p > end) {
+		result = VK_INCOMPLETE;
+		*pInternalRepresentationCount = end - pInternalRepresentations;
+	} else {
+		*pInternalRepresentationCount = p - pInternalRepresentations;
+	}
+
 	return result;
 }
