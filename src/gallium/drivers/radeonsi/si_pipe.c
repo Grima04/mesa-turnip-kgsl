@@ -505,9 +505,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	si_init_query_functions(sctx);
 	si_init_state_compute_functions(sctx);
 
-	if (sscreen->debug_flags & DBG(FORCE_DMA))
-		sctx->b.resource_copy_region = sctx->dma_copy;
-
 	/* Initialize graphics-only context functions. */
 	if (sctx->has_graphics) {
 		si_init_context_texture_functions(sctx);
@@ -531,6 +528,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		cik_init_sdma_functions(sctx);
 	else
 		si_init_dma_functions(sctx);
+
+	if (sscreen->debug_flags & DBG(FORCE_DMA))
+		sctx->b.resource_copy_region = sctx->dma_copy;
 
 	sctx->sample_mask = 0xffff;
 
