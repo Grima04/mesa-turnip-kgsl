@@ -811,7 +811,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			};
 			LLVMValueRef rsrc = ac_build_gather_values(&ctx->ac, desc, 4);
 			ac_build_buffer_store_dword(&ctx->ac, rsrc, count, 1, ctx->i32_0,
-						    ctx->i32_0, 0, true, true, true, false);
+						    ctx->i32_0, 0, true, true, false);
 		} else {
 			LLVMBuildStore(builder, count,
 				       si_expand_32bit_pointer(ctx, vertex_count_addr));
@@ -864,7 +864,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 
 		ac_build_buffer_store_format(&ctx->ac, output_indexbuf, vdata,
 					     vindex, ctx->i32_0, 3, true,
-					     INDEX_STORES_USE_SLC, true);
+					     INDEX_STORES_USE_SLC);
 	}
 	lp_build_endif(&if_accepted);
 

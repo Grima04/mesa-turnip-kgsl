@@ -635,7 +635,7 @@ static void store_emit_buffer(struct si_shader_context *ctx,
 					    voff, ctx->i32_0, 0,
 					    !!(cache_policy & ac_glc),
 					    !!(cache_policy & ac_slc),
-					    writeonly_memory, false);
+					    false);
 	}
 }
 
@@ -728,13 +728,13 @@ static void store_emit(
 					     ac_build_gather_values(&ctx->ac, chans, num_channels),
 					     vindex, ctx->i32_0 /* voffset */,
 					     num_channels,
-					     !!(args.cache_policy & ac_glc), false,
-					     writeonly_memory);
+					     !!(args.cache_policy & ac_glc),
+					     false);
 	} else {
 		args.opcode = ac_image_store;
 		args.data[0] = ac_build_gather_values(&ctx->ac, chans, 4);
 		args.dim = ac_image_dim_from_tgsi_target(ctx->screen, inst->Memory.Texture);
-		args.attributes = ac_get_store_intr_attribs(writeonly_memory);
+		args.attributes = AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY;
 		args.dmask = 0xf;
 
 		emit_data->output[emit_data->chan] =
