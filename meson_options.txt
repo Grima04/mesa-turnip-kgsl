@@ -176,9 +176,10 @@ option(
 )
 option(
   'shared-glapi',
-  type : 'boolean',
-  value : true,
-  description : 'Whether to build a shared or static glapi'
+  type : 'combo',
+  value : 'auto',
+  choices : ['auto', 'true', 'false'],
+  description : 'Whether to build a shared or static glapi. Defaults to false on Windows, true elsewhere'
 )
 option(
   'gles1',

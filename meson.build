@@ -89,7 +89,14 @@ if host_machine.system() == 'windows'
   endif
 endif
 with_opengl = get_option('opengl')
-with_shared_glapi = get_option('shared-glapi')
+
+# Default shared glapi off for windows, on elsewhere.
+_sg = get_option('shared-glapi')
+if _sg == 'auto'
+  with_shared_glapi = host_machine.system() != 'windows'
+else
+  with_shared_glapi = _sg == 'true'
+endif
 
 # shared-glapi is required if at least two OpenGL APIs are being built
 if not with_shared_glapi
@@ -115,7 +122,7 @@ with_gles1 = with_gles1 != 'false'
 with_gles2 = with_gles2 != 'false'
 with_any_opengl = with_opengl or with_gles1 or with_gles2
 # Only build shared_glapi if at least one OpenGL API is enabled
-with_shared_glapi = get_option('shared-glapi') and with_any_opengl
+with_shared_glapi = with_shared_glapi and with_any_opengl
 
 system_has_kms_drm = ['openbsd', 'netbsd', 'freebsd', 'gnu/kfreebsd', 'dragonfly', 'linux'].contains(host_machine.system())
 
