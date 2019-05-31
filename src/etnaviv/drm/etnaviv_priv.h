@@ -74,14 +74,14 @@ struct etna_device {
 	int closefd;        /* call close(fd) upon destruction */
 };
 
-drm_private void etna_bo_cache_init(struct etna_bo_cache *cache);
-drm_private void etna_bo_cache_cleanup(struct etna_bo_cache *cache, time_t time);
-drm_private struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache,
+void etna_bo_cache_init(struct etna_bo_cache *cache);
+void etna_bo_cache_cleanup(struct etna_bo_cache *cache, time_t time);
+struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache,
 		uint32_t *size, uint32_t flags);
-drm_private int etna_bo_cache_free(struct etna_bo_cache *cache, struct etna_bo *bo);
+int etna_bo_cache_free(struct etna_bo_cache *cache, struct etna_bo *bo);
 
 /* for where @table_lock is already held: */
-drm_private void etna_device_del_locked(struct etna_device *dev);
+void etna_device_del_locked(struct etna_device *dev);
 
 /* a GEM buffer object allocated from the DRM device */
 struct etna_bo {

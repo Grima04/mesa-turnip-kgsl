@@ -27,8 +27,8 @@
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
 
-drm_private void bo_del(struct etna_bo *bo);
-drm_private extern pthread_mutex_t table_lock;
+void bo_del(struct etna_bo *bo);
+extern pthread_mutex_t table_lock;
 
 static void add_bucket(struct etna_bo_cache *cache, int size)
 {
@@ -41,7 +41,7 @@ static void add_bucket(struct etna_bo_cache *cache, int size)
 	cache->num_buckets++;
 }
 
-drm_private void etna_bo_cache_init(struct etna_bo_cache *cache)
+void etna_bo_cache_init(struct etna_bo_cache *cache)
 {
 	unsigned long size, cache_max_size = 64 * 1024 * 1024;
 
@@ -67,7 +67,7 @@ drm_private void etna_bo_cache_init(struct etna_bo_cache *cache)
 }
 
 /* Frees older cached buffers.  Called under table_lock */
-drm_private void etna_bo_cache_cleanup(struct etna_bo_cache *cache, time_t time)
+void etna_bo_cache_cleanup(struct etna_bo_cache *cache, time_t time)
 {
 	unsigned i;
 
@@ -155,7 +155,7 @@ out_unlock:
  *
  * NOTE: size is potentially rounded up to bucket size
  */
-drm_private struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache, uint32_t *size,
+struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache, uint32_t *size,
     uint32_t flags)
 {
 	struct etna_bo *bo;
@@ -178,7 +178,7 @@ drm_private struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache, uin
 	return NULL;
 }
 
-drm_private int etna_bo_cache_free(struct etna_bo_cache *cache, struct etna_bo *bo)
+int etna_bo_cache_free(struct etna_bo_cache *cache, struct etna_bo *bo)
 {
 	struct etna_bo_bucket *bucket = get_bucket(cache, bo->size);
 

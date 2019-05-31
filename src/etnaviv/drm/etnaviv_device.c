@@ -41,7 +41,7 @@
 
 static pthread_mutex_t table_lock = PTHREAD_MUTEX_INITIALIZER;
 
-drm_public struct etna_device *etna_device_new(int fd)
+struct etna_device *etna_device_new(int fd)
 {
 	struct etna_device *dev = calloc(sizeof(*dev), 1);
 
@@ -59,7 +59,7 @@ drm_public struct etna_device *etna_device_new(int fd)
 
 /* like etna_device_new() but creates it's own private dup() of the fd
  * which is close()d when the device is finalized. */
-drm_public struct etna_device *etna_device_new_dup(int fd)
+struct etna_device *etna_device_new_dup(int fd)
 {
 	int dup_fd = dup(fd);
 	struct etna_device *dev = etna_device_new(dup_fd);
@@ -72,7 +72,7 @@ drm_public struct etna_device *etna_device_new_dup(int fd)
 	return dev;
 }
 
-drm_public struct etna_device *etna_device_ref(struct etna_device *dev)
+struct etna_device *etna_device_ref(struct etna_device *dev)
 {
 	atomic_inc(&dev->refcnt);
 
@@ -91,7 +91,7 @@ static void etna_device_del_impl(struct etna_device *dev)
 	free(dev);
 }
 
-drm_private void etna_device_del_locked(struct etna_device *dev)
+void etna_device_del_locked(struct etna_device *dev)
 {
 	if (!atomic_dec_and_test(&dev->refcnt))
 		return;
@@ -99,7 +99,7 @@ drm_private void etna_device_del_locked(struct etna_device *dev)
 	etna_device_del_impl(dev);
 }
 
-drm_public void etna_device_del(struct etna_device *dev)
+void etna_device_del(struct etna_device *dev)
 {
 	if (!atomic_dec_and_test(&dev->refcnt))
 		return;
@@ -109,7 +109,7 @@ drm_public void etna_device_del(struct etna_device *dev)
 	pthread_mutex_unlock(&table_lock);
 }
 
-drm_public int etna_device_fd(struct etna_device *dev)
+int etna_device_fd(struct etna_device *dev)
 {
    return dev->fd;
 }
