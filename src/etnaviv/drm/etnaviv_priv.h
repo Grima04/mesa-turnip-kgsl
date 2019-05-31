@@ -46,7 +46,7 @@
 #include "util/u_debug.h"
 
 #include "etnaviv_drmif.h"
-#include "etnaviv_drm.h"
+#include "drm-uapi/etnaviv_drm.h"
 
 struct etna_bo_bucket {
 	uint32_t size;
