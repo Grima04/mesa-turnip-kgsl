@@ -445,6 +445,8 @@ void gen_perf_query_register_mdapi_statistic_query(const struct gen_device_info 
                                                    struct gen_perf_config *perf);
 void gen_perf_query_register_mdapi_oa_query(const struct gen_device_info *devinfo,
                                             struct gen_perf_config *perf);
+uint64_t gen_perf_query_get_metric_id(struct gen_perf_config *perf,
+                                      const struct gen_perf_query_info *query);
 
 
 #endif /* GEN_PERF_H */

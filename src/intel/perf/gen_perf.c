@@ -790,3 +790,37 @@ gen_perf_query_register_mdapi_statistic_query(const struct gen_device_info *devi
    query->data_size = sizeof(uint64_t) * query->n_counters;
 }
 
+uint64_t
+gen_perf_query_get_metric_id(struct gen_perf_config *perf,
+                             const struct gen_perf_query_info *query)
+{
+   /* These queries are know not to ever change, their config ID has been
+    * loaded upon the first query creation. No need to look them up again.
+    */
+   if (query->kind == GEN_PERF_QUERY_TYPE_OA)
+      return query->oa_metrics_set_id;
+
+   assert(query->kind == GEN_PERF_QUERY_TYPE_RAW);
+
+   /* Raw queries can be reprogrammed up by an external application/library.
+    * When a raw query is used for the first time it's id is set to a value !=
+    * 0. When it stops being used the id returns to 0. No need to reload the
+    * ID when it's already loaded.
+    */
+   if (query->oa_metrics_set_id != 0) {
+      DBG("Raw query '%s' guid=%s using cached ID: %"PRIu64"\n",
+          query->name, query->guid, query->oa_metrics_set_id);
+      return query->oa_metrics_set_id;
+   }
+
+   struct gen_perf_query_info *raw_query = (struct gen_perf_query_info *)query;
+   if (!gen_perf_load_metric_id(perf, query->guid,
+                                &raw_query->oa_metrics_set_id)) {
+      DBG("Unable to read query guid=%s ID, falling back to test config\n", query->guid);
+      raw_query->oa_metrics_set_id = 1ULL;
+   } else {
+      DBG("Raw query '%s'guid=%s loaded ID: %"PRIu64"\n",
+          query->name, query->guid, query->oa_metrics_set_id);
+   }
+   return query->oa_metrics_set_id;
+}

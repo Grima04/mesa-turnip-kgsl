@@ -104,41 +104,6 @@ static bool
 brw_is_perf_query_ready(struct gl_context *ctx,
                         struct gl_perf_query_object *o);
 
-static uint64_t
-brw_perf_query_get_metric_id(struct brw_context *brw,
-                             const struct gen_perf_query_info *query)
-{
-   /* These queries are know not to ever change, their config ID has been
-    * loaded upon the first query creation. No need to look them up again.
-    */
-   if (query->kind == GEN_PERF_QUERY_TYPE_OA)
-      return query->oa_metrics_set_id;
-
-   assert(query->kind == GEN_PERF_QUERY_TYPE_RAW);
-
-   /* Raw queries can be reprogrammed up by an external application/library.
-    * When a raw query is used for the first time it's id is set to a value !=
-    * 0. When it stops being used the id returns to 0. No need to reload the
-    * ID when it's already loaded.
-    */
-   if (query->oa_metrics_set_id != 0) {
-      DBG("Raw query '%s' guid=%s using cached ID: %"PRIu64"\n",
-          query->name, query->guid, query->oa_metrics_set_id);
-      return query->oa_metrics_set_id;
-   }
-
-   struct gen_perf_query_info *raw_query = (struct gen_perf_query_info *)query;
-   if (!gen_perf_load_metric_id(brw->perfquery.perf, query->guid,
-                                &raw_query->oa_metrics_set_id)) {
-      DBG("Unable to read query guid=%s ID, falling back to test config\n", query->guid);
-      raw_query->oa_metrics_set_id = 1ULL;
-   } else {
-      DBG("Raw query '%s'guid=%s loaded ID: %"PRIu64"\n",
-          query->name, query->guid, query->oa_metrics_set_id);
-   }
-   return query->oa_metrics_set_id;
-}
-
 static void
 dump_perf_query_callback(GLuint id, void *query_void, void *brw_void)
 {
@@ -908,7 +873,7 @@ brw_begin_perf_query(struct gl_context *ctx,
        * require a different counter set or format unless we get an opportunity
        * to close the stream and open a new one...
        */
-      uint64_t metric_id = brw_perf_query_get_metric_id(brw, query);
+      uint64_t metric_id = gen_perf_query_get_metric_id(brw->perfquery.perf, query);
 
       if (brw->perfquery.oa_stream_fd != -1 &&
           brw->perfquery.current_oa_metrics_set_id != metric_id) {
