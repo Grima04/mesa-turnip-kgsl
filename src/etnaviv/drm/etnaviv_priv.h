@@ -40,6 +40,9 @@
 
 #include <xf86drm.h>
 
+#include "util/list.h"
+#include "util/u_atomic.h"
+
 #include "etnaviv_drmif.h"
 #include "etnaviv_drm.h"
 
@@ -56,7 +59,7 @@ struct etna_bo_cache {
 
 struct etna_device {
 	int fd;
-	atomic_t refcnt;
+	int refcnt;
 
 	/* tables to keep track of bo's, to avoid "evil-twin" etna_bo objects:
 	 *
@@ -92,7 +95,7 @@ struct etna_bo {
 	uint32_t        flags;
 	uint32_t        name;           /* flink global handle (DRI2 name) */
 	uint64_t        offset;         /* offset to mmap() */
-	atomic_t        refcnt;
+	int		refcnt;
 
 	/* in the common case, a bo won't be referenced by more than a single
 	 * command stream.  So to avoid looping over all the bo's in the

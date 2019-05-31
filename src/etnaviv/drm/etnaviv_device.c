@@ -34,7 +34,6 @@
 #include <pthread.h>
 
 #include <xf86drm.h>
-#include <xf86atomic.h>
 
 #include "etnaviv_priv.h"
 #include "etnaviv_drmif.h"
@@ -48,7 +47,7 @@ struct etna_device *etna_device_new(int fd)
 	if (!dev)
 		return NULL;
 
-	atomic_set(&dev->refcnt, 1);
+	p_atomic_set(&dev->refcnt, 1);
 	dev->fd = fd;
 	dev->handle_table = drmHashCreate();
 	dev->name_table = drmHashCreate();
@@ -74,7 +73,7 @@ struct etna_device *etna_device_new_dup(int fd)
 
 struct etna_device *etna_device_ref(struct etna_device *dev)
 {
-	atomic_inc(&dev->refcnt);
+	p_atomic_inc(&dev->refcnt);
 
 	return dev;
 }
@@ -93,7 +92,7 @@ static void etna_device_del_impl(struct etna_device *dev)
 
 void etna_device_del_locked(struct etna_device *dev)
 {
-	if (!atomic_dec_and_test(&dev->refcnt))
+	if (!p_atomic_dec_zero(&dev->refcnt))
 		return;
 
 	etna_device_del_impl(dev);
@@ -101,7 +100,7 @@ void etna_device_del_locked(struct etna_device *dev)
 
 void etna_device_del(struct etna_device *dev)
 {
-	if (!atomic_dec_and_test(&dev->refcnt))
+	if (!p_atomic_dec_zero(&dev->refcnt))
 		return;
 
 	pthread_mutex_lock(&table_lock);

@@ -169,7 +169,7 @@ struct etna_bo *etna_bo_cache_alloc(struct etna_bo_cache *cache, uint32_t *size,
 		*size = bucket->size;
 		bo = find_in_bucket(bucket, flags);
 		if (bo) {
-			atomic_set(&bo->refcnt, 1);
+			p_atomic_set(&bo->refcnt, 1);
 			etna_device_ref(bo->dev);
 			return bo;
 		}

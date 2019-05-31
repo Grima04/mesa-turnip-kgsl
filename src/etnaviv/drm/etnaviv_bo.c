@@ -95,7 +95,7 @@ static struct etna_bo *bo_from_handle(struct etna_device *dev,
 	bo->size = size;
 	bo->handle = handle;
 	bo->flags = flags;
-	atomic_set(&bo->refcnt, 1);
+	p_atomic_set(&bo->refcnt, 1);
 	list_inithead(&bo->list);
 	/* add ourselves to the handle table: */
 	drmHashInsert(dev->handle_table, handle, bo);
@@ -133,7 +133,7 @@ struct etna_bo *etna_bo_new(struct etna_device *dev, uint32_t size,
 
 struct etna_bo *etna_bo_ref(struct etna_bo *bo)
 {
-	atomic_inc(&bo->refcnt);
+	p_atomic_inc(&bo->refcnt);
 
 	return bo;
 }
@@ -239,7 +239,7 @@ void etna_bo_del(struct etna_bo *bo)
 	if (!bo)
 		return;
 
-	if (!atomic_dec_and_test(&bo->refcnt))
+	if (!p_atomic_dec_zero(&bo->refcnt))
 		return;
 
 	pthread_mutex_lock(&table_lock);
