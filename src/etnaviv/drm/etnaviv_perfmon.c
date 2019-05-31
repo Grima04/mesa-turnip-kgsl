@@ -47,9 +47,9 @@ static int etna_perfmon_query_signals(struct etna_perfmon *pm, struct etna_perfm
 		if (!sig)
 			return -ENOMEM;
 
-		INFO_MSG("perfmon signal:");
-		INFO_MSG("id         = %d", req.id);
-		INFO_MSG("name       = %s", req.name);
+		DEBUG_MSG("perfmon signal:");
+		DEBUG_MSG("id         = %d", req.id);
+		DEBUG_MSG("name       = %s", req.name);
 
 		sig->domain = dom;
 		sig->signal = req.id;
@@ -84,10 +84,10 @@ static int etna_perfmon_query_domains(struct etna_perfmon *pm)
 		strncpy(dom->name, req.name, sizeof(dom->name));
 		list_addtail(&dom->head, &pm->domains);
 
-		INFO_MSG("perfmon domain:");
-		INFO_MSG("id         = %d", req.id);
-		INFO_MSG("name       = %s", req.name);
-		INFO_MSG("nr_signals = %d", req.nr_signals);
+		DEBUG_MSG("perfmon domain:");
+		DEBUG_MSG("id         = %d", req.id);
+		DEBUG_MSG("name       = %s", req.name);
+		DEBUG_MSG("nr_signals = %d", req.nr_signals);
 
 		/* Query all available signals for this domain. */
 		if (req.nr_signals > 0) {
