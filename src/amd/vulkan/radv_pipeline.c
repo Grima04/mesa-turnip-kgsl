@@ -4921,6 +4921,109 @@ VkResult radv_GetPipelineExecutablePropertiesKHR(
 	return result;
 }
 
+VkResult radv_GetPipelineExecutableStatisticsKHR(
+    VkDevice                                    _device,
+    const VkPipelineExecutableInfoKHR*          pExecutableInfo,
+    uint32_t*                                   pStatisticCount,
+    VkPipelineExecutableStatisticKHR*           pStatistics)
+{
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	RADV_FROM_HANDLE(radv_pipeline, pipeline, pExecutableInfo->pipeline);
+	gl_shader_stage stage;
+	struct radv_shader_variant *shader = radv_get_shader_from_executable_index(pipeline, pExecutableInfo->executableIndex, &stage);
+
+	enum chip_class chip_class = device->physical_device->rad_info.chip_class;
+	unsigned lds_increment = chip_class >= GFX7 ? 512 : 256;
+	unsigned max_waves = radv_get_max_waves(device, shader, stage);
+
+	VkPipelineExecutableStatisticKHR *s = pStatistics;
+	VkPipelineExecutableStatisticKHR *end = s + (pStatistics ? *pStatisticCount : 0);
+	VkResult result = VK_SUCCESS;
+
+	if (s < end) {
+		desc_copy(s->name, "SGPRs");
+		desc_copy(s->description, "Number of SGPR registers allocated per subgroup");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->config.num_sgprs;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "VGPRs");
+		desc_copy(s->description, "Number of VGPR registers allocated per subgroup");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->config.num_vgprs;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "Spilled SGPRs");
+		desc_copy(s->description, "Number of SGPR registers spilled per subgroup");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->config.spilled_sgprs;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "Spilled VGPRs");
+		desc_copy(s->description, "Number of VGPR registers spilled per subgroup");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->config.spilled_vgprs;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "PrivMem VGPRs");
+		desc_copy(s->description, "Number of VGPRs stored in private memory per subgroup");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->info.private_mem_vgprs;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "Code size");
+		desc_copy(s->description, "Code size in bytes");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->code_size;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "LDS size");
+		desc_copy(s->description, "LDS size in bytes per workgroup");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->config.lds_size * lds_increment;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "Scratch size");
+		desc_copy(s->description, "Private memory in bytes per subgroup");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = shader->config.scratch_bytes_per_wave;
+	}
+	++s;
+
+	if (s < end) {
+		desc_copy(s->name, "Subgroups per SIMD");
+		desc_copy(s->description, "The maximum number of subgroups in flight on a SIMD unit");
+		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+		s->value.u64 = max_waves;
+	}
+	++s;
+
+	if (!pStatistics)
+		*pStatisticCount = s - pStatistics;
+	else if (s > end) {
+		*pStatisticCount = end - pStatistics;
+		result = VK_INCOMPLETE;
+	} else {
+		*pStatisticCount = s - pStatistics;
+	}
+
+	return result;
+}
+
 static VkResult radv_copy_representation(void *data, size_t *data_size, const char *src)
 {
 	size_t total_size  = strlen(src) + 1;
