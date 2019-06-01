@@ -4258,23 +4258,8 @@ radv_nir_get_max_workgroup_size(enum chip_class chip_class,
 				gl_shader_stage stage,
 				const struct nir_shader *nir)
 {
-	switch (stage) {
-	case MESA_SHADER_TESS_CTRL:
-		return chip_class >= GFX7 ? 128 : 64;
-	case MESA_SHADER_GEOMETRY:
-		return chip_class >= GFX9 ? 128 : 64;
-	case MESA_SHADER_COMPUTE:
-		break;
-	default:
-		return 0;
-	}
-
-	if (!nir)
-		return chip_class >= GFX9 ? 128 : 64;
-	unsigned max_workgroup_size = nir->info.cs.local_size[0] *
-		nir->info.cs.local_size[1] *
-		nir->info.cs.local_size[2];
-	return max_workgroup_size;
+	const unsigned backup_sizes[] = {chip_class >= GFX9 ? 128 : 64, 1, 1};
+	return radv_get_max_workgroup_size(chip_class, stage, nir ? nir->info.cs.local_size : backup_sizes);
 }
 
 /* Fixup the HW not emitting the TCS regs if there are no HS threads. */

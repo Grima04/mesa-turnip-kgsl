@@ -1279,6 +1279,25 @@ radv_get_shader_name(struct radv_shader_variant_info *info,
 	};
 }
 
+unsigned
+radv_get_max_workgroup_size(enum chip_class chip_class,
+                            gl_shader_stage stage,
+                            const unsigned *sizes)
+{
+	switch (stage) {
+	case MESA_SHADER_TESS_CTRL:
+		return chip_class >= GFX7 ? 128 : 64;
+	case MESA_SHADER_GEOMETRY:
+		return chip_class >= GFX9 ? 128 : 64;
+	case MESA_SHADER_COMPUTE:
+		break;
+	default:
+		return 0;
+	}
+
+	unsigned max_workgroup_size = sizes[0] * sizes[1] * sizes[2];
+	return max_workgroup_size;
+}
 
 unsigned
 radv_get_max_waves(struct radv_device *device,
@@ -1300,7 +1319,7 @@ radv_get_max_waves(struct radv_device *device,
 				     lds_increment);
 	} else if (stage == MESA_SHADER_COMPUTE) {
 		unsigned max_workgroup_size =
-			radv_nir_get_max_workgroup_size(chip_class, stage, variant->nir);
+			radv_get_max_workgroup_size(chip_class, stage, variant->info.cs.block_size);
 		lds_per_wave = (conf->lds_size * lds_increment) /
 			       DIV_ROUND_UP(max_workgroup_size, wave_size);
 	}
@@ -1409,7 +1428,7 @@ radv_GetShaderInfoAMD(VkDevice _device,
 			statistics.numAvailableSgprs = statistics.numPhysicalSgprs;
 
 			if (stage == MESA_SHADER_COMPUTE) {
-				unsigned *local_size = variant->nir->info.cs.local_size;
+				unsigned *local_size = variant->info.cs.block_size;
 				unsigned workgroup_size = local_size[0] * local_size[1] * local_size[2];
 
 				statistics.numAvailableVgprs = statistics.numPhysicalVgprs /
