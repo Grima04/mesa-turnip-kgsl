@@ -1279,22 +1279,20 @@ radv_get_shader_name(struct radv_shader_variant_info *info,
 	};
 }
 
-static void
-generate_shader_stats(struct radv_device *device,
-		      struct radv_shader_variant *variant,
-		      gl_shader_stage stage,
-		      struct _mesa_string_buffer *buf)
+
+unsigned
+radv_get_max_waves(struct radv_device *device,
+                   struct radv_shader_variant *variant,
+                   gl_shader_stage stage)
 {
 	enum chip_class chip_class = device->physical_device->rad_info.chip_class;
 	unsigned lds_increment = chip_class >= GFX7 ? 512 : 256;
 	uint8_t wave_size = variant->info.info.wave_size;
-	struct ac_shader_config *conf;
+	struct ac_shader_config *conf = &variant->config;
 	unsigned max_simd_waves;
 	unsigned lds_per_wave = 0;
 
 	max_simd_waves = ac_get_max_simd_waves(device->physical_device->rad_info.family);
-
-	conf = &variant->config;
 
 	if (stage == MESA_SHADER_FRAGMENT) {
 		lds_per_wave = conf->lds_size * lds_increment +
@@ -1322,6 +1320,18 @@ generate_shader_stats(struct radv_device *device,
 	 */
 	if (lds_per_wave)
 		max_simd_waves = MIN2(max_simd_waves, 16384 / lds_per_wave);
+
+	return max_simd_waves;
+}
+
+static void
+generate_shader_stats(struct radv_device *device,
+		      struct radv_shader_variant *variant,
+		      gl_shader_stage stage,
+		      struct _mesa_string_buffer *buf)
+{
+	struct ac_shader_config *conf = &variant->config;
+	unsigned max_simd_waves = radv_get_max_waves(device, variant, stage);
 
 	if (stage == MESA_SHADER_FRAGMENT) {
 		_mesa_string_buffer_printf(buf, "*** SHADER CONFIG ***\n"

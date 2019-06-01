@@ -413,6 +413,12 @@ void
 radv_shader_variant_destroy(struct radv_device *device,
 			    struct radv_shader_variant *variant);
 
+
+unsigned
+radv_get_max_waves(struct radv_device *device,
+                   struct radv_shader_variant *variant,
+                   gl_shader_stage stage);
+
 const char *
 radv_get_shader_name(struct radv_shader_variant_info *info,
 		     gl_shader_stage stage);
