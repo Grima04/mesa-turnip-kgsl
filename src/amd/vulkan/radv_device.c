@@ -1017,6 +1017,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->imagelessFramebuffer = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: {
+			VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *features =
+				(VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *)ext;
+			features->pipelineExecutableInfo = true;
+			break;
+		}
 		default:
 			break;
 		}
