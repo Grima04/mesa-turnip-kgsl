@@ -1097,6 +1097,29 @@ radv_shader_variant_create(struct radv_device *device,
 	return variant;
 }
 
+static char *
+radv_dump_nir_shaders(struct nir_shader * const *shaders,
+                      int shader_count)
+{
+	char *data = NULL;
+	char *ret = NULL;
+	size_t size = 0;
+	FILE *f = open_memstream(&data, &size);
+	if (f) {
+		for (int i = 0; i < shader_count; ++i)
+			nir_print_shader(shaders[i], f);
+		fclose(f);
+	}
+
+	ret = malloc(size + 1);
+	if (ret) {
+		memcpy(ret, data, size);
+		ret[size] = 0;
+	}
+	free(data);
+	return ret;
+}
+
 static struct radv_shader_variant *
 shader_variant_compile(struct radv_device *device,
 		       struct radv_shader_module *module,
@@ -1176,8 +1199,8 @@ shader_variant_compile(struct radv_device *device,
 
 
 	if (device->keep_shader_info) {
+		variant->nir_string = radv_dump_nir_shaders(shaders, shader_count);
 		if (!gs_copy_shader && !module->nir) {
-			variant->nir = *shaders;
 			variant->spirv = (uint32_t *)module->data;
 			variant->spirv_size = module->size;
 		}
@@ -1239,7 +1262,7 @@ radv_shader_variant_destroy(struct radv_device *device,
 	list_del(&variant->slab_list);
 	mtx_unlock(&device->shader_slab_mutex);
 
-	ralloc_free(variant->nir);
+	free(variant->nir_string);
 	free(variant->disasm_string);
 	free(variant->llvm_ir_string);
 	free(variant);

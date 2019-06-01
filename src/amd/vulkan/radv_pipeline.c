@@ -2660,8 +2660,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		free(binaries[i]);
 		if (nir[i]) {
-			if (!pipeline->device->keep_shader_info)
-				ralloc_free(nir[i]);
+			ralloc_free(nir[i]);
 
 			if (radv_can_dump_shader_stats(device, modules[i]))
 				radv_shader_dump_stats(device,

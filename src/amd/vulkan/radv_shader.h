@@ -354,7 +354,7 @@ struct radv_shader_variant {
 	/* debug only */
 	uint32_t *spirv;
 	uint32_t spirv_size;
-	struct nir_shader *nir;
+	char *nir_string;
 	char *disasm_string;
 	char *llvm_ir_string;
 
