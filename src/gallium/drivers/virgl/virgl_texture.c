@@ -38,10 +38,6 @@ static void virgl_copy_region_with_blit(struct pipe_context *pipe,
 {
    struct pipe_blit_info blit;
 
-   assert(src_box->width == dst_box->width);
-   assert(src_box->height == dst_box->height);
-   assert(src_box->depth == dst_box->depth);
-
    memset(&blit, 0, sizeof(blit));
    blit.src.resource = src;
    blit.src.format = src->format;
@@ -53,9 +49,9 @@ static void virgl_copy_region_with_blit(struct pipe_context *pipe,
    blit.dst.box.x = dst_box->x;
    blit.dst.box.y = dst_box->y;
    blit.dst.box.z = dst_box->z;
-   blit.dst.box.width = src_box->width;
-   blit.dst.box.height = src_box->height;
-   blit.dst.box.depth = src_box->depth;
+   blit.dst.box.width = dst_box->width;
+   blit.dst.box.height = dst_box->height;
+   blit.dst.box.depth = dst_box->depth;
    blit.mask = util_format_get_mask(src->format) &
       util_format_get_mask(dst->format);
    blit.filter = PIPE_TEX_FILTER_NEAREST;
@@ -184,14 +180,21 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
       assert(virgl_has_readback_format(ctx->screen, fmt));
    }
 
-   virgl_init_temp_resource_from_box(&templ, resource, box, level, 0, fmt);
+   struct pipe_box dst_box = *box;
+   dst_box.x = dst_box.y = dst_box.z = 0;
+   if (usage & PIPE_TRANSFER_READ) {
+      /* readback should scale to the block size */
+      dst_box.width = align(dst_box.width,
+            util_format_get_blockwidth(resource->format));
+      dst_box.height = align(dst_box.height,
+            util_format_get_blockheight(resource->format));
+   }
+
+   virgl_init_temp_resource_from_box(&templ, resource, &dst_box, level, 0, fmt);
 
    resolve_tmp = ctx->screen->resource_create(ctx->screen, &templ);
    if (!resolve_tmp)
       return NULL;
-
-   struct pipe_box dst_box = *box;
-   dst_box.x = dst_box.y = dst_box.z = 0;
 
    if (usage & PIPE_TRANSFER_READ) {
       virgl_copy_region_with_blit(ctx, resolve_tmp, 0, &dst_box, resource,
@@ -227,7 +230,9 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
                                        trans->resolve_transfer->stride,
                                        trans->resolve_transfer->layer_stride,
                                        0, 0, 0,
-                                       box->width, box->height, box->depth)) {
+                                       dst_box.width,
+                                       dst_box.height,
+                                       dst_box.depth)) {
             debug_printf("failed to translate format %s to %s\n",
                          util_format_short_name(fmt),
                          util_format_short_name(resource->format));
