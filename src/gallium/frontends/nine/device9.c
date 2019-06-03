@@ -2283,7 +2283,7 @@ NineDevice9_SetRenderState( struct NineDevice9 *This,
     DBG("This=%p State=%u(%s) Value=%08x\n", This,
         State, nine_d3drs_to_string(State), Value);
 
-    user_assert(State < D3DRS_COUNT, D3DERR_INVALIDCALL);
+    user_assert(State < D3DRS_COUNT, D3D_OK);
 
     if (unlikely(This->is_recording)) {
         state->rs_advertised[State] = Value;
@@ -2307,7 +2307,11 @@ NineDevice9_GetRenderState( struct NineDevice9 *This,
                             DWORD *pValue )
 {
     user_assert(!This->pure, D3DERR_INVALIDCALL);
-    user_assert(State < D3DRS_COUNT, D3DERR_INVALIDCALL);
+    /* TODO: This needs tests */
+    if (State >= D3DRS_COUNT) {
+        *pValue = 0;
+        return D3D_OK;
+    }
 
     *pValue = This->state.rs_advertised[State];
     return D3D_OK;
