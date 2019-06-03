@@ -83,10 +83,16 @@ int main(int argc, char *argv[])
 
 	drmVersionPtr version;
 	int fd, ret = 0;
+	const char *node = "/dev/dri/renderD128";
 
-	fd = open(argv[1], O_RDWR);
-	if (fd < 0)
+	if (argc > 1)
+		node = argv[1];
+
+        fd = open(node, O_RDWR);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open render node %s.\n", node);
 		return 1;
+	}
 
 	version = drmGetVersion(fd);
 	if (version) {
