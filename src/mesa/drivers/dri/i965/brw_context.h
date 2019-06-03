@@ -147,6 +147,7 @@ struct brw_wm_prog_key;
 struct brw_wm_prog_data;
 struct brw_cs_prog_key;
 struct brw_cs_prog_data;
+struct brw_label;
 
 enum brw_pipeline {
    BRW_RENDER_PIPELINE,

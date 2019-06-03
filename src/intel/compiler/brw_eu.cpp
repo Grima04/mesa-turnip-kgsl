@@ -409,6 +409,54 @@ bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
    return true;
 }
 
+const struct brw_label *
+brw_find_label(const struct brw_label *root, int offset)
+{
+   const struct brw_label *curr = root;
+
+   if (curr != NULL)
+   {
+      do {
+         if (curr->offset == offset)
+            return curr;
+
+         curr = curr->next;
+      } while (curr != NULL);
+   }
+
+   return curr;
+}
+
+void
+brw_create_label(struct brw_label **labels, int offset, void *mem_ctx)
+{
+   if (*labels != NULL) {
+      struct brw_label *curr = *labels;
+      struct brw_label *prev;
+
+      do {
+         prev = curr;
+
+         if (curr->offset == offset)
+            return;
+
+         curr = curr->next;
+      } while (curr != NULL);
+
+      curr = ralloc(mem_ctx, struct brw_label);
+      curr->offset = offset;
+      curr->number = prev->number + 1;
+      curr->next = NULL;
+      prev->next = curr;
+   } else {
+      struct brw_label *root = ralloc(mem_ctx, struct brw_label);
+      root->number = 0;
+      root->offset = offset;
+      root->next = NULL;
+      *labels = root;
+   }
+}
+
 void
 brw_disassemble(const struct gen_device_info *devinfo,
                 const void *assembly, int start, int end, FILE *out)

@@ -137,6 +137,12 @@ struct brw_codegen {
    int loop_stack_array_size;
 };
 
+struct brw_label {
+   int offset;
+   int number;
+   struct brw_label *next;
+};
+
 void brw_pop_insn_state( struct brw_codegen *p );
 void brw_push_insn_state( struct brw_codegen *p );
 unsigned brw_get_default_exec_size(struct brw_codegen *p);
@@ -164,6 +170,8 @@ void brw_init_codegen(const struct gen_device_info *, struct brw_codegen *p,
 		      void *mem_ctx);
 bool brw_has_jip(const struct gen_device_info *devinfo, enum opcode opcode);
 bool brw_has_uip(const struct gen_device_info *devinfo, enum opcode opcode);
+const struct brw_label *brw_find_label(const struct brw_label *root, int offset);
+void brw_create_label(struct brw_label **labels, int offset, void *mem_ctx);
 int brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                          const struct brw_inst *inst, bool is_compacted);
 void brw_disassemble(const struct gen_device_info *devinfo,
