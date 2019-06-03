@@ -48,7 +48,7 @@ RE_set_value_no_shift = re.compile(r'\((\(unsigned\))?\(x\) & ([0-9a-fA-Fx]+)\)'
 class HeaderParser(object):
     def __init__(self, address_space):
         self.regdb = RegisterDatabase()
-        self.chips = ['si', 'cik', 'vi', 'fiji', 'stoney', 'gfx9']
+        self.chips = ['gfx6', 'gfx7', 'gfx8', 'fiji', 'stoney', 'gfx9']
         self.address_space = address_space
 
     def __fini_field(self):
@@ -81,7 +81,7 @@ class HeaderParser(object):
 
     def parse_header(self, filp):
         regdb = RegisterDatabase()
-        chips = ['si', 'cik', 'vi', 'fiji', 'stoney', 'gfx9']
+        chips = ['gfx6', 'gfx7', 'gfx8', 'fiji', 'stoney', 'gfx9']
 
         self.__regmap = None
         self.__fields = None

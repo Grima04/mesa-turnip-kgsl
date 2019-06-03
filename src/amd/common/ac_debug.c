@@ -121,11 +121,11 @@ void ac_dump_reg(FILE *file, enum chip_class chip_class, unsigned offset,
 	if (chip_class >= GFX9)
 		reg = find_register(gfx9_reg_table, ARRAY_SIZE(gfx9_reg_table), offset);
 	else if (chip_class >= GFX8)
-		reg = find_register(vi_reg_table, ARRAY_SIZE(vi_reg_table), offset);
+		reg = find_register(gfx8_reg_table, ARRAY_SIZE(gfx8_reg_table), offset);
 	else if (chip_class >= GFX7)
-		reg = find_register(cik_reg_table, ARRAY_SIZE(cik_reg_table), offset);
+		reg = find_register(gfx7_reg_table, ARRAY_SIZE(gfx7_reg_table), offset);
 	else
-		reg = find_register(si_reg_table, ARRAY_SIZE(si_reg_table), offset);
+		reg = find_register(gfx6_reg_table, ARRAY_SIZE(gfx6_reg_table), offset);
 
 	if (reg) {
 		const char *reg_name = sid_strings + reg->name_offset;

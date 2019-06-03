@@ -358,7 +358,7 @@ def main():
                 raise
 
     # The ac_debug code only distinguishes by chip_class
-    regdb.merge_chips(['vi', 'fiji', 'stoney'], 'vi')
+    regdb.merge_chips(['gfx8', 'fiji', 'stoney'], 'gfx8')
 
     # Write it all out
     w = TableWriter()

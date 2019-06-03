@@ -92,7 +92,7 @@
  },
  "register_mappings": [
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney"],
    "map": {"at": 1044, "to": "pkt3"},
    "name": "COMMAND",
    "type_ref": "COMMAND"
@@ -104,31 +104,31 @@
    "type_ref": "COMMAND_gfx9"
   },
   {
-   "chips": ["si"],
+   "chips": ["gfx6"],
    "map": {"at": 880, "to": "pkt3"},
    "name": "CONTROL",
    "type_ref": "CONTROL"
   },
   {
-   "chips": ["cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 880, "to": "pkt3"},
    "name": "CONTROL",
    "type_ref": "CONTROL_cik"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1040, "to": "pkt3"},
    "name": "CP_DMA_WORD0",
    "type_ref": "CP_DMA_WORD0"
   },
   {
-   "chips": ["si"],
+   "chips": ["gfx6"],
    "map": {"at": 1041, "to": "pkt3"},
    "name": "CP_DMA_WORD1",
    "type_ref": "CP_DMA_WORD1"
   },
   {
-   "chips": ["cik", "vi", "fiji", "stoney"],
+   "chips": ["gfx7", "gfx8", "fiji", "stoney"],
    "map": {"at": 1041, "to": "pkt3"},
    "name": "CP_DMA_WORD1",
    "type_ref": "CP_DMA_WORD1_cik"
@@ -140,25 +140,25 @@
    "type_ref": "CP_DMA_WORD1_gfx9"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1042, "to": "pkt3"},
    "name": "CP_DMA_WORD2",
    "type_ref": "CP_DMA_WORD2"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1043, "to": "pkt3"},
    "name": "CP_DMA_WORD3",
    "type_ref": "CP_DMA_WORD3"
   },
   {
-   "chips": ["si"],
+   "chips": ["gfx6"],
    "map": {"at": 1280, "to": "pkt3"},
    "name": "DMA_DATA_WORD0",
    "type_ref": "DMA_DATA_WORD0"
   },
   {
-   "chips": ["cik", "vi", "fiji", "stoney"],
+   "chips": ["gfx7", "gfx8", "fiji", "stoney"],
    "map": {"at": 1280, "to": "pkt3"},
    "name": "DMA_DATA_WORD0",
    "type_ref": "DMA_DATA_WORD0_cik"
@@ -170,48 +170,48 @@
    "type_ref": "DMA_DATA_WORD0_gfx9"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 882, "to": "pkt3"},
    "name": "DST_ADDR_HI"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1284, "to": "pkt3"},
    "name": "DST_ADDR_HI"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 881, "to": "pkt3"},
    "name": "DST_ADDR_LO"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1283, "to": "pkt3"},
    "name": "DST_ADDR_LO"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1009, "to": "pkt3"},
    "name": "IB_BASE_HI"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1008, "to": "pkt3"},
    "name": "IB_BASE_LO"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1010, "to": "pkt3"},
    "name": "IB_CONTROL",
    "type_ref": "IB_CONTROL"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1282, "to": "pkt3"},
    "name": "SRC_ADDR_HI"
   },
   {
-   "chips": ["si", "cik", "vi", "fiji", "stoney", "gfx9"],
+   "chips": ["gfx6", "gfx7", "gfx8", "fiji", "stoney", "gfx9"],
    "map": {"at": 1281, "to": "pkt3"},
    "name": "SRC_ADDR_LO"
   }

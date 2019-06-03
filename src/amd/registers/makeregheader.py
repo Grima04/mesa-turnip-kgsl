@@ -43,9 +43,9 @@ from regdb import Object, RegisterDatabase, deduplicate_enums, deduplicate_regis
 
 # Chips are sorted chronologically
 CHIPS = [
-    Object(name='si', disambiguation='GFX6'),
-    Object(name='cik', disambiguation='GFX6'),
-    Object(name='vi', disambiguation='GFX6'),
+    Object(name='gfx6', disambiguation='GFX6'),
+    Object(name='gfx7', disambiguation='GFX6'),
+    Object(name='gfx8', disambiguation='GFX6'),
     Object(name='fiji', disambiguation='GFX6'),
     Object(name='stoney', disambiguation='GFX6'),
     Object(name='gfx9', disambiguation='GFX9'),
