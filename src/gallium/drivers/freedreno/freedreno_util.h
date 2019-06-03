@@ -488,4 +488,17 @@ fd4_stage2shadersb(gl_shader_stage type)
 	}
 }
 
+static inline enum a4xx_index_size
+fd4_size2indextype(unsigned index_size)
+{
+	switch (index_size) {
+	case 1: return INDEX4_SIZE_8_BIT;
+	case 2: return INDEX4_SIZE_16_BIT;
+	case 4: return INDEX4_SIZE_32_BIT;
+	}
+	DBG("unsupported index size: %d", index_size);
+	assert(0);
+	return INDEX4_SIZE_32_BIT;
+}
+
 #endif /* FREEDRENO_UTIL_H_ */
