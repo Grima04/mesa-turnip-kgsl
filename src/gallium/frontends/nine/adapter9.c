@@ -255,6 +255,26 @@ display_format( D3DFORMAT fmt,
     return FALSE;
 }
 
+static inline boolean
+adapter_format( D3DFORMAT fmt )
+{
+    /* Formats that are compatible to display_format (modulo alpha bits) */
+    static const D3DFORMAT allowed[] = {
+        D3DFMT_A2R10G10B10,
+        D3DFMT_X8R8G8B8,
+        D3DFMT_A8R8G8B8,
+        D3DFMT_X1R5G5B5,
+        D3DFMT_A1R5G5B5,
+        D3DFMT_R5G6B5,
+    };
+    unsigned i;
+
+    for (i = 0; i < sizeof(allowed)/sizeof(D3DFORMAT); i++) {
+        if (fmt == allowed[i]) { return TRUE; }
+    }
+    return FALSE;
+}
+
 HRESULT NINE_WINAPI
 NineAdapter9_CheckDeviceFormat( struct NineAdapter9 *This,
                                 D3DDEVTYPE DeviceType,
@@ -460,7 +480,10 @@ NineAdapter9_CheckDepthStencilMatch( struct NineAdapter9 *This,
         d3dformat_to_string(RenderTargetFormat),
         d3dformat_to_string(DepthStencilFormat));
 
-    user_assert(display_format(AdapterFormat, FALSE), D3DERR_NOTAVAILABLE);
+    /* TODO: does it check AdapterFormat at all ?
+     * It seems to need to pass at least for A8R8G8B8:
+     * https://github.com/iXit/Mesa-3D/issues/317 */
+    user_assert(adapter_format(AdapterFormat), D3DERR_NOTAVAILABLE);
     user_assert(depth_stencil_format(DepthStencilFormat), D3DERR_NOTAVAILABLE);
 
     hr = NineAdapter9_GetScreen(This, DeviceType, &screen);
