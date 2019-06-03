@@ -55,8 +55,10 @@ etna_create_sampler_state_state(struct pipe_context *pipe,
       VIVS_TE_SAMPLER_CONFIG0_MIP(translate_texture_mipfilter(ss->min_mip_filter)) |
       VIVS_TE_SAMPLER_CONFIG0_MAG(translate_texture_filter(ss->mag_img_filter)) |
       COND(ss->normalized_coords, VIVS_TE_SAMPLER_CONFIG0_ROUND_UV);
-   cs->TE_SAMPLER_CONFIG1 = 0; /* VIVS_TE_SAMPLER_CONFIG1 (swizzle, extended
-                                  format) fully determined by sampler view */
+
+   cs->TE_SAMPLER_CONFIG1 =
+      COND(ss->seamless_cube_map, VIVS_TE_SAMPLER_CONFIG1_SEAMLESS_CUBE_MAP);
+
    cs->TE_SAMPLER_LOD_CONFIG =
       COND(ss->lod_bias != 0.0, VIVS_TE_SAMPLER_LOD_CONFIG_BIAS_ENABLE) |
       VIVS_TE_SAMPLER_LOD_CONFIG_BIAS(etna_float_to_fixp55(ss->lod_bias));
@@ -142,9 +144,9 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
       memset(&sv->TE_SAMPLER_LINEAR_STRIDE, 0, sizeof(sv->TE_SAMPLER_LINEAR_STRIDE));
    }
 
-   sv->TE_SAMPLER_CONFIG1 = COND(ext, VIVS_TE_SAMPLER_CONFIG1_FORMAT_EXT(format)) |
-                            COND(astc, VIVS_TE_SAMPLER_CONFIG1_FORMAT_EXT(TEXTURE_FORMAT_EXT_ASTC)) |
-                            VIVS_TE_SAMPLER_CONFIG1_HALIGN(res->halign) | swiz;
+   sv->TE_SAMPLER_CONFIG1 |= COND(ext, VIVS_TE_SAMPLER_CONFIG1_FORMAT_EXT(format)) |
+                             COND(astc, VIVS_TE_SAMPLER_CONFIG1_FORMAT_EXT(TEXTURE_FORMAT_EXT_ASTC)) |
+                             VIVS_TE_SAMPLER_CONFIG1_HALIGN(res->halign) | swiz;
    sv->TE_SAMPLER_ASTC0 = COND(astc, VIVS_NTE_SAMPLER_ASTC0_ASTC_FORMAT(format)) |
                           VIVS_NTE_SAMPLER_ASTC0_UNK8(0xc) |
                           VIVS_NTE_SAMPLER_ASTC0_UNK16(0xc) |

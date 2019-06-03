@@ -200,6 +200,8 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
    case PIPE_CAP_MAX_TEXEL_OFFSET:
       return 7;
+   case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
+      return VIV_FEATURE(screen, chipMinorFeatures2, SEAMLESS_CUBE_MAP);
 
    /* Timer queries. */
    case PIPE_CAP_OCCLUSION_QUERY:
