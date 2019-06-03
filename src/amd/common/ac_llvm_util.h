@@ -147,6 +147,17 @@ bool ac_compile_module_to_binary(struct ac_compiler_passes *p, LLVMModuleRef mod
 void ac_llvm_add_barrier_noop_pass(LLVMPassManagerRef passmgr);
 void ac_enable_global_isel(LLVMTargetMachineRef tm);
 
+static inline bool
+ac_has_vec3_support(enum chip_class chip, bool use_format)
+{
+	if (chip == GFX6 && !use_format) {
+		/* GFX6 only supports vec3 with load/store format. */
+		return false;
+	}
+
+	return HAVE_LLVM >= 0x900;
+}
+
 #ifdef __cplusplus
 }
 #endif

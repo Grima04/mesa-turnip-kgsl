@@ -1576,7 +1576,8 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 
 		/* Due to an LLVM limitation with LLVM < 9, split 3-element
 		 * writes into a 2-element and a 1-element write. */
-		if (count == 3 && (elem_size_bytes != 4 || HAVE_LLVM < 0x900)) {
+		if (count == 3 &&
+		    (elem_size_bytes != 4 || !ac_has_vec3_support(ctx->ac.chip_class, false))) {
 			writemask |= 1 << (start + 2);
 			count = 2;
 		}

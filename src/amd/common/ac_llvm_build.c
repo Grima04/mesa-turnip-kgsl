@@ -1167,7 +1167,7 @@ ac_build_llvm8_buffer_store_common(struct ac_llvm_context *ctx,
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
-	unsigned func = HAVE_LLVM < 0x900 && num_channels == 3 ? 4 : num_channels;
+	unsigned func = !ac_has_vec3_support(ctx->chip_class, use_format) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
 
@@ -1227,7 +1227,7 @@ ac_build_buffer_store_dword(struct ac_llvm_context *ctx,
 {
 	/* Split 3 channel stores, because only LLVM 9+ support 3-channel
 	 * intrinsics. */
-	if (num_channels == 3 && HAVE_LLVM < 0x900) {
+	if (num_channels == 3 && !ac_has_vec3_support(ctx->chip_class, false)) {
 		LLVMValueRef v[3], v01;
 
 		for (int i = 0; i < 3; i++) {
@@ -1354,7 +1354,7 @@ ac_build_llvm8_buffer_load_common(struct ac_llvm_context *ctx,
 	args[idx++] = voffset ? voffset : ctx->i32_0;
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
-	unsigned func = HAVE_LLVM < 0x900 && num_channels == 3 ? 4 : num_channels;
+	unsigned func = !ac_has_vec3_support(ctx->chip_class, use_format) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
 
@@ -1420,7 +1420,7 @@ ac_build_buffer_load(struct ac_llvm_context *ctx,
 		if (num_channels == 1)
 			return result[0];
 
-		if (num_channels == 3 && HAVE_LLVM < 0x900)
+		if (num_channels == 3 && !ac_has_vec3_support(ctx->chip_class, false))
 			result[num_channels++] = LLVMGetUndef(ctx->f32);
 		return ac_build_gather_values(ctx, result, num_channels);
 	}
@@ -1512,7 +1512,7 @@ ac_build_llvm8_tbuffer_load(struct ac_llvm_context *ctx,
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, dfmt | (nfmt << 4), 0);
 	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
-	unsigned func = HAVE_LLVM < 0x900 && num_channels == 3 ? 4 : num_channels;
+	unsigned func = !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
 
@@ -2011,7 +2011,7 @@ ac_build_llvm8_tbuffer_store(struct ac_llvm_context *ctx,
 	args[idx++] = soffset ? soffset : ctx->i32_0;
 	args[idx++] = LLVMConstInt(ctx->i32, dfmt | (nfmt << 4), 0);
 	args[idx++] = LLVMConstInt(ctx->i32, (glc ? 1 : 0) + (slc ? 2 : 0), 0);
-	unsigned func = HAVE_LLVM < 0x900 && num_channels == 3 ? 4 : num_channels;
+	unsigned func = !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
 	const char *indexing_kind = structurized ? "struct" : "raw";
 	char name[256], type_name[8];
 

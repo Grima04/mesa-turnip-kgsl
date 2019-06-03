@@ -2764,7 +2764,7 @@ radv_emit_stream_output(struct radv_shader_context *ctx,
 		/* fall through */
 	case 4: /* as v4i32 */
 		vdata = ac_build_gather_values(&ctx->ac, out,
-					       HAVE_LLVM < 0x900 ?
+					       !ac_has_vec3_support(ctx->ac.chip_class, false) ?
 					       util_next_power_of_two(num_comps) :
 					       num_comps);
 		break;
