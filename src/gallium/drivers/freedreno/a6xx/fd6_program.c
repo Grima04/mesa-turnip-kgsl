@@ -300,17 +300,17 @@ setup_stages(struct fd6_program_state *state, struct stage *s, bool binning_pass
 	}
 }
 
+#define VALIDREG(r)      ((r) != regid(63,0))
+#define CONDREG(r, val)  COND(VALIDREG(r), (val))
+
 static inline uint32_t
 next_regid(uint32_t reg, uint32_t increment)
 {
-	if (reg == regid(63,0))
-		return regid(63,0);
-	else
+	if (VALIDREG(reg))
 		return reg + increment;
+	else
+		return regid(63,0);
 }
-
-#define VALIDREG(r)      ((r) != regid(63,0))
-#define CONDREG(r, val)  COND(VALIDREG(r), (val))
 
 static void
 setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
