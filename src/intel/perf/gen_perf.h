@@ -505,6 +505,7 @@ void gen_perf_query_register_mdapi_oa_query(const struct gen_device_info *devinf
 uint64_t gen_perf_query_get_metric_id(struct gen_perf_config *perf,
                                       const struct gen_perf_query_info *query);
 struct oa_sample_buf * gen_perf_get_free_sample_buf(struct gen_perf_context *perf);
+void gen_perf_reap_old_sample_buffers(struct gen_perf_context *perf_ctx);
 
 
 #endif /* GEN_PERF_H */

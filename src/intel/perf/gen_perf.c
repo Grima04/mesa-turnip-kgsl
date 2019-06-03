@@ -843,3 +843,27 @@ gen_perf_get_free_sample_buf(struct gen_perf_context *perf_ctx)
 
    return buf;
 }
+
+void
+gen_perf_reap_old_sample_buffers(struct gen_perf_context *perf_ctx)
+{
+   struct exec_node *tail_node =
+      exec_list_get_tail(&perf_ctx->sample_buffers);
+   struct oa_sample_buf *tail_buf =
+      exec_node_data(struct oa_sample_buf, tail_node, link);
+
+   /* Remove all old, unreferenced sample buffers walking forward from
+    * the head of the list, except always leave at least one node in
+    * the list so we always have a node to reference when we Begin
+    * a new query.
+    */
+   foreach_list_typed_safe(struct oa_sample_buf, buf, link,
+                           &perf_ctx->sample_buffers)
+   {
+      if (buf->refcount == 0 && buf != tail_buf) {
+         exec_node_remove(&buf->link);
+         exec_list_push_head(&perf_ctx->free_sample_buffers, &buf->link);
+      } else
+         return;
+   }
+}

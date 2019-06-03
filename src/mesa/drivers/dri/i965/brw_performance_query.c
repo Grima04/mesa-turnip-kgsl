@@ -147,30 +147,6 @@ dump_perf_queries(struct brw_context *brw)
 /******************************************************************************/
 
 static void
-reap_old_sample_buffers(struct brw_context *brw)
-{
-   struct exec_node *tail_node =
-      exec_list_get_tail(&brw->perf_ctx.sample_buffers);
-   struct oa_sample_buf *tail_buf =
-      exec_node_data(struct oa_sample_buf, tail_node, link);
-
-   /* Remove all old, unreferenced sample buffers walking forward from
-    * the head of the list, except always leave at least one node in
-    * the list so we always have a node to reference when we Begin
-    * a new query.
-    */
-   foreach_list_typed_safe(struct oa_sample_buf, buf, link,
-                           &brw->perf_ctx.sample_buffers)
-   {
-      if (buf->refcount == 0 && buf != tail_buf) {
-         exec_node_remove(&buf->link);
-         exec_list_push_head(&brw->perf_ctx.free_sample_buffers, &buf->link);
-      } else
-         return;
-   }
-}
-
-static void
 free_sample_bufs(struct brw_context *brw)
 {
    foreach_list_typed_safe(struct oa_sample_buf, buf, link,
@@ -363,7 +339,7 @@ drop_from_unaccumulated_query_list(struct brw_context *brw,
 
    obj->oa.samples_head = NULL;
 
-   reap_old_sample_buffers(brw);
+   gen_perf_reap_old_sample_buffers(&brw->perf_ctx);
 }
 
 static bool
