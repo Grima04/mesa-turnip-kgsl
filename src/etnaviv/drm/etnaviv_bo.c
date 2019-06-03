@@ -47,13 +47,13 @@ void _etna_bo_del(struct etna_bo *bo)
 	if (bo->map)
 		os_munmap(bo->map, bo->size);
 
-	if (bo->name)
-		_mesa_hash_table_remove_key(bo->dev->name_table, &bo->name);
-
 	if (bo->handle) {
 		struct drm_gem_close req = {
 			.handle = bo->handle,
 		};
+
+		if (bo->name)
+			_mesa_hash_table_remove_key(bo->dev->name_table, &bo->name);
 
 		_mesa_hash_table_remove_key(bo->dev->handle_table, &bo->handle);
 		drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &req);

@@ -99,12 +99,10 @@ struct etna_bo {
 	uint64_t        offset;         /* offset to mmap() */
 	int		refcnt;
 
-	/* in the common case, a bo won't be referenced by more than a single
-	 * command stream.  So to avoid looping over all the bo's in the
-	 * reloc table to find the idx of a bo that might already be in the
-	 * table, we cache the idx in the bo.  But in order to detect the
-	 * slow-path where bo is ref'd in multiple streams, we also must track
-	 * the current_stream for which the idx is valid.  See bo2idx().
+	/*
+	 * To avoid excess hashtable lookups, cache the stream this bo was
+	 * last emitted on (since that will probably also be the next ring
+	 * it is emitted on).
 	 */
 	struct etna_cmd_stream *current_stream;
 	uint32_t idx;
@@ -154,6 +152,8 @@ struct etna_cmd_stream_priv {
 	/* notify callback if buffer reset happened */
 	void (*reset_notify)(struct etna_cmd_stream *stream, void *priv);
 	void *reset_notify_priv;
+
+	void *bo_table;
 };
 
 struct etna_perfmon {
