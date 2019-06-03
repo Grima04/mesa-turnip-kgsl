@@ -92,7 +92,6 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .lower_flrp64 = true,
         .lower_ffract = true,
         .lower_fmod32 = true,
-        .lower_fmod64 = true,
         .lower_fdiv = true,
         .lower_idiv = true,
         .lower_isign = true,
@@ -108,6 +107,8 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .vertex_id_zero_based = true,
         .lower_extract_byte = true,
         .lower_extract_word = true,
+
+        .lower_doubles_options = nir_lower_dmod,
 };
 
 #endif
