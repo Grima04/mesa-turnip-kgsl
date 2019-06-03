@@ -297,7 +297,9 @@ NineAdapter9_CheckDeviceFormat( struct NineAdapter9 *This,
     DBG("Usage=%x RType=%u CheckFormat=%s\n", Usage, RType,
         d3dformat_to_string(CheckFormat));
 
-    user_assert(display_format(AdapterFormat, FALSE), D3DERR_INVALIDCALL);
+    /* Wine tests, but suspicious. Needs more tests. */
+    user_assert(adapter_format(AdapterFormat), D3DERR_INVALIDCALL);
+    user_assert(display_format(AdapterFormat, FALSE), D3DERR_NOTAVAILABLE);
 
     hr = NineAdapter9_GetScreen(This, DeviceType, &screen);
     if (FAILED(hr))
