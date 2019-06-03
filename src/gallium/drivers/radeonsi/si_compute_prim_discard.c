@@ -856,18 +856,15 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		}
 
 		/* Write indices for accepted primitives. */
-		LLVMValueRef buf_args[] = {
-			ac_to_float(&ctx->ac, ac_build_expand_to_vec4(&ctx->ac,
-						ac_build_gather_values(&ctx->ac, index, 3), 3)),
-			output_indexbuf,
-			LLVMBuildAdd(builder, start, prim_index, ""),
-			ctx->i32_0, /* voffset */
-			ctx->i1true, /* glc */
-			LLVMConstInt(ctx->i1, INDEX_STORES_USE_SLC, 0),
-		};
-		ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.buffer.store.format.v4f32",
-				   ctx->voidt, buf_args, 6,
-				   ac_get_store_intr_attribs(true));
+		LLVMValueRef vindex = LLVMBuildAdd(builder, start, prim_index, "");
+		LLVMValueRef vdata = ac_build_gather_values(&ctx->ac, index, 3);
+
+		if (!ac_has_vec3_support(ctx->ac.chip_class, true))
+			vdata = ac_build_expand_to_vec4(&ctx->ac, vdata, 3);
+
+		ac_build_buffer_store_format(&ctx->ac, output_indexbuf, vdata,
+					     vindex, ctx->i32_0, 3, true,
+					     INDEX_STORES_USE_SLC, true);
 	}
 	lp_build_endif(&if_accepted);
 

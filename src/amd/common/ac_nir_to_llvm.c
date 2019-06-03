@@ -2556,7 +2556,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 
 		ac_build_buffer_store_format(&ctx->ac, rsrc, src, vindex,
 					     ctx->ac.i32_0, src_channels,
-					     args.cache_policy & ac_glc,
+					     args.cache_policy & ac_glc, false,
 					     writeonly_memory);
 	} else {
 		args.opcode = ac_image_store;

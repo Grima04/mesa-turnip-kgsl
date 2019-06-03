@@ -728,7 +728,7 @@ static void store_emit(
 					     ac_build_gather_values(&ctx->ac, chans, num_channels),
 					     vindex, ctx->i32_0 /* voffset */,
 					     num_channels,
-					     !!(args.cache_policy & ac_glc),
+					     !!(args.cache_policy & ac_glc), false,
 					     writeonly_memory);
 	} else {
 		args.opcode = ac_image_store;
