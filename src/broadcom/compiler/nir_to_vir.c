@@ -2382,6 +2382,7 @@ const nir_shader_compiler_options v3d_nir_options = {
         .lower_bit_count = true,
         .lower_cs_local_id_from_index = true,
         .lower_ffract = true,
+        .lower_fmod = true,
         .lower_pack_unorm_2x16 = true,
         .lower_pack_snorm_2x16 = true,
         .lower_pack_unorm_4x8 = true,
