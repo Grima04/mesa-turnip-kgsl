@@ -906,7 +906,6 @@ static const nir_shader_compiler_options nir_options = {
    .lower_fsat = false,
    .lower_fsqrt = false, // TODO: only before gm200
    .lower_fmod32 = true,
-   .lower_fmod64 = true,
    .lower_bitfield_extract = false,
    .lower_bitfield_extract_to_shifts = false,
    .lower_bitfield_insert = false,
@@ -955,7 +954,7 @@ static const nir_shader_compiler_options nir_options = {
    .lower_mul_2x32_64 = true, // TODO
    .max_unroll_iterations = 32,
    .lower_int64_options = nir_lower_divmod64, // TODO
-   .lower_doubles_options = 0, // TODO
+   .lower_doubles_options = nir_lower_dmod, // TODO
 };
 
 static const void *
