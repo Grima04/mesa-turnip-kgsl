@@ -94,7 +94,7 @@ get_named_matrix_stack(struct gl_context *ctx, GLenum mode, const char* caller)
    if (mode >= GL_TEXTURE0 && mode < (GL_TEXTURE0 + ctx->Const.MaxTextureCoordUnits)) {
       return &ctx->TextureMatrixStack[mode - GL_TEXTURE0];
    }
-   _mesa_error(ctx, GL_INVALID_ENUM, caller);
+   _mesa_error(ctx, GL_INVALID_ENUM, "%s", caller);
    return NULL;
 }
 
@@ -111,7 +111,7 @@ static void matrix_frustum(struct gl_matrix_stack* stack,
        nearval == farval ||
        left == right ||
        top == bottom) {
-      _mesa_error(ctx, GL_INVALID_VALUE, caller);
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s", caller);
       return;
    }
 
@@ -192,7 +192,7 @@ matrix_ortho(struct gl_matrix_stack* stack,
        bottom == top ||
        nearval == farval)
    {
-      _mesa_error( ctx,  GL_INVALID_VALUE, caller );
+      _mesa_error( ctx,  GL_INVALID_VALUE, "%s", caller );
       return;
    }
 
