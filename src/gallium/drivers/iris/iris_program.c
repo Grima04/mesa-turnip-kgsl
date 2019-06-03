@@ -1666,7 +1666,7 @@ iris_update_compiled_shaders(struct iris_context *ice)
          struct iris_stream_output_target *so =
             (void *) ice->state.so_target[i];
          if (so)
-            so->stride = ish->stream_output.stride[i];
+            so->stride = ish->stream_output.stride[i] * sizeof(uint32_t);
       }
    }
 

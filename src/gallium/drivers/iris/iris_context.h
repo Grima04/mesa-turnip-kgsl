@@ -396,7 +396,7 @@ struct iris_stream_output_target {
    /** Storage holding the offset where we're writing in the buffer */
    struct iris_state_ref offset;
 
-   /** Stride (dwords-per-vertex) during this transform feedback operation */
+   /** Stride (bytes-per-vertex) during this transform feedback operation */
    uint16_t stride;
 
    /** Has 3DSTATE_SO_BUFFER actually been emitted, zeroing the offsets? */
