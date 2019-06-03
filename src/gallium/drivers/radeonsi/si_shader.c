@@ -2628,7 +2628,12 @@ static void emit_streamout_output(struct si_shader_context *ctx,
 		vdata = out[0];
 		break;
 	case 2: /* as v2i32 */
-	case 3: /* as v4i32 (aligned to 4) */
+	case 3: /* as v3i32 */
+		if (ac_has_vec3_support(ctx->screen->info.chip_class, false)) {
+			vdata = ac_build_gather_values(&ctx->ac, out, num_comps);
+			break;
+		}
+		/* as v4i32 (aligned to 4) */
 		out[3] = LLVMGetUndef(ctx->i32);
 		/* fall through */
 	case 4: /* as v4i32 */
@@ -3125,8 +3130,10 @@ static void si_write_tess_factors(struct lp_build_tgsi_context *bld_base,
 		tf_outer_offset = get_tcs_tes_buffer_address(ctx, rel_patch_id, NULL,
 					LLVMConstInt(ctx->i32, param_outer, 0));
 
-		outer_vec = ac_build_gather_values(&ctx->ac, outer,
-						   util_next_power_of_two(outer_comps));
+		unsigned outer_vec_size =
+			ac_has_vec3_support(ctx->screen->info.chip_class, false) ?
+				outer_comps : util_next_power_of_two(outer_comps);
+		outer_vec = ac_build_gather_values(&ctx->ac, outer, outer_vec_size);
 
 		ac_build_buffer_store_dword(&ctx->ac, buf, outer_vec,
 					    outer_comps, tf_outer_offset,
