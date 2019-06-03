@@ -220,8 +220,8 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
          if (!ptr)
             goto fail;
 
-          if (!util_format_translate_3d(resource->format,
-                                       ptr,
+         if (!util_format_translate_3d(resource->format,
+                                       ptr + vtex->metadata.level_offset[level],
                                        trans->base.stride,
                                        trans->base.layer_stride,
                                        box->x, box->y, box->z,
