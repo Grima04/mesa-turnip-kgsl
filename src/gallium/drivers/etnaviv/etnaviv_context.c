@@ -310,7 +310,10 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
            enum pipe_flush_flags flags)
 {
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
    int out_fence_fd = -1;
+
+   mtx_lock(&screen->lock);
 
    list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
       etna_hw_query_suspend(hq, ctx);
@@ -324,6 +327,8 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
 
    if (fence)
       *fence = etna_fence_create(pctx, out_fence_fd);
+
+   mtx_unlock(&screen->lock);
 }
 
 static void
