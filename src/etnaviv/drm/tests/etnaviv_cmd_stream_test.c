@@ -29,7 +29,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "etnaviv_drmif.h"
+#include "drm/etnaviv_drmif.h"
 
 static void test_avail()
 {
