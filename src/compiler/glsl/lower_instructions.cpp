@@ -1789,7 +1789,7 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
       break;
 
    case ir_binop_mod:
-      if (lowering(MOD_TO_FLOOR) && (ir->type->is_float() || ir->type->is_double()))
+      if (lowering(MOD_TO_FLOOR) && ir->type->is_float_16_32_64())
 	 mod_to_floor(ir);
       break;
 
