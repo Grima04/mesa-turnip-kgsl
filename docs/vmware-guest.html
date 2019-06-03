@@ -166,9 +166,10 @@ To get the latest code from git:
 
 <ul>
 <li>
+<p>
 Determine where the GL-related libraries reside on your system and set
 the LIBDIR environment variable accordingly.
-<br><br>
+</p>
 For 32-bit Ubuntu systems:
 <pre>
   export LIBDIR=/usr/lib/i386-linux-gnu
@@ -195,12 +196,14 @@ For 64-bit Fedora systems:
   ninja -C builddir
   sudo ninja -C builddir install
   </pre>
-<li>Build Mesa and the vmwgfx_dri.so driver, the vmwgfx_drv.so xorg driver, the X acceleration library libxatracker.
+<li>
+<p>Build Mesa and the vmwgfx_dri.so driver, the vmwgfx_drv.so xorg driver, the X acceleration library libxatracker.
 The vmwgfx_dri.so is used by the OpenGL libraries during direct rendering,
 and by the Xorg server during accelerated indirect GL rendering.
 The libxatracker library is used exclusively by the X server to do render,
 copy and video acceleration:
-<br>
+</p>
+
 The following configure options doesn't build the EGL system.
   <pre>
   cd $TOP/mesa
@@ -209,10 +212,10 @@ The following configure options doesn't build the EGL system.
   sudo ninja -C builddir install
   </pre>
 
+<p>
 Note that you may have to install other packages that Mesa depends upon
 if they're not installed in your system.  You should be told what's missing.
-<br>
-<br>
+</p>
 
 <li>xf86-video-vmware: Now, once libxatracker is installed, we proceed with
 building and replacing the current Xorg driver.

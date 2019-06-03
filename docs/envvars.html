@@ -52,11 +52,8 @@ sometimes be useful for debugging end-user issues.
 <li>MESA_DEBUG - if set, error messages are printed to stderr.  For example,
    if the application generates a GL_INVALID_ENUM error, a corresponding error
    message indicating where the error occurred, and possibly why, will be
-   printed to stderr.<br>
-
-   For release builds, MESA_DEBUG defaults to off (no debug output).
-
-   MESA_DEBUG accepts the following comma-separated list of named
+   printed to stderr. For release builds, MESA_DEBUG defaults to off (no debug
+   output). MESA_DEBUG accepts the following comma-separated list of named
    flags, which adds extra behaviour to just set MESA_DEBUG=1:
    <ul>
      <li>silent - turn off debug messages. Only useful for debug builds.</li>
