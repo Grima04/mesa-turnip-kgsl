@@ -723,36 +723,13 @@ static void store_emit(
 
 	if (target == TGSI_TEXTURE_BUFFER) {
 		unsigned num_channels = util_last_bit(inst->Dst[0].Register.WriteMask);
-		num_channels = util_next_power_of_two(num_channels);
 
-		LLVMValueRef buf_args[6] = {
-			ac_build_gather_values(&ctx->ac, chans, 4),
-			args.resource,
-			vindex,
-			ctx->i32_0, /* voffset */
-		};
-
-		if (HAVE_LLVM >= 0x0800) {
-			buf_args[4] = ctx->i32_0; /* soffset */
-			buf_args[5] = LLVMConstInt(ctx->i1, args.cache_policy, 0);
-		} else {
-			buf_args[4] = LLVMConstInt(ctx->i1, !!(args.cache_policy & ac_glc), 0);
-			buf_args[5] = LLVMConstInt(ctx->i1, !!(args.cache_policy & ac_slc), 0);
-		}
-
-		const char *types[] = { "f32", "v2f32", "v4f32" };
-		char name[128];
-
-		snprintf(name, sizeof(name), "%s.%s",
-			 HAVE_LLVM >= 0x0800 ? "llvm.amdgcn.struct.buffer.store.format" :
-					       "llvm.amdgcn.buffer.store.format",
-			 types[CLAMP(num_channels, 1, 3) - 1]);
-
-		emit_data->output[emit_data->chan] = ac_build_intrinsic(
-			&ctx->ac,
-			name,
-			ctx->voidt, buf_args, 6,
-			ac_get_store_intr_attribs(writeonly_memory));
+		ac_build_buffer_store_format(&ctx->ac, args.resource,
+					     ac_build_gather_values(&ctx->ac, chans, num_channels),
+					     vindex, ctx->i32_0 /* voffset */,
+					     num_channels,
+					     !!(args.cache_policy & ac_glc),
+					     writeonly_memory);
 	} else {
 		args.opcode = ac_image_store;
 		args.data[0] = ac_build_gather_values(&ctx->ac, chans, 4);
