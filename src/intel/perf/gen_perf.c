@@ -867,3 +867,13 @@ gen_perf_reap_old_sample_buffers(struct gen_perf_context *perf_ctx)
          return;
    }
 }
+
+void
+gen_perf_free_sample_bufs(struct gen_perf_context *perf_ctx)
+{
+   foreach_list_typed_safe(struct oa_sample_buf, buf, link,
+                           &perf_ctx->free_sample_buffers)
+      ralloc_free(buf);
+
+   exec_list_make_empty(&perf_ctx->free_sample_buffers);
+}

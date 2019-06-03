@@ -144,20 +144,6 @@ dump_perf_queries(struct brw_context *brw)
    _mesa_HashWalk(ctx->PerfQuery.Objects, dump_perf_query_callback, brw);
 }
 
-/******************************************************************************/
-
-static void
-free_sample_bufs(struct brw_context *brw)
-{
-   foreach_list_typed_safe(struct oa_sample_buf, buf, link,
-                           &brw->perf_ctx.free_sample_buffers)
-      ralloc_free(buf);
-
-   exec_list_make_empty(&brw->perf_ctx.free_sample_buffers);
-}
-
-/******************************************************************************/
-
 /**
  * Driver hook for glGetPerfQueryInfoINTEL().
  */
@@ -1393,7 +1379,7 @@ brw_delete_perf_query(struct gl_context *ctx,
     * buffers and close any current i915-perf stream.
     */
    if (--brw->perf_ctx.n_query_instances == 0) {
-      free_sample_bufs(brw);
+      gen_perf_free_sample_bufs(&brw->perf_ctx);
       close_perf(brw, obj->query);
    }
 
