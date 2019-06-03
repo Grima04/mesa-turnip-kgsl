@@ -82,6 +82,7 @@ static const struct nir_shader_compiler_options vector_nir_options = {
    .lower_unpack_unorm_2x16 = true,
    .lower_extract_byte = true,
    .lower_extract_word = true,
+   .intel_vec4 = true,
    .max_unroll_iterations = 32,
 };
 

@@ -2630,6 +2630,16 @@ typedef struct nir_shader_compiler_options {
    /* Lowers when rotate instruction is not supported */
    bool lower_rotate;
 
+   /**
+    * Is this the Intel vec4 backend?
+    *
+    * Used to inhibit algebraic optimizations that are known to be harmful on
+    * the Intel vec4 backend.  This is generally applicable to any
+    * optimization that might cause more immediate values to be used in
+    * 3-source (e.g., ffma and flrp) instructions.
+    */
+   bool intel_vec4;
+
    unsigned max_unroll_iterations;
 
    nir_lower_int64_options lower_int64_options;
