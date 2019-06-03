@@ -18,21 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-libetnaviv_drm_files = files(
-  'etnaviv_device.c',
-  'etnaviv_gpu.c',
-  'etnaviv_bo.c',
-  'etnaviv_bo_cache.c',
-  'etnaviv_perfmon.c',
-  'etnaviv_pipe.c',
-  'etnaviv_cmd_stream.c',
-  'etnaviv_drmif.h',
-  'etnaviv_priv.h',
-)
-
-libetnaviv_drm = static_library(
-  'etnaviv_drm',
-  libetnaviv_drm_files,
+etnaviv_cmd_stream_test = executable(
+  'etnaviv_cmd_stream_test',
+  'etnaviv_cmd_stream_test.c',
   include_directories : [
     inc_etnaviv,
     inc_common,
@@ -43,9 +31,23 @@ libetnaviv_drm = static_library(
     dep_libdrm,
     dep_valgrind,
   ],
-  build_by_default : false,
+  link_with : [libetnaviv_drm, libmesa_util],
+  install: false,
 )
 
-if with_tools.contains('etnaviv')
-  subdir('tests')
-endif
+etnaviv_bo_cache_test = executable(
+  'etnaviv_bo_cache_test',
+  'etnaviv_bo_cache_test.c',
+  include_directories : [
+    inc_etnaviv,
+    inc_common,
+  ],
+  c_args : [c_vis_args, no_override_init_args],
+  cpp_args : [cpp_vis_args],
+  dependencies : [
+    dep_libdrm,
+    dep_valgrind,
+  ],
+  link_with : [libetnaviv_drm, libmesa_util],
+  install: false,
+)
