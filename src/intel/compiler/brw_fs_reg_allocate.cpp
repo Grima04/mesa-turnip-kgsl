@@ -922,6 +922,15 @@ fs_reg_alloc::set_spill_costs()
    }
 
    for (unsigned i = 0; i < fs->alloc.count; i++) {
+      /* Do the no_spill check first.  Registers that are used as spill
+       * temporaries may have been allocated after we calculated liveness so
+       * we shouldn't look their liveness up.  Fortunately, they're always
+       * used in SCRATCH_READ/WRITE instructions so they'll always be flagged
+       * no_spill.
+       */
+      if (no_spill[i])
+         continue;
+
       int live_length = fs->virtual_grf_end[i] - fs->virtual_grf_start[i];
       if (live_length <= 0)
          continue;
@@ -934,8 +943,7 @@ fs_reg_alloc::set_spill_costs()
        * to spill medium length registers with more uses.
        */
       float adjusted_cost = spill_costs[i] / logf(live_length);
-      if (!no_spill[i])
-	 ra_set_node_spill_cost(g, first_vgrf_node + i, adjusted_cost);
+      ra_set_node_spill_cost(g, first_vgrf_node + i, adjusted_cost);
    }
 
    have_spill_costs = true;
