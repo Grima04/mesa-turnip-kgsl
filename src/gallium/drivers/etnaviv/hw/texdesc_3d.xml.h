@@ -11,7 +11,7 @@ The rules-ng-ng source files this header was generated from are:
 - texdesc_3d.xml (   3183 bytes, from 2018-02-10 13:09:26)
 - copyright.xml  (   1597 bytes, from 2018-02-10 13:09:26)
 - common.xml     (  35468 bytes, from 2018-02-10 13:09:26)
-- common_3d.xml  (  14843 bytes, from 2019-01-18 10:13:41)
+- common_3d.xml  (  14781 bytes, from 2019-06-02 11:12:51)
 
 Copyright (C) 2012-2018 by the following authors:
 - Wladimir J. van der Laan <laanwj@gmail.com>
@@ -107,7 +107,7 @@ DEALINGS IN THE SOFTWARE.
 #define TEXDESC_CONFIG1_CACHE_MODE__SHIFT			23
 #define TEXDESC_CONFIG1_CACHE_MODE(x)				(((x) << TEXDESC_CONFIG1_CACHE_MODE__SHIFT) & TEXDESC_CONFIG1_CACHE_MODE__MASK)
 #define TEXDESC_CONFIG1_TEXTURE_ARRAY				0x01000000
-#define TEXDESC_CONFIG1_UNK25					0x02000000
+#define TEXDESC_CONFIG1_SEAMLESS_CUBE_MAP			0x02000000
 #define TEXDESC_CONFIG1_HALIGN__MASK				0x1c000000
 #define TEXDESC_CONFIG1_HALIGN__SHIFT				26
 #define TEXDESC_CONFIG1_HALIGN(x)				(((x) << TEXDESC_CONFIG1_HALIGN__SHIFT) & TEXDESC_CONFIG1_HALIGN__MASK)
