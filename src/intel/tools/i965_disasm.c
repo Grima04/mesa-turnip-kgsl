@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
    }
 
    /* Disassemble i965 instructions from buffer assembly */
-   brw_disassemble(devinfo, assembly, start, end, stdout);
+   brw_disassemble_with_labels(devinfo, assembly, start, end, stdout);
 
    result = EXIT_SUCCESS;
 

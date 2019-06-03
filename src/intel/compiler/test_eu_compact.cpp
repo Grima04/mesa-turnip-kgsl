@@ -49,7 +49,7 @@ test_compact_instruction(struct brw_codegen *p, brw_inst src)
       if (memcmp(&unchanged, &dst, sizeof(dst))) {
 	 fprintf(stderr, "Failed to compact, but dst changed\n");
 	 fprintf(stderr, "  Instruction: ");
-	 brw_disassemble_inst(stderr, p->devinfo, &src, false);
+	 brw_disassemble_inst(stderr, p->devinfo, &src, false, 0, NULL);
 	 return false;
       }
    }

@@ -173,9 +173,16 @@ bool brw_has_uip(const struct gen_device_info *devinfo, enum opcode opcode);
 const struct brw_label *brw_find_label(const struct brw_label *root, int offset);
 void brw_create_label(struct brw_label **labels, int offset, void *mem_ctx);
 int brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
-                         const struct brw_inst *inst, bool is_compacted);
+                         const struct brw_inst *inst, bool is_compacted,
+                         int offset, const struct brw_label *root_label);
+const struct brw_label *brw_label_assembly(const struct gen_device_info *devinfo,
+                                           const void *assembly, int start, int end,
+                                           void *mem_ctx);
+void brw_disassemble_with_labels(const struct gen_device_info *devinfo,
+                                 const void *assembly, int start, int end, FILE *out);
 void brw_disassemble(const struct gen_device_info *devinfo,
-                     const void *assembly, int start, int end, FILE *out);
+                     const void *assembly, int start, int end,
+                     const struct brw_label *root_label, FILE *out);
 const unsigned *brw_get_program( struct brw_codegen *p, unsigned *sz );
 
 bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,

@@ -84,6 +84,10 @@ gen_disasm_disassemble(struct gen_disasm *disasm, const void *assembly,
 
    brw_validate_instructions(devinfo, assembly, start, end, disasm_info);
 
+   void *mem_ctx = ralloc_context(NULL);
+   const struct brw_label *root_label =
+      brw_label_assembly(devinfo, assembly, start, end, mem_ctx);
+
    foreach_list_typed(struct inst_group, group, link,
                       &disasm_info->group_list) {
       struct exec_node *next_node = exec_node_get_next(&group->link);
@@ -96,13 +100,15 @@ gen_disasm_disassemble(struct gen_disasm *disasm, const void *assembly,
       int start_offset = group->offset;
       int end_offset = next->offset;
 
-      brw_disassemble(devinfo, assembly, start_offset, end_offset, out);
+      brw_disassemble(devinfo, assembly, start_offset, end_offset,
+                      root_label, out);
 
       if (group->error) {
          fputs(group->error, out);
       }
    }
 
+   ralloc_free(mem_ctx);
    ralloc_free(disasm_info);
 }
 

@@ -2238,7 +2238,8 @@ generate_code(struct brw_codegen *p,
 
       /* overriding the shader makes disasm_info invalid */
       if (!brw_try_override_assembly(p, 0, sha1buf)) {
-         dump_assembly(p->store, disasm_info, perf.block_latency);
+         dump_assembly(p->store, 0, p->next_insn_offset,
+                       disasm_info, perf.block_latency);
       } else {
          fprintf(stderr, "Successfully overrode shader with sha1 %s\n\n", sha1buf);
       }

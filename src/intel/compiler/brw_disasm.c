@@ -1654,13 +1654,29 @@ brw_disassemble_imm(const struct gen_device_info *devinfo,
    brw_inst inst;
    inst.data[0] = (((uint64_t) dw1) << 32) | ((uint64_t) dw0);
    inst.data[1] = (((uint64_t) dw3) << 32) | ((uint64_t) dw2);
-   return brw_disassemble_inst(stderr, devinfo, &inst, false);
+   return brw_disassemble_inst(stderr, devinfo, &inst, false, 0, NULL);
 }
 #endif
 
+static void
+write_label(FILE *file, const struct gen_device_info *devinfo,
+            const struct brw_label *root_label,
+            int offset, int jump)
+{
+   if (root_label != NULL) {
+      int to_bytes_scale = sizeof(brw_inst) / brw_jump_scale(devinfo);
+      const struct brw_label *label =
+         brw_find_label(root_label, offset + jump * to_bytes_scale);
+      if (label != NULL) {
+         format(file, " LABEL%d", label->number);
+      }
+   }
+}
+
 int
 brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
-                     const brw_inst *inst, bool is_compacted)
+                     const brw_inst *inst, bool is_compacted,
+                     int offset, const struct brw_label *root_label)
 {
    int err = 0;
    int space = 0;
@@ -1736,16 +1752,23 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
    if (brw_has_uip(devinfo, opcode)) {
       /* Instructions that have UIP also have JIP. */
       pad(file, 16);
-      format(file, "JIP: %d", brw_inst_jip(devinfo, inst));
-      pad(file, 32);
-      format(file, "UIP: %d", brw_inst_uip(devinfo, inst));
+      string(file, "JIP: ");
+      write_label(file, devinfo, root_label, offset, brw_inst_jip(devinfo, inst));
+
+      pad(file, 38);
+      string(file, "UIP: ");
+      write_label(file, devinfo, root_label, offset, brw_inst_uip(devinfo, inst));
    } else if (brw_has_jip(devinfo, opcode)) {
-      pad(file, 16);
+      int jip;
       if (devinfo->gen >= 7) {
-         format(file, "JIP: %d", brw_inst_jip(devinfo, inst));
+         jip = brw_inst_jip(devinfo, inst);
       } else {
-         format(file, "JIP: %d", brw_inst_gen6_jump_count(devinfo, inst));
+         jip = brw_inst_gen6_jump_count(devinfo, inst);
       }
+
+      pad(file, 16);
+      string(file, "JIP: ");
+      write_label(file, devinfo, root_label, offset, jip);
    } else if (devinfo->gen < 6 && (opcode == BRW_OPCODE_BREAK ||
                                    opcode == BRW_OPCODE_CONTINUE ||
                                    opcode == BRW_OPCODE_ELSE)) {
