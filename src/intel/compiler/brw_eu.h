@@ -162,6 +162,8 @@ void brw_set_default_swsb(struct brw_codegen *p, struct tgl_swsb value);
 
 void brw_init_codegen(const struct gen_device_info *, struct brw_codegen *p,
 		      void *mem_ctx);
+bool brw_has_jip(const struct gen_device_info *devinfo, enum opcode opcode);
+bool brw_has_uip(const struct gen_device_info *devinfo, enum opcode opcode);
 int brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                          const struct brw_inst *inst, bool is_compacted);
 void brw_disassemble(const struct gen_device_info *devinfo,

@@ -32,8 +32,8 @@
 #include "brw_eu.h"
 #include "util/half_float.h"
 
-static bool
-has_jip(const struct gen_device_info *devinfo, enum opcode opcode)
+bool
+brw_has_jip(const struct gen_device_info *devinfo, enum opcode opcode)
 {
    if (devinfo->gen < 6)
       return false;
@@ -47,8 +47,8 @@ has_jip(const struct gen_device_info *devinfo, enum opcode opcode)
           opcode == BRW_OPCODE_HALT;
 }
 
-static bool
-has_uip(const struct gen_device_info *devinfo, enum opcode opcode)
+bool
+brw_has_uip(const struct gen_device_info *devinfo, enum opcode opcode)
 {
    if (devinfo->gen < 6)
       return false;
@@ -1733,13 +1733,13 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
    if (opcode == BRW_OPCODE_SEND && devinfo->gen < 6)
       format(file, " %"PRIu64, brw_inst_base_mrf(devinfo, inst));
 
-   if (has_uip(devinfo, opcode)) {
+   if (brw_has_uip(devinfo, opcode)) {
       /* Instructions that have UIP also have JIP. */
       pad(file, 16);
       format(file, "JIP: %d", brw_inst_jip(devinfo, inst));
       pad(file, 32);
       format(file, "UIP: %d", brw_inst_uip(devinfo, inst));
-   } else if (has_jip(devinfo, opcode)) {
+   } else if (brw_has_jip(devinfo, opcode)) {
       pad(file, 16);
       if (devinfo->gen >= 7) {
          format(file, "JIP: %d", brw_inst_jip(devinfo, inst));
