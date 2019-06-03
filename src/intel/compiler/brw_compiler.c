@@ -34,8 +34,7 @@
    .lower_fdiv = true,                                                        \
    .lower_scmp = true,                                                        \
    .lower_flrp16 = true,                                                      \
-   .lower_fmod16 = true,                                                      \
-   .lower_fmod32 = true,                                                      \
+   .lower_fmod = true,                                                        \
    .lower_bitfield_extract = true,                                            \
    .lower_bitfield_insert = true,                                             \
    .lower_uadd_carry = true,                                                  \

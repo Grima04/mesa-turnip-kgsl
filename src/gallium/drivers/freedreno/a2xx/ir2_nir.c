@@ -32,7 +32,7 @@
 static const nir_shader_compiler_options options = {
 	.lower_fpow = true,
 	.lower_flrp32 = true,
-	.lower_fmod32 = true,
+	.lower_fmod = true,
 	.lower_fdiv = true,
 	.lower_fceil = true,
 	.fuse_ffma = true,
