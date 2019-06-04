@@ -535,6 +535,7 @@ def system_value(name, dest_comp, indices=[], bit_sizes=[32]):
               bit_sizes=bit_sizes)
 
 system_value("frag_coord", 4)
+system_value("point_coord", 2)
 system_value("front_face", 1, bit_sizes=[1, 32])
 system_value("vertex_id", 1)
 system_value("vertex_id_zero_base", 1)
