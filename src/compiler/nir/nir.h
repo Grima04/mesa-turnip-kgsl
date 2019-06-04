@@ -1455,6 +1455,16 @@ nir_intrinsic_align(const nir_intrinsic_instr *intrin)
 void nir_rewrite_image_intrinsic(nir_intrinsic_instr *instr,
                                  nir_ssa_def *handle, bool bindless);
 
+/* Determine if an intrinsic can be arbitrarily reordered and eliminated. */
+static inline bool
+nir_intrinsic_can_reorder(nir_intrinsic_instr *instr)
+{
+   const nir_intrinsic_info *info =
+      &nir_intrinsic_infos[instr->intrinsic];
+   return (info->flags & NIR_INTRINSIC_CAN_ELIMINATE) &&
+          (info->flags & NIR_INTRINSIC_CAN_REORDER);
+}
+
 /**
  * \group texture information
  *
