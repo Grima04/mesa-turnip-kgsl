@@ -179,7 +179,7 @@ _mesa_bind_texture(struct gl_context *ctx, GLenum target,
 
 extern struct gl_texture_object *
 _mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
-                               GLuint texName, bool no_error,
+                               GLuint texName, bool no_error, bool is_ext_dsa,
                                const char *name);
 
 /*@}*/

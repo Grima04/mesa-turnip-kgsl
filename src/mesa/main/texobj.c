@@ -1705,11 +1705,27 @@ _mesa_bind_texture(struct gl_context *ctx, GLenum target,
 
 struct gl_texture_object *
 _mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
-                               GLuint texName, bool no_error,
+                               GLuint texName, bool no_error, bool is_ext_dsa,
                                const char *caller)
 {
    struct gl_texture_object *newTexObj = NULL;
    int targetIndex;
+
+   if (is_ext_dsa) {
+      if (_mesa_is_proxy_texture(target)) {
+         /* EXT_dsa allows proxy targets only when texName is 0 */
+         if (texName != 0) {
+            _mesa_error(ctx, GL_INVALID_OPERATION, "%s(target = %s)", caller,
+                        _mesa_enum_to_string(target));
+            return NULL;
+         }
+         return _mesa_get_current_tex_object(ctx, target);
+      }
+      if (GL_TEXTURE_CUBE_MAP_POSITIVE_X <= target &&
+          target <= GL_TEXTURE_CUBE_MAP_NEGATIVE_Z) {
+         target = GL_TEXTURE_CUBE_MAP;
+      }
+   }
 
    targetIndex = _mesa_tex_target_to_index(ctx, target);
    if (!no_error && targetIndex < 0) {
@@ -1780,7 +1796,7 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
              GLenum texunit, bool no_error, const char *caller)
 {
    struct gl_texture_object *newTexObj =
-      _mesa_lookup_or_create_texture(ctx, target, texName, no_error,
+      _mesa_lookup_or_create_texture(ctx, target, texName, no_error, false,
                                      "glBindTexture");
    if (!newTexObj)
       return;
