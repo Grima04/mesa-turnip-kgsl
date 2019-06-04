@@ -53,6 +53,31 @@ extern const char *pan_counters_base;
 /* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
 //#define DRY_RUN
 
+static enum mali_job_type
+panfrost_job_type_for_pipe(enum pipe_shader_type type)
+{
+        switch (type) {
+                case PIPE_SHADER_VERTEX:
+                        return JOB_TYPE_VERTEX;
+
+                case PIPE_SHADER_FRAGMENT:
+                        /* Note: JOB_TYPE_FRAGMENT is different.
+                         * JOB_TYPE_FRAGMENT actually executes the
+                         * fragment shader, but JOB_TYPE_TILER is how you
+                         * specify it*/
+                        return JOB_TYPE_TILER;
+
+                case PIPE_SHADER_GEOMETRY:
+                        return JOB_TYPE_GEOMETRY;
+
+                case PIPE_SHADER_COMPUTE:
+                        return JOB_TYPE_COMPUTE;
+
+                default:
+                        unreachable("Unsupported shader stage");
+        }
+}
+
 static void
 panfrost_enable_checksum(struct panfrost_context *ctx, struct panfrost_resource *rsrc)
 {
@@ -1808,7 +1833,8 @@ panfrost_bind_fs_state(
                 /* Now we have a variant selected, so compile and go */
 
                 if (!shader_state->compiled) {
-                        panfrost_shader_compile(ctx, shader_state->tripipe, NULL, JOB_TYPE_TILER, shader_state);
+                        panfrost_shader_compile(ctx, shader_state->tripipe, NULL,
+                                        panfrost_job_type_for_pipe(PIPE_SHADER_FRAGMENT), shader_state);
                         shader_state->compiled = true;
                 }
         }
@@ -1834,7 +1860,8 @@ panfrost_bind_vs_state(
                         ctx->vs->variants[0].tripipe = (struct mali_shader_meta *) transfer.cpu;
                         ctx->vs->variants[0].tripipe_gpu = transfer.gpu;
 
-                        panfrost_shader_compile(ctx, ctx->vs->variants[0].tripipe, NULL, JOB_TYPE_VERTEX, &ctx->vs->variants[0]);
+                        panfrost_shader_compile(ctx, ctx->vs->variants[0].tripipe, NULL,
+                                        panfrost_job_type_for_pipe(PIPE_SHADER_VERTEX), &ctx->vs->variants[0]);
                         ctx->vs->variants[0].compiled = true;
                 }
         }
