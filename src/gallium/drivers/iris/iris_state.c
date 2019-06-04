@@ -4141,7 +4141,8 @@ iris_populate_binding_table(struct iris_context *ice,
       return;
    }
 
-   if (stage == MESA_SHADER_COMPUTE) {
+   if (stage == MESA_SHADER_COMPUTE &&
+       shader->bt.used_mask[IRIS_SURFACE_GROUP_CS_WORK_GROUPS]) {
       /* surface for gl_NumWorkGroups */
       struct iris_state_ref *grid_data = &ice->state.grid_size;
       struct iris_state_ref *grid_state = &ice->state.grid_surf_state;

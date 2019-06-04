@@ -670,7 +670,6 @@ iris_setup_binding_table(struct nir_shader *nir,
          BITFIELD64_MASK(num_render_targets);
    } else if (info->stage == MESA_SHADER_COMPUTE) {
       bt->sizes[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
-      bt->used_mask[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
    }
 
    bt->sizes[IRIS_SURFACE_GROUP_TEXTURE] = util_last_bit(info->textures_used);
@@ -706,6 +705,10 @@ iris_setup_binding_table(struct nir_shader *nir,
 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
+         case nir_intrinsic_load_num_work_groups:
+            bt->used_mask[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
+            break;
+
          case nir_intrinsic_image_size:
          case nir_intrinsic_image_load:
          case nir_intrinsic_image_store:
