@@ -137,11 +137,13 @@ analyze_boolean_resolves_block(nir_block *block)
             resolve_status = get_resolve_status_for_src(&alu->src[0].src);
             break;
 
+         case nir_op_b32csel:
          case nir_op_iand:
          case nir_op_ior:
          case nir_op_ixor: {
-            uint8_t src0_status = get_resolve_status_for_src(&alu->src[0].src);
-            uint8_t src1_status = get_resolve_status_for_src(&alu->src[1].src);
+            const unsigned first = alu->op == nir_op_b32csel ? 1 : 0;
+            uint8_t src0_status = get_resolve_status_for_src(&alu->src[first + 0].src);
+            uint8_t src1_status = get_resolve_status_for_src(&alu->src[first + 1].src);
 
             if (src0_status == src1_status) {
                resolve_status = src0_status;
