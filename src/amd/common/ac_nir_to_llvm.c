@@ -1779,11 +1779,12 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 							 cache_policy & ac_glc);
 		} else {
 			int num_channels = util_next_power_of_two(load_bytes) / 4;
+			bool can_speculate = access & ACCESS_CAN_REORDER;
 
 			ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels,
 						   vindex, offset, immoffset, 0,
 						   cache_policy & ac_glc, 0,
-						   false, false);
+						   can_speculate, false);
 		}
 
 		LLVMTypeRef byte_vec = LLVMVectorType(ctx->ac.i8, ac_get_type_size(LLVMTypeOf(ret)));
@@ -2489,11 +2490,11 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 		vindex = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 						 ctx->ac.i32_0, "");
 
-		/* TODO: set "can_speculate" when OpenGL needs it. */
+		bool can_speculate = access & ACCESS_CAN_REORDER;
 		res = ac_build_buffer_load_format(&ctx->ac, rsrc, vindex,
 						  ctx->ac.i32_0, num_channels,
 						  !!(args.cache_policy & ac_glc),
-						  false);
+						  can_speculate);
 		res = ac_build_expand_to_vec4(&ctx->ac, res, num_channels);
 
 		res = ac_trim_vector(&ctx->ac, res, instr->dest.ssa.num_components);
