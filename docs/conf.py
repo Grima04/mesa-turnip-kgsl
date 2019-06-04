@@ -83,6 +83,10 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
+# Disable highlighting unless a language is specified, otherwise we'll get
+# python keywords highlit in literal blocks.
+highlight_language = "none"
+
 
 # -- Options for HTML output ----------------------------------------------
 
