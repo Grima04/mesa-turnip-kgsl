@@ -672,4 +672,4 @@ upon Mesa.
 
    Conformx passed.
 
-NOTE: conformx passes for all machine path levels (-p option).
+.. note:: conformx passes for all machine path levels (-p option).

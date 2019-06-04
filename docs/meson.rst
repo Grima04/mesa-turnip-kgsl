@@ -143,13 +143,15 @@ symbolic links for drivers). To install:
 
    ninja -C build/ install
 
-Note: autotools automatically updated translation files (used by the DRI
-configuration tool) as part of the build process, Meson does not do
-this. Instead, you will need do this:
+.. note::
 
-::
+   autotools automatically updated translation files (used by the DRI
+   configuration tool) as part of the build process, Meson does not do
+   this. Instead, you will need do this:
 
-   ninja -C build/ xmlpool-pot xmlpool-update-po xmlpool-gmo
+   ::
+
+      ninja -C build/ xmlpool-pot xmlpool-update-po xmlpool-gmo
 
 Windows specific instructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

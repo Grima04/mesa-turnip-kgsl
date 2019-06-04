@@ -165,9 +165,11 @@ October 21, 2019
 `Mesa 19.1.8 <relnotes/19.1.8.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 19.1.8 will be the final release in the
-19.1 series. Users of 19.1 are encouraged to migrate to the 19.2 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 19.1.8 will be the final release in the
+   19.1 series. Users of 19.1 are encouraged to migrate to the 19.2 series
+   in order to obtain future fixes.
 
 October 9, 2019
 ---------------
@@ -237,9 +239,11 @@ June 24, 2019
 `Mesa 19.0.7 <relnotes/19.0.7.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 19.0.7 will be the final release in the
-19.0 series. Users of 19.0 are encouraged to migrate to the 19.1 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 19.0.7 will be the final release in the
+   19.0 series. Users of 19.0 are encouraged to migrate to the 19.1 series
+   in order to obtain future fixes.
 
 June 11, 2019
 -------------
@@ -284,9 +288,11 @@ April 5, 2019
 `Mesa 18.3.6 <relnotes/18.3.6.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 18.3.6 will be the final release in the
-18.3 series. Users of 18.3 are encouraged to migrate to the 19.0 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 18.3.6 will be the final release in the
+   18.3 series. Users of 18.3 are encouraged to migrate to the 19.0 series
+   in order to obtain future fixes.
 
 March 27, 2019
 --------------
@@ -331,9 +337,11 @@ December 27, 2018
 `Mesa 18.2.8 <relnotes/18.2.8.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 18.2.8 will be the final release in the
-18.2 series. Users of 18.2 are encouraged to migrate to the 18.3 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 18.2.8 will be the final release in the
+   18.2 series. Users of 18.2 are encouraged to migrate to the 18.3 series
+   in order to obtain future fixes.
 
 December 13, 2018
 -----------------
@@ -390,9 +398,11 @@ September 24, 2018
 `Mesa 18.1.9 <relnotes/18.1.9.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 18.1.9 will be the final release in the
-18.1 series. Users of 18.1 are encouraged to migrate to the 18.2 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 18.1.9 will be the final release in the
+   18.1 series. Users of 18.1 are encouraged to migrate to the 18.2 series
+   in order to obtain future fixes.
 
 September 21, 2018
 ------------------
@@ -450,9 +460,11 @@ June 3, 2018
 `Mesa 18.0.5 <relnotes/18.0.5.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 18.0.5 will be the final release in the
-18.0 series. Users of 18.0 are encouraged to migrate to the 18.1 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 18.0.5 will be the final release in the
+   18.0 series. Users of 18.0 are encouraged to migrate to the 18.1 series
+   in order to obtain future fixes.
 
 June 1, 2018
 ------------
@@ -499,9 +511,11 @@ April 18, 2018
 `Mesa 17.3.9 <relnotes/17.3.9.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 17.3.9 will be the final release in the
-17.3 series. Users of 17.3 are encouraged to migrate to the 18.0 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 17.3.9 will be the final release in the
+   17.3 series. Users of 17.3 are encouraged to migrate to the 18.0 series
+   in order to obtain future fixes.
 
 April 03, 2018
 --------------
@@ -558,9 +572,11 @@ December 22, 2017
 `Mesa 17.2.8 <relnotes/17.2.8.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 17.2.8 will be the final release in the
-17.2 series. Users of 17.2 are encouraged to migrate to the 17.3 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 17.2.8 will be the final release in the
+   17.2 series. Users of 17.2 are encouraged to migrate to the 17.3 series
+   in order to obtain future fixes.
 
 December 21, 2017
 -----------------
@@ -617,9 +633,11 @@ September 25, 2017
 `Mesa 17.1.10 <relnotes/17.1.10.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 17.1.10 will be the final release in the
-17.1 series. Users of 17.1 are encouraged to migrate to the 17.2 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 17.1.10 will be the final release in the
+   17.1 series. Users of 17.1 are encouraged to migrate to the 17.2 series
+   in order to obtain future fixes.
 
 September 17, 2017
 ------------------
@@ -688,9 +706,11 @@ June 1, 2017
 `Mesa 17.0.7 <relnotes/17.0.7.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 17.0.7 will be the final release in the
-17.0 series. Users of 17.0 are encouraged to migrate to the 17.1 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 17.0.7 will be the final release in the
+   17.0 series. Users of 17.0 are encouraged to migrate to the 17.1 series
+   in order to obtain future fixes.
 
 May 25, 2017
 ------------
@@ -736,9 +756,11 @@ March 20, 2017
 17.0.2 <relnotes/17.0.2.html>`__ are released. These are bug-fix
 releases from the 13.0 and 17.0 branches, respectively.
 
-NOTE: It is anticipated that 13.0.6 will be the final release in the
-13.0 series. Users of 13.0 are encouraged to migrate to the 17.0 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 13.0.6 will be the final release in the
+   13.0 series. Users of 13.0 are encouraged to migrate to the 17.0 series
+   in order to obtain future fixes.
 
 March 4, 2017
 -------------
@@ -771,10 +793,12 @@ January 23, 2017
 `Mesa 12.0.6 <relnotes/12.0.6.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: This is an extra release for the 12.0 stable branch, as per
-developers' feedback. It is anticipated that 12.0.6 will be the final
-release in the 12.0 series. Users of 12.0 are encouraged to migrate to
-the 13.0 series in order to obtain future fixes.
+.. note::
+
+   This is an extra release for the 12.0 stable branch, as per
+   developers' feedback. It is anticipated that 12.0.6 will be the final
+   release in the 12.0 series. Users of 12.0 are encouraged to migrate to
+   the 13.0 series in order to obtain future fixes.
 
 January 5, 2017
 ---------------
@@ -788,9 +812,11 @@ December 5, 2016
 `Mesa 12.0.5 <relnotes/12.0.5.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 12.0.5 will be the final release in the
-12.0 series. Users of 12.0 are encouraged to migrate to the 13.0 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 12.0.5 will be the final release in the
+   12.0 series. Users of 12.0 are encouraged to migrate to the 13.0 series
+   in order to obtain future fixes.
 
 November 28, 2016
 -----------------
@@ -846,9 +872,11 @@ May 9, 2016
 11.2.2 <relnotes/11.2.2.html>`__ are released. These are bug-fix
 releases from the 11.1 and 11.2 branches, respectively.
 
-NOTE: It is anticipated that 11.1.4 will be the final release in the
-11.1.4 series. Users of 11.1 are encouraged to migrate to the 11.2
-series in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 11.1.4 will be the final release in the
+   11.1.4 series. Users of 11.1 are encouraged to migrate to the 11.2
+   series in order to obtain future fixes.
 
 April 17, 2016
 --------------
@@ -876,9 +904,11 @@ January 22, 2016
 `Mesa 11.0.9 <relnotes/11.0.9.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 11.0.9 will be the final release in the
-11.0 series. Users of 11.0 are encouraged to migrate to the 11.1 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 11.0.9 will be the final release in the
+   11.0 series. Users of 11.0 are encouraged to migrate to the 11.1 series
+   in order to obtain future fixes.
 
 January 13, 2016
 ----------------
@@ -940,9 +970,11 @@ October 3, 2015
 `Mesa 10.6.9 <relnotes/10.6.9.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 10.6.9 will be the final release in the
-10.6 series. Users of 10.6 are encouraged to migrate to the 11.0 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 10.6.9 will be the final release in the
+   10.6 series. Users of 10.6 are encouraged to migrate to the 11.0 series
+   in order to obtain future fixes.
 
 September 28, 2015
 ------------------
@@ -1011,9 +1043,11 @@ July 04, 2015
 `Mesa 10.5.9 <relnotes/10.5.9.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: It is anticipated that 10.5.9 will be the final release in the
-10.5 series. Users of 10.5 are encouraged to migrate to the 10.6 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 10.5.9 will be the final release in the
+   10.5 series. Users of 10.5 are encouraged to migrate to the 10.6 series
+   in order to obtain future fixes.
 
 June 29, 2015
 -------------
@@ -1122,9 +1156,11 @@ January 12, 2015
 10.4.2 <relnotes/10.4.2.html>`__ are released. These are bug-fix
 releases from the 10.3 and 10.4 branches, respectively.
 
-NOTE: It is anticipated that 10.3.7 will be the final release in the
-10.3 series. Users of 10.3 are encouraged to migrate to the 10.4 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 10.3.7 will be the final release in the
+   10.3 series. Users of 10.3 are encouraged to migrate to the 10.4 series
+   in order to obtain future fixes.
 
 December 29, 2014
 -----------------
@@ -1171,9 +1207,11 @@ October 12, 2014
 10.3.1 <relnotes/10.3.1.html>`__ are released. These are bug-fix
 releases from the 10.2 and 10.3 branches, respectively.
 
-NOTE: It is anticipated that 10.2.9 will be the final release in the
-10.2 series. Users of 10.2 are encouraged to migrate to the 10.3 series
-in order to obtain future fixes.
+.. note::
+
+   It is anticipated that 10.2.9 will be the final release in the
+   10.2 series. Users of 10.2 are encouraged to migrate to the 10.3 series
+   in order to obtain future fixes.
 
 September 19, 2014
 ------------------
@@ -1283,10 +1321,12 @@ April 18, 2014
 `Mesa 10.0.5 <relnotes/10.0.5.html>`__ is released. This is a bug-fix
 release.
 
-NOTE: Since the 10.1.1 release is being released concurrently, it is
-anticipated that 10.0.5 will be the final release in the 10.0 series.
-Users of 10.0 are encouraged to migrate to the 10.1 series in order to
-obtain future fixes.
+.. note::
+
+   Since the 10.1.1 release is being released concurrently, it is
+   anticipated that 10.0.5 will be the final release in the 10.0 series.
+   Users of 10.0 are encouraged to migrate to the 10.1 series in order to
+   obtain future fixes.
 
 March 12, 2014
 --------------
@@ -1739,8 +1779,9 @@ bug-fix release.
 August 19, 2005
 ---------------
 
-Mesa 6.3.2 has been released. Note: there was no public release of
-version 6.3.1.
+Mesa 6.3.2 has been released.
+
+.. note:: there was no public release of version 6.3.1.
 
 `Changes in version 6.3.1 <versions.html#6.3.2>`__
 

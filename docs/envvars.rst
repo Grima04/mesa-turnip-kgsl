@@ -147,10 +147,15 @@ Core Mesa environment variables
    GLSL programs. Should be set to a number optionally followed by
    ``K``, ``M``, or ``G`` to specify a size in kilobytes, megabytes, or
    gigabytes. By default, gigabytes will be assumed. And if unset, a
-   maximum size of 1GB will be used. Note: A separate cache might be
-   created for each architecture that Mesa is installed for on your
-   system. For example under the default settings you may end up with a
-   1GB cache for x86_64 and another 1GB cache for i386.
+   maximum size of 1GB will be used.
+
+   .. note::
+
+      A separate cache might be created for each architecture that Mesa is
+      installed for on your system. For example under the default settings
+      you may end up with a 1GB cache for x86_64 and another 1GB cache for
+      i386.
+
 ``MESA_GLSL_CACHE_DIR``
    if set, determines the directory to be used for the on-disk cache of
    compiled GLSL programs. If this variable is not set, then the cache

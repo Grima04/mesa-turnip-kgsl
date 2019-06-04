@@ -23,11 +23,13 @@ There are four Mesa 3D / DRI mailing lists:
 -  `piglit <https://lists.freedesktop.org/mailman/listinfo/piglit>`__ -
    for Piglit (OpenGL driver testing framework) discussion.
 
-**NOTE**: You **must** subscribe to these lists in order to post to
-them. If you try to post to a list and you're not a subscriber (or if
-you try to post from a different email address than you subscribed with)
-your posting will be held for an indefinite period or may be discarded
-entirely.
+.. note::
+
+   You **must** subscribe to these lists in order to post to
+   them. If you try to post to a list and you're not a subscriber (or if
+   you try to post from a different email address than you subscribed with)
+   your posting will be held for an indefinite period or may be discarded
+   entirely.
 
 Follow the links above for list archives.
 

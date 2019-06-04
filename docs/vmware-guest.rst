@@ -248,20 +248,22 @@ Building the Code
 
       echo vmwgfx | sudo tee -a /etc/modules
 
-   Note: some distros put DRM kernel drivers in different directories.
-   For example, sometimes vmwgfx.ko might be found in
-   ``/lib/modules/{version}/extra/vmwgfx.ko`` or in
-   ``/lib/modules/{version}/kernel/drivers/gpu/drm/vmwgfx/vmwgfx.ko``.
+   .. note::
 
-   After installing vmwgfx.ko you might want to run the following
-   command to check that the new kernel module is in the expected place:
+      some distros put DRM kernel drivers in different directories.
+      For example, sometimes vmwgfx.ko might be found in
+      ``/lib/modules/{version}/extra/vmwgfx.ko`` or in
+      ``/lib/modules/{version}/kernel/drivers/gpu/drm/vmwgfx/vmwgfx.ko``.
 
-   ::
+      After installing vmwgfx.ko you might want to run the following
+      command to check that the new kernel module is in the expected place:
 
-      find /lib/modules -name vmwgfx.ko -exec ls -l '{}' \;
+      ::
 
-   If you see the kernel module listed in more than one place, you may
-   need to move things around.
+         find /lib/modules -name vmwgfx.ko -exec ls -l '{}' \;
+
+      If you see the kernel module listed in more than one place, you may
+      need to move things around.
 
    Finally, if you update your kernel you'll probably have to rebuild
    and reinstall the vmwgfx.ko module again.

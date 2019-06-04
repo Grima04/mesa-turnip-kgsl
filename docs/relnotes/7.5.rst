@@ -48,10 +48,13 @@ New features
    -  softpipe - a software/reference driver
    -  i915 - Intel 915/945 driver
    -  Cell - IBM/Sony/Toshiba Cell processor driver
-   -  nouveau (for NVIDIA GPUs) and R300 for (AMD/ATI R300). **PLEASE
-      NOTE: these drivers are incomplete and still under development.
-      It's probably NOT worthwhile to report any bugs unless you have
-      patches.**
+   -  nouveau (for NVIDIA GPUs) and R300 for (AMD/ATI R300).
+
+      .. note::
+
+         these drivers are incomplete and still under development.
+         It's probably NOT worthwhile to report any bugs unless you have
+         patches.
 
 -  GL_ARB_framebuffer_object extension (software drivers, i965 driver)
 -  Reworked two-sided stencil support. This allows a driver to support

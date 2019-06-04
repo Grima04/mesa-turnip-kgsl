@@ -68,8 +68,10 @@ Third party/extra tools.
    For MSVC on Windows, install `Win
    flex-bison <http://winflexbison.sourceforge.net/>`__.
 
-**Note**: Some versions can be buggy (eg. flex 2.6.2) so do try others
-if things fail.
+.. note::
+
+   Some versions can be buggy (eg. flex 2.6.2) so do try others
+   if things fail.
 
 .. _prereq-dri:
 

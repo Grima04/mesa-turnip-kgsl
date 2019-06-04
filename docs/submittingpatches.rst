@@ -323,17 +323,23 @@ broad discretion in rejecting patches that have been nominated.
    patch is too large and/or otherwise contradicts with the rules set
    within, a backport is appropriate.
 -  It must not introduce a regression - be that build or runtime wise.
-   Note: If the regression is due to faulty piglit/dEQP/CTS/other test
-   the latter must be fixed first. A reference to the offending test(s)
-   and respective fix(es) should be provided in the nominated patch.
+
+   .. note::
+      If the regression is due to faulty piglit/dEQP/CTS/other test
+      the latter must be fixed first. A reference to the offending test(s)
+      and respective fix(es) should be provided in the nominated patch.
+
 -  Patch cannot be larger than 100 lines.
 -  Patches that move code around with no functional change should be
    rejected.
--  Patch must be a bug fix and not a new feature. Note: An exception to
-   this rule, are hardware-enabling "features". For example,
-   `backports <#backports>`__ of new code to support a newly-developed
-   hardware product can be accepted if they can be reasonably determined
-   not to have effects on other hardware.
+-  Patch must be a bug fix and not a new feature.
+
+   .. note::
+      An exception to this rule, are hardware-enabling "features". For
+      example, `backports <#backports>`__ of new code to support a
+      newly-developed hardware product can be accepted if they can be
+      reasonably determined not to have effects on other hardware.
+
 -  Patch must be reviewed, For example, the commit message has
    Reviewed-by, Signed-off-by, or Tested-by tags from someone but the
    author.

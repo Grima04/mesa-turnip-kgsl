@@ -1,8 +1,10 @@
 Mesa Version History
 ====================
 
-**NOTE: Changes for Mesa 6.4 and later are documented in the
-corresponding**\ `release notes <relnotes.html>`__\ **file.**
+.. note::
+
+   Changes for Mesa 6.4 and later are documented in the corresponding
+   `release notes <relnotes.html>`__ file.
 
 1.0 beta February 1995
 ----------------------
@@ -1648,5 +1650,7 @@ Bug fixes:
 -  fixed glxext.h cross-compile issue (Colin Harrison)
 -  assorted DRI driver fixes
 
-**NOTE: Changes for Mesa 6.4 and later are documented in the
-corresponding**\ `release notes <relnotes.html>`__\ **file.**
+.. note::
+
+   Changes for Mesa 6.4 and later are documented in the corresponding
+   `release notes <relnotes.html>`__ file.

@@ -70,7 +70,7 @@ command:
 
      git log mesa-7.10.1..mesa-7.10.2
 
-*Note:* Reverted commits and the reverts are not included in this list.
+.. note:: Reverted commits and the reverts are not included in this list.
 
 Alex Deucher (2):
 

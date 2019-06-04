@@ -56,17 +56,19 @@ Stable releases
 -  Normally available once every two weeks.
 -  Only the latest branch has releases. See note below.
 
-Note: There is one or two releases overlap when changing branches. For
-example:
+.. note::
 
-The final release from the 12.0 series Mesa 12.0.5 will be out around
-the same time (or shortly after) 13.0.1 is out.
+   There is one or two releases overlap when changing branches. For
+   example:
 
-This also involves that, as a final release may be delayed due to the
-need of additional candidates to solve some blocking regression(s), the
-release manager might have to update the
-`calendar <release-calendar.html>`__ with additional bug fix releases of
-the current stable branch.
+   The final release from the 12.0 series Mesa 12.0.5 will be out around
+   the same time (or shortly after) 13.0.1 is out.
+
+   This also involves that, as a final release may be delayed due to the
+   need of additional candidates to solve some blocking regression(s), the
+   release manager might have to update the
+   `calendar <release-calendar.html>`__ with additional bug fix releases of
+   the current stable branch.
 
 .. _pickntest:
 
@@ -111,9 +113,11 @@ the build status in that project.
 For MacOSX related changes, Jeremy Huddleston Sequoia is currently a
 good contact point.
 
-**Note:** If a patch in the current queue needs any additional fix(es),
-then they should be squashed together. The commit messages and the
-"``cherry picked from``"-tags must be preserved.
+.. note::
+
+   If a patch in the current queue needs any additional fix(es),
+   then they should be squashed together. The commit messages and the
+   "``cherry picked from``"-tags must be preserved.
 
 ::
 
@@ -174,9 +178,11 @@ Making a branchpoint
 A branchpoint is made such that new development can continue in parallel
 to stabilisation and bugfixing.
 
-Note: Before doing a branch ensure that basic build and ``meson test``
-testing is done and there are little to-no issues. Ideally all of those
-should be tackled already.
+.. note::
+
+   Before doing a branch ensure that basic build and ``meson test``
+   testing is done and there are little to-no issues. Ideally all of those
+   should be tackled already.
 
 Check if the version number is going to remain as, alternatively
 ``git mv docs/relnotes/{current,new}.html`` as appropriate.
@@ -347,5 +353,4 @@ document. If there's outstanding action, close the bug referencing the
 commit ID which addresses the bug and mention the Mesa version that has
 the fix.
 
-Note: the above is not applicable to all the reports, so use common
-sense.
+.. note: the above is not applicable to all the reports, so use common sense.
