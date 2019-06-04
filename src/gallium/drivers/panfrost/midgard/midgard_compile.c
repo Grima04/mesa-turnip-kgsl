@@ -1007,6 +1007,42 @@ emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset, nir_src
 }
 
 static void
+emit_varying_read(
+                compiler_context *ctx,
+                unsigned dest, unsigned offset,
+                unsigned nr_comp, unsigned component,
+                nir_src *indirect_offset)
+{
+        /* XXX: Half-floats? */
+        /* TODO: swizzle, mask */
+
+        midgard_instruction ins = m_ld_vary_32(dest, offset);
+        ins.load_store.mask = (1 << nr_comp) - 1;
+        ins.load_store.swizzle = SWIZZLE_XYZW >> (2 * component);
+
+        midgard_varying_parameter p = {
+                .is_varying = 1,
+                .interpolation = midgard_interp_default,
+                .flat = /*var->data.interpolation == INTERP_MODE_FLAT*/ 0
+        };
+
+        unsigned u;
+        memcpy(&u, &p, sizeof(p));
+        ins.load_store.varying_parameters = u;
+
+        if (indirect_offset) {
+                /* We need to add in the dynamic index, moved to r27.w */
+                emit_indirect_offset(ctx, indirect_offset);
+                ins.load_store.unknown = 0x79e; /* xxx: what is this? */
+        } else {
+                /* Just a direct load */
+                ins.load_store.unknown = 0x1e9e; /* xxx: what is this? */
+        }
+
+        emit_mir_instruction(ctx, ins);
+}
+
+static void
 emit_sysval_read(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
         /* First, pull out the destination */
@@ -1136,34 +1172,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 if (instr->intrinsic == nir_intrinsic_load_uniform && !ctx->is_blend) {
                         emit_uniform_read(ctx, reg, ctx->sysval_count + offset, !direct ? &instr->src[0] : NULL);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
-                        /* XXX: Half-floats? */
-                        /* TODO: swizzle, mask */
-
-                        midgard_instruction ins = m_ld_vary_32(reg, offset);
-                        ins.load_store.mask = (1 << nr_comp) - 1;
-                        ins.load_store.swizzle = SWIZZLE_XYZW >> (2 * component);
-
-                        midgard_varying_parameter p = {
-                                .is_varying = 1,
-                                .interpolation = midgard_interp_default,
-                                .flat = /*var->data.interpolation == INTERP_MODE_FLAT*/ 0
-                        };
-
-                        unsigned u;
-                        memcpy(&u, &p, sizeof(p));
-                        ins.load_store.varying_parameters = u;
-
-                        if (direct) {
-                                /* We have the offset totally ready */
-                                ins.load_store.unknown = 0x1e9e; /* xxx: what is this? */
-                        } else {
-                                /* We have it partially ready, but we need to
-                                 * add in the dynamic index, moved to r27.w */
-                                emit_indirect_offset(ctx, &instr->src[0]);
-                                ins.load_store.unknown = 0x79e; /* xxx: what is this? */
-                        }
-
-                        emit_mir_instruction(ctx, ins);
+                        emit_varying_read(ctx, reg, offset, nr_comp, component, !direct ? &instr->src[0] : NULL);
                 } else if (ctx->is_blend) {
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
