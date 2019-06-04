@@ -999,7 +999,7 @@ dri3_create_screen(int screen, struct glx_display * priv)
    return &psc->base;
 
 handle_error:
-   CriticalErrorMessageF("failed to load driver: %s\n", driverName);
+   CriticalErrorMessageF("failed to load driver: %s\n", driverName ? driverName : "(null)");
 
    if (configs)
        glx_config_destroy_list(configs);
