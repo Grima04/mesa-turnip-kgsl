@@ -257,9 +257,9 @@ snapshot_statistics_registers(struct brw_context *brw,
 
       assert(counter->data_type == GEN_PERF_COUNTER_DATA_TYPE_UINT64);
 
-      brw_store_register_mem64(brw, obj->pipeline_stats.bo,
-                               counter->pipeline_stat.reg,
-                               offset_in_bytes + i * sizeof(uint64_t));
+      brw->perf_ctx.perf->vtbl.store_register_mem64(brw, obj->pipeline_stats.bo,
+                                                    counter->pipeline_stat.reg,
+                                                    offset_in_bytes + i * sizeof(uint64_t));
    }
 }
 
@@ -1546,6 +1546,8 @@ brw_oa_batchbuffer_flush(void *c, const char *file, int line)
 }
 
 typedef void (*capture_frequency_stat_register_t)(void *, void *, uint32_t );
+typedef void (*store_register_mem64_t)(void *ctx, void *bo,
+                                       uint32_t reg, uint32_t offset);
 
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
@@ -1567,6 +1569,8 @@ brw_init_perf_query_info(struct gl_context *ctx)
    perf_cfg->vtbl.batchbuffer_flush = brw_oa_batchbuffer_flush;
    perf_cfg->vtbl.capture_frequency_stat_register =
       (capture_frequency_stat_register_t) capture_frequency_stat_register;
+   perf_cfg->vtbl.store_register_mem64 =
+      (store_register_mem64_t) brw_store_register_mem64;
 
    init_pipeline_statistic_query_registers(brw);
    gen_perf_query_register_mdapi_statistic_query(&brw->screen->devinfo,
