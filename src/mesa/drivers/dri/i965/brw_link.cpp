@@ -306,8 +306,8 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
              continue;
 
           brw_nir_link_shaders(compiler,
-                               &shProg->_LinkedShaders[i]->Program->nir,
-                               &shProg->_LinkedShaders[next]->Program->nir);
+                               shProg->_LinkedShaders[i]->Program->nir,
+                               shProg->_LinkedShaders[next]->Program->nir);
           next = i;
        }
     }

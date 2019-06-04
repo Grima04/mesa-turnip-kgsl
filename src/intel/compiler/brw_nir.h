@@ -98,7 +98,7 @@ void brw_preprocess_nir(const struct brw_compiler *compiler,
 
 void
 brw_nir_link_shaders(const struct brw_compiler *compiler,
-                     nir_shader **producer, nir_shader **consumer);
+                     nir_shader *producer, nir_shader *consumer);
 
 bool brw_nir_lower_cs_intrinsics(nir_shader *nir,
                                  unsigned dispatch_width);
