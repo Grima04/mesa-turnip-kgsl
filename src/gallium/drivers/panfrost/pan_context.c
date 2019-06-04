@@ -1785,88 +1785,80 @@ panfrost_variant_matches(struct panfrost_context *ctx, struct panfrost_shader_st
 }
 
 static void
-panfrost_bind_fs_state(
+panfrost_bind_shader_state(
         struct pipe_context *pctx,
-        void *hwcso)
+        void *hwcso,
+        enum pipe_shader_type type)
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        ctx->fs = hwcso;
+        if (type == PIPE_SHADER_FRAGMENT) {
+                ctx->fs = hwcso;
+                ctx->dirty |= PAN_DIRTY_FS;
+        } else {
+                ctx->vs = hwcso;
+                ctx->dirty |= PAN_DIRTY_VS;
+        }
 
-        if (hwcso) {
-                /* Match the appropriate variant */
+        if (!hwcso) return;
 
-                signed variant = -1;
+        /* Match the appropriate variant */
 
-                struct panfrost_shader_variants *variants = (struct panfrost_shader_variants *) hwcso;
+        signed variant = -1;
+        struct panfrost_shader_variants *variants = (struct panfrost_shader_variants *) hwcso;
 
-                for (unsigned i = 0; i < variants->variant_count; ++i) {
-                        if (panfrost_variant_matches(ctx, &variants->variants[i])) {
-                                variant = i;
-                                break;
-                        }
-                }
-
-                if (variant == -1) {
-                        /* No variant matched, so create a new one */
-                        variant = variants->variant_count++;
-                        assert(variants->variant_count < MAX_SHADER_VARIANTS);
-
-                        variants->variants[variant].base = hwcso;
-                        variants->variants[variant].alpha_state = ctx->depth_stencil->alpha;
-
-                        /* Allocate the mapped descriptor ahead-of-time. TODO: Use for FS as well as VS */
-                        struct panfrost_context *ctx = pan_context(pctx);
-                        struct panfrost_transfer transfer = panfrost_allocate_chunk(ctx, sizeof(struct mali_shader_meta), HEAP_DESCRIPTOR);
-
-                        variants->variants[variant].tripipe = (struct mali_shader_meta *) transfer.cpu;
-                        variants->variants[variant].tripipe_gpu = transfer.gpu;
-
-                }
-
-                /* Select this variant */
-                variants->active_variant = variant;
-
-                struct panfrost_shader_state *shader_state = &variants->variants[variant];
-                assert(panfrost_variant_matches(ctx, shader_state));
-
-                /* Now we have a variant selected, so compile and go */
-
-                if (!shader_state->compiled) {
-                        panfrost_shader_compile(ctx, shader_state->tripipe, NULL,
-                                        panfrost_job_type_for_pipe(PIPE_SHADER_FRAGMENT), shader_state);
-                        shader_state->compiled = true;
+        for (unsigned i = 0; i < variants->variant_count; ++i) {
+                if (panfrost_variant_matches(ctx, &variants->variants[i])) {
+                        variant = i;
+                        break;
                 }
         }
 
-        ctx->dirty |= PAN_DIRTY_FS;
+        if (variant == -1) {
+                /* No variant matched, so create a new one */
+                variant = variants->variant_count++;
+                assert(variants->variant_count < MAX_SHADER_VARIANTS);
+
+                variants->variants[variant].base = hwcso;
+
+                if (type == PIPE_SHADER_FRAGMENT)
+                        variants->variants[variant].alpha_state = ctx->depth_stencil->alpha;
+
+                /* Allocate the mapped descriptor ahead-of-time. */
+                struct panfrost_context *ctx = pan_context(pctx);
+                struct panfrost_transfer transfer = panfrost_allocate_chunk(ctx, sizeof(struct mali_shader_meta), HEAP_DESCRIPTOR);
+
+                variants->variants[variant].tripipe = (struct mali_shader_meta *) transfer.cpu;
+                variants->variants[variant].tripipe_gpu = transfer.gpu;
+
+        }
+
+        /* Select this variant */
+        variants->active_variant = variant;
+
+        struct panfrost_shader_state *shader_state = &variants->variants[variant];
+        assert(panfrost_variant_matches(ctx, shader_state));
+
+        /* We finally have a variant, so compile it */
+
+        if (!shader_state->compiled) {
+                panfrost_shader_compile(ctx, shader_state->tripipe, NULL,
+                                panfrost_job_type_for_pipe(type), shader_state);
+
+                shader_state->compiled = true;
+        }
 }
 
 static void
-panfrost_bind_vs_state(
-        struct pipe_context *pctx,
-        void *hwcso)
+panfrost_bind_vs_state(struct pipe_context *pctx, void *hwcso)
 {
-        struct panfrost_context *ctx = pan_context(pctx);
+        panfrost_bind_shader_state(pctx, hwcso, PIPE_SHADER_VERTEX);
+}
 
-        ctx->vs = hwcso;
-
-        if (hwcso) {
-                if (!ctx->vs->variants[0].compiled) {
-                        ctx->vs->variants[0].base = hwcso;
-
-                        /* TODO DRY from above */
-                        struct panfrost_transfer transfer = panfrost_allocate_chunk(ctx, sizeof(struct mali_shader_meta), HEAP_DESCRIPTOR);
-                        ctx->vs->variants[0].tripipe = (struct mali_shader_meta *) transfer.cpu;
-                        ctx->vs->variants[0].tripipe_gpu = transfer.gpu;
-
-                        panfrost_shader_compile(ctx, ctx->vs->variants[0].tripipe, NULL,
-                                        panfrost_job_type_for_pipe(PIPE_SHADER_VERTEX), &ctx->vs->variants[0]);
-                        ctx->vs->variants[0].compiled = true;
-                }
-        }
-
-        ctx->dirty |= PAN_DIRTY_VS;
+static void
+panfrost_bind_fs_state(struct pipe_context *pctx, void *hwcso)
+{
+        panfrost_bind_shader_state(pctx, hwcso, PIPE_SHADER_FRAGMENT);
 }
 
 static void
