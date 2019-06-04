@@ -490,7 +490,7 @@ if with_dri2 and with_platform_x11
     files_libgalliumvlwinsys += files('vl/vl_winsys_dri3.c')
   endif
 endif
-if dep_libdrm.found()
+if with_platform_drm
   files_libgalliumvlwinsys += files('vl/vl_winsys_drm.c')
 endif
 

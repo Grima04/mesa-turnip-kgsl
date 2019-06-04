@@ -589,9 +589,9 @@ if not system_has_kms_drm
   else
     _va = 'false'
   endif
-elif not (with_platform_x11 or dep_libdrm.found())
+elif not (with_platform_x11 or with_platform_drm)
   if _va == 'true'
-    error('VA state tracker requires X11 platform support or libdrm.')
+    error('VA state tracker requires X11 or drm or wayland platform support.')
   else
     _va = 'false'
   endif
