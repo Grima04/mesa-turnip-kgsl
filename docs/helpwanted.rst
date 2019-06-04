@@ -15,21 +15,21 @@ specific ideas and areas where help would be appreciated:
 #. **Remove aliasing warnings.** Enable gcc's
    ``-Wstrict-aliasing=2 -fstrict-aliasing`` arguments, and track down
    aliasing issues in the code.
-#. **Contribute more tests
-   to**\ `Piglit <https://piglit.freedesktop.org/>`__\ **.**
+#. **Contribute more tests to**
+   `Piglit <https://piglit.freedesktop.org/>`__.
 
 You can find some further To-do lists here:
 
 **Common To-Do lists:**
 
--  ```features.txt`` <https://gitlab.freedesktop.org/mesa/mesa/-/blob/master/docs/features.txt>`__
+-  `features.txt <https://gitlab.freedesktop.org/mesa/mesa/-/blob/master/docs/features.txt>`__
    - Status of OpenGL 3.x / 4.x features in Mesa.
 
 **Legacy Driver specific To-Do lists:**
 
--  ```r600g`` <https://dri.freedesktop.org/wiki/R600ToDo>`__ - Driver
+-  `r600g <https://dri.freedesktop.org/wiki/R600ToDo>`__ - Driver
    for ATI/AMD R600 - Northern Island.
--  ```r300g`` <https://dri.freedesktop.org/wiki/R300ToDo>`__ - Driver
+-  `r300g <https://dri.freedesktop.org/wiki/R300ToDo>`__ - Driver
    for ATI R300 - R500.
 
 If you want to do something new in Mesa, first join the Mesa developer's
