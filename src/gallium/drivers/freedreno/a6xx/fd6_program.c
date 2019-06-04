@@ -507,11 +507,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 	if (s[VS].instrlen)
 		fd6_emit_shader(ring, s[VS].v);
 
-	// TODO depending on other bits in this reg (if any) set somewhere else?
-#if 0
-	OUT_PKT4(ring, REG_A6XX_PC_PRIM_VTX_CNTL, 1);
-	OUT_RING(ring, COND(s[VS].v->writes_psize, A6XX_PC_PRIM_VTX_CNTL_PSIZE));
-#endif
 
 	OUT_PKT4(ring, REG_A6XX_SP_PRIMITIVE_CNTL, 1);
 	OUT_RING(ring, A6XX_SP_PRIMITIVE_CNTL_VSOUT(l.cnt));
@@ -572,11 +567,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 
 	OUT_PKT4(ring, REG_A6XX_VPC_GS_SIV_CNTL, 1);
 	OUT_RING(ring, 0x0000ffff);        /* XXX */
-
-#if 0
-	OUT_PKT4(ring, REG_A6XX_SP_SP_CNTL, 1);
-	OUT_RING(ring, 0x00000010);        /* XXX */
-#endif
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_CNTL, 1);
 	OUT_RING(ring,
