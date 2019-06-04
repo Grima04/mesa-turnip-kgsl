@@ -52,7 +52,9 @@ mir_pipeline_ins(
         if (ins->compact_branch)
                 return false;
 
-        if ((dest < 0) || (dest >= SSA_FIXED_MINIMUM))
+        /* Don't allow non-SSA. Pipelining registers is theoretically possible,
+         * but the analysis is much hairier, so don't bother quite yet */
+        if ((dest < 0) || (dest >= ctx->func->impl->ssa_alloc))
                 return false;
 
         /* We want to know if we live after this bundle, so check if
