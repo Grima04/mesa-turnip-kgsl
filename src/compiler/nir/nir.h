@@ -2920,7 +2920,7 @@ nir_variable *nir_variable_clone(const nir_variable *c, nir_shader *shader);
 
 void nir_shader_replace(nir_shader *dest, nir_shader *src);
 
-nir_shader *nir_shader_serialize_deserialize(void *mem_ctx, nir_shader *s);
+void nir_shader_serialize_deserialize(nir_shader *s);
 
 #ifndef NDEBUG
 void nir_validate_shader(nir_shader *shader, const char *when);
@@ -2995,8 +2995,7 @@ static inline bool should_print_nir(void) { return false; }
       nir_shader_replace(nir, clone);                                \
    }                                                                 \
    if (should_serialize_deserialize_nir()) {                         \
-      void *mem_ctx = ralloc_parent(nir);                            \
-      nir = nir_shader_serialize_deserialize(mem_ctx, nir);          \
+      nir_shader_serialize_deserialize(nir);                         \
    }                                                                 \
 } while (0)
 
