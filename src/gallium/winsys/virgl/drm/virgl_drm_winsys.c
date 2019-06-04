@@ -55,7 +55,8 @@ static inline boolean can_cache_resource_with_bind(uint32_t bind)
    return bind == VIRGL_BIND_CONSTANT_BUFFER ||
           bind == VIRGL_BIND_INDEX_BUFFER ||
           bind == VIRGL_BIND_VERTEX_BUFFER ||
-          bind == VIRGL_BIND_CUSTOM;
+          bind == VIRGL_BIND_CUSTOM ||
+          bind == VIRGL_BIND_STAGING;
 }
 
 static void virgl_hw_res_destroy(struct virgl_drm_winsys *qdws,
