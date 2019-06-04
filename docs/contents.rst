@@ -50,6 +50,7 @@
    postprocess
    application-issues
    viewperf
+   xlibdriver
 
 .. toctree::
    :maxdepth: 1
