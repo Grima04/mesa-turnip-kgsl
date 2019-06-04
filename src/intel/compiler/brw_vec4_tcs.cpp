@@ -397,14 +397,14 @@ brw_compile_tcs(const struct brw_compiler *compiler,
                             nir->info.outputs_written,
                             nir->info.patch_outputs_written);
 
-   nir = brw_nir_apply_sampler_key(nir, compiler, &key->tex, is_scalar);
+   brw_nir_apply_sampler_key(nir, compiler, &key->tex, is_scalar);
    brw_nir_lower_vue_inputs(nir, &input_vue_map);
    brw_nir_lower_tcs_outputs(nir, &vue_prog_data->vue_map,
                              key->tes_primitive_mode);
    if (key->quads_workaround)
       brw_nir_apply_tcs_quads_workaround(nir);
 
-   nir = brw_postprocess_nir(nir, compiler, is_scalar);
+   brw_postprocess_nir(nir, compiler, is_scalar);
 
    bool has_primitive_id =
       nir->info.system_values_read & (1 << SYSTEM_VALUE_PRIMITIVE_ID);

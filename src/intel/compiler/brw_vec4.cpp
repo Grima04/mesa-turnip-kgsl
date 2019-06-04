@@ -2823,7 +2823,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
                char **error_str)
 {
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_VERTEX];
-   shader = brw_nir_apply_sampler_key(shader, compiler, &key->tex, is_scalar);
+   brw_nir_apply_sampler_key(shader, compiler, &key->tex, is_scalar);
 
    const unsigned *assembly = NULL;
 
@@ -2847,7 +2847,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
 
    brw_nir_lower_vs_inputs(shader, key->gl_attrib_wa_flags);
    brw_nir_lower_vue_outputs(shader);
-   shader = brw_postprocess_nir(shader, compiler, is_scalar);
+   brw_postprocess_nir(shader, compiler, is_scalar);
 
    prog_data->base.clip_distance_mask =
       ((1 << shader->info.clip_distance_array_size) - 1);

@@ -117,7 +117,7 @@ brw_create_nir(struct brw_context *brw,
       ralloc_steal(ralloc_parent(nir), softfp64);
    }
 
-   nir = brw_preprocess_nir(brw->screen->compiler, nir, softfp64);
+   brw_preprocess_nir(brw->screen->compiler, nir, softfp64);
 
    NIR_PASS_V(nir, gl_nir_lower_samplers, shader_prog);
    prog->info.textures_used = nir->info.textures_used;

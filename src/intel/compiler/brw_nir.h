@@ -92,9 +92,9 @@ enum {
 
 void brw_nir_analyze_boolean_resolves(nir_shader *nir);
 
-nir_shader *brw_preprocess_nir(const struct brw_compiler *compiler,
-                               nir_shader *nir,
-                               const nir_shader *softfp64);
+void brw_preprocess_nir(const struct brw_compiler *compiler,
+                        nir_shader *nir,
+                        const nir_shader *softfp64);
 
 void
 brw_nir_link_shaders(const struct brw_compiler *compiler,
@@ -126,9 +126,9 @@ void brw_nir_rewrite_bindless_image_intrinsic(nir_intrinsic_instr *intrin,
 
 bool brw_nir_lower_mem_access_bit_sizes(nir_shader *shader);
 
-nir_shader *brw_postprocess_nir(nir_shader *nir,
-                                const struct brw_compiler *compiler,
-                                bool is_scalar);
+void brw_postprocess_nir(nir_shader *nir,
+                         const struct brw_compiler *compiler,
+                         bool is_scalar);
 
 bool brw_nir_apply_attribute_workarounds(nir_shader *nir,
                                          const uint8_t *attrib_wa_flags);
@@ -137,10 +137,10 @@ bool brw_nir_apply_trig_workarounds(nir_shader *nir);
 
 void brw_nir_apply_tcs_quads_workaround(nir_shader *nir);
 
-nir_shader *brw_nir_apply_sampler_key(nir_shader *nir,
-                                      const struct brw_compiler *compiler,
-                                      const struct brw_sampler_prog_key_data *key,
-                                      bool is_scalar);
+void brw_nir_apply_sampler_key(nir_shader *nir,
+                               const struct brw_compiler *compiler,
+                               const struct brw_sampler_prog_key_data *key,
+                               bool is_scalar);
 
 enum brw_reg_type brw_type_for_nir_type(const struct gen_device_info *devinfo,
                                         nir_alu_type type);
@@ -166,10 +166,10 @@ void brw_nir_analyze_ubo_ranges(const struct brw_compiler *compiler,
 
 bool brw_nir_opt_peephole_ffma(nir_shader *shader);
 
-nir_shader *brw_nir_optimize(nir_shader *nir,
-                             const struct brw_compiler *compiler,
-                             bool is_scalar,
-                             bool allow_copies);
+void brw_nir_optimize(nir_shader *nir,
+                      const struct brw_compiler *compiler,
+                      bool is_scalar,
+                      bool allow_copies);
 
 nir_shader *brw_nir_create_passthrough_tcs(void *mem_ctx,
                                            const struct brw_compiler *compiler,

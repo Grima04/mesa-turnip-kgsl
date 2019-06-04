@@ -246,7 +246,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 
-   nir = brw_preprocess_nir(compiler, nir, NULL);
+   brw_preprocess_nir(compiler, nir, NULL);
 
    return nir;
 }
