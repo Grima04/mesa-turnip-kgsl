@@ -189,6 +189,12 @@ i965_asm_binary_instruction(int opcode,
 	case BRW_OPCODE_PLN:
 		brw_PLN(p, dest, src0, src1);
 		break;
+	case BRW_OPCODE_ROL:
+		brw_ROL(p, dest, src0, src1);
+		break;
+	case BRW_OPCODE_ROR:
+		brw_ROR(p, dest, src0, src1);
+		break;
 	case BRW_OPCODE_SAD2:
 		fprintf(stderr, "Opcode BRW_OPCODE_SAD2 unhandled\n");
 		break;
@@ -720,6 +726,8 @@ binaryopcodes:
 	| MACH
 	| MUL
 	| PLN
+	| ROL
+	| ROR
 	| SAD2
 	| SADA2
 	| SUBB
