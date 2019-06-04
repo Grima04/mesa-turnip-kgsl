@@ -1544,7 +1544,7 @@ Eric Engestrom (142):
 -  tegra/meson: add missing dep_libdrm
 -  tegra/autotools: add missing libdrm cflags
 -  gitlab-ci: limit the automatic CI to master and MRs
--  gitlab-ci: automatically run the CI on pushes to \`ci/*\` branches
+-  gitlab-ci: automatically run the CI on pushes to \`ci/\*\` branches
 -  anv: sort extensions alphabetically
 -  anv: sort vendors extensions after KHR and EXT
 -  anv: make sure the extensions stay sorted

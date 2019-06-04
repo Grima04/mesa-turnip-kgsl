@@ -228,7 +228,7 @@ that did not exist in the 7.10 release series at all.
    piglit fdo9833 regression
 -  `Bug 36033 <https://bugs.freedesktop.org/show_bug.cgi?id=36033>`__ -
    main/shaderapi.c:1044: validate_samplers: Assertion
-   \`(sizeof(targetName)/sizeof(*(targetName))) == NUM_TEXTURE_TARGETS'
+   \`(sizeof(targetName)/sizeof(\*(targetName))) == NUM_TEXTURE_TARGETS'
    failed.
 -  `Bug 36086 <https://bugs.freedesktop.org/show_bug.cgi?id=36086>`__ -
    [wine] Segfault r300_resource_copy_region with some wine apps and

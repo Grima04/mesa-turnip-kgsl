@@ -922,7 +922,7 @@ Changes:
 New:
 
 -  optimized glDrawPixels for glPixelZoom(1,-1) Bug Fixes:
--  widgets-mesa/src/*.c files were missing from 3.3 distro
+-  widgets-mesa/src/\*.c files were missing from 3.3 distro
 -  include/GL/mesa_wgl.h file was missing from 3.3 distro
 -  fixed some Win32 compile problems
 -  texture object priorities weren't getting initialized to 1.0
