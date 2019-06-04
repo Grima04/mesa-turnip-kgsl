@@ -207,18 +207,28 @@ On Linux-based systems you'll want to follow the
 <a href="http://oss.sgi.com/projects/ogl-sample/ABI/index.html">Linux ABI</a> standard.
 Basically you'll want the following:
 </p>
-<ul>
-<li>/usr/include/GL/gl.h - the main OpenGL header
-</li><li>/usr/include/GL/glu.h - the OpenGL GLU (utility) header
-</li><li>/usr/include/GL/glx.h - the OpenGL GLX header
-</li><li>/usr/include/GL/glext.h - the OpenGL extensions header
-</li><li>/usr/include/GL/glxext.h - the OpenGL GLX extensions header
-</li><li>/usr/include/GL/osmesa.h - the Mesa off-screen rendering header
-</li><li>/usr/lib/libGL.so - a symlink to libGL.so.1
-</li><li>/usr/lib/libGL.so.1 - a symlink to libGL.so.1.xyz
-</li><li>/usr/lib/libGL.so.xyz - the actual OpenGL/Mesa library.  xyz denotes the
+<dl>
+<dt><code>/usr/include/GL/gl.h</code></dt>
+<dd>the main OpenGL header</dd>
+<dt><code>/usr/include/GL/glu.h</code></dt>
+<dd>the OpenGL GLU (utility) header</dd>
+<dt><code>/usr/include/GL/glx.h</code></dt>
+<dd>the OpenGL GLX header</dd>
+<dt><code>/usr/include/GL/glext.h</code></dt>
+<dd>the OpenGL extensions header</dd>
+<dt><code>/usr/include/GL/glxext.h</code></dt>
+<dd>the OpenGL GLX extensions header</dd>
+<dt><code>/usr/include/GL/osmesa.h</code></dt>
+<dd>the Mesa off-screen rendering header</dd>
+<dt><code>/usr/lib/libGL.so</code></dt>
+<dd>a symlink to <code>libGL.so.1</code></dd>
+<dt><code>/usr/lib/libGL.so.1</code></dt>
+<dd>a symlink to <code>libGL.so.1.xyz</code></dd>
+<dt><code>/usr/lib/libGL.so.xyz</code></dt>
+<dd>the actual OpenGL/Mesa library.  xyz denotes the
 Mesa version number.
-</li></ul>
+</dd>
+</dl>
 <p>
 When configuring Mesa, there are three meson options that affect the install
 location that you should take care with: <code>--prefix</code>,
