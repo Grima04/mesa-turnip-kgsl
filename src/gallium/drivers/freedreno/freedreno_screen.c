@@ -607,7 +607,7 @@ fd_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
 
 	case PIPE_COMPUTE_CAP_IR_TARGET:
 		if (ret)
-			sprintf(ret, ir);
+			sprintf(ret, "%s", ir);
 		return strlen(ir) * sizeof(char);
 
 	case PIPE_COMPUTE_CAP_GRID_DIMENSION:
