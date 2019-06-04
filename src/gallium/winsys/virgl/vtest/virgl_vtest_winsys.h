@@ -71,7 +71,6 @@ struct virgl_hw_res {
 
    struct list_head head;
    uint32_t bind;
-   boolean cacheable;
    int64_t start, end;
 };
 

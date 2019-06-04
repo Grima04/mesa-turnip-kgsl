@@ -37,9 +37,12 @@ static void *virgl_vtest_resource_map(struct virgl_winsys *vws,
 static void virgl_vtest_resource_unmap(struct virgl_winsys *vws,
                                        struct virgl_hw_res *res);
 
-static inline boolean can_cache_resource(struct virgl_hw_res *res)
+static inline boolean can_cache_resource_with_bind(uint32_t bind)
 {
-   return res->cacheable == TRUE;
+   return bind == VIRGL_BIND_CONSTANT_BUFFER ||
+          bind == VIRGL_BIND_INDEX_BUFFER ||
+          bind == VIRGL_BIND_VERTEX_BUFFER ||
+          bind == VIRGL_BIND_CUSTOM;
 }
 
 static uint32_t vtest_get_transfer_size(struct virgl_hw_res *res,
@@ -242,7 +245,7 @@ static void virgl_vtest_resource_reference(struct virgl_vtest_winsys *vtws,
 {
    struct virgl_hw_res *old = *dres;
    if (pipe_reference(&(*dres)->reference, &sres->reference)) {
-      if (!can_cache_resource(old)) {
+      if (!can_cache_resource_with_bind(old->bind)) {
          virgl_hw_res_destroy(vtws, old);
       } else {
          mtx_lock(&vtws->mutex);
@@ -419,9 +422,7 @@ virgl_vtest_winsys_resource_cache_create(struct virgl_winsys *vws,
    int64_t now;
    int ret = -1;
 
-   /* only store binds for vertex/index/const buffers */
-   if (bind != VIRGL_BIND_CONSTANT_BUFFER && bind != VIRGL_BIND_INDEX_BUFFER &&
-       bind != VIRGL_BIND_VERTEX_BUFFER && bind != VIRGL_BIND_CUSTOM)
+   if (!can_cache_resource_with_bind(bind))
       goto alloc;
 
    mtx_lock(&vtws->mutex);
@@ -478,9 +479,6 @@ alloc:
    res = virgl_vtest_winsys_resource_create(vws, target, format, bind,
                                             width, height, depth, array_size,
                                             last_level, nr_samples, size);
-   if (bind == VIRGL_BIND_CONSTANT_BUFFER || bind == VIRGL_BIND_INDEX_BUFFER ||
-       bind == VIRGL_BIND_VERTEX_BUFFER)
-      res->cacheable = TRUE;
    return res;
 }
 

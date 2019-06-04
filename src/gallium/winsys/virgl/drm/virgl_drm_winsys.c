@@ -50,9 +50,12 @@
 #define VIRGL_DRM_VERSION_FENCE_FD      VIRGL_DRM_VERSION(0, 1)
 
 
-static inline boolean can_cache_resource(struct virgl_hw_res *res)
+static inline boolean can_cache_resource_with_bind(uint32_t bind)
 {
-   return res->cacheable == TRUE;
+   return bind == VIRGL_BIND_CONSTANT_BUFFER ||
+          bind == VIRGL_BIND_INDEX_BUFFER ||
+          bind == VIRGL_BIND_VERTEX_BUFFER ||
+          bind == VIRGL_BIND_CUSTOM;
 }
 
 static void virgl_hw_res_destroy(struct virgl_drm_winsys *qdws,
@@ -156,7 +159,7 @@ static void virgl_drm_resource_reference(struct virgl_drm_winsys *qdws,
    struct virgl_hw_res *old = *dres;
    if (pipe_reference(&(*dres)->reference, &sres->reference)) {
 
-      if (!can_cache_resource(old)) {
+      if (!can_cache_resource_with_bind(old->bind)) {
          virgl_hw_res_destroy(qdws, old);
       } else {
          mtx_lock(&qdws->mutex);
@@ -316,9 +319,7 @@ virgl_drm_winsys_resource_cache_create(struct virgl_winsys *qws,
    int64_t now;
    int ret = 0;
 
-   /* only store binds for vertex/index/const buffers */
-   if (bind != VIRGL_BIND_CONSTANT_BUFFER && bind != VIRGL_BIND_INDEX_BUFFER &&
-       bind != VIRGL_BIND_VERTEX_BUFFER && bind != VIRGL_BIND_CUSTOM)
+   if (!can_cache_resource_with_bind(bind))
       goto alloc;
 
    mtx_lock(&qdws->mutex);
@@ -375,9 +376,6 @@ alloc:
    res = virgl_drm_winsys_resource_create(qws, target, format, bind,
                                            width, height, depth, array_size,
                                            last_level, nr_samples, size);
-   if (bind == VIRGL_BIND_CONSTANT_BUFFER || bind == VIRGL_BIND_INDEX_BUFFER ||
-       bind == VIRGL_BIND_VERTEX_BUFFER)
-      res->cacheable = TRUE;
    return res;
 }
 
