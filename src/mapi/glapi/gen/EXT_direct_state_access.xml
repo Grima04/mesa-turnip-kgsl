@@ -102,6 +102,48 @@
 
    <!-- OpenGL 1.1 -->
 
+    <function name="GetTextureParameterivEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="pname" type="GLenum" />
+       <param name="params" type="GLint *" />
+    </function>
+
+    <function name="GetTextureParameterfvEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="pname" type="GLenum" />
+       <param name="params" type="float *" />
+    </function>
+
+    <function name="TextureParameteriEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="pname" type="GLenum" />
+       <param name="param" type="int" />
+    </function>
+
+    <function name="TextureParameterivEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="pname" type="GLenum" />
+       <param name="params" type="const GLint *" />
+    </function>
+
+    <function name="TextureParameterfEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="pname" type="GLenum" />
+       <param name="param" type="float" />
+    </function>
+
+    <function name="TextureParameterfvEXT">
+       <param name="texture" type="GLuint" />
+       <param name="target" type="GLenum" />
+       <param name="pname" type="GLenum" />
+       <param name="params" type="const float *" />
+    </function>
+
    <function name="TextureSubImage2DEXT">
       <param name="texture" type="GLuint" />
       <param name="target" type="GLenum" />

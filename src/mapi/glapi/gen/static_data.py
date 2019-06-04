@@ -1481,6 +1481,12 @@ offsets = {
     "TextureSubImage2DEXT": 1445,
     "CompressedTextureSubImage2DEXT": 1446,
     "MapNamedBufferEXT": 1447,
+    "GetTextureParameterivEXT": 1448,
+    "GetTextureParameterfvEXT": 1449,
+    "TextureParameteriEXT": 1450,
+    "TextureParameterivEXT": 1451,
+    "TextureParameterfEXT": 1452,
+    "TextureParameterfvEXT": 1453,
 }
 
 functions = [

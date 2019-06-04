@@ -568,6 +568,8 @@ typedef enum
    OPCODE_MATRIX_FRUSTUM,
    OPCODE_MATRIX_PUSH,
    OPCODE_MATRIX_POP,
+   OPCODE_TEXTUREPARAMETER_F,
+   OPCODE_TEXTUREPARAMETER_I,
 
    /* The following three are meta instructions */
    OPCODE_ERROR,                /* raise compiled-in error */
@@ -9461,6 +9463,68 @@ save_MatrixMultTransposedEXT(GLenum matrixMode, const GLdouble m[16])
    save_MatrixMultfEXT(matrixMode, tm);
 }
 
+static void GLAPIENTRY
+save_TextureParameterfvEXT(GLuint texture, GLenum target, GLenum pname,
+                           const GLfloat *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_TEXTUREPARAMETER_F, 7);
+   if (n) {
+      n[1].ui = texture;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].f = params[0];
+      n[5].f = params[1];
+      n[6].f = params[2];
+      n[7].f = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_TextureParameterfvEXT(ctx->Exec, (texture, target, pname, params));
+   }
+}
+
+
+static void GLAPIENTRY
+save_TextureParameterfEXT(GLuint texture, GLenum target, GLenum pname, GLfloat param)
+{
+   GLfloat parray[4];
+   parray[0] = param;
+   parray[1] = parray[2] = parray[3] = 0.0F;
+   save_TextureParameterfvEXT(texture, target, pname, parray);
+}
+
+static void GLAPIENTRY
+save_TextureParameterivEXT(GLuint texture, GLenum target, GLenum pname, const GLint *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_TEXTUREPARAMETER_I, 7);
+   if (n) {
+      n[1].ui = texture;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].i = params[0];
+      n[5].i = params[1];
+      n[6].i = params[2];
+      n[7].i = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_TextureParameterivEXT(ctx->Exec, (texture, target, pname, params));
+   }
+}
+
+static void GLAPIENTRY
+save_TextureParameteriEXT(GLuint texture, GLenum target, GLenum pname, GLint param)
+{
+   GLint fparam[4];
+   fparam[0] = param;
+   fparam[1] = fparam[2] = fparam[3] = 0;
+   save_TextureParameterivEXT(texture, target, pname, fparam);
+}
+
 
 /**
  * Save an error-generating command into display list.
@@ -11027,6 +11091,26 @@ execute_list(struct gl_context *ctx, GLuint list)
          case OPCODE_MATRIX_POP:
             CALL_MatrixPopEXT(ctx->Exec, (n[1].e));
             break;
+         case OPCODE_TEXTUREPARAMETER_F:
+            {
+               GLfloat params[4];
+               params[0] = n[4].f;
+               params[1] = n[5].f;
+               params[2] = n[6].f;
+               params[3] = n[7].f;
+               CALL_TextureParameterfvEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].e, params));
+            }
+            break;
+         case OPCODE_TEXTUREPARAMETER_I:
+            {
+               GLint params[4];
+               params[0] = n[4].i;
+               params[1] = n[5].i;
+               params[2] = n[6].i;
+               params[3] = n[7].i;
+               CALL_TextureParameterivEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].e, params));
+            }
+            break;
 
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
@@ -12019,6 +12103,10 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_MatrixLoadTransposedEXT(table, save_MatrixLoadTransposedEXT);
    SET_MatrixMultTransposefEXT(table, save_MatrixMultTransposefEXT);
    SET_MatrixMultTransposedEXT(table, save_MatrixMultTransposedEXT);
+   SET_TextureParameteriEXT(table, save_TextureParameteriEXT);
+   SET_TextureParameterivEXT(table, save_TextureParameterivEXT);
+   SET_TextureParameterfEXT(table, save_TextureParameterfEXT);
+   SET_TextureParameterfvEXT(table, save_TextureParameterfvEXT);
 }
 
 
