@@ -303,6 +303,8 @@ The integer capabilities:
   TGSI opcodes are supported.
 * ``PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL``: If state trackers should use
   a system value for the POSITION fragment shader input.
+* ``PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL``: If state trackers should use
+  a system value for the POINT fragment shader input.
 * ``PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL``: If state trackers should use
   a system value for the FACE fragment shader input.
   Also, the FACE system value is integer, not float.

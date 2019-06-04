@@ -444,6 +444,8 @@ void st_init_limits(struct pipe_screen *screen,
 
    c->GLSLFragCoordIsSysVal =
       screen->get_param(screen, PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL);
+   c->GLSLPointCoordIsSysVal =
+      screen->get_param(screen, PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL);
    c->GLSLFrontFacingIsSysVal =
       screen->get_param(screen, PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL);
 
