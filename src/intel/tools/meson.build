@@ -164,6 +164,7 @@ asm_testcases = [
    ['hsw', 'tests/gen7.5'],
    ['bdw', 'tests/gen8'],
    ['skl', 'tests/gen9'],
+   ['icl', 'tests/gen11'],
 ]
 
 test_runner = find_program('tests/run-test.sh')
