@@ -83,42 +83,15 @@ fd6_vp_state_delete(struct pipe_context *pctx, void *hwcso)
 void
 fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 {
-	const struct ir3_info *si = &so->info;
 	enum a6xx_state_block sb = fd6_stage2shadersb(so->type);
-	enum a6xx_state_src src;
-	uint32_t i, sz, *bin;
 
-	if (fd_mesa_debug & FD_DBG_DIRECT) {
-		sz = si->sizedwords;
-		src = SS6_DIRECT;
-		bin = fd_bo_map(so->bo);
-	} else {
-		sz = 0;
-		src = SS6_INDIRECT;
-		bin = NULL;
-	}
-
-	OUT_PKT7(ring, fd6_stage2opcode(so->type), 3 + sz);
+	OUT_PKT7(ring, fd6_stage2opcode(so->type), 3);
 	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
 			CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-			CP_LOAD_STATE6_0_STATE_SRC(src) |
+			CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
 			CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
 			CP_LOAD_STATE6_0_NUM_UNIT(so->instrlen));
-	if (bin) {
-		OUT_RING(ring, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-		OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
-	} else {
-		OUT_RELOCD(ring, so->bo, 0, 0, 0);
-	}
-
-	/* for how clever coverity is, it is sometimes rather dull, and
-	 * doesn't realize that the only case where bin==NULL, sz==0:
-	 */
-	assume(bin || (sz == 0));
-
-	for (i = 0; i < sz; i++) {
-		OUT_RING(ring, bin[i]);
-	}
+	OUT_RELOCD(ring, so->bo, 0, 0, 0);
 }
 
 /* Add any missing varyings needed for stream-out.  Otherwise varyings not
