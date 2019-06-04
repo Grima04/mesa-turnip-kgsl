@@ -3912,8 +3912,12 @@ struct gl_constants
     */
    GLboolean GLSLSkipStrictMaxUniformLimitCheck;
 
-   /** Whether gl_FragCoord and gl_FrontFacing are system values. */
+   /**
+    * Whether gl_FragCoord, gl_PointCoord and gl_FrontFacing
+    * are system values.
+    **/
    bool GLSLFragCoordIsSysVal;
+   bool GLSLPointCoordIsSysVal;
    bool GLSLFrontFacingIsSysVal;
 
    /**

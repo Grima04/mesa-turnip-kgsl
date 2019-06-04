@@ -1258,8 +1258,12 @@ builtin_variable_generator::generate_fs_special_vars()
       add_input(VARYING_SLOT_FACE, bool_t, "gl_FrontFacing");
 
    if (state->is_version(120, 100)) {
-      add_input(VARYING_SLOT_PNTC, vec2_t, GLSL_PRECISION_MEDIUM,
-                "gl_PointCoord");
+      if (this->state->ctx->Const.GLSLPointCoordIsSysVal)
+         add_system_value(SYSTEM_VALUE_POINT_COORD, vec2_t,
+                          GLSL_PRECISION_MEDIUM, "gl_PointCoord");
+      else
+         add_input(VARYING_SLOT_PNTC, vec2_t, GLSL_PRECISION_MEDIUM,
+                   "gl_PointCoord");
    }
 
    if (state->has_geometry_shader() || state->EXT_gpu_shader4_enable) {
