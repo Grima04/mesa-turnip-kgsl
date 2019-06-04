@@ -64,7 +64,7 @@ Emil Velikov (5):
 
 -  docs: add sha256 checksums for 17.0.4
 -  winsys/sw/dri: don't use GNU void pointer arithmetic
--  st/clover: add space between < and ::
+-  st/clover: add space between < and :\:
 -  configure.ac: check require_basic_egl only if egl enabled
 -  st/mesa: automake: honour the vdpau header install location
 
