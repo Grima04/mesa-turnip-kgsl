@@ -117,6 +117,7 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .vertex_id_zero_based = true,
         .lower_extract_byte = true,
         .lower_extract_word = true,
+        .lower_rotate = true,
 
         .lower_doubles_options = nir_lower_dmod,
 

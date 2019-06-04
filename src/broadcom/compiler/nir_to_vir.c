@@ -2419,6 +2419,7 @@ const nir_shader_compiler_options v3d_nir_options = {
         .lower_ldexp = true,
         .lower_mul_high = true,
         .lower_wpos_pntc = true,
+        .lower_rotate = true,
 };
 
 /**

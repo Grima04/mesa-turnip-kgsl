@@ -40,6 +40,7 @@ static const nir_shader_compiler_options options = {
 	.lower_all_io_to_temps = true,
 	.vertex_id_zero_based = true, /* its not implemented anyway */
 	.lower_bitshift = true,
+	.lower_rotate = true,
 };
 
 const nir_shader_compiler_options *

@@ -503,6 +503,7 @@ static const struct nir_shader_compiler_options nir_options = {
 	.lower_unpack_unorm_4x8 = true,
 	.lower_extract_byte = true,
 	.lower_extract_word = true,
+	.lower_rotate = true,
 	.optimize_sample_mask_in = true,
 	.max_unroll_iterations = 32,
 };
