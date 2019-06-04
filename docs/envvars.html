@@ -28,20 +28,23 @@ sometimes be useful for debugging end-user issues.
 <dl>
 <dt><code>LIBGL_DEBUG</code></dt>
 <dd>If defined debug information will be printed to stderr.
-    If set to 'verbose' additional information will be printed.</dd>
+    If set to <code>verbose</code> additional information will be
+    printed.</dd>
 <dt><code>LIBGL_DRIVERS_PATH</code></dt>
 <dd>colon-separated list of paths to search for DRI drivers</dd>
 <dt><code>LIBGL_ALWAYS_INDIRECT</code></dt>
-<dd>if set to `true`, forces an indirect rendering context/connection.</dd>
+<dd>if set to <code>true</code>, forces an indirect rendering
+    context/connection.</dd>
 <dt><code>LIBGL_ALWAYS_SOFTWARE</code></dt>
-<dd>if set to `true`, always use software rendering</dd>
+<dd>if set to <code>true</code>, always use software rendering</dd>
 <dt><code>LIBGL_NO_DRAWARRAYS</code></dt>
-<dd>if set to `true`, do not use DrawArrays GLX protocol (for debugging)</dd>
+<dd>if set to <code>true</code>, do not use DrawArrays GLX protocol
+    (for debugging)</dd>
 <dt><code>LIBGL_SHOW_FPS</code></dt>
-<dd>print framerate to stdout based on the number of glXSwapBuffers
-    calls per second.</dd>
+<dd>print framerate to stdout based on the number of
+    <code>glXSwapBuffers</code> calls per second.</dd>
 <dt><code>LIBGL_DRI3_DISABLE</code></dt>
-<dd>disable DRI3 if set to `true`.</dd>
+<dd>disable DRI3 if set to <code>true</code>.</dd>
 </dl>
 
 <h2>Core Mesa environment variables</h2>
@@ -56,16 +59,18 @@ sometimes be useful for debugging end-user issues.
 <dt><code>MESA_NO_SSE</code></dt>
 <dd>if set, disables Intel SSE optimizations</dd>
 <dt><code>MESA_NO_ERROR</code></dt>
-<dd>if set to 1, error checking is disabled as per KHR_no_error.
+<dd>if set to 1, error checking is disabled as per <code>KHR_no_error</code>.
     This will result in undefined behaviour for invalid use of the api, but
     can reduce CPU use for apps that are known to be error free.</dd>
 <dt><code>MESA_DEBUG</code></dt>
 <dd>if set, error messages are printed to stderr.  For example,
-    if the application generates a GL_INVALID_ENUM error, a corresponding error
-    message indicating where the error occurred, and possibly why, will be
-    printed to stderr. For release builds, MESA_DEBUG defaults to off (no debug
-    output). MESA_DEBUG accepts the following comma-separated list of named
-    flags, which adds extra behaviour to just set MESA_DEBUG=1:
+    if the application generates a <code>GL_INVALID_ENUM</code> error, a
+    corresponding error message indicating where the error occurred, and
+    possibly why, will be printed to stderr. For release builds,
+    <code>MESA_DEBUG</code> defaults to off (no debug output).
+    <code>MESA_DEBUG</code> accepts the following comma-separated list of
+    named flags, which adds extra behaviour to just set
+    <code>MESA_DEBUG=1</code>:
     <dl>
       <dt><code>silent</code></dt>
       <dd>turn off debug messages. Only useful for debug builds.</dd>
@@ -76,8 +81,9 @@ sometimes be useful for debugging end-user issues.
       <dt><code>incomplete_fbo</code></dt>
       <dd>extra debug messages when a fbo is incomplete</dd>
       <dt><code>context</code></dt>
-      <dd>create a debug context (see GLX_CONTEXT_DEBUG_BIT_ARB) and print
-          error and performance messages to stderr (or MESA_LOG_FILE).</dd>
+      <dd>create a debug context (see <code>GLX_CONTEXT_DEBUG_BIT_ARB</code>)
+          and print error and performance messages to stderr (or
+          <code>MESA_LOG_FILE</code>).</dd>
     </dl>
 </dd>
 <dt><code>MESA_LOG_FILE</code></dt>
@@ -89,33 +95,34 @@ sometimes be useful for debugging end-user issues.
 <dt><code>MESA_TNL_PROG</code></dt>
 <dd>if set, implement conventional vertex transformation operations with
     vertex programs (intended for developers only). Setting this variable
-    automatically sets the MESA_TEX_PROG variable as well.</dd>
+    automatically sets the <code>MESA_TEX_PROG</code> variable as well.</dd>
 <dt><code>MESA_EXTENSION_OVERRIDE</code></dt>
 <dd>can be used to enable/disable extensions. A value such as
-    "GL_EXT_foo -GL_EXT_bar" will enable the GL_EXT_foo extension and disable
-    the GL_EXT_bar extension.</dd>
+    <code>GL_EXT_foo -GL_EXT_bar</code> will enable the
+    <code>GL_EXT_foo</code> extension and disable the
+    <code>GL_EXT_bar</code> extension.</dd>
 <dt><code>MESA_EXTENSION_MAX_YEAR</code></dt>
-<dd>The GL_EXTENSIONS string returned by Mesa is sorted by extension year.
-    If this variable is set to year X, only extensions defined on or before
-    year X will be reported. This is to work-around a bug in some games where
-    the extension string is copied into a fixed-size buffer without
-    truncating. If the extension string is too long, the buffer overrun can
-    cause the game to crash. This is a work-around for that.
-</dd>
+<dd>The <code>GL_EXTENSIONS</code> string returned by Mesa is sorted by
+    extension year. If this variable is set to year X, only extensions
+    defined on or before year X will be reported. This is to work-around a
+    bug in some games where the extension string is copied into a fixed-size
+    buffer without truncating. If the extension string is too long, the
+    buffer overrun can cause the game to crash. This is a work-around for
+    that.</dd>
 <dt><code>MESA_GL_VERSION_OVERRIDE</code></dt>
 <dd>changes the value returned by
-glGetString(GL_VERSION) and possibly the GL API type.
+<code>glGetString(GL_VERSION)</code> and possibly the GL API type.
 <ul>
-  <li>The format should be MAJOR.MINOR[FC|COMPAT]
-  <li>FC is an optional suffix that indicates a forward compatible
-      context. This is only valid for versions &gt;= 3.0.
-  <li>COMPAT is an optional suffix that indicates a compatibility
-      context or GL_ARB_compatibility support. This is only valid for
-      versions &gt;= 3.1.
+  <li>The format should be <code>MAJOR.MINOR[FC|COMPAT]</code>
+  <li><code>FC</code> is an optional suffix that indicates a forward
+      compatible context. This is only valid for versions &gt;= 3.0.
+  <li><code>COMPAT</code> is an optional suffix that indicates a
+      compatibility context or <code>GL_ARB_compatibility</code> support.
+      This is only valid for versions &gt;= 3.1.
   <li>GL versions &lt;= 3.0 are set to a compatibility (non-Core)
       profile
   <li>GL versions = 3.1, depending on the driver, it may or may not
-      have the ARB_compatibility extension enabled.
+      have the <code>ARB_compatibility</code> extension enabled.
   <li>GL versions &gt;= 3.2 are set to a Core profile
   <li>Examples:
   <dl>
@@ -145,36 +152,39 @@ glGetString(GL_VERSION) and possibly the GL API type.
 </ul>
 </dd>
 <dt><code>MESA_GLES_VERSION_OVERRIDE</code></dt>
-<dd>changes the value returned by glGetString(GL_VERSION) for OpenGL ES.
+<dd>changes the value returned by <code>glGetString(GL_VERSION)</code>
+    for OpenGL ES.
 <ul>
-<li> The format should be MAJOR.MINOR
-<li> Examples: 2.0, 3.0, 3.1
+<li> The format should be <code>MAJOR.MINOR</code>
+<li> Examples: <code>2.0</code>, <code>3.0</code>, <code>3.1</code>
 <li> Mesa may not really implement all the features of the given version.
 (for developers only)
 </ul>
 </dd>
 <dt><code>MESA_GLSL_VERSION_OVERRIDE</code></dt>
-<dd>changes the value returned by glGetString(GL_SHADING_LANGUAGE_VERSION).
+<dd>changes the value returned by
+    <code>glGetString(GL_SHADING_LANGUAGE_VERSION)</code>.
     Valid values are integers, such as "130".  Mesa will not really implement
     all the features of the given language version if it's higher than what's
     normally reported. (for developers only)
 </dd>
 <dt><code>MESA_GLSL_CACHE_DISABLE</code></dt>
-<dd>if set to `true`, disables the GLSL shader cache</dd>
+<dd>if set to <code>true</code>, disables the GLSL shader cache</dd>
 <dt><code>MESA_GLSL_CACHE_MAX_SIZE</code></dt>
 <dd>if set, determines the maximum size of the on-disk cache of compiled GLSL
-    programs. Should be set to a number optionally followed by 'K', 'M', or
-    'G' to specify a size in kilobytes, megabytes, or gigabytes. By default,
-    gigabytes will be assumed. And if unset, a maximum size of 1GB will be
-    used. Note: A separate cache might be created for each architecture that
-    Mesa is installed for on your system. For example under the default
-    settings you may end up with a 1GB cache for x86_64 and another 1GB cache
-    for i386.</dd>
+    programs. Should be set to a number optionally followed by <code>K</code>,
+    <code>M</code>, or <code>G</code> to specify a size in kilobytes,
+    megabytes, or gigabytes. By default, gigabytes will be assumed. And if
+    unset, a maximum size of 1GB will be used. Note: A separate cache might
+    be created for each architecture that Mesa is installed for on your
+    system. For example under the default settings you may end up with a 1GB
+    cache for x86_64 and another 1GB cache for i386.</dd>
 <dt><code>MESA_GLSL_CACHE_DIR</code></dt>
 <dd>if set, determines the directory to be used for the on-disk cache of
     compiled GLSL programs. If this variable is not set, then the cache will
-    be stored in $XDG_CACHE_HOME/mesa_shader_cache (if that variable is set),
-    or else within .cache/mesa_shader_cache within the user's home directory.
+    be stored in <code>$XDG_CACHE_HOME/mesa_shader_cache</code> (if that
+    variable is set), or else within <code>.cache/mesa_shader_cache</code>
+    within the user's home directory.
 </dd>
 <dt><code>MESA_GLSL</code></dt>
 <dd><a href="shading.html#envvars">shading language compiler options</a></dd>
@@ -186,11 +196,12 @@ glGetString(GL_VERSION) and possibly the GL API type.
 <dd>see <a href="shading.html#replacement">Experimenting with Shader Replacements</a></dd>
 <dt><code>MESA_VK_VERSION_OVERRIDE</code></dt>
 <dd>changes the Vulkan physical device version
-    as returned in VkPhysicalDeviceProperties::apiVersion.
+    as returned in <code>VkPhysicalDeviceProperties::apiVersion</code>.
   <ul>
-    <li>The format should be MAJOR.MINOR[.PATCH]</li>
+    <li>The format should be <code>MAJOR.MINOR[.PATCH]</code></li>
     <li>This will not let you force a version higher than the driver's
-        instance versionas advertised by vkEnumerateInstanceVersion</li>
+        instance versionas advertised by
+        <code>vkEnumerateInstanceVersion</code></li>
     <li>This can be very useful for debugging but some features may not be
         implemented correctly. (For developers only)</li>
   </ul>
@@ -210,8 +221,8 @@ See the <a href="xlibdriver.html">Xlib software driver page</a> for details.
 <dt><code>MESA_CI_VISUAL</code></dt>
 <dd>specifies the X visual and depth for CI mode</dd>
 <dt><code>MESA_BACK_BUFFER</code></dt>
-<dd>specifies how to implement the back color buffer, either "pixmap" or
-    "ximage"</dd>
+<dd>specifies how to implement the back color buffer, either
+    <code>pixmap</code> or <code>ximage</code></dd>
 <dt><code>MESA_GAMMA</code></dt>
 <dd>gamma correction coefficients for red, green, blue channels</dd>
 <dt><code>MESA_XSYNC</code></dt>
@@ -285,7 +296,7 @@ See the <a href="xlibdriver.html">Xlib software driver page</a> for details.
    <dt><code>perf</code></dt>
    <dd>emit messages about performance issues</dd>
    <dt><code>perfmon</code></dt>
-   <dd>emit messages about AMD_performance_monitor</dd>
+   <dd>emit messages about <code>AMD_performance_monitor</code></dd>
    <dt><code>pix</code></dt>
    <dd>emit messages about pixel operations</dd>
    <dt><code>prim</code></dt>
@@ -351,7 +362,8 @@ Mesa EGL supports different sets of environment variables.  See the
 <dt><code>GALLIUM_HUD</code></dt>
 <dd>draws various information on the screen, like framerate,
     cpu load, driver statistics, performance counters, etc.
-    Set GALLIUM_HUD=help and run e.g. glxgears for more info.</dd>
+    Set <code>GALLIUM_HUD=help</code> and run e.g. glxgears for more
+    info.</dd>
 <dt><code>GALLIUM_HUD_PERIOD</code></dt>
 <dd>sets the hud update rate in seconds (float). Use zero
     to update every frame. The default period is 1/2 second.</dd>
@@ -361,13 +373,16 @@ Mesa EGL supports different sets of environment variables.  See the
 <dd>toggle visibility via user specified signal.
     Especially useful to toggle hud at specific points of application and
     disable for unencumbered viewing the rest of the time. For example, set
-    GALLIUM_HUD_VISIBLE to false and GALLIUM_HUD_TOGGLE_SIGNAL to 10 (SIGUSR1).
-    Use kill -10 &lt;pid&gt; to toggle the hud as desired.</dd>
+    <code>GALLIUM_HUD_VISIBLE</code> to <code>false</code> and
+    <code>GALLIUM_HUD_TOGGLE_SIGNAL</code> to <code>10</code>
+    (<code>SIGUSR1</code>).
+    Use <code>kill -10 &lt;pid&gt;</code> to toggle the hud as desired.</dd>
 <dt><code>GALLIUM_HUD_DUMP_DIR</code></dt>
 <dd>specifies a directory for writing the displayed hud values into files.</dd>
 <dt><code>GALLIUM_DRIVER</code></dt>
-<dd>useful in combination with LIBGL_ALWAYS_SOFTWARE=true for choosing one
-    of the software renderers "softpipe", "llvmpipe" or "swr".</dd>
+<dd>useful in combination with <code>LIBGL_ALWAYS_SOFTWARE=true</code> for
+    choosing one of the software renderers <code>softpipe</code>,
+    <code>llvmpipe</code> or <code>swr</code>.</dd>
 <dt><code>GALLIUM_LOG_FILE</code></dt>
 <dd>specifies a file for logging all errors, warnings, etc.
     rather than stderr.</dd>
@@ -388,8 +403,9 @@ Mesa EGL supports different sets of environment variables.  See the
     shaders, vertex fetch, etc.</dd>
 <dt><code>ST_DEBUG</code></dt>
 <dd>controls debug output from the Mesa/Gallium state tracker.
-    Setting to "tgsi", for example, will print all the TGSI shaders.
-    See src/mesa/state_tracker/st_debug.c for other options.</dd>
+    Setting to <code>tgsi</code>, for example, will print all the TGSI
+    shaders. See <code>src/mesa/state_tracker/st_debug.c</code> for other
+    options.</dd>
 </dl>
 
 <h3>Clover state tracker environment variables</h3>
@@ -398,15 +414,15 @@ Mesa EGL supports different sets of environment variables.  See the
 <dt><code>CLOVER_EXTRA_BUILD_OPTIONS</code></dt>
 <dd>allows specifying additional compiler and linker
     options. Specified options are appended after the options set by the OpenCL
-    program in clBuildProgram.</dd>
+    program in <code>clBuildProgram</code>.</dd>
 <dt><code>CLOVER_EXTRA_COMPILE_OPTIONS</code></dt>
 <dd>allows specifying additional compiler
     options. Specified options are appended after the options set by the OpenCL
-    program in clCompileProgram.</dd>
+    program in <code>clCompileProgram</code>.</dd>
 <dt><code>CLOVER_EXTRA_LINK_OPTIONS</code></dt>
 <dd>allows specifying additional linker
     options. Specified options are appended after the options set by the OpenCL
-    program in clLinkProgram.</dd>
+    program in <code>clLinkProgram</code>.</dd>
 </dl>
 
 
@@ -463,9 +479,10 @@ Mesa EGL supports different sets of environment variables.  See the
 <h3>WGL environment variables</h3>
 <dl>
 <dt><code>WGL_SWAP_INTERVAL</code></dt>
-<dd>to set a swap interval, equivalent to calling wglSwapIntervalEXT()
-    in an application.  If this environment variable is set, application
-    calls to wglSwapIntervalEXT() will have no effect.</dd>
+<dd>to set a swap interval, equivalent to calling
+    <code>wglSwapIntervalEXT()</code> in an application.  If this
+    environment variable is set, application calls to
+    <code>wglSwapIntervalEXT()</code> will have no effect.</dd>
 </dl>
 
 <h3>VA-API state tracker environment variables</h3>
