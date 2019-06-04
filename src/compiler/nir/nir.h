@@ -1312,6 +1312,10 @@ typedef enum {
     */
    NIR_INTRINSIC_SWIZZLE_MASK,
 
+   /* Separate source/dest access flags for copies */
+   NIR_INTRINSIC_SRC_ACCESS = 21,
+   NIR_INTRINSIC_DST_ACCESS = 22,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
@@ -1412,6 +1416,8 @@ INTRINSIC_IDX_ACCESSORS(param_idx, PARAM_IDX, unsigned)
 INTRINSIC_IDX_ACCESSORS(image_dim, IMAGE_DIM, enum glsl_sampler_dim)
 INTRINSIC_IDX_ACCESSORS(image_array, IMAGE_ARRAY, bool)
 INTRINSIC_IDX_ACCESSORS(access, ACCESS, enum gl_access_qualifier)
+INTRINSIC_IDX_ACCESSORS(src_access, SRC_ACCESS, enum gl_access_qualifier)
+INTRINSIC_IDX_ACCESSORS(dst_access, DST_ACCESS, enum gl_access_qualifier)
 INTRINSIC_IDX_ACCESSORS(format, FORMAT, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_mul, ALIGN_MUL, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_offset, ALIGN_OFFSET, unsigned)
