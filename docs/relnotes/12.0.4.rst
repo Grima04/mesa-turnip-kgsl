@@ -61,7 +61,7 @@ Changes
 
 Axel Davy (4):
 
--  gallium/util: Really allow aliasing of dst for u_box_union_\*
+-  gallium/util: Really allow aliasing of dst for u_box_union\_\*
 -  st/nine: Fix the calculation of the number of vs inputs
 -  st/nine: Fix mistake in Volume9 UnlockBox
 -  st/nine: Fix locking CubeTexture surfaces.

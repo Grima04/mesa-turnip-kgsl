@@ -157,7 +157,7 @@ Bug fixes
 -  `Bug 109075 <https://bugs.freedesktop.org/show_bug.cgi?id=109075>`__
    - radv: New D3D boolean optimizations cause GPU hang in Witcher 3
 -  `Bug 109081 <https://bugs.freedesktop.org/show_bug.cgi?id=109081>`__
-   - [bisected] [HSW] Regression in clipping.user_defined.clip_\*
+   - [bisected] [HSW] Regression in clipping.user_defined.clip\_\*
    vulkancts tests
 -  `Bug 109086 <https://bugs.freedesktop.org/show_bug.cgi?id=109086>`__
    - Crash software mesa with gl_select render mode
@@ -1619,7 +1619,7 @@ Kenneth Graunke (41):
    counter
 -  st/mesa: Optionally override RGB/RGBX dst alpha blend factors
 -  gallium: Add forgotten docs for PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS.
--  st/mesa: Limit GL_MAX_[NATIVE_]PROGRAM_PARAMETERS_ARB to 2048
+-  st/mesa: Limit GL_MAX_[NATIVE\_]PROGRAM_PARAMETERS_ARB to 2048
 -  anv: Put MOCS in the correct location
 -  nir: Don't reassociate add/mul chains containing only constants
 -  compiler: Mark clip/cull distance arrays as compact before lowering.

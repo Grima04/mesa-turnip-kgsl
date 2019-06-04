@@ -63,7 +63,7 @@ Emil Velikov (24):
 
 -  docs: add sha256 checksums for 17.1.1
 -  configure: move platform handling further up
--  configure: rename remaining HAVE_EGL_PLATFORM_\* guards
+-  configure: rename remaining HAVE_EGL_PLATFORM\_\* guards
 -  configure: update remaining --with-egl-platforms references
 -  configure: loosen --with-platforms heuristics
 -  configure: enable the surfaceless platform by default

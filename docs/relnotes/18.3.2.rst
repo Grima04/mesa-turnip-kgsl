@@ -48,7 +48,7 @@ Bug fixes
 -  `Bug 109072 <https://bugs.freedesktop.org/show_bug.cgi?id=109072>`__
    - GPU hang in blender 2.80
 -  `Bug 109081 <https://bugs.freedesktop.org/show_bug.cgi?id=109081>`__
-   - [bisected] [HSW] Regression in clipping.user_defined.clip_\*
+   - [bisected] [HSW] Regression in clipping.user_defined.clip\_\*
    vulkancts tests
 -  `Bug 109151 <https://bugs.freedesktop.org/show_bug.cgi?id=109151>`__
    - [KBL-G][vulkan]

@@ -66,7 +66,7 @@ Emil Velikov (11):
 -  android: egl: add libsync_cflags to the build
 -  android: dri/common: conditionally include drm_cflags/set
    \__NOT_HAVE_DRM_H
--  android: add HAVE__BUILTIN_\* and HAVE_FUNC_ATTRIBUTE_\* defines
+-  android: add HAVE__BUILTIN\_\* and HAVE_FUNC_ATTRIBUTE\_\* defines
 -  android: add $(mesa_top)/src/mesa/main to the includes list
 -  android: dri: link against libmesa_util
 -  android: mesa: fix the path of the SSE4_1 optimisations

@@ -90,7 +90,7 @@ Juan A. Suarez Romero (7):
    around GCC 5.4 bug
 -  cherry-ignore: mesa: fix glGetInteger/Float/etc queries for vertex
    arrays attribs
--  cherry-ignore: mesa: revert GL_[SECONDARY_]COLOR_ARRAY_SIZE glGet
+-  cherry-ignore: mesa: revert GL_[SECONDARY\_]COLOR_ARRAY_SIZE glGet
    type to TYPE_INT
 -  cherry-ignore: radv/resolve: do fmask decompress on all layers.
 -  Update version to 18.0.4

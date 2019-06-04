@@ -378,7 +378,7 @@ Changes
 -  pan/bi: Add bi_load structure
 -  pan/bi: Pull out bifrost_load_var
 -  pan/bi: Add bi_load_vary structure
--  pan/bi: Add PAN_SCHED_\* flags
+-  pan/bi: Add PAN_SCHED\_\* flags
 -  pan/bi: Add bi_clause, bi_bundle abstractions
 -  pan/bi: Add dest_type field to bifrost_instruction
 -  pan/bi: Add special indices
@@ -437,7 +437,7 @@ Changes
 -  pan/bi: Allow inlining constants
 -  pan/bi: Implement fsat as mov.sat
 -  pan/bi: Add a bunch of ALU ops
--  pan/bi: Add BI_SPECIAL_\* enum
+-  pan/bi: Add BI_SPECIAL\_\* enum
 -  pan/bi: Handle special ops in NIR->BIR
 -  pan/bi: Implement fabs, fneg as fmov with mods
 -  pan/bi: Disable lower_sub
@@ -1002,12 +1002,12 @@ Changes
 -  freedreno: simplify fd_set_shader_buffers(..)
 -  freedreno: ssbo: keep track if a buffer gets written
 -  freedreno: ssbo: mark resource read or written depending on usage
--  etnaviv: get rid of SE_CLIP_\*
+-  etnaviv: get rid of SE_CLIP\_\*
 -  etnaviv: rework clippling calculation to be a derived state
 -  etnaviv: do the left shift by 16 at emit time
 -  etnaviv: get rid of struct compiled_scissor_state
 -  etnaviv: s/scissor_s/scissor
--  etnaviv: compiled_framebuffer_state: get rid of SE_SCISSOR_\*
+-  etnaviv: compiled_framebuffer_state: get rid of SE_SCISSOR\_\*
 -  etnaviv: rename hw queries to acc queries
 -  etnaviv: rework etna_acc_sample_provider
 -  etnaviv: explicitly call resource_written(..)
@@ -1220,7 +1220,7 @@ Changes
 -  nir: Fix breakage of foreach_list_typed_safe assumptions in loop
    unrolling
 -  anv: Do not sample from 3d depth image with HiZ
--  glsl/list: Fix undefined behaviour of foreach_\* macros
+-  glsl/list: Fix undefined behaviour of foreach\_\* macros
 -  st/mesa: Update shader info of ffvp/ARB_vp after translation to NIR
 -  st/mesa: Re-assign vs in locations after updating nir info for
    ffvp/ARB_vp
@@ -1342,8 +1342,8 @@ Changes
 -  docs/release-calendar: Add calendar for 20.1 Release candidates
 -  bin/gen_release_notes.py: Fix version detection for .0 release
 -  bin/pick-ui: Add a new maintainer script for picking patches
--  replace \_mesa_is_pow_two with util_is_power_of_two_\*
--  replace \_mesa_next_pow_two_\* with util_next_power_of_two_\*
+-  replace \_mesa_is_pow_two with util_is_power_of_two\_\*
+-  replace \_mesa_next_pow_two\_\* with util_next_power_of_two\_\*
 -  replace \_mesa_logbase2 with util_logbase2
 -  replace LOG2 with util_fast_log2
 -  u_math: add x86 optimized version of ifloor
@@ -1381,7 +1381,7 @@ Changes
    and GL_KHR_robustness are now expose in the guest.
 -  meson: glx: drop with_glx == dri check
 -  glx: set the loader_logger early and for everyone
--  egl/drm: reinstate (kms_)swrast support
+-  egl/drm: reinstate (kms\_)swrast support
 -  Revert "egl/dri2: Don't dlclose() the driver on
    dri2_load_driver_common failure"
 -  loader: use a maximum of 64 drmDevices
@@ -1392,7 +1392,7 @@ Changes
 -  loader: fallback to kernel name, if PCI fails
 -  glx: omit loader_loader() for macOS
 -  egl: simplify client/platform extension handling
--  Expose EGL_KHR_platform_\* when EXT is supported
+-  Expose EGL_KHR_platform\_\* when EXT is supported
 -  gallium/osmesa: Fix a typo in the unit test's test names.
 -  gallium/osmesa: Fix MakeCurrent of non-8888 contexts.
 -  gallium/osmesa: Fill out other format tests.
@@ -1401,7 +1401,7 @@ Changes
 -  mesa/st: Use direct util_format_pack/unpack instead of u_tile.
 -  gallium/util: Remove pipe_get_tile_z/put_tile_z.
 -  softpipe: Drop the raw_to\* part of the tile cache interface.
--  softpipe: Refactor pipe_get/put_tile_rgba_\* paths.
+-  softpipe: Refactor pipe_get/put_tile_rgba\_\* paths.
 -  gallium: Add and use a helper for packing uc from a color_union.
 -  gallium: Refactor some single-pixel util_format_read/writes.
 -  util: Drop unpacking from int signed to unsigned and vice versa.
@@ -2087,7 +2087,7 @@ Changes
 -  nv50,nvc0: add newly added PIPE_CAP's to list
 -  st/mesa: allow TXB2/TXL2 to work with cube array shadow textures
 -  nvc0: enable EXT_texture_shadow_lod
--  st/vdpau: avoid asserting on new VDP_YCBCR_\* formats
+-  st/vdpau: avoid asserting on new VDP_YCBCR\_\* formats
 -  st/vdpau: make query test for 2D support
 -  nv50: don't try to upload MSAA settings for BUFFER textures
 -  gallium: add viewport swizzling state and cap

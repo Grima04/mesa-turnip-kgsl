@@ -296,7 +296,7 @@ Marek Olšák (19):
 -  u_vbuf_mgr: don't take per-instance attribs into acc. when computing
    max index
 -  u_vbuf_mgr: fix max_index computation for large src_offset
--  u_vbuf_mgr: s/u_vbuf_mgr_/u_vbuf\_
+-  u_vbuf_mgr: s/u_vbuf_mgr\_/u_vbuf\_
 -  u_vbuf_mgr: remove unused flag U_VBUF_UPLOAD_FLUSHED
 -  u_vbuf_mgr: rework user buffer uploads
 -  u_vbuf_mgr: fix uploading with a non-zero index bias

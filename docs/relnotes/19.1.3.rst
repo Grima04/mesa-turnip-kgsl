@@ -105,7 +105,7 @@ Jason Ekstrand (13):
 -  nir/loop_analyze: Bail if we encounter swizzles
 -  anv: Set Stateless Data Port Access MOCS
 -  nir/opt_if: Clean up single-src phis in opt_if_loop_terminator
--  nir,intel: Add support for lowering 64-bit nir_opt_extract_\*
+-  nir,intel: Add support for lowering 64-bit nir_opt_extract\_\*
 -  anv: Account for dynamic stencil write disables in the PMA fix
 -  nir/regs_to_ssa: Handle regs in phi sources properly
 -  nir/loop_analyze: Refactor detection of limit vars

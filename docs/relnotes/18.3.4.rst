@@ -104,7 +104,7 @@ Juan A. Suarez Romero (1):
 
 Kenneth Graunke (1):
 
--  st/mesa: Limit GL_MAX_[NATIVE_]PROGRAM_PARAMETERS_ARB to 2048
+-  st/mesa: Limit GL_MAX_[NATIVE\_]PROGRAM_PARAMETERS_ARB to 2048
 
 Kristian H. Kristensen (1):
 

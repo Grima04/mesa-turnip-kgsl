@@ -249,7 +249,7 @@ José Fonseca (2):
 
 Kenneth Graunke (21):
 
--  genxml: Add CLIPMODE_\* prefix to 3DSTATE_CLIP's "Clip Mode" enum
+-  genxml: Add CLIPMODE\_\* prefix to 3DSTATE_CLIP's "Clip Mode" enum
    values.
 -  genxml: Add APIMODE_D3D missing enum values and improve consistency.
 -  anv: Fix near plane clipping on Gen7/7.5.

@@ -247,7 +247,7 @@ Bug fixes
 -  `Bug 97426 <https://bugs.freedesktop.org/show_bug.cgi?id=97426>`__ -
    glScissor gives vertically inverted result
 -  `Bug 97448 <https://bugs.freedesktop.org/show_bug.cgi?id=97448>`__ -
-   [HSW] deqp-vk.api_.copy_and_blit.image_to_image_stencil regression
+   [HSW] deqp-vk.api\_.copy_and_blit.image_to_image_stencil regression
 -  `Bug 97476 <https://bugs.freedesktop.org/show_bug.cgi?id=97476>`__ -
    Shader binaries should not be stored in the PipelineCache
 -  `Bug 97477 <https://bugs.freedesktop.org/show_bug.cgi?id=97477>`__ -

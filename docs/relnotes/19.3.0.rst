@@ -164,7 +164,7 @@ Changes
 -  surfaceless: Support EGL_WL_bind_wayland_display
 -  egl: Make native display detection work more than once
 -  gallium/xlib: Fix xmesa drawable creation
--  gallium: Fix a bunch of undefined left-shifts in u_format_\*
+-  gallium: Fix a bunch of undefined left-shifts in u_format\_\*
 -  c99_compat.h: Don't try to use 'restrict' in C++ code
 -  util: Make Solaris implemention of p_atomic_add work with gcc
 -  util: Workaround lack of flock on Solaris
@@ -538,7 +538,7 @@ Changes
 -  panfrost: Stop passing has_draws to panfrost_drm_submit_vs_fs_batch()
 -  panfrost: Get rid of pan_drm.c
 -  panfrost: Move panfrost_bo_{reference,unreference}() to pan_bo.c
--  panfrost: s/PAN_ALLOCATE_/PAN_BO_/
+-  panfrost: s/PAN_ALLOCATE\_/PAN_BO\_/
 -  panfrost: Move the BO API to its own header
 -  panfrost: Stop exposing panfrost_bo_cache_{fetch,put}()
 -  panfrost: Don't check if BO is mmaped before calling
@@ -1006,7 +1006,7 @@ Changes
 -  gallium/osmesa: Fix a race in creating the stmgr.
 -  gallium/osmesa: Move 565 format selection checks where the rest are.
 -  uapi: Update drm_fourcc.h
--  dri: Use DRM_FORMAT_\* instead of defining our own copy.
+-  dri: Use DRM_FORMAT\_\* instead of defining our own copy.
 -  gitlab-ci: Disable dEQP's watchdog timer.
 -  gitlab-ci: Log the driver version that got tested.
 -  freedreno: Introduce gitlab-based CI.
@@ -2448,7 +2448,7 @@ Changes
 -  anv: Add support for depth bounds testing.
 -  genxml: Change 3DSTATE_DEPTH_BOUNDS bias.
 -  anv: Set depthBounds to true in anv_GetPhysicalDeviceFeatures.
--  genxml: Add 3DSTATE_SO_BUFFER_INDEX_\* instructions
+-  genxml: Add 3DSTATE_SO_BUFFER_INDEX\_\* instructions
 -  iris: Implement new way for setting streamout buffers.
 -  anv: Implement new way for setting streamout buffers.
 -  scons/windows: Fix build with LLVM>=8

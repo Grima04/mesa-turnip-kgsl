@@ -70,7 +70,7 @@ Ilia Mirkin (5):
 
 Kenneth Graunke (1):
 
--  program: Allow redundant OPTION ARB_fog_\* directives.
+-  program: Allow redundant OPTION ARB_fog\_\* directives.
 
 Rob Clark (1):
 

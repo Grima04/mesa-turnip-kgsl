@@ -75,7 +75,7 @@ Changes
 -  .pick_status.json: Update to 13ce637f1b28381e72470763ff5e39dd3c562476
 -  .pick_status.json: Update to c3c1f4d6bcc210408f8b180727d269838b38193b
 -  glx: set the loader_logger early and for everyone
--  egl/drm: reinstate (kms_)swrast support
+-  egl/drm: reinstate (kms\_)swrast support
 -  Revert "egl/dri2: Don't dlclose() the driver on
    dri2_load_driver_common failure"
 -  glx: omit loader_loader() for macOS

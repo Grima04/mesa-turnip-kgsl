@@ -37,7 +37,7 @@ Bug fixes
 -  `Bug 108911 <https://bugs.freedesktop.org/show_bug.cgi?id=108911>`__
    - Vkd3d test failure test_clear_render_target_view()
 -  `Bug 109081 <https://bugs.freedesktop.org/show_bug.cgi?id=109081>`__
-   - [bisected] [HSW] Regression in clipping.user_defined.clip_\*
+   - [bisected] [HSW] Regression in clipping.user_defined.clip\_\*
    vulkancts tests
 
 Changes

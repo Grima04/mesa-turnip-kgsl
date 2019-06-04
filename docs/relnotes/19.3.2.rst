@@ -42,7 +42,7 @@ Bug fixes
 -  Blocky corruption in The Surge 2
 -  radeonsi: Floating point exception on R9 270 gpu for a set of traces
 -  [CTS]
-   dEQP-VK.api.image_clearing.core.clear_color_image.2d.linear.single_layer.r32g32b32_\*
+   dEQP-VK.api.image_clearing.core.clear_color_image.2d.linear.single_layer.r32g32b32\_\*
    fail on GFX6-GFX8
 -  Vulkan: Please consider adding another sample count to
    sampledImageIntegerSampleCounts

@@ -233,7 +233,7 @@ Bug fixes
 -  `Bug 99188 <https://bugs.freedesktop.org/show_bug.cgi?id=99188>`__ -
    dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb565_no_depth_no_stencil
 -  `Bug 99210 <https://bugs.freedesktop.org/show_bug.cgi?id=99210>`__ -
-   ES3-CTS.functional.texture.mipmap.cube.generate.rgba5551_\*
+   ES3-CTS.functional.texture.mipmap.cube.generate.rgba5551\_\*
 -  `Bug 99214 <https://bugs.freedesktop.org/show_bug.cgi?id=99214>`__ -
    Crash in library libswrAVX.so when assigning vertex buffer object
    pointers with elements of type GL_DOUBLE

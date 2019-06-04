@@ -62,7 +62,7 @@ Bug fixes
 -  `Bug 99188 <https://bugs.freedesktop.org/show_bug.cgi?id=99188>`__ -
    dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb565_no_depth_no_stencil
 -  `Bug 99210 <https://bugs.freedesktop.org/show_bug.cgi?id=99210>`__ -
-   ES3-CTS.functional.texture.mipmap.cube.generate.rgba5551_\*
+   ES3-CTS.functional.texture.mipmap.cube.generate.rgba5551\_\*
 -  `Bug 99354 <https://bugs.freedesktop.org/show_bug.cgi?id=99354>`__ -
    [G71] "Assertion \`bkref' failed" reproducible with glmark2
 -  `Bug 99450 <https://bugs.freedesktop.org/show_bug.cgi?id=99450>`__ -

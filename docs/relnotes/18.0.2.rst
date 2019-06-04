@@ -71,7 +71,7 @@ Ian Romanick (1):
 
 Jason Ekstrand (1):
 
--  i965/fs: Return mlen \* 8 for size_read() for INTERPOLATE_AT_\*
+-  i965/fs: Return mlen \* 8 for size_read() for INTERPOLATE_AT\_\*
 
 Johan Klokkhammer Helsing (1):
 

@@ -121,7 +121,7 @@ Bug fixes
 -  [RADV] [Navi] LOD artifacting in Halo - The Master Chief Collection
    (Halo Reach)
 -  [CTS]
-   dEQP-VK.api.image_clearing.core.clear_color_image.2d.linear.single_layer.r32g32b32_\*
+   dEQP-VK.api.image_clearing.core.clear_color_image.2d.linear.single_layer.r32g32b32\_\*
    fail on GFX6-GFX8
 -  Vulkan: Please consider adding another sample count to
    sampledImageIntegerSampleCounts
@@ -345,7 +345,7 @@ Changes
 -  pan/midgard: Lower txd with lower_tex
 -  panfrost: Decode shader types in pantrace shader-db
 -  pan/decode: Skip COMPUTE in blobber-db
--  pan/decode: Prefix blobberdb with MESA_SHADER_\*
+-  pan/decode: Prefix blobberdb with MESA_SHADER\_\*
 -  pan/decode: Append 0:0 spills:fills to blobber-db
 -  pan/midgard: Fix disassembler cycle/quadword counting
 -  pan/midgard: Bounds check lcra_restrict_range
@@ -356,7 +356,7 @@ Changes
 -  pan/midgard: Do witchcraft on texture offsets
 -  pan/midgard: Generalize temp coordinate to non-2D
 -  pan/midgard: Implement shadow cubemaps
--  pan/midgard: Enable lower_(un)pack_\* lowering
+-  pan/midgard: Enable lower_(un)pack\_\* lowering
 -  pan/midgard: Support loads from R11G11B10 in a blend shader
 -  pan/midgard: Add mir_upper_override helper
 -  pan/midgard: Compute destination override
@@ -888,8 +888,8 @@ Changes
 -  gallium: Add equivalents of packed MESA_FORMAT_*UINT formats.
 -  mesa: Stop defining a full separate format for RGBA_UINT8.
 -  mesa/st: Test round-tripping of all compressed formats.
--  mesa: Prepare for the MESA_FORMAT_\* enum to be sparse.
--  mesa: Redefine MESA_FORMAT_\* in terms of PIPE_FORMAT_*.
+-  mesa: Prepare for the MESA_FORMAT\_\* enum to be sparse.
+-  mesa: Redefine MESA_FORMAT\_\* in terms of PIPE_FORMAT_*.
 -  mesa/st: Gut most of st_mesa_format_to_pipe_format().
 -  mesa/st: Make st_pipe_format_to_mesa_format an effective no-op.
 -  u_format: Fix swizzle of A1R5G5B5.
@@ -1543,7 +1543,7 @@ Changes
 -  anv: Delete a redundant calculation
 -  isl: Add a helper for calculating subimage memory ranges
 -  anv: Add another align_down helper
--  anv: Make AUX table invalidate a PIPE_\* bit
+-  anv: Make AUX table invalidate a PIPE\_\* bit
 -  anv: Make anv_vma_alloc/free a lot dumber
 -  anv: Rework CCS memory handling on TGL-LP
 -  intel/blorp: Add support for CCS_E copies with UNORM formats
@@ -1929,7 +1929,7 @@ Changes
 -  st/mesa: call nir_lower_flrp only once per shader
 -  compiler: make variable::data::binding unsigned
 -  nir: pack nir_variable::data::stream
--  nir: pack nir_variable::data::xfb_\*
+-  nir: pack nir_variable::data::xfb\_\*
 -  radeonsi: use IR SHA1 as the cache key for the in-memory shader cache
 -  radeonsi: don't keep compute shader IR after compilation
 -  radeonsi: keep serialized NIR instead of nir_shader in
@@ -2065,7 +2065,7 @@ Changes
 -  radeonsi: enable NIR by default and document GL 4.6 support
 -  radeonsi/gfx10: disable vertex grouping
 -  radeonsi/gfx10: simplify the tess_turns_off_ngg condition
--  radeonsi: don't rely on CLEAR_STATE to set PA_SC_GENERIC_SCISSOR_\*
+-  radeonsi: don't rely on CLEAR_STATE to set PA_SC_GENERIC_SCISSOR\_\*
 -  ac: fix ac_get_i1_sgpr_mask for Wave32
 -  ac: fix the return value in cull_bbox when bbox culling is disabled
 -  radeonsi: deduplicate ES and GS thread enablement code
@@ -2150,7 +2150,7 @@ Changes
 -  radeonsi: move PS LLVM code into si_shader_llvm_ps.c
 -  radeonsi: separate code computing info for small primitive culling
 -  ac/cull: don't read Position.Z if it's not needed for culling
--  radeonsi: make si_insert_input_\* functions non-static
+-  radeonsi: make si_insert_input\_\* functions non-static
 -  radeonsi: move VS_STATE.LS_OUT_PATCH_SIZE a few bits higher to make
    space there
 -  radeonsi/gfx10: separate code for getting edgeflags from the
@@ -2161,7 +2161,7 @@ Changes
    culling
 -  radeonsi: work around an LLVM crash when using
    llvm.amdgcn.icmp.i64.i1
--  radeonsi: move si_insert_input_\* functions
+-  radeonsi: move si_insert_input\_\* functions
 -  radeonsi: move tessellation shader code into si_shader_llvm_tess.c
 -  radeonsi: remove llvm_type_is_64bit
 -  radeonsi: move geometry shader code into si_shader_llvm_gs.c
@@ -2237,7 +2237,7 @@ Changes
 -  etnaviv: update Android build files
 -  egl: Implement getImage/putImage on pbuffer swrast.
 -  intel/compiler: Use ARRAY_SIZE()
--  intel/compiler: Extract GEN_\* macros into separate file
+-  intel/compiler: Extract GEN\_\* macros into separate file
 -  intel/compiler: Split has_64bit_types into float/int
 -  intel/compiler: Don't disassemble align1 3-src operands on Gen < 10
 -  intel/compiler: Limit compaction unit tests to specific gens
@@ -2755,7 +2755,7 @@ Changes
 -  gitlab-ci: build RADV in meson-testing
 -  gitlab-ci: add a job that runs Vulkan CTS with RADV conditionally
 -  radv: do not use VK_TRUE/VK_FALSE
--  radv: move emission of two PA_SC_\* registers to the pipeline CS
+-  radv: move emission of two PA_SC\_\* registers to the pipeline CS
 -  radv: fix possibly wrong PA_SC_AA_CONFIG value for conservative rast
 -  radv: synchronize after performing a separate depth/stencil fast
    clears
@@ -2846,7 +2846,7 @@ Changes
 -  aco: fix wrong IR in nir_intrinsic_load_barycentric_at_sample
 -  aco: implement nir_intrinsic_store_global on GFX6
 -  aco: implement nir_intrinsic_load_global on GFX6
--  aco: implement nir_intrinsic_global_atomic_\* on GFX6
+-  aco: implement nir_intrinsic_global_atomic\_\* on GFX6
 -  aco: implement 64-bit nir_op_ftrunc on GFX6
 -  aco: implement 64-bit nir_op_fceil on GFX6
 -  aco: implement 64-bit nir_op_fround_even on GFX6
@@ -2855,7 +2855,7 @@ Changes
 -  ac/llvm: fix missing casts in ac_build_readlane()
 -  aco: combine MRTZ (depth, stencil, sample mask) exports
 -  aco: fix a hardware bug for MRTZ exports on GFX6
--  aco: fix a hazard with v_interp_\* and v_{read,readfirst}lane_\* on
+-  aco: fix a hazard with v_interp\_\* and v_{read,readfirst}lane\_\* on
    GFX6
 -  aco: copy the literal offset of SMEM instructions to a temporary
 -  radv: enable ACO support for GFX6
@@ -2865,10 +2865,10 @@ Changes
 -  compiler: add a new explicit interpolation mode
 -  spirv: add support for SpvDecorationExplicitInterpAMD
 -  compiler: add PERSP to the existing barycentric system values
--  compiler: add new SYSTEM_VALUE_BARYCENTRIC_\*
+-  compiler: add new SYSTEM_VALUE_BARYCENTRIC\_\*
 -  spirv: add support for SpvBuiltInBaryCoord\*
 -  nir: add nir_intrinsic_load_barycentric_model
--  nir: lower SYSTEM_VALUE_BARYCENTRIC_\* to nir_load_barycentric()
+-  nir: lower SYSTEM_VALUE_BARYCENTRIC\_\* to nir_load_barycentric()
 -  nir: add nir_intrinsic_interp_deref_at_vertex
 -  nir: lower interp_deref_at_vertex to load_input_vertex
 -  spirv: implement SPV_AMD_shader_explicit_vertex_parameter
@@ -3118,7 +3118,7 @@ Changes
 -  lima: fix PLBU_CMD_PRIMITIVE_SETUP command
 -  lima: fix viewport clipping
 -  lima: implement polygon offset
--  lima: fix PIPE_CAP_\* to mark features that aren't supported yet
+-  lima: fix PIPE_CAP\_\* to mark features that aren't supported yet
 -  lima: add new findings to texture descriptor
 -  lima: fix handling of reverse depth range
 -  ci: lava: pass CI_NODE_INDEX and CI_NODE_TOTAL to lava jobs

@@ -985,8 +985,8 @@ Chia-I Wu (78):
 -  turnip: use msm_drm.h from inc_freedreno
 -  turnip: remove unnecessary libfreedreno_drm dep
 -  turnip: add wrappers around DRM_MSM_GET_PARAM
--  turnip: add wrappers around DRM_MSM_SUBMITQUEUE_\*
--  turnip: constify tu_device in tu_gem_\*
+-  turnip: add wrappers around DRM_MSM_SUBMITQUEUE\_\*
+-  turnip: constify tu_device in tu_gem\_\*
 -  turnip: preliminary support for tu_QueueWaitIdle
 -  turnip: run sed and clang-format on tu_cs
 -  turnip: document tu_cs
@@ -2074,7 +2074,7 @@ Jason Ekstrand (212):
 -  intel/fs: Do the grf127 hack on SIMD8 instructions in SIMD16 mode
 -  intel/fs: Implement load/store_global with A64 untyped messages
 -  intel/fs: Use SENDS for A64 writes on gen9+
--  intel/fs: Implement nir_intrinsic_global_atomic_\*
+-  intel/fs: Implement nir_intrinsic_global_atomic\_\*
 -  anv: Implement VK_EXT_buffer_device_address
 -  relnotes: Add VK_EXT_buffer_device_address
 -  nir/deref: Drop zero ptr_as_array derefs
@@ -2122,7 +2122,7 @@ Jason Ekstrand (212):
 -  anv: Use an actual binding for gl_NumWorkgroups
 -  anv/pipeline: Drop anv_fill_binding_table
 -  anv/descriptor_set: Refactor alloc/free of descriptor sets
--  anv: Rework arguments to anv_descriptor_set_write_\*
+-  anv: Rework arguments to anv_descriptor_set_write\_\*
 -  anv: Stop allocating buffer views for dynamic buffers
 -  anv: Count image param entries rather than images
 -  anv: Clean up descriptor set layouts
@@ -2226,7 +2226,7 @@ Jason Ekstrand (212):
 -  nir/algebraic: Use a cache to avoid re-emitting structs
 -  intel/mi_builder: Re-order an initializer
 -  intel/mi_builder: Disable mem_mem tests on IVB
--  nir: Drop "struct" from some nir_\* declarations
+-  nir: Drop "struct" from some nir\_\* declarations
 -  nir: Rework nir_src_as_alu_instr to not take a pointer
 -  nir: Add a nir_src_as_intrinsic() helper
 -  anv: Re-sort the GetPhysicalDeviceFeatures2 switch statement
@@ -2438,8 +2438,8 @@ Karol Herbst (82):
 -  nv50/ir/nir: add skeleton for nir_intrinsic_instr
 -  nv50/ir/nir: implement nir_alu_instr handling
 -  nv50/ir/nir: implement nir_intrinsic_load_uniform
--  nv50/ir/nir: implement nir_intrinsic_store_(per_vertex_)output
--  nv50/ir/nir: implement load_(interpolated_)input/output
+-  nv50/ir/nir: implement nir_intrinsic_store_(per_vertex\_)output
+-  nv50/ir/nir: implement load_(interpolated\_)input/output
 -  nv50/ir/nir: implement intrinsic_discard(_if)
 -  nv50/ir/nir: implement loading system values
 -  nv50/ir/nir: implement nir_ssa_undef_instr
@@ -2518,7 +2518,7 @@ Kenneth Graunke (872):
 -  st/nir: Call nir_lower_clip_cull_distance_arrays().
 -  gallium: Add a PIPE_CAP_NIR_COMPACT_ARRAYS capability bit.
 -  nouveau: Silence unhandled cap warnings
--  st/mesa: Limit GL_MAX_[NATIVE_]PROGRAM_PARAMETERS_ARB to 2048
+-  st/mesa: Limit GL_MAX_[NATIVE\_]PROGRAM_PARAMETERS_ARB to 2048
 -  glsl: Allow gl_nir_lower_samplers*() without a gl_shader_program
 -  glsl: Don't look at sampler uniform storage for internal vars
 -  i965: Call nir_lower_samplers for ARB programs.
@@ -2610,7 +2610,7 @@ Kenneth Graunke (872):
 -  iris: promote iris_program_cache_item to iris_compiled_shader
 -  iris: actually save derived state
 -  iris: emit shader packets
--  iris: convert IRIS_DIRTY_\* to #defines
+-  iris: convert IRIS_DIRTY\_\* to #defines
 -  iris: don't forget about TE
 -  iris: reorganize commands to match brw
 -  iris: initial gpu state
@@ -3879,7 +3879,7 @@ Mike Blumenkrantz (6):
 
 Nanley Chery (3):
 
--  i965: Rename intel_mipmap_tree::r8stencil_\* -> ::shadow_\*
+-  i965: Rename intel_mipmap_tree::r8stencil\_\* -> ::shadow\_\*
 -  anv: Fix some depth buffer sampling cases on ICL+
 -  anv/cmd_buffer: Initalize the clear color struct for CNL+
 
@@ -4221,7 +4221,7 @@ Sagar Ghuge (10):
 -  glsl: [u/i]mulExtended optimization for GLSL
 -  nir/algebraic: Optimize low 32 bit extraction
 -  spirv: Allow [i/u]mulExtended to use new nir opcode
--  iris: Refactor code to share 3DSTATE_URB_\* packet
+-  iris: Refactor code to share 3DSTATE_URB\_\* packet
 -  iris: Track last VS URB entry size
 -  iris: Flag fewer dirty bits in BLORP
 -  intel/fs: Remove unused condition from opt_algebraic case

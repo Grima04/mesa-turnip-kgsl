@@ -153,8 +153,8 @@ Eric Anholt (19):
 -  mesa: Add a function to set up the default renderbuffer accessors.
 -  intel: Use Mesa core's renderbuffer accessors for depth.
 -  mesa: Use \_mesa_get_format_bytes to refactor out the RB
-   get_pointer_\*
--  mesa: Use \_mesa_get_format_bytes to refactor out the RB get_row_\*
+   get_pointer\_\*
+-  mesa: Use \_mesa_get_format_bytes to refactor out the RB get_row\_\*
 -  mesa: Add renderbuffer accessors for R8/RG88/R16/RG1616.
 -  swrast: Don't try to adjust_colors for <8bpc when handling R16,
    RG1616.

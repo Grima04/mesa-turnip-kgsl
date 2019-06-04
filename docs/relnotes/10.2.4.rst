@@ -99,5 +99,5 @@ Matt Turner (8):
 -  i965/fs: Make try_constant_propagate() static.
 -  i965/fs: Constant propagate into 2-src math instructions on Gen8.
 -  i965/vec4: Constant propagate into 2-src math instructions on Gen8.
--  i965/fs: Don't use brw_imm_\* unnecessarily.
+-  i965/fs: Don't use brw_imm\_\* unnecessarily.
 -  i965/fs: Set correct number of regs_written for MCS fetches.
