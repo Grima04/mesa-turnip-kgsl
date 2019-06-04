@@ -2134,7 +2134,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          break;
 
       case SHADER_OPCODE_CLUSTER_BROADCAST: {
-         assert(src[0].type == dst.type);
          assert(!src[0].negate && !src[0].abs);
          assert(src[1].file == BRW_IMMEDIATE_VALUE);
          assert(src[1].type == BRW_REGISTER_TYPE_UD);
@@ -2171,6 +2170,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
              * indirect here to handle adding 4 bytes to the offset and avoid
              * the extra ADD to the register file.
              */
+            assert(src[0].type == dst.type);
             brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_D, 0),
                        subscript(strided, BRW_REGISTER_TYPE_D, 0));
             brw_MOV(p, subscript(dst, BRW_REGISTER_TYPE_D, 1),
