@@ -28,13 +28,13 @@ Unix-like OSes
 If Meson is not already installed on your system, you can typically
 install it with your package installer. For example:
 
-::
+.. code-block:: console
 
    sudo apt-get install meson   # Ubuntu
 
 or
 
-::
+.. code-block:: console
 
    sudo dnf install meson   # Fedora
 
@@ -54,20 +54,20 @@ modules (mako). You also need pkg-config (a hard dependency of meson),
 flex, and bison. The easiest way to install everything you need is with
 `chocolatey <https://chocolatey.org/>`__.
 
-::
+.. code-block:: console
 
    choco install python3 winflexbison pkgconfiglite
 
 You can even use chocolatey to install mingw and ninja (ninja can be
 used with MSVC as well)
 
-::
+.. code-block:: console
 
    choco install ninja mingw
 
 Then install meson using pip
 
-::
+.. code-block:: console
 
    py -3 -m pip install meson mako
 
@@ -92,7 +92,7 @@ for each configuration you might want to use.
 
 Basic configuration is done with:
 
-::
+.. code-block:: console
 
    meson build/
 
@@ -102,7 +102,7 @@ configuration option (see below).
 
 To review the options which Meson chose, run:
 
-::
+.. code-block:: console
 
    meson configure build/
 
@@ -118,7 +118,7 @@ With additional arguments ``meson configure`` can be used to change
 options for a previously configured build directory. All options passed
 to this command are in the form ``-D "option"="value"``. For example:
 
-::
+.. code-block:: console
 
    meson configure build/ -Dprefix=/tmp/install -Dglx=true
 
@@ -131,7 +131,7 @@ an empty list (``-D platforms=[]``).
 Once you've run the initial ``meson`` command successfully you can use
 your configured backend to build the project in your build directory:
 
-::
+.. code-block:: console
 
    ninja -C build/
 
@@ -139,7 +139,7 @@ The next step is to install the Mesa libraries, drivers, etc. This also
 finishes up some final steps of the build process (such as creating
 symbolic links for drivers). To install:
 
-::
+.. code-block:: console
 
    ninja -C build/ install
 
@@ -149,7 +149,7 @@ symbolic links for drivers). To install:
    configuration tool) as part of the build process, Meson does not do
    this. Instead, you will need do this:
 
-   ::
+   .. code-block:: console
 
       ninja -C build/ xmlpool-pot xmlpool-update-po xmlpool-gmo
 
@@ -188,7 +188,7 @@ Developers will often want to install Mesa to a testing directory rather
 than the system library directory. This can be done with the --prefix
 option. For example:
 
-::
+.. code-block:: console
 
    meson --prefix="${PWD}/build/install" build/
 
@@ -211,7 +211,7 @@ they are guaranteed to persist across rebuilds and reconfigurations.
 This example sets -fmax-errors for compiling C sources and -DMAGIC=123
 for C++ sources:
 
-::
+.. code-block:: console
 
    meson builddir/ -Dc_args=-fmax-errors=10 -Dcpp_args=-DMAGIC=123
 
@@ -226,7 +226,7 @@ build dir for a different compiler.
 This is an example of specifying the clang compilers and cleaning the
 build directory before reconfiguring with an extra C option:
 
-::
+.. code-block:: console
 
    CC=clang CXX=clang++ meson build-clang
    ninja -C build-clang
@@ -251,7 +251,7 @@ libraries, it will never find libllvm.so. There is also a
 ``-Dcmake_module_path`` option in this meson version, which points to
 the root of an alternative installation (the prefix). For example:
 
-::
+.. code-block:: console
 
    meson builddir -Dcmake_module_path=/home/user/mycmake/prefix
 
@@ -270,7 +270,7 @@ custom-llvm.ini
 
 Then configure meson:
 
-::
+.. code-block:: console
 
    meson builddir/ --native-file custom-llvm.ini
 
@@ -279,7 +279,7 @@ Meson < 0.49 doesn't support native files, so to specify a custom
 windows), which will be searched for ``llvm-config``,
 ``llvm-config$version``, and ``llvm-config-$version``:
 
-::
+.. code-block:: console
 
    PATH=/path/to/folder/with/llvm-config:$PATH meson build
 
@@ -300,7 +300,7 @@ Obviously, only cmake or llvm-config is required.
 
 Then configure meson:
 
-::
+.. code-block:: console
 
    meson builddir/ --cross-file cross-llvm.ini
 

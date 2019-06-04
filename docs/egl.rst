@@ -18,7 +18,7 @@ Build EGL
 #. Configure your build with the desired client APIs and enable the
    driver for your hardware. For example:
 
-   ::
+   .. code-block:: console
 
       $ meson configure \
               -D egl=true \

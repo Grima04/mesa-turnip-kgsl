@@ -17,7 +17,7 @@ Basic formatting guidelines
 -  Opening braces go on the same line as the if/for/while statement. For
    example:
 
-   ::
+   .. code-block:: c
 
       if (condition) {
          foo;
@@ -30,7 +30,7 @@ Basic formatting guidelines
 -  This GNU indent command generally does the right thing for
    formatting:
 
-   ::
+   .. code-block:: console
 
       indent -br -i3 -npcs --no-tabs infile.c -o outfile.c
 
@@ -41,20 +41,20 @@ Basic formatting guidelines
 
    Single-line comments:
 
-   ::
+   .. code-block:: c
 
       /* null-out pointer to prevent dangling reference below */
       bufferObj = NULL;
 
    Or,
 
-   ::
+   .. code-block:: c
 
       bufferObj = NULL;  /* prevent dangling reference below */
 
    Multi-line comment:
 
-   ::
+   .. code-block:: c
 
       /* If this is a new buffer object id, or one which was generated but
        * never used before, allocate a buffer object now.
@@ -62,7 +62,7 @@ Basic formatting guidelines
 
    We try to quote the OpenGL specification where prudent:
 
-   ::
+   .. code-block:: c
 
       /* Page 38 of the PDF of the OpenGL ES 3.0 spec says:
        *
@@ -78,7 +78,7 @@ Basic formatting guidelines
 
    Function comment example:
 
-   ::
+   .. code-block:: c
 
       /**
        * Create and initialize a new buffer object.  Called via the

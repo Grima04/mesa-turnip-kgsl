@@ -13,7 +13,7 @@ To add a new GL extension to Mesa you have to do at least the following.
 -  If ``glext.h`` doesn't define the extension, edit ``include/GL/gl.h``
    and add code like this:
 
-   ::
+   .. code-block:: c
 
            #ifndef GL_EXT_the_extension_name
            #define GL_EXT_the_extension_name 1

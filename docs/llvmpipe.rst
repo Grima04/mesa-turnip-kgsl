@@ -32,7 +32,7 @@ Requirements
 
    For Linux, on a recent Debian based distribution do:
 
-   ::
+   .. code-block:: console
 
       aptitude install llvm-dev
 
@@ -43,7 +43,7 @@ Requirements
 
    For a RPM-based distribution do:
 
-   ::
+   .. code-block:: console
 
       yum install llvm-devel
 
@@ -75,13 +75,13 @@ Building
 
 To build everything on Linux invoke scons as:
 
-::
+.. code-block:: console
 
    scons build=debug libgl-xlib
 
 Alternatively, you can build it with meson with:
 
-::
+.. code-block:: console
 
    mkdir build
    cd build
@@ -91,7 +91,7 @@ Alternatively, you can build it with meson with:
 but the rest of these instructions assume that scons is used. For
 Windows the procedure is similar except the target:
 
-::
+.. code-block:: console
 
    scons platform=windows build=debug libgl-gdi
 
