@@ -94,4 +94,12 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job);
 void
 panfrost_job_set_requirements(struct panfrost_context *ctx,
                          struct panfrost_job *job);
+
+void
+panfrost_job_clear(struct panfrost_context *ctx,
+                struct panfrost_job *job,
+                unsigned buffers,
+                const union pipe_color_union *color,
+                double depth, unsigned stencil);
+
 #endif

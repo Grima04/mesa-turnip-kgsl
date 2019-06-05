@@ -221,40 +221,6 @@ panfrost_is_scanout(struct panfrost_context *ctx)
                ctx->pipe_framebuffer.cbufs[0]->texture->bind & PIPE_BIND_SHARED;
 }
 
-static uint32_t
-pan_pack_color(const union pipe_color_union *color, enum pipe_format format)
-{
-        /* Alpha magicked to 1.0 if there is no alpha */
-
-        bool has_alpha = util_format_has_alpha(format);
-        float clear_alpha = has_alpha ? color->f[3] : 1.0f;
-
-        /* Packed color depends on the framebuffer format */
-
-        const struct util_format_description *desc =
-                util_format_description(format);
-
-        if (util_format_is_rgba8_variant(desc)) {
-                return (float_to_ubyte(clear_alpha) << 24) |
-                       (float_to_ubyte(color->f[2]) << 16) |
-                       (float_to_ubyte(color->f[1]) <<  8) |
-                       (float_to_ubyte(color->f[0]) <<  0);
-        } else if (format == PIPE_FORMAT_B5G6R5_UNORM) {
-                /* First, we convert the components to R5, G6, B5 separately */
-                unsigned r5 = CLAMP(color->f[0], 0.0, 1.0) * 31.0;
-                unsigned g6 = CLAMP(color->f[1], 0.0, 1.0) * 63.0;
-                unsigned b5 = CLAMP(color->f[2], 0.0, 1.0) * 31.0;
-
-                /* Then we pack into a sparse u32. TODO: Why these shifts? */
-                return (b5 << 25) | (g6 << 14) | (r5 << 5);
-        } else {
-                /* Unknown format */
-                assert(0);
-        }
-
-        return 0;
-}
-
 static void
 panfrost_clear(
         struct pipe_context *pipe,
@@ -265,20 +231,7 @@ panfrost_clear(
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
-        if (buffers & PIPE_CLEAR_COLOR) {
-                enum pipe_format format = ctx->pipe_framebuffer.cbufs[0]->format;
-                job->clear_color = pan_pack_color(color, format);
-        }
-
-        if (buffers & PIPE_CLEAR_DEPTH) {
-                job->clear_depth = depth;
-        }
-
-        if (buffers & PIPE_CLEAR_STENCIL) {
-                job->clear_stencil = stencil;
-        }
-
-        job->clear |= buffers;
+        panfrost_job_clear(ctx, job, buffers, color, depth, stencil);
 }
 
 static mali_ptr
