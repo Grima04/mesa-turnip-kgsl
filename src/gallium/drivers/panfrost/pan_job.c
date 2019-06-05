@@ -158,6 +158,10 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
         if (ret)
                 fprintf(stderr, "panfrost_job_submit failed: %d\n", ret);
 
+        /* Reset job counters */
+        ctx->draw_count = 0;
+        ctx->vertex_job_count = 0;
+        ctx->tiler_job_count = 0;
 }
 
 void

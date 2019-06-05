@@ -339,11 +339,6 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
 
         /* XXX */
         ctx->dirty |= PAN_DIRTY_SAMPLERS | PAN_DIRTY_TEXTURES;
-
-        /* Reset job counters */
-        ctx->draw_count = 0;
-        ctx->vertex_job_count = 0;
-        ctx->tiler_job_count = 0;
 }
 
 /* In practice, every field of these payloads should be configurable
