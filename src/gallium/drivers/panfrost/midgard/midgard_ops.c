@@ -73,10 +73,10 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_imov]		 = {"imov", UNITS_MOST | QUIRK_FLIPPED_R24},
 
         /* For vector comparisons, use ball etc */
-        [midgard_alu_op_feq]		 = {"feq", UNITS_MOST | OP_COMMUTES},
-        [midgard_alu_op_fne]		 = {"fne", UNITS_MOST | OP_COMMUTES},
-        [midgard_alu_op_fle]		 = {"fle", UNITS_MOST},
-        [midgard_alu_op_flt]		 = {"flt", UNITS_MOST},
+        [midgard_alu_op_feq]		 = {"feq", UNITS_MOST | OP_TYPE_CONVERT | OP_COMMUTES},
+        [midgard_alu_op_fne]		 = {"fne", UNITS_MOST | OP_TYPE_CONVERT | OP_COMMUTES},
+        [midgard_alu_op_fle]		 = {"fle", UNITS_MOST | OP_TYPE_CONVERT},
+        [midgard_alu_op_flt]		 = {"flt", UNITS_MOST | OP_TYPE_CONVERT},
         [midgard_alu_op_ieq]		 = {"ieq", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_ine]		 = {"ine", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_ilt]		 = {"ilt", UNITS_MOST},
