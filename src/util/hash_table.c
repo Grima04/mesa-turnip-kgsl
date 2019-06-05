@@ -98,6 +98,12 @@ static const struct {
    ENTRY(2147483648ul, 2362232233ul, 2362232231ul )
 };
 
+static inline bool
+key_pointer_is_reserved(const struct hash_table *ht, const void *key)
+{
+   return key == NULL || key == ht->deleted_key;
+}
+
 static int
 entry_is_free(const struct hash_entry *entry)
 {
@@ -250,6 +256,8 @@ _mesa_hash_table_set_deleted_key(struct hash_table *ht, const void *deleted_key)
 static struct hash_entry *
 hash_table_search(struct hash_table *ht, uint32_t hash, const void *key)
 {
+   assert(!key_pointer_is_reserved(ht, key));
+
    uint32_t size = ht->size;
    uint32_t start_hash_address = util_fast_urem32(hash, size, ht->size_magic);
    uint32_t double_hash = 1 + util_fast_urem32(hash, ht->rehash,
@@ -366,7 +374,7 @@ hash_table_insert(struct hash_table *ht, uint32_t hash,
 {
    struct hash_entry *available_entry = NULL;
 
-   assert(key != NULL);
+   assert(!key_pointer_is_reserved(ht, key));
 
    if (ht->entries >= ht->max_entries) {
       _mesa_hash_table_rehash(ht, ht->size_index + 1);
