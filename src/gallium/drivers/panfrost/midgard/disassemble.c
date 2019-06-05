@@ -470,14 +470,25 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
         midgard_reg_mode mode = alu_field->reg_mode;
+        unsigned override = alu_field->dest_override;
 
         /* For now, prefix instruction names with their unit, until we
          * understand how this works on a deeper level */
         printf("%s.", name);
 
         print_alu_opcode(alu_field->op);
+
+        /* Postfix with the size to disambiguate if necessary */
+        char postfix = prefix_for_bits(bits_for_mode(mode));
+        bool size_ambiguous = override != midgard_dest_override_none;
+
+        if (size_ambiguous)
+                printf("%c", postfix ? postfix : 'r');
+
+        /* Print the outmod, if there is one */
         print_outmod(alu_field->outmod,
                 midgard_is_integer_out_op(alu_field->op));
+
         printf(" ");
 
         /* Mask denoting status of 8-lanes */
@@ -488,7 +499,6 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
                 print_dest(reg_info->out_reg, mode, alu_field->dest_override);
 
         /* Apply the destination override to the mask */
-        unsigned override = alu_field->dest_override;
 
         if (mode == midgard_reg_mode_32 || mode == midgard_reg_mode_64) {
                 if (override == midgard_dest_override_lower)
