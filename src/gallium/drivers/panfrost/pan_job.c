@@ -141,6 +141,26 @@ panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
 }
 
 void
+panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
+{
+        struct pipe_context *gallium = (struct pipe_context *) ctx;
+        struct panfrost_screen *screen = pan_screen(gallium->screen);
+        int ret;
+
+        bool has_draws = ctx->draw_count > 0;
+        bool is_scanout = panfrost_is_scanout(ctx);
+
+        if (!job)
+                return;
+
+        ret = screen->driver->submit_vs_fs_job(ctx, has_draws, is_scanout);
+
+        if (ret)
+                fprintf(stderr, "panfrost_job_submit failed: %d\n", ret);
+
+}
+
+void
 panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
                                 struct pipe_resource *prsc)
 {

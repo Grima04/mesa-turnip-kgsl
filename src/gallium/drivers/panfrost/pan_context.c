@@ -1473,13 +1473,9 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
-        /* Edge case if screen is cleared and nothing else */
-        bool has_draws = ctx->draw_count > 0;
-
 #ifndef DRY_RUN
         
-        bool is_scanout = panfrost_is_scanout(ctx);
-        screen->driver->submit_vs_fs_job(ctx, has_draws, is_scanout);
+        panfrost_job_submit(ctx, job);
 
         /* If visual, we can stall a frame */
 

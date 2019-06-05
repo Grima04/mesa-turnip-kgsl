@@ -88,4 +88,6 @@ void
 panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
                                 struct pipe_resource *prsc);
 
+void
+panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job);
 #endif
