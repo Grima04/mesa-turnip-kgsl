@@ -1426,6 +1426,29 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
       color = bit_cast_color(&b, color, key);
    } else if (key->dst_format) {
       color = convert_color(&b, color, key);
+   } else if (key->uint32_to_sint) {
+      /* Normally the hardware will take care of converting values from/to
+       * the source and destination formats.  But a few cases need help.
+       *
+       * The Skylake PRM, volume 07, page 658 has a programming note:
+       *
+       *    "When using SINT or UINT rendertarget surface formats, Blending
+       *     must be DISABLED. The Pre-Blend Color Clamp Enable and Color
+       *     Clamp Range fields are ignored, and an implied clamp to the
+       *     rendertarget surface format is performed."
+       *
+       * For UINT to SINT blits, our sample operation gives us a uint32_t,
+       * but our render target write expects a signed int32_t number.  If we
+       * simply passed the value along, the hardware would interpret a value
+       * with bit 31 set as a negative value, clamping it to the largest
+       * negative number the destination format could represent.  But the
+       * actual source value is a positive number, so we want to clamp it
+       * to INT_MAX.  To fix this, we explicitly take min(color, INT_MAX).
+       */
+      color = nir_umin(&b, color, nir_imm_int(&b, INT32_MAX));
+   } else if (key->sint32_to_uint) {
+      /* Similar to above, but clamping negative numbers to zero. */
+      color = nir_imax(&b, color, nir_imm_int(&b, 0));
    }
 
    if (key->dst_rgb) {
@@ -2300,9 +2323,18 @@ blorp_blit(struct blorp_batch *batch,
    params.src.view.swizzle = src_swizzle;
    params.dst.view.swizzle = dst_swizzle;
 
+   const struct isl_format_layout *src_fmtl =
+      isl_format_get_layout(params.src.view.format);
+
    struct brw_blorp_blit_prog_key wm_prog_key = {
       .shader_type = BLORP_SHADER_TYPE_BLIT,
       .filter = filter,
+      .sint32_to_uint = src_fmtl->channels.r.bits == 32 &&
+                        isl_format_has_sint_channel(params.src.view.format) &&
+                        isl_format_has_uint_channel(params.dst.view.format),
+      .uint32_to_sint = src_fmtl->channels.r.bits == 32 &&
+                        isl_format_has_uint_channel(params.src.view.format) &&
+                        isl_format_has_sint_channel(params.dst.view.format),
    };
 
    /* Scaling factors used for bilinear filtering in multisample scaled
