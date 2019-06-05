@@ -577,7 +577,7 @@ aub_write_ggtt(struct aub_file *aub, uint64_t virt_addr, uint64_t size, const vo
 
    if (aub->verbose_log_file) {
       fprintf(aub->verbose_log_file,
-              " Writting GGTT address: 0x%" PRIx64 ", size: %" PRIu64" phys_addr=0x%lx entries=%u\n",
+              " Writting GGTT address: 0x%" PRIx64 ", size: %" PRIu64" phys_addr=0x%" PRIx64 " entries=%u\n",
               virt_addr, size, phys_addr, ggtt_ptes);
    }
 

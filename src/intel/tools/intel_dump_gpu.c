@@ -260,14 +260,14 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       if (obj->flags & EXEC_OBJECT_PINNED) {
          bo->offset = obj->offset;
          if (verbose)
-            printf("BO #%d (%dB) pinned @ 0x%lx\n",
+            printf("BO #%d (%dB) pinned @ 0x%" PRIx64 "\n",
                    obj->handle, bo->size, bo->offset);
       } else {
          if (obj->alignment != 0)
             offset = align_u32(offset, obj->alignment);
          bo->offset = offset;
          if (verbose)
-            printf("BO #%d (%dB) @ 0x%lx\n", obj->handle,
+            printf("BO #%d (%dB) @ 0x%" PRIx64 "\n", obj->handle,
                    bo->size, bo->offset);
          offset = align_u32(offset + bo->size + 4095, 4096);
       }
