@@ -166,7 +166,6 @@ anv_shader_compile_to_nir(struct anv_device *device,
       .module = module,
    };
    struct spirv_to_nir_options spirv_options = {
-      .lower_workgroup_access_to_offsets = true,
       .frag_coord_is_sysval = true,
       .caps = {
          .demote_to_helper_invocation = true,
@@ -662,9 +661,6 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       NIR_PASS_V(nir, anv_nir_lower_multiview, pipeline->subpass->view_mask);
-
-   if (nir->info.stage == MESA_SHADER_COMPUTE)
-      prog_data->total_shared = nir->num_shared;
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
@@ -1353,6 +1349,18 @@ fail:
    return result;
 }
 
+static void
+shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   uint32_t comp_size = glsl_type_is_boolean(type)
+      ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+   *size = comp_size * length,
+   *align = comp_size * (length == 3 ? 4 : length);
+}
+
 VkResult
 anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
                         struct anv_pipeline_cache *cache,
@@ -1429,6 +1437,13 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
 
       NIR_PASS_V(stage.nir, anv_nir_add_base_work_group_id,
                  &stage.prog_data.cs);
+
+      NIR_PASS_V(stage.nir, nir_lower_vars_to_explicit_types,
+                 nir_var_mem_shared, shared_type_info);
+      NIR_PASS_V(stage.nir, nir_lower_explicit_io,
+                 nir_var_mem_shared, nir_address_format_32bit_offset);
+
+      stage.prog_data.cs.base.total_shared = stage.nir->info.cs.shared_size;
 
       const unsigned *shader_code =
          brw_compile_cs(compiler, pipeline->device, mem_ctx, &stage.key.cs,
