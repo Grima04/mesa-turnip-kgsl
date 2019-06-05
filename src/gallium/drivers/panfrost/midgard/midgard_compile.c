@@ -2355,12 +2355,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         /* TODO: Decide this at runtime */
         ctx->uniform_cutoff = 8;
 
-        /* Assign var locations early, so the epilogue can use them if necessary */
-
-        nir_assign_var_locations(&nir->outputs, &nir->num_outputs, glsl_type_size);
-        nir_assign_var_locations(&nir->inputs, &nir->num_inputs, glsl_type_size);
-        nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms, glsl_type_size);
-
         /* Initialize at a global (not block) level hash tables */
 
         ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);
