@@ -930,7 +930,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 }
 
                 ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
-        } else if (instr->op == nir_op_f2b32 || instr->op == nir_op_i2b32) {
+        } else if (nr_inputs == 1 && !quirk_flipped_r24) {
+                /* Lots of instructions need a 0 plonked in */
                 ins.ssa_args.inline_constant = false;
                 ins.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
                 ins.has_constants = true;
