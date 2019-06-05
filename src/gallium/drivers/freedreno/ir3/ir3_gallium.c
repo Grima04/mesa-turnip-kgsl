@@ -204,42 +204,10 @@ static void
 emit_user_consts(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
 {
-	const unsigned index = 0;     /* user consts are index 0 */
-
-	if (constbuf->enabled_mask & (1 << index)) {
-		struct pipe_constant_buffer *cb = &constbuf->cb[index];
-		/* size in dwords, aligned to vec4.  (This works at least
-		 * with mesa/st, which seems to align constant buffer to
-		 * 16 bytes)
-		 */
-		unsigned size = align(cb->buffer_size, 16) / 4;
-
-		/* in particular, with binning shader we may end up with
-		 * unused consts, ie. we could end up w/ constlen that is
-		 * smaller than first_driver_param.  In that case truncate
-		 * the user consts early to avoid HLSQ lockup caused by
-		 * writing too many consts
-		 */
-		const struct ir3_const_state *const_state = &v->shader->const_state;
-		uint32_t max_const = MIN2(const_state->num_uniforms, v->constlen);
-
-		/* and even if the start of the const buffer is before
-		 * first_immediate, the end may not be:
-		 */
-		size = MIN2(size, 4 * max_const);
-
-		if (size > 0) {
-			ring_wfi(ctx->batch, ring);
-			ctx->emit_const(ring, v->type, 0,
-					cb->buffer_offset, size,
-					cb->user_buffer, cb->buffer);
-		}
-	}
-
 	struct ir3_ubo_analysis_state *state;
 	state = &v->shader->ubo_state;
 
-	for (uint32_t i = 1; i < ARRAY_SIZE(state->range); i++) {
+	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
 		struct pipe_constant_buffer *cb = &constbuf->cb[i];
 
 		if (state->range[i].start < state->range[i].end &&
