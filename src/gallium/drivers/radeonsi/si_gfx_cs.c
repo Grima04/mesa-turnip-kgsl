@@ -75,22 +75,21 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 {
 	struct radeon_cmdbuf *cs = ctx->gfx_cs;
 	struct radeon_winsys *ws = ctx->ws;
+	const unsigned wait_ps_cs = SI_CONTEXT_PS_PARTIAL_FLUSH |
+				    SI_CONTEXT_CS_PARTIAL_FLUSH;
 	unsigned wait_flags = 0;
 
 	if (ctx->gfx_flush_in_progress)
 		return;
 
 	if (!ctx->screen->info.kernel_flushes_tc_l2_after_ib) {
-		wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
-			      SI_CONTEXT_CS_PARTIAL_FLUSH |
+		wait_flags |= wait_ps_cs |
 			      SI_CONTEXT_INV_L2;
 	} else if (ctx->chip_class == GFX6) {
 		/* The kernel flushes L2 before shaders are finished. */
-		wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
-			      SI_CONTEXT_CS_PARTIAL_FLUSH;
+		wait_flags |= wait_ps_cs;
 	} else if (!(flags & RADEON_FLUSH_START_NEXT_GFX_IB_NOW)) {
-		wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
-			      SI_CONTEXT_CS_PARTIAL_FLUSH;
+		wait_flags |= wait_ps_cs;
 	}
 
 	/* Drop this flush if it's a no-op. */
@@ -162,6 +161,13 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 		if (ctx->streamout.begin_emitted) {
 			si_emit_streamout_end(ctx);
 			ctx->streamout.suspended = true;
+
+			/* Since streamout uses GDS on gfx10, we need to make
+			 * GDS idle when we leave the IB, otherwise another
+			 * process might overwrite it while our shaders are busy.
+			 */
+			if (ctx->chip_class >= GFX10)
+				wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
 		}
 	}
 
@@ -175,7 +181,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 		ctx->flags |= wait_flags;
 		ctx->emit_cache_flush(ctx);
 	}
-	ctx->gfx_last_ib_is_busy = wait_flags == 0;
+	ctx->gfx_last_ib_is_busy = (wait_flags & wait_ps_cs) != wait_ps_cs;
 
 	if (ctx->current_saved_cs) {
 		si_trace_emit(ctx);

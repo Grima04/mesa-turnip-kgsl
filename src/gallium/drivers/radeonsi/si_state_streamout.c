@@ -96,6 +96,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 	struct si_context *sctx = (struct si_context *)ctx;
 	unsigned old_num_targets = sctx->streamout.num_targets;
 	unsigned i;
+	bool wait_now = false;
 
 	/* We are going to unbind the buffers. Mark which caches need to be flushed. */
 	if (sctx->streamout.num_targets && sctx->streamout.begin_emitted) {
@@ -126,10 +127,19 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 			       SI_CONTEXT_INV_VCACHE;
 
 		/* The BUFFER_FILLED_SIZE is written using a PS_DONE event. */
-		if (sctx->chip_class >= GFX10)
+		if (sctx->chip_class >= GFX10) {
 			sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
-		else
+
+			/* Wait now. This is needed to make sure that GDS is not
+			 * busy at the end of IBs.
+			 *
+			 * Also, the next streamout operation will overwrite GDS,
+			 * so we need to make sure that it's idle.
+			 */
+			wait_now = true;
+		} else {
 			sctx->flags |= SI_CONTEXT_VS_PARTIAL_FLUSH;
+		}
 	}
 
 	/* All readers of the streamout targets need to be finished before we can
@@ -200,6 +210,9 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 	}
 	for (; i < old_num_targets; i++)
 		si_set_rw_shader_buffer(sctx, SI_VS_STREAMOUT_BUF0 + i, NULL);
+
+	if (wait_now)
+		sctx->emit_cache_flush(sctx);
 }
 
 static void gfx10_emit_streamout_begin(struct si_context *sctx)
