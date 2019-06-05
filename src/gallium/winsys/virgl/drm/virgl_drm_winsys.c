@@ -739,7 +739,10 @@ virgl_drm_fence_create_legacy(struct virgl_winsys *vws)
       return NULL;
    fence->fd = -1;
 
-   fence->hw_res = virgl_drm_winsys_resource_cache_create(vws, PIPE_BUFFER,
+   /* Resources for fences should not be from the cache, since we are basing
+    * the fence status on the resource creation busy status.
+    */
+   fence->hw_res = virgl_drm_winsys_resource_create(vws, PIPE_BUFFER,
          PIPE_FORMAT_R8_UNORM, VIRGL_BIND_CUSTOM, 8, 1, 1, 0, 0, 0, 8);
    if (!fence->hw_res) {
       FREE(fence);

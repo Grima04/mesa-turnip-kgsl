@@ -589,11 +589,14 @@ virgl_vtest_fence_create(struct virgl_winsys *vws)
 {
    struct virgl_hw_res *res;
 
-   res = virgl_vtest_winsys_resource_cache_create(vws,
-                                                PIPE_BUFFER,
-                                                PIPE_FORMAT_R8_UNORM,
-                                                VIRGL_BIND_CUSTOM,
-                                                8, 1, 1, 0, 0, 0, 8);
+   /* Resources for fences should not be from the cache, since we are basing
+    * the fence status on the resource creation busy status.
+    */
+   res = virgl_vtest_winsys_resource_create(vws,
+                                            PIPE_BUFFER,
+                                            PIPE_FORMAT_R8_UNORM,
+                                            VIRGL_BIND_CUSTOM,
+                                            8, 1, 1, 0, 0, 0, 8);
 
    return (struct pipe_fence_handle *)res;
 }
