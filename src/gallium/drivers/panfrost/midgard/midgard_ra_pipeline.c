@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019 Alyssa Rosenzweig <alyssa@rosenzweig.io>
+ * Copyright (C) 2019 Collabora
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -55,6 +56,12 @@ mir_pipeline_ins(
         /* Don't allow non-SSA. Pipelining registers is theoretically possible,
          * but the analysis is much hairier, so don't bother quite yet */
         if ((dest < 0) || (dest >= ctx->func->impl->ssa_alloc))
+                return false;
+
+        /* Make sure they're not lying to us. Blend shaders lie. TODO: Fix your
+         * bad code Alyssa */
+
+        if (mir_has_multiple_writes(ctx, dest))
                 return false;
 
         /* We want to know if we live after this bundle, so check if
