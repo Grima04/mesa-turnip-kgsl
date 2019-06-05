@@ -682,7 +682,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(iadd, iadd);
                 ALU_CASE(isub, isub);
                 ALU_CASE(imul, imul);
-                ALU_CASE(iabs, iabs);
+
+                /* Zero shoved as second-arg */
+                ALU_CASE(iabs, iabsdiff);
+
                 ALU_CASE(mov, imov);
 
                 ALU_CASE(feq32, feq);

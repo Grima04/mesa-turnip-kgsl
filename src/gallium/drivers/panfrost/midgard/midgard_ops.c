@@ -40,6 +40,11 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_imax]		 = {"imax", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_umin]		 = {"umin", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_umax]		 = {"umax", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_ihadd]		 = {"ihadd", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_uhadd]		 = {"uhadd", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_irhadd]		 = {"irhadd", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_urhadd]		 = {"urhadd", UNITS_ADD | OP_COMMUTES},
+
         [midgard_alu_op_fmov]		 = {"fmov", UNITS_ALL | QUIRK_FLIPPED_R24},
         [midgard_alu_op_fround]          = {"fround", UNITS_ADD},
         [midgard_alu_op_froundeven]      = {"froundeven", UNITS_ADD},
@@ -56,8 +61,14 @@ struct mir_op_props alu_opcode_props[256] = {
 
         /* Incredibly, iadd can run on vmul, etc */
         [midgard_alu_op_iadd]		 = {"iadd", UNITS_MOST | OP_COMMUTES},
-        [midgard_alu_op_iabs]		 = {"iabs", UNITS_ADD},
+        [midgard_alu_op_iaddsat]	 = {"iaddsat", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_uaddsat]	 = {"uaddsat", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_iabsdiff]	 = {"iabsdiff", UNITS_ADD},
+        [midgard_alu_op_uabsdiff]	 = {"uabsdiff", UNITS_ADD},
+        [midgard_alu_op_ichoose]	 = {"ichoose", UNITS_ADD},
         [midgard_alu_op_isub]		 = {"isub", UNITS_MOST},
+        [midgard_alu_op_isubsat]	 = {"isubsat", UNITS_MOST},
+        [midgard_alu_op_usubsat]	 = {"usubsat", UNITS_MOST},
         [midgard_alu_op_imul]		 = {"imul", UNITS_MUL | OP_COMMUTES},
         [midgard_alu_op_imov]		 = {"imov", UNITS_MOST | QUIRK_FLIPPED_R24},
 
@@ -74,7 +85,7 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_ule]		 = {"ule", UNITS_MOST},
 
         [midgard_alu_op_icsel]		 = {"icsel", UNITS_ADD},
-        [midgard_alu_op_icsel_v]         = {"icsel_v", UNITS_ADD},
+        [midgard_alu_op_icsel_v]         = {"icsel_v", UNITS_ADD}, /* Acts as bitselect() */
         [midgard_alu_op_fcsel_v]	 = {"fcsel_v", UNITS_ADD},
         [midgard_alu_op_fcsel]		 = {"fcsel", UNITS_ADD | UNIT_SMUL},
 
@@ -82,6 +93,8 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_frsqrt]		 = {"frsqrt", UNIT_VLUT},
         [midgard_alu_op_fsqrt]		 = {"fsqrt", UNIT_VLUT},
         [midgard_alu_op_fpow_pt1]	 = {"fpow_pt1", UNIT_VLUT},
+        [midgard_alu_op_fpown_pt1]	 = {"fpown_pt1", UNIT_VLUT},
+        [midgard_alu_op_fpowr_pt1]	 = {"fpowr_pt1", UNIT_VLUT},
         [midgard_alu_op_fexp2]		 = {"fexp2", UNIT_VLUT},
         [midgard_alu_op_flog2]		 = {"flog2", UNIT_VLUT},
 

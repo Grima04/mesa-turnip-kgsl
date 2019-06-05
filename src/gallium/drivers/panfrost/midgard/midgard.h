@@ -75,6 +75,10 @@ typedef enum {
         midgard_alu_op_iadd       = 0x40,
         midgard_alu_op_ishladd    = 0x41,
         midgard_alu_op_isub       = 0x46,
+        midgard_alu_op_iaddsat    = 0x48,
+        midgard_alu_op_uaddsat    = 0x49,
+        midgard_alu_op_isubsat    = 0x4E,
+        midgard_alu_op_usubsat    = 0x4F,
 
         midgard_alu_op_imul       = 0x58,
 
@@ -82,6 +86,10 @@ typedef enum {
         midgard_alu_op_umin       = 0x61,
         midgard_alu_op_imax       = 0x62,
         midgard_alu_op_umax       = 0x63,
+        midgard_alu_op_ihadd      = 0x64,
+        midgard_alu_op_uhadd      = 0x65,
+        midgard_alu_op_irhadd     = 0x66,
+        midgard_alu_op_urhadd     = 0x67,
         midgard_alu_op_iasr       = 0x68,
         midgard_alu_op_ilsr       = 0x69,
         midgard_alu_op_ishl       = 0x6E,
@@ -97,7 +105,9 @@ typedef enum {
         midgard_alu_op_iclz       = 0x78, /* Number of zeroes on left */
         midgard_alu_op_ibitcount8 = 0x7A, /* Counts bits in 8-bit increments */
         midgard_alu_op_imov       = 0x7B,
-        midgard_alu_op_iabs       = 0x7C,
+        midgard_alu_op_iabsdiff   = 0x7C,
+        midgard_alu_op_uabsdiff   = 0x7D,
+        midgard_alu_op_ichoose    = 0x7E, /* vector, component number - dupe for shuffle() */
 
         midgard_alu_op_feq        = 0x80,
         midgard_alu_op_fne        = 0x81,
@@ -146,6 +156,8 @@ typedef enum {
 
         midgard_alu_op_fatan_pt2  = 0xE8,
         midgard_alu_op_fpow_pt1   = 0xEC,
+        midgard_alu_op_fpown_pt1  = 0xED,
+        midgard_alu_op_fpowr_pt1  = 0xEE,
 
         midgard_alu_op_frcp       = 0xF0,
         midgard_alu_op_frsqrt     = 0xF2,
