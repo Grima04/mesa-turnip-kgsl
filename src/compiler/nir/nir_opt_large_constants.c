@@ -28,6 +28,11 @@
 struct var_info {
    bool is_constant;
    bool found_read;
+
+   /* Block that has all the variable stores.  All the blocks with reads
+    * should be dominated by this block.
+    */
+   nir_block *block;
 };
 
 static nir_ssa_def *
@@ -151,6 +156,9 @@ nir_opt_large_constants(nir_shader *shader,
    nir_foreach_variable(var, &impl->locals)
       var->data.index = num_locals++;
 
+   if (num_locals == 0)
+      return false;
+
    struct var_info *var_infos = malloc(num_locals * sizeof(struct var_info));
    for (unsigned i = 0; i < num_locals; i++) {
       var_infos[i] = (struct var_info) {
@@ -159,10 +167,11 @@ nir_opt_large_constants(nir_shader *shader,
       };
    }
 
+   nir_metadata_require(impl, nir_metadata_dominance);
+
    /* First, walk through the shader and figure out what variables we can
     * lower to the constant blob.
     */
-   bool first_block = true;
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
@@ -200,12 +209,18 @@ nir_opt_large_constants(nir_shader *shader,
             nir_variable *var = nir_deref_instr_get_variable(dst_deref);
             assert(var->data.mode == nir_var_function_temp);
 
+            struct var_info *info = &var_infos[var->data.index];
+            if (!info->is_constant)
+               continue;
+
+            if (!info->block)
+               info->block = block;
+
             /* We only consider variables constant if they only have constant
              * stores, all the stores come before any reads, and all stores
-             * come in the first block.  We also can't handle indirect stores.
+             * come from the same block.  We also can't handle indirect stores.
              */
-            struct var_info *info = &var_infos[var->data.index];
-            if (!src_is_const || info->found_read || !first_block ||
+            if (!src_is_const || info->found_read || block != info->block ||
                 nir_deref_instr_has_indirect(dst_deref))
                info->is_constant = false;
          }
@@ -214,10 +229,19 @@ nir_opt_large_constants(nir_shader *shader,
             nir_variable *var = nir_deref_instr_get_variable(src_deref);
             assert(var->data.mode == nir_var_function_temp);
 
-            var_infos[var->data.index].found_read = true;
+            /* We only consider variables constant if all the reads are
+             * dominated by the block that writes to it.
+             */
+            struct var_info *info = &var_infos[var->data.index];
+            if (!info->is_constant)
+               continue;
+
+            if (!info->block || !nir_block_dominates(info->block, block))
+               info->is_constant = false;
+
+            info->found_read = true;
          }
       }
-      first_block = false;
    }
 
    shader->constant_data_size = 0;
