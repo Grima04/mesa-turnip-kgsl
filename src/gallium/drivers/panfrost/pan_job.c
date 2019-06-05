@@ -89,6 +89,7 @@ panfrost_get_job(struct panfrost_context *ctx,
 
         memcpy(&job->key, &key, sizeof(key));
         _mesa_hash_table_insert(ctx->jobs, &job->key, job);
+        panfrost_job_set_requirements(ctx, job);
 
         return job;
 }
@@ -162,6 +163,17 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
         ctx->draw_count = 0;
         ctx->vertex_job_count = 0;
         ctx->tiler_job_count = 0;
+}
+
+void
+panfrost_job_set_requirements(struct panfrost_context *ctx,
+                         struct panfrost_job *job)
+{
+        if (ctx->rasterizer && ctx->rasterizer->base.multisample)
+                job->requirements |= PAN_REQ_MSAA;
+
+        if (ctx->depth_stencil && ctx->depth_stencil->depth.writemask)
+                job->requirements |= PAN_REQ_DEPTH_WRITE;
 }
 
 void
