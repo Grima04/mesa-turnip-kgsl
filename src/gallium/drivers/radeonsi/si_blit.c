@@ -361,8 +361,9 @@ si_decompress_depth(struct si_context *sctx,
 	}
 
 	if (inplace_planes) {
-		bool has_htile = si_htile_enabled(tex, first_level);
-		bool tc_compat_htile = vi_tc_compat_htile_enabled(tex, first_level);
+		bool has_htile = si_htile_enabled(tex, first_level, inplace_planes);
+		bool tc_compat_htile = vi_tc_compat_htile_enabled(tex, first_level,
+								  inplace_planes);
 
 		/* Don't decompress if there is no HTILE or when HTILE is
 		 * TC-compatible. */

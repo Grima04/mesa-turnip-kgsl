@@ -313,6 +313,7 @@ struct si_texture {
 	enum pipe_format		db_render_format:16;
 	uint8_t				stencil_clear_value;
 	bool				tc_compatible_htile:1;
+	bool				htile_stencil_disabled:1;
 	bool				depth_cleared:1; /* if it was cleared at least once */
 	bool				stencil_cleared:1; /* if it was cleared at least once */
 	bool				upgraded_depth:1; /* upgraded from unorm to Z32_FLOAT */
@@ -1725,16 +1726,19 @@ si_can_sample_zs(struct si_texture *tex, bool stencil_sampler)
 }
 
 static inline bool
-si_htile_enabled(struct si_texture *tex, unsigned level)
+si_htile_enabled(struct si_texture *tex, unsigned level, unsigned zs_mask)
 {
+	if (zs_mask == PIPE_MASK_S && tex->htile_stencil_disabled)
+		return false;
+
 	return tex->htile_offset && level == 0;
 }
 
 static inline bool
-vi_tc_compat_htile_enabled(struct si_texture *tex, unsigned level)
+vi_tc_compat_htile_enabled(struct si_texture *tex, unsigned level, unsigned zs_mask)
 {
 	assert(!tex->tc_compatible_htile || tex->htile_offset);
-	return tex->tc_compatible_htile && level == 0;
+	return tex->tc_compatible_htile && si_htile_enabled(tex, level, zs_mask);
 }
 
 static inline unsigned si_get_ps_iter_samples(struct si_context *sctx)

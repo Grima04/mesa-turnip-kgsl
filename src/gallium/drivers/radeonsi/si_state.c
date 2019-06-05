@@ -2646,7 +2646,7 @@ static void si_init_depth_surface(struct si_context *sctx,
 		surf->db_depth_size = S_02801C_X_MAX(tex->buffer.b.b.width0 - 1) |
 				      S_02801C_Y_MAX(tex->buffer.b.b.height0 - 1);
 
-		if (si_htile_enabled(tex, level)) {
+		if (si_htile_enabled(tex, level, PIPE_MASK_ZS)) {
 			z_info |= S_028038_TILE_SURFACE_ENABLE(1) |
 				  S_028038_ALLOW_EXPCLEAR(1);
 
@@ -2661,14 +2661,14 @@ static void si_init_depth_surface(struct si_context *sctx,
 
 				if (sctx->chip_class >= GFX10) {
 					z_info |= S_028040_ITERATE_FLUSH(1);
-					s_info |= S_028044_ITERATE_FLUSH(1);
+					s_info |= S_028044_ITERATE_FLUSH(!tex->htile_stencil_disabled);
 				} else {
 					z_info |= S_028038_ITERATE_FLUSH(1);
 					s_info |= S_02803C_ITERATE_FLUSH(1);
 				}
 			}
 
-			if (tex->surface.has_stencil) {
+			if (tex->surface.has_stencil && !tex->htile_stencil_disabled) {
 				/* Stencil buffer workaround ported from the GFX6-GFX8 code.
 				 * See that for explanation.
 				 */
@@ -2733,7 +2733,7 @@ static void si_init_depth_surface(struct si_context *sctx,
 		surf->db_depth_slice = S_02805C_SLICE_TILE_MAX((levelinfo->nblk_x *
 								levelinfo->nblk_y) / 64 - 1);
 
-		if (si_htile_enabled(tex, level)) {
+		if (si_htile_enabled(tex, level, PIPE_MASK_ZS)) {
 			z_info |= S_028040_TILE_SURFACE_ENABLE(1) |
 				  S_028040_ALLOW_EXPCLEAR(1);
 
@@ -3048,7 +3048,8 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 			si_init_depth_surface(sctx, surf);
 		}
 
-		if (vi_tc_compat_htile_enabled(zstex, surf->base.u.tex.level))
+		if (vi_tc_compat_htile_enabled(zstex, surf->base.u.tex.level,
+					       PIPE_MASK_ZS))
 			sctx->framebuffer.DB_has_shader_readable_metadata = true;
 
 		si_context_add_resource_size(sctx, surf->base.texture);

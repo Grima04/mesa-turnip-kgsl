@@ -593,11 +593,11 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 	}
 
 	if (zstex &&
-	    si_htile_enabled(zstex, zsbuf->u.tex.level) &&
 	    zsbuf->u.tex.first_layer == 0 &&
 	    zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0)) {
 		/* TC-compatible HTILE only supports depth clears to 0 or 1. */
 		if (buffers & PIPE_CLEAR_DEPTH &&
+		    si_htile_enabled(zstex, zsbuf->u.tex.level, PIPE_MASK_Z) &&
 		    (!zstex->tc_compatible_htile ||
 		     depth == 0 || depth == 1)) {
 			/* Need to disable EXPCLEAR temporarily if clearing
@@ -618,6 +618,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 
 		/* TC-compatible HTILE only supports stencil clears to 0. */
 		if (buffers & PIPE_CLEAR_STENCIL &&
+		    si_htile_enabled(zstex, zsbuf->u.tex.level, PIPE_MASK_S) &&
 		    (!zstex->tc_compatible_htile || stencil == 0)) {
 			stencil &= 0xff;
 

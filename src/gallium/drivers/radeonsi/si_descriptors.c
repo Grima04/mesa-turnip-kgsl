@@ -354,7 +354,8 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 			unsigned dcc_tile_swizzle = tex->surface.tile_swizzle << 8;
 			dcc_tile_swizzle &= tex->surface.dcc_alignment - 1;
 			meta_va |= dcc_tile_swizzle;
-		} else if (vi_tc_compat_htile_enabled(tex, first_level)) {
+		} else if (vi_tc_compat_htile_enabled(tex, first_level,
+						      is_stencil ? PIPE_MASK_S : PIPE_MASK_Z)) {
 			meta_va = tex->buffer.gpu_address + tex->htile_offset;
 		}
 

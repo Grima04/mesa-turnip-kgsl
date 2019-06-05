@@ -1272,6 +1272,14 @@ si_texture_create_object(struct pipe_screen *screen,
 		if (sscreen->info.chip_class >= GFX9) {
 			tex->can_sample_z = true;
 			tex->can_sample_s = true;
+
+			/* Stencil texturing with HTILE doesn't work
+			 * with mipmapping on Navi10-14. */
+			if ((sscreen->info.family == CHIP_NAVI10 ||
+			     sscreen->info.family == CHIP_NAVI12 ||
+			     sscreen->info.family == CHIP_NAVI14) &&
+			    base->last_level > 0)
+				tex->htile_stencil_disabled = true;
 		} else {
 			tex->can_sample_z = !tex->surface.u.legacy.depth_adjusted;
 			tex->can_sample_s = !tex->surface.u.legacy.stencil_adjusted;
