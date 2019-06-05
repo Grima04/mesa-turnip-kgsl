@@ -328,6 +328,13 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 						layout->image_dims.count;
 					layout->image_dims.count += 3; /* three const per */
 					break;
+				case nir_intrinsic_load_ubo:
+					if (nir_src_is_const(intr->src[0])) {
+						layout->num_ubos = MAX2(layout->num_ubos,
+								nir_src_as_uint(intr->src[0]) + 1);
+					} else {
+						layout->num_ubos = shader->info.num_ubos;
+					}
 				default:
 					break;
 				}
@@ -347,7 +354,6 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 	ir3_nir_scan_driver_consts(nir, const_state);
 
 	const_state->num_uniforms = nir->num_uniforms;
-	const_state->num_ubos = nir->info.num_ubos;
 
 	debug_assert((shader->ubo_state.size % 16) == 0);
 	unsigned constoff = align(shader->ubo_state.size / 16, 4);
