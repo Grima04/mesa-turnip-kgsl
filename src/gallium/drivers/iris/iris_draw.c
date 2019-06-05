@@ -253,8 +253,9 @@ iris_update_grid_size_resource(struct iris_context *ice,
    struct iris_state_ref *grid_ref = &ice->state.grid_size;
    struct iris_state_ref *state_ref = &ice->state.grid_surf_state;
 
-   // XXX: if the shader doesn't actually care about the grid info,
-   // don't bother uploading the surface?
+   const struct iris_compiled_shader *shader = ice->shaders.prog[MESA_SHADER_COMPUTE];
+   bool grid_needs_surface = shader->bt.used_mask[IRIS_SURFACE_GROUP_CS_WORK_GROUPS];
+   bool grid_updated = false;
 
    if (grid->indirect) {
       pipe_resource_reference(&grid_ref->res, grid->indirect);
@@ -264,16 +265,21 @@ iris_update_grid_size_resource(struct iris_context *ice,
        * re-upload it properly.
        */
       memset(ice->state.last_grid, 0, sizeof(ice->state.last_grid));
-   } else {
-      /* If the size is the same, we don't need to upload anything. */
-      if (memcmp(ice->state.last_grid, grid->grid, sizeof(grid->grid)) == 0)
-         return;
-
+      grid_updated = true;
+   } else if (memcmp(ice->state.last_grid, grid->grid, sizeof(grid->grid)) != 0) {
       memcpy(ice->state.last_grid, grid->grid, sizeof(grid->grid));
-
       u_upload_data(ice->state.dynamic_uploader, 0, sizeof(grid->grid), 4,
                     grid->grid, &grid_ref->offset, &grid_ref->res);
+      grid_updated = true;
    }
+
+   /* If we changed the grid, the old surface state is invalid. */
+   if (grid_updated)
+      pipe_resource_reference(&state_ref->res, NULL);
+
+   /* Skip surface upload if we don't need it or we already have one */
+   if (!grid_needs_surface || state_ref->res)
+      return;
 
    void *surf_map = NULL;
    u_upload_alloc(ice->state.surface_uploader, 0, isl_dev->ss.size,
