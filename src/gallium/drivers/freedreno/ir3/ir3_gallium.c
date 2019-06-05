@@ -44,15 +44,17 @@
 #include "ir3/ir3_nir.h"
 
 static void
-dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug)
+dump_shader_info(struct ir3_shader_variant *v, bool binning_pass,
+		struct pipe_debug_callback *debug)
 {
 	if (!unlikely(fd_mesa_debug & FD_DBG_SHADERDB))
 		return;
 
 	pipe_debug_message(debug, SHADER_INFO,
-			"%s shader: %u inst, %u dwords, "
+			"%s%s shader: %u inst, %u dwords, "
 			"%u half, %u full, %u const, %u constlen, "
 			"%u (ss), %u (sy), %d max_sun, %d loops\n",
+			binning_pass ? "B" : "",
 			ir3_shader_stage(v->shader),
 			v->info.instrs_count,
 			v->info.sizedwords,
@@ -80,7 +82,7 @@ ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
 	v = ir3_shader_get_variant(shader, &key, binning_pass, &created);
 
 	if (created) {
-		dump_shader_info(v, debug);
+		dump_shader_info(v, binning_pass, debug);
 	}
 
 	return v;
@@ -137,6 +139,9 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		static struct ir3_shader_key key;
 		memset(&key, 0, sizeof(key));
 		ir3_shader_variant(shader, key, false, debug);
+
+		if (nir->info.stage != MESA_SHADER_FRAGMENT)
+			ir3_shader_variant(shader, key, true, debug);
 	}
 	return shader;
 }
