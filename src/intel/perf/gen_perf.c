@@ -298,8 +298,7 @@ compute_topology_builtins(struct gen_perf *perf,
    for (int i = 0; i < sizeof(devinfo->eu_masks); i++)
       perf->sys_vars.n_eus += __builtin_popcount(devinfo->eu_masks[i]);
 
-   perf->sys_vars.eu_threads_count =
-      perf->sys_vars.n_eus * devinfo->num_thread_per_eu;
+   perf->sys_vars.eu_threads_count = devinfo->num_thread_per_eu;
 
    /* The subslice mask builtin contains bits for all slices. Prior to Gen11
     * it had groups of 3bits for each slice, on Gen11 it's 8bits for each
