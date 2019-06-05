@@ -2195,7 +2195,7 @@ bool dump_clause(uint32_t *words, unsigned *size, unsigned offset, bool verbose)
 
         if (verbose) {
                 for (unsigned i = 0; i < num_consts; i++) {
-                        printf("# const%d: %08lx\n", 2 * i, consts[i] & 0xffffffff);
+                        printf("# const%d: %08" PRIx64 "\n", 2 * i, consts[i] & 0xffffffff);
                         printf("# const%d: %08" PRIx64 "\n", 2 * i + 1, consts[i] >> 32);
                 }
         }
