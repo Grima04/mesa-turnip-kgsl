@@ -174,7 +174,7 @@ ir3_optimize_loop(nir_shader *s)
 	} while (progress);
 }
 
-struct nir_shader *
+void
 ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 		const struct ir3_shader_key *key)
 {
@@ -281,8 +281,6 @@ ir3_optimize_nir(struct ir3_shader *shader, nir_shader *s,
 	if (!key) {
 		ir3_setup_const_state(shader, s);
 	}
-
-	return s;
 }
 
 static void

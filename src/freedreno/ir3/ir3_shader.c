@@ -292,7 +292,9 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir)
 	NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
 	/* do first pass optimization, ignoring the key: */
-	shader->nir = ir3_optimize_nir(shader, nir, NULL);
+	ir3_optimize_nir(shader, nir, NULL);
+
+	shader->nir = nir;
 	if (ir3_shader_debug & IR3_DBG_DISASM) {
 		printf("dump nir%d: type=%d", shader->id, shader->type);
 		nir_print_shader(shader->nir, stdout);
