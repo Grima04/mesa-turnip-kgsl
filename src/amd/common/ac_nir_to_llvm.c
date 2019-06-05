@@ -3895,7 +3895,13 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 		args.offset = NULL;
 	}
 
-	/* TODO TG4 support */
+	/* DMASK was repurposed for GATHER4. 4 components are always
+	 * returned and DMASK works like a swizzle - it selects
+	 * the component to fetch. The only valid DMASK values are
+	 * 1=red, 2=green, 4=blue, 8=alpha. (e.g. 1 returns
+	 * (red,red,red,red) etc.) The ISA document doesn't mention
+	 * this.
+	 */
 	args.dmask = 0xf;
 	if (instr->op == nir_texop_tg4) {
 		if (instr->is_shadow)
