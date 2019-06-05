@@ -997,15 +997,9 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 			 bool write, bool bindless)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-	const struct tgsi_shader_info *info = &ctx->shader->selector->info;
 	LLVMBuilderRef builder = ctx->ac.builder;
 	unsigned const_index = base_index + constant_index;
 	bool dcc_off = write;
-
-	/* TODO: images_store and images_atomic are not set */
-	if (!dynamic_index && image &&
-	    (info->images_store | info->images_atomic) & (1 << const_index))
-		dcc_off = true;
 
 	assert(!descriptor_set);
 	assert(!image || desc_type == AC_DESC_IMAGE || desc_type == AC_DESC_BUFFER);
