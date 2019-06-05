@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018-2019 Alyssa Rosenzweig <alyssa@rosenzweig.io>
+ * Copyright (C) 2019 Collabora
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -478,11 +479,17 @@ install_registers_instr(
         }
 
         case TAG_LOAD_STORE_4: {
-                if (OP_IS_STORE(ins->load_store.op)) {
+                if (OP_IS_STORE_VARY(ins->load_store.op)) {
                         /* TODO: use ssa_args for st_vary */
                         ins->load_store.reg = 0;
                 } else {
-                        struct phys_reg src = index_to_reg(ctx, g, args.dest);
+                        /* Which physical register we read off depends on
+                         * whether we are loading or storing -- think about the
+                         * logical dataflow */
+
+                        unsigned r = OP_IS_STORE(ins->load_store.op) ?
+                                args.src0 : args.dest;
+                        struct phys_reg src = index_to_reg(ctx, g, r);
 
                         ins->load_store.reg = src.reg;
 
