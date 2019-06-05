@@ -231,6 +231,8 @@ static void build_streamout(struct si_shader_context *ctx,
 	unsigned scratch_offset_base = isgs ? 8 : 4;
 	LLVMValueRef scratch_offset_basev = isgs ? i32_8 : i32_4;
 
+	ac_llvm_add_target_dep_function_attr(ctx->main_fn, "amdgpu-gds-size", 256);
+
 	/* Determine the mapping of streamout buffers to vertex streams. */
 	for (unsigned i = 0; i < so->num_outputs; ++i) {
 		unsigned buf = so->output[i].output_buffer;

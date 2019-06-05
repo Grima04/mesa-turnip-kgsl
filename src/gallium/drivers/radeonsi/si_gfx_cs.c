@@ -284,20 +284,43 @@ static void si_begin_gfx_cs_debug(struct si_context *ctx)
 			      RADEON_USAGE_READWRITE, RADEON_PRIO_TRACE);
 }
 
+static void si_add_gds_to_buffer_list(struct si_context *sctx)
+{
+	if (sctx->gds) {
+		sctx->ws->cs_add_buffer(sctx->gfx_cs, sctx->gds,
+				       RADEON_USAGE_READWRITE, 0, 0);
+		if (sctx->gds_oa) {
+			sctx->ws->cs_add_buffer(sctx->gfx_cs, sctx->gds_oa,
+					       RADEON_USAGE_READWRITE, 0, 0);
+		}
+	}
+}
+
+void si_allocate_gds(struct si_context *sctx)
+{
+	struct radeon_winsys *ws = sctx->ws;
+
+	if (sctx->gds)
+		return;
+
+	assert(sctx->chip_class >= GFX10); /* for gfx10 streamout */
+
+	/* 4 streamout GDS counters.
+	 * We need 256B (64 dw) of GDS, otherwise streamout hangs.
+	 */
+	sctx->gds = ws->buffer_create(ws, 256, 4, RADEON_DOMAIN_GDS, 0);
+	sctx->gds_oa = ws->buffer_create(ws, 4, 1, RADEON_DOMAIN_OA, 0);
+
+	assert(sctx->gds && sctx->gds_oa);
+	si_add_gds_to_buffer_list(sctx);
+}
+
 void si_begin_new_gfx_cs(struct si_context *ctx)
 {
 	if (ctx->is_debug)
 		si_begin_gfx_cs_debug(ctx);
 
-	if (ctx->gds) {
-		ctx->ws->cs_add_buffer(ctx->gfx_cs, ctx->gds,
-				       RADEON_USAGE_READWRITE, 0, 0);
-		if (ctx->gds_oa) {
-			ctx->ws->cs_add_buffer(ctx->gfx_cs, ctx->gds_oa,
-					       RADEON_USAGE_READWRITE, 0, 0);
-		}
-	}
-
+	si_add_gds_to_buffer_list(ctx);
 
 	/* Always invalidate caches at the beginning of IBs, because external
 	 * users (e.g. BO evictions and SDMA/UVD/VCE IBs) can modify our

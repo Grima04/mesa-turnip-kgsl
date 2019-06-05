@@ -145,9 +145,13 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 	/* All readers of the streamout targets need to be finished before we can
 	 * start writing to the targets.
 	 */
-	if (num_targets)
+	if (num_targets) {
+		if (sctx->chip_class >= GFX10)
+			si_allocate_gds(sctx);
+
 		sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
-		                 SI_CONTEXT_CS_PARTIAL_FLUSH;
+			       SI_CONTEXT_CS_PARTIAL_FLUSH;
+	}
 
 	/* Streamout buffers must be bound in 2 places:
 	 * 1) in VGT by setting the VGT_STRMOUT registers
