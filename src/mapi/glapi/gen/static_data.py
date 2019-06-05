@@ -1453,6 +1453,7 @@ offsets = {
     "TexParameterxv": 1417,
     "BlendBarrier": 1418,
     "PrimitiveBoundingBox": 1419,
+    "MaxShaderCompilerThreadsKHR": 1420,
 }
 
 functions = [
