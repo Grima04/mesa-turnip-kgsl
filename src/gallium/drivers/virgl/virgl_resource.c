@@ -28,6 +28,12 @@
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
+/* A (soft) limit for the amount of memory we want to allow for queued staging
+ * resources. This is used to decide when we should force a flush, in order to
+ * avoid exhausting virtio-gpu memory.
+ */
+#define VIRGL_QUEUED_STAGING_RES_SIZE_LIMIT (128 * 1024 * 1024)
+
 /* We need to flush to properly sync the transfer with the current cmdbuf.
  * But there are cases where the flushing can be skipped:
  *
@@ -132,11 +138,13 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
       copy_transfer = false;
    }
 
-   /* When performing a copy transfer there is no need to flush or wait for
-    * the target resource.
+   /* When performing a copy transfer there is no need wait for the target
+    * resource. There is normally no need to flush either, unless the amount of
+    * memory we are using for staging resources starts growing, in which case
+    * we want to flush to keep our memory consumption in check.
     */
    if (copy_transfer) {
-      flush = false;
+      flush = (vctx->queued_staging_res_size > VIRGL_QUEUED_STAGING_RES_SIZE_LIMIT);
       wait = false;
    }
 
@@ -572,6 +580,9 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
        */
       vtransfer->base.stride = stride;
       vtransfer->base.layer_stride = layer_stride;
+
+      /* Track the total size of active staging resources. */
+      vctx->queued_staging_res_size += size + align_offset;
    }
 
    return map_addr;

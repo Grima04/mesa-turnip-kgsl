@@ -97,6 +97,9 @@ struct virgl_context {
 
    struct primconvert_context *primconvert;
    uint32_t hw_sub_ctx_id;
+
+   /* The total size of staging resources used in queued copy transfers. */
+   uint64_t queued_staging_res_size;
 };
 
 static inline struct virgl_sampler_view *

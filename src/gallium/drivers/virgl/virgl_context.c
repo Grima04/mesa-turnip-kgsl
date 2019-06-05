@@ -778,6 +778,11 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
    virgl_encoder_set_sub_ctx(ctx, ctx->hw_sub_ctx_id);
 
    ctx->cbuf_initial_cdw = ctx->cbuf->cdw;
+
+   /* We have flushed the command queue, including any pending copy transfers
+    * involving staging resources.
+    */
+   ctx->queued_staging_res_size = 0;
 }
 
 static void virgl_flush_from_st(struct pipe_context *ctx,
