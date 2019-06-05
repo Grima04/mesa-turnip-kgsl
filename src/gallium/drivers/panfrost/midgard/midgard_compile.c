@@ -752,10 +752,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fexp2, fexp2);
                 ALU_CASE(flog2, flog2);
 
-                ALU_CASE(f2i32, f2i);
-                ALU_CASE(f2u32, f2u);
-                ALU_CASE(i2f32, i2f);
-                ALU_CASE(u2f32, u2f);
+                ALU_CASE(f2i32, f2i_rtz);
+                ALU_CASE(f2u32, f2u_rtz);
+                ALU_CASE(i2f32, i2f_rtz);
+                ALU_CASE(u2f32, u2f_rtz);
 
                 ALU_CASE(fsin, fsin);
                 ALU_CASE(fcos, fcos);
@@ -1123,7 +1123,7 @@ emit_fb_read_blend_scalar(compiler_context *ctx, unsigned reg)
                         .inline_constant = true
                 },
                 .alu = {
-                        .op = midgard_alu_op_u2f,
+                        .op = midgard_alu_op_u2f_rtz,
                         .reg_mode = midgard_reg_mode_16,
                         .dest_override = midgard_dest_override_none,
                         .mask = 0xF,
@@ -2140,12 +2140,12 @@ emit_blend_epilogue(compiler_context *ctx)
 
         emit_mir_instruction(ctx, scale);
 
-        /* vadd.f2u8.pos.low hr0, hr48, #0 */
+        /* vadd.f2u_rte.pos.low hr0, hr48, #0 */
 
         midgard_vector_alu_src alu_src = blank_alu_src;
         alu_src.half = true;
 
-        midgard_instruction f2u8 = {
+        midgard_instruction f2u_rte = {
                 .type = TAG_ALU_4,
                 .ssa_args = {
                         .src0 = SSA_FIXED_REGISTER(24),
@@ -2154,7 +2154,7 @@ emit_blend_epilogue(compiler_context *ctx)
                         .inline_constant = true
                 },
                 .alu = {
-                        .op = midgard_alu_op_f2u8,
+                        .op = midgard_alu_op_f2u_rte,
                         .reg_mode = midgard_reg_mode_16,
                         .dest_override = midgard_dest_override_lower,
                         .outmod = midgard_outmod_pos,
@@ -2164,7 +2164,7 @@ emit_blend_epilogue(compiler_context *ctx)
                 }
         };
 
-        emit_mir_instruction(ctx, f2u8);
+        emit_mir_instruction(ctx, f2u_rte);
 
         /* vmul.imov.quarter r0, r0, r0 */
 

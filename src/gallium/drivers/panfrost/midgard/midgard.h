@@ -61,7 +61,10 @@ typedef enum {
         midgard_alu_op_fmin       = 0x28,
         midgard_alu_op_fmax       = 0x2C,
 
-        midgard_alu_op_fmov       = 0x30,
+        midgard_alu_op_fmov       = 0x30, /* fmov_rte */
+        midgard_alu_op_fmov_rtz   = 0x31,
+        midgard_alu_op_fmov_rtn   = 0x32,
+        midgard_alu_op_fmov_rtp   = 0x33,
         midgard_alu_op_froundeven = 0x34,
         midgard_alu_op_ftrunc     = 0x35,
         midgard_alu_op_ffloor     = 0x36,
@@ -122,9 +125,15 @@ typedef enum {
         midgard_alu_op_fbany_neq  = 0x91, /* bvec4(0) also */
         midgard_alu_op_fbany_lt   = 0x92, /* any(lessThan(.., ..)) */
         midgard_alu_op_fbany_lte  = 0x93, /* any(lessThanEqual(.., ..)) */
-        midgard_alu_op_f2i        = 0x99,
-        midgard_alu_op_f2u8       = 0x9C,
-        midgard_alu_op_f2u        = 0x9D,
+
+        midgard_alu_op_f2i_rte    = 0x98,
+        midgard_alu_op_f2i_rtz    = 0x99,
+        midgard_alu_op_f2i_rtn    = 0x9A,
+        midgard_alu_op_f2i_rtp    = 0x9B,
+        midgard_alu_op_f2u_rte    = 0x9C,
+        midgard_alu_op_f2u_rtz    = 0x9D,
+        midgard_alu_op_f2u_rtn    = 0x9E,
+        midgard_alu_op_f2u_rtp    = 0x9F,
 
         midgard_alu_op_ieq        = 0xA0,
         midgard_alu_op_ine        = 0xA1,
@@ -145,8 +154,14 @@ typedef enum {
         midgard_alu_op_ubany_lte  = 0xB3,
         midgard_alu_op_ibany_lt   = 0xB4, /* any(lessThan(.., ..)) */
         midgard_alu_op_ibany_lte  = 0xB5, /* any(lessThanEqual(.., ..)) */
-        midgard_alu_op_i2f        = 0xB8,
-        midgard_alu_op_u2f        = 0xBC,
+        midgard_alu_op_i2f_rte    = 0xB8,
+        midgard_alu_op_i2f_rtz    = 0xB9,
+        midgard_alu_op_i2f_rtn    = 0xBA,
+        midgard_alu_op_i2f_rtp    = 0xBB,
+        midgard_alu_op_u2f_rte    = 0xBC,
+        midgard_alu_op_u2f_rtz    = 0xBD,
+        midgard_alu_op_u2f_rtn    = 0xBE,
+        midgard_alu_op_u2f_rtp    = 0xBF,
 
         midgard_alu_op_icsel_v    = 0xC0, /* condition code r31 */
         midgard_alu_op_icsel      = 0xC1, /* condition code r31.w */
