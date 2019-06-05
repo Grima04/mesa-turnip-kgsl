@@ -213,9 +213,14 @@ iris_disk_cache_retrieve(struct iris_context *ice,
    /* Upload our newly read shader to the in-memory program cache and
     * return it to the caller.
     */
-   return iris_upload_shader(ice, stage, key_size, prog_key, assembly,
-                             prog_data, so_decls, system_values,
-                             num_system_values, num_cbufs, &bt);
+   struct iris_compiled_shader *shader =
+      iris_upload_shader(ice, stage, key_size, prog_key, assembly,
+                         prog_data, so_decls, system_values,
+                         num_system_values, num_cbufs, &bt);
+
+   free(buffer);
+
+   return shader;
 #else
    return NULL;
 #endif
