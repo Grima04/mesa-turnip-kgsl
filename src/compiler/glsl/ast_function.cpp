@@ -2387,22 +2387,27 @@ ast_function_expression::hir(exec_list *instructions,
                                         new(ctx) ir_dereference_variable(mvp),
                                         new(ctx) ir_dereference_variable(vtx));
       } else {
-         if (state->stage == MESA_SHADER_TESS_CTRL &&
-             sig->is_builtin() && strcmp(func_name, "barrier") == 0) {
+         if (sig->is_builtin() &&
+             ((state->stage == MESA_SHADER_TESS_CTRL &&
+               strcmp(func_name, "barrier") == 0) ||
+              (state->stage == MESA_SHADER_FRAGMENT &&
+               state->ARB_fragment_shader_interlock_enable &&
+               (strcmp(func_name, "beginInvocationInterlockARB") == 0 ||
+                strcmp(func_name, "endInvocationInterlockARB") == 0)))) {
             if (state->current_function == NULL ||
                 strcmp(state->current_function->function_name(), "main") != 0) {
                _mesa_glsl_error(&loc, state,
-                                "barrier() may only be used in main()");
+                                "%s() may only be used in main()", func_name);
             }
 
             if (state->found_return) {
                _mesa_glsl_error(&loc, state,
-                                "barrier() may not be used after return");
+                                "%s() may not be used after return", func_name);
             }
 
             if (instructions != &state->current_function->body) {
                _mesa_glsl_error(&loc, state,
-                                "barrier() may not be used in control flow");
+                                "%s() may not be used in control flow", func_name);
             }
          }
 
