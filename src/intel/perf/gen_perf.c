@@ -212,22 +212,10 @@ enumerate_sysfs_metrics(struct gen_perf *perf)
 static bool
 kernel_has_dynamic_config_support(struct gen_perf *perf, int fd)
 {
-   hash_table_foreach(perf->oa_metrics_table, entry) {
-      struct gen_perf_query_info *query = entry->data;
-      char config_path[280];
-      uint64_t config_id;
+   uint64_t invalid_config_id = UINT64_MAX;
 
-      snprintf(config_path, sizeof(config_path), "%s/metrics/%s/id",
-               perf->sysfs_dev_dir, query->guid);
-
-      /* Look for the test config, which we know we can't replace. */
-      if (read_file_uint64(config_path, &config_id) && config_id == 1) {
-         return perf->ioctl(fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG,
-                            &config_id) < 0 && errno == ENOENT;
-      }
-   }
-
-   return false;
+   return perf->ioctl(fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG,
+                      &invalid_config_id) < 0 && errno == ENOENT;
 }
 
 bool
