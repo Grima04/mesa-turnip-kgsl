@@ -143,7 +143,14 @@ static char *outmod_names_int[4] = {
         ".isat",
         ".usat",
         "",
-        ".unk3"
+        ".hi"
+};
+
+static char *srcmod_names_int[4] = {
+        "sext(",
+        "zext(",
+        "",
+        "("
 };
 
 static void
@@ -176,20 +183,7 @@ print_vector_src(unsigned src_binary, bool out_high,
         midgard_int_mod int_mod = src->mod;
 
         if (is_int) {
-                switch (int_mod) {
-                        case midgard_int_sign_extend:
-                                printf("sext(");
-                                break;
-                        case midgard_int_zero_extend:
-                                printf("zext(");
-                                break;
-                        case midgard_int_reserved:
-                                printf("unk(");
-                                break;
-                        case midgard_int_normal:
-                                /* Implicit */
-                                break;
-                }
+                printf("%s", srcmod_names_int[int_mod]);
         } else {
                 if (src->mod & MIDGARD_FLOAT_MOD_NEG)
                         printf("-");
@@ -284,7 +278,9 @@ print_vector_src(unsigned src_binary, bool out_high,
 
         /* Since we wrapped with a function-looking thing */
 
-        if ((is_int && (int_mod != midgard_int_normal))
+        if (is_int && int_mod == midgard_int_shift)
+                printf(") << %d", bits);
+        else if ((is_int && (int_mod != midgard_int_normal))
                         || (!is_int && src->mod & MIDGARD_FLOAT_MOD_ABS))
                 printf(")");
 }

@@ -180,7 +180,7 @@ typedef enum {
         midgard_outmod_int_saturate = 0,
         midgard_outmod_uint_saturate = 1,
         midgard_outmod_int_wrap = 2,
-        /* 0x3 unknown */
+        midgard_outmod_int_high = 3, /* Overflowed portion */
 } midgard_outmod_int;
 
 typedef enum {
@@ -200,7 +200,7 @@ typedef enum {
         midgard_int_sign_extend = 0,
         midgard_int_zero_extend = 1,
         midgard_int_normal = 2,
-        midgard_int_reserved = 3
+        midgard_int_shift = 3
 } midgard_int_mod;
 
 #define MIDGARD_FLOAT_MOD_ABS (1 << 0)
