@@ -6195,6 +6195,8 @@ ast_function_definition::hir(exec_list *instructions,
    assert(state->current_function == NULL);
    state->current_function = signature;
    state->found_return = false;
+   state->found_begin_interlock = false;
+   state->found_end_interlock = false;
 
    /* Duplicate parameters declared in the prototype as concrete variables.
     * Add these to the symbol table.
