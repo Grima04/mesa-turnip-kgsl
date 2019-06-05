@@ -288,75 +288,28 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                  * the branch writeout */
 
                                 if (ains->writeout) {
-                                        if (index == 0) {
-                                                /* Inject a move */
-                                                midgard_instruction ins = v_fmov(0, blank_alu_src, SSA_FIXED_REGISTER(0));
-                                                ins.unit = UNIT_VMUL;
-                                                control |= ins.unit;
+                                        /* The rules for when "bare" writeout
+                                         * is safe are when all components are
+                                         * r0 are written out in the final
+                                         * bundle, earlier than VLUT, where any
+                                         * register dependencies of r0 are from
+                                         * an earlier bundle. We can't verify
+                                         * this before RA, so we don't try. */
 
-                                                /* TODO don't leak */
-                                                midgard_instruction *move =
-                                                        mem_dup(&ins, sizeof(midgard_instruction));
-                                                bytes_emitted += sizeof(midgard_reg_info);
-                                                bytes_emitted += sizeof(midgard_vector_alu);
-                                                bundle.instructions[packed_idx++] = move;
-                                        } else {
-                                                /* Analyse the group to see if r0 is written in full, on-time, without hanging dependencies */
-                                                bool written_late = false;
-                                                bool components[4] = { 0 };
-                                                uint16_t register_dep_mask = 0;
-                                                uint16_t written_mask = 0;
+                                        if (index != 0)
+                                                break;
 
-                                                midgard_instruction *qins = ins;
-                                                for (int t = 0; t < index; ++t) {
-                                                        if (qins->registers.out_reg != 0) {
-                                                                /* Mark down writes */
+                                        /* Inject a move */
+                                        midgard_instruction ins = v_fmov(0, blank_alu_src, SSA_FIXED_REGISTER(0));
+                                        ins.unit = UNIT_VMUL;
+                                        control |= ins.unit;
 
-                                                                written_mask |= (1 << qins->registers.out_reg);
-                                                        } else {
-                                                                /* Mark down the register dependencies for errata check */
-
-                                                                if (qins->registers.src1_reg < 16)
-                                                                        register_dep_mask |= (1 << qins->registers.src1_reg);
-
-                                                                if (qins->registers.src2_reg < 16)
-                                                                        register_dep_mask |= (1 << qins->registers.src2_reg);
-
-                                                                int mask = qins->alu.mask;
-
-                                                                for (int c = 0; c < 4; ++c)
-                                                                        if (mask & (0x3 << (2 * c)))
-                                                                                components[c] = true;
-
-                                                                /* ..but if the writeout is too late, we have to break up anyway... for some reason */
-
-                                                                if (qins->unit == UNIT_VLUT)
-                                                                        written_late = true;
-                                                        }
-
-                                                        /* Advance instruction pointer */
-                                                        qins = mir_next_op(qins);
-                                                }
-
-                                                /* Register dependencies of r0 must be out of fragment writeout bundle */
-                                                if (register_dep_mask & written_mask)
-                                                        break;
-
-                                                if (written_late)
-                                                        break;
-
-                                                /* If even a single component is not written, break it up (conservative check). */
-                                                bool breakup = false;
-
-                                                for (int c = 0; c < 4; ++c)
-                                                        if (!components[c])
-                                                                breakup = true;
-
-                                                if (breakup)
-                                                        break;
-
-                                                /* Otherwise, we're free to proceed */
-                                        }
+                                        /* TODO don't leak */
+                                        midgard_instruction *move =
+                                                mem_dup(&ins, sizeof(midgard_instruction));
+                                        bytes_emitted += sizeof(midgard_reg_info);
+                                        bytes_emitted += sizeof(midgard_vector_alu);
+                                        bundle.instructions[packed_idx++] = move;
                                 }
 
                                 if (ains->unit == ALU_ENAB_BRANCH) {
