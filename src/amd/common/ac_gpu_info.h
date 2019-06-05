@@ -138,6 +138,7 @@ struct radeon_info {
 	bool                        r600_gb_backend_map_valid;
 	uint32_t                    r600_num_banks;
 	uint32_t                    gb_addr_config;
+	uint32_t                    pa_sc_tile_steering_override; /* CLEAR_STATE also sets this */
 	uint32_t                    num_render_backends;
 	uint32_t                    num_tile_pipes; /* pipe count from PIPE_CONFIG */
 	uint32_t                    pipe_interleave_bytes;

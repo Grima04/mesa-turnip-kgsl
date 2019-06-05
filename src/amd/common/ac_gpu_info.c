@@ -405,6 +405,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->has_read_registers_query = true;
 	info->has_scheduled_fence_dependency = info->drm_minor >= 28;
 
+	info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
 	info->num_render_backends = amdinfo->rb_pipes;
 	/* The value returned by the kernel driver was wrong. */
 	if (info->family == CHIP_KAVERI)
@@ -599,6 +600,7 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    max_sh_per_se = %i\n", info->max_sh_per_se);
 
 	printf("Render backend info:\n");
+	printf("    pa_sc_tile_steering_override = 0x%x\n", info->pa_sc_tile_steering_override);
 	printf("    num_render_backends = %i\n", info->num_render_backends);
 	printf("    num_tile_pipes = %i\n", info->num_tile_pipes);
 	printf("    pipe_interleave_bytes = %i\n", info->pipe_interleave_bytes);
