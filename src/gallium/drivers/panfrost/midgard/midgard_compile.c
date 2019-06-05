@@ -540,14 +540,14 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch, unsigned co
                 .unit = for_branch ? UNIT_SMUL : UNIT_SADD,
 
                 .ssa_args = {
-
                         .src0 = condition,
                         .src1 = condition,
                         .dest = SSA_FIXED_REGISTER(31),
                 },
+
                 .alu = {
                         .op = midgard_alu_op_iand,
-                        .outmod = midgard_outmod_int,
+                        .outmod = midgard_outmod_int_wrap,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
@@ -586,7 +586,7 @@ emit_condition_mixed(compiler_context *ctx, nir_alu_src *src, unsigned nr_comp)
                 },
                 .alu = {
                         .op = midgard_alu_op_iand,
-                        .outmod = midgard_outmod_int,
+                        .outmod = midgard_outmod_int_wrap,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = expand_writemask((1 << nr_comp) - 1),
@@ -617,7 +617,7 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
                 },
                 .alu = {
                         .op = midgard_alu_op_imov,
-                        .outmod = midgard_outmod_int,
+                        .outmod = midgard_outmod_int_wrap,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .mask = (0x3 << 6), /* w */
@@ -821,12 +821,14 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         }
 
         /* Midgard can perform certain modifiers on output of an ALU op */
-        midgard_outmod outmod =
-                midgard_is_integer_out_op(op) ? midgard_outmod_int :
-                instr->dest.saturate ? midgard_outmod_sat : midgard_outmod_none;
+        unsigned outmod;
 
-        if (instr->op == nir_op_fsat)
-                outmod = midgard_outmod_sat;
+        if (midgard_is_integer_out_op(op)) {
+                outmod = midgard_outmod_int_wrap;
+        } else {
+                bool sat = instr->dest.saturate || instr->op == nir_op_fsat;
+                outmod = sat ? midgard_outmod_sat : midgard_outmod_none;
+        }
 
         /* fmax(a, 0.0) can turn into a .pos modifier as an optimization */
 
@@ -1766,6 +1768,18 @@ mir_nontrivial_source2_mod(midgard_instruction *ins)
 }
 
 static bool
+mir_nontrivial_outmod(midgard_instruction *ins)
+{
+        bool is_int = midgard_is_integer_op(ins->alu.op);
+        unsigned mod = ins->alu.outmod;
+
+        if (is_int)
+                return mod != midgard_outmod_int_wrap;
+        else
+                return mod != midgard_outmod_none;
+}
+
+static bool
 midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 {
         bool progress = false;
@@ -1789,7 +1803,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (ins->has_constants) continue;
 
                 if (mir_nontrivial_source2_mod(ins)) continue;
-                if (ins->alu.outmod != midgard_outmod_none) continue;
+                if (mir_nontrivial_outmod(ins)) continue;
 
                 /* We're clear -- rewrite */
                 mir_rewrite_index_src(ctx, to, from);
@@ -1804,7 +1818,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
  * the move can be propagated away entirely */
 
 static bool
-mir_compose_outmod(midgard_outmod *outmod, midgard_outmod comp)
+mir_compose_float_outmod(midgard_outmod_float *outmod, midgard_outmod_float comp)
 {
         /* Nothing to do */
         if (comp == midgard_outmod_none)
@@ -1832,6 +1846,7 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
                 /* TODO: Registers? */
                 unsigned src = ins->ssa_args.src1;
                 if (src >= ctx->func->impl->ssa_alloc) continue;
+                assert(!mir_has_multiple_writes(ctx, src));
 
                 /* There might be a source modifier, too */
                 if (mir_nontrivial_source2_mod(ins)) continue;
@@ -1841,8 +1856,11 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
                         if (v->type != TAG_ALU_4) continue;
                         if (v->ssa_args.dest != src) continue;
 
-                        midgard_outmod temp = v->alu.outmod;
-                        progress |= mir_compose_outmod(&temp, ins->alu.outmod);
+                        /* Can we even take a float outmod? */
+                        if (midgard_is_integer_out_op(v->alu.op)) continue;
+
+                        midgard_outmod_float temp = v->alu.outmod;
+                        progress |= mir_compose_float_outmod(&temp, ins->alu.outmod);
 
                         /* Throw in the towel.. */
                         if (!progress) break;
@@ -2076,7 +2094,7 @@ emit_blend_epilogue(compiler_context *ctx)
                         .op = midgard_alu_op_imov,
                         .reg_mode = midgard_reg_mode_8,
                         .dest_override = midgard_dest_override_none,
-                        .outmod = midgard_outmod_int,
+                        .outmod = midgard_outmod_int_wrap,
                         .mask = 0xFF,
                         .src1 = vector_alu_srco_unsigned(blank_alu_src),
                         .src2 = vector_alu_srco_unsigned(blank_alu_src),

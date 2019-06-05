@@ -132,17 +132,25 @@ print_reg(unsigned reg, unsigned bits)
         printf("r%u", reg);
 }
 
-static char *outmod_names[4] = {
+static char *outmod_names_float[4] = {
         "",
         ".pos",
-        ".int",
+        ".unk2",
         ".sat"
 };
 
+static char *outmod_names_int[4] = {
+        ".isat",
+        ".usat",
+        "",
+        ".unk3"
+};
+
 static void
-print_outmod(midgard_outmod outmod)
+print_outmod(unsigned outmod, bool is_int)
 {
-        printf("%s", outmod_names[outmod]);
+        printf("%s", is_int ? outmod_names_int[outmod] :
+                              outmod_names_float[outmod]);
 }
 
 static void
@@ -377,7 +385,8 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
         printf("%s.", name);
 
         print_alu_opcode(alu_field->op);
-        print_outmod(alu_field->outmod);
+        print_outmod(alu_field->outmod,
+                midgard_is_integer_out_op(alu_field->op));
         printf(" ");
 
         bool out_high = false;
@@ -503,7 +512,8 @@ print_scalar_field(const char *name, uint16_t *words, uint16_t reg_word,
 
         printf("%s.", name);
         print_alu_opcode(alu_field->op);
-        print_outmod(alu_field->outmod);
+        print_outmod(alu_field->outmod,
+                        midgard_is_integer_out_op(alu_field->op));
         printf(" ");
 
         if (alu_field->output_full)

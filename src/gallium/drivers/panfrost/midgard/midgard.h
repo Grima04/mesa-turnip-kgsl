@@ -172,15 +172,22 @@ typedef enum {
 typedef enum {
         midgard_outmod_none = 0,
         midgard_outmod_pos  = 1,
-        midgard_outmod_int  = 2,
+        /* 0x2 unknown */
         midgard_outmod_sat  = 3
-} midgard_outmod;
+} midgard_outmod_float;
+
+typedef enum {
+        midgard_outmod_int_saturate = 0,
+        midgard_outmod_uint_saturate = 1,
+        midgard_outmod_int_wrap = 2,
+        /* 0x3 unknown */
+} midgard_outmod_int;
 
 typedef enum {
         midgard_reg_mode_8 = 0,
         midgard_reg_mode_16 = 1,
         midgard_reg_mode_32 = 2,
-        midgard_reg_mode_64 = 3 /* TODO: verify */
+        midgard_reg_mode_64 = 3
 } midgard_reg_mode;
 
 typedef enum {
@@ -224,7 +231,7 @@ __attribute__((__packed__))
         unsigned src1 : 13;
         unsigned src2 : 13;
         midgard_dest_override dest_override : 2;
-        midgard_outmod outmod               : 2;
+        midgard_outmod_float outmod               : 2;
         unsigned mask                           : 8;
 }
 midgard_vector_alu;
@@ -246,7 +253,7 @@ __attribute__((__packed__))
         unsigned src1             :  6;
         unsigned src2             : 11;
         unsigned unknown          :  1;
-        midgard_outmod outmod :  2;
+        unsigned outmod :  2;
         bool output_full          :  1;
         unsigned output_component :  3;
 }
