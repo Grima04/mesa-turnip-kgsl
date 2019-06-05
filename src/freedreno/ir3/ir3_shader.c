@@ -417,9 +417,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 			so->info.max_half_reg + 1,
 			so->info.max_reg + 1);
 
-	fprintf(out, "; %d const, %u constlen\n",
-			so->info.max_const + 1,
-			so->constlen);
+	fprintf(out, "; %u constlen\n", so->constlen);
 
 	fprintf(out, "; %u (ss), %u (sy)\n", so->info.ss, so->info.sy);
 

@@ -52,7 +52,7 @@ dump_shader_info(struct ir3_shader_variant *v, bool binning_pass,
 
 	pipe_debug_message(debug, SHADER_INFO,
 			"%s%s shader: %u inst, %u dwords, "
-			"%u half, %u full, %u const, %u constlen, "
+			"%u half, %u full, %u constlen, "
 			"%u (ss), %u (sy), %d max_sun, %d loops\n",
 			binning_pass ? "B" : "",
 			ir3_shader_stage(v->shader),
@@ -60,7 +60,6 @@ dump_shader_info(struct ir3_shader_variant *v, bool binning_pass,
 			v->info.sizedwords,
 			v->info.max_half_reg + 1,
 			v->info.max_reg + 1,
-			v->info.max_const + 1,
 			v->constlen,
 			v->info.ss, v->info.sy,
 			v->max_sun, v->loops);
