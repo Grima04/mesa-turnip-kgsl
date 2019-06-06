@@ -242,6 +242,9 @@ public:
     */
    src_reg emit_uniformize(const src_reg &src);
 
+   /** Fix all float operands of a 3-source instruction. */
+   void fix_float_operands(src_reg op[3]);
+
    src_reg fix_3src_operand(const src_reg &src);
    src_reg resolve_source_modifiers(const src_reg &src);
 

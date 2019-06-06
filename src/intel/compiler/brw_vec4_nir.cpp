@@ -1131,6 +1131,17 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
 }
 
 void
+vec4_visitor::fix_float_operands(src_reg op[3])
+{
+   bool fixed[3] = { false, false, false };
+
+   for (unsigned i = 0; i < 3; i++) {
+      if (!fixed[i])
+         op[i] = fix_3src_operand(op[i]);
+   }
+}
+
+void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
    vec4_instruction *inst;
@@ -1916,20 +1927,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
          inst = emit(ADD(dst, src_reg(mul_dst), op[2]));
          inst->saturate = instr->dest.saturate;
       } else {
-         op[0] = fix_3src_operand(op[0]);
-         op[1] = fix_3src_operand(op[1]);
-         op[2] = fix_3src_operand(op[2]);
-
+         fix_float_operands(op);
          inst = emit(MAD(dst, op[2], op[1], op[0]));
          inst->saturate = instr->dest.saturate;
       }
       break;
 
    case nir_op_flrp:
-      op[0] = fix_3src_operand(op[0]);
-      op[1] = fix_3src_operand(op[1]);
-      op[2] = fix_3src_operand(op[2]);
-
+      fix_float_operands(op);
       inst = emit(LRP(dst, op[2], op[1], op[0]));
       inst->saturate = instr->dest.saturate;
       break;
