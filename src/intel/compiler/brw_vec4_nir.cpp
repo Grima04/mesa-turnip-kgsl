@@ -1131,9 +1131,41 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
 }
 
 void
-vec4_visitor::fix_float_operands(src_reg op[3])
+vec4_visitor::fix_float_operands(src_reg op[3], nir_alu_instr *instr)
 {
    bool fixed[3] = { false, false, false };
+
+   for (unsigned i = 0; i < 2; i++) {
+      if (!nir_src_is_const(instr->src[i].src))
+         continue;
+
+      for (unsigned j = i + 1; j < 3; j++) {
+         if (fixed[j])
+            continue;
+
+         if (!nir_src_is_const(instr->src[j].src))
+            continue;
+
+         if (nir_alu_srcs_equal(instr, instr, i, j)) {
+            if (!fixed[i])
+               op[i] = fix_3src_operand(op[i]);
+
+            op[j] = op[i];
+
+            fixed[i] = true;
+            fixed[j] = true;
+         } else if (nir_alu_srcs_negative_equal(instr, instr, i, j)) {
+            if (!fixed[i])
+               op[i] = fix_3src_operand(op[i]);
+
+            op[j] = op[i];
+            op[j].negate = !op[j].negate;
+
+            fixed[i] = true;
+            fixed[j] = true;
+         }
+      }
+   }
 
    for (unsigned i = 0; i < 3; i++) {
       if (!fixed[i])
@@ -1927,14 +1959,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
          inst = emit(ADD(dst, src_reg(mul_dst), op[2]));
          inst->saturate = instr->dest.saturate;
       } else {
-         fix_float_operands(op);
+         fix_float_operands(op, instr);
          inst = emit(MAD(dst, op[2], op[1], op[0]));
          inst->saturate = instr->dest.saturate;
       }
       break;
 
    case nir_op_flrp:
-      fix_float_operands(op);
+      fix_float_operands(op, instr);
       inst = emit(LRP(dst, op[2], op[1], op[0]));
       inst->saturate = instr->dest.saturate;
       break;
