@@ -361,7 +361,7 @@ static void
 radv_process_depth_image_layer(struct radv_cmd_buffer *cmd_buffer,
 			       struct radv_image *image,
 			       const VkImageSubresourceRange *range,
-			       int layer)
+			       int level, int layer)
 {
 	struct radv_device *device = cmd_buffer->device;
 	struct radv_meta_state *state = &device->meta_state;
@@ -369,8 +369,8 @@ radv_process_depth_image_layer(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_image_view iview;
 	uint32_t width, height;
 
-	width = radv_minify(image->info.width, range->baseMipLevel);
-	height = radv_minify(image->info.height, range->baseMipLevel);
+	width = radv_minify(image->info.width, range->baseMipLevel + level);
+	height = radv_minify(image->info.height, range->baseMipLevel + level);
 
 	radv_image_view_init(&iview, device,
 			     &(VkImageViewCreateInfo) {
@@ -380,7 +380,7 @@ radv_process_depth_image_layer(struct radv_cmd_buffer *cmd_buffer,
 					.format = image->vk_format,
 					.subresourceRange = {
 						.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-						.baseMipLevel = range->baseMipLevel,
+						.baseMipLevel = range->baseMipLevel + level,
 						.levelCount = 1,
 						.baseArrayLayer = range->baseArrayLayer + layer,
 						.layerCount = 1,
@@ -436,10 +436,6 @@ static void radv_process_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radv_meta_saved_state saved_state;
 	VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
-	uint32_t width = radv_minify(image->info.width,
-				     subresourceRange->baseMipLevel);
-	uint32_t height = radv_minify(image->info.height,
-				     subresourceRange->baseMipLevel);
 	VkPipeline *pipeline;
 
 	if (!radv_image_has_htile(image))
@@ -454,20 +450,6 @@ static void radv_process_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer),
 			     VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
-
-	radv_CmdSetViewport(cmd_buffer_h, 0, 1, &(VkViewport) {
-		.x = 0,
-		.y = 0,
-		.width = width,
-		.height = height,
-		.minDepth = 0.0f,
-		.maxDepth = 1.0f
-	});
-
-	radv_CmdSetScissor(cmd_buffer_h, 0, 1, &(VkRect2D) {
-		.offset = { 0, 0 },
-		.extent = { width, height },
-	});
 
 	if (sample_locs) {
 		assert(image->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
@@ -484,9 +466,34 @@ static void radv_process_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 		});
 	}
 
-	for (uint32_t s = 0; s < radv_get_layerCount(image, subresourceRange); s++) {
-		radv_process_depth_image_layer(cmd_buffer, image,
-					       subresourceRange, s);
+	for (uint32_t l = 0; l < radv_get_levelCount(image, subresourceRange); ++l) {
+		uint32_t width =
+			radv_minify(image->info.width,
+				    subresourceRange->baseMipLevel + l);
+		uint32_t height =
+			radv_minify(image->info.height,
+				    subresourceRange->baseMipLevel + l);
+
+		radv_CmdSetViewport(cmd_buffer_h, 0, 1,
+				    &(VkViewport) {
+					.x = 0,
+					.y = 0,
+					.width = width,
+					.height = height,
+					.minDepth = 0.0f,
+					.maxDepth = 1.0f
+				    });
+
+		radv_CmdSetScissor(cmd_buffer_h, 0, 1,
+				   &(VkRect2D) {
+					.offset = { 0, 0 },
+					.extent = { width, height },
+				   });
+
+		for (uint32_t s = 0; s < radv_get_layerCount(image, subresourceRange); s++) {
+			radv_process_depth_image_layer(cmd_buffer, image,
+						       subresourceRange, l, s);
+		}
 	}
 
 	radv_meta_restore(&saved_state, cmd_buffer);
