@@ -183,6 +183,15 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
         unsigned height = tmpl->height0;
         unsigned bytes_per_pixel = util_format_get_blocksize(tmpl->format);
 
+        /* Tiled operates blockwise; linear is packed. Also, anything
+         * we render to has to be tile-aligned. Maybe not strictly
+         * necessary, but we're not *that* pressed for memory and it
+         * makes code a lot simpler */
+
+        bool renderable = tmpl->bind & PIPE_BIND_RENDER_TARGET;
+        bool tiled = bo->layout == PAN_TILED;
+        bool should_align = renderable || tiled;
+
         unsigned offset = 0;
 
         for (unsigned l = 0; l <= tmpl->last_level; ++l) {
@@ -191,9 +200,7 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
                 unsigned effective_width = width;
                 unsigned effective_height = height;
 
-                /* Tiled operates blockwise; linear is packed */
-
-                if (bo->layout == PAN_TILED) {
+                if (should_align) {
                         effective_width = ALIGN(effective_width, 16);
                         effective_height = ALIGN(effective_height, 16);
                 }
