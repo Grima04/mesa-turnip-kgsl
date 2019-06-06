@@ -370,6 +370,7 @@ void mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new);
 /* MIR printing */
 
 void mir_print_instruction(midgard_instruction *ins);
+void mir_print_bundle(midgard_bundle *ctx);
 void mir_print_block(midgard_block *block);
 void mir_print_shader(compiler_context *ctx);
 
