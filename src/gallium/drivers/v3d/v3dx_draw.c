@@ -236,6 +236,11 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 shader.fragment_shader_uses_real_pixel_centre_w_in_addition_to_centroid_w2 =
                         v3d->prog.fs->prog_data.fs->uses_center_w;
 
+#if V3D_VERSION >= 40
+               shader.disable_implicit_point_line_varyings =
+                        !v3d->prog.fs->prog_data.fs->uses_implicit_point_line_varyings;
+#endif
+
                 shader.number_of_varyings_in_fragment_shader =
                         v3d->prog.fs->prog_data.fs->num_inputs;
 

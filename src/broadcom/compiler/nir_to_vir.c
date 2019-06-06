@@ -1462,6 +1462,17 @@ var_needs_point_coord(struct v3d_compile *c, nir_variable *var)
                   (1 << (var->data.location - VARYING_SLOT_VAR0)))));
 }
 
+static bool
+program_reads_point_coord(struct v3d_compile *c)
+{
+        nir_foreach_variable(var, &c->s->inputs) {
+                if (var_needs_point_coord(c, var))
+                        return true;
+        }
+
+        return false;
+}
+
 static void
 ntq_setup_fs_inputs(struct v3d_compile *c)
 {
@@ -2300,15 +2311,17 @@ nir_to_vir(struct v3d_compile *c)
                 c->payload_w_centroid = vir_MOV(c, vir_reg(QFILE_REG, 1));
                 c->payload_z = vir_MOV(c, vir_reg(QFILE_REG, 2));
 
-                /* XXX perf: We could set the "disable implicit point/line
-                 * varyings" field in the shader record and not emit these, if
-                 * they're not going to be used.
+                /* V3D 4.x can disable implicit point coordinate varyings if
+                 * they are not used.
                  */
-                if (c->fs_key->is_points) {
+                if (c->fs_key->is_points &&
+                    (c->devinfo->ver < 40 || program_reads_point_coord(c))) {
                         c->point_x = emit_fragment_varying(c, NULL, 0, 0);
                         c->point_y = emit_fragment_varying(c, NULL, 0, 0);
-                } else if (c->fs_key->is_lines) {
+                        c->uses_implicit_point_line_varyings = true;
+                } else if (c->fs_key->is_lines && c->devinfo->ver < 40) {
                         c->line_x = emit_fragment_varying(c, NULL, 0, 0);
+                        c->uses_implicit_point_line_varyings = true;
                 }
                 break;
         case MESA_SHADER_COMPUTE:
