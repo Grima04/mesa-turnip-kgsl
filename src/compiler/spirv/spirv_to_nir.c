@@ -1271,8 +1271,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          /* A length of 0 is used to denote unsized arrays */
          val->type->length = 0;
       } else {
-         val->type->length =
-            vtn_value(b, w[3], vtn_value_type_constant)->constant->values[0][0].u32;
+         val->type->length = vtn_constant_uint(b, w[3]);
       }
 
       val->type->base_type = vtn_base_type_array;
@@ -2280,8 +2279,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpImageGather:
       /* This has a component as its next source */
-      gather_component =
-         vtn_value(b, w[idx++], vtn_value_type_constant)->constant->values[0][0].u32;
+      gather_component = vtn_constant_uint(b, w[idx++]);
       break;
 
    default:
