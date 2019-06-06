@@ -210,9 +210,6 @@ typedef struct compiler_context {
         /* Constants which have been loaded, for later inlining */
         struct hash_table_u64 *ssa_constants;
 
-        /* SSA indices to be outputted to corresponding varying offset */
-        struct hash_table_u64 *ssa_varyings;
-
         /* SSA values / registers which have been aliased. Naively, these
          * demand a fmov output; instead, we alias them in a later pass to
          * avoid the wasted op.

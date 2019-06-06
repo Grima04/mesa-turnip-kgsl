@@ -1230,44 +1230,17 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         ctx->fragment_output = reg;
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
                         /* Varyings are written into one of two special
-                         * varying register, r26 or r27. The register itself is selected as the register
-                         * in the st_vary instruction, minus the base of 26. E.g. write into r27 and then call st_vary(1)
-                         *
-                         * Normally emitting fmov's is frowned upon,
-                         * but due to unique constraints of
-                         * REGISTER_VARYING, fmov emission + a
-                         * dedicated cleanup pass is the only way to
-                         * guarantee correctness when considering some
-                         * (common) edge cases XXX: FIXME */
+                         * varying register, r26 or r27. The register itself is
+                         * selected as the register in the st_vary instruction,
+                         * minus the base of 26. E.g. write into r27 and then
+                         * call st_vary(1) */
 
-                        /* If this varying corresponds to a constant (why?!),
-                         * emit that now since it won't get picked up by
-                         * hoisting (since there is no corresponding move
-                         * emitted otherwise) */
+                        midgard_instruction ins = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(26));
+                        emit_mir_instruction(ctx, ins);
 
-                        void *constant_value = _mesa_hash_table_u64_search(ctx->ssa_constants, reg + 1);
-
-                        if (constant_value) {
-                                /* Special case: emit the varying write
-                                 * directly to r26 (looks funny in asm but it's
-                                 * fine) and emit the store _now_. Possibly
-                                 * slightly slower, but this is a really stupid
-                                 * special case anyway (why on earth would you
-                                 * have a constant varying? Your own fault for
-                                 * slightly worse perf :P) */
-
-                                midgard_instruction ins = v_fmov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, SSA_FIXED_REGISTER(26));
-                                attach_constants(ctx, &ins, constant_value, reg + 1);
-                                emit_mir_instruction(ctx, ins);
-
-                                midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(0), offset);
-                                st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
-                                emit_mir_instruction(ctx, st);
-                        } else {
-                                /* Do not emit the varying yet -- instead, just mark down that we need to later */
-
-                                _mesa_hash_table_u64_insert(ctx->ssa_varyings, reg + 1, (void *) ((uintptr_t) (offset + 1)));
-                        }
+                        midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(0), offset);
+                        st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
+                        emit_mir_instruction(ctx, st);
                 } else {
                         DBG("Unknown store\n");
                         assert(0);
@@ -1954,40 +1927,6 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
         }
 }
 
-/* Emit varying stores late */
-
-static void
-midgard_emit_store(compiler_context *ctx, midgard_block *block) {
-        /* Iterate in reverse to get the final write, rather than the first */
-
-        mir_foreach_instr_in_block_safe_rev(block, ins) {
-                /* Check if what we just wrote needs a store */
-                int idx = ins->ssa_args.dest;
-                uintptr_t varying = ((uintptr_t) _mesa_hash_table_u64_search(ctx->ssa_varyings, idx + 1));
-
-                if (!varying) continue;
-
-                varying -= 1;
-
-                /* We need to store to the appropriate varying, so emit the
-                 * move/store */
-
-                /* TODO: Integrate with special purpose RA (and scheduler?) */
-                bool high_varying_register = false;
-
-                midgard_instruction mov = v_fmov(idx, blank_alu_src, SSA_FIXED_REGISTER(REGISTER_VARYING_BASE + high_varying_register));
-
-                midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(high_varying_register), varying);
-                st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
-
-                mir_insert_instruction_before(mir_next_op(ins), st);
-                mir_insert_instruction_before(mir_next_op(ins), mov);
-
-                /* We no longer need to store this varying */
-                _mesa_hash_table_u64_remove(ctx->ssa_varyings, idx + 1);
-        }
-}
-
 /* If there are leftovers after the below pass, emit actual fmov
  * instructions for the slow-but-correct path */
 
@@ -2153,7 +2092,6 @@ emit_block(compiler_context *ctx, nir_block *block)
         /* Perform heavylifting for aliasing */
         actualise_ssa_to_alias(ctx);
 
-        midgard_emit_store(ctx, this_block);
         midgard_pair_load_store(ctx, this_block);
 
         /* Append fragment shader epilogue (value writeout) */
@@ -2366,7 +2304,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         /* Initialize at a global (not block) level hash tables */
 
         ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);
-        ctx->ssa_varyings = _mesa_hash_table_u64_create(NULL);
         ctx->ssa_to_alias = _mesa_hash_table_u64_create(NULL);
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
         ctx->sysval_to_id = _mesa_hash_table_u64_create(NULL);
