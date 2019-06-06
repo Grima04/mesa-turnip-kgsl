@@ -26,7 +26,26 @@
 #include "dri_context.h"
 #include "dri_screen.h"
 
+
+struct dri2_format_mapping {
+   int dri_fourcc;
+   int dri_format; /* image format */
+   int dri_components;
+   enum pipe_format pipe_format;
+   int nplanes;
+   struct {
+      int buffer_index;
+      int width_shift;
+      int height_shift;
+      uint32_t dri_format; /* plane format */
+      int cpp;
+   } planes[3];
+};
+
 extern const __DRI2fenceExtension dri2FenceExtension;
+
+const struct dri2_format_mapping *
+dri2_get_mapping_by_fourcc(int fourcc);
 
 __DRIimage *
 dri2_lookup_egl_image(struct dri_screen *screen, void *handle);
