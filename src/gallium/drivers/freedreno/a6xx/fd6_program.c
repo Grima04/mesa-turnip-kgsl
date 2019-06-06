@@ -194,6 +194,50 @@ setup_stream_out(struct fd6_program_state *state, const struct ir3_shader_varian
 			COND(tf->ncomp[3] > 0, A6XX_VPC_SO_BUF_CNTL_BUF3);
 }
 
+static void
+setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state)
+{
+	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
+	OUT_RING(ring, 0xff);        /* XXX */
+
+	debug_assert(state->vs->constlen >= state->bs->constlen);
+
+	OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
+	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(state->vs->constlen, 4)) |
+			A6XX_HLSQ_VS_CNTL_ENABLED);
+	OUT_RING(ring, A6XX_HLSQ_HS_CNTL_CONSTLEN(0));
+	OUT_RING(ring, A6XX_HLSQ_DS_CNTL_CONSTLEN(0));
+	OUT_RING(ring, A6XX_HLSQ_GS_CNTL_CONSTLEN(0));
+
+	OUT_PKT4(ring, REG_A6XX_HLSQ_FS_CNTL, 1);
+	OUT_RING(ring, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(state->fs->constlen, 4)) |
+			A6XX_HLSQ_FS_CNTL_ENABLED);
+
+	OUT_PKT4(ring, REG_A6XX_SP_VS_CONFIG, 1);
+	OUT_RING(ring, COND(state->vs, A6XX_SP_VS_CONFIG_ENABLED) |
+			A6XX_SP_VS_CONFIG_NIBO(state->vs->image_mapping.num_ibo) |
+			A6XX_SP_VS_CONFIG_NTEX(state->vs->num_samp) |
+			A6XX_SP_VS_CONFIG_NSAMP(state->vs->num_samp));
+
+	OUT_PKT4(ring, REG_A6XX_SP_FS_CONFIG, 1);
+	OUT_RING(ring, COND(state->fs, A6XX_SP_FS_CONFIG_ENABLED) |
+			A6XX_SP_FS_CONFIG_NIBO(state->fs->image_mapping.num_ibo) |
+			A6XX_SP_FS_CONFIG_NTEX(state->fs->num_samp) |
+			A6XX_SP_FS_CONFIG_NSAMP(state->fs->num_samp));
+
+	OUT_PKT4(ring, REG_A6XX_SP_HS_CONFIG, 1);
+	OUT_RING(ring, COND(false, A6XX_SP_HS_CONFIG_ENABLED));
+
+	OUT_PKT4(ring, REG_A6XX_SP_DS_CONFIG, 1);
+	OUT_RING(ring, COND(false, A6XX_SP_DS_CONFIG_ENABLED));
+
+	OUT_PKT4(ring, REG_A6XX_SP_GS_CONFIG, 1);
+	OUT_RING(ring, COND(false, A6XX_SP_GS_CONFIG_ENABLED));
+
+	OUT_PKT4(ring, REG_A6XX_SP_IBO_COUNT, 1);
+	OUT_RING(ring, state->fs->image_mapping.num_ibo);
+}
+
 #define VALIDREG(r)      ((r) != regid(63,0))
 #define CONDREG(r, val)  COND(VALIDREG(r), (val))
 
@@ -271,29 +315,22 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
 	 */
 
-	OUT_PKT4(ring, REG_A6XX_SP_VS_CONFIG, 2);
-	OUT_RING(ring, COND(vs, A6XX_SP_VS_CONFIG_ENABLED) |
-			 A6XX_SP_VS_CONFIG_NIBO(vs->image_mapping.num_ibo) |
-			 A6XX_SP_VS_CONFIG_NTEX(vs->num_samp) |
-			 A6XX_SP_VS_CONFIG_NSAMP(vs->num_samp));		/* SP_VS_CONFIG */
+	OUT_PKT4(ring, REG_A6XX_SP_VS_INSTRLEN, 1);
 	OUT_RING(ring, vs->instrlen);							/* SP_VS_INSTRLEN */
 
 	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
 	OUT_RING(ring, 0);
 
-	OUT_PKT4(ring, REG_A6XX_SP_HS_CONFIG, 2);
-	OUT_RING(ring, 0);										/* SP_HS_CONFIG */
+	OUT_PKT4(ring, REG_A6XX_SP_HS_INSTRLEN, 1);
 	OUT_RING(ring, 0);										/* SP_HS_INSTRLEN */
 
-	OUT_PKT4(ring, REG_A6XX_SP_DS_CONFIG, 2);
-	OUT_RING(ring, 0);										/* SP_DS_CONFIG */
+	OUT_PKT4(ring, REG_A6XX_SP_DS_INSTRLEN, 1);
 	OUT_RING(ring, 0);										/* SP_DS_INSTRLEN */
 
 	OUT_PKT4(ring, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
 	OUT_RING(ring, 0);
 
-	OUT_PKT4(ring, REG_A6XX_SP_GS_CONFIG, 2);
-	OUT_RING(ring, 0);										/* SP_GS_CONFIG */
+	OUT_PKT4(ring, REG_A6XX_SP_GS_INSTRLEN, 1);
 	OUT_RING(ring, 0);										/* SP_GS_INSTRLEN */
 
 	/* I believe this is related to pre-dispatch texture fetch.. we probably
@@ -308,28 +345,13 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_AB00, 1);
 	OUT_RING(ring, 0x5);
 
-	OUT_PKT4(ring, REG_A6XX_SP_FS_CONFIG, 2);
-	OUT_RING(ring, COND(fs, A6XX_SP_FS_CONFIG_ENABLED) |
-			 A6XX_SP_FS_CONFIG_NIBO(fs->image_mapping.num_ibo) |
-			 A6XX_SP_FS_CONFIG_NTEX(fs->num_samp) |
-			 A6XX_SP_FS_CONFIG_NSAMP(fs->num_samp));     /* SP_FS_CONFIG */
+	OUT_PKT4(ring, REG_A6XX_SP_FS_INSTRLEN, 1);
 	OUT_RING(ring, fs->instrlen);							  /* SP_FS_INSTRLEN */
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL0, 1);
 	OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
 			 A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
 			 0xfc000000);
-
-	OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
-	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(vs->constlen, 4)) |
-			 A6XX_HLSQ_VS_CNTL_ENABLED);
-	OUT_RING(ring, A6XX_HLSQ_HS_CNTL_CONSTLEN(0));    /* HLSQ_HS_CONSTLEN */
-	OUT_RING(ring, A6XX_HLSQ_DS_CNTL_CONSTLEN(0));    /* HLSQ_DS_CONSTLEN */
-	OUT_RING(ring, A6XX_HLSQ_GS_CNTL_CONSTLEN(0));    /* HLSQ_GS_CONSTLEN */
-
-	OUT_PKT4(ring, REG_A6XX_HLSQ_FS_CNTL, 1);
-	OUT_RING(ring, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(fs->constlen, 4)) |
-			 A6XX_HLSQ_FS_CNTL_ENABLED);
 
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CTRL_REG0, 1);
 	OUT_RING(ring, A6XX_SP_VS_CTRL_REG0_THREADSIZE(fssz) |
@@ -459,9 +481,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A982, 1);
 	OUT_RING(ring, 0);        /* XXX */
-
-	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
-	OUT_RING(ring, 0xff);        /* XXX */
 
 	OUT_PKT4(ring, REG_A6XX_VPC_GS_SIV_CNTL, 1);
 	OUT_RING(ring, 0x0000ffff);        /* XXX */
@@ -677,9 +696,11 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	state->bs = bs;
 	state->vs = vs;
 	state->fs = fs;
+	state->config_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->binning_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 
+	setup_config_stateobj(state->config_stateobj, state);
 	setup_stateobj(state->binning_stateobj, state, key, true);
 	setup_stateobj(state->stateobj, state, key, false);
 
@@ -692,6 +713,7 @@ fd6_program_destroy(void *data, struct ir3_program_state *state)
 	struct fd6_program_state *so = fd6_program_state(state);
 	fd_ringbuffer_del(so->stateobj);
 	fd_ringbuffer_del(so->binning_stateobj);
+	fd_ringbuffer_del(so->config_stateobj);
 	free(so);
 }
 

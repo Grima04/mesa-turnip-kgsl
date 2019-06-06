@@ -43,6 +43,7 @@ struct fd_ringbuffer;
  * need to be emit'd.
  */
 enum fd6_state_id {
+	FD6_GROUP_PROG_CONFIG,
 	FD6_GROUP_PROG,
 	FD6_GROUP_PROG_BINNING,
 	FD6_GROUP_LRZ,

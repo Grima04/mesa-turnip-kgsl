@@ -871,6 +871,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	}
 
 	if (dirty & FD_DIRTY_PROG) {
+		fd6_emit_add_group(emit, prog->config_stateobj, FD6_GROUP_PROG_CONFIG, 0x7);
 		fd6_emit_add_group(emit, prog->stateobj, FD6_GROUP_PROG, 0x6);
 		fd6_emit_add_group(emit, prog->binning_stateobj,
 				FD6_GROUP_PROG_BINNING, 0x1);
@@ -1029,6 +1030,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_LO, 2);
 		OUT_RB(obj, state);
 
+		/* TODO if we used CP_SET_DRAW_STATE for compute shaders, we could
+		 * de-duplicate this from program->config_stateobj
+		 */
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_COUNT, 1);
 		OUT_RING(obj, mapping->num_ibo);
 
