@@ -731,10 +731,11 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fsin, fsin);
                 ALU_CASE(fcos, fcos);
 
+                /* Second op implicit #0 */
+                ALU_CASE(inot, inor);
                 ALU_CASE(iand, iand);
                 ALU_CASE(ior, ior);
                 ALU_CASE(ixor, ixor);
-                ALU_CASE(inot, inand);
                 ALU_CASE(ishl, ishl);
                 ALU_CASE(ishr, iasr);
                 ALU_CASE(ushr, ilsr);
