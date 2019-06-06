@@ -919,8 +919,19 @@ t7              opcode: CP_WAIT_FOR_IDLE (26) (1 dwords)
 	OUT_PKT4(ring, REG_A5XX_SP_MODE_CNTL, 1);
 	OUT_RING(ring, 0x0000001e);   /* SP_MODE_CNTL */
 
-	OUT_PKT4(ring, REG_A5XX_SP_DBG_ECO_CNTL, 1);
-	OUT_RING(ring, 0x40000800);   /* SP_DBG_ECO_CNTL */
+	if (ctx->screen->gpu_id == 540) {
+		OUT_PKT4(ring, REG_A5XX_SP_DBG_ECO_CNTL, 1);
+		OUT_RING(ring, 0x800);   /* SP_DBG_ECO_CNTL */
+
+		OUT_PKT4(ring, REG_A5XX_HLSQ_DBG_ECO_CNTL, 1);
+		OUT_RING(ring, 0x0);
+
+		OUT_PKT4(ring, REG_A5XX_VPC_DBG_ECO_CNTL, 1);
+		OUT_RING(ring, 0x800400);
+	} else {
+		OUT_PKT4(ring, REG_A5XX_SP_DBG_ECO_CNTL, 1);
+		OUT_RING(ring, 0x40000800);   /* SP_DBG_ECO_CNTL */
+	}
 
 	OUT_PKT4(ring, REG_A5XX_TPL1_MODE_CNTL, 1);
 	OUT_RING(ring, 0x00000544);   /* TPL1_MODE_CNTL */
