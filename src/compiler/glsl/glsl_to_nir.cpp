@@ -307,7 +307,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0][r].u32 = ir->value.u[r];
+         ret->values[r].u32 = ir->value.u[r];
 
       break;
 
@@ -316,21 +316,49 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0][r].i32 = ir->value.i[r];
+         ret->values[r].i32 = ir->value.i[r];
 
       break;
 
    case GLSL_TYPE_FLOAT:
-      for (unsigned c = 0; c < cols; c++) {
-         for (unsigned r = 0; r < rows; r++)
-            ret->values[c][r].f32 = ir->value.f[c * rows + r];
-      }
-      break;
-
    case GLSL_TYPE_DOUBLE:
-      for (unsigned c = 0; c < cols; c++) {
-         for (unsigned r = 0; r < rows; r++)
-            ret->values[c][r].f64 = ir->value.d[c * rows + r];
+      if (cols > 1) {
+         ret->elements = ralloc_array(mem_ctx, nir_constant *, cols);
+         ret->num_elements = cols;
+         for (unsigned c = 0; c < cols; c++) {
+            nir_constant *col_const = rzalloc(mem_ctx, nir_constant);
+            col_const->num_elements = 0;
+            switch (ir->type->base_type) {
+            case GLSL_TYPE_FLOAT:
+               for (unsigned r = 0; r < rows; r++)
+                  col_const->values[r].f32 = ir->value.f[c * rows + r];
+               break;
+
+            case GLSL_TYPE_DOUBLE:
+               for (unsigned r = 0; r < rows; r++)
+                  col_const->values[r].f64 = ir->value.d[c * rows + r];
+               break;
+
+            default:
+               unreachable("Cannot get here from the first level switch");
+            }
+            ret->elements[c] = col_const;
+         }
+      } else {
+         switch (ir->type->base_type) {
+         case GLSL_TYPE_FLOAT:
+            for (unsigned r = 0; r < rows; r++)
+               ret->values[r].f32 = ir->value.f[r];
+            break;
+
+         case GLSL_TYPE_DOUBLE:
+            for (unsigned r = 0; r < rows; r++)
+               ret->values[r].f64 = ir->value.d[r];
+            break;
+
+         default:
+            unreachable("Cannot get here from the first level switch");
+         }
       }
       break;
 
@@ -339,7 +367,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0][r].u64 = ir->value.u64[r];
+         ret->values[r].u64 = ir->value.u64[r];
       break;
 
    case GLSL_TYPE_INT64:
@@ -347,7 +375,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0][r].i64 = ir->value.i64[r];
+         ret->values[r].i64 = ir->value.i64[r];
       break;
 
    case GLSL_TYPE_BOOL:
@@ -355,7 +383,7 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
       assert(cols == 1);
 
       for (unsigned r = 0; r < rows; r++)
-         ret->values[0][r].b = ir->value.b[r];
+         ret->values[r].b = ir->value.b[r];
 
       break;
 
