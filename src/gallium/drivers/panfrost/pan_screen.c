@@ -447,6 +447,10 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (sample_count > 1)
                 return FALSE;
 
+	/* sRGB colorspace is not supported (yet?) */
+	if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+		return FALSE;
+
         /* Format wishlist */
         if (format == PIPE_FORMAT_Z24X8_UNORM || format == PIPE_FORMAT_X8Z24_UNORM)
                 return FALSE;
