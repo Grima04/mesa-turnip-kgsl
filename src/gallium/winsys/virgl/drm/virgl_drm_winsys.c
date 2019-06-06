@@ -194,7 +194,8 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
                                  uint32_t array_size,
                                  uint32_t last_level,
                                  uint32_t nr_samples,
-                                 uint32_t size)
+                                 uint32_t size,
+                                 bool for_fencing)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
    struct drm_virtgpu_resource_create createcmd;
@@ -236,10 +237,11 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    p_atomic_set(&res->external, false);
    p_atomic_set(&res->num_cs_references, 0);
 
-   /* A newly created resource is consdiered busy by the kernel until the
-    * command is retired.
+   /* A newly created resource is considered busy by the kernel until the
+    * command is retired.  But for our purposes, we can consider it idle
+    * unless it is used for fencing.
     */
-   p_atomic_set(&res->maybe_busy, true);
+   p_atomic_set(&res->maybe_busy, for_fencing);
 
    return res;
 }
@@ -394,7 +396,7 @@ virgl_drm_winsys_resource_cache_create(struct virgl_winsys *qws,
 alloc:
    res = virgl_drm_winsys_resource_create(qws, target, format, bind,
                                            width, height, depth, array_size,
-                                           last_level, nr_samples, size);
+                                           last_level, nr_samples, size, false);
    return res;
 }
 
@@ -798,7 +800,7 @@ virgl_drm_fence_create_legacy(struct virgl_winsys *vws)
     * the fence status on the resource creation busy status.
     */
    fence->hw_res = virgl_drm_winsys_resource_create(vws, PIPE_BUFFER,
-         PIPE_FORMAT_R8_UNORM, VIRGL_BIND_CUSTOM, 8, 1, 1, 0, 0, 0, 8);
+         PIPE_FORMAT_R8_UNORM, VIRGL_BIND_CUSTOM, 8, 1, 1, 0, 0, 0, 8, true);
    if (!fence->hw_res) {
       FREE(fence);
       return NULL;
