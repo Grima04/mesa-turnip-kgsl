@@ -5228,10 +5228,20 @@ static bool si_shader_binary_open(struct si_screen *screen,
 		esgs_ring_size = shader->gs_info.esgs_ring_size;;
 	}
 
-	if (sel && shader->key.as_ngg && sel->so.num_outputs) {
-		unsigned esgs_vertex_bytes = 4 * (4 * sel->info.num_outputs + 1);
-		esgs_ring_size = MAX2(esgs_ring_size,
-				      shader->ngg.max_out_verts * esgs_vertex_bytes);
+	if (sel && shader->key.as_ngg) {
+		if (sel->so.num_outputs) {
+			unsigned esgs_vertex_bytes = 4 * (4 * sel->info.num_outputs + 1);
+			esgs_ring_size = MAX2(esgs_ring_size,
+					      shader->ngg.max_out_verts * esgs_vertex_bytes);
+		}
+
+		/* GS stores Primitive IDs into LDS at the address corresponding
+		 * to the provoking vertex. All vertex threads load and export
+		 * PrimitiveID for their thread.
+		 */
+		if (sel->type == PIPE_SHADER_VERTEX &&
+		    shader->key.mono.u.vs_export_prim_id)
+			esgs_ring_size = MAX2(esgs_ring_size, shader->ngg.max_out_verts * 4);
 	}
 
 	if (esgs_ring_size) {

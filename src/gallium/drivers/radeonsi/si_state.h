@@ -74,6 +74,7 @@ struct si_state_rasterizer {
 	unsigned		clip_plane_enable:8;
 	unsigned		half_pixel_center:1;
 	unsigned		flatshade:1;
+	unsigned		flatshade_first:1;
 	unsigned		two_side:1;
 	unsigned		multisample_enable:1;
 	unsigned		force_persample_interp:1;

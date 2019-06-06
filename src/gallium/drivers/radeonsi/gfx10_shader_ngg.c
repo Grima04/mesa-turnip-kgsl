@@ -616,6 +616,30 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		emitted_prims = nggso.emit[0];
 	}
 
+	/* Copy Primitive IDs from GS threads to the LDS address corresponding
+	 * to the ES thread of the provoking vertex.
+	 */
+	if (ctx->type == PIPE_SHADER_VERTEX &&
+	    ctx->shader->key.mono.u.vs_export_prim_id) {
+		/* Streamout uses LDS. We need to wait for it before we can reuse it. */
+		if (sel->so.num_outputs)
+			ac_build_s_barrier(&ctx->ac);
+
+		ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
+		/* Extract the PROVOKING_VTX_INDEX field. */
+		LLVMValueRef provoking_vtx_in_prim =
+			si_unpack_param(ctx, ctx->param_vs_state_bits, 4, 2);
+
+		/* provoking_vtx_index = vtxindex[provoking_vtx_in_prim]; */
+		LLVMValueRef indices = ac_build_gather_values(&ctx->ac, vtxindex, 3);
+		LLVMValueRef provoking_vtx_index =
+			LLVMBuildExtractElement(builder, indices, provoking_vtx_in_prim, "");
+
+		LLVMBuildStore(builder, ctx->abi.gs_prim_id,
+			       ac_build_gep0(&ctx->ac, ctx->esgs_ring, provoking_vtx_index));
+		ac_build_endif(&ctx->ac, 5400);
+	}
+
 	/* TODO: primitive culling */
 
 	build_sendmsg_gs_alloc_req(ctx, ngg_get_vtx_cnt(ctx), ngg_get_prim_cnt(ctx));
@@ -700,12 +724,23 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 			}
 		}
 
-		/* TODO: Vertex shaders have to get PrimitiveID from GS VGPRs. */
-		if (ctx->type == PIPE_SHADER_TESS_EVAL &&
-		    ctx->shader->key.mono.u.vs_export_prim_id) {
+		if (ctx->shader->key.mono.u.vs_export_prim_id) {
 			outputs[i].semantic_name = TGSI_SEMANTIC_PRIMID;
 			outputs[i].semantic_index = 0;
-			outputs[i].values[0] = ac_to_float(&ctx->ac, si_get_primitive_id(ctx, 0));
+
+			if (ctx->type == PIPE_SHADER_VERTEX) {
+				/* Wait for GS stores to finish. */
+				ac_build_s_barrier(&ctx->ac);
+
+				tmp = ac_build_gep0(&ctx->ac, ctx->esgs_ring,
+						    get_thread_id_in_tg(ctx));
+				outputs[i].values[0] = LLVMBuildLoad(builder, tmp, "");
+			} else {
+				assert(ctx->type == PIPE_SHADER_TESS_EVAL);
+				outputs[i].values[0] = si_get_primitive_id(ctx, 0);
+			}
+
+			outputs[i].values[0] = ac_to_float(&ctx->ac, outputs[i].values[0]);
 			for (unsigned j = 1; j < 4; j++)
 				outputs[i].values[j] = LLVMGetUndef(ctx->f32);
 

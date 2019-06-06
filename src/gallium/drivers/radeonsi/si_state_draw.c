@@ -586,7 +586,9 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
 	if (likely(rast_prim == sctx->last_rast_prim &&
-		   rs->pa_sc_line_stipple == sctx->last_sc_line_stipple))
+		   rs->pa_sc_line_stipple == sctx->last_sc_line_stipple &&
+		   (sctx->chip_class <= GFX9 ||
+		    rs->flatshade_first == sctx->last_flatshade_first)))
 		return;
 
 	if (util_prim_is_lines(rast_prim)) {
@@ -599,9 +601,10 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 		sctx->context_roll = true;
 	}
 
+	unsigned gs_out = si_conv_prim_to_gs_out(sctx->current_rast_prim);
+
 	if (rast_prim != sctx->last_rast_prim &&
 	    (sctx->ngg || sctx->gs_shader.cso)) {
-		unsigned gs_out = si_conv_prim_to_gs_out(sctx->current_rast_prim);
 		radeon_set_context_reg(cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
 		sctx->context_roll = true;
 
@@ -611,8 +614,15 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 		}
 	}
 
+	if (sctx->chip_class >= GFX10) {
+		unsigned vtx_index = rs->flatshade_first ? 0 : gs_out;
+		sctx->current_vs_state &= C_VS_STATE_PROVOKING_VTX_INDEX;
+		sctx->current_vs_state |= S_VS_STATE_PROVOKING_VTX_INDEX(vtx_index);
+	}
+
 	sctx->last_rast_prim = rast_prim;
 	sctx->last_sc_line_stipple = rs->pa_sc_line_stipple;
+	sctx->last_flatshade_first = rs->flatshade_first;
 }
 
 static void si_emit_vs_state(struct si_context *sctx,

@@ -441,6 +441,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 	ctx->last_prim = -1;
 	ctx->last_multi_vgt_param = -1;
 	ctx->last_rast_prim = -1;
+	ctx->last_flatshade_first = -1;
 	ctx->last_sc_line_stipple = ~0;
 	ctx->last_vs_state = ~0;
 	ctx->last_ls = NULL;

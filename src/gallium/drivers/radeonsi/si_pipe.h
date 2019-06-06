@@ -1059,6 +1059,7 @@ struct si_context {
 	int			last_prim;
 	int			last_multi_vgt_param;
 	int			last_rast_prim;
+	int			last_flatshade_first;
 	unsigned		last_sc_line_stipple;
 	unsigned		current_vs_state;
 	unsigned		last_vs_state;

@@ -892,6 +892,7 @@ static void *si_create_rs_state(struct pipe_context *ctx,
 	rs->clamp_fragment_color = state->clamp_fragment_color;
 	rs->clamp_vertex_color = state->clamp_vertex_color;
 	rs->flatshade = state->flatshade;
+	rs->flatshade_first = state->flatshade_first;
 	rs->sprite_coord_enable = state->sprite_coord_enable;
 	rs->rasterizer_discard = state->rasterizer_discard;
 	rs->pa_sc_line_stipple = state->line_stipple_enable ?
