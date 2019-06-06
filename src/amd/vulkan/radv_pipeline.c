@@ -541,10 +541,13 @@ radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
 		}
 	}
 
-	blend->cb_shader_mask = ac_get_cb_shader_mask(col_format);
-
+	/* The output for dual source blending should have the same format as
+	 * the first output.
+	 */
 	if (blend->mrt0_is_dual_src)
 		col_format |= (col_format & 0xf) << 4;
+
+	blend->cb_shader_mask = ac_get_cb_shader_mask(col_format);
 	blend->spi_shader_col_format = col_format;
 }
 
