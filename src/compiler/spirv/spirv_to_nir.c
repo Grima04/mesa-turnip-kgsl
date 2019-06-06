@@ -1793,48 +1793,30 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
          vtn_assert(bit_size == bit_size0 && bit_size == bit_size1);
          (void)bit_size0; (void)bit_size1;
 
-         if (bit_size == 64) {
-            uint64_t u64[8];
-            if (v0->value_type == vtn_value_type_constant) {
-               for (unsigned i = 0; i < len0; i++)
-                  u64[i] = v0->constant->values[0][i].u64;
-            }
-            if (v1->value_type == vtn_value_type_constant) {
-               for (unsigned i = 0; i < len1; i++)
-                  u64[len0 + i] = v1->constant->values[0][i].u64;
-            }
+         nir_const_value undef = { .u64 = 0xdeadbeefdeadbeef };
+         nir_const_value combined[NIR_MAX_VEC_COMPONENTS * 2];
 
-            for (unsigned i = 0, j = 0; i < count - 6; i++, j++) {
-               uint32_t comp = w[i + 6];
+         if (v0->value_type == vtn_value_type_constant) {
+            for (unsigned i = 0; i < len0; i++)
+               combined[i] = v0->constant->values[0][i];
+         }
+         if (v1->value_type == vtn_value_type_constant) {
+            for (unsigned i = 0; i < len1; i++)
+               combined[len0 + i] = v1->constant->values[0][i];
+         }
+
+         for (unsigned i = 0, j = 0; i < count - 6; i++, j++) {
+            uint32_t comp = w[i + 6];
+            if (comp == (uint32_t)-1) {
                /* If component is not used, set the value to a known constant
                 * to detect if it is wrongly used.
                 */
-               if (comp == (uint32_t)-1)
-                  val->constant->values[0][j].u64 = 0xdeadbeefdeadbeef;
-               else
-                  val->constant->values[0][j].u64 = u64[comp];
-            }
-         } else {
-            /* This is for both 32-bit and 16-bit values */
-            uint32_t u32[8];
-            if (v0->value_type == vtn_value_type_constant) {
-               for (unsigned i = 0; i < len0; i++)
-                  u32[i] = v0->constant->values[0][i].u32;
-            }
-            if (v1->value_type == vtn_value_type_constant) {
-               for (unsigned i = 0; i < len1; i++)
-                  u32[len0 + i] = v1->constant->values[0][i].u32;
-            }
-
-            for (unsigned i = 0, j = 0; i < count - 6; i++, j++) {
-               uint32_t comp = w[i + 6];
-               /* If component is not used, set the value to a known constant
-                * to detect if it is wrongly used.
-                */
-               if (comp == (uint32_t)-1)
-                  val->constant->values[0][j].u32 = 0xdeadbeef;
-               else
-                  val->constant->values[0][j].u32 = u32[comp];
+               val->constant->values[0][j] = undef;
+            } else {
+               vtn_fail_if(comp >= len0 + len1,
+                           "All Component literals must either be FFFFFFFF "
+                           "or in [0, N - 1] (inclusive).");
+               val->constant->values[0][j] = combined[comp];
             }
          }
          break;
