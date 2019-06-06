@@ -47,6 +47,9 @@ struct virgl_hw_res {
    uint32_t bind;
    int64_t start, end;
    uint32_t flink_name;
+
+   /* true when the resource is imported or exported */
+   int external;
 };
 
 struct virgl_drm_winsys

@@ -160,7 +160,8 @@ static void virgl_drm_resource_reference(struct virgl_drm_winsys *qdws,
    struct virgl_hw_res *old = *dres;
    if (pipe_reference(&(*dres)->reference, &sres->reference)) {
 
-      if (!can_cache_resource_with_bind(old->bind)) {
+      if (!can_cache_resource_with_bind(old->bind) ||
+          p_atomic_read(&old->external)) {
          virgl_hw_res_destroy(qdws, old);
       } else {
          mtx_lock(&qdws->mutex);
@@ -226,6 +227,7 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    res->size = size;
    res->stride = stride;
    pipe_reference_init(&res->reference, 1);
+   p_atomic_set(&res->external, false);
    p_atomic_set(&res->num_cs_references, 0);
    return res;
 }
@@ -456,6 +458,7 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    res->size = info_arg.size;
    res->stride = info_arg.stride;
    pipe_reference_init(&res->reference, 1);
+   p_atomic_set(&res->external, true);
    res->num_cs_references = 0;
 
    if (res->flink_name)
@@ -502,6 +505,9 @@ static boolean virgl_drm_winsys_resource_get_handle(struct virgl_winsys *qws,
       util_hash_table_set(qdws->bo_handles, (void *)(uintptr_t)res->bo_handle, res);
       mtx_unlock(&qdws->bo_handles_mutex);
    }
+
+   p_atomic_set(&res->external, true);
+
    whandle->stride = stride;
    return TRUE;
 }
