@@ -246,7 +246,7 @@ glsl_type::contains_integer() const
       }
       return false;
    } else {
-      return this->is_integer();
+      return glsl_base_type_is_integer(this->base_type);
    }
 }
 
