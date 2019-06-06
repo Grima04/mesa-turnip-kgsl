@@ -40,6 +40,31 @@
 
 static bool is_instruction_int = false;
 
+/* Prints a short form of the tag for branching, the minimum needed to be
+ * legible and unambiguous */
+
+static void
+print_tag_short(unsigned tag)
+{
+        switch (midgard_word_types[tag]) {
+                case midgard_word_type_texture:
+                        printf("tex/%X", tag);
+                        break;
+
+                case midgard_word_type_load_store:
+                        printf("ldst");
+                        break;
+
+                case midgard_word_type_alu:
+                        printf("alu%d/%X", midgard_word_size[tag], tag);
+                        break;
+
+                default:
+                        printf("%s%X", (tag > 0) ? "" : "unk", tag);
+                        break;
+        }
+}
+
 static void
 print_alu_opcode(midgard_alu_op op)
 {
@@ -579,9 +604,10 @@ print_compact_branch_writeout_field(uint16_t word)
                 if (br_uncond.offset >= 0)
                         printf("+");
 
-                printf("%d", br_uncond.offset);
+                printf("%d -> ", br_uncond.offset);
+                print_tag_short(br_uncond.dest_tag);
+                printf("\n");
 
-                printf(" -> %X\n", br_uncond.dest_tag);
                 break;
         }
 
@@ -602,9 +628,10 @@ print_compact_branch_writeout_field(uint16_t word)
                 if (br_cond.offset >= 0)
                         printf("+");
 
-                printf("%d", br_cond.offset);
+                printf("%d -> ", br_cond.offset);
+                print_tag_short(br_cond.dest_tag);
+                printf("\n");
 
-                printf(" -> %X\n", br_cond.dest_tag);
                 break;
         }
         }
@@ -638,9 +665,9 @@ print_extended_branch_writeout_field(uint8_t *words)
         if (br.offset >= 0)
                 printf("+");
 
-        printf("%d", br.offset);
-
-        printf(" -> %X\n", br.dest_tag);
+        printf("%d -> ", br.offset);
+        print_tag_short(br.dest_tag);
+        printf("\n");
 }
 
 static unsigned
