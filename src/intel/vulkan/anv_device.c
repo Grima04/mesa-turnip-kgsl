@@ -1142,6 +1142,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+         VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *features =
+            (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *)ext;
+         features->texelBufferAlignment = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *)ext;
          features->variablePointersStorageBuffer = true;
@@ -1564,6 +1571,36 @@ void anv_GetPhysicalDeviceProperties2(
                                            VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
                                            VK_SUBGROUP_FEATURE_QUAD_BIT;
          properties->quadOperationsInAllStages = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+         VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *props =
+            (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *)ext;
+
+         /* From the SKL PRM Vol. 2d, docs for RENDER_SURFACE_STATE::Surface
+          * Base Address:
+          *
+          *    "For SURFTYPE_BUFFER non-rendertarget surfaces, this field
+          *    specifies the base address of the first element of the surface,
+          *    computed in software by adding the surface base address to the
+          *    byte offset of the element in the buffer. The base address must
+          *    be aligned to element size."
+          *
+          * The typed dataport messages require that things be texel aligned.
+          * Otherwise, we may just load/store the wrong data or, in the worst
+          * case, there may be hangs.
+          */
+         props->storageTexelBufferOffsetAlignmentBytes = 16;
+         props->storageTexelBufferOffsetSingleTexelAlignment = true;
+
+         /* The sampler, however, is much more forgiving and it can handle
+          * arbitrary byte alignment for linear and buffer surfaces.  It's
+          * hard to find a good PRM citation for this but years of empirical
+          * experience demonstrate that this is true.
+          */
+         props->uniformTexelBufferOffsetAlignmentBytes = 1;
+         props->uniformTexelBufferOffsetSingleTexelAlignment = false;
          break;
       }
 

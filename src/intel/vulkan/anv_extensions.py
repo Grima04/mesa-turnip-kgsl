@@ -145,6 +145,7 @@ EXTENSIONS = [
     Extension('VK_EXT_separate_stencil_usage',            1, True),
     Extension('VK_EXT_shader_stencil_export',             1, 'device->info.gen >= 9'),
     Extension('VK_EXT_shader_viewport_index_layer',       1, True),
+    Extension('VK_EXT_texel_buffer_alignment',            1, True),
     Extension('VK_EXT_transform_feedback',                1, True),
     Extension('VK_EXT_vertex_attribute_divisor',          3, True),
     Extension('VK_EXT_ycbcr_image_arrays',                1, True),
