@@ -1182,6 +1182,21 @@ get_buffer_size(struct ac_nir_context *ctx, LLVMValueRef descriptor, bool in_ele
 	return size;
 }
 
+/* Gather4 should follow the same rules as bilinear filtering, but the hardware
+ * incorrectly forces nearest filtering if the texture format is integer.
+ * The only effect it has on Gather4, which always returns 4 texels for
+ * bilinear filtering, is that the final coordinates are off by 0.5 of
+ * the texel size.
+ *
+ * The workaround is to subtract 0.5 from the unnormalized coordinates,
+ * or (0.5 / size) from the normalized coordinates.
+ *
+ * However, cube textures with 8_8_8_8 data formats require a different
+ * workaround of overriding the num format to USCALED/SSCALED. This would lose
+ * precision in 32-bit data formats, so it needs to be applied dynamically at
+ * runtime. In this case, return an i1 value that indicates whether the
+ * descriptor was overridden (and hence a fixup of the sampler result is needed).
+ */
 static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx,
 					  nir_variable *var,
 					  struct ac_image_args *args,
@@ -1189,87 +1204,92 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx,
 {
 	const struct glsl_type *type = glsl_without_array(var->type);
 	enum glsl_base_type stype = glsl_get_sampler_result_type(type);
+	LLVMValueRef wa_8888 = NULL;
 	LLVMValueRef half_texel[2];
-	LLVMValueRef compare_cube_wa = NULL;
 	LLVMValueRef result;
 
-	//TODO Rect
-	{
-		struct ac_image_args txq_args = { 0 };
+	assert(stype == GLSL_TYPE_INT || stype == GLSL_TYPE_UINT);
 
-		txq_args.dim = get_ac_sampler_dim(ctx, instr->sampler_dim, instr->is_array);
-		txq_args.opcode = ac_image_get_resinfo;
-		txq_args.dmask = 0xf;
-		txq_args.lod = ctx->i32_0;
-		txq_args.resource = args->resource;
-		txq_args.attributes = AC_FUNC_ATTR_READNONE;
-		LLVMValueRef size = ac_build_image_opcode(ctx, &txq_args);
+	if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+		LLVMValueRef formats;
+		LLVMValueRef data_format;
+		LLVMValueRef wa_formats;
 
+		formats = LLVMBuildExtractElement(ctx->builder, args->resource, ctx->i32_1, "");
+
+		data_format = LLVMBuildLShr(ctx->builder, formats,
+					    LLVMConstInt(ctx->i32, 20, false), "");
+		data_format = LLVMBuildAnd(ctx->builder, data_format,
+					   LLVMConstInt(ctx->i32, (1u << 6) - 1, false), "");
+		wa_8888 = LLVMBuildICmp(
+			ctx->builder, LLVMIntEQ, data_format,
+			LLVMConstInt(ctx->i32, V_008F14_IMG_DATA_FORMAT_8_8_8_8, false),
+			"");
+
+		uint32_t wa_num_format =
+			stype == GLSL_TYPE_UINT ?
+			S_008F14_NUM_FORMAT(V_008F14_IMG_NUM_FORMAT_USCALED) :
+			S_008F14_NUM_FORMAT(V_008F14_IMG_NUM_FORMAT_SSCALED);
+		wa_formats = LLVMBuildAnd(ctx->builder, formats,
+					  LLVMConstInt(ctx->i32, C_008F14_NUM_FORMAT, false),
+					  "");
+		wa_formats = LLVMBuildOr(ctx->builder, wa_formats,
+					LLVMConstInt(ctx->i32, wa_num_format, false), "");
+
+		formats = LLVMBuildSelect(ctx->builder, wa_8888, wa_formats, formats, "");
+		args->resource = LLVMBuildInsertElement(
+			ctx->builder, args->resource, formats, ctx->i32_1, "");
+	}
+
+	if (instr->sampler_dim == GLSL_SAMPLER_DIM_RECT) {
+		assert(!wa_8888);
+		half_texel[0] = half_texel[1] = LLVMConstReal(ctx->f32, -0.5);
+	} else {
+		struct ac_image_args resinfo = {};
+		LLVMBasicBlockRef bbs[2];
+
+		bbs[0] = LLVMGetInsertBlock(ctx->builder);
+		if (wa_8888) {
+			/* Skip the texture size query entirely if we don't need it. */
+			ac_build_ifcc(ctx, LLVMBuildNot(ctx->builder, wa_8888, ""), 2000);
+			bbs[1] = LLVMGetInsertBlock(ctx->builder);
+		}
+
+		/* Query the texture size. */
+		resinfo.dim = get_ac_sampler_dim(ctx, instr->sampler_dim, instr->is_array);
+		resinfo.opcode = ac_image_get_resinfo;
+		resinfo.dmask = 0xf;
+		resinfo.lod = ctx->i32_0;
+		resinfo.resource = args->resource;
+		resinfo.attributes = AC_FUNC_ATTR_READNONE;
+		LLVMValueRef size = ac_build_image_opcode(ctx, &resinfo);
+
+		/* Compute -0.5 / size. */
 		for (unsigned c = 0; c < 2; c++) {
-			half_texel[c] = LLVMBuildExtractElement(ctx->builder, size,
-								LLVMConstInt(ctx->i32, c, false), "");
+			half_texel[c] =
+				LLVMBuildExtractElement(ctx->builder, size,
+							LLVMConstInt(ctx->i32, c, 0), "");
 			half_texel[c] = LLVMBuildUIToFP(ctx->builder, half_texel[c], ctx->f32, "");
 			half_texel[c] = ac_build_fdiv(ctx, ctx->f32_1, half_texel[c]);
 			half_texel[c] = LLVMBuildFMul(ctx->builder, half_texel[c],
 						      LLVMConstReal(ctx->f32, -0.5), "");
 		}
-	}
 
-	LLVMValueRef orig_coords[2] = { args->coords[0], args->coords[1] };
+		if (wa_8888) {
+			ac_build_endif(ctx, 2000);
+
+			for (unsigned c = 0; c < 2; c++) {
+				LLVMValueRef values[2] = { ctx->f32_0, half_texel[c] };
+				half_texel[c] = ac_build_phi(ctx, ctx->f32, 2,
+							     values, bbs);
+			}
+		}
+	}
 
 	for (unsigned c = 0; c < 2; c++) {
 		LLVMValueRef tmp;
 		tmp = LLVMBuildBitCast(ctx->builder, args->coords[c], ctx->f32, "");
 		args->coords[c] = LLVMBuildFAdd(ctx->builder, tmp, half_texel[c], "");
-	}
-
-	/*
-	 * Apparantly cube has issue with integer types that the workaround doesn't solve,
-	 * so this tests if the format is 8_8_8_8 and an integer type do an alternate
-	 * workaround by sampling using a scaled type and converting.
-	 * This is taken from amdgpu-pro shaders.
-	 */
-	/* NOTE this produces some ugly code compared to amdgpu-pro,
-	 * LLVM ends up dumping SGPRs into VGPRs to deal with the compare/select,
-	 * and then reads them back. -pro generates two selects,
-	 * one s_cmp for the descriptor rewriting
-	 * one v_cmp for the coordinate and result changes.
-	 */
-	if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
-		LLVMValueRef tmp, tmp2;
-
-		/* workaround 8/8/8/8 uint/sint cube gather bug */
-		/* first detect it then change to a scaled read and f2i */
-		tmp = LLVMBuildExtractElement(ctx->builder, args->resource, ctx->i32_1, "");
-		tmp2 = tmp;
-
-		/* extract the DATA_FORMAT */
-		tmp = ac_build_bfe(ctx, tmp, LLVMConstInt(ctx->i32, 20, false),
-				   LLVMConstInt(ctx->i32, 6, false), false);
-
-		/* is the DATA_FORMAT == 8_8_8_8 */
-		compare_cube_wa = LLVMBuildICmp(ctx->builder, LLVMIntEQ, tmp, LLVMConstInt(ctx->i32, V_008F14_IMG_DATA_FORMAT_8_8_8_8, false), "");
-
-		if (stype == GLSL_TYPE_UINT)
-			/* Create a NUM FORMAT - 0x2 or 0x4 - USCALED or UINT */
-			tmp = LLVMBuildSelect(ctx->builder, compare_cube_wa, LLVMConstInt(ctx->i32, 0x8000000, false),
-					      LLVMConstInt(ctx->i32, 0x10000000, false), "");
-		else
-			/* Create a NUM FORMAT - 0x3 or 0x5 - SSCALED or SINT */
-			tmp = LLVMBuildSelect(ctx->builder, compare_cube_wa, LLVMConstInt(ctx->i32, 0xc000000, false),
-					      LLVMConstInt(ctx->i32, 0x14000000, false), "");
-
-		/* replace the NUM FORMAT in the descriptor */
-		tmp2 = LLVMBuildAnd(ctx->builder, tmp2, LLVMConstInt(ctx->i32, C_008F14_NUM_FORMAT, false), "");
-		tmp2 = LLVMBuildOr(ctx->builder, tmp2, tmp, "");
-
-		args->resource = LLVMBuildInsertElement(ctx->builder, args->resource, tmp2, ctx->i32_1, "");
-
-		/* don't modify the coordinates for this case */
-		for (unsigned c = 0; c < 2; ++c)
-			args->coords[c] = LLVMBuildSelect(
-				ctx->builder, compare_cube_wa,
-				orig_coords[c], args->coords[c], "");
 	}
 
 	args->attributes = AC_FUNC_ATTR_READNONE;
@@ -1287,7 +1307,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx,
 				tmp2 = LLVMBuildFPToSI(ctx->builder, tmp, ctx->i32, "");
 			tmp = LLVMBuildBitCast(ctx->builder, tmp, ctx->i32, "");
 			tmp2 = LLVMBuildBitCast(ctx->builder, tmp2, ctx->i32, "");
-			tmp = LLVMBuildSelect(ctx->builder, compare_cube_wa, tmp2, tmp, "");
+			tmp = LLVMBuildSelect(ctx->builder, wa_8888, tmp2, tmp, "");
 			tmp = LLVMBuildBitCast(ctx->builder, tmp, ctx->f32, "");
 			result = LLVMBuildInsertElement(ctx->builder, result, tmp, LLVMConstInt(ctx->i32, c, false), "");
 		}
