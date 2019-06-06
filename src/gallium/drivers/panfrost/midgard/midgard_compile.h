@@ -109,6 +109,8 @@ static const nir_shader_compiler_options midgard_nir_options = {
         .lower_extract_word = true,
 
         .lower_doubles_options = nir_lower_dmod,
+
+        .vectorize_io = true,
 };
 
 #endif

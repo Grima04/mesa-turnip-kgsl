@@ -1238,6 +1238,12 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         midgard_instruction ins = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(26));
                         emit_mir_instruction(ctx, ins);
 
+                        /* We should have been vectorized. That also lets us
+                         * ignore the mask. because the mask component on
+                         * st_vary is (as far as I can tell) ignored [the blob
+                         * sets it to zero] */
+                        assert(nir_intrinsic_component(instr) == 0);
+
                         midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(0), offset);
                         st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
                         emit_mir_instruction(ctx, st);
@@ -2314,16 +2320,22 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         struct exec_list *varyings =
                 ctx->stage == MESA_SHADER_VERTEX ? &nir->outputs : &nir->inputs;
 
+        unsigned max_varying = 0;
         nir_foreach_variable(var, varyings) {
                 unsigned loc = var->data.driver_location;
                 unsigned sz = glsl_type_size(var->type, FALSE);
 
-                for (int c = 0; c < sz; ++c) {
-                        program->varyings[loc + c] = var->data.location;
+                for (int c = loc; c < (loc + sz); ++c) {
+                        program->varyings[c] = var->data.location;
+                        max_varying = MAX2(max_varying, c);
                 }
         }
 
-        /* Lower gl_Position pre-optimisation */
+        /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
+         * (so we don't accidentally duplicate the epilogue since mesa/st has
+         * messed with our I/O quite a bit already) */
+
+        NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
         if (ctx->stage == MESA_SHADER_VERTEX)
                 NIR_PASS_V(nir, nir_lower_viewport_transform);
@@ -2356,7 +2368,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         memcpy(program->sysvals, ctx->sysvals, sizeof(ctx->sysvals[0]) * ctx->sysval_count);
 
         program->attribute_count = (ctx->stage == MESA_SHADER_VERTEX) ? nir->num_inputs : 0;
-        program->varying_count = (ctx->stage == MESA_SHADER_VERTEX) ? nir->num_outputs : ((ctx->stage == MESA_SHADER_FRAGMENT) ? nir->num_inputs : 0);
+        program->varying_count = max_varying + 1; /* Fencepost off-by-one */
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)
