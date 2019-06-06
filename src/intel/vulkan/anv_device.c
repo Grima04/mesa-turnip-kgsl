@@ -1299,7 +1299,10 @@ void anv_GetPhysicalDeviceProperties(
       .viewportBoundsRange                      = { INT16_MIN, INT16_MAX },
       .viewportSubPixelBits                     = 13, /* We take a float? */
       .minMemoryMapAlignment                    = 4096, /* A page */
-      .minTexelBufferOffsetAlignment            = 1,
+      /* The dataport requires texel alignment so we need to assume a worst
+       * case of R32G32B32A32 which is 16 bytes.
+       */
+      .minTexelBufferOffsetAlignment            = 16,
       /* We need 16 for UBO block reads to work and 32 for push UBOs */
       .minUniformBufferOffsetAlignment          = 32,
       .minStorageBufferOffsetAlignment          = 4,
