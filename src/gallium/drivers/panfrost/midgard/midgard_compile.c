@@ -1713,6 +1713,30 @@ midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
+/* Dead code elimination for branches at the end of a block - only one branch
+ * per block is legal semantically */
+
+static void
+midgard_opt_cull_dead_branch(compiler_context *ctx, midgard_block *block)
+{
+        bool branched = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (!midgard_is_branch_unit(ins->unit)) continue;
+
+                /* We ignore prepacked branches since the fragment epilogue is
+                 * just generally special */
+                if (ins->prepacked_branch) continue;
+
+                if (branched) {
+                        /* We already branched, so this is dead */
+                        mir_remove_instruction(ins);
+                }
+
+                branched = true;
+        }
+}
+
 static bool
 mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
 {
@@ -2400,6 +2424,13 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
                 }
         } while (progress);
+
+        /* Nested control-flow can result in dead branches at the end of the
+         * block. This messes with our analysis and is just dead code, so cull
+         * them */
+        mir_foreach_block(ctx, block) {
+                midgard_opt_cull_dead_branch(ctx, block);
+        }
 
         /* Schedule! */
         schedule_program(ctx);
