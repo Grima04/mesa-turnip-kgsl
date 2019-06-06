@@ -5104,16 +5104,11 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 		radv_initialize_htile(cmd_buffer, image, range, clear_value);
 	} else if (radv_layout_is_htile_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
 	           !radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
-		VkImageSubresourceRange local_range = *range;
-		local_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		local_range.baseMipLevel = 0;
-		local_range.levelCount = 1;
-
 		cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
 		                                RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 
-		radv_decompress_depth_image_inplace(cmd_buffer, image,
-						    &local_range, sample_locs);
+		radv_decompress_depth_image_inplace(cmd_buffer, image, range,
+						    sample_locs);
 
 		cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
 		                                RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;

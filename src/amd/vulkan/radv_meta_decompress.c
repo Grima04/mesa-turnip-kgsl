@@ -430,7 +430,7 @@ radv_process_depth_image_layer(struct radv_cmd_buffer *cmd_buffer,
 
 static void radv_process_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 					     struct radv_image *image,
-					     VkImageSubresourceRange *subresourceRange,
+					     const VkImageSubresourceRange *subresourceRange,
 					     struct radv_sample_locations_state *sample_locs,
 					     enum radv_depth_op op)
 {
@@ -501,7 +501,7 @@ static void radv_process_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 
 void radv_decompress_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 					 struct radv_image *image,
-					 VkImageSubresourceRange *subresourceRange,
+					 const VkImageSubresourceRange *subresourceRange,
 					 struct radv_sample_locations_state *sample_locs)
 {
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
@@ -511,7 +511,7 @@ void radv_decompress_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 
 void radv_resummarize_depth_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 					 struct radv_image *image,
-					 VkImageSubresourceRange *subresourceRange,
+					 const VkImageSubresourceRange *subresourceRange,
 					 struct radv_sample_locations_state *sample_locs)
 {
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
