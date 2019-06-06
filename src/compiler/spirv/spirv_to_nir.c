@@ -1940,8 +1940,13 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
             if (!nir_alu_type_get_type_size(nir_op_infos[op].input_types[i]))
                bit_size = glsl_get_bit_size(src_val->type->type);
 
+            unsigned src_comps = nir_op_infos[op].input_sizes[i] ?
+                                 nir_op_infos[op].input_sizes[i] :
+                                 num_components;
+
             unsigned j = swap ? 1 - i : i;
-            memcpy(src[j], src_val->constant->values[0], sizeof(src[j]));
+            for (unsigned c = 0; c < src_comps; c++)
+               src[j][c] = src_val->constant->values[0][c];
          }
 
          /* fix up fixed size sources */
