@@ -586,6 +586,14 @@ public:
    }
 
    /**
+    * Query whether or not a type is an integer.
+    */
+   bool is_integer() const
+   {
+      return glsl_base_type_is_integer(base_type);
+   }
+
+   /**
     * Query whether or not a type is an 32-bit integer.
     */
    bool is_integer_32() const

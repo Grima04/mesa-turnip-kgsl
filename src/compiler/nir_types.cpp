@@ -355,7 +355,7 @@ glsl_type_is_boolean(const struct glsl_type *type)
 bool
 glsl_type_is_integer(const struct glsl_type *type)
 {
-   return glsl_base_type_is_integer(type->base_type);
+   return type->is_integer();
 }
 
 bool
