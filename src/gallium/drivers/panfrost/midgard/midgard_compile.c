@@ -1125,6 +1125,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         offset += nir_src_as_uint(instr->src[0]);
                 }
 
+                /* We may need to apply a fractional offset */
+                int component = instr->intrinsic == nir_intrinsic_load_input ?
+                        nir_intrinsic_component(instr) : 0;
                 reg = nir_dest_index(ctx, &instr->dest);
 
                 if (instr->intrinsic == nir_intrinsic_load_uniform && !ctx->is_blend) {
@@ -1135,6 +1138,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         midgard_instruction ins = m_ld_vary_32(reg, offset);
                         ins.load_store.mask = (1 << nr_comp) - 1;
+                        ins.load_store.swizzle = SWIZZLE_XYZW >> (2 * component);
 
                         midgard_varying_parameter p = {
                                 .is_varying = 1,
