@@ -1248,10 +1248,32 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx,
 		struct ac_image_args resinfo = {};
 		LLVMBasicBlockRef bbs[2];
 
+		LLVMValueRef unnorm = NULL;
+		LLVMValueRef default_offset = ctx->f32_0;
+		if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D &&
+		    !instr->is_array) {
+			/* In vulkan, whether the sampler uses unnormalized
+			 * coordinates or not is a dynamic property of the
+			 * sampler. Hence, to figure out whether or not we
+			 * need to divide by the texture size, we need to test
+			 * the sampler at runtime. This tests the bit set by
+			 * radv_init_sampler().
+			 */
+			LLVMValueRef sampler0 =
+				LLVMBuildExtractElement(ctx->builder, args->sampler, ctx->i32_0, "");
+			sampler0 = LLVMBuildLShr(ctx->builder, sampler0,
+						 LLVMConstInt(ctx->i32, 15, false), "");
+			sampler0 = LLVMBuildAnd(ctx->builder, sampler0, ctx->i32_1, "");
+			unnorm = LLVMBuildICmp(ctx->builder, LLVMIntEQ, sampler0, ctx->i32_1, "");
+			default_offset = LLVMConstReal(ctx->f32, -0.5);
+		}
+
 		bbs[0] = LLVMGetInsertBlock(ctx->builder);
-		if (wa_8888) {
+		if (wa_8888 || unnorm) {
+			assert(!(wa_8888 && unnorm));
+			LLVMValueRef not_needed = wa_8888 ? wa_8888 : unnorm;
 			/* Skip the texture size query entirely if we don't need it. */
-			ac_build_ifcc(ctx, LLVMBuildNot(ctx->builder, wa_8888, ""), 2000);
+			ac_build_ifcc(ctx, LLVMBuildNot(ctx->builder, not_needed, ""), 2000);
 			bbs[1] = LLVMGetInsertBlock(ctx->builder);
 		}
 
@@ -1275,11 +1297,11 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx,
 						      LLVMConstReal(ctx->f32, -0.5), "");
 		}
 
-		if (wa_8888) {
+		if (wa_8888 || unnorm) {
 			ac_build_endif(ctx, 2000);
 
 			for (unsigned c = 0; c < 2; c++) {
-				LLVMValueRef values[2] = { ctx->f32_0, half_texel[c] };
+				LLVMValueRef values[2] = { default_offset, half_texel[c] };
 				half_texel[c] = ac_build_phi(ctx, ctx->f32, 2,
 							     values, bbs);
 			}
