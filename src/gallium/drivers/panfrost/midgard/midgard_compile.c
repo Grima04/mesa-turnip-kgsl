@@ -1688,6 +1688,10 @@ embedded_to_inline_constant(compiler_context *ctx)
 static void
 map_ssa_to_alias(compiler_context *ctx, int *ref)
 {
+        /* Sign is used quite deliberately for unused */
+        if (*ref < 0)
+                return;
+
         unsigned int alias = (uintptr_t) _mesa_hash_table_u64_search(ctx->ssa_to_alias, *ref + 1);
 
         if (alias) {
