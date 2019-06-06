@@ -65,21 +65,6 @@ dri2_buffer(__DRIbuffer * driBufferPriv)
    return (struct dri2_buffer *) driBufferPriv;
 }
 
-struct dri2_format_mapping {
-   int dri_fourcc;
-   int dri_format; /* image format */
-   int dri_components;
-   enum pipe_format pipe_format;
-   int nplanes;
-   struct {
-      int buffer_index;
-      int width_shift;
-      int height_shift;
-      uint32_t dri_format; /* plane format */
-      int cpp;
-   } planes[3];
-};
-
 static const struct dri2_format_mapping dri2_format_table[] = {
       { __DRI_IMAGE_FOURCC_ARGB2101010,   __DRI_IMAGE_FORMAT_ARGB2101010,
         __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_B10G10R10A2_UNORM, 1,
@@ -227,7 +212,7 @@ static const struct dri2_format_mapping dri2_format_table[] = {
           { 0, 1, 0, __DRI_IMAGE_FORMAT_ABGR8888, 4 } } }
 };
 
-static const struct dri2_format_mapping *
+const struct dri2_format_mapping *
 dri2_get_mapping_by_fourcc(int fourcc)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(dri2_format_table); i++) {
