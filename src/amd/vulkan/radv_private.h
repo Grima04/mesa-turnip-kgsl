@@ -1331,7 +1331,7 @@ unsigned radv_get_default_max_sample_dist(int log_samples);
 void radv_device_init_msaa(struct radv_device *device);
 
 void radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
-				   struct radv_image *image,
+				   const struct radv_image_view *iview,
 				   VkClearDepthStencilValue ds_clear_value,
 				   VkImageAspectFlags aspects);
 
@@ -1802,6 +1802,15 @@ radv_image_get_dcc_pred_va(const struct radv_image *image,
 {
 	uint64_t va = radv_buffer_get_va(image->bo);
 	va += image->offset + image->dcc_pred_offset + base_level * 8;
+	return va;
+}
+
+static inline uint64_t
+radv_get_tc_compat_zrange_va(const struct radv_image *image,
+			     uint32_t base_level)
+{
+	uint64_t va = radv_buffer_get_va(image->bo);
+	va += image->offset + image->tc_compat_zrange_offset + base_level * 4;
 	return va;
 }
 

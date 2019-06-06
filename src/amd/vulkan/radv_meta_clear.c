@@ -786,7 +786,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 	if (depth_view_can_fast_clear(cmd_buffer, iview, aspects,
 	                              ds_att->layout, ds_att->in_render_loop,
 	                              clear_rect, clear_value))
-		radv_update_ds_clear_metadata(cmd_buffer, iview->image,
+		radv_update_ds_clear_metadata(cmd_buffer, iview,
 					      clear_value, aspects);
 
 	radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1, &(VkViewport) {
@@ -1065,7 +1065,7 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 					      htile_mask);
 	}
 
-	radv_update_ds_clear_metadata(cmd_buffer, iview->image, clear_value, aspects);
+	radv_update_ds_clear_metadata(cmd_buffer, iview, clear_value, aspects);
 	if (post_flush) {
 		*post_flush |= flush_bits;
 	}
