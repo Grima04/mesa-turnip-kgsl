@@ -2403,23 +2403,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          struct vtn_value *link_val = vtn_untyped_value(b, w[i]);
          if (link_val->value_type == vtn_value_type_constant) {
             chain->link[idx].mode = vtn_access_mode_literal;
-            const unsigned bit_size = glsl_get_bit_size(link_val->type->type);
-            switch (bit_size) {
-            case 8:
-               chain->link[idx].id = link_val->constant->values[0][0].i8;
-               break;
-            case 16:
-               chain->link[idx].id = link_val->constant->values[0][0].i16;
-               break;
-            case 32:
-               chain->link[idx].id = link_val->constant->values[0][0].i32;
-               break;
-            case 64:
-               chain->link[idx].id = link_val->constant->values[0][0].i64;
-               break;
-            default:
-               vtn_fail("Invalid bit size: %u", bit_size);
-            }
+            chain->link[idx].id = vtn_constant_int(b, w[i]);
          } else {
             chain->link[idx].mode = vtn_access_mode_id;
             chain->link[idx].id = w[i];

@@ -716,6 +716,24 @@ vtn_constant_uint(struct vtn_builder *b, uint32_t value_id)
    }
 }
 
+static inline int64_t
+vtn_constant_int(struct vtn_builder *b, uint32_t value_id)
+{
+   struct vtn_value *val = vtn_value(b, value_id, vtn_value_type_constant);
+
+   vtn_fail_if(val->type->base_type != vtn_base_type_scalar ||
+               !glsl_type_is_integer(val->type->type),
+               "Expected id %u to be an integer constant", value_id);
+
+   switch (glsl_get_bit_size(val->type->type)) {
+   case 8:  return val->constant->values[0][0].i8;
+   case 16: return val->constant->values[0][0].i16;
+   case 32: return val->constant->values[0][0].i32;
+   case 64: return val->constant->values[0][0].i64;
+   default: unreachable("Invalid bit size");
+   }
+}
+
 struct vtn_ssa_value *vtn_ssa_value(struct vtn_builder *b, uint32_t value_id);
 
 struct vtn_ssa_value *vtn_create_ssa_value(struct vtn_builder *b,
