@@ -2587,7 +2587,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
          * last is an ALU, then it's also 1... */
 
         mir_foreach_block(ctx, block) {
-                util_dynarray_foreach(&block->bundles, midgard_bundle, bundle) {
+                mir_foreach_bundle_in_block(block, bundle) {
                         int lookahead = 1;
 
                         if (current_bundle + 1 < bundle_count) {
