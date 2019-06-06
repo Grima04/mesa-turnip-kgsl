@@ -96,17 +96,17 @@ the Xlib API:
 <li>The GLX wire protocol is not supported and there's no OpenGL extension
     loaded by the X server.
 <li>There is no hardware acceleration.
-<li>The OpenGL library, libGL.so, contains everything (the programming API,
-    the GLX functions and all the rendering code).
+<li>The OpenGL library, <code>libGL.so</code>, contains everything (the
+    programming API, the GLX functions and all the rendering code).
 </ul>
 <p>
 Alternately, Mesa acts as the core for a number of OpenGL hardware drivers
 within the DRI (Direct Rendering Infrastructure):
 <ul>
-<li>The libGL.so library provides the GL and GLX API functions, a GLX
-    protocol encoder, and a device driver loader.
-<li>The device driver modules (such as r200_dri.so) contain a built-in
-    copy of the core Mesa code.
+<li>The <code>libGL.so</code> library provides the GL and GLX API functions,
+    a GLX protocol encoder, and a device driver loader.
+<li>The device driver modules (such as <code>r200_dri.so</code>) contain
+    a built-in copy of the core Mesa code.
 <li>The X server loads the GLX module.
     The GLX module decodes incoming GLX protocol and dispatches the commands
     to a rendering module.
@@ -189,7 +189,8 @@ Mesa's not the solution.
 
 <h3>2.3 Where is the GLUT library?</h3>
 <p>
-GLUT (OpenGL Utility Toolkit) is no longer in the separate MesaGLUT-x.y.z.tar.gz file.
+GLUT (OpenGL Utility Toolkit) is no longer in the separate
+<code>MesaGLUT-x.y.z.tar.gz</code> file.
 If you don't already have GLUT installed, you should grab 
 <a href="http://freeglut.sourceforge.net/">freeglut</a>.
 </p>

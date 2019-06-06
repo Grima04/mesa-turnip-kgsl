@@ -60,8 +60,9 @@ To add a new GL extension to Mesa you have to do at least the following.
    as an example.
 </li>
 <li>
-   If the new extension adds new GL state, the functions in get.c, enable.c
-   and attrib.c will most likely require new code.
+   If the new extension adds new GL state, the functions in
+   <code>get.c</code>, <code>enable.c</code> and <code>attrib.c</code>
+   will most likely require new code.
 </li>
 <li>
    To determine if the new extension is active in the current context,
@@ -69,9 +70,10 @@ To add a new GL extension to Mesa you have to do at least the following.
    defined in <code>src/mesa/main/extensions.h</code>.
 </li>
 <li>
-   The dispatch tests check_table.cpp and <code>dispatch_sanity.cpp</code>
-   should be updated with details about the new extensions functions. These
-   tests are run using <code>meson test</code>.
+   The dispatch tests <code>check_table.cpp</code> and
+   <code>dispatch_sanity.cpp</code> should be updated with details about
+   the new extensions functions. These tests are run using
+   <code>meson test</code>.
 </li>
 </ul>
 
