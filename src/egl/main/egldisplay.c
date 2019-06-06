@@ -232,7 +232,7 @@ _eglSameAttribs(const EGLAttrib *a, const EGLAttrib *b)
       return EGL_TRUE;
 
    /* otherwise, compare the lists */
-   return memcmp(a, b, na) == 0 ? EGL_TRUE : EGL_FALSE;
+   return memcmp(a, b, na * sizeof(a[0])) == 0 ? EGL_TRUE : EGL_FALSE;
 }
 
 /**
