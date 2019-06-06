@@ -1453,6 +1453,15 @@ ntq_setup_vpm_inputs(struct v3d_compile *c)
         }
 }
 
+static bool
+var_needs_point_coord(struct v3d_compile *c, nir_variable *var)
+{
+        return (var->data.location == VARYING_SLOT_PNTC ||
+                (var->data.location >= VARYING_SLOT_VAR0 &&
+                 (c->fs_key->point_sprite_mask &
+                  (1 << (var->data.location - VARYING_SLOT_VAR0)))));
+}
+
 static void
 ntq_setup_fs_inputs(struct v3d_compile *c)
 {
@@ -1486,11 +1495,7 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
 
                 if (var->data.location == VARYING_SLOT_POS) {
                         emit_fragcoord_input(c, loc);
-                } else if (var->data.location == VARYING_SLOT_PNTC ||
-                           (var->data.location >= VARYING_SLOT_VAR0 &&
-                            (c->fs_key->point_sprite_mask &
-                             (1 << (var->data.location -
-                                    VARYING_SLOT_VAR0))))) {
+                } else if (var_needs_point_coord(c, var)) {
                         c->inputs[loc * 4 + 0] = c->point_x;
                         c->inputs[loc * 4 + 1] = c->point_y;
                 } else {
