@@ -118,6 +118,7 @@ copy_constant_to_storage(union gl_constant_value *storage,
    const enum glsl_base_type base_type = glsl_get_base_type(type);
    const unsigned n_columns = glsl_get_matrix_columns(type);
    const unsigned n_rows = glsl_get_vector_elements(type);
+   unsigned dmul = glsl_base_type_is_64bit(base_type) ? 2 : 1;
    int i = 0;
 
    for (unsigned int column = 0; column < n_columns; column++) {
@@ -164,7 +165,7 @@ copy_constant_to_storage(union gl_constant_value *storage,
             assert(!"Should not get here.");
             break;
          }
-         i++;
+         i += dmul;
       }
    }
 }
