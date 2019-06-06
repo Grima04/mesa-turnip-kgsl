@@ -1114,9 +1114,10 @@ disassemble_midgard(uint8_t *code, size_t size)
         unsigned i = 0;
 
         while (i < num_words) {
-                unsigned num_quad_words = midgard_word_size[words[i] & 0xF];
+                unsigned tag = words[i] & 0xF;
+                unsigned num_quad_words = midgard_word_size[tag];
 
-                switch (midgard_word_types[words[i] & 0xF]) {
+                switch (midgard_word_types[tag]) {
                 case midgard_word_type_texture:
                         print_texture_word(&words[i], tabs);
                         break;
