@@ -1250,6 +1250,18 @@ late_optimizations = [
    (('fmax', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmax', a, b))),
 
    (('bcsel', a, 0, ('b2f32', ('inot', 'b@bool'))), ('b2f32', ('inot', ('ior', a, b)))),
+
+   # Things that look like DPH in the source shader may get expanded to
+   # something that looks like dot(v1.xyz, v2.xyz) + v1.w by the time it gets
+   # to NIR.  After FFMA is generated, this can look like:
+   #
+   #    fadd(ffma(v1.z, v2.z, ffma(v1.y, v2.y, fmul(v1.x, v2.x))), v1.w)
+   #
+   # Reassociate the last addition into the first multiplication.
+   (('~fadd', ('ffma(is_used_once)', a, b, ('ffma', c, d, ('fmul', 'e(is_not_const_and_not_fsign)', 'f(is_not_const_and_not_fsign)'))), 'g(is_not_const)'),
+    ('ffma', a, b, ('ffma', c, d, ('ffma', e, 'f', 'g'))), '!options->intel_vec4'),
+   (('~fadd', ('ffma(is_used_once)', a, b,                ('fmul', 'e(is_not_const_and_not_fsign)', 'f(is_not_const_and_not_fsign)') ), 'g(is_not_const)'),
+    ('ffma', a, b,                ('ffma', e, 'f', 'g') ), '!options->intel_vec4'),
 ]
 
 print(nir_algebraic.AlgebraicPass("nir_opt_algebraic", optimizations).render())
