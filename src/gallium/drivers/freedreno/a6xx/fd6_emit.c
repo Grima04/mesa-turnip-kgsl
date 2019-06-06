@@ -45,24 +45,6 @@
 #include "fd6_format.h"
 #include "fd6_zsa.h"
 
-static uint32_t
-shader_t_to_opcode(gl_shader_stage type)
-{
-	switch (type) {
-	case MESA_SHADER_VERTEX:
-	case MESA_SHADER_TESS_CTRL:
-	case MESA_SHADER_TESS_EVAL:
-	case MESA_SHADER_GEOMETRY:
-		return CP_LOAD_STATE6_GEOM;
-	case MESA_SHADER_FRAGMENT:
-	case MESA_SHADER_COMPUTE:
-	case MESA_SHADER_KERNEL:
-		return CP_LOAD_STATE6_FRAG;
-	default:
-		unreachable("bad shader type");
-	}
-}
-
 /* regid:          base const register
  * prsc or dwords: buffer containing constant values
  * sizedwords:     size of const value buffer
@@ -87,7 +69,7 @@ fd6_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
 
 	align_sz = align(sz, 4);
 
-	OUT_PKT7(ring, shader_t_to_opcode(type), 3 + align_sz);
+	OUT_PKT7(ring, fd6_stage2opcode(type), 3 + align_sz);
 	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid/4) |
 			CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
 			CP_LOAD_STATE6_0_STATE_SRC(src) |
@@ -121,7 +103,7 @@ fd6_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type, boolean writ
 
 	debug_assert((regid % 4) == 0);
 
-	OUT_PKT7(ring, shader_t_to_opcode(type), 3 + (2 * anum));
+	OUT_PKT7(ring, fd6_stage2opcode(type), 3 + (2 * anum));
 	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(regid/4) |
 			CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS)|
 			CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |

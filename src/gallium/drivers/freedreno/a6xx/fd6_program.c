@@ -87,7 +87,6 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 	enum a6xx_state_block sb = fd6_stage2shadersb(so->type);
 	enum a6xx_state_src src;
 	uint32_t i, sz, *bin;
-	unsigned opcode;
 
 	if (fd_mesa_debug & FD_DBG_DIRECT) {
 		sz = si->sizedwords;
@@ -99,20 +98,7 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 		bin = NULL;
 	}
 
-	switch (so->type) {
-	case MESA_SHADER_VERTEX:
-		opcode = CP_LOAD_STATE6_GEOM;
-		break;
-	case MESA_SHADER_FRAGMENT:
-	case MESA_SHADER_COMPUTE:
-	case MESA_SHADER_KERNEL:
-		opcode = CP_LOAD_STATE6_FRAG;
-		break;
-	default:
-		unreachable("bad shader type");
-	}
-
-	OUT_PKT7(ring, opcode, 3 + sz);
+	OUT_PKT7(ring, fd6_stage2opcode(so->type), 3 + sz);
 	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
 			CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
 			CP_LOAD_STATE6_0_STATE_SRC(src) |
