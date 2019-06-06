@@ -296,8 +296,11 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 	OUT_RING(ring, 0);										/* SP_GS_CONFIG */
 	OUT_RING(ring, 0);										/* SP_GS_INSTRLEN */
 
+	/* I believe this is related to pre-dispatch texture fetch.. we probably
+	 * should't turn it on by accident:
+	 */
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A99E, 1);
-	OUT_RING(ring, 0x7fc0);
+	OUT_RING(ring, 0x0);
 
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A9A8, 1);
 	OUT_RING(ring, 0);
