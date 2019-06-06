@@ -1575,34 +1575,50 @@ radv_update_bound_fast_clear_ds(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_set_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 			   struct radv_image *image,
+			   const VkImageSubresourceRange *range,
 			   VkClearDepthStencilValue ds_clear_value,
 			   VkImageAspectFlags aspects)
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
-	uint64_t va = radv_buffer_get_va(image->bo);
-	unsigned reg_offset = 0, reg_count = 0;
+	uint64_t va = radv_get_ds_clear_value_va(image, range->baseMipLevel);
+	uint32_t level_count = radv_get_levelCount(image, range);
 
-	va += image->offset + image->clear_value_offset;
+	if (aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
+		       VK_IMAGE_ASPECT_STENCIL_BIT)) {
+		/* Use the fastest way when both aspects are used. */
+		radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + 2 * level_count, cmd_buffer->state.predicating));
+		radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
+				S_370_WR_CONFIRM(1) |
+				S_370_ENGINE_SEL(V_370_PFP));
+		radeon_emit(cs, va);
+		radeon_emit(cs, va >> 32);
 
-	if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-		++reg_count;
+		for (uint32_t l = 0; l < level_count; l++) {
+			radeon_emit(cs, ds_clear_value.stencil);
+			radeon_emit(cs, fui(ds_clear_value.depth));
+		}
 	} else {
-		++reg_offset;
-		va += 4;
-	}
-	if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-		++reg_count;
+		/* Otherwise we need one WRITE_DATA packet per level. */
+		for (uint32_t l = 0; l < level_count; l++) {
+			uint64_t va = radv_get_ds_clear_value_va(image, range->baseMipLevel + l);
+			unsigned value;
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + reg_count, cmd_buffer->state.predicating));
-	radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
-			S_370_WR_CONFIRM(1) |
-			S_370_ENGINE_SEL(V_370_PFP));
-	radeon_emit(cs, va);
-	radeon_emit(cs, va >> 32);
-	if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-		radeon_emit(cs, ds_clear_value.stencil);
-	if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-		radeon_emit(cs, fui(ds_clear_value.depth));
+			if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+				value = fui(ds_clear_value.depth);
+				va += 4;
+			} else {
+				value = ds_clear_value.stencil;
+			}
+
+			radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, cmd_buffer->state.predicating));
+			radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
+					S_370_WR_CONFIRM(1) |
+					S_370_ENGINE_SEL(V_370_PFP));
+			radeon_emit(cs, va);
+			radeon_emit(cs, va >> 32);
+			radeon_emit(cs, value);
+		}
+	}
 }
 
 /**
@@ -1665,11 +1681,19 @@ radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 			      VkClearDepthStencilValue ds_clear_value,
 			      VkImageAspectFlags aspects)
 {
+	VkImageSubresourceRange range = {
+		.aspectMask = iview->aspect_mask,
+		.baseMipLevel = iview->base_mip,
+		.levelCount = iview->level_count,
+		.baseArrayLayer = iview->base_layer,
+		.layerCount = iview->layer_count,
+	};
 	struct radv_image *image = iview->image;
 
 	assert(radv_image_has_htile(image));
 
-	radv_set_ds_clear_metadata(cmd_buffer, image, ds_clear_value, aspects);
+	radv_set_ds_clear_metadata(cmd_buffer, iview->image, &range,
+				   ds_clear_value, aspects);
 
 	if (radv_image_is_tc_compat_htile(image) &&
 	    (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
@@ -1686,14 +1710,13 @@ radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
  */
 static void
 radv_load_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
-			    struct radv_image *image)
+			    const struct radv_image_view *iview)
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	const struct radv_image *image = iview->image;
 	VkImageAspectFlags aspects = vk_format_aspects(image->vk_format);
-	uint64_t va = radv_buffer_get_va(image->bo);
+	uint64_t va = radv_get_ds_clear_value_va(image, iview->base_mip);
 	unsigned reg_offset = 0, reg_count = 0;
-
-	va += image->offset + image->clear_value_offset;
 
 	if (!radv_image_has_htile(image))
 		return;
@@ -1966,7 +1989,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 			cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 			cmd_buffer->state.offset_scale = cmd_buffer->state.attachments[idx].ds.offset_scale;
 		}
-		radv_load_ds_clear_metadata(cmd_buffer, image);
+		radv_load_ds_clear_metadata(cmd_buffer, iview);
 	} else {
 		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9)
 			radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
@@ -5081,7 +5104,7 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
 	if (vk_format_is_stencil(image->vk_format))
 		aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-	radv_set_ds_clear_metadata(cmd_buffer, image, value, aspects);
+	radv_set_ds_clear_metadata(cmd_buffer, image, range, value, aspects);
 
 	if (radv_image_is_tc_compat_htile(image)) {
 		/* Initialize the TC-compat metada value to 0 because by

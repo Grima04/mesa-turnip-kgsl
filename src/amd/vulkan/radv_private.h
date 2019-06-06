@@ -1814,6 +1814,15 @@ radv_get_tc_compat_zrange_va(const struct radv_image *image,
 	return va;
 }
 
+static inline uint64_t
+radv_get_ds_clear_value_va(const struct radv_image *image,
+			   uint32_t base_level)
+{
+	uint64_t va = radv_buffer_get_va(image->bo);
+	va += image->offset + image->clear_value_offset + base_level * 8;
+	return va;
+}
+
 unsigned radv_image_queue_family_mask(const struct radv_image *image, uint32_t family, uint32_t queue_family);
 
 static inline uint32_t
