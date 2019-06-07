@@ -848,6 +848,109 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
         ctx->payload_vertex.postfix.attribute_meta = transfer.gpu;
 }
 
+static void
+panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
+{
+        size_t desc_size = sizeof(struct mali_sampler_descriptor);
+
+        for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
+                if (!ctx->sampler_count[t]) continue;
+
+                size_t transfer_size = desc_size * ctx->sampler_count[t];
+
+                struct panfrost_transfer transfer =
+                        panfrost_allocate_transient(ctx, transfer_size);
+
+                struct mali_sampler_descriptor *desc =
+                        (struct mali_sampler_descriptor *) transfer.cpu;
+
+                for (int i = 0; i < ctx->sampler_count[t]; ++i)
+                        desc[i] = ctx->samplers[t][i]->hw;
+
+                if (t == PIPE_SHADER_FRAGMENT)
+                        ctx->payload_tiler.postfix.sampler_descriptor = transfer.gpu;
+                else if (t == PIPE_SHADER_VERTEX)
+                        ctx->payload_vertex.postfix.sampler_descriptor = transfer.gpu;
+                else
+                        assert(0);
+        }
+}
+
+/* Computes the address to a texture at a particular slice */
+
+static mali_ptr
+panfrost_get_texture_address(
+                struct panfrost_resource *rsrc,
+                unsigned level, unsigned face)
+{
+        unsigned level_offset = rsrc->bo->slices[level].offset;
+        unsigned face_offset = face * rsrc->bo->cubemap_stride;
+
+        return rsrc->bo->gpu + level_offset + face_offset;
+
+}
+
+static mali_ptr
+panfrost_upload_tex(
+                struct panfrost_context *ctx,
+                struct panfrost_sampler_view *view)
+{
+        if (!view)
+                return (mali_ptr) NULL;
+
+        struct pipe_resource *tex_rsrc = view->base.texture;
+        struct panfrost_resource *rsrc = (struct panfrost_resource *) tex_rsrc;
+
+        /* Do we interleave an explicit stride with every element? */
+
+        bool has_manual_stride =
+                view->hw.format.usage2 & MALI_TEX_MANUAL_STRIDE;
+
+        /* Inject the addresses in, interleaving mip levels, cube faces, and
+         * strides in that order */
+
+        unsigned idx = 0;
+
+        for (unsigned l = 0; l <= tex_rsrc->last_level; ++l) {
+                for (unsigned f = 0; f < tex_rsrc->array_size; ++f) {
+                        view->hw.payload[idx++] =
+                                panfrost_get_texture_address(rsrc, l, f);
+
+                        if (has_manual_stride) {
+                                view->hw.payload[idx++] =
+                                        rsrc->bo->slices[l].stride;
+                        }
+                }
+        }
+
+        return panfrost_upload_transient(ctx, &view->hw,
+                        sizeof(struct mali_texture_descriptor));
+}
+
+static void
+panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
+{
+        for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
+                /* Shortcircuit */
+                if (!ctx->sampler_view_count[t]) continue;
+
+                uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+
+                for (int i = 0; i < ctx->sampler_view_count[t]; ++i)
+                        trampolines[i] =
+                                panfrost_upload_tex(ctx, ctx->sampler_views[t][i]);
+
+                mali_ptr trampoline = panfrost_upload_transient(ctx, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
+
+                if (t == PIPE_SHADER_FRAGMENT)
+                        ctx->payload_tiler.postfix.texture_trampoline = trampoline;
+                else if (t == PIPE_SHADER_VERTEX)
+                        ctx->payload_vertex.postfix.texture_trampoline = trampoline;
+                else
+                        assert(0);
+        }
+}
+
 /* Go through dirty flags and actualise them in the cmdstream. */
 
 void
@@ -1040,80 +1143,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         /* We stage to transient, so always dirty.. */
         panfrost_stage_attributes(ctx);
 
-        if (ctx->dirty & PAN_DIRTY_SAMPLERS) {
-                /* Upload samplers back to back, no padding */
+        if (ctx->dirty & PAN_DIRTY_SAMPLERS)
+                panfrost_upload_sampler_descriptors(ctx);
 
-                for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
-                        if (!ctx->sampler_count[t]) continue;
-
-                        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(struct mali_sampler_descriptor) * ctx->sampler_count[t]);
-                        struct mali_sampler_descriptor *desc = (struct mali_sampler_descriptor *) transfer.cpu;
-
-                        for (int i = 0; i < ctx->sampler_count[t]; ++i) {
-                                desc[i] = ctx->samplers[t][i]->hw;
-                        }
-
-                        if (t == PIPE_SHADER_FRAGMENT)
-                                ctx->payload_tiler.postfix.sampler_descriptor = transfer.gpu;
-                        else if (t == PIPE_SHADER_VERTEX)
-                                ctx->payload_vertex.postfix.sampler_descriptor = transfer.gpu;
-                        else
-                                assert(0);
-                }
-        }
-
-        if (ctx->dirty & PAN_DIRTY_TEXTURES) {
-                for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
-                        /* Shortcircuit */
-                        if (!ctx->sampler_view_count[t]) continue;
-
-                        uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-
-                        for (int i = 0; i < ctx->sampler_view_count[t]; ++i) {
-                                if (!ctx->sampler_views[t][i])
-                                        continue;
-
-                                struct pipe_resource *tex_rsrc = ctx->sampler_views[t][i]->base.texture;
-                                struct panfrost_resource *rsrc = (struct panfrost_resource *) tex_rsrc;
-
-                                /* Inject the addresses in, interleaving cube
-                                 * faces and mip levels appropriately. */
-
-                                for (int l = 0; l <= tex_rsrc->last_level; ++l) {
-                                        for (int f = 0; f < tex_rsrc->array_size; ++f) {
-                                                unsigned idx = (l * tex_rsrc->array_size) + f;
-
-                                                ctx->sampler_views[t][i]->hw.swizzled_bitmaps[idx] =
-                                                        rsrc->bo->gpu +
-                                                        rsrc->bo->slices[l].offset +
-                                                        f * rsrc->bo->cubemap_stride;
-                                        }
-                                }
-
-                                /* Inject the strides */
-                                unsigned usage2 = ctx->sampler_views[t][i]->hw.format.usage2;
-
-                                if (usage2 & MALI_TEX_MANUAL_STRIDE) {
-                                        unsigned idx = tex_rsrc->last_level * tex_rsrc->array_size;
-                                        idx += tex_rsrc->array_size;
-
-                                        ctx->sampler_views[t][i]->hw.swizzled_bitmaps[idx] =
-                                                rsrc->bo->slices[0].stride;
-                                }
-
-                                trampolines[i] = panfrost_upload_transient(ctx, &ctx->sampler_views[t][i]->hw, sizeof(struct mali_texture_descriptor));
-                        }
-
-                        mali_ptr trampoline = panfrost_upload_transient(ctx, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
-
-                        if (t == PIPE_SHADER_FRAGMENT)
-                                ctx->payload_tiler.postfix.texture_trampoline = trampoline;
-                        else if (t == PIPE_SHADER_VERTEX)
-                                ctx->payload_vertex.postfix.texture_trampoline = trampoline;
-                        else
-                                assert(0);
-                }
-        }
+        if (ctx->dirty & PAN_DIRTY_TEXTURES)
+                panfrost_upload_texture_descriptors(ctx);
 
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
 

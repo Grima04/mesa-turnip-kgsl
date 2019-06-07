@@ -1112,6 +1112,9 @@ enum mali_wrap_mode {
 /* Cubemap bloats everything up */
 #define MAX_FACES (6)
 
+/* For each pointer, there is an address and optionally also a stride */
+#define MAX_ELEMENTS (2)
+
 /* Corresponds to the type passed to glTexImage2D and so forth */
 
 /* Flags for usage2 */
@@ -1155,7 +1158,7 @@ struct mali_texture_descriptor {
         uint32_t unknown6;
         uint32_t unknown7;
 
-        mali_ptr swizzled_bitmaps[MAX_MIP_LEVELS * MAX_FACES];
+        mali_ptr payload[MAX_MIP_LEVELS * MAX_FACES * MAX_ELEMENTS];
 } __attribute__((packed));
 
 /* Used as part of filter_mode */
