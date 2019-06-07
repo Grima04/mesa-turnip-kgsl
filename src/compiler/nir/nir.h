@@ -1783,6 +1783,19 @@ nir_tex_instr_is_query(const nir_tex_instr *instr)
    }
 }
 
+static inline bool
+nir_tex_instr_has_implicit_derivative(const nir_tex_instr *instr)
+{
+   switch (instr->op) {
+   case nir_texop_tex:
+   case nir_texop_txb:
+   case nir_texop_lod:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static inline nir_alu_type
 nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
 {
