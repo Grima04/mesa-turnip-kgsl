@@ -1204,6 +1204,22 @@ iris_update_compiled_tcs(struct iris_context *ice)
       ice->state.dirty |= IRIS_DIRTY_TCS |
                           IRIS_DIRTY_BINDINGS_TCS |
                           IRIS_DIRTY_CONSTANTS_TCS;
+
+      if (!tcs) {
+         /* We're binding a passthrough TCS, which doesn't have uniforms.
+          * Since there's no actual TCS, the state tracker doesn't bother
+          * to call set_constant_buffers to clear stale constant buffers.
+          *
+          * We do upload TCS constants for the default tesslevel system
+          * values, however.  In this case, we would see stale constant
+          * data and try and read a dangling cbuf0->user_buffer pointer.
+          * Just zero out the stale constants to avoid the upload.
+          */
+         struct iris_shader_state *shs =
+            &ice->state.shaders[MESA_SHADER_TESS_CTRL];
+
+         memset(&shs->cbuf0, 0, sizeof(shs->cbuf0));
+      }
    }
 }
 
