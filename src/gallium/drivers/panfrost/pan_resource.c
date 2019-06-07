@@ -210,7 +210,13 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
                 }
 
                 slice->offset = offset;
-                slice->stride = bytes_per_pixel * effective_width;
+
+                /* Compute the would-be stride */
+                unsigned stride = bytes_per_pixel * effective_width;
+
+                /* ..but cache-line align it for performance */
+                stride = ALIGN(stride, 64);
+                slice->stride = stride;
 
                 offset += slice->stride * effective_height;
 
