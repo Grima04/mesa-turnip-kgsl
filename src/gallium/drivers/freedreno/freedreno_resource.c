@@ -138,7 +138,7 @@ do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit, bool fallback
 
 static bool
 fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
-		unsigned level, const struct pipe_box *box)
+		unsigned level, const struct pipe_box *box, uint64_t modifier)
 {
 	struct pipe_context *pctx = &ctx->base;
 	struct pipe_resource *prsc = &rsc->base;
@@ -168,7 +168,8 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 		return false;
 
 	struct pipe_resource *pshadow =
-		pctx->screen->resource_create(pctx->screen, prsc);
+		pctx->screen->resource_create_with_modifiers(pctx->screen,
+				prsc, &modifier, 1);
 
 	if (!pshadow)
 		return false;
@@ -582,7 +583,8 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			/* try shadowing only if it avoids a flush, otherwise staging would
 			 * be better:
 			 */
-			if (needs_flush && fd_try_shadow_resource(ctx, rsc, level, box)) {
+			if (needs_flush && fd_try_shadow_resource(ctx, rsc, level,
+							box, DRM_FORMAT_MOD_LINEAR)) {
 				needs_flush = busy = false;
 				rebind_resource(ctx, prsc);
 				ctx->stats.shadow_uploads++;
