@@ -80,11 +80,42 @@ static const char* chip_families[] = {
     "ATI RV570"
 };
 
+static const char* r300_get_family_name(struct r300_screen* r300screen)
+{
+    return chip_families[r300screen->caps.family];
+}
+
 static const char* r300_get_name(struct pipe_screen* pscreen)
 {
     struct r300_screen* r300screen = r300_screen(pscreen);
 
-    return chip_families[r300screen->caps.family];
+    return r300_get_family_name(r300screen);
+}
+
+static void r300_disk_cache_create(struct r300_screen* r300screen)
+{
+    struct mesa_sha1 ctx;
+    unsigned char sha1[20];
+    char cache_id[20 * 2 + 1];
+
+    _mesa_sha1_init(&ctx);
+    if (!disk_cache_get_function_identifier(r300_disk_cache_create,
+                                            &ctx))
+        return;
+
+    _mesa_sha1_final(&ctx, sha1);
+    disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
+
+    r300screen->disk_shader_cache =
+                    disk_cache_create(r300_get_family_name(r300screen),
+                                      cache_id,
+                                      r300screen->debug);
+}
+
+static struct disk_cache* r300_get_disk_shader_cache(struct pipe_screen* pscreen)
+{
+	struct r300_screen* r300screen = r300_screen(pscreen);
+	return r300screen->disk_shader_cache;
 }
 
 static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
@@ -745,6 +776,8 @@ static void r300_destroy_screen(struct pipe_screen* pscreen)
     mtx_destroy(&r300screen->cmask_mutex);
     slab_destroy_parent(&r300screen->pool_transfers);
 
+    disk_cache_destroy(r300screen->disk_shader_cache);
+
     if (rws)
       rws->destroy(rws);
 
@@ -795,6 +828,7 @@ struct pipe_screen* r300_screen_create(struct radeon_winsys *rws,
     r300screen->screen.get_name = r300_get_name;
     r300screen->screen.get_vendor = r300_get_vendor;
     r300screen->screen.get_device_vendor = r300_get_device_vendor;
+    r300screen->screen.get_disk_shader_cache = r300_get_disk_shader_cache;
     r300screen->screen.get_param = r300_get_param;
     r300screen->screen.get_shader_param = r300_get_shader_param;
     r300screen->screen.get_paramf = r300_get_paramf;
@@ -806,6 +840,8 @@ struct pipe_screen* r300_screen_create(struct radeon_winsys *rws,
     r300screen->screen.fence_finish = r300_fence_finish;
 
     r300_init_screen_resource_functions(r300screen);
+
+    r300_disk_cache_create(r300screen);
 
     slab_create_parent(&r300screen->pool_transfers, sizeof(struct pipe_transfer), 64);
 
