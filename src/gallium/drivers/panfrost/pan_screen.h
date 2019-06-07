@@ -99,4 +99,10 @@ struct panfrost_screen {
         struct panfrost_job *last_job;
 };
 
+static inline struct panfrost_screen *
+pan_screen(struct pipe_screen *p)
+{
+   return (struct panfrost_screen *)p;
+}
+
 #endif /* PAN_SCREEN_H */

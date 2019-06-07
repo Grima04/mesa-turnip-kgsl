@@ -313,12 +313,6 @@ pan_context(struct pipe_context *pcontext)
         return (struct panfrost_context *) pcontext;
 }
 
-static inline struct panfrost_screen *
-pan_screen(struct pipe_screen *p)
-{
-   return (struct panfrost_screen *)p;
-}
-
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 
