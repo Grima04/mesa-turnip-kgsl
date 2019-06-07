@@ -186,8 +186,6 @@ ok_ubwc_format(enum a6xx_color_fmt fmt)
 	case RB6_R32G32B32A32_UINT:
 	case RB6_R32G32_SINT:
 	case RB6_R32G32_UINT:
-	case RB6_R32_SINT:
-	case RB6_R32_UINT:
 	case RB6_R5G6B5_UNORM:
 	case RB6_R8G8B8A8_SINT:
 	case RB6_R8G8B8A8_UINT:
