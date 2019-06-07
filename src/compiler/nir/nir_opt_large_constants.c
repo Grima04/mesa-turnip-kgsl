@@ -159,7 +159,7 @@ nir_opt_large_constants(nir_shader *shader,
    if (num_locals == 0)
       return false;
 
-   struct var_info *var_infos = malloc(num_locals * sizeof(struct var_info));
+   struct var_info *var_infos = ralloc_array(NULL, struct var_info, num_locals);
    for (unsigned i = 0; i < num_locals; i++) {
       var_infos[i] = (struct var_info) {
          .is_constant = true,
@@ -263,7 +263,7 @@ nir_opt_large_constants(nir_shader *shader,
    }
 
    if (shader->constant_data_size == 0) {
-      free(var_infos);
+      ralloc_free(var_infos);
       return false;
    }
 
@@ -343,7 +343,7 @@ nir_opt_large_constants(nir_shader *shader,
          exec_node_remove(&var->node);
    }
 
-   free(var_infos);
+   ralloc_free(var_infos);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
                                nir_metadata_dominance);
