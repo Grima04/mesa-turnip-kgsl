@@ -1,39 +1,55 @@
+# DEBIAN_TAG is the tag of the docker image used for the build jobs. If the
+# image doesn't exist yet, the docker-image stage generates it.
+#
+# In order to generate a new image, one should generally change the tag.
+# While removing the image from the registry would also work, that's not
+# recommended except for ephemeral images during development: Replacing an
+# image after a significant amount of time might pull in newer versions of
+# gcc/clang or other packages, which might break the build with older commits
+# using the same tag.
+#
+# After merging a change resulting in generating a new image to the main
+# repository, it's recommended to remove the image from the source repository's
+# container registry, so that the image from the main repository's registry
+# will be used there as well.  You can manage your images on your fork of:
+# https://gitlab.freedesktop.org/xorg/xserver/container_registry
 variables:
-  DOCKER_DRIVER: overlay2
+  UPSTREAM_REPO: mesa/mesa
+  DEBIAN_VERSION: testing-slim
+  DEBIAN_TAG: "2019-06-07-1"
+
+include:
+  - project: 'wayland/ci-templates'
+    ref: c73dae8b84697ef18e2dbbf4fed7386d9652b0cd
+    file: '/templates/debian.yml'
 
 stages:
   - containers
   - build
   - test
 
+# Retry jobs after runner system failures
+.retry: &retry
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+
 # Build Docker image with deqp, the rootfs and the build deps for Mesa
 .container:
+  extends: .debian@container-ifnot-exists
   stage: containers
-  image: docker:stable
-  only:
-    changes:
-      - src/gallium/drivers/panfrost/ci/gitlab-ci.yml
-      - src/gallium/drivers/panfrost/ci/Dockerfile
-      - src/gallium/drivers/panfrost/ci/create-rootfs.sh
-      - src/gallium/drivers/panfrost/ci/${KERNEL_ARCH}.config
-  services:
-    - docker:dind
+  <<: *retry
   variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_DRIVER: overlay2
-  script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
-    - time docker build
-             -t $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}
-             --build-arg DEBIAN_ARCH=${DEBIAN_ARCH}
-             --build-arg GCC_ARCH=${GCC_ARCH}
-             --build-arg KERNEL_ARCH=${KERNEL_ARCH}
-             --build-arg DEFCONFIG=${DEFCONFIG}
-             --build-arg DEVICE_TREES=${DEVICE_TREES}
-             --build-arg KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
-             src/gallium/drivers/panfrost/ci
-    - time docker push $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}
-    - docker history $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}
+    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
+    IMAGE_LOCAL: "$CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}:latest"
+    DEBIAN_EXEC: 'DEBIAN_ARCH=${DEBIAN_ARCH}
+                  GCC_ARCH=${GCC_ARCH}
+                  KERNEL_ARCH=${KERNEL_ARCH}
+                  DEFCONFIG=${DEFCONFIG}
+                  DEVICE_TREES=${DEVICE_TREES}
+                  KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
+                  bash src/gallium/drivers/panfrost/ci/debian-install.sh'
 
 container:armhf:
   extends: .container
