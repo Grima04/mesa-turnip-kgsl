@@ -1014,19 +1014,16 @@ nir_alu_instr_src_read_mask(const nir_alu_instr *instr, unsigned src)
    return read_mask;
 }
 
-/*
- * For instructions whose destinations are SSA, get the number of channels
- * used for a source
+/**
+ * Get the number of channels used for a source
  */
 static inline unsigned
 nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
 {
-   assert(instr->dest.dest.is_ssa);
-
    if (nir_op_infos[instr->op].input_sizes[src] > 0)
       return nir_op_infos[instr->op].input_sizes[src];
 
-   return instr->dest.dest.ssa.num_components;
+   return nir_dest_num_components(instr->dest.dest);
 }
 
 bool nir_const_value_negative_equal(nir_const_value c1, nir_const_value c2,
