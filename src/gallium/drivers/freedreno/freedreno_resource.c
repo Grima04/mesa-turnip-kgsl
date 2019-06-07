@@ -681,6 +681,9 @@ fd_resource_modifier(struct fd_resource *rsc)
 	if (!rsc->tile_mode)
 		return DRM_FORMAT_MOD_LINEAR;
 
+	if (rsc->ubwc_size)
+		return DRM_FORMAT_MOD_QCOM_COMPRESSED;
+
 	/* TODO invent a modifier for tiled but not UBWC buffers: */
 	return DRM_FORMAT_MOD_INVALID;
 }
