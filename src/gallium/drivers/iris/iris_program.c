@@ -1862,6 +1862,8 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
    NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
    NIR_PASS_V(nir, iris_lower_storage_image_derefs);
 
+   nir_sweep(nir);
+
    if (nir->constant_data_size > 0) {
       unsigned data_offset;
       u_upload_data(ice->shaders.uploader, 0, nir->constant_data_size,
