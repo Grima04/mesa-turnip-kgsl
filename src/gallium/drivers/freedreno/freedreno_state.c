@@ -165,7 +165,7 @@ fd_set_shader_buffers(struct pipe_context *pctx,
 	ctx->dirty_shader[shader] |= FD_DIRTY_SHADER_SSBO;
 }
 
-static void
+void
 fd_set_shader_images(struct pipe_context *pctx,
 		enum pipe_shader_type shader,
 		unsigned start, unsigned count,
