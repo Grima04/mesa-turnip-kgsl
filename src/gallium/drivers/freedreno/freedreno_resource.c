@@ -136,6 +136,12 @@ do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit, bool fallback
 	}
 }
 
+/**
+ * @rsc: the resource to shadow
+ * @level: the level to discard (if box != NULL, otherwise ignored)
+ * @box: the box to discard (or NULL if none)
+ * @modifier: the modifier for the new buffer state
+ */
 static bool
 fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 		unsigned level, const struct pipe_box *box, uint64_t modifier)
@@ -160,11 +166,11 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	if (prsc->target == PIPE_BUFFER)
 		fallback = true;
 
-	bool whole_level = util_texrange_covers_whole_level(prsc, level,
+	bool discard_whole_level = box && util_texrange_covers_whole_level(prsc, level,
 		box->x, box->y, box->z, box->width, box->height, box->depth);
 
 	/* TODO need to be more clever about current level */
-	if ((prsc->target >= PIPE_TEXTURE_2D) && !whole_level)
+	if ((prsc->target >= PIPE_TEXTURE_2D) && box && !discard_whole_level)
 		return false;
 
 	struct pipe_resource *pshadow =
@@ -236,7 +242,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 
 	/* blit the other levels in their entirety: */
 	for (unsigned l = 0; l <= prsc->last_level; l++) {
-		if (l == level)
+		if (box && l == level)
 			continue;
 
 		/* just blit whole level: */
@@ -251,7 +257,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	/* deal w/ current level specially, since we might need to split
 	 * it up into a couple blits:
 	 */
-	if (!whole_level) {
+	if (box && !discard_whole_level) {
 		set_box(level, level);
 
 		switch (prsc->target) {
