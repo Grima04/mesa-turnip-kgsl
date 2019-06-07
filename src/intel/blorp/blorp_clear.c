@@ -259,16 +259,21 @@ get_fast_clear_rect(const struct isl_device *dev,
       x_scaledown = x_align / 2;
       y_scaledown = y_align / 2;
 
-      /* From BSpec: 3D-Media-GPGPU Engine > 3D Pipeline > Pixel > Pixel
-       * Backend > MCS Buffer for Render Target(s) [DevIVB+] > Table "Color
-       * Clear of Non-MultiSampled Render Target Restrictions":
-       *
-       *   Clear rectangle must be aligned to two times the number of
-       *   pixels in the table shown below due to 16x16 hashing across the
-       *   slice.
-       */
-      x_align *= 2;
-      y_align *= 2;
+      if (ISL_DEV_IS_HASWELL(dev)) {
+         /* From BSpec: 3D-Media-GPGPU Engine > 3D Pipeline > Pixel > Pixel
+          * Backend > MCS Buffer for Render Target(s) [DevIVB+] > Table "Color
+          * Clear of Non-MultiSampled Render Target Restrictions":
+          *
+          *   Clear rectangle must be aligned to two times the number of
+          *   pixels in the table shown below due to 16x16 hashing across the
+          *   slice.
+          *
+          * This restriction is only documented to exist on HSW GT3 but
+          * empirical evidence suggests that it's also needed GT2.
+          */
+         x_align *= 2;
+         y_align *= 2;
+      }
    } else {
       assert(aux_surf->usage == ISL_SURF_USAGE_MCS_BIT);
 
