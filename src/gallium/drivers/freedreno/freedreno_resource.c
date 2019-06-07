@@ -200,6 +200,10 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	/* TODO valid_buffer_range?? */
 	swap(rsc->bo,        shadow->bo);
 	swap(rsc->write_batch,   shadow->write_batch);
+	swap(rsc->offset, shadow->offset);
+	swap(rsc->ubwc_offset, shadow->ubwc_offset);
+	swap(rsc->ubwc_pitch, shadow->ubwc_pitch);
+	swap(rsc->ubwc_size, shadow->ubwc_size);
 	rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
 
 	/* at this point, the newly created shadow buffer is not referenced
