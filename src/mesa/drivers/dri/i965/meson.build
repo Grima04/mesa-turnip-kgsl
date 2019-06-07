@@ -54,7 +54,6 @@ files_i965 = files(
   'brw_nir_uniforms.cpp',
   'brw_object_purgeable.c',
   'brw_pipe_control.c',
-  'brw_performance_query.h',
   'brw_performance_query.c',
   'brw_program.c',
   'brw_program.h',

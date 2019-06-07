@@ -70,7 +70,6 @@
 
 #include "brw_context.h"
 #include "brw_defines.h"
-#include "brw_performance_query.h"
 #include "intel_batchbuffer.h"
 
 #include "perf/gen_perf.h"
@@ -85,6 +84,11 @@
 #define OAREPORT_REASON_TRIGGER2       (1<<2)
 #define OAREPORT_REASON_CTX_SWITCH     (1<<3)
 #define OAREPORT_REASON_GO_TRANSITION  (1<<4)
+
+struct brw_perf_query_object {
+   struct gl_perf_query_object base;
+   struct gen_perf_query_object *query;
+};
 
 /** Downcasting convenience macro. */
 static inline struct brw_perf_query_object *
@@ -109,9 +113,10 @@ dump_perf_query_callback(GLuint id, void *query_void, void *brw_void)
 {
    struct gl_context *ctx = brw_void;
    struct gl_perf_query_object *o = query_void;
-   struct brw_perf_query_object *obj = query_void;
+   struct brw_perf_query_object * brw_query = brw_perf_query(o);
+   struct gen_perf_query_object *obj = brw_query->query;
 
-   switch (obj->query->kind) {
+   switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
    case GEN_PERF_QUERY_TYPE_RAW:
       DBG("%4d: %-6s %-8s BO: %-4s OA data: %-10s %-15s\n",
@@ -246,10 +251,10 @@ brw_get_perf_counter_info(struct gl_context *ctx,
  */
 static void
 snapshot_statistics_registers(struct brw_context *brw,
-                              struct brw_perf_query_object *obj,
+                              struct gen_perf_query_object *obj,
                               uint32_t offset_in_bytes)
 {
-   const struct gen_perf_query_info *query = obj->query;
+   const struct gen_perf_query_info *query = obj->queryinfo;
    const int n_counters = query->n_counters;
 
    for (int i = 0; i < n_counters; i++) {
@@ -272,7 +277,7 @@ snapshot_statistics_registers(struct brw_context *brw,
  */
 static void
 add_to_unaccumulated_query_list(struct brw_context *brw,
-                                struct brw_perf_query_object *obj)
+                                struct gen_perf_query_object *obj)
 {
    if (brw->perf_ctx.unaccumulated_elements >=
        brw->perf_ctx.unaccumulated_array_size)
@@ -280,7 +285,7 @@ add_to_unaccumulated_query_list(struct brw_context *brw,
       brw->perf_ctx.unaccumulated_array_size *= 1.5;
       brw->perf_ctx.unaccumulated =
          reralloc(brw, brw->perf_ctx.unaccumulated,
-                  struct brw_perf_query_object *,
+                  struct gen_perf_query_object *,
                   brw->perf_ctx.unaccumulated_array_size);
    }
 
@@ -295,7 +300,7 @@ add_to_unaccumulated_query_list(struct brw_context *brw,
  */
 static void
 drop_from_unaccumulated_query_list(struct brw_context *brw,
-                                   struct brw_perf_query_object *obj)
+                                   struct gen_perf_query_object *obj)
 {
    for (int i = 0; i < brw->perf_ctx.unaccumulated_elements; i++) {
       if (brw->perf_ctx.unaccumulated[i] == obj) {
@@ -367,7 +372,7 @@ static void
 discard_all_queries(struct brw_context *brw)
 {
    while (brw->perf_ctx.unaccumulated_elements) {
-      struct brw_perf_query_object *obj = brw->perf_ctx.unaccumulated[0];
+      struct gen_perf_query_object *obj = brw->perf_ctx.unaccumulated[0];
 
       obj->oa.results_accumulated = true;
       drop_from_unaccumulated_query_list(brw, brw->perf_ctx.unaccumulated[0]);
@@ -449,7 +454,7 @@ read_oa_samples_until(struct brw_context *brw,
  */
 static bool
 read_oa_samples_for_query(struct brw_context *brw,
-                          struct brw_perf_query_object *obj)
+                          struct gen_perf_query_object *obj)
 {
    uint32_t *start;
    uint32_t *last;
@@ -512,10 +517,10 @@ read_oa_samples_for_query(struct brw_context *brw,
  */
 static void
 accumulate_oa_reports(struct brw_context *brw,
-                      struct brw_perf_query_object *obj)
+                      struct brw_perf_query_object *brw_query)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   struct gl_perf_query_object *o = &obj->base;
+   struct gen_perf_query_object *obj = brw_query->query;
    uint32_t *start;
    uint32_t *last;
    uint32_t *end;
@@ -523,7 +528,7 @@ accumulate_oa_reports(struct brw_context *brw,
    bool in_ctx = true;
    int out_duration = 0;
 
-   assert(o->Ready);
+   assert(brw_query->base.Ready);
    assert(obj->oa.map != NULL);
 
    start = last = obj->oa.map;
@@ -627,7 +632,7 @@ accumulate_oa_reports(struct brw_context *brw,
             }
 
             if (add) {
-               gen_perf_query_result_accumulate(&obj->oa.result, obj->query,
+               gen_perf_query_result_accumulate(&obj->oa.result, obj->queryinfo,
                                                 last, report);
             }
 
@@ -648,10 +653,10 @@ accumulate_oa_reports(struct brw_context *brw,
 
 end:
 
-   gen_perf_query_result_accumulate(&obj->oa.result, obj->query,
+   gen_perf_query_result_accumulate(&obj->oa.result, obj->queryinfo,
                                     last, end);
 
-   DBG("Marking %d accumulated - results gathered\n", o->Id);
+   DBG("Marking %d accumulated - results gathered\n", brw_query->base.Id);
 
    obj->oa.results_accumulated = true;
    drop_from_unaccumulated_query_list(brw, obj);
@@ -745,8 +750,9 @@ brw_begin_perf_query(struct gl_context *ctx,
                      struct gl_perf_query_object *o)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct brw_perf_query_object *obj = brw_perf_query(o);
-   const struct gen_perf_query_info *query = obj->query;
+   struct brw_perf_query_object *brw_query = brw_perf_query(o);
+   struct gen_perf_query_object *obj = brw_query->query;
+   const struct gen_perf_query_info *query = obj->queryinfo;
    struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    /* We can assume the frontend hides mistaken attempts to Begin a
@@ -933,7 +939,7 @@ brw_begin_perf_query(struct gl_context *ctx,
 
       /* Take a starting OA counter snapshot. */
       brw->perf_ctx.perf->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
-                                                          obj->oa.begin_report_id);
+                                                         obj->oa.begin_report_id);
       perf_cfg->vtbl.capture_frequency_stat_register(brw, obj->oa.bo,
                                                      MI_FREQ_START_OFFSET_BYTES);
 
@@ -999,7 +1005,8 @@ brw_end_perf_query(struct gl_context *ctx,
                      struct gl_perf_query_object *o)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct brw_perf_query_object *obj = brw_perf_query(o);
+   struct brw_perf_query_object *brw_query = brw_perf_query(o);
+   struct gen_perf_query_object *obj = brw_query->query;
    struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    DBG("End(%d)\n", o->Id);
@@ -1012,7 +1019,7 @@ brw_end_perf_query(struct gl_context *ctx,
     */
    brw_emit_mi_flush(brw);
 
-   switch (obj->query->kind) {
+   switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
    case GEN_PERF_QUERY_TYPE_RAW:
 
@@ -1054,13 +1061,14 @@ static void
 brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct brw_perf_query_object *obj = brw_perf_query(o);
+   struct brw_perf_query_object *brw_query = brw_perf_query(o);
+   struct gen_perf_query_object *obj = brw_query->query;
    struct brw_bo *bo = NULL;
    struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    assert(!o->Ready);
 
-   switch (obj->query->kind) {
+   switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
    case GEN_PERF_QUERY_TYPE_RAW:
       bo = obj->oa.bo;
@@ -1091,8 +1099,8 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
     * we need to wait for all the reports to come in before we can
     * read them.
     */
-   if (obj->query->kind == GEN_PERF_QUERY_TYPE_OA ||
-       obj->query->kind == GEN_PERF_QUERY_TYPE_RAW) {
+   if (obj->queryinfo->kind == GEN_PERF_QUERY_TYPE_OA ||
+       obj->queryinfo->kind == GEN_PERF_QUERY_TYPE_RAW) {
       while (!read_oa_samples_for_query(brw, obj))
          ;
    }
@@ -1103,12 +1111,13 @@ brw_is_perf_query_ready(struct gl_context *ctx,
                         struct gl_perf_query_object *o)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct brw_perf_query_object *obj = brw_perf_query(o);
+   struct brw_perf_query_object *brw_query = brw_perf_query(o);
+   struct gen_perf_query_object *obj = brw_query->query;
 
    if (o->Ready)
       return true;
 
-   switch (obj->query->kind) {
+   switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
    case GEN_PERF_QUERY_TYPE_RAW:
       return (obj->oa.results_accumulated ||
@@ -1131,7 +1140,7 @@ brw_is_perf_query_ready(struct gl_context *ctx,
 
 static void
 read_slice_unslice_frequencies(struct brw_context *brw,
-                               struct brw_perf_query_object *obj)
+                               struct gen_perf_query_object *obj)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    uint32_t *begin_report = obj->oa.map, *end_report = obj->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
@@ -1142,7 +1151,7 @@ read_slice_unslice_frequencies(struct brw_context *brw,
 
 static void
 read_gt_frequency(struct brw_context *brw,
-                  struct brw_perf_query_object *obj)
+                  struct gen_perf_query_object *obj)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    uint32_t start = *((uint32_t *)(obj->oa.map + MI_FREQ_START_OFFSET_BYTES)),
@@ -1171,12 +1180,12 @@ read_gt_frequency(struct brw_context *brw,
 
 static int
 get_oa_counter_data(struct brw_context *brw,
-                    struct brw_perf_query_object *obj,
+                    struct gen_perf_query_object *obj,
                     size_t data_size,
                     uint8_t *data)
 {
    struct gen_perf_config *perf = brw->perf_ctx.perf;
-   const struct gen_perf_query_info *query = obj->query;
+   const struct gen_perf_query_info *query = obj->queryinfo;
    int n_counters = query->n_counters;
    int written = 0;
 
@@ -1213,13 +1222,13 @@ get_oa_counter_data(struct brw_context *brw,
 
 static int
 get_pipeline_stats_data(struct brw_context *brw,
-                        struct brw_perf_query_object *obj,
+                        struct gen_perf_query_object *obj,
                         size_t data_size,
                         uint8_t *data)
 
 {
-   const struct gen_perf_query_info *query = obj->query;
-   int n_counters = obj->query->n_counters;
+   const struct gen_perf_query_info *query = obj->queryinfo;
+   int n_counters = obj->queryinfo->n_counters;
    uint8_t *p = data;
 
    uint64_t *start = brw_bo_map(brw, obj->pipeline_stats.bo, MAP_READ);
@@ -1255,7 +1264,8 @@ brw_get_perf_query_data(struct gl_context *ctx,
                         GLuint *bytes_written)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct brw_perf_query_object *obj = brw_perf_query(o);
+   struct brw_perf_query_object *brw_query = brw_perf_query(o);
+   struct gen_perf_query_object *obj = brw_query->query;
    int written = 0;
 
    assert(brw_is_perf_query_ready(ctx, o));
@@ -1270,19 +1280,19 @@ brw_get_perf_query_data(struct gl_context *ctx,
     */
    assert(o->Ready);
 
-   switch (obj->query->kind) {
+   switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
    case GEN_PERF_QUERY_TYPE_RAW:
       if (!obj->oa.results_accumulated) {
          read_gt_frequency(brw, obj);
          read_slice_unslice_frequencies(brw, obj);
-         accumulate_oa_reports(brw, obj);
+         accumulate_oa_reports(brw, brw_query);
          assert(obj->oa.results_accumulated);
 
          brw_bo_unmap(obj->oa.bo);
          obj->oa.map = NULL;
       }
-      if (obj->query->kind == GEN_PERF_QUERY_TYPE_OA) {
+      if (obj->queryinfo->kind == GEN_PERF_QUERY_TYPE_OA) {
          written = get_oa_counter_data(brw, obj, data_size, (uint8_t *)data);
       } else {
          const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -1311,19 +1321,23 @@ static struct gl_perf_query_object *
 brw_new_perf_query_object(struct gl_context *ctx, unsigned query_index)
 {
    struct brw_context *brw = brw_context(ctx);
-   const struct gen_perf_query_info *query =
+   const struct gen_perf_query_info *queryinfo =
       &brw->perf_ctx.perf->queries[query_index];
-   struct brw_perf_query_object *obj =
-      calloc(1, sizeof(struct brw_perf_query_object));
+   struct gen_perf_query_object *obj =
+      calloc(1, sizeof(struct gen_perf_query_object));
 
    if (!obj)
       return NULL;
 
-   obj->query = query;
+   obj->queryinfo = queryinfo;
 
    brw->perf_ctx.n_query_instances++;
 
-   return &obj->base;
+   struct brw_perf_query_object *brw_query = calloc(1, sizeof(struct brw_perf_query_object));
+   if (unlikely(!brw_query))
+      return NULL;
+   brw_query->query = obj;
+   return &brw_query->base;
 }
 
 /**
@@ -1334,8 +1348,9 @@ brw_delete_perf_query(struct gl_context *ctx,
                       struct gl_perf_query_object *o)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct brw_perf_query_object *obj = brw_perf_query(o);
    struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
+   struct brw_perf_query_object *brw_query = brw_perf_query(o);
+   struct gen_perf_query_object *obj = brw_query->query;
 
    /* We can assume that the frontend waits for a query to complete
     * before ever calling into here, so we don't have to worry about
@@ -1346,7 +1361,7 @@ brw_delete_perf_query(struct gl_context *ctx,
 
    DBG("Delete(%d)\n", o->Id);
 
-   switch (obj->query->kind) {
+   switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
    case GEN_PERF_QUERY_TYPE_RAW:
       if (obj->oa.bo) {
@@ -1380,10 +1395,11 @@ brw_delete_perf_query(struct gl_context *ctx,
     */
    if (--brw->perf_ctx.n_query_instances == 0) {
       gen_perf_free_sample_bufs(&brw->perf_ctx);
-      close_perf(brw, obj->query);
+      close_perf(brw, obj->queryinfo);
    }
 
    free(obj);
+   free(brw_query);
 }
 
 /******************************************************************************/
@@ -1582,7 +1598,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
                                              brw->perf_ctx.perf);
 
    brw->perf_ctx.unaccumulated =
-      ralloc_array(brw, struct brw_perf_query_object *, 2);
+      ralloc_array(brw, struct gen_perf_query_object *, 2);
    brw->perf_ctx.unaccumulated_elements = 0;
    brw->perf_ctx.unaccumulated_array_size = 2;
 
