@@ -223,7 +223,8 @@ static const struct pandecode_flag_info mfbd_extra_flag_info[] = {
 
 #define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
 static const struct pandecode_flag_info shader_unknown1_flag_info [] = {
-        FLAG_INFO(NO_ALPHA_TO_COVERAGE),
+        FLAG_INFO(EARLY_Z),
+        FLAG_INFO(HELPER_INVOCATIONS),
         FLAG_INFO(READS_TILEBUFFER),
         FLAG_INFO(READS_ZS),
         {}

@@ -403,7 +403,19 @@ enum mali_format {
 #define MALI_GET_ALPHA_COVERAGE(nibble) ((float) nibble / 15.0f)
 
 /* Applies to unknown1 */
-#define MALI_NO_ALPHA_TO_COVERAGE (1 << 10)
+
+/* Should the hardware perform early-Z testing? Normally should be set
+ * for performance reasons. Clear if you use: discard,
+ * alpha-to-coverage... * It's also possible this disables
+ * forward-pixel kill; we're not quite sure which bit is which yet.
+ * TODO: How does this interact with blending?*/
+
+#define MALI_EARLY_Z (1 << 10)
+
+/* Should the hardware calculate derivatives (via helper invocations)? Set in a
+ * fragment shader that uses texturing or derivative functions */
+
+#define MALI_HELPER_INVOCATIONS (1 << 11)
 
 /* Flags denoting the fragment shader's use of tilebuffer readback. If the
  * shader might read any part of the tilebuffer, set MALI_READS_TILEBUFFER. If

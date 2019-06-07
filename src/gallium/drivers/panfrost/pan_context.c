@@ -1088,7 +1088,15 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 /* Set late due to depending on render state */
                 /* The one at the end seems to mean "1 UBO" */
-                ctx->fragment_shader_core.midgard1.unknown1 = MALI_NO_ALPHA_TO_COVERAGE | 0x200 | 0x2201;
+                unsigned flags = MALI_EARLY_Z | 0x200 | 0x2000 | 0x1;
+
+                /* Any time texturing is used, derivatives are implicitly
+                 * calculated, so we need to enable helper invocations */
+
+                if (ctx->sampler_view_count[PIPE_SHADER_FRAGMENT])
+                        flags |= MALI_HELPER_INVOCATIONS;
+
+                ctx->fragment_shader_core.midgard1.unknown1 = flags;
 
                 /* Assign texture/sample count right before upload */
                 ctx->fragment_shader_core.texture_count = ctx->sampler_view_count[PIPE_SHADER_FRAGMENT];
@@ -1107,7 +1115,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 if (variant->can_discard) {
                         ctx->fragment_shader_core.unknown2_3 |= MALI_CAN_DISCARD;
-                        ctx->fragment_shader_core.midgard1.unknown1 &= ~MALI_NO_ALPHA_TO_COVERAGE;
+                        ctx->fragment_shader_core.midgard1.unknown1 &= ~MALI_EARLY_Z;
                         ctx->fragment_shader_core.midgard1.unknown1 |= 0x4000;
                         ctx->fragment_shader_core.midgard1.unknown1 = 0x4200;
                 }
