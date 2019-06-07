@@ -92,6 +92,7 @@ static const struct debug_named_value debug_options[] = {
 		{"nolrz",     FD_DBG_NOLRZ,  "Disable LRZ (a6xx)"},
 		{"notile",    FD_DBG_NOTILE, "Disable tiling for all internal buffers"},
 		{"layout",    FD_DBG_LAYOUT, "Dump resource layouts"},
+		{"nofp16",    FD_DBG_NOFP16, "Disable mediump precision lowering"},
 		DEBUG_NAMED_VALUE_END
 };
 
@@ -564,7 +565,8 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
 	case PIPE_SHADER_CAP_INT64_ATOMICS:
 		return 0;
 	case PIPE_SHADER_CAP_FP16:
-		return 0;
+		return ((is_a5xx(screen) || is_a6xx(screen)) &&
+				!(fd_mesa_debug & FD_DBG_NOFP16));
 	case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
 	case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
 		return 16;
