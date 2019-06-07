@@ -677,7 +677,7 @@ static void ppir_codegen_print_prog(ppir_compiler *comp)
    printf("========ppir codegen========\n");
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
-         printf("%03d (@%6ld): ", instr->index, instr->offset);
+         printf("%03d (@%6d): ", instr->index, instr->offset);
          int n = prog[0] & 0x1f;
          for (int i = 0; i < n; i++) {
             if (i && i % 6 == 0)

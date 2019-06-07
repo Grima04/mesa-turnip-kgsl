@@ -297,7 +297,7 @@ typedef struct ppir_instr {
    int est; /* earliest start time */
    int parent_index;
    bool scheduled;
-   off_t offset;
+   int offset;
 } ppir_instr;
 
 typedef struct ppir_block {
