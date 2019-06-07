@@ -260,6 +260,24 @@ fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 	return meta_size;
 }
 
+/**
+ * Ensure the rsc is in an ok state to be used with the specified format.
+ * This handles the case of UBWC buffers used with non-UBWC compatible
+ * formats, by triggering an uncompress.
+ */
+void
+fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
+		enum pipe_format format)
+{
+	if (!rsc->ubwc_size)
+		return;
+
+	if (ok_ubwc_format(fd6_pipe2color(format)))
+		return;
+
+	fd_resource_uncompress(ctx, rsc);
+}
+
 uint32_t
 fd6_setup_slices(struct fd_resource *rsc)
 {
