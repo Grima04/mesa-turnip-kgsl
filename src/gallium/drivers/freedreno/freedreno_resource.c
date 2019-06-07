@@ -50,6 +50,14 @@
 /* XXX this should go away, needed for 'struct winsys_handle' */
 #include "state_tracker/drm_driver.h"
 
+/* A private modifier for now, so we have a way to request tiled but not
+ * compressed.  It would perhaps be good to get real modifiers for the
+ * tiled formats, but would probably need to do some work to figure out
+ * the layout(s) of the tiled modes, and whether they are the same
+ * across generations.
+ */
+#define FD_FORMAT_MOD_QCOM_TILED	fourcc_mod_code(QCOM, 0xffffffff)
+
 /**
  * Go through the entire state and see if the resource is bound
  * anywhere. If it is, mark the relevant state as dirty. This is
@@ -302,6 +310,34 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	pipe_resource_reference(&pshadow, NULL);
 
 	return true;
+}
+
+/**
+ * Uncompress an UBWC compressed buffer "in place".  This works basically
+ * like resource shadowing, creating a new resource, and doing an uncompress
+ * blit, and swapping the state between shadow and original resource so it
+ * appears to the state tracker as if nothing changed.
+ */
+void
+fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
+{
+	bool success =
+		fd_try_shadow_resource(ctx, rsc, 0, NULL, FD_FORMAT_MOD_QCOM_TILED);
+
+	/* shadow should not fail in any cases where we need to uncompress: */
+	debug_assert(success);
+
+	/*
+	 * TODO what if rsc is used in other contexts, we don't currently
+	 * have a good way to rebind_resource() in other contexts.  And an
+	 * app that is reading one resource in multiple contexts, isn't
+	 * going to expect that the resource is modified.
+	 *
+	 * Hopefully the edge cases where we need to uncompress are rare
+	 * enough that they mostly only show up in deqp.
+	 */
+
+	rebind_resource(ctx, &rsc->base);
 }
 
 static struct fd_resource *

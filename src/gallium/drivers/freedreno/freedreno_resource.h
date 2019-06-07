@@ -215,6 +215,7 @@ void fd_resource_context_init(struct pipe_context *pctx);
 
 uint32_t fd_setup_slices(struct fd_resource *rsc);
 void fd_resource_resize(struct pipe_resource *prsc, uint32_t sz);
+void fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc);
 
 bool fd_render_condition_check(struct pipe_context *pctx);
 
