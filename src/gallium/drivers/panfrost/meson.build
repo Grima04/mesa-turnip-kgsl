@@ -43,6 +43,7 @@ files_panfrost = files(
   'bifrost/disassemble.c',
 
   'pan_context.c',
+  'pan_afbc.c',
   'pan_job.c',
   'pan_trace.c',
   'pan_drm.c',

@@ -53,62 +53,6 @@ extern const char *pan_counters_base;
 /* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
 //#define DRY_RUN
 
-/* Can a given format support AFBC? Not all can. */
-
-static bool
-panfrost_can_afbc(enum pipe_format format)
-{
-        const struct util_format_description *desc =
-                util_format_description(format);
-
-        if (util_format_is_rgba8_variant(desc))
-                return true;
-
-        /* TODO: AFBC of other formats */
-
-        return false;
-}
-
-/* AFBC is enabled on a per-resource basis (AFBC enabling is theoretically
- * indepdent between color buffers and depth/stencil). To enable, we allocate
- * the AFBC metadata buffer and mark that it is enabled. We do -not- actually
- * edit the fragment job here. This routine should be called ONCE per
- * AFBC-compressed buffer, rather than on every frame. */
-
-static void
-panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsrc, bool ds)
-{
-        if (ctx->require_sfbd) {
-                DBG("AFBC not supported yet on SFBD\n");
-                assert(0);
-        }
-
-        struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
-       /* AFBC metadata is 16 bytes per tile */
-        int tile_w = (rsrc->base.width0 + (MALI_TILE_LENGTH - 1)) >> MALI_TILE_SHIFT;
-        int tile_h = (rsrc->base.height0 + (MALI_TILE_LENGTH - 1)) >> MALI_TILE_SHIFT;
-        int bytes_per_pixel = util_format_get_blocksize(rsrc->base.format);
-        int stride = bytes_per_pixel * ALIGN(rsrc->base.width0, 16);
-
-        stride *= 2;  /* TODO: Should this be carried over? */
-        int main_size = stride * rsrc->base.height0;
-        rsrc->bo->afbc_metadata_size = tile_w * tile_h * 16;
-
-        /* Allocate the AFBC slab itself, large enough to hold the above */
-        screen->driver->allocate_slab(screen, &rsrc->bo->afbc_slab,
-                               (rsrc->bo->afbc_metadata_size + main_size + 4095) / 4096,
-                               true, 0, 0, 0);
-
-        rsrc->bo->layout = PAN_AFBC;
-
-        /* Compressed textured reads use a tagged pointer to the metadata */
-
-        rsrc->bo->gpu = rsrc->bo->afbc_slab.gpu | (ds ? 0 : 1);
-        rsrc->bo->cpu = rsrc->bo->afbc_slab.cpu;
-        rsrc->bo->gem_handle = rsrc->bo->afbc_slab.gem_handle;
-}
-
 static void
 panfrost_enable_checksum(struct panfrost_context *ctx, struct panfrost_resource *rsrc)
 {
@@ -2175,18 +2119,13 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
                 bool is_scanout = panfrost_is_scanout(ctx);
 
-                if (!is_scanout && tex->bo->layout != PAN_AFBC && panfrost_can_afbc(format)) {
-                        /* The blob is aggressive about enabling AFBC. As such,
-                         * it's pretty much necessary to use it here, since we
-                         * have no traces of non-compressed FBO. */
+                bool can_afbc = panfrost_format_supports_afbc(format);
 
+                if (!is_scanout && tex->bo->layout != PAN_AFBC && can_afbc)
                         panfrost_enable_afbc(ctx, tex, false);
-                }
 
-                if (!is_scanout && !tex->bo->has_checksum) {
-                        /* Enable transaction elimination if we can */
+                if (!is_scanout && !tex->bo->has_checksum)
                         panfrost_enable_checksum(ctx, tex);
-                }
         }
 
         {
