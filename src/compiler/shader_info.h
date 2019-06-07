@@ -189,6 +189,14 @@ typedef struct shader_info {
          bool uses_discard;
 
          /**
+          * True if this fragment shader requires helper invocations.  This
+          * can be caused by the use of ALU derivative ops, texture
+          * instructions which do implicit derivatives, and the use of quad
+          * subgroup operations.
+          */
+         bool needs_helper_invocations;
+
+         /**
           * Whether any inputs are declared with the "sample" qualifier.
           */
          bool uses_sample_qualifier;

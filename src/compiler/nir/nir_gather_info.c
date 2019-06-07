@@ -264,6 +264,14 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          (1ull << nir_system_value_from_intrinsic(instr->intrinsic));
       break;
 
+   case nir_intrinsic_quad_broadcast:
+   case nir_intrinsic_quad_swap_horizontal:
+   case nir_intrinsic_quad_swap_vertical:
+   case nir_intrinsic_quad_swap_diagonal:
+      if (shader->info.stage == MESA_SHADER_FRAGMENT)
+         shader->info.fs.needs_helper_invocations = true;
+      break;
+
    case nir_intrinsic_end_primitive:
    case nir_intrinsic_end_primitive_with_counter:
       assert(shader->info.stage == MESA_SHADER_GEOMETRY);
@@ -284,6 +292,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
 static void
 gather_tex_info(nir_tex_instr *instr, nir_shader *shader)
 {
+   if (shader->info.stage == MESA_SHADER_FRAGMENT &&
+       nir_tex_instr_has_implicit_derivative(instr))
+      shader->info.fs.needs_helper_invocations = true;
+
    switch (instr->op) {
    case nir_texop_tg4:
       shader->info.uses_texture_gather = true;
@@ -300,6 +312,13 @@ gather_alu_info(nir_alu_instr *instr, nir_shader *shader)
    case nir_op_fddx:
    case nir_op_fddy:
       shader->info.uses_fddx_fddy = true;
+      /* Fall through */
+   case nir_op_fddx_fine:
+   case nir_op_fddy_fine:
+   case nir_op_fddx_coarse:
+   case nir_op_fddy_coarse:
+      if (shader->info.stage == MESA_SHADER_FRAGMENT)
+         shader->info.fs.needs_helper_invocations = true;
       break;
    default:
       break;
