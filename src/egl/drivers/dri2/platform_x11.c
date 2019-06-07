@@ -261,7 +261,7 @@ dri2_x11_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
 
    (void) drv;
 
-   dri2_surf = malloc(sizeof *dri2_surf);
+   dri2_surf = calloc(1, sizeof *dri2_surf);
    if (!dri2_surf) {
       _eglError(EGL_BAD_ALLOC, "dri2_create_surface");
       return NULL;
