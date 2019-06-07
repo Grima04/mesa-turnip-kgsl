@@ -171,7 +171,7 @@ dri2_drm_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
    dri2_surf->base.Height = surf->base.height;
    surf->dri_private = dri2_surf;
 
-   if (!dri2_create_drawable(dri2_dpy, config, dri2_surf))
+   if (!dri2_create_drawable(dri2_dpy, config, dri2_surf, dri2_surf->gbm_surf))
       goto cleanup_surf;
 
    return &dri2_surf->base;

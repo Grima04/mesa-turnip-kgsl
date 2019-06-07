@@ -1431,10 +1431,10 @@ dri2_surf_update_fence_fd(_EGLContext *ctx,
 EGLBoolean
 dri2_create_drawable(struct dri2_egl_display *dri2_dpy,
                      const __DRIconfig *config,
-                     struct dri2_egl_surface *dri2_surf)
+                     struct dri2_egl_surface *dri2_surf,
+                     void *loaderPrivate)
 {
    __DRIcreateNewDrawableFunc createNewDrawable;
-   void *loaderPrivate = dri2_surf;
 
    if (dri2_dpy->image_driver)
       createNewDrawable = dri2_dpy->image_driver->createNewDrawable;
@@ -1444,12 +1444,6 @@ dri2_create_drawable(struct dri2_egl_display *dri2_dpy,
       createNewDrawable = dri2_dpy->swrast->createNewDrawable;
    else
       return _eglError(EGL_BAD_ALLOC, "no createNewDrawable");
-
-   /* As always gbm is a bit special.. */
-#ifdef HAVE_DRM_PLATFORM
-   if (dri2_surf->gbm_surf)
-      loaderPrivate = dri2_surf->gbm_surf;
-#endif
 
    dri2_surf->dri_drawable = (*createNewDrawable)(dri2_dpy->dri_screen,
                                                   config, loaderPrivate);

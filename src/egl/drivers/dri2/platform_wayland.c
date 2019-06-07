@@ -348,7 +348,7 @@ dri2_wl_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
    if (dri2_dpy->flush)
       dri2_surf->wl_win->resize_callback = resize_callback;
 
-   if (!dri2_create_drawable(dri2_dpy, config, dri2_surf))
+   if (!dri2_create_drawable(dri2_dpy, config, dri2_surf, dri2_surf))
        goto cleanup_surf_wrapper;
 
    dri2_surf->base.SwapInterval = dri2_dpy->default_swap_interval;
