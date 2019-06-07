@@ -44,6 +44,7 @@ files_panfrost = files(
 
   'pan_context.c',
   'pan_afbc.c',
+  'pan_blit.c',
   'pan_job.c',
   'pan_trace.c',
   'pan_drm.c',

@@ -133,4 +133,13 @@ panfrost_format_supports_afbc(enum pipe_format format);
 void
 panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsrc, bool ds);
 
+/* Blitting */
+
+void
+panfrost_blit(struct pipe_context *pipe,
+              const struct pipe_blit_info *info);
+
+void
+panfrost_blit_wallpaper(struct panfrost_context *ctx);
+
 #endif /* PAN_RESOURCE_H */
