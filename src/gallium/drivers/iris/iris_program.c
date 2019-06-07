@@ -2173,9 +2173,9 @@ iris_delete_cs_state(struct pipe_context *ctx, void *state)
  * Updates dirty tracking to account for the shader's NOS.
  */
 static void
-bind_state(struct iris_context *ice,
-           struct iris_uncompiled_shader *ish,
-           gl_shader_stage stage)
+bind_shader_state(struct iris_context *ice,
+                  struct iris_uncompiled_shader *ish,
+                  gl_shader_stage stage)
 {
    uint64_t dirty_bit = IRIS_DIRTY_UNCOMPILED_VS << stage;
    const uint64_t nos = ish ? ish->nos : 0;
@@ -2205,13 +2205,13 @@ bind_state(struct iris_context *ice,
 static void
 iris_bind_vs_state(struct pipe_context *ctx, void *state)
 {
-   bind_state((void *) ctx, state, MESA_SHADER_VERTEX);
+   bind_shader_state((void *) ctx, state, MESA_SHADER_VERTEX);
 }
 
 static void
 iris_bind_tcs_state(struct pipe_context *ctx, void *state)
 {
-   bind_state((void *) ctx, state, MESA_SHADER_TESS_CTRL);
+   bind_shader_state((void *) ctx, state, MESA_SHADER_TESS_CTRL);
 }
 
 static void
@@ -2223,7 +2223,7 @@ iris_bind_tes_state(struct pipe_context *ctx, void *state)
    if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
-   bind_state((void *) ctx, state, MESA_SHADER_TESS_EVAL);
+   bind_shader_state((void *) ctx, state, MESA_SHADER_TESS_EVAL);
 }
 
 static void
@@ -2235,7 +2235,7 @@ iris_bind_gs_state(struct pipe_context *ctx, void *state)
    if (!!state != !!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
       ice->state.dirty |= IRIS_DIRTY_URB;
 
-   bind_state((void *) ctx, state, MESA_SHADER_GEOMETRY);
+   bind_shader_state((void *) ctx, state, MESA_SHADER_GEOMETRY);
 }
 
 static void
@@ -2256,13 +2256,13 @@ iris_bind_fs_state(struct pipe_context *ctx, void *state)
        (new_ish->nir->info.outputs_written & color_bits))
       ice->state.dirty |= IRIS_DIRTY_PS_BLEND;
 
-   bind_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
+   bind_shader_state((void *) ctx, state, MESA_SHADER_FRAGMENT);
 }
 
 static void
 iris_bind_cs_state(struct pipe_context *ctx, void *state)
 {
-   bind_state((void *) ctx, state, MESA_SHADER_COMPUTE);
+   bind_shader_state((void *) ctx, state, MESA_SHADER_COMPUTE);
 }
 
 void
