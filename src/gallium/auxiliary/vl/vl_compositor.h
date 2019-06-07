@@ -136,6 +136,17 @@ struct vl_compositor
    } fs_yuv;
 
    struct {
+      struct {
+         void *y;
+         void *uv;
+      } weave;
+      struct {
+         void *y;
+         void *uv;
+      } bob;
+   } cs_yuv;
+
+   struct {
       void *rgb;
       void *yuv;
    } fs_palette;
