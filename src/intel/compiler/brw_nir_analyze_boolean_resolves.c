@@ -145,6 +145,12 @@ analyze_boolean_resolves_block(nir_block *block)
             uint8_t src0_status = get_resolve_status_for_src(&alu->src[first + 0].src);
             uint8_t src1_status = get_resolve_status_for_src(&alu->src[first + 1].src);
 
+            /* src0 of a bcsel is evaluated as a Boolean with the expectation
+             * that it has already been resolved.  Mark it as such.
+             */
+            if (alu->op == nir_op_b32csel)
+               src_mark_needs_resolve(&alu->src[0].src, NULL);
+
             if (src0_status == src1_status) {
                resolve_status = src0_status;
             } else if (src0_status == BRW_NIR_NON_BOOLEAN ||
