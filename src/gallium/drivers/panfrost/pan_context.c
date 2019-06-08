@@ -1994,15 +1994,23 @@ panfrost_create_sampler_view(
 
         /* Check if we need to set a custom stride by computing the "expected"
          * stride and comparing it to what the BO actually wants. Only applies
-         * to linear textures TODO: Mipmap? */
+         * to linear textures, since tiled/compressed textures have strict
+         * alignment requirements for their strides as it is */
 
-        unsigned actual_stride = prsrc->bo->slices[0].stride;
+        unsigned first_level = template->u.tex.first_level;
+        unsigned last_level = template->u.tex.last_level;
 
-        if (prsrc->bo->layout == PAN_LINEAR &&
-            template->u.tex.last_level == 0 &&
-            template->u.tex.first_level == 0 &&
-            (texture->width0 * bytes_per_pixel) != actual_stride) {
-                usage2_layout |= MALI_TEX_MANUAL_STRIDE;
+        if (prsrc->bo->layout == PAN_LINEAR) {
+                for (unsigned l = first_level; l <= last_level; ++l) {
+                        unsigned actual_stride = prsrc->bo->slices[l].stride;
+                        unsigned width = u_minify(texture->width0, l);
+                        unsigned comp_stride = width * bytes_per_pixel;
+
+                        if (comp_stride != actual_stride) {
+                                usage2_layout |= MALI_TEX_MANUAL_STRIDE;
+                                break;
+                        }
+                }
         }
 
         struct mali_texture_descriptor texture_descriptor = {
