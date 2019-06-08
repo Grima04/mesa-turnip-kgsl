@@ -190,6 +190,16 @@ def barrier(name):
 barrier("barrier")
 barrier("discard")
 
+# Demote fragment shader invocation to a helper invocation.  Any stores to
+# memory after this instruction are suppressed and the fragment does not write
+# outputs to the framebuffer.  Unlike discard, demote needs to ensure that
+# derivatives will still work for invocations that were not demoted.
+#
+# As specified by SPV_EXT_demote_to_helper_invocation.
+barrier("demote")
+intrinsic("is_helper_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
+
+
 # Memory barrier with semantics analogous to the memoryBarrier() GLSL
 # intrinsic.
 barrier("memory_barrier")
