@@ -3502,6 +3502,23 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       bld.MOV(dest, fetch_render_target_array_index(bld));
       break;
 
+   case nir_intrinsic_is_helper_invocation: {
+      /* Unlike the regular gl_HelperInvocation, that is defined at dispatch,
+       * the helperInvocationEXT() (aka SpvOpIsHelperInvocationEXT) takes into
+       * consideration demoted invocations.  That information is stored in
+       * f0.1.
+       */
+      dest.type = BRW_REGISTER_TYPE_UD;
+
+      bld.MOV(dest, brw_imm_ud(0));
+
+      fs_inst *mov = bld.MOV(dest, brw_imm_ud(~0));
+      mov->predicate = BRW_PREDICATE_NORMAL;
+      mov->predicate_inverse = true;
+      mov->flag_subreg = 1;
+      break;
+   }
+
    case nir_intrinsic_load_helper_invocation:
    case nir_intrinsic_load_sample_mask_in:
    case nir_intrinsic_load_sample_id: {
@@ -3549,6 +3566,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       break;
    }
 
+   case nir_intrinsic_demote:
    case nir_intrinsic_discard:
    case nir_intrinsic_discard_if: {
       /* We track our discarded pixels in f0.1.  By predicating on it, we can
@@ -3608,10 +3626,14 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       cmp->flag_subreg = 1;
 
       if (devinfo->gen >= 6) {
+         /* Due to the way we implement discard, the jump will only happen
+          * when the whole quad is discarded.  So we can do this even for
+          * demote as it won't break its uniformity promises.
+          */
          emit_discard_jump();
       }
 
-      limit_dispatch_width(16, "Fragment discard not implemented in SIMD32 mode.");
+      limit_dispatch_width(16, "Fragment discard/demote not implemented in SIMD32 mode.");
       break;
    }
 
