@@ -109,6 +109,9 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 			 * one format with everything else.
 			 */
 			for (unsigned i = 0; i < format_list->viewFormatCount; ++i) {
+				if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
+					continue;
+
 				if (pCreateInfo->format != format_list->pViewFormats[i])
 					return false;
 			}
@@ -200,6 +203,9 @@ radv_use_dcc_for_image(struct radv_device *device,
 			/* compatibility is transitive, so we only need to check
 			 * one format with everything else. */
 			for (unsigned i = 0; i < format_list->viewFormatCount; ++i) {
+				if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
+					continue;
+
 				if (!radv_dcc_formats_compatible(pCreateInfo->format,
 				                                 format_list->pViewFormats[i]))
 					dcc_compatible_formats = false;
