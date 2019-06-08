@@ -3718,6 +3718,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(fragment_shader_pixel_interlock, cap);
          break;
 
+      case SpvCapabilityDemoteToHelperInvocationEXT:
+         spv_check_supported(demote_to_helper_invocation, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
@@ -4531,6 +4535,28 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpEndInvocationInterlockEXT:
       vtn_emit_barrier(b, nir_intrinsic_end_invocation_interlock);
       break;
+
+   case SpvOpDemoteToHelperInvocationEXT: {
+      nir_intrinsic_instr *intrin =
+         nir_intrinsic_instr_create(b->shader, nir_intrinsic_demote);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      break;
+   }
+
+   case SpvOpIsHelperInvocationEXT: {
+      nir_intrinsic_instr *intrin =
+         nir_intrinsic_instr_create(b->shader, nir_intrinsic_is_helper_invocation);
+      nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1, 1, NULL);
+      nir_builder_instr_insert(&b->nb, &intrin->instr);
+
+      struct vtn_type *res_type =
+         vtn_value(b, w[1], vtn_value_type_type)->type;
+      struct vtn_ssa_value *val = vtn_create_ssa_value(b, res_type->type);
+      val->def = &intrin->dest.ssa;
+
+      vtn_push_ssa(b, w[2], res_type, val);
+      break;
+   }
 
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);

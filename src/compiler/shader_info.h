@@ -35,6 +35,7 @@ extern "C" {
 struct spirv_supported_capabilities {
    bool address;
    bool atomic_storage;
+   bool demote_to_helper_invocation;
    bool derivative_group;
    bool descriptor_array_dynamic_indexing;
    bool descriptor_array_non_uniform_indexing;
