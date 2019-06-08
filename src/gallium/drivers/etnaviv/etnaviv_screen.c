@@ -84,7 +84,6 @@ etna_screen_destroy(struct pipe_screen *pscreen)
 {
    struct etna_screen *screen = etna_screen(pscreen);
 
-   _mesa_set_destroy(screen->used_resources, NULL);
    mtx_destroy(&screen->lock);
 
    if (screen->perfmon)
@@ -958,15 +957,9 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
       etna_pm_query_setup(screen);
 
    mtx_init(&screen->lock, mtx_recursive);
-   screen->used_resources = _mesa_set_create(NULL, _mesa_hash_pointer,
-                                             _mesa_key_pointer_equal);
-   if (!screen->used_resources)
-      goto fail2;
 
    return pscreen;
 
-fail2:
-   mtx_destroy(&screen->lock);
 fail:
    etna_screen_destroy(pscreen);
    return NULL;

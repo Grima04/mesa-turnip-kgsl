@@ -48,6 +48,7 @@
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
+#include "util/hash_table.h"
 #include "util/u_blitter.h"
 #include "util/u_helpers.h"
 #include "util/u_memory.h"
@@ -60,6 +61,25 @@ static void
 etna_context_destroy(struct pipe_context *pctx)
 {
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
+
+   if (ctx->used_resources) {
+      mtx_lock(&screen->lock);
+
+      /*
+       * There should be no resources tracked in the context when it's being
+       * destroyed. Be sure there are none to avoid memory leaks on buggy
+       * programs.
+       */
+      set_foreach(ctx->used_resources, entry) {
+         struct etna_resource *rsc = (struct etna_resource *)entry->key;
+
+         _mesa_set_remove_key(rsc->pending_ctx, ctx);
+      }
+      _mesa_set_destroy(ctx->used_resources, NULL);
+
+      mtx_unlock(&screen->lock);
+   }
 
    if (ctx->dummy_rt)
       etna_bo_del(ctx->dummy_rt);
@@ -399,16 +419,18 @@ etna_cmd_stream_reset_notify(struct etna_cmd_stream *stream, void *priv)
    ctx->dirty_sampler_views = ~0L;
 
    /*
-    * Go through all _resources_ associated with this _screen_, pending
-    * in this _context_ and mark them as not pending in this _context_
-    * anymore, since they were just flushed.
+    * Go through all _resources_ pending in this _context_ and mark them as
+    * not pending in this _context_ anymore, since they were just flushed.
     */
    mtx_lock(&screen->lock);
-   set_foreach(screen->used_resources, entry) {
+   set_foreach(ctx->used_resources, entry) {
       struct etna_resource *rsc = (struct etna_resource *)entry->key;
+
+      rsc->status = 0;
 
       _mesa_set_remove_key(rsc->pending_ctx, ctx);
    }
+   _mesa_set_clear(ctx->used_resources, NULL);
    mtx_unlock(&screen->lock);
 }
 
@@ -445,6 +467,11 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    screen = etna_screen(pscreen);
    ctx->stream = etna_cmd_stream_new(screen->pipe, 0x2000, &etna_cmd_stream_reset_notify, ctx);
    if (ctx->stream == NULL)
+      goto fail;
+
+   ctx->used_resources = _mesa_set_create(NULL, _mesa_hash_pointer,
+                                          _mesa_key_pointer_equal);
+   if (!ctx->used_resources)
       goto fail;
 
    /* context ctxate setup */

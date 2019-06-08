@@ -190,6 +190,9 @@ struct etna_context {
 
    struct etna_bo *dummy_rt;
    struct etna_reloc dummy_rt_reloc;
+
+   /* set of resources used by currently-unsubmitted renders */
+   struct set *used_resources;
 };
 
 static inline struct etna_context *
