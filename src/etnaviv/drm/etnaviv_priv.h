@@ -205,4 +205,56 @@ static inline void get_abs_timeout(struct drm_etnaviv_timespec *tv, uint64_t ns)
 	tv->tv_nsec = t.tv_nsec + ns - (s * 1000000000);
 }
 
+#if HAVE_VALGRIND
+#  include <valgrind/memcheck.h>
+
+/*
+ * For tracking the backing memory (if valgrind enabled, we force a mmap
+ * for the purposes of tracking)
+ */
+static inline void VG_BO_ALLOC(struct etna_bo *bo)
+{
+	if (bo && RUNNING_ON_VALGRIND) {
+		VALGRIND_MALLOCLIKE_BLOCK(etna_bo_map(bo), bo->size, 0, 1);
+	}
+}
+
+static inline void VG_BO_FREE(struct etna_bo *bo)
+{
+	VALGRIND_FREELIKE_BLOCK(bo->map, 0);
+}
+
+/*
+ * For tracking bo structs that are in the buffer-cache, so that valgrind
+ * doesn't attribute ownership to the first one to allocate the recycled
+ * bo.
+ *
+ * Note that the list_head in etna_bo is used to track the buffers in cache
+ * so disable error reporting on the range while they are in cache so
+ * valgrind doesn't squawk about list traversal.
+ *
+ */
+static inline void VG_BO_RELEASE(struct etna_bo *bo)
+{
+	if (RUNNING_ON_VALGRIND) {
+		VALGRIND_DISABLE_ADDR_ERROR_REPORTING_IN_RANGE(bo, sizeof(*bo));
+		VALGRIND_MAKE_MEM_NOACCESS(bo, sizeof(*bo));
+		VALGRIND_FREELIKE_BLOCK(bo->map, 0);
+	}
+}
+static inline void VG_BO_OBTAIN(struct etna_bo *bo)
+{
+	if (RUNNING_ON_VALGRIND) {
+		VALGRIND_MAKE_MEM_DEFINED(bo, sizeof(*bo));
+		VALGRIND_ENABLE_ADDR_ERROR_REPORTING_IN_RANGE(bo, sizeof(*bo));
+		VALGRIND_MALLOCLIKE_BLOCK(bo->map, bo->size, 0, 1);
+	}
+}
+#else
+static inline void VG_BO_ALLOC(struct etna_bo *bo)   {}
+static inline void VG_BO_FREE(struct etna_bo *bo)    {}
+static inline void VG_BO_RELEASE(struct etna_bo *bo) {}
+static inline void VG_BO_OBTAIN(struct etna_bo *bo)  {}
+#endif
+
 #endif /* ETNAVIV_PRIV_H_ */
