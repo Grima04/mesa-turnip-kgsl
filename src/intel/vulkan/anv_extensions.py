@@ -143,6 +143,7 @@ EXTENSIONS = [
     Extension('VK_EXT_sampler_filter_minmax',             1, 'device->info.gen >= 9'),
     Extension('VK_EXT_scalar_block_layout',               1, True),
     Extension('VK_EXT_separate_stencil_usage',            1, True),
+    Extension('VK_EXT_shader_demote_to_helper_invocation', 1, True),
     Extension('VK_EXT_shader_stencil_export',             1, 'device->info.gen >= 9'),
     Extension('VK_EXT_shader_viewport_index_layer',       1, True),
     Extension('VK_EXT_texel_buffer_alignment',            1, True),

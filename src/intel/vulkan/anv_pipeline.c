@@ -168,6 +168,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
       .caps = {
+         .demote_to_helper_invocation = true,
          .derivative_group = true,
          .descriptor_array_dynamic_indexing = true,
          .descriptor_array_non_uniform_indexing = true,
