@@ -315,6 +315,16 @@ iris_isl_format_for_pipe_format(enum pipe_format pf)
       [PIPE_FORMAT_ASTC_12x12_SRGB]         = ISL_FORMAT_ASTC_LDR_2D_12X12_U8SRGB,
 
       [PIPE_FORMAT_A1B5G5R5_UNORM]          = ISL_FORMAT_A1B5G5R5_UNORM,
+
+      /* We support these so that we know the API expects no alpha channel.
+       * Otherwise, the state tracker would just give us a format with alpha
+       * and we wouldn't know to override the swizzle to 1.
+       */
+      [PIPE_FORMAT_R16G16B16X16_UINT]       = ISL_FORMAT_R16G16B16A16_UINT,
+      [PIPE_FORMAT_R16G16B16X16_SINT]       = ISL_FORMAT_R16G16B16A16_SINT,
+      [PIPE_FORMAT_R32G32B32X32_UINT]       = ISL_FORMAT_R32G32B32A32_UINT,
+      [PIPE_FORMAT_R32G32B32X32_SINT]       = ISL_FORMAT_R32G32B32A32_SINT,
+      [PIPE_FORMAT_R10G10B10X2_SNORM]       = ISL_FORMAT_R10G10B10A2_SNORM,
    };
    assert(pf < PIPE_FORMAT_COUNT);
    return table[pf];
@@ -326,6 +336,7 @@ iris_format_for_usage(const struct gen_device_info *devinfo,
                       isl_surf_usage_flags_t usage)
 {
    enum isl_format format = iris_isl_format_for_pipe_format(pformat);
+   const struct isl_format_layout *fmtl = isl_format_get_layout(format);
    struct isl_swizzle swizzle = ISL_SWIZZLE_IDENTITY;
 
    if (!util_format_is_srgb(pformat)) {
@@ -340,8 +351,8 @@ iris_format_for_usage(const struct gen_device_info *devinfo,
       }
    }
 
-   if (pformat == PIPE_FORMAT_DXT1_RGB ||
-       pformat == PIPE_FORMAT_DXT1_SRGB) {
+   /* When faking RGBX pipe formats with RGBA ISL formats, override alpha. */
+   if (!util_format_has_alpha(pformat) && fmtl->channels.a.type != ISL_VOID) {
       swizzle = ISL_SWIZZLE(RED, GREEN, BLUE, ONE);
    }
 
