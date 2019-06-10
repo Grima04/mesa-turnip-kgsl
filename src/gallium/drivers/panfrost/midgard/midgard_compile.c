@@ -1377,11 +1377,9 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                         .mask = 0xF,
 
                         /* TODO: half */
-                        //.in_reg_full = 1,
+                        .in_reg_full = 1,
                         .in_reg_swizzle = SWIZZLE_XYZW,
                         .out_full = 1,
-
-                        .filter = 1,
 
                         /* Always 1 */
                         .unknown7 = 1,

@@ -1079,9 +1079,6 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         /* Instruction "modifiers" parallel the ALU instructions. */
 
-        if (!texture->filter)
-                printf(".raw");
-
         if (texture->shadow)
                 printf(".shadow");
 
@@ -1103,7 +1100,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
         print_swizzle_vec4(texture->swizzle, false, false);
         printf(", ");
 
-        print_texture_reg(/*texture->in_reg_full*/true, texture->in_reg_select, texture->in_reg_upper);
+        print_texture_reg(texture->in_reg_full, texture->in_reg_select, texture->in_reg_upper);
         print_swizzle_vec4(texture->in_reg_swizzle, false, false);
 
         /* There is *always* an offset attached. Of

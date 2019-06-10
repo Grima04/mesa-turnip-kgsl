@@ -534,9 +534,7 @@ __attribute__((__packed__))
          * specificed in offset_imm_* */
         unsigned offset_register : 1;
 
-        /* Like in Bifrost */
-        unsigned filter  : 1;
-
+        unsigned in_reg_full  : 1;
         unsigned in_reg_select : 1;
         unsigned in_reg_upper  : 1;
         unsigned in_reg_swizzle : 8;
