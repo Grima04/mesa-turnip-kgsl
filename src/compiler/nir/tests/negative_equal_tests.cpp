@@ -270,6 +270,42 @@ compare_with_negation(nir_type_uint32)
 compare_with_negation(nir_type_int64)
 compare_with_negation(nir_type_uint64)
 
+TEST_F(alu_srcs_negative_equal_test, swizzle_scalar_to_vector)
+{
+   nir_ssa_def *v = nir_imm_vec2(&bld, 1.0, -1.0);
+   const uint8_t s0[4] = { 0, 0, 0, 0 };
+   const uint8_t s1[4] = { 1, 1, 1, 1 };
+
+   /* We can't use nir_swizzle here because it inserts an extra MOV. */
+   nir_alu_instr *instr = nir_alu_instr_create(bld.shader, nir_op_fadd);
+
+   instr->src[0].src = nir_src_for_ssa(v);
+   instr->src[1].src = nir_src_for_ssa(v);
+
+   memcpy(&instr->src[0].swizzle, s0, sizeof(s0));
+   memcpy(&instr->src[1].swizzle, s1, sizeof(s1));
+
+   nir_builder_alu_instr_finish_and_insert(&bld, instr);
+
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));
+}
+
+TEST_F(alu_srcs_negative_equal_test, unused_components_mismatch)
+{
+   nir_ssa_def *v1 = nir_imm_vec4(&bld, -2.0, 18.0, 43.0,  1.0);
+   nir_ssa_def *v2 = nir_imm_vec4(&bld,  2.0, 99.0, 76.0, -1.0);
+
+   nir_ssa_def *result = nir_fadd(&bld, v1, v2);
+
+   nir_alu_instr *instr = nir_instr_as_alu(result->parent_instr);
+
+   /* Disable the channels that aren't negations of each other. */
+   instr->dest.dest.is_ssa = false;
+   instr->dest.write_mask = 8 + 1;
+
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));
+}
+
 static void
 count_sequence(nir_const_value c[NIR_MAX_VEC_COMPONENTS],
                nir_alu_type full_type, int first)

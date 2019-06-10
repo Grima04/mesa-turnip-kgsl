@@ -352,12 +352,31 @@ nir_const_value_negative_equal(nir_const_value c1,
  * This function does not detect the general case when \p alu1 and \p alu2 are
  * SSA values that are the negations of each other (e.g., \p alu1 represents
  * (a * b) and \p alu2 represents (-a * b)).
+ *
+ * \warning
+ * It is the responsibility of the caller to ensure that the component counts,
+ * write masks, and base types of the sources being compared are compatible.
  */
 bool
 nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
                             const nir_alu_instr *alu2,
                             unsigned src1, unsigned src2)
 {
+#ifndef NDEBUG
+   for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
+      assert(nir_alu_instr_channel_used(alu1, src1, i) ==
+             nir_alu_instr_channel_used(alu2, src2, i));
+   }
+
+   if (nir_op_infos[alu1->op].input_types[src1] == nir_type_float) {
+      assert(nir_op_infos[alu1->op].input_types[src1] ==
+             nir_op_infos[alu2->op].input_types[src2]);
+   } else {
+      assert(nir_op_infos[alu1->op].input_types[src1] == nir_type_int);
+      assert(nir_op_infos[alu2->op].input_types[src2] == nir_type_int);
+   }
+#endif
+
    if (alu1->src[src1].abs != alu2->src[src2].abs)
       return false;
 
@@ -385,12 +404,13 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
           nir_src_bit_size(alu2->src[src2].src))
          return false;
 
-      /* FINISHME: Apply the swizzle? */
-      const unsigned components = nir_ssa_alu_instr_src_components(alu1, src1);
       const nir_alu_type full_type = nir_op_infos[alu1->op].input_types[src1] |
                                      nir_src_bit_size(alu1->src[src1].src);
-      for (unsigned i = 0; i < components; i++) {
-         if (!nir_const_value_negative_equal(const1[i], const2[i], full_type))
+      for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
+         if (nir_alu_instr_channel_used(alu1, src1, i) &&
+             !nir_const_value_negative_equal(const1[alu1->src[src1].swizzle[i]],
+                                             const2[alu2->src[src2].swizzle[i]],
+                                             full_type))
             return false;
       }
 
