@@ -1091,8 +1091,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
         printf(", ");
 
         print_texture_reg(/*texture->in_reg_full*/true, texture->in_reg_select, texture->in_reg_upper);
-        printf(".%c%c, ", "xyzw"[texture->in_reg_swizzle_left],
-               "xyzw"[texture->in_reg_swizzle_right]);
+        print_swizzle_vec4(texture->in_reg_swizzle, false, false);
 
         /* TODO: can offsets be full words? */
         if (texture->has_offset) {
@@ -1108,15 +1107,13 @@ print_texture_word(uint32_t *word, unsigned tabs)
         /* While not zero in general, for these simple instructions the
          * following unknowns are zero, so we don't include them */
 
-        if (texture->unknown1 ||
-                        texture->unknown2 ||
+        if (texture->unknown2 ||
                         texture->unknown3 ||
                         texture->unknown4 ||
                         texture->unknownA ||
                         texture->unknownB ||
                         texture->unknown8 ||
                         texture->unknown9) {
-                printf("// unknown1 = 0x%x\n", texture->unknown1);
                 printf("// unknown2 = 0x%x\n", texture->unknown2);
                 printf("// unknown3 = 0x%x\n", texture->unknown3);
                 printf("// unknown4 = 0x%x\n", texture->unknown4);

@@ -1372,12 +1372,13 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,
 
-                        /* TODO: Don't force xyzw */
-                        .swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W),
+                        /* TODO: Regalloc it in */
+                        .swizzle = SWIZZLE_XYZW,
                         .mask = 0xF,
 
                         /* TODO: half */
                         //.in_reg_full = 1,
+                        .in_reg_swizzle = SWIZZLE_XYZW,
                         .out_full = 1,
 
                         .filter = 1,
@@ -1393,17 +1394,6 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         /* Set registers to read and write from the same place */
         ins.texture.in_reg_select = in_reg;
         ins.texture.out_reg_select = out_reg;
-
-        /* TODO: Dynamic swizzle input selection, half-swizzles? */
-        if (instr->sampler_dim == GLSL_SAMPLER_DIM_3D) {
-                ins.texture.in_reg_swizzle_right = COMPONENT_X;
-                ins.texture.in_reg_swizzle_left = COMPONENT_Y;
-                //ins.texture.in_reg_swizzle_third = COMPONENT_Z;
-        } else {
-                ins.texture.in_reg_swizzle_left = COMPONENT_X;
-                ins.texture.in_reg_swizzle_right = COMPONENT_Y;
-                //ins.texture.in_reg_swizzle_third = COMPONENT_X;
-        }
 
         emit_mir_instruction(ctx, ins);
 

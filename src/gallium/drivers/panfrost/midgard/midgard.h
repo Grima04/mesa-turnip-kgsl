@@ -505,13 +505,9 @@ __attribute__((__packed__))
 
         unsigned in_reg_select : 1;
         unsigned in_reg_upper  : 1;
+        unsigned in_reg_swizzle : 8;
 
-        unsigned in_reg_swizzle_left : 2;
-        unsigned in_reg_swizzle_right : 2;
-
-        unsigned unknown1 : 2;
-
-        unsigned unknown8  : 4;
+        unsigned unknown8  : 2;
 
         unsigned out_full  : 1;
 
