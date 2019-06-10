@@ -1048,9 +1048,22 @@ print_texture_format(int format)
 }
 
 static void
-print_texture_op(unsigned op)
+print_texture_op(unsigned op, bool gather)
 {
         /* Act like a bare name, like ESSL functions */
+
+        if (gather) {
+                printf("textureGather");
+
+                unsigned component = op >> 4;
+                unsigned bottom = op & 0xF;
+
+                if (bottom != 0x2)
+                        printf("_unk%d", bottom);
+
+                printf(".%c", components[component]);
+                return;
+        }
 
         switch (op) {
                 DEFINE_CASE(TEXTURE_OP_NORMAL, "texture");
@@ -1077,7 +1090,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
         midgard_texture_word *texture = (midgard_texture_word *) word;
 
         /* Broad category of texture operation in question */
-        print_texture_op(texture->op);
+        print_texture_op(texture->op, texture->is_gather);
 
         /* Specific format in question */
         print_texture_format(texture->format);
@@ -1180,12 +1193,10 @@ print_texture_word(uint32_t *word, unsigned tabs)
          * following unknowns are zero, so we don't include them */
 
         if (texture->unknown2 ||
-                        texture->unknown3 ||
                         texture->unknown4 ||
                         texture->unknownA ||
                         texture->unknown8) {
                 printf("// unknown2 = 0x%x\n", texture->unknown2);
-                printf("// unknown3 = 0x%x\n", texture->unknown3);
                 printf("// unknown4 = 0x%x\n", texture->unknown4);
                 printf("// unknownA = 0x%x\n", texture->unknownA);
                 printf("// unknown8 = 0x%x\n", texture->unknown8);

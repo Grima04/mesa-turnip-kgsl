@@ -510,7 +510,7 @@ __attribute__((__packed__))
 
         unsigned op  : 6;
         unsigned shadow    : 1;
-        unsigned unknown3  : 1;
+        unsigned is_gather  : 1;
 
         /* A little obscure, but last is set for the last texture operation in
          * a shader. cont appears to just be last's opposite (?). Yeah, I know,
