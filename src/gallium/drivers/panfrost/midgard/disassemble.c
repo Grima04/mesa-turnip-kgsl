@@ -1058,6 +1058,12 @@ print_texture_op(unsigned op)
         }
 }
 
+static bool
+texture_op_takes_bias(unsigned op)
+{
+        return op == TEXTURE_OP_NORMAL;
+}
+
 #undef DEFINE_CASE
 
 static void
@@ -1071,8 +1077,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
         /* Specific format in question */
         print_texture_format(texture->format);
 
-        /* Instruction "modifiers" parallel the ALU instructions. First group
-         * are modifiers that act alone */
+        /* Instruction "modifiers" parallel the ALU instructions. */
 
         if (!texture->filter)
                 printf(".raw");
@@ -1085,11 +1090,6 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         if (texture->last)
                 printf(".last");
-
-        /* Second set are modifiers which take an extra argument each */
-
-        if (texture->bias)
-                printf(".bias");
 
         printf(" ");
 
@@ -1139,9 +1139,16 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         if (texture->lod_register) {
                 /* TODO: Decode */
-                printf("lod/bias/grad reg 0x%X, ", texture->bias);
-        } else if (texture->bias) {
-                printf("%f /* %d */, ", texture->bias / 256.0f, texture->bias);
+                printf("lod/bias/grad reg 0x%X (%X), ", texture->bias, texture->bias_int);
+        } else if (texture->bias || texture->bias_int) {
+                int bias_int = texture->bias_int;
+                float bias_frac = texture->bias / 256.0f;
+                float bias = bias_int + bias_frac;
+
+                bool is_bias = texture_op_takes_bias(texture->op);
+                char operand = is_bias ? '+' : '=';
+
+                printf("lod %c %f, ", operand, bias);
         }
 
         printf("\n");
@@ -1154,15 +1161,13 @@ print_texture_word(uint32_t *word, unsigned tabs)
                         texture->unknown4 ||
                         texture->unknownA ||
                         texture->unknownB ||
-                        texture->unknown8 ||
-                        texture->unknown9) {
+                        texture->unknown8) {
                 printf("// unknown2 = 0x%x\n", texture->unknown2);
                 printf("// unknown3 = 0x%x\n", texture->unknown3);
                 printf("// unknown4 = 0x%x\n", texture->unknown4);
                 printf("// unknownA = 0x%x\n", texture->unknownA);
                 printf("// unknownB = 0x%x\n", texture->unknownB);
                 printf("// unknown8 = 0x%x\n", texture->unknown8);
-                printf("// unknown9 = 0x%x\n", texture->unknown9);
         }
 
         if (texture->offset_unknown4 ||

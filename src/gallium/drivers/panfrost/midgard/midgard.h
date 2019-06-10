@@ -577,9 +577,8 @@ __attribute__((__packed__))
          * fragment/vertex shader respectively. Compute as int(2^8 * biasf).
          *
          * For texel fetch, this is the LOD as is. */
-        unsigned bias  : 8;
-
-        unsigned unknown9  : 8;
+        unsigned bias : 8;
+        unsigned bias_int  : 8;
 
         unsigned texture_handle : 16;
         unsigned sampler_handle : 16;
