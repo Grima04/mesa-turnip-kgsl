@@ -352,10 +352,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		setup_stream_out(state, vs, &l);
 	}
 
-	for (i = 0, j = 0; (i < 16) && (j < l.cnt); i++) {
+	debug_assert(l.cnt < 32);
+	OUT_PKT4(ring, REG_A6XX_SP_VS_OUT_REG(0), DIV_ROUND_UP(l.cnt, 2));
+	for (j = 0; j < l.cnt; ) {
 		uint32_t reg = 0;
-
-		OUT_PKT4(ring, REG_A6XX_SP_VS_OUT_REG(i), 1);
 
 		reg |= A6XX_SP_VS_OUT_REG_A_REGID(l.var[j].regid);
 		reg |= A6XX_SP_VS_OUT_REG_A_COMPMASK(l.var[j].compmask);
@@ -368,10 +368,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_RING(ring, reg);
 	}
 
-	for (i = 0, j = 0; (i < 8) && (j < l.cnt); i++) {
+	OUT_PKT4(ring, REG_A6XX_SP_VS_VPC_DST_REG(0), DIV_ROUND_UP(l.cnt, 4));
+	for (j = 0; j < l.cnt; ) {
 		uint32_t reg = 0;
-
-		OUT_PKT4(ring, REG_A6XX_SP_VS_VPC_DST_REG(i), 1);
 
 		reg |= A6XX_SP_VS_VPC_DST_REG_OUTLOC0(l.var[j++].loc);
 		reg |= A6XX_SP_VS_VPC_DST_REG_OUTLOC1(l.var[j++].loc);
