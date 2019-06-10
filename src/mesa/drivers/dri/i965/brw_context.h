@@ -524,7 +524,7 @@ struct intel_batchbuffer {
    } saved;
 
    /** Map from batch offset to brw_state_batch data (with DEBUG_BATCH) */
-   struct hash_table *state_batch_sizes;
+   struct hash_table_u64 *state_batch_sizes;
 
    struct gen_batch_decode_ctx decoder;
 };

@@ -655,8 +655,8 @@ _mesa_hash_table_u64_create(void *mem_ctx)
 }
 
 void
-_mesa_hash_table_u64_destroy(struct hash_table_u64 *ht,
-                             void (*delete_function)(struct hash_entry *entry))
+_mesa_hash_table_u64_clear(struct hash_table_u64 *ht,
+                           void (*delete_function)(struct hash_entry *entry))
 {
    if (!ht)
       return;
@@ -691,6 +691,17 @@ _mesa_hash_table_u64_destroy(struct hash_table_u64 *ht,
       ht->freed_key_data = NULL;
    }
 
+   _mesa_hash_table_clear(ht->table, delete_function);
+}
+
+void
+_mesa_hash_table_u64_destroy(struct hash_table_u64 *ht,
+                             void (*delete_function)(struct hash_entry *entry))
+{
+   if (!ht)
+      return;
+
+   _mesa_hash_table_u64_clear(ht, delete_function);
    _mesa_hash_table_destroy(ht->table, delete_function);
    free(ht);
 }

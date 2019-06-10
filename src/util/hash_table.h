@@ -194,6 +194,10 @@ _mesa_hash_table_u64_search(struct hash_table_u64 *ht, uint64_t key);
 void
 _mesa_hash_table_u64_remove(struct hash_table_u64 *ht, uint64_t key);
 
+void
+_mesa_hash_table_u64_clear(struct hash_table_u64 *ht,
+                           void (*delete_function)(struct hash_entry *entry));
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
