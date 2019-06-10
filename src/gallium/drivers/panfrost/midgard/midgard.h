@@ -493,8 +493,9 @@ midgard_load_store;
 #define REG_TEX_BASE 28
 
 /* Texture opcodes... maybe? */
-#define TEXTURE_OP_NORMAL 0x11
-#define TEXTURE_OP_TEXEL_FETCH 0x14
+#define TEXTURE_OP_NORMAL 0x11          /* texture */
+#define TEXTURE_OP_LOD 0x12             /* textureLod */
+#define TEXTURE_OP_TEXEL_FETCH 0x14     /* texelFetch */
 
 /* Texture format types, found in format */
 #define TEXTURE_CUBE 0x00

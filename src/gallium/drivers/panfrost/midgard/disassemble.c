@@ -1045,12 +1045,12 @@ print_texture_format(int format)
 static void
 print_texture_op(int format)
 {
-        /* Act like a modifier */
-        printf(".");
+        /* Act like a bare name, like ESSL functions */
 
         switch (format) {
-                DEFINE_CASE(TEXTURE_OP_NORMAL, "normal");
-                DEFINE_CASE(TEXTURE_OP_TEXEL_FETCH, "texelfetch");
+                DEFINE_CASE(TEXTURE_OP_NORMAL, "texture");
+                DEFINE_CASE(TEXTURE_OP_LOD, "textureLod");
+                DEFINE_CASE(TEXTURE_OP_TEXEL_FETCH, "texelFetch");
 
         default:
                 printf("op_%d", format);
@@ -1064,9 +1064,6 @@ static void
 print_texture_word(uint32_t *word, unsigned tabs)
 {
         midgard_texture_word *texture = (midgard_texture_word *) word;
-
-        /* Instruction family, like ALU words have theirs */
-        printf("texture");
 
         /* Broad category of texture operation in question */
         print_texture_op(texture->op);
