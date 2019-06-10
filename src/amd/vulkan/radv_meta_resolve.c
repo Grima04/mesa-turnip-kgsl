@@ -719,6 +719,7 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 			fb->attachments[src_att.attachment].attachment->image;
 
 		VkImageResolve region = {};
+		region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		region.srcSubresource.baseArrayLayer = 0;
 		region.srcSubresource.mipLevel = 0;
 		region.srcSubresource.layerCount = src_image->info.array_size;
