@@ -1131,6 +1131,18 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
                 printf(", ");
         } else if (texture->offset_x || texture->offset_y || texture->offset_z) {
+                /* Only select ops allow negative immediate offsets, verify */
+
+                bool neg_x = texture->offset_x < 0;
+                bool neg_y = texture->offset_y < 0;
+                bool neg_z = texture->offset_z < 0;
+                bool any_neg = neg_x || neg_y || neg_z;
+
+                if (any_neg && texture->op != TEXTURE_OP_TEXEL_FETCH)
+                        printf("/* invalid negative */ ");
+
+                /* Regardless, just print the immediate offset */
+
                 printf(" + <%d, %d, %d>, ",
                         texture->offset_x,
                         texture->offset_y,
@@ -1171,20 +1183,12 @@ print_texture_word(uint32_t *word, unsigned tabs)
                         texture->unknown3 ||
                         texture->unknown4 ||
                         texture->unknownA ||
-                        texture->unknownB ||
                         texture->unknown8) {
                 printf("// unknown2 = 0x%x\n", texture->unknown2);
                 printf("// unknown3 = 0x%x\n", texture->unknown3);
                 printf("// unknown4 = 0x%x\n", texture->unknown4);
                 printf("// unknownA = 0x%x\n", texture->unknownA);
-                printf("// unknownB = 0x%x\n", texture->unknownB);
                 printf("// unknown8 = 0x%x\n", texture->unknown8);
-        }
-
-        if (texture->offset_unknown4 ||
-                        texture->offset_unknown8) {
-                printf("// offset_unknown4 = 0x%x\n", texture->offset_unknown4);
-                printf("// offset_unknown8 = 0x%x\n", texture->offset_unknown8);
         }
 
         /* Don't blow up */

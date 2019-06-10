@@ -561,15 +561,15 @@ __attribute__((__packed__))
         /* Each offset field is either an immediate (range 0-7) or, in the case of X, a
          * register full / select / upper triplet to select the offset vector
          * register in register mode. In register mode, Y=2 and Z=1 for some
-         * reason. The range in register mode is [-8, 7] */
+         * reason. The range in register mode is [-8, 7].
+         *
+         * In immediate mode, for texel fethces the range is the full [-8, 7],
+         * but for normal texturing the top bit must be zero and a register
+         * used instead. It's not clear where this limitated is from. */
 
-        unsigned offset_x : 3;
-        unsigned offset_unknown4  : 1;
-        unsigned offset_y : 3;
-        unsigned offset_unknown8  : 1;
-        unsigned offset_z : 3;
-
-        unsigned unknownB  : 1;
+        signed offset_x : 4;
+        signed offset_y : 4;
+        signed offset_z : 4;
 
         /* Texture bias or LOD, depending on whether it is executed in a
          * fragment/vertex shader respectively. Compute as int(2^8 * biasf).
