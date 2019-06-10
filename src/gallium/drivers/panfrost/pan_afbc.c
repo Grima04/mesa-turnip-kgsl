@@ -86,8 +86,10 @@ panfrost_format_supports_afbc(enum pipe_format format)
         if (util_format_is_rgba8_variant(desc))
                 return true;
 
+        if (format == PIPE_FORMAT_Z32_UNORM)
+                return true;
+
         /* TODO: AFBC of other formats */
-        /* TODO: AFBC of ZS */
 
         return false;
 }

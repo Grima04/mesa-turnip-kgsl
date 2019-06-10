@@ -2118,9 +2118,9 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 
                 struct panfrost_resource *tex = ((struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[i]->texture);
                 enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
-                bool is_scanout = panfrost_is_scanout(ctx);
 
                 bool can_afbc = panfrost_format_supports_afbc(format);
+                bool is_scanout = panfrost_is_scanout(ctx);
 
                 if (!is_scanout && tex->bo->layout != PAN_AFBC && can_afbc)
                         panfrost_enable_afbc(ctx, tex, false);
@@ -2136,8 +2136,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                         pipe_surface_reference(&ctx->pipe_framebuffer.zsbuf, zb);
 
                         if (zb) {
-                                /* FBO has depth */
-
                                 if (ctx->require_sfbd)
                                         ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx);
                                 else
@@ -2145,7 +2143,12 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 
                                 panfrost_attach_vt_framebuffer(ctx);
 
-                                /* Keep the depth FBO linear */
+                                struct panfrost_resource *tex = pan_resource(zb->texture);
+                                bool can_afbc = panfrost_format_supports_afbc(zb->format);
+                                bool is_scanout = panfrost_is_scanout(ctx);
+
+                                if (!is_scanout && tex->bo->layout != PAN_AFBC && can_afbc)
+                                        panfrost_enable_afbc(ctx, tex, true);
                         }
                 }
         }
