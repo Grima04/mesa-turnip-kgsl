@@ -907,10 +907,10 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
           * havok on the vec4 backend.  The handling of constants in the vec4
           * backend is not good.
           */
-         if (is_scalar) {
+         if (is_scalar)
             OPT(nir_opt_constant_folding);
-            OPT(nir_copy_prop);
-         }
+
+         OPT(nir_copy_prop);
          OPT(nir_opt_dce);
          OPT(nir_opt_cse);
       }
