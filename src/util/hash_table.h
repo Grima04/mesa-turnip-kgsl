@@ -173,6 +173,7 @@ hash_table_call_foreach(struct hash_table *ht,
  */
 struct hash_table_u64 {
    struct hash_table *table;
+   void *freed_key_data;
    void *deleted_key_data;
 };
 

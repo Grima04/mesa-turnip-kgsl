@@ -628,9 +628,12 @@ key_u64_equals(const void *a, const void *b)
    return aa->value == bb->value;
 }
 
+#define FREED_KEY_VALUE 0
+
 struct hash_table_u64 *
 _mesa_hash_table_u64_create(void *mem_ctx)
 {
+   STATIC_ASSERT(FREED_KEY_VALUE != DELETED_KEY_VALUE);
    struct hash_table_u64 *ht;
 
    ht = CALLOC_STRUCT(hash_table_u64);
@@ -661,16 +664,31 @@ _mesa_hash_table_u64_destroy(struct hash_table_u64 *ht,
    if (ht->deleted_key_data) {
       if (delete_function) {
          struct hash_table *table = ht->table;
-         struct hash_entry deleted_entry;
+         struct hash_entry entry;
 
          /* Create a fake entry for the delete function. */
-         deleted_entry.hash = table->key_hash_function(table->deleted_key);
-         deleted_entry.key = table->deleted_key;
-         deleted_entry.data = ht->deleted_key_data;
+         entry.hash = table->key_hash_function(table->deleted_key);
+         entry.key = table->deleted_key;
+         entry.data = ht->deleted_key_data;
 
-         delete_function(&deleted_entry);
+         delete_function(&entry);
       }
       ht->deleted_key_data = NULL;
+   }
+
+   if (ht->freed_key_data) {
+      if (delete_function) {
+         struct hash_table *table = ht->table;
+         struct hash_entry entry;
+
+         /* Create a fake entry for the delete function. */
+         entry.hash = table->key_hash_function(uint_key(FREED_KEY_VALUE));
+         entry.key = uint_key(FREED_KEY_VALUE);
+         entry.data = ht->freed_key_data;
+
+         delete_function(&entry);
+      }
+      ht->freed_key_data = NULL;
    }
 
    _mesa_hash_table_destroy(ht->table, delete_function);
@@ -681,6 +699,11 @@ void
 _mesa_hash_table_u64_insert(struct hash_table_u64 *ht, uint64_t key,
                             void *data)
 {
+   if (key == FREED_KEY_VALUE) {
+      ht->freed_key_data = data;
+      return;
+   }
+
    if (key == DELETED_KEY_VALUE) {
       ht->deleted_key_data = data;
       return;
@@ -715,6 +738,9 @@ _mesa_hash_table_u64_search(struct hash_table_u64 *ht, uint64_t key)
 {
    struct hash_entry *entry;
 
+   if (key == FREED_KEY_VALUE)
+      return ht->freed_key_data;
+
    if (key == DELETED_KEY_VALUE)
       return ht->deleted_key_data;
 
@@ -729,6 +755,11 @@ void
 _mesa_hash_table_u64_remove(struct hash_table_u64 *ht, uint64_t key)
 {
    struct hash_entry *entry;
+
+   if (key == FREED_KEY_VALUE) {
+      ht->freed_key_data = NULL;
+      return;
+   }
 
    if (key == DELETED_KEY_VALUE) {
       ht->deleted_key_data = NULL;
