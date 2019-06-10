@@ -1110,8 +1110,8 @@ optimizations += [
    # 'al * bl': If either 'al' or 'bl' is zero, return zero.
    (('umul_low', '#a(is_lower_half_zero)', 'b'), (0)),
    # '(ah * bl) << 16 + c': If either 'ah' or 'bl' is zero, return 'c'.
-   (('imadsh_mix16', '#a@32(is_upper_half_zero)', 'b@32', 'c@32'), ('c')),
-   (('imadsh_mix16', 'a@32', '#b@32(is_lower_half_zero)', 'c@32'), ('c')),
+   (('imadsh_mix16', '#a@32(is_lower_half_zero)', 'b@32', 'c@32'), ('c')),
+   (('imadsh_mix16', 'a@32', '#b@32(is_upper_half_zero)', 'c@32'), ('c')),
 ]
 
 # This section contains "late" optimizations that should be run before
