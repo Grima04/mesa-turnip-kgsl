@@ -558,14 +558,15 @@ __attribute__((__packed__))
 
         unsigned unknownA  : 4;
 
-        /* Each offset field is either an immediate (range 0-7) or, in the case of X, a
-         * register full / select / upper triplet to select the offset vector
-         * register in register mode. In register mode, Y=2 and Z=1 for some
-         * reason. The range in register mode is [-8, 7].
+        /* In immediate mode, each offset field is an immediate range [0, 7].
          *
-         * In immediate mode, for texel fethces the range is the full [-8, 7],
+         * In register mode, offset_x becomes a register full / select / upper
+         * triplet and a vec3 swizzle is splattered across offset_y/offset_z in
+         * a genuinely bizarre way.
+         *
+         * For texel fetches in immediate mode, the range is the full [-8, 7],
          * but for normal texturing the top bit must be zero and a register
-         * used instead. It's not clear where this limitated is from. */
+         * used instead. It's not clear where this limitation is from. */
 
         signed offset_x : 4;
         signed offset_y : 4;

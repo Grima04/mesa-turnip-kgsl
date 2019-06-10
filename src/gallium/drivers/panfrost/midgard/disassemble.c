@@ -36,6 +36,7 @@
 #include "disassemble.h"
 #include "helpers.h"
 #include "util/half_float.h"
+#include "util/u_math.h"
 
 #define DEFINE_CASE(define, str) case define: { printf(str); break; }
 
@@ -1135,12 +1136,22 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 printf(" + ");
                 print_texture_reg_triple(texture->offset_x);
 
-                /* I've never seen them different than this */
-                if (texture->offset_y != 2)
-                        printf(" /* y = %d */", texture->offset_y);
+                /* The less questions you ask, the better. */
 
-                if (texture->offset_z != 1)
-                        printf(" /* z = %d */", texture->offset_z);
+                unsigned swizzle_lo, swizzle_hi;
+                unsigned orig_y = texture->offset_y;
+                unsigned orig_z = texture->offset_z;
+
+                memcpy(&swizzle_lo, &orig_y, sizeof(unsigned));
+                memcpy(&swizzle_hi, &orig_z, sizeof(unsigned));
+
+                /* Duplicate hi swizzle over */
+                assert(swizzle_hi < 4);
+                swizzle_hi = (swizzle_hi << 2) | swizzle_hi;
+
+                unsigned swiz = (swizzle_lo << 4) | swizzle_hi;
+                unsigned reversed = util_bitreverse(swiz) >> 24;
+                print_swizzle_vec4(reversed, false, false);
 
                 printf(", ");
         } else if (texture->offset_x || texture->offset_y || texture->offset_z) {
