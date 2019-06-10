@@ -707,6 +707,10 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 {
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
 	struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+	uint32_t layer_count = fb->layers;
+
+	if (subpass->view_mask)
+		layer_count = util_last_bit(subpass->view_mask);
 
 	for (uint32_t i = 0; i < subpass->color_count; ++i) {
 		struct radv_subpass_attachment src_att = subpass->color_attachments[i];
@@ -715,14 +719,16 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
-		struct radv_image *src_image =
-			fb->attachments[src_att.attachment].attachment->image;
+		struct radv_image_view *src_iview =
+			fb->attachments[src_att.attachment].attachment;
+		struct radv_image *src_image = src_iview->image;
 
 		VkImageResolve region = {};
 		region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		region.srcSubresource.baseArrayLayer = 0;
 		region.srcSubresource.mipLevel = 0;
-		region.srcSubresource.layerCount = src_image->info.array_size;
+		region.srcSubresource.baseArrayLayer = src_iview->base_layer;
+		region.srcSubresource.layerCount = layer_count;
 
 		radv_decompress_resolve_src(cmd_buffer, src_image,
 					    src_att.layout, 1, &region);
