@@ -520,7 +520,13 @@ __attribute__((__packed__))
         unsigned cont  : 1;
         unsigned last  : 1;
 
-        unsigned format    : 5;
+        unsigned format    : 4;
+
+        /* Is a register used to specify the
+         * LOD/bias/offset? If set, use the `bias` field as
+         * a register index. If clear, use the `bias` field
+         * as an immediate. */
+        unsigned lod_register : 1;
 
         /* Is a register used to specify an offset? If set, use the
          * offset_reg_* fields to encode this, duplicated for each of the

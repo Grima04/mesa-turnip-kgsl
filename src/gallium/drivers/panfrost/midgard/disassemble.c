@@ -1137,8 +1137,12 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 printf(",");
         }
 
-        if (texture->bias)
-                printf("%f, ", texture->bias / 256.0f);
+        if (texture->lod_register) {
+                /* TODO: Decode */
+                printf("lod/bias/grad reg 0x%X, ", texture->bias);
+        } else if (texture->bias) {
+                printf("%f /* %d */, ", texture->bias / 256.0f, texture->bias);
+        }
 
         printf("\n");
 
