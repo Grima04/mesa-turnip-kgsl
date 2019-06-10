@@ -371,6 +371,13 @@ typedef enum {
         /* Used in OpenCL. Probably can ld other things as well */
         midgard_op_ld_global_id = 0x10,
 
+        /* The L/S unit can do perspective division a clock faster than the ALU
+         * if you're lucky. Put the vec4 in r27, and call with 0x24 as the
+         * unknown state; the output will be <x/w, y/w, z/w, 1>. Replace w with
+         * z for the z version */
+        midgard_op_ldst_perspective_division_z = 0x12,
+        midgard_op_ldst_perspective_division_w = 0x13,
+
         /* val in r27.y, address embedded, outputs result to argument. Invert val for sub. Let val = +-1 for inc/dec. */
         midgard_op_atomic_add = 0x40,
         midgard_op_atomic_and = 0x44,
