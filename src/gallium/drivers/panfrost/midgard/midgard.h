@@ -498,7 +498,12 @@ __attribute__((__packed__))
         unsigned last  : 1;
 
         unsigned format    : 5;
-        unsigned has_offset : 1;
+
+        /* Is a register used to specify an offset? If set, use the
+         * offset_reg_* fields to encode this, duplicated for each of the
+         * components. If clear, there is implcitly always an immediate offst
+         * specificed in offset_imm_* */
+        unsigned offset_register : 1;
 
         /* Like in Bifrost */
         unsigned filter  : 1;
@@ -526,17 +531,18 @@ __attribute__((__packed__))
 
         unsigned unknownA  : 4;
 
-        unsigned offset_unknown1  : 1;
-        unsigned offset_reg_select : 1;
-        unsigned offset_reg_upper : 1;
-        unsigned offset_unknown4  : 1;
-        unsigned offset_unknown5  : 1;
-        unsigned offset_unknown6  : 1;
-        unsigned offset_unknown7  : 1;
-        unsigned offset_unknown8  : 1;
-        unsigned offset_unknown9  : 1;
+        /* Each offset field is either an immediate (range 0-7) or, in the case of X, a
+         * register full / select / upper triplet to select the offset vector
+         * register in register mode. In register mode, Y=2 and Z=1 for some
+         * reason. The range in register mode is [-8, 7] */
 
-        unsigned unknownB  : 3;
+        unsigned offset_x : 3;
+        unsigned offset_unknown4  : 1;
+        unsigned offset_y : 3;
+        unsigned offset_unknown8  : 1;
+        unsigned offset_z : 3;
+
+        unsigned unknownB  : 1;
 
         /* Texture bias or LOD, depending on whether it is executed in a
          * fragment/vertex shader respectively. Compute as int(2^8 * biasf).

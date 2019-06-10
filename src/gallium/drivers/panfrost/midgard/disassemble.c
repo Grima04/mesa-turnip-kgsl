@@ -1007,6 +1007,16 @@ print_texture_reg(bool full, bool select, bool upper)
 }
 
 static void
+print_texture_reg_triple(unsigned triple)
+{
+        bool full = triple & 1;
+        bool select = triple & 2;
+        bool upper = triple & 4;
+
+        print_texture_reg(full, select, upper);
+}
+
+static void
 print_texture_format(int format)
 {
         /* Act like a modifier */
@@ -1072,9 +1082,6 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         /* Second set are modifiers which take an extra argument each */
 
-        if (texture->has_offset)
-                printf(".offset");
-
         if (texture->bias)
                 printf(".bias");
 
@@ -1093,10 +1100,35 @@ print_texture_word(uint32_t *word, unsigned tabs)
         print_texture_reg(/*texture->in_reg_full*/true, texture->in_reg_select, texture->in_reg_upper);
         print_swizzle_vec4(texture->in_reg_swizzle, false, false);
 
-        /* TODO: can offsets be full words? */
-        if (texture->has_offset) {
-                print_texture_reg(false, texture->offset_reg_select, texture->offset_reg_upper);
-                printf(", ");
+        /* There is *always* an offset attached. Of
+         * course, that offset is just immediate #0 for a
+         * GLES call that doesn't take an offset. If there
+         * is a non-negative non-zero offset, this is
+         * specified in immediate offset mode, with the
+         * values in the offset_* fields as immediates. If
+         * this is a negative offset, we instead switch to
+         * a register offset mode, where the offset_*
+         * fields become register triplets */
+
+        if (texture->offset_register) {
+                printf(" + ");
+                print_texture_reg_triple(texture->offset_x);
+
+                /* I've never seen them different than this */
+                if (texture->offset_y != 2)
+                        printf(" /* y = %d */", texture->offset_y);
+
+                if (texture->offset_z != 1)
+                        printf(" /* z = %d */", texture->offset_z);
+
+                printf(",");
+        } else if (texture->offset_x || texture->offset_y || texture->offset_z) {
+                printf(" + <%d, %d, %d>, ",
+                        texture->offset_x,
+                        texture->offset_y,
+                        texture->offset_z);
+        } else {
+                printf(",");
         }
 
         if (texture->bias)
@@ -1123,28 +1155,10 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 printf("// unknown9 = 0x%x\n", texture->unknown9);
         }
 
-        /* Similarly, if no offset is applied, these are zero. If an offset
-         * -is- applied, or gradients are used, etc, these are nonzero but
-         *  largely unknown still. */
-
-        if (texture->offset_unknown1 ||
-                        texture->offset_reg_select ||
-                        texture->offset_reg_upper ||
-                        texture->offset_unknown4 ||
-                        texture->offset_unknown5 ||
-                        texture->offset_unknown6 ||
-                        texture->offset_unknown7 ||
-                        texture->offset_unknown8 ||
-                        texture->offset_unknown9) {
-                printf("// offset_unknown1 = 0x%x\n", texture->offset_unknown1);
-                printf("// offset_reg_select = 0x%x\n", texture->offset_reg_select);
-                printf("// offset_reg_upper = 0x%x\n", texture->offset_reg_upper);
+        if (texture->offset_unknown4 ||
+                        texture->offset_unknown8) {
                 printf("// offset_unknown4 = 0x%x\n", texture->offset_unknown4);
-                printf("// offset_unknown5 = 0x%x\n", texture->offset_unknown5);
-                printf("// offset_unknown6 = 0x%x\n", texture->offset_unknown6);
-                printf("// offset_unknown7 = 0x%x\n", texture->offset_unknown7);
                 printf("// offset_unknown8 = 0x%x\n", texture->offset_unknown8);
-                printf("// offset_unknown9 = 0x%x\n", texture->offset_unknown9);
         }
 
         /* Don't blow up */
