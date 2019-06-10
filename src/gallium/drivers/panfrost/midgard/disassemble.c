@@ -451,9 +451,14 @@ print_mask(uint8_t mask, unsigned bits, midgard_dest_override override)
                 printf(" /* %X */", mask);
 }
 
+/* Prints the 4-bit masks found in texture and load/store ops, as opposed to
+ * the 8-bit masks found in (vector) ALU ops */
+
 static void
 print_mask_4(unsigned mask)
 {
+        if (mask == 0xF) return;
+
         printf(".");
 
         for (unsigned i = 0; i < 4; ++i) {
