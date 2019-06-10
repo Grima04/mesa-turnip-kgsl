@@ -1137,6 +1137,15 @@ print_texture_word(uint32_t *word, unsigned tabs)
         if (texture->lod_register) {
                 /* TODO: Decode */
                 printf("lod/bias/grad reg 0x%X (%X), ", texture->bias, texture->bias_int);
+        } else if (texture->op == TEXTURE_OP_TEXEL_FETCH) {
+                /* For texel fetch, the int LOD is in the fractional place and
+                 * there is no fraction / possibility of bias. We *always* have
+                 * an explicit LOD, even if it's zero. */
+
+                if (texture->bias_int)
+                        printf(" /* bias_int = 0x%X */ ", texture->bias_int);
+
+                printf("lod = %d, ", texture->bias);
         } else if (texture->bias || texture->bias_int) {
                 int bias_int = texture->bias_int;
                 float bias_frac = texture->bias / 256.0f;
