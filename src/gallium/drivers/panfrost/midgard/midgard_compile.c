@@ -1731,6 +1731,11 @@ midgard_opt_cull_dead_branch(compiler_context *ctx, midgard_block *block)
                  * just generally special */
                 if (ins->prepacked_branch) continue;
 
+                /* Discards are similarly special and may not correspond to the
+                 * end of a block */
+
+                if (ins->branch.target_type == TARGET_DISCARD) continue;
+
                 if (branched) {
                         /* We already branched, so this is dead */
                         mir_remove_instruction(ins);
