@@ -1127,14 +1127,14 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 if (texture->offset_z != 1)
                         printf(" /* z = %d */", texture->offset_z);
 
-                printf(",");
+                printf(", ");
         } else if (texture->offset_x || texture->offset_y || texture->offset_z) {
                 printf(" + <%d, %d, %d>, ",
                         texture->offset_x,
                         texture->offset_y,
                         texture->offset_z);
         } else {
-                printf(",");
+                printf(", ");
         }
 
         if (texture->lod_register) {
