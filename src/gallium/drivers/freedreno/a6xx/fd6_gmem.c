@@ -189,12 +189,12 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE_LO, 3);
 		if (ubwc_enabled) {
 			OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);	/* BASE_LO/HI */
-			OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(rsc->ubwc_pitch) |
-				A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->ubwc_size));
+			OUT_RING(ring, A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_PITCH(rsc->ubwc_pitch) |
+				A6XX_RB_DEPTH_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->ubwc_size));
 		} else {
-			OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_LO */
-			OUT_RING(ring, 0x00000000);    /* RB_MRT_FLAG_BUFFER[i].ADDR_HI */
-			OUT_RING(ring, 0x00000000);
+			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_LO */
+			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_BASE_HI */
+			OUT_RING(ring, 0x00000000);    /* RB_DEPTH_FLAG_BUFFER_PITCH */
 		}
 
 		if (rsc->lrz) {
@@ -759,8 +759,8 @@ emit_blit(struct fd_batch *batch,
 	if (ubwc_enabled) {
 		OUT_PKT4(ring, REG_A6XX_RB_BLIT_FLAG_DST_LO, 3);
 		OUT_RELOCW(ring, rsc->bo, ubwc_offset, 0, 0);
-		OUT_RING(ring, A6XX_RB_MRT_FLAG_BUFFER_PITCH_PITCH(rsc->ubwc_pitch) |
-				 A6XX_RB_MRT_FLAG_BUFFER_PITCH_ARRAY_PITCH(rsc->ubwc_size));
+		OUT_RING(ring, A6XX_RB_BLIT_FLAG_DST_PITCH_PITCH(rsc->ubwc_pitch) |
+				 A6XX_RB_BLIT_FLAG_DST_PITCH_ARRAY_PITCH(rsc->ubwc_size));
 	}
 
 	fd6_emit_blit(batch, ring);
