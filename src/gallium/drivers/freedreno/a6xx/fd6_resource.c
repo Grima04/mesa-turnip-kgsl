@@ -194,7 +194,6 @@ ok_ubwc_format(enum a6xx_color_fmt fmt)
 	case RB6_R8G8_SINT:
 	case RB6_R8G8_UINT:
 	case RB6_R8G8_UNORM:
-	case RB6_X8Z24_UNORM:
 		return true;
 	default:
 		return false;
