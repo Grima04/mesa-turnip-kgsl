@@ -110,7 +110,7 @@ copy_stream_out(struct ir3_stream_output_info *i,
 
 struct ir3_shader *
 ir3_shader_create(struct ir3_compiler *compiler,
-		const struct pipe_shader_state *cso, gl_shader_stage type,
+		const struct pipe_shader_state *cso,
 		struct pipe_debug_callback *debug,
 		struct pipe_screen *screen)
 {
@@ -688,4 +688,38 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 					compute_params, NULL);
 		}
 	}
+}
+
+static void *
+ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_state *cso)
+{
+	struct fd_context *ctx = fd_context(pctx);
+	struct ir3_compiler *compiler = ctx->screen->compiler;
+	return ir3_shader_create(compiler, cso, &ctx->debug, pctx->screen);
+}
+
+static void
+ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso)
+{
+	struct ir3_shader *so = hwcso;
+	ir3_shader_destroy(so);
+}
+
+void
+ir3_prog_init(struct pipe_context *pctx)
+{
+	pctx->create_vs_state = ir3_shader_state_create;
+	pctx->delete_vs_state = ir3_shader_state_delete;
+
+	pctx->create_tcs_state = ir3_shader_state_create;
+	pctx->delete_tcs_state = ir3_shader_state_delete;
+
+	pctx->create_tes_state = ir3_shader_state_create;
+	pctx->delete_tes_state = ir3_shader_state_delete;
+
+	pctx->create_gs_state = ir3_shader_state_create;
+	pctx->delete_gs_state = ir3_shader_state_delete;
+
+	pctx->create_fs_state = ir3_shader_state_create;
+	pctx->delete_fs_state = ir3_shader_state_delete;
 }
