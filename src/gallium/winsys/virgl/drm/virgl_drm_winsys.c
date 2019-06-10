@@ -560,6 +560,38 @@ static void virgl_drm_resource_wait(struct virgl_winsys *qws,
       goto again;
 }
 
+static bool virgl_drm_alloc_res_list(struct virgl_drm_cmd_buf *cbuf,
+                                     int initial_size)
+{
+   cbuf->nres = initial_size;
+   cbuf->cres = 0;
+
+   cbuf->res_bo = CALLOC(cbuf->nres, sizeof(struct virgl_hw_buf*));
+   if (!cbuf->res_bo)
+      return false;
+
+   cbuf->res_hlist = MALLOC(cbuf->nres * sizeof(uint32_t));
+   if (!cbuf->res_hlist) {
+      FREE(cbuf->res_bo);
+      return false;
+   }
+
+   return true;
+}
+
+static void virgl_drm_free_res_list(struct virgl_drm_cmd_buf *cbuf)
+{
+   struct virgl_drm_winsys *qdws = virgl_drm_winsys(cbuf->ws);
+   int i;
+
+   for (i = 0; i < cbuf->cres; i++) {
+      p_atomic_dec(&cbuf->res_bo[i]->num_cs_references);
+      virgl_drm_resource_reference(qdws, &cbuf->res_bo[i], NULL);
+   }
+   FREE(cbuf->res_hlist);
+   FREE(cbuf->res_bo);
+}
+
 static boolean virgl_drm_lookup_res(struct virgl_drm_cmd_buf *cbuf,
                                     struct virgl_hw_res *res)
 {
@@ -619,16 +651,20 @@ static void virgl_drm_add_res(struct virgl_drm_winsys *qdws,
    cbuf->cres++;
 }
 
-static void virgl_drm_release_all_res(struct virgl_drm_winsys *qdws,
-                                      struct virgl_drm_cmd_buf *cbuf)
+/* This is called after the cbuf is submitted. */
+static void virgl_drm_clear_res_list(struct virgl_drm_cmd_buf *cbuf)
 {
+   struct virgl_drm_winsys *qdws = virgl_drm_winsys(cbuf->ws);
    int i;
 
    for (i = 0; i < cbuf->cres; i++) {
       p_atomic_dec(&cbuf->res_bo[i]->num_cs_references);
       virgl_drm_resource_reference(qdws, &cbuf->res_bo[i], NULL);
    }
+
    cbuf->cres = 0;
+
+   memset(cbuf->is_handle_added, 0, sizeof(cbuf->is_handle_added));
 }
 
 static void virgl_drm_emit_res(struct virgl_winsys *qws,
@@ -667,15 +703,7 @@ static struct virgl_cmd_buf *virgl_drm_cmd_buf_create(struct virgl_winsys *qws,
 
    cbuf->ws = qws;
 
-   cbuf->nres = 512;
-   cbuf->res_bo = CALLOC(cbuf->nres, sizeof(struct virgl_hw_buf*));
-   if (!cbuf->res_bo) {
-      FREE(cbuf);
-      return NULL;
-   }
-   cbuf->res_hlist = MALLOC(cbuf->nres * sizeof(uint32_t));
-   if (!cbuf->res_hlist) {
-      FREE(cbuf->res_bo);
+   if (!virgl_drm_alloc_res_list(cbuf, 512)) {
       FREE(cbuf);
       return NULL;
    }
@@ -697,12 +725,10 @@ static void virgl_drm_cmd_buf_destroy(struct virgl_cmd_buf *_cbuf)
 {
    struct virgl_drm_cmd_buf *cbuf = virgl_drm_cmd_buf(_cbuf);
 
-   virgl_drm_release_all_res(virgl_drm_winsys(cbuf->ws), cbuf);
-   FREE(cbuf->res_hlist);
-   FREE(cbuf->res_bo);
+   virgl_drm_free_res_list(cbuf);
+
    FREE(cbuf->buf);
    FREE(cbuf);
-
 }
 
 static struct pipe_fence_handle *
@@ -808,9 +834,8 @@ static int virgl_drm_winsys_submit_cmd(struct virgl_winsys *qws,
          *fence = virgl_drm_fence_create_legacy(qws);
    }
 
-   virgl_drm_release_all_res(qdws, cbuf);
+   virgl_drm_clear_res_list(cbuf);
 
-   memset(cbuf->is_handle_added, 0, sizeof(cbuf->is_handle_added));
    return ret;
 }
 
