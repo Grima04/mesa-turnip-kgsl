@@ -188,7 +188,8 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
          * necessary, but we're not *that* pressed for memory and it
          * makes code a lot simpler */
 
-        bool renderable = tmpl->bind & PIPE_BIND_RENDER_TARGET;
+        bool renderable = tmpl->bind &
+                (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL);
         bool tiled = bo->layout == PAN_TILED;
         bool should_align = renderable || tiled;
 
