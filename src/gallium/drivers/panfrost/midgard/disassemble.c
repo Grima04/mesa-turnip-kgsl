@@ -1043,17 +1043,17 @@ print_texture_format(int format)
 }
 
 static void
-print_texture_op(int format)
+print_texture_op(unsigned op)
 {
         /* Act like a bare name, like ESSL functions */
 
-        switch (format) {
+        switch (op) {
                 DEFINE_CASE(TEXTURE_OP_NORMAL, "texture");
                 DEFINE_CASE(TEXTURE_OP_LOD, "textureLod");
                 DEFINE_CASE(TEXTURE_OP_TEXEL_FETCH, "texelFetch");
 
         default:
-                printf("op_%d", format);
+                printf("tex_%d", op);
                 break;
         }
 }
