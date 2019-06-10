@@ -435,10 +435,25 @@ typedef enum {
         midgard_interp_default = 2
 } midgard_interpolation;
 
+typedef enum {
+        midgard_varying_mod_none = 0,
+
+        /* Other values unknown */
+
+        /* Take the would-be result and divide all components by its z/w
+         * (perspective division baked in with the load)  */
+        midgard_varying_mod_perspective_z = 2,
+        midgard_varying_mod_perspective_w = 3,
+} midgard_varying_modifier;
+
 typedef struct
 __attribute__((__packed__))
 {
-        unsigned zero1 : 4; /* Always zero */
+        unsigned zero0 : 1; /* Always zero */
+
+        midgard_varying_modifier modifier : 2;
+
+        unsigned zero1: 1; /* Always zero */
 
         /* Varying qualifiers, zero if not a varying */
         unsigned flat    : 1;

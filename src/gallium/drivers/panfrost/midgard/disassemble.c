@@ -924,12 +924,21 @@ print_varying_parameters(midgard_load_store_word *word)
                         else
                                 printf(".interp%d", param.interpolation);
                 }
-        } else if (param.flat || param.interpolation) {
+
+                if (param.modifier != midgard_varying_mod_none) {
+                        if (param.modifier == midgard_varying_mod_perspective_w)
+                                printf(".perspectivew");
+                        else if (param.modifier == midgard_varying_mod_perspective_z)
+                                printf(".perspectivez");
+                        else
+                                printf(".mod%d", param.modifier);
+                }
+        } else if (param.flat || param.interpolation || param.modifier) {
                 printf(" /* is_varying not set but varying metadata attached */");
         }
 
-        if (param.zero1 || param.zero2)
-                printf(" /* zero tripped, %d %d */ ", param.zero1, param.zero2);
+        if (param.zero0 || param.zero1 || param.zero2)
+                printf(" /* zero tripped, %d %d %d */ ", param.zero0, param.zero1, param.zero2);
 }
 
 static bool
