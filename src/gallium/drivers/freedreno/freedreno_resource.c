@@ -970,20 +970,7 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 	if (tmpl->bind & PIPE_BIND_SHARED)
 		allow_ubwc = drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count);
 
-	/* TODO turn on UBWC for all internal buffers
-	 *
-	 * There are still some regressions in deqp with UBWC enabled.  I
-	 * think it is mostly related to sampler/image views using a format
-	 * that doesn't support compression with a resource created with
-	 * a format that does.  We need to track the compression state of
-	 * a buffer and do an (in-place, hopefully?) resolve if it is re-
-	 * interpreted with a format that does not support compression.
-	 *
-	 * It is possible (likely?) that we can't do atomic ops on a
-	 * compressed buffer as well, so this would also require transition
-	 * to a compressed state.
-	 */
-	allow_ubwc &= !!(fd_mesa_debug & FD_DBG_UBWC);
+	allow_ubwc &= !(fd_mesa_debug & FD_DBG_NOUBWC);
 
 	if (screen->tile_mode &&
 			(tmpl->target != PIPE_BUFFER) &&
