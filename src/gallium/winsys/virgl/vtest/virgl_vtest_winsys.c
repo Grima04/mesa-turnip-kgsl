@@ -32,6 +32,10 @@
 #include "virgl_vtest_winsys.h"
 #include "virgl_vtest_public.h"
 
+/* Gets a pointer to the virgl_hw_res containing the pointed to cache entry. */
+#define cache_entry_container_res(ptr) \
+    (struct virgl_hw_res*)((char*)ptr - offsetof(struct virgl_hw_res, cache_entry))
+
 static void *virgl_vtest_resource_map(struct virgl_winsys *vws,
                                       struct virgl_hw_res *res);
 static void virgl_vtest_resource_unmap(struct virgl_winsys *vws,
@@ -198,48 +202,6 @@ static boolean virgl_vtest_resource_is_busy(struct virgl_winsys *vws,
    return ret == 1 ? TRUE : FALSE;
 }
 
-static void
-virgl_cache_flush(struct virgl_vtest_winsys *vtws)
-{
-   struct list_head *curr, *next;
-   struct virgl_hw_res *res;
-
-   mtx_lock(&vtws->mutex);
-   curr = vtws->delayed.next;
-   next = curr->next;
-
-   while (curr != &vtws->delayed) {
-      res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-      LIST_DEL(&res->head);
-      virgl_hw_res_destroy(vtws, res);
-      curr = next;
-      next = curr->next;
-   }
-   mtx_unlock(&vtws->mutex);
-}
-
-static void
-virgl_cache_list_check_free(struct virgl_vtest_winsys *vtws)
-{
-   struct list_head *curr, *next;
-   struct virgl_hw_res *res;
-   int64_t now;
-
-   now = os_time_get();
-   curr = vtws->delayed.next;
-   next = curr->next;
-   while (curr != &vtws->delayed) {
-      res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-      if (!os_time_timeout(res->start, res->end, now))
-         break;
-
-      LIST_DEL(&res->head);
-      virgl_hw_res_destroy(vtws, res);
-      curr = next;
-      next = curr->next;
-   }
-}
-
 static void virgl_vtest_resource_reference(struct virgl_vtest_winsys *vtws,
                                            struct virgl_hw_res **dres,
                                            struct virgl_hw_res *sres)
@@ -250,12 +212,7 @@ static void virgl_vtest_resource_reference(struct virgl_vtest_winsys *vtws,
          virgl_hw_res_destroy(vtws, old);
       } else {
          mtx_lock(&vtws->mutex);
-         virgl_cache_list_check_free(vtws);
-
-         old->start = os_time_get();
-         old->end = old->start + vtws->usecs;
-         LIST_ADDTAIL(&old->head, &vtws->delayed);
-         vtws->num_delayed++;
+         virgl_resource_cache_add(&vtws->cache, &old->cache_entry);
          mtx_unlock(&vtws->mutex);
       }
    }
@@ -332,6 +289,7 @@ virgl_vtest_winsys_resource_create(struct virgl_winsys *vws,
    }
 
 out:
+   virgl_resource_cache_entry_init(&res->cache_entry, size, bind, format);
    res->res_handle = handle++;
    pipe_reference_init(&res->reference, 1);
    p_atomic_set(&res->num_cs_references, 0);
@@ -383,27 +341,6 @@ static void virgl_vtest_resource_wait(struct virgl_winsys *vws,
    virgl_vtest_busy_wait(vtws, res->res_handle, VCMD_BUSY_WAIT_FLAG_WAIT);
 }
 
-static inline int virgl_is_res_compat(struct virgl_vtest_winsys *vtws,
-                                      struct virgl_hw_res *res,
-                                      uint32_t size, uint32_t bind,
-                                      uint32_t format)
-{
-   if (res->bind != bind)
-      return 0;
-   if (res->format != format)
-      return 0;
-   if (res->size < size)
-      return 0;
-   if (res->size > size * 2)
-      return 0;
-
-   if (virgl_vtest_resource_is_busy(&vtws->base, res)) {
-      return -1;
-   }
-
-   return 1;
-}
-
 static struct virgl_hw_res *
 virgl_vtest_winsys_resource_cache_create(struct virgl_winsys *vws,
                                          enum pipe_texture_target target,
@@ -418,57 +355,18 @@ virgl_vtest_winsys_resource_cache_create(struct virgl_winsys *vws,
                                          uint32_t size)
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
-   struct virgl_hw_res *res, *curr_res;
-   struct list_head *curr, *next;
-   int64_t now;
-   int ret = -1;
+   struct virgl_hw_res *res;
+   struct virgl_resource_cache_entry *entry;
 
    if (!can_cache_resource_with_bind(bind))
       goto alloc;
 
    mtx_lock(&vtws->mutex);
 
-   res = NULL;
-   curr = vtws->delayed.next;
-   next = curr->next;
-
-   now = os_time_get();
-   while (curr != &vtws->delayed) {
-      curr_res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-
-      if (!res && ((ret = virgl_is_res_compat(vtws, curr_res, size, bind, format)) > 0))
-         res = curr_res;
-      else if (os_time_timeout(curr_res->start, curr_res->end, now)) {
-         LIST_DEL(&curr_res->head);
-         virgl_hw_res_destroy(vtws, curr_res);
-      } else
-         break;
-
-      if (ret == -1)
-         break;
-
-      curr = next;
-      next = curr->next;
-   }
-
-   if (!res && ret != -1) {
-      while (curr != &vtws->delayed) {
-         curr_res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-         ret = virgl_is_res_compat(vtws, curr_res, size, bind, format);
-         if (ret > 0) {
-            res = curr_res;
-            break;
-         }
-         if (ret == -1)
-            break;
-         curr = next;
-         next = curr->next;
-      }
-   }
-
-   if (res) {
-      LIST_DEL(&res->head);
-      --vtws->num_delayed;
+   entry = virgl_resource_cache_remove_compatible(&vtws->cache, size,
+                                                  bind, format);
+   if (entry) {
+      res = cache_entry_container_res(entry);
       mtx_unlock(&vtws->mutex);
       pipe_reference_init(&res->reference, 1);
       return res;
@@ -729,15 +627,36 @@ virgl_vtest_winsys_destroy(struct virgl_winsys *vws)
 {
    struct virgl_vtest_winsys *vtws = virgl_vtest_winsys(vws);
 
-   virgl_cache_flush(vtws);
+   virgl_resource_cache_flush(&vtws->cache);
 
    mtx_destroy(&vtws->mutex);
    FREE(vtws);
 }
 
+static bool
+virgl_vtest_resource_cache_entry_is_busy(struct virgl_resource_cache_entry *entry,
+                                         void *user_data)
+{
+   struct virgl_vtest_winsys *vtws = user_data;
+   struct virgl_hw_res *res = cache_entry_container_res(entry);
+
+   return virgl_vtest_resource_is_busy(&vtws->base, res);
+}
+
+static void
+virgl_vtest_resource_cache_entry_release(struct virgl_resource_cache_entry *entry,
+                                         void *user_data)
+{
+   struct virgl_vtest_winsys *vtws = user_data;
+   struct virgl_hw_res *res = cache_entry_container_res(entry);
+
+   virgl_hw_res_destroy(vtws, res);
+}
+
 struct virgl_winsys *
 virgl_vtest_winsys_wrap(struct sw_winsys *sws)
 {
+   static const unsigned CACHE_TIMEOUT_USEC = 1000000;
    struct virgl_vtest_winsys *vtws;
 
    vtws = CALLOC_STRUCT(virgl_vtest_winsys);
@@ -747,8 +666,10 @@ virgl_vtest_winsys_wrap(struct sw_winsys *sws)
    virgl_vtest_connect(vtws);
    vtws->sws = sws;
 
-   vtws->usecs = 1000000;
-   LIST_INITHEAD(&vtws->delayed);
+   virgl_resource_cache_init(&vtws->cache, CACHE_TIMEOUT_USEC,
+                             virgl_vtest_resource_cache_entry_is_busy,
+                             virgl_vtest_resource_cache_entry_release,
+                             vtws);
    (void) mtx_init(&vtws->mutex, mtx_plain);
 
    vtws->base.destroy = virgl_vtest_winsys_destroy;
