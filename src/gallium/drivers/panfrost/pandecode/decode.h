@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef __MMAP_TRACE_H__
-#define __MMAP_TRACE_H__
+#ifndef __PAN_DECODE_H__
+#define __PAN_DECODE_H__
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -42,9 +42,14 @@ struct pandecode_mapped_memory {
         char name[32];
 };
 
+void pandecode_initialize(void);
+
 char *pointer_as_memory_reference(mali_ptr ptr);
 
 struct pandecode_mapped_memory *pandecode_find_mapped_gpu_mem_containing(mali_ptr addr);
+
+void
+pandecode_inject_mmap(mali_ptr gpu_va, void *cpu, unsigned sz, const char *name);
 
 static inline void *
 __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
@@ -74,5 +79,8 @@ __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
 #define PANDECODE_PTR_VAR(name, mem, gpu_va) \
 	name = __pandecode_fetch_gpu_mem(mem, gpu_va, sizeof(*name), \
 				       __LINE__, __FILE__)
+
+/* Common entrypoint */
+int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
 
 #endif /* __MMAP_TRACE_H__ */

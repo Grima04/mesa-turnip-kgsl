@@ -3,6 +3,7 @@
  * Copyright 2008 VMware, Inc.
  * Copyright 2014 Broadcom
  * Copyright 2018 Alyssa Rosenzweig
+ * Copyright 2019 Collabora
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -48,12 +49,14 @@
 #include "pan_resource.h"
 #include "pan_public.h"
 #include "pan_util.h"
+#include "pandecode/decode.h"
 
 #include "pan_context.h"
 #include "midgard/midgard_compile.h"
 
 static const struct debug_named_value debug_options[] = {
 	{"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
+	{"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
 	DEBUG_NAMED_VALUE_END
 };
 
@@ -584,18 +587,16 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         screen->driver = panfrost_create_drm_driver(fd);
 
-        /* Dump memory and/or performance counters iff asked for in the environment */
-        const char *pantrace_base = getenv("PANTRACE_BASE");
+        /* Dump performance counters iff asked for in the environment */
         pan_counters_base = getenv("PANCOUNTERS_BASE");
-
-        if (pantrace_base) {
-                pantrace_initialize(pantrace_base);
-        }
 
         if (pan_counters_base) {
                 screen->driver->allocate_slab(screen, &screen->perf_counters, 64, true, 0, 0, 0);
                 screen->driver->enable_counters(screen);
         }
+
+        if (pan_debug & PAN_DBG_TRACE)
+                pandecode_initialize();
 
         screen->base.destroy = panfrost_destroy_screen;
 

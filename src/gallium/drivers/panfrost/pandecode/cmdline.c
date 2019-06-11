@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2019 Alyssa Rosenzweig
- * Copyright (C) 2017-2018 Lyude Paul
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -28,45 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "mmap.h"
-int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
-
-/* Memory handling */
-
-static struct pandecode_mapped_memory mmaps;
-
-struct pandecode_mapped_memory *
-pandecode_find_mapped_gpu_mem_containing(mali_ptr addr)
-{
-        list_for_each_entry(struct pandecode_mapped_memory, pos, &mmaps.node, node) {
-                if (addr >= pos->gpu_va && addr < pos->gpu_va + pos->length)
-                        return pos;
-        }
-
-        return NULL;
-}
-
-char *
-pointer_as_memory_reference(mali_ptr ptr)
-{
-        struct pandecode_mapped_memory *mapped;
-        char *out = malloc(128);
-
-        /* Try to find the corresponding mapped zone */
-
-        mapped = pandecode_find_mapped_gpu_mem_containing(ptr);
-
-        if (mapped) {
-                snprintf(out, 128, "%s + %d", mapped->name, (int) (ptr - mapped->gpu_va));
-                return out;
-        }
-
-        /* Just use the raw address if other options are exhausted */
-
-        snprintf(out, 128, MALI_PTR_FMT, ptr);
-        return out;
-
-}
+#include "decode.h"
 
 /* Parsing */
 
@@ -101,21 +62,7 @@ pandecode_read_memory(const char *base, const char *name, mali_ptr gpu_va)
         fread(buf, 1, sz, fp);
         fclose(fp);
 
-        /* Now that we have the memory loaded in, create a mmap entry for it so
-         * we remember it later */
-
-        struct pandecode_mapped_memory *mapped_mem = NULL;
-
-        mapped_mem = malloc(sizeof(*mapped_mem));
-        list_inithead(&mapped_mem->node);
-
-        mapped_mem->gpu_va = gpu_va;
-        mapped_mem->length = sz;
-        mapped_mem->addr = buf;
-
-        memcpy(mapped_mem->name, name, strlen(name));
-
-        list_add(&mapped_mem->node, &mmaps.node);
+        pandecode_inject_mmap(gpu_va, buf, sz, name);
 }
 
 static void
@@ -140,6 +87,8 @@ pandecode_read_job_submit(const char *base, const char *line)
         sscanf(line, "JS %" PRIx64 " %x %x", &addr, &core_req, &is_bifrost);
         pandecode_replay_jc(addr, is_bifrost);
 }
+
+
 
 /* Reads the control file, processing as it goes. */
 
@@ -180,10 +129,7 @@ main(int argc, char **argv)
                 fprintf(stderr, "Usage: pandecode [directory]\n");
                 exit(1);
         }
-        
-        /* Initialize */
-        list_inithead(&mmaps.node);
 
-        /* Let's go! */
+        pandecode_initialize();
         pandecode_read_control(argv[1]);
 }

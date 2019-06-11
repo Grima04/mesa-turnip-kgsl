@@ -36,7 +36,8 @@
 #include "pan_resource.h"
 #include "pan_context.h"
 #include "pan_drm.h"
-#include "pan_trace.h"
+#include "pan_util.h"
+#include "pandecode/decode.h"
 
 struct panfrost_drm {
 	struct panfrost_driver base;
@@ -91,8 +92,8 @@ panfrost_drm_allocate_slab(struct panfrost_screen *screen,
 	}
 
         /* Record the mmap if we're tracing */
-        if (!(extra_flags & PAN_ALLOCATE_GROWABLE))
-                pantrace_mmap(mem->gpu, mem->cpu, mem->size, NULL);
+        if (pan_debug & PAN_DBG_TRACE)
+                pandecode_inject_mmap(mem->gpu, mem->cpu, mem->size, NULL);
 }
 
 static void
@@ -159,7 +160,8 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 	}
 
         /* Record the mmap if we're tracing */
-        pantrace_mmap(bo->gpu, bo->cpu, bo->size, NULL);
+        if (pan_debug & PAN_DBG_TRACE)
+                pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
 
         return bo;
 }
@@ -237,17 +239,15 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	bo_handles[submit.bo_handle_count++] = ctx->misc_0.gem_handle;
 	submit.bo_handles = (u64) (uintptr_t) bo_handles;
 
-        /* Dump memory _before_ submitting so we're not corrupted with actual GPU results */
-        pantrace_dump_memory();
-
 	if (drmIoctl(drm->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit)) {
 	        fprintf(stderr, "Error submitting: %m\n");
 	        return errno;
 	}
 
-        /* Trace the job if we're doing that and do a memory dump. We may
-         * want to adjust this logic once we're ready to trace FBOs */
-        pantrace_submit_job(submit.jc, submit.requirements, FALSE);
+        /* Trace the job if we're doing that */
+
+        if (pan_debug & PAN_DBG_TRACE)
+                pandecode_replay_jc(submit.jc, FALSE);
 
 	return 0;
 }

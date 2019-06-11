@@ -42,11 +42,13 @@ files_panfrost = files(
 
   'bifrost/disassemble.c',
 
+  'pandecode/common.c',
+  'pandecode/decode.c',
+
   'pan_context.c',
   'pan_afbc.c',
   'pan_blit.c',
   'pan_job.c',
-  'pan_trace.c',
   'pan_drm.c',
   'pan_allocate.c',
   'pan_assemble.c',
@@ -135,6 +137,7 @@ bifrost_compiler = executable(
 
 files_pandecode = files(
   'pandecode/cmdline.c',
+  'pandecode/common.c',
   'pandecode/decode.c',
 
   'pan_pretty_print.c',
