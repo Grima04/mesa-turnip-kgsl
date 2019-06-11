@@ -507,6 +507,7 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x00000000);
 		}
+
 		/*
 		 * Blit command:
 		 */
@@ -555,85 +556,19 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	}
 }
 
-static void
-rewrite_zs_blit(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
+static bool fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info);
+
+/**
+ * Handle depth/stencil blits either via u_blitter and/or re-writing the
+ * blit into an equivilant format that we can handle
+ */
+static bool
+handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
 	struct pipe_blit_info separate = *info;
 
 	if (DEBUG_BLIT_FALLBACK) {
-		fprintf(stderr, "---- rewrite_separate_zs_blit: ");
-		util_dump_blit_info(stderr, info);
-		fprintf(stderr, "\ndst resource: ");
-		util_dump_resource(stderr, info->dst.resource);
-		fprintf(stderr, "\nsrc resource: ");
-		util_dump_resource(stderr, info->src.resource);
-		fprintf(stderr, "\n\n");
-	}
-
-	switch (info->src.format) {
-	case PIPE_FORMAT_S8_UINT:
-		debug_assert(info->mask == PIPE_MASK_S);
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R8_UINT;
-		separate.dst.format = PIPE_FORMAT_R8_UINT;
-		emit_blit_texture(ring, &separate);
-		break;
-
-	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-		if (info->mask & PIPE_MASK_Z) {
-			separate.mask = PIPE_MASK_R;
-			separate.src.format = PIPE_FORMAT_R32_FLOAT;
-			separate.dst.format = PIPE_FORMAT_R32_FLOAT;
-			emit_blit_texture(ring, &separate);
-		}
-		if (info->mask & PIPE_MASK_S) {
-			separate.mask = PIPE_MASK_R;
-			separate.src.format = PIPE_FORMAT_R8_UINT;
-			separate.dst.format = PIPE_FORMAT_R8_UINT;
-			separate.src.resource = &fd_resource(info->src.resource)->stencil->base;
-			separate.dst.resource = &fd_resource(info->dst.resource)->stencil->base;
-			emit_blit_texture(ring, &separate);
-		}
-		break;
-
-	case PIPE_FORMAT_Z16_UNORM:
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R16_UNORM;
-		separate.dst.format = PIPE_FORMAT_R16_UNORM;
-		emit_blit_texture(ring, &separate);
-		break;
-
-	case PIPE_FORMAT_Z32_UNORM:
-	case PIPE_FORMAT_Z32_FLOAT:
-		debug_assert(info->mask == PIPE_MASK_Z);
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R32_UINT;
-		separate.dst.format = PIPE_FORMAT_R32_UINT;
-		emit_blit_texture(ring, &separate);
-		break;
-
-	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-		debug_assert(info->mask == PIPE_MASK_ZS);
-	case PIPE_FORMAT_Z24X8_UNORM:
-	case PIPE_FORMAT_X8Z24_UNORM:
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R32_UINT;
-		separate.dst.format = PIPE_FORMAT_R32_UINT;
-		emit_blit_texture(ring, &separate);
-		break;
-
-	default:
-		unreachable("");
-	}
-}
-
-static void
-rewrite_combined_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
-{
-	struct pipe_blit_info separate = *info;
-
-	if (DEBUG_BLIT_FALLBACK) {
-		fprintf(stderr, "---- rewrite_combined_zs_blit: ");
+		fprintf(stderr, "---- handle_zs_blit: ");
 		util_dump_blit_info(stderr, info);
 		fprintf(stderr, "\ndst resource: ");
 		util_dump_resource(stderr, info->dst.resource);
@@ -642,25 +577,77 @@ rewrite_combined_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *in
 		fprintf(stderr, "\n");
 	}
 
-	switch (info->mask) {
-	case PIPE_MASK_Z:
-		separate.mask = PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
-		separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-		separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+	switch (info->dst.format) {
+	case PIPE_FORMAT_S8_UINT:
+		debug_assert(info->mask == PIPE_MASK_S);
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R8_UINT;
+		separate.dst.format = PIPE_FORMAT_R8_UINT;
+		return fd6_blit(ctx, &separate);
 
-		fd_blitter_blit(ctx, &separate);
-		break;
+	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+		if (info->mask & PIPE_MASK_Z) {
+			separate.mask = PIPE_MASK_R;
+			separate.src.format = PIPE_FORMAT_R32_FLOAT;
+			separate.dst.format = PIPE_FORMAT_R32_FLOAT;
+			fd6_blit(ctx, &separate);
+		}
 
-	case PIPE_MASK_S:
-		separate.mask = PIPE_MASK_A;
-		separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-		separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+		if (info->mask & PIPE_MASK_S) {
+			separate.mask = PIPE_MASK_R;
+			separate.src.format = PIPE_FORMAT_R8_UINT;
+			separate.dst.format = PIPE_FORMAT_R8_UINT;
+			separate.src.resource = &fd_resource(info->src.resource)->stencil->base;
+			separate.dst.resource = &fd_resource(info->dst.resource)->stencil->base;
+			fd6_blit(ctx, &separate);
+		}
 
-		fd_blitter_blit(ctx, &separate);
-		break;
+		return true;
+
+	case PIPE_FORMAT_Z16_UNORM:
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R16_UNORM;
+		separate.dst.format = PIPE_FORMAT_R16_UNORM;
+		return fd6_blit(ctx, &separate);
+
+	case PIPE_FORMAT_Z32_UNORM:
+	case PIPE_FORMAT_Z32_FLOAT:
+		debug_assert(info->mask == PIPE_MASK_Z);
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R32_UINT;
+		separate.dst.format = PIPE_FORMAT_R32_UINT;
+		return fd6_blit(ctx, &separate);
+
+	case PIPE_FORMAT_Z24X8_UNORM:
+		separate.mask = PIPE_MASK_R;
+		separate.src.format = PIPE_FORMAT_R32_UINT;
+		separate.dst.format = PIPE_FORMAT_R32_UINT;
+		return fd6_blit(ctx, &separate);
+
+	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+		switch (info->mask) {
+		case PIPE_MASK_ZS:
+			separate.mask = PIPE_MASK_R;
+			separate.src.format = PIPE_FORMAT_R32_UINT;
+			separate.dst.format = PIPE_FORMAT_R32_UINT;
+			return fd6_blit(ctx, &separate);
+		case PIPE_MASK_Z:
+			separate.mask = PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
+			separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			return fd_blitter_blit(ctx, &separate);
+		case PIPE_MASK_S:
+			separate.mask = PIPE_MASK_A;
+			separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			return fd_blitter_blit(ctx, &separate);
+		default:
+			unreachable("");
+		}
+		return true;
 
 	default:
-		unreachable("");
+		return false;
 	}
 }
 
@@ -669,11 +656,8 @@ fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
 	struct fd_batch *batch;
 
-	if (info->dst.format == PIPE_FORMAT_Z24_UNORM_S8_UINT &&
-		info->mask != PIPE_MASK_ZS)  {
-		rewrite_combined_zs_blit(ctx, info);
-		return true;
-	}
+	if (info->mask & PIPE_MASK_ZS)
+		return handle_zs_blit(ctx, info);
 
 	if (!can_do_blit(info))
 		return false;
@@ -703,12 +687,7 @@ fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		/* I don't *think* we need to handle blits between buffer <-> !buffer */
 		debug_assert(info->src.resource->target != PIPE_BUFFER);
 		debug_assert(info->dst.resource->target != PIPE_BUFFER);
-
-		if (info->mask & (PIPE_MASK_ZS)) {
-			rewrite_zs_blit(batch->draw, info);
-		} else {
-			emit_blit_texture(batch->draw, info);
-		}
+		emit_blit_texture(batch->draw, info);
 	}
 
 	fd6_event_write(batch, batch->draw, 0x1d, true);
