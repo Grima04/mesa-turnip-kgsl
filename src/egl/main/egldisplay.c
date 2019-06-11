@@ -35,6 +35,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include "c11/threads.h"
 #include "util/u_atomic.h"
