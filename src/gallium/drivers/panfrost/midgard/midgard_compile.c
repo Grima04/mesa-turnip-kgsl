@@ -356,7 +356,8 @@ optimise_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_lower_idiv);
 
         nir_lower_tex_options lower_tex_options = {
-                .lower_rect = true
+                .lower_rect = true,
+                .lower_txp = ~0
         };
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
