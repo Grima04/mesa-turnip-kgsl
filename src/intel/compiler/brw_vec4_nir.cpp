@@ -1088,29 +1088,50 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
 
    case BRW_REGISTER_TYPE_F: {
       int first_comp = -1;
-      float f;
+      float f[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+      bool is_scalar = true;
 
       for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
          if (nir_alu_instr_channel_used(instr, idx, i)) {
+            f[i] = nir_src_comp_as_float(instr->src[idx].src,
+                                         instr->src[idx].swizzle[i]);
             if (first_comp < 0) {
                first_comp = i;
-               f = nir_src_comp_as_float(instr->src[idx].src,
-                                         instr->src[idx].swizzle[i]);
-            } else if (f != nir_src_comp_as_float(instr->src[idx].src,
-                                                  instr->src[idx].swizzle[i])) {
-               return -1;
+            } else if (f[first_comp] != f[i]) {
+               is_scalar = false;
             }
          }
       }
 
-      if (op[idx].abs)
-         f = fabs(f);
+      if (is_scalar) {
+         if (op[idx].abs)
+            f[first_comp] = fabs(f[first_comp]);
 
-      if (op[idx].negate)
-         f = -f;
+         if (op[idx].negate)
+            f[first_comp] = -f[first_comp];
 
-      op[idx] = src_reg(brw_imm_f(f));
-      assert(op[idx].type == old_type);
+         op[idx] = src_reg(brw_imm_f(f[first_comp]));
+         assert(op[idx].type == old_type);
+      } else {
+         uint8_t vf_values[4] = { 0, 0, 0, 0 };
+
+         for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
+            if (op[idx].abs)
+               f[i] = fabs(f[i]);
+
+            if (op[idx].negate)
+               f[i] = -f[i];
+
+            const int vf = brw_float_to_vf(f[i]);
+            if (vf == -1)
+               return -1;
+
+            vf_values[i] = vf;
+         }
+
+         op[idx] = src_reg(brw_imm_vf4(vf_values[0], vf_values[1],
+                                       vf_values[2], vf_values[3]));
+      }
       break;
    }
 
