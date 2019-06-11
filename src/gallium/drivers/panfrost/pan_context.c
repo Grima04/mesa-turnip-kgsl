@@ -900,23 +900,27 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
         size_t desc_size = sizeof(struct mali_sampler_descriptor);
 
         for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
-                if (!ctx->sampler_count[t]) continue;
+                mali_ptr upload = 0;
 
-                size_t transfer_size = desc_size * ctx->sampler_count[t];
+                if (ctx->sampler_count[t] && ctx->sampler_view_count[t]) {
+                        size_t transfer_size = desc_size * ctx->sampler_count[t];
 
-                struct panfrost_transfer transfer =
-                        panfrost_allocate_transient(ctx, transfer_size);
+                        struct panfrost_transfer transfer =
+                                panfrost_allocate_transient(ctx, transfer_size);
 
-                struct mali_sampler_descriptor *desc =
-                        (struct mali_sampler_descriptor *) transfer.cpu;
+                        struct mali_sampler_descriptor *desc =
+                                (struct mali_sampler_descriptor *) transfer.cpu;
 
-                for (int i = 0; i < ctx->sampler_count[t]; ++i)
-                        desc[i] = ctx->samplers[t][i]->hw;
+                        for (int i = 0; i < ctx->sampler_count[t]; ++i)
+                                desc[i] = ctx->samplers[t][i]->hw;
+
+                        upload = transfer.gpu;
+                }
 
                 if (t == PIPE_SHADER_FRAGMENT)
-                        ctx->payload_tiler.postfix.sampler_descriptor = transfer.gpu;
+                        ctx->payload_tiler.postfix.sampler_descriptor = upload;
                 else if (t == PIPE_SHADER_VERTEX)
-                        ctx->payload_vertex.postfix.sampler_descriptor = transfer.gpu;
+                        ctx->payload_vertex.postfix.sampler_descriptor = upload;
                 else
                         assert(0);
         }
@@ -977,16 +981,17 @@ static void
 panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
 {
         for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
-                /* Shortcircuit */
-                if (!ctx->sampler_view_count[t]) continue;
+                mali_ptr trampoline = 0;
 
-                uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+                if (ctx->sampler_view_count[t]) {
+                        uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
-                for (int i = 0; i < ctx->sampler_view_count[t]; ++i)
-                        trampolines[i] =
-                                panfrost_upload_tex(ctx, ctx->sampler_views[t][i]);
+                        for (int i = 0; i < ctx->sampler_view_count[t]; ++i)
+                                trampolines[i] =
+                                        panfrost_upload_tex(ctx, ctx->sampler_views[t][i]);
 
-                mali_ptr trampoline = panfrost_upload_transient(ctx, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
+                        trampoline = panfrost_upload_transient(ctx, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
+                }
 
                 if (t == PIPE_SHADER_FRAGMENT)
                         ctx->payload_tiler.postfix.texture_trampoline = trampoline;
@@ -2128,7 +2133,13 @@ panfrost_set_sampler_views(
 
         assert(start_slot == 0);
 
-        ctx->sampler_view_count[shader] = num_views;
+        unsigned new_nr = 0;
+        for (unsigned i = 0; i < num_views; ++i) {
+                if (views[i])
+                        new_nr = i + 1;
+        }
+
+        ctx->sampler_view_count[shader] = new_nr;
         memcpy(ctx->sampler_views[shader], views, num_views * sizeof (void *));
 
         ctx->dirty |= PAN_DIRTY_TEXTURES;
