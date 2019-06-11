@@ -530,7 +530,77 @@ pandecode_rt_format(struct mali_rt_format format)
 }
 
 static void
-pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no)
+pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_framebuffer *fb)
+{
+        pandecode_log("struct bifrost_render_target rts_list_%d[] = {\n", job_no);
+        pandecode_indent++;
+
+        for (int i = 0; i < MALI_NEGATIVE(fb->rt_count_1); i++) {
+                mali_ptr rt_va = gpu_va + i * sizeof(struct bifrost_render_target);
+                struct pandecode_mapped_memory *mem =
+                        pandecode_find_mapped_gpu_mem_containing(rt_va);
+                const struct bifrost_render_target *PANDECODE_PTR_VAR(rt, mem, (mali_ptr) rt_va);
+
+                pandecode_log("{\n");
+                pandecode_indent++;
+
+                pandecode_rt_format(rt->format);
+
+                /* TODO: How the actual heck does AFBC enabling work here? */
+                if (0) {
+                        pandecode_log(".afbc = {\n");
+                        pandecode_indent++;
+
+                        char *a = pointer_as_memory_reference(rt->afbc.metadata);
+                        pandecode_prop("metadata = %s", a);
+                        free(a);
+
+                        pandecode_prop("stride = %d", rt->afbc.stride);
+                        pandecode_prop("unk = 0x%" PRIx32, rt->afbc.unk);
+
+                        pandecode_indent--;
+                        pandecode_log("},\n");
+                } else {
+                        pandecode_log(".chunknown = {\n");
+                        pandecode_indent++;
+
+                        pandecode_prop("unk = 0x%" PRIx64, rt->chunknown.unk);
+
+                        char *a = pointer_as_memory_reference(rt->chunknown.pointer);
+                        pandecode_prop("pointer = %s", a);
+                        free(a);
+
+                        pandecode_indent--;
+                        pandecode_log("},\n");
+                }
+
+                MEMORY_PROP(rt, framebuffer);
+                pandecode_prop("framebuffer_stride = %d", rt->framebuffer_stride);
+
+                if (rt->clear_color_1 | rt->clear_color_2 | rt->clear_color_3 | rt->clear_color_4) {
+                        pandecode_prop("clear_color_1 = 0x%" PRIx32, rt->clear_color_1);
+                        pandecode_prop("clear_color_2 = 0x%" PRIx32, rt->clear_color_2);
+                        pandecode_prop("clear_color_3 = 0x%" PRIx32, rt->clear_color_3);
+                        pandecode_prop("clear_color_4 = 0x%" PRIx32, rt->clear_color_4);
+                }
+
+                if (rt->zero1 || rt->zero2 || rt->zero3) {
+                        pandecode_msg("render target zeros tripped\n");
+                        pandecode_prop("zero1 = 0x%" PRIx64, rt->zero1);
+                        pandecode_prop("zero2 = 0x%" PRIx32, rt->zero2);
+                        pandecode_prop("zero3 = 0x%" PRIx32, rt->zero3);
+                }
+
+                pandecode_indent--;
+                pandecode_log("},\n");
+        }
+
+        pandecode_indent--;
+        pandecode_log("};\n");
+}
+
+static void
+pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct bifrost_framebuffer *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
@@ -613,7 +683,7 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no)
 
         gpu_va += sizeof(struct bifrost_framebuffer);
 
-        if (fb->unk3 & MALI_MFBD_EXTRA) {
+        if ((fb->unk3 & MALI_MFBD_EXTRA) && with_render_targets) {
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
                 const struct bifrost_fb_extra *PANDECODE_PTR_VAR(fbx, mem, (mali_ptr) gpu_va);
 
@@ -694,70 +764,8 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no)
                 gpu_va += sizeof(struct bifrost_fb_extra);
         }
 
-        pandecode_log("struct bifrost_render_target rts_list_%d[] = {\n", job_no);
-        pandecode_indent++;
-
-        for (int i = 0; i < MALI_NEGATIVE(fb->rt_count_1); i++) {
-                mali_ptr rt_va = gpu_va + i * sizeof(struct bifrost_render_target);
-                mem = pandecode_find_mapped_gpu_mem_containing(rt_va);
-                const struct bifrost_render_target *PANDECODE_PTR_VAR(rt, mem, (mali_ptr) rt_va);
-
-                pandecode_log("{\n");
-                pandecode_indent++;
-
-                pandecode_rt_format(rt->format);
-
-                /* TODO: How the actual heck does AFBC enabling work here? */
-                if (0) {
-                        pandecode_log(".afbc = {\n");
-                        pandecode_indent++;
-
-                        char *a = pointer_as_memory_reference(rt->afbc.metadata);
-                        pandecode_prop("metadata = %s", a);
-                        free(a);
-
-                        pandecode_prop("stride = %d", rt->afbc.stride);
-                        pandecode_prop("unk = 0x%" PRIx32, rt->afbc.unk);
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
-                } else {
-                        pandecode_log(".chunknown = {\n");
-                        pandecode_indent++;
-
-                        pandecode_prop("unk = 0x%" PRIx64, rt->chunknown.unk);
-
-                        char *a = pointer_as_memory_reference(rt->chunknown.pointer);
-                        pandecode_prop("pointer = %s", a);
-                        free(a);
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
-                }
-
-                MEMORY_PROP(rt, framebuffer);
-                pandecode_prop("framebuffer_stride = %d", rt->framebuffer_stride);
-
-                if (rt->clear_color_1 | rt->clear_color_2 | rt->clear_color_3 | rt->clear_color_4) {
-                        pandecode_prop("clear_color_1 = 0x%" PRIx32, rt->clear_color_1);
-                        pandecode_prop("clear_color_2 = 0x%" PRIx32, rt->clear_color_2);
-                        pandecode_prop("clear_color_3 = 0x%" PRIx32, rt->clear_color_3);
-                        pandecode_prop("clear_color_4 = 0x%" PRIx32, rt->clear_color_4);
-                }
-
-                if (rt->zero1 || rt->zero2 || rt->zero3) {
-                        pandecode_msg("render target zeros tripped\n");
-                        pandecode_prop("zero1 = 0x%" PRIx64, rt->zero1);
-                        pandecode_prop("zero2 = 0x%" PRIx32, rt->zero2);
-                        pandecode_prop("zero3 = 0x%" PRIx32, rt->zero3);
-                }
-
-                pandecode_indent--;
-                pandecode_log("},\n");
-        }
-
-        pandecode_indent--;
-        pandecode_log("};\n");
+        if (with_render_targets)
+                pandecode_render_target(gpu_va, job_no, fb);
 }
 
 static void
@@ -1202,7 +1210,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
         if (is_bifrost)
                 pandecode_replay_scratchpad(p->framebuffer & ~FBD_TYPE, job_no, suffix);
         else if (p->framebuffer & MALI_MFBD)
-                pandecode_replay_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no);
+                pandecode_replay_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
         else
                 pandecode_replay_sfbd((u64) (uintptr_t) p->framebuffer, job_no);
 
@@ -1937,7 +1945,7 @@ pandecode_replay_fragment_job(const struct pandecode_mapped_memory *mem,
                  * trace, which appears impossible.
                  */
 
-                pandecode_replay_mfbd_bfr(s->framebuffer & FBD_MASK, job_no);
+                pandecode_replay_mfbd_bfr(s->framebuffer & FBD_MASK, job_no, true);
                 fbd_dumped = true;
         }
 

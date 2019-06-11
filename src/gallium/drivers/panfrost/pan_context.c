@@ -251,28 +251,7 @@ panfrost_clear(
 static mali_ptr
 panfrost_attach_vt_mfbd(struct panfrost_context *ctx)
 {
-        /* MFBD needs a sequential semi-render target upload, but what exactly this is, is beyond me for now */
-        struct bifrost_render_target rts_list[] = {
-                {
-                        .chunknown = {
-                                .unk = 0x30005,
-                        },
-                        .framebuffer = ctx->misc_0.gpu,
-                        .zero2 = 0x3,
-                },
-        };
-
-        /* Allocate memory for the three components */
-        int size = 1024 + sizeof(ctx->vt_framebuffer_mfbd) + sizeof(rts_list);
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
-
-        /* Opaque 1024-block */
-        rts_list[0].chunknown.pointer = transfer.gpu;
-
-        memcpy(transfer.cpu + 1024, &ctx->vt_framebuffer_mfbd, sizeof(ctx->vt_framebuffer_mfbd));
-        memcpy(transfer.cpu + 1024 + sizeof(ctx->vt_framebuffer_mfbd), rts_list, sizeof(rts_list));
-
-        return (transfer.gpu + 1024) | MALI_MFBD;
+        return panfrost_upload_transient(ctx, &ctx->vt_framebuffer_mfbd, sizeof(ctx->vt_framebuffer_mfbd)) | MALI_MFBD;
 }
 
 static mali_ptr
