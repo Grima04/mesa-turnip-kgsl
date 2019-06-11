@@ -489,6 +489,37 @@ __attribute__((__packed__))
 }
 midgard_load_store;
 
+/* 8-bit register selector used in texture ops to select a bias/LOD/gradient
+ * register, shoved into the `bias` field */
+
+typedef struct
+__attribute__((__packed__))
+{
+        /* Combines with component_hi to form 2-bit component select out of
+         * xyzw, as the component for bias/LOD and the starting component of a
+         * gradient vector */
+
+        unsigned component_lo : 1;
+
+        /* Register select between r28/r29 */
+        unsigned select : 1;
+
+        /* For a half-register, selects the upper half */
+        unsigned upper : 1;
+
+        /* Specifies a full-register, clear for a half-register. Mutually
+         * exclusive with upper. */
+        unsigned full : 1;
+
+        /* Higher half of component_lo. Always seen to be set for LOD/bias
+         * and clear for processed gradients, but I'm not sure if that's a
+         * hardware requirement. */
+        unsigned component_hi : 1;
+
+        /* Padding to make this 8-bit */
+        unsigned zero : 3;
+} midgard_tex_register_select;
+
 /* Texture pipeline results are in r28-r29 */
 #define REG_TEX_BASE 28
 
@@ -572,10 +603,14 @@ __attribute__((__packed__))
         signed offset_y : 4;
         signed offset_z : 4;
 
-        /* Texture bias or LOD, depending on whether it is executed in a
-         * fragment/vertex shader respectively. Compute as int(2^8 * biasf).
+        /* In immediate bias mode, for a normal texture op, this is
+         * texture bias, computed as int(2^8 * frac(biasf)), with
+         * bias_int = floor(bias). For a textureLod, it's that, but
+         * s/bias/lod. For a texel fetch, this is the LOD as-is.
          *
-         * For texel fetch, this is the LOD as is. */
+         * In register mode, this is a midgard_tex_register_select
+         * structure and bias_int is zero */
+
         unsigned bias : 8;
         unsigned bias_int  : 8;
 

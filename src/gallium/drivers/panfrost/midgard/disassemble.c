@@ -1175,9 +1175,27 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 printf(", ");
         }
 
+        char lod_operand = texture_op_takes_bias(texture->op) ? '+' : '=';
+
         if (texture->lod_register) {
-                /* TODO: Decode */
-                printf("lod/bias/grad reg 0x%X (%X), ", texture->bias, texture->bias_int);
+                midgard_tex_register_select sel;
+                uint8_t raw = texture->bias;
+                memcpy(&sel, &raw, sizeof(raw));
+
+                unsigned c = (sel.component_hi << 1) | sel.component_lo;
+
+                printf("lod %c ", lod_operand);
+                print_texture_reg(sel.full, sel.select, sel.upper);
+                printf(".%c, ", components[c]);
+
+                if (!sel.component_hi)
+                        printf(" /* gradient? */");
+
+                if (texture->bias_int)
+                        printf(" /* bias_int = 0x%X */", texture->bias_int);
+
+                if (sel.zero)
+                        printf(" /* sel.zero = 0x%X */", sel.zero);
         } else if (texture->op == TEXTURE_OP_TEXEL_FETCH) {
                 /* For texel fetch, the int LOD is in the fractional place and
                  * there is no fraction / possibility of bias. We *always* have
