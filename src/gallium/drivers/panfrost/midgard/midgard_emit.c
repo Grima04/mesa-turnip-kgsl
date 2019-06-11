@@ -214,9 +214,12 @@ emit_binary_bundle(compiler_context *ctx,
 
                 ctx->texture_op_count--;
 
-                if (!ctx->texture_op_count) {
-                        ins->texture.cont = 0;
-                        ins->texture.last = 1;
+                if (ins->texture.op == TEXTURE_OP_NORMAL) {
+                        bool continues = ctx->texture_op_count > 0;
+                        ins->texture.cont = continues;
+                        ins->texture.last = !continues;
+                } else {
+                        ins->texture.cont = ins->texture.last = 1;
                 }
 
                 util_dynarray_append(emission, midgard_texture_word, ins->texture);

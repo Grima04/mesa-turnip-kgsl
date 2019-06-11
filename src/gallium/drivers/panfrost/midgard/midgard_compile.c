@@ -1318,6 +1318,8 @@ midgard_tex_op(nir_texop op)
                 case nir_texop_tex:
                 case nir_texop_txb:
                         return TEXTURE_OP_NORMAL;
+                case nir_texop_txl:
+                        return TEXTURE_OP_LOD;
                 default:
                         unreachable("Unhanlded texture op");
         }
@@ -1377,7 +1379,8 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                         break;
                 }
 
-                case nir_tex_src_bias: {
+                case nir_tex_src_bias:
+                case nir_tex_src_lod: {
                         /* To keep RA simple, we put the bias/LOD into the w
                          * component of the input source, which is otherwise in xy */
 
@@ -1417,9 +1420,6 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
                         /* Always 1 */
                         .unknown7 = 1,
-
-                        /* Assume we can continue; hint it out later */
-                        .cont = 1,
                 }
         };
 
@@ -1430,7 +1430,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         /* Setup bias/LOD if necessary. Only register mode support right now.
          * TODO: Immediate mode for performance gains */
 
-        if (instr->op == nir_texop_txb) {
+        if (instr->op == nir_texop_txb || instr->op == nir_texop_txl) {
                 ins.texture.lod_register = true;
 
                 midgard_tex_register_select sel = {
