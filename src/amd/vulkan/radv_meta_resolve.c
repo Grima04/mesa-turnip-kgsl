@@ -725,7 +725,6 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 
 		VkImageResolve region = {};
 		region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.srcSubresource.baseArrayLayer = 0;
 		region.srcSubresource.mipLevel = 0;
 		region.srcSubresource.baseArrayLayer = src_iview->base_layer;
 		region.srcSubresource.layerCount = layer_count;
