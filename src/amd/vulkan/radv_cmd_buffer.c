@@ -3245,6 +3245,14 @@ void radv_CmdPushDescriptorSetKHR(
 					   pipelineBindPoint))
 		return;
 
+	/* Check that there are no inline uniform block updates when calling vkCmdPushDescriptorSetKHR()
+	 * because it is invalid, according to Vulkan spec.
+	 */
+	for (int i = 0; i < descriptorWriteCount; i++) {
+		const VkWriteDescriptorSet *writeset = &pDescriptorWrites[i];
+		assert(writeset->descriptorType != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
+	}
+
 	radv_update_descriptor_sets(cmd_buffer->device, cmd_buffer,
 	                            radv_descriptor_set_to_handle(push_set),
 	                            descriptorWriteCount, pDescriptorWrites, 0, NULL);
