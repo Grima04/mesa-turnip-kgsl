@@ -31,8 +31,12 @@
 <p><strong>Mesa's Meson build system is generally considered stable and ready
 for production.</strong></p>
 
-<p>The Meson build of Mesa is tested on Linux, macOS, Cygwin and Haiku, FreeBSD,
+<p><strong>Mesa requires Meson &gt;= 0.46.0 to build.</strong>
+
+<p>The Meson build of Mesa is tested on Linux, macOS, Windows, Cygwin, Haiku, FreeBSD,
 DragonflyBSD, NetBSD, and should work on OpenBSD.</p>
+
+<h4>Unix-like OSes</h4>
 
 <p>If Meson is not already installed on your system, you can typically
 install it with your package installer.  For example:</p>
@@ -44,8 +48,6 @@ or
 sudo dnf install meson   # Fedora
 </pre>
 
-<p><strong>Mesa requires Meson &gt;= 0.46.0 to build.</strong>
-
 Some older versions of meson do not check that they are too old and will error
 out in odd ways.
 </p>
@@ -54,6 +56,30 @@ out in odd ways.
 If it's not already installed, use apt-get or dnf to install
 the <em>ninja-build</em> package.
 </p>
+
+<h4>Windows</h4>
+
+<p>
+You will need to install python3 and meson as a module using pip. This is
+because we use python for generating code, and rely on external modules
+(mako). You also need pkg-config (a hard dependency of meson), flex, and bison.
+
+The easiest way to install everything you need is with <a
+href="https://chocolatey.org/">chocolatey</a>.
+</p>
+<pre>
+  choco install python3 winflexbison pkgconfiglite
+</pre>
+<p>You can even use chocolatey to install mingw and ninja (ninja can be used with MSVC as well)</p>
+<pre>
+  choco install ninja mingw
+</pre>
+<p>Then install meson using pip</p>
+<pre>
+  py -3 -m pip install meson mako
+</pre>
+
+You may need to add the python3 scripts directory to your path for meson.
 
 <h2 id="basic">2. Basic Usage</h2>
 
@@ -151,6 +177,29 @@ Meson does not do this.  Instead, you will need do this:
 <pre>
 ninja -C build/ xmlpool-pot xmlpool-update-po xmlpool-gmo
 </pre>
+
+<h4>Windows specific instructions</h4>
+
+<p>
+On windows you have a couple of choices for compilers. If you installed mingw
+with chocolatey and want to use ninja you should be able to open any shell
+and follow the instructions above. If you want to you MSVC, clang-cl, or ICL
+(the Intel Compiler), read on.
+</p>
+<p>
+Both ICL and MSVC come with shell environments, the easiest way to use meson
+with these it to open a shell. For clang-cl you will need to open an MSVC
+shell, and then override the compilers, either using a <a
+href="https://mesonbuild.com/Native-environments.html">native file</a>, or
+with the CC and CXX environment variables.
+</p>
+<p>
+All of these compilers are tested and work with ninja, but if you want visual
+studio integration or you just like msbuild, passing
+<code>--backend=vs</code> to meson will generate a visual studio solution. If
+you want to use ICL or clang-cl with the vsbackend you will need meson 0.52.0
+or greater. Older versions always use the microsoft compiler.
+</p>
 
 <h2 id="advanced">3. Advanced Usage</h2>
 
