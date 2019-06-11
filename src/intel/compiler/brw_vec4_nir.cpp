@@ -1036,7 +1036,15 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
 {
    unsigned idx;
 
-   if (nir_src_bit_size(instr->src[1].src) == 32 &&
+   /* MOV should be the only single-source instruction passed to this
+    * function.  Any other unary instruction with a constant source should
+    * have been constant-folded away!
+    */
+   assert(nir_op_infos[instr->op].num_inputs > 1 ||
+          instr->op == nir_op_mov);
+
+   if (instr->op != nir_op_mov &&
+       nir_src_bit_size(instr->src[1].src) == 32 &&
        nir_src_is_const(instr->src[1].src)) {
       idx = 1;
    } else if (try_src0_also &&
@@ -1139,10 +1147,11 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
       unreachable("Non-32bit type.");
    }
 
-   /* The instruction format only allows source 1 to be an immediate value.
-    * If the immediate value was source 0, then the sources must be exchanged.
+   /* If the instruction has more than one source, the instruction format only
+    * allows source 1 to be an immediate value.  If the immediate value was
+    * source 0, then the sources must be exchanged.
     */
-   if (idx == 0) {
+   if (idx == 0 && instr->op != nir_op_mov) {
       src_reg tmp = op[0];
       op[0] = op[1];
       op[1] = tmp;
@@ -1217,6 +1226,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    switch (instr->op) {
    case nir_op_mov:
+      try_immediate_source(instr, &op[0], true, devinfo);
       inst = emit(MOV(dst, op[0]));
       inst->saturate = instr->dest.saturate;
       break;
