@@ -370,8 +370,15 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                 break;
         }
 
+        case TAG_TEXTURE_4: {
+                /* Which tag we use depends on the shader stage */
+                bool in_frag = ctx->stage == MESA_SHADER_FRAGMENT;
+                bundle.tag = in_frag ? TAG_TEXTURE_4 : TAG_TEXTURE_4_VTX;
+                break;
+        }
+
         default:
-                /* Texture ops default to single-op-per-bundle scheduling */
+                unreachable("Unknown tag");
                 break;
         }
 

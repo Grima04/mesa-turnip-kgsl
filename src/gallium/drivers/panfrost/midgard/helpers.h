@@ -86,6 +86,7 @@
 
 /* 4-bit type tags */
 
+#define TAG_TEXTURE_4_VTX 0x2
 #define TAG_TEXTURE_4 0x3
 #define TAG_LOAD_STORE_4 0x5
 #define TAG_ALU_4 0x8
@@ -100,6 +101,7 @@ quadword_size(int tag)
         case TAG_ALU_4:
         case TAG_LOAD_STORE_4:
         case TAG_TEXTURE_4:
+        case TAG_TEXTURE_4_VTX:
                 return 1;
         case TAG_ALU_8:
                 return 2;

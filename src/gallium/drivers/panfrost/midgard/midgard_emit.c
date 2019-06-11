@@ -203,13 +203,15 @@ emit_binary_bundle(compiler_context *ctx,
                 break;
         }
 
-        case TAG_TEXTURE_4: {
+        case TAG_TEXTURE_4:
+        case TAG_TEXTURE_4_VTX: {
                 /* Texture instructions are easy, since there is no pipelining
-                 * nor VLIW to worry about. We may need to set .last flag */
+                 * nor VLIW to worry about. We may need to set .cont/.last
+                 * flags. */
 
                 midgard_instruction *ins = bundle->instructions[0];
 
-                ins->texture.type = TAG_TEXTURE_4;
+                ins->texture.type = bundle->tag;
                 ins->texture.next_type = next_tag;
 
                 ctx->texture_op_count--;
