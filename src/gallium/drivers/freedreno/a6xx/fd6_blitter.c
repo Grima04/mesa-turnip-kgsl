@@ -638,32 +638,15 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		return do_rewritten_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z24X8_UNORM:
-		blit.mask = PIPE_MASK_R;
-		blit.src.format = PIPE_FORMAT_R32_UINT;
-		blit.dst.format = PIPE_FORMAT_R32_UINT;
-		return do_rewritten_blit(ctx, &blit);
-
 	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-		switch (info->mask) {
-		case PIPE_MASK_ZS:
-			blit.mask = PIPE_MASK_R;
-			blit.src.format = PIPE_FORMAT_R32_UINT;
-			blit.dst.format = PIPE_FORMAT_R32_UINT;
-			return do_rewritten_blit(ctx, &blit);
-		case PIPE_MASK_Z:
-			blit.mask = PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
-			blit.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			blit.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			return fd_blitter_blit(ctx, &blit);
-		case PIPE_MASK_S:
-			blit.mask = PIPE_MASK_A;
-			blit.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			blit.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			return fd_blitter_blit(ctx, &blit);
-		default:
-			unreachable("");
-		}
-		return true;
+		blit.mask = 0;
+		if (info->mask & PIPE_MASK_Z)
+			blit.mask |= PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
+		if (info->mask & PIPE_MASK_S)
+			blit.mask |= PIPE_MASK_A;
+		blit.src.format = PIPE_FORMAT_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+		blit.dst.format = PIPE_FORMAT_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+		return fd_blitter_blit(ctx, &blit);
 
 	default:
 		return false;
