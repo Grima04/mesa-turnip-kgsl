@@ -1394,11 +1394,8 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                         break;
                };
 
-                default: {
-                        DBG("Unknown source type\n");
-                        //assert(0);
-                        break;
-                }
+                default:
+                        unreachable("Unknown texture source type\n");
                 }
         }
 
