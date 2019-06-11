@@ -59,6 +59,12 @@ __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
         if (!mem)
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
 
+        if (!mem) {
+                fprintf(stderr, "Access to unknown memory %" PRIx64 " in %s:%d",
+                                gpu_va, filename, line);
+                assert(0);
+        }
+
         assert(mem);
         assert(size + (gpu_va - mem->gpu_va) <= mem->length);
 
