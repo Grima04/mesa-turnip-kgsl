@@ -232,7 +232,7 @@ endif
 
 libfreedreno = static_library(
   'freedreno',
-  [files_libfreedreno],
+  [files_libfreedreno, freedreno_xml_header_files],
   include_directories : freedreno_includes,
   c_args : [freedreno_c_args, c_vis_args],
   cpp_args : [freedreno_cpp_args, cpp_vis_args],

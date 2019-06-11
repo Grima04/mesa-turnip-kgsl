@@ -86,7 +86,7 @@ endif
 
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
-  [libtu_files, tu_entrypoints, tu_extensions_c, tu_format_table_c],
+  [libtu_files, tu_entrypoints, tu_extensions_c, tu_format_table_c, freedreno_xml_header_files],
   include_directories : [
     inc_common,
     inc_compiler,

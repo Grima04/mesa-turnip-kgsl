@@ -1,4 +1,4 @@
-# Copyright © 2018 Rob Clark
+# Copyright © 2019 Google, Inc
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,12 +18,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_freedreno = include_directories(['.', './registers'])
+xml_files = [
+  'a2xx.xml',
+  'a3xx.xml',
+  'a4xx.xml',
+  'a5xx.xml',
+  'a6xx.xml',
+  'adreno_common.xml',
+  'adreno_pm4.xml',
+]
 
-subdir('drm')
-subdir('ir3')
-subdir('registers')
-
-if with_freedreno_vk
-  subdir('vulkan')
-endif
+freedreno_xml_header_files = []
+foreach f : xml_files
+  _name = f + '.h'
+  freedreno_xml_header_files += custom_target(
+    _name,
+    input : ['gen_header.py', f],
+    output : _name,
+    command : [prog_python, '@INPUT@'],
+    capture : true,
+  )
+endforeach
