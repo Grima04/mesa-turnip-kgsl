@@ -582,5 +582,9 @@ struct oa_sample_buf * gen_perf_get_free_sample_buf(struct gen_perf_context *per
 void gen_perf_reap_old_sample_buffers(struct gen_perf_context *perf_ctx);
 void gen_perf_free_sample_bufs(struct gen_perf_context *perf_ctx);
 
+void gen_perf_snapshot_statistics_registers(void *context,
+                                            struct gen_perf_config *perf,
+                                            struct gen_perf_query_object *obj,
+                                            uint32_t offset_in_bytes);
 
 #endif /* GEN_PERF_H */

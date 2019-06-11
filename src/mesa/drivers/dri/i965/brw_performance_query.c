@@ -243,31 +243,6 @@ brw_get_perf_counter_info(struct gl_context *ctx,
    *raw_max = counter->raw_max;
 }
 
-/******************************************************************************/
-
-/**
- * Emit MI_STORE_REGISTER_MEM commands to capture all of the
- * pipeline statistics for the performance query object.
- */
-static void
-snapshot_statistics_registers(struct brw_context *brw,
-                              struct gen_perf_query_object *obj,
-                              uint32_t offset_in_bytes)
-{
-   const struct gen_perf_query_info *query = obj->queryinfo;
-   const int n_counters = query->n_counters;
-
-   for (int i = 0; i < n_counters; i++) {
-      const struct gen_perf_query_counter *counter = &query->counters[i];
-
-      assert(counter->data_type == GEN_PERF_COUNTER_DATA_TYPE_UINT64);
-
-      brw->perf_ctx.perf->vtbl.store_register_mem64(brw, obj->pipeline_stats.bo,
-                                                    counter->pipeline_stat.reg,
-                                                    offset_in_bytes + i * sizeof(uint64_t));
-   }
-}
-
 /**
  * Add a query to the global list of "unaccumulated queries."
  *
@@ -981,7 +956,7 @@ brw_begin_perf_query(struct gl_context *ctx,
                                             STATS_BO_SIZE);
 
       /* Take starting snapshots. */
-      snapshot_statistics_registers(brw, obj, 0);
+      gen_perf_snapshot_statistics_registers(brw, perf_cfg, obj, 0);
 
       ++brw->perf_ctx.n_active_pipeline_stats_queries;
       break;
@@ -1046,8 +1021,8 @@ brw_end_perf_query(struct gl_context *ctx,
       break;
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
-      snapshot_statistics_registers(brw, obj,
-                                    STATS_BO_END_OFFSET_BYTES);
+      gen_perf_snapshot_statistics_registers(brw, perf_cfg, obj,
+                                             STATS_BO_END_OFFSET_BYTES);
       --brw->perf_ctx.n_active_pipeline_stats_queries;
       break;
 

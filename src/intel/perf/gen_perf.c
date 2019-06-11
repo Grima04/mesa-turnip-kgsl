@@ -877,3 +877,29 @@ gen_perf_free_sample_bufs(struct gen_perf_context *perf_ctx)
 
    exec_list_make_empty(&perf_ctx->free_sample_buffers);
 }
+
+/******************************************************************************/
+
+/**
+ * Emit MI_STORE_REGISTER_MEM commands to capture all of the
+ * pipeline statistics for the performance query object.
+ */
+void
+gen_perf_snapshot_statistics_registers(void *context,
+                                       struct gen_perf_config *perf,
+                                       struct gen_perf_query_object *obj,
+                                       uint32_t offset_in_bytes)
+{
+   const struct gen_perf_query_info *query = obj->queryinfo;
+   const int n_counters = query->n_counters;
+
+   for (int i = 0; i < n_counters; i++) {
+      const struct gen_perf_query_counter *counter = &query->counters[i];
+
+      assert(counter->data_type == GEN_PERF_COUNTER_DATA_TYPE_UINT64);
+
+      perf->vtbl.store_register_mem64(context, obj->pipeline_stats.bo,
+                                      counter->pipeline_stat.reg,
+                                      offset_in_bytes + i * sizeof(uint64_t));
+   }
+}
