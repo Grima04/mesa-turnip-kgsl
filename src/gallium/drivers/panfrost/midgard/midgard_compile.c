@@ -83,6 +83,7 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 
 #define EMIT(op, ...) emit_mir_instruction(ctx, v_##op(__VA_ARGS__));
 #define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
+#define SWIZZLE_XYXX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X)
 #define SWIZZLE_XXXX SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X)
 #define SWIZZLE_WWWW SWIZZLE(COMPONENT_W, COMPONENT_W, COMPONENT_W, COMPONENT_W)
 
@@ -1416,7 +1417,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
                         /* TODO: half */
                         .in_reg_full = 1,
-                        .in_reg_swizzle = SWIZZLE_XYZW,
+                        .in_reg_swizzle = SWIZZLE_XYXX,
                         .out_full = 1,
 
                         /* Always 1 */
