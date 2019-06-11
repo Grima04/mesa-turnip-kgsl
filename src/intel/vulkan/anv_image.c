@@ -835,7 +835,7 @@ resolve_ahw_image(struct anv_device *device,
           vk_tiling == VK_IMAGE_TILING_OPTIMAL);
 
    /* Check format. */
-   VkFormat vk_format = vk_format_from_android(desc.format);
+   VkFormat vk_format = vk_format_from_android(desc.format, desc.usage);
    enum isl_format isl_fmt = anv_get_isl_format(&device->info,
                                                 vk_format,
                                                 VK_IMAGE_ASPECT_COLOR_BIT,
