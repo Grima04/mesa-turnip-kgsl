@@ -83,6 +83,8 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 
 #define EMIT(op, ...) emit_mir_instruction(ctx, v_##op(__VA_ARGS__));
 #define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
+#define SWIZZLE_XXXX SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X)
+#define SWIZZLE_WWWW SWIZZLE(COMPONENT_W, COMPONENT_W, COMPONENT_W, COMPONENT_W)
 
 #define M_LOAD_STORE(name, rname, uname) \
 	static midgard_instruction m_##name(unsigned ssa, unsigned address) { \
@@ -1309,13 +1311,24 @@ midgard_tex_format(enum glsl_sampler_dim dim)
         }
 }
 
+static unsigned
+midgard_tex_op(nir_texop op)
+{
+        switch (op) {
+                case nir_texop_tex:
+                case nir_texop_txb:
+                        return TEXTURE_OP_NORMAL;
+                default:
+                        unreachable("Unhanlded texture op");
+        }
+}
+
 static void
 emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 {
         /* TODO */
         //assert (!instr->sampler);
         //assert (!instr->texture_array_size);
-        assert (instr->op == nir_texop_tex);
 
         /* Allocate registers via a round robin scheme to alternate between the two registers */
         int reg = ctx->texture_op_count & 1;
@@ -1330,18 +1343,17 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         int sampler_index = texture_index;
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
+                int reg = SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + in_reg);
+                int index = nir_src_index(ctx, &instr->src[i].src);
+                midgard_vector_alu_src alu_src = blank_alu_src;
+
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord: {
-                        int index = nir_src_index(ctx, &instr->src[i].src);
-
-                        midgard_vector_alu_src alu_src = blank_alu_src;
-
-                        int reg = SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + in_reg);
-
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
                                 /* For cubemaps, we need to load coords into
                                  * special r27, and then use a special ld/st op
-                                 * to copy into the texture register */
+                                 * to select the face and copy the xy into the
+                                 * texture register */
 
                                 alu_src.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X);
 
@@ -1350,7 +1362,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
                                 midgard_instruction st = m_st_cubemap_coords(reg, 0);
                                 st.load_store.unknown = 0x24; /* XXX: What is this? */
-                                st.load_store.mask = 0x3; /* xy? */
+                                st.load_store.mask = 0x3; /* xy */
                                 st.load_store.swizzle = alu_src.swizzle;
                                 emit_mir_instruction(ctx, st);
 
@@ -1358,11 +1370,24 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                                 alu_src.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X);
 
                                 midgard_instruction ins = v_fmov(index, alu_src, reg);
+                                ins.alu.mask = expand_writemask(0x3); /* xy */
                                 emit_mir_instruction(ctx, ins);
                         }
 
                         break;
                 }
+
+                case nir_tex_src_bias: {
+                        /* To keep RA simple, we put the bias/LOD into the w
+                         * component of the input source, which is otherwise in xy */
+
+                        alu_src.swizzle = SWIZZLE_XXXX;
+
+                        midgard_instruction ins = v_fmov(index, alu_src, reg);
+                        ins.alu.mask = expand_writemask(1 << COMPONENT_W);
+                        emit_mir_instruction(ctx, ins);
+                        break;
+               };
 
                 default: {
                         DBG("Unknown source type\n");
@@ -1376,7 +1401,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
                 .texture = {
-                        .op = TEXTURE_OP_NORMAL,
+                        .op = midgard_tex_op(instr->op),
                         .format = midgard_tex_format(instr->sampler_dim),
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,
@@ -1401,6 +1426,26 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         /* Set registers to read and write from the same place */
         ins.texture.in_reg_select = in_reg;
         ins.texture.out_reg_select = out_reg;
+
+        /* Setup bias/LOD if necessary. Only register mode support right now.
+         * TODO: Immediate mode for performance gains */
+
+        if (instr->op == nir_texop_txb) {
+                ins.texture.lod_register = true;
+
+                midgard_tex_register_select sel = {
+                        .select = in_reg,
+                        .full = 1,
+
+                        /* w */
+                        .component_lo = 1,
+                        .component_hi = 1
+                };
+
+                uint8_t packed;
+                memcpy(&packed, &sel, sizeof(packed));
+                ins.texture.bias = packed;
+        }
 
         emit_mir_instruction(ctx, ins);
 
