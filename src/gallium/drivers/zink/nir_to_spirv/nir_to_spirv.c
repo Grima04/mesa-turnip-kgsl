@@ -396,17 +396,7 @@ static SpvId
 get_var_from_reg(struct ntv_context *ctx, nir_register *reg)
 {
    struct hash_entry *he = _mesa_hash_table_search(ctx->vars, reg);
-   if (!he) {
-      SpvId type = get_uvec_type(ctx, reg->bit_size, reg->num_components);
-      SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
-                                                      SpvStorageClassFunction,
-                                                      type);
-
-      SpvId var = spirv_builder_emit_var(&ctx->builder, pointer_type,
-                                         SpvStorageClassFunction);
-
-      he = _mesa_hash_table_insert(ctx->vars, reg, (void *)(intptr_t)var);
-   }
+   assert(he);
    return (SpvId)(intptr_t)he->data;
 }
 
@@ -1451,6 +1441,20 @@ nir_to_spirv(struct nir_shader *s)
 
    ctx.block_ids = block_ids;
    ctx.num_blocks = entry->num_blocks;
+
+   /* emit a block only for the variable declarations */
+   start_block(&ctx, spirv_builder_new_id(&ctx.builder));
+   foreach_list_typed(nir_register, reg, node, &entry->registers) {
+      SpvId type = get_uvec_type(&ctx, reg->bit_size, reg->num_components);
+      SpvId pointer_type = spirv_builder_type_pointer(&ctx.builder,
+                                                      SpvStorageClassFunction,
+                                                      type);
+      SpvId var = spirv_builder_emit_var(&ctx.builder, pointer_type,
+                                         SpvStorageClassFunction);
+
+      if (!_mesa_hash_table_insert(ctx.vars, reg, (void *)(intptr_t)var))
+         goto fail;
+   }
 
    emit_cf_list(&ctx, &entry->body);
 
