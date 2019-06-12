@@ -948,21 +948,27 @@ panfrost_upload_tex(
         if (!view)
                 return (mali_ptr) NULL;
 
-        struct pipe_resource *tex_rsrc = view->base.texture;
-        struct panfrost_resource *rsrc = (struct panfrost_resource *) tex_rsrc;
+        struct pipe_sampler_view *pview = &view->base;
+        struct panfrost_resource *rsrc = pan_resource(pview->texture);
 
         /* Do we interleave an explicit stride with every element? */
 
         bool has_manual_stride =
                 view->hw.format.usage2 & MALI_TEX_MANUAL_STRIDE;
 
+        /* For easy access */
+
+        assert(pview->target != PIPE_BUFFER);
+        unsigned first_level = pview->u.tex.first_level;
+        unsigned last_level = pview->u.tex.last_level;
+
         /* Inject the addresses in, interleaving mip levels, cube faces, and
          * strides in that order */
 
         unsigned idx = 0;
 
-        for (unsigned l = 0; l <= tex_rsrc->last_level; ++l) {
-                for (unsigned f = 0; f < tex_rsrc->array_size; ++f) {
+        for (unsigned l = first_level; l <= last_level; ++l) {
+                for (unsigned f = 0; f < pview->texture->array_size; ++f) {
                         view->hw.payload[idx++] =
                                 panfrost_get_texture_address(rsrc, l, f);
 
@@ -2108,9 +2114,9 @@ panfrost_create_sampler_view(
         }
 
         struct mali_texture_descriptor texture_descriptor = {
-                .width = MALI_POSITIVE(texture->width0),
-                .height = MALI_POSITIVE(texture->height0),
-                .depth = MALI_POSITIVE(texture->depth0),
+                .width = MALI_POSITIVE(u_minify(texture->width0, first_level)),
+                .height = MALI_POSITIVE(u_minify(texture->height0, first_level)),
+                .depth = MALI_POSITIVE(u_minify(texture->depth0, first_level)),
                 .array_size = MALI_POSITIVE(array_size),
 
                 /* TODO: Decode */
@@ -2127,14 +2133,7 @@ panfrost_create_sampler_view(
                 .swizzle = panfrost_translate_swizzle_4(user_swizzle)
         };
 
-        /* TODO: Other base levels require adjusting dimensions / level numbers / etc */
-        assert (template->u.tex.first_level == 0);
-
-        /* Disable mipmapping for now to avoid regressions while automipmapping
-         * is being implemented. TODO: Remove me once automipmaps work */
-
-        //texture_descriptor.nr_mipmap_levels = template->u.tex.last_level - template->u.tex.first_level;
-        texture_descriptor.nr_mipmap_levels = 0;
+        //texture_descriptor.nr_mipmap_levels = last_level - first_level;
 
         so->hw = texture_descriptor;
 
