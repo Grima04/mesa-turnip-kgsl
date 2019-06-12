@@ -824,6 +824,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_fadd, SpvOpFAdd)
    BINOP(nir_op_fsub, SpvOpFSub)
    BINOP(nir_op_fmul, SpvOpFMul)
+   BINOP(nir_op_fmod, SpvOpFMod)
    BINOP(nir_op_flt, SpvOpFUnordLessThan)
    BINOP(nir_op_fge, SpvOpFUnordGreaterThanEqual)
 
