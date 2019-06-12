@@ -49,6 +49,9 @@
 #define VIRGL_DRM_VERSION(major, minor) ((major) << 16 | (minor))
 #define VIRGL_DRM_VERSION_FENCE_FD      VIRGL_DRM_VERSION(0, 1)
 
+/* Gets a pointer to the virgl_hw_res containing the pointed to cache entry. */
+#define cache_entry_container_res(ptr) \
+    (struct virgl_hw_res*)((char*)ptr - offsetof(struct virgl_hw_res, cache_entry))
 
 static inline boolean can_cache_resource_with_bind(uint32_t bind)
 {
@@ -104,30 +107,11 @@ static boolean virgl_drm_resource_is_busy(struct virgl_winsys *vws,
 }
 
 static void
-virgl_cache_flush(struct virgl_drm_winsys *qdws)
-{
-   struct list_head *curr, *next;
-   struct virgl_hw_res *res;
-
-   mtx_lock(&qdws->mutex);
-   curr = qdws->delayed.next;
-   next = curr->next;
-
-   while (curr != &qdws->delayed) {
-      res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-      LIST_DEL(&res->head);
-      virgl_hw_res_destroy(qdws, res);
-      curr = next;
-      next = curr->next;
-   }
-   mtx_unlock(&qdws->mutex);
-}
-static void
 virgl_drm_winsys_destroy(struct virgl_winsys *qws)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
 
-   virgl_cache_flush(qdws);
+   virgl_resource_cache_flush(&qdws->cache);
 
    util_hash_table_destroy(qdws->bo_handles);
    util_hash_table_destroy(qdws->bo_names);
@@ -135,28 +119,6 @@ virgl_drm_winsys_destroy(struct virgl_winsys *qws)
    mtx_destroy(&qdws->mutex);
 
    FREE(qdws);
-}
-
-static void
-virgl_cache_list_check_free(struct virgl_drm_winsys *qdws)
-{
-   struct list_head *curr, *next;
-   struct virgl_hw_res *res;
-   int64_t now;
-
-   now = os_time_get();
-   curr = qdws->delayed.next;
-   next = curr->next;
-   while (curr != &qdws->delayed) {
-      res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-      if (!os_time_timeout(res->start, res->end, now))
-         break;
-
-      LIST_DEL(&res->head);
-      virgl_hw_res_destroy(qdws, res);
-      curr = next;
-      next = curr->next;
-   }
 }
 
 static void virgl_drm_resource_reference(struct virgl_drm_winsys *qdws,
@@ -171,12 +133,7 @@ static void virgl_drm_resource_reference(struct virgl_drm_winsys *qdws,
          virgl_hw_res_destroy(qdws, old);
       } else {
          mtx_lock(&qdws->mutex);
-         virgl_cache_list_check_free(qdws);
-
-         old->start = os_time_get();
-         old->end = old->start + qdws->usecs;
-         LIST_ADDTAIL(&old->head, &qdws->delayed);
-         qdws->num_delayed++;
+         virgl_resource_cache_add(&qdws->cache, &old->cache_entry);
          mtx_unlock(&qdws->mutex);
       }
    }
@@ -243,28 +200,9 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
     */
    p_atomic_set(&res->maybe_busy, for_fencing);
 
+   virgl_resource_cache_entry_init(&res->cache_entry, size, bind, format);
+
    return res;
-}
-
-static inline int virgl_is_res_compat(struct virgl_drm_winsys *qdws,
-                                      struct virgl_hw_res *res,
-                                      uint32_t size, uint32_t bind,
-                                      uint32_t format)
-{
-   if (res->bind != bind)
-      return 0;
-   if (res->format != format)
-      return 0;
-   if (res->size < size)
-      return 0;
-   if (res->size > size * 2)
-      return 0;
-
-   if (virgl_drm_resource_is_busy(&qdws->base, res)) {
-      return -1;
-   }
-
-   return 1;
 }
 
 static int
@@ -335,57 +273,18 @@ virgl_drm_winsys_resource_cache_create(struct virgl_winsys *qws,
                                        uint32_t size)
 {
    struct virgl_drm_winsys *qdws = virgl_drm_winsys(qws);
-   struct virgl_hw_res *res, *curr_res;
-   struct list_head *curr, *next;
-   int64_t now;
-   int ret = 0;
+   struct virgl_hw_res *res;
+   struct virgl_resource_cache_entry *entry;
 
    if (!can_cache_resource_with_bind(bind))
       goto alloc;
 
    mtx_lock(&qdws->mutex);
 
-   res = NULL;
-   curr = qdws->delayed.next;
-   next = curr->next;
-
-   now = os_time_get();
-   while (curr != &qdws->delayed) {
-      curr_res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-
-      if (!res && ((ret = virgl_is_res_compat(qdws, curr_res, size, bind, format)) > 0))
-         res = curr_res;
-      else if (os_time_timeout(curr_res->start, curr_res->end, now)) {
-         LIST_DEL(&curr_res->head);
-         virgl_hw_res_destroy(qdws, curr_res);
-      } else
-         break;
-
-      if (ret == -1)
-         break;
-
-      curr = next;
-      next = curr->next;
-   }
-
-   if (!res && ret != -1) {
-      while (curr != &qdws->delayed) {
-         curr_res = LIST_ENTRY(struct virgl_hw_res, curr, head);
-         ret = virgl_is_res_compat(qdws, curr_res, size, bind, format);
-         if (ret > 0) {
-            res = curr_res;
-            break;
-         }
-         if (ret == -1)
-            break;
-         curr = next;
-         next = curr->next;
-      }
-   }
-
-   if (res) {
-      LIST_DEL(&res->head);
-      --qdws->num_delayed;
+   entry = virgl_resource_cache_remove_compatible(&qdws->cache, size,
+                                                  bind, format);
+   if (entry) {
+      res = cache_entry_container_res(entry);
       mtx_unlock(&qdws->mutex);
       pipe_reference_init(&res->reference, 1);
       return res;
@@ -1026,9 +925,30 @@ static int virgl_drm_get_version(int fd)
 	return ret;
 }
 
+static bool
+virgl_drm_resource_cache_entry_is_busy(struct virgl_resource_cache_entry *entry,
+                                       void *user_data)
+{
+   struct virgl_drm_winsys *qdws = user_data;
+   struct virgl_hw_res *res = cache_entry_container_res(entry);
+
+   return virgl_drm_resource_is_busy(&qdws->base, res);
+}
+
+static void
+virgl_drm_resource_cache_entry_release(struct virgl_resource_cache_entry *entry,
+                                       void *user_data)
+{
+   struct virgl_drm_winsys *qdws = user_data;
+   struct virgl_hw_res *res = cache_entry_container_res(entry);
+
+   virgl_hw_res_destroy(qdws, res);
+}
+
 static struct virgl_winsys *
 virgl_drm_winsys_create(int drmFD)
 {
+   static const unsigned CACHE_TIMEOUT_USEC = 1000000;
    struct virgl_drm_winsys *qdws;
    int drm_version;
    int ret;
@@ -1050,9 +970,10 @@ virgl_drm_winsys_create(int drmFD)
       return NULL;
 
    qdws->fd = drmFD;
-   qdws->num_delayed = 0;
-   qdws->usecs = 1000000;
-   LIST_INITHEAD(&qdws->delayed);
+   virgl_resource_cache_init(&qdws->cache, CACHE_TIMEOUT_USEC,
+                             virgl_drm_resource_cache_entry_is_busy,
+                             virgl_drm_resource_cache_entry_release,
+                             qdws);
    (void) mtx_init(&qdws->mutex, mtx_plain);
    (void) mtx_init(&qdws->bo_handles_mutex, mtx_plain);
    qdws->bo_handles = util_hash_table_create(handle_hash, handle_compare);
