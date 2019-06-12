@@ -208,10 +208,24 @@ spirv_builder_emit_image_sample_implicit_lod(struct spirv_builder *b,
                                              SpvId coordinate);
 
 SpvId
+spirv_builder_emit_image_sample_explicit_lod(struct spirv_builder *b,
+                                             SpvId result_type,
+                                             SpvId sampled_image,
+                                             SpvId coordinate,
+                                             SpvId lod);
+
+SpvId
 spirv_builder_emit_image_sample_proj_implicit_lod(struct spirv_builder *b,
                                                   SpvId result_type,
                                                   SpvId sampled_image,
                                                   SpvId coordinate);
+
+SpvId
+spirv_builder_emit_image_sample_proj_explicit_lod(struct spirv_builder *b,
+                                                  SpvId result_type,
+                                                  SpvId sampled_image,
+                                                  SpvId coordinate,
+                                                  SpvId lod);
 
 SpvId
 spirv_builder_emit_ext_inst(struct spirv_builder *b, SpvId result_type,

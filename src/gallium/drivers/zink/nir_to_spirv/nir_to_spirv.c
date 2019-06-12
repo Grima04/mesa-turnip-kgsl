@@ -1076,8 +1076,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
-   bool has_proj = false;
-   SpvId coord = 0, proj;
+   bool has_proj = false, has_lod = false;
+   SpvId coord = 0, proj, lod;
    unsigned coord_components;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -1092,10 +1092,21 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          assert(nir_src_num_components(tex->src[i].src) == 1);
          break;
 
+      case nir_tex_src_lod:
+         has_lod = true;
+         lod = get_src_float(ctx, &tex->src[i].src);
+         assert(nir_src_num_components(tex->src[i].src) == 1);
+         break;
+
       default:
          fprintf(stderr, "texture source: %d\n", tex->src[i].src_type);
          unreachable("unknown texture source");
       }
+   }
+
+   if (!has_lod && ctx->stage != MESA_SHADER_FRAGMENT) {
+      has_lod = true;
+      lod = spirv_builder_const_float(&ctx->builder, 32, 0);
    }
 
    bool is_ms;
@@ -1131,14 +1142,29 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                             constituents,
                                                             coord_components);
 
-      result = spirv_builder_emit_image_sample_proj_implicit_lod(&ctx->builder,
-                                                                 dest_type,
-                                                                 load,
-                                                                 merged);
-   } else
-      result = spirv_builder_emit_image_sample_implicit_lod(&ctx->builder,
-                                                            dest_type, load,
-                                                            coord);
+      if (has_lod)
+         result = spirv_builder_emit_image_sample_proj_explicit_lod(&ctx->builder,
+                                                                    dest_type,
+                                                                    load,
+                                                                    merged,
+                                                                    lod);
+      else
+         result = spirv_builder_emit_image_sample_proj_implicit_lod(&ctx->builder,
+                                                                    dest_type,
+                                                                    load,
+                                                                    merged);
+   } else {
+      if (has_lod)
+         result = spirv_builder_emit_image_sample_explicit_lod(&ctx->builder,
+                                                               dest_type,
+                                                               load,
+                                                               coord, lod);
+      else
+         result = spirv_builder_emit_image_sample_implicit_lod(&ctx->builder,
+                                                               dest_type,
+                                                               load,
+                                                               coord);
+   }
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
 
