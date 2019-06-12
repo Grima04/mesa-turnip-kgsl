@@ -818,6 +818,20 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 	}
 }
 
+static struct radv_sample_locations_state *
+radv_get_resolve_sample_locations(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	uint32_t subpass_id = radv_get_subpass_id(cmd_buffer);
+
+	for (uint32_t i = 0; i < state->num_subpass_sample_locs; i++) {
+		if (state->subpass_sample_locs[i].subpass_idx == subpass_id)
+			return &state->subpass_sample_locs[i].sample_location;
+	}
+
+	return NULL;
+}
+
 /**
  * Decompress CMask/FMask before resolving a multisampled source image.
  */
@@ -847,6 +861,22 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer,
 			.baseArrayLayer = src_base_layer,
 			.layerCount = region->srcSubresource.layerCount,
 		};
+
+		if (src_image->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT) {
+			/* If the depth/stencil image uses different sample
+			 * locations, we need them during HTILE decompressions.
+			 */
+			struct radv_sample_locations_state *sample_locs =
+				radv_get_resolve_sample_locations(cmd_buffer);
+
+			barrier.pNext = &(VkSampleLocationsInfoEXT) {
+				.sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT,
+				.sampleLocationsPerPixel = sample_locs->per_pixel,
+				.sampleLocationGridSize = sample_locs->grid_size,
+				.sampleLocationsCount = sample_locs->count,
+				.pSampleLocations = sample_locs->locations,
+			};
+		}
 
 		radv_CmdPipelineBarrier(radv_cmd_buffer_to_handle(cmd_buffer),
 					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

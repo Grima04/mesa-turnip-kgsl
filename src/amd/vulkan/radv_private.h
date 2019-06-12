@@ -2003,6 +2003,9 @@ struct radv_subpass {
 	VkSampleCountFlagBits                        max_sample_count;
 };
 
+uint32_t
+radv_get_subpass_id(struct radv_cmd_buffer *cmd_buffer);
+
 struct radv_render_pass_attachment {
 	VkFormat                                     format;
 	uint32_t                                     samples;

@@ -2688,7 +2688,7 @@ void radv_subpass_barrier(struct radv_cmd_buffer *cmd_buffer,
 	                                                      NULL);
 }
 
-static uint32_t
+uint32_t
 radv_get_subpass_id(struct radv_cmd_buffer *cmd_buffer)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
