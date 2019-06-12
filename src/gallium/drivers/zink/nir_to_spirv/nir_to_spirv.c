@@ -1063,7 +1063,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_undef(struct ntv_context *ctx, nir_ssa_undef_instr *undef)
 {
-   SpvId type = get_fvec_type(ctx, undef->def.bit_size,
+   SpvId type = get_uvec_type(ctx, undef->def.bit_size,
                               undef->def.num_components);
 
    store_ssa_def_uint(ctx, &undef->def,
