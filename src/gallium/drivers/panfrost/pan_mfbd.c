@@ -88,16 +88,22 @@ panfrost_mfbd_set_cbuf(
                 struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
-        int stride = rsrc->bo->slices[0].stride;
+
+        unsigned level = surf->u.tex.level;
+        assert(surf->u.tex.first_layer == 0);
+
+        int stride = rsrc->bo->slices[level].stride;
+        unsigned offset = rsrc->bo->slices[level].offset;
 
         rt->format = panfrost_mfbd_format(surf);
 
         /* Now, we set the layout specific pieces */
 
         if (rsrc->bo->layout == PAN_LINEAR) {
-                rt->framebuffer = rsrc->bo->gpu;
+                rt->framebuffer = rsrc->bo->gpu + offset;
                 rt->framebuffer_stride = stride / 16;
         } else if (rsrc->bo->layout == PAN_AFBC) {
+                assert(level == 0);
                 rt->afbc.metadata = rsrc->bo->afbc_slab.gpu;
                 rt->afbc.stride = 0;
                 rt->afbc.unk = 0x30009;
@@ -123,7 +129,13 @@ panfrost_mfbd_set_zsbuf(
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
+        unsigned level = surf->u.tex.level;
+        assert(surf->u.tex.first_layer == 0);
+
+        unsigned offset = rsrc->bo->slices[level].offset;
+
         if (rsrc->bo->layout == PAN_AFBC) {
+                assert(level == 0);
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
 
                 fbx->flags =
@@ -141,11 +153,13 @@ panfrost_mfbd_set_zsbuf(
                 fbx->ds_afbc.zero1 = 0x10009;
                 fbx->ds_afbc.padding = 0x1000;
         } else if (rsrc->bo->layout == PAN_LINEAR) {
+                int stride = rsrc->bo->slices[level].stride;
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
+
                 fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS | 0x1;
 
-                fbx->ds_linear.depth = rsrc->bo->gpu;
-                fbx->ds_linear.depth_stride = rsrc->bo->slices[0].stride;
+                fbx->ds_linear.depth = rsrc->bo->gpu + offset;
+                fbx->ds_linear.depth_stride = stride;
         } else {
                 assert(0);
         }
