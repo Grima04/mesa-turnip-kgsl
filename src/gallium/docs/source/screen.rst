@@ -531,6 +531,8 @@ The integer capabilities:
 * ``PIPE_CAP_CS_DERIVED_SYSTEM_VALUES_SUPPORTED``: True if driver handles
   gl_LocalInvocationIndex and gl_GlobalInvocationID.  Otherwise, state tracker will
   lower those system values.
+* ``PIPE_CAP_ATOMIC_FLOAT_MINMAX``: Atomic float point minimum,
+  maximum, exchange and compare-and-swap support to buffer and shared variables.
 
 .. _pipe_capf:
 
