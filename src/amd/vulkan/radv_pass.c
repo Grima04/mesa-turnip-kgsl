@@ -132,7 +132,7 @@ radv_render_pass_compile(struct radv_render_pass *pass)
 						 depth_sample_count);
 
 		/* We have to handle resolve attachments specially */
-		subpass->has_resolve = false;
+		subpass->has_color_resolve = false;
 		if (subpass->resolve_attachments) {
 			for (uint32_t j = 0; j < subpass->color_count; j++) {
 				struct radv_subpass_attachment *resolve_att =
@@ -141,7 +141,7 @@ radv_render_pass_compile(struct radv_render_pass *pass)
 				if (resolve_att->attachment == VK_ATTACHMENT_UNUSED)
 					continue;
 
-				subpass->has_resolve = true;
+				subpass->has_color_resolve = true;
 			}
 		}
 	}

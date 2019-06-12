@@ -1954,8 +1954,8 @@ struct radv_subpass {
 	struct radv_subpass_attachment *             resolve_attachments;
 	struct radv_subpass_attachment *             depth_stencil_attachment;
 
-	/** Subpass has at least one resolve attachment */
-	bool                                         has_resolve;
+	/** Subpass has at least one color resolve attachment */
+	bool                                         has_color_resolve;
 
 	/** Subpass has at least one color attachment */
 	bool                                         has_color_att;

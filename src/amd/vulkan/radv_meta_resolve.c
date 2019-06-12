@@ -629,7 +629,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 	struct radv_meta_saved_state saved_state;
 	enum radv_resolve_method resolve_method = RESOLVE_HW;
 
-	if (!subpass->has_resolve)
+	if (!subpass->has_color_resolve)
 		return;
 
 	for (uint32_t i = 0; i < subpass->color_count; ++i) {
