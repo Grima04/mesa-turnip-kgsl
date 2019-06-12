@@ -368,6 +368,9 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    copyRegion.imageExtent.width = trans->base.box.width;
    copyRegion.imageExtent.height = trans->base.box.height;
 
+   zink_cmdbuf_reference_resoure(cmdbuf, res);
+   zink_cmdbuf_reference_resoure(cmdbuf, staging_res);
+
    if (buf2img)
       vkCmdCopyBufferToImage(cmdbuf->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
    else
