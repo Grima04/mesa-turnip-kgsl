@@ -463,10 +463,10 @@ pandecode_replay_sfbd(uint64_t gpu_va, int job_no)
         }
 
         MEMORY_PROP(s, unknown_address_0);
-        MEMORY_PROP(s, unknown_address_1);
-        MEMORY_PROP(s, unknown_address_2);
+        MEMORY_PROP(s, tiler_scratch_start);
+        MEMORY_PROP(s, tiler_scratch_middle);
 
-        pandecode_prop("resolution_check = 0x%" PRIx32, s->resolution_check);
+        pandecode_prop("tiler_resolution_check = 0x%" PRIx32, s->tiler_resolution_check);
         pandecode_prop("tiler_flags = 0x%" PRIx32, s->tiler_flags);
 
         MEMORY_PROP(s, tiler_heap_free);
@@ -640,12 +640,12 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
         if (fb->sample_locations)
                 pandecode_prop("sample_locations = sample_locations_%d", job_no);
 
-        /* Assume that unknown1 and tiler_meta were emitted in the last job for
+        /* Assume that unknown1 was emitted in the last job for
          * now */
-        /*pandecode_prop("unknown1 = unknown1_%d_p", job_no - 1);
-        pandecode_prop("tiler_meta = tiler_meta_%d_p", job_no - 1);*/
         MEMORY_PROP(fb, unknown1);
-        MEMORY_PROP(fb, tiler_meta);
+
+        pandecode_prop("tiler_unknown = 0x%x", fb->tiler_unknown);
+        pandecode_prop("tiler_flags = 0x%x", fb->tiler_flags);
 
         pandecode_prop("width1 = MALI_POSITIVE(%d)", fb->width1 + 1);
         pandecode_prop("height1 = MALI_POSITIVE(%d)", fb->height1 + 1);
@@ -668,14 +668,26 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
         MEMORY_PROP(fb, tiler_heap_start);
         MEMORY_PROP(fb, tiler_heap_end);
 
-        if (fb->zero3 || fb->zero4 || fb->zero9 || fb->zero10 || fb->zero11 || fb->zero12) {
+        if (fb->zero3 || fb->zero4) {
                 pandecode_msg("framebuffer zeros tripped\n");
                 pandecode_prop("zero3 = 0x%" PRIx32, fb->zero3);
                 pandecode_prop("zero4 = 0x%" PRIx32, fb->zero4);
-                pandecode_prop("zero9 = 0x%" PRIx64, fb->zero9);
-                pandecode_prop("zero10 = 0x%" PRIx64, fb->zero10);
-                pandecode_prop("zero11 = 0x%" PRIx64, fb->zero11);
-                pandecode_prop("zero12 = 0x%" PRIx64, fb->zero12);
+        }
+
+        bool nonzero_weights = false;
+
+        for (unsigned w = 0; w < ARRAY_SIZE(fb->tiler_weights); ++w) {
+                nonzero_weights |= fb->tiler_weights[w] != 0x0;
+        }
+
+        if (nonzero_weights) {
+                pandecode_log(".tiler_weights = {");
+
+                for (unsigned w = 0; w < ARRAY_SIZE(fb->tiler_weights); ++w) {
+                        pandecode_log("%d, ", fb->tiler_weights[w]);
+                }
+
+                pandecode_log("},");
         }
 
         pandecode_indent--;

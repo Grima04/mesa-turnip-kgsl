@@ -2,6 +2,7 @@
  * © Copyright 2017-2018 Alyssa Rosenzweig
  * © Copyright 2017-2018 Connor Abbott
  * © Copyright 2017-2018 Lyude Paul
+ * © Copyright2019 Collabora
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -1362,16 +1363,16 @@ struct mali_single_framebuffer {
         u32 zero6[7];
 
         /* Very weird format, see generation code in trans_builder.c */
-        u32 resolution_check;
-
+        u32 tiler_resolution_check;
         u32 tiler_flags;
 
-        u64 unknown_address_1; /* Pointing towards... a zero buffer? */
-        u64 unknown_address_2;
+        /* Guesses? */
+        mali_ptr tiler_scratch_start; /* Pointing towards... a zero buffer? */
+        mali_ptr tiler_scratch_middle;
 
         /* See mali_kbase_replay.c */
-        u64 tiler_heap_free;
-        u64 tiler_heap_end;
+        mali_ptr tiler_heap_free;
+        mali_ptr tiler_heap_end;
 
         /* More below this, maybe */
 } __attribute__((packed));
@@ -1519,18 +1520,29 @@ struct bifrost_framebuffer {
         u32 clear_stencil : 8;
         u32 unk3 : 24; // = 0x100
         float clear_depth;
-        mali_ptr tiler_meta;
-        /* 0x40 */
+
+
+        /* Tiler section begins here */
+        u32 tiler_unknown;
+
+        /* Name known from the replay workaround in the kernel. What exactly is
+         * flagged here is less known. We do that (tiler_flags & 0x1ff)
+         * specifies a mask of hierarchy weights, which explains some of the
+         * performance mysteries around setting it. We also known (1 << 16)
+         * should be set, but there's no explanation in the kernel why. */
+        u32 tiler_flags;
 
         /* Note: these are guesses! */
         mali_ptr tiler_scratch_start;
         mali_ptr tiler_scratch_middle;
 
-        /* These are not, since we see symmetry with replay jobs which name these explicitly */
-        mali_ptr tiler_heap_start;
+        /* These are not, since we see symmetry with replay
+         * jobs which name these explicitly */
+
+        mali_ptr tiler_heap_start; /* tiler heap_free_address */
         mali_ptr tiler_heap_end;
         
-        u64 zero9, zero10, zero11, zero12;
+        u32 tiler_weights[8];
 
         /* optional: struct bifrost_fb_extra extra */
         /* struct bifrost_render_target rts[] */

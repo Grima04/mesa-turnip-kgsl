@@ -107,7 +107,7 @@ panfrost_set_framebuffer_resolution(struct mali_single_framebuffer *fb, int w, i
          * The formula itself was discovered mostly by manual bruteforce and
          * aggressive algebraic simplification. */
 
-        fb->resolution_check = ((w + h) / 3) << 4;
+        fb->tiler_resolution_check = ((w + h) / 3) << 4;
 }
 
 struct mali_single_framebuffer
@@ -118,8 +118,8 @@ panfrost_emit_sfbd(struct panfrost_context *ctx)
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
                 .unknown_address_0 = ctx->scratchpad.gpu,
-                .unknown_address_1 = ctx->misc_0.gpu,
-                .unknown_address_2 = ctx->misc_0.gpu + 40960,
+                .tiler_scratch_start = ctx->misc_0.gpu,
+                .tiler_scratch_middle = ctx->misc_0.gpu + 40960,
                 .tiler_flags = 0xf0,
                 .tiler_heap_free = ctx->tiler_heap.gpu,
                 .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
@@ -134,28 +134,22 @@ struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_context *ctx)
 {
         struct bifrost_framebuffer framebuffer = {
-                /* It is not yet clear what tiler_meta means or how it's
-                 * calculated, but we can tell the lower 32-bits are a
-                 * (monotonically increasing?) function of tile count and
-                 * geometry complexity; I suspect it defines a memory size of
-                 * some kind? for the tiler. It's really unclear at the
-                 * moment... but to add to the confusion, the hardware is happy
-                 * enough to accept a zero in this field, so we don't even have
-                 * to worry about it right now.
-                 *
-                 * The byte (just after the 32-bit mark) is much more
-                 * interesting. The higher nibble I've only ever seen as 0xF,
-                 * but the lower one I've seen as 0x0 or 0xF, and it's not
-                 * obvious what the difference is. But what -is- obvious is
-                 * that when the lower nibble is zero, performance is severely
-                 * degraded compared to when the lower nibble is set.
-                 * Evidently, that nibble enables some sort of fast path,
-                 * perhaps relating to caching or tile flush? Regardless, at
-                 * this point there's no clear reason not to set it, aside from
-                 * substantially increased memory requirements (of the misc_0
-                 * buffer) */
+                /* It is not yet clear what this means or how it's
+                 * calculated, but we can tell it is a (monotonically
+                 * increasing?) function of tile count and geometry complexity;
+                 * I suspect it defines a memory size of some kind? for the
+                 * tiler. It's really unclear at the moment... but to add to
+                 * the confusion, the hardware is happy enough to accept a zero
+                 * in this field, so we don't even have to worry about it right
+                 * now. */
 
-                .tiler_meta = ((uint64_t) 0xff << 32) | 0x0,
+                .tiler_unknown = 0x0,
+
+                /* The lower 0xff controls the hierarchy mask. Set more bits
+                 * on for more tile granularity (which can be a performance win
+                 * on some scenes, at memory bandwidth costs). For now, be lazy
+                 * and enable everything. This might be a terrible idea. */
+                .tiler_flags = 0xff,
 
                 .width1 = MALI_POSITIVE(ctx->pipe_framebuffer.width),
                 .height1 = MALI_POSITIVE(ctx->pipe_framebuffer.height),
