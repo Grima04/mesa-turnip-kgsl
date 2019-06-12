@@ -493,8 +493,7 @@ zink_transfer_unmap(struct pipe_context *pctx,
          zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);
       }
 
-      zink_resource_destroy(pctx->screen, trans->staging_res);
-      trans->staging_res = NULL;
+      pipe_resource_reference(&trans->staging_res, NULL);
    } else
       vkUnmapMemory(screen->dev, res->mem);
 
