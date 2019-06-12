@@ -4991,7 +4991,7 @@ static void si_init_config(struct si_context *sctx)
 
        /* GFX6, radeon kernel disabled CLEAR_STATE. */
        assert(has_clear_state || sscreen->info.chip_class == GFX6 ||
-              sscreen->info.drm_major != 3);
+              !sscreen->info.is_amdgpu);
 
 	if (!pm4)
 		return;

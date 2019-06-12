@@ -345,48 +345,12 @@ void r600_postflush_resume_features(struct r600_common_context *ctx)
 		r600_resume_queries(ctx);
 }
 
-static void r600_add_fence_dependency(struct r600_common_context *rctx,
-				      struct pipe_fence_handle *fence)
-{
-	struct radeon_winsys *ws = rctx->ws;
-
-	if (rctx->dma.cs)
-		ws->cs_add_fence_dependency(rctx->dma.cs, fence, 0);
-	ws->cs_add_fence_dependency(rctx->gfx.cs, fence, 0);
-}
-
 static void r600_fence_server_sync(struct pipe_context *ctx,
 				   struct pipe_fence_handle *fence)
 {
-	struct r600_common_context *rctx = (struct r600_common_context *)ctx;
-	struct r600_multi_fence *rfence = (struct r600_multi_fence *)fence;
-
-	/* Only amdgpu needs to handle fence dependencies (for fence imports).
-	 * radeon synchronizes all rings by default and will not implement
+	/* radeon synchronizes all rings by default and will not implement
 	 * fence imports.
 	 */
-	if (rctx->screen->info.drm_major == 2)
-		return;
-
-	/* Only imported fences need to be handled by fence_server_sync,
-	 * because the winsys handles synchronizations automatically for BOs
-	 * within the process.
-	 *
-	 * Simply skip unflushed fences here, and the winsys will drop no-op
-	 * dependencies (i.e. dependencies within the same ring).
-	 */
-	if (rfence->gfx_unflushed.ctx)
-		return;
-
-	/* All unflushed commands will not start execution before
-	 * this fence dependency is signalled.
-	 *
-	 * Should we flush the context to allow more GPU parallelism?
-	 */
-	if (rfence->sdma)
-		r600_add_fence_dependency(rctx, rfence->sdma);
-	if (rfence->gfx)
-		r600_add_fence_dependency(rctx, rfence->gfx);
 }
 
 static void r600_flush_from_st(struct pipe_context *ctx,
@@ -1227,12 +1191,8 @@ static void r600_query_memory_info(struct pipe_screen *screen,
 	info->device_memory_evicted =
 		ws->query_value(ws, RADEON_NUM_BYTES_MOVED) / 1024;
 
-	if (rscreen->info.drm_major == 3 && rscreen->info.drm_minor >= 4)
-		info->nr_device_memory_evictions =
-			ws->query_value(ws, RADEON_NUM_EVICTIONS);
-	else
-		/* Just return the number of evicted 64KB pages. */
-		info->nr_device_memory_evictions = info->device_memory_evicted / 64;
+	/* Just return the number of evicted 64KB pages. */
+	info->nr_device_memory_evictions = info->device_memory_evicted / 64;
 }
 
 struct pipe_resource *r600_resource_create_common(struct pipe_screen *screen,

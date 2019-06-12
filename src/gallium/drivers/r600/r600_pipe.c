@@ -322,7 +322,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		return 64 * 1024 * 1024;
 
 	case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
-		return rscreen->b.info.drm_major == 2 && rscreen->b.info.drm_minor >= 43;
+		return rscreen->b.info.drm_minor >= 43;
 
 	case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
 		return !R600_BIG_ENDIAN && rscreen->b.info.has_userptr;

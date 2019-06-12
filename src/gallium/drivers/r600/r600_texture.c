@@ -762,7 +762,7 @@ static void r600_texture_get_htile_size(struct r600_common_screen *rscreen,
 	rtex->surface.htile_size = 0;
 
 	if (rscreen->chip_class <= EVERGREEN &&
-	    rscreen->info.drm_major == 2 && rscreen->info.drm_minor < 26)
+	    rscreen->info.drm_minor < 26)
 		return;
 
 	/* HW bug on R6xx. */

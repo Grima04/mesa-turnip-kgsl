@@ -322,7 +322,7 @@ static void si_dump_debug_registers(struct si_context *sctx, FILE *f)
 	si_dump_mmapped_reg(sctx, f, R_008010_GRBM_STATUS);
 
 	/* No other registers can be read on DRM < 3.1.0. */
-	if (sctx->screen->info.drm_major < 3 ||
+	if (!sctx->screen->info.is_amdgpu ||
 	    sctx->screen->info.drm_minor < 1) {
 		fprintf(f, "\n");
 		return;

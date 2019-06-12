@@ -1819,7 +1819,7 @@ static struct pipe_driver_query_info si_driver_query_list[] = {
 static unsigned si_get_num_queries(struct si_screen *sscreen)
 {
 	/* amdgpu */
-	if (sscreen->info.drm_major == 3) {
+	if (sscreen->info.is_amdgpu) {
 		if (sscreen->info.chip_class >= GFX8)
 			return ARRAY_SIZE(si_driver_query_list);
 		else

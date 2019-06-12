@@ -166,6 +166,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     ws->info.drm_major = version->version_major;
     ws->info.drm_minor = version->version_minor;
     ws->info.drm_patchlevel = version->version_patchlevel;
+    ws->info.is_amdgpu = false;
     drmFreeVersion(version);
 
     /* Get PCI ID. */

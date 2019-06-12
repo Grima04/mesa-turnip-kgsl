@@ -155,7 +155,7 @@ void si_init_resource_fields(struct si_screen *sscreen,
 		 * persistent buffers into GTT to prevent VRAM CPU page faults.
 		 */
 		if (!sscreen->info.kernel_flushes_hdp_before_ib ||
-		    sscreen->info.drm_major == 2)
+		    !sscreen->info.is_amdgpu)
 			res->domains = RADEON_DOMAIN_GTT;
 	}
 

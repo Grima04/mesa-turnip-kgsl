@@ -673,7 +673,7 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen,
 	 * implementation for fence_server_sync is incomplete. */
 	return threaded_context_create(ctx, &sscreen->pool_transfers,
 				       si_replace_buffer_storage,
-				       sscreen->info.drm_major >= 3 ? si_create_fence : NULL,
+				       sscreen->info.is_amdgpu ? si_create_fence : NULL,
 				       &((struct si_context*)ctx)->tc);
 }
 
@@ -1060,7 +1060,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
         * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
         * SPI_VS_OUT_CONFIG. So only enable GFX7 CLEAR_STATE on amdgpu kernel.*/
        sscreen->has_clear_state = sscreen->info.chip_class >= GFX7 &&
-                                  sscreen->info.drm_major == 3;
+                                  sscreen->info.is_amdgpu;
 
 	sscreen->has_distributed_tess =
 		sscreen->info.chip_class >= GFX8 &&
