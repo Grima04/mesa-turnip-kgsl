@@ -353,6 +353,8 @@ fd_alloc_staging(struct fd_context *ctx, struct fd_resource *rsc,
 	 * for 3d textures, it is the depth:
 	 */
 	if (tmpl.array_size > 1) {
+		if (tmpl.target == PIPE_TEXTURE_CUBE)
+			tmpl.target = PIPE_TEXTURE_2D_ARRAY;
 		tmpl.array_size = box->depth;
 		tmpl.depth0 = 1;
 	} else {
