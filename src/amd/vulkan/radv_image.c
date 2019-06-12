@@ -155,9 +155,7 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (device->instance->debug_flags & RADV_DEBUG_NO_DCC)
 		return false;
 
-	/* FIXME: DCC is broken for shareable images starting with GFX9 */
-	if (device->physical_device->rad_info.chip_class >= GFX9 &&
-	    image->shareable)
+	if (image->shareable)
 		return false;
 
 	/* TODO: Enable DCC for storage images. */
