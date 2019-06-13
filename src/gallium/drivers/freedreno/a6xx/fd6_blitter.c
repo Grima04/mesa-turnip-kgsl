@@ -565,7 +565,7 @@ static bool fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info);
 static bool
 handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
-	struct pipe_blit_info separate = *info;
+	struct pipe_blit_info blit = *info;
 
 	if (DEBUG_BLIT_FALLBACK) {
 		fprintf(stderr, "---- handle_zs_blit: ");
@@ -580,67 +580,67 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	switch (info->dst.format) {
 	case PIPE_FORMAT_S8_UINT:
 		debug_assert(info->mask == PIPE_MASK_S);
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R8_UINT;
-		separate.dst.format = PIPE_FORMAT_R8_UINT;
-		return fd6_blit(ctx, &separate);
+		blit.mask = PIPE_MASK_R;
+		blit.src.format = PIPE_FORMAT_R8_UINT;
+		blit.dst.format = PIPE_FORMAT_R8_UINT;
+		return fd6_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
 		if (info->mask & PIPE_MASK_Z) {
-			separate.mask = PIPE_MASK_R;
-			separate.src.format = PIPE_FORMAT_R32_FLOAT;
-			separate.dst.format = PIPE_FORMAT_R32_FLOAT;
-			fd6_blit(ctx, &separate);
+			blit.mask = PIPE_MASK_R;
+			blit.src.format = PIPE_FORMAT_R32_FLOAT;
+			blit.dst.format = PIPE_FORMAT_R32_FLOAT;
+			fd6_blit(ctx, &blit);
 		}
 
 		if (info->mask & PIPE_MASK_S) {
-			separate.mask = PIPE_MASK_R;
-			separate.src.format = PIPE_FORMAT_R8_UINT;
-			separate.dst.format = PIPE_FORMAT_R8_UINT;
-			separate.src.resource = &fd_resource(info->src.resource)->stencil->base;
-			separate.dst.resource = &fd_resource(info->dst.resource)->stencil->base;
-			fd6_blit(ctx, &separate);
+			blit.mask = PIPE_MASK_R;
+			blit.src.format = PIPE_FORMAT_R8_UINT;
+			blit.dst.format = PIPE_FORMAT_R8_UINT;
+			blit.src.resource = &fd_resource(info->src.resource)->stencil->base;
+			blit.dst.resource = &fd_resource(info->dst.resource)->stencil->base;
+			fd6_blit(ctx, &blit);
 		}
 
 		return true;
 
 	case PIPE_FORMAT_Z16_UNORM:
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R16_UNORM;
-		separate.dst.format = PIPE_FORMAT_R16_UNORM;
-		return fd6_blit(ctx, &separate);
+		blit.mask = PIPE_MASK_R;
+		blit.src.format = PIPE_FORMAT_R16_UNORM;
+		blit.dst.format = PIPE_FORMAT_R16_UNORM;
+		return fd6_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z32_UNORM:
 	case PIPE_FORMAT_Z32_FLOAT:
 		debug_assert(info->mask == PIPE_MASK_Z);
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R32_UINT;
-		separate.dst.format = PIPE_FORMAT_R32_UINT;
-		return fd6_blit(ctx, &separate);
+		blit.mask = PIPE_MASK_R;
+		blit.src.format = PIPE_FORMAT_R32_UINT;
+		blit.dst.format = PIPE_FORMAT_R32_UINT;
+		return fd6_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z24X8_UNORM:
-		separate.mask = PIPE_MASK_R;
-		separate.src.format = PIPE_FORMAT_R32_UINT;
-		separate.dst.format = PIPE_FORMAT_R32_UINT;
-		return fd6_blit(ctx, &separate);
+		blit.mask = PIPE_MASK_R;
+		blit.src.format = PIPE_FORMAT_R32_UINT;
+		blit.dst.format = PIPE_FORMAT_R32_UINT;
+		return fd6_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
 		switch (info->mask) {
 		case PIPE_MASK_ZS:
-			separate.mask = PIPE_MASK_R;
-			separate.src.format = PIPE_FORMAT_R32_UINT;
-			separate.dst.format = PIPE_FORMAT_R32_UINT;
-			return fd6_blit(ctx, &separate);
+			blit.mask = PIPE_MASK_R;
+			blit.src.format = PIPE_FORMAT_R32_UINT;
+			blit.dst.format = PIPE_FORMAT_R32_UINT;
+			return fd6_blit(ctx, &blit);
 		case PIPE_MASK_Z:
-			separate.mask = PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
-			separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			return fd_blitter_blit(ctx, &separate);
+			blit.mask = PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
+			blit.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			blit.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			return fd_blitter_blit(ctx, &blit);
 		case PIPE_MASK_S:
-			separate.mask = PIPE_MASK_A;
-			separate.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			separate.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
-			return fd_blitter_blit(ctx, &separate);
+			blit.mask = PIPE_MASK_A;
+			blit.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			blit.dst.format = PIPE_FORMAT_R8G8B8A8_UNORM;
+			return fd_blitter_blit(ctx, &blit);
 		default:
 			unreachable("");
 		}
