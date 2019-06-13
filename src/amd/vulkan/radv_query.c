@@ -1641,6 +1641,10 @@ static void emit_end_query(struct radv_cmd_buffer *cmd_buffer,
 					       RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
 					       RADV_CMD_FLAG_INV_GLOBAL_L2 |
 					       RADV_CMD_FLAG_INV_VMEM_L1;
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+		cmd_buffer->active_query_flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
+						       RADV_CMD_FLAG_FLUSH_AND_INV_DB;
+	}
 }
 
 void radv_CmdBeginQueryIndexedEXT(
