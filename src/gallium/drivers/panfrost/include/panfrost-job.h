@@ -963,7 +963,8 @@ struct bifrost_tiler_heap_meta {
 
 struct bifrost_tiler_meta {
         u64 zero0;
-        u32 unk; // = 0xf0
+        u16 hierarchy_mask;
+        u16 flags;
         u16 width;
         u16 height;
         u64 zero1;
@@ -1362,13 +1363,18 @@ struct mali_single_framebuffer {
 
         u32 zero6[7];
 
-        /* Very weird format, see generation code in trans_builder.c */
-        u32 tiler_resolution_check;
-        u32 tiler_flags;
+        /* Logically, by symmetry to the MFBD, this ought to be the size of the
+         * polygon list. But this doesn't quite compute up. More investigation
+         * is needed. */
 
-        /* Guesses? */
-        mali_ptr tiler_scratch_start; /* Pointing towards... a zero buffer? */
-        mali_ptr tiler_scratch_middle;
+        u32 tiler_resolution_check;
+
+        u16 tiler_hierarchy_mask;
+        u16 tiler_flags;
+
+        /* See pan_tiler.c */
+        mali_ptr tiler_polygon_list; 
+        mali_ptr tiler_polygon_list_body;
 
         /* See mali_kbase_replay.c */
         mali_ptr tiler_heap_free;
@@ -1523,21 +1529,23 @@ struct bifrost_framebuffer {
 
 
         /* Tiler section begins here */
-        u32 tiler_unknown;
+        u32 tiler_polygon_list_size;
 
         /* Name known from the replay workaround in the kernel. What exactly is
-         * flagged here is less known. We do that (tiler_flags & 0x1ff)
+         * flagged here is less known. We do that (tiler_hierarchy_mask & 0x1ff)
          * specifies a mask of hierarchy weights, which explains some of the
-         * performance mysteries around setting it. We also known (1 << 16)
-         * should be set, but there's no explanation in the kernel why. */
-        u32 tiler_flags;
+         * performance mysteries around setting it. We also see the bottom bit
+         * of tiler_flags set in the kernel, but no comment why. */
 
-        /* Note: these are guesses! */
-        mali_ptr tiler_scratch_start;
-        mali_ptr tiler_scratch_middle;
+        u16 tiler_hierarchy_mask;
+        u16 tiler_flags;
 
-        /* These are not, since we see symmetry with replay
-         * jobs which name these explicitly */
+        /* See mali_tiler.c for an explanation */
+        mali_ptr tiler_polygon_list;
+        mali_ptr tiler_polygon_list_body;
+
+        /* Names based on we see symmetry with replay jobs which name these
+         * explicitly */
 
         mali_ptr tiler_heap_start; /* tiler heap_free_address */
         mali_ptr tiler_heap_end;

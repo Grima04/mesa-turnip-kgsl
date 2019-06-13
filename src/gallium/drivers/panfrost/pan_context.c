@@ -118,9 +118,10 @@ panfrost_emit_sfbd(struct panfrost_context *ctx)
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
                 .unknown_address_0 = ctx->scratchpad.gpu,
-                .tiler_scratch_start = ctx->misc_0.gpu,
-                .tiler_scratch_middle = ctx->misc_0.gpu + 40960,
-                .tiler_flags = 0xf0,
+                .tiler_polygon_list = ctx->misc_0.gpu,
+                .tiler_polygon_list_body = ctx->misc_0.gpu + 40960,
+                .tiler_hierarchy_mask = 0xF0,
+                .tiler_flags = 0x0,
                 .tiler_heap_free = ctx->tiler_heap.gpu,
                 .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
         };
@@ -134,22 +135,22 @@ struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_context *ctx)
 {
         struct bifrost_framebuffer framebuffer = {
-                /* It is not yet clear what this means or how it's
-                 * calculated, but we can tell it is a (monotonically
-                 * increasing?) function of tile count and geometry complexity;
-                 * I suspect it defines a memory size of some kind? for the
-                 * tiler. It's really unclear at the moment... but to add to
-                 * the confusion, the hardware is happy enough to accept a zero
-                 * in this field, so we don't even have to worry about it right
-                 * now. */
-
-                .tiler_unknown = 0x0,
-
-                /* The lower 0xff controls the hierarchy mask. Set more bits
+                /* The lower 0x1ff controls the hierarchy mask. Set more bits
                  * on for more tile granularity (which can be a performance win
                  * on some scenes, at memory bandwidth costs). For now, be lazy
                  * and enable everything. This might be a terrible idea. */
-                .tiler_flags = 0xff,
+
+                .tiler_hierarchy_mask = 0xff,
+                .tiler_flags = 0x0,
+
+                /* The hardware deals with suballocation; we don't care */
+                .tiler_heap_start = ctx->tiler_heap.gpu,
+                .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
+
+                /* See pan_tiler.c */
+                .tiler_polygon_list  = ctx->misc_0.gpu,
+                .tiler_polygon_list_body = ctx->misc_0.gpu + 0xf0000,
+                .tiler_polygon_list_size = 0x0,
 
                 .width1 = MALI_POSITIVE(ctx->pipe_framebuffer.width),
                 .height1 = MALI_POSITIVE(ctx->pipe_framebuffer.height),
@@ -164,26 +165,7 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
 
                 .unknown2 = 0x1f,
 
-                /* Corresponds to unknown_address_X of SFBD */
                 .scratchpad = ctx->scratchpad.gpu,
-                .tiler_scratch_start  = ctx->misc_0.gpu,
-
-                /* The constant added here is, like the lower word of
-                 * tiler_meta, (loosely) another product of framebuffer size
-                 * and geometry complexity. It must be sufficiently large for
-                 * the tiler_meta fast path to work; if it's too small, there
-                 * will be DATA_INVALID_FAULTs. Conversely, it must be less
-                 * than the total size of misc_0, or else there's no room. It's
-                 * possible this constant configures a partition between two
-                 * parts of misc_0? We haven't investigated the functionality,
-                 * as these buffers are internally used by the hardware
-                 * (presumably by the tiler) but not seemingly touched by the driver
-                 */
-
-                .tiler_scratch_middle = ctx->misc_0.gpu + 0xf0000,
-
-                .tiler_heap_start = ctx->tiler_heap.gpu,
-                .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
         };
 
         return framebuffer;
