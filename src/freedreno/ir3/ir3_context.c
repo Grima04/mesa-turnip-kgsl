@@ -90,7 +90,7 @@ ir3_context_init(struct ir3_compiler *compiler,
 	 * However, we want a final swing of a few passes to have a chance
 	 * at optimizing the result.
 	 */
-	bool progress;
+	bool progress = false;
 	NIR_PASS(progress, ctx->s, ir3_nir_lower_imul);
 	if (progress) {
 		NIR_PASS_V(ctx->s, nir_opt_algebraic);
