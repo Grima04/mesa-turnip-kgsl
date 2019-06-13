@@ -23,6 +23,8 @@
 #ifndef VIRGL_HW_H
 #define VIRGL_HW_H
 
+#include <stdint.h>
+
 struct virgl_box {
 	uint32_t x, y, z;
 	uint32_t w, h, d;
@@ -212,6 +214,8 @@ enum virgl_formats {
 
    VIRGL_FORMAT_R10G10B10X2_UNORM       = 308,
    VIRGL_FORMAT_A4B4G4R4_UNORM          = 311,
+
+   VIRGL_FORMAT_R8_SRGB                 = 312,
    VIRGL_FORMAT_MAX,
 };
 
@@ -235,16 +239,16 @@ enum virgl_formats {
 #define VIRGL_CAP_SRGB_WRITE_CONTROL   (1 << 15)
 #define VIRGL_CAP_QBO                  (1 << 16)
 #define VIRGL_CAP_TRANSFER             (1 << 17)
-#define VIRGL_CAP_FBO_MIXED_COLOR_FORMATS (1 << 18)
+#define VIRGL_CAP_FBO_MIXED_COLOR_FORMATS  (1 << 18)
 #define VIRGL_CAP_FAKE_FP64            (1 << 19)
 #define VIRGL_CAP_BIND_COMMAND_ARGS    (1 << 20)
 #define VIRGL_CAP_MULTI_DRAW_INDIRECT  (1 << 21)
 #define VIRGL_CAP_INDIRECT_PARAMS      (1 << 22)
 #define VIRGL_CAP_TRANSFORM_FEEDBACK3  (1 << 23)
+#define VIRGL_CAP_3D_ASTC              (1 << 24)
 #define VIRGL_CAP_INDIRECT_INPUT_ADDR  (1 << 25)
 #define VIRGL_CAP_COPY_TRANSFER        (1 << 26)
 #define VIRGL_CAP_CLIP_HALFZ           (1 << 27)
-
 
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
  * but are fixed, no other should be passed to virgl either.
@@ -263,6 +267,9 @@ enum virgl_formats {
 #define VIRGL_BIND_CURSOR        (1 << 16)
 #define VIRGL_BIND_CUSTOM        (1 << 17)
 #define VIRGL_BIND_SCANOUT       (1 << 18)
+/* Used for buffers that are backed by guest storage and
+ * are only read by the host.
+ */
 #define VIRGL_BIND_STAGING       (1 << 19)
 
 struct virgl_caps_bool_set1 {
@@ -398,8 +405,8 @@ enum virgl_ctx_errors {
         VIRGL_ERROR_CTX_ILLEGAL_SURFACE,
         VIRGL_ERROR_CTX_ILLEGAL_VERTEX_FORMAT,
         VIRGL_ERROR_CTX_ILLEGAL_CMD_BUFFER,
+        VIRGL_ERROR_CTX_GLES_HAVE_TES_BUT_MISS_TCS,
 };
-
 
 #define VIRGL_RESOURCE_Y_0_TOP (1 << 0)
 #endif
