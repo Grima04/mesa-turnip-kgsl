@@ -871,6 +871,9 @@ if (mask == 0) {
 }
 """)
 
+
+triop("bitfield_select", tuint, "", "(src0 & src1) | (~src0 & src2)")
+
 # SM5 ubfe/ibfe assembly: only the 5 least significant bits of offset and bits are used.
 opcode("ubfe", 0, tuint32,
        [0, 0, 0], [tuint32, tuint32, tuint32], False, "", """
