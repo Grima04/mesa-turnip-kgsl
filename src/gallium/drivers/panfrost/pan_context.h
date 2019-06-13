@@ -267,8 +267,8 @@ struct panfrost_shader_state {
         bool writes_point_size;
         bool reads_point_coord;
 
-        unsigned general_varying_stride;
         struct mali_attr_meta varyings[PIPE_MAX_ATTRIBS];
+        gl_varying_slot varyings_loc[PIPE_MAX_ATTRIBS];
 
         unsigned sysval_count;
         unsigned sysval[MAX_SYSVAL_COUNT];

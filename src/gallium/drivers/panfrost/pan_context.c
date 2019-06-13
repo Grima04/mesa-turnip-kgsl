@@ -697,6 +697,7 @@ panfrost_emit_varying_descriptor(
 
         struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
         struct panfrost_shader_state *fs = &ctx->fs->variants[ctx->fs->active_variant];
+        unsigned int num_gen_varyings = 0;
 
         /* Allocate the varying descriptor */
 
@@ -705,6 +706,42 @@ panfrost_emit_varying_descriptor(
 
         struct panfrost_transfer trans = panfrost_allocate_transient(ctx,
                         vs_size + fs_size);
+
+        /*
+         * Assign ->src_offset now that we know about all the general purpose
+         * varyings that will be used by the fragment and vertex shaders.
+         */
+        for (unsigned i = 0; i < vs->tripipe->varying_count; i++) {
+                /*
+                 * General purpose varyings have ->index set to 0, skip other
+                 * entries.
+                 */
+                if (vs->varyings[i].index)
+                        continue;
+
+                vs->varyings[i].src_offset = 16 * (num_gen_varyings++);
+        }
+
+        for (unsigned i = 0; i < fs->tripipe->varying_count; i++) {
+                unsigned j;
+
+                if (fs->varyings[i].index)
+                        continue;
+
+                /*
+                 * Re-use the VS general purpose varying pos if it exists,
+                 * create a new one otherwise.
+                 */
+                for (j = 0; j < vs->tripipe->varying_count; j++) {
+                        if (fs->varyings_loc[i] == vs->varyings_loc[j])
+                                break;
+                }
+
+                if (j < vs->tripipe->varying_count)
+                        fs->varyings[i].src_offset = vs->varyings[j].src_offset;
+                else
+                        fs->varyings[i].src_offset = 16 * (num_gen_varyings++);
+        }
 
         memcpy(trans.cpu, vs->varyings, vs_size);
         memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
@@ -716,11 +753,8 @@ panfrost_emit_varying_descriptor(
         union mali_attr varyings[PIPE_MAX_ATTRIBS];
         unsigned idx = 0;
 
-        /* General varyings -- use the VS's, since those are more likely to be
-         * accurate on desktop */
-
-        panfrost_emit_varyings(ctx, &varyings[idx++],
-                        vs->general_varying_stride, invocation_count);
+        panfrost_emit_varyings(ctx, &varyings[idx++], num_gen_varyings * 16,
+                               invocation_count);
 
         /* fp32 vec4 gl_Position */
         ctx->payload_tiler.postfix.position_varying =

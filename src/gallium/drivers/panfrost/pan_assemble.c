@@ -105,8 +105,6 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         unsigned default_vec4_swizzle = panfrost_get_default_swizzle(4);
 
         /* Iterate the varyings and emit the corresponding descriptor */
-        unsigned general_purpose_count = 0;
-
         for (unsigned i = 0; i < program.varying_count; ++i) {
                 unsigned location = program.varyings[i];
 
@@ -136,12 +134,9 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
                         state->reads_point_coord = true;
                 } else {
                         v.index = 0;
-                        v.src_offset = 16 * (general_purpose_count++);
                 }
 
                 state->varyings[i] = v;
+                state->varyings_loc[i] = location;
         }
-
-        /* Set the stride for the general purpose fp32 vec4 varyings */
-        state->general_varying_stride = (4 * 4) * general_purpose_count;
 }

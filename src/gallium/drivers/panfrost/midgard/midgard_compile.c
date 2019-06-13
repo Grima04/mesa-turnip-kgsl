@@ -2414,9 +2414,9 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 unsigned loc = var->data.driver_location;
                 unsigned sz = glsl_type_size(var->type, FALSE);
 
-                for (int c = loc; c < (loc + sz); ++c) {
-                        program->varyings[c] = var->data.location;
-                        max_varying = MAX2(max_varying, c);
+                for (int c = 0; c < sz; ++c) {
+                        program->varyings[loc + c] = var->data.location + c;
+                        max_varying = MAX2(max_varying, loc + c);
                 }
         }
 
