@@ -1209,80 +1209,80 @@ typedef enum {
    /**
     * For store instructions, a writemask for the store.
     */
-   NIR_INTRINSIC_WRMASK = 2,
+   NIR_INTRINSIC_WRMASK,
 
    /**
     * The stream-id for GS emit_vertex/end_primitive intrinsics.
     */
-   NIR_INTRINSIC_STREAM_ID = 3,
+   NIR_INTRINSIC_STREAM_ID,
 
    /**
     * The clip-plane id for load_user_clip_plane intrinsic.
     */
-   NIR_INTRINSIC_UCP_ID = 4,
+   NIR_INTRINSIC_UCP_ID,
 
    /**
     * The amount of data, starting from BASE, that this instruction may
     * access.  This is used to provide bounds if the offset is not constant.
     */
-   NIR_INTRINSIC_RANGE = 5,
+   NIR_INTRINSIC_RANGE,
 
    /**
     * The Vulkan descriptor set for vulkan_resource_index intrinsic.
     */
-   NIR_INTRINSIC_DESC_SET = 6,
+   NIR_INTRINSIC_DESC_SET,
 
    /**
     * The Vulkan descriptor set binding for vulkan_resource_index intrinsic.
     */
-   NIR_INTRINSIC_BINDING = 7,
+   NIR_INTRINSIC_BINDING,
 
    /**
     * Component offset.
     */
-   NIR_INTRINSIC_COMPONENT = 8,
+   NIR_INTRINSIC_COMPONENT,
 
    /**
     * Interpolation mode (only meaningful for FS inputs).
     */
-   NIR_INTRINSIC_INTERP_MODE = 9,
+   NIR_INTRINSIC_INTERP_MODE,
 
    /**
     * A binary nir_op to use when performing a reduction or scan operation
     */
-   NIR_INTRINSIC_REDUCTION_OP = 10,
+   NIR_INTRINSIC_REDUCTION_OP,
 
    /**
     * Cluster size for reduction operations
     */
-   NIR_INTRINSIC_CLUSTER_SIZE = 11,
+   NIR_INTRINSIC_CLUSTER_SIZE,
 
    /**
     * Parameter index for a load_param intrinsic
     */
-   NIR_INTRINSIC_PARAM_IDX = 12,
+   NIR_INTRINSIC_PARAM_IDX,
 
    /**
     * Image dimensionality for image intrinsics
     *
     * One of GLSL_SAMPLER_DIM_*
     */
-   NIR_INTRINSIC_IMAGE_DIM = 13,
+   NIR_INTRINSIC_IMAGE_DIM,
 
    /**
     * Non-zero if we are accessing an array image
     */
-   NIR_INTRINSIC_IMAGE_ARRAY = 14,
+   NIR_INTRINSIC_IMAGE_ARRAY,
 
    /**
     * Image format for image intrinsics
     */
-   NIR_INTRINSIC_FORMAT = 15,
+   NIR_INTRINSIC_FORMAT,
 
    /**
     * Access qualifiers for image and memory access intrinsics
     */
-   NIR_INTRINSIC_ACCESS = 16,
+   NIR_INTRINSIC_ACCESS,
 
    /**
     * Alignment for offsets and addresses
@@ -1293,24 +1293,24 @@ typedef enum {
     *
     *                (X - align_offset) % align_mul == 0
     */
-   NIR_INTRINSIC_ALIGN_MUL = 17,
-   NIR_INTRINSIC_ALIGN_OFFSET = 18,
+   NIR_INTRINSIC_ALIGN_MUL,
+   NIR_INTRINSIC_ALIGN_OFFSET,
 
    /**
     * The Vulkan descriptor type for a vulkan_resource_[re]index intrinsic.
     */
-   NIR_INTRINSIC_DESC_TYPE = 19,
+   NIR_INTRINSIC_DESC_TYPE,
 
    /**
     * The nir_alu_type of a uniform/input/output
     */
-   NIR_INTRINSIC_TYPE = 20,
+   NIR_INTRINSIC_TYPE,
 
    /**
     * The swizzle mask for the instructions
     * SwizzleInvocationsAMD and SwizzleInvocationsMaskedAMD
     */
-   NIR_INTRINSIC_SWIZZLE_MASK = 20,
+   NIR_INTRINSIC_SWIZZLE_MASK,
 
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
