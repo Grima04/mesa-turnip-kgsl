@@ -210,6 +210,23 @@ sometimes be useful for debugging end-user issues.
 </dl>
 
 
+<h2>NIR passes enviroment variables</h2>
+<p>
+The following are only applicable for drivers that uses NIR, as they
+modify the behaviour for the common NIR_PASS and NIR_PASS_V macros,
+that wrap calls to NIR lowering/optimizations.
+</p>
+
+<dl>
+  <dt><code>NIR_PRINT</code></dt>
+  <dd>If defined, the resulting NIR shader will be printed out at each succesful NIR lowering/optimization call.</dd>
+  <dt><code>NIR_TEST_CLONE</code></dt>
+  <dd>If defined, cloning a NIR shader would be tested at each succesful NIR lowering/optimization call.</dd>
+  <dt><code>NIR_TEST_SERIALIZE</code></dt>
+  <dd>If defined, serialize and deserialize a NIR shader would be tested at each succesful NIR lowering/optimization call.</dd>
+</dl>
+
+
 <h2>Mesa Xlib driver environment variables</h2>
 
 <p>
