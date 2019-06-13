@@ -152,6 +152,8 @@ static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs,
    }
    if (pbind & PIPE_BIND_SCANOUT)
       outbind |= VIRGL_BIND_SCANOUT;
+   if (pbind & PIPE_BIND_SHARED)
+      outbind |= VIRGL_BIND_SHARED;
    if (pbind & PIPE_BIND_SHADER_BUFFER)
       outbind |= VIRGL_BIND_SHADER_BUFFER;
    if (pbind & PIPE_BIND_QUERY_BUFFER)

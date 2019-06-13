@@ -277,6 +277,7 @@ enum virgl_formats {
  * are only read by the host.
  */
 #define VIRGL_BIND_STAGING       (1 << 19)
+#define VIRGL_BIND_SHARED        (1 << 20)
 
 struct virgl_caps_bool_set1 {
         unsigned indep_blend_enable:1;
