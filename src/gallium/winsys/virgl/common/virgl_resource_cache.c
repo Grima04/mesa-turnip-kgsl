@@ -103,28 +103,23 @@ virgl_resource_cache_remove_compatible(struct virgl_resource_cache *cache,
    bool check_expired = true;
 
    /* Iterate through the cache to find a compatible resource, while also
-    * destroying any expired resources.
+    * destroying any expired resources we come across.
     */
    list_for_each_entry_safe(struct virgl_resource_cache_entry,
                             entry, &cache->resources, head) {
-      /* If we haven't yet found a compatible resource, try this one. */
-      if (!compat_entry) {
-         const bool compatible =
-            virgl_resource_cache_entry_is_compatible(entry, size, bind, format);
+      const bool compatible =
+         virgl_resource_cache_entry_is_compatible(entry, size, bind, format);
 
-         if (compatible) {
-            const bool busy = cache->entry_is_busy_func(entry, cache->user_data);
-            if (!busy) {
-               compat_entry = entry;
-               continue;
-            } else {
-               /* If the resource is busy, there is no point checking further,
-                * since any resources later in the cache list will also be
-                * busy.
-                */
-               break;
-            }
-         }
+      if (compatible) {
+         if (!cache->entry_is_busy_func(entry, cache->user_data))
+            compat_entry = entry;
+
+         /* We either have found a compatible resource, in which case we are
+          * done, or the resource is busy, which means resources later in
+          * the cache list will also be busy, so there is no point in
+          * searching further.
+          */
+         break;
       }
 
       /* If we aren't using this resource, check to see if it has expired.
@@ -137,12 +132,6 @@ virgl_resource_cache_remove_compatible(struct virgl_resource_cache *cache,
          else
             check_expired = false;
       }
-
-      /* If we have found a compatible entry and there are no remaining expired
-       * resources we can stop.
-       */
-      if (compat_entry && !check_expired)
-         break;
    }
 
    if (compat_entry)
