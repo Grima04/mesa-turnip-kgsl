@@ -2015,7 +2015,6 @@ ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
 
                 /* Emit the else block. */
                 vir_set_emit_block(c, else_block);
-                ntq_activate_execute_for_block(c);
                 ntq_emit_cf_list(c, &if_stmt->else_list);
         }
 
