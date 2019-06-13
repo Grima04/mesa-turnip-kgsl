@@ -3724,6 +3724,15 @@ void radv_CmdExecuteCommands(
 		if (secondary->sample_positions_needed)
 			primary->sample_positions_needed = true;
 
+		if (!secondary->state.framebuffer &&
+		    (primary->state.dirty & RADV_CMD_DIRTY_FRAMEBUFFER)) {
+			/* Emit the framebuffer state from primary if secondary
+			 * has been recorded without a framebuffer, otherwise
+			 * fast color/depth clears can't work.
+			 */
+			radv_emit_framebuffer_state(primary);
+		}
+
 		primary->device->ws->cs_execute_secondary(primary->cs, secondary->cs);
 
 
