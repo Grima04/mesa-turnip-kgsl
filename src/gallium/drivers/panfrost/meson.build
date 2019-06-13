@@ -59,7 +59,8 @@ files_panfrost = files(
   'pan_pretty_print.c',
   'pan_fragment.c',
   'pan_sfbd.c',
-  'pan_mfbd.c'
+  'pan_mfbd.c',
+  'pan_tiler.c',
 )
 
 inc_panfrost = [

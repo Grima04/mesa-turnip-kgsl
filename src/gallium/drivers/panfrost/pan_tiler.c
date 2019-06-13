@@ -24,6 +24,10 @@
  *   Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
 
+#include "util/u_math.h"
+#include "util/macros.h"
+#include "pan_tiler.h"
+
 /* Mali GPUs are tiled-mode renderers, rather than immediate-mode.
  * Conceptually, the screen is divided into 16x16 tiles. Vertex shaders run.
  * Then, a fixed-function hardware block (the tiler) consumes the gl_Position
@@ -149,3 +153,104 @@
  * size of the statically-sized polygon list structures, allocate them, and go!
  *
  */
+
+/* Hierarchical tiling spans from 16x16 to 2048x2048 tiles */
+
+#define MIN_TILE_SIZE 16
+#define MAX_TILE_SIZE 2048
+
+/* Constants as shifts for easier power-of-two iteration */
+
+#define MIN_TILE_SHIFT util_logbase2(MIN_TILE_SIZE)
+#define MAX_TILE_SHIFT util_logbase2(MAX_TILE_SIZE)
+
+/* The hierarchy has a 64-byte prologue */
+#define PROLOGUE_SIZE 0x40
+
+/* For each tile (across all hierarchy levels), there is 8 bytes of header */
+#define HEADER_BYTES_PER_TILE 0x8
+
+/* Absent any geometry, the minimum size of the header */
+#define MINIMUM_HEADER_SIZE 0x200
+
+/* If the width-x-height framebuffer is divided into tile_size-x-tile_size
+ * tiles, how many tiles are there? Rounding up in each direction. For the
+ * special case of tile_size=16, this aligns with the usual Midgard count.
+ * tile_size must be a power-of-two. Not really repeat code from AFBC/checksum,
+ * because those care about the stride (not just the overall count) and only at
+ * a a fixed-tile size (not any of a number of power-of-twos) */
+
+static unsigned
+pan_tile_count(unsigned width, unsigned height, unsigned tile_size)
+{
+        unsigned aligned_width = ALIGN_POT(width, tile_size);
+        unsigned aligned_height = ALIGN_POT(height, tile_size);
+
+        unsigned tile_count_x = aligned_width / tile_size;
+        unsigned tile_count_y = aligned_height / tile_size;
+
+        return tile_count_x * tile_count_y;
+}
+
+/* For `masked_count` of the smallest tile sizes masked out, computes how the
+ * size of the polygon list header. We iterate the tile sizes (16x16 through
+ * 2048x2048, if nothing is masked; (16*2^masked_count)x(16*2^masked_count)
+ * through 2048x2048 more generally. For each tile size, we figure out how many
+ * tiles there are at this hierarchy level and therefore many bytes this level
+ * is, leaving us with a byte count for each level. We then just sum up the
+ * byte counts across the levels to find a byte count for all levels. */
+
+static unsigned
+panfrost_raw_header_size(unsigned width, unsigned height, unsigned masked_count)
+{
+        unsigned size = PROLOGUE_SIZE;
+
+        /* Normally we start at 16x16 tiles (MIN_TILE_SHIFT), but we add more
+         * if anything is masked off */
+
+        unsigned start_level = MIN_TILE_SHIFT + masked_count;
+
+        /* Iterate hierarchy levels / tile sizes */
+
+        for (unsigned i = start_level; i < MAX_TILE_SHIFT; ++i) {
+                /* Shift from a level to a tile size */
+                unsigned tile_size = (1 << i);
+
+                unsigned tile_count = pan_tile_count(width, height, tile_size);
+                unsigned header_bytes = HEADER_BYTES_PER_TILE * tile_count;
+
+                size += header_bytes;
+        }
+
+        /* This size will be used as an offset, so ensure it's aligned */
+        return ALIGN_POT(size, 512);
+}
+
+/* Given a hierarchy mask and a framebuffer size, compute the header size */
+
+unsigned
+panfrost_tiler_header_size(unsigned width, unsigned height, uint8_t mask)
+{
+        /* If no hierarchy levels are enabled, that means there is no geometry
+         * for the tiler to process, so use a minimum size. Used for clears */
+
+        if (mask == 0x00)
+                return MINIMUM_HEADER_SIZE;
+
+        /* Some levels are enabled. Ensure that only smaller levels are
+         * disabled and there are no gaps. Theoretically the hardware is more
+         * flexible, but there's no known reason to use other configurations
+         * and this keeps the code simple. Since we know the 0x80 bit is set,
+         * ctz(mask) will return the number of masked off levels. */
+
+        unsigned masked_count = __builtin_ctz(mask);
+
+        assert(mask & 0x80);
+        assert(((mask >> masked_count) & ((mask >> masked_count) + 1)) == 0);
+
+        /* Everything looks good. Use the number of trailing zeroes we found to
+         * figure out how many smaller levels are disabled to compute the
+         * actual header size */
+
+        return panfrost_raw_header_size(width, height, masked_count);
+}
