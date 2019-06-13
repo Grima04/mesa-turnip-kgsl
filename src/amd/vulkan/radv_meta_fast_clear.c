@@ -753,6 +753,14 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
+	if (!cmd_buffer->device->meta_state.fast_clear_flush.cmask_eliminate_pipeline) {
+		VkResult ret = radv_device_init_meta_fast_clear_flush_state_internal(cmd_buffer->device);
+		if (ret != VK_SUCCESS) {
+			cmd_buffer->record_result = ret;
+			return;
+		}
+	}
+
 	radv_meta_save(&saved_state, cmd_buffer, RADV_META_SAVE_DESCRIPTORS |
 	                                         RADV_META_SAVE_COMPUTE_PIPELINE);
 
