@@ -441,12 +441,16 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
       if (const2 == NULL)
          return false;
 
+      if (nir_src_bit_size(alu1->src[src1].src) !=
+          nir_src_bit_size(alu2->src[src2].src))
+         return false;
+
       /* FINISHME: Apply the swizzle? */
       return nir_const_value_negative_equal(const1,
                                             const2,
                                             nir_ssa_alu_instr_src_components(alu1, src1),
                                             nir_op_infos[alu1->op].input_types[src1],
-                                            alu1->dest.dest.ssa.bit_size);
+                                            nir_src_bit_size(alu1->src[src1].src));
    }
 
    uint8_t alu1_swizzle[4] = {0};

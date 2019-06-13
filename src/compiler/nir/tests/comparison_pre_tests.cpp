@@ -260,6 +260,219 @@ TEST_F(comparison_pre_test, a_lt_neg_b_vs_a_plus_b)
    EXPECT_TRUE(nir_opt_comparison_pre_impl(bld.impl));
 }
 
+TEST_F(comparison_pre_test, imm_lt_b_vs_neg_imm_plus_b)
+{
+   /* Before:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 1 ssa_7 = flt ssa_3, ssa_6
+    *
+    * if ssa_7 {
+    *    vec1 32 ssa_8 = fadd ssa_4, ssa_6
+    * } else {
+    * }
+    *
+    * After:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 32 ssa_9 = fneg ssa_3
+    * vec1 32 ssa_10 = fadd ssa_6, ssa_9
+    * vec1 32 ssa_11 = load_const ( 0.0)
+    * vec1 1 ssa_12 = flt ssa_11, ssa_10
+    * vec1 32 ssa_13 = mov ssa_10
+    * vec1 1 ssa_14 = mov ssa_12
+    *
+    * if ssa_14 {
+    * } else {
+    * }
+    */
+   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
+   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+
+   nir_ssa_def *flt = nir_flt(&bld, one, a);
+
+   nir_if *nif = nir_push_if(&bld, flt);
+
+   nir_fadd(&bld, neg_one, a);
+
+   nir_pop_if(&bld, nif);
+
+   EXPECT_TRUE(nir_opt_comparison_pre_impl(bld.impl));
+}
+
+TEST_F(comparison_pre_test, a_lt_imm_vs_a_minus_imm)
+{
+   /* Before:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 1 ssa_7 = flt ssa_6, ssa_3
+    *
+    * if ssa_6 {
+    *    vec1 32 ssa_8 = fadd ssa_6, ssa_4
+    * } else {
+    * }
+    *
+    * After:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 32 ssa_9 = fneg ssa_3
+    * vec1 32 ssa_10 = fadd ssa_6, ssa_9
+    * vec1 32 ssa_11 = load_const ( 0.0)
+    * vec1 1 ssa_12 = flt ssa_10, ssa_11
+    * vec1 32 ssa_13 = mov ssa_10
+    * vec1 1 ssa_14 = mov ssa_12
+    *
+    * if ssa_14 {
+    * } else {
+    * }
+    */
+   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
+   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+
+   nir_ssa_def *flt = nir_flt(&bld, a, one);
+
+   nir_if *nif = nir_push_if(&bld, flt);
+
+   nir_fadd(&bld, a, neg_one);
+
+   nir_pop_if(&bld, nif);
+
+   EXPECT_TRUE(nir_opt_comparison_pre_impl(bld.impl));
+}
+
+TEST_F(comparison_pre_test, neg_imm_lt_a_vs_a_plus_imm)
+{
+   /* Before:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 1 ssa_7 = flt ssa_4, ssa_6
+    *
+    * if ssa_7 {
+    *    vec1 32 ssa_8 = fadd ssa_6, ssa_3
+    * } else {
+    * }
+    *
+    * After:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 32 ssa_9 = fneg ssa_4
+    * vec1 32 ssa_10 = fadd ssa_6, ssa_9
+    * vec1 32 ssa_11 = load_const ( 0.0)
+    * vec1 1 ssa_12 = flt ssa_11, ssa_10
+    * vec1 32 ssa_13 = mov ssa_10
+    * vec1 1 ssa_14 = mov ssa_12
+    *
+    * if ssa_14 {
+    * } else {
+    * }
+    */
+
+   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
+   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+
+   nir_ssa_def *flt = nir_flt(&bld, neg_one, a);
+
+   nir_if *nif = nir_push_if(&bld, flt);
+
+   nir_fadd(&bld, a, one);
+
+   nir_pop_if(&bld, nif);
+
+   EXPECT_TRUE(nir_opt_comparison_pre_impl(bld.impl));
+}
+
+TEST_F(comparison_pre_test, a_lt_neg_imm_vs_a_plus_imm)
+{
+   /* Before:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 1 ssa_7 = flt ssa_6, ssa_4
+    *
+    * if ssa_7 {
+    *    vec1 32 ssa_8 = fadd ssa_6, ssa_3
+    * } else {
+    * }
+    *
+    * After:
+    *
+    * vec4 32 ssa_0 = load_const (-2.0, -1.0,  1.0,  2.0)
+    * vec4 32 ssa_1 = load_const ( 2.0,  1.0, -1.0, -2.0)
+    * vec4 32 ssa_2 = load_const ( 3.0,  4.0,  5.0,  6.0)
+    * vec1 32 ssa_3 = load_const ( 1.0)
+    * vec1 32 ssa_4 = load_const (-1.0)
+    * vec4 32 ssa_5 = fadd ssa_0, ssa_2
+    * vec1 32 ssa_6 = mov ssa_5.x
+    * vec1 32 ssa_9 = fneg ssa_4
+    * vec1 32 ssa_10 = fadd ssa_6, ssa_9
+    * vec1 32 ssa_11 = load_const ( 0.0)
+    * vec1 1 ssa_12 = flt ssa_10, ssa_11
+    * vec1 32 ssa_13 = mov ssa_10
+    * vec1 1 ssa_14 = mov ssa_12
+    *
+    * if ssa_14 {
+    * } else {
+    * }
+    */
+   nir_ssa_def *one = nir_imm_float(&bld, 1.0f);
+   nir_ssa_def *neg_one = nir_imm_float(&bld, -1.0f);
+   nir_ssa_def *a = nir_channel(&bld, nir_fadd(&bld, v1, v3), 0);
+
+   nir_ssa_def *flt = nir_flt(&bld, a, neg_one);
+
+   nir_if *nif = nir_push_if(&bld, flt);
+
+   nir_fadd(&bld, a, one);
+
+   nir_pop_if(&bld, nif);
+
+   EXPECT_TRUE(nir_opt_comparison_pre_impl(bld.impl));
+}
+
 TEST_F(comparison_pre_test, non_scalar_add_result)
 {
    /* The optimization pass should not do anything because the result of the
