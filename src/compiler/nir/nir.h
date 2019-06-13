@@ -1029,9 +1029,7 @@ nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
    return instr->dest.dest.ssa.num_components;
 }
 
-bool nir_const_value_negative_equal(const nir_const_value *c1,
-                                    const nir_const_value *c2,
-                                    unsigned components,
+bool nir_const_value_negative_equal(nir_const_value c1, nir_const_value c2,
                                     nir_alu_type full_type);
 
 bool nir_alu_srcs_equal(const nir_alu_instr *alu1, const nir_alu_instr *alu2,

@@ -302,9 +302,8 @@ get_neg_instr(nir_src s)
 }
 
 bool
-nir_const_value_negative_equal(const nir_const_value *c1,
-                               const nir_const_value *c2,
-                               unsigned components,
+nir_const_value_negative_equal(nir_const_value c1,
+                               nir_const_value c2,
                                nir_alu_type full_type)
 {
    assert(nir_alu_type_get_base_type(full_type) != nir_type_invalid);
@@ -312,66 +311,29 @@ nir_const_value_negative_equal(const nir_const_value *c1,
 
    switch (full_type) {
    case nir_type_float16:
-      for (unsigned i = 0; i < components; i++) {
-         if (_mesa_half_to_float(c1[i].u16) !=
-             -_mesa_half_to_float(c2[i].u16)) {
-            return false;
-         }
-      }
-
-      return true;
+      return _mesa_half_to_float(c1.u16) == -_mesa_half_to_float(c2.u16);
 
    case nir_type_float32:
-      for (unsigned i = 0; i < components; i++) {
-         if (c1[i].f32 != -c2[i].f32)
-            return false;
-      }
-
-      return true;
+      return c1.f32 == -c2.f32;
 
    case nir_type_float64:
-      for (unsigned i = 0; i < components; i++) {
-         if (c1[i].f64 != -c2[i].f64)
-            return false;
-      }
-
-      return true;
+      return c1.f64 == -c2.f64;
 
    case nir_type_int8:
    case nir_type_uint8:
-      for (unsigned i = 0; i < components; i++) {
-         if (c1[i].i8 != -c2[i].i8)
-            return false;
-      }
-
-      return true;
+      return c1.i8 == -c2.i8;
 
    case nir_type_int16:
    case nir_type_uint16:
-      for (unsigned i = 0; i < components; i++) {
-         if (c1[i].i16 != -c2[i].i16)
-            return false;
-      }
-
-      return true;
+      return c1.i16 == -c2.i16;
 
    case nir_type_int32:
    case nir_type_uint32:
-      for (unsigned i = 0; i < components; i++) {
-         if (c1[i].i32 != -c2[i].i32)
-            return false;
-      }
-
-      return true;
+      return c1.i32 == -c2.i32;
 
    case nir_type_int64:
    case nir_type_uint64:
-      for (unsigned i = 0; i < components; i++) {
-         if (c1[i].i64 != -c2[i].i64)
-            return false;
-      }
-
-      return true;
+      return c1.i64 == -c2.i64;
 
    default:
       break;
@@ -424,11 +386,15 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
          return false;
 
       /* FINISHME: Apply the swizzle? */
-      return nir_const_value_negative_equal(const1,
-                                            const2,
-                                            nir_ssa_alu_instr_src_components(alu1, src1),
-                                            nir_op_infos[alu1->op].input_types[src1] |
-                                            nir_src_bit_size(alu1->src[src1].src));
+      const unsigned components = nir_ssa_alu_instr_src_components(alu1, src1);
+      const nir_alu_type full_type = nir_op_infos[alu1->op].input_types[src1] |
+                                     nir_src_bit_size(alu1->src[src1].src);
+      for (unsigned i = 0; i < components; i++) {
+         if (!nir_const_value_negative_equal(const1[i], const2[i], full_type))
+            return false;
+      }
+
+      return true;
    }
 
    uint8_t alu1_swizzle[4] = {0};

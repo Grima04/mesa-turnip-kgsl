@@ -71,15 +71,13 @@ protected:
 TEST_F(const_value_negative_equal_test, float32_zero)
 {
    /* Verify that 0.0 negative-equals 0.0. */
-   EXPECT_TRUE(nir_const_value_negative_equal(c1, c1, NIR_MAX_VEC_COMPONENTS,
-                                              nir_type_float32));
+   EXPECT_TRUE(nir_const_value_negative_equal(c1[0], c1[0], nir_type_float32));
 }
 
 TEST_F(const_value_negative_equal_test, float64_zero)
 {
    /* Verify that 0.0 negative-equals 0.0. */
-   EXPECT_TRUE(nir_const_value_negative_equal(c1, c1, NIR_MAX_VEC_COMPONENTS,
-                                              nir_type_float64));
+   EXPECT_TRUE(nir_const_value_negative_equal(c1[0], c1[0], nir_type_float64));
 }
 
 /* Compare an object with non-zero values to itself.  This should always be
@@ -89,9 +87,7 @@ TEST_F(const_value_negative_equal_test, float64_zero)
 TEST_F(const_value_negative_equal_test, full_type ## _self)             \
 {                                                                       \
    count_sequence(c1, full_type, 1);                                    \
-   EXPECT_FALSE(nir_const_value_negative_equal(c1, c1,                  \
-                                               NIR_MAX_VEC_COMPONENTS,  \
-                                               full_type));             \
+   EXPECT_FALSE(nir_const_value_negative_equal(c1[0], c1[0], full_type)); \
 }
 
 compare_with_self(nir_type_float16)
@@ -113,10 +109,8 @@ compare_with_self(nir_type_uint64)
 TEST_F(const_value_negative_equal_test, full_type ## _trivially_true)   \
 {                                                                       \
    count_sequence(c1, full_type, 1);                                    \
-   negate(c2, c1, full_type, NIR_MAX_VEC_COMPONENTS);                   \
-   EXPECT_TRUE(nir_const_value_negative_equal(c1, c2,                   \
-                                              NIR_MAX_VEC_COMPONENTS,   \
-                                              full_type));              \
+   negate(c2, c1, full_type, 1);                                        \
+   EXPECT_TRUE(nir_const_value_negative_equal(c1[0], c2[0], full_type)); \
 }
 
 compare_with_negation(nir_type_float16)
@@ -131,32 +125,6 @@ compare_with_negation(nir_type_uint32)
 compare_with_negation(nir_type_int64)
 compare_with_negation(nir_type_uint64)
 #undef compare_with_negation
-
-/* Compare fewer than the maximum possible components.  All of the components
- * that are compared a negative-equal, but the extra components are not.
- */
-#define compare_fewer_components(full_type)                             \
-TEST_F(const_value_negative_equal_test, full_type ## _fewer_components) \
-{                                                                       \
-   count_sequence(c1, full_type, 1);                                    \
-   negate(c2, c1, full_type, 3);                                        \
-   EXPECT_TRUE(nir_const_value_negative_equal(c1, c2, 3, full_type));   \
-   EXPECT_FALSE(nir_const_value_negative_equal(c1, c2,                  \
-                                               NIR_MAX_VEC_COMPONENTS,  \
-                                               full_type));             \
-}
-
-compare_fewer_components(nir_type_float16)
-compare_fewer_components(nir_type_float32)
-compare_fewer_components(nir_type_float64)
-compare_fewer_components(nir_type_int8)
-compare_fewer_components(nir_type_uint8)
-compare_fewer_components(nir_type_int16)
-compare_fewer_components(nir_type_uint16)
-compare_fewer_components(nir_type_int32)
-compare_fewer_components(nir_type_uint32)
-compare_fewer_components(nir_type_int64)
-compare_fewer_components(nir_type_uint64)
 
 TEST_F(alu_srcs_negative_equal_test, trivial_float)
 {
