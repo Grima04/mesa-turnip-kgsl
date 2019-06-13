@@ -1032,8 +1032,7 @@ nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
 bool nir_const_value_negative_equal(const nir_const_value *c1,
                                     const nir_const_value *c2,
                                     unsigned components,
-                                    nir_alu_type base_type,
-                                    unsigned bits);
+                                    nir_alu_type full_type);
 
 bool nir_alu_srcs_equal(const nir_alu_instr *alu1, const nir_alu_instr *alu2,
                         unsigned src1, unsigned src2);

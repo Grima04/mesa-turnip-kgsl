@@ -305,95 +305,73 @@ bool
 nir_const_value_negative_equal(const nir_const_value *c1,
                                const nir_const_value *c2,
                                unsigned components,
-                               nir_alu_type base_type,
-                               unsigned bits)
+                               nir_alu_type full_type)
 {
-   assert(base_type == nir_alu_type_get_base_type(base_type));
-   assert(base_type != nir_type_invalid);
+   assert(nir_alu_type_get_base_type(full_type) != nir_type_invalid);
+   assert(nir_alu_type_get_type_size(full_type) != 0);
 
-   /* This can occur for 1-bit Boolean values. */
-   if (bits == 1)
-      return false;
-
-   switch (base_type) {
-   case nir_type_float:
-      switch (bits) {
-      case 16:
-         for (unsigned i = 0; i < components; i++) {
-            if (_mesa_half_to_float(c1[i].u16) !=
-                -_mesa_half_to_float(c2[i].u16)) {
-               return false;
-            }
+   switch (full_type) {
+   case nir_type_float16:
+      for (unsigned i = 0; i < components; i++) {
+         if (_mesa_half_to_float(c1[i].u16) !=
+             -_mesa_half_to_float(c2[i].u16)) {
+            return false;
          }
-
-         return true;
-
-      case 32:
-         for (unsigned i = 0; i < components; i++) {
-            if (c1[i].f32 != -c2[i].f32)
-               return false;
-         }
-
-         return true;
-
-      case 64:
-         for (unsigned i = 0; i < components; i++) {
-            if (c1[i].f64 != -c2[i].f64)
-               return false;
-         }
-
-         return true;
-
-      default:
-         unreachable("unknown bit size");
       }
 
-      break;
+      return true;
 
-   case nir_type_int:
-   case nir_type_uint:
-      switch (bits) {
-      case 8:
-         for (unsigned i = 0; i < components; i++) {
-            if (c1[i].i8 != -c2[i].i8)
-               return false;
-         }
-
-         return true;
-
-      case 16:
-         for (unsigned i = 0; i < components; i++) {
-            if (c1[i].i16 != -c2[i].i16)
-               return false;
-         }
-
-         return true;
-         break;
-
-      case 32:
-         for (unsigned i = 0; i < components; i++) {
-            if (c1[i].i32 != -c2[i].i32)
-               return false;
-         }
-
-         return true;
-
-      case 64:
-         for (unsigned i = 0; i < components; i++) {
-            if (c1[i].i64 != -c2[i].i64)
-               return false;
-         }
-
-         return true;
-
-      default:
-         unreachable("unknown bit size");
+   case nir_type_float32:
+      for (unsigned i = 0; i < components; i++) {
+         if (c1[i].f32 != -c2[i].f32)
+            return false;
       }
 
-      break;
+      return true;
 
-   case nir_type_bool:
-      return false;
+   case nir_type_float64:
+      for (unsigned i = 0; i < components; i++) {
+         if (c1[i].f64 != -c2[i].f64)
+            return false;
+      }
+
+      return true;
+
+   case nir_type_int8:
+   case nir_type_uint8:
+      for (unsigned i = 0; i < components; i++) {
+         if (c1[i].i8 != -c2[i].i8)
+            return false;
+      }
+
+      return true;
+
+   case nir_type_int16:
+   case nir_type_uint16:
+      for (unsigned i = 0; i < components; i++) {
+         if (c1[i].i16 != -c2[i].i16)
+            return false;
+      }
+
+      return true;
+
+   case nir_type_int32:
+   case nir_type_uint32:
+      for (unsigned i = 0; i < components; i++) {
+         if (c1[i].i32 != -c2[i].i32)
+            return false;
+      }
+
+      return true;
+
+   case nir_type_int64:
+   case nir_type_uint64:
+      for (unsigned i = 0; i < components; i++) {
+         if (c1[i].i64 != -c2[i].i64)
+            return false;
+      }
+
+      return true;
 
    default:
       break;
@@ -449,7 +427,7 @@ nir_alu_srcs_negative_equal(const nir_alu_instr *alu1,
       return nir_const_value_negative_equal(const1,
                                             const2,
                                             nir_ssa_alu_instr_src_components(alu1, src1),
-                                            nir_op_infos[alu1->op].input_types[src1],
+                                            nir_op_infos[alu1->op].input_types[src1] |
                                             nir_src_bit_size(alu1->src[src1].src));
    }
 
