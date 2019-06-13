@@ -140,6 +140,9 @@ can_do_blit(const struct pipe_blit_info *info)
 	 *    minimum and maximum depth values in the pixel."
 	 *
 	 * so do those with CP_BLIT.
+	 *
+	 * TODO since we re-write z/s blits to RGBA, we'll fail this check in some
+	 * cases where we don't need to.
 	 */
 	fail_if((info->mask & PIPE_MASK_RGBA) &&
 			info->src.resource->nr_samples > 1);
@@ -556,7 +559,23 @@ emit_blit_texture(struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 	}
 }
 
-static bool fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info);
+static bool handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info);
+
+/**
+ * Re-written z/s blits can still fail for various reasons (for example MSAA).
+ * But we want to do the fallback blit with the re-written pipe_blit_info,
+ * in particular as u_blitter cannot blit stencil.  So handle the fallback
+ * ourself and never "fail".
+ */
+static bool
+do_rewritten_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+{
+	bool success = handle_rgba_blit(ctx, info);
+	if (!success)
+		success = fd_blitter_blit(ctx, info);
+	debug_assert(success);  /* fallback should never fail! */
+	return success;
+}
 
 /**
  * Handle depth/stencil blits either via u_blitter and/or re-writing the
@@ -583,14 +602,14 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		blit.mask = PIPE_MASK_R;
 		blit.src.format = PIPE_FORMAT_R8_UINT;
 		blit.dst.format = PIPE_FORMAT_R8_UINT;
-		return fd6_blit(ctx, &blit);
+		return do_rewritten_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
 		if (info->mask & PIPE_MASK_Z) {
 			blit.mask = PIPE_MASK_R;
 			blit.src.format = PIPE_FORMAT_R32_FLOAT;
 			blit.dst.format = PIPE_FORMAT_R32_FLOAT;
-			fd6_blit(ctx, &blit);
+			do_rewritten_blit(ctx, &blit);
 		}
 
 		if (info->mask & PIPE_MASK_S) {
@@ -599,7 +618,7 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 			blit.dst.format = PIPE_FORMAT_R8_UINT;
 			blit.src.resource = &fd_resource(info->src.resource)->stencil->base;
 			blit.dst.resource = &fd_resource(info->dst.resource)->stencil->base;
-			fd6_blit(ctx, &blit);
+			do_rewritten_blit(ctx, &blit);
 		}
 
 		return true;
@@ -608,7 +627,7 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		blit.mask = PIPE_MASK_R;
 		blit.src.format = PIPE_FORMAT_R16_UNORM;
 		blit.dst.format = PIPE_FORMAT_R16_UNORM;
-		return fd6_blit(ctx, &blit);
+		return do_rewritten_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z32_UNORM:
 	case PIPE_FORMAT_Z32_FLOAT:
@@ -616,13 +635,13 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		blit.mask = PIPE_MASK_R;
 		blit.src.format = PIPE_FORMAT_R32_UINT;
 		blit.dst.format = PIPE_FORMAT_R32_UINT;
-		return fd6_blit(ctx, &blit);
+		return do_rewritten_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z24X8_UNORM:
 		blit.mask = PIPE_MASK_R;
 		blit.src.format = PIPE_FORMAT_R32_UINT;
 		blit.dst.format = PIPE_FORMAT_R32_UINT;
-		return fd6_blit(ctx, &blit);
+		return do_rewritten_blit(ctx, &blit);
 
 	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
 		switch (info->mask) {
@@ -630,7 +649,7 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 			blit.mask = PIPE_MASK_R;
 			blit.src.format = PIPE_FORMAT_R32_UINT;
 			blit.dst.format = PIPE_FORMAT_R32_UINT;
-			return fd6_blit(ctx, &blit);
+			return do_rewritten_blit(ctx, &blit);
 		case PIPE_MASK_Z:
 			blit.mask = PIPE_MASK_R | PIPE_MASK_G | PIPE_MASK_B;
 			blit.src.format = PIPE_FORMAT_R8G8B8A8_UNORM;
@@ -652,12 +671,11 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 }
 
 static bool
-fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 {
 	struct fd_batch *batch;
 
-	if (info->mask & PIPE_MASK_ZS)
-		return handle_zs_blit(ctx, info);
+	debug_assert(!(info->mask & PIPE_MASK_ZS));
 
 	if (!can_do_blit(info))
 		return false;
@@ -701,6 +719,14 @@ fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	fd_batch_reference(&batch, NULL);
 
 	return true;
+}
+
+static bool
+fd6_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
+{
+	if (info->mask & PIPE_MASK_ZS)
+		return handle_zs_blit(ctx, info);
+	return handle_rgba_blit(ctx, info);
 }
 
 void
