@@ -83,4 +83,69 @@
  * pushed to kernel space and we can mostly ignore it here, just remembering to
  * set the GROWABLE flag so the kernel actually uses this path rather than
  * allocating a gigantic amount up front and burning a hole in RAM.
+ *
+ * As far as determining which hierarchy levels to use, the simple answer is
+ * that right now, we don't. In the tiler configuration fields (consistent from
+ * the earliest Midgard's SFBD through the latest Bifrost traces we have),
+ * there is a hierarchy_mask field, controlling which levels (tile sizes) are
+ * enabled. Ideally, the hierarchical tiling dream -- mapping big polygons to
+ * big tiles and small polygons to small tiles -- would be realized here as
+ * well. As long as there are polygons at all needing tiling, we always have to
+ * have big tiles available, in case there are big polygons. But we don't
+ * necessarily need small tiles available. Ideally, when there are small
+ * polygons, small tiles are enabled (to avoid waste from putting small
+ * triangles in the big tiles); when there are not, small tiles are disabled to
+ * avoid enabling more levels than necessary, which potentially costs in memory
+ * bandwidth / power / tiler performance.
+ *
+ * Of course, the driver has to figure this out statically. When tile
+ * hiearchies are actually established, this occurs by the tiler in
+ * fixed-function hardware, after the vertex shaders have run and there is
+ * sufficient information to figure out the size of triangles. The driver has
+ * no such luxury, again barring insane hacks like additionally running the
+ * vertex shaders in software or in hardware via transform feedback. Thus, for
+ * the driver, we need a heuristic approach.
+ *
+ * There are lots of heuristics to guess triangle size statically you could
+ * imagine, but one approach shines as particularly simple-stupid: assume all
+ * on-screen triangles are equal size and spread equidistantly throughout the
+ * screen. Let's be clear, this is NOT A VALID ASSUMPTION. But if we roll with
+ * it, then we see:
+ *
+ *      Triangle Area   = (Screen Area / # of triangles)
+ *                      = (Width * Height) / (# of triangles)
+ *
+ * Or if you prefer, we can also make a third CRAZY assumption that we only draw
+ * right triangles with edges parallel/perpendicular to the sides of the screen
+ * with no overdraw, forming a triangle grid across the screen:
+ *
+ * |--w--|
+ *  _____   |
+ * | /| /|  |
+ * |/_|/_|  h
+ * | /| /|  |
+ * |/_|/_|  |
+ *
+ * Then you can use some middle school geometry and algebra to work out the
+ * triangle dimensions. I started working on this, but realised I didn't need
+ * to to make my point, but couldn't bare to erase that ASCII art. Anyway.
+ *
+ * POINT IS, by considering the ratio of screen area and triangle count, we can
+ * estimate the triangle size. For a small size, use small bins; for a large
+ * size, use large bins. Intuitively, this metric makes sense: when there are
+ * few triangles on a large screen, you're probably compositing a UI and
+ * therefore the triangles are large; when there are a lot of triangles on a
+ * small screen, you're probably rendering a 3D mesh and therefore the
+ * triangles are tiny. (Or better said -- there will be tiny triangles, even if
+ * there are also large triangles. There have to be unless you expect crazy
+ * overdraw. Generally, it's better to allow more small bin sizes than
+ * necessary than not allow enough.)
+ *
+ * From this heuristic (or whatever), we determine the minimum allowable tile
+ * size, and we use that to decide the hierarchy masking, selecting from the
+ * minimum "ideal" tile size to the maximum tile size (2048x2048).
+ *
+ * Once we have that mask and the framebuffer dimensions, we can compute the
+ * size of the statically-sized polygon list structures, allocate them, and go!
+ *
  */
