@@ -194,6 +194,7 @@ build:arm64:
         dEQP-GLES2.functional.polygon_offset.fixed16_factor_0_slope
         dEQP-GLES2.functional.polygon_offset.fixed16_factor_1_slope
         dEQP-GLES2.functional.shaders.invariance.highp.loop_4
+        dEQP-GLES2.functional.shaders.matrix.mul.dynamic_highp_vec4_mat4_fragment
         dEQP-GLES2.functional.shaders.operator.common_functions.smoothstep.mediump_vec3_vertex
         dEQP-GLES2.functional.shaders.random.all_features.fragment.12
         dEQP-GLES2.functional.shaders.random.all_features.fragment.37
@@ -202,10 +203,58 @@ build:arm64:
         dEQP-GLES2.functional.texture.units.2_units.only_2d.2
         dEQP-GLES2.functional.texture.units.4_units.mixed.5
         dEQP-GLES2.functional.texture.units.4_units.only_2d.0
+        dEQP-GLES2.functional.texture.units.all_units.mixed.6
         dEQP-GLES2.functional.texture.units.all_units.only_cube.4
         dEQP-GLES2.functional.texture.units.all_units.only_cube.7
         dEQP-GLES2.functional.texture.units.all_units.only_cube.8
         "
+
+    # FIXME: These tests fail in RK3288 but pass on RK3399
+    - |
+      FLIP_FLOPS="$FLIP_FLOPS
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.add_dst_color_one_minus_src_color
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.add_dst_color_src_color
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.add_one_minus_dst_color_src_color
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.reverse_subtract_constant_alpha_one_minus_dst_color
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.reverse_subtract_dst_alpha_one_minus_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.reverse_subtract_dst_color_constant_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.reverse_subtract_zero_dst_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.reverse_subtract_zero_dst_color
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.reverse_subtract_zero_one
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.subtract_one_one
+        dEQP-GLES2.functional.fragment_ops.blend.equation_src_func_dst_func.subtract_src_alpha_saturate_constant_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_equation_alpha_equation.reverse_subtract_reverse_subtract
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.constant_color_one
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_minus_constant_alpha_one_minus_constant_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_minus_constant_alpha_src_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_minus_constant_color_src_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_minus_dst_color_one_minus_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_minus_src_color_one_minus_src_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_minus_src_color_one_minus_src_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.one_one_minus_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.src_color_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.src_color_src_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.zero_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.dst.zero_one_minus_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.constant_color_one_minus_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.dst_color_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_constant_color_one_minus_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_constant_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_dst_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_dst_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_one
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_one_minus_src_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_one_minus_src_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_src_alpha
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_src_alpha_saturate
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_src_color
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.one_minus_dst_color_zero
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.src_alpha_saturate_src_alpha_saturate
+        dEQP-GLES2.functional.fragment_ops.blend.rgb_func_alpha_func.src.src_color_one_minus_constant_color
+        dEQP-GLES2.functional.shaders.builtin_variable.max_draw_buffers_vertex
+        "
+
     - for test in $FLIP_FLOPS; do sed -i "/$test/d" src/gallium/drivers/panfrost/ci/expected-failures.txt results/results-$lava_job_id.csv; done
 
     - PASSED=$(grep pass$ results/results-$lava_job_id.csv | wc -l)
@@ -214,7 +263,7 @@ build:arm64:
     - 'echo "Passed: $PASSED ($(expr $PASSED \* 100 / $TOTAL)%)"'
     - 'echo "Failed: $FAILED ($(expr $FAILED \* 100 / $TOTAL)%)"'
     - 'echo "Total: $TOTAL"'
-    - 'if [ $TOTAL != 17439 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
+    - 'if [ $TOTAL != 17395 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
 
     - sed '/,pass/d' results/results-$lava_job_id.csv | sed 's/,fail//' > results/failures-$lava_job_id.txt
     - diff -u src/gallium/drivers/panfrost/ci/expected-failures.txt results/failures-$lava_job_id.txt
