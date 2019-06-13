@@ -38,6 +38,7 @@ struct ntv_context {
    SpvId input_types[PIPE_MAX_SHADER_INPUTS][4];
    SpvId outputs[PIPE_MAX_SHADER_OUTPUTS][4];
    SpvId output_types[PIPE_MAX_SHADER_OUTPUTS][4];
+   int var_location;
 
    SpvId ubos[128];
    size_t num_ubos;
@@ -192,19 +193,24 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      switch (var->data.location) {
-      case VARYING_SLOT_POS:
-         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragCoord);
-         break;
-
-      case VARYING_SLOT_PNTC:
-         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointCoord);
-         break;
-
-      default:
+      if (var->data.location >= VARYING_SLOT_VAR0 ||
+          (var->data.location >= VARYING_SLOT_COL0 &&
+           var->data.location <= VARYING_SLOT_TEX7)) {
          spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.driver_location);
-         break;
+                                     ctx->var_location++);
+      } else {
+         switch (var->data.location) {
+         case VARYING_SLOT_POS:
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragCoord);
+            break;
+
+         case VARYING_SLOT_PNTC:
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointCoord);
+            break;
+
+         default:
+            unreachable("unknown varying slot");
+         }
       }
    } else {
       spirv_builder_emit_location(&ctx->builder, var_id,
@@ -242,18 +248,24 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
 
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
-      switch (var->data.location) {
-      case VARYING_SLOT_POS:
-         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPosition);
-         break;
-
-      case VARYING_SLOT_PSIZ:
-         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointSize);
-         break;
-
-      default:
+      if (var->data.location >= VARYING_SLOT_VAR0 ||
+          (var->data.location >= VARYING_SLOT_COL0 &&
+           var->data.location <= VARYING_SLOT_TEX7)) {
          spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.driver_location - 1);
+                                     ctx->var_location++);
+      } else {
+         switch (var->data.location) {
+         case VARYING_SLOT_POS:
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPosition);
+            break;
+
+         case VARYING_SLOT_PSIZ:
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointSize);
+            break;
+
+         default:
+            unreachable("unknown varying slot");
+         }
       }
    } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
       switch (var->data.location) {
