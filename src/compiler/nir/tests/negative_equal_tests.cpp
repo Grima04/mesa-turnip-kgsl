@@ -54,6 +54,8 @@ protected:
    {
       static const nir_shader_compiler_options options = { };
       nir_builder_init_simple_shader(&bld, NULL, MESA_SHADER_VERTEX, &options);
+      memset(c1, 0, sizeof(c1));
+      memset(c2, 0, sizeof(c2));
    }
 
    ~alu_srcs_negative_equal_test()
@@ -62,6 +64,8 @@ protected:
    }
 
    struct nir_builder bld;
+   nir_const_value c1[NIR_MAX_VEC_COMPONENTS];
+   nir_const_value c2[NIR_MAX_VEC_COMPONENTS];
 };
 
 TEST_F(const_value_negative_equal_test, float32_zero)
@@ -101,6 +105,7 @@ compare_with_self(nir_type_int32)
 compare_with_self(nir_type_uint32)
 compare_with_self(nir_type_int64)
 compare_with_self(nir_type_uint64)
+#undef compare_with_self
 
 /* Compare an object with the negation of itself.  This should always be true.
  */
@@ -125,6 +130,7 @@ compare_with_negation(nir_type_int32)
 compare_with_negation(nir_type_uint32)
 compare_with_negation(nir_type_int64)
 compare_with_negation(nir_type_uint64)
+#undef compare_with_negation
 
 /* Compare fewer than the maximum possible components.  All of the components
  * that are compared a negative-equal, but the extra components are not.
@@ -219,6 +225,82 @@ TEST_F(alu_srcs_negative_equal_test, trivial_negation_int)
    EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 0));
    EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));
 }
+
+/* Compare an object with non-zero values to itself.  This should always be
+ * false.
+ */
+#define compare_with_self(full_type)                                    \
+TEST_F(alu_srcs_negative_equal_test, full_type ## _self)                \
+{                                                                       \
+   count_sequence(c1, full_type, 1);                                    \
+   nir_ssa_def *a = nir_build_imm(&bld,                                 \
+                                  NIR_MAX_VEC_COMPONENTS,               \
+                                  nir_alu_type_get_type_size(full_type), \
+                                  c1);                                  \
+   nir_ssa_def *result;                                                 \
+   if (nir_alu_type_get_base_type(full_type) == nir_type_float)         \
+      result = nir_fadd(&bld, a, a);                                    \
+   else                                                                 \
+      result = nir_iadd(&bld, a, a);                                    \
+   nir_alu_instr *instr = nir_instr_as_alu(result->parent_instr);       \
+   ASSERT_NE((void *) 0, instr);                                        \
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 0));       \
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));       \
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 0));       \
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));       \
+}
+
+compare_with_self(nir_type_float16)
+compare_with_self(nir_type_float32)
+compare_with_self(nir_type_float64)
+compare_with_self(nir_type_int8)
+compare_with_self(nir_type_uint8)
+compare_with_self(nir_type_int16)
+compare_with_self(nir_type_uint16)
+compare_with_self(nir_type_int32)
+compare_with_self(nir_type_uint32)
+compare_with_self(nir_type_int64)
+compare_with_self(nir_type_uint64)
+
+/* Compare an object with the negation of itself.  This should always be true.
+ */
+#define compare_with_negation(full_type)                                \
+TEST_F(alu_srcs_negative_equal_test, full_type ## _trivially_true)      \
+{                                                                       \
+   count_sequence(c1, full_type, 1);                                    \
+   negate(c2, c1, full_type, NIR_MAX_VEC_COMPONENTS);                   \
+   nir_ssa_def *a = nir_build_imm(&bld,                                 \
+                                  NIR_MAX_VEC_COMPONENTS,               \
+                                  nir_alu_type_get_type_size(full_type), \
+                                  c1);                                  \
+   nir_ssa_def *b = nir_build_imm(&bld,                                 \
+                                  NIR_MAX_VEC_COMPONENTS,               \
+                                  nir_alu_type_get_type_size(full_type), \
+                                  c2);                                  \
+   nir_ssa_def *result;                                                 \
+   if (nir_alu_type_get_base_type(full_type) == nir_type_float)         \
+      result = nir_fadd(&bld, a, b);                                    \
+   else                                                                 \
+      result = nir_iadd(&bld, a, b);                                    \
+   nir_alu_instr *instr = nir_instr_as_alu(result->parent_instr);       \
+   ASSERT_NE((void *) 0, instr);                                        \
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 0, 0));       \
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 0, 1));        \
+   EXPECT_TRUE(nir_alu_srcs_negative_equal(instr, instr, 1, 0));        \
+   EXPECT_FALSE(nir_alu_srcs_negative_equal(instr, instr, 1, 1));       \
+}
+
+compare_with_negation(nir_type_float16)
+compare_with_negation(nir_type_float32)
+compare_with_negation(nir_type_float64)
+compare_with_negation(nir_type_int8)
+compare_with_negation(nir_type_uint8)
+compare_with_negation(nir_type_int16)
+compare_with_negation(nir_type_uint16)
+compare_with_negation(nir_type_int32)
+compare_with_negation(nir_type_uint32)
+compare_with_negation(nir_type_int64)
+compare_with_negation(nir_type_uint64)
 
 static void
 count_sequence(nir_const_value c[NIR_MAX_VEC_COMPONENTS],
