@@ -23,7 +23,7 @@
 
 #include "zink_resource.h"
 
-#include "zink_cmdbuf.h"
+#include "zink_batch.h"
 #include "zink_context.h"
 #include "zink_screen.h"
 
@@ -337,13 +337,13 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
                             struct zink_transfer *trans,
                             bool buf2img)
 {
-   struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-   if (!cmdbuf)
-      return false;
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   if (batch->rp)
+      vkCmdEndRenderPass(batch->cmdbuf);
 
    if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
        res->layout != VK_IMAGE_LAYOUT_GENERAL) {
-      zink_resource_barrier(cmdbuf->cmdbuf, res, res->aspect,
+      zink_resource_barrier(batch->cmdbuf, res, res->aspect,
                             VK_IMAGE_LAYOUT_GENERAL);
       res->layout = VK_IMAGE_LAYOUT_GENERAL;
    }
@@ -368,15 +368,17 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    copyRegion.imageExtent.width = trans->base.box.width;
    copyRegion.imageExtent.height = trans->base.box.height;
 
-   zink_cmdbuf_reference_resoure(cmdbuf, res);
-   zink_cmdbuf_reference_resoure(cmdbuf, staging_res);
+   zink_batch_reference_resoure(batch, res);
+   zink_batch_reference_resoure(batch, staging_res);
 
    if (buf2img)
-      vkCmdCopyBufferToImage(cmdbuf->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
+      vkCmdCopyBufferToImage(batch->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
    else
-      vkCmdCopyImageToBuffer(cmdbuf->cmdbuf, res->image, res->layout, staging_res->buffer, 1, &copyRegion);
+      vkCmdCopyImageToBuffer(batch->cmdbuf, res->image, res->layout, staging_res->buffer, 1, &copyRegion);
 
-   zink_end_cmdbuf(ctx, cmdbuf);
+   if (batch->rp)
+      zink_begin_render_pass(ctx, batch);
+
    return true;
 }
 

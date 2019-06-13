@@ -1,4 +1,4 @@
-#include "zink_cmdbuf.h"
+#include "zink_batch.h"
 
 #include "zink_context.h"
 #include "zink_fence.h"
@@ -11,46 +11,41 @@
 #include "util/set.h"
 
 static void
-reset_cmdbuf(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf)
+reset_batch(struct zink_screen *screen, struct zink_batch *batch)
 {
    // cmdbuf hasn't been submitted before
-   if (!cmdbuf->fence)
+   if (!batch->fence)
       return;
 
-   zink_fence_finish(screen, cmdbuf->fence, PIPE_TIMEOUT_INFINITE);
-   zink_fence_reference(screen, &cmdbuf->fence, NULL);
+   zink_fence_finish(screen, batch->fence, PIPE_TIMEOUT_INFINITE);
+   zink_fence_reference(screen, &batch->fence, NULL);
 
-   zink_render_pass_reference(screen, &cmdbuf->rp, NULL);
-   zink_framebuffer_reference(screen, &cmdbuf->fb, NULL);
+   zink_render_pass_reference(screen, &batch->rp, NULL);
+   zink_framebuffer_reference(screen, &batch->fb, NULL);
 
    /* unref all used resources */
-   set_foreach(cmdbuf->resources, entry) {
+   set_foreach(batch->resources, entry) {
       struct pipe_resource *pres = (struct pipe_resource *)entry->key;
       pipe_resource_reference(&pres, NULL);
    }
-   _mesa_set_clear(cmdbuf->resources, NULL);
+   _mesa_set_clear(batch->resources, NULL);
 
-   util_dynarray_foreach(&cmdbuf->zombie_samplers, VkSampler, samp) {
+   util_dynarray_foreach(&batch->zombie_samplers, VkSampler, samp) {
       vkDestroySampler(screen->dev, *samp, NULL);
    }
-   util_dynarray_clear(&cmdbuf->zombie_samplers);
+   util_dynarray_clear(&batch->zombie_samplers);
 }
 
-struct zink_cmdbuf *
-zink_start_cmdbuf(struct zink_context *ctx)
+void
+zink_start_cmdbuf(struct zink_context *ctx, struct zink_batch *batch)
 {
-   struct zink_cmdbuf *cmdbuf = &ctx->cmdbufs[0];
-   reset_cmdbuf(zink_screen(ctx->base.screen), cmdbuf);
+   reset_batch(zink_screen(ctx->base.screen), batch);
 
    VkCommandBufferBeginInfo cbbi = {};
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-   if (vkBeginCommandBuffer(cmdbuf->cmdbuf, &cbbi) != VK_SUCCESS) {
+   if (vkBeginCommandBuffer(batch->cmdbuf, &cbbi) != VK_SUCCESS)
       debug_printf("vkBeginCommandBuffer failed\n");
-      return NULL;
-   }
-
-   return cmdbuf;
 }
 
 static bool
@@ -77,31 +72,28 @@ submit_cmdbuf(struct zink_context *ctx, VkCommandBuffer cmdbuf, VkFence fence)
 }
 
 void
-zink_end_cmdbuf(struct zink_context *ctx, struct zink_cmdbuf *cmdbuf)
+zink_end_cmdbuf(struct zink_context *ctx, struct zink_batch *batch)
 {
-   if (vkEndCommandBuffer(cmdbuf->cmdbuf) != VK_SUCCESS) {
+   if (vkEndCommandBuffer(batch->cmdbuf) != VK_SUCCESS) {
       debug_printf("vkEndCommandBuffer failed\n");
       return;
    }
 
-   assert(cmdbuf->fence == NULL);
-   cmdbuf->fence = zink_create_fence(ctx->base.screen);
-   if (!cmdbuf->fence ||
-       !submit_cmdbuf(ctx, cmdbuf->cmdbuf, cmdbuf->fence->fence))
+   assert(batch->fence == NULL);
+   batch->fence = zink_create_fence(ctx->base.screen);
+   if (!batch->fence ||
+       !submit_cmdbuf(ctx, batch->cmdbuf, batch->fence->fence))
       return;
-
-   if (vkQueueWaitIdle(ctx->queue) != VK_SUCCESS)
-      debug_printf("vkQueueWaitIdle failed\n");
 }
 
 void
-zink_cmdbuf_reference_resoure(struct zink_cmdbuf *cmdbuf,
-                              struct zink_resource *res)
+zink_batch_reference_resoure(struct zink_batch *batch,
+                             struct zink_resource *res)
 {
-   struct set_entry *entry = _mesa_set_search(cmdbuf->resources, res);
+   struct set_entry *entry = _mesa_set_search(batch->resources, res);
    if (!entry) {
       struct pipe_resource *tmp = NULL;
-      entry = _mesa_set_add(cmdbuf->resources, res);
+      entry = _mesa_set_add(batch->resources, res);
       pipe_resource_reference(&tmp, &res->base);
    }
 }

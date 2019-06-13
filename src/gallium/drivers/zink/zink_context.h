@@ -25,7 +25,7 @@
 #define ZINK_CONTEXT_H
 
 #include "zink_pipeline.h"
-#include "zink_cmdbuf.h"
+#include "zink_batch.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
@@ -63,7 +63,8 @@ struct zink_context {
    struct blitter_context *blitter;
 
    VkCommandPool cmdpool;
-   struct zink_cmdbuf cmdbufs[1];
+   struct zink_batch batches[4];
+   unsigned curr_batch;
 
    VkQueue queue;
 
@@ -108,15 +109,21 @@ zink_context(struct pipe_context *context)
    return (struct zink_context *)context;
 }
 
-static inline struct zink_cmdbuf *
-zink_context_curr_cmdbuf(struct zink_context *ctx)
+static inline struct zink_batch *
+zink_context_curr_batch(struct zink_context *ctx)
 {
-   return ctx->cmdbufs + 0;
+   assert(ctx->curr_batch < ARRAY_SIZE(ctx->batches));
+   return ctx->batches + ctx->curr_batch;
 }
 
 void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
                       VkImageAspectFlags aspect, VkImageLayout new_layout);
+
+ void
+ zink_begin_render_pass(struct zink_context *ctx,
+                        struct zink_batch *batch);
+
 
 VkShaderStageFlagBits
 zink_shader_stage(enum pipe_shader_type type);

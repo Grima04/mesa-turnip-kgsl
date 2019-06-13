@@ -77,10 +77,6 @@ zink_begin_query(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_query *query = (struct zink_query *)q;
 
-   struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-   if (!cmdbuf)
-      return false;
-
    if (query->vkqtype == VK_QUERY_TYPE_TIMESTAMP)
       return true;
 
@@ -88,7 +84,8 @@ zink_begin_query(struct pipe_context *pctx,
    if (query->precise)
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
 
-   vkCmdBeginQuery(cmdbuf->cmdbuf, query->queryPool, 0, flags);
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   vkCmdBeginQuery(batch->cmdbuf, query->queryPool, 0, flags);
 
    return true;
 }
@@ -100,15 +97,12 @@ zink_end_query(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_query *query = (struct zink_query *)q;
 
-   struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-   if (!cmdbuf)
-      return false;
-
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
    if (query->vkqtype == VK_QUERY_TYPE_TIMESTAMP)
-      vkCmdWriteTimestamp(cmdbuf->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+      vkCmdWriteTimestamp(batch->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           query->queryPool, 0);
    else
-      vkCmdEndQuery(cmdbuf->cmdbuf, query->queryPool, 0);
+      vkCmdEndQuery(batch->cmdbuf, query->queryPool, 0);
    return true;
 }
 

@@ -21,8 +21,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ZINK_CMDBUF_H
-#define ZINK_CMDBUF_H
+#ifndef ZINK_BATCH_H
+#define ZINK_BATCH_H
 
 #include <vulkan/vulkan.h>
 
@@ -34,7 +34,7 @@ struct zink_framebuffer;
 struct zink_render_pass;
 struct zink_resource;
 
-struct zink_cmdbuf {
+struct zink_batch {
    VkCommandBuffer cmdbuf;
    struct zink_fence *fence;
 
@@ -46,14 +46,14 @@ struct zink_cmdbuf {
    struct util_dynarray zombie_samplers;
 };
 
-struct zink_cmdbuf *
-zink_start_cmdbuf(struct zink_context *ctx);
+void
+zink_start_cmdbuf(struct zink_context *ctx, struct zink_batch *batch);
 
 void
-zink_end_cmdbuf(struct zink_context *ctx, struct zink_cmdbuf *cmdbuf);
+zink_end_cmdbuf(struct zink_context *ctx, struct zink_batch *batch);
 
 void
-zink_cmdbuf_reference_resoure(struct zink_cmdbuf *cmdbuf,
-                              struct zink_resource *res);
+zink_batch_reference_resoure(struct zink_batch *cmdbuf,
+                             struct zink_resource *res);
 
 #endif

@@ -23,7 +23,7 @@
 
 #include "zink_context.h"
 
-#include "zink_cmdbuf.h"
+#include "zink_batch.h"
 #include "zink_compiler.h"
 #include "zink_fence.h"
 #include "zink_framebuffer.h"
@@ -58,8 +58,8 @@ zink_context_destroy(struct pipe_context *pctx)
    if (vkQueueWaitIdle(ctx->queue) != VK_SUCCESS)
       debug_printf("vkQueueWaitIdle failed\n");
 
-   for (int i = 0; i < ARRAY_SIZE(ctx->cmdbufs); ++i)
-      vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->cmdbufs[i].cmdbuf);
+   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
+      vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->batches[i].cmdbuf);
    vkDestroyCommandPool(screen->dev, ctx->cmdpool, NULL);
 
    util_primconvert_destroy(ctx->primconvert);
@@ -165,8 +165,8 @@ static void
 zink_delete_sampler_state(struct pipe_context *pctx,
                           void *sampler_state)
 {
-   struct zink_cmdbuf *cmdbuf = zink_context_curr_cmdbuf(zink_context(pctx));
-   util_dynarray_append(&cmdbuf->zombie_samplers,
+   struct zink_batch *batch = zink_context_curr_batch(zink_context(pctx));
+   util_dynarray_append(&batch->zombie_samplers,
                         VkSampler, sampler_state);
 }
 
@@ -472,6 +472,55 @@ get_framebuffer(struct zink_context *ctx,
 }
 
 static void
+end_batch(struct zink_context *ctx, struct zink_batch *batch)
+{
+   if (batch->rp)
+      vkCmdEndRenderPass(batch->cmdbuf);
+
+   zink_end_cmdbuf(ctx, batch);
+}
+
+void
+zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   assert(batch == zink_context_curr_batch(ctx));
+
+   VkRenderPassBeginInfo rpbi = {};
+   rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+   rpbi.renderPass = ctx->gfx_pipeline_state.render_pass->render_pass;
+   rpbi.renderArea.offset.x = 0;
+   rpbi.renderArea.offset.y = 0;
+   rpbi.renderArea.extent.width = ctx->fb_state.width;
+   rpbi.renderArea.extent.height = ctx->fb_state.height;
+   rpbi.clearValueCount = 0;
+   rpbi.pClearValues = NULL;
+   rpbi.framebuffer = ctx->framebuffer->fb;
+
+   assert(ctx->gfx_pipeline_state.render_pass && ctx->framebuffer);
+   assert(!batch->rp || batch->rp == ctx->gfx_pipeline_state.render_pass);
+   assert(!batch->fb || batch->fb == ctx->framebuffer);
+
+   zink_render_pass_reference(screen, &batch->rp, ctx->gfx_pipeline_state.render_pass);
+   zink_framebuffer_reference(screen, &batch->fb, ctx->framebuffer);
+
+   vkCmdBeginRenderPass(batch->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+static void
+flush_batch(struct zink_context *ctx)
+{
+   end_batch(ctx, zink_context_curr_batch(ctx));
+
+   ctx->curr_batch++;
+   if (ctx->curr_batch == ARRAY_SIZE(ctx->batches))
+      ctx->curr_batch = 0;
+
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   zink_start_cmdbuf(ctx, batch);
+}
+
+static void
 zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
 {
@@ -490,15 +539,14 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
 
-   struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-   if (!cmdbuf)
-      return;
+   flush_batch(ctx);
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
 
    for (int i = 0; i < state->nr_cbufs; i++) {
       struct zink_resource *res = zink_resource(state->cbufs[i]->texture);
       if (res->layout != VK_IMAGE_LAYOUT_GENERAL &&
           res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(cmdbuf->cmdbuf, res, res->aspect,
+         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
                                VK_IMAGE_LAYOUT_GENERAL);
    }
 
@@ -506,11 +554,9 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       struct zink_resource *res = zink_resource(state->zsbuf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_GENERAL &&
           res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(cmdbuf->cmdbuf, res, res->aspect,
+         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
                                VK_IMAGE_LAYOUT_GENERAL);
    }
-
-   zink_end_cmdbuf(ctx, cmdbuf);
 }
 
 static void
@@ -600,84 +646,68 @@ zink_clear(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct pipe_framebuffer_state *fb = &ctx->fb_state;
 
-   struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-   if (!cmdbuf)
-      return;
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
 
-   // first transition all images to a compatible layout
+   VkClearAttachment attachments[1 + PIPE_MAX_COLOR_BUFS];
+   int num_attachments = 0;
+
    if (buffers & PIPE_CLEAR_COLOR) {
+      VkClearColorValue color;
+      color.float32[0] = pcolor->f[0];
+      color.float32[1] = pcolor->f[1];
+      color.float32[2] = pcolor->f[2];
+      color.float32[3] = pcolor->f[3];
+
       for (unsigned i = 0; i < fb->nr_cbufs; i++) {
          if (!(buffers & (PIPE_CLEAR_COLOR0 << i)) || !fb->cbufs[i])
             continue;
 
-         struct zink_resource *cbuf = zink_resource(fb->cbufs[i]->texture);
-
-         if (cbuf->layout != VK_IMAGE_LAYOUT_GENERAL &&
-             cbuf->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-            zink_resource_barrier(cmdbuf->cmdbuf, cbuf, cbuf->aspect,
-                                  VK_IMAGE_LAYOUT_GENERAL);
+         attachments[num_attachments].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+         attachments[num_attachments].colorAttachment = i;
+         attachments[num_attachments].clearValue.color = color;
+         ++num_attachments;
       }
    }
 
-   VkImageAspectFlags depthStencilAspect = 0;
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL && fb->zsbuf) {
-      struct zink_resource *zsbuf = zink_resource(fb->zsbuf->texture);
+      VkImageAspectFlags aspect = 0;
       if (buffers & PIPE_CLEAR_DEPTH)
-         depthStencilAspect |= VK_IMAGE_ASPECT_DEPTH_BIT;
+         aspect |= VK_IMAGE_ASPECT_DEPTH_BIT;
       if (buffers & PIPE_CLEAR_STENCIL)
-         depthStencilAspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+         aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-      if (zsbuf->layout != VK_IMAGE_LAYOUT_GENERAL &&
-          zsbuf->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-         zink_resource_barrier(cmdbuf->cmdbuf, zsbuf, depthStencilAspect,
-                               VK_IMAGE_LAYOUT_GENERAL);
+      attachments[num_attachments].aspectMask = aspect;
+      attachments[num_attachments].clearValue.depthStencil.depth = depth;
+      attachments[num_attachments].clearValue.depthStencil.stencil = stencil;
+      ++num_attachments;
    }
 
-   VkClearColorValue color;
-   color.float32[0] = pcolor->f[0];
-   color.float32[1] = pcolor->f[1];
-   color.float32[2] = pcolor->f[2];
-   color.float32[3] = pcolor->f[3];
-
-   if (buffers & PIPE_CLEAR_COLOR) {
-      for (unsigned i = 0; i < fb->nr_cbufs; i++) {
-         if (!(buffers & (PIPE_CLEAR_COLOR0 << i)) || !fb->cbufs[i])
-            continue;
-
-         struct zink_resource *cbuf = zink_resource(fb->cbufs[i]->texture);
-
-         VkImageSubresourceRange range;
-         range.aspectMask = cbuf->aspect;
-         range.baseMipLevel = 0;
-         range.levelCount = VK_REMAINING_MIP_LEVELS;
-         range.baseArrayLayer = 0;
-         range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-         vkCmdClearColorImage(cmdbuf->cmdbuf,
-                              cbuf->image, VK_IMAGE_LAYOUT_GENERAL,
-                              &color,
-                              1, &range);
+   unsigned num_layers = util_framebuffer_get_num_layers(fb);
+   VkClearRect rects[PIPE_MAX_VIEWPORTS];
+   uint32_t num_rects;
+   if (ctx->num_scissors) {
+      for (unsigned i = 0 ; i < ctx->num_scissors; ++i) {
+         rects[i].rect = ctx->scissors[i];
+         rects[i].baseArrayLayer = 0;
+         rects[i].layerCount = num_layers;
       }
+      num_rects = ctx->num_scissors;
+   } else {
+      rects[0].rect.offset.x = 0;
+      rects[0].rect.offset.y = 0;
+      rects[0].rect.extent.width = fb->width;
+      rects[0].rect.extent.height = fb->height;
+      rects[0].baseArrayLayer = 0;
+      rects[0].layerCount = num_layers;
+      num_rects = 1;
    }
 
-   if (depthStencilAspect) {
-      struct zink_resource *zsbuf = zink_resource(fb->zsbuf->texture);
+   if (!batch->rp)
+      zink_begin_render_pass(ctx, batch);
 
-      VkClearDepthStencilValue zsvalue = { depth, stencil };
-
-      VkImageSubresourceRange range;
-      range.aspectMask = depthStencilAspect;
-      range.baseMipLevel = 0;
-      range.levelCount = VK_REMAINING_MIP_LEVELS;
-      range.baseArrayLayer = 0;
-      range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-
-      vkCmdClearDepthStencilImage(cmdbuf->cmdbuf,
-                                  zsbuf->image, VK_IMAGE_LAYOUT_GENERAL,
-                                  &zsvalue,
-                                  1, &range);
-   }
-
-   zink_end_cmdbuf(ctx, cmdbuf);
+   vkCmdClearAttachments(batch->cmdbuf,
+                         num_attachments, attachments,
+                         num_rects, rects);
 }
 
 VkShaderStageFlagBits
@@ -708,6 +738,15 @@ allocate_descriptor_set(struct zink_context *ctx, VkDescriptorSetLayout dsl)
 
    VkDescriptorSet desc_set;
    if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
+
+      /* if we run out of descriptor sets we either need to create a bunch
+       * more... or flush and wait. For simplicity, let's flush for now.
+       */
+      struct pipe_fence_handle *fence = NULL;
+      ctx->base.flush(&ctx->base, &fence, 0);
+      ctx->base.screen->fence_finish(ctx->base.screen, &ctx->base, fence,
+                                     PIPE_TIMEOUT_INFINITE);
+
       if (vkResetDescriptorPool(screen->dev, ctx->descpool, 0) != VK_SUCCESS) {
          fprintf(stderr, "vkResetDescriptorPool failed\n");
          return VK_NULL_HANDLE;
@@ -722,7 +761,7 @@ allocate_descriptor_set(struct zink_context *ctx, VkDescriptorSetLayout dsl)
 }
 
 static void
-zink_bind_vertex_buffers(struct zink_cmdbuf *cmdbuf, struct zink_context *ctx)
+zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 {
    VkBuffer buffers[PIPE_MAX_ATTRIBS];
    VkDeviceSize buffer_offsets[PIPE_MAX_ATTRIBS];
@@ -733,37 +772,13 @@ zink_bind_vertex_buffers(struct zink_cmdbuf *cmdbuf, struct zink_context *ctx)
       struct zink_resource *res = zink_resource(vb->buffer.resource);
       buffers[i] = res->buffer;
       buffer_offsets[i] = vb->buffer_offset;
-      zink_cmdbuf_reference_resoure(cmdbuf, res);
+      zink_batch_reference_resoure(batch, res);
    }
 
    if (elems->hw_state.num_bindings > 0)
-      vkCmdBindVertexBuffers(cmdbuf->cmdbuf, 0,
+      vkCmdBindVertexBuffers(batch->cmdbuf, 0,
                              elems->hw_state.num_bindings,
                              buffers, buffer_offsets);
-}
-
-static void
-begin_render_pass(struct zink_screen *screen, struct zink_cmdbuf *cmdbuf,
-                  struct zink_render_pass *rp, struct zink_framebuffer *fb,
-                  unsigned width, unsigned height)
-{
-   VkRenderPassBeginInfo rpbi = {};
-   rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-   rpbi.renderPass = rp->render_pass;
-   rpbi.renderArea.offset.x = 0;
-   rpbi.renderArea.offset.y = 0;
-   rpbi.renderArea.extent.width = width;
-   rpbi.renderArea.extent.height = height;
-   rpbi.clearValueCount = 0;
-   rpbi.pClearValues = NULL;
-   rpbi.framebuffer = fb->fb;
-
-   assert(rp && fb);
-   assert(!cmdbuf->rp && !cmdbuf->fb);
-   zink_render_pass_reference(screen, &cmdbuf->rp, rp);
-   zink_framebuffer_reference(screen, &cmdbuf->fb, fb);
-
-   vkCmdBeginRenderPass(cmdbuf->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 static uint32_t
@@ -856,9 +871,9 @@ zink_draw_vbo(struct pipe_context *pctx,
          index_buffer = dinfo->index.resource;
    }
 
-   struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-   if (!cmdbuf)
-      return;
+   VkDescriptorSet desc_set = allocate_descriptor_set(ctx, gfx_program->dsl);
+
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
 
    VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
@@ -884,7 +899,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             buffer_infos[num_buffer_info].range  = VK_WHOLE_SIZE;
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
-            zink_cmdbuf_reference_resoure(cmdbuf, res);
+            zink_batch_reference_resoure(batch, res);
          } else {
             struct pipe_sampler_view *psampler_view = ctx->image_views[i][index];
             assert(psampler_view);
@@ -902,7 +917,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             image_infos[num_image_info].sampler = ctx->samplers[i][index];
             wds[num_wds].pImageInfo = image_infos + num_image_info;
             ++num_image_info;
-            zink_cmdbuf_reference_resoure(cmdbuf, res);
+            zink_batch_reference_resoure(batch, res);
          }
 
          wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -915,64 +930,63 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
    }
 
-   for (int i = 0; i < num_transitions; ++i)
-      zink_resource_barrier(cmdbuf->cmdbuf, transitions[i],
-                            transitions[i]->aspect,
-                            VK_IMAGE_LAYOUT_GENERAL);
+   if (num_transitions > 0) {
+      if (batch->rp)
+         vkCmdEndRenderPass(batch->cmdbuf);
 
-   begin_render_pass(screen, cmdbuf, ctx->gfx_pipeline_state.render_pass,
-                     ctx->framebuffer,
-                     ctx->fb_state.width, ctx->fb_state.height);
+      for (int i = 0; i < num_transitions; ++i)
+         zink_resource_barrier(batch->cmdbuf, transitions[i],
+                               transitions[i]->aspect,
+                               VK_IMAGE_LAYOUT_GENERAL);
 
-   vkCmdSetViewport(cmdbuf->cmdbuf, 0, ctx->num_viewports, ctx->viewports);
+      zink_begin_render_pass(ctx, batch);
+   } else if (!batch->rp)
+      zink_begin_render_pass(ctx, batch);
+
+
+   vkCmdSetViewport(batch->cmdbuf, 0, ctx->num_viewports, ctx->viewports);
 
    if (ctx->num_scissors)
-      vkCmdSetScissor(cmdbuf->cmdbuf, 0, ctx->num_scissors, ctx->scissors);
+      vkCmdSetScissor(batch->cmdbuf, 0, ctx->num_scissors, ctx->scissors);
    else if (ctx->fb_state.width && ctx->fb_state.height) {
       VkRect2D fb_scissor = {};
       fb_scissor.extent.width = ctx->fb_state.width;
       fb_scissor.extent.height = ctx->fb_state.height;
-      vkCmdSetScissor(cmdbuf->cmdbuf, 0, 1, &fb_scissor);
+      vkCmdSetScissor(batch->cmdbuf, 0, 1, &fb_scissor);
    }
 
-   vkCmdSetStencilReference(cmdbuf->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, ctx->stencil_ref[0]);
-   vkCmdSetStencilReference(cmdbuf->cmdbuf, VK_STENCIL_FACE_BACK_BIT, ctx->stencil_ref[1]);
+   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, ctx->stencil_ref[0]);
+   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_BACK_BIT, ctx->stencil_ref[1]);
 
    if (depth_bias)
-      vkCmdSetDepthBias(cmdbuf->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
+      vkCmdSetDepthBias(batch->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
    else
-      vkCmdSetDepthBias(cmdbuf->cmdbuf, 0.0f, 0.0f, 0.0f);
+      vkCmdSetDepthBias(batch->cmdbuf, 0.0f, 0.0f, 0.0f);
 
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
-      vkCmdSetBlendConstants(cmdbuf->cmdbuf, ctx->blend_constants);
-
-   VkDescriptorSet desc_set = allocate_descriptor_set(ctx, gfx_program->dsl);
+      vkCmdSetBlendConstants(batch->cmdbuf, ctx->blend_constants);
 
    for (int i = 0; i < num_wds; ++i)
       wds[i].dstSet = desc_set;
 
    vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
 
-   vkCmdBindPipeline(cmdbuf->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-   vkCmdBindDescriptorSets(cmdbuf->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+   vkCmdBindPipeline(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+   vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                            gfx_program->layout, 0, 1, &desc_set, 0, NULL);
-   zink_bind_vertex_buffers(cmdbuf, ctx);
+   zink_bind_vertex_buffers(batch, ctx);
 
    if (dinfo->index_size > 0) {
       assert(dinfo->index_size != 1);
       VkIndexType index_type = dinfo->index_size == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
       struct zink_resource *res = zink_resource(index_buffer);
-      vkCmdBindIndexBuffer(cmdbuf->cmdbuf, res->buffer, index_offset, index_type);
-      zink_cmdbuf_reference_resoure(cmdbuf, res);
-      vkCmdDrawIndexed(cmdbuf->cmdbuf,
+      vkCmdBindIndexBuffer(batch->cmdbuf, res->buffer, index_offset, index_type);
+      zink_batch_reference_resoure(batch, res);
+      vkCmdDrawIndexed(batch->cmdbuf,
          dinfo->count, dinfo->instance_count,
          dinfo->start, dinfo->index_bias, dinfo->start_instance);
    } else
-      vkCmdDraw(cmdbuf->cmdbuf, dinfo->count, dinfo->instance_count, dinfo->start, dinfo->start_instance);
-
-   vkCmdEndRenderPass(cmdbuf->cmdbuf);
-
-   zink_end_cmdbuf(ctx, cmdbuf);
+      vkCmdDraw(batch->cmdbuf, dinfo->count, dinfo->instance_count, dinfo->start, dinfo->start_instance);
 
    if (dinfo->index_size > 0 && dinfo->has_user_indices)
       pipe_resource_reference(&index_buffer, NULL);
@@ -985,9 +999,18 @@ zink_flush(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   flush_batch(ctx);
+
    if (pfence)
-      zink_fence_reference(zink_screen(pctx->screen), (struct zink_fence **)pfence,
-                           zink_context_curr_cmdbuf(ctx)->fence);
+      zink_fence_reference(zink_screen(pctx->screen),
+                           (struct zink_fence **)pfence,
+                           batch->fence);
+
+   if (flags & PIPE_FLUSH_END_OF_FRAME)
+      pctx->screen->fence_finish(pctx->screen, pctx,
+                                 (struct pipe_fence_handle *)batch->fence,
+                                 PIPE_TIMEOUT_INFINITE);
 }
 
 static void
@@ -1022,12 +1045,12 @@ zink_blit(struct pipe_context *pctx,
    if (src->base.nr_samples > 1 && dst->base.nr_samples <= 1)
       is_resolve = true;
 
-   struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-   if (!cmdbuf)
-      return;
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   if (batch->rp)
+      vkCmdEndRenderPass(batch->cmdbuf);
 
-   zink_cmdbuf_reference_resoure(cmdbuf, src);
-   zink_cmdbuf_reference_resoure(cmdbuf, dst);
+   zink_batch_reference_resoure(batch, src);
+   zink_batch_reference_resoure(batch, dst);
 
    if (is_resolve) {
       VkImageResolve region = {};
@@ -1051,14 +1074,14 @@ zink_blit(struct pipe_context *pctx,
       region.extent.width = info->dst.box.width;
       region.extent.height = info->dst.box.height;
       region.extent.depth = info->dst.box.depth;
-      vkCmdResolveImage(cmdbuf->cmdbuf, src->image, src->layout,
+      vkCmdResolveImage(batch->cmdbuf, src->image, src->layout,
                         dst->image, dst->layout,
                         1, &region);
 
    } else {
       if (dst->layout != VK_IMAGE_LAYOUT_GENERAL &&
           dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-         zink_resource_barrier(cmdbuf->cmdbuf, dst, dst->aspect,
+         zink_resource_barrier(batch->cmdbuf, dst, dst->aspect,
                                VK_IMAGE_LAYOUT_GENERAL);
 
       VkImageBlit region = {};
@@ -1100,12 +1123,19 @@ zink_blit(struct pipe_context *pctx,
          region.dstSubresource.layerCount = 1;
       }
 
-      vkCmdBlitImage(cmdbuf->cmdbuf, src->image, src->layout,
+      vkCmdBlitImage(batch->cmdbuf, src->image, src->layout,
                      dst->image, dst->layout,
                      1, &region,
                      filter(info->filter));
    }
-   zink_end_cmdbuf(ctx, cmdbuf);
+
+   if (batch->rp)
+      zink_begin_render_pass(ctx, batch);
+
+   /* HACK: I have no idea why this is needed, but without it ioquake3
+    * randomly keeps fading to black.
+    */
+   flush_batch(ctx);
 }
 
 static void
@@ -1158,17 +1188,13 @@ zink_resource_copy_region(struct pipe_context *pctx,
       region.extent.width = src_box->width;
       region.extent.height = src_box->height;
 
-      struct zink_cmdbuf *cmdbuf = zink_start_cmdbuf(ctx);
-      if (!cmdbuf)
-         return;
+      struct zink_batch *batch = zink_context_curr_batch(ctx);
+      zink_batch_reference_resoure(batch, src);
+      zink_batch_reference_resoure(batch, dst);
 
-      zink_cmdbuf_reference_resoure(cmdbuf, src);
-      zink_cmdbuf_reference_resoure(cmdbuf, dst);
-
-      vkCmdCopyImage(cmdbuf->cmdbuf, src->image, src->layout,
+      vkCmdCopyImage(batch->cmdbuf, src->image, src->layout,
                      dst->image, dst->layout,
                      1, &region);
-      zink_end_cmdbuf(ctx, cmdbuf);
    } else
       debug_printf("zink: TODO resource copy\n");
 }
@@ -1257,16 +1283,16 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    cbai.commandPool = ctx->cmdpool;
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cbai.commandBufferCount = 1;
-   for (int i = 0; i < ARRAY_SIZE(ctx->cmdbufs); ++i) {
-      if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->cmdbufs[i].cmdbuf) != VK_SUCCESS)
+   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
+      if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->batches[i].cmdbuf) != VK_SUCCESS)
          goto fail;
 
-      ctx->cmdbufs[i].resources = _mesa_set_create(NULL, _mesa_hash_pointer,
+      ctx->batches[i].resources = _mesa_set_create(NULL, _mesa_hash_pointer,
                                                    _mesa_key_pointer_equal);
-      if (!ctx->cmdbufs[i].resources)
+      if (!ctx->batches[i].resources)
          goto fail;
 
-      util_dynarray_init(&ctx->cmdbufs[i].zombie_samplers, NULL);
+      util_dynarray_init(&ctx->batches[i].zombie_samplers, NULL);
    }
 
    VkDescriptorPoolSize sizes[] = {
@@ -1289,6 +1315,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       goto fail;
 
    ctx->dirty = ZINK_DIRTY_PROGRAM;
+
+   /* start the first batch */
+   zink_start_cmdbuf(ctx, zink_context_curr_batch(ctx));
 
    return &ctx->base;
 
