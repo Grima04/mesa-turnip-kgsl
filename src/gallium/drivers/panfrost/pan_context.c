@@ -46,6 +46,7 @@
 #include "pan_blending.h"
 #include "pan_blend_shaders.h"
 #include "pan_util.h"
+#include "pan_tiler.h"
 
 static int performance_counter_number = 0;
 extern const char *pan_counters_base;
@@ -134,6 +135,9 @@ panfrost_emit_sfbd(struct panfrost_context *ctx)
 struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_context *ctx)
 {
+        unsigned width = ctx->pipe_framebuffer.width;
+        unsigned height = ctx->pipe_framebuffer.height;
+
         struct bifrost_framebuffer framebuffer = {
                 /* The lower 0x1ff controls the hierarchy mask. Set more bits
                  * on for more tile granularity (which can be a performance win
@@ -149,13 +153,12 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
 
                 /* See pan_tiler.c */
                 .tiler_polygon_list  = ctx->misc_0.gpu,
-                .tiler_polygon_list_body = ctx->misc_0.gpu + 0xf0000,
                 .tiler_polygon_list_size = 0x0,
 
-                .width1 = MALI_POSITIVE(ctx->pipe_framebuffer.width),
-                .height1 = MALI_POSITIVE(ctx->pipe_framebuffer.height),
-                .width2 = MALI_POSITIVE(ctx->pipe_framebuffer.width),
-                .height2 = MALI_POSITIVE(ctx->pipe_framebuffer.height),
+                .width1 = MALI_POSITIVE(width),
+                .height1 = MALI_POSITIVE(height),
+                .width2 = MALI_POSITIVE(width),
+                .height2 = MALI_POSITIVE(height),
 
                 .unk1 = 0x1080,
 
@@ -167,6 +170,14 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
 
                 .scratchpad = ctx->scratchpad.gpu,
         };
+
+        /* Compute the polygon header size and use that to offset the body */
+
+        unsigned header_size = panfrost_tiler_header_size(
+                        width, height, framebuffer.tiler_hierarchy_mask);
+
+        framebuffer.tiler_polygon_list_body =
+                framebuffer.tiler_polygon_list + header_size;
 
         return framebuffer;
 }
