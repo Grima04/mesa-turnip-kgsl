@@ -82,10 +82,34 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
  * driver seems to do it that way */
 
 #define EMIT(op, ...) emit_mir_instruction(ctx, v_##op(__VA_ARGS__));
-#define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
-#define SWIZZLE_XYXX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X)
 #define SWIZZLE_XXXX SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X)
+#define SWIZZLE_XYXX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X)
+#define SWIZZLE_XYZX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X)
+#define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
 #define SWIZZLE_WWWW SWIZZLE(COMPONENT_W, COMPONENT_W, COMPONENT_W, COMPONENT_W)
+
+static inline unsigned
+swizzle_of(unsigned comp)
+{
+        switch (comp) {
+                case 1:
+                        return SWIZZLE_XXXX;
+                case 2:
+                        return SWIZZLE_XYXX;
+                case 3:
+                        return SWIZZLE_XYZX;
+                case 4:
+                        return SWIZZLE_XYZW;
+                default:
+                        unreachable("Invalid component count");
+        }
+}
+
+static inline unsigned
+mask_of(unsigned nr_comp)
+{
+        return (1 << nr_comp) - 1;
+}
 
 #define M_LOAD_STORE(name, rname, uname) \
 	static midgard_instruction m_##name(unsigned ssa, unsigned address) { \
@@ -593,7 +617,7 @@ emit_condition_mixed(compiler_context *ctx, nir_alu_src *src, unsigned nr_comp)
                         .outmod = midgard_outmod_int_wrap,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
-                        .mask = expand_writemask((1 << nr_comp) - 1),
+                        .mask = expand_writemask(mask_of(nr_comp)),
                         .src1 = vector_alu_srco_unsigned(alu_src),
                         .src2 = vector_alu_srco_unsigned(alu_src)
                 },
@@ -904,7 +928,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 .outmod = outmod,
 
                 /* Writemask only valid for non-SSA NIR */
-                .mask = expand_writemask((1 << nr_components) - 1),
+                .mask = expand_writemask(mask_of(nr_components)),
 
                 .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int)),
                 .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int)),
@@ -1021,7 +1045,7 @@ emit_varying_read(
         /* TODO: swizzle, mask */
 
         midgard_instruction ins = m_ld_vary_32(dest, offset);
-        ins.load_store.mask = (1 << nr_comp) - 1;
+        ins.load_store.mask = mask_of(nr_comp);
         ins.load_store.swizzle = SWIZZLE_XYZW >> (2 * component);
 
         midgard_varying_parameter p = {
@@ -1186,7 +1210,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
-                        ins.load_store.mask = (1 << nr_comp) - 1;
+                        ins.load_store.mask = mask_of(nr_comp);
                         emit_mir_instruction(ctx, ins);
                 } else {
                         DBG("Unknown load\n");
