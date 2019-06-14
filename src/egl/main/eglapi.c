@@ -725,10 +725,7 @@ eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   if (drv->API.GetConfigs)
-      ret = drv->API.GetConfigs(drv, disp, configs, config_size, num_config);
-   else
-      ret = _eglGetConfigs(drv, disp, configs, config_size, num_config);
+   ret = _eglGetConfigs(drv, disp, configs, config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -749,12 +746,8 @@ eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   if (drv->API.ChooseConfig)
-      ret = drv->API.ChooseConfig(drv, disp, attrib_list, configs,
-                                  config_size, num_config);
-   else
-      ret = _eglChooseConfig(drv, disp, attrib_list, configs,
-                             config_size, num_config);
+   ret = _eglChooseConfig(drv, disp, attrib_list, configs,
+                          config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -773,10 +766,7 @@ eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config,
 
    _EGL_CHECK_CONFIG(disp, conf, EGL_FALSE, drv);
 
-   if (drv->API.GetConfigAttrib)
-      ret = drv->API.GetConfigAttrib(drv, disp, conf, attribute, value);
-   else
-      ret = _eglGetConfigAttrib(drv, disp, conf, attribute, value);
+   ret = _eglGetConfigAttrib(drv, disp, conf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -901,10 +891,7 @@ eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 
    _EGL_CHECK_CONTEXT(disp, context, EGL_FALSE, drv);
 
-   if (drv->API.QueryContext)
-      ret = drv->API.QueryContext(drv, disp, context, attribute, value);
-   else
-      ret = _eglQueryContext(drv, disp, context, attribute, value);
+   ret = _eglQueryContext(drv, disp, context, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -1229,10 +1216,7 @@ eglSurfaceAttrib(EGLDisplay dpy, EGLSurface surface,
    _EGL_FUNC_START(disp, EGL_OBJECT_SURFACE_KHR, surf, EGL_FALSE);
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
 
-   if (drv->API.SurfaceAttrib)
-      ret = drv->API.SurfaceAttrib(drv, disp, surf, attribute, value);
-   else
-      ret = _eglSurfaceAttrib(drv, disp, surf, attribute, value);
+   ret = _eglSurfaceAttrib(drv, disp, surf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -2113,10 +2097,7 @@ _eglGetSyncAttribCommon(_EGLDisplay *disp, _EGLSync *s, EGLint attribute, EGLAtt
           disp->Extensions.KHR_fence_sync ||
           disp->Extensions.ANDROID_native_fence_sync);
 
-   if (drv->API.GetSyncAttrib)
-      ret = drv->API.GetSyncAttrib(drv, disp, s, attribute, value);
-   else
-      ret = _eglGetSyncAttrib(drv, disp, s, attribute, value);
+   ret = _eglGetSyncAttrib(drv, disp, s, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
