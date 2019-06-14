@@ -133,8 +133,7 @@ struct panfrost_context {
         struct panfrost_memory scratchpad;
         struct panfrost_memory tiler_heap;
         struct panfrost_memory varying_mem;
-        struct panfrost_memory misc_0;
-        struct panfrost_memory misc_1;
+        struct panfrost_memory tiler_polygon_list;
         struct panfrost_memory depth_stencil_buffer;
 
         struct panfrost_query *occlusion_query;

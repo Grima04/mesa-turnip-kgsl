@@ -236,7 +236,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	bo_handles[submit.bo_handle_count++] = ctx->scratchpad.gem_handle;
 	bo_handles[submit.bo_handle_count++] = ctx->tiler_heap.gem_handle;
 	bo_handles[submit.bo_handle_count++] = ctx->varying_mem.gem_handle;
-	bo_handles[submit.bo_handle_count++] = ctx->misc_0.gem_handle;
+	bo_handles[submit.bo_handle_count++] = ctx->tiler_polygon_list.gem_handle;
 	submit.bo_handles = (u64) (uintptr_t) bo_handles;
 
 	if (drmIoctl(drm->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit)) {

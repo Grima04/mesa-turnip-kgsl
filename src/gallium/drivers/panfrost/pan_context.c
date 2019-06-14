@@ -119,8 +119,8 @@ panfrost_emit_sfbd(struct panfrost_context *ctx)
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
                 .unknown_address_0 = ctx->scratchpad.gpu,
-                .tiler_polygon_list = ctx->misc_0.gpu,
-                .tiler_polygon_list_body = ctx->misc_0.gpu + 40960,
+                .tiler_polygon_list = ctx->tiler_polygon_list.gpu,
+                .tiler_polygon_list_body = ctx->tiler_polygon_list.gpu + 40960,
                 .tiler_hierarchy_mask = 0xF0,
                 .tiler_flags = 0x0,
                 .tiler_heap_free = ctx->tiler_heap.gpu,
@@ -152,7 +152,7 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
                 .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
 
                 /* See pan_tiler.c */
-                .tiler_polygon_list  = ctx->misc_0.gpu,
+                .tiler_polygon_list  = ctx->tiler_polygon_list.gpu,
 
                 .width1 = MALI_POSITIVE(width),
                 .height1 = MALI_POSITIVE(height),
@@ -181,7 +181,7 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
         /* Sanity check */
 
         unsigned total_size = header_size + body_size;
-        assert(ctx->misc_0.size >= total_size);
+        assert(ctx->tiler_polygon_list.size >= total_size);
 
         framebuffer.tiler_polygon_list_body =
                 framebuffer.tiler_polygon_list + header_size;
@@ -646,7 +646,7 @@ panfrost_set_value_job(struct panfrost_context *ctx)
         };
 
         struct mali_payload_set_value payload = {
-                .out = ctx->misc_0.gpu,
+                .out = ctx->tiler_polygon_list.gpu,
                 .unknown = 0x3,
         };
 
@@ -2389,7 +2389,7 @@ panfrost_destroy(struct pipe_context *pipe)
         screen->driver->free_slab(screen, &panfrost->varying_mem);
         screen->driver->free_slab(screen, &panfrost->shaders);
         screen->driver->free_slab(screen, &panfrost->tiler_heap);
-        screen->driver->free_slab(screen, &panfrost->misc_0);
+        screen->driver->free_slab(screen, &panfrost->tiler_polygon_list);
 }
 
 static struct pipe_query *
@@ -2544,7 +2544,7 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         screen->driver->allocate_slab(screen, &ctx->varying_mem, 16384, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_COHERENT_LOCAL, 0, 0);
         screen->driver->allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
         screen->driver->allocate_slab(screen, &ctx->tiler_heap, 32768, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
-        screen->driver->allocate_slab(screen, &ctx->misc_0, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
+        screen->driver->allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
 
 }
 
