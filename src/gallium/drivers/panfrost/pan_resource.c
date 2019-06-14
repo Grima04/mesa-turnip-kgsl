@@ -181,7 +181,10 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
 {
         unsigned width = tmpl->width0;
         unsigned height = tmpl->height0;
+        unsigned depth = tmpl->depth0;
         unsigned bytes_per_pixel = util_format_get_blocksize(tmpl->format);
+
+        assert(depth > 0);
 
         /* Tiled operates blockwise; linear is packed. Also, anything
          * we render to has to be tile-aligned. Maybe not strictly
@@ -193,17 +196,28 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
         bool tiled = bo->layout == PAN_TILED;
         bool should_align = renderable || tiled;
 
+        /* We don't know how to specify a 2D stride for 3D textures */
+
+        bool should_align_stride =
+                tmpl->target != PIPE_TEXTURE_3D;
+
+        should_align &= should_align_stride;
+
         unsigned offset = 0;
+        unsigned size_2d = 0;
 
         for (unsigned l = 0; l <= tmpl->last_level; ++l) {
                 struct panfrost_slice *slice = &bo->slices[l];
 
                 unsigned effective_width = width;
                 unsigned effective_height = height;
+                unsigned effective_depth = depth;
 
                 if (should_align) {
                         effective_width = ALIGN(effective_width, 16);
                         effective_height = ALIGN(effective_height, 16);
+
+                        /* We don't need to align depth */
                 }
 
                 slice->offset = offset;
@@ -212,19 +226,40 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
                 unsigned stride = bytes_per_pixel * effective_width;
 
                 /* ..but cache-line align it for performance */
-                stride = ALIGN(stride, 64);
+                if (should_align_stride)
+                        stride = ALIGN(stride, 64);
+
                 slice->stride = stride;
 
-                offset += slice->stride * effective_height;
+                unsigned slice_one_size = slice->stride * effective_height;
+                unsigned slice_full_size = slice_one_size * effective_depth;
+
+                /* Report 2D size for 3D texturing */
+
+                if (l == 0)
+                        size_2d = slice_one_size;
+
+                offset += slice_full_size;
 
                 width = u_minify(width, 1);
                 height = u_minify(height, 1);
+                depth = u_minify(depth, 1);
         }
 
         assert(tmpl->array_size);
 
-        bo->cubemap_stride = ALIGN(offset, 64);
-        bo->size = ALIGN(bo->cubemap_stride * tmpl->array_size, 4096);
+        if (tmpl->target != PIPE_TEXTURE_3D) {
+                /* Arrays and cubemaps have the entire miptree duplicated */
+
+                bo->cubemap_stride = ALIGN(offset, 64);
+                bo->size = ALIGN(bo->cubemap_stride * tmpl->array_size, 4096);
+        } else {
+                /* 3D strides across the 2D layers */
+                assert(tmpl->array_size == 1);
+
+                bo->cubemap_stride = size_2d;
+                bo->size = ALIGN(offset, 4096);
+        }
 }
 
 static struct panfrost_bo *
@@ -249,7 +284,12 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
          */
 
         /* Tiling textures is almost always faster, unless we only use it once */
-        bool should_tile = (template->usage != PIPE_USAGE_STREAM) && (template->bind & PIPE_BIND_SAMPLER_VIEW);
+
+        bool is_texture = (template->bind & PIPE_BIND_SAMPLER_VIEW);
+        bool is_2d = template->depth0 == 1;
+        bool is_streaming = (template->usage != PIPE_USAGE_STREAM);
+
+        bool should_tile = is_streaming && is_texture && is_2d;
 
         /* Set the layout appropriately */
         bo->layout = should_tile ? PAN_TILED : PAN_LINEAR;
