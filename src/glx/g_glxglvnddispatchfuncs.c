@@ -124,7 +124,7 @@ static void dispatch_BindTexImageEXT(Display *dpy, GLXDrawable drawable,
 
 
 static GLXFBConfigSGIX *dispatch_ChooseFBConfigSGIX(Display *dpy, int screen,
-                                                    const int *attrib_list,
+                                                    int *attrib_list,
                                                     int *nelements)
 {
     PFNGLXCHOOSEFBCONFIGSGIXPROC pChooseFBConfigSGIX;
@@ -216,7 +216,7 @@ static GLXPbuffer dispatch_CreateGLXPbufferSGIX(Display *dpy,
                                                 GLXFBConfig config,
                                                 unsigned int width,
                                                 unsigned int height,
-                                                const int *attrib_list)
+                                                int *attrib_list)
 {
     PFNGLXCREATEGLXPBUFFERSGIXPROC pCreateGLXPbufferSGIX;
     __GLXvendorInfo *dd;
