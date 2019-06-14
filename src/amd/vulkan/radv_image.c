@@ -924,11 +924,11 @@ radv_image_alloc_dcc(struct radv_image *image)
 	assert(image->plane_count == 1);
 
 	image->dcc_offset = align64(image->size, image->planes[0].surface.dcc_alignment);
-	/* + 16 for storing the clear values + dcc pred */
+	/* + 24 for storing the clear values + fce pred + dcc pred for each mip */
 	image->clear_value_offset = image->dcc_offset + image->planes[0].surface.dcc_size;
-	image->fce_pred_offset = image->clear_value_offset + 8;
-	image->dcc_pred_offset = image->clear_value_offset + 16;
-	image->size = image->dcc_offset + image->planes[0].surface.dcc_size + 24;
+	image->fce_pred_offset = image->clear_value_offset + 8 * image->info.levels;
+	image->dcc_pred_offset = image->clear_value_offset + 16 * image->info.levels;
+	image->size = image->dcc_offset + image->planes[0].surface.dcc_size + 24 * image->info.levels;
 	image->alignment = MAX2(image->alignment, image->planes[0].surface.dcc_alignment);
 }
 
