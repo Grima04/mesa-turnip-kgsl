@@ -167,9 +167,20 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
  * it can be tiled doesn't mean it can be compressed.
  */
 static bool
-ok_ubwc_format(enum a6xx_color_fmt fmt)
+ok_ubwc_format(enum pipe_format pfmt)
 {
-	switch (fmt) {
+	/* NOTE: both x24s8 and z24s8 map to RB6_X8Z24_UNORM, but UBWC
+	 * does not seem to work properly when sampling x24s8.. possibly
+	 * because we sample it as TFMT6_8_8_8_8_UINT.
+	 *
+	 * This could possibly be a hw limitation, or maybe something
+	 * else wrong somewhere (although z24s8 blits and sampling with
+	 * UBWC seem fine).  Recheck on a later revision of a6xx
+	 */
+	if (pfmt == PIPE_FORMAT_X24S8_UINT)
+		return false;
+
+	switch (fd6_pipe2color(pfmt)) {
 	case RB6_R10G10B10A2_UINT:
 	case RB6_R10G10B10A2_UNORM:
 	case RB6_R11G11B10_FLOAT:
@@ -213,7 +224,7 @@ fd6_fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 	uint32_t width = prsc->width0;
 	uint32_t height = prsc->height0;
 
-	if (!ok_ubwc_format(fd6_pipe2color(prsc->format)))
+	if (!ok_ubwc_format(prsc->format))
 		return 0;
 
 	/* limit things to simple single level 2d for now: */
@@ -271,7 +282,7 @@ fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
 	if (!rsc->ubwc_size)
 		return;
 
-	if (ok_ubwc_format(fd6_pipe2color(format)))
+	if (ok_ubwc_format(format))
 		return;
 
 	fd_resource_uncompress(ctx, rsc);
