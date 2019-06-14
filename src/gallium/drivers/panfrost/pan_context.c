@@ -1796,11 +1796,16 @@ panfrost_bind_sampler_states(
 }
 
 static bool
-panfrost_variant_matches(struct panfrost_context *ctx, struct panfrost_shader_state *variant)
+panfrost_variant_matches(
+                struct panfrost_context *ctx,
+                struct panfrost_shader_state *variant,
+                enum pipe_shader_type type)
 {
         struct pipe_alpha_state *alpha = &ctx->depth_stencil->alpha;
 
-        if (alpha->enabled || variant->alpha_state.enabled) {
+        bool is_fragment = (type == PIPE_SHADER_FRAGMENT);
+
+        if (is_fragment && (alpha->enabled || variant->alpha_state.enabled)) {
                 /* Make sure enable state is at least the same */
                 if (alpha->enabled != variant->alpha_state.enabled) {
                         return false;
@@ -1830,6 +1835,7 @@ panfrost_bind_shader_state(
                 ctx->fs = hwcso;
                 ctx->dirty |= PAN_DIRTY_FS;
         } else {
+                assert(type == PIPE_SHADER_VERTEX);
                 ctx->vs = hwcso;
                 ctx->dirty |= PAN_DIRTY_VS;
         }
@@ -1842,7 +1848,7 @@ panfrost_bind_shader_state(
         struct panfrost_shader_variants *variants = (struct panfrost_shader_variants *) hwcso;
 
         for (unsigned i = 0; i < variants->variant_count; ++i) {
-                if (panfrost_variant_matches(ctx, &variants->variants[i])) {
+                if (panfrost_variant_matches(ctx, &variants->variants[i], type)) {
                         variant = i;
                         break;
                 }
@@ -1871,7 +1877,7 @@ panfrost_bind_shader_state(
         variants->active_variant = variant;
 
         struct panfrost_shader_state *shader_state = &variants->variants[variant];
-        assert(panfrost_variant_matches(ctx, shader_state));
+        assert(panfrost_variant_matches(ctx, shader_state, type));
 
         /* We finally have a variant, so compile it */
 
