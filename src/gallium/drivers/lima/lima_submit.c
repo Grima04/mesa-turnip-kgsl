@@ -110,7 +110,7 @@ bool lima_submit_add_bo(struct lima_submit *submit, struct lima_bo *bo, uint32_t
    submit_bo->handle = bo->handle;
    submit_bo->flags = flags;
 
-   struct lima_bo **jbo = util_dynarray_grow(&submit->bos, struct lima_bo, 1);
+   struct lima_bo **jbo = util_dynarray_grow(&submit->bos, struct lima_bo *, 1);
    *jbo = bo;
 
    /* prevent bo from being freed when submit start */
