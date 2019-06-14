@@ -178,6 +178,11 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
         unsigned body_size = panfrost_tiler_body_size(
                         width, height, framebuffer.tiler_hierarchy_mask);
 
+        /* Sanity check */
+
+        unsigned total_size = header_size + body_size;
+        assert(ctx->misc_0.size >= total_size);
+
         framebuffer.tiler_polygon_list_body =
                 framebuffer.tiler_polygon_list + header_size;
 
