@@ -1760,13 +1760,12 @@ radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
  */
 static void
 radv_load_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
-			       struct radv_image *image,
+			       struct radv_image_view *iview,
 			       int cb_idx)
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
-	uint64_t va = radv_buffer_get_va(image->bo);
-
-	va += image->offset + image->clear_value_offset;
+	struct radv_image *image = iview->image;
+	uint64_t va = radv_image_get_fast_clear_va(image, iview->base_mip);
 
 	if (!radv_image_has_cmask(image) && !radv_image_has_dcc(image))
 		return;
@@ -1815,7 +1814,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
 		int idx = subpass->color_attachments[i].attachment;
 		struct radv_attachment_info *att = &framebuffer->attachments[idx];
-		struct radv_image *image = att->attachment->image;
+		struct radv_image_view *iview = att->attachment;
+		struct radv_image *image = iview->image;
 		VkImageLayout layout = subpass->color_attachments[i].layout;
 
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, att->attachment->bo);
@@ -1824,7 +1824,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		                                       VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
 		radv_emit_fb_color_state(cmd_buffer, i, att, iview, layout);
 
-		radv_load_color_clear_metadata(cmd_buffer, image, i);
+		radv_load_color_clear_metadata(cmd_buffer, iview, i);
 
 		if (image->planes[0].surface.bpe >= 8)
 			num_bpp64_colorbufs++;
