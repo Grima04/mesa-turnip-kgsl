@@ -604,6 +604,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 	if (radv_image_has_dcc(image)) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
+		pred_offset += 8 * subresourceRange->baseMipLevel;
 
 		old_predicating = cmd_buffer->state.predicating;
 
@@ -695,6 +696,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 	if (radv_image_has_dcc(image)) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
+		pred_offset += 8 * subresourceRange->baseMipLevel;
 
 		cmd_buffer->state.predicating = old_predicating;
 
