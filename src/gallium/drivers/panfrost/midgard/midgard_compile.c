@@ -297,16 +297,46 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         }
 }
 
+static unsigned
+nir_dest_index(compiler_context *ctx, nir_dest *dst)
+{
+        if (dst->is_ssa)
+                return dst->ssa.index;
+        else {
+                assert(!dst->reg.indirect);
+                return ctx->func->impl->ssa_alloc + dst->reg.reg->index;
+        }
+}
+
+static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
+                            unsigned *dest)
+{
+        nir_intrinsic_instr *intr;
+        nir_dest *dst = NULL;
+        int sysval = -1;
+
+        switch (instr->type) {
+        case nir_instr_type_intrinsic:
+                intr = nir_instr_as_intrinsic(instr);
+                sysval = midgard_nir_sysval_for_intrinsic(intr);
+                dst = &intr->dest;
+                break;
+        default:
+                break;
+        }
+
+        if (dest && dst)
+                *dest = nir_dest_index(ctx, dst);
+
+        return sysval;
+}
+
 static void
 midgard_nir_assign_sysval_body(compiler_context *ctx, nir_instr *instr)
 {
-        int sysval = -1;
+        int sysval;
 
-        if (instr->type == nir_instr_type_intrinsic) {
-                nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-                sysval = midgard_nir_sysval_for_intrinsic(intr);
-        }
-
+        sysval = sysval_for_instr(ctx, instr, NULL);
         if (sysval < 0)
                 return;
 
@@ -511,17 +541,6 @@ nir_src_index(compiler_context *ctx, nir_src *src)
         else {
                 assert(!src->reg.indirect);
                 return ctx->func->impl->ssa_alloc + src->reg.reg->index;
-        }
-}
-
-static unsigned
-nir_dest_index(compiler_context *ctx, nir_dest *dst)
-{
-        if (dst->is_ssa)
-                return dst->ssa.index;
-        else {
-                assert(!dst->reg.indirect);
-                return ctx->func->impl->ssa_alloc + dst->reg.reg->index;
         }
 }
 
@@ -1079,13 +1098,11 @@ emit_varying_read(
 }
 
 static void
-emit_sysval_read(compiler_context *ctx, nir_intrinsic_instr *instr)
+emit_sysval_read(compiler_context *ctx, nir_instr *instr)
 {
-        /* First, pull out the destination */
-        unsigned dest = nir_dest_index(ctx, &instr->dest);
-
-        /* Now, figure out which uniform this is */
-        int sysval = midgard_nir_sysval_for_intrinsic(instr);
+        unsigned dest;
+        /* Figure out which uniform this is */
+        int sysval = sysval_for_instr(ctx, instr, &dest);
         void *val = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
 
         /* Sysvals are prefix uniforms */
@@ -1318,7 +1335,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
-                emit_sysval_read(ctx, instr);
+                emit_sysval_read(ctx, &instr->instr);
                 break;
 
         default:
