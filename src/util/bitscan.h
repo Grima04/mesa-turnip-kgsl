@@ -286,6 +286,38 @@ u_bit_consecutive64(unsigned start, unsigned count)
    return (((uint64_t)1 << count) - 1) << start;
 }
 
+/**
+ * Return number of bits set in n.
+ */
+static inline unsigned
+util_bitcount(unsigned n)
+{
+#if defined(HAVE___BUILTIN_POPCOUNT)
+   return __builtin_popcount(n);
+#else
+   /* K&R classic bitcount.
+    *
+    * For each iteration, clear the LSB from the bitfield.
+    * Requires only one iteration per set bit, instead of
+    * one iteration per bit less than highest set bit.
+    */
+   unsigned bits;
+   for (bits = 0; n; bits++) {
+      n &= n - 1;
+   }
+   return bits;
+#endif
+}
+
+static inline unsigned
+util_bitcount64(uint64_t n)
+{
+#ifdef HAVE___BUILTIN_POPCOUNTLL
+   return __builtin_popcountll(n);
+#else
+   return util_bitcount(n) + util_bitcount(n >> 32);
+#endif
+}
 
 #ifdef __cplusplus
 }
