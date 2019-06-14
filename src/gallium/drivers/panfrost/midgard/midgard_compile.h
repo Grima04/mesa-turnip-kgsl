@@ -34,7 +34,9 @@
 /* Allow 2D of sysval IDs, while allowing nonparametric sysvals to equal
  * their class for equal comparison */
 
-#define PAN_SYSVAL(type, no) ((no << 16) | PAN_SYSVAL_##type)
+#define PAN_SYSVAL(type, no) (((no) << 16) | PAN_SYSVAL_##type)
+#define PAN_SYSVAL_TYPE(sysval) ((sysval) & 0xffff)
+#define PAN_SYSVAL_ID(sysval) ((sysval) >> 16)
 
 /* Define some common types. We start at one for easy indexing of hash
  * tables internal to the compiler */

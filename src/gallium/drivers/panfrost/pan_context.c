@@ -1008,6 +1008,56 @@ panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
         }
 }
 
+struct sysval_uniform {
+        union {
+                float f[4];
+                int32_t i[4];
+                uint32_t u[4];
+        };
+};
+
+static void panfrost_upload_viewport_scale_sysval(struct panfrost_context *ctx,
+                                                  struct sysval_uniform *uniform)
+{
+        const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
+
+        uniform->f[0] = vp->scale[0];
+        uniform->f[1] = vp->scale[1];
+        uniform->f[2] = vp->scale[2];
+}
+
+static void panfrost_upload_viewport_offset_sysval(struct panfrost_context *ctx,
+                                                   struct sysval_uniform *uniform)
+{
+        const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
+
+        uniform->f[0] = vp->translate[0];
+        uniform->f[1] = vp->translate[1];
+        uniform->f[2] = vp->translate[2];
+}
+
+static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
+                                    struct panfrost_shader_state *ss,
+                                    enum pipe_shader_type st)
+{
+        struct sysval_uniform *uniforms = (void *)buf;
+
+        for (unsigned i = 0; i < ss->sysval_count; ++i) {
+                int sysval = ss->sysval[i];
+
+                switch (PAN_SYSVAL_TYPE(sysval)) {
+                case PAN_SYSVAL_VIEWPORT_SCALE:
+                        panfrost_upload_viewport_scale_sysval(ctx, &uniforms[i]);
+                        break;
+                case PAN_SYSVAL_VIEWPORT_OFFSET:
+                        panfrost_upload_viewport_offset_sysval(ctx, &uniforms[i]);
+                        break;
+                default:
+                        assert(0);
+                }
+        }
+}
+
 /* Go through dirty flags and actualise them in the cmdstream. */
 
 void
@@ -1231,22 +1281,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
 
                 /* Upload sysvals requested by the shader */
-                float *uniforms = (float *) transfer.cpu;
-                for (unsigned i = 0; i < ss->sysval_count; ++i) {
-                        int sysval = ss->sysval[i];
-
-                        if (sysval == PAN_SYSVAL_VIEWPORT_SCALE) {
-                                uniforms[4*i + 0] = vp->scale[0];
-                                uniforms[4*i + 1] = vp->scale[1];
-                                uniforms[4*i + 2] = vp->scale[2];
-                        } else if (sysval == PAN_SYSVAL_VIEWPORT_OFFSET) {
-                                uniforms[4*i + 0] = vp->translate[0];
-                                uniforms[4*i + 1] = vp->translate[1];
-                                uniforms[4*i + 2] = vp->translate[2];
-                        } else {
-                                assert(0);
-                        }
-                }
+                panfrost_upload_sysvals(ctx, transfer.cpu, ss, i);
 
                 /* Upload uniforms */
                 memcpy(transfer.cpu + sys_size, buf->buffer, buf->size);
