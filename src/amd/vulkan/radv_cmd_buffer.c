@@ -1240,12 +1240,13 @@ static void
 radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 			 int index,
 			 struct radv_attachment_info *att,
-			 struct radv_image *image,
+			 struct radv_image_view *iview,
 			 VkImageLayout layout)
 {
 	bool is_vi = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX8;
 	struct radv_color_buffer_info *cb = &att->cb;
 	uint32_t cb_color_info = cb->cb_color_info;
+	struct radv_image *image = iview->image;
 
 	if (!radv_layout_dcc_compressed(image, layout,
 	                                radv_image_queue_family_mask(image,
@@ -1295,7 +1296,15 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 
 	if (radv_image_has_dcc(image)) {
 		/* Drawing with DCC enabled also compresses colorbuffers. */
-		radv_update_dcc_metadata(cmd_buffer, image, true);
+		VkImageSubresourceRange range = {
+			.aspectMask = iview->aspect_mask,
+			.baseMipLevel = iview->base_mip,
+			.levelCount = iview->level_count,
+			.baseArrayLayer = iview->base_layer,
+			.layerCount = iview->layer_count,
+		};
+
+		radv_update_dcc_metadata(cmd_buffer, image, &range, true);
 	}
 }
 
@@ -1635,22 +1644,27 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer,
  */
 void
 radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer,
-			 struct radv_image *image, bool value)
+			 struct radv_image *image,
+			 const VkImageSubresourceRange *range, bool value)
 {
 	uint64_t pred_val = value;
-	uint64_t va = radv_buffer_get_va(image->bo);
-	va += image->offset + image->dcc_pred_offset;
+	uint64_t va = radv_image_get_dcc_pred_va(image, range->baseMipLevel);
+	uint32_t level_count = radv_get_levelCount(image, range);
+	uint32_t count = 2 * level_count;
 
 	assert(radv_image_has_dcc(image));
 
-	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 4, 0));
+	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
 	radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) |
 				    S_370_WR_CONFIRM(1) |
 				    S_370_ENGINE_SEL(V_370_PFP));
 	radeon_emit(cmd_buffer->cs, va);
 	radeon_emit(cmd_buffer->cs, va >> 32);
-	radeon_emit(cmd_buffer->cs, pred_val);
-	radeon_emit(cmd_buffer->cs, pred_val >> 32);
+
+	for (uint32_t l = 0; l < level_count; l++) {
+		radeon_emit(cmd_buffer->cs, pred_val);
+		radeon_emit(cmd_buffer->cs, pred_val >> 32);
+	}
 }
 
 /**
@@ -1808,7 +1822,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
 		assert(att->attachment->aspect_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT |
 		                                       VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
-		radv_emit_fb_color_state(cmd_buffer, i, att, image, layout);
+		radv_emit_fb_color_state(cmd_buffer, i, att, iview, layout);
 
 		radv_load_color_clear_metadata(cmd_buffer, image, i);
 
@@ -4891,14 +4905,15 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 }
 
 void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
-			 struct radv_image *image, uint32_t value)
+			 struct radv_image *image,
+			 const VkImageSubresourceRange *range, uint32_t value)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
-	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, value);
+	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, range, value);
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
@@ -4940,7 +4955,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 			need_decompress_pass = true;
 		}
 
-		radv_initialize_dcc(cmd_buffer, image, value);
+		radv_initialize_dcc(cmd_buffer, image, range, value);
 
 		radv_update_fce_metadata(cmd_buffer, image, range,
 					 need_decompress_pass);
@@ -4974,7 +4989,7 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 
 	if (radv_image_has_dcc(image)) {
 		if (src_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-			radv_initialize_dcc(cmd_buffer, image, 0xffffffffu);
+			radv_initialize_dcc(cmd_buffer, image, range, 0xffffffffu);
 		} else if (radv_layout_dcc_compressed(image, src_layout, src_queue_mask) &&
 		           !radv_layout_dcc_compressed(image, dst_layout, dst_queue_mask)) {
 			radv_decompress_dcc(cmd_buffer, image, range);

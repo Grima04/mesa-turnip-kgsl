@@ -1335,10 +1335,11 @@ radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
 
 uint32_t
 radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
-	       struct radv_image *image, uint32_t value)
+	       struct radv_image *image,
+	       const VkImageSubresourceRange *range, uint32_t value)
 {
 	/* Mark the image as being compressed. */
-	radv_update_dcc_metadata(cmd_buffer, image, true);
+	radv_update_dcc_metadata(cmd_buffer, image, range, true);
 
 	return radv_fill_buffer(cmd_buffer, image->bo,
 				image->offset + image->dcc_offset,
@@ -1543,7 +1544,8 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 		if (!can_avoid_fast_clear_elim)
 			need_decompress_pass = true;
 
-		flush_bits |= radv_clear_dcc(cmd_buffer, iview->image, reset_value);
+		flush_bits |= radv_clear_dcc(cmd_buffer, iview->image, &range,
+					     reset_value);
 
 		radv_update_fce_metadata(cmd_buffer, iview->image, &range,
 					 need_decompress_pass);

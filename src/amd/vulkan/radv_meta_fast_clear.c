@@ -716,7 +716,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 
 		/* Mark the image as being decompressed. */
 		if (decompress_dcc)
-			radv_update_dcc_metadata(cmd_buffer, image, false);
+			radv_update_dcc_metadata(cmd_buffer, image, subresourceRange, false);
 	}
 
 	radv_meta_restore(&saved_state, cmd_buffer);
@@ -822,7 +822,7 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	radv_unaligned_dispatch(cmd_buffer, image->info.width, image->info.height, 1);
 
 	/* Mark this image as actually being decompressed. */
-	radv_update_dcc_metadata(cmd_buffer, image, false);
+	radv_update_dcc_metadata(cmd_buffer, image, subresourceRange, false);
 
 	/* The fill buffer below does its own saving */
 	radv_meta_restore(&saved_state, cmd_buffer);
@@ -830,7 +830,8 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	state->flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
 			     RADV_CMD_FLAG_INV_VMEM_L1;
 
-	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, 0xffffffff);
+	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, subresourceRange,
+					    0xffffffff);
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
