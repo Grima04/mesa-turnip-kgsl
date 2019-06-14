@@ -1370,9 +1370,12 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         int texture_index = instr->texture_index;
         int sampler_index = texture_index;
 
+        unsigned position_swizzle = 0;
+
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 int reg = SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + in_reg);
                 int index = nir_src_index(ctx, &instr->src[i].src);
+                int nr_comp = nir_src_num_components(instr->src[i].src);
                 midgard_vector_alu_src alu_src = blank_alu_src;
 
                 switch (instr->src[i].src_type) {
@@ -1394,12 +1397,14 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                                 st.load_store.swizzle = alu_src.swizzle;
                                 emit_mir_instruction(ctx, st);
 
+                                position_swizzle = swizzle_of(2);
                         } else {
-                                alu_src.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X);
+                                position_swizzle = alu_src.swizzle = swizzle_of(nr_comp);
 
                                 midgard_instruction ins = v_fmov(index, alu_src, reg);
-                                ins.alu.mask = expand_writemask(0x3); /* xy */
+                                ins.alu.mask = expand_writemask(mask_of(nr_comp));
                                 emit_mir_instruction(ctx, ins);
+
                         }
 
                         break;
@@ -1438,7 +1443,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
                         /* TODO: half */
                         .in_reg_full = 1,
-                        .in_reg_swizzle = SWIZZLE_XYXX,
+                        .in_reg_swizzle = position_swizzle,
                         .out_full = 1,
 
                         /* Always 1 */
