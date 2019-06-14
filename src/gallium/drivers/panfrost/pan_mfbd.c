@@ -203,11 +203,11 @@ panfrost_mfbd_upload(
 /* Creates an MFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr
-panfrost_mfbd_fragment(struct panfrost_context *ctx)
+panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
 {
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
-        struct bifrost_framebuffer fb = panfrost_emit_mfbd(ctx);
+        struct bifrost_framebuffer fb = panfrost_emit_mfbd(ctx, has_draws);
         struct bifrost_fb_extra fbx = {};
         struct bifrost_render_target rts[4] = {};
 

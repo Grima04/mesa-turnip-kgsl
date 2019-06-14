@@ -32,11 +32,11 @@
  * presentations, this is supposed to correspond to eglSwapBuffers) */
 
 mali_ptr
-panfrost_fragment_job(struct panfrost_context *ctx)
+panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
 {
         mali_ptr framebuffer = ctx->require_sfbd ?
-                panfrost_sfbd_fragment(ctx) :
-                panfrost_mfbd_fragment(ctx);
+                panfrost_sfbd_fragment(ctx, has_draws) :
+                panfrost_mfbd_fragment(ctx, has_draws);
 
         struct mali_job_descriptor_header header = {
                 .job_type = JOB_TYPE_FRAGMENT,

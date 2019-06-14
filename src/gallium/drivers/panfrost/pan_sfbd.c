@@ -107,10 +107,10 @@ panfrost_sfbd_set_cbuf(
 /* Creates an SFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr
-panfrost_sfbd_fragment(struct panfrost_context *ctx)
+panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws)
 {
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
-        struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx);
+        struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx, has_draws);
 
         panfrost_sfbd_clear(job, &fb);
 

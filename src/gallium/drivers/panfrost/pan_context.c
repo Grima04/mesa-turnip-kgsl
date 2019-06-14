@@ -112,7 +112,7 @@ panfrost_set_framebuffer_resolution(struct mali_single_framebuffer *fb, int w, i
 }
 
 struct mali_single_framebuffer
-panfrost_emit_sfbd(struct panfrost_context *ctx)
+panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count)
 {
         struct mali_single_framebuffer framebuffer = {
                 .unknown2 = 0x1f,
@@ -133,27 +133,12 @@ panfrost_emit_sfbd(struct panfrost_context *ctx)
 }
 
 struct bifrost_framebuffer
-panfrost_emit_mfbd(struct panfrost_context *ctx)
+panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
 {
         unsigned width = ctx->pipe_framebuffer.width;
         unsigned height = ctx->pipe_framebuffer.height;
 
         struct bifrost_framebuffer framebuffer = {
-                /* The lower 0x1ff controls the hierarchy mask. Set more bits
-                 * on for more tile granularity (which can be a performance win
-                 * on some scenes, at memory bandwidth costs). For now, be lazy
-                 * and enable everything. This might be a terrible idea. */
-
-                .tiler_hierarchy_mask = 0xff,
-                .tiler_flags = 0x0,
-
-                /* The hardware deals with suballocation; we don't care */
-                .tiler_heap_start = ctx->tiler_heap.gpu,
-                .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
-
-                /* See pan_tiler.c */
-                .tiler_polygon_list  = ctx->tiler_polygon_list.gpu,
-
                 .width1 = MALI_POSITIVE(width),
                 .height1 = MALI_POSITIVE(height),
                 .width2 = MALI_POSITIVE(width),
@@ -170,6 +155,9 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
                 .scratchpad = ctx->scratchpad.gpu,
         };
 
+        framebuffer.tiler_hierarchy_mask =
+                panfrost_choose_hierarchy_mask(width, height, vertex_count);
+
         /* Compute the polygon header size and use that to offset the body */
 
         unsigned header_size = panfrost_tiler_header_size(
@@ -181,13 +169,36 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
         /* Sanity check */
 
         unsigned total_size = header_size + body_size;
-        assert(ctx->tiler_polygon_list.size >= total_size);
+
+        if (framebuffer.tiler_hierarchy_mask) {
+               assert(ctx->tiler_polygon_list.size >= total_size);
+
+                /* Specify allocated tiler structures */
+                framebuffer.tiler_polygon_list = ctx->tiler_polygon_list.gpu;
+
+                /* Allow the entire tiler heap */
+                framebuffer.tiler_heap_start = ctx->tiler_heap.gpu;
+                framebuffer.tiler_heap_end =
+                        ctx->tiler_heap.gpu + ctx->tiler_heap.size;
+        } else {
+                /* The tiler is disabled, so don't allow the tiler heap */
+                framebuffer.tiler_heap_start = ctx->tiler_heap.gpu;
+                framebuffer.tiler_heap_end = framebuffer.tiler_heap_start;
+
+                /* Use a dummy polygon list */
+                framebuffer.tiler_polygon_list = ctx->tiler_dummy.gpu;
+
+                /* Also, set a "tiler disabled?" flag? */
+                framebuffer.tiler_hierarchy_mask |= 0x1000;
+        }
 
         framebuffer.tiler_polygon_list_body =
                 framebuffer.tiler_polygon_list + header_size;
 
         framebuffer.tiler_polygon_list_size =
                 header_size + body_size;
+
+
 
         return framebuffer;
 }
@@ -307,9 +318,9 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
                 ctx->cmdstream_i = 0;
 
         if (ctx->require_sfbd)
-                ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx);
+                ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
         else
-                ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx);
+                ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
         /* Reset varyings allocated */
         ctx->varying_height = 0;
@@ -2145,9 +2156,9 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                         continue;
 
                 if (ctx->require_sfbd)
-                        ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx);
+                        ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
                 else
-                        ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx);
+                        ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
                 panfrost_attach_vt_framebuffer(ctx);
 
@@ -2172,9 +2183,9 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 
                         if (zb) {
                                 if (ctx->require_sfbd)
-                                        ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx);
+                                        ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
                                 else
-                                        ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx);
+                                        ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
                                 panfrost_attach_vt_framebuffer(ctx);
 
@@ -2545,6 +2556,7 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         screen->driver->allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
         screen->driver->allocate_slab(screen, &ctx->tiler_heap, 32768, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
         screen->driver->allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
+        screen->driver->allocate_slab(screen, &ctx->tiler_dummy, 1, false, PAN_ALLOCATE_INVISIBLE, 0, 0);
 
 }
 
