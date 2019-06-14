@@ -1287,27 +1287,56 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         };
 
         /* Always scissor to the viewport by default. */
-        view.viewport0[0] = (int) (vp->translate[0] - vp->scale[0]);
-        view.viewport1[0] = MALI_POSITIVE((int) (vp->translate[0] + vp->scale[0]));
+        int minx = (int) (vp->translate[0] - vp->scale[0]);
+        int maxx = (int) (vp->translate[0] + vp->scale[0]);
 
         int miny = (int) (vp->translate[1] - vp->scale[1]);
         int maxy = (int) (vp->translate[1] + vp->scale[1]);
 
-        if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor) {
-                view.viewport0[0] = ss->minx;
-                view.viewport1[0] = MALI_POSITIVE(ss->maxx);
+        /* Apply the scissor test */
 
+        if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor) {
+                minx = ss->minx;
+                maxx = ss->maxx;
                 miny = ss->miny;
                 maxy = ss->maxy;
         } 
 
         /* Hardware needs the min/max to be strictly ordered, so flip if we
-         * need to */
+         * need to. The viewport transformation in the vertex shader will
+         * handle the negatives if we don't */
+
         if (miny > maxy) {
                 int temp = miny;
                 miny = maxy;
                 maxy = temp;
         }
+
+        if (minx > maxx) {
+                int temp = minx;
+                minx = maxx;
+                maxx = temp;
+        }
+
+        /* Clamp everything positive, just in case */
+
+        maxx = MAX2(0, maxx);
+        maxy = MAX2(0, maxy);
+        minx = MAX2(0, minx);
+        miny = MAX2(0, miny);
+
+        /* Clamp to the framebuffer size as a last check */
+
+        minx = MIN2(ctx->pipe_framebuffer.width, minx);
+        maxx = MIN2(ctx->pipe_framebuffer.width, maxx);
+
+        miny = MIN2(ctx->pipe_framebuffer.height, miny);
+        maxy = MIN2(ctx->pipe_framebuffer.height, maxy);
+
+        /* Upload */
+
+        view.viewport0[0] = minx;
+        view.viewport1[0] = MALI_POSITIVE(maxx);
 
         view.viewport0[1] = miny;
         view.viewport1[1] = MALI_POSITIVE(maxy);
