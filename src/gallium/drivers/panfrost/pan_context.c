@@ -2097,10 +2097,21 @@ panfrost_create_sampler_view(
                 }
         }
 
+        /* In the hardware, array_size refers specifically to array textures,
+         * whereas in Gallium, it also covers cubemaps */
+
+        unsigned array_size = texture->array_size;
+
+        if (texture->target == PIPE_TEXTURE_CUBE) {
+                /* TODO: Cubemap arrays */
+                assert(array_size == 6);
+        }
+
         struct mali_texture_descriptor texture_descriptor = {
                 .width = MALI_POSITIVE(texture->width0),
                 .height = MALI_POSITIVE(texture->height0),
                 .depth = MALI_POSITIVE(texture->depth0),
+                .array_size = MALI_POSITIVE(array_size),
 
                 /* TODO: Decode */
                 .format = {
