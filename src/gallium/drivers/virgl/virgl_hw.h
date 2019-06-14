@@ -138,6 +138,12 @@ enum virgl_formats {
    VIRGL_FORMAT_L32_FLOAT               = 160,
    VIRGL_FORMAT_L32A32_FLOAT            = 161,
 
+   VIRGL_FORMAT_YV12                    = 163,
+   VIRGL_FORMAT_YV16                    = 164,
+   VIRGL_FORMAT_IYUV                    = 165,  /**< aka I420 */
+   VIRGL_FORMAT_NV12                    = 166,
+   VIRGL_FORMAT_NV21                    = 167,
+
    VIRGL_FORMAT_R8_UINT                 = 177,
    VIRGL_FORMAT_R8G8_UINT               = 178,
    VIRGL_FORMAT_R8G8B8_UINT             = 179,
