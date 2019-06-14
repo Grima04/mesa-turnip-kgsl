@@ -286,7 +286,7 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
         /* Tiling textures is almost always faster, unless we only use it once */
 
         bool is_texture = (template->bind & PIPE_BIND_SAMPLER_VIEW);
-        bool is_2d = template->depth0 == 1;
+        bool is_2d = template->depth0 == 1 && template->array_size == 1;
         bool is_streaming = (template->usage != PIPE_USAGE_STREAM);
 
         bool should_tile = is_streaming && is_texture && is_2d;
@@ -329,6 +329,7 @@ panfrost_resource_create(struct pipe_screen *screen,
                 case PIPE_TEXTURE_3D:
                 case PIPE_TEXTURE_CUBE:
                 case PIPE_TEXTURE_RECT:
+                case PIPE_TEXTURE_2D_ARRAY:
                         break;
                 default:
                         DBG("Unknown texture target %d\n", template->target);
