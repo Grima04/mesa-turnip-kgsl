@@ -207,7 +207,11 @@ iris_disk_cache_retrieve(struct iris_context *ice,
     * needed, the constant buffer 0 will be needed, so account for it.
     */
    unsigned num_cbufs = ish->nir->info.num_ubos;
-   if (num_cbufs || num_system_values || ish->nir->num_uniforms)
+
+   if (num_cbufs || ish->nir->num_uniforms)
+      num_cbufs++;
+
+   if (num_system_values)
       num_cbufs++;
 
    /* Upload our newly read shader to the in-memory program cache and

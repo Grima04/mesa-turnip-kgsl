@@ -87,7 +87,7 @@ iris_update_draw_info(struct iris_context *ice,
       if (tcs_info &&
           tcs_info->system_values_read & (1ull << SYSTEM_VALUE_VERTICES_IN)) {
          ice->state.dirty |= IRIS_DIRTY_CONSTANTS_TCS;
-         ice->state.shaders[MESA_SHADER_TESS_CTRL].cbuf0_needs_upload = true;
+         ice->state.shaders[MESA_SHADER_TESS_CTRL].sysvals_need_upload = true;
       }
    }
 

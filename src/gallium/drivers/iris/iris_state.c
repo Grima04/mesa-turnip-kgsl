@@ -2185,7 +2185,7 @@ iris_set_shader_images(struct pipe_context *ctx,
    /* Broadwell also needs brw_image_params re-uploaded */
    if (GEN_GEN < 9) {
       ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
-      shs->cbuf0_needs_upload = true;
+      shs->sysvals_need_upload = true;
    }
 }
 
@@ -2237,7 +2237,7 @@ iris_set_tess_state(struct pipe_context *ctx,
    memcpy(&ice->state.default_inner_level[0], &default_inner_level[0], 2 * sizeof(float));
 
    ice->state.dirty |= IRIS_DIRTY_CONSTANTS_TCS;
-   shs->cbuf0_needs_upload = true;
+   shs->sysvals_need_upload = true;
 }
 
 static void
@@ -2259,7 +2259,7 @@ iris_set_clip_state(struct pipe_context *ctx,
    memcpy(&ice->state.clip_planes, state, sizeof(*state));
 
    ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS;
-   shs->cbuf0_needs_upload = true;
+   shs->sysvals_need_upload = true;
 }
 
 /**
@@ -2518,16 +2518,33 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    struct pipe_shader_buffer *cbuf = &shs->constbuf[index];
 
-   if (input && input->buffer) {
+   if (input && input->buffer_size && (input->buffer || input->user_buffer)) {
       shs->bound_cbufs |= 1u << index;
 
-      assert(index > 0);
+      if (input->user_buffer) {
+         void *map = NULL;
+         pipe_resource_reference(&cbuf->buffer, NULL);
+         u_upload_alloc(ice->ctx.const_uploader, 0, input->buffer_size, 64,
+                        &cbuf->buffer_offset, &cbuf->buffer, (void **) &map);
 
-      pipe_resource_reference(&cbuf->buffer, input->buffer);
-      cbuf->buffer_offset = input->buffer_offset;
-      cbuf->buffer_size = 
-         MIN2(input->buffer_size,
-              iris_resource_bo(input->buffer)->size - cbuf->buffer_offset);
+         if (!cbuf->buffer) {
+            /* Allocation was unsuccessful - just unbind */
+            iris_set_constant_buffer(ctx, p_stage, index, NULL);
+            return;
+         }
+
+         assert(map);
+         memcpy(map, input->user_buffer, input->buffer_size);
+         u_upload_unmap(ice->ctx.const_uploader);
+
+      } else if (input->buffer) {
+         pipe_resource_reference(&cbuf->buffer, input->buffer);
+
+         cbuf->buffer_offset = input->buffer_offset;
+         cbuf->buffer_size =
+            MIN2(input->buffer_size,
+                 iris_resource_bo(cbuf->buffer)->size - cbuf->buffer_offset);
+      }
 
       struct iris_resource *res = (void *) cbuf->buffer;
       res->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
@@ -2541,15 +2558,6 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       pipe_resource_reference(&shs->constbuf_surf_state[index].res, NULL);
    }
 
-   if (index == 0) {
-      if (input)
-         memcpy(&shs->cbuf0, input, sizeof(shs->cbuf0));
-      else
-         memset(&shs->cbuf0, 0, sizeof(shs->cbuf0));
-
-      shs->cbuf0_needs_upload = true;
-   }
-
    ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
    // XXX: maybe not necessary all the time...?
    // XXX: we need 3DS_BTP to commit these changes, and if we fell back to
@@ -2558,21 +2566,24 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 }
 
 static void
-upload_uniforms(struct iris_context *ice,
+upload_sysvals(struct iris_context *ice,
                 gl_shader_stage stage)
 {
    UNUSED struct iris_genx_state *genx = ice->state.genx;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
-   struct pipe_shader_buffer *cbuf = &shs->constbuf[0];
+
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
-
-   unsigned upload_size = shader->num_system_values * sizeof(uint32_t) +
-                          shs->cbuf0.buffer_size;
-
-   if (upload_size == 0)
+   if (!shader || shader->num_system_values == 0)
       return;
 
+   assert(shader->num_cbufs > 0);
+
+   unsigned sysval_cbuf_index = shader->num_cbufs - 1;
+   struct pipe_shader_buffer *cbuf = &shs->constbuf[sysval_cbuf_index];
+   unsigned upload_size = shader->num_system_values * sizeof(uint32_t);
    uint32_t *map = NULL;
+
+   assert(sysval_cbuf_index < PIPE_MAX_CONSTANT_BUFFERS);
    u_upload_alloc(ice->ctx.const_uploader, 0, upload_size, 64,
                   &cbuf->buffer_offset, &cbuf->buffer, (void **) &map);
 
@@ -2623,14 +2634,11 @@ upload_uniforms(struct iris_context *ice,
       *map++ = value;
    }
 
-   if (shs->cbuf0.user_buffer) {
-      memcpy(map, shs->cbuf0.user_buffer, shs->cbuf0.buffer_size);
-   }
-
    cbuf->buffer_size = upload_size;
    iris_upload_ubo_ssbo_surf_state(ice, cbuf,
-                                   &shs->constbuf_surf_state[0], false);
-   shs->cbuf0_needs_upload = false;
+                                   &shs->constbuf_surf_state[sysval_cbuf_index], false);
+
+   shs->sysvals_need_upload = false;
 }
 
 /**
@@ -4604,8 +4612,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       if (!shader)
          continue;
 
-      if (shs->cbuf0_needs_upload)
-         upload_uniforms(ice, stage);
+      if (shs->sysvals_need_upload)
+         upload_sysvals(ice, stage);
 
       struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
 
@@ -5462,8 +5470,8 @@ iris_upload_compute_state(struct iris_context *ice,
     */
    iris_use_pinned_bo(batch, ice->state.binder.bo, false);
 
-   if ((dirty & IRIS_DIRTY_CONSTANTS_CS) && shs->cbuf0_needs_upload)
-      upload_uniforms(ice, MESA_SHADER_COMPUTE);
+   if ((dirty & IRIS_DIRTY_CONSTANTS_CS) && shs->sysvals_need_upload)
+      upload_sysvals(ice, MESA_SHADER_COMPUTE);
 
    if (dirty & IRIS_DIRTY_BINDINGS_CS)
       iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);
