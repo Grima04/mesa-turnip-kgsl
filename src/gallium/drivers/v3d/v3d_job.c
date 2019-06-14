@@ -147,6 +147,17 @@ v3d_job_add_write_resource(struct v3d_job *job, struct pipe_resource *prsc)
 }
 
 void
+v3d_flush_jobs_using_bo(struct v3d_context *v3d, struct v3d_bo *bo)
+{
+        hash_table_foreach(v3d->jobs, entry) {
+                struct v3d_job *job = entry->data;
+
+                if (_mesa_set_search(job->bos, bo))
+                        v3d_job_submit(v3d, job);
+        }
+}
+
+void
 v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
                                 struct pipe_resource *prsc)
 {
