@@ -1549,7 +1549,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 		*post_flush |= flush_bits;
 	}
 
-	radv_update_color_clear_metadata(cmd_buffer, iview->image, subpass_att,
+	radv_update_color_clear_metadata(cmd_buffer, iview, subpass_att,
 					 clear_color);
 }
 

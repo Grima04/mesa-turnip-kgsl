@@ -1687,23 +1687,27 @@ radv_update_bound_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 			      struct radv_image *image,
+			      const VkImageSubresourceRange *range,
 			      uint32_t color_values[2])
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
-	uint64_t va = radv_buffer_get_va(image->bo);
-
-	va += image->offset + image->clear_value_offset;
+	uint64_t va = radv_image_get_fast_clear_va(image, range->baseMipLevel);
+	uint32_t level_count = radv_get_levelCount(image, range);
+	uint32_t count = 2 * level_count;
 
 	assert(radv_image_has_cmask(image) || radv_image_has_dcc(image));
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 4, cmd_buffer->state.predicating));
+	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, cmd_buffer->state.predicating));
 	radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
 			S_370_WR_CONFIRM(1) |
 			S_370_ENGINE_SEL(V_370_PFP));
 	radeon_emit(cs, va);
 	radeon_emit(cs, va >> 32);
-	radeon_emit(cs, color_values[0]);
-	radeon_emit(cs, color_values[1]);
+
+	for (uint32_t l = 0; l < level_count; l++) {
+		radeon_emit(cs, color_values[0]);
+		radeon_emit(cs, color_values[1]);
+	}
 }
 
 /**
@@ -1711,13 +1715,22 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
  */
 void
 radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
-				 struct radv_image *image,
+				 const struct radv_image_view *iview,
 				 int cb_idx,
 				 uint32_t color_values[2])
 {
+	struct radv_image *image = iview->image;
+	VkImageSubresourceRange range = {
+		.aspectMask = iview->aspect_mask,
+		.baseMipLevel = iview->base_mip,
+		.levelCount = iview->level_count,
+		.baseArrayLayer = iview->base_layer,
+		.layerCount = iview->layer_count,
+	};
+
 	assert(radv_image_has_cmask(image) || radv_image_has_dcc(image));
 
-	radv_set_color_clear_metadata(cmd_buffer, image, color_values);
+	radv_set_color_clear_metadata(cmd_buffer, image, &range, color_values);
 
 	radv_update_bound_fast_clear_color(cmd_buffer, image, cb_idx,
 					   color_values);
@@ -4894,7 +4907,8 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 					   VkImageLayout src_layout,
 					   VkImageLayout dst_layout,
 					   unsigned src_queue_mask,
-					   unsigned dst_queue_mask)
+					   unsigned dst_queue_mask,
+					   const VkImageSubresourceRange *range)
 {
 	if (radv_image_has_cmask(image)) {
 		uint32_t value = 0xffffffffu; /* Fully expanded mode. */
@@ -4929,7 +4943,8 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 
 	if (radv_image_has_cmask(image) || radv_image_has_dcc(image)) {
 		uint32_t color_values[2] = {};
-		radv_set_color_clear_metadata(cmd_buffer, image, color_values);
+		radv_set_color_clear_metadata(cmd_buffer, image, range,
+					      color_values);
 	}
 }
 
@@ -4947,7 +4962,8 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
 		radv_init_color_image_metadata(cmd_buffer, image,
 					       src_layout, dst_layout,
-					       src_queue_mask, dst_queue_mask);
+					       src_queue_mask, dst_queue_mask,
+					       range);
 		return;
 	}
 

@@ -1174,6 +1174,7 @@ struct radv_cmd_buffer {
 };
 
 struct radv_image;
+struct radv_image_view;
 
 bool radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer);
 
@@ -1251,7 +1252,7 @@ void radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 				   VkImageAspectFlags aspects);
 
 void radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
-				      struct radv_image *image,
+				      const struct radv_image_view *iview,
 				      int cb_idx,
 				      uint32_t color_values[2]);
 
@@ -1678,6 +1679,15 @@ static inline bool
 radv_image_is_tc_compat_htile(const struct radv_image *image)
 {
 	return radv_image_has_htile(image) && image->tc_compatible_htile;
+}
+
+static inline uint64_t
+radv_image_get_fast_clear_va(const struct radv_image *image,
+			     uint32_t base_level)
+{
+	uint64_t va = radv_buffer_get_va(image->bo);
+	va += image->offset + image->clear_value_offset + base_level * 8;
+	return va;
 }
 
 unsigned radv_image_queue_family_mask(const struct radv_image *image, uint32_t family, uint32_t queue_family);
