@@ -268,3 +268,24 @@ panfrost_tiler_body_size(unsigned width, unsigned height, uint8_t mask)
         return ALIGN_POT(header_size * 512 / 8, 512);
 }
 
+
+/* In the future, a heuristic to choose a tiler hierarchy mask would go here.
+ * At the moment, we just default to 0xFF, which enables all possible hierarchy
+ * levels. Overall this yields good performance but presumably incurs a cost in
+ * memory bandwidth / power consumption / etc, at least on smaller scenes that
+ * don't really need all the smaller levels enabled */
+
+unsigned
+panfrost_choose_hierarchy_mask(
+                unsigned width, unsigned height,
+                unsigned vertex_count)
+{
+        /* If there is no geometry, we don't bother enabling anything */
+
+        if (!vertex_count)
+                return 0x00;
+
+        /* Otherwise, default everything on. TODO: Proper tests */
+
+        return 0xFF;
+}
