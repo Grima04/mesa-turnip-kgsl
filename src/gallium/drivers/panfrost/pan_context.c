@@ -2153,12 +2153,15 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        /* Flush when switching away from an FBO, but not if the framebuffer
+        /* Flush when switching framebuffers, but not if the framebuffer
          * state is being restored by u_blitter
          */
 
-        if (!panfrost_is_scanout(ctx) && !ctx->blitter->running) {
-                panfrost_flush(pctx, NULL, 0);
+        bool is_scanout = panfrost_is_scanout(ctx);
+        bool has_draws = ctx->draw_count > 0;
+
+        if (!ctx->blitter->running && (!is_scanout || has_draws)) {
+                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
         }
 
         ctx->pipe_framebuffer.nr_cbufs = fb->nr_cbufs;
