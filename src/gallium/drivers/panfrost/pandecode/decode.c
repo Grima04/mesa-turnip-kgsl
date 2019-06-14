@@ -1508,8 +1508,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", t->width + 1);
                                         pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", t->height + 1);
                                         pandecode_prop("depth = MALI_POSITIVE(%" PRId16 ")", t->depth + 1);
-
-                                        pandecode_prop("unknown1 = %" PRId16, t->unknown1);
+                                        pandecode_prop("array_size = MALI_POSITIVE(%" PRId16 ")", t->array_size + 1);
                                         pandecode_prop("unknown3 = %" PRId16, t->unknown3);
                                         pandecode_prop("unknown3A = %" PRId8, t->unknown3A);
                                         pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
@@ -1558,6 +1557,9 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         /* Miptree for each face */
                                         if (!f.is_not_cubemap)
                                                 bitmap_count *= 6;
+
+                                        /* Array of textures */
+                                        bitmap_count *= MALI_NEGATIVE(t->array_size);
 
                                         /* Stride for each element */
                                         if (manual_stride)

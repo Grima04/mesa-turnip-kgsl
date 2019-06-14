@@ -1150,8 +1150,7 @@ struct mali_texture_descriptor {
         uint16_t width;
         uint16_t height;
         uint16_t depth;
-
-        uint16_t unknown1;
+        uint16_t array_size;
 
         struct mali_texture_format format;
 
