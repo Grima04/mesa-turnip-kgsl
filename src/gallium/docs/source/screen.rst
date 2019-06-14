@@ -533,6 +533,7 @@ The integer capabilities:
   lower those system values.
 * ``PIPE_CAP_ATOMIC_FLOAT_MINMAX``: Atomic float point minimum,
   maximum, exchange and compare-and-swap support to buffer and shared variables.
+* ``PIPE_CAP_TGSI_DIV``: Whether opcode DIV is supported
 
 .. _pipe_capf:
 
