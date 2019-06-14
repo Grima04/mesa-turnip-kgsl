@@ -86,6 +86,7 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 #define SWIZZLE_XYXX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X)
 #define SWIZZLE_XYZX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X)
 #define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
+#define SWIZZLE_XYXZ SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_Z)
 #define SWIZZLE_WWWW SWIZZLE(COMPONENT_W, COMPONENT_W, COMPONENT_W, COMPONENT_W)
 
 static inline unsigned
@@ -1405,6 +1406,15 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                                 ins.alu.mask = expand_writemask(mask_of(nr_comp));
                                 emit_mir_instruction(ctx, ins);
 
+                                /* To the hardware, z is depth, w is array
+                                 * layer. To NIR, z is array layer for a 2D
+                                 * array */
+
+                                bool has_array = instr->texture_array_size > 0;
+                                bool is_2d = instr->sampler_dim == GLSL_SAMPLER_DIM_2D;
+
+                                if (is_2d && has_array)
+                                        position_swizzle = SWIZZLE_XYXZ;
                         }
 
                         break;
