@@ -230,6 +230,15 @@ static const struct pandecode_flag_info shader_unknown1_flag_info [] = {
 };
 #undef FLAG_INFO
 
+#define FLAG_INFO(flag) { MALI_MFBD_##flag, "MALI_MFBD_" #flag }
+static const struct pandecode_flag_info mfbd_flag_info [] = {
+        FLAG_INFO(DEPTH_WRITE),
+        FLAG_INFO(EXTRA),
+        {}
+};
+#undef FLAG_INFO
+
+
 extern char *replace_fragment;
 extern char *replace_vertex;
 
@@ -659,7 +668,10 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
         pandecode_prop("rt_count_1 = MALI_POSITIVE(%d)", fb->rt_count_1 + 1);
         pandecode_prop("rt_count_2 = %d", fb->rt_count_2);
 
-        pandecode_prop("unk3 = 0x%x", fb->unk3);
+        pandecode_log(".mfbd_flags = ");
+        pandecode_log_decoded_flags(mfbd_flag_info, fb->mfbd_flags);
+        pandecode_log_cont(",\n");
+
         pandecode_prop("clear_stencil = 0x%x", fb->clear_stencil);
         pandecode_prop("clear_depth = %f", fb->clear_depth);
 
@@ -697,7 +709,7 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
 
         gpu_va += sizeof(struct bifrost_framebuffer);
 
-        if ((fb->unk3 & MALI_MFBD_EXTRA) && with_render_targets) {
+        if ((fb->mfbd_flags & MALI_MFBD_EXTRA) && with_render_targets) {
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
                 const struct bifrost_fb_extra *PANDECODE_PTR_VAR(fbx, mem, (mali_ptr) gpu_va);
 

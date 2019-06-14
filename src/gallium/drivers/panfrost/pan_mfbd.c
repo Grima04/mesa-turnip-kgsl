@@ -124,7 +124,7 @@ panfrost_mfbd_set_zsbuf(
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         if (rsrc->bo->layout == PAN_AFBC) {
-                fb->unk3 |= MALI_MFBD_EXTRA;
+                fb->mfbd_flags |= MALI_MFBD_EXTRA;
 
                 fbx->flags =
                         MALI_EXTRA_PRESENT |
@@ -141,7 +141,7 @@ panfrost_mfbd_set_zsbuf(
                 fbx->ds_afbc.zero1 = 0x10009;
                 fbx->ds_afbc.padding = 0x1000;
         } else if (rsrc->bo->layout == PAN_LINEAR) {
-                fb->unk3 |= MALI_MFBD_EXTRA;
+                fb->mfbd_flags |= MALI_MFBD_EXTRA;
                 fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS | 0x1;
 
                 fbx->ds_linear.depth = rsrc->bo->gpu;
@@ -171,7 +171,7 @@ panfrost_mfbd_upload(
         off_t offset = 0;
 
         /* There may be extra data stuck in the middle */
-        bool has_extra = fb->unk3 & MALI_MFBD_EXTRA;
+        bool has_extra = fb->mfbd_flags & MALI_MFBD_EXTRA;
 
         /* Compute total size for transfer */
 
@@ -213,7 +213,7 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx)
 
         /* XXX: MRT case */
         fb.rt_count_2 = 1;
-        fb.unk3 = 0x100;
+        fb.mfbd_flags = 0x100;
 
         /* TODO: MRT clear */
         panfrost_mfbd_clear(job, &fb, &fbx, &rts[0]);
@@ -263,13 +263,13 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx)
         }
 
         if (job->requirements & PAN_REQ_DEPTH_WRITE)
-                fb.unk3 |= MALI_MFBD_DEPTH_WRITE;
+                fb.mfbd_flags |= MALI_MFBD_DEPTH_WRITE;
 
         if (ctx->pipe_framebuffer.nr_cbufs == 1) {
                 struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[0]->texture;
 
                 if (rsrc->bo->has_checksum) {
-                        fb.unk3 |= MALI_MFBD_EXTRA;
+                        fb.mfbd_flags |= MALI_MFBD_EXTRA;
                         fbx.flags |= MALI_EXTRA_PRESENT;
                         fbx.checksum_stride = rsrc->bo->checksum_stride;
                         fbx.checksum = rsrc->bo->gpu + rsrc->bo->slices[0].stride * rsrc->base.height0;

@@ -1493,7 +1493,7 @@ struct bifrost_fb_extra {
         u64 zero3, zero4;
 } __attribute__((packed));
 
-/* flags for unk3 */
+/* Flags for mfbd_flags */
 
 /* Enables writing depth results back to main memory (rather than keeping them
  * on-chip in the tile buffer and then discarding) */
@@ -1524,7 +1524,7 @@ struct bifrost_framebuffer {
         u32 zero4 : 5;
         /* 0x30 */
         u32 clear_stencil : 8;
-        u32 unk3 : 24; // = 0x100
+        u32 mfbd_flags : 24; // = 0x100
         float clear_depth;
 
 
