@@ -2107,7 +2107,7 @@ panfrost_create_sampler_view(
                         .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
                         .format = format,
 
-                        .usage1 = 0x0,
+                        .usage1 = (texture->target == PIPE_TEXTURE_3D) ? MALI_TEX_3D : 0,
                         .is_not_cubemap = texture->target != PIPE_TEXTURE_CUBE,
 
                         .usage2 = usage2_layout

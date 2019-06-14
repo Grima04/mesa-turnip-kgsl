@@ -1131,6 +1131,9 @@ enum mali_wrap_mode {
 
 /* Corresponds to the type passed to glTexImage2D and so forth */
 
+/* For usage1 */
+#define MALI_TEX_3D (0x04)
+
 /* Flags for usage2 */
 #define MALI_TEX_MANUAL_STRIDE (0x20)
 
