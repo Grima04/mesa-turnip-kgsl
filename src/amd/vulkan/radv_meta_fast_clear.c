@@ -712,7 +712,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 		/* Clear the image's fast-clear eliminate predicate because
 		 * FMASK and DCC also imply a fast-clear eliminate.
 		 */
-		radv_update_fce_metadata(cmd_buffer, image, false);
+		radv_update_fce_metadata(cmd_buffer, image, subresourceRange, false);
 
 		/* Mark the image as being decompressed. */
 		if (decompress_dcc)

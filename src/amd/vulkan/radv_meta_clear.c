@@ -1521,6 +1521,13 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 		uint32_t reset_value;
 		bool can_avoid_fast_clear_elim;
 		bool need_decompress_pass = false;
+		VkImageSubresourceRange range = {
+			.aspectMask = iview->aspect_mask,
+			.baseMipLevel = iview->base_mip,
+			.levelCount = iview->level_count,
+			.baseArrayLayer = iview->base_layer,
+			.layerCount = iview->layer_count,
+		};
 
 		vi_get_fast_clear_parameters(iview->vk_format,
 					     &clear_value, &reset_value,
@@ -1538,7 +1545,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 
 		flush_bits |= radv_clear_dcc(cmd_buffer, iview->image, reset_value);
 
-		radv_update_fce_metadata(cmd_buffer, iview->image,
+		radv_update_fce_metadata(cmd_buffer, iview->image, &range,
 					 need_decompress_pass);
 	} else {
 		flush_bits = radv_clear_cmask(cmd_buffer, iview->image,

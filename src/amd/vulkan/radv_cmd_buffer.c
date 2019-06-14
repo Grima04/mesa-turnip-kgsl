@@ -1607,22 +1607,27 @@ radv_load_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
  */
 void
 radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer,
-			 struct radv_image *image, bool value)
+			 struct radv_image *image,
+			 const VkImageSubresourceRange *range, bool value)
 {
 	uint64_t pred_val = value;
-	uint64_t va = radv_buffer_get_va(image->bo);
-	va += image->offset + image->fce_pred_offset;
+	uint64_t va = radv_image_get_fce_pred_va(image, range->baseMipLevel);
+	uint32_t level_count = radv_get_levelCount(image, range);
+	uint32_t count = 2 * level_count;
 
 	assert(radv_image_has_dcc(image));
 
-	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 4, 0));
+	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
 	radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) |
 				    S_370_WR_CONFIRM(1) |
 				    S_370_ENGINE_SEL(V_370_PFP));
 	radeon_emit(cmd_buffer->cs, va);
 	radeon_emit(cmd_buffer->cs, va >> 32);
-	radeon_emit(cmd_buffer->cs, pred_val);
-	radeon_emit(cmd_buffer->cs, pred_val >> 32);
+
+	for (uint32_t l = 0; l < level_count; l++) {
+		radeon_emit(cmd_buffer->cs, pred_val);
+		radeon_emit(cmd_buffer->cs, pred_val >> 32);
+	}
 }
 
 /**
@@ -4937,7 +4942,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 
 		radv_initialize_dcc(cmd_buffer, image, value);
 
-		radv_update_fce_metadata(cmd_buffer, image,
+		radv_update_fce_metadata(cmd_buffer, image, range,
 					 need_decompress_pass);
 	}
 
