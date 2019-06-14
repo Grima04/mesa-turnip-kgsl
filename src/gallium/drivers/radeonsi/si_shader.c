@@ -5225,7 +5225,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 
 	if (sel && screen->info.chip_class >= GFX9 &&
 	    sel->type == PIPE_SHADER_GEOMETRY && !shader->is_gs_copy_shader) {
-		esgs_ring_size = shader->gs_info.esgs_ring_size;;
+		esgs_ring_size = shader->gs_info.esgs_ring_size;
 	}
 
 	if (sel && shader->key.as_ngg) {
@@ -5236,8 +5236,8 @@ static bool si_shader_binary_open(struct si_screen *screen,
 		}
 
 		/* GS stores Primitive IDs into LDS at the address corresponding
-		 * to the provoking vertex. All vertex threads load and export
-		 * PrimitiveID for their thread.
+		 * to the ES thread of the provoking vertex. All ES threads
+		 * load and export PrimitiveID for their thread.
 		 */
 		if (sel->type == PIPE_SHADER_VERTEX &&
 		    shader->key.mono.u.vs_export_prim_id)
@@ -6076,12 +6076,10 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 		ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
 		if (shader->key.as_es)
 			ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
-		else {
-			if (shader->key.as_ngg)
-				ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
-			else
-				ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
-		}
+		else if (shader->key.as_ngg)
+			ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
+		else
+			ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
 		bld_base->emit_epilogue = si_tgsi_emit_epilogue;
 		break;
 	case PIPE_SHADER_GEOMETRY:

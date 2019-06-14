@@ -697,7 +697,7 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
 
 	/* Draw state. */
 	if (ia_multi_vgt_param != sctx->last_multi_vgt_param) {
-		if (sctx->chip_class >= GFX9)
+		if (sctx->chip_class == GFX9)
 			radeon_set_uconfig_reg_idx(cs, sctx->screen,
 						   R_030960_IA_MULTI_VGT_PARAM, 4,
 						   ia_multi_vgt_param);
@@ -1015,7 +1015,9 @@ void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,
 	bool compute_ib = !sctx->has_graphics ||
 			  cs == sctx->prim_discard_compute_cs;
 
-	if (sctx->chip_class >= GFX9 || compute_ib) {
+	assert(sctx->chip_class <= GFX9);
+
+	if (sctx->chip_class == GFX9 || compute_ib) {
 		/* Flush caches and wait for the caches to assert idle. */
 		radeon_emit(cs, PKT3(PKT3_ACQUIRE_MEM, 5, 0));
 		radeon_emit(cs, cp_coher_cntl);	/* CP_COHER_CNTL */
@@ -1379,7 +1381,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 	/* GFX9: Wait for idle if we're flushing CB or DB. ACQUIRE_MEM doesn't
 	 * wait for idle on GFX9. We have to use a TS event.
 	 */
-	if (sctx->chip_class >= GFX9 && flush_cb_db) {
+	if (sctx->chip_class == GFX9 && flush_cb_db) {
 		uint64_t va;
 		unsigned tc_flags, cb_db_event;
 

@@ -2579,7 +2579,7 @@ static void si_initialize_color_surface(struct si_context *sctx,
 		surf->cb_color_attrib3 = S_028EE0_MIP0_DEPTH(mip0_depth) |
 					 S_028EE0_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type) |
 					 S_028EE0_RESOURCE_LEVEL(1);
-	} else if (sctx->chip_class >= GFX9) {
+	} else if (sctx->chip_class == GFX9) {
 		color_view |= S_028C6C_MIP_LEVEL_GFX9(surf->base.u.tex.level);
 		color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
 				S_028C74_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type);
@@ -3245,7 +3245,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 					       cb->cb_color_attrib2);
 			radeon_set_context_reg(cs, R_028EE0_CB_COLOR0_ATTRIB3 + i * 4,
 					       cb_color_attrib3);
-		} else if (sctx->chip_class >= GFX9) {
+		} else if (sctx->chip_class == GFX9) {
 			struct gfx9_surf_meta_flags meta;
 
 			if (tex->dcc_offset)
@@ -3380,7 +3380,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 			radeon_emit(cs, zb->db_depth_base >> 32);	/* DB_Z_WRITE_BASE_HI */
 			radeon_emit(cs, zb->db_stencil_base >> 32);	/* DB_STENCIL_WRITE_BASE_HI */
 			radeon_emit(cs, zb->db_htile_data_base >> 32);	/* DB_HTILE_DATA_BASE_HI */
-		} else if (sctx->chip_class >= GFX9) {
+		} else if (sctx->chip_class == GFX9) {
 			radeon_set_context_reg_seq(cs, R_028014_DB_HTILE_DATA_BASE, 3);
 			radeon_emit(cs, zb->db_htile_data_base);	/* DB_HTILE_DATA_BASE */
 			radeon_emit(cs, S_028018_BASE_HI(zb->db_htile_data_base >> 32)); /* DB_HTILE_DATA_BASE_HI */
@@ -3908,7 +3908,7 @@ gfx10_make_texture_descriptor(struct si_screen *screen,
 			/*
 			 * X24S8 is implemented as an 8_8_8_8 data format, to
 			 * fix texture gathers. This affects at least
-			 * GL45-CTS.texture_cube_map_array.sampling on VI.
+			 * GL45-CTS.texture_cube_map_array.sampling on GFX8.
 			 */
 			util_format_compose_swizzles(swizzle_wwww, state_swizzle, swizzle);
 			is_stencil = true;
@@ -4188,7 +4188,7 @@ si_make_texture_descriptor(struct si_screen *screen,
 	}
 
 	/* S8 with Z32 HTILE needs a special format. */
-	if (screen->info.chip_class >= GFX9 &&
+	if (screen->info.chip_class == GFX9 &&
 	    pipe_format == PIPE_FORMAT_S8_UINT &&
 	    tex->tc_compatible_htile)
 		data_format = V_008F14_IMG_DATA_FORMAT_S8_32;
@@ -4240,7 +4240,7 @@ si_make_texture_descriptor(struct si_screen *screen,
 	state[6] = 0;
 	state[7] = 0;
 
-	if (screen->info.chip_class >= GFX9) {
+	if (screen->info.chip_class == GFX9) {
 		unsigned bc_swizzle = gfx9_border_color_swizzle(desc->swizzle);
 
 		/* Depth is the the last accessible layer on Gfx9.
@@ -4282,7 +4282,7 @@ si_make_texture_descriptor(struct si_screen *screen,
 		va = tex->buffer.gpu_address + tex->fmask_offset;
 
 #define FMASK(s,f) (((unsigned)(MAX2(1, s)) * 16) + (MAX2(1, f)))
-		if (screen->info.chip_class >= GFX9) {
+		if (screen->info.chip_class == GFX9) {
 			data_format = V_008F14_IMG_DATA_FORMAT_FMASK;
 			switch (FMASK(res->nr_samples, res->nr_storage_samples)) {
 			case FMASK(2,1):
@@ -4391,7 +4391,7 @@ si_make_texture_descriptor(struct si_screen *screen,
 		fmask_state[6] = 0;
 		fmask_state[7] = 0;
 
-		if (screen->info.chip_class >= GFX9) {
+		if (screen->info.chip_class == GFX9) {
 			fmask_state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode);
 			fmask_state[4] |= S_008F20_DEPTH(last_layer) |
 					  S_008F20_PITCH(tex->surface.u.gfx9.fmask.epitch);
@@ -5470,7 +5470,7 @@ static void si_init_config(struct si_context *sctx)
 		si_pm4_set_reg(pm4, R_030964_GE_MAX_VTX_INDX, ~0);
 		si_pm4_set_reg(pm4, R_030924_GE_MIN_VTX_INDX, 0);
 		si_pm4_set_reg(pm4, R_030928_GE_INDX_OFFSET, 0);
-	} else if (sctx->chip_class >= GFX9) {
+	} else if (sctx->chip_class == GFX9) {
 		si_pm4_set_reg(pm4, R_030920_VGT_MAX_VTX_INDX, ~0);
 		si_pm4_set_reg(pm4, R_030924_VGT_MIN_VTX_INDX, 0);
 		si_pm4_set_reg(pm4, R_030928_VGT_INDX_OFFSET, 0);

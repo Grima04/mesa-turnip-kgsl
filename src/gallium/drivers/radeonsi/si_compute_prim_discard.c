@@ -797,7 +797,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		count = LLVMBuildMul(builder, count,
 				     LLVMConstInt(ctx->i32, vertices_per_prim, 0), "");
 
-		/* VI needs to disable caching, so that the CP can see the stored value.
+		/* GFX8 needs to disable caching, so that the CP can see the stored value.
 		 * MTYPE=3 bypasses TC L2.
 		 */
 		if (ctx->screen->info.chip_class <= GFX8) {
@@ -1196,6 +1196,8 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
 		/* This needs to be done at the beginning of IBs due to possible
 		 * TTM buffer moves in the kernel.
+		 *
+		 * TODO: update for GFX10
 		 */
 		si_emit_surface_sync(sctx, cs,
 				     S_0085F0_TC_ACTION_ENA(1) |

@@ -391,7 +391,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 		}
 
 		state[7] = meta_va >> 16;
-	} else if (sscreen->info.chip_class >= GFX9) {
+	} else if (sscreen->info.chip_class == GFX9) {
 		state[3] &= C_008F1C_SW_MODE;
 		state[4] &= C_008F20_PITCH;
 
@@ -2109,7 +2109,7 @@ void si_shader_change_notify(struct si_context *sctx)
 		if (sctx->chip_class >= GFX10) {
 			si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
 					      R_00B430_SPI_SHADER_USER_DATA_HS_0);
-		} else if (sctx->chip_class >= GFX9) {
+		} else if (sctx->chip_class == GFX9) {
 			si_set_user_data_base(sctx, PIPE_SHADER_VERTEX,
 					      R_00B430_SPI_SHADER_USER_DATA_LS_0);
 		} else {
