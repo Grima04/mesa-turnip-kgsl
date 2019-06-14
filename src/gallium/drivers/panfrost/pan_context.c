@@ -153,7 +153,6 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
 
                 /* See pan_tiler.c */
                 .tiler_polygon_list  = ctx->misc_0.gpu,
-                .tiler_polygon_list_size = 0x0,
 
                 .width1 = MALI_POSITIVE(width),
                 .height1 = MALI_POSITIVE(height),
@@ -176,8 +175,14 @@ panfrost_emit_mfbd(struct panfrost_context *ctx)
         unsigned header_size = panfrost_tiler_header_size(
                         width, height, framebuffer.tiler_hierarchy_mask);
 
+        unsigned body_size = panfrost_tiler_body_size(
+                        width, height, framebuffer.tiler_hierarchy_mask);
+
         framebuffer.tiler_polygon_list_body =
                 framebuffer.tiler_polygon_list + header_size;
+
+        framebuffer.tiler_polygon_list_size =
+                header_size + body_size;
 
         return framebuffer;
 }

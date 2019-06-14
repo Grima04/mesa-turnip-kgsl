@@ -254,3 +254,17 @@ panfrost_tiler_header_size(unsigned width, unsigned height, uint8_t mask)
 
         return panfrost_raw_header_size(width, height, masked_count);
 }
+
+/* The body seems to be about 512 bytes per tile. Noting that the header is
+ * about 8 bytes per tile, we can be a little sloppy and estimate the body size
+ * to be equal to the header size * (512/8). Given the header size is a
+ * considerable overestimate, this is fine. Eventually, we should maybe figure
+ * out how to actually implement this. */
+
+unsigned
+panfrost_tiler_body_size(unsigned width, unsigned height, uint8_t mask)
+{
+        unsigned header_size = panfrost_tiler_header_size(width, height, mask);
+        return ALIGN_POT(header_size * 512 / 8, 512);
+}
+
