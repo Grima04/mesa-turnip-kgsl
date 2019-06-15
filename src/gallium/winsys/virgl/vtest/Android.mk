@@ -27,6 +27,8 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := $(C_SOURCES)
 
+LOCAL_C_INCLUDES := $(GALLIUM_TOP)/winsys/virgl/common
+
 LOCAL_MODULE := libmesa_winsys_virgl_vtest
 
 LOCAL_STATIC_LIBRARIES := libmesa_winsys_virgl_common

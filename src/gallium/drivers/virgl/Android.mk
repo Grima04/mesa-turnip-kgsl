@@ -46,5 +46,5 @@ $(intermediates)/virgl/virgl_driinfo.h: $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS)
 
 ifneq ($(HAVE_GALLIUM_VIRGL),)
 GALLIUM_TARGET_DRIVERS += virtio_gpu
-$(eval GALLIUM_LIBS += $(LOCAL_MODULE) libmesa_winsys_virgl libmesa_winsys_virgl_vtest)
+$(eval GALLIUM_LIBS += $(LOCAL_MODULE) libmesa_winsys_virgl_common libmesa_winsys_virgl libmesa_winsys_virgl_vtest)
 endif
