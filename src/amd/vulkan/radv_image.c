@@ -379,6 +379,9 @@ radv_make_buffer_descriptor(struct radv_device *device,
 	num_format = radv_translate_buffer_numformat(desc, first_non_void);
 	data_format = radv_translate_buffer_dataformat(desc, first_non_void);
 
+	assert(data_format != V_008F0C_BUF_DATA_FORMAT_INVALID);
+	assert(num_format != ~0);
+
 	va += offset;
 	state[0] = va;
 	state[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) |
