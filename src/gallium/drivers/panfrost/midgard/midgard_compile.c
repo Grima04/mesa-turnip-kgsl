@@ -1421,10 +1421,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                                  * layer. To NIR, z is array layer for a 2D
                                  * array */
 
-                                bool has_array = instr->texture_array_size > 0;
-                                bool is_2d = instr->sampler_dim == GLSL_SAMPLER_DIM_2D;
-
-                                if (is_2d && has_array)
+                                if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D)
                                         position_swizzle = SWIZZLE_XYXZ;
                         }
 
