@@ -746,7 +746,11 @@ if with_platform_haiku
   pre_args += '-DHAVE_HAIKU_PLATFORM'
 endif
 
-prog_python = import('python3').find_python()
+if meson.version().version_compare('>=0.50')
+  prog_python = import('python').find_installation('python3')
+else
+  prog_python = import('python3').find_python()
+endif
 has_mako = run_command(
   prog_python, '-c',
   '''
