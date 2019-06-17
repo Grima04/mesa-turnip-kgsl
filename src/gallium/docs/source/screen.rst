@@ -34,6 +34,9 @@ The integer capabilities:
   bound.
 * ``PIPE_CAP_OCCLUSION_QUERY``: Whether occlusion queries are available.
 * ``PIPE_CAP_QUERY_TIME_ELAPSED``: Whether PIPE_QUERY_TIME_ELAPSED queries are available.
+* ``PIPE_CAP_TEXTURE_SHADOW_MAP``: indicates whether the fragment shader hardware
+  can do the depth texture / Z comparison operation in TEX instructions
+  for shadow testing.
 * ``PIPE_CAP_TEXTURE_SWIZZLE``: Whether swizzling through sampler views is
   supported.
 * ``PIPE_CAP_MAX_TEXTURE_2D_SIZE``: The maximum size of 2D (and 1D) textures.
