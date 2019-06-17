@@ -39,13 +39,13 @@
 #include "nir_builder.h"
 #include "nir_format_convert.h"
 
-static void
+static bool
 project_src(nir_builder *b, nir_tex_instr *tex)
 {
    /* Find the projector in the srcs list, if present. */
    int proj_index = nir_tex_instr_src_index(tex, nir_tex_src_projector);
    if (proj_index < 0)
-      return;
+      return false;
 
    b->cursor = nir_before_instr(&tex->instr);
 
@@ -100,6 +100,7 @@ project_src(nir_builder *b, nir_tex_instr *tex)
    }
 
    nir_tex_instr_remove_src(tex, proj_index);
+   return true;
 }
 
 static nir_ssa_def *
@@ -1005,8 +1006,7 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
        * as clamping happens *after* projection:
        */
       if (lower_txp || sat_mask) {
-         project_src(b, tex);
-         progress = true;
+         progress |= project_src(b, tex);
       }
 
       if ((tex->op == nir_texop_txf && options->lower_txf_offset) ||
