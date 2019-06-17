@@ -779,7 +779,7 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_image_view iview = {0};
 	struct radv_device *device = cmd_buffer->device;
 
-	/* This assumes the image is 2d with 1 layer and 1 mipmap level */
+	/* This assumes the image is 2d with 1 layer */
 	struct radv_cmd_state *state = &cmd_buffer->state;
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
@@ -800,58 +800,60 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	                     VK_PIPELINE_BIND_POINT_COMPUTE,
 	                     device->meta_state.fast_clear_flush.dcc_decompress_compute_pipeline);
 
-	radv_image_view_init(&iview, cmd_buffer->device,
-			     &(VkImageViewCreateInfo) {
-				     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-					     .image = radv_image_to_handle(image),
-					     .viewType = VK_IMAGE_VIEW_TYPE_2D,
-					     .format = image->vk_format,
-					     .subresourceRange = {
-						.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-						.baseMipLevel = 0,
-						.levelCount = 1,
-						.baseArrayLayer = 0,
-						.layerCount = 1
-					     },
-			     });
+	for (uint32_t l = 0; l < radv_get_levelCount(image, subresourceRange); l++) {
+		radv_image_view_init(&iview, cmd_buffer->device,
+				     &(VkImageViewCreateInfo) {
+					     .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+						     .image = radv_image_to_handle(image),
+						     .viewType = VK_IMAGE_VIEW_TYPE_2D,
+						     .format = image->vk_format,
+						     .subresourceRange = {
+							.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+							.baseMipLevel = subresourceRange->baseMipLevel + l,
+							.levelCount = 1,
+							.baseArrayLayer = 0,
+							.layerCount = 1
+						     },
+				     });
 
-	radv_meta_push_descriptor_set(cmd_buffer,
-				      VK_PIPELINE_BIND_POINT_COMPUTE,
-				      device->meta_state.fast_clear_flush.dcc_decompress_compute_p_layout,
-				      0, /* set */
-				      2, /* descriptorWriteCount */
-				      (VkWriteDescriptorSet[]) {
+		radv_meta_push_descriptor_set(cmd_buffer,
+					      VK_PIPELINE_BIND_POINT_COMPUTE,
+					      device->meta_state.fast_clear_flush.dcc_decompress_compute_p_layout,
+					      0, /* set */
+					      2, /* descriptorWriteCount */
+					      (VkWriteDescriptorSet[]) {
 				              {
-				                       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-				                       .dstBinding = 0,
-				                       .dstArrayElement = 0,
-				                       .descriptorCount = 1,
-				                       .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-				                       .pImageInfo = (VkDescriptorImageInfo[]) {
-				                               {
-				                                       .sampler = VK_NULL_HANDLE,
-				                                       .imageView = radv_image_view_to_handle(&iview),
-				                                       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-				                               },
-				                       }
-				              },
-				              {
-				                       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-				                       .dstBinding = 1,
-				                       .dstArrayElement = 0,
-				                       .descriptorCount = 1,
-				                       .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				                       .pImageInfo = (VkDescriptorImageInfo[]) {
-				                               {
-				                                       .sampler = VK_NULL_HANDLE,
-				                                       .imageView = radv_image_view_to_handle(&iview),
-				                                       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-				                               },
-				                       }
-				              }
-				      });
+					                       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+					                       .dstBinding = 0,
+					                       .dstArrayElement = 0,
+					                       .descriptorCount = 1,
+					                       .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+					                       .pImageInfo = (VkDescriptorImageInfo[]) {
+					                               {
+					                                       .sampler = VK_NULL_HANDLE,
+					                                       .imageView = radv_image_view_to_handle(&iview),
+					                                       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+					                               },
+					                       }
+					              },
+					              {
+					                       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+					                       .dstBinding = 1,
+					                       .dstArrayElement = 0,
+					                       .descriptorCount = 1,
+					                       .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					                       .pImageInfo = (VkDescriptorImageInfo[]) {
+					                               {
+					                                       .sampler = VK_NULL_HANDLE,
+					                                       .imageView = radv_image_view_to_handle(&iview),
+					                                       .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+					                               },
+					                       }
+					              }
+					      });
 
-	radv_unaligned_dispatch(cmd_buffer, image->info.width, image->info.height, 1);
+		radv_unaligned_dispatch(cmd_buffer, image->info.width, image->info.height, 1);
+	}
 
 	/* Mark this image as actually being decompressed. */
 	radv_update_dcc_metadata(cmd_buffer, image, subresourceRange, false);
