@@ -116,12 +116,12 @@ static boolean
 v3d_get_query_result(struct pipe_context *pctx, struct pipe_query *query,
                      boolean wait, union pipe_query_result *vresult)
 {
+        struct v3d_context *v3d = v3d_context(pctx);
         struct v3d_query *q = (struct v3d_query *)query;
         uint32_t result = 0;
 
         if (q->bo) {
-                /* XXX: Only flush the jobs using this BO. */
-                v3d_flush(pctx);
+                v3d_flush_jobs_using_bo(v3d, q->bo);
 
                 if (wait) {
                         if (!v3d_bo_wait(q->bo, 0, "query"))
