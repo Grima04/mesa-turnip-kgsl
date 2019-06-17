@@ -3625,6 +3625,9 @@ bool nir_lower_phis_to_regs_block(nir_block *block);
 bool nir_lower_ssa_defs_to_regs_block(nir_block *block);
 bool nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl);
 
+/* This is here for unit tests. */
+bool nir_opt_comparison_pre_impl(nir_function_impl *impl);
+
 bool nir_opt_comparison_pre(nir_shader *shader);
 
 bool nir_opt_algebraic(nir_shader *shader);
