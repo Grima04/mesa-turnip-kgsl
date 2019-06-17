@@ -344,29 +344,21 @@ panfrost_make_constant(unsigned *factors, unsigned num_factors, const struct pip
  * representating, return false to handle degenerate cases with a blend shader
  */
 
-static const struct pipe_rt_blend_state default_blend = {
-        .blend_enable = 1,
-
-        .rgb_func = PIPE_BLEND_ADD,
-        .rgb_src_factor = PIPE_BLENDFACTOR_ONE,
-        .rgb_dst_factor = PIPE_BLENDFACTOR_ZERO,
-
-        .alpha_func = PIPE_BLEND_ADD,
-        .alpha_src_factor = PIPE_BLENDFACTOR_ONE,
-        .alpha_dst_factor = PIPE_BLENDFACTOR_ZERO,
-
-        .colormask = PIPE_MASK_RGBA
-};
-
 bool
 panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct panfrost_blend_state *so, unsigned colormask, const struct pipe_blend_color *blend_color)
 {
         struct mali_blend_equation *out = &so->equation;
 
+        /* Gallium and Mali represent colour masks identically. XXX: Static assert for future proof */
+        out->color_mask = colormask;
+
         /* If no blending is enabled, default back on `replace` mode */
 
-        if (!blend->blend_enable)
-                return panfrost_make_fixed_blend_mode(&default_blend, so, colormask, blend_color);
+        if (!blend->blend_enable) {
+                out->rgb_mode = 0x122;
+                out->alpha_mode = 0x122;
+                return true;
+        }
 
         /* We have room only for a single float32 constant between the four
          * components. If we need more, spill to the programmable pipeline. */
@@ -394,9 +386,6 @@ panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct p
 
         out->rgb_mode = rgb_mode;
         out->alpha_mode = alpha_mode;
-
-        /* Gallium and Mali represent colour masks identically. XXX: Static assert for future proof */
-        out->color_mask = colormask;
 
         return true;
 }
