@@ -129,11 +129,21 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
     */
    if (wait && (xfer->base.usage & (PIPE_TRANSFER_DISCARD_RANGE |
                                     PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE))) {
-      const bool can_realloc =
-         (xfer->base.usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) &&
-         virgl_can_rebind_resource(vctx, &res->u.b);
-      const bool can_staging = vctx->transfer_uploader &&
-                               !vctx->transfer_uploader_in_use;
+      bool can_realloc = false;
+      bool can_staging = false;
+
+      /* A PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE transfer may be followed by
+       * PIPE_TRANSFER_UNSYNCHRONIZED transfers to non-overlapping regions.
+       * It cannot be treated as a PIPE_TRANSFER_DISCARD_RANGE transfer,
+       * otherwise those following unsynchronized transfers may overwrite
+       * valid data.
+       */
+      if (xfer->base.usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+         can_realloc = virgl_can_rebind_resource(vctx, &res->u.b);
+      } else {
+         can_staging = vctx->transfer_uploader &&
+                       !vctx->transfer_uploader_in_use;
+      }
 
       /* discard implies no readback */
       assert(!readback);
