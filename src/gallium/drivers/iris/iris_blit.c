@@ -423,10 +423,9 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       filter = BLORP_FILTER_NEAREST;
    }
 
-   bool flush_hack = src_fmt.fmt != src_res->surf.format &&
-                     iris_batch_references(batch, src_res->bo);
+   bool format_mismatch = src_fmt.fmt != src_res->surf.format;
 
-   if (flush_hack)
+   if (format_mismatch && iris_batch_references(batch, src_res->bo))
       tex_cache_flush_hack(batch);
 
    if (dst_res->base.target == PIPE_BUFFER)
@@ -483,7 +482,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    blorp_batch_finish(&blorp_batch);
 
-   if (flush_hack)
+   if (format_mismatch)
       tex_cache_flush_hack(batch);
 
    iris_resource_finish_write(ice, dst_res, info->dst.level, info->dst.box.z,
@@ -549,8 +548,7 @@ iris_copy_region(struct blorp_context *blorp,
    get_copy_region_aux_settings(devinfo, dst_res, &dst_aux_usage,
                                 &dst_clear_supported);
 
-   bool flush_hack = iris_batch_references(batch, src_res->bo);
-   if (flush_hack)
+   if (iris_batch_references(batch, src_res->bo))
       tex_cache_flush_hack(batch);
 
    if (dst->target == PIPE_BUFFER)
@@ -605,8 +603,7 @@ iris_copy_region(struct blorp_context *blorp,
                                  src_box->depth, dst_aux_usage);
    }
 
-   if (flush_hack)
-      tex_cache_flush_hack(batch);
+   tex_cache_flush_hack(batch);
 }
 
 
