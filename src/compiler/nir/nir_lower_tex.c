@@ -266,6 +266,11 @@ lower_offset(nir_builder *b, nir_tex_instr *tex)
 static void
 lower_rect(nir_builder *b, nir_tex_instr *tex)
 {
+   /* Set the sampler_dim to 2D here so that get_texture_size picks up the
+    * right dimensionality.
+    */
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+
    nir_ssa_def *txs = get_texture_size(b, tex);
    nir_ssa_def *scale = nir_frcp(b, txs);
 
@@ -280,8 +285,6 @@ lower_rect(nir_builder *b, nir_tex_instr *tex)
                             &tex->src[i].src,
                             nir_src_for_ssa(nir_fmul(b, coords, scale)));
    }
-
-   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
 }
 
 static void
