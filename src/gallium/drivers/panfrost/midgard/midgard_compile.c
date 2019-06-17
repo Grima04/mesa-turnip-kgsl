@@ -1366,22 +1366,9 @@ midgard_tex_format(enum glsl_sampler_dim dim)
         }
 }
 
-static unsigned
-midgard_tex_op(nir_texop op)
-{
-        switch (op) {
-                case nir_texop_tex:
-                case nir_texop_txb:
-                        return TEXTURE_OP_NORMAL;
-                case nir_texop_txl:
-                        return TEXTURE_OP_LOD;
-                default:
-                        unreachable("Unhanlded texture op");
-        }
-}
-
 static void
-emit_tex(compiler_context *ctx, nir_tex_instr *instr)
+emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
+		  unsigned midgard_texop)
 {
         /* TODO */
         //assert (!instr->sampler);
@@ -1467,7 +1454,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
                 .texture = {
-                        .op = midgard_tex_op(instr->op),
+                        .op = midgard_texop,
                         .format = midgard_tex_format(instr->sampler_dim),
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,
@@ -1523,6 +1510,22 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
         /* Used for .cont and .last hinting */
         ctx->texture_op_count++;
+}
+
+static void
+emit_tex(compiler_context *ctx, nir_tex_instr *instr)
+{
+        switch (instr->op) {
+        case nir_texop_tex:
+        case nir_texop_txb:
+                emit_texop_native(ctx, instr, TEXTURE_OP_NORMAL);
+                break;
+        case nir_texop_txl:
+                emit_texop_native(ctx, instr, TEXTURE_OP_LOD);
+                break;
+        default:
+		unreachable("Unhanlded texture op");
+        }
 }
 
 static void
