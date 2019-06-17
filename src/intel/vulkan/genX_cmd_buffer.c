@@ -927,6 +927,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
       assert(isl_format_is_compressed(image->planes[plane].surface.isl.format));
       assert(plane == 0);
       anv_image_copy_to_shadow(cmd_buffer, image,
+                               VK_IMAGE_ASPECT_COLOR_BIT,
                                base_level, level_count,
                                base_layer, layer_count);
    }

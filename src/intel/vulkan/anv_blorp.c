@@ -1319,17 +1319,16 @@ fast_clear_aux_usage(const struct anv_image *image,
 void
 anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
                          const struct anv_image *image,
+                         VkImageAspectFlagBits aspect,
                          uint32_t base_level, uint32_t level_count,
                          uint32_t base_layer, uint32_t layer_count)
 {
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, 0);
 
-   assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT && image->n_planes == 1);
-
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device,
-                                image, VK_IMAGE_ASPECT_COLOR_BIT,
+                                image, aspect,
                                 VK_IMAGE_LAYOUT_GENERAL,
                                 ISL_AUX_USAGE_NONE, &surf);
    assert(surf.aux_usage == ISL_AUX_USAGE_NONE);
