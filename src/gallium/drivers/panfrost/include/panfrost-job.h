@@ -1409,6 +1409,7 @@ struct mali_single_framebuffer {
 /* Format bits for the render target flags */
 
 #define MALI_MFBD_FORMAT_MSAA 	  (1 << 1)
+#define MALI_MFBD_FORMAT_SRGB 	  (1 << 2)
 
 enum mali_mfbd_block_format {
         MALI_MFBD_BLOCK_TILED   = 0x0,
