@@ -289,9 +289,8 @@ tex_cache_flush_hack(struct iris_batch *batch)
     *
     * TODO: Remove this hack!
     */
-   iris_emit_pipe_control_flush(batch,
-                                PIPE_CONTROL_CS_STALL |
-                                PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
+   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
 }
 
 /**
