@@ -1408,8 +1408,14 @@ struct mali_single_framebuffer {
 
 /* Format bits for the render target flags */
 
-#define MALI_MFBD_FORMAT_AFBC 	  (1 << 5)
-#define MALI_MFBD_FORMAT_MSAA 	  (1 << 7)
+#define MALI_MFBD_FORMAT_MSAA 	  (1 << 1)
+
+enum mali_mfbd_block_format {
+        MALI_MFBD_BLOCK_TILED   = 0x0,
+        MALI_MFBD_BLOCK_UNKNOWN = 0x1,
+        MALI_MFBD_BLOCK_LINEAR  = 0x2,
+        MALI_MFBD_BLOCK_AFBC    = 0x3,
+};
 
 struct mali_rt_format {
         unsigned unk1 : 32;
@@ -1417,7 +1423,9 @@ struct mali_rt_format {
 
         unsigned nr_channels : 2; /* MALI_POSITIVE */
 
-        unsigned flags : 11;
+        unsigned unk3 : 5;
+        enum mali_mfbd_block_format block : 2;
+        unsigned flags : 4;
 
         unsigned swizzle : 12;
 

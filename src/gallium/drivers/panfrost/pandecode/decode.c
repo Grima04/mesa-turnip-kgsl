@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2017-2019 Alyssa Rosenzweig
  * Copyright (C) 2017-2019 Connor Abbott
+ * Copyright (C) 2019 Collabora
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -206,7 +207,6 @@ static const struct pandecode_flag_info fb_fmt_flag_info[] = {
 
 #define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
 static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
-        FLAG_INFO(AFBC),
         FLAG_INFO(MSAA),
         {}
 };
@@ -423,6 +423,22 @@ pandecode_texture_type(enum mali_texture_type type)
 }
 #undef DEFINE_CASE
 
+#define DEFINE_CASE(name) case MALI_MFBD_BLOCK_## name: return "MALI_MFBD_BLOCK_" #name
+static char *
+pandecode_mfbd_block_format(enum mali_mfbd_block_format fmt)
+{
+        switch (fmt) {
+                DEFINE_CASE(TILED);
+                DEFINE_CASE(UNKNOWN);
+                DEFINE_CASE(LINEAR);
+                DEFINE_CASE(AFBC);
+
+        default:
+                unreachable("Invalid case");
+        }
+}
+#undef DEFINE_CASE
+
 static inline char *
 pandecode_decode_fbd_type(enum mali_fbd_type type)
 {
@@ -540,6 +556,10 @@ pandecode_rt_format(struct mali_rt_format format)
 
         pandecode_prop("unk1 = 0x%" PRIx32, format.unk1);
         pandecode_prop("unk2 = 0x%" PRIx32, format.unk2);
+        pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
+
+        pandecode_prop("block = %s",
+                        pandecode_mfbd_block_format(format.block));
 
         pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
                         MALI_NEGATIVE(format.nr_channels));
