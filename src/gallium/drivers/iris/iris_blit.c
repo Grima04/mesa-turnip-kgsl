@@ -626,6 +626,16 @@ iris_resource_copy_region(struct pipe_context *ctx,
 
    iris_copy_region(&ice->blorp, batch, dst, dst_level, dstx, dsty, dstz,
                     src, src_level, src_box);
+
+   if (util_format_is_depth_and_stencil(dst->format) &&
+       util_format_has_stencil(util_format_description(src->format))) {
+      struct iris_resource *junk, *s_src_res, *s_dst_res;
+      iris_get_depth_stencil_resources(src, &junk, &s_src_res);
+      iris_get_depth_stencil_resources(dst, &junk, &s_dst_res);
+
+      iris_copy_region(&ice->blorp, batch, &s_dst_res->base, dst_level, dstx,
+                       dsty, dstz, &s_src_res->base, src_level, src_box);
+   }
 }
 
 void
