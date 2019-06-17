@@ -1038,13 +1038,13 @@ print_texture_format(int format)
         printf(".");
 
         switch (format) {
-                DEFINE_CASE(TEXTURE_2D, "2d");
-                DEFINE_CASE(TEXTURE_3D, "3d");
-                DEFINE_CASE(TEXTURE_CUBE, "cube");
+                DEFINE_CASE(MALI_TEX_1D, "1d");
+                DEFINE_CASE(MALI_TEX_2D, "2d");
+                DEFINE_CASE(MALI_TEX_3D, "3d");
+                DEFINE_CASE(MALI_TEX_CUBE, "cube");
 
         default:
-                printf("fmt_%d", format);
-                break;
+                unreachable("Bad format");
         }
 }
 
@@ -1095,6 +1095,8 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         /* Specific format in question */
         print_texture_format(texture->format);
+
+        assert(texture->zero == 0);
 
         /* Instruction "modifiers" parallel the ALU instructions. */
 

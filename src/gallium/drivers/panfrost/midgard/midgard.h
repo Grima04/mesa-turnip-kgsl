@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "panfrost-job.h"
 
 #define MIDGARD_DBG_MSGS		0x0001
 #define MIDGARD_DBG_SHADERS		0x0002
@@ -543,11 +544,6 @@ __attribute__((__packed__))
 #define TEXTURE_OP_LOD 0x12             /* textureLod */
 #define TEXTURE_OP_TEXEL_FETCH 0x14     /* texelFetch */
 
-/* Texture format types, found in format */
-#define TEXTURE_CUBE 0x00
-#define TEXTURE_2D 0x02
-#define TEXTURE_3D 0x03
-
 typedef struct
 __attribute__((__packed__))
 {
@@ -566,7 +562,8 @@ __attribute__((__packed__))
         unsigned cont  : 1;
         unsigned last  : 1;
 
-        unsigned format    : 4;
+        enum mali_texture_type format : 2;
+        unsigned zero : 2;
 
         /* Is a register used to specify the
          * LOD/bias/offset? If set, use the `bias` field as

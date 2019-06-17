@@ -407,6 +407,22 @@ pandecode_wrap_mode_name(enum mali_wrap_mode op)
 }
 #undef DEFINE_CASE
 
+#define DEFINE_CASE(name) case MALI_TEX_## name: return "MALI_TEX_" #name
+static char *
+pandecode_texture_type(enum mali_texture_type type)
+{
+        switch (type) {
+                DEFINE_CASE(1D);
+                DEFINE_CASE(2D);
+                DEFINE_CASE(3D);
+                DEFINE_CASE(CUBE);
+
+        default:
+                unreachable("Unknown case");
+        }
+}
+#undef DEFINE_CASE
+
 static inline char *
 pandecode_decode_fbd_type(enum mali_fbd_type type)
 {
@@ -1520,9 +1536,9 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
 
                                         pandecode_replay_swizzle(f.swizzle);
 					pandecode_prop("format = %s", pandecode_format_name(f.format));
-
-                                        pandecode_prop("usage1 = 0x%" PRIx32, f.usage1);
-                                        pandecode_prop("is_not_cubemap = %" PRId32, f.is_not_cubemap);
+					pandecode_prop("type = %s", pandecode_texture_type(f.type));
+                                        pandecode_prop("srgb = %" PRId32, f.srgb);
+                                        pandecode_prop("unknown1 = %" PRId32, f.unknown1);
                                         pandecode_prop("usage2 = 0x%" PRIx32, f.usage2);
 
                                         pandecode_indent--;
@@ -1555,7 +1571,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         bool manual_stride = f.usage2 & MALI_TEX_MANUAL_STRIDE;
 
                                         /* Miptree for each face */
-                                        if (!f.is_not_cubemap)
+                                        if (f.type == MALI_TEX_CUBE)
                                                 bitmap_count *= 6;
 
                                         /* Array of textures */

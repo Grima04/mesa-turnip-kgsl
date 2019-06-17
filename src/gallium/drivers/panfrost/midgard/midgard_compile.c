@@ -1366,15 +1366,19 @@ static unsigned
 midgard_tex_format(enum glsl_sampler_dim dim)
 {
         switch (dim) {
+        case GLSL_SAMPLER_DIM_1D:
+        case GLSL_SAMPLER_DIM_BUF:
+                return MALI_TEX_1D;
+
         case GLSL_SAMPLER_DIM_2D:
         case GLSL_SAMPLER_DIM_EXTERNAL:
-                return TEXTURE_2D;
+                return MALI_TEX_2D;
 
         case GLSL_SAMPLER_DIM_3D:
-                return TEXTURE_3D;
+                return MALI_TEX_3D;
 
         case GLSL_SAMPLER_DIM_CUBE:
-                return TEXTURE_CUBE;
+                return MALI_TEX_CUBE;
 
         default:
                 DBG("Unknown sampler dim type\n");

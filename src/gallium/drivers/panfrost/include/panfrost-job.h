@@ -1120,19 +1120,25 @@ enum mali_wrap_mode {
         MALI_WRAP_MIRRORED_REPEAT = 0xC
 };
 
+/* Shared across both command stream and Midgard, and even with Bifrost */
+
+enum mali_texture_type {
+        MALI_TEX_CUBE = 0x0,
+        MALI_TEX_1D = 0x1,
+        MALI_TEX_2D = 0x2,
+        MALI_TEX_3D = 0x3
+};
+
 /* 8192x8192 */
 #define MAX_MIP_LEVELS (13)
 
 /* Cubemap bloats everything up */
-#define MAX_FACES (6)
+#define MAX_CUBE_FACES (6)
 
 /* For each pointer, there is an address and optionally also a stride */
 #define MAX_ELEMENTS (2)
 
 /* Corresponds to the type passed to glTexImage2D and so forth */
-
-/* For usage1 */
-#define MALI_TEX_3D (0x04)
 
 /* Flags for usage2 */
 #define MALI_TEX_MANUAL_STRIDE (0x20)
@@ -1141,8 +1147,11 @@ struct mali_texture_format {
         unsigned swizzle : 12;
         enum mali_format format : 8;
 
-        unsigned usage1 : 3;
-        unsigned is_not_cubemap : 1;
+        unsigned srgb : 1;
+        unsigned unknown1 : 1;
+
+        enum mali_texture_type type : 2;
+
         unsigned usage2 : 8;
 } __attribute__((packed));
 
@@ -1174,7 +1183,7 @@ struct mali_texture_descriptor {
         uint32_t unknown6;
         uint32_t unknown7;
 
-        mali_ptr payload[MAX_MIP_LEVELS * MAX_FACES * MAX_ELEMENTS];
+        mali_ptr payload[MAX_MIP_LEVELS * MAX_CUBE_FACES * MAX_ELEMENTS];
 } __attribute__((packed));
 
 /* Used as part of filter_mode */
