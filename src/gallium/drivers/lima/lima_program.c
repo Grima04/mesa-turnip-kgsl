@@ -55,6 +55,7 @@ static const nir_shader_compiler_options vs_nir_options = {
 };
 
 static const nir_shader_compiler_options fs_nir_options = {
+   .lower_ffma = true,
    .lower_fpow = true,
    .lower_fdiv = true,
    .lower_fmod = true,
