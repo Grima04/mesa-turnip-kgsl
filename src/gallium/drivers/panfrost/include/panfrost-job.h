@@ -168,9 +168,6 @@ struct mali_stencil_test {
         unsigned zero			: 4;
 } __attribute__((packed));
 
-/* Blending is a mess, since anything fancy triggers a blend shader, and
- * -those- are not understood whatsover yet */
-
 #define MALI_MASK_R (1 << 0)
 #define MALI_MASK_G (1 << 1)
 #define MALI_MASK_B (1 << 2)
@@ -439,11 +436,14 @@ union midgard_blend {
 /* On MRT Midgard systems (using an MFBD), each render target gets its own
  * blend descriptor */
 
+#define MALI_BLEND_SRGB (0x400)
+
 struct midgard_blend_rt {
         /* Flags base value of 0x200 to enable the render target.
          * OR with 0x1 for blending (anything other than REPLACE).
          * OR with 0x2 for programmable blending with 0-2 registers
          * OR with 0x3 for programmable blending with 2+ registers
+         * OR with MALI_BLEND_SRGB for implicit sRGB
          */
 
         u64 flags;

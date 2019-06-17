@@ -1259,7 +1259,21 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         /* TODO: MRT */
 
                         for (unsigned i = 0; i < 1; ++i) {
+                                bool is_srgb =
+                                        util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
+
                                 rts[i].flags = blend_count;
+
+                                if (is_srgb)
+                                        rts[i].flags |= MALI_BLEND_SRGB;
+
+                                /* TODO: sRGB in blend shaders is currently
+                                 * unimplemented. Contact me (Alyssa) if you're
+                                 * interested in working on this. We have
+                                 * native Midgard ops for helping here, but
+                                 * they're not well-understood yet. */
+
+                                assert(!(is_srgb && ctx->blend->has_blend_shader));
 
                                 if (ctx->blend->has_blend_shader) {
                                         rts[i].blend.shader = ctx->blend->blend_shader;
