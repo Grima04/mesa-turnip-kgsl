@@ -474,6 +474,13 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
                        0, 0, 1, hiz_op);
 }
 
+static inline bool
+vk_image_layout_stencil_write_optimal(VkImageLayout layout)
+{
+   return layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ||
+          layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+}
+
 /* Transitions a HiZ-enabled depth buffer from one layout to another. Unless
  * the initial layout is undefined, the HiZ buffer and depth buffer will
  * represent the same data at the end of this operation.
@@ -486,6 +493,34 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
                           VkImageLayout initial_layout,
                           VkImageLayout final_layout)
 {
+#if GEN_GEN == 7
+   uint32_t plane = anv_image_aspect_to_plane(image->aspects,
+                                              VK_IMAGE_ASPECT_STENCIL_BIT);
+
+   /* On gen7, we have to store a texturable version of the stencil buffer in
+    * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
+    * forth at strategic points.  Stencil writes are only allowed in three
+    * layouts:
+    *
+    *  - VK_IMAGE_LAYOUT_GENERAL
+    *  - VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    *  - VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    *  - VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+    *
+    * For general, we have no nice opportunity to transition so we do the copy
+    * to the shadow unconditionally at the end of the subpass.  For transfer
+    * destinations, we can update it as part of the transfer op.  For the
+    * other two, we delay the copy until a transition into some other layout.
+    */
+   if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
+       vk_image_layout_stencil_write_optimal(initial_layout) &&
+       !vk_image_layout_stencil_write_optimal(final_layout)) {
+      anv_image_copy_to_shadow(cmd_buffer, image,
+                               VK_IMAGE_ASPECT_STENCIL_BIT,
+                               base_level, level_count,
+                               base_layer, layer_count);
+   }
+#endif /* GEN_GEN == 7 */
 }
 
 #define MI_PREDICATE_SRC0    0x2400
@@ -4502,6 +4537,47 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                 fb->layers, filter);
       }
    }
+
+#if GEN_GEN == 7
+   /* On gen7, we have to store a texturable version of the stencil buffer in
+    * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
+    * forth at strategic points.  Stencil writes are only allowed in three
+    * layouts:
+    *
+    *  - VK_IMAGE_LAYOUT_GENERAL
+    *  - VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+    *  - VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    *  - VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+    *
+    * For general, we have no nice opportunity to transition so we do the copy
+    * to the shadow unconditionally at the end of the subpass.  For transfer
+    * destinations, we can update it as part of the transfer op.  For the
+    * other two, we delay the copy until a transition into some other layout.
+    */
+   if (subpass->depth_stencil_attachment) {
+      uint32_t a = subpass->depth_stencil_attachment->attachment;
+      assert(a != VK_ATTACHMENT_UNUSED);
+
+      struct anv_attachment_state *att_state = &cmd_state->attachments[a];
+      struct anv_image_view *iview = fb->attachments[a];
+      const struct anv_image *image = iview->image;
+
+      if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+         uint32_t plane = anv_image_aspect_to_plane(image->aspects,
+                                                    VK_IMAGE_ASPECT_STENCIL_BIT);
+
+         if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
+             att_state->current_layout == VK_IMAGE_LAYOUT_GENERAL) {
+            assert(image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT);
+            anv_image_copy_to_shadow(cmd_buffer, image,
+                                     VK_IMAGE_ASPECT_STENCIL_BIT,
+                                     iview->planes[plane].isl.base_level, 1,
+                                     iview->planes[plane].isl.base_array_layer,
+                                     fb->layers);
+         }
+      }
+   }
+#endif /* GEN_GEN == 7 */
 
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
       const uint32_t a = subpass->attachments[i].attachment;

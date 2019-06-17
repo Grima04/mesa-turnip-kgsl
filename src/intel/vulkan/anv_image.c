@@ -336,6 +336,12 @@ make_surface(const struct anv_device *dev,
       needs_shadow = true;
    }
 
+   if (dev->info.gen <= 7 &&
+       aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
+       (image->usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
+      needs_shadow = true;
+   }
+
    ok = isl_surf_init(&dev->isl_dev, &anv_surf->isl,
       .dim = vk_to_isl_surf_dim[image->type],
       .format = plane_format.isl_format,
@@ -359,12 +365,11 @@ make_surface(const struct anv_device *dev,
 
    /* If an image is created as BLOCK_TEXEL_VIEW_COMPATIBLE, then we need to
     * create an identical tiled shadow surface for use while texturing so we
-    * don't get garbage performance.
+    * don't get garbage performance.  If we're on gen7 and the image contains
+    * stencil, then we need to maintain a shadow because we can't texture from
+    * W-tiled images.
     */
    if (needs_shadow) {
-      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
-      assert(tiling_flags == ISL_TILING_LINEAR_BIT);
-
       ok = isl_surf_init(&dev->isl_dev, &image->planes[plane].shadow_surface.isl,
          .dim = vk_to_isl_surf_dim[image->type],
          .format = plane_format.isl_format,
@@ -1272,6 +1277,16 @@ anv_image_fill_surface_state(struct anv_device *device,
       assert(isl_format_is_compressed(surface->isl.format));
       assert(surface->isl.tiling == ISL_TILING_LINEAR);
       assert(image->planes[plane].shadow_surface.isl.tiling != ISL_TILING_LINEAR);
+      surface = &image->planes[plane].shadow_surface;
+   }
+
+   /* For texturing from stencil on gen7, we have to sample from a shadow
+    * surface because we don't support W-tiling in the sampler.
+    */
+   if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
+       aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      assert(device->info.gen == 7);
+      assert(view_usage & ISL_SURF_USAGE_TEXTURE_BIT);
       surface = &image->planes[plane].shadow_surface;
    }
 
