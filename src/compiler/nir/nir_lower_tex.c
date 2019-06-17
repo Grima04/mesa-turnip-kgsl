@@ -983,6 +983,47 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
 }
 
 static bool
+nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
+{
+   int lod_idx = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+   if (lod_idx < 0 ||
+       (nir_src_is_const(tex->src[lod_idx].src) &&
+        nir_src_as_int(tex->src[lod_idx].src) == 0))
+      return false;
+
+   unsigned dest_size = nir_tex_instr_dest_size(tex);
+
+   b->cursor = nir_before_instr(&tex->instr);
+   nir_ssa_def *lod = nir_ssa_for_src(b, tex->src[lod_idx].src, 1);
+
+   /* Replace the non-0-LOD in the initial TXS operation by a 0-LOD. */
+   nir_instr_rewrite_src(&tex->instr, &tex->src[lod_idx].src,
+                         nir_src_for_ssa(nir_imm_int(b, 0)));
+
+   /* TXS(LOD) = max(TXS(0) >> LOD, 1) */
+   b->cursor = nir_after_instr(&tex->instr);
+   nir_ssa_def *minified = nir_imax(b, nir_ushr(b, &tex->dest.ssa, lod),
+                                    nir_imm_int(b, 1));
+
+   /* Make sure the component encoding the array size (if any) is not
+    * minified.
+    */
+   if (tex->is_array) {
+      nir_ssa_def *comp[3];
+
+      for (unsigned i = 0; i < dest_size - 1; i++)
+         comp[i] = nir_channel(b, minified, i);
+
+      comp[dest_size - 1] = nir_channel(b, &tex->dest.ssa, dest_size - 1);
+      minified = nir_vec(b, comp, dest_size);
+   }
+
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(minified),
+                                  minified->parent_instr);
+   return true;
+}
+
+static bool
 nir_lower_tex_block(nir_block *block, nir_builder *b,
                     const nir_lower_tex_options *options)
 {
@@ -1132,6 +1173,11 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
          if (tex->op == nir_texop_tex && options->lower_tex_without_implicit_lod)
             tex->op = nir_texop_txl;
          progress = true;
+         continue;
+      }
+
+      if (options->lower_txs_lod && tex->op == nir_texop_txs) {
+         progress |= nir_lower_txs_lod(b, tex);
          continue;
       }
 
