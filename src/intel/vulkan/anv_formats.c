@@ -1012,6 +1012,9 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
          external_info = (const void *) s;
          break;
+      case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT:
+         /* Ignore but don't warn */
+         break;
       default:
          anv_debug_ignored_stype(s->sType);
          break;

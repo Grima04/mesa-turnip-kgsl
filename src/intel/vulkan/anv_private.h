@@ -2978,7 +2978,8 @@ struct anv_image {
    uint32_t array_size;
    uint32_t samples; /**< VkImageCreateInfo::samples */
    uint32_t n_planes;
-   VkImageUsageFlags usage; /**< Superset of VkImageCreateInfo::usage. */
+   VkImageUsageFlags usage; /**< VkImageCreateInfo::usage. */
+   VkImageUsageFlags stencil_usage;
    VkImageCreateFlags create_flags; /* Flags used when creating image. */
    VkImageTiling tiling; /** VkImageCreateInfo::tiling */
 

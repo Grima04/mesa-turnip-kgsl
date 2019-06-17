@@ -338,7 +338,7 @@ make_surface(const struct anv_device *dev,
 
    if (dev->info.gen <= 7 &&
        aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
-       (image->usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
+       (image->stencil_usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
       needs_shadow = true;
    }
 
@@ -598,6 +598,15 @@ anv_image_create(VkDevice _device,
    image->needs_set_tiling = wsi_info && wsi_info->scanout;
    image->drm_format_mod = isl_mod_info ? isl_mod_info->modifier :
                                           DRM_FORMAT_MOD_INVALID;
+
+   if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      image->stencil_usage = pCreateInfo->usage;
+      const VkImageStencilUsageCreateInfoEXT *stencil_usage_info =
+         vk_find_struct_const(pCreateInfo->pNext,
+                              IMAGE_STENCIL_USAGE_CREATE_INFO_EXT);
+      if (stencil_usage_info)
+         image->stencil_usage = stencil_usage_info->stencilUsage;
+   }
 
    /* In case of external format, We don't know format yet,
     * so skip the rest for now.
