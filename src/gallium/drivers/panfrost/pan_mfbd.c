@@ -36,7 +36,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
         const struct util_format_description *desc =
                 util_format_description(surf->texture->format);
 
-        /* Fill in accordingly, defaulting to RGBA8888 (UNORM) */
+        /* Fill in accordingly, defaulting to 8-bit UNORM */
 
         struct mali_rt_format fmt = {
                 .unk1 = 0x4000000,
@@ -47,6 +47,9 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
                 .unk4 = 0x8
         };
+
+        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+                fmt.flags |= MALI_MFBD_FORMAT_SRGB;
 
         /* Set flags for alternative formats */
 
