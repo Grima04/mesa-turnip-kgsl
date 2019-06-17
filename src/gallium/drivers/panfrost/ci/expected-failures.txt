@@ -307,8 +307,6 @@ dEQP-GLES2.functional.shaders.random.all_features.fragment.72
 dEQP-GLES2.functional.shaders.random.all_features.fragment.77
 dEQP-GLES2.functional.shaders.random.all_features.vertex.0
 dEQP-GLES2.functional.shaders.random.all_features.vertex.17
-dEQP-GLES2.functional.shaders.random.exponential.fragment.46
-dEQP-GLES2.functional.shaders.random.exponential.vertex.46
 dEQP-GLES2.functional.shaders.random.texture.vertex.10
 dEQP-GLES2.functional.shaders.random.texture.vertex.11
 dEQP-GLES2.functional.shaders.random.texture.vertex.12

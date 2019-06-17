@@ -985,7 +985,14 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 memcpy(original_swizzle, nirmods[0]->swizzle, sizeof(nirmods[0]->swizzle));
 
                 for (int i = 0; i < nr_components; ++i) {
-                        ins.alu.mask = (0x3) << (2 * i); /* Mask the associated component */
+                        /* Mask the associated component, dropping the
+                         * instruction if needed */
+
+                        ins.alu.mask = (0x3) << (2 * i);
+                        ins.alu.mask &= alu.mask;
+
+                        if (!ins.alu.mask)
+                                continue;
 
                         for (int j = 0; j < 4; ++j)
                                 nirmods[0]->swizzle[j] = original_swizzle[i]; /* Pull from the correct component */
