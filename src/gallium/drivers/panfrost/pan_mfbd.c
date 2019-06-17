@@ -104,6 +104,10 @@ panfrost_mfbd_set_cbuf(
                 rt->format.block = MALI_MFBD_BLOCK_LINEAR;
                 rt->framebuffer = rsrc->bo->gpu + offset;
                 rt->framebuffer_stride = stride / 16;
+        } else if (rsrc->bo->layout == PAN_TILED) {
+                rt->format.block = MALI_MFBD_BLOCK_TILED;
+                rt->framebuffer = rsrc->bo->gpu + offset;
+                rt->framebuffer_stride = stride;
         } else if (rsrc->bo->layout == PAN_AFBC) {
                 assert(level == 0);
                 rt->afbc.metadata = rsrc->bo->afbc_slab.gpu;
