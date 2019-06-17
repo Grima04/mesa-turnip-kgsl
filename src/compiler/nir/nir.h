@@ -2840,6 +2840,12 @@ typedef struct nir_shader_compiler_options {
    bool lower_to_scalar;
 
    /**
+    * Should the linker unify inputs_read/outputs_written between adjacent
+    * shader stages which are linked into a single program?
+    */
+   bool unify_interfaces;
+
+   /**
     * Should nir_lower_io() create load_interpolated_input intrinsics?
     *
     * If not, it generates regular load_input intrinsics and interpolation
