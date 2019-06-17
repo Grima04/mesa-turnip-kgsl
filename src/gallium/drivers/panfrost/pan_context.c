@@ -1141,6 +1141,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 if (ctx->blend->has_blend_shader) {
                         ctx->fragment_shader_core.blend.shader = ctx->blend->blend_shader;
+                } else {
+                        ctx->fragment_shader_core.blend.shader = 0;
                 }
 
                 if (ctx->require_sfbd) {
