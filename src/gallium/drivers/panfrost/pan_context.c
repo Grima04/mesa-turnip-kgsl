@@ -1569,12 +1569,32 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
         }
 }
 
+static bool
+panfrost_scissor_culls_everything(struct panfrost_context *ctx)
+{
+        const struct pipe_scissor_state *ss = &ctx->scissor;
+
+        /* Check if we're scissoring at all */
+
+        if (!(ss && ctx->rasterizer && ctx->rasterizer->base.scissor))
+                return false;
+
+        return (ss->minx == ss->maxx) && (ss->miny == ss->maxy);
+}
+
 static void
 panfrost_draw_vbo(
         struct pipe_context *pipe,
         const struct pipe_draw_info *info)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+
+        /* First of all, check the scissor to see if anything is drawn at all.
+         * If it's not, we drop the draw (mostly a conformance issue;
+         * well-behaved apps shouldn't hit this) */
+
+        if (panfrost_scissor_culls_everything(ctx))
+                return;
 
         ctx->payload_vertex.draw_start = info->start;
         ctx->payload_tiler.draw_start = info->start;

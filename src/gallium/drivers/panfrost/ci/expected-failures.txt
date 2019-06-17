@@ -285,10 +285,6 @@ dEQP-GLES2.functional.fragment_ops.random.96
 dEQP-GLES2.functional.fragment_ops.random.97
 dEQP-GLES2.functional.fragment_ops.random.98
 dEQP-GLES2.functional.fragment_ops.random.99
-dEQP-GLES2.functional.fragment_ops.scissor.clear_color
-dEQP-GLES2.functional.fragment_ops.scissor.outside_render_line
-dEQP-GLES2.functional.fragment_ops.scissor.outside_render_point
-dEQP-GLES2.functional.fragment_ops.scissor.outside_render_tri
 dEQP-GLES2.functional.lifetime.attach.deleted_output.renderbuffer_framebuffer
 dEQP-GLES2.functional.lifetime.attach.deleted_output.texture_framebuffer
 dEQP-GLES2.functional.negative_api.shader.uniform_matrixfv_invalid_transpose
