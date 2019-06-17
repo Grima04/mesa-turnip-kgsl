@@ -261,8 +261,6 @@ iris_lower_storage_image_derefs(nir_shader *nir)
    }
 }
 
-// XXX: need unify_interfaces() at link time...
-
 /**
  * Undo nir_lower_passthrough_edgeflags but keep the inputs_read flag.
  */
