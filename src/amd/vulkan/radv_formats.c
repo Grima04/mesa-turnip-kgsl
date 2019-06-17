@@ -774,6 +774,10 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
 		break;
 	}
 
+	/* addrlib does not support linear compressed textures. */
+	if (vk_format_is_compressed(format))
+		linear = 0;
+
 	out_properties->linearTilingFeatures = linear;
 	out_properties->optimalTilingFeatures = tiled;
 	out_properties->bufferFeatures = buffer;
