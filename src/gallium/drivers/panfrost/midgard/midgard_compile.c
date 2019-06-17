@@ -476,8 +476,7 @@ optimise_nir(nir_shader *nir)
                          nir_var_shader_out |
                          nir_var_function_temp);
 
-                /* TODO: Enable vectorize when merged upstream */
-                // NIR_PASS(progress, nir, nir_opt_vectorize);
+                NIR_PASS(progress, nir, nir_opt_vectorize);
         } while (progress);
 
         /* Must be run at the end to prevent creation of fsin/fcos ops */
