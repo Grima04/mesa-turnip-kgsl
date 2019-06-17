@@ -3249,7 +3249,7 @@ void radv_CmdPushDescriptorSetKHR(
 	 * because it is invalid, according to Vulkan spec.
 	 */
 	for (int i = 0; i < descriptorWriteCount; i++) {
-		const VkWriteDescriptorSet *writeset = &pDescriptorWrites[i];
+		MAYBE_UNUSED const VkWriteDescriptorSet *writeset = &pDescriptorWrites[i];
 		assert(writeset->descriptorType != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
 	}
 
