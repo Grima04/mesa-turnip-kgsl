@@ -313,6 +313,7 @@ static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
 {
         nir_intrinsic_instr *intr;
         nir_dest *dst = NULL;
+        nir_tex_instr *tex;
         int sysval = -1;
 
         switch (instr->type) {
@@ -320,6 +321,18 @@ static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
                 intr = nir_instr_as_intrinsic(instr);
                 sysval = midgard_nir_sysval_for_intrinsic(intr);
                 dst = &intr->dest;
+                break;
+        case nir_instr_type_tex:
+                tex = nir_instr_as_tex(instr);
+                if (tex->op != nir_texop_txs)
+                        break;
+
+                sysval = PAN_SYSVAL(TEXTURE_SIZE,
+				    PAN_TXS_SYSVAL_ID(tex->texture_index,
+					              nir_tex_instr_dest_size(tex) -
+						      (tex->is_array ? 1 : 0),
+						      tex->is_array));
+                dst  = &tex->dest;
                 break;
         default:
                 break;
@@ -411,12 +424,17 @@ optimise_nir(nir_shader *nir)
         NIR_PASS(progress, nir, midgard_nir_lower_fdot2);
         NIR_PASS(progress, nir, nir_lower_idiv);
 
-        nir_lower_tex_options lower_tex_options = {
+        nir_lower_tex_options lower_tex_1st_pass_options = {
                 .lower_rect = true,
                 .lower_txp = ~0
         };
 
-        NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
+        nir_lower_tex_options lower_tex_2nd_pass_options = {
+                .lower_txs_lod = true,
+	};
+
+        NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_1st_pass_options);
+        NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_2nd_pass_options);
 
         do {
                 progress = false;
@@ -1522,6 +1540,9 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 break;
         case nir_texop_txl:
                 emit_texop_native(ctx, instr, TEXTURE_OP_LOD);
+                break;
+        case nir_texop_txs:
+                emit_sysval_read(ctx, &instr->instr);
                 break;
         default:
 		unreachable("Unhanlded texture op");

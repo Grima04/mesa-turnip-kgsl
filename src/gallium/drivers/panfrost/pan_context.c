@@ -1036,6 +1036,31 @@ static void panfrost_upload_viewport_offset_sysval(struct panfrost_context *ctx,
         uniform->f[2] = vp->translate[2];
 }
 
+static void panfrost_upload_txs_sysval(struct panfrost_context *ctx,
+                                       enum pipe_shader_type st,
+                                       unsigned int sysvalid,
+                                       struct sysval_uniform *uniform)
+{
+        unsigned texidx = PAN_SYSVAL_ID_TO_TXS_TEX_IDX(sysvalid);
+        unsigned dim = PAN_SYSVAL_ID_TO_TXS_DIM(sysvalid);
+        bool is_array = PAN_SYSVAL_ID_TO_TXS_IS_ARRAY(sysvalid);
+        struct pipe_sampler_view *tex = &ctx->sampler_views[st][texidx]->base;
+
+        assert(dim);
+        uniform->i[0] = u_minify(tex->texture->width0, tex->u.tex.first_level);
+
+        if (dim > 1)
+                uniform->i[1] = u_minify(tex->texture->height0,
+                                         tex->u.tex.first_level);
+
+        if (dim > 2)
+                uniform->i[2] = u_minify(tex->texture->depth0,
+                                         tex->u.tex.first_level);
+
+        if (is_array)
+                uniform->i[dim] = tex->texture->array_size;
+}
+
 static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
                                     struct panfrost_shader_state *ss,
                                     enum pipe_shader_type st)
@@ -1051,6 +1076,10 @@ static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
                         break;
                 case PAN_SYSVAL_VIEWPORT_OFFSET:
                         panfrost_upload_viewport_offset_sysval(ctx, &uniforms[i]);
+                        break;
+                case PAN_SYSVAL_TEXTURE_SIZE:
+                        panfrost_upload_txs_sysval(ctx, st, PAN_SYSVAL_ID(sysval),
+                                                   &uniforms[i]);
                         break;
                 default:
                         assert(0);
