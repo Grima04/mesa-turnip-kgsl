@@ -2221,7 +2221,7 @@ panfrost_create_sampler_view(
                         .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
                         .format = format,
 
-                        .srgb = false,
+                        .srgb = desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB,
                         .type = panfrost_translate_texture_type(texture->target),
 
                         .usage2 = usage2_layout
