@@ -300,11 +300,8 @@ dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_fragment
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_vertex
 dEQP-GLES2.functional.shaders.random.all_features.fragment.0
 dEQP-GLES2.functional.shaders.random.all_features.fragment.16
-dEQP-GLES2.functional.shaders.random.all_features.fragment.45
 dEQP-GLES2.functional.shaders.random.all_features.fragment.5
 dEQP-GLES2.functional.shaders.random.all_features.fragment.6
-dEQP-GLES2.functional.shaders.random.all_features.fragment.72
-dEQP-GLES2.functional.shaders.random.all_features.fragment.77
 dEQP-GLES2.functional.shaders.random.all_features.vertex.0
 dEQP-GLES2.functional.shaders.random.all_features.vertex.17
 dEQP-GLES2.functional.shaders.random.texture.vertex.10

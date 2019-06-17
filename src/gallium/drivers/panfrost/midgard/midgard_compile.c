@@ -1286,14 +1286,18 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         midgard_instruction ins = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(26));
                         emit_mir_instruction(ctx, ins);
 
-                        /* We should have been vectorized. That also lets us
-                         * ignore the mask. because the mask component on
-                         * st_vary is (as far as I can tell) ignored [the blob
-                         * sets it to zero] */
-                        assert(nir_intrinsic_component(instr) == 0);
+                        /* We should have been vectorized, though we don't
+                         * currently check that st_vary is emitted only once
+                         * per slot (this is relevant, since there's not a mask
+                         * parameter available on the store [set to 0 by the
+                         * blob]). We do respect the component by adjusting the
+                         * swizzle. */
+
+                        unsigned component = nir_intrinsic_component(instr);
 
                         midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(0), offset);
                         st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
+                        st.load_store.swizzle = SWIZZLE_XYZW << (2*component);
                         emit_mir_instruction(ctx, st);
                 } else {
                         DBG("Unknown store\n");
