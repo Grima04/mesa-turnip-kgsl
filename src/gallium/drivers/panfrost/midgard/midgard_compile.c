@@ -1206,7 +1206,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
 
-                        midgard_instruction move = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
+                        midgard_instruction move = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
                         emit_mir_instruction(ctx, move);
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
@@ -1241,7 +1241,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 /* Blend constants are embedded directly in the shader and
                  * patched in, so we use some magic routing */
 
-                midgard_instruction ins = v_fmov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, reg);
+                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, reg);
                 ins.has_constants = true;
                 ins.has_blend_constant = true;
                 emit_mir_instruction(ctx, ins);
@@ -1262,7 +1262,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                          * framebuffer writeout dance. TODO: Defer
                          * writes */
 
-                        midgard_instruction move = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
+                        midgard_instruction move = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
                         emit_mir_instruction(ctx, move);
 
                         /* Save the index we're writing to for later reference
@@ -1276,7 +1276,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                          * minus the base of 26. E.g. write into r27 and then
                          * call st_vary(1) */
 
-                        midgard_instruction ins = v_fmov(reg, blank_alu_src, SSA_FIXED_REGISTER(26));
+                        midgard_instruction ins = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(26));
                         emit_mir_instruction(ctx, ins);
 
                         /* We should have been vectorized. That also lets us
@@ -1389,7 +1389,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
                                 alu_src.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X);
 
-                                midgard_instruction move = v_fmov(index, alu_src, SSA_FIXED_REGISTER(27));
+                                midgard_instruction move = v_mov(index, alu_src, SSA_FIXED_REGISTER(27));
                                 emit_mir_instruction(ctx, move);
 
                                 midgard_instruction st = m_st_cubemap_coords(reg, 0);
@@ -1402,7 +1402,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                         } else {
                                 position_swizzle = alu_src.swizzle = swizzle_of(nr_comp);
 
-                                midgard_instruction ins = v_fmov(index, alu_src, reg);
+                                midgard_instruction ins = v_mov(index, alu_src, reg);
                                 ins.alu.mask = expand_writemask(mask_of(nr_comp));
                                 emit_mir_instruction(ctx, ins);
 
@@ -1427,7 +1427,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 
                         alu_src.swizzle = SWIZZLE_XXXX;
 
-                        midgard_instruction ins = v_fmov(index, alu_src, reg);
+                        midgard_instruction ins = v_mov(index, alu_src, reg);
                         ins.alu.mask = expand_writemask(1 << COMPONENT_W);
                         emit_mir_instruction(ctx, ins);
                         break;
@@ -1493,7 +1493,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         alias_ssa(ctx, o_index, SSA_FIXED_REGISTER(o_reg));
         ctx->texture_index[reg] = o_index;
 
-        midgard_instruction ins2 = v_fmov(SSA_FIXED_REGISTER(o_reg), blank_alu_src, o_index);
+        midgard_instruction ins2 = v_mov(SSA_FIXED_REGISTER(o_reg), blank_alu_src, o_index);
         emit_mir_instruction(ctx, ins2);
 
         /* Used for .cont and .last hinting */
@@ -1600,7 +1600,7 @@ inline_alu_constants(compiler_context *ctx)
                         unsigned scratch = alu->ssa_args.dest;
 
                         if (entry) {
-                                midgard_instruction ins = v_fmov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, scratch);
+                                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, scratch);
                                 attach_constants(ctx, &ins, entry, alu->ssa_args.src1 + 1);
 
                                 /* Force a break XXX Defer r31 writes */
@@ -2072,7 +2072,7 @@ emit_leftover_move(compiler_context *ctx)
                 int mapped = base;
 
                 map_ssa_to_alias(ctx, &mapped);
-                EMIT(fmov, mapped, blank_alu_src, base);
+                EMIT(mov, mapped, blank_alu_src, base);
         }
 }
 
@@ -2096,7 +2096,7 @@ emit_fragment_epilogue(compiler_context *ctx)
         void *constant_value = _mesa_hash_table_u64_search(ctx->ssa_constants, ctx->fragment_output + 1);
 
         if (constant_value) {
-                midgard_instruction ins = v_fmov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, SSA_FIXED_REGISTER(0));
+                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, SSA_FIXED_REGISTER(0));
                 attach_constants(ctx, &ins, constant_value, ctx->fragment_output + 1);
                 emit_mir_instruction(ctx, ins);
         }
@@ -2166,32 +2166,7 @@ emit_blend_epilogue(compiler_context *ctx)
 
         emit_mir_instruction(ctx, f2u_rte);
 
-        /* vmul.imov.quarter r0, r0, r0 */
-
-        midgard_instruction imov_8 = {
-                .type = TAG_ALU_4,
-                .ssa_args = {
-                        .src0 = SSA_UNUSED_1,
-                        .src1 = SSA_FIXED_REGISTER(0),
-                        .dest = SSA_FIXED_REGISTER(0),
-                },
-                .alu = {
-                        .op = midgard_alu_op_imov,
-                        .reg_mode = midgard_reg_mode_8,
-                        .dest_override = midgard_dest_override_none,
-                        .outmod = midgard_outmod_int_wrap,
-                        .mask = 0xFF,
-                        .src1 = vector_alu_srco_unsigned(blank_alu_src),
-                        .src2 = vector_alu_srco_unsigned(blank_alu_src),
-                }
-        };
-
-        /* Emit branch epilogue with the 8-bit move as the source */
-
-        emit_mir_instruction(ctx, imov_8);
         EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, 0, midgard_condition_always);
-
-        emit_mir_instruction(ctx, imov_8);
         EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, -1, midgard_condition_always);
 }
 

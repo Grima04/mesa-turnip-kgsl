@@ -300,7 +300,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                                 break;
 
                                         /* Inject a move */
-                                        midgard_instruction ins = v_fmov(0, blank_alu_src, SSA_FIXED_REGISTER(0));
+                                        midgard_instruction ins = v_mov(0, blank_alu_src, SSA_FIXED_REGISTER(0));
                                         ins.unit = UNIT_VMUL;
                                         control |= ins.unit;
 
