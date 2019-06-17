@@ -1495,8 +1495,10 @@ panfrost_flush(
 	if (!job->clear)
 	        panfrost_draw_wallpaper(&ctx->base);
 
-        /* Whether to stall the pipeline for immediately correct results */
-        bool flush_immediate = flags & PIPE_FLUSH_END_OF_FRAME;
+        /* Whether to stall the pipeline for immediately correct results. Since
+         * pipelined rendering is quite broken right now (to be fixed by the
+         * panfrost_job refactor, just take the perf hit for correctness) */
+        bool flush_immediate = /*flags & PIPE_FLUSH_END_OF_FRAME*/true;
 
         /* Submit the frame itself */
         panfrost_submit_frame(ctx, flush_immediate, fence, job);
