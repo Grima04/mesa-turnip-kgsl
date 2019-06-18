@@ -265,4 +265,33 @@ vector_alu_from_unsigned(unsigned u)
         return s;
 }
 
+/* Composes two swizzles */
+static inline unsigned
+pan_compose_swizzle(unsigned left, unsigned right)
+{
+        unsigned out = 0;
+
+        for (unsigned c = 0; c < 4; ++c) {
+                unsigned s = (left >> (2*c)) & 0x3;
+                unsigned q = (right >> (2*s)) & 0x3;
+
+                out |= (q << (2*c));
+        }
+
+        return out;
+}
+
+/* Applies a swizzle to an ALU source */
+
+static inline unsigned
+vector_alu_apply_swizzle(unsigned src, unsigned swizzle)
+{
+        midgard_vector_alu_src s =
+                vector_alu_from_unsigned(src);
+
+        s.swizzle = pan_compose_swizzle(s.swizzle, swizzle);
+
+        return vector_alu_srco_unsigned(s);
+}
+
 #endif
