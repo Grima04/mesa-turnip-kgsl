@@ -83,6 +83,13 @@ panfrost_format_supports_afbc(enum pipe_format format)
         const struct util_format_description *desc =
                 util_format_description(format);
 
+        /* sRGB cannot be AFBC, but it can be tiled. TODO: Verify. The blob
+         * does not do AFBC for SRGB8_ALPHA8, but it's not clear why it
+         * shouldn't be able to. */
+
+        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
+                return false;
+
         if (util_format_is_rgba8_variant(desc))
                 return true;
 
