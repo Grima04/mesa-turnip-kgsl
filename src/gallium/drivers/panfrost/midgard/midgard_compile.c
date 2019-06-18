@@ -36,6 +36,7 @@
 #include "main/imports.h"
 #include "compiler/nir/nir_builder.h"
 #include "util/half_float.h"
+#include "util/u_math.h"
 #include "util/u_debug.h"
 #include "util/u_dynarray.h"
 #include "util/list.h"
@@ -1449,6 +1450,39 @@ midgard_tex_format(enum glsl_sampler_dim dim)
                 assert(0);
                 return 0;
         }
+}
+
+/* Tries to attach an explicit LOD / bias as a constant. Returns whether this
+ * was successful */
+
+static bool
+pan_attach_constant_bias(
+                compiler_context *ctx,
+                nir_src lod,
+                midgard_texture_word *word)
+{
+        /* To attach as constant, it has to *be* constant */
+
+        if (!nir_src_is_const(lod))
+                return false;
+
+        float f = nir_src_as_float(lod);
+
+        /* Break into fixed-point */
+        signed lod_int = f;
+        float lod_frac = f - lod_int;
+
+        /* Carry over negative fractions */
+        if (lod_frac < 0.0) {
+                lod_int--;
+                lod_frac += 1.0;
+        }
+
+        /* Encode */
+        word->bias = float_to_ubyte(lod_frac);
+        word->bias_int = lod_int;
+
+        return true;
 }
 
 static void
