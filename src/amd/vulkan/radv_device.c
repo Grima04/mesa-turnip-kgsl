@@ -4322,6 +4322,11 @@ radv_initialise_color_surface(struct radv_device *device,
 
 	va = radv_buffer_get_va(iview->bo) + iview->image->offset;
 	va += iview->image->dcc_offset;
+
+	if (radv_dcc_enabled(iview->image, iview->base_mip) &&
+	    device->physical_device->rad_info.chip_class <= GFX8)
+		va += plane->surface.u.legacy.level[iview->base_mip].dcc_offset;
+
 	cb->cb_dcc_base = va >> 8;
 	cb->cb_dcc_base |= surf->tile_swizzle;
 
