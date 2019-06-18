@@ -126,7 +126,7 @@ static const unsigned si_pc_shader_type_bits[] = {
 /* Max counters per HW block */
 #define SI_QUERY_MAX_COUNTERS 16
 
-#define SI_PC_SHADERS_WINDOWING (1 << 31)
+#define SI_PC_SHADERS_WINDOWING (1u << 31)
 
 struct si_query_group {
 	struct si_query_group *next;
