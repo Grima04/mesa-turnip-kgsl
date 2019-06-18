@@ -1373,6 +1373,13 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         miny = MIN2(ctx->pipe_framebuffer.height, miny);
         maxy = MIN2(ctx->pipe_framebuffer.height, maxy);
 
+        /* Update the job, unless we're doing wallpapering (whose lack of
+         * scissor we can ignore, since if we "miss" a tile of wallpaper, it'll
+         * just... be faster :) */
+
+        if (!ctx->in_wallpaper)
+                panfrost_job_union_scissor(job, minx, miny, maxx, maxy);
+
         /* Upload */
 
         view.viewport0[0] = minx;
@@ -1467,7 +1474,9 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
 		return;
 
         /* Blit the wallpaper in */
+        ctx->in_wallpaper = true;
         panfrost_blit_wallpaper(ctx);
+        ctx->in_wallpaper = false;
 
         /* We are flushing all queued draws and we know that no more jobs will
          * be added until the next frame.

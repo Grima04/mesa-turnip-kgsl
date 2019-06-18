@@ -55,6 +55,12 @@ struct panfrost_job {
          * bitmask) */
         unsigned requirements;
 
+        /* The bounding box covered by this job, taking scissors into account.
+         * Basically, the bounding box we have to run fragment shaders for */
+
+        unsigned minx, miny;
+        unsigned maxx, maxy;
+
         /* BOs referenced -- will be used for flushing logic */
         struct set *bos;
 };
@@ -101,5 +107,10 @@ panfrost_job_clear(struct panfrost_context *ctx,
                 unsigned buffers,
                 const union pipe_color_union *color,
                 double depth, unsigned stencil);
+
+void
+panfrost_job_union_scissor(struct panfrost_job *job,
+                unsigned minx, unsigned miny,
+                unsigned maxx, unsigned maxy);
 
 #endif

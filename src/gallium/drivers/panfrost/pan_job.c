@@ -38,6 +38,9 @@ panfrost_create_job(struct panfrost_context *ctx)
         job->bos = _mesa_set_create(job,
                                     _mesa_hash_pointer,
                                     _mesa_key_pointer_equal);
+
+        job->minx = job->miny = ~0;
+        job->maxx = job->maxy = 0;
  
         return job;
 }
@@ -232,6 +235,15 @@ panfrost_job_clear(struct panfrost_context *ctx,
         }
 
         job->clear |= buffers;
+
+        /* Clearing affects the entire framebuffer (by definition -- this is
+         * the Gallium clear callback, which clears the whole framebuffer. If
+         * the scissor test were enabled from the GL side, the state tracker
+         * would emit a quad instead and we wouldn't go down this code path) */
+
+        panfrost_job_union_scissor(job, 0, 0,
+                        ctx->pipe_framebuffer.width,
+                        ctx->pipe_framebuffer.height);
 }
 
 void
@@ -263,6 +275,20 @@ static uint32_t
 panfrost_job_hash(const void *key)
 {
         return _mesa_hash_data(key, sizeof(struct panfrost_job_key));
+}
+
+/* Given a new bounding rectangle (scissor), let the job cover the union of the
+ * new and old bounding rectangles */
+
+void
+panfrost_job_union_scissor(struct panfrost_job *job,
+                unsigned minx, unsigned miny,
+                unsigned maxx, unsigned maxy)
+{
+        job->minx = MIN2(job->minx, minx);
+        job->miny = MIN2(job->miny, miny);
+        job->maxx = MAX2(job->maxx, maxx);
+        job->maxy = MAX2(job->maxy, maxy);
 }
 
 void

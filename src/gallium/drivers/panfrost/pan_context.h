@@ -201,6 +201,7 @@ struct panfrost_context {
 
         struct primconvert_context *primconvert;
         struct blitter_context *blitter;
+        bool in_wallpaper;
 
         struct panfrost_blend_state *blend;
 

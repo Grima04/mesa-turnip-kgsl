@@ -46,9 +46,11 @@ panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
 #endif
         };
 
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+
         struct mali_payload_fragment payload = {
-                .min_tile_coord = MALI_COORDINATE_TO_TILE_MIN(0, 0),
-                .max_tile_coord = MALI_COORDINATE_TO_TILE_MAX(ctx->pipe_framebuffer.width, ctx->pipe_framebuffer.height),
+                .min_tile_coord = MALI_COORDINATE_TO_TILE_MIN(job->minx, job->miny),
+                .max_tile_coord = MALI_COORDINATE_TO_TILE_MAX(job->maxx, job->maxy),
                 .framebuffer = framebuffer,
         };
 
