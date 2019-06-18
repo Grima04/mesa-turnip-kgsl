@@ -278,6 +278,10 @@ with_platform_surfaceless = _platforms.contains('surfaceless')
 
 with_platforms = false
 if _platforms.length() != 0 and _platforms != ['']
+  # sanity check that list contains no empty strings
+  if _platforms.contains('')
+    error('Invalid argument list given to -Dplatforms, please fix.')
+  endif
   with_platforms = true
   egl_native_platform = _platforms[0]
 endif
