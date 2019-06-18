@@ -124,7 +124,7 @@ panfrost_drm_free_slab(struct panfrost_screen *screen, struct panfrost_memory *m
 static struct panfrost_bo *
 panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *whandle)
 {
-	struct panfrost_bo *bo = CALLOC_STRUCT(panfrost_bo);
+	struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
 	struct panfrost_drm *drm = (struct panfrost_drm *)screen->driver;
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
 	struct drm_panfrost_mmap_bo mmap_bo = {0,};

@@ -58,7 +58,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
         assert(whandle->type == WINSYS_HANDLE_TYPE_FD);
 
-        rsc = CALLOC_STRUCT(panfrost_resource);
+        rsc = rzalloc(pscreen, struct panfrost_resource);
         if (!rsc)
                 return NULL;
 
@@ -138,7 +138,7 @@ panfrost_create_surface(struct pipe_context *pipe,
 {
         struct pipe_surface *ps = NULL;
 
-        ps = CALLOC_STRUCT(pipe_surface);
+        ps = rzalloc(pipe, struct pipe_surface);
 
         if (ps) {
                 pipe_reference_init(&ps->reference, 1);
@@ -173,7 +173,7 @@ panfrost_surface_destroy(struct pipe_context *pipe,
 {
         assert(surf->texture);
         pipe_resource_reference(&surf->texture, NULL);
-        free(surf);
+        ralloc_free(surf);
 }
 
 static void
@@ -265,7 +265,7 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
 static struct panfrost_bo *
 panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *template)
 {
-	struct panfrost_bo *bo = CALLOC_STRUCT(panfrost_bo);
+	struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
         pipe_reference_init(&bo->reference, 1);
 
         /* Based on the usage, figure out what storing will be used. There are
@@ -313,7 +313,7 @@ static struct pipe_resource *
 panfrost_resource_create(struct pipe_screen *screen,
                          const struct pipe_resource *template)
 {
-        struct panfrost_resource *so = CALLOC_STRUCT(panfrost_resource);
+        struct panfrost_resource *so = rzalloc(screen, struct panfrost_resource);
         struct panfrost_screen *pscreen = (struct panfrost_screen *) screen;
 
         so->base = *template;
@@ -369,10 +369,8 @@ panfrost_resource_create(struct pipe_screen *screen,
 }
 
 static void
-panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
+panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
 {
-	struct panfrost_bo *bo = (struct panfrost_bo *)pbo;
-
         if ((bo->layout == PAN_LINEAR || bo->layout == PAN_TILED) &&
                         !bo->imported) {
                 struct panfrost_memory mem = {
@@ -404,6 +402,8 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *pbo)
         if (bo->imported) {
                 screen->driver->free_imported_bo(screen, bo);
         }
+
+        ralloc_free(bo);
 }
 
 void
@@ -436,7 +436,7 @@ panfrost_resource_destroy(struct pipe_screen *screen,
                 panfrost_bo_unreference(screen, rsrc->bo);
 
         util_range_destroy(&rsrc->valid_buffer_range);
-	FREE(rsrc);
+	ralloc_free(rsrc);
 }
 
 static void *
@@ -451,7 +451,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
         struct panfrost_resource *rsrc = pan_resource(resource);
         struct panfrost_bo *bo = rsrc->bo;
 
-        struct panfrost_gtransfer *transfer = CALLOC_STRUCT(panfrost_gtransfer);
+        struct panfrost_gtransfer *transfer = rzalloc(pctx, struct panfrost_gtransfer);
         transfer->base.level = level;
         transfer->base.usage = usage;
         transfer->base.box = *box;
@@ -508,7 +508,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 transfer->base.layer_stride = transfer->base.stride * box->height;
 
                 /* TODO: Reads */
-                transfer->map = malloc(transfer->base.layer_stride * box->depth);
+                transfer->map = rzalloc_size(transfer, transfer->base.layer_stride * box->depth);
 
                 return transfer->map;
         } else {
@@ -569,8 +569,6 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                                 panfrost_tile_texture(screen, prsrc, trans);
                         }
                 }
-
-                free(trans->map);
         }
 
 
@@ -581,8 +579,8 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
         /* Derefence the resource */
         pipe_resource_reference(&transfer->resource, NULL);
 
-        /* Transfer itself is CALLOCed at the moment */
-        free(transfer);
+        /* Transfer itself is RALLOCed at the moment */
+        ralloc_free(transfer);
 }
 
 static void
@@ -603,7 +601,7 @@ static struct pb_slab *
 panfrost_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_index)
 {
         struct panfrost_screen *screen = (struct panfrost_screen *) priv;
-        struct panfrost_memory *mem = CALLOC_STRUCT(panfrost_memory);
+        struct panfrost_memory *mem = rzalloc(screen, struct panfrost_memory);
 
         size_t slab_size = (1 << (MAX_SLAB_ENTRY_SIZE + 1));
 
@@ -613,7 +611,7 @@ panfrost_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned gro
         LIST_INITHEAD(&mem->slab.free);
         for (unsigned i = 0; i < mem->slab.num_entries; ++i) {
                 /* Create a slab entry */
-                struct panfrost_memory_entry *entry = CALLOC_STRUCT(panfrost_memory_entry);
+                struct panfrost_memory_entry *entry = rzalloc(mem, struct panfrost_memory_entry);
                 entry->offset = entry_size * i;
 
                 entry->base.slab = &mem->slab;
@@ -644,6 +642,7 @@ panfrost_slab_free(void *priv, struct pb_slab *slab)
         struct panfrost_screen *screen = (struct panfrost_screen *) priv;
 
         screen->driver->free_slab(screen, mem);
+        ralloc_free(mem);
 }
 
 static void
@@ -706,6 +705,12 @@ panfrost_resource_screen_init(struct panfrost_screen *pscreen)
                         panfrost_slab_can_reclaim,
                         panfrost_slab_alloc,
                         panfrost_slab_free);
+}
+
+void
+panfrost_resource_screen_deinit(struct panfrost_screen *pscreen)
+{
+        pb_slabs_deinit(&pscreen->slabs);
 }
 
 void

@@ -269,13 +269,11 @@ panfrost_job_hash(const void *key)
 void
 panfrost_job_init(struct panfrost_context *ctx)
 {
-        /* TODO: Don't leak */
-        ctx->jobs = _mesa_hash_table_create(NULL,
+        ctx->jobs = _mesa_hash_table_create(ctx,
                                             panfrost_job_hash,
                                             panfrost_job_compare);
 
-        ctx->write_jobs = _mesa_hash_table_create(NULL,
+        ctx->write_jobs = _mesa_hash_table_create(ctx,
                                             _mesa_hash_pointer,
                                             _mesa_key_pointer_equal);
-
 }

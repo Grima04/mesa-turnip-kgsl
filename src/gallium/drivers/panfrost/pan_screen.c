@@ -514,9 +514,11 @@ panfrost_is_format_supported( struct pipe_screen *screen,
 
 
 static void
-panfrost_destroy_screen( struct pipe_screen *screen )
+panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
-        FREE(screen);
+        struct panfrost_screen *screen = pan_screen(pscreen);
+        panfrost_resource_screen_deinit(screen);
+        ralloc_free(screen);
 }
 
 static void
@@ -565,7 +567,7 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
 struct pipe_screen *
 panfrost_create_screen(int fd, struct renderonly *ro)
 {
-        struct panfrost_screen *screen = CALLOC_STRUCT(panfrost_screen);
+        struct panfrost_screen *screen = rzalloc(NULL, struct panfrost_screen);
 
 	pan_debug = debug_get_option_pan_debug();
 

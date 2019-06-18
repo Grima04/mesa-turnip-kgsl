@@ -2020,7 +2020,7 @@ panfrost_set_constant_buffer(
         pbuf->size = sz;
 
         if (pbuf->buffer) {
-                free(pbuf->buffer);
+                ralloc_free(pbuf->buffer);
                 pbuf->buffer = NULL;
         }
 
@@ -2047,7 +2047,7 @@ panfrost_set_constant_buffer(
 
         /* Copy the constant buffer into the driver context for later upload */
 
-        pbuf->buffer = malloc(sz);
+        pbuf->buffer = rzalloc_size(ctx, sz);
         memcpy(pbuf->buffer, cpu + buf->buffer_offset, sz);
 }
 
@@ -2095,7 +2095,7 @@ panfrost_create_sampler_view(
         struct pipe_resource *texture,
         const struct pipe_sampler_view *template)
 {
-        struct panfrost_sampler_view *so = CALLOC_STRUCT(panfrost_sampler_view);
+        struct panfrost_sampler_view *so = rzalloc(pctx, struct panfrost_sampler_view);
         int bytes_per_pixel = util_format_get_blocksize(texture->format);
 
         pipe_reference(NULL, &texture->reference);
@@ -2233,7 +2233,7 @@ panfrost_sampler_view_destroy(
         struct pipe_sampler_view *view)
 {
         pipe_resource_reference(&view->texture, NULL);
-        free(view);
+        ralloc_free(view);
 }
 
 static void
@@ -2326,7 +2326,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                             const struct pipe_blend_state *blend)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_blend_state *so = CALLOC_STRUCT(panfrost_blend_state);
+        struct panfrost_blend_state *so = rzalloc(ctx, struct panfrost_blend_state);
         so->base = *blend;
 
         /* TODO: The following features are not yet implemented */
@@ -2376,7 +2376,7 @@ panfrost_delete_blend_state(struct pipe_context *pipe,
                 DBG("Deleting blend state leak blend shaders bytecode\n");
         }
 
-        free(blend);
+        ralloc_free(blend);
 }
 
 static void
@@ -2522,6 +2522,8 @@ panfrost_destroy(struct pipe_context *pipe)
         screen->driver->free_slab(screen, &panfrost->shaders);
         screen->driver->free_slab(screen, &panfrost->tiler_heap);
         screen->driver->free_slab(screen, &panfrost->tiler_polygon_list);
+
+        ralloc_free(pipe);
 }
 
 static struct pipe_query *
@@ -2529,7 +2531,7 @@ panfrost_create_query(struct pipe_context *pipe,
 		      unsigned type,
 		      unsigned index)
 {
-        struct panfrost_query *q = CALLOC_STRUCT(panfrost_query);
+        struct panfrost_query *q = rzalloc(pipe, struct panfrost_query);
 
         q->type = type;
         q->index = index;
@@ -2540,7 +2542,7 @@ panfrost_create_query(struct pipe_context *pipe,
 static void
 panfrost_destroy_query(struct pipe_context *pipe, struct pipe_query *q)
 {
-        FREE(q);
+        ralloc_free(q);
 }
 
 static boolean
@@ -2624,7 +2626,7 @@ panfrost_create_stream_output_target(struct pipe_context *pctx,
 {
         struct pipe_stream_output_target *target;
 
-        target = CALLOC_STRUCT(pipe_stream_output_target);
+        target = rzalloc(pctx, struct pipe_stream_output_target);
 
         if (!target)
                 return NULL;
@@ -2644,7 +2646,7 @@ panfrost_stream_output_target_destroy(struct pipe_context *pctx,
                                  struct pipe_stream_output_target *target)
 {
         pipe_resource_reference(&target->buffer, NULL);
-        free(target);
+        ralloc_free(target);
 }
 
 static void
@@ -2687,7 +2689,7 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 {
-        struct panfrost_context *ctx = CALLOC_STRUCT(panfrost_context);
+        struct panfrost_context *ctx = rzalloc(screen, struct panfrost_context);
         struct panfrost_screen *pscreen = pan_screen(screen);
         memset(ctx, 0, sizeof(*ctx));
         struct pipe_context *gallium = (struct pipe_context *) ctx;
