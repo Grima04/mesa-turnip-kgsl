@@ -624,7 +624,7 @@ __attribute__((__packed__))
          * structure and bias_int is zero */
 
         unsigned bias : 8;
-        unsigned bias_int  : 8;
+        signed bias_int  : 8;
 
         unsigned texture_handle : 16;
         unsigned sampler_handle : 16;

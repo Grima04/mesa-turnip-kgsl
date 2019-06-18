@@ -1208,14 +1208,15 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
                 printf("lod = %d, ", texture->bias);
         } else if (texture->bias || texture->bias_int) {
-                int bias_int = texture->bias_int;
+                signed bias_int = texture->bias_int;
                 float bias_frac = texture->bias / 256.0f;
                 float bias = bias_int + bias_frac;
 
                 bool is_bias = texture_op_takes_bias(texture->op);
-                char operand = is_bias ? '+' : '=';
+                char sign = (bias >= 0.0) ? '+' : '-';
+                char operand = is_bias ? sign : '=';
 
-                printf("lod %c %f, ", operand, bias);
+                printf("lod %c %f, ", operand, fabsf(bias));
         }
 
         printf("\n");
