@@ -673,7 +673,8 @@ radv_process_color_image(struct radv_cmd_buffer *cmd_buffer,
 		uint32_t width, height;
 
 		/* Do not decompress levels without DCC. */
-		if (!radv_dcc_enabled(image, subresourceRange->baseMipLevel + l))
+		if (decompress_dcc &&
+		    !radv_dcc_enabled(image, subresourceRange->baseMipLevel + l))
 			continue;
 
 		width = radv_minify(image->info.width,
