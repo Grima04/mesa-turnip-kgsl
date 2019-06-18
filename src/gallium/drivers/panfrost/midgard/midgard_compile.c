@@ -83,36 +83,6 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
  * driver seems to do it that way */
 
 #define EMIT(op, ...) emit_mir_instruction(ctx, v_##op(__VA_ARGS__));
-#define SWIZZLE_XXXX SWIZZLE(COMPONENT_X, COMPONENT_X, COMPONENT_X, COMPONENT_X)
-#define SWIZZLE_XYXX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X)
-#define SWIZZLE_XYZX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X)
-#define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
-#define SWIZZLE_XYZZ SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_Z)
-#define SWIZZLE_XYXZ SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_Z)
-#define SWIZZLE_WWWW SWIZZLE(COMPONENT_W, COMPONENT_W, COMPONENT_W, COMPONENT_W)
-
-static inline unsigned
-swizzle_of(unsigned comp)
-{
-        switch (comp) {
-                case 1:
-                        return SWIZZLE_XXXX;
-                case 2:
-                        return SWIZZLE_XYXX;
-                case 3:
-                        return SWIZZLE_XYZX;
-                case 4:
-                        return SWIZZLE_XYZW;
-                default:
-                        unreachable("Invalid component count");
-        }
-}
-
-static inline unsigned
-mask_of(unsigned nr_comp)
-{
-        return (1 << nr_comp) - 1;
-}
 
 #define M_LOAD_STORE(name, rname, uname) \
 	static midgard_instruction m_##name(unsigned ssa, unsigned address) { \
