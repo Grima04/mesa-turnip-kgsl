@@ -506,9 +506,22 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 transfer->base.stride = box->width * bytes_per_pixel;
                 transfer->base.layer_stride = transfer->base.stride * box->height;
-
-                /* TODO: Reads */
                 transfer->map = rzalloc_size(transfer, transfer->base.layer_stride * box->depth);
+                assert(box->depth == 1);
+
+                if (usage & PIPE_TRANSFER_READ) {
+                        if (bo->layout == PAN_AFBC) {
+                                DBG("Unimplemented: reads from AFBC");
+                        } else if (bo->layout == PAN_TILED) {
+                                panfrost_load_tiled_image(
+                                                transfer->map,
+                                                bo->cpu + bo->slices[level].offset,
+                                                box,
+                                                transfer->base.stride,
+                                                bo->slices[level].stride,
+                                                util_format_get_blocksize(resource->format));
+                        }
+                }
 
                 return transfer->map;
         } else {
