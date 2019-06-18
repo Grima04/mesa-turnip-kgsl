@@ -122,6 +122,20 @@ nir_deref_instr_has_indirect(nir_deref_instr *instr)
 }
 
 bool
+nir_deref_instr_is_known_out_of_bounds(nir_deref_instr *instr)
+{
+   for (; instr; instr = nir_deref_instr_parent(instr)) {
+      if (instr->deref_type == nir_deref_type_array &&
+          nir_src_is_const(instr->arr.index) &&
+           nir_src_as_uint(instr->arr.index) >
+           glsl_get_length(nir_deref_instr_parent(instr)->type))
+         return true;
+   }
+
+   return false;
+}
+
+bool
 nir_deref_instr_has_complex_use(nir_deref_instr *deref)
 {
    nir_foreach_use(use_src, &deref->dest.ssa) {
