@@ -63,7 +63,7 @@ files_panfrost = files(
   'pan_tiler.c',
 )
 
-inc_panfrost = [
+panfrost_includes = [
   inc_common,
   inc_gallium,
   inc_gallium_aux,
@@ -99,7 +99,7 @@ libpanfrost = static_library(
     dep_libdrm,
     idep_nir
   ],
-  include_directories : inc_panfrost,
+  include_directories : panfrost_includes,
   c_args : [c_vis_args, c_msvc_compat_args, compile_args_panfrost],
 )
 
@@ -151,7 +151,7 @@ files_pandecode = files(
 pandecode = executable(
   'pandecode',
   files_pandecode,
-  include_directories : inc_panfrost,
+  include_directories : panfrost_includes,
   dependencies : [
     dep_thread,
   ],

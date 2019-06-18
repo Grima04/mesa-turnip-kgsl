@@ -67,8 +67,6 @@ LOCAL_SRC_FILES := \
 	lima_submit.h \
 	lima_texture.c \
 	lima_texture.h \
-	lima_tiling.c \
-	lima_tiling.h \
 	lima_util.c \
 	lima_util.h
 

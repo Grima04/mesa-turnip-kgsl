@@ -24,7 +24,7 @@
  *
  */
 
-#include "lima_tiling.h"
+#include "pan_tiling.h"
 
 uint32_t space_filler[16][16] = {
    { 0,   1,   4,   5,   16,  17,  20,  21,  64,  65,  68,  69,  80,  81,  84,  85, },
@@ -46,7 +46,7 @@ uint32_t space_filler[16][16] = {
 };
 
 static void
-lima_store_tiled_image_bpp4(void *dst, const void *src,
+panfrost_store_tiled_image_bpp4(void *dst, const void *src,
                                const struct pipe_box *box,
                                uint32_t dst_stride,
                                uint32_t src_stride)
@@ -71,7 +71,7 @@ lima_store_tiled_image_bpp4(void *dst, const void *src,
 }
 
 static void
-lima_store_tiled_image_generic(void *dst, const void *src,
+panfrost_store_tiled_image_generic(void *dst, const void *src,
                                const struct pipe_box *box,
                                uint32_t dst_stride,
                                uint32_t src_stride,
@@ -99,7 +99,7 @@ lima_store_tiled_image_generic(void *dst, const void *src,
 }
 
 static void
-lima_load_tiled_image_bpp4(void *dst, const void *src,
+panfrost_load_tiled_image_bpp4(void *dst, const void *src,
                               const struct pipe_box *box,
                               uint32_t dst_stride,
                               uint32_t src_stride)
@@ -124,7 +124,7 @@ lima_load_tiled_image_bpp4(void *dst, const void *src,
 }
 
 static void
-lima_load_tiled_image_generic(void *dst, const void *src,
+panfrost_load_tiled_image_generic(void *dst, const void *src,
                               const struct pipe_box *box,
                               uint32_t dst_stride,
                               uint32_t src_stride,
@@ -152,7 +152,7 @@ lima_load_tiled_image_generic(void *dst, const void *src,
 }
 
 void
-lima_store_tiled_image(void *dst, const void *src,
+panfrost_store_tiled_image(void *dst, const void *src,
                            const struct pipe_box *box,
                            uint32_t dst_stride,
                            uint32_t src_stride,
@@ -160,15 +160,15 @@ lima_store_tiled_image(void *dst, const void *src,
 {
 	switch (bpp) {
 	case 4:
-		lima_store_tiled_image_bpp4(dst, src, box, dst_stride, src_stride);
+		panfrost_store_tiled_image_bpp4(dst, src, box, dst_stride, src_stride);
 		break;
 	default:
-		lima_store_tiled_image_generic(dst, src, box, dst_stride, src_stride, bpp);
+		panfrost_store_tiled_image_generic(dst, src, box, dst_stride, src_stride, bpp);
 	}
 }
 
 void
-lima_load_tiled_image(void *dst, const void *src,
+panfrost_load_tiled_image(void *dst, const void *src,
                            const struct pipe_box *box,
                            uint32_t dst_stride,
                            uint32_t src_stride,
@@ -176,9 +176,9 @@ lima_load_tiled_image(void *dst, const void *src,
 {
 	switch (bpp) {
 	case 4:
-		lima_load_tiled_image_bpp4(dst, src, box, dst_stride, src_stride);
+		panfrost_load_tiled_image_bpp4(dst, src, box, dst_stride, src_stride);
 		break;
 	default:
-		lima_load_tiled_image_generic(dst, src, box, dst_stride, src_stride, bpp);
+		panfrost_load_tiled_image_generic(dst, src, box, dst_stride, src_stride, bpp);
 	}
 }

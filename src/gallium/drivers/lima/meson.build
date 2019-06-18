@@ -69,8 +69,6 @@ files_lima = files(
   'lima_texture.h',
   'lima_fence.c',
   'lima_fence.h',
-  'lima_tiling.c',
-  'lima_tiling.h',
 )
 
 liblima = static_library(
@@ -78,12 +76,13 @@ liblima = static_library(
   files_lima,
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_drivers,
+    inc_panfrost
   ],
   dependencies : [dep_libdrm, idep_nir_headers],
 )
 
 driver_lima = declare_dependency(
   compile_args : '-DGALLIUM_LIMA',
-  link_with : [liblima, liblimawinsys],
+  link_with : [liblima, liblimawinsys, libpanfrost_shared],
   dependencies : idep_nir,
 )
