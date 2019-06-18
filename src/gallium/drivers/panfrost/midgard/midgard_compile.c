@@ -1505,7 +1505,27 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         int texture_index = instr->texture_index;
         int sampler_index = texture_index;
 
-        unsigned position_swizzle = 0;
+        /* No helper to build texture words -- we do it all here */
+        midgard_instruction ins = {
+                .type = TAG_TEXTURE_4,
+                .texture = {
+                        .op = midgard_texop,
+                        .format = midgard_tex_format(instr->sampler_dim),
+                        .texture_handle = texture_index,
+                        .sampler_handle = sampler_index,
+
+                        /* TODO: Regalloc it in */
+                        .swizzle = SWIZZLE_XYZW,
+                        .mask = 0xF,
+
+                        /* TODO: half */
+                        .in_reg_full = 1,
+                        .out_full = 1,
+
+                        /* Always 1 */
+                        .unknown7 = 1,
+                }
+        };
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 int reg = SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + in_reg);
@@ -1535,13 +1555,13 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 st.load_store.swizzle = alu_src.swizzle;
                                 emit_mir_instruction(ctx, st);
 
-                                position_swizzle = swizzle_of(2);
+                                ins.texture.in_reg_swizzle = swizzle_of(2);
                         } else {
-                                position_swizzle = alu_src.swizzle = swizzle_of(nr_comp);
+                                ins.texture.in_reg_swizzle = alu_src.swizzle = swizzle_of(nr_comp);
 
-                                midgard_instruction ins = v_mov(index, alu_src, reg);
-                                ins.alu.mask = expand_writemask(mask_of(nr_comp));
-                                emit_mir_instruction(ctx, ins);
+                                midgard_instruction mov = v_mov(index, alu_src, reg);
+                                mov.alu.mask = expand_writemask(mask_of(nr_comp));
+                                emit_mir_instruction(ctx, mov);
 
                                 if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
                                         /* Texel fetch opcodes care about the
@@ -1557,17 +1577,15 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                         zero.ssa_args.inline_constant = true;
                                         zero.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
                                         zero.has_constants = true;
-                                        zero.alu.mask = ~ins.alu.mask;
+                                        zero.alu.mask = ~mov.alu.mask;
                                         emit_mir_instruction(ctx, zero);
 
-                                        position_swizzle = SWIZZLE_XYZZ;
+                                        ins.texture.in_reg_swizzle = SWIZZLE_XYZZ;
                                 } else {
-                                        /* To the hardware, z is depth, w is array
-                                         * layer. To NIR, z is array layer for a 2D
-                                         * array */
-
-                                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D)
-                                                position_swizzle = SWIZZLE_XYXZ;
+                                        /* Non-texel fetch doesn't need that
+                                         * nonsense. However we do use the Z
+                                         * for array indexing */
+                                        ins.texture.in_reg_swizzle = SWIZZLE_XYXZ;
                                 }
                         }
 
@@ -1576,14 +1594,37 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                 case nir_tex_src_bias:
                 case nir_tex_src_lod: {
-                        /* To keep RA simple, we put the bias/LOD into the w
-                         * component of the input source, which is otherwise in xy */
+                        /* Try as a constant if we can */
+
+                        bool is_txf = midgard_texop == TEXTURE_OP_TEXEL_FETCH;
+                        if (!is_txf && pan_attach_constant_bias(ctx, instr->src[i].src, &ins.texture))
+                                break;
+
+                        /* Otherwise we use a register. To keep RA simple, we
+                         * put the bias/LOD into the w component of the input
+                         * source, which is otherwise in xy */
 
                         alu_src.swizzle = SWIZZLE_XXXX;
 
-                        midgard_instruction ins = v_mov(index, alu_src, reg);
-                        ins.alu.mask = expand_writemask(1 << COMPONENT_W);
-                        emit_mir_instruction(ctx, ins);
+                        midgard_instruction mov = v_mov(index, alu_src, reg);
+                        mov.alu.mask = expand_writemask(1 << COMPONENT_W);
+                        emit_mir_instruction(ctx, mov);
+
+                        ins.texture.lod_register = true;
+
+                        midgard_tex_register_select sel = {
+                                .select = in_reg,
+                                .full = 1,
+
+                                /* w */
+                                .component_lo = 1,
+                                .component_hi = 1
+                        };
+
+                        uint8_t packed;
+                        memcpy(&packed, &sel, sizeof(packed));
+                        ins.texture.bias = packed;
+
                         break;
                };
 
@@ -1592,57 +1633,9 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 }
         }
 
-        /* No helper to build texture words -- we do it all here */
-        midgard_instruction ins = {
-                .type = TAG_TEXTURE_4,
-                .texture = {
-                        .op = midgard_texop,
-                        .format = midgard_tex_format(instr->sampler_dim),
-                        .texture_handle = texture_index,
-                        .sampler_handle = sampler_index,
-
-                        /* TODO: Regalloc it in */
-                        .swizzle = SWIZZLE_XYZW,
-                        .mask = 0xF,
-
-                        /* TODO: half */
-                        .in_reg_full = 1,
-                        .in_reg_swizzle = position_swizzle,
-                        .out_full = 1,
-
-                        /* Always 1 */
-                        .unknown7 = 1,
-                }
-        };
-
         /* Set registers to read and write from the same place */
         ins.texture.in_reg_select = in_reg;
         ins.texture.out_reg_select = out_reg;
-
-        /* Setup bias/LOD if necessary. Only register mode support right now.
-         * TODO: Immediate mode for performance gains */
-
-        bool needs_lod =
-                instr->op == nir_texop_txb ||
-                instr->op == nir_texop_txl ||
-                instr->op == nir_texop_txf;
-
-        if (needs_lod) {
-                ins.texture.lod_register = true;
-
-                midgard_tex_register_select sel = {
-                        .select = in_reg,
-                        .full = 1,
-
-                        /* w */
-                        .component_lo = 1,
-                        .component_hi = 1
-                };
-
-                uint8_t packed;
-                memcpy(&packed, &sel, sizeof(packed));
-                ins.texture.bias = packed;
-        }
 
         emit_mir_instruction(ctx, ins);
 

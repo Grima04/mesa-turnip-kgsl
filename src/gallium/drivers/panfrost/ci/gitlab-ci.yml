@@ -230,6 +230,7 @@ build:arm64:
         dEQP-GLES2.functional.shaders.loops.do_while_constant_iterations.only_continue_vertex
         dEQP-GLES2.functional.fbo.render.resize.tex2d_rgb_depth_component16
         dEQP-GLES2.functional.fbo.render.resize.tex2d_rgba_depth_component16
+        dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_nearest_nearest_clamp_rgba8888
         "
 
     - for test in $FLIP_FLOPS; do sed -i "/$test/d" results/expected-failures.txt results/results-$lava_job_id.csv; done
