@@ -26,7 +26,6 @@
 #include <errno.h>
 
 #include "pan_context.h"
-#include "pan_swizzle.h"
 #include "pan_format.h"
 
 #include "util/macros.h"
@@ -2799,7 +2798,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         panfrost_emit_tiler_payload(ctx);
         panfrost_invalidate_frame(ctx);
         panfrost_default_shader_backend(ctx);
-        panfrost_generate_space_filler_indices();
 
         return gallium;
 }

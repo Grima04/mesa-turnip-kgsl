@@ -43,8 +43,8 @@
 #include "pan_context.h"
 #include "pan_screen.h"
 #include "pan_resource.h"
-#include "pan_swizzle.h"
 #include "pan_util.h"
+#include "pan_tiling.h"
 
 static struct pipe_resource *
 panfrost_resource_from_handle(struct pipe_screen *pscreen,
@@ -524,32 +524,9 @@ panfrost_transfer_map(struct pipe_context *pctx,
 }
 
 static void
-panfrost_tile_texture(struct panfrost_screen *screen, struct panfrost_resource *rsrc, struct panfrost_gtransfer *trans)
-{
-	struct panfrost_bo *bo = (struct panfrost_bo *)rsrc->bo;
-
-        unsigned level = trans->base.level;
-
-        panfrost_texture_swizzle(
-                        trans->base.box.x,
-                        trans->base.box.y,
-                        trans->base.box.width,
-                        trans->base.box.height,
-                        util_format_get_blocksize(rsrc->base.format),
-                        u_minify(rsrc->base.width0, level),
-                        trans->map,
-                        bo->cpu
-                                + bo->slices[level].offset
-                                + bo->cubemap_stride * trans->base.box.z
-                        );
-}
-
-static void
 panfrost_transfer_unmap(struct pipe_context *pctx,
                         struct pipe_transfer *transfer)
 {
-        struct panfrost_context *ctx = pan_context(pctx);
-
         /* Gallium expects writeback here, so we tile */
 
         struct panfrost_gtransfer *trans = pan_transfer(transfer);
@@ -563,10 +540,16 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                         if (bo->layout == PAN_AFBC) {
                                 DBG("Unimplemented: writes to AFBC\n");
                         } else if (bo->layout == PAN_TILED) {
-                                struct pipe_context *gallium = (struct pipe_context *) ctx;
-                                struct panfrost_screen *screen = pan_screen(gallium->screen);
+                                unsigned level = transfer->level;
                                 assert(transfer->box.depth == 1);
-                                panfrost_tile_texture(screen, prsrc, trans);
+
+                                panfrost_store_tiled_image(
+                                                bo->cpu + bo->slices[level].offset,
+                                                trans->map,
+                                                &transfer->box,
+                                                bo->slices[level].stride,
+                                                transfer->stride,
+                                                util_format_get_blocksize(prsrc->base.format));
                         }
                 }
         }
