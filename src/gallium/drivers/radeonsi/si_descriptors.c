@@ -1881,7 +1881,7 @@ static void si_upload_bindless_descriptors(struct si_context *sctx)
 	}
 
 	/* Invalidate L1 because it doesn't know that L2 changed. */
-	sctx->flags |= SI_CONTEXT_INV_SMEM_L1;
+	sctx->flags |= SI_CONTEXT_INV_SCACHE;
 	si_emit_cache_flush(sctx);
 
 	sctx->bindless_descriptors_dirty = false;

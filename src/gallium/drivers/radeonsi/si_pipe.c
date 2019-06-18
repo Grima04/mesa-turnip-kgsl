@@ -1155,11 +1155,11 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	sscreen->use_monolithic_shaders =
 		(sscreen->debug_flags & DBG(MONOLITHIC_SHADERS)) != 0;
 
-	sscreen->barrier_flags.cp_to_L2 = SI_CONTEXT_INV_SMEM_L1 |
-					    SI_CONTEXT_INV_VMEM_L1;
+	sscreen->barrier_flags.cp_to_L2 = SI_CONTEXT_INV_SCACHE |
+					  SI_CONTEXT_INV_VCACHE;
 	if (sscreen->info.chip_class <= GFX8) {
-		sscreen->barrier_flags.cp_to_L2 |= SI_CONTEXT_INV_GLOBAL_L2;
-		sscreen->barrier_flags.L2_to_cp |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+		sscreen->barrier_flags.cp_to_L2 |= SI_CONTEXT_INV_L2;
+		sscreen->barrier_flags.L2_to_cp |= SI_CONTEXT_WB_L2;
 	}
 
 	if (debug_get_bool_option("RADEON_DUMP_SHADERS", false))

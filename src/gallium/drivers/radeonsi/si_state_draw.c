@@ -959,10 +959,10 @@ void si_emit_cache_flush(struct si_context *sctx)
 	if (!sctx->has_graphics) {
 		/* Only process compute flags. */
 		flags &= SI_CONTEXT_INV_ICACHE |
-			 SI_CONTEXT_INV_SMEM_L1 |
-			 SI_CONTEXT_INV_VMEM_L1 |
-			 SI_CONTEXT_INV_GLOBAL_L2 |
-			 SI_CONTEXT_WRITEBACK_GLOBAL_L2 |
+			 SI_CONTEXT_INV_SCACHE |
+			 SI_CONTEXT_INV_VCACHE |
+			 SI_CONTEXT_INV_L2 |
+			 SI_CONTEXT_WB_L2 |
 			 SI_CONTEXT_INV_L2_METADATA |
 			 SI_CONTEXT_CS_PARTIAL_FLUSH;
 	}
@@ -996,7 +996,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 
 	if (flags & SI_CONTEXT_INV_ICACHE)
 		cp_coher_cntl |= S_0085F0_SH_ICACHE_ACTION_ENA(1);
-	if (flags & SI_CONTEXT_INV_SMEM_L1)
+	if (flags & SI_CONTEXT_INV_SCACHE)
 		cp_coher_cntl |= S_0085F0_SH_KCACHE_ACTION_ENA(1);
 
 	if (sctx->chip_class <= GFX8) {
@@ -1114,15 +1114,15 @@ void si_emit_cache_flush(struct si_context *sctx)
 		}
 
 		/* Ideally flush TC together with CB/DB. */
-		if (flags & SI_CONTEXT_INV_GLOBAL_L2) {
+		if (flags & SI_CONTEXT_INV_L2) {
 			/* Writeback and invalidate everything in L2 & L1. */
 			tc_flags = EVENT_TC_ACTION_ENA |
 				   EVENT_TC_WB_ACTION_ENA;
 
 			/* Clear the flags. */
-			flags &= ~(SI_CONTEXT_INV_GLOBAL_L2 |
-				   SI_CONTEXT_WRITEBACK_GLOBAL_L2 |
-				   SI_CONTEXT_INV_VMEM_L1);
+			flags &= ~(SI_CONTEXT_INV_L2 |
+				   SI_CONTEXT_WB_L2 |
+				   SI_CONTEXT_INV_VCACHE);
 			sctx->num_L2_invalidates++;
 		}
 
@@ -1146,9 +1146,9 @@ void si_emit_cache_flush(struct si_context *sctx)
 	if (sctx->has_graphics &&
 	    (cp_coher_cntl ||
 	     (flags & (SI_CONTEXT_CS_PARTIAL_FLUSH |
-		       SI_CONTEXT_INV_VMEM_L1 |
-		       SI_CONTEXT_INV_GLOBAL_L2 |
-		       SI_CONTEXT_WRITEBACK_GLOBAL_L2)))) {
+		       SI_CONTEXT_INV_VCACHE |
+		       SI_CONTEXT_INV_L2 |
+		       SI_CONTEXT_WB_L2)))) {
 		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
 		radeon_emit(cs, 0);
 	}
@@ -1162,9 +1162,9 @@ void si_emit_cache_flush(struct si_context *sctx)
 	 *
 	 * GFX6-GFX7 don't support L2 write-back.
 	 */
-	if (flags & SI_CONTEXT_INV_GLOBAL_L2 ||
+	if (flags & SI_CONTEXT_INV_L2 ||
 	    (sctx->chip_class <= GFX7 &&
-	     (flags & SI_CONTEXT_WRITEBACK_GLOBAL_L2))) {
+	     (flags & SI_CONTEXT_WB_L2))) {
 		/* Invalidate L1 & L2. (L1 is always invalidated on GFX6)
 		 * WB must be set on GFX8+ when TC_ACTION is set.
 		 */
@@ -1178,7 +1178,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 		/* L1 invalidation and L2 writeback must be done separately,
 		 * because both operations can't be done together.
 		 */
-		if (flags & SI_CONTEXT_WRITEBACK_GLOBAL_L2) {
+		if (flags & SI_CONTEXT_WB_L2) {
 			/* WB = write-back
 			 * NC = apply to non-coherent MTYPEs
 			 *      (i.e. MTYPE <= 1, which is what we use everywhere)
@@ -1191,7 +1191,7 @@ void si_emit_cache_flush(struct si_context *sctx)
 			cp_coher_cntl = 0;
 			sctx->num_L2_writebacks++;
 		}
-		if (flags & SI_CONTEXT_INV_VMEM_L1) {
+		if (flags & SI_CONTEXT_INV_VCACHE) {
 			/* Invalidate per-CU VMEM L1. */
 			si_emit_surface_sync(sctx, sctx->gfx_cs, cp_coher_cntl |
 					     S_0085F0_TCL1_ACTION_ENA(1));
@@ -1588,7 +1588,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 			   si_resource(indexbuf)->TC_L2_dirty) {
 			/* GFX8 reads index buffers through TC L2, so it doesn't
 			 * need this. */
-			sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+			sctx->flags |= SI_CONTEXT_WB_L2;
 			si_resource(indexbuf)->TC_L2_dirty = false;
 		}
 	}
@@ -1607,13 +1607,13 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		/* Indirect buffers use TC L2 on GFX9, but not older hw. */
 		if (sctx->chip_class <= GFX8) {
 			if (si_resource(indirect->buffer)->TC_L2_dirty) {
-				sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+				sctx->flags |= SI_CONTEXT_WB_L2;
 				si_resource(indirect->buffer)->TC_L2_dirty = false;
 			}
 
 			if (indirect->indirect_draw_count &&
 			    si_resource(indirect->indirect_draw_count)->TC_L2_dirty) {
-				sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+				sctx->flags |= SI_CONTEXT_WB_L2;
 				si_resource(indirect->indirect_draw_count)->TC_L2_dirty = false;
 			}
 		}

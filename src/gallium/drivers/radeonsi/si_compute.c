@@ -917,7 +917,7 @@ static void si_launch_grid(
 		/* Indirect buffers use TC L2 on GFX9, but not older hw. */
 		if (sctx->chip_class <= GFX8 &&
 		    si_resource(info->indirect)->TC_L2_dirty) {
-			sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+			sctx->flags |= SI_CONTEXT_WB_L2;
 			si_resource(info->indirect)->TC_L2_dirty = false;
 		}
 	}

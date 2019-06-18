@@ -51,9 +51,9 @@ unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
 	case SI_COHERENCY_CP:
 		return 0;
 	case SI_COHERENCY_SHADER:
-		return SI_CONTEXT_INV_SMEM_L1 |
-		       SI_CONTEXT_INV_VMEM_L1 |
-		       (cache_policy == L2_BYPASS ? SI_CONTEXT_INV_GLOBAL_L2 : 0);
+		return SI_CONTEXT_INV_SCACHE |
+		       SI_CONTEXT_INV_VCACHE |
+		       (cache_policy == L2_BYPASS ? SI_CONTEXT_INV_L2 : 0);
 	case SI_COHERENCY_CB_META:
 		return SI_CONTEXT_FLUSH_AND_INV_CB;
 	}
@@ -172,7 +172,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx,
 
 	enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
-		       (cache_policy == L2_BYPASS ? SI_CONTEXT_WRITEBACK_GLOBAL_L2 : 0);
+		       (cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0);
 
 	if (cache_policy != L2_BYPASS)
 		si_resource(dst)->TC_L2_dirty = true;
@@ -418,7 +418,7 @@ void si_compute_copy_image(struct si_context *sctx,
 	ctx->launch_grid(ctx, &info);
 
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
-		       (sctx->chip_class <= GFX8 ? SI_CONTEXT_WRITEBACK_GLOBAL_L2 : 0) |
+		       (sctx->chip_class <= GFX8 ? SI_CONTEXT_WB_L2 : 0) |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
 	ctx->bind_compute_state(ctx, saved_cs);
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, saved_image);
@@ -597,7 +597,7 @@ void si_compute_clear_render_target(struct pipe_context *ctx,
 	ctx->launch_grid(ctx, &info);
 
 	sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH |
-		       (sctx->chip_class <= GFX8 ? SI_CONTEXT_WRITEBACK_GLOBAL_L2 : 0) |
+		       (sctx->chip_class <= GFX8 ? SI_CONTEXT_WB_L2 : 0) |
 		       si_get_flush_flags(sctx, SI_COHERENCY_SHADER, L2_STREAM);
 	ctx->bind_compute_state(ctx, saved_cs);
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_image);

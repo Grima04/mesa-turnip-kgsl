@@ -4792,11 +4792,11 @@ static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 	/* Subsequent commands must wait for all shader invocations to
 	 * complete. */
 	sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
-	                 SI_CONTEXT_CS_PARTIAL_FLUSH;
+		       SI_CONTEXT_CS_PARTIAL_FLUSH;
 
 	if (flags & PIPE_BARRIER_CONSTANT_BUFFER)
-		sctx->flags |= SI_CONTEXT_INV_SMEM_L1 |
-				 SI_CONTEXT_INV_VMEM_L1;
+		sctx->flags |= SI_CONTEXT_INV_SCACHE |
+			       SI_CONTEXT_INV_VCACHE;
 
 	if (flags & (PIPE_BARRIER_VERTEX_BUFFER |
 		     PIPE_BARRIER_SHADER_BUFFER |
@@ -4807,7 +4807,7 @@ static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 		/* As far as I can tell, L1 contents are written back to L2
 		 * automatically at end of shader, but the contents of other
 		 * L1 caches might still be stale. */
-		sctx->flags |= SI_CONTEXT_INV_VMEM_L1;
+		sctx->flags |= SI_CONTEXT_INV_VCACHE;
 	}
 
 	if (flags & PIPE_BARRIER_INDEX_BUFFER) {
@@ -4815,7 +4815,7 @@ static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 		 * L1 isn't used.
 		 */
 		if (sctx->screen->info.chip_class <= GFX7)
-			sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+			sctx->flags |= SI_CONTEXT_WB_L2;
 	}
 
 	/* MSAA color, any depth and any stencil are flushed in
@@ -4826,13 +4826,13 @@ static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 		sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB;
 
 		if (sctx->chip_class <= GFX8)
-			sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+			sctx->flags |= SI_CONTEXT_WB_L2;
 	}
 
 	/* Indirect buffers use TC L2 on GFX9, but not older hw. */
 	if (sctx->screen->info.chip_class <= GFX8 &&
 	    flags & PIPE_BARRIER_INDIRECT_BUFFER)
-		sctx->flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+		sctx->flags |= SI_CONTEXT_WB_L2;
 }
 
 static void *si_create_blend_custom(struct si_context *sctx, unsigned mode)

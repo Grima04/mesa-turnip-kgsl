@@ -83,7 +83,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 	if (!ctx->screen->info.kernel_flushes_tc_l2_after_ib) {
 		wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
 			      SI_CONTEXT_CS_PARTIAL_FLUSH |
-			      SI_CONTEXT_INV_GLOBAL_L2;
+			      SI_CONTEXT_INV_L2;
 	} else if (ctx->chip_class == GFX6) {
 		/* The kernel flushes L2 before shaders are finished. */
 		wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
@@ -304,9 +304,9 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 	 * TODO: Do we also need to invalidate CB & DB caches?
 	 */
 	ctx->flags |= SI_CONTEXT_INV_ICACHE |
-		      SI_CONTEXT_INV_SMEM_L1 |
-		      SI_CONTEXT_INV_VMEM_L1 |
-		      SI_CONTEXT_INV_GLOBAL_L2 |
+		      SI_CONTEXT_INV_SCACHE |
+		      SI_CONTEXT_INV_VCACHE |
+		      SI_CONTEXT_INV_L2 |
 		      SI_CONTEXT_START_PIPELINE_STATS;
 
 	ctx->cs_shader_state.initialized = false;
