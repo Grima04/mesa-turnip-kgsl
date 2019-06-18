@@ -639,9 +639,18 @@ static void
 radv_process_color_image(struct radv_cmd_buffer *cmd_buffer,
 			 struct radv_image *image,
 			 const VkImageSubresourceRange *subresourceRange,
-			 VkPipeline *pipeline)
+			 bool decompress_dcc)
 {
 	struct radv_meta_saved_state saved_state;
+	VkPipeline *pipeline;
+
+	if (decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
+		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.dcc_decompress_pipeline;
+	} else if (radv_image_has_fmask(image)) {
+		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.fmask_decompress_pipeline;
+	} else {
+		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.cmask_eliminate_pipeline;
+	}
 
 	if (!*pipeline) {
 		VkResult ret;
@@ -661,11 +670,15 @@ radv_process_color_image(struct radv_cmd_buffer *cmd_buffer,
 			     VK_PIPELINE_BIND_POINT_GRAPHICS, *pipeline);
 
 	for (uint32_t l = 0; l < radv_get_levelCount(image, subresourceRange); ++l) {
-		uint32_t width =
-			radv_minify(image->info.width,
+		uint32_t width, height;
+
+		/* Do not decompress levels without DCC. */
+		if (!radv_dcc_enabled(image, subresourceRange->baseMipLevel + l))
+			continue;
+
+		width = radv_minify(image->info.width,
 				    subresourceRange->baseMipLevel + l);
-		uint32_t height =
-			radv_minify(image->info.height,
+		height = radv_minify(image->info.height,
 				    subresourceRange->baseMipLevel + l);
 
 		radv_CmdSetViewport(radv_cmd_buffer_to_handle(cmd_buffer), 0, 1,
@@ -700,17 +713,8 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
                            bool decompress_dcc)
 {
 	bool old_predicating = false;
-	VkPipeline *pipeline;
 
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
-
-	if (decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
-		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.dcc_decompress_pipeline;
-	} else if (radv_image_has_fmask(image)) {
-               pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.fmask_decompress_pipeline;
-	} else {
-               pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.cmask_eliminate_pipeline;
-	}
 
 	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
@@ -723,7 +727,8 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 		cmd_buffer->state.predicating = true;
 	}
 
-	radv_process_color_image(cmd_buffer, image, subresourceRange, pipeline);
+	radv_process_color_image(cmd_buffer, image, subresourceRange,
+				 decompress_dcc);
 
 	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
