@@ -341,8 +341,10 @@ VkResult genX(CreateSampler)(
 
    sampler->n_planes = 1;
 
+   uint32_t border_color_stride = GEN_IS_HASWELL ? 512 : 64;
    uint32_t border_color_offset = device->border_colors.offset +
-                                  pCreateInfo->borderColor * 64;
+                                  pCreateInfo->borderColor *
+                                  border_color_stride;
 
 #if GEN_GEN >= 9
    unsigned sampler_reduction_mode = STD_FILTER;
