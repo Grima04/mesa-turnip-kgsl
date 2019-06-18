@@ -506,7 +506,7 @@ void radv_CmdResolveImage(
 		const struct VkOffset3D dstOffset =
 			radv_sanitize_image_offset(dest_image->type, region->dstOffset);
 
-		if (radv_image_has_dcc(dest_image)) {
+		if (radv_dcc_enabled(dest_image, region->dstSubresource.mipLevel)) {
 			VkImageSubresourceRange range = {
 				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 				.baseMipLevel = region->dstSubresource.mipLevel,
@@ -676,7 +676,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_image_view *dest_iview = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment;
 		struct radv_image *dst_img = dest_iview->image;
 
-		if (radv_image_has_dcc(dst_img)) {
+		if (radv_dcc_enabled(dst_img, dest_iview->base_mip)) {
 			VkImageSubresourceRange range = {
 				.aspectMask = dest_iview->aspect_mask,
 				.baseMipLevel = dest_iview->base_mip,

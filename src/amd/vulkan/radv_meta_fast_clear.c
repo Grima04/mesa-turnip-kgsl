@@ -704,7 +704,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 
 	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
 
-	if (decompress_dcc && radv_image_has_dcc(image)) {
+	if (decompress_dcc && radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.dcc_decompress_pipeline;
 	} else if (radv_image_has_fmask(image)) {
                pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.fmask_decompress_pipeline;
@@ -712,7 +712,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
                pipeline = &cmd_buffer->device->meta_state.fast_clear_flush.cmask_eliminate_pipeline;
 	}
 
-	if (radv_image_has_dcc(image)) {
+	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
 		pred_offset += 8 * subresourceRange->baseMipLevel;
@@ -725,7 +725,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_process_color_image(cmd_buffer, image, subresourceRange, pipeline);
 
-	if (radv_image_has_dcc(image)) {
+	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		uint64_t pred_offset = decompress_dcc ? image->dcc_pred_offset :
 							image->fce_pred_offset;
 		pred_offset += 8 * subresourceRange->baseMipLevel;
@@ -742,7 +742,7 @@ radv_emit_color_decompress(struct radv_cmd_buffer *cmd_buffer,
 		}
 	}
 
-	if (radv_image_has_dcc(image)) {
+	if (radv_dcc_enabled(image, subresourceRange->baseMipLevel)) {
 		/* Clear the image's fast-clear eliminate predicate because
 		 * FMASK and DCC also imply a fast-clear eliminate.
 		 */

@@ -87,7 +87,7 @@ blit_surf_for_image_level_layer(struct radv_image *image,
 {
 	VkFormat format = radv_get_aspect_format(image, aspect_mask);
 
-	if (!radv_image_has_dcc(image) &&
+	if (!radv_dcc_enabled(image, subres->mipLevel) &&
 	    !(radv_image_is_tc_compat_htile(image)))
 		format = vk_format_for_size(vk_format_get_blocksize(format));
 

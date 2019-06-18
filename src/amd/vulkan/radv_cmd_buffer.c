@@ -1294,7 +1294,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 		}
 	}
 
-	if (radv_image_has_dcc(image)) {
+	if (radv_dcc_enabled(image, iview->base_mip)) {
 		/* Drawing with DCC enabled also compresses colorbuffers. */
 		VkImageSubresourceRange range = {
 			.aspectMask = iview->aspect_mask,
@@ -1624,7 +1624,7 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t level_count = radv_get_levelCount(image, range);
 	uint32_t count = 2 * level_count;
 
-	assert(radv_image_has_dcc(image));
+	assert(radv_dcc_enabled(image, range->baseMipLevel));
 
 	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
 	radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) |
@@ -1652,7 +1652,7 @@ radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t level_count = radv_get_levelCount(image, range);
 	uint32_t count = 2 * level_count;
 
-	assert(radv_image_has_dcc(image));
+	assert(radv_dcc_enabled(image, range->baseMipLevel));
 
 	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
 	radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) |
@@ -1714,7 +1714,8 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t level_count = radv_get_levelCount(image, range);
 	uint32_t count = 2 * level_count;
 
-	assert(radv_image_has_cmask(image) || radv_image_has_dcc(image));
+	assert(radv_image_has_cmask(image) ||
+	       radv_dcc_enabled(image, range->baseMipLevel));
 
 	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, cmd_buffer->state.predicating));
 	radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
@@ -1747,7 +1748,8 @@ radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 		.layerCount = iview->layer_count,
 	};
 
-	assert(radv_image_has_cmask(image) || radv_image_has_dcc(image));
+	assert(radv_image_has_cmask(image) ||
+	       radv_dcc_enabled(image, iview->base_mip));
 
 	radv_set_color_clear_metadata(cmd_buffer, image, &range, color_values);
 
@@ -1767,7 +1769,8 @@ radv_load_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_image *image = iview->image;
 	uint64_t va = radv_image_get_fast_clear_va(image, iview->base_mip);
 
-	if (!radv_image_has_cmask(image) && !radv_image_has_dcc(image))
+	if (!radv_image_has_cmask(image) &&
+	    !radv_dcc_enabled(image, iview->base_mip))
 		return;
 
 	uint32_t reg = R_028C8C_CB_COLOR0_CLEAR_WORD0 + cb_idx * 0x3c;
@@ -4945,7 +4948,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		radv_initialize_fmask(cmd_buffer, image);
 	}
 
-	if (radv_image_has_dcc(image)) {
+	if (radv_dcc_enabled(image, range->baseMipLevel)) {
 		uint32_t value = 0xffffffffu; /* Fully expanded mode. */
 		bool need_decompress_pass = false;
 
@@ -4961,7 +4964,8 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 					 need_decompress_pass);
 	}
 
-	if (radv_image_has_cmask(image) || radv_image_has_dcc(image)) {
+	if (radv_image_has_cmask(image) ||
+	    radv_dcc_enabled(image, range->baseMipLevel)) {
 		uint32_t color_values[2] = {};
 		radv_set_color_clear_metadata(cmd_buffer, image, range,
 					      color_values);
@@ -4987,7 +4991,7 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 		return;
 	}
 
-	if (radv_image_has_dcc(image)) {
+	if (radv_dcc_enabled(image, range->baseMipLevel)) {
 		if (src_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
 			radv_initialize_dcc(cmd_buffer, image, range, 0xffffffffu);
 		} else if (radv_layout_dcc_compressed(image, src_layout, src_queue_mask) &&

@@ -4202,7 +4202,7 @@ radv_init_dcc_control_reg(struct radv_device *device,
 	unsigned max_compressed_block_size;
 	unsigned independent_64b_blocks;
 
-	if (!radv_image_has_dcc(iview->image))
+	if (!radv_dcc_enabled(iview->image, iview->base_mip))
 		return 0;
 
 	if (iview->image->info.samples > 1) {

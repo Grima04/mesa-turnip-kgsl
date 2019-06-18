@@ -1469,7 +1469,7 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 					  clear_color, &clear_value))
 		return false;
 
-	if (radv_image_has_dcc(iview->image)) {
+	if (radv_dcc_enabled(iview->image, iview->base_mip)) {
 		bool can_avoid_fast_clear_elim;
 		uint32_t reset_value;
 
@@ -1518,7 +1518,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 	cmask_clear_value = radv_get_cmask_fast_clear_value(iview->image);
 
 	/* clear cmask buffer */
-	if (radv_image_has_dcc(iview->image)) {
+	if (radv_dcc_enabled(iview->image, iview->base_mip)) {
 		uint32_t reset_value;
 		bool can_avoid_fast_clear_elim;
 		bool need_decompress_pass = false;
