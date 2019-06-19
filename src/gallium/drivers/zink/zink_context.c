@@ -1013,6 +1013,7 @@ zink_blit(struct pipe_context *pctx,
       util_blitter_save_rasterizer(ctx->blitter, ctx->gfx_pipeline_state.rast_state);
 
       util_blitter_blit(ctx->blitter, info);
+      return;
    }
 
    struct zink_resource *src = zink_resource(info->src.resource);
