@@ -53,8 +53,13 @@ etna_create_sampler_state_state(struct pipe_context *pipe,
       VIVS_TE_SAMPLER_CONFIG0_VWRAP(translate_texture_wrapmode(ss->wrap_t)) |
       VIVS_TE_SAMPLER_CONFIG0_MIN(translate_texture_filter(ss->min_img_filter)) |
       VIVS_TE_SAMPLER_CONFIG0_MIP(translate_texture_mipfilter(ss->min_mip_filter)) |
-      VIVS_TE_SAMPLER_CONFIG0_MAG(translate_texture_filter(ss->mag_img_filter)) |
-      COND(ss->normalized_coords, VIVS_TE_SAMPLER_CONFIG0_ROUND_UV);
+      VIVS_TE_SAMPLER_CONFIG0_MAG(translate_texture_filter(ss->mag_img_filter));
+
+   /* ROUND_UV improves precision - but not compatible with NEAREST filter */
+   if (ss->min_img_filter != PIPE_TEX_FILTER_NEAREST &&
+       ss->mag_img_filter != PIPE_TEX_FILTER_NEAREST) {
+      cs->TE_SAMPLER_CONFIG0 |= VIVS_TE_SAMPLER_CONFIG0_ROUND_UV;
+   }
 
    cs->TE_SAMPLER_CONFIG1 =
       COND(ss->seamless_cube_map, VIVS_TE_SAMPLER_CONFIG1_SEAMLESS_CUBE_MAP);
