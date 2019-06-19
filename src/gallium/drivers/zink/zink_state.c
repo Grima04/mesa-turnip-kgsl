@@ -60,15 +60,15 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
       ves->bindings[binding].binding = binding;
       ves->bindings[binding].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-      ves->attribs[i].binding = binding;
-      ves->attribs[i].location = i; // TODO: unsure
-      ves->attribs[i].format = zink_get_format(elem->src_format);
-      assert(ves->attribs[i].format != VK_FORMAT_UNDEFINED);
-      ves->attribs[i].offset = elem->src_offset;
+      ves->hw_state.attribs[i].binding = binding;
+      ves->hw_state.attribs[i].location = i; // TODO: unsure
+      ves->hw_state.attribs[i].format = zink_get_format(elem->src_format);
+      assert(ves->hw_state.attribs[i].format != VK_FORMAT_UNDEFINED);
+      ves->hw_state.attribs[i].offset = elem->src_offset;
    }
 
-   ves->num_bindings = num_bindings;
-   ves->num_attribs = num_elements;
+   ves->hw_state.num_bindings = num_bindings;
+   ves->hw_state.num_attribs = num_elements;
    return ves;
 }
 
@@ -76,15 +76,18 @@ static void
 zink_bind_vertex_elements_state(struct pipe_context *pctx,
                                 void *cso)
 {
-   struct zink_gfx_pipeline_state *state = &zink_context(pctx)->gfx_pipeline_state;
-   state->element_state = cso;
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
+   ctx->element_state = cso;
    if (cso) {
+      state->element_state = &ctx->element_state->hw_state;
       struct zink_vertex_elements_state *ves = cso;
-      for (int i = 0; i < ves->num_bindings; ++i) {
+      for (int i = 0; i < state->element_state->num_bindings; ++i) {
          state->bindings[i].binding = ves->bindings[i].binding;
          state->bindings[i].inputRate = ves->bindings[i].inputRate;
       }
-   }
+   } else
+     state->element_state = NULL;
 }
 
 static void
@@ -372,17 +375,18 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    state->base = *rs_state;
 
    assert(rs_state->depth_clip_far == rs_state->depth_clip_near);
-   state->depth_clamp = rs_state->depth_clip_near == 0;
-   state->rasterizer_discard = rs_state->rasterizer_discard;
+   state->hw_state.depth_clamp = rs_state->depth_clip_near == 0;
+   state->hw_state.rasterizer_discard = rs_state->rasterizer_discard;
 
    assert(rs_state->fill_front <= PIPE_POLYGON_MODE_POINT);
    if (rs_state->fill_back != rs_state->fill_front)
       debug_printf("BUG: vulkan doesn't support different front and back fill modes\n");
-   state->polygon_mode = (VkPolygonMode)rs_state->fill_front; // same values
-   state->cull_mode = (VkCullModeFlags)rs_state->cull_face; // same bits
+   state->hw_state.polygon_mode = (VkPolygonMode)rs_state->fill_front; // same values
+   state->hw_state.cull_mode = (VkCullModeFlags)rs_state->cull_face; // same bits
 
-   state->front_face = rs_state->front_ccw ? VK_FRONT_FACE_COUNTER_CLOCKWISE
-                                           : VK_FRONT_FACE_CLOCKWISE;
+   state->hw_state.front_face = rs_state->front_ccw ?
+                                VK_FRONT_FACE_COUNTER_CLOCKWISE :
+                                VK_FRONT_FACE_CLOCKWISE;
 
    state->offset_point = rs_state->offset_point;
    state->offset_line = rs_state->offset_line;
@@ -400,7 +404,9 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
 static void
 zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
 {
-   zink_context(pctx)->gfx_pipeline_state.rast_state = cso;
+   struct zink_context *ctx = zink_context(pctx);
+   ctx->rast_state = cso;
+   ctx->gfx_pipeline_state.rast_state = &ctx->rast_state->hw_state;
 }
 
 static void

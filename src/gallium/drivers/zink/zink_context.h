@@ -72,6 +72,9 @@ struct zink_context {
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_framebuffer_state fb_state;
 
+   struct zink_vertex_elements_state *element_state;
+   struct zink_rasterizer_state *rast_state;
+
    struct zink_shader *gfx_stages[PIPE_SHADER_TYPES - 1];
    struct zink_gfx_pipeline_state gfx_pipeline_state;
    struct hash_table *program_cache;

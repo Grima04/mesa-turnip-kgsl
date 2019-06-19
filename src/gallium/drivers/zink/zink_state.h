@@ -28,28 +28,34 @@
 
 #include "pipe/p_state.h"
 
+struct zink_vertex_elements_hw_state {
+   VkVertexInputAttributeDescription attribs[PIPE_MAX_ATTRIBS];
+   uint32_t num_bindings, num_attribs;
+};
+
 struct zink_vertex_elements_state {
    struct {
       uint32_t             binding;
       VkVertexInputRate    inputRate;
    } bindings[PIPE_MAX_ATTRIBS];
-   VkVertexInputAttributeDescription attribs[PIPE_MAX_ATTRIBS];
-   uint32_t num_bindings, num_attribs;
    uint8_t binding_map[PIPE_MAX_ATTRIBS];
+   struct zink_vertex_elements_hw_state hw_state;
 };
 
-struct zink_rasterizer_state {
-   struct pipe_rasterizer_state base;
-
+struct zink_rasterizer_hw_state {
    VkBool32 depth_clamp;
    VkBool32 rasterizer_discard;
    VkFrontFace front_face;
    VkPolygonMode polygon_mode;
    VkCullModeFlags cull_mode;
+};
 
+struct zink_rasterizer_state {
+   struct pipe_rasterizer_state base;
    bool offset_point, offset_line, offset_tri;
    float offset_units, offset_clamp, offset_scale;
    float line_width;
+   struct zink_rasterizer_hw_state hw_state;
 };
 
 struct zink_blend_state {

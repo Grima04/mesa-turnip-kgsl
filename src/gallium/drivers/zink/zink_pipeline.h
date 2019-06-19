@@ -38,13 +38,13 @@ struct zink_vertex_elements_state;
 struct zink_gfx_pipeline_state {
    struct zink_render_pass *render_pass;
 
-   struct zink_vertex_elements_state *element_state;
+   struct zink_vertex_elements_hw_state *element_state;
    VkVertexInputBindingDescription bindings[PIPE_MAX_ATTRIBS]; // combination of element_state and stride
 
    uint32_t num_attachments;
    struct zink_blend_state *blend_state;
 
-   struct zink_rasterizer_state *rast_state;
+   struct zink_rasterizer_hw_state *rast_state;
 
    struct zink_depth_stencil_alpha_state *depth_stencil_alpha_state;
 

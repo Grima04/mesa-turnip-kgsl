@@ -726,9 +726,9 @@ zink_bind_vertex_buffers(struct zink_cmdbuf *cmdbuf, struct zink_context *ctx)
 {
    VkBuffer buffers[PIPE_MAX_ATTRIBS];
    VkDeviceSize buffer_offsets[PIPE_MAX_ATTRIBS];
-   struct zink_vertex_elements_state *elems = ctx->gfx_pipeline_state.element_state;
-   for (unsigned i = 0; i < elems->num_bindings; i++) {
-      struct pipe_vertex_buffer *vb = ctx->buffers + elems->binding_map[i];
+   const struct zink_vertex_elements_state *elems = ctx->element_state;
+   for (unsigned i = 0; i < elems->hw_state.num_bindings; i++) {
+      struct pipe_vertex_buffer *vb = ctx->buffers + ctx->element_state->binding_map[i];
       assert(vb && vb->buffer.resource);
       struct zink_resource *res = zink_resource(vb->buffer.resource);
       buffers[i] = res->buffer;
@@ -736,8 +736,10 @@ zink_bind_vertex_buffers(struct zink_cmdbuf *cmdbuf, struct zink_context *ctx)
       zink_cmdbuf_reference_resoure(cmdbuf, res);
    }
 
-   if (elems->num_bindings > 0)
-      vkCmdBindVertexBuffers(cmdbuf->cmdbuf, 0, elems->num_bindings, buffers, buffer_offsets);
+   if (elems->hw_state.num_bindings > 0)
+      vkCmdBindVertexBuffers(cmdbuf->cmdbuf, 0,
+                             elems->hw_state.num_bindings,
+                             buffers, buffer_offsets);
 }
 
 static void
@@ -804,7 +806,7 @@ zink_draw_vbo(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
-   struct zink_rasterizer_state *rast_state = ctx->gfx_pipeline_state.rast_state;
+   struct zink_rasterizer_state *rast_state = ctx->rast_state;
 
    if (dinfo->mode >= PIPE_PRIM_QUADS ||
        dinfo->mode == PIPE_PRIM_LINE_LOOP) {
