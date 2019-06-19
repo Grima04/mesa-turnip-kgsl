@@ -316,8 +316,6 @@ LOCAL_C_INCLUDES := \
 	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_anv_entrypoints,,)/vulkan \
 	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_vulkan_common,,)/vulkan
 
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(MESA_TOP)/src/intel/vulkan
-
 LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_nir \
 	libmesa_isl \
