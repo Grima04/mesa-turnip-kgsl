@@ -113,7 +113,7 @@ static void anv_spirv_nir_debug(void *private_data,
    };
    char buffer[256];
 
-   snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s", spirv_offset, message);
+   snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s", (unsigned long) spirv_offset, message);
 
    vk_debug_report(&debug_data->device->instance->debug_report_callbacks,
                    vk_flags[level],
