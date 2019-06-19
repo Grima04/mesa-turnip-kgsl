@@ -1523,7 +1523,9 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                 pandecode_replay_attribute_meta(job_no, varying_count, p, true, suffix);
         }
 
-        if (p->uniforms) {
+        bool is_compute = job_type == JOB_TYPE_COMPUTE;
+
+        if (p->uniforms && !is_compute) {
                 int rows = uniform_count, width = 4;
                 size_t sz = rows * width * sizeof(float);
 
@@ -1550,6 +1552,27 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
 
                 pandecode_indent--;
                 pandecode_log("};\n");
+        } else if (p->uniforms) {
+                int rows = uniform_count * 2;
+                size_t sz = rows * sizeof(mali_ptr);
+
+                struct pandecode_mapped_memory *uniform_mem = pandecode_find_mapped_gpu_mem_containing(p->uniforms);
+                pandecode_fetch_gpu_mem(uniform_mem, p->uniforms, sz);
+                mali_ptr *PANDECODE_PTR_VAR(uniforms, uniform_mem, p->uniforms);
+
+                pandecode_log("mali_ptr uniforms_%d%s[] = {\n", job_no, suffix);
+
+                pandecode_indent++;
+
+                for (int row = 0; row < rows; row++) {
+                        char *a = pointer_as_memory_reference(uniforms[row]);
+                        pandecode_log("%s,\n", a);
+                        free(a);
+                }
+
+                pandecode_indent--;
+                pandecode_log("};\n");
+
         }
 
         if (p->uniform_buffers) {
