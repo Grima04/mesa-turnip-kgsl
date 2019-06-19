@@ -70,7 +70,8 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
        * image types use textures which cannot alias with buffer objects.
        * Therefore we have to group buffer samplers together with SSBO's.
        */
-      if (glsl_get_sampler_dim(var->type) == GLSL_SAMPLER_DIM_BUF)
+      if (glsl_get_sampler_dim(glsl_without_array(var->type)) ==
+          GLSL_SAMPLER_DIM_BUF)
          state->buffers_written = true;
       else
          state->images_written = true;
