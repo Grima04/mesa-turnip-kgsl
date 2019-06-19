@@ -48,6 +48,14 @@ enum SpvExtension {
    SPV_EXTENSIONS_COUNT
 };
 
+struct spirv_supported_extensions {
+   /** Flags the supported extensions. Array to make it easier to iterate. */
+   bool supported[SPV_EXTENSIONS_COUNT];
+
+   /** Number of supported extensions */
+   unsigned int count;
+};
+
 extern GLuint
 _mesa_get_spirv_extension_count(struct gl_context *ctx);
 
@@ -56,6 +64,9 @@ _mesa_get_enabled_spirv_extension(struct gl_context *ctx,
                                   GLuint index);
 
 const char *_mesa_spirv_extensions_to_string(enum SpvExtension ext);
+
+void _mesa_fill_supported_spirv_extensions(struct spirv_supported_extensions *ext,
+                                           const struct spirv_supported_capabilities *cap);
 
 #ifdef __cplusplus
 }
