@@ -2522,6 +2522,13 @@ panfrost_destroy(struct pipe_context *pipe)
         screen->driver->free_slab(screen, &panfrost->shaders);
         screen->driver->free_slab(screen, &panfrost->tiler_heap);
         screen->driver->free_slab(screen, &panfrost->tiler_polygon_list);
+        screen->driver->free_slab(screen, &panfrost->tiler_dummy);
+
+        for (int i = 0; i < ARRAY_SIZE(panfrost->transient_pools); ++i) {
+                struct panfrost_memory_entry *entry;
+                entry = panfrost->transient_pools[i].entries[0];
+                pb_slab_free(&screen->slabs, (struct pb_slab_entry *)entry);
+        }
 
         ralloc_free(pipe);
 }
@@ -2680,7 +2687,6 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         screen->driver->allocate_slab(screen, &ctx->tiler_heap, 32768, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
         screen->driver->allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
         screen->driver->allocate_slab(screen, &ctx->tiler_dummy, 1, false, PAN_ALLOCATE_INVISIBLE, 0, 0);
-
 }
 
 /* New context creation, which also does hardware initialisation since I don't
