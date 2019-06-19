@@ -328,18 +328,23 @@ make_surface(const struct anv_device *dev,
     * just use RENDER_SURFACE_STATE::X/Y Offset.
     */
    bool needs_shadow = false;
+   isl_surf_usage_flags_t shadow_usage = 0;
    if (dev->info.gen <= 8 &&
        (image->create_flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
        image->tiling == VK_IMAGE_TILING_OPTIMAL) {
       assert(isl_format_is_compressed(plane_format.isl_format));
       tiling_flags = ISL_TILING_LINEAR_BIT;
       needs_shadow = true;
+      shadow_usage = ISL_SURF_USAGE_TEXTURE_BIT |
+                     (usage & ISL_SURF_USAGE_CUBE_BIT);
    }
 
    if (dev->info.gen <= 7 &&
        aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
        (image->stencil_usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
       needs_shadow = true;
+      shadow_usage = ISL_SURF_USAGE_TEXTURE_BIT |
+                     (usage & ISL_SURF_USAGE_CUBE_BIT);
    }
 
    ok = isl_surf_init(&dev->isl_dev, &anv_surf->isl,
@@ -381,7 +386,7 @@ make_surface(const struct anv_device *dev,
          .samples = image->samples,
          .min_alignment_B = 0,
          .row_pitch_B = stride,
-         .usage = usage,
+         .usage = shadow_usage,
          .tiling_flags = ISL_TILING_ANY_MASK);
 
       /* isl_surf_init() will fail only if provided invalid input. Invalid input
