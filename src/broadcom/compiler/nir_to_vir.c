@@ -115,6 +115,20 @@ vir_emit_thrsw(struct v3d_compile *c)
                 c->lock_scoreboard_on_first_thrsw = true;
 }
 
+uint32_t
+v3d_get_op_for_atomic_add(nir_intrinsic_instr *instr, unsigned src)
+{
+        if (nir_src_is_const(instr->src[src])) {
+                int64_t add_val = nir_src_as_int(instr->src[src]);
+                if (add_val == 1)
+                        return V3D_TMU_OP_WRITE_AND_READ_INC;
+                else if (add_val == -1)
+                        return V3D_TMU_OP_WRITE_OR_READ_DEC;
+        }
+
+        return V3D_TMU_OP_WRITE_ADD_READ_PREFETCH;
+}
+
 static uint32_t
 v3d_general_tmu_op(nir_intrinsic_instr *instr)
 {
@@ -129,8 +143,9 @@ v3d_general_tmu_op(nir_intrinsic_instr *instr)
         case nir_intrinsic_store_scratch:
                 return V3D_TMU_OP_REGULAR;
         case nir_intrinsic_ssbo_atomic_add:
+                return v3d_get_op_for_atomic_add(instr, 2);
         case nir_intrinsic_shared_atomic_add:
-                return V3D_TMU_OP_WRITE_ADD_READ_PREFETCH;
+                return v3d_get_op_for_atomic_add(instr, 1);
         case nir_intrinsic_ssbo_atomic_imin:
         case nir_intrinsic_shared_atomic_imin:
                 return V3D_TMU_OP_WRITE_SMIN;
@@ -171,11 +186,16 @@ static void
 ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                      bool is_shared_or_scratch)
 {
-        /* XXX perf: We should turn add/sub of 1 to inc/dec.  Perhaps NIR
-         * wants to have support for inc/dec?
-         */
-
         uint32_t tmu_op = v3d_general_tmu_op(instr);
+
+        /* If we were able to replace atomic_add for an inc/dec, then we
+         * need/can to do things slightly different, like not loading the
+         * amount to add/sub, as that is implicit.
+         */
+        bool atomic_add_replaced = ((instr->intrinsic == nir_intrinsic_ssbo_atomic_add ||
+                                     instr->intrinsic == nir_intrinsic_shared_atomic_add) &&
+                                    (tmu_op == V3D_TMU_OP_WRITE_AND_READ_INC ||
+                                     tmu_op == V3D_TMU_OP_WRITE_OR_READ_DEC));
         bool is_store = (instr->intrinsic == nir_intrinsic_store_ssbo ||
                          instr->intrinsic == nir_intrinsic_store_scratch ||
                          instr->intrinsic == nir_intrinsic_store_shared);
@@ -188,7 +208,8 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
         } else if (instr->intrinsic == nir_intrinsic_load_ssbo ||
                    instr->intrinsic == nir_intrinsic_load_ubo ||
                    instr->intrinsic == nir_intrinsic_load_scratch ||
-                   instr->intrinsic == nir_intrinsic_load_shared) {
+                   instr->intrinsic == nir_intrinsic_load_shared ||
+                   atomic_add_replaced) {
                 offset_src = 0 + has_index;
         } else if (is_store) {
                 offset_src = 1 + has_index;

@@ -826,6 +826,9 @@ bool vir_init_reg_sets(struct v3d_compiler *compiler);
 
 bool v3d_gl_format_is_return_32(GLenum format);
 
+uint32_t
+v3d_get_op_for_atomic_add(nir_intrinsic_instr *instr, unsigned src);
+
 static inline bool
 quniform_contents_is_texture_p0(enum quniform_contents contents)
 {
