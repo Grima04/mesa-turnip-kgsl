@@ -1406,6 +1406,13 @@ struct mali_single_framebuffer {
         /* More below this, maybe */
 } __attribute__((packed));
 
+/* On Midgard, this "framebuffer descriptor" is used for the framebuffer field
+ * of compute jobs. Superficially resembles a single framebuffer descriptor */
+
+struct mali_compute_fbd {
+        u32 unknown[64];
+} __attribute__((packed));
+
 /* Format bits for the render target flags */
 
 #define MALI_MFBD_FORMAT_MSAA 	  (1 << 1)

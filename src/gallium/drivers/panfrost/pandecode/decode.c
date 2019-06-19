@@ -540,6 +540,26 @@ pandecode_replay_sfbd(uint64_t gpu_va, int job_no)
 }
 
 static void
+pandecode_compute_fbd(uint64_t gpu_va, int job_no)
+{
+        struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
+        const struct mali_compute_fbd *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
+
+        pandecode_log("struct mali_compute_fbd framebuffer_%d = {\n", job_no);
+        pandecode_indent++;
+
+        pandecode_log(".unknown = {");
+
+        for (int i = 0; i < sizeof(s->unknown) / sizeof(s->unknown[0]); ++i)
+                printf("%X, ", s->unknown[i]);
+
+        pandecode_log("},\n");
+
+        pandecode_indent--;
+        printf("},\n");
+}
+
+static void
 pandecode_replay_swizzle(unsigned swizzle)
 {
 	pandecode_prop("swizzle = %s | (%s << 3) | (%s << 6) | (%s << 9)",
@@ -1275,6 +1295,8 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                 pandecode_replay_scratchpad(p->framebuffer & ~FBD_TYPE, job_no, suffix);
         else if (p->framebuffer & MALI_MFBD)
                 pandecode_replay_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
+        else if (job_type == JOB_TYPE_COMPUTE)
+                pandecode_compute_fbd((u64) (uintptr_t) p->framebuffer, job_no);
         else
                 pandecode_replay_sfbd((u64) (uintptr_t) p->framebuffer, job_no);
 
