@@ -667,7 +667,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 		vs_params[param_vertex_id] = index[i];
 		vs_params[param_instance_id] = instance_id;
 
-		LLVMValueRef ret = LLVMBuildCall(builder, vs, vs_params, num_vs_params, "");
+		LLVMValueRef ret = ac_build_call(&ctx->ac, vs, vs_params, num_vs_params);
 		for (unsigned chan = 0; chan < 4; chan++)
 			pos[i][chan] = LLVMBuildExtractValue(builder, ret, chan, "");
 	}

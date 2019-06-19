@@ -6591,7 +6591,7 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 			out_idx += param_size;
 		}
 
-		ret = LLVMBuildCall(builder, parts[part], in, num_params, "");
+		ret = ac_build_call(&ctx->ac, parts[part], in, num_params);
 
 		if (is_merged_shader(ctx) &&
 		    part + 1 == next_shader_first_part) {

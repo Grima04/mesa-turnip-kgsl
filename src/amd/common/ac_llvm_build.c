@@ -4445,3 +4445,11 @@ ac_build_load_helper_invocation(struct ac_llvm_context *ctx)
 	result = LLVMBuildNot(ctx->builder, result, "");
 	return LLVMBuildSExt(ctx->builder, result, ctx->i32, "");
 }
+
+LLVMValueRef ac_build_call(struct ac_llvm_context *ctx, LLVMValueRef func,
+			   LLVMValueRef *args, unsigned num_args)
+{
+	LLVMValueRef ret = LLVMBuildCall(ctx->builder, func, args, num_args, "");
+	LLVMSetInstructionCallConv(ret, LLVMGetFunctionCallConv(func));
+	return ret;
+}
