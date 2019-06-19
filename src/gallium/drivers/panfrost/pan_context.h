@@ -47,7 +47,6 @@
 /* Forward declare to avoid extra header dep */
 struct prim_convert_context;
 
-#define MAX_DRAW_CALLS 4096
 #define MAX_VARYINGS   4096
 
 //#define PAN_DIRTY_CLEAR	     (1 << 0)
@@ -149,23 +148,6 @@ struct panfrost_context {
 
         struct mali_shader_meta fragment_shader_core;
 
-        /* A frame is composed of a starting set value job, a number of vertex
-         * and tiler jobs, linked to the fragment job at the end. See the
-         * presentations for more information how this works */
-
-        unsigned draw_count;
-
-        mali_ptr set_value_job;
-        mali_ptr vertex_jobs[MAX_DRAW_CALLS];
-        mali_ptr tiler_jobs[MAX_DRAW_CALLS];
-
-        struct mali_job_descriptor_header *u_set_value_job;
-        struct mali_job_descriptor_header *u_vertex_jobs[MAX_DRAW_CALLS];
-        struct mali_job_descriptor_header *u_tiler_jobs[MAX_DRAW_CALLS];
-
-        unsigned vertex_job_count;
-        unsigned tiler_job_count;
-
         /* Per-draw Dirty flags are setup like any other driver */
         int dirty;
 
@@ -201,7 +183,7 @@ struct panfrost_context {
 
         struct primconvert_context *primconvert;
         struct blitter_context *blitter;
-        bool in_wallpaper;
+        struct panfrost_job *wallpaper_batch;
 
         struct panfrost_blend_state *blend;
 

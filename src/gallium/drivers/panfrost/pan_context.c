@@ -517,15 +517,6 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
         memcpy(&ctx->fragment_shader_core, &shader, sizeof(shader));
 }
 
-static void
-panfrost_link_job_pair(struct mali_job_descriptor_header *first, mali_ptr next)
-{
-        if (first->job_descriptor_size)
-                first->next_job_64 = (u64) (uintptr_t) next;
-        else
-                first->next_job_32 = (u32) (uintptr_t) next;
-}
-
 /* Generates a vertex/tiler job. This is, in some sense, the heart of the
  * graphics command stream. It should be called once per draw, accordding to
  * presentations. Set is_tiler for "tiler" jobs (fragment shader jobs, but in
@@ -535,12 +526,8 @@ panfrost_link_job_pair(struct mali_job_descriptor_header *first, mali_ptr next)
 struct panfrost_transfer
 panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler)
 {
-        /* Each draw call corresponds to two jobs, and the set-value job is first */
-        int draw_job_index = 1 + (2 * ctx->draw_count) + 1;
-
         struct mali_job_descriptor_header job = {
                 .job_type = is_tiler ? JOB_TYPE_TILER : JOB_TYPE_VERTEX,
-                .job_index = draw_job_index + (is_tiler ? 1 : 0),
 #ifdef __LP64__
                 .job_descriptor_size = 1,
 #endif
@@ -557,63 +544,9 @@ panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler)
 #endif
         struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
 
-        if (is_tiler) {
-                /* Tiler jobs depend on vertex jobs */
-
-                job.job_dependency_index_1 = draw_job_index;
-
-                /* Tiler jobs also depend on the previous tiler job */
-
-                if (ctx->draw_count) {
-                        job.job_dependency_index_2 = draw_job_index - 1;
-                        /* Previous tiler job points to this tiler job */
-                        panfrost_link_job_pair(ctx->u_tiler_jobs[ctx->draw_count - 1], transfer.gpu);
-                } else {
-                        /* The only vertex job so far points to first tiler job */
-                        panfrost_link_job_pair(ctx->u_vertex_jobs[0], transfer.gpu);
-                }
-        } else {
-                if (ctx->draw_count) {
-                        /* Previous vertex job points to this vertex job */
-                        panfrost_link_job_pair(ctx->u_vertex_jobs[ctx->draw_count - 1], transfer.gpu);
-
-                        /* Last vertex job points to first tiler job */
-                        panfrost_link_job_pair(&job, ctx->tiler_jobs[0]);
-                } else {
-                        /* Have the first vertex job depend on the set value job */
-                        job.job_dependency_index_1 = ctx->u_set_value_job->job_index;
-                        panfrost_link_job_pair(ctx->u_set_value_job, transfer.gpu);
-                }
-        }
-
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job) - offset, payload, sizeof(*payload));
         return transfer;
-}
-
-/* Generates a set value job. It's unclear what exactly this does, why it's
- * necessary, and when to call it. */
-
-static void
-panfrost_set_value_job(struct panfrost_context *ctx)
-{
-        struct mali_job_descriptor_header job = {
-                .job_type = JOB_TYPE_SET_VALUE,
-                .job_descriptor_size = 1,
-                .job_index = 1,
-        };
-
-        struct mali_payload_set_value payload = {
-                .out = ctx->tiler_polygon_list.gpu,
-                .unknown = 0x3,
-        };
-
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(payload));
-        memcpy(transfer.cpu, &job, sizeof(job));
-        memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
-        
-        ctx->u_set_value_job = (struct mali_job_descriptor_header *) transfer.cpu;
-        ctx->set_value_job = transfer.gpu;
 }
 
 static mali_ptr
@@ -1214,6 +1147,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                         for (unsigned i = 0; i < 1; ++i) {
                                 bool is_srgb =
+                                        (ctx->pipe_framebuffer.nr_cbufs > i) &&
                                         util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
 
                                 rts[i].flags = blend_count;
@@ -1377,7 +1311,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
          * scissor we can ignore, since if we "miss" a tile of wallpaper, it'll
          * just... be faster :) */
 
-        if (!ctx->in_wallpaper)
+        if (!ctx->wallpaper_batch)
                 panfrost_job_union_scissor(job, minx, miny, maxx, maxy);
 
         /* Upload */
@@ -1401,28 +1335,18 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 static void
 panfrost_queue_draw(struct panfrost_context *ctx)
 {
-        /* TODO: Expand the array? */
-        if (ctx->draw_count >= MAX_DRAW_CALLS) {
-                DBG("Job buffer overflow, ignoring draw\n");
-                assert(0);
-        }
-
         /* Handle dirty flags now */
         panfrost_emit_for_draw(ctx, true);
 
-        /* We need a set_value job before any other draw jobs */
-        if (ctx->draw_count == 0)
-                panfrost_set_value_job(ctx);
-
         struct panfrost_transfer vertex = panfrost_vertex_tiler_job(ctx, false);
-        ctx->u_vertex_jobs[ctx->vertex_job_count] = (struct mali_job_descriptor_header *) vertex.cpu;
-        ctx->vertex_jobs[ctx->vertex_job_count++] = vertex.gpu;
-
         struct panfrost_transfer tiler = panfrost_vertex_tiler_job(ctx, true);
-        ctx->u_tiler_jobs[ctx->tiler_job_count] = (struct mali_job_descriptor_header *) tiler.cpu;
-        ctx->tiler_jobs[ctx->tiler_job_count++] = tiler.gpu;
 
-        ctx->draw_count++;
+        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+
+        if (ctx->wallpaper_batch)
+                panfrost_scoreboard_queue_fused_job_prepend(batch, vertex, tiler);
+        else
+                panfrost_scoreboard_queue_fused_job(batch, vertex, tiler);
 }
 
 /* The entire frame is in memory -- send it off to the kernel! */
@@ -1473,37 +1397,12 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
 	if (ctx->pipe_framebuffer.cbufs[0] == NULL)
 		return;
 
-        /* Blit the wallpaper in */
-        ctx->in_wallpaper = true;
+        /* Save the batch */
+        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+
+        ctx->wallpaper_batch = batch;
         panfrost_blit_wallpaper(ctx);
-        ctx->in_wallpaper = false;
-
-        /* We are flushing all queued draws and we know that no more jobs will
-         * be added until the next frame.
-         * We also know that the last jobs are the wallpaper jobs, and they
-         * need to be linked so they execute right after the set_value job.
-         */
-
-        /* set_value job to wallpaper vertex job */
-        panfrost_link_job_pair(ctx->u_set_value_job, ctx->vertex_jobs[ctx->vertex_job_count - 1]);
-        ctx->u_vertex_jobs[ctx->vertex_job_count - 1]->job_dependency_index_1 = ctx->u_set_value_job->job_index;
-
-        /* wallpaper vertex job to first vertex job */
-        panfrost_link_job_pair(ctx->u_vertex_jobs[ctx->vertex_job_count - 1], ctx->vertex_jobs[0]);
-        ctx->u_vertex_jobs[0]->job_dependency_index_1 = ctx->u_set_value_job->job_index;
-
-        /* last vertex job to wallpaper tiler job */
-        panfrost_link_job_pair(ctx->u_vertex_jobs[ctx->vertex_job_count - 2], ctx->tiler_jobs[ctx->tiler_job_count - 1]);
-        ctx->u_tiler_jobs[ctx->tiler_job_count - 1]->job_dependency_index_1 = ctx->u_vertex_jobs[ctx->vertex_job_count - 1]->job_index;
-        ctx->u_tiler_jobs[ctx->tiler_job_count - 1]->job_dependency_index_2 = 0;
-
-        /* wallpaper tiler job to first tiler job */
-        panfrost_link_job_pair(ctx->u_tiler_jobs[ctx->tiler_job_count - 1], ctx->tiler_jobs[0]);
-        ctx->u_tiler_jobs[0]->job_dependency_index_1 = ctx->u_vertex_jobs[0]->job_index;
-        ctx->u_tiler_jobs[0]->job_dependency_index_2 = ctx->u_tiler_jobs[ctx->tiler_job_count - 1]->job_index;
-
-        /* last tiler job to NULL */
-        panfrost_link_job_pair(ctx->u_tiler_jobs[ctx->tiler_job_count - 2], 0);
+        ctx->wallpaper_batch = NULL;
 }
 
 void
@@ -1516,7 +1415,7 @@ panfrost_flush(
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
         /* Nothing to do! */
-        if (!ctx->draw_count && !job->clear) return;
+        if (!job->last_job.gpu && !job->clear) return;
 
 	if (!job->clear)
 	        panfrost_draw_wallpaper(&ctx->base);
@@ -2256,8 +2155,9 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
          * state is being restored by u_blitter
          */
 
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
         bool is_scanout = panfrost_is_scanout(ctx);
-        bool has_draws = ctx->draw_count > 0;
+        bool has_draws = job->last_job.gpu;
 
         if (!ctx->blitter->running && (!is_scanout || has_draws)) {
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);

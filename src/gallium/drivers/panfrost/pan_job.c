@@ -41,6 +41,9 @@ panfrost_create_job(struct panfrost_context *ctx)
 
         job->minx = job->miny = ~0;
         job->maxx = job->maxy = 0;
+
+        util_dynarray_init(&job->headers, job);
+        util_dynarray_init(&job->gpu_headers, job);
  
         return job;
 }
@@ -102,6 +105,12 @@ panfrost_get_job(struct panfrost_context *ctx,
 struct panfrost_job *
 panfrost_get_job_for_fbo(struct panfrost_context *ctx)
 {
+        /* If we're wallpapering, we special case to workaround
+         * u_blitter abuse */
+
+        if (ctx->wallpaper_batch)
+                return ctx->wallpaper_batch;
+
         /* If we already began rendering, use that */
 
         if (ctx->job)
@@ -151,7 +160,9 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
         struct panfrost_screen *screen = pan_screen(gallium->screen);
         int ret;
 
-        bool has_draws = ctx->draw_count > 0;
+        panfrost_scoreboard_link_batch(job);
+
+        bool has_draws = job->last_job.gpu;
         bool is_scanout = panfrost_is_scanout(ctx);
 
         if (!job)
@@ -161,11 +172,6 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
 
         if (ret)
                 fprintf(stderr, "panfrost_job_submit failed: %d\n", ret);
-
-        /* Reset job counters */
-        ctx->draw_count = 0;
-        ctx->vertex_job_count = 0;
-        ctx->tiler_job_count = 0;
 }
 
 void

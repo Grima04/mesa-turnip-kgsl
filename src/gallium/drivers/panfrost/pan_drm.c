@@ -258,8 +258,10 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool
         struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[0];
 	int ret;
 
-        if (has_draws) {
-		ret = panfrost_drm_submit_job(ctx, ctx->set_value_job, 0, NULL);
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+
+        if (job->first_job.gpu) {
+		ret = panfrost_drm_submit_job(ctx, job->first_job.gpu, 0, NULL);
 		assert(!ret);
 	}
 

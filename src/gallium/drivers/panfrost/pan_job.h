@@ -26,6 +26,11 @@
 #ifndef __PAN_JOB_H__
 #define __PAN_JOB_H__
 
+#include "util/u_dynarray.h"
+#include "pipe/p_state.h"
+#include "pan_allocate.h"
+#include "pan_resource.h"
+
 /* Used as a hash table key */
 
 struct panfrost_job_key {
@@ -60,6 +65,40 @@ struct panfrost_job {
 
         unsigned minx, miny;
         unsigned maxx, maxy;
+
+        /* CPU pointers to the job descriptor headers. next_job is only
+         * set at submit time (since only then are all the dependencies
+         * known). The upshot is that this is append-only.
+         *
+         * These arrays contain the headers for the "primary batch", our jargon
+         * referring to the part of the panfrost_job that actually contains
+         * meaningful work. In an OpenGL ES setting, that means the
+         * SET_VALUE/VERTEX/TILER jobs. Excluded is specifically the FRAGMENT
+         * job, which is sent on as a secondary batch containing only a single
+         * hardware job. Since there's one and only one FRAGMENT job issued per
+         * panfrost_job, there is no need to do any scoreboarding / management;
+         * it's easy enough to open-code it and it's not like we can get any
+         * better anyway. */
+        struct util_dynarray headers;
+
+        /* (And the GPU versions; TODO maybe combine) */
+        struct util_dynarray gpu_headers;
+
+        /* The last job in the primary batch */
+        struct panfrost_transfer last_job;
+
+        /* The first/last tiler job */
+        struct panfrost_transfer first_tiler;
+        struct panfrost_transfer last_tiler;
+
+        /* The first vertex job used as the input to a tiler job */
+        struct panfrost_transfer first_vertex_for_tiler;
+
+        /* The first job. Notice we've created a linked list */
+        struct panfrost_transfer first_job;
+
+        /* The number of jobs in the primary batch, essentially */
+        unsigned job_index;
 
         /* BOs referenced -- will be used for flushing logic */
         struct set *bos;
@@ -112,5 +151,37 @@ void
 panfrost_job_union_scissor(struct panfrost_job *job,
                 unsigned minx, unsigned miny,
                 unsigned maxx, unsigned maxy);
+
+/* Scoreboarding */
+
+void
+panfrost_scoreboard_queue_compute_job(
+                struct panfrost_job *batch,
+                struct panfrost_transfer job);
+
+void
+panfrost_scoreboard_queue_vertex_job(
+                struct panfrost_job *batch,
+                struct panfrost_transfer vertex,
+                bool requires_tiling);
+
+void
+panfrost_scoreboard_queue_tiler_job(
+                struct panfrost_job *batch,
+                struct panfrost_transfer tiler);
+
+void
+panfrost_scoreboard_queue_fused_job(
+                struct panfrost_job *batch,
+                struct panfrost_transfer vertex,
+                struct panfrost_transfer tiler);
+void
+panfrost_scoreboard_queue_fused_job_prepend(
+                struct panfrost_job *batch,
+                struct panfrost_transfer vertex,
+                struct panfrost_transfer tiler);
+
+void
+panfrost_scoreboard_link_batch(struct panfrost_job *batch);
 
 #endif
