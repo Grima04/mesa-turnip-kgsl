@@ -177,6 +177,15 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
 
                 v3d_flush_jobs_writing_resource(v3d, view->base.resource);
         }
+
+        /* Flush writes to our vertex buffers (i.e. from transform feedback) */
+        if (s == PIPE_SHADER_VERTEX) {
+                foreach_bit(i, v3d->vertexbuf.enabled_mask) {
+                        struct pipe_vertex_buffer *vb = &v3d->vertexbuf.vb[i];
+
+                        v3d_flush_jobs_writing_resource(v3d, vb->buffer.resource);
+                }
+        }
 }
 
 static void
