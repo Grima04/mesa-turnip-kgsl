@@ -496,7 +496,6 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_VERTEX);
 
 	/* emit driver params every time: */
-	/* TODO skip emit if shader doesn't use driver params to avoid WFI.. */
 	if (info) {
 		const struct ir3_const_state *const_state = &v->shader->const_state;
 		uint32_t offset = const_state->offsets.driver_param;
