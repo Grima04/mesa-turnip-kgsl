@@ -1270,6 +1270,8 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
                                             total_extent_el);
       return;
    }
+
+   unreachable("invalid value for dim_layout");
 }
 
 static uint32_t
