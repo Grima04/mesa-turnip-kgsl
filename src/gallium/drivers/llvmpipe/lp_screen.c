@@ -341,7 +341,6 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_PCI_BUS:
    case PIPE_CAP_PCI_DEVICE:
    case PIPE_CAP_PCI_FUNCTION:
-   case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
    case PIPE_CAP_PRIMITIVE_RESTART_FOR_PATCHES:
    case PIPE_CAP_TGSI_VOTE:
@@ -386,6 +385,8 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 32;
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE:
       return LP_MAX_TGSI_SHADER_BUFFER_SIZE;
+   case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
+      return 1;
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }
