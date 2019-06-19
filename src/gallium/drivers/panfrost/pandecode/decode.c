@@ -38,9 +38,11 @@
 int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
 
 #define MEMORY_PROP(obj, p) {\
-	char *a = pointer_as_memory_reference(obj->p); \
-	pandecode_prop("%s = %s", #p, a); \
-	free(a); \
+        if (obj->p) { \
+                char *a = pointer_as_memory_reference(obj->p); \
+                pandecode_prop("%s = %s", #p, a); \
+                free(a); \
+        } \
 }
 
 #define DYN_MEMORY_PROP(obj, no, p) { \
@@ -1177,7 +1179,9 @@ pandecode_replay_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job
                          32) + 1);
 
         /* TODO: Decode */
-        pandecode_prop("unknown_draw = 0x%" PRIx32, p->unknown_draw);
+        if (p->unknown_draw)
+                pandecode_prop("unknown_draw = 0x%" PRIx32, p->unknown_draw);
+
         pandecode_prop("workgroups_x_shift_3 = 0x%" PRIx32, p->workgroups_x_shift_3);
 
         pandecode_prop("draw_mode = %s", pandecode_draw_mode_name(p->draw_mode));
@@ -1187,7 +1191,8 @@ pandecode_replay_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job
         if (p->index_count)
                 pandecode_prop("index_count = MALI_POSITIVE(%" PRId32 ")", p->index_count + 1);
 
-        pandecode_prop("negative_start = %d", p->negative_start);
+        if (p->negative_start)
+                pandecode_prop("negative_start = %d", p->negative_start);
 
         DYN_MEMORY_PROP(p, job_no, indices);
 
@@ -1897,6 +1902,9 @@ pandecode_replay_gl_enables(uint32_t gl_enables, int job_type)
 static void
 pandecode_replay_primitive_size(union midgard_primitive_size u, bool constant)
 {
+        if (u.pointer == 0x0)
+                return;
+
         pandecode_log(".primitive_size = {\n");
         pandecode_indent++;
 
@@ -2021,7 +2029,9 @@ pandecode_replay_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header
         pandecode_replay_vertex_tiler_prefix(&v->prefix, job_no);
 
         pandecode_replay_gl_enables(v->gl_enables, h->job_type);
-        pandecode_prop("draw_start = %d", v->draw_start);
+
+        if (v->draw_start)
+                pandecode_prop("draw_start = %d", v->draw_start);
 
 #ifndef __LP64__
 
