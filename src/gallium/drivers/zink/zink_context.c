@@ -476,12 +476,34 @@ static struct zink_framebuffer *
 get_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   struct zink_render_pass *rp = get_render_pass(ctx);
-   // TODO: cache!
-   struct zink_framebuffer *ret = zink_create_framebuffer(screen,
-                                                          &ctx->fb_state,
-                                                          rp);
-   return ret;
+
+   struct zink_framebuffer_state state = {};
+   state.rp = get_render_pass(ctx);
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
+      state.attachments[i] = zink_surface(psurf);
+   }
+
+   state.num_attachments = ctx->fb_state.nr_cbufs;
+   if (ctx->fb_state.zsbuf) {
+      struct pipe_surface *psurf = ctx->fb_state.zsbuf;
+      state.attachments[state.num_attachments++] = zink_surface(psurf);
+   }
+
+   state.width = ctx->fb_state.width;
+   state.height = ctx->fb_state.height;
+   state.layers = MAX2(ctx->fb_state.layers, 1);
+
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->framebuffer_cache,
+                                                      &state);
+   if (!entry) {
+      struct zink_framebuffer *fb = zink_create_framebuffer(screen, &state);
+      entry = _mesa_hash_table_insert(ctx->framebuffer_cache, &state, fb);
+      if (!entry)
+         return NULL;
+   }
+
+   return entry->data;
 }
 
 static void
@@ -498,6 +520,7 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(batch == zink_context_curr_batch(ctx));
+   assert(ctx->gfx_pipeline_state.render_pass);
 
    VkRenderPassBeginInfo rpbi = {};
    rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -545,7 +568,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    struct zink_framebuffer *fb = get_framebuffer(ctx);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
    zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, fb->rp);
-   zink_framebuffer_reference(screen, &fb, NULL);
 
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
 
@@ -813,6 +835,20 @@ static bool
 equals_render_pass_state(const void *a, const void *b)
 {
    return memcmp(a, b, sizeof(struct zink_render_pass_state)) == 0;
+}
+
+static uint32_t
+hash_framebuffer_state(const void *key)
+{
+   struct zink_framebuffer_state *s = (struct zink_framebuffer_state*)key;
+   return _mesa_hash_data(key, sizeof(struct zink_framebuffer_state) + sizeof(s->attachments) * s->num_attachments);
+}
+
+static bool
+equals_framebuffer_state(const void *a, const void *b)
+{
+   struct zink_framebuffer_state *s = (struct zink_framebuffer_state*)a;
+   return memcmp(a, b, sizeof(struct zink_framebuffer_state) + sizeof(s->attachments) * s->num_attachments) == 0;
 }
 
 static struct zink_gfx_program *
@@ -1335,13 +1371,15 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->program_cache = _mesa_hash_table_create(NULL,
                                                 hash_gfx_program,
                                                 equals_gfx_program);
-   if (!ctx->program_cache)
-      goto fail;
-
    ctx->render_pass_cache = _mesa_hash_table_create(NULL,
                                                     hash_render_pass_state,
                                                     equals_render_pass_state);
-   if (!ctx->render_pass_cache)
+   ctx->framebuffer_cache = _mesa_hash_table_create(NULL,
+                                                    hash_framebuffer_state,
+                                                    equals_framebuffer_state);
+
+   if (!ctx->program_cache || !ctx->render_pass_cache ||
+       !ctx->framebuffer_cache)
       goto fail;
 
    ctx->dirty = ZINK_DIRTY_PROGRAM;

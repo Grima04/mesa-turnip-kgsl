@@ -45,8 +45,7 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 
 struct zink_framebuffer *
 zink_create_framebuffer(struct zink_screen *screen,
-                        const struct pipe_framebuffer_state *fb,
-                        struct zink_render_pass *rp)
+                        struct zink_framebuffer_state *fb)
 {
    struct zink_framebuffer *fbuf = CALLOC_STRUCT(zink_framebuffer);
    if (!fbuf)
@@ -54,31 +53,23 @@ zink_create_framebuffer(struct zink_screen *screen,
 
    pipe_reference_init(&fbuf->reference, 1);
 
-   VkImageView attachments[PIPE_MAX_COLOR_BUFS + 1];
-   for (int i = 0; i < fb->nr_cbufs; i++) {
-      struct pipe_surface *psurf = fb->cbufs[i];
-      pipe_surface_reference(fbuf->surfaces + i, psurf);
-      attachments[i] = zink_surface(psurf)->image_view;
+   VkImageView attachments[ARRAY_SIZE(fb->attachments)];
+   for (int i = 0; i < fb->num_attachments; i++) {
+      struct zink_surface *surf = fb->attachments[i];
+      pipe_surface_reference(fbuf->surfaces + i, &surf->base);
+      attachments[i] = surf->image_view;
    }
 
-   int num_attachments = fb->nr_cbufs;
-   if (fb->zsbuf) {
-      struct pipe_surface *psurf = fb->zsbuf;
-      pipe_surface_reference(fbuf->surfaces + num_attachments, psurf);
-      attachments[num_attachments++] = zink_surface(psurf)->image_view;
-   }
-
-   assert(rp);
-   zink_render_pass_reference(screen, &fbuf->rp, rp);
+   zink_render_pass_reference(screen, &fbuf->rp, fb->rp);
 
    VkFramebufferCreateInfo fci = {};
    fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-   fci.renderPass = rp->render_pass;
-   fci.attachmentCount = num_attachments;
+   fci.renderPass = fbuf->rp->render_pass;
+   fci.attachmentCount = fb->num_attachments;
    fci.pAttachments = attachments;
-   fci.width = (uint32_t)fb->width;
-   fci.height = (uint32_t)fb->height;
-   fci.layers = (uint32_t)MAX2(fb->layers, 1);
+   fci.width = fb->width;
+   fci.height = fb->height;
+   fci.layers = fb->layers;
 
    if (vkCreateFramebuffer(screen->dev, &fci, NULL, &fbuf->fb) != VK_SUCCESS) {
       zink_destroy_framebuffer(screen, fbuf);

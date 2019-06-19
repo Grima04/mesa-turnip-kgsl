@@ -32,6 +32,14 @@
 struct zink_screen;
 struct zink_render_pass;
 
+struct zink_framebuffer_state {
+   struct zink_render_pass *rp;
+   uint32_t width;
+   uint16_t height, layers;
+   uint8_t num_attachments;
+   struct zink_surface *attachments[PIPE_MAX_COLOR_BUFS + 1];
+};
+
 struct zink_framebuffer {
    struct pipe_reference reference;
    VkFramebuffer fb;
@@ -42,8 +50,7 @@ struct zink_framebuffer {
 
 struct zink_framebuffer *
 zink_create_framebuffer(struct zink_screen *screen,
-                        const struct pipe_framebuffer_state *fb,
-                        struct zink_render_pass *rp);
+                        struct zink_framebuffer_state *fb);
 
 void
 zink_destroy_framebuffer(struct zink_screen *screen,
