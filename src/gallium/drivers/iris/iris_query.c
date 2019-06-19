@@ -157,7 +157,8 @@ mark_available(struct iris_context *ice, struct iris_query *q)
    } else {
       /* Order available *after* the query results. */
       flags |= PIPE_CONTROL_FLUSH_ENABLE;
-      iris_emit_pipe_control_write(batch, flags, bo, offset, true);
+      iris_emit_pipe_control_write(batch, "query: mark available",
+                                   flags, bo, offset, true);
    }
 }
 
@@ -175,7 +176,8 @@ iris_pipelined_write(struct iris_batch *batch,
       devinfo->gen == 9 && devinfo->gt == 4 ?  PIPE_CONTROL_CS_STALL : 0;
    struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
-   iris_emit_pipe_control_write(batch, flags | optional_cs_stall,
+   iris_emit_pipe_control_write(batch, "query: pipelined snapshot write",
+                                flags | optional_cs_stall,
                                 bo, offset, 0ull);
 }
 
@@ -188,6 +190,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
 
    if (!iris_is_query_pipelined(q)) {
       iris_emit_pipe_control_flush(batch,
+                                   "query: non-pipelined snapshot write",
                                    PIPE_CONTROL_CS_STALL |
                                    PIPE_CONTROL_STALL_AT_SCOREBOARD);
       q->stalled = true;
@@ -202,7 +205,10 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
           *  bit set prior to programming a PIPE_CONTROL with Write PS Depth
           *  Count sync operation."
           */
-         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_DEPTH_STALL);
+         iris_emit_pipe_control_flush(batch,
+                                      "workaround: depth stall before writing "
+                                      "PS_DEPTH_COUNT",
+                                      PIPE_CONTROL_DEPTH_STALL);
       }
       iris_pipelined_write(&ice->batches[IRIS_BATCH_RENDER], q,
                            PIPE_CONTROL_WRITE_DEPTH_COUNT |
@@ -260,6 +266,7 @@ write_overflow_values(struct iris_context *ice, struct iris_query *q, bool end)
    uint32_t offset = q->query_state_ref.offset;
 
    iris_emit_pipe_control_flush(batch,
+                                "query: write SO overflow snapshots",
                                 PIPE_CONTROL_CS_STALL |
                                 PIPE_CONTROL_STALL_AT_SCOREBOARD);
    for (uint32_t i = 0; i < count; i++) {
@@ -942,7 +949,9 @@ iris_get_query_result_resource(struct pipe_context *ctx,
        * and use the result.
        */
       // XXX: Why?  i965 doesn't do this.
-      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+      iris_emit_pipe_control_flush(batch,
+                                   "query: unknown QBO flushing hack",
+                                   PIPE_CONTROL_CS_STALL);
       return;
    }
 
@@ -1015,7 +1024,9 @@ set_predicate_for_result(struct iris_context *ice,
    ice->state.predicate = IRIS_PREDICATE_STATE_USE_BIT;
 
    /* Ensure the memory is coherent for MI_LOAD_REGISTER_* commands. */
-   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_FLUSH_ENABLE);
+   iris_emit_pipe_control_flush(batch,
+                                "conditional rendering: set predicate",
+                                PIPE_CONTROL_FLUSH_ENABLE);
    q->stalled = true;
 
    switch (q->type) {

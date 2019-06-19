@@ -1029,6 +1029,7 @@ iris_map_copy_region(struct iris_transfer *map)
                        xfer->resource, xfer->level, box);
       /* Ensure writes to the staging BO land before we map it below. */
       iris_emit_pipe_control_flush(map->batch,
+                                   "transfer read: flush before mapping",
                                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                    PIPE_CONTROL_CS_STALL);
    }
@@ -1475,7 +1476,8 @@ iris_transfer_flush_region(struct pipe_context *ctx,
       if (ice->batches[i].contains_draw ||
           ice->batches[i].cache.render->entries) {
          iris_batch_maybe_flush(&ice->batches[i], 24);
-         iris_flush_and_dirty_for_history(ice, &ice->batches[i], res);
+         iris_flush_and_dirty_for_history(ice, &ice->batches[i], res,
+                                          "cache history: transfer flush");
       }
    }
 
@@ -1559,7 +1561,8 @@ iris_flush_bits_for_history(struct iris_resource *res)
 void
 iris_flush_and_dirty_for_history(struct iris_context *ice,
                                  struct iris_batch *batch,
-                                 struct iris_resource *res)
+                                 struct iris_resource *res,
+                                 const char *reason)
 {
    if (res->base.target != PIPE_BUFFER)
       return;
@@ -1572,7 +1575,7 @@ iris_flush_and_dirty_for_history(struct iris_context *ice,
    if (batch->name != IRIS_BATCH_COMPUTE)
       flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
 
-   iris_emit_pipe_control_flush(batch, flush);
+   iris_emit_pipe_control_flush(batch, reason, flush);
 }
 
 bool

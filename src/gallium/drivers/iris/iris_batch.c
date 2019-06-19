@@ -616,7 +616,8 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
 
    iris_finish_batch(batch);
 
-   if (unlikely(INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT))) {
+   if (unlikely(INTEL_DEBUG &
+                (DEBUG_BATCH | DEBUG_SUBMIT | DEBUG_PIPE_CONTROL))) {
       int bytes_for_commands = iris_batch_bytes_used(batch);
       int second_bytes = 0;
       if (batch->bo != batch->exec_bos[0]) {
@@ -630,12 +631,15 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
               100.0f * bytes_for_commands / BATCH_SZ,
               batch->exec_count,
               (float) batch->aperture_space / (1024 * 1024));
-      dump_fence_list(batch);
-      dump_validation_list(batch);
-   }
 
-   if (unlikely(INTEL_DEBUG & DEBUG_BATCH)) {
-      decode_batch(batch);
+      if (INTEL_DEBUG & (DEBUG_BATCH | DEBUG_SUBMIT)) {
+         dump_fence_list(batch);
+         dump_validation_list(batch);
+      }
+
+      if (INTEL_DEBUG & DEBUG_BATCH) {
+         decode_batch(batch);
+      }
    }
 
    int ret = submit_batch(batch);

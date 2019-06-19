@@ -455,7 +455,8 @@ struct iris_vtable {
                         struct iris_bo *dst_bo, uint32_t dst_offset,
                         struct iris_bo *src_bo, uint32_t src_offset,
                         unsigned bytes);
-   void (*emit_raw_pipe_control)(struct iris_batch *batch, uint32_t flags,
+   void (*emit_raw_pipe_control)(struct iris_batch *batch,
+                                 const char *reason, uint32_t flags,
                                  struct iris_bo *bo, uint32_t offset,
                                  uint64_t imm);
 
@@ -771,12 +772,13 @@ void iris_launch_grid(struct pipe_context *, const struct pipe_grid_info *);
 /* iris_pipe_control.c */
 
 void iris_emit_pipe_control_flush(struct iris_batch *batch,
-                                  uint32_t flags);
-void iris_emit_pipe_control_write(struct iris_batch *batch, uint32_t flags,
+                                  const char *reason, uint32_t flags);
+void iris_emit_pipe_control_write(struct iris_batch *batch,
+                                  const char *reason, uint32_t flags,
                                   struct iris_bo *bo, uint32_t offset,
                                   uint64_t imm);
 void iris_emit_end_of_pipe_sync(struct iris_batch *batch,
-                                uint32_t flags);
+                                const char *reason, uint32_t flags);
 
 void iris_init_flush_functions(struct pipe_context *ctx);
 

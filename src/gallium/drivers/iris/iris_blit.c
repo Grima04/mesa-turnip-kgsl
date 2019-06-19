@@ -289,8 +289,12 @@ tex_cache_flush_hack(struct iris_batch *batch)
     *
     * TODO: Remove this hack!
     */
-   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
-   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
+   const char *reason =
+      "workaround: WaSamplerCacheFlushBetweenRedescribedSurfaceReads";
+
+   iris_emit_pipe_control_flush(batch, reason, PIPE_CONTROL_CS_STALL);
+   iris_emit_pipe_control_flush(batch, reason,
+                                PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
 }
 
 /**
@@ -488,7 +492,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                               info->dst.box.depth, dst_aux_usage);
 
    iris_flush_and_dirty_for_history(ice, batch, (struct iris_resource *)
-                                    info->dst.resource);
+                                    info->dst.resource,
+                                    "cache history: post-blit");
 }
 
 static void
@@ -569,7 +574,8 @@ iris_copy_region(struct blorp_context *blorp,
       blorp_batch_finish(&blorp_batch);
 
       iris_flush_and_dirty_for_history(ice, batch,
-                                       (struct iris_resource *) dst);
+                                       (struct iris_resource *) dst,
+                                       "cache history: post copy_region");
    } else {
       // XXX: what about one surface being a buffer and not the other?
 

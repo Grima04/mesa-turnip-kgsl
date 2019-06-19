@@ -486,6 +486,7 @@ flush_for_state_base_change(struct iris_batch *batch)
     * rendering.  It's a bit of a big hammer but it appears to work.
     */
    iris_emit_end_of_pipe_sync(batch,
+                              "change STATE_BASE_ADDRESS",
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
                               PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                               PIPE_CONTROL_DATA_CACHE_FLUSH);
@@ -539,12 +540,14 @@ emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
     *     MI_PIPELINE_SELECT command to change the Pipeline Select Mode."
     */
     iris_emit_pipe_control_flush(batch,
+                                 "workaround: PIPELINE_SELECT flushes (1/2)",
                                  PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                  PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                  PIPE_CONTROL_DATA_CACHE_FLUSH |
                                  PIPE_CONTROL_CS_STALL);
 
     iris_emit_pipe_control_flush(batch,
+                                 "workaround: PIPELINE_SELECT flushes (2/2)",
                                  PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                                  PIPE_CONTROL_CONST_CACHE_INVALIDATE |
                                  PIPE_CONTROL_STATE_CACHE_INVALIDATE |
@@ -663,7 +666,9 @@ iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
    uint32_t reg_val;
 
    /* A fixed function pipe flush is required before modifying this field */
-   iris_emit_end_of_pipe_sync(batch, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+   iris_emit_end_of_pipe_sync(batch, enable ? "enable preemption"
+                                            : "disable preemption",
+                              PIPE_CONTROL_RENDER_TARGET_FLUSH);
 
    /* enable object level preemption */
    iris_pack_state(GENX(CS_CHICKEN1), &reg_val, reg) {
@@ -2570,6 +2575,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
     */
    // XXX: does this need to happen at 3DSTATE_BTP_PS time?
    iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
+                                "workaround: RT BTI change [draw]",
                                 PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                 PIPE_CONTROL_STALL_AT_SCOREBOARD);
 #endif
@@ -3048,7 +3054,8 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
                iris_dirty_for_history(ice, res);
             }
          }
-         iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER], flush);
+         iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
+                                      "make streamout results visible", flush);
       }
    }
 
@@ -5131,8 +5138,11 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             }
          }
 
-         if (flush_flags)
-            iris_emit_pipe_control_flush(batch, flush_flags);
+         if (flush_flags) {
+            iris_emit_pipe_control_flush(batch,
+                                         "workaround: VF cache 32-bit key [VB]",
+                                         flush_flags);
+         }
 
          const unsigned vb_dwords = GENX(VERTEX_BUFFER_STATE_length);
 
@@ -5331,8 +5341,10 @@ iris_upload_render_state(struct iris_context *ice,
       /* The VF cache key only uses 32-bits, see vertex buffer comment above */
       uint16_t high_bits = bo->gtt_offset >> 32ull;
       if (high_bits != ice->state.last_index_bo_high_bits) {
-         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE |
-                                             PIPE_CONTROL_CS_STALL);
+         iris_emit_pipe_control_flush(batch,
+                                      "workaround: VF cache 32-bit key [IB]",
+                                      PIPE_CONTROL_VF_CACHE_INVALIDATE |
+                                      PIPE_CONTROL_CS_STALL);
          ice->state.last_index_bo_high_bits = high_bits;
       }
    }
@@ -5353,7 +5365,9 @@ iris_upload_render_state(struct iris_context *ice,
          unsigned draw_count_offset =
             draw->indirect->indirect_draw_count_offset;
 
-         iris_emit_pipe_control_flush(batch, PIPE_CONTROL_FLUSH_ENABLE);
+         iris_emit_pipe_control_flush(batch,
+                                      "ensure indirect draw buffer is flushed",
+                                      PIPE_CONTROL_FLUSH_ENABLE);
 
          if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
             static const uint32_t math[] = {
@@ -5459,7 +5473,9 @@ iris_upload_render_state(struct iris_context *ice,
          (void *) draw->count_from_stream_output;
 
       /* XXX: Replace with actual cache tracking */
-      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+      iris_emit_pipe_control_flush(batch,
+                                   "draw count from stream output stall",
+                                   PIPE_CONTROL_CS_STALL);
 
       iris_emit_cmd(batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
          lrm.RegisterAddress = CS_GPR(0);
@@ -5548,7 +5564,9 @@ iris_upload_compute_state(struct iris_context *ice,
        *    these scoreboard related states, a MEDIA_STATE_FLUSH is
        *    sufficient."
        */
-      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_CS_STALL);
+      iris_emit_pipe_control_flush(batch,
+                                   "workaround: stall before MEDIA_VFE_STATE",
+                                   PIPE_CONTROL_CS_STALL);
 
       iris_emit_cmd(batch, GENX(MEDIA_VFE_STATE), vfe) {
          if (prog_data->total_scratch) {
@@ -6030,8 +6048,12 @@ get_post_sync_flags(enum pipe_control_flags flags)
  * iris_pipe_control.c instead, which may split the pipe control further.
  */
 static void
-iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
-                           struct iris_bo *bo, uint32_t offset, uint64_t imm)
+iris_emit_raw_pipe_control(struct iris_batch *batch,
+                           const char *reason,
+                           uint32_t flags,
+                           struct iris_bo *bo,
+                           uint32_t offset,
+                           uint64_t imm)
 {
    UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
    enum pipe_control_flags post_sync_flags = get_post_sync_flags(flags);
@@ -6056,7 +6078,9 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
        *     needs to be sent prior to the PIPE_CONTROL with VF Cache
        *     Invalidation Enable set to a 1."
        */
-      iris_emit_raw_pipe_control(batch, 0, NULL, 0, 0);
+      iris_emit_raw_pipe_control(batch,
+                                 "workaround: recursive VF cache invalidate",
+                                 0, NULL, 0, 0);
    }
 
    if (GEN_GEN == 9 && IS_COMPUTE_PIPELINE(batch) && post_sync_flags) {
@@ -6069,7 +6093,9 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
        *
        * The same text exists a few rows below for Post Sync Op.
        */
-      iris_emit_raw_pipe_control(batch, PIPE_CONTROL_CS_STALL, bo, offset, imm);
+      iris_emit_raw_pipe_control(batch,
+                                 "workaround: CS stall before gpgpu post-sync",
+                                 PIPE_CONTROL_CS_STALL, bo, offset, imm);
    }
 
    if (GEN_GEN == 10 && (flags & PIPE_CONTROL_RENDER_TARGET_FLUSH)) {
@@ -6078,8 +6104,9 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
        *  another PIPE_CONTROL with Render Target Cache Flush Enable (bit 12)
        *  = 0 and Pipe Control Flush Enable (bit 7) = 1"
        */
-      iris_emit_raw_pipe_control(batch, PIPE_CONTROL_FLUSH_ENABLE, bo,
-                                 offset, imm);
+      iris_emit_raw_pipe_control(batch,
+                                 "workaround: PC flush before RT flush",
+                                 PIPE_CONTROL_FLUSH_ENABLE, bo, offset, imm);
    }
 
    /* "Flush Types" workarounds ---------------------------------------------
@@ -6358,6 +6385,34 @@ iris_emit_raw_pipe_control(struct iris_batch *batch, uint32_t flags,
    }
 
    /* Emit --------------------------------------------------------------- */
+
+   if (INTEL_DEBUG & DEBUG_PIPE_CONTROL) {
+      fprintf(stderr,
+              "  PC [%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%"PRIx64"]: %s\n",
+              (flags & PIPE_CONTROL_FLUSH_ENABLE) ? "PipeCon " : "",
+              (flags & PIPE_CONTROL_CS_STALL) ? "CS " : "",
+              (flags & PIPE_CONTROL_STALL_AT_SCOREBOARD) ? "Scoreboard " : "",
+              (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE) ? "VF " : "",
+              (flags & PIPE_CONTROL_RENDER_TARGET_FLUSH) ? "RT " : "",
+              (flags & PIPE_CONTROL_CONST_CACHE_INVALIDATE) ? "Const " : "",
+              (flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE) ? "TC " : "",
+              (flags & PIPE_CONTROL_DATA_CACHE_FLUSH) ? "DC " : "",
+              (flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH) ? "ZFlush " : "",
+              (flags & PIPE_CONTROL_DEPTH_STALL) ? "ZStall " : "",
+              (flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE) ? "State " : "",
+              (flags & PIPE_CONTROL_TLB_INVALIDATE) ? "TLB " : "",
+              (flags & PIPE_CONTROL_INSTRUCTION_INVALIDATE) ? "Inst " : "",
+              (flags & PIPE_CONTROL_MEDIA_STATE_CLEAR) ? "MediaClear " : "",
+              (flags & PIPE_CONTROL_NOTIFY_ENABLE) ? "Notify " : "",
+              (flags & PIPE_CONTROL_GLOBAL_SNAPSHOT_COUNT_RESET) ?
+                 "SnapRes" : "",
+              (flags & PIPE_CONTROL_INDIRECT_STATE_POINTERS_DISABLE) ?
+                  "ISPDis" : "",
+              (flags & PIPE_CONTROL_WRITE_IMMEDIATE) ? "WriteImm " : "",
+              (flags & PIPE_CONTROL_WRITE_DEPTH_COUNT) ? "WriteZCount " : "",
+              (flags & PIPE_CONTROL_WRITE_TIMESTAMP) ? "WriteTimestamp " : "",
+              imm, reason);
+   }
 
    iris_emit_cmd(batch, GENX(PIPE_CONTROL), pc) {
       pc.LRIPostSyncOperation = NoLRIOperation;

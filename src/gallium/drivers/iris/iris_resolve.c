@@ -339,11 +339,13 @@ void
 iris_flush_depth_and_render_caches(struct iris_batch *batch)
 {
    iris_emit_pipe_control_flush(batch,
+                                "cache tracker: render-to-texture",
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                 PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                 PIPE_CONTROL_CS_STALL);
 
    iris_emit_pipe_control_flush(batch,
+                                "cache tracker: render-to-texture",
                                 PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                                 PIPE_CONTROL_CONST_CACHE_INVALIDATE);
 
@@ -465,7 +467,8 @@ iris_resolve_color(struct iris_context *ice,
     * and again afterwards to ensure that the resolve is complete before we
     * do any more regular drawing.
     */
-   iris_emit_end_of_pipe_sync(batch, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+   iris_emit_end_of_pipe_sync(batch, "color resolve: pre-flush",
+                              PIPE_CONTROL_RENDER_TARGET_FLUSH);
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
@@ -475,7 +478,8 @@ iris_resolve_color(struct iris_context *ice,
    blorp_batch_finish(&blorp_batch);
 
    /* See comment above */
-   iris_emit_end_of_pipe_sync(batch, PIPE_CONTROL_RENDER_TARGET_FLUSH);
+   iris_emit_end_of_pipe_sync(batch, "color resolve: post-flush",
+                              PIPE_CONTROL_RENDER_TARGET_FLUSH);
 }
 
 static void
@@ -622,10 +626,12 @@ iris_hiz_exec(struct iris_context *ice,
     * another for depth stall.
     */
    iris_emit_pipe_control_flush(batch,
+                                "hiz op: pre-flushes (1/2)",
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                 PIPE_CONTROL_CS_STALL);
 
-   iris_emit_pipe_control_flush(batch, PIPE_CONTROL_DEPTH_STALL);
+   iris_emit_pipe_control_flush(batch, "hiz op: pre-flushes (2/2)",
+                                PIPE_CONTROL_DEPTH_STALL);
 
    assert(res->aux.usage == ISL_AUX_USAGE_HIZ && res->aux.bo);
 
@@ -659,6 +665,7 @@ iris_hiz_exec(struct iris_context *ice,
     * TODO: Such as the spec says, this could be conditional.
     */
    iris_emit_pipe_control_flush(batch,
+                                "hiz op: post flush",
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                 PIPE_CONTROL_DEPTH_STALL);
 }

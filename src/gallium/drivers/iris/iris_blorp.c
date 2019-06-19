@@ -219,8 +219,10 @@ blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *blorp_batch,
    }
 
    if (need_invalidate) {
-      iris_emit_pipe_control_flush(batch, PIPE_CONTROL_VF_CACHE_INVALIDATE |
-                                          PIPE_CONTROL_CS_STALL);
+      iris_emit_pipe_control_flush(batch,
+                                   "workaround: VF cache 32-bit key [blorp]",
+                                   PIPE_CONTROL_VF_CACHE_INVALIDATE |
+                                   PIPE_CONTROL_CS_STALL);
    }
 }
 
@@ -279,6 +281,7 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
     *     be set in this packet."
     */
    iris_emit_pipe_control_flush(batch,
+                                "workaround: RT BTI change [blorp]",
                                 PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                 PIPE_CONTROL_STALL_AT_SCOREBOARD);
 #endif

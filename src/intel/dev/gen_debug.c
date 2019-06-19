@@ -88,6 +88,7 @@ static const struct debug_control debug_control[] = {
    { "soft64",      DEBUG_SOFT64 },
    { "tcs8",        DEBUG_TCS_EIGHT_PATCH },
    { "bt",          DEBUG_BT },
+   { "pc",          DEBUG_PIPE_CONTROL },
    { NULL,    0 }
 };
 
