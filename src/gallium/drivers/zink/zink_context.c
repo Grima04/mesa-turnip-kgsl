@@ -721,33 +721,6 @@ allocate_descriptor_set(struct zink_context *ctx, VkDescriptorSetLayout dsl)
    return desc_set;
 }
 
-static VkPrimitiveTopology
-zink_primitive_topology(enum pipe_prim_type mode)
-{
-   switch (mode) {
-   case PIPE_PRIM_POINTS:
-      return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-
-   case PIPE_PRIM_LINES:
-      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-
-   case PIPE_PRIM_LINE_STRIP:
-      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-
-   case PIPE_PRIM_TRIANGLES:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-   case PIPE_PRIM_TRIANGLE_STRIP:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-
-   case PIPE_PRIM_TRIANGLE_FAN:
-      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-
-   default:
-      unreachable("unexpected enum pipe_prim_type");
-   }
-}
-
 static void
 zink_bind_vertex_buffers(struct zink_cmdbuf *cmdbuf, struct zink_context *ctx)
 {
@@ -847,10 +820,9 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!gfx_program)
       return;
 
-   ctx->gfx_pipeline_state.primitive_topology = zink_primitive_topology(dinfo->mode);
-
    VkPipeline pipeline = zink_get_gfx_pipeline(screen->dev, gfx_program,
-                                               &ctx->gfx_pipeline_state);
+                                               &ctx->gfx_pipeline_state,
+                                               dinfo->mode);
 
    bool depth_bias = false;
    switch (u_reduced_prim(dinfo->mode)) {

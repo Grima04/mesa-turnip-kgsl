@@ -35,7 +35,8 @@
 
 VkPipeline
 zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
-                         struct zink_gfx_pipeline_state *state)
+                         struct zink_gfx_pipeline_state *state,
+                         VkPrimitiveTopology primitive_topology)
 {
    VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
    vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -46,7 +47,7 @@ zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
 
    VkPipelineInputAssemblyStateCreateInfo primitive_state = {};
    primitive_state.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-   primitive_state.topology = state->primitive_topology;
+   primitive_state.topology = primitive_topology;
    primitive_state.primitiveRestartEnable = VK_FALSE;
 
    VkPipelineColorBlendStateCreateInfo blend_state = {};

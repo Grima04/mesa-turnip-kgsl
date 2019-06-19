@@ -111,10 +111,13 @@ zink_create_gfx_program(VkDevice dev,
    if (!prog)
       goto fail;
 
-   prog->pipelines = _mesa_hash_table_create(NULL, hash_gfx_pipeline_state,
-                                             equals_gfx_pipeline_state);
-   if (!prog->pipelines)
-      goto fail;
+   for (int i = 0; i < ARRAY_SIZE(prog->pipelines); ++i) {
+      prog->pipelines[i] = _mesa_hash_table_create(NULL,
+                                                   hash_gfx_pipeline_state,
+                                                   equals_gfx_pipeline_state);
+      if (!prog->pipelines[i])
+         goto fail;
+   }
 
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i)
       prog->stages[i] = stages[i];
@@ -152,15 +155,46 @@ struct pipeline_cache_entry {
    VkPipeline pipeline;
 };
 
+static VkPrimitiveTopology
+primitive_topology(enum pipe_prim_type mode)
+{
+   switch (mode) {
+   case PIPE_PRIM_POINTS:
+      return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+
+   case PIPE_PRIM_LINES:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
+   case PIPE_PRIM_LINE_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+
+   case PIPE_PRIM_TRIANGLES:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+   case PIPE_PRIM_TRIANGLE_STRIP:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+
+   case PIPE_PRIM_TRIANGLE_FAN:
+      return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+
+   default:
+      unreachable("unexpected enum pipe_prim_type");
+   }
+}
+
 VkPipeline
 zink_get_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
-                      struct zink_gfx_pipeline_state *state)
+                      struct zink_gfx_pipeline_state *state,
+                      enum pipe_prim_type mode)
 {
+   assert(mode <= ARRAY_SIZE(prog->pipelines));
+
    /* TODO: use pre-hashed versions to save some time (can re-hash only when
       state changes) */
-   struct hash_entry *entry = _mesa_hash_table_search(prog->pipelines, state);
+   struct hash_entry *entry = _mesa_hash_table_search(prog->pipelines[mode], state);
    if (!entry) {
-      VkPipeline pipeline = zink_create_gfx_pipeline(dev, prog, state);
+      VkPrimitiveTopology vkmode = primitive_topology(mode);
+      VkPipeline pipeline = zink_create_gfx_pipeline(dev, prog, state, vkmode);
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 
@@ -171,7 +205,7 @@ zink_get_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
 
-      entry = _mesa_hash_table_insert(prog->pipelines, &pc_entry->state, pc_entry);
+      entry = _mesa_hash_table_insert(prog->pipelines[mode], &pc_entry->state, pc_entry);
       assert(entry);
    }
 
