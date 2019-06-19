@@ -139,9 +139,22 @@ mask_of(unsigned nr_comp)
  * the corresponding Midgard source */
 
 static midgard_vector_alu_src
-vector_alu_modifiers(nir_alu_src *src, bool is_int)
+vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count)
 {
         if (!src) return blank_alu_src;
+
+        /* Figure out how many components there are so we can adjust the
+         * swizzle.  Specifically we want to broadcast the last channel so
+         * things like ball2/3 work
+         */
+
+        if (broadcast_count) {
+                uint8_t last_component = src->swizzle[broadcast_count - 1];
+
+                for (unsigned c = broadcast_count; c < NIR_MAX_VEC_COMPONENTS; ++c) {
+                        src->swizzle[c] = last_component;
+                }
+        }
 
         midgard_vector_alu_src alu_src = {
                 .rep_low = 0,
@@ -698,6 +711,12 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
 	case nir_op_##nir: \
 		op = midgard_alu_op_##_op; \
 		break;
+
+#define ALU_CASE_BCAST(nir, _op, count) \
+        case nir_op_##nir: \
+                op = midgard_alu_op_##_op; \
+                broadcast_swizzle = count; \
+                break;
 static bool
 nir_is_fzero_constant(nir_src src)
 {
@@ -729,6 +748,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * emit_alu below */
 
         unsigned op;
+
+        /* Number of components valid to check for the instruction (the rest
+         * will be forced to the last), or 0 to use as-is. Relevant as
+         * ball-type instructions have a channel count in NIR but are all vec4
+         * in Midgard */
+
+        unsigned broadcast_swizzle = 0;
 
         switch (instr->op) {
                 ALU_CASE(fadd, fadd);
@@ -805,20 +831,20 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(ishr, iasr);
                 ALU_CASE(ushr, ilsr);
 
-                ALU_CASE(b32all_fequal2, fball_eq);
-                ALU_CASE(b32all_fequal3, fball_eq);
+                ALU_CASE_BCAST(b32all_fequal2, fball_eq, 2);
+                ALU_CASE_BCAST(b32all_fequal3, fball_eq, 3);
                 ALU_CASE(b32all_fequal4, fball_eq);
 
-                ALU_CASE(b32any_fnequal2, fbany_neq);
-                ALU_CASE(b32any_fnequal3, fbany_neq);
+                ALU_CASE_BCAST(b32any_fnequal2, fbany_neq, 2);
+                ALU_CASE_BCAST(b32any_fnequal3, fbany_neq, 3);
                 ALU_CASE(b32any_fnequal4, fbany_neq);
 
-                ALU_CASE(b32all_iequal2, iball_eq);
-                ALU_CASE(b32all_iequal3, iball_eq);
+                ALU_CASE_BCAST(b32all_iequal2, iball_eq, 2);
+                ALU_CASE_BCAST(b32all_iequal3, iball_eq, 3);
                 ALU_CASE(b32all_iequal4, iball_eq);
 
-                ALU_CASE(b32any_inequal2, ibany_neq);
-                ALU_CASE(b32any_inequal3, ibany_neq);
+                ALU_CASE_BCAST(b32any_inequal2, ibany_neq, 2);
+                ALU_CASE_BCAST(b32any_inequal3, ibany_neq, 3);
                 ALU_CASE(b32any_inequal4, ibany_neq);
 
                 /* Source mods will be shoved in later */
@@ -967,8 +993,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* Writemask only valid for non-SSA NIR */
                 .mask = expand_writemask(mask_of(nr_components)),
 
-                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int)),
-                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int)),
+                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle)),
+                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int, broadcast_swizzle)),
         };
 
         /* Apply writemask if non-SSA, keeping in mind that we can't write to components that don't exist */
@@ -1033,7 +1059,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         for (int j = 0; j < 4; ++j)
                                 nirmods[0]->swizzle[j] = original_swizzle[i]; /* Pull from the correct component */
 
-                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int));
+                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle));
                         emit_mir_instruction(ctx, ins);
                 }
         } else {
