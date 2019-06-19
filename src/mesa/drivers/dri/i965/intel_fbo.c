@@ -250,7 +250,7 @@ static mesa_format
 intel_renderbuffer_format(struct gl_context * ctx, GLenum internalFormat)
 {
    struct brw_context *brw = brw_context(ctx);
-   MAYBE_UNUSED const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   ASSERTED const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
    switch (internalFormat) {
    default:

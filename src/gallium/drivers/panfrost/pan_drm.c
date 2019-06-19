@@ -197,7 +197,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, int fd)
 {
         struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
-        MAYBE_UNUSED int ret;
+        ASSERTED int ret;
         unsigned gem_handle;
 
         ret = drmPrimeFDToHandle(screen->fd, fd, &gem_handle);
@@ -355,7 +355,7 @@ unsigned
 panfrost_drm_query_gpu_version(struct panfrost_screen *screen)
 {
         struct drm_panfrost_get_param get_param = {0,};
-        MAYBE_UNUSED int ret;
+        ASSERTED int ret;
 
         get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_PARAM, &get_param);

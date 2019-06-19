@@ -77,7 +77,7 @@ pipe_reference_described(struct pipe_reference *dst,
    if (dst != src) {
       /* bump the src.count first */
       if (src) {
-         MAYBE_UNUSED int count = p_atomic_inc_return(&src->count);
+         ASSERTED int count = p_atomic_inc_return(&src->count);
          assert(count != 1); /* src had to be referenced */
          debug_reference(src, get_desc, 1);
       }

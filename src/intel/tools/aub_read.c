@@ -290,7 +290,7 @@ int
 aub_read_command(struct aub_read *read, const void *data, uint32_t data_len)
 {
    const uint32_t *p = data, *next;
-   MAYBE_UNUSED const uint32_t *end = data + data_len;
+   ASSERTED const uint32_t *end = data + data_len;
    uint32_t h, header_length, bias;
 
    assert(data_len >= 4);

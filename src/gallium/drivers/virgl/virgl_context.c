@@ -88,7 +88,7 @@ virgl_rebind_resource(struct virgl_context *vctx,
    /* Queries use internally created buffers and do not go through transfers.
     * Index buffers are not bindable.  They are not tracked.
     */
-   MAYBE_UNUSED const unsigned tracked_bind = (PIPE_BIND_VERTEX_BUFFER |
+   ASSERTED const unsigned tracked_bind = (PIPE_BIND_VERTEX_BUFFER |
                                                PIPE_BIND_CONSTANT_BUFFER |
                                                PIPE_BIND_SHADER_BUFFER |
                                                PIPE_BIND_SHADER_IMAGE);

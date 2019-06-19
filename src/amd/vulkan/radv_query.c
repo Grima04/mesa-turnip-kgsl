@@ -1371,7 +1371,7 @@ void radv_CmdCopyQueryPoolResults(
 			unsigned query = firstQuery + i;
 			uint64_t local_src_va = va  + query * pool->stride;
 
-			MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 19);
+			ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 19);
 
 
 			if (flags & VK_QUERY_RESULT_WAIT_BIT) {
@@ -1745,7 +1745,7 @@ void radv_CmdWriteTimestamp(
 	if (cmd_buffer->state.subpass && cmd_buffer->state.subpass->view_mask)
 		num_queries = util_bitcount(cmd_buffer->state.subpass->view_mask);
 
-	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 28 * num_queries);
+	ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 28 * num_queries);
 
 	for (unsigned i = 0; i < num_queries; i++) {
 		switch(pipelineStage) {

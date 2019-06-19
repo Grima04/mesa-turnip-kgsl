@@ -261,7 +261,7 @@ static LLVMValueRef emit_intrin_1f_param(struct ac_llvm_context *ctx,
 		ac_to_float(ctx, src0),
 	};
 
-	MAYBE_UNUSED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
+	ASSERTED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
 						 ac_get_elem_bits(ctx, result_type));
 	assert(length < sizeof(name));
 	return ac_build_intrinsic(ctx, name, result_type, params, 1, AC_FUNC_ATTR_READNONE);
@@ -278,7 +278,7 @@ static LLVMValueRef emit_intrin_2f_param(struct ac_llvm_context *ctx,
 		ac_to_float(ctx, src1),
 	};
 
-	MAYBE_UNUSED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
+	ASSERTED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
 						 ac_get_elem_bits(ctx, result_type));
 	assert(length < sizeof(name));
 	return ac_build_intrinsic(ctx, name, result_type, params, 2, AC_FUNC_ATTR_READNONE);
@@ -296,7 +296,7 @@ static LLVMValueRef emit_intrin_3f_param(struct ac_llvm_context *ctx,
 		ac_to_float(ctx, src2),
 	};
 
-	MAYBE_UNUSED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
+	ASSERTED const int length = snprintf(name, sizeof(name), "%s.f%d", intrin,
 						 ac_get_elem_bits(ctx, result_type));
 	assert(length < sizeof(name));
 	return ac_build_intrinsic(ctx, name, result_type, params, 3, AC_FUNC_ATTR_READNONE);
@@ -2374,7 +2374,7 @@ static void get_image_coords(struct ac_nir_context *ctx,
 	LLVMValueRef sample_index = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
 
 	int count;
-	MAYBE_UNUSED bool add_frag_pos = (dim == GLSL_SAMPLER_DIM_SUBPASS ||
+	ASSERTED bool add_frag_pos = (dim == GLSL_SAMPLER_DIM_SUBPASS ||
 					  dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
 	bool is_ms = (dim == GLSL_SAMPLER_DIM_MS ||
 		      dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
@@ -2576,7 +2576,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 	const char *atomic_name;
 	char intrinsic_name[64];
 	enum ac_atomic_op atomic_subop;
-	MAYBE_UNUSED int length;
+	ASSERTED int length;
 
 	enum glsl_sampler_dim dim;
 	bool is_unsigned = false;
@@ -3427,7 +3427,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	}
 	case nir_intrinsic_load_interpolated_input: {
 		/* We assume any indirect loads have been lowered away */
-		MAYBE_UNUSED nir_const_value *offset = nir_src_as_const_value(instr->src[1]);
+		ASSERTED nir_const_value *offset = nir_src_as_const_value(instr->src[1]);
 		assert(offset);
 		assert(offset[0].i32 == 0);
 
@@ -3442,7 +3442,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	}
 	case nir_intrinsic_load_input: {
 		/* We only lower inputs for fragment shaders ATM */
-		MAYBE_UNUSED nir_const_value *offset = nir_src_as_const_value(instr->src[0]);
+		ASSERTED nir_const_value *offset = nir_src_as_const_value(instr->src[0]);
 		assert(offset);
 		assert(offset[0].i32 == 0);
 

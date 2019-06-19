@@ -318,7 +318,7 @@ anv_physical_device_init_disk_cache(struct anv_physical_device *device)
 {
 #ifdef ENABLE_SHADER_CACHE
    char renderer[10];
-   MAYBE_UNUSED int len = snprintf(renderer, sizeof(renderer), "anv_%04x",
+   ASSERTED int len = snprintf(renderer, sizeof(renderer), "anv_%04x",
                                    device->chipset_id);
    assert(len == sizeof(renderer) - 2);
 
@@ -2795,7 +2795,7 @@ anv_vma_free(struct anv_device *device, struct anv_bo *bo)
       util_vma_heap_free(&device->vma_lo, addr_48b, bo->size);
       device->vma_lo_available += bo->size;
    } else {
-      MAYBE_UNUSED const struct anv_physical_device *physical_device =
+      ASSERTED const struct anv_physical_device *physical_device =
          &device->instance->physicalDevice;
       assert(addr_48b >= physical_device->memory.heaps[0].vma_start &&
              addr_48b < (physical_device->memory.heaps[0].vma_start +

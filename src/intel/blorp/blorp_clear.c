@@ -1179,7 +1179,7 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
    const uint32_t width_rgba_px = width_cl;
    const uint32_t height_rgba_px = height_cl * 4;
 
-   MAYBE_UNUSED bool ok =
+   ASSERTED bool ok =
       isl_surf_init(batch->blorp->isl_dev, &params.dst.surf,
                     .dim = ISL_SURF_DIM_2D,
                     .format = ISL_FORMAT_R32G32B32A32_UINT,

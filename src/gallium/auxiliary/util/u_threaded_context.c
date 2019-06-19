@@ -2223,7 +2223,7 @@ static void
 tc_call_generate_mipmap(struct pipe_context *pipe, union tc_payload *payload)
 {
    struct tc_generate_mipmap *p = (struct tc_generate_mipmap *)payload;
-   MAYBE_UNUSED bool result = pipe->generate_mipmap(pipe, p->res, p->format,
+   ASSERTED bool result = pipe->generate_mipmap(pipe, p->res, p->format,
                                                     p->base_level,
                                                     p->last_level,
                                                     p->first_layer,

@@ -1032,7 +1032,7 @@ vec4_visitor::emit_conversion_to_double(dst_reg dst, src_reg src,
 static int
 try_immediate_source(const nir_alu_instr *instr, src_reg *op,
                      bool try_src0_also,
-                     MAYBE_UNUSED const gen_device_info *devinfo)
+                     ASSERTED const gen_device_info *devinfo)
 {
    unsigned idx;
 

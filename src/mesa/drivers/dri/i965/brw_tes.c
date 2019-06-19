@@ -177,7 +177,7 @@ brw_upload_tes_prog(struct brw_context *brw)
    tep = (struct brw_program *) brw->programs[MESA_SHADER_TESS_EVAL];
    tep->id = key.base.program_string_id;
 
-   MAYBE_UNUSED bool success = brw_codegen_tes_prog(brw, tep, &key);
+   ASSERTED bool success = brw_codegen_tes_prog(brw, tep, &key);
    assert(success);
 }
 

@@ -1938,7 +1938,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_attachment_info *att = &framebuffer->attachments[idx];
 		struct radv_image *image = att->attachment->image;
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, att->attachment->bo);
-		MAYBE_UNUSED uint32_t queue_mask = radv_image_queue_family_mask(image,
+		ASSERTED uint32_t queue_mask = radv_image_queue_family_mask(image,
 										cmd_buffer->queue_family_index,
 										cmd_buffer->queue_family_index);
 		/* We currently don't support writing decompressed HTILE */
@@ -2214,7 +2214,7 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer,
 	if (flush_indirect_descriptors)
 		radv_flush_indirect_descriptor_sets(cmd_buffer, bind_point);
 
-	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
+	ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
 	                                                   cmd_buffer->cs,
 	                                                   MAX_SETS * MESA_SHADER_STAGES * 4);
 
@@ -2300,7 +2300,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer,
 		va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
 		va += offset;
 
-		MAYBE_UNUSED unsigned cdw_max =
+		ASSERTED unsigned cdw_max =
 			radeon_check_space(cmd_buffer->device->ws,
 	                                   cmd_buffer->cs, MESA_SHADER_STAGES * 4);
 
@@ -3470,7 +3470,7 @@ void radv_CmdPushDescriptorSetKHR(
 	 * because it is invalid, according to Vulkan spec.
 	 */
 	for (int i = 0; i < descriptorWriteCount; i++) {
-		MAYBE_UNUSED const VkWriteDescriptorSet *writeset = &pDescriptorWrites[i];
+		ASSERTED const VkWriteDescriptorSet *writeset = &pDescriptorWrites[i];
 		assert(writeset->descriptorType != VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
 	}
 
@@ -3651,7 +3651,7 @@ void radv_CmdSetViewport(
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_cmd_state *state = &cmd_buffer->state;
-	MAYBE_UNUSED const uint32_t total_count = firstViewport + viewportCount;
+	ASSERTED const uint32_t total_count = firstViewport + viewportCount;
 
 	assert(firstViewport < MAX_VIEWPORTS);
 	assert(total_count >= 1 && total_count <= MAX_VIEWPORTS);
@@ -3675,7 +3675,7 @@ void radv_CmdSetScissor(
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_cmd_state *state = &cmd_buffer->state;
-	MAYBE_UNUSED const uint32_t total_count = firstScissor + scissorCount;
+	ASSERTED const uint32_t total_count = firstScissor + scissorCount;
 
 	assert(firstScissor < MAX_SCISSORS);
 	assert(total_count >= 1 && total_count <= MAX_SCISSORS);
@@ -3837,7 +3837,7 @@ void radv_CmdSetDiscardRectangleEXT(
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_cmd_state *state = &cmd_buffer->state;
-	MAYBE_UNUSED const uint32_t total_count = firstDiscardRectangle + discardRectangleCount;
+	ASSERTED const uint32_t total_count = firstDiscardRectangle + discardRectangleCount;
 
 	assert(firstDiscardRectangle < MAX_DISCARD_RECTANGLES);
 	assert(total_count >= 1 && total_count <= MAX_DISCARD_RECTANGLES);
@@ -4060,7 +4060,7 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	struct radv_subpass *subpass = &state->pass->subpasses[subpass_id];
 
-	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
+	ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws,
 							   cmd_buffer->cs, 4096);
 
 	radv_subpass_barrier(cmd_buffer, &subpass->start_barrier);
@@ -4465,7 +4465,7 @@ radv_draw(struct radv_cmd_buffer *cmd_buffer,
 		(cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE) &&
 		cmd_buffer->state.pipeline != cmd_buffer->state.emitted_pipeline;
 
-	MAYBE_UNUSED unsigned cdw_max =
+	ASSERTED unsigned cdw_max =
 		radeon_check_space(cmd_buffer->device->ws,
 				   cmd_buffer->cs, 4096);
 
@@ -4720,7 +4720,7 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
 	loc = radv_lookup_user_sgpr(pipeline, MESA_SHADER_COMPUTE,
 				    AC_UD_CS_GRID_SIZE);
 
-	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(ws, cs, 25);
+	ASSERTED unsigned cdw_max = radeon_check_space(ws, cs, 25);
 
 	if (info->indirect) {
 		uint64_t va = radv_buffer_get_va(info->indirect->bo);
@@ -5337,7 +5337,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer,
 
 		radv_cs_add_buffer(cmd_buffer->device->ws, cs, event->bo);
 
-		MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 7);
+		ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 7);
 
 		radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, va, 1, 0xffffffff);
 		assert(cmd_buffer->cs->cdw <= cdw_max);
@@ -5456,7 +5456,7 @@ static void write_event(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_cs_add_buffer(cmd_buffer->device->ws, cs, event->bo);
 
-	MAYBE_UNUSED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 21);
+	ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 21);
 
 	/* Flags that only require a top-of-pipe event. */
 	VkPipelineStageFlags top_of_pipe_flags =

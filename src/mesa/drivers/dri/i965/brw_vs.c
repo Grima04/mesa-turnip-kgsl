@@ -317,7 +317,7 @@ brw_upload_vs_prog(struct brw_context *brw)
    vp = (struct brw_program *) brw->programs[MESA_SHADER_VERTEX];
    vp->id = key.base.program_string_id;
 
-   MAYBE_UNUSED bool success = brw_codegen_vs_prog(brw, vp, &key);
+   ASSERTED bool success = brw_codegen_vs_prog(brw, vp, &key);
    assert(success);
 }
 

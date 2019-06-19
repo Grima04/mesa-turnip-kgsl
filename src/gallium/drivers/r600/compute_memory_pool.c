@@ -435,7 +435,7 @@ static void compute_memory_move_item(struct compute_memory_pool *pool,
 			new_start_in_dw, new_start_in_dw * 4);
 
 	if (pool->item_list != item->link.prev) {
-		MAYBE_UNUSED struct compute_memory_item *prev;
+		ASSERTED struct compute_memory_item *prev;
 		prev = container_of(item->link.prev, item, link);
 		assert(prev->start_in_dw + prev->size_in_dw <= new_start_in_dw);
 	}

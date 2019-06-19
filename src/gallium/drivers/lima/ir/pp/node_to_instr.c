@@ -123,7 +123,7 @@ static bool insert_to_each_succ_instr(ppir_block *block, ppir_node *node)
       if (!create_new_instr(block, move))
          return false;
 
-      MAYBE_UNUSED bool insert_result =
+      ASSERTED bool insert_result =
          ppir_instr_insert_node(move->instr, node);
       assert(insert_result);
 

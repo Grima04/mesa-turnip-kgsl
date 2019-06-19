@@ -134,7 +134,7 @@ static void add_arg_assign_checked(struct si_function_info *fninfo,
 				   enum si_arg_regfile regfile, LLVMTypeRef type,
 				   LLVMValueRef *assign, unsigned idx)
 {
-	MAYBE_UNUSED unsigned actual = add_arg_assign(fninfo, regfile, type, assign);
+	ASSERTED unsigned actual = add_arg_assign(fninfo, regfile, type, assign);
 	assert(actual == idx);
 }
 
@@ -6649,8 +6649,8 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 	LLVMTypeRef function_type;
 	unsigned num_first_params;
 	unsigned num_out, initial_num_out;
-	MAYBE_UNUSED unsigned num_out_sgpr; /* used in debug checks */
-	MAYBE_UNUSED unsigned initial_num_out_sgpr; /* used in debug checks */
+	ASSERTED unsigned num_out_sgpr; /* used in debug checks */
+	ASSERTED unsigned initial_num_out_sgpr; /* used in debug checks */
 	unsigned num_sgprs, num_vgprs;
 	unsigned gprs;
 

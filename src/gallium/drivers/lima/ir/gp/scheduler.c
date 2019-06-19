@@ -912,7 +912,7 @@ static void spill_node(sched_ctx *ctx, gpir_node *node, gpir_store_node *store)
          gpir_node_add_dep(&load->node, &store->node, GPIR_DEP_READ_AFTER_WRITE);
          gpir_debug("spilling use %d of node %d to load node %d\n",
                     use->index, node->index, load->node.index);
-         MAYBE_UNUSED bool result = _try_place_node(ctx, use->sched.instr, &load->node);
+         ASSERTED bool result = _try_place_node(ctx, use->sched.instr, &load->node);
          assert(result);
       }
    }
@@ -1303,7 +1303,7 @@ static bool try_node(sched_ctx *ctx)
    if (best_node) {
       gpir_debug("scheduling %d (score = %d)%s\n", best_node->index,
                  best_score, best_node->sched.max_node ? " (max)" : "");
-      MAYBE_UNUSED int score = schedule_try_node(ctx, best_node, false);
+      ASSERTED int score = schedule_try_node(ctx, best_node, false);
       assert(score != INT_MIN);
       return true;
    }
@@ -1323,7 +1323,7 @@ static void place_move(sched_ctx *ctx, gpir_node *node)
             gpir_node_replace_child(succ, move, node);
       }
    }
-   MAYBE_UNUSED int score = schedule_try_node(ctx, move, false);
+   ASSERTED int score = schedule_try_node(ctx, move, false);
    assert(score != INT_MIN);
 }
 

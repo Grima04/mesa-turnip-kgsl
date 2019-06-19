@@ -420,7 +420,7 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
 {
    const uint32_t bb_start_offset =
       prev_bbo->length - GEN8_MI_BATCH_BUFFER_START_length * 4;
-   MAYBE_UNUSED const uint32_t *bb_start = prev_bbo->bo.map + bb_start_offset;
+   ASSERTED const uint32_t *bb_start = prev_bbo->bo.map + bb_start_offset;
 
    /* Make sure we're looking at a MI_BATCH_BUFFER_START */
    assert(((*bb_start >> 29) & 0x07) == 0);

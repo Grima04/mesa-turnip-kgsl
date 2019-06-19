@@ -396,7 +396,7 @@ brw_disk_cache_init(struct intel_screen *screen)
 
    /* array length: print length + null char + 1 extra to verify it is unused */
    char renderer[11];
-   MAYBE_UNUSED int len = snprintf(renderer, sizeof(renderer), "i965_%04x",
+   ASSERTED int len = snprintf(renderer, sizeof(renderer), "i965_%04x",
                                    screen->deviceID);
    assert(len == sizeof(renderer) - 2);
 

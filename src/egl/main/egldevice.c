@@ -257,7 +257,7 @@ _eglQueryDeviceStringEXT(_EGLDevice *dev, EGLint name)
 static int
 _eglRefreshDeviceList(void)
 {
-   MAYBE_UNUSED _EGLDevice *dev;
+   ASSERTED _EGLDevice *dev;
    int count = 0;
 
    dev = _eglGlobal.DeviceList;

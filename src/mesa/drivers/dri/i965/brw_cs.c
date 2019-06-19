@@ -176,7 +176,7 @@ brw_upload_cs_prog(struct brw_context *brw)
    cp = (struct brw_program *) brw->programs[MESA_SHADER_COMPUTE];
    cp->id = key.base.program_string_id;
 
-   MAYBE_UNUSED bool success = brw_codegen_cs_prog(brw, cp, &key);
+   ASSERTED bool success = brw_codegen_cs_prog(brw, cp, &key);
    assert(success);
 }
 

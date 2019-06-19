@@ -287,7 +287,7 @@ brw_message_desc_rlen(const struct gen_device_info *devinfo, uint32_t desc)
 }
 
 static inline bool
-brw_message_desc_header_present(MAYBE_UNUSED const struct gen_device_info *devinfo,
+brw_message_desc_header_present(ASSERTED const struct gen_device_info *devinfo,
                                 uint32_t desc)
 {
    assert(devinfo->gen >= 5);
@@ -370,7 +370,7 @@ brw_sampler_desc_simd_mode(const struct gen_device_info *devinfo, uint32_t desc)
 }
 
 static  inline unsigned
-brw_sampler_desc_return_format(MAYBE_UNUSED const struct gen_device_info *devinfo,
+brw_sampler_desc_return_format(ASSERTED const struct gen_device_info *devinfo,
                                uint32_t desc)
 {
    assert(devinfo->gen == 4 && !devinfo->is_g4x);
@@ -753,7 +753,7 @@ brw_dp_a64_byte_scattered_rw_desc(const struct gen_device_info *devinfo,
 
 static inline uint32_t
 brw_dp_a64_untyped_atomic_desc(const struct gen_device_info *devinfo,
-                               MAYBE_UNUSED unsigned exec_size, /**< 0 for SIMD4x2 */
+                               ASSERTED unsigned exec_size, /**< 0 for SIMD4x2 */
                                unsigned bit_size,
                                unsigned atomic_op,
                                bool response_expected)
@@ -774,7 +774,7 @@ brw_dp_a64_untyped_atomic_desc(const struct gen_device_info *devinfo,
 
 static inline uint32_t
 brw_dp_a64_untyped_atomic_float_desc(const struct gen_device_info *devinfo,
-                                     MAYBE_UNUSED unsigned exec_size,
+                                     ASSERTED unsigned exec_size,
                                      unsigned atomic_op,
                                      bool response_expected)
 {

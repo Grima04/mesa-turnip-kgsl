@@ -1098,7 +1098,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx,
 
 	/* The compute IB is always chained, but we need to call cs_check_space to add more space. */
 	struct radeon_cmdbuf *cs = sctx->prim_discard_compute_cs;
-	MAYBE_UNUSED bool compute_has_space = sctx->ws->cs_check_space(cs, need_compute_dw, false);
+	ASSERTED bool compute_has_space = sctx->ws->cs_check_space(cs, need_compute_dw, false);
 	assert(compute_has_space);
 	assert(si_check_ring_space(sctx, out_indexbuf_size));
 	return SI_PRIM_DISCARD_ENABLED;

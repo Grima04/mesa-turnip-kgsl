@@ -2321,7 +2321,7 @@ static void si_init_bindless_descriptors(struct si_context *sctx,
 					 short shader_userdata_rel_index,
 					 unsigned num_elements)
 {
-	MAYBE_UNUSED unsigned desc_slot;
+	ASSERTED unsigned desc_slot;
 
 	si_init_descriptors(desc, shader_userdata_rel_index, 16, num_elements);
 	sctx->bindless_descriptors.num_active_slots = num_elements;

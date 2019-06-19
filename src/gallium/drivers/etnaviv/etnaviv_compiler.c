@@ -477,7 +477,7 @@ static void
 etna_compile_parse_declarations(struct etna_compile *c)
 {
    struct tgsi_parse_context ctx = { };
-   MAYBE_UNUSED unsigned status = tgsi_parse_init(&ctx, c->tokens);
+   ASSERTED unsigned status = tgsi_parse_init(&ctx, c->tokens);
    assert(status == TGSI_PARSE_OK);
 
    while (!tgsi_parse_end_of_tokens(&ctx)) {
@@ -529,7 +529,7 @@ static void
 etna_compile_pass_check_usage(struct etna_compile *c)
 {
    struct tgsi_parse_context ctx = { };
-   MAYBE_UNUSED unsigned status = tgsi_parse_init(&ctx, c->tokens);
+   ASSERTED unsigned status = tgsi_parse_init(&ctx, c->tokens);
    assert(status == TGSI_PARSE_OK);
 
    for (int idx = 0; idx < c->total_decls; ++idx) {
@@ -660,7 +660,7 @@ etna_compile_pass_optimize_outputs(struct etna_compile *c)
 {
    struct tgsi_parse_context ctx = { };
    int inst_idx = 0;
-   MAYBE_UNUSED unsigned status = tgsi_parse_init(&ctx, c->tokens);
+   ASSERTED unsigned status = tgsi_parse_init(&ctx, c->tokens);
    assert(status == TGSI_PARSE_OK);
 
    while (!tgsi_parse_end_of_tokens(&ctx)) {
@@ -1809,7 +1809,7 @@ static void
 etna_compile_pass_generate_code(struct etna_compile *c)
 {
    struct tgsi_parse_context ctx = { };
-   MAYBE_UNUSED unsigned status = tgsi_parse_init(&ctx, c->tokens);
+   ASSERTED unsigned status = tgsi_parse_init(&ctx, c->tokens);
    assert(status == TGSI_PARSE_OK);
 
    int inst_idx = 0;

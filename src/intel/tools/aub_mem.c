@@ -155,7 +155,7 @@ ensure_phys_mem(struct aub_mem *mem, uint64_t phys_addr)
       new_mem->phys_addr = phys_addr;
       new_mem->fd_offset = mem->mem_fd_len;
 
-      MAYBE_UNUSED int ftruncate_res = ftruncate(mem->mem_fd, mem->mem_fd_len += 4096);
+      ASSERTED int ftruncate_res = ftruncate(mem->mem_fd, mem->mem_fd_len += 4096);
       assert(ftruncate_res == 0);
 
       new_mem->data = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -289,7 +289,7 @@ aub_mem_get_ggtt_bo(void *_mem, uint64_t address)
          continue;
 
       uint32_t map_offset = i->virt_addr - address;
-      MAYBE_UNUSED void *res =
+      ASSERTED void *res =
             mmap((uint8_t *)bo.map + map_offset, 4096, PROT_READ,
                   MAP_SHARED | MAP_FIXED, mem->mem_fd, phys_mem->fd_offset);
       assert(res != MAP_FAILED);
@@ -355,7 +355,7 @@ aub_mem_get_ppgtt_bo(void *_mem, uint64_t address)
    for (uint64_t page = address; page < end; page += 4096) {
       struct phys_mem *phys_mem = ppgtt_walk(mem, mem->pml4, page);
 
-      MAYBE_UNUSED void *res =
+      ASSERTED void *res =
             mmap((uint8_t *)bo.map + (page - bo.addr), 4096, PROT_READ,
                   MAP_SHARED | MAP_FIXED, mem->mem_fd, phys_mem->fd_offset);
       assert(res != MAP_FAILED);

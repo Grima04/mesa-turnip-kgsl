@@ -62,7 +62,7 @@ dump_image_init(struct anv_device *device, struct dump_image *image,
                 uint32_t width, uint32_t height, const char *filename)
 {
    VkDevice vk_device = anv_device_to_handle(device);
-   MAYBE_UNUSED VkResult result;
+   ASSERTED VkResult result;
 
    image->filename = filename;
    image->extent = (VkExtent2D) { width, height };
@@ -200,7 +200,7 @@ static void
 dump_image_write_to_ppm(struct anv_device *device, struct dump_image *image)
 {
    VkDevice vk_device = anv_device_to_handle(device);
-   MAYBE_UNUSED VkResult result;
+   ASSERTED VkResult result;
 
    VkMemoryRequirements reqs;
    anv_GetImageMemoryRequirements(vk_device, image->image, &reqs);
@@ -249,7 +249,7 @@ anv_dump_image_to_ppm(struct anv_device *device,
                       const char *filename)
 {
    VkDevice vk_device = anv_device_to_handle(device);
-   MAYBE_UNUSED VkResult result;
+   ASSERTED VkResult result;
 
    PFN_vkBeginCommandBuffer BeginCommandBuffer =
       (void *)anv_GetDeviceProcAddr(anv_device_to_handle(device),

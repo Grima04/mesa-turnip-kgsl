@@ -700,7 +700,7 @@ make_texture(struct st_context *st,
                               unpack);
       }
       else {
-         bool MAYBE_UNUSED success;
+         ASSERTED bool success;
          success = _mesa_texstore(ctx, 2,           /* dims */
                                   baseInternalFormat, /* baseInternalFormat */
                                   mformat,          /* mesa_format */
@@ -750,7 +750,7 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
    const unsigned fb_width = _mesa_geometric_width(ctx->DrawBuffer);
    const unsigned fb_height = _mesa_geometric_height(ctx->DrawBuffer);
    GLfloat x0, y0, x1, y1;
-   GLsizei MAYBE_UNUSED maxSize;
+   ASSERTED GLsizei maxSize;
    boolean normalized = sv[0]->texture->target == PIPE_TEXTURE_2D;
    unsigned cso_state_mask;
 

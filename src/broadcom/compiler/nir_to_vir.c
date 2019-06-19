@@ -944,7 +944,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_sge:
         case nir_op_slt: {
                 enum v3d_qpu_cond cond;
-                MAYBE_UNUSED bool ok = ntq_emit_comparison(c, instr, &cond);
+                ASSERTED bool ok = ntq_emit_comparison(c, instr, &cond);
                 assert(ok);
                 result = vir_MOV(c, vir_SEL(c, cond,
                                             vir_uniform_f(c, 1.0),
@@ -965,7 +965,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
         case nir_op_ilt32:
         case nir_op_ult32: {
                 enum v3d_qpu_cond cond;
-                MAYBE_UNUSED bool ok = ntq_emit_comparison(c, instr, &cond);
+                ASSERTED bool ok = ntq_emit_comparison(c, instr, &cond);
                 assert(ok);
                 result = vir_MOV(c, vir_SEL(c, cond,
                                             vir_uniform_ui(c, ~0),

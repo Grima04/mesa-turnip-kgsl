@@ -757,7 +757,7 @@ main(int argc, char *argv[])
       setup_pager();
 
    if (S_ISDIR(st.st_mode)) {
-      MAYBE_UNUSED int ret;
+      ASSERTED int ret;
       char *filename;
 
       ret = asprintf(&filename, "%s/i915_error_state", path);

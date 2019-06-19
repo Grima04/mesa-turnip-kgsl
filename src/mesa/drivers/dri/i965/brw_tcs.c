@@ -205,7 +205,7 @@ brw_upload_tcs_prog(struct brw_context *brw)
    /* BRW_NEW_TESS_PROGRAMS */
    struct brw_program *tcp =
       (struct brw_program *) brw->programs[MESA_SHADER_TESS_CTRL];
-   MAYBE_UNUSED struct brw_program *tep =
+   ASSERTED struct brw_program *tep =
       (struct brw_program *) brw->programs[MESA_SHADER_TESS_EVAL];
    assert(tep);
 
@@ -229,7 +229,7 @@ brw_upload_tcs_prog(struct brw_context *brw)
    if (tcp)
       tcp->id = key.base.program_string_id;
 
-   MAYBE_UNUSED bool success = brw_codegen_tcs_prog(brw, tcp, tep, &key);
+   ASSERTED bool success = brw_codegen_tcs_prog(brw, tcp, tep, &key);
    assert(success);
 }
 

@@ -1062,7 +1062,7 @@ static bool do_hardware_msaa_resolve(struct pipe_context *ctx,
 	struct si_context *sctx = (struct si_context*)ctx;
 	struct si_texture *src = (struct si_texture*)info->src.resource;
 	struct si_texture *dst = (struct si_texture*)info->dst.resource;
-	MAYBE_UNUSED struct si_texture *stmp;
+	ASSERTED struct si_texture *stmp;
 	unsigned dst_width = u_minify(info->dst.resource->width0, info->dst.level);
 	unsigned dst_height = u_minify(info->dst.resource->height0, info->dst.level);
 	enum pipe_format format = info->src.format;

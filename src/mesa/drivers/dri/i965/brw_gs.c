@@ -178,7 +178,7 @@ brw_upload_gs_prog(struct brw_context *brw)
    gp = (struct brw_program *) brw->programs[MESA_SHADER_GEOMETRY];
    gp->id = key.base.program_string_id;
 
-   MAYBE_UNUSED bool success = brw_codegen_gs_prog(brw, gp, &key);
+   ASSERTED bool success = brw_codegen_gs_prog(brw, gp, &key);
    assert(success);
 }
 

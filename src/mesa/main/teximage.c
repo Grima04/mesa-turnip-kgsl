@@ -1277,7 +1277,7 @@ error_check_subtexture_dimensions(struct gl_context *ctx, GLuint dims,
  */
 GLboolean
 _mesa_test_proxy_teximage(struct gl_context *ctx, GLenum target,
-                          GLuint numLevels, MAYBE_UNUSED GLint level,
+                          GLuint numLevels, ASSERTED GLint level,
                           mesa_format format, GLuint numSamples,
                           GLint width, GLint height, GLint depth)
 {

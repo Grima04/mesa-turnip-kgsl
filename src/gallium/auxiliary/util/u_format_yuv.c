@@ -246,7 +246,7 @@ util_format_r8g8_b8g8_unorm_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stri
 
 void
 util_format_r8g8_b8g8_unorm_fetch_rgba_float(float *dst, const uint8_t *src,
-                                        unsigned i, MAYBE_UNUSED unsigned j)
+                                        unsigned i, ASSERTED unsigned j)
 {
    assert(i < 2);
    assert(j < 1);
@@ -466,7 +466,7 @@ util_format_g8r8_g8b8_unorm_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stri
 
 void
 util_format_g8r8_g8b8_unorm_fetch_rgba_float(float *dst, const uint8_t *src,
-                                        unsigned i, MAYBE_UNUSED unsigned j)
+                                        unsigned i, ASSERTED unsigned j)
 {
    assert(i < 2);
    assert(j < 1);
@@ -682,7 +682,7 @@ util_format_uyvy_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
 
 void
 util_format_uyvy_fetch_rgba_float(float *dst, const uint8_t *src,
-                             unsigned i, MAYBE_UNUSED unsigned j)
+                             unsigned i, ASSERTED unsigned j)
 {
    uint8_t y, u, v;
 
@@ -903,7 +903,7 @@ util_format_yuyv_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
 
 void
 util_format_yuyv_fetch_rgba_float(float *dst, const uint8_t *src,
-                             unsigned i, MAYBE_UNUSED unsigned j)
+                             unsigned i, ASSERTED unsigned j)
 {
    uint8_t y, u, v;
 

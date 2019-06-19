@@ -370,7 +370,7 @@ vmw_swc_add_validate_buffer(struct vmw_svga_winsys_context *vswc,
 			    struct pb_buffer *pb_buf,
 			    unsigned flags)
 {
-   MAYBE_UNUSED enum pipe_error ret;
+   ASSERTED enum pipe_error ret;
    unsigned translated_flags;
    boolean already_present;
 
