@@ -43,12 +43,6 @@ int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
 	free(a); \
 }
 
-#define MEMORY_COMMENT(obj, p) {\
-	char *a = pointer_as_memory_reference(obj->p); \
-	pandecode_msg("%s = %s\n", #p, a); \
-	free(a); \
-}
-
 #define DYN_MEMORY_PROP(obj, no, p) { \
 	if (obj->p) \
 		pandecode_prop("%s = %s_%d_p", #p, #p, no); \
@@ -1776,30 +1770,16 @@ pandecode_replay_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p,
         pandecode_indent++;
 
         MEMORY_PROP(p, position_varying);
-        MEMORY_COMMENT(p, position_varying);
         DYN_MEMORY_PROP(p, job_no, uniform_buffers);
-        MEMORY_COMMENT(p, uniform_buffers);
         DYN_MEMORY_PROP(p, job_no, texture_trampoline);
-        MEMORY_COMMENT(p, texture_trampoline);
         DYN_MEMORY_PROP(p, job_no, sampler_descriptor);
-        MEMORY_COMMENT(p, sampler_descriptor);
         DYN_MEMORY_PROP(p, job_no, uniforms);
-        MEMORY_COMMENT(p, uniforms);
         DYN_MEMORY_PROP(p, job_no, attributes);
-        MEMORY_COMMENT(p, attributes);
         DYN_MEMORY_PROP(p, job_no, attribute_meta);
-        MEMORY_COMMENT(p, attribute_meta);
         DYN_MEMORY_PROP(p, job_no, varyings);
-        MEMORY_COMMENT(p, varyings);
         DYN_MEMORY_PROP(p, job_no, varying_meta);
-        MEMORY_COMMENT(p, varying_meta);
         DYN_MEMORY_PROP(p, job_no, viewport);
-        MEMORY_COMMENT(p, viewport);
         DYN_MEMORY_PROP(p, job_no, occlusion_counter);
-        MEMORY_COMMENT(p, occlusion_counter);
-        MEMORY_COMMENT(p, framebuffer & ~1);
-        pandecode_msg("%" PRIx64 "\n", p->viewport);
-        pandecode_msg("%" PRIx64 "\n", p->framebuffer);
 
         if (is_bifrost)
                 pandecode_prop("framebuffer = scratchpad_%d_p", job_no);
