@@ -563,15 +563,6 @@ pandecode_compute_fbd(uint64_t gpu_va, int job_no)
         pandecode_indent++;
 
         SHORT_SLIDE(1);
-        MEMORY_PROP(s, unknown2);
-        MEMORY_PROP(s, unknown3);
-        SHORT_SLIDE(4);
-        SHORT_SLIDE(5);
-        MEMORY_PROP(s, unknown6);
-        SHORT_SLIDE(7);
-        MEMORY_PROP(s, unknown8);
-        MEMORY_PROP(s, unknown9);
-        SHORT_SLIDE(10);
 
         pandecode_indent--;
         printf("},\n");
