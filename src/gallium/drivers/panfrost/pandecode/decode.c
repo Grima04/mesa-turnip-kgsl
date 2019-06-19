@@ -937,9 +937,23 @@ pandecode_replay_shader_address(const char *name, mali_ptr ptr)
         return shader_ptr;
 }
 
+static bool
+all_zero(unsigned *buffer, unsigned count)
+{
+        for (unsigned i = 0; i < count; ++i) {
+                if (buffer[i])
+                        return false;
+        }
+
+        return true;
+}
+
 static void
 pandecode_replay_stencil(const char *name, const struct mali_stencil_test *stencil)
 {
+        if (all_zero((unsigned *) stencil, sizeof(stencil) / sizeof(unsigned)))
+                return;
+
         const char *func = pandecode_func_name(stencil->func);
         const char *sfail = pandecode_stencil_op_name(stencil->sfail);
         const char *dpfail = pandecode_stencil_op_name(stencil->dpfail);
@@ -1019,6 +1033,9 @@ pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
 static mali_ptr
 pandecode_midgard_blend(union midgard_blend *blend, bool is_shader)
 {
+        if (all_zero((unsigned *) blend, sizeof(blend) / sizeof(unsigned)))
+                return 0;
+
         pandecode_log(".blend = {\n");
         pandecode_indent++;
 
@@ -1376,37 +1393,43 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                         pandecode_prop("depth_factor = %f", s->depth_factor);
                 }
 
-                bool invert_alpha_coverage = s->alpha_coverage & 0xFFF0;
-                uint16_t inverted_coverage = invert_alpha_coverage ? ~s->alpha_coverage : s->alpha_coverage;
+                if (s->alpha_coverage) {
+                        bool invert_alpha_coverage = s->alpha_coverage & 0xFFF0;
+                        uint16_t inverted_coverage = invert_alpha_coverage ? ~s->alpha_coverage : s->alpha_coverage;
 
-                pandecode_prop("alpha_coverage = %sMALI_ALPHA_COVERAGE(%f)",
-                             invert_alpha_coverage ? "~" : "",
-                             MALI_GET_ALPHA_COVERAGE(inverted_coverage));
-
-                pandecode_log(".unknown2_3 = ");
-
-                int unknown2_3 = s->unknown2_3;
-                int unknown2_4 = s->unknown2_4;
-
-                /* We're not quite sure what these flags mean without the depth test, if anything */
-
-                if (unknown2_3 & (MALI_DEPTH_TEST | MALI_DEPTH_FUNC_MASK)) {
-                        const char *func = pandecode_func_name(MALI_GET_DEPTH_FUNC(unknown2_3));
-                        unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
-
-                        pandecode_log_cont("MALI_DEPTH_FUNC(%s) | ", func);
+                        pandecode_prop("alpha_coverage = %sMALI_ALPHA_COVERAGE(%f)",
+                                     invert_alpha_coverage ? "~" : "",
+                                     MALI_GET_ALPHA_COVERAGE(inverted_coverage));
                 }
 
-                pandecode_log_decoded_flags(u3_flag_info, unknown2_3);
-                pandecode_log_cont(",\n");
+                if (s->unknown2_3 || s->unknown2_4) {
+                        pandecode_log(".unknown2_3 = ");
 
-                pandecode_prop("stencil_mask_front = 0x%02X", s->stencil_mask_front);
-                pandecode_prop("stencil_mask_back = 0x%02X", s->stencil_mask_back);
+                        int unknown2_3 = s->unknown2_3;
+                        int unknown2_4 = s->unknown2_4;
 
-                pandecode_log(".unknown2_4 = ");
-                pandecode_log_decoded_flags(u4_flag_info, unknown2_4);
-                pandecode_log_cont(",\n");
+                        /* We're not quite sure what these flags mean without the depth test, if anything */
 
+                        if (unknown2_3 & (MALI_DEPTH_TEST | MALI_DEPTH_FUNC_MASK)) {
+                                const char *func = pandecode_func_name(MALI_GET_DEPTH_FUNC(unknown2_3));
+                                unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
+
+                                pandecode_log_cont("MALI_DEPTH_FUNC(%s) | ", func);
+                        }
+
+                        pandecode_log_decoded_flags(u3_flag_info, unknown2_3);
+                        pandecode_log_cont(",\n");
+
+                        pandecode_log(".unknown2_4 = ");
+                        pandecode_log_decoded_flags(u4_flag_info, unknown2_4);
+                        pandecode_log_cont(",\n");
+                }
+
+                if (s->stencil_mask_front || s->stencil_mask_back) {
+                        pandecode_prop("stencil_mask_front = 0x%02X", s->stencil_mask_front);
+                        pandecode_prop("stencil_mask_back = 0x%02X", s->stencil_mask_back);
+                }
+                
                 pandecode_replay_stencil("front", &s->stencil_front);
                 pandecode_replay_stencil("back", &s->stencil_back);
 
@@ -1421,7 +1444,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
 
                         pandecode_indent--;
                         pandecode_log("},\n");
-                } else {
+                } else if (s->midgard2.unknown2_7) {
                         pandecode_log(".midgard2 = {\n");
                         pandecode_indent++;
 
@@ -1430,7 +1453,8 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                         pandecode_log("},\n");
                 }
 
-                pandecode_prop("unknown2_8 = 0x%" PRIx32, s->unknown2_8);
+                if (s->unknown2_8)
+                        pandecode_prop("unknown2_8 = 0x%" PRIx32, s->unknown2_8);
 
                 if (!is_bifrost) {
                         /* TODO: Blend shaders routing/disasm */
