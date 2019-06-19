@@ -293,6 +293,7 @@ gl_nir_opt_access(nir_shader *shader)
       .vars_written = _mesa_pointer_set_create(NULL),
    };
 
+   bool var_progress = false;
    bool progress = false;
 
    nir_foreach_function(func, shader) {
@@ -307,13 +308,24 @@ gl_nir_opt_access(nir_shader *shader)
    }
 
    nir_foreach_variable(var, &shader->uniforms)
-      progress |= process_variable(&state, var);
+      var_progress |= process_variable(&state, var);
 
    nir_foreach_function(func, shader) {
       if (func->impl) {
          progress |= opt_access_impl(&state, func->impl);
+
+         /* If we make a change to the uniforms, update all the impls. */
+         if (var_progress) {
+            nir_metadata_preserve(func->impl,
+                                  nir_metadata_block_index |
+                                  nir_metadata_dominance |
+                                  nir_metadata_live_ssa_defs |
+                                  nir_metadata_loop_analysis);
+         }
       }
    }
+
+   progress |= var_progress;
 
    _mesa_set_destroy(state.vars_written, NULL);
    return progress;
