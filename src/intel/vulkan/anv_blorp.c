@@ -1409,6 +1409,15 @@ anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
    struct blorp_batch batch;
    blorp_batch_init(&cmd_buffer->device->blorp, &batch, cmd_buffer, 0);
 
+   /* We don't know who touched the main surface last so flush a bunch of
+    * caches to ensure we get good data.
+    */
+   cmd_buffer->state.pending_pipe_bits |=
+      ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+      ANV_PIPE_DATA_CACHE_FLUSH_BIT |
+      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+      ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device,
                                 image, aspect,
@@ -1440,6 +1449,10 @@ anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
                     0, 0, 0, 0, extent.width, extent.height);
       }
    }
+
+   /* We just wrote to the buffer with the render cache.  Flush it. */
+   cmd_buffer->state.pending_pipe_bits |=
+      ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
 
    blorp_batch_finish(&batch);
 }
