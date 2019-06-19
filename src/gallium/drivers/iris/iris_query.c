@@ -859,6 +859,11 @@ iris_get_query_result(struct pipe_context *ctx,
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
+   if (unlikely(screen->no_hw)) {
+      result->u64 = 0;
+      return true;
+   }
+
    if (!q->ready) {
       if (iris_batch_references(&ice->batches[q->batch_idx], bo))
          iris_batch_flush(&ice->batches[q->batch_idx]);
