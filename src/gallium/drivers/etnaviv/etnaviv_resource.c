@@ -253,8 +253,8 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
       paddingY = 1;
    }
 
-   if (!screen->specs.use_blt && templat->target != PIPE_BUFFER)
-      etna_adjust_rs_align(screen->specs.pixel_pipes, NULL, &paddingY);
+   if (!screen->specs.use_blt && templat->target != PIPE_BUFFER && layout == ETNA_LAYOUT_LINEAR)
+      paddingY = align(paddingY, ETNA_RS_HEIGHT_MASK + 1);
 
    if (templat->bind & PIPE_BIND_SCANOUT && screen->ro->kms_fd >= 0) {
       struct pipe_resource scanout_templat = *templat;
@@ -262,8 +262,10 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
       struct winsys_handle handle;
 
       /* pad scanout buffer size to be compatible with the RS */
-      if (!screen->specs.use_blt && modifier == DRM_FORMAT_MOD_LINEAR)
-         etna_adjust_rs_align(screen->specs.pixel_pipes, &paddingX, &paddingY);
+      if (!screen->specs.use_blt && modifier == DRM_FORMAT_MOD_LINEAR) {
+         paddingX = align(paddingX, ETNA_RS_WIDTH_MASK + 1);
+         paddingY = align(paddingY, ETNA_RS_HEIGHT_MASK + 1);
+      }
 
       scanout_templat.width0 = align(scanout_templat.width0, paddingX);
       scanout_templat.height0 = align(scanout_templat.height0, paddingY);
@@ -559,8 +561,8 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
                         is_rs_align(screen, tmpl),
                         &paddingX, &paddingY, &rsc->halign);
 
-   if (!screen->specs.use_blt)
-      etna_adjust_rs_align(screen->specs.pixel_pipes, NULL, &paddingY);
+   if (!screen->specs.use_blt && rsc->layout == ETNA_LAYOUT_LINEAR)
+      paddingY = align(paddingY, ETNA_RS_HEIGHT_MASK + 1);
    level->padded_width = align(level->width, paddingX);
    level->padded_height = align(level->height, paddingY);
 
