@@ -1529,15 +1529,19 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
 
                 struct pandecode_mapped_memory *uniform_mem = pandecode_find_mapped_gpu_mem_containing(p->uniforms);
                 pandecode_fetch_gpu_mem(uniform_mem, p->uniforms, sz);
-                float *PANDECODE_PTR_VAR(uniforms, uniform_mem, p->uniforms);
+                u32 *PANDECODE_PTR_VAR(uniforms, uniform_mem, p->uniforms);
 
-                pandecode_log("float uniforms_%d%s[] = {\n", job_no, suffix);
+                pandecode_log("u32 uniforms_%d%s[] = {\n", job_no, suffix);
 
                 pandecode_indent++;
 
                 for (int row = 0; row < rows; row++) {
-                        for (int i = 0; i < width; i++)
-                                pandecode_log_cont("%ff, ", uniforms[i]);
+                        for (int i = 0; i < width; i++) {
+                                u32 v = uniforms[i];
+                                float f;
+                                memcpy(&f, &v, sizeof(v));
+                                pandecode_log_cont("%X /* %f */, ", v, f);
+                        }
 
                         pandecode_log_cont("\n");
 
