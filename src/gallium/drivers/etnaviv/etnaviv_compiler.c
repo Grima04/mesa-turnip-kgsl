@@ -2575,16 +2575,18 @@ etna_link_shader(struct etna_shader_link_info *info,
       else /* texture coord or other bypasses flat shading */
          varying->pa_attributes = 0x2f1;
 
-      varying->use[0] = interpolate_always ? VARYING_COMPONENT_USE_POINTCOORD_X : VARYING_COMPONENT_USE_USED;
-      varying->use[1] = interpolate_always ? VARYING_COMPONENT_USE_POINTCOORD_Y : VARYING_COMPONENT_USE_USED;
-      varying->use[2] = VARYING_COMPONENT_USE_USED;
-      varying->use[3] = VARYING_COMPONENT_USE_USED;
-
+      varying->use[0] = VARYING_COMPONENT_USE_UNUSED;
+      varying->use[1] = VARYING_COMPONENT_USE_UNUSED;
+      varying->use[2] = VARYING_COMPONENT_USE_UNUSED;
+      varying->use[3] = VARYING_COMPONENT_USE_UNUSED;
 
       /* point coord is an input to the PS without matching VS output,
        * so it gets a varying slot without being assigned a VS register.
        */
       if (fsio->semantic.Name == TGSI_SEMANTIC_PCOORD) {
+         varying->use[0] = VARYING_COMPONENT_USE_POINTCOORD_X;
+         varying->use[1] = VARYING_COMPONENT_USE_POINTCOORD_Y;
+
          info->pcoord_varying_comp_ofs = comp_ofs;
       } else {
          if (vsio == NULL) { /* not found -- link error */
