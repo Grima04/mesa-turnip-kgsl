@@ -1410,7 +1410,16 @@ struct mali_single_framebuffer {
  * of compute jobs. Superficially resembles a single framebuffer descriptor */
 
 struct mali_compute_fbd {
-        u32 unknown[64];
+        u32 unknown1[16];
+        mali_ptr unknown2;
+        mali_ptr unknown3;
+        u32 unknown4[16];
+        u32 unknown5[18];
+        mali_ptr unknown6;
+        u32 unknown7[4];
+        mali_ptr unknown8;
+        mali_ptr unknown9;
+        u32 unknown10[16];
 } __attribute__((packed));
 
 /* Format bits for the render target flags */
