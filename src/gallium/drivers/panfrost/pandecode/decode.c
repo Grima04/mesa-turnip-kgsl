@@ -1158,7 +1158,7 @@ pandecode_replay_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job
         pandecode_log_cont("{\n");
         pandecode_indent++;
 
-        pandecode_prop("invocation_count = %" PRIx32, p->invocation_count);
+        pandecode_prop("invocation_count = 0x%" PRIx32, p->invocation_count);
         pandecode_prop("size_y_shift = %d", p->size_y_shift);
         pandecode_prop("size_z_shift = %d", p->size_z_shift);
         pandecode_prop("workgroups_x_shift = %d", p->workgroups_x_shift);
