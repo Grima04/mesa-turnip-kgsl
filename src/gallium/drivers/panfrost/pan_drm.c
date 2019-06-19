@@ -323,18 +323,6 @@ panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
         }
 }
 
-static void
-panfrost_drm_enable_counters(struct panfrost_screen *screen)
-{
-	fprintf(stderr, "unimplemented: %s\n", __func__);
-}
-
-static void
-panfrost_drm_dump_counters(struct panfrost_screen *screen)
-{
-	fprintf(stderr, "unimplemented: %s\n", __func__);
-}
-
 static unsigned
 panfrost_drm_query_gpu_version(struct panfrost_screen *screen)
 {
@@ -425,12 +413,10 @@ panfrost_create_drm_driver(int fd)
 	driver->base.force_flush_fragment = panfrost_drm_force_flush_fragment;
 	driver->base.allocate_slab = panfrost_drm_allocate_slab;
 	driver->base.free_slab = panfrost_drm_free_slab;
-	driver->base.enable_counters = panfrost_drm_enable_counters;
 	driver->base.query_gpu_version = panfrost_drm_query_gpu_version;
 	driver->base.init_context = panfrost_drm_init_context;
 	driver->base.fence_reference = panfrost_drm_fence_reference;
 	driver->base.fence_finish = panfrost_drm_fence_finish;
-	driver->base.dump_counters = panfrost_drm_dump_counters;
 
         return &driver->base;
 }

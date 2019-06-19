@@ -66,8 +66,6 @@ int pan_debug = 0;
 
 struct panfrost_driver *panfrost_create_drm_driver(int fd);
 
-const char *pan_counters_base = NULL;
-
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
 {
@@ -584,14 +582,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         }
 
         screen->driver = panfrost_create_drm_driver(fd);
-
-        /* Dump performance counters iff asked for in the environment */
-        pan_counters_base = getenv("PANCOUNTERS_BASE");
-
-        if (pan_counters_base) {
-                screen->driver->allocate_slab(screen, &screen->perf_counters, 64, true, 0, 0, 0);
-                screen->driver->enable_counters(screen);
-        }
 
         if (pan_debug & PAN_DBG_TRACE)
                 pandecode_initialize();

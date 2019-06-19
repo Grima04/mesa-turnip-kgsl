@@ -64,8 +64,6 @@ struct panfrost_driver {
                            struct panfrost_memory *mem);
         void (*free_imported_bo) (struct panfrost_screen *screen,
                              struct panfrost_bo *bo);
-        void (*enable_counters) (struct panfrost_screen *screen);
-        void (*dump_counters) (struct panfrost_screen *screen);
 	unsigned (*query_gpu_version) (struct panfrost_screen *screen);
 	int (*init_context) (struct panfrost_context *ctx);
 	void (*fence_reference) (struct pipe_screen *screen,
@@ -82,8 +80,6 @@ struct panfrost_screen {
 
         struct renderonly *ro;
         struct panfrost_driver *driver;
-
-        struct panfrost_memory perf_counters;
 
         /* Memory management is based on subdividing slabs with AMD's allocator */
         struct pb_slabs slabs;

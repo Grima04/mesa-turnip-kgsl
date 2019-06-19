@@ -47,9 +47,6 @@
 #include "pan_util.h"
 #include "pan_tiler.h"
 
-static int performance_counter_number = 0;
-extern const char *pan_counters_base;
-
 /* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
 //#define DRY_RUN
 
@@ -1384,17 +1381,6 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
         /* If readback, flush now (hurts the pipelined performance) */
         if (flush_immediate)
                 screen->driver->force_flush_fragment(ctx, fence);
-
-        if (screen->driver->dump_counters && pan_counters_base) {
-                screen->driver->dump_counters(screen);
-
-                char filename[128];
-                snprintf(filename, sizeof(filename), "%s/frame%d.mdgprf", pan_counters_base, ++performance_counter_number);
-                FILE *fp = fopen(filename, "wb");
-                fwrite(screen->perf_counters.cpu,  4096, sizeof(uint32_t), fp);
-                fclose(fp);
-        }
-
 #endif
 }
 
