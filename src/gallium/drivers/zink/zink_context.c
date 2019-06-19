@@ -441,9 +441,9 @@ zink_set_clip_state(struct pipe_context *pctx,
 }
 
 static struct zink_render_pass *
-get_render_pass(struct zink_context *ctx,
-                const struct pipe_framebuffer_state *fb)
+get_render_pass(struct zink_context *ctx)
 {
+   const struct pipe_framebuffer_state *fb = &ctx->fb_state;
    struct zink_render_pass_state state;
 
    for (int i = 0; i < fb->nr_cbufs; i++) {
@@ -463,12 +463,16 @@ get_render_pass(struct zink_context *ctx,
 }
 
 static struct zink_framebuffer *
-get_framebuffer(struct zink_context *ctx,
-                const struct pipe_framebuffer_state *fb,
-                struct zink_render_pass *rp)
+get_framebuffer(struct zink_context *ctx)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_render_pass *rp = get_render_pass(ctx);
    // TODO: cache!
-   return zink_create_framebuffer(zink_screen(ctx->base.screen), fb, rp);
+   struct zink_framebuffer *ret = zink_create_framebuffer(screen,
+                                                          &ctx->fb_state,
+                                                          rp);
+   zink_render_pass_reference(screen, &rp, NULL);
+   return ret;
 }
 
 static void
@@ -527,17 +531,14 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
 
-   struct zink_render_pass *rp = get_render_pass(ctx, state);
-   zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, rp);
+   util_copy_framebuffer_state(&ctx->fb_state, state);
 
-   struct zink_framebuffer *fb = get_framebuffer(ctx, state, rp);
+   struct zink_framebuffer *fb = get_framebuffer(ctx);
    zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
+   zink_render_pass_reference(screen, &ctx->gfx_pipeline_state.render_pass, fb->rp);
    zink_framebuffer_reference(screen, &fb, NULL);
-   zink_render_pass_reference(screen, &rp, NULL);
 
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
-
-   util_copy_framebuffer_state(&ctx->fb_state, state);
 
    flush_batch(ctx);
    struct zink_batch *batch = zink_context_curr_batch(ctx);
