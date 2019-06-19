@@ -701,8 +701,7 @@ v3dX(emit_state)(struct pipe_context *pctx)
                                               v3d->prog.bind_vs->tf_specs);
 
 #if V3D_VERSION >= 40
-                        bool tf_enabled = (v3d->prog.bind_vs->num_tf_specs != 0 &&
-                                           v3d->active_queries);
+                        bool tf_enabled = v3d_transform_feedback_enabled(v3d);
                         job->tf_enabled |= tf_enabled;
 
                         cl_emit(&job->bcl, TRANSFORM_FEEDBACK_SPECS, tfe) {
