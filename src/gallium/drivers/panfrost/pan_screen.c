@@ -540,8 +540,7 @@ panfrost_fence_reference(struct pipe_screen *pscreen,
                          struct pipe_fence_handle **ptr,
                          struct pipe_fence_handle *fence)
 {
-        struct panfrost_screen *screen = pan_screen(pscreen);
-        screen->driver->fence_reference(pscreen, ptr, fence);
+        panfrost_drm_fence_reference(pscreen, ptr, fence);
 }
 
 static boolean
@@ -550,8 +549,7 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
                       struct pipe_fence_handle *fence,
                       uint64_t timeout)
 {
-        struct panfrost_screen *screen = pan_screen(pscreen);
-        return screen->driver->fence_finish(pscreen, ctx, fence, timeout);
+        return panfrost_drm_fence_finish(pscreen, ctx, fence, timeout);
 }
 
 static const void *
@@ -581,7 +579,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 }
         }
 
-        screen->driver = panfrost_create_drm_driver(fd);
+        screen->fd = fd;
 
         if (pan_debug & PAN_DBG_TRACE)
                 pandecode_initialize();

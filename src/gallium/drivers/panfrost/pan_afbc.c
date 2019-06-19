@@ -138,7 +138,7 @@ panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsr
         unsigned buffer_size = header_size + body_size;
 
         /* Allocate the AFBC slab itself, large enough to hold the above */
-        screen->driver->allocate_slab(screen, &rsrc->bo->afbc_slab,
+        panfrost_drm_allocate_slab(screen, &rsrc->bo->afbc_slab,
                                ALIGN(buffer_size, 4096) / 4096,
                                true, 0, 0, 0);
 

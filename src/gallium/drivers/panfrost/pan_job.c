@@ -168,7 +168,7 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
         if (!job)
                 return;
 
-        ret = screen->driver->submit_vs_fs_job(ctx, has_draws, is_scanout);
+        ret = panfrost_drm_submit_vs_fs_job(ctx, has_draws, is_scanout);
 
         if (ret)
                 fprintf(stderr, "panfrost_job_submit failed: %d\n", ret);

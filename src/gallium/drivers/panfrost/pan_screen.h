@@ -46,40 +46,11 @@ struct panfrost_screen;
 #define PAN_ALLOCATE_INVISIBLE (1 << 2)
 #define PAN_ALLOCATE_COHERENT_LOCAL (1 << 3)
 
-struct panfrost_driver {
-	struct panfrost_bo * (*import_bo) (struct panfrost_screen *screen, struct winsys_handle *whandle);
-	int (*export_bo) (struct panfrost_screen *screen, int gem_handle, unsigned int stride, struct winsys_handle *whandle);
-
-	int (*submit_vs_fs_job) (struct panfrost_context *ctx, bool has_draws, bool is_scanout);
-	void (*force_flush_fragment) (struct panfrost_context *ctx,
-				      struct pipe_fence_handle **fence);
-	void (*allocate_slab) (struct panfrost_screen *screen,
-		               struct panfrost_memory *mem,
-		               size_t pages,
-		               bool same_va,
-		               int extra_flags,
-		               int commit_count,
-		               int extent);
-        void (*free_slab) (struct panfrost_screen *screen,
-                           struct panfrost_memory *mem);
-        void (*free_imported_bo) (struct panfrost_screen *screen,
-                             struct panfrost_bo *bo);
-	unsigned (*query_gpu_version) (struct panfrost_screen *screen);
-	int (*init_context) (struct panfrost_context *ctx);
-	void (*fence_reference) (struct pipe_screen *screen,
-                         struct pipe_fence_handle **ptr,
-                         struct pipe_fence_handle *fence);
-	boolean (*fence_finish) (struct pipe_screen *screen,
-                      struct pipe_context *ctx,
-                      struct pipe_fence_handle *fence,
-                      uint64_t timeout);
-};
-
 struct panfrost_screen {
         struct pipe_screen base;
+        int fd;
 
         struct renderonly *ro;
-        struct panfrost_driver *driver;
 
         /* Memory management is based on subdividing slabs with AMD's allocator */
         struct pb_slabs slabs;
@@ -99,5 +70,50 @@ pan_screen(struct pipe_screen *p)
 {
    return (struct panfrost_screen *)p;
 }
+
+void
+panfrost_drm_allocate_slab(struct panfrost_screen *screen,
+                           struct panfrost_memory *mem,
+                           size_t pages,
+                           bool same_va,
+                           int extra_flags,
+                           int commit_count,
+                           int extent);
+void
+panfrost_drm_free_slab(struct panfrost_screen *screen,
+                       struct panfrost_memory *mem);
+struct panfrost_bo *
+panfrost_drm_import_bo(struct panfrost_screen *screen,
+                       struct winsys_handle *whandle);
+int
+panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle,
+                       unsigned int stride, struct winsys_handle *whandle);
+void
+panfrost_drm_free_imported_bo(struct panfrost_screen *screen,
+                              struct panfrost_bo *bo);
+int
+panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs,
+                        struct pipe_surface *surf);
+int
+panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws,
+                              bool is_scanout);
+struct panfrost_fence *
+panfrost_fence_create(struct panfrost_context *ctx);
+void
+panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
+                                  struct pipe_fence_handle **fence);
+unsigned
+panfrost_drm_query_gpu_version(struct panfrost_screen *screen);
+int
+panfrost_drm_init_context(struct panfrost_context *ctx);
+void
+panfrost_drm_fence_reference(struct pipe_screen *screen,
+                             struct pipe_fence_handle **ptr,
+                             struct pipe_fence_handle *fence);
+boolean
+panfrost_drm_fence_finish(struct pipe_screen *pscreen,
+                          struct pipe_context *ctx,
+                          struct pipe_fence_handle *fence,
+                          uint64_t timeout);
 
 #endif /* PAN_SCREEN_H */

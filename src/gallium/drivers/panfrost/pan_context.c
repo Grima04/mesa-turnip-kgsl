@@ -86,7 +86,7 @@ panfrost_enable_checksum(struct panfrost_context *ctx, struct panfrost_resource 
         /* 8 byte checksum per tile */
         rsrc->bo->checksum_stride = tile_w * 8;
         int pages = (((rsrc->bo->checksum_stride * tile_h) + 4095) / 4096);
-        screen->driver->allocate_slab(screen, &rsrc->bo->checksum_slab, pages, false, 0, 0, 0);
+        panfrost_drm_allocate_slab(screen, &rsrc->bo->checksum_slab, pages, false, 0, 0, 0);
 
         rsrc->bo->has_checksum = true;
 }
@@ -1373,14 +1373,14 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
         /* If visual, we can stall a frame */
 
         if (!flush_immediate)
-                screen->driver->force_flush_fragment(ctx, fence);
+                panfrost_drm_force_flush_fragment(ctx, fence);
 
         screen->last_fragment_flushed = false;
         screen->last_job = job;
 
         /* If readback, flush now (hurts the pipelined performance) */
         if (flush_immediate)
-                screen->driver->force_flush_fragment(ctx, fence);
+                panfrost_drm_force_flush_fragment(ctx, fence);
 #endif
 }
 
@@ -2432,12 +2432,12 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter)
                 util_blitter_destroy(panfrost->blitter);
 
-        screen->driver->free_slab(screen, &panfrost->scratchpad);
-        screen->driver->free_slab(screen, &panfrost->varying_mem);
-        screen->driver->free_slab(screen, &panfrost->shaders);
-        screen->driver->free_slab(screen, &panfrost->tiler_heap);
-        screen->driver->free_slab(screen, &panfrost->tiler_polygon_list);
-        screen->driver->free_slab(screen, &panfrost->tiler_dummy);
+        panfrost_drm_free_slab(screen, &panfrost->scratchpad);
+        panfrost_drm_free_slab(screen, &panfrost->varying_mem);
+        panfrost_drm_free_slab(screen, &panfrost->shaders);
+        panfrost_drm_free_slab(screen, &panfrost->tiler_heap);
+        panfrost_drm_free_slab(screen, &panfrost->tiler_polygon_list);
+        panfrost_drm_free_slab(screen, &panfrost->tiler_dummy);
 
         for (int i = 0; i < ARRAY_SIZE(panfrost->transient_pools); ++i) {
                 struct panfrost_memory_entry *entry;
@@ -2596,12 +2596,12 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
                 ctx->transient_pools[i].entries[0] = (struct panfrost_memory_entry *) pb_slab_alloc(&screen->slabs, entry_size, HEAP_TRANSIENT);
         }
 
-        screen->driver->allocate_slab(screen, &ctx->scratchpad, 64, false, 0, 0, 0);
-        screen->driver->allocate_slab(screen, &ctx->varying_mem, 16384, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_COHERENT_LOCAL, 0, 0);
-        screen->driver->allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
-        screen->driver->allocate_slab(screen, &ctx->tiler_heap, 32768, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
-        screen->driver->allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
-        screen->driver->allocate_slab(screen, &ctx->tiler_dummy, 1, false, PAN_ALLOCATE_INVISIBLE, 0, 0);
+        panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64, false, 0, 0, 0);
+        panfrost_drm_allocate_slab(screen, &ctx->varying_mem, 16384, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_COHERENT_LOCAL, 0, 0);
+        panfrost_drm_allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
+        panfrost_drm_allocate_slab(screen, &ctx->tiler_heap, 32768, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
+        panfrost_drm_allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
+        panfrost_drm_allocate_slab(screen, &ctx->tiler_dummy, 1, false, PAN_ALLOCATE_INVISIBLE, 0, 0);
 }
 
 /* New context creation, which also does hardware initialisation since I don't
@@ -2616,7 +2616,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         unsigned gpu_id;
 
-        gpu_id = pscreen->driver->query_gpu_version(pscreen);
+        gpu_id = panfrost_drm_query_gpu_version(pscreen);
 
         ctx->is_t6xx = gpu_id <= 0x0750; /* For now, this flag means T760 or less */
         ctx->require_sfbd = gpu_id < 0x0750; /* T760 is the first to support MFBD */
@@ -2690,7 +2690,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         panfrost_resource_context_init(gallium);
 
-        pscreen->driver->init_context(ctx);
+        panfrost_drm_init_context(ctx);
 
         panfrost_setup_hardware(ctx);
 

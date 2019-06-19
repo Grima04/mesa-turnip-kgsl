@@ -69,7 +69,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         pipe_reference_init(&prsc->reference, 1);
         prsc->screen = pscreen;
 
-	rsc->bo = screen->driver->import_bo(screen, whandle);
+	rsc->bo = panfrost_drm_import_bo(screen, whandle);
 	rsc->bo->slices[0].stride = whandle->stride;
         rsc->bo->slices[0].initialized = true;
 
@@ -120,7 +120,9 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 
                         return TRUE;
                 } else
-			return screen->driver->export_bo(screen, rsrc->bo->gem_handle, rsrc->bo->slices[0].stride, handle);
+			return panfrost_drm_export_bo(screen, rsrc->bo->gem_handle,
+                                                      rsrc->bo->slices[0].stride,
+                                                      handle);
 	}
 
 	return FALSE;
@@ -300,7 +302,7 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
         if (bo->layout == PAN_TILED || bo->layout == PAN_LINEAR) {
                 struct panfrost_memory mem;
 
-                screen->driver->allocate_slab(screen, &mem, bo->size / 4096, true, 0, 0, 0);
+                panfrost_drm_allocate_slab(screen, &mem, bo->size / 4096, true, 0, 0, 0);
 
                 bo->cpu = mem.cpu;
                 bo->gpu = mem.gpu;
@@ -381,7 +383,7 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
                         .gem_handle = bo->gem_handle,
                 };
 
-                screen->driver->free_slab(screen, &mem);
+                panfrost_drm_free_slab(screen, &mem);
         }
 
         if (bo->layout == PAN_AFBC) {
@@ -397,11 +399,11 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
                         .gem_handle = bo->checksum_slab.gem_handle,
                 };
 
-                screen->driver->free_slab(screen, &mem);
+                panfrost_drm_free_slab(screen, &mem);
         }
 
         if (bo->imported) {
-                screen->driver->free_imported_bo(screen, bo);
+                panfrost_drm_free_imported_bo(screen, bo);
         }
 
         ralloc_free(bo);
@@ -627,7 +629,7 @@ panfrost_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned gro
         /* Actually allocate the memory from kernel-space. Mapped, same_va, no
          * special flags */
 
-        screen->driver->allocate_slab(screen, mem, slab_size / 4096, true, 0, 0, 0);
+        panfrost_drm_allocate_slab(screen, mem, slab_size / 4096, true, 0, 0, 0);
 
         return &mem->slab;
 }
@@ -645,7 +647,7 @@ panfrost_slab_free(void *priv, struct pb_slab *slab)
         struct panfrost_memory *mem = (struct panfrost_memory *) slab;
         struct panfrost_screen *screen = (struct panfrost_screen *) priv;
 
-        screen->driver->free_slab(screen, mem);
+        panfrost_drm_free_slab(screen, mem);
         ralloc_free(mem);
 }
 
