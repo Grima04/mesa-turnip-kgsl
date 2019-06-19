@@ -443,6 +443,7 @@ zink_set_clip_state(struct pipe_context *pctx,
 static struct zink_render_pass *
 get_render_pass(struct zink_context *ctx)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    const struct pipe_framebuffer_state *fb = &ctx->fb_state;
    struct zink_render_pass_state state;
 
@@ -458,8 +459,17 @@ get_render_pass(struct zink_context *ctx)
    }
    state.have_zsbuf = fb->zsbuf != NULL;
 
-   // TODO: cache instead!
-   return zink_create_render_pass(zink_screen(ctx->base.screen), &state);
+   struct hash_entry *entry = _mesa_hash_table_search(ctx->render_pass_cache,
+                                                      &state);
+   if (!entry) {
+      struct zink_render_pass *rp;
+      rp = zink_create_render_pass(screen, &state);
+      entry = _mesa_hash_table_insert(ctx->render_pass_cache, &state, rp);
+      if (!entry)
+         return NULL;
+   }
+
+   return entry->data;
 }
 
 static struct zink_framebuffer *
@@ -471,7 +481,6 @@ get_framebuffer(struct zink_context *ctx)
    struct zink_framebuffer *ret = zink_create_framebuffer(screen,
                                                           &ctx->fb_state,
                                                           rp);
-   zink_render_pass_reference(screen, &rp, NULL);
    return ret;
 }
 
@@ -792,6 +801,18 @@ static bool
 equals_gfx_program(const void *a, const void *b)
 {
    return memcmp(a, b, sizeof(struct zink_shader *) * (PIPE_SHADER_TYPES - 1)) == 0;
+}
+
+static uint32_t
+hash_render_pass_state(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct zink_render_pass_state));
+}
+
+static bool
+equals_render_pass_state(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct zink_render_pass_state)) == 0;
 }
 
 static struct zink_gfx_program *
@@ -1311,8 +1332,16 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);
 
-   ctx->program_cache = _mesa_hash_table_create(NULL, hash_gfx_program, equals_gfx_program);
+   ctx->program_cache = _mesa_hash_table_create(NULL,
+                                                hash_gfx_program,
+                                                equals_gfx_program);
    if (!ctx->program_cache)
+      goto fail;
+
+   ctx->render_pass_cache = _mesa_hash_table_create(NULL,
+                                                    hash_render_pass_state,
+                                                    equals_render_pass_state);
+   if (!ctx->render_pass_cache)
       goto fail;
 
    ctx->dirty = ZINK_DIRTY_PROGRAM;
