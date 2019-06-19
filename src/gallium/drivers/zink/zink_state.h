@@ -35,8 +35,8 @@ struct zink_vertex_elements_hw_state {
 
 struct zink_vertex_elements_state {
    struct {
-      uint32_t             binding;
-      VkVertexInputRate    inputRate;
+      uint32_t binding;
+      VkVertexInputRate inputRate;
    } bindings[PIPE_MAX_ATTRIBS];
    uint8_t binding_map[PIPE_MAX_ATTRIBS];
    struct zink_vertex_elements_hw_state hw_state;
