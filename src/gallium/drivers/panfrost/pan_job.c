@@ -31,7 +31,7 @@
 struct panfrost_job *
 panfrost_create_job(struct panfrost_context *ctx)
 {
-        struct panfrost_job *job = rzalloc(NULL, struct panfrost_job);
+        struct panfrost_job *job = rzalloc(ctx, struct panfrost_job);
 
         job->ctx = ctx;
 
