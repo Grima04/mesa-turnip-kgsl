@@ -2011,10 +2011,6 @@ pandecode_replay_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header
 {
         struct midgard_payload_vertex_tiler *PANDECODE_PTR_VAR(v, mem, payload);
 
-        char *a = pointer_as_memory_reference(payload);
-        pandecode_msg("vt payload: %s\n", a);
-        free(a);
-
         pandecode_replay_vertex_tiler_postfix_pre(&v->postfix, job_no, h->job_type, "", false);
 
         pandecode_replay_indices(v->prefix.indices, v->prefix.index_count, job_no);
