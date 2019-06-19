@@ -151,10 +151,6 @@ LOCAL_C_INCLUDES := \
 	$(RADV_COMMON_INCLUDES) \
 	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_radv_common,,)
 
-LOCAL_EXPORT_C_INCLUDE_DIRS := \
-	$(MESA_TOP)/src/amd/vulkan \
-	$(intermediates)
-
 LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_util \
 	libmesa_nir \
