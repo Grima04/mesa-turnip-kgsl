@@ -1077,6 +1077,7 @@ emit_3dstate_clip(struct anv_pipeline *pipeline,
       clip.EarlyCullEnable          = true;
       clip.APIMode                  = APIMODE_D3D,
       clip.ViewportXYClipTestEnable = true;
+      clip.GuardbandClipTestEnable  = true;
 
 #if GEN_GEN >= 8
       clip.VertexSubPixelPrecisionSelect = _8Bit;
