@@ -90,7 +90,6 @@ panfrost_get_job(struct panfrost_context *ctx,
 
         memcpy(&job->key, &key, sizeof(key));
         _mesa_hash_table_insert(ctx->jobs, &job->key, job);
-        panfrost_job_set_requirements(ctx, job);
 
         return job;
 }
