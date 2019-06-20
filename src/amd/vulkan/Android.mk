@@ -74,7 +74,7 @@ LOCAL_C_INCLUDES := \
 	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_vulkan_util,,)/util \
 	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_util,,)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := \
+LOCAL_STATIC_LIBRARIES := \
 	libmesa_vulkan_util \
 	libmesa_git_sha1
 
@@ -158,7 +158,8 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_compiler \
 	libmesa_amdgpu_addrlib \
 	libmesa_amd_common \
-	libmesa_radv_common
+	libmesa_radv_common \
+	libmesa_vulkan_util
 
 LOCAL_SHARED_LIBRARIES += $(RADV_SHARED_LIBRARIES) libz libsync liblog
 
