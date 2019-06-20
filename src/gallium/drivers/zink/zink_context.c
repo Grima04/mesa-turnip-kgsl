@@ -956,7 +956,8 @@ zink_draw_vbo(struct pipe_context *pctx,
          } else {
             struct pipe_sampler_view *psampler_view = ctx->image_views[i][index];
             assert(psampler_view);
-            struct zink_sampler_view *sampler_view = (struct zink_sampler_view *)psampler_view;
+            struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
+
             struct zink_resource *res = zink_resource(psampler_view->texture);
             VkImageLayout layout = res->layout;
             if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL &&
