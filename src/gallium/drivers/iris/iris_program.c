@@ -970,6 +970,7 @@ iris_compile_vs(struct iris_context *ice,
 static void
 iris_update_compiled_vs(struct iris_context *ice)
 {
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_VERTEX];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_VERTEX];
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
@@ -994,6 +995,8 @@ iris_update_compiled_vs(struct iris_context *ice)
                           IRIS_DIRTY_BINDINGS_VS |
                           IRIS_DIRTY_CONSTANTS_VS |
                           IRIS_DIRTY_VF_SGVS;
+      shs->cbuf0_needs_upload = true;
+
       const struct brw_vs_prog_data *vs_prog_data =
             (void *) shader->prog_data;
       const bool uses_draw_params = vs_prog_data->uses_firstvertex ||
@@ -1175,6 +1178,7 @@ iris_compile_tcs(struct iris_context *ice,
 static void
 iris_update_compiled_tcs(struct iris_context *ice)
 {
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_CTRL];
    struct iris_uncompiled_shader *tcs =
       ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL];
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
@@ -1207,6 +1211,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
       ice->state.dirty |= IRIS_DIRTY_TCS |
                           IRIS_DIRTY_BINDINGS_TCS |
                           IRIS_DIRTY_CONSTANTS_TCS;
+      shs->cbuf0_needs_upload = true;
 
       if (!tcs) {
          /* We're binding a passthrough TCS, which doesn't have uniforms.
@@ -1218,9 +1223,6 @@ iris_update_compiled_tcs(struct iris_context *ice)
           * data and try and read a dangling cbuf0->user_buffer pointer.
           * Just zero out the stale constants to avoid the upload.
           */
-         struct iris_shader_state *shs =
-            &ice->state.shaders[MESA_SHADER_TESS_CTRL];
-
          memset(&shs->cbuf0, 0, sizeof(shs->cbuf0));
       }
    }
@@ -1300,6 +1302,7 @@ iris_compile_tes(struct iris_context *ice,
 static void
 iris_update_compiled_tes(struct iris_context *ice)
 {
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_EVAL];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
@@ -1324,6 +1327,7 @@ iris_update_compiled_tes(struct iris_context *ice)
       ice->state.dirty |= IRIS_DIRTY_TES |
                           IRIS_DIRTY_BINDINGS_TES |
                           IRIS_DIRTY_CONSTANTS_TES;
+      shs->cbuf0_needs_upload = true;
    }
 
    /* TODO: Could compare and avoid flagging this. */
@@ -1408,6 +1412,7 @@ iris_compile_gs(struct iris_context *ice,
 static void
 iris_update_compiled_gs(struct iris_context *ice)
 {
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_GEOMETRY];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_GEOMETRY];
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_GS];
@@ -1434,6 +1439,7 @@ iris_update_compiled_gs(struct iris_context *ice)
       ice->state.dirty |= IRIS_DIRTY_GS |
                           IRIS_DIRTY_BINDINGS_GS |
                           IRIS_DIRTY_CONSTANTS_GS;
+      shs->cbuf0_needs_upload = true;
    }
 }
 
@@ -1504,6 +1510,7 @@ iris_compile_fs(struct iris_context *ice,
 static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_FRAGMENT];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
       struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
@@ -1534,6 +1541,7 @@ iris_update_compiled_fs(struct iris_context *ice)
                           IRIS_DIRTY_WM |
                           IRIS_DIRTY_CLIP |
                           IRIS_DIRTY_SBE;
+      shs->cbuf0_needs_upload = true;
    }
 }
 
@@ -1762,6 +1770,7 @@ iris_compile_cs(struct iris_context *ice,
 void
 iris_update_compiled_compute_shader(struct iris_context *ice)
 {
+   struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
 
@@ -1785,6 +1794,7 @@ iris_update_compiled_compute_shader(struct iris_context *ice)
       ice->state.dirty |= IRIS_DIRTY_CS |
                           IRIS_DIRTY_BINDINGS_CS |
                           IRIS_DIRTY_CONSTANTS_CS;
+      shs->cbuf0_needs_upload = true;
    }
 }
 

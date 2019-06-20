@@ -2630,6 +2630,7 @@ upload_uniforms(struct iris_context *ice,
    cbuf->buffer_size = upload_size;
    iris_upload_ubo_ssbo_surf_state(ice, cbuf,
                                    &shs->constbuf_surf_state[0], false);
+   shs->cbuf0_needs_upload = false;
 }
 
 /**
