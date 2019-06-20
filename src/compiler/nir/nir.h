@@ -2002,6 +2002,86 @@ NIR_DEFINE_SRC_AS_CONST(double,     float)
 #undef NIR_DEFINE_SRC_AS_CONST
 
 
+typedef struct {
+   nir_ssa_def *def;
+   unsigned comp;
+} nir_ssa_scalar;
+
+static inline bool
+nir_ssa_scalar_is_const(nir_ssa_scalar s)
+{
+   return s.def->parent_instr->type == nir_instr_type_load_const;
+}
+
+static inline nir_const_value
+nir_ssa_scalar_as_const_value(nir_ssa_scalar s)
+{
+   assert(s.comp < s.def->num_components);
+   nir_load_const_instr *load = nir_instr_as_load_const(s.def->parent_instr);
+   return load->value[s.comp];
+}
+
+#define NIR_DEFINE_SCALAR_AS_CONST(type, suffix)                     \
+static inline type                                                   \
+nir_ssa_scalar_as_##suffix(nir_ssa_scalar s)                         \
+{                                                                    \
+   return nir_const_value_as_##suffix(                               \
+      nir_ssa_scalar_as_const_value(s), s.def->bit_size);            \
+}
+
+NIR_DEFINE_SCALAR_AS_CONST(int64_t,    int)
+NIR_DEFINE_SCALAR_AS_CONST(uint64_t,   uint)
+NIR_DEFINE_SCALAR_AS_CONST(bool,       bool)
+NIR_DEFINE_SCALAR_AS_CONST(double,     float)
+
+#undef NIR_DEFINE_SCALAR_AS_CONST
+
+static inline bool
+nir_ssa_scalar_is_alu(nir_ssa_scalar s)
+{
+   return s.def->parent_instr->type == nir_instr_type_alu;
+}
+
+static inline nir_op
+nir_ssa_scalar_alu_op(nir_ssa_scalar s)
+{
+   return nir_instr_as_alu(s.def->parent_instr)->op;
+}
+
+static inline nir_ssa_scalar
+nir_ssa_scalar_chase_alu_src(nir_ssa_scalar s, unsigned alu_src_idx)
+{
+   nir_ssa_scalar out = { NULL, 0 };
+
+   nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
+   assert(alu_src_idx < nir_op_infos[alu->op].num_inputs);
+
+   /* Our component must be written */
+   assert(s.comp < s.def->num_components);
+   assert(alu->dest.write_mask & (1u << s.comp));
+
+   assert(alu->src[alu_src_idx].src.is_ssa);
+   out.def = alu->src[alu_src_idx].src.ssa;
+
+   if (nir_op_infos[alu->op].input_sizes[alu_src_idx] == 0) {
+      /* The ALU src is unsized so the source component follows the
+       * destination component.
+       */
+      out.comp = alu->src[alu_src_idx].swizzle[s.comp];
+   } else {
+      /* This is a sized source so all source components work together to
+       * produce all the destination components.  Since we need to return a
+       * scalar, this only works if the source is a scalar.
+       */
+      assert(nir_op_infos[alu->op].input_sizes[alu_src_idx] == 1);
+      out.comp = alu->src[alu_src_idx].swizzle[0];
+   }
+   assert(out.comp < out.def->num_components);
+
+   return out;
+}
+
+
 /*
  * Control flow
  *
