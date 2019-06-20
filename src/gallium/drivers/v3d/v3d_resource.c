@@ -179,7 +179,7 @@ v3d_map_usage_prep(struct pipe_context *pctx,
                 if (usage & PIPE_TRANSFER_WRITE)
                         v3d_flush_jobs_reading_resource(v3d, prsc);
                 else
-                        v3d_flush_jobs_writing_resource(v3d, prsc);
+                        v3d_flush_jobs_writing_resource(v3d, prsc, true);
         }
 
         if (usage & PIPE_TRANSFER_WRITE) {

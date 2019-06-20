@@ -168,16 +168,51 @@ v3d_job_add_tf_write_resource(struct v3d_job *job, struct pipe_resource *prsc)
         _mesa_set_add(job->tf_write_prscs, prsc);
 }
 
+static bool
+v3d_job_writes_resource_from_tf(struct v3d_job *job,
+                                struct pipe_resource *prsc)
+{
+        if (!job->tf_enabled)
+                return false;
+
+        if (!job->tf_write_prscs)
+                return false;
+
+        return _mesa_set_search(job->tf_write_prscs, prsc) != NULL;
+}
+
 void
 v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
-                                struct pipe_resource *prsc)
+                                struct pipe_resource *prsc,
+                                bool always_flush)
 {
         struct hash_entry *entry = _mesa_hash_table_search(v3d->write_jobs,
                                                            prsc);
-        if (entry) {
-                struct v3d_job *job = entry->data;
-                v3d_job_submit(v3d, job);
+        if (!entry)
+                return;
+
+        struct v3d_job *job = entry->data;
+
+        /* For writes from TF in the same job we use the "Wait for TF"
+         * feature provided by the hardware so we don't want to flush.
+         * The exception to this is when the caller is about to map the
+         * resource since in that case we don't have a 'Wait for TF' command
+         * the in command stream. In this scenario the caller is expected
+         * to set 'always_flush' to True.
+         */
+        bool needs_flush;
+        if (always_flush) {
+                needs_flush = true;
+        } else if (!v3d->job || v3d->job != job) {
+                /* Write from a different job: always flush */
+                needs_flush = true;
+        } else {
+                /* Write from currrent job: flush if not TF */
+                needs_flush = !v3d_job_writes_resource_from_tf(job, prsc);
         }
+
+        if (needs_flush)
+                v3d_job_submit(v3d, job);
 }
 
 void
@@ -186,7 +221,13 @@ v3d_flush_jobs_reading_resource(struct v3d_context *v3d,
 {
         struct v3d_resource *rsc = v3d_resource(prsc);
 
-        v3d_flush_jobs_writing_resource(v3d, prsc);
+        /* We only need to force the flush on TF writes, which is the only
+         * case where we might skip the flush to use the 'Wait for TF'
+         * command. Here we are flushing for a read, which means that the
+         * caller intends to write to the resource, so we don't care if
+         * there was a previous TF write to it.
+         */
+        v3d_flush_jobs_writing_resource(v3d, prsc, false);
 
         hash_table_foreach(v3d->jobs, entry) {
                 struct v3d_job *job = entry->data;

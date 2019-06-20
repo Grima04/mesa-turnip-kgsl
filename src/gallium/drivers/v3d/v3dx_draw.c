@@ -145,11 +145,6 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
 {
         struct v3d_context *v3d = v3d_context(pctx);
 
-        /* XXX perf: If we're reading from the output of TF in this job, we
-         * should instead be using the wait for transform feedback
-         * functionality.
-         */
-
         /* Flush writes to textures we're sampling. */
         for (int i = 0; i < v3d->tex[s].num_textures; i++) {
                 struct pipe_sampler_view *pview = v3d->tex[s].textures[i];
@@ -161,21 +156,22 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
                     view->base.format != PIPE_FORMAT_X32_S8X24_UINT)
                         v3d_update_shadow_texture(pctx, &view->base);
 
-                v3d_flush_jobs_writing_resource(v3d, view->texture);
+                v3d_flush_jobs_writing_resource(v3d, view->texture, false);
         }
 
         /* Flush writes to UBOs. */
         foreach_bit(i, v3d->constbuf[s].enabled_mask) {
                 struct pipe_constant_buffer *cb = &v3d->constbuf[s].cb[i];
                 if (cb->buffer)
-                        v3d_flush_jobs_writing_resource(v3d, cb->buffer);
+                        v3d_flush_jobs_writing_resource(v3d, cb->buffer, false);
         }
 
         /* Flush writes to our image views */
         foreach_bit(i, v3d->shaderimg[s].enabled_mask) {
                 struct v3d_image_view *view = &v3d->shaderimg[s].si[i];
 
-                v3d_flush_jobs_writing_resource(v3d, view->base.resource);
+                v3d_flush_jobs_writing_resource(v3d, view->base.resource,
+                                                false);
         }
 
         /* Flush writes to our vertex buffers (i.e. from transform feedback) */
@@ -183,7 +179,8 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
                 foreach_bit(i, v3d->vertexbuf.enabled_mask) {
                         struct pipe_vertex_buffer *vb = &v3d->vertexbuf.vb[i];
 
-                        v3d_flush_jobs_writing_resource(v3d, vb->buffer.resource);
+                        v3d_flush_jobs_writing_resource(v3d, vb->buffer.resource,
+                                                        false);
                 }
         }
 }
@@ -654,8 +651,10 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
         for (int s = 0; s < PIPE_SHADER_COMPUTE; s++)
                 v3d_predraw_check_stage_inputs(pctx, s);
 
-        if (info->indirect)
-                v3d_flush_jobs_writing_resource(v3d, info->indirect->buffer);
+        if (info->indirect) {
+                v3d_flush_jobs_writing_resource(v3d, info->indirect->buffer,
+                                                false);
+        }
 
         v3d_predraw_check_outputs(pctx);
 
