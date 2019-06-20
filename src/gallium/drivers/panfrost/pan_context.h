@@ -67,9 +67,9 @@ struct prim_convert_context;
 		lval &= ~(bit);
 
 struct panfrost_constant_buffer {
-        bool dirty;
-        size_t size;
-        void *buffer;
+        struct pipe_constant_buffer cb[PIPE_MAX_CONSTANT_BUFFERS];
+        uint32_t enabled_mask;
+        uint32_t dirty_mask;
 };
 
 struct panfrost_query {

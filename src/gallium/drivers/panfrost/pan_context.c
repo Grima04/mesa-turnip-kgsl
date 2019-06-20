@@ -987,6 +987,20 @@ static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
         }
 }
 
+static const void *
+panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf, unsigned index)
+{
+        struct pipe_constant_buffer *cb = &buf->cb[index];
+        struct panfrost_resource *rsrc = pan_resource(cb->buffer);
+
+        if (rsrc)
+                return rsrc->bo->cpu;
+        else if (cb->user_buffer)
+                return cb->user_buffer;
+        else
+                unreachable("No constant buffer");
+}
+
 /* Go through dirty flags and actualise them in the cmdstream. */
 
 void
@@ -1213,16 +1227,23 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_shader_state *fs = &ctx->fs->variants[ctx->fs->active_variant];
                 struct panfrost_shader_state *ss = (i == PIPE_SHADER_FRAGMENT) ? fs : vs;
 
+                /* Uniforms are implicitly UBO #0 */
+                bool has_uniforms = buf->enabled_mask & (1 << 0);
+
                 /* Allocate room for the sysval and the uniforms */
                 size_t sys_size = sizeof(float) * 4 * ss->sysval_count;
-                size_t size = sys_size + buf->size;
+                size_t uniform_size = has_uniforms ? (buf->cb[0].buffer_size) : 0;
+                size_t size = sys_size + uniform_size;
                 struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
 
                 /* Upload sysvals requested by the shader */
                 panfrost_upload_sysvals(ctx, transfer.cpu, ss, i);
 
                 /* Upload uniforms */
-                memcpy(transfer.cpu + sys_size, buf->buffer, buf->size);
+                if (has_uniforms) {
+                        const void *cpu = panfrost_map_constant_buffer_cpu(buf, 0);
+                        memcpy(transfer.cpu + sys_size, cpu, uniform_size);
+                }
 
                 int uniform_count = 0;
 
@@ -1256,7 +1277,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 postfix->uniforms = transfer.gpu;
                 postfix->uniform_buffers = ubufs;
 
-                buf->dirty = 0;
+                buf->dirty_mask = 0;
         }
 
         /* TODO: Upload the viewport somewhere more appropriate */
@@ -1985,43 +2006,18 @@ panfrost_set_constant_buffer(
         struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_constant_buffer *pbuf = &ctx->constant_buffer[shader];
 
-        size_t sz = buf ? buf->buffer_size : 0;
+        util_copy_constant_buffer(&pbuf->cb[index], buf);
 
-        /* Free previous buffer */
+        unsigned mask = (1 << index);
 
-        pbuf->dirty = true;
-        pbuf->size = sz;
-
-        if (pbuf->buffer) {
-                ralloc_free(pbuf->buffer);
-                pbuf->buffer = NULL;
-        }
-
-        /* If unbinding, we're done */
-
-        if (!buf)
-                return;
-
-        /* Multiple constant buffers not yet supported */
-        assert(index == 0);
-
-        const uint8_t *cpu;
-
-        struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer);
-
-        if (rsrc) {
-                cpu = rsrc->bo->cpu;
-        } else if (buf->user_buffer) {
-                cpu = buf->user_buffer;
-        } else {
-                DBG("No constant buffer?\n");
+        if (unlikely(!buf)) {
+                pbuf->enabled_mask &= ~mask;
+                pbuf->dirty_mask &= ~mask;
                 return;
         }
 
-        /* Copy the constant buffer into the driver context for later upload */
-
-        pbuf->buffer = rzalloc_size(ctx, sz);
-        memcpy(pbuf->buffer, cpu + buf->buffer_offset, sz);
+        pbuf->enabled_mask |= mask;
+        pbuf->dirty_mask |= mask;
 }
 
 static void
