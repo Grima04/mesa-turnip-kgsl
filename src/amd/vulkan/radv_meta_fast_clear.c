@@ -875,11 +875,9 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 	state->flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
 			     RADV_CMD_FLAG_INV_VMEM_L1;
 
-	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, subresourceRange,
-					    0xffffffff);
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+	/* Initialize the DCC metadata as "fully expanded". */
+	radv_initialize_dcc(cmd_buffer, image, subresourceRange, 0xffffffff);
 }
 
 void
