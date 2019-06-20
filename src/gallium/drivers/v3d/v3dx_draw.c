@@ -208,6 +208,116 @@ v3d_predraw_check_outputs(struct pipe_context *pctx)
         }
 }
 
+/**
+ * Checks if the state for the current draw reads a particular resource in
+ * in the given shader stage.
+ */
+static bool
+v3d_state_reads_resource(struct v3d_context *v3d,
+                         struct pipe_resource *prsc,
+                         enum pipe_shader_type s)
+{
+        struct v3d_resource *rsc = v3d_resource(prsc);
+
+        /* Vertex buffers */
+        if (s == PIPE_SHADER_VERTEX) {
+                foreach_bit(i, v3d->vertexbuf.enabled_mask) {
+                        struct pipe_vertex_buffer *vb = &v3d->vertexbuf.vb[i];
+                        if (!vb->buffer.resource)
+                                continue;
+
+                        struct v3d_resource *vb_rsc =
+                                v3d_resource(vb->buffer.resource);
+                        if (rsc->bo == vb_rsc->bo)
+                                return true;
+                }
+        }
+
+        /* Constant buffers */
+        foreach_bit(i, v3d->constbuf[s].enabled_mask) {
+                struct pipe_constant_buffer *cb = &v3d->constbuf[s].cb[i];
+                if (!cb->buffer)
+                        continue;
+
+                struct v3d_resource *cb_rsc = v3d_resource(cb->buffer);
+                if (rsc->bo == cb_rsc->bo)
+                        return true;
+        }
+
+        /* Shader storage buffers */
+        foreach_bit(i, v3d->ssbo[s].enabled_mask) {
+                struct pipe_shader_buffer *sb = &v3d->ssbo[s].sb[i];
+                if (!sb->buffer)
+                        continue;
+
+                struct v3d_resource *sb_rsc = v3d_resource(sb->buffer);
+                if (rsc->bo == sb_rsc->bo)
+                        return true;
+        }
+
+        /* Textures  */
+        for (int i = 0; i < v3d->tex[s].num_textures; i++) {
+                struct pipe_sampler_view *pview = v3d->tex[s].textures[i];
+                if (!pview)
+                        continue;
+
+                struct v3d_sampler_view *view = v3d_sampler_view(pview);
+                struct v3d_resource *v_rsc = v3d_resource(view->texture);
+                if (rsc->bo == v_rsc->bo)
+                        return true;
+        }
+
+        return false;
+}
+
+static void
+v3d_emit_wait_for_tf(struct v3d_job *job)
+{
+        /* XXX: we might be able to skip this in some cases, for now we
+         * always emit it.
+         */
+        cl_emit(&job->bcl, FLUSH_TRANSFORM_FEEDBACK_DATA, flush);
+
+        cl_emit(&job->bcl, WAIT_FOR_TRANSFORM_FEEDBACK, wait) {
+                /* XXX: Wait for all outstanding writes... maybe we can do
+                 * better in some cases.
+                 */
+                wait.block_count = 255;
+        }
+
+        /* We have just flushed all our outstanding TF work in this job so make
+         * sure we don't emit TF flushes again for any of it again.
+         */
+        _mesa_set_clear(job->tf_write_prscs, NULL);
+}
+
+static void
+v3d_emit_wait_for_tf_if_needed(struct v3d_context *v3d, struct v3d_job *job)
+{
+        if (!job->tf_enabled)
+            return;
+
+        set_foreach(job->tf_write_prscs, entry) {
+                struct pipe_resource *prsc = (struct pipe_resource *)entry->key;
+                for (int s = 0; s < PIPE_SHADER_COMPUTE; s++) {
+                        /* Fragment shaders can only start executing after all
+                         * binning (and thus TF) is complete.
+                         *
+                         * XXX: For VS/GS/TES, if the binning shader does not
+                         * read the resource then we could also avoid emitting
+                         * the wait.
+                         */
+                        if (s == PIPE_SHADER_FRAGMENT)
+                            continue;
+
+                        if (v3d_state_reads_resource(v3d, prsc, s)) {
+                                v3d_emit_wait_for_tf(job);
+                                return;
+                        }
+                }
+        }
+}
+
 static void
 v3d_emit_gl_shader_state(struct v3d_context *v3d,
                          const struct pipe_draw_info *info)
@@ -595,6 +705,16 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
         v3d_start_draw(v3d);
         v3d_update_compiled_shaders(v3d, info->mode);
         v3d_update_job_ez(v3d, job);
+
+        /* If this job was writing to transform feedback buffers before this
+         * draw and we are reading from them here, then we need to wait for TF
+         * to complete before we emit this draw.
+         *
+         * Notice this check needs to happen before we emit state for the
+         * current draw call, where we update job->tf_enabled, so we can ensure
+         * that we only check TF writes for prior draws.
+         */
+        v3d_emit_wait_for_tf_if_needed(v3d, job);
 
 #if V3D_VERSION >= 41
         v3d41_emit_state(pctx);
