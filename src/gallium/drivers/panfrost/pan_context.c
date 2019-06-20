@@ -1311,8 +1311,20 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 /* The rest are honest-to-goodness UBOs */
 
                 for (unsigned ubo = 1; ubo < ubo_count; ++ubo) {
-                        mali_ptr gpu = panfrost_map_constant_buffer_gpu(ctx, buf, ubo);
                         size_t sz = buf->cb[ubo].buffer_size;
+
+                        bool enabled = buf->enabled_mask & (1 << ubo);
+                        bool empty = sz == 0;
+
+                        if (!enabled || empty) {
+                                /* Stub out disabled UBOs to catch accesses */
+
+                                ubos[ubo].size = 0;
+                                ubos[ubo].ptr = 0xDEAD0000;
+                                continue;
+                        }
+
+                        mali_ptr gpu = panfrost_map_constant_buffer_gpu(ctx, buf, ubo);
 
                         unsigned bytes_per_field = 16;
                         unsigned aligned = ALIGN(sz, bytes_per_field);
