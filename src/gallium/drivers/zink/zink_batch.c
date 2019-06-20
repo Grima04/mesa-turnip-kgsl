@@ -37,7 +37,7 @@ reset_batch(struct zink_screen *screen, struct zink_batch *batch)
 }
 
 void
-zink_start_cmdbuf(struct zink_context *ctx, struct zink_batch *batch)
+zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    reset_batch(zink_screen(ctx->base.screen), batch);
 
@@ -72,7 +72,7 @@ submit_cmdbuf(struct zink_context *ctx, VkCommandBuffer cmdbuf, VkFence fence)
 }
 
 void
-zink_end_cmdbuf(struct zink_context *ctx, struct zink_batch *batch)
+zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    if (vkEndCommandBuffer(batch->cmdbuf) != VK_SUCCESS) {
       debug_printf("vkEndCommandBuffer failed\n");

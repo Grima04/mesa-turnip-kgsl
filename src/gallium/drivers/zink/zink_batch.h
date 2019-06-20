@@ -47,10 +47,10 @@ struct zink_batch {
 };
 
 void
-zink_start_cmdbuf(struct zink_context *ctx, struct zink_batch *batch);
+zink_start_batch(struct zink_context *ctx, struct zink_batch *batch);
 
 void
-zink_end_cmdbuf(struct zink_context *ctx, struct zink_batch *batch);
+zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
 
 void
 zink_batch_reference_resoure(struct zink_batch *cmdbuf,

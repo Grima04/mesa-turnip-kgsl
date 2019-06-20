@@ -506,15 +506,6 @@ get_framebuffer(struct zink_context *ctx)
    return entry->data;
 }
 
-static void
-end_batch(struct zink_context *ctx, struct zink_batch *batch)
-{
-   if (batch->rp)
-      vkCmdEndRenderPass(batch->cmdbuf);
-
-   zink_end_cmdbuf(ctx, batch);
-}
-
 void
 zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
@@ -546,14 +537,18 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 static void
 flush_batch(struct zink_context *ctx)
 {
-   end_batch(ctx, zink_context_curr_batch(ctx));
+   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   if (batch->rp)
+      vkCmdEndRenderPass(batch->cmdbuf);
+
+   zink_end_batch(ctx, batch);
 
    ctx->curr_batch++;
    if (ctx->curr_batch == ARRAY_SIZE(ctx->batches))
       ctx->curr_batch = 0;
 
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
-   zink_start_cmdbuf(ctx, batch);
+   batch = zink_context_curr_batch(ctx);
+   zink_start_batch(ctx, batch);
 }
 
 static void
@@ -1385,7 +1380,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->dirty = ZINK_DIRTY_PROGRAM;
 
    /* start the first batch */
-   zink_start_cmdbuf(ctx, zink_context_curr_batch(ctx));
+   zink_start_batch(ctx, zink_context_curr_batch(ctx));
 
    return &ctx->base;
 
