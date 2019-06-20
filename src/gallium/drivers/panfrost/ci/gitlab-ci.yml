@@ -183,6 +183,8 @@ build:arm64:
         dEQP-GLES2.functional.fbo.render.recreate_stencilbuffer.
         dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.rbo_rgb5_a1
         dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.rbo_rgba4
+        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.tex2d_rgb
+        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.tex2d_rgba
         dEQP-GLES2.functional.fbo.render.shared_colorbuffer.rbo_rgb5_a1
         dEQP-GLES2.functional.fbo.render.shared_colorbuffer.rbo_rgba4
         dEQP-GLES2.functional.fbo.render.shared_depthbuffer.rbo_rgb5_a1_depth_component16
@@ -197,6 +199,7 @@ build:arm64:
         dEQP-GLES2.functional.polygon_offset.fixed16_factor_0_slope
         dEQP-GLES2.functional.polygon_offset.fixed16_factor_1_slope
         dEQP-GLES2.functional.shaders.invariance.highp.loop_4
+        dEQP-GLES2.functional.shaders.matrix.mul.dynamic_highp_mat4_vec4_vertex
         dEQP-GLES2.functional.shaders.matrix.mul.dynamic_highp_vec4_mat4_fragment
         dEQP-GLES2.functional.shaders.operator.common_functions.smoothstep.mediump_vec3_vertex
         dEQP-GLES2.functional.shaders.random.all_features.fragment.12
@@ -228,7 +231,7 @@ build:arm64:
     - 'echo "Passed: $PASSED ($(expr $PASSED \* 100 / $TOTAL)%)"'
     - 'echo "Failed: $FAILED ($(expr $FAILED \* 100 / $TOTAL)%)"'
     - 'echo "Total: $TOTAL"'
-    - 'if [ $TOTAL != 16375 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
+    - 'if [ $TOTAL != 16372 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
 
     - sed '/,pass/d' results/results-$lava_job_id.csv | sed 's/,fail//' > results/failures-$lava_job_id.txt
     - diff -u results/expected-failures.txt results/failures-$lava_job_id.txt
