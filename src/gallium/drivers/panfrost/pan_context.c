@@ -1002,13 +1002,14 @@ panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf, unsigned 
 }
 
 /* Compute number of UBOs active (more specifically, compute the highest UBO
- * number addressable -- if there are gaps, include them in the count anyway)
- * */
+ * number addressable -- if there are gaps, include them in the count anyway).
+ * We always include UBO #0 in the count, since we *need* uniforms enabled for
+ * sysvals. */
 
 static unsigned
 panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage)
 {
-        unsigned mask = ctx->constant_buffer[stage].enabled_mask;
+        unsigned mask = ctx->constant_buffer[stage].enabled_mask | 1;
         return 32 - __builtin_clz(mask);
 }
 
@@ -1277,16 +1278,20 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         unreachable("Invalid shader stage\n");
                 }
 
-                /* Also attach the same buffer as a UBO for extended access */
+                /* Next up, attach UBOs. UBO #0 is the uniforms we just
+                 * uploaded */
 
-                struct mali_uniform_buffer_meta uniform_buffers[] = {
-                        {
-                                .size = MALI_POSITIVE((2 + uniform_count)),
-                                .ptr = transfer.gpu >> 2,
-                        },
-                };
+                unsigned ubo_count = panfrost_ubo_count(ctx, i);
+                assert(ubo_count >= 1);
 
-                mali_ptr ubufs = panfrost_upload_transient(ctx, uniform_buffers, sizeof(uniform_buffers));
+                size_t sz = sizeof(struct mali_uniform_buffer_meta) * ubo_count;
+                struct mali_uniform_buffer_meta *ubos = calloc(sz, 1);
+
+                /* Upload uniforms as a UBO */
+                ubos[0].size = MALI_POSITIVE((2 + uniform_count));
+                ubos[0].ptr = transfer.gpu >> 2;
+
+                mali_ptr ubufs = panfrost_upload_transient(ctx, ubos, sz);
                 postfix->uniforms = transfer.gpu;
                 postfix->uniform_buffers = ubufs;
 
