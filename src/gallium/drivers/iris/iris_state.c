@@ -5054,7 +5054,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       if (ice->state.vs_uses_draw_params) {
          if (ice->draw.draw_params_offset == 0) {
-            u_upload_data(ice->state.dynamic_uploader, 0, sizeof(ice->draw.params),
+            u_upload_data(ice->ctx.stream_uploader, 0, sizeof(ice->draw.params),
                           4, &ice->draw.params, &ice->draw.draw_params_offset,
                           &ice->draw.draw_params_res);
          }
@@ -5080,7 +5080,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       if (ice->state.vs_uses_derived_draw_params) {
-         u_upload_data(ice->state.dynamic_uploader, 0,
+         u_upload_data(ice->ctx.stream_uploader, 0,
                        sizeof(ice->draw.derived_params), 4,
                        &ice->draw.derived_params,
                        &ice->draw.derived_draw_params_offset,
