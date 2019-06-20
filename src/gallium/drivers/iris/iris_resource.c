@@ -1476,7 +1476,7 @@ iris_transfer_flush_region(struct pipe_context *ctx,
 
    if (res->base.target == PIPE_BUFFER) {
       history_flush |= iris_flush_bits_for_history(res) |
-                       PIPE_CONTROL_RENDER_TARGET_FLUSH;
+                       (map->staging ? PIPE_CONTROL_RENDER_TARGET_FLUSH : 0);
    }
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
