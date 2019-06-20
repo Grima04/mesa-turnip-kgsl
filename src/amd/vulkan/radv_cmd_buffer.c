@@ -4921,11 +4921,58 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 			 const VkImageSubresourceRange *range, uint32_t value)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
+	uint32_t level_count = radv_get_levelCount(image, range);
+	unsigned size = 0;
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
-	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, range, value);
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+		/* Mipmap level aren't implemented. */
+		assert(level_count == 1);
+		state->flush_bits |= radv_clear_dcc(cmd_buffer, image,
+						    range, value);
+	} else {
+		/* Initialize the mipmap levels with DCC first. */
+		for (unsigned l = 0; l < level_count; l++) {
+			uint32_t level = range->baseMipLevel + l;
+			struct legacy_surf_level *surf_level =
+				&image->planes[0].surface.u.legacy.level[level];
+
+			if (!surf_level->dcc_fast_clear_size)
+				break;
+
+			state->flush_bits |=
+				radv_dcc_clear_level(cmd_buffer, image,
+						     level, value);
+		}
+
+		/* When DCC is enabled with mipmaps, some levels might not
+		 * support fast clears and we have to initialize them as "fully
+		 * expanded".
+		 */
+		if (image->planes[0].surface.num_dcc_levels > 1) {
+			/* Compute the size of all fast clearable DCC levels. */
+			for (unsigned i = 0; i < image->planes[0].surface.num_dcc_levels; i++) {
+				struct legacy_surf_level *surf_level =
+					&image->planes[0].surface.u.legacy.level[i];
+
+				if (!surf_level->dcc_fast_clear_size)
+					break;
+
+				size = surf_level->dcc_offset + surf_level->dcc_fast_clear_size;
+			}
+
+			/* Initialize the mipmap levels without DCC. */
+			if (size != image->planes[0].surface.dcc_size) {
+				state->flush_bits |=
+					radv_fill_buffer(cmd_buffer, image->bo,
+							 image->offset + image->dcc_offset + size,
+							 image->planes[0].surface.dcc_size - size,
+							 0xffffffff);
+			}
+		}
+	}
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
