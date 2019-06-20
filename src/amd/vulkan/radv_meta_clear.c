@@ -1522,6 +1522,21 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 			if (!can_avoid_fast_clear_elim)
 				return false;
 		}
+
+		if (iview->image->info.levels > 1 &&
+		    cmd_buffer->device->physical_device->rad_info.chip_class == GFX8) {
+			for (uint32_t l = 0; l < iview->level_count; l++) {
+				uint32_t level = iview->base_mip + l;
+				struct legacy_surf_level *surf_level =
+					&iview->image->planes[0].surface.u.legacy.level[level];
+
+				/* Do not fast clears if one level can't be
+				 * fast cleared.
+				 */
+				if (!surf_level->dcc_fast_clear_size)
+					return false;
+			}
+		}
 	}
 
 	return true;
