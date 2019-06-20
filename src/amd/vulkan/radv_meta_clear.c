@@ -1364,10 +1364,20 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 	       struct radv_image *image,
 	       const VkImageSubresourceRange *range, uint32_t value)
 {
+	uint32_t level_count = radv_get_levelCount(image, range);
+	uint32_t flush_bits = 0;
+
 	/* Mark the image as being compressed. */
 	radv_update_dcc_metadata(cmd_buffer, image, range, true);
 
-	return radv_dcc_clear_level(cmd_buffer, image, 0, value);
+	for (uint32_t l = 0; l < level_count; l++) {
+		uint32_t level = range->baseMipLevel + l;
+
+		flush_bits |= radv_dcc_clear_level(cmd_buffer, image,
+						   level, value);
+	}
+
+	return flush_bits;
 }
 
 uint32_t
