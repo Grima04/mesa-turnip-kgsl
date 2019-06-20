@@ -198,10 +198,10 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
 
         /* We don't know how to specify a 2D stride for 3D textures */
 
-        bool should_align_stride =
+        bool can_align_stride =
                 tmpl->target != PIPE_TEXTURE_3D;
 
-        should_align &= should_align_stride;
+        should_align &= can_align_stride;
 
         unsigned offset = 0;
         unsigned size_2d = 0;
@@ -226,7 +226,7 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
                 unsigned stride = bytes_per_pixel * effective_width;
 
                 /* ..but cache-line align it for performance */
-                if (should_align_stride)
+                if (can_align_stride && bo->layout == PAN_LINEAR)
                         stride = ALIGN(stride, 64);
 
                 slice->stride = stride;
