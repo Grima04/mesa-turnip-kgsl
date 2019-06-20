@@ -28,7 +28,7 @@
 
 #include "pipe/p_state.h"
 
-struct zink_context;
+struct zink_screen;
 struct zink_shader;
 struct zink_gfx_pipeline_state;
 
@@ -40,14 +40,16 @@ struct zink_gfx_program {
 };
 
 struct zink_gfx_program *
-zink_create_gfx_program(VkDevice dev,
+zink_create_gfx_program(struct zink_screen *screen,
                         struct zink_shader *stages[PIPE_SHADER_TYPES - 1]);
 
 void
-zink_destroy_gfx_program(VkDevice dev, struct zink_gfx_program *);
+zink_destroy_gfx_program(struct zink_screen *screen,
+                         struct zink_gfx_program *prog);
 
 VkPipeline
-zink_get_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
+zink_get_gfx_pipeline(struct zink_screen *screen,
+                      struct zink_gfx_program *prog,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode);
 

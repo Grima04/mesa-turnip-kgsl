@@ -104,7 +104,7 @@ equals_gfx_pipeline_state(const void *a, const void *b)
 }
 
 struct zink_gfx_program *
-zink_create_gfx_program(VkDevice dev,
+zink_create_gfx_program(struct zink_screen *screen,
                         struct zink_shader *stages[PIPE_SHADER_TYPES - 1])
 {
    struct zink_gfx_program *prog = CALLOC_STRUCT(zink_gfx_program);
@@ -122,11 +122,11 @@ zink_create_gfx_program(VkDevice dev,
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i)
       prog->stages[i] = stages[i];
 
-   prog->dsl = create_desc_set_layout(dev, stages);
+   prog->dsl = create_desc_set_layout(screen->dev, stages);
    if (!prog->dsl)
       goto fail;
 
-   prog->layout = create_pipeline_layout(dev, prog->dsl);
+   prog->layout = create_pipeline_layout(screen->dev, prog->dsl);
    if (!prog->layout)
       goto fail;
 
@@ -134,18 +134,19 @@ zink_create_gfx_program(VkDevice dev,
 
 fail:
    if (prog)
-      zink_destroy_gfx_program(dev, prog);
+      zink_destroy_gfx_program(screen, prog);
    return NULL;
 }
 
 void
-zink_destroy_gfx_program(VkDevice dev, struct zink_gfx_program *prog)
+zink_destroy_gfx_program(struct zink_screen *screen,
+                         struct zink_gfx_program *prog)
 {
    if (prog->layout)
-      vkDestroyPipelineLayout(dev, prog->layout, NULL);
+      vkDestroyPipelineLayout(screen->dev, prog->layout, NULL);
 
    if (prog->dsl)
-      vkDestroyDescriptorSetLayout(dev, prog->dsl, NULL);
+      vkDestroyDescriptorSetLayout(screen->dev, prog->dsl, NULL);
 
    FREE(prog);
 }
@@ -183,7 +184,8 @@ primitive_topology(enum pipe_prim_type mode)
 }
 
 VkPipeline
-zink_get_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
+zink_get_gfx_pipeline(struct zink_screen *screen,
+                      struct zink_gfx_program *prog,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode)
 {
@@ -194,7 +196,8 @@ zink_get_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
    struct hash_entry *entry = _mesa_hash_table_search(prog->pipelines[mode], state);
    if (!entry) {
       VkPrimitiveTopology vkmode = primitive_topology(mode);
-      VkPipeline pipeline = zink_create_gfx_pipeline(dev, prog, state, vkmode);
+      VkPipeline pipeline = zink_create_gfx_pipeline(screen->dev, prog,
+                                                     state, vkmode);
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
 

@@ -881,7 +881,7 @@ get_gfx_program(struct zink_context *ctx)
                                                          ctx->gfx_stages);
       if (!entry) {
          struct zink_gfx_program *prog;
-         prog = zink_create_gfx_program(zink_screen(ctx->base.screen)->dev,
+         prog = zink_create_gfx_program(zink_screen(ctx->base.screen),
                                                      ctx->gfx_stages);
          entry = _mesa_hash_table_insert(ctx->program_cache, prog->stages, prog);
          if (!entry)
@@ -917,7 +917,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!gfx_program)
       return;
 
-   VkPipeline pipeline = zink_get_gfx_pipeline(screen->dev, gfx_program,
+   VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
                                                &ctx->gfx_pipeline_state,
                                                dinfo->mode);
 
