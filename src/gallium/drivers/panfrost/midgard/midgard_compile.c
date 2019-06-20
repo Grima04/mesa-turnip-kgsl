@@ -1069,12 +1069,20 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
 #undef ALU_CASE
 
+/* Uniforms and UBOs use a shared code path, as uniforms are just (slightly
+ * optimized) versions of UBO #0 */
+
 static void
-emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset, nir_src *indirect_offset)
+emit_ubo_read(
+                compiler_context *ctx,
+                unsigned dest,
+                unsigned offset,
+                nir_src *indirect_offset,
+                unsigned index)
 {
         /* TODO: half-floats */
 
-        if (!indirect_offset && offset < ctx->uniform_cutoff) {
+        if (!indirect_offset && offset < ctx->uniform_cutoff && index == 0) {
                 /* Fast path: For the first 16 uniforms, direct accesses are
                  * 0-cycle, since they're just a register fetch in the usual
                  * case.  So, we alias the registers while we're still in
@@ -1095,10 +1103,12 @@ emit_uniform_read(compiler_context *ctx, unsigned dest, unsigned offset, nir_src
 
                 if (indirect_offset) {
                         emit_indirect_offset(ctx, indirect_offset);
-                        ins.load_store.unknown = 0x8700; /* xxx: what is this? */
+                        ins.load_store.unknown = 0x8700 | index; /* xxx: what is this? */
                 } else {
-                        ins.load_store.unknown = 0x1E00; /* xxx: what is this? */
+                        ins.load_store.unknown = 0x1E00 | index; /* xxx: what is this? */
                 }
+
+                /* TODO respect index */
 
                 emit_mir_instruction(ctx, ins);
         }
@@ -1152,7 +1162,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr)
         unsigned uniform = ((uintptr_t) val) - 1;
 
         /* Emit the read itself -- this is never indirect */
-        emit_uniform_read(ctx, dest, uniform, NULL);
+        emit_ubo_read(ctx, dest, uniform, NULL, 0);
 }
 
 /* Reads RGBA8888 value from the tilebuffer and converts to a RGBA32F register,
@@ -1231,7 +1241,7 @@ emit_fb_read_blend_scalar(compiler_context *ctx, unsigned reg)
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
-        unsigned offset, reg;
+        unsigned offset = 0, reg;
 
         switch (instr->intrinsic) {
         case nir_intrinsic_discard_if:
@@ -1250,23 +1260,49 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         }
 
         case nir_intrinsic_load_uniform:
-        case nir_intrinsic_load_input:
-                offset = nir_intrinsic_base(instr);
+        case nir_intrinsic_load_ubo:
+        case nir_intrinsic_load_input: {
+                bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
+                bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
+
+                if (!is_ubo) {
+                        offset = nir_intrinsic_base(instr);
+                }
 
                 unsigned nr_comp = nir_intrinsic_dest_components(instr);
-                bool direct = nir_src_is_const(instr->src[0]);
 
-                if (direct) {
-                        offset += nir_src_as_uint(instr->src[0]);
-                }
+                nir_src *src_offset = nir_get_io_offset_src(instr);
+
+                bool direct = nir_src_is_const(*src_offset);
+
+                if (direct)
+                        offset += nir_src_as_uint(*src_offset);
 
                 /* We may need to apply a fractional offset */
                 int component = instr->intrinsic == nir_intrinsic_load_input ?
                         nir_intrinsic_component(instr) : 0;
                 reg = nir_dest_index(ctx, &instr->dest);
 
-                if (instr->intrinsic == nir_intrinsic_load_uniform && !ctx->is_blend) {
-                        emit_uniform_read(ctx, reg, ctx->sysval_count + offset, !direct ? &instr->src[0] : NULL);
+                if (is_uniform && !ctx->is_blend) {
+                        emit_ubo_read(ctx, reg, ctx->sysval_count + offset, !direct ? &instr->src[0] : NULL, 0);
+                } else if (is_ubo) {
+                        nir_src index = instr->src[0];
+
+                        /* We don't yet support indirect UBOs. For indirect
+                         * block numbers (if that's possible), we don't know
+                         * enough about the hardware yet. For indirect sources,
+                         * we know what we need but we need to add some NIR
+                         * support for lowering correctly with respect to
+                         * 128-bit reads */
+
+                        assert(nir_src_is_const(index));
+                        assert(nir_src_is_const(*src_offset));
+
+                        /* TODO: Alignment */
+                        assert((offset & 0xF) == 0);
+
+                        uint32_t uindex = nir_src_as_uint(index) + 1;
+                        emit_ubo_read(ctx, reg, offset / 16, NULL, uindex);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         emit_varying_read(ctx, reg, offset, nr_comp, component, !direct ? &instr->src[0] : NULL);
                 } else if (ctx->is_blend) {
@@ -1286,6 +1322,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }
 
                 break;
+       }
 
         case nir_intrinsic_load_output:
                 assert(nir_src_is_const(instr->src[0]));
