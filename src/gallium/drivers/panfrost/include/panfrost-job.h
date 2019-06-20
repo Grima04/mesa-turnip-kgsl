@@ -399,7 +399,7 @@ enum mali_format {
 #define MALI_ALPHA_COVERAGE(clampf) ((uint16_t) (int) (clampf * 15.0f))
 #define MALI_GET_ALPHA_COVERAGE(nibble) ((float) nibble / 15.0f)
 
-/* Applies to unknown1 */
+/* Applies to midgard1.flags */
 
 /* Should the hardware perform early-Z testing? Normally should be set
  * for performance reasons. Clear if you use: discard,
@@ -407,19 +407,19 @@ enum mali_format {
  * forward-pixel kill; we're not quite sure which bit is which yet.
  * TODO: How does this interact with blending?*/
 
-#define MALI_EARLY_Z (1 << 10)
+#define MALI_EARLY_Z (1 << 6)
 
 /* Should the hardware calculate derivatives (via helper invocations)? Set in a
  * fragment shader that uses texturing or derivative functions */
 
-#define MALI_HELPER_INVOCATIONS (1 << 11)
+#define MALI_HELPER_INVOCATIONS (1 << 7)
 
 /* Flags denoting the fragment shader's use of tilebuffer readback. If the
  * shader might read any part of the tilebuffer, set MALI_READS_TILEBUFFER. If
  * it might read depth/stencil in particular, also set MALI_READS_ZS */
 
-#define MALI_READS_ZS (1 << 12)
-#define MALI_READS_TILEBUFFER (1 << 16)
+#define MALI_READS_ZS (1 << 8)
+#define MALI_READS_TILEBUFFER (1 << 12)
 
 /* The raw Midgard blend payload can either be an equation or a shader
  * address, depending on the context */
@@ -538,9 +538,8 @@ struct mali_shader_meta {
                         u32 unk1 : 28; // = 0x800000 for vertex, 0x958020 for tiler
                 } bifrost1;
                 struct {
-                        /* 0x200 except MALI_NO_ALPHA_TO_COVERAGE. Mysterious 1
-                         * other times. Who knows really? */
-                        u16 unknown1;
+                        unsigned uniform_buffer_count : 4;
+                        unsigned flags : 12;
 
                         /* Whole number of uniform registers used, times two;
                          * whole number of work registers used (no scale).

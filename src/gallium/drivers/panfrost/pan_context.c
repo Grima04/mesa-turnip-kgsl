@@ -1069,7 +1069,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 vs->tripipe->sampler_count = ctx->sampler_count[PIPE_SHADER_VERTEX];
 
                 /* Who knows */
-                vs->tripipe->midgard1.unknown1 = 0x2201;
+                vs->tripipe->midgard1.flags = 0x220;
+                vs->tripipe->midgard1.uniform_buffer_count = 1;
 
                 ctx->payload_vertex.postfix._shader_upper = vs->tripipe_gpu >> 4;
         }
@@ -1108,11 +1109,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 if (ctx->blend->has_blend_shader)
                         ctx->fragment_shader_core.midgard1.work_count = /*MAX2(ctx->fragment_shader_core.midgard1.work_count, ctx->blend->blend_work_count)*/16;
 
-                /* Set late due to depending on render state */
-
-                /* The bottom bits seem to mean UBO count */
                 unsigned ubo_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
-                unsigned flags = MALI_EARLY_Z | 0x200 | 0x2000 | ubo_count;
+                ctx->fragment_shader_core.midgard1.uniform_buffer_count = ubo_count;
+
+                /* Set late due to depending on render state */
+                unsigned flags = MALI_EARLY_Z | 0x20 | 0x200;
 
                 /* Any time texturing is used, derivatives are implicitly
                  * calculated, so we need to enable helper invocations */
@@ -1120,7 +1121,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 if (ctx->sampler_view_count[PIPE_SHADER_FRAGMENT])
                         flags |= MALI_HELPER_INVOCATIONS;
 
-                ctx->fragment_shader_core.midgard1.unknown1 = flags;
+                ctx->fragment_shader_core.midgard1.flags = flags;
 
                 /* Assign texture/sample count right before upload */
                 ctx->fragment_shader_core.texture_count = ctx->sampler_view_count[PIPE_SHADER_FRAGMENT];
@@ -1139,9 +1140,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 if (variant->can_discard) {
                         ctx->fragment_shader_core.unknown2_3 |= MALI_CAN_DISCARD;
-                        ctx->fragment_shader_core.midgard1.unknown1 &= ~MALI_EARLY_Z;
-                        ctx->fragment_shader_core.midgard1.unknown1 |= 0x4000;
-                        ctx->fragment_shader_core.midgard1.unknown1 = 0x4200;
+                        ctx->fragment_shader_core.midgard1.flags &= ~MALI_EARLY_Z;
+                        ctx->fragment_shader_core.midgard1.flags |= 0x400;
                 }
 
 		/* Check if we're using the default blend descriptor (fast path) */

@@ -219,7 +219,7 @@ static const struct pandecode_flag_info mfbd_extra_flag_info[] = {
 #undef FLAG_INFO
 
 #define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
-static const struct pandecode_flag_info shader_unknown1_flag_info [] = {
+static const struct pandecode_flag_info shader_midgard1_flag_info [] = {
         FLAG_INFO(EARLY_Z),
         FLAG_INFO(HELPER_INVOCATIONS),
         FLAG_INFO(READS_TILEBUFFER),
@@ -1346,8 +1346,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                         uniform_buffer_count = s->bifrost1.uniform_buffer_count;
                 } else {
                         uniform_count = s->midgard1.uniform_count;
-                        /* TODO figure this out */
-                        uniform_buffer_count = 1;
+                        uniform_buffer_count = s->midgard1.uniform_buffer_count;
                 }
 
                 mali_ptr shader_ptr = pandecode_replay_shader_address("shader", s->shader);
@@ -1371,10 +1370,11 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                         pandecode_indent++;
 
                         pandecode_prop("uniform_count = %" PRId16, s->midgard1.uniform_count);
+                        pandecode_prop("uniform_buffer_count = %" PRId16, s->midgard1.uniform_buffer_count);
                         pandecode_prop("work_count = %" PRId16, s->midgard1.work_count);
 
-                        pandecode_log(".unknown1 = ");
-                        pandecode_log_decoded_flags(shader_unknown1_flag_info, s->midgard1.unknown1);
+                        pandecode_log(".flags = ");
+                        pandecode_log_decoded_flags(shader_midgard1_flag_info, s->midgard1.flags);
                         pandecode_log_cont(",\n");
 
                         pandecode_prop("unknown2 = 0x%" PRIx32, s->midgard1.unknown2);
