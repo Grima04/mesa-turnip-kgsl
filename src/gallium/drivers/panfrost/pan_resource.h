@@ -43,6 +43,9 @@ enum panfrost_memory_layout {
 struct panfrost_slice {
         unsigned offset;
         unsigned stride;
+
+        /* Has anything been written to this slice? */
+        bool initialized;
 };
 
 struct panfrost_bo {

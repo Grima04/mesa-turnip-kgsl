@@ -1397,6 +1397,15 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
 	if (ctx->pipe_framebuffer.cbufs[0] == NULL)
 		return;
 
+        /* Check if the buffer has any content on it worth preserving */
+
+        struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[0];
+        struct panfrost_resource *rsrc = pan_resource(surf->texture);
+        unsigned level = surf->u.tex.level;
+
+        if (!rsrc->bo->slices[level].initialized)
+                return;
+
         /* Save the batch */
         struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
 

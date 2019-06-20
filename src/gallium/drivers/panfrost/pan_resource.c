@@ -71,6 +71,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
 	rsc->bo = screen->driver->import_bo(screen, whandle);
 	rsc->bo->slices[0].stride = whandle->stride;
+        rsc->bo->slices[0].initialized = true;
 
 	if (screen->ro) {
 		rsc->scanout =
@@ -509,7 +510,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 transfer->map = rzalloc_size(transfer, transfer->base.layer_stride * box->depth);
                 assert(box->depth == 1);
 
-                if (usage & PIPE_TRANSFER_READ) {
+                if ((usage & PIPE_TRANSFER_READ) && bo->slices[level].initialized) {
                         if (bo->layout == PAN_AFBC) {
                                 DBG("Unimplemented: reads from AFBC");
                         } else if (bo->layout == PAN_TILED) {
@@ -527,6 +528,12 @@ panfrost_transfer_map(struct pipe_context *pctx,
         } else {
                 transfer->base.stride = bo->slices[level].stride;
                 transfer->base.layer_stride = bo->cubemap_stride;
+
+                /* By mapping direct-write, we're implicitly already
+                 * initialized (maybe), so be conservative */
+
+                if ((usage & PIPE_TRANSFER_WRITE) && (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+                        bo->slices[level].initialized = true;
 
                 return bo->cpu
                         + bo->slices[level].offset
@@ -549,11 +556,12 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                 struct panfrost_bo *bo = prsrc->bo;
 
                 if (transfer->usage & PIPE_TRANSFER_WRITE) {
+                        unsigned level = transfer->level;
+                        bo->slices[level].initialized = true;
 
                         if (bo->layout == PAN_AFBC) {
                                 DBG("Unimplemented: writes to AFBC\n");
                         } else if (bo->layout == PAN_TILED) {
-                                unsigned level = transfer->level;
                                 assert(transfer->box.depth == 1);
 
                                 panfrost_store_tiled_image(
