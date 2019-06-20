@@ -1204,6 +1204,41 @@ nir_foreach_src(nir_instr *instr, nir_foreach_src_cb cb, void *state)
    return nir_foreach_dest(instr, visit_dest_indirect, &dest_state);
 }
 
+nir_const_value
+nir_const_value_for_float(double f, unsigned bit_size)
+{
+   nir_const_value v;
+   memset(&v, 0, sizeof(v));
+
+   switch (bit_size) {
+   case 16:
+      v.u16 = _mesa_float_to_half(f);
+      break;
+   case 32:
+      v.f32 = f;
+      break;
+   case 64:
+      v.f64 = f;
+      break;
+   default:
+      unreachable("Invalid bit size");
+   }
+
+   return v;
+}
+
+double
+nir_const_value_as_float(nir_const_value value, unsigned bit_size)
+{
+   switch (bit_size) {
+   case 16: return _mesa_half_to_float(value.u16);
+   case 32: return value.f32;
+   case 64: return value.f64;
+   default:
+      unreachable("Invalid bit size");
+   }
+}
+
 int64_t
 nir_src_comp_as_int(nir_src src, unsigned comp)
 {

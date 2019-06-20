@@ -140,6 +140,106 @@ typedef union {
       arr[i] = c[i].m; \
 } while (false)
 
+static inline nir_const_value
+nir_const_value_for_raw_uint(uint64_t x, unsigned bit_size)
+{
+   nir_const_value v;
+   memset(&v, 0, sizeof(v));
+
+   switch (bit_size) {
+   case 1:  v.b   = x;  break;
+   case 8:  v.u8  = x;  break;
+   case 16: v.u16 = x;  break;
+   case 32: v.u32 = x;  break;
+   case 64: v.u64 = x;  break;
+   default:
+      unreachable("Invalid bit size");
+   }
+
+   return v;
+}
+
+static inline nir_const_value
+nir_const_value_for_int(int64_t i, unsigned bit_size)
+{
+   nir_const_value v;
+   memset(&v, 0, sizeof(v));
+
+   assert(bit_size <= 64);
+   if (bit_size < 64) {
+      assert(i >= (-(1ll << (bit_size - 1))));
+      assert(i < (1ll << (bit_size - 1)));
+   }
+
+   return nir_const_value_for_raw_uint(i, bit_size);
+}
+
+static inline nir_const_value
+nir_const_value_for_uint(uint64_t u, unsigned bit_size)
+{
+   nir_const_value v;
+   memset(&v, 0, sizeof(v));
+
+   assert(bit_size <= 64);
+   if (bit_size < 64)
+      assert(u < (1ull << bit_size));
+
+   return nir_const_value_for_raw_uint(u, bit_size);
+}
+
+static inline nir_const_value
+nir_const_value_for_bool(bool b, unsigned bit_size)
+{
+   /* Booleans use a 0/-1 convention */
+   return nir_const_value_for_int(-(int)b, bit_size);
+}
+
+/* This one isn't inline because it requires half-float conversion */
+nir_const_value nir_const_value_for_float(double b, unsigned bit_size);
+
+static inline int64_t
+nir_const_value_as_int(nir_const_value value, unsigned bit_size)
+{
+   switch (bit_size) {
+   /* int1_t uses 0/-1 convention */
+   case 1:  return -(int)value.b;
+   case 8:  return value.i8;
+   case 16: return value.i16;
+   case 32: return value.i32;
+   case 64: return value.i64;
+   default:
+      unreachable("Invalid bit size");
+   }
+}
+
+static inline int64_t
+nir_const_value_as_uint(nir_const_value value, unsigned bit_size)
+{
+   switch (bit_size) {
+   case 1:  return value.b;
+   case 8:  return value.u8;
+   case 16: return value.u16;
+   case 32: return value.u32;
+   case 64: return value.u64;
+   default:
+      unreachable("Invalid bit size");
+   }
+}
+
+static inline bool
+nir_const_value_as_bool(nir_const_value value, unsigned bit_size)
+{
+   int64_t i = nir_const_value_as_int(value, bit_size);
+
+   /* Booleans of any size use 0/-1 convention */
+   assert(i == 0 || i == -1);
+
+   return i;
+}
+
+/* This one isn't inline because it requires half-float conversion */
+double nir_const_value_as_float(nir_const_value value, unsigned bit_size);
+
 typedef struct nir_constant {
    /**
     * Value of the constant.
