@@ -335,6 +335,8 @@ bool ac_query_gpu_info(int fd, amdgpu_device_handle dev,
 		return false;
 	}
 
+	info->family_id = amdinfo->family_id;
+	info->chip_external_rev = amdinfo->chip_external_rev;
 	info->marketing_name = amdgpu_get_marketing_name(dev);
 	info->is_pro_graphics = info->marketing_name &&
 				(!strcmp(info->marketing_name, "Pro") ||

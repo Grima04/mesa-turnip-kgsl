@@ -53,6 +53,8 @@ struct radeon_info {
 	uint32_t                    pci_id;
 	enum radeon_family          family;
 	enum chip_class             chip_class;
+	uint32_t                    family_id;
+	uint32_t                    chip_external_rev;
 	uint32_t                    num_compute_rings;
 	uint32_t                    num_sdma_rings;
 	uint32_t                    clock_crystal_freq;
