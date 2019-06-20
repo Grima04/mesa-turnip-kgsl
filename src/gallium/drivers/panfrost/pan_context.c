@@ -1001,6 +1001,17 @@ panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf, unsigned 
                 unreachable("No constant buffer");
 }
 
+/* Compute number of UBOs active (more specifically, compute the highest UBO
+ * number addressable -- if there are gaps, include them in the count anyway)
+ * */
+
+static unsigned
+panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage)
+{
+        unsigned mask = ctx->constant_buffer[stage].enabled_mask;
+        return 32 - __builtin_clz(mask);
+}
+
 /* Go through dirty flags and actualise them in the cmdstream. */
 
 void
@@ -1080,8 +1091,10 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         ctx->fragment_shader_core.midgard1.work_count = /*MAX2(ctx->fragment_shader_core.midgard1.work_count, ctx->blend->blend_work_count)*/16;
 
                 /* Set late due to depending on render state */
-                /* The one at the end seems to mean "1 UBO" */
-                unsigned flags = MALI_EARLY_Z | 0x200 | 0x2000 | 0x1;
+
+                /* The bottom bits seem to mean UBO count */
+                unsigned ubo_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                unsigned flags = MALI_EARLY_Z | 0x200 | 0x2000 | ubo_count;
 
                 /* Any time texturing is used, derivatives are implicitly
                  * calculated, so we need to enable helper invocations */
