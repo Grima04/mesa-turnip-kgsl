@@ -971,7 +971,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             image_infos[num_image_info].sampler = ctx->samplers[i][index];
             wds[num_wds].pImageInfo = image_infos + num_image_info;
             ++num_image_info;
-            zink_batch_reference_resoure(batch, res);
+            zink_batch_reference_sampler_view(batch, sampler_view);
          }
 
          wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1343,7 +1343,11 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
       ctx->batches[i].resources = _mesa_set_create(NULL, _mesa_hash_pointer,
                                                    _mesa_key_pointer_equal);
-      if (!ctx->batches[i].resources)
+      ctx->batches[i].sampler_views = _mesa_set_create(NULL,
+                                                       _mesa_hash_pointer,
+                                                       _mesa_key_pointer_equal);
+
+      if (!ctx->batches[i].resources || !ctx->batches[i].sampler_views)
          goto fail;
 
       util_dynarray_init(&ctx->batches[i].zombie_samplers, NULL);

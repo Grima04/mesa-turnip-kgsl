@@ -30,6 +30,13 @@ reset_batch(struct zink_screen *screen, struct zink_batch *batch)
    }
    _mesa_set_clear(batch->resources, NULL);
 
+   /* unref all used sampler-views */
+   set_foreach(batch->sampler_views, entry) {
+      struct pipe_sampler_view *pres = (struct pipe_sampler_view *)entry->key;
+      pipe_sampler_view_reference(&pres, NULL);
+   }
+   _mesa_set_clear(batch->sampler_views, NULL);
+
    util_dynarray_foreach(&batch->zombie_samplers, VkSampler, samp) {
       vkDestroySampler(screen->dev, *samp, NULL);
    }
@@ -95,5 +102,17 @@ zink_batch_reference_resoure(struct zink_batch *batch,
       struct pipe_resource *tmp = NULL;
       entry = _mesa_set_add(batch->resources, res);
       pipe_resource_reference(&tmp, &res->base);
+   }
+}
+
+void
+zink_batch_reference_sampler_view(struct zink_batch *batch,
+                                  struct zink_sampler_view *sv)
+{
+   struct set_entry *entry = _mesa_set_search(batch->sampler_views, sv);
+   if (!entry) {
+      struct pipe_sampler_view *tmp = NULL;
+      entry = _mesa_set_add(batch->sampler_views, sv);
+      pipe_sampler_view_reference(&tmp, &sv->base);
    }
 }

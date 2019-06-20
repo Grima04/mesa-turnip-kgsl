@@ -33,6 +33,7 @@ struct zink_fence;
 struct zink_framebuffer;
 struct zink_render_pass;
 struct zink_resource;
+struct zink_sampler_view;
 
 struct zink_batch {
    VkCommandBuffer cmdbuf;
@@ -42,6 +43,7 @@ struct zink_batch {
    struct zink_framebuffer *fb;
 
    struct set *resources;
+   struct set *sampler_views;
 
    struct util_dynarray zombie_samplers;
 };
@@ -55,5 +57,9 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
 void
 zink_batch_reference_resoure(struct zink_batch *batch,
                              struct zink_resource *res);
+
+void
+zink_batch_reference_sampler_view(struct zink_batch *batch,
+                                  struct zink_sampler_view *sv);
 
 #endif
