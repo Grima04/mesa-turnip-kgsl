@@ -1001,6 +1001,23 @@ panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf, unsigned 
                 unreachable("No constant buffer");
 }
 
+static mali_ptr
+panfrost_map_constant_buffer_gpu(
+                struct panfrost_context *ctx,
+                struct panfrost_constant_buffer *buf,
+                unsigned index)
+{
+        struct pipe_constant_buffer *cb = &buf->cb[index];
+        struct panfrost_resource *rsrc = pan_resource(cb->buffer);
+
+        if (rsrc)
+                return rsrc->bo->gpu;
+        else if (cb->user_buffer)
+                return panfrost_upload_transient(ctx, cb->user_buffer, cb->buffer_size);
+        else
+                unreachable("No constant buffer");
+}
+
 /* Compute number of UBOs active (more specifically, compute the highest UBO
  * number addressable -- if there are gaps, include them in the count anyway).
  * We always include UBO #0 in the count, since we *need* uniforms enabled for
@@ -1290,6 +1307,20 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 /* Upload uniforms as a UBO */
                 ubos[0].size = MALI_POSITIVE((2 + uniform_count));
                 ubos[0].ptr = transfer.gpu >> 2;
+
+                /* The rest are honest-to-goodness UBOs */
+
+                for (unsigned ubo = 1; ubo < ubo_count; ++ubo) {
+                        mali_ptr gpu = panfrost_map_constant_buffer_gpu(ctx, buf, ubo);
+                        size_t sz = buf->cb[ubo].buffer_size;
+
+                        unsigned bytes_per_field = 16;
+                        unsigned aligned = ALIGN(sz, bytes_per_field);
+                        unsigned fields = aligned / bytes_per_field;
+
+                        ubos[ubo].size = MALI_POSITIVE(fields);
+                        ubos[ubo].ptr = gpu >> 2;
+                }
 
                 mali_ptr ubufs = panfrost_upload_transient(ctx, ubos, sz);
                 postfix->uniforms = transfer.gpu;
