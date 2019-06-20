@@ -158,6 +158,17 @@ v3d_flush_jobs_using_bo(struct v3d_context *v3d, struct v3d_bo *bo)
 }
 
 void
+v3d_job_add_tf_write_resource(struct v3d_job *job, struct pipe_resource *prsc)
+{
+        v3d_job_add_write_resource(job, prsc);
+
+        if (!job->tf_write_prscs)
+                job->tf_write_prscs = _mesa_pointer_set_create(job);
+
+        _mesa_set_add(job->tf_write_prscs, prsc);
+}
+
+void
 v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
                                 struct pipe_resource *prsc)
 {

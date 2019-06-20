@@ -766,8 +766,8 @@ v3dX(emit_state)(struct pipe_context *pctx)
                         };
 #endif /* V3D_VERSION < 40 */
                         if (target) {
-                                v3d_job_add_write_resource(v3d->job,
-                                                           target->buffer);
+                                v3d_job_add_tf_write_resource(v3d->job,
+                                                              target->buffer);
                         }
                         /* XXX: buffer_size? */
                 }

@@ -297,6 +297,7 @@ struct v3d_job {
         uint32_t referenced_size;
 
         struct set *write_prscs;
+        struct set *tf_write_prscs;
 
         /* Size of the submit.bo_handles array. */
         uint32_t bo_handles_size;
@@ -589,6 +590,7 @@ struct v3d_job *v3d_get_job(struct v3d_context *v3d,
 struct v3d_job *v3d_get_job_for_fbo(struct v3d_context *v3d);
 void v3d_job_add_bo(struct v3d_job *job, struct v3d_bo *bo);
 void v3d_job_add_write_resource(struct v3d_job *job, struct pipe_resource *prsc);
+void v3d_job_add_tf_write_resource(struct v3d_job *job, struct pipe_resource *prsc);
 void v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job);
 void v3d_flush_jobs_using_bo(struct v3d_context *v3d, struct v3d_bo *bo);
 void v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
