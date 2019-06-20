@@ -425,7 +425,7 @@ zink_transfer_map(struct pipe_context *pctx,
          struct pipe_resource templ = *pres;
          templ.usage = PIPE_USAGE_STAGING;
          templ.target = PIPE_BUFFER;
-         templ.bind = 0; // HACK: there's no transfer binding, but usage should tell us enough 
+         templ.bind = 0;
          templ.width0 = trans->base.layer_stride * box->depth;
          templ.height0 = templ.depth0 = 0;
          templ.last_level = 0;
