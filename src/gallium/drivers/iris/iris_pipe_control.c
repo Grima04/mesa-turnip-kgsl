@@ -155,18 +155,18 @@ iris_texture_barrier(struct pipe_context *ctx, unsigned flags)
    if (render_batch->contains_draw ||
        render_batch->cache.render->entries ||
        render_batch->cache.depth->entries) {
-      iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
+      iris_emit_pipe_control_flush(render_batch,
                                    PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                    PIPE_CONTROL_CS_STALL);
-      iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
+      iris_emit_pipe_control_flush(render_batch,
                                    PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
    }
 
    if (compute_batch->contains_draw) {
-      iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_COMPUTE],
+      iris_emit_pipe_control_flush(compute_batch,
                                    PIPE_CONTROL_CS_STALL);
-      iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_COMPUTE],
+      iris_emit_pipe_control_flush(compute_batch,
                                    PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
    }
 }
