@@ -170,8 +170,13 @@ radv_use_dcc_for_image(struct radv_device *device,
 	    vk_format_get_plane_count(pCreateInfo->format) > 1)
 		return false;
 
-	/* TODO: Enable DCC for mipmaps and array layers. */
-	if (pCreateInfo->mipLevels > 1 || pCreateInfo->arrayLayers > 1)
+	/* TODO: Enable DCC for mipmaps on GFX9+. */
+	if (pCreateInfo->mipLevels > 1 &&
+	    device->physical_device->rad_info.chip_class >= GFX9)
+		return false;
+
+	/* TODO: Enable DCC for array layers. */
+	if (pCreateInfo->arrayLayers > 1)
 		return false;
 
 	if (radv_surface_has_scanout(device, create_info))
