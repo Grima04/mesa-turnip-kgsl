@@ -1338,12 +1338,22 @@ panfrost_queue_draw(struct panfrost_context *ctx)
         /* Handle dirty flags now */
         panfrost_emit_for_draw(ctx, true);
 
+        /* If rasterizer discard is enable, only submit the vertex */
+
+        bool rasterizer_discard = ctx->rasterizer
+                && ctx->rasterizer->base.rasterizer_discard;
+
         struct panfrost_transfer vertex = panfrost_vertex_tiler_job(ctx, false);
-        struct panfrost_transfer tiler = panfrost_vertex_tiler_job(ctx, true);
+        struct panfrost_transfer tiler;
+
+        if (!rasterizer_discard)
+                tiler = panfrost_vertex_tiler_job(ctx, true);
 
         struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
 
-        if (ctx->wallpaper_batch)
+        if (rasterizer_discard)
+                panfrost_scoreboard_queue_vertex_job(batch, vertex, FALSE);
+        else if (ctx->wallpaper_batch)
                 panfrost_scoreboard_queue_fused_job_prepend(batch, vertex, tiler);
         else
                 panfrost_scoreboard_queue_fused_job(batch, vertex, tiler);
