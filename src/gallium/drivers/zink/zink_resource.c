@@ -337,9 +337,7 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
                             struct zink_transfer *trans,
                             bool buf2img)
 {
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
-   if (batch->rp)
-      vkCmdEndRenderPass(batch->cmdbuf);
+   struct zink_batch *batch = zink_batch_no_rp(ctx);
 
    if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
        res->layout != VK_IMAGE_LAYOUT_GENERAL) {
@@ -375,9 +373,6 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
       vkCmdCopyBufferToImage(batch->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
    else
       vkCmdCopyImageToBuffer(batch->cmdbuf, res->image, res->layout, staging_res->buffer, 1, &copyRegion);
-
-   if (batch->rp)
-      zink_begin_render_pass(ctx, batch);
 
    return true;
 }

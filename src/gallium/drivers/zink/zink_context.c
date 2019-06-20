@@ -165,7 +165,7 @@ static void
 zink_delete_sampler_state(struct pipe_context *pctx,
                           void *sampler_state)
 {
-   struct zink_batch *batch = zink_context_curr_batch(zink_context(pctx));
+   struct zink_batch *batch = zink_curr_batch(zink_context(pctx));
    util_dynarray_append(&batch->zombie_samplers,
                         VkSampler, sampler_state);
 }
@@ -510,7 +510,7 @@ void
 zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   assert(batch == zink_context_curr_batch(ctx));
+   assert(batch == zink_curr_batch(ctx));
    assert(ctx->gfx_pipeline_state.render_pass);
 
    VkRenderPassBeginInfo rpbi = {};
@@ -537,7 +537,7 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 static void
 flush_batch(struct zink_context *ctx)
 {
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   struct zink_batch *batch = zink_curr_batch(ctx);
    if (batch->rp)
       vkCmdEndRenderPass(batch->cmdbuf);
 
@@ -547,8 +547,31 @@ flush_batch(struct zink_context *ctx)
    if (ctx->curr_batch == ARRAY_SIZE(ctx->batches))
       ctx->curr_batch = 0;
 
-   batch = zink_context_curr_batch(ctx);
-   zink_start_batch(ctx, batch);
+   zink_start_batch(ctx, zink_curr_batch(ctx));
+}
+
+struct zink_batch *
+zink_batch_rp(struct zink_context *ctx)
+{
+   struct zink_batch *batch = zink_curr_batch(ctx);
+   if (!batch->rp) {
+      zink_begin_render_pass(ctx, batch);
+      assert(batch->rp);
+   }
+   return batch;
+}
+
+struct zink_batch *
+zink_batch_no_rp(struct zink_context *ctx)
+{
+   struct zink_batch *batch = zink_curr_batch(ctx);
+   if (batch->rp) {
+      /* flush batch and get a new one */
+      flush_batch(ctx);
+      batch = zink_curr_batch(ctx);
+      assert(!batch->rp);
+   }
+   return batch;
 }
 
 static void
@@ -566,8 +589,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
 
-   flush_batch(ctx);
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   struct zink_batch *batch = zink_batch_no_rp(ctx);
 
    for (int i = 0; i < state->nr_cbufs; i++) {
       struct zink_resource *res = zink_resource(state->cbufs[i]->texture);
@@ -673,7 +695,12 @@ zink_clear(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct pipe_framebuffer_state *fb = &ctx->fb_state;
 
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   /* FIXME: this is very inefficient; if no renderpass has been started yet,
+    * we should record the clear if it's full-screen, and apply it as we
+    * start the render-pass. Otherwise we can do a partial out-of-renderpass
+    * clear.
+    */
+   struct zink_batch *batch = zink_batch_rp(ctx);
 
    VkClearAttachment attachments[1 + PIPE_MAX_COLOR_BUFS];
    int num_attachments = 0;
@@ -924,10 +951,6 @@ zink_draw_vbo(struct pipe_context *pctx,
          index_buffer = dinfo->index.resource;
    }
 
-   VkDescriptorSet desc_set = allocate_descriptor_set(ctx, gfx_program->dsl);
-
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
-
    VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
    VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
@@ -952,7 +975,6 @@ zink_draw_vbo(struct pipe_context *pctx,
             buffer_infos[num_buffer_info].range  = VK_WHOLE_SIZE;
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
-            zink_batch_reference_resoure(batch, res);
          } else {
             struct pipe_sampler_view *psampler_view = ctx->image_views[i][index];
             assert(psampler_view);
@@ -971,7 +993,6 @@ zink_draw_vbo(struct pipe_context *pctx,
             image_infos[num_image_info].sampler = ctx->samplers[i][index];
             wds[num_wds].pImageInfo = image_infos + num_image_info;
             ++num_image_info;
-            zink_batch_reference_sampler_view(batch, sampler_view);
          }
 
          wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -984,19 +1005,36 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
    }
 
+   struct zink_batch *batch;
    if (num_transitions > 0) {
-      if (batch->rp)
-         vkCmdEndRenderPass(batch->cmdbuf);
+      batch = zink_batch_no_rp(ctx);
 
       for (int i = 0; i < num_transitions; ++i)
          zink_resource_barrier(batch->cmdbuf, transitions[i],
                                transitions[i]->aspect,
                                VK_IMAGE_LAYOUT_GENERAL);
+   }
 
-      zink_begin_render_pass(ctx, batch);
-   } else if (!batch->rp)
-      zink_begin_render_pass(ctx, batch);
+   VkDescriptorSet desc_set = allocate_descriptor_set(ctx, gfx_program->dsl);
 
+   batch = zink_batch_rp(ctx);
+
+   for (int i = 0; i < ARRAY_SIZE(ctx->gfx_stages); i++) {
+      struct zink_shader *shader = ctx->gfx_stages[i];
+      if (!shader)
+         continue;
+
+      for (int j = 0; j < shader->num_bindings; j++) {
+         int index = shader->bindings[j].index;
+         if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+            struct zink_resource *res = zink_resource(ctx->ubos[i][index].buffer);
+            zink_batch_reference_resoure(batch, res);
+         } else {
+            struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->image_views[i][index]);
+            zink_batch_reference_sampler_view(batch, sampler_view);
+         }
+      }
+   }
 
    vkCmdSetViewport(batch->cmdbuf, 0, ctx->num_viewports, ctx->viewports);
 
@@ -1053,7 +1091,7 @@ zink_flush(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
+   struct zink_batch *batch = zink_curr_batch(ctx);
    flush_batch(ctx);
 
    if (pfence)
@@ -1099,9 +1137,7 @@ zink_blit(struct pipe_context *pctx,
    if (src->base.nr_samples > 1 && dst->base.nr_samples <= 1)
       is_resolve = true;
 
-   struct zink_batch *batch = zink_context_curr_batch(ctx);
-   if (batch->rp)
-      vkCmdEndRenderPass(batch->cmdbuf);
+   struct zink_batch *batch = zink_batch_no_rp(ctx);
 
    zink_batch_reference_resoure(batch, src);
    zink_batch_reference_resoure(batch, dst);
@@ -1183,9 +1219,6 @@ zink_blit(struct pipe_context *pctx,
                      filter(info->filter));
    }
 
-   if (batch->rp)
-      zink_begin_render_pass(ctx, batch);
-
    /* HACK: I have no idea why this is needed, but without it ioquake3
     * randomly keeps fading to black.
     */
@@ -1242,7 +1275,7 @@ zink_resource_copy_region(struct pipe_context *pctx,
       region.extent.width = src_box->width;
       region.extent.height = src_box->height;
 
-      struct zink_batch *batch = zink_context_curr_batch(ctx);
+      struct zink_batch *batch = zink_batch_no_rp(ctx);
       zink_batch_reference_resoure(batch, src);
       zink_batch_reference_resoure(batch, dst);
 
@@ -1385,7 +1418,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->dirty = ZINK_DIRTY_PROGRAM;
 
    /* start the first batch */
-   zink_start_batch(ctx, zink_context_curr_batch(ctx));
+   zink_start_batch(ctx, zink_curr_batch(ctx));
 
    return &ctx->base;
 

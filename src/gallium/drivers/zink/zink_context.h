@@ -113,11 +113,17 @@ zink_context(struct pipe_context *context)
 }
 
 static inline struct zink_batch *
-zink_context_curr_batch(struct zink_context *ctx)
+zink_curr_batch(struct zink_context *ctx)
 {
    assert(ctx->curr_batch < ARRAY_SIZE(ctx->batches));
    return ctx->batches + ctx->curr_batch;
 }
+
+struct zink_batch *
+zink_batch_rp(struct zink_context *ctx);
+
+struct zink_batch *
+zink_batch_no_rp(struct zink_context *ctx);
 
 void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
