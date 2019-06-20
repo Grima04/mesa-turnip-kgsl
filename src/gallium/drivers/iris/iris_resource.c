@@ -1472,12 +1472,19 @@ iris_transfer_flush_region(struct pipe_context *ctx,
    if (map->staging)
       iris_flush_staging_region(xfer, box);
 
+   uint32_t history_flush = 0;
+
+   if (res->base.target == PIPE_BUFFER) {
+      history_flush |= iris_flush_bits_for_history(res) |
+                       PIPE_CONTROL_RENDER_TARGET_FLUSH;
+   }
+
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (ice->batches[i].contains_draw ||
-          ice->batches[i].cache.render->entries) {
-         iris_batch_maybe_flush(&ice->batches[i], 24);
-         iris_flush_and_dirty_for_history(ice, &ice->batches[i], res,
-                                          "cache history: transfer flush");
+      struct iris_batch *batch = &ice->batches[i];
+      if (batch->contains_draw || batch->cache.render->entries) {
+         iris_batch_maybe_flush(batch, 24);
+         iris_emit_pipe_control_flush(batch, "cache history: transfer flush",
+                                      history_flush);
       }
    }
 
