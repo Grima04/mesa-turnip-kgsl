@@ -664,14 +664,12 @@ test_iterations(int32_t iter_int, nir_const_value *step,
    /* Multiple the iteration count we are testing by the number of times we
     * step the induction variable each iteration.
     */
-   nir_const_value *mul_src[2] = { &iter_src, step };
-   nir_const_value mul_result;
-   nir_eval_const_opcode(mul_op, &mul_result, 1, bit_size, mul_src);
+   nir_const_value mul_result =
+      eval_const_binop(mul_op, bit_size, iter_src, *step);
 
    /* Add the initial value to the accumulated induction variable total */
-   nir_const_value *add_src[2] = { &mul_result, initial };
-   nir_const_value add_result;
-   nir_eval_const_opcode(add_op, &add_result, 1, bit_size, add_src);
+   nir_const_value add_result =
+      eval_const_binop(add_op, bit_size, mul_result, *initial);
 
    nir_const_value *src[2];
    src[limit_rhs ? 0 : 1] = &add_result;
