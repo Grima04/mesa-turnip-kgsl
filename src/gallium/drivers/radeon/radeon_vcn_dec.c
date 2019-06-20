@@ -56,6 +56,11 @@
 #define RDECODE_VCN2_GPCOM_VCPU_DATA1		(0x505 << 2)
 #define RDECODE_VCN2_ENGINE_CNTL		(0x506 << 2)
 
+#define RDECODE_VCN2_5_GPCOM_VCPU_CMD 		0x3c
+#define RDECODE_VCN2_5_GPCOM_VCPU_DATA0 	0x40
+#define RDECODE_VCN2_5_GPCOM_VCPU_DATA1 	0x44
+#define RDECODE_VCN2_5_ENGINE_CNTL 		0x9b4
+
 #define NUM_MPEG2_REFS			6
 #define NUM_H264_REFS			17
 #define NUM_VC1_REFS			5
@@ -1597,7 +1602,12 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
 	}
 	si_vid_clear_buffer(context, &dec->sessionctx);
 
-	if (sctx->family >= CHIP_NAVI10) {
+	if (sctx->family == CHIP_ARCTURUS) {
+		dec->reg.data0 = RDECODE_VCN2_5_GPCOM_VCPU_DATA0;
+		dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
+		dec->reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
+		dec->reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
+	} else if (sctx->family >= CHIP_NAVI10) {
 		dec->reg.data0 = RDECODE_VCN2_GPCOM_VCPU_DATA0;
 		dec->reg.data1 = RDECODE_VCN2_GPCOM_VCPU_DATA1;
 		dec->reg.cmd = RDECODE_VCN2_GPCOM_VCPU_CMD;
