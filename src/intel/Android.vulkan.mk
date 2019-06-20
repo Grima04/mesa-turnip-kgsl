@@ -128,7 +128,7 @@ LOCAL_CFLAGS := -DGEN_VERSIONx10=70
 
 LOCAL_C_INCLUDES := $(ANV_INCLUDES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
+LOCAL_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
@@ -149,7 +149,7 @@ LOCAL_CFLAGS := -DGEN_VERSIONx10=75
 
 LOCAL_C_INCLUDES := $(ANV_INCLUDES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
+LOCAL_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
@@ -170,7 +170,7 @@ LOCAL_CFLAGS := -DGEN_VERSIONx10=80
 
 LOCAL_C_INCLUDES := $(ANV_INCLUDES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
+LOCAL_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
@@ -191,7 +191,7 @@ LOCAL_CFLAGS := -DGEN_VERSIONx10=90
 
 LOCAL_C_INCLUDES := $(ANV_INCLUDES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
+LOCAL_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
@@ -212,7 +212,7 @@ LOCAL_CFLAGS := -DGEN_VERSIONx10=100
 
 LOCAL_C_INCLUDES := $(ANV_INCLUDES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
+LOCAL_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
@@ -233,7 +233,7 @@ LOCAL_CFLAGS := -DGEN_VERSIONx10=110
 
 LOCAL_C_INCLUDES := $(ANV_INCLUDES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
+LOCAL_STATIC_LIBRARIES := libmesa_anv_entrypoints libmesa_genxml
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
@@ -257,7 +257,7 @@ LOCAL_C_INCLUDES := \
 	$(ANV_INCLUDES) \
 	$(MESA_TOP)/src/compiler
 
-LOCAL_WHOLE_STATIC_LIBRARIES := \
+LOCAL_STATIC_LIBRARIES := \
 	libmesa_anv_entrypoints \
 	libmesa_genxml \
 	libmesa_git_sha1 \
@@ -326,14 +326,14 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_intel_common \
 	libmesa_intel_dev \
 	libmesa_vulkan_common \
+	libmesa_vulkan_util \
 	libmesa_anv_gen7 \
 	libmesa_anv_gen75 \
 	libmesa_anv_gen8 \
 	libmesa_anv_gen9 \
 	libmesa_anv_gen10 \
 	libmesa_anv_gen11 \
-	libmesa_intel_compiler \
-	libmesa_anv_entrypoints
+	libmesa_intel_compiler
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES) libz libsync liblog
 LOCAL_HEADER_LIBRARIES += $(VULKAN_COMMON_HEADER_LIBRARIES)
