@@ -4128,7 +4128,7 @@ si_create_sampler_view_custom(struct pipe_context *ctx,
 	/* Depth/stencil texturing sometimes needs separate texture. */
 	if (tex->is_depth && !si_can_sample_zs(tex, view->is_stencil_sampler)) {
 		if (!tex->flushed_depth_texture &&
-		    !si_init_flushed_depth_texture(ctx, texture, NULL)) {
+		    !si_init_flushed_depth_texture(ctx, texture)) {
 			pipe_resource_reference(&view->base.texture, NULL);
 			FREE(view);
 			return NULL;

@@ -1209,12 +1209,6 @@ void si_resource_copy_region(struct pipe_context *ctx,
 			     unsigned src_level,
 			     const struct pipe_box *src_box);
 void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex);
-void si_blit_decompress_depth(struct pipe_context *ctx,
-			      struct si_texture *texture,
-			      struct si_texture *staging,
-			      unsigned first_level, unsigned last_level,
-			      unsigned first_layer, unsigned last_layer,
-			      unsigned first_sample, unsigned last_sample);
 
 /* si_buffer.c */
 bool si_rings_is_buffer_referenced(struct si_context *sctx,
@@ -1452,8 +1446,7 @@ void si_eliminate_fast_color_clear(struct si_context *sctx,
 void si_texture_discard_cmask(struct si_screen *sscreen,
 			      struct si_texture *tex);
 bool si_init_flushed_depth_texture(struct pipe_context *ctx,
-				   struct pipe_resource *texture,
-				   struct si_texture **staging);
+				   struct pipe_resource *texture);
 void si_print_texture_info(struct si_screen *sscreen,
 			   struct si_texture *tex, struct u_log_context *log);
 struct pipe_resource *si_texture_create(struct pipe_screen *screen,

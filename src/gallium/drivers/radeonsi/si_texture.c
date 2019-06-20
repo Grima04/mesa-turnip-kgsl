@@ -128,8 +128,7 @@ static void si_copy_region_with_blit(struct pipe_context *pipe,
 	blit.dst.box.width = src_box->width;
 	blit.dst.box.height = src_box->height;
 	blit.dst.box.depth = src_box->depth;
-	blit.mask = util_format_get_mask(src->format) &
-		    util_format_get_mask(dst->format);
+	blit.mask = util_format_get_mask(dst->format);
 	blit.filter = PIPE_TEX_FILTER_NEAREST;
 
 	if (blit.mask) {
@@ -145,7 +144,7 @@ static void si_copy_to_staging_texture(struct pipe_context *ctx, struct si_trans
 	struct pipe_resource *dst = &stransfer->staging->b.b;
 	struct pipe_resource *src = transfer->resource;
 
-	if (src->nr_samples > 1) {
+	if (src->nr_samples > 1 || ((struct si_texture*)src)->is_depth) {
 		si_copy_region_with_blit(ctx, dst, 0, 0, 0, 0,
 					   src, transfer->level, &transfer->box);
 		return;
@@ -166,7 +165,7 @@ static void si_copy_from_staging_texture(struct pipe_context *ctx, struct si_tra
 
 	u_box_3d(0, 0, 0, transfer->box.width, transfer->box.height, transfer->box.depth, &sbox);
 
-	if (dst->nr_samples > 1) {
+	if (dst->nr_samples > 1 || ((struct si_texture*)dst)->is_depth) {
 		si_copy_region_with_blit(ctx, dst, transfer->level,
 					   transfer->box.x, transfer->box.y, transfer->box.z,
 					   src, 0, &sbox);
@@ -1714,46 +1713,40 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
 }
 
 bool si_init_flushed_depth_texture(struct pipe_context *ctx,
-				   struct pipe_resource *texture,
-				   struct si_texture **staging)
+				   struct pipe_resource *texture)
 {
 	struct si_texture *tex = (struct si_texture*)texture;
 	struct pipe_resource resource;
-	struct si_texture **flushed_depth_texture = staging ?
-			staging : &tex->flushed_depth_texture;
 	enum pipe_format pipe_format = texture->format;
 
-	if (!staging) {
-		if (tex->flushed_depth_texture)
-			return true; /* it's ready */
+	assert(!tex->flushed_depth_texture);
 
-		if (!tex->can_sample_z && tex->can_sample_s) {
-			switch (pipe_format) {
-			case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-				/* Save memory by not allocating the S plane. */
-				pipe_format = PIPE_FORMAT_Z32_FLOAT;
-				break;
-			case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-			case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-				/* Save memory bandwidth by not copying the
-				 * stencil part during flush.
-				 *
-				 * This potentially increases memory bandwidth
-				 * if an application uses both Z and S texturing
-				 * simultaneously (a flushed Z24S8 texture
-				 * would be stored compactly), but how often
-				 * does that really happen?
-				 */
-				pipe_format = PIPE_FORMAT_Z24X8_UNORM;
-				break;
-			default:;
-			}
-		} else if (!tex->can_sample_s && tex->can_sample_z) {
-			assert(util_format_has_stencil(util_format_description(pipe_format)));
-
-			/* DB->CB copies to an 8bpp surface don't work. */
-			pipe_format = PIPE_FORMAT_X24S8_UINT;
+	if (!tex->can_sample_z && tex->can_sample_s) {
+		switch (pipe_format) {
+		case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+			/* Save memory by not allocating the S plane. */
+			pipe_format = PIPE_FORMAT_Z32_FLOAT;
+			break;
+		case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+		case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+			/* Save memory bandwidth by not copying the
+			 * stencil part during flush.
+			 *
+			 * This potentially increases memory bandwidth
+			 * if an application uses both Z and S texturing
+			 * simultaneously (a flushed Z24S8 texture
+			 * would be stored compactly), but how often
+			 * does that really happen?
+			 */
+			pipe_format = PIPE_FORMAT_Z24X8_UNORM;
+			break;
+		default:;
 		}
+	} else if (!tex->can_sample_s && tex->can_sample_z) {
+		assert(util_format_has_stencil(util_format_description(pipe_format)));
+
+		/* DB->CB copies to an 8bpp surface don't work. */
+		pipe_format = PIPE_FORMAT_X24S8_UINT;
 	}
 
 	memset(&resource, 0, sizeof(resource));
@@ -1765,15 +1758,12 @@ bool si_init_flushed_depth_texture(struct pipe_context *ctx,
 	resource.array_size = texture->array_size;
 	resource.last_level = texture->last_level;
 	resource.nr_samples = texture->nr_samples;
-	resource.usage = staging ? PIPE_USAGE_STAGING : PIPE_USAGE_DEFAULT;
+	resource.usage = PIPE_USAGE_DEFAULT;
 	resource.bind = texture->bind & ~PIPE_BIND_DEPTH_STENCIL;
 	resource.flags = texture->flags | SI_RESOURCE_FLAG_FLUSHED_DEPTH;
 
-	if (staging)
-		resource.flags |= SI_RESOURCE_FLAG_TRANSFER;
-
-	*flushed_depth_texture = (struct si_texture *)ctx->screen->resource_create(ctx->screen, &resource);
-	if (*flushed_depth_texture == NULL) {
+	tex->flushed_depth_texture = (struct si_texture *)ctx->screen->resource_create(ctx->screen, &resource);
+	if (!tex->flushed_depth_texture) {
 		PRINT_ERR("failed to create temporary texture to hold flushed depth\n");
 		return false;
 	}
@@ -1880,8 +1870,10 @@ static void *si_texture_transfer_map(struct pipe_context *ctx,
 	assert(!(texture->flags & SI_RESOURCE_FLAG_TRANSFER));
 	assert(box->width && box->height && box->depth);
 
-	/* Depth textures use staging unconditionally. */
-	if (!tex->is_depth) {
+	if (tex->is_depth) {
+		/* Depth textures use staging unconditionally. */
+		use_staging_texture = true;
+	} else {
 		/* Degrade the tile mode if we get too many transfers on APUs.
 		 * On dGPUs, the staging texture is always faster.
 		 * Only count uploads that are at least 4x4 pixels large.
@@ -1936,68 +1928,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx,
 	trans->b.b.usage = usage;
 	trans->b.b.box = *box;
 
-	if (tex->is_depth) {
-		struct si_texture *staging_depth;
-
-		if (tex->buffer.b.b.nr_samples > 1) {
-			/* MSAA depth buffers need to be converted to single sample buffers.
-			 *
-			 * Mapping MSAA depth buffers can occur if ReadPixels is called
-			 * with a multisample GLX visual.
-			 *
-			 * First downsample the depth buffer to a temporary texture,
-			 * then decompress the temporary one to staging.
-			 *
-			 * Only the region being mapped is transfered.
-			 */
-			struct pipe_resource resource;
-
-			si_init_temp_resource_from_box(&resource, texture, box, level, 0);
-
-			if (!si_init_flushed_depth_texture(ctx, &resource, &staging_depth)) {
-				PRINT_ERR("failed to create temporary texture to hold untiled copy\n");
-				goto fail_trans;
-			}
-
-			if (usage & PIPE_TRANSFER_READ) {
-				struct pipe_resource *temp = ctx->screen->resource_create(ctx->screen, &resource);
-				if (!temp) {
-					PRINT_ERR("failed to create a temporary depth texture\n");
-					goto fail_trans;
-				}
-
-				si_copy_region_with_blit(ctx, temp, 0, 0, 0, 0, texture, level, box);
-				si_blit_decompress_depth(ctx, (struct si_texture*)temp, staging_depth,
-							 0, 0, 0, box->depth, 0, 0);
-				pipe_resource_reference(&temp, NULL);
-			}
-
-			/* Just get the strides. */
-			si_texture_get_offset(sctx->screen, staging_depth, level, NULL,
-						&trans->b.b.stride,
-						&trans->b.b.layer_stride);
-		} else {
-			/* XXX: only readback the rectangle which is being mapped? */
-			/* XXX: when discard is true, no need to read back from depth texture */
-			if (!si_init_flushed_depth_texture(ctx, texture, &staging_depth)) {
-				PRINT_ERR("failed to create temporary texture to hold untiled copy\n");
-				goto fail_trans;
-			}
-
-			si_blit_decompress_depth(ctx, tex, staging_depth,
-						 level, level,
-						 box->z, box->z + box->depth - 1,
-						 0, 0);
-
-			offset = si_texture_get_offset(sctx->screen, staging_depth,
-							 level, box,
-							 &trans->b.b.stride,
-							 &trans->b.b.layer_stride);
-		}
-
-		trans->staging = &staging_depth->buffer;
-		buf = trans->staging;
-	} else if (use_staging_texture) {
+	if (use_staging_texture) {
 		struct pipe_resource resource;
 		struct si_texture *staging;
 
@@ -2005,6 +1936,13 @@ static void *si_texture_transfer_map(struct pipe_context *ctx,
 						 SI_RESOURCE_FLAG_TRANSFER);
 		resource.usage = (usage & PIPE_TRANSFER_READ) ?
 			PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
+
+		/* Since depth-stencil textures don't support linear tiling,
+		 * blit from ZS to color and vice versa. u_blitter will do
+		 * the packing for these formats.
+		 */
+		if (tex->is_depth)
+			resource.format = util_blitter_get_color_format_for_zs(resource.format);
 
 		/* Create the temporary texture. */
 		staging = (struct si_texture*)ctx->screen->resource_create(ctx->screen, &resource);
@@ -2070,16 +2008,8 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx,
 		sctx->ws->buffer_unmap(buf->buf);
 	}
 
-	if ((transfer->usage & PIPE_TRANSFER_WRITE) && stransfer->staging) {
-		if (tex->is_depth && tex->buffer.b.b.nr_samples <= 1) {
-			ctx->resource_copy_region(ctx, texture, transfer->level,
-						  transfer->box.x, transfer->box.y, transfer->box.z,
-						  &stransfer->staging->b.b, transfer->level,
-						  &transfer->box);
-		} else {
-			si_copy_from_staging_texture(ctx, stransfer);
-		}
-	}
+	if ((transfer->usage & PIPE_TRANSFER_WRITE) && stransfer->staging)
+		si_copy_from_staging_texture(ctx, stransfer);
 
 	if (stransfer->staging) {
 		sctx->num_alloc_tex_transfer_bytes += stransfer->staging->buf->size;
