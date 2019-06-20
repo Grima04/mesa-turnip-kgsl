@@ -402,20 +402,10 @@ void si_emit_dpbb_state(struct si_context *sctx)
 	unsigned persistent_states_per_bin; /* allowed range: [0, 31] */
 	unsigned fpovs_per_batch; /* allowed range: [0, 255], 0 = unlimited */
 
-	switch (sctx->family) {
-	case CHIP_VEGA10:
-	case CHIP_VEGA12:
-	case CHIP_VEGA20:
-	case CHIP_RAVEN:
-	case CHIP_RAVEN2:
-		/* Tuned for Raven. Vega might need different values. */
-		context_states_per_bin = 5;
-		persistent_states_per_bin = 31;
-		fpovs_per_batch = 63;
-		break;
-	default:
-		assert(0);
-	}
+	/* Tuned for Raven. Vega might need different values. */
+	context_states_per_bin = 5;
+	persistent_states_per_bin = 31;
+	fpovs_per_batch = 63;
 
 	/* Emit registers. */
 	struct uvec2 bin_size_extend = {};
