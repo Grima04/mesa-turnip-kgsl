@@ -597,6 +597,35 @@ void util_blitter_restore_fb_state(struct blitter_context *blitter);
 void util_blitter_restore_textures(struct blitter_context *blitter);
 void util_blitter_restore_constant_buffer_state(struct blitter_context *blitter);
 
+/* These are supported combinations of blits from ZS to color and vice versa.
+ * The blitter will do the packing/unpacking of depth and stencil
+ * in the fragment shader.
+ */
+static inline enum pipe_format
+util_blitter_get_color_format_for_zs(enum pipe_format format)
+{
+   switch (format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      return PIPE_FORMAT_R16_UNORM;
+
+   case PIPE_FORMAT_Z32_FLOAT:
+      return PIPE_FORMAT_R32_FLOAT;
+
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+   case PIPE_FORMAT_X8Z24_UNORM:
+      return PIPE_FORMAT_R32_UINT;
+
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      return PIPE_FORMAT_R32G32_UINT;
+
+   case PIPE_FORMAT_Z32_UNORM:
+   default:
+      assert(0);
+   }
+}
+
 #ifdef __cplusplus
 }
 #endif
