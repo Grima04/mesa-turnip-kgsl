@@ -379,172 +379,61 @@ util_make_fragment_tex_shader(struct pipe_context *pipe,
 
 
 /**
- * Make a simple fragment texture shader which reads an X component from
- * a texture and writes it as depth.
- */
-void *
-util_make_fragment_tex_shader_writedepth(struct pipe_context *pipe,
-                                         enum tgsi_texture_type tex_target,
-                                         enum tgsi_interpolate_mode interp_mode,
-                                         bool load_level_zero,
-                                         bool use_txf)
-{
-   struct ureg_program *ureg;
-   struct ureg_src sampler;
-   struct ureg_src tex;
-   struct ureg_dst out, depth;
-   struct ureg_src imm;
-
-   ureg = ureg_create( PIPE_SHADER_FRAGMENT );
-   if (!ureg)
-      return NULL;
-
-   sampler = ureg_DECL_sampler( ureg, 0 );
-
-   ureg_DECL_sampler_view(ureg, 0, tex_target,
-                          TGSI_RETURN_TYPE_FLOAT,
-                          TGSI_RETURN_TYPE_FLOAT,
-                          TGSI_RETURN_TYPE_FLOAT,
-                          TGSI_RETURN_TYPE_FLOAT);
-
-   tex = ureg_DECL_fs_input( ureg,
-                             TGSI_SEMANTIC_GENERIC, 0,
-                             interp_mode );
-
-   out = ureg_DECL_output( ureg,
-                           TGSI_SEMANTIC_COLOR,
-                           0 );
-
-   depth = ureg_DECL_output( ureg,
-                             TGSI_SEMANTIC_POSITION,
-                             0 );
-
-   imm = ureg_imm4f( ureg, 0, 0, 0, 1 );
-
-   ureg_MOV( ureg, out, imm );
-
-   ureg_load_tex(ureg, ureg_writemask(depth, TGSI_WRITEMASK_Z), tex, sampler,
-                 tex_target, load_level_zero, use_txf);
-   ureg_END( ureg );
-
-   return ureg_create_shader_and_destroy( ureg, pipe );
-}
-
-
-/**
  * Make a simple fragment texture shader which reads the texture unit 0 and 1
  * and writes it as depth and stencil, respectively.
  */
 void *
-util_make_fragment_tex_shader_writedepthstencil(struct pipe_context *pipe,
-                                         enum tgsi_texture_type tex_target,
-                                         enum tgsi_interpolate_mode interp_mode,
-                                         bool load_level_zero,
-                                         bool use_txf)
+util_make_fs_blit_zs(struct pipe_context *pipe, unsigned zs_mask,
+                     enum tgsi_texture_type tex_target,
+                     bool load_level_zero, bool use_txf)
 {
    struct ureg_program *ureg;
-   struct ureg_src depth_sampler, stencil_sampler;
-   struct ureg_src tex;
-   struct ureg_dst out, depth, stencil;
-   struct ureg_src imm;
+   struct ureg_src depth_sampler, stencil_sampler, coord;
+   struct ureg_dst depth, stencil, tmp;
 
-   ureg = ureg_create( PIPE_SHADER_FRAGMENT );
+   ureg = ureg_create(PIPE_SHADER_FRAGMENT);
    if (!ureg)
       return NULL;
 
-   depth_sampler = ureg_DECL_sampler( ureg, 0 );
-   ureg_DECL_sampler_view(ureg, 0, tex_target,
-                          TGSI_RETURN_TYPE_FLOAT,
-                          TGSI_RETURN_TYPE_FLOAT,
-                          TGSI_RETURN_TYPE_FLOAT,
-                          TGSI_RETURN_TYPE_FLOAT);
-   stencil_sampler = ureg_DECL_sampler( ureg, 1 );
-   ureg_DECL_sampler_view(ureg, 0, tex_target,
-                          TGSI_RETURN_TYPE_UINT,
-                          TGSI_RETURN_TYPE_UINT,
-                          TGSI_RETURN_TYPE_UINT,
-                          TGSI_RETURN_TYPE_UINT);
+   coord = ureg_DECL_fs_input(ureg, TGSI_SEMANTIC_GENERIC, 0,
+                              TGSI_INTERPOLATE_LINEAR);
+   tmp = ureg_DECL_temporary(ureg);
 
-   tex = ureg_DECL_fs_input( ureg,
-                             TGSI_SEMANTIC_GENERIC, 0,
-                             interp_mode );
+   if (zs_mask & PIPE_MASK_Z) {
+      depth_sampler = ureg_DECL_sampler(ureg, 0);
+      ureg_DECL_sampler_view(ureg, 0, tex_target,
+                             TGSI_RETURN_TYPE_FLOAT,
+                             TGSI_RETURN_TYPE_FLOAT,
+                             TGSI_RETURN_TYPE_FLOAT,
+                             TGSI_RETURN_TYPE_FLOAT);
 
-   out = ureg_DECL_output( ureg,
-                           TGSI_SEMANTIC_COLOR,
-                           0 );
+      ureg_load_tex(ureg, ureg_writemask(tmp, TGSI_WRITEMASK_X), coord,
+                    depth_sampler, tex_target, load_level_zero, use_txf);
 
-   depth = ureg_DECL_output( ureg,
-                             TGSI_SEMANTIC_POSITION,
-                             0 );
+      depth = ureg_DECL_output(ureg, TGSI_SEMANTIC_POSITION, 0);
+      ureg_MOV(ureg, ureg_writemask(depth, TGSI_WRITEMASK_Z),
+               ureg_scalar(ureg_src(tmp), TGSI_SWIZZLE_X));
+   }
 
-   stencil = ureg_DECL_output( ureg,
-                             TGSI_SEMANTIC_STENCIL,
-                             0 );
+   if (zs_mask & PIPE_MASK_S) {
+      stencil_sampler = ureg_DECL_sampler(ureg, zs_mask & PIPE_MASK_Z ? 1 : 0);
+      ureg_DECL_sampler_view(ureg, 0, tex_target,
+                             TGSI_RETURN_TYPE_UINT,
+                             TGSI_RETURN_TYPE_UINT,
+                             TGSI_RETURN_TYPE_UINT,
+                             TGSI_RETURN_TYPE_UINT);
 
-   imm = ureg_imm4f( ureg, 0, 0, 0, 1 );
+      ureg_load_tex(ureg, ureg_writemask(tmp, TGSI_WRITEMASK_X), coord,
+                    stencil_sampler, tex_target, load_level_zero, use_txf);
 
-   ureg_MOV( ureg, out, imm );
+      stencil = ureg_DECL_output(ureg, TGSI_SEMANTIC_STENCIL, 0);
+      ureg_MOV(ureg, ureg_writemask(stencil, TGSI_WRITEMASK_Y),
+               ureg_scalar(ureg_src(tmp), TGSI_SWIZZLE_X));
+   }
 
-   ureg_load_tex(ureg, ureg_writemask(depth, TGSI_WRITEMASK_Z), tex,
-                 depth_sampler, tex_target, load_level_zero, use_txf);
-   ureg_load_tex(ureg, ureg_writemask(stencil, TGSI_WRITEMASK_Y), tex,
-                 stencil_sampler, tex_target, load_level_zero, use_txf);
-   ureg_END( ureg );
+   ureg_END(ureg);
 
-   return ureg_create_shader_and_destroy( ureg, pipe );
-}
-
-
-/**
- * Make a simple fragment texture shader which reads a texture and writes it
- * as stencil.
- */
-void *
-util_make_fragment_tex_shader_writestencil(struct pipe_context *pipe,
-                                         enum tgsi_texture_type tex_target,
-                                         enum tgsi_interpolate_mode interp_mode,
-                                         bool load_level_zero,
-                                         bool use_txf)
-{
-   struct ureg_program *ureg;
-   struct ureg_src stencil_sampler;
-   struct ureg_src tex;
-   struct ureg_dst out, stencil;
-   struct ureg_src imm;
-
-   ureg = ureg_create( PIPE_SHADER_FRAGMENT );
-   if (!ureg)
-      return NULL;
-
-   stencil_sampler = ureg_DECL_sampler( ureg, 0 );
-
-   ureg_DECL_sampler_view(ureg, 0, tex_target,
-                          TGSI_RETURN_TYPE_UINT,
-                          TGSI_RETURN_TYPE_UINT,
-                          TGSI_RETURN_TYPE_UINT,
-                          TGSI_RETURN_TYPE_UINT);
-
-   tex = ureg_DECL_fs_input( ureg,
-                             TGSI_SEMANTIC_GENERIC, 0,
-                             interp_mode );
-
-   out = ureg_DECL_output( ureg,
-                           TGSI_SEMANTIC_COLOR,
-                           0 );
-
-   stencil = ureg_DECL_output( ureg,
-                             TGSI_SEMANTIC_STENCIL,
-                             0 );
-
-   imm = ureg_imm4f( ureg, 0, 0, 0, 1 );
-
-   ureg_MOV( ureg, out, imm );
-
-   ureg_load_tex(ureg, ureg_writemask(stencil, TGSI_WRITEMASK_Y), tex,
-                 stencil_sampler, tex_target, load_level_zero, use_txf);
-   ureg_END( ureg );
-
-   return ureg_create_shader_and_destroy( ureg, pipe );
+   return ureg_create_shader_and_destroy(ureg, pipe);
 }
 
 
