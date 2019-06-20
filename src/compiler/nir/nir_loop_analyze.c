@@ -538,7 +538,8 @@ guess_loop_limit(loop_info_state *state, nir_const_value *limit_val,
    }
 
    if (min_array_size) {
-      limit_val->i32 = min_array_size;
+      *limit_val = nir_const_value_for_uint(min_array_size,
+                                            basic_ind->def->bit_size);
       return true;
    }
 
@@ -574,43 +575,63 @@ try_find_limit_of_alu(nir_loop_variable *limit, nir_const_value *limit_val,
    return false;
 }
 
-static int32_t
-get_iteration(nir_op cond_op, nir_const_value *initial, nir_const_value *step,
-              nir_const_value *limit)
+static nir_const_value
+eval_const_unop(nir_op op, unsigned bit_size, nir_const_value src0)
 {
-   int32_t iter;
+   assert(nir_op_infos[op].num_inputs == 1);
+   nir_const_value dest;
+   nir_const_value *src[1] = { &src0 };
+   nir_eval_const_opcode(op, &dest, 1, bit_size, src);
+   return dest;
+}
+
+static nir_const_value
+eval_const_binop(nir_op op, unsigned bit_size,
+                 nir_const_value src0, nir_const_value src1)
+{
+   assert(nir_op_infos[op].num_inputs == 2);
+   nir_const_value dest;
+   nir_const_value *src[2] = { &src0, &src1 };
+   nir_eval_const_opcode(op, &dest, 1, bit_size, src);
+   return dest;
+}
+
+static int32_t
+get_iteration(nir_op cond_op, nir_const_value initial, nir_const_value step,
+              nir_const_value limit, unsigned bit_size)
+{
+   nir_const_value span, iter;
 
    switch (cond_op) {
    case nir_op_ige:
    case nir_op_ilt:
    case nir_op_ieq:
-   case nir_op_ine: {
-      int32_t initial_val = initial->i32;
-      int32_t span = limit->i32 - initial_val;
-      iter = span / step->i32;
+   case nir_op_ine:
+      span = eval_const_binop(nir_op_isub, bit_size, limit, initial);
+      iter = eval_const_binop(nir_op_idiv, bit_size, span, step);
       break;
-   }
+
    case nir_op_uge:
-   case nir_op_ult: {
-      uint32_t initial_val = initial->u32;
-      uint32_t span = limit->u32 - initial_val;
-      iter = span / step->u32;
+   case nir_op_ult:
+      span = eval_const_binop(nir_op_isub, bit_size, limit, initial);
+      iter = eval_const_binop(nir_op_udiv, bit_size, span, step);
       break;
-   }
+
    case nir_op_fge:
    case nir_op_flt:
    case nir_op_feq:
-   case nir_op_fne: {
-      float initial_val = initial->f32;
-      float span = limit->f32 - initial_val;
-      iter = span / step->f32;
+   case nir_op_fne:
+      span = eval_const_binop(nir_op_fsub, bit_size, limit, initial);
+      iter = eval_const_binop(nir_op_fdiv, bit_size, span, step);
+      iter = eval_const_unop(nir_op_f2i64, bit_size, iter);
       break;
-   }
+
    default:
       return -1;
    }
 
-   return iter;
+   uint64_t iter_u64 = nir_const_value_as_uint(iter, bit_size);
+   return iter_u64 > INT_MAX ? -1 : (int)iter_u64;
 }
 
 static bool
@@ -621,18 +642,18 @@ test_iterations(int32_t iter_int, nir_const_value *step,
 {
    assert(nir_op_infos[cond_op].num_inputs == 2);
 
-   nir_const_value iter_src = {0, };
+   nir_const_value iter_src;
    nir_op mul_op;
    nir_op add_op;
    switch (induction_base_type) {
    case nir_type_float:
-      iter_src.f32 = (float) iter_int;
+      iter_src = nir_const_value_for_float(iter_int, bit_size);
       mul_op = nir_op_fmul;
       add_op = nir_op_fadd;
       break;
    case nir_type_int:
    case nir_type_uint:
-      iter_src.i32 = iter_int;
+      iter_src = nir_const_value_for_int(iter_int, bit_size);
       mul_op = nir_op_imul;
       add_op = nir_op_iadd;
       break;
@@ -709,7 +730,10 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
       trip_offset = 1;
    }
 
-   int iter_int = get_iteration(alu_op, initial, step, limit);
+   assert(nir_src_bit_size(alu->src[0].src) ==
+          nir_src_bit_size(alu->src[1].src));
+   unsigned bit_size = nir_src_bit_size(alu->src[0].src);
+   int iter_int = get_iteration(alu_op, *initial, *step, *limit, bit_size);
 
    /* If iter_int is negative the loop is ill-formed or is the conditional is
     * unsigned with a huge iteration count so don't bother going any further.
@@ -726,9 +750,6 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
     *
     *    for (float x = 0.0; x != 0.9; x += 0.2);
     */
-   assert(nir_src_bit_size(alu->src[0].src) ==
-          nir_src_bit_size(alu->src[1].src));
-   unsigned bit_size = nir_src_bit_size(alu->src[0].src);
    for (int bias = -1; bias <= 1; bias++) {
       const int iter_bias = iter_int + bias;
 
