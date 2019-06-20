@@ -265,7 +265,10 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool
 		assert(!ret);
 	}
 
-	ret = panfrost_drm_submit_job(ctx, panfrost_fragment_job(ctx, has_draws), PANFROST_JD_REQ_FS, surf);
+        if (job->first_tiler.gpu || job->clear) {
+                ret = panfrost_drm_submit_job(ctx, panfrost_fragment_job(ctx, has_draws), PANFROST_JD_REQ_FS, surf);
+                assert(!ret);
+        }
 
         return ret;
 }
