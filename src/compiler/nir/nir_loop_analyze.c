@@ -274,6 +274,31 @@ compute_invariance_information(loop_info_state *state)
    }
 }
 
+/* If all of the instruction sources point to identical ALU instructions (as
+ * per nir_instrs_equal), return one of the ALU instructions.  Otherwise,
+ * return NULL.
+ */
+static nir_alu_instr *
+phi_instr_as_alu(nir_phi_instr *phi)
+{
+   nir_alu_instr *first = NULL;
+   nir_foreach_phi_src(src, phi) {
+      assert(src->src.is_ssa);
+      if (src->src.ssa->parent_instr->type != nir_instr_type_alu)
+         return NULL;
+
+      nir_alu_instr *alu = nir_instr_as_alu(src->src.ssa->parent_instr);
+      if (first == NULL) {
+         first = alu;
+      } else {
+         if (!nir_instrs_equal(&first->instr, &alu->instr))
+            return NULL;
+      }
+   }
+
+   return first;
+}
+
 static bool
 compute_induction_information(loop_info_state *state)
 {
@@ -313,33 +338,11 @@ compute_induction_information(loop_info_state *state)
          if (is_var_phi(src_var)) {
             nir_phi_instr *src_phi =
                nir_instr_as_phi(src_var->def->parent_instr);
-
-            nir_op alu_op = nir_num_opcodes; /* avoid uninitialized warning */
-            nir_ssa_def *alu_srcs[2] = {0};
-            nir_foreach_phi_src(src2, src_phi) {
-               nir_loop_variable *src_var2 =
-                  get_loop_var(src2->src.ssa, state);
-
-               if (!src_var2->in_if_branch || !is_var_alu(src_var2))
+            nir_alu_instr *src_phi_alu = phi_instr_as_alu(src_phi);
+            if (src_phi_alu) {
+               src_var = get_loop_var(&src_phi_alu->dest.dest.ssa, state);
+               if (!src_var->in_if_branch)
                   break;
-
-               nir_alu_instr *alu =
-                  nir_instr_as_alu(src_var2->def->parent_instr);
-               if (nir_op_infos[alu->op].num_inputs != 2)
-                  break;
-
-               if (alu->src[0].src.ssa == alu_srcs[0] &&
-                   alu->src[1].src.ssa == alu_srcs[1] &&
-                   alu->op == alu_op) {
-                  /* Both branches perform the same calculation so we can use
-                   * one of them to find the induction variable.
-                   */
-                  src_var = src_var2;
-               } else {
-                  alu_srcs[0] = alu->src[0].src.ssa;
-                  alu_srcs[1] = alu->src[1].src.ssa;
-                  alu_op = alu->op;
-               }
             }
          }
 
