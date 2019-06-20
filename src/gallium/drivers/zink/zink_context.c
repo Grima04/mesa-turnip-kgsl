@@ -243,7 +243,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
 }
 
 static void
-zink_destroy_sampler_view(struct pipe_context *pctx,
+zink_sampler_view_destroy(struct pipe_context *pctx,
                           struct pipe_sampler_view *pview)
 {
    struct zink_sampler_view *view = zink_sampler_view(pview);
@@ -1305,7 +1305,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.create_sampler_view = zink_create_sampler_view;
    ctx->base.set_sampler_views = zink_set_sampler_views;
-   ctx->base.sampler_view_destroy = zink_destroy_sampler_view;
+   ctx->base.sampler_view_destroy = zink_sampler_view_destroy;
 
    ctx->base.create_vs_state = zink_create_vs_state;
    ctx->base.bind_vs_state = zink_bind_vs_state;
