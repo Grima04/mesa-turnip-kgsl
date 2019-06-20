@@ -105,7 +105,7 @@ libpanfrost = static_library(
 
 driver_panfrost = declare_dependency(
   compile_args : compile_args_panfrost,
-  link_with : [libpanfrost, libpanfrostwinsys],
+  link_with : [libpanfrost, libpanfrostwinsys, libpanfrost_shared],
 )
 
 files_bifrost = files(
