@@ -1572,18 +1572,13 @@ void
 iris_flush_and_dirty_for_history(struct iris_context *ice,
                                  struct iris_batch *batch,
                                  struct iris_resource *res,
+                                 uint32_t extra_flags,
                                  const char *reason)
 {
    if (res->base.target != PIPE_BUFFER)
       return;
 
-   uint32_t flush = iris_flush_bits_for_history(res);
-
-   /* We've likely used the rendering engine (i.e. BLORP) to write to this
-    * surface.  Flush the render cache so the data actually lands.
-    */
-   if (batch->name != IRIS_BATCH_COMPUTE)
-      flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
+   uint32_t flush = iris_flush_bits_for_history(res) | extra_flags;
 
    iris_emit_pipe_control_flush(batch, reason, flush);
 
