@@ -147,6 +147,8 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                 instructions_emitted = -1;
                 midgard_instruction *pins = ins;
 
+                unsigned constant_count = 0;
+
                 for (;;) {
                         midgard_instruction *ains = pins;
 
@@ -251,33 +253,78 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                         segment[segment_size++] = ains;
 
-                        /* Only one set of embedded constants per
-                         * bundle possible; if we have more, we must
-                         * break the chain early, unfortunately */
+                        /* We try to reuse constants if possible, by adjusting
+                         * the swizzle */
 
-                        if (ains->has_constants) {
-                                if (bundle.has_embedded_constants) {
-                                        /* The blend constant needs to be
-                                         * alone, since it conflicts with
-                                         * everything by definition */
+                        if (ains->has_blend_constant) {
+                                bundle.has_blend_constant = 1;
+                                bundle.has_embedded_constants = 1;
+                        } else if (ains->has_constants) {
+                                /* By definition, blend constants conflict with
+                                 * everything, so if there are already
+                                 * constants we break the bundle *now* */
 
-                                        if (ains->has_blend_constant || bundle.has_blend_constant)
+                                if (bundle.has_blend_constant)
+                                        break;
+
+                                /* For anything but blend constants, we can do
+                                 * proper analysis, however */
+
+                                /* TODO: Mask by which are used */
+                                uint32_t *constants = (uint32_t *) ains->constants;
+                                uint32_t *bundles = (uint32_t *) bundle.constants;
+
+                                uint32_t indices[4] = { 0 };
+                                bool break_bundle = false;
+
+                                for (unsigned i = 0; i < 4; ++i) {
+                                        uint32_t cons = constants[i];
+                                        bool constant_found = false;
+
+                                        /* Search for the constant */
+                                        for (unsigned j = 0; j < constant_count; ++j) {
+                                                if (bundles[j] != cons)
+                                                        continue;
+
+                                                /* We found it, reuse */
+                                                indices[i] = j;
+                                                constant_found = true;
                                                 break;
+                                        }
 
-                                        /* ...but if there are already
-                                         * constants but these are the
-                                         * *same* constants, we let it
-                                         * through */
+                                        if (constant_found)
+                                                continue;
 
-                                        if (memcmp(bundle.constants, ains->constants, sizeof(bundle.constants)))
+                                        /* We didn't find it, so allocate it */
+                                        unsigned idx = constant_count++;
+
+                                        if (idx >= 4) {
+                                                /* Uh-oh, out of space */
+                                                break_bundle = true;
                                                 break;
-                                } else {
-                                        bundle.has_embedded_constants = true;
-                                        memcpy(bundle.constants, ains->constants, sizeof(bundle.constants));
+                                        }
 
-                                        /* If this is a blend shader special constant, track it for patching */
-                                        bundle.has_blend_constant |= ains->has_blend_constant;
+                                        /* We have space, copy it in! */
+                                        bundles[idx] = cons;
+                                        indices[i] = idx;
                                 }
+
+                                if (break_bundle)
+                                        break;
+
+                                /* Cool, we have it in. So use indices as a
+                                 * swizzle */
+
+                                unsigned swizzle = SWIZZLE_FROM_ARRAY(indices);
+                                unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+
+                                if (ains->ssa_args.src0 == r_constant)
+                                        ains->alu.src1 = vector_alu_apply_swizzle(ains->alu.src1, swizzle);
+
+                                if (ains->ssa_args.src1 == r_constant)
+                                        ains->alu.src2 = vector_alu_apply_swizzle(ains->alu.src2, swizzle);
+
+                                bundle.has_embedded_constants = true;
                         }
 
                         if (ains->unit & UNITS_ANY_VECTOR) {
