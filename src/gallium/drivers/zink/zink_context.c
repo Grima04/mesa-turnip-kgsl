@@ -107,6 +107,22 @@ sampler_address_mode(enum pipe_tex_wrap filter)
    unreachable("unexpected wrap");
 }
 
+static VkCompareOp
+compare_op(enum pipe_compare_func op)
+{
+   switch (op) {
+      case PIPE_FUNC_NEVER: return VK_COMPARE_OP_NEVER;
+      case PIPE_FUNC_LESS: return VK_COMPARE_OP_LESS;
+      case PIPE_FUNC_EQUAL: return VK_COMPARE_OP_EQUAL;
+      case PIPE_FUNC_LEQUAL: return VK_COMPARE_OP_LESS_OR_EQUAL;
+      case PIPE_FUNC_GREATER: return VK_COMPARE_OP_GREATER;
+      case PIPE_FUNC_NOTEQUAL: return VK_COMPARE_OP_NOT_EQUAL;
+      case PIPE_FUNC_GEQUAL: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+      case PIPE_FUNC_ALWAYS: return VK_COMPARE_OP_ALWAYS;
+   }
+   unreachable("unexpected compare");
+}
+
 static void *
 zink_create_sampler_state(struct pipe_context *pctx,
                           const struct pipe_sampler_state *state)
@@ -132,7 +148,12 @@ zink_create_sampler_state(struct pipe_context *pctx,
    sci.addressModeV = sampler_address_mode(state->wrap_t);
    sci.addressModeW = sampler_address_mode(state->wrap_r);
    sci.mipLodBias = state->lod_bias;
-   sci.compareOp = VK_COMPARE_OP_NEVER; // TODO
+
+   if (state->compare_mode == PIPE_TEX_COMPARE_NONE)
+      sci.compareOp = VK_COMPARE_OP_NEVER;
+   else
+      sci.compareOp = compare_op(state->compare_func);
+
    sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO
    sci.unnormalizedCoordinates = !state->normalized_coords;
 
