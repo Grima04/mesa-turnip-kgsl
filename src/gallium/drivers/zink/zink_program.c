@@ -25,9 +25,11 @@
 
 #include "zink_compiler.h"
 #include "zink_context.h"
+#include "zink_render_pass.h"
 #include "zink_screen.h"
 
 #include "util/hash_table.h"
+#include "util/set.h"
 #include "util/u_debug.h"
 #include "util/u_memory.h"
 
@@ -130,6 +132,11 @@ zink_create_gfx_program(struct zink_screen *screen,
    if (!prog->layout)
       goto fail;
 
+   prog->render_passes = _mesa_set_create(NULL, _mesa_hash_pointer,
+                                          _mesa_key_pointer_equal);
+   if (!prog->render_passes)
+      goto fail;
+
    return prog;
 
 fail:
@@ -147,6 +154,15 @@ zink_destroy_gfx_program(struct zink_screen *screen,
 
    if (prog->dsl)
       vkDestroyDescriptorSetLayout(screen->dev, prog->dsl, NULL);
+
+   /* unref all used render-passes */
+   if (prog->render_passes) {
+      set_foreach(prog->render_passes, entry) {
+         struct zink_render_pass *pres = (struct zink_render_pass *)entry->key;
+         zink_render_pass_reference(screen, &pres, NULL);
+      }
+      _mesa_set_destroy(prog->render_passes, NULL);
+   }
 
    FREE(prog);
 }
@@ -183,6 +199,20 @@ primitive_topology(enum pipe_prim_type mode)
    }
 }
 
+static void
+reference_render_pass(struct zink_screen *screen,
+                      struct zink_gfx_program *prog,
+                      struct zink_render_pass *render_pass)
+{
+   struct set_entry *entry = _mesa_set_search(prog->render_passes,
+                                              render_pass);
+   if (!entry) {
+      struct zink_render_pass *tmp = NULL;
+      entry = _mesa_set_add(prog->render_passes, render_pass);
+      zink_render_pass_reference(screen, &tmp, render_pass);
+   }
+}
+
 VkPipeline
 zink_get_gfx_pipeline(struct zink_screen *screen,
                       struct zink_gfx_program *prog,
@@ -210,6 +240,8 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 
       entry = _mesa_hash_table_insert(prog->pipelines[mode], &pc_entry->state, pc_entry);
       assert(entry);
+
+      reference_render_pass(screen, prog, state->render_pass);
    }
 
    return ((struct pipeline_cache_entry *)(entry->data))->pipeline;

@@ -32,11 +32,15 @@ struct zink_screen;
 struct zink_shader;
 struct zink_gfx_pipeline_state;
 
+struct hash_table;
+struct set;
+
 struct zink_gfx_program {
    struct zink_shader *stages[PIPE_SHADER_TYPES - 1]; // compute stage doesn't belong here
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;
    struct hash_table *pipelines[PIPE_PRIM_TRIANGLE_FAN + 1];
+   struct set *render_passes;
 };
 
 struct zink_gfx_program *
