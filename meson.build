@@ -49,7 +49,6 @@ with_vulkan_icd_dir = get_option('vulkan-icd-dir')
 with_tests = get_option('build-tests')
 with_valgrind = get_option('valgrind')
 with_libunwind = get_option('libunwind')
-with_asm = get_option('asm')
 with_glx_read_only_text = get_option('glx-read-only-text')
 with_glx_direct = get_option('glx-direct')
 with_osmesa = get_option('osmesa')
@@ -972,68 +971,41 @@ endif
 
 # TODO: shared/static? Is this even worth doing?
 
-# When cross compiling we generally need to turn off the use of assembly,
-# because mesa's assembly relies on building an executable for the host system,
-# and running it to get information about struct sizes. There is at least one
-# case of cross compiling where we can use asm, and that's x86_64 -> x86 when
-# host OS == build OS, since in that case the build machine can run the host's
-# binaries.
-if with_asm and meson.is_cross_build()
-  if build_machine.system() != host_machine.system()
-    # TODO: It may be possible to do this with an exe_wrapper (like wine).
-    message('Cross compiling from one OS to another, disabling assembly.')
-    with_asm = false
-  elif not (build_machine.cpu_family().startswith('x86') and host_machine.cpu_family() == 'x86')
-    # FIXME: Gentoo always sets -m32 for x86_64 -> x86 builds, resulting in an
-    # x86 -> x86 cross compile. We use startswith rather than == to handle this
-    # case.
-    # TODO: There may be other cases where the 64 bit version of the
-    # architecture can run 32 bit binaries (aarch64 and armv7 for example)
-    message('''
-      Cross compiling to different architectures, and the host cannot run
-      the build machine's binaries. Disabling assembly.
-    ''')
-    with_asm = false
-  endif
-endif
-
 with_asm_arch = ''
-if with_asm
-  if host_machine.cpu_family() == 'x86'
-    if system_has_kms_drm or host_machine.system() == 'gnu'
-      with_asm_arch = 'x86'
-      pre_args += ['-DUSE_X86_ASM', '-DUSE_MMX_ASM', '-DUSE_3DNOW_ASM',
-                   '-DUSE_SSE_ASM']
+if host_machine.cpu_family() == 'x86'
+  if system_has_kms_drm or host_machine.system() == 'gnu'
+    with_asm_arch = 'x86'
+    pre_args += ['-DUSE_X86_ASM', '-DUSE_MMX_ASM', '-DUSE_3DNOW_ASM',
+                 '-DUSE_SSE_ASM']
 
-      if with_glx_read_only_text
-         pre_args += ['-DGLX_X86_READONLY_TEXT']
-      endif
+    if with_glx_read_only_text
+      pre_args += ['-DGLX_X86_READONLY_TEXT']
     endif
-  elif host_machine.cpu_family() == 'x86_64'
-    if system_has_kms_drm
-      with_asm_arch = 'x86_64'
-      pre_args += ['-DUSE_X86_64_ASM']
-    endif
-  elif host_machine.cpu_family() == 'arm'
-    if system_has_kms_drm
-      with_asm_arch = 'arm'
-      pre_args += ['-DUSE_ARM_ASM']
-    endif
-  elif host_machine.cpu_family() == 'aarch64'
-    if system_has_kms_drm
-      with_asm_arch = 'aarch64'
-      pre_args += ['-DUSE_AARCH64_ASM']
-    endif
-  elif host_machine.cpu_family() == 'sparc64'
-    if system_has_kms_drm
-      with_asm_arch = 'sparc'
-      pre_args += ['-DUSE_SPARC_ASM']
-    endif
-  elif host_machine.cpu_family().startswith('ppc64') and host_machine.endian() == 'little'
-    if system_has_kms_drm
-      with_asm_arch = 'ppc64le'
-      pre_args += ['-DUSE_PPC64LE_ASM']
-    endif
+  endif
+elif host_machine.cpu_family() == 'x86_64'
+  if system_has_kms_drm
+    with_asm_arch = 'x86_64'
+    pre_args += ['-DUSE_X86_64_ASM']
+  endif
+elif host_machine.cpu_family() == 'arm'
+  if system_has_kms_drm
+    with_asm_arch = 'arm'
+    pre_args += ['-DUSE_ARM_ASM']
+  endif
+elif host_machine.cpu_family() == 'aarch64'
+  if system_has_kms_drm
+    with_asm_arch = 'aarch64'
+    pre_args += ['-DUSE_AARCH64_ASM']
+  endif
+elif host_machine.cpu_family() == 'sparc64'
+  if system_has_kms_drm
+    with_asm_arch = 'sparc'
+    pre_args += ['-DUSE_SPARC_ASM']
+  endif
+elif host_machine.cpu_family().startswith('ppc64') and host_machine.endian() == 'little'
+  if system_has_kms_drm
+    with_asm_arch = 'ppc64le'
+    pre_args += ['-DUSE_PPC64LE_ASM']
   endif
 endif
 
