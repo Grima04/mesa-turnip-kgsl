@@ -361,6 +361,7 @@ DRI_CONF_OPT_END
 #define DRI_CONF_V3D_NONMSAA_TEXTURE_SIZE_LIMIT(def) \
 DRI_CONF_OPT_BEGIN_B(v3d_nonmsaa_texture_size_limit, def) \
         DRI_CONF_DESC(en,"Report the non-MSAA-only texture size limit") \
+DRI_CONF_OPT_END
 /**
  * \brief virgl specific configuration options
  */
