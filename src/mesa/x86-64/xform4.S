@@ -24,7 +24,8 @@
 
 #ifdef USE_X86_64_ASM
 
-#include "matypes.h"
+#define MATH_ASM_PTR_SIZE 8
+#include "math/m_vector_asm.h"
 
 .text
 
