@@ -463,7 +463,7 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 
 			return true;
 		}
-	} else if (is_same_type_mov(src) &&
+	} else if ((is_same_type_mov(src) || is_const_mov(src)) &&
 			/* cannot collapse const/immed/etc into meta instrs: */
 			!is_meta(instr)) {
 		/* immed/const/etc cases, which require some special handling: */

@@ -695,6 +695,25 @@ static inline bool is_same_type_mov(struct ir3_instruction *instr)
 	return true;
 }
 
+/* A move from const, which changes size but not type, can also be
+ * folded into dest instruction in some cases.
+ */
+static inline bool is_const_mov(struct ir3_instruction *instr)
+{
+	if (instr->opc != OPC_MOV)
+		return false;
+
+	if (!(instr->regs[1]->flags & IR3_REG_CONST))
+		return false;
+
+	type_t src_type = instr->cat1.src_type;
+	type_t dst_type = instr->cat1.dst_type;
+
+	return (type_float(src_type) && type_float(dst_type)) ||
+		(type_uint(src_type) && type_uint(dst_type)) ||
+		(type_sint(src_type) && type_sint(dst_type));
+}
+
 static inline bool is_alu(struct ir3_instruction *instr)
 {
 	return (1 <= opc_cat(instr->opc)) && (opc_cat(instr->opc) <= 3);
