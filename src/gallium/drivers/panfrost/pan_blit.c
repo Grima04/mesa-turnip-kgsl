@@ -87,14 +87,10 @@ panfrost_blit(struct pipe_context *pipe,
          * u_blitter. We could do a little better by culling
          * vertex jobs, though. */
 
-        /* TODO: Implement blitting. Commented out because u_blitter is not
-         * fully integrated and creates bugs in other places. */
-#if 0
         if (panfrost_u_blitter_blit(pipe, info))
                 return;
 
         fprintf(stderr, "Unhandled blit");
-#endif
 
         return;
 }
