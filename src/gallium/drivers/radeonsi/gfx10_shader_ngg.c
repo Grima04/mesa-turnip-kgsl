@@ -647,6 +647,9 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	/* Update query buffer */
 	/* TODO: this won't catch 96-bit clear_buffer via transform feedback. */
 	if (!info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS]) {
+		tmp = si_unpack_param(ctx, ctx->param_vs_state_bits, 6, 1);
+		tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+		ac_build_ifcc(&ctx->ac, tmp, 5029); /* if (STREAMOUT_QUERY_ENABLED) */
 		tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5030);
 		tmp = LLVMBuildICmp(builder, LLVMIntULE, ac_get_thread_id(&ctx->ac),
@@ -673,6 +676,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		}
 		ac_build_endif(&ctx->ac, 5031);
 		ac_build_endif(&ctx->ac, 5030);
+		ac_build_endif(&ctx->ac, 5029);
 	}
 
 	/* Export primitive data to the index buffer. Format is:
@@ -1044,6 +1048,9 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	}
 
 	/* Write shader query data. */
+	tmp = si_unpack_param(ctx, ctx->param_vs_state_bits, 6, 1);
+	tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
+	ac_build_ifcc(&ctx->ac, tmp, 5109); /* if (STREAMOUT_QUERY_ENABLED) */
 	unsigned num_query_comps = sel->so.num_outputs ? 8 : 4;
 	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid,
 			    LLVMConstInt(ctx->i32, num_query_comps, false), "");
@@ -1072,6 +1079,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 				   ctx->i32, args, 5, 0);
 	}
 	ac_build_endif(&ctx->ac, 5110);
+	ac_build_endif(&ctx->ac, 5109);
 
 	/* TODO: culling */
 

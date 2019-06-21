@@ -249,6 +249,8 @@ enum {
 #define C_VS_STATE_OUTPRIM			0xFFFFFFF3
 #define S_VS_STATE_PROVOKING_VTX_INDEX(x)	(((unsigned)(x) & 0x3) << 4)
 #define C_VS_STATE_PROVOKING_VTX_INDEX		0xFFFFFFCF
+#define S_VS_STATE_STREAMOUT_QUERY_ENABLED(x)	(((unsigned)(x) & 0x1) << 6)
+#define C_VS_STATE_STREAMOUT_QUERY_ENABLED	0xFFFFFFBF
 #define S_VS_STATE_LS_OUT_PATCH_SIZE(x)		(((unsigned)(x) & 0x1FFF) << 8)
 #define C_VS_STATE_LS_OUT_PATCH_SIZE		0xFFE000FF
 #define S_VS_STATE_LS_OUT_VERTEX_SIZE(x)	(((unsigned)(x) & 0xFF) << 24)
