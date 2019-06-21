@@ -1030,6 +1030,26 @@ panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage)
         return 32 - __builtin_clz(mask);
 }
 
+/* Fixes up a shader state with current state, returning a GPU address to the
+ * patched shader */
+
+static mali_ptr
+panfrost_patch_shader_state(
+                struct panfrost_context *ctx,
+                struct panfrost_shader_state *ss,
+                enum pipe_shader_type stage)
+{
+        ss->tripipe->texture_count = ctx->sampler_view_count[stage];
+        ss->tripipe->sampler_count = ctx->sampler_count[stage];
+
+        ss->tripipe->midgard1.flags = 0x220;
+
+        unsigned ubo_count = panfrost_ubo_count(ctx, stage);
+        ss->tripipe->midgard1.uniform_buffer_count = ubo_count;
+
+        return ss->tripipe_gpu;
+}
+
 /* Go through dirty flags and actualise them in the cmdstream. */
 
 void
@@ -1063,16 +1083,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
 
-                /* Late shader descriptor assignments */
-
-                vs->tripipe->texture_count = ctx->sampler_view_count[PIPE_SHADER_VERTEX];
-                vs->tripipe->sampler_count = ctx->sampler_count[PIPE_SHADER_VERTEX];
-
-                /* Who knows */
-                vs->tripipe->midgard1.flags = 0x220;
-                vs->tripipe->midgard1.uniform_buffer_count = 1;
-
-                ctx->payload_vertex.postfix._shader_upper = vs->tripipe_gpu >> 4;
+                ctx->payload_vertex.postfix._shader_upper =
+                        panfrost_patch_shader_state(ctx, vs, PIPE_SHADER_VERTEX) >> 4;
         }
 
         if (ctx->dirty & (PAN_DIRTY_RASTERIZER | PAN_DIRTY_VS)) {
@@ -1094,13 +1106,20 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 assert(ctx->fs);
                 struct panfrost_shader_state *variant = &ctx->fs->variants[ctx->fs->active_variant];
 
+                panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT);
+
 #define COPY(name) ctx->fragment_shader_core.name = variant->tripipe->name
 
                 COPY(shader);
                 COPY(attribute_count);
                 COPY(varying_count);
+                COPY(texture_count);
+                COPY(sampler_count);
+                COPY(sampler_count);
                 COPY(midgard1.uniform_count);
+                COPY(midgard1.uniform_buffer_count);
                 COPY(midgard1.work_count);
+                COPY(midgard1.flags);
                 COPY(midgard1.unknown2);
 
 #undef COPY
@@ -1109,11 +1128,14 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 if (ctx->blend->has_blend_shader)
                         ctx->fragment_shader_core.midgard1.work_count = /*MAX2(ctx->fragment_shader_core.midgard1.work_count, ctx->blend->blend_work_count)*/16;
 
-                unsigned ubo_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
-                ctx->fragment_shader_core.midgard1.uniform_buffer_count = ubo_count;
-
                 /* Set late due to depending on render state */
-                unsigned flags = MALI_EARLY_Z | 0x20 | 0x200;
+                unsigned flags = ctx->fragment_shader_core.midgard1.flags;
+
+                /* Depending on whether it's legal to in the given shader, we
+                 * try to enable early-z testing (or forward-pixel kill?) */
+
+                if (!variant->can_discard)
+                        flags |= MALI_EARLY_Z;
 
                 /* Any time texturing is used, derivatives are implicitly
                  * calculated, so we need to enable helper invocations */
@@ -1122,10 +1144,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         flags |= MALI_HELPER_INVOCATIONS;
 
                 ctx->fragment_shader_core.midgard1.flags = flags;
-
-                /* Assign texture/sample count right before upload */
-                ctx->fragment_shader_core.texture_count = ctx->sampler_view_count[PIPE_SHADER_FRAGMENT];
-                ctx->fragment_shader_core.sampler_count = ctx->sampler_count[PIPE_SHADER_FRAGMENT];
 
                 /* Assign the stencil refs late */
                 ctx->fragment_shader_core.stencil_front.ref = ctx->stencil_ref.ref_value[0];
@@ -1140,7 +1158,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 if (variant->can_discard) {
                         ctx->fragment_shader_core.unknown2_3 |= MALI_CAN_DISCARD;
-                        ctx->fragment_shader_core.midgard1.flags &= ~MALI_EARLY_Z;
                         ctx->fragment_shader_core.midgard1.flags |= 0x400;
                 }
 
