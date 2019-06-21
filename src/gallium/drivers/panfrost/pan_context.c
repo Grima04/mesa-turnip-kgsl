@@ -2313,7 +2313,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         bool is_scanout = panfrost_is_scanout(ctx);
         bool has_draws = job->last_job.gpu;
 
-        if (!ctx->blitter->running && (!is_scanout || has_draws)) {
+        if (!ctx->wallpaper_batch && (!is_scanout || has_draws)) {
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
         }
 
