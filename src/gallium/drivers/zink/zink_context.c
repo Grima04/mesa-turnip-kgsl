@@ -763,6 +763,10 @@ zink_clear(struct pipe_context *pctx,
    if (ctx->num_scissors) {
       for (unsigned i = 0 ; i < ctx->num_scissors; ++i) {
          rects[i].rect = ctx->scissors[i];
+         rects[i].rect.extent.width = MIN2(rects[i].rect.extent.width,
+                                           fb->width);
+         rects[i].rect.extent.height = MIN2(rects[i].rect.extent.height,
+                                            fb->height);
          rects[i].baseArrayLayer = 0;
          rects[i].layerCount = num_layers;
       }
