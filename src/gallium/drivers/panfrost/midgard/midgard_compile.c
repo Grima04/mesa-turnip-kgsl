@@ -86,6 +86,7 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 #define SWIZZLE_XYXX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_X)
 #define SWIZZLE_XYZX SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X)
 #define SWIZZLE_XYZW SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_W)
+#define SWIZZLE_XYZZ SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_Z)
 #define SWIZZLE_XYXZ SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_X, COMPONENT_Z)
 #define SWIZZLE_WWWW SWIZZLE(COMPONENT_W, COMPONENT_W, COMPONENT_W, COMPONENT_W)
 
@@ -1505,12 +1506,32 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 ins.alu.mask = expand_writemask(mask_of(nr_comp));
                                 emit_mir_instruction(ctx, ins);
 
-                                /* To the hardware, z is depth, w is array
-                                 * layer. To NIR, z is array layer for a 2D
-                                 * array */
+                                if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
+                                        /* Texel fetch opcodes care about the
+                                         * values of z and w, so we actually
+                                         * need to spill into a second register
+                                         * for a texel fetch with register bias
+                                         * (for non-2D). TODO: Implement that
+                                         */
 
-                                if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D)
-                                        position_swizzle = SWIZZLE_XYXZ;
+                                        assert(instr->sampler_dim == GLSL_SAMPLER_DIM_2D);
+
+                                        midgard_instruction zero = v_mov(index, alu_src, reg);
+                                        zero.ssa_args.inline_constant = true;
+                                        zero.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
+                                        zero.has_constants = true;
+                                        zero.alu.mask = ~ins.alu.mask;
+                                        emit_mir_instruction(ctx, zero);
+
+                                        position_swizzle = SWIZZLE_XYZZ;
+                                } else {
+                                        /* To the hardware, z is depth, w is array
+                                         * layer. To NIR, z is array layer for a 2D
+                                         * array */
+
+                                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D)
+                                                position_swizzle = SWIZZLE_XYXZ;
+                                }
                         }
 
                         break;
@@ -1564,7 +1585,12 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         /* Setup bias/LOD if necessary. Only register mode support right now.
          * TODO: Immediate mode for performance gains */
 
-        if (instr->op == nir_texop_txb || instr->op == nir_texop_txl) {
+        bool needs_lod =
+                instr->op == nir_texop_txb ||
+                instr->op == nir_texop_txl ||
+                instr->op == nir_texop_txf;
+
+        if (needs_lod) {
                 ins.texture.lod_register = true;
 
                 midgard_tex_register_select sel = {
@@ -1606,6 +1632,9 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 break;
         case nir_texop_txl:
                 emit_texop_native(ctx, instr, TEXTURE_OP_LOD);
+                break;
+        case nir_texop_txf:
+                emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
                 break;
         case nir_texop_txs:
                 emit_sysval_read(ctx, &instr->instr);
