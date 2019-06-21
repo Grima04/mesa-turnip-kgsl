@@ -1906,6 +1906,22 @@ panfrost_create_sampler_state(
                 .unknown2 = 1,
         };
 
+        /* If necessary, we disable mipmapping in the sampler descriptor by
+         * clamping the LOD as tight as possible (from 0 to epsilon,
+         * essentially -- remember these are fixed point numbers, so
+         * epsilon=1/256) */
+
+        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
+                sampler_descriptor.max_lod = sampler_descriptor.min_lod;
+
+        /* Enforce that there is something in the middle by adding epsilon*/
+
+        if (sampler_descriptor.min_lod == sampler_descriptor.max_lod)
+                sampler_descriptor.max_lod++;
+
+        /* Sanity check */
+        assert(sampler_descriptor.max_lod > sampler_descriptor.min_lod);
+
         so->hw = sampler_descriptor;
 
         return so;
