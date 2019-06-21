@@ -212,7 +212,7 @@ blorp_vf_invalidate_for_vb_48b_transitions(struct blorp_batch *blorp_batch,
       struct iris_bo *bo = addrs[i].buffer;
       uint16_t high_bits = bo ? bo->gtt_offset >> 32u : 0;
 
-      if (bo && high_bits != ice->state.last_vbo_high_bits[i]) {
+      if (high_bits != ice->state.last_vbo_high_bits[i]) {
          need_invalidate = true;
          ice->state.last_vbo_high_bits[i] = high_bits;
       }
