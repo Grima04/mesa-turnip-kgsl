@@ -121,7 +121,7 @@ copy_constant_to_storage(union gl_constant_value *storage,
    unsigned dmul = glsl_base_type_is_64bit(base_type) ? 2 : 1;
    int i = 0;
 
-   if (n_columns > 0) {
+   if (n_columns > 1) {
       const struct glsl_type *column_type = glsl_get_column_type(type);
       for (unsigned int column = 0; column < n_columns; column++) {
          copy_constant_to_storage(&storage[i], val->elements[column],
