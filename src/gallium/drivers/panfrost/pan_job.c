@@ -156,8 +156,6 @@ panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
 void
 panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
 {
-        struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
         int ret;
 
         panfrost_scoreboard_link_batch(job);
