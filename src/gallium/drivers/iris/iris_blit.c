@@ -276,21 +276,42 @@ iris_blorp_surf_for_resource(struct iris_vtable *vtbl,
    // XXX: ASTC
 }
 
-static void
-tex_cache_flush_hack(struct iris_batch *batch)
+static bool
+is_astc(enum isl_format format)
 {
-   /* The hardware seems to have issues with having a two different
-    * format views of the same texture in the sampler cache at the
-    * same time.  It's unclear exactly what the issue is but it hurts
-    * blits and copies particularly badly because they often reinterpret
-    * formats.  We badly need better understanding of the sampler issue
-    * and a better fix but this works for now and fixes CTS tests.
+   return format != ISL_FORMAT_UNSUPPORTED &&
+          isl_format_get_layout(format)->txc == ISL_TXC_ASTC;
+}
+
+static void
+tex_cache_flush_hack(struct iris_batch *batch,
+                     enum isl_format view_format,
+                     enum isl_format surf_format)
+{
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+
+   /* The WaSamplerCacheFlushBetweenRedescribedSurfaceReads workaround says:
+    *
+    *    "Currently Sampler assumes that a surface would not have two
+    *     different format associate with it.  It will not properly cache
+    *     the different views in the MT cache, causing a data corruption."
+    *
+    * We may need to handle this for texture views in general someday, but
+    * for now we handle it here, as it hurts copies and blits particularly
+    * badly because they ofter reinterpret formats.
     *
     * If the BO hasn't been referenced yet this batch, we assume that the
     * texture cache doesn't contain any relevant data nor need flushing.
     *
-    * TODO: Remove this hack!
+    * Icelake (Gen11+) claims to fix this issue, but seems to still have
+    * issues with ASTC formats.
     */
+   bool need_flush = devinfo->gen >= 11 ?
+                     is_astc(surf_format) != is_astc(view_format) :
+                     view_format != surf_format;
+   if (!need_flush)
+      return;
+
    const char *reason =
       "workaround: WaSamplerCacheFlushBetweenRedescribedSurfaceReads";
 
@@ -428,10 +449,8 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       filter = BLORP_FILTER_NEAREST;
    }
 
-   bool format_mismatch = src_fmt.fmt != src_res->surf.format;
-
-   if (format_mismatch && iris_batch_references(batch, src_res->bo))
-      tex_cache_flush_hack(batch);
+   if (iris_batch_references(batch, src_res->bo))
+      tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
 
    if (dst_res->base.target == PIPE_BUFFER)
       util_range_add(&dst_res->valid_buffer_range, dst_x0, dst_x1);
@@ -487,8 +506,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
 
    blorp_batch_finish(&blorp_batch);
 
-   if (format_mismatch)
-      tex_cache_flush_hack(batch);
+   tex_cache_flush_hack(batch, src_fmt.fmt, src_res->surf.format);
 
    iris_resource_finish_write(ice, dst_res, info->dst.level, info->dst.box.z,
                               info->dst.box.depth, dst_aux_usage);
@@ -556,7 +574,7 @@ iris_copy_region(struct blorp_context *blorp,
                                 &dst_clear_supported);
 
    if (iris_batch_references(batch, src_res->bo))
-      tex_cache_flush_hack(batch);
+      tex_cache_flush_hack(batch, ISL_FORMAT_UNSUPPORTED, src_res->surf.format);
 
    if (dst->target == PIPE_BUFFER)
       util_range_add(&dst_res->valid_buffer_range, dstx, dstx + src_box->width);
@@ -607,7 +625,7 @@ iris_copy_region(struct blorp_context *blorp,
                                  src_box->depth, dst_aux_usage);
    }
 
-   tex_cache_flush_hack(batch);
+   tex_cache_flush_hack(batch, ISL_FORMAT_UNSUPPORTED, src_res->surf.format);
 }
 
 static struct iris_batch *
