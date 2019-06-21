@@ -143,6 +143,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER:
                 return 1;
 
+        case PIPE_CAP_GENERATE_MIPMAP:
+                return 1;
+
         case PIPE_CAP_DEPTH_CLIP_DISABLE:
                 return 1;
 

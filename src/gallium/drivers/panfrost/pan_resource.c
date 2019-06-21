@@ -39,6 +39,7 @@
 #include "util/u_surface.h"
 #include "util/u_transfer.h"
 #include "util/u_transfer_helper.h"
+#include "util/u_gen_mipmap.h"
 
 #include "pan_context.h"
 #include "pan_screen.h"
@@ -663,6 +664,56 @@ panfrost_resource_get_internal_format(struct pipe_resource *prsrc)
         return prsrc->format;
 }
 
+static boolean
+panfrost_generate_mipmap(
+                struct pipe_context *pctx,
+                struct pipe_resource *prsrc,
+                enum pipe_format format,
+                unsigned base_level,
+                unsigned last_level,
+                unsigned first_layer,
+                unsigned last_layer)
+{
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_resource *rsrc = pan_resource(prsrc);
+
+        /* Generating a mipmap invalidates the written levels, so make that
+         * explicit so we don't try to wallpaper them back and end up with
+         * u_blitter recursion */
+
+        assert(rsrc->bo);
+        for (unsigned l = base_level + 1; l <= last_level; ++l)
+                rsrc->bo->slices[l].initialized = false;
+
+        /* Beyond that, we just delegate the hard stuff. We're careful to
+         * include flushes on both ends to make sure the data is really valid.
+         * We could be doing a lot better perf-wise, especially once we have
+         * reorder-type optimizations in place. But for now prioritize
+         * correctness. */
+
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        bool has_draws = job->last_job.gpu;
+
+        if (has_draws)
+                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+
+        /* We've flushed the original buffer if needed, now trigger a blit */
+
+        bool blit_res = util_gen_mipmap(
+                        pctx, prsrc, format, 
+                        base_level, last_level,
+                        first_layer, last_layer,
+                        PIPE_TEX_FILTER_LINEAR);
+
+        /* If the blit was successful, flush once more. If it wasn't, well, let
+         * the state tracker deal with it. */
+
+        if (blit_res)
+                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+
+        return blit_res;
+}
+
 static void
 panfrost_resource_set_stencil(struct pipe_resource *prsrc,
                               struct pipe_resource *stencil)
@@ -730,6 +781,7 @@ panfrost_resource_context_init(struct pipe_context *pctx)
         pctx->surface_destroy = panfrost_surface_destroy;
         pctx->resource_copy_region = util_resource_copy_region;
         pctx->blit = panfrost_blit;
+        pctx->generate_mipmap = panfrost_generate_mipmap;
         pctx->flush_resource = panfrost_flush_resource;
         pctx->invalidate_resource = panfrost_invalidate_resource;
         pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
