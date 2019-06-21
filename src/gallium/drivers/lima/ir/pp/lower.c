@@ -414,6 +414,19 @@ static bool ppir_lower_abs(ppir_block *block, ppir_node *node)
    return true;
 }
 
+static bool ppir_lower_neg(ppir_block *block, ppir_node *node)
+{
+   /* Turn it into a mov and set the negate modifier */
+   ppir_alu_node *alu = ppir_node_to_alu(node);
+
+   assert(alu->num_src == 1);
+
+   alu->src[0].negate = !alu->src[0].negate;
+   node->op = ppir_op_mov;
+
+   return true;
+}
+
 static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
 {
    ppir_branch_node *branch = ppir_node_to_branch(node);
@@ -450,6 +463,7 @@ static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
 
 static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_abs] = ppir_lower_abs,
+   [ppir_op_neg] = ppir_lower_neg,
    [ppir_op_const] = ppir_lower_const,
    [ppir_op_dot2] = ppir_lower_dot,
    [ppir_op_dot3] = ppir_lower_dot,
