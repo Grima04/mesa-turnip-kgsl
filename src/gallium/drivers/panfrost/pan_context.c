@@ -2260,7 +2260,7 @@ panfrost_create_sampler_view(
                 .swizzle = panfrost_translate_swizzle_4(user_swizzle)
         };
 
-        //texture_descriptor.nr_mipmap_levels = last_level - first_level;
+        texture_descriptor.nr_mipmap_levels = last_level - first_level;
 
         so->hw = texture_descriptor;
 
