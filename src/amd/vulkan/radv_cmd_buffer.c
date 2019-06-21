@@ -5716,3 +5716,38 @@ void radv_CmdDrawIndirectByteCountEXT(
 
 	radv_draw(cmd_buffer, &info);
 }
+
+/* VK_AMD_buffer_marker */
+void radv_CmdWriteBufferMarkerAMD(
+    VkCommandBuffer                             commandBuffer,
+    VkPipelineStageFlagBits                     pipelineStage,
+    VkBuffer                                    dstBuffer,
+    VkDeviceSize                                dstOffset,
+    uint32_t                                    marker)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	RADV_FROM_HANDLE(radv_buffer, buffer, dstBuffer);
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	uint64_t va = radv_buffer_get_va(buffer->bo) + dstOffset;
+
+	si_emit_cache_flush(cmd_buffer);
+
+	if (!(pipelineStage & ~VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)) {
+		radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+		radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_IMM) |
+				COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+				COPY_DATA_WR_CONFIRM);
+		radeon_emit(cs, marker);
+		radeon_emit(cs, 0);
+		radeon_emit(cs, va);
+		radeon_emit(cs, va >> 32);
+	} else {
+		si_cs_emit_write_event_eop(cs,
+					   cmd_buffer->device->physical_device->rad_info.chip_class,
+					   radv_cmd_buffer_uses_mec(cmd_buffer),
+					   V_028A90_BOTTOM_OF_PIPE_TS, 0,
+					   EOP_DATA_SEL_VALUE_32BIT,
+					   va, marker,
+					   cmd_buffer->gfx9_eop_bug_va);
+	}
+}
