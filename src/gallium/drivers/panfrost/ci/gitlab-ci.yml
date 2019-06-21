@@ -221,6 +221,9 @@ build:arm64:
       FLIP_FLOPS="$FLIP_FLOPS
         dEQP-GLES2.functional.fragment_ops.blend.*
         dEQP-GLES2.functional.shaders.builtin_variable.max_draw_buffers_vertex
+        dEQP-GLES2.functional.shaders.matrix.div.const_lowp_mat2_mat2_vertex
+        dEQP-GLES2.functional.shaders.operator.unary_operator.pre_increment_effect.highp_ivec4_vertex
+        dEQP-GLES2.functional.shaders.texture_functions.vertex.texture2dprojlod_vec3
         "
 
     - for test in $FLIP_FLOPS; do sed -i "/$test/d" results/expected-failures.txt results/results-$lava_job_id.csv; done
@@ -231,7 +234,7 @@ build:arm64:
     - 'echo "Passed: $PASSED ($(expr $PASSED \* 100 / $TOTAL)%)"'
     - 'echo "Failed: $FAILED ($(expr $FAILED \* 100 / $TOTAL)%)"'
     - 'echo "Total: $TOTAL"'
-    - 'if [ $TOTAL != 16372 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
+    - 'if [ $TOTAL != 16374 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
 
     - sed '/,pass/d' results/results-$lava_job_id.csv | sed 's/,fail//' > results/failures-$lava_job_id.txt
     - diff -u results/expected-failures.txt results/failures-$lava_job_id.txt
