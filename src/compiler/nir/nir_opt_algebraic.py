@@ -50,11 +50,12 @@ e = 'e'
 # however, be used for backend-requested lowering operations as those need to
 # happen regardless of precision.
 #
-# Variable names are specified as "[#]name[@type][(cond)]" where "#" inicates
-# that the given variable will only match constants and the type indicates that
-# the given variable will only match values from ALU instructions with the
-# given output type, and (cond) specifies an additional condition function
-# (see nir_search_helpers.h).
+# Variable names are specified as "[#]name[@type][(cond)][.swiz]" where:
+# "#" indicates that the given variable will only match constants,
+# type indicates that the given variable will only match values from ALU
+#    instructions with the given output type,
+# (cond) specifies an additional condition function (see nir_search_helpers.h),
+# swiz is a swizzle applied to the variable (only in the <replace> expression)
 #
 # For constants, you have to be careful to make sure that it is the right
 # type because python is unaware of the source and destination types of the
