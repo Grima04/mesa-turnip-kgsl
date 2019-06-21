@@ -427,6 +427,20 @@ static bool ppir_lower_neg(ppir_block *block, ppir_node *node)
    return true;
 }
 
+static bool ppir_lower_sat(ppir_block *block, ppir_node *node)
+{
+   /* Turn it into a mov with the saturate output modifier */
+   ppir_alu_node *alu = ppir_node_to_alu(node);
+
+   assert(alu->num_src == 1);
+
+   ppir_dest *move_dest = &alu->dest;
+   move_dest->modifier = ppir_outmod_clamp_fraction;
+   node->op = ppir_op_mov;
+
+   return true;
+}
+
 static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
 {
    ppir_branch_node *branch = ppir_node_to_branch(node);
@@ -480,6 +494,7 @@ static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_load_texture] = ppir_lower_texture,
    [ppir_op_select] = ppir_lower_select,
    [ppir_op_trunc] = ppir_lower_trunc,
+   [ppir_op_sat] = ppir_lower_sat,
    [ppir_op_branch] = ppir_lower_branch,
 };
 
