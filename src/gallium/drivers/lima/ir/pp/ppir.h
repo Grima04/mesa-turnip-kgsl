@@ -32,6 +32,7 @@
 
 typedef enum {
    ppir_op_mov,
+   ppir_op_abs,
    ppir_op_add,
 
    ppir_op_ddx,
