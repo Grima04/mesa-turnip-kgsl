@@ -295,6 +295,9 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
 
         bool should_tile = is_streaming && is_texture && is_2d;
 
+        /* Depth/stencil can't be tiled, only linear or AFBC */
+        should_tile &= !(template->bind & PIPE_BIND_DEPTH_STENCIL);
+
         /* Set the layout appropriately */
         bo->layout = should_tile ? PAN_TILED : PAN_LINEAR;
 
