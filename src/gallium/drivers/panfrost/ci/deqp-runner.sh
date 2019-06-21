@@ -46,8 +46,8 @@ while [ -s /tmp/case-list.txt ]; do
 		sed -i "0,/^$crashed_test$/d" /tmp/case-list.txt
 
 		# So LAVA knows what happened
-		echo "Test case '$crashed_test'.."
-		echo "  Crash"
+		echo "Test case '$crashed_test'..
+                         Crash"
 	else
 		# Consume a whole batch
 	    sed -i '1,'$BATCH_SIZE'd' /tmp/case-list.txt
