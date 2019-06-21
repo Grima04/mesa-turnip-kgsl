@@ -655,6 +655,9 @@ virgl_resource_realloc(struct virgl_context *vctx, struct virgl_resource *res)
    vs->vws->resource_reference(vs->vws, &res->hw_res, NULL);
    res->hw_res = hw_res;
 
+   /* We can safely clear the range here, since it will be repopulated in the
+    * following rebind operation, according to the active buffer binds.
+    */
    util_range_set_empty(&res->valid_buffer_range);
 
    /* count toward the staging resource size limit */

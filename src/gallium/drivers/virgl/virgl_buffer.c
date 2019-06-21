@@ -78,6 +78,27 @@ static void *virgl_buffer_transfer_map(struct pipe_context *ctx,
       return NULL;
    }
 
+   /* For the checks below to be able to use 'usage', we assume that
+    * transfer preparation doesn't affect the usage.
+    */
+   assert(usage == trans->base.usage);
+
+   /* If we are doing a whole resource discard with a hw_res map, the buffer
+    * storage can now be considered unused and we don't care about previous
+    * contents.  We can thus mark the storage as uninitialized, but only if the
+    * buffer is not host writable (in which case we can't clear the valid
+    * range, since that would result in missed readbacks in future transfers).
+    * We only do this for VIRGL_TRANSFER_MAP_HW_RES, since for
+    * VIRGL_TRANSFER_MAP_REALLOC we already take care of the buffer range when
+    * reallocating and rebinding, and VIRGL_TRANSFER_MAP_STAGING is not
+    * currently used for whole resource discards.
+    */
+   if (map_type == VIRGL_TRANSFER_MAP_HW_RES &&
+       (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) &&
+       (vbuf->clean_mask & 1)) {
+      util_range_set_empty(&vbuf->valid_buffer_range);
+   }
+
    if (usage & PIPE_TRANSFER_WRITE)
        util_range_add(&vbuf->valid_buffer_range, box->x, box->x + box->width);
 
