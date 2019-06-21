@@ -35,8 +35,6 @@
 extern "C" {
 #endif
 
-/* Prior to C11 the following may trigger a typedef redeclaration warning */
-typedef struct amdgpu_device *amdgpu_device_handle;
 struct amdgpu_gpu_info;
 
 struct radeon_info {
@@ -151,7 +149,7 @@ struct radeon_info {
 	uint32_t                    cik_macrotile_mode_array[16];
 };
 
-bool ac_query_gpu_info(int fd, amdgpu_device_handle dev,
+bool ac_query_gpu_info(int fd, void *dev_p,
 		       struct radeon_info *info,
 		       struct amdgpu_gpu_info *amdinfo);
 
