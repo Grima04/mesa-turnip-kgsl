@@ -348,7 +348,6 @@ Converter::getOperation(nir_op op)
    case nir_op_fadd:
    case nir_op_iadd:
       return OP_ADD;
-   case nir_op_fand:
    case nir_op_iand:
       return OP_AND;
    case nir_op_ifind_msb:
@@ -417,10 +416,8 @@ Converter::getOperation(nir_op op)
    case nir_op_fneg:
    case nir_op_ineg:
       return OP_NEG;
-   case nir_op_fnot:
    case nir_op_inot:
       return OP_NOT;
-   case nir_op_for:
    case nir_op_ior:
       return OP_OR;
    case nir_op_fpow:
@@ -456,7 +453,6 @@ Converter::getOperation(nir_op op)
       return OP_SUB;
    case nir_op_ftrunc:
       return OP_TRUNC;
-   case nir_op_fxor:
    case nir_op_ixor:
       return OP_XOR;
    default:
@@ -2705,7 +2701,6 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_iabs:
    case nir_op_fadd:
    case nir_op_iadd:
-   case nir_op_fand:
    case nir_op_iand:
    case nir_op_fceil:
    case nir_op_fcos:
@@ -2737,9 +2732,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_umul_high:
    case nir_op_fneg:
    case nir_op_ineg:
-   case nir_op_fnot:
    case nir_op_inot:
-   case nir_op_for:
    case nir_op_ior:
    case nir_op_pack_64_2x32_split:
    case nir_op_fpow:
@@ -2756,7 +2749,6 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_isub:
    case nir_op_ftrunc:
    case nir_op_ishl:
-   case nir_op_fxor:
    case nir_op_ixor: {
       DEFAULT_CHECKS;
       LValues &newDefs = convert(&insn->dest);

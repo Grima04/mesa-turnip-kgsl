@@ -114,7 +114,6 @@ static int nir_to_gpir_opcodes[nir_num_opcodes] = {
    [nir_op_fmul] = gpir_op_mul,
    [nir_op_fadd] = gpir_op_add,
    [nir_op_fneg] = gpir_op_neg,
-   [nir_op_fnot] = gpir_op_not,
    [nir_op_fmin] = gpir_op_min,
    [nir_op_fmax] = gpir_op_max,
    [nir_op_frcp] = gpir_op_rcp,
@@ -126,8 +125,6 @@ static int nir_to_gpir_opcodes[nir_num_opcodes] = {
    [nir_op_fsign] = gpir_op_sign,
    [nir_op_seq] = gpir_op_eq,
    [nir_op_sne] = gpir_op_ne,
-   [nir_op_fand] = gpir_op_min,
-   [nir_op_for] = gpir_op_max,
    [nir_op_fabs] = gpir_op_abs,
    [nir_op_mov] = gpir_op_mov,
 };
