@@ -197,6 +197,7 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
 
         bool renderable = tmpl->bind &
                 (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL);
+        bool afbc = bo->layout == PAN_AFBC;
         bool tiled = bo->layout == PAN_TILED;
         bool should_align = renderable || tiled;
 
@@ -242,6 +243,14 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
 
                 if (l == 0)
                         size_2d = slice_one_size;
+
+                /* Compute AFBC sizes if necessary */
+                if (afbc) {
+                        slice->header_size =
+                                panfrost_afbc_header_size(width, height);
+
+                        offset += slice->header_size;
+                }
 
                 offset += slice_full_size;
 
@@ -303,15 +312,13 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
 
         panfrost_setup_slices(template, bo);
 
-        if (bo->layout == PAN_TILED || bo->layout == PAN_LINEAR) {
-                struct panfrost_memory mem;
+        struct panfrost_memory mem;
 
-                panfrost_drm_allocate_slab(screen, &mem, bo->size / 4096, true, 0, 0, 0);
+        panfrost_drm_allocate_slab(screen, &mem, bo->size / 4096, true, 0, 0, 0);
 
-                bo->cpu = mem.cpu;
-                bo->gpu = mem.gpu;
-                bo->gem_handle = mem.gem_handle;
-        }
+        bo->cpu = mem.cpu;
+        bo->gpu = mem.gpu;
+        bo->gem_handle = mem.gem_handle;
 
         return bo;
 }
@@ -378,8 +385,7 @@ panfrost_resource_create(struct pipe_screen *screen,
 static void
 panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
 {
-        if ((bo->layout == PAN_LINEAR || bo->layout == PAN_TILED) &&
-                        !bo->imported) {
+        if (!bo->imported) {
                 struct panfrost_memory mem = {
                         .cpu = bo->cpu,
                         .gpu = bo->gpu,
@@ -388,11 +394,6 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
                 };
 
                 panfrost_drm_free_slab(screen, &mem);
-        }
-
-        if (bo->layout == PAN_AFBC) {
-                /* TODO */
-                DBG("--leaking afbc (%d bytes)--\n", bo->afbc_metadata_size);
         }
 
         if (bo->has_checksum) {

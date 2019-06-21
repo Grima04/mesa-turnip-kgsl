@@ -44,6 +44,10 @@ struct panfrost_slice {
         unsigned offset;
         unsigned stride;
 
+        /* If there is a header preceding each slice, how big is that header?
+         * Used for AFBC */
+        unsigned header_size;
+
         /* Has anything been written to this slice? */
         bool initialized;
 };
@@ -71,14 +75,6 @@ struct panfrost_bo {
 
         /* Internal layout (tiled?) */
         enum panfrost_memory_layout layout;
-
-        /* If AFBC is enabled for this resource, we lug around an AFBC
-         * metadata buffer as well. The actual AFBC resource is also in
-         * afbc_slab (only defined for AFBC) at position afbc_main_offset
-         */
-
-        struct panfrost_memory afbc_slab;
-        int afbc_metadata_size;
 
         /* If transaciton elimination is enabled, we have a dedicated
          * buffer for that as well. */
@@ -134,8 +130,8 @@ void panfrost_resource_context_init(struct pipe_context *pctx);
 bool
 panfrost_format_supports_afbc(enum pipe_format format);
 
-void
-panfrost_enable_afbc(struct panfrost_context *ctx, struct panfrost_resource *rsrc, bool ds);
+unsigned
+panfrost_afbc_header_size(unsigned width, unsigned height);
 
 /* Blitting */
 

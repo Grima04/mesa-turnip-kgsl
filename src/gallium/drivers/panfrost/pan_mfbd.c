@@ -112,15 +112,15 @@ panfrost_mfbd_set_cbuf(
                 rt->framebuffer = rsrc->bo->gpu + offset;
                 rt->framebuffer_stride = stride;
         } else if (rsrc->bo->layout == PAN_AFBC) {
-                assert(level == 0);
-                rt->afbc.metadata = rsrc->bo->afbc_slab.gpu;
-                rt->afbc.stride = 0;
-                rt->afbc.unk = 0x30009;
-
                 rt->format.block = MALI_MFBD_BLOCK_AFBC;
 
-                mali_ptr afbc_main = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
-                rt->framebuffer = afbc_main;
+                mali_ptr base = rsrc->bo->gpu + offset;
+                unsigned header_size = rsrc->bo->slices[level].header_size;
+
+                rt->framebuffer = base + header_size;
+                rt->afbc.metadata = base;
+                rt->afbc.stride = 0;
+                rt->afbc.unk = 0x30009;
 
                 /* TODO: Investigate shift */
                 rt->framebuffer_stride = stride << 1;
@@ -144,7 +144,9 @@ panfrost_mfbd_set_zsbuf(
         unsigned offset = rsrc->bo->slices[level].offset;
 
         if (rsrc->bo->layout == PAN_AFBC) {
-                assert(level == 0);
+                mali_ptr base = rsrc->bo->gpu + offset;
+                unsigned header_size = rsrc->bo->slices[level].header_size;
+
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
 
                 fbx->flags =
@@ -154,10 +156,9 @@ panfrost_mfbd_set_zsbuf(
                         MALI_EXTRA_ZS |
                         0x1; /* unknown */
 
-                fbx->ds_afbc.depth_stencil_afbc_metadata = rsrc->bo->afbc_slab.gpu;
+                fbx->ds_afbc.depth_stencil = base + header_size;
+                fbx->ds_afbc.depth_stencil_afbc_metadata = base;
                 fbx->ds_afbc.depth_stencil_afbc_stride = 0;
-
-                fbx->ds_afbc.depth_stencil = rsrc->bo->afbc_slab.gpu + rsrc->bo->afbc_metadata_size;
 
                 fbx->ds_afbc.zero1 = 0x10009;
                 fbx->ds_afbc.padding = 0x1000;

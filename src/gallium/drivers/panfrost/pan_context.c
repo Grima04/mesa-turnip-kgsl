@@ -836,7 +836,12 @@ panfrost_get_texture_address(
         unsigned level_offset = rsrc->bo->slices[level].offset;
         unsigned face_offset = face * rsrc->bo->cubemap_stride;
 
-        return rsrc->bo->gpu + level_offset + face_offset;
+        /* Lower-bit is set when sampling from colour AFBC */
+        bool is_afbc = rsrc->bo->layout == PAN_AFBC;
+        bool is_zs = rsrc->base.bind & PIPE_BIND_DEPTH_STENCIL;
+        unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
+
+        return rsrc->bo->gpu + level_offset + face_offset + afbc_bit;
 
 }
 
@@ -2346,18 +2351,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                         ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
                 panfrost_attach_vt_framebuffer(ctx);
-
-                struct panfrost_resource *tex = ((struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[i]->texture);
-                enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
-
-                bool can_afbc = panfrost_format_supports_afbc(format);
-                bool is_scanout = panfrost_is_scanout(ctx);
-
-                if (!is_scanout && tex->bo->layout != PAN_AFBC && can_afbc)
-                        panfrost_enable_afbc(ctx, tex, false);
-
-                if (!is_scanout && !tex->bo->has_checksum)
-                        panfrost_enable_checksum(ctx, tex);
         }
 
         {
@@ -2373,13 +2366,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                                         ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
                                 panfrost_attach_vt_framebuffer(ctx);
-
-                                struct panfrost_resource *tex = pan_resource(zb->texture);
-                                bool can_afbc = panfrost_format_supports_afbc(zb->format);
-                                bool is_scanout = panfrost_is_scanout(ctx);
-
-                                if (!is_scanout && tex->bo->layout != PAN_AFBC && can_afbc)
-                                        panfrost_enable_afbc(ctx, tex, true);
                         }
                 }
         }
