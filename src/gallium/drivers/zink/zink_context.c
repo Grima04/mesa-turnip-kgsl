@@ -777,9 +777,6 @@ zink_clear(struct pipe_context *pctx,
       num_rects = 1;
    }
 
-   if (!batch->rp)
-      zink_begin_render_pass(ctx, batch);
-
    vkCmdClearAttachments(batch->cmdbuf,
                          num_attachments, attachments,
                          num_rects, rects);
