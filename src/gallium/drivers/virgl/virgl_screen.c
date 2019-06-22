@@ -550,7 +550,7 @@ has_format_bit(struct virgl_supported_format_mask *mask,
    unsigned idx = val / 32;
    unsigned bit = val % 32;
    assert(idx < ARRAY_SIZE(mask->bitmask));
-   return (mask->bitmask[val / 32] & (1u << bit)) != 0;
+   return (mask->bitmask[idx] & (1u << bit)) != 0;
 }
 
 bool
