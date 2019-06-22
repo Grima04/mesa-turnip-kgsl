@@ -2224,6 +2224,7 @@ panfrost_create_sampler_view(
         if (texture->target == PIPE_TEXTURE_CUBE) {
                 /* TODO: Cubemap arrays */
                 assert(array_size == 6);
+                array_size /= 6;
         }
 
         struct mali_texture_descriptor texture_descriptor = {
