@@ -278,7 +278,7 @@ def output_counter_read(gen, set, counter):
         read_eq = counter.get('equation')
 
         c("static " + ret_type)
-        c(counter.read_sym + "(MAYBE_UNUSED struct gen_perf *perf,\n")
+        c(counter.read_sym + "(UNUSED struct gen_perf *perf,\n")
         c_indent(len(counter.read_sym) + 1)
         c("const struct gen_perf_query_info *query,\n")
         c("const uint64_t *accumulator)\n")

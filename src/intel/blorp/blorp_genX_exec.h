@@ -1074,7 +1074,7 @@ blorp_emit_blend_state(struct blorp_batch *batch,
 
 static uint32_t
 blorp_emit_color_calc_state(struct blorp_batch *batch,
-                            MAYBE_UNUSED const struct blorp_params *params)
+                            UNUSED const struct blorp_params *params)
 {
    uint32_t offset;
    blorp_emit_dynamic(batch, GENX(COLOR_CALC_STATE), cc, 64, &offset) {
@@ -1475,7 +1475,7 @@ blorp_emit_surface_states(struct blorp_batch *batch,
    uint32_t bind_offset = 0, surface_offsets[2];
    void *surface_maps[2];
 
-   MAYBE_UNUSED bool has_indirect_clear_color = false;
+   UNUSED bool has_indirect_clear_color = false;
    if (params->use_pre_baked_binding_table) {
       bind_offset = params->pre_baked_binding_table_offset;
    } else {

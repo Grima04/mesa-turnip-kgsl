@@ -1781,7 +1781,7 @@ emit_3dstate_ps(struct anv_pipeline *pipeline,
                 const VkPipelineColorBlendStateCreateInfo *blend,
                 const VkPipelineMultisampleStateCreateInfo *multisample)
 {
-   MAYBE_UNUSED const struct gen_device_info *devinfo = &pipeline->device->info;
+   UNUSED const struct gen_device_info *devinfo = &pipeline->device->info;
    const struct anv_shader_bin *fs_bin =
       pipeline->shaders[MESA_SHADER_FRAGMENT];
 

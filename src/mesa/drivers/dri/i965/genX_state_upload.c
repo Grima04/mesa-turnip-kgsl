@@ -237,9 +237,9 @@ genX(emit_vertex_buffer_state)(struct brw_context *brw,
                                unsigned buffer_nr,
                                struct brw_bo *bo,
                                unsigned start_offset,
-                               MAYBE_UNUSED unsigned end_offset,
+                               UNUSED unsigned end_offset,
                                unsigned stride,
-                               MAYBE_UNUSED unsigned step_rate)
+                               UNUSED unsigned step_rate)
 {
    struct GENX(VERTEX_BUFFER_STATE) buf_state = {
       .VertexBufferIndex = buffer_nr,
@@ -4900,8 +4900,8 @@ genX(emit_mi_report_perf_count)(struct brw_context *brw,
  * Emit a 3DSTATE_SAMPLER_STATE_POINTERS_{VS,HS,GS,DS,PS} packet.
  */
 static void
-genX(emit_sampler_state_pointers_xs)(MAYBE_UNUSED struct brw_context *brw,
-                                     MAYBE_UNUSED struct brw_stage_state *stage_state)
+genX(emit_sampler_state_pointers_xs)(UNUSED struct brw_context *brw,
+                                     UNUSED struct brw_stage_state *stage_state)
 {
 #if GEN_GEN >= 7
    static const uint16_t packet_headers[] = {
@@ -5117,7 +5117,7 @@ genX(upload_default_color)(struct brw_context *brw,
 }
 
 static uint32_t
-translate_wrap_mode(GLenum wrap, MAYBE_UNUSED bool using_nearest)
+translate_wrap_mode(GLenum wrap, UNUSED bool using_nearest)
 {
    switch (wrap) {
    case GL_REPEAT:
