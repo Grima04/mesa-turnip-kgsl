@@ -725,7 +725,10 @@ eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->API.GetConfigs(drv, disp, configs, config_size, num_config);
+   if (drv->API.GetConfigs)
+      ret = drv->API.GetConfigs(drv, disp, configs, config_size, num_config);
+   else
+      ret = _eglGetConfigs(drv, disp, configs, config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
 }

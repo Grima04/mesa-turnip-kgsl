@@ -42,7 +42,6 @@
 void
 _eglInitDriverFallbacks(_EGLDriver *drv)
 {
-   drv->API.GetConfigs = _eglGetConfigs;
    drv->API.ChooseConfig = _eglChooseConfig;
    drv->API.GetConfigAttrib = _eglGetConfigAttrib;
 
