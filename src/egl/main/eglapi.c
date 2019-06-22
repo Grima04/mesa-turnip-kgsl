@@ -900,7 +900,11 @@ eglQueryContext(EGLDisplay dpy, EGLContext ctx,
    _EGL_FUNC_START(disp, EGL_OBJECT_CONTEXT_KHR, context, EGL_FALSE);
 
    _EGL_CHECK_CONTEXT(disp, context, EGL_FALSE, drv);
-   ret = drv->API.QueryContext(drv, disp, context, attribute, value);
+
+   if (drv->API.QueryContext)
+      ret = drv->API.QueryContext(drv, disp, context, attribute, value);
+   else
+      ret = _eglQueryContext(drv, disp, context, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
