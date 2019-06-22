@@ -84,23 +84,13 @@ emit_lrm(struct brw_context *brw, uint32_t reg, struct brw_address addr)
 }
 #endif
 
-#if GEN_GEN <= 7
+#if GEN_GEN == 7
 static void
 emit_lri(struct brw_context *brw, uint32_t reg, uint32_t imm)
 {
    brw_batch_emit(brw, GENX(MI_LOAD_REGISTER_IMM), lri) {
       lri.RegisterOffset   = reg;
       lri.DataDWord        = imm;
-   }
-}
-
-#if GEN_IS_HASWELL || GEN_GEN >= 8
-MAYBE_UNUSED static void
-emit_lrr(struct brw_context *brw, uint32_t dst, uint32_t src)
-{
-   brw_batch_emit(brw, GENX(MI_LOAD_REGISTER_REG), lrr) {
-      lrr.SourceRegisterAddress        = src;
-      lrr.DestinationRegisterAddress   = dst;
    }
 }
 #endif
