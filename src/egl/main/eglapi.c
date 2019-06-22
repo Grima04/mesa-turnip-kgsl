@@ -1296,10 +1296,15 @@ eglSwapInterval(EGLDisplay dpy, EGLint interval)
                     surf->Config->MinSwapInterval,
                     surf->Config->MaxSwapInterval);
 
-   if (surf->SwapInterval != interval)
-      ret = drv->API.SwapInterval(drv, disp, surf, interval);
-   else
+   if (surf->SwapInterval != interval) {
+      if (drv->API.SwapInterval)
+         ret = drv->API.SwapInterval(drv, disp, surf, interval);
+      else
+         ret = _eglSwapInterval(drv, disp, surf, interval);
+   }
+   else {
       ret = EGL_TRUE;
+   }
 
    if (ret)
       surf->SwapInterval = interval;

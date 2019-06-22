@@ -42,7 +42,5 @@
 void
 _eglInitDriverFallbacks(_EGLDriver *drv)
 {
-   drv->API.SwapInterval = _eglSwapInterval;
-
    drv->API.GetSyncAttrib = _eglGetSyncAttrib;
 }
