@@ -37,6 +37,7 @@
  */
 
 
+#include <errno.h>
 #include <stdbool.h>
 #include <c99_alloca.h>
 #include "main/glheader.h"
@@ -1254,6 +1255,11 @@ link_program(struct gl_context *ctx, struct gl_shader_program *shProg,
          }
          file = os_file_create_unique(filename, 0644);
          if (file)
+            break;
+         /* If we are failing for another reason than "this filename already
+          * exists", we are likely to fail again with another filename, so
+          * let's just give up */
+         if (errno != EEXIST)
             break;
          ralloc_free(filename);
       }
