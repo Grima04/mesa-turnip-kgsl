@@ -84,7 +84,8 @@ emit_lrm(struct brw_context *brw, uint32_t reg, struct brw_address addr)
 }
 #endif
 
-MAYBE_UNUSED static void
+#if GEN_GEN <= 7
+static void
 emit_lri(struct brw_context *brw, uint32_t reg, uint32_t imm)
 {
    brw_batch_emit(brw, GENX(MI_LOAD_REGISTER_IMM), lri) {
