@@ -48,7 +48,7 @@
 void
 brw_enable_obj_preemption(struct brw_context *brw, bool enable)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   ASSERTED const struct gen_device_info *devinfo = &brw->screen->devinfo;
    assert(devinfo->gen >= 9);
 
    if (enable == brw->object_preemption)
