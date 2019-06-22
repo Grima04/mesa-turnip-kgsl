@@ -598,7 +598,7 @@ struct _mesa_glsl_extension {
 
 /** Checks if the context supports a user-facing extension */
 #define EXT(name_str, driver_cap, ...) \
-static MAYBE_UNUSED bool \
+static UNUSED bool \
 has_##name_str(const struct gl_context *ctx, gl_api api, uint8_t version) \
 { \
    return ctx->Extensions.driver_cap && (version >= \
