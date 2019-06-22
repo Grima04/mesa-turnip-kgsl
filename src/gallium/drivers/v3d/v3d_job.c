@@ -435,12 +435,12 @@ v3d_clif_dump(struct v3d_context *v3d, struct v3d_job *job)
 void
 v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job)
 {
-        MAYBE_UNUSED struct v3d_screen *screen = v3d->screen;
+        struct v3d_screen *screen = v3d->screen;
 
         if (!job->needs_flush)
                 goto done;
 
-        if (v3d->screen->devinfo.ver >= 41)
+        if (screen->devinfo.ver >= 41)
                 v3d41_emit_rcl(job);
         else
                 v3d33_emit_rcl(job);
