@@ -42,5 +42,4 @@
 void
 _eglInitDriverFallbacks(_EGLDriver *drv)
 {
-   drv->API.GetSyncAttrib = _eglGetSyncAttrib;
 }

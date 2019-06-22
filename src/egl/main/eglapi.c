@@ -2112,7 +2112,11 @@ _eglGetSyncAttribCommon(_EGLDisplay *disp, _EGLSync *s, EGLint attribute, EGLAtt
    assert(disp->Extensions.KHR_reusable_sync ||
           disp->Extensions.KHR_fence_sync ||
           disp->Extensions.ANDROID_native_fence_sync);
-   ret = drv->API.GetSyncAttrib(drv, disp, s, attribute, value);
+
+   if (drv->API.GetSyncAttrib)
+      ret = drv->API.GetSyncAttrib(drv, disp, s, attribute, value);
+   else
+      ret = _eglGetSyncAttrib(drv, disp, s, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
