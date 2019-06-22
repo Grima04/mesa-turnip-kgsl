@@ -191,7 +191,7 @@ meta_copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer,
 			uint32_t queue_mask = radv_image_queue_family_mask(image,
 			                                                   cmd_buffer->queue_family_index,
 			                                                   cmd_buffer->queue_family_index);
-			MAYBE_UNUSED bool compressed = radv_layout_dcc_compressed(image, layout, queue_mask);
+			bool compressed = radv_layout_dcc_compressed(image, layout, queue_mask);
 			if (compressed) {
 				radv_decompress_dcc(cmd_buffer, image, &(VkImageSubresourceRange) {
 								.aspectMask = pRegions[r].imageSubresource.aspectMask,
@@ -335,7 +335,7 @@ meta_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer,
 			uint32_t queue_mask = radv_image_queue_family_mask(image,
 			                                                   cmd_buffer->queue_family_index,
 			                                                   cmd_buffer->queue_family_index);
-			MAYBE_UNUSED bool compressed = radv_layout_dcc_compressed(image, layout, queue_mask);
+			bool compressed = radv_layout_dcc_compressed(image, layout, queue_mask);
 			if (compressed) {
 				radv_decompress_dcc(cmd_buffer, image, &(VkImageSubresourceRange) {
 								.aspectMask = pRegions[r].imageSubresource.aspectMask,
