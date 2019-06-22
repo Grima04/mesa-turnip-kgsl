@@ -74,7 +74,7 @@ KSP(UNUSED struct brw_context *brw, uint32_t offset)
 #endif
 
 #if GEN_GEN >= 7
-MAYBE_UNUSED static void
+static void
 emit_lrm(struct brw_context *brw, uint32_t reg, struct brw_address addr)
 {
    brw_batch_emit(brw, GENX(MI_LOAD_REGISTER_MEM), lrm) {
@@ -4941,7 +4941,7 @@ has_component(mesa_format format, int i)
 static void
 genX(upload_default_color)(struct brw_context *brw,
                            const struct gl_sampler_object *sampler,
-                           MAYBE_UNUSED mesa_format format, GLenum base_format,
+                           mesa_format format, GLenum base_format,
                            bool is_integer_format, bool is_stencil_sampling,
                            uint32_t *sdc_offset)
 {

@@ -1577,7 +1577,7 @@ intel_miptree_alloc_aux(struct brw_context *brw,
    enum isl_aux_state initial_state;
    uint8_t memset_value;
    struct isl_surf aux_surf;
-   MAYBE_UNUSED bool aux_surf_ok = false;
+   bool aux_surf_ok = false;
 
    switch (mt->aux_usage) {
    case ISL_AUX_USAGE_NONE:
@@ -2963,7 +2963,7 @@ intel_miptree_unmap_tiled_memcpy(struct brw_context *brw,
  *
  * \return true if the format and type combination are valid
  */
-MAYBE_UNUSED isl_memcpy_type
+isl_memcpy_type
 intel_miptree_get_memcpy_type(mesa_format tiledFormat, GLenum format, GLenum type,
                               uint32_t *cpp)
 {

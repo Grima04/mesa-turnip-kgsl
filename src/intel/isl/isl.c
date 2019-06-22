@@ -1193,7 +1193,7 @@ isl_calc_phys_total_extent_el_gen9_1d(
       uint32_t *array_pitch_el_rows,
       struct isl_extent2d *phys_total_el)
 {
-   MAYBE_UNUSED const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
+   const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
    assert(phys_level0_sa->height == 1);
    assert(phys_level0_sa->depth == 1);

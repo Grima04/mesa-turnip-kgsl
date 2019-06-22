@@ -1731,7 +1731,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    assert(!urb_low_bw || cfg->n[GEN_L3P_URB] == cfg->n[GEN_L3P_SLM]);
 
    /* Minimum number of ways that can be allocated to the URB. */
-   MAYBE_UNUSED const unsigned n0_urb = devinfo->is_baytrail ? 32 : 0;
+   const unsigned n0_urb = devinfo->is_baytrail ? 32 : 0;
    assert(cfg->n[GEN_L3P_URB] >= n0_urb);
 
    uint32_t l3sqcr1, l3cr2, l3cr3;
@@ -3540,7 +3540,7 @@ void
 genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_pipeline *pipeline = cmd_buffer->state.compute.base.pipeline;
-   MAYBE_UNUSED VkResult result;
+   VkResult result;
 
    assert(pipeline->active_stages == VK_SHADER_STAGE_COMPUTE_BIT);
 

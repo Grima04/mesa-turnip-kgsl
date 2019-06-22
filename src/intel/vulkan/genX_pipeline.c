@@ -955,7 +955,7 @@ emit_ds_state(struct anv_pipeline *pipeline,
 #endif
 }
 
-MAYBE_UNUSED static bool
+static bool
 is_dual_src_blend_factor(VkBlendFactor factor)
 {
    return factor == VK_BLEND_FACTOR_SRC1_COLOR ||

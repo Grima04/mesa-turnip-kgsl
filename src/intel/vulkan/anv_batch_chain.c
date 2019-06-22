@@ -418,7 +418,7 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
                   struct anv_batch_bo *next_bbo,
                   uint32_t next_bbo_offset)
 {
-   MAYBE_UNUSED const uint32_t bb_start_offset =
+   const uint32_t bb_start_offset =
       prev_bbo->length - GEN8_MI_BATCH_BUFFER_START_length * 4;
    MAYBE_UNUSED const uint32_t *bb_start = prev_bbo->bo.map + bb_start_offset;
 
