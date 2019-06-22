@@ -708,7 +708,7 @@ static void *
 v3d_create_sampler_state(struct pipe_context *pctx,
                          const struct pipe_sampler_state *cso)
 {
-        MAYBE_UNUSED struct v3d_context *v3d = v3d_context(pctx);
+        UNUSED struct v3d_context *v3d = v3d_context(pctx);
         struct v3d_sampler_state *so = CALLOC_STRUCT(v3d_sampler_state);
 
         if (!so)
