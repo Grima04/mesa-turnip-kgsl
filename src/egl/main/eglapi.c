@@ -725,10 +725,7 @@ eglGetConfigs(EGLDisplay dpy, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   if (drv->API.GetConfigs)
-      ret = drv->API.GetConfigs(drv, disp, configs, config_size, num_config);
-   else
-      ret = _eglGetConfigs(drv, disp, configs, config_size, num_config);
+   ret = drv->API.GetConfigs(drv, disp, configs, config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -749,12 +746,8 @@ eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   if (drv->API.ChooseConfig)
-      ret = drv->API.ChooseConfig(drv, disp, attrib_list, configs,
-                                  config_size, num_config);
-   else
-      ret = _eglChooseConfig(drv, disp, attrib_list, configs,
-                             config_size, num_config);
+   ret = drv->API.ChooseConfig(drv, disp, attrib_list, configs,
+                               config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -772,11 +765,7 @@ eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config,
    _EGL_FUNC_START(disp, EGL_OBJECT_DISPLAY_KHR, NULL, EGL_FALSE);
 
    _EGL_CHECK_CONFIG(disp, conf, EGL_FALSE, drv);
-
-   if (drv->API.GetConfigAttrib)
-      ret = drv->API.GetConfigAttrib(drv, disp, conf, attribute, value);
-   else
-      ret = _eglGetConfigAttrib(drv, disp, conf, attribute, value);
+   ret = drv->API.GetConfigAttrib(drv, disp, conf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -900,11 +889,7 @@ eglQueryContext(EGLDisplay dpy, EGLContext ctx,
    _EGL_FUNC_START(disp, EGL_OBJECT_CONTEXT_KHR, context, EGL_FALSE);
 
    _EGL_CHECK_CONTEXT(disp, context, EGL_FALSE, drv);
-
-   if (drv->API.QueryContext)
-      ret = drv->API.QueryContext(drv, disp, context, attribute, value);
-   else
-      ret = _eglQueryContext(drv, disp, context, attribute, value);
+   ret = drv->API.QueryContext(drv, disp, context, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -1208,11 +1193,7 @@ eglQuerySurface(EGLDisplay dpy, EGLSurface surface,
 
    _EGL_FUNC_START(disp, EGL_OBJECT_SURFACE_KHR, surf, EGL_FALSE);
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
-
-   if (drv->API.QuerySurface)
-      ret = drv->API.QuerySurface(drv, disp, surf, attribute, value);
-   else
-      ret = _eglQuerySurface(drv, disp, surf, attribute, value);
+   ret = drv->API.QuerySurface(drv, disp, surf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -1228,11 +1209,7 @@ eglSurfaceAttrib(EGLDisplay dpy, EGLSurface surface,
 
    _EGL_FUNC_START(disp, EGL_OBJECT_SURFACE_KHR, surf, EGL_FALSE);
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
-
-   if (drv->API.SurfaceAttrib)
-      ret = drv->API.SurfaceAttrib(drv, disp, surf, attribute, value);
-   else
-      ret = _eglSurfaceAttrib(drv, disp, surf, attribute, value);
+   ret = drv->API.SurfaceAttrib(drv, disp, surf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
@@ -1296,15 +1273,10 @@ eglSwapInterval(EGLDisplay dpy, EGLint interval)
                     surf->Config->MinSwapInterval,
                     surf->Config->MaxSwapInterval);
 
-   if (surf->SwapInterval != interval) {
-      if (drv->API.SwapInterval)
-         ret = drv->API.SwapInterval(drv, disp, surf, interval);
-      else
-         ret = _eglSwapInterval(drv, disp, surf, interval);
-   }
-   else {
+   if (surf->SwapInterval != interval)
+      ret = drv->API.SwapInterval(drv, disp, surf, interval);
+   else
       ret = EGL_TRUE;
-   }
 
    if (ret)
       surf->SwapInterval = interval;

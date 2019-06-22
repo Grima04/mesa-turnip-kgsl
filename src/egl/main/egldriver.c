@@ -58,6 +58,7 @@ _eglGetDriver(void)
       _eglDriver = calloc(1, sizeof(*_eglDriver));
       if (!_eglDriver)
          return NULL;
+      _eglInitDriverFallbacks(_eglDriver);
       _eglInitDriver(_eglDriver);
    }
 
