@@ -95,6 +95,7 @@ panfrost_mfbd_set_cbuf(
 
         unsigned level = surf->u.tex.level;
         unsigned first_layer = surf->u.tex.first_layer;
+        assert(surf->u.tex.last_layer == first_layer);
         int stride = rsrc->bo->slices[level].stride;
 
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
