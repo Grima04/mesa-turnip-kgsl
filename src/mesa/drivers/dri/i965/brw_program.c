@@ -119,16 +119,6 @@ brw_create_nir(struct brw_context *brw,
 
    brw_preprocess_nir(brw->screen->compiler, nir, softfp64);
 
-   NIR_PASS_V(nir, gl_nir_lower_samplers, shader_prog);
-   prog->info.textures_used = nir->info.textures_used;
-   prog->info.textures_used_by_txf = nir->info.textures_used_by_txf;
-
-   NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
-
-   NIR_PASS_V(nir, gl_nir_lower_buffers, shader_prog);
-   /* Do a round of constant folding to clean up address calculations */
-   NIR_PASS_V(nir, nir_opt_constant_folding);
-
    if (stage == MESA_SHADER_TESS_CTRL) {
       /* Lower gl_PatchVerticesIn from a sys. value to a uniform on Gen8+. */
       static const gl_state_index16 tokens[STATE_LENGTH] =
@@ -167,6 +157,22 @@ brw_create_nir(struct brw_context *brw,
    NIR_PASS_V(nir, brw_nir_lower_uniforms, is_scalar);
 
    return nir;
+}
+
+void
+brw_nir_lower_resources(nir_shader *nir, struct gl_shader_program *shader_prog,
+                        struct gl_program *prog,
+                        const struct gen_device_info *devinfo)
+{
+   NIR_PASS_V(prog->nir, gl_nir_lower_samplers, shader_prog);
+   prog->info.textures_used = prog->nir->info.textures_used;
+   prog->info.textures_used_by_txf = prog->nir->info.textures_used_by_txf;
+
+   NIR_PASS_V(prog->nir, brw_nir_lower_image_load_store, devinfo);
+
+   NIR_PASS_V(prog->nir, gl_nir_lower_buffers, shader_prog);
+   /* Do a round of constant folding to clean up address calculations */
+   NIR_PASS_V(prog->nir, nir_opt_constant_folding);
 }
 
 void
@@ -262,6 +268,8 @@ brwProgramStringNotify(struct gl_context *ctx,
 
       prog->nir = brw_create_nir(brw, NULL, prog, MESA_SHADER_FRAGMENT, true);
 
+      brw_nir_lower_resources(prog->nir, NULL, prog, &brw->screen->devinfo);
+
       brw_shader_gather_info(prog->nir, prog);
 
       brw_fs_precompile(ctx, prog);
@@ -285,6 +293,8 @@ brwProgramStringNotify(struct gl_context *ctx,
 
       prog->nir = brw_create_nir(brw, NULL, prog, MESA_SHADER_VERTEX,
                                  compiler->scalar_stage[MESA_SHADER_VERTEX]);
+
+      brw_nir_lower_resources(prog->nir, NULL, prog, &brw->screen->devinfo);
 
       brw_shader_gather_info(prog->nir, prog);
 

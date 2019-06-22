@@ -64,6 +64,11 @@ struct nir_shader *brw_create_nir(struct brw_context *brw,
                                   gl_shader_stage stage,
                                   bool is_scalar);
 
+void brw_nir_lower_resources(nir_shader *nir,
+                             struct gl_shader_program *shader_prog,
+                             struct gl_program *prog,
+                             const struct gen_device_info *devinfo);
+
 void brw_shader_gather_info(nir_shader *nir, struct gl_program *prog);
 
 void brw_setup_tex_for_precompile(const struct gen_device_info *devinfo,
