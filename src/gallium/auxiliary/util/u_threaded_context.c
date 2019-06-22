@@ -64,7 +64,7 @@ typedef void (*tc_execute)(struct pipe_context *pipe, union tc_payload *payload)
 static const tc_execute execute_func[TC_NUM_CALLS];
 
 static void
-tc_batch_check(MAYBE_UNUSED struct tc_batch *batch)
+tc_batch_check(UNUSED struct tc_batch *batch)
 {
    tc_assert(batch->sentinel == TC_SENTINEL);
    tc_assert(batch->num_total_call_slots <= TC_CALLS_PER_BATCH);
@@ -180,7 +180,7 @@ tc_is_sync(struct threaded_context *tc)
 }
 
 static void
-_tc_sync(struct threaded_context *tc, MAYBE_UNUSED const char *info, MAYBE_UNUSED const char *func)
+_tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char *func)
 {
    struct tc_batch *last = &tc->batch_slots[tc->last];
    struct tc_batch *next = &tc->batch_slots[tc->next];
