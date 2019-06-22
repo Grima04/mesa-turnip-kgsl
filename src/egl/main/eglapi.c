@@ -749,8 +749,12 @@ eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs,
    if (!num_config)
       RETURN_EGL_ERROR(disp, EGL_BAD_PARAMETER, EGL_FALSE);
 
-   ret = drv->API.ChooseConfig(drv, disp, attrib_list, configs,
-                               config_size, num_config);
+   if (drv->API.ChooseConfig)
+      ret = drv->API.ChooseConfig(drv, disp, attrib_list, configs,
+                                  config_size, num_config);
+   else
+      ret = _eglChooseConfig(drv, disp, attrib_list, configs,
+                             config_size, num_config);
 
    RETURN_EGL_EVAL(disp, ret);
 }
