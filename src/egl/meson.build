@@ -44,7 +44,6 @@ files_egl = files(
   'main/egldisplay.h',
   'main/egldriver.c',
   'main/egldriver.h',
-  'main/eglfallbacks.c',
   'main/eglglobals.c',
   'main/eglglobals.h',
   'main/eglimage.c',
