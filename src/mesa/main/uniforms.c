@@ -101,7 +101,7 @@ _mesa_update_shader_textures_used(struct gl_shader_program *shProg,
                                   struct gl_program *prog)
 {
    GLbitfield mask = prog->SamplersUsed;
-   gl_shader_stage prog_stage =
+   ASSERTED gl_shader_stage prog_stage =
       _mesa_program_enum_to_shader_stage(prog->Target);
    GLuint s;
 
