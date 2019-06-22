@@ -42,8 +42,6 @@
 void
 _eglInitDriverFallbacks(_EGLDriver *drv)
 {
-   drv->API.GetConfigAttrib = _eglGetConfigAttrib;
-
    drv->API.QueryContext = _eglQueryContext;
 
    drv->API.QuerySurface = _eglQuerySurface;

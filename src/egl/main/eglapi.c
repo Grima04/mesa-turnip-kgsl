@@ -772,7 +772,11 @@ eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config,
    _EGL_FUNC_START(disp, EGL_OBJECT_DISPLAY_KHR, NULL, EGL_FALSE);
 
    _EGL_CHECK_CONFIG(disp, conf, EGL_FALSE, drv);
-   ret = drv->API.GetConfigAttrib(drv, disp, conf, attribute, value);
+
+   if (drv->API.GetConfigAttrib)
+      ret = drv->API.GetConfigAttrib(drv, disp, conf, attribute, value);
+   else
+      ret = _eglGetConfigAttrib(drv, disp, conf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
