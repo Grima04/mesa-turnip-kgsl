@@ -1678,18 +1678,13 @@ eglCreatePbufferFromClientBuffer(EGLDisplay dpy, EGLenum buftype,
    _EGLDisplay *disp = _eglLockDisplay(dpy);
    _EGLConfig *conf = _eglLookupConfig(config, disp);
    _EGLDriver *drv;
-   _EGLSurface *surf;
-   EGLSurface ret;
 
    _EGL_FUNC_START(disp, EGL_OBJECT_DISPLAY_KHR, NULL, EGL_NO_SURFACE);
 
    _EGL_CHECK_CONFIG(disp, conf, EGL_NO_SURFACE, drv);
 
-   surf = drv->API.CreatePbufferFromClientBuffer(drv, disp, buftype, buffer,
-                                                 conf, attrib_list);
-   ret = (surf) ? _eglLinkSurface(surf) : EGL_NO_SURFACE;
-
-   RETURN_EGL_EVAL(disp, ret);
+   /* OpenVG is not supported */
+   RETURN_EGL_ERROR(disp, EGL_BAD_ALLOC, EGL_NO_SURFACE);
 }
 
 

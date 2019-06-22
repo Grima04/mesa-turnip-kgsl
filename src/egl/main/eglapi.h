@@ -108,13 +108,6 @@ struct _egl_api
    /* this function may be called from multiple threads at the same time */
    _EGLProc (*GetProcAddress)(_EGLDriver *drv, const char *procname);
 
-   _EGLSurface *(*CreatePbufferFromClientBuffer)(_EGLDriver *drv,
-                                                 _EGLDisplay *disp,
-                                                 EGLenum buftype,
-                                                 EGLClientBuffer buffer,
-                                                 _EGLConfig *config,
-                                                 const EGLint *attrib_list);
-
    _EGLImage *(*CreateImageKHR)(_EGLDriver *drv, _EGLDisplay *disp,
                                 _EGLContext *ctx, EGLenum target,
                                 EGLClientBuffer buffer,
