@@ -94,10 +94,10 @@ panfrost_mfbd_set_cbuf(
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         unsigned level = surf->u.tex.level;
-        assert(surf->u.tex.first_layer == 0);
-
+        unsigned first_layer = surf->u.tex.first_layer;
         int stride = rsrc->bo->slices[level].stride;
-        unsigned offset = rsrc->bo->slices[level].offset;
+
+        mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
 
         rt->format = panfrost_mfbd_format(surf);
 
@@ -105,16 +105,15 @@ panfrost_mfbd_set_cbuf(
 
         if (rsrc->bo->layout == PAN_LINEAR) {
                 rt->format.block = MALI_MFBD_BLOCK_LINEAR;
-                rt->framebuffer = rsrc->bo->gpu + offset;
+                rt->framebuffer = base;
                 rt->framebuffer_stride = stride / 16;
         } else if (rsrc->bo->layout == PAN_TILED) {
                 rt->format.block = MALI_MFBD_BLOCK_TILED;
-                rt->framebuffer = rsrc->bo->gpu + offset;
+                rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
         } else if (rsrc->bo->layout == PAN_AFBC) {
                 rt->format.block = MALI_MFBD_BLOCK_AFBC;
 
-                mali_ptr base = rsrc->bo->gpu + offset;
                 unsigned header_size = rsrc->bo->slices[level].header_size;
 
                 rt->framebuffer = base + header_size;
