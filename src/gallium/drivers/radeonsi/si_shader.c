@@ -2044,12 +2044,19 @@ void si_load_system_value(struct si_shader_context *ctx,
 		break;
 
 	case TGSI_SEMANTIC_INVOCATIONID:
-		if (ctx->type == PIPE_SHADER_TESS_CTRL)
+		if (ctx->type == PIPE_SHADER_TESS_CTRL) {
 			value = unpack_llvm_param(ctx, ctx->abi.tcs_rel_ids, 8, 5);
-		else if (ctx->type == PIPE_SHADER_GEOMETRY)
-			value = ctx->abi.gs_invocation_id;
-		else
+		} else if (ctx->type == PIPE_SHADER_GEOMETRY) {
+			if (ctx->screen->info.chip_class >= GFX10) {
+				value = LLVMBuildAnd(ctx->ac.builder,
+						     ctx->abi.gs_invocation_id,
+						     LLVMConstInt(ctx->i32, 127, 0), "");
+			} else {
+				value = ctx->abi.gs_invocation_id;
+			}
+		} else {
 			assert(!"INVOCATIONID not implemented");
+		}
 		break;
 
 	case TGSI_SEMANTIC_POSITION:
