@@ -76,6 +76,8 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.GeneralStateMOCS = GENX(MOCS);
       sba.GeneralStateBaseAddressModifyEnable = true;
 
+      sba.StatelessDataPortAccessMOCS = GENX(MOCS);
+
       sba.SurfaceStateBaseAddress =
          anv_cmd_buffer_surface_base_address(cmd_buffer);
       sba.SurfaceStateMOCS = GENX(MOCS);
