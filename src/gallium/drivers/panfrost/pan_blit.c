@@ -31,29 +31,31 @@
 #include "util/u_format.h"
 
 static void
-panfrost_blitter_save(struct panfrost_context *ctx)
+panfrost_blitter_save(
+                struct panfrost_context *ctx,
+                struct blitter_context *blitter)
 {
 
-        util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vertex_buffers);
-        util_blitter_save_vertex_elements(ctx->blitter, ctx->vertex);
-        util_blitter_save_vertex_shader(ctx->blitter, ctx->vs);
-        util_blitter_save_rasterizer(ctx->blitter, ctx->rasterizer);
-        util_blitter_save_viewport(ctx->blitter, &ctx->pipe_viewport);
-        util_blitter_save_scissor(ctx->blitter, &ctx->scissor);
-        util_blitter_save_fragment_shader(ctx->blitter, ctx->fs);
-        util_blitter_save_blend(ctx->blitter, ctx->blend);
-        util_blitter_save_depth_stencil_alpha(ctx->blitter, ctx->depth_stencil);
-        util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
-	util_blitter_save_so_targets(ctx->blitter, 0, NULL);
+        util_blitter_save_vertex_buffer_slot(blitter, ctx->vertex_buffers);
+        util_blitter_save_vertex_elements(blitter, ctx->vertex);
+        util_blitter_save_vertex_shader(blitter, ctx->vs);
+        util_blitter_save_rasterizer(blitter, ctx->rasterizer);
+        util_blitter_save_viewport(blitter, &ctx->pipe_viewport);
+        util_blitter_save_scissor(blitter, &ctx->scissor);
+        util_blitter_save_fragment_shader(blitter, ctx->fs);
+        util_blitter_save_blend(blitter, ctx->blend);
+        util_blitter_save_depth_stencil_alpha(blitter, ctx->depth_stencil);
+        util_blitter_save_stencil_ref(blitter, &ctx->stencil_ref);
+	util_blitter_save_so_targets(blitter, 0, NULL);
 
 	/* For later */
-//        util_blitter_save_sample_mask(ctx->blitter, ctx->sample_mask);
+//        util_blitter_save_sample_mask(blitter, ctx->sample_mask);
 
-        util_blitter_save_framebuffer(ctx->blitter, &ctx->pipe_framebuffer);
-        util_blitter_save_fragment_sampler_states(ctx->blitter,
+        util_blitter_save_framebuffer(blitter, &ctx->pipe_framebuffer);
+        util_blitter_save_fragment_sampler_states(blitter,
 						  ctx->sampler_count[PIPE_SHADER_FRAGMENT],
 						  (void **)(&ctx->samplers[PIPE_SHADER_FRAGMENT]));
-        util_blitter_save_fragment_sampler_views(ctx->blitter,
+        util_blitter_save_fragment_sampler_views(blitter,
 						 ctx->sampler_view_count[PIPE_SHADER_FRAGMENT],
 						 (struct pipe_sampler_view **)&ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
 }
@@ -73,7 +75,7 @@ panfrost_u_blitter_blit(struct pipe_context *pipe,
 
         /* TODO: Scissor */
 
-        panfrost_blitter_save(ctx);
+        panfrost_blitter_save(ctx, ctx->blitter);
         util_blitter_blit(ctx->blitter, info);
 
         return true;
@@ -105,7 +107,7 @@ panfrost_blit_wallpaper(struct panfrost_context *ctx)
 {
         struct pipe_blit_info binfo = { };
 
-        panfrost_blitter_save(ctx);
+        panfrost_blitter_save(ctx, ctx->blitter_wallpaper);
 
 	binfo.src.resource = binfo.dst.resource = ctx->pipe_framebuffer.cbufs[0]->texture;
 	binfo.src.level = binfo.dst.level = 0;
@@ -122,6 +124,6 @@ panfrost_blit_wallpaper(struct panfrost_context *ctx)
 	binfo.filter = PIPE_TEX_FILTER_LINEAR;
 	binfo.scissor_enable = FALSE;
 
-	util_blitter_blit(ctx->blitter, &binfo);
+	util_blitter_blit(ctx->blitter_wallpaper, &binfo);
 }
 

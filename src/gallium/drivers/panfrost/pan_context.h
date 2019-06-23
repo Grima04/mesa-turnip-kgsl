@@ -183,6 +183,14 @@ struct panfrost_context {
 
         struct primconvert_context *primconvert;
         struct blitter_context *blitter;
+
+        /* Blitting the wallpaper (the old contents of the framebuffer back to
+         * itself) uses a dedicated u_blitter instance versus general blit()
+         * callbacks from Gallium, as the blit() callback can trigger
+         * wallpapering without Gallium realising, which in turns u_blitter
+         * errors due to unsupported reucrsion */
+
+        struct blitter_context *blitter_wallpaper;
         struct panfrost_job *wallpaper_batch;
 
         struct panfrost_blend_state *blend;
