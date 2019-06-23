@@ -711,15 +711,52 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                             IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
                             IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE)));
 
-   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, res->surf.size_B, 4096,
-                                 memzone,
+   uint32_t aux_preferred_alloc_flags;
+   uint64_t aux_size = 0;
+   bool aux_enabled =
+      iris_resource_configure_aux(screen, res, &aux_size,
+                                  &aux_preferred_alloc_flags);
+   aux_enabled = aux_enabled && res->aux.surf.size_B > 0;
+   const bool separate_aux = aux_enabled && !res->mod_info;
+   uint64_t aux_offset;
+   uint64_t bo_size;
+
+   if (aux_enabled && !separate_aux) {
+      /* Allocate aux data with main surface. This is required for modifiers
+       * with aux data (ccs).
+       */
+      aux_offset = ALIGN(res->surf.size_B, res->aux.surf.alignment_B);
+      bo_size = aux_offset + aux_size;
+   } else {
+      aux_offset = 0;
+      bo_size = res->surf.size_B;
+   }
+
+   res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, bo_size, 4096, memzone,
                                  isl_tiling_to_i915_tiling(res->surf.tiling),
                                  res->surf.row_pitch_B, flags);
 
    if (!res->bo)
       goto fail;
 
-   if (!iris_resource_alloc_separate_aux(screen, res))
+   if (aux_enabled) {
+      if (separate_aux) {
+         if (!iris_resource_alloc_separate_aux(screen, res))
+            aux_enabled = false;
+      } else {
+         res->aux.bo = res->bo;
+         iris_bo_reference(res->aux.bo);
+         res->aux.offset += aux_offset;
+         unsigned clear_color_state_size =
+            iris_get_aux_clear_color_state_size(screen);
+         if (clear_color_state_size > 0)
+            res->aux.clear_color_offset += aux_offset;
+         if (!iris_resource_init_aux_buf(res, flags, clear_color_state_size))
+            aux_enabled = false;
+      }
+   }
+
+   if (!aux_enabled)
       iris_resource_disable_aux(res);
 
    return &res->base;
