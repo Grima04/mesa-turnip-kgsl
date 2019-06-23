@@ -672,7 +672,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
         pandecode_log("};\n");
 }
 
-static void
+static unsigned
 pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
@@ -855,6 +855,9 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
 
         if (with_render_targets)
                 pandecode_render_target(gpu_va, job_no, fb);
+
+        /* Passback the render target count */
+        return MALI_NEGATIVE(fb->rt_count_1);
 }
 
 static void
@@ -1311,6 +1314,8 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
         mali_ptr shader_meta_ptr = (u64) (uintptr_t) (p->_shader_upper << 4);
         struct pandecode_mapped_memory *attr_mem;
 
+        unsigned rt_count = 1;
+
         /* On Bifrost, since the tiler heap (for tiler jobs) and the scratchpad
          * are the only things actually needed from the FBD, vertex/tiler jobs
          * no longer reference the FBD -- instead, this field points to some
@@ -1319,7 +1324,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
         if (is_bifrost)
                 pandecode_replay_scratchpad(p->framebuffer & ~FBD_TYPE, job_no, suffix);
         else if (p->framebuffer & MALI_MFBD)
-                pandecode_replay_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
+                rt_count = pandecode_replay_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
         else if (job_type == JOB_TYPE_COMPUTE)
                 pandecode_compute_fbd((u64) (uintptr_t) p->framebuffer, job_no);
         else
@@ -1470,7 +1475,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                 if (job_type == JOB_TYPE_TILER) {
                         void* blend_base = (void *) (s + 1);
 
-                        for (unsigned i = 0; i < 4; i++) {
+                        for (unsigned i = 0; i < rt_count; i++) {
                                 mali_ptr shader = 0;
 
                                 if (is_bifrost)
