@@ -334,22 +334,31 @@ create_aux_state_map(struct iris_resource *res, enum isl_aux_state initial)
    return per_level_arr;
 }
 
+static unsigned
+iris_get_aux_clear_color_state_size(struct iris_screen *screen)
+{
+   const struct gen_device_info *devinfo = &screen->devinfo;
+   return
+      (devinfo->gen >= 10 ? screen->isl_dev.ss.clear_color_state_size :
+       (devinfo->gen >= 9 ? screen->isl_dev.ss.clear_value_size : 0));
+}
+
 /**
- * Allocate the initial aux surface for a resource based on aux.usage
+ * Configure aux for the resource, but don't allocate it. For images which
+ * might be shared with modifiers, we must allocate the image and aux data in
+ * a single bo.
  */
 static bool
-iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
+iris_resource_configure_aux(struct iris_screen *screen,
+                            struct iris_resource *res, uint64_t *aux_size_B,
+                            uint32_t *alloc_flags)
 {
    struct isl_device *isl_dev = &screen->isl_dev;
    enum isl_aux_state initial_state;
    UNUSED bool ok = false;
-   uint8_t memset_value = 0;
-   uint32_t alloc_flags = 0;
-   const struct gen_device_info *devinfo = &screen->devinfo;
-   const unsigned clear_color_state_size = devinfo->gen >= 10 ?
-      screen->isl_dev.ss.clear_color_state_size :
-      (devinfo->gen >= 9 ? screen->isl_dev.ss.clear_value_size : 0);
 
+   *aux_size_B = 0;
+   *alloc_flags = 0;
    assert(!res->aux.bo);
 
    switch (res->aux.usage) {
@@ -359,7 +368,6 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
       break;
    case ISL_AUX_USAGE_HIZ:
       initial_state = ISL_AUX_STATE_AUX_INVALID;
-      memset_value = 0;
       ok = isl_surf_get_hiz_surf(isl_dev, &res->surf, &res->aux.surf);
       break;
    case ISL_AUX_USAGE_MCS:
@@ -373,7 +381,6 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
        * 1's, so we simply memset it to 0xff.
        */
       initial_state = ISL_AUX_STATE_CLEAR;
-      memset_value = 0xFF;
       ok = isl_surf_get_mcs_surf(isl_dev, &res->surf, &res->aux.surf);
       break;
    case ISL_AUX_USAGE_CCS_D:
@@ -392,7 +399,7 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
        * undefined bits in the aux buffer.
        */
       initial_state = ISL_AUX_STATE_PASS_THROUGH;
-      alloc_flags |= BO_ALLOC_ZEROED;
+      *alloc_flags |= BO_ALLOC_ZEROED;
       ok = isl_surf_get_ccs_surf(isl_dev, &res->surf, &res->aux.surf, 0);
       break;
    }
@@ -405,10 +412,12 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
    if (res->aux.surf.size_B == 0)
       return true;
 
-   /* Create the aux_state for the auxiliary buffer. */
-   res->aux.state = create_aux_state_map(res, initial_state);
-   if (!res->aux.state)
-      return false;
+   if (!res->aux.state) {
+      /* Create the aux_state for the auxiliary buffer. */
+      res->aux.state = create_aux_state_map(res, initial_state);
+      if (!res->aux.state)
+         return false;
+   }
 
    uint64_t size = res->aux.surf.size_B;
 
@@ -419,42 +428,8 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
     * anyways, and copy it back to the surface state during state emission.
     */
    res->aux.clear_color_offset = size;
-   size += clear_color_state_size;
-
-   /* Allocate the auxiliary buffer.  ISL has stricter set of alignment rules
-    * the drm allocator.  Therefore, one can pass the ISL dimensions in terms
-    * of bytes instead of trying to recalculate based on different format
-    * block sizes.
-    */
-   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer", size, 4096,
-                                     IRIS_MEMZONE_OTHER, I915_TILING_Y,
-                                     res->aux.surf.row_pitch_B, alloc_flags);
-   if (!res->aux.bo) {
-      return false;
-   }
-
-   if (!(alloc_flags & BO_ALLOC_ZEROED)) {
-      void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
-
-      if (!map) {
-         iris_resource_disable_aux(res);
-         return false;
-      }
-
-      if (memset_value != 0)
-         memset(map, memset_value, res->aux.surf.size_B);
-
-      /* Zero the indirect clear color to match ::fast_clear_color. */
-      memset((char *)map + res->aux.clear_color_offset, 0,
-             clear_color_state_size);
-
-      iris_bo_unmap(res->aux.bo);
-   }
-
-   if (clear_color_state_size > 0) {
-      res->aux.clear_color_bo = res->aux.bo;
-      iris_bo_reference(res->aux.clear_color_bo);
-   }
+   size += iris_get_aux_clear_color_state_size(screen);
+   *aux_size_B = size;
 
    if (res->aux.usage == ISL_AUX_USAGE_HIZ) {
       for (unsigned level = 0; level < res->surf.levels; ++level) {
@@ -468,6 +443,76 @@ iris_resource_alloc_aux(struct iris_screen *screen, struct iris_resource *res)
             res->aux.has_hiz |= 1 << level;
       }
    }
+
+   return true;
+}
+
+/**
+ * Initialize the aux buffer contents.
+ */
+static bool
+iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
+                           unsigned clear_color_state_size)
+{
+   if (!(alloc_flags & BO_ALLOC_ZEROED)) {
+      void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
+
+      if (!map) {
+         iris_resource_disable_aux(res);
+         return false;
+      }
+
+      if (iris_resource_get_aux_state(res, 0, 0) != ISL_AUX_STATE_AUX_INVALID) {
+         uint8_t memset_value = res->aux.usage == ISL_AUX_USAGE_MCS ? 0xFF : 0;
+         memset((char*)map + res->aux.offset, memset_value,
+                res->aux.surf.size_B);
+      }
+
+      /* Zero the indirect clear color to match ::fast_clear_color. */
+      memset((char *)map + res->aux.clear_color_offset, 0,
+             clear_color_state_size);
+
+      iris_bo_unmap(res->aux.bo);
+   }
+
+   if (clear_color_state_size > 0) {
+      res->aux.clear_color_bo = res->aux.bo;
+      iris_bo_reference(res->aux.clear_color_bo);
+   }
+
+   return true;
+}
+
+/**
+ * Allocate the initial aux surface for a resource based on aux.usage
+ */
+static bool
+iris_resource_alloc_separate_aux(struct iris_screen *screen,
+                                 struct iris_resource *res)
+{
+   uint32_t alloc_flags;
+   uint64_t size;
+   if (!iris_resource_configure_aux(screen, res, &size, &alloc_flags))
+      return false;
+
+   if (size == 0)
+      return true;
+
+   /* Allocate the auxiliary buffer.  ISL has stricter set of alignment rules
+    * the drm allocator.  Therefore, one can pass the ISL dimensions in terms
+    * of bytes instead of trying to recalculate based on different format
+    * block sizes.
+    */
+   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer", size, 4096,
+                                     IRIS_MEMZONE_OTHER, I915_TILING_Y,
+                                     res->aux.surf.row_pitch_B, alloc_flags);
+   if (!res->aux.bo) {
+      return false;
+   }
+
+   if (!iris_resource_init_aux_buf(res, alloc_flags,
+                                   iris_get_aux_clear_color_state_size(screen)))
+      return false;
 
    return true;
 }
@@ -674,7 +719,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!res->bo)
       goto fail;
 
-   if (!iris_resource_alloc_aux(screen, res))
+   if (!iris_resource_alloc_separate_aux(screen, res))
       iris_resource_disable_aux(res);
 
    return &res->base;
@@ -801,7 +846,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
              isl_tiling_to_i915_tiling(res->surf.tiling));
 
       // XXX: create_ccs_buf_for_image?
-      if (!iris_resource_alloc_aux(screen, res))
+      if (!iris_resource_alloc_separate_aux(screen, res))
          goto fail;
    }
 
