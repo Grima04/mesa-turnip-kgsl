@@ -117,9 +117,7 @@ panfrost_blit_wallpaper(struct panfrost_context *ctx)
 	binfo.src.box.y = binfo.dst.box.y = 0;
 	binfo.src.box.width = binfo.dst.box.width = ctx->pipe_framebuffer.width;
 	binfo.src.box.height = binfo.dst.box.height = ctx->pipe_framebuffer.height;
-
-	/* This avoids an assert due to missing nir_texop_txb support */
-	//binfo.src.box.depth = binfo.dst.box.depth = 1;
+	binfo.src.box.depth = binfo.dst.box.depth = 1;
 
 	binfo.src.format = binfo.dst.format = ctx->pipe_framebuffer.cbufs[0]->texture->format;
 
