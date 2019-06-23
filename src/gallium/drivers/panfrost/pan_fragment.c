@@ -69,6 +69,26 @@ panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
 
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
+        /* The passed tile coords can be out of range in some cases, so we need
+         * to clamp them to the framebuffer size to avoid a TILE_RANGE_FAULT.
+         * Theoretically we also need to clamp the coordinates positive, but we
+         * avoid that edge case as all four values are unsigned. Also,
+         * theoretically we could clamp the minima, but if that has to happen
+         * the asserts would fail anyway (since the maxima would get clamped
+         * and then be smaller than the minima). An edge case of sorts occurs
+         * when no scissors are added to draw, so by default min=~0 and max=0.
+         * But that can't happen if any actual drawing occurs (beyond a
+         * wallpaper reload), so this is again irrelevant in practice. */
+
+        job->maxx = MIN2(job->maxx, fb->width);
+        job->maxy = MIN2(job->maxy, fb->height);
+
+        /* Rendering region must be at least 1x1; otherwise, there is nothing
+         * to do and the whole job chain should have been discarded. */
+
+        assert(job->maxx > job->minx);
+        assert(job->maxy > job->miny);
+
         struct mali_payload_fragment payload = {
                 .min_tile_coord = MALI_COORDINATE_TO_TILE_MIN(job->minx, job->miny),
                 .max_tile_coord = MALI_COORDINATE_TO_TILE_MAX(job->maxx, job->maxy),
