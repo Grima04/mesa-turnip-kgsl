@@ -247,9 +247,20 @@ emit_user_consts(struct fd_context *ctx, const struct ir3_shader_variant *v,
 
 			uint32_t size = state->range[i].end - state->range[i].start;
 			uint32_t offset = cb->buffer_offset + state->range[i].start;
+
+			/* and even if the start of the const buffer is before
+			 * first_immediate, the end may not be:
+			 */
+			size = MIN2(size, (16 * v->constlen) - state->range[i].offset);
+
+			if (size == 0)
+				continue;
+
+			/* things should be aligned to vec4: */
 			debug_assert((state->range[i].offset % 16) == 0);
 			debug_assert((size % 16) == 0);
 			debug_assert((offset % 16) == 0);
+
 			ctx->emit_const(ring, v->type, state->range[i].offset / 4,
 							offset, size / 4, cb->user_buffer, cb->buffer);
 		}
