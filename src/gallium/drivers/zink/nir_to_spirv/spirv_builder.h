@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+struct hash_table;
+
 struct spirv_buffer {
    uint32_t *words;
    size_t num_words, room;
