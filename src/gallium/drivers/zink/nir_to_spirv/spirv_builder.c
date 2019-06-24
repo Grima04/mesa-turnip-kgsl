@@ -800,19 +800,82 @@ spirv_builder_type_function(struct spirv_builder *b, SpvId return_type,
    return type;
 }
 
+struct spirv_const {
+   SpvOp op, type;
+   uint32_t args[8];
+   size_t num_args;
+
+   SpvId result;
+};
+
+static uint32_t
+const_hash(const void *arg)
+{
+   const struct spirv_const *key = arg;
+
+   uint32_t hash = _mesa_fnv32_1a_offset_bias;
+   hash = _mesa_fnv32_1a_accumulate(hash, key->op);
+   hash = _mesa_fnv32_1a_accumulate(hash, key->type);
+   hash = _mesa_fnv32_1a_accumulate_block(hash, key->args, sizeof(uint32_t) *
+                                          key->num_args);
+   return hash;
+}
+
+static bool
+const_equals(const void *a, const void *b)
+{
+   const struct spirv_const *ca = a, *cb = b;
+
+   if (ca->op != cb->op ||
+       ca->type != cb->type)
+      return false;
+
+   assert(ca->num_args == cb->num_args);
+   return memcmp(ca->args, cb->args, sizeof(uint32_t) * ca->num_args) == 0;
+}
+
 static SpvId
 get_const_def(struct spirv_builder *b, SpvOp op, SpvId type,
               const uint32_t args[], size_t num_args)
 {
-   /* TODO: reuse constants */
-   SpvId result = spirv_builder_new_id(b);
+   struct spirv_const key;
+   assert(num_args <= ARRAY_SIZE(key.args));
+   key.op = op;
+   key.type = type;
+   memcpy(&key.args, args, sizeof(uint32_t) * num_args);
+   key.num_args = num_args;
+
+   struct hash_entry *entry;
+   if (b->consts) {
+      entry = _mesa_hash_table_search(b->consts, &key);
+      if (entry)
+         return ((struct spirv_const *)entry->data)->result;
+   } else {
+      b->consts = _mesa_hash_table_create(NULL, const_hash, const_equals);
+      assert(b->consts);
+   }
+
+   struct spirv_const *cnst = CALLOC_STRUCT(spirv_const);
+   if (!type)
+      return 0;
+
+   cnst->op = op;
+   cnst->type = type;
+   memcpy(&cnst->args, args, sizeof(uint32_t) * num_args);
+   cnst->num_args = num_args;
+
+   cnst->result = spirv_builder_new_id(b);
    spirv_buffer_prepare(&b->types_const_defs, 3 + num_args);
    spirv_buffer_emit_word(&b->types_const_defs, op | ((3 + num_args) << 16));
    spirv_buffer_emit_word(&b->types_const_defs, type);
-   spirv_buffer_emit_word(&b->types_const_defs, result);
+   spirv_buffer_emit_word(&b->types_const_defs, cnst->result);
    for (int i = 0; i < num_args; ++i)
       spirv_buffer_emit_word(&b->types_const_defs, args[i]);
-   return result;
+
+   entry = _mesa_hash_table_insert(b->consts, cnst, cnst);
+   assert(entry);
+
+   return ((struct spirv_const *)entry->data)->result;
 }
 
 SpvId

@@ -49,6 +49,7 @@ struct spirv_builder {
 
    struct spirv_buffer types_const_defs;
    struct hash_table *types;
+   struct hash_table *consts;
 
    struct spirv_buffer instructions;
    SpvId prev_id;
