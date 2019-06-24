@@ -650,7 +650,7 @@ get_type_def(struct spirv_builder *b, SpvOp op, const uint32_t args[],
     */
 
    struct spirv_type key;
-   assert(num_args < ARRAY_SIZE(key.args));
+   assert(num_args <= ARRAY_SIZE(key.args));
    key.op = op;
    memcpy(&key.args, args, sizeof(uint32_t) * num_args);
    key.num_args = num_args;
