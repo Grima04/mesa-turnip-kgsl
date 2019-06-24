@@ -3656,7 +3656,8 @@ static void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi,
 		}
 	}
 
-	if (ctx->shader->selector->so.num_outputs)
+	if (ctx->ac.chip_class <= GFX9 &&
+	    ctx->shader->selector->so.num_outputs)
 		si_llvm_emit_streamout(ctx, outputs, i, 0);
 
 	/* Export PrimitiveID. */
@@ -4448,7 +4449,8 @@ static void declare_streamout_params(struct si_shader_context *ctx,
 				     struct pipe_stream_output_info *so,
 				     struct si_function_info *fninfo)
 {
-	int i;
+	if (ctx->ac.chip_class >= GFX10)
+		return;
 
 	/* Streamout SGPRs. */
 	if (so->num_outputs) {
@@ -4460,7 +4462,7 @@ static void declare_streamout_params(struct si_shader_context *ctx,
 		ctx->param_streamout_write_index = add_arg(fninfo, ARG_SGPR, ctx->ac.i32);
 	}
 	/* A streamout buffer offset is loaded if the stride is non-zero. */
-	for (i = 0; i < 4; i++) {
+	for (int i = 0; i < 4; i++) {
 		if (!so->stride[i])
 			continue;
 
@@ -5789,7 +5791,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 		}
 
 		/* Streamout and exports. */
-		if (gs_selector->so.num_outputs) {
+		if (ctx.ac.chip_class <= GFX9 && gs_selector->so.num_outputs) {
 			si_llvm_emit_streamout(&ctx, outputs,
 					       gsinfo->num_outputs,
 					       stream);

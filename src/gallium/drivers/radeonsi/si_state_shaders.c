@@ -418,7 +418,8 @@ static void polaris_set_vgt_vertex_reuse(struct si_screen *sscreen,
 {
 	unsigned type = sel->type;
 
-	if (sscreen->info.family < CHIP_POLARIS10)
+	if (sscreen->info.family < CHIP_POLARIS10 ||
+	    sscreen->info.chip_class >= GFX10)
 		return;
 
 	/* VS as VS, or VS as ES: */
@@ -1371,21 +1372,27 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 
 	si_pm4_set_reg(pm4, R_00B120_SPI_SHADER_PGM_LO_VS, va >> 8);
 	si_pm4_set_reg(pm4, R_00B124_SPI_SHADER_PGM_HI_VS, S_00B124_MEM_BASE(va >> 40));
-	si_pm4_set_reg(pm4, R_00B128_SPI_SHADER_PGM_RSRC1_VS,
-		       S_00B128_VGPRS((shader->config.num_vgprs - 1) / 4) |
-		       S_00B128_SGPRS((shader->config.num_sgprs - 1) / 8) |
-		       S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt) |
-		       S_00B128_DX10_CLAMP(1) |
-		       S_00B128_FLOAT_MODE(shader->config.float_mode));
-	si_pm4_set_reg(pm4, R_00B12C_SPI_SHADER_PGM_RSRC2_VS,
-		       S_00B12C_USER_SGPR(num_user_sgprs) |
-		       S_00B12C_OC_LDS_EN(oc_lds_en) |
-		       S_00B12C_SO_BASE0_EN(!!shader->selector->so.stride[0]) |
-		       S_00B12C_SO_BASE1_EN(!!shader->selector->so.stride[1]) |
-		       S_00B12C_SO_BASE2_EN(!!shader->selector->so.stride[2]) |
-		       S_00B12C_SO_BASE3_EN(!!shader->selector->so.stride[3]) |
-		       S_00B12C_SO_EN(!!shader->selector->so.num_outputs) |
-		       S_00B12C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
+
+	uint32_t rsrc1 = S_00B128_VGPRS((shader->config.num_vgprs - 1) / 4) |
+			 S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt) |
+			 S_00B128_DX10_CLAMP(1) |
+			 S_00B128_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+			 S_00B128_FLOAT_MODE(shader->config.float_mode);
+	uint32_t rsrc2 = S_00B12C_USER_SGPR(num_user_sgprs) |
+			 S_00B12C_OC_LDS_EN(oc_lds_en) |
+			 S_00B12C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
+
+	if (sscreen->info.chip_class <= GFX9) {
+		rsrc1 |= S_00B128_SGPRS((shader->config.num_sgprs - 1) / 8);
+		rsrc2 |= S_00B12C_SO_BASE0_EN(!!shader->selector->so.stride[0]) |
+			 S_00B12C_SO_BASE1_EN(!!shader->selector->so.stride[1]) |
+			 S_00B12C_SO_BASE2_EN(!!shader->selector->so.stride[2]) |
+			 S_00B12C_SO_BASE3_EN(!!shader->selector->so.stride[3]) |
+			 S_00B12C_SO_EN(!!shader->selector->so.num_outputs);
+	}
+
+	si_pm4_set_reg(pm4, R_00B128_SPI_SHADER_PGM_RSRC1_VS, rsrc1);
+	si_pm4_set_reg(pm4, R_00B12C_SPI_SHADER_PGM_RSRC2_VS, rsrc2);
 
 	if (window_space)
 		shader->ctx_reg.vs.pa_cl_vte_cntl =

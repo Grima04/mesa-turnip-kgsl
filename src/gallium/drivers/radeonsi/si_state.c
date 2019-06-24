@@ -5565,6 +5565,7 @@ static void si_init_config(struct si_context *sctx)
 		 */
 		si_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL,
 			       S_028C50_MAX_DEALLOCS_IN_WAVE(512));
+		si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
 		si_pm4_set_reg(pm4, R_02835C_PA_SC_TILE_STEERING_OVERRIDE,
 			       sscreen->info.pa_sc_tile_steering_override);
 
