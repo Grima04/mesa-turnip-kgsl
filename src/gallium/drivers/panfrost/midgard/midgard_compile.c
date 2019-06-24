@@ -1482,6 +1482,9 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord: {
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+                                /* texelFetch is undefined on samplerCube */
+                                assert(midgard_texop != TEXTURE_OP_TEXEL_FETCH);
+
                                 /* For cubemaps, we need to load coords into
                                  * special r27, and then use a special ld/st op
                                  * to select the face and copy the xy into the
