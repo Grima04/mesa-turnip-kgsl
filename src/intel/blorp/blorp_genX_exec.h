@@ -778,6 +778,10 @@ blorp_emit_ps_config(struct blorp_batch *batch,
       if (GEN_GEN == 11)
          ps.BindingTableEntryCount = 0;
 
+      /* SAMPLER_STATE prefetching is broken on Gen11 - WA_1606682166 */
+      if (GEN_GEN == 11)
+         ps.SamplerCount = 0;
+
       if (prog_data) {
          ps._8PixelDispatchEnable = prog_data->dispatch_8;
          ps._16PixelDispatchEnable = prog_data->dispatch_16;
