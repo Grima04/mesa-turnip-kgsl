@@ -831,6 +831,8 @@ panfrost_upload_tex(
         assert(pview->target != PIPE_BUFFER);
         unsigned first_level = pview->u.tex.first_level;
         unsigned last_level = pview->u.tex.last_level;
+        unsigned first_layer = pview->u.tex.first_layer;
+        unsigned last_layer = pview->u.tex.last_layer;
 
         /* Inject the addresses in, interleaving mip levels, cube faces, and
          * strides in that order */
@@ -838,7 +840,7 @@ panfrost_upload_tex(
         unsigned idx = 0;
 
         for (unsigned l = first_level; l <= last_level; ++l) {
-                for (unsigned f = 0; f < pview->texture->array_size; ++f) {
+                for (unsigned f = first_layer; f <= last_layer; ++f) {
                         view->hw.payload[idx++] =
                                 panfrost_get_texture_address(rsrc, l, f);
 
