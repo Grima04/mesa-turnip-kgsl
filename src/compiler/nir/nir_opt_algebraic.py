@@ -66,6 +66,12 @@ e = 'e'
 # should only match that particular bit-size.  In the replace half of the
 # expression this indicates that the constructed value should have that
 # bit-size.
+#
+# A special condition "many-comm-expr" can be used with expressions to note
+# that the expression and its subexpressions have more commutative expressions
+# than nir_replace_instr can handle.  If this special condition is needed with
+# another condition, the two can be separated by a comma (e.g.,
+# "(many-comm-expr,is_used_once)").
 
 optimizations = [
 
@@ -1056,7 +1062,7 @@ def bitfield_reverse(u):
     step2 = ('ior', ('ishl', ('iand', step1, 0x00ff00ff), 8), ('ushr', ('iand', step1, 0xff00ff00), 8))
     step3 = ('ior', ('ishl', ('iand', step2, 0x0f0f0f0f), 4), ('ushr', ('iand', step2, 0xf0f0f0f0), 4))
     step4 = ('ior', ('ishl', ('iand', step3, 0x33333333), 2), ('ushr', ('iand', step3, 0xcccccccc), 2))
-    step5 = ('ior', ('ishl', ('iand', step4, 0x55555555), 1), ('ushr', ('iand', step4, 0xaaaaaaaa), 1))
+    step5 = ('ior(many-comm-expr)', ('ishl', ('iand', step4, 0x55555555), 1), ('ushr', ('iand', step4, 0xaaaaaaaa), 1))
 
     return step5
 

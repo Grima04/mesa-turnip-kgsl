@@ -30,6 +30,7 @@
 #include "nir_builder.h"
 #include "util/half_float.h"
 
+/* This should be the same as nir_search_max_comm_ops in nir_algebraic.py. */
 #define NIR_SEARCH_MAX_COMM_OPS 4
 
 struct match_state {
