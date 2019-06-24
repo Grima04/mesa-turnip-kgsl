@@ -214,9 +214,6 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 		struct panfrost_resource *res = pan_resource(surf->texture);
 		assert(res->bo->gem_handle > 0);
 		bo_handles[submit.bo_handle_count++] = res->bo->gem_handle;
-
-		if (res->bo->checksum_slab.gem_handle)
-			bo_handles[submit.bo_handle_count++] = res->bo->checksum_slab.gem_handle;
 	}
 
 	/* TODO: Add here the transient pools */

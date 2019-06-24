@@ -44,9 +44,14 @@ struct panfrost_slice {
         unsigned offset;
         unsigned stride;
 
-        /* If there is a header preceding each slice, how big is that header?
-         * Used for AFBC */
+        /* If there is a header preceding each slice, how big is
+         * that header?  Used for AFBC */
         unsigned header_size;
+
+        /* If checksumming is enabled following the slice, what
+         * is its offset/stride? */
+        unsigned checksum_offset;
+        unsigned checksum_stride;
 
         /* Has anything been written to this slice? */
         bool initialized;
@@ -76,12 +81,8 @@ struct panfrost_bo {
         /* Internal layout (tiled?) */
         enum panfrost_memory_layout layout;
 
-        /* If transaciton elimination is enabled, we have a dedicated
-         * buffer for that as well. */
-
-        bool has_checksum;
-        struct panfrost_memory checksum_slab;
-        int checksum_stride;
+        /* Is transaciton elimination enabled? */
+        bool checksummed;
 
         int gem_handle;
 };

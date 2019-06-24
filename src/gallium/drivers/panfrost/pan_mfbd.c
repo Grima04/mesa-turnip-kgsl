@@ -289,14 +289,21 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         if (job->requirements & PAN_REQ_DEPTH_WRITE)
                 fb.mfbd_flags |= MALI_MFBD_DEPTH_WRITE;
 
-        if (ctx->pipe_framebuffer.nr_cbufs == 1) {
-                struct panfrost_resource *rsrc = (struct panfrost_resource *) ctx->pipe_framebuffer.cbufs[0]->texture;
+        /* Checksumming only works with a single render target */
 
-                if (rsrc->bo->has_checksum) {
+        if (ctx->pipe_framebuffer.nr_cbufs == 1) {
+                struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[0];
+                struct panfrost_resource *rsrc = pan_resource(surf->texture);
+                struct panfrost_bo *bo = rsrc->bo;
+
+                if (bo->checksummed) {
+                        unsigned level = surf->u.tex.level;
+                        struct panfrost_slice *slice = &bo->slices[level];
+
                         fb.mfbd_flags |= MALI_MFBD_EXTRA;
                         fbx.flags |= MALI_EXTRA_PRESENT;
-                        fbx.checksum_stride = rsrc->bo->checksum_stride;
-                        fbx.checksum = rsrc->bo->gpu + rsrc->bo->slices[0].stride * rsrc->base.height0;
+                        fbx.checksum_stride = slice->checksum_stride;
+                        fbx.checksum = bo->gpu + slice->checksum_offset;
                 }
         }
 

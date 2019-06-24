@@ -180,6 +180,31 @@ panfrost_surface_destroy(struct pipe_context *pipe,
         ralloc_free(surf);
 }
 
+/* Computes sizes for checksumming, which is 8 bytes per 16x16 tile */
+
+#define CHECKSUM_TILE_WIDTH 16
+#define CHECKSUM_TILE_HEIGHT 16
+#define CHECKSUM_BYTES_PER_TILE 8
+
+static unsigned
+panfrost_compute_checksum_sizes(
+                struct panfrost_slice *slice,
+                unsigned width,
+                unsigned height)
+{
+        unsigned aligned_width = ALIGN(width, CHECKSUM_TILE_WIDTH);
+        unsigned aligned_height = ALIGN(width, CHECKSUM_TILE_HEIGHT);
+
+        unsigned tile_count_x = aligned_width / CHECKSUM_TILE_WIDTH;
+        unsigned tile_count_y = aligned_height / CHECKSUM_TILE_HEIGHT;
+
+        slice->checksum_stride = tile_count_x * CHECKSUM_BYTES_PER_TILE;
+
+        return slice->checksum_stride * tile_count_y;
+}
+
+/* Setup the mip tree given a particular layout, possibly with checksumming */
+
 static void
 panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
 {
@@ -254,6 +279,16 @@ panfrost_setup_slices(const struct pipe_resource *tmpl, struct panfrost_bo *bo)
 
                 offset += slice_full_size;
 
+                /* Add a checksum region if necessary */
+                if (bo->checksummed) {
+                        slice->checksum_offset = offset;
+
+                        unsigned size = panfrost_compute_checksum_sizes(
+                                        slice, width, height);
+
+                        offset += size;
+                }
+
                 width = u_minify(width, 1);
                 height = u_minify(height, 1);
                 depth = u_minify(depth, 1);
@@ -306,6 +341,12 @@ panfrost_create_bo(struct panfrost_screen *screen, const struct pipe_resource *t
 
         /* Depth/stencil can't be tiled, only linear or AFBC */
         should_tile &= !(template->bind & PIPE_BIND_DEPTH_STENCIL);
+
+        /* FBOs we would like to checksum, if at all possible */
+        bool can_checksum = !(template->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED));
+        bool should_checksum = template->bind & PIPE_BIND_RENDER_TARGET;
+
+        bo->checksummed = can_checksum && should_checksum;
 
         /* Set the layout appropriately */
         bo->layout = should_tile ? PAN_TILED : PAN_LINEAR;
@@ -385,7 +426,9 @@ panfrost_resource_create(struct pipe_screen *screen,
 static void
 panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
 {
-        if (!bo->imported) {
+        if (bo->imported) {
+                panfrost_drm_free_imported_bo(screen, bo);
+        } else {
                 struct panfrost_memory mem = {
                         .cpu = bo->cpu,
                         .gpu = bo->gpu,
@@ -394,21 +437,6 @@ panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
                 };
 
                 panfrost_drm_free_slab(screen, &mem);
-        }
-
-        if (bo->has_checksum) {
-                struct panfrost_memory mem = {
-                        .cpu = bo->checksum_slab.cpu,
-                        .gpu = bo->checksum_slab.gpu,
-                        .size = bo->checksum_slab.size,
-                        .gem_handle = bo->checksum_slab.gem_handle,
-                };
-
-                panfrost_drm_free_slab(screen, &mem);
-        }
-
-        if (bo->imported) {
-                panfrost_drm_free_imported_bo(screen, bo);
         }
 
         ralloc_free(bo);

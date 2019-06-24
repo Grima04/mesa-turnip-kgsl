@@ -75,22 +75,6 @@ panfrost_job_type_for_pipe(enum pipe_shader_type type)
         }
 }
 
-static void
-panfrost_enable_checksum(struct panfrost_context *ctx, struct panfrost_resource *rsrc)
-{
-        struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
-        int tile_w = (rsrc->base.width0 + (MALI_TILE_LENGTH - 1)) >> MALI_TILE_SHIFT;
-        int tile_h = (rsrc->base.height0 + (MALI_TILE_LENGTH - 1)) >> MALI_TILE_SHIFT;
-
-        /* 8 byte checksum per tile */
-        rsrc->bo->checksum_stride = tile_w * 8;
-        int pages = (((rsrc->bo->checksum_stride * tile_h) + 4095) / 4096);
-        panfrost_drm_allocate_slab(screen, &rsrc->bo->checksum_slab, pages, false, 0, 0, 0);
-
-        rsrc->bo->has_checksum = true;
-}
-
 /* Framebuffer descriptor */
 
 static void
