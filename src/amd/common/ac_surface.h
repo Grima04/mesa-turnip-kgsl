@@ -86,6 +86,7 @@ struct legacy_surf_fmask {
     uint8_t tiling_index;    /* max 31 */
     uint8_t bankh;           /* max 8 */
     uint16_t pitch_in_pixels;
+    uint64_t slice_size;
 };
 
 struct legacy_surf_layout {

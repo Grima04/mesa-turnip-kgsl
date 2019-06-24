@@ -4905,7 +4905,8 @@ static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
 }
 
 void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
-			   struct radv_image *image)
+			   struct radv_image *image,
+			   const VkImageSubresourceRange *range)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	static const uint32_t fmask_clear_values[4] = {
@@ -4920,7 +4921,7 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
-	state->flush_bits |= radv_clear_fmask(cmd_buffer, image, value);
+	state->flush_bits |= radv_clear_fmask(cmd_buffer, image, range, value);
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 }
@@ -5008,7 +5009,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	if (radv_image_has_fmask(image)) {
-		radv_initialize_fmask(cmd_buffer, image);
+		radv_initialize_fmask(cmd_buffer, image, range);
 	}
 
 	if (radv_dcc_enabled(image, range->baseMipLevel)) {

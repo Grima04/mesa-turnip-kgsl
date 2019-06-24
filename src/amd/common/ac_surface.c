@@ -848,6 +848,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 		surf->u.legacy.fmask.tiling_index = fout.tileIndex;
 		surf->u.legacy.fmask.bankh = fout.pTileInfo->bankHeight;
 		surf->u.legacy.fmask.pitch_in_pixels = fout.pitch;
+		surf->u.legacy.fmask.slice_size = fout.sliceSize;
 
 		/* Compute tile swizzle for FMASK. */
 		if (config->info.fmask_surf_index &&

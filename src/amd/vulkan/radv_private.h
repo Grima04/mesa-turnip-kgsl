@@ -1555,6 +1555,7 @@ struct radv_fmask_info {
 	unsigned slice_tile_max;
 	unsigned tile_mode_index;
 	unsigned tile_swizzle;
+	uint64_t slice_size;
 };
 
 struct radv_cmask_info {
@@ -2081,7 +2082,8 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 			 const VkImageSubresourceRange *range, uint32_t value);
 
 void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
-			   struct radv_image *image);
+			   struct radv_image *image,
+			   const VkImageSubresourceRange *range);
 
 struct radv_fence {
 	struct radeon_winsys_fence *fence;

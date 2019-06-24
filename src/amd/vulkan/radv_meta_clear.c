@@ -1336,11 +1336,25 @@ radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer,
 
 uint32_t
 radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
-		 struct radv_image *image, uint32_t value)
+		 struct radv_image *image,
+		 const VkImageSubresourceRange *range, uint32_t value)
 {
-	return radv_fill_buffer(cmd_buffer, image->bo,
-				image->offset + image->fmask.offset,
-				image->fmask.size, value);
+	uint64_t offset = image->offset + image->fmask.offset;
+	uint64_t size;
+
+	/* MSAA images do not support mipmap levels. */
+	assert(range->baseMipLevel == 0 &&
+	       radv_get_levelCount(image, range) == 1);
+
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+		/* TODO: clear layers. */
+		size = image->fmask.size;
+	} else {
+		offset += image->fmask.slice_size * range->baseArrayLayer;
+		size = image->fmask.slice_size * radv_get_layerCount(image, range);
+	}
+
+	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
 }
 
 uint32_t

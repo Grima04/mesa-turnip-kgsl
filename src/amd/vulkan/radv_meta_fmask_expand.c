@@ -172,7 +172,7 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 					RADV_CMD_FLAG_INV_GLOBAL_L2;
 
 	/* Re-initialize FMASK in fully expanded mode. */
-	radv_initialize_fmask(cmd_buffer, image);
+	radv_initialize_fmask(cmd_buffer, image, subresourceRange);
 }
 
 void radv_device_finish_meta_fmask_expand_state(struct radv_device *device)

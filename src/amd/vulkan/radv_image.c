@@ -907,6 +907,7 @@ radv_image_get_fmask_info(struct radv_device *device,
 	out->slice_tile_max = image->planes[0].surface.u.legacy.fmask.slice_tile_max;
 	out->tile_mode_index = image->planes[0].surface.u.legacy.fmask.tiling_index;
 	out->pitch_in_pixels = image->planes[0].surface.u.legacy.fmask.pitch_in_pixels;
+	out->slice_size = image->planes[0].surface.u.legacy.fmask.slice_size;
 	out->bank_height = image->planes[0].surface.u.legacy.fmask.bankh;
 	out->tile_swizzle = image->planes[0].surface.fmask_tile_swizzle;
 	out->alignment = image->planes[0].surface.fmask_alignment;
