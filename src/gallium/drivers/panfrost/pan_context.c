@@ -2205,7 +2205,7 @@ panfrost_create_sampler_view(
 
         unsigned array_size = texture->array_size;
 
-        if (texture->target == PIPE_TEXTURE_CUBE) {
+        if (template->target == PIPE_TEXTURE_CUBE) {
                 /* TODO: Cubemap arrays */
                 assert(array_size == 6);
                 array_size /= 6;
@@ -2223,7 +2223,7 @@ panfrost_create_sampler_view(
                         .format = format,
 
                         .srgb = desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB,
-                        .type = panfrost_translate_texture_type(texture->target),
+                        .type = panfrost_translate_texture_type(template->target),
 
                         .usage2 = usage2_layout
                 },
