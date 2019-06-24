@@ -869,6 +869,22 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
 
 }
 
+static void virgl_submit_cmd(struct virgl_winsys *vws,
+                             struct virgl_cmd_buf *cbuf,
+			     struct pipe_fence_handle **fence)
+{
+   if (unlikely(virgl_debug & VIRGL_DEBUG_SYNC)) {
+      struct pipe_fence_handle *sync_fence = NULL;
+
+      vws->submit_cmd(vws, cbuf, &sync_fence);
+
+      vws->fence_wait(vws, sync_fence, PIPE_TIMEOUT_INFINITE);
+      vws->fence_reference(vws, &sync_fence, NULL);
+   } else {
+      vws->submit_cmd(vws, cbuf, fence);
+   }
+}
+
 static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
 			   struct pipe_fence_handle **fence)
 {
@@ -887,7 +903,8 @@ static void virgl_flush_eq(struct virgl_context *ctx, void *closure,
    ctx->num_draws = ctx->num_compute = 0;
 
    virgl_transfer_queue_clear(&ctx->queue, ctx->cbuf);
-   rs->vws->submit_cmd(rs->vws, ctx->cbuf, fence);
+
+   virgl_submit_cmd(rs->vws, ctx->cbuf, fence);
 
    /* Reserve some space for transfers. */
    if (ctx->encoded_transfers)
