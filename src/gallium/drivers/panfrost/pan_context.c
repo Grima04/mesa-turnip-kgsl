@@ -610,6 +610,29 @@ panfrost_emit_varying_descriptor(
         for (unsigned i = 0; i < fs->tripipe->varying_count; i++) {
                 unsigned j;
 
+                /* If we have a point sprite replacement, handle that here. We
+                 * have to translate location first.  TODO: Flip y in shader.
+                 * We're already keying ... just time crunch .. */
+
+                unsigned loc = fs->varyings_loc[i];
+                unsigned pnt_loc =
+                        (loc >= VARYING_SLOT_VAR0) ? (loc - VARYING_SLOT_VAR0) :
+                        (loc == VARYING_SLOT_PNTC) ? 8 :
+                        ~0;
+
+                if (~pnt_loc && fs->point_sprite_mask & (1 << pnt_loc)) {
+                        /* gl_PointCoord index by convention */
+                        fs->varyings[i].index = 3;
+                        fs->reads_point_coord = true;
+
+                        /* Swizzle out the z/w to 0/1 */
+                        fs->varyings[i].format = MALI_RG16F;
+                        fs->varyings[i].swizzle =
+                                panfrost_get_default_swizzle(2);
+
+                        continue;
+                }
+
                 if (fs->varyings[i].index)
                         continue;
 
@@ -1668,7 +1691,10 @@ panfrost_bind_rasterizer_state(
 
         /* Point sprites are emulated */
 
-        if (ctx->rasterizer->base.sprite_coord_enable)
+        struct panfrost_shader_state *variant =
+                ctx->fs ? &ctx->fs->variants[ctx->fs->active_variant] : NULL;
+
+        if (ctx->rasterizer->base.sprite_coord_enable || (variant && variant->point_sprite_mask))
                 ctx->base.bind_fs_state(&ctx->base, ctx->fs);
 }
 
