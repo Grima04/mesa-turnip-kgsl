@@ -1758,7 +1758,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         pandecode_prop("zero = 0x%X, 0x%X\n", s->zero, s->zero2);
                                 }
 
-                                pandecode_prop("unknown2 = %d", s->unknown2);
+                                pandecode_prop("seamless_cube_map = %d", s->seamless_cube_map);
 
                                 pandecode_prop("border_color = { %f, %f, %f, %f }",
                                              s->border_color[0],

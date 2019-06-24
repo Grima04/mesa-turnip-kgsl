@@ -1234,8 +1234,9 @@ struct mali_sampler_descriptor {
         enum mali_wrap_mode wrap_r : 4;
         enum mali_alt_func compare_func : 3;
 
-        /* A single set bit of unknown, ha! */
-        unsigned unknown2 : 1;
+        /* No effect on 2D textures. For cubemaps, set for ES3 and clear for
+         * ES2, controlling seamless cubemapping */
+        unsigned seamless_cube_map : 1;
 
         unsigned zero : 16;
 

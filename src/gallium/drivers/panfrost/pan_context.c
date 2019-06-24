@@ -1873,7 +1873,7 @@ panfrost_create_sampler_state(
                 },
                 .min_lod = FIXED_16(cso->min_lod),
                 .max_lod = FIXED_16(cso->max_lod),
-                .unknown2 = 1,
+                .seamless_cube_map = cso->seamless_cube_map,
         };
 
         /* If necessary, we disable mipmapping in the sampler descriptor by
