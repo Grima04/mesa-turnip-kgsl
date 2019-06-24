@@ -1665,6 +1665,11 @@ panfrost_bind_rasterizer_state(
 
         ctx->rasterizer = hwcso;
         ctx->dirty |= PAN_DIRTY_RASTERIZER;
+
+        /* Point sprites are emulated */
+
+        if (ctx->rasterizer->base.sprite_coord_enable)
+                ctx->base.bind_fs_state(&ctx->base, ctx->fs);
 }
 
 static void *
@@ -1805,6 +1810,7 @@ panfrost_variant_matches(
                 struct panfrost_shader_state *variant,
                 enum pipe_shader_type type)
 {
+        struct pipe_rasterizer_state *rasterizer = &ctx->rasterizer->base;
         struct pipe_alpha_state *alpha = &ctx->depth_stencil->alpha;
 
         bool is_fragment = (type == PIPE_SHADER_FRAGMENT);
@@ -1823,6 +1829,22 @@ panfrost_variant_matches(
                         return false;
                 }
         }
+
+        if (is_fragment && rasterizer && (rasterizer->sprite_coord_enable |
+                                variant->point_sprite_mask)) {
+                /* Ensure the same varyings are turned to point sprites */
+                if (rasterizer->sprite_coord_enable != variant->point_sprite_mask)
+                        return false;
+
+                /* Ensure the orientation is correct */
+                bool upper_left =
+                        rasterizer->sprite_coord_mode ==
+                        PIPE_SPRITE_COORD_UPPER_LEFT;
+
+                if (variant->point_sprite_upper_left != upper_left)
+                        return false;
+        }
+
         /* Otherwise, we're good to go */
         return true;
 }
@@ -1863,10 +1885,21 @@ panfrost_bind_shader_state(
                 variant = variants->variant_count++;
                 assert(variants->variant_count < MAX_SHADER_VARIANTS);
 
-                variants->variants[variant].base = hwcso;
+                struct panfrost_shader_state *v =
+                        &variants->variants[variant];
 
-                if (type == PIPE_SHADER_FRAGMENT)
-                        variants->variants[variant].alpha_state = ctx->depth_stencil->alpha;
+                v->base = hwcso;
+
+                if (type == PIPE_SHADER_FRAGMENT) {
+                        v->alpha_state = ctx->depth_stencil->alpha;
+
+                        if (ctx->rasterizer) {
+                                v->point_sprite_mask = ctx->rasterizer->base.sprite_coord_enable;
+                                v->point_sprite_upper_left =
+                                        ctx->rasterizer->base.sprite_coord_mode ==
+                                        PIPE_SPRITE_COORD_UPPER_LEFT;
+                        }
+                }
 
                 /* Allocate the mapped descriptor ahead-of-time. */
                 struct panfrost_context *ctx = pan_context(pctx);

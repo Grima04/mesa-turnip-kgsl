@@ -258,6 +258,9 @@ struct panfrost_shader_state {
 
         /* Information on this particular shader variant */
         struct pipe_alpha_state alpha_state;
+
+        uint16_t point_sprite_mask;
+        unsigned point_sprite_upper_left : 1;
 };
 
 /* A collection of varyings (the CSO) */
