@@ -561,6 +561,9 @@ MAYBE_UNUSED static void dump_value(const nir_search_value *val)
       case nir_type_uint:
          printf("0x%"PRIx64, sconst->data.u);
          break;
+      case nir_type_bool:
+         printf("%s", sconst->data.u != 0 ? "True" : "False");
+         break;
       default:
          unreachable("bad const type");
       }
