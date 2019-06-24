@@ -3908,21 +3908,20 @@ static void membar_emit(
 	struct si_shader_context *ctx = si_shader_context(bld_base);
 	LLVMValueRef src0 = lp_build_emit_fetch(bld_base, emit_data->inst, 0, 0);
 	unsigned flags = LLVMConstIntGetZExtValue(src0);
-	unsigned waitcnt = NOOP_WAITCNT;
+	unsigned wait_flags = 0;
 
 	if (flags & TGSI_MEMBAR_THREAD_GROUP)
-		waitcnt &= VM_CNT & LGKM_CNT;
+		wait_flags |= AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE;
 
 	if (flags & (TGSI_MEMBAR_ATOMIC_BUFFER |
 		     TGSI_MEMBAR_SHADER_BUFFER |
 		     TGSI_MEMBAR_SHADER_IMAGE))
-		waitcnt &= VM_CNT;
+		wait_flags |= AC_WAIT_VLOAD | AC_WAIT_VSTORE;
 
 	if (flags & TGSI_MEMBAR_SHARED)
-		waitcnt &= LGKM_CNT;
+		wait_flags |= AC_WAIT_LGKM;
 
-	if (waitcnt != NOOP_WAITCNT)
-		ac_build_waitcnt(&ctx->ac, waitcnt);
+	ac_build_waitcnt(&ctx->ac, wait_flags);
 }
 
 static void clock_emit(
@@ -4372,7 +4371,7 @@ static void si_llvm_emit_barrier(const struct lp_build_tgsi_action *action,
 	 */
 	if (ctx->screen->info.chip_class == GFX6 &&
 	    ctx->type == PIPE_SHADER_TESS_CTRL) {
-		ac_build_waitcnt(&ctx->ac, LGKM_CNT & VM_CNT);
+		ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
 		return;
 	}
 

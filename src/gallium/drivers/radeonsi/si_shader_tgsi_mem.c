@@ -520,7 +520,7 @@ static void load_emit(
 	}
 
 	if (inst->Memory.Qualifier & TGSI_MEMORY_VOLATILE)
-		ac_build_waitcnt(&ctx->ac, VM_CNT);
+		ac_build_waitcnt(&ctx->ac, AC_WAIT_VLOAD | AC_WAIT_VSTORE);
 
 	can_speculate = !(inst->Memory.Qualifier & TGSI_MEMORY_VOLATILE) &&
 			  is_oneway_access_only(inst, info,
@@ -709,7 +709,7 @@ static void store_emit(
 	}
 
 	if (inst->Memory.Qualifier & TGSI_MEMORY_VOLATILE)
-		ac_build_waitcnt(&ctx->ac, VM_CNT);
+		ac_build_waitcnt(&ctx->ac, AC_WAIT_VLOAD | AC_WAIT_VSTORE);
 
 	bool is_image = inst->Dst[0].Register.File != TGSI_FILE_BUFFER;
 	args.cache_policy = get_cache_policy(ctx, inst,

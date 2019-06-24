@@ -2741,26 +2741,26 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx,
 static void emit_membar(struct ac_llvm_context *ac,
 			const nir_intrinsic_instr *instr)
 {
-	unsigned waitcnt = NOOP_WAITCNT;
+	unsigned wait_flags = 0;
 
 	switch (instr->intrinsic) {
 	case nir_intrinsic_memory_barrier:
 	case nir_intrinsic_group_memory_barrier:
-		waitcnt &= VM_CNT & LGKM_CNT;
+		wait_flags = AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE;
 		break;
 	case nir_intrinsic_memory_barrier_atomic_counter:
 	case nir_intrinsic_memory_barrier_buffer:
 	case nir_intrinsic_memory_barrier_image:
-		waitcnt &= VM_CNT;
+		wait_flags = AC_WAIT_VLOAD | AC_WAIT_VSTORE;
 		break;
 	case nir_intrinsic_memory_barrier_shared:
-		waitcnt &= LGKM_CNT;
+		wait_flags = AC_WAIT_LGKM;
 		break;
 	default:
 		break;
 	}
-	if (waitcnt != NOOP_WAITCNT)
-		ac_build_waitcnt(ac, waitcnt);
+
+	ac_build_waitcnt(ac, wait_flags);
 }
 
 void ac_emit_barrier(struct ac_llvm_context *ac, gl_shader_stage stage)
@@ -2770,7 +2770,7 @@ void ac_emit_barrier(struct ac_llvm_context *ac, gl_shader_stage stage)
 	 * always fits into a single wave.
 	 */
 	if (ac->chip_class == GFX6 && stage == MESA_SHADER_TESS_CTRL) {
-		ac_build_waitcnt(ac, LGKM_CNT & VM_CNT);
+		ac_build_waitcnt(ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
 		return;
 	}
 	ac_build_s_barrier(ac);

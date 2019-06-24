@@ -43,11 +43,10 @@ enum {
 	AC_ADDR_SPACE_CONST_32BIT = 6, /* same as CONST, but the pointer type has 32 bits */
 };
 
-/* Combine these with & instead of |. */
-#define NOOP_WAITCNT	0xcf7f
-#define LGKM_CNT	0xc07f
-#define EXP_CNT		0xcf0f
-#define VM_CNT		0x0f70 /* On GFX9, vmcnt has 6 bits in [0:3] and [14:15] */
+#define AC_WAIT_LGKM	(1 << 0) /* LDS, GDS, constant, message */
+#define AC_WAIT_EXP	(1 << 1) /* exports */
+#define AC_WAIT_VLOAD	(1 << 2) /* VMEM load/sample instructions */
+#define AC_WAIT_VSTORE	(1 << 3) /* VMEM store instructions */
 
 struct ac_llvm_flow;
 
@@ -575,7 +574,7 @@ LLVMValueRef ac_build_imad(struct ac_llvm_context *ctx, LLVMValueRef s0,
 LLVMValueRef ac_build_fmad(struct ac_llvm_context *ctx, LLVMValueRef s0,
 			   LLVMValueRef s1, LLVMValueRef s2);
 
-void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned simm16);
+void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags);
 
 LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 			   unsigned bitsize);

@@ -2882,13 +2882,49 @@ LLVMValueRef ac_build_fmad(struct ac_llvm_context *ctx, LLVMValueRef s0,
 			     LLVMBuildFMul(ctx->builder, s0, s1, ""), s2, "");
 }
 
-void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned simm16)
+void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
 {
+	if (!wait_flags)
+		return;
+
+	unsigned lgkmcnt = 63;
+	unsigned expcnt = 7;
+	unsigned vmcnt = ctx->chip_class >= GFX9 ? 63 : 15;
+	unsigned vscnt = 63;
+
+	if (wait_flags & AC_WAIT_LGKM)
+		lgkmcnt = 0;
+	if (wait_flags & AC_WAIT_EXP)
+		expcnt = 0;
+	if (wait_flags & AC_WAIT_VLOAD)
+		vmcnt = 0;
+
+	if (wait_flags & AC_WAIT_VSTORE) {
+		if (ctx->chip_class >= GFX10)
+			vscnt = 0;
+		else
+			vmcnt = 0;
+	}
+
+	unsigned simm16 = (lgkmcnt << 8) |
+			  (expcnt << 4) |
+			  (vmcnt & 0xf) |
+			  ((vmcnt >> 4) << 14);
+
 	LLVMValueRef args[1] = {
 		LLVMConstInt(ctx->i32, simm16, false),
 	};
 	ac_build_intrinsic(ctx, "llvm.amdgcn.s.waitcnt",
 			   ctx->voidt, args, 1, 0);
+
+	/* TODO: add llvm.amdgcn.s.waitcnt.vscnt into LLVM: */
+	if (0 && ctx->chip_class >= GFX10 && vscnt == 0) {
+		LLVMValueRef args[1] = {
+			LLVMConstInt(ctx->i32, vscnt, false),
+		};
+		ac_build_intrinsic(ctx, "llvm.amdgcn.s.waitcnt.vscnt",
+				   ctx->voidt, args, 1, 0);
+	}
 }
 
 LLVMValueRef ac_build_fmed3(struct ac_llvm_context *ctx, LLVMValueRef src0,
