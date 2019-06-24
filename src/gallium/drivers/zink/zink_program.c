@@ -35,7 +35,8 @@
 
 static VkDescriptorSetLayout
 create_desc_set_layout(VkDevice dev,
-                       struct zink_shader *stages[PIPE_SHADER_TYPES - 1])
+                       struct zink_shader *stages[PIPE_SHADER_TYPES - 1],
+                       unsigned *num_descriptors)
 {
    VkDescriptorSetLayoutBinding bindings[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
    int num_bindings = 0;
@@ -70,6 +71,7 @@ create_desc_set_layout(VkDevice dev,
       return VK_NULL_HANDLE;
    }
 
+   *num_descriptors = num_bindings;
    return dsl;
 }
 
@@ -124,7 +126,8 @@ zink_create_gfx_program(struct zink_screen *screen,
    for (int i = 0; i < PIPE_SHADER_TYPES - 1; ++i)
       prog->stages[i] = stages[i];
 
-   prog->dsl = create_desc_set_layout(screen->dev, stages);
+   prog->dsl = create_desc_set_layout(screen->dev, stages,
+                                      &prog->num_descriptors);
    if (!prog->dsl)
       goto fail;
 

@@ -39,6 +39,7 @@ struct zink_gfx_program {
    struct zink_shader *stages[PIPE_SHADER_TYPES - 1]; // compute stage doesn't belong here
    VkDescriptorSetLayout dsl;
    VkPipelineLayout layout;
+   unsigned num_descriptors;
    struct hash_table *pipelines[PIPE_PRIM_TRIANGLE_FAN + 1];
    struct set *render_passes;
 };

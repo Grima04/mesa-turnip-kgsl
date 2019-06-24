@@ -801,38 +801,26 @@ zink_shader_stage(enum pipe_shader_type type)
 }
 
 static VkDescriptorSet
-allocate_descriptor_set(struct zink_context *ctx, VkDescriptorSetLayout dsl)
+allocate_descriptor_set(struct zink_screen *screen,
+                        struct zink_batch *batch,
+                        struct zink_gfx_program *prog)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   assert(batch->descs_left >= prog->num_descriptors);
    VkDescriptorSetAllocateInfo dsai;
    memset((void *)&dsai, 0, sizeof(dsai));
    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
    dsai.pNext = NULL;
-   dsai.descriptorPool = ctx->descpool;
+   dsai.descriptorPool = batch->descpool;
    dsai.descriptorSetCount = 1;
-   dsai.pSetLayouts = &dsl;
+   dsai.pSetLayouts = &prog->dsl;
 
    VkDescriptorSet desc_set;
    if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
-
-      /* if we run out of descriptor sets we either need to create a bunch
-       * more... or flush and wait. For simplicity, let's flush for now.
-       */
-      struct pipe_fence_handle *fence = NULL;
-      ctx->base.flush(&ctx->base, &fence, 0);
-      ctx->base.screen->fence_finish(ctx->base.screen, &ctx->base, fence,
-                                     PIPE_TIMEOUT_INFINITE);
-
-      if (vkResetDescriptorPool(screen->dev, ctx->descpool, 0) != VK_SUCCESS) {
-         fprintf(stderr, "vkResetDescriptorPool failed\n");
-         return VK_NULL_HANDLE;
-      }
-      if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
-         fprintf(stderr, "vkAllocateDescriptorSets failed\n");
-         return VK_NULL_HANDLE;
-      }
+      debug_printf("ZINK: failed to allocate descriptor set :/");
+      return VK_NULL_HANDLE;
    }
 
+   batch->descs_left -= prog->num_descriptors;
    return desc_set;
 }
 
@@ -1037,9 +1025,17 @@ zink_draw_vbo(struct pipe_context *pctx,
                                VK_IMAGE_LAYOUT_GENERAL);
    }
 
-   VkDescriptorSet desc_set = allocate_descriptor_set(ctx, gfx_program->dsl);
-
    batch = zink_batch_rp(ctx);
+
+   if (batch->descs_left < gfx_program->num_descriptors) {
+      flush_batch(ctx);
+      batch = zink_batch_rp(ctx);
+      assert(batch->descs_left >= gfx_program->num_descriptors);
+   }
+
+   VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
+                                                      gfx_program);
+   assert(desc_set != VK_NULL_HANDLE);
 
    for (int i = 0; i < ARRAY_SIZE(ctx->gfx_stages); i++) {
       struct zink_shader *shader = ctx->gfx_stages[i];
@@ -1392,6 +1388,17 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    cbai.commandPool = ctx->cmdpool;
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cbai.commandBufferCount = 1;
+
+   VkDescriptorPoolSize sizes[] = {
+      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_BATCH_DESC_SIZE}
+   };
+   VkDescriptorPoolCreateInfo dpci = {};
+   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+   dpci.pPoolSizes = sizes;
+   dpci.poolSizeCount = ARRAY_SIZE(sizes);
+   dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+   dpci.maxSets = ZINK_BATCH_DESC_SIZE;
+
    for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
       if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->batches[i].cmdbuf) != VK_SUCCESS)
          goto fail;
@@ -1406,20 +1413,11 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          goto fail;
 
       util_dynarray_init(&ctx->batches[i].zombie_samplers, NULL);
+
+      if (vkCreateDescriptorPool(screen->dev, &dpci, 0,
+                                 &ctx->batches[i].descpool) != VK_SUCCESS)
+         goto fail;
    }
-
-   VkDescriptorPoolSize sizes[] = {
-      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000}
-   };
-   VkDescriptorPoolCreateInfo dpci = {};
-   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-   dpci.pPoolSizes = sizes;
-   dpci.poolSizeCount = ARRAY_SIZE(sizes);
-   dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-   dpci.maxSets = 1000;
-
-   if(vkCreateDescriptorPool(screen->dev, &dpci, 0, &ctx->descpool) != VK_SUCCESS)
-      goto fail;
 
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);
 

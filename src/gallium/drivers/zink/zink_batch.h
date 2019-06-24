@@ -35,8 +35,12 @@ struct zink_render_pass;
 struct zink_resource;
 struct zink_sampler_view;
 
+#define ZINK_BATCH_DESC_SIZE 1000
+
 struct zink_batch {
    VkCommandBuffer cmdbuf;
+   VkDescriptorPool descpool;
+   int descs_left;
    struct zink_fence *fence;
 
    struct zink_render_pass *rp;

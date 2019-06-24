@@ -13,6 +13,8 @@
 static void
 reset_batch(struct zink_screen *screen, struct zink_batch *batch)
 {
+   batch->descs_left = ZINK_BATCH_DESC_SIZE;
+
    // cmdbuf hasn't been submitted before
    if (!batch->fence)
       return;
@@ -41,6 +43,9 @@ reset_batch(struct zink_screen *screen, struct zink_batch *batch)
       vkDestroySampler(screen->dev, *samp, NULL);
    }
    util_dynarray_clear(&batch->zombie_samplers);
+
+   if (vkResetDescriptorPool(screen->dev, batch->descpool, 0) != VK_SUCCESS)
+      fprintf(stderr, "vkResetDescriptorPool failed\n");
 }
 
 void
