@@ -36,7 +36,7 @@ import traceback
 from nir_opcodes import opcodes, type_sizes
 
 # This should be the same as NIR_SEARCH_MAX_COMM_OPS in nir_search.c
-nir_search_max_comm_ops = 4
+nir_search_max_comm_ops = 8
 
 # These opcodes are only employed by nir_search.  This provides a mapping from
 # opcode to destination type.

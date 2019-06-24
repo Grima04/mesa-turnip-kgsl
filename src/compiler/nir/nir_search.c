@@ -31,7 +31,7 @@
 #include "util/half_float.h"
 
 /* This should be the same as nir_search_max_comm_ops in nir_algebraic.py. */
-#define NIR_SEARCH_MAX_COMM_OPS 4
+#define NIR_SEARCH_MAX_COMM_OPS 8
 
 struct match_state {
    bool inexact_match;
@@ -631,6 +631,8 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    struct match_state state;
    state.inexact_match = false;
    state.has_exact_alu = false;
+
+   STATIC_ASSERT(sizeof(state.comm_op_direction) * 8 >= NIR_SEARCH_MAX_COMM_OPS);
 
    unsigned comm_expr_combinations =
       1 << MIN2(search->comm_exprs, NIR_SEARCH_MAX_COMM_OPS);
