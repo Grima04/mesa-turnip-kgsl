@@ -21,9 +21,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef NIR_TO_SPIRV_H
+#define NIR_TO_SPIRV_H
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -42,6 +41,4 @@ nir_to_spirv(struct nir_shader *s);
 void
 spirv_shader_delete(struct spirv_shader *s);
 
-#ifdef __cplusplus
-}
 #endif
