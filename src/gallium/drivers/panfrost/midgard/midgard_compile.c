@@ -1625,6 +1625,14 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 static void
 emit_tex(compiler_context *ctx, nir_tex_instr *instr)
 {
+        /* Fixup op, since only textureLod is permitted in VS but NIR can give
+         * generic tex in some cases (which confuses the hardware) */
+
+        bool is_vertex = ctx->stage == MESA_SHADER_VERTEX;
+
+        if (is_vertex && instr->op == nir_texop_tex)
+                instr->op = nir_texop_txl;
+
         switch (instr->op) {
         case nir_texop_tex:
         case nir_texop_txb:
