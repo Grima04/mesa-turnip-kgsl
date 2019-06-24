@@ -27,10 +27,12 @@
 #include "util/slab.h"
 #include "virgl_winsys.h"
 
-#define VIRGL_DEBUG_VERBOSE 1
-#define VIRGL_DEBUG_TGSI    2
-#define VIRGL_DEBUG_EMULATE_BGRA 4
-#define VIRGL_DEBUG_BGRA_DEST_SWIZZLE 4
+enum virgl_debug_flags {
+   VIRGL_DEBUG_VERBOSE              = 1 << 0,
+   VIRGL_DEBUG_TGSI                 = 1 << 1,
+   VIRGL_DEBUG_EMULATE_BGRA         = 1 << 2,
+   VIRGL_DEBUG_BGRA_DEST_SWIZZLE    = 1 << 3,
+};
 
 extern int virgl_debug;
 

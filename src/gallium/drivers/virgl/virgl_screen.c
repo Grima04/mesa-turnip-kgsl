@@ -41,10 +41,10 @@
 
 int virgl_debug = 0;
 static const struct debug_named_value debug_options[] = {
-   { "verbose", VIRGL_DEBUG_VERBOSE, NULL },
-   { "tgsi", VIRGL_DEBUG_TGSI, NULL },
-   { "emubgra", VIRGL_DEBUG_EMULATE_BGRA, "Enable tweak to emulate BGRA as RGBA on GLES hosts"},
-   { "bgraswz", VIRGL_DEBUG_BGRA_DEST_SWIZZLE, "Enable tweak to swizzle emulated BGRA on GLES hosts" },
+   { "verbose",   VIRGL_DEBUG_VERBOSE,             NULL },
+   { "tgsi",      VIRGL_DEBUG_TGSI,                NULL },
+   { "emubgra",   VIRGL_DEBUG_EMULATE_BGRA,        "Enable tweak to emulate BGRA as RGBA on GLES hosts"},
+   { "bgraswz",   VIRGL_DEBUG_BGRA_DEST_SWIZZLE,   "Enable tweak to swizzle emulated BGRA on GLES hosts" },
    DEBUG_NAMED_VALUE_END
 };
 DEBUG_GET_ONCE_FLAGS_OPTION(virgl_debug, "VIRGL_DEBUG", debug_options, 0)
