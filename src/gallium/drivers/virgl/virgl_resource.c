@@ -117,8 +117,9 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
     * PIPE_TRANSFER_DISCARD_RANGE are set.
     */
    if (res->u.b.target == PIPE_BUFFER &&
-         !util_ranges_intersect(&res->valid_buffer_range, xfer->base.box.x,
-            xfer->base.box.x + xfer->base.box.width)) {
+       !util_ranges_intersect(&res->valid_buffer_range, xfer->base.box.x,
+                              xfer->base.box.x + xfer->base.box.width) &&
+       likely(!(virgl_debug & VIRGL_DEBUG_XFER))) {
       flush = false;
       readback = false;
       wait = false;
@@ -127,8 +128,10 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    /* When the resource is busy but its content can be discarded, we can
     * replace its HW resource or use a staging buffer to avoid waiting.
     */
-   if (wait && (xfer->base.usage & (PIPE_TRANSFER_DISCARD_RANGE |
-                                    PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE))) {
+   if (wait &&
+       (xfer->base.usage & (PIPE_TRANSFER_DISCARD_RANGE |
+                            PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE)) &&
+       likely(!(virgl_debug & VIRGL_DEBUG_XFER))) {
       bool can_realloc = false;
       bool can_staging = false;
 
