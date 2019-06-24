@@ -109,10 +109,16 @@ panfrost_blit_wallpaper(struct panfrost_context *ctx)
 
         panfrost_blitter_save(ctx, ctx->blitter_wallpaper);
 
+        struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[0];
+        unsigned level = surf->u.tex.level;
+        unsigned layer = surf->u.tex.first_layer;
+        assert(surf->u.tex.last_layer == layer);
+
 	binfo.src.resource = binfo.dst.resource = ctx->pipe_framebuffer.cbufs[0]->texture;
-	binfo.src.level = binfo.dst.level = 0;
+	binfo.src.level = binfo.dst.level = level;
 	binfo.src.box.x = binfo.dst.box.x = 0;
 	binfo.src.box.y = binfo.dst.box.y = 0;
+	binfo.src.box.z = binfo.dst.box.z = layer;
 	binfo.src.box.width = binfo.dst.box.width = ctx->pipe_framebuffer.width;
 	binfo.src.box.height = binfo.dst.box.height = ctx->pipe_framebuffer.height;
 	binfo.src.box.depth = binfo.dst.box.depth = 1;
