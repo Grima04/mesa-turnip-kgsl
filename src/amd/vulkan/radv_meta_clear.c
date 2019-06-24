@@ -1326,11 +1326,21 @@ radv_get_cmask_fast_clear_value(const struct radv_image *image)
 
 uint32_t
 radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer,
-		 struct radv_image *image, uint32_t value)
+		 struct radv_image *image,
+		 const VkImageSubresourceRange *range, uint32_t value)
 {
-	return radv_fill_buffer(cmd_buffer, image->bo,
-				image->offset + image->cmask.offset,
-				image->cmask.size, value);
+	uint64_t offset = image->offset + image->cmask.offset;
+	uint64_t size;
+
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+		/* TODO: clear layers. */
+		size = image->cmask.size;
+	} else {
+		offset += image->cmask.slice_size * range->baseArrayLayer;
+		size = image->cmask.slice_size * radv_get_layerCount(image, range);
+	}
+
+	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
 }
 
 
@@ -1578,6 +1588,13 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 	VkClearColorValue clear_value = clear_att->clearValue.color;
 	uint32_t clear_color[2], flush_bits = 0;
 	uint32_t cmask_clear_value;
+	VkImageSubresourceRange range = {
+		.aspectMask = iview->aspect_mask,
+		.baseMipLevel = iview->base_mip,
+		.levelCount = iview->level_count,
+		.baseArrayLayer = iview->base_layer,
+		.layerCount = iview->layer_count,
+	};
 
 	if (pre_flush) {
 		cmd_buffer->state.flush_bits |= (RADV_CMD_FLAG_FLUSH_AND_INV_CB |
@@ -1595,13 +1612,6 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 		uint32_t reset_value;
 		bool can_avoid_fast_clear_elim;
 		bool need_decompress_pass = false;
-		VkImageSubresourceRange range = {
-			.aspectMask = iview->aspect_mask,
-			.baseMipLevel = iview->base_mip,
-			.levelCount = iview->level_count,
-			.baseArrayLayer = iview->base_layer,
-			.layerCount = iview->layer_count,
-		};
 
 		vi_get_fast_clear_parameters(iview->vk_format,
 					     &clear_value, &reset_value,
@@ -1609,7 +1619,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 
 		if (radv_image_has_cmask(iview->image)) {
 			flush_bits = radv_clear_cmask(cmd_buffer, iview->image,
-						      cmask_clear_value);
+						      &range, cmask_clear_value);
 
 			need_decompress_pass = true;
 		}
@@ -1624,7 +1634,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 					 need_decompress_pass);
 	} else {
 		flush_bits = radv_clear_cmask(cmd_buffer, iview->image,
-					      cmask_clear_value);
+					      &range, cmask_clear_value);
 	}
 
 	if (post_flush) {

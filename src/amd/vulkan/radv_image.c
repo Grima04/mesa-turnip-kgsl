@@ -942,6 +942,7 @@ radv_image_get_cmask_info(struct radv_device *device,
 
 	out->slice_tile_max = image->planes[0].surface.u.legacy.cmask_slice_tile_max;
 	out->alignment = image->planes[0].surface.cmask_alignment;
+	out->slice_size = image->planes[0].surface.cmask_slice_size;
 	out->size = image->planes[0].surface.cmask_size;
 }
 

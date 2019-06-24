@@ -504,7 +504,8 @@ static void ac_compute_cmask(const struct radeon_info *info,
 		num_layers = config->info.array_size;
 
 	surf->cmask_alignment = MAX2(256, base_align);
-	surf->cmask_size = align(slice_bytes, base_align) * num_layers;
+	surf->cmask_slice_size = align(slice_bytes, base_align);
+	surf->cmask_size = surf->cmask_slice_size * num_layers;
 }
 
 /**

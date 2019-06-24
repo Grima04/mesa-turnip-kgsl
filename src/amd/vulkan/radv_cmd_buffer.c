@@ -4892,14 +4892,16 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 }
 
 static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
-				  struct radv_image *image, uint32_t value)
+				  struct radv_image *image,
+				  const VkImageSubresourceRange *range,
+				  uint32_t value)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			    RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
-	state->flush_bits |= radv_clear_cmask(cmd_buffer, image, value);
+	state->flush_bits |= radv_clear_cmask(cmd_buffer, image, range, value);
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 }
@@ -5005,7 +5007,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 			value = 0xccccccccu;
 		}
 
-		radv_initialise_cmask(cmd_buffer, image, value);
+		radv_initialise_cmask(cmd_buffer, image, range, value);
 	}
 
 	if (radv_image_has_fmask(image)) {

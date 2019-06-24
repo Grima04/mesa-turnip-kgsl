@@ -219,6 +219,7 @@ struct radeon_surf {
     uint32_t                    htile_alignment;
 
     uint32_t                    cmask_size;
+    uint32_t                    cmask_slice_size;
     uint32_t                    cmask_alignment;
 
     union {
