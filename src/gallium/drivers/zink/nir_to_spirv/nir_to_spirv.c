@@ -50,7 +50,8 @@ struct ntv_context {
    SpvId *defs;
    size_t num_defs;
 
-   struct hash_table *vars;
+   SpvId *vars;
+   size_t num_vars;
 
    const SpvId *block_ids;
    size_t num_blocks;
@@ -407,9 +408,9 @@ get_src_uint_ssa(struct ntv_context *ctx, const nir_ssa_def *ssa)
 static SpvId
 get_var_from_reg(struct ntv_context *ctx, nir_register *reg)
 {
-   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, reg);
-   assert(he);
-   return (SpvId)(intptr_t)he->data;
+   assert(reg->index < ctx->num_vars);
+   assert(ctx->vars[reg->index] != 0);
+   return ctx->vars[reg->index];
 }
 
 static SpvId
@@ -1465,10 +1466,11 @@ nir_to_spirv(struct nir_shader *s)
       goto fail;
    ctx.num_defs = entry->ssa_alloc;
 
-   ctx.vars = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                            _mesa_key_pointer_equal);
+   nir_index_local_regs(entry);
+   ctx.vars = malloc(sizeof(SpvId) * entry->reg_alloc);
    if (!ctx.vars)
       goto fail;
+   ctx.num_vars = entry->reg_alloc;
 
    SpvId *block_ids = (SpvId *)malloc(sizeof(SpvId) * entry->num_blocks);
    if (!block_ids)
@@ -1490,8 +1492,7 @@ nir_to_spirv(struct nir_shader *s)
       SpvId var = spirv_builder_emit_var(&ctx.builder, pointer_type,
                                          SpvStorageClassFunction);
 
-      if (!_mesa_hash_table_insert(ctx.vars, reg, (void *)(intptr_t)var))
-         goto fail;
+      ctx.vars[reg->index] = var;
    }
 
    emit_cf_list(&ctx, &entry->body);
