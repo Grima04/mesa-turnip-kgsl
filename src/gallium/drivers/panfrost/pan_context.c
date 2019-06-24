@@ -1601,7 +1601,7 @@ panfrost_scissor_culls_everything(struct panfrost_context *ctx)
         if (!(ss && ctx->rasterizer && ctx->rasterizer->base.scissor))
                 return false;
 
-        return (ss->minx == ss->maxx) && (ss->miny == ss->maxy);
+        return (ss->minx == ss->maxx) || (ss->miny == ss->maxy);
 }
 
 static void
