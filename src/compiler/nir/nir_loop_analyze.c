@@ -320,6 +320,12 @@ compute_induction_information(loop_info_state *state)
       if (!is_var_phi(var))
          continue;
 
+      /* We only handle scalars because none of the rest of the loop analysis
+       * code can properly handle swizzles.
+       */
+      if (var->def->num_components > 1)
+         continue;
+
       nir_phi_instr *phi = nir_instr_as_phi(var->def->parent_instr);
       nir_basic_induction_var *biv = rzalloc(state, nir_basic_induction_var);
 
@@ -358,7 +364,9 @@ compute_induction_information(loop_info_state *state)
                for (unsigned i = 0; i < 2; i++) {
                   /* Is one of the operands const, and the other the phi */
                   if (alu->src[i].src.ssa->parent_instr->type == nir_instr_type_load_const &&
+                      alu->src[i].swizzle[0] == 0 &&
                       alu->src[1-i].src.ssa == &phi->dest.ssa)
+                     assert(alu->src[1-i].swizzle[0] == 0);
                      biv->invariant = get_loop_var(alu->src[i].src.ssa, state);
                }
             }
@@ -557,6 +565,10 @@ try_find_limit_of_alu(nir_loop_variable *limit, nir_const_value *limit_val,
 
    if (limit_alu->op == nir_op_imin ||
        limit_alu->op == nir_op_fmin) {
+      /* We don't handle swizzles here */
+      if (limit_alu->src[0].swizzle[0] > 0 || limit_alu->src[1].swizzle[0] > 0)
+         return false;
+
       limit = get_loop_var(limit_alu->src[0].src.ssa, state);
 
       if (!is_var_constant(limit))
@@ -828,9 +840,15 @@ try_find_trip_count_vars_in_iand(nir_alu_instr **alu,
    assert((*alu)->op == nir_op_ieq || (*alu)->op == nir_op_inot);
 
    nir_ssa_def *iand_def = (*alu)->src[0].src.ssa;
+   /* This is used directly in an if condition so it must be a scalar */
+   assert(iand_def->num_components == 1);
 
    if ((*alu)->op == nir_op_ieq) {
       nir_ssa_def *zero_def = (*alu)->src[1].src.ssa;
+
+      /* We don't handle swizzles here */
+      if ((*alu)->src[0].swizzle[0] > 0 || (*alu)->src[1].swizzle[0] > 0)
+         return;
 
       if (iand_def->parent_instr->type != nir_instr_type_alu ||
           zero_def->parent_instr->type != nir_instr_type_load_const) {
@@ -856,6 +874,10 @@ try_find_trip_count_vars_in_iand(nir_alu_instr **alu,
 
    nir_alu_instr *iand = nir_instr_as_alu(iand_def->parent_instr);
    if (iand->op != nir_op_iand)
+      return;
+
+   /* We don't handle swizzles here */
+   if ((*alu)->src[0].swizzle[0] > 0 || (*alu)->src[1].swizzle[0] > 0)
       return;
 
    /* Check if iand src is a terminator condition and try get induction var
