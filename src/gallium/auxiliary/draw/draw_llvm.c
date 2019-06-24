@@ -607,7 +607,8 @@ generate_vs(struct draw_llvm_variant *variant,
             const struct lp_bld_tgsi_system_values *system_values,
             LLVMValueRef context_ptr,
             const struct lp_build_sampler_soa *draw_sampler,
-            boolean clamp_vertex_color)
+            boolean clamp_vertex_color,
+            struct lp_build_mask_context *bld_mask)
 {
    struct draw_llvm *llvm = variant->llvm;
    const struct tgsi_token *tokens = llvm->draw->vs.vertex_shader->state.tokens;
@@ -619,7 +620,7 @@ generate_vs(struct draw_llvm_variant *variant,
    lp_build_tgsi_soa(variant->gallivm,
                      tokens,
                      vs_type,
-                     NULL /*struct lp_build_mask_context *mask*/,
+                     bld_mask, /*struct lp_build_mask_context *mask*/
                      consts_ptr,
                      num_consts_ptr,
                      system_values,
@@ -1801,6 +1802,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
       true_index_array = lp_build_broadcast_scalar(&blduivec, lp_loop.counter);
       true_index_array = LLVMBuildAdd(builder, true_index_array, ind_vec, "");
 
+      LLVMValueRef exec_mask = lp_build_cmp(&blduivec, PIPE_FUNC_LEQUAL, true_index_array, fetch_max);
       /*
        * Limit indices to fetch_max, otherwise might try to access indices
        * beyond index buffer (or rather vsplit elt buffer) size.
@@ -1880,6 +1882,9 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
          }
       }
 
+      struct lp_build_mask_context mask;
+
+      lp_build_mask_begin(&mask, gallivm, vs_type, exec_mask);
       /* In the paths with elts vertex id has to be unaffected by the
        * index bias and because indices inside our elements array have
        * already had index bias applied we need to subtract it here to
@@ -1906,8 +1911,10 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
                   &system_values,
                   context_ptr,
                   sampler,
-                  key->clamp_vertex_color);
+                  key->clamp_vertex_color,
+                  &mask);
 
+      lp_build_mask_end(&mask);
       if (pos != -1 && cv != -1) {
          /* store original positions in clip before further manipulation */
          store_clip(gallivm, vs_type, io, outputs, pos);
