@@ -47,6 +47,7 @@
 #include "virgl_protocol.h"
 #include "virgl_resource.h"
 #include "virgl_screen.h"
+#include "virgl_staging_mgr.h"
 
 struct virgl_vertex_elements_state {
    uint32_t handle;
@@ -1372,8 +1373,8 @@ virgl_context_destroy( struct pipe_context *ctx )
    rs->vws->cmd_buf_destroy(vctx->cbuf);
    if (vctx->uploader)
       u_upload_destroy(vctx->uploader);
-   if (vctx->transfer_uploader)
-      u_upload_destroy(vctx->transfer_uploader);
+   if (vctx->supports_staging)
+      virgl_staging_destroy(&vctx->staging);
    util_primconvert_destroy(vctx->primconvert);
    virgl_transfer_queue_fini(&vctx->queue);
 
@@ -1547,17 +1548,12 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
            goto fail;
    vctx->base.stream_uploader = vctx->uploader;
    vctx->base.const_uploader = vctx->uploader;
-   /* Use a custom/staging buffer for the transfer uploader, since we are
-    * using it only for copies to other resources.
-    */
+
+   /* We use a special staging buffer as the source of copy transfers. */
    if ((rs->caps.caps.v2.capability_bits & VIRGL_CAP_COPY_TRANSFER) &&
        vctx->encoded_transfers) {
-      vctx->transfer_uploader = u_upload_create(&vctx->base, 1024 * 1024,
-                                                PIPE_BIND_CUSTOM,
-                                                PIPE_USAGE_STAGING,
-                                                VIRGL_RESOURCE_FLAG_STAGING);
-      if (!vctx->transfer_uploader)
-              goto fail;
+      virgl_staging_init(&vctx->staging, &vctx->base, 1024 * 1024);
+      vctx->supports_staging = true;
    }
 
    vctx->hw_sub_ctx_id = rs->sub_ctx_id++;

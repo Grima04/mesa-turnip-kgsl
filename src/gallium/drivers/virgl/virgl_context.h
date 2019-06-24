@@ -28,6 +28,7 @@
 #include "util/slab.h"
 #include "util/list.h"
 
+#include "virgl_staging_mgr.h"
 #include "virgl_transfer_queue.h"
 
 struct pipe_screen;
@@ -81,9 +82,9 @@ struct virgl_context {
    struct slab_child_pool transfer_pool;
    struct virgl_transfer_queue queue;
    struct u_upload_mgr *uploader;
-   struct u_upload_mgr *transfer_uploader;
-   bool transfer_uploader_in_use;
+   struct virgl_staging_mgr staging;
    bool encoded_transfers;
+   bool supports_staging;
 
    struct pipe_vertex_buffer vertex_buffer[PIPE_MAX_ATTRIBS];
    unsigned num_vertex_buffers;

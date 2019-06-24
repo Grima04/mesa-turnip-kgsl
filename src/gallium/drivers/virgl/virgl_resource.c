@@ -27,6 +27,7 @@
 #include "virgl_context.h"
 #include "virgl_resource.h"
 #include "virgl_screen.h"
+#include "virgl_staging_mgr.h"
 
 /* A (soft) limit for the amount of memory we want to allow for queued staging
  * resources. This is used to decide when we should force a flush, in order to
@@ -144,8 +145,7 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
       if (xfer->base.usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
          can_realloc = virgl_can_rebind_resource(vctx, &res->u.b);
       } else {
-         can_staging = vctx->transfer_uploader &&
-                       !vctx->transfer_uploader_in_use;
+         can_staging = vctx->supports_staging;
       }
 
       /* discard implies no readback */
@@ -564,20 +564,19 @@ static unsigned virgl_transfer_map_size(struct virgl_transfer *vtransfer,
    return size;
 }
 
-/* Maps a region from the transfer uploader to service the transfer. */
-void *virgl_transfer_uploader_map(struct virgl_context *vctx,
-                                  struct virgl_transfer *vtransfer)
+/* Maps a region from staging to service the transfer. */
+void *virgl_staging_map(struct virgl_context *vctx,
+                        struct virgl_transfer *vtransfer)
 {
    struct virgl_resource *vres = virgl_resource(vtransfer->base.resource);
-   struct pipe_resource *copy_src_res = NULL;
    unsigned size;
    unsigned align_offset;
    unsigned stride;
    unsigned layer_stride;
    void *map_addr;
+   bool alloc_succeeded;
 
-   assert(vctx->transfer_uploader);
-   assert(!vctx->transfer_uploader_in_use);
+   assert(vctx->supports_staging);
 
    size = virgl_transfer_map_size(vtransfer, &stride, &layer_stride);
 
@@ -598,18 +597,13 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
                   vtransfer->base.box.x % VIRGL_MAP_BUFFER_ALIGNMENT :
                   0;
 
-   u_upload_alloc(vctx->transfer_uploader, 0, size + align_offset,
-                  VIRGL_MAP_BUFFER_ALIGNMENT,
-                  &vtransfer->copy_src_offset,
-                  &copy_src_res, &map_addr);
-   if (map_addr) {
-      struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
-
-      /* Extract and reference the hw_res backing the pipe_resource. */
-      vws->resource_reference(vws, &vtransfer->copy_src_hw_res,
-                              virgl_resource(copy_src_res)->hw_res);
-      pipe_resource_reference(&copy_src_res, NULL);
-
+   alloc_succeeded =
+      virgl_staging_alloc(&vctx->staging, size + align_offset,
+                          VIRGL_MAP_BUFFER_ALIGNMENT,
+                          &vtransfer->copy_src_offset,
+                          &vtransfer->copy_src_hw_res,
+                          &map_addr);
+   if (alloc_succeeded) {
       /* Update source offset and address to point to the requested x coordinate
        * if we have an align_offset (see above for more information). */
       vtransfer->copy_src_offset += align_offset;
@@ -620,10 +614,6 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
        * hence the two will diverge.
        */
       virgl_resource_dirty(vres, vtransfer->base.level);
-
-      /* The pointer returned by u_upload_alloc already has +offset
-       * applied. */
-      vctx->transfer_uploader_in_use = true;
 
       /* We are using the minimum required size to hold the contents,
        * possibly using a layout different from the layout of the resource,

@@ -149,7 +149,7 @@ static void *texture_transfer_map_plain(struct pipe_context *ctx,
          map_addr = NULL;
       break;
    case VIRGL_TRANSFER_MAP_STAGING:
-      map_addr = virgl_transfer_uploader_map(vctx, trans);
+      map_addr = virgl_staging_map(vctx, trans);
       /* Copy transfers don't make use of hw_res_map at the moment. */
       trans->hw_res_map = NULL;
       break;
@@ -317,12 +317,9 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    struct pipe_resource *res = transfer->resource;
    bool queue_unmap = false;
 
-   /* We don't need to transfer the contents of staging buffers, since they
-    * don't have any host-side storage. */
-   if (pipe_to_virgl_bind(vs, res->bind, res->flags) == VIRGL_BIND_STAGING) {
-      virgl_resource_destroy_transfer(vctx, trans);
-      return;
-   }
+   /* We don't transfer the contents of staging resources, since they don't
+    * have any host-side storage. */
+   assert(pipe_to_virgl_bind(vs, res->bind, res->flags) != VIRGL_BIND_STAGING);
 
    if (transfer->usage & PIPE_TRANSFER_WRITE &&
        (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) == 0) {
@@ -357,8 +354,6 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
    if (queue_unmap) {
       if (trans->copy_src_hw_res) {
          virgl_encode_copy_transfer(vctx, trans);
-         /* It's now safe for other mappings to use the transfer_uploader. */
-         vctx->transfer_uploader_in_use = false;
          virgl_resource_destroy_transfer(vctx, trans);
       } else {
          virgl_transfer_queue_unmap(&vctx->queue, trans);

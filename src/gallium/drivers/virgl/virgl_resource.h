@@ -190,8 +190,8 @@ boolean virgl_resource_get_handle(struct pipe_screen *screen,
 
 void virgl_resource_dirty(struct virgl_resource *res, uint32_t level);
 
-void *virgl_transfer_uploader_map(struct virgl_context *vctx,
-                                  struct virgl_transfer *vtransfer);
+void *virgl_staging_map(struct virgl_context *vctx,
+                        struct virgl_transfer *vtransfer);
 
 bool
 virgl_resource_realloc(struct virgl_context *vctx,
