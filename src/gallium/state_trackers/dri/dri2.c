@@ -907,6 +907,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
       whandles[i].stride = (unsigned)strides[index];
       whandles[i].offset = (unsigned)offsets[index];
       whandles[i].modifier = modifier;
+      whandles[i].plane = i;
    }
 
    img = dri2_create_image_from_winsys(_screen, width, height, map,
@@ -1063,6 +1064,7 @@ dri2_query_image_by_resource_handle(__DRIimage *image, int attrib, int *value)
    struct winsys_handle whandle;
    unsigned usage;
    memset(&whandle, 0, sizeof(whandle));
+   whandle.plane = image->plane;
 
    switch (attrib) {
    case __DRI_IMAGE_ATTRIB_STRIDE:
@@ -1122,6 +1124,18 @@ dri2_query_image_by_resource_handle(__DRIimage *image, int attrib, int *value)
    default:
       return false;
    }
+}
+
+static bool
+dri2_resource_get_param(__DRIimage *image, enum pipe_resource_param param,
+                        uint64_t *value)
+{
+   struct pipe_screen *pscreen = image->texture->screen;
+   if (!pscreen->resource_get_param)
+      return false;
+
+   return pscreen->resource_get_param(pscreen, image->texture, image->plane,
+                                      param, value);
 }
 
 static GLboolean
@@ -1223,11 +1237,25 @@ dri2_from_planar(__DRIimage *image, int plane, void *loaderPrivate)
 {
    __DRIimage *img;
 
-   if (plane != 0)
+   if (plane < 0) {
       return NULL;
+   } else if (plane > 0) {
+      uint64_t planes;
+      if (!dri2_resource_get_param(image, PIPE_RESOURCE_PARAM_NPLANES,
+                                   &planes) ||
+          plane >= planes) {
+         return NULL;
+      }
+   }
 
-   if (image->dri_components == 0)
-      return NULL;
+   if (image->dri_components == 0) {
+      uint64_t modifier;
+      if (!dri2_resource_get_param(image, PIPE_RESOURCE_PARAM_MODIFIER,
+                                   &modifier) ||
+          modifier == DRM_FORMAT_MOD_INVALID) {
+         return NULL;
+      }
+   }
 
    img = dri2_dup_image(image, loaderPrivate);
    if (img == NULL)
@@ -1239,6 +1267,7 @@ dri2_from_planar(__DRIimage *image, int plane, void *loaderPrivate)
 
    /* set this to 0 for sub images. */
    img->dri_components = 0;
+   img->plane = plane;
    return img;
 }
 
