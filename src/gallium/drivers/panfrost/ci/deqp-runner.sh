@@ -28,9 +28,6 @@ sleep 1  # Give some time for Weston to start up
 # Disable for now tests that are very slow, either by just using lots of CPU or by crashing
 sed -i '/dEQP-GLES2.performance/d' /tmp/case-list.txt
 sed -i '/dEQP-GLES2.stress/d' /tmp/case-list.txt
-sed -i '/dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_linear_/d' /tmp/case-list.txt
-sed -i '/dEQP-GLES2.functional.texture.filtering.cube.linear_mipmap_linear_/d' /tmp/case-list.txt
-sed -i '/dEQP-GLES2.functional.texture.filtering.cube.linear_mipmap_nearest_/d' /tmp/case-list.txt
 sed -i '/dEQP-GLES2.functional.fbo.render.depth./d' /tmp/case-list.txt
 
 # Cannot use tee because dash doesn't have pipefail
