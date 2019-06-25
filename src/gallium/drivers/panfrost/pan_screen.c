@@ -459,15 +459,23 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return FALSE;
 
         if (bind & PIPE_BIND_RENDER_TARGET) {
-                /* TODO: Support all the formats! :) */
-                bool supported = util_format_is_rgba8_variant(format_desc);
-                supported |= format == PIPE_FORMAT_B5G6R5_UNORM;
-
-                if (!supported)
-                        return FALSE;
-
                 if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS)
                         return FALSE;
+
+                if (format == PIPE_FORMAT_B5G6R5_UNORM)
+                        return TRUE;
+
+                /* Check for vaguely 8UNORM formats. Looser than
+                 * util_format_is_rgba8_variant, since it permits R8 (for
+                 * instance) */
+
+                for (unsigned chan = 0; chan < 4; ++chan) {
+                        enum util_format_type t = format_desc->channel[chan].type;
+                        if (t == UTIL_FORMAT_TYPE_VOID) continue;
+                        if (t != UTIL_FORMAT_TYPE_UNSIGNED) return FALSE;
+                        if (!format_desc->channel[chan].normalized) return FALSE;
+                        if (format_desc->channel[chan].size != 8) return FALSE;
+                }
 
                 /*
                  * Although possible, it is unnatural to render into compressed or YUV
@@ -489,25 +497,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                         format_desc->layout == UTIL_FORMAT_LAYOUT_ETC) {
                 /* Compressed formats not yet hooked up. */
                 return FALSE;
-        }
-
-        if ((bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) &&
-                        ((bind & PIPE_BIND_DISPLAY_TARGET) == 0) &&
-                        target != PIPE_BUFFER) {
-                const struct util_format_description *desc =
-                        util_format_description(format);
-
-                if (desc->nr_channels == 3 && desc->is_array) {
-                        /* Don't support any 3-component formats for rendering/texturing
-                         * since we don't support the corresponding 8-bit 3 channel UNORM
-                         * formats.  This allows us to support GL_ARB_copy_image between
-                         * GL_RGB8 and GL_RGB8UI, for example.  Otherwise, we may be asked to
-                         * do a resource copy between PIPE_FORMAT_R8G8B8_UINT and
-                         * PIPE_FORMAT_R8G8B8X8_UNORM, for example, which will not work
-                         * (different bpp).
-                         */
-                        return FALSE;
-                }
         }
 
         return TRUE;
