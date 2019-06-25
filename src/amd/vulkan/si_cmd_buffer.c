@@ -237,7 +237,11 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			       S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
 			       S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE));
 
-	if (physical_device->rad_info.chip_class >= GFX9) {
+	if (physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_uconfig_reg(cs, R_030964_GE_MAX_VTX_INDX, ~0);
+		radeon_set_uconfig_reg(cs, R_030924_GE_MIN_VTX_INDX, 0);
+		radeon_set_uconfig_reg(cs, R_030928_GE_INDX_OFFSET, 0);
+	} else if (physical_device->rad_info.chip_class >= GFX9) {
 		radeon_set_uconfig_reg(cs, R_030920_VGT_MAX_VTX_INDX, ~0);
 		radeon_set_uconfig_reg(cs, R_030924_VGT_MIN_VTX_INDX, 0);
 		radeon_set_uconfig_reg(cs, R_030928_VGT_INDX_OFFSET, 0);
