@@ -471,12 +471,39 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 
 		if (meta_va) {
 			state[6] |= S_008F28_COMPRESSION_EN(1);
-			state[7] = meta_va >> 8;
-			state[7] |= plane->surface.tile_swizzle;
+			if (chip_class <= GFX9) {
+				state[7] = meta_va >> 8;
+				state[7] |= plane->surface.tile_swizzle;
+			}
 		}
 	}
 
-	if (chip_class >= GFX9) {
+	if (chip_class >= GFX10) {
+		state[3] &= C_00A00C_SW_MODE;
+
+		if (is_stencil) {
+			state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.stencil.swizzle_mode);
+		} else {
+			state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.surf.swizzle_mode);
+		}
+
+		state[6] &= C_00A018_META_DATA_ADDRESS_LO &
+			    C_00A018_META_PIPE_ALIGNED;
+
+		if (meta_va) {
+			struct gfx9_surf_meta_flags meta;
+
+			if (image->dcc_offset)
+				meta = plane->surface.u.gfx9.dcc;
+			else
+				meta = plane->surface.u.gfx9.htile;
+
+			state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
+				    S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8);
+		}
+
+		state[7] = meta_va >> 16;
+	} else if (chip_class >= GFX9) {
 		state[3] &= C_008F1C_SW_MODE;
 		state[4] &= C_008F20_PITCH;
 
