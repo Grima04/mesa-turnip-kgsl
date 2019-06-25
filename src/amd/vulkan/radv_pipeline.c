@@ -3210,9 +3210,15 @@ radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 	va = radv_buffer_get_va(gs->bo) + gs->bo_offset;
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9) {
-		radeon_set_sh_reg_seq(cs, R_00B210_SPI_SHADER_PGM_LO_ES, 2);
-		radeon_emit(cs, va >> 8);
-		radeon_emit(cs, S_00B214_MEM_BASE(va >> 40));
+		if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
+			radeon_set_sh_reg_seq(cs, R_00B320_SPI_SHADER_PGM_LO_ES, 2);
+			radeon_emit(cs, va >> 8);
+			radeon_emit(cs, S_00B324_MEM_BASE(va >> 40));
+		} else {
+			radeon_set_sh_reg_seq(cs, R_00B210_SPI_SHADER_PGM_LO_ES, 2);
+			radeon_emit(cs, va >> 8);
+			radeon_emit(cs, S_00B214_MEM_BASE(va >> 40));
+		}
 
 		radeon_set_sh_reg_seq(cs, R_00B228_SPI_SHADER_PGM_RSRC1_GS, 2);
 		radeon_emit(cs, gs->config.rsrc1);
