@@ -293,7 +293,7 @@ endif
 _platforms = get_option('platforms')
 if _platforms.contains('auto')
   if system_has_kms_drm
-    _platforms = ['x11', 'wayland', 'drm']
+    _platforms = ['x11', 'wayland']
   elif ['darwin', 'cygwin'].contains(host_machine.system())
     _platforms = ['x11']
   elif ['haiku'].contains(host_machine.system())
@@ -309,12 +309,15 @@ endif
 with_platform_android = _platforms.contains('android')
 with_platform_x11 = _platforms.contains('x11')
 with_platform_wayland = _platforms.contains('wayland')
-with_platform_drm = _platforms.contains('drm')
 with_platform_haiku = _platforms.contains('haiku')
 with_platform_windows = _platforms.contains('windows')
 
 if _platforms.contains('surfaceless')
   warning('Platform `surfaceless` is now always selected; setting this option will be an error in Mesa 20.3')
+endif
+
+if _platforms.contains('drm')
+  warning('Platform `drm` is now automatically selected; setting this option will be an error in Mesa 20.3')
 endif
 
 if _platforms.length() != 0
@@ -382,7 +385,7 @@ elif _xlib_lease == 'false'
   warning('xlib_lease option "false" deprecated, please use "disabled" instead.')
 endif
 if _xlib_lease == 'auto'
-  with_xlib_lease = with_platform_x11 and with_platform_drm
+  with_xlib_lease = with_platform_x11 and with_gbm
 else
   with_xlib_lease = _xlib_lease == 'enabled'
 endif
@@ -822,10 +825,7 @@ else
   pre_args += '-DEGL_NO_X11'
   gl_pkgconfig_c_flags += '-DEGL_NO_X11'
 endif
-if with_platform_drm
-  if with_egl and not with_gbm
-    error('EGL drm platform requires gbm')
-  endif
+if with_gbm
   pre_args += '-DHAVE_DRM_PLATFORM'
 endif
 if with_platform_android
@@ -1881,6 +1881,9 @@ endif
 lines += 'GBM:             ' + (with_gbm ? 'yes' : 'no')
 if with_egl or with_any_vk
   _platforms += 'surfaceless'
+  if with_gbm
+    _platforms += 'drm'
+  endif
   lines += 'EGL/Vulkan/VL platforms:   ' + ' '.join(_platforms)
 endif
 
