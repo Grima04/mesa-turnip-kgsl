@@ -190,14 +190,17 @@ static void
 radv_dump_image_descriptor(enum chip_class chip_class, const uint32_t *desc,
 			   FILE *f)
 {
+	unsigned sq_img_rsrc_word0 = chip_class >= GFX10 ? R_00A000_SQ_IMG_RSRC_WORD0
+							 : R_008F10_SQ_IMG_RSRC_WORD0;
+
 	fprintf(f, COLOR_CYAN "    Image:" COLOR_RESET "\n");
 	for (unsigned j = 0; j < 8; j++)
-		ac_dump_reg(f, chip_class, R_008F10_SQ_IMG_RSRC_WORD0 + j * 4,
+		ac_dump_reg(f, chip_class, sq_img_rsrc_word0 + j * 4,
 			    desc[j], 0xffffffff);
 
 	fprintf(f, COLOR_CYAN "    FMASK:" COLOR_RESET "\n");
 	for (unsigned j = 0; j < 8; j++)
-		ac_dump_reg(f, chip_class, R_008F10_SQ_IMG_RSRC_WORD0 + j * 4,
+		ac_dump_reg(f, chip_class, sq_img_rsrc_word0 + j * 4,
 			    desc[8 + j], 0xffffffff);
 }
 
