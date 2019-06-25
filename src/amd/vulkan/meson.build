@@ -139,6 +139,7 @@ if with_xlib_lease
 endif
 
 if with_platform_android
+  radv_deps += dep_android
   radv_flags += [
     '-DVK_USE_PLATFORM_ANDROID_KHR'
   ]
