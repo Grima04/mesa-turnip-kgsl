@@ -870,8 +870,8 @@ clear_htile_mask(struct radv_cmd_buffer *cmd_buffer,
 	radv_meta_restore(&saved_state, cmd_buffer);
 
 	return RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-	       RADV_CMD_FLAG_INV_VMEM_L1 |
-	       RADV_CMD_FLAG_WRITEBACK_GLOBAL_L2;
+	       RADV_CMD_FLAG_INV_VCACHE |
+	       RADV_CMD_FLAG_WB_L2;
 }
 
 static uint32_t

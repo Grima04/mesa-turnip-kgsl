@@ -2704,9 +2704,9 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			                         queue->device->physical_device->rad_info.chip_class >= GFX7,
 			                       (queue->queue_family_index == RADV_QUEUE_COMPUTE ? RADV_CMD_FLAG_CS_PARTIAL_FLUSH : (RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH)) |
 			                       RADV_CMD_FLAG_INV_ICACHE |
-			                       RADV_CMD_FLAG_INV_SMEM_L1 |
-			                       RADV_CMD_FLAG_INV_VMEM_L1 |
-			                       RADV_CMD_FLAG_INV_GLOBAL_L2 |
+			                       RADV_CMD_FLAG_INV_SCACHE |
+			                       RADV_CMD_FLAG_INV_VCACHE |
+			                       RADV_CMD_FLAG_INV_L2 |
 					       RADV_CMD_FLAG_START_PIPELINE_STATS, 0);
 		} else if (i == 1) {
 			si_cs_emit_cache_flush(cs,
@@ -2715,9 +2715,9 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			                       queue->queue_family_index == RING_COMPUTE &&
 			                         queue->device->physical_device->rad_info.chip_class >= GFX7,
 			                       RADV_CMD_FLAG_INV_ICACHE |
-			                       RADV_CMD_FLAG_INV_SMEM_L1 |
-			                       RADV_CMD_FLAG_INV_VMEM_L1 |
-			                       RADV_CMD_FLAG_INV_GLOBAL_L2 |
+			                       RADV_CMD_FLAG_INV_SCACHE |
+			                       RADV_CMD_FLAG_INV_VCACHE |
+			                       RADV_CMD_FLAG_INV_L2 |
 					       RADV_CMD_FLAG_START_PIPELINE_STATS, 0);
 		}
 

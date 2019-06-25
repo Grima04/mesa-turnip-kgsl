@@ -169,7 +169,7 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 	radv_meta_restore(&saved_state, cmd_buffer);
 
 	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-					RADV_CMD_FLAG_INV_GLOBAL_L2;
+					RADV_CMD_FLAG_INV_L2;
 
 	/* Re-initialize FMASK in fully expanded mode. */
 	radv_initialize_fmask(cmd_buffer, image, subresourceRange);
