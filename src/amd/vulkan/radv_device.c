@@ -4938,7 +4938,8 @@ radv_init_sampler(struct radv_device *device,
 {
 	uint32_t max_aniso = radv_get_max_anisotropy(device, pCreateInfo);
 	uint32_t max_aniso_ratio = radv_tex_aniso_filter(max_aniso);
-	bool is_vi = (device->physical_device->rad_info.chip_class >= GFX8);
+	bool compat_mode = device->physical_device->rad_info.chip_class == GFX8 ||
+			   device->physical_device->rad_info.chip_class == GFX9;
 	unsigned filter_mode = V_008F30_SQ_IMG_FILTER_MODE_BLEND;
 
 	const struct VkSamplerReductionModeCreateInfoEXT *sampler_reduction =
@@ -4956,7 +4957,7 @@ radv_init_sampler(struct radv_device *device,
 			     S_008F30_ANISO_THRESHOLD(max_aniso_ratio >> 1) |
 			     S_008F30_ANISO_BIAS(max_aniso_ratio) |
 			     S_008F30_DISABLE_CUBE_WRAP(0) |
-			     S_008F30_COMPAT_MODE(is_vi) |
+			     S_008F30_COMPAT_MODE(compat_mode) |
 			     S_008F30_FILTER_MODE(filter_mode));
 	sampler->state[1] = (S_008F34_MIN_LOD(S_FIXED(CLAMP(pCreateInfo->minLod, 0, 15), 8)) |
 			     S_008F34_MAX_LOD(S_FIXED(CLAMP(pCreateInfo->maxLod, 0, 15), 8)) |
@@ -4965,12 +4966,18 @@ radv_init_sampler(struct radv_device *device,
 			     S_008F38_XY_MAG_FILTER(radv_tex_filter(pCreateInfo->magFilter, max_aniso)) |
 			     S_008F38_XY_MIN_FILTER(radv_tex_filter(pCreateInfo->minFilter, max_aniso)) |
 			     S_008F38_MIP_FILTER(radv_tex_mipfilter(pCreateInfo->mipmapMode)) |
-			     S_008F38_MIP_POINT_PRECLAMP(0) |
-			     S_008F38_DISABLE_LSB_CEIL(device->physical_device->rad_info.chip_class <= GFX8) |
-			     S_008F38_FILTER_PREC_FIX(1) |
-			     S_008F38_ANISO_OVERRIDE_GFX6(is_vi));
+			     S_008F38_MIP_POINT_PRECLAMP(0));
 	sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR(0) |
 			     S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(pCreateInfo->borderColor)));
+
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		sampler->state[2] |= S_008F38_ANISO_OVERRIDE_GFX10(1);
+	} else {
+		sampler->state[2] |=
+			S_008F38_DISABLE_LSB_CEIL(device->physical_device->rad_info.chip_class <= GFX8) |
+			S_008F38_FILTER_PREC_FIX(1) |
+			S_008F38_ANISO_OVERRIDE_GFX6(device->physical_device->rad_info.chip_class >= GFX8);
+	}
 }
 
 VkResult radv_CreateSampler(
