@@ -1264,7 +1264,36 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 		cb_color_info &= C_028C70_FMASK_COMPRESS_1FRAG_ONLY;
 	}
 
-	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+			radeon_set_context_reg_seq(cmd_buffer->cs, R_028C60_CB_COLOR0_BASE + index * 0x3c, 11);
+			radeon_emit(cmd_buffer->cs, cb->cb_color_base);
+			radeon_emit(cmd_buffer->cs, 0);
+			radeon_emit(cmd_buffer->cs, 0);
+			radeon_emit(cmd_buffer->cs, cb->cb_color_view);
+			radeon_emit(cmd_buffer->cs, cb_color_info);
+			radeon_emit(cmd_buffer->cs, cb->cb_color_attrib);
+			radeon_emit(cmd_buffer->cs, cb->cb_dcc_control);
+			radeon_emit(cmd_buffer->cs, cb->cb_color_cmask);
+			radeon_emit(cmd_buffer->cs, 0);
+			radeon_emit(cmd_buffer->cs, cb->cb_color_fmask);
+			radeon_emit(cmd_buffer->cs, 0);
+
+			radeon_set_context_reg_seq(cmd_buffer->cs, R_028C94_CB_COLOR0_DCC_BASE + index * 0x3c, 1);
+			radeon_emit(cmd_buffer->cs, cb->cb_dcc_base);
+
+			radeon_set_context_reg(cmd_buffer->cs, R_028E40_CB_COLOR0_BASE_EXT + index * 4,
+					       cb->cb_color_base >> 32);
+			radeon_set_context_reg(cmd_buffer->cs, R_028E60_CB_COLOR0_CMASK_BASE_EXT + index * 4,
+					       cb->cb_color_cmask >> 32);
+			radeon_set_context_reg(cmd_buffer->cs, R_028E80_CB_COLOR0_FMASK_BASE_EXT + index * 4,
+					       cb->cb_color_fmask >> 32);
+			radeon_set_context_reg(cmd_buffer->cs, R_028EA0_CB_COLOR0_DCC_BASE_EXT + index * 4,
+					       cb->cb_dcc_base >> 32);
+			radeon_set_context_reg(cmd_buffer->cs, R_028EC0_CB_COLOR0_ATTRIB2 + index * 4,
+					       cb->cb_color_attrib2);
+			radeon_set_context_reg(cmd_buffer->cs, R_028EE0_CB_COLOR0_ATTRIB3 + index * 4,
+					       cb->cb_color_attrib3);
+	} else if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
 		radeon_set_context_reg_seq(cmd_buffer->cs, R_028C60_CB_COLOR0_BASE + index * 0x3c, 11);
 		radeon_emit(cmd_buffer->cs, cb->cb_color_base);
 		radeon_emit(cmd_buffer->cs, S_028C64_BASE_256B(cb->cb_color_base >> 32));
