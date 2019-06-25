@@ -2989,6 +2989,14 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 			num_pos_exports++;
 	}
 
+	/* Navi10-14 skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
+	 * Setting valid_mask=1 prevents it and has no other effect.
+	 */
+	if (ctx->ac.family == CHIP_NAVI10 ||
+	    ctx->ac.family == CHIP_NAVI12 ||
+	    ctx->ac.family == CHIP_NAVI14)
+		pos_args[0].valid_mask = 1;
+
 	pos_idx = 0;
 	for (i = 0; i < 4; i++) {
 		if (!pos_args[i].out[0])
