@@ -44,7 +44,9 @@
 #include <llvm-c/Transforms/Utils.h>
 #endif
 #include <llvm-c/BitWriter.h>
-
+#if GALLIVM_HAVE_CORO
+#include <llvm-c/Transforms/Coroutines.h>
+#endif
 
 /* Only MCJIT is available as of LLVM SVN r216982 */
 #if HAVE_LLVM >= 0x0306
@@ -125,6 +127,10 @@ create_pass_manager(struct gallivm_state *gallivm)
    gallivm->passmgr = LLVMCreateFunctionPassManagerForModule(gallivm->module);
    if (!gallivm->passmgr)
       return FALSE;
+
+#if GALLIVM_HAVE_CORO
+   gallivm->cgpassmgr = LLVMCreatePassManager();
+#endif
    /*
     * TODO: some per module pass manager with IPO passes might be helpful -
     * the generated texture functions may benefit from inlining if they are
@@ -143,6 +149,12 @@ create_pass_manager(struct gallivm_state *gallivm)
       LLVMSetDataLayout(gallivm->module, td_str);
       free(td_str);
    }
+
+#if GALLIVM_HAVE_CORO
+   LLVMAddCoroEarlyPass(gallivm->cgpassmgr);
+   LLVMAddCoroSplitPass(gallivm->cgpassmgr);
+   LLVMAddCoroElidePass(gallivm->cgpassmgr);
+#endif
 
    if ((gallivm_perf & GALLIVM_PERF_NO_OPT) == 0) {
       /*
@@ -170,6 +182,9 @@ create_pass_manager(struct gallivm_state *gallivm)
       LLVMAddConstantPropagationPass(gallivm->passmgr);
       LLVMAddInstructionCombiningPass(gallivm->passmgr);
       LLVMAddGVNPass(gallivm->passmgr);
+#if GALLIVM_HAVE_CORO
+      LLVMAddCoroCleanupPass(gallivm->passmgr);
+#endif
    }
    else {
       /* We need at least this pass to prevent the backends to fail in
@@ -192,6 +207,12 @@ gallivm_free_ir(struct gallivm_state *gallivm)
    if (gallivm->passmgr) {
       LLVMDisposePassManager(gallivm->passmgr);
    }
+
+#if GALLIVM_HAVE_CORO
+   if (gallivm->cgpassmgr) {
+      LLVMDisposePassManager(gallivm->cgpassmgr);
+   }
+#endif
 
    if (gallivm->engine) {
       /* This will already destroy any associated module */
@@ -219,6 +240,7 @@ gallivm_free_ir(struct gallivm_state *gallivm)
    gallivm->target = NULL;
    gallivm->module = NULL;
    gallivm->module_name = NULL;
+   gallivm->cgpassmgr = NULL;
    gallivm->passmgr = NULL;
    gallivm->context = NULL;
    gallivm->builder = NULL;
@@ -610,6 +632,9 @@ gallivm_compile_module(struct gallivm_state *gallivm)
    if (gallivm_debug & GALLIVM_DEBUG_PERF)
       time_begin = os_time_get();
 
+#if GALLIVM_HAVE_CORO
+   LLVMRunPassManager(gallivm->cgpassmgr, gallivm->module);
+#endif
    /* Run optimization passes */
    LLVMInitializeFunctionPassManager(gallivm->passmgr);
    func = LLVMGetFirstFunction(gallivm->module);

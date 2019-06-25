@@ -95,6 +95,11 @@ typedef void *LLVMMCJITMemoryManagerRef;
 #define LLVMInsertBasicBlock ILLEGAL_LLVM_FUNCTION
 #define LLVMCreateBuilder ILLEGAL_LLVM_FUNCTION
 
+#if HAVE_LLVM >= 0x0800
+#define GALLIVM_HAVE_CORO 1
+#else
+#define GALLIVM_HAVE_CORO 0
+#endif
 
 /*
  * Before LLVM 3.4 LLVMSetAlignment only supported GlobalValue, not
