@@ -51,9 +51,6 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
 		return false;
 	}
 
-	if (ws->info.chip_class > GFX9)
-		return false;
-
 	/* temporary */
 	ws->info.use_display_dcc_unaligned = false;
 	ws->info.use_display_dcc_with_retile_blit = false;
