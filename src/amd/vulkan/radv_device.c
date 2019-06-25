@@ -4581,6 +4581,10 @@ radv_initialise_ds_surface(struct radv_device *device,
 	uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
 	ds->db_depth_view = S_028008_SLICE_START(iview->base_layer) |
 		S_028008_SLICE_MAX(max_slice);
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		ds->db_depth_view |= S_028008_SLICE_START_HI(iview->base_layer >> 11) |
+				     S_028008_SLICE_MAX_HI(max_slice >> 11);
+	}
 
 	ds->db_htile_data_base = 0;
 	ds->db_htile_surface = 0;
@@ -4600,10 +4604,12 @@ radv_initialise_ds_surface(struct radv_device *device,
 		ds->db_stencil_info = S_02803C_FORMAT(stencil_format) |
 			S_02803C_SW_MODE(surf->u.gfx9.stencil.swizzle_mode);
 
-		ds->db_z_info2 = S_028068_EPITCH(surf->u.gfx9.surf.epitch);
-		ds->db_stencil_info2 = S_02806C_EPITCH(surf->u.gfx9.stencil.epitch);
-		ds->db_depth_view |= S_028008_MIPID(level);
+		if (device->physical_device->rad_info.chip_class == GFX9) {
+			ds->db_z_info2 = S_028068_EPITCH(surf->u.gfx9.surf.epitch);
+			ds->db_stencil_info2 = S_02806C_EPITCH(surf->u.gfx9.stencil.epitch);
+		}
 
+		ds->db_depth_view |= S_028008_MIPID(level);
 		ds->db_depth_size = S_02801C_X_MAX(iview->image->info.width - 1) |
 			S_02801C_Y_MAX(iview->image->info.height - 1);
 
@@ -4614,9 +4620,15 @@ radv_initialise_ds_surface(struct radv_device *device,
 				unsigned max_zplanes =
 					radv_calc_decompress_on_z_planes(device, iview);
 
-				ds->db_z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes) |
-						 S_028038_ITERATE_FLUSH(1);
-				ds->db_stencil_info |= S_02803C_ITERATE_FLUSH(1);
+				ds->db_z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes);
+
+				if (device->physical_device->rad_info.chip_class >= GFX10) {
+					ds->db_z_info |= S_028040_ITERATE_FLUSH(1);
+					ds->db_stencil_info |= S_028044_ITERATE_FLUSH(1);
+				} else {
+					ds->db_z_info |= S_028038_ITERATE_FLUSH(1);
+					ds->db_stencil_info |= S_02803C_ITERATE_FLUSH(1);
+				}
 			}
 
 			if (!surf->has_stencil)
@@ -4626,8 +4638,11 @@ radv_initialise_ds_surface(struct radv_device *device,
 				iview->image->htile_offset;
 			ds->db_htile_data_base = va >> 8;
 			ds->db_htile_surface = S_028ABC_FULL_CACHE(1) |
-				S_028ABC_PIPE_ALIGNED(surf->u.gfx9.htile.pipe_aligned) |
-				S_028ABC_RB_ALIGNED(surf->u.gfx9.htile.rb_aligned);
+				S_028ABC_PIPE_ALIGNED(surf->u.gfx9.htile.pipe_aligned);
+
+			if (device->physical_device->rad_info.chip_class == GFX9) {
+				ds->db_htile_surface |= S_028ABC_RB_ALIGNED(surf->u.gfx9.htile.rb_aligned);
+			}
 		}
 	} else {
 		const struct legacy_surf_level *level_info = &surf->u.legacy.level[level];
