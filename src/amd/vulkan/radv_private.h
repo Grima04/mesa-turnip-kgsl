@@ -1937,7 +1937,8 @@ struct radv_color_buffer_info {
 	uint32_t cb_color_view;
 	uint32_t cb_color_info;
 	uint32_t cb_color_attrib;
-	uint32_t cb_color_attrib2;
+	uint32_t cb_color_attrib2; /* GFX9 and later */
+	uint32_t cb_color_attrib3; /* GFX10 and later */
 	uint32_t cb_dcc_control;
 	uint32_t cb_color_cmask_slice;
 	uint32_t cb_color_fmask_slice;

@@ -4308,15 +4308,21 @@ radv_initialise_color_surface(struct radv_device *device,
 		else
 			meta = surf->u.gfx9.cmask;
 
-		cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
-			S_028C74_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
-			S_028C74_RB_ALIGNED(meta.rb_aligned) |
-			S_028C74_PIPE_ALIGNED(meta.pipe_aligned);
+		if (device->physical_device->rad_info.chip_class >= GFX10) {
+			cb->cb_color_attrib3 |=	S_028EE0_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
+				S_028EE0_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
+				S_028EE0_CMASK_PIPE_ALIGNED(surf->u.gfx9.cmask.pipe_aligned) |
+				S_028EE0_DCC_PIPE_ALIGNED(surf->u.gfx9.dcc.pipe_aligned);
+		} else {
+			cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
+				S_028C74_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
+				S_028C74_RB_ALIGNED(meta.rb_aligned) |
+				S_028C74_PIPE_ALIGNED(meta.pipe_aligned);
+			cb->cb_mrt_epitch = S_0287A0_EPITCH(surf->u.gfx9.surf.epitch);
+		}
 
 		cb->cb_color_base += surf->u.gfx9.surf_offset >> 8;
 		cb->cb_color_base |= surf->tile_swizzle;
-
-		cb->cb_mrt_epitch = S_0287A0_EPITCH(surf->u.gfx9.surf.epitch);
 	} else {
 		const struct legacy_surf_level *level_info = &surf->u.legacy.level[iview->base_mip];
 		unsigned pitch_tile_max, slice_tile_max, tile_mode_index;
@@ -4364,9 +4370,10 @@ radv_initialise_color_surface(struct radv_device *device,
 	cb->cb_dcc_base = va >> 8;
 	cb->cb_dcc_base |= surf->tile_swizzle;
 
+	/* GFX10 field has the same base shift as the GFX6 field. */
 	uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
 	cb->cb_color_view = S_028C6C_SLICE_START(iview->base_layer) |
-		S_028C6C_SLICE_MAX_GFX6(max_slice);
+		S_028C6C_SLICE_MAX_GFX10(max_slice);
 
 	if (iview->image->info.samples > 1) {
 		unsigned log_samples = util_logbase2(iview->image->info.samples);
@@ -4471,9 +4478,18 @@ radv_initialise_color_surface(struct radv_device *device,
 		unsigned width = iview->extent.width / (iview->plane_id ? format_desc->width_divisor : 1);
 		unsigned height = iview->extent.height / (iview->plane_id ? format_desc->height_divisor : 1);
 
-		cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX9(iview->base_mip);
-		cb->cb_color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
-			S_028C74_RESOURCE_TYPE(surf->u.gfx9.resource_type);
+		if (device->physical_device->rad_info.chip_class >= GFX10) {
+			cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX10(iview->base_mip);
+
+			cb->cb_color_attrib3 |= S_028EE0_MIP0_DEPTH(mip0_depth) |
+					        S_028EE0_RESOURCE_TYPE(surf->u.gfx9.resource_type) |
+					        S_028EE0_RESOURCE_LEVEL(1);
+		} else {
+			cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX9(iview->base_mip);
+			cb->cb_color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
+					       S_028C74_RESOURCE_TYPE(surf->u.gfx9.resource_type);
+		}
+
 		cb->cb_color_attrib2 = S_028C68_MIP0_WIDTH(width - 1) |
 			S_028C68_MIP0_HEIGHT(height - 1) |
 			S_028C68_MAX_MIP(iview->image->info.levels - 1);
