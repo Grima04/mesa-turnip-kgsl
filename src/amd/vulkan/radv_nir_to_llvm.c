@@ -2596,9 +2596,15 @@ si_llvm_init_export_args(struct radv_shader_context *ctx,
 			break;
 
 		case V_028714_SPI_SHADER_32_AR:
-			args->enabled_channels = 0x9;
-			args->out[0] = values[0];
-			args->out[3] = values[3];
+			if (ctx->ac.chip_class >= GFX10) {
+				args->enabled_channels = 0x3;
+				args->out[0] = values[0];
+				args->out[1] = values[3];
+			} else {
+				args->enabled_channels = 0x9;
+				args->out[0] = values[0];
+				args->out[3] = values[3];
+			}
 			break;
 
 		case V_028714_SPI_SHADER_FP16_ABGR:
