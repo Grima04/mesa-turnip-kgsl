@@ -123,7 +123,7 @@ panfrost_blit_wallpaper(struct panfrost_context *ctx)
 	binfo.src.box.height = binfo.dst.box.height = ctx->pipe_framebuffer.height;
 	binfo.src.box.depth = binfo.dst.box.depth = 1;
 
-	binfo.src.format = binfo.dst.format = ctx->pipe_framebuffer.cbufs[0]->texture->format;
+	binfo.src.format = binfo.dst.format = ctx->pipe_framebuffer.cbufs[0]->format;
 
 	assert(ctx->pipe_framebuffer.nr_cbufs == 1);
 	binfo.mask = PIPE_MASK_RGBA;
