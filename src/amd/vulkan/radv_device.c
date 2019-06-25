@@ -4423,8 +4423,11 @@ radv_initialise_color_surface(struct radv_device *device,
 	    device->physical_device->rad_info.chip_class <= GFX8)
 		va += plane->surface.u.legacy.level[iview->base_mip].dcc_offset;
 
+	unsigned dcc_tile_swizzle = surf->tile_swizzle;
+	dcc_tile_swizzle &= (surf->dcc_alignment - 1) >> 8;
+
 	cb->cb_dcc_base = va >> 8;
-	cb->cb_dcc_base |= surf->tile_swizzle;
+	cb->cb_dcc_base |= dcc_tile_swizzle;
 
 	/* GFX10 field has the same base shift as the GFX6 field. */
 	uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
