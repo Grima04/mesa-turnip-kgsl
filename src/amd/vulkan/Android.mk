@@ -33,8 +33,6 @@ RADV_COMMON_INCLUDES := \
 	$(MESA_TOP)/src/vulkan/wsi \
 	$(MESA_TOP)/src/vulkan/util \
 	$(MESA_TOP)/src/amd \
-	$(MESA_TOP)/src/amd/common \
-	$(MESA_TOP)/src/compiler \
 	$(MESA_TOP)/src/mapi \
 	$(MESA_TOP)/src/mesa \
 	$(MESA_TOP)/src/mesa/drivers/dri/common \
@@ -66,14 +64,12 @@ LOCAL_CFLAGS += -DVK_USE_PLATFORM_ANDROID_KHR
 
 $(call mesa-build-with-llvm)
 
-LOCAL_C_INCLUDES := \
-	$(RADV_COMMON_INCLUDES) \
-	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_amd_common,,)/common \
-	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_nir,,)/nir \
-	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_radv_common,,) \
-	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_util,,)
+LOCAL_C_INCLUDES := $(RADV_COMMON_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES := \
+	libmesa_amd_common \
+	libmesa_nir \
+	libmesa_util \
 	libmesa_vulkan_util \
 	libmesa_git_sha1
 
@@ -146,9 +142,7 @@ LOCAL_CFLAGS += -DVK_USE_PLATFORM_ANDROID_KHR
 
 $(call mesa-build-with-llvm)
 
-LOCAL_C_INCLUDES := \
-	$(RADV_COMMON_INCLUDES) \
-	$(call generated-sources-dir-for,STATIC_LIBRARIES,libmesa_radv_common,,)
+LOCAL_C_INCLUDES := $(RADV_COMMON_INCLUDES)
 
 LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_util \
