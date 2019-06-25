@@ -7073,6 +7073,14 @@
     <field name="Color Compression Disable Mask" start="31" end="31" type="bool"/>
   </register>
 
+  <register name="GT_MODE" length="1" num="0x7008">
+     <field name="Binding Table Alignment" start="10" end="10" type="uint">
+       <value name="BTP_15_5" value="0"/>
+       <value name="BTP_18_8" value="1"/>
+     </field>
+     <field name="Binding Table Alignment Mask" start="26" end="26" type="bool"/>
+  </register>
+
   <register name="CACHE_MODE_SS" length="1" num="0x0e420">
     <field name="Instruction Level 1 Cache Disable" start="0" end="0" type="bool"/>
     <field name="Instruction Level 1 Cache and In-Flight Queue Disable " start="1" end="1" type="bool"/>
