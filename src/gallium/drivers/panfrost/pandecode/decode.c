@@ -619,8 +619,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
 
                 pandecode_rt_format(rt->format);
 
-                /* TODO: How the actual heck does AFBC enabling work here? */
-                if (0) {
+                if (rt->format.block == MALI_MFBD_BLOCK_AFBC) {
                         pandecode_log(".afbc = {\n");
                         pandecode_indent++;
 
