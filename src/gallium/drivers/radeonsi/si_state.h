@@ -599,6 +599,7 @@ void si_shader_selector_key_vs(struct si_context *sctx,
 			       struct si_shader_selector *vs,
 			       struct si_shader_key *key,
 			       struct si_vs_prolog_bits *prolog_key);
+unsigned si_get_input_prim(const struct si_shader_selector *gs);
 
 /* si_state_draw.c */
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs,

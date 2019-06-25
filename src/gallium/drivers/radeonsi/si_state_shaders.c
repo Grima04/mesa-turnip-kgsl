@@ -1054,6 +1054,23 @@ static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx)
 	gfx10_emit_shader_ngg_tail(sctx, shader, initial_cdw);
 }
 
+unsigned si_get_input_prim(const struct si_shader_selector *gs)
+{
+	if (gs->type == PIPE_SHADER_GEOMETRY)
+		return gs->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
+
+	if (gs->type == PIPE_SHADER_TESS_EVAL) {
+		if (gs->info.properties[TGSI_PROPERTY_TES_POINT_MODE])
+			return PIPE_PRIM_POINTS;
+		if (gs->info.properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
+			return PIPE_PRIM_LINES;
+		return PIPE_PRIM_TRIANGLES;
+	}
+
+	/* TODO: Set this correctly if the primitive type is set in the shader key. */
+	return PIPE_PRIM_TRIANGLES;
+}
+
 /**
  * Prepare the PM4 image for \p shader, which will run as a merged ESGS shader
  * in NGG mode.
@@ -1074,10 +1091,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		gs_info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
 	bool es_enable_prim_id = shader->key.mono.u.vs_export_prim_id || es_info->uses_primid;
 	unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
-	unsigned input_prim =
-		gs_type == PIPE_SHADER_GEOMETRY ?
-		gs_info->properties[TGSI_PROPERTY_GS_INPUT_PRIM] :
-		PIPE_PRIM_TRIANGLES; /* TODO: Optimize when primtype is known */
+	unsigned input_prim = si_get_input_prim(gs_sel);
 	bool break_wave_at_eoi = false;
 	struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader);
 	if (!pm4)

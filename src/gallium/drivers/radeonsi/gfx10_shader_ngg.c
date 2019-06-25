@@ -1265,10 +1265,8 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 		shader->previous_stage_sel ? shader->previous_stage_sel : gs_sel;
 	const enum pipe_shader_type gs_type = gs_sel->type;
 	const unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
-	/* TODO: Specialize for known primitive type without GS. */
-	const unsigned input_prim = gs_type == PIPE_SHADER_GEOMETRY ?
-				    gs_sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM] :
-				    PIPE_PRIM_TRIANGLES;
+
+	const unsigned input_prim = si_get_input_prim(gs_sel);
 	const bool use_adjacency = input_prim >= PIPE_PRIM_LINES_ADJACENCY &&
 				   input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
 	const unsigned max_verts_per_prim = u_vertices_per_prim(input_prim);
