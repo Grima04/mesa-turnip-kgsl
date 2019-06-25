@@ -81,7 +81,7 @@ if with_platform_wayland
   libtu_files += files('tu_wsi_wayland.c')
 endif
 
-if with_platform_drm
+if system_has_kms_drm
   tu_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
   libtu_files += files('tu_wsi_display.c')
 endif
