@@ -1876,6 +1876,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 			       S_028208_BR_Y(framebuffer->height));
 
 	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX8) {
+		bool disable_constant_encode =
+			cmd_buffer->device->physical_device->has_dcc_constant_encode;
 		uint8_t watermark = 4; /* Default value for GFX8. */
 
 		/* For optimal DCC performance. */
@@ -1889,7 +1891,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
 		radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_DCC_CONTROL,
 				       S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(1) |
-				       S_028424_OVERWRITE_COMBINER_WATERMARK(watermark));
+				       S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
+				       S_028424_DISABLE_CONSTANT_ENCODE_REG(disable_constant_encode));
 	}
 
 	if (cmd_buffer->device->dfsm_allowed) {

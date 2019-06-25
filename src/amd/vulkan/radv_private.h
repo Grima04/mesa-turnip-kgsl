@@ -319,6 +319,9 @@ struct radv_physical_device {
 	/* Whether to enable the AMD_shader_ballot extension */
 	bool use_shader_ballot;
 
+	/* Whether DISABLE_CONSTANT_ENCODE_REG is supported. */
+	bool has_dcc_constant_encode;
+
 	/* This is the drivers on-disk cache used as a fallback as opposed to
 	 * the pipeline cache defined by apps.
 	 */
