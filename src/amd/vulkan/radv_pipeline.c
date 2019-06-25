@@ -2360,32 +2360,41 @@ radv_pipeline_stage_to_user_data_0(struct radv_pipeline *pipeline,
 	case MESA_SHADER_FRAGMENT:
 		return R_00B030_SPI_SHADER_USER_DATA_PS_0;
 	case MESA_SHADER_VERTEX:
-		if (chip_class >= GFX9) {
-			return has_tess ? R_00B430_SPI_SHADER_USER_DATA_LS_0 :
-			       has_gs ? R_00B330_SPI_SHADER_USER_DATA_ES_0 :
-			       R_00B130_SPI_SHADER_USER_DATA_VS_0;
+		if (has_tess) {
+			if (chip_class >= GFX10) {
+				return R_00B430_SPI_SHADER_USER_DATA_HS_0;
+			} else if (chip_class == GFX9) {
+				return R_00B430_SPI_SHADER_USER_DATA_LS_0;
+			} else {
+				return R_00B530_SPI_SHADER_USER_DATA_LS_0;
+			}
+
 		}
-		if (has_tess)
-			return R_00B530_SPI_SHADER_USER_DATA_LS_0;
-		else
-			return has_gs ? R_00B330_SPI_SHADER_USER_DATA_ES_0 : R_00B130_SPI_SHADER_USER_DATA_VS_0;
+
+		if (has_gs) {
+			if (chip_class >= GFX10) {
+				return R_00B230_SPI_SHADER_USER_DATA_GS_0;
+			} else {
+				return R_00B330_SPI_SHADER_USER_DATA_ES_0;
+			}
+		}
+
+		return R_00B130_SPI_SHADER_USER_DATA_VS_0;
 	case MESA_SHADER_GEOMETRY:
-		return chip_class >= GFX9 ? R_00B330_SPI_SHADER_USER_DATA_ES_0 :
+		return chip_class == GFX9 ? R_00B330_SPI_SHADER_USER_DATA_ES_0 :
 		                            R_00B230_SPI_SHADER_USER_DATA_GS_0;
 	case MESA_SHADER_COMPUTE:
 		return R_00B900_COMPUTE_USER_DATA_0;
 	case MESA_SHADER_TESS_CTRL:
-		return chip_class >= GFX9 ? R_00B430_SPI_SHADER_USER_DATA_LS_0 :
+		return chip_class == GFX9 ? R_00B430_SPI_SHADER_USER_DATA_LS_0 :
 		                            R_00B430_SPI_SHADER_USER_DATA_HS_0;
 	case MESA_SHADER_TESS_EVAL:
-		if (chip_class >= GFX9) {
-			return has_gs ? R_00B330_SPI_SHADER_USER_DATA_ES_0 :
-			       R_00B130_SPI_SHADER_USER_DATA_VS_0;
-		}
-		if (has_gs)
-			return R_00B330_SPI_SHADER_USER_DATA_ES_0;
-		else
+		if (has_gs) {
+			return chip_class >= GFX10 ? R_00B230_SPI_SHADER_USER_DATA_GS_0 :
+						     R_00B330_SPI_SHADER_USER_DATA_ES_0;
+		} else {
 			return R_00B130_SPI_SHADER_USER_DATA_VS_0;
+		}
 	default:
 		unreachable("unknown shader");
 	}
