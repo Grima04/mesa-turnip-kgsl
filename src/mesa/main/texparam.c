@@ -146,6 +146,28 @@ get_texobj_by_target(struct gl_context *ctx, GLenum target, GLboolean get)
    return texUnit->CurrentTex[targetIndex];
 }
 
+
+static bool
+is_texparameteri_target_valid(GLenum target)
+{
+   switch (target) {
+   case GL_TEXTURE_1D:
+   case GL_TEXTURE_1D_ARRAY:
+   case GL_TEXTURE_2D:
+   case GL_TEXTURE_2D_ARRAY:
+   case GL_TEXTURE_2D_MULTISAMPLE:
+   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+   case GL_TEXTURE_3D:
+   case GL_TEXTURE_CUBE_MAP:
+   case GL_TEXTURE_CUBE_MAP_ARRAY:
+   case GL_TEXTURE_RECTANGLE:
+      return true;
+   default:
+      return false;
+   }
+}
+
+
 /**
  * Get current texture object for given name.
  * Return NULL if any error (and record the error).
@@ -161,23 +183,12 @@ get_texobj_by_name(struct gl_context *ctx, GLuint texture, const char *name)
    if (!texObj)
       return NULL;
 
-   switch (texObj->Target) {
-   case GL_TEXTURE_1D:
-   case GL_TEXTURE_1D_ARRAY:
-   case GL_TEXTURE_2D:
-   case GL_TEXTURE_2D_ARRAY:
-   case GL_TEXTURE_2D_MULTISAMPLE:
-   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
-   case GL_TEXTURE_3D:
-   case GL_TEXTURE_CUBE_MAP:
-   case GL_TEXTURE_CUBE_MAP_ARRAY:
-   case GL_TEXTURE_RECTANGLE:
-      return texObj;
-   default:
+   if (!is_texparameteri_target_valid(texObj->Target)) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "%s(target)", name);
       return NULL;
    }
 
+   return texObj;
 }
 
 
