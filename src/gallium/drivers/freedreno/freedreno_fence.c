@@ -48,7 +48,7 @@ struct pipe_fence_handle {
 static void fence_flush(struct pipe_fence_handle *fence)
 {
 	if (fence->batch)
-		fd_batch_flush(fence->batch, true, true);
+		fd_batch_flush(fence->batch, true);
 	debug_assert(!fence->batch);
 }
 

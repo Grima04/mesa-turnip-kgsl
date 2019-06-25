@@ -69,7 +69,7 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 	batch->needs_out_fence_fd = true;
 
 	if (!ctx->screen->reorder) {
-		fd_batch_flush(batch, true, false);
+		fd_batch_flush(batch, true);
 	} else if (flags & PIPE_FLUSH_DEFERRED) {
 		fd_bc_flush_deferred(&ctx->screen->batch_cache, ctx);
 	} else {

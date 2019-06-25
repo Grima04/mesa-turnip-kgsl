@@ -139,7 +139,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 			 * spin forever:
 			 */
 			if (aq->no_wait_cnt++ > 5)
-				fd_batch_flush(rsc->write_batch, false, false);
+				fd_batch_flush(rsc->write_batch, false);
 			return false;
 		}
 
@@ -152,7 +152,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 	}
 
 	if (rsc->write_batch)
-		fd_batch_flush(rsc->write_batch, true, false);
+		fd_batch_flush(rsc->write_batch, true);
 
 	/* get the result: */
 	fd_bo_cpu_prep(rsc->bo, ctx->pipe, DRM_FREEDRENO_PREP_READ);
