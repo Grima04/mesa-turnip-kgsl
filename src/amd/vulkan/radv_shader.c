@@ -539,12 +539,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	config_out->float_mode |= V_00B028_FP_64_DENORMS;
 
 	config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
-			    S_00B12C_SCRATCH_EN(scratch_enabled) |
-			    S_00B12C_SO_BASE0_EN(!!info->info.so.strides[0]) |
-			    S_00B12C_SO_BASE1_EN(!!info->info.so.strides[1]) |
-			    S_00B12C_SO_BASE2_EN(!!info->info.so.strides[2]) |
-			    S_00B12C_SO_BASE3_EN(!!info->info.so.strides[3]) |
-			    S_00B12C_SO_EN(!!info->info.so.num_outputs);
+			    S_00B12C_SCRATCH_EN(scratch_enabled);
 
 	config_out->rsrc1 = S_00B848_VGPRS((num_vgprs - 1) / 4) |
 			    S_00B848_DX10_CLAMP(1) |
@@ -554,7 +549,12 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		config_out->rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX10(info->num_user_sgprs >> 5);
 	} else {
 		config_out->rsrc1 |= S_00B228_SGPRS((num_sgprs - 1) / 8);
-		config_out->rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX9(info->num_user_sgprs >> 5);
+		config_out->rsrc2 |= S_00B22C_USER_SGPR_MSB_GFX9(info->num_user_sgprs >> 5)  |
+		                     S_00B12C_SO_BASE0_EN(!!info->info.so.strides[0]) |
+		                     S_00B12C_SO_BASE1_EN(!!info->info.so.strides[1]) |
+		                     S_00B12C_SO_BASE2_EN(!!info->info.so.strides[2]) |
+		                     S_00B12C_SO_BASE3_EN(!!info->info.so.strides[3]) |
+		                     S_00B12C_SO_EN(!!info->info.so.num_outputs);
 	}
 
 	switch (stage) {
