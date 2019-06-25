@@ -224,6 +224,12 @@ build:arm64:
         dEQP-GLES2.functional.shaders.matrix.div.const_lowp_mat2_mat2_vertex
         dEQP-GLES2.functional.shaders.operator.unary_operator.pre_increment_effect.highp_ivec4_vertex
         dEQP-GLES2.functional.shaders.texture_functions.vertex.texture2dprojlod_vec3
+        dEQP-GLES2.functional.shaders.swizzles.vector_swizzles.mediump_ivec3_stts_fragment
+        dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_nearest_linear_repeat_rgba8888
+        dEQP-GLES2.functional.shaders.swizzles.vector_swizzles.mediump_ivec3_stts_fragment
+        dEQP-GLES2.functional.shaders.loops.do_while_constant_iterations.only_continue_vertex
+        dEQP-GLES2.functional.fbo.render.resize.tex2d_rgb_depth_component16
+        dEQP-GLES2.functional.fbo.render.resize.tex2d_rgba_depth_component16
         "
 
     - for test in $FLIP_FLOPS; do sed -i "/$test/d" results/expected-failures.txt results/results-$lava_job_id.csv; done
