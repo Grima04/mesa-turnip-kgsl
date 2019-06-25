@@ -1,7 +1,7 @@
 /**************************************************************************
  *
  * Copyright 2018-2019 Alyssa Rosenzweig
- * Copyright 2018-2019 Collabora
+ * Copyright 2018-2019 Collabora, Ltd.
  * All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a

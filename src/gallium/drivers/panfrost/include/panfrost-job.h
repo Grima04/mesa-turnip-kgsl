@@ -2,7 +2,7 @@
  * © Copyright 2017-2018 Alyssa Rosenzweig
  * © Copyright 2017-2018 Connor Abbott
  * © Copyright 2017-2018 Lyude Paul
- * © Copyright2019 Collabora
+ * © Copyright2019 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),

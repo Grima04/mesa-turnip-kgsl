@@ -2,7 +2,7 @@
  * Copyright (C) 2008 VMware, Inc.
  * Copyright (C) 2014 Broadcom
  * Copyright (C) 2018-2019 Alyssa Rosenzweig
- * Copyright (C) 2019 Collabora
+ * Copyright (C) 2019 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),

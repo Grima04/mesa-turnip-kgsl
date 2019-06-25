@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2019 Alyssa Rosenzweig
  * Copyright (C) 2017-2018 Lyude Paul
- * Copyright (C) 2019 Collabora
+ * Copyright (C) 2019 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
