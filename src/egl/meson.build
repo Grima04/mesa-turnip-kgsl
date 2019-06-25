@@ -96,7 +96,10 @@ if with_dri2
   link_for_egl += libloader
   incs_for_egl += inc_loader
 
-  files_egl += files('drivers/dri2/platform_device.c')
+  files_egl += files(
+    'drivers/dri2/platform_device.c',
+    'drivers/dri2/platform_surfaceless.c',
+  )
   if with_platform_x11
     files_egl += files('drivers/dri2/platform_x11.c')
     if with_dri3
@@ -110,9 +113,6 @@ if with_dri2
     link_for_egl += libgbm
     incs_for_egl += [inc_gbm, include_directories('../gbm/main')]
     deps_for_egl += dep_libdrm
-  endif
-  if with_platform_surfaceless
-    files_egl += files('drivers/dri2/platform_surfaceless.c')
   endif
   if with_platform_wayland
     deps_for_egl += [dep_wayland_client, dep_wayland_server, dep_wayland_egl_headers]

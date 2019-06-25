@@ -293,9 +293,9 @@ endif
 _platforms = get_option('platforms')
 if _platforms.contains('auto')
   if system_has_kms_drm
-    _platforms = ['x11', 'wayland', 'drm', 'surfaceless']
+    _platforms = ['x11', 'wayland', 'drm']
   elif ['darwin', 'cygwin'].contains(host_machine.system())
-    _platforms = ['x11', 'surfaceless']
+    _platforms = ['x11']
   elif ['haiku'].contains(host_machine.system())
     _platforms = ['haiku']
   elif host_machine.system() == 'windows'
@@ -311,11 +311,16 @@ with_platform_x11 = _platforms.contains('x11')
 with_platform_wayland = _platforms.contains('wayland')
 with_platform_drm = _platforms.contains('drm')
 with_platform_haiku = _platforms.contains('haiku')
-with_platform_surfaceless = _platforms.contains('surfaceless')
 with_platform_windows = _platforms.contains('windows')
+
+if _platforms.contains('surfaceless')
+  warning('Platform `surfaceless` is now always selected; setting this option will be an error in Mesa 20.3')
+endif
 
 if _platforms.length() != 0
   egl_native_platform = _platforms[0]
+else
+  egl_native_platform = 'surfaceless'
 endif
 
 _xlib_lease = get_option('xlib-lease')
@@ -393,15 +398,13 @@ endif
 if _egl == 'auto'
   with_egl = (
     not ['darwin', 'windows'].contains(host_machine.system()) and
-    with_dri and with_shared_glapi and _platforms.length() != 0
+    with_dri and with_shared_glapi
   )
 elif _egl == 'enabled'
   if not with_dri
     error('EGL requires dri')
   elif not with_shared_glapi
     error('EGL requires shared-glapi')
-  elif _platforms.length() == 0
-    error('No platforms specified, consider -Dplatforms=drm,x11,surfaceless at least')
   elif not ['disabled', 'dri'].contains(with_glx)
     error('EGL requires dri, but a GLX is being built without dri')
   elif ['darwin', 'windows'].contains(host_machine.system())
@@ -410,15 +413,6 @@ elif _egl == 'enabled'
   with_egl = true
 else
   with_egl = false
-endif
-
-if with_egl and not (with_platform_drm or with_platform_surfaceless or with_platform_android)
-  if with_gallium_radeonsi
-    error('RadeonSI requires the drm, surfaceless or android platform when using EGL')
-  endif
-  if with_gallium_virgl
-    error('Virgl requires the drm, surfaceless or android platform when using EGL')
-  endif
 endif
 
 # Android uses emutls for versions <= P/28. For USE_ELF_TLS we need ELF TLS.
@@ -833,9 +827,6 @@ if with_platform_drm
     error('EGL drm platform requires gbm')
   endif
   pre_args += '-DHAVE_DRM_PLATFORM'
-endif
-if with_platform_surfaceless
-  pre_args += '-DHAVE_SURFACELESS_PLATFORM'
 endif
 if with_platform_android
   dep_android = [
@@ -1888,7 +1879,8 @@ if with_egl
   lines += 'EGL drivers:     ' + ' '.join(egl_drivers)
 endif
 lines += 'GBM:             ' + (with_gbm ? 'yes' : 'no')
-if _platforms.length() != 0
+if with_egl or with_any_vk
+  _platforms += 'surfaceless'
   lines += 'EGL/Vulkan/VL platforms:   ' + ' '.join(_platforms)
 endif
 

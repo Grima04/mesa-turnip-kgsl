@@ -95,9 +95,7 @@ struct _egl_global _eglGlobal =
    " EGL_MESA_platform_gbm"
    " EGL_KHR_platform_gbm"
 #endif
-#ifdef HAVE_SURFACELESS_PLATFORM
    " EGL_MESA_platform_surfaceless"
-#endif
    "",
 
    .debugCallback = NULL,

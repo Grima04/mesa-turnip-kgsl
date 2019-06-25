@@ -534,7 +534,6 @@ _eglGetWaylandDisplay(struct wl_display *native_display,
 }
 #endif /* HAVE_WAYLAND_PLATFORM */
 
-#ifdef HAVE_SURFACELESS_PLATFORM
 _EGLDisplay*
 _eglGetSurfacelessDisplay(void *native_display,
                           const EGLAttrib *attrib_list)
@@ -554,7 +553,6 @@ _eglGetSurfacelessDisplay(void *native_display,
    return _eglFindDisplay(_EGL_PLATFORM_SURFACELESS, native_display,
                           attrib_list);
 }
-#endif /* HAVE_SURFACELESS_PLATFORM */
 
 #ifdef HAVE_ANDROID_PLATFORM
 _EGLDisplay*

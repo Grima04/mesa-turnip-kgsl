@@ -503,16 +503,8 @@ dri2_initialize_android(_EGLDriver *drv, _EGLDisplay *disp)
 }
 #endif
 
-#ifdef HAVE_SURFACELESS_PLATFORM
 EGLBoolean
 dri2_initialize_surfaceless(_EGLDriver *drv, _EGLDisplay *disp);
-#else
-static inline EGLBoolean
-dri2_initialize_surfaceless(_EGLDriver *drv, _EGLDisplay *disp)
-{
-   return _eglError(EGL_NOT_INITIALIZED, "Surfaceless platform not built");
-}
-#endif
 
 EGLBoolean
 dri2_initialize_device(_EGLDriver *drv, _EGLDisplay *disp);

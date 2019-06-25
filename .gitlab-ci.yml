@@ -520,7 +520,7 @@ meson-testing:
       -D glx=dri
       -D gbm=enabled
       -D egl=enabled
-      -D platforms=x11,drm,surfaceless
+      -D platforms=x11,drm
     GALLIUM_ST: >
       -D dri3=enabled
     GALLIUM_DRIVERS: "swrast,virgl"
@@ -540,7 +540,7 @@ meson-gallium:
       -D glx=dri
       -D gbm=enabled
       -D egl=enabled
-      -D platforms=x11,wayland,drm,surfaceless
+      -D platforms=x11,wayland,drm
     GALLIUM_ST: >
       -D dri3=enabled
       -D gallium-extra-hud=true
@@ -585,7 +585,7 @@ meson-classic:
       -D glx=disabled
       -D gbm=disabled
       -D egl=enabled
-      -D platforms=surfaceless
+      -D platforms=[]
       -D osmesa=none
     GALLIUM_ST: >
       -D dri3=disabled
@@ -705,7 +705,7 @@ meson-clover-old-llvm:
       -D glx=disabled
       -D egl=disabled
       -D gbm=disabled
-      -D platforms=drm,surfaceless
+      -D platforms=drm
     GALLIUM_DRIVERS: "i915,r600"
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/meson-build.sh

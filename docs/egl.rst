@@ -54,7 +54,7 @@ time
    used by the main library to decide the native platform.
 
    The available platforms are ``x11``, ``drm``, ``wayland``,
-   ``surfaceless``, ``android``, and ``haiku``. The ``android`` platform
+   ``android``, and ``haiku``. The ``android`` platform
    can either be built as a system component, part of AOSP, using
    ``Android.mk`` files, or cross-compiled using appropriate options.
    Unless for special needs, the build system should select the right
