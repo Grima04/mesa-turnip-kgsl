@@ -4224,17 +4224,11 @@ radv_init_dcc_control_reg(struct radv_device *device,
 	unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
 	unsigned min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_32B;
 	unsigned max_compressed_block_size;
+	unsigned independent_128b_blocks;
 	unsigned independent_64b_blocks;
 
 	if (!radv_dcc_enabled(iview->image, iview->base_mip))
 		return 0;
-
-	if (iview->image->info.samples > 1) {
-		if (iview->image->planes[0].surface.bpe == 1)
-			max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
-		else if (iview->image->planes[0].surface.bpe == 2)
-			max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
-	}
 
 	if (!device->physical_device->rad_info.has_dedicated_vram) {
 		/* amdvlk: [min-compressed-block-size] should be set to 32 for
@@ -4245,27 +4239,43 @@ radv_init_dcc_control_reg(struct radv_device *device,
 		min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
 	}
 
-	if (iview->image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
-				   VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-				   VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
-		/* If this DCC image is potentially going to be used in texture
-		 * fetches, we need some special settings.
-		 */
-		independent_64b_blocks = 1;
-		max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
-	} else {
-		/* MAX_UNCOMPRESSED_BLOCK_SIZE must be >=
-		 * MAX_COMPRESSED_BLOCK_SIZE. Set MAX_COMPRESSED_BLOCK_SIZE as
-		 * big as possible for better compression state.
-		 */
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
 		independent_64b_blocks = 0;
-		max_compressed_block_size = max_uncompressed_block_size;
+		independent_128b_blocks = 1;
+	} else {
+		independent_128b_blocks = 0;
+
+		if (iview->image->info.samples > 1) {
+			if (iview->image->planes[0].surface.bpe == 1)
+				max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
+			else if (iview->image->planes[0].surface.bpe == 2)
+				max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
+		}
+
+		if (iview->image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+					   VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+					   VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+			/* If this DCC image is potentially going to be used in texture
+			 * fetches, we need some special settings.
+			 */
+			independent_64b_blocks = 1;
+			max_compressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
+		} else {
+			/* MAX_UNCOMPRESSED_BLOCK_SIZE must be >=
+			 * MAX_COMPRESSED_BLOCK_SIZE. Set MAX_COMPRESSED_BLOCK_SIZE as
+			 * big as possible for better compression state.
+			 */
+			independent_64b_blocks = 0;
+			max_compressed_block_size = max_uncompressed_block_size;
+		}
 	}
 
 	return S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(max_uncompressed_block_size) |
 	       S_028C78_MAX_COMPRESSED_BLOCK_SIZE(max_compressed_block_size) |
 	       S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
-	       S_028C78_INDEPENDENT_64B_BLOCKS(independent_64b_blocks);
+	       S_028C78_INDEPENDENT_64B_BLOCKS(independent_64b_blocks) |
+	       S_028C78_INDEPENDENT_128B_BLOCKS(independent_128b_blocks);
 }
 
 static void
