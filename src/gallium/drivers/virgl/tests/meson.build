@@ -1,4 +1,4 @@
-# Copyright © 2017 Intel Corporation
+# Copyright © 2019 Collabora Ltd.
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,45 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-files_libvirgl = files(
-  'virgl_buffer.c',
-  'virgl_context.c',
-  'virgl_encode.c',
-  'virgl_query.c',
-  'virgl_resource.c',
-  'virgl_screen.c',
-  'virgl_staging_mgr.c',
-  'virgl_streamout.c',
-  'virgl_transfer_queue.c',
-  'virgl_texture.c',
-  'virgl_tgsi.c',
-)
-
-virgl_driinfo_h = custom_target(
-  'virgl_driinfo.h',
-  input : files(
-    '../../../util/merge_driinfo.py',
-    '../../auxiliary/pipe-loader/driinfo_gallium.h', 'virgl_driinfo.h.in'
+test(
+  'virgl_staging_mgr',
+  executable(
+    'virgl_staging_mgr_test',
+    files('virgl_staging_mgr_test.cpp'),
+    dependencies : [dep_thread, idep_gtest],
+    include_directories : [inc_common, include_directories('..')],
+    link_with : [libvirgl, libgallium],
   ),
-  output : 'virgl_driinfo.h',
-  command : [prog_python, '@INPUT@'],
-  capture : true,
+  suite : ['virgl'],
 )
-
-libvirgl = static_library(
-  'virgl',
-  [ files_libvirgl, virgl_driinfo_h ],
-  c_args : c_vis_args,
-  include_directories : inc_common,
-  dependencies : dep_libdrm
-)
-
-driver_virgl = declare_dependency(
-  sources : virgl_driinfo_h,
-  compile_args : '-DGALLIUM_VIRGL',
-  link_with : [libvirgl, libvirgldrm, libvirglvtest],
-)
-
-if with_tests
-  subdir('tests')
-endif
