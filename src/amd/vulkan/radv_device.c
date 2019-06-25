@@ -1897,7 +1897,8 @@ VkResult radv_CreateDevice(
 		}
 	}
 
-	device->pbb_allowed = device->physical_device->rad_info.chip_class >= GFX9 &&
+	/* TODO: Enable binning for GFX10. */
+	device->pbb_allowed = device->physical_device->rad_info.chip_class == GFX9 &&
 			      !(device->instance->debug_flags & RADV_DEBUG_NOBINNING);
 
 	/* Disabled and not implemented for now. */
