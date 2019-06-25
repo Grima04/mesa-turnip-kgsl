@@ -1161,7 +1161,6 @@ ${pass_name}(nir_shader *shader)
 }
 """)
 
-      
 
 class AlgebraicPass(object):
    def __init__(self, pass_name, transforms):
