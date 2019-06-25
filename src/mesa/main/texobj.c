@@ -1703,17 +1703,10 @@ _mesa_bind_texture(struct gl_context *ctx, GLenum target,
    bind_texture_object(ctx, ctx->Texture.CurrentUnit, tex_obj);
 }
 
-/**
- * Implement glBindTexture().  Do error checking, look-up or create a new
- * texture object, then bind it in the current texture unit.
- *
- * \param target texture target.
- * \param texName texture name.
- * \param texunit texture unit.
- */
-static ALWAYS_INLINE void
-bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
-             GLenum texunit, bool no_error, const char *caller)
+struct gl_texture_object *
+_mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
+                               GLuint texName, bool no_error,
+                               const char *caller)
 {
    struct gl_texture_object *newTexObj = NULL;
    int targetIndex;
@@ -1722,7 +1715,7 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
    if (!no_error && targetIndex < 0) {
       _mesa_error(ctx, GL_INVALID_ENUM, "%s(target = %s)", caller,
                   _mesa_enum_to_string(target));
-      return;
+      return NULL;
    }
    assert(targetIndex < NUM_TEXTURE_TARGETS);
 
@@ -1744,24 +1737,23 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
              */
             _mesa_error(ctx, GL_INVALID_OPERATION,
                         "%s(target mismatch)", caller);
-            return;
+            return NULL;
          }
          if (newTexObj->Target == 0) {
             finish_texture_init(ctx, target, newTexObj, targetIndex);
          }
-      }
-      else {
+      } else {
          if (!no_error && ctx->API == API_OPENGL_CORE) {
             _mesa_error(ctx, GL_INVALID_OPERATION,
                         "%s(non-gen name)", caller);
-            return;
+            return NULL;
          }
 
          /* if this is a new texture id, allocate a texture object now */
          newTexObj = ctx->Driver.NewTextureObject(ctx, texName, target);
          if (!newTexObj) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
-            return;
+            return NULL;
          }
 
          /* and insert it into hash table */
@@ -1771,6 +1763,27 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
 
    assert(newTexObj->Target == target);
    assert(newTexObj->TargetIndex == targetIndex);
+
+   return newTexObj;
+}
+
+/**
+ * Implement glBindTexture().  Do error checking, look-up or create a new
+ * texture object, then bind it in the current texture unit.
+ *
+ * \param target texture target.
+ * \param texName texture name.
+ * \param texunit texture unit.
+ */
+static ALWAYS_INLINE void
+bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
+             GLenum texunit, bool no_error, const char *caller)
+{
+   struct gl_texture_object *newTexObj =
+      _mesa_lookup_or_create_texture(ctx, target, texName, no_error,
+                                     "glBindTexture");
+   if (!newTexObj)
+      return;
 
    bind_texture_object(ctx, texunit, newTexObj);
 }
