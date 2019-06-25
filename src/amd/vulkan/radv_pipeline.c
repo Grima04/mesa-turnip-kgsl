@@ -3434,7 +3434,8 @@ static void
 radv_pipeline_generate_vgt_vertex_reuse(struct radeon_cmdbuf *ctx_cs,
 					struct radv_pipeline *pipeline)
 {
-	if (pipeline->device->physical_device->rad_info.family < CHIP_POLARIS10)
+	if (pipeline->device->physical_device->rad_info.family < CHIP_POLARIS10 ||
+	    pipeline->device->physical_device->rad_info.chip_class >= GFX10)
 		return;
 
 	unsigned vtx_reuse_depth = 30;

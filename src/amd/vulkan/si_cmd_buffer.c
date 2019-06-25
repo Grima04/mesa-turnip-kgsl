@@ -321,6 +321,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_context_reg(cs, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
 		radeon_set_context_reg(cs, R_02835C_PA_SC_TILE_STEERING_OVERRIDE,
 				       physical_device->rad_info.pa_sc_tile_steering_override);
 		radeon_set_context_reg(cs, R_02807C_DB_RMI_L2_CACHE_CONTROL,
