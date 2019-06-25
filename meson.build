@@ -1544,8 +1544,8 @@ lines = ['',
                                                     with_gles2 ? 'yes' : 'no'),
 ]
 
-lines += ''
 if with_osmesa != 'none'
+  lines += ''
   suffix = ''
   if with_osmesa == 'gallium'
     suffix = '(Gallium)'
@@ -1555,8 +1555,8 @@ else
   lines += 'OSMesa:          no'
 endif
 
-lines += ''
 if with_dri
+  lines += ''
   lines += 'DRI platform:    ' + with_dri_platform
   if dri_drivers.length() != 0 and dri_drivers != ['']
     lines += 'DRI drivers:     ' + ' '.join(dri_drivers)
@@ -1566,8 +1566,8 @@ if with_dri
   lines += 'DRI driver dir:  ' + dri_drivers_path
 endif
 
-lines += ''
 if with_glx != 'disabled'
+  lines += ''
   if with_glx == 'dri'
     lines += 'GLX:             DRI-based'
   elif with_glx == 'xlib'
