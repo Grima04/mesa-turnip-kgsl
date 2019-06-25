@@ -2386,7 +2386,11 @@ radv_emit_tess_factor_ring(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 				       S_030938_SIZE(tf_ring_size / 4));
 		radeon_set_uconfig_reg(cs, R_030940_VGT_TF_MEMORY_BASE,
 				       tf_va >> 8);
-		if (queue->device->physical_device->rad_info.chip_class >= GFX9) {
+
+		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
+			radeon_set_uconfig_reg(cs, R_030984_VGT_TF_MEMORY_BASE_HI_UMD,
+					       S_030984_BASE_HI(tf_va >> 40));
+		} else if (queue->device->physical_device->rad_info.chip_class == GFX9) {
 			radeon_set_uconfig_reg(cs, R_030944_VGT_TF_MEMORY_BASE_HI,
 					       S_030944_BASE_HI(tf_va >> 40));
 		}
