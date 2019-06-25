@@ -3158,10 +3158,17 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		result = ctx->abi->view_index;
 		break;
 	case nir_intrinsic_load_invocation_id:
-		if (ctx->stage == MESA_SHADER_TESS_CTRL)
+		if (ctx->stage == MESA_SHADER_TESS_CTRL) {
 			result = ac_unpack_param(&ctx->ac, ctx->abi->tcs_rel_ids, 8, 5);
-		else
-			result = ctx->abi->gs_invocation_id;
+		} else {
+			if (ctx->ac.chip_class >= GFX10) {
+				result = LLVMBuildAnd(ctx->ac.builder,
+						      ctx->abi->gs_invocation_id,
+						      LLVMConstInt(ctx->ac.i32, 127, 0), "");
+			} else {
+				result = ctx->abi->gs_invocation_id;
+			}
+		}
 		break;
 	case nir_intrinsic_load_primitive_id:
 		if (ctx->stage == MESA_SHADER_GEOMETRY) {
