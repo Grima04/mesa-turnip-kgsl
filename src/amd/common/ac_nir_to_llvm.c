@@ -4415,10 +4415,9 @@ void
 ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class)
 {
 	/* While it would be nice not to have this flag, we are constrained
-	 * by the reality that LLVM 5.0 doesn't have working VGPR indexing
-	 * on GFX9.
+	 * by the reality that LLVM 9.0 has buggy VGPR indexing on GFX9.
 	 */
-	bool llvm_has_working_vgpr_indexing = chip_class <= GFX8;
+	bool llvm_has_working_vgpr_indexing = chip_class != GFX9;
 
 	/* TODO: Indirect indexing of GS inputs is unimplemented.
 	 *
