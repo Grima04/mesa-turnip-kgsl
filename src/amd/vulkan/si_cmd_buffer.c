@@ -161,10 +161,6 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 {
 	int i;
 
-	/* Only GFX6 can disable CLEAR_STATE for now. */
-	assert(physical_device->has_clear_state ||
-	       physical_device->rad_info.chip_class == GFX6);
-
 	radeon_emit(cs, PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
 	radeon_emit(cs, CONTEXT_CONTROL_LOAD_ENABLE(1));
 	radeon_emit(cs, CONTEXT_CONTROL_SHADOW_ENABLE(1));
