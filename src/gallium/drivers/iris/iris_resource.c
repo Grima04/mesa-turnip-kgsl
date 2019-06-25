@@ -169,7 +169,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
       DRM_FORMAT_MOD_LINEAR,
       I915_FORMAT_MOD_X_TILED,
       I915_FORMAT_MOD_Y_TILED,
-      // XXX: (broken) I915_FORMAT_MOD_Y_TILED_CCS,
+      I915_FORMAT_MOD_Y_TILED_CCS,
    };
 
    int supported_mods = 0;
@@ -1051,17 +1051,30 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
                          unsigned usage)
 {
    struct iris_resource *res = (struct iris_resource *)resource;
+   bool mod_with_aux =
+      res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
 
-   /* Disable aux usage if explicit flush not set and this is the
-    * first time we are dealing with this resource.
+   /* Disable aux usage if explicit flush not set and this is the first time
+    * we are dealing with this resource and the resource was not created with
+    * a modifier with aux.
     */
-   if ((!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) && res->aux.usage != 0)) {
-      if (p_atomic_read(&resource->reference.count) == 1)
+   if (!mod_with_aux &&
+       (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) && res->aux.usage != 0) &&
+       p_atomic_read(&resource->reference.count) == 1) {
          iris_resource_disable_aux(res);
    }
 
-   /* If this is a buffer, stride should be 0 - no need to special case */
-   whandle->stride = res->surf.row_pitch_B;
+   struct iris_bo *bo;
+   if (mod_with_aux && whandle->plane > 0) {
+      assert(res->aux.bo);
+      bo = res->aux.bo;
+      whandle->stride = res->aux.surf.row_pitch_B;
+      whandle->offset = res->aux.offset;
+   } else {
+      /* If this is a buffer, stride should be 0 - no need to special case */
+      whandle->stride = res->surf.row_pitch_B;
+      bo = res->bo;
+   }
    whandle->modifier =
       res->mod_info ? res->mod_info->modifier
                     : tiling_to_modifier(res->bo->tiling_mode);
@@ -1079,12 +1092,12 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_SHARED:
-      return iris_bo_flink(res->bo, &whandle->handle) == 0;
+      return iris_bo_flink(bo, &whandle->handle) == 0;
    case WINSYS_HANDLE_TYPE_KMS:
-      whandle->handle = iris_bo_export_gem_handle(res->bo);
+      whandle->handle = iris_bo_export_gem_handle(bo);
       return true;
    case WINSYS_HANDLE_TYPE_FD:
-      return iris_bo_export_dmabuf(res->bo, (int *) &whandle->handle) == 0;
+      return iris_bo_export_dmabuf(bo, (int *) &whandle->handle) == 0;
    }
 
    return false;
