@@ -2720,8 +2720,14 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 
 	radeon_set_context_reg(ctx_cs, R_028C44_PA_SC_BINNER_CNTL_0,
 			       pa_sc_binner_cntl_0);
-	radeon_set_context_reg(ctx_cs, R_028060_DB_DFSM_CONTROL,
-			       db_dfsm_control);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_context_reg(ctx_cs, R_028038_DB_DFSM_CONTROL,
+				       db_dfsm_control);
+	} else {
+		radeon_set_context_reg(ctx_cs, R_028060_DB_DFSM_CONTROL,
+				       db_dfsm_control);
+	}
 }
 
 
