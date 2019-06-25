@@ -28,13 +28,41 @@
 
 #include "util/u_format.h"
 
+static void
+panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
+{
+        /* First, default to all zeroes to prevent uninitialized junk */
+
+        for (unsigned c = 0; c < 4; ++c)
+                out[c] = PIPE_SWIZZLE_0;
+
+        /* Now "do" what the swizzle says */
+
+        for (unsigned c = 0; c < 4; ++c) {
+                unsigned char i = in[c];
+
+                /* Who cares? */
+                if (i < PIPE_SWIZZLE_X || i > PIPE_SWIZZLE_W)
+                        continue;
+
+                /* Invert */
+                unsigned idx = i - PIPE_SWIZZLE_X;
+                out[idx] = PIPE_SWIZZLE_X + c;
+        }
+}
+
 static struct mali_rt_format
 panfrost_mfbd_format(struct pipe_surface *surf)
 {
         /* Explode details on the format */
 
         const struct util_format_description *desc =
-                util_format_description(surf->texture->format);
+                util_format_description(surf->format);
+
+        /* The swizzle for rendering is inverted from texturing */
+
+        unsigned char swizzle[4];
+        panfrost_invert_swizzle(desc->swizzle, swizzle);
 
         /* Fill in accordingly, defaulting to 8-bit UNORM */
 
@@ -44,7 +72,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 .nr_channels = MALI_POSITIVE(desc->nr_channels),
                 .unk3 = 0x4,
                 .flags = 0x8,
-                .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
+                .swizzle = panfrost_translate_swizzle_4(swizzle),
                 .unk4 = 0x8
         };
 
