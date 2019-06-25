@@ -1411,8 +1411,26 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 	radeon_set_context_reg(cmd_buffer->cs, R_028008_DB_DEPTH_VIEW, ds->db_depth_view);
 	radeon_set_context_reg(cmd_buffer->cs, R_028ABC_DB_HTILE_SURFACE, ds->db_htile_surface);
 
+	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_context_reg(cmd_buffer->cs, R_028014_DB_HTILE_DATA_BASE, ds->db_htile_data_base);
+		radeon_set_context_reg(cmd_buffer->cs, R_02801C_DB_DEPTH_SIZE_XY, ds->db_depth_size);
 
-	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+		radeon_set_context_reg_seq(cmd_buffer->cs, R_02803C_DB_DEPTH_INFO, 7);
+		radeon_emit(cmd_buffer->cs, S_02803C_RESOURCE_LEVEL(1));
+		radeon_emit(cmd_buffer->cs, db_z_info);
+		radeon_emit(cmd_buffer->cs, db_stencil_info);
+		radeon_emit(cmd_buffer->cs, ds->db_z_read_base);
+		radeon_emit(cmd_buffer->cs, ds->db_stencil_read_base);
+		radeon_emit(cmd_buffer->cs, ds->db_z_read_base);
+		radeon_emit(cmd_buffer->cs, ds->db_stencil_read_base);
+
+		radeon_set_context_reg_seq(cmd_buffer->cs, R_028068_DB_Z_READ_BASE_HI, 5);
+		radeon_emit(cmd_buffer->cs, ds->db_z_read_base >> 32);
+		radeon_emit(cmd_buffer->cs, ds->db_stencil_read_base >> 32);
+		radeon_emit(cmd_buffer->cs, ds->db_z_read_base >> 32);
+		radeon_emit(cmd_buffer->cs, ds->db_stencil_read_base >> 32);
+		radeon_emit(cmd_buffer->cs, ds->db_htile_data_base >> 32);
+	} else if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
 		radeon_set_context_reg_seq(cmd_buffer->cs, R_028014_DB_HTILE_DATA_BASE, 3);
 		radeon_emit(cmd_buffer->cs, ds->db_htile_data_base);
 		radeon_emit(cmd_buffer->cs, S_028018_BASE_HI(ds->db_htile_data_base >> 32));
