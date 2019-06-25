@@ -300,6 +300,8 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_context_reg(cs, R_02835C_PA_SC_TILE_STEERING_OVERRIDE,
+				       physical_device->rad_info.pa_sc_tile_steering_override);
 		radeon_set_context_reg(cs, R_02807C_DB_RMI_L2_CACHE_CONTROL,
 				       S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
 				       S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
