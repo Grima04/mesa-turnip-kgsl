@@ -78,14 +78,6 @@ can_fast_clear_color(struct iris_context *ice,
    if (res->aux.usage == ISL_AUX_USAGE_NONE)
       return false;
 
-   /* Surface state can only record one fast clear color value. Therefore
-    * unless different levels/layers agree on the color it can be used to
-    * represent only single level/layer. Here it will be reserved for the
-    * first slice (level 0, layer 0).
-    */
-   if (level > 0 || box->z > 0 || box->depth > 1)
-      return false;
-
    /* Check for partial clear */
    if (box->x > 0 || box->y > 0 ||
        box->width < p_res->width0 ||
@@ -227,6 +219,54 @@ fast_clear_color(struct iris_context *ice,
       iris_resolve_conditional_render(ice);
       if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)
          return;
+
+      /* If we are clearing to a new clear value, we need to resolve fast
+       * clears from other levels/layers first, since we can't have different
+       * levels/layers with different fast clear colors.
+       */
+      for (unsigned res_lvl = 0; res_lvl < res->surf.levels; res_lvl++) {
+         const unsigned level_layers =
+            iris_get_num_logical_layers(res, res_lvl);
+         for (unsigned layer = 0; layer < level_layers; layer++) {
+            if (res_lvl == level &&
+                layer >= box->z &&
+                layer < box->z + box->depth) {
+               /* We're going to clear this layer anyway.  Leave it alone. */
+               continue;
+            }
+
+            enum isl_aux_state aux_state =
+               iris_resource_get_aux_state(res, res_lvl, layer);
+
+            if (aux_state != ISL_AUX_STATE_CLEAR &&
+                aux_state != ISL_AUX_STATE_PARTIAL_CLEAR &&
+                aux_state != ISL_AUX_STATE_COMPRESSED_CLEAR) {
+               /* This slice doesn't have any fast-cleared bits. */
+               continue;
+            }
+
+            /* If we got here, then the level may have fast-clear bits that use
+             * the old clear value.  We need to do a color resolve to get rid
+             * of their use of the clear color before we can change it.
+             * Fortunately, few applications ever change their clear color at
+             * different levels/layers, so this shouldn't happen often.
+             */
+            iris_resource_prepare_access(ice, batch, res,
+                                         res_lvl, 1, layer, 1,
+                                         res->aux.usage,
+                                         false);
+            perf_debug(&ice->dbg,
+                       "Resolving resource (%p) level %d, layer %d: color changing from "
+                       "(%0.2f, %0.2f, %0.2f, %0.2f) to "
+                       "(%0.2f, %0.2f, %0.2f, %0.2f)\n",
+                       res, res_lvl, layer,
+                       res->aux.clear_color.f32[0],
+                       res->aux.clear_color.f32[1],
+                       res->aux.clear_color.f32[2],
+                       res->aux.clear_color.f32[3],
+                       color.f32[0], color.f32[1], color.f32[2], color.f32[3]);
+         }
+      }
    }
 
    iris_resource_set_clear_color(ice, res, color);
