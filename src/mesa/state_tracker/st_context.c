@@ -238,8 +238,12 @@ st_invalidate_state(struct gl_context *ctx)
       st->dirty |= ST_NEW_VERTEX_ARRAYS;
 
    /* Update the vertex shader if ctx->Light._ClampVertexColor was changed. */
-   if (st->clamp_vert_color_in_shader && (new_state & _NEW_LIGHT))
+   if (st->clamp_vert_color_in_shader && (new_state & _NEW_LIGHT)) {
       st->dirty |= ST_NEW_VS_STATE;
+      if (st->ctx->API == API_OPENGL_COMPAT && ctx->Version >= 32) {
+         st->dirty |= ST_NEW_GS_STATE | ST_NEW_TES_STATE;
+      }
+   }
 
    /* Which shaders are dirty will be determined manually. */
    if (new_state & _NEW_PROGRAM) {
@@ -701,8 +705,12 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
          !st->force_persample_in_shader;
 
    st->shader_has_one_variant[MESA_SHADER_TESS_CTRL] = st->has_shareable_shaders;
-   st->shader_has_one_variant[MESA_SHADER_TESS_EVAL] = st->has_shareable_shaders;
-   st->shader_has_one_variant[MESA_SHADER_GEOMETRY] = st->has_shareable_shaders;
+   st->shader_has_one_variant[MESA_SHADER_TESS_EVAL] =
+         st->has_shareable_shaders &&
+         !st->clamp_vert_color_in_shader;
+   st->shader_has_one_variant[MESA_SHADER_GEOMETRY] =
+         st->has_shareable_shaders &&
+         !st->clamp_vert_color_in_shader;
    st->shader_has_one_variant[MESA_SHADER_COMPUTE] = st->has_shareable_shaders;
 
    st->bitmap.cache.empty = true;
