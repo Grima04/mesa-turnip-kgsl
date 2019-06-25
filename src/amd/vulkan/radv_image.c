@@ -404,12 +404,6 @@ radv_make_buffer_descriptor(struct radv_device *device,
 	first_non_void = vk_format_get_first_non_void_channel(vk_format);
 	stride = desc->block.bits / 8;
 
-	num_format = radv_translate_buffer_numformat(desc, first_non_void);
-	data_format = radv_translate_buffer_dataformat(desc, first_non_void);
-
-	assert(data_format != V_008F0C_BUF_DATA_FORMAT_INVALID);
-	assert(num_format != ~0);
-
 	va += offset;
 	state[0] = va;
 	state[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) |
@@ -423,9 +417,31 @@ radv_make_buffer_descriptor(struct radv_device *device,
 	state[3] = S_008F0C_DST_SEL_X(radv_map_swizzle(desc->swizzle[0])) |
 		   S_008F0C_DST_SEL_Y(radv_map_swizzle(desc->swizzle[1])) |
 		   S_008F0C_DST_SEL_Z(radv_map_swizzle(desc->swizzle[2])) |
-		   S_008F0C_DST_SEL_W(radv_map_swizzle(desc->swizzle[3])) |
-		   S_008F0C_NUM_FORMAT(num_format) |
-		   S_008F0C_DATA_FORMAT(data_format);
+		   S_008F0C_DST_SEL_W(radv_map_swizzle(desc->swizzle[3]));
+
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		const struct gfx10_format *fmt = &gfx10_format_table[vk_format];
+
+		/* OOB_SELECT chooses the out-of-bounds check:
+		 *  - 0: (index >= NUM_RECORDS) || (offset >= STRIDE)
+		 *  - 1: index >= NUM_RECORDS
+		 *  - 2: NUM_RECORDS == 0
+		 *  - 3: if SWIZZLE_ENABLE == 0: offset >= NUM_RECORDS
+		 *       else: swizzle_address >= NUM_RECORDS
+		 */
+		state[3] |= S_008F0C_FORMAT(fmt->img_format) |
+			    S_008F0C_OOB_SELECT(0) |
+			    S_008F0C_RESOURCE_LEVEL(1);
+	} else {
+		num_format = radv_translate_buffer_numformat(desc, first_non_void);
+		data_format = radv_translate_buffer_dataformat(desc, first_non_void);
+
+		assert(data_format != V_008F0C_BUF_DATA_FORMAT_INVALID);
+		assert(num_format != ~0);
+
+		state[3] |= S_008F0C_NUM_FORMAT(num_format) |
+			    S_008F0C_DATA_FORMAT(data_format);
+	}
 }
 
 static void
