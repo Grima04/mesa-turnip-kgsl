@@ -1367,7 +1367,7 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer,
 
 	db_z_info &= C_028040_ZRANGE_PRECISION;
 
-	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+	if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
 		db_z_info_reg = R_028038_DB_Z_INFO;
 	} else {
 		db_z_info_reg = R_028040_DB_Z_INFO;
@@ -1908,7 +1908,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		}
 		radv_load_ds_clear_metadata(cmd_buffer, image);
 	} else {
-		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9)
+		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9)
 			radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
 		else
 			radeon_set_context_reg_seq(cmd_buffer->cs, R_028040_DB_Z_INFO, 2);
