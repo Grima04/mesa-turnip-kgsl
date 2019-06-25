@@ -3603,6 +3603,9 @@ static void emit_gs_epilogue(struct si_shader_context *ctx)
 		return;
 	}
 
+	if (ctx->screen->info.chip_class >= GFX10)
+		LLVMBuildFence(ctx->ac.builder, LLVMAtomicOrderingRelease, false, "");
+
 	ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE,
 			 si_get_gs_wave_id(ctx));
 
@@ -5730,7 +5733,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	/* Fetch the vertex stream ID.*/
 	LLVMValueRef stream_id;
 
-	if (gs_selector->so.num_outputs)
+	if (ctx.ac.chip_class <= GFX9 && gs_selector->so.num_outputs)
 		stream_id = si_unpack_param(&ctx, ctx.param_streamout_config, 24, 2);
 	else
 		stream_id = ctx.i32_0;
