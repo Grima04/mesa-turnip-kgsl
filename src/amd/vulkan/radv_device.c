@@ -215,7 +215,9 @@ radv_handle_env_var_force_family(struct radv_physical_device *device)
 			/* Override family and chip_class. */
 			device->rad_info.family = i;
 
-			if (i >= CHIP_VEGA10)
+			if (i >= CHIP_NAVI10)
+				device->rad_info.chip_class = GFX10;
+			else if (i >= CHIP_VEGA10)
 				device->rad_info.chip_class = GFX9;
 			else if (i >= CHIP_TONGA)
 				device->rad_info.chip_class = GFX8;
