@@ -2159,11 +2159,18 @@ fill_geom_tess_rings(struct radv_queue *queue,
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
 			  S_008F0C_ELEMENT_SIZE(1) |
 			  S_008F0C_INDEX_STRIDE(3) |
 			  S_008F0C_ADD_TID_ENABLE(true);
+
+		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
+			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+		}
 
 		/* GS entry for ES->GS ring */
 		/* stride 0, num records - size, elsize0,
@@ -2177,11 +2184,18 @@ fill_geom_tess_rings(struct radv_queue *queue,
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
 			  S_008F0C_ELEMENT_SIZE(0) |
 			  S_008F0C_INDEX_STRIDE(0) |
 			  S_008F0C_ADD_TID_ENABLE(false);
+
+		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
+			desc[7] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+		}
 	}
 
 	desc += 8;
@@ -2201,11 +2215,18 @@ fill_geom_tess_rings(struct radv_queue *queue,
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
 			  S_008F0C_ELEMENT_SIZE(0) |
 			  S_008F0C_INDEX_STRIDE(0) |
 			  S_008F0C_ADD_TID_ENABLE(false);
+
+		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
+			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+		}
 
 		/* stride gsvs_itemsize, num records 64
 		   elsize 4, index stride 16 */
@@ -2219,11 +2240,19 @@ fill_geom_tess_rings(struct radv_queue *queue,
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
 			  S_008F0C_ELEMENT_SIZE(1) |
 			  S_008F0C_INDEX_STRIDE(1) |
 			  S_008F0C_ADD_TID_ENABLE(true);
+
+		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
+			desc[7] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+				   S_008F0C_OOB_SELECT(2) |
+				   S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+		}
+
 	}
 
 	desc += 8;
@@ -2240,12 +2269,16 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-			  S_008F0C_ELEMENT_SIZE(0) |
-			  S_008F0C_INDEX_STRIDE(0) |
-			  S_008F0C_ADD_TID_ENABLE(false);
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+
+		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
+			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+				   S_008F0C_OOB_SELECT(3) |
+				   S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+		}
 
 		desc[4] = tess_offchip_va;
 		desc[5] = S_008F04_BASE_ADDRESS_HI(tess_offchip_va >> 32) |
@@ -2255,12 +2288,16 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-			  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
-			  S_008F0C_ELEMENT_SIZE(0) |
-			  S_008F0C_INDEX_STRIDE(0) |
-			  S_008F0C_ADD_TID_ENABLE(false);
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+
+		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
+			desc[7] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+				   S_008F0C_OOB_SELECT(3) |
+				   S_008F0C_RESOURCE_LEVEL(1);
+		} else {
+			desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+		}
 	}
 
 	desc += 8;
