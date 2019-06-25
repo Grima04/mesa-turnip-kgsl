@@ -2670,6 +2670,12 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	case PIPE_SHADER_GEOMETRY:
 		sel->gs_output_prim =
 			sel->info.properties[TGSI_PROPERTY_GS_OUTPUT_PRIM];
+
+		/* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
+		sel->rast_prim = sel->gs_output_prim;
+		if (util_rast_prim_is_triangles(sel->rast_prim))
+			sel->rast_prim = PIPE_PRIM_TRIANGLES;
+
 		sel->gs_max_out_vertices =
 			sel->info.properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES];
 		sel->gs_num_invocations =
@@ -2738,6 +2744,14 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 			sel->esgs_itemsize += 4;
 
 		assert(((sel->esgs_itemsize / 4) & C_028AAC_ITEMSIZE) == 0);
+
+		/* Only for TES: */
+		if (sel->info.properties[TGSI_PROPERTY_TES_POINT_MODE])
+			sel->rast_prim = PIPE_PRIM_POINTS;
+		else if (sel->info.properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
+			sel->rast_prim = PIPE_PRIM_LINE_STRIP;
+		else
+			sel->rast_prim = PIPE_PRIM_TRIANGLES;
 		break;
 
 	case PIPE_SHADER_FRAGMENT:

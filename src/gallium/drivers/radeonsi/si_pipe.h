@@ -1787,6 +1787,18 @@ static inline bool util_prim_is_points_or_lines(unsigned prim)
 			       (1 << PIPE_PRIM_POINTS))) != 0;
 }
 
+static inline bool util_rast_prim_is_triangles(unsigned prim)
+{
+	return ((1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) |
+			       (1 << PIPE_PRIM_TRIANGLE_STRIP) |
+			       (1 << PIPE_PRIM_TRIANGLE_FAN) |
+			       (1 << PIPE_PRIM_QUADS) |
+			       (1 << PIPE_PRIM_QUAD_STRIP) |
+			       (1 << PIPE_PRIM_POLYGON) |
+			       (1 << PIPE_PRIM_TRIANGLES_ADJACENCY) |
+			       (1 << PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY)));
+}
+
 /**
  * Return true if there is enough memory in VRAM and GTT for the buffers
  * added so far.

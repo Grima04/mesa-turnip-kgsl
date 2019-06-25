@@ -1787,15 +1787,18 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	 * This must be done after si_decompress_textures, which can call
 	 * draw_vbo recursively, and before si_update_shaders, which uses
 	 * current_rast_prim for this draw_vbo call. */
-	if (sctx->gs_shader.cso)
-		rast_prim = sctx->gs_shader.cso->gs_output_prim;
-	else if (sctx->tes_shader.cso) {
-		if (sctx->tes_shader.cso->info.properties[TGSI_PROPERTY_TES_POINT_MODE])
-			rast_prim = PIPE_PRIM_POINTS;
-		else
-			rast_prim = sctx->tes_shader.cso->info.properties[TGSI_PROPERTY_TES_PRIM_MODE];
-	} else
+	if (sctx->gs_shader.cso) {
+		/* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
+		rast_prim = sctx->gs_shader.cso->rast_prim;
+	} else if (sctx->tes_shader.cso) {
+		/* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
+		rast_prim = sctx->tes_shader.cso->rast_prim;
+	} else if (util_rast_prim_is_triangles(prim)) {
+		rast_prim = PIPE_PRIM_TRIANGLES;
+	} else {
+		/* Only possibilities, POINTS, LINE*, RECTANGLES */
 		rast_prim = prim;
+	}
 
 	if (rast_prim != sctx->current_rast_prim) {
 		if (util_prim_is_points_or_lines(sctx->current_rast_prim) !=

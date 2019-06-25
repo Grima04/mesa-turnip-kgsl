@@ -354,6 +354,7 @@ struct si_shader_selector {
 	unsigned	pa_cl_vs_out_cntl;
 	ubyte		clipdist_mask;
 	ubyte		culldist_mask;
+	unsigned	rast_prim;
 
 	/* ES parameters. */
 	unsigned	esgs_itemsize; /* vertex stride */
