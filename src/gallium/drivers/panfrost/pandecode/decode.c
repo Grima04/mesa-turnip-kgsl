@@ -2171,8 +2171,12 @@ pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost)
                 if (h->job_descriptor_size)
                         pandecode_prop("job_descriptor_size = %d", h->job_descriptor_size);
 
-                if (h->exception_status)
-                        pandecode_prop("exception_status = %d", h->exception_status);
+                if (h->exception_status != 0x1)
+                        pandecode_prop("exception_status = %x (source ID: 0x%x access: 0x%x exception: 0x%x)",
+                                       h->exception_status,
+                                       (h->exception_status >> 16) & 0xFFFF,
+                                       (h->exception_status >> 8) & 0x3,
+                                       h->exception_status  & 0xFF);
 
                 if (h->first_incomplete_task)
                         pandecode_prop("first_incomplete_task = %d", h->first_incomplete_task);
