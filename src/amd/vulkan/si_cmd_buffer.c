@@ -88,7 +88,8 @@ si_emit_compute(struct radv_physical_device *physical_device,
 	radeon_emit(cs, 0);
 
 	radeon_set_sh_reg_seq(cs, R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0, 2);
-	/* R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 / SE1 */
+	/* R_00B858_COMPUTE_STATIC_THREAD_MGMT_SE0 / SE1,
+	 * renamed COMPUTE_DESTINATION_EN_SEn on gfx10. */
 	radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) | S_00B858_SH1_CU_EN(0xffff));
 	radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) | S_00B858_SH1_CU_EN(0xffff));
 
@@ -101,6 +102,9 @@ si_emit_compute(struct radv_physical_device *physical_device,
 		radeon_emit(cs, S_00B858_SH0_CU_EN(0xffff) |
 			    S_00B858_SH1_CU_EN(0xffff));
 	}
+
+	if (physical_device->rad_info.chip_class >= GFX10)
+		radeon_set_sh_reg(cs, R_00B8A0_COMPUTE_PGM_RSRC3, 0);
 
 	/* This register has been moved to R_00CD20_COMPUTE_MAX_WAVE_ID
 	 * and is now per pipe, so it should be handled in the
