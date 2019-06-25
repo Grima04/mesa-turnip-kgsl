@@ -251,7 +251,7 @@ v3d40_image_load_store_tmu_op(nir_intrinsic_instr *instr)
         case nir_intrinsic_image_deref_store:
                 return V3D_TMU_OP_REGULAR;
         case nir_intrinsic_image_deref_atomic_add:
-                return V3D_TMU_OP_WRITE_ADD_READ_PREFETCH;
+                return v3d_get_op_for_atomic_add(instr, 3);
         case nir_intrinsic_image_deref_atomic_min:
                 return V3D_TMU_OP_WRITE_UMIN_FULL_L1_CLEAR;
         case nir_intrinsic_image_deref_atomic_max:
@@ -292,10 +292,15 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
 
         struct V3D41_TMU_CONFIG_PARAMETER_2 p2_unpacked = { 0 };
 
-        /* XXX perf: We should turn add/sub of 1 to inc/dec.  Perhaps NIR
-         * wants to have support for inc/dec?
-         */
         p2_unpacked.op = v3d40_image_load_store_tmu_op(instr);
+
+        /* If we were able to replace atomic_add for an inc/dec, then we
+         * need/can to do things slightly different, like not loading the
+         * amount to add/sub, as that is implicit.
+         */
+        bool atomic_add_replaced = (instr->intrinsic == nir_intrinsic_image_deref_atomic_add &&
+                                    (p2_unpacked.op == V3D_TMU_OP_WRITE_AND_READ_INC ||
+                                     p2_unpacked.op == V3D_TMU_OP_WRITE_OR_READ_DEC));
 
         bool is_1d = false;
         switch (glsl_get_sampler_dim(sampler_type)) {
@@ -364,7 +369,8 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
                 vir_WRTMUC(c, QUNIFORM_CONSTANT, p2_packed);
 
         /* Emit the data writes for atomics or image store. */
-        if (instr->intrinsic != nir_intrinsic_image_deref_load) {
+        if (instr->intrinsic != nir_intrinsic_image_deref_load &&
+            !atomic_add_replaced) {
                 /* Vector for stores, or first atomic argument */
                 struct qreg src[4];
                 for (int i = 0; i < nir_intrinsic_src_components(instr, 3); i++) {
