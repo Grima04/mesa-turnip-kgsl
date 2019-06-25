@@ -379,6 +379,8 @@ if with_llvm
     'gallivm/lp_bld_const.h',
     'gallivm/lp_bld_conv.c',
     'gallivm/lp_bld_conv.h',
+    'gallivm/lp_bld_coro.c',
+    'gallivm/lp_bld_coro.h',
     'gallivm/lp_bld_debug.cpp',
     'gallivm/lp_bld_debug.h',
     'gallivm/lp_bld_flow.c',
