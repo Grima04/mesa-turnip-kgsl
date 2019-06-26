@@ -142,6 +142,10 @@ struct lp_jit_context
    const float *constants[LP_MAX_TGSI_CONST_BUFFERS];
    int num_constants[LP_MAX_TGSI_CONST_BUFFERS];
 
+   struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct lp_jit_image images[PIPE_MAX_SHADER_IMAGES];
+
    float alpha_ref_value;
 
    uint32_t stencil_ref_front, stencil_ref_back;
@@ -150,10 +154,6 @@ struct lp_jit_context
    float *f_blend_color;
 
    struct lp_jit_viewport *viewports;
-
-   struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
-   struct lp_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
@@ -167,15 +167,15 @@ struct lp_jit_context
 enum {
    LP_JIT_CTX_CONSTANTS = 0,
    LP_JIT_CTX_NUM_CONSTANTS,
+   LP_JIT_CTX_TEXTURES,
+   LP_JIT_CTX_SAMPLERS,
+   LP_JIT_CTX_IMAGES,
    LP_JIT_CTX_ALPHA_REF,
    LP_JIT_CTX_STENCIL_REF_FRONT,
    LP_JIT_CTX_STENCIL_REF_BACK,
    LP_JIT_CTX_U8_BLEND_COLOR,
    LP_JIT_CTX_F_BLEND_COLOR,
    LP_JIT_CTX_VIEWPORTS,
-   LP_JIT_CTX_TEXTURES,
-   LP_JIT_CTX_SAMPLERS,
-   LP_JIT_CTX_IMAGES,
    LP_JIT_CTX_SSBOS,
    LP_JIT_CTX_NUM_SSBOS,
    LP_JIT_CTX_COUNT
@@ -187,6 +187,15 @@ enum {
 
 #define lp_jit_context_num_constants(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_NUM_CONSTANTS, "num_constants")
+
+#define lp_jit_context_textures(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_TEXTURES, "textures")
+
+#define lp_jit_context_samplers(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_SAMPLERS, "samplers")
+
+#define lp_jit_context_images(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_IMAGES, "images")
 
 #define lp_jit_context_alpha_ref_value(_gallivm, _ptr) \
    lp_build_struct_get(_gallivm, _ptr, LP_JIT_CTX_ALPHA_REF, "alpha_ref_value")
@@ -205,15 +214,6 @@ enum {
 
 #define lp_jit_context_viewports(_gallivm, _ptr) \
    lp_build_struct_get(_gallivm, _ptr, LP_JIT_CTX_VIEWPORTS, "viewports")
-
-#define lp_jit_context_textures(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_TEXTURES, "textures")
-
-#define lp_jit_context_samplers(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_SAMPLERS, "samplers")
-
-#define lp_jit_context_images(_gallivm, _ptr) \
-   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_IMAGES, "images")
 
 #define lp_jit_context_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CTX_SSBOS, "ssbos")

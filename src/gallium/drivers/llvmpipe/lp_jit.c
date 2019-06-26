@@ -202,18 +202,18 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
          LLVMArrayType(LLVMPointerType(LLVMFloatTypeInContext(lc), 0), LP_MAX_TGSI_CONST_BUFFERS);
       elem_types[LP_JIT_CTX_NUM_CONSTANTS] =
             LLVMArrayType(LLVMInt32TypeInContext(lc), LP_MAX_TGSI_CONST_BUFFERS);
-      elem_types[LP_JIT_CTX_ALPHA_REF] = LLVMFloatTypeInContext(lc);
-      elem_types[LP_JIT_CTX_STENCIL_REF_FRONT] =
-      elem_types[LP_JIT_CTX_STENCIL_REF_BACK] = LLVMInt32TypeInContext(lc);
-      elem_types[LP_JIT_CTX_U8_BLEND_COLOR] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
-      elem_types[LP_JIT_CTX_F_BLEND_COLOR] = LLVMPointerType(LLVMFloatTypeInContext(lc), 0);
-      elem_types[LP_JIT_CTX_VIEWPORTS] = LLVMPointerType(viewport_type, 0);
       elem_types[LP_JIT_CTX_TEXTURES] = LLVMArrayType(texture_type,
                                                       PIPE_MAX_SHADER_SAMPLER_VIEWS);
       elem_types[LP_JIT_CTX_SAMPLERS] = LLVMArrayType(sampler_type,
                                                       PIPE_MAX_SAMPLERS);
       elem_types[LP_JIT_CTX_IMAGES] = LLVMArrayType(image_type,
                                                     PIPE_MAX_SHADER_IMAGES);
+      elem_types[LP_JIT_CTX_ALPHA_REF] = LLVMFloatTypeInContext(lc);
+      elem_types[LP_JIT_CTX_STENCIL_REF_FRONT] =
+      elem_types[LP_JIT_CTX_STENCIL_REF_BACK] = LLVMInt32TypeInContext(lc);
+      elem_types[LP_JIT_CTX_U8_BLEND_COLOR] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
+      elem_types[LP_JIT_CTX_F_BLEND_COLOR] = LLVMPointerType(LLVMFloatTypeInContext(lc), 0);
+      elem_types[LP_JIT_CTX_VIEWPORTS] = LLVMPointerType(viewport_type, 0);
       elem_types[LP_JIT_CTX_SSBOS] =
          LLVMArrayType(LLVMPointerType(LLVMInt32TypeInContext(lc), 0), LP_MAX_TGSI_SHADER_BUFFERS);
       elem_types[LP_JIT_CTX_NUM_SSBOS] =
@@ -227,6 +227,15 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
       LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, num_constants,
                              gallivm->target, context_type,
                              LP_JIT_CTX_NUM_CONSTANTS);
+      LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, textures,
+                             gallivm->target, context_type,
+                             LP_JIT_CTX_TEXTURES);
+      LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, samplers,
+                             gallivm->target, context_type,
+                             LP_JIT_CTX_SAMPLERS);
+      LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, images,
+                             gallivm->target, context_type,
+                             LP_JIT_CTX_IMAGES);
       LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, alpha_ref_value,
                              gallivm->target, context_type,
                              LP_JIT_CTX_ALPHA_REF);
@@ -245,15 +254,6 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
       LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, viewports,
                              gallivm->target, context_type,
                              LP_JIT_CTX_VIEWPORTS);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, textures,
-                             gallivm->target, context_type,
-                             LP_JIT_CTX_TEXTURES);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, samplers,
-                             gallivm->target, context_type,
-                             LP_JIT_CTX_SAMPLERS);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, images,
-                             gallivm->target, context_type,
-                             LP_JIT_CTX_IMAGES);
       LP_CHECK_MEMBER_OFFSET(struct lp_jit_context, ssbos,
                              gallivm->target, context_type,
                              LP_JIT_CTX_SSBOS);
