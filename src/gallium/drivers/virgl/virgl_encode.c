@@ -1168,8 +1168,9 @@ void virgl_encode_copy_transfer(struct virgl_context *ctx,
                                 struct virgl_transfer *trans)
 {
    uint32_t command;
-   struct virgl_resource *copy_src_res = virgl_resource(trans->copy_src_res);
    struct virgl_screen *vs = virgl_screen(ctx->base.screen);
+
+   assert(trans->copy_src_hw_res);
 
    command = VIRGL_CMD0(VIRGL_CCMD_COPY_TRANSFER3D, 0, VIRGL_COPY_TRANSFER3D_SIZE);
    virgl_encoder_write_cmd_dword(ctx, command);
@@ -1177,7 +1178,7 @@ void virgl_encode_copy_transfer(struct virgl_context *ctx,
     * from the image stride.
     */
    virgl_encoder_transfer3d_common(vs, ctx->cbuf, trans, virgl_transfer3d_explicit_stride);
-   virgl_encoder_emit_resource(vs, ctx->cbuf, copy_src_res);
+   vs->vws->emit_res(vs->vws, ctx->cbuf, trans->copy_src_hw_res, TRUE);
    virgl_encoder_write_dword(ctx->cbuf, trans->copy_src_offset);
    /* At the moment all copy transfers are synchronized. */
    virgl_encoder_write_dword(ctx->cbuf, 1);

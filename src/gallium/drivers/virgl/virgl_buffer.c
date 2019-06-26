@@ -112,7 +112,7 @@ static void virgl_buffer_transfer_unmap(struct pipe_context *ctx,
          trans->offset = transfer->box.x;
       }
 
-      if (trans->copy_src_res) {
+      if (trans->copy_src_hw_res) {
          virgl_encode_copy_transfer(vctx, trans);
          /* It's now safe for other mappings to use the transfer_uploader. */
          vctx->transfer_uploader_in_use = false;

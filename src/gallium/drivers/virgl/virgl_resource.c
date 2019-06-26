@@ -461,7 +461,7 @@ virgl_resource_create_transfer(struct virgl_context *vctx,
    trans->base.layer_stride = metadata->layer_stride[level];
    trans->offset = offset;
    util_range_init(&trans->range);
-   trans->copy_src_res = NULL;
+   trans->copy_src_hw_res = NULL;
    trans->copy_src_offset = 0;
 
    if (trans->base.resource->target != PIPE_TEXTURE_3D &&
@@ -481,7 +481,7 @@ void virgl_resource_destroy_transfer(struct virgl_context *vctx,
 {
    struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
 
-   pipe_resource_reference(&trans->copy_src_res, NULL);
+   vws->resource_reference(vws, &trans->copy_src_hw_res, NULL);
 
    util_range_destroy(&trans->range);
    vws->resource_reference(vws, &trans->hw_res, NULL);
@@ -569,6 +569,7 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
                                   struct virgl_transfer *vtransfer)
 {
    struct virgl_resource *vres = virgl_resource(vtransfer->base.resource);
+   struct pipe_resource *copy_src_res = NULL;
    unsigned size;
    unsigned align_offset;
    unsigned stride;
@@ -600,8 +601,15 @@ void *virgl_transfer_uploader_map(struct virgl_context *vctx,
    u_upload_alloc(vctx->transfer_uploader, 0, size + align_offset,
                   VIRGL_MAP_BUFFER_ALIGNMENT,
                   &vtransfer->copy_src_offset,
-                  &vtransfer->copy_src_res, &map_addr);
+                  &copy_src_res, &map_addr);
    if (map_addr) {
+      struct virgl_winsys *vws = virgl_screen(vctx->base.screen)->vws;
+
+      /* Extract and reference the hw_res backing the pipe_resource. */
+      vws->resource_reference(vws, &vtransfer->copy_src_hw_res,
+                              virgl_resource(copy_src_res)->hw_res);
+      pipe_resource_reference(&copy_src_res, NULL);
+
       /* Update source offset and address to point to the requested x coordinate
        * if we have an align_offset (see above for more information). */
       vtransfer->copy_src_offset += align_offset;

@@ -289,7 +289,7 @@ int virgl_transfer_queue_unmap(struct virgl_transfer_queue *queue,
    struct list_iteration_args iter;
 
    /* We don't support copy transfers in the transfer queue. */
-   assert(!transfer->copy_src_res);
+   assert(!transfer->copy_src_hw_res);
 
    /* Attempt to merge multiple intersecting transfers into a single one. */
    if (transfer->base.resource->target == PIPE_BUFFER) {
@@ -364,7 +364,7 @@ virgl_transfer_queue_extend(struct virgl_transfer_queue *queue,
    struct list_iteration_args iter;
 
    /* We don't support extending from copy transfers. */
-   assert(!transfer->copy_src_res);
+   assert(!transfer->copy_src_hw_res);
 
    if (transfer->base.resource->target == PIPE_BUFFER) {
       memset(&iter, 0, sizeof(iter));
