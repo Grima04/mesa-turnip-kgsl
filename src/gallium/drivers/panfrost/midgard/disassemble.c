@@ -1083,6 +1083,22 @@ texture_op_takes_bias(unsigned op)
         return op == TEXTURE_OP_NORMAL;
 }
 
+static char
+sampler_type_name(enum mali_sampler_type t)
+{
+        switch (t) {
+                case MALI_SAMPLER_FLOAT:
+                        return 'f';
+                case MALI_SAMPLER_UNSIGNED:
+                        return 'u';
+                case MALI_SAMPLER_SIGNED:
+                        return 'i';
+                default:
+                        return '?';
+        }
+
+}
+
 #undef DEFINE_CASE
 
 static void
@@ -1117,6 +1133,8 @@ print_texture_word(uint32_t *word, unsigned tabs)
 
         printf("texture%d, ", texture->texture_handle);
 
+        /* Print the type, GL style */
+        printf("%c", sampler_type_name(texture->sampler_type));
         printf("sampler%d", texture->sampler_handle);
         print_swizzle_vec4(texture->swizzle, false, false);
         printf(", ");
@@ -1233,10 +1251,6 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 printf("// unknownA = 0x%x\n", texture->unknownA);
                 printf("// unknown8 = 0x%x\n", texture->unknown8);
         }
-
-        /* Don't blow up */
-        if (texture->unknown7 != 0x1)
-                printf("// (!) unknown7 = %d\n", texture->unknown7);
 }
 
 void

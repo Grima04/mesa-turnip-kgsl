@@ -1455,6 +1455,21 @@ pan_attach_constant_bias(
         return true;
 }
 
+static enum mali_sampler_type
+midgard_sampler_type(nir_alu_type t)
+{
+        switch (nir_alu_type_get_base_type(t)) {
+                case nir_type_float:
+                        return MALI_SAMPLER_FLOAT;
+                case nir_type_int:
+                        return MALI_SAMPLER_SIGNED;
+                case nir_type_uint:
+                        return MALI_SAMPLER_UNSIGNED;
+                default:
+                        unreachable("Unknown sampler type");
+        }
+}
+
 static void
 emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 		  unsigned midgard_texop)
@@ -1492,8 +1507,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         .in_reg_full = 1,
                         .out_full = 1,
 
-                        /* Always 1 */
-                        .unknown7 = 1,
+                        .sampler_type = midgard_sampler_type(instr->dest_type),
                 }
         };
 

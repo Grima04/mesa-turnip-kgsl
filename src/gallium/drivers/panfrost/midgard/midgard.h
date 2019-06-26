@@ -544,6 +544,13 @@ __attribute__((__packed__))
 #define TEXTURE_OP_LOD 0x12             /* textureLod */
 #define TEXTURE_OP_TEXEL_FETCH 0x14     /* texelFetch */
 
+enum mali_sampler_type {
+        MALI_SAMPLER_UNK        = 0x0,
+        MALI_SAMPLER_FLOAT      = 0x1, /* sampler */
+        MALI_SAMPLER_UNSIGNED   = 0x2, /* usampler */
+        MALI_SAMPLER_SIGNED     = 0x3, /* isampler */
+};
+
 typedef struct
 __attribute__((__packed__))
 {
@@ -586,8 +593,7 @@ __attribute__((__packed__))
 
         unsigned out_full  : 1;
 
-        /* Always 1 afaict... */
-        unsigned unknown7  : 2;
+        enum mali_sampler_type sampler_type : 2;
 
         unsigned out_reg_select : 1;
         unsigned out_upper : 1;
