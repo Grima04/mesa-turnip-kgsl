@@ -37,6 +37,7 @@
 #include "util/half_float.h"
 #include "util/u_helpers.h"
 #include "util/u_format.h"
+#include "util/u_prim_restart.h"
 #include "indices/u_primconvert.h"
 #include "tgsi/tgsi_parse.h"
 #include "util/u_math.h"
@@ -1631,6 +1632,15 @@ panfrost_draw_vbo(
 
         int mode = info->mode;
 
+        /* Fallback unsupported restart index */
+        unsigned primitive_index = (1 << (info->index_size * 8)) - 1;
+
+        if (info->primitive_restart && info->index_size
+                        && info->restart_index != primitive_index) {
+                util_draw_vbo_without_prim_restart(pipe, info);
+                return;
+        }
+
         /* Fallback for unsupported modes */
 
         if (!(ctx->draw_modes & (1 << mode))) {
@@ -1666,6 +1676,9 @@ panfrost_draw_vbo(
 
         if (panfrost_writes_point_size(ctx))
                 draw_flags |= MALI_DRAW_VARYING_SIZE;
+
+        if (info->primitive_restart)
+                draw_flags |= MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX;
 
         /* For higher amounts of vertices (greater than what fits in a 16-bit
          * short), the other value is needed, otherwise there will be bizarre
