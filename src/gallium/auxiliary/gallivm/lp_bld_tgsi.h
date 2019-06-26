@@ -456,6 +456,8 @@ struct lp_build_tgsi_soa_context
 
    LLVMValueRef ssbo_ptr;
    LLVMValueRef ssbo_sizes_ptr;
+   LLVMValueRef ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+   LLVMValueRef ssbo_sizes[LP_MAX_TGSI_SHADER_BUFFERS];
 
    const struct lp_build_sampler_soa *sampler;
 

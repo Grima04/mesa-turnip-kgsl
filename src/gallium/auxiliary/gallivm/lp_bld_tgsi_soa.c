@@ -57,6 +57,7 @@
 #include "lp_bld_gather.h"
 #include "lp_bld_init.h"
 #include "lp_bld_logic.h"
+#include "lp_bld_misc.h"
 #include "lp_bld_swizzle.h"
 #include "lp_bld_flow.h"
 #include "lp_bld_quad.h"
@@ -133,20 +134,24 @@ mask_has_loop(struct lp_exec_mask *mask)
    return FALSE;
 }
 
+/*
+ * combine the execution mask if there is one with the current mask.
+ */
 static LLVMValueRef
 mask_vec(struct lp_build_tgsi_context *bld_base)
 {
    struct lp_build_tgsi_soa_context * bld = lp_soa_context(bld_base);
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    struct lp_exec_mask *exec_mask = &bld->exec_mask;
-
+   LLVMValueRef bld_mask = bld->mask ? lp_build_mask_value(bld->mask) : NULL;
    if (!exec_mask->has_mask) {
-      return lp_build_mask_value(bld->mask);
+      return bld_mask;
    }
+   if (!bld_mask)
+      return exec_mask->exec_mask;
    return LLVMBuildAnd(builder, lp_build_mask_value(bld->mask),
                        exec_mask->exec_mask, "");
 }
-
 
 /*
  * Returns true if we're inside a switch statement.
@@ -2975,8 +2980,19 @@ lp_emit_declaration_soa(
       bld->consts_sizes[idx2D] =
          lp_build_array_get(gallivm, bld->const_sizes_ptr, index2D);
    }
-      break;
+   break;
+   case TGSI_FILE_BUFFER:
+   {
+      unsigned idx = decl->Range.First;
+      LLVMValueRef index = lp_build_const_int32(gallivm, idx);
+      assert(idx < LP_MAX_TGSI_SHADER_BUFFERS);
+      bld->ssbos[idx] =
+         lp_build_array_get(gallivm, bld->ssbo_ptr, index);
+      bld->ssbo_sizes[idx] =
+         lp_build_array_get(gallivm, bld->ssbo_sizes_ptr, index);
 
+   }
+   break;
    default:
       /* don't need to declare other vars */
       break;
@@ -3369,6 +3385,283 @@ lod_emit(
 
    emit_sample(bld, emit_data->inst, LP_BLD_TEX_MODIFIER_NONE,
                FALSE, LP_SAMPLER_OP_LODQ, emit_data->output);
+}
+
+static void
+load_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct gallivm_state * gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
+   const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
+   unsigned buf = bufreg->Register.Index;
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+   struct lp_build_context *uint_bld = &bld_base->uint_bld;
+
+   if (0) {
+      /* for indirect support with ARB_gpu_shader5 */
+   } else {
+      LLVMValueRef index;
+      LLVMValueRef scalar, scalar_ptr;
+      unsigned chan_index;
+
+      index = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, 0);
+      index = lp_build_shr_imm(uint_bld, index, 2);
+
+      scalar_ptr = bld->ssbos[buf];
+
+      LLVMValueRef ssbo_limit;
+
+      ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
+      ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+
+      TGSI_FOR_EACH_DST0_ENABLED_CHANNEL(emit_data->inst, chan_index) {
+         LLVMValueRef loop_index = lp_build_add(uint_bld, index, lp_build_const_int_vec(gallivm, uint_bld->type, chan_index));
+
+         LLVMValueRef exec_mask = mask_vec(bld_base);
+         LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, loop_index, ssbo_limit);
+         exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+
+         LLVMValueRef result = lp_build_alloca(gallivm, uint_bld->vec_type, "");
+         struct lp_build_loop_state loop_state;
+         lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+
+         struct lp_build_if_state ifthen;
+         LLVMValueRef cond, temp_res;
+
+         loop_index = LLVMBuildExtractElement(gallivm->builder, loop_index,
+                                              loop_state.counter, "");
+
+         cond = LLVMBuildICmp(gallivm->builder, LLVMIntNE, exec_mask, uint_bld->zero, "");
+         cond = LLVMBuildExtractElement(gallivm->builder, cond, loop_state.counter, "");
+
+         lp_build_if(&ifthen, gallivm, cond);
+         scalar = lp_build_pointer_get(builder, scalar_ptr, loop_index);
+
+         temp_res = LLVMBuildLoad(builder, result, "");
+         temp_res = LLVMBuildInsertElement(builder, temp_res, scalar, loop_state.counter, "");
+         LLVMBuildStore(builder, temp_res, result);
+         lp_build_else(&ifthen);
+         temp_res = LLVMBuildLoad(builder, result, "");
+         temp_res = LLVMBuildInsertElement(builder, temp_res, lp_build_const_int32(gallivm, 0), loop_state.counter, "");
+         LLVMBuildStore(builder, temp_res, result);
+         lp_build_endif(&ifthen);
+         lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, uint_bld->type.length),
+                                NULL, LLVMIntUGE);
+         emit_data->output[chan_index] = LLVMBuildLoad(gallivm->builder, result, "");
+      }
+   }
+}
+
+static void
+store_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct gallivm_state * gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
+   struct lp_build_context *uint_bld = &bld_base->uint_bld;
+   const struct tgsi_full_dst_register *bufreg = &emit_data->inst->Dst[0];
+   unsigned buf = bufreg->Register.Index;
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+
+   if (0) {
+
+   } else {
+      LLVMValueRef index;  /* index into the const buffer */
+      LLVMValueRef scalar_ptr;
+      LLVMValueRef value;
+      unsigned chan_index;
+
+      index = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 0, 0);
+      index = lp_build_shr_imm(uint_bld, index, 2);
+
+      scalar_ptr = bld->ssbos[buf];
+
+      LLVMValueRef ssbo_limit;
+
+      ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
+      ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+
+      TGSI_FOR_EACH_DST0_ENABLED_CHANNEL(emit_data->inst, chan_index) {
+         LLVMValueRef loop_index = lp_build_add(uint_bld, index, lp_build_const_int_vec(gallivm, uint_bld->type, chan_index));
+
+         value = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, chan_index);
+
+         LLVMValueRef exec_mask = mask_vec(bld_base);
+         LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, loop_index, ssbo_limit);
+         exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+
+         struct lp_build_loop_state loop_state;
+         lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+
+         LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, value,
+                                                          loop_state.counter, "");
+         value_ptr = LLVMBuildBitCast(gallivm->builder, value_ptr, uint_bld->elem_type, "");
+
+         struct lp_build_if_state ifthen;
+         LLVMValueRef cond;
+
+         loop_index = LLVMBuildExtractElement(gallivm->builder, loop_index,
+                                              loop_state.counter, "");
+
+         cond = LLVMBuildICmp(gallivm->builder, LLVMIntNE, exec_mask, uint_bld->zero, "");
+         cond = LLVMBuildExtractElement(gallivm->builder, cond, loop_state.counter, "");
+         lp_build_if(&ifthen, gallivm, cond);
+
+         lp_build_pointer_set(builder, scalar_ptr, loop_index, value_ptr);
+
+         lp_build_endif(&ifthen);
+         lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, uint_bld->type.length),
+                                NULL, LLVMIntUGE);
+      }
+   }
+}
+
+static void
+resq_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct lp_build_context *uint_bld = &bld_base->uint_bld;
+   const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
+
+   unsigned buf = bufreg->Register.Index;
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+
+   LLVMValueRef num_ssbo = bld->ssbo_sizes[buf];
+
+   emit_data->output[emit_data->chan] = lp_build_broadcast_scalar(uint_bld, num_ssbo);
+}
+
+static void
+atomic_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct gallivm_state * gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   struct lp_build_context *uint_bld = &bld_base->uint_bld;
+   const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
+
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+   unsigned buf = bufreg->Register.Index;
+
+   LLVMAtomicRMWBinOp op;
+   switch (emit_data->inst->Instruction.Opcode) {
+   case TGSI_OPCODE_ATOMUADD:
+      op = LLVMAtomicRMWBinOpAdd;
+      break;
+   case TGSI_OPCODE_ATOMXCHG:
+      op = LLVMAtomicRMWBinOpXchg;
+      break;
+   case TGSI_OPCODE_ATOMAND:
+      op = LLVMAtomicRMWBinOpAnd;
+      break;
+   case TGSI_OPCODE_ATOMOR:
+      op = LLVMAtomicRMWBinOpOr;
+      break;
+   case TGSI_OPCODE_ATOMXOR:
+      op = LLVMAtomicRMWBinOpXor;
+      break;
+   case TGSI_OPCODE_ATOMUMIN:
+      op = LLVMAtomicRMWBinOpUMin;
+      break;
+   case TGSI_OPCODE_ATOMUMAX:
+      op = LLVMAtomicRMWBinOpUMax;
+      break;
+   case TGSI_OPCODE_ATOMIMIN:
+      op = LLVMAtomicRMWBinOpMin;
+      break;
+   case TGSI_OPCODE_ATOMIMAX:
+      op = LLVMAtomicRMWBinOpMax;
+      break;
+   }
+
+   if (0) {
+   } else {
+      LLVMValueRef index;  /* index into the const buffer */
+      LLVMValueRef scalar, scalar_ptr;
+      LLVMValueRef value;
+
+      index = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, 0);
+      value = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 2, 0);
+
+      index = lp_build_shr_imm(uint_bld, index, 2);
+      index = lp_build_add(uint_bld, index, lp_build_const_int_vec(gallivm, uint_bld->type, emit_data->chan));
+
+      scalar_ptr = bld->ssbos[buf];
+
+      LLVMValueRef atom_res = lp_build_alloca(gallivm,
+                                              uint_bld->vec_type, "");
+
+      LLVMValueRef ssbo_limit;
+      ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
+      ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+
+      LLVMValueRef exec_mask = mask_vec(bld_base);
+      LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, index, ssbo_limit);
+      exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+
+      struct lp_build_loop_state loop_state;
+      lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+
+      LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, value,
+                                                       loop_state.counter, "");
+      value_ptr = LLVMBuildBitCast(gallivm->builder, value_ptr, uint_bld->elem_type, "");
+
+      index = LLVMBuildExtractElement(gallivm->builder, index,
+                                      loop_state.counter, "");
+
+      scalar_ptr = LLVMBuildGEP(builder, scalar_ptr,
+                                &index, 1, "");
+
+      struct lp_build_if_state ifthen;
+      LLVMValueRef cond, temp_res;
+
+      cond = LLVMBuildICmp(gallivm->builder, LLVMIntNE, exec_mask, uint_bld->zero, "");
+      cond = LLVMBuildExtractElement(gallivm->builder, cond, loop_state.counter, "");
+      lp_build_if(&ifthen, gallivm, cond);
+
+      if (emit_data->inst->Instruction.Opcode == TGSI_OPCODE_ATOMCAS) {
+         LLVMValueRef cas_src = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 3, 0);
+         LLVMValueRef cas_src_ptr = LLVMBuildExtractElement(gallivm->builder, cas_src,
+                                                            loop_state.counter, "");
+         cas_src_ptr = LLVMBuildBitCast(gallivm->builder, cas_src_ptr, uint_bld->elem_type, "");
+         scalar = LLVMBuildAtomicCmpXchg(builder, scalar_ptr, value_ptr,
+                                         cas_src_ptr,
+                                         LLVMAtomicOrderingSequentiallyConsistent,
+                                         LLVMAtomicOrderingSequentiallyConsistent,
+                                         false);
+         scalar = LLVMBuildExtractValue(gallivm->builder, scalar, 0, "");
+      } else {
+         scalar = LLVMBuildAtomicRMW(builder, op,
+                                     scalar_ptr, value_ptr,
+                                     LLVMAtomicOrderingSequentiallyConsistent,
+                                     false);
+      }
+      temp_res = LLVMBuildLoad(builder, atom_res, "");
+      temp_res = LLVMBuildInsertElement(builder, temp_res, scalar, loop_state.counter, "");
+      LLVMBuildStore(builder, temp_res, atom_res);
+      lp_build_else(&ifthen);
+      temp_res = LLVMBuildLoad(builder, atom_res, "");
+      temp_res = LLVMBuildInsertElement(builder, temp_res, lp_build_const_int32(gallivm, 0), loop_state.counter, "");
+      LLVMBuildStore(builder, temp_res, atom_res);
+      lp_build_endif(&ifthen);
+
+      lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, uint_bld->type.length),
+                             NULL, LLVMIntUGE);
+      emit_data->output[emit_data->chan] = LLVMBuildLoad(gallivm->builder, atom_res, "");
+   }
 }
 
 static void
@@ -3973,6 +4266,20 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.bld_base.op_actions[TGSI_OPCODE_SVIEWINFO].emit = sviewinfo_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_LOD].emit = lod_emit;
 
+   bld.bld_base.op_actions[TGSI_OPCODE_LOAD].emit = load_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_STORE].emit = store_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_RESQ].emit = resq_emit;
+
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMUADD].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMXCHG].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMCAS].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMAND].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMOR].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMXOR].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMUMIN].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMUMAX].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMIMIN].emit = atomic_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_ATOMIMAX].emit = atomic_emit;
 
    if (gs_iface) {
       /* There's no specific value for this because it should always
