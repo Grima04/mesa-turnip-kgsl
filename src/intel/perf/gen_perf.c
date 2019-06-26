@@ -903,3 +903,18 @@ gen_perf_snapshot_statistics_registers(void *context,
                                       offset_in_bytes + i * sizeof(uint64_t));
    }
 }
+
+void
+gen_perf_close(struct gen_perf_context *perfquery,
+               const struct gen_perf_query_info *query)
+{
+   if (perfquery->oa_stream_fd != -1) {
+      close(perfquery->oa_stream_fd);
+      perfquery->oa_stream_fd = -1;
+   }
+   if (query->kind == GEN_PERF_QUERY_TYPE_RAW) {
+      struct gen_perf_query_info *raw_query =
+         (struct gen_perf_query_info *) query;
+      raw_query->oa_metrics_set_id = 0;
+   }
+}

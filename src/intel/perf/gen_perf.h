@@ -588,4 +588,7 @@ void gen_perf_snapshot_statistics_registers(void *context,
                                             struct gen_perf_query_object *obj,
                                             uint32_t offset_in_bytes);
 
+void gen_perf_close(struct gen_perf_context *perfquery,
+                    const struct gen_perf_query_info *query);
+
 #endif /* GEN_PERF_H */

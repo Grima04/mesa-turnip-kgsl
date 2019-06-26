@@ -696,22 +696,6 @@ open_i915_perf_oa_stream(struct brw_context *brw,
 }
 
 static void
-close_perf(struct brw_context *brw,
-           const struct gen_perf_query_info *query)
-{
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   if (perf_ctx->oa_stream_fd != -1) {
-      close(perf_ctx->oa_stream_fd);
-      perf_ctx->oa_stream_fd = -1;
-   }
-   if (query->kind == GEN_PERF_QUERY_TYPE_RAW) {
-      struct gen_perf_query_info *raw_query =
-         (struct gen_perf_query_info *) query;
-      raw_query->oa_metrics_set_id = 0;
-   }
-}
-
-static void
 capture_frequency_stat_register(struct brw_context *brw,
                                 struct brw_bo *bo,
                                 uint32_t bo_offset)
@@ -817,7 +801,7 @@ brw_begin_perf_query(struct gl_context *ctx,
                 o->Id, perf_ctx->current_oa_metrics_set_id, metric_id);
             return false;
          } else
-            close_perf(brw, query);
+            gen_perf_close(perf_ctx, query);
       }
 
       /* If the OA counters aren't already on, enable them. */
@@ -1384,7 +1368,7 @@ brw_delete_perf_query(struct gl_context *ctx,
     */
    if (--perf_ctx->n_query_instances == 0) {
       gen_perf_free_sample_bufs(perf_ctx);
-      close_perf(brw, obj->queryinfo);
+      gen_perf_close(perf_ctx, obj->queryinfo);
    }
 
    free(obj);
