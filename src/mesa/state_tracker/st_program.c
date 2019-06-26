@@ -1641,7 +1641,7 @@ st_get_basic_variant(struct st_context *st,
 
    /* Search for existing variant */
    for (v = prog->variants; v; v = v->next) {
-      if (memcmp(&v->key, &key, sizeof(key)) == 0) {
+      if (memcmp(&v->key, key, sizeof(*key)) == 0) {
          break;
       }
    }
