@@ -3087,19 +3087,52 @@ VkResult anv_AllocateMemory(
 
    enum anv_bo_alloc_flags alloc_flags = 0;
 
-   const struct wsi_memory_allocate_info *wsi_info =
-      vk_find_struct_const(pAllocateInfo->pNext, WSI_MEMORY_ALLOCATE_INFO_MESA);
-   if (wsi_info && wsi_info->implicit_sync) {
-      /* We need to set the WRITE flag on window system buffers so that GEM
-       * will know we're writing to them and synchronize uses on other rings
-       * (eg if the display server uses the blitter ring).
-       */
-      alloc_flags |= ANV_BO_ALLOC_IMPLICIT_SYNC |
-                     ANV_BO_ALLOC_IMPLICIT_WRITE;
-   }
+   const VkExportMemoryAllocateInfo *export_info = NULL;
+   const VkImportAndroidHardwareBufferInfoANDROID *ahw_import_info = NULL;
+   const VkImportMemoryFdInfoKHR *fd_info = NULL;
+   const VkImportMemoryHostPointerInfoEXT *host_ptr_info = NULL;
+   const VkMemoryDedicatedAllocateInfo *dedicated_info = NULL;
 
-   const VkExportMemoryAllocateInfo *export_info =
-      vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO);
+   vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
+         export_info = (void *)ext;
+         break;
+
+      case VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID:
+         ahw_import_info = (void *)ext;
+         break;
+
+      case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR:
+         fd_info = (void *)ext;
+         break;
+
+      case VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT:
+         host_ptr_info = (void *)ext;
+         break;
+
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
+         dedicated_info = (void *)ext;
+         break;
+
+      case VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA: {
+         const struct wsi_memory_allocate_info *wsi_info = (void *)ext;
+         if (wsi_info->implicit_sync) {
+            /* We need to set the WRITE flag on window system buffers so that
+             * GEM will know we're writing to them and synchronize uses on
+             * other rings (eg if the display server uses the blitter ring).
+             */
+            alloc_flags |= ANV_BO_ALLOC_IMPLICIT_SYNC |
+                           ANV_BO_ALLOC_IMPLICIT_WRITE;
+         }
+         break;
+      }
+
+      default:
+         anv_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
 
    /* Check if we need to support Android HW buffer export. If so,
     * create AHardwareBuffer and import memory from it.
@@ -3108,11 +3141,6 @@ VkResult anv_AllocateMemory(
    if (export_info && export_info->handleTypes &
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
       android_export = true;
-
-   /* Android memory import. */
-   const struct VkImportAndroidHardwareBufferInfoANDROID *ahw_import_info =
-      vk_find_struct_const(pAllocateInfo->pNext,
-                           IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID);
 
    if (ahw_import_info) {
       result = anv_import_ahw_memory(_device, mem, ahw_import_info);
@@ -3134,9 +3162,6 @@ VkResult anv_AllocateMemory(
 
       goto success;
    }
-
-   const VkImportMemoryFdInfoKHR *fd_info =
-      vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
 
    /* The Vulkan spec permits handleType to be 0, in which case the struct is
     * ignored.
@@ -3188,9 +3213,6 @@ VkResult anv_AllocateMemory(
       goto success;
    }
 
-   const VkImportMemoryHostPointerInfoEXT *host_ptr_info =
-      vk_find_struct_const(pAllocateInfo->pNext,
-                           IMPORT_MEMORY_HOST_POINTER_INFO_EXT);
    if (host_ptr_info && host_ptr_info->handleType) {
       if (host_ptr_info->handleType ==
           VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT) {
@@ -3226,8 +3248,6 @@ VkResult anv_AllocateMemory(
    if (result != VK_SUCCESS)
       goto fail;
 
-   const VkMemoryDedicatedAllocateInfo *dedicated_info =
-      vk_find_struct_const(pAllocateInfo->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
    if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
       ANV_FROM_HANDLE(anv_image, image, dedicated_info->image);
 
