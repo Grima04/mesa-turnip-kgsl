@@ -2537,10 +2537,12 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer,
 	int32_t primitive_reset_en;
 
 	/* Draw state. */
-	si_emit_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1,
-				   draw_info->indirect,
-				   !!draw_info->strmout_buffer,
-				   draw_info->indirect ? 0 : draw_info->count);
+	if (info->chip_class < GFX10) {
+		si_emit_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1,
+					   draw_info->indirect,
+					   !!draw_info->strmout_buffer,
+					   draw_info->indirect ? 0 : draw_info->count);
+	}
 
 	/* Primitive restart. */
 	primitive_reset_en =

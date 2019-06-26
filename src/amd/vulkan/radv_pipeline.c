@@ -3514,6 +3514,41 @@ radv_compute_cliprect_rule(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 }
 
 static void
+gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs,
+				struct radv_pipeline *pipeline,
+				const struct radv_tessellation_state *tess,
+				const struct radv_gs_state *gs_state)
+{
+	bool break_wave_at_eoi = false;
+	unsigned primgroup_size;
+	unsigned vertgroup_size;
+
+	if (radv_pipeline_has_tess(pipeline)) {
+		primgroup_size = tess->num_patches; /* must be a multiple of NUM_PATCHES */
+		vertgroup_size = 0;
+	} else if (radv_pipeline_has_gs(pipeline)) {
+		unsigned vgt_gs_onchip_cntl = gs_state->vgt_gs_onchip_cntl;
+		primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
+		vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
+	} else {
+		primgroup_size = 128; /* recommended without a GS and tess */
+		vertgroup_size = 0;
+	}
+
+	if (radv_pipeline_has_tess(pipeline)) {
+		if (pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.info.uses_prim_id ||
+		    radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL)->info.info.uses_prim_id)
+			break_wave_at_eoi = true;
+	}
+
+	radeon_set_uconfig_reg(ctx_cs, R_03096C_GE_CNTL,
+			       S_03096C_PRIM_GRP_SIZE(primgroup_size) |
+			       S_03096C_VERT_GRP_SIZE(vertgroup_size) |
+			       S_03096C_PACKET_TO_ONE_PA(0) /* line stipple */ |
+			       S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi));
+}
+
+static void
 radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const struct radv_graphics_pipeline_create_info *extra,
@@ -3542,6 +3577,9 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
 	radv_pipeline_generate_binning_state(ctx_cs, pipeline, pCreateInfo);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10)
+		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess, gs);
 
 	radeon_set_context_reg(ctx_cs, R_0286E8_SPI_TMPRING_SIZE,
 			       S_0286E8_WAVES(pipeline->max_waves) |
