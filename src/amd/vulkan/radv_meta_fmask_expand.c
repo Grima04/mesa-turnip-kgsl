@@ -123,7 +123,7 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 	radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer),
 			     VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 
-	for (unsigned l = 0; l < subresourceRange->layerCount; l++) {
+	for (unsigned l = 0; l < radv_get_layerCount(image, subresourceRange); l++) {
 		struct radv_image_view iview;
 
 		radv_image_view_init(&iview, device,
