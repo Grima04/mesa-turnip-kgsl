@@ -864,7 +864,6 @@ iris_get_query_result(struct pipe_context *ctx,
    struct iris_query *q = (void *) query;
    struct iris_screen *screen = (void *) ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
-   struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    if (unlikely(screen->no_hw)) {
       result->u64 = 0;
@@ -872,8 +871,9 @@ iris_get_query_result(struct pipe_context *ctx,
    }
 
    if (!q->ready) {
-      if (iris_batch_references(&ice->batches[q->batch_idx], bo))
-         iris_batch_flush(&ice->batches[q->batch_idx]);
+      struct iris_batch *batch = &ice->batches[q->batch_idx];
+      if (q->syncpt == iris_batch_get_signal_syncpt(batch))
+         iris_batch_flush(batch);
 
       while (!READ_ONCE(q->map->snapshots_landed)) {
          if (wait)
@@ -919,7 +919,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
        * now so that progress happens.  Either way, copy the snapshots
        * landed field to the destination resource.
        */
-      if (iris_batch_references(batch, bo))
+      if (q->syncpt == iris_batch_get_signal_syncpt(batch))
          iris_batch_flush(batch);
 
       ice->vtbl.copy_mem_mem(batch, iris_resource_bo(p_res), offset,
