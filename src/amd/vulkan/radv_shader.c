@@ -471,6 +471,7 @@ radv_get_shader_binary_size(struct ac_shader_binary *binary)
 static void
 radv_fill_shader_variant(struct radv_device *device,
 			 struct radv_shader_variant *variant,
+			 struct radv_nir_compiler_options *options,
 			 struct ac_shader_binary *binary,
 			 gl_shader_stage stage)
 {
@@ -495,7 +496,13 @@ radv_fill_shader_variant(struct radv_device *device,
 
 	switch (stage) {
 	case MESA_SHADER_TESS_EVAL:
-		vgpr_comp_cnt = 3;
+		if (options->key.tes.as_es) {
+			assert(device->physical_device->rad_info.chip_class <= GFX8);
+			vgpr_comp_cnt = info->uses_prim_id ? 3 : 2;
+		} else {
+			bool enable_prim_id = options->key.tes.export_prim_id || info->uses_prim_id;
+			vgpr_comp_cnt = enable_prim_id ? 3 : 2;
+		}
 		variant->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		break;
 	case MESA_SHADER_TESS_CTRL:
@@ -534,7 +541,7 @@ radv_fill_shader_variant(struct radv_device *device,
 		if (es_type == MESA_SHADER_VERTEX) {
 			es_vgpr_comp_cnt = variant->info.vs.vgpr_comp_cnt;
 		} else if (es_type == MESA_SHADER_TESS_EVAL) {
-			es_vgpr_comp_cnt = 3;
+			es_vgpr_comp_cnt = info->uses_prim_id ? 3 : 2;
 		} else {
 			unreachable("invalid shader ES type");
 		}
@@ -669,7 +676,7 @@ shader_variant_create(struct radv_device *device,
 
 	radv_destroy_llvm_compiler(&ac_llvm, thread_compiler);
 
-	radv_fill_shader_variant(device, variant, &binary, stage);
+	radv_fill_shader_variant(device, variant, options, &binary, stage);
 
 	if (code_out) {
 		*code_out = binary.code;
