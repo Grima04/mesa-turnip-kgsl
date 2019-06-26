@@ -170,6 +170,44 @@ util_vma_heap_alloc(struct util_vma_heap *heap,
    return 0;
 }
 
+bool
+util_vma_heap_alloc_addr(struct util_vma_heap *heap,
+                         uint64_t offset, uint64_t size)
+{
+   /* An offset of 0 is reserved for allocation failure.  It is not a valid
+    * address and cannot be allocated.
+    */
+   assert(offset > 0);
+
+   /* Allocating something with a size of 0 is also not valid. */
+   assert(size > 0);
+
+   /* It's possible for offset + size to wrap around if we touch the top of
+    * the 64-bit address space, but we cannot go any higher than 2^64.
+    */
+   assert(offset + size == 0 || offset + size > offset);
+
+   /* Find the hole if one exists. */
+   util_vma_foreach_hole_safe(hole, heap) {
+      if (hole->offset > offset)
+         continue;
+
+      /* Holes are ordered high-to-low so the first hole we find with
+       * hole->offset <= is our hole.  If it's not big enough to contain the
+       * requested range, then the allocation fails.
+       */
+      assert(hole->offset <= offset);
+      if (hole->size < offset - hole->offset + size)
+         return false;
+
+      util_vma_hole_alloc(hole, offset, size);
+      return true;
+   }
+
+   /* We didn't find a suitable hole */
+   return false;
+}
+
 void
 util_vma_heap_free(struct util_vma_heap *heap,
                    uint64_t offset, uint64_t size)
