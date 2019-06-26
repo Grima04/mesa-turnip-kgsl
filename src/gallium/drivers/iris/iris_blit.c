@@ -608,6 +608,19 @@ iris_copy_region(struct blorp_context *blorp,
    tex_cache_flush_hack(batch);
 }
 
+static struct iris_batch *
+get_preferred_batch(struct iris_context *ice, struct iris_bo *bo)
+{
+   /* If the compute batch is already using this buffer, we'd prefer to
+    * continue queueing in the compute batch.
+    */
+   if (iris_batch_references(&ice->batches[IRIS_BATCH_COMPUTE], bo))
+      return &ice->batches[IRIS_BATCH_COMPUTE];
+
+   /* Otherwise default to the render batch. */
+   return &ice->batches[IRIS_BATCH_RENDER];
+}
+
 
 /**
  * The pipe->resource_copy_region() driver hook.
@@ -626,6 +639,20 @@ iris_resource_copy_region(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+
+   /* Use MI_COPY_MEM_MEM for tiny (<= 16 byte, % 4) buffer copies. */
+   if (src->target == PIPE_BUFFER && dst->target == PIPE_BUFFER &&
+       (src_box->width % 4 == 0) && src_box->width <= 16) {
+      struct iris_bo *dst_bo = iris_resource_bo(dst);
+      batch = get_preferred_batch(ice, dst_bo);
+      iris_batch_maybe_flush(batch, 24 + 5 * (src_box->width / 4));
+      iris_emit_pipe_control_flush(batch,
+                                   "stall for MI_COPY_MEM_MEM copy_region",
+                                   PIPE_CONTROL_CS_STALL);
+      ice->vtbl.copy_mem_mem(batch, dst_bo, dstx, iris_resource_bo(src),
+                             src_box->x, src_box->width);
+      return;
+   }
 
    iris_copy_region(&ice->blorp, batch, dst, dst_level, dstx, dsty, dstz,
                     src, src_level, src_box);
