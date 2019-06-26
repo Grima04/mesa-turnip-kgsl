@@ -1,4 +1,4 @@
-# DEBIAN_TAG is the tag of the docker image used for the build jobs. If the
+# IMAGE_TAG is the tag of the docker image used for the build jobs. If the
 # image doesn't exist yet, the docker-image stage generates it.
 #
 # In order to generate a new image, one should generally change the tag.
@@ -16,7 +16,7 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_VERSION: testing-slim
-  DEBIAN_TAG: "2019-06-07-1"
+  IMAGE_TAG: "2019-06-26-1"
 
 include:
   - project: 'wayland/ci-templates'
@@ -42,7 +42,7 @@ stages:
   <<: *retry
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
-    IMAGE_LOCAL: "$CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}:latest"
+    DEBIAN_TAG: '${DEBIAN_ARCH}-${IMAGE_TAG}'
     DEBIAN_EXEC: 'DEBIAN_ARCH=${DEBIAN_ARCH}
                   GCC_ARCH=${GCC_ARCH}
                   KERNEL_ARCH=${KERNEL_ARCH}
@@ -73,7 +73,7 @@ container:arm64:
 
 .build:
   stage: build
-  image: $CI_REGISTRY/$CI_PROJECT_PATH/${DEBIAN_ARCH}:latest
+  image: $CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:${DEBIAN_ARCH}-${IMAGE_TAG}
   cache:
     paths:
       - ccache
@@ -143,7 +143,7 @@ build:arm64:
   stage: test
   tags:
     - idle-jobs
-  image: $CI_REGISTRY/$CI_PROJECT_PATH/arm64:latest  # Any of the images will be fine
+  image: $CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:arm64-${IMAGE_TAG}  # Any of the images will be fine
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for submitting the job
   script:
