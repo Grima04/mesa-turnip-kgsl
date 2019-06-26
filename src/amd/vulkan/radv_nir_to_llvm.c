@@ -2861,6 +2861,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 static void
 handle_vs_outputs_post(struct radv_shader_context *ctx,
 		       bool export_prim_id, bool export_layer_id,
+		       bool export_clip_dists,
 		       struct radv_vs_output_info *outinfo)
 {
 	uint32_t param_count = 0;
@@ -2917,9 +2918,11 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 			memcpy(&pos_args[target - V_008DFC_SQ_EXP_POS],
 			&args, sizeof(args));
 
-			/* Export the clip/cull distances values to the next stage. */
-			radv_export_param(ctx, param_count, &slots[0], 0xf);
-			outinfo->vs_output_param_offset[location] = param_count++;
+			if (export_clip_dists) {
+				/* Export the clip/cull distances values to the next stage. */
+				radv_export_param(ctx, param_count, &slots[0], 0xf);
+				outinfo->vs_output_param_offset[location] = param_count++;
+			}
 		}
 	}
 
@@ -3446,6 +3449,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 		else
 			handle_vs_outputs_post(ctx, ctx->options->key.vs.export_prim_id,
 					       ctx->options->key.vs.export_layer_id,
+					       ctx->options->key.vs.export_clip_dists,
 					       &ctx->shader_info->vs.outinfo);
 		break;
 	case MESA_SHADER_FRAGMENT:
@@ -3463,6 +3467,7 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 		else
 			handle_vs_outputs_post(ctx, ctx->options->key.tes.export_prim_id,
 					       ctx->options->key.tes.export_layer_id,
+					       ctx->options->key.tes.export_clip_dists,
 					       &ctx->shader_info->tes.outinfo);
 		break;
 	default:
@@ -4117,7 +4122,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 			radv_emit_streamout(ctx, stream);
 
 		if (stream == 0) {
-			handle_vs_outputs_post(ctx, false, false,
+			handle_vs_outputs_post(ctx, false, false, true,
 					       &ctx->shader_info->vs.outinfo);
 		}
 
