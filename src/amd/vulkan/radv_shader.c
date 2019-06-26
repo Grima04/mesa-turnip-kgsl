@@ -513,10 +513,10 @@ radv_fill_shader_variant(struct radv_device *device,
 		}
 		break;
 	case MESA_SHADER_VERTEX:
-	case MESA_SHADER_GEOMETRY:
 		vgpr_comp_cnt = variant->info.vs.vgpr_comp_cnt;
 		break;
 	case MESA_SHADER_FRAGMENT:
+	case MESA_SHADER_GEOMETRY:
 		break;
 	case MESA_SHADER_COMPUTE:
 		variant->rsrc2 |=
