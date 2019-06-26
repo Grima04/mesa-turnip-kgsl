@@ -2442,21 +2442,21 @@ struct radv_draw_info {
 };
 
 static void
-radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer,
-			 const struct radv_draw_info *draw_info)
+si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
+			   bool instanced_draw, bool indirect_draw,
+			   bool count_from_stream_output,
+			   uint32_t draw_vertex_count)
 {
 	struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
-	uint32_t ia_multi_vgt_param;
-	int32_t primitive_reset_en;
+	unsigned ia_multi_vgt_param;
 
-	/* Draw state. */
 	ia_multi_vgt_param =
-		si_get_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1,
-					  draw_info->indirect,
-					  !!draw_info->strmout_buffer,
-					  draw_info->indirect ? 0 : draw_info->count);
+		si_get_ia_multi_vgt_param(cmd_buffer, instanced_draw,
+					  indirect_draw,
+					  count_from_stream_output,
+					  draw_vertex_count);
 
 	if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
 		if (info->chip_class >= GFX9) {
@@ -2473,6 +2473,22 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer,
 		}
 		state->last_ia_multi_vgt_param = ia_multi_vgt_param;
 	}
+}
+
+static void
+radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer,
+			 const struct radv_draw_info *draw_info)
+{
+	struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
+	struct radv_cmd_state *state = &cmd_buffer->state;
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	int32_t primitive_reset_en;
+
+	/* Draw state. */
+	si_emit_ia_multi_vgt_param(cmd_buffer, draw_info->instance_count > 1,
+				   draw_info->indirect,
+				   !!draw_info->strmout_buffer,
+				   draw_info->indirect ? 0 : draw_info->count);
 
 	/* Primitive restart. */
 	primitive_reset_en =
