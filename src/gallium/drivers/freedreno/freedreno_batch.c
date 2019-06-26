@@ -409,7 +409,7 @@ batch_depends_on(struct fd_batch *batch, struct fd_batch *other)
 	if (batch->dependents_mask & (1 << other->idx))
 		return true;
 
-	foreach_batch(dep, cache, batch->dependents_mask)
+	foreach_batch(dep, cache, other->dependents_mask)
 		if (batch_depends_on(batch, dep))
 			return true;
 
