@@ -108,7 +108,7 @@ export ARCH=${KERNEL_ARCH}
 export CROSS_COMPILE="${GCC_ARCH}-"
 
 mkdir -p /kernel
-wget -qO- ${KERNEL_URL} | tar -xvz -C /kernel
+wget -qO- ${KERNEL_URL} | tar -xz -C /kernel
 cd /kernel
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ${PANFROST_CI_DIR}/${KERNEL_ARCH}.config
 make -j12 ${KERNEL_IMAGE_NAME} dtbs
