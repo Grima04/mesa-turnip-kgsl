@@ -918,3 +918,44 @@ gen_perf_close(struct gen_perf_context *perfquery,
       raw_query->oa_metrics_set_id = 0;
    }
 }
+
+bool
+gen_perf_open(struct gen_perf_context *perf_ctx,
+              int metrics_set_id,
+              int report_format,
+              int period_exponent,
+              int drm_fd,
+              uint32_t ctx_id)
+{
+   uint64_t properties[] = {
+      /* Single context sampling */
+      DRM_I915_PERF_PROP_CTX_HANDLE, ctx_id,
+
+      /* Include OA reports in samples */
+      DRM_I915_PERF_PROP_SAMPLE_OA, true,
+
+      /* OA unit configuration */
+      DRM_I915_PERF_PROP_OA_METRICS_SET, metrics_set_id,
+      DRM_I915_PERF_PROP_OA_FORMAT, report_format,
+      DRM_I915_PERF_PROP_OA_EXPONENT, period_exponent,
+   };
+   struct drm_i915_perf_open_param param = {
+      .flags = I915_PERF_FLAG_FD_CLOEXEC |
+               I915_PERF_FLAG_FD_NONBLOCK |
+               I915_PERF_FLAG_DISABLED,
+      .num_properties = ARRAY_SIZE(properties) / 2,
+      .properties_ptr = (uintptr_t) properties,
+   };
+   int fd = gen_ioctl(drm_fd, DRM_IOCTL_I915_PERF_OPEN, &param);
+   if (fd == -1) {
+      DBG("Error opening gen perf OA stream: %m\n");
+      return false;
+   }
+
+   perf_ctx->oa_stream_fd = fd;
+
+   perf_ctx->current_oa_metrics_set_id = metrics_set_id;
+   perf_ctx->current_oa_format = report_format;
+
+   return true;
+}

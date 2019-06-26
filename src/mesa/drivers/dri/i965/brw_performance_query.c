@@ -653,48 +653,6 @@ error:
 
 /******************************************************************************/
 
-static bool
-open_i915_perf_oa_stream(struct brw_context *brw,
-                         int metrics_set_id,
-                         int report_format,
-                         int period_exponent,
-                         int drm_fd,
-                         uint32_t ctx_id)
-{
-   uint64_t properties[] = {
-      /* Single context sampling */
-      DRM_I915_PERF_PROP_CTX_HANDLE, ctx_id,
-
-      /* Include OA reports in samples */
-      DRM_I915_PERF_PROP_SAMPLE_OA, true,
-
-      /* OA unit configuration */
-      DRM_I915_PERF_PROP_OA_METRICS_SET, metrics_set_id,
-      DRM_I915_PERF_PROP_OA_FORMAT, report_format,
-      DRM_I915_PERF_PROP_OA_EXPONENT, period_exponent,
-   };
-   struct drm_i915_perf_open_param param = {
-      .flags = I915_PERF_FLAG_FD_CLOEXEC |
-               I915_PERF_FLAG_FD_NONBLOCK |
-               I915_PERF_FLAG_DISABLED,
-      .num_properties = ARRAY_SIZE(properties) / 2,
-      .properties_ptr = (uintptr_t) properties,
-   };
-   int fd = drmIoctl(drm_fd, DRM_IOCTL_I915_PERF_OPEN, &param);
-   if (fd == -1) {
-      DBG("Error opening i915 perf OA stream: %m\n");
-      return false;
-   }
-
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   perf_ctx->oa_stream_fd = fd;
-
-   perf_ctx->current_oa_metrics_set_id = metrics_set_id;
-   perf_ctx->current_oa_format = report_format;
-
-   return true;
-}
-
 static void
 capture_frequency_stat_register(struct brw_context *brw,
                                 struct brw_bo *bo,
@@ -863,12 +821,8 @@ brw_begin_perf_query(struct gl_context *ctx,
          DBG("OA sampling exponent: %i ~= %"PRIu64"ms\n", period_exponent,
              prev_sample_period / 1000000ul);
 
-         if (!open_i915_perf_oa_stream(brw,
-                                       metric_id,
-                                       query->oa_format,
-                                       period_exponent,
-                                       screen->fd, /* drm fd */
-                                       brw->hw_ctx))
+         if (!gen_perf_open(perf_ctx, metric_id, query->oa_format,
+                            period_exponent, screen->fd, brw->hw_ctx))
             return false;
       } else {
          assert(perf_ctx->current_oa_metrics_set_id == metric_id &&

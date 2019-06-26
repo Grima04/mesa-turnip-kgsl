@@ -590,5 +590,11 @@ void gen_perf_snapshot_statistics_registers(void *context,
 
 void gen_perf_close(struct gen_perf_context *perfquery,
                     const struct gen_perf_query_info *query);
+bool gen_perf_open(struct gen_perf_context *perfquery,
+                   int metrics_set_id,
+                   int report_format,
+                   int period_exponent,
+                   int drm_fd,
+                   uint32_t ctx_id);
 
 #endif /* GEN_PERF_H */
