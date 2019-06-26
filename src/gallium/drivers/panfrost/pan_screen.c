@@ -492,9 +492,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                         return FALSE;
         }
 
-        if (format_desc->layout == UTIL_FORMAT_LAYOUT_BPTC ||
-                        format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
-                        format_desc->layout == UTIL_FORMAT_LAYOUT_ETC) {
+        if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN) {
                 /* Compressed formats not yet hooked up. */
                 return FALSE;
         }
