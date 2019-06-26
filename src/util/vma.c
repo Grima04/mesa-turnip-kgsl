@@ -84,6 +84,53 @@ util_vma_heap_validate(struct util_vma_heap *heap)
 #define util_vma_heap_validate(heap)
 #endif
 
+static void
+util_vma_hole_alloc(struct util_vma_hole *hole,
+                    uint64_t offset, uint64_t size)
+{
+   assert(hole->offset <= offset);
+   assert(hole->size >= offset - hole->offset + size);
+
+   if (offset == hole->offset && size == hole->size) {
+      /* Just get rid of the hole. */
+      list_del(&hole->link);
+      free(hole);
+      return;
+   }
+
+   assert(offset - hole->offset <= hole->size - size);
+   uint64_t waste = (hole->size - size) - (offset - hole->offset);
+   if (waste == 0) {
+      /* We allocated at the top.  Shrink the hole down. */
+      hole->size -= size;
+      return;
+   }
+
+   if (offset == hole->offset) {
+      /* We allocated at the bottom. Shrink the hole up. */
+      hole->offset += size;
+      hole->size -= size;
+      return;
+   }
+
+   /* We allocated in the middle.  We need to split the old hole into two
+    * holes, one high and one low.
+    */
+   struct util_vma_hole *high_hole = calloc(1, sizeof(*hole));
+   high_hole->offset = offset + size;
+   high_hole->size = waste;
+
+   /* Adjust the hole to be the amount of space left at he bottom of the
+    * original hole.
+    */
+   hole->size = offset - hole->offset;
+
+   /* Place the new hole before the old hole so that the list is in order
+    * from high to low.
+    */
+   list_addtail(&high_hole->link, &hole->link);
+}
+
 uint64_t
 util_vma_heap_alloc(struct util_vma_heap *heap,
                     uint64_t size, uint64_t alignment)
@@ -114,50 +161,8 @@ util_vma_heap_alloc(struct util_vma_heap *heap,
       if (offset < hole->offset)
          continue;
 
-      if (offset == hole->offset && size == hole->size) {
-         /* Just get rid of the hole. */
-         list_del(&hole->link);
-         free(hole);
-         util_vma_heap_validate(heap);
-         return offset;
-      }
-
-      assert(offset - hole->offset <= hole->size - size);
-      uint64_t waste = (hole->size - size) - (offset - hole->offset);
-      if (waste == 0) {
-         /* We allocated at the top.  Shrink the hole down. */
-         hole->size -= size;
-         util_vma_heap_validate(heap);
-         return offset;
-      }
-
-      if (offset == hole->offset) {
-         /* We allocated at the bottom. Shrink the hole up. */
-         hole->offset += size;
-         hole->size -= size;
-         util_vma_heap_validate(heap);
-         return offset;
-      }
-
-      /* We allocated in the middle.  We need to split the old hole into two
-       * holes, one high and one low.
-       */
-      struct util_vma_hole *high_hole = calloc(1, sizeof(*hole));
-      high_hole->offset = offset + size;
-      high_hole->size = waste;
-
-      /* Adjust the hole to be the amount of space left at he bottom of the
-       * original hole.
-       */
-      hole->size = offset - hole->offset;
-
-      /* Place the new hole before the old hole so that the list is in order
-       * from high to low.
-       */
-      list_addtail(&high_hole->link, &hole->link);
-
+      util_vma_hole_alloc(hole, offset, size);
       util_vma_heap_validate(heap);
-
       return offset;
    }
 
