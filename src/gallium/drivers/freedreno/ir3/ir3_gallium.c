@@ -333,10 +333,11 @@ emit_image_dims(struct fd_context *ctx, const struct ir3_shader_variant *v,
 				dims[off + 1] = ffs(dims[off + 0]) - 1;
 			}
 		}
+		uint32_t size = MIN2(ARRAY_SIZE(dims), v->constlen * 4 - offset * 4);
 
 		ring_wfi(ctx->batch, ring);
 		ctx->emit_const(ring, v->type, offset * 4,
-			0, ARRAY_SIZE(dims), dims, NULL);
+			0, size, dims, NULL);
 	}
 }
 
@@ -635,9 +636,11 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 				[IR3_DP_LOCAL_GROUP_SIZE_Y] = info->block[1],
 				[IR3_DP_LOCAL_GROUP_SIZE_Z] = info->block[2],
 			};
+			uint32_t size = MIN2(ARRAY_SIZE(compute_params),
+					v->constlen * 4 - offset * 4);
 
 			ctx->emit_const(ring, MESA_SHADER_COMPUTE, offset * 4, 0,
-					ARRAY_SIZE(compute_params), compute_params, NULL);
+					size, compute_params, NULL);
 		}
 	}
 }
