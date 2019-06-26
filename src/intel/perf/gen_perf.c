@@ -42,6 +42,9 @@
 
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
 
+#define MAP_READ  (1 << 0)
+#define MAP_WRITE (1 << 1)
+
 static bool
 get_sysfs_dev_dir(struct gen_perf_config *perf, int fd)
 {

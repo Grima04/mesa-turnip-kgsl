@@ -418,7 +418,7 @@ read_oa_samples_for_query(struct brw_context *brw,
    /* Map the BO once here and let accumulate_oa_reports() unmap
     * it. */
    if (obj->oa.map == NULL)
-      obj->oa.map = brw_bo_map(brw, obj->oa.bo, MAP_READ);
+      obj->oa.map = brw->perf_ctx.perf->vtbl.bo_map(brw, obj->oa.bo, MAP_READ);
 
    start = last = obj->oa.map;
    end = obj->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
@@ -814,9 +814,9 @@ brw_begin_perf_query(struct gl_context *ctx,
                                             MI_RPC_BO_SIZE);
 #ifdef DEBUG
       /* Pre-filling the BO helps debug whether writes landed. */
-      void *map = brw_bo_map(brw, obj->oa.bo, MAP_WRITE);
+      void *map = brw->perf_ctx.perf->vtbl.bo_map(brw, obj->oa.bo, MAP_WRITE);
       memset(map, 0x80, MI_RPC_BO_SIZE);
-      brw_bo_unmap(obj->oa.bo);
+      brw->perf_ctx.perf->vtbl.bo_unmap(obj->oa.bo);
 #endif
 
       obj->oa.begin_report_id = perf_ctx->next_query_start_report_id;
@@ -1122,10 +1122,12 @@ get_pipeline_stats_data(struct brw_context *brw,
 
 {
    const struct gen_perf_query_info *query = obj->queryinfo;
+   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
    int n_counters = obj->queryinfo->n_counters;
    uint8_t *p = data;
 
-   uint64_t *start = brw_bo_map(brw, obj->pipeline_stats.bo, MAP_READ);
+   uint64_t *start = perf_cfg->vtbl.bo_map(brw, obj->pipeline_stats.bo, MAP_READ);
    uint64_t *end = start + (STATS_BO_END_OFFSET_BYTES / sizeof(uint64_t));
 
    for (int i = 0; i < n_counters; i++) {
@@ -1142,7 +1144,7 @@ get_pipeline_stats_data(struct brw_context *brw,
       p += 8;
    }
 
-   brw_bo_unmap(obj->pipeline_stats.bo);
+   perf_cfg->vtbl.bo_unmap(obj->pipeline_stats.bo);
 
    return p - data;
 }
@@ -1183,7 +1185,7 @@ brw_get_perf_query_data(struct gl_context *ctx,
          accumulate_oa_reports(brw, brw_query);
          assert(obj->oa.results_accumulated);
 
-         brw_bo_unmap(obj->oa.bo);
+         brw->perf_ctx.perf->vtbl.bo_unmap(obj->oa.bo);
          obj->oa.map = NULL;
       }
       if (obj->queryinfo->kind == GEN_PERF_QUERY_TYPE_OA) {
@@ -1448,6 +1450,8 @@ brw_oa_emit_mi_report_perf_count(void *c,
 }
 
 typedef void (*bo_unreference_t)(void *);
+typedef void *(*bo_map_t)(void *, void *, unsigned flags);
+typedef void (*bo_unmap_t)(void *);
 typedef void (* emit_mi_report_t)(void *, void *, uint32_t, uint32_t);
 typedef void (*emit_mi_flush_t)(void *);
 
@@ -1478,6 +1482,8 @@ brw_init_perf_query_info(struct gl_context *ctx)
 
    perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
+   perf_cfg->vtbl.bo_map = (bo_map_t)brw_bo_map;
+   perf_cfg->vtbl.bo_unmap = (bo_unmap_t)brw_bo_unmap;
    perf_cfg->vtbl.emit_mi_flush = (emit_mi_flush_t)brw_emit_mi_flush;
    perf_cfg->vtbl.emit_mi_report_perf_count =
       (emit_mi_report_t)brw_oa_emit_mi_report_perf_count;
