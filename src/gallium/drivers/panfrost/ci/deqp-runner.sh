@@ -2,9 +2,6 @@
 
 set -x
 
-# To prevent memory leaks from slowing throughput, restart everything between batches
-BATCH_SIZE=3000
-
 DEQP_OPTIONS="--deqp-surface-width=256 --deqp-surface-height=256"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-log-images=disable"
@@ -36,8 +33,7 @@ touch /tmp/result.txt
 tail -f /tmp/result.txt &
 
 while [ -s /tmp/case-list.txt ]; do
-	head -$BATCH_SIZE /tmp/case-list.txt > /tmp/next-batch.txt
-	./deqp-gles2 $DEQP_OPTIONS --deqp-log-filename=/dev/null --deqp-caselist-file=/tmp/next-batch.txt >> /tmp/result.txt
+	./deqp-gles2 $DEQP_OPTIONS --deqp-log-filename=/dev/null --deqp-caselist-file=/tmp/case-list.txt >> /tmp/result.txt
 	if [ $? -ne 0 ]; then
 		# Continue from the subtest after the failing one
 		crashed_test=$(grep "Test case" /tmp/result.txt | tail -1 | sed "s/Test case '\(.*\)'\.\./\1/")
@@ -47,7 +43,6 @@ while [ -s /tmp/case-list.txt ]; do
 		echo "Test case '$crashed_test'..
                          Crash"
 	else
-		# Consume a whole batch
-	    sed -i '1,'$BATCH_SIZE'd' /tmp/case-list.txt
+		break
 	fi
 done
