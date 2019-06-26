@@ -795,7 +795,7 @@ brw_begin_perf_query(struct gl_context *ctx,
     * This is our Begin synchronization point to drain current work on the
     * GPU before we capture our first counter snapshot...
     */
-   brw_emit_mi_flush(brw);
+   perf_cfg->vtbl.emit_mi_flush(brw);
 
    switch (query->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
@@ -1004,7 +1004,7 @@ brw_end_perf_query(struct gl_context *ctx,
     * For more details see comment in brw_begin_perf_query for
     * corresponding flush.
     */
-   brw_emit_mi_flush(brw);
+   perf_cfg->vtbl.emit_mi_flush(brw);
 
    switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
@@ -1542,6 +1542,7 @@ brw_oa_emit_mi_report_perf_count(void *c,
 
 typedef void (*bo_unreference_t)(void *);
 typedef void (* emit_mi_report_t)(void *, void *, uint32_t, uint32_t);
+typedef void (*emit_mi_flush_t)(void *);
 
 static void
 brw_oa_batchbuffer_flush(void *c, const char *file, int line)
@@ -1570,6 +1571,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
 
    perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
+   perf_cfg->vtbl.emit_mi_flush = (emit_mi_flush_t)brw_emit_mi_flush;
    perf_cfg->vtbl.emit_mi_report_perf_count =
       (emit_mi_report_t)brw_oa_emit_mi_report_perf_count;
    perf_cfg->vtbl.batchbuffer_flush = brw_oa_batchbuffer_flush;
