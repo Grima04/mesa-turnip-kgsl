@@ -233,6 +233,7 @@ panfrost_find_format(const struct util_format_description *desc)
                         break;
 
                 default:
+                        printf("%s\n", util_format_name(desc->format));
                         unreachable("Invalid format type");
         }
 
