@@ -133,6 +133,21 @@ mask_has_loop(struct lp_exec_mask *mask)
    return FALSE;
 }
 
+static LLVMValueRef
+mask_vec(struct lp_build_tgsi_context *bld_base)
+{
+   struct lp_build_tgsi_soa_context * bld = lp_soa_context(bld_base);
+   LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
+   struct lp_exec_mask *exec_mask = &bld->exec_mask;
+
+   if (!exec_mask->has_mask) {
+      return lp_build_mask_value(bld->mask);
+   }
+   return LLVMBuildAnd(builder, lp_build_mask_value(bld->mask),
+                       exec_mask->exec_mask, "");
+}
+
+
 /*
  * Returns true if we're inside a switch statement.
  * It's global, meaning that it returns true even if there's
@@ -3354,20 +3369,6 @@ lod_emit(
 
    emit_sample(bld, emit_data->inst, LP_BLD_TEX_MODIFIER_NONE,
                FALSE, LP_SAMPLER_OP_LODQ, emit_data->output);
-}
-
-static LLVMValueRef
-mask_vec(struct lp_build_tgsi_context *bld_base)
-{
-   struct lp_build_tgsi_soa_context * bld = lp_soa_context(bld_base);
-   LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
-   struct lp_exec_mask *exec_mask = &bld->exec_mask;
-
-   if (!exec_mask->has_mask) {
-      return lp_build_mask_value(bld->mask);
-   }
-   return LLVMBuildAnd(builder, lp_build_mask_value(bld->mask),
-                       exec_mask->exec_mask, "");
 }
 
 static void
