@@ -3838,7 +3838,9 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
                   LLVMValueRef thread_data_ptr,
                   const struct lp_build_sampler_soa *sampler,
                   const struct tgsi_shader_info *info,
-                  const struct lp_build_tgsi_gs_iface *gs_iface)
+                  const struct lp_build_tgsi_gs_iface *gs_iface,
+                  LLVMValueRef ssbo_ptr,
+                  LLVMValueRef ssbo_sizes_ptr)
 {
    struct lp_build_tgsi_soa_context bld;
 
@@ -3879,6 +3881,8 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.outputs = outputs;
    bld.consts_ptr = consts_ptr;
    bld.const_sizes_ptr = const_sizes_ptr;
+   bld.ssbo_ptr = ssbo_ptr;
+   bld.ssbo_sizes_ptr = ssbo_sizes_ptr;
    bld.sampler = sampler;
    bld.bld_base.info = info;
    bld.indirect_files = info->indirect_files;

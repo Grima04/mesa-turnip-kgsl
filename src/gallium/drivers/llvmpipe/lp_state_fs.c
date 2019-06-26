@@ -479,7 +479,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                      consts_ptr, num_consts_ptr, &system_values,
                      interp->inputs,
                      outputs, context_ptr, thread_data_ptr,
-                     sampler, &shader->info.base, NULL);
+                     sampler, &shader->info.base, NULL, NULL, NULL);
 
    /* Alpha test */
    if (key->alpha.enabled) {

@@ -630,7 +630,7 @@ generate_vs(struct draw_llvm_variant *variant,
                      NULL,
                      draw_sampler,
                      &llvm->draw->vs.vertex_shader->info,
-                     NULL);
+                     NULL, NULL, NULL);
 
    {
       LLVMValueRef out;
@@ -2363,7 +2363,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
                      NULL,
                      sampler,
                      &llvm->draw->gs.geometry_shader->info,
-                     (const struct lp_build_tgsi_gs_iface *)&gs_iface);
+                     (const struct lp_build_tgsi_gs_iface *)&gs_iface, NULL, NULL);
 
    sampler->destroy(sampler);
 
