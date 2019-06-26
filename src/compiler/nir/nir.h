@@ -807,15 +807,6 @@ nir_src_is_const(nir_src src)
           src.ssa->parent_instr->type == nir_instr_type_load_const;
 }
 
-int64_t nir_src_as_int(nir_src src);
-uint64_t nir_src_as_uint(nir_src src);
-bool nir_src_as_bool(nir_src src);
-double nir_src_as_float(nir_src src);
-int64_t nir_src_comp_as_int(nir_src src, unsigned component);
-uint64_t nir_src_comp_as_uint(nir_src src, unsigned component);
-bool nir_src_comp_as_bool(nir_src src, unsigned component);
-double nir_src_comp_as_float(nir_src src, unsigned component);
-
 static inline unsigned
 nir_dest_bit_size(nir_dest dest)
 {
@@ -1982,6 +1973,34 @@ NIR_DEFINE_CAST(nir_instr_as_phi, nir_instr, nir_phi_instr, instr,
 NIR_DEFINE_CAST(nir_instr_as_parallel_copy, nir_instr,
                 nir_parallel_copy_instr, instr,
                 type, nir_instr_type_parallel_copy)
+
+
+#define NIR_DEFINE_SRC_AS_CONST(type, suffix)               \
+static inline type                                          \
+nir_src_comp_as_##suffix(nir_src src, unsigned comp)        \
+{                                                           \
+   assert(nir_src_is_const(src));                           \
+   nir_load_const_instr *load =                             \
+      nir_instr_as_load_const(src.ssa->parent_instr);       \
+   assert(comp < load->def.num_components);                 \
+   return nir_const_value_as_##suffix(load->value[comp],    \
+                                      load->def.bit_size);  \
+}                                                           \
+                                                            \
+static inline type                                          \
+nir_src_as_##suffix(nir_src src)                            \
+{                                                           \
+   assert(nir_src_num_components(src) == 1);                \
+   return nir_src_comp_as_##suffix(src, 0);                 \
+}
+
+NIR_DEFINE_SRC_AS_CONST(int64_t,    int)
+NIR_DEFINE_SRC_AS_CONST(uint64_t,   uint)
+NIR_DEFINE_SRC_AS_CONST(bool,       bool)
+NIR_DEFINE_SRC_AS_CONST(double,     float)
+
+#undef NIR_DEFINE_SRC_AS_CONST
+
 
 /*
  * Control flow
