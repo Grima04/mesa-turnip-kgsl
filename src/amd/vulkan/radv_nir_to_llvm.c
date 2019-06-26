@@ -2191,14 +2191,6 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 					buffer_index = LLVMBuildUDiv(ctx->ac.builder, buffer_index,
 					                             LLVMConstInt(ctx->ac.i32, divisor, 0), "");
 				}
-
-				if (ctx->options->key.vs.as_ls) {
-					ctx->shader_info->vs.vgpr_comp_cnt =
-						MAX2(2, ctx->shader_info->vs.vgpr_comp_cnt);
-				} else {
-					ctx->shader_info->vs.vgpr_comp_cnt =
-						MAX2(1, ctx->shader_info->vs.vgpr_comp_cnt);
-				}
 			} else {
 				buffer_index = ctx->ac.i32_0;
 			}
@@ -3047,8 +3039,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 		LLVMValueRef values[4];
 
 		values[0] = ctx->vs_prim_id;
-		ctx->shader_info->vs.vgpr_comp_cnt = MAX2(2,
-							  ctx->shader_info->vs.vgpr_comp_cnt);
 		for (unsigned j = 1; j < 4; j++)
 			values[j] = ctx->ac.f32_0;
 
@@ -3756,15 +3746,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			ctx.tcs_vertices_per_patch = shaders[i]->info.tess.tcs_vertices_out;
 			ctx.tcs_num_patches = ctx.options->key.tes.num_patches;
 		} else if (shaders[i]->info.stage == MESA_SHADER_VERTEX) {
-			if (shader_info->info.vs.needs_instance_id) {
-				if (ctx.options->key.vs.as_ls) {
-					ctx.shader_info->vs.vgpr_comp_cnt =
-						MAX2(2, ctx.shader_info->vs.vgpr_comp_cnt);
-				} else {
-					ctx.shader_info->vs.vgpr_comp_cnt =
-						MAX2(1, ctx.shader_info->vs.vgpr_comp_cnt);
-				}
-			}
 			ctx.abi.load_base_vertex = radv_load_base_vertex;
 		} else if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT) {
 			shader_info->fs.can_discard = shaders[i]->info.fs.uses_discard;
@@ -3999,9 +3980,6 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
         case MESA_SHADER_VERTEX:
                 shader_info->vs.as_es = options->key.vs.as_es;
                 shader_info->vs.as_ls = options->key.vs.as_ls;
-                /* in LS mode we need at least 1, invocation id needs 2, handled elsewhere */
-                if (options->key.vs.as_ls)
-                        shader_info->vs.vgpr_comp_cnt = MAX2(1, shader_info->vs.vgpr_comp_cnt);
                 break;
         default:
                 break;

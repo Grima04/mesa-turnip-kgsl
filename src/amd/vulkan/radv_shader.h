@@ -266,7 +266,6 @@ struct radv_shader_variant_info {
 		struct {
 			struct radv_vs_output_info outinfo;
 			struct radv_es_output_info es_info;
-			unsigned vgpr_comp_cnt;
 			bool as_es;
 			bool as_ls;
 		} vs;

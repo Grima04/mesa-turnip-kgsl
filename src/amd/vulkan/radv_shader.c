@@ -507,13 +507,40 @@ radv_fill_shader_variant(struct radv_device *device,
 		break;
 	case MESA_SHADER_TESS_CTRL:
 		if (device->physical_device->rad_info.chip_class >= GFX9) {
-			vgpr_comp_cnt = variant->info.vs.vgpr_comp_cnt;
+			/* We need at least 2 components for LS.
+			 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
+			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
+			 */
+			vgpr_comp_cnt = info->vs.needs_instance_id ? 2 : 1;
 		} else {
 			variant->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
 		break;
 	case MESA_SHADER_VERTEX:
-		vgpr_comp_cnt = variant->info.vs.vgpr_comp_cnt;
+		if (variant->info.vs.as_ls) {
+			assert(device->physical_device->rad_info.chip_class <= GFX8);
+			/* We need at least 2 components for LS.
+			 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
+			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
+			 */
+			vgpr_comp_cnt = info->vs.needs_instance_id ? 2 : 1;
+		} else if (variant->info.vs.as_es) {
+			assert(device->physical_device->rad_info.chip_class <= GFX8);
+			/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
+			vgpr_comp_cnt = info->vs.needs_instance_id ? 1 : 0;
+		} else {
+			/* VGPR0-3: (VertexID, InstanceID / StepRate0, PrimID, InstanceID)
+			 * If PrimID is disabled. InstanceID / StepRate1 is loaded instead.
+			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
+			 */
+			if (options->key.vs.export_prim_id) {
+				vgpr_comp_cnt = 2;
+			} else if (info->vs.needs_instance_id) {
+				vgpr_comp_cnt = 1;
+			} else {
+				vgpr_comp_cnt = 0;
+			}
+		}
 		break;
 	case MESA_SHADER_FRAGMENT:
 	case MESA_SHADER_GEOMETRY:
@@ -539,7 +566,8 @@ radv_fill_shader_variant(struct radv_device *device,
 		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
 
 		if (es_type == MESA_SHADER_VERTEX) {
-			es_vgpr_comp_cnt = variant->info.vs.vgpr_comp_cnt;
+			/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
+			es_vgpr_comp_cnt = info->vs.needs_instance_id ? 1 : 0;
 		} else if (es_type == MESA_SHADER_TESS_EVAL) {
 			es_vgpr_comp_cnt = info->uses_prim_id ? 3 : 2;
 		} else {
