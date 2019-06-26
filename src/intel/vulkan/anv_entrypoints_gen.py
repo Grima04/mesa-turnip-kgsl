@@ -117,7 +117,7 @@ extern const struct anv_device_dispatch_table ${layer}_device_dispatch_table;
 %endfor
 
 % for e in instance_entrypoints:
-  % if e.alias:
+  % if e.alias and e.alias.enabled:
     <% continue %>
   % endif
   % if e.guard is not None:
@@ -145,7 +145,7 @@ extern const struct anv_device_dispatch_table ${layer}_device_dispatch_table;
 % endfor
 
 % for e in device_entrypoints:
-  % if e.alias:
+  % if e.alias and e.alias.enabled:
     <% continue %>
   % endif
   % if e.guard is not None:
@@ -278,7 +278,7 @@ ${strmap(device_strmap, 'device')}
  */
 
 % for e in instance_entrypoints:
-  % if e.alias:
+  % if e.alias and e.alias.enabled:
     <% continue %>
   % endif
   % if e.guard is not None:
@@ -345,7 +345,7 @@ const struct anv_instance_dispatch_table anv_instance_dispatch_table = {
 
 % for layer in LAYERS:
   % for e in device_entrypoints:
-    % if e.alias:
+    % if e.alias and e.alias.enabled:
       <% continue %>
     % endif
     % if e.guard is not None:
@@ -652,6 +652,10 @@ class EntrypointBase(object):
         self.core_version = None
         self.extensions = []
 
+    def prefixed_name(self, prefix):
+        assert self.name.startswith('vk')
+        return prefix + '_' + self.name[2:]
+
 class Entrypoint(EntrypointBase):
     def __init__(self, name, return_type, params, guard=None):
         super(Entrypoint, self).__init__(name)
@@ -664,10 +668,6 @@ class Entrypoint(EntrypointBase):
 
     def is_device_entrypoint(self):
         return self.params[0].type in ('VkDevice', 'VkCommandBuffer', 'VkQueue')
-
-    def prefixed_name(self, prefix):
-        assert self.name.startswith('vk')
-        return prefix + '_' + self.name[2:]
 
     def decl_params(self):
         return ', '.join(p.decl for p in self.params)
@@ -687,7 +687,23 @@ class EntrypointAlias(EntrypointBase):
         return self.alias.is_device_entrypoint()
 
     def prefixed_name(self, prefix):
-        return self.alias.prefixed_name(prefix)
+        if self.alias.enabled:
+            return self.alias.prefixed_name(prefix)
+        return super(EntrypointAlias, self).prefixed_name(prefix)
+
+    @property
+    def params(self):
+        return self.alias.params
+
+    @property
+    def return_type(self):
+        return self.alias.return_type
+
+    def decl_params(self):
+        return self.alias.decl_params()
+
+    def call_params(self):
+        return self.alias.call_params()
 
 def get_entrypoints(doc, entrypoints_to_defines):
     """Extract the entry points from the registry."""
