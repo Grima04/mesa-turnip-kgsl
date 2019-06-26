@@ -1918,21 +1918,25 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_fdot_replicated2:
+      try_immediate_source(instr, &op[1], devinfo);
       inst = emit(BRW_OPCODE_DP2, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fdot_replicated3:
+      try_immediate_source(instr, &op[1], devinfo);
       inst = emit(BRW_OPCODE_DP3, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fdot_replicated4:
+      try_immediate_source(instr, &op[1], devinfo);
       inst = emit(BRW_OPCODE_DP4, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_fdph_replicated:
+      try_immediate_source(instr, &op[1], devinfo);
       inst = emit(BRW_OPCODE_DPH, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
