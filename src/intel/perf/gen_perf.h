@@ -597,4 +597,7 @@ bool gen_perf_open(struct gen_perf_context *perfquery,
                    int drm_fd,
                    uint32_t ctx_id);
 
+bool gen_perf_inc_n_users(struct gen_perf_context *perfquery);
+void gen_perf_dec_n_users(struct gen_perf_context *perfquery);
+
 #endif /* GEN_PERF_H */

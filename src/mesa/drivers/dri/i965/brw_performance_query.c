@@ -311,38 +311,6 @@ drop_from_unaccumulated_query_list(struct brw_context *brw,
    gen_perf_reap_old_sample_buffers(&brw->perf_ctx);
 }
 
-static bool
-inc_n_oa_users(struct brw_context *brw)
-{
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   if (perf_ctx->n_oa_users == 0 &&
-       drmIoctl(perf_ctx->oa_stream_fd,
-                I915_PERF_IOCTL_ENABLE, 0) < 0)
-   {
-      return false;
-   }
-   ++perf_ctx->n_oa_users;
-
-   return true;
-}
-
-static void
-dec_n_oa_users(struct brw_context *brw)
-{
-   /* Disabling the i915 perf stream will effectively disable the OA
-    * counters.  Note it's important to be sure there are no outstanding
-    * MI_RPC commands at this point since they could stall the CS
-    * indefinitely once OACONTROL is disabled.
-    */
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   --perf_ctx->n_oa_users;
-   if (perf_ctx->n_oa_users == 0 &&
-       drmIoctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_DISABLE, 0) < 0)
-   {
-      DBG("WARNING: Error disabling i915 perf stream: %m\n");
-   }
-}
-
 /* In general if we see anything spurious while accumulating results,
  * we don't try and continue accumulating the current query, hoping
  * for the best, we scrap anything outstanding, and then hope for the
@@ -358,7 +326,7 @@ discard_all_queries(struct brw_context *brw)
       obj->oa.results_accumulated = true;
       drop_from_unaccumulated_query_list(brw, perf_ctx->unaccumulated[0]);
 
-      dec_n_oa_users(brw);
+      gen_perf_dec_n_users(perf_ctx);
    }
 }
 
@@ -503,6 +471,7 @@ accumulate_oa_reports(struct brw_context *brw,
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct gen_perf_query_object *obj = brw_query->query;
+   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
    uint32_t *start;
    uint32_t *last;
    uint32_t *end;
@@ -642,7 +611,7 @@ end:
 
    obj->oa.results_accumulated = true;
    drop_from_unaccumulated_query_list(brw, obj);
-   dec_n_oa_users(brw);
+   gen_perf_dec_n_users(perf_ctx);
 
    return;
 
@@ -829,7 +798,7 @@ brw_begin_perf_query(struct gl_context *ctx,
                 perf_ctx->current_oa_format == query->oa_format);
       }
 
-      if (!inc_n_oa_users(brw)) {
+      if (!gen_perf_inc_n_users(perf_ctx)) {
          DBG("WARNING: Error enabling i915 perf stream: %m\n");
          return false;
       }
@@ -1294,7 +1263,7 @@ brw_delete_perf_query(struct gl_context *ctx,
       if (obj->oa.bo) {
          if (!obj->oa.results_accumulated) {
             drop_from_unaccumulated_query_list(brw, obj);
-            dec_n_oa_users(brw);
+            gen_perf_dec_n_users(perf_ctx);
          }
 
          perf_cfg->vtbl.bo_unreference(obj->oa.bo);

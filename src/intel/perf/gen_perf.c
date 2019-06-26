@@ -959,3 +959,32 @@ gen_perf_open(struct gen_perf_context *perf_ctx,
 
    return true;
 }
+
+bool
+gen_perf_inc_n_users(struct gen_perf_context *perf_ctx)
+{
+   if (perf_ctx->n_oa_users == 0 &&
+       gen_ioctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_ENABLE, 0) < 0)
+   {
+      return false;
+   }
+   ++perf_ctx->n_oa_users;
+
+   return true;
+}
+
+void
+gen_perf_dec_n_users(struct gen_perf_context *perf_ctx)
+{
+   /* Disabling the i915 perf stream will effectively disable the OA
+    * counters.  Note it's important to be sure there are no outstanding
+    * MI_RPC commands at this point since they could stall the CS
+    * indefinitely once OACONTROL is disabled.
+    */
+   --perf_ctx->n_oa_users;
+   if (perf_ctx->n_oa_users == 0 &&
+       gen_ioctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_DISABLE, 0) < 0)
+   {
+      DBG("WARNING: Error disabling gen perf stream: %m\n");
+   }
+}
