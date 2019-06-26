@@ -1943,8 +1943,7 @@ genX(upload_wm)(struct brw_context *brw)
       if (wm_prog_data->base.use_alt_mode)
          wm.FloatingPointMode = FLOATING_POINT_MODE_Alternate;
 
-      /* WA_1606682166 */
-      wm.SamplerCount = (GEN_GEN == 5 || GEN_GEN == 11) ?
+      wm.SamplerCount = GEN_GEN == 5 ?
          0 : DIV_ROUND_UP(stage_state->sampler_count, 4);
 
       wm.BindingTableEntryCount =
