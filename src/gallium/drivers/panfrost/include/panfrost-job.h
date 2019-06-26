@@ -318,6 +318,7 @@ enum mali_format {
 	MALI_RGB32_FIXED    = MALI_FORMAT_SPECIAL | 0x13,
 	MALI_RGBA32_FIXED   = MALI_FORMAT_SPECIAL | 0x14,
 	MALI_R11F_G11F_B10F = MALI_FORMAT_SPECIAL | 0x19,
+        MALI_R9F_G9F_B9F_E5F = MALI_FORMAT_SPECIAL | 0x1b,
 	/* Only used for varyings, to indicate the transformed gl_Position */
 	MALI_VARYING_POS    = MALI_FORMAT_SPECIAL | 0x1e,
 	/* Only used for varyings, to indicate that the write should be
