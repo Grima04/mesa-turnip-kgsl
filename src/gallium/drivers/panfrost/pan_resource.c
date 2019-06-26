@@ -193,7 +193,7 @@ panfrost_compute_checksum_sizes(
                 unsigned height)
 {
         unsigned aligned_width = ALIGN(width, CHECKSUM_TILE_WIDTH);
-        unsigned aligned_height = ALIGN(width, CHECKSUM_TILE_HEIGHT);
+        unsigned aligned_height = ALIGN(height, CHECKSUM_TILE_HEIGHT);
 
         unsigned tile_count_x = aligned_width / CHECKSUM_TILE_WIDTH;
         unsigned tile_count_y = aligned_height / CHECKSUM_TILE_HEIGHT;
