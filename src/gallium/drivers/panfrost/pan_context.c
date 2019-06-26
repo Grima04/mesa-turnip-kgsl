@@ -2166,9 +2166,6 @@ panfrost_create_sampler_view(
          * (data) itself. So, we serialise the descriptor here and cache it for
          * later. */
 
-        /* Make sure it's something with which we're familiar */
-        assert(bytes_per_pixel >= 1 && bytes_per_pixel <= 4);
-
         /* TODO: Detect from format better */
         const struct util_format_description *desc = util_format_description(prsrc->base.format);
 
