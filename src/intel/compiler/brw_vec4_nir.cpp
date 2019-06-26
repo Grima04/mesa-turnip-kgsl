@@ -1020,8 +1020,7 @@ static void
 try_immediate_source(const nir_alu_instr *instr, src_reg *op,
                      MAYBE_UNUSED const gen_device_info *devinfo)
 {
-   if (nir_src_num_components(instr->src[1].src) != 1 ||
-       nir_src_bit_size(instr->src[1].src) != 32 ||
+   if (nir_src_bit_size(instr->src[1].src) != 32 ||
        !nir_src_is_const(instr->src[1].src))
       return;
 
@@ -1030,7 +1029,21 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
    switch (old_type) {
    case BRW_REGISTER_TYPE_D:
    case BRW_REGISTER_TYPE_UD: {
-      int d = nir_src_as_int(instr->src[1].src);
+      int first_comp = -1;
+      int d;
+
+      for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
+         if (nir_alu_instr_channel_used(instr, 1, i)) {
+            if (first_comp < 0) {
+               first_comp = i;
+               d = nir_src_comp_as_int(instr->src[1].src,
+                                       instr->src[1].swizzle[i]);
+            } else if (d != nir_src_comp_as_int(instr->src[1].src,
+                                                instr->src[1].swizzle[i])) {
+               return;
+            }
+         }
+      }
 
       if (op->abs)
          d = MAX2(-d, d);
@@ -1051,7 +1064,21 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
    }
 
    case BRW_REGISTER_TYPE_F: {
-      float f = nir_src_as_float(instr->src[1].src);
+      int first_comp = -1;
+      float f;
+
+      for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
+         if (nir_alu_instr_channel_used(instr, 1, i)) {
+            if (first_comp < 0) {
+               first_comp = i;
+               f = nir_src_comp_as_float(instr->src[1].src,
+                                         instr->src[1].swizzle[i]);
+            } else if (f != nir_src_comp_as_float(instr->src[1].src,
+                                                  instr->src[1].swizzle[i])) {
+               return;
+            }
+         }
+      }
 
       if (op->abs)
          f = fabs(f);
