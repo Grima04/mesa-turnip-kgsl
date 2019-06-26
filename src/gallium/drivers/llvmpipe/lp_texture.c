@@ -646,7 +646,8 @@ llvmpipe_is_resource_referenced( struct pipe_context *pipe,
    struct llvmpipe_context *llvmpipe = llvmpipe_context( pipe );
    if (!(presource->bind & (PIPE_BIND_DEPTH_STENCIL |
                             PIPE_BIND_RENDER_TARGET |
-                            PIPE_BIND_SAMPLER_VIEW)))
+                            PIPE_BIND_SAMPLER_VIEW |
+                            PIPE_BIND_SHADER_BUFFER)))
       return LP_UNREFERENCED;
 
    return lp_setup_is_resource_referenced(llvmpipe->setup, presource);
