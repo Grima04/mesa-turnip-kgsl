@@ -1569,7 +1569,8 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                         /* Non-texel fetch doesn't need that
                                          * nonsense. However we do use the Z
                                          * for array indexing */
-                                        ins.texture.in_reg_swizzle = SWIZZLE_XYXZ;
+                                        bool is_3d = instr->sampler_dim == GLSL_SAMPLER_DIM_3D;
+                                        ins.texture.in_reg_swizzle = is_3d ? SWIZZLE_XYZZ : SWIZZLE_XYXZ;
                                 }
                         }
 
