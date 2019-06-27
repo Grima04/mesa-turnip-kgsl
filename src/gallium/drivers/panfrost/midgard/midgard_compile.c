@@ -1237,6 +1237,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
 
+                /* Get the base type of the intrinsic */
+                nir_alu_type t = nir_intrinsic_type(instr);
+                t = nir_alu_type_get_base_type(t);
+
                 if (!is_ubo) {
                         offset = nir_intrinsic_base(instr);
                 }
@@ -1287,6 +1291,22 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
                         ins.load_store.mask = mask_of(nr_comp);
+
+                        /* Use the type appropriate load */
+                        switch (t) {
+                                case nir_type_int:
+                                case nir_type_uint:
+                                case nir_type_bool:
+                                        ins.load_store.op = midgard_op_ld_attr_32i;
+                                        break;
+                                case nir_type_float:
+                                        ins.load_store.op = midgard_op_ld_attr_32;
+                                        break;
+                                default:
+                                        unreachable("Attempted to load unknown type");
+                                        break;
+                        }
+
                         emit_mir_instruction(ctx, ins);
                 } else {
                         DBG("Unknown load\n");
