@@ -795,9 +795,11 @@ optimizations.extend([
 
    # Alternative lowering that doesn't rely on bfi.
    (('bitfield_insert', 'base', 'insert', 'offset', 'bits'),
-    ('ior',
-    ('iand', 'base', ('inot', ('ishl', ('isub', ('ishl', 1, 'bits'), 1), 'offset'))),
-    ('iand', ('ishl', 'insert', 'offset'), ('ishl', ('isub', ('ishl', 1, 'bits'), 1), 'offset'))),
+    ('bcsel', ('ult', 31, 'bits'),
+     'insert',
+    (('ior',
+     ('iand', 'base', ('inot', ('ishl', ('isub', ('ishl', 1, 'bits'), 1), 'offset'))),
+     ('iand', ('ishl', 'insert', 'offset'), ('ishl', ('isub', ('ishl', 1, 'bits'), 1), 'offset'))))),
     'options->lower_bitfield_insert_to_shifts'),
 
    # Alternative lowering that uses bitfield_select.
