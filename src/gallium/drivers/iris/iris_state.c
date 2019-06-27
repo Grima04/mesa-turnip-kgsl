@@ -2535,8 +2535,6 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 
          assert(map);
          memcpy(map, input->user_buffer, input->buffer_size);
-         u_upload_unmap(ice->ctx.const_uploader);
-
       } else if (input->buffer) {
          pipe_resource_reference(&cbuf->buffer, input->buffer);
 
