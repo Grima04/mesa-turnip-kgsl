@@ -1096,9 +1096,6 @@ struct bifrost_payload_fused {
         struct mali_vertex_tiler_postfix vertex_postfix;
 } __attribute__((packed));
 
-/* Pointed to from texture_trampoline, mostly unknown still, haven't
- * managed to replay successfully */
-
 /* Purposeful off-by-one in width, height fields. For example, a (64, 64)
  * texture is stored as (63, 63) in these fields. This adjusts for that.
  * There's an identical pattern in the framebuffer descriptor. Even vertex
