@@ -984,6 +984,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			OUT_RING(ring, blend_control);
 		}
 
+		OUT_PKT4(ring, REG_A6XX_RB_DITHER_CNTL, 1);
+		OUT_RING(ring, blend->rb_dither_cntl);
+
 		OUT_PKT4(ring, REG_A6XX_SP_BLEND_CNTL, 1);
 		OUT_RING(ring, blend->sp_blend_cntl);
 	}
