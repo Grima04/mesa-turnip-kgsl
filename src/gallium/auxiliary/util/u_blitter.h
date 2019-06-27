@@ -624,6 +624,7 @@ util_blitter_get_color_format_for_zs(enum pipe_format format)
    default:
       assert(0);
    }
+   return PIPE_FORMAT_NONE;
 }
 
 #ifdef __cplusplus
