@@ -5624,6 +5624,10 @@ iris_destroy_state(struct iris_context *ice)
    }
    free(ice->state.genx);
 
+   for (int i = 0; i < 4; i++) {
+      pipe_so_target_reference(&ice->state.so_target[i], NULL);
+   }
+
    for (unsigned i = 0; i < ice->state.framebuffer.nr_cbufs; i++) {
       pipe_surface_reference(&ice->state.framebuffer.cbufs[i], NULL);
    }
