@@ -748,6 +748,17 @@ iris_init_render_context(struct iris_screen *screen,
       }
       iris_emit_lri(batch, SLICE_COMMON_ECO_CHICKEN1, reg_val);
 
+      /* Hardware specification recommends disabling repacking for the
+       * compatibility with decompression mechanism in display controller.
+       */
+      if (devinfo->disable_ccs_repack) {
+         iris_pack_state(GENX(CACHE_MODE_0), &reg_val, reg) {
+            reg.DisableRepackingforCompression = true;
+            reg.DisableRepackingforCompressionMask = true;
+         }
+         iris_emit_lri(batch, CACHE_MODE_0, reg_val);
+      }
+
       // XXX: 3D_MODE?
 #endif
 
