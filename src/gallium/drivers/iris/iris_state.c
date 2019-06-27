@@ -2180,11 +2180,13 @@ iris_set_clip_state(struct pipe_context *ctx,
 {
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_VERTEX];
+   struct iris_shader_state *gshs = &ice->state.shaders[MESA_SHADER_GEOMETRY];
 
    memcpy(&ice->state.clip_planes, state, sizeof(*state));
 
-   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS;
+   ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS | IRIS_DIRTY_CONSTANTS_GS;
    shs->sysvals_need_upload = true;
+   gshs->sysvals_need_upload = true;
 }
 
 /**
@@ -3336,12 +3338,14 @@ iris_emit_sbe(struct iris_batch *batch, const struct iris_context *ice)
 static void
 iris_populate_vs_key(const struct iris_context *ice,
                      const struct shader_info *info,
+                     gl_shader_stage last_stage,
                      struct brw_vs_prog_key *key)
 {
    const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
 
    if (info->clip_distance_array_size == 0 &&
-       (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)))
+       (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)) &&
+       last_stage == MESA_SHADER_VERTEX)
       key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 }
 
@@ -3368,8 +3372,16 @@ iris_populate_tes_key(const struct iris_context *ice,
  */
 static void
 iris_populate_gs_key(const struct iris_context *ice,
+                     const struct shader_info *info,
+                     gl_shader_stage last_stage,
                      struct brw_gs_prog_key *key)
 {
+   const struct iris_rasterizer_state *cso_rast = ice->state.cso_rast;
+
+   if (info->clip_distance_array_size == 0 &&
+       (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)) &&
+       last_stage == MESA_SHADER_GEOMETRY)
+      key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 }
 
 /**

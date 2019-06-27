@@ -323,6 +323,15 @@ struct brw_tes_prog_key
 struct brw_gs_prog_key
 {
    struct brw_base_prog_key base;
+
+   /**
+    * How many user clipping planes are being uploaded to the geometry shader
+    * as push constants.
+    *
+    * These are used for lowering legacy gl_ClipVertex/gl_Position clipping to
+    * clip distances.
+    */
+   unsigned nr_userclip_plane_consts:4;
 };
 
 enum brw_sf_primitive {

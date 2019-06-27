@@ -869,6 +869,22 @@ iris_debug_recompile(struct iris_context *ice,
    brw_debug_key_recompile(c, &ice->dbg, info->stage, old_key, key);
 }
 
+/**
+ * Get the shader for the last enabled geometry stage.
+ *
+ * This stage is the one which will feed stream output and the rasterizer.
+ */
+static gl_shader_stage
+last_vue_stage(struct iris_context *ice)
+{
+   if (ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
+      return MESA_SHADER_GEOMETRY;
+
+   if (ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
+      return MESA_SHADER_TESS_EVAL;
+
+   return MESA_SHADER_VERTEX;
+}
 
 /**
  * Compile a vertex shader, and upload the assembly.
@@ -968,7 +984,7 @@ iris_update_compiled_vs(struct iris_context *ice)
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    struct brw_vs_prog_key key = { KEY_INIT(devinfo->gen) };
-   ice->vtbl.populate_vs_key(ice, &ish->nir->info, &key);
+   ice->vtbl.populate_vs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_VS];
    struct iris_compiled_shader *shader =
@@ -1341,6 +1357,15 @@ iris_compile_gs(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
+   if (key->nr_userclip_plane_consts) {
+      nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+      nir_lower_clip_gs(nir, (1 << key->nr_userclip_plane_consts) - 1);
+      nir_lower_io_to_temporaries(nir, impl, true, false);
+      nir_lower_global_vars_to_local(nir);
+      nir_lower_vars_to_ssa(nir);
+      nir_shader_gather_info(nir, impl);
+   }
+
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values, &num_cbufs);
 
@@ -1403,7 +1428,7 @@ iris_update_compiled_gs(struct iris_context *ice)
       struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
       const struct gen_device_info *devinfo = &screen->devinfo;
       struct brw_gs_prog_key key = { KEY_INIT(devinfo->gen) };
-      ice->vtbl.populate_gs_key(ice, &key);
+      ice->vtbl.populate_gs_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
       shader =
          iris_find_cached_shader(ice, IRIS_CACHE_GS, sizeof(key), &key);
@@ -1524,23 +1549,6 @@ iris_update_compiled_fs(struct iris_context *ice)
                           IRIS_DIRTY_SBE;
       shs->sysvals_need_upload = true;
    }
-}
-
-/**
- * Get the shader for the last enabled geometry stage.
- *
- * This stage is the one which will feed stream output and the rasterizer.
- */
-static gl_shader_stage
-last_vue_stage(struct iris_context *ice)
-{
-   if (ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
-      return MESA_SHADER_GEOMETRY;
-
-   if (ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
-      return MESA_SHADER_TESS_EVAL;
-
-   return MESA_SHADER_VERTEX;
 }
 
 /**
@@ -2026,6 +2034,10 @@ iris_create_gs_state(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
+
+   /* User clip planes */
+   if (ish->nir->info.clip_distance_array_size == 0)
+      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
 
    if (screen->precompile) {
       const struct gen_device_info *devinfo = &screen->devinfo;
