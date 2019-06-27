@@ -23,13 +23,13 @@
  *
  **************************************************************************/
 
-#include "u_format.h"
-#include "u_format_bptc.h"
+#include "util/format/u_format.h"
+#include "util/format/u_format_bptc.h"
 #include "util/format_srgb.h"
 #include "util/u_math.h"
 
 #define BPTC_BLOCK_DECODE
-#include "../../../mesa/main/texcompress_bptc_tmp.h"
+#include "../../mesa/main/texcompress_bptc_tmp.h"
 
 void
 util_format_bptc_rgba_unorm_unpack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,

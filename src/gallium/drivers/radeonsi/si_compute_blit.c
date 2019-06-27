@@ -24,7 +24,7 @@
  */
 
 #include "si_pipe.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/format_srgb.h"
 
 /* Note: Compute shaders always use SI_COMPUTE_DST_CACHE_POLICY for dst

@@ -38,7 +38,7 @@
 #include "pipe/p_screen.h"
 #include "cso_cache/cso_context.h"
 #include "tgsi/tgsi_ureg.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_upload_mgr.h"
 

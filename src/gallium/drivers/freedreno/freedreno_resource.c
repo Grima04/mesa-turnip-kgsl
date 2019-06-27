@@ -24,9 +24,9 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include "util/u_format.h"
-#include "util/u_format_rgtc.h"
-#include "util/u_format_zs.h"
+#include "util/format/u_format.h"
+#include "util/format/u_format_rgtc.h"
+#include "util/format/u_format_zs.h"
 #include "util/u_inlines.h"
 #include "util/u_transfer.h"
 #include "util/u_string.h"

@@ -27,7 +27,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_screen.h"
 #include "util/u_inlines.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_upload_mgr.h"
 #include "util/ralloc.h"
 #include "iris_context.h"

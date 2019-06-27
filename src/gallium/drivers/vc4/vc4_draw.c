@@ -24,7 +24,7 @@
 
 #include "util/u_blitter.h"
 #include "util/u_prim.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_pack_color.h"
 #include "util/u_upload_mgr.h"
 #include "indices/u_primconvert.h"

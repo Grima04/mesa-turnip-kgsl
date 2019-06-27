@@ -27,7 +27,7 @@
 
 #include "drm-uapi/drm_fourcc.h"
 #include "pipe/p_screen.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 #include "fd6_screen.h"
 #include "fd6_blitter.h"

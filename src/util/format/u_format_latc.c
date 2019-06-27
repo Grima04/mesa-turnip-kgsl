@@ -23,9 +23,9 @@
  **************************************************************************/
 
 #include <stdio.h>
-#include "u_format.h"
-#include "u_format_rgtc.h"
-#include "u_format_latc.h"
+#include "util/format/u_format.h"
+#include "util/format/u_format_rgtc.h"
+#include "util/format/u_format_latc.h"
 #include "util/rgtc.h"
 #include "util/u_math.h"
 

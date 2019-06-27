@@ -31,7 +31,7 @@
 #include "pan_context.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_pack_color.h"
 #include "pan_util.h"
 #include "pandecode/decode.h"

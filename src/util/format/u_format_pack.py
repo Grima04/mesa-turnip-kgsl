@@ -701,7 +701,7 @@ def generate(formats):
     print()
     print('#include "pipe/p_compiler.h"')
     print('#include "util/u_math.h"')
-    print('#include "u_half.h"')
+    print('#include "util/u_half.h"')
     print('#include "u_format.h"')
     print('#include "u_format_other.h"')
     print('#include "util/format_srgb.h"')

@@ -40,7 +40,7 @@
 #include "util/u_dump.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_cpu_detect.h"
 #include "util/format_rgb9e5.h"
 #include "lp_bld_debug.h"

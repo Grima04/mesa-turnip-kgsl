@@ -32,7 +32,7 @@
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_texture.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include <stdbool.h>
 
 static bool

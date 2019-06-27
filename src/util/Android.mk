@@ -68,6 +68,10 @@ LOCAL_GENERATED_SOURCES := $(UTIL_GENERATED_SOURCES)
 MESA_DRI_OPTIONS_H := $(intermediates)/xmlpool/options.h
 LOCAL_GENERATED_SOURCES += $(MESA_DRI_OPTIONS_H)
 
+
+$(intermediates)/format/u_format_table.c: $(intermediates)/%.c: $(LOCAL_PATH)/%.py $(LOCAL_PATH)/format/u_format.csv
+	$(transform-generated-source)
+
 #
 # Generate options.h from gettext translations.
 #

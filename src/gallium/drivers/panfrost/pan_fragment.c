@@ -26,7 +26,7 @@
 #include "pan_util.h"
 #include "pan_format.h"
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 /* Mark a surface as written */
 

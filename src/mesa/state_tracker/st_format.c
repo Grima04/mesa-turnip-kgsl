@@ -48,7 +48,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "st_cb_texture.h"
 #include "st_context.h"
 #include "st_format.h"

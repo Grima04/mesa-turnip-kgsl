@@ -1503,6 +1503,13 @@ void util_format_unswizzle_4f(float *dst, const float *src,
 enum pipe_format
 util_format_snorm8_to_sint8(enum pipe_format format);
 
+
+extern void
+util_copy_rect(ubyte * dst, enum pipe_format format,
+               unsigned dst_stride, unsigned dst_x, unsigned dst_y,
+               unsigned width, unsigned height, const ubyte * src,
+               int src_stride, unsigned src_x, unsigned src_y);
+
 #ifdef __cplusplus
 } // extern "C" {
 #endif

@@ -34,7 +34,7 @@
 #include "drm-uapi/drm_fourcc.h"
 
 #include "state_tracker/winsys_handle.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_surface.h"
 #include "util/u_transfer.h"

@@ -25,7 +25,7 @@
 
 #include "si_pipe.h"
 #include "si_compute.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_log.h"
 #include "util/u_surface.h"
 

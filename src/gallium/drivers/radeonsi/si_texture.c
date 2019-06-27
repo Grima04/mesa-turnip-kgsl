@@ -25,7 +25,7 @@
 
 #include "si_pipe.h"
 #include "si_query.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_log.h"
 #include "util/u_memory.h"
 #include "util/u_pack_color.h"

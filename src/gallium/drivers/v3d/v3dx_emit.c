@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_half.h"
 #include "v3d_context.h"
 #include "broadcom/common/v3d_macros.h"

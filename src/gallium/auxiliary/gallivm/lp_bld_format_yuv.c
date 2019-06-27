@@ -34,7 +34,7 @@
  */
 
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_cpu_detect.h"
 
 #include "lp_bld_arit.h"

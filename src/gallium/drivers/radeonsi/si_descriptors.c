@@ -58,7 +58,7 @@
 
 #include "util/hash_table.h"
 #include "util/u_idalloc.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 

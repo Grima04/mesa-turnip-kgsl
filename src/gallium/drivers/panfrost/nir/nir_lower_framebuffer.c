@@ -41,7 +41,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_format_convert.h"
 #include "nir_lower_blend.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 /* Determines the best NIR intrinsic to load a tile buffer of a given type,
  * using native format conversion where possible. RGBA8 UNORM has a fast path

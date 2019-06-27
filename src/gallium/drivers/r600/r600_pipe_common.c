@@ -30,7 +30,7 @@
 #include "util/list.h"
 #include "util/u_draw_quad.h"
 #include "util/u_memory.h"
-#include "util/u_format_s3tc.h"
+#include "util/format/u_format_s3tc.h"
 #include "util/u_upload_mgr.h"
 #include "util/os_time.h"
 #include "vl/vl_decoder.h"

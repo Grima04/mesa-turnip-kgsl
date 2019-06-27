@@ -38,7 +38,7 @@
 #include "indices/u_primconvert.h"
 #include "util/u_blitter.h"
 #include "util/u_debug.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_framebuffer.h"
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"

@@ -29,7 +29,7 @@
 
 #include "util/bitscan.h"
 #include "util/macros.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 #include "iris_resource.h"
 #include "iris_screen.h"

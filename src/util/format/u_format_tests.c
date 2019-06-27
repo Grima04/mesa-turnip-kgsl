@@ -31,7 +31,7 @@
 
 #include "pipe/p_config.h"
 #include "util/u_memory.h"
-#include "u_format_tests.h"
+#include "util/format/u_format_tests.h"
 
 
 /*

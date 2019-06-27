@@ -26,7 +26,7 @@
 #include "sid.h"
 #include "si_pipe.h"
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 static void si_dma_copy_buffer(struct si_context *ctx,
 				struct pipe_resource *dst,

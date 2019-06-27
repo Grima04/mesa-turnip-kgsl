@@ -29,7 +29,7 @@
 #include "pipe/p_screen.h"
 #include "pipe/p_defines.h"
 #include "util/u_dl.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "api.h"
 
 #include "memory/TilingFunctions.h"

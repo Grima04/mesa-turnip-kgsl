@@ -32,14 +32,65 @@
  * @author Jose Fonseca <jfonseca@vmware.com>
  */
 
-#include "util/u_memory.h"
-#include "u_format.h"
-#include "u_format_s3tc.h"
-#include "u_surface.h"
+#include "util/format/u_format.h"
+#include "util/format/u_format_s3tc.h"
 #include "util/u_math.h"
 
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
+
+
+/**
+ * Copy 2D rect from one place to another.
+ * Position and sizes are in pixels.
+ * src_stride may be negative to do vertical flip of pixels from source.
+ */
+void
+util_copy_rect(ubyte * dst,
+               enum pipe_format format,
+               unsigned dst_stride,
+               unsigned dst_x,
+               unsigned dst_y,
+               unsigned width,
+               unsigned height,
+               const ubyte * src,
+               int src_stride,
+               unsigned src_x,
+               unsigned src_y)
+{
+   unsigned i;
+   int src_stride_pos = src_stride < 0 ? -src_stride : src_stride;
+   int blocksize = util_format_get_blocksize(format);
+   int blockwidth = util_format_get_blockwidth(format);
+   int blockheight = util_format_get_blockheight(format);
+
+   assert(blocksize > 0);
+   assert(blockwidth > 0);
+   assert(blockheight > 0);
+
+   dst_x /= blockwidth;
+   dst_y /= blockheight;
+   width = (width + blockwidth - 1)/blockwidth;
+   height = (height + blockheight - 1)/blockheight;
+   src_x /= blockwidth;
+   src_y /= blockheight;
+
+   dst += dst_x * blocksize;
+   src += src_x * blocksize;
+   dst += dst_y * dst_stride;
+   src += src_y * src_stride_pos;
+   width *= blocksize;
+
+   if (width == dst_stride && width == (unsigned)src_stride)
+      memcpy(dst, src, height * width);
+   else {
+      for (i = 0; i < height; i++) {
+         memcpy(dst, src, width);
+         dst += dst_stride;
+         src += src_stride;
+      }
+   }
+}
 
 
 boolean
@@ -656,12 +707,12 @@ util_format_translate(enum pipe_format dst_format,
 
       if (src_format_desc->unpack_z_float &&
           dst_format_desc->pack_z_float) {
-         tmp_z = MALLOC(width * sizeof *tmp_z);
+         tmp_z = malloc(width * sizeof *tmp_z);
       }
 
       if (src_format_desc->unpack_s_8uint &&
           dst_format_desc->pack_s_8uint) {
-         tmp_s = MALLOC(width * sizeof *tmp_s);
+         tmp_s = malloc(width * sizeof *tmp_s);
       }
 
       while (height--) {
@@ -679,9 +730,9 @@ util_format_translate(enum pipe_format dst_format,
          src_row += src_step;
       }
 
-      FREE(tmp_s);
+      free(tmp_s);
 
-      FREE(tmp_z);
+      free(tmp_z);
 
       return TRUE;
    }
@@ -697,7 +748,7 @@ util_format_translate(enum pipe_format dst_format,
       }
 
       tmp_stride = MAX2(width, x_step) * 4 * sizeof *tmp_row;
-      tmp_row = MALLOC(y_step * tmp_stride);
+      tmp_row = malloc(y_step * tmp_stride);
       if (!tmp_row)
          return FALSE;
 
@@ -715,7 +766,7 @@ util_format_translate(enum pipe_format dst_format,
          dst_format_desc->pack_rgba_8unorm(dst_row, dst_stride, tmp_row, tmp_stride, width, height);
       }
 
-      FREE(tmp_row);
+      free(tmp_row);
    }
    else if (util_format_is_pure_sint(src_format) ||
             util_format_is_pure_sint(dst_format)) {
@@ -728,7 +779,7 @@ util_format_translate(enum pipe_format dst_format,
       }
 
       tmp_stride = MAX2(width, x_step) * 4 * sizeof *tmp_row;
-      tmp_row = MALLOC(y_step * tmp_stride);
+      tmp_row = malloc(y_step * tmp_stride);
       if (!tmp_row)
          return FALSE;
 
@@ -746,7 +797,7 @@ util_format_translate(enum pipe_format dst_format,
          dst_format_desc->pack_rgba_sint(dst_row, dst_stride, tmp_row, tmp_stride, width, height);
       }
 
-      FREE(tmp_row);
+      free(tmp_row);
    }
    else if (util_format_is_pure_uint(src_format) ||
             util_format_is_pure_uint(dst_format)) {
@@ -759,7 +810,7 @@ util_format_translate(enum pipe_format dst_format,
       }
 
       tmp_stride = MAX2(width, x_step) * 4 * sizeof *tmp_row;
-      tmp_row = MALLOC(y_step * tmp_stride);
+      tmp_row = malloc(y_step * tmp_stride);
       if (!tmp_row)
          return FALSE;
 
@@ -777,7 +828,7 @@ util_format_translate(enum pipe_format dst_format,
          dst_format_desc->pack_rgba_uint(dst_row, dst_stride, tmp_row, tmp_stride, width, height);
       }
 
-      FREE(tmp_row);
+      free(tmp_row);
    }
    else {
       unsigned tmp_stride;
@@ -789,7 +840,7 @@ util_format_translate(enum pipe_format dst_format,
       }
 
       tmp_stride = MAX2(width, x_step) * 4 * sizeof *tmp_row;
-      tmp_row = MALLOC(y_step * tmp_stride);
+      tmp_row = malloc(y_step * tmp_stride);
       if (!tmp_row)
          return FALSE;
 
@@ -807,7 +858,7 @@ util_format_translate(enum pipe_format dst_format,
          dst_format_desc->pack_rgba_float(dst_row, dst_stride, tmp_row, tmp_stride, width, height);
       }
 
-      FREE(tmp_row);
+      free(tmp_row);
    }
    return TRUE;
 }

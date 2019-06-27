@@ -43,7 +43,7 @@
 #include "state_tracker/drm_driver.h"
 
 #include "util/u_debug.h"
-#include "util/u_format_s3tc.h"
+#include "util/format/u_format_s3tc.h"
 
 #define MSAA_VISUAL_MAX_SAMPLES 32
 

@@ -31,7 +31,7 @@
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_sampler.h"
 #include "util/u_memory.h"

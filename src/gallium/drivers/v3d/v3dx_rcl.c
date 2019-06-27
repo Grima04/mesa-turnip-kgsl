@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "v3d_context.h"
 #include "v3d_tiling.h"
 #include "broadcom/common/v3d_macros.h"

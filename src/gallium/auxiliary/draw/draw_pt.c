@@ -39,7 +39,7 @@
 #include "tgsi/tgsi_dump.h"
 #include "util/u_math.h"
 #include "util/u_prim.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_draw.h"
 
 

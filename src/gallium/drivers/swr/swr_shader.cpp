@@ -44,7 +44,7 @@
 #include "functionpasses/passes.h"
 
 #include "tgsi/tgsi_strings.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_prim.h"
 #include "gallivm/lp_bld_init.h"
 #include "gallivm/lp_bld_flow.h"

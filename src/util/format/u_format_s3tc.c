@@ -23,12 +23,11 @@
  *
  **************************************************************************/
 
-#include "u_dl.h"
-#include "u_format.h"
-#include "u_format_s3tc.h"
+#include "util/format/u_format.h"
+#include "util/format/u_format_s3tc.h"
 #include "util/format_srgb.h"
 #include "util/u_math.h"
-#include "../../../mesa/main/texcompress_s3tc_tmp.h"
+#include "../../mesa/main/texcompress_s3tc_tmp.h"
 
 
 util_format_dxtn_fetch_t util_format_dxt1_rgb_fetch = (util_format_dxtn_fetch_t)fetch_2d_texel_rgb_dxt1;

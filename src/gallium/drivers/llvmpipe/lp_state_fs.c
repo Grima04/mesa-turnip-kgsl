@@ -62,7 +62,7 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_pointer.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_dump.h"
 #include "util/u_string.h"
 #include "util/simple_list.h"

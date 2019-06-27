@@ -90,7 +90,7 @@
 #include "pipe/p_screen.h"
 #include "util/u_dual_blend.h"
 #include "util/u_inlines.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_framebuffer.h"
 #include "util/u_transfer.h"
 #include "util/u_upload_mgr.h"

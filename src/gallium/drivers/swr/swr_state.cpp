@@ -43,7 +43,7 @@
 #include "core/state_funcs.h"
 
 #include "gallivm/lp_bld_tgsi.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 #include "util/u_memory.h"
 #include "util/u_inlines.h"

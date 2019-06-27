@@ -27,7 +27,7 @@
 #include "pan_util.h"
 #include "pan_format.h"
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 static struct mali_sfbd_format
 panfrost_sfbd_format(struct pipe_surface *surf)

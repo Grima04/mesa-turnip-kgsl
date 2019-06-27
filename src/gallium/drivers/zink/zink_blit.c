@@ -4,7 +4,7 @@
 #include "zink_screen.h"
 
 #include "util/u_blitter.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 static bool
 blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)

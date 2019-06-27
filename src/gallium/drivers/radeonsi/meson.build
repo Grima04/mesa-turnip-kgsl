@@ -105,7 +105,7 @@ gfx10_format_table_h = custom_target(
   'gfx10_format_table.h',
   input : files(
     'gfx10_format_table.py',
-    '../../auxiliary/util/u_format.csv', '../../../amd/registers/gfx10-rsrc.json'
+    '../../../util/format/u_format.csv', '../../../amd/registers/gfx10-rsrc.json'
   ),
   output : 'gfx10_format_table.h',
   command : [prog_python, '@INPUT@'],

@@ -26,7 +26,7 @@
 #define __PAN_FORMAT_H__
 
 #include "pan_context.h"
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 
 unsigned
 panfrost_translate_swizzle_4(const unsigned char swizzle[4]);

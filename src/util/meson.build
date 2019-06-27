@@ -20,6 +20,7 @@
 
 inc_util = include_directories('.')
 
+subdir('format')
 subdir('xmlpool')
 
 files_mesa_util = files(
@@ -161,6 +162,7 @@ _libmesa_util = static_library(
   [files_mesa_util, format_srgb],
   include_directories : inc_common,
   dependencies : deps_for_libmesa_util,
+  link_with: libmesa_format,
   c_args : [c_msvc_compat_args, c_vis_args],
   build_by_default : false
 )

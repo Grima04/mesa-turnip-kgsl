@@ -36,7 +36,7 @@
 #include "hw/state.xml.h"
 #include "hw/state_3d.xml.h"
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include "util/u_math.h"
 
 /* Returned when there is no match of pipe value to etna value */

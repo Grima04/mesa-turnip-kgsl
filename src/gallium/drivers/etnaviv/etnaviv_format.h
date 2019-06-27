@@ -27,7 +27,7 @@
 #ifndef ETNAVIV_FORMAT_H_
 #define ETNAVIV_FORMAT_H_
 
-#include "util/u_format.h"
+#include "util/format/u_format.h"
 #include <stdint.h>
 
 #define ETNA_NO_MATCH (~0)

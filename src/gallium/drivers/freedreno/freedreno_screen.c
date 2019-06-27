@@ -31,8 +31,8 @@
 
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
-#include "util/u_format.h"
-#include "util/u_format_s3tc.h"
+#include "util/format/u_format.h"
+#include "util/format/u_format_s3tc.h"
 #include "util/u_screen.h"
 #include "util/u_string.h"
 #include "util/u_debug.h"
