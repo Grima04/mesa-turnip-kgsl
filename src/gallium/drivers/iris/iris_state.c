@@ -5567,7 +5567,7 @@ iris_upload_compute_state(struct iris_context *ice,
             GENX(INTERFACE_DESCRIPTOR_DATA_length) * sizeof(uint32_t);
          load.InterfaceDescriptorDataStartAddress =
             emit_state(batch, ice->state.dynamic_uploader,
-                       &desc_res, desc, sizeof(desc), 32);
+                       &desc_res, desc, sizeof(desc), 64);
       }
 
       pipe_resource_reference(&desc_res, NULL);
