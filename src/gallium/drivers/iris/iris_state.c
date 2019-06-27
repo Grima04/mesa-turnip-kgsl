@@ -5614,6 +5614,9 @@ iris_destroy_state(struct iris_context *ice)
 {
    struct iris_genx_state *genx = ice->state.genx;
 
+   pipe_resource_reference(&ice->draw.draw_params_res, NULL);
+   pipe_resource_reference(&ice->draw.derived_draw_params_res, NULL);
+
    uint64_t bound_vbs = ice->state.bound_vertex_buffers;
    while (bound_vbs) {
       const int i = u_bit_scan64(&bound_vbs);
