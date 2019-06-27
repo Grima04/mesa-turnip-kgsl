@@ -306,6 +306,11 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			list_add(&baryf->node, &last_input->node);
 
 			last_input = baryf;
+
+			/* by definition, we need (ss) since we are inserting
+			 * the dummy bary.f immediately after the ldlv:
+			 */
+			last_input_needs_ss = true;
 		}
 		last_input->regs[0]->flags |= IR3_REG_EI;
 		if (last_input_needs_ss)
