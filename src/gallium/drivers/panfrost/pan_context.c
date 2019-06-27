@@ -283,11 +283,6 @@ static void
 panfrost_emit_vertex_payload(struct panfrost_context *ctx)
 {
         struct midgard_payload_vertex_tiler payload = {
-                .prefix = {
-                        .workgroups_z_shift = 32,
-                        .workgroups_x_shift_2 = 0x2,
-                        .workgroups_x_shift_3 = 0x5,
-                },
 		.gl_enables = 0x4 | (ctx->is_t6xx ? 0 : 0x2),
         };
 
@@ -299,10 +294,6 @@ panfrost_emit_tiler_payload(struct panfrost_context *ctx)
 {
         struct midgard_payload_vertex_tiler payload = {
                 .prefix = {
-                        .workgroups_z_shift = 32,
-                        .workgroups_x_shift_2 = 0x2,
-                        .workgroups_x_shift_3 = 0x6,
-
                         .zero1 = 0xffff, /* Why is this only seen on test-quad-textured? */
                 },
         };
@@ -1668,7 +1659,7 @@ panfrost_draw_vbo(
         ctx->vertex_count = info->count;
 
         /* For non-indexed draws, they're the same */
-        unsigned invocation_count = ctx->vertex_count;
+        unsigned vertex_count = ctx->vertex_count;
 
         unsigned draw_flags = 0;
 
@@ -1701,7 +1692,7 @@ panfrost_draw_vbo(
                 }
 
                 /* Use the corresponding values */
-                invocation_count = max_index - min_index + 1;
+                vertex_count = max_index - min_index + 1;
                 ctx->payload_vertex.draw_start = min_index;
                 ctx->payload_tiler.draw_start = min_index;
 
@@ -1724,8 +1715,15 @@ panfrost_draw_vbo(
                 ctx->payload_tiler.prefix.indices = (uintptr_t) NULL;
         }
 
-        ctx->payload_vertex.prefix.invocation_count = MALI_POSITIVE(invocation_count);
-        ctx->payload_tiler.prefix.invocation_count = MALI_POSITIVE(invocation_count);
+        /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
+         * vertex_count, 1) */
+
+        panfrost_pack_work_groups_fused(
+                        &ctx->payload_vertex.prefix,
+                        &ctx->payload_tiler.prefix,
+                        1, vertex_count, 1,
+                        1, 1, 1);
+
         ctx->payload_tiler.prefix.unknown_draw = draw_flags;
 
         /* Fire off the draw itself */

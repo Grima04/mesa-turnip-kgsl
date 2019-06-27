@@ -343,4 +343,27 @@ panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws);
 void
 panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *meta, const char *src, int type, struct panfrost_shader_state *state);
 
+void
+panfrost_pack_work_groups_compute(
+                struct mali_vertex_tiler_prefix *out,
+                unsigned num_x,
+                unsigned num_y,
+                unsigned num_z,
+                unsigned size_x,
+                unsigned size_y,
+                unsigned size_z);
+
+void
+panfrost_pack_work_groups_fused(
+                struct mali_vertex_tiler_prefix *vertex,
+                struct mali_vertex_tiler_prefix *tiler,
+                unsigned num_x,
+                unsigned num_y,
+                unsigned num_z,
+                unsigned size_x,
+                unsigned size_y,
+                unsigned size_z);
+
+
+
 #endif
