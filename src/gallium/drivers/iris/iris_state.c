@@ -4362,6 +4362,13 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
    if (sampler_res)
       iris_use_pinned_bo(batch, iris_resource_bo(sampler_res), false);
 
+   if ((clean & IRIS_DIRTY_SAMPLER_STATES_CS) &&
+       (clean & IRIS_DIRTY_BINDINGS_CS) &&
+       (clean & IRIS_DIRTY_CONSTANTS_CS) &&
+       (clean & IRIS_DIRTY_CS)) {
+      iris_use_optional_res(batch, ice->state.last_res.cs_desc, false);
+   }
+
    if (clean & IRIS_DIRTY_CS) {
       struct iris_compiled_shader *shader = ice->shaders.prog[stage];
 
@@ -5531,7 +5538,6 @@ iris_upload_compute_state(struct iris_context *ice,
                 IRIS_DIRTY_BINDINGS_CS |
                 IRIS_DIRTY_CONSTANTS_CS |
                 IRIS_DIRTY_CS)) {
-      struct pipe_resource *desc_res = NULL;
       uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
 
       iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
@@ -5547,10 +5553,8 @@ iris_upload_compute_state(struct iris_context *ice,
             GENX(INTERFACE_DESCRIPTOR_DATA_length) * sizeof(uint32_t);
          load.InterfaceDescriptorDataStartAddress =
             emit_state(batch, ice->state.dynamic_uploader,
-                       &desc_res, desc, sizeof(desc), 64);
+                       &ice->state.last_res.cs_desc, desc, sizeof(desc), 64);
       }
-
-      pipe_resource_reference(&desc_res, NULL);
    }
 
    uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
@@ -5658,6 +5662,7 @@ iris_destroy_state(struct iris_context *ice)
    pipe_resource_reference(&ice->state.last_res.blend, NULL);
    pipe_resource_reference(&ice->state.last_res.index_buffer, NULL);
    pipe_resource_reference(&ice->state.last_res.cs_thread_ids, NULL);
+   pipe_resource_reference(&ice->state.last_res.cs_desc, NULL);
 }
 
 /* ------------------------------------------------------------------- */
