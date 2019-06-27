@@ -4952,32 +4952,14 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 			 const VkImageSubresourceRange *range, uint32_t value)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
-	uint32_t level_count = radv_get_levelCount(image, range);
 	unsigned size = 0;
 
 	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 
-	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
-		/* Mipmap level aren't implemented. */
-		assert(level_count == 1);
-		state->flush_bits |= radv_clear_dcc(cmd_buffer, image,
-						    range, value);
-	} else {
-		/* Initialize the mipmap levels with DCC first. */
-		for (unsigned l = 0; l < level_count; l++) {
-			uint32_t level = range->baseMipLevel + l;
-			struct legacy_surf_level *surf_level =
-				&image->planes[0].surface.u.legacy.level[level];
+	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, range, value);
 
-			if (!surf_level->dcc_fast_clear_size)
-				break;
-
-			state->flush_bits |=
-				radv_dcc_clear_level(cmd_buffer, image,
-						     level, value);
-		}
-
+	if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX8) {
 		/* When DCC is enabled with mipmaps, some levels might not
 		 * support fast clears and we have to initialize them as "fully
 		 * expanded".

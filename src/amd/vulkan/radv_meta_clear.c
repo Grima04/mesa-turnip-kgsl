@@ -1367,7 +1367,7 @@ radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
 	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
 }
 
-uint32_t
+static uint32_t
 radv_dcc_clear_level(struct radv_cmd_buffer *cmd_buffer,
 		     const struct radv_image *image,
 		     uint32_t level, uint32_t value)
@@ -1383,9 +1383,11 @@ radv_dcc_clear_level(struct radv_cmd_buffer *cmd_buffer,
 		const struct legacy_surf_level *surf_level =
 			&image->planes[0].surface.u.legacy.level[level];
 
-		/* If this is 0, fast clear isn't possible. */
-		assert(surf_level->dcc_fast_clear_size);
-
+		/* If dcc_fast_clear_size is 0 (which might happens for
+		 * mipmaps) the fill buffer operation below is a no-op. This
+		 * can only happen during initialization as the fast clear path
+		 * fallbacks to slow clears if one level can't be fast cleared.
+		 */
 		offset += surf_level->dcc_offset;
 		size = surf_level->dcc_fast_clear_size;
 	}
