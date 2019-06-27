@@ -152,6 +152,11 @@ struct panfrost_context {
         int dirty;
 
         unsigned vertex_count;
+        unsigned instance_count;
+
+        /* If instancing is enabled, vertex count padded for instance; if
+         * it is disabled, just equal to plain vertex count */
+        unsigned padded_count;
 
         union mali_attr attributes[PIPE_MAX_ATTRIBS];
 
@@ -364,6 +369,27 @@ panfrost_pack_work_groups_fused(
                 unsigned size_y,
                 unsigned size_z);
 
+/* Instancing */
+
+mali_ptr
+panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i);
+
+void
+panfrost_emit_vertex_data(struct panfrost_job *batch);
+
+struct pan_shift_odd {
+        unsigned shift;
+        unsigned odd;
+};
+
+struct pan_shift_odd
+panfrost_padded_vertex_count(
+                unsigned vertex_count,
+                bool primitive_pot);
+
+
+unsigned
+pan_expand_shift_odd(struct pan_shift_odd o);
 
 
 #endif

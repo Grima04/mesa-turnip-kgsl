@@ -552,7 +552,7 @@ panfrost_emit_point_coord(union mali_attr *slot)
 static void
 panfrost_emit_varying_descriptor(
                 struct panfrost_context *ctx,
-                unsigned invocation_count)
+                unsigned vertex_count)
 {
         /* Load the shaders */
 
@@ -638,19 +638,19 @@ panfrost_emit_varying_descriptor(
         unsigned idx = 0;
 
         panfrost_emit_varyings(ctx, &varyings[idx++], num_gen_varyings * 16,
-                               invocation_count);
+                               vertex_count);
 
         /* fp32 vec4 gl_Position */
         ctx->payload_tiler.postfix.position_varying =
                 panfrost_emit_varyings(ctx, &varyings[idx++],
-                                sizeof(float) * 4, invocation_count);
+                                sizeof(float) * 4, vertex_count);
 
 
         if (vs->writes_point_size || fs->reads_point_coord) {
                 /* fp16 vec1 gl_PointSize */
                 ctx->payload_tiler.primitive_size.pointer =
                         panfrost_emit_varyings(ctx, &varyings[idx++],
-                                        2, invocation_count);
+                                        2, vertex_count);
         }
 
         if (fs->reads_point_coord) {
@@ -663,55 +663,13 @@ panfrost_emit_varying_descriptor(
         ctx->payload_tiler.postfix.varyings = varyings_p;
 }
 
-static mali_ptr
+mali_ptr
 panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i)
 {
         struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[i];
         struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer.resource);
 
         return rsrc->bo->gpu + buf->buffer_offset;
-}
-
-/* Emits attributes and varying descriptors, which should be called every draw,
- * excepting some obscure circumstances */
-
-static void
-panfrost_emit_vertex_data(struct panfrost_context *ctx, struct panfrost_job *job)
-{
-        /* Staged mali_attr, and index into them. i =/= k, depending on the
-         * vertex buffer mask */
-        union mali_attr attrs[PIPE_MAX_ATTRIBS];
-        unsigned k = 0;
-
-        unsigned invocation_count = MALI_NEGATIVE(ctx->payload_tiler.prefix.invocation_count);
-
-        for (int i = 0; i < ARRAY_SIZE(ctx->vertex_buffers); ++i) {
-                if (!(ctx->vb_mask & (1 << i))) continue;
-
-                struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[i];
-                struct panfrost_resource *rsrc = (struct panfrost_resource *) (buf->buffer.resource);
-
-                if (!rsrc) continue;
-
-                /* Align to 64 bytes by masking off the lower bits. This
-                 * will be adjusted back when we fixup the src_offset in
-                 * mali_attr_meta */
-
-                mali_ptr addr = panfrost_vertex_buffer_address(ctx, i) & ~63;
-
-                /* Offset vertex count by draw_start to make sure we upload enough */
-                attrs[k].stride = buf->stride;
-                attrs[k].size = rsrc->base.width0;
-
-                panfrost_job_add_bo(job, rsrc->bo);
-                attrs[k].elements = addr | MALI_ATTR_LINEAR;
-
-                ++k;
-        }
-
-        ctx->payload_vertex.postfix.attributes = panfrost_upload_transient(ctx, attrs, k * sizeof(union mali_attr));
-
-        panfrost_emit_varying_descriptor(ctx, invocation_count);
 }
 
 static bool
@@ -759,12 +717,24 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
          * QED.
          */
 
+        unsigned start = ctx->payload_vertex.draw_start;
+
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
+                struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
                 mali_ptr addr = panfrost_vertex_buffer_address(ctx, vbi);
 
                 /* Adjust by the masked off bits of the offset */
                 target[i].src_offset += (addr & 63);
+
+                /* Also, somewhat obscurely per-instance data needs to be
+                 * offset in response to a delayed start in an indexed draw */
+
+                if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start) {
+                        target[i].src_offset -= buf->stride * start;
+                }
+
+
         }
 
         ctx->payload_vertex.postfix.attribute_meta = transfer.gpu;
@@ -1028,7 +998,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
         if (with_vertex_data) {
-                panfrost_emit_vertex_data(ctx, job);
+                panfrost_emit_vertex_data(job);
+
+                /* Varyings emitted for -all- geometry */
+                unsigned total_count = ctx->padded_count * ctx->instance_count;
+                panfrost_emit_varying_descriptor(ctx, total_count);
         }
 
         bool msaa = ctx->rasterizer->base.multisample;
@@ -1580,9 +1554,11 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
         struct panfrost_resource *rsrc = (struct panfrost_resource *) (info->index.resource);
 
         off_t offset = info->start * info->index_size;
+        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
 
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
+                panfrost_job_add_bo(batch, rsrc->bo);
                 return rsrc->bo->gpu + offset;
         } else {
                 /* Otherwise, we need to upload to transient memory */
@@ -1657,6 +1633,7 @@ panfrost_draw_vbo(
         ctx->payload_tiler.prefix.draw_mode = g2m_draw_mode(mode);
 
         ctx->vertex_count = info->count;
+        ctx->instance_count = info->instance_count;
 
         /* For non-indexed draws, they're the same */
         unsigned vertex_count = ctx->vertex_count;
@@ -1673,9 +1650,20 @@ panfrost_draw_vbo(
 
         /* For higher amounts of vertices (greater than what fits in a 16-bit
          * short), the other value is needed, otherwise there will be bizarre
-         * rendering artefacts. It's not clear what these values mean yet. */
+         * rendering artefacts. It's not clear what these values mean yet. This
+         * change is also needed for instancing and sometimes points (perhaps
+         * related to dynamically setting gl_PointSize) */
 
-        draw_flags |= (mode == PIPE_PRIM_POINTS || ctx->vertex_count > 65535) ? 0x3000 : 0x18000;
+        bool is_points = mode == PIPE_PRIM_POINTS;
+        bool many_verts = ctx->vertex_count > 0xFFFF;
+        bool instanced = ctx->instance_count > 1;
+
+        draw_flags |= (is_points || many_verts || instanced) ? 0x3000 : 0x18000;
+
+        /* This doesn't make much sense */
+        if (mode == PIPE_PRIM_LINE_STRIP) {
+                draw_flags |= 0x800;
+        }
 
         if (info->index_size) {
                 /* Calculate the min/max index used so we can figure out how
@@ -1721,10 +1709,41 @@ panfrost_draw_vbo(
         panfrost_pack_work_groups_fused(
                         &ctx->payload_vertex.prefix,
                         &ctx->payload_tiler.prefix,
-                        1, vertex_count, 1,
+                        1, vertex_count, info->instance_count,
                         1, 1, 1);
 
         ctx->payload_tiler.prefix.unknown_draw = draw_flags;
+
+        /* Encode the padded vertex count */
+
+        if (info->instance_count > 1) {
+                /* Triangles have non-even vertex counts so they change how
+                 * padding works internally */
+
+                bool is_triangle =
+                        mode == PIPE_PRIM_TRIANGLES ||
+                        mode == PIPE_PRIM_TRIANGLE_STRIP ||
+                        mode == PIPE_PRIM_TRIANGLE_FAN;
+
+                struct pan_shift_odd so =
+                        panfrost_padded_vertex_count(vertex_count, !is_triangle);
+
+                ctx->payload_vertex.instance_shift = so.shift;
+                ctx->payload_tiler.instance_shift = so.shift;
+
+                ctx->payload_vertex.instance_odd = so.odd;
+                ctx->payload_tiler.instance_odd = so.odd;
+
+                ctx->padded_count = pan_expand_shift_odd(so);
+        } else {
+                ctx->padded_count = ctx->vertex_count;
+
+                /* Reset instancing state */
+                ctx->payload_vertex.instance_shift = 0;
+                ctx->payload_vertex.instance_odd = 0;
+                ctx->payload_tiler.instance_shift = 0;
+                ctx->payload_tiler.instance_odd = 0;
+        }
 
         /* Fire off the draw itself */
         panfrost_queue_draw(ctx);
@@ -1807,7 +1826,7 @@ panfrost_create_vertex_elements_state(
         panfrost_allocate_chunk(pan_context(pctx), 0, HEAP_DESCRIPTOR);
 
         for (int i = 0; i < num_elements; ++i) {
-                so->hw[i].index = elements[i].vertex_buffer_index;
+                so->hw[i].index = i;
 
                 enum pipe_format fmt = elements[i].src_format;
                 const struct util_format_description *desc = util_format_description(fmt);

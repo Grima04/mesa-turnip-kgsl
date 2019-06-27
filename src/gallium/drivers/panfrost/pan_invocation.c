@@ -120,6 +120,7 @@ panfrost_pack_work_groups_fused(
         tiler->size_y_shift = vertex->size_y_shift;
         tiler->size_z_shift = vertex->size_z_shift;
         tiler->workgroups_x_shift = vertex->workgroups_x_shift;
+        tiler->workgroups_x_shift_2 = vertex->workgroups_x_shift_2;
         tiler->workgroups_y_shift = vertex->workgroups_y_shift;
         tiler->workgroups_z_shift = vertex->workgroups_z_shift;
 

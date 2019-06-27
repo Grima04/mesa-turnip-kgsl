@@ -1255,7 +1255,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
 
                 /* Get the base type of the intrinsic */
-                nir_alu_type t = nir_intrinsic_type(instr);
+                /* TODO: Infer type? Does it matter? */
+                nir_alu_type t =
+                        is_ubo ? nir_type_uint : nir_intrinsic_type(instr);
                 t = nir_alu_type_get_base_type(t);
 
                 if (!is_ubo) {

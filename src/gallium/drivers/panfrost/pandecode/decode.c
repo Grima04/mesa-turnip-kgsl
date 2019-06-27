@@ -859,6 +859,100 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
         return MALI_NEGATIVE(fb->rt_count_1);
 }
 
+/* Just add a comment decoding the shift/odd fields forming the padded vertices
+ * count */
+
+static void
+pandecode_padded_vertices(unsigned shift, unsigned k)
+{
+        unsigned odd = 2*k + 1;
+        unsigned pot = 1 << shift;
+        pandecode_msg("padded_num_vertices = %d\n", odd * pot);
+}
+
+/* Given a magic divisor, recover what we were trying to divide by.
+ *
+ * Let m represent the magic divisor. By definition, m is an element on Z, whre
+ * 0 <= m < 2^N, for N bits in m.
+ *
+ * Let q represent the number we would like to divide by.
+ *
+ * By definition of a magic divisor for N-bit unsigned integers (a number you
+ * multiply by to magically get division), m is a number such that:
+ *
+ *      (m * x) & (2^N - 1) = floor(x/q).
+ *      for all x on Z where 0 <= x < 2^N
+ *
+ * Ignore the case where any of the above values equals zero; it is irrelevant
+ * for our purposes (instanced arrays).
+ *
+ * Choose x = q. Then:
+ *
+ *      (m * x) & (2^N - 1) = floor(x/q).
+ *      (m * q) & (2^N - 1) = floor(q/q).
+ *
+ *      floor(q/q) = floor(1) = 1, therefore:
+ *
+ *      (m * q) & (2^N - 1) = 1
+ *
+ * Recall the identity that the bitwise AND of one less than a power-of-two
+ * equals the modulo with that power of two, i.e. for all x:
+ *
+ *      x & (2^N - 1) = x % N
+ *
+ * Therefore:
+ *
+ *      mq % (2^N) = 1
+ *
+ * By definition, a modular multiplicative inverse of a number m is the number
+ * q such that with respect to a modulos M:
+ *
+ *      mq % M = 1
+ *
+ * Therefore, q is the modular multiplicative inverse of m with modulus 2^N.
+ *
+ */
+
+static void
+pandecode_magic_divisor(uint32_t magic, unsigned shift, unsigned orig_divisor, unsigned extra)
+{
+        /* Compute the modular inverse of `magic` with respect to 2^(32 -
+         * shift) the most lame way possible... just repeatedly add.
+         * Asymptoptically slow but nobody cares in practice, unless you have
+         * massive numbers of vertices or high divisors. */
+
+        unsigned inverse = 0;
+
+        /* Magic implicitly has the highest bit set */
+        magic |= (1 << 31);
+
+        /* Depending on rounding direction */
+        if (extra)
+                magic++;
+
+        for (;;) {
+                uint32_t product = magic * inverse;
+
+                if (shift) {
+                        product >>= shift;
+                }
+
+                if (product == 1)
+                        break;
+
+                ++inverse;
+        }
+
+        pandecode_msg("dividing by %d (maybe off by two)\n", inverse);
+
+        /* Recall we're supposed to divide by (gl_level_divisor *
+         * padded_num_vertices) */
+
+        unsigned padded_num_vertices = inverse / orig_divisor;
+
+        pandecode_msg("padded_num_vertices = %d\n", padded_num_vertices);
+}
+
 static void
 pandecode_replay_attributes(const struct pandecode_mapped_memory *mem,
                           mali_ptr addr, int job_no, char *suffix,
@@ -905,9 +999,9 @@ pandecode_replay_attributes(const struct pandecode_mapped_memory *mem,
                 /* Decode further where possible */
 
                 if (mode == MALI_ATTR_MODULO) {
-                        unsigned odd = (2 * attr[i].extra_flags) + 1;
-                        unsigned pot = (1 << attr[i].shift);
-                        pandecode_msg("padded_num_vertices = %d\n", odd * pot);
+                        pandecode_padded_vertices(
+                                        attr[i].shift,
+                                        attr[i].extra_flags);
                 }
 
                 pandecode_indent--;
@@ -922,6 +1016,7 @@ pandecode_replay_attributes(const struct pandecode_mapped_memory *mem,
 			if (attr[i].zero != 0)
 				pandecode_prop("zero = 0x%x /* XXX zero tripped */", attr[i].zero);
 			pandecode_prop("divisor = %d", attr[i].divisor);
+                        pandecode_magic_divisor(attr[i].magic_divisor, attr[i - 1].shift, attr[i].divisor, attr[i - 1].extra_flags);
 			pandecode_indent--;
 			pandecode_log("}, \n");
 		}
@@ -1114,7 +1209,7 @@ pandecode_replay_attribute_meta(int job_no, int count, const struct mali_vertex_
 
                 pandecode_prop("unknown1 = 0x%" PRIx64, (u64) attr_meta->unknown1);
                 pandecode_prop("unknown3 = 0x%" PRIx64, (u64) attr_meta->unknown3);
-                pandecode_prop("src_offset = 0x%" PRIx64, (u64) attr_meta->src_offset);
+                pandecode_prop("src_offset = %d", attr_meta->src_offset);
                 pandecode_indent--;
                 pandecode_log("},\n");
 
@@ -2039,6 +2134,15 @@ pandecode_replay_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header
         pandecode_replay_vertex_tiler_prefix(&v->prefix, job_no);
 
         pandecode_replay_gl_enables(v->gl_enables, h->job_type);
+
+        if (v->instance_shift || v->instance_odd) {
+                pandecode_prop("instance_shift = 0x%d /* %d */",
+                                v->instance_shift, 1 << v->instance_shift);
+                pandecode_prop("instance_odd = 0x%X /* %d */",
+                                v->instance_odd, (2 * v->instance_odd) + 1);
+
+                pandecode_padded_vertices(v->instance_shift, v->instance_odd);
+        }
 
         if (v->draw_start)
                 pandecode_prop("draw_start = %d", v->draw_start);

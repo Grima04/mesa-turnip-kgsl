@@ -834,8 +834,9 @@ struct mali_attr_meta {
         /* Always observed to be zero at the moment */
         unsigned unknown3 : 2;
 
-        /* When packing multiple attributes in a buffer, offset addresses by this value */
-        uint32_t src_offset;
+        /* When packing multiple attributes in a buffer, offset addresses by
+         * this value. Obscurely, this is signed. */
+        int32_t src_offset;
 } __attribute__((packed));
 
 enum mali_fbd_type {
@@ -1061,7 +1062,16 @@ struct midgard_payload_vertex_tiler {
         u32 zero3;
 #endif
 
-        u32 gl_enables; // 0x5
+        u16 gl_enables; // 0x5
+
+        /* Both zero for non-instanced draws. For instanced draws, a
+         * decomposition of padded_num_vertices. See the comments about the
+         * corresponding fields in mali_attr for context. */
+
+        unsigned instance_shift : 5;
+        unsigned instance_odd : 3;
+
+        u8 zero4;
 
         /* Offset for first vertex in buffer */
         u32 draw_start;
