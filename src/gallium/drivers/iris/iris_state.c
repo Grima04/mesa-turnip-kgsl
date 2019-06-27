@@ -5502,20 +5502,20 @@ iris_upload_compute_state(struct iris_context *ice,
    }
 
    /* TODO: Combine subgroup-id with cbuf0 so we can push regular uniforms */
-   uint32_t curbe_data_offset = 0;
-   assert(cs_prog_data->push.cross_thread.dwords == 0 &&
-          cs_prog_data->push.per_thread.dwords == 1 &&
-          cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
-   struct pipe_resource *curbe_data_res = NULL;
-   uint32_t *curbe_data_map =
-      stream_state(batch, ice->state.dynamic_uploader, &curbe_data_res,
-                   ALIGN(cs_prog_data->push.total.size, 64), 64,
-                   &curbe_data_offset);
-   assert(curbe_data_map);
-   memset(curbe_data_map, 0x5a, ALIGN(cs_prog_data->push.total.size, 64));
-   iris_fill_cs_push_const_buffer(cs_prog_data, curbe_data_map);
-
    if (dirty & IRIS_DIRTY_CS) {
+      uint32_t curbe_data_offset = 0;
+      assert(cs_prog_data->push.cross_thread.dwords == 0 &&
+             cs_prog_data->push.per_thread.dwords == 1 &&
+             cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
+      struct pipe_resource *curbe_data_res = NULL;
+      uint32_t *curbe_data_map =
+         stream_state(batch, ice->state.dynamic_uploader, &curbe_data_res,
+                      ALIGN(cs_prog_data->push.total.size, 64), 64,
+                      &curbe_data_offset);
+      assert(curbe_data_map);
+      memset(curbe_data_map, 0x5a, ALIGN(cs_prog_data->push.total.size, 64));
+      iris_fill_cs_push_const_buffer(cs_prog_data, curbe_data_map);
+
       iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
          curbe.CURBETotalDataLength =
             ALIGN(cs_prog_data->push.total.size, 64);
