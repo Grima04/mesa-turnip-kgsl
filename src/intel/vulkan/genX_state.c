@@ -213,6 +213,24 @@ genX(init_device_state)(struct anv_device *device)
    }
 #endif
 
+#if GEN_GEN >= 11
+   /* hardware specification recommends disabling repacking for
+    * the compatibility with decompression mechanism in display controller.
+    */
+   if (device->info.disable_ccs_repack) {
+      uint32_t cache_mode_0;
+      anv_pack_struct(&cache_mode_0,
+                      GENX(CACHE_MODE_0),
+                      .DisableRepackingforCompression = true,
+                      .DisableRepackingforCompressionMask = true);
+
+      anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
+         lri.RegisterOffset = GENX(CACHE_MODE_0_num);
+         lri.DataDWord      = cache_mode_0;
+      }
+   }
+#endif
+
    /* Set the "CONSTANT_BUFFER Address Offset Disable" bit, so
     * 3DSTATE_CONSTANT_XS buffer 0 is an absolute address.
     *
