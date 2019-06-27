@@ -895,15 +895,25 @@ pandecode_replay_attributes(const struct pandecode_mapped_memory *mem,
                 pandecode_log("{\n");
                 pandecode_indent++;
 
-		pandecode_prop("elements = (%s_%d_p) | %s", base, i, pandecode_attr_mode_name(attr[i].elements & 7));
+                unsigned mode = attr[i].elements & 7;
+		pandecode_prop("elements = (%s_%d_p) | %s", base, i, pandecode_attr_mode_name(mode));
 		pandecode_prop("shift = %d", attr[i].shift);
 		pandecode_prop("extra_flags = %d", attr[i].extra_flags);
                 pandecode_prop("stride = 0x%" PRIx32, attr[i].stride);
                 pandecode_prop("size = 0x%" PRIx32, attr[i].size);
+
+                /* Decode further where possible */
+
+                if (mode == MALI_ATTR_MODULO) {
+                        unsigned odd = (2 * attr[i].extra_flags) + 1;
+                        unsigned pot = (1 << attr[i].shift);
+                        pandecode_msg("padded_num_vertices = %d\n", odd * pot);
+                }
+
                 pandecode_indent--;
                 pandecode_log("}, \n");
 
-		if ((attr[i].elements & 7) == MALI_ATTR_NPOT_DIVIDE) {
+		if (mode == MALI_ATTR_NPOT_DIVIDE) {
 			i++;
 			pandecode_log("{\n");
 			pandecode_indent++;
