@@ -958,6 +958,7 @@ static const struct gen_device_info gen_device_info_ehl_4x8 = {
          [MESA_SHADER_GEOMETRY]  = 1032,
       },
    },
+   .disable_ccs_repack = true,
    .simulator_id = 28,
 };
 
@@ -978,6 +979,7 @@ static const struct gen_device_info gen_device_info_ehl_4x4 = {
          [MESA_SHADER_GEOMETRY]  = 1032,
       },
    },
+   .disable_ccs_repack = true,
    .num_eu_per_subslice = 4,
    .simulator_id = 28,
 };
@@ -999,6 +1001,7 @@ static const struct gen_device_info gen_device_info_ehl_2x4 = {
          [MESA_SHADER_GEOMETRY]  = 1032,
       },
    },
+   .disable_ccs_repack = true,
    .num_eu_per_subslice =4,
    .simulator_id = 28,
 };

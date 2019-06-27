@@ -74,6 +74,7 @@ struct gen_device_info
    bool has_surface_tile_offset;
    bool supports_simd16_3src;
    bool has_resource_streamer;
+   bool disable_ccs_repack;
 
    /**
     * \name Intel hardware quirks
