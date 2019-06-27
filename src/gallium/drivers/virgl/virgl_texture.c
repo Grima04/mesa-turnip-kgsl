@@ -313,13 +313,7 @@ static void virgl_texture_transfer_unmap(struct pipe_context *ctx,
 {
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_transfer *trans = virgl_transfer(transfer);
-   struct virgl_screen *vs = virgl_screen(ctx->screen);
-   struct pipe_resource *res = transfer->resource;
    bool queue_unmap = false;
-
-   /* We don't transfer the contents of staging resources, since they don't
-    * have any host-side storage. */
-   assert(pipe_to_virgl_bind(vs, res->bind, res->flags) != VIRGL_BIND_STAGING);
 
    if (transfer->usage & PIPE_TRANSFER_WRITE &&
        (transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT) == 0) {

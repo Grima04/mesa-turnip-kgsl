@@ -33,12 +33,6 @@
 #include "virgl_screen.h"
 #define VR_MAX_TEXTURE_2D_LEVELS 15
 
-/* Indicates that the resource will be used as a staging buffer, not requiring
- * dedicated host-side storage. Can only be used with PIPE_BUFFER resources
- * that have a PIPE_BIND_CUSTOM bind type.
- */
-#define VIRGL_RESOURCE_FLAG_STAGING (PIPE_RESOURCE_FLAG_DRV_PRIV << 0)
-
 struct winsys_handle;
 struct virgl_screen;
 struct virgl_context;
@@ -144,12 +138,8 @@ static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs,
       outbind |= VIRGL_BIND_STREAM_OUTPUT;
    if (pbind & PIPE_BIND_CURSOR)
       outbind |= VIRGL_BIND_CURSOR;
-   if (pbind & PIPE_BIND_CUSTOM) {
-      if (flags & VIRGL_RESOURCE_FLAG_STAGING)
-         outbind |= VIRGL_BIND_STAGING;
-      else
-         outbind |= VIRGL_BIND_CUSTOM;
-   }
+   if (pbind & PIPE_BIND_CUSTOM)
+      outbind |= VIRGL_BIND_CUSTOM;
    if (pbind & PIPE_BIND_SCANOUT)
       outbind |= VIRGL_BIND_SCANOUT;
    if (pbind & PIPE_BIND_SHARED)
@@ -161,6 +151,12 @@ static inline unsigned pipe_to_virgl_bind(const struct virgl_screen *vs,
    if (pbind & PIPE_BIND_COMMAND_ARGS_BUFFER)
       if (vs->caps.caps.v2.capability_bits & VIRGL_CAP_BIND_COMMAND_ARGS)
          outbind |= VIRGL_BIND_COMMAND_ARGS;
+
+   /* Staging resources should only be created directly through the winsys,
+    * not using pipe_resources.
+    */
+   assert(!(outbind & VIRGL_BIND_STAGING));
+
    return outbind;
 }
 
