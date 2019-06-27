@@ -1587,8 +1587,15 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 	 *    stalls without this setting.
 	 *
 	 * Don't add this to CB_SHADER_MASK.
+	 *
+	 * GFX10 supports pixel shaders without exports by setting both
+	 * the color and Z formats to SPI_SHADER_ZERO. The hw will skip export
+	 * instructions if any are present.
 	 */
-	if (!spi_shader_col_format &&
+	if ((sscreen->info.chip_class <= GFX9 ||
+	     info->uses_kill ||
+	     shader->key.part.ps.epilog.alpha_func != PIPE_FUNC_ALWAYS) &&
+	    !spi_shader_col_format &&
 	    !info->writes_z && !info->writes_stencil && !info->writes_samplemask)
 		spi_shader_col_format = V_028714_SPI_SHADER_32_R;
 
