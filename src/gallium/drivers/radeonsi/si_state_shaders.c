@@ -1159,10 +1159,10 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		       S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
 		       S_00B22C_LDS_SIZE(shader->config.lds_size));
 
-	/* TODO: Use NO_PC_EXPORT when applicable. */
 	nparams = MAX2(shader->info.nr_param_exports, 1);
 	shader->ctx_reg.ngg.spi_vs_out_config =
-		S_0286C4_VS_EXPORT_COUNT(nparams - 1);
+		S_0286C4_VS_EXPORT_COUNT(nparams - 1) |
+		S_0286C4_NO_PC_EXPORT(shader->info.nr_param_exports == 0);
 
 	shader->ctx_reg.ngg.spi_shader_idx_format =
 		S_028708_IDX0_EXPORT_FORMAT(V_028708_SPI_SHADER_1COMP);
@@ -1369,6 +1369,11 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 	/* VS is required to export at least one param. */
 	nparams = MAX2(shader->info.nr_param_exports, 1);
 	shader->ctx_reg.vs.spi_vs_out_config = S_0286C4_VS_EXPORT_COUNT(nparams - 1);
+
+	if (sscreen->info.chip_class >= GFX10) {
+		shader->ctx_reg.vs.spi_vs_out_config |=
+			S_0286C4_NO_PC_EXPORT(shader->info.nr_param_exports == 0);
+	}
 
 	shader->ctx_reg.vs.spi_shader_pos_format =
 			S_02870C_POS0_EXPORT_FORMAT(V_02870C_SPI_SHADER_4COMP) |
