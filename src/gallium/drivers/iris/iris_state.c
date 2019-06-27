@@ -2098,9 +2098,7 @@ iris_set_shader_images(struct pipe_context *ctx,
          if (!unlikely(map))
             return;
 
-         iv->base = *img;
-         iv->base.resource = NULL;
-         pipe_resource_reference(&iv->base.resource, &res->base);
+         util_copy_image_view(&iv->base, img);
 
          shs->bound_image_views |= 1 << (start_slot + i);
 
