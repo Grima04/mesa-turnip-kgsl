@@ -115,6 +115,15 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
                                REG_MASK(GEN11_STATE_CACHE_REDIRECT_TO_CS_SECTION_ENABLE));
    }
 
+   /* hardware specification recommends disabling repacking for
+    * the compatibility with decompression mechanism in display controller.
+    */
+   if (devinfo->disable_ccs_repack) {
+      brw_load_register_imm32(brw, GEN7_CACHE_MODE_0,
+                              GEN11_DISABLE_REPACKING_FOR_COMPRESSION |
+                              REG_MASK(GEN11_DISABLE_REPACKING_FOR_COMPRESSION));
+   }
+
    if (devinfo->gen == 10 || devinfo->gen == 11) {
       /* From gen10 workaround table in h/w specs:
        *

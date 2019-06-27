@@ -1576,6 +1576,7 @@ enum brw_pixel_shader_coverage_mask_mode {
 # define GEN9_PARTIAL_RESOLVE_DISABLE_IN_VC (1 << 1)
 # define GEN8_HIZ_PMA_MASK_BITS \
    REG_MASK(GEN8_HIZ_NP_PMA_FIX_ENABLE | GEN8_HIZ_NP_EARLY_Z_FAILS_DISABLE)
+# define GEN11_DISABLE_REPACKING_FOR_COMPRESSION (1 << 15)
 
 #define GEN7_GT_MODE                    0x7008
 # define GEN9_SUBSLICE_HASHING_8x8      (0 << 8)
