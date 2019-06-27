@@ -4353,30 +4353,6 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
    const int stage = MESA_SHADER_COMPUTE;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
-   if (clean & IRIS_DIRTY_CONSTANTS_CS) {
-      struct iris_compiled_shader *shader = ice->shaders.prog[stage];
-
-      if (shader) {
-         struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
-         const struct brw_ubo_range *range = &prog_data->ubo_ranges[0];
-
-         if (range->length > 0) {
-            /* Range block is a binding table index, map back to UBO index. */
-            unsigned block_index = iris_bti_to_group_index(
-               &shader->bt, IRIS_SURFACE_GROUP_UBO, range->block);
-            assert(block_index != IRIS_SURFACE_NOT_USED);
-
-            struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
-            struct iris_resource *res = (void *) cbuf->buffer;
-
-            if (res)
-               iris_use_pinned_bo(batch, res->bo, false);
-            else
-               iris_use_pinned_bo(batch, batch->screen->workaround_bo, false);
-           }
-      }
-   }
-
    if (clean & IRIS_DIRTY_BINDINGS_CS) {
       /* Re-pin any buffers referred to by the binding table. */
       iris_populate_binding_table(ice, batch, stage, true);
