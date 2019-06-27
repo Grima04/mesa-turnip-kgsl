@@ -290,6 +290,63 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars)
    return true;
 }
 
+static void
+lower_clip_in_gs_block(nir_builder *b, nir_block *block, nir_variable *position,
+                       nir_variable *clipvertex, nir_variable **out,
+                       unsigned ucp_enables)
+{
+   nir_foreach_instr_safe(instr, block) {
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_emit_vertex_with_counter:
+      case nir_intrinsic_emit_vertex:
+         b->cursor = nir_before_instr(instr);
+         lower_clip_outputs(b, position, clipvertex, out, ucp_enables, true);
+         break;
+      default:
+         /* not interesting; skip this */
+         break;
+      }
+   }
+}
+
+/*
+ * GS lowering
+ */
+
+bool
+nir_lower_clip_gs(nir_shader *shader, unsigned ucp_enables)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   nir_builder b;
+   int maxloc = -1;
+   nir_variable *position = NULL;
+   nir_variable *clipvertex = NULL;
+   nir_variable *out[2] = { NULL };
+
+   if (!ucp_enables)
+      return false;
+
+   /* find clipvertex/position outputs */
+   if (!find_clipvertex_and_position_outputs(shader, &clipvertex, &position))
+      return false;
+
+   /* insert CLIPDIST outputs */
+   create_clipdist_vars(shader, out, ucp_enables, &maxloc, true);
+
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl)
+      lower_clip_in_gs_block(&b, block, position, clipvertex, out, ucp_enables);
+
+   nir_metadata_preserve(impl, nir_metadata_dominance);
+
+   return true;
+}
+
 /*
  * FS lowering
  */

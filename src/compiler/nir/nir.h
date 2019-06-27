@@ -3776,6 +3776,7 @@ bool nir_lower_idiv(nir_shader *shader);
 bool nir_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval);
 
 bool nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars);
+bool nir_lower_clip_gs(nir_shader *shader, unsigned ucp_enables);
 bool nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables);
 bool nir_lower_clip_cull_distance_arrays(nir_shader *nir);
 
