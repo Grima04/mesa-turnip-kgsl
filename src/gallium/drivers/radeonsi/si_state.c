@@ -148,8 +148,15 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 			unsigned format, swap, spi_format, colormask;
 			bool has_alpha, has_rgb;
 
-			if (!surf)
+			if (!surf) {
+				/* If the color buffer is not set, the driver sets 32_R
+				 * as the SPI color format, because the hw doesn't allow
+				 * holes between color outputs, so also set this to
+				 * enable RB+.
+				 */
+				sx_ps_downconvert |= V_028754_SX_RT_EXPORT_32_R << (i * 4);
 				continue;
+			}
 
 			format = G_028C70_FORMAT(surf->cb_color_info);
 			swap = G_028C70_COMP_SWAP(surf->cb_color_info);
@@ -257,6 +264,12 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 				break;
 			}
 		}
+
+		/* If there are no color outputs, the first color export is
+		 * always enabled as 32_R, so also set this to enable RB+.
+		 */
+		if (!sx_ps_downconvert)
+			sx_ps_downconvert = V_028754_SX_RT_EXPORT_32_R;
 
 		/* SX_PS_DOWNCONVERT, SX_BLEND_OPT_EPSILON, SX_BLEND_OPT_CONTROL */
 		radeon_opt_set_context_reg3(sctx, R_028754_SX_PS_DOWNCONVERT,
