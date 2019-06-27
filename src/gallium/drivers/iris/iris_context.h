@@ -712,6 +712,7 @@ struct iris_context {
          struct pipe_resource *scissor;
          struct pipe_resource *blend;
          struct pipe_resource *index_buffer;
+         struct pipe_resource *cs_thread_ids;
       } last_res;
 
       /** Records the size of variable-length state for INTEL_DEBUG=bat */

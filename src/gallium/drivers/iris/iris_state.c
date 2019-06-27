@@ -4369,6 +4369,10 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
          struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
          iris_use_pinned_bo(batch, bo, false);
 
+         struct iris_bo *curbe_bo =
+            iris_resource_bo(ice->state.last_res.cs_thread_ids);
+         iris_use_pinned_bo(batch, curbe_bo, false);
+
          struct brw_stage_prog_data *prog_data = shader->prog_data;
 
          if (prog_data->total_scratch > 0) {
@@ -5507,9 +5511,9 @@ iris_upload_compute_state(struct iris_context *ice,
       assert(cs_prog_data->push.cross_thread.dwords == 0 &&
              cs_prog_data->push.per_thread.dwords == 1 &&
              cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
-      struct pipe_resource *curbe_data_res = NULL;
       uint32_t *curbe_data_map =
-         stream_state(batch, ice->state.dynamic_uploader, &curbe_data_res,
+         stream_state(batch, ice->state.dynamic_uploader,
+                      &ice->state.last_res.cs_thread_ids,
                       ALIGN(cs_prog_data->push.total.size, 64), 64,
                       &curbe_data_offset);
       assert(curbe_data_map);
@@ -5653,6 +5657,7 @@ iris_destroy_state(struct iris_context *ice)
    pipe_resource_reference(&ice->state.last_res.scissor, NULL);
    pipe_resource_reference(&ice->state.last_res.blend, NULL);
    pipe_resource_reference(&ice->state.last_res.index_buffer, NULL);
+   pipe_resource_reference(&ice->state.last_res.cs_thread_ids, NULL);
 }
 
 /* ------------------------------------------------------------------- */
