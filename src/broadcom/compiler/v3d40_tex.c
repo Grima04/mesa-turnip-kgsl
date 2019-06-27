@@ -243,6 +243,34 @@ type_size_align_1(const struct glsl_type *type, unsigned *size, unsigned *align)
         *align = 1;
 }
 
+static uint32_t
+v3d40_image_load_store_tmu_op(nir_intrinsic_instr *instr)
+{
+        switch (instr->intrinsic) {
+        case nir_intrinsic_image_deref_load:
+        case nir_intrinsic_image_deref_store:
+                return V3D_TMU_OP_REGULAR;
+        case nir_intrinsic_image_deref_atomic_add:
+                return V3D_TMU_OP_WRITE_ADD_READ_PREFETCH;
+        case nir_intrinsic_image_deref_atomic_min:
+                return V3D_TMU_OP_WRITE_UMIN_FULL_L1_CLEAR;
+        case nir_intrinsic_image_deref_atomic_max:
+                return V3D_TMU_OP_WRITE_UMAX;
+        case nir_intrinsic_image_deref_atomic_and:
+                return V3D_TMU_OP_WRITE_AND_READ_INC;
+        case nir_intrinsic_image_deref_atomic_or:
+                return V3D_TMU_OP_WRITE_OR_READ_DEC;
+        case nir_intrinsic_image_deref_atomic_xor:
+                return V3D_TMU_OP_WRITE_XOR_READ_NOT;
+        case nir_intrinsic_image_deref_atomic_exchange:
+                return V3D_TMU_OP_WRITE_XCHG_READ_FLUSH;
+        case nir_intrinsic_image_deref_atomic_comp_swap:
+                return V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH;
+        default:
+                unreachable("unknown image intrinsic");
+        };
+}
+
 void
 v3d40_vir_emit_image_load_store(struct v3d_compile *c,
                                 nir_intrinsic_instr *instr)
@@ -267,39 +295,7 @@ v3d40_vir_emit_image_load_store(struct v3d_compile *c,
         /* XXX perf: We should turn add/sub of 1 to inc/dec.  Perhaps NIR
          * wants to have support for inc/dec?
          */
-        switch (instr->intrinsic) {
-        case nir_intrinsic_image_deref_load:
-        case nir_intrinsic_image_deref_store:
-                p2_unpacked.op = V3D_TMU_OP_REGULAR;
-                break;
-        case nir_intrinsic_image_deref_atomic_add:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_ADD_READ_PREFETCH;
-                break;
-        case nir_intrinsic_image_deref_atomic_min:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_UMIN_FULL_L1_CLEAR;
-                break;
-
-        case nir_intrinsic_image_deref_atomic_max:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_UMAX;
-                break;
-        case nir_intrinsic_image_deref_atomic_and:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_AND_READ_INC;
-                break;
-        case nir_intrinsic_image_deref_atomic_or:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_OR_READ_DEC;
-                break;
-        case nir_intrinsic_image_deref_atomic_xor:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_XOR_READ_NOT;
-                break;
-        case nir_intrinsic_image_deref_atomic_exchange:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_XCHG_READ_FLUSH;
-                break;
-        case nir_intrinsic_image_deref_atomic_comp_swap:
-                p2_unpacked.op = V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH;
-                break;
-        default:
-                unreachable("unknown image intrinsic");
-        };
+        p2_unpacked.op = v3d40_image_load_store_tmu_op(instr);
 
         bool is_1d = false;
         switch (glsl_get_sampler_dim(sampler_type)) {
