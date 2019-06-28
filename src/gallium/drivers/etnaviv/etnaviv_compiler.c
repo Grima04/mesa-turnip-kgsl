@@ -763,7 +763,7 @@ etna_native_to_dst(struct etna_native_reg native, unsigned comps)
    assert(native.valid && !native.is_tex && native.rgroup == INST_RGROUP_TEMP);
 
    struct etna_inst_dst rv = {
-      .comps = comps,
+      .write_mask = comps,
       .use = 1,
       .reg = native.id,
    };
@@ -892,7 +892,7 @@ convert_dst(struct etna_compile *c, const struct tgsi_full_dst_register *in)
 {
    struct etna_inst_dst rv = {
       /// XXX .amode
-      .comps = in->Register.WriteMask,
+      .write_mask = in->Register.WriteMask,
    };
 
    if (in->Register.File == TGSI_FILE_ADDRESS) {
