@@ -220,6 +220,7 @@ struct gen_perf_config {
       void *(*bo_map)(void *ctx, void *bo, unsigned flags);
       void (*bo_unmap)(void *bo);
       bool (*batch_references)(void *batch, void *bo);
+      void (*bo_wait_rendering)(void *bo);
       void (*emit_mi_flush)(void *ctx);
       void (*emit_mi_report_perf_count)(void *ctx,
                                         void *bo,

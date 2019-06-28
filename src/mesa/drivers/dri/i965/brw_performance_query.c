@@ -696,7 +696,7 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
    if (perf_cfg->vtbl.batch_references(&brw->batch, bo))
       perf_cfg->vtbl.batchbuffer_flush(brw, __FILE__, __LINE__);
 
-   brw_bo_wait_rendering(bo);
+   perf_cfg->vtbl.bo_wait_rendering(bo);
 
    /* Due to a race condition between the OA unit signaling report
     * availability and the report actually being written into memory,
@@ -1177,6 +1177,7 @@ typedef void (*capture_frequency_stat_register_t)(void *, void *, uint32_t );
 typedef void (*store_register_mem64_t)(void *ctx, void *bo,
                                        uint32_t reg, uint32_t offset);
 typedef bool (*batch_references_t)(void *batch, void *bo);
+typedef void (*bo_wait_rendering_t)(void *bo);
 
 
 static unsigned
@@ -1205,6 +1206,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
    perf_cfg->vtbl.store_register_mem64 =
       (store_register_mem64_t) brw_store_register_mem64;
    perf_cfg->vtbl.batch_references = (batch_references_t)brw_batch_references;
+   perf_cfg->vtbl.bo_wait_rendering = (bo_wait_rendering_t)brw_bo_wait_rendering;
 
    gen_perf_init_context(perf_ctx, perf_cfg, brw, brw->bufmgr, devinfo,
                          brw->hw_ctx, brw->screen->driScrnPriv->fd);
