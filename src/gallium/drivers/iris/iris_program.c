@@ -1526,17 +1526,17 @@ iris_update_compiled_fs(struct iris_context *ice)
 }
 
 /**
- * Get the compiled shader for the last enabled geometry stage.
+ * Get the shader for the last enabled geometry stage.
  *
  * This stage is the one which will feed stream output and the rasterizer.
  */
 static gl_shader_stage
 last_vue_stage(struct iris_context *ice)
 {
-   if (ice->shaders.prog[MESA_SHADER_GEOMETRY])
+   if (ice->shaders.uncompiled[MESA_SHADER_GEOMETRY])
       return MESA_SHADER_GEOMETRY;
 
-   if (ice->shaders.prog[MESA_SHADER_TESS_EVAL])
+   if (ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL])
       return MESA_SHADER_TESS_EVAL;
 
    return MESA_SHADER_VERTEX;
