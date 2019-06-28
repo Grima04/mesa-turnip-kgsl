@@ -146,6 +146,35 @@ find_output(nir_shader *shader, unsigned drvloc)
    return def;
 }
 
+static bool
+find_clipvertex_and_position_outputs(nir_shader *shader,
+                                     nir_variable **clipvertex,
+                                     nir_variable **position)
+{
+   nir_foreach_variable(var, &shader->outputs) {
+      switch (var->data.location) {
+      case VARYING_SLOT_POS:
+         *position = var;
+         break;
+      case VARYING_SLOT_CLIP_VERTEX:
+         *clipvertex = var;
+         break;
+      case VARYING_SLOT_CLIP_DIST0:
+      case VARYING_SLOT_CLIP_DIST1:
+         /* if shader is already writing CLIPDIST, then
+          * there should be no user-clip-planes to deal
+          * with.
+          *
+          * We assume nir_remove_dead_variables has removed the clipdist
+          * variables if they're not written.
+          */
+         return false;
+      }
+   }
+
+   return *clipvertex || *position;
+}
+
 /*
  * VS lowering
  */
@@ -185,27 +214,9 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars)
    assert(impl->end_block->predecessors->entries == 1);
    b.cursor = nir_after_cf_list(&impl->body);
 
-   /* find clipvertex/position outputs: */
-   nir_foreach_variable(var, &shader->outputs) {
-      switch (var->data.location) {
-      case VARYING_SLOT_POS:
-         position = var;
-         break;
-      case VARYING_SLOT_CLIP_VERTEX:
-         clipvertex = var;
-         break;
-      case VARYING_SLOT_CLIP_DIST0:
-      case VARYING_SLOT_CLIP_DIST1:
-         /* if shader is already writing CLIPDIST, then
-          * there should be no user-clip-planes to deal
-          * with.
-          *
-          * We assume nir_remove_dead_variables has removed the clipdist
-          * variables if they're not written.
-          */
-         return false;
-      }
-   }
+   /* find clipvertex/position outputs */
+   if (!find_clipvertex_and_position_outputs(shader, &clipvertex, &position))
+      return false;
 
    if (use_vars) {
       cv = nir_load_var(&b, clipvertex ? clipvertex : position);
@@ -218,10 +229,10 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars)
    } else {
       if (clipvertex)
          cv = find_output(shader, clipvertex->data.driver_location);
-      else if (position)
+      else {
+         assert(position);
          cv = find_output(shader, position->data.driver_location);
-      else
-         return false;
+      }
    }
 
    /* insert CLIPDIST outputs: */
