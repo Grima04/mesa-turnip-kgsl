@@ -667,47 +667,10 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
-   struct brw_bo *bo = NULL;
-   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    assert(!o->Ready);
 
-   switch (obj->queryinfo->kind) {
-   case GEN_PERF_QUERY_TYPE_OA:
-   case GEN_PERF_QUERY_TYPE_RAW:
-      bo = obj->oa.bo;
-      break;
-
-   case GEN_PERF_QUERY_TYPE_PIPELINE:
-      bo = obj->pipeline_stats.bo;
-      break;
-
-   default:
-      unreachable("Unknown query type");
-      break;
-   }
-
-   if (bo == NULL)
-      return;
-
-   /* If the current batch references our results bo then we need to
-    * flush first...
-    */
-   if (perf_cfg->vtbl.batch_references(&brw->batch, bo))
-      perf_cfg->vtbl.batchbuffer_flush(brw, __FILE__, __LINE__);
-
-   perf_cfg->vtbl.bo_wait_rendering(bo);
-
-   /* Due to a race condition between the OA unit signaling report
-    * availability and the report actually being written into memory,
-    * we need to wait for all the reports to come in before we can
-    * read them.
-    */
-   if (obj->queryinfo->kind == GEN_PERF_QUERY_TYPE_OA ||
-       obj->queryinfo->kind == GEN_PERF_QUERY_TYPE_RAW) {
-      while (!read_oa_samples_for_query(brw, obj))
-         ;
-   }
+   gen_perf_wait_query(&brw->perf_ctx, obj, &brw->batch);
 }
 
 static bool

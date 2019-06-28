@@ -1337,3 +1337,167 @@ gen_perf_end_query(struct gen_perf_context *perf_ctx,
       break;
    }
 }
+
+enum OaReadStatus {
+   OA_READ_STATUS_ERROR,
+   OA_READ_STATUS_UNFINISHED,
+   OA_READ_STATUS_FINISHED,
+};
+
+static enum OaReadStatus
+read_oa_samples_until(struct gen_perf_context *perf_ctx,
+                      uint32_t start_timestamp,
+                      uint32_t end_timestamp)
+{
+   struct exec_node *tail_node =
+      exec_list_get_tail(&perf_ctx->sample_buffers);
+   struct oa_sample_buf *tail_buf =
+      exec_node_data(struct oa_sample_buf, tail_node, link);
+   uint32_t last_timestamp = tail_buf->last_timestamp;
+
+   while (1) {
+      struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(perf_ctx);
+      uint32_t offset;
+      int len;
+
+      while ((len = read(perf_ctx->oa_stream_fd, buf->buf,
+                         sizeof(buf->buf))) < 0 && errno == EINTR)
+         ;
+
+      if (len <= 0) {
+         exec_list_push_tail(&perf_ctx->free_sample_buffers, &buf->link);
+
+         if (len < 0) {
+            if (errno == EAGAIN)
+               return ((last_timestamp - start_timestamp) >=
+                       (end_timestamp - start_timestamp)) ?
+                      OA_READ_STATUS_FINISHED :
+                      OA_READ_STATUS_UNFINISHED;
+            else {
+               DBG("Error reading i915 perf samples: %m\n");
+            }
+         } else
+            DBG("Spurious EOF reading i915 perf samples\n");
+
+         return OA_READ_STATUS_ERROR;
+      }
+
+      buf->len = len;
+      exec_list_push_tail(&perf_ctx->sample_buffers, &buf->link);
+
+      /* Go through the reports and update the last timestamp. */
+      offset = 0;
+      while (offset < buf->len) {
+         const struct drm_i915_perf_record_header *header =
+            (const struct drm_i915_perf_record_header *) &buf->buf[offset];
+         uint32_t *report = (uint32_t *) (header + 1);
+
+         if (header->type == DRM_I915_PERF_RECORD_SAMPLE)
+            last_timestamp = report[1];
+
+         offset += header->size;
+      }
+
+      buf->last_timestamp = last_timestamp;
+   }
+
+   unreachable("not reached");
+   return OA_READ_STATUS_ERROR;
+}
+
+/**
+ * Try to read all the reports until either the delimiting timestamp
+ * or an error arises.
+ */
+static bool
+read_oa_samples_for_query(struct gen_perf_context *perf_ctx,
+                          struct gen_perf_query_object *query,
+                          void *current_batch)
+{
+   uint32_t *start;
+   uint32_t *last;
+   uint32_t *end;
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+
+   /* We need the MI_REPORT_PERF_COUNT to land before we can start
+    * accumulate. */
+   assert(!perf_cfg->vtbl.batch_references(current_batch, query->oa.bo) &&
+          !perf_cfg->vtbl.bo_busy(query->oa.bo));
+
+   /* Map the BO once here and let accumulate_oa_reports() unmap
+    * it. */
+   if (query->oa.map == NULL)
+      query->oa.map = perf_cfg->vtbl.bo_map(perf_ctx->ctx, query->oa.bo, MAP_READ);
+
+   start = last = query->oa.map;
+   end = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
+
+   if (start[0] != query->oa.begin_report_id) {
+      DBG("Spurious start report id=%"PRIu32"\n", start[0]);
+      return true;
+   }
+   if (end[0] != (query->oa.begin_report_id + 1)) {
+      DBG("Spurious end report id=%"PRIu32"\n", end[0]);
+      return true;
+   }
+
+   /* Read the reports until the end timestamp. */
+   switch (read_oa_samples_until(perf_ctx, start[1], end[1])) {
+   case OA_READ_STATUS_ERROR:
+      /* Fallthrough and let accumulate_oa_reports() deal with the
+       * error. */
+   case OA_READ_STATUS_FINISHED:
+      return true;
+   case OA_READ_STATUS_UNFINISHED:
+      return false;
+   }
+
+   unreachable("invalid read status");
+   return false;
+}
+
+void
+gen_perf_wait_query(struct gen_perf_context *perf_ctx,
+                    struct gen_perf_query_object *query,
+                    void *current_batch)
+{
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+   struct brw_bo *bo = NULL;
+
+   switch (query->queryinfo->kind) {
+   case GEN_PERF_QUERY_TYPE_OA:
+   case GEN_PERF_QUERY_TYPE_RAW:
+      bo = query->oa.bo;
+      break;
+
+   case GEN_PERF_QUERY_TYPE_PIPELINE:
+      bo = query->pipeline_stats.bo;
+      break;
+
+   default:
+      unreachable("Unknown query type");
+      break;
+   }
+
+   if (bo == NULL)
+      return;
+
+   /* If the current batch references our results bo then we need to
+    * flush first...
+    */
+   if (perf_cfg->vtbl.batch_references(current_batch, bo))
+      perf_cfg->vtbl.batchbuffer_flush(perf_ctx->ctx, __FILE__, __LINE__);
+
+   perf_cfg->vtbl.bo_wait_rendering(bo);
+
+   /* Due to a race condition between the OA unit signaling report
+    * availability and the report actually being written into memory,
+    * we need to wait for all the reports to come in before we can
+    * read them.
+    */
+   if (query->queryinfo->kind == GEN_PERF_QUERY_TYPE_OA ||
+       query->queryinfo->kind == GEN_PERF_QUERY_TYPE_RAW) {
+      while (!read_oa_samples_for_query(perf_ctx, query, current_batch))
+         ;
+   }
+}

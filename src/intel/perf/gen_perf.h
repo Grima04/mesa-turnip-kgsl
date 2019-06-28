@@ -624,5 +624,8 @@ bool gen_perf_begin_query(struct gen_perf_context *perf_ctx,
                           struct gen_perf_query_object *query);
 void gen_perf_end_query(struct gen_perf_context *perf_ctx,
                         struct gen_perf_query_object *query);
+void gen_perf_wait_query(struct gen_perf_context *perf_ctx,
+                         struct gen_perf_query_object *query,
+                         void *current_batch);
 
 #endif /* GEN_PERF_H */
