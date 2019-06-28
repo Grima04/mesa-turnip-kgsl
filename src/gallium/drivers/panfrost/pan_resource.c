@@ -756,12 +756,7 @@ panfrost_get_texture_address(
         unsigned level_offset = rsrc->bo->slices[level].offset;
         unsigned face_offset = face * rsrc->bo->cubemap_stride;
 
-        /* Lower-bit is set when sampling from colour AFBC */
-        bool is_afbc = rsrc->bo->layout == PAN_AFBC;
-        bool is_zs = rsrc->base.bind & PIPE_BIND_DEPTH_STENCIL;
-        unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
-
-        return rsrc->bo->gpu + level_offset + face_offset + afbc_bit;
+        return rsrc->bo->gpu + level_offset + face_offset;
 }
 
 static void

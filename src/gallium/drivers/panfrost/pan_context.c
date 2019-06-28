@@ -834,6 +834,11 @@ panfrost_upload_tex(
         unsigned first_layer = pview->u.tex.first_layer;
         unsigned last_layer = pview->u.tex.last_layer;
 
+        /* Lower-bit is set when sampling from colour AFBC */
+        bool is_afbc = rsrc->bo->layout == PAN_AFBC;
+        bool is_zs = rsrc->base.bind & PIPE_BIND_DEPTH_STENCIL;
+        unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
+
         /* Inject the addresses in, interleaving mip levels, cube faces, and
          * strides in that order */
 
@@ -841,8 +846,9 @@ panfrost_upload_tex(
 
         for (unsigned l = first_level; l <= last_level; ++l) {
                 for (unsigned f = first_layer; f <= last_layer; ++f) {
+
                         view->hw.payload[idx++] =
-                                panfrost_get_texture_address(rsrc, l, f);
+                                panfrost_get_texture_address(rsrc, l, f) + afbc_bit;
 
                         if (has_manual_stride) {
                                 view->hw.payload[idx++] =
