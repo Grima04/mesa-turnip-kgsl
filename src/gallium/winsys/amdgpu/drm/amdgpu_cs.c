@@ -672,7 +672,8 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
    return index;
 }
 
-static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws, struct amdgpu_ib *ib,
+static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
+                                 struct amdgpu_ib *ib,
                                  enum ring_type ring_type)
 {
    struct pb_buffer *pb;
@@ -696,18 +697,18 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws, struct amdgpu_ib *ib,
    buffer_size = MIN2(buffer_size, max_size);
    buffer_size = MAX2(buffer_size, min_size); /* min_size is more important */
 
-   pb = ws->base.buffer_create(&ws->base, buffer_size,
-                               ws->info.gart_page_size,
-                               RADEON_DOMAIN_GTT,
-                               RADEON_FLAG_NO_INTERPROCESS_SHARING |
-                               (ring_type == RING_GFX ||
-                                ring_type == RING_COMPUTE ||
-                                ring_type == RING_DMA ?
-                                   RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC : 0));
+   pb = amdgpu_bo_create(ws, buffer_size,
+                         ws->info.gart_page_size,
+                         RADEON_DOMAIN_GTT,
+                         RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                         (ring_type == RING_GFX ||
+                          ring_type == RING_COMPUTE ||
+                          ring_type == RING_DMA ?
+                          RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC : 0));
    if (!pb)
       return false;
 
-   mapped = ws->base.buffer_map(pb, NULL, PIPE_TRANSFER_WRITE);
+   mapped = amdgpu_bo_map(pb, NULL, PIPE_TRANSFER_WRITE);
    if (!mapped) {
       pb_reference(&pb, NULL);
       return false;
@@ -740,10 +741,9 @@ static unsigned amdgpu_ib_max_submit_dwords(enum ib_type ib_type)
    }
 }
 
-static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
+static bool amdgpu_get_new_ib(struct amdgpu_winsys *ws, struct amdgpu_cs *cs,
                               enum ib_type ib_type)
 {
-   struct amdgpu_winsys *aws = amdgpu_winsys(ws);
    /* Small IBs are better than big IBs, because the GPU goes idle quicker
     * and there is less waiting for buffers and fences. Proof:
     *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
@@ -785,7 +785,7 @@ static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
    /* Allocate a new buffer for IBs if the current buffer is all used. */
    if (!ib->big_ib_buffer ||
        ib->used_ib_space + ib_size > ib->big_ib_buffer->size) {
-      if (!amdgpu_ib_new_buffer(aws, ib, cs->ring_type))
+      if (!amdgpu_ib_new_buffer(ws, ib, cs->ring_type))
          return false;
    }
 
@@ -987,7 +987,7 @@ amdgpu_cs_create(struct radeon_winsys_ctx *rwctx,
    cs->csc = &cs->csc1;
    cs->cst = &cs->csc2;
 
-   if (!amdgpu_get_new_ib(&ctx->ws->base, cs, IB_MAIN)) {
+   if (!amdgpu_get_new_ib(ctx->ws, cs, IB_MAIN)) {
       amdgpu_destroy_cs_context(&cs->csc2);
       amdgpu_destroy_cs_context(&cs->csc1);
       FREE(cs);
@@ -1013,7 +1013,7 @@ amdgpu_cs_add_parallel_compute_ib(struct radeon_cmdbuf *ib,
       return NULL;
 
    /* Allocate the compute IB. */
-   if (!amdgpu_get_new_ib(&ws->base, cs, IB_PARALLEL_COMPUTE))
+   if (!amdgpu_get_new_ib(ws, cs, IB_PARALLEL_COMPUTE))
       return NULL;
 
    if (uses_gds_ordered_append) {
@@ -1768,9 +1768,9 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       amdgpu_cs_context_cleanup(cs->csc);
    }
 
-   amdgpu_get_new_ib(&ws->base, cs, IB_MAIN);
+   amdgpu_get_new_ib(ws, cs, IB_MAIN);
    if (cs->compute_ib.ib_mapped)
-      amdgpu_get_new_ib(&ws->base, cs, IB_PARALLEL_COMPUTE);
+      amdgpu_get_new_ib(ws, cs, IB_PARALLEL_COMPUTE);
 
    cs->main.base.used_gart = 0;
    cs->main.base.used_vram = 0;
@@ -1810,7 +1810,7 @@ static bool amdgpu_bo_is_referenced(struct radeon_cmdbuf *rcs,
    return amdgpu_bo_is_referenced_by_cs_with_usage(cs, bo, usage);
 }
 
-void amdgpu_cs_init_functions(struct amdgpu_winsys *ws)
+void amdgpu_cs_init_functions(struct amdgpu_screen_winsys *ws)
 {
    ws->base.ctx_create = amdgpu_ctx_create;
    ws->base.ctx_destroy = amdgpu_ctx_destroy;
