@@ -1294,9 +1294,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         /* Use the type appropriate load */
                         switch (t) {
-                                case nir_type_int:
                                 case nir_type_uint:
                                 case nir_type_bool:
+                                        ins.load_store.op = midgard_op_ld_attr_32u;
+                                        break;
+                                case nir_type_int:
                                         ins.load_store.op = midgard_op_ld_attr_32i;
                                         break;
                                 case nir_type_float:

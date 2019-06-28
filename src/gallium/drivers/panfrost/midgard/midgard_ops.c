@@ -190,15 +190,18 @@ const char *load_store_opcode_names[256] = {
         [midgard_op_ld_attr_32] = "ld_attr_32",
         [midgard_op_ld_attr_16] = "ld_attr_16",
         [midgard_op_ld_attr_32i] = "ld_attr_32i",
+        [midgard_op_ld_attr_32u] = "ld_attr_32u",
 
         [midgard_op_ld_vary_32] = "ld_vary_32",
         [midgard_op_ld_vary_16] = "ld_vary_16",
         [midgard_op_ld_vary_32i] = "ld_vary_32i",
+        [midgard_op_ld_vary_32u] = "ld_vary_32u",
 
         [midgard_op_ld_color_buffer_16] = "ld_color_buffer_16",
 
         [midgard_op_ld_uniform_16] = "ld_uniform_16",
         [midgard_op_ld_uniform_32] = "ld_uniform_32",
+        [midgard_op_ld_uniform_32i] = "ld_uniform_32i",
         [midgard_op_ld_color_buffer_8] = "ld_color_buffer_8",
 
         [midgard_op_st_char] = "st_char",
@@ -210,6 +213,7 @@ const char *load_store_opcode_names[256] = {
         [midgard_op_st_vary_32] = "st_vary_32",
         [midgard_op_st_vary_16] = "st_vary_16",
         [midgard_op_st_vary_32i] = "st_vary_32i",
+        [midgard_op_st_vary_32u] = "st_vary_32u",
 
         [midgard_op_st_image_f] = "st_image_f",
         [midgard_op_st_image_ui] = "st_image_ui",

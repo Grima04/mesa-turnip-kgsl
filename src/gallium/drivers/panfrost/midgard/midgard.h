@@ -419,13 +419,16 @@ typedef enum {
 
         midgard_op_ld_attr_32 = 0x94,
         midgard_op_ld_attr_16 = 0x95,
+        midgard_op_ld_attr_32u = 0x96,
         midgard_op_ld_attr_32i = 0x97,
         midgard_op_ld_vary_32 = 0x98,
         midgard_op_ld_vary_16 = 0x99,
+        midgard_op_ld_vary_32u = 0x9A,
         midgard_op_ld_vary_32i = 0x9B,
         midgard_op_ld_color_buffer_16 = 0x9D,
 
         midgard_op_ld_uniform_16 = 0xAC,
+        midgard_op_ld_uniform_32i = 0xA8,
 
         midgard_op_ld_uniform_32 = 0xB0,
         midgard_op_ld_color_buffer_8 = 0xBA,
@@ -438,6 +441,7 @@ typedef enum {
 
         midgard_op_st_vary_32 = 0xD4,
         midgard_op_st_vary_16 = 0xD5,
+        midgard_op_st_vary_32u = 0xD6,
         midgard_op_st_vary_32i = 0xD7,
 
         /* Value to st in r27, location r26.w as short2 */
