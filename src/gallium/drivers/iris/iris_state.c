@@ -1874,6 +1874,27 @@ iris_create_surface(struct pipe_context *ctx,
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
+
+   isl_surf_usage_flags_t usage = 0;
+   if (tmpl->writable)
+      usage = ISL_SURF_USAGE_STORAGE_BIT;
+   else if (util_format_is_depth_or_stencil(tmpl->format))
+      usage = ISL_SURF_USAGE_DEPTH_BIT;
+   else
+      usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
+
+   const struct iris_format_info fmt =
+      iris_format_for_usage(devinfo, tmpl->format, usage);
+
+   if ((usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
+       !isl_format_supports_rendering(devinfo, fmt.fmt)) {
+      /* Framebuffer validation will reject this invalid case, but it
+       * hasn't had the opportunity yet.  In the meantime, we need to
+       * avoid hitting ISL asserts about unsupported formats below.
+       */
+      return NULL;
+   }
+
    struct iris_surface *surf = calloc(1, sizeof(struct iris_surface));
    struct pipe_surface *psurf = &surf->base;
    struct iris_resource *res = (struct iris_resource *) tex;
@@ -1891,27 +1912,6 @@ iris_create_surface(struct pipe_context *ctx,
    psurf->u.tex.first_layer = tmpl->u.tex.first_layer;
    psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
    psurf->u.tex.level = tmpl->u.tex.level;
-
-   isl_surf_usage_flags_t usage = 0;
-   if (tmpl->writable)
-      usage = ISL_SURF_USAGE_STORAGE_BIT;
-   else if (util_format_is_depth_or_stencil(tmpl->format))
-      usage = ISL_SURF_USAGE_DEPTH_BIT;
-   else
-      usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
-
-   const struct iris_format_info fmt =
-      iris_format_for_usage(devinfo, psurf->format, usage);
-
-   if ((usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
-       !isl_format_supports_rendering(devinfo, fmt.fmt)) {
-      /* Framebuffer validation will reject this invalid case, but it
-       * hasn't had the opportunity yet.  In the meantime, we need to
-       * avoid hitting ISL asserts about unsupported formats below.
-       */
-      free(surf);
-      return NULL;
-   }
 
    struct isl_view *view = &surf->view;
    *view = (struct isl_view) {
