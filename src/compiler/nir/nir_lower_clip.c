@@ -189,6 +189,56 @@ find_clipvertex_and_position_outputs(nir_shader *shader,
    return *clipvertex || *position;
 }
 
+static void
+lower_clip_outputs(nir_builder *b, nir_variable *position,
+                   nir_variable *clipvertex, nir_variable **out,
+                   unsigned ucp_enables, bool use_vars)
+{
+   nir_ssa_def *clipdist[MAX_CLIP_PLANES];
+   nir_ssa_def *cv;
+
+   if (use_vars) {
+      cv = nir_load_var(b, clipvertex ? clipvertex : position);
+
+      if (clipvertex) {
+         exec_node_remove(&clipvertex->node);
+         clipvertex->data.mode = nir_var_shader_temp;
+         exec_list_push_tail(&b->shader->globals, &clipvertex->node);
+      }
+   } else {
+      if (clipvertex)
+         cv = find_output(b->shader, clipvertex->data.driver_location);
+      else {
+         assert(position);
+         cv = find_output(b->shader, position->data.driver_location);
+      }
+   }
+
+   for (int plane = 0; plane < MAX_CLIP_PLANES; plane++) {
+      if (ucp_enables & (1 << plane)) {
+         nir_ssa_def *ucp = nir_load_user_clip_plane(b, plane);
+
+         /* calculate clipdist[plane] - dot(ucp, cv): */
+         clipdist[plane] = nir_fdot4(b, ucp, cv);
+      } else {
+         /* 0.0 == don't-clip == disabled: */
+         clipdist[plane] = nir_imm_float(b, 0.0);
+      }
+   }
+
+   if (use_vars) {
+      if (ucp_enables & 0x0f)
+         nir_store_var(b, out[0], nir_vec(b, clipdist, 4), 0xf);
+      if (ucp_enables & 0xf0)
+         nir_store_var(b, out[1], nir_vec(b, &clipdist[4], 4), 0xf);
+   } else {
+      if (ucp_enables & 0x0f)
+         store_clipdist_output(b, out[0], &clipdist[0]);
+      if (ucp_enables & 0xf0)
+         store_clipdist_output(b, out[1], &clipdist[4]);
+   }
+}
+
 /*
  * VS lowering
  */
@@ -203,12 +253,10 @@ bool
 nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   nir_ssa_def *clipdist[MAX_CLIP_PLANES];
    nir_builder b;
    int maxloc = -1;
    nir_variable *position = NULL;
    nir_variable *clipvertex = NULL;
-   nir_ssa_def *cv;
    nir_variable *out[2] = { NULL };
 
    if (!ucp_enables)
@@ -232,49 +280,10 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars)
    if (!find_clipvertex_and_position_outputs(shader, &clipvertex, &position))
       return false;
 
-   if (use_vars) {
-      cv = nir_load_var(&b, clipvertex ? clipvertex : position);
-
-      if (clipvertex) {
-         exec_node_remove(&clipvertex->node);
-         clipvertex->data.mode = nir_var_shader_temp;
-         exec_list_push_tail(&shader->globals, &clipvertex->node);
-      }
-   } else {
-      if (clipvertex)
-         cv = find_output(shader, clipvertex->data.driver_location);
-      else {
-         assert(position);
-         cv = find_output(shader, position->data.driver_location);
-      }
-   }
-
    /* insert CLIPDIST outputs */
    create_clipdist_vars(shader, out, ucp_enables, &maxloc, true);
 
-   for (int plane = 0; plane < MAX_CLIP_PLANES; plane++) {
-      if (ucp_enables & (1 << plane)) {
-         nir_ssa_def *ucp = nir_load_user_clip_plane(&b, plane);
-
-         /* calculate clipdist[plane] - dot(ucp, cv): */
-         clipdist[plane] = nir_fdot4(&b, ucp, cv);
-      } else {
-         /* 0.0 == don't-clip == disabled: */
-         clipdist[plane] = nir_imm_float(&b, 0.0);
-      }
-   }
-
-   if (use_vars) {
-      if (ucp_enables & 0x0f)
-         nir_store_var(&b, out[0], nir_vec(&b, clipdist, 4), 0xf);
-      if (ucp_enables & 0xf0)
-         nir_store_var(&b, out[1], nir_vec(&b, &clipdist[4], 4), 0xf);
-   } else {
-      if (ucp_enables & 0x0f)
-         store_clipdist_output(&b, out[0], &clipdist[0]);
-      if (ucp_enables & 0xf0)
-         store_clipdist_output(&b, out[1], &clipdist[4]);
-   }
+   lower_clip_outputs(&b, position, clipvertex, out, ucp_enables, use_vars);
 
    nir_metadata_preserve(impl, nir_metadata_dominance);
 
