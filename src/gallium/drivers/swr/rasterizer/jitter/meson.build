@@ -1,4 +1,4 @@
-# Copyright © 2017-2019 Intel Corporation
+# Copyright © 2017-2018 Intel Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -19,17 +19,14 @@
 # SOFTWARE.
 
 
-if meson.version().version_compare('>=0.51')
-  _llvm_includedir = dep_llvm.get_variable(configtool : 'includedir', cmake : 'LLVM_INCLUDE_DIR')
-else
-  _llvm_includedir = dep_llvm.get_configtool_variable('includedir')
-endif
-
 gen_builder_hpp = custom_target(
   'gen_builder.hpp',
   input : [
     swr_gen_llvm_ir_macros_py,
-    join_paths(_llvm_includedir, 'llvm', 'IR', 'IRBuilder.h')
+    join_paths(
+      dep_llvm.get_configtool_variable('includedir'), 'llvm', 'IR',
+      'IRBuilder.h'
+    )
   ],
   output : 'gen_builder.hpp',
   command : [

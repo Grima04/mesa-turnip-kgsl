@@ -1,4 +1,4 @@
-# Copyright © 2017-2019 Intel Corporation
+# Copyright © 2017-2018 Intel Corporation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,6 @@ if with_opencl_icd
   clover_cpp_args += '-DHAVE_CLOVER_ICD'
 endif
 
-if meson.version().version_compare('>=0.51')
-  _clang_resources = join_paths(dep_llvm.get_variable(cmake : 'LLVM_LIBRARY_DIR', configtool : 'libdir'), 'clang', dep_llvm.version(), 'include')
-else
-  _clang_resources = join_paths(dep_llvm.get_configtool_variable('libdir'), 'clang', dep_llvm.version(), 'include')
-endif
-
 libclllvm = static_library(
   'clllvm',
   files(
@@ -49,7 +43,10 @@ libclllvm = static_library(
     cpp_vis_args,
     '-DLIBCLC_INCLUDEDIR="@0@/"'.format(dep_clc.get_pkgconfig_variable('includedir')),
     '-DLIBCLC_LIBEXECDIR="@0@/"'.format(dep_clc.get_pkgconfig_variable('libexecdir')),
-    '-DCLANG_RESOURCE_DIR="@0@"'.format(_clang_resources),
+    '-DCLANG_RESOURCE_DIR="@0@"'.format(join_paths(
+      dep_llvm.get_configtool_variable('libdir'), 'clang',
+      dep_llvm.version(), 'include',
+    )),
   ],
   dependencies : [dep_llvm, dep_elf],
   override_options : clover_cpp_std,
