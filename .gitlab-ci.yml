@@ -15,12 +15,15 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_TAG: "2019-09-11"
+  DEBIAN_ARM64_TAG: "arm64v8-2019-08-09"
   DEBIAN_VERSION: stretch-slim
+  DEBIAN_ARM64_VERSION: buster-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
+  DEBIAN_ARM64_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_ARM64_VERSION:$DEBIAN_ARM64_TAG"
 
 include:
   - project: 'wayland/ci-templates'
-    ref: c73dae8b84697ef18e2dbbf4fed7386d9652b0cd
+    ref: 1f7f57c6
     file: '/templates/debian.yml'
 
 stages:
@@ -49,8 +52,7 @@ stages:
       # https://gitlab.com/gitlab-org/gitlab-ce/commit/8788fb925706cad594adf6917a6c5f6587dd1521
       - artifacts
 
-# CONTAINERS
-
+# Builds the normal CI native and cross-build docker image.
 debian:
   extends: .debian@container-ifnot-exists
   stage: containers-build
@@ -59,6 +61,16 @@ debian:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
 
+# Builds a Docker image with the native environment and VK-GL-CTS for testing.
+test-container:arm64:
+  extends: .debian@container-ifnot-exists@arm64v8
+  <<: *ci-run-policy
+  stage: containers-build
+  variables:
+    DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
+    DEBIAN_VERSION: "$DEBIAN_ARM64_VERSION"
+    GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
+    DEBIAN_EXEC: 'bash .gitlab-ci/debian-test-install.sh'
 
 # BUILD
 
@@ -252,7 +264,7 @@ meson-vulkan:
     DRI_LOADERS: >
       -D glx=disabled
       -D gbm=false
-      -D egl=false
+      -D egl=true
       -D platforms=surfaceless
       -D osmesa=none
     GALLIUM_ST: >
@@ -291,6 +303,7 @@ meson-arm64:
       -D build-tests=false
       -D I-love-half-baked-turnips=true
       -D vulkan-overlay-layer=true
+    BUILDTYPE: "debugoptimized"
 
 # While the main point of this build is testing the i386 cross build,
 # we also use this one to test some other options that are exclusive
@@ -382,3 +395,48 @@ test-softpipe-gles3-limited:
   dependencies:
     - meson-main
   needs: [meson-main]
+
+arm64_a306_gles2:
+  extends: .deqp-test
+  parallel: 4
+  image: $DEBIAN_ARM64_IMAGE
+  variables:
+    DEQP_VER: gles2
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
+    NIR_VALIDATE: 0
+    DEQP_RENDERER_MATCH: "FD307"
+  tags:
+    - db410c
+  dependencies:
+    - meson-arm64
+
+.cheza-test:
+  image: $DEBIAN_ARM64_IMAGE
+  extends: .deqp-test
+  variables:
+    DEQP_RENDERER_MATCH: "FD630"
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
+    DEQP_SKIPS: deqp-freedreno-a630-skips.txt
+    NIR_VALIDATE: 0
+  tags:
+    - mesa-cheza
+  dependencies:
+    - meson-arm64
+  needs: [ meson-arm64 ]
+
+arm64_a630_gles2:
+  extends: .cheza-test
+  variables:
+    DEQP_VER: gles2
+
+arm64_a630_gles3:
+  parallel: 6
+  extends: .cheza-test
+  variables:
+    DEQP_VER: gles3
+
+arm64_a630_gles31:
+  parallel: 4
+  extends: .cheza-test
+  variables:
+    DEQP_VER: gles31
