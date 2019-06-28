@@ -619,5 +619,7 @@ void gen_perf_dec_n_users(struct gen_perf_context *perfquery);
 
 bool gen_perf_begin_query(struct gen_perf_context *perf_ctx,
                           struct gen_perf_query_object *query);
+void gen_perf_end_query(struct gen_perf_context *perf_ctx,
+                        struct gen_perf_query_object *query);
 
 #endif /* GEN_PERF_H */

@@ -657,51 +657,7 @@ brw_end_perf_query(struct gl_context *ctx,
    struct gen_perf_context *perf_ctx = &brw->perf_ctx;
 
    DBG("End(%d)\n", o->Id);
-
-   /* Ensure that the work associated with the queried commands will have
-    * finished before taking our query end counter readings.
-    *
-    * For more details see comment in brw_begin_perf_query for
-    * corresponding flush.
-    */
-   perf_cfg->vtbl.emit_mi_flush(perf_ctx->ctx);
-
-   switch (obj->queryinfo->kind) {
-   case GEN_PERF_QUERY_TYPE_OA:
-   case GEN_PERF_QUERY_TYPE_RAW:
-
-      /* NB: It's possible that the query will have already been marked
-       * as 'accumulated' if an error was seen while reading samples
-       * from perf. In this case we mustn't try and emit a closing
-       * MI_RPC command in case the OA unit has already been disabled
-       */
-      if (!obj->oa.results_accumulated) {
-         /* Take an ending OA counter snapshot. */
-         perf_cfg->vtbl.capture_frequency_stat_register(perf_ctx->ctx, obj->oa.bo,
-                                                        MI_FREQ_END_OFFSET_BYTES);
-         brw->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, obj->oa.bo,
-                                             MI_RPC_BO_END_OFFSET_BYTES,
-                                             obj->oa.begin_report_id + 1);
-      }
-
-      --perf_ctx->n_active_oa_queries;
-
-      /* NB: even though the query has now ended, it can't be accumulated
-       * until the end MI_REPORT_PERF_COUNT snapshot has been written
-       * to query->oa.bo
-       */
-      break;
-
-   case GEN_PERF_QUERY_TYPE_PIPELINE:
-      gen_perf_snapshot_statistics_registers(brw, perf_cfg, obj,
-                                             STATS_BO_END_OFFSET_BYTES);
-      --perf_ctx->n_active_pipeline_stats_queries;
-      break;
-
-   default:
-      unreachable("Unknown query type");
-      break;
-   }
+   gen_perf_end_query(perf_ctx, obj);
 }
 
 static void
