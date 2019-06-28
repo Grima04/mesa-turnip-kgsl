@@ -430,7 +430,7 @@ resolve_jump(struct ir3_instruction *instr)
 	else
 		next_block = 1;
 
-	if ((!target) || (target->ip == (instr->ip + next_block))) {
+	if (target->ip == (instr->ip + next_block)) {
 		list_delinit(&instr->node);
 		return true;
 	} else {
