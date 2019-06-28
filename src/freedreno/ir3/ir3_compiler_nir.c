@@ -2118,7 +2118,6 @@ get_block(struct ir3_context *ctx, const nir_block *nblock)
 {
 	struct ir3_block *block;
 	struct hash_entry *hentry;
-	unsigned i;
 
 	hentry = _mesa_hash_table_search(ctx->block_ht, nblock);
 	if (hentry)
@@ -2128,12 +2127,9 @@ get_block(struct ir3_context *ctx, const nir_block *nblock)
 	block->nblock = nblock;
 	_mesa_hash_table_insert(ctx->block_ht, nblock, block);
 
-	block->predecessors_count = nblock->predecessors->entries;
-	block->predecessors = ralloc_array_size(block,
-		sizeof(block->predecessors[0]), block->predecessors_count);
-	i = 0;
+	block->predecessors = _mesa_pointer_set_create(block);
 	set_foreach(nblock->predecessors, sentry) {
-		block->predecessors[i++] = get_block(ctx, sentry->key);
+		_mesa_set_add(block->predecessors, get_block(ctx, sentry->key));
 	}
 
 	return block;

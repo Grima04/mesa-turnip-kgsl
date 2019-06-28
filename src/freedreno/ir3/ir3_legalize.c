@@ -90,8 +90,9 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 	bool last_input_needs_ss = false;
 
 	/* our input state is the OR of all predecessor blocks' state: */
-	for (unsigned i = 0; i < block->predecessors_count; i++) {
-		struct ir3_legalize_block_data *pbd = block->predecessors[i]->data;
+	set_foreach(block->predecessors, entry) {
+		struct ir3_block *predecessor = (struct ir3_block *)entry->key;
+		struct ir3_legalize_block_data *pbd = predecessor->data;
 		struct ir3_legalize_state *pstate = &pbd->state;
 
 		/* Our input (ss)/(sy) state is based on OR'ing the output

@@ -31,6 +31,7 @@
 
 #include "util/bitscan.h"
 #include "util/list.h"
+#include "util/set.h"
 #include "util/u_debug.h"
 
 #include "instr-a3xx.h"
@@ -498,8 +499,7 @@ struct ir3_block {
 	struct ir3_instruction *condition;
 	struct ir3_block *successors[2];
 
-	unsigned predecessors_count;
-	struct ir3_block **predecessors;
+	struct set *predecessors;     /* set of ir3_block */
 
 	uint16_t start_ip, end_ip;
 

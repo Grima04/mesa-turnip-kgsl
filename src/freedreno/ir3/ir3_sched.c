@@ -270,10 +270,11 @@ distance(struct ir3_block *block, struct ir3_instruction *instr,
 		/* (ab)use block->data to prevent recursion: */
 		block->data = block;
 
-		for (unsigned i = 0; i < block->predecessors_count; i++) {
+		set_foreach(block->predecessors, entry) {
+			struct ir3_block *pred = (struct ir3_block *)entry->key;
 			unsigned n;
 
-			n = distance(block->predecessors[i], instr, min, pred);
+			n = distance(pred, instr, min, pred);
 
 			min = MIN2(min, n);
 		}
@@ -880,8 +881,9 @@ sched_intra_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	list_for_each_entry_safe (struct ir3_instruction, instr, &block->instr_list, node) {
 		unsigned delay = 0;
 
-		for (unsigned i = 0; i < block->predecessors_count; i++) {
-			unsigned d = delay_calc(block->predecessors[i], instr, false, true);
+		set_foreach(block->predecessors, entry) {
+			struct ir3_block *pred = (struct ir3_block *)entry->key;
+			unsigned d = delay_calc(pred, instr, false, true);
 			delay = MAX2(d, delay);
 		}
 
