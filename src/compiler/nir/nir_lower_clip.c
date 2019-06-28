@@ -65,6 +65,20 @@ create_clipdist_var(nir_shader *shader, unsigned drvloc,
 }
 
 static void
+create_clipdist_vars(nir_shader *shader, nir_variable **io_vars,
+                     unsigned ucp_enables, int *drvloc, bool output)
+{
+   if (ucp_enables & 0x0f)
+      io_vars[0] =
+         create_clipdist_var(shader, ++(*drvloc), output,
+                             VARYING_SLOT_CLIP_DIST0);
+   if (ucp_enables & 0xf0)
+      io_vars[1] =
+         create_clipdist_var(shader, ++(*drvloc), output,
+                             VARYING_SLOT_CLIP_DIST1);
+}
+
+static void
 store_clipdist_output(nir_builder *b, nir_variable *out, nir_ssa_def **val)
 {
    nir_intrinsic_instr *store;
@@ -235,13 +249,8 @@ nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables, bool use_vars)
       }
    }
 
-   /* insert CLIPDIST outputs: */
-   if (ucp_enables & 0x0f)
-      out[0] =
-         create_clipdist_var(shader, ++maxloc, true, VARYING_SLOT_CLIP_DIST0);
-   if (ucp_enables & 0xf0)
-      out[1] =
-         create_clipdist_var(shader, ++maxloc, true, VARYING_SLOT_CLIP_DIST1);
+   /* insert CLIPDIST outputs */
+   create_clipdist_vars(shader, out, ucp_enables, &maxloc, true);
 
    for (int plane = 0; plane < MAX_CLIP_PLANES; plane++) {
       if (ucp_enables & (1 << plane)) {
@@ -334,15 +343,8 @@ nir_lower_clip_fs(nir_shader *shader, unsigned ucp_enables)
    /* The shader won't normally have CLIPDIST inputs, so we
     * must add our own:
     */
-   /* insert CLIPDIST outputs: */
-   if (ucp_enables & 0x0f)
-      in[0] =
-         create_clipdist_var(shader, ++maxloc, false,
-                             VARYING_SLOT_CLIP_DIST0);
-   if (ucp_enables & 0xf0)
-      in[1] =
-         create_clipdist_var(shader, ++maxloc, false,
-                             VARYING_SLOT_CLIP_DIST1);
+   /* insert CLIPDIST inputs */
+   create_clipdist_vars(shader, in, ucp_enables, &maxloc, false);
 
    nir_foreach_function(function, shader) {
       if (!strcmp(function->name, "main"))
