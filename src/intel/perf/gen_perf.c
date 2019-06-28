@@ -39,8 +39,11 @@
 #include "dev/gen_debug.h"
 #include "dev/gen_device_info.h"
 #include "util/bitscan.h"
+#include "util/u_math.h"
 
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
+#define MI_RPC_BO_SIZE              4096
+#define MI_FREQ_START_OFFSET_BYTES  (3072)
 
 #define MAP_READ  (1 << 0)
 #define MAP_WRITE (1 << 1)
@@ -1026,4 +1029,257 @@ gen_perf_init_context(struct gen_perf_context *perf_ctx,
 
    perf_ctx->oa_stream_fd = -1;
    perf_ctx->next_query_start_report_id = 1000;
+}
+
+/**
+ * Add a query to the global list of "unaccumulated queries."
+ *
+ * Queries are tracked here until all the associated OA reports have
+ * been accumulated via accumulate_oa_reports() after the end
+ * MI_REPORT_PERF_COUNT has landed in query->oa.bo.
+ */
+static void
+add_to_unaccumulated_query_list(struct gen_perf_context *perf_ctx,
+                                struct gen_perf_query_object *obj)
+{
+   if (perf_ctx->unaccumulated_elements >=
+       perf_ctx->unaccumulated_array_size)
+   {
+      perf_ctx->unaccumulated_array_size *= 1.5;
+      perf_ctx->unaccumulated =
+         reralloc(perf_ctx->ctx, perf_ctx->unaccumulated,
+                  struct gen_perf_query_object *,
+                  perf_ctx->unaccumulated_array_size);
+   }
+
+   perf_ctx->unaccumulated[perf_ctx->unaccumulated_elements++] = obj;
+}
+
+bool
+gen_perf_begin_query(struct gen_perf_context *perf_ctx,
+                     struct gen_perf_query_object *query)
+{
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+   const struct gen_perf_query_info *queryinfo = query->queryinfo;
+
+   /* XXX: We have to consider that the command parser unit that parses batch
+    * buffer commands and is used to capture begin/end counter snapshots isn't
+    * implicitly synchronized with what's currently running across other GPU
+    * units (such as the EUs running shaders) that the performance counters are
+    * associated with.
+    *
+    * The intention of performance queries is to measure the work associated
+    * with commands between the begin/end delimiters and so for that to be the
+    * case we need to explicitly synchronize the parsing of commands to capture
+    * Begin/End counter snapshots with what's running across other parts of the
+    * GPU.
+    *
+    * When the command parser reaches a Begin marker it effectively needs to
+    * drain everything currently running on the GPU until the hardware is idle
+    * before capturing the first snapshot of counters - otherwise the results
+    * would also be measuring the effects of earlier commands.
+    *
+    * When the command parser reaches an End marker it needs to stall until
+    * everything currently running on the GPU has finished before capturing the
+    * end snapshot - otherwise the results won't be a complete representation
+    * of the work.
+    *
+    * Theoretically there could be opportunities to minimize how much of the
+    * GPU pipeline is drained, or that we stall for, when we know what specific
+    * units the performance counters being queried relate to but we don't
+    * currently attempt to be clever here.
+    *
+    * Note: with our current simple approach here then for back-to-back queries
+    * we will redundantly emit duplicate commands to synchronize the command
+    * streamer with the rest of the GPU pipeline, but we assume that in HW the
+    * second synchronization is effectively a NOOP.
+    *
+    * N.B. The final results are based on deltas of counters between (inside)
+    * Begin/End markers so even though the total wall clock time of the
+    * workload is stretched by larger pipeline bubbles the bubbles themselves
+    * are generally invisible to the query results. Whether that's a good or a
+    * bad thing depends on the use case. For a lower real-time impact while
+    * capturing metrics then periodic sampling may be a better choice than
+    * INTEL_performance_query.
+    *
+    *
+    * This is our Begin synchronization point to drain current work on the
+    * GPU before we capture our first counter snapshot...
+    */
+   perf_cfg->vtbl.emit_mi_flush(perf_ctx->ctx);
+
+   switch (queryinfo->kind) {
+   case GEN_PERF_QUERY_TYPE_OA:
+   case GEN_PERF_QUERY_TYPE_RAW: {
+
+      /* Opening an i915 perf stream implies exclusive access to the OA unit
+       * which will generate counter reports for a specific counter set with a
+       * specific layout/format so we can't begin any OA based queries that
+       * require a different counter set or format unless we get an opportunity
+       * to close the stream and open a new one...
+       */
+      uint64_t metric_id = gen_perf_query_get_metric_id(perf_ctx->perf, queryinfo);
+
+      if (perf_ctx->oa_stream_fd != -1 &&
+          perf_ctx->current_oa_metrics_set_id != metric_id) {
+
+         if (perf_ctx->n_oa_users != 0) {
+            DBG("WARNING: Begin failed already using perf config=%i/%"PRIu64"\n",
+                perf_ctx->current_oa_metrics_set_id, metric_id);
+            return false;
+         } else
+            gen_perf_close(perf_ctx, queryinfo);
+      }
+
+      /* If the OA counters aren't already on, enable them. */
+      if (perf_ctx->oa_stream_fd == -1) {
+         const struct gen_device_info *devinfo = perf_ctx->devinfo;
+
+         /* The period_exponent gives a sampling period as follows:
+          *   sample_period = timestamp_period * 2^(period_exponent + 1)
+          *
+          * The timestamps increments every 80ns (HSW), ~52ns (GEN9LP) or
+          * ~83ns (GEN8/9).
+          *
+          * The counter overflow period is derived from the EuActive counter
+          * which reads a counter that increments by the number of clock
+          * cycles multiplied by the number of EUs. It can be calculated as:
+          *
+          * 2^(number of bits in A counter) / (n_eus * max_gen_freq * 2)
+          *
+          * (E.g. 40 EUs @ 1GHz = ~53ms)
+          *
+          * We select a sampling period inferior to that overflow period to
+          * ensure we cannot see more than 1 counter overflow, otherwise we
+          * could loose information.
+          */
+
+         int a_counter_in_bits = 32;
+         if (devinfo->gen >= 8)
+            a_counter_in_bits = 40;
+
+         uint64_t overflow_period = pow(2, a_counter_in_bits) / (perf_cfg->sys_vars.n_eus *
+             /* drop 1GHz freq to have units in nanoseconds */
+             2);
+
+         DBG("A counter overflow period: %"PRIu64"ns, %"PRIu64"ms (n_eus=%"PRIu64")\n",
+             overflow_period, overflow_period / 1000000ul, perf_cfg->sys_vars.n_eus);
+
+         int period_exponent = 0;
+         uint64_t prev_sample_period, next_sample_period;
+         for (int e = 0; e < 30; e++) {
+            prev_sample_period = 1000000000ull * pow(2, e + 1) / devinfo->timestamp_frequency;
+            next_sample_period = 1000000000ull * pow(2, e + 2) / devinfo->timestamp_frequency;
+
+            /* Take the previous sampling period, lower than the overflow
+             * period.
+             */
+            if (prev_sample_period < overflow_period &&
+                next_sample_period > overflow_period)
+               period_exponent = e + 1;
+         }
+
+         if (period_exponent == 0) {
+            DBG("WARNING: enable to find a sampling exponent\n");
+            return false;
+         }
+
+         DBG("OA sampling exponent: %i ~= %"PRIu64"ms\n", period_exponent,
+             prev_sample_period / 1000000ul);
+
+         if (!gen_perf_open(perf_ctx, metric_id, queryinfo->oa_format,
+                            period_exponent, perf_ctx->drm_fd,
+                            perf_ctx->hw_ctx))
+            return false;
+      } else {
+         assert(perf_ctx->current_oa_metrics_set_id == metric_id &&
+                perf_ctx->current_oa_format == queryinfo->oa_format);
+      }
+
+      if (!gen_perf_inc_n_users(perf_ctx)) {
+         DBG("WARNING: Error enabling i915 perf stream: %m\n");
+         return false;
+      }
+
+      if (query->oa.bo) {
+         perf_cfg->vtbl.bo_unreference(query->oa.bo);
+         query->oa.bo = NULL;
+      }
+
+      query->oa.bo = perf_cfg->vtbl.bo_alloc(perf_ctx->bufmgr,
+                                             "perf. query OA MI_RPC bo",
+                                             MI_RPC_BO_SIZE);
+#ifdef DEBUG
+      /* Pre-filling the BO helps debug whether writes landed. */
+      void *map = perf_cfg->vtbl.bo_map(perf_ctx->ctx, query->oa.bo, MAP_WRITE);
+      memset(map, 0x80, MI_RPC_BO_SIZE);
+      perf_cfg->vtbl.bo_unmap(query->oa.bo);
+#endif
+
+      query->oa.begin_report_id = perf_ctx->next_query_start_report_id;
+      perf_ctx->next_query_start_report_id += 2;
+
+      /* We flush the batchbuffer here to minimize the chances that MI_RPC
+       * delimiting commands end up in different batchbuffers. If that's the
+       * case, the measurement will include the time it takes for the kernel
+       * scheduler to load a new request into the hardware. This is manifested in
+       * tools like frameretrace by spikes in the "GPU Core Clocks" counter.
+       */
+      perf_cfg->vtbl.batchbuffer_flush(perf_ctx->ctx, __FILE__, __LINE__);
+
+      /* Take a starting OA counter snapshot. */
+      perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, query->oa.bo, 0,
+                                               query->oa.begin_report_id);
+      perf_cfg->vtbl.capture_frequency_stat_register(perf_ctx->ctx, query->oa.bo,
+                                                     MI_FREQ_START_OFFSET_BYTES);
+
+      ++perf_ctx->n_active_oa_queries;
+
+      /* No already-buffered samples can possibly be associated with this query
+       * so create a marker within the list of sample buffers enabling us to
+       * easily ignore earlier samples when processing this query after
+       * completion.
+       */
+      assert(!exec_list_is_empty(&perf_ctx->sample_buffers));
+      query->oa.samples_head = exec_list_get_tail(&perf_ctx->sample_buffers);
+
+      struct oa_sample_buf *buf =
+         exec_node_data(struct oa_sample_buf, query->oa.samples_head, link);
+
+      /* This reference will ensure that future/following sample
+       * buffers (that may relate to this query) can't be freed until
+       * this drops to zero.
+       */
+      buf->refcount++;
+
+      gen_perf_query_result_clear(&query->oa.result);
+      query->oa.results_accumulated = false;
+
+      add_to_unaccumulated_query_list(perf_ctx, query);
+      break;
+   }
+
+   case GEN_PERF_QUERY_TYPE_PIPELINE:
+      if (query->pipeline_stats.bo) {
+         perf_cfg->vtbl.bo_unreference(query->pipeline_stats.bo);
+         query->pipeline_stats.bo = NULL;
+      }
+
+      query->pipeline_stats.bo =
+         perf_cfg->vtbl.bo_alloc(perf_ctx->bufmgr,
+                                 "perf. query pipeline stats bo",
+                                 STATS_BO_SIZE);
+
+      /* Take starting snapshots. */
+      gen_perf_snapshot_statistics_registers(perf_ctx->ctx , perf_cfg, query, 0);
+
+      ++perf_ctx->n_active_pipeline_stats_queries;
+      break;
+
+   default:
+      unreachable("Unknown query type");
+      break;
+   }
+
+   return true;
 }
