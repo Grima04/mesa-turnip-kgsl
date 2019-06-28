@@ -51,6 +51,7 @@ libopencl = shared_library(
     cpp.find_library('clangSema', dirs : llvm_libdir),
     cpp.find_library('clangAnalysis', dirs : llvm_libdir),
     cpp.find_library('clangAST', dirs : llvm_libdir),
+    cpp.find_library('clangASTMatchers', dirs : llvm_libdir),
     cpp.find_library('clangEdit', dirs : llvm_libdir),
     cpp.find_library('clangLex', dirs : llvm_libdir),
     cpp.find_library('clangBasic', dirs : llvm_libdir),
