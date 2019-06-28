@@ -2265,13 +2265,20 @@ etna_compile_check_limits(struct etna_compile *c)
 static void
 copy_uniform_state_to_shader(struct etna_compile *c, struct etna_shader_variant *sobj)
 {
-   uint32_t count = c->imm_size;
+   uint32_t count = c->imm_base + c->imm_size;
    struct etna_shader_uniform_info *uinfo = &sobj->uniforms;
 
-   uinfo->const_count = c->imm_base;
    uinfo->imm_count = count;
-   uinfo->imm_data = mem_dup(c->imm_data, count * sizeof(*c->imm_data));
-   uinfo->imm_contents = mem_dup(c->imm_contents, count * sizeof(*c->imm_contents));
+
+   uinfo->imm_data = malloc(count * sizeof(*c->imm_data));
+   for (unsigned i = 0; i < c->imm_base; i++)
+      uinfo->imm_data[i] = i;
+   memcpy(&uinfo->imm_data[c->imm_base], c->imm_data, c->imm_size * sizeof(*c->imm_data));
+
+   uinfo->imm_contents = malloc(count * sizeof(*c->imm_contents));
+   for (unsigned i = 0; i < c->imm_base; i++)
+      uinfo->imm_contents[i] = ETNA_IMMEDIATE_UNIFORM;
+   memcpy(&uinfo->imm_contents[c->imm_base], c->imm_contents, c->imm_size * sizeof(*c->imm_contents));
 
    etna_set_shader_uniforms_dirty_flags(sobj);
 }
@@ -2486,14 +2493,14 @@ etna_dump_shader(const struct etna_shader_variant *shader)
 
    printf("num loops: %i\n", shader->num_loops);
    printf("num temps: %i\n", shader->num_temps);
-   printf("num const: %i\n", shader->uniforms.const_count);
    printf("immediates:\n");
    for (int idx = 0; idx < shader->uniforms.imm_count; ++idx) {
-      printf(" [%i].%s = %f (0x%08x)\n",
-             (idx + shader->uniforms.const_count) / 4,
+      printf(" [%i].%s = %f (0x%08x) (%d)\n",
+             idx / 4,
              tgsi_swizzle_names[idx % 4],
              *((float *)&shader->uniforms.imm_data[idx]),
-             shader->uniforms.imm_data[idx]);
+             shader->uniforms.imm_data[idx],
+             shader->uniforms.imm_contents[idx]);
    }
    printf("inputs:\n");
    for (int idx = 0; idx < shader->infile.num_reg; ++idx) {

@@ -293,8 +293,7 @@ dump_shader_info(struct etna_shader_variant *v, struct pipe_debug_callback *debu
 
    pipe_debug_message(debug, SHADER_INFO, "\n"
          "SHADER-DB: %s prog %d/%d: %u instructions %u temps\n"
-         "SHADER-DB: %s prog %d/%d: %u immediates %u consts\n"
-         "SHADER-DB: %s prog %d/%d: %u loops\n",
+         "SHADER-DB: %s prog %d/%d: %u immediates %u loops\n",
          etna_shader_stage(v),
          v->shader->id, v->id,
          v->code_size,
@@ -302,9 +301,6 @@ dump_shader_info(struct etna_shader_variant *v, struct pipe_debug_callback *debu
          etna_shader_stage(v),
          v->shader->id, v->id,
          v->uniforms.imm_count,
-         v->uniforms.const_count,
-         etna_shader_stage(v),
-         v->shader->id, v->id,
          v->num_loops);
 }
 

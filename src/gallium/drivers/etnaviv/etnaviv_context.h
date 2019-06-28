@@ -88,15 +88,17 @@ struct etna_shader_state {
 enum etna_immediate_contents {
    ETNA_IMMEDIATE_UNUSED = 0,
    ETNA_IMMEDIATE_CONSTANT,
+   ETNA_IMMEDIATE_UNIFORM,
    ETNA_IMMEDIATE_TEXRECT_SCALE_X,
    ETNA_IMMEDIATE_TEXRECT_SCALE_Y,
+   ETNA_IMMEDIATE_UBO0_ADDR,
+   ETNA_IMMEDIATE_UBOMAX_ADDR = ETNA_IMMEDIATE_UBO0_ADDR + 255,
 };
 
 struct etna_shader_uniform_info {
    enum etna_immediate_contents *imm_contents;
    uint32_t *imm_data;
    uint32_t imm_count;
-   uint32_t const_count;
 };
 
 struct etna_context {

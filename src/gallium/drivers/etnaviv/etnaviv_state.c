@@ -42,6 +42,7 @@
 #include "util/u_inlines.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
+#include "util/u_upload_mgr.h"
 
 static void
 etna_set_stencil_ref(struct pipe_context *pctx, const struct pipe_stencil_ref *sr)
@@ -95,6 +96,11 @@ etna_set_constant_buffer(struct pipe_context *pctx,
 
    /* there is no support for ARB_uniform_buffer_object */
    assert(cb->buffer == NULL && cb->user_buffer != NULL);
+
+   if (!cb->buffer) {
+      struct pipe_constant_buffer *cb = &ctx->constant_buffer[shader];
+      u_upload_data(pctx->const_uploader, 0, cb->buffer_size, 16, cb->user_buffer, &cb->buffer_offset, &cb->buffer);
+   }
 
    ctx->dirty |= ETNA_DIRTY_CONSTBUF;
 }
