@@ -1091,7 +1091,7 @@ emit_varying_read(
                 compiler_context *ctx,
                 unsigned dest, unsigned offset,
                 unsigned nr_comp, unsigned component,
-                nir_src *indirect_offset)
+                nir_src *indirect_offset, nir_alu_type type)
 {
         /* XXX: Half-floats? */
         /* TODO: swizzle, mask */
@@ -1117,6 +1117,23 @@ emit_varying_read(
         } else {
                 /* Just a direct load */
                 ins.load_store.unknown = 0x1e9e; /* xxx: what is this? */
+        }
+
+        /* Use the type appropriate load */
+        switch (type) {
+                case nir_type_uint:
+                case nir_type_bool:
+                        ins.load_store.op = midgard_op_ld_vary_32u;
+                        break;
+                case nir_type_int:
+                        ins.load_store.op = midgard_op_ld_vary_32i;
+                        break;
+                case nir_type_float:
+                        ins.load_store.op = midgard_op_ld_vary_32;
+                        break;
+                default:
+                        unreachable("Attempted to load unknown type");
+                        break;
         }
 
         emit_mir_instruction(ctx, ins);
@@ -1280,7 +1297,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         uint32_t uindex = nir_src_as_uint(index) + 1;
                         emit_ubo_read(ctx, reg, offset / 16, NULL, uindex);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
-                        emit_varying_read(ctx, reg, offset, nr_comp, component, !direct ? &instr->src[0] : NULL);
+                        emit_varying_read(ctx, reg, offset, nr_comp, component, !direct ? &instr->src[0] : NULL, t);
                 } else if (ctx->is_blend) {
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
