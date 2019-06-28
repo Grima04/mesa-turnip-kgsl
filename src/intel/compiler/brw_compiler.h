@@ -317,6 +317,15 @@ struct brw_tes_prog_key
 
    /** A bitfield of per-vertex inputs read. */
    uint64_t inputs_read;
+
+   /**
+    * How many user clipping planes are being uploaded to the tessellation
+    * evaluation shader as push constants.
+    *
+    * These are used for lowering legacy gl_ClipVertex/gl_Position clipping to
+    * clip distances.
+    */
+   unsigned nr_userclip_plane_consts:4;
 };
 
 /** The program key for Geometry Shaders. */

@@ -1246,6 +1246,15 @@ iris_compile_tes(struct iris_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
+   if (key->nr_userclip_plane_consts) {
+      nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+      nir_lower_clip_vs(nir, (1 << key->nr_userclip_plane_consts) - 1, true);
+      nir_lower_io_to_temporaries(nir, impl, true, false);
+      nir_lower_global_vars_to_local(nir);
+      nir_lower_vars_to_ssa(nir);
+      nir_shader_gather_info(nir, impl);
+   }
+
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values, &num_cbufs);
 
@@ -1307,7 +1316,7 @@ iris_update_compiled_tes(struct iris_context *ice)
 
    struct brw_tes_prog_key key = { KEY_INIT(devinfo->gen) };
    get_unified_tess_slots(ice, &key.inputs_read, &key.patch_inputs_read);
-   ice->vtbl.populate_tes_key(ice, &key);
+   ice->vtbl.populate_tes_key(ice, &ish->nir->info, last_vue_stage(ice), &key);
 
    struct iris_compiled_shader *old = ice->shaders.prog[IRIS_CACHE_TES];
    struct iris_compiled_shader *shader =
@@ -2010,6 +2019,10 @@ iris_create_tes_state(struct pipe_context *ctx,
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
+
+   /* User clip planes */
+   if (ish->nir->info.clip_distance_array_size == 0)
+      ish->nos |= (1ull << IRIS_NOS_RASTERIZER);
 
    if (screen->precompile) {
       const struct gen_device_info *devinfo = &screen->devinfo;
