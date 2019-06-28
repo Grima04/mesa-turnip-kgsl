@@ -1501,3 +1501,31 @@ gen_perf_wait_query(struct gen_perf_context *perf_ctx,
          ;
    }
 }
+
+bool
+gen_perf_is_query_ready(struct gen_perf_context *perf_ctx,
+                        struct gen_perf_query_object *query,
+                        void *current_batch)
+{
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+
+   switch (query->queryinfo->kind) {
+   case GEN_PERF_QUERY_TYPE_OA:
+   case GEN_PERF_QUERY_TYPE_RAW:
+      return (query->oa.results_accumulated ||
+              (query->oa.bo &&
+               !perf_cfg->vtbl.batch_references(current_batch, query->oa.bo) &&
+               !perf_cfg->vtbl.bo_busy(query->oa.bo) &&
+               read_oa_samples_for_query(perf_ctx, query, current_batch)));
+   case GEN_PERF_QUERY_TYPE_PIPELINE:
+      return (query->pipeline_stats.bo &&
+              !perf_cfg->vtbl.batch_references(current_batch, query->pipeline_stats.bo) &&
+              !perf_cfg->vtbl.bo_busy(query->pipeline_stats.bo));
+
+   default:
+      unreachable("Unknown query type");
+      break;
+   }
+
+   return false;
+}

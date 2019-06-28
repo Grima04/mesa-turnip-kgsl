@@ -311,119 +311,6 @@ enum OaReadStatus {
    OA_READ_STATUS_FINISHED,
 };
 
-static enum OaReadStatus
-read_oa_samples_until(struct brw_context *brw,
-                      uint32_t start_timestamp,
-                      uint32_t end_timestamp)
-{
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   struct exec_node *tail_node =
-      exec_list_get_tail(&perf_ctx->sample_buffers);
-   struct oa_sample_buf *tail_buf =
-      exec_node_data(struct oa_sample_buf, tail_node, link);
-   uint32_t last_timestamp = tail_buf->last_timestamp;
-
-   while (1) {
-      struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(perf_ctx);
-      uint32_t offset;
-      int len;
-
-      while ((len = read(perf_ctx->oa_stream_fd, buf->buf,
-                         sizeof(buf->buf))) < 0 && errno == EINTR)
-         ;
-
-      if (len <= 0) {
-         exec_list_push_tail(&perf_ctx->free_sample_buffers, &buf->link);
-
-         if (len < 0) {
-            if (errno == EAGAIN)
-               return ((last_timestamp - start_timestamp) >=
-                       (end_timestamp - start_timestamp)) ?
-                      OA_READ_STATUS_FINISHED :
-                      OA_READ_STATUS_UNFINISHED;
-            else {
-               DBG("Error reading i915 perf samples: %m\n");
-            }
-         } else
-            DBG("Spurious EOF reading i915 perf samples\n");
-
-         return OA_READ_STATUS_ERROR;
-      }
-
-      buf->len = len;
-      exec_list_push_tail(&perf_ctx->sample_buffers, &buf->link);
-
-      /* Go through the reports and update the last timestamp. */
-      offset = 0;
-      while (offset < buf->len) {
-         const struct drm_i915_perf_record_header *header =
-            (const struct drm_i915_perf_record_header *) &buf->buf[offset];
-         uint32_t *report = (uint32_t *) (header + 1);
-
-         if (header->type == DRM_I915_PERF_RECORD_SAMPLE)
-            last_timestamp = report[1];
-
-         offset += header->size;
-      }
-
-      buf->last_timestamp = last_timestamp;
-   }
-
-   unreachable("not reached");
-   return OA_READ_STATUS_ERROR;
-}
-
-/**
- * Try to read all the reports until either the delimiting timestamp
- * or an error arises.
- */
-static bool
-read_oa_samples_for_query(struct brw_context *brw,
-                          struct gen_perf_query_object *obj)
-{
-   uint32_t *start;
-   uint32_t *last;
-   uint32_t *end;
-
-   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
-
-   /* We need the MI_REPORT_PERF_COUNT to land before we can start
-    * accumulate. */
-   assert(!perf_cfg->vtbl.batch_references(&brw->batch, obj->oa.bo) &&
-          !perf_cfg->vtbl.bo_busy(obj->oa.bo));
-
-   /* Map the BO once here and let accumulate_oa_reports() unmap
-    * it. */
-   if (obj->oa.map == NULL)
-      obj->oa.map = perf_cfg->vtbl.bo_map(brw, obj->oa.bo, MAP_READ);
-
-   start = last = obj->oa.map;
-   end = obj->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
-
-   if (start[0] != obj->oa.begin_report_id) {
-      DBG("Spurious start report id=%"PRIu32"\n", start[0]);
-      return true;
-   }
-   if (end[0] != (obj->oa.begin_report_id + 1)) {
-      DBG("Spurious end report id=%"PRIu32"\n", end[0]);
-      return true;
-   }
-
-   /* Read the reports until the end timestamp. */
-   switch (read_oa_samples_until(brw, start[1], end[1])) {
-   case OA_READ_STATUS_ERROR:
-      /* Fallthrough and let accumulate_oa_reports() deal with the
-       * error. */
-   case OA_READ_STATUS_FINISHED:
-      return true;
-   case OA_READ_STATUS_UNFINISHED:
-      return false;
-   }
-
-   unreachable("invalid read status");
-   return false;
-}
-
 /**
  * Accumulate raw OA counter values based on deltas between pairs of
  * OA reports.
@@ -680,30 +567,11 @@ brw_is_perf_query_ready(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
-   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    if (o->Ready)
       return true;
 
-   switch (obj->queryinfo->kind) {
-   case GEN_PERF_QUERY_TYPE_OA:
-   case GEN_PERF_QUERY_TYPE_RAW:
-      return (obj->oa.results_accumulated ||
-              (obj->oa.bo &&
-               !perf_cfg->vtbl.batch_references(&brw->batch, obj->oa.bo) &&
-               !perf_cfg->vtbl.bo_busy(obj->oa.bo) &&
-               read_oa_samples_for_query(brw, obj)));
-   case GEN_PERF_QUERY_TYPE_PIPELINE:
-      return (obj->pipeline_stats.bo &&
-              !perf_cfg->vtbl.batch_references(&brw->batch, obj->pipeline_stats.bo) &&
-              !perf_cfg->vtbl.bo_busy(obj->pipeline_stats.bo));
-
-   default:
-      unreachable("Unknown query type");
-      break;
-   }
-
-   return false;
+   return gen_perf_is_query_ready(&brw->perf_ctx, obj, &brw->batch);
 }
 
 static void
