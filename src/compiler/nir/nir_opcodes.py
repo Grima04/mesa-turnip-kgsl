@@ -1054,3 +1054,10 @@ opcode("imadsh_mix16", 1, tint32,
        [1, 1, 1], [tint32, tint32, tint32], False, "", """
 dst.x = ((((src0.x & 0xffff0000) >> 16) * (src1.x & 0x0000ffff)) << 16) + src2.x;
 """)
+
+# ir3-specific instruction that maps directly to ir3 mad.s24.
+#
+# 24b multiply into 32b result (with sign extension) plus 32b int
+triop("imad24_ir3", tint32, _2src_commutative,
+      "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8) + src2")
+
