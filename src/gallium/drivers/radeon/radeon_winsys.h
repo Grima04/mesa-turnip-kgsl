@@ -411,12 +411,14 @@ struct radeon_winsys {
      * Get a winsys handle from a winsys buffer. The internal structure
      * of the handle is platform-specific and only a winsys should access it.
      *
+     * \param ws        The winsys instance for which the handle is to be valid
      * \param buf       A winsys buffer object to get the handle from.
      * \param whandle   A winsys handle pointer.
      * \param stride    A stride of the buffer in bytes, for texturing.
      * \return          true on success.
      */
-    bool (*buffer_get_handle)(struct pb_buffer *buf,
+    bool (*buffer_get_handle)(struct radeon_winsys *ws,
+                              struct pb_buffer *buf,
                               unsigned stride, unsigned offset,
                               unsigned slice_size,
                               struct winsys_handle *whandle);

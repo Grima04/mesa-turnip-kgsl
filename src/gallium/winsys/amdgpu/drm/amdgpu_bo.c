@@ -1524,11 +1524,13 @@ error:
    return NULL;
 }
 
-static bool amdgpu_bo_get_handle(struct pb_buffer *buffer,
+static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
+                                 struct pb_buffer *buffer,
                                  unsigned stride, unsigned offset,
                                  unsigned slice_size,
                                  struct winsys_handle *whandle)
 {
+   struct amdgpu_screen_winsys *sws = amdgpu_screen_winsys(rws);
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buffer);
    struct amdgpu_winsys *ws = bo->ws;
    enum amdgpu_bo_handle_type type;
@@ -1544,11 +1546,9 @@ static bool amdgpu_bo_get_handle(struct pb_buffer *buffer,
    case WINSYS_HANDLE_TYPE_SHARED:
       type = amdgpu_bo_handle_type_gem_flink_name;
       break;
+   case WINSYS_HANDLE_TYPE_KMS:
    case WINSYS_HANDLE_TYPE_FD:
       type = amdgpu_bo_handle_type_dma_buf_fd;
-      break;
-   case WINSYS_HANDLE_TYPE_KMS:
-      type = amdgpu_bo_handle_type_kms;
       break;
    default:
       return false;
@@ -1557,6 +1557,16 @@ static bool amdgpu_bo_get_handle(struct pb_buffer *buffer,
    r = amdgpu_bo_export(bo->bo, type, &whandle->handle);
    if (r)
       return false;
+
+   if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
+      int dma_fd = whandle->handle;
+
+      r = drmPrimeFDToHandle(sws->fd, dma_fd, &whandle->handle);
+      close(dma_fd);
+
+      if (r)
+         return false;
+   }
 
    simple_mtx_lock(&ws->bo_export_table_lock);
    util_hash_table_set(ws->bo_export_table, bo->bo, bo);

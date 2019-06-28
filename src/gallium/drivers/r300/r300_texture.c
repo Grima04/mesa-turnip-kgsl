@@ -1048,7 +1048,7 @@ boolean r300_resource_get_handle(struct pipe_screen* screen,
         return FALSE;
     }
 
-    return rws->buffer_get_handle(tex->buf, tex->tex.stride_in_bytes[0],
+    return rws->buffer_get_handle(rws, tex->buf, tex->tex.stride_in_bytes[0],
                                   0, 0, whandle);
 }
 
