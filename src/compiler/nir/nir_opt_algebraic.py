@@ -218,6 +218,12 @@ optimizations = [
    (('inot', ('ieq', a, b)), ('ine', a, b)),
    (('inot', ('ine', a, b)), ('ieq', a, b)),
 
+   (('iand', ('feq', a, b), ('fne', a, b)), False),
+   (('iand', ('flt', a, b), ('flt', b, a)), False),
+   (('iand', ('ieq', a, b), ('ine', a, b)), False),
+   (('iand', ('ilt', a, b), ('ilt', b, a)), False),
+   (('iand', ('ult', a, b), ('ult', b, a)), False),
+
    # This helps some shaders because, after some optimizations, they end up
    # with patterns like (-a < -b) || (b < a).  In an ideal world, this sort of
    # matching would be handled by CSE.
