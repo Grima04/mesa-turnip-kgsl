@@ -40,6 +40,91 @@
 #include "lp_context.h"
 #include "lp_jit.h"
 
+static LLVMTypeRef
+create_jit_texture_type(struct gallivm_state *gallivm)
+{
+   LLVMContextRef lc = gallivm->context;
+   LLVMTypeRef texture_type;
+   LLVMTypeRef elem_types[LP_JIT_TEXTURE_NUM_FIELDS];
+
+   /* struct lp_jit_texture */
+   elem_types[LP_JIT_TEXTURE_WIDTH]  =
+   elem_types[LP_JIT_TEXTURE_HEIGHT] =
+   elem_types[LP_JIT_TEXTURE_DEPTH] =
+   elem_types[LP_JIT_TEXTURE_FIRST_LEVEL] =
+   elem_types[LP_JIT_TEXTURE_LAST_LEVEL] = LLVMInt32TypeInContext(lc);
+   elem_types[LP_JIT_TEXTURE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
+   elem_types[LP_JIT_TEXTURE_ROW_STRIDE] =
+   elem_types[LP_JIT_TEXTURE_IMG_STRIDE] =
+   elem_types[LP_JIT_TEXTURE_MIP_OFFSETS] =
+      LLVMArrayType(LLVMInt32TypeInContext(lc), LP_MAX_TEXTURE_LEVELS);
+
+   texture_type = LLVMStructTypeInContext(lc, elem_types,
+                                          ARRAY_SIZE(elem_types), 0);
+
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, width,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_WIDTH);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, height,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_HEIGHT);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, depth,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_DEPTH);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, first_level,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_FIRST_LEVEL);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, last_level,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_LAST_LEVEL);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, base,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_BASE);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, row_stride,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_ROW_STRIDE);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, img_stride,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_IMG_STRIDE);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, mip_offsets,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_MIP_OFFSETS);
+   LP_CHECK_STRUCT_SIZE(struct lp_jit_texture,
+                        gallivm->target, texture_type);
+   return texture_type;
+}
+
+static LLVMTypeRef
+create_jit_sampler_type(struct gallivm_state *gallivm)
+{
+   LLVMContextRef lc = gallivm->context;
+   LLVMTypeRef sampler_type;
+   LLVMTypeRef elem_types[LP_JIT_SAMPLER_NUM_FIELDS];
+   elem_types[LP_JIT_SAMPLER_MIN_LOD] =
+   elem_types[LP_JIT_SAMPLER_MAX_LOD] =
+   elem_types[LP_JIT_SAMPLER_LOD_BIAS] = LLVMFloatTypeInContext(lc);
+   elem_types[LP_JIT_SAMPLER_BORDER_COLOR] =
+      LLVMArrayType(LLVMFloatTypeInContext(lc), 4);
+
+   sampler_type = LLVMStructTypeInContext(lc, elem_types,
+                                          ARRAY_SIZE(elem_types), 0);
+
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, min_lod,
+                          gallivm->target, sampler_type,
+                          LP_JIT_SAMPLER_MIN_LOD);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, max_lod,
+                          gallivm->target, sampler_type,
+                          LP_JIT_SAMPLER_MAX_LOD);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, lod_bias,
+                          gallivm->target, sampler_type,
+                          LP_JIT_SAMPLER_LOD_BIAS);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, border_color,
+                          gallivm->target, sampler_type,
+                          LP_JIT_SAMPLER_BORDER_COLOR);
+   LP_CHECK_STRUCT_SIZE(struct lp_jit_sampler,
+                        gallivm->target, sampler_type);
+   return sampler_type;
+}
 
 static void
 lp_jit_create_types(struct lp_fragment_shader_variant *lp)
@@ -68,82 +153,8 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
                            gallivm->target, viewport_type);
    }
 
-   /* struct lp_jit_texture */
-   {
-      LLVMTypeRef elem_types[LP_JIT_TEXTURE_NUM_FIELDS];
-
-      elem_types[LP_JIT_TEXTURE_WIDTH]  =
-      elem_types[LP_JIT_TEXTURE_HEIGHT] =
-      elem_types[LP_JIT_TEXTURE_DEPTH] =
-      elem_types[LP_JIT_TEXTURE_FIRST_LEVEL] =
-      elem_types[LP_JIT_TEXTURE_LAST_LEVEL] = LLVMInt32TypeInContext(lc);
-      elem_types[LP_JIT_TEXTURE_BASE] = LLVMPointerType(LLVMInt8TypeInContext(lc), 0);
-      elem_types[LP_JIT_TEXTURE_ROW_STRIDE] =
-      elem_types[LP_JIT_TEXTURE_IMG_STRIDE] =
-      elem_types[LP_JIT_TEXTURE_MIP_OFFSETS] =
-         LLVMArrayType(LLVMInt32TypeInContext(lc), LP_MAX_TEXTURE_LEVELS);
-
-      texture_type = LLVMStructTypeInContext(lc, elem_types,
-                                             ARRAY_SIZE(elem_types), 0);
-
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, width,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_WIDTH);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, height,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_HEIGHT);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, depth,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_DEPTH);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, first_level,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_FIRST_LEVEL);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, last_level,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_LAST_LEVEL);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, base,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_BASE);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, row_stride,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_ROW_STRIDE);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, img_stride,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_IMG_STRIDE);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, mip_offsets,
-                             gallivm->target, texture_type,
-                             LP_JIT_TEXTURE_MIP_OFFSETS);
-      LP_CHECK_STRUCT_SIZE(struct lp_jit_texture,
-                           gallivm->target, texture_type);
-   }
-
-   /* struct lp_jit_sampler */
-   {
-      LLVMTypeRef elem_types[LP_JIT_SAMPLER_NUM_FIELDS];
-      elem_types[LP_JIT_SAMPLER_MIN_LOD] =
-      elem_types[LP_JIT_SAMPLER_MAX_LOD] =
-      elem_types[LP_JIT_SAMPLER_LOD_BIAS] = LLVMFloatTypeInContext(lc);
-      elem_types[LP_JIT_SAMPLER_BORDER_COLOR] =
-         LLVMArrayType(LLVMFloatTypeInContext(lc), 4);
-
-      sampler_type = LLVMStructTypeInContext(lc, elem_types,
-                                             ARRAY_SIZE(elem_types), 0);
-
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, min_lod,
-                             gallivm->target, sampler_type,
-                             LP_JIT_SAMPLER_MIN_LOD);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, max_lod,
-                             gallivm->target, sampler_type,
-                             LP_JIT_SAMPLER_MAX_LOD);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, lod_bias,
-                             gallivm->target, sampler_type,
-                             LP_JIT_SAMPLER_LOD_BIAS);
-      LP_CHECK_MEMBER_OFFSET(struct lp_jit_sampler, border_color,
-                             gallivm->target, sampler_type,
-                             LP_JIT_SAMPLER_BORDER_COLOR);
-      LP_CHECK_STRUCT_SIZE(struct lp_jit_sampler,
-                           gallivm->target, sampler_type);
-   }
+   texture_type = create_jit_texture_type(gallivm);
+   sampler_type = create_jit_sampler_type(gallivm);
 
    /* struct lp_jit_context */
    {
