@@ -390,7 +390,7 @@ read_oa_samples_for_query(struct brw_context *brw,
    /* We need the MI_REPORT_PERF_COUNT to land before we can start
     * accumulate. */
    assert(!perf_cfg->vtbl.batch_references(&brw->batch, obj->oa.bo) &&
-          !brw_bo_busy(obj->oa.bo));
+          !perf_cfg->vtbl.bo_busy(obj->oa.bo));
 
    /* Map the BO once here and let accumulate_oa_reports() unmap
     * it. */
@@ -728,12 +728,12 @@ brw_is_perf_query_ready(struct gl_context *ctx,
       return (obj->oa.results_accumulated ||
               (obj->oa.bo &&
                !perf_cfg->vtbl.batch_references(&brw->batch, obj->oa.bo) &&
-               !brw_bo_busy(obj->oa.bo) &&
+               !perf_cfg->vtbl.bo_busy(obj->oa.bo) &&
                read_oa_samples_for_query(brw, obj)));
    case GEN_PERF_QUERY_TYPE_PIPELINE:
       return (obj->pipeline_stats.bo &&
               !perf_cfg->vtbl.batch_references(&brw->batch, obj->pipeline_stats.bo) &&
-              !brw_bo_busy(obj->pipeline_stats.bo));
+              !perf_cfg->vtbl.bo_busy(obj->pipeline_stats.bo));
 
    default:
       unreachable("Unknown query type");
@@ -1178,7 +1178,7 @@ typedef void (*store_register_mem64_t)(void *ctx, void *bo,
                                        uint32_t reg, uint32_t offset);
 typedef bool (*batch_references_t)(void *batch, void *bo);
 typedef void (*bo_wait_rendering_t)(void *bo);
-
+typedef int (*bo_busy_t)(void *bo);
 
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
@@ -1207,6 +1207,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
       (store_register_mem64_t) brw_store_register_mem64;
    perf_cfg->vtbl.batch_references = (batch_references_t)brw_batch_references;
    perf_cfg->vtbl.bo_wait_rendering = (bo_wait_rendering_t)brw_bo_wait_rendering;
+   perf_cfg->vtbl.bo_busy = (bo_busy_t)brw_bo_busy;
 
    gen_perf_init_context(perf_ctx, perf_cfg, brw, brw->bufmgr, devinfo,
                          brw->hw_ctx, brw->screen->driScrnPriv->fd);
