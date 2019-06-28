@@ -385,15 +385,17 @@ read_oa_samples_for_query(struct brw_context *brw,
    uint32_t *last;
    uint32_t *end;
 
+   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
+
    /* We need the MI_REPORT_PERF_COUNT to land before we can start
     * accumulate. */
-   assert(!brw_batch_references(&brw->batch, obj->oa.bo) &&
+   assert(!perf_cfg->vtbl.batch_references(&brw->batch, obj->oa.bo) &&
           !brw_bo_busy(obj->oa.bo));
 
    /* Map the BO once here and let accumulate_oa_reports() unmap
     * it. */
    if (obj->oa.map == NULL)
-      obj->oa.map = brw->perf_ctx.perf->vtbl.bo_map(brw, obj->oa.bo, MAP_READ);
+      obj->oa.map = perf_cfg->vtbl.bo_map(brw, obj->oa.bo, MAP_READ);
 
    start = last = obj->oa.map;
    end = obj->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
@@ -653,7 +655,6 @@ brw_end_perf_query(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
-   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
    struct gen_perf_context *perf_ctx = &brw->perf_ctx;
 
    DBG("End(%d)\n", o->Id);
@@ -692,7 +693,7 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
    /* If the current batch references our results bo then we need to
     * flush first...
     */
-   if (brw_batch_references(&brw->batch, bo))
+   if (perf_cfg->vtbl.batch_references(&brw->batch, bo))
       perf_cfg->vtbl.batchbuffer_flush(brw, __FILE__, __LINE__);
 
    brw_bo_wait_rendering(bo);
@@ -716,6 +717,7 @@ brw_is_perf_query_ready(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
+   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
 
    if (o->Ready)
       return true;
@@ -725,12 +727,12 @@ brw_is_perf_query_ready(struct gl_context *ctx,
    case GEN_PERF_QUERY_TYPE_RAW:
       return (obj->oa.results_accumulated ||
               (obj->oa.bo &&
-               !brw_batch_references(&brw->batch, obj->oa.bo) &&
+               !perf_cfg->vtbl.batch_references(&brw->batch, obj->oa.bo) &&
                !brw_bo_busy(obj->oa.bo) &&
                read_oa_samples_for_query(brw, obj)));
    case GEN_PERF_QUERY_TYPE_PIPELINE:
       return (obj->pipeline_stats.bo &&
-              !brw_batch_references(&brw->batch, obj->pipeline_stats.bo) &&
+              !perf_cfg->vtbl.batch_references(&brw->batch, obj->pipeline_stats.bo) &&
               !brw_bo_busy(obj->pipeline_stats.bo));
 
    default:
@@ -1174,6 +1176,8 @@ brw_oa_batchbuffer_flush(void *c, const char *file, int line)
 typedef void (*capture_frequency_stat_register_t)(void *, void *, uint32_t );
 typedef void (*store_register_mem64_t)(void *ctx, void *bo,
                                        uint32_t reg, uint32_t offset);
+typedef bool (*batch_references_t)(void *batch, void *bo);
+
 
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
@@ -1200,6 +1204,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
       (capture_frequency_stat_register_t) capture_frequency_stat_register;
    perf_cfg->vtbl.store_register_mem64 =
       (store_register_mem64_t) brw_store_register_mem64;
+   perf_cfg->vtbl.batch_references = (batch_references_t)brw_batch_references;
 
    gen_perf_init_context(perf_ctx, perf_cfg, brw, brw->bufmgr, devinfo,
                          brw->hw_ctx, brw->screen->driScrnPriv->fd);
