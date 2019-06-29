@@ -499,45 +499,38 @@ resolve_jumps(struct ir3 *ir)
 	return false;
 }
 
-/* we want to mark points where divergent flow control re-converges
- * with (jp) flags.  For now, since we don't do any optimization for
- * things that start out as a 'do {} while()', re-convergence points
- * will always be a branch or jump target.  Note that this is overly
- * conservative, since unconditional jump targets are not convergence
- * points, we are just assuming that the other path to reach the jump
- * target was divergent.  If we were clever enough to optimize the
- * jump at end of a loop back to a conditional branch into a single
- * conditional branch, ie. like:
+static void mark_jp(struct ir3_block *block)
+{
+	struct ir3_instruction *target = list_first_entry(&block->instr_list,
+			struct ir3_instruction, node);
+	target->flags |= IR3_INSTR_JP;
+}
+
+/* Mark points where control flow converges or diverges.
  *
- *    add.f r1.w, r0.x, (neg)(r)c2.x   <= loop start
- *    mul.f r1.z, r1.z, r0.x
- *    mul.f r1.y, r1.y, r0.x
- *    mul.f r0.z, r1.x, r0.x
- *    mul.f r0.w, r0.y, r0.x
- *    cmps.f.ge r0.x, (r)c2.y, (r)r1.w
- *    add.s r0.x, (r)r0.x, (r)-1
- *    sel.f32 r0.x, (r)c3.y, (r)r0.x, c3.x
- *    cmps.f.eq p0.x, r0.x, c3.y
- *    mov.f32f32 r0.x, r1.w
- *    mov.f32f32 r0.y, r0.w
- *    mov.f32f32 r1.x, r0.z
- *    (rpt2)nop
- *    br !p0.x, #-13
- *    (jp)mul.f r0.x, c263.y, r1.y
- *
- * Then we'd have to be more clever, as the convergence point is no
- * longer a branch or jump target.
+ * Divergence points could actually be re-convergence points where
+ * "parked" threads are recoverged with threads that took the opposite
+ * path last time around.  Possibly it is easier to think of (jp) as
+ * "the execution mask might have changed".
  */
 static void
-mark_convergence_points(struct ir3 *ir)
+mark_xvergence_points(struct ir3 *ir)
 {
 	list_for_each_entry (struct ir3_block, block, &ir->block_list, node) {
-		list_for_each_entry (struct ir3_instruction, instr, &block->instr_list, node) {
-			if (is_flow(instr) && instr->cat0.target) {
-				struct ir3_instruction *target =
-					list_first_entry(&instr->cat0.target->instr_list,
-							struct ir3_instruction, node);
-				target->flags |= IR3_INSTR_JP;
+		if (block->predecessors->entries > 1) {
+			/* if a block has more than one possible predecessor, then
+			 * the first instruction is a convergence point.
+			 */
+			mark_jp(block);
+		} else if (block->predecessors->entries == 1) {
+			/* If a block has one predecessor, which has multiple possible
+			 * successors, it is a divergence point.
+			 */
+			set_foreach(block->predecessors, entry) {
+				struct ir3_block *predecessor = (struct ir3_block *)entry->key;
+				if (predecessor->successors[1]) {
+					mark_jp(block);
+				}
 			}
 		}
 	}
@@ -574,7 +567,7 @@ ir3_legalize(struct ir3 *ir, bool *has_ssbo, bool *need_pixlod, int *max_bary)
 		ir3_count_instructions(ir);
 	} while(resolve_jumps(ir));
 
-	mark_convergence_points(ir);
+	mark_xvergence_points(ir);
 
 	ralloc_free(ctx);
 }
