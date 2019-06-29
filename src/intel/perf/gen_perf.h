@@ -39,6 +39,18 @@ struct gen_device_info;
 struct gen_perf_config;
 struct gen_perf_query_info;
 
+#define GEN7_RPSTAT1                       0xA01C
+#define  GEN7_RPSTAT1_CURR_GT_FREQ_SHIFT   7
+#define  GEN7_RPSTAT1_CURR_GT_FREQ_MASK    INTEL_MASK(13, 7)
+#define  GEN7_RPSTAT1_PREV_GT_FREQ_SHIFT   0
+#define  GEN7_RPSTAT1_PREV_GT_FREQ_MASK    INTEL_MASK(6, 0)
+
+#define GEN9_RPSTAT0                       0xA01C
+#define  GEN9_RPSTAT0_CURR_GT_FREQ_SHIFT   23
+#define  GEN9_RPSTAT0_CURR_GT_FREQ_MASK    INTEL_MASK(31, 23)
+#define  GEN9_RPSTAT0_PREV_GT_FREQ_SHIFT   0
+#define  GEN9_RPSTAT0_PREV_GT_FREQ_MASK    INTEL_MASK(8, 0)
+
 enum gen_perf_counter_type {
    GEN_PERF_COUNTER_TYPE_EVENT,
    GEN_PERF_COUNTER_TYPE_DURATION_NORM,
@@ -632,5 +644,10 @@ bool gen_perf_is_query_ready(struct gen_perf_context *perf_ctx,
                              void *current_batch);
 void gen_perf_delete_query(struct gen_perf_context *perf_ctx,
                            struct gen_perf_query_object *query);
+void gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
+                             struct gen_perf_query_object *query,
+                             int data_size,
+                             unsigned *data,
+                             unsigned *bytes_written);
 
 #endif /* GEN_PERF_H */

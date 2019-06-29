@@ -47,6 +47,20 @@
 #define MI_RPC_BO_END_OFFSET_BYTES  (MI_RPC_BO_SIZE / 2)
 #define MI_FREQ_END_OFFSET_BYTES    (3076)
 
+#define INTEL_MASK(high, low) (((1u<<((high)-(low)+1))-1)<<(low))
+
+#define GEN7_RPSTAT1                       0xA01C
+#define  GEN7_RPSTAT1_CURR_GT_FREQ_SHIFT   7
+#define  GEN7_RPSTAT1_CURR_GT_FREQ_MASK    INTEL_MASK(13, 7)
+#define  GEN7_RPSTAT1_PREV_GT_FREQ_SHIFT   0
+#define  GEN7_RPSTAT1_PREV_GT_FREQ_MASK    INTEL_MASK(6, 0)
+
+#define GEN9_RPSTAT0                       0xA01C
+#define  GEN9_RPSTAT0_CURR_GT_FREQ_SHIFT   23
+#define  GEN9_RPSTAT0_CURR_GT_FREQ_MASK    INTEL_MASK(31, 23)
+#define  GEN9_RPSTAT0_PREV_GT_FREQ_SHIFT   0
+#define  GEN9_RPSTAT0_PREV_GT_FREQ_MASK    INTEL_MASK(8, 0)
+
 #define MAP_READ  (1 << 0)
 #define MAP_WRITE (1 << 1)
 
@@ -1571,6 +1585,192 @@ drop_from_unaccumulated_query_list(struct gen_perf_context *perf_ctx,
    gen_perf_reap_old_sample_buffers(perf_ctx);
 }
 
+/* In general if we see anything spurious while accumulating results,
+ * we don't try and continue accumulating the current query, hoping
+ * for the best, we scrap anything outstanding, and then hope for the
+ * best with new queries.
+ */
+static void
+discard_all_queries(struct gen_perf_context *perf_ctx)
+{
+   while (perf_ctx->unaccumulated_elements) {
+      struct gen_perf_query_object *query = perf_ctx->unaccumulated[0];
+
+      query->oa.results_accumulated = true;
+      drop_from_unaccumulated_query_list(perf_ctx, query);
+
+      gen_perf_dec_n_users(perf_ctx);
+   }
+}
+
+/**
+ * Accumulate raw OA counter values based on deltas between pairs of
+ * OA reports.
+ *
+ * Accumulation starts from the first report captured via
+ * MI_REPORT_PERF_COUNT (MI_RPC) by brw_begin_perf_query() until the
+ * last MI_RPC report requested by brw_end_perf_query(). Between these
+ * two reports there may also some number of periodically sampled OA
+ * reports collected via the i915 perf interface - depending on the
+ * duration of the query.
+ *
+ * These periodic snapshots help to ensure we handle counter overflow
+ * correctly by being frequent enough to ensure we don't miss multiple
+ * overflows of a counter between snapshots. For Gen8+ the i915 perf
+ * snapshots provide the extra context-switch reports that let us
+ * subtract out the progress of counters associated with other
+ * contexts running on the system.
+ */
+static void
+accumulate_oa_reports(struct gen_perf_context *perf_ctx,
+                      struct gen_perf_query_object *query)
+{
+   const struct gen_device_info *devinfo = perf_ctx->devinfo;
+   uint32_t *start;
+   uint32_t *last;
+   uint32_t *end;
+   struct exec_node *first_samples_node;
+   bool in_ctx = true;
+   int out_duration = 0;
+
+   assert(query->oa.map != NULL);
+
+   start = last = query->oa.map;
+   end = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
+
+   if (start[0] != query->oa.begin_report_id) {
+      DBG("Spurious start report id=%"PRIu32"\n", start[0]);
+      goto error;
+   }
+   if (end[0] != (query->oa.begin_report_id + 1)) {
+      DBG("Spurious end report id=%"PRIu32"\n", end[0]);
+      goto error;
+   }
+
+   /* See if we have any periodic reports to accumulate too... */
+
+   /* N.B. The oa.samples_head was set when the query began and
+    * pointed to the tail of the perf_ctx->sample_buffers list at
+    * the time the query started. Since the buffer existed before the
+    * first MI_REPORT_PERF_COUNT command was emitted we therefore know
+    * that no data in this particular node's buffer can possibly be
+    * associated with the query - so skip ahead one...
+    */
+   first_samples_node = query->oa.samples_head->next;
+
+   foreach_list_typed_from(struct oa_sample_buf, buf, link,
+                           &perf_ctx.sample_buffers,
+                           first_samples_node)
+   {
+      int offset = 0;
+
+      while (offset < buf->len) {
+         const struct drm_i915_perf_record_header *header =
+            (const struct drm_i915_perf_record_header *)(buf->buf + offset);
+
+         assert(header->size != 0);
+         assert(header->size <= buf->len);
+
+         offset += header->size;
+
+         switch (header->type) {
+         case DRM_I915_PERF_RECORD_SAMPLE: {
+            uint32_t *report = (uint32_t *)(header + 1);
+            bool add = true;
+
+            /* Ignore reports that come before the start marker.
+             * (Note: takes care to allow overflow of 32bit timestamps)
+             */
+            if (gen_device_info_timebase_scale(devinfo,
+                                               report[1] - start[1]) > 5000000000) {
+               continue;
+            }
+
+            /* Ignore reports that come after the end marker.
+             * (Note: takes care to allow overflow of 32bit timestamps)
+             */
+            if (gen_device_info_timebase_scale(devinfo,
+                                               report[1] - end[1]) <= 5000000000) {
+               goto end;
+            }
+
+            /* For Gen8+ since the counters continue while other
+             * contexts are running we need to discount any unrelated
+             * deltas. The hardware automatically generates a report
+             * on context switch which gives us a new reference point
+             * to continuing adding deltas from.
+             *
+             * For Haswell we can rely on the HW to stop the progress
+             * of OA counters while any other context is acctive.
+             */
+            if (devinfo->gen >= 8) {
+               if (in_ctx && report[2] != query->oa.result.hw_id) {
+                  DBG("i915 perf: Switch AWAY (observed by ID change)\n");
+                  in_ctx = false;
+                  out_duration = 0;
+               } else if (in_ctx == false && report[2] == query->oa.result.hw_id) {
+                  DBG("i915 perf: Switch TO\n");
+                  in_ctx = true;
+
+                  /* From experimentation in IGT, we found that the OA unit
+                   * might label some report as "idle" (using an invalid
+                   * context ID), right after a report for a given context.
+                   * Deltas generated by those reports actually belong to the
+                   * previous context, even though they're not labelled as
+                   * such.
+                   *
+                   * We didn't *really* Switch AWAY in the case that we e.g.
+                   * saw a single periodic report while idle...
+                   */
+                  if (out_duration >= 1)
+                     add = false;
+               } else if (in_ctx) {
+                  assert(report[2] == query->oa.result.hw_id);
+                  DBG("i915 perf: Continuation IN\n");
+               } else {
+                  assert(report[2] != query->oa.result.hw_id);
+                  DBG("i915 perf: Continuation OUT\n");
+                  add = false;
+                  out_duration++;
+               }
+            }
+
+            if (add) {
+               gen_perf_query_result_accumulate(&query->oa.result, query->queryinfo,
+                                                last, report);
+            }
+
+            last = report;
+
+            break;
+         }
+
+         case DRM_I915_PERF_RECORD_OA_BUFFER_LOST:
+             DBG("i915 perf: OA error: all reports lost\n");
+             goto error;
+         case DRM_I915_PERF_RECORD_OA_REPORT_LOST:
+             DBG("i915 perf: OA report lost\n");
+             break;
+         }
+      }
+   }
+
+end:
+
+   gen_perf_query_result_accumulate(&query->oa.result, query->queryinfo,
+                                    last, end);
+
+   query->oa.results_accumulated = true;
+   drop_from_unaccumulated_query_list(perf_ctx, query);
+   gen_perf_dec_n_users(perf_ctx);
+
+   return;
+
+error:
+
+   discard_all_queries(perf_ctx);
+}
+
 void
 gen_perf_delete_query(struct gen_perf_context *perf_ctx,
                       struct gen_perf_query_object *query)
@@ -1619,4 +1819,163 @@ gen_perf_delete_query(struct gen_perf_context *perf_ctx,
    }
 
    free(query);
+}
+
+#define GET_FIELD(word, field) (((word)  & field ## _MASK) >> field ## _SHIFT)
+
+static void
+read_gt_frequency(struct gen_perf_context *perf_ctx,
+                  struct gen_perf_query_object *obj)
+{
+   const struct gen_device_info *devinfo = perf_ctx->devinfo;
+   uint32_t start = *((uint32_t *)(obj->oa.map + MI_FREQ_START_OFFSET_BYTES)),
+      end = *((uint32_t *)(obj->oa.map + MI_FREQ_END_OFFSET_BYTES));
+
+   switch (devinfo->gen) {
+   case 7:
+   case 8:
+      obj->oa.gt_frequency[0] = GET_FIELD(start, GEN7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
+      obj->oa.gt_frequency[1] = GET_FIELD(end, GEN7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
+      break;
+   case 9:
+   case 10:
+   case 11:
+      obj->oa.gt_frequency[0] = GET_FIELD(start, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
+      obj->oa.gt_frequency[1] = GET_FIELD(end, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
+      break;
+   default:
+      unreachable("unexpected gen");
+   }
+
+   /* Put the numbers into Hz. */
+   obj->oa.gt_frequency[0] *= 1000000ULL;
+   obj->oa.gt_frequency[1] *= 1000000ULL;
+}
+
+static int
+get_oa_counter_data(struct gen_perf_context *perf_ctx,
+                    struct gen_perf_query_object *query,
+                    size_t data_size,
+                    uint8_t *data)
+{
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+   const struct gen_perf_query_info *queryinfo = query->queryinfo;
+   int n_counters = queryinfo->n_counters;
+   int written = 0;
+
+   for (int i = 0; i < n_counters; i++) {
+      const struct gen_perf_query_counter *counter = &queryinfo->counters[i];
+      uint64_t *out_uint64;
+      float *out_float;
+      size_t counter_size = gen_perf_query_counter_get_size(counter);
+
+      if (counter_size) {
+         switch (counter->data_type) {
+         case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
+            out_uint64 = (uint64_t *)(data + counter->offset);
+            *out_uint64 =
+               counter->oa_counter_read_uint64(perf_cfg, queryinfo,
+                                               query->oa.result.accumulator);
+            break;
+         case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
+            out_float = (float *)(data + counter->offset);
+            *out_float =
+               counter->oa_counter_read_float(perf_cfg, queryinfo,
+                                              query->oa.result.accumulator);
+            break;
+         default:
+            /* So far we aren't using uint32, double or bool32... */
+            unreachable("unexpected counter data type");
+         }
+         written = counter->offset + counter_size;
+      }
+   }
+
+   return written;
+}
+
+static int
+get_pipeline_stats_data(struct gen_perf_context *perf_ctx,
+                        struct gen_perf_query_object *query,
+                        size_t data_size,
+                        uint8_t *data)
+
+{
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+   const struct gen_perf_query_info *queryinfo = query->queryinfo;
+   int n_counters = queryinfo->n_counters;
+   uint8_t *p = data;
+
+   uint64_t *start = perf_cfg->vtbl.bo_map(perf_ctx->ctx, query->pipeline_stats.bo, MAP_READ);
+   uint64_t *end = start + (STATS_BO_END_OFFSET_BYTES / sizeof(uint64_t));
+
+   for (int i = 0; i < n_counters; i++) {
+      const struct gen_perf_query_counter *counter = &queryinfo->counters[i];
+      uint64_t value = end[i] - start[i];
+
+      if (counter->pipeline_stat.numerator !=
+          counter->pipeline_stat.denominator) {
+         value *= counter->pipeline_stat.numerator;
+         value /= counter->pipeline_stat.denominator;
+      }
+
+      *((uint64_t *)p) = value;
+      p += 8;
+   }
+
+   perf_cfg->vtbl.bo_unmap(query->pipeline_stats.bo);
+
+   return p - data;
+}
+
+void
+gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
+                        struct gen_perf_query_object *query,
+                        int data_size,
+                        unsigned *data,
+                        unsigned *bytes_written)
+{
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+   int written = 0;
+
+   switch (query->queryinfo->kind) {
+   case GEN_PERF_QUERY_TYPE_OA:
+   case GEN_PERF_QUERY_TYPE_RAW:
+      if (!query->oa.results_accumulated) {
+         read_gt_frequency(perf_ctx, query);
+         uint32_t *begin_report = query->oa.map;
+         uint32_t *end_report = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
+         gen_perf_query_result_read_frequencies(&query->oa.result,
+                                                perf_ctx->devinfo,
+                                                begin_report,
+                                                end_report);
+         accumulate_oa_reports(perf_ctx, query);
+         assert(query->oa.results_accumulated);
+
+         perf_cfg->vtbl.bo_unmap(query->oa.bo);
+         query->oa.map = NULL;
+      }
+      if (query->queryinfo->kind == GEN_PERF_QUERY_TYPE_OA) {
+         written = get_oa_counter_data(perf_ctx, query, data_size, (uint8_t *)data);
+      } else {
+         const struct gen_device_info *devinfo = perf_ctx->devinfo;
+
+         written = gen_perf_query_result_write_mdapi((uint8_t *)data, data_size,
+                                                     devinfo, &query->oa.result,
+                                                     query->oa.gt_frequency[0],
+                                                     query->oa.gt_frequency[1]);
+      }
+      break;
+
+   case GEN_PERF_QUERY_TYPE_PIPELINE:
+      written = get_pipeline_stats_data(perf_ctx, query, data_size, (uint8_t *)data);
+      break;
+
+   default:
+      unreachable("Unknown query type");
+      break;
+   }
+
+   if (bytes_written)
+      *bytes_written = written;
 }
