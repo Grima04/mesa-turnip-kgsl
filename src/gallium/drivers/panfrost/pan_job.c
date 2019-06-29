@@ -27,6 +27,7 @@
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 #include "util/u_format.h"
+#include "util/u_pack_color.h"
 
 struct panfrost_job *
 panfrost_create_job(struct panfrost_context *ctx)
@@ -210,8 +211,12 @@ pan_pack_color(const union pipe_color_union *color, enum pipe_format format)
                 /* Then we pack into a sparse u32. TODO: Why these shifts? */
                 return (b5 << 25) | (g6 << 14) | (r5 << 5);
         } else {
-                /* Unknown format */
-                assert(0);
+                /* Try Gallium's generic default path. Doesn't work for all
+                 * formats but it's a good guess. */
+
+                union util_color out;
+                util_pack_color(color->f, format, &out);
+                return out.ui[0];
         }
 
         return 0;
