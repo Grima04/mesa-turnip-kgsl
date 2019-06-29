@@ -347,8 +347,8 @@ LLVMValueRef si_load_sampler_desc(struct si_shader_context *ctx,
 				  enum ac_descriptor_type type);
 LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 				LLVMValueRef list, LLVMValueRef index,
-				enum ac_descriptor_type desc_type, bool dcc_off,
-				bool bindless);
+				enum ac_descriptor_type desc_type,
+				bool uses_store, bool bindless);
 
 void si_load_system_value(struct si_shader_context *ctx,
 			  unsigned index,

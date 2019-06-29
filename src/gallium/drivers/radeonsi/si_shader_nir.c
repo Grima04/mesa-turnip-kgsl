@@ -1031,7 +1031,6 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	LLVMBuilderRef builder = ctx->ac.builder;
 	unsigned const_index = base_index + constant_index;
-	bool dcc_off = write;
 
 	assert(!descriptor_set);
 	assert(!image || desc_type == AC_DESC_IMAGE || desc_type == AC_DESC_BUFFER);
@@ -1049,7 +1048,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 					     LLVMConstInt(ctx->i64, 2, 0), "");
 
 			return si_load_image_desc(ctx, list, dynamic_index, desc_type,
-						  dcc_off, true);
+						  write, true);
 		}
 
 		/* Since bindless handle arithmetic can contain an unsigned integer
@@ -1088,7 +1087,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 		index = LLVMBuildSub(ctx->ac.builder,
 				     LLVMConstInt(ctx->i32, SI_NUM_IMAGES - 1, 0),
 				     index, "");
-		return si_load_image_desc(ctx, list, index, desc_type, dcc_off, false);
+		return si_load_image_desc(ctx, list, index, desc_type, write, false);
 	}
 
 	index = LLVMBuildAdd(ctx->ac.builder, index,

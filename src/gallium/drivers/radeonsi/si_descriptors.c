@@ -739,7 +739,7 @@ static void si_set_shader_image_desc(struct si_context *ctx,
 		assert(fmask_desc || tex->surface.fmask_size == 0);
 
 		if (uses_dcc && !skip_decompress &&
-		    (view->access & PIPE_IMAGE_ACCESS_WRITE ||
+		    ((ctx->chip_class <= GFX9 && view->access & PIPE_IMAGE_ACCESS_WRITE) ||
 		     !vi_dcc_formats_compatible(screen, res->b.b.format, view->format))) {
 			/* If DCC can't be disabled, at least decompress it.
 			 * The decompression is relatively cheap if the surface

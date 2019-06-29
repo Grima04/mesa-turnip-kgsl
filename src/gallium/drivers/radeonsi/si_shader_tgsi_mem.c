@@ -176,8 +176,8 @@ static LLVMValueRef force_dcc_off(struct si_shader_context *ctx,
 
 LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 				LLVMValueRef list, LLVMValueRef index,
-				enum ac_descriptor_type desc_type, bool dcc_off,
-				bool bindless)
+				enum ac_descriptor_type desc_type,
+				bool uses_store, bool bindless)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef rsrc;
@@ -196,7 +196,8 @@ LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 	else
 		rsrc = ac_build_load_to_sgpr(&ctx->ac, list, index);
 
-	if (desc_type == AC_DESC_IMAGE && dcc_off)
+	if (ctx->ac.chip_class <= GFX9 &&
+	    desc_type == AC_DESC_IMAGE && uses_store)
 		rsrc = force_dcc_off(ctx, rsrc);
 	return rsrc;
 }
@@ -215,7 +216,6 @@ image_fetch_rsrc(
 	LLVMValueRef rsrc_ptr = LLVMGetParam(ctx->main_fn,
 					     ctx->param_samplers_and_images);
 	LLVMValueRef index;
-	bool dcc_off = is_store;
 
 	if (!image->Register.Indirect) {
 		index = LLVMConstInt(ctx->i32,
@@ -259,7 +259,7 @@ image_fetch_rsrc(
 
 	*rsrc = si_load_image_desc(ctx, rsrc_ptr, index,
 				   target == TGSI_TEXTURE_BUFFER ? AC_DESC_BUFFER : AC_DESC_IMAGE,
-				   dcc_off, bindless);
+				   is_store, bindless);
 }
 
 static void image_fetch_coords(
