@@ -541,8 +541,7 @@ void si_llvm_load_input_vs(
 		tmp = ac_build_opencoded_load_format(
 				&ctx->ac, fix_fetch.u.log_size, fix_fetch.u.num_channels_m1 + 1,
 				fix_fetch.u.format, fix_fetch.u.reverse, !opencode,
-				t_list, vertex_index, ctx->ac.i32_0, ctx->ac.i32_0,
-				false, false, true);
+				t_list, vertex_index, ctx->ac.i32_0, ctx->ac.i32_0, 0, true);
 		for (unsigned i = 0; i < 4; ++i)
 			out[i] = LLVMBuildExtractElement(ctx->ac.builder, tmp, LLVMConstInt(ctx->i32, i, false), "");
 		return;
@@ -568,7 +567,7 @@ void si_llvm_load_input_vs(
 	for (unsigned i = 0; i < num_fetches; ++i) {
 		LLVMValueRef voffset = LLVMConstInt(ctx->i32, fetch_stride * i, 0);
 		fetches[i] = ac_build_buffer_load_format(&ctx->ac, t_list, vertex_index, voffset,
-							 channels_per_fetch, false, true);
+							 channels_per_fetch, 0, true);
 	}
 
 	if (num_fetches == 1 && channels_per_fetch > 1) {
@@ -967,14 +966,14 @@ static LLVMValueRef buffer_load(struct lp_build_tgsi_context *bld_base,
 
 	if (swizzle == ~0) {
 		value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset,
-					     0, 1, 0, can_speculate, false);
+					     0, ac_glc, can_speculate, false);
 
 		return LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");
 	}
 
 	if (!llvm_type_is_64bit(ctx, type)) {
 		value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset,
-					     0, 1, 0, can_speculate, false);
+					     0, ac_glc, can_speculate, false);
 
 		value = LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");
 		return LLVMBuildExtractElement(ctx->ac.builder, value,
@@ -982,10 +981,10 @@ static LLVMValueRef buffer_load(struct lp_build_tgsi_context *bld_base,
 	}
 
 	value = ac_build_buffer_load(&ctx->ac, buffer, 1, NULL, base, offset,
-	                          swizzle * 4, 1, 0, can_speculate, false);
+	                          swizzle * 4, ac_glc, can_speculate, false);
 
 	value2 = ac_build_buffer_load(&ctx->ac, buffer, 1, NULL, base, offset,
-	                           swizzle * 4 + 4, 1, 0, can_speculate, false);
+	                           swizzle * 4 + 4, ac_glc, can_speculate, false);
 
 	return si_llvm_emit_fetch_64bit(bld_base, type, value, value2);
 }
@@ -1589,14 +1588,14 @@ LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi,
 	soffset = LLVMConstInt(ctx->i32, (param * 4 + swizzle) * 256, 0);
 
 	value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->i32_0,
-				     vtx_offset, soffset, 0, 1, 0, true, false);
+				     vtx_offset, soffset, 0, ac_glc, true, false);
 	if (llvm_type_is_64bit(ctx, type)) {
 		LLVMValueRef value2;
 		soffset = LLVMConstInt(ctx->i32, (param * 4 + swizzle + 1) * 256, 0);
 
 		value2 = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1,
 					      ctx->i32_0, vtx_offset, soffset,
-					      0, 1, 0, true, false);
+					      0, ac_glc, true, false);
 		return si_llvm_emit_fetch_64bit(bld_base, type, value, value2);
 	}
 	return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
@@ -1908,7 +1907,7 @@ static LLVMValueRef buffer_load_const(struct si_shader_context *ctx,
 				      LLVMValueRef offset)
 {
 	return ac_build_buffer_load(&ctx->ac, resource, 1, NULL, offset, NULL,
-				    0, 0, 0, true, true);
+				    0, 0, true, true);
 }
 
 static LLVMValueRef load_sample_position(struct ac_shader_abi *abi, LLVMValueRef sample_id)
@@ -5787,7 +5786,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 					ac_build_buffer_load(&ctx.ac,
 							     ctx.gsvs_ring[0], 1,
 							     ctx.i32_0, voffset,
-							     soffset, 0, 1, 1,
+							     soffset, 0, ac_glc | ac_slc,
 							     true, false);
 			}
 		}

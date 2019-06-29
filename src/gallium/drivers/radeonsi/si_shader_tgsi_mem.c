@@ -515,7 +515,7 @@ static void load_emit(
 		emit_data->output[emit_data->chan] =
 			ac_build_buffer_load(&ctx->ac, args.resource,
 					     util_last_bit(inst->Dst[0].Register.WriteMask),
-					     NULL, voffset, NULL, 0, 0, 0, true, true);
+					     NULL, voffset, NULL, 0, 0, true, true);
 		return;
 	}
 
@@ -552,9 +552,7 @@ static void load_emit(
 			ac_build_buffer_load(&ctx->ac, args.resource,
 					     util_last_bit(inst->Dst[0].Register.WriteMask),
 					     NULL, voffset, NULL, 0,
-					     !!(args.cache_policy & ac_glc),
-					     !!(args.cache_policy & ac_slc),
-					     can_speculate, false);
+					     args.cache_policy, can_speculate, false);
 		return;
 	}
 
@@ -566,7 +564,7 @@ static void load_emit(
 						    vindex,
 						    ctx->i32_0,
 						    num_channels,
-						    !!(args.cache_policy & ac_glc),
+						    args.cache_policy,
 						    can_speculate);
 		emit_data->output[emit_data->chan] =
 			ac_build_expand_to_vec4(&ctx->ac, result, num_channels);
@@ -1340,7 +1338,7 @@ static void build_tex_intrinsic(const struct lp_build_tgsi_action *action,
 						    args.resource,
 						    vindex,
 						    ctx->i32_0,
-						    num_channels, false, true);
+						    num_channels, 0, true);
 		emit_data->output[emit_data->chan] =
 			ac_build_expand_to_vec4(&ctx->ac, result, num_channels);
 		return;

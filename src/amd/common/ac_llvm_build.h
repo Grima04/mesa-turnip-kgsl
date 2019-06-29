@@ -288,8 +288,7 @@ ac_build_buffer_load(struct ac_llvm_context *ctx,
 		     LLVMValueRef voffset,
 		     LLVMValueRef soffset,
 		     unsigned inst_offset,
-		     unsigned glc,
-		     unsigned slc,
+		     unsigned cache_policy,
 		     bool can_speculate,
 		     bool allow_smem);
 
@@ -298,7 +297,7 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx,
 					 LLVMValueRef vindex,
 					 LLVMValueRef voffset,
 					 unsigned num_channels,
-					 bool glc,
+					 unsigned cache_policy,
 					 bool can_speculate);
 
 /* load_format that handles the stride & element count better if idxen is
@@ -308,7 +307,7 @@ LLVMValueRef ac_build_buffer_load_format_gfx9_safe(struct ac_llvm_context *ctx,
                                                   LLVMValueRef vindex,
                                                   LLVMValueRef voffset,
                                                   unsigned num_channels,
-                                                  bool glc,
+                                                  unsigned cache_policy,
                                                   bool can_speculate);
 
 LLVMValueRef
@@ -317,7 +316,7 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    LLVMValueRef voffset,
 			    LLVMValueRef soffset,
 			    LLVMValueRef immoffset,
-			    bool glc);
+			    unsigned cache_policy);
 
 LLVMValueRef
 ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx,
@@ -325,7 +324,7 @@ ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx,
 			   LLVMValueRef voffset,
 			   LLVMValueRef soffset,
 			   LLVMValueRef immoffset,
-			   bool glc);
+			   unsigned cache_policy);
 
 LLVMValueRef
 ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx,
@@ -337,8 +336,7 @@ ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx,
 			     unsigned num_channels,
 			     unsigned dfmt,
 			     unsigned nfmt,
-			     bool glc,
-			     bool slc,
+			     unsigned cache_policy,
 			     bool can_speculate);
 
 LLVMValueRef
@@ -350,8 +348,7 @@ ac_build_raw_tbuffer_load(struct ac_llvm_context *ctx,
 			  unsigned num_channels,
 			  unsigned dfmt,
 			  unsigned nfmt,
-			  bool glc,
-			  bool slc,
+			  unsigned cache_policy,
 		          bool can_speculate);
 
 /* For ac_build_fetch_format.
@@ -380,8 +377,7 @@ ac_build_opencoded_load_format(struct ac_llvm_context *ctx,
 			       LLVMValueRef vindex,
 			       LLVMValueRef voffset,
 			       LLVMValueRef soffset,
-			       bool glc,
-			       bool slc,
+			       unsigned cache_policy,
 			       bool can_speculate);
 
 void

@@ -1303,14 +1303,14 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 			                                             args->coords[0],
 			                                             ctx->ac.i32_0,
 			                                             util_last_bit(mask),
-			                                             false, true);
+			                                             0, true);
 		} else {
 			return ac_build_buffer_load_format(&ctx->ac,
 			                                   args->resource,
 			                                   args->coords[0],
 			                                   ctx->ac.i32_0,
 			                                   util_last_bit(mask),
-			                                   false, true);
+			                                   0, true);
 		}
 	}
 
@@ -1743,22 +1743,21 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 							  offset,
 							  ctx->ac.i32_0,
 							  immoffset,
-							  cache_policy & ac_glc);
+							  cache_policy);
 		} else if (load_bytes == 2) {
 			ret = ac_build_tbuffer_load_short(&ctx->ac,
 							 rsrc,
 							 offset,
 							 ctx->ac.i32_0,
 							 immoffset,
-							 cache_policy & ac_glc);
+							 cache_policy);
 		} else {
 			int num_channels = util_next_power_of_two(load_bytes) / 4;
 			bool can_speculate = access & ACCESS_CAN_REORDER;
 
 			ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels,
 						   vindex, offset, immoffset, 0,
-						   cache_policy & ac_glc, 0,
-						   can_speculate, false);
+						   cache_policy, can_speculate, false);
 		}
 
 		LLVMTypeRef byte_vec = LLVMVectorType(ctx->ac.i8, ac_get_type_size(LLVMTypeOf(ret)));
@@ -1804,7 +1803,7 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx,
 									offset,
 									ctx->ac.i32_0,
 									immoffset,
-									false);
+									0);
 			} else {
 				assert(load_bytes == 2);
 				results[i] = ac_build_tbuffer_load_short(&ctx->ac,
@@ -1812,13 +1811,13 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx,
 									 offset,
 									 ctx->ac.i32_0,
 									 immoffset,
-									 false);
+									 0);
 			}
 		}
 		ret = ac_build_gather_values(&ctx->ac, results, num_components);
 	} else {
 		ret = ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset,
-					   NULL, 0, false, false, true, true);
+					   NULL, 0, 0, true, true);
 
 		ret = ac_trim_vector(&ctx->ac, ret, num_components);
 	}
@@ -2467,7 +2466,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 		bool can_speculate = access & ACCESS_CAN_REORDER;
 		res = ac_build_buffer_load_format(&ctx->ac, rsrc, vindex,
 						  ctx->ac.i32_0, num_channels,
-						  !!(args.cache_policy & ac_glc),
+						  args.cache_policy,
 						  can_speculate);
 		res = ac_build_expand_to_vec4(&ctx->ac, res, num_channels);
 
@@ -3476,7 +3475,7 @@ static LLVMValueRef get_bindless_index_from_uniform(struct ac_nir_context *ctx,
 	LLVMValueRef ubo_index = ctx->abi->load_ubo(ctx->abi, ctx->ac.i32_0);
 
 	LLVMValueRef ret = ac_build_buffer_load(&ctx->ac, ubo_index, 1, NULL, offset,
-						NULL, 0, false, false, true, true);
+						NULL, 0, 0, true, true);
 
 	return LLVMBuildBitCast(ctx->ac.builder, ret, ctx->ac.i32, "");
 }
