@@ -34,7 +34,6 @@
 struct cache_entry_variant_info {
 	struct radv_shader_variant_info variant_info;
 	struct ac_shader_config config;
-	uint32_t rsrc1, rsrc2;
 };
 
 struct cache_entry {
@@ -324,8 +323,6 @@ radv_create_shader_variants_from_pipeline_cache(struct radv_device *device,
 
 			variant->config = info.config;
 			variant->info = info.variant_info;
-			variant->rsrc1 = info.rsrc1;
-			variant->rsrc2 = info.rsrc2;
 			variant->code_size = entry->code_sizes[i];
 			variant->ref_count = 1;
 
@@ -413,8 +410,6 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 
 		info.config = variants[i]->config;
 		info.variant_info = variants[i]->info;
-		info.rsrc1 = variants[i]->rsrc1;
-		info.rsrc2 = variants[i]->rsrc2;
 		memcpy(p, &info, sizeof(struct cache_entry_variant_info));
 		p += sizeof(struct cache_entry_variant_info);
 

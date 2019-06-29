@@ -481,19 +481,19 @@ radv_fill_shader_variant(struct radv_device *device,
 	unsigned vgpr_comp_cnt = 0;
 
 	variant->code_size = radv_get_shader_binary_size(binary);
-	variant->rsrc2 = S_00B12C_USER_SGPR(variant->info.num_user_sgprs) |
-			 S_00B12C_USER_SGPR_MSB_GFX9(variant->info.num_user_sgprs >> 5) |
-			 S_00B12C_SCRATCH_EN(scratch_enabled) |
-			 S_00B12C_SO_BASE0_EN(!!info->so.strides[0]) |
-			 S_00B12C_SO_BASE1_EN(!!info->so.strides[1]) |
-			 S_00B12C_SO_BASE2_EN(!!info->so.strides[2]) |
-			 S_00B12C_SO_BASE3_EN(!!info->so.strides[3]) |
-			 S_00B12C_SO_EN(!!info->so.num_outputs);
+	variant->config.rsrc2 = S_00B12C_USER_SGPR(variant->info.num_user_sgprs) |
+				S_00B12C_USER_SGPR_MSB_GFX9(variant->info.num_user_sgprs >> 5) |
+				S_00B12C_SCRATCH_EN(scratch_enabled) |
+				S_00B12C_SO_BASE0_EN(!!info->so.strides[0]) |
+				S_00B12C_SO_BASE1_EN(!!info->so.strides[1]) |
+				S_00B12C_SO_BASE2_EN(!!info->so.strides[2]) |
+				S_00B12C_SO_BASE3_EN(!!info->so.strides[3]) |
+				S_00B12C_SO_EN(!!info->so.num_outputs);
 
-	variant->rsrc1 = S_00B848_VGPRS((variant->config.num_vgprs - 1) / 4) |
-		S_00B848_SGPRS((variant->config.num_sgprs - 1) / 8) |
-		S_00B848_DX10_CLAMP(1) |
-		S_00B848_FLOAT_MODE(variant->config.float_mode);
+	variant->config.rsrc1 = S_00B848_VGPRS((variant->config.num_vgprs - 1) / 4) |
+				S_00B848_SGPRS((variant->config.num_sgprs - 1) / 8) |
+				S_00B848_DX10_CLAMP(1) |
+				S_00B848_FLOAT_MODE(variant->config.float_mode);
 
 	switch (stage) {
 	case MESA_SHADER_TESS_EVAL:
@@ -504,7 +504,7 @@ radv_fill_shader_variant(struct radv_device *device,
 			bool enable_prim_id = options->key.tes.export_prim_id || info->uses_prim_id;
 			vgpr_comp_cnt = enable_prim_id ? 3 : 2;
 		}
-		variant->rsrc2 |= S_00B12C_OC_LDS_EN(1);
+		variant->config.rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		break;
 	case MESA_SHADER_TESS_CTRL:
 		if (device->physical_device->rad_info.chip_class >= GFX9) {
@@ -514,7 +514,7 @@ radv_fill_shader_variant(struct radv_device *device,
 			 */
 			vgpr_comp_cnt = info->vs.needs_instance_id ? 2 : 1;
 		} else {
-			variant->rsrc2 |= S_00B12C_OC_LDS_EN(1);
+			variant->config.rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
 		break;
 	case MESA_SHADER_VERTEX:
@@ -547,7 +547,7 @@ radv_fill_shader_variant(struct radv_device *device,
 	case MESA_SHADER_GEOMETRY:
 		break;
 	case MESA_SHADER_COMPUTE:
-		variant->rsrc2 |=
+		variant->config.rsrc2 |=
 			S_00B84C_TGID_X_EN(info->cs.uses_block_id[0]) |
 			S_00B84C_TGID_Y_EN(info->cs.uses_block_id[1]) |
 			S_00B84C_TGID_Z_EN(info->cs.uses_block_id[2]) |
@@ -588,14 +588,14 @@ radv_fill_shader_variant(struct radv_device *device,
 			gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 		}
 
-		variant->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
-		variant->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
-		                  S_00B22C_OC_LDS_EN(es_type == MESA_SHADER_TESS_EVAL);
+		variant->config.rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
+		variant->config.rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
+		                         S_00B22C_OC_LDS_EN(es_type == MESA_SHADER_TESS_EVAL);
 	} else if (device->physical_device->rad_info.chip_class >= GFX9 &&
 		   stage == MESA_SHADER_TESS_CTRL) {
-		variant->rsrc1 |= S_00B428_LS_VGPR_COMP_CNT(vgpr_comp_cnt);
+		variant->config.rsrc1 |= S_00B428_LS_VGPR_COMP_CNT(vgpr_comp_cnt);
 	} else {
-		variant->rsrc1 |= S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt);
+		variant->config.rsrc1 |= S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt);
 	}
 
 	void *ptr = radv_alloc_shader_memory(device, variant);

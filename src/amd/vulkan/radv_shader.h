@@ -314,8 +314,6 @@ struct radv_shader_variant {
 	struct ac_shader_config config;
 	uint32_t code_size;
 	struct radv_shader_variant_info info;
-	unsigned rsrc1;
-	unsigned rsrc2;
 
 	/* debug only */
 	uint32_t *spirv;
