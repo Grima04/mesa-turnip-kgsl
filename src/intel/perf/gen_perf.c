@@ -1529,3 +1529,94 @@ gen_perf_is_query_ready(struct gen_perf_context *perf_ctx,
 
    return false;
 }
+
+/**
+ * Remove a query from the global list of unaccumulated queries once
+ * after successfully accumulating the OA reports associated with the
+ * query in accumulate_oa_reports() or when discarding unwanted query
+ * results.
+ */
+static void
+drop_from_unaccumulated_query_list(struct gen_perf_context *perf_ctx,
+                                   struct gen_perf_query_object *query)
+{
+   for (int i = 0; i < perf_ctx->unaccumulated_elements; i++) {
+      if (perf_ctx->unaccumulated[i] == query) {
+         int last_elt = --perf_ctx->unaccumulated_elements;
+
+         if (i == last_elt)
+            perf_ctx->unaccumulated[i] = NULL;
+         else {
+            perf_ctx->unaccumulated[i] =
+               perf_ctx->unaccumulated[last_elt];
+         }
+
+         break;
+      }
+   }
+
+   /* Drop our samples_head reference so that associated periodic
+    * sample data buffers can potentially be reaped if they aren't
+    * referenced by any other queries...
+    */
+
+   struct oa_sample_buf *buf =
+      exec_node_data(struct oa_sample_buf, query->oa.samples_head, link);
+
+   assert(buf->refcount > 0);
+   buf->refcount--;
+
+   query->oa.samples_head = NULL;
+
+   gen_perf_reap_old_sample_buffers(perf_ctx);
+}
+
+void
+gen_perf_delete_query(struct gen_perf_context *perf_ctx,
+                      struct gen_perf_query_object *query)
+{
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+
+   /* We can assume that the frontend waits for a query to complete
+    * before ever calling into here, so we don't have to worry about
+    * deleting an in-flight query object.
+    */
+   switch (query->queryinfo->kind) {
+   case GEN_PERF_QUERY_TYPE_OA:
+   case GEN_PERF_QUERY_TYPE_RAW:
+      if (query->oa.bo) {
+         if (!query->oa.results_accumulated) {
+            drop_from_unaccumulated_query_list(perf_ctx, query);
+            gen_perf_dec_n_users(perf_ctx);
+         }
+
+         perf_cfg->vtbl.bo_unreference(query->oa.bo);
+         query->oa.bo = NULL;
+      }
+
+      query->oa.results_accumulated = false;
+      break;
+
+   case GEN_PERF_QUERY_TYPE_PIPELINE:
+      if (query->pipeline_stats.bo) {
+         perf_cfg->vtbl.bo_unreference(query->pipeline_stats.bo);
+         query->pipeline_stats.bo = NULL;
+      }
+      break;
+
+   default:
+      unreachable("Unknown query type");
+      break;
+   }
+
+   /* As an indication that the INTEL_performance_query extension is no
+    * longer in use, it's a good time to free our cache of sample
+    * buffers and close any current i915-perf stream.
+    */
+   if (--perf_ctx->n_query_instances == 0) {
+      gen_perf_free_sample_bufs(perf_ctx);
+      gen_perf_close(perf_ctx, query->queryinfo);
+   }
+
+   free(query);
+}

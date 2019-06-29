@@ -787,7 +787,6 @@ brw_delete_perf_query(struct gl_context *ctx,
                       struct gl_perf_query_object *o)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct gen_perf_config *perf_cfg = brw->perf_ctx.perf;
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
    struct gen_perf_context *perf_ctx = &brw->perf_ctx;
@@ -801,44 +800,7 @@ brw_delete_perf_query(struct gl_context *ctx,
 
    DBG("Delete(%d)\n", o->Id);
 
-   switch (obj->queryinfo->kind) {
-   case GEN_PERF_QUERY_TYPE_OA:
-   case GEN_PERF_QUERY_TYPE_RAW:
-      if (obj->oa.bo) {
-         if (!obj->oa.results_accumulated) {
-            drop_from_unaccumulated_query_list(brw, obj);
-            gen_perf_dec_n_users(perf_ctx);
-         }
-
-         perf_cfg->vtbl.bo_unreference(obj->oa.bo);
-         obj->oa.bo = NULL;
-      }
-
-      obj->oa.results_accumulated = false;
-      break;
-
-   case GEN_PERF_QUERY_TYPE_PIPELINE:
-      if (obj->pipeline_stats.bo) {
-         perf_cfg->vtbl.bo_unreference(obj->pipeline_stats.bo);
-         obj->pipeline_stats.bo = NULL;
-      }
-      break;
-
-   default:
-      unreachable("Unknown query type");
-      break;
-   }
-
-   /* As an indication that the INTEL_performance_query extension is no
-    * longer in use, it's a good time to free our cache of sample
-    * buffers and close any current i915-perf stream.
-    */
-   if (--perf_ctx->n_query_instances == 0) {
-      gen_perf_free_sample_bufs(perf_ctx);
-      gen_perf_close(perf_ctx, obj->queryinfo);
-   }
-
-   free(obj);
+   gen_perf_delete_query(perf_ctx, obj);
    free(brw_query);
 }
 

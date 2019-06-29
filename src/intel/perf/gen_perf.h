@@ -630,5 +630,7 @@ void gen_perf_wait_query(struct gen_perf_context *perf_ctx,
 bool gen_perf_is_query_ready(struct gen_perf_context *perf_ctx,
                              struct gen_perf_query_object *query,
                              void *current_batch);
+void gen_perf_delete_query(struct gen_perf_context *perf_ctx,
+                           struct gen_perf_query_object *query);
 
 #endif /* GEN_PERF_H */
