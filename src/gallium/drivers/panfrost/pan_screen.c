@@ -458,12 +458,19 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (format == PIPE_FORMAT_A1B5G5R5_UNORM || format == PIPE_FORMAT_X1B5G5R5_UNORM)
                 return FALSE;
 
+        /* Allow through special formats */
+
+        switch (format) {
+                case PIPE_FORMAT_R11G11B10_FLOAT:
+                case PIPE_FORMAT_B5G6R5_UNORM:
+                        return TRUE;
+                default:
+                        break;
+        }
+
         if (bind & PIPE_BIND_RENDER_TARGET) {
                 if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS)
                         return FALSE;
-
-                if (format == PIPE_FORMAT_B5G6R5_UNORM)
-                        return TRUE;
 
                 /* Check for vaguely 8UNORM formats. Looser than
                  * util_format_is_rgba8_variant, since it permits R8 (for

@@ -81,10 +81,14 @@ panfrost_mfbd_format(struct pipe_surface *surf)
 
         /* Set flags for alternative formats */
 
-        if (surf->texture->format == PIPE_FORMAT_B5G6R5_UNORM) {
+        if (surf->format == PIPE_FORMAT_B5G6R5_UNORM) {
                 fmt.unk1 = 0x14000000;
                 fmt.nr_channels = MALI_POSITIVE(2);
                 fmt.unk3 |= 0x1;
+        } else if (surf->format == PIPE_FORMAT_R11G11B10_FLOAT) {
+                fmt.unk1 = 0x88000000;
+                fmt.unk3 = 0x0;
+                fmt.nr_channels = MALI_POSITIVE(4);
         }
 
         return fmt;
