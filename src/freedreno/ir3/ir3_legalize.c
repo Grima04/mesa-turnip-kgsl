@@ -400,6 +400,47 @@ resolve_dest_block(struct ir3_block *block)
 	return block;
 }
 
+static void
+remove_unused_block(struct ir3_block *old_target)
+{
+	list_delinit(&old_target->node);
+
+	/* cleanup dangling predecessors: */
+	for (unsigned i = 0; i < ARRAY_SIZE(old_target->successors); i++) {
+		if (old_target->successors[i]) {
+			struct ir3_block *succ = old_target->successors[i];
+			_mesa_set_remove_key(succ->predecessors, old_target);
+		}
+	}
+}
+
+static void
+retarget_jump(struct ir3_instruction *instr, struct ir3_block *new_target)
+{
+	struct ir3_block *old_target = instr->cat0.target;
+	struct ir3_block *cur_block = instr->block;
+
+	/* update current blocks successors to reflect the retargetting: */
+	if (cur_block->successors[0] == old_target) {
+		cur_block->successors[0] = new_target;
+	} else {
+		debug_assert(cur_block->successors[1] == old_target);
+		cur_block->successors[1] = new_target;
+	}
+
+	/* update new target's predecessors: */
+	_mesa_set_add(new_target->predecessors, cur_block);
+
+	/* and remove old_target's predecessor: */
+	debug_assert(_mesa_set_search(old_target->predecessors, cur_block));
+	_mesa_set_remove_key(old_target->predecessors, cur_block);
+
+	if (old_target->predecessors->entries == 0)
+		remove_unused_block(old_target);
+
+	instr->cat0.target = new_target;
+}
+
 static bool
 resolve_jump(struct ir3_instruction *instr)
 {
@@ -408,8 +449,7 @@ resolve_jump(struct ir3_instruction *instr)
 	struct ir3_instruction *target;
 
 	if (tblock != instr->cat0.target) {
-		list_delinit(&instr->cat0.target->node);
-		instr->cat0.target = tblock;
+		retarget_jump(instr, tblock);
 		return true;
 	}
 
