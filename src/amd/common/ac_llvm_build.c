@@ -2887,6 +2887,15 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
 			vmcnt = 0;
 	}
 
+	/* There is no intrinsic for vscnt(0), so use a fence. */
+	if ((wait_flags & AC_WAIT_LGKM &&
+	     wait_flags & AC_WAIT_VLOAD &&
+	     wait_flags & AC_WAIT_VSTORE) ||
+	    vscnt == 0) {
+		LLVMBuildFence(ctx->builder, LLVMAtomicOrderingRelease, false, "");
+		return;
+	}
+
 	unsigned simm16 = (lgkmcnt << 8) |
 			  (7 << 4) | /* expcnt */
 			  (vmcnt & 0xf) |
@@ -2897,15 +2906,6 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
 	};
 	ac_build_intrinsic(ctx, "llvm.amdgcn.s.waitcnt",
 			   ctx->voidt, args, 1, 0);
-
-	/* TODO: add llvm.amdgcn.s.waitcnt.vscnt into LLVM: */
-	if (0 && ctx->chip_class >= GFX10 && vscnt == 0) {
-		LLVMValueRef args[1] = {
-			LLVMConstInt(ctx->i32, vscnt, false),
-		};
-		ac_build_intrinsic(ctx, "llvm.amdgcn.s.waitcnt.vscnt",
-				   ctx->voidt, args, 1, 0);
-	}
 }
 
 LLVMValueRef ac_build_fmed3(struct ac_llvm_context *ctx, LLVMValueRef src0,
