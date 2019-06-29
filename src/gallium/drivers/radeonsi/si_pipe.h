@@ -1681,7 +1681,10 @@ si_make_CB_shader_coherent(struct si_context *sctx, unsigned num_samples,
 	sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB |
 		       SI_CONTEXT_INV_VCACHE;
 
-	if (sctx->chip_class >= GFX9) {
+	if (sctx->chip_class >= GFX10) {
+		if (shaders_read_metadata)
+			sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
+	} else if (sctx->chip_class == GFX9) {
 		/* Single-sample color is coherent with shaders on GFX9, but
 		 * L2 metadata must be flushed if shaders read metadata.
 		 * (DCC, CMASK).
@@ -1704,7 +1707,10 @@ si_make_DB_shader_coherent(struct si_context *sctx, unsigned num_samples,
 	sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_DB |
 		       SI_CONTEXT_INV_VCACHE;
 
-	if (sctx->chip_class >= GFX9) {
+	if (sctx->chip_class >= GFX10) {
+		if (shaders_read_metadata)
+			sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
+	} else if (sctx->chip_class == GFX9) {
 		/* Single-sample depth (not stencil) is coherent with shaders
 		 * on GFX9, but L2 metadata must be flushed if shaders read
 		 * metadata.
