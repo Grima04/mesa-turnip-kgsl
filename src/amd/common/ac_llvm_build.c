@@ -2603,6 +2603,10 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 		      a->opcode == ac_image_get_lod;
 	bool atomic = a->opcode == ac_image_atomic ||
 		      a->opcode == ac_image_atomic_cmpswap;
+	bool load = a->opcode == ac_image_sample ||
+		    a->opcode == ac_image_gather4 ||
+		    a->opcode == ac_image_load ||
+		    a->opcode == ac_image_load_mip;
 	LLVMTypeRef coord_type = sample ? ctx->f32 : ctx->i32;
 
 	if (atomic || a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
@@ -2643,7 +2647,9 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 	}
 
 	args[num_args++] = ctx->i32_0; /* texfailctrl */
-	args[num_args++] = LLVMConstInt(ctx->i32, a->cache_policy, false);
+	args[num_args++] = LLVMConstInt(ctx->i32,
+					load ? get_load_cache_policy(ctx, a->cache_policy) :
+					       a->cache_policy, false);
 
 	const char *name;
 	const char *atomic_subop = "";

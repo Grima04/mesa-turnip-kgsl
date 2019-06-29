@@ -315,7 +315,7 @@ static void image_fetch_coords(
 
 static unsigned get_cache_policy(struct si_shader_context *ctx,
 				 const struct tgsi_full_instruction *inst,
-				 bool load, bool atomic, bool may_store_unaligned,
+				 bool atomic, bool may_store_unaligned,
 				 bool writeonly_memory)
 {
 	unsigned cache_policy = 0;
@@ -331,8 +331,7 @@ static unsigned get_cache_policy(struct si_shader_context *ctx,
 	      * instructions. */
 	     writeonly_memory ||
 	     inst->Memory.Qualifier & (TGSI_MEMORY_COHERENT | TGSI_MEMORY_VOLATILE))) {
-		cache_policy |= ac_glc |
-				(ctx->screen->info.chip_class >= GFX10 && load ? ac_dlc : 0);
+		cache_policy |= ac_glc;
 	}
 
 	if (inst->Memory.Qualifier & TGSI_MEMORY_STREAM_CACHE_POLICY)
@@ -532,7 +531,7 @@ static void load_emit(
 						info->uses_bindless_buffer_atomic,
 						info->uses_bindless_image_store |
 						info->uses_bindless_image_atomic);
-	args.cache_policy = get_cache_policy(ctx, inst, true, false, false, false);
+	args.cache_policy = get_cache_policy(ctx, inst, false, false, false);
 
 	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
 		/* Don't use SMEM for shader buffer loads, because LLVM doesn't
@@ -709,7 +708,6 @@ static void store_emit(
 
 	bool is_image = inst->Dst[0].Register.File != TGSI_FILE_BUFFER;
 	args.cache_policy = get_cache_policy(ctx, inst,
-					     false, /* load */
 					     false, /* atomic */
 					     is_image, /* may_store_unaligned */
 					     writeonly_memory);
@@ -831,7 +829,7 @@ static void atomic_emit(
 
 	args.data[num_data++] =
 		ac_to_integer(&ctx->ac, lp_build_emit_fetch(bld_base, inst, 2, 0));
-	args.cache_policy = get_cache_policy(ctx, inst, false, true, false, false);
+	args.cache_policy = get_cache_policy(ctx, inst, true, false, false);
 
 	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
 		args.resource = shader_buffer_fetch_rsrc(ctx, &inst->Src[0], false);

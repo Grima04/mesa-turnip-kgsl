@@ -1519,7 +1519,6 @@ static LLVMValueRef extract_vector_range(struct ac_llvm_context *ctx, LLVMValueR
 
 static unsigned get_cache_policy(struct ac_nir_context *ctx,
 				 enum gl_access_qualifier access,
-				 bool load,
 				 bool may_store_unaligned,
 				 bool writeonly_memory)
 {
@@ -1536,8 +1535,7 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx,
 	      */
 	     writeonly_memory ||
 	     access & (ACCESS_COHERENT | ACCESS_VOLATILE))) {
-		cache_policy |= ac_glc |
-				(ctx->ac.chip_class >= GFX10 && load ? ac_dlc : 0);
+		cache_policy |= ac_glc;
 	}
 
 	return cache_policy;
@@ -1551,7 +1549,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 	unsigned writemask = nir_intrinsic_write_mask(instr);
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
 	bool writeonly_memory = access & ACCESS_NON_READABLE;
-	unsigned cache_policy = get_cache_policy(ctx, access, false, false, writeonly_memory);
+	unsigned cache_policy = get_cache_policy(ctx, access, false, writeonly_memory);
 
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
 				        get_src(ctx, instr->src[1]), true);
@@ -1714,7 +1712,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx,
 	int elem_size_bytes = instr->dest.ssa.bit_size / 8;
 	int num_components = instr->num_components;
 	enum gl_access_qualifier access = nir_intrinsic_access(instr);
-	unsigned cache_policy = get_cache_policy(ctx, access, true, false, false);
+	unsigned cache_policy = get_cache_policy(ctx, access, false, false);
 
 	LLVMValueRef offset = get_src(ctx, instr->src[1]);
 	LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi,
@@ -2452,7 +2450,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 
 	struct ac_image_args args = {};
 
-	args.cache_policy = get_cache_policy(ctx, access, true, false, false);
+	args.cache_policy = get_cache_policy(ctx, access, false, false);
 
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
 		unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
@@ -2510,7 +2508,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 	bool writeonly_memory = access & ACCESS_NON_READABLE;
 	struct ac_image_args args = {};
 
-	args.cache_policy = get_cache_policy(ctx, access, false, true, writeonly_memory);
+	args.cache_policy = get_cache_policy(ctx, access, true, writeonly_memory);
 
 	if (dim == GLSL_SAMPLER_DIM_BUF) {
 		LLVMValueRef rsrc = get_image_buffer_descriptor(ctx, instr, true, false);
