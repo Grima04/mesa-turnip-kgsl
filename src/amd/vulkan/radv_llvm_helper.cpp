@@ -33,7 +33,6 @@ public:
 
 	~radv_llvm_per_thread_info()
 	{
-		ac_destroy_llvm_passes(passes);
 		ac_destroy_llvm_compiler(&llvm_info);
 	}
 

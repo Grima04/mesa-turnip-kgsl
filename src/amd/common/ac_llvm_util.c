@@ -356,6 +356,9 @@ fail:
 void
 ac_destroy_llvm_compiler(struct ac_llvm_compiler *compiler)
 {
+	ac_destroy_llvm_passes(compiler->passes);
+	ac_destroy_llvm_passes(compiler->low_opt_passes);
+
 	if (compiler->passmgr)
 		LLVMDisposePassManager(compiler->passmgr);
 	if (compiler->target_library_info)

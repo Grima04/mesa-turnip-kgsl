@@ -143,8 +143,6 @@ static void si_init_compiler(struct si_screen *sscreen,
 
 static void si_destroy_compiler(struct ac_llvm_compiler *compiler)
 {
-	ac_destroy_llvm_passes(compiler->passes);
-	ac_destroy_llvm_passes(compiler->low_opt_passes);
 	ac_destroy_llvm_compiler(compiler);
 }
 
