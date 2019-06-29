@@ -1597,11 +1597,11 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 		if (num_bytes == 1) {
 			ac_build_tbuffer_store_byte(&ctx->ac, rsrc, data,
 						    offset, ctx->ac.i32_0,
-						    cache_policy & ac_glc);
+						    cache_policy);
 		} else if (num_bytes == 2) {
 			ac_build_tbuffer_store_short(&ctx->ac, rsrc, data,
 						     offset, ctx->ac.i32_0,
-						     cache_policy & ac_glc);
+						     cache_policy);
 		} else {
 			int num_channels = num_bytes / 4;
 
@@ -1626,8 +1626,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 			ac_build_buffer_store_dword(&ctx->ac, rsrc, data,
 						    num_channels, offset,
 						    ctx->ac.i32_0, 0,
-						    cache_policy & ac_glc,
-						    false, false);
+						    cache_policy, false);
 		}
 	}
 }
@@ -2529,7 +2528,7 @@ static void visit_image_store(struct ac_nir_context *ctx,
 
 		ac_build_buffer_store_format(&ctx->ac, rsrc, src, vindex,
 					     ctx->ac.i32_0, src_channels,
-					     args.cache_policy & ac_glc, false);
+					     args.cache_policy);
 	} else {
 		args.opcode = ac_image_store;
 		args.data[0] = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));

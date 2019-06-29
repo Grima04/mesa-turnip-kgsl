@@ -635,9 +635,7 @@ static void store_emit_buffer(struct si_shader_context *ctx,
 		}
 
 		ac_build_buffer_store_dword(&ctx->ac, resource, data, count,
-					    voff, ctx->i32_0, 0,
-					    !!(cache_policy & ac_glc),
-					    !!(cache_policy & ac_slc),
+					    voff, ctx->i32_0, 0, cache_policy,
 					    false);
 	}
 }
@@ -732,8 +730,7 @@ static void store_emit(
 					     ac_build_gather_values(&ctx->ac, chans, num_channels),
 					     vindex, ctx->i32_0 /* voffset */,
 					     num_channels,
-					     !!(args.cache_policy & ac_glc),
-					     false);
+					     args.cache_policy);
 	} else {
 		args.opcode = ac_image_store;
 		args.data[0] = ac_build_gather_values(&ctx->ac, chans, 4);
