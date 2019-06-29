@@ -2872,14 +2872,11 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
 		return;
 
 	unsigned lgkmcnt = 63;
-	unsigned expcnt = 7;
 	unsigned vmcnt = ctx->chip_class >= GFX9 ? 63 : 15;
 	unsigned vscnt = 63;
 
 	if (wait_flags & AC_WAIT_LGKM)
 		lgkmcnt = 0;
-	if (wait_flags & AC_WAIT_EXP)
-		expcnt = 0;
 	if (wait_flags & AC_WAIT_VLOAD)
 		vmcnt = 0;
 
@@ -2891,7 +2888,7 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
 	}
 
 	unsigned simm16 = (lgkmcnt << 8) |
-			  (expcnt << 4) |
+			  (7 << 4) | /* expcnt */
 			  (vmcnt & 0xf) |
 			  ((vmcnt >> 4) << 14);
 
