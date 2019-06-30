@@ -397,6 +397,9 @@ struct radv_pipeline_key {
 	uint32_t optimisations_disabled : 1;
 };
 
+struct radv_shader_binary;
+struct radv_shader_variant;
+
 void
 radv_pipeline_cache_init(struct radv_pipeline_cache *cache,
 			 struct radv_device *device);
@@ -405,8 +408,6 @@ radv_pipeline_cache_finish(struct radv_pipeline_cache *cache);
 bool
 radv_pipeline_cache_load(struct radv_pipeline_cache *cache,
 			 const void *data, size_t size);
-
-struct radv_shader_variant;
 
 bool
 radv_create_shader_variants_from_pipeline_cache(struct radv_device *device,
@@ -420,8 +421,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 				   struct radv_pipeline_cache *cache,
 				   const unsigned char *sha1,
 				   struct radv_shader_variant **variants,
-				   const void *const *codes,
-				   const unsigned *code_sizes);
+				   struct radv_shader_binary *const *binaries);
 
 enum radv_blit_ds_layout {
 	RADV_BLIT_DS_LAYOUT_TILE_ENABLE,
@@ -2107,14 +2107,12 @@ struct radv_nir_compiler_options;
 
 void radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 				 struct nir_shader *geom_shader,
-				 struct ac_shader_binary *binary,
-				 struct ac_shader_config *config,
+				 struct radv_shader_binary **rbinary,
 				 struct radv_shader_variant_info *shader_info,
 				 const struct radv_nir_compiler_options *option);
 
 void radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
-			     struct ac_shader_binary *binary,
-			     struct ac_shader_config *config,
+			     struct radv_shader_binary **rbinary,
 			     struct radv_shader_variant_info *shader_info,
 			     struct nir_shader *const *nir,
 			     int nir_count,

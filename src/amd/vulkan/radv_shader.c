@@ -43,6 +43,7 @@
 #include "ac_binary.h"
 #include "ac_llvm_util.h"
 #include "ac_nir_to_llvm.h"
+#include "ac_rtld.h"
 #include "vk_format.h"
 #include "util/debug.h"
 #include "ac_exp_param.h"
@@ -464,79 +465,78 @@ radv_destroy_shader_slabs(struct radv_device *device)
 #define DEBUGGER_NUM_MARKERS           5
 
 static unsigned
-radv_get_shader_binary_size(struct ac_shader_binary *binary)
+radv_get_shader_binary_size(size_t code_size)
 {
-	return binary->code_size + DEBUGGER_NUM_MARKERS * 4;
+	return code_size + DEBUGGER_NUM_MARKERS * 4;
 }
 
-static void
-radv_fill_shader_variant(struct radv_device *device,
-			 struct radv_shader_variant *variant,
-			 struct radv_nir_compiler_options *options,
-			 struct ac_shader_binary *binary,
-			 gl_shader_stage stage)
+static void radv_postprocess_config(const struct radv_physical_device *pdevice,
+				    const struct ac_shader_config *config_in,
+				    const struct radv_shader_variant_info *info,
+				    gl_shader_stage stage,
+				    struct ac_shader_config *config_out)
 {
-	bool scratch_enabled = variant->config.scratch_bytes_per_wave > 0;
-	struct radv_shader_info *info = &variant->info.info;
+	bool scratch_enabled = config_in->scratch_bytes_per_wave > 0;
 	unsigned vgpr_comp_cnt = 0;
 
-	variant->code_size = radv_get_shader_binary_size(binary);
-	variant->config.rsrc2 = S_00B12C_USER_SGPR(variant->info.num_user_sgprs) |
-				S_00B12C_USER_SGPR_MSB_GFX9(variant->info.num_user_sgprs >> 5) |
-				S_00B12C_SCRATCH_EN(scratch_enabled) |
-				S_00B12C_SO_BASE0_EN(!!info->so.strides[0]) |
-				S_00B12C_SO_BASE1_EN(!!info->so.strides[1]) |
-				S_00B12C_SO_BASE2_EN(!!info->so.strides[2]) |
-				S_00B12C_SO_BASE3_EN(!!info->so.strides[3]) |
-				S_00B12C_SO_EN(!!info->so.num_outputs);
+	*config_out = *config_in;
 
-	variant->config.rsrc1 = S_00B848_VGPRS((variant->config.num_vgprs - 1) / 4) |
-				S_00B848_SGPRS((variant->config.num_sgprs - 1) / 8) |
-				S_00B848_DX10_CLAMP(1) |
-				S_00B848_FLOAT_MODE(variant->config.float_mode);
+	config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
+			    S_00B12C_USER_SGPR_MSB_GFX9(info->num_user_sgprs >> 5) |
+			    S_00B12C_SCRATCH_EN(scratch_enabled) |
+			    S_00B12C_SO_BASE0_EN(!!info->info.so.strides[0]) |
+			    S_00B12C_SO_BASE1_EN(!!info->info.so.strides[1]) |
+			    S_00B12C_SO_BASE2_EN(!!info->info.so.strides[2]) |
+			    S_00B12C_SO_BASE3_EN(!!info->info.so.strides[3]) |
+			    S_00B12C_SO_EN(!!info->info.so.num_outputs);
+
+	config_out->rsrc1 = S_00B848_VGPRS((config_in->num_vgprs - 1) / 4) |
+			    S_00B848_SGPRS((config_in->num_sgprs - 1) / 8) |
+			    S_00B848_DX10_CLAMP(1) |
+			    S_00B848_FLOAT_MODE(config_in->float_mode);
 
 	switch (stage) {
 	case MESA_SHADER_TESS_EVAL:
-		if (options->key.tes.as_es) {
-			assert(device->physical_device->rad_info.chip_class <= GFX8);
-			vgpr_comp_cnt = info->uses_prim_id ? 3 : 2;
+		if (info->tes.as_es) {
+			assert(pdevice->rad_info.chip_class <= GFX8);
+			vgpr_comp_cnt = info->info.uses_prim_id ? 3 : 2;
 		} else {
-			bool enable_prim_id = variant->info.tes.export_prim_id || info->uses_prim_id;
+			bool enable_prim_id = info->tes.export_prim_id || info->info.uses_prim_id;
 			vgpr_comp_cnt = enable_prim_id ? 3 : 2;
 		}
-		variant->config.rsrc2 |= S_00B12C_OC_LDS_EN(1);
+		config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		break;
 	case MESA_SHADER_TESS_CTRL:
-		if (device->physical_device->rad_info.chip_class >= GFX9) {
+		if (pdevice->rad_info.chip_class >= GFX9) {
 			/* We need at least 2 components for LS.
 			 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
 			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
 			 */
-			vgpr_comp_cnt = info->vs.needs_instance_id ? 2 : 1;
+			vgpr_comp_cnt = info->info.vs.needs_instance_id ? 2 : 1;
 		} else {
-			variant->config.rsrc2 |= S_00B12C_OC_LDS_EN(1);
+			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
 		break;
 	case MESA_SHADER_VERTEX:
-		if (variant->info.vs.as_ls) {
-			assert(device->physical_device->rad_info.chip_class <= GFX8);
+		if (info->vs.as_ls) {
+			assert(pdevice->rad_info.chip_class <= GFX8);
 			/* We need at least 2 components for LS.
 			 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
 			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
 			 */
-			vgpr_comp_cnt = info->vs.needs_instance_id ? 2 : 1;
-		} else if (variant->info.vs.as_es) {
-			assert(device->physical_device->rad_info.chip_class <= GFX8);
+			vgpr_comp_cnt = info->info.vs.needs_instance_id ? 2 : 1;
+		} else if (info->vs.as_es) {
+			assert(pdevice->rad_info.chip_class <= GFX8);
 			/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
-			vgpr_comp_cnt = info->vs.needs_instance_id ? 1 : 0;
+			vgpr_comp_cnt = info->info.vs.needs_instance_id ? 1 : 0;
 		} else {
 			/* VGPR0-3: (VertexID, InstanceID / StepRate0, PrimID, InstanceID)
 			 * If PrimID is disabled. InstanceID / StepRate1 is loaded instead.
 			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
 			 */
-			if (variant->info.vs.export_prim_id) {
+			if (info->vs.export_prim_id) {
 				vgpr_comp_cnt = 2;
-			} else if (info->vs.needs_instance_id) {
+			} else if (info->info.vs.needs_instance_id) {
 				vgpr_comp_cnt = 1;
 			} else {
 				vgpr_comp_cnt = 0;
@@ -547,30 +547,30 @@ radv_fill_shader_variant(struct radv_device *device,
 	case MESA_SHADER_GEOMETRY:
 		break;
 	case MESA_SHADER_COMPUTE:
-		variant->config.rsrc2 |=
-			S_00B84C_TGID_X_EN(info->cs.uses_block_id[0]) |
-			S_00B84C_TGID_Y_EN(info->cs.uses_block_id[1]) |
-			S_00B84C_TGID_Z_EN(info->cs.uses_block_id[2]) |
-			S_00B84C_TIDIG_COMP_CNT(info->cs.uses_thread_id[2] ? 2 :
-						info->cs.uses_thread_id[1] ? 1 : 0) |
-			S_00B84C_TG_SIZE_EN(info->cs.uses_local_invocation_idx) |
-			S_00B84C_LDS_SIZE(variant->config.lds_size);
+		config_out->rsrc2 |=
+			S_00B84C_TGID_X_EN(info->info.cs.uses_block_id[0]) |
+			S_00B84C_TGID_Y_EN(info->info.cs.uses_block_id[1]) |
+			S_00B84C_TGID_Z_EN(info->info.cs.uses_block_id[2]) |
+			S_00B84C_TIDIG_COMP_CNT(info->info.cs.uses_thread_id[2] ? 2 :
+						info->info.cs.uses_thread_id[1] ? 1 : 0) |
+			S_00B84C_TG_SIZE_EN(info->info.cs.uses_local_invocation_idx) |
+			S_00B84C_LDS_SIZE(config_in->lds_size);
 		break;
 	default:
 		unreachable("unsupported shader type");
 		break;
 	}
 
-	if (device->physical_device->rad_info.chip_class >= GFX9 &&
+	if (pdevice->rad_info.chip_class >= GFX9 &&
 	    stage == MESA_SHADER_GEOMETRY) {
-		unsigned es_type = variant->info.gs.es_type;
+		unsigned es_type = info->gs.es_type;
 		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
 
 		if (es_type == MESA_SHADER_VERTEX) {
 			/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
-			es_vgpr_comp_cnt = info->vs.needs_instance_id ? 1 : 0;
+			es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 1 : 0;
 		} else if (es_type == MESA_SHADER_TESS_EVAL) {
-			es_vgpr_comp_cnt = info->uses_prim_id ? 3 : 2;
+			es_vgpr_comp_cnt = info->info.uses_prim_id ? 3 : 2;
 		} else {
 			unreachable("invalid shader ES type");
 		}
@@ -578,34 +578,25 @@ radv_fill_shader_variant(struct radv_device *device,
 		/* If offsets 4, 5 are used, GS_VGPR_COMP_CNT is ignored and
 		 * VGPR[0:4] are always loaded.
 		 */
-		if (info->uses_invocation_id) {
+		if (info->info.uses_invocation_id) {
 			gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
-		} else if (info->uses_prim_id) {
+		} else if (info->info.uses_prim_id) {
 			gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
-		} else if (variant->info.gs.vertices_in >= 3) {
+		} else if (info->gs.vertices_in >= 3) {
 			gs_vgpr_comp_cnt = 1; /* VGPR1 contains offsets 2, 3 */
 		} else {
 			gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 		}
 
-		variant->config.rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
-		variant->config.rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
+		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
+		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
 		                         S_00B22C_OC_LDS_EN(es_type == MESA_SHADER_TESS_EVAL);
-	} else if (device->physical_device->rad_info.chip_class >= GFX9 &&
+	} else if (pdevice->rad_info.chip_class >= GFX9 &&
 		   stage == MESA_SHADER_TESS_CTRL) {
-		variant->config.rsrc1 |= S_00B428_LS_VGPR_COMP_CNT(vgpr_comp_cnt);
+		config_out->rsrc1 |= S_00B428_LS_VGPR_COMP_CNT(vgpr_comp_cnt);
 	} else {
-		variant->config.rsrc1 |= S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt);
+		config_out->rsrc1 |= S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt);
 	}
-
-	void *ptr = radv_alloc_shader_memory(device, variant);
-	memcpy(ptr, binary->code, binary->code_size);
-
-	/* Add end-of-code markers for the UMR disassembler. */
-       uint32_t *ptr32 = (uint32_t *)ptr + binary->code_size / 4;
-       for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
-		ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
-
 }
 
 static void radv_init_llvm_target()
@@ -647,26 +638,132 @@ static void radv_init_llvm_once(void)
 	call_once(&radv_init_llvm_target_once_flag, radv_init_llvm_target);
 }
 
+struct radv_shader_variant *
+radv_shader_variant_create(struct radv_device *device,
+			   const struct radv_shader_binary *binary)
+{
+	struct ac_shader_config config = {0};
+	struct ac_rtld_binary rtld_binary = {0};
+	struct radv_shader_variant *variant = calloc(1, sizeof(struct radv_shader_variant));
+	if (!variant)
+		return NULL;
+
+	variant->ref_count = 1;
+
+	if (binary->type == RADV_BINARY_TYPE_RTLD) {
+		struct ac_rtld_symbol lds_symbols[1];
+		unsigned num_lds_symbols = 0;
+		const char *elf_data = (const char *)((struct radv_shader_binary_rtld *)binary)->data;
+		size_t elf_size = ((struct radv_shader_binary_rtld *)binary)->elf_size;
+
+		if (device->physical_device->rad_info.chip_class >= GFX9 &&
+		    binary->stage == MESA_SHADER_GEOMETRY && !binary->is_gs_copy_shader) {
+			/* We add this symbol even on LLVM <= 8 to ensure that
+			 * shader->config.lds_size is set correctly below.
+			 */
+			struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
+			sym->name = "esgs_ring";
+			sym->size = 32 * 1024;
+			sym->align = 64 * 1024;
+		}
+		struct ac_rtld_open_info open_info = {
+			.info = &device->physical_device->rad_info,
+			.shader_type = binary->stage,
+			.num_parts = 1,
+			.elf_ptrs = &elf_data,
+			.elf_sizes = &elf_size,
+			.num_shared_lds_symbols = num_lds_symbols,
+			.shared_lds_symbols = lds_symbols,
+		};
+		
+		if (!ac_rtld_open(&rtld_binary, open_info)) {
+			free(variant);
+			return NULL;
+		}
+
+		if (!ac_rtld_read_config(&rtld_binary, &config)) {
+			ac_rtld_close(&rtld_binary);
+			free(variant);
+			return NULL;
+		}
+
+		if (rtld_binary.lds_size > 0) {
+			unsigned alloc_granularity = device->physical_device->rad_info.chip_class >= GFX7 ? 512 : 256;
+			config.lds_size = align(rtld_binary.lds_size, alloc_granularity) / alloc_granularity;
+		}
+
+		variant->code_size = rtld_binary.rx_size;
+	} else {
+		assert(binary->type == RADV_BINARY_TYPE_LEGACY);
+		config = ((struct radv_shader_binary_legacy *)binary)->config;
+		variant->code_size  = radv_get_shader_binary_size(((struct radv_shader_binary_legacy *)binary)->code_size);
+	}
+
+	variant->info = binary->variant_info;
+	radv_postprocess_config(device->physical_device, &config, &binary->variant_info,
+				binary->stage, &variant->config);
+	
+	void *dest_ptr = radv_alloc_shader_memory(device, variant);
+
+	if (binary->type == RADV_BINARY_TYPE_RTLD) {
+		struct radv_shader_binary_rtld* bin = (struct radv_shader_binary_rtld *)binary;
+		struct ac_rtld_upload_info info = {
+			.binary = &rtld_binary,
+			.rx_va = radv_buffer_get_va(variant->bo) + variant->bo_offset,
+			.rx_ptr = dest_ptr, 
+		};
+
+		if (!ac_rtld_upload(&info)) {
+			radv_shader_variant_destroy(device, variant);
+			ac_rtld_close(&rtld_binary);
+			return NULL;
+		}
+
+		const char *disasm_data;
+		size_t disasm_size;
+		if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm_data, &disasm_size)) {
+			radv_shader_variant_destroy(device, variant);
+			ac_rtld_close(&rtld_binary);
+			return NULL;
+		}
+
+		variant->llvm_ir_string = bin->llvm_ir_size ? strdup((const char*)(bin->data + bin->elf_size)) : NULL;
+		variant->disasm_string = malloc(disasm_size + 1);
+		memcpy(variant->disasm_string, disasm_data, disasm_size);
+		variant->disasm_string[disasm_size] = 0;
+
+		ac_rtld_close(&rtld_binary);
+	} else {
+		struct radv_shader_binary_legacy* bin = (struct radv_shader_binary_legacy *)binary;
+		memcpy(dest_ptr, bin->data, bin->code_size);
+
+		/* Add end-of-code markers for the UMR disassembler. */
+		uint32_t *ptr32 = (uint32_t *)dest_ptr + bin->code_size / 4;
+		for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
+			ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
+
+		variant->llvm_ir_string = bin->llvm_ir_size ? strdup((const char*)(bin->data + bin->code_size)) : NULL;
+		variant->disasm_string = bin->disasm_size ? strdup((const char*)(bin->data + bin->code_size + bin->llvm_ir_size)) : NULL;
+	}
+	return variant;
+}
+
 static struct radv_shader_variant *
-shader_variant_create(struct radv_device *device,
-		      struct radv_shader_module *module,
-		      struct nir_shader * const *shaders,
-		      int shader_count,
-		      gl_shader_stage stage,
-		      struct radv_nir_compiler_options *options,
-		      bool gs_copy_shader,
-		      void **code_out,
-		      unsigned *code_size_out)
+shader_variant_compile(struct radv_device *device,
+		       struct radv_shader_module *module,
+		       struct nir_shader * const *shaders,
+		       int shader_count,
+		       gl_shader_stage stage,
+		       struct radv_nir_compiler_options *options,
+		       bool gs_copy_shader,
+		       struct radv_shader_binary **binary_out)
 {
 	enum radeon_family chip_family = device->physical_device->rad_info.family;
 	enum ac_target_machine_options tm_options = 0;
-	struct radv_shader_variant *variant;
-	struct ac_shader_binary binary;
 	struct ac_llvm_compiler ac_llvm;
+	struct radv_shader_binary *binary = NULL;
+	struct radv_shader_variant_info variant_info = {0};
 	bool thread_compiler;
-	variant = calloc(1, sizeof(struct radv_shader_variant));
-	if (!variant)
-		return NULL;
 
 	options->family = chip_family;
 	options->chip_class = device->physical_device->rad_info.chip_class;
@@ -695,53 +792,45 @@ shader_variant_create(struct radv_device *device,
 	if (gs_copy_shader) {
 		assert(shader_count == 1);
 		radv_compile_gs_copy_shader(&ac_llvm, *shaders, &binary,
-					    &variant->config, &variant->info,
-					    options);
+					    &variant_info, options);
 	} else {
-		radv_compile_nir_shader(&ac_llvm, &binary, &variant->config,
-					&variant->info, shaders, shader_count,
-					options);
+		radv_compile_nir_shader(&ac_llvm, &binary, &variant_info,
+					shaders, shader_count, options);
 	}
+	binary->variant_info = variant_info;
 
 	radv_destroy_llvm_compiler(&ac_llvm, thread_compiler);
 
-	radv_fill_shader_variant(device, variant, options, &binary, stage);
-
-	if (code_out) {
-		*code_out = binary.code;
-		*code_size_out = binary.code_size;
-	} else
-		free(binary.code);
-	free(binary.config);
-	free(binary.rodata);
-	free(binary.global_symbol_offsets);
-	free(binary.relocs);
-	variant->ref_count = 1;
+	struct radv_shader_variant *variant = radv_shader_variant_create(device, binary);
+	if (!variant) {
+		free(binary);
+		return NULL;
+	}
 
 	if (device->keep_shader_info) {
-		variant->disasm_string = binary.disasm_string;
-		variant->llvm_ir_string = binary.llvm_ir_string;
 		if (!gs_copy_shader && !module->nir) {
 			variant->nir = *shaders;
 			variant->spirv = (uint32_t *)module->data;
 			variant->spirv_size = module->size;
 		}
-	} else {
-		free(binary.disasm_string);
 	}
+
+	if (binary_out)
+		*binary_out = binary;
+	else
+		free(binary);
 
 	return variant;
 }
 
 struct radv_shader_variant *
-radv_shader_variant_create(struct radv_device *device,
+radv_shader_variant_compile(struct radv_device *device,
 			   struct radv_shader_module *module,
 			   struct nir_shader *const *shaders,
 			   int shader_count,
 			   struct radv_pipeline_layout *layout,
 			   const struct radv_shader_variant_key *key,
-			   void **code_out,
-			   unsigned *code_size_out)
+			   struct radv_shader_binary **binary_out)
 {
 	struct radv_nir_compiler_options options = {0};
 
@@ -752,23 +841,22 @@ radv_shader_variant_create(struct radv_device *device,
 	options.unsafe_math = !!(device->instance->debug_flags & RADV_DEBUG_UNSAFE_MATH);
 	options.supports_spill = true;
 
-	return shader_variant_create(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage,
-				     &options, false, code_out, code_size_out);
+	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage,
+				     &options, false, binary_out);
 }
 
 struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device,
 			   struct nir_shader *shader,
-			   void **code_out,
-			   unsigned *code_size_out,
+			   struct radv_shader_binary **binary_out,
 			   bool multiview)
 {
 	struct radv_nir_compiler_options options = {0};
 
 	options.key.has_multiview_view_index = multiview;
 
-	return shader_variant_create(device, NULL, &shader, 1, MESA_SHADER_VERTEX,
-				     &options, true, code_out, code_size_out);
+	return shader_variant_compile(device, NULL, &shader, 1, MESA_SHADER_VERTEX,
+				     &options, true, binary_out);
 }
 
 void

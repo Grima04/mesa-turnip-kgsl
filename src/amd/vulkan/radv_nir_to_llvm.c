@@ -3863,32 +3863,33 @@ static unsigned ac_llvm_compile(LLVMModuleRef M,
 
 static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 				   LLVMModuleRef llvm_module,
-				   struct ac_shader_binary *binary,
-				   struct ac_shader_config *config,
+				   struct radv_shader_binary **rbinary,
 				   struct radv_shader_variant_info *shader_info,
 				   gl_shader_stage stage,
 				   const struct radv_nir_compiler_options *options)
 {
+	struct ac_shader_binary binary;
+	struct ac_shader_config config;
 	if (options->dump_shader)
 		ac_dump_module(llvm_module);
 
-	memset(binary, 0, sizeof(*binary));
+	memset(&binary, 0, sizeof(binary));
 
 	if (options->record_llvm_ir) {
 		char *llvm_ir = LLVMPrintModuleToString(llvm_module);
-		binary->llvm_ir_string = strdup(llvm_ir);
+		binary.llvm_ir_string = strdup(llvm_ir);
 		LLVMDisposeMessage(llvm_ir);
 	}
 
-	int v = ac_llvm_compile(llvm_module, binary, ac_llvm);
+	int v = ac_llvm_compile(llvm_module, &binary, ac_llvm);
 	if (v) {
 		fprintf(stderr, "compile failed\n");
 	}
 
 	if (options->dump_shader)
-		fprintf(stderr, "disasm:\n%s\n", binary->disasm_string);
+		fprintf(stderr, "disasm:\n%s\n", binary.disasm_string);
 
-	ac_shader_binary_read_config(binary, config, 0, options->supports_spill);
+	ac_shader_binary_read_config(&binary, &config, 0, options->supports_spill);
 
 	LLVMContextRef ctx = LLVMGetModuleContext(llvm_module);
 	LLVMDisposeModule(llvm_module);
@@ -3896,43 +3897,43 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 
 	if (stage == MESA_SHADER_FRAGMENT) {
 		shader_info->num_input_vgprs = 0;
-		if (G_0286CC_PERSP_SAMPLE_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_PERSP_SAMPLE_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_PERSP_CENTER_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_PERSP_CENTER_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_PERSP_CENTROID_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_PERSP_CENTROID_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_PERSP_PULL_MODEL_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_PERSP_PULL_MODEL_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 3;
-		if (G_0286CC_LINEAR_SAMPLE_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_LINEAR_SAMPLE_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_LINEAR_CENTER_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_LINEAR_CENTER_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_LINEAR_CENTROID_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_LINEAR_CENTROID_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_LINE_STIPPLE_TEX_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_LINE_STIPPLE_TEX_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_X_FLOAT_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_POS_X_FLOAT_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_Y_FLOAT_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_POS_Y_FLOAT_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_Z_FLOAT_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_POS_Z_FLOAT_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_W_FLOAT_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_POS_W_FLOAT_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_FRONT_FACE_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_FRONT_FACE_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_ANCILLARY_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_ANCILLARY_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_SAMPLE_COVERAGE_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_SAMPLE_COVERAGE_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_FIXED_PT_ENA(config->spi_ps_input_addr))
+		if (G_0286CC_POS_FIXED_PT_ENA(config.spi_ps_input_addr))
 			shader_info->num_input_vgprs += 1;
 	}
-	config->num_vgprs = MAX2(config->num_vgprs, shader_info->num_input_vgprs);
+	config.num_vgprs = MAX2(config.num_vgprs, shader_info->num_input_vgprs);
 
 	/* +3 for scratch wave offset and VCC */
-	config->num_sgprs = MAX2(config->num_sgprs,
+	config.num_sgprs = MAX2(config.num_sgprs,
 	                         shader_info->num_input_sgprs + 3);
 
 	/* Enable 64-bit and 16-bit denormals, because there is no performance
@@ -3947,7 +3948,35 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 	 *   have to stop using those.
 	 * - GFX6 & GFX7 would be very slow.
 	 */
-	config->float_mode |= V_00B028_FP_64_DENORMS;
+	config.float_mode |= V_00B028_FP_64_DENORMS;
+
+	size_t disasm_size = binary.disasm_string ? strlen(binary.disasm_string) : 0;
+	size_t llvm_ir_size = binary.llvm_ir_string ? strlen(binary.llvm_ir_string) : 0;
+	size_t alloc_size = sizeof(struct radv_shader_binary_legacy) + binary.code_size +
+		disasm_size + llvm_ir_size + 2;
+	struct radv_shader_binary_legacy *lbin = calloc(1, alloc_size);
+	memcpy(lbin->data, binary.code, binary.code_size);
+	if (binary.llvm_ir_string)
+		memcpy(lbin->data + binary.code_size, binary.llvm_ir_string, llvm_ir_size + 1);
+	if (binary.disasm_string)
+		memcpy(lbin->data + binary.code_size + llvm_ir_size + 1, binary.disasm_string, disasm_size + 1);
+
+	lbin->base.type = RADV_BINARY_TYPE_LEGACY;
+	lbin->base.stage = stage;
+	lbin->base.total_size = alloc_size;
+	lbin->config = config;
+	lbin->code_size = binary.code_size;
+	lbin->llvm_ir_size = llvm_ir_size;
+	lbin->disasm_size = disasm_size;
+	*rbinary = &lbin->base;
+
+	free(binary.code);
+	free(binary.config);
+	free(binary.rodata);
+	free(binary.global_symbol_offsets);
+	free(binary.relocs);
+	free(binary.disasm_string);
+	free(binary.llvm_ir_string);
 }
 
 static void
@@ -3990,8 +4019,7 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
 
 void
 radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
-			struct ac_shader_binary *binary,
-			struct ac_shader_config *config,
+			struct radv_shader_binary **rbinary,
 			struct radv_shader_variant_info *shader_info,
 			struct nir_shader *const *nir,
 			int nir_count,
@@ -4003,7 +4031,7 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 	llvm_module = ac_translate_nir_to_llvm(ac_llvm, nir, nir_count, shader_info,
 	                                       options);
 
-	ac_compile_llvm_module(ac_llvm, llvm_module, binary, config, shader_info,
+	ac_compile_llvm_module(ac_llvm, llvm_module, rbinary, shader_info,
 			       nir[nir_count - 1]->info.stage, options);
 
 	for (int i = 0; i < nir_count; ++i)
@@ -4115,8 +4143,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 void
 radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 			    struct nir_shader *geom_shader,
-			    struct ac_shader_binary *binary,
-			    struct ac_shader_config *config,
+			    struct radv_shader_binary **rbinary,
 			    struct radv_shader_variant_info *shader_info,
 			    const struct radv_nir_compiler_options *options)
 {
@@ -4156,6 +4183,8 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 
 	ac_llvm_finalize_module(&ctx, ac_llvm->passmgr, options);
 
-	ac_compile_llvm_module(ac_llvm, ctx.ac.module, binary, config, shader_info,
+	ac_compile_llvm_module(ac_llvm, ctx.ac.module, rbinary, shader_info,
 			       MESA_SHADER_VERTEX, options);
+	(*rbinary)->is_gs_copy_shader = true;
+	
 }

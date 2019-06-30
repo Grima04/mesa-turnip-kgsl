@@ -308,6 +308,41 @@ struct radv_shader_variant_info {
 	};
 };
 
+enum radv_shader_binary_type {
+	RADV_BINARY_TYPE_LEGACY,
+	RADV_BINARY_TYPE_RTLD
+};
+
+struct radv_shader_binary {
+	enum radv_shader_binary_type type;
+	gl_shader_stage stage;
+	bool is_gs_copy_shader;
+
+	struct radv_shader_variant_info variant_info;
+
+	/* Self-referential size so we avoid consistency issues. */
+	uint32_t total_size;
+};
+
+struct radv_shader_binary_legacy {
+	struct radv_shader_binary base;
+	struct ac_shader_config config;
+	unsigned code_size;
+	unsigned llvm_ir_size;
+	unsigned disasm_size;
+	
+	/* data has size of code_size + llvm_ir_size + disasm_size + 2, where
+	 * the +2 is for 0 of the ir strings. */
+	uint8_t data[0];
+};
+
+struct radv_shader_binary_rtld {
+	struct radv_shader_binary base;
+	unsigned elf_size;
+	unsigned llvm_ir_size;
+	uint8_t data[0];
+};
+
 struct radv_shader_variant {
 	uint32_t ref_count;
 
@@ -360,17 +395,19 @@ radv_destroy_shader_slabs(struct radv_device *device);
 
 struct radv_shader_variant *
 radv_shader_variant_create(struct radv_device *device,
-			   struct radv_shader_module *module,
-			   struct nir_shader *const *shaders,
-			   int shader_count,
-			   struct radv_pipeline_layout *layout,
-			   const struct radv_shader_variant_key *key,
-			   void **code_out,
-			   unsigned *code_size_out);
+			   const struct radv_shader_binary *binary);
+struct radv_shader_variant *
+radv_shader_variant_compile(struct radv_device *device,
+			    struct radv_shader_module *module,
+			    struct nir_shader *const *shaders,
+			    int shader_count,
+			    struct radv_pipeline_layout *layout,
+			    const struct radv_shader_variant_key *key,
+			    struct radv_shader_binary **binary_out);
 
 struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
-			   void **code_out, unsigned *code_size_out,
+			   struct radv_shader_binary **binary_out,
 			   bool multiview);
 
 void
