@@ -210,23 +210,36 @@ lima_ctx_dirty(struct lima_context *ctx)
    return ctx->plbu_cmd_array.size;
 }
 
+static inline struct lima_damage_region *
+lima_ctx_get_damage(struct lima_context *ctx)
+{
+   if (!ctx->framebuffer.base.nr_cbufs)
+      return NULL;
+
+   struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
+   struct lima_resource *res = lima_resource(surf->base.texture);
+   return &res->damage;
+}
+
 static bool
 lima_fb_need_reload(struct lima_context *ctx)
 {
    /* Depth buffer is always discarded */
    if (!ctx->framebuffer.base.nr_cbufs)
       return false;
-   if (ctx->damage.region) {
-      /* for EGL_KHR_partial_update we just want to reload the
-       * region not aligned to tile boundary */
-      if (!ctx->damage.aligned)
-         return true;
+
+   struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
+   struct lima_resource *res = lima_resource(surf->base.texture);
+   if (res->damage.region) {
+      /* for EGL_KHR_partial_update, when EGL_EXT_buffer_age is enabled,
+       * we need to reload damage region, otherwise just want to reload
+       * the region not aligned to tile boundary */
+      //if (!res->damage.aligned)
+      //   return true;
+      return true;
    }
-   else {
-      struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
-      if (surf->reload)
+   else if (surf->reload)
          return true;
-   }
 
    return false;
 }
@@ -510,9 +523,9 @@ lima_get_pp_stream_size(int num_pp, int tiled_w, int tiled_h, uint32_t *off)
 }
 
 static bool
-inside_damage_region(int x, int y, struct lima_damage_state *ds)
+inside_damage_region(int x, int y, struct lima_damage_region *ds)
 {
-   if (!ds->region)
+   if (!ds || !ds->region)
       return true;
 
    for (int i = 0; i < ds->num_region; i++) {
@@ -531,6 +544,7 @@ lima_update_pp_stream(struct lima_context *ctx, int off_x, int off_y,
 {
    struct lima_pp_stream_state *ps = &ctx->pp_stream;
    struct lima_context_framebuffer *fb = &ctx->framebuffer;
+   struct lima_damage_region *damage = lima_ctx_get_damage(ctx);
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    int i, num_pp = screen->num_pp;
 
@@ -556,7 +570,7 @@ lima_update_pp_stream(struct lima_context *ctx, int off_x, int off_y,
          x += off_x;
          y += off_y;
 
-         if (!inside_damage_region(x, y, &ctx->damage))
+         if (!inside_damage_region(x, y, damage))
             continue;
 
          int pp = index % num_pp;
@@ -586,7 +600,7 @@ lima_update_pp_stream(struct lima_context *ctx, int off_x, int off_y,
 static void
 lima_update_damage_pp_stream(struct lima_context *ctx)
 {
-   struct lima_damage_state *ds = &ctx->damage;
+   struct lima_damage_region *ds = lima_ctx_get_damage(ctx);
    struct pipe_scissor_state max = ds->region[0];
 
    /* find a max region to cover all the damage region */
@@ -671,7 +685,8 @@ lima_update_submit_bo(struct lima_context *ctx)
       ctx->plb_gp_size, false, "gp plb stream at va %x\n",
       ctx->plb_gp_stream->va + ctx->plb_index * ctx->plb_gp_size);
 
-   if (ctx->damage.region)
+   struct lima_damage_region *damage = lima_ctx_get_damage(ctx);
+   if (damage && damage->region)
       lima_update_damage_pp_stream(ctx);
    else if (ctx->plb_pp_stream)
       lima_update_full_pp_stream(ctx);

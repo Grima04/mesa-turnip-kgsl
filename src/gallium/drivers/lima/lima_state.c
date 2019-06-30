@@ -414,50 +414,6 @@ lima_set_sampler_views(struct pipe_context *pctx,
    ctx->dirty |= LIMA_CONTEXT_DIRTY_TEXTURES;
 }
 
-UNUSED static bool
-lima_set_damage_region(struct pipe_context *pctx, unsigned num_rects, int *rects)
-{
-   struct lima_context *ctx = lima_context(pctx);
-   struct lima_damage_state *damage = &ctx->damage;
-   int i;
-
-   if (damage->region)
-      ralloc_free(damage->region);
-
-   if (!num_rects) {
-      damage->region = NULL;
-      damage->num_region = 0;
-      return true;
-   }
-
-   damage->region = ralloc_size(ctx, sizeof(*damage->region) * num_rects);
-   if (!damage->region) {
-      damage->num_region = 0;
-      return false;
-   }
-
-   for (i = 0; i < num_rects; i++) {
-      struct pipe_scissor_state *r = damage->region + i;
-      /* region in tile unit */
-      r->minx = rects[i * 4] >> 4;
-      r->miny = rects[i * 4 + 1] >> 4;
-      r->maxx = (rects[i * 4] + rects[i * 4 + 2] + 0xf) >> 4;
-      r->maxy = (rects[i * 4 + 1] + rects[i * 4 + 3] + 0xf) >> 4;
-   }
-
-   /* is region aligned to tiles? */
-   damage->aligned = true;
-   for (i = 0; i < num_rects * 4; i++) {
-      if (rects[i] & 0xf) {
-         damage->aligned = false;
-         break;
-      }
-   }
-
-   damage->num_region = num_rects;
-   return true;
-}
-
 static void
 lima_set_sample_mask(struct pipe_context *pctx,
                      unsigned sample_mask)

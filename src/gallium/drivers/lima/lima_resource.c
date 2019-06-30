@@ -264,6 +264,9 @@ lima_resource_destroy(struct pipe_screen *pscreen, struct pipe_resource *pres)
    if (res->scanout)
       renderonly_scanout_destroy(res->scanout, screen->ro);
 
+   if (res->damage.region)
+      FREE(res->damage.region);
+
    FREE(res);
 }
 
@@ -343,6 +346,52 @@ lima_resource_get_handle(struct pipe_screen *pscreen,
    return true;
 }
 
+static void
+lima_resource_set_damage_region(struct pipe_screen *pscreen,
+                                struct pipe_resource *pres,
+                                unsigned int nrects,
+                                const struct pipe_box *rects)
+{
+   struct lima_resource *res = lima_resource(pres);
+   struct lima_damage_region *damage = &res->damage;
+   int i;
+
+   if (damage->region) {
+      FREE(damage->region);
+      damage->region = NULL;
+      damage->num_region = 0;
+   }
+
+   if (!nrects)
+      return;
+
+   damage->region = CALLOC(nrects, sizeof(*damage->region));
+   if (!damage->region)
+      return;
+
+   for (i = 0; i < nrects; i++) {
+      struct pipe_scissor_state *r = damage->region + i;
+      int y = pres->height0 - (rects[i].y + rects[i].height);
+      /* region in tile unit */
+      r->minx = rects[i].x >> 4;
+      r->miny = y >> 4;
+      r->maxx = (rects[i].x + rects[i].width + 0xf) >> 4;
+      r->maxy = (y + rects[i].height + 0xf) >> 4;
+   }
+
+   /* is region aligned to tiles? */
+   damage->aligned = true;
+   for (i = 0; i < nrects; i++) {
+      if (rects[i].x & 0xf || rects[i].y & 0xf ||
+          rects[i].width & 0xf || rects[i].height & 0xf) {
+         damage->aligned = false;
+         break;
+      }
+   }
+
+   damage->num_region = nrects;
+}
+
 void
 lima_resource_screen_init(struct lima_screen *screen)
 {
@@ -351,6 +400,7 @@ lima_resource_screen_init(struct lima_screen *screen)
    screen->base.resource_from_handle = lima_resource_from_handle;
    screen->base.resource_destroy = lima_resource_destroy;
    screen->base.resource_get_handle = lima_resource_get_handle;
+   screen->base.set_damage_region = lima_resource_set_damage_region;
 }
 
 static struct pipe_surface *
