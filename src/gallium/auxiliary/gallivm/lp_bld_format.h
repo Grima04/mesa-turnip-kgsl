@@ -204,7 +204,7 @@ lp_build_smallfloat_to_float(struct gallivm_state *gallivm,
 
 LLVMValueRef
 lp_build_float_to_r11g11b10(struct gallivm_state *gallivm,
-                            LLVMValueRef *src);
+                            const LLVMValueRef *src);
 
 void
 lp_build_r11g11b10_to_float(struct gallivm_state *gallivm,
