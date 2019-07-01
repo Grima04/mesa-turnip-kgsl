@@ -219,17 +219,57 @@ panfrost_access_tiled_image_generic(void *dst, void *src,
          uint8_t *out = is_store ? dest : source;
          uint8_t *in = is_store ? source : dest;
 
-         /* Write out 1-4 bytes. Written like this rather than a loop so the
-          * compiler doesn't need to do branching (just some predication) */
+         uint16_t *out16 = (uint16_t *) out;
+         uint16_t *in16 = (uint16_t *) in;
 
-         out[0] = in[0];
-         if (bpp > 1) {
-            out[1] = in[1];
-            if (bpp > 2) {
+         uint32_t *out32 = (uint32_t *) out;
+         uint32_t *in32 = (uint32_t *) in;
+
+         uint64_t *out64 = (uint64_t *) out;
+         uint64_t *in64 = (uint64_t *) in;
+
+         /* Write out 1-16 bytes. Written like this rather than a loop so the
+          * compiler can see what's going on */
+
+         switch (bpp) {
+            case 1:
+               out[0] = in[0];
+               break;
+
+            case 2:
+               out16[0] = in16[0];
+               break;
+
+            case 3:
+               out16[0] = in16[0];
                out[2] = in[2];
-               if (bpp > 3)
-                  out[3] = in[3];
-            }
+               break;
+
+            case 4:
+               out32[0] = in32[0];
+               break;
+
+            case 6:
+               out32[0] = in32[0];
+               out16[2] = in16[2];
+               break;
+
+            case 8:
+               out64[0] = in64[0];
+               break;
+
+            case 12:
+               out64[0] = in64[0];
+               out32[2] = in32[2];
+               break;
+
+            case 16:
+               out64[0] = in64[0];
+               out64[1] = in64[1];
+               break;
+
+            default:
+               unreachable("Invalid bpp in software tiling");
          }
       }
    }
