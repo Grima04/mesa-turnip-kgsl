@@ -1397,8 +1397,9 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 			 * fast clear path fallbacks to slow clears if one
 			 * level can't be fast cleared.
 			 */
-			offset += surf_level->dcc_offset;
-			size = surf_level->dcc_fast_clear_size;
+			offset += surf_level->dcc_offset +
+				  surf_level->dcc_slice_fast_clear_size * range->baseArrayLayer;
+			size = surf_level->dcc_slice_fast_clear_size * radv_get_layerCount(image, range);
 		}
 
 		flush_bits |= radv_fill_buffer(cmd_buffer, image->bo, offset,
