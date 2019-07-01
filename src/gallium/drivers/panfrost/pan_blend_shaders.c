@@ -149,6 +149,8 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
                 nir_make_options(&cso->base, 1);
         NIR_PASS_V(shader, nir_lower_blend, options);
 
+        NIR_PASS_V(shader, nir_lower_framebuffer);
+
         /* Compile the built shader */
 
         midgard_program program;

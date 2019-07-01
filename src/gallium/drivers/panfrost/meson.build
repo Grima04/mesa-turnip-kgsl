@@ -37,6 +37,7 @@ files_panfrost = files(
   'midgard/midgard_ops.c',
 
   'midgard/nir_lower_blend.c',
+  'midgard/nir_lower_framebuffer.c',
   'midgard/cppwrap.cpp',
   'midgard/disassemble.c',
 
