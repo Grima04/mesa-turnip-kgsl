@@ -51,8 +51,12 @@ struct panfrost_job {
         /* Buffers cleared (PIPE_CLEAR_* bitmask) */
         unsigned clear;
 
-        /* Packed clear values */
-        uint32_t clear_color;
+        /* Packed clear values, indexed by both render target as well as word.
+         * Essentially, a single pixel is packed, with some padding to bring it
+         * up to a 32-bit interval; that pixel is then duplicated over to fill
+         * all 16-bytes */
+
+        uint32_t clear_color[PIPE_MAX_COLOR_BUFS][4];
         float clear_depth;
         unsigned clear_stencil;
 

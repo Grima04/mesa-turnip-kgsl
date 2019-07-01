@@ -127,13 +127,17 @@ panfrost_mfbd_clear(
                 struct panfrost_job *job,
                 struct bifrost_framebuffer *fb,
                 struct bifrost_fb_extra *fbx,
-                struct bifrost_render_target *rt)
+                struct bifrost_render_target *rts,
+                unsigned rt_count)
 {
-        if (job->clear & PIPE_CLEAR_COLOR) {
-                rt->clear_color_1 = job->clear_color;
-                rt->clear_color_2 = job->clear_color;
-                rt->clear_color_3 = job->clear_color;
-                rt->clear_color_4 = job->clear_color;
+        for (unsigned i = 0; i < rt_count; ++i) {
+                if (!(job->clear & (PIPE_CLEAR_COLOR0 << i)))
+                        continue;
+
+                rts[i].clear_color_1 = job->clear_color[i][0];
+                rts[i].clear_color_2 = job->clear_color[i][1];
+                rts[i].clear_color_3 = job->clear_color[i][2];
+                rts[i].clear_color_4 = job->clear_color[i][3];
         }
 
         if (job->clear & PIPE_CLEAR_DEPTH) {
@@ -299,7 +303,7 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         fb.mfbd_flags = 0x100;
 
         /* TODO: MRT clear */
-        panfrost_mfbd_clear(job, &fb, &fbx, &rts[0]);
+        panfrost_mfbd_clear(job, &fb, &fbx, rts, fb.rt_count_2);
 
         for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
                 struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
