@@ -732,7 +732,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         bool is_ssa = instr->dest.dest.is_ssa;
 
         unsigned dest = nir_dest_index(ctx, &instr->dest.dest);
-        unsigned nr_components = is_ssa ? instr->dest.dest.ssa.num_components : instr->dest.dest.reg.reg->num_components;
+        unsigned nr_components = nir_dest_num_components(instr->dest.dest);
         unsigned nr_inputs = nir_op_infos[instr->op].num_inputs;
 
         /* Most Midgard ALU ops have a 1:1 correspondance to NIR ops; these are
