@@ -1073,6 +1073,7 @@ reset_masks(struct gen_device_info *devinfo)
    memset(&devinfo->slice_masks, 0, sizeof(devinfo->slice_masks));
    memset(devinfo->subslice_masks, 0, sizeof(devinfo->subslice_masks));
    memset(devinfo->eu_masks, 0, sizeof(devinfo->eu_masks));
+   memset(devinfo->ppipe_subslices, 0, sizeof(devinfo->ppipe_subslices));
 }
 
 static void
@@ -1098,7 +1099,7 @@ update_from_topology(struct gen_device_info *devinfo,
 
    uint32_t n_subslices = 0;
    for (int s = 0; s < topology->max_slices; s++) {
-      if ((devinfo->slice_masks & (1UL << s)) == 0)
+      if ((devinfo->slice_masks & (1 << s)) == 0)
          continue;
 
       for (int b = 0; b < devinfo->subslice_slice_stride; b++) {
@@ -1108,6 +1109,23 @@ update_from_topology(struct gen_device_info *devinfo,
       n_subslices += devinfo->num_subslices[s];
    }
    assert(n_subslices > 0);
+
+   if (devinfo->gen == 11) {
+      /* On ICL we only have one slice */
+      assert(devinfo->slice_masks == 1);
+
+      /* Count the number of subslices on each pixel pipe. Assume that
+       * subslices 0-3 are on pixel pipe 0, and 4-7 are on pixel pipe 1.
+       */
+      unsigned subslices = devinfo->subslice_masks[0];
+      unsigned ss = 0;
+      while (subslices > 0) {
+         if (subslices & 1)
+            devinfo->ppipe_subslices[ss >= 4 ? 1 : 0] += 1;
+         subslices >>= 1;
+         ss++;
+      }
+   }
 
    uint32_t eu_mask_len =
       topology->eu_stride * topology->max_subslices * topology->max_slices;

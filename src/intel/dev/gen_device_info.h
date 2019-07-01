@@ -39,6 +39,7 @@ struct drm_i915_query_topology_info;
 #define GEN_DEVICE_MAX_SLICES           (6)  /* Maximum on gen10 */
 #define GEN_DEVICE_MAX_SUBSLICES        (8)  /* Maximum on gen11 */
 #define GEN_DEVICE_MAX_EUS_PER_SUBSLICE (10) /* Maximum on Haswell */
+#define GEN_DEVICE_MAX_PIXEL_PIPES      (2)  /* Maximum on gen11 */
 
 /**
  * Intel hardware information and quirks
@@ -123,6 +124,11 @@ struct gen_device_info
     * Number of subslices for each slice (used to be uniform until CNL).
     */
    unsigned num_subslices[GEN_DEVICE_MAX_SUBSLICES];
+
+   /**
+    * Number of subslices on each pixel pipe (ICL).
+    */
+   unsigned ppipe_subslices[GEN_DEVICE_MAX_PIXEL_PIPES];
 
    /**
     * Upper bound of number of EU per subslice (some SKUs might have just 1 EU
