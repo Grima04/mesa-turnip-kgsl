@@ -574,8 +574,15 @@ etna_try_rs_blit(struct pipe_context *pctx,
       return false;
    }
 
-   unsigned src_format = etna_compatible_rs_format(blit_info->src.format);
-   unsigned dst_format = etna_compatible_rs_format(blit_info->dst.format);
+   unsigned src_format = blit_info->src.format;
+   unsigned dst_format = blit_info->dst.format;
+
+   /* for a copy with same dst/src format, we can use a different format */
+   if (translate_rs_format(src_format) == ETNA_NO_MATCH &&
+       src_format == dst_format) {
+      src_format = dst_format = etna_compatible_rs_format(src_format);
+   }
+
    if (translate_rs_format(src_format) == ETNA_NO_MATCH ||
        translate_rs_format(dst_format) == ETNA_NO_MATCH ||
        blit_info->scissor_enable ||
