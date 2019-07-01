@@ -613,6 +613,8 @@ etna_get_specs(struct etna_screen *screen)
       VIV_FEATURE(screen, chipMinorFeatures3, HAS_FAST_TRANSCENDENTALS);
    screen->specs.has_halti2_instructions =
       VIV_FEATURE(screen, chipMinorFeatures4, HALTI2);
+   screen->specs.v4_compression =
+      VIV_FEATURE(screen, chipMinorFeatures6, V4_COMPRESSION);
 
    if (screen->specs.halti >= 5) {
       /* GC7000 - this core must load shaders from memory. */
@@ -831,6 +833,12 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
       goto fail;
    }
    screen->features[6] = val;
+
+   if (etna_gpu_get_param(screen->gpu, ETNA_GPU_FEATURES_7, &val)) {
+      DBG("could not get ETNA_GPU_FEATURES_7");
+      goto fail;
+   }
+   screen->features[7] = val;
 
    if (!etna_get_specs(screen))
       goto fail;

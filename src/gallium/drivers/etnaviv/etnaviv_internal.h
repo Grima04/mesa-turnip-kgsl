@@ -76,6 +76,8 @@ struct etna_specs {
    unsigned has_new_transcendentals : 1;
    /* has the new dp2/dpX_norm instructions, among others */
    unsigned has_halti2_instructions : 1;
+   /* has V4_COMPRESSION */
+   unsigned v4_compression : 1;
    /* supports single-buffer rendering with multiple pixel pipes */
    unsigned single_buffer : 1;
    /* has unified uniforms memory */
