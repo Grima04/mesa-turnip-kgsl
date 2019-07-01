@@ -257,6 +257,10 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                          * the swizzle */
 
                         if (ains->has_blend_constant) {
+                                /* Everything conflicts with the blend constant */
+                                if (bundle.has_embedded_constants)
+                                        break;
+
                                 bundle.has_blend_constant = 1;
                                 bundle.has_embedded_constants = 1;
                         } else if (ains->has_constants) {
