@@ -212,6 +212,7 @@ struct radeon_surf {
 
     /* DCC and HTILE are very small. */
     uint32_t                    dcc_size;
+    uint32_t                    dcc_slice_size;
     uint32_t                    dcc_alignment;
 
     uint32_t                    htile_size;

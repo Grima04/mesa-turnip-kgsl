@@ -302,6 +302,12 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib,
 				surf_level->dcc_fast_clear_size = AddrDccOut->dccFastClearSize;
 			else
 				surf_level->dcc_fast_clear_size = 0;
+
+			/* Compute the DCC slice size because addrlib doesn't
+			 * provide this info. As DCC memory is linear (each
+			 * slice is the same size) it's easy to compute.
+			 */
+			surf->dcc_slice_size = AddrDccOut->dccRamSize / config->info.array_size;
 		}
 	}
 
