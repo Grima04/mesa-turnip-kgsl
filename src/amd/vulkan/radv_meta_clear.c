@@ -1367,34 +1367,6 @@ radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
 	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
 }
 
-static uint32_t
-radv_dcc_clear_level(struct radv_cmd_buffer *cmd_buffer,
-		     const struct radv_image *image,
-		     uint32_t level, uint32_t value)
-{
-	uint64_t offset = image->offset + image->dcc_offset;
-	uint32_t size;
-
-	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
-		/* Mipmap levels aren't implemented. */
-		assert(level == 0);
-		size = image->planes[0].surface.dcc_size;
-	} else {
-		const struct legacy_surf_level *surf_level =
-			&image->planes[0].surface.u.legacy.level[level];
-
-		/* If dcc_fast_clear_size is 0 (which might happens for
-		 * mipmaps) the fill buffer operation below is a no-op. This
-		 * can only happen during initialization as the fast clear path
-		 * fallbacks to slow clears if one level can't be fast cleared.
-		 */
-		offset += surf_level->dcc_offset;
-		size = surf_level->dcc_fast_clear_size;
-	}
-
-	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
-}
-
 uint32_t
 radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 	       struct radv_image *image,
@@ -1407,10 +1379,30 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 	radv_update_dcc_metadata(cmd_buffer, image, range, true);
 
 	for (uint32_t l = 0; l < level_count; l++) {
+		uint64_t offset = image->offset + image->dcc_offset;
 		uint32_t level = range->baseMipLevel + l;
+		uint64_t size;
 
-		flush_bits |= radv_dcc_clear_level(cmd_buffer, image,
-						   level, value);
+		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+			/* Mipmap levels aren't implemented. */
+			assert(level == 0);
+			size = image->planes[0].surface.dcc_size;
+		} else {
+			const struct legacy_surf_level *surf_level =
+				&image->planes[0].surface.u.legacy.level[level];
+
+			/* If dcc_fast_clear_size is 0 (which might happens for
+			 * mipmaps) the fill buffer operation below is a no-op.
+			 * This can only happen during initialization as the
+			 * fast clear path fallbacks to slow clears if one
+			 * level can't be fast cleared.
+			 */
+			offset += surf_level->dcc_offset;
+			size = surf_level->dcc_fast_clear_size;
+		}
+
+		flush_bits |= radv_fill_buffer(cmd_buffer, image->bo, offset,
+					       size, value);
 	}
 
 	return flush_bits;
