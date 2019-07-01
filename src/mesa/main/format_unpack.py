@@ -43,7 +43,6 @@ string = """/*
 
 #include <stdint.h>
 
-#include "errors.h"
 #include "format_unpack.h"
 #include "format_utils.h"
 #include "macros.h"
@@ -333,9 +332,7 @@ _mesa_unpack_rgba_row(mesa_format format, GLuint n,
       unpack_float_ycbcr_rev(src, dst, n);
       break;
    default:
-      _mesa_problem(NULL, "%s: bad format %s", __func__,
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format");
    }
 }
 
@@ -402,9 +399,7 @@ _mesa_unpack_uint_rgba_row(mesa_format format, GLuint n,
       break;
 %endfor
    default:
-      _mesa_problem(NULL, "%s: bad format %s", __func__,
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format");
    }
 }
 
@@ -552,9 +547,7 @@ _mesa_unpack_float_z_row(mesa_format format, GLuint n,
       unpack = unpack_float_z_Z32X24S8;
       break;
    default:
-      _mesa_problem(NULL, "bad format %s in _mesa_unpack_float_z_row",
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format in _mesa_unpack_float_z_row");
    }
 
    unpack(n, src, dst);
@@ -657,9 +650,7 @@ _mesa_unpack_uint_z_row(mesa_format format, GLuint n,
       unpack = unpack_uint_Z_FLOAT32_X24S8;
       break;
    default:
-      _mesa_problem(NULL, "bad format %s in _mesa_unpack_uint_z_row",
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format %s in _mesa_unpack_uint_z_row");
    }
 
    unpack(srcPtr, dst, n);
@@ -720,9 +711,7 @@ _mesa_unpack_ubyte_stencil_row(mesa_format format, GLuint n,
       unpack_ubyte_s_Z32_FLOAT_S8X24_UINT(src, dst, n);
       break;
    default:
-      _mesa_problem(NULL, "bad format %s in _mesa_unpack_ubyte_s_row",
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format %s in _mesa_unpack_ubyte_s_row");
    }
 }
 
@@ -777,10 +766,7 @@ _mesa_unpack_uint_24_8_depth_stencil_row(mesa_format format, GLuint n,
       unpack_uint_24_8_depth_stencil_Z32_S8X24(src, dst, n);
       break;
    default:
-      _mesa_problem(NULL,
-                    "bad format %s in _mesa_unpack_uint_24_8_depth_stencil_row",
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format %s in _mesa_unpack_uint_24_8_depth_stencil_row");
    }
 }
 
@@ -854,10 +840,7 @@ _mesa_unpack_float_32_uint_24_8_depth_stencil_row(mesa_format format, GLuint n,
       unpack_float_32_uint_24_8_Z32_FLOAT_S8X24_UINT(src, dst, n);
       break;
    default:
-      _mesa_problem(NULL,
-                    "bad format %s in _mesa_unpack_uint_24_8_depth_stencil_row",
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format %s in _mesa_unpack_uint_24_8_depth_stencil_row");
    }
 }
 
@@ -882,10 +865,7 @@ _mesa_unpack_depth_stencil_row(mesa_format format, GLuint n,
       _mesa_unpack_float_32_uint_24_8_depth_stencil_row(format, n, src, dst);
       break;
    default:
-      _mesa_problem(NULL,
-                    "bad type 0x%x in _mesa_unpack_depth_stencil_row",
-                    type);
-      return;
+      unreachable("bad type 0x%x in _mesa_unpack_depth_stencil_row");
    }
 }
 """

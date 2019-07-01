@@ -44,7 +44,6 @@ string = """/*
 #include <stdint.h>
 
 #include "config.h"
-#include "errors.h"
 #include "format_pack.h"
 #include "format_utils.h"
 #include "macros.h"
@@ -539,9 +538,7 @@ _mesa_get_pack_float_z_func(mesa_format format)
    case MESA_FORMAT_Z32_FLOAT_S8X24_UINT:
       return pack_float_Z_FLOAT32;
    default:
-      _mesa_problem(NULL,
-                    "unexpected format in _mesa_get_pack_float_z_func()");
-      return NULL;
+      unreachable("unexpected format in _mesa_get_pack_float_z_func()");
    }
 }
 
@@ -618,8 +615,7 @@ _mesa_get_pack_uint_z_func(mesa_format format)
    case MESA_FORMAT_Z32_FLOAT_S8X24_UINT:
       return pack_uint_Z_FLOAT32;
    default:
-      _mesa_problem(NULL, "unexpected format in _mesa_get_pack_uint_z_func()");
-      return NULL;
+      unreachable("unexpected format in _mesa_get_pack_uint_z_func()");
    }
 }
 
@@ -676,9 +672,7 @@ _mesa_get_pack_ubyte_stencil_func(mesa_format format)
    case MESA_FORMAT_Z32_FLOAT_S8X24_UINT:
       return pack_ubyte_stencil_Z32_FLOAT_X24S8;
    default:
-      _mesa_problem(NULL,
-                    "unexpected format in _mesa_pack_ubyte_stencil_func()");
-      return NULL;
+      unreachable("unexpected format in _mesa_pack_ubyte_stencil_func()");
    }
 }
 
@@ -752,7 +746,7 @@ _mesa_pack_float_z_row(mesa_format format, GLuint n,
       }
       break;
    default:
-      _mesa_problem(NULL, "unexpected format in _mesa_pack_float_z_row()");
+      unreachable("unexpected format in _mesa_pack_float_z_row()");
    }
 }
 
@@ -828,7 +822,7 @@ _mesa_pack_uint_z_row(mesa_format format, GLuint n,
       }
       break;
    default:
-      _mesa_problem(NULL, "unexpected format in _mesa_pack_uint_z_row()");
+      unreachable("unexpected format in _mesa_pack_uint_z_row()");
    }
 }
 
@@ -875,7 +869,7 @@ _mesa_pack_ubyte_stencil_row(mesa_format format, GLuint n,
       }
       break;
    default:
-      _mesa_problem(NULL, "unexpected format in _mesa_pack_ubyte_stencil_row()");
+      unreachable("unexpected format in _mesa_pack_ubyte_stencil_row()");
    }
 }
 
@@ -915,9 +909,7 @@ _mesa_pack_uint_24_8_depth_stencil_row(mesa_format format, GLuint n,
       }
       break;
    default:
-      _mesa_problem(NULL, "bad format %s in _mesa_pack_ubyte_s_row",
-                    _mesa_get_format_name(format));
-      return;
+      unreachable("bad format in _mesa_pack_ubyte_s_row");
    }
 }
 
@@ -985,14 +977,12 @@ _mesa_pack_colormask(mesa_format format, const GLubyte colorMask[4], void *dst)
             }
          }
          else {
-            _mesa_problem(NULL, "unexpected size in _mesa_pack_colormask()");
-            return;
+            unreachable("unexpected size in _mesa_pack_colormask()");
          }
       }
       break;
    default:
-      _mesa_problem(NULL, "unexpected format data type in gen_color_mask()");
-      return;
+      unreachable("unexpected format data type in gen_color_mask()");
    }
 }
 """
