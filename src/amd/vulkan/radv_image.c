@@ -179,6 +179,10 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (pCreateInfo->arrayLayers > 1)
 		return false;
 
+	/* Do not enable DCC for mipmapped arrays because performance is worse. */
+	if (pCreateInfo->arrayLayers > 1 && pCreateInfo->mipLevels > 1)
+		return false;
+
 	if (radv_surface_has_scanout(device, create_info))
 		return false;
 
