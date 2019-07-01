@@ -85,11 +85,21 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
 {
    struct etna_screen *screen = etna_screen(pscreen);
    size_t rt_ts_size, ts_layer_stride;
+   size_t ts_bits_per_tile, bytes_per_tile;
+   uint8_t ts_mode = TS_MODE_128B; /* only used by halti5 */
 
    assert(!rsc->ts_bo);
 
+   if (screen->specs.halti >= 5) {
+      ts_bits_per_tile = 4;
+      bytes_per_tile = ts_mode == TS_MODE_256B ? 256 : 128;
+   } else {
+      ts_bits_per_tile = screen->specs.bits_per_tile;
+      bytes_per_tile = 64;
+   }
+
    ts_layer_stride = align(DIV_ROUND_UP(rsc->levels[0].layer_stride,
-                                        64 * 8 / screen->specs.bits_per_tile),
+                                        bytes_per_tile * 8 / ts_bits_per_tile),
                            0x100 * screen->specs.pixel_pipes);
    rt_ts_size = ts_layer_stride * rsc->base.array_size;
    if (rt_ts_size == 0)
@@ -110,6 +120,7 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
    rsc->levels[0].ts_offset = 0;
    rsc->levels[0].ts_layer_stride = ts_layer_stride;
    rsc->levels[0].ts_size = rt_ts_size;
+   rsc->levels[0].ts_mode = ts_mode;
 
    /* It is important to initialize the TS, as random pattern
     * can result in crashes. Do this on the CPU as this only happens once

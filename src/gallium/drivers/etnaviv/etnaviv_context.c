@@ -356,7 +356,6 @@ etna_cmd_stream_reset_notify(struct etna_cmd_stream *stream, void *priv)
       etna_set_state(stream, VIVS_RA_UNK00E0C, 0x00000000);
    }
    if (ctx->specs.halti >= 3) { /* Only on HALTI3+ */
-      etna_set_state(stream, VIVS_PE_MEM_CONFIG, 0x00000000); /* TODO: cache modes */
       etna_set_state(stream, VIVS_PS_HALTI3_UNK0103C, 0x76543210);
    }
    if (ctx->specs.halti >= 4) { /* Only on HALTI4+ */

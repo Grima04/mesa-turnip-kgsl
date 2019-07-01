@@ -122,6 +122,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
 
    /* Set up TS as well. Warning: this state is used by both the RS and PE */
    uint32_t ts_mem_config = 0;
+   uint32_t pe_mem_config = 0;
 
    if (sv->nr_cbufs > 0) { /* at least one color buffer? */
       struct etna_surface *cbuf = etna_surface(sv->cbufs[0]);
@@ -173,6 +174,8 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
 
          cs->TS_COLOR_SURFACE_BASE = cbuf->reloc[0];
          cs->TS_COLOR_SURFACE_BASE.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
+
+         pe_mem_config |= VIVS_PE_MEM_CONFIG_COLOR_TS_MODE(cbuf->level->ts_mode);
       }
 
       /* MSAA */
@@ -239,6 +242,8 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
 
          cs->TS_DEPTH_SURFACE_BASE = zsbuf->reloc[0];
          cs->TS_DEPTH_SURFACE_BASE.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;
+
+         pe_mem_config |= VIVS_PE_MEM_CONFIG_DEPTH_TS_MODE(zsbuf->level->ts_mode);
       }
 
       ts_mem_config |= COND(depth_bits == 16, VIVS_TS_MEM_CONFIG_DEPTH_16BPP);
@@ -316,6 +321,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
    cs->SE_CLIP_BOTTOM = (sv->height << 16) + ETNA_SE_CLIP_MARGIN_BOTTOM;
 
    cs->TS_MEM_CONFIG = ts_mem_config;
+   cs->PE_MEM_CONFIG = pe_mem_config;
 
    /* Single buffer setup. There is only one switch for this, not a separate
     * one per color buffer / depth buffer. To keep the logic simple always use

@@ -531,6 +531,10 @@ etna_emit_state(struct etna_context *ctx)
          /*014A8*/ EMIT_STATE(PE_DITHER(x), blend->PE_DITHER[x]);
       }
    }
+
+   if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER)) && ctx->specs.halti >= 3)
+      /*014BC*/ EMIT_STATE(PE_MEM_CONFIG, ctx->framebuffer.PE_MEM_CONFIG);
+
    if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER | ETNA_DIRTY_TS))) {
       /*01654*/ EMIT_STATE(TS_MEM_CONFIG, ctx->framebuffer.TS_MEM_CONFIG);
       /*01658*/ EMIT_STATE_RELOC(TS_COLOR_STATUS_BASE, &ctx->framebuffer.TS_COLOR_STATUS_BASE);

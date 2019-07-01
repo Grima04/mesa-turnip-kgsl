@@ -83,6 +83,7 @@ etna_configure_sampler_ts(struct etna_sampler_ts *sts, struct pipe_sampler_view 
       struct etna_resource_level *lev = &rsc->levels[0];
       assert(rsc->ts_bo && lev->ts_valid);
 
+      sts->mode = lev->ts_mode;
       sts->TS_SAMPLER_CONFIG =
          VIVS_TS_SAMPLER_CONFIG_ENABLE |
          VIVS_TS_SAMPLER_CONFIG_COMPRESSION_FORMAT(translate_ts_sampler_format(rsc->base.format));

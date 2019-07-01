@@ -193,6 +193,7 @@ struct compiled_framebuffer_state {
    struct etna_reloc PE_COLOR_ADDR;
    struct etna_reloc PE_PIPE_COLOR_ADDR[ETNA_MAX_PIXELPIPES];
    uint32_t PE_COLOR_STRIDE;
+   uint32_t PE_MEM_CONFIG;
    uint32_t SE_SCISSOR_LEFT;
    uint32_t SE_SCISSOR_TOP;
    uint32_t SE_SCISSOR_RIGHT;
