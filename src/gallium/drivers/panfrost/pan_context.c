@@ -190,7 +190,7 @@ bool
 panfrost_is_scanout(struct panfrost_context *ctx)
 {
         /* If there is no color buffer, it's an FBO */
-        if (!ctx->pipe_framebuffer.nr_cbufs)
+        if (ctx->pipe_framebuffer.nr_cbufs != 1)
                 return false;
 
         /* If we're too early that no framebuffer was sent, it's scanout */
@@ -1459,7 +1459,7 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
 {
 	struct panfrost_context *ctx = pan_context(pipe);
 
-	/* Nothing to reload? */
+	/* Nothing to reload? TODO: MRT wallpapers */
 	if (ctx->pipe_framebuffer.cbufs[0] == NULL)
 		return;
 
@@ -2333,46 +2333,33 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         ctx->pipe_framebuffer.width = fb->width;
         ctx->pipe_framebuffer.height = fb->height;
 
+        struct pipe_surface *zb = fb->zsbuf;
+        bool needs_reattach = false;
+
         for (int i = 0; i < PIPE_MAX_COLOR_BUFS; i++) {
                 struct pipe_surface *cb = i < fb->nr_cbufs ? fb->cbufs[i] : NULL;
 
                 /* check if changing cbuf */
                 if (ctx->pipe_framebuffer.cbufs[i] == cb) continue;
 
-                if (cb && (i != 0)) {
-                        DBG("XXX: Multiple render targets not supported before t7xx!\n");
-                        assert(0);
-                }
-
                 /* assign new */
                 pipe_surface_reference(&ctx->pipe_framebuffer.cbufs[i], cb);
 
-                if (!cb)
-                        continue;
+                needs_reattach |= (cb != NULL);
+        }
 
+        if (ctx->pipe_framebuffer.zsbuf != zb) {
+                pipe_surface_reference(&ctx->pipe_framebuffer.zsbuf, zb);
+                needs_reattach |= (zb != NULL);
+        }
+
+        if (needs_reattach) {
                 if (ctx->require_sfbd)
                         ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
                 else
                         ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
                 panfrost_attach_vt_framebuffer(ctx);
-        }
-
-        {
-                struct pipe_surface *zb = fb->zsbuf;
-
-                if (ctx->pipe_framebuffer.zsbuf != zb) {
-                        pipe_surface_reference(&ctx->pipe_framebuffer.zsbuf, zb);
-
-                        if (zb) {
-                                if (ctx->require_sfbd)
-                                        ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
-                                else
-                                        ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
-
-                                panfrost_attach_vt_framebuffer(ctx);
-                        }
-                }
         }
 }
 
