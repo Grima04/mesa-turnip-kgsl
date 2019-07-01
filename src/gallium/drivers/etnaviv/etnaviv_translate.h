@@ -276,12 +276,11 @@ translate_depth_format(enum pipe_format fmt)
 
 /* render target format for MSAA */
 static inline uint32_t
-translate_msaa_format(enum pipe_format fmt)
+translate_ts_format(enum pipe_format fmt)
 {
    /* Note: Pipe format convention is LSB to MSB, VIVS is MSB to LSB */
    switch (fmt) {
    case PIPE_FORMAT_B4G4R4X4_UNORM:
-      return COMPRESSION_FORMAT_A4R4G4B4;
    case PIPE_FORMAT_B4G4R4A4_UNORM:
       return COMPRESSION_FORMAT_A4R4G4B4;
    case PIPE_FORMAT_B5G5R5X1_UNORM:
@@ -291,9 +290,19 @@ translate_msaa_format(enum pipe_format fmt)
    case PIPE_FORMAT_B5G6R5_UNORM:
       return COMPRESSION_FORMAT_R5G6B5;
    case PIPE_FORMAT_B8G8R8X8_UNORM:
+   case PIPE_FORMAT_B8G8R8X8_SRGB:
+   case PIPE_FORMAT_R8G8B8X8_UNORM:
       return COMPRESSION_FORMAT_X8R8G8B8;
    case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_B8G8R8A8_SRGB:
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
       return COMPRESSION_FORMAT_A8R8G8B8;
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      return COMPRESSION_FORMAT_D24S8;
+   case PIPE_FORMAT_X8Z24_UNORM:
+      return COMPRESSION_FORMAT_D24X8;
+   case PIPE_FORMAT_Z16_UNORM:
+      return COMPRESSION_FORMAT_D16;
    /* MSAA with YUYV not supported */
    default:
       return ETNA_NO_MATCH;

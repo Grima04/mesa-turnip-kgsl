@@ -413,7 +413,7 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
           * must have MSAA'able format. */
          if (sample_count > 1) {
             if (translate_samples_to_xyscale(sample_count, NULL, NULL, NULL) &&
-                translate_msaa_format(format) != ETNA_NO_MATCH) {
+                translate_ts_format(format) != ETNA_NO_MATCH) {
                allowed |= PIPE_BIND_RENDER_TARGET;
             }
          } else {

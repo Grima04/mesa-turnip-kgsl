@@ -86,7 +86,7 @@ etna_configure_sampler_ts(struct etna_sampler_ts *sts, struct pipe_sampler_view 
       sts->mode = lev->ts_mode;
       sts->TS_SAMPLER_CONFIG =
          VIVS_TS_SAMPLER_CONFIG_ENABLE |
-         VIVS_TS_SAMPLER_CONFIG_COMPRESSION_FORMAT(translate_ts_sampler_format(rsc->base.format));
+         VIVS_TS_SAMPLER_CONFIG_COMPRESSION_FORMAT(translate_ts_format(rsc->base.format));
       sts->TS_SAMPLER_CLEAR_VALUE = lev->clear_value;
       sts->TS_SAMPLER_CLEAR_VALUE2 = lev->clear_value; /* To handle 64-bit formats this needs a different value */
       sts->TS_SAMPLER_STATUS_BASE.bo = rsc->ts_bo;
@@ -123,7 +123,7 @@ etna_can_use_sampler_ts(struct pipe_sampler_view *view, int num)
    return VIV_FEATURE(screen, chipMinorFeatures2, TEXTURE_TILED_READ) &&
       num < VIVS_TS_SAMPLER__LEN &&
       rsc->base.target != PIPE_BUFFER &&
-      translate_ts_sampler_format(rsc->base.format) != ETNA_NO_MATCH &&
+      translate_ts_format(rsc->base.format) != ETNA_NO_MATCH &&
       view->u.tex.first_level == 0 && MIN2(view->u.tex.last_level, rsc->base.last_level) == 0 &&
       rsc->levels[0].ts_valid;
 }
