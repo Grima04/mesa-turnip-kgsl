@@ -26,6 +26,20 @@ libmesa_st_test_common = static_library(
 )
 
 test(
+  'st_format_test',
+  executable(
+    'st_format_test',
+    ['st_format.c'],
+    include_directories : inc_common,
+    link_with : [
+      libmesa_st_test_common, libmesa_gallium, libglapi, libgallium,
+      libmesa_util,
+    ],
+  ),
+  suite : ['st_mesa'],
+)
+
+test(
   'st_renumerate_test',
   executable(
     'st_renumerate_test',
