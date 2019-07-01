@@ -31,40 +31,40 @@
 
 
 /** Pack a GLubyte rgba[4] color to dest address */
-typedef void (*gl_pack_ubyte_rgba_func)(const GLubyte src[4], void *dst);
+typedef void (*mesa_pack_ubyte_rgba_func)(const GLubyte src[4], void *dst);
 
 /** Pack a GLfloat rgba[4] color to dest address */
-typedef void (*gl_pack_float_rgba_func)(const GLfloat src[4], void *dst);
+typedef void (*mesa_pack_float_rgba_func)(const GLfloat src[4], void *dst);
 
 /** Pack a GLfloat Z value to dest address */
-typedef void (*gl_pack_float_z_func)(const GLfloat *src, void *dst);
+typedef void (*mesa_pack_float_z_func)(const GLfloat *src, void *dst);
 
 /** Pack a GLuint Z value to dest address */
-typedef void (*gl_pack_uint_z_func)(const GLuint *src, void *dst);
+typedef void (*mesa_pack_uint_z_func)(const GLuint *src, void *dst);
 
 /** Pack a GLubyte stencil value to dest address */
-typedef void (*gl_pack_ubyte_stencil_func)(const GLubyte *src, void *dst);
+typedef void (*mesa_pack_ubyte_stencil_func)(const GLubyte *src, void *dst);
 
 
 
 
-extern gl_pack_ubyte_rgba_func
+extern mesa_pack_ubyte_rgba_func
 _mesa_get_pack_ubyte_rgba_function(mesa_format format);
 
 
-extern gl_pack_float_rgba_func
+extern mesa_pack_float_rgba_func
 _mesa_get_pack_float_rgba_function(mesa_format format);
 
 
-extern gl_pack_float_z_func
+extern mesa_pack_float_z_func
 _mesa_get_pack_float_z_func(mesa_format format);
 
 
-extern gl_pack_uint_z_func
+extern mesa_pack_uint_z_func
 _mesa_get_pack_uint_z_func(mesa_format format);
 
 
-extern gl_pack_ubyte_stencil_func
+extern mesa_pack_ubyte_stencil_func
 _mesa_get_pack_ubyte_stencil_func(mesa_format format);
 
 

@@ -298,7 +298,7 @@ pack_float_r11g11b10_float(const GLfloat src[4], void *dst)
 /**
  * Return a function that can pack a GLubyte rgba[4] color.
  */
-gl_pack_ubyte_rgba_func
+mesa_pack_ubyte_rgba_func
 _mesa_get_pack_ubyte_rgba_function(mesa_format format)
 {
    switch (format) {
@@ -318,7 +318,7 @@ _mesa_get_pack_ubyte_rgba_function(mesa_format format)
 /**
  * Return a function that can pack a GLfloat rgba[4] color.
  */
-gl_pack_float_rgba_func
+mesa_pack_float_rgba_func
 _mesa_get_pack_float_rgba_function(mesa_format format)
 {
    switch (format) {
@@ -521,7 +521,7 @@ pack_float_Z_FLOAT32(const GLfloat *src, void *dst)
    *d = *src;
 }
 
-gl_pack_float_z_func
+mesa_pack_float_z_func
 _mesa_get_pack_float_z_func(mesa_format format)
 {
    switch (format) {
@@ -600,7 +600,7 @@ pack_uint_Z_FLOAT32(const GLuint *src, void *dst)
    assert(*d <= 1.0f);
 }
 
-gl_pack_uint_z_func
+mesa_pack_uint_z_func
 _mesa_get_pack_uint_z_func(mesa_format format)
 {
    switch (format) {
@@ -663,7 +663,7 @@ pack_ubyte_stencil_Z32_FLOAT_X24S8(const GLubyte *src, void *dst)
 }
 
 
-gl_pack_ubyte_stencil_func
+mesa_pack_ubyte_stencil_func
 _mesa_get_pack_ubyte_stencil_func(mesa_format format)
 {
    switch (format) {
