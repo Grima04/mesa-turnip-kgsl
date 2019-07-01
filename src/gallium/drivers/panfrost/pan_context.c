@@ -801,6 +801,10 @@ panfrost_upload_tex(
         bool is_zs = rsrc->base.bind & PIPE_BIND_DEPTH_STENCIL;
         unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
 
+	/* Add the BO to the job so it's retained until the job is done. */
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        panfrost_job_add_bo(job, rsrc->bo);
+
         /* Inject the addresses in, interleaving mip levels, cube faces, and
          * strides in that order */
 
