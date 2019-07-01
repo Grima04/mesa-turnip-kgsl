@@ -3886,69 +3886,11 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 		fprintf(stderr, "compile failed\n");
 	}
 
-	if (options->dump_shader)
-		fprintf(stderr, "disasm:\n%s\n", binary.disasm_string);
-
 	ac_shader_binary_read_config(&binary, &config, 0, options->supports_spill);
 
 	LLVMContextRef ctx = LLVMGetModuleContext(llvm_module);
 	LLVMDisposeModule(llvm_module);
 	LLVMContextDispose(ctx);
-
-	if (stage == MESA_SHADER_FRAGMENT) {
-		shader_info->num_input_vgprs = 0;
-		if (G_0286CC_PERSP_SAMPLE_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_PERSP_CENTER_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_PERSP_CENTROID_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_PERSP_PULL_MODEL_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 3;
-		if (G_0286CC_LINEAR_SAMPLE_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_LINEAR_CENTER_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_LINEAR_CENTROID_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 2;
-		if (G_0286CC_LINE_STIPPLE_TEX_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_X_FLOAT_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_Y_FLOAT_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_Z_FLOAT_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_W_FLOAT_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_FRONT_FACE_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_ANCILLARY_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_SAMPLE_COVERAGE_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-		if (G_0286CC_POS_FIXED_PT_ENA(config.spi_ps_input_addr))
-			shader_info->num_input_vgprs += 1;
-	}
-	config.num_vgprs = MAX2(config.num_vgprs, shader_info->num_input_vgprs);
-
-	/* +3 for scratch wave offset and VCC */
-	config.num_sgprs = MAX2(config.num_sgprs,
-	                         shader_info->num_input_sgprs + 3);
-
-	/* Enable 64-bit and 16-bit denormals, because there is no performance
-	 * cost.
-	 *
-	 * If denormals are enabled, all floating-point output modifiers are
-	 * ignored.
-	 *
-	 * Don't enable denormals for 32-bit floats, because:
-	 * - Floating-point output modifiers would be ignored by the hw.
-	 * - Some opcodes don't support denormals, such as v_mad_f32. We would
-	 *   have to stop using those.
-	 * - GFX6 & GFX7 would be very slow.
-	 */
-	config.float_mode |= V_00B028_FP_64_DENORMS;
 
 	size_t disasm_size = binary.disasm_string ? strlen(binary.disasm_string) : 0;
 	size_t llvm_ir_size = binary.llvm_ir_string ? strlen(binary.llvm_ir_string) : 0;

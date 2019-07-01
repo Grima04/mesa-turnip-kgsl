@@ -478,8 +478,65 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 {
 	bool scratch_enabled = config_in->scratch_bytes_per_wave > 0;
 	unsigned vgpr_comp_cnt = 0;
+	unsigned num_input_vgprs = info->num_input_vgprs;
+
+	if (stage == MESA_SHADER_FRAGMENT) {
+		num_input_vgprs = 0;
+		if (G_0286CC_PERSP_SAMPLE_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 2;
+		if (G_0286CC_PERSP_CENTER_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 2;
+		if (G_0286CC_PERSP_CENTROID_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 2;
+		if (G_0286CC_PERSP_PULL_MODEL_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 3;
+		if (G_0286CC_LINEAR_SAMPLE_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 2;
+		if (G_0286CC_LINEAR_CENTER_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 2;
+		if (G_0286CC_LINEAR_CENTROID_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 2;
+		if (G_0286CC_LINE_STIPPLE_TEX_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_POS_X_FLOAT_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_POS_Y_FLOAT_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_POS_Z_FLOAT_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_POS_W_FLOAT_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_FRONT_FACE_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_ANCILLARY_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_SAMPLE_COVERAGE_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+		if (G_0286CC_POS_FIXED_PT_ENA(config_in->spi_ps_input_addr))
+			num_input_vgprs += 1;
+	}
+
+	unsigned num_vgprs = MAX2(config_in->num_vgprs, num_input_vgprs);
+	/* +3 for scratch wave offset and VCC */
+	unsigned num_sgprs = MAX2(config_in->num_sgprs, info->num_input_sgprs + 3);
 
 	*config_out = *config_in;
+	config_out->num_vgprs = num_vgprs;
+	config_out->num_sgprs = num_sgprs;
+
+	/* Enable 64-bit and 16-bit denormals, because there is no performance
+	 * cost.
+	 *
+	 * If denormals are enabled, all floating-point output modifiers are
+	 * ignored.
+	 *
+	 * Don't enable denormals for 32-bit floats, because:
+	 * - Floating-point output modifiers would be ignored by the hw.
+	 * - Some opcodes don't support denormals, such as v_mad_f32. We would
+	 *   have to stop using those.
+	 * - GFX6 & GFX7 would be very slow.
+	 */
+	config_out->float_mode |= V_00B028_FP_64_DENORMS;
 
 	config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
 			    S_00B12C_USER_SGPR_MSB_GFX9(info->num_user_sgprs >> 5) |
@@ -490,10 +547,10 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			    S_00B12C_SO_BASE3_EN(!!info->info.so.strides[3]) |
 			    S_00B12C_SO_EN(!!info->info.so.num_outputs);
 
-	config_out->rsrc1 = S_00B848_VGPRS((config_in->num_vgprs - 1) / 4) |
-			    S_00B848_SGPRS((config_in->num_sgprs - 1) / 8) |
+	config_out->rsrc1 = S_00B848_VGPRS((num_vgprs - 1) / 4) |
+			    S_00B848_SGPRS((num_sgprs - 1) / 8) |
 			    S_00B848_DX10_CLAMP(1) |
-			    S_00B848_FLOAT_MODE(config_in->float_mode);
+			    S_00B848_FLOAT_MODE(config_out->float_mode);
 
 	switch (stage) {
 	case MESA_SHADER_TESS_EVAL:
@@ -806,6 +863,11 @@ shader_variant_compile(struct radv_device *device,
 		free(binary);
 		return NULL;
 	}
+
+	if (options->dump_shader) {
+		fprintf(stderr, "disasm:\n%s\n", variant->disasm_string);
+	}
+
 
 	if (device->keep_shader_info) {
 		if (!gs_copy_shader && !module->nir) {
