@@ -35,7 +35,7 @@
 /**
  * Information about texture formats.
  */
-struct gl_format_info
+struct mesa_format_info
 {
    mesa_format Name;
 
@@ -80,10 +80,10 @@ struct gl_format_info
 
 #include "format_info.h"
 
-static const struct gl_format_info *
+static const struct mesa_format_info *
 _mesa_get_format_info(mesa_format format)
 {
-   const struct gl_format_info *info = &format_info[format];
+   const struct mesa_format_info *info = &format_info[format];
    STATIC_ASSERT(ARRAY_SIZE(format_info) == MESA_FORMAT_COUNT);
    assert(info->Name == format);
    return info;
@@ -94,7 +94,7 @@ _mesa_get_format_info(mesa_format format)
 const char *
 _mesa_get_format_name(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return info->StrName;
 }
 
@@ -115,7 +115,7 @@ _mesa_get_format_bytes(mesa_format format)
              _mesa_array_format_get_num_channels(format);
    }
 
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    assert(info->BytesPerBlock);
    assert(info->BytesPerBlock <= MAX_PIXEL_BYTES ||
           _mesa_is_format_compressed(format));
@@ -131,7 +131,7 @@ _mesa_get_format_bytes(mesa_format format)
 GLint
 _mesa_get_format_bits(mesa_format format, GLenum pname)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
 
    switch (pname) {
    case GL_RED_BITS:
@@ -186,7 +186,7 @@ _mesa_get_format_bits(mesa_format format, GLenum pname)
 GLuint
 _mesa_get_format_max_bits(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    GLuint max = MAX2(info->RedBits, info->GreenBits);
    max = MAX2(max, info->BlueBits);
    max = MAX2(max, info->AlphaBits);
@@ -204,7 +204,7 @@ _mesa_get_format_max_bits(mesa_format format)
 extern enum mesa_format_layout
 _mesa_get_format_layout(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return info->Layout;
 }
 
@@ -222,7 +222,7 @@ _mesa_get_format_layout(mesa_format format)
 GLenum
 _mesa_get_format_datatype(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return info->DataType;
 }
 
@@ -302,7 +302,7 @@ GLenum
 _mesa_get_format_base_format(uint32_t format)
 {
    if (!_mesa_format_is_mesa_array_format(format)) {
-      const struct gl_format_info *info = _mesa_get_format_info(format);
+      const struct mesa_format_info *info = _mesa_get_format_info(format);
       return info->BaseFormat;
    } else {
       return get_base_format_for_array_format(format);
@@ -320,7 +320,7 @@ _mesa_get_format_base_format(uint32_t format)
 void
 _mesa_get_format_block_size(mesa_format format, GLuint *bw, GLuint *bh)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    /* Use _mesa_get_format_block_size_3d() for 3D blocks. */
    assert(info->BlockDepth == 1);
 
@@ -343,7 +343,7 @@ _mesa_get_format_block_size_3d(mesa_format format,
                                GLuint *bh,
                                GLuint *bd)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    *bw = info->BlockWidth;
    *bh = info->BlockHeight;
    *bd = info->BlockDepth;
@@ -372,7 +372,7 @@ _mesa_get_format_block_size_3d(mesa_format format,
 void
 _mesa_get_format_swizzle(mesa_format format, uint8_t swizzle_out[4])
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    memcpy(swizzle_out, info->Swizzle, sizeof(info->Swizzle));
 }
 
@@ -414,7 +414,7 @@ _mesa_array_format_flip_channels(mesa_array_format format)
 uint32_t
 _mesa_format_to_array_format(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    if (info->ArrayFormat && !_mesa_little_endian() &&
        info->Layout == MESA_FORMAT_LAYOUT_PACKED)
       return _mesa_array_format_flip_channels(info->ArrayFormat);
@@ -434,7 +434,7 @@ array_formats_equal(const void *a, const void *b)
 static void
 format_array_format_table_init(void)
 {
-   const struct gl_format_info *info;
+   const struct mesa_format_info *info;
    mesa_array_format array_format;
    unsigned f;
 
@@ -500,7 +500,7 @@ _mesa_format_from_array_format(uint32_t array_format)
 GLboolean
 _mesa_is_format_compressed(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return info->BlockWidth > 1 || info->BlockHeight > 1;
 }
 
@@ -511,7 +511,7 @@ _mesa_is_format_compressed(mesa_format format)
 GLboolean
 _mesa_is_format_packed_depth_stencil(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
 
    return info->BaseFormat == GL_DEPTH_STENCIL;
 }
@@ -523,7 +523,7 @@ _mesa_is_format_packed_depth_stencil(mesa_format format)
 GLboolean
 _mesa_is_format_integer_color(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return (info->DataType == GL_INT || info->DataType == GL_UNSIGNED_INT) &&
       info->BaseFormat != GL_DEPTH_COMPONENT &&
       info->BaseFormat != GL_DEPTH_STENCIL &&
@@ -537,7 +537,7 @@ _mesa_is_format_integer_color(mesa_format format)
 GLboolean
 _mesa_is_format_unsigned(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return _mesa_is_type_unsigned(info->DataType);
 }
 
@@ -554,7 +554,7 @@ _mesa_is_format_signed(mesa_format format)
       return GL_FALSE;
    }
    else {
-      const struct gl_format_info *info = _mesa_get_format_info(format);
+      const struct mesa_format_info *info = _mesa_get_format_info(format);
       return (info->DataType == GL_SIGNED_NORMALIZED ||
               info->DataType == GL_INT ||
               info->DataType == GL_FLOAT);
@@ -567,7 +567,7 @@ _mesa_is_format_signed(mesa_format format)
 GLboolean
 _mesa_is_format_integer(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return (info->DataType == GL_INT || info->DataType == GL_UNSIGNED_INT);
 }
 
@@ -578,7 +578,7 @@ _mesa_is_format_integer(mesa_format format)
 bool
 _mesa_is_format_color_format(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    switch (info->BaseFormat) {
    case GL_DEPTH_COMPONENT:
    case GL_STENCIL_INDEX:
@@ -597,7 +597,7 @@ _mesa_is_format_color_format(mesa_format format)
 GLenum
 _mesa_get_format_color_encoding(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return info->IsSRGBFormat ? GL_SRGB : GL_LINEAR;
 }
 
@@ -743,7 +743,7 @@ _mesa_get_uncompressed_format(mesa_format format)
 GLuint
 _mesa_format_num_components(mesa_format format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    return ((info->RedBits > 0) +
            (info->GreenBits > 0) +
            (info->BlueBits > 0) +
@@ -762,7 +762,7 @@ _mesa_format_num_components(mesa_format format)
 bool
 _mesa_format_has_color_component(mesa_format format, int component)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
 
    assert(info->BaseFormat != GL_DEPTH_COMPONENT &&
           info->BaseFormat != GL_DEPTH_STENCIL &&
@@ -792,7 +792,7 @@ GLuint
 _mesa_format_image_size(mesa_format format, GLsizei width,
                         GLsizei height, GLsizei depth)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    GLuint sz;
    /* Strictly speaking, a conditional isn't needed here */
    if (info->BlockWidth > 1 || info->BlockHeight > 1 || info->BlockDepth > 1) {
@@ -820,7 +820,7 @@ uint64_t
 _mesa_format_image_size64(mesa_format format, GLsizei width,
                           GLsizei height, GLsizei depth)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    uint64_t sz;
    /* Strictly speaking, a conditional isn't needed here */
    if (info->BlockWidth > 1 || info->BlockHeight > 1 || info->BlockDepth > 1) {
@@ -845,7 +845,7 @@ _mesa_format_image_size64(mesa_format format, GLsizei width,
 GLint
 _mesa_format_row_stride(mesa_format format, GLsizei width)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
+   const struct mesa_format_info *info = _mesa_get_format_info(format);
    /* Strictly speaking, a conditional isn't needed here */
    if (info->BlockWidth > 1 || info->BlockHeight > 1) {
       /* compressed format */
