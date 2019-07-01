@@ -44,8 +44,8 @@
 static nir_ssa_def *
 nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
 {
-   /* TODO */
-   return c_float;
+   nir_ssa_def *scaled = nir_fmul_imm(b, nir_fsat(b, c_float), 255.0);
+   return scaled;
 }
 
 void

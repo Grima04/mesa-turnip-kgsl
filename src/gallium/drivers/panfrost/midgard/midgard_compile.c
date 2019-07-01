@@ -2324,20 +2324,18 @@ emit_fragment_epilogue(compiler_context *ctx)
 static void
 emit_blend_epilogue(compiler_context *ctx)
 {
-        /* vmul.fmul.none.fulllow hr48, r0, #255 */
+        /* fmov hr48, [...], r0*/
 
         midgard_instruction scale = {
                 .type = TAG_ALU_4,
                 .unit = UNIT_VMUL,
-                .inline_constant = _mesa_float_to_half(255.0),
                 .ssa_args = {
-                        .src0 = SSA_FIXED_REGISTER(0),
-                        .src1 = SSA_UNUSED_0,
+                        .src0 = SSA_FIXED_REGISTER(24),
+                        .src1 = SSA_FIXED_REGISTER(0),
                         .dest = SSA_FIXED_REGISTER(24),
-                        .inline_constant = true
                 },
                 .alu = {
-                        .op = midgard_alu_op_fmul,
+                        .op = midgard_alu_op_fmov,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_lower,
                         .mask = 0xFF,
@@ -2348,7 +2346,7 @@ emit_blend_epilogue(compiler_context *ctx)
 
         emit_mir_instruction(ctx, scale);
 
-        /* vadd.f2u_rte.pos.low hr0, hr48, #0 */
+        /* vadd.f2u_rte qr0, hr48, #0 */
 
         midgard_vector_alu_src alu_src = blank_alu_src;
         alu_src.half = true;
@@ -2365,7 +2363,6 @@ emit_blend_epilogue(compiler_context *ctx)
                         .op = midgard_alu_op_f2u_rte,
                         .reg_mode = midgard_reg_mode_16,
                         .dest_override = midgard_dest_override_lower,
-                        .outmod = midgard_outmod_pos,
                         .mask = 0xF,
                         .src1 = vector_alu_srco_unsigned(alu_src),
                         .src2 = vector_alu_srco_unsigned(blank_alu_src),
