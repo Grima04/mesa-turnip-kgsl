@@ -81,13 +81,40 @@ panfrost_mfbd_format(struct pipe_surface *surf)
 
         /* Set flags for alternative formats */
 
+        bool float_16 =
+                surf->format == PIPE_FORMAT_R16_FLOAT;
+
+        bool float_32 =
+                surf->format == PIPE_FORMAT_R11G11B10_FLOAT ||
+                surf->format == PIPE_FORMAT_R32_FLOAT ||
+                surf->format == PIPE_FORMAT_R16G16_FLOAT;
+
+        bool float_64 =
+                surf->format == PIPE_FORMAT_R32G32_FLOAT ||
+                surf->format == PIPE_FORMAT_R16G16B16A16_FLOAT;
+
+        bool float_128 =
+                surf->format == PIPE_FORMAT_R32G32B32A32_FLOAT;
+
         if (surf->format == PIPE_FORMAT_B5G6R5_UNORM) {
                 fmt.unk1 = 0x14000000;
                 fmt.nr_channels = MALI_POSITIVE(2);
                 fmt.unk3 |= 0x1;
-        } else if (surf->format == PIPE_FORMAT_R11G11B10_FLOAT) {
+        } else if (float_32) {
                 fmt.unk1 = 0x88000000;
                 fmt.unk3 = 0x0;
+                fmt.nr_channels = MALI_POSITIVE(4);
+        } else if (float_16) {
+                fmt.unk1 = 0x84000000;
+                fmt.unk3 = 0x0;
+                fmt.nr_channels = MALI_POSITIVE(2);
+        } else if (float_64) {
+                fmt.unk1 = 0x8c000000;
+                fmt.unk3 = 0x1;
+                fmt.nr_channels = MALI_POSITIVE(2);
+        } else if (float_128) {
+                fmt.unk1 = 0x90000000;
+                fmt.unk3 = 0x1;
                 fmt.nr_channels = MALI_POSITIVE(4);
         }
 
