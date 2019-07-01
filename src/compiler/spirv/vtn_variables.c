@@ -30,6 +30,35 @@
 #include "nir_deref.h"
 #include <vulkan/vulkan_core.h>
 
+static void ptr_decoration_cb(struct vtn_builder *b,
+                              struct vtn_value *val, int member,
+                              const struct vtn_decoration *dec,
+                              void *void_ptr);
+
+struct vtn_value *
+vtn_push_value_pointer(struct vtn_builder *b, uint32_t value_id,
+                       struct vtn_pointer *ptr)
+{
+   struct vtn_value *val = vtn_push_value(b, value_id, vtn_value_type_pointer);
+   val->pointer = ptr;
+   vtn_foreach_decoration(b, val, ptr_decoration_cb, ptr);
+   return val;
+}
+
+struct vtn_value *
+vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
+             struct vtn_type *type, struct vtn_ssa_value *ssa)
+{
+   struct vtn_value *val;
+   if (type->base_type == vtn_base_type_pointer) {
+      val = vtn_push_value_pointer(b, value_id, vtn_pointer_from_ssa(b, ssa->def, type));
+   } else {
+      val = vtn_push_value(b, value_id, vtn_value_type_ssa);
+      val->ssa = ssa;
+   }
+   return val;
+}
+
 static struct vtn_access_chain *
 vtn_access_chain_create(struct vtn_builder *b, unsigned length)
 {
@@ -2460,11 +2489,10 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                                 val->sampled_image->sampler);
       } else {
          vtn_assert(base_val->value_type == vtn_value_type_pointer);
-         struct vtn_value *val =
-            vtn_push_value(b, w[2], vtn_value_type_pointer);
-         val->pointer = vtn_pointer_dereference(b, base_val->pointer, chain);
-         val->pointer->ptr_type = ptr_type;
-         vtn_foreach_decoration(b, val, ptr_decoration_cb, val->pointer);
+         struct vtn_pointer *ptr =
+            vtn_pointer_dereference(b, base_val->pointer, chain);
+         ptr->ptr_type = ptr_type;
+         vtn_push_value_pointer(b, w[2], ptr);
       }
       break;
    }
@@ -2489,7 +2517,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
       if (glsl_type_is_image(res_type->type) ||
           glsl_type_is_sampler(res_type->type)) {
-         vtn_push_value(b, w[2], vtn_value_type_pointer)->pointer = src;
+         vtn_push_value_pointer(b, w[2], src);
          return;
       }
 

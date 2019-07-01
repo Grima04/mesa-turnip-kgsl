@@ -655,6 +655,10 @@ vtn_untyped_value(struct vtn_builder *b, uint32_t value_id)
    return &b->values[value_id];
 }
 
+/* Consider not using this function directly and instead use
+ * vtn_push_ssa/vtn_push_value_pointer so that appropriate applying of
+ * decorations is handled by common code.
+ */
 static inline struct vtn_value *
 vtn_push_value(struct vtn_builder *b, uint32_t value_id,
                enum vtn_value_type value_type)
@@ -666,22 +670,8 @@ vtn_push_value(struct vtn_builder *b, uint32_t value_id,
                value_id);
 
    val->value_type = value_type;
-   return &b->values[value_id];
-}
 
-static inline struct vtn_value *
-vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
-             struct vtn_type *type, struct vtn_ssa_value *ssa)
-{
-   struct vtn_value *val;
-   if (type->base_type == vtn_base_type_pointer) {
-      val = vtn_push_value(b, value_id, vtn_value_type_pointer);
-      val->pointer = vtn_pointer_from_ssa(b, ssa->def, type);
-   } else {
-      val = vtn_push_value(b, value_id, vtn_value_type_ssa);
-      val->ssa = ssa;
-   }
-   return val;
+   return &b->values[value_id];
 }
 
 static inline struct vtn_value *
@@ -735,6 +725,13 @@ vtn_constant_int(struct vtn_builder *b, uint32_t value_id)
 }
 
 struct vtn_ssa_value *vtn_ssa_value(struct vtn_builder *b, uint32_t value_id);
+
+struct vtn_value *vtn_push_value_pointer(struct vtn_builder *b,
+                                         uint32_t value_id,
+                                         struct vtn_pointer *ptr);
+
+struct vtn_value *vtn_push_ssa(struct vtn_builder *b, uint32_t value_id,
+                               struct vtn_type *type, struct vtn_ssa_value *ssa);
 
 struct vtn_ssa_value *vtn_create_ssa_value(struct vtn_builder *b,
                                            const struct glsl_type *type);
