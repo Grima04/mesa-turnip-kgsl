@@ -308,6 +308,33 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib,
 			 * slice is the same size) it's easy to compute.
 			 */
 			surf->dcc_slice_size = AddrDccOut->dccRamSize / config->info.array_size;
+
+			/* For arrays, we have to compute the DCC info again
+			 * with one slice size to get a correct fast clear
+			 * size.
+			 */
+			if (config->info.array_size > 1) {
+				AddrDccIn->colorSurfSize = AddrSurfInfoOut->sliceSize;
+				AddrDccIn->tileMode = AddrSurfInfoOut->tileMode;
+				AddrDccIn->tileInfo = *AddrSurfInfoOut->pTileInfo;
+				AddrDccIn->tileIndex = AddrSurfInfoOut->tileIndex;
+				AddrDccIn->macroModeIndex = AddrSurfInfoOut->macroModeIndex;
+
+				ret = AddrComputeDccInfo(addrlib,
+							 AddrDccIn, AddrDccOut);
+				if (ret == ADDR_OK) {
+					/* If the DCC memory isn't properly
+					 * aligned, the data are interleaved
+					 * accross slices.
+					 */
+					if (AddrDccOut->dccRamSizeAligned)
+						surf_level->dcc_slice_fast_clear_size = AddrDccOut->dccFastClearSize;
+					else
+						surf_level->dcc_slice_fast_clear_size = 0;
+				}
+			} else {
+				surf_level->dcc_slice_fast_clear_size = surf_level->dcc_fast_clear_size;
+			}
 		}
 	}
 
