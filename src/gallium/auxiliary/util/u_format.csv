@@ -191,6 +191,10 @@ PIPE_FORMAT_DXT1_SRGBA              , s3tc, 4, 4, 1, x64 ,     ,     ,     , xyz
 PIPE_FORMAT_DXT3_SRGBA              , s3tc, 4, 4, 1, x128,     ,     ,     , xyzw, srgb
 PIPE_FORMAT_DXT5_SRGBA              , s3tc, 4, 4, 1, x128,     ,     ,     , xyzw, srgb
 
+# FXT1 compressed formats
+PIPE_FORMAT_FXT1_RGB              , fxt1, 8, 4, 1, x128,     ,     ,     , xyz1, rgb
+PIPE_FORMAT_FXT1_RGBA             , fxt1, 8, 4, 1, x128,     ,     ,     , xyzw, rgb
+
 PIPE_FORMAT_RGTC1_UNORM             , rgtc, 4, 4, 1, x64,      ,     ,     , x001, rgb
 PIPE_FORMAT_RGTC1_SNORM             , rgtc, 4, 4, 1, x64,      ,     ,     , x001, rgb
 PIPE_FORMAT_RGTC2_UNORM             , rgtc, 4, 4, 1, x128,     ,     ,     , xy01, rgb

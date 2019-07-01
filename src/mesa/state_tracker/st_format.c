@@ -638,6 +638,11 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
    case MESA_FORMAT_ATC_RGBA_INTERPOLATED:
       return PIPE_FORMAT_ATC_RGBA_INTERPOLATED;
 
+   case MESA_FORMAT_RGB_FXT1:
+      return PIPE_FORMAT_FXT1_RGB;
+   case MESA_FORMAT_RGBA_FXT1:
+      return PIPE_FORMAT_FXT1_RGBA;
+
    default:
       if (0) {
          debug_printf("%s(mesa_format=%s) -> NONE\n",
@@ -1163,6 +1168,11 @@ st_pipe_format_to_mesa_format(enum pipe_format format)
       return MESA_FORMAT_ATC_RGBA_EXPLICIT;
    case PIPE_FORMAT_ATC_RGBA_INTERPOLATED:
       return MESA_FORMAT_ATC_RGBA_INTERPOLATED;
+
+   case PIPE_FORMAT_FXT1_RGB:
+      return MESA_FORMAT_RGB_FXT1;
+   case PIPE_FORMAT_FXT1_RGBA:
+      return MESA_FORMAT_RGBA_FXT1;
 
    default:
       return MESA_FORMAT_NONE;
