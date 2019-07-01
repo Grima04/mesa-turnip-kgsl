@@ -84,29 +84,9 @@ struct ac_shader_config {
 	unsigned rsrc2;
 };
 
-/*
- * Parse the elf binary stored in \p elf_data and create a
- * ac_shader_binary object.
- */
-bool ac_elf_read(const char *elf_data, unsigned elf_size,
-		 struct ac_shader_binary *binary);
-
-/**
- * @returns A pointer to the start of the configuration information for
- * the function starting at \p symbol_offset of the binary.
- */
-const unsigned char *ac_shader_binary_config_start(
-	const struct ac_shader_binary *binary,
-	uint64_t symbol_offset);
-
 void ac_parse_shader_binary_config(const char *data, size_t nbytes,
 				   bool really_needs_scratch,
 				   struct ac_shader_config *conf);
-void ac_shader_binary_read_config(struct ac_shader_binary *binary,
-				  struct ac_shader_config *conf,
-				  unsigned symbol_offset,
-				  bool supports_spill);
-void ac_shader_binary_clean(struct ac_shader_binary *b);
 
 #ifdef __cplusplus
 }
