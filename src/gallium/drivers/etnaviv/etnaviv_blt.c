@@ -70,8 +70,8 @@ blt_compute_img_config_bits(const struct blt_imginfo *img, bool for_dest)
 
    return BLT_IMAGE_CONFIG_TS_MODE(img->ts_mode) |
           COND(img->use_ts, BLT_IMAGE_CONFIG_TS) |
-          COND(img->compressed, BLT_IMAGE_CONFIG_COMPRESSION) |
-          BLT_IMAGE_CONFIG_COMPRESSION_FORMAT(img->compress_fmt) |
+          COND(img->use_ts && img->ts_compress_fmt >= 0, BLT_IMAGE_CONFIG_COMPRESSION) |
+          BLT_IMAGE_CONFIG_COMPRESSION_FORMAT(img->ts_compress_fmt) |
           COND(for_dest, BLT_IMAGE_CONFIG_UNK22) |
           BLT_IMAGE_CONFIG_SWIZ_R(0) | /* not used? */
           BLT_IMAGE_CONFIG_SWIZ_G(1) |
@@ -211,10 +211,6 @@ etna_blit_clear_color_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    clr.dest.addr.flags = ETNA_RELOC_WRITE;
    clr.dest.bpp = util_format_get_blocksize(surf->base.format);
    clr.dest.stride = surf->surf.stride;
-   /* TODO: color compression
-   clr.dest.compressed = 1;
-   clr.dest.compress_fmt = 3;
-   */
    clr.dest.tiling = res->layout;
 
    if (surf->surf.ts_size) {
@@ -225,6 +221,7 @@ etna_blit_clear_color_blt(struct pipe_context *pctx, struct pipe_surface *dst,
       clr.dest.ts_clear_value[0] = new_clear_value;
       clr.dest.ts_clear_value[1] = new_clear_value;
       clr.dest.ts_mode = surf->level->ts_mode;
+      clr.dest.ts_compress_fmt = surf->level->ts_compress_fmt;
    }
 
    clr.clear_value[0] = new_clear_value;
@@ -287,10 +284,6 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    clr.dest.addr.flags = ETNA_RELOC_WRITE;
    clr.dest.bpp = util_format_get_blocksize(surf->base.format);
    clr.dest.stride = surf->surf.stride;
-#if 0 /* TODO depth compression */
-   clr.dest.compressed = 1;
-   clr.dest.compress_fmt = COLOR_COMPRESSION_FORMAT_D24S8;
-#endif
    clr.dest.tiling = res->layout;
 
    if (surf->surf.ts_size) {
@@ -301,6 +294,7 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
       clr.dest.ts_clear_value[0] = new_clear_value;
       clr.dest.ts_clear_value[1] = new_clear_value;
       clr.dest.ts_mode = surf->level->ts_mode;
+      clr.dest.ts_compress_fmt = surf->level->ts_compress_fmt;
    }
 
    clr.clear_value[0] = new_clear_value;
@@ -418,12 +412,19 @@ etna_try_blt_blit(struct pipe_context *pctx,
    struct etna_resource_level *src_lev = &src->levels[blit_info->src.level];
    struct etna_resource_level *dst_lev = &dst->levels[blit_info->dst.level];
 
-   /* Kick off BLT here */
+   /* if we asked for in-place resolve, return immediately if ts isn't valid
+    * do this check separately because it applies when compression is used, but
+    * we can't use inplace resolve path with compression
+    */
    if (src == dst) {
-      /* Resolve-in-place */
       assert(!memcmp(&blit_info->src, &blit_info->dst, sizeof(blit_info->src)));
       if (!src_lev->ts_size || !src_lev->ts_valid) /* No TS, no worries */
          return true;
+   }
+
+   /* Kick off BLT here */
+   if (src == dst && src_lev->ts_compress_fmt < 0) {
+      /* Resolve-in-place */
       struct blt_inplace_op op = {};
 
       op.addr.bo = src->bo;
@@ -464,6 +465,7 @@ etna_try_blt_blit(struct pipe_context *pctx,
          op.src.ts_clear_value[0] = src_lev->clear_value;
          op.src.ts_clear_value[1] = src_lev->clear_value;
          op.src.ts_mode = src_lev->ts_mode;
+         op.src.ts_compress_fmt = src_lev->ts_compress_fmt;
       }
 
       op.dest.addr.bo = dst->bo;
@@ -471,10 +473,6 @@ etna_try_blt_blit(struct pipe_context *pctx,
       op.dest.addr.flags = ETNA_RELOC_WRITE;
       op.dest.format = translate_blt_format(dst_format);
       op.dest.stride = dst_lev->stride;
-      /* TODO color compression
-      op.dest.compressed = 1;
-      op.dest.compress_fmt = 3;
-      */
       op.dest.tiling = dst->layout;
       const struct util_format_description *dst_format_desc =
          util_format_description(dst_format);

@@ -145,7 +145,8 @@ etna_compile_rs_state(struct etna_context *ctx, struct compiled_rs_state *cs,
          rs->source_stride == rs->dest_stride &&
          !rs->downsample_x && !rs->downsample_y &&
          !rs->swap_rb && !rs->flip &&
-         !rs->clear_mode && rs->source_padded_width) {
+         !rs->clear_mode && rs->source_padded_width &&
+         !rs->source_ts_compressed) {
       /* Total number of tiles (same as for autodisable) */
       cs->RS_KICKER_INPLACE = rs->tile_count;
    }
@@ -545,7 +546,6 @@ etna_try_rs_blit(struct pipe_context *pctx,
    struct etna_resource *src = etna_resource(blit_info->src.resource);
    struct etna_resource *dst = etna_resource(blit_info->dst.resource);
    struct compiled_rs_state copy_to_screen;
-   uint32_t ts_mem_config = 0;
    int msaa_xscale = 1, msaa_yscale = 1;
 
    /* Ensure that the level is valid */
@@ -661,13 +661,6 @@ etna_try_rs_blit(struct pipe_context *pctx,
        width & (w_align - 1) || height & (h_align - 1))
       goto manual;
 
-   if (src->base.nr_samples > 1) {
-      uint32_t ts_format = translate_ts_format(src_format);
-      assert(ts_format != ETNA_NO_MATCH);
-      ts_mem_config |= VIVS_TS_MEM_CONFIG_COLOR_COMPRESSION |
-                       VIVS_TS_MEM_CONFIG_COLOR_COMPRESSION_FORMAT(ts_format);
-   }
-
    /* Always flush color and depth cache together before resolving. This works
     * around artifacts that appear in some cases when scanning out a texture
     * directly after it has been rendered to, such as rendering an animated web
@@ -683,18 +676,22 @@ etna_try_rs_blit(struct pipe_context *pctx,
 		     VIVS_GL_FLUSH_CACHE_COLOR | VIVS_GL_FLUSH_CACHE_DEPTH);
       etna_stall(ctx->stream, SYNC_RECIPIENT_RA, SYNC_RECIPIENT_PE);
 
-      if (src->levels[blit_info->src.level].ts_size &&
-          src->levels[blit_info->src.level].ts_valid)
+      if (src_lev->ts_size && src_lev->ts_valid)
          etna_set_state(ctx->stream, VIVS_TS_FLUSH_CACHE, VIVS_TS_FLUSH_CACHE_FLUSH);
    }
 
    /* Set up color TS to source surface before blit, if needed */
    bool source_ts_valid = false;
-   if (src->levels[blit_info->src.level].ts_size &&
-       src->levels[blit_info->src.level].ts_valid) {
+   if (src_lev->ts_size && src_lev->ts_valid) {
       struct etna_reloc reloc;
       unsigned ts_offset =
          src_lev->ts_offset + blit_info->src.box.z * src_lev->ts_layer_stride;
+      uint32_t ts_mem_config = 0;
+
+      if (src_lev->ts_compress_fmt >= 0) {
+         ts_mem_config |= VIVS_TS_MEM_CONFIG_COLOR_COMPRESSION |
+                          VIVS_TS_MEM_CONFIG_COLOR_COMPRESSION_FORMAT(src_lev->ts_compress_fmt);
+      }
 
       etna_set_state(ctx->stream, VIVS_TS_MEM_CONFIG,
                      VIVS_TS_MEM_CONFIG_COLOR_FAST_CLEAR | ts_mem_config);
@@ -712,12 +709,11 @@ etna_try_rs_blit(struct pipe_context *pctx,
       reloc.flags = ETNA_RELOC_READ;
       etna_set_state_reloc(ctx->stream, VIVS_TS_COLOR_SURFACE_BASE, &reloc);
 
-      etna_set_state(ctx->stream, VIVS_TS_COLOR_CLEAR_VALUE,
-                     src->levels[blit_info->src.level].clear_value);
+      etna_set_state(ctx->stream, VIVS_TS_COLOR_CLEAR_VALUE, src_lev->clear_value);
 
       source_ts_valid = true;
    } else {
-      etna_set_state(ctx->stream, VIVS_TS_MEM_CONFIG, ts_mem_config);
+      etna_set_state(ctx->stream, VIVS_TS_MEM_CONFIG, 0);
    }
    ctx->dirty |= ETNA_DIRTY_TS;
 
@@ -731,6 +727,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
       .source_padded_width = src_lev->padded_width,
       .source_padded_height = src_lev->padded_height,
       .source_ts_valid = source_ts_valid,
+      .source_ts_compressed = src_lev->ts_compress_fmt >= 0,
       .dest_format = translate_rs_format(dst_format),
       .dest_tiling = dst->layout,
       .dest = dst->bo,
@@ -751,7 +748,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
    resource_read(ctx, &src->base);
    resource_written(ctx, &dst->base);
    dst->seqno++;
-   dst->levels[blit_info->dst.level].ts_valid = false;
+   dst_lev->ts_valid = false;
    ctx->dirty |= ETNA_DIRTY_DERIVE_TS;
 
    return true;

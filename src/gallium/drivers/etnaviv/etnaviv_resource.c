@@ -87,10 +87,24 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
    size_t rt_ts_size, ts_layer_stride;
    size_t ts_bits_per_tile, bytes_per_tile;
    uint8_t ts_mode = TS_MODE_128B; /* only used by halti5 */
+   int8_t ts_compress_fmt;
 
    assert(!rsc->ts_bo);
 
+   /* pre-v4 compression is largely useless, so disable it when not wanted for MSAA
+    * v4 compression can be enabled everywhere without any known drawback,
+    * except that in-place resolve must go through a slower path
+    */
+   ts_compress_fmt = (screen->specs.v4_compression || rsc->base.nr_samples > 1) ?
+                      translate_ts_format(rsc->base.format) : -1;
+
    if (screen->specs.halti >= 5) {
+      /* enable 256B ts mode with compression, as it improves performance
+       * the size of the resource might also determine if we want to use it or not
+       */
+      if (ts_compress_fmt >= 0)
+         ts_mode = TS_MODE_256B;
+
       ts_bits_per_tile = 4;
       bytes_per_tile = ts_mode == TS_MODE_256B ? 256 : 128;
    } else {
@@ -121,6 +135,7 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
    rsc->levels[0].ts_layer_stride = ts_layer_stride;
    rsc->levels[0].ts_size = rt_ts_size;
    rsc->levels[0].ts_mode = ts_mode;
+   rsc->levels[0].ts_compress_fmt = ts_compress_fmt;
 
    return true;
 }
