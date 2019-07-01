@@ -3842,9 +3842,9 @@ static void ac_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 	LLVMDisposeMessage(description);
 }
 
-static unsigned ac_llvm_compile(LLVMModuleRef M,
-                                struct ac_shader_binary *binary,
-                                struct ac_llvm_compiler *ac_llvm)
+static unsigned radv_llvm_compile(LLVMModuleRef M,
+                                  char **pelf_buffer, size_t *pelf_size,
+                                  struct ac_llvm_compiler *ac_llvm)
 {
 	unsigned retval = 0;
 	LLVMContextRef llvm_ctx;
@@ -3856,7 +3856,7 @@ static unsigned ac_llvm_compile(LLVMModuleRef M,
 	                                &retval);
 
 	/* Compile IR*/
-	if (!radv_compile_to_binary(ac_llvm, M, binary))
+	if (!radv_compile_to_elf(ac_llvm, M, pelf_buffer, pelf_size))
 		retval = 1;
 	return retval;
 }
@@ -3868,57 +3868,43 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 				   gl_shader_stage stage,
 				   const struct radv_nir_compiler_options *options)
 {
-	struct ac_shader_binary binary;
-	struct ac_shader_config config;
+	char *elf_buffer = NULL;
+	size_t elf_size = 0;
+	char *llvm_ir_string = NULL;
 	if (options->dump_shader)
 		ac_dump_module(llvm_module);
 
-	memset(&binary, 0, sizeof(binary));
-
 	if (options->record_llvm_ir) {
 		char *llvm_ir = LLVMPrintModuleToString(llvm_module);
-		binary.llvm_ir_string = strdup(llvm_ir);
+		llvm_ir_string = strdup(llvm_ir);
 		LLVMDisposeMessage(llvm_ir);
 	}
 
-	int v = ac_llvm_compile(llvm_module, &binary, ac_llvm);
+	int v = radv_llvm_compile(llvm_module, &elf_buffer, &elf_size, ac_llvm);
 	if (v) {
 		fprintf(stderr, "compile failed\n");
 	}
-
-	ac_shader_binary_read_config(&binary, &config, 0, options->supports_spill);
 
 	LLVMContextRef ctx = LLVMGetModuleContext(llvm_module);
 	LLVMDisposeModule(llvm_module);
 	LLVMContextDispose(ctx);
 
-	size_t disasm_size = binary.disasm_string ? strlen(binary.disasm_string) : 0;
-	size_t llvm_ir_size = binary.llvm_ir_string ? strlen(binary.llvm_ir_string) : 0;
-	size_t alloc_size = sizeof(struct radv_shader_binary_legacy) + binary.code_size +
-		disasm_size + llvm_ir_size + 2;
-	struct radv_shader_binary_legacy *lbin = calloc(1, alloc_size);
-	memcpy(lbin->data, binary.code, binary.code_size);
-	if (binary.llvm_ir_string)
-		memcpy(lbin->data + binary.code_size, binary.llvm_ir_string, llvm_ir_size + 1);
-	if (binary.disasm_string)
-		memcpy(lbin->data + binary.code_size + llvm_ir_size + 1, binary.disasm_string, disasm_size + 1);
+	size_t llvm_ir_size = llvm_ir_string ? strlen(llvm_ir_string) : 0;
+	size_t alloc_size = sizeof(struct radv_shader_binary_rtld) + elf_size + llvm_ir_size + 1;
+	struct radv_shader_binary_rtld *rbin = calloc(1, alloc_size);
+	memcpy(rbin->data,  elf_buffer, elf_size);
+	if (llvm_ir_string)
+		memcpy(rbin->data + elf_size, llvm_ir_string, llvm_ir_size + 1);
 
-	lbin->base.type = RADV_BINARY_TYPE_LEGACY;
-	lbin->base.stage = stage;
-	lbin->base.total_size = alloc_size;
-	lbin->config = config;
-	lbin->code_size = binary.code_size;
-	lbin->llvm_ir_size = llvm_ir_size;
-	lbin->disasm_size = disasm_size;
-	*rbinary = &lbin->base;
+	rbin->base.type = RADV_BINARY_TYPE_RTLD;
+	rbin->base.stage = stage;
+	rbin->base.total_size = alloc_size;
+	rbin->elf_size = elf_size;
+	rbin->llvm_ir_size = llvm_ir_size;
+	*rbinary = &rbin->base;
 
-	free(binary.code);
-	free(binary.config);
-	free(binary.rodata);
-	free(binary.global_symbol_offsets);
-	free(binary.relocs);
-	free(binary.disasm_string);
-	free(binary.llvm_ir_string);
+	free(llvm_ir_string);
+	free(elf_buffer);
 }
 
 static void
