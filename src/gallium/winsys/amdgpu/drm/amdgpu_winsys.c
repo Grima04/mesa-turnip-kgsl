@@ -125,7 +125,7 @@ static void do_winsys_deinit(struct amdgpu_winsys *ws)
 
 static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
 {
-   struct amdgpu_winsys *ws = (struct amdgpu_winsys*)rws;
+   struct amdgpu_winsys *ws = amdgpu_winsys(rws);
 
    if (ws->reserve_vmid)
       amdgpu_vm_unreserve_vmid(ws->dev, 0);
@@ -149,7 +149,7 @@ static void amdgpu_winsys_destroy(struct radeon_winsys *rws)
 static void amdgpu_winsys_query_info(struct radeon_winsys *rws,
                                      struct radeon_info *info)
 {
-   *info = ((struct amdgpu_winsys *)rws)->info;
+   *info = amdgpu_winsys(rws)->info;
 }
 
 static bool amdgpu_cs_request_feature(struct radeon_cmdbuf *rcs,
@@ -162,7 +162,7 @@ static bool amdgpu_cs_request_feature(struct radeon_cmdbuf *rcs,
 static uint64_t amdgpu_query_value(struct radeon_winsys *rws,
                                    enum radeon_value_id value)
 {
-   struct amdgpu_winsys *ws = (struct amdgpu_winsys*)rws;
+   struct amdgpu_winsys *ws = amdgpu_winsys(rws);
    struct amdgpu_heap_info heap;
    uint64_t retval = 0;
 
@@ -228,7 +228,7 @@ static bool amdgpu_read_registers(struct radeon_winsys *rws,
                                   unsigned reg_offset,
                                   unsigned num_registers, uint32_t *out)
 {
-   struct amdgpu_winsys *ws = (struct amdgpu_winsys*)rws;
+   struct amdgpu_winsys *ws = amdgpu_winsys(rws);
 
    return amdgpu_read_mm_registers(ws->dev, reg_offset / 4, num_registers,
                                    0xffffffff, 0, out) == 0;
@@ -246,7 +246,7 @@ static int compare_pointers(void *key1, void *key2)
 
 static bool amdgpu_winsys_unref(struct radeon_winsys *rws)
 {
-   struct amdgpu_winsys *ws = (struct amdgpu_winsys*)rws;
+   struct amdgpu_winsys *ws = amdgpu_winsys(rws);
    bool destroy;
 
    /* When the reference counter drops to zero, remove the device pointer
@@ -272,7 +272,7 @@ static bool amdgpu_winsys_unref(struct radeon_winsys *rws)
 static void amdgpu_pin_threads_to_L3_cache(struct radeon_winsys *rws,
                                            unsigned cache)
 {
-   struct amdgpu_winsys *ws = (struct amdgpu_winsys*)rws;
+   struct amdgpu_winsys *ws = amdgpu_winsys(rws);
 
    util_pin_thread_to_L3(ws->cs_queue.threads[0], cache,
                          util_cpu_caps.cores_per_L3);

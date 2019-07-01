@@ -743,7 +743,7 @@ static unsigned amdgpu_ib_max_submit_dwords(enum ib_type ib_type)
 static bool amdgpu_get_new_ib(struct radeon_winsys *ws, struct amdgpu_cs *cs,
                               enum ib_type ib_type)
 {
-   struct amdgpu_winsys *aws = (struct amdgpu_winsys*)ws;
+   struct amdgpu_winsys *aws = amdgpu_winsys(ws);
    /* Small IBs are better than big IBs, because the GPU goes idle quicker
     * and there is less waiting for buffers and fences. Proof:
     *   http://www.phoronix.com/scan.php?page=article&item=mesa-111-si&num=1
