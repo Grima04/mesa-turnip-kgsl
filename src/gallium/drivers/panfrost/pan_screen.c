@@ -460,48 +460,18 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (format == PIPE_FORMAT_A1B5G5R5_UNORM || format == PIPE_FORMAT_X1B5G5R5_UNORM)
                 return FALSE;
 
-        /* Allow through special formats */
+        /* TODO */
+        if (format == PIPE_FORMAT_B5G5R5A1_UNORM)
+                return FALSE;
 
-        switch (format) {
-                case PIPE_FORMAT_R11G11B10_FLOAT:
-                case PIPE_FORMAT_B5G6R5_UNORM:
-                        return TRUE;
-                default:
-                        break;
-        }
+        /* Don't confuse poorly written apps (workaround dEQP bug) that expect
+         * more alpha than they ask for */
+        bool scanout = bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED | PIPE_BIND_DISPLAY_TARGET);
+        if (scanout && !util_format_is_rgba8_variant(format_desc))
+                return FALSE;
 
-        if (bind & PIPE_BIND_RENDER_TARGET) {
-                if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS)
-                        return FALSE;
-
-                /* Check for vaguely 8UNORM formats. Looser than
-                 * util_format_is_rgba8_variant, since it permits R8 (for
-                 * instance) */
-
-                for (unsigned chan = 0; chan < 4; ++chan) {
-                        enum util_format_type t = format_desc->channel[chan].type;
-                        if (t == UTIL_FORMAT_TYPE_VOID) continue;
-                        if (t != UTIL_FORMAT_TYPE_UNSIGNED) return FALSE;
-                        if (!format_desc->channel[chan].normalized) return FALSE;
-                        if (format_desc->channel[chan].size != 8) return FALSE;
-                }
-
-                /*
-                 * Although possible, it is unnatural to render into compressed or YUV
-                 * surfaces. So disable these here to avoid going into weird paths
-                 * inside the state trackers.
-                 */
-                if (format_desc->block.width != 1 ||
-                                format_desc->block.height != 1)
-                        return FALSE;
-        }
-
-        if (bind & PIPE_BIND_DEPTH_STENCIL) {
-                if (format_desc->colorspace != UTIL_FORMAT_COLORSPACE_ZS)
-                        return FALSE;
-        }
-
-        if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN) {
+        if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
+                        format_desc->layout != UTIL_FORMAT_LAYOUT_OTHER) {
                 /* Compressed formats not yet hooked up. */
                 return FALSE;
         }
