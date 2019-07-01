@@ -132,8 +132,6 @@ get_tex_depth_stencil(struct gl_context *ctx, GLuint dimensions,
    GLint img, row;
 
    assert(format == GL_DEPTH_STENCIL);
-   assert(type == GL_UNSIGNED_INT_24_8 ||
-          type == GL_FLOAT_32_UNSIGNED_INT_24_8_REV);
 
    for (img = 0; img < depth; img++) {
       GLubyte *srcMap;
@@ -150,10 +148,19 @@ get_tex_depth_stencil(struct gl_context *ctx, GLuint dimensions,
             void *dest = _mesa_image_address(dimensions, &ctx->Pack, pixels,
                                              width, height, format, type,
                                              img, row, 0);
-            _mesa_unpack_depth_stencil_row(texImage->TexFormat,
-                                           width,
-                                           (const GLuint *) src,
-                                           type, dest);
+            switch (type) {
+            case GL_UNSIGNED_INT_24_8:
+               _mesa_unpack_uint_24_8_depth_stencil_row(texImage->TexFormat,
+                                                        width, src, dest);
+               break;
+            case GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
+               _mesa_unpack_float_32_uint_24_8_depth_stencil_row(texImage->TexFormat,
+                                                                 width,
+                                                                 src, dest);
+               break;
+            default:
+               unreachable("bad type in get_tex_depth_stencil()");
+            }
             if (ctx->Pack.SwapBytes) {
                _mesa_swap4((GLuint *) dest, width);
             }

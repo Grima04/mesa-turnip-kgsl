@@ -67,8 +67,5 @@ _mesa_unpack_float_32_uint_24_8_depth_stencil_row(mesa_format format,
                                                   uint32_t n,
                                                   const void *src,
                                                   uint32_t *dst);
-void
-_mesa_unpack_depth_stencil_row(mesa_format format, uint32_t n,
-                              const void *src, GLenum type,
-                              uint32_t *dst);
+
 #endif /* FORMAT_UNPACK_H */

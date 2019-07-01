@@ -844,30 +844,6 @@ _mesa_unpack_float_32_uint_24_8_depth_stencil_row(mesa_format format, uint32_t n
    }
 }
 
-/**
- * Unpack depth/stencil
- * \param format  the source data format
- * \param type the destination data type
- */
-void
-_mesa_unpack_depth_stencil_row(mesa_format format, uint32_t n,
-	                       const void *src, GLenum type,
-                               uint32_t *dst)
-{
-   assert(type == GL_UNSIGNED_INT_24_8 ||
-          type == GL_FLOAT_32_UNSIGNED_INT_24_8_REV);
-
-   switch (type) {
-   case GL_UNSIGNED_INT_24_8:
-      _mesa_unpack_uint_24_8_depth_stencil_row(format, n, src, dst);
-      break;
-   case GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
-      _mesa_unpack_float_32_uint_24_8_depth_stencil_row(format, n, src, dst);
-      break;
-   default:
-      unreachable("bad type 0x%x in _mesa_unpack_depth_stencil_row");
-   }
-}
 """
 
 template = Template(string, future_imports=['division']);
