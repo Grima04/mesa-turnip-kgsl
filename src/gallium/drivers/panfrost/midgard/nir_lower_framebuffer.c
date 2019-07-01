@@ -44,8 +44,20 @@
 static nir_ssa_def *
 nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
 {
+   /* First, we scale from [0, 1] to [0, 255.0] */
    nir_ssa_def *scaled = nir_fmul_imm(b, nir_fsat(b, c_float), 255.0);
-   return scaled;
+
+   /* Next, we type convert */
+   nir_ssa_def *converted = nir_u2u8(b, nir_f2u32(b,
+            nir_fround_even(b, scaled)));
+
+   return converted;
+}
+
+static nir_ssa_def *
+nir_native_to_float(nir_builder *b, nir_ssa_def *c_native)
+{
+   return c_native;
 }
 
 void
@@ -87,11 +99,43 @@ nir_lower_framebuffer(nir_shader *shader)
                /* Format convert */
                nir_ssa_def *converted = nir_float_to_native(&b, c_nir);
 
-               /* Write out the converted color instead of the input */
-               nir_instr_rewrite_src(instr, &intr->src[1],
-               nir_src_for_ssa(converted));
+               /* Rewrite to use a native store by creating a new intrinsic */
+               nir_intrinsic_instr *new =
+                  nir_intrinsic_instr_create(shader, nir_intrinsic_store_raw_output_pan);
+               new->src[0] = nir_src_for_ssa(converted);
+
+               /* TODO: What about non-RGBA? Is that different? */
+               new->num_components = 4;
+
+               nir_builder_instr_insert(&b, &new->instr);
+
+               /* (And finally removing the old) */
+               nir_instr_remove(instr);
             } else {
-               /* TODO loads */
+               /* For loads, add conversion after */
+               b.cursor = nir_after_instr(instr);
+
+               /* Rewrite to use a native load by creating a new intrinsic */
+
+               nir_intrinsic_instr *new =
+                  nir_intrinsic_instr_create(shader, nir_intrinsic_load_raw_output_pan);
+
+               new->num_components = 4;
+
+               unsigned bitsize = 32;
+               nir_ssa_dest_init(&new->instr, &new->dest, 4, bitsize, NULL);
+               nir_builder_instr_insert(&b, &new->instr);
+
+               /* Convert the raw value */
+               nir_ssa_def *raw = &new->dest.ssa;
+               nir_ssa_def *converted = nir_native_to_float(&b, raw);
+
+               /* Rewrite to use the converted value */
+               nir_src rewritten = nir_src_for_ssa(converted);
+               nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, instr);
+
+               /* Finally, remove the old load */
+               nir_instr_remove(instr);
             }
          }
       }

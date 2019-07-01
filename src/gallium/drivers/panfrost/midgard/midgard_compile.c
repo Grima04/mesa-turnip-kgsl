@@ -1380,18 +1380,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
        }
 
-        case nir_intrinsic_load_output:
-                assert(nir_src_is_const(instr->src[0]));
+        /* Reads off the tilebuffer during blending, tasty */
+        case nir_intrinsic_load_raw_output_pan:
                 reg = nir_dest_index(ctx, &instr->dest);
-
-                if (ctx->is_blend) {
-                        /* TODO: MRT */
-                        emit_fb_read_blend_scalar(ctx, reg);
-                } else {
-                        DBG("Unknown output load\n");
-                        assert(0);
-                }
-
+                assert(ctx->is_blend);
+                emit_fb_read_blend_scalar(ctx, reg);
                 break;
 
         case nir_intrinsic_load_blend_const_color_rgba: {
@@ -1456,6 +1449,17 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         DBG("Unknown store\n");
                         assert(0);
                 }
+
+                break;
+
+        /* Special case of store_output for lowered blend shaders */
+        case nir_intrinsic_store_raw_output_pan:
+                assert (ctx->stage == MESA_SHADER_FRAGMENT);
+                reg = nir_src_index(ctx, &instr->src[0]);
+
+                midgard_instruction move = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
+                emit_mir_instruction(ctx, move);
+                ctx->fragment_output = reg;
 
                 break;
 
@@ -2364,64 +2368,6 @@ emit_fragment_epilogue(compiler_context *ctx)
         EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, -1, midgard_condition_always);
 }
 
-/* For the blend epilogue, we need to convert the blended fragment vec4 (stored
- * in r0) to a RGBA8888 value by scaling and type converting. We then output it
- * with the int8 analogue to the fragment epilogue */
-
-static void
-emit_blend_epilogue(compiler_context *ctx)
-{
-        /* fmov hr48, [...], r0*/
-
-        midgard_instruction scale = {
-                .type = TAG_ALU_4,
-                .unit = UNIT_VMUL,
-                .ssa_args = {
-                        .src0 = SSA_FIXED_REGISTER(24),
-                        .src1 = SSA_FIXED_REGISTER(0),
-                        .dest = SSA_FIXED_REGISTER(24),
-                },
-                .alu = {
-                        .op = midgard_alu_op_fmov,
-                        .reg_mode = midgard_reg_mode_32,
-                        .dest_override = midgard_dest_override_lower,
-                        .mask = 0xFF,
-                        .src1 = vector_alu_srco_unsigned(blank_alu_src),
-                        .src2 = vector_alu_srco_unsigned(blank_alu_src),
-                }
-        };
-
-        emit_mir_instruction(ctx, scale);
-
-        /* vadd.f2u_rte qr0, hr48, #0 */
-
-        midgard_vector_alu_src alu_src = blank_alu_src;
-        alu_src.half = true;
-
-        midgard_instruction f2u_rte = {
-                .type = TAG_ALU_4,
-                .ssa_args = {
-                        .src0 = SSA_FIXED_REGISTER(24),
-                        .src1 = SSA_UNUSED_0,
-                        .dest = SSA_FIXED_REGISTER(0),
-                        .inline_constant = true
-                },
-                .alu = {
-                        .op = midgard_alu_op_f2u_rte,
-                        .reg_mode = midgard_reg_mode_16,
-                        .dest_override = midgard_dest_override_lower,
-                        .mask = 0xF,
-                        .src1 = vector_alu_srco_unsigned(alu_src),
-                        .src2 = vector_alu_srco_unsigned(blank_alu_src),
-                }
-        };
-
-        emit_mir_instruction(ctx, f2u_rte);
-
-        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, 0, midgard_condition_always);
-        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, -1, midgard_condition_always);
-}
-
 static midgard_block *
 emit_block(compiler_context *ctx, nir_block *block)
 {
@@ -2458,10 +2404,7 @@ emit_block(compiler_context *ctx, nir_block *block)
         /* Append fragment shader epilogue (value writeout) */
         if (ctx->stage == MESA_SHADER_FRAGMENT) {
                 if (block == nir_impl_last_block(ctx->func->impl)) {
-                        if (ctx->is_blend)
-                                emit_blend_epilogue(ctx);
-                        else
-                                emit_fragment_epilogue(ctx);
+                        emit_fragment_epilogue(ctx);
                 }
         }
 
