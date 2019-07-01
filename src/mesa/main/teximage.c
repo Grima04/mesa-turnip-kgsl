@@ -2416,13 +2416,9 @@ copytexture_error_check( struct gl_context *ctx, GLuint dimensions,
    }
 
    if (_mesa_is_gles3(ctx)) {
-      bool rb_is_srgb = false;
+      bool rb_is_srgb = (ctx->Extensions.EXT_sRGB &&
+                         _mesa_is_format_srgb(rb->Format));
       bool dst_is_srgb = false;
-
-      if (ctx->Extensions.EXT_sRGB &&
-          _mesa_get_format_color_encoding(rb->Format) == GL_SRGB) {
-         rb_is_srgb = true;
-      }
 
       if (_mesa_get_linear_internalformat(internalFormat) != internalFormat) {
          dst_is_srgb = true;

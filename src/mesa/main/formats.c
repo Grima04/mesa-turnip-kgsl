@@ -590,18 +590,12 @@ _mesa_is_format_color_format(mesa_format format)
    }
 }
 
-
-/**
- * Return color encoding for given format.
- * \return GL_LINEAR or GL_SRGB
- */
-GLenum
-_mesa_get_format_color_encoding(mesa_format format)
+bool
+_mesa_is_format_srgb(mesa_format format)
 {
    const struct mesa_format_info *info = _mesa_get_format_info(format);
-   return info->IsSRGBFormat ? GL_SRGB : GL_LINEAR;
+   return info->IsSRGBFormat;
 }
-
 
 /**
  * Return TRUE if format is an ETC2 compressed format specified
