@@ -35,7 +35,6 @@
 extern "C" {
 #endif
 
-struct ac_shader_binary;
 struct ac_compiler_passes;
 
 enum ac_func_attr {
