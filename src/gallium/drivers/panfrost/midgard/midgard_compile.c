@@ -111,7 +111,8 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
  * the corresponding Midgard source */
 
 static midgard_vector_alu_src
-vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count)
+vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
+                bool half, bool sext)
 {
         if (!src) return blank_alu_src;
 
@@ -131,13 +132,20 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count)
         midgard_vector_alu_src alu_src = {
                 .rep_low = 0,
                 .rep_high = 0,
-                .half = 0, /* TODO */
+                .half = half,
                 .swizzle = SWIZZLE_FROM_ARRAY(src->swizzle)
         };
 
         if (is_int) {
-                /* TODO: sign-extend/zero-extend */
                 alu_src.mod = midgard_int_normal;
+
+                /* Sign/zero-extend if needed */
+
+                if (half) {
+                        alu_src.mod = sext ?
+                                  midgard_int_sign_extend
+                                : midgard_int_zero_extend;
+                }
 
                 /* These should have been lowered away */
                 assert(!(src->abs || src->negate));
@@ -703,9 +711,8 @@ nir_is_fzero_constant(nir_src src)
         return true;
 }
 
-/* Analyze the sizes of inputs/outputs to determine which reg mode to run an
- * ALU instruction in. Right now, we just consider the size of the first
- * argument. This will fail for upconverting, for instance (TODO) */
+/* Analyze the sizes of the inputs to determine which reg mode. Ops needed
+ * special treatment override this anyway. */
 
 static midgard_reg_mode
 reg_mode_for_nir(nir_alu_instr *instr)
@@ -751,11 +758,20 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         unsigned broadcast_swizzle = 0;
 
+        /* What register mode should we operate in? */
+        midgard_reg_mode reg_mode =
+                reg_mode_for_nir(instr);
+
         /* Do we need a destination override? Used for inline
          * type conversion */
 
         midgard_dest_override dest_override =
                 midgard_dest_override_none;
+
+        /* Should we use a smaller respective source and sign-extend?  */
+
+        bool half_1 = false, sext_1 = false;
+        bool half_2 = false, sext_2 = false;
 
         switch (instr->op) {
                 ALU_CASE(fadd, fadd);
@@ -856,14 +872,37 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         /* For size conversion, we use a move. Ideally though we would squash
          * these ops together; maybe that has to happen after in NIR as part of
          * propagation...? An earlier algebraic pass ensured we step down by
-         * only / exactly one size */
+         * only / exactly one size. If stepping down, we use a dest override to
+         * reduce the size; if stepping up, we use a larger-sized move with a
+         * half source and a sign/zero-extension modifier */
 
+        case nir_op_i2i8:
+        case nir_op_i2i16:
+        case nir_op_i2i32:
+                /* If we end up upscale, we'll need a sign-extend on the
+                 * operand (the second argument) */
+
+                sext_2 = true;
         case nir_op_u2u8:
         case nir_op_u2u16:
-        case nir_op_i2i8:
-        case nir_op_i2i16: {
+        case nir_op_u2u32: {
                 op = midgard_alu_op_imov;
-                dest_override = midgard_dest_override_lower;
+
+                unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
+                unsigned dst_bitsize = nir_dest_bit_size(instr->dest.dest);
+
+
+                if (dst_bitsize == (src_bitsize * 2)) {
+                        /* Converting up */
+                        half_2 = true;
+
+                        /* Use a greater register mode */
+                        reg_mode++;
+                } else if (src_bitsize == (dst_bitsize * 2)) {
+                        /* Converting down */
+                        dest_override = midgard_dest_override_lower;
+                }
+
                 break;
         }
 
@@ -1001,15 +1040,15 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         midgard_vector_alu alu = {
                 .op = op,
-                .reg_mode = reg_mode_for_nir(instr),
+                .reg_mode = reg_mode,
                 .dest_override = dest_override,
                 .outmod = outmod,
 
                 /* Writemask only valid for non-SSA NIR */
                 .mask = expand_writemask(mask_of(nr_components)),
 
-                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle)),
-                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int, broadcast_swizzle)),
+                .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle, half_1, sext_1)),
+                .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int, broadcast_swizzle, half_2, sext_2)),
         };
 
         /* Apply writemask if non-SSA, keeping in mind that we can't write to components that don't exist */
@@ -1074,7 +1113,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         for (int j = 0; j < 4; ++j)
                                 nirmods[0]->swizzle[j] = original_swizzle[i]; /* Pull from the correct component */
 
-                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle));
+                        ins.alu.src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle, half_1, false));
                         emit_mir_instruction(ctx, ins);
                 }
         } else {
@@ -2085,6 +2124,12 @@ mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
 {
         /* abs or neg */
         if (!is_int && src.mod) return true;
+
+        /* Other int mods don't matter in isolation */
+        if (is_int && src.mod == midgard_int_shift) return true;
+
+        /* size-conversion */
+        if (src.half) return true;
 
         /* swizzle */
         for (unsigned c = 0; c < 4; ++c) {
