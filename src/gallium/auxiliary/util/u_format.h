@@ -83,14 +83,8 @@ enum util_format_layout {
     */
    UTIL_FORMAT_LAYOUT_BPTC = 7,
 
-   /**
-    * ASTC
-    */
    UTIL_FORMAT_LAYOUT_ASTC = 8,
 
-   /**
-    * ATC
-    */
    UTIL_FORMAT_LAYOUT_ATC = 9,
 
    /**
