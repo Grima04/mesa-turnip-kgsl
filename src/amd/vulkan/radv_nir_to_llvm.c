@@ -3973,6 +3973,7 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
                 shader_info->tes.ccw = nir->info.tess.ccw;
                 shader_info->tes.point_mode = nir->info.tess.point_mode;
                 shader_info->tes.as_es = options->key.tes.as_es;
+                shader_info->tes.export_prim_id = options->key.tes.export_prim_id;
                 break;
         case MESA_SHADER_TESS_CTRL:
                 shader_info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
@@ -3980,6 +3981,7 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
         case MESA_SHADER_VERTEX:
                 shader_info->vs.as_es = options->key.vs.as_es;
                 shader_info->vs.as_ls = options->key.vs.as_ls;
+                shader_info->vs.export_prim_id = options->key.vs.export_prim_id;
                 break;
         default:
                 break;

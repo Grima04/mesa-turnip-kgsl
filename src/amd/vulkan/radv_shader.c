@@ -501,7 +501,7 @@ radv_fill_shader_variant(struct radv_device *device,
 			assert(device->physical_device->rad_info.chip_class <= GFX8);
 			vgpr_comp_cnt = info->uses_prim_id ? 3 : 2;
 		} else {
-			bool enable_prim_id = options->key.tes.export_prim_id || info->uses_prim_id;
+			bool enable_prim_id = variant->info.tes.export_prim_id || info->uses_prim_id;
 			vgpr_comp_cnt = enable_prim_id ? 3 : 2;
 		}
 		variant->config.rsrc2 |= S_00B12C_OC_LDS_EN(1);
@@ -534,7 +534,7 @@ radv_fill_shader_variant(struct radv_device *device,
 			 * If PrimID is disabled. InstanceID / StepRate1 is loaded instead.
 			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
 			 */
-			if (options->key.vs.export_prim_id) {
+			if (variant->info.vs.export_prim_id) {
 				vgpr_comp_cnt = 2;
 			} else if (info->vs.needs_instance_id) {
 				vgpr_comp_cnt = 1;

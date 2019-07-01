@@ -268,6 +268,7 @@ struct radv_shader_variant_info {
 			struct radv_es_output_info es_info;
 			bool as_es;
 			bool as_ls;
+			bool export_prim_id;
 		} vs;
 		struct {
 			unsigned num_interp;
@@ -302,6 +303,7 @@ struct radv_shader_variant_info {
 			enum gl_tess_spacing spacing;
 			bool ccw;
 			bool point_mode;
+			bool export_prim_id;
 		} tes;
 	};
 };
