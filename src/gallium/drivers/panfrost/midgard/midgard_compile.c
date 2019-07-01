@@ -1255,58 +1255,6 @@ emit_fb_read_blend_scalar(compiler_context *ctx, unsigned reg)
                 ins.load_store.unknown = c;
                 emit_mir_instruction(ctx, ins);
         }
-
-        /* vadd.u2f hr2, zext(hr2), #0 */
-
-        midgard_vector_alu_src alu_src = blank_alu_src;
-        alu_src.mod = midgard_int_zero_extend;
-        alu_src.half = true;
-
-        midgard_instruction u2f = {
-                .type = TAG_ALU_4,
-                .ssa_args = {
-                        .src0 = reg,
-                        .src1 = SSA_UNUSED_0,
-                        .dest = reg,
-                        .inline_constant = true
-                },
-                .alu = {
-                        .op = midgard_alu_op_u2f_rtz,
-                        .reg_mode = midgard_reg_mode_16,
-                        .dest_override = midgard_dest_override_none,
-                        .mask = 0xF,
-                        .src1 = vector_alu_srco_unsigned(alu_src),
-                        .src2 = vector_alu_srco_unsigned(blank_alu_src),
-                }
-        };
-
-        emit_mir_instruction(ctx, u2f);
-
-        /* vmul.fmul.sat r1, hr2, #0.00392151 */
-
-        alu_src.mod = 0;
-
-        midgard_instruction fmul = {
-                .type = TAG_ALU_4,
-                .inline_constant = _mesa_float_to_half(1.0 / 255.0),
-                .ssa_args = {
-                        .src0 = reg,
-                        .dest = reg,
-                        .src1 = SSA_UNUSED_0,
-                        .inline_constant = true
-                },
-                .alu = {
-                        .op = midgard_alu_op_fmul,
-                        .reg_mode = midgard_reg_mode_32,
-                        .dest_override = midgard_dest_override_none,
-                        .outmod = midgard_outmod_sat,
-                        .mask = 0xFF,
-                        .src1 = vector_alu_srco_unsigned(alu_src),
-                        .src2 = vector_alu_srco_unsigned(blank_alu_src),
-                }
-        };
-
-        emit_mir_instruction(ctx, fmul);
 }
 
 static void

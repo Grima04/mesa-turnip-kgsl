@@ -57,7 +57,13 @@ nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
 static nir_ssa_def *
 nir_native_to_float(nir_builder *b, nir_ssa_def *c_native)
 {
-   return c_native;
+   /* First, we convert up from u8 to f32 */
+   nir_ssa_def *converted = nir_u2f32(b, nir_u2u32(b, c_native));
+
+   /* Next, we scale down from [0, 255.0] to [0, 1] */
+   nir_ssa_def *scaled = nir_fsat(b, nir_fmul_imm(b, converted, 1.0/255.0));
+
+   return scaled;
 }
 
 void
@@ -122,7 +128,7 @@ nir_lower_framebuffer(nir_shader *shader)
 
                new->num_components = 4;
 
-               unsigned bitsize = 32;
+               unsigned bitsize = 8;
                nir_ssa_dest_init(&new->instr, &new->dest, 4, bitsize, NULL);
                nir_builder_instr_insert(&b, &new->instr);
 
