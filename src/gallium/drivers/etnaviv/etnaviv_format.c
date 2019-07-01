@@ -69,7 +69,7 @@ struct etna_format {
       .vtx = FE_DATA_TYPE_##vtxfmt, \
       .tex = TEXTURE_FORMAT_##texfmt,                     \
       .rs = RS_FORMAT_##rsfmt,                            \
-      .ts = TS_SAMPLER_FORMAT_##tsfmt,        \
+      .ts = COMPRESSION_FORMAT_##tsfmt,        \
       .present = 1,                                       \
       .tex_swiz = texswiz,                                \
    }
@@ -80,7 +80,7 @@ struct etna_format {
       .vtx = ETNA_NO_MATCH,        \
       .tex = TEXTURE_FORMAT_##fmt, \
       .rs = RS_FORMAT_##rsfmt,     \
-      .ts = TS_SAMPLER_FORMAT_##tsfmt,     \
+      .ts = COMPRESSION_FORMAT_##tsfmt,     \
       .present = 1,                \
       .tex_swiz = swiz,            \
    }
@@ -180,7 +180,7 @@ static struct etna_format formats[PIPE_FORMAT_COUNT] = {
    V_(R10G10B10A2_SSCALED, INT_10_10_10_2,          NONE),
 
    _T(X8Z24_UNORM,       D24X8, SWIZ(X, Y, Z, W), A8R8G8B8, D24X8),
-   _T(S8_UINT_Z24_UNORM, D24X8, SWIZ(X, Y, Z, W), A8R8G8B8, D24X8),
+   _T(S8_UINT_Z24_UNORM, D24X8, SWIZ(X, Y, Z, W), A8R8G8B8, D24S8),
 
    /* 48-bit */
    V_(R16G16B16_UNORM,   UNSIGNED_SHORT, NONE),

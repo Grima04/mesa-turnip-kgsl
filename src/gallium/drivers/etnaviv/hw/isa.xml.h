@@ -8,10 +8,10 @@ http://0x04.net/cgit/index.cgi/rules-ng-ng
 git clone git://0x04.net/rules-ng-ng
 
 The rules-ng-ng source files this header was generated from are:
-- isa.xml       (  37079 bytes, from 2018-02-10 13:09:26)
-- copyright.xml (   1597 bytes, from 2018-02-10 13:09:26)
+- isa.xml       (  37821 bytes, from 2019-06-30 15:02:03)
+- copyright.xml (   1597 bytes, from 2019-06-10 23:29:22)
 
-Copyright (C) 2012-2018 by the following authors:
+Copyright (C) 2012-2019 by the following authors:
 - Wladimir J. van der Laan <laanwj@gmail.com>
 - Christian Gmeiner <christian.gmeiner@gmail.com>
 - Lucas Stach <l.stach@pengutronix.de>
@@ -185,6 +185,8 @@ DEALINGS IN THE SOFTWARE.
 #define INST_RGROUP_INTERNAL					0x00000001
 #define INST_RGROUP_UNIFORM_0					0x00000002
 #define INST_RGROUP_UNIFORM_1					0x00000003
+#define INST_RGROUP_TEMP_FP					0x00000004
+#define INST_RGROUP_IMMEDIATE					0x00000007
 #define INST_AMODE_DIRECT					0x00000000
 #define INST_AMODE_ADD_A_X					0x00000001
 #define INST_AMODE_ADD_A_Y					0x00000002
@@ -313,7 +315,7 @@ DEALINGS IN THE SOFTWARE.
 #define VIV_ISA_WORD_3_SRC2_RGROUP__MASK			0x70000000
 #define VIV_ISA_WORD_3_SRC2_RGROUP__SHIFT			28
 #define VIV_ISA_WORD_3_SRC2_RGROUP(x)				(((x) << VIV_ISA_WORD_3_SRC2_RGROUP__SHIFT) & VIV_ISA_WORD_3_SRC2_RGROUP__MASK)
-#define VIV_ISA_WORD_3_UNK3_31					0x80000000
+#define VIV_ISA_WORD_3_DST_FULL					0x80000000
 
 
 #endif /* ISA_XML */

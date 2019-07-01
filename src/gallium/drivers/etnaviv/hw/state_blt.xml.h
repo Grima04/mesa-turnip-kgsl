@@ -8,17 +8,17 @@ http://0x04.net/cgit/index.cgi/rules-ng-ng
 git clone git://0x04.net/rules-ng-ng
 
 The rules-ng-ng source files this header was generated from are:
-- state.xml     (  26087 bytes, from 2018-02-10 13:09:26)
-- common.xml    (  35468 bytes, from 2018-02-10 13:09:26)
-- common_3d.xml (  14781 bytes, from 2019-06-02 11:12:51)
-- state_hi.xml  (  30232 bytes, from 2018-03-30 07:48:22)
-- copyright.xml (   1597 bytes, from 2018-02-10 13:09:26)
-- state_2d.xml  (  51552 bytes, from 2018-02-10 13:09:26)
-- state_3d.xml  (  80352 bytes, from 2019-04-23 18:58:17)
-- state_blt.xml (  13405 bytes, from 2018-02-10 13:09:26)
-- state_vg.xml  (   5975 bytes, from 2018-02-10 13:09:26)
+- state.xml     (  26087 bytes, from 2019-06-10 23:29:22)
+- common.xml    (  35468 bytes, from 2019-06-10 23:29:22)
+- common_3d.xml (  14984 bytes, from 2019-07-01 19:47:22)
+- state_hi.xml  (  30232 bytes, from 2019-06-10 23:29:22)
+- copyright.xml (   1597 bytes, from 2019-06-10 23:29:22)
+- state_2d.xml  (  51552 bytes, from 2019-06-10 23:29:22)
+- state_3d.xml  (  79878 bytes, from 2019-07-01 19:47:36)
+- state_blt.xml (  13381 bytes, from 2019-07-01 19:46:55)
+- state_vg.xml  (   5975 bytes, from 2019-06-10 23:29:22)
 
-Copyright (C) 2012-2018 by the following authors:
+Copyright (C) 2012-2019 by the following authors:
 - Wladimir J. van der Laan <laanwj@gmail.com>
 - Christian Gmeiner <christian.gmeiner@gmail.com>
 - Lucas Stach <l.stach@pengutronix.de>
@@ -72,9 +72,9 @@ DEALINGS IN THE SOFTWARE.
 #define BLT_IMAGE_CONFIG_SWIZ_A__MASK				0x00018000
 #define BLT_IMAGE_CONFIG_SWIZ_A__SHIFT				15
 #define BLT_IMAGE_CONFIG_SWIZ_A(x)				(((x) << BLT_IMAGE_CONFIG_SWIZ_A__SHIFT) & BLT_IMAGE_CONFIG_SWIZ_A__MASK)
-#define BLT_IMAGE_CONFIG_CACHE_MODE__MASK			0x00020000
-#define BLT_IMAGE_CONFIG_CACHE_MODE__SHIFT			17
-#define BLT_IMAGE_CONFIG_CACHE_MODE(x)				(((x) << BLT_IMAGE_CONFIG_CACHE_MODE__SHIFT) & BLT_IMAGE_CONFIG_CACHE_MODE__MASK)
+#define BLT_IMAGE_CONFIG_TS_MODE__MASK				0x00020000
+#define BLT_IMAGE_CONFIG_TS_MODE__SHIFT				17
+#define BLT_IMAGE_CONFIG_TS_MODE(x)				(((x) << BLT_IMAGE_CONFIG_TS_MODE__SHIFT) & BLT_IMAGE_CONFIG_TS_MODE__MASK)
 #define BLT_IMAGE_CONFIG_FLIP_Y					0x00080000
 #define BLT_IMAGE_CONFIG_FROM_SUPER_TILED			0x00200000
 #define BLT_IMAGE_CONFIG_UNK22					0x00400000
@@ -183,9 +183,9 @@ DEALINGS IN THE SOFTWARE.
 #define VIVS_BLT_CONFIG_CLEAR_BPP__MASK				0x00000380
 #define VIVS_BLT_CONFIG_CLEAR_BPP__SHIFT			7
 #define VIVS_BLT_CONFIG_CLEAR_BPP(x)				(((x) << VIVS_BLT_CONFIG_CLEAR_BPP__SHIFT) & VIVS_BLT_CONFIG_CLEAR_BPP__MASK)
-#define VIVS_BLT_CONFIG_INPLACE_CACHE_MODE__MASK		0x00000400
-#define VIVS_BLT_CONFIG_INPLACE_CACHE_MODE__SHIFT		10
-#define VIVS_BLT_CONFIG_INPLACE_CACHE_MODE(x)			(((x) << VIVS_BLT_CONFIG_INPLACE_CACHE_MODE__SHIFT) & VIVS_BLT_CONFIG_INPLACE_CACHE_MODE__MASK)
+#define VIVS_BLT_CONFIG_INPLACE_TS_MODE__MASK			0x00000400
+#define VIVS_BLT_CONFIG_INPLACE_TS_MODE__SHIFT			10
+#define VIVS_BLT_CONFIG_INPLACE_TS_MODE(x)			(((x) << VIVS_BLT_CONFIG_INPLACE_TS_MODE__SHIFT) & VIVS_BLT_CONFIG_INPLACE_TS_MODE__MASK)
 #define VIVS_BLT_CONFIG_INPLACE_BOTH				0x00000800
 #define VIVS_BLT_CONFIG_INPLACE_BPP__MASK			0x00038000
 #define VIVS_BLT_CONFIG_INPLACE_BPP__SHIFT			15

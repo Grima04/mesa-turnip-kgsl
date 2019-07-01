@@ -8,12 +8,12 @@ http://0x04.net/cgit/index.cgi/rules-ng-ng
 git clone git://0x04.net/rules-ng-ng
 
 The rules-ng-ng source files this header was generated from are:
-- texdesc_3d.xml (   3183 bytes, from 2018-02-10 13:09:26)
-- copyright.xml  (   1597 bytes, from 2018-02-10 13:09:26)
-- common.xml     (  35468 bytes, from 2018-02-10 13:09:26)
-- common_3d.xml  (  14781 bytes, from 2019-06-02 11:12:51)
+- texdesc_3d.xml (   3183 bytes, from 2019-06-10 23:29:22)
+- copyright.xml  (   1597 bytes, from 2019-06-10 23:29:22)
+- common.xml     (  35468 bytes, from 2019-06-10 23:29:22)
+- common_3d.xml  (  14984 bytes, from 2019-07-01 19:47:22)
 
-Copyright (C) 2012-2018 by the following authors:
+Copyright (C) 2012-2019 by the following authors:
 - Wladimir J. van der Laan <laanwj@gmail.com>
 - Christian Gmeiner <christian.gmeiner@gmail.com>
 - Lucas Stach <l.stach@pengutronix.de>
@@ -103,9 +103,9 @@ DEALINGS IN THE SOFTWARE.
 #define TEXDESC_CONFIG1_SWIZZLE_A__MASK				0x00700000
 #define TEXDESC_CONFIG1_SWIZZLE_A__SHIFT			20
 #define TEXDESC_CONFIG1_SWIZZLE_A(x)				(((x) << TEXDESC_CONFIG1_SWIZZLE_A__SHIFT) & TEXDESC_CONFIG1_SWIZZLE_A__MASK)
-#define TEXDESC_CONFIG1_CACHE_MODE__MASK			0x00800000
-#define TEXDESC_CONFIG1_CACHE_MODE__SHIFT			23
-#define TEXDESC_CONFIG1_CACHE_MODE(x)				(((x) << TEXDESC_CONFIG1_CACHE_MODE__SHIFT) & TEXDESC_CONFIG1_CACHE_MODE__MASK)
+#define TEXDESC_CONFIG1_TS_MODE__MASK				0x00800000
+#define TEXDESC_CONFIG1_TS_MODE__SHIFT				23
+#define TEXDESC_CONFIG1_TS_MODE(x)				(((x) << TEXDESC_CONFIG1_TS_MODE__SHIFT) & TEXDESC_CONFIG1_TS_MODE__MASK)
 #define TEXDESC_CONFIG1_TEXTURE_ARRAY				0x01000000
 #define TEXDESC_CONFIG1_SEAMLESS_CUBE_MAP			0x02000000
 #define TEXDESC_CONFIG1_HALIGN__MASK				0x1c000000
