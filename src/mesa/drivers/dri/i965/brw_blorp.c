@@ -299,10 +299,10 @@ brw_blorp_blit_miptrees(struct brw_context *brw,
        dst_level, dst_layer, dst_x0, dst_y0, dst_x1, dst_y1,
        mirror_x, mirror_y);
 
-   if (!decode_srgb && _mesa_get_format_color_encoding(src_format) == GL_SRGB)
+   if (!decode_srgb)
       src_format = _mesa_get_srgb_format_linear(src_format);
 
-   if (!encode_srgb && _mesa_get_format_color_encoding(dst_format) == GL_SRGB)
+   if (!encode_srgb)
       dst_format = _mesa_get_srgb_format_linear(dst_format);
 
    /* When doing a multisample resolve of a GL_LUMINANCE32F or GL_INTENSITY32F
@@ -1191,7 +1191,7 @@ do_single_blorp_clear(struct brw_context *brw, struct gl_framebuffer *fb,
    uint32_t x0, x1, y0, y1;
 
    mesa_format format = irb->Base.Base.Format;
-   if (!encode_srgb && _mesa_get_format_color_encoding(format) == GL_SRGB)
+   if (!encode_srgb)
       format = _mesa_get_srgb_format_linear(format);
    enum isl_format isl_format = brw->mesa_to_isl_render_format[format];
 
