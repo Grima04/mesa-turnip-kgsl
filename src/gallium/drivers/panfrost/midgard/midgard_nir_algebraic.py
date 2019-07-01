@@ -44,6 +44,18 @@ algebraic_late = [
     (('b32csel', a, 0, 'b@32'), ('iand', ('inot', a), b)),
 ]
 
+
+# Midgard is able to type convert down by only one "step" per instruction; if
+# NIR wants more than one step, we need to break up into multiple instructions
+
+converts = [
+    (('i2i8', 'a@32'), ('i2i8', ('i2i16', a))),
+    (('u2u8', 'a@32'), ('u2u8', ('u2u16', a))),
+
+    (('i2i32', 'a@8'), ('i2i32', ('i2i16', a))),
+    (('u2u32', 'a@8'), ('u2u32', ('u2u16', a)))
+]
+
 # Midgard scales fsin/fcos arguments by pi.
 # Pass must be run only once, after the main loop
 
@@ -66,7 +78,7 @@ def run():
     print('#include "midgard_nir.h"')
 
     print(nir_algebraic.AlgebraicPass("midgard_nir_lower_algebraic_late",
-                                      algebraic_late).render())
+                                      algebraic_late + converts).render())
 
     print(nir_algebraic.AlgebraicPass("midgard_nir_scale_trig",
                                       scale_trig).render())

@@ -703,6 +703,29 @@ nir_is_fzero_constant(nir_src src)
         return true;
 }
 
+/* Analyze the sizes of inputs/outputs to determine which reg mode to run an
+ * ALU instruction in. Right now, we just consider the size of the first
+ * argument. This will fail for upconverting, for instance (TODO) */
+
+static midgard_reg_mode
+reg_mode_for_nir(nir_alu_instr *instr)
+{
+        unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
+
+        switch (src_bitsize) {
+                case 8:
+                        return midgard_reg_mode_8;
+                case 16:
+                        return midgard_reg_mode_16;
+                case 32:
+                        return midgard_reg_mode_32;
+                case 64:
+                        return midgard_reg_mode_64;
+                default:
+                        unreachable("Invalid bit size");
+        }
+}
+
 static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
@@ -727,6 +750,12 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * in Midgard */
 
         unsigned broadcast_swizzle = 0;
+
+        /* Do we need a destination override? Used for inline
+         * type conversion */
+
+        midgard_dest_override dest_override =
+                midgard_dest_override_none;
 
         switch (instr->op) {
                 ALU_CASE(fadd, fadd);
@@ -823,6 +852,20 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fabs, fmov);
                 ALU_CASE(fneg, fmov);
                 ALU_CASE(fsat, fmov);
+
+        /* For size conversion, we use a move. Ideally though we would squash
+         * these ops together; maybe that has to happen after in NIR as part of
+         * propagation...? An earlier algebraic pass ensured we step down by
+         * only / exactly one size */
+
+        case nir_op_u2u8:
+        case nir_op_u2u16:
+        case nir_op_i2i8:
+        case nir_op_i2i16: {
+                op = midgard_alu_op_imov;
+                dest_override = midgard_dest_override_lower;
+                break;
+        }
 
         /* For greater-or-equal, we lower to less-or-equal and flip the
          * arguments */
@@ -958,8 +1001,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         midgard_vector_alu alu = {
                 .op = op,
-                .reg_mode = midgard_reg_mode_32,
-                .dest_override = midgard_dest_override_none,
+                .reg_mode = reg_mode_for_nir(instr),
+                .dest_override = dest_override,
                 .outmod = outmod,
 
                 /* Writemask only valid for non-SSA NIR */
@@ -2065,6 +2108,10 @@ mir_nontrivial_outmod(midgard_instruction *ins)
 {
         bool is_int = midgard_is_integer_op(ins->alu.op);
         unsigned mod = ins->alu.outmod;
+
+        /* Type conversion is a sort of outmod */
+        if (ins->alu.dest_override != midgard_dest_override_none)
+                return true;
 
         if (is_int)
                 return mod != midgard_outmod_int_wrap;
