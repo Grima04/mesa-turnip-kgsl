@@ -191,7 +191,6 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 int op = ains->alu.op;
                                 int units = alu_opcode_props[op].props;
 
-                                bool vectorable = units & UNITS_ANY_VECTOR;
                                 bool scalarable = units & UNITS_SCALAR;
                                 bool could_scalar = is_single_component_mask(ains->mask);
 
@@ -200,15 +199,35 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
                                 could_scalar &= ains->alu.dest_override == midgard_dest_override_none;
 
-                                bool vector = vectorable && !(could_scalar && scalarable);
+                                if (ains->alu.reg_mode == midgard_reg_mode_16) {
+                                        /* If we're running in 16-bit mode, we
+                                         * can't have any 8-bit sources on the
+                                         * scalar unit (since the scalar unit
+                                         * doesn't understand 8-bit) */
+
+                                        midgard_vector_alu_src s1 =
+                                                vector_alu_from_unsigned(ains->alu.src1);
+
+                                        could_scalar &= !s1.half;
+
+                                        if (!ains->ssa_args.inline_constant) {
+                                                midgard_vector_alu_src s2 =
+                                                        vector_alu_from_unsigned(ains->alu.src2);
+
+                                                could_scalar &= !s2.half;
+                                        }
+
+                                }
+
+                                bool scalar = could_scalar && scalarable;
 
                                 /* TODO: Check ahead-of-time for other scalar
                                  * hazards that otherwise get aborted out */
 
-                                if (!vector)
+                                if (scalar)
                                         assert(units & UNITS_SCALAR);
 
-                                if (vector) {
+                                if (!scalar) {
                                        if (last_unit >= UNIT_VADD) {
                                                 if (units & UNIT_VLUT)
                                                         unit = UNIT_VLUT;

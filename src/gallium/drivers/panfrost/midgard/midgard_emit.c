@@ -89,12 +89,13 @@ vector_to_scalar_alu(midgard_vector_alu v, midgard_instruction *ins)
 {
         bool is_int = midgard_is_integer_op(v.op);
         bool is_full = v.reg_mode == midgard_reg_mode_32;
+        bool is_inline_constant = ins->ssa_args.inline_constant;
 
         /* The output component is from the mask */
         midgard_scalar_alu s = {
                 .op = v.op,
                 .src1 = vector_to_scalar_source(v.src1, is_int, is_full),
-                .src2 = vector_to_scalar_source(v.src2, is_int, is_full),
+                .src2 = !is_inline_constant ? vector_to_scalar_source(v.src2, is_int, is_full) : 0,
                 .unknown = 0,
                 .outmod = v.outmod,
                 .output_full = is_full,
