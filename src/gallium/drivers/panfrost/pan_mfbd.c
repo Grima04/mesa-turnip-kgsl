@@ -307,7 +307,14 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
 
         for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
                 struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
+                unsigned bpp = util_format_get_blocksize(surf->format);
+
                 panfrost_mfbd_set_cbuf(&rts[cb], surf);
+
+                /* What is this? Looks like some extension of the bpp field.
+                 * Maybe it establishes how much internal tilebuffer space is
+                 * reserved? */
+                fb.rt_count_2 = MAX2(fb.rt_count_2, ALIGN_POT(bpp, 4) / 4);
         }
 
         if (ctx->pipe_framebuffer.zsbuf) {
