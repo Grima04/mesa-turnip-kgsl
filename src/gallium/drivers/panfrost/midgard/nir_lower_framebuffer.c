@@ -51,7 +51,7 @@ nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
    nir_ssa_def *scaled = nir_fmul_imm(b, nir_fsat(b, degraded), 255.0);
 
    /* Next, we type convert */
-   nir_ssa_def *converted = nir_u2u8(b, nir_f2u32(b,
+   nir_ssa_def *converted = nir_u2u8(b, nir_f2u16(b,
             nir_fround_even(b, scaled)));
 
    return converted;
