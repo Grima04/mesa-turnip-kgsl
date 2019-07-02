@@ -71,7 +71,7 @@ swr_clear(struct pipe_context *pipe,
    SWR_RECT clear_rect;
    /* If enabled, clear to scissor; otherwise clear full surface */
    if (ctx->rasterizer && ctx->rasterizer->scissor) {
-      clear_rect = ctx->swr_scissor;
+      clear_rect = ctx->swr_scissors[0];
    } else {
       clear_rect = {0, 0, (int32_t)fb->width, (int32_t)fb->height};
    }

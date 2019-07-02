@@ -132,12 +132,12 @@ struct swr_context {
       constants[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_framebuffer_state framebuffer;
    struct swr_poly_stipple poly_stipple;
-   struct pipe_scissor_state scissor;
-   SWR_RECT swr_scissor;
+   struct pipe_scissor_state scissors[KNOB_NUM_VIEWPORTS_SCISSORS];
+   SWR_RECT swr_scissors[KNOB_NUM_VIEWPORTS_SCISSORS];
    struct pipe_sampler_view *
       sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
-   struct pipe_viewport_state viewport;
+   struct pipe_viewport_state viewports[KNOB_NUM_VIEWPORTS_SCISSORS];
    struct pipe_vertex_buffer vertex_buffer[PIPE_MAX_ATTRIBS];
 
    struct blitter_context *blitter;

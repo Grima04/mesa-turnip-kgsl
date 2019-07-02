@@ -218,7 +218,7 @@ swr_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return 1;
    case PIPE_CAP_MAX_VIEWPORTS:
-      return 1;
+      return KNOB_NUM_VIEWPORTS_SCISSORS;
    case PIPE_CAP_ENDIANNESS:
       return PIPE_ENDIAN_NATIVE;
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:

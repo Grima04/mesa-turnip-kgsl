@@ -424,6 +424,9 @@ BuilderSWR::swr_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base
        } else if (iface->info->output_semantic_name[attrib] == TGSI_SEMANTIC_LAYER) {
           attribSlot = VERTEX_SGV_SLOT;
           sgvChannel = VERTEX_SGV_RTAI_COMP;
+       } else if (iface->info->output_semantic_name[attrib] == TGSI_SEMANTIC_VIEWPORT_INDEX) {
+          attribSlot = VERTEX_SGV_SLOT;
+          sgvChannel = VERTEX_SGV_VAI_COMP;
        } else if (iface->info->output_semantic_name[attrib] == TGSI_SEMANTIC_POSITION) {
           attribSlot = VERTEX_POSITION_SLOT;
        } else {

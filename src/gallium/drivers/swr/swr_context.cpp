@@ -325,8 +325,8 @@ swr_blit(struct pipe_context *pipe, const struct pipe_blit_info *blit_info)
       ctx->num_so_targets,
       (struct pipe_stream_output_target **)ctx->so_targets);
    util_blitter_save_rasterizer(ctx->blitter, (void *)ctx->rasterizer);
-   util_blitter_save_viewport(ctx->blitter, &ctx->viewport);
-   util_blitter_save_scissor(ctx->blitter, &ctx->scissor);
+   util_blitter_save_viewport(ctx->blitter, &ctx->viewports[0]);
+   util_blitter_save_scissor(ctx->blitter, &ctx->scissors[0]);
    util_blitter_save_fragment_shader(ctx->blitter, ctx->fs);
    util_blitter_save_blend(ctx->blitter, (void *)ctx->blend);
    util_blitter_save_depth_stencil_alpha(ctx->blitter,
@@ -402,6 +402,7 @@ swr_destroy(struct pipe_context *pipe)
    delete ctx->blendJIT;
 
    swr_destroy_scratch_buffers(ctx);
+
 
    /* Only update screen->pipe if current context is being destroyed */
    assert(screen);
