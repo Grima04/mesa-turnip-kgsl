@@ -44,13 +44,18 @@ swizzle_to_access_mask(unsigned swizzle)
 /* Does the mask cover more than a scalar? */
 
 static bool
-is_single_component_mask(unsigned mask)
+is_single_component_mask(unsigned mask, bool full)
 {
         int components = 0;
 
-        for (int c = 0; c < 4; ++c)
-                if (mask & (3 << (2 * c)))
+        for (int c = 0; c < 8; ++c) {
+                if (mask & (1 << c))
                         components++;
+
+                /* Full uses 2-bit components */
+                if (full)
+                        c++;
+        }
 
         return components == 1;
 }
@@ -193,8 +198,16 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                                 bool vectorable = units & UNITS_ANY_VECTOR;
                                 bool scalarable = units & UNITS_SCALAR;
-                                bool could_scalar = is_single_component_mask(ains->alu.mask);
+                                bool full = ains->alu.reg_mode == midgard_reg_mode_32;
+                                bool could_scalar = is_single_component_mask(ains->alu.mask, full);
                                 bool vector = vectorable && !(could_scalar && scalarable);
+
+                                /* Only 16/32-bit can run on a scalar unit */
+                                could_scalar &= ains->alu.reg_mode != midgard_reg_mode_8;
+                                could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
+
+                                /* TODO: Check ahead-of-time for other scalar
+                                 * hazards that otherwise get aborted out */
 
                                 if (!vector)
                                         assert(units & UNITS_SCALAR);

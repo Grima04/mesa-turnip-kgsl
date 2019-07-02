@@ -29,11 +29,15 @@
  * this, we just demote vector ALU payloads to scalar. */
 
 static int
-component_from_mask(unsigned mask)
+component_from_mask(unsigned mask, bool full)
 {
-        for (int c = 0; c < 4; ++c) {
-                if (mask & (3 << (2 * c)))
+        for (int c = 0; c < 8; ++c) {
+                if (mask & (1 << c))
                         return c;
+
+                /* Full uses every other bit */
+                if (full)
+                        c++;
         }
 
         assert(0);
@@ -41,17 +45,35 @@ component_from_mask(unsigned mask)
 }
 
 static unsigned
-vector_to_scalar_source(unsigned u, bool is_int)
+vector_to_scalar_source(unsigned u, bool is_int, bool is_full)
 {
         midgard_vector_alu_src v;
         memcpy(&v, &u, sizeof(v));
 
         /* TODO: Integers */
 
-        midgard_scalar_alu_src s = {
-                .full = !v.half,
-                .component = (v.swizzle & 3) << 1
-        };
+        unsigned component = v.swizzle & 3;
+        bool upper = false; /* TODO */
+
+        midgard_scalar_alu_src s = { 0 };
+
+        if (is_full) {
+                /* For a 32-bit op, just check the source half flag */
+                s.full = !v.half;
+        } else if (!v.half) {
+                /* For a 16-bit op that's not subdivided, never full */
+                s.full = false;
+        } else {
+                /* We can't do 8-bit scalar, abort! */
+                assert(0);
+        }
+
+        /* Component indexing takes size into account */
+
+        if (s.full)
+                s.component = component << 1;
+        else
+                s.component = component + (upper << 2);
 
         if (is_int) {
                 /* TODO */
@@ -70,16 +92,17 @@ static midgard_scalar_alu
 vector_to_scalar_alu(midgard_vector_alu v, midgard_instruction *ins)
 {
         bool is_int = midgard_is_integer_op(v.op);
+        bool is_full = v.reg_mode == midgard_reg_mode_32;
 
         /* The output component is from the mask */
         midgard_scalar_alu s = {
                 .op = v.op,
-                .src1 = vector_to_scalar_source(v.src1, is_int),
-                .src2 = vector_to_scalar_source(v.src2, is_int),
+                .src1 = vector_to_scalar_source(v.src1, is_int, is_full),
+                .src2 = vector_to_scalar_source(v.src2, is_int, is_full),
                 .unknown = 0,
                 .outmod = v.outmod,
-                .output_full = 1, /* TODO: Half */
-                .output_component = component_from_mask(v.mask) << 1,
+                .output_full = is_full,
+                .output_component = component_from_mask(v.mask, is_full),
         };
 
         /* Inline constant is passed along rather than trying to extract it
