@@ -31,6 +31,10 @@
 #include "pan_context.h"
 
 void
-panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_state *cso, const struct pipe_blend_color *blend_color);
+panfrost_make_blend_shader(
+                struct panfrost_context *ctx,
+                struct panfrost_blend_state *cso,
+                const struct pipe_blend_color *blend_color,
+                enum pipe_format format);
 
 #endif

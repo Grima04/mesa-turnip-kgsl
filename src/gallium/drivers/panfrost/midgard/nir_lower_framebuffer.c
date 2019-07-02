@@ -99,12 +99,11 @@ nir_native_to_float(nir_builder *b,
 }
 
 void
-nir_lower_framebuffer(nir_shader *shader)
+nir_lower_framebuffer(nir_shader *shader, enum pipe_format format)
 {
    /* Blend shaders are represented as special fragment shaders */
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   enum pipe_format format = PIPE_FORMAT_R8G8B8A8_UNORM;
    const struct util_format_description *format_desc =
       util_format_description(format);
 

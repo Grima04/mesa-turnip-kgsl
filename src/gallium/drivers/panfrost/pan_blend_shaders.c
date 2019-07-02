@@ -115,7 +115,11 @@ nir_make_options(const struct pipe_blend_state *blend, unsigned nr_cbufs)
 }
 
 void
-panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_state *cso, const struct pipe_blend_color *blend_color)
+panfrost_make_blend_shader(
+                struct panfrost_context *ctx,
+                struct panfrost_blend_state *cso,
+                const struct pipe_blend_color *blend_color,
+                enum pipe_format format)
 {
         /* Build the shader */
 
@@ -149,7 +153,7 @@ panfrost_make_blend_shader(struct panfrost_context *ctx, struct panfrost_blend_s
                 nir_make_options(&cso->base, 1);
         NIR_PASS_V(shader, nir_lower_blend, options);
 
-        NIR_PASS_V(shader, nir_lower_framebuffer);
+        NIR_PASS_V(shader, nir_lower_framebuffer, format);
 
         /* Compile the built shader */
 
