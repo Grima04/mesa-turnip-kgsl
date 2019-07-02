@@ -73,31 +73,40 @@ etna_bind_sampler_states(struct pipe_context *pctx, enum pipe_shader_type shader
    ctx->dirty |= ETNA_DIRTY_SAMPLERS;
 }
 
-static void
+static bool
 etna_configure_sampler_ts(struct etna_sampler_ts *sts, struct pipe_sampler_view *pview, bool enable)
 {
+   bool dirty = (sts->enable != enable);
+
    assert(sts);
    sts->enable = enable;
-   if (enable) {
-      struct etna_resource *rsc = etna_resource(pview->texture);
-      struct etna_resource_level *lev = &rsc->levels[0];
-      assert(rsc->ts_bo && lev->ts_valid);
 
-      sts->mode = lev->ts_mode;
-      sts->TS_SAMPLER_CONFIG =
-         VIVS_TS_SAMPLER_CONFIG_ENABLE |
-         COND(lev->ts_compress_fmt >= 0, VIVS_TS_SAMPLER_CONFIG_COMPRESSION) |
-         VIVS_TS_SAMPLER_CONFIG_COMPRESSION_FORMAT(lev->ts_compress_fmt);
-      sts->TS_SAMPLER_CLEAR_VALUE = lev->clear_value;
-      sts->TS_SAMPLER_CLEAR_VALUE2 = lev->clear_value; /* To handle 64-bit formats this needs a different value */
-      sts->TS_SAMPLER_STATUS_BASE.bo = rsc->ts_bo;
-      sts->TS_SAMPLER_STATUS_BASE.offset = lev->ts_offset;
-      sts->TS_SAMPLER_STATUS_BASE.flags = ETNA_RELOC_READ;
-   } else {
+   if (!enable) {
       sts->TS_SAMPLER_CONFIG = 0;
       sts->TS_SAMPLER_STATUS_BASE.bo = NULL;
+      return dirty;
    }
-   /* n.b.: relies on caller to mark ETNA_DIRTY_SAMPLER_VIEWS */
+
+   struct etna_resource *rsc = etna_resource(pview->texture);
+   struct etna_resource_level *lev = &rsc->levels[0];
+
+   if (lev->clear_value != sts->TS_SAMPLER_CLEAR_VALUE)
+      dirty = true;
+
+   assert(rsc->ts_bo && lev->ts_valid);
+
+   sts->mode = lev->ts_mode;
+   sts->TS_SAMPLER_CONFIG =
+      VIVS_TS_SAMPLER_CONFIG_ENABLE |
+      COND(lev->ts_compress_fmt >= 0, VIVS_TS_SAMPLER_CONFIG_COMPRESSION) |
+      VIVS_TS_SAMPLER_CONFIG_COMPRESSION_FORMAT(lev->ts_compress_fmt);
+   sts->TS_SAMPLER_CLEAR_VALUE = lev->clear_value;
+   sts->TS_SAMPLER_CLEAR_VALUE2 = lev->clear_value; /* To handle 64-bit formats this needs a different value */
+   sts->TS_SAMPLER_STATUS_BASE.bo = rsc->ts_bo;
+   sts->TS_SAMPLER_STATUS_BASE.offset = lev->ts_offset;
+   sts->TS_SAMPLER_STATUS_BASE.flags = ETNA_RELOC_READ;
+
+   return dirty;
 }
 
 /* Return true if the GPU can use sampler TS with this sampler view.
@@ -121,6 +130,7 @@ etna_can_use_sampler_ts(struct pipe_sampler_view *view, int num)
      */
    struct etna_resource *rsc = etna_resource(view->texture);
    struct etna_screen *screen = etna_screen(rsc->base.screen);
+
    return VIV_FEATURE(screen, chipMinorFeatures2, TEXTURE_TILED_READ) &&
       num < VIVS_TS_SAMPLER__LEN &&
       rsc->base.target != PIPE_BUFFER &&
@@ -129,7 +139,7 @@ etna_can_use_sampler_ts(struct pipe_sampler_view *view, int num)
       rsc->levels[0].ts_valid;
 }
 
-static void
+void
 etna_update_sampler_source(struct pipe_sampler_view *view, int num)
 {
    struct etna_resource *base = etna_resource(view->texture);
@@ -147,6 +157,7 @@ etna_update_sampler_source(struct pipe_sampler_view *view, int num)
       etna_copy_resource(view->context, &to->base, &from->base, 0,
                          view->texture->last_level);
       to->seqno = from->seqno;
+      ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
    } else if ((to == from) && etna_resource_needs_flush(to)) {
       if (ctx->ts_for_sampler_view && etna_can_use_sampler_ts(view, num)) {
          enable_sampler_ts = true;
@@ -156,10 +167,16 @@ etna_update_sampler_source(struct pipe_sampler_view *view, int num)
          etna_copy_resource(view->context, &to->base, &from->base, 0,
                             view->texture->last_level);
          to->flush_seqno = from->seqno;
+         ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
       }
+  } else if ((to == from) && (to->flush_seqno < from->seqno)) {
+      to->flush_seqno = from->seqno;
+      ctx->dirty |= ETNA_DIRTY_TEXTURE_CACHES;
    }
-   if (ctx->ts_for_sampler_view) {
-      etna_configure_sampler_ts(ctx->ts_for_sampler_view(view), view, enable_sampler_ts);
+   if (ctx->ts_for_sampler_view &&
+       etna_configure_sampler_ts(ctx->ts_for_sampler_view(view), view, enable_sampler_ts)) {
+      ctx->dirty |= ETNA_DIRTY_SAMPLER_VIEWS | ETNA_DIRTY_TEXTURE_CACHES;
+      ctx->dirty_sampler_views |= (1 << num);
    }
 }
 
@@ -276,11 +293,6 @@ etna_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
    assert(start_slot == 0);
 
    ctx->dirty |= ETNA_DIRTY_SAMPLER_VIEWS | ETNA_DIRTY_TEXTURE_CACHES;
-
-   for (unsigned idx = 0; idx < num_views; ++idx) {
-      if (views[idx])
-         etna_update_sampler_source(views[idx], idx);
-   }
 
    switch (shader) {
    case PIPE_SHADER_FRAGMENT:

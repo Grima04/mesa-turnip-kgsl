@@ -263,9 +263,17 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    resource_read(ctx, indexbuf);
 
    /* Mark textures as being read */
-   for (i = 0; i < PIPE_MAX_SAMPLERS; i++)
-      if (ctx->sampler_view[i])
-         resource_read(ctx, ctx->sampler_view[i]->texture);
+   for (i = 0; i < PIPE_MAX_SAMPLERS; i++) {
+      if (ctx->sampler_view[i]) {
+          resource_read(ctx, ctx->sampler_view[i]->texture);
+
+         /* if texture was modified since the last update,
+          * we need to clear the texture cache and possibly
+          * resolve/update ts
+          */
+         etna_update_sampler_source(ctx->sampler_view[i], i);
+      }
+   }
 
    list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
       resource_written(ctx, hq->prsc);
