@@ -990,8 +990,8 @@ radv_image_alloc_htile(struct radv_image *image)
 		 * have to be fixed by updating ZRANGE_PRECISION when doing
 		 * fast depth clears to 0.0f.
 		 */
-		image->tc_compat_zrange_offset = image->clear_value_offset + 8;
-		image->size = image->clear_value_offset + 16;
+		image->tc_compat_zrange_offset = image->size;
+		image->size = image->tc_compat_zrange_offset + 4;
 	}
 	image->alignment = align64(image->alignment, image->planes[0].surface.htile_alignment);
 }
