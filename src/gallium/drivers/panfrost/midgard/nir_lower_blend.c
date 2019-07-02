@@ -200,11 +200,34 @@ nir_blend(
    return nir_color_mask(b, options.rt[0].colormask, blended, dst);
 }
 
+static bool
+nir_is_blend_channel_replace(nir_lower_blend_channel chan)
+{
+   return
+      (chan.src_factor == BLEND_FACTOR_ZERO) &&
+      (chan.dst_factor == BLEND_FACTOR_ZERO) &&
+      (chan.invert_src_factor && !chan.invert_dst_factor) &&
+      (chan.func == BLEND_FUNC_ADD || chan.func == BLEND_FUNC_SUBTRACT || chan.func == BLEND_FUNC_MAX);
+}
+
+static bool
+nir_is_blend_replace(nir_lower_blend_options options)
+{
+   return
+      nir_is_blend_channel_replace(options.rt[0].rgb) &&
+      nir_is_blend_channel_replace(options.rt[0].alpha);
+}
+
 void
 nir_lower_blend(nir_shader *shader, nir_lower_blend_options options)
 {
    /* Blend shaders are represented as special fragment shaders */
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
+
+   /* Special case replace, since there's nothing to do and we don't want to
+    * degrade intermediate precision (e.g. for non-blendable R32F targets) */
+   if (nir_is_blend_replace(options))
+      return;
 
    nir_foreach_function(func, shader) {
       nir_foreach_block(block, func->impl) {
