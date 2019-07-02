@@ -101,8 +101,4 @@ extern void
 _mesa_pack_uint_24_8_depth_stencil_row(mesa_format format, uint32_t n,
                                        const uint32_t *src, void *dst);
 
-
-extern void
-_mesa_pack_colormask(mesa_format format, const uint8_t colorMask[4], void *dst);
-
 #endif
