@@ -188,6 +188,10 @@ struct gen_perf_config {
 
    /* Location of the device's sysfs entry. */
    char sysfs_dev_dir[256];
+
+   struct {
+      void *(*bo_alloc)(void *bufmgr, const char *name, uint64_t size);
+   } vtbl;
 };
 
 static inline size_t

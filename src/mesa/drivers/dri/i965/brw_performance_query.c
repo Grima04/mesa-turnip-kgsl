@@ -1124,8 +1124,9 @@ brw_begin_perf_query(struct gl_context *ctx,
       }
 
       obj->oa.bo =
-         brw_bo_alloc(brw->bufmgr, "perf. query OA MI_RPC bo", MI_RPC_BO_SIZE,
-                      BRW_MEMZONE_OTHER);
+         brw->perfquery.perf->vtbl.bo_alloc(brw->bufmgr,
+                                            "perf. query OA MI_RPC bo",
+                                            MI_RPC_BO_SIZE);
 #ifdef DEBUG
       /* Pre-filling the BO helps debug whether writes landed. */
       void *map = brw_bo_map(brw, obj->oa.bo, MAP_WRITE);
@@ -1182,8 +1183,9 @@ brw_begin_perf_query(struct gl_context *ctx,
       }
 
       obj->pipeline_stats.bo =
-         brw_bo_alloc(brw->bufmgr, "perf. query pipeline stats bo",
-                      STATS_BO_SIZE, BRW_MEMZONE_OTHER);
+         brw->perfquery.perf->vtbl.bo_alloc(brw->bufmgr,
+                                            "perf. query pipeline stats bo",
+                                            STATS_BO_SIZE);
 
       /* Take starting snapshots. */
       snapshot_statistics_registers(brw, obj, 0);
@@ -1723,6 +1725,12 @@ oa_metrics_kernel_support(int fd, const struct gen_device_info *devinfo)
    return false;
 }
 
+static void *
+brw_oa_bo_alloc(void *bufmgr, const char *name, uint64_t size)
+{
+   return brw_bo_alloc(bufmgr, name, size, BRW_MEMZONE_OTHER);
+}
+
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
 {
@@ -1734,6 +1742,9 @@ brw_init_perf_query_info(struct gl_context *ctx)
       return brw->perfquery.perf->n_queries;
 
    brw->perfquery.perf = gen_perf_new(brw);
+
+   struct gen_perf_config *perf_cfg = brw->perfquery.perf;
+   perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
 
    init_pipeline_statistic_query_registers(brw);
    brw_perf_query_register_mdapi_statistic_query(brw);
