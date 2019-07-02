@@ -70,7 +70,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         pipe_reference_init(&prsc->reference, 1);
         prsc->screen = pscreen;
 
-	rsc->bo = panfrost_drm_import_bo(screen, whandle);
+	rsc->bo = panfrost_drm_import_bo(screen, whandle->handle);
 	rsc->slices[0].stride = whandle->stride;
 	rsc->slices[0].initialized = true;
 
@@ -120,10 +120,16 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
                         handle->handle = args.fd;
 
                         return TRUE;
-                } else
-			return panfrost_drm_export_bo(screen, rsrc->bo->gem_handle,
-                                                      rsrc->slices[0].stride,
-                                                      handle);
+                } else {
+                        int fd = panfrost_drm_export_bo(screen, rsrc->bo);
+
+                        if (fd < 0)
+                                return FALSE;
+
+                        handle->handle = fd;
+                        handle->stride = rsrc->slices[0].stride;
+                        return TRUE;
+		}
 	}
 
 	return FALSE;

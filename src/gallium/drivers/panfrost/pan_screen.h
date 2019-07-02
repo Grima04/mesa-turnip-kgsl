@@ -83,11 +83,9 @@ void
 panfrost_drm_free_slab(struct panfrost_screen *screen,
                        struct panfrost_memory *mem);
 struct panfrost_bo *
-panfrost_drm_import_bo(struct panfrost_screen *screen,
-                       struct winsys_handle *whandle);
+panfrost_drm_import_bo(struct panfrost_screen *screen, int fd);
 int
-panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle,
-                       unsigned int stride, struct winsys_handle *whandle);
+panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo *bo);
 int
 panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws,
                               bool is_scanout);

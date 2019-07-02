@@ -114,7 +114,7 @@ panfrost_drm_free_slab(struct panfrost_screen *screen, struct panfrost_memory *m
 }
 
 struct panfrost_bo *
-panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *whandle)
+panfrost_drm_import_bo(struct panfrost_screen *screen, int fd)
 {
 	struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
@@ -122,7 +122,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
         int ret;
         unsigned gem_handle;
 
-	ret = drmPrimeFDToHandle(screen->fd, whandle->handle, &gem_handle);
+	ret = drmPrimeFDToHandle(screen->fd, fd, &gem_handle);
 	assert(!ret);
 
 	get_bo_offset.handle = gem_handle;
@@ -141,7 +141,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 		assert(0);
 	}
 
-        bo->size = lseek(whandle->handle, 0, SEEK_END);
+        bo->size = lseek(fd, 0, SEEK_END);
         assert(bo->size > 0);
         bo->cpu = os_mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
                        screen->fd, mmap_bo.offset);
@@ -158,21 +158,18 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, struct winsys_handle *wha
 }
 
 int
-panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle, unsigned int stride, struct winsys_handle *whandle)
+panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo *bo)
 {
         struct drm_prime_handle args = {
-                .handle = gem_handle,
+                .handle = bo->gem_handle,
                 .flags = DRM_CLOEXEC,
         };
 
         int ret = drmIoctl(screen->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
         if (ret == -1)
-                return FALSE;
+                return -1;
 
-        whandle->handle = args.fd;
-        whandle->stride = stride;
-
-        return TRUE;
+        return args.fd;
 }
 
 static int
