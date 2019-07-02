@@ -120,6 +120,11 @@ typedef struct midgard_instruction {
         bool writeout;
         bool prepacked_branch;
 
+        /* Masks in a saneish format. One bit per channel, not packed fancy.
+         * Use this instead of the op specific ones, and switch over at emit
+         * time */
+        uint16_t mask;
+
         union {
                 midgard_load_store_word load_store;
                 midgard_vector_alu alu;
@@ -398,6 +403,7 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
 {
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
+                .mask = 0xF,
                 .ssa_args = {
                         .src0 = SSA_UNUSED_1,
                         .src1 = src,
@@ -408,7 +414,6 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
                         .outmod = midgard_outmod_int_wrap,
-                        .mask = 0xFF,
                         .src1 = vector_alu_srco_unsigned(zero_alu_src),
                         .src2 = vector_alu_srco_unsigned(mod)
                 },

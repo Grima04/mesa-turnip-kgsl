@@ -44,17 +44,13 @@ swizzle_to_access_mask(unsigned swizzle)
 /* Does the mask cover more than a scalar? */
 
 static bool
-is_single_component_mask(unsigned mask, bool full)
+is_single_component_mask(unsigned mask)
 {
         int components = 0;
 
         for (int c = 0; c < 8; ++c) {
                 if (mask & (1 << c))
                         components++;
-
-                /* Full uses 2-bit components */
-                if (full)
-                        c++;
         }
 
         return components == 1;
@@ -72,7 +68,7 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
 
         /* Figure out where exactly we wrote to */
         int source = first->ssa_args.dest;
-        int source_mask = first->type == TAG_ALU_4 ? squeeze_writemask(first->alu.mask) : 0xF;
+        int source_mask = first->mask;
 
         /* As long as the second doesn't read from the first, we're okay */
         if (second->ssa_args.src0 == source) {
@@ -98,9 +94,8 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
 
         if (second->ssa_args.dest == source) {
                 /* ...but only if the components overlap */
-                int dest_mask = second->type == TAG_ALU_4 ? squeeze_writemask(second->alu.mask) : 0xF;
 
-                if (dest_mask & source_mask)
+                if (second->mask & source_mask)
                         return false;
         }
 
@@ -198,13 +193,14 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                                 bool vectorable = units & UNITS_ANY_VECTOR;
                                 bool scalarable = units & UNITS_SCALAR;
-                                bool full = ains->alu.reg_mode == midgard_reg_mode_32;
-                                bool could_scalar = is_single_component_mask(ains->alu.mask, full);
-                                bool vector = vectorable && !(could_scalar && scalarable);
+                                bool could_scalar = is_single_component_mask(ains->mask);
 
                                 /* Only 16/32-bit can run on a scalar unit */
                                 could_scalar &= ains->alu.reg_mode != midgard_reg_mode_8;
                                 could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
+                                could_scalar &= ains->alu.dest_override == midgard_dest_override_none;
+
+                                bool vector = vectorable && !(could_scalar && scalarable);
 
                                 /* TODO: Check ahead-of-time for other scalar
                                  * hazards that otherwise get aborted out */

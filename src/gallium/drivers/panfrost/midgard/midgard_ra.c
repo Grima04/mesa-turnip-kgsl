@@ -293,16 +293,7 @@ allocate_registers(compiler_context *ctx)
                         if (ins->ssa_args.dest < 0) continue;
                         if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
 
-                        /* Default to vec4 if we're not sure */
-
-                        int mask = 0xF;
-
-                        if (ins->type == TAG_ALU_4)
-                                mask = squeeze_writemask(ins->alu.mask);
-                        else if (ins->type == TAG_LOAD_STORE_4)
-                                mask = ins->load_store.mask;
-
-                        int class = util_logbase2(mask) + 1;
+                        int class = util_logbase2(ins->mask) + 1;
 
                         /* Use the largest class if there's ambiguity, this
                          * handles partial writes */
@@ -430,16 +421,16 @@ install_registers_instr(
                 struct phys_reg src2 = index_to_reg(ctx, g, adjusted_src);
                 struct phys_reg dest = index_to_reg(ctx, g, args.dest);
 
-                unsigned mask = squeeze_writemask(ins->alu.mask);
-                ins->alu.mask = expand_writemask(compose_writemask(mask, dest));
+                unsigned uncomposed_mask = ins->mask; 
+                ins->mask = compose_writemask(uncomposed_mask, dest);
 
                 /* Adjust the dest mask if necessary. Mostly this is a no-op
                  * but it matters for dot products */
-                dest.mask = effective_writemask(&ins->alu);
+                dest.mask = effective_writemask(&ins->alu, ins->mask);
 
                 midgard_vector_alu_src mod1 =
                         vector_alu_from_unsigned(ins->alu.src1);
-                mod1.swizzle = compose_swizzle(mod1.swizzle, mask, src1, dest);
+                mod1.swizzle = compose_swizzle(mod1.swizzle, uncomposed_mask, src1, dest);
                 ins->alu.src1 = vector_alu_srco_unsigned(mod1);
 
                 ins->registers.src1_reg = src1.reg;
@@ -461,7 +452,7 @@ install_registers_instr(
                         midgard_vector_alu_src mod2 =
                                 vector_alu_from_unsigned(ins->alu.src2);
                         mod2.swizzle = compose_swizzle(
-                                        mod2.swizzle, mask, src2, dest);
+                                        mod2.swizzle, uncomposed_mask, src2, dest);
                         ins->alu.src2 = vector_alu_srco_unsigned(mod2);
 
                         ins->registers.src2_reg = src2.reg;
@@ -490,8 +481,8 @@ install_registers_instr(
                                         ins->load_store.swizzle, 0xF,
                                         default_phys_reg(0), src);
 
-                        ins->load_store.mask = compose_writemask(
-                                        ins->load_store.mask, src);
+                        ins->mask = compose_writemask(
+                                        ins->mask, src);
                 }
 
                 break;

@@ -88,6 +88,7 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 	static midgard_instruction m_##name(unsigned ssa, unsigned address) { \
 		midgard_instruction i = { \
 			.type = TAG_LOAD_STORE_4, \
+                        .mask = 0xF, \
 			.ssa_args = { \
 				.rname = ssa, \
 				.uname = -1, \
@@ -95,7 +96,6 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 			}, \
 			.load_store = { \
 				.op = midgard_op_##name, \
-				.mask = 0xF, \
 				.swizzle = SWIZZLE_XYZW, \
 				.address = address \
 			} \
@@ -596,6 +596,7 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch, unsigned co
                 /* We need to set the conditional as close as possible */
                 .precede_break = true,
                 .unit = for_branch ? UNIT_SMUL : UNIT_SADD,
+                .mask = 1 << COMPONENT_W,
 
                 .ssa_args = {
                         .src0 = condition,
@@ -608,7 +609,6 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch, unsigned co
                         .outmod = midgard_outmod_int_wrap,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
-                        .mask = (0x3 << 6), /* w */
                         .src1 = vector_alu_srco_unsigned(alu_src),
                         .src2 = vector_alu_srco_unsigned(alu_src)
                 },
@@ -637,6 +637,7 @@ emit_condition_mixed(compiler_context *ctx, nir_alu_src *src, unsigned nr_comp)
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
                 .precede_break = true,
+                .mask = mask_of(nr_comp),
                 .ssa_args = {
                         .src0 = condition,
                         .src1 = condition,
@@ -647,7 +648,6 @@ emit_condition_mixed(compiler_context *ctx, nir_alu_src *src, unsigned nr_comp)
                         .outmod = midgard_outmod_int_wrap,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
-                        .mask = expand_writemask(mask_of(nr_comp)),
                         .src1 = vector_alu_srco_unsigned(alu_src),
                         .src2 = vector_alu_srco_unsigned(alu_src)
                 },
@@ -668,6 +668,7 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
 
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
+                .mask = 1 << COMPONENT_W,
                 .ssa_args = {
                         .src0 = SSA_UNUSED_1,
                         .src1 = offset,
@@ -678,7 +679,6 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
                         .outmod = midgard_outmod_int_wrap,
                         .reg_mode = midgard_reg_mode_32,
                         .dest_override = midgard_dest_override_none,
-                        .mask = (0x3 << 6), /* w */
                         .src1 = vector_alu_srco_unsigned(zero_alu_src),
                         .src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx)
                 },
@@ -1062,14 +1062,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         bool is_int = midgard_is_integer_op(op);
 
+        ins.mask = mask_of(nr_components);
+
         midgard_vector_alu alu = {
                 .op = op,
                 .reg_mode = reg_mode,
                 .dest_override = dest_override,
                 .outmod = outmod,
-
-                /* Writemask only valid for non-SSA NIR */
-                .mask = expand_writemask(mask_of(nr_components)),
 
                 .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle, half_1, sext_1)),
                 .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int, broadcast_swizzle, half_2, sext_2)),
@@ -1078,7 +1077,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         /* Apply writemask if non-SSA, keeping in mind that we can't write to components that don't exist */
 
         if (!is_ssa)
-                alu.mask &= expand_writemask(instr->dest.write_mask);
+                ins.mask &= instr->dest.write_mask;
 
         ins.alu = alu;
 
@@ -1123,15 +1122,16 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 uint8_t original_swizzle[4];
                 memcpy(original_swizzle, nirmods[0]->swizzle, sizeof(nirmods[0]->swizzle));
+                unsigned orig_mask = ins.mask;
 
                 for (int i = 0; i < nr_components; ++i) {
                         /* Mask the associated component, dropping the
                          * instruction if needed */
 
-                        ins.alu.mask = (0x3) << (2 * i);
-                        ins.alu.mask &= alu.mask;
+                        ins.mask = 1 << i;
+                        ins.mask &= orig_mask;
 
-                        if (!ins.alu.mask)
+                        if (!ins.mask)
                                 continue;
 
                         for (int j = 0; j < 4; ++j)
@@ -1203,7 +1203,7 @@ emit_varying_read(
         /* TODO: swizzle, mask */
 
         midgard_instruction ins = m_ld_vary_32(dest, offset);
-        ins.load_store.mask = mask_of(nr_comp);
+        ins.mask = mask_of(nr_comp);
         ins.load_store.swizzle = SWIZZLE_XYZW >> (2 * component);
 
         midgard_varying_parameter p = {
@@ -1342,7 +1342,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
-                        ins.load_store.mask = mask_of(nr_comp);
+                        ins.mask = mask_of(nr_comp);
 
                         /* Use the type appropriate load */
                         switch (t) {
@@ -1574,6 +1574,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         /* No helper to build texture words -- we do it all here */
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
+                .mask = 0xF,
                 .texture = {
                         .op = midgard_texop,
                         .format = midgard_tex_format(instr->sampler_dim),
@@ -1582,7 +1583,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                         /* TODO: Regalloc it in */
                         .swizzle = SWIZZLE_XYZW,
-                        .mask = 0xF,
 
                         /* TODO: half */
                         .in_reg_full = 1,
@@ -1616,7 +1616,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                                 midgard_instruction st = m_st_cubemap_coords(reg, 0);
                                 st.load_store.unknown = 0x24; /* XXX: What is this? */
-                                st.load_store.mask = 0x3; /* xy */
+                                st.mask = 0x3; /* xy */
                                 st.load_store.swizzle = alu_src.swizzle;
                                 emit_mir_instruction(ctx, st);
 
@@ -1625,7 +1625,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 ins.texture.in_reg_swizzle = alu_src.swizzle = swizzle_of(nr_comp);
 
                                 midgard_instruction mov = v_mov(index, alu_src, reg);
-                                mov.alu.mask = expand_writemask(mask_of(nr_comp));
+                                mov.mask = mask_of(nr_comp);
                                 emit_mir_instruction(ctx, mov);
 
                                 if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
@@ -1642,7 +1642,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                         zero.ssa_args.inline_constant = true;
                                         zero.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
                                         zero.has_constants = true;
-                                        zero.alu.mask = ~mov.alu.mask;
+                                        zero.mask = ~mov.mask;
                                         emit_mir_instruction(ctx, zero);
 
                                         ins.texture.in_reg_swizzle = SWIZZLE_XYZZ;
@@ -1673,7 +1673,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         alu_src.swizzle = SWIZZLE_XXXX;
 
                         midgard_instruction mov = v_mov(index, alu_src, reg);
-                        mov.alu.mask = expand_writemask(1 << COMPONENT_W);
+                        mov.mask = 1 << COMPONENT_W;
                         emit_mir_instruction(ctx, mov);
 
                         ins.texture.lod_register = true;
@@ -1969,7 +1969,7 @@ embedded_to_inline_constant(compiler_context *ctx)
                         uint32_t value = cons[component];
 
                         bool is_vector = false;
-                        unsigned mask = effective_writemask(&ins->alu);
+                        unsigned mask = effective_writemask(&ins->alu, ins->mask);
 
                         for (int c = 1; c < 4; ++c) {
                                 /* We only care if this component is actually used */
@@ -2097,13 +2097,12 @@ mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
 static bool
 mir_nontrivial_source2_mod(midgard_instruction *ins)
 {
-        unsigned mask = squeeze_writemask(ins->alu.mask);
         bool is_int = midgard_is_integer_op(ins->alu.op);
 
         midgard_vector_alu_src src2 =
                 vector_alu_from_unsigned(ins->alu.src2);
 
-        return mir_nontrivial_mod(src2, is_int, mask);
+        return mir_nontrivial_mod(src2, is_int, ins->mask);
 }
 
 static bool
@@ -2250,7 +2249,7 @@ midgard_opt_copy_prop_tex(compiler_context *ctx, midgard_block *block)
 
                         if (v->ssa_args.dest == from) {
                                 /* We don't want to track partial writes ... */
-                                if (v->alu.mask == 0xF) {
+                                if (v->mask == 0xF) {
                                         v->ssa_args.dest = to;
                                         eliminated = true;
                                 }

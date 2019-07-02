@@ -29,15 +29,11 @@
  * this, we just demote vector ALU payloads to scalar. */
 
 static int
-component_from_mask(unsigned mask, bool full)
+component_from_mask(unsigned mask)
 {
         for (int c = 0; c < 8; ++c) {
                 if (mask & (1 << c))
                         return c;
-
-                /* Full uses every other bit */
-                if (full)
-                        c++;
         }
 
         assert(0);
@@ -102,8 +98,14 @@ vector_to_scalar_alu(midgard_vector_alu v, midgard_instruction *ins)
                 .unknown = 0,
                 .outmod = v.outmod,
                 .output_full = is_full,
-                .output_component = component_from_mask(v.mask, is_full),
+                .output_component = component_from_mask(ins->mask),
         };
+
+        /* Full components are physically spaced out */
+        if (is_full) {
+                assert(s.output_component < 4);
+                s.output_component <<= 1;
+        }
 
         /* Inline constant is passed along rather than trying to extract it
          * from v */
@@ -156,6 +158,11 @@ emit_alu_bundle(compiler_context *ctx,
                 midgard_scalar_alu scalarized;
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
+                        if (ins->alu.reg_mode == midgard_reg_mode_32)
+                                ins->alu.mask = expand_writemask_32(ins->mask);
+                        else
+                                ins->alu.mask = ins->mask;
+
                         size = sizeof(midgard_vector_alu);
                         source = &ins->alu;
                 } else if (ins->unit == ALU_ENAB_BR_COMPACT) {
@@ -209,6 +216,13 @@ emit_binary_bundle(compiler_context *ctx,
 
                 uint64_t current64, next64 = LDST_NOP;
 
+                /* Copy masks */
+
+                for (unsigned i = 0; i < bundle->instruction_count; ++i) {
+                        bundle->instructions[i]->load_store.mask =
+                                bundle->instructions[i]->mask;
+                }
+
                 memcpy(&current64, &bundle->instructions[0]->load_store, sizeof(current64));
 
                 if (bundle->instruction_count == 2)
@@ -236,6 +250,7 @@ emit_binary_bundle(compiler_context *ctx,
 
                 ins->texture.type = bundle->tag;
                 ins->texture.next_type = next_tag;
+                ins->texture.mask = ins->mask;
 
                 ctx->texture_op_count--;
 

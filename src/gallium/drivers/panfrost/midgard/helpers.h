@@ -217,13 +217,11 @@ struct mir_op_props {
 /* This file is common, so don't define the tables themselves. #include
  * midgard_op.h if you need that, or edit midgard_ops.c directly */
 
-/* Duplicate bits to convert standard 4-bit writemask to duplicated 8-bit
- * format (or do the inverse). The 8-bit format only really matters for
- * int8, as far as I know, where performance can be improved by using a
- * vec8 output */
+/* Duplicate bits to convert a 4-bit writemask to duplicated 8-bit format,
+ * which is used for 32-bit vector units */
 
 static inline unsigned
-expand_writemask(unsigned mask)
+expand_writemask_32(unsigned mask)
 {
         unsigned o = 0;
 
@@ -232,19 +230,6 @@ expand_writemask(unsigned mask)
                         o |= (3 << (2 * i));
 
         return o;
-}
-
-static inline unsigned
-squeeze_writemask(unsigned mask)
-{
-        unsigned o = 0;
-
-        for (int i = 0; i < 4; ++i)
-                if (mask & (3 << (2 * i)))
-                        o |= (1 << i);
-
-        return o;
-
 }
 
 /* Coerce structs to integer */

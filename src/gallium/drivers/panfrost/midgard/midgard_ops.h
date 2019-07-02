@@ -53,8 +53,9 @@ midgard_is_integer_out_op(int op)
 }
 
 /* Determines effective writemask, taking quirks and expansion into account */
+
 static inline unsigned
-effective_writemask(midgard_vector_alu *alu)
+effective_writemask(midgard_vector_alu *alu, unsigned existing_mask)
 {
         /* Channel count is off-by-one to fit in two-bits (0 channel makes no
          * sense) */
@@ -66,9 +67,7 @@ effective_writemask(midgard_vector_alu *alu)
         if (channel_count)
                 return (1 << channel_count) - 1;
 
-        /* Otherwise, just squeeze the existing mask */
-        return squeeze_writemask(alu->mask);
-}
-
+        return existing_mask;
+};
 
 
