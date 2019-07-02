@@ -38,6 +38,33 @@
 #include "pan_util.h"
 #include "pandecode/decode.h"
 
+static void
+panfrost_drm_mmap_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
+{
+        struct drm_panfrost_mmap_bo mmap_bo = { .handle = bo->gem_handle };
+        int ret;
+
+        if (bo->cpu)
+                return;
+
+        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
+        if (ret) {
+                fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %d\n", ret);
+                assert(0);
+        }
+
+        bo->cpu = os_mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                          screen->fd, mmap_bo.offset);
+        if (bo->cpu == MAP_FAILED) {
+                fprintf(stderr, "mmap failed: %p\n", bo->cpu);
+                assert(0);
+        }
+
+        /* Record the mmap if we're tracing */
+        if (pan_debug & PAN_DBG_TRACE)
+                pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
+}
+
 void
 panfrost_drm_allocate_slab(struct panfrost_screen *screen,
 		           struct panfrost_memory *mem,
@@ -118,7 +145,6 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, int fd)
 {
 	struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
-	struct drm_panfrost_mmap_bo mmap_bo = {0,};
         int ret;
         unsigned gem_handle;
 
@@ -131,29 +157,12 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, int fd)
 
 	bo->gem_handle = gem_handle;
         bo->gpu = (mali_ptr) get_bo_offset.offset;
-        pipe_reference_init(&bo->reference, 1);
-
-	// TODO map and unmap on demand?
-	mmap_bo.handle = gem_handle;
-	ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
-	if (ret) {
-                fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %d\n", ret);
-		assert(0);
-	}
-
         bo->size = lseek(fd, 0, SEEK_END);
         assert(bo->size > 0);
-        bo->cpu = os_mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                       screen->fd, mmap_bo.offset);
-        if (bo->cpu == MAP_FAILED) {
-                fprintf(stderr, "mmap failed: %p\n", bo->cpu);
-		assert(0);
-	}
+        pipe_reference_init(&bo->reference, 1);
 
-        /* Record the mmap if we're tracing */
-        if (pan_debug & PAN_DBG_TRACE)
-                pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
-
+        // TODO map and unmap on demand?
+        panfrost_drm_mmap_bo(screen, bo);
         return bo;
 }
 
