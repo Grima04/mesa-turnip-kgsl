@@ -41,7 +41,7 @@
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
 
 static bool
-get_sysfs_dev_dir(struct gen_perf *perf, int fd)
+get_sysfs_dev_dir(struct gen_perf_config *perf, int fd)
 {
    struct stat sb;
    int min, maj;
@@ -125,7 +125,7 @@ read_file_uint64(const char *file, uint64_t *val)
 }
 
 static bool
-read_sysfs_drm_device_file_uint64(struct gen_perf *perf,
+read_sysfs_drm_device_file_uint64(struct gen_perf_config *perf,
                                   const char *file,
                                   uint64_t *value)
 {
@@ -142,7 +142,7 @@ read_sysfs_drm_device_file_uint64(struct gen_perf *perf,
 }
 
 static void
-register_oa_config(struct gen_perf *perf,
+register_oa_config(struct gen_perf_config *perf,
                    const struct gen_perf_query_info *query,
                    uint64_t config_id)
 {
@@ -156,7 +156,7 @@ register_oa_config(struct gen_perf *perf,
 }
 
 static void
-enumerate_sysfs_metrics(struct gen_perf *perf)
+enumerate_sysfs_metrics(struct gen_perf_config *perf)
 {
    DIR *metricsdir = NULL;
    struct dirent *metric_entry;
@@ -210,7 +210,7 @@ enumerate_sysfs_metrics(struct gen_perf *perf)
 }
 
 static bool
-kernel_has_dynamic_config_support(struct gen_perf *perf, int fd)
+kernel_has_dynamic_config_support(struct gen_perf_config *perf, int fd)
 {
    uint64_t invalid_config_id = UINT64_MAX;
 
@@ -219,7 +219,7 @@ kernel_has_dynamic_config_support(struct gen_perf *perf, int fd)
 }
 
 bool
-gen_perf_load_metric_id(struct gen_perf *perf, const char *guid,
+gen_perf_load_metric_id(struct gen_perf_config *perf, const char *guid,
                         uint64_t *metric_id)
 {
    char config_path[280];
@@ -232,7 +232,7 @@ gen_perf_load_metric_id(struct gen_perf *perf, const char *guid,
 }
 
 static void
-init_oa_configs(struct gen_perf *perf, int fd)
+init_oa_configs(struct gen_perf_config *perf, int fd)
 {
    hash_table_foreach(perf->oa_metrics_table, entry) {
       const struct gen_perf_query_info *query = entry->data;
@@ -272,7 +272,7 @@ init_oa_configs(struct gen_perf *perf, int fd)
 }
 
 static void
-compute_topology_builtins(struct gen_perf *perf,
+compute_topology_builtins(struct gen_perf_config *perf,
                           const struct gen_device_info *devinfo)
 {
    perf->sys_vars.slice_mask = devinfo->slice_masks;
@@ -308,7 +308,7 @@ compute_topology_builtins(struct gen_perf *perf,
 }
 
 static bool
-init_oa_sys_vars(struct gen_perf *perf, const struct gen_device_info *devinfo)
+init_oa_sys_vars(struct gen_perf_config *perf, const struct gen_device_info *devinfo)
 {
    uint64_t min_freq_mhz = 0, max_freq_mhz = 0;
 
@@ -328,7 +328,7 @@ init_oa_sys_vars(struct gen_perf *perf, const struct gen_device_info *devinfo)
    return true;
 }
 
-typedef void (*perf_register_oa_queries_t)(struct gen_perf *);
+typedef void (*perf_register_oa_queries_t)(struct gen_perf_config *);
 
 static perf_register_oa_queries_t
 get_register_queries_function(const struct gen_device_info *devinfo)
@@ -372,7 +372,7 @@ get_register_queries_function(const struct gen_device_info *devinfo)
 }
 
 bool
-gen_perf_load_oa_metrics(struct gen_perf *perf, int fd,
+gen_perf_load_oa_metrics(struct gen_perf_config *perf, int fd,
                          const struct gen_device_info *devinfo)
 {
    perf_register_oa_queries_t oa_register = get_register_queries_function(devinfo);

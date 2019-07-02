@@ -1162,7 +1162,7 @@ struct brw_context
    } predicate;
 
    struct {
-      struct gen_perf *perf;
+      struct gen_perf_config *perf;
 
       /* The i915 perf stream we open to setup + enable the OA counters */
       int oa_stream_fd;

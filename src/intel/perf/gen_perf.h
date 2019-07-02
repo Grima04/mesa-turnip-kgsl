@@ -35,7 +35,7 @@
 
 struct gen_device_info;
 
-struct gen_perf;
+struct gen_perf_config;
 struct gen_perf_query_info;
 
 enum gen_perf_counter_type {
@@ -108,10 +108,10 @@ struct gen_perf_query_counter {
    size_t offset;
 
    union {
-      uint64_t (*oa_counter_read_uint64)(struct gen_perf *perf,
+      uint64_t (*oa_counter_read_uint64)(struct gen_perf_config *perf,
                                          const struct gen_perf_query_info *query,
                                          const uint64_t *accumulator);
-      float (*oa_counter_read_float)(struct gen_perf *perf,
+      float (*oa_counter_read_float)(struct gen_perf_config *perf,
                                      const struct gen_perf_query_info *query,
                                      const uint64_t *accumulator);
       struct gen_pipeline_stat pipeline_stat;
@@ -158,7 +158,7 @@ struct gen_perf_query_info {
    uint32_t n_b_counter_regs;
 };
 
-struct gen_perf {
+struct gen_perf_config {
    struct gen_perf_query_info *queries;
    int n_queries;
 
@@ -212,7 +212,7 @@ gen_perf_query_counter_get_size(const struct gen_perf_query_counter *counter)
 }
 
 static inline struct gen_perf_query_info *
-gen_perf_query_append_query_info(struct gen_perf *perf, int max_counters)
+gen_perf_query_append_query_info(struct gen_perf_config *perf, int max_counters)
 {
    struct gen_perf_query_info *query;
 
@@ -263,19 +263,19 @@ gen_perf_query_info_add_basic_stat_reg(struct gen_perf_query_info *query,
    gen_perf_query_info_add_stat_reg(query, reg, 1, 1, name, name);
 }
 
-static inline struct gen_perf *
+static inline struct gen_perf_config *
 gen_perf_new(void *ctx, int (*ioctl_cb)(int, unsigned long, void *))
 {
-   struct gen_perf *perf = rzalloc(ctx, struct gen_perf);
+   struct gen_perf_config *perf = rzalloc(ctx, struct gen_perf_config);
 
    perf->ioctl = ioctl_cb;
 
    return perf;
 }
 
-bool gen_perf_load_oa_metrics(struct gen_perf *perf, int fd,
+bool gen_perf_load_oa_metrics(struct gen_perf_config *perf, int fd,
                               const struct gen_device_info *devinfo);
-bool gen_perf_load_metric_id(struct gen_perf *perf, const char *guid,
+bool gen_perf_load_metric_id(struct gen_perf_config *perf, const char *guid,
                              uint64_t *metric_id);
 
 void gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,

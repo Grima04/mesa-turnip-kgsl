@@ -1383,7 +1383,7 @@ get_oa_counter_data(struct brw_context *brw,
                     size_t data_size,
                     uint8_t *data)
 {
-   struct gen_perf *perf = brw->perfquery.perf;
+   struct gen_perf_config *perf = brw->perfquery.perf;
    const struct gen_perf_query_info *query = obj->query;
    int n_counters = query->n_counters;
    int written = 0;
@@ -1599,7 +1599,7 @@ static void
 init_pipeline_statistic_query_registers(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   struct gen_perf *perf = brw->perfquery.perf;
+   struct gen_perf_config *perf = brw->perfquery.perf;
    struct gen_perf_query_info *query =
       gen_perf_query_append_query_info(perf, MAX_STAT_COUNTERS);
 

@@ -67,7 +67,7 @@ void
 brw_perf_query_register_mdapi_oa_query(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   struct gen_perf *perf = brw->perfquery.perf;
+   struct gen_perf_config *perf = brw->perfquery.perf;
    struct gen_perf_query_info *query = NULL;
 
    /* MDAPI requires different structures for pretty much every generation
