@@ -42,6 +42,8 @@
 #include "nir_lower_blend.h"
 #include "util/u_format.h"
 
+/* Converters for UNORM8 formats, e.g. R8G8B8A8_UNORM */
+
 static nir_ssa_def *
 nir_float_to_unorm8(nir_builder *b, nir_ssa_def *c_float)
 {
@@ -70,15 +72,17 @@ nir_unorm8_to_float(nir_builder *b, nir_ssa_def *c_native)
    return scaled;
 }
 
-
-
 static nir_ssa_def *
 nir_float_to_native(nir_builder *b,
       nir_ssa_def *c_float,
-      const struct util_format_description *desc)
+      const struct util_format_description *desc,
+      unsigned bits,
+      bool homogenous_bits)
 {
    if (util_format_is_unorm8(desc))
       return nir_float_to_unorm8(b, c_float);
+   else if (util_format_is_float(desc->format) && homogenous_bits)
+      return c_float;
    else {
       printf("%s\n", desc->name);
       unreachable("Unknown format name");
@@ -88,10 +92,14 @@ nir_float_to_native(nir_builder *b,
 static nir_ssa_def *
 nir_native_to_float(nir_builder *b,
    nir_ssa_def *c_native,
-   const struct util_format_description *desc)
+   const struct util_format_description *desc,
+   unsigned bits,
+   bool homogenous_bits)
 {
    if (util_format_is_unorm8(desc))
       return nir_unorm8_to_float(b, c_native);
+   else if (util_format_is_float(desc->format) && homogenous_bits)
+      return c_native;
    else {
       printf("%s\n", desc->name);
       unreachable("Unknown format name");
@@ -106,6 +114,19 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format)
 
    const struct util_format_description *format_desc =
       util_format_description(format);
+
+   unsigned nr_channels = format_desc->nr_channels;
+   unsigned bits = format_desc->channel[0].size;
+
+   /* Do all channels have the same bit count? */
+   bool homogenous_bits = true;
+
+   for (unsigned c = 1; c < nr_channels; ++c)
+      homogenous_bits &= (format_desc->channel[c].size == bits);
+
+   /* Figure out the formats for the raw */
+   unsigned raw_bitsize_in = bits;
+   unsigned raw_bitsize_out = bits;
 
    nir_foreach_function(func, shader) {
       nir_foreach_block(block, func->impl) {
@@ -138,7 +159,12 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format)
                nir_ssa_def *c_nir = nir_ssa_for_src(&b, intr->src[1], 4);
 
                /* Format convert */
-               nir_ssa_def *converted = nir_float_to_native(&b, c_nir, format_desc);
+               nir_ssa_def *converted = nir_float_to_native(&b, c_nir, format_desc, bits, homogenous_bits);
+
+               if (raw_bitsize_out == 16)
+                  converted = nir_f2f16(&b, converted);
+               else if (raw_bitsize_out == 32)
+                  converted = nir_f2f32(&b, converted);
 
                /* Rewrite to use a native store by creating a new intrinsic */
                nir_intrinsic_instr *new =
@@ -163,13 +189,13 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format)
 
                new->num_components = 4;
 
-               unsigned bitsize = 8;
+               unsigned bitsize = raw_bitsize_in;
                nir_ssa_dest_init(&new->instr, &new->dest, 4, bitsize, NULL);
                nir_builder_instr_insert(&b, &new->instr);
 
                /* Convert the raw value */
                nir_ssa_def *raw = &new->dest.ssa;
-               nir_ssa_def *converted = nir_native_to_float(&b, raw, format_desc);
+               nir_ssa_def *converted = nir_native_to_float(&b, raw, format_desc, bits, homogenous_bits);
 
                /* Rewrite to use the converted value */
                nir_src rewritten = nir_src_for_ssa(converted);
