@@ -8250,6 +8250,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                int shader_time_index,
                char **error_str)
 {
+   prog_data->base.total_shared = src_shader->info.cs.shared_size;
    prog_data->local_size[0] = src_shader->info.cs.local_size[0];
    prog_data->local_size[1] = src_shader->info.cs.local_size[1];
    prog_data->local_size[2] = src_shader->info.cs.local_size[2];

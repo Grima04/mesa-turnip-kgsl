@@ -1443,8 +1443,6 @@ anv_pipeline_compile_cs(struct anv_pipeline *pipeline,
       NIR_PASS_V(stage.nir, nir_lower_explicit_io,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
 
-      stage.prog_data.cs.base.total_shared = stage.nir->info.cs.shared_size;
-
       const unsigned *shader_code =
          brw_compile_cs(compiler, pipeline->device, mem_ctx, &stage.key.cs,
                         &stage.prog_data.cs, stage.nir, -1, NULL);

@@ -71,8 +71,6 @@ brw_codegen_cs_prog(struct brw_context *brw,
 
       ralloc_free(mem_ctx);
       return false;
-   } else {
-      prog_data.base.total_shared = cp->program.info.cs.shared_size;
    }
 
    assign_cs_binding_table_offsets(devinfo, &cp->program, &prog_data);
