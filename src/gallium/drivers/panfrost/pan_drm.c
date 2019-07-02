@@ -65,6 +65,68 @@ panfrost_drm_mmap_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
                 pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
 }
 
+static void
+panfrost_drm_munmap_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
+{
+        if (!bo->cpu)
+                return;
+
+        if (os_munmap((void *) (uintptr_t)bo->cpu, bo->size)) {
+                perror("munmap");
+                abort();
+        }
+
+        bo->cpu = NULL;
+}
+
+struct panfrost_bo *
+panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
+                       uint32_t flags)
+{
+        struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
+        struct drm_panfrost_create_bo create_bo = {
+                .size = size,
+                .flags = flags,
+        };
+        int ret;
+
+        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
+        if (ret) {
+                fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %d\n", ret);
+                assert(0);
+        }
+
+        bo->size = create_bo.size;
+        bo->gpu = create_bo.offset;
+        bo->gem_handle = create_bo.handle;
+
+        // TODO map and unmap on demand?
+        panfrost_drm_mmap_bo(screen, bo);
+
+        pipe_reference_init(&bo->reference, 1);
+        return bo;
+}
+
+void
+panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
+{
+        struct drm_gem_close gem_close = { .handle = bo->gem_handle };
+        int ret;
+
+        if (!bo)
+                return;
+
+        panfrost_drm_munmap_bo(screen, bo);
+
+        ret = drmIoctl(screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+        if (ret) {
+                fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %d\n", ret);
+                assert(0);
+        }
+
+        ralloc_free(bo);
+}
+
 void
 panfrost_drm_allocate_slab(struct panfrost_screen *screen,
 		           struct panfrost_memory *mem,

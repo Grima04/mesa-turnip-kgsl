@@ -83,6 +83,11 @@ void
 panfrost_drm_free_slab(struct panfrost_screen *screen,
                        struct panfrost_memory *mem);
 struct panfrost_bo *
+panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
+                       uint32_t flags);
+void
+panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo);
+struct panfrost_bo *
 panfrost_drm_import_bo(struct panfrost_screen *screen, int fd);
 int
 panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo *bo);

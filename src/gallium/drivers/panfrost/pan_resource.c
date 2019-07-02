@@ -391,18 +391,7 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
         size_t bo_size;
 
         panfrost_setup_slices(pres, &bo_size);
-
-        struct panfrost_memory mem;
-        struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
-
-        pipe_reference_init(&bo->reference, 1);
-        panfrost_drm_allocate_slab(screen, &mem, bo_size / 4096, true, 0, 0, 0);
-
-        bo->cpu = mem.cpu;
-        bo->gpu = mem.gpu;
-        bo->gem_handle = mem.gem_handle;
-	bo->size = bo_size;
-	pres->bo = bo;
+        pres->bo = panfrost_drm_create_bo(screen, bo_size, 0);
 }
 
 static struct pipe_resource *
@@ -442,20 +431,6 @@ panfrost_resource_create(struct pipe_screen *screen,
         return (struct pipe_resource *)so;
 }
 
-static void
-panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
-{
-        struct panfrost_memory mem = {
-                .cpu = bo->cpu,
-                .gpu = bo->gpu,
-                .size = bo->size,
-                .gem_handle = bo->gem_handle,
-        };
-
-        panfrost_drm_free_slab(screen, &mem);
-        ralloc_free(bo);
-}
-
 void
 panfrost_bo_reference(struct panfrost_bo *bo)
 {
@@ -467,9 +442,8 @@ panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo)
 {
         /* When the reference count goes to zero, we need to cleanup */
 
-        if (pipe_reference(&bo->reference, NULL)) {
-                panfrost_destroy_bo(pan_screen(screen), bo);
-        }
+        if (pipe_reference(&bo->reference, NULL))
+                panfrost_drm_release_bo(pan_screen(screen), bo);
 }
 
 static void
