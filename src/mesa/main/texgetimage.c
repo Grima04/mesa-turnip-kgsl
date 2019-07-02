@@ -1445,23 +1445,28 @@ get_texture_image(struct gl_context *ctx,
    _mesa_unlock_texture(ctx, texObj);
 }
 
-
-void GLAPIENTRY
-_mesa_GetnTexImageARB(GLenum target, GLint level, GLenum format, GLenum type,
-                      GLsizei bufSize, GLvoid *pixels)
+static void
+_get_texture_image(struct gl_context *ctx,
+                  struct gl_texture_object *texObj,
+                  GLenum target, GLint level,
+                  GLenum format, GLenum type,
+                  GLsizei bufSize, GLvoid *pixels,
+                  const char *caller)
 {
-   GET_CURRENT_CONTEXT(ctx);
-   static const char *caller = "glGetnTexImageARB";
    GLsizei width, height, depth;
-   struct gl_texture_object *texObj;
-
-   if (!legal_getteximage_target(ctx, target, false)) {
+   /* EXT/ARB direct_state_access variants don't call _get_texture_image
+    * with a NULL texObj */
+   bool is_dsa = texObj != NULL;
+   if (!legal_getteximage_target(ctx, target, is_dsa)) {
       _mesa_error(ctx, GL_INVALID_ENUM, "%s", caller);
       return;
    }
 
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   assert(texObj);
+   if (!is_dsa) {
+      texObj = _mesa_get_current_tex_object(ctx, target);
+      assert(texObj);
+   }
+
 
    get_texture_image_dims(texObj, target, level, &width, &height, &depth);
 
@@ -1474,6 +1479,18 @@ _mesa_GetnTexImageARB(GLenum target, GLint level, GLenum format, GLenum type,
    get_texture_image(ctx, texObj, target, level,
                      0, 0, 0, width, height, depth,
                      format, type, pixels, caller);
+}
+
+
+void GLAPIENTRY
+_mesa_GetnTexImageARB(GLenum target, GLint level, GLenum format, GLenum type,
+                      GLsizei bufSize, GLvoid *pixels)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   static const char *caller = "glGetnTexImageARB";
+
+   _get_texture_image(ctx, NULL, target, level, format, type,
+                      bufSize, pixels, caller);
 }
 
 
@@ -1483,28 +1500,9 @@ _mesa_GetTexImage(GLenum target, GLint level, GLenum format, GLenum type,
 {
    GET_CURRENT_CONTEXT(ctx);
    static const char *caller = "glGetTexImage";
-   GLsizei width, height, depth;
-   struct gl_texture_object *texObj;
 
-   if (!legal_getteximage_target(ctx, target, false)) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "%s", caller);
-      return;
-   }
-
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   assert(texObj);
-
-   get_texture_image_dims(texObj, target, level, &width, &height, &depth);
-
-   if (getteximage_error_check(ctx, texObj, target, level,
-                               width, height, depth,
-                               format, type, INT_MAX, pixels, caller)) {
-      return;
-   }
-
-   get_texture_image(ctx, texObj, target, level,
-                     0, 0, 0, width, height, depth,
-                     format, type, pixels, caller);
+   _get_texture_image(ctx, NULL, target, level, format, type,
+                      INT_MAX, pixels, caller);
 }
 
 
@@ -1513,7 +1511,6 @@ _mesa_GetTextureImage(GLuint texture, GLint level, GLenum format, GLenum type,
                       GLsizei bufSize, GLvoid *pixels)
 {
    GET_CURRENT_CONTEXT(ctx);
-   GLsizei width, height, depth;
    static const char *caller = "glGetTextureImage";
    struct gl_texture_object *texObj =
       _mesa_lookup_texture_err(ctx, texture, caller);
@@ -1522,23 +1519,8 @@ _mesa_GetTextureImage(GLuint texture, GLint level, GLenum format, GLenum type,
       return;
    }
 
-   if (!legal_getteximage_target(ctx, texObj->Target, true)) {
-      _mesa_error(ctx, GL_INVALID_OPERATION, "%s", caller);
-      return;
-   }
-
-   get_texture_image_dims(texObj, texObj->Target, level,
-                          &width, &height, &depth);
-
-   if (getteximage_error_check(ctx, texObj, texObj->Target, level,
-                               width, height, depth,
-                               format, type, bufSize, pixels, caller)) {
-      return;
-   }
-
-   get_texture_image(ctx, texObj, texObj->Target, level,
-                     0, 0, 0, width, height, depth,
-                     format, type, pixels, caller);
+   _get_texture_image(ctx, texObj, texObj->Target, level, format, type,
+                      bufSize, pixels, caller);
 }
 
 
