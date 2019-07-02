@@ -180,6 +180,37 @@ panfrost_surface_destroy(struct pipe_context *pipe,
         ralloc_free(surf);
 }
 
+static struct pipe_resource *
+panfrost_create_scanout_res(struct pipe_screen *screen,
+                            const struct pipe_resource *template)
+{
+        struct panfrost_screen *pscreen = pan_screen(screen);
+        struct pipe_resource scanout_templat = *template;
+        struct renderonly_scanout *scanout;
+        struct winsys_handle handle;
+        struct pipe_resource *res;
+
+        scanout = renderonly_scanout_for_resource(&scanout_templat,
+                                                  pscreen->ro, &handle);
+        if (!scanout)
+                return NULL;
+
+        assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+        /* TODO: handle modifiers? */
+        res = screen->resource_from_handle(screen, template, &handle,
+                                           PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE);
+        close(handle.handle);
+        if (!res)
+                return NULL;
+
+        struct panfrost_resource *pres = pan_resource(res);
+
+        pres->scanout = scanout;
+        pscreen->display_target = pres;
+
+        return res;
+}
+
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile */
 
 #define CHECKSUM_TILE_WIDTH 16
@@ -368,14 +399,6 @@ static struct pipe_resource *
 panfrost_resource_create(struct pipe_screen *screen,
                          const struct pipe_resource *template)
 {
-        struct panfrost_resource *so = rzalloc(screen, struct panfrost_resource);
-        struct panfrost_screen *pscreen = (struct panfrost_screen *) screen;
-
-        so->base = *template;
-        so->base.screen = screen;
-
-        pipe_reference_init(&so->base.reference, 1);
-
         /* Make sure we're familiar */
         switch (template->target) {
                 case PIPE_BUFFER:
@@ -391,35 +414,21 @@ panfrost_resource_create(struct pipe_screen *screen,
                         assert(0);
         }
 
+        if (template->bind &
+            (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED))
+                return panfrost_create_scanout_res(screen, template);
+
+        struct panfrost_resource *so = rzalloc(screen, struct panfrost_resource);
+        struct panfrost_screen *pscreen = (struct panfrost_screen *) screen;
+
+        so->base = *template;
+        so->base.screen = screen;
+
+        pipe_reference_init(&so->base.reference, 1);
+
         util_range_init(&so->valid_buffer_range);
 
-        if (template->bind & PIPE_BIND_DISPLAY_TARGET ||
-            template->bind & PIPE_BIND_SCANOUT ||
-            template->bind & PIPE_BIND_SHARED) {
-                struct pipe_resource scanout_templat = *template;
-                struct renderonly_scanout *scanout;
-                struct winsys_handle handle;
-
-                scanout = renderonly_scanout_for_resource(&scanout_templat,
-                                                          pscreen->ro, &handle);
-                if (!scanout)
-                        return NULL;
-
-                assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-                /* TODO: handle modifiers? */
-                so = pan_resource(screen->resource_from_handle(screen, template,
-                                                                 &handle,
-                                                                 PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
-                close(handle.handle);
-                if (!so)
-                        return NULL;
-
-                so->scanout = scanout;
-                pscreen->display_target = so;
-        } else {
-                so->bo = panfrost_create_bo(pscreen, template);
-        }
-
+        so->bo = panfrost_create_bo(pscreen, template);
         return (struct pipe_resource *)so;
 }
 
