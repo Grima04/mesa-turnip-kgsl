@@ -75,9 +75,6 @@ struct panfrost_bo {
         /* Distance from tree to tree */
         unsigned cubemap_stride;
 
-        /* Set if this bo was imported rather than allocated */
-        bool imported;
-
         /* Internal layout (tiled?) */
         enum panfrost_memory_layout layout;
 

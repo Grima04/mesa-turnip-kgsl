@@ -88,9 +88,6 @@ panfrost_drm_import_bo(struct panfrost_screen *screen,
 int
 panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle,
                        unsigned int stride, struct winsys_handle *whandle);
-void
-panfrost_drm_free_imported_bo(struct panfrost_screen *screen,
-                              struct panfrost_bo *bo);
 int
 panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs,
                         struct pipe_surface *surf);

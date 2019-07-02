@@ -435,19 +435,14 @@ panfrost_resource_create(struct pipe_screen *screen,
 static void
 panfrost_destroy_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
 {
-        if (bo->imported) {
-                panfrost_drm_free_imported_bo(screen, bo);
-        } else {
-                struct panfrost_memory mem = {
-                        .cpu = bo->cpu,
-                        .gpu = bo->gpu,
-                        .size = bo->size,
-                        .gem_handle = bo->gem_handle,
-                };
+        struct panfrost_memory mem = {
+                .cpu = bo->cpu,
+                .gpu = bo->gpu,
+                .size = bo->size,
+                .gem_handle = bo->gem_handle,
+        };
 
-                panfrost_drm_free_slab(screen, &mem);
-        }
-
+        panfrost_drm_free_slab(screen, &mem);
         ralloc_free(bo);
 }
 

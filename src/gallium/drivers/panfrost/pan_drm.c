@@ -175,24 +175,6 @@ panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle, unsigned 
         return TRUE;
 }
 
-void
-panfrost_drm_free_imported_bo(struct panfrost_screen *screen, struct panfrost_bo *bo) 
-{
-	struct drm_gem_close gem_close = {
-		.handle = bo->gem_handle,
-	};
-	int ret;
-
-	ret = drmIoctl(screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
-	if (ret) {
-                fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %d\n", ret);
-		assert(0);
-	}
-
-	bo->gem_handle = -1;
-	bo->gpu = (mali_ptr)NULL;
-}
-
 int
 panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, struct pipe_surface *surf)
 {
