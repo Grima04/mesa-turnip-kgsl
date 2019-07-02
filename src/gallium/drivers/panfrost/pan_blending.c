@@ -26,6 +26,7 @@
 #include "pan_blending.h"
 #include "pan_context.h"
 #include "gallium/auxiliary/util/u_blend.h"
+#include "util/u_format.h"
 
 /*
  * Implements fixed-function blending on Midgard.
@@ -97,6 +98,34 @@
  *
  * The following routines implement this fixed function blending encoding
  */
+
+/* Not all formats can be blended by fixed-function hardware */
+
+static bool
+panfrost_can_blend(enum pipe_format format)
+{
+        /* Fixed-function can handle sRGB */
+        format = util_format_linear(format);
+
+        /* Decompose the format */
+        const struct util_format_description *desc =
+                util_format_description(format);
+
+        /* Any 8-bit unorm is supported */
+        if (util_format_is_unorm8(desc))
+                return true;
+
+        /* Certain special formats are, too */
+        switch (format) {
+                case PIPE_FORMAT_B5G6R5_UNORM:
+                case PIPE_FORMAT_B4G4R4A4_UNORM:
+                case PIPE_FORMAT_B5G5R5A1_UNORM:
+                case PIPE_FORMAT_R10G10B10A2_UNORM:
+                        return true;
+                default:
+                        return false;
+        }
+}
 
 /* Helper to find the uncomplemented Gallium blend factor corresponding to a
  * complemented Gallium blend factor */
@@ -345,9 +374,19 @@ panfrost_make_constant(unsigned *factors, unsigned num_factors, const struct pip
  */
 
 bool
-panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state *blend, struct panfrost_blend_state *so, unsigned colormask, const struct pipe_blend_color *blend_color)
+panfrost_make_fixed_blend_mode(
+                const struct pipe_rt_blend_state *blend,
+                struct panfrost_blend_state *so,
+                unsigned colormask,
+                const struct pipe_blend_color *blend_color,
+                enum pipe_format format)
 {
         struct mali_blend_equation *out = &so->equation;
+
+        /* Check if the format supports fixed-function blending at all */
+
+        if (!panfrost_can_blend(format))
+                return false;
 
         /* Gallium and Mali represent colour masks identically. XXX: Static assert for future proof */
         out->color_mask = colormask;

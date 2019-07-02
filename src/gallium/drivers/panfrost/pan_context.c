@@ -2378,14 +2378,13 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
         /* Compile the blend state, first as fixed-function if we can */
 
-        if (panfrost_make_fixed_blend_mode(&blend->rt[0], so, blend->rt[0].colormask, &ctx->blend_color))
-                return so;
+        /* TODO: Key by format */
+        enum pipe_format format = ctx->pipe_framebuffer.nr_cbufs ?
+                ctx->pipe_framebuffer.cbufs[0]->format :
+                PIPE_FORMAT_R8G8B8A8_UNORM;
 
-        /* TODO: Key against framebuffer. TODO: MRT explicitly */
-        if (!ctx->pipe_framebuffer.nr_cbufs)
+        if (panfrost_make_fixed_blend_mode(&blend->rt[0], so, blend->rt[0].colormask, &ctx->blend_color, format))
                 return so;
-
-        enum pipe_format format = ctx->pipe_framebuffer.cbufs[0]->format;
 
         /* If we can't, compile a blend shader instead */
 
