@@ -1236,27 +1236,6 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr)
         emit_ubo_read(ctx, dest, uniform, NULL, 0);
 }
 
-/* Reads RGBA8888 value from the tilebuffer and converts to a RGBA32F register,
- * using scalar ops functional on earlier Midgard generations. Newer Midgard
- * generations have faster vectorized reads. This operation is for blend
- * shaders in particular; reading the tilebuffer from the fragment shader
- * remains an open problem. */
-
-static void
-emit_fb_read_blend_scalar(compiler_context *ctx, unsigned reg)
-{
-        midgard_instruction ins = m_ld_color_buffer_8(reg, 0);
-        ins.load_store.swizzle = 0; /* xxxx */
-
-        /* Read each component sequentially */
-
-        for (unsigned c = 0; c < 4; ++c) {
-                ins.load_store.mask = (1 << c);
-                ins.load_store.unknown = c;
-                emit_mir_instruction(ctx, ins);
-        }
-}
-
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1367,11 +1346,14 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
        }
 
-        /* Reads off the tilebuffer during blending, tasty */
+        /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
+
         case nir_intrinsic_load_raw_output_pan:
                 reg = nir_dest_index(ctx, &instr->dest);
                 assert(ctx->is_blend);
-                emit_fb_read_blend_scalar(ctx, reg);
+
+                midgard_instruction ins = m_ld_color_buffer_8(reg, 0);
+                emit_mir_instruction(ctx, ins);
                 break;
 
         case nir_intrinsic_load_blend_const_color_rgba: {
