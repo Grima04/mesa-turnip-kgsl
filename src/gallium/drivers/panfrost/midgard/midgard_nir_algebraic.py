@@ -57,6 +57,9 @@ converts = [
 
     (('f2i32', 'a@16'), ('f2i32', ('f2f32', a))),
     (('f2u32', 'a@16'), ('f2u32', ('f2f32', a))),
+
+    # Totally redundant
+    (('~f2f16', ('f2f32', 'a@16')), a),
 ]
 
 # Midgard scales fsin/fcos arguments by pi.
