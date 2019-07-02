@@ -1631,9 +1631,8 @@ legal_texsubimage_target(struct gl_context *ctx, GLuint dims, GLenum target,
  * of GL_ARB_texture_storage/GL_ARB_bindless_texture).
  */
 static GLboolean
-mutable_tex_object(struct gl_context *ctx, GLenum target)
+mutable_tex_object(struct gl_texture_object *texObj)
 {
-   struct gl_texture_object *texObj = _mesa_get_current_tex_object(ctx, target);
    if (!texObj)
       return GL_FALSE;
 
@@ -1821,6 +1820,7 @@ texture_format_error_check_gles(struct gl_context *ctx, GLenum format,
 static GLboolean
 texture_error_check( struct gl_context *ctx,
                      GLuint dimensions, GLenum target,
+                     struct gl_texture_object* texObj,
                      GLint level, GLint internalFormat,
                      GLenum format, GLenum type,
                      GLint width, GLint height,
@@ -1983,7 +1983,7 @@ texture_error_check( struct gl_context *ctx,
       return GL_TRUE;
    }
 
-   if (!mutable_tex_object(ctx, target)) {
+   if (!mutable_tex_object(texObj)) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glTexImage%dD(immutable texture)", dimensions);
       return GL_TRUE;
@@ -2002,8 +2002,8 @@ texture_error_check( struct gl_context *ctx,
  */
 static GLenum
 compressed_texture_error_check(struct gl_context *ctx, GLint dimensions,
-                               GLenum target, GLint level,
-                               GLenum internalFormat, GLsizei width,
+                               GLenum target, struct gl_texture_object* texObj,
+                               GLint level, GLenum internalFormat, GLsizei width,
                                GLsizei height, GLsizei depth, GLint border,
                                GLsizei imageSize, const GLvoid *data)
 {
@@ -2119,7 +2119,7 @@ compressed_texture_error_check(struct gl_context *ctx, GLint dimensions,
       goto error;
    }
 
-   if (!mutable_tex_object(ctx, target)) {
+   if (!mutable_tex_object(texObj)) {
       reason = "immutable texture";
       error = GL_INVALID_OPERATION;
       goto error;
@@ -2275,8 +2275,8 @@ texsubimage_error_check(struct gl_context *ctx, GLuint dimensions,
  */
 static GLboolean
 copytexture_error_check( struct gl_context *ctx, GLuint dimensions,
-                         GLenum target, GLint level, GLint internalFormat,
-                         GLint border )
+                         GLenum target, struct gl_texture_object* texObj,
+                         GLint level, GLint internalFormat, GLint border )
 {
    GLint baseFormat;
    GLint rb_base_format;
@@ -2520,7 +2520,7 @@ copytexture_error_check( struct gl_context *ctx, GLuint dimensions,
       }
    }
 
-   if (!mutable_tex_object(ctx, target)) {
+   if (!mutable_tex_object(texObj)) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glCopyTexImage%dD(immutable texture)", dimensions);
       return GL_TRUE;
@@ -2875,8 +2875,8 @@ strip_texture_border(GLenum target,
 
 
 /**
- * Common code to implement all the glTexImage1D/2D/3D functions
- * as well as glCompressedTexImage1D/2D/3D.
+ * Common code to implement all the glTexImage1D/2D/3D functions,
+ * glCompressedTexImage1D/2D/3D and glTextureImage1D/2D/3DEXT
  * \param compressed  only GL_TRUE for glCompressedTexImage1D/2D/3D calls.
  * \param format  the user's image format (only used if !compressed)
  * \param type  the user's image type (only used if !compressed)
@@ -2884,6 +2884,7 @@ strip_texture_border(GLenum target,
  */
 static ALWAYS_INLINE void
 teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
+         struct gl_texture_object *texObj,
          GLenum target, GLint level, GLint internalFormat,
          GLsizei width, GLsizei height, GLsizei depth,
          GLint border, GLenum format, GLenum type,
@@ -2892,7 +2893,6 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
    const char *func = compressed ? "glCompressedTexImage" : "glTexImage";
    struct gl_pixelstore_attrib unpack_no_border;
    const struct gl_pixelstore_attrib *unpack = &ctx->Unpack;
-   struct gl_texture_object *texObj;
    mesa_format texFormat;
    bool dimensionsOK = true, sizeOK = true;
 
@@ -2929,13 +2929,13 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
 
       /* general error checking */
       if (compressed) {
-         if (compressed_texture_error_check(ctx, dims, target, level,
-                                            internalFormat,
+         if (compressed_texture_error_check(ctx, dims, target, texObj,
+                                            level, internalFormat,
                                             width, height, depth,
                                             border, imageSize, pixels))
             return;
       } else {
-         if (texture_error_check(ctx, dims, target, level, internalFormat,
+         if (texture_error_check(ctx, dims, target, texObj, level, internalFormat,
                                  format, type, width, height, depth, border,
                                  pixels))
             return;
@@ -2963,9 +2963,6 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
          return;
       }
    }
-
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   assert(texObj);
 
    if (compressed) {
       /* For glCompressedTexImage() the driver has no choice about the
@@ -3103,7 +3100,10 @@ teximage_err(struct gl_context *ctx, GLboolean compressed, GLuint dims,
              GLint border, GLenum format, GLenum type,
              GLsizei imageSize, const GLvoid *pixels)
 {
-   teximage(ctx, compressed, dims, target, level, internalFormat, width, height,
+   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
+   assert(texObj);
+
+   teximage(ctx, compressed, dims, texObj, target, level, internalFormat, width, height,
             depth, border, format, type, imageSize, pixels, false);
 }
 
@@ -3115,7 +3115,10 @@ teximage_no_error(struct gl_context *ctx, GLboolean compressed, GLuint dims,
                   GLint border, GLenum format, GLenum type,
                   GLsizei imageSize, const GLvoid *pixels)
 {
-   teximage(ctx, compressed, dims, target, level, internalFormat, width, height,
+   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
+   assert(texObj);
+
+   teximage(ctx, compressed, dims, texObj, target, level, internalFormat, width, height,
             depth, border, format, type, imageSize, pixels, true);
 }
 
@@ -3975,13 +3978,12 @@ copy_texture_sub_image_no_error(struct gl_context *ctx, GLuint dims,
  * Implement the glCopyTexImage1/2D() functions.
  */
 static ALWAYS_INLINE void
-copyteximage(struct gl_context *ctx, GLuint dims,
+copyteximage(struct gl_context *ctx, GLuint dims, struct gl_texture_object *texObj,
              GLenum target, GLint level, GLenum internalFormat,
              GLint x, GLint y, GLsizei width, GLsizei height, GLint border,
              bool no_error)
 {
    struct gl_texture_image *texImage;
-   struct gl_texture_object *texObj;
    mesa_format texFormat;
 
    FLUSH_VERTICES(ctx, 0);
@@ -3997,8 +3999,8 @@ copyteximage(struct gl_context *ctx, GLuint dims,
       _mesa_update_state(ctx);
 
    if (!no_error) {
-      if (copytexture_error_check(ctx, dims, target, level, internalFormat,
-                                  border))
+      if (copytexture_error_check(ctx, dims, target, texObj, level,
+                                  internalFormat, border))
          return;
 
       if (!_mesa_legal_texture_dimensions(ctx, target, level, width, height,
@@ -4010,7 +4012,6 @@ copyteximage(struct gl_context *ctx, GLuint dims,
       }
    }
 
-   texObj = _mesa_get_current_tex_object(ctx, target);
    assert(texObj);
 
    texFormat = _mesa_choose_texture_format(ctx, texObj, target, level,
@@ -4137,11 +4138,13 @@ copyteximage(struct gl_context *ctx, GLuint dims,
 
 
 static void
-copyteximage_err(struct gl_context *ctx, GLuint dims, GLenum target,
+copyteximage_err(struct gl_context *ctx, GLuint dims,
+                 GLenum target,
                  GLint level, GLenum internalFormat, GLint x, GLint y,
                  GLsizei width, GLsizei height, GLint border)
 {
-   copyteximage(ctx, dims, target, level, internalFormat, x, y, width, height,
+   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
+   copyteximage(ctx, dims, texObj, target, level, internalFormat, x, y, width, height,
                 border, false);
 }
 
@@ -4151,7 +4154,8 @@ copyteximage_no_error(struct gl_context *ctx, GLuint dims, GLenum target,
                       GLint level, GLenum internalFormat, GLint x, GLint y,
                       GLsizei width, GLsizei height, GLint border)
 {
-   copyteximage(ctx, dims, target, level, internalFormat, x, y, width, height,
+   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
+   copyteximage(ctx, dims, texObj, target, level, internalFormat, x, y, width, height,
                 border, true);
 }
 
