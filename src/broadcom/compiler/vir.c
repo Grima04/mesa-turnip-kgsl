@@ -947,7 +947,8 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         char *shaderdb;
         int ret = asprintf(&shaderdb,
                            "%s shader: %d inst, %d threads, %d loops, "
-                           "%d uniforms, %d max-temps, %d:%d spills:fills",
+                           "%d uniforms, %d max-temps, %d:%d spills:fills, "
+                           "%d sfu-stalls, %d inst-and-stalls",
                            vir_get_stage_name(c),
                            c->qpu_inst_count,
                            c->threads,
@@ -955,7 +956,9 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                            c->num_uniforms,
                            vir_get_max_temps(c),
                            c->spills,
-                           c->fills);
+                           c->fills,
+                           c->qpu_inst_stalled_count,
+                           c->qpu_inst_count + c->qpu_inst_stalled_count);
         if (ret >= 0) {
                 if (V3D_DEBUG & V3D_DEBUG_SHADERDB)
                         fprintf(stderr, "SHADER-DB: %s\n", shaderdb);

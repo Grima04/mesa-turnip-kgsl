@@ -613,6 +613,7 @@ struct v3d_compile {
         uint64_t *qpu_insts;
         uint32_t qpu_inst_count;
         uint32_t qpu_inst_size;
+        uint32_t qpu_inst_stalled_count;
 
         /* For the FS, the number of varying inputs not counting the
          * point/line varyings payload
