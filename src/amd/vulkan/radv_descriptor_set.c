@@ -506,8 +506,12 @@ radv_descriptor_set_create(struct radv_device *device,
 	uint32_t layout_size = layout->size;
 	if (variable_count) {
 		assert(layout->has_variable_descriptors);
+		uint32_t stride = layout->binding[layout->binding_count - 1].size;
+		if (layout->binding[layout->binding_count - 1].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)
+			stride = 1;
+
 		layout_size = layout->binding[layout->binding_count - 1].offset +
-		              *variable_count * layout->binding[layout->binding_count - 1].size;
+		              *variable_count * stride;
 	}
 	layout_size = align_u32(layout_size, 32);
 	if (layout_size) {
