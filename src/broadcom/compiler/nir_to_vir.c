@@ -32,18 +32,15 @@
 #include "common/v3d_device_info.h"
 #include "v3d_compiler.h"
 
+/* We don't do any address packing. */
+#define __gen_user_data void
+#define __gen_address_type uint32_t
+#define __gen_address_offset(reloc) (*reloc)
+#define __gen_emit_reloc(cl, reloc)
+#include "cle/v3d_packet_v41_pack.h"
+
 #define GENERAL_TMU_LOOKUP_PER_QUAD                 (0 << 7)
 #define GENERAL_TMU_LOOKUP_PER_PIXEL                (1 << 7)
-#define GENERAL_TMU_READ_OP_PREFETCH                (0 << 3)
-#define GENERAL_TMU_READ_OP_CACHE_CLEAR             (1 << 3)
-#define GENERAL_TMU_READ_OP_CACHE_FLUSH             (3 << 3)
-#define GENERAL_TMU_READ_OP_CACHE_CLEAN             (3 << 3)
-#define GENERAL_TMU_READ_OP_CACHE_L1T_CLEAR         (4 << 3)
-#define GENERAL_TMU_READ_OP_CACHE_L1T_FLUSH_AGGREGATION (5 << 3)
-#define GENERAL_TMU_READ_OP_ATOMIC_INC              (8 << 3)
-#define GENERAL_TMU_READ_OP_ATOMIC_DEC              (9 << 3)
-#define GENERAL_TMU_READ_OP_ATOMIC_NOT              (10 << 3)
-#define GENERAL_TMU_READ_OP_READ                    (15 << 3)
 #define GENERAL_TMU_LOOKUP_TYPE_8BIT_I              (0 << 0)
 #define GENERAL_TMU_LOOKUP_TYPE_16BIT_I             (1 << 0)
 #define GENERAL_TMU_LOOKUP_TYPE_VEC2                (2 << 0)
@@ -52,19 +49,6 @@
 #define GENERAL_TMU_LOOKUP_TYPE_8BIT_UI             (5 << 0)
 #define GENERAL_TMU_LOOKUP_TYPE_16BIT_UI            (6 << 0)
 #define GENERAL_TMU_LOOKUP_TYPE_32BIT_UI            (7 << 0)
-
-#define GENERAL_TMU_WRITE_OP_ATOMIC_ADD_WRAP         (0 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_SUB_WRAP         (1 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_XCHG             (2 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG          (3 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_UMIN             (4 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_UMAX             (5 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_SMIN             (6 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_SMAX             (7 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_AND              (8 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_OR               (9 << 3)
-#define GENERAL_TMU_WRITE_OP_ATOMIC_XOR              (10 << 3)
-#define GENERAL_TMU_WRITE_OP_WRITE                   (15 << 3)
 
 #define V3D_TSY_SET_QUORUM          0
 #define V3D_TSY_INC_WAITERS         1
@@ -140,41 +124,40 @@ v3d_general_tmu_op(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_shared:
         case nir_intrinsic_load_scratch:
-                return GENERAL_TMU_READ_OP_READ;
         case nir_intrinsic_store_ssbo:
         case nir_intrinsic_store_shared:
         case nir_intrinsic_store_scratch:
-                return GENERAL_TMU_WRITE_OP_WRITE;
+                return V3D_TMU_OP_REGULAR;
         case nir_intrinsic_ssbo_atomic_add:
         case nir_intrinsic_shared_atomic_add:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_ADD_WRAP;
+                return V3D_TMU_OP_WRITE_ADD_READ_PREFETCH;
         case nir_intrinsic_ssbo_atomic_imin:
         case nir_intrinsic_shared_atomic_imin:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_SMIN;
+                return V3D_TMU_OP_WRITE_SMIN;
         case nir_intrinsic_ssbo_atomic_umin:
         case nir_intrinsic_shared_atomic_umin:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_UMIN;
+                return V3D_TMU_OP_WRITE_UMIN_FULL_L1_CLEAR;
         case nir_intrinsic_ssbo_atomic_imax:
         case nir_intrinsic_shared_atomic_imax:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_SMAX;
+                return V3D_TMU_OP_WRITE_SMAX;
         case nir_intrinsic_ssbo_atomic_umax:
         case nir_intrinsic_shared_atomic_umax:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_UMAX;
+                return V3D_TMU_OP_WRITE_UMAX;
         case nir_intrinsic_ssbo_atomic_and:
         case nir_intrinsic_shared_atomic_and:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_AND;
+                return V3D_TMU_OP_WRITE_AND_READ_INC;
         case nir_intrinsic_ssbo_atomic_or:
         case nir_intrinsic_shared_atomic_or:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_OR;
+                return V3D_TMU_OP_WRITE_OR_READ_DEC;
         case nir_intrinsic_ssbo_atomic_xor:
         case nir_intrinsic_shared_atomic_xor:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_XOR;
+                return V3D_TMU_OP_WRITE_XOR_READ_NOT;
         case nir_intrinsic_ssbo_atomic_exchange:
         case nir_intrinsic_shared_atomic_exchange:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_XCHG;
+                return V3D_TMU_OP_WRITE_XCHG_READ_FLUSH;
         case nir_intrinsic_ssbo_atomic_comp_swap:
         case nir_intrinsic_shared_atomic_comp_swap:
-                return GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG;
+                return V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH;
         default:
                 unreachable("unknown intrinsic op");
         }
@@ -221,7 +204,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                              vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
                              ntq_get_src(c, instr->src[1 + has_index], 0));
                 tmu_writes++;
-                if (tmu_op == GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG) {
+                if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
                         vir_MOV_dest(c,
                                      vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
                                      ntq_get_src(c, instr->src[2 + has_index],
@@ -279,13 +262,13 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
          * reads, which has been fine).
          */
         int num_components;
-        if (tmu_op == GENERAL_TMU_WRITE_OP_ATOMIC_CMPXCHG)
+        if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH)
                 num_components = 2;
         else
                 num_components = instr->num_components;
 
         uint32_t config = (0xffffff00 |
-                           tmu_op |
+                           tmu_op << 3|
                            GENERAL_TMU_LOOKUP_PER_PIXEL);
         if (num_components == 1) {
                 config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
