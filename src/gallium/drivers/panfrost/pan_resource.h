@@ -57,21 +57,6 @@ struct panfrost_slice {
         bool initialized;
 };
 
-struct panfrost_bo {
-        struct pipe_reference reference;
-
-        /* Mapping for the entire object (all levels) */
-        uint8_t *cpu;
-
-        /* GPU address for the object */
-        mali_ptr gpu;
-
-        /* Size of all entire trees */
-        size_t size;
-
-        int gem_handle;
-};
-
 void
 panfrost_bo_reference(struct panfrost_bo *bo);
 

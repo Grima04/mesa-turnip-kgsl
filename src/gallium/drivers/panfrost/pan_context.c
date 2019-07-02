@@ -99,13 +99,13 @@ panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count)
                 .unknown2 = 0x1f,
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
-                .unknown_address_0 = ctx->scratchpad.gpu,
-                .tiler_polygon_list = ctx->tiler_polygon_list.gpu,
-                .tiler_polygon_list_body = ctx->tiler_polygon_list.gpu + 40960,
+                .unknown_address_0 = ctx->scratchpad.bo->gpu,
+                .tiler_polygon_list = ctx->tiler_polygon_list.bo->gpu,
+                .tiler_polygon_list_body = ctx->tiler_polygon_list.bo->gpu + 40960,
                 .tiler_hierarchy_mask = 0xF0,
                 .tiler_flags = 0x0,
-                .tiler_heap_free = ctx->tiler_heap.gpu,
-                .tiler_heap_end = ctx->tiler_heap.gpu + ctx->tiler_heap.size,
+                .tiler_heap_free = ctx->tiler_heap.bo->gpu,
+                .tiler_heap_end = ctx->tiler_heap.bo->gpu + ctx->tiler_heap.bo->size,
         };
 
         panfrost_set_framebuffer_resolution(&framebuffer, ctx->pipe_framebuffer.width, ctx->pipe_framebuffer.height);
@@ -133,7 +133,7 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
 
                 .unknown2 = 0x1f,
 
-                .scratchpad = ctx->scratchpad.gpu,
+                .scratchpad = ctx->scratchpad.bo->gpu,
         };
 
         framebuffer.tiler_hierarchy_mask =
@@ -152,22 +152,22 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
         unsigned total_size = header_size + body_size;
 
         if (framebuffer.tiler_hierarchy_mask) {
-               assert(ctx->tiler_polygon_list.size >= total_size);
+               assert(ctx->tiler_polygon_list.bo->size >= total_size);
 
                 /* Specify allocated tiler structures */
-                framebuffer.tiler_polygon_list = ctx->tiler_polygon_list.gpu;
+                framebuffer.tiler_polygon_list = ctx->tiler_polygon_list.bo->gpu;
 
                 /* Allow the entire tiler heap */
-                framebuffer.tiler_heap_start = ctx->tiler_heap.gpu;
+                framebuffer.tiler_heap_start = ctx->tiler_heap.bo->gpu;
                 framebuffer.tiler_heap_end =
-                        ctx->tiler_heap.gpu + ctx->tiler_heap.size;
+                        ctx->tiler_heap.bo->gpu + ctx->tiler_heap.bo->size;
         } else {
                 /* The tiler is disabled, so don't allow the tiler heap */
-                framebuffer.tiler_heap_start = ctx->tiler_heap.gpu;
+                framebuffer.tiler_heap_start = ctx->tiler_heap.bo->gpu;
                 framebuffer.tiler_heap_end = framebuffer.tiler_heap_start;
 
                 /* Use a dummy polygon list */
-                framebuffer.tiler_polygon_list = ctx->tiler_dummy.gpu;
+                framebuffer.tiler_polygon_list = ctx->tiler_dummy.bo->gpu;
 
                 /* Also, set a "tiler disabled?" flag? */
                 framebuffer.tiler_hierarchy_mask |= 0x1000;
@@ -529,7 +529,7 @@ panfrost_emit_varyings(
                 unsigned stride,
                 unsigned count)
 {
-        mali_ptr varying_address = ctx->varying_mem.gpu + ctx->varying_height;
+        mali_ptr varying_address = ctx->varying_mem.bo->gpu + ctx->varying_height;
 
         /* Fill out the descriptor */
         slot->elements = varying_address | MALI_ATTR_LINEAR;
@@ -537,7 +537,7 @@ panfrost_emit_varyings(
         slot->size = stride * count;
 
         ctx->varying_height += ALIGN(slot->size, 64);
-        assert(ctx->varying_height < ctx->varying_mem.size);
+        assert(ctx->varying_height < ctx->varying_mem.bo->size);
 
         return varying_address;
 }

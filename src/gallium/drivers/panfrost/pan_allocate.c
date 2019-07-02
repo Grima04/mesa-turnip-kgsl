@@ -48,8 +48,8 @@ panfrost_allocate_chunk(struct panfrost_context *ctx, size_t size, unsigned heap
         struct panfrost_memory *backing = (struct panfrost_memory *) entry->slab;
 
         struct panfrost_transfer transfer = {
-                .cpu = backing->cpu + p_entry->offset,
-                .gpu = backing->gpu + p_entry->offset
+                .cpu = backing->bo->cpu + p_entry->offset,
+                .gpu = backing->bo->gpu + p_entry->offset
         };
 
         return transfer;
@@ -97,8 +97,8 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
         struct panfrost_memory *backing = (struct panfrost_memory *) p_entry->base.slab;
 
         struct panfrost_transfer ret = {
-                .cpu = backing->cpu + p_entry->offset + pool->entry_offset,
-                .gpu = backing->gpu + p_entry->offset + pool->entry_offset
+                .cpu = backing->bo->cpu + p_entry->offset + pool->entry_offset,
+                .gpu = backing->bo->gpu + p_entry->offset + pool->entry_offset
         };
 
         /* Advance the pointer */
@@ -192,18 +192,19 @@ mali_ptr
 panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz, bool no_pad)
 {
         /* Bounds check */
-        if ((mem->stack_bottom + sz) >= mem->size) {
-                printf("Out of memory, tried to upload %zd but only %zd available\n", sz, mem->size - mem->stack_bottom);
+        if ((mem->stack_bottom + sz) >= mem->bo->size) {
+                printf("Out of memory, tried to upload %zd but only %zd available\n",
+                       sz, mem->bo->size - mem->stack_bottom);
                 assert(0);
         }
 
-        return pandev_upload(-1, &mem->stack_bottom, mem->gpu, mem->cpu, data, sz, no_pad);
+        return pandev_upload(-1, &mem->stack_bottom, mem->bo->gpu, mem->bo->cpu, data, sz, no_pad);
 }
 
 mali_ptr
 panfrost_upload_sequential(struct panfrost_memory *mem, const void *data, size_t sz)
 {
-        return pandev_upload(last_offset, &mem->stack_bottom, mem->gpu, mem->cpu, data, sz, true);
+        return pandev_upload(last_offset, &mem->stack_bottom, mem->bo->gpu, mem->bo->cpu, data, sz, true);
 }
 
 /* Simplified interface to allocate a chunk without any upload, to allow
@@ -215,6 +216,6 @@ panfrost_allocate_transfer(struct panfrost_memory *mem, size_t sz, mali_ptr *gpu
 {
         int offset = pandev_allocate_offset(&mem->stack_bottom, sz);
 
-        *gpu = mem->gpu + offset;
-        return mem->cpu + offset;
+        *gpu = mem->bo->gpu + offset;
+        return mem->bo->cpu + offset;
 }

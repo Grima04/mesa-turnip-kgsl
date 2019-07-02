@@ -55,14 +55,14 @@ panfrost_sfbd_clear(
                 sfbd->clear_depth_3 = job->clear_depth;
                 sfbd->clear_depth_4 = job->clear_depth;
 
-                sfbd->depth_buffer = ctx->depth_stencil_buffer.gpu;
+                sfbd->depth_buffer = ctx->depth_stencil_buffer.bo->gpu;
                 sfbd->depth_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
         }
 
         if (job->clear & PIPE_CLEAR_STENCIL) {
                 sfbd->clear_stencil = job->clear_stencil;
 
-                sfbd->stencil_buffer = ctx->depth_stencil_buffer.gpu;
+                sfbd->stencil_buffer = ctx->depth_stencil_buffer.bo->gpu;
                 sfbd->stencil_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
         }
 

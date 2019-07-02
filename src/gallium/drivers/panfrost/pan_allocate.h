@@ -58,16 +58,28 @@ struct panfrost_transfer {
         mali_ptr gpu;
 };
 
+struct panfrost_bo {
+        struct pipe_reference reference;
+
+        /* Mapping for the entire object (all levels) */
+        uint8_t *cpu;
+
+        /* GPU address for the object */
+        mali_ptr gpu;
+
+        /* Size of all entire trees */
+        size_t size;
+
+        int gem_handle;
+};
+
 struct panfrost_memory {
         /* Subclassing slab object */
         struct pb_slab slab;
 
         /* Backing for the slab in memory */
-        uint8_t *cpu;
-        mali_ptr gpu;
+        struct panfrost_bo *bo;
         int stack_bottom;
-        size_t size;
-        int gem_handle;
 };
 
 /* Slab entry sizes range from 2^min to 2^max. In this case, we range from 1k
@@ -109,7 +121,7 @@ static inline mali_ptr
 panfrost_reserve(struct panfrost_memory *mem, size_t sz)
 {
         mem->stack_bottom += sz;
-        return mem->gpu + (mem->stack_bottom - sz);
+        return mem->bo->gpu + (mem->stack_bottom - sz);
 }
 
 struct panfrost_transfer

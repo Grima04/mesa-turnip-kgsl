@@ -136,70 +136,18 @@ panfrost_drm_allocate_slab(struct panfrost_screen *screen,
 		           int commit_count,
 		           int extent)
 {
-	struct drm_panfrost_create_bo create_bo = {
-		        .size = pages * 4096,
-		        .flags = 0,  // TODO figure out proper flags..
-	};
-	struct drm_panfrost_mmap_bo mmap_bo = {0,};
-	int ret;
-
-	// TODO cache allocations
-	// TODO properly handle errors
-	// TODO take into account extra_flags
-
-	ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
-	if (ret) {
-                fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %d\n", ret);
-		assert(0);
-	}
-
-	mem->gpu = create_bo.offset;
-	mem->gem_handle = create_bo.handle;
+        // TODO cache allocations
+        // TODO properly handle errors
+        // TODO take into account extra_flags
+        mem->bo = panfrost_drm_create_bo(screen, pages * 4096, 0);
         mem->stack_bottom = 0;
-        mem->size = create_bo.size;
-
-	// TODO map and unmap on demand?
-	mmap_bo.handle = create_bo.handle;
-	ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
-	if (ret) {
-                fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %d\n", ret);
-		assert(0);
-	}
-
-        mem->cpu = os_mmap(NULL, mem->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                       screen->fd, mmap_bo.offset);
-        if (mem->cpu == MAP_FAILED) {
-                fprintf(stderr, "mmap failed: %p\n", mem->cpu);
-		assert(0);
-	}
-
-        /* Record the mmap if we're tracing */
-        if (pan_debug & PAN_DBG_TRACE)
-                pandecode_inject_mmap(mem->gpu, mem->cpu, mem->size, NULL);
 }
 
 void
 panfrost_drm_free_slab(struct panfrost_screen *screen, struct panfrost_memory *mem)
 {
-	struct drm_gem_close gem_close = {
-		.handle = mem->gem_handle,
-	};
-	int ret;
-
-        if (os_munmap((void *) (uintptr_t) mem->cpu, mem->size)) {
-                perror("munmap");
-                abort();
-        }
-
-	mem->cpu = NULL;
-
-	ret = drmIoctl(screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
-	if (ret) {
-                fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %d\n", ret);
-		assert(0);
-	}
-
-	mem->gem_handle = -1;
+        panfrost_bo_unreference(&screen->base, mem->bo);
+        mem->bo = NULL;
 }
 
 struct panfrost_bo *
@@ -267,11 +215,11 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 
 	/* TODO: Add here the transient pools */
         /* TODO: Add here the BOs listed in the panfrost_job */
-	bo_handles[submit.bo_handle_count++] = ctx->shaders.gem_handle;
-	bo_handles[submit.bo_handle_count++] = ctx->scratchpad.gem_handle;
-	bo_handles[submit.bo_handle_count++] = ctx->tiler_heap.gem_handle;
-	bo_handles[submit.bo_handle_count++] = ctx->varying_mem.gem_handle;
-	bo_handles[submit.bo_handle_count++] = ctx->tiler_polygon_list.gem_handle;
+        bo_handles[submit.bo_handle_count++] = ctx->shaders.bo->gem_handle;
+        bo_handles[submit.bo_handle_count++] = ctx->scratchpad.bo->gem_handle;
+        bo_handles[submit.bo_handle_count++] = ctx->tiler_heap.bo->gem_handle;
+        bo_handles[submit.bo_handle_count++] = ctx->varying_mem.bo->gem_handle;
+        bo_handles[submit.bo_handle_count++] = ctx->tiler_polygon_list.bo->gem_handle;
 	submit.bo_handles = (u64) (uintptr_t) bo_handles;
 
 	if (drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit)) {
