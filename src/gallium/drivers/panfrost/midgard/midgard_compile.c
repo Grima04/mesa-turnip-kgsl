@@ -907,6 +907,24 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 break;
         }
 
+        case nir_op_f2f16: {
+                assert(src_bitsize == 32);
+
+                op = midgard_alu_op_fmov;
+                dest_override = midgard_dest_override_lower;
+                break;
+        }
+
+        case nir_op_f2f32: {
+                assert(src_bitsize == 16);
+
+                op = midgard_alu_op_fmov;
+                half_2 = true;
+                reg_mode++;
+                break;
+        }
+                
+
         /* For greater-or-equal, we lower to less-or-equal and flip the
          * arguments */
 

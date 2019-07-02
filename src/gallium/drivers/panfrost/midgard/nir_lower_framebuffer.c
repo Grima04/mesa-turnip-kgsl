@@ -44,8 +44,11 @@
 static nir_ssa_def *
 nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
 {
-   /* First, we scale from [0, 1] to [0, 255.0] */
-   nir_ssa_def *scaled = nir_fmul_imm(b, nir_fsat(b, c_float), 255.0);
+   /* First, we degrade quality to fp16; we don't need the extra bits */
+   nir_ssa_def *degraded = nir_f2f16(b, c_float);
+
+   /* Scale from [0, 1] to [0, 255.0] */
+   nir_ssa_def *scaled = nir_fmul_imm(b, nir_fsat(b, degraded), 255.0);
 
    /* Next, we type convert */
    nir_ssa_def *converted = nir_u2u8(b, nir_f2u32(b,
