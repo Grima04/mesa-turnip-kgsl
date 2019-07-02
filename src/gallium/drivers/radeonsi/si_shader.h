@@ -347,7 +347,7 @@ struct si_shader_selector {
 	struct tgsi_tessctrl_info	tcs_info;
 
 	/* PIPE_SHADER_[VERTEX|FRAGMENT|...] */
-	unsigned	type;
+	enum pipe_shader_type type;
 	bool		vs_needs_prolog;
 	bool		force_correct_derivs_after_kill;
 	bool		prim_discard_cs_allowed;
@@ -753,14 +753,14 @@ unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index,
 bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
 			     uint64_t scratch_va);
 void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
-		    struct pipe_debug_callback *debug, unsigned processor,
+		    struct pipe_debug_callback *debug,
 		    FILE *f, bool check_debug_option);
 void si_shader_dump_stats_for_shader_db(struct si_screen *screen,
 					struct si_shader *shader,
 					struct pipe_debug_callback *debug);
 void si_multiwave_lds_size_workaround(struct si_screen *sscreen,
 				      unsigned *lds_size);
-const char *si_get_shader_name(const struct si_shader *shader, unsigned processor);
+const char *si_get_shader_name(const struct si_shader *shader);
 void si_shader_binary_clean(struct si_shader_binary *binary);
 
 /* si_shader_nir.c */

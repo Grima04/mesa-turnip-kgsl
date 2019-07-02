@@ -2049,7 +2049,7 @@ static void si_build_shader_variant(struct si_shader *shader,
 		FILE *f = open_memstream(&shader->shader_log,
 					 &shader->shader_log_size);
 		if (f) {
-			si_shader_dump(sscreen, shader, NULL, sel->type, f, false);
+			si_shader_dump(sscreen, shader, NULL, f, false);
 			fclose(f);
 		}
 	}
@@ -2785,6 +2785,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 			}
 		}
 		break;
+	default:;
 	}
 
 	/* PA_CL_VS_OUT_CNTL */
@@ -3135,6 +3136,7 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
 		case PIPE_SHADER_FRAGMENT:
 			si_pm4_delete_state(sctx, ps, shader->pm4);
 			break;
+		default:;
 		}
 	}
 

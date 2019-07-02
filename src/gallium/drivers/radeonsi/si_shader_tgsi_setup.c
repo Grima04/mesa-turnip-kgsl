@@ -1105,7 +1105,7 @@ void si_llvm_create_func(struct si_shader_context *ctx,
 	LLVMTypeRef main_fn_type, ret_type;
 	LLVMBasicBlockRef main_fn_body;
 	enum si_llvm_calling_convention call_conv;
-	unsigned real_shader_type;
+	enum pipe_shader_type real_shader_type;
 
 	if (num_return_elems)
 		ret_type = LLVMStructTypeInContext(ctx->ac.context,

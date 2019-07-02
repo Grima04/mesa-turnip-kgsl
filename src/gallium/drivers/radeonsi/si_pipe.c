@@ -884,7 +884,7 @@ static void si_set_max_shader_compiler_threads(struct pipe_screen *screen,
 
 static bool si_is_parallel_shader_compilation_finished(struct pipe_screen *screen,
 						       void *shader,
-						       unsigned shader_type)
+						       enum pipe_shader_type shader_type)
 {
 	if (shader_type == PIPE_SHADER_COMPUTE) {
 		struct si_compute *cs = (struct si_compute*)shader;
