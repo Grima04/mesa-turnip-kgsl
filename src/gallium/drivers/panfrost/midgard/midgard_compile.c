@@ -1880,6 +1880,13 @@ embedded_to_inline_constant(compiler_context *ctx)
                 /* Blend constants must not be inlined by definition */
                 if (ins->has_blend_constant) continue;
 
+                /* We can inline 32-bit (sometimes) or 16-bit (usually) */
+                bool is_16 = ins->alu.reg_mode == midgard_reg_mode_16;
+                bool is_32 = ins->alu.reg_mode == midgard_reg_mode_32;
+
+                if (!(is_16 || is_32))
+                        continue;
+
                 /* src1 cannot be an inline constant due to encoding
                  * restrictions. So, if possible we try to flip the arguments
                  * in that case */
@@ -1930,7 +1937,7 @@ embedded_to_inline_constant(compiler_context *ctx)
                         /* Scale constant appropriately, if we can legally */
                         uint16_t scaled_constant = 0;
 
-                        if (midgard_is_integer_op(op)) {
+                        if (midgard_is_integer_op(op) || is_16) {
                                 unsigned int *iconstants = (unsigned int *) ins->constants;
                                 scaled_constant = (uint16_t) iconstants[component];
 
