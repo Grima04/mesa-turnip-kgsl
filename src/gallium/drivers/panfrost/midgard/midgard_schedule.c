@@ -272,6 +272,25 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                                 bundle.has_blend_constant = 1;
                                 bundle.has_embedded_constants = 1;
+                        } else if (ains->has_constants && ains->alu.reg_mode == midgard_reg_mode_16) {
+                                /* TODO: DRY with the analysis pass */
+
+                                if (bundle.has_blend_constant)
+                                        break;
+
+                                if (constant_count)
+                                        break;
+
+                                /* TODO: Fix packing XXX */
+                                uint16_t *bundles = (uint16_t *) bundle.constants;
+                                uint32_t *constants = (uint32_t *) ains->constants;
+
+                                /* Copy them wholesale */
+                                for (unsigned i = 0; i < 4; ++i)
+                                        bundles[i] = constants[i];
+
+                                bundle.has_embedded_constants = true;
+                                constant_count = 4;
                         } else if (ains->has_constants) {
                                 /* By definition, blend constants conflict with
                                  * everything, so if there are already
