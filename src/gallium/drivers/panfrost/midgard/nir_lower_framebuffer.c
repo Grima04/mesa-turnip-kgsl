@@ -60,8 +60,8 @@ nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
 static nir_ssa_def *
 nir_native_to_float(nir_builder *b, nir_ssa_def *c_native)
 {
-   /* First, we convert up from u8 to f32 */
-   nir_ssa_def *converted = nir_u2f32(b, nir_u2u32(b, c_native));
+   /* First, we convert up from u8 to f16 */
+   nir_ssa_def *converted = nir_u2f16(b, nir_u2u16(b, c_native));
 
    /* Next, we scale down from [0, 255.0] to [0, 1] */
    nir_ssa_def *scaled = nir_fsat(b, nir_fmul_imm(b, converted, 1.0/255.0));
