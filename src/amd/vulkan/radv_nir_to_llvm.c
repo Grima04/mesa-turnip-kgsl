@@ -4002,7 +4002,7 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 	                                       options);
 
 	ac_compile_llvm_module(ac_llvm, llvm_module, binary, config, shader_info,
-			       nir[0]->info.stage, options);
+			       nir[nir_count - 1]->info.stage, options);
 
 	for (int i = 0; i < nir_count; ++i)
 		ac_fill_shader_info(shader_info, nir[i], options);
