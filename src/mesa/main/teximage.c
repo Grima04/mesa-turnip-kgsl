@@ -2873,6 +2873,66 @@ strip_texture_border(GLenum target,
    }
 }
 
+static struct gl_texture_object *
+lookup_texture_ext_dsa(struct gl_context *ctx, GLenum target, GLuint texture,
+                       const char *caller)
+{
+   GLenum boundTarget;
+   switch (target) {
+   case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+   case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+   case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+   case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+   case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+   case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+      boundTarget = GL_TEXTURE_CUBE_MAP;
+      break;
+   default:
+      boundTarget = target;
+      break;
+   }
+
+   int targetIndex = _mesa_tex_target_to_index(ctx, boundTarget);
+   if (targetIndex < 0) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target = %s)", caller,
+                  _mesa_enum_to_string(target));
+            return NULL;
+   }
+   assert(targetIndex < NUM_TEXTURE_TARGETS);
+
+   struct gl_texture_object *texObj;
+   if (texture == 0) {
+      /* Use a default texture object */
+      texObj = ctx->Shared->DefaultTex[targetIndex];
+      assert(texObj);
+   } else {
+      texObj = _mesa_lookup_texture(ctx, texture);
+      if (!texObj && ctx->API == API_OPENGL_CORE) {
+         _mesa_error(ctx, GL_INVALID_OPERATION, "%s(non-gen name)", caller);
+         return NULL;
+      }
+
+      if (!texObj) {
+         texObj = ctx->Driver.NewTextureObject(ctx, texture, boundTarget);
+         if (!texObj) {
+            _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
+            return NULL;
+         }
+
+         /* insert into hash table */
+         _mesa_HashInsert(ctx->Shared->TexObjects, texObj->Name, texObj);
+      }
+
+      if (texObj->Target != boundTarget) {
+         _mesa_error(ctx, GL_INVALID_OPERATION, "%s(%s != %s)",
+                     caller, _mesa_enum_to_string(texObj->Target),
+                     _mesa_enum_to_string(target));
+         return NULL;
+      }
+   }
+
+   return texObj;
+}
 
 /**
  * Common code to implement all the glTexImage1D/2D/3D functions,
@@ -3273,69 +3333,6 @@ _mesa_EGLImageTargetTexture2DOES (GLenum target, GLeglImageOES image)
    }
    _mesa_unlock_texture(ctx, texObj);
 }
-
-
-static struct gl_texture_object *
-lookup_texture_ext_dsa(struct gl_context *ctx, GLenum target, GLuint texture,
-                       const char *caller)
-{
-   GLenum boundTarget;
-   switch (target) {
-   case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
-   case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
-   case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
-   case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
-   case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
-   case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-      boundTarget = GL_TEXTURE_CUBE_MAP;
-      break;
-   default:
-      boundTarget = target;
-      break;
-   }
-
-   int targetIndex = _mesa_tex_target_to_index(ctx, boundTarget);
-   if (targetIndex < 0) {
-      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target = %s)", caller,
-                  _mesa_enum_to_string(target));
-            return NULL;
-   }
-   assert(targetIndex < NUM_TEXTURE_TARGETS);
-
-   struct gl_texture_object *texObj;
-   if (texture == 0) {
-      /* Use a default texture object */
-      texObj = ctx->Shared->DefaultTex[targetIndex];
-      assert(texObj);
-   } else {
-      texObj = _mesa_lookup_texture(ctx, texture);
-      if (!texObj && ctx->API == API_OPENGL_CORE) {
-         _mesa_error(ctx, GL_INVALID_OPERATION, "%s(non-gen name)", caller);
-         return NULL;
-      }
-
-      if (!texObj) {
-         texObj = ctx->Driver.NewTextureObject(ctx, texture, boundTarget);
-         if (!texObj) {
-            _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
-            return NULL;
-         }
-
-         /* insert into hash table */
-         _mesa_HashInsert(ctx->Shared->TexObjects, texObj->Name, texObj);
-      }
-
-      if (texObj->Target != boundTarget) {
-         _mesa_error(ctx, GL_INVALID_OPERATION, "%s(%s != %s)",
-                     caller, _mesa_enum_to_string(texObj->Target),
-                     _mesa_enum_to_string(target));
-         return NULL;
-      }
-   }
-
-   return texObj;
-}
-
 
 /**
  * Helper that implements the glTexSubImage1/2/3D()
