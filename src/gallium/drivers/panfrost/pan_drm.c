@@ -192,12 +192,13 @@ panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo 
 }
 
 static int
-panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, struct pipe_surface *surf)
+panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
 {
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
         struct drm_panfrost_submit submit = {0,};
-        int bo_handles[7];
+        int *bo_handles, ret;
 
         submit.in_syncs = (u64) (uintptr_t) &ctx->out_sync;
         submit.in_sync_count = 1;
@@ -207,22 +208,19 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs, st
 	submit.jc = job_desc;
 	submit.requirements = reqs;
 
-	if (surf) {
-		struct panfrost_resource *res = pan_resource(surf->texture);
-		assert(res->bo->gem_handle > 0);
-		bo_handles[submit.bo_handle_count++] = res->bo->gem_handle;
+	bo_handles = calloc(job->bos->entries, sizeof(*bo_handles));
+	assert(bo_handles);
+
+	set_foreach(job->bos, entry) {
+		struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+		assert(bo->gem_handle > 0);
+		bo_handles[submit.bo_handle_count++] = bo->gem_handle;
 	}
 
-	/* TODO: Add here the transient pools */
-        /* TODO: Add here the BOs listed in the panfrost_job */
-        bo_handles[submit.bo_handle_count++] = ctx->shaders.bo->gem_handle;
-        bo_handles[submit.bo_handle_count++] = ctx->scratchpad.bo->gem_handle;
-        bo_handles[submit.bo_handle_count++] = ctx->tiler_heap.bo->gem_handle;
-        bo_handles[submit.bo_handle_count++] = ctx->varying_mem.bo->gem_handle;
-        bo_handles[submit.bo_handle_count++] = ctx->tiler_polygon_list.bo->gem_handle;
 	submit.bo_handles = (u64) (uintptr_t) bo_handles;
-
-	if (drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit)) {
+	ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+	free(bo_handles);
+	if (ret) {
 	        fprintf(stderr, "Error submitting: %m\n");
 	        return errno;
 	}
@@ -245,13 +243,23 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool
 
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
+        /* TODO: Add here the transient pools */
+        panfrost_job_add_bo(job, ctx->shaders.bo);
+        panfrost_job_add_bo(job, ctx->scratchpad.bo);
+        panfrost_job_add_bo(job, ctx->tiler_heap.bo);
+        panfrost_job_add_bo(job, ctx->varying_mem.bo);
+        panfrost_job_add_bo(job, ctx->tiler_polygon_list.bo);
+
         if (job->first_job.gpu) {
-		ret = panfrost_drm_submit_job(ctx, job->first_job.gpu, 0, NULL);
-		assert(!ret);
-	}
+                ret = panfrost_drm_submit_job(ctx, job->first_job.gpu, 0);
+                assert(!ret);
+        }
 
         if (job->first_tiler.gpu || job->clear) {
-                ret = panfrost_drm_submit_job(ctx, panfrost_fragment_job(ctx, has_draws), PANFROST_JD_REQ_FS, surf);
+                struct panfrost_resource *res = pan_resource(surf->texture);
+                assert(res->bo);
+                panfrost_job_add_bo(job, res->bo);
+                ret = panfrost_drm_submit_job(ctx, panfrost_fragment_job(ctx, has_draws), PANFROST_JD_REQ_FS);
                 assert(!ret);
         }
 
