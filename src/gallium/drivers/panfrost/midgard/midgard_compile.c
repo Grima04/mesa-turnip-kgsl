@@ -690,12 +690,14 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
 #define ALU_CASE(nir, _op) \
 	case nir_op_##nir: \
 		op = midgard_alu_op_##_op; \
+                assert(src_bitsize == dst_bitsize); \
 		break;
 
 #define ALU_CASE_BCAST(nir, _op, count) \
         case nir_op_##nir: \
                 op = midgard_alu_op_##_op; \
                 broadcast_swizzle = count; \
+                assert(src_bitsize == dst_bitsize); \
                 break;
 static bool
 nir_is_fzero_constant(nir_src src)
@@ -772,6 +774,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         bool half_1 = false, sext_1 = false;
         bool half_2 = false, sext_2 = false;
+
+        unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
+        unsigned dst_bitsize = nir_dest_bit_size(instr->dest.dest);
 
         switch (instr->op) {
                 ALU_CASE(fadd, fadd);
@@ -887,10 +892,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         case nir_op_u2u16:
         case nir_op_u2u32: {
                 op = midgard_alu_op_imov;
-
-                unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
-                unsigned dst_bitsize = nir_dest_bit_size(instr->dest.dest);
-
 
                 if (dst_bitsize == (src_bitsize * 2)) {
                         /* Converting up */
