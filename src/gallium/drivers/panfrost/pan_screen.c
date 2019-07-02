@@ -64,8 +64,6 @@ DEBUG_GET_ONCE_FLAGS_OPTION(pan_debug, "PAN_MESA_DEBUG", debug_options, 0)
 
 int pan_debug = 0;
 
-struct panfrost_driver *panfrost_create_drm_driver(int fd);
-
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
 {
