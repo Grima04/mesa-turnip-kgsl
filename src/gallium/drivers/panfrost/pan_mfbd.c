@@ -82,19 +82,31 @@ panfrost_mfbd_format(struct pipe_surface *surf)
         /* Set flags for alternative formats */
 
         bool float_16 =
-                surf->format == PIPE_FORMAT_R16_FLOAT;
+                surf->format == PIPE_FORMAT_R16_FLOAT ||
+                surf->format == PIPE_FORMAT_R16_UINT ||
+                surf->format == PIPE_FORMAT_R16_SINT;
 
         bool float_32 =
                 surf->format == PIPE_FORMAT_R11G11B10_FLOAT ||
+                surf->format == PIPE_FORMAT_R16G16_FLOAT ||
+                surf->format == PIPE_FORMAT_R16G16_UINT ||
+                surf->format == PIPE_FORMAT_R16G16_SINT ||
                 surf->format == PIPE_FORMAT_R32_FLOAT ||
-                surf->format == PIPE_FORMAT_R16G16_FLOAT;
+                surf->format == PIPE_FORMAT_R32_UINT ||
+                surf->format == PIPE_FORMAT_R32_SINT;
 
         bool float_64 =
                 surf->format == PIPE_FORMAT_R32G32_FLOAT ||
-                surf->format == PIPE_FORMAT_R16G16B16A16_FLOAT;
+                surf->format == PIPE_FORMAT_R32G32_SINT ||
+                surf->format == PIPE_FORMAT_R32G32_UINT ||
+                surf->format == PIPE_FORMAT_R16G16B16A16_FLOAT ||
+                surf->format == PIPE_FORMAT_R16G16B16A16_SINT ||
+                surf->format == PIPE_FORMAT_R16G16B16A16_UINT;
 
         bool float_128 =
-                surf->format == PIPE_FORMAT_R32G32B32A32_FLOAT;
+                surf->format == PIPE_FORMAT_R32G32B32A32_FLOAT ||
+                surf->format == PIPE_FORMAT_R32G32B32A32_SINT ||
+                surf->format == PIPE_FORMAT_R32G32B32A32_UINT;
 
         if (surf->format == PIPE_FORMAT_B5G6R5_UNORM) {
                 fmt.unk1 = 0x14000000;
