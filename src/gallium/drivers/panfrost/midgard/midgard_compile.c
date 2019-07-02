@@ -2225,55 +2225,6 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
-static bool
-midgard_opt_copy_prop_tex(compiler_context *ctx, midgard_block *block)
-{
-        bool progress = false;
-
-        mir_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != TAG_ALU_4) continue;
-                if (!OP_IS_MOVE(ins->alu.op)) continue;
-
-                unsigned from = ins->ssa_args.src1;
-                unsigned to = ins->ssa_args.dest;
-
-                /* Make sure it's simple enough for us to handle */
-
-                if (from >= SSA_FIXED_MINIMUM) continue;
-                if (from >= ctx->func->impl->ssa_alloc) continue;
-                if (to < SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE)) continue;
-                if (to > SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + 1)) continue;
-
-                bool eliminated = false;
-
-                mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
-                        /* The texture registers are not SSA so be careful.
-                         * Conservatively, just stop if we hit a texture op
-                         * (even if it may not write) to where we are */
-
-                        if (v->type != TAG_ALU_4)
-                                break;
-
-                        if (v->ssa_args.dest == from) {
-                                /* We don't want to track partial writes ... */
-                                if (v->mask == 0xF) {
-                                        v->ssa_args.dest = to;
-                                        eliminated = true;
-                                }
-
-                                break;
-                        }
-                }
-
-                if (eliminated)
-                        mir_remove_instruction(ins);
-
-                progress |= eliminated;
-        }
-
-        return progress;
-}
-
 /* The following passes reorder MIR instructions to enable better scheduling */
 
 static void
@@ -2699,7 +2650,6 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 mir_foreach_block(ctx, block) {
                         progress |= midgard_opt_pos_propagate(ctx, block);
                         progress |= midgard_opt_copy_prop(ctx, block);
-                        progress |= midgard_opt_copy_prop_tex(ctx, block);
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
                 }
         } while (progress);
