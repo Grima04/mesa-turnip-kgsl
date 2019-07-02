@@ -89,13 +89,8 @@ int
 panfrost_drm_export_bo(struct panfrost_screen *screen, int gem_handle,
                        unsigned int stride, struct winsys_handle *whandle);
 int
-panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs,
-                        struct pipe_surface *surf);
-int
 panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws,
                               bool is_scanout);
-struct panfrost_fence *
-panfrost_fence_create(struct panfrost_context *ctx);
 void
 panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
                                   struct pipe_fence_handle **fence);
