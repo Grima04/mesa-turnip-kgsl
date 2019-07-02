@@ -252,6 +252,7 @@ etna_blit_clear_color_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    if (surf->surf.ts_size) {
       ctx->framebuffer.TS_COLOR_CLEAR_VALUE = new_clear_value;
       surf->level->ts_valid = true;
+      ctx->dirty |= ETNA_DIRTY_TS | ETNA_DIRTY_DERIVE_TS;
    }
 
    surf->level->clear_value = new_clear_value;
@@ -325,6 +326,7 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    if (surf->surf.ts_size) {
       ctx->framebuffer.TS_DEPTH_CLEAR_VALUE = new_clear_value;
       surf->level->ts_valid = true;
+      ctx->dirty |= ETNA_DIRTY_TS | ETNA_DIRTY_DERIVE_TS;
    }
 
    surf->level->clear_value = new_clear_value;
