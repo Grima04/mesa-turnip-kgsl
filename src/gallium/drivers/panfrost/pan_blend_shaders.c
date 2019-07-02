@@ -89,21 +89,31 @@ nir_make_options(const struct pipe_blend_state *blend, unsigned nr_cbufs)
         nir_lower_blend_options options;
 
         for (unsigned i = 0; i < nr_cbufs; ++i) {
+                /* If blend is disabled, we just use replace mode */
+
                 nir_lower_blend_channel rgb = {
-                        .func = util_blend_func_to_shader(blend->rt[i].rgb_func),
-                        .src_factor = util_blend_factor_to_shader(blend->rt[i].rgb_src_factor),
-                        .dst_factor = util_blend_factor_to_shader(blend->rt[i].rgb_dst_factor),
-                        .invert_src_factor = util_blend_factor_is_inverted(blend->rt[i].rgb_src_factor),
-                        .invert_dst_factor = util_blend_factor_is_inverted(blend->rt[i].rgb_dst_factor)
+                        .func = BLEND_FUNC_ADD,
+                        .src_factor = BLEND_FACTOR_ZERO,
+                        .invert_src_factor = true,
+                        .dst_factor = BLEND_FACTOR_ZERO,
+                        .invert_dst_factor = false
                 };
 
-                nir_lower_blend_channel alpha = {
-                        .func = util_blend_func_to_shader(blend->rt[i].alpha_func),
-                        .src_factor = util_blend_factor_to_shader(blend->rt[i].alpha_src_factor),
-                        .dst_factor = util_blend_factor_to_shader(blend->rt[i].alpha_dst_factor),
-                        .invert_src_factor = util_blend_factor_is_inverted(blend->rt[i].alpha_src_factor),
-                        .invert_dst_factor = util_blend_factor_is_inverted(blend->rt[i].alpha_dst_factor)
-                };
+                nir_lower_blend_channel alpha = rgb;
+
+                if (blend->rt[i].blend_enable) {
+                        rgb.func = util_blend_func_to_shader(blend->rt[i].rgb_func);
+                        rgb.src_factor = util_blend_factor_to_shader(blend->rt[i].rgb_src_factor);
+                        rgb.dst_factor = util_blend_factor_to_shader(blend->rt[i].rgb_dst_factor);
+                        rgb.invert_src_factor = util_blend_factor_is_inverted(blend->rt[i].rgb_src_factor);
+                        rgb.invert_dst_factor = util_blend_factor_is_inverted(blend->rt[i].rgb_dst_factor);
+
+                        alpha.func = util_blend_func_to_shader(blend->rt[i].alpha_func);
+                        alpha.src_factor = util_blend_factor_to_shader(blend->rt[i].alpha_src_factor);
+                        alpha.dst_factor = util_blend_factor_to_shader(blend->rt[i].alpha_dst_factor);
+                        alpha.invert_src_factor = util_blend_factor_is_inverted(blend->rt[i].alpha_src_factor);
+                        alpha.invert_dst_factor = util_blend_factor_is_inverted(blend->rt[i].alpha_dst_factor);
+                }
 
                 options.rt[i].rgb = rgb;
                 options.rt[i].alpha = alpha;
