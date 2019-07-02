@@ -128,7 +128,7 @@ panfrost_mfbd_set_cbuf(
         unsigned level = surf->u.tex.level;
         unsigned first_layer = surf->u.tex.first_layer;
         assert(surf->u.tex.last_layer == first_layer);
-        int stride = rsrc->bo->slices[level].stride;
+        int stride = rsrc->slices[level].stride;
 
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer);
 
@@ -136,18 +136,18 @@ panfrost_mfbd_set_cbuf(
 
         /* Now, we set the layout specific pieces */
 
-        if (rsrc->bo->layout == PAN_LINEAR) {
+        if (rsrc->layout == PAN_LINEAR) {
                 rt->format.block = MALI_MFBD_BLOCK_LINEAR;
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride / 16;
-        } else if (rsrc->bo->layout == PAN_TILED) {
+        } else if (rsrc->layout == PAN_TILED) {
                 rt->format.block = MALI_MFBD_BLOCK_TILED;
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
-        } else if (rsrc->bo->layout == PAN_AFBC) {
+        } else if (rsrc->layout == PAN_AFBC) {
                 rt->format.block = MALI_MFBD_BLOCK_AFBC;
 
-                unsigned header_size = rsrc->bo->slices[level].header_size;
+                unsigned header_size = rsrc->slices[level].header_size;
 
                 rt->framebuffer = base + header_size;
                 rt->afbc.metadata = base;
@@ -173,11 +173,11 @@ panfrost_mfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        unsigned offset = rsrc->bo->slices[level].offset;
+        unsigned offset = rsrc->slices[level].offset;
 
-        if (rsrc->bo->layout == PAN_AFBC) {
+        if (rsrc->layout == PAN_AFBC) {
                 mali_ptr base = rsrc->bo->gpu + offset;
-                unsigned header_size = rsrc->bo->slices[level].header_size;
+                unsigned header_size = rsrc->slices[level].header_size;
 
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
 
@@ -194,8 +194,8 @@ panfrost_mfbd_set_zsbuf(
 
                 fbx->ds_afbc.zero1 = 0x10009;
                 fbx->ds_afbc.padding = 0x1000;
-        } else if (rsrc->bo->layout == PAN_LINEAR) {
-                int stride = rsrc->bo->slices[level].stride;
+        } else if (rsrc->layout == PAN_LINEAR) {
+                int stride = rsrc->slices[level].stride;
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
 
                 fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS | 0x1;
@@ -328,9 +328,9 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
                 struct panfrost_resource *rsrc = pan_resource(surf->texture);
                 struct panfrost_bo *bo = rsrc->bo;
 
-                if (bo->checksummed) {
+                if (rsrc->checksummed) {
                         unsigned level = surf->u.tex.level;
-                        struct panfrost_slice *slice = &bo->slices[level];
+                        struct panfrost_slice *slice = &rsrc->slices[level];
 
                         fb.mfbd_flags |= MALI_MFBD_EXTRA;
                         fbx.flags |= MALI_EXTRA_PRESENT;

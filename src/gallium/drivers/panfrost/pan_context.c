@@ -797,7 +797,7 @@ panfrost_upload_tex(
         unsigned last_layer = pview->u.tex.last_layer;
 
         /* Lower-bit is set when sampling from colour AFBC */
-        bool is_afbc = rsrc->bo->layout == PAN_AFBC;
+        bool is_afbc = rsrc->layout == PAN_AFBC;
         bool is_zs = rsrc->base.bind & PIPE_BIND_DEPTH_STENCIL;
         unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
 
@@ -818,7 +818,7 @@ panfrost_upload_tex(
 
                         if (has_manual_stride) {
                                 view->hw.payload[idx++] =
-                                        rsrc->bo->slices[l].stride;
+                                        rsrc->slices[l].stride;
                         }
                 }
         }
@@ -1469,7 +1469,7 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
         unsigned level = surf->u.tex.level;
 
-        if (!rsrc->bo->slices[level].initialized)
+        if (!rsrc->slices[level].initialized)
                 return;
 
         /* Save the batch */
@@ -2203,7 +2203,7 @@ panfrost_create_sampler_view(
 
         unsigned usage2_layout = 0x10;
 
-        switch (prsrc->bo->layout) {
+        switch (prsrc->layout) {
                 case PAN_AFBC:
                         usage2_layout |= 0x8 | 0x4;
                         break;
@@ -2226,9 +2226,9 @@ panfrost_create_sampler_view(
         unsigned first_level = template->u.tex.first_level;
         unsigned last_level = template->u.tex.last_level;
 
-        if (prsrc->bo->layout == PAN_LINEAR) {
+        if (prsrc->layout == PAN_LINEAR) {
                 for (unsigned l = first_level; l <= last_level; ++l) {
-                        unsigned actual_stride = prsrc->bo->slices[l].stride;
+                        unsigned actual_stride = prsrc->slices[l].stride;
                         unsigned width = u_minify(texture->width0, l);
                         unsigned comp_stride = width * bytes_per_pixel;
 

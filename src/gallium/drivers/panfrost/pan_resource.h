@@ -60,9 +60,6 @@ struct panfrost_slice {
 struct panfrost_bo {
         struct pipe_reference reference;
 
-        /* Description of the mip levels */
-        struct panfrost_slice slices[MAX_MIP_LEVELS];
-
         /* Mapping for the entire object (all levels) */
         uint8_t *cpu;
 
@@ -71,15 +68,6 @@ struct panfrost_bo {
 
         /* Size of all entire trees */
         size_t size;
-
-        /* Distance from tree to tree */
-        unsigned cubemap_stride;
-
-        /* Internal layout (tiled?) */
-        enum panfrost_memory_layout layout;
-
-        /* Is transaciton elimination enabled? */
-        bool checksummed;
 
         int gem_handle;
 };
@@ -99,6 +87,18 @@ struct panfrost_resource {
         struct panfrost_resource *separate_stencil;
 
         struct util_range valid_buffer_range;
+
+        /* Description of the mip levels */
+        struct panfrost_slice slices[MAX_MIP_LEVELS];
+
+        /* Distance from tree to tree */
+        unsigned cubemap_stride;
+
+        /* Internal layout (tiled?) */
+        enum panfrost_memory_layout layout;
+
+        /* Is transaciton elimination enabled? */
+        bool checksummed;
 };
 
 static inline struct panfrost_resource *
