@@ -40,9 +40,10 @@
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "nir_lower_blend.h"
+#include "util/u_format.h"
 
 static nir_ssa_def *
-nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
+nir_float_to_unorm8(nir_builder *b, nir_ssa_def *c_float)
 {
    /* First, we degrade quality to fp16; we don't need the extra bits */
    nir_ssa_def *degraded = nir_f2f16(b, c_float);
@@ -58,7 +59,7 @@ nir_float_to_native(nir_builder *b, nir_ssa_def *c_float)
 }
 
 static nir_ssa_def *
-nir_native_to_float(nir_builder *b, nir_ssa_def *c_native)
+nir_unorm8_to_float(nir_builder *b, nir_ssa_def *c_native)
 {
    /* First, we convert up from u8 to f16 */
    nir_ssa_def *converted = nir_u2f16(b, nir_u2u16(b, c_native));
@@ -69,11 +70,43 @@ nir_native_to_float(nir_builder *b, nir_ssa_def *c_native)
    return scaled;
 }
 
+
+
+static nir_ssa_def *
+nir_float_to_native(nir_builder *b,
+      nir_ssa_def *c_float,
+      const struct util_format_description *desc)
+{
+   if (util_format_is_unorm8(desc))
+      return nir_float_to_unorm8(b, c_float);
+   else {
+      printf("%s\n", desc->name);
+      unreachable("Unknown format name");
+   }
+}
+
+static nir_ssa_def *
+nir_native_to_float(nir_builder *b,
+   nir_ssa_def *c_native,
+   const struct util_format_description *desc)
+{
+   if (util_format_is_unorm8(desc))
+      return nir_unorm8_to_float(b, c_native);
+   else {
+      printf("%s\n", desc->name);
+      unreachable("Unknown format name");
+   }
+}
+
 void
 nir_lower_framebuffer(nir_shader *shader)
 {
    /* Blend shaders are represented as special fragment shaders */
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
+
+   enum pipe_format format = PIPE_FORMAT_R8G8B8A8_UNORM;
+   const struct util_format_description *format_desc =
+      util_format_description(format);
 
    nir_foreach_function(func, shader) {
       nir_foreach_block(block, func->impl) {
@@ -106,7 +139,7 @@ nir_lower_framebuffer(nir_shader *shader)
                nir_ssa_def *c_nir = nir_ssa_for_src(&b, intr->src[1], 4);
 
                /* Format convert */
-               nir_ssa_def *converted = nir_float_to_native(&b, c_nir);
+               nir_ssa_def *converted = nir_float_to_native(&b, c_nir, format_desc);
 
                /* Rewrite to use a native store by creating a new intrinsic */
                nir_intrinsic_instr *new =
@@ -137,7 +170,7 @@ nir_lower_framebuffer(nir_shader *shader)
 
                /* Convert the raw value */
                nir_ssa_def *raw = &new->dest.ssa;
-               nir_ssa_def *converted = nir_native_to_float(&b, raw);
+               nir_ssa_def *converted = nir_native_to_float(&b, raw, format_desc);
 
                /* Rewrite to use the converted value */
                nir_src rewritten = nir_src_for_ssa(converted);
