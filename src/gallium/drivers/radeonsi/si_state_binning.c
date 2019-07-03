@@ -308,6 +308,124 @@ static struct uvec2 si_get_depth_bin_size(struct si_context *sctx)
 	return si_find_bin_size(sctx->screen, table, sum);
 }
 
+static void gfx10_get_bin_sizes(struct si_context *sctx,
+				unsigned cb_target_enabled_4bit,
+				struct uvec2 *color_bin_size,
+				struct uvec2 *depth_bin_size)
+{
+	unsigned num_sdp_interfaces = 0;
+
+	switch (sctx->family) {
+	case CHIP_NAVI10:
+	case CHIP_NAVI12:
+		num_sdp_interfaces = 16;
+		break;
+	case CHIP_NAVI14:
+		num_sdp_interfaces = 8;
+		break;
+	default:
+		assert(0);
+	}
+
+	const unsigned ZsTagSize  = 64;
+	const unsigned ZsNumTags  = 312;
+	const unsigned CcTagSize  = 1024;
+	const unsigned CcReadTags = 31;
+	const unsigned FcTagSize  = 256;
+	const unsigned FcReadTags = 44;
+
+	const unsigned num_rbs = sctx->screen->info.num_render_backends;
+	const unsigned num_pipes = MAX2(num_rbs, num_sdp_interfaces);
+
+	const unsigned depthBinSizeTagPart = ((ZsNumTags * num_rbs / num_pipes) * (ZsTagSize * num_pipes));
+	const unsigned colorBinSizeTagPart = ((CcReadTags * num_rbs / num_pipes) * (CcTagSize * num_pipes));
+	const unsigned fmaskBinSizeTagPart = ((FcReadTags * num_rbs / num_pipes) * (FcTagSize * num_pipes));
+
+	const unsigned minBinSizeX = 128;
+	const unsigned minBinSizeY = 64;
+
+	const unsigned num_fragments = sctx->framebuffer.nr_color_samples;
+	const unsigned num_samples = sctx->framebuffer.nr_samples;
+	const bool ps_iter_sample = si_get_ps_iter_samples(sctx) >= 2;
+
+	/* Calculate cColor and cFmask(if applicable) */
+	unsigned cColor = 0;
+	unsigned cFmask = 0;
+	bool has_fmask = false;
+
+	for (unsigned i = 0; i < sctx->framebuffer.state.nr_cbufs; i++) {
+		if (!sctx->framebuffer.state.cbufs[i])
+			continue;
+
+		struct si_texture *tex =
+			(struct si_texture*)sctx->framebuffer.state.cbufs[i]->texture;
+		const unsigned mmrt =
+			num_fragments == 1 ? 1 : (ps_iter_sample ? num_fragments : 2);
+
+		cColor += tex->surface.bpe * mmrt;
+		if (num_samples >= 2 /* if FMASK is bound */) {
+			const unsigned fragmentsLog2 = util_logbase2(num_fragments);
+			const unsigned samplesLog2 = util_logbase2(num_samples);
+
+			static const unsigned cFmaskMrt[4 /* fragments */][5 /* samples */] = {
+				{ 0, 1, 1, 1, 2 }, /* fragments = 1 */
+				{ 0, 1, 1, 2, 4 }, /* fragments = 2 */
+				{ 0, 1, 1, 4, 8 }, /* fragments = 4 */
+				{ 0, 1, 2, 4, 8 }  /* fragments = 8 */
+			};
+			cFmask += cFmaskMrt[fragmentsLog2][samplesLog2];
+			has_fmask = true;
+		}
+	}
+	cColor = MAX2(cColor, 1u);
+
+	const unsigned colorLog2Pixels = util_logbase2(colorBinSizeTagPart / cColor);
+	const unsigned colorBinSizeX   = 1 << ((colorLog2Pixels + 1) / 2); /* round up width */
+	const unsigned colorBinSizeY   = 1 << (colorLog2Pixels / 2);       /* round down height */
+
+	unsigned binSizeX = colorBinSizeX;
+	unsigned binSizeY = colorBinSizeY;
+
+	if (has_fmask) {
+		cFmask = MAX2(cFmask, 1u);
+
+		const unsigned fmaskLog2Pixels = util_logbase2(fmaskBinSizeTagPart / cFmask);
+		const unsigned fmaskBinSizeX   = 1 << ((fmaskLog2Pixels + 1) / 2); /* round up width */
+		const unsigned fmaskBinSizeY   = 1 << (fmaskLog2Pixels / 2);       /* round down height */
+
+		/* use the smaller of the Color vs. Fmask bin sizes */
+		if (fmaskLog2Pixels < colorLog2Pixels) {
+			binSizeX = fmaskBinSizeX;
+			binSizeY = fmaskBinSizeY;
+		}
+	}
+
+	/* Return size adjusted for minimum bin size */
+	color_bin_size->x = MAX2(binSizeX, minBinSizeX);
+	color_bin_size->y = MAX2(binSizeY, minBinSizeY);
+
+	if (!sctx->framebuffer.state.zsbuf) {
+		/* Set to max sizes when no depth buffer is bound. */
+		depth_bin_size->x = 512;
+		depth_bin_size->y = 512;
+	} else {
+		struct si_texture *zstex = (struct si_texture*)sctx->framebuffer.state.zsbuf->texture;
+		struct si_state_dsa *dsa = sctx->queued.named.dsa;
+
+		const unsigned cPerDepthSample   = dsa->depth_enabled ? 5 : 0;
+		const unsigned cPerStencilSample = dsa->stencil_enabled ? 1 : 0;
+		const unsigned cDepth            = (cPerDepthSample + cPerStencilSample) *
+						   MAX2(zstex->buffer.b.b.nr_samples, 1);
+
+		const unsigned depthLog2Pixels = util_logbase2(depthBinSizeTagPart / MAX2(cDepth, 1u));
+		unsigned       depthBinSizeX   = 1 << ((depthLog2Pixels + 1) / 2);
+		unsigned       depthBinSizeY   = 1 << (depthLog2Pixels / 2);
+
+		depth_bin_size->x = MAX2(depthBinSizeX, minBinSizeX);
+		depth_bin_size->y = MAX2(depthBinSizeY, minBinSizeY);
+	}
+}
+
 static void si_emit_dpbb_disable(struct si_context *sctx)
 {
 	unsigned initial_cdw = sctx->gfx_cs->current.cdw;
@@ -393,9 +511,15 @@ void si_emit_dpbb_state(struct si_context *sctx)
 	/* TODO: We could also look at enabled pixel shader outputs. */
 	unsigned cb_target_enabled_4bit = sctx->framebuffer.colorbuf_enabled_4bit &
 					  blend->cb_target_enabled_4bit;
-	struct uvec2 color_bin_size =
-		si_get_color_bin_size(sctx, cb_target_enabled_4bit);
-	struct uvec2 depth_bin_size = si_get_depth_bin_size(sctx);
+	struct uvec2 color_bin_size, depth_bin_size;
+
+	if (sctx->chip_class >= GFX10) {
+		gfx10_get_bin_sizes(sctx, cb_target_enabled_4bit,
+				    &color_bin_size, &depth_bin_size);
+	} else {
+		color_bin_size = si_get_color_bin_size(sctx, cb_target_enabled_4bit);
+		depth_bin_size = si_get_depth_bin_size(sctx);
+	}
 
 	unsigned color_area = color_bin_size.x * color_bin_size.y;
 	unsigned depth_area = depth_bin_size.x * depth_bin_size.y;

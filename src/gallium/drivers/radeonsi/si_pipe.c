@@ -1148,11 +1148,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 		sscreen->dfsm_allowed = false;
 	}
 
-	if (sscreen->info.chip_class == GFX10) {
-		sscreen->dpbb_allowed = false; /* TODO-GFX10: implement this */
-		sscreen->dfsm_allowed = false;
-	}
-
 	/* While it would be nice not to have this flag, we are constrained
 	 * by the reality that LLVM 9.0 has buggy VGPR indexing on GFX9.
 	 */
