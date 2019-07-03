@@ -362,9 +362,8 @@ option(
 )
 option(
   'osmesa',
-  type : 'combo',
-  value : 'none',
-  choices : ['none', 'classic', 'gallium'],
+  type : 'boolean',
+  value : false,
   description : 'Build OSmesa.'
 )
 option(

@@ -760,9 +760,6 @@ libmesa_gallium = static_library(
 )
 
 subdir('drivers/dri')
-if with_osmesa == 'classic'
-  subdir('drivers/osmesa')
-endif
 if with_glx == 'xlib'
   subdir('drivers/x11')
 endif

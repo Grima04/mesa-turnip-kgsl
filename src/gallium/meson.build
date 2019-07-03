@@ -180,7 +180,7 @@ if with_dri
   subdir('frontends/dri')
   subdir('targets/dri')
 endif
-if with_osmesa == 'gallium'
+if with_osmesa
   subdir('frontends/osmesa')
   subdir('targets/osmesa')
 endif

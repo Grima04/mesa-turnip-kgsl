@@ -643,7 +643,7 @@ meson-gallium:
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
     VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
-      -D osmesa=gallium
+      -D osmesa=true
       -D tools=all
       -D werror=true
   script:
@@ -675,26 +675,11 @@ meson-release:
     GALLIUM_DRIVERS: "nouveau,kmsro,freedreno,r300,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
     BUILDTYPE: "release"
     EXTRA_OPTION: >
-      -D osmesa=none
+      -D osmesa=false
       -D tools=all
       -D werror=true
   script:
     - .gitlab-ci/meson-build.sh
-
-meson-classic:
-  extends: .meson-build
-  variables:
-    UNWIND: "enabled"
-    DRI_LOADERS: >
-      -D glx=dri
-      -D gbm=enabled
-      -D egl=enabled
-      -D platforms=x11,wayland
-    DRI_DRIVERS: "auto"
-    EXTRA_OPTION: >
-      -D osmesa=classic
-      -D tools=all
-      -D werror=true
 
 meson-android:
   extends:
@@ -741,7 +726,7 @@ meson-android:
       -D gbm=disabled
       -D egl=enabled
       -D platforms=[]
-      -D osmesa=none
+      -D osmesa=false
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
@@ -892,7 +877,7 @@ meson-vulkan:
       -D gbm=disabled
       -D egl=disabled
       -D platforms=x11,wayland
-      -D osmesa=none
+      -D osmesa=false
     GALLIUM_ST: >
       -D dri3=enabled
       -D gallium-vdpau=disabled
@@ -957,7 +942,7 @@ meson-mingw32-x86_64:
     GALLIUM_DRIVERS: "swrast"
     EXTRA_OPTION: >
       -Dllvm=disabled
-      -Dosmesa=gallium
+      -Dosmesa=true
       --cross-file=.gitlab-ci/x86_64-w64-mingw32
 
 .test:

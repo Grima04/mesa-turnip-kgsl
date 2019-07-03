@@ -116,7 +116,7 @@ _mesa_override_extensions(struct gl_context *ctx)
 
 /**
  * Enable all extensions suitable for a software-only renderer.
- * This is a convenience function used by the XMesa, OSMesa, GGI drivers, etc.
+ * This is a convenience function used by the mesa/swrast drivers.
  */
 void
 _mesa_enable_sw_extensions(struct gl_context *ctx)

@@ -517,8 +517,8 @@ if with_any_vk and (with_platform_x11 and not with_dri3)
   error('Vulkan drivers require dri3 for X11 support')
 endif
 if with_dri
-  if with_glx == 'disabled' and not with_egl and not with_gbm and with_osmesa != 'classic'
-    error('building dri drivers require at least one windowing system or classic osmesa')
+  if with_glx == 'disabled' and not with_egl and not with_gbm
+    error('building dri drivers require at least one windowing system')
   endif
 endif
 
@@ -1737,8 +1737,8 @@ else
   dep_unwind = null_dep
 endif
 
-if with_osmesa != 'none'
-  if with_osmesa == 'gallium' and not with_gallium_softpipe
+if with_osmesa
+  if not with_gallium_softpipe
     error('OSMesa gallium requires gallium softpipe or llvmpipe.')
   endif
   if host_machine.system() == 'windows'
@@ -1976,13 +1976,9 @@ lines = ['',
                                                     with_gles2 ? 'yes' : 'no'),
 ]
 
-if with_osmesa != 'none'
+if with_osmesa
   lines += ''
-  suffix = ''
-  if with_osmesa == 'gallium'
-    suffix = '(Gallium)'
-  endif
-  lines += 'OSMesa:          lib' + osmesa_lib_name + suffix
+  lines += 'OSMesa:          lib' + osmesa_lib_name
 else
   lines += 'OSMesa:          no'
 endif
