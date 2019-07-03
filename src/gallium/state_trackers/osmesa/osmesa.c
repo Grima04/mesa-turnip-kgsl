@@ -266,6 +266,8 @@ osmesa_choose_format(GLenum format, GLenum type)
       /* No gallium format for this one */
       return PIPE_FORMAT_NONE;
    case OSMESA_RGB_565:
+      if (type != GL_UNSIGNED_SHORT_5_6_5)
+         return PIPE_FORMAT_NONE;
       return PIPE_FORMAT_B5G6R5_UNORM;
    default:
       ; /* fall-through */
@@ -769,10 +771,6 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
    enum pipe_format color_format;
 
    if (!osmesa || !buffer || width < 1 || height < 1) {
-      return GL_FALSE;
-   }
-
-   if (osmesa->format == OSMESA_RGB_565 && type != GL_UNSIGNED_SHORT_5_6_5) {
       return GL_FALSE;
    }
 
