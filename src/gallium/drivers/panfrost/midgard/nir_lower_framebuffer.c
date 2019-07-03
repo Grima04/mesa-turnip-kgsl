@@ -167,24 +167,37 @@ nir_shader_to_native(nir_builder *b,
       return nir_float_to_unorm8(b, c_shader);
    else if (homogenous_bits && float_or_pure_int)
       return c_shader; /* type is already correct */
-   else if (homogenous_bits && bits == 4 && util_format_is_unorm(desc->format)) {
-      /* TODO: Swizzle generally */
-      unsigned swiz[4] = { 2, 1, 0, 3 }; /* BGRA */
-      c_shader = nir_swizzle(b, c_shader, swiz, 4);
-      return nir_float_to_unorm4(b, c_shader);
-   } else if (desc->format == PIPE_FORMAT_R10G10B10A2_UNORM || desc->format == PIPE_FORMAT_B10G10R10A2_UNORM)
-     return nir_float_to_rgb10a2(b, c_shader, true); 
-   else if (desc->format == PIPE_FORMAT_R10G10B10A2_UINT)
-     return nir_float_to_rgb10a2(b, c_shader, false); 
-   else if (desc->format == PIPE_FORMAT_B5G5R5A1_UNORM) {
-      unsigned swiz[4] = { 2, 1, 0, 3 }; /* BGRA */
-      c_shader = nir_swizzle(b, c_shader, swiz, 4);
-      return nir_float_to_rgb5a1(b, c_shader);
-   } else if (desc->format == PIPE_FORMAT_R11G11B10_FLOAT) {
-      return nir_format_pack_11f11f10f(b, c_shader);
-   } else {
-      printf("%s\n", desc->name);
-      unreachable("Unknown format name");
+
+   //unsigned bgra[4] = { 2, 1, 0, 3 }; /* BGRA */
+   //c_shader = nir_swizzle(b, c_shader, swiz, 4);
+
+   /* Special formats */
+   switch (desc->format) {
+      case PIPE_FORMAT_B4G4R4A4_UNORM:
+      case PIPE_FORMAT_B4G4R4X4_UNORM:
+      case PIPE_FORMAT_A4R4_UNORM:
+      case PIPE_FORMAT_R4A4_UNORM:
+      case PIPE_FORMAT_A4B4G4R4_UNORM:
+         return nir_float_to_unorm4(b, c_shader);
+
+      case PIPE_FORMAT_R10G10B10A2_UNORM:
+      case PIPE_FORMAT_B10G10R10A2_UNORM:
+      case PIPE_FORMAT_R10G10B10X2_UNORM:
+      case PIPE_FORMAT_B10G10R10X2_UNORM:
+        return nir_float_to_rgb10a2(b, c_shader, true); 
+
+      case PIPE_FORMAT_R10G10B10A2_UINT:
+        return nir_float_to_rgb10a2(b, c_shader, false); 
+
+      case PIPE_FORMAT_B5G5R5A1_UNORM:
+         return nir_float_to_rgb5a1(b, c_shader);
+
+      case PIPE_FORMAT_R11G11B10_FLOAT:
+         return nir_format_pack_11f11f10f(b, c_shader);
+
+      default:
+         printf("%s\n", desc->name);
+         unreachable("Unknown format name");
    }
 }
 
