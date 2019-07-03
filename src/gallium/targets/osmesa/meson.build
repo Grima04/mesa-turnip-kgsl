@@ -62,3 +62,12 @@ pkg.generate(
   libraries : libosmesa,
   libraries_private : gl_priv_libs,
 )
+
+if with_tests
+  test('osmesa-render',
+       executable('osmesa-render',
+                  'test-render.c',
+                  include_directories : inc_common,
+                  link_with: libosmesa),
+       suite: 'gallium')
+endif
