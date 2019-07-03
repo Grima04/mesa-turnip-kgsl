@@ -504,8 +504,8 @@ struct v3d_compile {
         struct qreg *inputs;
         struct qreg *outputs;
         bool msaa_per_sample_output;
-        struct qreg color_reads[V3D_MAX_SAMPLES];
-        struct qreg sample_colors[V3D_MAX_SAMPLES];
+        struct qreg color_reads[V3D_MAX_DRAW_BUFFERS * V3D_MAX_SAMPLES * 4];
+        struct qreg sample_colors[V3D_MAX_DRAW_BUFFERS * V3D_MAX_SAMPLES * 4];
         uint32_t inputs_array_size;
         uint32_t outputs_array_size;
         uint32_t uniforms_array_size;
