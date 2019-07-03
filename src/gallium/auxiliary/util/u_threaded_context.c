@@ -1630,8 +1630,11 @@ tc_buffer_subdata(struct pipe_context *_pipe,
    if (!size)
       return;
 
-   usage |= PIPE_TRANSFER_WRITE |
-            PIPE_TRANSFER_DISCARD_RANGE;
+   usage |= PIPE_TRANSFER_WRITE;
+
+   /* PIPE_TRANSFER_MAP_DIRECTLY supresses implicit DISCARD_RANGE. */
+   if (!(usage & PIPE_TRANSFER_MAP_DIRECTLY))
+      usage |= PIPE_TRANSFER_DISCARD_RANGE;
 
    usage = tc_improve_map_buffer_flags(tc, tres, usage, offset, size);
 

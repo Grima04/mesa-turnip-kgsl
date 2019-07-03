@@ -18,11 +18,15 @@ void u_default_buffer_subdata(struct pipe_context *pipe,
    /* the write flag is implicit by the nature of buffer_subdata */
    usage |= PIPE_TRANSFER_WRITE;
 
-   /* buffer_subdata implicitly discards the rewritten buffer range */
-   if (offset == 0 && size == resource->width0) {
-      usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
-   } else {
-      usage |= PIPE_TRANSFER_DISCARD_RANGE;
+   /* buffer_subdata implicitly discards the rewritten buffer range.
+    * PIPE_TRANSFER_MAP_DIRECTLY supresses that.
+    */
+   if (!(usage & PIPE_TRANSFER_MAP_DIRECTLY)) {
+      if (offset == 0 && size == resource->width0) {
+         usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+      } else {
+         usage |= PIPE_TRANSFER_DISCARD_RANGE;
+      }
    }
 
    u_box_1d(offset, size, &box);

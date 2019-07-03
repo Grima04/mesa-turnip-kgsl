@@ -588,10 +588,12 @@ static void virgl_buffer_subdata(struct pipe_context *pipe,
    /* the write flag is implicit by the nature of buffer_subdata */
    usage |= PIPE_TRANSFER_WRITE;
 
-   if (offset == 0 && size == resource->width0)
-      usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
-   else
-      usage |= PIPE_TRANSFER_DISCARD_RANGE;
+   if (!(usage & PIPE_TRANSFER_MAP_DIRECTLY)) {
+      if (offset == 0 && size == resource->width0)
+         usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+      else
+         usage |= PIPE_TRANSFER_DISCARD_RANGE;
+   }
 
    u_box_1d(offset, size, &box);
 
