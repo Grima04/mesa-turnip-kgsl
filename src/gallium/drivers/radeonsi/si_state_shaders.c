@@ -558,6 +558,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 				S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8) : 0) |
 		       S_00B428_DX10_CLAMP(1) |
 		       S_00B428_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+		       S_00B428_WGP_MODE(sscreen->info.chip_class >= GFX10) |
 		       S_00B428_FLOAT_MODE(shader->config.float_mode) |
 		       S_00B428_LS_VGPR_COMP_CNT(ls_vgpr_comp_cnt));
 
@@ -898,6 +899,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 			S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) |
 			S_00B228_DX10_CLAMP(1) |
 			S_00B228_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+			S_00B228_WGP_MODE(sscreen->info.chip_class >= GFX10) |
 			S_00B228_FLOAT_MODE(shader->config.float_mode) |
 			S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
 		uint32_t rsrc2 =
@@ -1158,6 +1160,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		       S_00B228_FLOAT_MODE(shader->config.float_mode) |
 		       S_00B228_DX10_CLAMP(1) |
 		       S_00B228_MEM_ORDERED(1) |
+		       S_00B228_WGP_MODE(1) |
 		       S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt));
 	si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
 		       S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0) |

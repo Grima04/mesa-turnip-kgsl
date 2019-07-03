@@ -191,6 +191,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 			S_00B848_VGPRS((shader->config.num_vgprs - 1) / 4) |
 			S_00B848_DX10_CLAMP(1) |
 			S_00B848_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
+			S_00B848_WGP_MODE(sscreen->info.chip_class >= GFX10) |
 			S_00B848_FLOAT_MODE(shader->config.float_mode);
 
 		if (program->screen->info.chip_class < GFX10) {
