@@ -151,6 +151,10 @@ etna_link_shaders(struct etna_context *ctx, struct compiled_shader_state *cs,
       cs->VS_OUTPUT_COUNT_PSIZE = cs->VS_OUTPUT_COUNT;
    }
 
+   /* if fragment shader doesn't read pointcoord, disable it */
+   if (link.pcoord_varying_comp_ofs == -1)
+      cs->PA_CONFIG &= ~VIVS_PA_CONFIG_POINT_SPRITE_ENABLE;
+
    cs->VS_LOAD_BALANCING = vs->vs_load_balancing;
    cs->VS_START_PC = 0;
 
