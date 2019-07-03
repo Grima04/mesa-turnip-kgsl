@@ -64,4 +64,10 @@ bool
 iris_end_monitor(struct pipe_context *ctx,
                  struct iris_monitor_object *monitor);
 
+bool
+iris_get_monitor_result(struct pipe_context *ctx,
+                        struct iris_monitor_object *monitor,
+                        bool wait,
+                        union pipe_numeric_type_union *result);
+
 #endif

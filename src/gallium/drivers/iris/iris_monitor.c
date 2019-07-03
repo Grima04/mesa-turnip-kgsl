@@ -411,3 +411,63 @@ iris_end_monitor(struct pipe_context *ctx,
    gen_perf_end_query(perf_ctx, monitor->query);
    return true;
 }
+
+bool
+iris_get_monitor_result(struct pipe_context *ctx,
+                        struct iris_monitor_object *monitor,
+                        bool wait,
+                        union pipe_numeric_type_union *result)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct gen_perf_context *perf_ctx = ice->perf_ctx;
+
+   bool monitor_ready = gen_perf_is_query_ready(perf_ctx, monitor->query,
+                                                &ice->batches[IRIS_BATCH_RENDER]);
+
+   if (!monitor_ready) {
+      if (!wait)
+         return false;
+      gen_perf_wait_query(perf_ctx, monitor->query,
+                          &ice->batches[IRIS_BATCH_RENDER]);
+   }
+
+   assert (gen_perf_is_query_ready(perf_ctx, monitor->query,
+                                   &ice->batches[IRIS_BATCH_RENDER]));
+
+   unsigned bytes_written;
+   gen_perf_get_query_data(perf_ctx, monitor->query,
+                           monitor->result_size,
+                           (unsigned*) monitor->result_buffer,
+                           &bytes_written);
+   if (bytes_written != monitor->result_size)
+      return false;
+
+   /* copy metrics into the batch result */
+   for (int i = 0; i < monitor->num_active_counters; ++i) {
+      int current_counter = monitor->active_counters[i];
+      const struct gen_perf_query_info *info =
+         gen_perf_query_info(monitor->query);
+      const struct gen_perf_query_counter *counter =
+         &info->counters[current_counter];
+      assert(gen_perf_query_counter_get_size(counter));
+      switch (counter->data_type) {
+      case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
+         result[i].u64 = *(uint64_t*)(monitor->result_buffer + counter->offset);
+         break;
+      case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
+         result[i].f = *(float*)(monitor->result_buffer + counter->offset);
+         break;
+      case GEN_PERF_COUNTER_DATA_TYPE_UINT32:
+      case GEN_PERF_COUNTER_DATA_TYPE_BOOL32:
+         result[i].u64 = *(uint32_t*)(monitor->result_buffer + counter->offset);
+         break;
+      case GEN_PERF_COUNTER_DATA_TYPE_DOUBLE: {
+         double v = *(double*)(monitor->result_buffer + counter->offset);
+         result[i].f = v;
+      }
+      default:
+         unreachable("unexpected counter data type");
+      }
+   }
+   return true;
+}
