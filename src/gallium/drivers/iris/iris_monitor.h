@@ -53,4 +53,8 @@ iris_create_monitor_object(struct iris_context *ice,
                            unsigned num_queries,
                            unsigned *query_types);
 
+struct pipe_query;
+void iris_destroy_monitor_object(struct pipe_context *ctx,
+                                 struct iris_monitor_object *monitor);
+
 #endif

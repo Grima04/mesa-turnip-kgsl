@@ -378,3 +378,15 @@ allocation_failure:
    free(monitor);
    return NULL;
 }
+
+void iris_destroy_monitor_object(struct pipe_context *ctx,
+                                 struct iris_monitor_object *monitor)
+{
+   struct iris_context *ice = (struct iris_context *)ctx;
+   gen_perf_delete_query(ice->perf_ctx, monitor->query);
+   free(monitor->result_buffer);
+   monitor->result_buffer = NULL;
+   free(monitor->active_counters);
+   monitor->active_counters = NULL;
+   free(monitor);
+}
