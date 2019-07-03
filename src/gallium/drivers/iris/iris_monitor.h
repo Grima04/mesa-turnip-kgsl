@@ -57,4 +57,11 @@ struct pipe_query;
 void iris_destroy_monitor_object(struct pipe_context *ctx,
                                  struct iris_monitor_object *monitor);
 
+bool
+iris_begin_monitor(struct pipe_context *ctx,
+                   struct iris_monitor_object *monitor);
+bool
+iris_end_monitor(struct pipe_context *ctx,
+                 struct iris_monitor_object *monitor);
+
 #endif

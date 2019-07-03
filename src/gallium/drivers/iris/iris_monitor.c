@@ -390,3 +390,24 @@ void iris_destroy_monitor_object(struct pipe_context *ctx,
    monitor->active_counters = NULL;
    free(monitor);
 }
+
+bool
+iris_begin_monitor(struct pipe_context *ctx,
+                   struct iris_monitor_object *monitor)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct gen_perf_context *perf_ctx = ice->perf_ctx;
+
+   return gen_perf_begin_query(perf_ctx, monitor->query);
+}
+
+bool
+iris_end_monitor(struct pipe_context *ctx,
+                 struct iris_monitor_object *monitor)
+{
+   struct iris_context *ice = (void *) ctx;
+   struct gen_perf_context *perf_ctx = ice->perf_ctx;
+
+   gen_perf_end_query(perf_ctx, monitor->query);
+   return true;
+}
