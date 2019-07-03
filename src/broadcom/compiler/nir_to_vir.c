@@ -1760,26 +1760,98 @@ vir_emit_tlb_color_read(struct v3d_compile *c, nir_intrinsic_instr *instr)
 }
 
 static void
+ntq_emit_load_uniform(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        if (nir_src_is_const(instr->src[0])) {
+                int offset = (nir_intrinsic_base(instr) +
+                             nir_src_as_uint(instr->src[0]));
+                assert(offset % 4 == 0);
+                /* We need dwords */
+                offset = offset / 4;
+                for (int i = 0; i < instr->num_components; i++) {
+                        ntq_store_dest(c, &instr->dest, i,
+                                       vir_uniform(c, QUNIFORM_UNIFORM,
+                                                   offset + i));
+                }
+        } else {
+               ntq_emit_tmu_general(c, instr, false);
+        }
+}
+
+static void
+ntq_emit_load_input(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        /* XXX: Use ldvpmv (uniform offset) or ldvpmd (non-uniform offset)
+         * and enable PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR.
+         */
+        unsigned offset =
+                nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[0]);
+
+        if (c->s->info.stage != MESA_SHADER_FRAGMENT && c->devinfo->ver >= 40) {
+               /* Emit the LDVPM directly now, rather than at the top
+                * of the shader like we did for V3D 3.x (which needs
+                * vpmsetup when not just taking the next offset).
+                *
+                * Note that delaying like this may introduce stalls,
+                * as LDVPMV takes a minimum of 1 instruction but may
+                * be slower if the VPM unit is busy with another QPU.
+                */
+               int index = 0;
+               if (c->s->info.system_values_read &
+                   (1ull << SYSTEM_VALUE_INSTANCE_ID)) {
+                      index++;
+               }
+               if (c->s->info.system_values_read &
+                   (1ull << SYSTEM_VALUE_VERTEX_ID)) {
+                      index++;
+               }
+               for (int i = 0; i < offset; i++)
+                      index += c->vattr_sizes[i];
+               index += nir_intrinsic_component(instr);
+               for (int i = 0; i < instr->num_components; i++) {
+                      struct qreg vpm_offset = vir_uniform_ui(c, index++);
+                      ntq_store_dest(c, &instr->dest, i,
+                                     vir_LDVPMV_IN(c, vpm_offset));
+                }
+        } else {
+                for (int i = 0; i < instr->num_components; i++) {
+                        int comp = nir_intrinsic_component(instr) + i;
+                        ntq_store_dest(c, &instr->dest, i,
+                                       vir_MOV(c, c->inputs[offset * 4 + comp]));
+                }
+        }
+}
+
+static void
+ntq_emit_store_output(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        /* XXX perf: Use stvpmv with uniform non-constant offsets and
+         * stvpmd with non-uniform offsets and enable
+         * PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR.
+         */
+        if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
+            unsigned offset = ((nir_intrinsic_base(instr) +
+                    nir_src_as_uint(instr->src[1])) * 4 +
+                    nir_intrinsic_component(instr));
+            for (int i = 0; i < instr->num_components; i++) {
+                    c->outputs[offset + i] =
+                            vir_MOV(c, ntq_get_src(c, instr->src[0], i));
+            }
+        } else {
+                assert(instr->num_components == 1);
+
+                vir_VPM_WRITE(c,
+                              ntq_get_src(c, instr->src[0], 0),
+                              nir_intrinsic_base(instr));
+        }
+}
+
+static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
-        unsigned offset;
-
         switch (instr->intrinsic) {
         case nir_intrinsic_load_uniform:
-                if (nir_src_is_const(instr->src[0])) {
-                        int offset = (nir_intrinsic_base(instr) +
-                                      nir_src_as_uint(instr->src[0]));
-                        assert(offset % 4 == 0);
-                        /* We need dwords */
-                        offset = offset / 4;
-                        for (int i = 0; i < instr->num_components; i++) {
-                                ntq_store_dest(c, &instr->dest, i,
-                                               vir_uniform(c, QUNIFORM_UNIFORM,
-                                                           offset + i));
-                        }
-                } else {
-                        ntq_emit_tmu_general(c, instr, false);
-                }
+                ntq_emit_load_uniform(c, instr);
                 break;
 
         case nir_intrinsic_load_ubo:
@@ -1906,71 +1978,11 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_input:
-                /* Use ldvpmv (uniform offset) or ldvpmd (non-uniform offset)
-                 * and enable PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR.
-                 */
-                offset = (nir_intrinsic_base(instr) +
-                          nir_src_as_uint(instr->src[0]));
-                if (c->s->info.stage != MESA_SHADER_FRAGMENT &&
-                    c->devinfo->ver >= 40) {
-                        /* Emit the LDVPM directly now, rather than at the top
-                         * of the shader like we did for V3D 3.x (which needs
-                         * vpmsetup when not just taking the next offset).
-                         *
-                         * Note that delaying like this may introduce stalls,
-                         * as LDVPMV takes a minimum of 1 instruction but may
-                         * be slower if the VPM unit is busy with another QPU.
-                         */
-                        int index = 0;
-                        if (c->s->info.system_values_read &
-                            (1ull << SYSTEM_VALUE_INSTANCE_ID)) {
-                                index++;
-                        }
-                        if (c->s->info.system_values_read &
-                            (1ull << SYSTEM_VALUE_VERTEX_ID)) {
-                                index++;
-                        }
-                        for (int i = 0; i < offset; i++)
-                                index += c->vattr_sizes[i];
-                        index += nir_intrinsic_component(instr);
-                        for (int i = 0; i < instr->num_components; i++) {
-                                struct qreg vpm_offset =
-                                        vir_uniform_ui(c, index++);
-                                ntq_store_dest(c, &instr->dest, i,
-                                               vir_LDVPMV_IN(c, vpm_offset));
-                        }
-                } else {
-                        for (int i = 0; i < instr->num_components; i++) {
-                                int comp = nir_intrinsic_component(instr) + i;
-                                ntq_store_dest(c, &instr->dest, i,
-                                               vir_MOV(c, c->inputs[offset * 4 +
-                                                                    comp]));
-                        }
-                }
+                ntq_emit_load_input(c, instr);
                 break;
 
         case nir_intrinsic_store_output:
-                /* XXX perf: Use stvpmv with uniform non-constant offsets and
-                 * stvpmd with non-uniform offsets and enable
-                 * PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR.
-                 */
-                if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
-                        offset = ((nir_intrinsic_base(instr) +
-                                   nir_src_as_uint(instr->src[1])) * 4 +
-                                  nir_intrinsic_component(instr));
-                        for (int i = 0; i < instr->num_components; i++) {
-                                c->outputs[offset + i] =
-                                        vir_MOV(c,
-                                                ntq_get_src(c,
-                                                            instr->src[0], i));
-                        }
-                } else {
-                        assert(instr->num_components == 1);
-
-                        vir_VPM_WRITE(c,
-                                      ntq_get_src(c, instr->src[0], 0),
-                                      nir_intrinsic_base(instr));
-                }
+                ntq_emit_store_output(c, instr);
                 break;
 
         case nir_intrinsic_image_deref_size:
