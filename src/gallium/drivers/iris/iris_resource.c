@@ -1276,7 +1276,6 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
 
    const bool has_swizzling = false;
 
-   // XXX: PIPE_TRANSFER_READ?
    if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
       char *src =
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);

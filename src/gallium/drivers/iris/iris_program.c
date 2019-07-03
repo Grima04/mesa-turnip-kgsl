@@ -78,7 +78,6 @@ iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
    struct pipe_context *ctx = &ice->ctx;
    struct iris_screen *screen = (struct iris_screen *) ctx->screen;
 
-   // XXX: these are not retained forever, use a separate uploader?
    void *map =
       upload_state(ice->state.surface_uploader, surf_state,
                    screen->isl_dev.ss.size, 64);
@@ -1563,7 +1562,6 @@ update_last_vue_map(struct iris_context *ice,
       (old_map ? old_map->slots_valid : 0ull) ^ vue_map->slots_valid;
 
    if (changed_slots & VARYING_BIT_VIEWPORT) {
-      // XXX: could use ctx->Const.MaxViewports for old API efficiency
       ice->state.num_viewports =
          (vue_map->slots_valid & VARYING_BIT_VIEWPORT) ? IRIS_MAX_VIEWPORTS : 1;
       ice->state.dirty |= IRIS_DIRTY_CLIP |
@@ -1572,7 +1570,6 @@ update_last_vue_map(struct iris_context *ice,
                           IRIS_DIRTY_SCISSOR_RECT |
                           IRIS_DIRTY_UNCOMPILED_FS |
                           ice->state.dirty_for_nos[IRIS_NOS_LAST_VUE_MAP];
-      // XXX: CC_VIEWPORT?
    }
 
    if (changed_slots || (old_map && old_map->separate != vue_map->separate)) {

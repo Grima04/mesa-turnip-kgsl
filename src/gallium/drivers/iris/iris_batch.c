@@ -679,10 +679,7 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
       ret = 0;
    }
 
-   if (ret >= 0) {
-      //if (iris->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)
-         //iris_check_for_reset(ice);
-   } else {
+   if (ret < 0) {
 #ifdef DEBUG
       const bool color = INTEL_DEBUG & DEBUG_COLOR;
       fprintf(stderr, "%siris: Failed to submit batchbuffer: %-80s%s\n",

@@ -406,8 +406,8 @@ iris_is_format_supported(struct pipe_screen *pscreen,
    const struct gen_device_info *devinfo = &screen->devinfo;
    uint32_t max_samples = devinfo->gen == 8 ? 8 : 16;
 
-   // XXX: msaa max
-   if (sample_count > max_samples || !util_is_power_of_two_or_zero(sample_count))
+   if (sample_count > max_samples ||
+       !util_is_power_of_two_or_zero(sample_count))
       return false;
 
    if (pformat == PIPE_FORMAT_NONE)
@@ -470,7 +470,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
        */
       supported &= sample_count <= 1;
 
-      // XXX: allow untyped reads
+      /* TODO: allow formats that only support untyped reads? */
       supported &= isl_format_supports_typed_reads(devinfo, format) &&
                    isl_format_supports_typed_writes(devinfo, format);
    }
@@ -498,38 +498,6 @@ iris_is_format_supported(struct pipe_screen *pscreen,
       supported &= format == ISL_FORMAT_R8_UINT ||
                    format == ISL_FORMAT_R16_UINT ||
                    format == ISL_FORMAT_R32_UINT;
-   }
-
-   if (usage & PIPE_BIND_CONSTANT_BUFFER) {
-      // XXX:
-   }
-
-   if (usage & PIPE_BIND_STREAM_OUTPUT) {
-      // XXX:
-   }
-
-   if (usage & PIPE_BIND_CURSOR) {
-      // XXX:
-   }
-
-   if (usage & PIPE_BIND_CUSTOM) {
-      // XXX:
-   }
-
-   if (usage & PIPE_BIND_SHADER_BUFFER) {
-      // XXX:
-   }
-
-   if (usage & PIPE_BIND_COMPUTE_RESOURCE) {
-      // XXX:
-   }
-
-   if (usage & PIPE_BIND_COMMAND_ARGS_BUFFER) {
-      // XXX:
-   }
-
-   if (usage & PIPE_BIND_QUERY_BUFFER) {
-      // XXX:
    }
 
    return supported;

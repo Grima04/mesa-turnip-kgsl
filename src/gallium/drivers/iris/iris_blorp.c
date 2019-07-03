@@ -307,17 +307,7 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
 
    iris_require_command_space(batch, 1400);
 
-   // XXX: Emit L3 state
-
-#if GEN_GEN == 8
-   // XXX: PMA - gen8_write_pma_stall_bits(ice, 0);
-#endif
-
-   // XXX: TODO...drawing rectangle...unrevert Jason's patches on master
-
    blorp_exec(blorp_batch, params);
-
-   // XXX: aperture checks?
 
    /* We've smashed all state compared to what the normal 3D pipeline
     * rendering tracks for GL.

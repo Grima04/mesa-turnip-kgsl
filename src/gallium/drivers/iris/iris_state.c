@@ -2083,7 +2083,6 @@ iris_set_shader_images(struct pipe_context *ctx,
          const struct pipe_image_view *img = &p_images[i];
          struct iris_resource *res = (void *) img->resource;
 
-         // XXX: these are not retained forever, use a separate uploader?
          void *map =
             alloc_surface_states(ice->state.surface_uploader,
                                  &iv->surface_state, 1 << ISL_AUX_USAGE_NONE);
@@ -3723,7 +3722,6 @@ iris_store_fs_state(struct iris_context *ice,
 #else
       psx.PixelShaderUsesInputCoverageMask = wm_prog_data->uses_sample_mask;
 #endif
-      // XXX: UAV bit
    }
 }
 
@@ -4051,7 +4049,6 @@ iris_populate_binding_table(struct iris_context *ice,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    uint32_t binder_addr = binder->bo->gtt_offset;
 
-   //struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
    uint32_t *bt_map = binder->map + binder->bt_offset[stage];
    int s = 0;
 
@@ -5405,7 +5402,6 @@ iris_upload_render_state(struct iris_context *ice,
          prim.InstanceCount = draw->instance_count;
          prim.VertexCountPerInstance = draw->count;
 
-         // XXX: this is probably bonkers.
          prim.StartVertexLocation = draw->start;
 
          if (draw->index_size) {
@@ -5413,8 +5409,6 @@ iris_upload_render_state(struct iris_context *ice,
          } else {
             prim.StartVertexLocation += draw->index_bias;
          }
-
-         //prim.BaseVertexLocation = ...;
       }
    }
 }
