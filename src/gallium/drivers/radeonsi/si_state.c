@@ -5493,9 +5493,6 @@ static void si_init_config(struct si_context *sctx)
 			/* Logical CUs 16 - 31 */
 			si_pm4_set_reg(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
 				       S_00B404_CU_EN(0xffff));
-			si_pm4_set_reg(pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-				       S_00B204_CU_EN(0xffff) |
-				       S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0));
 			si_pm4_set_reg(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
 				       S_00B104_CU_EN(0xffff));
 			si_pm4_set_reg(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
@@ -5521,8 +5518,6 @@ static void si_init_config(struct si_context *sctx)
 				       S_028A44_ES_VERTS_PER_SUBGRP(64) |
 				       S_028A44_GS_PRIMS_PER_SUBGRP(4));
 		}
-		si_pm4_set_reg(pm4, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-			       S_00B21C_CU_EN(0xffff) | S_00B21C_WAVE_LIMIT(0x3F));
 
 		/* Compute LATE_ALLOC_VS.LIMIT. */
 		unsigned num_cu_per_sh = sscreen->info.num_good_cu_per_sh;
@@ -5546,12 +5541,34 @@ static void si_init_config(struct si_context *sctx)
 			late_alloc_limit = (num_cu_per_sh - 2) * 4;
 		}
 
+		unsigned cu_mask_vs = 0xffff;
+		unsigned cu_mask_gs = 0xffff;
+
+		if (late_alloc_limit > 2) {
+			if (sctx->chip_class >= GFX10) {
+				/* CU2 & CU3 disabled because of the dual CU design */
+				cu_mask_vs = 0xfff3;
+				cu_mask_gs = 0xfff3; /* NGG only */
+			} else {
+				cu_mask_vs = 0xfffe; /* 1 CU disabled */
+			}
+		}
+
 		/* VS can't execute on one CU if the limit is > 2. */
 		si_pm4_set_reg(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-			S_00B118_CU_EN(late_alloc_limit > 2 ? 0xfffe : 0xffff) |
+			S_00B118_CU_EN(cu_mask_vs) |
 			S_00B118_WAVE_LIMIT(0x3F));
 		si_pm4_set_reg(pm4, R_00B11C_SPI_SHADER_LATE_ALLOC_VS,
 			S_00B11C_LIMIT(late_alloc_limit));
+
+		si_pm4_set_reg(pm4, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+			       S_00B21C_CU_EN(cu_mask_gs) | S_00B21C_WAVE_LIMIT(0x3F));
+
+		if (sctx->chip_class >= GFX10) {
+			si_pm4_set_reg(pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+				       S_00B204_CU_EN(0xffff) |
+				       S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit));
+		}
 
 		si_pm4_set_reg(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
 			       S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
