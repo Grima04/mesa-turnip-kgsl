@@ -140,7 +140,6 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_QUERY_TIMESTAMP:
 	case PIPE_CAP_QUERY_TIME_ELAPSED:
 	case PIPE_CAP_NIR_SAMPLERS_AS_DEREF:
-	case PIPE_CAP_QUERY_SO_OVERFLOW:
 	case PIPE_CAP_MEMOBJ:
 	case PIPE_CAP_LOAD_CONSTBUF:
 	case PIPE_CAP_INT64:
@@ -158,6 +157,9 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_PREFER_COMPUTE_BLIT_FOR_MULTIMEDIA:
         case PIPE_CAP_TGSI_DIV:
 		return 1;
+
+	case PIPE_CAP_QUERY_SO_OVERFLOW:
+		return sscreen->info.chip_class <= GFX9;
 
 	case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
 		return !SI_BIG_ENDIAN && sscreen->info.has_userptr;
