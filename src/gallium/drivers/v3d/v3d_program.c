@@ -537,6 +537,17 @@ v3d_update_compiled_fs(struct v3d_context *v3d, uint8_t prim_mode)
                  */
                 key->cbufs |= 1 << i;
 
+                /* If logic operations are enabled then we might emit color
+                 * reads and we need to know the color buffer format and
+                 * swizzle for that.
+                 */
+                if (key->logicop_func != PIPE_LOGICOP_COPY) {
+                        key->color_fmt[i].format = cbuf->format;
+                        key->color_fmt[i].swizzle =
+                                v3d_get_format_swizzle(&v3d->screen->devinfo,
+                                                       cbuf->format);
+                }
+
                 const struct util_format_description *desc =
                         util_format_description(cbuf->format);
 

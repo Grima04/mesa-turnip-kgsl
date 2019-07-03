@@ -355,6 +355,15 @@ struct v3d_fs_key {
          */
         uint8_t int_color_rb;
         uint8_t uint_color_rb;
+
+        /* Color format information per render target. Only set when logic
+         * operations are enabled.
+         */
+        struct {
+                enum pipe_format format;
+                const uint8_t *swizzle;
+        } color_fmt[V3D_MAX_DRAW_BUFFERS];
+
         uint8_t alpha_test_func;
         uint8_t logicop_func;
         uint32_t point_sprite_mask;
