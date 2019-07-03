@@ -1076,6 +1076,30 @@ vir_UMUL(struct v3d_compile *c, struct qreg src0, struct qreg src1)
         return vir_UMUL24(c, src0, src1);
 }
 
+static inline struct qreg
+vir_TLBU_COLOR_READ(struct v3d_compile *c, uint32_t config)
+{
+        assert(c->devinfo->ver >= 41); /* XXX */
+        assert((config & 0xffffff00) == 0xffffff00);
+
+        struct qinst *ldtlb = vir_add_inst(V3D_QPU_A_NOP, c->undef,
+                                           c->undef, c->undef);
+        ldtlb->qpu.sig.ldtlbu = true;
+        ldtlb->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT, config);
+        return vir_emit_def(c, ldtlb);
+}
+
+static inline struct qreg
+vir_TLB_COLOR_READ(struct v3d_compile *c)
+{
+        assert(c->devinfo->ver >= 41); /* XXX */
+
+        struct qinst *ldtlb = vir_add_inst(V3D_QPU_A_NOP, c->undef,
+                                           c->undef, c->undef);
+        ldtlb->qpu.sig.ldtlb = true;
+        return vir_emit_def(c, ldtlb);
+}
+
 /*
 static inline struct qreg
 vir_LOAD_IMM(struct v3d_compile *c, uint32_t val)
