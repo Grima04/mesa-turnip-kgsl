@@ -756,9 +756,8 @@ get_ccs_d_resolve_op(enum isl_aux_state aux_state,
 {
    assert(aux_usage == ISL_AUX_USAGE_NONE || aux_usage == ISL_AUX_USAGE_CCS_D);
 
-   const bool ccs_supported = aux_usage == ISL_AUX_USAGE_CCS_D;
-
-   assert(ccs_supported == fast_clear_supported);
+   const bool ccs_supported =
+      (aux_usage == ISL_AUX_USAGE_CCS_D) && fast_clear_supported;
 
    switch (aux_state) {
    case ISL_AUX_STATE_CLEAR:
@@ -790,9 +789,6 @@ get_ccs_e_resolve_op(enum isl_aux_state aux_state,
    assert(aux_usage == ISL_AUX_USAGE_NONE ||
           aux_usage == ISL_AUX_USAGE_CCS_D ||
           aux_usage == ISL_AUX_USAGE_CCS_E);
-
-   if (aux_usage == ISL_AUX_USAGE_CCS_D)
-      assert(fast_clear_supported);
 
    switch (aux_state) {
    case ISL_AUX_STATE_CLEAR:
