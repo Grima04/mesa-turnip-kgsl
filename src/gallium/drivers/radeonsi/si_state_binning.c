@@ -196,7 +196,7 @@ static struct uvec2 si_get_depth_bin_size(struct si_context *sctx)
 	unsigned stencil_coeff = tex->surface.has_stencil &&
 				 dsa->stencil_enabled ? 1 : 0;
 	unsigned sum = 4 * (depth_coeff + stencil_coeff) *
-		       tex->buffer.b.b.nr_samples;
+		       MAX2(tex->buffer.b.b.nr_samples, 1);
 
 	static const si_bin_size_subtable table[] = {
 		{
