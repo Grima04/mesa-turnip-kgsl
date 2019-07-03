@@ -45,5 +45,12 @@ int iris_get_monitor_group_info(struct pipe_screen *pscreen,
                                 unsigned index,
                                 struct pipe_driver_query_group_info *info);
 
+struct iris_context;
+struct iris_screen;
+
+struct iris_monitor_object *
+iris_create_monitor_object(struct iris_context *ice,
+                           unsigned num_queries,
+                           unsigned *query_types);
 
 #endif

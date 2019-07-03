@@ -66,6 +66,8 @@ struct iris_query {
    struct iris_syncpt *syncpt;
 
    int batch_idx;
+
+   struct iris_monitor_object *monitor;
 };
 
 struct iris_query_snapshots {

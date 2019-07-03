@@ -29,6 +29,16 @@
 
 #include "perf/gen_perf.h"
 
+struct iris_monitor_object {
+   int num_active_counters;
+   int *active_counters;
+
+   size_t result_size;
+   unsigned char *result_buffer;
+
+   struct gen_perf_query_object *query;
+};
+
 int iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,
                           struct pipe_driver_query_info *info)
 {
@@ -278,4 +288,93 @@ int iris_get_monitor_group_info(struct pipe_screen *pscreen,
    info->max_active_queries = query->n_counters;
    info->num_queries = query->n_counters;
    return 1;
+}
+
+static void
+iris_init_monitor_ctx(struct iris_context *ice)
+{
+   struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
+   struct iris_monitor_config *monitor_cfg = screen->monitor_cfg;
+   ice->perf_ctx = gen_perf_new_context(ice);
+   if (unlikely(!ice->perf_ctx)) {
+      return;
+   }
+
+   struct gen_perf_context *perf_ctx = ice->perf_ctx;
+   struct gen_perf_config *perf_cfg = monitor_cfg->perf_cfg;
+   gen_perf_init_context(perf_ctx,
+                         perf_cfg,
+                         ice,
+                         screen->bufmgr,
+                         &screen->devinfo,
+                         ice->batches[IRIS_BATCH_RENDER].hw_ctx_id,
+                         screen->fd);
+}
+
+/* entry point for GenPerfMonitorsAMD */
+struct iris_monitor_object *
+iris_create_monitor_object(struct iris_context *ice,
+                           unsigned num_queries,
+                           unsigned *query_types)
+{
+   struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
+   struct iris_monitor_config *monitor_cfg = screen->monitor_cfg;
+   struct gen_perf_config *perf_cfg = monitor_cfg->perf_cfg;
+   struct gen_perf_query_object *query_obj = NULL;
+
+   /* initialize perf context if this has not already been done.  This
+    * function is the first entry point that carries the gl context.
+    */
+   if (ice->perf_ctx == NULL) {
+      iris_init_monitor_ctx(ice);
+   }
+   struct gen_perf_context *perf_ctx = ice->perf_ctx;
+
+   assert(num_queries > 0);
+   int query_index = query_types[0] - PIPE_QUERY_DRIVER_SPECIFIC;
+   assert(query_index <= monitor_cfg->num_counters);
+   const int group = monitor_cfg->counters[query_index].group;
+
+   struct iris_monitor_object *monitor =
+      calloc(1, sizeof(struct iris_monitor_object));
+   if (unlikely(!monitor))
+      goto allocation_failure;
+
+   monitor->num_active_counters = num_queries;
+   monitor->active_counters = calloc(num_queries, sizeof(int));
+   if (unlikely(!monitor->active_counters))
+      goto allocation_failure;
+
+   for (int i = 0; i < num_queries; ++i) {
+      unsigned current_query = query_types[i];
+      unsigned current_query_index = current_query - PIPE_QUERY_DRIVER_SPECIFIC;
+
+      /* all queries must be in the same group */
+      assert(current_query_index <= monitor_cfg->num_counters);
+      assert(monitor_cfg->counters[current_query_index].group == group);
+      monitor->active_counters[i] =
+         monitor_cfg->counters[current_query_index].counter;
+   }
+
+   /* create the gen_perf_query */
+   query_obj = gen_perf_new_query(perf_ctx, group);
+   if (unlikely(!query_obj))
+      goto allocation_failure;
+
+   monitor->query = query_obj;
+   monitor->result_size = perf_cfg->queries[group].data_size;
+   monitor->result_buffer = calloc(1, monitor->result_size);
+   if (unlikely(!monitor->result_buffer))
+      goto allocation_failure;
+
+   return monitor;
+
+allocation_failure:
+   if (monitor) {
+      free(monitor->active_counters);
+      free(monitor->result_buffer);
+   }
+   free(query_obj);
+   free(monitor);
+   return NULL;
 }

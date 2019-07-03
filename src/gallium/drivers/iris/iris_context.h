@@ -606,6 +606,8 @@ struct iris_context {
       bool condition;
    } condition;
 
+   struct gen_perf_context *perf_ctx;
+
    struct {
       uint64_t dirty;
       uint64_t dirty_for_nos[IRIS_NOS_COUNT];
