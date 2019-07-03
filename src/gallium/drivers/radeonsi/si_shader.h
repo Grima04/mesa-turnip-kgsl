@@ -157,7 +157,7 @@ struct si_context;
 /* Shader IO unique indices are supported for TGSI_SEMANTIC_GENERIC with an
  * index smaller than this.
  */
-#define SI_MAX_IO_GENERIC       43
+#define SI_MAX_IO_GENERIC       32
 
 /* SGPR user data indices */
 enum {
