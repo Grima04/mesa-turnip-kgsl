@@ -84,7 +84,8 @@ panfrost_mfbd_format(struct pipe_surface *surf)
         bool float_16 =
                 surf->format == PIPE_FORMAT_R16_FLOAT ||
                 surf->format == PIPE_FORMAT_R16_UINT ||
-                surf->format == PIPE_FORMAT_R16_SINT;
+                surf->format == PIPE_FORMAT_R16_SINT ||
+                surf->format == PIPE_FORMAT_B5G5R5A1_UNORM;
 
         bool float_32 =
                 surf->format == PIPE_FORMAT_R11G11B10_FLOAT ||
@@ -93,7 +94,9 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 surf->format == PIPE_FORMAT_R16G16_SINT ||
                 surf->format == PIPE_FORMAT_R32_FLOAT ||
                 surf->format == PIPE_FORMAT_R32_UINT ||
-                surf->format == PIPE_FORMAT_R32_SINT;
+                surf->format == PIPE_FORMAT_R32_SINT ||
+                surf->format == PIPE_FORMAT_R10G10B10A2_UNORM ||
+                surf->format == PIPE_FORMAT_R10G10B10A2_UINT;
 
         bool float_64 =
                 surf->format == PIPE_FORMAT_R32G32_FLOAT ||
@@ -112,6 +115,18 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 fmt.unk1 = 0x14000000;
                 fmt.nr_channels = MALI_POSITIVE(2);
                 fmt.unk3 |= 0x1;
+        } else if (surf->format == PIPE_FORMAT_B4G4R4A4_UNORM) {
+                /* XXX: why does the specialized code not work but the generic
+                 * 16-bit code work? */
+#if 0
+                fmt.unk1 = 0x10000000;
+                fmt.unk3 = 0x5;
+                fmt.nr_channels = MALI_POSITIVE(1);
+#endif
+
+                fmt.unk1 = 0x84000000;
+                fmt.unk3 = 0x0;
+                fmt.nr_channels = MALI_POSITIVE(2);
         } else if (float_32) {
                 fmt.unk1 = 0x88000000;
                 fmt.unk3 = 0x0;

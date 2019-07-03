@@ -39,6 +39,7 @@
 
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_format_convert.h"
 #include "nir_lower_blend.h"
 #include "util/u_format.h"
 
@@ -72,6 +73,85 @@ nir_unorm8_to_float(nir_builder *b, nir_ssa_def *c_native)
    return scaled;
 }
 
+/* Converters for UNORM4 formats, packing the final result into 16-bit */
+
+static nir_ssa_def *
+nir_float_to_unorm4(nir_builder *b, nir_ssa_def *c_float)
+{
+   /* First, we degrade quality to fp16; we don't need the extra bits */
+   nir_ssa_def *degraded = nir_f2f16(b, c_float);
+
+   /* Scale from [0, 1] to [0, 15.0] */
+   nir_ssa_def *scaled = nir_fmul_imm(b, nir_fsat(b, degraded), 15.0);
+
+   /* Next, we type convert to u16 */
+   nir_ssa_def *converted = nir_f2u16(b,
+            nir_fround_even(b, scaled));
+
+   /* In u16 land, we now need to pack */
+   nir_ssa_def *cr = nir_channel(b, converted, 0);
+   nir_ssa_def *cg = nir_channel(b, converted, 1);
+   nir_ssa_def *cb = nir_channel(b, converted, 2);
+   nir_ssa_def *ca = nir_channel(b, converted, 3);
+
+   nir_ssa_def *pack =
+      nir_ior(b,
+            nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 4))),
+            nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 8)), nir_ishl(b, ca, nir_imm_int(b, 12))));
+
+   return pack;
+}
+
+static nir_ssa_def *
+nir_float_to_rgb10a2(nir_builder *b, nir_ssa_def *c_float, bool normalize)
+{
+   nir_ssa_def *converted = c_float;
+
+   if (normalize) {
+      nir_ssa_def *scaled = nir_fmul(b, nir_fsat(b, c_float),
+            nir_imm_vec4(b, 1023.0, 1023.0, 1023.0, 3.0));
+
+      converted = nir_f2u32(b,
+               nir_fround_even(b, scaled));
+   }
+
+   nir_ssa_def *cr = nir_channel(b, converted, 0);
+   nir_ssa_def *cg = nir_channel(b, converted, 1);
+   nir_ssa_def *cb = nir_channel(b, converted, 2);
+   nir_ssa_def *ca = nir_channel(b, converted, 3);
+
+   nir_ssa_def *pack =
+      nir_ior(b,
+            nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 10))),
+            nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 20)), nir_ishl(b, ca, nir_imm_int(b, 30))));
+
+   return pack;
+}
+
+static nir_ssa_def *
+nir_float_to_rgb5a1(nir_builder *b, nir_ssa_def *c_float)
+{
+   nir_ssa_def *degraded = nir_f2f16(b, c_float);
+
+   nir_ssa_def *scaled = nir_fmul(b, nir_fsat(b, degraded),
+         nir_imm_vec4_16(b, 31.0, 31.0, 31.0, 1.0));
+
+   nir_ssa_def *converted = nir_f2u16(b,
+            nir_fround_even(b, scaled));
+
+   nir_ssa_def *cr = nir_channel(b, converted, 0);
+   nir_ssa_def *cg = nir_channel(b, converted, 1);
+   nir_ssa_def *cb = nir_channel(b, converted, 2);
+   nir_ssa_def *ca = nir_channel(b, converted, 3);
+
+   nir_ssa_def *pack =
+      nir_ior(b,
+            nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 5))),
+            nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 10)), nir_ishl(b, ca, nir_imm_int(b, 15))));
+
+   return pack;
+}
+
 static nir_ssa_def *
 nir_shader_to_native(nir_builder *b,
       nir_ssa_def *c_shader,
@@ -87,7 +167,22 @@ nir_shader_to_native(nir_builder *b,
       return nir_float_to_unorm8(b, c_shader);
    else if (homogenous_bits && float_or_pure_int)
       return c_shader; /* type is already correct */
-   else {
+   else if (homogenous_bits && bits == 4 && util_format_is_unorm(desc->format)) {
+      /* TODO: Swizzle generally */
+      unsigned swiz[4] = { 2, 1, 0, 3 }; /* BGRA */
+      c_shader = nir_swizzle(b, c_shader, swiz, 4);
+      return nir_float_to_unorm4(b, c_shader);
+   } else if (desc->format == PIPE_FORMAT_R10G10B10A2_UNORM)
+     return nir_float_to_rgb10a2(b, c_shader, true); 
+   else if (desc->format == PIPE_FORMAT_R10G10B10A2_UINT)
+     return nir_float_to_rgb10a2(b, c_shader, false); 
+   else if (desc->format == PIPE_FORMAT_B5G5R5A1_UNORM) {
+      unsigned swiz[4] = { 2, 1, 0, 3 }; /* BGRA */
+      c_shader = nir_swizzle(b, c_shader, swiz, 4);
+      return nir_float_to_rgb5a1(b, c_shader);
+   } else if (desc->format == PIPE_FORMAT_R11G11B10_FLOAT) {
+      return nir_format_pack_11f11f10f(b, c_shader);
+   } else {
       printf("%s\n", desc->name);
       unreachable("Unknown format name");
    }
@@ -132,9 +227,22 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format)
    for (unsigned c = 1; c < nr_channels; ++c)
       homogenous_bits &= (format_desc->channel[c].size == bits);
 
+   if (format == PIPE_FORMAT_R11G11B10_FLOAT)
+      homogenous_bits = false;
+
    /* Figure out the formats for the raw */
    unsigned raw_bitsize_in = bits;
    unsigned raw_bitsize_out = bits;
+   unsigned raw_out_components = 4;
+
+   /* We pack a 4-bit vec4 as 16-bit vec1 */
+   if ((homogenous_bits && bits == 4 && util_format_is_unorm(format)) || format == PIPE_FORMAT_B5G5R5A1_UNORM) {
+      raw_bitsize_out = 16;
+      raw_out_components = 1;
+   } else if (format == PIPE_FORMAT_R10G10B10A2_UNORM || format == PIPE_FORMAT_R10G10B10A2_UINT || format == PIPE_FORMAT_R11G11B10_FLOAT) {
+      raw_bitsize_out = 32;
+      raw_out_components = 1;
+   }
 
    nir_foreach_function(func, shader) {
       nir_foreach_block(block, func->impl) {
@@ -183,8 +291,7 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format)
                   nir_intrinsic_instr_create(shader, nir_intrinsic_store_raw_output_pan);
                new->src[0] = nir_src_for_ssa(converted);
 
-               /* TODO: What about non-RGBA? Is that different? */
-               new->num_components = 4;
+               new->num_components = raw_out_components;
 
                nir_builder_instr_insert(&b, &new->instr);
 
