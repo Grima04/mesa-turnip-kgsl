@@ -14,7 +14,7 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-05-08"
+  DEBIAN_TAG: "2019-07-04"
   DEBIAN_VERSION: stretch-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
 
