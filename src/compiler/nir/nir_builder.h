@@ -319,6 +319,20 @@ nir_imm_vec4(nir_builder *build, float x, float y, float z, float w)
 }
 
 static inline nir_ssa_def *
+nir_imm_vec4_16(nir_builder *build, float x, float y, float z, float w)
+{
+   nir_const_value v[4];
+
+   memset(v, 0, sizeof(v));
+   v[0].u16 = _mesa_float_to_half(x);
+   v[1].u16 = _mesa_float_to_half(y);
+   v[2].u16 = _mesa_float_to_half(z);
+   v[3].u16 = _mesa_float_to_half(w);
+
+   return nir_build_imm(build, 4, 16, v);
+}
+
+static inline nir_ssa_def *
 nir_imm_ivec2(nir_builder *build, int x, int y)
 {
    nir_const_value v[2];
