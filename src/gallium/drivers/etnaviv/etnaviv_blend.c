@@ -32,6 +32,7 @@
 #include "hw/common.xml.h"
 #include "pipe/p_defines.h"
 #include "util/u_memory.h"
+#include "util/u_half.h"
 
 void *
 etna_blend_state_create(struct pipe_context *pctx,
@@ -162,21 +163,20 @@ etna_update_blend_color(struct etna_context *ctx)
 {
    struct pipe_framebuffer_state *pfb = &ctx->framebuffer_s;
    struct compiled_blend_color *cs = &ctx->blend_color;
+   bool rb_swap = (pfb->cbufs[0] && translate_rs_format_rb_swap(pfb->cbufs[0]->format));
 
-   if (pfb->cbufs[0] &&
-       translate_rs_format_rb_swap(pfb->cbufs[0]->format)) {
-      cs->PE_ALPHA_BLEND_COLOR =
-         VIVS_PE_ALPHA_BLEND_COLOR_R(etna_cfloat_to_uint8(cs->color[2])) |
-         VIVS_PE_ALPHA_BLEND_COLOR_G(etna_cfloat_to_uint8(cs->color[1])) |
-         VIVS_PE_ALPHA_BLEND_COLOR_B(etna_cfloat_to_uint8(cs->color[0])) |
-         VIVS_PE_ALPHA_BLEND_COLOR_A(etna_cfloat_to_uint8(cs->color[3]));
-   } else {
-      cs->PE_ALPHA_BLEND_COLOR =
-         VIVS_PE_ALPHA_BLEND_COLOR_R(etna_cfloat_to_uint8(cs->color[0])) |
-         VIVS_PE_ALPHA_BLEND_COLOR_G(etna_cfloat_to_uint8(cs->color[1])) |
-         VIVS_PE_ALPHA_BLEND_COLOR_B(etna_cfloat_to_uint8(cs->color[2])) |
-         VIVS_PE_ALPHA_BLEND_COLOR_A(etna_cfloat_to_uint8(cs->color[3]));
-   }
+   cs->PE_ALPHA_BLEND_COLOR =
+      VIVS_PE_ALPHA_BLEND_COLOR_R(etna_cfloat_to_uint8(cs->color[rb_swap ? 2 : 0])) |
+      VIVS_PE_ALPHA_BLEND_COLOR_G(etna_cfloat_to_uint8(cs->color[1])) |
+      VIVS_PE_ALPHA_BLEND_COLOR_B(etna_cfloat_to_uint8(cs->color[rb_swap ? 0 : 2])) |
+      VIVS_PE_ALPHA_BLEND_COLOR_A(etna_cfloat_to_uint8(cs->color[3]));
+
+   cs->PE_ALPHA_COLOR_EXT0 =
+      VIVS_PE_ALPHA_COLOR_EXT0_B(util_float_to_half(cs->color[rb_swap ? 2 : 0])) |
+      VIVS_PE_ALPHA_COLOR_EXT0_G(util_float_to_half(cs->color[1]));
+   cs->PE_ALPHA_COLOR_EXT1 =
+      VIVS_PE_ALPHA_COLOR_EXT1_R(util_float_to_half(cs->color[rb_swap ? 0 : 2])) |
+      VIVS_PE_ALPHA_COLOR_EXT1_A(util_float_to_half(cs->color[3]));
 
    return true;
 }

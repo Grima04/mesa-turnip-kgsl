@@ -146,6 +146,8 @@ struct etna_specs {
 struct compiled_blend_color {
    float color[4];
    uint32_t PE_ALPHA_BLEND_COLOR;
+   uint32_t PE_ALPHA_COLOR_EXT0;
+   uint32_t PE_ALPHA_COLOR_EXT1;
 };
 
 /* Compiled pipe_stencil_ref */
