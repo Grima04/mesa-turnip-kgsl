@@ -253,6 +253,7 @@ struct ac_surf_info {
 
 struct ac_surf_config {
 	struct ac_surf_info info;
+	unsigned is_1d : 1;
 	unsigned is_3d : 1;
 	unsigned is_cube : 1;
 };

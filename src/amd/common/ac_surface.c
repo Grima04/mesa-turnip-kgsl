@@ -1471,6 +1471,8 @@ static int gfx9_compute_surface(ADDR_HANDLE addrlib,
 	 * must sample 1D textures as 2D. */
 	if (config->is_3d)
 		AddrSurfInfoIn.resourceType = ADDR_RSRC_TEX_3D;
+	else if (info->chip_class != GFX9 && config->is_1d)
+		AddrSurfInfoIn.resourceType = ADDR_RSRC_TEX_1D;
 	else
 		AddrSurfInfoIn.resourceType = ADDR_RSRC_TEX_2D;
 

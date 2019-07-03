@@ -1985,7 +1985,7 @@ static unsigned si_tex_dim(struct si_screen *sscreen, struct si_texture *tex,
 	/* GFX9 allocates 1D textures as 2D. */
 	if ((res_target == PIPE_TEXTURE_1D ||
 	     res_target == PIPE_TEXTURE_1D_ARRAY) &&
-	    sscreen->info.chip_class >= GFX9 &&
+	    sscreen->info.chip_class == GFX9 &&
 	    tex->surface.u.gfx9.resource_type == RADEON_RESOURCE_2D) {
 		if (res_target == PIPE_TEXTURE_1D)
 			res_target = PIPE_TEXTURE_2D;
