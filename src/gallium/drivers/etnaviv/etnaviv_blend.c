@@ -49,23 +49,26 @@ etna_blend_state_create(struct pipe_context *pctx,
 
    /* Enable blending if
     * - blend enabled in blend state
-    * - NOT source factor is ONE and destination factor ZERO for both rgb and
-    *   alpha (which would mean that blending is effectively disabled)
+    * - NOT source factor is ONE and destination factor ZERO and eq is ADD for
+    *   both rgb and alpha (which mean that blending is effectively disabled)
     */
    alpha_enable = rt0->blend_enable &&
                  !(rt0->rgb_src_factor == PIPE_BLENDFACTOR_ONE &&
                    rt0->rgb_dst_factor == PIPE_BLENDFACTOR_ZERO &&
+                   rt0->rgb_func == PIPE_BLEND_ADD &&
                    rt0->alpha_src_factor == PIPE_BLENDFACTOR_ONE &&
-                   rt0->alpha_dst_factor == PIPE_BLENDFACTOR_ZERO);
+                   rt0->alpha_dst_factor == PIPE_BLENDFACTOR_ZERO &&
+                   rt0->alpha_func == PIPE_BLEND_ADD);
 
    /* Enable separate alpha if
     * - Blending enabled (see above)
-    * - NOT source factor is equal to destination factor for both rgb abd
-    *   alpha (which would effectively that mean alpha is not separate)
+    * - NOT source/destination factor and eq is same for both rgb and alpha
+    *   (which would effectively that mean alpha is not separate), and
     */
    bool separate_alpha = alpha_enable &&
                          !(rt0->rgb_src_factor == rt0->alpha_src_factor &&
-                           rt0->rgb_dst_factor == rt0->alpha_dst_factor);
+                           rt0->rgb_dst_factor == rt0->alpha_dst_factor &&
+                           rt0->rgb_func == rt0->alpha_func);
 
    if (alpha_enable) {
       co->PE_ALPHA_CONFIG =
