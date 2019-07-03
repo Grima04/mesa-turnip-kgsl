@@ -1383,7 +1383,20 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
          val->type->deref = vtn_value(b, w[3], vtn_value_type_type)->type;
 
-         vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
+         /* Only certain storage classes use ArrayStride.  The others (in
+          * particular Workgroup) are expected to be laid out by the driver.
+          */
+         switch (storage_class) {
+         case SpvStorageClassUniform:
+         case SpvStorageClassPushConstant:
+         case SpvStorageClassStorageBuffer:
+         case SpvStorageClassPhysicalStorageBufferEXT:
+            vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
+            break;
+         default:
+            /* Nothing to do. */
+            break;
+         }
 
          if (b->physical_ptrs) {
             switch (storage_class) {
@@ -1398,14 +1411,15 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             }
          } else if (storage_class == SpvStorageClassWorkgroup &&
                     b->options->lower_workgroup_access_to_offsets) {
-            /* Workgroup is laid out by the implementation. */
+            /* Lay out Workgroup types so it can be lowered to offsets during
+             * SPIR-V to NIR conversion.  When not lowering to offsets, the
+             * stride will be calculated by the driver.
+             */
             uint32_t size, align;
             val->type->deref = vtn_type_layout_std430(b, val->type->deref,
                                                       &size, &align);
             val->type->length = size;
             val->type->align = align;
-
-            /* Override any ArrayStride previously set. */
             val->type->stride = vtn_align_u32(size, align);
          }
       }
