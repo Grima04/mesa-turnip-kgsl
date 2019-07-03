@@ -3437,6 +3437,7 @@ static void si_emit_msaa_config(struct si_context *sctx)
 			   S_028804_INTERPOLATE_COMP_Z(1) |
 			   S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
 	unsigned coverage_samples, color_samples, z_samples;
+	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
 	/* S: Coverage samples (up to 16x):
 	 * - Scan conversion samples (PA_SC_AA_CONFIG.MSAA_NUM_SAMPLES)
@@ -3479,7 +3480,7 @@ static void si_emit_msaa_config(struct si_context *sctx)
 	 *   EQAA  4s 4z 2f - might look the same as 4x MSAA with low-density geometry
 	 *   EQAA  2s 2z 2f = 2x MSAA
 	 */
-	if (sctx->framebuffer.nr_samples > 1) {
+	if (sctx->framebuffer.nr_samples > 1 && rs->multisample_enable) {
 		coverage_samples = sctx->framebuffer.nr_samples;
 		color_samples = sctx->framebuffer.nr_color_samples;
 
