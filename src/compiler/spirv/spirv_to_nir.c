@@ -1406,7 +1406,7 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
             val->type->align = align;
 
             /* Override any ArrayStride previously set. */
-            val->type->stride = size;
+            val->type->stride = vtn_align_u32(size, align);
          }
       }
       break;
