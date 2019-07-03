@@ -281,6 +281,8 @@ iris_update_grid_size_resource(struct iris_context *ice,
    if (!grid_needs_surface || state_ref->res)
       return;
 
+   struct iris_bo *grid_bo = iris_resource_bo(grid_ref->res);
+
    void *surf_map = NULL;
    u_upload_alloc(ice->state.surface_uploader, 0, isl_dev->ss.size,
                   isl_dev->ss.align, &state_ref->offset, &state_ref->res,
@@ -288,12 +290,11 @@ iris_update_grid_size_resource(struct iris_context *ice,
    state_ref->offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(state_ref->res));
    isl_buffer_fill_state(&screen->isl_dev, surf_map,
-                         .address = grid_ref->offset +
-                            iris_resource_bo(grid_ref->res)->gtt_offset,
+                         .address = grid_ref->offset + grid_bo->gtt_offset,
                          .size_B = sizeof(grid->grid),
                          .format = ISL_FORMAT_RAW,
                          .stride_B = 1,
-                         .mocs = 4); // XXX: MOCS
+                         .mocs = ice->vtbl.mocs(grid_bo));
 
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_CS;
 }
