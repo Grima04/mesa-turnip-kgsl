@@ -1633,6 +1633,102 @@ ntq_emit_image_size(struct v3d_compile *c, nir_intrinsic_instr *instr)
 }
 
 static void
+vir_emit_tlb_color_read(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        assert(c->s->info.stage == MESA_SHADER_FRAGMENT);
+
+        int rt = nir_src_as_uint(instr->src[0]);
+        assert(rt < V3D_MAX_DRAW_BUFFERS);
+
+        int sample_index = nir_intrinsic_base(instr) ;
+        assert(sample_index == 0); /* XXX: multisample */
+
+        int component = nir_intrinsic_component(instr);
+        assert(component < 4);
+
+        struct qreg *color_reads =
+                &c->color_reads[(rt * V3D_MAX_SAMPLES + sample_index) * 4];
+
+        if (color_reads[component].file == QFILE_NULL) {
+                enum pipe_format rt_format = c->fs_key->color_fmt[rt].format;
+                int num_components =
+                        util_format_get_nr_components(rt_format);
+
+                const bool swap_rb = c->fs_key->swap_color_rb & (1 << rt);
+                if (swap_rb)
+                        num_components = MAX2(num_components, 3);
+
+                bool is_int_format = (c->fs_key->int_color_rb & (1 << rt)) ||
+                                     (c->fs_key->uint_color_rb & (1 << rt));
+
+                bool is_32b_tlb_format = is_int_format ||
+                                         (c->fs_key->f32_color_rb & (1 << rt));
+
+                uint32_t conf = 0xffffff00;
+                conf |= TLB_SAMPLE_MODE_PER_PIXEL; /* XXX: multisample */
+                conf |= (7 - rt) << TLB_RENDER_TARGET_SHIFT;
+
+                if (is_32b_tlb_format) {
+                        /* The F32 vs I32 distinction was dropped in 4.2. */
+                        conf |= (c->devinfo->ver < 42 && is_int_format) ?
+                                TLB_TYPE_I32_COLOR : TLB_TYPE_F32_COLOR;
+
+                        conf |= ((num_components - 1) <<
+                                 TLB_VEC_SIZE_MINUS_1_SHIFT);
+                } else {
+                        conf |= TLB_TYPE_F16_COLOR;
+                        conf |= TLB_F16_SWAP_HI_LO;
+
+                        if (num_components >= 3)
+                                conf |= TLB_VEC_SIZE_4_F16;
+                        else
+                                conf |= TLB_VEC_SIZE_2_F16;
+                }
+
+                struct qreg r, g, b, a;
+                if (is_32b_tlb_format) {
+                        r = conf != 0xffffffff ? vir_TLBU_COLOR_READ(c, conf) :
+                                                 vir_TLB_COLOR_READ(c);
+                        if (num_components >= 2)
+                                g = vir_TLB_COLOR_READ(c);
+                        if (num_components >= 3)
+                                b = vir_TLB_COLOR_READ(c);
+                        if (num_components >= 4)
+                                a = vir_TLB_COLOR_READ(c);
+                } else {
+                        struct qreg rg = conf != 0xffffffff ?
+                                vir_TLBU_COLOR_READ(c, conf) :
+                                vir_TLB_COLOR_READ(c);
+                        r = vir_FMOV(c, rg);
+                        vir_set_unpack(c->defs[r.index], 0, V3D_QPU_UNPACK_L);
+                        g = vir_FMOV(c, rg);
+                        vir_set_unpack(c->defs[g.index], 0, V3D_QPU_UNPACK_H);
+
+                        if (num_components > 2) {
+                            struct qreg ba = vir_TLB_COLOR_READ(c);
+                            b = vir_FMOV(c, ba);
+                            vir_set_unpack(c->defs[b.index], 0,
+                                           V3D_QPU_UNPACK_L);
+                            a = vir_FMOV(c, ba);
+                            vir_set_unpack(c->defs[a.index], 0,
+                                           V3D_QPU_UNPACK_H);
+                        }
+                }
+
+                color_reads[0] = swap_rb ? b : r;
+                if (num_components >= 2)
+                        color_reads[1] = g;
+                if (num_components >= 3)
+                        color_reads[2] = swap_rb ? r : b;
+                if (num_components >= 4)
+                        color_reads[3] = a;
+        }
+
+        assert(color_reads[component].file != QFILE_NULL);
+        ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, color_reads[component]));
+}
+
+static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         unsigned offset;
@@ -1772,6 +1868,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_vertex_id:
                 ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, c->vid));
+                break;
+
+        case nir_intrinsic_load_tlb_color_v3d:
+                vir_emit_tlb_color_read(c, instr);
                 break;
 
         case nir_intrinsic_load_input:
