@@ -50,6 +50,7 @@
 
 
 #include <stdio.h>
+#include <c11/threads.h>
 #include "GL/osmesa.h"
 
 #include "glapi/glapi.h"  /* for OSMesaGetProcAddress below */
@@ -149,6 +150,18 @@ get_st_api(void)
    return stapi;
 }
 
+static struct st_manager *stmgr = NULL;
+
+static void
+create_st_manager(void)
+{
+   stmgr = CALLOC_STRUCT(st_manager);
+   if (stmgr) {
+      stmgr->screen = osmesa_create_screen();
+      stmgr->get_param = osmesa_st_get_param;
+      stmgr->get_egl_image = NULL;
+   }
+}
 
 /**
  * Create/return a singleton st_manager object.
@@ -156,15 +169,10 @@ get_st_api(void)
 static struct st_manager *
 get_st_manager(void)
 {
-   static struct st_manager *stmgr = NULL;
-   if (!stmgr) {
-      stmgr = CALLOC_STRUCT(st_manager);
-      if (stmgr) {
-         stmgr->screen = osmesa_create_screen();
-         stmgr->get_param = osmesa_st_get_param;
-         stmgr->get_egl_image = NULL;
-      }         
-   }
+   static once_flag create_once_flag = ONCE_FLAG_INIT;
+
+   call_once(&create_once_flag, create_st_manager);
+
    return stmgr;
 }
 
