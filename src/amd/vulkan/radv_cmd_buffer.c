@@ -5111,7 +5111,8 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 		assert(src_family == cmd_buffer->queue_family_index ||
 		       dst_family == cmd_buffer->queue_family_index);
 
-		if (src_family == VK_QUEUE_FAMILY_EXTERNAL)
+		if (src_family == VK_QUEUE_FAMILY_EXTERNAL ||
+		    src_family == VK_QUEUE_FAMILY_FOREIGN_EXT)
 			return;
 
 		if (cmd_buffer->queue_family_index == RADV_QUEUE_TRANSFER)

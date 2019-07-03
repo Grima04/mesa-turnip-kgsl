@@ -1125,7 +1125,8 @@ radv_image_create(VkDevice _device,
 	image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
 	if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
 		for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; ++i)
-			if (pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_EXTERNAL)
+			if (pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_EXTERNAL ||
+			    pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_FOREIGN_EXT)
 				image->queue_family_mask |= (1u << RADV_MAX_QUEUE_FAMILIES) - 1u;
 			else
 				image->queue_family_mask |= 1u << pCreateInfo->pQueueFamilyIndices[i];
@@ -1471,7 +1472,8 @@ unsigned radv_image_queue_family_mask(const struct radv_image *image, uint32_t f
 {
 	if (!image->exclusive)
 		return image->queue_family_mask;
-	if (family == VK_QUEUE_FAMILY_EXTERNAL)
+	if (family == VK_QUEUE_FAMILY_EXTERNAL ||
+	    family == VK_QUEUE_FAMILY_FOREIGN_EXT)
 		return (1u << RADV_MAX_QUEUE_FAMILIES) - 1u;
 	if (family == VK_QUEUE_FAMILY_IGNORED)
 		return 1u << queue_family;
