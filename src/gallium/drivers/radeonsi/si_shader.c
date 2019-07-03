@@ -213,10 +213,10 @@ unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index,
 			return SI_MAX_IO_GENERIC + 10 + index;
 	case TGSI_SEMANTIC_TEXCOORD:
 		assert(index < 8);
-		STATIC_ASSERT(SI_MAX_IO_GENERIC + 12 + 8 <= 63);
 		return SI_MAX_IO_GENERIC + 12 + index;
 	case TGSI_SEMANTIC_CLIPVERTEX:
-		return 63;
+		STATIC_ASSERT(SI_MAX_IO_GENERIC + 12 + 8 <= 63);
+		return SI_MAX_IO_GENERIC + 12 + 8;
 	default:
 		fprintf(stderr, "invalid semantic name = %u\n", semantic_name);
 		assert(!"invalid semantic name");
