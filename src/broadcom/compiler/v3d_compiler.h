@@ -812,6 +812,7 @@ bool vir_opt_small_immediates(struct v3d_compile *c);
 bool vir_opt_vpm(struct v3d_compile *c);
 void v3d_nir_lower_blend(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_io(nir_shader *s, struct v3d_compile *c);
+void v3d_nir_lower_logic_ops(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_scratch(nir_shader *s);
 void v3d_nir_lower_txf_ms(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_image_load_store(nir_shader *s);

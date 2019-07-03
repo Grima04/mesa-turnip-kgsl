@@ -799,6 +799,8 @@ v3d_nir_lower_fs_early(struct v3d_compile *c)
         if (c->fs_key->int_color_rb || c->fs_key->uint_color_rb)
                 v3d_fixup_fs_output_types(c);
 
+        NIR_PASS_V(c->s, v3d_nir_lower_logic_ops, c);
+
         /* If the shader has no non-TLB side effects, we can promote it to
          * enabling early_fragment_tests even if the user didn't.
          */
