@@ -716,6 +716,10 @@ print_deref_instr(nir_deref_instr *instr, print_state *state)
       print_deref_link(instr, true, state);
       fprintf(fp, " */");
    }
+
+   if (instr->deref_type == nir_deref_type_cast) {
+      fprintf(fp, " /* ptr_stride=%u */", instr->cast.ptr_stride);
+   }
 }
 
 static const char *
