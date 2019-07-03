@@ -409,6 +409,9 @@ enum pipe_format {
 
    PIPE_FORMAT_Z24_UNORM_S8_UINT_AS_R8G8B8A8 = 320,
 
+   PIPE_FORMAT_AYUV                    = 321,
+   PIPE_FORMAT_XYUV                    = 322,
+
    PIPE_FORMAT_COUNT
 };
 

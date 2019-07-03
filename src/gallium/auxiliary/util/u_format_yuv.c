@@ -1036,6 +1036,52 @@ util_format_p016_fetch_rgba_float(UNUSED float *dst, UNUSED const uint8_t *src,
                              UNUSED unsigned i, UNUSED unsigned j) {}
 
 void
+util_format_xyuv_unpack_rgba_float(UNUSED float *dst_row, UNUSED unsigned dst_stride,
+                                         UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
+                                         UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_xyuv_unpack_rgba_8unorm(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
+                                          UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
+                                          UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_xyuv_pack_rgba_float(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
+                                       UNUSED const float *src_row, UNUSED unsigned src_stride,
+                                       UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_xyuv_pack_rgba_8unorm(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
+                                        UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
+                                        UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_xyuv_fetch_rgba_float(UNUSED float *dst, UNUSED const uint8_t *src,
+                                        UNUSED unsigned i, UNUSED unsigned j) {}
+void
+util_format_ayuv_unpack_rgba_float(UNUSED float *dst_row, UNUSED unsigned dst_stride,
+                                         UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
+                                         UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_ayuv_unpack_rgba_8unorm(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
+                                          UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
+                                          UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_ayuv_pack_rgba_float(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
+                                       UNUSED const float *src_row, UNUSED unsigned src_stride,
+                                       UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_ayuv_pack_rgba_8unorm(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
+                                        UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
+                                        UNUSED unsigned width, UNUSED unsigned height) {}
+
+void
+util_format_ayuv_fetch_rgba_float(UNUSED float *dst, UNUSED const uint8_t *src,
+                                        UNUSED unsigned i, UNUSED unsigned j) {}
+void
 util_format_r8g8_r8b8_unorm_unpack_rgba_float(UNUSED float *dst_row, UNUSED unsigned dst_stride,
                                          UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
                                          UNUSED unsigned width, UNUSED unsigned height) {}
