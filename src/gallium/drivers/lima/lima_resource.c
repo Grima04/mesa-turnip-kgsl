@@ -321,7 +321,7 @@ err_out:
    return NULL;
 }
 
-static boolean
+static bool
 lima_resource_get_handle(struct pipe_screen *pscreen,
                          struct pipe_context *pctx,
                          struct pipe_resource *pres,
@@ -334,13 +334,13 @@ lima_resource_get_handle(struct pipe_screen *pscreen,
 
    if (handle->type == WINSYS_HANDLE_TYPE_KMS && screen->ro &&
        renderonly_get_handle(res->scanout, handle))
-      return TRUE;
+      return true;
 
    if (!lima_bo_export(res->bo, handle))
-      return FALSE;
+      return false;
 
    handle->stride = res->levels[0].stride;
-   return TRUE;
+   return true;
 }
 
 void

@@ -74,7 +74,7 @@ realloc_query_bo(struct fd_context *ctx, struct fd_acc_query *aq)
 	fd_bo_cpu_fini(rsc->bo);
 }
 
-static boolean
+static bool
 fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q)
 {
 	struct fd_batch *batch = fd_context_batch(ctx);
@@ -113,9 +113,9 @@ fd_acc_end_query(struct fd_context *ctx, struct fd_query *q)
 	list_delinit(&aq->node);
 }
 
-static boolean
+static bool
 fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
-		boolean wait, union pipe_query_result *result)
+		bool wait, union pipe_query_result *result)
 {
 	struct fd_acc_query *aq = fd_acc_query(q);
 	const struct fd_acc_sample_provider *p = aq->provider;

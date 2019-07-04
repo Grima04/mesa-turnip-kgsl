@@ -716,10 +716,10 @@ static int si_get_video_param(struct pipe_screen *screen,
 	}
 }
 
-static boolean si_vid_is_format_supported(struct pipe_screen *screen,
-					  enum pipe_format format,
-					  enum pipe_video_profile profile,
-					  enum pipe_video_entrypoint entrypoint)
+static bool si_vid_is_format_supported(struct pipe_screen *screen,
+				       enum pipe_format format,
+				       enum pipe_video_profile profile,
+				       enum pipe_video_entrypoint entrypoint)
 {
 	/* HEVC 10 bit decoding should use P016 instead of NV12 if possible */
 	if (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)

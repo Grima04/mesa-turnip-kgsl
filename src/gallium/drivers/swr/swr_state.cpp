@@ -651,7 +651,7 @@ swr_set_framebuffer_state(struct pipe_context *pipe,
 {
    struct swr_context *ctx = swr_context(pipe);
 
-   boolean changed = !util_framebuffer_state_equal(&ctx->framebuffer, fb);
+   bool changed = !util_framebuffer_state_equal(&ctx->framebuffer, fb);
 
    assert(fb->width <= KNOB_GUARDBAND_WIDTH);
    assert(fb->height <= KNOB_GUARDBAND_HEIGHT);

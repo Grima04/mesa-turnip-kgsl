@@ -827,7 +827,7 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
                                 mod ? mod->supports_clear_color : false);
 }
 
-static boolean
+static bool
 iris_resource_get_handle(struct pipe_screen *pscreen,
                          struct pipe_context *ctx,
                          struct pipe_resource *resource,

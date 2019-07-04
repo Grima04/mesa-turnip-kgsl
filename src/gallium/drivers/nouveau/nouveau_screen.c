@@ -74,7 +74,7 @@ nouveau_screen_fence_ref(struct pipe_screen *pscreen,
    nouveau_fence_ref(nouveau_fence(pfence), (struct nouveau_fence **)ptr);
 }
 
-static boolean
+static bool
 nouveau_screen_fence_finish(struct pipe_screen *screen,
                             struct pipe_context *ctx,
                             struct pipe_fence_handle *pfence,

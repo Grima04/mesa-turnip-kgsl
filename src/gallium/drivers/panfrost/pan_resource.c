@@ -83,7 +83,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         return prsc;
 }
 
-static boolean
+static bool
 panfrost_resource_get_handle(struct pipe_screen *pscreen,
                              struct pipe_context *ctx,
                              struct pipe_resource *pt,
@@ -97,10 +97,10 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         handle->modifier = DRM_FORMAT_MOD_INVALID;
 
         if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
-                return FALSE;
+                return false;
         } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
                 if (renderonly_get_handle(scanout, handle))
-                        return TRUE;
+                        return true;
 
                 handle->handle = rsrc->bo->gem_handle;
                 handle->stride = rsrc->slices[0].stride;
@@ -114,25 +114,25 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 
                         int ret = drmIoctl(screen->ro->kms_fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
                         if (ret == -1)
-                                return FALSE;
+                                return false;
 
                         handle->stride = scanout->stride;
                         handle->handle = args.fd;
 
-                        return TRUE;
+                        return true;
                 } else {
                         int fd = panfrost_drm_export_bo(screen, rsrc->bo);
 
                         if (fd < 0)
-                                return FALSE;
+                                return false;
 
                         handle->handle = fd;
                         handle->stride = rsrc->slices[0].stride;
-                        return TRUE;
+                        return true;
                 }
         }
 
-        return FALSE;
+        return false;
 }
 
 static void
@@ -656,7 +656,7 @@ panfrost_resource_get_internal_format(struct pipe_resource *prsrc) {
         return prsrc->format;
 }
 
-static boolean
+static bool
 panfrost_generate_mipmap(
         struct pipe_context *pctx,
         struct pipe_resource *prsrc,

@@ -140,7 +140,7 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
    return true;
 }
 
-static boolean
+static bool
 etna_screen_can_create_resource(struct pipe_screen *pscreen,
                                 const struct pipe_resource *templat)
 {
@@ -624,7 +624,7 @@ fail:
    return NULL;
 }
 
-static boolean
+static bool
 etna_resource_get_handle(struct pipe_screen *pscreen,
                          struct pipe_context *pctx,
                          struct pipe_resource *prsc,
@@ -649,16 +649,16 @@ etna_resource_get_handle(struct pipe_screen *pscreen,
       return etna_bo_get_name(rsc->bo, &handle->handle) == 0;
    } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
       if (renderonly_get_handle(scanout, handle)) {
-         return TRUE;
+         return true;
       } else {
          handle->handle = etna_bo_handle(rsc->bo);
-         return TRUE;
+         return true;
       }
    } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
       handle->handle = etna_bo_dmabuf(rsc->bo);
-      return TRUE;
+      return true;
    } else {
-      return FALSE;
+      return false;
    }
 }
 

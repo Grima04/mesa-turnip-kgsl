@@ -2501,7 +2501,7 @@ panfrost_set_polygon_stipple(struct pipe_context *pipe,
 
 static void
 panfrost_set_active_query_state(struct pipe_context *pipe,
-                                boolean enable)
+                                bool enable)
 {
         //struct panfrost_context *panfrost = pan_context(pipe);
 }
@@ -2546,7 +2546,7 @@ panfrost_destroy_query(struct pipe_context *pipe, struct pipe_query *q)
         ralloc_free(q);
 }
 
-static boolean
+static bool
 panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
 {
         struct panfrost_context *ctx = pan_context(pipe);
@@ -2580,10 +2580,10 @@ panfrost_end_query(struct pipe_context *pipe, struct pipe_query *q)
         return true;
 }
 
-static boolean
+static bool
 panfrost_get_query_result(struct pipe_context *pipe,
                           struct pipe_query *q,
-                          boolean wait,
+                          bool wait,
                           union pipe_query_result *vresult)
 {
         /* STUB */

@@ -35,7 +35,7 @@
 #include "util/u_format.h"
 #include <stdbool.h>
 
-static boolean
+static bool
 is_format_supported(struct pipe_screen *pscreen,
                     enum pipe_format format,
                     enum pipe_texture_target target,

@@ -518,7 +518,7 @@ etna_pm_destroy_query(struct etna_context *ctx, struct etna_query *q)
    FREE(pq);
 }
 
-static boolean
+static bool
 etna_pm_begin_query(struct etna_context *ctx, struct etna_query *q)
 {
    struct etna_pm_query *pq = etna_pm_query(q);
@@ -537,9 +537,9 @@ etna_pm_end_query(struct etna_context *ctx, struct etna_query *q)
    etna_pm_query_get(ctx->stream, q, ETNA_PM_PROCESS_POST);
 }
 
-static boolean
+static bool
 etna_pm_get_query_result(struct etna_context *ctx, struct etna_query *q,
-                         boolean wait, union pipe_query_result *result)
+                         bool wait, union pipe_query_result *result)
 {
    struct etna_pm_query *pq = etna_pm_query(q);
 

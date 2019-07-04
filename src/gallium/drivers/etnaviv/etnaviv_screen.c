@@ -386,7 +386,7 @@ gpu_supports_texure_format(struct etna_screen *screen, uint32_t fmt,
    return true;
 }
 
-static boolean
+static bool
 etna_screen_is_format_supported(struct pipe_screen *pscreen,
                                 enum pipe_format format,
                                 enum pipe_texture_target target,
@@ -403,7 +403,7 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
        target != PIPE_TEXTURE_3D &&
        target != PIPE_TEXTURE_CUBE &&
        target != PIPE_TEXTURE_RECT)
-      return FALSE;
+      return false;
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;

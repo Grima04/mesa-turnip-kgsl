@@ -461,7 +461,7 @@ v3d_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
         return 0;
 }
 
-static boolean
+static bool
 v3d_screen_is_format_supported(struct pipe_screen *pscreen,
                                enum pipe_format format,
                                enum pipe_texture_target target,
@@ -475,10 +475,10 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
                 return false;
 
         if (sample_count > 1 && sample_count != V3D_MAX_SAMPLES)
-                return FALSE;
+                return false;
 
         if (target >= PIPE_MAX_TEXTURE_TYPES) {
-                return FALSE;
+                return false;
         }
 
         if (usage & PIPE_BIND_VERTEX_BUFFER) {
@@ -537,7 +537,7 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
                 case PIPE_FORMAT_B10G10R10A2_SSCALED:
                         break;
                 default:
-                        return FALSE;
+                        return false;
                 }
         }
 
@@ -547,12 +547,12 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
         if ((usage & PIPE_BIND_RENDER_TARGET) &&
             format != PIPE_FORMAT_NONE &&
             !v3d_rt_format_supported(&screen->devinfo, format)) {
-                return FALSE;
+                return false;
         }
 
         if ((usage & PIPE_BIND_SAMPLER_VIEW) &&
             !v3d_tex_format_supported(&screen->devinfo, format)) {
-                return FALSE;
+                return false;
         }
 
         if ((usage & PIPE_BIND_DEPTH_STENCIL) &&
@@ -561,17 +561,17 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
               format == PIPE_FORMAT_Z16_UNORM ||
               format == PIPE_FORMAT_Z32_FLOAT ||
               format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)) {
-                return FALSE;
+                return false;
         }
 
         if ((usage & PIPE_BIND_INDEX_BUFFER) &&
             !(format == PIPE_FORMAT_I8_UINT ||
               format == PIPE_FORMAT_I16_UINT ||
               format == PIPE_FORMAT_I32_UINT)) {
-                return FALSE;
+                return false;
         }
 
-        return TRUE;
+        return true;
 }
 
 #define PTR_TO_UINT(x) ((unsigned)((intptr_t)(x)))

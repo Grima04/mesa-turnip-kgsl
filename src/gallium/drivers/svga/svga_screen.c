@@ -781,14 +781,14 @@ svga_fence_reference(struct pipe_screen *screen,
 }
 
 
-static boolean
+static bool
 svga_fence_finish(struct pipe_screen *screen,
                   struct pipe_context *ctx,
                   struct pipe_fence_handle *fence,
                   uint64_t timeout)
 {
    struct svga_winsys_screen *sws = svga_screen(screen)->sws;
-   boolean retVal;
+   bool retVal;
 
    SVGA_STATS_TIME_PUSH(sws, SVGA_STATS_TIME_FENCEFINISH);
 

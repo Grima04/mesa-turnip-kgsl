@@ -187,7 +187,7 @@ fail:
  * Check the size of the texture specified by 'res'.
  * \return TRUE if OK, FALSE if too large.
  */
-static boolean
+static bool
 llvmpipe_can_create_resource(struct pipe_screen *screen,
                              const struct pipe_resource *res)
 {
@@ -486,7 +486,7 @@ no_lpr:
 }
 
 
-static boolean
+static bool
 llvmpipe_resource_get_handle(struct pipe_screen *screen,
                              struct pipe_context *ctx,
                             struct pipe_resource *pt,
@@ -498,7 +498,7 @@ llvmpipe_resource_get_handle(struct pipe_screen *screen,
 
    assert(lpr->dt);
    if (!lpr->dt)
-      return FALSE;
+      return false;
 
    return winsys->displaytarget_get_handle(winsys, lpr->dt, whandle);
 }

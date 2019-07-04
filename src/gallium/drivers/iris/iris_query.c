@@ -753,7 +753,7 @@ iris_destroy_query(struct pipe_context *ctx, struct pipe_query *p_query)
 }
 
 
-static boolean
+static bool
 iris_begin_query(struct pipe_context *ctx, struct pipe_query *query)
 {
    struct iris_context *ice = (void *) ctx;
@@ -846,10 +846,10 @@ iris_check_query_no_flush(struct iris_context *ice, struct iris_query *q)
    }
 }
 
-static boolean
+static bool
 iris_get_query_result(struct pipe_context *ctx,
                       struct pipe_query *query,
-                      boolean wait,
+                      bool wait,
                       union pipe_query_result *result)
 {
    struct iris_context *ice = (void *) ctx;
@@ -888,7 +888,7 @@ iris_get_query_result(struct pipe_context *ctx,
 static void
 iris_get_query_result_resource(struct pipe_context *ctx,
                                struct pipe_query *query,
-                               boolean wait,
+                               bool wait,
                                enum pipe_query_value_type result_type,
                                int index,
                                struct pipe_resource *p_res,
@@ -975,7 +975,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
 }
 
 static void
-iris_set_active_query_state(struct pipe_context *ctx, boolean enable)
+iris_set_active_query_state(struct pipe_context *ctx, bool enable)
 {
    struct iris_context *ice = (void *) ctx;
 
@@ -1063,7 +1063,7 @@ set_predicate_for_result(struct iris_context *ice,
 static void
 iris_render_condition(struct pipe_context *ctx,
                       struct pipe_query *query,
-                      boolean condition,
+                      bool condition,
                       enum pipe_render_cond_flag mode)
 {
    struct iris_context *ice = (void *) ctx;

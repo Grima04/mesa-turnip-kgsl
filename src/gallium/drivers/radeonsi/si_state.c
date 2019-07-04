@@ -1347,7 +1347,7 @@ static void *si_create_db_flush_dsa(struct si_context *sctx)
 
 /* DB RENDER STATE */
 
-static void si_set_active_query_state(struct pipe_context *ctx, boolean enable)
+static void si_set_active_query_state(struct pipe_context *ctx, bool enable)
 {
 	struct si_context *sctx = (struct si_context*)ctx;
 
@@ -2215,12 +2215,12 @@ static bool si_is_zs_format_supported(enum pipe_format format)
 	return si_translate_dbformat(format) != V_028040_Z_INVALID;
 }
 
-static boolean si_is_format_supported(struct pipe_screen *screen,
-				      enum pipe_format format,
-				      enum pipe_texture_target target,
-				      unsigned sample_count,
-				      unsigned storage_sample_count,
-				      unsigned usage)
+static bool si_is_format_supported(struct pipe_screen *screen,
+				   enum pipe_format format,
+				   enum pipe_texture_target target,
+				   unsigned sample_count,
+				   unsigned storage_sample_count,
+				   unsigned usage)
 {
 	struct si_screen *sscreen = (struct si_screen *)screen;
 	unsigned retval = 0;

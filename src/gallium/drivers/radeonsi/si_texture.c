@@ -824,11 +824,11 @@ static void si_texture_get_info(struct pipe_screen* screen,
 		*poffset = offset;
 }
 
-static boolean si_texture_get_handle(struct pipe_screen* screen,
-				     struct pipe_context *ctx,
-				     struct pipe_resource *resource,
-				     struct winsys_handle *whandle,
-				     unsigned usage)
+static bool si_texture_get_handle(struct pipe_screen* screen,
+				  struct pipe_context *ctx,
+				  struct pipe_resource *resource,
+				  struct winsys_handle *whandle,
+				  unsigned usage)
 {
 	struct si_screen *sscreen = (struct si_screen*)screen;
 	struct si_context *sctx;

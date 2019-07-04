@@ -425,7 +425,7 @@ nv30_screen_get_shader_param(struct pipe_screen *pscreen,
    }
 }
 
-static boolean
+static bool
 nv30_screen_is_format_supported(struct pipe_screen *pscreen,
                                 enum pipe_format format,
                                 enum pipe_texture_target target,

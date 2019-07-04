@@ -1238,11 +1238,11 @@ static void si_blit(struct pipe_context *ctx,
 	si_blitter_end(sctx);
 }
 
-static boolean si_generate_mipmap(struct pipe_context *ctx,
-				  struct pipe_resource *tex,
-				  enum pipe_format format,
-				  unsigned base_level, unsigned last_level,
-				  unsigned first_layer, unsigned last_layer)
+static bool si_generate_mipmap(struct pipe_context *ctx,
+			       struct pipe_resource *tex,
+			       enum pipe_format format,
+			       unsigned base_level, unsigned last_level,
+			       unsigned first_layer, unsigned last_layer)
 {
 	struct si_context *sctx = (struct si_context*)ctx;
 	struct si_texture *stex = (struct si_texture *)tex;

@@ -583,7 +583,7 @@ static void si_emit_window_rectangles(struct si_context *sctx)
 }
 
 static void si_set_window_rectangles(struct pipe_context *ctx,
-				     boolean include,
+				     bool include,
 				     unsigned num_rectangles,
 				     const struct pipe_scissor_state *rects)
 {

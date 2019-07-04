@@ -1397,7 +1397,7 @@ dd_context_blit(struct pipe_context *_pipe, const struct pipe_blit_info *info)
    dd_after_draw(dctx, record);
 }
 
-static boolean
+static bool
 dd_context_generate_mipmap(struct pipe_context *_pipe,
                            struct pipe_resource *res,
                            enum pipe_format format,
@@ -1409,7 +1409,7 @@ dd_context_generate_mipmap(struct pipe_context *_pipe,
    struct dd_context *dctx = dd_context(_pipe);
    struct pipe_context *pipe = dctx->pipe;
    struct dd_draw_record *record = dd_create_record(dctx);
-   boolean result;
+   bool result;
 
    record->call.type = CALL_GENERATE_MIPMAP;
    record->call.info.generate_mipmap.res = NULL;
@@ -1430,7 +1430,7 @@ dd_context_generate_mipmap(struct pipe_context *_pipe,
 static void
 dd_context_get_query_result_resource(struct pipe_context *_pipe,
                                      struct pipe_query *query,
-                                     boolean wait,
+                                     bool wait,
                                      enum pipe_query_value_type result_type,
                                      int index,
                                      struct pipe_resource *resource,

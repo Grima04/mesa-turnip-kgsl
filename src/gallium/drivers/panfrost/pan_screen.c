@@ -359,7 +359,7 @@ panfrost_get_paramf(struct pipe_screen *screen, enum pipe_capf param)
  * \param format  the format to test
  * \param type  one of PIPE_TEXTURE, PIPE_SURFACE
  */
-static boolean
+static bool
 panfrost_is_format_supported( struct pipe_screen *screen,
                               enum pipe_format format,
                               enum pipe_texture_target target,
@@ -382,17 +382,17 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         format_desc = util_format_description(format);
 
         if (!format_desc)
-                return FALSE;
+                return false;
 
         if (sample_count > 1)
-                return FALSE;
+                return false;
 
         /* Format wishlist */
         if (format == PIPE_FORMAT_X8Z24_UNORM)
-                return FALSE;
+                return false;
 
         if (format == PIPE_FORMAT_A1B5G5R5_UNORM || format == PIPE_FORMAT_X1B5G5R5_UNORM)
-                return FALSE;
+                return false;
 
         /* TODO */
         if (format == PIPE_FORMAT_B5G5R5A1_UNORM)
@@ -405,12 +405,12 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         bool renderable = bind & PIPE_BIND_RENDER_TARGET;
 
         if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
-                return FALSE;
+                return false;
 
         if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
             format_desc->layout != UTIL_FORMAT_LAYOUT_OTHER) {
                 /* Compressed formats not yet hooked up. */
-                return FALSE;
+                return false;
         }
 
         /* Internally, formats that are depth/stencil renderable are limited.
@@ -437,7 +437,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 }
         }
 
-        return TRUE;
+        return true;
 }
 
 
@@ -473,7 +473,7 @@ panfrost_fence_reference(struct pipe_screen *pscreen,
         panfrost_drm_fence_reference(pscreen, ptr, fence);
 }
 
-static boolean
+static bool
 panfrost_fence_finish(struct pipe_screen *pscreen,
                       struct pipe_context *ctx,
                       struct pipe_fence_handle *fence,

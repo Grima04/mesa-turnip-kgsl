@@ -667,7 +667,7 @@ fd_get_compiler_options(struct pipe_screen *pscreen,
 	return ir2_get_compiler_options();
 }
 
-boolean
+bool
 fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 		struct fd_bo *bo,
 		struct renderonly_scanout *scanout,
@@ -680,14 +680,14 @@ fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 		return fd_bo_get_name(bo, &whandle->handle) == 0;
 	} else if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
 		if (renderonly_get_handle(scanout, whandle))
-			return TRUE;
+			return true;
 		whandle->handle = fd_bo_handle(bo);
-		return TRUE;
+		return true;
 	} else if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
 		whandle->handle = fd_bo_dmabuf(bo);
-		return TRUE;
+		return true;
 	} else {
-		return FALSE;
+		return false;
 	}
 }
 

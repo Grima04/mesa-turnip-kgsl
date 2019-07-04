@@ -747,7 +747,7 @@ fd_resource_modifier(struct fd_resource *rsc)
 	return DRM_FORMAT_MOD_INVALID;
 }
 
-static boolean
+static bool
 fd_resource_get_handle(struct pipe_screen *pscreen,
 		struct pipe_context *pctx,
 		struct pipe_resource *prsc,

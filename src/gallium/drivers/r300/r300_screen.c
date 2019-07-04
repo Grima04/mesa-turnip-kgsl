@@ -638,12 +638,12 @@ static bool r300_is_blending_supported(struct r300_screen *rscreen,
     return false;
 }
 
-static boolean r300_is_format_supported(struct pipe_screen* screen,
-                                        enum pipe_format format,
-                                        enum pipe_texture_target target,
-                                        unsigned sample_count,
-                                        unsigned storage_sample_count,
-                                        unsigned usage)
+static bool r300_is_format_supported(struct pipe_screen* screen,
+                                     enum pipe_format format,
+                                     enum pipe_texture_target target,
+                                     unsigned sample_count,
+                                     unsigned storage_sample_count,
+                                     unsigned usage)
 {
     uint32_t retval = 0;
     boolean is_r500 = r300_screen(screen)->caps.is_r500;
@@ -683,7 +683,7 @@ static boolean r300_is_format_supported(struct pipe_screen* screen,
             if (usage & (PIPE_BIND_SAMPLER_VIEW |
                          PIPE_BIND_DISPLAY_TARGET |
                          PIPE_BIND_SCANOUT)) {
-                return FALSE;
+                return false;
             }
 
             desc = util_format_description(format);
@@ -695,18 +695,18 @@ static boolean r300_is_format_supported(struct pipe_screen* screen,
                     !util_format_is_rgba1010102_variant(desc) &&
                     format != PIPE_FORMAT_R16G16B16A16_FLOAT &&
                     format != PIPE_FORMAT_R16G16B16X16_FLOAT) {
-                    return FALSE;
+                    return false;
                 }
             } else {
                 /* Only allow depth/stencil, RGBA8. */
                 if (!util_format_is_depth_or_stencil(format) &&
                     !util_format_is_rgba8_variant(desc)) {
-                    return FALSE;
+                    return false;
                 }
             }
             break;
         default:
-            return FALSE;
+            return false;
     }
 
     /* Check sampler format support. */
@@ -795,10 +795,10 @@ static void r300_fence_reference(struct pipe_screen *screen,
     rws->fence_reference(ptr, fence);
 }
 
-static boolean r300_fence_finish(struct pipe_screen *screen,
-                                 struct pipe_context *ctx,
-                                 struct pipe_fence_handle *fence,
-                                 uint64_t timeout)
+static bool r300_fence_finish(struct pipe_screen *screen,
+                              struct pipe_context *ctx,
+                              struct pipe_fence_handle *fence,
+                              uint64_t timeout)
 {
     struct radeon_winsys *rws = r300_screen(screen)->rws;
 

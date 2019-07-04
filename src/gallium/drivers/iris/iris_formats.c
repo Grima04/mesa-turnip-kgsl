@@ -394,7 +394,7 @@ iris_format_for_usage(const struct gen_device_info *devinfo,
  * Returns true if the given format is supported for the given usage
  * (PIPE_BIND_*) and sample count.
  */
-boolean
+bool
 iris_is_format_supported(struct pipe_screen *pscreen,
                          enum pipe_format pformat,
                          enum pipe_texture_target target,

@@ -463,7 +463,7 @@ llvmpipe_get_paramf(struct pipe_screen *screen, enum pipe_capf param)
  * \param format  the format to test
  * \param type  one of PIPE_TEXTURE, PIPE_SURFACE
  */
-static boolean
+static bool
 llvmpipe_is_format_supported( struct pipe_screen *_screen,
                               enum pipe_format format,
                               enum pipe_texture_target target,
@@ -477,7 +477,7 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
 
    format_desc = util_format_description(format);
    if (!format_desc)
-      return FALSE;
+      return false;
 
    assert(target == PIPE_BUFFER ||
           target == PIPE_TEXTURE_1D ||
@@ -490,7 +490,7 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
           target == PIPE_TEXTURE_CUBE_ARRAY);
 
    if (sample_count > 1)
-      return FALSE;
+      return false;
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
@@ -499,24 +499,24 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
       if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) {
          /* this is a lie actually other formats COULD exist where we would fail */
          if (format_desc->nr_channels < 3)
-            return FALSE;
+            return false;
       }
       else if (format_desc->colorspace != UTIL_FORMAT_COLORSPACE_RGB)
-         return FALSE;
+         return false;
 
       if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
           format != PIPE_FORMAT_R11G11B10_FLOAT)
-         return FALSE;
+         return false;
 
       assert(format_desc->block.width == 1);
       assert(format_desc->block.height == 1);
 
       if (format_desc->is_mixed)
-         return FALSE;
+         return false;
 
       if (!format_desc->is_array && !format_desc->is_bitmask &&
           format != PIPE_FORMAT_R11G11B10_FLOAT)
-         return FALSE;
+         return false;
    }
 
    if ((bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) &&
@@ -530,44 +530,44 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
       if (format_desc->is_array &&
           format_desc->nr_channels == 3 &&
           format_desc->block.bits != 96) {
-         return FALSE;
+         return false;
       }
    }
 
    if (bind & PIPE_BIND_DISPLAY_TARGET) {
       if(!winsys->is_displaytarget_format_supported(winsys, bind, format))
-         return FALSE;
+         return false;
    }
 
    if (bind & PIPE_BIND_DEPTH_STENCIL) {
       if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN)
-         return FALSE;
+         return false;
 
       if (format_desc->colorspace != UTIL_FORMAT_COLORSPACE_ZS)
-         return FALSE;
+         return false;
 
       /* TODO: Support stencil-only formats */
       if (format_desc->swizzle[0] == PIPE_SWIZZLE_NONE) {
-         return FALSE;
+         return false;
       }
    }
 
    if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
        format_desc->layout == UTIL_FORMAT_LAYOUT_ATC) {
       /* Software decoding is not hooked up. */
-      return FALSE;
+      return false;
    }
 
    if (format_desc->layout == UTIL_FORMAT_LAYOUT_ETC &&
        format != PIPE_FORMAT_ETC1_RGB8)
-      return FALSE;
+      return false;
 
    /*
     * Everything can be supported by u_format
     * (those without fetch_rgba_float might be not but shouldn't hit that)
     */
 
-   return TRUE;
+   return true;
 }
 
 
@@ -629,7 +629,7 @@ llvmpipe_fence_reference(struct pipe_screen *screen,
 /**
  * Wait for the fence to finish.
  */
-static boolean
+static bool
 llvmpipe_fence_finish(struct pipe_screen *screen,
                       struct pipe_context *ctx,
                       struct pipe_fence_handle *fence_handle,
@@ -646,7 +646,7 @@ llvmpipe_fence_finish(struct pipe_screen *screen,
 
       lp_fence_wait(f);
    }
-   return TRUE;
+   return true;
 }
 
 static uint64_t

@@ -1119,8 +1119,8 @@ static void si_destroy_query(struct pipe_context *ctx, struct pipe_query *query)
 	squery->ops->destroy(sctx, squery);
 }
 
-static boolean si_begin_query(struct pipe_context *ctx,
-                                struct pipe_query *query)
+static bool si_begin_query(struct pipe_context *ctx,
+			   struct pipe_query *query)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_query *squery = (struct si_query *)query;
@@ -1401,9 +1401,9 @@ static const struct si_query_ops query_hw_ops = {
 	.resume = si_query_hw_resume,
 };
 
-static boolean si_get_query_result(struct pipe_context *ctx,
-				   struct pipe_query *query, boolean wait,
-				   union pipe_query_result *result)
+static bool si_get_query_result(struct pipe_context *ctx,
+				struct pipe_query *query, bool wait,
+				union pipe_query_result *result)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_query *squery = (struct si_query *)query;
@@ -1413,7 +1413,7 @@ static boolean si_get_query_result(struct pipe_context *ctx,
 
 static void si_get_query_result_resource(struct pipe_context *ctx,
 					 struct pipe_query *query,
-					 boolean wait,
+					 bool wait,
 					 enum pipe_query_value_type result_type,
 					 int index,
 					 struct pipe_resource *resource,
@@ -1625,7 +1625,7 @@ static void si_query_hw_get_result_resource(struct si_context *sctx,
 
 static void si_render_condition(struct pipe_context *ctx,
 				struct pipe_query *query,
-				boolean condition,
+				bool condition,
 				enum pipe_render_cond_flag mode)
 {
 	struct si_context *sctx = (struct si_context *)ctx;

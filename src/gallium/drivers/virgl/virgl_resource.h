@@ -171,9 +171,9 @@ void virgl_resource_destroy_transfer(struct virgl_context *vctx,
 void virgl_resource_destroy(struct pipe_screen *screen,
                             struct pipe_resource *resource);
 
-boolean virgl_resource_get_handle(struct pipe_screen *screen,
-                                  struct pipe_resource *resource,
-                                  struct winsys_handle *whandle);
+bool virgl_resource_get_handle(struct pipe_screen *screen,
+                               struct pipe_resource *resource,
+                               struct winsys_handle *whandle);
 
 void virgl_resource_dirty(struct virgl_resource *res, uint32_t level);
 

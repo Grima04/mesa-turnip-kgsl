@@ -43,7 +43,7 @@
 
 #define THREADS_IN_WARP 32
 
-static boolean
+static bool
 nv50_screen_is_format_supported(struct pipe_screen *pscreen,
                                 enum pipe_format format,
                                 enum pipe_texture_target target,

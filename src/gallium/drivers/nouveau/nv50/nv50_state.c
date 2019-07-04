@@ -1049,7 +1049,7 @@ nv50_set_viewport_states(struct pipe_context *pipe,
 
 static void
 nv50_set_window_rectangles(struct pipe_context *pipe,
-                           boolean include,
+                           bool include,
                            unsigned num_rectangles,
                            const struct pipe_scissor_state *rectangles)
 {

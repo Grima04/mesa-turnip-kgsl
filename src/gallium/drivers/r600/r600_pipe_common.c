@@ -1090,10 +1090,10 @@ static void r600_fence_reference(struct pipe_screen *screen,
         *rdst = rsrc;
 }
 
-static boolean r600_fence_finish(struct pipe_screen *screen,
-				 struct pipe_context *ctx,
-				 struct pipe_fence_handle *fence,
-				 uint64_t timeout)
+static bool r600_fence_finish(struct pipe_screen *screen,
+			      struct pipe_context *ctx,
+			      struct pipe_fence_handle *fence,
+			      uint64_t timeout)
 {
 	struct radeon_winsys *rws = ((struct r600_common_screen*)screen)->ws;
 	struct r600_multi_fence *rfence = (struct r600_multi_fence *)fence;

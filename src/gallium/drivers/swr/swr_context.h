@@ -148,7 +148,7 @@ struct swr_context {
    /** Conditional query object and mode */
    struct pipe_query *render_cond_query;
    enum pipe_render_cond_flag render_cond_mode;
-   boolean render_cond_cond;
+   bool render_cond_cond;
    unsigned active_queries;
 
    unsigned num_vertex_buffers;

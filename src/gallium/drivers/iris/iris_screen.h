@@ -88,7 +88,7 @@ struct iris_screen {
 struct pipe_screen *
 iris_screen_create(int fd, const struct pipe_screen_config *config);
 
-boolean
+bool
 iris_is_format_supported(struct pipe_screen *pscreen,
                          enum pipe_format format,
                          enum pipe_texture_target target,

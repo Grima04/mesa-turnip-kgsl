@@ -249,7 +249,7 @@ lima_screen_get_shader_param(struct pipe_screen *pscreen,
    }
 }
 
-static boolean
+static bool
 lima_screen_is_format_supported(struct pipe_screen *pscreen,
                                 enum pipe_format format,
                                 enum pipe_texture_target target,
@@ -263,7 +263,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
    case PIPE_TEXTURE_2D:
       break;
    default:
-      return FALSE;
+      return false;
    }
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
@@ -271,7 +271,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
 
    /* be able to support 16, now limit to 4 */
    if (sample_count > 1 && sample_count != 4)
-      return FALSE;
+      return false;
 
    if (usage & PIPE_BIND_RENDER_TARGET) {
       switch (format) {
@@ -284,7 +284,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
       case PIPE_FORMAT_Z24X8_UNORM:
          break;
       default:
-         return FALSE;
+         return false;
       }
    }
 
@@ -295,7 +295,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
       case PIPE_FORMAT_Z24X8_UNORM:
          break;
       default:
-         return FALSE;
+         return false;
       }
    }
 
@@ -304,7 +304,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
       case PIPE_FORMAT_R32G32B32_FLOAT:
          break;
       default:
-         return FALSE;
+         return false;
       }
    }
 
@@ -315,7 +315,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
       case PIPE_FORMAT_I32_UINT:
          break;
       default:
-         return FALSE;
+         return false;
       }
    }
 
@@ -332,11 +332,11 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
       case PIPE_FORMAT_Z24X8_UNORM:
          break;
       default:
-         return FALSE;
+         return false;
       }
    }
 
-   return TRUE;
+   return true;
 }
 
 static const void *

@@ -457,7 +457,7 @@ v3d_tfu(struct pipe_context *pctx,
         return true;
 }
 
-boolean
+bool
 v3d_generate_mipmap(struct pipe_context *pctx,
                     struct pipe_resource *prsc,
                     enum pipe_format format,

@@ -32,7 +32,7 @@
 #include "fd2_util.h"
 #include "fd2_resource.h"
 
-static boolean
+static bool
 fd2_screen_is_format_supported(struct pipe_screen *pscreen,
 		enum pipe_format format,
 		enum pipe_texture_target target,
@@ -46,7 +46,7 @@ fd2_screen_is_format_supported(struct pipe_screen *pscreen,
 			(sample_count > 1)) { /* TODO add MSAA */
 		DBG("not supported: format=%s, target=%d, sample_count=%d, usage=%x",
 				util_format_name(format), target, sample_count, usage);
-		return FALSE;
+		return false;
 	}
 
 	if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
@@ -65,7 +65,7 @@ fd2_screen_is_format_supported(struct pipe_screen *pscreen,
 			 (format != PIPE_FORMAT_R8G8B8X8_UNORM))) {
 		DBG("not supported render target: format=%s, target=%d, sample_count=%d, usage=%x",
 				util_format_name(format), target, sample_count, usage);
-		return FALSE;
+		return false;
 	}
 
 	if ((usage & (PIPE_BIND_SAMPLER_VIEW |

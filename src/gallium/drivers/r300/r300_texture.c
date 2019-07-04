@@ -1035,17 +1035,17 @@ static void r300_texture_destroy(struct pipe_screen *screen,
     FREE(tex);
 }
 
-boolean r300_resource_get_handle(struct pipe_screen* screen,
-                                 struct pipe_context *ctx,
-                                 struct pipe_resource *texture,
-                                 struct winsys_handle *whandle,
-                                 unsigned usage)
+bool r300_resource_get_handle(struct pipe_screen* screen,
+                              struct pipe_context *ctx,
+                              struct pipe_resource *texture,
+                              struct winsys_handle *whandle,
+                              unsigned usage)
 {
     struct radeon_winsys *rws = r300_screen(screen)->rws;
     struct r300_resource* tex = (struct r300_resource*)texture;
 
     if (!tex) {
-        return FALSE;
+        return false;
     }
 
     return rws->buffer_get_handle(rws, tex->buf, tex->tex.stride_in_bytes[0],

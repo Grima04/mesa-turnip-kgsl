@@ -114,7 +114,7 @@ fd_screen(struct pipe_screen *pscreen)
 	return (struct fd_screen *)pscreen;
 }
 
-boolean fd_screen_bo_get_handle(struct pipe_screen *pscreen,
+bool fd_screen_bo_get_handle(struct pipe_screen *pscreen,
 		struct fd_bo *bo,
 		struct renderonly_scanout *scanout,
 		unsigned stride,

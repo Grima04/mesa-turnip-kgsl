@@ -39,7 +39,7 @@
 
 #include "nv50/g80_texture.xml.h"
 
-static boolean
+static bool
 nvc0_screen_is_format_supported(struct pipe_screen *pscreen,
                                 enum pipe_format format,
                                 enum pipe_texture_target target,

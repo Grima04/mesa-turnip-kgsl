@@ -202,7 +202,7 @@ svga_transfer_dma(struct svga_context *svga,
 
 
 
-static boolean
+static bool
 svga_texture_get_handle(struct pipe_screen *screen,
                         struct pipe_resource *texture,
                         struct winsys_handle *whandle)
@@ -1279,7 +1279,7 @@ out_unref:
    return NULL;
 }
 
-boolean
+bool
 svga_texture_generate_mipmap(struct pipe_context *pipe,
                              struct pipe_resource *pt,
                              enum pipe_format format,
@@ -1298,19 +1298,19 @@ svga_texture_generate_mipmap(struct pipe_context *pipe,
 
    /* Only support 2D texture for now */
    if (pt->target != PIPE_TEXTURE_2D)
-      return FALSE;
+      return false;
 
    /* Fallback to the mipmap generation utility for those formats that
     * do not support hw generate mipmap
     */
    if (!svga_format_support_gen_mips(format))
-      return FALSE;
+      return false;
 
    /* Make sure the texture surface was created with
     * SVGA3D_SURFACE_BIND_RENDER_TARGET
     */
    if (!tex->handle || !(tex->key.flags & SVGA3D_SURFACE_BIND_RENDER_TARGET))
-      return FALSE;
+      return false;
 
    templ.format = format;
    templ.u.tex.first_layer = first_layer;
@@ -1320,7 +1320,7 @@ svga_texture_generate_mipmap(struct pipe_context *pipe,
 
    psv = pipe->create_sampler_view(pipe, pt, &templ);
    if (psv == NULL)
-      return FALSE;
+      return false;
 
    sv = svga_pipe_sampler_view(psv);
    ret = svga_validate_pipe_sampler_view(svga, sv);
@@ -1339,7 +1339,7 @@ svga_texture_generate_mipmap(struct pipe_context *pipe,
 
    svga->hud.num_generate_mipmap++;
 
-   return TRUE;
+   return true;
 }
 
 

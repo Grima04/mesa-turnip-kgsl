@@ -283,10 +283,10 @@ static void si_fine_fence_set(struct si_context *ctx,
 	}
 }
 
-static boolean si_fence_finish(struct pipe_screen *screen,
-			       struct pipe_context *ctx,
-			       struct pipe_fence_handle *fence,
-			       uint64_t timeout)
+static bool si_fence_finish(struct pipe_screen *screen,
+			    struct pipe_context *ctx,
+			    struct pipe_fence_handle *fence,
+			    uint64_t timeout)
 {
 	struct radeon_winsys *rws = ((struct si_screen*)screen)->ws;
 	struct si_multi_fence *sfence = (struct si_multi_fence *)fence;

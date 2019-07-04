@@ -46,7 +46,7 @@ struct swr_screen {
    struct sw_winsys *winsys;
 
    /* Configurable environment settings */
-   boolean msaa_force_enable;
+   bool msaa_force_enable;
    uint8_t msaa_max_count;
    uint32_t client_copy_limit;
 

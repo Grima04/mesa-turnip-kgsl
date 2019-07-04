@@ -698,15 +698,15 @@ void virgl_resource_destroy(struct pipe_screen *screen,
    FREE(res);
 }
 
-boolean virgl_resource_get_handle(struct pipe_screen *screen,
-                                  struct pipe_resource *resource,
-                                  struct winsys_handle *whandle)
+bool virgl_resource_get_handle(struct pipe_screen *screen,
+                               struct pipe_resource *resource,
+                               struct winsys_handle *whandle)
 {
    struct virgl_screen *vs = virgl_screen(screen);
    struct virgl_resource *res = virgl_resource(resource);
 
    if (res->u.b.target == PIPE_BUFFER)
-      return FALSE;
+      return false;
 
    return vs->vws->resource_get_handle(vs->vws, res->hw_res,
                                        res->metadata.stride[0],

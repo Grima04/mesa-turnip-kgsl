@@ -416,7 +416,7 @@ swr_destroy(struct pipe_context *pipe)
 static void
 swr_render_condition(struct pipe_context *pipe,
                      struct pipe_query *query,
-                     boolean condition,
+                     bool condition,
                      enum pipe_render_cond_flag mode)
 {
    struct swr_context *ctx = swr_context(pipe);

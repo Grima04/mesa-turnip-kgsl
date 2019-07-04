@@ -225,7 +225,7 @@ rel2abs(uint64_t timeout)
    return now + timeout;
 }
 
-static boolean
+static bool
 iris_fence_finish(struct pipe_screen *p_screen,
                   struct pipe_context *ctx,
                   struct pipe_fence_handle *fence,
