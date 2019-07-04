@@ -1501,7 +1501,9 @@ ac_get_tbuffer_format(struct ac_llvm_context *ctx,
 		case V_008F0C_BUF_DATA_FORMAT_16_16_16_16: format = V_008F0C_IMG_FORMAT_16_16_16_16_UINT; break;
 		case V_008F0C_BUF_DATA_FORMAT_32: format = V_008F0C_IMG_FORMAT_32_UINT; break;
 		case V_008F0C_BUF_DATA_FORMAT_32_32: format = V_008F0C_IMG_FORMAT_32_32_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_32_32_32: format = V_008F0C_IMG_FORMAT_32_32_32_UINT; break;
 		case V_008F0C_BUF_DATA_FORMAT_32_32_32_32: format = V_008F0C_IMG_FORMAT_32_32_32_32_UINT; break;
+		case V_008F0C_BUF_DATA_FORMAT_2_10_10_10: format = V_008F0C_IMG_FORMAT_2_10_10_10_UINT; break;
 		}
 
 		// Use the regularity properties of the combined format enum.
