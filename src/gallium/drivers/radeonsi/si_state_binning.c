@@ -430,13 +430,18 @@ void si_emit_dpbb_state(struct si_context *sctx)
 	}
 
 	/* Tunable parameters. Also test with DFSM enabled/disabled. */
-	unsigned context_states_per_bin; /* allowed range: [0, 5] */
-	unsigned persistent_states_per_bin; /* allowed range: [0, 31] */
+	unsigned context_states_per_bin; /* allowed range: [1, 6] */
+	unsigned persistent_states_per_bin; /* allowed range: [1, 32] */
 	unsigned fpovs_per_batch; /* allowed range: [0, 255], 0 = unlimited */
 
 	/* Tuned for Raven. Vega might need different values. */
-	context_states_per_bin = 5;
-	persistent_states_per_bin = 31;
+	if (sscreen->info.has_dedicated_vram) {
+		context_states_per_bin = 1;
+		persistent_states_per_bin = 1;
+	} else {
+		context_states_per_bin = 6;
+		persistent_states_per_bin = 32;
+	}
 	fpovs_per_batch = 63;
 
 	/* Emit registers. */
@@ -455,8 +460,8 @@ void si_emit_dpbb_state(struct si_context *sctx)
 		S_028C44_BIN_SIZE_Y(bin_size.y == 16) |
 		S_028C44_BIN_SIZE_X_EXTEND(bin_size_extend.x) |
 		S_028C44_BIN_SIZE_Y_EXTEND(bin_size_extend.y) |
-		S_028C44_CONTEXT_STATES_PER_BIN(context_states_per_bin) |
-		S_028C44_PERSISTENT_STATES_PER_BIN(persistent_states_per_bin) |
+		S_028C44_CONTEXT_STATES_PER_BIN(context_states_per_bin - 1) |
+		S_028C44_PERSISTENT_STATES_PER_BIN(persistent_states_per_bin - 1) |
 		S_028C44_DISABLE_START_OF_PRIM(disable_start_of_prim) |
 		S_028C44_FPOVS_PER_BATCH(fpovs_per_batch) |
 		S_028C44_OPTIMAL_BIN_SELECTION(1) |
