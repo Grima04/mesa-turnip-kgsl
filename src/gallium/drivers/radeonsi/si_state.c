@@ -127,7 +127,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 		radeon_opt_set_context_reg(
 				sctx, R_028424_CB_DCC_CONTROL,
 				SI_TRACKED_CB_DCC_CONTROL,
-				S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(1) |
+				S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(sctx->chip_class <= GFX9) |
 				S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
 				S_028424_OVERWRITE_COMBINER_DISABLE(oc_disable) |
 				S_028424_DISABLE_CONSTANT_ENCODE_REG(sctx->screen->has_dcc_constant_encode));
@@ -2975,7 +2975,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 	sctx->framebuffer.CB_has_shader_readable_metadata = false;
 	sctx->framebuffer.DB_has_shader_readable_metadata = false;
 	sctx->framebuffer.all_DCC_pipe_aligned = true;
-	unsigned num_bpp64_colorbufs = 0;
 
 	for (i = 0; i < state->nr_cbufs; i++) {
 		if (!state->cbufs[i])
@@ -3022,8 +3021,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 
 		if (tex->surface.is_linear)
 			sctx->framebuffer.any_dst_linear = true;
-		if (tex->surface.bpe >= 8)
-			num_bpp64_colorbufs++;
 
 		if (vi_dcc_enabled(tex, surf->base.u.tex.level)) {
 			sctx->framebuffer.CB_has_shader_readable_metadata = true;
@@ -3045,12 +3042,10 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 	}
 
 	/* For optimal DCC performance. */
-	if (sctx->chip_class == GFX8)
-		sctx->framebuffer.dcc_overwrite_combiner_watermark = 4;
-	else if (num_bpp64_colorbufs >= 5)
-		sctx->framebuffer.dcc_overwrite_combiner_watermark = 8;
-	else
+	if (sctx->chip_class >= GFX10)
 		sctx->framebuffer.dcc_overwrite_combiner_watermark = 6;
+	else
+		sctx->framebuffer.dcc_overwrite_combiner_watermark = 4;
 
 	struct si_texture *zstex = NULL;
 
