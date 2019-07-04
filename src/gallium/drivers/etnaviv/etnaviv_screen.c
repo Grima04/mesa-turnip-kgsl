@@ -590,8 +590,10 @@ etna_get_specs(struct etna_screen *screen)
    screen->specs.bits_per_tile =
       VIV_FEATURE(screen, chipMinorFeatures0, 2BITPERTILE) ? 2 : 4;
    screen->specs.ts_clear_value =
-      VIV_FEATURE(screen, chipMinorFeatures0, 2BITPERTILE) ? 0x55555555
-                                                           : 0x11111111;
+      VIV_FEATURE(screen, chipMinorFeatures5, BLT_ENGINE)  ? 0xffffffff :
+      VIV_FEATURE(screen, chipMinorFeatures0, 2BITPERTILE) ? 0x55555555 :
+                                                             0x11111111;
+
 
    /* vertex and fragment samplers live in one address space */
    screen->specs.vertex_sampler_offset = 8;
