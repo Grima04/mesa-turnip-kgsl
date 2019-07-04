@@ -74,7 +74,7 @@ function_temp_type_info(const struct glsl_type *type, unsigned *size, unsigned *
 class Converter : public ConverterCommon
 {
 public:
-   Converter(Program *, nir_shader *, nv50_ir_prog_info *);
+   Converter(Program *, nir_shader *, nv50_ir_prog_info *, nv50_ir_prog_info_out *);
 
    bool run();
 private:
@@ -192,8 +192,9 @@ private:
    };
 };
 
-Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info)
-   : ConverterCommon(prog, info),
+Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info,
+                     nv50_ir_prog_info_out *info_out)
+   : ConverterCommon(prog, info, info_out),
      nir(nir),
      curLoopDepth(0),
      curIfDepth(0),
@@ -975,34 +976,34 @@ bool Converter::assignSlots() {
    unsigned index;
 
    info->io.viewportId = -1;
-   info->numInputs = 0;
-   info->numOutputs = 0;
-   info->numSysVals = 0;
+   info_out->numInputs = 0;
+   info_out->numOutputs = 0;
+   info_out->numSysVals = 0;
 
    for (uint8_t i = 0; i < SYSTEM_VALUE_MAX; ++i) {
       if (!(nir->info.system_values_read & 1ull << i))
          continue;
 
-      info->sv[info->numSysVals].sn = tgsi_get_sysval_semantic(i);
-      info->sv[info->numSysVals].si = 0;
-      info->sv[info->numSysVals].input = 0; // TODO inferSysValDirection(sn);
+      info_out->sv[info_out->numSysVals].sn = tgsi_get_sysval_semantic(i);
+      info_out->sv[info_out->numSysVals].si = 0;
+      info_out->sv[info_out->numSysVals].input = 0; // TODO inferSysValDirection(sn);
 
       switch (i) {
       case SYSTEM_VALUE_INSTANCE_ID:
-         info->io.instanceId = info->numSysVals;
+         info_out->io.instanceId = info_out->numSysVals;
          break;
       case SYSTEM_VALUE_TESS_LEVEL_INNER:
       case SYSTEM_VALUE_TESS_LEVEL_OUTER:
-         info->sv[info->numSysVals].patch = 1;
+         info_out->sv[info_out->numSysVals].patch = 1;
          break;
       case SYSTEM_VALUE_VERTEX_ID:
-         info->io.vertexId = info->numSysVals;
+         info_out->io.vertexId = info_out->numSysVals;
          break;
       default:
          break;
       }
 
-      info->numSysVals += 1;
+      info_out->numSysVals += 1;
    }
 
    if (prog->getType() == Program::TYPE_COMPUTE)
@@ -1021,7 +1022,7 @@ bool Converter::assignSlots() {
          tgsi_get_gl_varying_semantic((gl_varying_slot)slot, true,
                                       &name, &index);
          for (uint16_t i = 0; i < slots; ++i) {
-            setInterpolate(&info->in[vary + i], var->data.interpolation,
+            setInterpolate(&info_out->in[vary + i], var->data.interpolation,
                            var->data.centroid | var->data.sample, name);
          }
          break;
@@ -1034,7 +1035,7 @@ bool Converter::assignSlots() {
          tgsi_get_gl_varying_semantic((gl_varying_slot)slot, true,
                                       &name, &index);
          if (var->data.patch && name == TGSI_SEMANTIC_PATCH)
-            info->numPatchConstants = MAX2(info->numPatchConstants, index + slots);
+            info_out->numPatchConstants = MAX2(info_out->numPatchConstants, index + slots);
          break;
       case Program::TYPE_VERTEX:
          if (slot >= VERT_ATTRIB_GENERIC0)
@@ -1042,7 +1043,7 @@ bool Converter::assignSlots() {
          vert_attrib_to_tgsi_semantic((gl_vert_attrib)slot, &name, &index);
          switch (name) {
          case TGSI_SEMANTIC_EDGEFLAG:
-            info->io.edgeFlagIn = vary;
+            info_out->io.edgeFlagIn = vary;
             break;
          default:
             break;
@@ -1054,14 +1055,14 @@ bool Converter::assignSlots() {
       }
 
       for (uint16_t i = 0u; i < slots; ++i, ++vary) {
-         nv50_ir_varying *v = &info->in[vary];
+         nv50_ir_varying *v = &info_out->in[vary];
 
          v->patch = var->data.patch;
          v->sn = name;
          v->si = index + i;
          v->mask |= getMaskForType(type, i) << var->data.location_frac;
       }
-      info->numInputs = std::max<uint8_t>(info->numInputs, vary);
+      info_out->numInputs = std::max<uint8_t>(info_out->numInputs, vary);
    }
 
    nir_foreach_shader_out_variable(var, nir) {
@@ -1078,22 +1079,20 @@ bool Converter::assignSlots() {
          switch (name) {
          case TGSI_SEMANTIC_COLOR:
             if (!var->data.fb_fetch_output)
-               info->prop.fp.numColourResults++;
-
+               info_out->prop.fp.numColourResults++;
             if (var->data.location == FRAG_RESULT_COLOR &&
                 nir->info.outputs_written & BITFIELD64_BIT(var->data.location))
-               info->prop.fp.separateFragData = true;
-
+            info_out->prop.fp.separateFragData = true;
             // sometimes we get FRAG_RESULT_DATAX with data.index 0
             // sometimes we get FRAG_RESULT_DATA0 with data.index X
             index = index == 0 ? var->data.index : index;
             break;
          case TGSI_SEMANTIC_POSITION:
-            info->io.fragDepth = vary;
-            info->prop.fp.writesDepth = true;
+            info_out->io.fragDepth = vary;
+            info_out->prop.fp.writesDepth = true;
             break;
          case TGSI_SEMANTIC_SAMPLEMASK:
-            info->io.sampleMask = vary;
+            info_out->io.sampleMask = vary;
             break;
          default:
             break;
@@ -1108,17 +1107,17 @@ bool Converter::assignSlots() {
 
          if (var->data.patch && name != TGSI_SEMANTIC_TESSINNER &&
              name != TGSI_SEMANTIC_TESSOUTER)
-            info->numPatchConstants = MAX2(info->numPatchConstants, index + slots);
+            info_out->numPatchConstants = MAX2(info_out->numPatchConstants, index + slots);
 
          switch (name) {
          case TGSI_SEMANTIC_CLIPDIST:
-            info->io.genUserClip = -1;
+            info_out->io.genUserClip = -1;
             break;
          case TGSI_SEMANTIC_CLIPVERTEX:
             clipVertexOutput = vary;
             break;
          case TGSI_SEMANTIC_EDGEFLAG:
-            info->io.edgeFlagOut = vary;
+            info_out->io.edgeFlagOut = vary;
             break;
          case TGSI_SEMANTIC_POSITION:
             if (clipVertexOutput < 0)
@@ -1134,7 +1133,7 @@ bool Converter::assignSlots() {
       }
 
       for (uint16_t i = 0u; i < slots; ++i, ++vary) {
-         nv50_ir_varying *v = &info->out[vary];
+         nv50_ir_varying *v = &info_out->out[vary];
          v->patch = var->data.patch;
          v->sn = name;
          v->si = index + i;
@@ -1143,24 +1142,24 @@ bool Converter::assignSlots() {
          if (nir->info.outputs_read & 1ull << slot)
             v->oread = 1;
       }
-      info->numOutputs = std::max<uint8_t>(info->numOutputs, vary);
+      info_out->numOutputs = std::max<uint8_t>(info_out->numOutputs, vary);
    }
 
-   if (info->io.genUserClip > 0) {
-      info->io.clipDistances = info->io.genUserClip;
+   if (info_out->io.genUserClip > 0) {
+      info_out->io.clipDistances = info_out->io.genUserClip;
 
-      const unsigned int nOut = (info->io.genUserClip + 3) / 4;
+      const unsigned int nOut = (info_out->io.genUserClip + 3) / 4;
 
       for (unsigned int n = 0; n < nOut; ++n) {
-         unsigned int i = info->numOutputs++;
-         info->out[i].id = i;
-         info->out[i].sn = TGSI_SEMANTIC_CLIPDIST;
-         info->out[i].si = n;
-         info->out[i].mask = ((1 << info->io.clipDistances) - 1) >> (n * 4);
+         unsigned int i = info_out->numOutputs++;
+         info_out->out[i].id = i;
+         info_out->out[i].sn = TGSI_SEMANTIC_CLIPDIST;
+         info_out->out[i].si = n;
+         info_out->out[i].mask = ((1 << info_out->io.clipDistances) - 1) >> (n * 4);
       }
    }
 
-   return info->assignSlots(info) == 0;
+   return info->assignSlots(info_out) == 0;
 }
 
 uint32_t
@@ -1210,7 +1209,7 @@ Converter::getSlotAddress(nir_intrinsic_instr *insn, uint8_t idx, uint8_t slot)
    assert(!input || idx < PIPE_MAX_SHADER_INPUTS);
    assert(input || idx < PIPE_MAX_SHADER_OUTPUTS);
 
-   const nv50_ir_varying *vary = input ? info->in : info->out;
+   const nv50_ir_varying *vary = input ? info_out->in : info_out->out;
    return vary[idx].slot[slot] * 4;
 }
 
@@ -1268,63 +1267,63 @@ Converter::storeTo(nir_intrinsic_instr *insn, DataFile file, operation op,
       }
 
       mkStore(op, TYPE_U32, mkSymbol(file, 0, TYPE_U32, address), indirect0,
-              split[0])->perPatch = info->out[idx].patch;
+              split[0])->perPatch = info_out->out[idx].patch;
       mkStore(op, TYPE_U32, mkSymbol(file, 0, TYPE_U32, address + 4), indirect0,
-              split[1])->perPatch = info->out[idx].patch;
+              split[1])->perPatch = info_out->out[idx].patch;
    } else {
       if (op == OP_EXPORT)
          src = mkMov(getSSA(size), src, ty)->getDef(0);
       mkStore(op, ty, mkSymbol(file, 0, ty, address), indirect0,
-              src)->perPatch = info->out[idx].patch;
+              src)->perPatch = info_out->out[idx].patch;
    }
 }
 
 bool
 Converter::parseNIR()
 {
-   info->bin.tlsSpace = nir->scratch_size;
-   info->io.clipDistances = nir->info.clip_distance_array_size;
-   info->io.cullDistances = nir->info.cull_distance_array_size;
-   info->io.layer_viewport_relative = nir->info.layer_viewport_relative;
+   info_out->bin.tlsSpace = nir->scratch_size;
+   info_out->io.clipDistances = nir->info.clip_distance_array_size;
+   info_out->io.cullDistances = nir->info.cull_distance_array_size;
+   info_out->io.layer_viewport_relative = nir->info.layer_viewport_relative;
 
    switch(prog->getType()) {
    case Program::TYPE_COMPUTE:
       info->prop.cp.numThreads[0] = nir->info.cs.local_size[0];
       info->prop.cp.numThreads[1] = nir->info.cs.local_size[1];
       info->prop.cp.numThreads[2] = nir->info.cs.local_size[2];
-      info->bin.smemSize += nir->info.cs.shared_size;
+      info_out->bin.smemSize += nir->info.cs.shared_size;
       break;
    case Program::TYPE_FRAGMENT:
-      info->prop.fp.earlyFragTests = nir->info.fs.early_fragment_tests;
+      info_out->prop.fp.earlyFragTests = nir->info.fs.early_fragment_tests;
       prog->persampleInvocation =
          (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_ID) ||
          (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_POS);
-      info->prop.fp.postDepthCoverage = nir->info.fs.post_depth_coverage;
-      info->prop.fp.readsSampleLocations =
+      info_out->prop.fp.postDepthCoverage = nir->info.fs.post_depth_coverage;
+      info_out->prop.fp.readsSampleLocations =
          (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_POS);
-      info->prop.fp.usesDiscard = nir->info.fs.uses_discard || nir->info.fs.uses_demote;
-      info->prop.fp.usesSampleMaskIn =
+      info_out->prop.fp.usesDiscard = nir->info.fs.uses_discard || nir->info.fs.uses_demote;
+      info_out->prop.fp.usesSampleMaskIn =
          !!(nir->info.system_values_read & SYSTEM_BIT_SAMPLE_MASK_IN);
       break;
    case Program::TYPE_GEOMETRY:
-      info->prop.gp.instanceCount = nir->info.gs.invocations;
-      info->prop.gp.maxVertices = nir->info.gs.vertices_out;
-      info->prop.gp.outputPrim = nir->info.gs.output_primitive;
+      info_out->prop.gp.instanceCount = nir->info.gs.invocations;
+      info_out->prop.gp.maxVertices = nir->info.gs.vertices_out;
+      info_out->prop.gp.outputPrim = nir->info.gs.output_primitive;
       break;
    case Program::TYPE_TESSELLATION_CONTROL:
    case Program::TYPE_TESSELLATION_EVAL:
       if (nir->info.tess.primitive_mode == GL_ISOLINES)
-         info->prop.tp.domain = GL_LINES;
+         info_out->prop.tp.domain = GL_LINES;
       else
-         info->prop.tp.domain = nir->info.tess.primitive_mode;
-      info->prop.tp.outputPatchSize = nir->info.tess.tcs_vertices_out;
-      info->prop.tp.outputPrim =
+         info_out->prop.tp.domain = nir->info.tess.primitive_mode;
+      info_out->prop.tp.outputPatchSize = nir->info.tess.tcs_vertices_out;
+      info_out->prop.tp.outputPrim =
          nir->info.tess.point_mode ? PIPE_PRIM_POINTS : PIPE_PRIM_TRIANGLES;
-      info->prop.tp.partitioning = (nir->info.tess.spacing + 1) % 3;
-      info->prop.tp.winding = !nir->info.tess.ccw;
+      info_out->prop.tp.partitioning = (nir->info.tess.spacing + 1) % 3;
+      info_out->prop.tp.winding = !nir->info.tess.ccw;
       break;
    case Program::TYPE_VERTEX:
-      info->prop.vp.usesDrawParameters =
+      info_out->prop.vp.usesDrawParameters =
          (nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BASE_VERTEX)) ||
          (nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BASE_INSTANCE)) ||
          (nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID));
@@ -1350,7 +1349,7 @@ Converter::visit(nir_function *function)
 
    setPosition(entry, true);
 
-   if (info->io.genUserClip > 0) {
+   if (info_out->io.genUserClip > 0) {
       for (int c = 0; c < 4; ++c)
          clipVtx[c] = getScratch();
    }
@@ -1383,7 +1382,7 @@ Converter::visit(nir_function *function)
 
    if ((prog->getType() == Program::TYPE_VERTEX ||
         prog->getType() == Program::TYPE_TESSELLATION_EVAL)
-       && info->io.genUserClip > 0)
+       && info_out->io.genUserClip > 0)
       handleUserClipPlanes();
 
    // TODO: for non main function this needs to be a OP_RETURN
@@ -1646,7 +1645,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          Value *src = getSrc(&insn->src[0], i);
          switch (prog->getType()) {
          case Program::TYPE_FRAGMENT: {
-            if (info->out[idx].sn == TGSI_SEMANTIC_POSITION) {
+            if (info_out->out[idx].sn == TGSI_SEMANTIC_POSITION) {
                // TGSI uses a different interface than NIR, TGSI stores that
                // value in the z component, NIR in X
                offset += 2;
@@ -1657,7 +1656,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          case Program::TYPE_GEOMETRY:
          case Program::TYPE_TESSELLATION_EVAL:
          case Program::TYPE_VERTEX: {
-            if (info->io.genUserClip > 0 && idx == (uint32_t)clipVertexOutput) {
+            if (info_out->io.genUserClip > 0 && idx == (uint32_t)clipVertexOutput) {
                mkMov(clipVtx[i], src);
                src = clipVtx[i];
             }
@@ -1704,7 +1703,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          texi->tex.r = 0xffff;
          texi->tex.s = 0xffff;
 
-         info->prop.fp.readsFramebuffer = true;
+         info_out->prop.fp.readsFramebuffer = true;
          break;
       }
 
@@ -1715,7 +1714,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t mode = 0;
 
       uint32_t idx = getIndirect(insn, op == nir_intrinsic_load_interpolated_input ? 1 : 0, 0, indirect);
-      nv50_ir_varying& vary = input ? info->in[idx] : info->out[idx];
+      nv50_ir_varying& vary = input ? info_out->in[idx] : info_out->out[idx];
 
       // see load_barycentric_* handling
       if (prog->getType() == Program::TYPE_FRAGMENT) {
@@ -1806,7 +1805,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       } else if (op == nir_intrinsic_load_barycentric_pixel) {
          mode = NV50_IR_INTERP_DEFAULT;
       } else if (op == nir_intrinsic_load_barycentric_at_sample) {
-         info->prop.fp.readsSampleLocations = true;
+         info_out->prop.fp.readsSampleLocations = true;
          mkOp1(OP_PIXLD, TYPE_U32, newDefs[0], getSrc(&insn->src[0], 0))->subOp = NV50_IR_SUBOP_PIXLD_OFFSET;
          mode = NV50_IR_INTERP_OFFSET;
       } else {
@@ -1940,7 +1939,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       for (uint8_t i = 0u; i < dest_components; ++i) {
          uint32_t address = getSlotAddress(insn, idx, i);
          loadFrom(FILE_SHADER_INPUT, 0, dType, newDefs[i], address, 0,
-                  indirectOffset, vtxBase, info->in[idx].patch);
+                  indirectOffset, vtxBase, info_out->in[idx].patch);
       }
       break;
    }
@@ -1963,12 +1962,12 @@ Converter::visit(nir_intrinsic_instr *insn)
       for (uint8_t i = 0u; i < dest_components; ++i) {
          uint32_t address = getSlotAddress(insn, idx, i);
          loadFrom(FILE_SHADER_OUTPUT, 0, dType, newDefs[i], address, 0,
-                  indirectOffset, vtxBase, info->in[idx].patch);
+                  indirectOffset, vtxBase, info_out->in[idx].patch);
       }
       break;
    }
    case nir_intrinsic_emit_vertex: {
-      if (info->io.genUserClip > 0)
+      if (info_out->io.genUserClip > 0)
          handleUserClipPlanes();
       uint32_t idx = nir_intrinsic_stream_id(insn);
       mkOp1(getOperation(op), TYPE_U32, NULL, mkImm(idx))->fixed = 1;
@@ -2020,7 +2019,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          mkStore(OP_STORE, sType, sym, indirectOffset, getSrc(&insn->src[0], i))
             ->setIndirect(0, 1, indirectBuffer);
       }
-      info->io.globalAccess |= 0x2;
+      info_out->io.globalAccess |= 0x2;
       break;
    }
    case nir_intrinsic_load_ssbo: {
@@ -2035,7 +2034,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          loadFrom(FILE_MEMORY_BUFFER, buffer, dType, newDefs[i], offset, i,
                   indirectOffset, indirectBuffer);
 
-      info->io.globalAccess |= 0x1;
+      info_out->io.globalAccess |= 0x1;
       break;
    }
    case nir_intrinsic_shared_atomic_add:
@@ -2086,7 +2085,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       atom->setIndirect(0, 1, indirectBuffer);
       atom->subOp = getSubOp(op);
 
-      info->io.globalAccess |= 0x2;
+      info_out->io.globalAccess |= 0x2;
       break;
    }
    case nir_intrinsic_global_atomic_add:
@@ -2112,7 +2111,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       atom->setIndirect(0, 0, address);
       atom->subOp = getSubOp(op);
 
-      info->io.globalAccess |= 0x2;
+      info_out->io.globalAccess |= 0x2;
       break;
    }
    case nir_intrinsic_bindless_image_atomic_add:
@@ -2182,7 +2181,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_bindless_image_atomic_dec_wrap:
          ty = getDType(insn);
          bindless = true;
-         info->io.globalAccess |= 0x2;
+         info_out->io.globalAccess |= 0x2;
          mask = 0x1;
          break;
       case nir_intrinsic_image_atomic_add:
@@ -2199,25 +2198,27 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_image_atomic_dec_wrap:
          ty = getDType(insn);
          bindless = false;
-         info->io.globalAccess |= 0x2;
+         info_out->io.globalAccess |= 0x2;
          mask = 0x1;
          break;
       case nir_intrinsic_bindless_image_load:
       case nir_intrinsic_image_load:
          ty = TYPE_U32;
          bindless = op == nir_intrinsic_bindless_image_load;
-         info->io.globalAccess |= 0x1;
+         info_out->io.globalAccess |= 0x1;
          lod_src = 4;
          break;
       case nir_intrinsic_bindless_image_store:
       case nir_intrinsic_image_store:
          ty = TYPE_U32;
+         mask = 0xf;
          bindless = op == nir_intrinsic_bindless_image_store;
-         info->io.globalAccess |= 0x2;
+         info_out->io.globalAccess |= 0x2;
          lod_src = 5;
          mask = 0xf;
          break;
       case nir_intrinsic_bindless_image_samples:
+         mask = 0x8;
       case nir_intrinsic_image_samples:
          ty = TYPE_U32;
          bindless = op == nir_intrinsic_bindless_image_samples;
@@ -2301,7 +2302,7 @@ Converter::visit(nir_intrinsic_instr *insn)
    }
    case nir_intrinsic_control_barrier: {
       // TODO: add flag to shader_info
-      info->numBarriers = 1;
+      info_out->numBarriers = 1;
       Instruction *bar = mkOp2(OP_BAR, TYPE_U32, NULL, mkImm(0), mkImm(0));
       bar->fixed = 1;
       bar->subOp = NV50_IR_SUBOP_BAR_SYNC;
@@ -2336,7 +2337,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       for (auto i = 0u; i < dest_components; ++i)
          loadFrom(FILE_MEMORY_GLOBAL, 0, dType, newDefs[i], offset, i, indirectOffset);
 
-      info->io.globalAccess |= 0x1;
+      info_out->io.globalAccess |= 0x1;
       break;
    }
    case nir_intrinsic_store_global: {
@@ -2360,7 +2361,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          }
       }
 
-      info->io.globalAccess |= 0x2;
+      info_out->io.globalAccess |= 0x2;
       break;
    }
    default:
@@ -3181,16 +3182,17 @@ Converter::run()
 namespace nv50_ir {
 
 bool
-Program::makeFromNIR(struct nv50_ir_prog_info *info)
+Program::makeFromNIR(struct nv50_ir_prog_info *info,
+                     struct nv50_ir_prog_info_out *info_out)
 {
    nir_shader *nir = (nir_shader*)info->bin.source;
-   Converter converter(this, nir, info);
+   Converter converter(this, nir, info, info_out);
    bool result = converter.run();
    if (!result)
       return result;
    LoweringHelper lowering;
    lowering.run(this);
-   tlsSize = info->bin.tlsSpace;
+   tlsSize = info_out->bin.tlsSpace;
    return result;
 }
 

@@ -352,7 +352,7 @@ CodeEmitter::prepareEmission(BasicBlock *bb)
 }
 
 bool
-Program::emitBinary(struct nv50_ir_prog_info *info)
+Program::emitBinary(struct nv50_ir_prog_info_out *info)
 {
    CodeEmitter *emit = target->getCodeEmitter(progType);
 
