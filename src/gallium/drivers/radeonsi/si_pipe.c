@@ -1127,11 +1127,11 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 					   sscreen->info.chip_class >= GFX10;
 
 	/* Only enable primitive binning on APUs by default. */
-	sscreen->dpbb_allowed = sscreen->info.family == CHIP_RAVEN ||
-				sscreen->info.family == CHIP_RAVEN2;
+	sscreen->dpbb_allowed = sscreen->info.chip_class >= GFX9 &&
+				!sscreen->info.has_dedicated_vram;
 
-	sscreen->dfsm_allowed = sscreen->info.family == CHIP_RAVEN ||
-				sscreen->info.family == CHIP_RAVEN2;
+	sscreen->dfsm_allowed = sscreen->info.chip_class >= GFX9 &&
+				!sscreen->info.has_dedicated_vram;
 
 	/* Process DPBB enable flags. */
 	if (sscreen->debug_flags & DBG(DPBB)) {
