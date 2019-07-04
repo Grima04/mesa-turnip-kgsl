@@ -192,7 +192,7 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
 	if (!size)
 		return;
 
-	unsigned clear_alignment = MIN2(clear_value_size, 4);
+	MAYBE_UNUSED unsigned clear_alignment = MIN2(clear_value_size, 4);
 
 	assert(clear_value_size != 3 && clear_value_size != 6); /* 12 is allowed. */
 	assert(offset % clear_alignment == 0);
