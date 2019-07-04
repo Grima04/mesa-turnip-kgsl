@@ -1724,6 +1724,11 @@ emit_fetch_system_value(
       atype = TGSI_TYPE_UNSIGNED;
       break;
 
+   case TGSI_SEMANTIC_HELPER_INVOCATION:
+      res = LLVMBuildNot(gallivm->builder, lp_build_mask_value(bld->mask), "");
+      atype = TGSI_TYPE_UNSIGNED;
+      break;
+
    default:
       assert(!"unexpected semantic in emit_fetch_system_value");
       res = bld_base->base.zero;
