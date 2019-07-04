@@ -188,35 +188,39 @@ unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index,
 
 		assert(!"invalid generic index");
 		return 0;
-	case TGSI_SEMANTIC_PSIZE:
-		return SI_MAX_IO_GENERIC + 1;
-	case TGSI_SEMANTIC_CLIPDIST:
-		assert(index <= 1);
-		return SI_MAX_IO_GENERIC + 2 + index;
 	case TGSI_SEMANTIC_FOG:
-		return SI_MAX_IO_GENERIC + 4;
-	case TGSI_SEMANTIC_LAYER:
-		return SI_MAX_IO_GENERIC + 5;
-	case TGSI_SEMANTIC_VIEWPORT_INDEX:
-		return SI_MAX_IO_GENERIC + 6;
-	case TGSI_SEMANTIC_PRIMID:
-		return SI_MAX_IO_GENERIC + 7;
+		return SI_MAX_IO_GENERIC + 1;
 	case TGSI_SEMANTIC_COLOR:
 		assert(index < 2);
-		return SI_MAX_IO_GENERIC + 8 + index;
+		return SI_MAX_IO_GENERIC + 2 + index;
 	case TGSI_SEMANTIC_BCOLOR:
 		assert(index < 2);
 		/* If it's a varying, COLOR and BCOLOR alias. */
 		if (is_varying)
-			return SI_MAX_IO_GENERIC + 8 + index;
+			return SI_MAX_IO_GENERIC + 2 + index;
 		else
-			return SI_MAX_IO_GENERIC + 10 + index;
+			return SI_MAX_IO_GENERIC + 4 + index;
 	case TGSI_SEMANTIC_TEXCOORD:
 		assert(index < 8);
-		return SI_MAX_IO_GENERIC + 12 + index;
+		return SI_MAX_IO_GENERIC + 6 + index;
+
+	/* These are rarely used between LS and HS or ES and GS. */
+	case TGSI_SEMANTIC_CLIPDIST:
+		assert(index < 2);
+		return SI_MAX_IO_GENERIC + 6 + 8 + index;
 	case TGSI_SEMANTIC_CLIPVERTEX:
-		STATIC_ASSERT(SI_MAX_IO_GENERIC + 12 + 8 <= 63);
-		return SI_MAX_IO_GENERIC + 12 + 8;
+		return SI_MAX_IO_GENERIC + 6 + 8 + 2;
+	case TGSI_SEMANTIC_PSIZE:
+		return SI_MAX_IO_GENERIC + 6 + 8 + 3;
+
+	/* These can't be written by LS, HS, and ES. */
+	case TGSI_SEMANTIC_LAYER:
+		return SI_MAX_IO_GENERIC + 6 + 8 + 4;
+	case TGSI_SEMANTIC_VIEWPORT_INDEX:
+		return SI_MAX_IO_GENERIC + 6 + 8 + 5;
+	case TGSI_SEMANTIC_PRIMID:
+		STATIC_ASSERT(SI_MAX_IO_GENERIC + 6 + 8 + 6 <= 63);
+		return SI_MAX_IO_GENERIC + 6 + 8 + 6;
 	default:
 		fprintf(stderr, "invalid semantic name = %u\n", semantic_name);
 		assert(!"invalid semantic name");
