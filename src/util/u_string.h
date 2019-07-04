@@ -65,37 +65,6 @@ util_strchrnul(const char *s, char c)
 
 #ifdef _WIN32
 
-#define vsnprintf util_vsnprintf
-static inline int
-util_vsnprintf(char *str, size_t size, const char *format, va_list ap)
-{
-   /* We need to use _vscprintf to calculate the length as vsnprintf returns -1
-    * if the number of characters to write is greater than count.
-    */
-   va_list ap_copy;
-   int ret;
-   va_copy(ap_copy, ap);
-   ret = _vsnprintf(str, size, format, ap);
-   if (ret < 0) {
-      ret = _vscprintf(format, ap_copy);
-   }
-   va_end(ap_copy);
-   return ret;
-}
-
-#define snprintf util_snprintf
-static inline int
-   PRINTFLIKE(3, 4)
-util_snprintf(char *str, size_t size, const char *format, ...)
-{
-   va_list ap;
-   int ret;
-   va_start(ap, format);
-   ret = vsnprintf(str, size, format, ap);
-   va_end(ap);
-   return ret;
-}
-
 #define sprintf util_sprintf
 static inline void
    PRINTFLIKE(2, 3)
@@ -128,56 +97,6 @@ util_vasprintf(char **ret, const char *format, va_list ap)
    /* Print to buffer */
    return vsnprintf(*ret, r + 1, format, ap);
 }
-
-#define strncat util_strncat
-static inline char*
-util_strncat(char *dst, const char *src, size_t n)
-{
-   char *p = dst + strlen(dst);
-   const char *q = src;
-   size_t i;
-
-   for (i = 0; i < n && *q != '\0'; ++i)
-       *p++ = *q++;
-   *p = '\0';
-
-   return dst;
-}
-
-#define strcmp util_strcmp
-static inline int
-util_strcmp(const char *s1, const char *s2)
-{
-   unsigned char u1, u2;
-
-   while (1) {
-      u1 = (unsigned char) *s1++;
-      u2 = (unsigned char) *s2++;
-      if (u1 != u2)
-	 return u1 - u2;
-      if (u1 == '\0')
-	 return 0;
-   }
-   return 0;
-}
-
-#define strncmp util_strncmp
-static inline int
-util_strncmp(const char *s1, const char *s2, size_t n)
-{
-   unsigned char u1, u2;
-
-   while (n-- > 0) {
-      u1 = (unsigned char) *s1++;
-      u2 = (unsigned char) *s2++;
-      if (u1 != u2)
-	 return u1 - u2;
-      if (u1 == '\0')
-	 return 0;
-   }
-   return 0;
-}
-
 
 
 #define strcasecmp stricmp
