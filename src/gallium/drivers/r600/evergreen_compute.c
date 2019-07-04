@@ -84,13 +84,12 @@ writable images will consume TEX slots, VTX slots too because of linear indexing
 
 */
 
-MAYBE_UNUSED
+#ifdef HAVE_OPENCL
 static void radeon_shader_binary_init(struct r600_shader_binary *b)
 {
 	memset(b, 0, sizeof(*b));
 }
 
-MAYBE_UNUSED
 static void radeon_shader_binary_clean(struct r600_shader_binary *b)
 {
 	if (!b)
@@ -102,6 +101,7 @@ static void radeon_shader_binary_clean(struct r600_shader_binary *b)
 	FREE(b->relocs);
 	FREE(b->disasm_string);
 }
+#endif
 
 struct r600_resource *r600_compute_buffer_alloc_vram(struct r600_screen *screen,
 						     unsigned size)
