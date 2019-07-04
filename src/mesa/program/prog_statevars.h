@@ -129,6 +129,7 @@ typedef enum gl_state_index_ {
     * currently active advanced blending equation, or zero if disabled.
     */
    STATE_ADVANCED_BLENDING_MODE,
+   STATE_ALPHA_REF,        /* alpha-test reference value */
    STATE_INTERNAL_DRIVER	/* first available state index for drivers (must be last) */
 } gl_state_index;
 

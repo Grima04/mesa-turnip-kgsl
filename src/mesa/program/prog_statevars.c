@@ -602,6 +602,10 @@ _mesa_fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                       ctx->Color.BlendEnabled, ctx->Color._AdvancedBlendMode);
          return;
 
+      case STATE_ALPHA_REF:
+         value[0] = ctx->Color.AlphaRefUnclamped;
+         return;
+
       /* XXX: make sure new tokens added here are also handled in the 
        * _mesa_program_state_flags() switch, below.
        */
@@ -711,6 +715,9 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
          return _NEW_BUFFERS;
 
       case STATE_ADVANCED_BLENDING_MODE:
+         return _NEW_COLOR;
+
+      case STATE_ALPHA_REF:
          return _NEW_COLOR;
 
       default:
@@ -918,6 +925,9 @@ append_token(char *dst, gl_state_index k)
       break;
    case STATE_ADVANCED_BLENDING_MODE:
       append(dst, "AdvancedBlendingMode");
+      break;
+   case STATE_ALPHA_REF:
+      append(dst, "alphaRef");
       break;
    default:
       /* probably STATE_INTERNAL_DRIVER+i (driver private state) */
