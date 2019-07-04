@@ -326,7 +326,7 @@ intel_perf_rpstart_offset(bool end)
    return 16 + (end ? sizeof(uint32_t) : 0);
 }
 
-#if GEN_GEN >= 8 && GEN_GEN <= 11
+#if GEN_IS_HASWELL || (GEN_GEN >= 8 && GEN_GEN <= 11)
 static uint32_t
 intel_perf_counter(bool end)
 {
@@ -541,14 +541,14 @@ VkResult genX(GetQueryPoolResults)(
                                                 oa_begin, oa_end);
          gen_perf_query_result_read_gt_frequency(&result, &device->info,
                                                  *rpstat_begin, *rpstat_end);
-         gen_perf_query_result_write_mdapi(pData, stride,
-                                           &device->info,
-                                           query, &result);
-#if GEN_GEN >= 8 && GEN_GEN <= 11
-         gen_perf_query_mdapi_write_perfcntr(pData, stride, &device->info,
+#if GEN_IS_HASWELL || (GEN_GEN >= 8 && GEN_GEN <= 11)
+         gen_perf_query_result_read_perfcnts(&result, query,
                                              query_data + intel_perf_counter(false),
                                              query_data + intel_perf_counter(true));
 #endif
+         gen_perf_query_result_write_mdapi(pData, stride,
+                                           &device->info,
+                                           query, &result);
          const uint64_t *marker = query_data + intel_perf_marker_offset();
          gen_perf_query_mdapi_write_marker(pData, stride, &device->info, *marker);
          break;
@@ -913,7 +913,7 @@ void genX(CmdBeginQueryIndexedEXT)(
                                                 intel_perf_rpstart_offset(false))),
                    gen_mi_reg32(GENX(RPSTAT0_num)));
 #endif
-#if GEN_GEN >= 8 && GEN_GEN <= 11
+#if GEN_IS_HASWELL || (GEN_GEN >= 8 && GEN_GEN <= 11)
       gen_mi_store(&b, gen_mi_mem64(anv_address_add(query_addr,
                                                     intel_perf_counter(false))),
                    gen_mi_reg64(GENX(PERFCNT1_num)));
@@ -1047,7 +1047,7 @@ void genX(CmdEndQueryIndexedEXT)(
       uint32_t marker_offset = intel_perf_marker_offset();
       gen_mi_store(&b, gen_mi_mem64(anv_address_add(query_addr, marker_offset)),
                    gen_mi_imm(cmd_buffer->intel_perf_marker));
-#if GEN_GEN >= 8 && GEN_GEN <= 11
+#if GEN_IS_HASWELL || (GEN_GEN >= 8 && GEN_GEN <= 11)
       gen_mi_store(&b, gen_mi_mem64(anv_address_add(query_addr, intel_perf_counter(true))),
                    gen_mi_reg64(GENX(PERFCNT1_num)));
       gen_mi_store(&b, gen_mi_mem64(anv_address_add(query_addr, intel_perf_counter(true) + 8)),

@@ -108,8 +108,10 @@ struct gen_pipeline_stat {
  *   1 timestamp, 45 A counters, 8 B counters and 8 C counters.
  * For Gen8+
  *   1 timestamp, 1 clock, 36 A counters, 8 B counters and 8 C counters
+ *
+ * Plus 2 PERF_CNT registers.
  */
-#define MAX_OA_REPORT_COUNTERS 62
+#define MAX_OA_REPORT_COUNTERS (62 + 2)
 
 /*
  * When currently allocate only one page for pipeline statistics queries. Here
@@ -180,10 +182,10 @@ struct gen_perf_query_counter {
    union {
       uint64_t (*oa_counter_read_uint64)(struct gen_perf_config *perf,
                                          const struct gen_perf_query_info *query,
-                                         const uint64_t *accumulator);
+                                         const struct gen_perf_query_result *results);
       float (*oa_counter_read_float)(struct gen_perf_config *perf,
                                      const struct gen_perf_query_info *query,
-                                     const uint64_t *accumulator);
+                                     const struct gen_perf_query_result *results);
       struct gen_pipeline_stat pipeline_stat;
    };
 };
@@ -231,6 +233,7 @@ struct gen_perf_query_info {
    int a_offset;
    int b_offset;
    int c_offset;
+   int perfcnt_offset;
 
    struct gen_perf_registers config;
 };
@@ -282,6 +285,7 @@ struct gen_perf_config {
       uint64_t gt_min_freq;         /** $GpuMinFrequency */
       uint64_t gt_max_freq;         /** $GpuMaxFrequency */
       uint64_t revision;            /** $SkuRevisionId */
+      bool     query_mode;          /** $QueryMode */
    } sys_vars;
 
    /* OA metric sets, indexed by GUID, as know by Mesa at build time, to
@@ -369,6 +373,13 @@ void gen_perf_query_result_read_gt_frequency(struct gen_perf_query_result *resul
                                              const struct gen_device_info *devinfo,
                                              const uint32_t start,
                                              const uint32_t end);
+
+/** Store PERFCNT registers values.
+ */
+void gen_perf_query_result_read_perfcnts(struct gen_perf_query_result *result,
+                                         const struct gen_perf_query_info *query,
+                                         const uint64_t *start,
+                                         const uint64_t *end);
 
 /** Accumulate the delta between 2 OA reports into result for a given query.
  */

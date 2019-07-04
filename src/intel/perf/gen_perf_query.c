@@ -1423,13 +1423,13 @@ get_oa_counter_data(struct gen_perf_context *perf_ctx,
             out_uint64 = (uint64_t *)(data + counter->offset);
             *out_uint64 =
                counter->oa_counter_read_uint64(perf_cfg, queryinfo,
-                                               query->oa.result.accumulator);
+                                               &query->oa.result);
             break;
          case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
             out_float = (float *)(data + counter->offset);
             *out_float =
                counter->oa_counter_read_float(perf_cfg, queryinfo,
-                                              query->oa.result.accumulator);
+                                              &query->oa.result);
             break;
          default:
             /* So far we aren't using uint32, double or bool32... */

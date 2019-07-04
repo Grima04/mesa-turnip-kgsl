@@ -54,6 +54,9 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
             result->accumulator[1 + ARRAY_SIZE(mdapi_data->ACounters) + i];
       }
 
+      mdapi_data->PerfCounter1 = result->accumulator[query->perfcnt_offset + 0];
+      mdapi_data->PerfCounter2 = result->accumulator[query->perfcnt_offset + 1];
+
       mdapi_data->ReportsCount = result->reports_accumulated;
       mdapi_data->TotalTime =
          gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
@@ -74,6 +77,9 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
          mdapi_data->NoaCntr[i] =
             result->accumulator[2 + ARRAY_SIZE(mdapi_data->OaCntr) + i];
       }
+
+      mdapi_data->PerfCounter1 = result->accumulator[query->perfcnt_offset + 0];
+      mdapi_data->PerfCounter2 = result->accumulator[query->perfcnt_offset + 1];
 
       mdapi_data->ReportId = result->hw_id;
       mdapi_data->ReportsCount = result->reports_accumulated;
@@ -105,6 +111,9 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
          mdapi_data->NoaCntr[i] =
             result->accumulator[2 + ARRAY_SIZE(mdapi_data->OaCntr) + i];
       }
+
+      mdapi_data->PerfCounter1 = result->accumulator[query->perfcnt_offset + 0];
+      mdapi_data->PerfCounter2 = result->accumulator[query->perfcnt_offset + 1];
 
       mdapi_data->ReportId = result->hw_id;
       mdapi_data->ReportsCount = result->reports_accumulated;
@@ -354,5 +363,6 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
       query->a_offset = copy_query->a_offset;
       query->b_offset = copy_query->b_offset;
       query->c_offset = copy_query->c_offset;
+      query->perfcnt_offset = copy_query->perfcnt_offset;
    }
 }

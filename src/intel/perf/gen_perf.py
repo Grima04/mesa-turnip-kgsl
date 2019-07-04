@@ -94,7 +94,15 @@ def emit_fsub(tmp_id, args):
 
 def emit_read(tmp_id, args):
     type = args[1].lower()
-    c("uint64_t tmp{0} = accumulator[query->{1}_offset + {2}];".format(tmp_id, type, args[0]))
+    c("uint64_t tmp{0} = results->accumulator[query->{1}_offset + {2}];".format(tmp_id, type, args[0]))
+    return tmp_id + 1
+
+def emit_read_reg(tmp_id, args):
+    offsets = {
+        'PERFCNT1': 0,
+        'PERFCNT2': 1,
+    }
+    c("uint64_t tmp{0} = results->accumulator[query->perfcnt_offset + {1}];".format(tmp_id, offsets[args[0]]))
     return tmp_id + 1
 
 def emit_uadd(tmp_id, args):
@@ -144,6 +152,7 @@ ops["FMAX"] = (2, emit_fmax)
 ops["FMUL"] = (2, emit_fmul)
 ops["FSUB"] = (2, emit_fsub)
 ops["READ"] = (2, emit_read)
+ops["READ_REG"] = (1, emit_read_reg)
 ops["UADD"] = (2, emit_uadd)
 ops["UDIV"] = (2, emit_udiv)
 ops["UMUL"] = (2, emit_umul)
@@ -193,6 +202,7 @@ hw_vars["$GpuTimestampFrequency"] = "perf->sys_vars.timestamp_frequency"
 hw_vars["$GpuMinFrequency"] = "perf->sys_vars.gt_min_freq"
 hw_vars["$GpuMaxFrequency"] = "perf->sys_vars.gt_max_freq"
 hw_vars["$SkuRevisionId"] = "perf->sys_vars.revision"
+hw_vars["$QueryMode"] = "perf->sys_vars.query_mode"
 
 def output_rpn_equation_code(set, counter, equation):
     c("/* RPN equation: " + equation + " */")
@@ -214,7 +224,7 @@ def output_rpn_equation_code(set, counter, equation):
                         operand = hw_vars[operand]
                     elif operand in set.counter_vars:
                         reference = set.counter_vars[operand]
-                        operand = set.read_funcs[operand[1:]] + "(perf, query, accumulator)"
+                        operand = set.read_funcs[operand[1:]] + "(perf, query, results)"
                     else:
                         raise Exception("Failed to resolve variable " + operand + " in equation " + equation + " for " + set.name + " :: " + counter.get('name'));
                 args.append(operand)
@@ -234,7 +244,7 @@ def output_rpn_equation_code(set, counter, equation):
     if value in hw_vars:
         value = hw_vars[value]
     if value in set.counter_vars:
-        value = set.read_funcs[value[1:]] + "(perf, query, accumulator)"
+        value = set.read_funcs[value[1:]] + "(perf, query, results)"
 
     c("\nreturn " + value + ";")
 
@@ -288,7 +298,7 @@ def output_counter_read(gen, set, counter):
         c(counter.read_sym + "(UNUSED struct gen_perf_config *perf,\n")
         c_indent(len(counter.read_sym) + 1)
         c("const struct gen_perf_query_info *query,\n")
-        c("const uint64_t *accumulator)\n")
+        c("const struct gen_perf_query_result *results)\n")
         c_outdent(len(counter.read_sym) + 1)
 
         c("{")
@@ -729,19 +739,21 @@ def main():
                     query->oa_format = I915_OA_FORMAT_A45_B8_C8;
                     /* Accumulation buffer offsets... */
                     query->gpu_time_offset = 0;
-                    query->a_offset = 1;
-                    query->b_offset = 46;
-                    query->c_offset = 54;
+                    query->a_offset = query->gpu_time_offset + 1;
+                    query->b_offset = query->a_offset + 45;
+                    query->c_offset = query->b_offset + 8;
+                    query->perfcnt_offset = query->c_offset + 8;
                 """))
             else:
                 c(textwrap.dedent("""\
                     query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
                     /* Accumulation buffer offsets... */
                     query->gpu_time_offset = 0;
-                    query->gpu_clock_offset = 1;
-                    query->a_offset = 2;
-                    query->b_offset = 38;
-                    query->c_offset = 46;
+                    query->gpu_clock_offset = query->gpu_time_offset + 1;
+                    query->a_offset = query->gpu_clock_offset + 1;
+                    query->b_offset = query->a_offset + 36;
+                    query->c_offset = query->b_offset + 8;
+                    query->perfcnt_offset = query->c_offset + 8;
                 """))
 
 

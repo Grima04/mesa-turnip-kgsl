@@ -421,13 +421,13 @@ anv_perf_write_pass_results(struct gen_perf_config *perf,
             results[c].uint64 =
                counter_pass->counter->oa_counter_read_uint64(perf,
                                                              counter_pass->query,
-                                                             accumulated_results->accumulator);
+                                                             accumulated_results);
             break;
          case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
             results[c].float32 =
                counter_pass->counter->oa_counter_read_float(perf,
                                                             counter_pass->query,
-                                                            accumulated_results->accumulator);
+                                                            accumulated_results);
             break;
          default:
             /* So far we aren't using uint32, double or bool32... */
