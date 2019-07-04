@@ -238,7 +238,6 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
 int
 panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool is_scanout)
 {
-        struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[0];
 	int ret;
 
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
@@ -256,9 +255,12 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool
         }
 
         if (job->first_tiler.gpu || job->clear) {
-                struct panfrost_resource *res = pan_resource(surf->texture);
-                assert(res->bo);
-                panfrost_job_add_bo(job, res->bo);
+                struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[0];
+                if (surf) {
+                        struct panfrost_resource *res = pan_resource(surf->texture);
+                        assert(res->bo);
+                        panfrost_job_add_bo(job, res->bo);
+                }
                 ret = panfrost_drm_submit_job(ctx, panfrost_fragment_job(ctx, has_draws), PANFROST_JD_REQ_FS);
                 assert(!ret);
         }
