@@ -145,6 +145,20 @@ const ppir_op_info ppir_op_infos[] = {
          PPIR_INSTR_SLOT_END
       },
    },
+   [ppir_op_ddx] = {
+      .name = "ddx",
+      .slots = (int []) {
+         PPIR_INSTR_SLOT_ALU_SCL_ADD, PPIR_INSTR_SLOT_ALU_VEC_ADD,
+         PPIR_INSTR_SLOT_END
+      },
+   },
+   [ppir_op_ddy] = {
+      .name = "ddy",
+      .slots = (int []) {
+         PPIR_INSTR_SLOT_ALU_SCL_ADD, PPIR_INSTR_SLOT_ALU_VEC_ADD,
+         PPIR_INSTR_SLOT_END
+      },
+   },
    [ppir_op_and] = {
       .name = "and",
       .slots = (int []) {

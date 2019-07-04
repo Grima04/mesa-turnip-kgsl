@@ -114,6 +114,24 @@ static bool ppir_lower_load(ppir_block *block, ppir_node *node)
    return true;
 }
 
+static bool ppir_lower_ddxy(ppir_block *block, ppir_node *node)
+{
+   assert(node->type == ppir_node_type_alu);
+   ppir_alu_node *alu = ppir_node_to_alu(node);
+
+   alu->src[1] = alu->src[0];
+   if (node->op == ppir_op_ddx)
+      alu->src[1].negate = !alu->src[1].negate;
+   else if (node->op == ppir_op_ddy)
+      alu->src[0].negate = !alu->src[0].negate;
+   else
+      assert(0);
+
+   alu->num_src = 2;
+
+   return true;
+}
+
 static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
 {
    ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
@@ -299,6 +317,8 @@ static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_abs] = ppir_lower_abs,
    [ppir_op_neg] = ppir_lower_neg,
    [ppir_op_const] = ppir_lower_const,
+   [ppir_op_ddx] = ppir_lower_ddxy,
+   [ppir_op_ddy] = ppir_lower_ddxy,
    [ppir_op_lt] = ppir_lower_swap_args,
    [ppir_op_le] = ppir_lower_swap_args,
    [ppir_op_load_texture] = ppir_lower_texture,

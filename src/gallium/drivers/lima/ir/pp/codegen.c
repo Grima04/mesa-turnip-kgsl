@@ -350,6 +350,12 @@ static void ppir_codegen_encode_vec_add(ppir_node *node, void *code)
    case ppir_op_min:
       f->op = ppir_codegen_vec4_acc_op_min;
       break;
+   case ppir_op_ddx:
+      f->op = ppir_codegen_vec4_acc_op_dFdx;
+      break;
+   case ppir_op_ddy:
+      f->op = ppir_codegen_vec4_acc_op_dFdy;
+      break;
    default:
       break;
    }
@@ -425,6 +431,12 @@ static void ppir_codegen_encode_scl_add(ppir_node *node, void *code)
       break;
    case ppir_op_select:
       f->op = ppir_codegen_float_acc_op_sel;
+      break;
+   case ppir_op_ddx:
+      f->op = ppir_codegen_float_acc_op_dFdx;
+      break;
+   case ppir_op_ddy:
+      f->op = ppir_codegen_float_acc_op_dFdy;
       break;
    default:
       break;
@@ -657,6 +669,18 @@ static int encode_instr(ppir_instr *instr, void *code, void *last_code)
 
    if (instr->slots[PPIR_INSTR_SLOT_TEXLD])
       ctrl->sync = true;
+
+   if (instr->slots[PPIR_INSTR_SLOT_ALU_VEC_ADD]) {
+      ppir_node *node = instr->slots[PPIR_INSTR_SLOT_ALU_VEC_ADD];
+      if (node->op == ppir_op_ddx || node->op == ppir_op_ddy)
+         ctrl->sync = true;
+   }
+
+   if (instr->slots[PPIR_INSTR_SLOT_ALU_SCL_ADD]) {
+      ppir_node *node = instr->slots[PPIR_INSTR_SLOT_ALU_SCL_ADD];
+      if (node->op == ppir_op_ddx || node->op == ppir_op_ddy)
+         ctrl->sync = true;
+   }
 
    for (int i = 0; i < 2; i++) {
       if (instr->constant[i].num) {
