@@ -434,13 +434,6 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset,
       prog->gp.vert_count = CLAMP(info->prop.gp.maxVertices, 1, 1024);
    }
 
-   if (prog->type == PIPE_SHADER_COMPUTE) {
-      prog->cp.syms = info->bin.syms;
-      prog->cp.num_syms = info->bin.numSyms;
-   } else {
-      FREE(info->bin.syms);
-   }
-
    if (prog->pipe.stream_output.num_outputs)
       prog->so = nv50_program_create_strmout_state(info,
                                                    &prog->pipe.stream_output);
@@ -542,9 +535,6 @@ nv50_program_destroy(struct nv50_context *nv50, struct nv50_program *p)
    FREE(p->fixups);
    FREE(p->interps);
    FREE(p->so);
-
-   if (type == PIPE_SHADER_COMPUTE)
-      FREE(p->cp.syms);
 
    memset(p, 0, sizeof(*p));
 

@@ -638,8 +638,6 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
       NOUVEAU_ERR("shader translation failed: %i\n", ret);
       goto out;
    }
-   if (prog->type != PIPE_SHADER_COMPUTE)
-      FREE(info->bin.syms);
 
    prog->code = info->bin.code;
    prog->code_size = info->bin.codeSize;
@@ -676,8 +674,6 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
       ret = nvc0_fp_gen_header(prog, info);
       break;
    case PIPE_SHADER_COMPUTE:
-      prog->cp.syms = info->bin.syms;
-      prog->cp.num_syms = info->bin.numSyms;
       break;
    default:
       ret = -1;
@@ -956,8 +952,6 @@ nvc0_program_destroy(struct nvc0_context *nvc0, struct nvc0_program *prog)
    FREE(prog->code); /* may be 0 for hardcoded shaders */
    FREE(prog->relocs);
    FREE(prog->fixups);
-   if (prog->type == PIPE_SHADER_COMPUTE && prog->cp.syms)
-      FREE(prog->cp.syms);
    if (prog->tfb) {
       if (nvc0->state.tfb == prog->tfb)
          nvc0->state.tfb = NULL;
@@ -968,21 +962,6 @@ nvc0_program_destroy(struct nvc0_context *nvc0, struct nvc0_program *prog)
 
    prog->pipe = pipe;
    prog->type = type;
-}
-
-uint32_t
-nvc0_program_symbol_offset(const struct nvc0_program *prog, uint32_t label)
-{
-   const struct nv50_ir_prog_symbol *syms =
-      (const struct nv50_ir_prog_symbol *)prog->cp.syms;
-   unsigned base = 0;
-   unsigned i;
-   if (prog->type != PIPE_SHADER_COMPUTE)
-      base = GF100_SHADER_HEADER_SIZE;
-   for (i = 0; i < prog->cp.num_syms; ++i)
-      if (syms[i].label == label)
-         return prog->code_base + base + syms[i].offset;
-   return prog->code_base; /* no symbols or symbol not found */
 }
 
 void
