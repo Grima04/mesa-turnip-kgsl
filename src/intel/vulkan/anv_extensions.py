@@ -106,6 +106,7 @@ EXTENSIONS = [
     Extension('VK_KHR_relaxed_block_layout',              1, True),
     Extension('VK_KHR_sampler_mirror_clamp_to_edge',      1, True),
     Extension('VK_KHR_sampler_ycbcr_conversion',          1, True),
+    Extension('VK_KHR_separate_depth_stencil_layouts',    1, True),
     Extension('VK_KHR_shader_atomic_int64',               1,
               'device->info.gen >= 9 && device->use_softpin'),
     Extension('VK_KHR_shader_clock',                      1, True),

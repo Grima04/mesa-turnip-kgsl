@@ -505,7 +505,8 @@ static inline bool
 vk_image_layout_stencil_write_optimal(VkImageLayout layout)
 {
    return layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ||
-          layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+          layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL ||
+          layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR;
 }
 
 /* Transitions a HiZ-enabled depth buffer from one layout to another. Unless
@@ -526,18 +527,19 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    /* On gen7, we have to store a texturable version of the stencil buffer in
     * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
-    * forth at strategic points.  Stencil writes are only allowed in three
+    * forth at strategic points. Stencil writes are only allowed in following
     * layouts:
     *
     *  - VK_IMAGE_LAYOUT_GENERAL
     *  - VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+    *  - VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR
     *
     * For general, we have no nice opportunity to transition so we do the copy
-    * to the shadow unconditionally at the end of the subpass.  For transfer
-    * destinations, we can update it as part of the transfer op.  For the
-    * other two, we delay the copy until a transition into some other layout.
+    * to the shadow unconditionally at the end of the subpass. For transfer
+    * destinations, we can update it as part of the transfer op. For the other
+    * layouts, we delay the copy until a transition into some other layout.
     */
    if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
        vk_image_layout_stencil_write_optimal(initial_layout) &&
@@ -1293,6 +1295,7 @@ genX(cmd_buffer_setup_attachments)(struct anv_cmd_buffer *cmd_buffer,
          }
 
          state->attachments[i].current_layout = att->initial_layout;
+         state->attachments[i].current_stencil_layout = att->stencil_initial_layout;
          state->attachments[i].pending_clear_aspects = clear_aspects;
          state->attachments[i].pending_load_aspects = load_aspects;
          if (clear_aspects)
@@ -4271,7 +4274,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
             (att_state->fast_clear && !att_state->clear_color_is_zero_one) ||
             att_state->input_aux_usage != att_state->aux_usage;
 
-      VkImageLayout target_layout;
+      VkImageLayout target_layout, target_stencil_layout;
       if (iview->aspect_mask & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV &&
           !input_needs_resolve) {
          /* Layout transitions before the final only help to enable sampling
@@ -4282,6 +4285,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          target_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       } else {
          target_layout = subpass->attachments[i].layout;
+         target_stencil_layout = subpass->attachments[i].stencil_layout;
       }
 
       uint32_t base_layer, layer_count;
@@ -4314,9 +4318,11 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          transition_stencil_buffer(cmd_buffer, image,
                                    iview->planes[0].isl.base_level, 1,
                                    base_layer, layer_count,
-                                   att_state->current_layout, target_layout);
+                                   att_state->current_stencil_layout,
+                                   target_stencil_layout);
       }
       att_state->current_layout = target_layout;
+      att_state->current_stencil_layout = target_stencil_layout;
 
       if (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
          assert(att_state->pending_clear_aspects == VK_IMAGE_ASPECT_COLOR_BIT);
@@ -4676,13 +4682,13 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
 
       const VkRect2D render_area = cmd_buffer->state.render_area;
 
+      struct anv_attachment_state *src_state =
+         &cmd_state->attachments[src_att];
+      struct anv_attachment_state *dst_state =
+         &cmd_state->attachments[dst_att];
+
       if ((src_iview->image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
           subpass->depth_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
-
-         struct anv_attachment_state *src_state =
-            &cmd_state->attachments[src_att];
-         struct anv_attachment_state *dst_state =
-            &cmd_state->attachments[dst_att];
 
          /* MSAA resolves sample from the source attachment.  Transition the
           * depth attachment first to get rid of any HiZ that we may not be
@@ -4742,6 +4748,9 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       if ((src_iview->image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
           subpass->stencil_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
 
+         src_state->current_stencil_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+         dst_state->current_stencil_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
          enum isl_aux_usage src_aux_usage = ISL_AUX_USAGE_NONE;
          enum isl_aux_usage dst_aux_usage = ISL_AUX_USAGE_NONE;
 
@@ -4767,18 +4776,19 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
 #if GEN_GEN == 7
    /* On gen7, we have to store a texturable version of the stencil buffer in
     * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
-    * forth at strategic points.  Stencil writes are only allowed in three
+    * forth at strategic points. Stencil writes are only allowed in following
     * layouts:
     *
     *  - VK_IMAGE_LAYOUT_GENERAL
     *  - VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+    *  - VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR
     *
     * For general, we have no nice opportunity to transition so we do the copy
-    * to the shadow unconditionally at the end of the subpass.  For transfer
-    * destinations, we can update it as part of the transfer op.  For the
-    * other two, we delay the copy until a transition into some other layout.
+    * to the shadow unconditionally at the end of the subpass. For transfer
+    * destinations, we can update it as part of the transfer op. For the other
+    * layouts, we delay the copy until a transition into some other layout.
     */
    if (subpass->depth_stencil_attachment) {
       uint32_t a = subpass->depth_stencil_attachment->attachment;
@@ -4793,7 +4803,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                                     VK_IMAGE_ASPECT_STENCIL_BIT);
 
          if (image->planes[plane].shadow_surface.isl.size_B > 0 &&
-             att_state->current_layout == VK_IMAGE_LAYOUT_GENERAL) {
+             att_state->current_stencil_layout == VK_IMAGE_LAYOUT_GENERAL) {
             assert(image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT);
             anv_image_copy_to_shadow(cmd_buffer, image,
                                      VK_IMAGE_ASPECT_STENCIL_BIT,
@@ -4870,6 +4880,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       /* Transition the image into the final layout for this render pass */
       VkImageLayout target_layout =
          cmd_state->pass->attachments[a].final_layout;
+      VkImageLayout target_stencil_layout =
+         cmd_state->pass->attachments[a].stencil_final_layout;
 
       uint32_t base_layer, layer_count;
       if (image->type == VK_IMAGE_TYPE_3D) {
@@ -4898,7 +4910,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          transition_stencil_buffer(cmd_buffer, image,
                                    iview->planes[0].isl.base_level, 1,
                                    base_layer, layer_count,
-                                   att_state->current_layout, target_layout);
+                                   att_state->current_stencil_layout,
+                                   target_stencil_layout);
       }
    }
 

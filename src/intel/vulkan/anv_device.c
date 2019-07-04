@@ -1188,6 +1188,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR: {
+         VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *features =
+            (VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR *)ext;
+         features->separateDepthStencilLayouts = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
          VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *features = (void *)ext;
          features->shaderBufferInt64Atomics =

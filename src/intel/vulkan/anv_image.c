@@ -1146,6 +1146,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
 
 
    /* Sampling Layouts */
+   case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL_KHR:
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
    case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
       assert((image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) == 0);
@@ -1159,6 +1160,9 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
       } else {
          return image->planes[plane].aux_usage;
       }
+
+   case VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL_KHR:
+      return ISL_AUX_USAGE_NONE;
 
 
    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: {
@@ -1180,6 +1184,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
    /* Rendering Layouts */
    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
       assert(aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
+   case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR:
       if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE) {
          assert(image->samples == 1);
          return ISL_AUX_USAGE_CCS_D;
@@ -1188,6 +1193,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
          return image->planes[plane].aux_usage;
       }
 
+   case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR:
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
       assert(aspect == VK_IMAGE_ASPECT_DEPTH_BIT);

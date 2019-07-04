@@ -2412,6 +2412,7 @@ struct anv_attachment_state {
    struct anv_surface_state                     input;
 
    VkImageLayout                                current_layout;
+   VkImageLayout                                current_stencil_layout;
    VkImageAspectFlags                           pending_clear_aspects;
    VkImageAspectFlags                           pending_load_aspects;
    bool                                         fast_clear;
@@ -3744,6 +3745,9 @@ struct anv_subpass_attachment {
    VkImageUsageFlagBits usage;
    uint32_t attachment;
    VkImageLayout layout;
+
+   /* Used only with attachment containing stencil data. */
+   VkImageLayout stencil_layout;
 };
 
 struct anv_subpass {
@@ -3793,6 +3797,9 @@ struct anv_render_pass_attachment {
    VkImageLayout                                initial_layout;
    VkImageLayout                                final_layout;
    VkImageLayout                                first_subpass_layout;
+
+   VkImageLayout                                stencil_initial_layout;
+   VkImageLayout                                stencil_final_layout;
 
    /* The subpass id in which the attachment will be used last. */
    uint32_t                                     last_subpass_idx;
