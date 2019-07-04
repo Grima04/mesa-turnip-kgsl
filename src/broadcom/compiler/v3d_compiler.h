@@ -634,6 +634,9 @@ struct v3d_compile {
         struct qinst *last_thrsw;
         bool last_thrsw_at_top_level;
 
+        bool emitted_tlb_load;
+        bool lock_scoreboard_on_first_thrsw;
+
         bool failed;
 };
 
@@ -700,6 +703,7 @@ struct v3d_fs_prog_data {
         bool disable_ez;
         bool uses_center_w;
         bool uses_implicit_point_line_varyings;
+        bool lock_scoreboard_on_first_thrsw;
 };
 
 struct v3d_compute_prog_data {

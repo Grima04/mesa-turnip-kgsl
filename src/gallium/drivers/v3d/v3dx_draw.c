@@ -373,6 +373,8 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                         v3d->prog.fs->prog_data.fs->uses_center_w;
 
 #if V3D_VERSION >= 40
+               shader.do_scoreboard_wait_on_first_thread_switch =
+                        v3d->prog.fs->prog_data.fs->lock_scoreboard_on_first_thrsw;
                shader.disable_implicit_point_line_varyings =
                         !v3d->prog.fs->prog_data.fs->uses_implicit_point_line_varyings;
 #endif

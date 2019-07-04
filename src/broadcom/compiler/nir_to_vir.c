@@ -122,6 +122,13 @@ vir_emit_thrsw(struct v3d_compile *c)
         c->last_thrsw = vir_NOP(c);
         c->last_thrsw->qpu.sig.thrsw = true;
         c->last_thrsw_at_top_level = !c->in_control_flow;
+
+        /* We need to lock the scoreboard before any tlb acess happens. If this
+         * thread switch comes after we have emitted a tlb load, then it means
+         * that we can't lock on the last thread switch any more.
+         */
+        if (c->emitted_tlb_load)
+                c->lock_scoreboard_on_first_thrsw = true;
 }
 
 static uint32_t
@@ -1645,6 +1652,27 @@ vir_emit_tlb_color_read(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         int component = nir_intrinsic_component(instr);
         assert(component < 4);
+
+        /* We need to emit our TLB reads after we have acquired the scoreboard
+         * lock, or the GPU will hang. Usually, we do our scoreboard locking on
+         * the last thread switch to improve parallelism, however, that is only
+         * guaranteed to happen before the tlb color writes.
+         *
+         * To fix that, we make sure we always emit a thread switch before the
+         * first tlb color read. If that happens to be the last thread switch
+         * we emit, then everything is fine, but otherwsie, if any code after
+         * this point needs to emit additional thread switches, then we will
+         * switch the strategy to locking the scoreboard on the first thread
+         * switch instead -- see vir_emit_thrsw().
+         */
+        if (!c->emitted_tlb_load) {
+                if (!c->last_thrsw_at_top_level) {
+                        assert(c->devinfo->ver >= 41);
+                        vir_emit_thrsw(c);
+                }
+
+                c->emitted_tlb_load = true;
+        }
 
         struct qreg *color_reads =
                 &c->color_reads[(rt * V3D_MAX_SAMPLES + sample_index) * 4];

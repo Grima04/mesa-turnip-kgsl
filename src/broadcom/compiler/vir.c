@@ -692,6 +692,8 @@ v3d_fs_set_prog_data(struct v3d_compile *c,
         prog_data->uses_center_w = c->uses_center_w;
         prog_data->uses_implicit_point_line_varyings =
                 c->uses_implicit_point_line_varyings;
+        prog_data->lock_scoreboard_on_first_thrsw =
+                c->lock_scoreboard_on_first_thrsw;
 }
 
 static void
