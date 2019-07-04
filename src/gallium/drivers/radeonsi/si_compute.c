@@ -810,12 +810,19 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 	struct si_screen *sscreen = sctx->screen;
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 	bool render_cond_bit = sctx->render_cond && !sctx->render_cond_force_off;
+	unsigned threads_per_threadgroup =
+		info->block[0] * info->block[1] * info->block[2];
 	unsigned waves_per_threadgroup =
-		DIV_ROUND_UP(info->block[0] * info->block[1] * info->block[2], 64);
+		DIV_ROUND_UP(threads_per_threadgroup, 64);
+	unsigned threadgroups_per_cu = 1;
+
+	if (sctx->chip_class >= GFX10 && waves_per_threadgroup == 1)
+		threadgroups_per_cu = 2;
 
 	radeon_set_sh_reg(cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
 			  si_get_compute_resource_limits(sscreen, waves_per_threadgroup,
-							 sctx->cs_max_waves_per_sh, 1));
+							 sctx->cs_max_waves_per_sh,
+							 threadgroups_per_cu));
 
 	unsigned dispatch_initiator =
 		S_00B800_COMPUTE_SHADER_EN(1) |
