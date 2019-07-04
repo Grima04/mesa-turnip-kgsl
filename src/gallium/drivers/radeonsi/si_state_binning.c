@@ -331,12 +331,17 @@ static void si_emit_dpbb_disable(struct si_context *sctx)
 			S_028C44_BIN_SIZE_Y(bin_size.y == 16) |
 			S_028C44_BIN_SIZE_X_EXTEND(bin_size_extend.x) |
 			S_028C44_BIN_SIZE_Y_EXTEND(bin_size_extend.y) |
-			S_028C44_DISABLE_START_OF_PRIM(1));
+			S_028C44_DISABLE_START_OF_PRIM(1) |
+			S_028C44_FLUSH_ON_BINNING_TRANSITION(sctx->last_binning_enabled != 0));
 	} else {
 		radeon_opt_set_context_reg(sctx, R_028C44_PA_SC_BINNER_CNTL_0,
 			SI_TRACKED_PA_SC_BINNER_CNTL_0,
 			S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
-			S_028C44_DISABLE_START_OF_PRIM(1));
+			S_028C44_DISABLE_START_OF_PRIM(1) |
+			S_028C44_FLUSH_ON_BINNING_TRANSITION((sctx->family == CHIP_VEGA12 ||
+							      sctx->family == CHIP_VEGA20 ||
+							      sctx->family >= CHIP_RAVEN2) &&
+							     sctx->last_binning_enabled != 0));
 	}
 
 	unsigned db_dfsm_control = sctx->chip_class >= GFX10 ? R_028038_DB_DFSM_CONTROL
@@ -347,6 +352,8 @@ static void si_emit_dpbb_disable(struct si_context *sctx)
 				   S_028060_POPS_DRAIN_PS_ON_OVERLAP(1));
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
+
+	sctx->last_binning_enabled = false;
 }
 
 void si_emit_dpbb_state(struct si_context *sctx)
@@ -452,7 +459,8 @@ void si_emit_dpbb_state(struct si_context *sctx)
 		S_028C44_PERSISTENT_STATES_PER_BIN(persistent_states_per_bin) |
 		S_028C44_DISABLE_START_OF_PRIM(disable_start_of_prim) |
 		S_028C44_FPOVS_PER_BATCH(fpovs_per_batch) |
-		S_028C44_OPTIMAL_BIN_SELECTION(1));
+		S_028C44_OPTIMAL_BIN_SELECTION(1) |
+		G_028C44_FLUSH_ON_BINNING_TRANSITION(sctx->last_binning_enabled != 1));
 
 	unsigned db_dfsm_control = sctx->chip_class >= GFX10 ? R_028038_DB_DFSM_CONTROL
 							     : R_028060_DB_DFSM_CONTROL;
@@ -462,4 +470,6 @@ void si_emit_dpbb_state(struct si_context *sctx)
 				   S_028060_POPS_DRAIN_PS_ON_OVERLAP(1));
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
+
+	sctx->last_binning_enabled = true;
 }
