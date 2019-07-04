@@ -1435,6 +1435,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
 	if (sctx->num_occlusion_queries > 0 &&
 	    !sctx->occlusion_queries_disabled) {
 		bool perfect = sctx->num_perfect_occlusion_queries > 0;
+		bool gfx10_perfect = sctx->chip_class >= GFX10 && perfect;
 
 		if (sctx->chip_class >= GFX7) {
 			unsigned log_sample_rate = sctx->framebuffer.log_samples;
@@ -1447,6 +1448,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
 
 			db_count_control =
 				S_028004_PERFECT_ZPASS_COUNTS(perfect) |
+				S_028004_DISABLE_CONSERVATIVE_ZPASS_COUNTS(gfx10_perfect) |
 				S_028004_SAMPLE_RATE(log_sample_rate) |
 				S_028004_ZPASS_ENABLE(1) |
 				S_028004_SLICE_EVEN_ENABLE(1) |
@@ -5471,9 +5473,12 @@ static void si_init_config(struct si_context *sctx)
 	}
 
 	if (sctx->chip_class >= GFX10) {
+		si_pm4_set_reg(pm4, R_028A98_VGT_DRAW_PAYLOAD_CNTL, 0);
 		si_pm4_set_reg(pm4, R_030964_GE_MAX_VTX_INDX, ~0);
 		si_pm4_set_reg(pm4, R_030924_GE_MIN_VTX_INDX, 0);
 		si_pm4_set_reg(pm4, R_030928_GE_INDX_OFFSET, 0);
+		si_pm4_set_reg(pm4, R_03097C_GE_STEREO_CNTL, 0);
+		si_pm4_set_reg(pm4, R_030988_GE_USER_VGPR_EN, 0);
 	} else if (sctx->chip_class == GFX9) {
 		si_pm4_set_reg(pm4, R_030920_VGT_MAX_VTX_INDX, ~0);
 		si_pm4_set_reg(pm4, R_030924_VGT_MIN_VTX_INDX, 0);
@@ -5608,6 +5613,13 @@ static void si_init_config(struct si_context *sctx)
 			       S_028410_FMASK_RD_POLICY(V_028410_CACHE_NOA_RD) |
 			       S_028410_DCC_RD_POLICY(V_028410_CACHE_NOA_RD) |
 			       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD));
+		si_pm4_set_reg(pm4, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
+
+		si_pm4_set_reg(pm4, R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
+			       S_00B0C0_SOFT_GROUPING_EN(1) |
+			       S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
+		si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
+
 	}
 
 	if (sctx->chip_class >= GFX8) {

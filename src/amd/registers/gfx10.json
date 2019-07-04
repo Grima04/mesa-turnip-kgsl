@@ -10194,6 +10194,12 @@
   },
   {
    "chips": ["gfx10"],
+   "map": {"at": 199048, "to": "mm"},
+   "name": "GE_USER_VGPR_EN",
+   "type_ref": "GE_USER_VGPR_EN"
+  },
+  {
+   "chips": ["gfx10"],
    "map": {"at": 165840, "to": "mm"},
    "name": "GFX_COPY_STATE",
    "type_ref": "CS_COPY_STATE"
@@ -18944,10 +18950,14 @@
     {"bits": [0, 8], "name": "PRIM_GRP_SIZE"},
     {"bits": [9, 17], "name": "VERT_GRP_SIZE"},
     {"bits": [18, 18], "name": "BREAK_WAVE_AT_EOI"},
-    {"bits": [19, 19], "name": "PACKET_TO_ONE_PA"},
-    {"bits": [21, 21], "name": "EN_USER_VGPR1"},
-    {"bits": [22, 22], "name": "EN_USER_VGPR2"},
-    {"bits": [23, 23], "name": "EN_USER_VGPR3"}
+    {"bits": [19, 19], "name": "PACKET_TO_ONE_PA"}
+   ]
+  },
+  "GE_USER_VGPR_EN": {
+   "fields": [
+    {"bits": [0, 0], "name": "EN_USER_VGPR1"},
+    {"bits": [1, 1], "name": "EN_USER_VGPR2"},
+    {"bits": [2, 2], "name": "EN_USER_VGPR3"}
    ]
   },
   "GE_DMA_FIRST_INDEX": {
