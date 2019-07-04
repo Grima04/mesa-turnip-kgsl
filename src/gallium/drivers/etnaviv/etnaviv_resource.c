@@ -84,13 +84,12 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
                               struct etna_resource *rsc)
 {
    struct etna_screen *screen = etna_screen(pscreen);
-   size_t rt_ts_size, ts_layer_stride, pixels;
+   size_t rt_ts_size, ts_layer_stride;
 
    assert(!rsc->ts_bo);
 
-   /* TS only for level 0 -- XXX is this formula correct? */
-   pixels = rsc->levels[0].layer_stride / util_format_get_blocksize(rsc->base.format);
-   ts_layer_stride = align(pixels * screen->specs.bits_per_tile / 0x80,
+   ts_layer_stride = align(DIV_ROUND_UP(rsc->levels[0].layer_stride,
+                                        64 * 8 / screen->specs.bits_per_tile),
                            0x100 * screen->specs.pixel_pipes);
    rt_ts_size = ts_layer_stride * rsc->base.array_size;
    if (rt_ts_size == 0)
