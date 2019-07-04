@@ -2691,29 +2691,29 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 
 	VkExtent2D bin_size = radv_compute_bin_size(pipeline, pCreateInfo);
 
-	unsigned context_states_per_bin; /* allowed range: [1, 6] */
-	unsigned persistent_states_per_bin; /* allowed range: [1, 32] */
-	unsigned fpovs_per_batch; /* allowed range: [0, 255], 0 = unlimited */
-
-	switch (pipeline->device->physical_device->rad_info.family) {
-	case CHIP_VEGA10:
-	case CHIP_VEGA12:
-	case CHIP_VEGA20:
-		context_states_per_bin = 1;
-		persistent_states_per_bin = 1;
-		fpovs_per_batch = 63;
-		break;
-	case CHIP_RAVEN:
-	case CHIP_RAVEN2:
-		context_states_per_bin = 6;
-		persistent_states_per_bin = 32;
-		fpovs_per_batch = 63;
-		break;
-	default:
-		unreachable("unhandled family while determining binning state.");
-	}
-
 	if (pipeline->device->pbb_allowed && bin_size.width && bin_size.height) {
+		unsigned context_states_per_bin; /* allowed range: [1, 6] */
+		unsigned persistent_states_per_bin; /* allowed range: [1, 32] */
+		unsigned fpovs_per_batch; /* allowed range: [0, 255], 0 = unlimited */
+
+		switch (pipeline->device->physical_device->rad_info.family) {
+		case CHIP_VEGA10:
+		case CHIP_VEGA12:
+		case CHIP_VEGA20:
+			context_states_per_bin = 1;
+			persistent_states_per_bin = 1;
+			fpovs_per_batch = 63;
+			break;
+		case CHIP_RAVEN:
+		case CHIP_RAVEN2:
+			context_states_per_bin = 6;
+			persistent_states_per_bin = 32;
+			fpovs_per_batch = 63;
+			break;
+		default:
+			unreachable("unhandled family while determining binning state.");
+		}
+
 		pa_sc_binner_cntl_0 =
 	                S_028C44_BINNING_MODE(V_028C44_BINNING_ALLOWED) |
 	                S_028C44_BIN_SIZE_X(bin_size.width == 16) |
