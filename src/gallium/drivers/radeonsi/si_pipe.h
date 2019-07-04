@@ -674,6 +674,7 @@ struct si_framebuffer {
 	ubyte				color_is_int10;
 	ubyte				dirty_cbufs;
 	ubyte				dcc_overwrite_combiner_watermark;
+	ubyte				min_bytes_per_pixel;
 	bool				dirty_zsbuf;
 	bool				any_dst_linear;
 	bool				CB_has_shader_readable_metadata;

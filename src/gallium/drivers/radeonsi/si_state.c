@@ -2977,6 +2977,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 	sctx->framebuffer.CB_has_shader_readable_metadata = false;
 	sctx->framebuffer.DB_has_shader_readable_metadata = false;
 	sctx->framebuffer.all_DCC_pipe_aligned = true;
+	sctx->framebuffer.min_bytes_per_pixel = 0;
 
 	for (i = 0; i < state->nr_cbufs; i++) {
 		if (!state->cbufs[i])
@@ -3041,6 +3042,11 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 			sctx->framebuffer.compressed_cb_mask |= 1 << i;
 			vi_separate_dcc_start_query(sctx, tex);
 		}
+
+		/* Update the minimum but don't keep 0. */
+		if (!sctx->framebuffer.min_bytes_per_pixel ||
+		    tex->surface.bpe < sctx->framebuffer.min_bytes_per_pixel)
+			sctx->framebuffer.min_bytes_per_pixel = tex->surface.bpe;
 	}
 
 	/* For optimal DCC performance. */
@@ -3064,6 +3070,11 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 			sctx->framebuffer.DB_has_shader_readable_metadata = true;
 
 		si_context_add_resource_size(sctx, surf->base.texture);
+
+		/* Update the minimum but don't keep 0. */
+		if (!sctx->framebuffer.min_bytes_per_pixel ||
+		    zstex->surface.bpe < sctx->framebuffer.min_bytes_per_pixel)
+			sctx->framebuffer.min_bytes_per_pixel = zstex->surface.bpe;
 	}
 
 	si_update_ps_colorbuf0_slot(sctx);

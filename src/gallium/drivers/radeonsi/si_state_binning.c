@@ -312,10 +312,32 @@ static void si_emit_dpbb_disable(struct si_context *sctx)
 {
 	unsigned initial_cdw = sctx->gfx_cs->current.cdw;
 
-	radeon_opt_set_context_reg(sctx, R_028C44_PA_SC_BINNER_CNTL_0,
-		SI_TRACKED_PA_SC_BINNER_CNTL_0,
-		S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
-		S_028C44_DISABLE_START_OF_PRIM(1));
+	if (sctx->chip_class >= GFX10) {
+		struct uvec2 bin_size = {};
+		struct uvec2 bin_size_extend = {};
+
+		bin_size.x = 128;
+		bin_size.y = sctx->framebuffer.min_bytes_per_pixel <= 4 ? 128 : 64;
+
+		if (bin_size.x >= 32)
+			bin_size_extend.x = util_logbase2(bin_size.x) - 5;
+		if (bin_size.y >= 32)
+			bin_size_extend.y = util_logbase2(bin_size.y) - 5;
+
+		radeon_opt_set_context_reg(sctx, R_028C44_PA_SC_BINNER_CNTL_0,
+			SI_TRACKED_PA_SC_BINNER_CNTL_0,
+			S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_NEW_SC) |
+			S_028C44_BIN_SIZE_X(bin_size.x == 16) |
+			S_028C44_BIN_SIZE_Y(bin_size.y == 16) |
+			S_028C44_BIN_SIZE_X_EXTEND(bin_size_extend.x) |
+			S_028C44_BIN_SIZE_Y_EXTEND(bin_size_extend.y) |
+			S_028C44_DISABLE_START_OF_PRIM(1));
+	} else {
+		radeon_opt_set_context_reg(sctx, R_028C44_PA_SC_BINNER_CNTL_0,
+			SI_TRACKED_PA_SC_BINNER_CNTL_0,
+			S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
+			S_028C44_DISABLE_START_OF_PRIM(1));
+	}
 
 	unsigned db_dfsm_control = sctx->chip_class >= GFX10 ? R_028038_DB_DFSM_CONTROL
 							     : R_028060_DB_DFSM_CONTROL;
