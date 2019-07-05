@@ -29,6 +29,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "midgard/nir_lower_blend.h"
 #include "gallium/auxiliary/util/u_blend.h"
+#include "util/u_memory.h"
 
 /*
  * Implements the command stream portion of programmatic blend shaders.
@@ -124,13 +125,14 @@ nir_make_options(const struct pipe_blend_state *blend, unsigned nr_cbufs)
         return options;
 }
 
-void
-panfrost_make_blend_shader(
+struct panfrost_blend_shader
+panfrost_compile_blend_shader(
                 struct panfrost_context *ctx,
-                struct panfrost_blend_state *cso,
-                const struct pipe_blend_color *blend_color,
+                struct pipe_blend_state *cso,
                 enum pipe_format format)
 {
+        struct panfrost_blend_shader res;
+
         /* Build the shader */
 
         nir_shader *shader = nir_shader_create(NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
@@ -160,7 +162,7 @@ panfrost_make_blend_shader(
         nir_store_var(b, c_out, s_src, 0xFF);
 
         nir_lower_blend_options options =
-                nir_make_options(&cso->base, 1);
+                nir_make_options(cso, 1);
         NIR_PASS_V(shader, nir_lower_blend, options);
 
         NIR_PASS_V(shader, nir_lower_framebuffer, format);
@@ -175,20 +177,16 @@ panfrost_make_blend_shader(
         int size = program.compiled.size;
         uint8_t *dst = program.compiled.data;
 
-        /* Hot patch in constant color */
-
-        if (program.blend_patch_offset >= 0) {
-                float *hot_color = (float *) (dst + program.blend_patch_offset);
-
-                for (int c = 0; c < 4; ++c)
-                        hot_color[c] = blend_color->color[c];
-        }
-
-        cso->blend_shader = panfrost_upload(&ctx->shaders, dst, size, true) | program.first_tag;
-
-        /* We need to switch to shader mode */
-        cso->has_blend_shader = true;
+        res.shader.cpu = mem_dup(dst, size);
+        res.shader.gpu = panfrost_upload(&ctx->shaders, dst, size, true);
 
         /* At least two work registers are needed due to an encoding quirk */
-        cso->blend_work_count = MAX2(program.work_register_count, 2);
+        res.work_count = MAX2(program.work_register_count, 2);
+
+        /* Allow us to patch later */
+        res.patch_index = program.blend_patch_offset;
+        res.first_tag = program.first_tag;
+        res.size = size;
+
+        return res;
 }

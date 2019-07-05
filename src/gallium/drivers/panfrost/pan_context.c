@@ -1071,9 +1071,14 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 COPY(midgard1.unknown2);
 
 #undef COPY
+
+                /* Get blending setup */
+                struct panfrost_blend_final blend =
+                        panfrost_get_blend_for_context(ctx, 0);
+
                 /* If there is a blend shader, work registers are shared */
 
-                if (ctx->blend->has_blend_shader)
+                if (blend.is_shader)
                         ctx->fragment_shader_core.midgard1.work_count = /*MAX2(ctx->fragment_shader_core.midgard1.work_count, ctx->blend->blend_work_count)*/16;
 
                 /* Set late due to depending on render state */
@@ -1112,18 +1117,19 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 		/* Check if we're using the default blend descriptor (fast path) */
 
 		bool no_blending =
-			!ctx->blend->has_blend_shader &&
-			(ctx->blend->equation.rgb_mode == 0x122) &&
-			(ctx->blend->equation.alpha_mode == 0x122) &&
-			(ctx->blend->equation.color_mask == 0xf);
+			!blend.is_shader &&
+			(blend.equation.equation->rgb_mode == 0x122) &&
+			(blend.equation.equation->alpha_mode == 0x122) &&
+			(blend.equation.equation->color_mask == 0xf);
 
                 /* Even on MFBD, the shader descriptor gets blend shaders. It's
                  * *also* copied to the blend_meta appended (by convention),
                  * but this is the field actually read by the hardware. (Or
                  * maybe both are read...?) */
 
-                if (ctx->blend->has_blend_shader) {
-                        ctx->fragment_shader_core.blend.shader = ctx->blend->blend_shader;
+                if (blend.is_shader) {
+                        ctx->fragment_shader_core.blend.shader =
+                                blend.shader.gpu;
                 } else {
                         ctx->fragment_shader_core.blend.shader = 0;
                 }
@@ -1134,9 +1140,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                          * additionally need to signal CAN_DISCARD for nontrivial blend
                          * modes (so we're able to read back the destination buffer) */
 
-                        if (!ctx->blend->has_blend_shader) {
-                                ctx->fragment_shader_core.blend.equation = ctx->blend->equation;
-                                ctx->fragment_shader_core.blend.constant = ctx->blend->constant;
+                        if (!blend.is_shader) {
+                                ctx->fragment_shader_core.blend.equation =
+                                        *blend.equation.equation;
+                                ctx->fragment_shader_core.blend.constant =
+                                        blend.equation.constant;
                         }
 
                         if (!no_blending) {
@@ -1155,13 +1163,13 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                         unsigned blend_count = 0x200;
 
-                        if (ctx->blend->has_blend_shader) {
+                        if (blend.is_shader) {
                                 /* For a blend shader, the bottom nibble corresponds to
                                  * the number of work registers used, which signals the
                                  * -existence- of a blend shader */
 
-                                assert(ctx->blend->blend_work_count >= 2);
-                                blend_count |= MIN2(ctx->blend->blend_work_count, 3);
+                                assert(blend.shader.work_count >= 2);
+                                blend_count |= MIN2(blend.shader.work_count, 3);
                         } else {
                                 /* Otherwise, the bottom bit simply specifies if
                                  * blending (anything other than REPLACE) is enabled */
@@ -1191,13 +1199,13 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                  * native Midgard ops for helping here, but
                                  * they're not well-understood yet. */
 
-                                assert(!(is_srgb && ctx->blend->has_blend_shader));
+                                assert(!(is_srgb && blend.is_shader));
 
-                                if (ctx->blend->has_blend_shader) {
-                                        rts[i].blend.shader = ctx->blend->blend_shader;
+                                if (blend.is_shader) {
+                                        rts[i].blend.shader = blend.shader.gpu;
                                 } else {
-                                        rts[i].blend.equation = ctx->blend->equation;
-                                        rts[i].blend.constant = ctx->blend->constant;
+                                        rts[i].blend.equation = *blend.equation.equation;
+                                        rts[i].blend.constant = blend.equation.constant;
                                 }
                         }
 
@@ -2364,88 +2372,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 }
 
 static void *
-panfrost_create_blend_state(struct pipe_context *pipe,
-                            const struct pipe_blend_state *blend)
-{
-        struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_blend_state *so = rzalloc(ctx, struct panfrost_blend_state);
-        so->base = *blend;
-
-        /* TODO: The following features are not yet implemented */
-        assert(!blend->logicop_enable);
-        assert(!blend->alpha_to_coverage);
-        assert(!blend->alpha_to_one);
-
-        /* Compile the blend state, first as fixed-function if we can */
-
-        /* TODO: Key by format */
-        enum pipe_format format = ctx->pipe_framebuffer.nr_cbufs ?
-                ctx->pipe_framebuffer.cbufs[0]->format :
-                PIPE_FORMAT_R8G8B8A8_UNORM;
-
-        if (panfrost_make_fixed_blend_mode(&blend->rt[0], so, blend->rt[0].colormask, &ctx->blend_color, format))
-                return so;
-
-        /* If we can't, compile a blend shader instead */
-
-        panfrost_make_blend_shader(ctx, so, &ctx->blend_color, format);
-
-        return so;
-}
-
-static void
-panfrost_bind_blend_state(struct pipe_context *pipe,
-                          void *cso)
-{
-        struct panfrost_context *ctx = pan_context(pipe);
-        struct pipe_blend_state *blend = (struct pipe_blend_state *) cso;
-        struct panfrost_blend_state *pblend = (struct panfrost_blend_state *) cso;
-        ctx->blend = pblend;
-
-        if (!blend)
-                return;
-
-        SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_DITHER, !blend->dither);
-
-        /* TODO: Attach color */
-
-        /* Shader itself is not dirty, but the shader core is */
-        ctx->dirty |= PAN_DIRTY_FS;
-}
-
-static void
-panfrost_delete_blend_state(struct pipe_context *pipe,
-                            void *blend)
-{
-        struct panfrost_blend_state *so = (struct panfrost_blend_state *) blend;
-
-        if (so->has_blend_shader) {
-                DBG("Deleting blend state leak blend shaders bytecode\n");
-        }
-
-        ralloc_free(blend);
-}
-
-static void
-panfrost_set_blend_color(struct pipe_context *pipe,
-                         const struct pipe_blend_color *blend_color)
-{
-        struct panfrost_context *ctx = pan_context(pipe);
-
-        /* If blend_color is we're unbinding, so ctx->blend_color is now undefined -> nothing to do */
-
-        if (blend_color) {
-                ctx->blend_color = *blend_color;
-
-                /* The blend mode depends on the blend constant color, due to the
-                 * fixed/programmable split. So, we're forced to regenerate the blend
-                 * equation */
-
-                /* TODO: Attach color */
-        }
-}
-
-static void *
 panfrost_create_depth_stencil_state(struct pipe_context *pipe,
                                     const struct pipe_depth_stencil_alpha_state *depth_stencil)
 {
@@ -2795,12 +2721,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->delete_sampler_state = panfrost_generic_cso_delete;
         gallium->bind_sampler_states = panfrost_bind_sampler_states;
 
-        gallium->create_blend_state = panfrost_create_blend_state;
-        gallium->bind_blend_state   = panfrost_bind_blend_state;
-        gallium->delete_blend_state = panfrost_delete_blend_state;
-
-        gallium->set_blend_color = panfrost_set_blend_color;
-
         gallium->create_depth_stencil_alpha_state = panfrost_create_depth_stencil_state;
         gallium->bind_depth_stencil_alpha_state   = panfrost_bind_depth_stencil_state;
         gallium->delete_depth_stencil_alpha_state = panfrost_delete_depth_stencil_state;
@@ -2824,6 +2744,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->set_stream_output_targets = panfrost_set_stream_output_targets;
 
         panfrost_resource_context_init(gallium);
+        panfrost_blend_context_init(gallium);
 
         panfrost_drm_init_context(ctx);
 

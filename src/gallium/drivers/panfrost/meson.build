@@ -56,6 +56,7 @@ files_panfrost = files(
   'pan_format.c',
   'pan_blending.c',
   'pan_blend_shaders.c',
+  'pan_blend_cso.c',
   'pan_pretty_print.c',
   'pan_fragment.c',
   'pan_invocation.c',

@@ -101,8 +101,8 @@
 
 /* Not all formats can be blended by fixed-function hardware */
 
-static bool
-panfrost_can_blend(enum pipe_format format)
+bool
+panfrost_can_fixed_blend(enum pipe_format format)
 {
         /* Fixed-function can handle sRGB */
         format = util_format_linear(format);
@@ -318,53 +318,24 @@ panfrost_make_fixed_blend_part(unsigned func, unsigned src_factor, unsigned dst_
         return true;
 }
 
-/* We can upload a single constant for all of the factors. So, scan the factors
- * for constants used, and scan the constants for the constants used. If there
- * is a single unique constant, output that. If there are multiple,
- * fixed-function operation breaks down. */
+/* We can upload a single constant for all of the factors. So, scan
+ * the factors for constants used to create a mask to check later. */
 
-static bool
-panfrost_make_constant(unsigned *factors, unsigned num_factors, const struct pipe_blend_color *blend_color, void *out)
+static unsigned
+panfrost_constant_mask(unsigned *factors, unsigned num_factors)
 {
-        /* Color components used */
-        bool cc[4] = { false };
+        unsigned mask = 0;
 
         for (unsigned i = 0; i < num_factors; ++i) {
                 unsigned factor = uncomplement_factor(factors[i]);
 
                 if (factor == PIPE_BLENDFACTOR_CONST_COLOR)
-                        cc[0] = cc[1] = cc[2] = true;
+                        mask |= 0b0111; /* RGB */
                 else if (factor == PIPE_BLENDFACTOR_CONST_ALPHA)
-                        cc[3] = true;
+                        mask |= 0b1000; /* A */
         }
 
-        /* Find the actual constant associated with the components used*/
-
-        float constant = 0.0;
-        bool has_constant = false;
-
-        for (unsigned i = 0; i < 4; ++i) {
-                /* If the component is unused, nothing to do */
-                if (!cc[i]) continue;
-
-                float value = blend_color->color[i];
-
-                /* Either there's a second constant, in which case we fail, or
-                 * there's no constant / a first constant, in which case we use
-                 * that constant */
-
-                if (has_constant && constant != value) {
-                        return false;
-                } else {
-                        has_constant = true;
-                        constant = value;
-                }
-        }
-
-        /* We have the constant -- success! */
-
-        memcpy(out, &constant, sizeof(float));
-        return true;
+        return mask;
 }
 
 /* Create the descriptor for a fixed blend mode given the corresponding Gallium
@@ -376,19 +347,13 @@ panfrost_make_constant(unsigned *factors, unsigned num_factors, const struct pip
 bool
 panfrost_make_fixed_blend_mode(
                 const struct pipe_rt_blend_state *blend,
-                struct panfrost_blend_state *so,
-                unsigned colormask,
-                const struct pipe_blend_color *blend_color,
-                enum pipe_format format)
+                struct mali_blend_equation *out,
+                unsigned *constant_mask,
+                unsigned colormask)
 {
-        struct mali_blend_equation *out = &so->equation;
+        /* Gallium and Mali represent colour masks identically. XXX: Static
+         * assert for future proof */
 
-        /* Check if the format supports fixed-function blending at all */
-
-        if (!panfrost_can_blend(format))
-                return false;
-
-        /* Gallium and Mali represent colour masks identically. XXX: Static assert for future proof */
         out->color_mask = colormask;
 
         /* If no blending is enabled, default back on `replace` mode */
@@ -399,16 +364,18 @@ panfrost_make_fixed_blend_mode(
                 return true;
         }
 
-        /* We have room only for a single float32 constant between the four
-         * components. If we need more, spill to the programmable pipeline. */
+        /* At draw-time, we'll need to analyze the blend constant, so
+         * precompute a mask for it -- even if we don't end up able to use
+         * fixed-function blending */
 
         unsigned factors[] = {
                 blend->rgb_src_factor, blend->rgb_dst_factor,
                 blend->alpha_src_factor, blend->alpha_dst_factor,
         };
 
-        if (!panfrost_make_constant(factors, ARRAY_SIZE(factors), blend_color, &so->constant))
-                return false;
+        *constant_mask = panfrost_constant_mask(factors, ARRAY_SIZE(factors));
+
+        /* Try to compile the actual fixed-function blend */
 
         unsigned rgb_mode = 0;
         unsigned alpha_mode = 0;

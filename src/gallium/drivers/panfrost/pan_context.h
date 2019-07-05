@@ -31,6 +31,7 @@
 #include <assert.h>
 #include "pan_resource.h"
 #include "pan_job.h"
+#include "pan_blend.h"
 
 #include "pipe/p_compiler.h"
 #include "pipe/p_config.h"
@@ -226,21 +227,6 @@ struct panfrost_rasterizer {
 
         /* Bitmask of front face, etc */
         unsigned tiler_gl_enables;
-};
-
-struct panfrost_blend_state {
-        struct pipe_blend_state base;
-
-        /* Whether a blend shader is in use */
-        bool has_blend_shader;
-
-        /* Compiled fixed function command */
-        struct mali_blend_equation equation;
-        float constant;
-
-        /* Compiled blend shader */
-        mali_ptr blend_shader;
-        int blend_work_count;
 };
 
 /* Variants bundle together to form the backing CSO, bundling multiple
