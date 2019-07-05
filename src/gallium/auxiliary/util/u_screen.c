@@ -370,6 +370,9 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 0;
 #endif
 
+   case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
+      return pscreen->get_param(pscreen, PIPE_CAP_SM3);
+
    default:
       unreachable("bad PIPE_CAP_*");
    }
