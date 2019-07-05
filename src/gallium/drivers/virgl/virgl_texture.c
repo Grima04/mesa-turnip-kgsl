@@ -112,63 +112,6 @@ static void virgl_init_temp_resource_from_box(struct pipe_resource *res,
    }
 }
 
-static void *texture_transfer_map_plain(struct pipe_context *ctx,
-                                        struct pipe_resource *resource,
-                                        unsigned level,
-                                        unsigned usage,
-                                        const struct pipe_box *box,
-                                        struct pipe_transfer **transfer)
-{
-   struct virgl_context *vctx = virgl_context(ctx);
-   struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
-   struct virgl_resource *vtex = virgl_resource(resource);
-   struct virgl_transfer *trans;
-   enum virgl_transfer_map_type map_type;
-   void *map_addr;
-
-   trans = virgl_resource_create_transfer(vctx, resource,
-                                          &vtex->metadata, level, usage, box);
-   trans->resolve_transfer = NULL;
-
-   assert(resource->nr_samples <= 1);
-
-   map_type = virgl_resource_transfer_prepare(vctx, trans);
-   switch (map_type) {
-   case VIRGL_TRANSFER_MAP_REALLOC:
-      if (!virgl_resource_realloc(vctx, vtex)) {
-         map_addr = NULL;
-         break;
-      }
-      vws->resource_reference(vws, &trans->hw_res, vtex->hw_res);
-      /* fall through */
-   case VIRGL_TRANSFER_MAP_HW_RES:
-      trans->hw_res_map = vws->resource_map(vws, vtex->hw_res);
-      if (trans->hw_res_map)
-         map_addr = trans->hw_res_map + trans->offset;
-      else
-         map_addr = NULL;
-      break;
-   case VIRGL_TRANSFER_MAP_STAGING:
-      map_addr = virgl_staging_map(vctx, trans);
-      /* Copy transfers don't make use of hw_res_map at the moment. */
-      trans->hw_res_map = NULL;
-      break;
-   case VIRGL_TRANSFER_MAP_ERROR:
-   default:
-      trans->hw_res_map = NULL;
-      map_addr = NULL;
-      break;
-   }
-
-   if (!map_addr) {
-      virgl_resource_destroy_transfer(vctx, trans);
-      return NULL;
-   }
-
-   *transfer = &trans->base;
-   return map_addr;
-}
-
 static void *texture_transfer_map_resolve(struct pipe_context *ctx,
                                           struct pipe_resource *resource,
                                           unsigned level,
@@ -221,8 +164,8 @@ static void *texture_transfer_map_resolve(struct pipe_context *ctx,
       ctx->flush(ctx, NULL, 0);
    }
 
-   void *ptr = texture_transfer_map_plain(ctx, resolve_tmp, 0, usage, &dst_box,
-                                          &trans->resolve_transfer);
+   void *ptr = virgl_resource_transfer_map(ctx, resolve_tmp, 0, usage, &dst_box,
+                                           &trans->resolve_transfer);
    if (!ptr)
       goto fail;
 
@@ -295,7 +238,7 @@ static void *virgl_texture_transfer_map(struct pipe_context *ctx,
       return texture_transfer_map_resolve(ctx, resource, level, usage, box,
                                           transfer);
 
-   return texture_transfer_map_plain(ctx, resource, level, usage, box, transfer);
+   return virgl_resource_transfer_map(ctx, resource, level, usage, box, transfer);
 }
 
 static void flush_data(struct pipe_context *ctx,

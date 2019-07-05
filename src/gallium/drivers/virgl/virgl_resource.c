@@ -547,6 +547,7 @@ virgl_resource_create_transfer(struct virgl_context *vctx,
    util_range_init(&trans->range);
    trans->copy_src_hw_res = NULL;
    trans->copy_src_offset = 0;
+   trans->resolve_transfer = NULL;
 
    if (trans->base.resource->target != PIPE_TEXTURE_3D &&
        trans->base.resource->target != PIPE_TEXTURE_CUBE &&
