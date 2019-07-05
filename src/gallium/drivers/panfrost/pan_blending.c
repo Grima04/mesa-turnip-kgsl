@@ -122,6 +122,11 @@ panfrost_can_fixed_blend(enum pipe_format format)
                 case PIPE_FORMAT_B10G10R10A2_UNORM:
                 case PIPE_FORMAT_R10G10B10X2_UNORM:
                 case PIPE_FORMAT_B10G10R10X2_UNORM:
+                case PIPE_FORMAT_B4G4R4A4_UNORM:
+                case PIPE_FORMAT_B4G4R4X4_UNORM:
+                case PIPE_FORMAT_A4R4_UNORM:
+                case PIPE_FORMAT_R4A4_UNORM:
+                case PIPE_FORMAT_A4B4G4R4_UNORM:
                         return true;
                 default:
                         return false;

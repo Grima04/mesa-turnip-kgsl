@@ -79,79 +79,97 @@ panfrost_mfbd_format(struct pipe_surface *surf)
         if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
                 fmt.flags |= MALI_MFBD_FORMAT_SRGB;
 
+        /* sRGB handled as a dedicated flag */
+        enum pipe_format linearized = util_format_linear(surf->format);
+
+        /* If RGB, we're good to go */
+        if (util_format_is_unorm8(desc))
+                return fmt;
+
         /* Set flags for alternative formats */
+             
+        switch (linearized) {
+                case PIPE_FORMAT_B5G6R5_UNORM:
+                        fmt.unk1 = 0x14000000;
+                        fmt.nr_channels = MALI_POSITIVE(2);
+                        fmt.unk3 |= 0x1;
+                        break;
 
-        bool float_16 =
-                surf->format == PIPE_FORMAT_R16_FLOAT ||
-                surf->format == PIPE_FORMAT_R16_UINT ||
-                surf->format == PIPE_FORMAT_R16_SINT ||
-                surf->format == PIPE_FORMAT_B5G5R5A1_UNORM;
+                case PIPE_FORMAT_A4B4G4R4_UNORM:
+                case PIPE_FORMAT_B4G4R4A4_UNORM:
+                        fmt.unk1 = 0x10000000;
+                        fmt.unk3 = 0x5;
+                        fmt.nr_channels = MALI_POSITIVE(1);
+                        break;
 
-        bool float_32 =
-                surf->format == PIPE_FORMAT_R11G11B10_FLOAT ||
-                surf->format == PIPE_FORMAT_R16G16_FLOAT ||
-                surf->format == PIPE_FORMAT_R16G16_UINT ||
-                surf->format == PIPE_FORMAT_R16G16_SINT ||
-                surf->format == PIPE_FORMAT_R32_FLOAT ||
-                surf->format == PIPE_FORMAT_R32_UINT ||
-                surf->format == PIPE_FORMAT_R32_SINT ||
-                surf->format == PIPE_FORMAT_R10G10B10A2_UINT;
+                case PIPE_FORMAT_R10G10B10A2_UNORM:
+                case PIPE_FORMAT_B10G10R10A2_UNORM:
+                case PIPE_FORMAT_R10G10B10X2_UNORM:
+                case PIPE_FORMAT_B10G10R10X2_UNORM:
+                        fmt.unk1 = 0x08000000;
+                        fmt.unk3 = 0x6;
+                        fmt.nr_channels = MALI_POSITIVE(1);
+                        break;
 
-        bool rgb10_unorm =
-                surf->format == PIPE_FORMAT_R10G10B10A2_UNORM ||
-                surf->format == PIPE_FORMAT_B10G10R10A2_UNORM ||
-                surf->format == PIPE_FORMAT_R10G10B10X2_UNORM ||
-                surf->format == PIPE_FORMAT_B10G10R10X2_UNORM;
+                        /* Generic 8-bit */
+                case PIPE_FORMAT_R8_UINT:
+                case PIPE_FORMAT_R8_SINT:
+                        fmt.unk1 = 0x80000000;
+                        fmt.unk3 = 0x0;
+                        fmt.nr_channels = MALI_POSITIVE(1);
+                        break;
 
-        bool float_64 =
-                surf->format == PIPE_FORMAT_R32G32_FLOAT ||
-                surf->format == PIPE_FORMAT_R32G32_SINT ||
-                surf->format == PIPE_FORMAT_R32G32_UINT ||
-                surf->format == PIPE_FORMAT_R16G16B16A16_FLOAT ||
-                surf->format == PIPE_FORMAT_R16G16B16A16_SINT ||
-                surf->format == PIPE_FORMAT_R16G16B16A16_UINT;
+                        /* Generic 32-bit */
+                case PIPE_FORMAT_R11G11B10_FLOAT:
+                case PIPE_FORMAT_R8G8B8A8_UINT:
+                case PIPE_FORMAT_R8G8B8A8_SINT:
+                case PIPE_FORMAT_R16G16_FLOAT:
+                case PIPE_FORMAT_R16G16_UINT:
+                case PIPE_FORMAT_R16G16_SINT:
+                case PIPE_FORMAT_R32_FLOAT:
+                case PIPE_FORMAT_R32_UINT:
+                case PIPE_FORMAT_R32_SINT:
+                case PIPE_FORMAT_R10G10B10A2_UINT:
+                        fmt.unk1 = 0x88000000;
+                        fmt.unk3 = 0x0;
+                        fmt.nr_channels = MALI_POSITIVE(4);
+                        break;
 
-        bool float_128 =
-                surf->format == PIPE_FORMAT_R32G32B32A32_FLOAT ||
-                surf->format == PIPE_FORMAT_R32G32B32A32_SINT ||
-                surf->format == PIPE_FORMAT_R32G32B32A32_UINT;
+                        /* Generic 16-bit */
+                case PIPE_FORMAT_R8G8_UINT:
+                case PIPE_FORMAT_R8G8_SINT:
+                case PIPE_FORMAT_R16_FLOAT:
+                case PIPE_FORMAT_R16_UINT:
+                case PIPE_FORMAT_R16_SINT:
+                case PIPE_FORMAT_B5G5R5A1_UNORM:
+                        fmt.unk1 = 0x84000000;
+                        fmt.unk3 = 0x0;
+                        fmt.nr_channels = MALI_POSITIVE(2);
+                        break;
 
-        if (surf->format == PIPE_FORMAT_B5G6R5_UNORM) {
-                fmt.unk1 = 0x14000000;
-                fmt.nr_channels = MALI_POSITIVE(2);
-                fmt.unk3 |= 0x1;
-        } else if (surf->format == PIPE_FORMAT_B4G4R4A4_UNORM) {
-                /* XXX: why does the specialized code not work but the generic
-                 * 16-bit code work? */
-#if 0
-                fmt.unk1 = 0x10000000;
-                fmt.unk3 = 0x5;
-                fmt.nr_channels = MALI_POSITIVE(1);
-#endif
+                        /* Generic 64-bit */
+                case PIPE_FORMAT_R32G32_FLOAT:
+                case PIPE_FORMAT_R32G32_SINT:
+                case PIPE_FORMAT_R32G32_UINT:
+                case PIPE_FORMAT_R16G16B16A16_FLOAT:
+                case PIPE_FORMAT_R16G16B16A16_SINT:
+                case PIPE_FORMAT_R16G16B16A16_UINT:
+                        fmt.unk1 = 0x8c000000;
+                        fmt.unk3 = 0x1;
+                        fmt.nr_channels = MALI_POSITIVE(2);
+                        break;
 
-                fmt.unk1 = 0x84000000;
-                fmt.unk3 = 0x0;
-                fmt.nr_channels = MALI_POSITIVE(2);
-        } else if (rgb10_unorm) {
-                fmt.unk1 = 0x08000000;
-                fmt.unk3 = 0x6;
-                fmt.nr_channels = MALI_POSITIVE(1);
-        } else if (float_32) {
-                fmt.unk1 = 0x88000000;
-                fmt.unk3 = 0x0;
-                fmt.nr_channels = MALI_POSITIVE(4);
-        } else if (float_16) {
-                fmt.unk1 = 0x84000000;
-                fmt.unk3 = 0x0;
-                fmt.nr_channels = MALI_POSITIVE(2);
-        } else if (float_64) {
-                fmt.unk1 = 0x8c000000;
-                fmt.unk3 = 0x1;
-                fmt.nr_channels = MALI_POSITIVE(2);
-        } else if (float_128) {
-                fmt.unk1 = 0x90000000;
-                fmt.unk3 = 0x1;
-                fmt.nr_channels = MALI_POSITIVE(4);
+                        /* Generic 128-bit */
+                case PIPE_FORMAT_R32G32B32A32_FLOAT:
+                case PIPE_FORMAT_R32G32B32A32_SINT:
+                case PIPE_FORMAT_R32G32B32A32_UINT:
+                        fmt.unk1 = 0x90000000;
+                        fmt.unk3 = 0x1;
+                        fmt.nr_channels = MALI_POSITIVE(4);
+                        break;
+
+                default:
+                        unreachable("Invalid format rendering");
         }
 
         return fmt;
