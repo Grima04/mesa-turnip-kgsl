@@ -65,6 +65,7 @@ enum {
 struct radv_vs_out_key {
 	uint32_t as_es:1;
 	uint32_t as_ls:1;
+	uint32_t as_ngg:1;
 	uint32_t export_prim_id:1;
 	uint32_t export_layer_id:1;
 	uint32_t export_clip_dists:1;
@@ -264,6 +265,7 @@ struct radv_shader_variant_info {
 	unsigned num_input_vgprs;
 	unsigned private_mem_vgprs;
 	bool need_indirect_descriptor_sets;
+	bool is_ngg;
 	struct {
 		struct {
 			struct radv_vs_output_info outinfo;

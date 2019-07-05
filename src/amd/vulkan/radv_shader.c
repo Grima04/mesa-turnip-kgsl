@@ -583,7 +583,9 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		config_out->rsrc1 |= S_00B428_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		break;
 	case MESA_SHADER_VERTEX:
-		if (info->vs.as_ls) {
+		if (info->is_ngg) {
+			config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+		} else if (info->vs.as_ls) {
 			assert(pdevice->rad_info.chip_class <= GFX8);
 			/* We need at least 2 components for LS.
 			 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
@@ -632,8 +634,19 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		break;
 	}
 
-	if (pdevice->rad_info.chip_class >= GFX9 &&
-	    stage == MESA_SHADER_GEOMETRY) {
+	if (pdevice->rad_info.chip_class >= GFX10 &&
+	    stage == MESA_SHADER_VERTEX) {
+		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
+
+		/* VGPR5-8: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 / InstanceID) */
+		es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 0;
+		gs_vgpr_comp_cnt = 3;
+
+		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
+		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
+				     S_00B22C_LDS_SIZE(config_in->lds_size);
+	} else if (pdevice->rad_info.chip_class >= GFX9 &&
+		   stage == MESA_SHADER_GEOMETRY) {
 		unsigned es_type = info->gs.es_type;
 		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
 

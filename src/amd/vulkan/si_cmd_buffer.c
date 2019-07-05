@@ -317,6 +317,17 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX10) {
+		/* Break up a pixel wave if it contains deallocs for more than
+		 * half the parameter cache.
+		 *
+		 * To avoid a deadlock where pixel waves aren't launched
+		 * because they're waiting for more pixels while the frontend
+		 * is stuck waiting for PC space, the maximum allowed value is
+		 * the size of the PC minus the largest possible allocation for
+		 * a single primitive shader subgroup.
+		 */
+		radeon_set_context_reg(cs, R_028C50_PA_SC_NGG_MODE_CNTL,
+				       S_028C50_MAX_DEALLOCS_IN_WAVE(512));
 		radeon_set_context_reg(cs, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
 		radeon_set_context_reg(cs, R_02835C_PA_SC_TILE_STEERING_OVERRIDE,
 				       physical_device->rad_info.pa_sc_tile_steering_override);
