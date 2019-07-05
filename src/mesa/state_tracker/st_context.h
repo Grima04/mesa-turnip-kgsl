@@ -133,7 +133,6 @@ struct st_context
    GLboolean clamp_vert_color_in_shader;
    boolean has_stencil_export; /**< can do shader stencil export? */
    boolean has_time_elapsed;
-   boolean has_shader_model3;
    boolean has_etc1;
    boolean has_etc2;
    boolean has_astc_2d_ldr;
