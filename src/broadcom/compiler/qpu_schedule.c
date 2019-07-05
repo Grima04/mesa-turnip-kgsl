@@ -382,7 +382,7 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
                 add_write_dep(state, &state->last_tmu_config, n);
 
         if (inst->sig.ldtlb | inst->sig.ldtlbu)
-                add_read_dep(state, state->last_tlb, n);
+                add_write_dep(state, &state->last_tlb, n);
 
         if (inst->sig.ldvpm) {
                 add_write_dep(state, &state->last_vpm_read, n);
