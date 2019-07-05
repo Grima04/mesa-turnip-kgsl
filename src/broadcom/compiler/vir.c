@@ -75,6 +75,8 @@ vir_has_side_effects(struct v3d_compile *c, struct qinst *inst)
 
         if (inst->qpu.sig.ldtmu ||
             inst->qpu.sig.ldvary ||
+            inst->qpu.sig.ldtlbu ||
+            inst->qpu.sig.ldtlb ||
             inst->qpu.sig.wrtmuc ||
             inst->qpu.sig.thrsw) {
                 return true;
