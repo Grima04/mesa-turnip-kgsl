@@ -1160,6 +1160,13 @@ bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 
 		int64_t offset = (int64_t)((int)vb->buffer_offset) +
 				 velems->src_offset[i];
+
+		if (offset >= buf->b.b.width0) {
+			assert(offset < buf->b.b.width0);
+			memset(desc, 0, 16);
+			continue;
+		}
+
 		uint64_t va = buf->gpu_address + offset;
 
 		int64_t num_records = (int64_t)buf->b.b.width0 - offset;
