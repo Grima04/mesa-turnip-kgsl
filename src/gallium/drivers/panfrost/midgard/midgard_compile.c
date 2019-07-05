@@ -2551,7 +2551,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 .stage = nir->info.stage,
 
                 .is_blend = is_blend,
-                .blend_constant_offset = -1,
+                .blend_constant_offset = 0,
 
                 .alpha_ref = program->alpha_ref
         };
