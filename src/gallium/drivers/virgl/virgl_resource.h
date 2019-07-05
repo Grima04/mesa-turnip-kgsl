@@ -164,6 +164,14 @@ enum virgl_transfer_map_type
 virgl_resource_transfer_prepare(struct virgl_context *vctx,
                                 struct virgl_transfer *xfer);
 
+void *
+virgl_resource_transfer_map(struct pipe_context *ctx,
+                            struct pipe_resource *resource,
+                            unsigned level,
+                            unsigned usage,
+                            const struct pipe_box *box,
+                            struct pipe_transfer **transfer);
+
 void virgl_resource_layout(struct pipe_resource *pt,
                            struct virgl_resource_metadata *metadata);
 

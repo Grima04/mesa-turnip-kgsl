@@ -213,6 +213,90 @@ virgl_resource_transfer_prepare(struct virgl_context *vctx,
    return map_type;
 }
 
+void *
+virgl_resource_transfer_map(struct pipe_context *ctx,
+                            struct pipe_resource *resource,
+                            unsigned level,
+                            unsigned usage,
+                            const struct pipe_box *box,
+                            struct pipe_transfer **transfer)
+{
+   struct virgl_context *vctx = virgl_context(ctx);
+   struct virgl_winsys *vws = virgl_screen(ctx->screen)->vws;
+   struct virgl_resource *vres = virgl_resource(resource);
+   struct virgl_transfer *trans;
+   enum virgl_transfer_map_type map_type;
+   void *map_addr;
+
+   /* Multisampled resources require resolve before mapping. */
+   assert(resource->nr_samples <= 1);
+
+   trans = virgl_resource_create_transfer(vctx, resource,
+                                          &vres->metadata, level, usage, box);
+
+   map_type = virgl_resource_transfer_prepare(vctx, trans);
+   switch (map_type) {
+   case VIRGL_TRANSFER_MAP_REALLOC:
+      if (!virgl_resource_realloc(vctx, vres)) {
+         map_addr = NULL;
+         break;
+      }
+      vws->resource_reference(vws, &trans->hw_res, vres->hw_res);
+      /* fall through */
+   case VIRGL_TRANSFER_MAP_HW_RES:
+      trans->hw_res_map = vws->resource_map(vws, vres->hw_res);
+      if (trans->hw_res_map)
+         map_addr = trans->hw_res_map + trans->offset;
+      else
+         map_addr = NULL;
+      break;
+   case VIRGL_TRANSFER_MAP_STAGING:
+      map_addr = virgl_staging_map(vctx, trans);
+      /* Copy transfers don't make use of hw_res_map at the moment. */
+      trans->hw_res_map = NULL;
+      break;
+   case VIRGL_TRANSFER_MAP_ERROR:
+   default:
+      trans->hw_res_map = NULL;
+      map_addr = NULL;
+      break;
+   }
+
+   if (!map_addr) {
+      virgl_resource_destroy_transfer(vctx, trans);
+      return NULL;
+   }
+
+   if (vres->u.b.target == PIPE_BUFFER) {
+      /* For the checks below to be able to use 'usage', we assume that
+       * transfer preparation doesn't affect the usage.
+       */
+      assert(usage == trans->base.usage);
+
+      /* If we are doing a whole resource discard with a hw_res map, the buffer
+       * storage can now be considered unused and we don't care about previous
+       * contents.  We can thus mark the storage as uninitialized, but only if
+       * the buffer is not host writable (in which case we can't clear the
+       * valid range, since that would result in missed readbacks in future
+       * transfers).  We only do this for VIRGL_TRANSFER_MAP_HW_RES, since for
+       * VIRGL_TRANSFER_MAP_REALLOC we already take care of the buffer range
+       * when reallocating and rebinding, and VIRGL_TRANSFER_MAP_STAGING is not
+       * currently used for whole resource discards.
+       */
+      if (map_type == VIRGL_TRANSFER_MAP_HW_RES &&
+          (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) &&
+          (vres->clean_mask & 1)) {
+         util_range_set_empty(&vres->valid_buffer_range);
+      }
+
+      if (usage & PIPE_TRANSFER_WRITE)
+          util_range_add(&vres->valid_buffer_range, box->x, box->x + box->width);
+   }
+
+   *transfer = &trans->base;
+   return map_addr;
+}
+
 static struct pipe_resource *virgl_resource_create(struct pipe_screen *screen,
                                                    const struct pipe_resource *templ)
 {
