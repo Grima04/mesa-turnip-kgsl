@@ -686,7 +686,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
     * is not supported
     */
    ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].EmitNoSat =
-      !screen->get_param(screen, PIPE_CAP_SM3);
+      !screen->get_param(screen, PIPE_CAP_VERTEX_SHADER_SATURATE);
 
    if (ctx->Const.GLSLVersion < 400) {
       for (i = 0; i < MESA_SHADER_STAGES; i++)

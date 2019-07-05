@@ -538,6 +538,8 @@ The integer capabilities:
   explicit LOD is supported in the fragment shader.
 * ``PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES``: True if the driver supports
   derivatives in fragment shaders.
+* ``PIPE_CAP_VERTEX_SHADER_SATURATE``: True if the driver supports saturate
+  modifiers in the vertex shader.
 
 .. _pipe_capf:
 
