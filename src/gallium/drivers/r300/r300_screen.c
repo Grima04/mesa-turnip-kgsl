@@ -168,7 +168,9 @@ static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
         /* Supported on r500 only. */
         case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
         case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
-        case PIPE_CAP_SM3:
+        case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
+        case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
+        case PIPE_CAP_VERTEX_SHADER_SATURATE:
             return is_r500 ? 1 : 0;
 
         /* Unsupported features. */

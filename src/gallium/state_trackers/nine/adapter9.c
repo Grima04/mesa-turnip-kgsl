@@ -34,6 +34,14 @@
 
 #define DBG_CHANNEL DBG_ADAPTER
 
+static bool
+has_sm3(struct pipe_screen *hal)
+{
+    return hal->get_param(hal, PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD) &&
+           hal->get_param(hal, PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES) &&
+           hal->get_param(hal, PIPE_CAP_VERTEX_SHADER_SATURATE);
+}
+
 HRESULT
 NineAdapter9_ctor( struct NineAdapter9 *This,
                    struct NineUnknownParams *pParams,
@@ -65,7 +73,7 @@ NineAdapter9_ctor( struct NineAdapter9 *This,
      * as these are very old, we choose to drop support for them */
 
     /* checks minimum requirements, most are vs3/ps3 strict requirements */
-    if (!hal->get_param(hal, PIPE_CAP_SM3) ||
+    if (!has_sm3(hal) ||
         hal->get_shader_param(hal, PIPE_SHADER_VERTEX,
                               PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE) < 256 * sizeof(float[4]) ||
         hal->get_shader_param(hal, PIPE_SHADER_FRAGMENT,

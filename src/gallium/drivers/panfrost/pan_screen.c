@@ -90,7 +90,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_NPOT_TEXTURES:
         case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
         case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
-        case PIPE_CAP_SM3:
+        case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
+        case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
+        case PIPE_CAP_VERTEX_SHADER_SATURATE:
         case PIPE_CAP_POINT_SPRITE:
                 return 1;
 
