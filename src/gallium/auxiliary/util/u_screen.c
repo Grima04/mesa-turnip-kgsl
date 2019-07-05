@@ -371,6 +371,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
 #endif
 
    case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
+   case PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES:
       return pscreen->get_param(pscreen, PIPE_CAP_SM3);
 
    default:

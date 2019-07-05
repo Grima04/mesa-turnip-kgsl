@@ -536,6 +536,8 @@ The integer capabilities:
 * ``PIPE_CAP_TGSI_DIV``: Whether opcode DIV is supported
 * ``PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD``: Whether texture lookups with
   explicit LOD is supported in the fragment shader.
+* ``PIPE_CAP_FRAGMENT_SHADER_DERIVATIVES``: True if the driver supports
+  derivatives in fragment shaders.
 
 .. _pipe_capf:
 
