@@ -172,7 +172,7 @@ nir_shader_to_native(nir_builder *b,
       unsigned swiz[4] = { 2, 1, 0, 3 }; /* BGRA */
       c_shader = nir_swizzle(b, c_shader, swiz, 4);
       return nir_float_to_unorm4(b, c_shader);
-   } else if (desc->format == PIPE_FORMAT_R10G10B10A2_UNORM)
+   } else if (desc->format == PIPE_FORMAT_R10G10B10A2_UNORM || desc->format == PIPE_FORMAT_B10G10R10A2_UNORM)
      return nir_float_to_rgb10a2(b, c_shader, true); 
    else if (desc->format == PIPE_FORMAT_R10G10B10A2_UINT)
      return nir_float_to_rgb10a2(b, c_shader, false); 
@@ -239,7 +239,7 @@ nir_lower_framebuffer(nir_shader *shader, enum pipe_format format)
    if ((homogenous_bits && bits == 4 && util_format_is_unorm(format)) || format == PIPE_FORMAT_B5G5R5A1_UNORM) {
       raw_bitsize_out = 16;
       raw_out_components = 1;
-   } else if (format == PIPE_FORMAT_R10G10B10A2_UNORM || format == PIPE_FORMAT_R10G10B10A2_UINT || format == PIPE_FORMAT_R11G11B10_FLOAT) {
+   } else if (format == PIPE_FORMAT_R10G10B10A2_UNORM || format == PIPE_FORMAT_B10G10R10A2_UNORM || format == PIPE_FORMAT_R10G10B10A2_UINT || format == PIPE_FORMAT_R11G11B10_FLOAT) {
       raw_bitsize_out = 32;
       raw_out_components = 1;
    }
