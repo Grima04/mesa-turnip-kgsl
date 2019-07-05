@@ -118,6 +118,10 @@ panfrost_can_fixed_blend(enum pipe_format format)
         /* Certain special formats are, too */
         switch (format) {
                 case PIPE_FORMAT_B5G6R5_UNORM:
+                case PIPE_FORMAT_R10G10B10A2_UNORM:
+                case PIPE_FORMAT_B10G10R10A2_UNORM:
+                case PIPE_FORMAT_R10G10B10X2_UNORM:
+                case PIPE_FORMAT_B10G10R10X2_UNORM:
                         return true;
                 default:
                         return false;

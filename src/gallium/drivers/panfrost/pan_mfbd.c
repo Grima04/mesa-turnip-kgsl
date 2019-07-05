@@ -95,8 +95,13 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 surf->format == PIPE_FORMAT_R32_FLOAT ||
                 surf->format == PIPE_FORMAT_R32_UINT ||
                 surf->format == PIPE_FORMAT_R32_SINT ||
-                surf->format == PIPE_FORMAT_R10G10B10A2_UNORM ||
                 surf->format == PIPE_FORMAT_R10G10B10A2_UINT;
+
+        bool rgb10_unorm =
+                surf->format == PIPE_FORMAT_R10G10B10A2_UNORM ||
+                surf->format == PIPE_FORMAT_B10G10R10A2_UNORM ||
+                surf->format == PIPE_FORMAT_R10G10B10X2_UNORM ||
+                surf->format == PIPE_FORMAT_B10G10R10X2_UNORM;
 
         bool float_64 =
                 surf->format == PIPE_FORMAT_R32G32_FLOAT ||
@@ -127,6 +132,10 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 fmt.unk1 = 0x84000000;
                 fmt.unk3 = 0x0;
                 fmt.nr_channels = MALI_POSITIVE(2);
+        } else if (rgb10_unorm) {
+                fmt.unk1 = 0x08000000;
+                fmt.unk3 = 0x6;
+                fmt.nr_channels = MALI_POSITIVE(1);
         } else if (float_32) {
                 fmt.unk1 = 0x88000000;
                 fmt.unk3 = 0x0;
