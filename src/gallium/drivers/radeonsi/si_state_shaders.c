@@ -2880,6 +2880,9 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 		sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z);
 	}
 
+	if (sel->info.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE])
+		sel->db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
+
 	(void) mtx_init(&sel->mutex, mtx_plain);
 
 	si_schedule_initial_compile(sctx, sel->info.processor, &sel->ready,

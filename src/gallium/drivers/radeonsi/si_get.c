@@ -163,6 +163,9 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_QUERY_SO_OVERFLOW:
 		return sscreen->info.chip_class <= GFX9;
 
+	case PIPE_CAP_POST_DEPTH_COVERAGE:
+		return sscreen->info.chip_class >= GFX10;
+
 	case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
 		return !SI_BIG_ENDIAN && sscreen->info.has_userptr;
 
@@ -224,7 +227,6 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_TGSI_MUL_ZERO_WINS:
 	case PIPE_CAP_UMA:
 	case PIPE_CAP_POLYGON_MODE_FILL_RECTANGLE:
-	case PIPE_CAP_POST_DEPTH_COVERAGE:
 	case PIPE_CAP_TILE_RASTER_ORDER:
 	case PIPE_CAP_MAX_COMBINED_SHADER_OUTPUT_RESOURCES:
 	case PIPE_CAP_CONTEXT_PRIORITY_MASK:
