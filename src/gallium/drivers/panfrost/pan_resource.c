@@ -229,8 +229,8 @@ panfrost_compute_checksum_sizes(
                 unsigned width,
                 unsigned height)
 {
-        unsigned aligned_width = ALIGN(width, CHECKSUM_TILE_WIDTH);
-        unsigned aligned_height = ALIGN(height, CHECKSUM_TILE_HEIGHT);
+        unsigned aligned_width = ALIGN_POT(width, CHECKSUM_TILE_WIDTH);
+        unsigned aligned_height = ALIGN_POT(height, CHECKSUM_TILE_HEIGHT);
 
         unsigned tile_count_x = aligned_width / CHECKSUM_TILE_WIDTH;
         unsigned tile_count_y = aligned_height / CHECKSUM_TILE_HEIGHT;
@@ -282,8 +282,8 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                 unsigned effective_depth = depth;
 
                 if (should_align) {
-                        effective_width = ALIGN(effective_width, 16);
-                        effective_height = ALIGN(effective_height, 16);
+                        effective_width = ALIGN_POT(effective_width, 16);
+                        effective_height = ALIGN_POT(effective_height, 16);
 
                         /* We don't need to align depth */
                 }
@@ -295,7 +295,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
 
                 /* ..but cache-line align it for performance */
                 if (can_align_stride && pres->layout == PAN_LINEAR)
-                        stride = ALIGN(stride, 64);
+                        stride = ALIGN_POT(stride, 64);
 
                 slice->stride = stride;
 
@@ -337,14 +337,14 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
         if (res->target != PIPE_TEXTURE_3D) {
                 /* Arrays and cubemaps have the entire miptree duplicated */
 
-                pres->cubemap_stride = ALIGN(offset, 64);
-                *bo_size = ALIGN(pres->cubemap_stride * res->array_size, 4096);
+                pres->cubemap_stride = ALIGN_POT(offset, 64);
+                *bo_size = ALIGN_POT(pres->cubemap_stride * res->array_size, 4096);
         } else {
                 /* 3D strides across the 2D layers */
                 assert(res->array_size == 1);
 
                 pres->cubemap_stride = size_2d;
-                *bo_size = ALIGN(offset, 4096);
+                *bo_size = ALIGN_POT(offset, 4096);
         }
 }
 

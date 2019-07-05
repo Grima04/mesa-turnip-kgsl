@@ -536,7 +536,7 @@ panfrost_emit_varyings(
         slot->stride = stride;
         slot->size = stride * count;
 
-        ctx->varying_height += ALIGN(slot->size, 64);
+        ctx->varying_height += ALIGN_POT(slot->size, 64);
         assert(ctx->varying_height < ctx->varying_mem.bo->size);
 
         return varying_address;
@@ -1292,7 +1292,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         mali_ptr gpu = panfrost_map_constant_buffer_gpu(ctx, buf, ubo);
 
                         unsigned bytes_per_field = 16;
-                        unsigned aligned = ALIGN(sz, bytes_per_field);
+                        unsigned aligned = ALIGN_POT(sz, bytes_per_field);
                         unsigned fields = aligned / bytes_per_field;
 
                         ubos[ubo].size = MALI_POSITIVE(fields);
@@ -1318,10 +1318,10 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                  * should work, but in practice causes issues when we're not
                  * explicitly trying to scissor */
 
-                .clip_minx = -inff,
-                .clip_miny = -inff,
-                .clip_maxx = inff,
-                .clip_maxy = inff,
+                .clip_minx = -INFINITY,
+                .clip_miny = -INFINITY,
+                .clip_maxx = INFINITY,
+                .clip_maxy = INFINITY,
 
                 .clip_minz = 0.0,
                 .clip_maxz = 1.0,

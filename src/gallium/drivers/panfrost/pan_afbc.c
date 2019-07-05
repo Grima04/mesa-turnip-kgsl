@@ -105,8 +105,8 @@ unsigned
 panfrost_afbc_header_size(unsigned width, unsigned height)
 {
         /* Align to tile */
-        unsigned aligned_width  = ALIGN(width,  AFBC_TILE_WIDTH);
-        unsigned aligned_height = ALIGN(height, AFBC_TILE_HEIGHT);
+        unsigned aligned_width  = ALIGN_POT(width,  AFBC_TILE_WIDTH);
+        unsigned aligned_height = ALIGN_POT(height, AFBC_TILE_HEIGHT);
 
         /* Compute size in tiles, rather than pixels */
         unsigned tile_count_x = aligned_width  / AFBC_TILE_WIDTH;
@@ -117,6 +117,6 @@ panfrost_afbc_header_size(unsigned width, unsigned height)
         unsigned header_bytes = tile_count * AFBC_HEADER_BYTES_PER_TILE;
 
         /* Align and go */
-        return ALIGN(header_bytes, AFBC_CACHE_ALIGN);
+        return ALIGN_POT(header_bytes, AFBC_CACHE_ALIGN);
 
 }

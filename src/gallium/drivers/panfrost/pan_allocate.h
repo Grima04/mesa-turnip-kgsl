@@ -127,10 +127,4 @@ panfrost_reserve(struct panfrost_memory *mem, size_t sz)
 struct panfrost_transfer
 panfrost_allocate_chunk(struct panfrost_context *ctx, size_t size, unsigned heap_id);
 
-#include <math.h>
-#define inff INFINITY
-
-#define R(...) #__VA_ARGS__
-#define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
-
 #endif /* __PAN_ALLOCATE_H__ */
