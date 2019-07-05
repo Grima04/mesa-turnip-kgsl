@@ -1265,8 +1265,10 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 		shader->previous_stage_sel ? shader->previous_stage_sel : gs_sel;
 	const enum pipe_shader_type gs_type = gs_sel->type;
 	const unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
-
-	const unsigned input_prim = si_get_input_prim(gs_sel);
+	/* TODO: Use QUADS as the worst case because of reuse, but triangles
+	 * will always have 1 additional unoccupied vector lane. We could use
+	 * that lane if the worst case was TRIANGLES. */
+	const unsigned input_prim = si_get_input_prim(gs_sel, PIPE_PRIM_QUADS);
 	const bool use_adjacency = input_prim >= PIPE_PRIM_LINES_ADJACENCY &&
 				   input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
 	const unsigned max_verts_per_prim = u_vertices_per_prim(input_prim);
@@ -1294,7 +1296,7 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 
 	/* All these are per subgroup: */
 	bool max_vert_out_per_gs_instance = false;
-	unsigned max_esverts_base = 256;
+	unsigned max_esverts_base = 128;
 	unsigned max_gsprims_base = 128; /* default prim group size clamp */
 
 	/* Hardware has the following non-natural restrictions on the value
