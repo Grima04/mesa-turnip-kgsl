@@ -1216,17 +1216,13 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(
 			shader->ngg.max_vert_out_per_gs_instance);
 
-	/* User edge flags are set by the pos exports. If user edge flags are
-	 * not used, we must use hw-generated edge flags and pass them via
-	 * the prim export to prevent drawing lines on internal edges of
-	 * decomposed primitives (such as quads) with polygon mode = lines.
-	 *
-	 * TODO: We should combine hw-generated edge flags with user edge
-	 *       flags in the shader.
+	/* Always output hw-generated edge flags and pass them via the prim
+	 * export to prevent drawing lines on internal edges of decomposed
+	 * primitives (such as quads) with polygon mode = lines. Only VS needs
+	 * this.
 	 */
 	shader->ctx_reg.ngg.pa_cl_ngg_cntl =
-		S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX &&
-						 !gs_info->writes_edgeflag);
+		S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX);
 
 	shader->ge_cntl =
 		S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
@@ -2671,6 +2667,14 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 		!sel->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] &&
 		!sel->so.num_outputs;
 
+	if (sel->type == PIPE_SHADER_VERTEX &&
+	    sel->info.writes_edgeflag) {
+		if (sscreen->info.chip_class >= GFX10)
+			sel->ngg_writes_edgeflag = true;
+		else
+			sel->pos_writes_edgeflag = true;
+	}
+
 	/* Set which opcode uses which (i,j) pair. */
 	if (sel->info.uses_persp_opcode_interp_centroid)
 		sel->info.uses_persp_centroid = true;
@@ -2817,11 +2821,11 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 	/* PA_CL_VS_OUT_CNTL */
 	bool misc_vec_ena =
-		sel->info.writes_psize || sel->info.writes_edgeflag ||
+		sel->info.writes_psize || sel->pos_writes_edgeflag ||
 		sel->info.writes_layer || sel->info.writes_viewport_index;
 	sel->pa_cl_vs_out_cntl =
 		S_02881C_USE_VTX_POINT_SIZE(sel->info.writes_psize) |
-		S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag) |
+		S_02881C_USE_VTX_EDGE_FLAG(sel->pos_writes_edgeflag) |
 		S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
 		S_02881C_USE_VTX_VIEWPORT_INDX(sel->info.writes_viewport_index) |
 		S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |

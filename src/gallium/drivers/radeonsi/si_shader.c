@@ -2964,11 +2964,11 @@ void si_llvm_export_vs(struct si_shader_context *ctx,
 
 	/* Write the misc vector (point size, edgeflag, layer, viewport). */
 	if (shader->selector->info.writes_psize ||
-	    shader->selector->info.writes_edgeflag ||
+	    shader->selector->pos_writes_edgeflag ||
 	    shader->selector->info.writes_viewport_index ||
 	    shader->selector->info.writes_layer) {
 		pos_args[1].enabled_channels = shader->selector->info.writes_psize |
-					       (shader->selector->info.writes_edgeflag << 1) |
+					       (shader->selector->pos_writes_edgeflag << 1) |
 					       (shader->selector->info.writes_layer << 2);
 
 		pos_args[1].valid_mask = 0; /* EXEC mask */
@@ -2983,7 +2983,7 @@ void si_llvm_export_vs(struct si_shader_context *ctx,
 		if (shader->selector->info.writes_psize)
 			pos_args[1].out[0] = psize_value;
 
-		if (shader->selector->info.writes_edgeflag) {
+		if (shader->selector->pos_writes_edgeflag) {
 			/* The output is a float, but the hw expects an integer
 			 * with the first bit containing the edge flag. */
 			edgeflag_value = LLVMBuildFPToUI(ctx->ac.builder,
