@@ -2016,7 +2016,7 @@ radv_fill_shader_keys(struct radv_shader_variant_key *keys,
 	}
 
 	if (nir[MESA_SHADER_TESS_CTRL]) {
-		keys[MESA_SHADER_VERTEX].vs.as_ls = true;
+		keys[MESA_SHADER_VERTEX].vs.out.as_ls = true;
 		keys[MESA_SHADER_TESS_CTRL].tcs.num_inputs = 0;
 		keys[MESA_SHADER_TESS_CTRL].tcs.input_vertices = key->tess_input_vertices;
 		keys[MESA_SHADER_TESS_CTRL].tcs.primitive_mode = nir[MESA_SHADER_TESS_EVAL]->info.tess.primitive_mode;
@@ -2026,9 +2026,9 @@ radv_fill_shader_keys(struct radv_shader_variant_key *keys,
 
 	if (nir[MESA_SHADER_GEOMETRY]) {
 		if (nir[MESA_SHADER_TESS_CTRL])
-			keys[MESA_SHADER_TESS_EVAL].tes.as_es = true;
+			keys[MESA_SHADER_TESS_EVAL].tes.out.as_es = true;
 		else
-			keys[MESA_SHADER_VERTEX].vs.as_es = true;
+			keys[MESA_SHADER_VERTEX].vs.out.as_es = true;
 	}
 
 	for(int i = 0; i < MESA_SHADER_STAGES; ++i)
@@ -2132,7 +2132,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 	struct radv_shader_module *modules[MESA_SHADER_STAGES] = { 0, };
 	nir_shader *nir[MESA_SHADER_STAGES] = {0};
 	struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
-	struct radv_shader_variant_key keys[MESA_SHADER_STAGES] = {{{{0}}}};
+	struct radv_shader_variant_key keys[MESA_SHADER_STAGES] = {{{{{0}}}}};
 	unsigned char hash[20], gs_copy_hash[20];
 
 	radv_start_feedback(pipeline_feedback);
@@ -2236,17 +2236,17 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		}
 
 		/* TODO: These are no longer used as keys we should refactor this */
-		keys[MESA_SHADER_VERTEX].vs.export_prim_id =
+		keys[MESA_SHADER_VERTEX].vs.out.export_prim_id =
 		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.info.ps.prim_id_input;
-		keys[MESA_SHADER_VERTEX].vs.export_layer_id =
+		keys[MESA_SHADER_VERTEX].vs.out.export_layer_id =
 		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.info.ps.layer_input;
-		keys[MESA_SHADER_VERTEX].vs.export_clip_dists =
+		keys[MESA_SHADER_VERTEX].vs.out.export_clip_dists =
 		        !!pipeline->shaders[MESA_SHADER_FRAGMENT]->info.info.ps.num_input_clips_culls;
-		keys[MESA_SHADER_TESS_EVAL].tes.export_prim_id =
+		keys[MESA_SHADER_TESS_EVAL].tes.out.export_prim_id =
 		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.info.ps.prim_id_input;
-		keys[MESA_SHADER_TESS_EVAL].tes.export_layer_id =
+		keys[MESA_SHADER_TESS_EVAL].tes.out.export_layer_id =
 		        pipeline->shaders[MESA_SHADER_FRAGMENT]->info.info.ps.layer_input;
-		keys[MESA_SHADER_TESS_EVAL].tes.export_clip_dists =
+		keys[MESA_SHADER_TESS_EVAL].tes.out.export_clip_dists =
 		        !!pipeline->shaders[MESA_SHADER_FRAGMENT]->info.info.ps.num_input_clips_culls;
 	}
 

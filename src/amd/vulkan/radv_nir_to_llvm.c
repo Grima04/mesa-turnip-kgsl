@@ -594,11 +594,11 @@ static bool needs_view_index_sgpr(struct radv_shader_context *ctx,
 	switch (stage) {
 	case MESA_SHADER_VERTEX:
 		if (ctx->shader_info->info.needs_multiview_view_index ||
-		    (!ctx->options->key.vs.as_es && !ctx->options->key.vs.as_ls && ctx->options->key.has_multiview_view_index))
+		    (!ctx->options->key.vs.out.as_es && !ctx->options->key.vs.out.as_ls && ctx->options->key.has_multiview_view_index))
 			return true;
 		break;
 	case MESA_SHADER_TESS_EVAL:
-		if (ctx->shader_info->info.needs_multiview_view_index || (!ctx->options->key.tes.as_es && ctx->options->key.has_multiview_view_index))
+		if (ctx->shader_info->info.needs_multiview_view_index || (!ctx->options->key.tes.out.as_es && ctx->options->key.has_multiview_view_index))
 			return true;
 		break;
 	case MESA_SHADER_GEOMETRY:
@@ -820,7 +820,7 @@ declare_vs_input_vgprs(struct radv_shader_context *ctx, struct arg_info *args)
 {
 	add_arg(args, ARG_VGPR, ctx->ac.i32, &ctx->abi.vertex_id);
 	if (!ctx->is_gs_copy_shader) {
-		if (ctx->options->key.vs.as_ls) {
+		if (ctx->options->key.vs.out.as_ls) {
 			add_arg(args, ARG_VGPR, ctx->ac.i32, &ctx->rel_auto_id);
 			add_arg(args, ARG_VGPR, ctx->ac.i32, &ctx->abi.instance_id);
 		} else {
@@ -1020,10 +1020,10 @@ static void create_function(struct radv_shader_context *ctx,
 		if (needs_view_index)
 			add_arg(&args, ARG_SGPR, ctx->ac.i32,
 				&ctx->abi.view_index);
-		if (ctx->options->key.vs.as_es) {
+		if (ctx->options->key.vs.out.as_es) {
 			add_arg(&args, ARG_SGPR, ctx->ac.i32,
 				&ctx->es2gs_offset);
-		} else if (ctx->options->key.vs.as_ls) {
+		} else if (ctx->options->key.vs.out.as_ls) {
 			/* no extra parameters */
 		} else {
 			declare_streamout_sgprs(ctx, stage, &args);
@@ -1086,7 +1086,7 @@ static void create_function(struct radv_shader_context *ctx,
 			add_arg(&args, ARG_SGPR, ctx->ac.i32,
 				&ctx->abi.view_index);
 
-		if (ctx->options->key.tes.as_es) {
+		if (ctx->options->key.tes.out.as_es) {
 			add_arg(&args, ARG_SGPR, ctx->ac.i32, &ctx->oc_lds);
 			add_arg(&args, ARG_SGPR, ctx->ac.i32, NULL);
 			add_arg(&args, ARG_SGPR, ctx->ac.i32,
@@ -1273,7 +1273,7 @@ static void create_function(struct radv_shader_context *ctx,
 	}
 
 	if (stage == MESA_SHADER_TESS_CTRL ||
-	    (stage == MESA_SHADER_VERTEX && ctx->options->key.vs.as_ls) ||
+	    (stage == MESA_SHADER_VERTEX && ctx->options->key.vs.out.as_ls) ||
 	    /* GFX9 has the ESGS ring buffer in LDS. */
 	    (stage == MESA_SHADER_GEOMETRY && has_previous_stage)) {
 		ac_declare_lds_as_pointer(&ctx->ac);
@@ -3448,14 +3448,14 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 
 	switch (ctx->stage) {
 	case MESA_SHADER_VERTEX:
-		if (ctx->options->key.vs.as_ls)
+		if (ctx->options->key.vs.out.as_ls)
 			handle_ls_outputs_post(ctx);
-		else if (ctx->options->key.vs.as_es)
+		else if (ctx->options->key.vs.out.as_es)
 			handle_es_outputs_post(ctx, &ctx->shader_info->vs.es_info);
 		else
-			handle_vs_outputs_post(ctx, ctx->options->key.vs.export_prim_id,
-					       ctx->options->key.vs.export_layer_id,
-					       ctx->options->key.vs.export_clip_dists,
+			handle_vs_outputs_post(ctx, ctx->options->key.vs.out.export_prim_id,
+					       ctx->options->key.vs.out.export_layer_id,
+					       ctx->options->key.vs.out.export_clip_dists,
 					       &ctx->shader_info->vs.outinfo);
 		break;
 	case MESA_SHADER_FRAGMENT:
@@ -3468,12 +3468,12 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 		handle_tcs_outputs_post(ctx);
 		break;
 	case MESA_SHADER_TESS_EVAL:
-		if (ctx->options->key.tes.as_es)
+		if (ctx->options->key.tes.out.as_es)
 			handle_es_outputs_post(ctx, &ctx->shader_info->tes.es_info);
 		else
-			handle_vs_outputs_post(ctx, ctx->options->key.tes.export_prim_id,
-					       ctx->options->key.tes.export_layer_id,
-					       ctx->options->key.tes.export_clip_dists,
+			handle_vs_outputs_post(ctx, ctx->options->key.tes.out.export_prim_id,
+					       ctx->options->key.tes.out.export_layer_id,
+					       ctx->options->key.tes.out.export_clip_dists,
 					       &ctx->shader_info->tes.outinfo);
 		break;
 	default:
@@ -3503,13 +3503,13 @@ ac_nir_eliminate_const_vs_outputs(struct radv_shader_context *ctx)
 	case MESA_SHADER_GEOMETRY:
 		return;
 	case MESA_SHADER_VERTEX:
-		if (ctx->options->key.vs.as_ls ||
-		    ctx->options->key.vs.as_es)
+		if (ctx->options->key.vs.out.as_ls ||
+		    ctx->options->key.vs.out.as_es)
 			return;
 		outinfo = &ctx->shader_info->vs.outinfo;
 		break;
 	case MESA_SHADER_TESS_EVAL:
-		if (ctx->options->key.vs.as_es)
+		if (ctx->options->key.vs.out.as_es)
 			return;
 		outinfo = &ctx->shader_info->tes.outinfo;
 		break;
@@ -3529,7 +3529,7 @@ ac_setup_rings(struct radv_shader_context *ctx)
 {
 	if (ctx->options->chip_class <= GFX8 &&
 	    (ctx->stage == MESA_SHADER_GEOMETRY ||
-	     ctx->options->key.vs.as_es || ctx->options->key.tes.as_es)) {
+	     ctx->options->key.vs.out.as_es || ctx->options->key.tes.out.as_es)) {
 		unsigned ring = ctx->stage == MESA_SHADER_GEOMETRY ? RING_ESGS_GS
 								   : RING_ESGS_VS;
 		LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, ring, false);
@@ -3945,16 +3945,16 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
                 shader_info->tes.spacing = nir->info.tess.spacing;
                 shader_info->tes.ccw = nir->info.tess.ccw;
                 shader_info->tes.point_mode = nir->info.tess.point_mode;
-                shader_info->tes.as_es = options->key.tes.as_es;
-                shader_info->tes.export_prim_id = options->key.tes.export_prim_id;
+                shader_info->tes.as_es = options->key.tes.out.as_es;
+                shader_info->tes.export_prim_id = options->key.tes.out.export_prim_id;
                 break;
         case MESA_SHADER_TESS_CTRL:
                 shader_info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
                 break;
         case MESA_SHADER_VERTEX:
-                shader_info->vs.as_es = options->key.vs.as_es;
-                shader_info->vs.as_ls = options->key.vs.as_ls;
-                shader_info->vs.export_prim_id = options->key.vs.export_prim_id;
+                shader_info->vs.as_es = options->key.vs.out.as_es;
+                shader_info->vs.as_ls = options->key.vs.out.as_ls;
+                shader_info->vs.export_prim_id = options->key.vs.out.export_prim_id;
                 break;
         default:
                 break;

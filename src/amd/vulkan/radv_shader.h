@@ -62,7 +62,17 @@ enum {
 	RADV_ALPHA_ADJUST_SSCALED = 3,
 };
 
+struct radv_vs_out_key {
+	uint32_t as_es:1;
+	uint32_t as_ls:1;
+	uint32_t export_prim_id:1;
+	uint32_t export_layer_id:1;
+	uint32_t export_clip_dists:1;
+};
+
 struct radv_vs_variant_key {
+	struct radv_vs_out_key out;
+
 	uint32_t instance_rate_inputs;
 	uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
 	uint8_t vertex_attribute_formats[MAX_VERTEX_ATTRIBS];
@@ -76,19 +86,11 @@ struct radv_vs_variant_key {
 
 	/* For some formats the channels have to be shuffled. */
 	uint32_t post_shuffle;
-
-	uint32_t as_es:1;
-	uint32_t as_ls:1;
-	uint32_t export_prim_id:1;
-	uint32_t export_layer_id:1;
-	uint32_t export_clip_dists:1;
 };
 
 struct radv_tes_variant_key {
-	uint32_t as_es:1;
-	uint32_t export_prim_id:1;
-	uint32_t export_layer_id:1;
-	uint32_t export_clip_dists:1;
+	struct radv_vs_out_key out;
+
 	uint8_t num_patches;
 	uint8_t tcs_num_outputs;
 };
