@@ -521,15 +521,13 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	struct si_shader_selector *sel = ctx->shader->selector;
 	struct tgsi_shader_info *info = &sel->info;
-	struct si_shader_output_values *outputs = NULL;
+	struct si_shader_output_values outputs[PIPE_MAX_SHADER_OUTPUTS];
 	LLVMBuilderRef builder = ctx->ac.builder;
 	struct lp_build_if_state if_state;
 	LLVMValueRef tmp, tmp2;
 
 	assert(!ctx->shader->is_gs_copy_shader);
 	assert(info->num_outputs <= max_outputs);
-
-	outputs = MALLOC((info->num_outputs + 1) * sizeof(outputs[0]));
 
 	LLVMValueRef vertex_ptr = NULL;
 
@@ -756,8 +754,6 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		si_llvm_export_vs(ctx, outputs, i);
 	}
 	lp_build_endif(&if_state);
-
-	FREE(outputs);
 }
 
 static LLVMValueRef
@@ -1206,8 +1202,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, vertlive_scan.result_reduce, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5145);
 	{
-		struct si_shader_output_values *outputs = NULL;
-		outputs = MALLOC(info->num_outputs * sizeof(outputs[0]));
+		struct si_shader_output_values outputs[PIPE_MAX_SHADER_OUTPUTS];
 
 		tmp = ngg_gs_vertex_ptr(ctx, tid);
 		LLVMValueRef gep_idx[3] = {
@@ -1237,8 +1232,6 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 		}
 
 		si_llvm_export_vs(ctx, outputs, info->num_outputs);
-
-		FREE(outputs);
 	}
 	ac_build_endif(&ctx->ac, 5145);
 }
