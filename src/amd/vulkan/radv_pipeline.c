@@ -3588,7 +3588,8 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radeon_set_context_reg(ctx_cs, R_028B54_VGT_SHADER_STAGES_EN, radv_compute_vgt_shader_stages_en(pipeline));
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX7) {
-		radeon_set_uconfig_reg_idx(cs, R_030908_VGT_PRIMITIVE_TYPE, 1, prim);
+		radeon_set_uconfig_reg_idx(pipeline->device->physical_device,
+					   cs, R_030908_VGT_PRIMITIVE_TYPE, 1, prim);
 	} else {
 		radeon_set_config_reg(cs, R_008958_VGT_PRIMITIVE_TYPE, prim);
 	}

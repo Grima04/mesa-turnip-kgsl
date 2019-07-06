@@ -62,7 +62,7 @@
 #include "ac_llvm_util.h"
 #include "radv_descriptor_set.h"
 #include "radv_extensions.h"
-#include "radv_cs.h"
+#include "sid.h"
 
 #include <llvm-c/TargetMachine.h>
 

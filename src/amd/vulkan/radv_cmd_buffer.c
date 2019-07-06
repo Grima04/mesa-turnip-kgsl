@@ -1956,7 +1956,8 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer)
 
 	if (state->index_type != state->last_index_type) {
 		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
-			radeon_set_uconfig_reg_idx(cs, R_03090C_VGT_INDEX_TYPE,
+			radeon_set_uconfig_reg_idx(cmd_buffer->device->physical_device,
+						   cs, R_03090C_VGT_INDEX_TYPE,
 						   2, state->index_type);
 		} else {
 			radeon_emit(cs, PKT3(PKT3_INDEX_TYPE, 0, 0));
@@ -2512,7 +2513,8 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 
 	if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
 		if (info->chip_class >= GFX9) {
-			radeon_set_uconfig_reg_idx(cs,
+			radeon_set_uconfig_reg_idx(cmd_buffer->device->physical_device,
+						   cs,
 						   R_030960_IA_MULTI_VGT_PARAM,
 						   4, ia_multi_vgt_param);
 		} else if (info->chip_class >= GFX7) {
