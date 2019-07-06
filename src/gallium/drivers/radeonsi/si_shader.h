@@ -369,6 +369,7 @@ struct si_shader_selector {
 	unsigned	gsvs_vertex_size;
 	unsigned	max_gsvs_emit_size;
 	unsigned	enabled_streamout_buffer_mask;
+	bool		tess_turns_off_ngg;
 
 	/* PS parameters. */
 	unsigned	color_attr_index[2];

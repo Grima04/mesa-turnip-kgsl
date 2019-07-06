@@ -2533,12 +2533,9 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		}
 	}
 
-	/* The GS copy shader is always pre-compiled.
-	 *
-	 * TODO-GFX10: We could compile the GS copy shader on demand, since it
-	 * is only used in the (rare) non-NGG case.
-	 */
-	if (sel->type == PIPE_SHADER_GEOMETRY) {
+	/* The GS copy shader is always pre-compiled. */
+	if (sel->type == PIPE_SHADER_GEOMETRY &&
+	    (sscreen->info.chip_class <= GFX9 || sel->tess_turns_off_ngg)) {
 		sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
 		if (!sel->gs_copy_shader) {
 			fprintf(stderr, "radeonsi: can't create GS copy shader\n");
@@ -2714,6 +2711,13 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 		sel->gs_input_verts_per_prim =
 			u_vertices_per_prim(sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM]);
+
+		/* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation. */
+		sel->tess_turns_off_ngg =
+			(sscreen->info.family == CHIP_NAVI10 ||
+			 sscreen->info.family == CHIP_NAVI12 ||
+			 sscreen->info.family == CHIP_NAVI14) &&
+			sel->gs_num_invocations * sel->gs_max_out_vertices > 256;
 		break;
 
 	case PIPE_SHADER_TESS_CTRL:
@@ -2980,9 +2984,8 @@ static bool si_update_ngg(struct si_context *sctx)
 
 	bool new_ngg = true;
 
-	/* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation. */
 	if (sctx->gs_shader.cso && sctx->tes_shader.cso &&
-	    sctx->gs_shader.cso->gs_num_invocations * sctx->gs_shader.cso->gs_max_out_vertices > 256)
+	    sctx->gs_shader.cso->tess_turns_off_ngg)
 		new_ngg = false;
 
 	if (new_ngg != sctx->ngg) {
