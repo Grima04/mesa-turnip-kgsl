@@ -1279,17 +1279,11 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 	/* We can't allow using the whole LDS, because GS waves compete with
 	 * other shader stages for LDS space.
 	 *
-	 * Streamout can increase the ESGS buffer size later on, so be more
-	 * conservative with streamout and use 4K dwords. This may be suboptimal.
-	 *
-	 * Otherwise, use the limit of 7K dwords. The reason is that we need
-	 * to leave some headroom for the max_esverts increase at the end.
-	 *
 	 * TODO: We should really take the shader's internal LDS use into
 	 *       account. The linker will fail if the size is greater than
 	 *       8K dwords.
 	 */
-	const unsigned max_lds_size = (gs_sel->so.num_outputs ? 4 : 7) * 1024 - 128;
+	const unsigned max_lds_size = 8 * 1024 - 768;
 	const unsigned target_lds_size = max_lds_size;
 	unsigned esvert_lds_size = 0;
 	unsigned gsprim_lds_size = 0;
