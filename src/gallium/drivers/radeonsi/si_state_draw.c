@@ -715,30 +715,33 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
  */
 static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 {
-	if (sctx->ngg)
-		return; /* set during PM4 emit */
+	unsigned ge_cntl;
 
-	union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
-	unsigned primgroup_size;
-	unsigned vertgroup_size;
-
-	if (sctx->tes_shader.cso) {
-		primgroup_size = num_patches; /* must be a multiple of NUM_PATCHES */
-		vertgroup_size = 0;
-	} else if (sctx->gs_shader.cso) {
-		unsigned vgt_gs_onchip_cntl = sctx->gs_shader.current->ctx_reg.gs.vgt_gs_onchip_cntl;
-		primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
-		vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
+	if (sctx->ngg) {
+		ge_cntl = si_get_vs_state(sctx)->ge_cntl |
+			  S_03096C_PACKET_TO_ONE_PA(sctx->ia_multi_vgt_param_key.u.line_stipple_enabled);
 	} else {
-		primgroup_size = 128; /* recommended without a GS and tess */
-		vertgroup_size = 0;
-	}
+		union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
+		unsigned primgroup_size;
+		unsigned vertgroup_size;
 
-	unsigned ge_cntl =
-		S_03096C_PRIM_GRP_SIZE(primgroup_size) |
-		S_03096C_VERT_GRP_SIZE(vertgroup_size) |
-		S_03096C_PACKET_TO_ONE_PA(key.u.line_stipple_enabled) |
-		S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
+		if (sctx->tes_shader.cso) {
+			primgroup_size = num_patches; /* must be a multiple of NUM_PATCHES */
+			vertgroup_size = 0;
+		} else if (sctx->gs_shader.cso) {
+			unsigned vgt_gs_onchip_cntl = sctx->gs_shader.current->ctx_reg.gs.vgt_gs_onchip_cntl;
+			primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
+			vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
+		} else {
+			primgroup_size = 128; /* recommended without a GS and tess */
+			vertgroup_size = 0;
+		}
+
+		ge_cntl = S_03096C_PRIM_GRP_SIZE(primgroup_size) |
+			  S_03096C_VERT_GRP_SIZE(vertgroup_size) |
+			  S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id) |
+			  S_03096C_PACKET_TO_ONE_PA(key.u.line_stipple_enabled);
+	}
 
 	if (ge_cntl != sctx->last_multi_vgt_param) {
 		radeon_set_uconfig_reg(sctx->gfx_cs, R_03096C_GE_CNTL, ge_cntl);

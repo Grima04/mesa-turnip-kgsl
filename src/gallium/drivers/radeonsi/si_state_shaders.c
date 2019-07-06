@@ -990,11 +990,6 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx,
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
-
-	if (shader->ge_cntl != sctx->last_multi_vgt_param) {
-		radeon_set_uconfig_reg(sctx->gfx_cs, R_03096C_GE_CNTL, shader->ge_cntl);
-		sctx->last_multi_vgt_param = shader->ge_cntl;
-	}
 }
 
 static void gfx10_emit_shader_ngg_notess_nogs(struct si_context *sctx)

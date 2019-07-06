@@ -1629,7 +1629,9 @@ static inline struct tgsi_shader_info *si_get_vs_info(struct si_context *sctx)
 
 static inline struct si_shader* si_get_vs_state(struct si_context *sctx)
 {
-	if (sctx->gs_shader.cso)
+	if (sctx->gs_shader.cso &&
+	    sctx->gs_shader.current &&
+	    !sctx->gs_shader.current->key.as_ngg)
 		return sctx->gs_shader.cso->gs_copy_shader;
 
 	struct si_shader_ctx_state *vs = si_get_vs(sctx);
