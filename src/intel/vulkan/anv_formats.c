@@ -1170,8 +1170,14 @@ void anv_GetPhysicalDeviceExternalBufferProperties(
    }
 
  unsupported:
+   /* From the Vulkan 1.1.113 spec:
+    *
+    *    compatibleHandleTypes must include at least handleType.
+    */
    pExternalBufferProperties->externalMemoryProperties =
-      (VkExternalMemoryProperties) {0};
+      (VkExternalMemoryProperties) {
+         .compatibleHandleTypes = pExternalBufferInfo->handleType,
+      };
 }
 
 VkResult anv_CreateSamplerYcbcrConversion(
