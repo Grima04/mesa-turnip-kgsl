@@ -496,6 +496,16 @@ static void build_streamout(struct si_shader_context *ctx,
 	}
 }
 
+static unsigned ngg_nogs_vertex_size(struct si_shader *shader)
+{
+	unsigned lds_vertex_size = 0;
+
+	if (shader->selector->so.num_outputs)
+		lds_vertex_size = 4 * shader->selector->info.num_outputs + 1;
+
+	return lds_vertex_size;
+}
+
 /**
  * Returns an `[N x i32] addrspace(LDS)*` pointing at contiguous LDS storage
  * for the vertex outputs.
@@ -504,7 +514,7 @@ static LLVMValueRef ngg_nogs_vertex_ptr(struct si_shader_context *ctx,
 					LLVMValueRef vtxid)
 {
 	/* The extra dword is used to avoid LDS bank conflicts. */
-	unsigned vertex_size = 4 * ctx->shader->selector->info.num_outputs + 1;
+	unsigned vertex_size = ngg_nogs_vertex_size(ctx->shader);
 	LLVMTypeRef ai32 = LLVMArrayType(ctx->i32, vertex_size);
 	LLVMTypeRef pai32 = LLVMPointerType(ai32, AC_ADDR_SPACE_LDS);
 	LLVMValueRef tmp = LLVMBuildBitCast(ctx->ac.builder, ctx->esgs_ring, pai32, "");
@@ -1316,12 +1326,12 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 		esvert_lds_size = es_sel->esgs_itemsize / 4;
 		gsprim_lds_size = (gs_sel->gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
 	} else {
-		/* TODO: This needs to be adjusted once LDS use for compaction
-		 * after culling is implemented. */
-		if (es_sel->so.num_outputs)
-			esvert_lds_size = 4 * es_sel->info.num_outputs + 1;
+		/* VS and TES. */
+		/* LDS size for passing data from ES to GS. */
+		esvert_lds_size = ngg_nogs_vertex_size(shader);
 
-		/* GS stores Primitive IDs into LDS at the address corresponding
+		/* LDS size for passing data from GS to ES.
+		 * GS stores Primitive IDs into LDS at the address corresponding
 		 * to the ES thread of the provoking vertex. All ES threads
 		 * load and export PrimitiveID for their thread.
 		 */
