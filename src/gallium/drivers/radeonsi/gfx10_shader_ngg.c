@@ -538,19 +538,18 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		outputs[i].semantic_name = info->output_semantic_name[i];
 		outputs[i].semantic_index = info->output_semantic_index[i];
 
-		/* This is used only by streamout. */
 		for (unsigned j = 0; j < 4; j++) {
-			outputs[i].values[j] =
-				LLVMBuildLoad(builder,
-					      addrs[4 * i + j],
-					      "");
 			outputs[i].vertex_stream[j] =
 				(info->output_streams[i] >> (2 * j)) & 3;
 
-			if (vertex_ptr) {
+			/* TODO: we may store more outputs than streamout needs,
+			 * but streamout performance isn't that important.
+			 */
+			if (sel->so.num_outputs) {
 				tmp = ac_build_gep0(&ctx->ac, vertex_ptr,
 					LLVMConstInt(ctx->i32, 4 * i + j, false));
-				tmp2 = ac_to_integer(&ctx->ac, outputs[i].values[j]);
+				tmp2 = LLVMBuildLoad(builder, addrs[4 * i + j], "");
+				tmp2 = ac_to_integer(&ctx->ac, tmp2);
 				LLVMBuildStore(builder, tmp2, tmp);
 			}
 		}
