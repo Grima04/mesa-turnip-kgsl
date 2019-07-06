@@ -4164,6 +4164,8 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		prim = V_008958_DI_PT_RECTLIST;
 		gs_out = V_028A6C_OUTPRIM_TYPE_TRISTRIP;
 		pipeline->graphics.can_use_guardband = true;
+		if (radv_pipeline_has_ngg(pipeline))
+			gs_out = V_028A6C_VGT_OUT_RECT_V0;
 	}
 	pipeline->graphics.prim_restart_enable = !!pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
 	/* prim vertex count will need TESS changes */
