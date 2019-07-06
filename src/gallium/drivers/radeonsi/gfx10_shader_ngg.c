@@ -1328,6 +1328,14 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 		 * after culling is implemented. */
 		if (es_sel->so.num_outputs)
 			esvert_lds_size = 4 * es_sel->info.num_outputs + 1;
+
+		/* GS stores Primitive IDs into LDS at the address corresponding
+		 * to the ES thread of the provoking vertex. All ES threads
+		 * load and export PrimitiveID for their thread.
+		 */
+		if (gs_sel->type == PIPE_SHADER_VERTEX &&
+		    shader->key.mono.u.vs_export_prim_id)
+			esvert_lds_size = MAX2(esvert_lds_size, 1);
 	}
 
 	unsigned max_gsprims = max_gsprims_base;
