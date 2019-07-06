@@ -565,6 +565,8 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		} else {
 			bool enable_prim_id = info->tes.export_prim_id || info->info.uses_prim_id;
 			vgpr_comp_cnt = enable_prim_id ? 3 : 2;
+
+			config_out->rsrc1 |= S_00B128_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		}
 		config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		break;
@@ -578,6 +580,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		} else {
 			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
+		config_out->rsrc1 |= S_00B428_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		break;
 	case MESA_SHADER_VERTEX:
 		if (info->vs.as_ls) {
@@ -603,12 +606,18 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			} else {
 				vgpr_comp_cnt = 0;
 			}
+
+			config_out->rsrc1 |= S_00B128_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		}
 		break;
 	case MESA_SHADER_FRAGMENT:
+		config_out->rsrc1 |= S_00B028_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+		break;
 	case MESA_SHADER_GEOMETRY:
+		config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		break;
 	case MESA_SHADER_COMPUTE:
+		config_out->rsrc1 |= S_00B848_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		config_out->rsrc2 |=
 			S_00B84C_TGID_X_EN(info->info.cs.uses_block_id[0]) |
 			S_00B84C_TGID_Y_EN(info->info.cs.uses_block_id[1]) |
