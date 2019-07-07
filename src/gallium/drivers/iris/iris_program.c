@@ -1494,7 +1494,7 @@ iris_update_compiled_fs(struct iris_context *ice)
       struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
       const struct gen_device_info *devinfo = &screen->devinfo;
    struct brw_wm_prog_key key = { KEY_INIT(devinfo->gen) };
-   ice->vtbl.populate_fs_key(ice, &key);
+   ice->vtbl.populate_fs_key(ice, &ish->nir->info, &key);
 
    if (ish->nos & (1ull << IRIS_NOS_LAST_VUE_MAP))
       key.input_slots_valid = ice->shaders.last_vue_map->slots_valid;

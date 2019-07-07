@@ -3442,6 +3442,7 @@ iris_populate_gs_key(const struct iris_context *ice,
  */
 static void
 iris_populate_fs_key(const struct iris_context *ice,
+                     const struct shader_info *info,
                      struct brw_wm_prog_key *key)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
@@ -3458,8 +3459,8 @@ iris_populate_fs_key(const struct iris_context *ice,
 
    key->alpha_test_replicate_alpha = fb->nr_cbufs > 1 && zsa->alpha.enabled;
 
-   /* XXX: only bother if COL0/1 are read */
-   key->flat_shade = rast->flatshade;
+   key->flat_shade = rast->flatshade &&
+      (info->inputs_read & (VARYING_BIT_COL0 | VARYING_BIT_COL1));
 
    key->persample_interp = rast->force_persample_interp;
    key->multisample_fbo = rast->multisample && fb->samples > 1;

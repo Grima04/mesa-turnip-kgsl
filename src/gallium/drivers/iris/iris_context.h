@@ -475,6 +475,7 @@ struct iris_vtable {
    void (*populate_gs_key)(const struct iris_context *ice,
                            struct brw_gs_prog_key *key);
    void (*populate_fs_key)(const struct iris_context *ice,
+                           const struct shader_info *info,
                            struct brw_wm_prog_key *key);
    void (*populate_cs_key)(const struct iris_context *ice,
                            struct brw_cs_prog_key *key);
