@@ -123,7 +123,6 @@ struct nv50_ir_prog_info
          bool usesDrawParameters;
       } vp;
       struct {
-         uint8_t inputPatchSize;
          uint8_t outputPatchSize;
          uint8_t partitioning;    /* PIPE_TESS_PART */
          int8_t winding;          /* +1 (clockwise) / -1 (counter-clockwise) */
