@@ -3647,10 +3647,10 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 	case MESA_SHADER_VERTEX:
 		if (ctx->options->key.vs.out.as_ls)
 			handle_ls_outputs_post(ctx);
+		else if (ctx->options->key.vs.out.as_ngg)
+			break; /* handled outside of the shader body */
 		else if (ctx->options->key.vs.out.as_es)
 			handle_es_outputs_post(ctx, &ctx->shader_info->vs.es_info);
-		else if (ctx->options->key.vs.out.as_ngg)
-			handle_ngg_outputs_post(ctx);
 		else
 			handle_vs_outputs_post(ctx, ctx->options->key.vs.out.export_prim_id,
 					       ctx->options->key.vs.out.export_layer_id,
@@ -4021,6 +4021,14 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		if (shader_count >= 2 || is_ngg) {
 			LLVMBuildBr(ctx.ac.builder, merge_block);
 			LLVMPositionBuilderAtEnd(ctx.ac.builder, merge_block);
+		}
+
+		/* This needs to be outside the if wrapping the shader body, as sometimes
+		 * the HW generates waves with 0 es/vs threads. */
+		if (is_pre_gs_stage(shaders[i]->info.stage) &&
+		    ctx.options->key.vs.out.as_ngg &&
+		    i == shader_count - 1) {
+			handle_ngg_outputs_post(&ctx);
 		}
 
 		if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY) {
