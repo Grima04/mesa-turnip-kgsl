@@ -1967,8 +1967,6 @@ iris_create_tcs_state(struct pipe_context *ctx,
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
-   // XXX: NOS?
-
    if (screen->precompile) {
       const unsigned _GL_TRIANGLES = 0x0004;
       const struct gen_device_info *devinfo = &screen->devinfo;
@@ -2006,8 +2004,6 @@ iris_create_tes_state(struct pipe_context *ctx,
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
    struct shader_info *info = &ish->nir->info;
 
-   // XXX: NOS?
-
    if (screen->precompile) {
       const struct gen_device_info *devinfo = &screen->devinfo;
       struct brw_tes_prog_key key = {
@@ -2031,8 +2027,6 @@ iris_create_gs_state(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_uncompiled_shader *ish = iris_create_shader_state(ctx, state);
-
-   // XXX: NOS?
 
    if (screen->precompile) {
       const struct gen_device_info *devinfo = &screen->devinfo;
