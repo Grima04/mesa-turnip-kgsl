@@ -48,54 +48,26 @@ def hardcoded_format(hw_enum):
     return Object(img_format=hw_enum, flags=[])
 
 HARDCODED = {
-    'PIPE_FORMAT_Z32_FLOAT_S8X24_UINT': hardcoded_format('X24_8_32_FLOAT'),
-    'PIPE_FORMAT_Z24_UNORM_S8_UINT': hardcoded_format('8_24_UNORM'),
-    'PIPE_FORMAT_S8_UINT_Z24_UNORM': hardcoded_format('24_8_UNORM'),
-    'PIPE_FORMAT_Z32_UNORM': None,
+    'VK_FORMAT_E5B9G9R9_UFLOAT_PACK32': hardcoded_format('5_9_9_9_FLOAT'),
+    'VK_FORMAT_B10G11R11_UFLOAT_PACK32': hardcoded_format('10_11_11_FLOAT'), # NOTE: full set of int/unorm/etc. exists
 
-    'PIPE_FORMAT_R9G9B9E5_FLOAT': hardcoded_format('5_9_9_9_FLOAT'),
-    'PIPE_FORMAT_R11G11B10_FLOAT': hardcoded_format('10_11_11_FLOAT'), # NOTE: full set of int/unorm/etc. exists
-
-    'PIPE_FORMAT_R8G8_B8G8_UNORM': hardcoded_format('GB_GR_UNORM'),
-    'PIPE_FORMAT_G8R8_B8R8_UNORM': hardcoded_format('GB_GR_UNORM'),
-
-    'PIPE_FORMAT_R8G8_R8B8_UNORM': hardcoded_format('BG_RG_UNORM'),
-    'PIPE_FORMAT_G8R8_G8B8_UNORM': hardcoded_format('BG_RG_UNORM'),
-
-    # These mixed channel types are not supported natively
-    'PIPE_FORMAT_R8SG8SB8UX8U_NORM': None,
-    'PIPE_FORMAT_R10SG10SB10SA2U_NORM': None,
-    'PIPE_FORMAT_R5SG5SB6U_NORM': None,
-
-    # Only R8G8_SRGB is supported, not L8A8_SRGB
-    'PIPE_FORMAT_L8A8_SRGB': None,
-
-    # S3TC
-    'PIPE_FORMAT_DXT1_RGB': hardcoded_format('BC1_UNORM'),
-    'PIPE_FORMAT_DXT1_RGBA': hardcoded_format('BC1_UNORM'),
-    'PIPE_FORMAT_DXT1_SRGB': hardcoded_format('BC1_SRGB'),
-    'PIPE_FORMAT_DXT1_SRGBA': hardcoded_format('BC1_SRGB'),
-    'PIPE_FORMAT_DXT3_RGBA': hardcoded_format('BC2_UNORM'),
-    'PIPE_FORMAT_DXT3_SRGBA': hardcoded_format('BC2_SRGB'),
-    'PIPE_FORMAT_DXT5_RGBA': hardcoded_format('BC3_UNORM'),
-    'PIPE_FORMAT_DXT5_SRGBA': hardcoded_format('BC3_SRGB'),
-
-    # RGTC
-    'PIPE_FORMAT_RGTC1_UNORM': hardcoded_format('BC4_UNORM'),
-    'PIPE_FORMAT_RGTC1_SNORM': hardcoded_format('BC4_SNORM'),
-    'PIPE_FORMAT_RGTC2_UNORM': hardcoded_format('BC5_UNORM'),
-    'PIPE_FORMAT_RGTC2_SNORM': hardcoded_format('BC5_SNORM'),
-    'PIPE_FORMAT_LATC1_UNORM': hardcoded_format('BC4_UNORM'),
-    'PIPE_FORMAT_LATC1_SNORM': hardcoded_format('BC4_SNORM'),
-    'PIPE_FORMAT_LATC2_UNORM': hardcoded_format('BC5_UNORM'),
-    'PIPE_FORMAT_LATC2_SNORM': hardcoded_format('BC5_SNORM'),
-
-    # BPTC
-    'PIPE_FORMAT_BPTC_RGB_UFLOAT': hardcoded_format('BC6_UFLOAT'),
-    'PIPE_FORMAT_BPTC_RGB_FLOAT': hardcoded_format('BC6_SFLOAT'),
-
-    'PIPE_FORMAT_BPTC_RGBA_UNORM': hardcoded_format('BC7_UNORM'),
-    'PIPE_FORMAT_BPTC_SRGBA': hardcoded_format('BC7_SRGB'),
+    # BC
+    'VK_FORMAT_BC1_RGB_UNORM_BLOCK': hardcoded_format('BC1_UNORM'),
+    'VK_FORMAT_BC1_RGBA_UNORM_BLOCK': hardcoded_format('BC1_UNORM'),
+    'VK_FORMAT_BC1_RGB_SRGB_BLOCK': hardcoded_format('BC1_SRGB'),
+    'VK_FORMAT_BC1_RGBA_SRGB_BLOCK': hardcoded_format('BC1_SRGB'),
+    'VK_FORMAT_BC2_UNORM_BLOCK': hardcoded_format('BC2_UNORM'),
+    'VK_FORMAT_BC2_SRGB_BLOCK': hardcoded_format('BC2_SRGB'),
+    'VK_FORMAT_BC3_UNORM_BLOCK': hardcoded_format('BC3_UNORM'),
+    'VK_FORMAT_BC3_SRGB_BLOCK': hardcoded_format('BC3_SRGB'),
+    'VK_FORMAT_BC4_UNORM_BLOCK': hardcoded_format('BC4_UNORM'),
+    'VK_FORMAT_BC4_SNORM_BLOCK': hardcoded_format('BC4_SNORM'),
+    'VK_FORMAT_BC5_UNORM_BLOCK': hardcoded_format('BC5_UNORM'),
+    'VK_FORMAT_BC5_SNORM_BLOCK': hardcoded_format('BC5_SNORM'),
+    'VK_FORMAT_BC6H_UFLOAT_BLOCK': hardcoded_format('BC6_UFLOAT'),
+    'VK_FORMAT_BC6H_SFLOAT_BLOCK': hardcoded_format('BC6_SFLOAT'),
+    'VK_FORMAT_BC7_UNORM_BLOCK': hardcoded_format('BC7_UNORM'),
+    'VK_FORMAT_BC7_SRGB_BLOCK': hardcoded_format('BC7_SRGB'),
 }
 
 
