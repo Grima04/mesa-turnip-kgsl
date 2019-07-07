@@ -42,6 +42,8 @@ def _init_exts_from_xml(xml):
     for ext in EXTENSIONS:
         ext_name_map[ext.name] = ext
 
+    # KHR_display is missing from the list.
+    platform_defines.append('VK_USE_PLATFORM_DISPLAY_KHR')
     for platform in xml.findall('./platforms/platform'):
         platform_defines.append(platform.attrib['protect'])
 
