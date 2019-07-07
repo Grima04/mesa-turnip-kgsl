@@ -769,12 +769,15 @@ static int compare_wave(const void *p1, const void *p2)
 }
 
 /* Return wave information. "waves" should be a large enough array. */
-unsigned ac_get_wave_info(struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP])
+unsigned ac_get_wave_info(enum chip_class chip_class,
+			  struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP])
 {
-	char line[2000];
+	char line[2000], cmd[128];
 	unsigned num_waves = 0;
 
-	FILE *p = popen("umr -O halt_waves -wa", "r");
+	sprintf(cmd, "umr -O halt_waves -wa %s", chip_class >= GFX10 ? "gfx_0.0.0" : "gfx");
+
+	FILE *p = popen(cmd, "r");
 	if (!p)
 		return 0;
 

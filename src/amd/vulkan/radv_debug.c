@@ -445,7 +445,8 @@ radv_dump_annotated_shaders(struct radv_pipeline *pipeline,
 			    VkShaderStageFlagBits active_stages, FILE *f)
 {
 	struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP];
-	unsigned num_waves = ac_get_wave_info(waves);
+	enum chip_class chip_class = pipeline->device->physical_device->rad_info.chip_class;
+	unsigned num_waves = ac_get_wave_info(chip_class, waves);
 
 	fprintf(f, COLOR_CYAN "The number of active waves = %u" COLOR_RESET
 		"\n\n", num_waves);

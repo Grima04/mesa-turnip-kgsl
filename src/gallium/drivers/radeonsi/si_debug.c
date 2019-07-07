@@ -1080,7 +1080,7 @@ static void si_print_annotated_shader(struct si_shader *shader,
 static void si_dump_annotated_shaders(struct si_context *sctx, FILE *f)
 {
 	struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP];
-	unsigned num_waves = ac_get_wave_info(waves);
+	unsigned num_waves = ac_get_wave_info(sctx->chip_class, waves);
 
 	fprintf(f, COLOR_CYAN "The number of active waves = %u" COLOR_RESET
 		"\n\n", num_waves);
