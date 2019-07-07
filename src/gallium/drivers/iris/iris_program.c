@@ -1173,6 +1173,7 @@ iris_update_compiled_tcs(struct iris_context *ice)
    struct iris_uncompiled_shader *tcs =
       ice->shaders.uncompiled[MESA_SHADER_TESS_CTRL];
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct brw_compiler *compiler = screen->compiler;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
    const struct shader_info *tes_info =
@@ -1181,7 +1182,8 @@ iris_update_compiled_tcs(struct iris_context *ice)
       KEY_INIT_NO_ID(devinfo->gen),
       .base.program_string_id = tcs ? tcs->program_id : 0,
       .tes_primitive_mode = tes_info->tess.primitive_mode,
-      .input_vertices = ice->state.vertices_per_patch,
+      .input_vertices =
+         !tcs || compiler->use_tcs_8_patch ? ice->state.vertices_per_patch : 0,
    };
    get_unified_tess_slots(ice, &key.outputs_written,
                           &key.patch_outputs_written);

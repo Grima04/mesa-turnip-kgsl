@@ -63,6 +63,9 @@ static void
 iris_update_draw_info(struct iris_context *ice,
                       const struct pipe_draw_info *info)
 {
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct brw_compiler *compiler = screen->compiler;
+
    if (ice->state.prim_mode != info->mode) {
       ice->state.prim_mode = info->mode;
       ice->state.dirty |= IRIS_DIRTY_VF_TOPOLOGY;
@@ -80,6 +83,10 @@ iris_update_draw_info(struct iris_context *ice,
        ice->state.vertices_per_patch != info->vertices_per_patch) {
       ice->state.vertices_per_patch = info->vertices_per_patch;
       ice->state.dirty |= IRIS_DIRTY_VF_TOPOLOGY;
+
+      /* 8_PATCH TCS needs this for key->input_vertices */
+      if (compiler->use_tcs_8_patch)
+         ice->state.dirty |= IRIS_DIRTY_UNCOMPILED_TCS;
 
       /* Flag constants dirty for gl_PatchVerticesIn if needed. */
       const struct shader_info *tcs_info =
