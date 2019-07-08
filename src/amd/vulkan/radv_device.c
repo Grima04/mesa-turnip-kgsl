@@ -2368,8 +2368,11 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 	case GFX7:
 	case GFX8:
 	case GFX9:
-	default:
 		max_offchip_buffers = MIN2(max_offchip_buffers, 508);
+		break;
+	case GFX10:
+		break;
+	default:
 		break;
 	}
 
