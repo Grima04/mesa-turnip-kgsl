@@ -487,6 +487,31 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         screen->fd = fd;
 
+        screen->gpu_id = panfrost_drm_query_gpu_version(screen);
+
+        /* Check if we're loading against a supported GPU model
+         * paired with a supported CPU (differences from
+         * armhf/aarch64 break models on incompatible CPUs at the
+         * moment -- this is a TODO). In other words, we whitelist
+         * RK3288, RK3399, and S912, which are verified to work. */
+
+        switch (screen->gpu_id) {
+#ifdef __LP64__
+                case 0x820: /* T820 */
+                case 0x860: /* T860 */
+                        break;
+#else
+                case 0x750: /* T760 */
+                        break;
+#endif
+
+                default:
+                        /* Fail to load against untested models */
+                        debug_printf("panfrost: Unsupported model %X",
+                                        screen->gpu_id);
+                        return NULL;
+        }
+
         if (pan_debug & PAN_DBG_TRACE)
                 pandecode_initialize();
 

@@ -49,6 +49,7 @@ struct panfrost_screen;
 struct panfrost_screen {
         struct pipe_screen base;
         int fd;
+        unsigned gpu_id;
 
         struct renderonly *ro;
 
