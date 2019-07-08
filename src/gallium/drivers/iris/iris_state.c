@@ -2390,6 +2390,10 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
 
    if (cso->samples != samples) {
       ice->state.dirty |= IRIS_DIRTY_MULTISAMPLE;
+
+      /* We need to toggle 3DSTATE_PS::32 Pixel Dispatch Enable */
+      if (GEN_GEN >= 9 && (cso->samples == 16 || samples == 16))
+         ice->state.dirty |= IRIS_DIRTY_FS;
    }
 
    if (cso->nr_cbufs != state->nr_cbufs) {
@@ -3689,9 +3693,7 @@ iris_store_fs_state(struct iris_context *ice,
          wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
       ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
       ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
-      ps._32PixelDispatchEnable = wm_prog_data->dispatch_32;
-
-      // XXX: Disable SIMD32 with 16x MSAA
+      /* ps._32PixelDispatchEnable is filled in at draw time. */
 
       ps.DispatchGRFStartRegisterForConstantSetupData0 =
          brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
@@ -4707,10 +4709,25 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          }
 #if GEN_GEN >= 9
          if (stage == MESA_SHADER_FRAGMENT && wm_prog_data->uses_sample_mask) {
+            uint32_t *shader_ps = (uint32_t *) shader->derived_data;
+            uint32_t *shader_psx = shader_ps + GENX(3DSTATE_PS_length);
+            uint32_t ps_state[GENX(3DSTATE_PS_length)] = {0};
             uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)] = {0};
-            uint32_t *shader_psx = ((uint32_t*)shader->derived_data) +
-               GENX(3DSTATE_PS_length);
             struct iris_rasterizer_state *cso = ice->state.cso_rast;
+            struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+
+           /* The docs for 3DSTATE_PS::32 Pixel Dispatch Enable say:
+            *
+            *    "When NUM_MULTISAMPLES = 16 or FORCE_SAMPLE_COUNT = 16,
+            *     SIMD32 Dispatch must not be enabled for PER_PIXEL dispatch
+            *     mode."
+            *
+            * 16x MSAA only exists on Gen9+, so we can skip this on Gen8.
+            */
+            iris_pack_command(GENX(3DSTATE_PS), &ps_state, ps) {
+               ps._32PixelDispatchEnable = wm_prog_data->dispatch_32 &&
+                  (cso_fb->samples != 16 || wm_prog_data->persample_dispatch);
+            }
 
             iris_pack_command(GENX(3DSTATE_PS_EXTRA), &psx_state, psx) {
                if (wm_prog_data->post_depth_coverage)
@@ -4721,8 +4738,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                   psx.InputCoverageMaskState = ICMS_NORMAL;
             }
 
-            iris_batch_emit(batch, shader->derived_data,
-                            sizeof(uint32_t) * GENX(3DSTATE_PS_length));
+            iris_emit_merge(batch, shader_ps, ps_state,
+                            GENX(3DSTATE_PS_length));
             iris_emit_merge(batch,
                             shader_psx,
                             psx_state,
