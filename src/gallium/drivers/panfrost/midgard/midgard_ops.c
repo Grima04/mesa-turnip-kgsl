@@ -137,12 +137,12 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_iasr]		 = {"iasr", UNITS_ADD},
         [midgard_alu_op_ilsr]		 = {"ilsr", UNITS_ADD},
 
-        [midgard_alu_op_fball_eq]	 = {"fball_eq", UNITS_VECTOR | OP_COMMUTES},
-        [midgard_alu_op_fbany_neq]	 = {"fbany_neq", UNITS_VECTOR | OP_COMMUTES},
-        [midgard_alu_op_iball_eq]	 = {"iball_eq", UNITS_VECTOR | OP_COMMUTES},
-        [midgard_alu_op_iball_neq]	 = {"iball_neq", UNITS_VECTOR | OP_COMMUTES},
-        [midgard_alu_op_ibany_eq]	 = {"ibany_eq", UNITS_VECTOR | OP_COMMUTES},
-        [midgard_alu_op_ibany_neq]	 = {"ibany_neq", UNITS_VECTOR | OP_COMMUTES},
+        [midgard_alu_op_fball_eq]	 = {"fball_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_fbany_neq]	 = {"fbany_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_iball_eq]	 = {"iball_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_iball_neq]	 = {"iball_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_ibany_eq]	 = {"ibany_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_ibany_neq]	 = {"ibany_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
 
         /* These instructions are not yet emitted by the compiler, so
          * don't speculate about units yet */ 
@@ -158,8 +158,8 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_ibany_lte]      = {"ibany_lte", 0},
 
         [midgard_alu_op_freduce]        = {"freduce", 0},
-        [midgard_alu_op_bball_eq]       = {"bball_eq", 0 | OP_COMMUTES},
-        [midgard_alu_op_bbany_neq]      = {"bball_eq", 0 | OP_COMMUTES},
+        [midgard_alu_op_bball_eq]       = {"bball_eq", 0 | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_bbany_neq]      = {"bball_eq", 0 | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
         [midgard_alu_op_fatan2_pt1]     = {"fatan2_pt1", 0},
         [midgard_alu_op_fatan_pt2]      = {"fatan_pt2", 0},
 };
