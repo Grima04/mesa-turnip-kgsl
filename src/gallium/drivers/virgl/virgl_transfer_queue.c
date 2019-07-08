@@ -53,6 +53,90 @@ struct list_iteration_args
    enum virgl_transfer_queue_lists type;
 };
 
+static int
+transfer_dim(const struct virgl_transfer *xfer)
+{
+   switch (xfer->base.resource->target) {
+   case PIPE_BUFFER:
+   case PIPE_TEXTURE_1D:
+      return 1;
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_RECT:
+      return 2;
+   default:
+      return 3;
+   }
+}
+
+static void
+box_min_max(const struct pipe_box *box, int dim, int *min, int *max)
+{
+   switch (dim) {
+   case 0:
+      if (box->width > 0) {
+         *min = box->x;
+         *max = box->x + box->width;
+      } else {
+         *max = box->x;
+         *min = box->x + box->width;
+      }
+      break;
+   case 1:
+      if (box->height > 0) {
+         *min = box->y;
+         *max = box->y + box->height;
+      } else {
+         *max = box->y;
+         *min = box->y + box->height;
+      }
+      break;
+   default:
+      if (box->depth > 0) {
+         *min = box->z;
+         *max = box->z + box->depth;
+      } else {
+         *max = box->z;
+         *min = box->z + box->depth;
+      }
+      break;
+   }
+}
+
+static bool
+transfer_overlap(const struct virgl_transfer *xfer,
+                 const struct virgl_hw_res *hw_res,
+                 unsigned level,
+                 const struct pipe_box *box,
+                 bool include_touching)
+{
+   const int dim_count = transfer_dim(xfer);
+
+   if (xfer->hw_res != hw_res || xfer->base.level != level)
+      return false;
+
+   for (int dim = 0; dim < dim_count; dim++) {
+      int xfer_min;
+      int xfer_max;
+      int box_min;
+      int box_max;
+
+      box_min_max(&xfer->base.box, dim, &xfer_min, &xfer_max);
+      box_min_max(box, dim, &box_min, &box_max);
+
+      if (include_touching) {
+         /* touching is considered overlapping */
+         if (xfer_min > box_max || xfer_max < box_min)
+            return false;
+      } else {
+         /* touching is not considered overlapping */
+         if (xfer_min >= box_max || xfer_max <= box_min)
+            return false;
+      }
+   }
+
+   return true;
+}
+
 static bool transfers_intersect(struct virgl_transfer *queued,
                                 struct virgl_transfer *current)
 {
@@ -68,33 +152,8 @@ static bool transfers_intersect(struct virgl_transfer *queued,
 static bool transfers_overlap(struct virgl_transfer *queued,
                               struct virgl_transfer *current)
 {
-   boolean tmp;
-
-   if (queued->hw_res != current->hw_res)
-      return false;
-
-   if (queued->base.level != current->base.level)
-      return false;
-
-   if (queued->base.box.z != current->base.box.z)
-      return true;
-
-   if (queued->base.box.depth != 1 || current->base.box.depth != 1)
-      return true;
-
-   /*
-    * Special case for boxes with [x: 0, width: 1] and [x: 1, width: 1].
-    */
-   if (queued->base.resource->target == PIPE_BUFFER) {
-      if (queued->base.box.x + queued->base.box.width == current->base.box.x)
-         return false;
-
-      if (current->base.box.x + current->base.box.width == queued->base.box.x)
-         return false;
-   }
-
-   tmp = u_box_test_intersection_2d(&queued->base.box, &current->base.box);
-   return (tmp == TRUE);
+   return transfer_overlap(queued, current->hw_res, current->base.level,
+         &current->base.box, false);
 }
 
 static void set_true(UNUSED struct virgl_transfer_queue *queue,
