@@ -65,7 +65,7 @@
 # define PIPE_ARCH_BIG_ENDIAN
 #endif
 
-#elif defined(_MSC_VER)
+#elif defined(_WIN32)
 
 #define PIPE_ARCH_LITTLE_ENDIAN
 
