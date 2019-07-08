@@ -57,6 +57,8 @@
 static const struct debug_named_value debug_options[] = {
 	{"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
 	{"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
+        {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"}, 
+                /* ^^ If Rob can do it, so can I */
 	DEBUG_NAMED_VALUE_END
 };
 
@@ -85,36 +87,56 @@ panfrost_get_device_vendor(struct pipe_screen *screen)
 static int
 panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 {
+        /* We expose in-dev stuff for dEQP that we don't want apps to use yet */
+        bool is_deqp = pan_debug & PAN_DBG_DEQP;
+
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
         case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
         case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
-                return 1;
-
         case PIPE_CAP_SM3:
         case PIPE_CAP_POINT_SPRITE:
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
-        case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
                 return 1;
 
         case PIPE_CAP_OCCLUSION_QUERY:
+                return 1;
         case PIPE_CAP_QUERY_TIME_ELAPSED:
         case PIPE_CAP_QUERY_PIPELINE_STATISTICS:
-                return 1; /* TODO: Queries */
+        case PIPE_CAP_QUERY_TIMESTAMP:
+        case PIPE_CAP_QUERY_SO_OVERFLOW:
+                return 0;
 
         case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
         case PIPE_CAP_TEXTURE_SWIZZLE:
                 return 1;
 
-        /* TODO: ES3. We expose these caps so we can access higher dEQP
-         * tests; in actuality they are nonfunctional */
-        case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-                return 4;
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
-                return 1;
+                return is_deqp ? 1 : 0;
+
+        case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
+                return is_deqp ? 4 : 0;
+        case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
+        case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
+                return is_deqp ? 64 : 0;
+
+        case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
+                return is_deqp ? 256 : 0; /* for GL3 */
+
+        case PIPE_CAP_GLSL_FEATURE_LEVEL:
+        case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
+                return is_deqp ? 140 : 120;
+        case PIPE_CAP_ESSL_FEATURE_LEVEL:
+                return is_deqp ? 300 : 120;
+
+        case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
+                return is_deqp ? 16 : 0;
+
+        case PIPE_CAP_CUBE_MAP_ARRAY:
+                return is_deqp;
 
         /* TODO: Where does this req come from in practice? */
         case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
@@ -127,11 +149,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 13;
 
         case PIPE_CAP_BLEND_EQUATION_SEPARATE:
-                return 1;
-
         case PIPE_CAP_INDEP_BLEND_ENABLE:
-                return 1;
-
         case PIPE_CAP_INDEP_BLEND_FUNC:
                 return 1;
 
@@ -140,68 +158,17 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 0;
 
         case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
-                return 1;
         case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
         case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER:
-                return 1;
-
         case PIPE_CAP_GENERATE_MIPMAP:
-                return 1;
-
-        case PIPE_CAP_DEPTH_CLIP_DISABLE:
-                return 1;
-
-        case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
-        case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-                return 16 * 4;
-
-        case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
-        case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
-                return 1024;
-
-        case PIPE_CAP_MAX_VERTEX_STREAMS:
-                return 1;
-
-        case PIPE_CAP_SHADER_STENCIL_EXPORT:
                 return 1;
 
         case PIPE_CAP_SEAMLESS_CUBE_MAP:
         case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
                 return 1;
 
-        case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
-                return 256; /* for GL3 */
-
-        case PIPE_CAP_CONDITIONAL_RENDER:
-                return 1;
-
-        case PIPE_CAP_FRAGMENT_COLOR_CLAMPED:
-        case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
-        case PIPE_CAP_VERTEX_COLOR_CLAMPED:
-                return 1;
-
-        case PIPE_CAP_GLSL_FEATURE_LEVEL:
-                return 330;
-
-        case PIPE_CAP_USER_VERTEX_BUFFERS: /* TODO */
-        case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
-                return 0;
-
-        case PIPE_CAP_TGSI_VS_LAYER_VIEWPORT:
-        case PIPE_CAP_DOUBLES:
-        case PIPE_CAP_INT64:
-        case PIPE_CAP_INT64_DIVMOD:
-                return 1;
-
-        case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
-                return 16;
-
         case PIPE_CAP_MAX_VERTEX_ELEMENT_SRC_OFFSET:
                 return 0xffff;
-
-        case PIPE_CAP_QUERY_TIMESTAMP:
-        case PIPE_CAP_CUBE_MAP_ARRAY:
-                return 1;
 
         case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
                 return 1;
@@ -209,47 +176,31 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
                 return 65536;
 
-        case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
-                return 0;
-
         case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
                 return 0;
-
-        case PIPE_CAP_MAX_VIEWPORTS:
-                return PIPE_MAX_VIEWPORTS;
 
         case PIPE_CAP_ENDIANNESS:
                 return PIPE_ENDIAN_NATIVE;
 
-        case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
-                return 4;
-
-        case PIPE_CAP_TEXTURE_GATHER_SM5:
-        case PIPE_CAP_TEXTURE_QUERY_LOD:
-        case PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION:
         case PIPE_CAP_SAMPLER_VIEW_TARGET:
-        case PIPE_CAP_FAKE_SW_MSAA:
                 return 1;
 
         case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
-                return -32;
+                return -8;
 
         case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
-                return 31;
-
-        case PIPE_CAP_DRAW_INDIRECT:
-                return 1;
-
-        case PIPE_CAP_QUERY_SO_OVERFLOW:
-                return 1;
+                return 7;
 
         case PIPE_CAP_VENDOR_ID:
-                return 0xFFFFFFFF;
-
         case PIPE_CAP_DEVICE_ID:
                 return 0xFFFFFFFF;
 
         case PIPE_CAP_ACCELERATED:
+        case PIPE_CAP_UMA:
+        case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
+        case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
+        case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
+        case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
                 return 1;
 
         case PIPE_CAP_VIDEO_MEMORY: {
@@ -260,20 +211,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
                 return (int)(system_memory >> 20);
         }
-
-        case PIPE_CAP_UMA:
-                return 1;
-
-        case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
-        case PIPE_CAP_CLIP_HALFZ:
-        case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
-        case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
-        case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
-        case PIPE_CAP_CULL_DISTANCE:
-        case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
-        case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
-        case PIPE_CAP_CLEAR_TEXTURE:
-                return 1;
 
         case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
                 return 4;
