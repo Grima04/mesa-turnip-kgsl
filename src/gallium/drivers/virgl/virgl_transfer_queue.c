@@ -137,25 +137,27 @@ transfer_overlap(const struct virgl_transfer *xfer,
    return true;
 }
 
+static struct virgl_transfer *
+virgl_transfer_queue_find_pending(const struct virgl_transfer_queue *queue,
+                                  const struct virgl_hw_res *hw_res,
+                                  unsigned level,
+                                  const struct pipe_box *box,
+                                  bool include_touching)
+{
+   struct virgl_transfer *xfer;
+   LIST_FOR_EACH_ENTRY(xfer, &queue->lists[PENDING_LIST], queue_link) {
+      if (transfer_overlap(xfer, hw_res, level, box, include_touching))
+         return xfer;
+   }
+
+   return NULL;
+}
+
 static bool transfers_intersect(struct virgl_transfer *queued,
                                 struct virgl_transfer *current)
 {
    return transfer_overlap(queued, current->hw_res, current->base.level,
          &current->base.box, true);
-}
-
-static bool transfers_overlap(struct virgl_transfer *queued,
-                              struct virgl_transfer *current)
-{
-   return transfer_overlap(queued, current->hw_res, current->base.level,
-         &current->base.box, false);
-}
-
-static void set_true(UNUSED struct virgl_transfer_queue *queue,
-                     struct list_action_args *args)
-{
-   bool *val = args->data;
-   *val = true;
 }
 
 static void set_queued(UNUSED struct virgl_transfer_queue *queue,
@@ -392,22 +394,11 @@ int virgl_transfer_queue_clear(struct virgl_transfer_queue *queue,
 bool virgl_transfer_queue_is_queued(struct virgl_transfer_queue *queue,
                                     struct virgl_transfer *transfer)
 {
-   bool queued = false;
-   struct list_iteration_args iter;
-
-   memset(&iter, 0, sizeof(iter));
-   iter.current = transfer;
-   iter.compare = transfers_overlap;
-   iter.action = set_true;
-   iter.data = &queued;
-
-   iter.type = PENDING_LIST;
-   compare_and_perform_action(queue, &iter);
-
-   iter.type = COMPLETED_LIST;
-   compare_and_perform_action(queue, &iter);
-
-   return queued;
+   return virgl_transfer_queue_find_pending(queue,
+                                            transfer->hw_res,
+                                            transfer->base.level,
+                                            &transfer->base.box,
+                                            false);
 }
 
 struct virgl_transfer *
