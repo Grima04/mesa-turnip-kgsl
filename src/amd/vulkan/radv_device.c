@@ -763,7 +763,7 @@ void radv_GetPhysicalDeviceFeatures(
 		.imageCubeArray                           = true,
 		.independentBlend                         = true,
 		.geometryShader                           = pdevice->rad_info.chip_class < GFX10,
-		.tessellationShader                       = pdevice->rad_info.chip_class < GFX10,
+		.tessellationShader                       = true,
 		.sampleRateShading                        = true,
 		.dualSrcBlend                             = true,
 		.logicOp                                  = true,
