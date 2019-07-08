@@ -2026,6 +2026,10 @@ static void overlay_FreeCommandBuffers(
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       struct command_buffer_data *cmd_buffer_data =
          FIND_CMD_BUFFER_DATA(pCommandBuffers[i]);
+      /* It is legal to free a NULL command buffer*/
+      if (!cmd_buffer_data)
+         continue;
+
       uint64_t count = (uintptr_t)find_object_data(HKEY(cmd_buffer_data->pipeline_query_pool));
       if (count == 1) {
          unmap_object(HKEY(cmd_buffer_data->pipeline_query_pool));
