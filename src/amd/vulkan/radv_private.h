@@ -1924,6 +1924,10 @@ radv_image_from_gralloc(VkDevice device_h,
                        const VkNativeBufferANDROID *gralloc_info,
                        const VkAllocationCallbacks *alloc,
                        VkImage *out_image_h);
+uint64_t
+radv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create,
+                             const VkImageUsageFlags vk_usage);
+
 
 struct radv_image_view_extra_create_info {
 	bool disable_compression;

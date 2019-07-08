@@ -410,6 +410,32 @@ vk_format_from_android(unsigned android_format, unsigned android_usage)
 	}
 }
 
+uint64_t
+radv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create,
+                             const VkImageUsageFlags vk_usage)
+{
+   uint64_t ahb_usage = 0;
+   if (vk_usage & VK_IMAGE_USAGE_SAMPLED_BIT)
+      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+
+   if (vk_usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+
+   if (vk_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+
+   if (vk_create & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
+      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_CUBE_MAP;
+
+   if (vk_create & VK_IMAGE_CREATE_PROTECTED_BIT)
+      ahb_usage |= AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT;
+
+   /* No usage bits set - set at least one GPU usage. */
+   if (ahb_usage == 0)
+      ahb_usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+   return ahb_usage;
+}
+
 static VkResult
 get_ahb_buffer_format_properties(
    VkDevice device_h,

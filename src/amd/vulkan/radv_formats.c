@@ -1345,6 +1345,7 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 	RADV_FROM_HANDLE(radv_physical_device, physical_device, physicalDevice);
 	const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
 	VkExternalImageFormatProperties *external_props = NULL;
+	struct VkAndroidHardwareBufferUsageANDROID *android_usage = NULL;
 	VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
 	VkResult result;
 
@@ -1373,9 +1374,21 @@ VkResult radv_GetPhysicalDeviceImageFormatProperties2(
 		case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES:
 			ycbcr_props = (void *) s;
 			break;
+		case VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID:
+			android_usage = (void *) s;
+			break;
 		default:
 			break;
 		}
+	}
+
+	bool ahb_supported = physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer;
+	if (android_usage && ahb_supported) {
+#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
+		android_usage->androidHardwareBufferUsage =
+			radv_ahb_usage_from_vk_usage(base_info->flags,
+			                             base_info->usage);
+#endif
 	}
 
 	/* From the Vulkan 1.0.97 spec:
