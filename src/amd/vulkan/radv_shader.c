@@ -710,16 +710,21 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 
 	switch (stage) {
 	case MESA_SHADER_TESS_EVAL:
-		if (info->tes.as_es) {
+		if (info->is_ngg) {
+			config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+			config_out->rsrc2 |= S_00B22C_OC_LDS_EN(1);
+		} else if (info->tes.as_es) {
 			assert(pdevice->rad_info.chip_class <= GFX8);
 			vgpr_comp_cnt = info->info.uses_prim_id ? 3 : 2;
+
+			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		} else {
 			bool enable_prim_id = info->tes.export_prim_id || info->info.uses_prim_id;
 			vgpr_comp_cnt = enable_prim_id ? 3 : 2;
 
 			config_out->rsrc1 |= S_00B128_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
-		config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		break;
 	case MESA_SHADER_TESS_CTRL:
 		if (pdevice->rad_info.chip_class >= GFX9) {
@@ -727,7 +732,11 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
 			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
 			 */
-			vgpr_comp_cnt = info->info.vs.needs_instance_id ? 2 : 1;
+			if (pdevice->rad_info.chip_class >= GFX10) {
+				vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 1;
+			} else {
+				vgpr_comp_cnt = info->info.vs.needs_instance_id ? 2 : 1;
+			}
 		} else {
 			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
@@ -786,12 +795,27 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	}
 
 	if (pdevice->rad_info.chip_class >= GFX10 &&
-	    stage == MESA_SHADER_VERTEX) {
+	    (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL)) {
 		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
 
 		/* VGPR5-8: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 / InstanceID) */
-		es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 0;
-		gs_vgpr_comp_cnt = 3;
+		if (stage == MESA_SHADER_VERTEX) {
+			es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 0;
+		} else if (stage == MESA_SHADER_TESS_EVAL) {
+			es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 2;
+		}
+
+		bool tes_triangles = stage == MESA_SHADER_TESS_EVAL &&
+			info->tes.primitive_mode >= 4; /* GL_TRIANGLES */
+		if (info->info.uses_invocation_id || stage == MESA_SHADER_VERTEX) {
+			gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
+		} else if (info->info.uses_prim_id) {
+			gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
+		} else if (info->gs.vertices_in >= 3 || tes_triangles) {
+			gs_vgpr_comp_cnt = 1; /* VGPR1 contains offsets 2, 3 */
+		} else {
+			gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
+		}
 
 		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
 		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |

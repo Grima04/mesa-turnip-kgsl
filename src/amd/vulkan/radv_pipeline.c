@@ -2254,7 +2254,11 @@ radv_fill_shader_keys(struct radv_device *device,
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
-		keys[MESA_SHADER_VERTEX].vs.out.as_ngg = true;
+		if (nir[MESA_SHADER_TESS_CTRL]) {
+			keys[MESA_SHADER_TESS_EVAL].tes.out.as_ngg = true;
+		} else {
+			keys[MESA_SHADER_VERTEX].vs.out.as_ngg = true;
+		}
 	}
 
 	for(int i = 0; i < MESA_SHADER_STAGES; ++i)
@@ -2623,6 +2627,8 @@ radv_pipeline_stage_to_user_data_0(struct radv_pipeline *pipeline,
 		if (has_gs) {
 			return chip_class >= GFX10 ? R_00B230_SPI_SHADER_USER_DATA_GS_0 :
 						     R_00B330_SPI_SHADER_USER_DATA_ES_0;
+		} else if (has_ngg) {
+			return R_00B230_SPI_SHADER_USER_DATA_GS_0;
 		} else {
 			return R_00B130_SPI_SHADER_USER_DATA_VS_0;
 		}
@@ -3210,6 +3216,8 @@ radv_pipeline_generate_vgt_gs_mode(struct radeon_cmdbuf *ctx_cs,
 		                             pipeline->device->physical_device->rad_info.chip_class);
 	} else if (radv_pipeline_has_ngg(pipeline)) {
 		const struct radv_shader_variant *vs =
+			pipeline->shaders[MESA_SHADER_TESS_EVAL] ?
+			pipeline->shaders[MESA_SHADER_TESS_EVAL] :
 			pipeline->shaders[MESA_SHADER_VERTEX];
 		bool enable_prim_id =
 			outinfo->export_prim_id || vs->info.info.uses_prim_id;
@@ -3489,7 +3497,8 @@ static void
 radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 				    struct radeon_cmdbuf *cs,
 				    struct radv_pipeline *pipeline,
-				    const struct radv_tessellation_state *tess)
+				    const struct radv_tessellation_state *tess,
+				    const struct radv_ngg_state *ngg)
 {
 	if (!radv_pipeline_has_tess(pipeline))
 		return;
@@ -3500,7 +3509,9 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 	tes = pipeline->shaders[MESA_SHADER_TESS_EVAL];
 
 	if (tes) {
-		if (tes->info.tes.as_es)
+		if (tes->info.is_ngg) {
+			radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, tes, ngg);
+		} else if (tes->info.tes.as_es)
 			radv_pipeline_generate_hw_es(cs, pipeline, tes);
 		else
 			radv_pipeline_generate_hw_vs(ctx_cs, cs, pipeline, tes);
@@ -3919,7 +3930,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_multisample_state(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_gs_mode(ctx_cs, pipeline);
 	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline, tess, ngg);
-	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess);
+	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess, ngg);
 	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline, gs);
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
