@@ -519,9 +519,6 @@ static boolean r600_texture_get_handle(struct pipe_screen* screen,
 		/* Set metadata. */
 		if (!res->b.is_shared || update_metadata) {
 			r600_texture_init_metadata(rscreen, rtex, &metadata);
-			if (rscreen->query_opaque_metadata)
-				rscreen->query_opaque_metadata(rscreen, rtex,
-							       &metadata);
 
 			rscreen->ws->buffer_set_metadata(res->buf, &metadata);
 		}
@@ -1153,9 +1150,6 @@ static struct pipe_resource *r600_texture_from_handle(struct pipe_screen *screen
 
 	rtex->resource.b.is_shared = true;
 	rtex->resource.external_usage = usage;
-
-	if (rscreen->apply_opaque_metadata)
-		rscreen->apply_opaque_metadata(rscreen, rtex, &metadata);
 
 	assert(rtex->surface.tile_swizzle == 0);
 	return &rtex->resource.b.b;
@@ -1969,9 +1963,6 @@ r600_texture_from_memobj(struct pipe_screen *screen,
 
 	rtex->resource.b.is_shared = true;
 	rtex->resource.external_usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
-
-	if (rscreen->apply_opaque_metadata)
-		rscreen->apply_opaque_metadata(rscreen, rtex, &metadata);
 
 	return &rtex->resource.b.b;
 }
