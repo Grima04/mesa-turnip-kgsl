@@ -2746,8 +2746,11 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo)  {
 			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 			radeon_emit(cs, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
-			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-			radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+
+			if (queue->device->physical_device->rad_info.chip_class < GFX10) {
+				radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+				radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+			}
 		}
 
 		radv_emit_gs_ring_sizes(queue, cs, esgs_ring_bo, esgs_ring_size,
