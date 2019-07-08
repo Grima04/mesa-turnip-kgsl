@@ -829,8 +829,13 @@ declare_vs_input_vgprs(struct radv_shader_context *ctx, struct arg_info *args)
 	if (!ctx->is_gs_copy_shader) {
 		if (ctx->options->key.vs.out.as_ls) {
 			add_arg(args, ARG_VGPR, ctx->ac.i32, &ctx->rel_auto_id);
-			add_arg(args, ARG_VGPR, ctx->ac.i32, &ctx->abi.instance_id);
-			add_arg(args, ARG_VGPR, ctx->ac.i32, NULL); /* unused */
+			if (ctx->ac.chip_class >= GFX10) {
+				add_arg(args, ARG_VGPR, ctx->ac.i32, NULL); /* user vgpr */
+				add_arg(args, ARG_VGPR, ctx->ac.i32, &ctx->abi.instance_id);
+			} else {
+				add_arg(args, ARG_VGPR, ctx->ac.i32, &ctx->abi.instance_id);
+				add_arg(args, ARG_VGPR, ctx->ac.i32, NULL); /* unused */
+			}
 		} else {
 			if (ctx->ac.chip_class >= GFX10) {
 				add_arg(args, ARG_VGPR, ctx->ac.i32, NULL); /* user vgpr */
@@ -1008,11 +1013,11 @@ static void create_function(struct radv_shader_context *ctx,
 	}
 
 	if (ctx->ac.chip_class >= GFX10) {
-		if (stage == MESA_SHADER_VERTEX && ctx->options->key.vs.out.as_ngg) {
+		if (is_pre_gs_stage(stage) && ctx->options->key.vs.out.as_ngg) {
 			/* On GFX10, VS is merged into GS for NGG. */
+			previous_stage = stage;
 			stage = MESA_SHADER_GEOMETRY;
 			has_previous_stage = true;
-			previous_stage = MESA_SHADER_VERTEX;
 		}
 	}
 
@@ -3132,7 +3137,8 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 	unsigned num_vertices = 3;
 	LLVMValueRef tmp;
 
-	assert(ctx->stage == MESA_SHADER_VERTEX && !ctx->is_gs_copy_shader);
+	assert((ctx->stage == MESA_SHADER_VERTEX ||
+	        ctx->stage == MESA_SHADER_TESS_EVAL) && !ctx->is_gs_copy_shader);
 
 	LLVMValueRef prims_in_wave = ac_unpack_param(&ctx->ac, ctx->merged_wave_info, 8, 8);
 	LLVMValueRef vtx_in_wave = ac_unpack_param(&ctx->ac, ctx->merged_wave_info, 0, 8);
@@ -3197,7 +3203,7 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 		handle_vs_outputs_post(ctx, ctx->options->key.vs.out.export_prim_id,
 				       ctx->options->key.vs.out.export_layer_id,
 				       ctx->options->key.vs.out.export_clip_dists,
-				       &ctx->shader_info->vs.outinfo);
+				       ctx->stage == MESA_SHADER_TESS_EVAL ? &ctx->shader_info->tes.outinfo : &ctx->shader_info->vs.outinfo);
 	}
 	ac_nir_build_endif(&if_state);
 }
@@ -3478,7 +3484,9 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 		handle_tcs_outputs_post(ctx);
 		break;
 	case MESA_SHADER_TESS_EVAL:
-		if (ctx->options->key.tes.out.as_es)
+		if (ctx->options->key.tes.out.as_ngg)
+			break; /* handled outside of the shader body */
+		else if (ctx->options->key.tes.out.as_es)
 			handle_es_outputs_post(ctx, &ctx->shader_info->tes.es_info);
 		else
 			handle_vs_outputs_post(ctx, ctx->options->key.tes.out.export_prim_id,
@@ -3971,6 +3979,7 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
                 shader_info->tes.point_mode = nir->info.tess.point_mode;
                 shader_info->tes.as_es = options->key.tes.out.as_es;
                 shader_info->tes.export_prim_id = options->key.tes.out.export_prim_id;
+                shader_info->is_ngg = options->key.tes.out.as_ngg;
                 break;
         case MESA_SHADER_TESS_CTRL:
                 shader_info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
@@ -4007,7 +4016,7 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 		ac_fill_shader_info(shader_info, nir[i], options);
 
 	/* Determine the ES type (VS or TES) for the GS on GFX9. */
-	if (options->chip_class == GFX9) {
+	if (options->chip_class >= GFX9) {
 		if (nir_count == 2 &&
 		    nir[1]->info.stage == MESA_SHADER_GEOMETRY) {
 			shader_info->gs.es_type = nir[0]->info.stage;
