@@ -211,12 +211,8 @@ static inline void ensure_vk_object_map(void)
 }
 
 #define HKEY(obj) ((uint64_t)(obj))
-#define FIND_SWAPCHAIN_DATA(obj) ((struct swapchain_data *)find_object_data(HKEY(obj)))
-#define FIND_CMD_BUFFER_DATA(obj) ((struct command_buffer_data *)find_object_data(HKEY(obj)))
-#define FIND_DEVICE_DATA(obj) ((struct device_data *)find_object_data(HKEY(obj)))
-#define FIND_QUEUE_DATA(obj) ((struct queue_data *)find_object_data(HKEY(obj)))
-#define FIND_PHYSICAL_DEVICE_DATA(obj) ((struct instance_data *)find_object_data(HKEY(obj)))
-#define FIND_INSTANCE_DATA(obj) ((struct instance_data *)find_object_data(HKEY(obj)))
+#define FIND(type, obj) ((type *)find_object_data(HKEY(obj)))
+
 static void *find_object_data(uint64_t obj)
 {
    simple_mtx_lock(&vk_object_to_data_mutex);
@@ -1543,7 +1539,7 @@ static VkResult overlay_CreateSwapchainKHR(
     const VkAllocationCallbacks*                pAllocator,
     VkSwapchainKHR*                             pSwapchain)
 {
-   struct device_data *device_data = FIND_DEVICE_DATA(device);
+   struct device_data *device_data = FIND(struct device_data, device);
    VkResult result = device_data->vtable.CreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
    if (result != VK_SUCCESS) return result;
 
@@ -1557,7 +1553,8 @@ static void overlay_DestroySwapchainKHR(
     VkSwapchainKHR                              swapchain,
     const VkAllocationCallbacks*                pAllocator)
 {
-   struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
+   struct swapchain_data *swapchain_data =
+      FIND(struct swapchain_data, swapchain);
 
    shutdown_swapchain_data(swapchain_data);
    swapchain_data->device->vtable.DestroySwapchainKHR(device, swapchain, pAllocator);
@@ -1568,7 +1565,7 @@ static VkResult overlay_QueuePresentKHR(
     VkQueue                                     queue,
     const VkPresentInfoKHR*                     pPresentInfo)
 {
-   struct queue_data *queue_data = FIND_QUEUE_DATA(queue);
+   struct queue_data *queue_data = FIND(struct queue_data, queue);
    struct device_data *device_data = queue_data->device;
    struct instance_data *instance_data = device_data->instance;
    uint32_t query_results[OVERLAY_QUERY_COUNT];
@@ -1629,7 +1626,8 @@ static VkResult overlay_QueuePresentKHR(
    if (instance_data->params.no_display) {
       for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
          VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
-         struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
+         struct swapchain_data *swapchain_data =
+            FIND(struct swapchain_data, swapchain);
 
          before_present(swapchain_data,
                         pPresentInfo->pWaitSemaphores,
@@ -1648,7 +1646,8 @@ static VkResult overlay_QueuePresentKHR(
    } else {
       for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
          VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
-         struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
+         struct swapchain_data *swapchain_data =
+            FIND(struct swapchain_data, swapchain);
          VkPresentInfoKHR present_info = *pPresentInfo;
          present_info.swapchainCount = 1;
          present_info.pSwapchains = &swapchain;
@@ -1689,7 +1688,8 @@ static VkResult overlay_AcquireNextImageKHR(
     VkFence                                     fence,
     uint32_t*                                   pImageIndex)
 {
-   struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(swapchain);
+   struct swapchain_data *swapchain_data =
+      FIND(struct swapchain_data, swapchain);
    struct device_data *device_data = swapchain_data->device;
 
    uint64_t ts0 = os_time_get();
@@ -1708,7 +1708,8 @@ static VkResult overlay_AcquireNextImage2KHR(
     const VkAcquireNextImageInfoKHR*            pAcquireInfo,
     uint32_t*                                   pImageIndex)
 {
-   struct swapchain_data *swapchain_data = FIND_SWAPCHAIN_DATA(pAcquireInfo->swapchain);
+   struct swapchain_data *swapchain_data =
+      FIND(struct swapchain_data, pAcquireInfo->swapchain);
    struct device_data *device_data = swapchain_data->device;
 
    uint64_t ts0 = os_time_get();
@@ -1728,7 +1729,8 @@ static void overlay_CmdDraw(
     uint32_t                                    firstVertex,
     uint32_t                                    firstInstance)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_draw]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDraw(commandBuffer, vertexCount, instanceCount,
@@ -1743,7 +1745,8 @@ static void overlay_CmdDrawIndexed(
     int32_t                                     vertexOffset,
     uint32_t                                    firstInstance)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_draw_indexed]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDrawIndexed(commandBuffer, indexCount, instanceCount,
@@ -1757,7 +1760,8 @@ static void overlay_CmdDrawIndirect(
     uint32_t                                    drawCount,
     uint32_t                                    stride)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_draw_indirect]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDrawIndirect(commandBuffer, buffer, offset, drawCount, stride);
@@ -1770,7 +1774,8 @@ static void overlay_CmdDrawIndexedIndirect(
     uint32_t                                    drawCount,
     uint32_t                                    stride)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_draw_indexed_indirect]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDrawIndexedIndirect(commandBuffer, buffer, offset, drawCount, stride);
@@ -1785,7 +1790,8 @@ static void overlay_CmdDrawIndirectCountKHR(
     uint32_t                                    maxDrawCount,
     uint32_t                                    stride)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_draw_indirect_count]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDrawIndirectCountKHR(commandBuffer, buffer, offset,
@@ -1802,7 +1808,8 @@ static void overlay_CmdDrawIndexedIndirectCountKHR(
     uint32_t                                    maxDrawCount,
     uint32_t                                    stride)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_draw_indexed_indirect_count]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDrawIndexedIndirectCountKHR(commandBuffer, buffer, offset,
@@ -1816,7 +1823,8 @@ static void overlay_CmdDispatch(
     uint32_t                                    groupCountY,
     uint32_t                                    groupCountZ)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_dispatch]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDispatch(commandBuffer, groupCountX, groupCountY, groupCountZ);
@@ -1827,7 +1835,8 @@ static void overlay_CmdDispatchIndirect(
     VkBuffer                                    buffer,
     VkDeviceSize                                offset)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_dispatch_indirect]++;
    struct device_data *device_data = cmd_buffer_data->device;
    device_data->vtable.CmdDispatchIndirect(commandBuffer, buffer, offset);
@@ -1838,7 +1847,8 @@ static void overlay_CmdBindPipeline(
     VkPipelineBindPoint                         pipelineBindPoint,
     VkPipeline                                  pipeline)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    switch (pipelineBindPoint) {
    case VK_PIPELINE_BIND_POINT_GRAPHICS: cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_pipeline_graphics]++; break;
    case VK_PIPELINE_BIND_POINT_COMPUTE: cmd_buffer_data->stats.stats[OVERLAY_PARAM_ENABLED_pipeline_compute]++; break;
@@ -1853,7 +1863,8 @@ static VkResult overlay_BeginCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     const VkCommandBufferBeginInfo*             pBeginInfo)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    struct device_data *device_data = cmd_buffer_data->device;
 
    memset(&cmd_buffer_data->stats, 0, sizeof(cmd_buffer_data->stats));
@@ -1927,7 +1938,8 @@ static VkResult overlay_BeginCommandBuffer(
 static VkResult overlay_EndCommandBuffer(
     VkCommandBuffer                             commandBuffer)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    struct device_data *device_data = cmd_buffer_data->device;
 
    if (cmd_buffer_data->timestamp_query_pool) {
@@ -1949,7 +1961,8 @@ static VkResult overlay_ResetCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     VkCommandBufferResetFlags                   flags)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    struct device_data *device_data = cmd_buffer_data->device;
 
    memset(&cmd_buffer_data->stats, 0, sizeof(cmd_buffer_data->stats));
@@ -1962,12 +1975,14 @@ static void overlay_CmdExecuteCommands(
     uint32_t                                    commandBufferCount,
     const VkCommandBuffer*                      pCommandBuffers)
 {
-   struct command_buffer_data *cmd_buffer_data = FIND_CMD_BUFFER_DATA(commandBuffer);
+   struct command_buffer_data *cmd_buffer_data =
+      FIND(struct command_buffer_data, commandBuffer);
    struct device_data *device_data = cmd_buffer_data->device;
 
    /* Add the stats of the executed command buffers to the primary one. */
    for (uint32_t c = 0; c < commandBufferCount; c++) {
-      struct command_buffer_data *sec_cmd_buffer_data = FIND_CMD_BUFFER_DATA(pCommandBuffers[c]);
+      struct command_buffer_data *sec_cmd_buffer_data =
+         FIND(struct command_buffer_data, pCommandBuffers[c]);
 
       for (uint32_t s = 0; s < OVERLAY_PARAM_ENABLED_MAX; s++)
          cmd_buffer_data->stats.stats[s] += sec_cmd_buffer_data->stats.stats[s];
@@ -1981,7 +1996,7 @@ static VkResult overlay_AllocateCommandBuffers(
    const VkCommandBufferAllocateInfo* pAllocateInfo,
    VkCommandBuffer*                   pCommandBuffers)
 {
-   struct device_data *device_data = FIND_DEVICE_DATA(device);
+   struct device_data *device_data = FIND(struct device_data, device);
    VkResult result =
       device_data->vtable.AllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers);
    if (result != VK_SUCCESS)
@@ -2035,10 +2050,11 @@ static void overlay_FreeCommandBuffers(
    uint32_t               commandBufferCount,
    const VkCommandBuffer* pCommandBuffers)
 {
-   struct device_data *device_data = FIND_DEVICE_DATA(device);
+   struct device_data *device_data = FIND(struct device_data, device);
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       struct command_buffer_data *cmd_buffer_data =
-         FIND_CMD_BUFFER_DATA(pCommandBuffers[i]);
+         FIND(struct command_buffer_data, pCommandBuffers[i]);
+
       /* It is legal to free a NULL command buffer*/
       if (!cmd_buffer_data)
          continue;
@@ -2072,7 +2088,7 @@ static VkResult overlay_QueueSubmit(
     const VkSubmitInfo*                         pSubmits,
     VkFence                                     fence)
 {
-   struct queue_data *queue_data = FIND_QUEUE_DATA(queue);
+   struct queue_data *queue_data = FIND(struct queue_data, queue);
    struct device_data *device_data = queue_data->device;
 
    device_data->frame_stats.stats[OVERLAY_PARAM_ENABLED_submit]++;
@@ -2080,7 +2096,7 @@ static VkResult overlay_QueueSubmit(
    for (uint32_t s = 0; s < submitCount; s++) {
       for (uint32_t c = 0; c < pSubmits[s].commandBufferCount; c++) {
          struct command_buffer_data *cmd_buffer_data =
-            FIND_CMD_BUFFER_DATA(pSubmits[s].pCommandBuffers[c]);
+            FIND(struct command_buffer_data, pSubmits[s].pCommandBuffers[c]);
 
          /* Merge the submitted command buffer stats into the device. */
          for (uint32_t st = 0; st < OVERLAY_PARAM_ENABLED_MAX; st++)
@@ -2112,7 +2128,8 @@ static VkResult overlay_CreateDevice(
     const VkAllocationCallbacks*                pAllocator,
     VkDevice*                                   pDevice)
 {
-   struct instance_data *instance_data = FIND_PHYSICAL_DEVICE_DATA(physicalDevice);
+   struct instance_data *instance_data =
+      FIND(struct instance_data, physicalDevice);
    VkLayerDeviceCreateInfo *chain_info =
       get_device_chain_info(pCreateInfo, VK_LAYER_LINK_INFO);
 
@@ -2162,7 +2179,7 @@ static void overlay_DestroyDevice(
     VkDevice                                    device,
     const VkAllocationCallbacks*                pAllocator)
 {
-   struct device_data *device_data = FIND_DEVICE_DATA(device);
+   struct device_data *device_data = FIND(struct device_data, device);
    device_unmap_queues(device_data);
    device_data->vtable.DestroyDevice(device, pAllocator);
    destroy_device_data(device_data);
@@ -2214,7 +2231,7 @@ static void overlay_DestroyInstance(
     VkInstance                                  instance,
     const VkAllocationCallbacks*                pAllocator)
 {
-   struct instance_data *instance_data = FIND_INSTANCE_DATA(instance);
+   struct instance_data *instance_data = FIND(struct instance_data, instance);
    instance_data_map_physical_devices(instance_data, false);
    instance_data->vtable.DestroyInstance(instance, pAllocator);
    destroy_instance_data(instance_data);
@@ -2278,7 +2295,7 @@ VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkD
 
    if (dev == NULL) return NULL;
 
-   struct device_data *device_data = FIND_DEVICE_DATA(dev);
+   struct device_data *device_data = FIND(struct device_data, dev);
    if (device_data->vtable.GetDeviceProcAddr == NULL) return NULL;
    return device_data->vtable.GetDeviceProcAddr(dev, funcName);
 }
@@ -2291,7 +2308,7 @@ VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(V
 
    if (instance == NULL) return NULL;
 
-   struct instance_data *instance_data = FIND_INSTANCE_DATA(instance);
+   struct instance_data *instance_data = FIND(struct instance_data, instance);
    if (instance_data->vtable.GetInstanceProcAddr == NULL) return NULL;
    return instance_data->vtable.GetInstanceProcAddr(instance, funcName);
 }
