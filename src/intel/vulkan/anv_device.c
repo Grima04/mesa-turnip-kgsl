@@ -1285,7 +1285,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxFragmentOutputAttachments             = 8,
       .maxFragmentDualSrcAttachments            = 1,
       .maxFragmentCombinedOutputResources       = 8,
-      .maxComputeSharedMemorySize               = 32768,
+      .maxComputeSharedMemorySize               = 64 * 1024,
       .maxComputeWorkGroupCount                 = { 65535, 65535, 65535 },
       .maxComputeWorkGroupInvocations           = 32 * devinfo->max_cs_threads,
       .maxComputeWorkGroupSize = {
