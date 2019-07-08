@@ -146,6 +146,37 @@ lower_store_output(nir_builder *b,
 }
 
 static void
+lower_store_deref(nir_builder *b,
+                  struct nir_instr *instr)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_deref)
+      return;
+
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (var->data.mode != nir_var_shader_out ||
+       var->data.location != VARYING_SLOT_POS)
+      return;
+
+   b->cursor = nir_before_instr(&intr->instr);
+
+   nir_ssa_def *src = nir_ssa_for_src(b, intr->src[1], 4);
+   nir_ssa_def *def = nir_vec4(b,
+                               nir_channel(b, src, 0),
+                               nir_channel(b, src, 1),
+                               nir_fmul(b,
+                                        nir_fadd(b,
+                                                 nir_channel(b, src, 2),
+                                                 nir_channel(b, src, 3)),
+                                        nir_imm_float(b, 0.5)),
+                               nir_channel(b, src, 3));
+   nir_instr_rewrite_src(&intr->instr, &intr->src[1], nir_src_for_ssa(def));
+}
+
+static void
 position_to_vulkan(nir_shader *s)
 {
    if (s->info.stage != MESA_SHADER_VERTEX)
@@ -157,8 +188,10 @@ position_to_vulkan(nir_shader *s)
          nir_builder_init(&b, function->impl);
 
          nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block)
+            nir_foreach_instr_safe(instr, block) {
                lower_store_output(&b, instr);
+               lower_store_deref(&b, instr);
+            }
          }
 
          nir_metadata_preserve(function->impl, nir_metadata_block_index |
@@ -260,12 +293,6 @@ optimize_nir(struct nir_shader *s)
    } while (progress);
 }
 
-static int
-glsl_type_size(const struct glsl_type *type, bool bindless)
-{
-   return glsl_count_attribute_slots(type, false);
-}
-
 static uint32_t
 zink_binding(enum pipe_shader_type stage, VkDescriptorType type, int index)
 {
@@ -295,7 +322,6 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
 {
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
 
-   NIR_PASS_V(nir, nir_lower_io, nir_var_all, glsl_type_size, (nir_lower_io_options)0);
    NIR_PASS_V(nir, lower_uniforms_to_ubo);
    NIR_PASS_V(nir, position_to_vulkan);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);

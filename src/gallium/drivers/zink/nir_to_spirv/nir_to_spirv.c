@@ -27,6 +27,7 @@
 #include "nir.h"
 #include "pipe/p_state.h"
 #include "util/u_memory.h"
+#include "util/hash_table.h"
 
 struct ntv_context {
    struct spirv_builder builder;
@@ -34,10 +35,6 @@ struct ntv_context {
    SpvId GLSL_std_450;
 
    gl_shader_stage stage;
-   SpvId inputs[PIPE_MAX_SHADER_INPUTS][4];
-   SpvId input_types[PIPE_MAX_SHADER_INPUTS][4];
-   SpvId outputs[PIPE_MAX_SHADER_OUTPUTS][4];
-   SpvId output_types[PIPE_MAX_SHADER_OUTPUTS][4];
    int var_location;
 
    SpvId ubos[128];
@@ -52,6 +49,8 @@ struct ntv_context {
 
    SpvId *regs;
    size_t num_regs;
+
+   struct hash_table *vars; /* nir_variable -> SpvId */
 
    const SpvId *block_ids;
    size_t num_blocks;
@@ -225,11 +224,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
    if (var->data.interpolation == INTERP_MODE_FLAT)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationFlat);
 
-   assert(var->data.driver_location < PIPE_MAX_SHADER_INPUTS);
-   assert(var->data.location_frac < 4);
-   assert(ctx->inputs[var->data.driver_location][var->data.location_frac] == 0);
-   ctx->inputs[var->data.driver_location][var->data.location_frac] = var_id;
-   ctx->input_types[var->data.driver_location][var->data.location_frac] = var_type;
+   _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
 
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
    ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
@@ -284,11 +279,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       spirv_builder_emit_component(&ctx->builder, var_id,
                                    var->data.location_frac);
 
-   assert(var->data.driver_location < PIPE_MAX_SHADER_INPUTS);
-   assert(var->data.location_frac < 4);
-   assert(ctx->outputs[var->data.driver_location][var->data.location_frac] == 0);
-   ctx->outputs[var->data.driver_location][var->data.location_frac] = var_id;
-   ctx->output_types[var->data.driver_location][var->data.location_frac] = var_type;
+   _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
 
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
    ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
@@ -930,31 +921,6 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
 }
 
 static void
-emit_load_input(struct ntv_context *ctx, nir_intrinsic_instr *intr)
-{
-   nir_const_value *const_offset = nir_src_as_const_value(intr->src[0]);
-   if (const_offset) {
-      int driver_location = (int)nir_intrinsic_base(intr) + const_offset->u32;
-      assert(driver_location < PIPE_MAX_SHADER_INPUTS);
-      int location_frac = nir_intrinsic_component(intr);
-      assert(location_frac < 4);
-
-      SpvId ptr = ctx->inputs[driver_location][location_frac];
-      SpvId type = ctx->input_types[driver_location][location_frac];
-      assert(ptr && type);
-
-      SpvId result = spirv_builder_emit_load(&ctx->builder, type, ptr);
-
-      unsigned num_components = nir_dest_num_components(intr->dest);
-      unsigned bit_size = nir_dest_bit_size(intr->dest);
-      result = bitcast_to_uvec(ctx, result, bit_size, num_components);
-
-      store_dest_uint(ctx, &intr->dest, result);
-   } else
-      unreachable("input-addressing not yet supported");
-}
-
-static void
 emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
@@ -1006,27 +972,6 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
-emit_store_output(struct ntv_context *ctx, nir_intrinsic_instr *intr)
-{
-   nir_const_value *const_offset = nir_src_as_const_value(intr->src[1]);
-   if (const_offset) {
-      int driver_location = (int)nir_intrinsic_base(intr) + const_offset->u32;
-      assert(driver_location < PIPE_MAX_SHADER_OUTPUTS);
-      int location_frac = nir_intrinsic_component(intr);
-      assert(location_frac < 4);
-
-      SpvId ptr = ctx->outputs[driver_location][location_frac];
-      assert(ptr > 0);
-
-      SpvId src = get_src_uint(ctx, &intr->src[0]);
-      SpvId spirv_type = ctx->output_types[driver_location][location_frac];
-      SpvId result = emit_unop(ctx, SpvOpBitcast, spirv_type, src);
-      spirv_builder_emit_store(&ctx->builder, ptr, result);
-   } else
-      unreachable("output-addressing not yet supported");
-}
-
-static void
 emit_discard(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    assert(ctx->block_started);
@@ -1037,23 +982,56 @@ emit_discard(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, var);
+   assert(he);
+   SpvId ptr = (SpvId)(intptr_t)he->data;
+
+   // SpvId ptr = get_src_uint(ctx, intr->src); /* uint is a bit of a lie here; it's really just a pointer */
+   SpvId result = spirv_builder_emit_load(&ctx->builder,
+                                          get_glsl_type(ctx, var->type),
+                                          ptr);
+   unsigned num_components = nir_dest_num_components(intr->dest);
+   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   result = bitcast_to_uvec(ctx, result, bit_size, num_components);
+   store_dest_uint(ctx, &intr->dest, result);
+}
+
+static void
+emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, var);
+   assert(he);
+   SpvId ptr = (SpvId)(intptr_t)he->data;
+   // SpvId ptr = get_src_uint(ctx, &intr->src[0]); /* uint is a bit of a lie here; it's really just a pointer */
+
+   SpvId src = get_src_uint(ctx, &intr->src[1]);
+   SpvId result = emit_unop(ctx, SpvOpBitcast, get_glsl_type(ctx, var->type),
+                            src);
+   spirv_builder_emit_store(&ctx->builder, ptr, result);
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
-   case nir_intrinsic_load_input:
-      emit_load_input(ctx, intr);
-      break;
-
    case nir_intrinsic_load_ubo:
       emit_load_ubo(ctx, intr);
       break;
 
-   case nir_intrinsic_store_output:
-      emit_store_output(ctx, intr);
-      break;
-
    case nir_intrinsic_discard:
       emit_discard(ctx, intr);
+      break;
+
+   case nir_intrinsic_load_deref:
+      emit_load_deref(ctx, intr);
+      break;
+
+   case nir_intrinsic_store_deref:
+      emit_store_deref(ctx, intr);
       break;
 
    default:
@@ -1234,6 +1212,40 @@ emit_jump(struct ntv_context *ctx, nir_jump_instr *jump)
 }
 
 static void
+emit_deref(struct ntv_context *ctx, nir_deref_instr *deref)
+{
+   assert(deref->deref_type == nir_deref_type_var);
+
+   SpvStorageClass storage_class;
+   switch (deref->var->data.mode) {
+   case nir_var_shader_in:
+      storage_class = SpvStorageClassInput;
+      break;
+
+   case nir_var_shader_out:
+      storage_class = SpvStorageClassOutput;
+      break;
+
+   default:
+      unreachable("Unsupported nir_variable_mode\n");
+   }
+
+   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, deref->var);
+   assert(he);
+
+   SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
+                                               storage_class,
+                                               get_glsl_type(ctx, deref->type));
+
+   SpvId result = spirv_builder_emit_access_chain(&ctx->builder,
+                                                  ptr_type,
+                                                  (SpvId)(intptr_t)he->data,
+                                                  NULL, 0);
+   /* uint is a bit of a lie here, it's really just an opaque type */
+   store_dest_uint(ctx, &deref->dest, result);
+}
+
+static void
 emit_block(struct ntv_context *ctx, struct nir_block *block)
 {
    start_block(ctx, block_label(ctx, block));
@@ -1267,7 +1279,8 @@ emit_block(struct ntv_context *ctx, struct nir_block *block)
          unreachable("nir_instr_type_parallel_copy not supported");
          break;
       case nir_instr_type_deref:
-         unreachable("nir_instr_type_deref not supported");
+         /* these are handled in emit_{load,store}_deref */
+         /* emit_deref(ctx, nir_instr_as_deref(instr)); */
          break;
       }
    }
@@ -1437,6 +1450,9 @@ nir_to_spirv(struct nir_shader *s)
    SpvId entry_point = spirv_builder_new_id(&ctx.builder);
    spirv_builder_emit_name(&ctx.builder, entry_point, "main");
 
+   ctx.vars = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
+                                      _mesa_key_pointer_equal);
+
    nir_foreach_variable(var, &s->inputs)
       emit_input(&ctx, var);
 
@@ -1521,6 +1537,9 @@ fail:
 
    if (ret)
       spirv_shader_delete(ret);
+
+   if (ctx.vars)
+      _mesa_hash_table_destroy(ctx.vars, NULL);
 
    return NULL;
 }
