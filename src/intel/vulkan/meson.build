@@ -177,6 +177,7 @@ if with_xlib_lease
 endif
 
 if with_platform_android
+  anv_deps += dep_android
   anv_flags += '-DVK_USE_PLATFORM_ANDROID_KHR'
   libanv_files += files('anv_android.c')
 else
