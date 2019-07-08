@@ -1313,7 +1313,7 @@ si_texture_create_object(struct pipe_screen *screen,
 
 		/* Shared textures must always set up DCC here.
 		 * If it's not present, it will be disabled by
-		 * apply_opaque_metadata later.
+		 * si_get_opaque_metadata later.
 		 */
 		if (tex->surface.dcc_size &&
 		    (buf || !(sscreen->debug_flags & DBG(NO_DCC))) &&
