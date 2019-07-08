@@ -545,6 +545,7 @@ static const char *param_unit(enum overlay_param_enabled param)
    switch (param) {
    case OVERLAY_PARAM_ENABLED_frame_timing:
    case OVERLAY_PARAM_ENABLED_acquire_timing:
+   case OVERLAY_PARAM_ENABLED_present_timing:
       return "(us)";
    case OVERLAY_PARAM_ENABLED_gpu_timing:
       return "(ns)";
@@ -733,6 +734,7 @@ static void compute_swapchain_display(struct swapchain_data *data)
 
       if (s == OVERLAY_PARAM_ENABLED_frame_timing ||
           s == OVERLAY_PARAM_ENABLED_acquire_timing ||
+          s == OVERLAY_PARAM_ENABLED_present_timing ||
           s == OVERLAY_PARAM_ENABLED_gpu_timing) {
          double min_time = data->stats_min.stats[s] / data->time_dividor;
          double max_time = data->stats_max.stats[s] / data->time_dividor;
@@ -1633,8 +1635,16 @@ static VkResult overlay_QueuePresentKHR(
                         pPresentInfo->pWaitSemaphores,
                         pPresentInfo->waitSemaphoreCount,
                         pPresentInfo->pImageIndices[i]);
+
+         VkPresentInfoKHR present_info = *pPresentInfo;
+         present_info.swapchainCount = 1;
+         present_info.pSwapchains = &swapchain;
+
+         uint64_t ts0 = os_time_get();
+         result = queue_data->device->vtable.QueuePresentKHR(queue, &present_info);
+         uint64_t ts1 = os_time_get();
+         swapchain_data->frame_stats.stats[OVERLAY_PARAM_ENABLED_present_timing] += ts1 - ts0;
       }
-      result = queue_data->device->vtable.QueuePresentKHR(queue, pPresentInfo);
    } else {
       for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
          VkSwapchainKHR swapchain = pPresentInfo->pSwapchains[i];
@@ -1658,7 +1668,10 @@ static VkResult overlay_QueuePresentKHR(
          present_info.pWaitSemaphores = &draw->semaphore;
          present_info.waitSemaphoreCount = 1;
 
+         uint64_t ts0 = os_time_get();
          VkResult chain_result = queue_data->device->vtable.QueuePresentKHR(queue, &present_info);
+         uint64_t ts1 = os_time_get();
+         swapchain_data->frame_stats.stats[OVERLAY_PARAM_ENABLED_present_timing] += ts1 - ts0;
          if (pPresentInfo->pResults)
             pPresentInfo->pResults[i] = chain_result;
          if (chain_result != VK_SUCCESS && result == VK_SUCCESS)
