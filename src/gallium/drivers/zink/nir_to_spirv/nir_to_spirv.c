@@ -50,8 +50,8 @@ struct ntv_context {
    SpvId *defs;
    size_t num_defs;
 
-   SpvId *vars;
-   size_t num_vars;
+   SpvId *regs;
+   size_t num_regs;
 
    const SpvId *block_ids;
    size_t num_blocks;
@@ -408,9 +408,9 @@ get_src_uint_ssa(struct ntv_context *ctx, const nir_ssa_def *ssa)
 static SpvId
 get_var_from_reg(struct ntv_context *ctx, nir_register *reg)
 {
-   assert(reg->index < ctx->num_vars);
-   assert(ctx->vars[reg->index] != 0);
-   return ctx->vars[reg->index];
+   assert(reg->index < ctx->num_regs);
+   assert(ctx->regs[reg->index] != 0);
+   return ctx->regs[reg->index];
 }
 
 static SpvId
@@ -1467,10 +1467,10 @@ nir_to_spirv(struct nir_shader *s)
    ctx.num_defs = entry->ssa_alloc;
 
    nir_index_local_regs(entry);
-   ctx.vars = malloc(sizeof(SpvId) * entry->reg_alloc);
-   if (!ctx.vars)
+   ctx.regs = malloc(sizeof(SpvId) * entry->reg_alloc);
+   if (!ctx.regs)
       goto fail;
-   ctx.num_vars = entry->reg_alloc;
+   ctx.num_regs = entry->reg_alloc;
 
    SpvId *block_ids = (SpvId *)malloc(sizeof(SpvId) * entry->num_blocks);
    if (!block_ids)
@@ -1492,7 +1492,7 @@ nir_to_spirv(struct nir_shader *s)
       SpvId var = spirv_builder_emit_var(&ctx.builder, pointer_type,
                                          SpvStorageClassFunction);
 
-      ctx.vars[reg->index] = var;
+      ctx.regs[reg->index] = var;
    }
 
    emit_cf_list(&ctx, &entry->body);
