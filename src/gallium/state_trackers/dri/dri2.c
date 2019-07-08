@@ -819,6 +819,37 @@ dri2_create_image_from_name(__DRIscreen *_screen,
    return img;
 }
 
+static unsigned
+dri2_get_modifier_num_planes(uint64_t modifier)
+{
+   switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_CCS:
+      return 2;
+   case DRM_FORMAT_MOD_BROADCOM_UIF:
+   case DRM_FORMAT_MOD_BROADCOM_VC4_T_TILED:
+   case DRM_FORMAT_MOD_LINEAR:
+   /* DRM_FORMAT_MOD_NONE is the same as LINEAR */
+   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_EIGHT_GOB:
+   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_FOUR_GOB:
+   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_ONE_GOB:
+   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_SIXTEEN_GOB:
+   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_THIRTYTWO_GOB:
+   case DRM_FORMAT_MOD_NVIDIA_16BX2_BLOCK_TWO_GOB:
+   case DRM_FORMAT_MOD_QCOM_COMPRESSED:
+   case DRM_FORMAT_MOD_VIVANTE_SPLIT_SUPER_TILED:
+   case DRM_FORMAT_MOD_VIVANTE_SPLIT_TILED:
+   case DRM_FORMAT_MOD_VIVANTE_SUPER_TILED:
+   case DRM_FORMAT_MOD_VIVANTE_TILED:
+   /* FD_FORMAT_MOD_QCOM_TILED is not in drm_fourcc.h */
+   case I915_FORMAT_MOD_X_TILED:
+   case I915_FORMAT_MOD_Y_TILED:
+      return 1;
+   case DRM_FORMAT_MOD_INVALID:
+   default:
+      return 0;
+   }
+}
+
 static __DRIimage *
 dri2_create_image_from_fd(__DRIscreen *_screen,
                           int width, int height, int fourcc,
@@ -1227,6 +1258,23 @@ dri2_query_dma_buf_modifiers(__DRIscreen *_screen, int fourcc, int max,
       return true;
    }
    return false;
+}
+
+static boolean
+dri2_query_dma_buf_format_modifier_attribs(__DRIscreen *_screen,
+                                           uint32_t fourcc, uint64_t modifier,
+                                           int attrib, uint64_t *value)
+{
+   switch (attrib) {
+   case __DRI_IMAGE_FORMAT_MODIFIER_ATTRIB_PLANE_COUNT: {
+      uint64_t mod_planes = dri2_get_modifier_num_planes(modifier);
+      if (mod_planes > 0)
+         *value = mod_planes;
+      return mod_planes > 0;
+   }
+   default:
+      return false;
+   }
 }
 
 static __DRIimage *
@@ -1852,6 +1900,8 @@ dri2_init_screen(__DRIscreen * sPriv)
             dri2ImageExtension.queryDmaBufFormats = dri2_query_dma_buf_formats;
             dri2ImageExtension.queryDmaBufModifiers =
                                        dri2_query_dma_buf_modifiers;
+            dri2ImageExtension.queryDmaBufFormatModifierAttribs =
+                                       dri2_query_dma_buf_format_modifier_attribs;
          }
       }
    }
