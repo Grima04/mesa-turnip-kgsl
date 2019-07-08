@@ -1705,12 +1705,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
         emit_mir_instruction(ctx, ins);
 
-        /* Simultaneously alias the destination and emit a move for it. The move will be eliminated if possible */
-
         int o_reg = REGISTER_TEXTURE_BASE + out_reg, o_index = nir_dest_index(ctx, &instr->dest);
-        alias_ssa(ctx, o_index, SSA_FIXED_REGISTER(o_reg));
-        ctx->texture_index[reg] = o_index;
-
         midgard_instruction ins2 = v_mov(SSA_FIXED_REGISTER(o_reg), blank_alu_src, o_index);
         emit_mir_instruction(ctx, ins2);
 
