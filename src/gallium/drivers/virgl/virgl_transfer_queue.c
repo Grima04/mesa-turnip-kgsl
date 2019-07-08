@@ -140,13 +140,8 @@ transfer_overlap(const struct virgl_transfer *xfer,
 static bool transfers_intersect(struct virgl_transfer *queued,
                                 struct virgl_transfer *current)
 {
-   boolean tmp;
-
-   if (queued->hw_res != current->hw_res)
-      return false;
-
-   tmp = u_box_test_intersection_2d(&queued->base.box, &current->base.box);
-   return (tmp == TRUE);
+   return transfer_overlap(queued, current->hw_res, current->base.level,
+         &current->base.box, true);
 }
 
 static bool transfers_overlap(struct virgl_transfer *queued,
