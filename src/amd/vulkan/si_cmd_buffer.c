@@ -976,10 +976,11 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		radeon_emit(cs, 0);		/* CP_COHER_BASE_HI */
 		radeon_emit(cs, 0x0000000A);	/* POLL_INTERVAL */
 		radeon_emit(cs, gcr_cntl);	/* GCR_CNTL */
-	} else if (cb_db_event ||
+	} else if ((cb_db_event ||
 		   (flush_bits & (RADV_CMD_FLAG_VS_PARTIAL_FLUSH |
 			     RADV_CMD_FLAG_PS_PARTIAL_FLUSH |
-			     RADV_CMD_FLAG_CS_PARTIAL_FLUSH))) {
+			     RADV_CMD_FLAG_CS_PARTIAL_FLUSH)))
+		   && !is_mec) {
 		/* We need to ensure that PFP waits as well. */
 		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
 		radeon_emit(cs, 0);
