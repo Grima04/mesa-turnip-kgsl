@@ -33,6 +33,7 @@
 
 #define MIDGARD_DBG_MSGS		0x0001
 #define MIDGARD_DBG_SHADERS		0x0002
+#define MIDGARD_DBG_SHADERDB            0x0004
 
 extern int midgard_debug;
 

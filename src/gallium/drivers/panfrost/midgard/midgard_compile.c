@@ -54,10 +54,13 @@
 static const struct debug_named_value debug_options[] = {
 	{"msgs",      MIDGARD_DBG_MSGS,		"Print debug messages"},
 	{"shaders",   MIDGARD_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
+        {"shaderdb",  MIDGARD_DBG_SHADERDB,     "Prints shader-db statistics"},
 	DEBUG_NAMED_VALUE_END
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG", debug_options, 0)
+
+unsigned SHADER_DB_COUNT = 0;
 
 int midgard_debug = 0;
 
@@ -2851,6 +2854,42 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
 	if (midgard_debug & MIDGARD_DBG_SHADERS)
 		disassemble_midgard(program->compiled.data, program->compiled.size);
+
+        if (midgard_debug & MIDGARD_DBG_SHADERDB) {
+                unsigned nr_bundles = 0, nr_ins = 0;
+
+                /* Count instructions and bundles */
+
+                mir_foreach_instr_global(ctx, ins) {
+                        nr_ins++;
+                }
+
+                mir_foreach_block(ctx, block) {
+                        nr_bundles += util_dynarray_num_elements(
+                                        &block->bundles, midgard_bundle);
+                }
+
+                /* Calculate thread count. There are certain cutoffs by
+                 * register count for thread count */
+
+                unsigned nr_registers = program->work_register_count;
+
+                unsigned nr_threads =
+                        (nr_registers <= 4) ? 4 :
+                        (nr_registers <= 8) ? 2 :
+                                              1;
+
+                /* Dump stats */
+
+                fprintf(stderr, "shader%d - %s shader: "
+                                "%u inst, %u bundles, "
+                                "%u registers, %u threads, 0 loops\n",
+                                SHADER_DB_COUNT++,
+                                gl_shader_stage_name(ctx->stage),
+                                nr_ins, nr_bundles,
+                                nr_registers, nr_threads);
+        }
+
 
         return 0;
 }
