@@ -183,10 +183,10 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
 static void
 emit_input(struct ntv_context *ctx, struct nir_variable *var)
 {
-   SpvId vec_type = get_glsl_type(ctx, var->type);
+   SpvId var_type = get_glsl_type(ctx, var->type);
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassInput,
-                                                   vec_type);
+                                                   var_type);
    SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
                                          SpvStorageClassInput);
 
@@ -229,7 +229,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
    assert(var->data.location_frac < 4);
    assert(ctx->inputs[var->data.driver_location][var->data.location_frac] == 0);
    ctx->inputs[var->data.driver_location][var->data.location_frac] = var_id;
-   ctx->input_types[var->data.driver_location][var->data.location_frac] = vec_type;
+   ctx->input_types[var->data.driver_location][var->data.location_frac] = var_type;
 
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
    ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
@@ -238,10 +238,10 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
 static void
 emit_output(struct ntv_context *ctx, struct nir_variable *var)
 {
-   SpvId vec_type = get_glsl_type(ctx, var->type);
+   SpvId var_type = get_glsl_type(ctx, var->type);
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassOutput,
-                                                   vec_type);
+                                                   var_type);
    SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
                                          SpvStorageClassOutput);
    if (var->name)
@@ -288,7 +288,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    assert(var->data.location_frac < 4);
    assert(ctx->outputs[var->data.driver_location][var->data.location_frac] == 0);
    ctx->outputs[var->data.driver_location][var->data.location_frac] = var_id;
-   ctx->output_types[var->data.driver_location][var->data.location_frac] = vec_type;
+   ctx->output_types[var->data.driver_location][var->data.location_frac] = var_type;
 
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
    ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
