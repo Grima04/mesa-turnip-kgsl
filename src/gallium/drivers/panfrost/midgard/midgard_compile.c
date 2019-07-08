@@ -404,6 +404,8 @@ midgard_nir_lower_fdot2(nir_shader *shader)
         return progress;
 }
 
+/* Flushes undefined values to zero */
+
 static void
 optimise_nir(nir_shader *nir)
 {
@@ -464,6 +466,8 @@ optimise_nir(nir_shader *nir)
                 }
 
                 NIR_PASS(progress, nir, nir_opt_undef);
+                NIR_PASS(progress, nir, nir_undef_to_zero);
+
                 NIR_PASS(progress, nir, nir_opt_loop_unroll,
                          nir_var_shader_in |
                          nir_var_shader_out |

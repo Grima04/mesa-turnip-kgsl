@@ -256,12 +256,6 @@ dEQP-GLES2.functional.rasterization.limits.points
 dEQP-GLES2.functional.shaders.builtin_variable.fragcoord_w
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_fragment
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_vertex
-dEQP-GLES2.functional.shaders.random.all_features.fragment.0
-dEQP-GLES2.functional.shaders.random.all_features.fragment.16
-dEQP-GLES2.functional.shaders.random.all_features.fragment.5
-dEQP-GLES2.functional.shaders.random.all_features.fragment.6
-dEQP-GLES2.functional.shaders.random.all_features.vertex.0
-dEQP-GLES2.functional.shaders.random.all_features.vertex.17
 dEQP-GLES2.functional.shaders.scoping.valid.local_variable_hides_function_parameter_fragment
 dEQP-GLES2.functional.shaders.scoping.valid.local_variable_hides_function_parameter_vertex
 dEQP-GLES2.functional.shaders.struct.local.dynamic_loop_assignment_fragment

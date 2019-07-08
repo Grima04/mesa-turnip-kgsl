@@ -444,4 +444,10 @@ void emit_binary_bundle(
                 midgard_bundle *bundle,
                 struct util_dynarray *emission,
                 int next_tag);
+
+/* NIR stuff */
+
+bool
+nir_undef_to_zero(nir_shader *shader);
+
 #endif
