@@ -32,14 +32,8 @@ struct virgl_screen;
 struct virgl_context;
 struct virgl_transfer;
 
-enum virgl_transfer_queue_lists {
-   PENDING_LIST = 0,
-   COMPLETED_LIST = 1,
-   MAX_LISTS = 2,
-};
-
 struct virgl_transfer_queue {
-   struct list_head lists[MAX_LISTS];
+   struct list_head transfer_list;
    struct virgl_screen *vs;
    struct virgl_context *vctx;
    struct virgl_cmd_buf *tbuf;

@@ -50,7 +50,6 @@ struct list_iteration_args
    list_action_t action;
    compare_transfers_t compare;
    struct virgl_transfer *current;
-   enum virgl_transfer_queue_lists type;
 };
 
 static int
@@ -138,14 +137,14 @@ transfer_overlap(const struct virgl_transfer *xfer,
 }
 
 static struct virgl_transfer *
-virgl_transfer_queue_find_pending(const struct virgl_transfer_queue *queue,
+virgl_transfer_queue_find_overlap(const struct virgl_transfer_queue *queue,
                                   const struct virgl_hw_res *hw_res,
                                   unsigned level,
                                   const struct pipe_box *box,
                                   bool include_touching)
 {
    struct virgl_transfer *xfer;
-   LIST_FOR_EACH_ENTRY(xfer, &queue->lists[PENDING_LIST], queue_link) {
+   LIST_FOR_EACH_ENTRY(xfer, &queue->transfer_list, queue_link) {
       if (transfer_overlap(xfer, hw_res, level, box, include_touching))
          return xfer;
    }
@@ -161,9 +160,8 @@ static bool transfers_intersect(struct virgl_transfer *queued,
 }
 
 static void remove_transfer(struct virgl_transfer_queue *queue,
-                            struct list_action_args *args)
+                            struct virgl_transfer *queued)
 {
-   struct virgl_transfer *queued = args->queued;
    list_del(&queued->queue_link);
    virgl_resource_destroy_transfer(queue->vctx, queued);
 }
@@ -177,7 +175,7 @@ static void replace_unmapped_transfer(struct virgl_transfer_queue *queue,
    u_box_union_2d(&current->base.box, &current->base.box, &queued->base.box);
    current->offset = current->base.box.x;
 
-   remove_transfer(queue, args);
+   remove_transfer(queue, queued);
    queue->num_dwords -= (VIRGL_TRANSFER3D_SIZE + 1);
 }
 
@@ -191,7 +189,7 @@ static void transfer_put(struct virgl_transfer_queue *queue,
                                 queued->base.stride, queued->l_stride,
                                 queued->offset, queued->base.level);
 
-   remove_transfer(queue, args);
+   remove_transfer(queue, queued);
 }
 
 static void transfer_write(struct virgl_transfer_queue *queue,
@@ -204,7 +202,7 @@ static void transfer_write(struct virgl_transfer_queue *queue,
    // the exec buffer command.
    virgl_encode_transfer(queue->vs, buf, queued, VIRGL_TRANSFER_TO_HOST);
 
-   remove_transfer(queue, args);
+   remove_transfer(queue, queued);
 }
 
 static void compare_and_perform_action(struct virgl_transfer_queue *queue,
@@ -212,13 +210,12 @@ static void compare_and_perform_action(struct virgl_transfer_queue *queue,
 {
    struct list_action_args args;
    struct virgl_transfer *queued, *tmp;
-   enum virgl_transfer_queue_lists type = iter->type;
 
    memset(&args, 0, sizeof(args));
    args.current = iter->current;
    args.data = iter->data;
 
-   LIST_FOR_EACH_ENTRY_SAFE(queued, tmp, &queue->lists[type], queue_link) {
+   LIST_FOR_EACH_ENTRY_SAFE(queued, tmp, &queue->transfer_list, queue_link) {
       if (iter->compare(queued, iter->current)) {
          args.queued = queued;
          iter->action(queue, &args);
@@ -231,12 +228,11 @@ static void perform_action(struct virgl_transfer_queue *queue,
 {
    struct list_action_args args;
    struct virgl_transfer *queued, *tmp;
-   enum virgl_transfer_queue_lists type = iter->type;
 
    memset(&args, 0, sizeof(args));
    args.data = iter->data;
 
-   LIST_FOR_EACH_ENTRY_SAFE(queued, tmp, &queue->lists[type], queue_link) {
+   LIST_FOR_EACH_ENTRY_SAFE(queued, tmp, &queue->transfer_list, queue_link) {
       args.queued = queued;
       iter->action(queue, &args);
    }
@@ -252,7 +248,6 @@ static void add_internal(struct virgl_transfer_queue *queue,
          struct virgl_winsys *vws = queue->vs->vws;
 
          memset(&iter, 0, sizeof(iter));
-         iter.type = PENDING_LIST;
          iter.action = transfer_write;
          iter.data = queue->tbuf;
          perform_action(queue, &iter);
@@ -262,10 +257,9 @@ static void add_internal(struct virgl_transfer_queue *queue,
       }
    }
 
-   list_addtail(&transfer->queue_link, &queue->lists[PENDING_LIST]);
+   list_addtail(&transfer->queue_link, &queue->transfer_list);
    queue->num_dwords += dwords;
 }
-
 
 void virgl_transfer_queue_init(struct virgl_transfer_queue *queue,
                                struct virgl_context *vctx)
@@ -276,8 +270,7 @@ void virgl_transfer_queue_init(struct virgl_transfer_queue *queue,
    queue->vctx = vctx;
    queue->num_dwords = 0;
 
-   for (uint32_t i = 0; i < MAX_LISTS; i++)
-      list_inithead(&queue->lists[i]);
+   list_inithead(&queue->transfer_list);
 
    if ((vs->caps.caps.v2.capability_bits & VIRGL_CAP_TRANSFER) &&
         vs->vws->supports_encoded_transfers)
@@ -294,11 +287,6 @@ void virgl_transfer_queue_fini(struct virgl_transfer_queue *queue)
    memset(&iter, 0, sizeof(iter));
 
    iter.action = transfer_put;
-   iter.type = PENDING_LIST;
-   perform_action(queue, &iter);
-
-   iter.action = remove_transfer;
-   iter.type = COMPLETED_LIST;
    perform_action(queue, &iter);
 
    if (queue->tbuf)
@@ -324,7 +312,6 @@ int virgl_transfer_queue_unmap(struct virgl_transfer_queue *queue,
       iter.current = transfer;
       iter.compare = transfers_intersect;
       iter.action = replace_unmapped_transfer;
-      iter.type = PENDING_LIST;
       compare_and_perform_action(queue, &iter);
    }
 
@@ -338,7 +325,6 @@ int virgl_transfer_queue_clear(struct virgl_transfer_queue *queue,
    struct list_iteration_args iter;
 
    memset(&iter, 0, sizeof(iter));
-   iter.type = PENDING_LIST;
    if (queue->tbuf) {
       uint32_t prior_num_dwords = cbuf->cdw;
       cbuf->cdw = 0;
@@ -354,9 +340,6 @@ int virgl_transfer_queue_clear(struct virgl_transfer_queue *queue,
       perform_action(queue, &iter);
    }
 
-   iter.action = remove_transfer;
-   iter.type = COMPLETED_LIST;
-   perform_action(queue, &iter);
    queue->num_dwords = 0;
 
    return 0;
@@ -365,7 +348,7 @@ int virgl_transfer_queue_clear(struct virgl_transfer_queue *queue,
 bool virgl_transfer_queue_is_queued(struct virgl_transfer_queue *queue,
                                     struct virgl_transfer *transfer)
 {
-   return virgl_transfer_queue_find_pending(queue,
+   return virgl_transfer_queue_find_overlap(queue,
                                             transfer->hw_res,
                                             transfer->base.level,
                                             &transfer->base.box,
@@ -382,7 +365,7 @@ virgl_transfer_queue_extend(struct virgl_transfer_queue *queue,
    assert(!transfer->copy_src_hw_res);
 
    if (transfer->base.resource->target == PIPE_BUFFER) {
-      queued = virgl_transfer_queue_find_pending(queue,
+      queued = virgl_transfer_queue_find_overlap(queue,
                                                  transfer->hw_res,
                                                  transfer->base.level,
                                                  &transfer->base.box,
