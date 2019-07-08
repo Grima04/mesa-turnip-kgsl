@@ -3413,7 +3413,8 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	 *       flags in the shader.
 	 */
 	radeon_set_context_reg(ctx_cs, R_028838_PA_CL_NGG_CNTL,
-			       S_028838_INDEX_BUF_EDGE_FLAG_ENA(1));
+			       S_028838_INDEX_BUF_EDGE_FLAG_ENA(!radv_pipeline_has_tess(pipeline) &&
+			                                        !radv_pipeline_has_gs(pipeline)));
 
 	radeon_set_context_reg(ctx_cs, R_03096C_GE_CNTL,
 			       S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
