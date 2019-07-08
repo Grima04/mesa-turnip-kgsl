@@ -1686,8 +1686,11 @@ vir_emit_tlb_color_read(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 if (swap_rb)
                         num_components = MAX2(num_components, 3);
 
-                bool is_int_format = (c->fs_key->int_color_rb & (1 << rt)) ||
-                                     (c->fs_key->uint_color_rb & (1 << rt));
+                nir_variable *var = c->output_color_var[rt];
+                enum glsl_base_type type = glsl_get_base_type(var->type);
+
+                bool is_int_format = type == GLSL_TYPE_INT ||
+                                     type == GLSL_TYPE_UINT;
 
                 bool is_32b_tlb_format = is_int_format ||
                                          (c->fs_key->f32_color_rb & (1 << rt));

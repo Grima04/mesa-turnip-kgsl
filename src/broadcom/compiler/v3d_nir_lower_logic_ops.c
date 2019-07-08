@@ -164,17 +164,32 @@ v3d_nir_get_tlb_color(nir_builder *b, int rt, int sample)
 }
 
 static nir_ssa_def *
-v3d_nir_emit_logic_op(struct v3d_compile *c, nir_builder *b,
-                      nir_ssa_def *src, int rt, int sample)
+v3d_emit_logic_op_raw(struct v3d_compile *c, nir_builder *b,
+                      nir_ssa_def **src_chans, nir_ssa_def **dst_chans,
+                      int rt, int sample)
 {
-        nir_ssa_def *dst = v3d_nir_get_tlb_color(b, rt, sample);
+        const uint8_t *fmt_swz = v3d_get_format_swizzle_for_rt(c, rt);
 
-        nir_ssa_def *src_chans[4], *dst_chans[4];
-        for (unsigned i = 0; i < 4; i++) {
-                src_chans[i] = nir_channel(b, src, i);
-                dst_chans[i] = nir_channel(b, dst, i);
+        nir_ssa_def *op_res[4];
+        for (int i = 0; i < 4; i++) {
+                nir_ssa_def *src = src_chans[i];
+                nir_ssa_def *dst =
+                        v3d_nir_get_swizzled_channel(b, dst_chans, fmt_swz[i]);
+                op_res[i] = v3d_logicop(b, c->fs_key->logicop_func, src, dst);
         }
 
+        nir_ssa_def *r[4];
+        for (int i = 0; i < 4; i++)
+                r[i] = v3d_nir_get_swizzled_channel(b, op_res, fmt_swz[i]);
+
+        return nir_vec4(b, r[0], r[1], r[2], r[3]);
+}
+
+static nir_ssa_def *
+v3d_emit_logic_op_unorm(struct v3d_compile *c, nir_builder *b,
+                        nir_ssa_def **src_chans, nir_ssa_def **dst_chans,
+                        int rt, int sample)
+{
         const uint8_t src_swz[4] = { 0, 1, 2, 3 };
         nir_ssa_def *packed_src =
                 v3d_nir_swizzle_and_pack(b, src_chans, src_swz);
@@ -187,6 +202,26 @@ v3d_nir_emit_logic_op(struct v3d_compile *c, nir_builder *b,
                 v3d_logicop(b, c->fs_key->logicop_func, packed_src, packed_dst);
 
         return v3d_nir_unpack_and_swizzle(b, packed_result, fmt_swz);
+}
+
+static nir_ssa_def *
+v3d_nir_emit_logic_op(struct v3d_compile *c, nir_builder *b,
+                      nir_ssa_def *src, int rt, int sample)
+{
+        nir_ssa_def *dst = v3d_nir_get_tlb_color(b, rt, sample);
+
+        nir_ssa_def *src_chans[4], *dst_chans[4];
+        for (unsigned i = 0; i < 4; i++) {
+                src_chans[i] = nir_channel(b, src, i);
+                dst_chans[i] = nir_channel(b, dst, i);
+        }
+
+        if (util_format_is_unorm(c->fs_key->color_fmt[rt].format)) {
+                return v3d_emit_logic_op_unorm(c, b, src_chans, dst_chans,
+                                               rt, 0);
+        } else {
+                return v3d_emit_logic_op_raw(c, b, src_chans, dst_chans, rt, 0);
+        }
 }
 
 static void
