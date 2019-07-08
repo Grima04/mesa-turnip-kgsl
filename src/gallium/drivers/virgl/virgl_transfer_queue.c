@@ -212,8 +212,7 @@ static void transfer_write(struct virgl_transfer_queue *queue,
    // the exec buffer command.
    virgl_encode_transfer(queue->vs, buf, queued, VIRGL_TRANSFER_TO_HOST);
 
-   list_delinit(&queued->queue_link);
-   list_addtail(&queued->queue_link, &queue->lists[COMPLETED_LIST]);
+   remove_transfer(queue, args);
 }
 
 static void compare_and_perform_action(struct virgl_transfer_queue *queue,
