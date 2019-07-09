@@ -3338,6 +3338,8 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			      const struct radv_ngg_state *ngg_state)
 {
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+	gl_shader_stage es_type =
+		radv_pipeline_has_tess(pipeline) ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
 
 	radeon_set_sh_reg_seq(cs, R_00B320_SPI_SHADER_PGM_LO_ES, 2);
 	radeon_emit(cs, va >> 8);
@@ -3388,9 +3390,12 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
-	/* TODO: Correctly set REUSE_OFF */
+	bool vgt_reuse_off = pipeline->device->physical_device->rad_info.family == CHIP_NAVI10 &&
+			     pipeline->device->physical_device->rad_info.chip_external_rev == 0x1 &&
+			     es_type == MESA_SHADER_TESS_EVAL;
+
 	radeon_set_context_reg(ctx_cs, R_028AB4_VGT_REUSE_OFF,
-			       S_028AB4_REUSE_OFF(0));
+			       S_028AB4_REUSE_OFF(vgt_reuse_off));
 	radeon_set_context_reg(ctx_cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
 			       ngg_state->vgt_esgs_ring_itemsize);
 
