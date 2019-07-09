@@ -3721,7 +3721,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	}
 
 	if (ctx.ac.chip_class >= GFX10) {
-		if (shaders[0]->info.stage == MESA_SHADER_VERTEX &&
+		if (is_pre_gs_stage(shaders[0]->info.stage) &&
 		    options->key.vs.out.as_ngg) {
 			ctx.max_workgroup_size = 128;
 		}
