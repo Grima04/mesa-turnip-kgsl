@@ -1624,7 +1624,7 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 	struct radv_shader_variant_info *gs_info = &pipeline->shaders[MESA_SHADER_GEOMETRY]->info;
 	struct radv_es_output_info *es_info =
 		radv_pipeline_has_tess(pipeline) ? &gs_info->tes.es_info : &gs_info->vs.es_info;
-	unsigned gs_type = MESA_SHADER_VERTEX;
+	unsigned gs_type = radv_pipeline_has_gs(pipeline) ? MESA_SHADER_GEOMETRY : MESA_SHADER_VERTEX;
 	unsigned max_verts_per_prim = 3; // triangles
 	unsigned min_verts_per_prim =
 		gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
@@ -1795,7 +1795,12 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 	ngg.prim_amp_factor = prim_amp_factor;
 	ngg.max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
 	ngg.ngg_emit_size = max_gsprims * gsprim_lds_size;
-	ngg.vgt_esgs_ring_itemsize = 1;
+
+	if (gs_type == MESA_SHADER_GEOMETRY) {
+		ngg.vgt_esgs_ring_itemsize = es_info->esgs_itemsize / 4;
+	} else {
+		ngg.vgt_esgs_ring_itemsize = 1;
+	}
 
 	pipeline->graphics.esgs_ring_size = 4 * max_esverts * esvert_lds_size;
 
