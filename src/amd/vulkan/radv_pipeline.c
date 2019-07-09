@@ -3536,21 +3536,17 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 }
 
 static void
-radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
-				       struct radeon_cmdbuf *cs,
-				       struct radv_pipeline *pipeline,
-				       const struct radv_gs_state *gs_state)
+radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs,
+			     struct radeon_cmdbuf *cs,
+			     struct radv_pipeline *pipeline,
+			     struct radv_shader_variant *gs,
+			     const struct radv_gs_state *gs_state)
 {
-	struct radv_shader_variant *gs;
 	unsigned gs_max_out_vertices;
 	uint8_t *num_components;
 	uint8_t max_stream;
 	unsigned offset;
 	uint64_t va;
-
-	gs = pipeline->shaders[MESA_SHADER_GEOMETRY];
-	if (!gs)
-		return;
 
 	gs_max_out_vertices = gs->info.gs.vertices_out;
 	max_stream = gs->info.info.gs.max_stream;
@@ -3614,6 +3610,21 @@ radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 	}
 
 	radv_pipeline_generate_hw_vs(ctx_cs, cs, pipeline, pipeline->gs_copy_shader);
+}
+
+static void
+radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
+				       struct radeon_cmdbuf *cs,
+				       struct radv_pipeline *pipeline,
+				       const struct radv_gs_state *gs_state)
+{
+	struct radv_shader_variant *gs;
+
+	gs = pipeline->shaders[MESA_SHADER_GEOMETRY];
+	if (!gs)
+		return;
+
+	radv_pipeline_generate_hw_gs(ctx_cs, cs, pipeline, gs, gs_state);
 }
 
 static uint32_t offset_to_ps_input(uint32_t offset, bool flat_shade, bool float16)
