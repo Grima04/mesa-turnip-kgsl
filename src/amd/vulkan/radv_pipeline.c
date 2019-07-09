@@ -2259,9 +2259,7 @@ radv_fill_shader_keys(struct radv_device *device,
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
-		if (nir[MESA_SHADER_GEOMETRY]) {
-			keys[MESA_SHADER_GEOMETRY].gs.as_ngg = true;
-		} else if (nir[MESA_SHADER_TESS_CTRL]) {
+		if (nir[MESA_SHADER_TESS_CTRL]) {
 			keys[MESA_SHADER_TESS_EVAL].tes.out.as_ngg = true;
 		} else {
 			keys[MESA_SHADER_VERTEX].vs.out.as_ngg = true;

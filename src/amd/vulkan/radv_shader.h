@@ -112,18 +112,12 @@ struct radv_fs_variant_key {
 	uint32_t is_int10;
 };
 
-
-struct radv_gs_variant_key {
-	uint32_t as_ngg:1;
-};
-
 struct radv_shader_variant_key {
 	union {
 		struct radv_vs_variant_key vs;
 		struct radv_fs_variant_key fs;
 		struct radv_tes_variant_key tes;
 		struct radv_tcs_variant_key tcs;
-		struct radv_gs_variant_key gs;
 	};
 	bool has_multiview_view_index;
 };
