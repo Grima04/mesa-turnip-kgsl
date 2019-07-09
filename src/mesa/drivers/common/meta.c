@@ -1468,6 +1468,8 @@ _mesa_meta_setup_drawpix_texture(struct gl_context *ctx,
          /* load image */
          _mesa_TexSubImage2D(tex->Target, 0,
                              0, 0, width, height, format, type, pixels);
+
+         _mesa_reference_buffer_object(ctx, &save_unpack_obj, NULL);
       }
    }
    else {
