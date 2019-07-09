@@ -802,7 +802,8 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		if (stage == MESA_SHADER_VERTEX) {
 			es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 0;
 		} else if (stage == MESA_SHADER_TESS_EVAL) {
-			es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 2;
+			bool enable_prim_id = info->tes.export_prim_id || info->info.uses_prim_id;
+			es_vgpr_comp_cnt = enable_prim_id ? 3 : 2;
 		}
 
 		bool tes_triangles = stage == MESA_SHADER_TESS_EVAL &&
