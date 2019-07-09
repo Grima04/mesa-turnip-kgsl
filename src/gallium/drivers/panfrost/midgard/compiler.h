@@ -212,6 +212,9 @@ typedef struct compiler_context {
          * when using nested loops */
         int current_loop_depth;
 
+        /* Total number of loops for shader-db */
+        unsigned loop_count;
+
         /* Constants which have been loaded, for later inlining */
         struct hash_table_u64 *ssa_constants;
 

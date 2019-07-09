@@ -2479,6 +2479,9 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
         /* Now that we've finished emitting the loop, free up the depth again
          * so we play nice with recursion amid nested loops */
         --ctx->current_loop_depth;
+
+        /* Dump loop stats */
+        ++ctx->loop_count;
 }
 
 static midgard_block *
@@ -2883,11 +2886,12 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
                 fprintf(stderr, "shader%d - %s shader: "
                                 "%u inst, %u bundles, "
-                                "%u registers, %u threads, 0 loops\n",
+                                "%u registers, %u threads, %u loops\n",
                                 SHADER_DB_COUNT++,
                                 gl_shader_stage_name(ctx->stage),
                                 nr_ins, nr_bundles,
-                                nr_registers, nr_threads);
+                                nr_registers, nr_threads,
+                                ctx->loop_count);
         }
 
 
