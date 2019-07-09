@@ -1004,13 +1004,6 @@ static void create_function(struct radv_shader_context *ctx,
 	struct arg_info args = {};
 	LLVMValueRef desc_sets;
 	bool needs_view_index = needs_view_index_sgpr(ctx, stage);
-	allocate_user_sgprs(ctx, stage, has_previous_stage,
-			    previous_stage, needs_view_index, &user_sgpr_info);
-
-	if (user_sgpr_info.need_ring_offsets && !ctx->options->supports_spill) {
-		add_arg(&args, ARG_SGPR, ac_array_in_const_addr_space(ctx->ac.v4i32),
-			&ctx->ring_offsets);
-	}
 
 	if (ctx->ac.chip_class >= GFX10) {
 		if (is_pre_gs_stage(stage) && ctx->options->key.vs.out.as_ngg) {
@@ -1019,6 +1012,14 @@ static void create_function(struct radv_shader_context *ctx,
 			stage = MESA_SHADER_GEOMETRY;
 			has_previous_stage = true;
 		}
+	}
+
+	allocate_user_sgprs(ctx, stage, has_previous_stage,
+			    previous_stage, needs_view_index, &user_sgpr_info);
+
+	if (user_sgpr_info.need_ring_offsets && !ctx->options->supports_spill) {
+		add_arg(&args, ARG_SGPR, ac_array_in_const_addr_space(ctx->ac.v4i32),
+			&ctx->ring_offsets);
 	}
 
 	switch (stage) {
