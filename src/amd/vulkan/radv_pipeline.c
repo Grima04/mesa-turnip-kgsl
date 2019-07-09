@@ -3618,7 +3618,8 @@ static void
 radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 				       struct radeon_cmdbuf *cs,
 				       struct radv_pipeline *pipeline,
-				       const struct radv_gs_state *gs_state)
+				       const struct radv_gs_state *gs_state,
+				       const struct radv_ngg_state *ngg_state)
 {
 	struct radv_shader_variant *gs;
 
@@ -3626,7 +3627,10 @@ radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 	if (!gs)
 		return;
 
-	radv_pipeline_generate_hw_gs(ctx_cs, cs, pipeline, gs, gs_state);
+	if (gs->info.is_ngg)
+		radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, gs, ngg_state);
+	else
+		radv_pipeline_generate_hw_gs(ctx_cs, cs, pipeline, gs, gs_state);
 }
 
 static uint32_t offset_to_ps_input(uint32_t offset, bool flat_shade, bool float16)
@@ -3949,7 +3953,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_vgt_gs_mode(ctx_cs, pipeline);
 	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline, tess, ngg);
 	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess, ngg);
-	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline, gs);
+	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline, gs, ngg);
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
