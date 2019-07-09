@@ -3568,8 +3568,6 @@ radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs,
 		offset += num_components[3] * gs_max_out_vertices;
 	radeon_set_context_reg(ctx_cs, R_028AB0_VGT_GSVS_RING_ITEMSIZE, offset);
 
-	radeon_set_context_reg(ctx_cs, R_028B38_VGT_GS_MAX_VERT_OUT, gs->info.gs.vertices_out);
-
 	radeon_set_context_reg_seq(ctx_cs, R_028B5C_VGT_GS_VERT_ITEMSIZE, 4);
 	radeon_emit(ctx_cs, num_components[0]);
 	radeon_emit(ctx_cs, (max_stream >= 1) ? num_components[1] : 0);
@@ -3631,6 +3629,9 @@ radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 		radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, gs, ngg_state);
 	else
 		radv_pipeline_generate_hw_gs(ctx_cs, cs, pipeline, gs, gs_state);
+
+	radeon_set_context_reg(ctx_cs, R_028B38_VGT_GS_MAX_VERT_OUT,
+			      gs->info.gs.vertices_out);
 }
 
 static uint32_t offset_to_ps_input(uint32_t offset, bool flat_shade, bool float16)
