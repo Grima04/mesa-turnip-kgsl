@@ -999,6 +999,15 @@ get_subgroup_size(gl_shader_stage stage,
        * size.
        */
       return stage == MESA_SHADER_FRAGMENT ? 0 : max_subgroup_size;
+
+   case BRW_SUBGROUP_SIZE_REQUIRE_8:
+   case BRW_SUBGROUP_SIZE_REQUIRE_16:
+   case BRW_SUBGROUP_SIZE_REQUIRE_32:
+      assert(stage == MESA_SHADER_COMPUTE);
+      /* These enum values are expressly chosen to be equal to the subgroup
+       * size that they require.
+       */
+      return key->subgroup_size_type;
    }
 
    unreachable("Invalid subgroup size type");

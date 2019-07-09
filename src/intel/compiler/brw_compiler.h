@@ -206,9 +206,17 @@ struct brw_sampler_prog_key_data {
 /** An enum representing what kind of input gl_SubgroupSize is. */
 enum PACKED brw_subgroup_size_type
 {
-   BRW_SUBGROUP_SIZE_API_CONSTANT,  /**< Vulkan behavior */
-   BRW_SUBGROUP_SIZE_UNIFORM,       /**< OpenGL behavior */
-   BRW_SUBGROUP_SIZE_VARYING,       /**< VK_EXT_subgroup_size_control */
+   BRW_SUBGROUP_SIZE_API_CONSTANT,     /**< Default Vulkan behavior */
+   BRW_SUBGROUP_SIZE_UNIFORM,          /**< OpenGL behavior */
+   BRW_SUBGROUP_SIZE_VARYING,          /**< VK_EXT_subgroup_size_control */
+
+   /* These enums are specifically chosen so that the value of the enum is
+    * also the subgroup size.  If any new values are added, they must respect
+    * this invariant.
+    */
+   BRW_SUBGROUP_SIZE_REQUIRE_8   = 8,  /**< VK_EXT_subgroup_size_control */
+   BRW_SUBGROUP_SIZE_REQUIRE_16  = 16, /**< VK_EXT_subgroup_size_control */
+   BRW_SUBGROUP_SIZE_REQUIRE_32  = 32, /**< VK_EXT_subgroup_size_control */
 };
 
 struct brw_base_prog_key {
