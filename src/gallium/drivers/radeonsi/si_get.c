@@ -720,6 +720,11 @@ static boolean si_vid_is_format_supported(struct pipe_screen *screen,
 		return (format == PIPE_FORMAT_NV12) ||
 			(format == PIPE_FORMAT_P016);
 
+	/* Vp9 profile 2 supports 10 bit decoding using P016 */
+	if (profile == PIPE_VIDEO_PROFILE_VP9_PROFILE2)
+		return format == PIPE_FORMAT_P016;
+
+
 	/* we can only handle this one with UVD */
 	if (profile != PIPE_VIDEO_PROFILE_UNKNOWN)
 		return format == PIPE_FORMAT_NV12;
