@@ -560,6 +560,11 @@ mux_read_stalls(struct choose_scoreboard *scoreboard,
                                         scoreboard->last_stallable_sfu_reg);
 }
 
+/* We define a max schedule priority to allow negative priorities as result of
+ * substracting this max when an instruction stalls. So instructions that
+ * stall have lower priority than regular instructions. */
+#define MAX_SCHEDULE_PRIORITY 16
+
 static int
 get_instruction_priority(const struct v3d_qpu_instr *inst)
 {
@@ -578,10 +583,6 @@ get_instruction_priority(const struct v3d_qpu_instr *inst)
                 return next_score;
         next_score++;
 
-        /* XXX perf: We should schedule SFU ALU ops so that the reader is 2
-         * instructions after the producer if possible, not just 1.
-         */
-
         /* Default score for things that aren't otherwise special. */
         baseline_score = next_score;
         next_score++;
@@ -590,6 +591,9 @@ get_instruction_priority(const struct v3d_qpu_instr *inst)
         if (v3d_qpu_writes_tmu(inst))
                 return next_score;
         next_score++;
+
+        /* We should increase the maximum if we assert here */
+        assert(next_score < MAX_SCHEDULE_PRIORITY);
 
         return baseline_score;
 }
@@ -845,6 +849,18 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
 
                 int prio = get_instruction_priority(inst);
 
+                if (mux_read_stalls(scoreboard, inst)) {
+                        /* Don't merge an instruction that stalls */
+                        if (prev_inst)
+                                continue;
+                        else {
+                                /* Any instruction that don't stall will have
+                                 * higher scheduling priority */
+                                prio -= MAX_SCHEDULE_PRIORITY;
+                                assert(prio < 0);
+                        }
+                }
+
                 /* Found a valid instruction.  If nothing better comes along,
                  * this one works.
                  */
@@ -1004,6 +1020,9 @@ instruction_latency(struct schedule_node *before, struct schedule_node *after)
                                magic_waddr_latency(before_inst->alu.mul.waddr,
                                                    after_inst));
         }
+
+        if (v3d_qpu_instr_is_sfu(before_inst))
+                return 2;
 
         return latency;
 }
