@@ -4197,7 +4197,10 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		gs_out = si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_GEOMETRY]->info.gs.output_prim);
 		pipeline->graphics.can_use_guardband = gs_out == V_028A6C_OUTPRIM_TYPE_TRISTRIP;
 	} else if (radv_pipeline_has_tess(pipeline)) {
-		gs_out = si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.primitive_mode);
+		if (pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.point_mode)
+			gs_out = V_028A6C_OUTPRIM_TYPE_POINTLIST;
+		else
+			gs_out = si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.primitive_mode);
 		pipeline->graphics.can_use_guardband = gs_out == V_028A6C_OUTPRIM_TYPE_TRISTRIP;
 	} else {
 		gs_out = si_conv_prim_to_gs_out(pCreateInfo->pInputAssemblyState->topology);
