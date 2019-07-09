@@ -3972,6 +3972,7 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
                 shader_info->gs.vertices_out = nir->info.gs.vertices_out;
                 shader_info->gs.output_prim = nir->info.gs.output_primitive;
                 shader_info->gs.invocations = nir->info.gs.invocations;
+                shader_info->is_ngg = options->key.gs.as_ngg;
                 break;
         case MESA_SHADER_TESS_EVAL:
                 shader_info->tes.primitive_mode = nir->info.tess.primitive_mode;
