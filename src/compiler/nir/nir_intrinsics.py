@@ -776,3 +776,12 @@ intrinsic("ssbo_atomic_comp_swap_ir3",  src_comp=[1, 1, 1, 1, 1], dest_comp=1)
 # src[] = { value }
 store("raw_output_pan", 1, [])
 load("raw_output_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
+
+# V3D-specific instrinc for tile buffer color reads.
+#
+# The hardware requires that we read the samples and components of a pixel
+# in order, so we cannot eliminate or remove any loads in a sequence.
+#
+# src[] = { render_target }
+# BASE = sample index
+load("tlb_color_v3d", 1, [BASE, COMPONENT], [])
