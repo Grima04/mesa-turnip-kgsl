@@ -407,6 +407,16 @@ void iris_resource_prepare_image(struct iris_context *ice,
                                  struct iris_batch *batch,
                                  struct iris_resource *res);
 
+static inline bool
+iris_resource_unfinished_aux_import(struct iris_resource *res)
+{
+   return res->base.next != NULL && res->mod_info &&
+      res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
+}
+
+void iris_resource_finish_aux_import(struct pipe_screen *pscreen,
+                                     struct iris_resource *res);
+
 bool iris_has_color_unresolved(const struct iris_resource *res,
                                unsigned start_level, unsigned num_levels,
                                unsigned start_layer, unsigned num_layers);

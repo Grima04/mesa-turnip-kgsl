@@ -238,6 +238,8 @@ iris_blorp_surf_for_resource(struct iris_vtable *vtbl,
 {
    struct iris_resource *res = (void *) p_res;
 
+   assert(!iris_resource_unfinished_aux_import(res));
+
    if (aux_usage == ISL_AUX_USAGE_HIZ &&
        !iris_resource_level_has_hiz(res, level))
       aux_usage = ISL_AUX_USAGE_NONE;
