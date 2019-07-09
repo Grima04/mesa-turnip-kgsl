@@ -2859,7 +2859,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 		disassemble_midgard(program->compiled.data, program->compiled.size);
 
         if (midgard_debug & MIDGARD_DBG_SHADERDB) {
-                unsigned nr_bundles = 0, nr_ins = 0;
+                unsigned nr_bundles = 0, nr_ins = 0, nr_quadwords = 0;
 
                 /* Count instructions and bundles */
 
@@ -2870,6 +2870,8 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 mir_foreach_block(ctx, block) {
                         nr_bundles += util_dynarray_num_elements(
                                         &block->bundles, midgard_bundle);
+
+                        nr_quadwords += block->quadword_count;
                 }
 
                 /* Calculate thread count. There are certain cutoffs by
@@ -2885,11 +2887,11 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 /* Dump stats */
 
                 fprintf(stderr, "shader%d - %s shader: "
-                                "%u inst, %u bundles, "
+                                "%u inst, %u bundles, %u quadwords, "
                                 "%u registers, %u threads, %u loops\n",
                                 SHADER_DB_COUNT++,
                                 gl_shader_stage_name(ctx->stage),
-                                nr_ins, nr_bundles,
+                                nr_ins, nr_bundles, nr_quadwords,
                                 nr_registers, nr_threads,
                                 ctx->loop_count);
         }
