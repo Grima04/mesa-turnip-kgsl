@@ -548,7 +548,6 @@ lower_fs_io(nir_shader *nir, struct radv_shader_variant_info *shader_info)
 	nir_opt_constant_folding(nir);
 
 	NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in);
-	radv_optimize_nir(nir, false, false);
 }
 
 
