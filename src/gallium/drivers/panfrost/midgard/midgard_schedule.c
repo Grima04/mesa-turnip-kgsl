@@ -234,7 +234,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                                 else
                                                         break;
                                         } else {
-                                                if ((units & UNIT_VMUL) && !(control & UNIT_VMUL))
+                                                if ((units & UNIT_VMUL) && last_unit < UNIT_VMUL)
                                                         unit = UNIT_VMUL;
                                                 else if ((units & UNIT_VADD) && !(control & UNIT_VADD))
                                                         unit = UNIT_VADD;
