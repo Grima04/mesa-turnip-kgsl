@@ -110,14 +110,12 @@ brw_create_nir(struct brw_context *brw,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-   nir_shader *softfp64 = NULL;
-   if ((options->lower_doubles_options & nir_lower_fp64_full_software) &&
-       nir->info.uses_64bit) {
-      softfp64 = glsl_float64_funcs_to_nir(ctx, options);
-      ralloc_steal(ralloc_parent(nir), softfp64);
+   if (!ctx->SoftFP64 && nir->info.uses_64bit &&
+       (options->lower_doubles_options & nir_lower_fp64_full_software)) {
+      ctx->SoftFP64 = glsl_float64_funcs_to_nir(ctx, options);
    }
 
-   brw_preprocess_nir(brw->screen->compiler, nir, softfp64);
+   brw_preprocess_nir(brw->screen->compiler, nir, ctx->SoftFP64);
 
    if (stage == MESA_SHADER_TESS_CTRL) {
       /* Lower gl_PatchVerticesIn from a sys. value to a uniform on Gen8+. */

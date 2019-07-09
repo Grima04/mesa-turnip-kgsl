@@ -328,11 +328,9 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
    }
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
-   nir_shader *softfp64 = NULL;
-   if (nir->info.uses_64bit &&
+   if (!st->ctx->SoftFP64 && nir->info.uses_64bit &&
        (options->lower_doubles_options & nir_lower_fp64_full_software) != 0) {
-      softfp64 = glsl_float64_funcs_to_nir(st->ctx, options);
-      ralloc_steal(ralloc_parent(nir), softfp64);
+      st->ctx->SoftFP64 = glsl_float64_funcs_to_nir(st->ctx, options);
    }
 
    nir_variable_mode mask =
@@ -381,7 +379,7 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
          }
          if (options->lower_doubles_options) {
             NIR_PASS(progress, nir, nir_lower_doubles,
-                     softfp64, options->lower_doubles_options);
+                     st->ctx->SoftFP64, options->lower_doubles_options);
          }
          NIR_PASS(progress, nir, nir_opt_algebraic);
          lowered_64bit_ops |= progress;

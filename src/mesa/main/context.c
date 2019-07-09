@@ -1397,6 +1397,8 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_compiler_types)
    if (destroy_compiler_types)
       _mesa_destroy_shader_compiler_types();
 
+   ralloc_free(ctx->SoftFP64);
+
    /* unbind the context if it's currently bound */
    if (ctx == _mesa_get_current_context()) {
       _mesa_make_current(NULL, NULL, NULL);

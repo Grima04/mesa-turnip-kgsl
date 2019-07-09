@@ -4970,6 +4970,11 @@ struct gl_context
     */
    struct gl_pipeline_object *_Shader;
 
+   /**
+    * NIR containing the functions that implement software fp64 support.
+    */
+   struct nir_shader *SoftFP64;
+
    struct gl_query_state Query;  /**< occlusion, timer queries */
 
    struct gl_transform_feedback_state TransformFeedback;
