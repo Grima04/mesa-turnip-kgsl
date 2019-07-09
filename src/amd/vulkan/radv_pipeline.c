@@ -1616,6 +1616,29 @@ static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts
 	*max_gsprims = MIN2(*max_gsprims, 1 + max_reuse);
 }
 
+static unsigned
+radv_get_num_input_vertices(struct radv_pipeline *pipeline)
+{
+	if (radv_pipeline_has_gs(pipeline)) {
+		struct radv_shader_variant *gs =
+			radv_get_shader(pipeline, MESA_SHADER_GEOMETRY);
+
+		return gs->info.gs.vertices_in;
+	}
+
+	if (radv_pipeline_has_tess(pipeline)) {
+		struct radv_shader_variant *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
+
+		if (tes->info.tes.point_mode)
+			return 1;
+		if (tes->info.tes.primitive_mode == GL_ISOLINES)
+			return 2;
+		return 3;
+	}
+
+	return 3;
+}
+
 static struct radv_ngg_state
 calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 		   struct radv_pipeline *pipeline)
@@ -1625,7 +1648,7 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 	struct radv_es_output_info *es_info =
 		radv_pipeline_has_tess(pipeline) ? &gs_info->tes.es_info : &gs_info->vs.es_info;
 	unsigned gs_type = radv_pipeline_has_gs(pipeline) ? MESA_SHADER_GEOMETRY : MESA_SHADER_VERTEX;
-	unsigned max_verts_per_prim = 3; // triangles
+	unsigned max_verts_per_prim = radv_get_num_input_vertices(pipeline);
 	unsigned min_verts_per_prim =
 		gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
 	unsigned gs_num_invocations = 1;//MAX2(gs_info->gs.invocations, 1);
