@@ -795,7 +795,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	}
 
 	if (pdevice->rad_info.chip_class >= GFX10 &&
-	    (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL)) {
+	    (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_GEOMETRY)) {
 		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
 
 		/* VGPR5-8: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 / InstanceID) */
