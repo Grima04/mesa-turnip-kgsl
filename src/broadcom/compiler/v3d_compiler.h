@@ -718,13 +718,6 @@ vir_has_uniform(struct qinst *inst)
         return inst->uniform != ~0;
 }
 
-/* Special nir_load_input intrinsic index for loading the current TLB
- * destination color.
- */
-#define V3D_NIR_TLB_COLOR_READ_INPUT		2000000000
-
-#define V3D_NIR_MS_MASK_OUTPUT			2000000000
-
 extern const nir_shader_compiler_options v3d_nir_options;
 
 const struct v3d_compiler *v3d_compiler_init(const struct v3d_device_info *devinfo);
