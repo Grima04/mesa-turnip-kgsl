@@ -410,6 +410,26 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return FALSE;
         }
 
+        /* Internally, formats that are depth/stencil renderable are limited.
+         *
+         * In particular: Z16, Z24, Z24S8, S8 are all identical from the GPU
+         * rendering perspective. That is, we render to Z24S8 (which we can
+         * AFBC compress), ignore the different when texturing (who cares?),
+         * and then in the off-chance there's a CPU read we blit back to
+         * staging.
+         *
+         * ...alternatively, we can make the state tracker deal with that. */
+
+        if (bind & PIPE_BIND_DEPTH_STENCIL) {
+                switch (format) {
+                        case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+                                return true;
+
+                        default:
+                                return false;
+                }
+        }
+
         return TRUE;
 }
 

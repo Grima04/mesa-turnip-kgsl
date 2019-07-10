@@ -254,6 +254,7 @@ panfrost_mfbd_set_zsbuf(
         struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
+        enum pipe_format format = surf->format;
 
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
@@ -261,6 +262,10 @@ panfrost_mfbd_set_zsbuf(
         unsigned offset = rsrc->slices[level].offset;
 
         if (rsrc->layout == PAN_AFBC) {
+                /* The only Z/S format we can compress is Z24S8 or variants
+                 * thereof (handled by the state tracker) */
+                assert(format == PIPE_FORMAT_Z24_UNORM_S8_UINT);
+
                 mali_ptr base = rsrc->bo->gpu + offset;
                 unsigned header_size = rsrc->slices[level].header_size;
 
@@ -280,6 +285,9 @@ panfrost_mfbd_set_zsbuf(
                 fbx->ds_afbc.zero1 = 0x10009;
                 fbx->ds_afbc.padding = 0x1000;
         } else if (rsrc->layout == PAN_LINEAR) {
+                /* TODO: Z32F(S8) support, which is always linear */
+
+                assert(format == PIPE_FORMAT_Z24_UNORM_S8_UINT);
                 int stride = rsrc->slices[level].stride;
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
 

@@ -93,7 +93,12 @@ panfrost_format_supports_afbc(enum pipe_format format)
         if (util_format_is_rgba8_variant(desc))
                 return true;
 
-        if (format == PIPE_FORMAT_Z32_UNORM)
+        /* Z32/Z16/S8 are all compressible as well, but they are implemented as
+         * Z24S8 with wasted bits. So Z24S8 is the only format we actually need
+         * to handle compressed, and we can make the state tracker deal with
+         * the rest. */
+
+        if (format == PIPE_FORMAT_Z24_UNORM_S8_UINT)
                 return true;
 
         /* TODO: AFBC of other formats */
