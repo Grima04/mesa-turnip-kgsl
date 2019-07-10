@@ -406,10 +406,8 @@ private:
 
    void resolve_inot_sources(const brw::fs_builder &bld, nir_alu_instr *instr,
                              fs_reg *op);
-   void lower_mul_dword_inst(fs_inst *inst, bblock_t *block,
-                             const brw::fs_builder &ibld);
-   void lower_mulh_inst(fs_inst *inst, bblock_t *block,
-                        const brw::fs_builder &ibld);
+   void lower_mul_dword_inst(fs_inst *inst, bblock_t *block);
+   void lower_mulh_inst(fs_inst *inst, bblock_t *block);
 };
 
 /**

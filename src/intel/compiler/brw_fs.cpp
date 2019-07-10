@@ -3863,9 +3863,10 @@ fs_visitor::lower_load_payload()
 }
 
 void
-fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block,
-                                 const fs_builder &ibld)
+fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block)
 {
+   const fs_builder ibld(this, block, inst);
+
    if (inst->src[1].file == IMM && inst->src[1].ud < (1 << 16)) {
       /* The MUL instruction isn't commutative. On Gen <= 6, only the low
        * 16-bits of src0 are read, and on Gen >= 7 only the low 16-bits of
@@ -3990,9 +3991,10 @@ fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block,
 }
 
 void
-fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block,
-                            const fs_builder &ibld)
+fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block)
 {
+   const fs_builder ibld(this, block, inst);
+
    /* According to the BDW+ BSpec page for the "Multiply Accumulate
     * High" instruction:
     *
@@ -4059,8 +4061,6 @@ fs_visitor::lower_integer_multiplication()
    bool progress = false;
 
    foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
-      const fs_builder ibld(this, block, inst);
-
       if (inst->opcode == BRW_OPCODE_MUL) {
          if (inst->dst.is_accumulator() ||
              (inst->dst.type != BRW_REGISTER_TYPE_D &&
@@ -4070,9 +4070,9 @@ fs_visitor::lower_integer_multiplication()
          if (devinfo->has_integer_dword_mul)
             continue;
 
-         lower_mul_dword_inst(inst, block, ibld);
+         lower_mul_dword_inst(inst, block);
       } else if (inst->opcode == SHADER_OPCODE_MULH) {
-         lower_mulh_inst(inst, block, ibld);
+         lower_mulh_inst(inst, block);
       } else {
          continue;
       }
