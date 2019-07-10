@@ -78,37 +78,77 @@ panfrost_job_type_for_pipe(enum pipe_shader_type type)
 
 /* Framebuffer descriptor */
 
-static void
-panfrost_set_framebuffer_resolution(struct mali_single_framebuffer *fb, int w, int h)
+static struct midgard_tiler_descriptor
+panfrost_emit_midg_tiler(
+                struct panfrost_context *ctx,
+                unsigned width,
+                unsigned height,
+                unsigned vertex_count)
 {
-        fb->width = MALI_POSITIVE(w);
-        fb->height = MALI_POSITIVE(h);
+        struct midgard_tiler_descriptor t = {};
 
-        /* No idea why this is needed, but it's how resolution_check is
-         * calculated.  It's not clear to us yet why the hardware wants this.
-         * The formula itself was discovered mostly by manual bruteforce and
-         * aggressive algebraic simplification. */
+        t.hierarchy_mask =
+                panfrost_choose_hierarchy_mask(width, height, vertex_count);
 
-        fb->tiler_resolution_check = ((w + h) / 3) << 4;
+        /* Compute the polygon header size and use that to offset the body */
+
+        unsigned header_size = panfrost_tiler_header_size(
+                        width, height, t.hierarchy_mask);
+
+        unsigned body_size = panfrost_tiler_body_size(
+                        width, height, t.hierarchy_mask);
+
+        /* Sanity check */
+
+        unsigned total_size = header_size + body_size;
+
+        if (t.hierarchy_mask) {
+               assert(ctx->tiler_polygon_list.bo->size >= total_size);
+
+                /* Specify allocated tiler structures */
+                t.polygon_list = ctx->tiler_polygon_list.bo->gpu;
+
+                /* Allow the entire tiler heap */
+                t.heap_start = ctx->tiler_heap.bo->gpu;
+                t.heap_end =
+                        ctx->tiler_heap.bo->gpu + ctx->tiler_heap.bo->size;
+        } else {
+                /* The tiler is disabled, so don't allow the tiler heap */
+                t.heap_start = ctx->tiler_heap.bo->gpu;
+                t.heap_end = t.heap_start;
+
+                /* Use a dummy polygon list */
+                t.polygon_list = ctx->tiler_dummy.bo->gpu;
+
+                /* Also, set a "tiler disabled?" flag? */
+                t.hierarchy_mask |= 0x1000;
+        }
+
+        t.polygon_list_body =
+                t.polygon_list + header_size;
+
+        t.polygon_list_size =
+                header_size + body_size;
+
+        return t;
 }
 
 struct mali_single_framebuffer
 panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count)
 {
+        unsigned width = ctx->pipe_framebuffer.width;
+        unsigned height = ctx->pipe_framebuffer.height;
+
         struct mali_single_framebuffer framebuffer = {
+                .width = MALI_POSITIVE(width),
+                .height = MALI_POSITIVE(width),
                 .unknown2 = 0x1f,
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
                 .unknown_address_0 = ctx->scratchpad.bo->gpu,
-                .tiler_polygon_list = ctx->tiler_polygon_list.bo->gpu,
-                .tiler_polygon_list_body = ctx->tiler_polygon_list.bo->gpu + 40960,
-                .tiler_hierarchy_mask = 0xF0,
-                .tiler_flags = 0x0,
-                .tiler_heap_free = ctx->tiler_heap.bo->gpu,
-                .tiler_heap_end = ctx->tiler_heap.bo->gpu + ctx->tiler_heap.bo->size,
+                .tiler = panfrost_emit_midg_tiler(ctx,
+                                width, height, vertex_count),
         };
-
-        panfrost_set_framebuffer_resolution(&framebuffer, ctx->pipe_framebuffer.width, ctx->pipe_framebuffer.height);
 
         return framebuffer;
 }
@@ -134,52 +174,9 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
                 .unknown2 = 0x1f,
 
                 .scratchpad = ctx->scratchpad.bo->gpu,
+                .tiler = panfrost_emit_midg_tiler(ctx,
+                                width, height, vertex_count)
         };
-
-        framebuffer.tiler_hierarchy_mask =
-                panfrost_choose_hierarchy_mask(width, height, vertex_count);
-
-        /* Compute the polygon header size and use that to offset the body */
-
-        unsigned header_size = panfrost_tiler_header_size(
-                        width, height, framebuffer.tiler_hierarchy_mask);
-
-        unsigned body_size = panfrost_tiler_body_size(
-                        width, height, framebuffer.tiler_hierarchy_mask);
-
-        /* Sanity check */
-
-        unsigned total_size = header_size + body_size;
-
-        if (framebuffer.tiler_hierarchy_mask) {
-               assert(ctx->tiler_polygon_list.bo->size >= total_size);
-
-                /* Specify allocated tiler structures */
-                framebuffer.tiler_polygon_list = ctx->tiler_polygon_list.bo->gpu;
-
-                /* Allow the entire tiler heap */
-                framebuffer.tiler_heap_start = ctx->tiler_heap.bo->gpu;
-                framebuffer.tiler_heap_end =
-                        ctx->tiler_heap.bo->gpu + ctx->tiler_heap.bo->size;
-        } else {
-                /* The tiler is disabled, so don't allow the tiler heap */
-                framebuffer.tiler_heap_start = ctx->tiler_heap.bo->gpu;
-                framebuffer.tiler_heap_end = framebuffer.tiler_heap_start;
-
-                /* Use a dummy polygon list */
-                framebuffer.tiler_polygon_list = ctx->tiler_dummy.bo->gpu;
-
-                /* Also, set a "tiler disabled?" flag? */
-                framebuffer.tiler_hierarchy_mask |= 0x1000;
-        }
-
-        framebuffer.tiler_polygon_list_body =
-                framebuffer.tiler_polygon_list + header_size;
-
-        framebuffer.tiler_polygon_list_size =
-                header_size + body_size;
-
-
 
         return framebuffer;
 }

@@ -1334,6 +1334,40 @@ struct mali_payload_fragment {
 #define MALI_CLEAR_SLOW         (1 << 28)
 #define MALI_CLEAR_SLOW_STENCIL (1 << 31)
 
+/* Configures hierarchical tiling on Midgard for both SFBD/MFBD (embedded
+ * within the larget framebuffer descriptor). Analogous to
+ * bifrost_tiler_heap_meta and bifrost_tiler_meta*/
+
+struct midgard_tiler_descriptor {
+        /* Size of the entire polygon list; see pan_tiler.c for the
+         * computation. It's based on hierarchical tiling */
+
+        u32 polygon_list_size;
+
+        /* Name known from the replay workaround in the kernel. What exactly is
+         * flagged here is less known. We do that (tiler_hierarchy_mask & 0x1ff)
+         * specifies a mask of hierarchy weights, which explains some of the
+         * performance mysteries around setting it. We also see the bottom bit
+         * of tiler_flags set in the kernel, but no comment why. */
+
+        u16 hierarchy_mask;
+        u16 flags;
+
+        /* See mali_tiler.c for an explanation */
+        mali_ptr polygon_list;
+        mali_ptr polygon_list_body;
+
+        /* Names based on we see symmetry with replay jobs which name these
+         * explicitly */
+
+        mali_ptr heap_start; /* tiler heap_free_address */
+        mali_ptr heap_end;
+
+        /* Hierarchy weights. We know these are weights based on the kernel,
+         * but I've never seen them be anything other than zero */
+        u32 weights[8];
+};
+
 struct mali_single_framebuffer {
         u32 unknown1;
         u32 unknown2;
@@ -1394,22 +1428,7 @@ struct mali_single_framebuffer {
 
         u32 zero6[7];
 
-        /* Logically, by symmetry to the MFBD, this ought to be the size of the
-         * polygon list. But this doesn't quite compute up. More investigation
-         * is needed. */
-
-        u32 tiler_resolution_check;
-
-        u16 tiler_hierarchy_mask;
-        u16 tiler_flags;
-
-        /* See pan_tiler.c */
-        mali_ptr tiler_polygon_list; 
-        mali_ptr tiler_polygon_list_body;
-
-        /* See mali_kbase_replay.c */
-        mali_ptr tiler_heap_free;
-        mali_ptr tiler_heap_end;
+        struct midgard_tiler_descriptor tiler;
 
         /* More below this, maybe */
 } __attribute__((packed));
@@ -1574,30 +1593,7 @@ struct bifrost_framebuffer {
         u32 mfbd_flags : 24; // = 0x100
         float clear_depth;
 
-
-        /* Tiler section begins here */
-        u32 tiler_polygon_list_size;
-
-        /* Name known from the replay workaround in the kernel. What exactly is
-         * flagged here is less known. We do that (tiler_hierarchy_mask & 0x1ff)
-         * specifies a mask of hierarchy weights, which explains some of the
-         * performance mysteries around setting it. We also see the bottom bit
-         * of tiler_flags set in the kernel, but no comment why. */
-
-        u16 tiler_hierarchy_mask;
-        u16 tiler_flags;
-
-        /* See mali_tiler.c for an explanation */
-        mali_ptr tiler_polygon_list;
-        mali_ptr tiler_polygon_list_body;
-
-        /* Names based on we see symmetry with replay jobs which name these
-         * explicitly */
-
-        mali_ptr tiler_heap_start; /* tiler heap_free_address */
-        mali_ptr tiler_heap_end;
-        
-        u32 tiler_weights[8];
+        struct midgard_tiler_descriptor tiler;
 
         /* optional: struct bifrost_fb_extra extra */
         /* struct bifrost_render_target rts[] */

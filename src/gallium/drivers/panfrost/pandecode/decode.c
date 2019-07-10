@@ -444,6 +444,51 @@ pandecode_decode_fbd_type(enum mali_fbd_type type)
         else return "WATFBD /* XXX */";
 }
 
+/* Midgard's tiler descriptor is embedded within the
+ * larger FBD */
+
+static void
+pandecode_midgard_tiler_descriptor(const struct midgard_tiler_descriptor *t)
+{
+        pandecode_log(".tiler = {\n");
+        pandecode_indent++;
+
+        pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
+        pandecode_prop("flags = 0x%" PRIx16, t->flags);
+        pandecode_prop("polygon_list_size = 0x%x", t->polygon_list_size);
+
+        MEMORY_PROP(t, polygon_list);
+        MEMORY_PROP(t, polygon_list_body);
+
+        MEMORY_PROP(t, heap_start);
+
+        {
+                /* Points to the end of a buffer */
+                char *a = pointer_as_memory_reference(t->heap_end - 1);
+                pandecode_prop("heap_end = %s + 1", a);
+                free(a);
+        }
+
+        bool nonzero_weights = false;
+
+        for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
+                nonzero_weights |= t->weights[w] != 0x0;
+        }
+
+        if (nonzero_weights) {
+                pandecode_log(".weights = {");
+
+                for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
+                        pandecode_log("%d, ", t->weights[w]);
+                }
+
+                pandecode_log("},");
+        }
+
+        pandecode_indent--;
+        pandecode_log("}\n");
+}
+
 static void
 pandecode_replay_sfbd(uint64_t gpu_va, int job_no)
 {
@@ -502,15 +547,7 @@ pandecode_replay_sfbd(uint64_t gpu_va, int job_no)
         }
 
         MEMORY_PROP(s, unknown_address_0);
-        MEMORY_PROP(s, tiler_polygon_list);
-        MEMORY_PROP(s, tiler_polygon_list_body);
-
-        pandecode_prop("tiler_resolution_check = 0x%" PRIx32, s->tiler_resolution_check);
-        pandecode_prop("tiler_hierarchy_mask = 0x%" PRIx16, s->tiler_hierarchy_mask);
-        pandecode_prop("tiler_flags = 0x%" PRIx16, s->tiler_flags);
-
-        MEMORY_PROP(s, tiler_heap_free);
-        MEMORY_PROP(s, tiler_heap_end);
+        pandecode_midgard_tiler_descriptor(&s->tiler);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -716,10 +753,6 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
          * now */
         MEMORY_PROP(fb, unknown1);
 
-        pandecode_prop("tiler_polygon_list_size = 0x%x", fb->tiler_polygon_list_size);
-        pandecode_prop("tiler_hierarchy_mask = 0x%" PRIx16, fb->tiler_hierarchy_mask);
-        pandecode_prop("tiler_flags = 0x%" PRIx16, fb->tiler_flags);
-
         pandecode_prop("width1 = MALI_POSITIVE(%d)", fb->width1 + 1);
         pandecode_prop("height1 = MALI_POSITIVE(%d)", fb->height1 + 1);
         pandecode_prop("width2 = MALI_POSITIVE(%d)", fb->width2 + 1);
@@ -739,31 +772,12 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
 
         pandecode_prop("unknown2 = 0x%x", fb->unknown2);
         MEMORY_PROP(fb, scratchpad);
-        MEMORY_PROP(fb, tiler_polygon_list);
-        MEMORY_PROP(fb, tiler_polygon_list_body);
-        MEMORY_PROP(fb, tiler_heap_start);
-        MEMORY_PROP(fb, tiler_heap_end);
+        pandecode_midgard_tiler_descriptor(&fb->tiler);
 
         if (fb->zero3 || fb->zero4) {
                 pandecode_msg("framebuffer zeros tripped\n");
                 pandecode_prop("zero3 = 0x%" PRIx32, fb->zero3);
                 pandecode_prop("zero4 = 0x%" PRIx32, fb->zero4);
-        }
-
-        bool nonzero_weights = false;
-
-        for (unsigned w = 0; w < ARRAY_SIZE(fb->tiler_weights); ++w) {
-                nonzero_weights |= fb->tiler_weights[w] != 0x0;
-        }
-
-        if (nonzero_weights) {
-                pandecode_log(".tiler_weights = {");
-
-                for (unsigned w = 0; w < ARRAY_SIZE(fb->tiler_weights); ++w) {
-                        pandecode_log("%d, ", fb->tiler_weights[w]);
-                }
-
-                pandecode_log("},");
         }
 
         pandecode_indent--;
