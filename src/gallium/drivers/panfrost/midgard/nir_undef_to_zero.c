@@ -64,9 +64,7 @@ nir_undef_to_zero(nir_shader *shader)
                                 unsigned c = und->def.num_components;
                                 unsigned s = und->def.bit_size;
 
-                                nir_const_value v[16];
-                                assert(c <= 16);
-
+                                nir_const_value v[NIR_MAX_VEC_COMPONENTS];
                                 memset(v, 0, sizeof(v));
 
                                 b.cursor = nir_before_instr(instr);
