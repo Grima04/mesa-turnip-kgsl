@@ -27,6 +27,14 @@
 
 #include "util/u_memory.h"
 
+static void
+destroy_fence(struct zink_screen *screen, struct zink_fence *fence)
+{
+   if (fence->fence)
+      vkDestroyFence(screen->dev, fence->fence, NULL);
+   FREE(fence);
+}
+
 struct zink_fence *
 zink_create_fence(struct pipe_screen *pscreen)
 {
@@ -50,7 +58,7 @@ zink_create_fence(struct pipe_screen *pscreen)
    return ret;
 
 fail:
-   FREE(ret);
+   destroy_fence(screen, ret);
    return NULL;
 }
 
@@ -59,10 +67,8 @@ zink_fence_reference(struct zink_screen *screen,
                      struct zink_fence **ptr,
                      struct zink_fence *fence)
 {
-   if (pipe_reference(&(*ptr)->reference, &fence->reference)) {
-      vkDestroyFence(screen->dev, (*ptr)->fence, NULL);
-      free(*ptr);
-   }
+   if (pipe_reference(&(*ptr)->reference, &fence->reference))
+      destroy_fence(screen, *ptr);
 
    *ptr = fence;
 }
