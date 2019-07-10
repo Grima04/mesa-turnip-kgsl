@@ -73,15 +73,13 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (!batch->fence)
       return;
 
-   VkPipelineStageFlags wait = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
    VkSubmitInfo si = {};
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
    si.waitSemaphoreCount = 0;
    si.pWaitSemaphores = NULL;
    si.signalSemaphoreCount = 0;
    si.pSignalSemaphores = NULL;
-   si.pWaitDstStageMask = &wait;
+   si.pWaitDstStageMask = NULL;
    si.commandBufferCount = 1;
    si.pCommandBuffers = &batch->cmdbuf;
 
