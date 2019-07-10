@@ -27,7 +27,7 @@
 #include "pan_util.h"
 #include "midgard/midgard_compile.h"
 #include "compiler/nir/nir_builder.h"
-#include "midgard/nir_lower_blend.h"
+#include "nir/nir_lower_blend.h"
 #include "gallium/auxiliary/util/u_blend.h"
 #include "util/u_memory.h"
 
