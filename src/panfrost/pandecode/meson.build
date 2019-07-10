@@ -19,64 +19,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_panfrost_hw = include_directories([
-   'include'
-])
-
-inc_panfrost = include_directories([
-   '.', 'include', 'shared', 'midgard', 'bifrost'
-])
-
-subdir('shared')
-subdir('midgard')
-subdir('bifrost')
-subdir('pandecode')
-
-files_pandecode = files(
-  'pandecode/cmdline.c',
-  'pandecode/common.c',
-  'pandecode/decode.c',
-  'pandecode/pan_pretty_print.c',
-
-  'midgard/disassemble.c',
-  'midgard/midgard_ops.c',
-  'bifrost/disassemble.c',
+libpanfrost_decode_files = files(
+  'pan_pretty_print.c',
+  'common.c',
+  'decode.c',
 )
 
-pandecode = executable(
-  'pandecoder',
-  files_pandecode,
-  include_directories : [inc_common, inc_include, inc_src, inc_panfrost],
-  dependencies : [
-    dep_thread,
-  ],
-  link_with : [
-    libmesa_util
-  ],
-  build_by_default : true
-)
-
-files_bifrost = files(
-  'bifrost/cmdline.c',
-)
-
-bifrost_compiler = executable(
-  'bifrost_compiler',
-  [files_bifrost],
-  include_directories : [
-    inc_common,
-    inc_include,
-    inc_src,
-    inc_panfrost,
- ],
-  dependencies : [
-    dep_thread,
-    idep_nir
-  ],
-  link_with : [
-    libglsl_standalone,
-    libmesa_util,
-    libpanfrost_bifrost
-  ],
-  build_by_default : true
+libpanfrost_decode = static_library(
+  'panfrost_decode',
+  [libpanfrost_decode_files],
+  include_directories : [inc_common, inc_panfrost],
+  c_args : [c_vis_args, no_override_init_args],
+  cpp_args : [cpp_vis_args],
+  build_by_default : false,
 )

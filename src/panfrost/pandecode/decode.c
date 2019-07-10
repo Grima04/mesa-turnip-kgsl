@@ -32,9 +32,10 @@
 #include "decode.h"
 #include "util/u_math.h"
 
-#include "../pan_pretty_print.h"
-#include "../midgard/disassemble.h"
-#include "../bifrost/disassemble.h"
+#include "pan_pretty_print.h"
+#include "midgard/disassemble.h"
+#include "bifrost/disassemble.h"
+
 int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
 
 #define MEMORY_PROP(obj, p) {\

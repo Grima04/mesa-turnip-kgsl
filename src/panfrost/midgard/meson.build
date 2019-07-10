@@ -19,64 +19,45 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_panfrost_hw = include_directories([
-   'include'
-])
-
-inc_panfrost = include_directories([
-   '.', 'include', 'shared', 'midgard', 'bifrost'
-])
-
-subdir('shared')
-subdir('midgard')
-subdir('bifrost')
-subdir('pandecode')
-
-files_pandecode = files(
-  'pandecode/cmdline.c',
-  'pandecode/common.c',
-  'pandecode/decode.c',
-  'pandecode/pan_pretty_print.c',
-
-  'midgard/disassemble.c',
-  'midgard/midgard_ops.c',
-  'bifrost/disassemble.c',
+libpanfrost_midgard_files = files(
+  'midgard_compile.c',
+  'mir.c',
+  'midgard_print.c',
+  'midgard_schedule.c',
+  'midgard_emit.c',
+  'midgard_ra.c',
+  'midgard_ra_pipeline.c',
+  'midgard_liveness.c',
+  'midgard_ops.c',
+  'cppwrap.cpp',
+  'disassemble.c',
 )
 
-pandecode = executable(
-  'pandecoder',
-  files_pandecode,
-  include_directories : [inc_common, inc_include, inc_src, inc_panfrost],
-  dependencies : [
-    dep_thread,
+midgard_nir_algebraic_c = custom_target(
+  'midgard_nir_algebraic.c',
+  input : 'midgard_nir_algebraic.py',
+  output : 'midgard_nir_algebraic.c',
+  command : [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/compiler/nir/'),
   ],
-  link_with : [
-    libmesa_util
-  ],
-  build_by_default : true
+  capture : true,
+  depend_files : nir_algebraic_py,
 )
 
-files_bifrost = files(
-  'bifrost/cmdline.c',
-)
-
-bifrost_compiler = executable(
-  'bifrost_compiler',
-  [files_bifrost],
+libpanfrost_midgard = static_library(
+  'panfrost_midgard',
+  [libpanfrost_midgard_files, midgard_nir_algebraic_c],
   include_directories : [
-    inc_common,
-    inc_include,
-    inc_src,
-    inc_panfrost,
- ],
-  dependencies : [
-    dep_thread,
-    idep_nir
+   inc_common,
+   inc_include,
+   inc_src,
+   inc_panfrost_hw,
   ],
-  link_with : [
-    libglsl_standalone,
-    libmesa_util,
-    libpanfrost_bifrost
+  dependencies: [
+   idep_nir
   ],
-  build_by_default : true
+  c_args : [c_vis_args, no_override_init_args],
+  cpp_args : [cpp_vis_args],
+  build_by_default : false,
 )
