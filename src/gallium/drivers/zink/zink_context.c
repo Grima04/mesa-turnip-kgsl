@@ -1166,11 +1166,25 @@ zink_blit(struct pipe_context *pctx,
          return;
       }
 
+      util_blitter_save_blend(ctx->blitter, ctx->gfx_pipeline_state.blend_state);
+      util_blitter_save_depth_stencil_alpha(ctx->blitter, ctx->gfx_pipeline_state.depth_stencil_alpha_state);
+      util_blitter_save_vertex_elements(ctx->blitter, ctx->element_state);
+      util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
+      util_blitter_save_rasterizer(ctx->blitter, ctx->gfx_pipeline_state.rast_state);
+      util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
+      util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
+      util_blitter_save_viewport(ctx->blitter, ctx->viewport_states);
+      util_blitter_save_scissor(ctx->blitter, ctx->scissor_states);
+      util_blitter_save_fragment_sampler_states(ctx->blitter,
+                                                ctx->num_samplers[PIPE_SHADER_FRAGMENT],
+                                                (void **)ctx->samplers[PIPE_SHADER_FRAGMENT]);
+      util_blitter_save_fragment_sampler_views(ctx->blitter,
+                                               ctx->num_image_views[PIPE_SHADER_FRAGMENT],
+                                               ctx->image_views[PIPE_SHADER_FRAGMENT]);
       util_blitter_save_fragment_constant_buffer_slot(ctx->blitter, ctx->ubos[PIPE_SHADER_FRAGMENT]);
       util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->buffers);
-      util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
-      util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]);
-      util_blitter_save_rasterizer(ctx->blitter, ctx->gfx_pipeline_state.rast_state);
+      util_blitter_save_sample_mask(ctx->blitter, ctx->gfx_pipeline_state.sample_mask);
 
       util_blitter_blit(ctx->blitter, info);
       return;
