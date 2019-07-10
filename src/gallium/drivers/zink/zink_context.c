@@ -180,6 +180,7 @@ zink_bind_sampler_states(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    for (unsigned i = 0; i < num_samplers; ++i)
       ctx->samplers[shader][start_slot + i] = (VkSampler)samplers[i];
+   ctx->num_samplers[shader] = start_slot + num_samplers;
 }
 
 static void
@@ -444,6 +445,7 @@ zink_set_sampler_views(struct pipe_context *pctx,
          &ctx->image_views[shader_type][start_slot + i],
          views[i]);
    }
+   ctx->num_image_views[shader_type] = start_slot + num_views;
 }
 
 static void

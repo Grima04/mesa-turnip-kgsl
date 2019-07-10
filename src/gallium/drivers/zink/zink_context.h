@@ -97,7 +97,9 @@ struct zink_context {
    uint32_t buffers_enabled_mask;
 
    VkSampler samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+   unsigned num_samplers[PIPE_SHADER_TYPES];
    struct pipe_sampler_view *image_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   unsigned num_image_views[PIPE_SHADER_TYPES];
 
    float blend_constants[4];
 
