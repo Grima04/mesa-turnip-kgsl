@@ -486,8 +486,8 @@ iris_is_format_supported(struct pipe_screen *pscreen,
        *
        * We do need to advertise 32-bit RGB for texture buffers though.
        */
-      supported &= fmtl->bpb != 24 && fmtl->bpb != 48 &&
-                   (fmtl->bpb != 96 || target == PIPE_BUFFER);
+      if (target != PIPE_BUFFER)
+         supported &= fmtl->bpb != 24 && fmtl->bpb != 48 && fmtl->bpb != 96;
    }
 
    if (usage & PIPE_BIND_VERTEX_BUFFER)
