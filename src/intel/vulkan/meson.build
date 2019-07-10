@@ -68,19 +68,6 @@ intel_icd = custom_target(
   install : true,
 )
 
-dev_icd = custom_target(
-  'dev_icd',
-  input : 'anv_icd.py',
-  output : 'dev_icd.@0@.json'.format(host_machine.cpu()),
-  command : [
-    prog_python, '@INPUT@', '--lib-path', meson.current_build_dir(),
-    '--out', '@OUTPUT@'
-  ],
-  depend_files : files('anv_extensions.py'),
-  build_by_default : true,
-  install : false,
-)
-
 libanv_gen_libs = []
 anv_gen_files = files(
   'genX_blorp_exec.c',
