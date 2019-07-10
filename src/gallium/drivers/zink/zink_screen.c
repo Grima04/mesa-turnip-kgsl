@@ -588,9 +588,9 @@ zink_is_format_supported(struct pipe_screen *pscreen,
    if (vkformat == VK_FORMAT_UNDEFINED)
       return FALSE;
 
-   const struct util_format_description *desc = util_format_description(format);
    if (sample_count >= 1) {
       VkSampleCountFlagBits sample_mask = vk_sample_count_flags(sample_count);
+      const struct util_format_description *desc = util_format_description(format);
       if (util_format_is_depth_or_stencil(format)) {
          if (util_format_has_depth(desc)) {
             if (bind & PIPE_BIND_DEPTH_STENCIL &&
@@ -651,9 +651,12 @@ zink_is_format_supported(struct pipe_screen *pscreen,
          return FALSE;
    }
 
-   if (desc->layout == UTIL_FORMAT_LAYOUT_BPTC &&
-       !screen->feats.textureCompressionBC)
-      return FALSE;
+   if (util_format_is_compressed(format)) {
+      const struct util_format_description *desc = util_format_description(format);
+      if (desc->layout == UTIL_FORMAT_LAYOUT_BPTC &&
+          !screen->feats.textureCompressionBC)
+         return FALSE;
+   }
 
    return TRUE;
 }
