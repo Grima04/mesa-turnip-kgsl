@@ -3427,6 +3427,11 @@ static void radv_free_memory(struct radv_device *device,
 	if (mem == NULL)
 		return;
 
+#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
+	if (mem->android_hardware_buffer)
+		AHardwareBuffer_release(mem->android_hardware_buffer);
+#endif
+
 	if (mem->bo) {
 		radv_bo_list_remove(device, mem->bo);
 		device->ws->buffer_destroy(mem->bo);
@@ -3495,6 +3500,10 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 
 	mem->user_ptr = NULL;
 	mem->bo = NULL;
+
+#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
+	mem->android_hardware_buffer = NULL;
+#endif
 
 	if (import_info) {
 		assert(import_info->handleType ==
