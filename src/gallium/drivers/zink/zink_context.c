@@ -378,6 +378,7 @@ zink_set_viewport_states(struct pipe_context *pctx,
          state[i].translate[2] - state[i].scale[2],
          state[i].translate[2] + state[i].scale[2]
       };
+      ctx->viewport_states[start_slot + i] = state[i];
       ctx->viewports[start_slot + i] = viewport;
    }
    ctx->num_viewports = start_slot + num_viewports;
@@ -397,6 +398,7 @@ zink_set_scissor_states(struct pipe_context *pctx,
       scissor.offset.y = states[i].miny;
       scissor.extent.width = states[i].maxx - states[i].minx;
       scissor.extent.height = states[i].maxy - states[i].miny;
+      ctx->scissor_states[start_slot + i] = states[i];
       ctx->scissors[start_slot + i] = scissor;
    }
    ctx->num_scissors = start_slot + num_scissors;

@@ -87,9 +87,11 @@ struct zink_context {
 
    struct zink_framebuffer *framebuffer;
 
+   struct pipe_viewport_state viewport_states[PIPE_MAX_VIEWPORTS];
    VkViewport viewports[PIPE_MAX_VIEWPORTS];
    unsigned num_viewports;
 
+   struct pipe_scissor_state scissor_states[PIPE_MAX_VIEWPORTS];
    VkRect2D scissors[PIPE_MAX_VIEWPORTS];
    unsigned num_scissors;
 
