@@ -225,6 +225,11 @@ optimizations = [
    # a * (#b << #c)
    (('ishl', ('imul', a, '#b'), '#c'), ('imul', a, ('ishl', b, c))),
 
+   # This is common for address calculations.  Reassociating may enable the
+   # 'a<<c' to be CSE'd.  It also helps architectures that have an ISHLADD
+   # instruction or a constant offset field for in load / store instructions.
+   (('ishl', ('iadd', a, '#b'), '#c'), ('iadd', ('ishl', a, c), ('ishl', b, c))),
+
    # Comparison simplifications
    (('~inot', ('flt', a, b)), ('fge', a, b)),
    (('~inot', ('fge', a, b)), ('flt', a, b)),
