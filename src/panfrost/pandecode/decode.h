@@ -53,15 +53,15 @@ pandecode_inject_mmap(mali_ptr gpu_va, void *cpu, unsigned sz, const char *name)
 
 static inline void *
 __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
-                        mali_ptr gpu_va, size_t size,
-                        int line, const char *filename)
+                          mali_ptr gpu_va, size_t size,
+                          int line, const char *filename)
 {
         if (!mem)
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
 
         if (!mem) {
                 fprintf(stderr, "Access to unknown memory %" PRIx64 " in %s:%d",
-                                gpu_va, filename, line);
+                        gpu_va, filename, line);
                 assert(0);
         }
 

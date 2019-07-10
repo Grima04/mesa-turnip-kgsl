@@ -63,7 +63,7 @@ pandecode_inject_mmap(mali_ptr gpu_va, void *cpu, unsigned sz, const char *name)
                 /* If we don't have a name, assign one */
 
                 snprintf(mapped_mem->name, ARRAY_SIZE(mapped_mem->name) - 1,
-                                "memory_%" PRIx64, gpu_va);
+                         "memory_%" PRIx64, gpu_va);
         } else {
                 assert(strlen(name) < ARRAY_SIZE(mapped_mem->name));
                 memcpy(mapped_mem->name, name, strlen(name));

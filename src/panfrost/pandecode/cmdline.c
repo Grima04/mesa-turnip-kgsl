@@ -107,17 +107,17 @@ pandecode_read_control(const char *base)
 
         while (getline(&line, &len, fp) != -1) {
                 switch (line[0]) {
-                        case 'M':
-                                pandecode_read_mmap(base, line);
-                                break;
+                case 'M':
+                        pandecode_read_mmap(base, line);
+                        break;
 
-                        case 'J':
-                                pandecode_read_job_submit(base, line);
-                                break;
+                case 'J':
+                        pandecode_read_job_submit(base, line);
+                        break;
 
-                        default:
-                                assert(0);
-                                break;
+                default:
+                        assert(0);
+                        break;
                 }
         }
 }
