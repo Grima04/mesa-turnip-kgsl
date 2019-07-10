@@ -2710,16 +2710,57 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 	ac_nir_build_endif(&if_ctx);
 }
 
+struct radv_shader_output_values {
+	LLVMValueRef values[4];
+	unsigned slot_name;
+	unsigned slot_index;
+	unsigned usage_mask;
+};
+
+static void
+radv_build_param_exports(struct radv_shader_context *ctx,
+			 struct radv_shader_output_values *outputs,
+			 unsigned noutput,
+			 struct radv_vs_output_info *outinfo,
+			 bool export_clip_dists)
+{
+	unsigned param_count = 0;
+
+	for (unsigned i = 0; i < noutput; i++) {
+		unsigned slot_name = outputs[i].slot_name;
+		unsigned usage_mask = outputs[i].usage_mask;
+
+		if (slot_name != VARYING_SLOT_LAYER &&
+		    slot_name != VARYING_SLOT_PRIMITIVE_ID &&
+		    slot_name != VARYING_SLOT_CLIP_DIST0 &&
+		    slot_name != VARYING_SLOT_CLIP_DIST1 &&
+		    slot_name < VARYING_SLOT_VAR0)
+			continue;
+
+		if ((slot_name == VARYING_SLOT_CLIP_DIST0 ||
+		     slot_name == VARYING_SLOT_CLIP_DIST1) && !export_clip_dists)
+			continue;
+
+		radv_export_param(ctx, param_count, outputs[i].values, usage_mask);
+
+		assert(i < ARRAY_SIZE(outinfo->vs_output_param_offset));
+		outinfo->vs_output_param_offset[slot_name] = param_count++;
+        }
+
+	outinfo->param_exports = param_count;
+}
+
 static void
 handle_vs_outputs_post(struct radv_shader_context *ctx,
 		       bool export_prim_id,
 		       bool export_clip_dists,
 		       struct radv_vs_output_info *outinfo)
 {
-	uint32_t param_count = 0;
 	unsigned pos_idx, num_pos_exports = 0;
 	struct ac_export_args pos_args[4] = {};
 	LLVMValueRef psize_value = NULL, layer_value = NULL, viewport_index_value = NULL;
+	struct radv_shader_output_values *outputs;
+	unsigned noutput = 0;
 	int i;
 
 	if (ctx->options->key.has_multiview_view_index) {
@@ -2863,60 +2904,57 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 		ac_build_export(&ctx->ac, &pos_args[i]);
 	}
 
+	outinfo->pos_exports = num_pos_exports;
+
+	/* Allocate a temporary array for the output values. */
+	unsigned num_outputs = util_bitcount64(ctx->output_mask) + export_prim_id;
+	outputs = malloc(num_outputs * sizeof(outputs[0]));
+
 	for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
-		LLVMValueRef values[4];
 		if (!(ctx->output_mask & (1ull << i)))
 			continue;
 
-		if (i != VARYING_SLOT_LAYER &&
-		    i != VARYING_SLOT_PRIMITIVE_ID &&
-		    i != VARYING_SLOT_CLIP_DIST0 &&
-		    i != VARYING_SLOT_CLIP_DIST1 &&
-		    i < VARYING_SLOT_VAR0)
-			continue;
-
-		if ((i == VARYING_SLOT_CLIP_DIST0 ||
-		     i == VARYING_SLOT_CLIP_DIST1) && !export_clip_dists)
-			continue;
-
-		for (unsigned j = 0; j < 4; j++)
-			values[j] = ac_to_float(&ctx->ac, radv_load_output(ctx, i, j));
-
-		unsigned output_usage_mask;
+		outputs[noutput].slot_name = i;
+		outputs[noutput].slot_index = 0;
 
 		if (ctx->stage == MESA_SHADER_VERTEX &&
 		    !ctx->is_gs_copy_shader) {
-			output_usage_mask =
+			outputs[noutput].usage_mask =
 				ctx->shader_info->info.vs.output_usage_mask[i];
 		} else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
-			output_usage_mask =
+			outputs[noutput].usage_mask =
 				ctx->shader_info->info.tes.output_usage_mask[i];
 		} else {
 			assert(ctx->is_gs_copy_shader);
-			output_usage_mask =
+			outputs[noutput].usage_mask =
 				ctx->shader_info->info.gs.output_usage_mask[i];
 		}
 
-		radv_export_param(ctx, param_count, values, output_usage_mask);
+		for (unsigned j = 0; j < 4; j++) {
+			outputs[noutput].values[j] =
+				ac_to_float(&ctx->ac, radv_load_output(ctx, i, j));
+		}
 
-		outinfo->vs_output_param_offset[i] = param_count++;
+		noutput++;
 	}
 
+	/* Export PrimitiveID. */
 	if (export_prim_id) {
-		LLVMValueRef values[4];
-
-		values[0] = ctx->vs_prim_id;
-		for (unsigned j = 1; j < 4; j++)
-			values[j] = ctx->ac.f32_0;
-
-		radv_export_param(ctx, param_count, values, 0x1);
-
-		outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = param_count++;
 		outinfo->export_prim_id = true;
+
+		outputs[noutput].slot_name = VARYING_SLOT_PRIMITIVE_ID;
+		outputs[noutput].slot_index = 0;
+		outputs[noutput].usage_mask = 0x1;
+		outputs[noutput].values[0] = ctx->vs_prim_id;
+		for (unsigned j = 1; j < 4; j++)
+			outputs[noutput].values[j] = ctx->ac.f32_0;
+		noutput++;
 	}
 
-	outinfo->pos_exports = num_pos_exports;
-	outinfo->param_exports = param_count;
+	/* Build parameter exports. */
+	radv_build_param_exports(ctx, outputs, noutput, outinfo, export_clip_dists);
+
+	free(outputs);
 }
 
 static void
