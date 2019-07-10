@@ -722,8 +722,15 @@ array_stride_decoration_cb(struct vtn_builder *b,
    struct vtn_type *type = val->type;
 
    if (dec->decoration == SpvDecorationArrayStride) {
-      vtn_fail_if(dec->operands[0] == 0, "ArrayStride must be non-zero");
-      type->stride = dec->operands[0];
+      if (vtn_type_contains_block(b, type)) {
+         vtn_warn("The ArrayStride decoration cannot be applied to an array "
+                  "type which contains a structure type decorated Block "
+                  "or BufferBlock");
+         /* Ignore the decoration */
+      } else {
+         vtn_fail_if(dec->operands[0] == 0, "ArrayStride must be non-zero");
+         type->stride = dec->operands[0];
+      }
    }
 }
 
