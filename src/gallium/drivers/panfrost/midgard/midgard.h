@@ -539,7 +539,8 @@ __attribute__((__packed__))
 
         /* Padding to make this 8-bit */
         unsigned zero : 3;
-} midgard_tex_register_select;
+}
+midgard_tex_register_select;
 
 /* Texture pipeline results are in r28-r29 */
 #define REG_TEX_BASE 28

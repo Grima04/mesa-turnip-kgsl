@@ -49,8 +49,8 @@
 static unsigned reg_type_to_mask[WORK_STRIDE] = {
         0xF,                                    /* xyzw */
         0x7, 0x7 << 1,                          /* xyz */
-        0x3, 0x3 << 1, 0x3 << 2,                /* xy */
-        0x1, 0x1 << 1, 0x1 << 2, 0x1 << 3       /* x */
+                 0x3, 0x3 << 1, 0x3 << 2,                /* xy */
+                 0x1, 0x1 << 1, 0x1 << 2, 0x1 << 3       /* x */
 };
 
 static unsigned reg_type_to_swizzle[WORK_STRIDE] = {
@@ -123,7 +123,7 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
                 return hash;
 
         unsigned temp = (uintptr_t) _mesa_hash_table_u64_search(
-                        ctx->hash_to_temp, hash + 1);
+                                ctx->hash_to_temp, hash + 1);
 
         if (temp)
                 return temp - 1;
@@ -133,7 +133,7 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
         ctx->max_hash = MAX2(ctx->max_hash, hash);
 
         _mesa_hash_table_u64_insert(ctx->hash_to_temp,
-                        hash + 1, (void *) ((uintptr_t) temp + 1));
+                                    hash + 1, (void *) ((uintptr_t) temp + 1));
 
         return temp;
 }
@@ -251,7 +251,7 @@ allocate_registers(compiler_context *ctx)
 
                                 if (mask1 & mask2)
                                         ra_add_reg_conflict(regs,
-                                                        base + a, base + b);
+                                                            base + a, base + b);
                         }
                 }
         }
@@ -408,9 +408,9 @@ allocate_registers(compiler_context *ctx)
 
 static void
 install_registers_instr(
-                compiler_context *ctx,
-                struct ra_graph *g,
-                midgard_instruction *ins)
+        compiler_context *ctx,
+        struct ra_graph *g,
+        midgard_instruction *ins)
 {
         ssa_args args = ins->ssa_args;
 
@@ -421,7 +421,7 @@ install_registers_instr(
                 struct phys_reg src2 = index_to_reg(ctx, g, adjusted_src);
                 struct phys_reg dest = index_to_reg(ctx, g, args.dest);
 
-                unsigned uncomposed_mask = ins->mask; 
+                unsigned uncomposed_mask = ins->mask;
                 ins->mask = compose_writemask(uncomposed_mask, dest);
 
                 /* Adjust the dest mask if necessary. Mostly this is a no-op
@@ -445,14 +445,14 @@ install_registers_instr(
 
                         int lower_11 = ins->inline_constant & ((1 << 12) - 1);
                         uint16_t imm = ((lower_11 >> 8) & 0x7) |
-                                ((lower_11 & 0xFF) << 3);
+                                       ((lower_11 & 0xFF) << 3);
 
                         ins->alu.src2 = imm << 2;
                 } else {
                         midgard_vector_alu_src mod2 =
                                 vector_alu_from_unsigned(ins->alu.src2);
                         mod2.swizzle = compose_swizzle(
-                                        mod2.swizzle, uncomposed_mask, src2, dest);
+                                               mod2.swizzle, uncomposed_mask, src2, dest);
                         ins->alu.src2 = vector_alu_srco_unsigned(mod2);
 
                         ins->registers.src2_reg = src2.reg;
@@ -472,17 +472,17 @@ install_registers_instr(
                          * logical dataflow */
 
                         unsigned r = OP_IS_STORE(ins->load_store.op) ?
-                                args.src0 : args.dest;
+                                     args.src0 : args.dest;
                         struct phys_reg src = index_to_reg(ctx, g, r);
 
                         ins->load_store.reg = src.reg;
 
                         ins->load_store.swizzle = compose_swizzle(
-                                        ins->load_store.swizzle, 0xF,
-                                        default_phys_reg(0), src);
+                                                          ins->load_store.swizzle, 0xF,
+                                                          default_phys_reg(0), src);
 
                         ins->mask = compose_writemask(
-                                        ins->mask, src);
+                                            ins->mask, src);
                 }
 
                 break;

@@ -40,10 +40,10 @@
 
 static bool
 mir_pipeline_ins(
-                compiler_context *ctx,
-                midgard_block *block,
-                midgard_bundle *bundle, unsigned i,
-                unsigned pipeline_count)
+        compiler_context *ctx,
+        midgard_block *block,
+        midgard_bundle *bundle, unsigned i,
+        unsigned pipeline_count)
 {
         midgard_instruction *ins = bundle->instructions[i];
         unsigned dest = ins->ssa_args.dest;
@@ -68,7 +68,7 @@ mir_pipeline_ins(
          * we're live after the last instruction of the bundle */
 
         midgard_instruction *end = bundle->instructions[
-                bundle->instruction_count - 1];
+                                    bundle->instruction_count - 1];
 
         if (mir_is_live_after(ctx, block, end, ins->ssa_args.dest))
                 return false;

@@ -122,7 +122,7 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_fcos]		 = {"fcos", UNIT_VLUT},
 
         /* XXX: Test case where it's right on smul but not sadd */
-        [midgard_alu_op_iand]		 = {"iand", UNITS_MOST | OP_COMMUTES}, 
+        [midgard_alu_op_iand]		 = {"iand", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_iandnot]         = {"iandnot", UNITS_MOST},
 
         [midgard_alu_op_ior]		 = {"ior", UNITS_MOST | OP_COMMUTES},
@@ -145,7 +145,7 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_ibany_neq]	 = {"ibany_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
 
         /* These instructions are not yet emitted by the compiler, so
-         * don't speculate about units yet */ 
+         * don't speculate about units yet */
         [midgard_alu_op_ishladd]        = {"ishladd", 0},
 
         [midgard_alu_op_uball_lt]       = {"uball_lt", 0},

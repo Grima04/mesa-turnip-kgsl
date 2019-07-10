@@ -312,31 +312,31 @@ mir_next_op(struct midgard_instruction *ins)
 }
 
 #define mir_foreach_block(ctx, v) \
-        list_for_each_entry(struct midgard_block, v, &ctx->blocks, link) 
+        list_for_each_entry(struct midgard_block, v, &ctx->blocks, link)
 
 #define mir_foreach_block_from(ctx, from, v) \
         list_for_each_entry_from(struct midgard_block, v, from, &ctx->blocks, link)
 
 #define mir_foreach_instr(ctx, v) \
-        list_for_each_entry(struct midgard_instruction, v, &ctx->current_block->instructions, link) 
+        list_for_each_entry(struct midgard_instruction, v, &ctx->current_block->instructions, link)
 
 #define mir_foreach_instr_safe(ctx, v) \
-        list_for_each_entry_safe(struct midgard_instruction, v, &ctx->current_block->instructions, link) 
+        list_for_each_entry_safe(struct midgard_instruction, v, &ctx->current_block->instructions, link)
 
 #define mir_foreach_instr_in_block(block, v) \
-        list_for_each_entry(struct midgard_instruction, v, &block->instructions, link) 
+        list_for_each_entry(struct midgard_instruction, v, &block->instructions, link)
 
 #define mir_foreach_instr_in_block_safe(block, v) \
-        list_for_each_entry_safe(struct midgard_instruction, v, &block->instructions, link) 
+        list_for_each_entry_safe(struct midgard_instruction, v, &block->instructions, link)
 
 #define mir_foreach_instr_in_block_safe_rev(block, v) \
-        list_for_each_entry_safe_rev(struct midgard_instruction, v, &block->instructions, link) 
+        list_for_each_entry_safe_rev(struct midgard_instruction, v, &block->instructions, link)
 
 #define mir_foreach_instr_in_block_from(block, v, from) \
-        list_for_each_entry_from(struct midgard_instruction, v, from, &block->instructions, link) 
+        list_for_each_entry_from(struct midgard_instruction, v, from, &block->instructions, link)
 
 #define mir_foreach_instr_in_block_from_rev(block, v, from) \
-        list_for_each_entry_from_rev(struct midgard_instruction, v, from, &block->instructions, link) 
+        list_for_each_entry_from_rev(struct midgard_instruction, v, from, &block->instructions, link)
 
 #define mir_foreach_bundle_in_block(block, v) \
         util_dynarray_foreach(&block->bundles, midgard_bundle, v)
@@ -443,10 +443,10 @@ void mir_create_pipeline_registers(compiler_context *ctx);
 /* Final emission */
 
 void emit_binary_bundle(
-                compiler_context *ctx,
-                midgard_bundle *bundle,
-                struct util_dynarray *emission,
-                int next_tag);
+        compiler_context *ctx,
+        midgard_bundle *bundle,
+        struct util_dynarray *emission,
+        int next_tag);
 
 /* NIR stuff */
 

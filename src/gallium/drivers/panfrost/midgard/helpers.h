@@ -163,16 +163,16 @@ static inline unsigned
 swizzle_of(unsigned comp)
 {
         switch (comp) {
-                case 1:
-                        return SWIZZLE_XXXX;
-                case 2:
-                        return SWIZZLE_XYXX;
-                case 3:
-                        return SWIZZLE_XYZX;
-                case 4:
-                        return SWIZZLE_XYZW;
-                default:
-                        unreachable("Invalid component count");
+        case 1:
+                return SWIZZLE_XXXX;
+        case 2:
+                return SWIZZLE_XYXX;
+        case 3:
+                return SWIZZLE_XYZX;
+        case 4:
+                return SWIZZLE_XYZW;
+        default:
+                unreachable("Invalid component count");
         }
 }
 

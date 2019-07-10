@@ -198,9 +198,9 @@ emit_alu_bundle(compiler_context *ctx,
 
 void
 emit_binary_bundle(compiler_context *ctx,
-                midgard_bundle *bundle,
-                struct util_dynarray *emission,
-                int next_tag)
+                   midgard_bundle *bundle,
+                   struct util_dynarray *emission,
+                   int next_tag)
 {
         int lookahead = next_tag << 4;
 

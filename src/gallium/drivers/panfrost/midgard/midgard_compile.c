@@ -52,10 +52,10 @@
 #include "disassemble.h"
 
 static const struct debug_named_value debug_options[] = {
-	{"msgs",      MIDGARD_DBG_MSGS,		"Print debug messages"},
-	{"shaders",   MIDGARD_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
+        {"msgs",      MIDGARD_DBG_MSGS,		"Print debug messages"},
+        {"shaders",   MIDGARD_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
         {"shaderdb",  MIDGARD_DBG_SHADERDB,     "Prints shader-db statistics"},
-	DEBUG_NAMED_VALUE_END
+        DEBUG_NAMED_VALUE_END
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(midgard_debug, "MIDGARD_MESA_DEBUG", debug_options, 0)
@@ -115,7 +115,7 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 
 static midgard_vector_alu_src
 vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
-                bool half, bool sext)
+                     bool half, bool sext)
 {
         if (!src) return blank_alu_src;
 
@@ -146,8 +146,8 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
 
                 if (half) {
                         alu_src.mod = sext ?
-                                  midgard_int_sign_extend
-                                : midgard_int_zero_extend;
+                                      midgard_int_sign_extend
+                                      : midgard_int_zero_extend;
                 }
 
                 /* These should have been lowered away */
@@ -272,9 +272,9 @@ midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
 
         nir_ssa_def *product = nir_fmul(b, src0, src1);
 
-        nir_ssa_def *sum = nir_fadd(b, 
-                        nir_channel(b, product, 0), 
-                        nir_channel(b, product, 1));
+        nir_ssa_def *sum = nir_fadd(b,
+                                    nir_channel(b, product, 0),
+                                    nir_channel(b, product, 1));
 
         /* Replace the fdot2 with this sum */
         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
@@ -324,10 +324,10 @@ static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
                         break;
 
                 sysval = PAN_SYSVAL(TEXTURE_SIZE,
-				    PAN_TXS_SYSVAL_ID(tex->texture_index,
-					              nir_tex_instr_dest_size(tex) -
-						      (tex->is_array ? 1 : 0),
-						      tex->is_array));
+                                    PAN_TXS_SYSVAL_ID(tex->texture_index,
+                                                      nir_tex_instr_dest_size(tex) -
+                                                      (tex->is_array ? 1 : 0),
+                                                      tex->is_array));
                 dst  = &tex->dest;
                 break;
         default:
@@ -429,7 +429,7 @@ optimise_nir(nir_shader *nir)
 
         nir_lower_tex_options lower_tex_2nd_pass_options = {
                 .lower_txs_lod = true,
-	};
+        };
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_1st_pass_options);
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_2nd_pass_options);
@@ -729,16 +729,16 @@ reg_mode_for_nir(nir_alu_instr *instr)
         unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
 
         switch (src_bitsize) {
-                case 8:
-                        return midgard_reg_mode_8;
-                case 16:
-                        return midgard_reg_mode_16;
-                case 32:
-                        return midgard_reg_mode_32;
-                case 64:
-                        return midgard_reg_mode_64;
-                default:
-                        unreachable("Invalid bit size");
+        case 8:
+                return midgard_reg_mode_8;
+        case 16:
+                return midgard_reg_mode_16;
+        case 32:
+                return midgard_reg_mode_32;
+        case 64:
+                return midgard_reg_mode_64;
+        default:
+                unreachable("Invalid bit size");
         }
 }
 
@@ -935,7 +935,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 reg_mode++;
                 break;
         }
-                
+
 
         /* For greater-or-equal, we lower to less-or-equal and flip the
          * arguments */
@@ -1159,11 +1159,11 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
 static void
 emit_ubo_read(
-                compiler_context *ctx,
-                unsigned dest,
-                unsigned offset,
-                nir_src *indirect_offset,
-                unsigned index)
+        compiler_context *ctx,
+        unsigned dest,
+        unsigned offset,
+        nir_src *indirect_offset,
+        unsigned index)
 {
         /* TODO: half-floats */
 
@@ -1201,10 +1201,10 @@ emit_ubo_read(
 
 static void
 emit_varying_read(
-                compiler_context *ctx,
-                unsigned dest, unsigned offset,
-                unsigned nr_comp, unsigned component,
-                nir_src *indirect_offset, nir_alu_type type)
+        compiler_context *ctx,
+        unsigned dest, unsigned offset,
+        unsigned nr_comp, unsigned component,
+        nir_src *indirect_offset, nir_alu_type type)
 {
         /* XXX: Half-floats? */
         /* TODO: swizzle, mask */
@@ -1234,19 +1234,19 @@ emit_varying_read(
 
         /* Use the type appropriate load */
         switch (type) {
-                case nir_type_uint:
-                case nir_type_bool:
-                        ins.load_store.op = midgard_op_ld_vary_32u;
-                        break;
-                case nir_type_int:
-                        ins.load_store.op = midgard_op_ld_vary_32i;
-                        break;
-                case nir_type_float:
-                        ins.load_store.op = midgard_op_ld_vary_32;
-                        break;
-                default:
-                        unreachable("Attempted to load unknown type");
-                        break;
+        case nir_type_uint:
+        case nir_type_bool:
+                ins.load_store.op = midgard_op_ld_vary_32u;
+                break;
+        case nir_type_int:
+                ins.load_store.op = midgard_op_ld_vary_32i;
+                break;
+        case nir_type_float:
+                ins.load_store.op = midgard_op_ld_vary_32;
+                break;
+        default:
+                unreachable("Attempted to load unknown type");
+                break;
         }
 
         emit_mir_instruction(ctx, ins);
@@ -1315,7 +1315,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 /* We may need to apply a fractional offset */
                 int component = instr->intrinsic == nir_intrinsic_load_input ?
-                        nir_intrinsic_component(instr) : 0;
+                                nir_intrinsic_component(instr) : 0;
                 reg = nir_dest_index(ctx, &instr->dest);
 
                 if (is_uniform && !ctx->is_blend) {
@@ -1353,19 +1353,19 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         /* Use the type appropriate load */
                         switch (t) {
-                                case nir_type_uint:
-                                case nir_type_bool:
-                                        ins.load_store.op = midgard_op_ld_attr_32u;
-                                        break;
-                                case nir_type_int:
-                                        ins.load_store.op = midgard_op_ld_attr_32i;
-                                        break;
-                                case nir_type_float:
-                                        ins.load_store.op = midgard_op_ld_attr_32;
-                                        break;
-                                default:
-                                        unreachable("Attempted to load unknown type");
-                                        break;
+                        case nir_type_uint:
+                        case nir_type_bool:
+                                ins.load_store.op = midgard_op_ld_attr_32u;
+                                break;
+                        case nir_type_int:
+                                ins.load_store.op = midgard_op_ld_attr_32i;
+                                break;
+                        case nir_type_float:
+                                ins.load_store.op = midgard_op_ld_attr_32;
+                                break;
+                        default:
+                                unreachable("Attempted to load unknown type");
+                                break;
                         }
 
                         emit_mir_instruction(ctx, ins);
@@ -1375,7 +1375,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }
 
                 break;
-       }
+        }
 
         /* Reads 128-bit value raw off the tilebuffer during blending, tasty */
 
@@ -1515,9 +1515,9 @@ midgard_tex_format(enum glsl_sampler_dim dim)
 
 static bool
 pan_attach_constant_bias(
-                compiler_context *ctx,
-                nir_src lod,
-                midgard_texture_word *word)
+        compiler_context *ctx,
+        nir_src lod,
+        midgard_texture_word *word)
 {
         /* To attach as constant, it has to *be* constant */
 
@@ -1544,23 +1544,23 @@ pan_attach_constant_bias(
 }
 
 static enum mali_sampler_type
-midgard_sampler_type(nir_alu_type t)
-{
-        switch (nir_alu_type_get_base_type(t)) {
-                case nir_type_float:
-                        return MALI_SAMPLER_FLOAT;
-                case nir_type_int:
-                        return MALI_SAMPLER_SIGNED;
-                case nir_type_uint:
-                        return MALI_SAMPLER_UNSIGNED;
-                default:
-                        unreachable("Unknown sampler type");
+midgard_sampler_type(nir_alu_type t) {
+        switch (nir_alu_type_get_base_type(t))
+        {
+        case nir_type_float:
+                                return MALI_SAMPLER_FLOAT;
+        case nir_type_int:
+                return MALI_SAMPLER_SIGNED;
+        case nir_type_uint:
+                return MALI_SAMPLER_UNSIGNED;
+        default:
+                unreachable("Unknown sampler type");
         }
 }
 
 static void
 emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
-		  unsigned midgard_texop)
+                  unsigned midgard_texop)
 {
         /* TODO */
         //assert (!instr->sampler);
@@ -1699,7 +1699,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         ins.texture.bias = packed;
 
                         break;
-               };
+                };
 
                 default:
                         unreachable("Unknown texture source type\n");
@@ -1746,7 +1746,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_sysval_read(ctx, &instr->instr);
                 break;
         default:
-		unreachable("Unhanlded texture op");
+                unreachable("Unhanlded texture op");
         }
 }
 
@@ -1754,20 +1754,20 @@ static void
 emit_jump(compiler_context *ctx, nir_jump_instr *instr)
 {
         switch (instr->type) {
-                case nir_jump_break: {
-                        /* Emit a branch out of the loop */
-                        struct midgard_instruction br = v_branch(false, false);
-                        br.branch.target_type = TARGET_BREAK;
-                        br.branch.target_break = ctx->current_loop_depth;
-                        emit_mir_instruction(ctx, br);
+        case nir_jump_break: {
+                /* Emit a branch out of the loop */
+                struct midgard_instruction br = v_branch(false, false);
+                br.branch.target_type = TARGET_BREAK;
+                br.branch.target_break = ctx->current_loop_depth;
+                emit_mir_instruction(ctx, br);
 
-                        DBG("break..\n");
-                        break;
-                }
+                DBG("break..\n");
+                break;
+        }
 
-                default:
-                        DBG("Unknown jump type %d\n", instr->type);
-                        break;
+        default:
+                DBG("Unknown jump type %d\n", instr->type);
+                break;
         }
 }
 
@@ -2549,7 +2549,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 {
         struct util_dynarray *compiled = &program->compiled;
 
-	midgard_debug = debug_get_option_midgard_debug();
+        midgard_debug = debug_get_option_midgard_debug();
 
         compiler_context ictx = {
                 .nir = nir,
@@ -2577,7 +2577,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         /* Record the varying mapping for the command stream's bookkeeping */
 
         struct exec_list *varyings =
-                ctx->stage == MESA_SHADER_VERTEX ? &nir->outputs : &nir->inputs;
+                        ctx->stage == MESA_SHADER_VERTEX ? &nir->outputs : &nir->inputs;
 
         unsigned max_varying = 0;
         nir_foreach_variable(var, varyings) {
@@ -2613,9 +2613,9 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         optimise_nir(nir);
 
-	if (midgard_debug & MIDGARD_DBG_SHADERS) {
-	        nir_print_shader(nir, stdout);
-	}
+        if (midgard_debug & MIDGARD_DBG_SHADERS) {
+                nir_print_shader(nir, stdout);
+        }
 
         /* Assign sysvals and counts, now that we're sure
          * (post-optimisation) */
@@ -2855,8 +2855,8 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         program->blend_patch_offset = ctx->blend_constant_offset;
 
-	if (midgard_debug & MIDGARD_DBG_SHADERS)
-		disassemble_midgard(program->compiled.data, program->compiled.size);
+        if (midgard_debug & MIDGARD_DBG_SHADERS)
+                disassemble_midgard(program->compiled.data, program->compiled.size);
 
         if (midgard_debug & MIDGARD_DBG_SHADERDB) {
                 unsigned nr_bundles = 0, nr_ins = 0, nr_quadwords = 0;
@@ -2869,7 +2869,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
                 mir_foreach_block(ctx, block) {
                         nr_bundles += util_dynarray_num_elements(
-                                        &block->bundles, midgard_bundle);
+                                              &block->bundles, midgard_bundle);
 
                         nr_quadwords += block->quadword_count;
                 }
@@ -2882,18 +2882,18 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
                 unsigned nr_threads =
                         (nr_registers <= 4) ? 4 :
                         (nr_registers <= 8) ? 2 :
-                                              1;
+                        1;
 
                 /* Dump stats */
 
                 fprintf(stderr, "shader%d - %s shader: "
-                                "%u inst, %u bundles, %u quadwords, "
-                                "%u registers, %u threads, %u loops\n",
-                                SHADER_DB_COUNT++,
-                                gl_shader_stage_name(ctx->stage),
-                                nr_ins, nr_bundles, nr_quadwords,
-                                nr_registers, nr_threads,
-                                ctx->loop_count);
+                        "%u inst, %u bundles, %u quadwords, "
+                        "%u registers, %u threads, %u loops\n",
+                        SHADER_DB_COUNT++,
+                        gl_shader_stage_name(ctx->stage),
+                        nr_ins, nr_bundles, nr_quadwords,
+                        nr_registers, nr_threads,
+                        ctx->loop_count);
         }
 
 

@@ -105,8 +105,8 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
 
 static bool
 midgard_has_hazard(
-                midgard_instruction **segment, unsigned segment_size,
-                midgard_instruction *ains)
+        midgard_instruction **segment, unsigned segment_size,
+        midgard_instruction *ains)
 {
         for (int s = 0; s < segment_size; ++s)
                 if (!can_run_concurrent_ssa(segment[s], ains))
@@ -228,7 +228,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                         assert(units & UNITS_SCALAR);
 
                                 if (!scalar) {
-                                       if (last_unit >= UNIT_VADD) {
+                                        if (last_unit >= UNIT_VADD) {
                                                 if (units & UNIT_VLUT)
                                                         unit = UNIT_VLUT;
                                                 else

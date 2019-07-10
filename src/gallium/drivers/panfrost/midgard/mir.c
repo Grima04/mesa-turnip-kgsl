@@ -31,7 +31,7 @@ mir_rewrite_index_src(compiler_context *ctx, unsigned old, unsigned new)
                         ins->ssa_args.src0 = new;
 
                 if (ins->ssa_args.src1 == old &&
-                                !ins->ssa_args.inline_constant)
+                    !ins->ssa_args.inline_constant)
                         ins->ssa_args.src1 = new;
         }
 }

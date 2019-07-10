@@ -49,21 +49,21 @@ static void
 print_tag_short(unsigned tag)
 {
         switch (midgard_word_types[tag]) {
-                case midgard_word_type_texture:
-                        printf("tex/%X", tag);
-                        break;
+        case midgard_word_type_texture:
+                printf("tex/%X", tag);
+                break;
 
-                case midgard_word_type_load_store:
-                        printf("ldst");
-                        break;
+        case midgard_word_type_load_store:
+                printf("ldst");
+                break;
 
-                case midgard_word_type_alu:
-                        printf("alu%d/%X", midgard_word_size[tag], tag);
-                        break;
+        case midgard_word_type_alu:
+                printf("alu%d/%X", midgard_word_size[tag], tag);
+                break;
 
-                default:
-                        printf("%s%X", (tag > 0) ? "" : "unk", tag);
-                        break;
+        default:
+                printf("%s%X", (tag > 0) ? "" : "unk", tag);
+                break;
         }
 }
 
@@ -99,14 +99,14 @@ static char
 prefix_for_bits(unsigned bits)
 {
         switch (bits) {
-                case 8:
-                        return 'q';
-                case 16:
-                        return 'h';
-                case 64:
-                        return 'd';
-                default:
-                        return 0;
+        case 8:
+                return 'q';
+        case 16:
+                return 'h';
+        case 64:
+                return 'd';
+        default:
+                return 0;
         }
 }
 
@@ -153,7 +153,7 @@ static void
 print_outmod(unsigned outmod, bool is_int)
 {
         printf("%s", is_int ? outmod_names_int[outmod] :
-                              outmod_names_float[outmod]);
+               outmod_names_float[outmod]);
 }
 
 static void
@@ -194,7 +194,7 @@ print_swizzle_helper_8(unsigned swizzle, bool upper)
 
 static void
 print_swizzle_vec16(unsigned swizzle, bool rep_high, bool rep_low,
-                midgard_dest_override override)
+                    midgard_dest_override override)
 {
         printf(".");
 
@@ -270,16 +270,16 @@ static int
 bits_for_mode(midgard_reg_mode mode)
 {
         switch (mode) {
-                case midgard_reg_mode_8:
-                        return 8;
-                case midgard_reg_mode_16:
-                        return 16;
-                case midgard_reg_mode_32:
-                        return 32;
-                case midgard_reg_mode_64:
-                        return 64;
-                default:
-                        return 0;
+        case midgard_reg_mode_8:
+                return 8;
+        case midgard_reg_mode_16:
+                return 16;
+        case midgard_reg_mode_32:
+                return 32;
+        case midgard_reg_mode_64:
+                return 64;
+        default:
+                return 0;
         }
 }
 
@@ -334,7 +334,7 @@ print_vector_src(unsigned src_binary,
         if (is_int && int_mod == midgard_int_shift)
                 printf(") << %d", bits);
         else if ((is_int && (int_mod != midgard_int_normal))
-                        || (!is_int && src->mod & MIDGARD_FLOAT_MOD_ABS))
+                 || (!is_int && src->mod & MIDGARD_FLOAT_MOD_ABS))
                 printf(")");
 }
 
@@ -383,8 +383,8 @@ print_mask_vec16(uint8_t mask, midgard_dest_override override)
                 for (unsigned i = 0; i < 8; i++) {
                         if (mask & (1 << i))
                                 printf("%c%c",
-                                        components[i*2 + 0],
-                                        components[i*2 + 1]);
+                                       components[i*2 + 0],
+                                       components[i*2 + 1]);
                 }
         } else {
                 bool upper = (override == midgard_dest_override_upper);
@@ -493,7 +493,7 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
 
         /* Print the outmod, if there is one */
         print_outmod(alu_field->outmod,
-                midgard_is_integer_out_op(alu_field->op));
+                     midgard_is_integer_out_op(alu_field->op));
 
         printf(" ");
 
@@ -512,7 +512,7 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
                 else if (override == midgard_dest_override_upper)
                         mask &= 0xF0;
         } else if (mode == midgard_reg_mode_16
-                        && override == midgard_dest_override_lower) {
+                   && override == midgard_dest_override_lower) {
                 /* stub */
         }
 
@@ -596,7 +596,7 @@ print_scalar_field(const char *name, uint16_t *words, uint16_t reg_word,
         printf("%s.", name);
         print_alu_opcode(alu_field->op);
         print_outmod(alu_field->outmod,
-                        midgard_is_integer_out_op(alu_field->op));
+                     midgard_is_integer_out_op(alu_field->op));
         printf(" ");
 
         bool full = alu_field->output_full;
@@ -1087,14 +1087,14 @@ static char
 sampler_type_name(enum mali_sampler_type t)
 {
         switch (t) {
-                case MALI_SAMPLER_FLOAT:
-                        return 'f';
-                case MALI_SAMPLER_UNSIGNED:
-                        return 'u';
-                case MALI_SAMPLER_SIGNED:
-                        return 'i';
-                default:
-                        return '?';
+        case MALI_SAMPLER_FLOAT:
+                return 'f';
+        case MALI_SAMPLER_UNSIGNED:
+                return 'u';
+        case MALI_SAMPLER_SIGNED:
+                return 'i';
+        default:
+                return '?';
         }
 
 }
@@ -1188,9 +1188,9 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 /* Regardless, just print the immediate offset */
 
                 printf(" + <%d, %d, %d>, ",
-                        texture->offset_x,
-                        texture->offset_y,
-                        texture->offset_z);
+                       texture->offset_x,
+                       texture->offset_y,
+                       texture->offset_z);
         } else {
                 printf(", ");
         }
@@ -1243,9 +1243,9 @@ print_texture_word(uint32_t *word, unsigned tabs)
          * following unknowns are zero, so we don't include them */
 
         if (texture->unknown2 ||
-                        texture->unknown4 ||
-                        texture->unknownA ||
-                        texture->unknown8) {
+            texture->unknown4 ||
+            texture->unknownA ||
+            texture->unknown8) {
                 printf("// unknown2 = 0x%x\n", texture->unknown2);
                 printf("// unknown4 = 0x%x\n", texture->unknown4);
                 printf("// unknownA = 0x%x\n", texture->unknownA);
