@@ -921,15 +921,34 @@ radv_shader_variant_create(struct radv_device *device,
 		unsigned num_lds_symbols = 0;
 		const char *elf_data = (const char *)((struct radv_shader_binary_rtld *)binary)->data;
 		size_t elf_size = ((struct radv_shader_binary_rtld *)binary)->elf_size;
+		unsigned esgs_ring_size = 0;
 
 		if (device->physical_device->rad_info.chip_class >= GFX9 &&
 		    binary->stage == MESA_SHADER_GEOMETRY && !binary->is_gs_copy_shader) {
+			/* TODO: Do not hardcode this value */
+			esgs_ring_size = 32 * 1024;
+		}
+
+		if (binary->variant_info.is_ngg) {
+			/* GS stores Primitive IDs into LDS at the address
+			 * corresponding to the ES thread of the provoking
+			 * vertex. All ES threads load and export PrimitiveID
+			 * for their thread.
+			 */
+			if (binary->stage == MESA_SHADER_VERTEX &&
+			    binary->variant_info.vs.export_prim_id) {
+				/* TODO: Do not harcode this value */
+				esgs_ring_size = 256 /* max_out_verts */ * 4;
+			}
+		}
+
+		if (esgs_ring_size) {
 			/* We add this symbol even on LLVM <= 8 to ensure that
 			 * shader->config.lds_size is set correctly below.
 			 */
 			struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
 			sym->name = "esgs_ring";
-			sym->size = 32 * 1024;
+			sym->size = esgs_ring_size;
 			sym->align = 64 * 1024;
 
 			/* Make sure to have LDS space for NGG scratch. */
