@@ -2717,9 +2717,8 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 		       struct radv_vs_output_info *outinfo)
 {
 	uint32_t param_count = 0;
-	unsigned target;
 	unsigned pos_idx, num_pos_exports = 0;
-	struct ac_export_args args, pos_args[4] = {};
+	struct ac_export_args pos_args[4] = {};
 	LLVMValueRef psize_value = NULL, layer_value = NULL, viewport_index_value = NULL;
 	int i;
 
@@ -2765,10 +2764,10 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 			for (i = length; i < 4; i++)
 				slots[i] = LLVMGetUndef(ctx->ac.f32);
 
-			target = V_008DFC_SQ_EXP_POS + 2 + (location - VARYING_SLOT_CLIP_DIST0);
-			si_llvm_init_export_args(ctx, &slots[0], 0xf, target, &args);
-			memcpy(&pos_args[target - V_008DFC_SQ_EXP_POS],
-			&args, sizeof(args));
+			unsigned index = 2 + (location - VARYING_SLOT_CLIP_DIST0);
+			si_llvm_init_export_args(ctx, &slots[0], 0xf,
+						  V_008DFC_SQ_EXP_POS + index,
+						  &pos_args[index]);
 
 			if (export_clip_dists) {
 				/* Export the clip/cull distances values to the next stage. */
