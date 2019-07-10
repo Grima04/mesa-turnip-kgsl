@@ -645,6 +645,14 @@ gen_mi_iand(struct gen_mi_builder *b,
 }
 
 static inline struct gen_mi_value
+gen_mi_ior(struct gen_mi_builder *b,
+           struct gen_mi_value src0, struct gen_mi_value src1)
+{
+   return gen_mi_math_binop(b, MI_ALU_OR, src0, src1,
+                            MI_ALU_STORE, MI_ALU_ACCU);
+}
+
+static inline struct gen_mi_value
 gen_mi_imul_imm(struct gen_mi_builder *b,
                 struct gen_mi_value src, uint32_t N)
 {
