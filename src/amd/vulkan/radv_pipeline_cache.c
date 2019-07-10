@@ -309,6 +309,7 @@ radv_create_shader_variants_from_pipeline_cache(struct radv_device *device,
 			p += entry->binary_sizes[i];
 
 			entry->variants[i] = radv_shader_variant_create(device, binary);
+			free(binary);
 		} else if (entry->binary_sizes[i]) {
 			p += entry->binary_sizes[i];
 		}
