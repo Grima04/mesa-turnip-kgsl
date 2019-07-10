@@ -2712,7 +2712,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 
 static void
 handle_vs_outputs_post(struct radv_shader_context *ctx,
-		       bool export_prim_id, bool export_layer_id,
+		       bool export_prim_id,
 		       bool export_clip_dists,
 		       struct radv_vs_output_info *outinfo)
 {
@@ -2914,18 +2914,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 
 		outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = param_count++;
 		outinfo->export_prim_id = true;
-	}
-
-	if (export_layer_id && layer_value) {
-		LLVMValueRef values[4];
-
-		values[0] = layer_value;
-		for (unsigned j = 1; j < 4; j++)
-			values[j] = ctx->ac.f32_0;
-
-		radv_export_param(ctx, param_count, values, 0x1);
-
-		outinfo->vs_output_param_offset[VARYING_SLOT_LAYER] = param_count++;
 	}
 
 	outinfo->pos_exports = num_pos_exports;
@@ -3202,7 +3190,6 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 	ac_nir_build_if(&if_state, ctx, is_es_thread);
 	{
 		handle_vs_outputs_post(ctx, ctx->options->key.vs_common_out.export_prim_id,
-				       ctx->options->key.vs_common_out.export_layer_id,
 				       ctx->options->key.vs_common_out.export_clip_dists,
 				       ctx->stage == MESA_SHADER_TESS_EVAL ? &ctx->shader_info->tes.outinfo : &ctx->shader_info->vs.outinfo);
 	}
@@ -3471,7 +3458,6 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 			handle_es_outputs_post(ctx, &ctx->shader_info->vs.es_info);
 		else
 			handle_vs_outputs_post(ctx, ctx->options->key.vs_common_out.export_prim_id,
-					       ctx->options->key.vs_common_out.export_layer_id,
 					       ctx->options->key.vs_common_out.export_clip_dists,
 					       &ctx->shader_info->vs.outinfo);
 		break;
@@ -3491,7 +3477,6 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 			handle_es_outputs_post(ctx, &ctx->shader_info->tes.es_info);
 		else
 			handle_vs_outputs_post(ctx, ctx->options->key.vs_common_out.export_prim_id,
-					       ctx->options->key.vs_common_out.export_layer_id,
 					       ctx->options->key.vs_common_out.export_clip_dists,
 					       &ctx->shader_info->tes.outinfo);
 		break;
@@ -4109,7 +4094,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 			radv_emit_streamout(ctx, stream);
 
 		if (stream == 0) {
-			handle_vs_outputs_post(ctx, false, false, true,
+			handle_vs_outputs_post(ctx, false, true,
 					       &ctx->shader_info->vs.outinfo);
 		}
 
