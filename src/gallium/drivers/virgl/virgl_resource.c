@@ -554,6 +554,7 @@ static bool virgl_buffer_transfer_extend(struct pipe_context *ctx,
     * Pessimestically falls back if a flush is required.
     */
    dummy_trans.base.resource = resource;
+   dummy_trans.hw_res = vbuf->hw_res;
    dummy_trans.base.usage = usage;
    dummy_trans.base.box = *box;
    dummy_trans.base.stride = vbuf->metadata.stride[0];
