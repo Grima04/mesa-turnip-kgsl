@@ -415,6 +415,27 @@ vk_format_from_android(unsigned android_format, unsigned android_usage)
 	}
 }
 
+static inline unsigned
+android_format_from_vk(unsigned vk_format)
+{
+   switch (vk_format) {
+   case VK_FORMAT_R8G8B8A8_UNORM:
+      return AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+   case VK_FORMAT_R8G8B8_UNORM:
+      return AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM;
+   case VK_FORMAT_R5G6B5_UNORM_PACK16:
+      return AHARDWAREBUFFER_FORMAT_R5G6B5_UNORM;
+   case VK_FORMAT_R16G16B16A16_SFLOAT:
+      return AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT;
+   case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+      return AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM;
+   case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+      return AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420;
+   default:
+      return AHARDWAREBUFFER_FORMAT_BLOB;
+   }
+}
+
 uint64_t
 radv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create,
                              const VkImageUsageFlags vk_usage)
@@ -598,4 +619,109 @@ radv_select_android_external_format(const void *next, VkFormat default_format)
 #endif
 
 	return default_format;
+}
+
+
+VkResult
+radv_import_ahb_memory(struct radv_device *device,
+                       struct radv_device_memory *mem,
+                       unsigned priority,
+                       const VkImportAndroidHardwareBufferInfoANDROID *info)
+{
+#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
+	/* Import from AHardwareBuffer to radv_device_memory. */
+	const native_handle_t *handle =
+		AHardwareBuffer_getNativeHandle(info->buffer);
+
+	/* NOTE - We support buffers with only one handle but do not error on
+	 * multiple handle case. Reason is that we want to support YUV formats
+	 * where we have many logical planes but they all point to the same
+	 * buffer, like is the case with VK_FORMAT_G8_B8R8_2PLANE_420_UNORM.
+	 */
+	int dma_buf = (handle && handle->numFds) ? handle->data[0] : -1;
+	if (dma_buf < 0)
+		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+	mem->bo = device->ws->buffer_from_fd(device->ws, dma_buf,
+	                                     priority);
+	if (!mem->bo)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+	/* "If the vkAllocateMemory command succeeds, the implementation must
+	 * acquire a reference to the imported hardware buffer, which it must
+	 * release when the device memory object is freed. If the command fails,
+	 * the implementation must not retain a reference."
+	 */
+	AHardwareBuffer_acquire(info->buffer);
+	mem->android_hardware_buffer = info->buffer;
+
+	return VK_SUCCESS;
+#else /* RADV_SUPPORT_ANDROID_HARDWARE_BUFFER */
+	return VK_ERROR_EXTENSION_NOT_PRESENT;
+#endif
+}
+
+VkResult
+radv_create_ahb_memory(struct radv_device *device,
+                       struct radv_device_memory *mem,
+                       unsigned priority,
+                       const VkMemoryAllocateInfo *pAllocateInfo)
+{
+#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
+	const VkMemoryDedicatedAllocateInfo *dedicated_info =
+		vk_find_struct_const(pAllocateInfo->pNext,
+		                     MEMORY_DEDICATED_ALLOCATE_INFO);
+
+	uint32_t w = 0;
+	uint32_t h = 1;
+	uint32_t layers = 1;
+	uint32_t format = 0;
+	uint64_t usage = 0;
+
+	/* If caller passed dedicated information. */
+	if (dedicated_info && dedicated_info->image) {
+		RADV_FROM_HANDLE(radv_image, image, dedicated_info->image);
+		w = image->info.width;
+		h = image->info.height;
+		layers = image->info.array_size;
+		format = android_format_from_vk(image->vk_format);
+		usage = radv_ahb_usage_from_vk_usage(image->flags, image->usage);
+	} else if (dedicated_info && dedicated_info->buffer) {
+		RADV_FROM_HANDLE(radv_buffer, buffer, dedicated_info->buffer);
+		w = buffer->size;
+		format = AHARDWAREBUFFER_FORMAT_BLOB;
+		usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+		        AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+	} else {
+		w = pAllocateInfo->allocationSize;
+		format = AHARDWAREBUFFER_FORMAT_BLOB;
+		usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+		        AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+	}
+
+	struct AHardwareBuffer *android_hardware_buffer = NULL;
+	struct AHardwareBuffer_Desc desc = {
+		.width = w,
+		.height = h,
+		.layers = layers,
+		.format = format,
+		.usage = usage,
+	};
+
+	if (AHardwareBuffer_allocate(&desc, &android_hardware_buffer) != 0)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+	mem->android_hardware_buffer = android_hardware_buffer;
+
+	const struct VkImportAndroidHardwareBufferInfoANDROID import_info = {
+		.buffer = mem->android_hardware_buffer,
+	};
+
+	VkResult result = radv_import_ahb_memory(device, mem, priority, &import_info);
+	if (result != VK_SUCCESS)
+		AHardwareBuffer_release(mem->android_hardware_buffer);
+	return result;
+#else /* RADV_SUPPORT_ANDROID_HARDWARE_BUFFER */
+	return VK_ERROR_EXTENSION_NOT_PRESENT;
+#endif
 }

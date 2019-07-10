@@ -76,6 +76,7 @@ typedef uint32_t xcb_window_t;
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_intel.h>
+#include <vulkan/vulkan_android.h>
 #include <vulkan/vk_icd.h>
 #include <vulkan/vk_android_native_buffer.h>
 
@@ -1927,6 +1928,16 @@ radv_image_from_gralloc(VkDevice device_h,
 uint64_t
 radv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create,
                              const VkImageUsageFlags vk_usage);
+VkResult
+radv_import_ahb_memory(struct radv_device *device,
+                       struct radv_device_memory *mem,
+                       unsigned priority,
+                       const VkImportAndroidHardwareBufferInfoANDROID *info);
+VkResult
+radv_create_ahb_memory(struct radv_device *device,
+                       struct radv_device_memory *mem,
+                       unsigned priority,
+                       const VkMemoryAllocateInfo *pAllocateInfo);
 
 VkFormat
 radv_select_android_external_format(const void *next, VkFormat default_format);

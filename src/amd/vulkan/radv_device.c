@@ -3454,23 +3454,27 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 
 	assert(pAllocateInfo->sType == VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO);
 
-	if (pAllocateInfo->allocationSize == 0) {
-		/* Apparently, this is allowed */
-		*pMem = VK_NULL_HANDLE;
-		return VK_SUCCESS;
-	}
-
 	const VkImportMemoryFdInfoKHR *import_info =
 		vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
 	const VkMemoryDedicatedAllocateInfo *dedicate_info =
 		vk_find_struct_const(pAllocateInfo->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
 	const VkExportMemoryAllocateInfo *export_info =
 		vk_find_struct_const(pAllocateInfo->pNext, EXPORT_MEMORY_ALLOCATE_INFO);
+	const struct VkImportAndroidHardwareBufferInfoANDROID *ahb_import_info =
+		vk_find_struct_const(pAllocateInfo->pNext,
+		                     IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID);
 	const VkImportMemoryHostPointerInfoEXT *host_ptr_info =
 		vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_HOST_POINTER_INFO_EXT);
 
 	const struct wsi_memory_allocate_info *wsi_info =
 		vk_find_struct_const(pAllocateInfo->pNext, WSI_MEMORY_ALLOCATE_INFO_MESA);
+
+	if (pAllocateInfo->allocationSize == 0 && !ahb_import_info &&
+	    !(export_info && (export_info->handleTypes & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID))) {
+		/* Apparently, this is allowed */
+		*pMem = VK_NULL_HANDLE;
+		return VK_SUCCESS;
+	}
 
 	mem = vk_zalloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
 			  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -3505,7 +3509,15 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 	mem->android_hardware_buffer = NULL;
 #endif
 
-	if (import_info) {
+	if (ahb_import_info) {
+		result = radv_import_ahb_memory(device, mem, priority, ahb_import_info);
+		if (result != VK_SUCCESS)
+			goto fail;
+	} else if(export_info && (export_info->handleTypes & VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)) {
+		result = radv_create_ahb_memory(device, mem, priority, pAllocateInfo);
+		if (result != VK_SUCCESS)
+			goto fail;
+	} else if (import_info) {
 		assert(import_info->handleType ==
 		       VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
 		       import_info->handleType ==
