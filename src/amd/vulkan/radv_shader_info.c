@@ -576,4 +576,21 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 	    nir->info.stage == MESA_SHADER_TESS_EVAL ||
 	    nir->info.stage == MESA_SHADER_GEOMETRY)
 		gather_xfb_info(nir, info);
+
+	/* Make sure to export the LayerID if the fragment shader needs it. */
+	if (options->key.vs_common_out.export_layer_id) {
+		switch (nir->info.stage) {
+		case MESA_SHADER_VERTEX:
+			info->vs.output_usage_mask[VARYING_SLOT_LAYER] |= 0x1;
+			break;
+		case MESA_SHADER_TESS_EVAL:
+			info->tes.output_usage_mask[VARYING_SLOT_LAYER] |= 0x1;
+			break;
+		case MESA_SHADER_GEOMETRY:
+			info->gs.output_usage_mask[VARYING_SLOT_LAYER] |= 0x1;
+			break;
+		default:
+			break;
+		}
+	}
 }
