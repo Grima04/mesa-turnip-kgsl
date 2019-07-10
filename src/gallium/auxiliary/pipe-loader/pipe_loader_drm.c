@@ -194,6 +194,15 @@ pipe_loader_drm_probe_fd_nodup(struct pipe_loader_device **dev, int fd)
    if (!ddev->base.driver_name)
       goto fail;
 
+   /* For the closed source AMD OpenGL driver, we want libgbm to load
+    * "amdgpu_dri.so", but we want Gallium multimedia drivers to load
+    * "radeonsi". So change amdgpu to radeonsi for Gallium.
+    */
+   if (strcmp(ddev->base.driver_name, "amdgpu") == 0) {
+      FREE(ddev->base.driver_name);
+      ddev->base.driver_name = strdup("radeonsi");
+   }
+
    struct util_dl_library **plib = NULL;
 #ifndef GALLIUM_STATIC_TARGETS
    plib = &ddev->lib;
