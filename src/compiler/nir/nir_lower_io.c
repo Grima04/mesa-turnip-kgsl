@@ -461,8 +461,7 @@ nir_lower_io_block(nir_block *block,
 
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
 
-      nir_variable *var = nir_deref_instr_get_variable(deref);
-      nir_variable_mode mode = var->data.mode;
+      nir_variable_mode mode = deref->mode;
 
       if ((state->modes & mode) == 0)
          continue;
@@ -472,6 +471,8 @@ nir_lower_io_block(nir_block *block,
           mode != nir_var_mem_shared &&
           mode != nir_var_uniform)
          continue;
+
+      nir_variable *var = nir_deref_instr_get_variable(deref);
 
       b->cursor = nir_before_instr(instr);
 
