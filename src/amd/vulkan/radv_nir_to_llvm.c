@@ -2768,12 +2768,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 			si_llvm_init_export_args(ctx, &slots[0], 0xf,
 						  V_008DFC_SQ_EXP_POS + index,
 						  &pos_args[index]);
-
-			if (export_clip_dists) {
-				/* Export the clip/cull distances values to the next stage. */
-				radv_export_param(ctx, param_count, &slots[0], 0xf);
-				outinfo->vs_output_param_offset[location] = param_count++;
-			}
 		}
 	}
 
@@ -2876,7 +2870,13 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 
 		if (i != VARYING_SLOT_LAYER &&
 		    i != VARYING_SLOT_PRIMITIVE_ID &&
+		    i != VARYING_SLOT_CLIP_DIST0 &&
+		    i != VARYING_SLOT_CLIP_DIST1 &&
 		    i < VARYING_SLOT_VAR0)
+			continue;
+
+		if ((i == VARYING_SLOT_CLIP_DIST0 ||
+		     i == VARYING_SLOT_CLIP_DIST1) && !export_clip_dists)
 			continue;
 
 		for (unsigned j = 0; j < 4; j++)
