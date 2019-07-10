@@ -1736,6 +1736,7 @@ typedef enum {
    nir_texop_samples_identical,  /**< Query whether all samples are definitely
                                   * identical.
                                   */
+   nir_texop_tex_prefetch,       /**< Regular texture look-up, eligible for pre-dispatch */
 } nir_texop;
 
 typedef struct {

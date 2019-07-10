@@ -985,6 +985,9 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    case nir_texop_samples_identical:
       fprintf(fp, "samples_identical ");
       break;
+   case nir_texop_tex_prefetch:
+      fprintf(fp, "tex (pre-dispatchable) ");
+      break;
    default:
       unreachable("Invalid texture operation");
       break;

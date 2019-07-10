@@ -2110,6 +2110,8 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       break;
    case nir_texop_txf_ms_mcs:
       vtn_fail("unexpected nir_texop_txf_ms_mcs");
+   case nir_texop_tex_prefetch:
+      vtn_fail("unexpected nir_texop_tex_prefetch");
    }
 
    unsigned idx = 4;
