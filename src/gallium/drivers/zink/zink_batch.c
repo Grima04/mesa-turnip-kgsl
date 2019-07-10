@@ -60,29 +60,6 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
       debug_printf("vkBeginCommandBuffer failed\n");
 }
 
-static bool
-submit_cmdbuf(struct zink_context *ctx, VkCommandBuffer cmdbuf, VkFence fence)
-{
-   VkPipelineStageFlags wait = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
-   VkSubmitInfo si = {};
-   si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-   si.waitSemaphoreCount = 0;
-   si.pWaitSemaphores = NULL;
-   si.signalSemaphoreCount = 0;
-   si.pSignalSemaphores = NULL;
-   si.pWaitDstStageMask = &wait;
-   si.commandBufferCount = 1;
-   si.pCommandBuffers = &cmdbuf;
-
-   if (vkQueueSubmit(ctx->queue, 1, &si, fence) != VK_SUCCESS) {
-      debug_printf("vkQueueSubmit failed\n");
-      return false;
-   }
-
-   return true;
-}
-
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
@@ -93,9 +70,23 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    assert(batch->fence == NULL);
    batch->fence = zink_create_fence(ctx->base.screen);
-   if (!batch->fence ||
-       !submit_cmdbuf(ctx, batch->cmdbuf, batch->fence->fence))
+   if (!batch->fence)
       return;
+
+   VkPipelineStageFlags wait = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+   VkSubmitInfo si = {};
+   si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   si.waitSemaphoreCount = 0;
+   si.pWaitSemaphores = NULL;
+   si.signalSemaphoreCount = 0;
+   si.pSignalSemaphores = NULL;
+   si.pWaitDstStageMask = &wait;
+   si.commandBufferCount = 1;
+   si.pCommandBuffers = &batch->cmdbuf;
+
+   if (vkQueueSubmit(ctx->queue, 1, &si, batch->fence->fence) != VK_SUCCESS)
+      debug_printf("vkQueueSubmit failed\n");
 }
 
 void
