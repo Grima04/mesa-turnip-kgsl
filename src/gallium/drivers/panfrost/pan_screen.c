@@ -335,7 +335,7 @@ panfrost_get_paramf(struct pipe_screen *screen, enum pipe_capf param)
 
         /* fall-through */
         case PIPE_CAPF_MAX_POINT_WIDTH_AA:
-                return 255.0; /* arbitrary */
+                return 1024.0;
 
         case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:
                 return 16.0;

@@ -252,7 +252,6 @@ dEQP-GLES2.functional.polygon_offset.fixed16_enable
 dEQP-GLES2.functional.polygon_offset.fixed16_render_with_factor
 dEQP-GLES2.functional.polygon_offset.fixed16_render_with_units
 dEQP-GLES2.functional.polygon_offset.fixed16_result_depth_clamp
-dEQP-GLES2.functional.rasterization.limits.points
 dEQP-GLES2.functional.shaders.builtin_variable.fragcoord_w
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_fragment
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_vertex

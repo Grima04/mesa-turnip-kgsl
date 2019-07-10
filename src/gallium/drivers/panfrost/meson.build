@@ -29,6 +29,7 @@ files_panfrost = files(
   'nir/nir_undef_to_zero.c',
   'nir/nir_lower_blend.c',
   'nir/nir_lower_framebuffer.c',
+  'nir/nir_clamp_psiz.c',
 
   'pan_context.c',
   'pan_afbc.c',

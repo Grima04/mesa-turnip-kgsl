@@ -2596,8 +2596,10 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
-        if (ctx->stage == MESA_SHADER_VERTEX)
+        if (ctx->stage == MESA_SHADER_VERTEX) {
                 NIR_PASS_V(nir, nir_lower_viewport_transform);
+                NIR_PASS_V(nir, nir_clamp_psiz, 1.0, 1024.0);
+        }
 
         NIR_PASS_V(nir, nir_lower_var_copies);
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
