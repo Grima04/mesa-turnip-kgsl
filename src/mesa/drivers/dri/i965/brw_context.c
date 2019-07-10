@@ -964,6 +964,7 @@ brwCreateContext(gl_api api,
       *dri_ctx_error = __DRI_CTX_ERROR_NO_MEMORY;
       return false;
    }
+   brw->perf_ctx = gen_perf_new_context(brw);
 
    driContextPriv->driverPrivate = brw;
    brw->driContext = driContextPriv;

@@ -112,7 +112,7 @@ static void
 dump_perf_query_callback(GLuint id, void *query_void, void *brw_void)
 {
    struct brw_context *ctx = brw_void;
-   struct gen_perf_context *perf_ctx = &ctx->perf_ctx;
+   struct gen_perf_context *perf_ctx = ctx->perf_ctx;
    struct gl_perf_query_object *o = query_void;
    struct brw_perf_query_object * brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
@@ -128,7 +128,7 @@ static void
 dump_perf_queries(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
-   gen_perf_dump_query_count(&brw->perf_ctx);
+   gen_perf_dump_query_count(brw->perf_ctx);
    _mesa_HashWalk(ctx->PerfQuery.Objects, dump_perf_query_callback, brw);
 }
 
@@ -144,28 +144,14 @@ brw_get_perf_query_info(struct gl_context *ctx,
                         GLuint *n_active)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   const struct gen_perf_query_info *query =
-      &perf_ctx->perf->queries[query_index];
+   struct gen_perf_context *perf_ctx = brw->perf_ctx;
+   struct gen_perf_config *perf_cfg = gen_perf_config(perf_ctx);
+   const struct gen_perf_query_info *query = &perf_cfg->queries[query_index];
 
    *name = query->name;
    *data_size = query->data_size;
    *n_counters = query->n_counters;
-
-   switch (query->kind) {
-   case GEN_PERF_QUERY_TYPE_OA:
-   case GEN_PERF_QUERY_TYPE_RAW:
-      *n_active = perf_ctx->n_active_oa_queries;
-      break;
-
-   case GEN_PERF_QUERY_TYPE_PIPELINE:
-      *n_active = perf_ctx->n_active_pipeline_stats_queries;
-      break;
-
-   default:
-      unreachable("Unknown query type");
-      break;
-   }
+   *n_active = gen_perf_active_queries(perf_ctx, query);
 }
 
 static GLuint
@@ -213,8 +199,9 @@ brw_get_perf_counter_info(struct gl_context *ctx,
                           GLuint64 *raw_max)
 {
    struct brw_context *brw = brw_context(ctx);
+   struct gen_perf_config *perf_cfg = gen_perf_config(brw->perf_ctx);
    const struct gen_perf_query_info *query =
-      &brw->perf_ctx.perf->queries[query_index];
+      &perf_cfg->queries[query_index];
    const struct gen_perf_query_counter *counter =
       &query->counters[counter_index];
 
@@ -260,7 +247,7 @@ brw_begin_perf_query(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
+   struct gen_perf_context *perf_ctx = brw->perf_ctx;
 
    /* We can assume the frontend hides mistaken attempts to Begin a
     * query object multiple times before its End. Similarly if an
@@ -291,7 +278,7 @@ brw_end_perf_query(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
+   struct gen_perf_context *perf_ctx = brw->perf_ctx;
 
    DBG("End(%d)\n", o->Id);
    gen_perf_end_query(perf_ctx, obj);
@@ -306,7 +293,7 @@ brw_wait_perf_query(struct gl_context *ctx, struct gl_perf_query_object *o)
 
    assert(!o->Ready);
 
-   gen_perf_wait_query(&brw->perf_ctx, obj, &brw->batch);
+   gen_perf_wait_query(brw->perf_ctx, obj, &brw->batch);
 }
 
 static bool
@@ -320,7 +307,7 @@ brw_is_perf_query_ready(struct gl_context *ctx,
    if (o->Ready)
       return true;
 
-   return gen_perf_is_query_ready(&brw->perf_ctx, obj, &brw->batch);
+   return gen_perf_is_query_ready(brw->perf_ctx, obj, &brw->batch);
 }
 
 /**
@@ -349,7 +336,7 @@ brw_get_perf_query_data(struct gl_context *ctx,
     */
    assert(o->Ready);
 
-   gen_perf_get_query_data(&brw->perf_ctx, obj,
+   gen_perf_get_query_data(brw->perf_ctx, obj,
                            data_size, data, bytes_written);
 }
 
@@ -357,7 +344,7 @@ static struct gl_perf_query_object *
 brw_new_perf_query_object(struct gl_context *ctx, unsigned query_index)
 {
    struct brw_context *brw = brw_context(ctx);
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
+   struct gen_perf_context *perf_ctx = brw->perf_ctx;
    struct gen_perf_query_object * obj = gen_perf_new_query(perf_ctx, query_index);
    if (unlikely(!obj))
       return NULL;
@@ -380,7 +367,7 @@ brw_delete_perf_query(struct gl_context *ctx,
    struct brw_context *brw = brw_context(ctx);
    struct brw_perf_query_object *brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
+   struct gen_perf_context *perf_ctx = brw->perf_ctx;
 
    /* We can assume that the frontend waits for a query to complete
     * before ever calling into here, so we don't have to worry about
@@ -482,12 +469,16 @@ brw_init_perf_query_info(struct gl_context *ctx)
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   if (perf_ctx->perf)
-      return perf_ctx->perf->n_queries;
+   struct gen_perf_context *perf_ctx = brw->perf_ctx;
+   struct gen_perf_config *perf_cfg = gen_perf_config(perf_ctx);
 
-   perf_ctx->perf = gen_perf_new(brw);
-   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+   if (perf_cfg)
+      return perf_cfg->n_queries;
+
+   if (!oa_metrics_kernel_support(brw->screen->driScrnPriv->fd, devinfo))
+      return 0;
+
+   perf_cfg = gen_perf_new(ctx);
 
    perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
@@ -507,11 +498,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
 
    gen_perf_init_context(perf_ctx, perf_cfg, brw, brw->bufmgr, devinfo,
                          brw->hw_ctx, brw->screen->driScrnPriv->fd);
-
-   if (!oa_metrics_kernel_support(perf_ctx->drm_fd, devinfo))
-      return 0;
-
-   gen_perf_init_metrics(perf_cfg, devinfo, perf_ctx->drm_fd);
+   gen_perf_init_metrics(perf_cfg, devinfo, brw->screen->driScrnPriv->fd);
 
    return perf_cfg->n_queries;
 }
