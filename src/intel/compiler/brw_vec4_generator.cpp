@@ -1886,7 +1886,7 @@ generate_code(struct brw_codegen *p,
          break;
 
       case SHADER_OPCODE_MEMORY_FENCE:
-         brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, false);
+         brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, false, /* bti */ 0);
          break;
 
       case SHADER_OPCODE_FIND_LIVE_CHANNEL: {

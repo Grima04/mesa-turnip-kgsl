@@ -1117,7 +1117,8 @@ brw_memory_fence(struct brw_codegen *p,
                  struct brw_reg dst,
                  struct brw_reg src,
                  enum opcode send_op,
-                 bool stall);
+                 bool stall,
+                 unsigned bti);
 
 void
 brw_pixel_interpolator_query(struct brw_codegen *p,

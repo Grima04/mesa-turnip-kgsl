@@ -4416,11 +4416,47 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
    case nir_intrinsic_memory_barrier: {
+      bool l3_fence, slm_fence;
+      if (devinfo->gen >= 11) {
+         l3_fence = instr->intrinsic != nir_intrinsic_memory_barrier_shared;
+         slm_fence = instr->intrinsic == nir_intrinsic_group_memory_barrier ||
+                     instr->intrinsic == nir_intrinsic_memory_barrier ||
+                     instr->intrinsic == nir_intrinsic_memory_barrier_shared;
+      } else {
+         /* Prior to gen11, we only have one kind of fence. */
+         l3_fence = true;
+         slm_fence = false;
+      }
+
+      /* Be conservative in Gen11+ and always stall in a fence.  Since there
+       * are two different fences, and shader might want to synchronize
+       * between them.
+       *
+       * TODO: Improve NIR so that scope and visibility information for the
+       * barriers is available here to make a better decision.
+       *
+       * TODO: When emitting more than one fence, it might help emit all
+       * the fences first and then generate the stall moves.
+       */
+      const bool stall = devinfo->gen >= 11;
+
       const fs_builder ubld = bld.group(8, 0);
       const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
-      ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
-                brw_vec8_grf(0, 0), brw_imm_ud(0))
-         ->size_written = 2 * REG_SIZE;
+
+      if (l3_fence) {
+         ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
+                   brw_vec8_grf(0, 0), brw_imm_ud(stall),
+                   /* bti */ brw_imm_ud(0))
+            ->size_written = 2 * REG_SIZE;
+      }
+
+      if (slm_fence) {
+         ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
+                   brw_vec8_grf(0, 0), brw_imm_ud(stall),
+                   brw_imm_ud(GEN7_BTI_SLM))
+            ->size_written = 2 * REG_SIZE;
+      }
+
       break;
    }
 
@@ -5238,7 +5274,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const fs_builder ubld = bld.group(8, 0);
       const fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
       ubld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp,
-                brw_vec8_grf(0, 0), brw_imm_ud(1))
+                brw_vec8_grf(0, 0), brw_imm_ud(1), brw_imm_ud(0))
          ->size_written = 2 * REG_SIZE;
       break;
    }
