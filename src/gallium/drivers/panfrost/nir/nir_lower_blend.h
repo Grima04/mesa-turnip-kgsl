@@ -33,13 +33,13 @@
  */
 
 typedef struct {
-      enum blend_func func;
+   enum blend_func func;
 
-      enum blend_factor src_factor;
-      bool invert_src_factor;
+   enum blend_factor src_factor;
+   bool invert_src_factor;
 
-      enum blend_factor dst_factor;
-      bool invert_dst_factor;
+   enum blend_factor dst_factor;
+   bool invert_dst_factor;
 } nir_lower_blend_channel;
 
 typedef struct {

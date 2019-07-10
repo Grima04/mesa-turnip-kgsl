@@ -38,9 +38,9 @@
 
 static nir_ssa_def *
 nir_blend_func(
-      nir_builder *b,
-      enum blend_func func,
-      nir_ssa_def *src, nir_ssa_def *dst)
+   nir_builder *b,
+   enum blend_func func,
+   nir_ssa_def *src, nir_ssa_def *dst)
 {
    switch (func) {
    case BLEND_FUNC_ADD:
@@ -76,9 +76,9 @@ nir_blend_factored(enum blend_func func)
 /* Compute a src_alpha_saturate factor */
 static nir_ssa_def *
 nir_alpha_saturate(
-      nir_builder *b,
-      nir_ssa_def *src, nir_ssa_def *dst,
-      unsigned chan)
+   nir_builder *b,
+   nir_ssa_def *src, nir_ssa_def *dst,
+   unsigned chan)
 {
    nir_ssa_def *Asrc = nir_channel(b, src, 3);
    nir_ssa_def *Adst = nir_channel(b, dst, 3);
@@ -92,10 +92,10 @@ nir_alpha_saturate(
 
 static nir_ssa_def *
 nir_blend_factor_value(
-      nir_builder *b,
-      nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
-      unsigned chan,
-      enum blend_factor factor)
+   nir_builder *b,
+   nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
+   unsigned chan,
+   enum blend_factor factor)
 {
    switch (factor) {
    case BLEND_FACTOR_ZERO:
@@ -121,12 +121,12 @@ nir_blend_factor_value(
 
 static nir_ssa_def *
 nir_blend_factor(
-      nir_builder *b,
-      nir_ssa_def *raw_scalar,
-      nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
-      unsigned chan,
-      enum blend_factor factor,
-      bool inverted)
+   nir_builder *b,
+   nir_ssa_def *raw_scalar,
+   nir_ssa_def *src, nir_ssa_def *dst, nir_ssa_def *bconst,
+   unsigned chan,
+   enum blend_factor factor,
+   bool inverted)
 {
    nir_ssa_def *f =
       nir_blend_factor_value(b, src, dst, bconst, chan, factor);
@@ -141,15 +141,15 @@ nir_blend_factor(
 
 static nir_ssa_def *
 nir_color_mask(
-      nir_builder *b,
-      unsigned mask,
-      nir_ssa_def *src,
-      nir_ssa_def *dst)
+   nir_builder *b,
+   unsigned mask,
+   nir_ssa_def *src,
+   nir_ssa_def *dst)
 {
    nir_ssa_def *masked[4];
 
    for (unsigned c = 0; c < 4; ++c) {
-      bool enab = (mask & (1 << c)); 
+      bool enab = (mask & (1 << c));
       masked[c] = enab ? nir_channel(b, src, c) : nir_channel(b, dst, c);
    }
 
@@ -162,9 +162,9 @@ nir_color_mask(
 
 static nir_ssa_def *
 nir_blend(
-      nir_builder *b,
-      nir_lower_blend_options options,
-      nir_ssa_def *src, nir_ssa_def *dst)
+   nir_builder *b,
+   nir_lower_blend_options options,
+   nir_ssa_def *src, nir_ssa_def *dst)
 {
    /* Grab the blend constant ahead of time */
    nir_ssa_def *bconst = nir_f2f16(b, nir_load_blend_const_color_rgba(b));
@@ -182,14 +182,14 @@ nir_blend(
 
       if (nir_blend_factored(chan.func)) {
          psrc = nir_blend_factor(
-                  b, psrc,
-                  src, dst, bconst, c,
-                  chan.src_factor, chan.invert_src_factor);
+                   b, psrc,
+                   src, dst, bconst, c,
+                   chan.src_factor, chan.invert_src_factor);
 
          pdst = nir_blend_factor(
-                  b, pdst,
-                  src, dst, bconst, c,
-                  chan.dst_factor, chan.invert_dst_factor);
+                   b, pdst,
+                   src, dst, bconst, c,
+                   chan.dst_factor, chan.invert_dst_factor);
       }
 
       channels[c] = nir_blend_func(b, chan.func, psrc, pdst);
@@ -260,7 +260,7 @@ nir_lower_blend(nir_shader *shader, nir_lower_blend_options options)
             /* Write out the final color instead of the input */
             nir_instr_rewrite_src(instr, &intr->src[1],
                                   nir_src_for_ssa(blended));
- 
+
          }
       }
 

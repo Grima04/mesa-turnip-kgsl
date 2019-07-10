@@ -46,42 +46,42 @@ bool nir_undef_to_zero(nir_shader *shader);
 bool
 nir_undef_to_zero(nir_shader *shader)
 {
-        bool progress = false;
+   bool progress = false;
 
-        nir_foreach_function(function, shader) {
-                if (!function->impl) continue;
+   nir_foreach_function(function, shader) {
+      if (!function->impl) continue;
 
-                nir_builder b;
-                nir_builder_init(&b, function->impl);
+      nir_builder b;
+      nir_builder_init(&b, function->impl);
 
-                nir_foreach_block(block, function->impl) {
-                        nir_foreach_instr_safe(instr, block) {
-                                if (instr->type != nir_instr_type_ssa_undef) continue;
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_ssa_undef) continue;
 
-                                nir_ssa_undef_instr *und = nir_instr_as_ssa_undef(instr);
+            nir_ssa_undef_instr *und = nir_instr_as_ssa_undef(instr);
 
-                                /* Get the required size */
-                                unsigned c = und->def.num_components;
-                                unsigned s = und->def.bit_size;
+            /* Get the required size */
+            unsigned c = und->def.num_components;
+            unsigned s = und->def.bit_size;
 
-                                nir_const_value v[NIR_MAX_VEC_COMPONENTS];
-                                memset(v, 0, sizeof(v));
+            nir_const_value v[NIR_MAX_VEC_COMPONENTS];
+            memset(v, 0, sizeof(v));
 
-                                b.cursor = nir_before_instr(instr);
-                                nir_ssa_def *zero = nir_build_imm(&b, c, s, v);
-                                nir_src zerosrc = nir_src_for_ssa(zero);
+            b.cursor = nir_before_instr(instr);
+            nir_ssa_def *zero = nir_build_imm(&b, c, s, v);
+            nir_src zerosrc = nir_src_for_ssa(zero);
 
-                                nir_ssa_def_rewrite_uses(&und->def, zerosrc);
+            nir_ssa_def_rewrite_uses(&und->def, zerosrc);
 
-                                progress |= true;
-                        }
-                }
+            progress |= true;
+         }
+      }
 
-                nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
+      nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
 
-        }
+   }
 
-        return progress;
+   return progress;
 }
 
 

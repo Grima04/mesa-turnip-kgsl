@@ -56,7 +56,7 @@ nir_float_to_unorm8(nir_builder *b, nir_ssa_def *c_float)
 
    /* Next, we type convert */
    nir_ssa_def *converted = nir_u2u8(b, nir_f2u16(b,
-            nir_fround_even(b, scaled)));
+                                     nir_fround_even(b, scaled)));
 
    return converted;
 }
@@ -86,7 +86,7 @@ nir_float_to_unorm4(nir_builder *b, nir_ssa_def *c_float)
 
    /* Next, we type convert to u16 */
    nir_ssa_def *converted = nir_f2u16(b,
-            nir_fround_even(b, scaled));
+                                      nir_fround_even(b, scaled));
 
    /* In u16 land, we now need to pack */
    nir_ssa_def *cr = nir_channel(b, converted, 0);
@@ -96,8 +96,8 @@ nir_float_to_unorm4(nir_builder *b, nir_ssa_def *c_float)
 
    nir_ssa_def *pack =
       nir_ior(b,
-            nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 4))),
-            nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 8)), nir_ishl(b, ca, nir_imm_int(b, 12))));
+              nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 4))),
+              nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 8)), nir_ishl(b, ca, nir_imm_int(b, 12))));
 
    return pack;
 }
@@ -109,10 +109,10 @@ nir_float_to_rgb10a2(nir_builder *b, nir_ssa_def *c_float, bool normalize)
 
    if (normalize) {
       nir_ssa_def *scaled = nir_fmul(b, nir_fsat(b, c_float),
-            nir_imm_vec4(b, 1023.0, 1023.0, 1023.0, 3.0));
+                                     nir_imm_vec4(b, 1023.0, 1023.0, 1023.0, 3.0));
 
       converted = nir_f2u32(b,
-               nir_fround_even(b, scaled));
+                            nir_fround_even(b, scaled));
    }
 
    nir_ssa_def *cr = nir_channel(b, converted, 0);
@@ -122,8 +122,8 @@ nir_float_to_rgb10a2(nir_builder *b, nir_ssa_def *c_float, bool normalize)
 
    nir_ssa_def *pack =
       nir_ior(b,
-            nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 10))),
-            nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 20)), nir_ishl(b, ca, nir_imm_int(b, 30))));
+              nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 10))),
+              nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 20)), nir_ishl(b, ca, nir_imm_int(b, 30))));
 
    return pack;
 }
@@ -134,10 +134,10 @@ nir_float_to_rgb5a1(nir_builder *b, nir_ssa_def *c_float)
    nir_ssa_def *degraded = nir_f2f16(b, c_float);
 
    nir_ssa_def *scaled = nir_fmul(b, nir_fsat(b, degraded),
-         nir_imm_vec4_16(b, 31.0, 31.0, 31.0, 1.0));
+                                  nir_imm_vec4_16(b, 31.0, 31.0, 31.0, 1.0));
 
    nir_ssa_def *converted = nir_f2u16(b,
-            nir_fround_even(b, scaled));
+                                      nir_fround_even(b, scaled));
 
    nir_ssa_def *cr = nir_channel(b, converted, 0);
    nir_ssa_def *cg = nir_channel(b, converted, 1);
@@ -146,18 +146,18 @@ nir_float_to_rgb5a1(nir_builder *b, nir_ssa_def *c_float)
 
    nir_ssa_def *pack =
       nir_ior(b,
-            nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 5))),
-            nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 10)), nir_ishl(b, ca, nir_imm_int(b, 15))));
+              nir_ior(b, cr, nir_ishl(b, cg, nir_imm_int(b, 5))),
+              nir_ior(b, nir_ishl(b, cb, nir_imm_int(b, 10)), nir_ishl(b, ca, nir_imm_int(b, 15))));
 
    return pack;
 }
 
 static nir_ssa_def *
 nir_shader_to_native(nir_builder *b,
-      nir_ssa_def *c_shader,
-      const struct util_format_description *desc,
-      unsigned bits,
-      bool homogenous_bits)
+                     nir_ssa_def *c_shader,
+                     const struct util_format_description *desc,
+                     unsigned bits,
+                     bool homogenous_bits)
 {
    bool float_or_pure_int =
       util_format_is_float(desc->format) ||
@@ -173,40 +173,40 @@ nir_shader_to_native(nir_builder *b,
 
    /* Special formats */
    switch (desc->format) {
-      case PIPE_FORMAT_B4G4R4A4_UNORM:
-      case PIPE_FORMAT_B4G4R4X4_UNORM:
-      case PIPE_FORMAT_A4R4_UNORM:
-      case PIPE_FORMAT_R4A4_UNORM:
-      case PIPE_FORMAT_A4B4G4R4_UNORM:
-         return nir_float_to_unorm4(b, c_shader);
+   case PIPE_FORMAT_B4G4R4A4_UNORM:
+   case PIPE_FORMAT_B4G4R4X4_UNORM:
+   case PIPE_FORMAT_A4R4_UNORM:
+   case PIPE_FORMAT_R4A4_UNORM:
+   case PIPE_FORMAT_A4B4G4R4_UNORM:
+      return nir_float_to_unorm4(b, c_shader);
 
-      case PIPE_FORMAT_R10G10B10A2_UNORM:
-      case PIPE_FORMAT_B10G10R10A2_UNORM:
-      case PIPE_FORMAT_R10G10B10X2_UNORM:
-      case PIPE_FORMAT_B10G10R10X2_UNORM:
-        return nir_float_to_rgb10a2(b, c_shader, true); 
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+   case PIPE_FORMAT_B10G10R10A2_UNORM:
+   case PIPE_FORMAT_R10G10B10X2_UNORM:
+   case PIPE_FORMAT_B10G10R10X2_UNORM:
+      return nir_float_to_rgb10a2(b, c_shader, true);
 
-      case PIPE_FORMAT_R10G10B10A2_UINT:
-        return nir_float_to_rgb10a2(b, c_shader, false); 
+   case PIPE_FORMAT_R10G10B10A2_UINT:
+      return nir_float_to_rgb10a2(b, c_shader, false);
 
-      case PIPE_FORMAT_B5G5R5A1_UNORM:
-         return nir_float_to_rgb5a1(b, c_shader);
+   case PIPE_FORMAT_B5G5R5A1_UNORM:
+      return nir_float_to_rgb5a1(b, c_shader);
 
-      case PIPE_FORMAT_R11G11B10_FLOAT:
-         return nir_format_pack_11f11f10f(b, c_shader);
+   case PIPE_FORMAT_R11G11B10_FLOAT:
+      return nir_format_pack_11f11f10f(b, c_shader);
 
-      default:
-         printf("%s\n", desc->name);
-         unreachable("Unknown format name");
+   default:
+      printf("%s\n", desc->name);
+      unreachable("Unknown format name");
    }
 }
 
 static nir_ssa_def *
 nir_native_to_shader(nir_builder *b,
-   nir_ssa_def *c_native,
-   const struct util_format_description *desc,
-   unsigned bits,
-   bool homogenous_bits)
+                     nir_ssa_def *c_native,
+                     const struct util_format_description *desc,
+                     unsigned bits,
+                     bool homogenous_bits)
 {
    bool float_or_pure_int =
       util_format_is_float(desc->format) ||
