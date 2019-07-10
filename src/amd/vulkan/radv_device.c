@@ -3419,6 +3419,23 @@ bool radv_get_memory_fd(struct radv_device *device,
 					 pFD);
 }
 
+
+static void radv_free_memory(struct radv_device *device,
+			     const VkAllocationCallbacks* pAllocator,
+			     struct radv_device_memory *mem)
+{
+	if (mem == NULL)
+		return;
+
+	if (mem->bo) {
+		radv_bo_list_remove(device, mem->bo);
+		device->ws->buffer_destroy(mem->bo);
+		mem->bo = NULL;
+	}
+
+	vk_free2(&device->alloc, pAllocator, mem);
+}
+
 static VkResult radv_alloc_memory(struct radv_device *device,
 				  const VkMemoryAllocateInfo*     pAllocateInfo,
 				  const VkAllocationCallbacks*    pAllocator,
@@ -3450,7 +3467,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 	const struct wsi_memory_allocate_info *wsi_info =
 		vk_find_struct_const(pAllocateInfo->pNext, WSI_MEMORY_ALLOCATE_INFO_MESA);
 
-	mem = vk_alloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
+	mem = vk_zalloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
 			  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (mem == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -3477,6 +3494,7 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 	                         (int)(priority_float * RADV_BO_PRIORITY_APPLICATION_MAX));
 
 	mem->user_ptr = NULL;
+	mem->bo = NULL;
 
 	if (import_info) {
 		assert(import_info->handleType ==
@@ -3538,15 +3556,14 @@ static VkResult radv_alloc_memory(struct radv_device *device,
 
 	result = radv_bo_list_add(device, mem->bo);
 	if (result != VK_SUCCESS)
-		goto fail_bo;
+		goto fail;
 
 	*pMem = radv_device_memory_to_handle(mem);
 
 	return VK_SUCCESS;
 
-fail_bo:
-	device->ws->buffer_destroy(mem->bo);
 fail:
+	radv_free_memory(device, pAllocator,mem);
 	vk_free2(&device->alloc, pAllocator, mem);
 
 	return result;
@@ -3570,14 +3587,7 @@ void radv_FreeMemory(
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_device_memory, mem, _mem);
 
-	if (mem == NULL)
-		return;
-
-	radv_bo_list_remove(device, mem->bo);
-	device->ws->buffer_destroy(mem->bo);
-	mem->bo = NULL;
-
-	vk_free2(&device->alloc, pAllocator, mem);
+	radv_free_memory(device, pAllocator, mem);
 }
 
 VkResult radv_MapMemory(
