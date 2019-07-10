@@ -359,7 +359,19 @@ zink_delete_depth_stencil_alpha_state(struct pipe_context *pctx,
 static float
 round_to_granularity(float value, float granularity)
 {
-   return (float)(round(value / granularity) * granularity);
+   return roundf(value / granularity) * granularity;
+}
+
+static float
+line_width(float width, float granularity, const float range[2])
+{
+   assert(granularity >= 0);
+   assert(range[0] <= range[1]);
+
+   if (granularity > 0)
+      width = round_to_granularity(width, granularity);
+
+   return CLAMP(width, range[0], range[1]);
 }
 
 static void *
@@ -395,8 +407,9 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    state->offset_clamp = rs_state->offset_clamp;
    state->offset_scale = rs_state->offset_scale;
 
-   state->line_width = round_to_granularity(rs_state->line_width,
-                                     screen->props.limits.lineWidthGranularity);
+   state->line_width = line_width(rs_state->line_width,
+                                  screen->props.limits.lineWidthGranularity,
+                                  screen->props.limits.lineWidthRange);
 
    return state;
 }
