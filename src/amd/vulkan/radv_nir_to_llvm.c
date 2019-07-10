@@ -2750,6 +2750,134 @@ radv_build_param_exports(struct radv_shader_context *ctx,
 	outinfo->param_exports = param_count;
 }
 
+/* Generate export instructions for hardware VS shader stage or NGG GS stage
+ * (position and parameter data only).
+ */
+static void
+radv_llvm_export_vs(struct radv_shader_context *ctx,
+                    struct radv_shader_output_values *outputs,
+                    unsigned noutput,
+                    struct radv_vs_output_info *outinfo,
+		    bool export_clip_dists)
+{
+	LLVMValueRef psize_value = NULL, layer_value = NULL, viewport_value = NULL;
+	struct ac_export_args pos_args[4] = {};
+	unsigned pos_idx, index;
+	int i;
+
+	/* Build position exports */
+	for (i = 0; i < noutput; i++) {
+		switch (outputs[i].slot_name) {
+		case VARYING_SLOT_POS:
+			si_llvm_init_export_args(ctx, outputs[i].values, 0xf,
+						 V_008DFC_SQ_EXP_POS, &pos_args[0]);
+			break;
+		case VARYING_SLOT_PSIZ:
+			psize_value = outputs[i].values[0];
+			break;
+		case VARYING_SLOT_LAYER:
+			layer_value = outputs[i].values[0];
+			break;
+		case VARYING_SLOT_VIEWPORT:
+			viewport_value = outputs[i].values[0];
+			break;
+		case VARYING_SLOT_CLIP_DIST0:
+		case VARYING_SLOT_CLIP_DIST1:
+			index = 2 + outputs[i].slot_index;
+			si_llvm_init_export_args(ctx, outputs[i].values, 0xf,
+						 V_008DFC_SQ_EXP_POS + index,
+						 &pos_args[index]);
+			break;
+		default:
+			break;
+		}
+	}
+
+	/* We need to add the position output manually if it's missing. */
+	if (!pos_args[0].out[0]) {
+		pos_args[0].enabled_channels = 0xf; /* writemask */
+		pos_args[0].valid_mask = 0; /* EXEC mask */
+		pos_args[0].done = 0; /* last export? */
+		pos_args[0].target = V_008DFC_SQ_EXP_POS;
+		pos_args[0].compr = 0; /* COMPR flag */
+		pos_args[0].out[0] = ctx->ac.f32_0; /* X */
+		pos_args[0].out[1] = ctx->ac.f32_0; /* Y */
+		pos_args[0].out[2] = ctx->ac.f32_0; /* Z */
+		pos_args[0].out[3] = ctx->ac.f32_1;  /* W */
+	}
+
+	if (outinfo->writes_pointsize ||
+	    outinfo->writes_layer ||
+	    outinfo->writes_viewport_index) {
+		pos_args[1].enabled_channels = ((outinfo->writes_pointsize == true ? 1 : 0) |
+						(outinfo->writes_layer == true ? 4 : 0));
+		pos_args[1].valid_mask = 0;
+		pos_args[1].done = 0;
+		pos_args[1].target = V_008DFC_SQ_EXP_POS + 1;
+		pos_args[1].compr = 0;
+		pos_args[1].out[0] = ctx->ac.f32_0; /* X */
+		pos_args[1].out[1] = ctx->ac.f32_0; /* Y */
+		pos_args[1].out[2] = ctx->ac.f32_0; /* Z */
+		pos_args[1].out[3] = ctx->ac.f32_0;  /* W */
+
+		if (outinfo->writes_pointsize == true)
+			pos_args[1].out[0] = psize_value;
+		if (outinfo->writes_layer == true)
+			pos_args[1].out[2] = layer_value;
+		if (outinfo->writes_viewport_index == true) {
+			if (ctx->options->chip_class >= GFX9) {
+				/* GFX9 has the layer in out.z[10:0] and the viewport
+				 * index in out.z[19:16].
+				 */
+				LLVMValueRef v = viewport_value;
+				v = ac_to_integer(&ctx->ac, v);
+				v = LLVMBuildShl(ctx->ac.builder, v,
+						 LLVMConstInt(ctx->ac.i32, 16, false),
+						 "");
+				v = LLVMBuildOr(ctx->ac.builder, v,
+						ac_to_integer(&ctx->ac, pos_args[1].out[2]), "");
+
+				pos_args[1].out[2] = ac_to_float(&ctx->ac, v);
+				pos_args[1].enabled_channels |= 1 << 2;
+			} else {
+				pos_args[1].out[3] = viewport_value;
+				pos_args[1].enabled_channels |= 1 << 3;
+			}
+		}
+	}
+
+	for (i = 0; i < 4; i++) {
+		if (pos_args[i].out[0])
+			outinfo->pos_exports++;
+	}
+
+	/* Navi10-14 skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
+	 * Setting valid_mask=1 prevents it and has no other effect.
+	 */
+	if (ctx->ac.family == CHIP_NAVI10 ||
+	    ctx->ac.family == CHIP_NAVI12 ||
+	    ctx->ac.family == CHIP_NAVI14)
+		pos_args[0].valid_mask = 1;
+
+	pos_idx = 0;
+	for (i = 0; i < 4; i++) {
+		if (!pos_args[i].out[0])
+			continue;
+
+		/* Specify the target we are exporting */
+		pos_args[i].target = V_008DFC_SQ_EXP_POS + pos_idx++;
+
+		if (pos_idx == outinfo->pos_exports)
+			/* Specify that this is the last export */
+			pos_args[i].done = 1;
+
+		ac_build_export(&ctx->ac, &pos_args[i]);
+	}
+
+	/* Build parameter exports */
+	radv_build_param_exports(ctx, outputs, noutput, outinfo, export_clip_dists);
+}
+
 static void
 handle_vs_outputs_post(struct radv_shader_context *ctx,
 		       bool export_prim_id,
