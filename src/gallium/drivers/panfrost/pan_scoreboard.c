@@ -121,8 +121,8 @@ job_descriptor_header(struct panfrost_transfer t)
 
 static void
 panfrost_assign_index(
-                struct panfrost_job *job,
-                struct panfrost_transfer transfer)
+        struct panfrost_job *job,
+        struct panfrost_transfer transfer)
 {
         /* Assign the index */
         unsigned index = ++job->job_index;
@@ -133,8 +133,8 @@ panfrost_assign_index(
 
 static void
 panfrost_add_dependency(
-                struct panfrost_transfer depender,
-                struct panfrost_transfer dependent)
+        struct panfrost_transfer depender,
+        struct panfrost_transfer dependent)
 {
 
         struct mali_job_descriptor_header *first =
@@ -161,8 +161,8 @@ panfrost_add_dependency(
 
 static void
 panfrost_scoreboard_queue_job_internal(
-                struct panfrost_job *batch,
-                struct panfrost_transfer job)
+        struct panfrost_job *batch,
+        struct panfrost_transfer job)
 {
         panfrost_assign_index(batch, job);
 
@@ -178,8 +178,8 @@ panfrost_scoreboard_queue_job_internal(
 
 void
 panfrost_scoreboard_queue_compute_job(
-                struct panfrost_job *batch,
-                struct panfrost_transfer job)
+        struct panfrost_job *batch,
+        struct panfrost_transfer job)
 {
         panfrost_scoreboard_queue_job_internal(batch, job);
 
@@ -196,9 +196,9 @@ panfrost_scoreboard_queue_compute_job(
 
 void
 panfrost_scoreboard_queue_vertex_job(
-                struct panfrost_job *batch,
-                struct panfrost_transfer vertex,
-                bool requires_tiling)
+        struct panfrost_job *batch,
+        struct panfrost_transfer vertex,
+        bool requires_tiling)
 {
         panfrost_scoreboard_queue_compute_job(batch, vertex);
 
@@ -211,8 +211,8 @@ panfrost_scoreboard_queue_vertex_job(
 
 void
 panfrost_scoreboard_queue_tiler_job(
-                struct panfrost_job *batch,
-                struct panfrost_transfer tiler)
+        struct panfrost_job *batch,
+        struct panfrost_transfer tiler)
 {
         panfrost_scoreboard_queue_compute_job(batch, tiler);
 
@@ -230,9 +230,9 @@ panfrost_scoreboard_queue_tiler_job(
 
 void
 panfrost_scoreboard_queue_fused_job(
-                struct panfrost_job *batch,
-                struct panfrost_transfer vertex,
-                struct panfrost_transfer tiler)
+        struct panfrost_job *batch,
+        struct panfrost_transfer vertex,
+        struct panfrost_transfer tiler)
 {
         panfrost_scoreboard_queue_vertex_job(batch, vertex, true);
         panfrost_scoreboard_queue_tiler_job(batch, tiler);
@@ -244,9 +244,9 @@ panfrost_scoreboard_queue_fused_job(
 
 void
 panfrost_scoreboard_queue_fused_job_prepend(
-                struct panfrost_job *batch,
-                struct panfrost_transfer vertex,
-                struct panfrost_transfer tiler)
+        struct panfrost_job *batch,
+        struct panfrost_transfer vertex,
+        struct panfrost_transfer tiler)
 {
         /* Sanity check */
         assert(batch->last_tiler.gpu);
@@ -390,8 +390,8 @@ panfrost_scoreboard_link_batch(struct panfrost_job *batch)
         unsigned arr_size = BITSET_WORDS(node_count);
 
         for (unsigned node_n_1 = __bitset_ffs(no_incoming, arr_size);
-                        (node_n_1 != 0);
-                        node_n_1 = __bitset_ffs(no_incoming, arr_size)) {
+             (node_n_1 != 0);
+             node_n_1 = __bitset_ffs(no_incoming, arr_size)) {
 
                 unsigned node_n = node_n_1 - 1;
 

@@ -217,7 +217,7 @@ struct panfrost_context {
          * there's no real advantage to doing so */
         bool require_sfbd;
 
-	uint32_t out_sync;
+        uint32_t out_sync;
 };
 
 /* Corresponds to the CSO */
@@ -336,24 +336,24 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
 
 void
 panfrost_pack_work_groups_compute(
-                struct mali_vertex_tiler_prefix *out,
-                unsigned num_x,
-                unsigned num_y,
-                unsigned num_z,
-                unsigned size_x,
-                unsigned size_y,
-                unsigned size_z);
+        struct mali_vertex_tiler_prefix *out,
+        unsigned num_x,
+        unsigned num_y,
+        unsigned num_z,
+        unsigned size_x,
+        unsigned size_y,
+        unsigned size_z);
 
 void
 panfrost_pack_work_groups_fused(
-                struct mali_vertex_tiler_prefix *vertex,
-                struct mali_vertex_tiler_prefix *tiler,
-                unsigned num_x,
-                unsigned num_y,
-                unsigned num_z,
-                unsigned size_x,
-                unsigned size_y,
-                unsigned size_z);
+        struct mali_vertex_tiler_prefix *vertex,
+        struct mali_vertex_tiler_prefix *tiler,
+        unsigned num_x,
+        unsigned num_y,
+        unsigned num_z,
+        unsigned size_x,
+        unsigned size_y,
+        unsigned size_z);
 
 /* Instancing */
 
@@ -370,8 +370,8 @@ struct pan_shift_odd {
 
 struct pan_shift_odd
 panfrost_padded_vertex_count(
-                unsigned vertex_count,
-                bool primitive_pot);
+        unsigned vertex_count,
+        bool primitive_pot);
 
 
 unsigned

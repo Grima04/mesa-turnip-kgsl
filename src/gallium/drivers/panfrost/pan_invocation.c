@@ -39,13 +39,13 @@
 
 void
 panfrost_pack_work_groups_compute(
-                struct mali_vertex_tiler_prefix *out,
-                unsigned num_x,
-                unsigned num_y,
-                unsigned num_z,
-                unsigned size_x,
-                unsigned size_y,
-                unsigned size_z)
+        struct mali_vertex_tiler_prefix *out,
+        unsigned num_x,
+        unsigned num_y,
+        unsigned num_z,
+        unsigned size_x,
+        unsigned size_y,
+        unsigned size_z)
 {
         /* First of all, all 6 values are off-by-one (strictly positive).
          * Account for that, first by ensuring all values are strictly positive
@@ -104,14 +104,14 @@ panfrost_pack_work_groups_compute(
 /* Packs vertex/tiler descriptors simultaneously */
 void
 panfrost_pack_work_groups_fused(
-                struct mali_vertex_tiler_prefix *vertex,
-                struct mali_vertex_tiler_prefix *tiler,
-                unsigned num_x,
-                unsigned num_y,
-                unsigned num_z,
-                unsigned size_x,
-                unsigned size_y,
-                unsigned size_z)
+        struct mali_vertex_tiler_prefix *vertex,
+        struct mali_vertex_tiler_prefix *tiler,
+        unsigned num_x,
+        unsigned num_y,
+        unsigned num_z,
+        unsigned size_x,
+        unsigned size_y,
+        unsigned size_z)
 {
         panfrost_pack_work_groups_compute(vertex, num_x, num_y, num_z, size_x, size_y, size_z);
 

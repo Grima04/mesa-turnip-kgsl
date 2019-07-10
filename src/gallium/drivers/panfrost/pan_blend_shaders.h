@@ -33,8 +33,8 @@
 
 struct panfrost_blend_shader
 panfrost_compile_blend_shader(
-                struct panfrost_context *ctx,
-                struct pipe_blend_state *cso,
-                enum pipe_format format);
+        struct panfrost_context *ctx,
+        struct pipe_blend_state *cso,
+        enum pipe_format format);
 
 #endif

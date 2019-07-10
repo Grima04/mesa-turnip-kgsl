@@ -101,8 +101,8 @@ static struct pan_shift_odd
 panfrost_small_padded_vertex_count(unsigned idx)
 {
         return pan_factored(
-                        small_lut[idx].pot,
-                        small_lut[idx].odd);
+                       small_lut[idx].pot,
+                       small_lut[idx].odd);
 }
 
 static struct pan_shift_odd
@@ -144,15 +144,15 @@ panfrost_large_padded_vertex_count(uint32_t vertex_count)
 
 struct pan_shift_odd
 panfrost_padded_vertex_count(
-                unsigned vertex_count,
-                bool pot)
+        unsigned vertex_count,
+        bool pot)
 {
         assert(vertex_count > 0);
 
         if (vertex_count < 20) {
                 /* Add an off-by-one if it won't align naturally (quirk of the hardware) */
                 //if (!pot)
-                  //      vertex_count++;
+                //      vertex_count++;
 
                 return panfrost_small_padded_vertex_count(vertex_count);
         } else
@@ -164,13 +164,13 @@ panfrost_padded_vertex_count(
 
 static unsigned
 panfrost_vertex_instanced(
-                struct panfrost_job *batch,
-                struct panfrost_resource *rsrc,
-                unsigned divisor,
-                union mali_attr *attrs,
-                mali_ptr addr,
-                unsigned vertex_count,
-                unsigned instance_count)
+        struct panfrost_job *batch,
+        struct panfrost_resource *rsrc,
+        unsigned divisor,
+        union mali_attr *attrs,
+        mali_ptr addr,
+        unsigned vertex_count,
+        unsigned instance_count)
 {
         /* First, grab the padded vertex count */
 
@@ -199,7 +199,7 @@ panfrost_vertex_instanced(
         } else if (util_is_power_of_two_or_zero(hw_divisor)) {
                 /* If there is a divisor but the hardware divisor works out to
                  * a power of two (not terribly exceptional), we can use an
-                 * easy path (just shifting) */ 
+                 * easy path (just shifting) */
 
                 attrs->elements |= MALI_ATTR_POT_DIVIDE;
                 attrs->shift = __builtin_ctz(hw_divisor);
@@ -328,7 +328,7 @@ panfrost_emit_vertex_data(struct panfrost_job *batch)
                         attrs[k++].elements |= MALI_ATTR_LINEAR;
                 } else {
                         k += panfrost_vertex_instanced(
-                                        batch, rsrc, divisor, &attrs[k], addr, vertex_count, instanced_count);
+                                     batch, rsrc, divisor, &attrs[k], addr, vertex_count, instanced_count);
                 }
         }
 

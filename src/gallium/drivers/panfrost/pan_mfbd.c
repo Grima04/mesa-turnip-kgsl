@@ -87,89 +87,89 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 return fmt;
 
         /* Set flags for alternative formats */
-             
+
         switch (linearized) {
-                case PIPE_FORMAT_B5G6R5_UNORM:
-                        fmt.unk1 = 0x14000000;
-                        fmt.nr_channels = MALI_POSITIVE(2);
-                        fmt.unk3 |= 0x1;
-                        break;
+        case PIPE_FORMAT_B5G6R5_UNORM:
+                fmt.unk1 = 0x14000000;
+                fmt.nr_channels = MALI_POSITIVE(2);
+                fmt.unk3 |= 0x1;
+                break;
 
-                case PIPE_FORMAT_A4B4G4R4_UNORM:
-                case PIPE_FORMAT_B4G4R4A4_UNORM:
-                        fmt.unk1 = 0x10000000;
-                        fmt.unk3 = 0x5;
-                        fmt.nr_channels = MALI_POSITIVE(1);
-                        break;
+        case PIPE_FORMAT_A4B4G4R4_UNORM:
+        case PIPE_FORMAT_B4G4R4A4_UNORM:
+                fmt.unk1 = 0x10000000;
+                fmt.unk3 = 0x5;
+                fmt.nr_channels = MALI_POSITIVE(1);
+                break;
 
-                case PIPE_FORMAT_R10G10B10A2_UNORM:
-                case PIPE_FORMAT_B10G10R10A2_UNORM:
-                case PIPE_FORMAT_R10G10B10X2_UNORM:
-                case PIPE_FORMAT_B10G10R10X2_UNORM:
-                        fmt.unk1 = 0x08000000;
-                        fmt.unk3 = 0x6;
-                        fmt.nr_channels = MALI_POSITIVE(1);
-                        break;
+        case PIPE_FORMAT_R10G10B10A2_UNORM:
+        case PIPE_FORMAT_B10G10R10A2_UNORM:
+        case PIPE_FORMAT_R10G10B10X2_UNORM:
+        case PIPE_FORMAT_B10G10R10X2_UNORM:
+                fmt.unk1 = 0x08000000;
+                fmt.unk3 = 0x6;
+                fmt.nr_channels = MALI_POSITIVE(1);
+                break;
 
-                        /* Generic 8-bit */
-                case PIPE_FORMAT_R8_UINT:
-                case PIPE_FORMAT_R8_SINT:
-                        fmt.unk1 = 0x80000000;
-                        fmt.unk3 = 0x0;
-                        fmt.nr_channels = MALI_POSITIVE(1);
-                        break;
+        /* Generic 8-bit */
+        case PIPE_FORMAT_R8_UINT:
+        case PIPE_FORMAT_R8_SINT:
+                fmt.unk1 = 0x80000000;
+                fmt.unk3 = 0x0;
+                fmt.nr_channels = MALI_POSITIVE(1);
+                break;
 
-                        /* Generic 32-bit */
-                case PIPE_FORMAT_R11G11B10_FLOAT:
-                case PIPE_FORMAT_R8G8B8A8_UINT:
-                case PIPE_FORMAT_R8G8B8A8_SINT:
-                case PIPE_FORMAT_R16G16_FLOAT:
-                case PIPE_FORMAT_R16G16_UINT:
-                case PIPE_FORMAT_R16G16_SINT:
-                case PIPE_FORMAT_R32_FLOAT:
-                case PIPE_FORMAT_R32_UINT:
-                case PIPE_FORMAT_R32_SINT:
-                case PIPE_FORMAT_R10G10B10A2_UINT:
-                        fmt.unk1 = 0x88000000;
-                        fmt.unk3 = 0x0;
-                        fmt.nr_channels = MALI_POSITIVE(4);
-                        break;
+        /* Generic 32-bit */
+        case PIPE_FORMAT_R11G11B10_FLOAT:
+        case PIPE_FORMAT_R8G8B8A8_UINT:
+        case PIPE_FORMAT_R8G8B8A8_SINT:
+        case PIPE_FORMAT_R16G16_FLOAT:
+        case PIPE_FORMAT_R16G16_UINT:
+        case PIPE_FORMAT_R16G16_SINT:
+        case PIPE_FORMAT_R32_FLOAT:
+        case PIPE_FORMAT_R32_UINT:
+        case PIPE_FORMAT_R32_SINT:
+        case PIPE_FORMAT_R10G10B10A2_UINT:
+                fmt.unk1 = 0x88000000;
+                fmt.unk3 = 0x0;
+                fmt.nr_channels = MALI_POSITIVE(4);
+                break;
 
-                        /* Generic 16-bit */
-                case PIPE_FORMAT_R8G8_UINT:
-                case PIPE_FORMAT_R8G8_SINT:
-                case PIPE_FORMAT_R16_FLOAT:
-                case PIPE_FORMAT_R16_UINT:
-                case PIPE_FORMAT_R16_SINT:
-                case PIPE_FORMAT_B5G5R5A1_UNORM:
-                        fmt.unk1 = 0x84000000;
-                        fmt.unk3 = 0x0;
-                        fmt.nr_channels = MALI_POSITIVE(2);
-                        break;
+        /* Generic 16-bit */
+        case PIPE_FORMAT_R8G8_UINT:
+        case PIPE_FORMAT_R8G8_SINT:
+        case PIPE_FORMAT_R16_FLOAT:
+        case PIPE_FORMAT_R16_UINT:
+        case PIPE_FORMAT_R16_SINT:
+        case PIPE_FORMAT_B5G5R5A1_UNORM:
+                fmt.unk1 = 0x84000000;
+                fmt.unk3 = 0x0;
+                fmt.nr_channels = MALI_POSITIVE(2);
+                break;
 
-                        /* Generic 64-bit */
-                case PIPE_FORMAT_R32G32_FLOAT:
-                case PIPE_FORMAT_R32G32_SINT:
-                case PIPE_FORMAT_R32G32_UINT:
-                case PIPE_FORMAT_R16G16B16A16_FLOAT:
-                case PIPE_FORMAT_R16G16B16A16_SINT:
-                case PIPE_FORMAT_R16G16B16A16_UINT:
-                        fmt.unk1 = 0x8c000000;
-                        fmt.unk3 = 0x1;
-                        fmt.nr_channels = MALI_POSITIVE(2);
-                        break;
+        /* Generic 64-bit */
+        case PIPE_FORMAT_R32G32_FLOAT:
+        case PIPE_FORMAT_R32G32_SINT:
+        case PIPE_FORMAT_R32G32_UINT:
+        case PIPE_FORMAT_R16G16B16A16_FLOAT:
+        case PIPE_FORMAT_R16G16B16A16_SINT:
+        case PIPE_FORMAT_R16G16B16A16_UINT:
+                fmt.unk1 = 0x8c000000;
+                fmt.unk3 = 0x1;
+                fmt.nr_channels = MALI_POSITIVE(2);
+                break;
 
-                        /* Generic 128-bit */
-                case PIPE_FORMAT_R32G32B32A32_FLOAT:
-                case PIPE_FORMAT_R32G32B32A32_SINT:
-                case PIPE_FORMAT_R32G32B32A32_UINT:
-                        fmt.unk1 = 0x90000000;
-                        fmt.unk3 = 0x1;
-                        fmt.nr_channels = MALI_POSITIVE(4);
-                        break;
+        /* Generic 128-bit */
+        case PIPE_FORMAT_R32G32B32A32_FLOAT:
+        case PIPE_FORMAT_R32G32B32A32_SINT:
+        case PIPE_FORMAT_R32G32B32A32_UINT:
+                fmt.unk1 = 0x90000000;
+                fmt.unk3 = 0x1;
+                fmt.nr_channels = MALI_POSITIVE(4);
+                break;
 
-                default:
-                        unreachable("Invalid format rendering");
+        default:
+                unreachable("Invalid format rendering");
         }
 
         return fmt;
@@ -178,11 +178,11 @@ panfrost_mfbd_format(struct pipe_surface *surf)
 
 static void
 panfrost_mfbd_clear(
-                struct panfrost_job *job,
-                struct bifrost_framebuffer *fb,
-                struct bifrost_fb_extra *fbx,
-                struct bifrost_render_target *rts,
-                unsigned rt_count)
+        struct panfrost_job *job,
+        struct bifrost_framebuffer *fb,
+        struct bifrost_fb_extra *fbx,
+        struct bifrost_render_target *rts,
+        unsigned rt_count)
 {
         for (unsigned i = 0; i < rt_count; ++i) {
                 if (!(job->clear & (PIPE_CLEAR_COLOR0 << i)))
@@ -205,8 +205,8 @@ panfrost_mfbd_clear(
 
 static void
 panfrost_mfbd_set_cbuf(
-                struct bifrost_render_target *rt,
-                struct pipe_surface *surf)
+        struct bifrost_render_target *rt,
+        struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
@@ -249,9 +249,9 @@ panfrost_mfbd_set_cbuf(
 
 static void
 panfrost_mfbd_set_zsbuf(
-                struct bifrost_framebuffer *fb,
-                struct bifrost_fb_extra *fbx,
-                struct pipe_surface *surf)
+        struct bifrost_framebuffer *fb,
+        struct bifrost_fb_extra *fbx,
+        struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
@@ -303,11 +303,11 @@ panfrost_mfbd_set_zsbuf(
 
 static mali_ptr
 panfrost_mfbd_upload(
-                struct panfrost_context *ctx,
-                struct bifrost_framebuffer *fb,
-                struct bifrost_fb_extra *fbx,
-                struct bifrost_render_target *rts,
-                unsigned cbufs)
+        struct panfrost_context *ctx,
+        struct bifrost_framebuffer *fb,
+        struct bifrost_fb_extra *fbx,
+        struct bifrost_render_target *rts,
+        unsigned cbufs)
 {
         off_t offset = 0;
 

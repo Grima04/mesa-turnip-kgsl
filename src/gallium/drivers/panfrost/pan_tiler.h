@@ -36,8 +36,8 @@ panfrost_tiler_body_size(unsigned width, unsigned height, uint8_t mask);
 
 unsigned
 panfrost_choose_hierarchy_mask(
-                unsigned width, unsigned height,
-                unsigned vertex_count);
+        unsigned width, unsigned height,
+        unsigned vertex_count);
 
 #endif
 

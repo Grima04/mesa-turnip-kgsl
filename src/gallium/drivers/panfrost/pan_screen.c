@@ -51,11 +51,11 @@
 #include "midgard/midgard_compile.h"
 
 static const struct debug_named_value debug_options[] = {
-	{"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
-	{"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
-        {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"}, 
-                /* ^^ If Rob can do it, so can I */
-	DEBUG_NAMED_VALUE_END
+        {"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
+        {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
+        {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
+        /* ^^ If Rob can do it, so can I */
+        DEBUG_NAMED_VALUE_END
 };
 
 DEBUG_GET_ONCE_FLAGS_OPTION(pan_debug, "PAN_MESA_DEBUG", debug_options, 0)
@@ -226,7 +226,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                           enum pipe_shader_cap param)
 {
         if (shader != PIPE_SHADER_VERTEX &&
-                        shader != PIPE_SHADER_FRAGMENT) {
+            shader != PIPE_SHADER_FRAGMENT) {
                 return 0;
         }
 
@@ -405,7 +405,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return FALSE;
 
         if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
-                        format_desc->layout != UTIL_FORMAT_LAYOUT_OTHER) {
+            format_desc->layout != UTIL_FORMAT_LAYOUT_OTHER) {
                 /* Compressed formats not yet hooked up. */
                 return FALSE;
         }
@@ -468,7 +468,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 {
         struct panfrost_screen *screen = rzalloc(NULL, struct panfrost_screen);
 
-	pan_debug = debug_get_option_pan_debug();
+        pan_debug = debug_get_option_pan_debug();
 
         if (!screen)
                 return NULL;
@@ -494,19 +494,19 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         switch (screen->gpu_id) {
 #ifdef __LP64__
-                case 0x820: /* T820 */
-                case 0x860: /* T860 */
-                        break;
+        case 0x820: /* T820 */
+        case 0x860: /* T860 */
+                break;
 #else
-                case 0x750: /* T760 */
-                        break;
+        case 0x750: /* T760 */
+                break;
 #endif
 
-                default:
-                        /* Fail to load against untested models */
-                        debug_printf("panfrost: Unsupported model %X",
-                                        screen->gpu_id);
-                        return NULL;
+        default:
+                /* Fail to load against untested models */
+                debug_printf("panfrost: Unsupported model %X",
+                             screen->gpu_id);
+                return NULL;
         }
 
         if (pan_debug & PAN_DBG_TRACE)
@@ -528,7 +528,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.fence_reference = panfrost_fence_reference;
         screen->base.fence_finish = panfrost_fence_finish;
 
-	screen->last_fragment_flushed = true;
+        screen->last_fragment_flushed = true;
         screen->last_job = NULL;
 
         panfrost_resource_screen_init(screen);

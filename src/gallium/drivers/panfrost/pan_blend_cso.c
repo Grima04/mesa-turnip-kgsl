@@ -65,10 +65,10 @@
 
 static struct panfrost_blend_shader *
 panfrost_get_blend_shader(
-                struct panfrost_context *ctx,
-                struct panfrost_blend_state *blend,
-                enum pipe_format fmt,
-                unsigned rt)
+        struct panfrost_context *ctx,
+        struct panfrost_blend_state *blend,
+        enum pipe_format fmt,
+        unsigned rt)
 {
         /* Prevent NULL collision issues.. */
         assert(fmt != 0);
@@ -116,10 +116,10 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
                 rt->has_fixed_function =
                         panfrost_make_fixed_blend_mode(
-                                        &blend->rt[c],
-                                        &rt->equation,
-                                        &rt->constant_mask,
-                                        blend->rt[c].colormask);
+                                &blend->rt[c],
+                                &rt->equation,
+                                &rt->constant_mask,
+                                blend->rt[c].colormask);
 
                 /* Regardless if that works, we also need to initialize
                  * the blend shaders */
@@ -222,10 +222,9 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         /* First, we'll try a fixed function path */
         if (rt->has_fixed_function && panfrost_can_fixed_blend(fmt)) {
                 if (panfrost_blend_constant(
-                                        &final.equation.constant,
-                                        ctx->blend_color.color,
-                                        rt->constant_mask))
-                {
+                            &final.equation.constant,
+                            ctx->blend_color.color,
+                            rt->constant_mask)) {
                         /* There's an equation and suitable constant, so we're good to go */
                         final.is_shader = false;
                         final.equation.equation = &rt->equation;
@@ -242,12 +241,12 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
                 /* We have to specialize the blend shader to use constants, so
                  * patch in the current constants and upload to transient
                  * memory */
-                
+
                 float *patch = (float *) (shader->shader.cpu + shader->patch_index);
                 memcpy(patch, ctx->blend_color.color, sizeof(float) * 4);
 
                 final.shader.gpu = panfrost_upload_transient(
-                                ctx, shader->shader.cpu, shader->size);
+                                           ctx, shader->shader.cpu, shader->size);
         } else {
                 /* No need to specialize further, use the preuploaded */
                 final.shader.gpu = shader->shader.gpu;

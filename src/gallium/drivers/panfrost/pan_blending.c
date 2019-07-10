@@ -117,19 +117,19 @@ panfrost_can_fixed_blend(enum pipe_format format)
 
         /* Certain special formats are, too */
         switch (format) {
-                case PIPE_FORMAT_B5G6R5_UNORM:
-                case PIPE_FORMAT_R10G10B10A2_UNORM:
-                case PIPE_FORMAT_B10G10R10A2_UNORM:
-                case PIPE_FORMAT_R10G10B10X2_UNORM:
-                case PIPE_FORMAT_B10G10R10X2_UNORM:
-                case PIPE_FORMAT_B4G4R4A4_UNORM:
-                case PIPE_FORMAT_B4G4R4X4_UNORM:
-                case PIPE_FORMAT_A4R4_UNORM:
-                case PIPE_FORMAT_R4A4_UNORM:
-                case PIPE_FORMAT_A4B4G4R4_UNORM:
-                        return true;
-                default:
-                        return false;
+        case PIPE_FORMAT_B5G6R5_UNORM:
+        case PIPE_FORMAT_R10G10B10A2_UNORM:
+        case PIPE_FORMAT_B10G10R10A2_UNORM:
+        case PIPE_FORMAT_R10G10B10X2_UNORM:
+        case PIPE_FORMAT_B10G10R10X2_UNORM:
+        case PIPE_FORMAT_B4G4R4A4_UNORM:
+        case PIPE_FORMAT_B4G4R4X4_UNORM:
+        case PIPE_FORMAT_A4R4_UNORM:
+        case PIPE_FORMAT_R4A4_UNORM:
+        case PIPE_FORMAT_A4B4G4R4_UNORM:
+                return true;
+        default:
+                return false;
         }
 }
 
@@ -241,14 +241,14 @@ panfrost_make_fixed_blend_part(unsigned func, unsigned src_factor, unsigned dst_
         /* Make sure that the blend function is representible */
 
         switch (func) {
-                case PIPE_BLEND_ADD:
-                        break;
+        case PIPE_BLEND_ADD:
+                break;
 
-                /* TODO: Reenable subtraction modes when those fixed */
-                case PIPE_BLEND_SUBTRACT:
-                case PIPE_BLEND_REVERSE_SUBTRACT:
-                default:
-                        return false;
+        /* TODO: Reenable subtraction modes when those fixed */
+        case PIPE_BLEND_SUBTRACT:
+        case PIPE_BLEND_REVERSE_SUBTRACT:
+        default:
+                return false;
         }
 
         part.clip_modifier = MALI_BLEND_MOD_NORMAL;
@@ -273,7 +273,7 @@ panfrost_make_fixed_blend_part(unsigned func, unsigned src_factor, unsigned dst_
         } else if (src_factor == dst_factor) {
                 /* XXX: Why? */
                 part.dominant = func == PIPE_BLEND_ADD ?
-                        MALI_BLEND_DOM_DESTINATION : MALI_BLEND_DOM_SOURCE;
+                                MALI_BLEND_DOM_DESTINATION : MALI_BLEND_DOM_SOURCE;
 
                 part.nondominant_mode = MALI_BLEND_NON_MIRROR;
         } else if (src_factor == complement_factor(dst_factor)) {
@@ -352,10 +352,10 @@ panfrost_constant_mask(unsigned *factors, unsigned num_factors)
 
 bool
 panfrost_make_fixed_blend_mode(
-                const struct pipe_rt_blend_state *blend,
-                struct mali_blend_equation *out,
-                unsigned *constant_mask,
-                unsigned colormask)
+        const struct pipe_rt_blend_state *blend,
+        struct mali_blend_equation *out,
+        unsigned *constant_mask,
+        unsigned colormask)
 {
         /* Gallium and Mali represent colour masks identically. XXX: Static
          * assert for future proof */
@@ -387,13 +387,13 @@ panfrost_make_fixed_blend_mode(
         unsigned alpha_mode = 0;
 
         if (!panfrost_make_fixed_blend_part(
-                                blend->rgb_func, blend->rgb_src_factor, blend->rgb_dst_factor,
-                                &rgb_mode))
+                    blend->rgb_func, blend->rgb_src_factor, blend->rgb_dst_factor,
+                    &rgb_mode))
                 return false;
 
         if (!panfrost_make_fixed_blend_part(
-                                blend->alpha_func, blend->alpha_src_factor, blend->alpha_dst_factor,
-                                &alpha_mode))
+                    blend->alpha_func, blend->alpha_src_factor, blend->alpha_dst_factor,
+                    &alpha_mode))
                 return false;
 
         out->rgb_mode = rgb_mode;

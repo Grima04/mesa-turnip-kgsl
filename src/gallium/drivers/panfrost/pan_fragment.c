@@ -46,8 +46,8 @@ mali_ptr
 panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
 {
         mali_ptr framebuffer = ctx->require_sfbd ?
-                panfrost_sfbd_fragment(ctx, has_draws) :
-                panfrost_mfbd_fragment(ctx, has_draws);
+                               panfrost_sfbd_fragment(ctx, has_draws) :
+                               panfrost_mfbd_fragment(ctx, has_draws);
 
         /* Mark the affected buffers as initialized, since we're writing to it */
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;

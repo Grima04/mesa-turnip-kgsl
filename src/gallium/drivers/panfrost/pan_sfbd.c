@@ -37,8 +37,8 @@ panfrost_sfbd_format(struct pipe_surface *surf)
 
 static void
 panfrost_sfbd_clear(
-                struct panfrost_job *job,
-                struct mali_single_framebuffer *sfbd)
+        struct panfrost_job *job,
+        struct mali_single_framebuffer *sfbd)
 {
         struct panfrost_context *ctx = job->ctx;
 
@@ -86,8 +86,8 @@ panfrost_sfbd_clear(
 
 static void
 panfrost_sfbd_set_cbuf(
-                struct mali_single_framebuffer *fb,
-                struct pipe_surface *surf)
+        struct mali_single_framebuffer *fb,
+        struct pipe_surface *surf)
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 

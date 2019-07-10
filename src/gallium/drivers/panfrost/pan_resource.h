@@ -89,7 +89,7 @@ struct panfrost_resource {
 static inline struct panfrost_resource *
 pan_resource(struct pipe_resource *p)
 {
-   return (struct panfrost_resource *)p;
+        return (struct panfrost_resource *)p;
 }
 
 struct panfrost_gtransfer {
@@ -100,13 +100,13 @@ struct panfrost_gtransfer {
 static inline struct panfrost_gtransfer *
 pan_transfer(struct pipe_transfer *p)
 {
-   return (struct panfrost_gtransfer *)p;
+        return (struct panfrost_gtransfer *)p;
 }
 
 mali_ptr
 panfrost_get_texture_address(
-                struct panfrost_resource *rsrc,
-                unsigned level, unsigned face);
+        struct panfrost_resource *rsrc,
+        unsigned level, unsigned face);
 
 void panfrost_resource_screen_init(struct panfrost_screen *screen);
 void panfrost_resource_screen_deinit(struct panfrost_screen *screen);

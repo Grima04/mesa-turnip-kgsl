@@ -68,7 +68,7 @@ struct panfrost_blend_equation_final {
 struct panfrost_blend_rt {
         /* If has_fixed_function is set, equation is the
          * fixed-function configuration for this blend state */
-        
+
         bool has_fixed_function;
         struct mali_blend_equation equation;
 

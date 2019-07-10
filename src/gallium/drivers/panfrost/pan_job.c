@@ -45,7 +45,7 @@ panfrost_create_job(struct panfrost_context *ctx)
 
         util_dynarray_init(&job->headers, job);
         util_dynarray_init(&job->gpu_headers, job);
- 
+
         return job;
 }
 
@@ -70,7 +70,7 @@ panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job)
 
 struct panfrost_job *
 panfrost_get_job(struct panfrost_context *ctx,
-                struct pipe_surface **cbufs, struct pipe_surface *zsbuf)
+                 struct pipe_surface **cbufs, struct pipe_surface *zsbuf)
 {
         /* Lookup the job first */
 
@@ -83,7 +83,7 @@ panfrost_get_job(struct panfrost_context *ctx,
                 },
                 .zsbuf = zsbuf
         };
-        
+
         struct hash_entry *entry = _mesa_hash_table_search(ctx->jobs, &key);
 
         if (entry)
@@ -141,11 +141,11 @@ panfrost_job_add_bo(struct panfrost_job *job, struct panfrost_bo *bo)
 
 void
 panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
-                                struct pipe_resource *prsc)
+                                     struct pipe_resource *prsc)
 {
 #if 0
         struct hash_entry *entry = _mesa_hash_table_search(panfrost->write_jobs,
-                                                           prsc);
+                                   prsc);
         if (entry) {
                 struct panfrost_job *job = entry->data;
                 panfrost_job_submit(panfrost, job);
@@ -175,7 +175,7 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
 
 void
 panfrost_job_set_requirements(struct panfrost_context *ctx,
-                         struct panfrost_job *job)
+                              struct panfrost_job *job)
 {
         if (ctx->rasterizer && ctx->rasterizer->base.multisample)
                 job->requirements |= PAN_REQ_MSAA;
@@ -217,10 +217,10 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
 
         if (util_format_is_rgba8_variant(desc)) {
                 pan_pack_color_32(packed,
-                        (float_to_ubyte(clear_alpha) << 24) |
-                        (float_to_ubyte(color->f[2]) << 16) |
-                        (float_to_ubyte(color->f[1]) <<  8) |
-                        (float_to_ubyte(color->f[0]) <<  0));
+                                  (float_to_ubyte(clear_alpha) << 24) |
+                                  (float_to_ubyte(color->f[2]) << 16) |
+                                  (float_to_ubyte(color->f[1]) <<  8) |
+                                  (float_to_ubyte(color->f[0]) <<  0));
         } else if (format == PIPE_FORMAT_B5G6R5_UNORM) {
                 /* First, we convert the components to R5, G6, B5 separately */
                 unsigned r5 = CLAMP(color->f[0], 0.0, 1.0) * 31.0;
@@ -279,10 +279,10 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
 
 void
 panfrost_job_clear(struct panfrost_context *ctx,
-                struct panfrost_job *job,
-                unsigned buffers,
-                const union pipe_color_union *color,
-                double depth, unsigned stencil)
+                   struct panfrost_job *job,
+                   unsigned buffers,
+                   const union pipe_color_union *color,
+                   double depth, unsigned stencil)
 
 {
         if (buffers & PIPE_CLEAR_COLOR) {
@@ -311,13 +311,13 @@ panfrost_job_clear(struct panfrost_context *ctx,
          * would emit a quad instead and we wouldn't go down this code path) */
 
         panfrost_job_union_scissor(job, 0, 0,
-                        ctx->pipe_framebuffer.width,
-                        ctx->pipe_framebuffer.height);
+                                   ctx->pipe_framebuffer.width,
+                                   ctx->pipe_framebuffer.height);
 }
 
 void
 panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
-                                struct pipe_resource *prsc)
+                                     struct pipe_resource *prsc)
 {
         struct panfrost_resource *rsc = pan_resource(prsc);
 
@@ -351,8 +351,8 @@ panfrost_job_hash(const void *key)
 
 void
 panfrost_job_union_scissor(struct panfrost_job *job,
-                unsigned minx, unsigned miny,
-                unsigned maxx, unsigned maxy)
+                           unsigned minx, unsigned miny,
+                           unsigned maxx, unsigned maxy)
 {
         job->minx = MIN2(job->minx, minx);
         job->miny = MIN2(job->miny, miny);
@@ -368,6 +368,6 @@ panfrost_job_init(struct panfrost_context *ctx)
                                             panfrost_job_compare);
 
         ctx->write_jobs = _mesa_hash_table_create(ctx,
-                                            _mesa_hash_pointer,
-                                            _mesa_key_pointer_equal);
+                          _mesa_hash_pointer,
+                          _mesa_key_pointer_equal);
 }

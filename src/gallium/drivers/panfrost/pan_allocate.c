@@ -77,7 +77,7 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
                 assert(pool->entry_index < PANFROST_MAX_TRANSIENT_ENTRIES);
 
                 /* Check if this entry exists */
-                
+
                 if (pool->entry_index >= pool->entry_count) {
                         /* Don't overflow the pool -- allocate a new one */
                         struct pipe_context *gallium = (struct pipe_context *) ctx;

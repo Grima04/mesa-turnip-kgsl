@@ -129,12 +129,12 @@ panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
 
 void
 panfrost_drm_allocate_slab(struct panfrost_screen *screen,
-		           struct panfrost_memory *mem,
-		           size_t pages,
-		           bool same_va,
-		           int extra_flags,
-		           int commit_count,
-		           int extent)
+                           struct panfrost_memory *mem,
+                           size_t pages,
+                           bool same_va,
+                           int extra_flags,
+                           int commit_count,
+                           int extent)
 {
         // TODO cache allocations
         // TODO properly handle errors
@@ -153,19 +153,19 @@ panfrost_drm_free_slab(struct panfrost_screen *screen, struct panfrost_memory *m
 struct panfrost_bo *
 panfrost_drm_import_bo(struct panfrost_screen *screen, int fd)
 {
-	struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
+        struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
         struct drm_panfrost_get_bo_offset get_bo_offset = {0,};
         int ret;
         unsigned gem_handle;
 
-	ret = drmPrimeFDToHandle(screen->fd, fd, &gem_handle);
-	assert(!ret);
+        ret = drmPrimeFDToHandle(screen->fd, fd, &gem_handle);
+        assert(!ret);
 
-	get_bo_offset.handle = gem_handle;
+        get_bo_offset.handle = gem_handle;
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_BO_OFFSET, &get_bo_offset);
         assert(!ret);
 
-	bo->gem_handle = gem_handle;
+        bo->gem_handle = gem_handle;
         bo->gpu = (mali_ptr) get_bo_offset.offset;
         bo->size = lseek(fd, 0, SEEK_END);
         assert(bo->size > 0);
@@ -205,25 +205,25 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
 
         submit.out_sync = ctx->out_sync;
 
-	submit.jc = job_desc;
-	submit.requirements = reqs;
+        submit.jc = job_desc;
+        submit.requirements = reqs;
 
-	bo_handles = calloc(job->bos->entries, sizeof(*bo_handles));
-	assert(bo_handles);
+        bo_handles = calloc(job->bos->entries, sizeof(*bo_handles));
+        assert(bo_handles);
 
-	set_foreach(job->bos, entry) {
-		struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
-		assert(bo->gem_handle > 0);
-		bo_handles[submit.bo_handle_count++] = bo->gem_handle;
-	}
+        set_foreach(job->bos, entry) {
+                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+                assert(bo->gem_handle > 0);
+                bo_handles[submit.bo_handle_count++] = bo->gem_handle;
+        }
 
-	submit.bo_handles = (u64) (uintptr_t) bo_handles;
-	ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
-	free(bo_handles);
-	if (ret) {
-	        fprintf(stderr, "Error submitting: %m\n");
-	        return errno;
-	}
+        submit.bo_handles = (u64) (uintptr_t) bo_handles;
+        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+        free(bo_handles);
+        if (ret) {
+                fprintf(stderr, "Error submitting: %m\n");
+                return errno;
+        }
 
         /* Trace the job if we're doing that */
         if (pan_debug & PAN_DBG_TRACE) {
@@ -232,13 +232,13 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
                 pandecode_replay_jc(submit.jc, FALSE);
         }
 
-	return 0;
+        return 0;
 }
 
 int
 panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool is_scanout)
 {
-	int ret;
+        int ret;
 
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
@@ -296,18 +296,18 @@ panfrost_fence_create(struct panfrost_context *ctx)
 
 void
 panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
-				  struct pipe_fence_handle **fence)
+                                  struct pipe_fence_handle **fence)
 {
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
         if (!screen->last_fragment_flushed) {
-		drmSyncobjWait(screen->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
+                drmSyncobjWait(screen->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
                 screen->last_fragment_flushed = true;
 
                 /* The job finished up, so we're safe to clean it up now */
                 panfrost_free_job(ctx, screen->last_job);
-	}
+        }
 
         if (fence) {
                 struct panfrost_fence *f = panfrost_fence_create(ctx);
@@ -322,11 +322,11 @@ panfrost_drm_query_gpu_version(struct panfrost_screen *screen)
         struct drm_panfrost_get_param get_param = {0,};
         int ret;
 
-	get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
+        get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_PARAM, &get_param);
         assert(!ret);
 
-	return get_param.value;
+        return get_param.value;
 }
 
 int
@@ -341,8 +341,8 @@ panfrost_drm_init_context(struct panfrost_context *ctx)
 
 void
 panfrost_drm_fence_reference(struct pipe_screen *screen,
-                         struct pipe_fence_handle **ptr,
-                         struct pipe_fence_handle *fence)
+                             struct pipe_fence_handle **ptr,
+                             struct pipe_fence_handle *fence)
 {
         struct panfrost_fence **p = (struct panfrost_fence **)ptr;
         struct panfrost_fence *f = (struct panfrost_fence *)fence;
@@ -357,9 +357,9 @@ panfrost_drm_fence_reference(struct pipe_screen *screen,
 
 boolean
 panfrost_drm_fence_finish(struct pipe_screen *pscreen,
-                      struct pipe_context *ctx,
-                      struct pipe_fence_handle *fence,
-                      uint64_t timeout)
+                          struct pipe_context *ctx,
+                          struct pipe_fence_handle *fence,
+                          uint64_t timeout)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_fence *f = (struct panfrost_fence *)fence;
