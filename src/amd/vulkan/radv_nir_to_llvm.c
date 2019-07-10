@@ -3321,9 +3321,27 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 
 	/* TODO: streamout */
 
-	/* TODO: VS primitive ID */
-	if (ctx->options->key.vs_common_out.export_prim_id)
-		assert(0);
+	/* Copy Primitive IDs from GS threads to the LDS address corresponding
+	 * to the ES thread of the provoking vertex.
+	 */
+	if (ctx->stage == MESA_SHADER_VERTEX &&
+	    ctx->options->key.vs_common_out.export_prim_id) {
+		/* TODO: streamout */
+
+		ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
+		/* Extract the PROVOKING_VTX_INDEX field. */
+		LLVMValueRef provoking_vtx_in_prim =
+			LLVMConstInt(ctx->ac.i32, 0, false);
+
+		/* provoking_vtx_index = vtxindex[provoking_vtx_in_prim]; */
+		LLVMValueRef indices = ac_build_gather_values(&ctx->ac, vtxindex, 3);
+		LLVMValueRef provoking_vtx_index =
+			LLVMBuildExtractElement(builder, indices, provoking_vtx_in_prim, "");
+
+		LLVMBuildStore(builder, ctx->abi.gs_prim_id,
+			       ac_build_gep0(&ctx->ac, ctx->esgs_ring, provoking_vtx_index));
+		ac_build_endif(&ctx->ac, 5400);
+	}
 
 	/* TODO: primitive culling */
 
@@ -3367,9 +3385,41 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 	/* Export per-vertex data (positions and parameters). */
 	ac_nir_build_if(&if_state, ctx, is_es_thread);
 	{
-		handle_vs_outputs_post(ctx, ctx->options->key.vs_common_out.export_prim_id,
+		struct radv_vs_output_info *outinfo =
+			ctx->stage == MESA_SHADER_TESS_EVAL ? &ctx->shader_info->tes.outinfo : &ctx->shader_info->vs.outinfo;
+
+		/* Exporting the primitive ID is handled below. */
+		/* TODO: use the new VS export path */
+		handle_vs_outputs_post(ctx, false,
 				       ctx->options->key.vs_common_out.export_clip_dists,
-				       ctx->stage == MESA_SHADER_TESS_EVAL ? &ctx->shader_info->tes.outinfo : &ctx->shader_info->vs.outinfo);
+				       outinfo);
+
+		if (ctx->options->key.vs_common_out.export_prim_id) {
+			unsigned param_count = outinfo->param_exports;
+			LLVMValueRef values[4];
+
+			if (ctx->stage == MESA_SHADER_VERTEX) {
+				/* Wait for GS stores to finish. */
+				ac_build_s_barrier(&ctx->ac);
+
+				tmp = ac_build_gep0(&ctx->ac, ctx->esgs_ring,
+						    get_thread_id_in_tg(ctx));
+				values[0] = LLVMBuildLoad(builder, tmp, "");
+			} else {
+				assert(ctx->stage == MESA_SHADER_TESS_EVAL);
+				values[0] = ctx->abi.tes_patch_id;
+			}
+
+			values[0] = ac_to_float(&ctx->ac, values[0]);
+			for (unsigned j = 1; j < 4; j++)
+				values[j] = ctx->ac.f32_0;
+
+			radv_export_param(ctx, param_count, values, 0x1);
+
+			outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = param_count++;
+			outinfo->export_prim_id = true;
+			outinfo->param_exports = param_count;
+		}
 	}
 	ac_nir_build_endif(&if_state);
 }
