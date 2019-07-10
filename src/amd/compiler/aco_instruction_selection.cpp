@@ -2543,9 +2543,8 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
       target = V_008DFC_SQ_EXP_MRT + index;
       col_format = (ctx->options->key.fs.col_format >> (4 * index)) & 0xf;
    }
-   ASSERTED bool is_int8 = (ctx->options->key.fs.is_int8 >> index) & 1;
-   ASSERTED bool is_int10 = (ctx->options->key.fs.is_int10 >> index) & 1;
-   assert(!is_int8 && !is_int10);
+   bool is_int8 = (ctx->options->key.fs.is_int8 >> index) & 1;
+   bool is_int10 = (ctx->options->key.fs.is_int10 >> index) & 1;
 
    switch (col_format)
    {
@@ -2588,14 +2587,46 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
       compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
       break;
 
-   case V_028714_SPI_SHADER_UINT16_ABGR:
+   case V_028714_SPI_SHADER_UINT16_ABGR: {
       enabled_channels = 0x5;
       compr_op = aco_opcode::v_cvt_pk_u16_u32;
+      if (is_int8 || is_int10) {
+         /* clamp */
+         uint32_t max_rgb = is_int8 ? 255 : is_int10 ? 1023 : 0;
+         Temp max_rgb_val = bld.copy(bld.def(s1), Operand(max_rgb));
+
+         for (unsigned i = 0; i < 4; i++) {
+            if ((write_mask >> i) & 1) {
+               values[i] = bld.vop2(aco_opcode::v_min_u32, bld.def(v1),
+                                    i == 3 && is_int10 ? Operand(3u) : Operand(max_rgb_val),
+                                    values[i]);
+            }
+         }
+      }
       break;
+   }
 
    case V_028714_SPI_SHADER_SINT16_ABGR:
       enabled_channels = 0x5;
       compr_op = aco_opcode::v_cvt_pk_i16_i32;
+      if (is_int8 || is_int10) {
+         /* clamp */
+         uint32_t max_rgb = is_int8 ? 127 : is_int10 ? 511 : 0;
+         uint32_t min_rgb = is_int8 ? -128 :is_int10 ? -512 : 0;
+         Temp max_rgb_val = bld.copy(bld.def(s1), Operand(max_rgb));
+         Temp min_rgb_val = bld.copy(bld.def(s1), Operand(min_rgb));
+
+         for (unsigned i = 0; i < 4; i++) {
+            if ((write_mask >> i) & 1) {
+               values[i] = bld.vop2(aco_opcode::v_min_i32, bld.def(v1),
+                                    i == 3 && is_int10 ? Operand(1u) : Operand(max_rgb_val),
+                                    values[i]);
+               values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1),
+                                    i == 3 && is_int10 ? Operand(-2u) : Operand(min_rgb_val),
+                                    values[i]);
+            }
+         }
+      }
       break;
 
    case V_028714_SPI_SHADER_32_ABGR:
@@ -2609,10 +2640,8 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
    if (target == V_008DFC_SQ_EXP_NULL)
       return;
 
-   if ((bool)compr_op)
-   {
-      for (int i = 0; i < 2; i++)
-      {
+   if ((bool) compr_op) {
+      for (int i = 0; i < 2; i++) {
          /* check if at least one of the values to be compressed is enabled */
          unsigned enabled = (write_mask >> (i*2) | write_mask >> (i*2+1)) & 0x1;
          if (enabled) {
