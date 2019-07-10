@@ -1630,7 +1630,7 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
       break;
    case SpvDecorationCounterBuffer:
       /* Counter buffer decorations can safely be ignored by the driver. */
-      break;
+      return;
    default:
       break;
    }
