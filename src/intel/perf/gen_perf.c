@@ -403,9 +403,9 @@ kernel_has_dynamic_config_support(struct gen_perf_config *perf, int fd)
                     &invalid_config_id) < 0 && errno == ENOENT;
 }
 
-bool
-gen_perf_load_metric_id(struct gen_perf_config *perf, const char *guid,
-                        uint64_t *metric_id)
+static bool
+load_metric_id(struct gen_perf_config *perf, const char *guid,
+               uint64_t *metric_id)
 {
    char config_path[280];
 
@@ -425,7 +425,7 @@ init_oa_configs(struct gen_perf_config *perf, int fd)
       uint64_t config_id;
       int ret;
 
-      if (gen_perf_load_metric_id(perf, query->guid, &config_id)) {
+      if (load_metric_id(perf, query->guid, &config_id)) {
          DBG("metric set: %s (already loaded)\n", query->guid);
          register_oa_config(perf, query, config_id);
          continue;
@@ -784,11 +784,11 @@ gen8_read_report_clock_ratios(const uint32_t *report,
    *unslice_freq_hz = unslice_freq * 16666667ULL;
 }
 
-void
-gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
-                                       const struct gen_device_info *devinfo,
-                                       const uint32_t *start,
-                                       const uint32_t *end)
+static void
+query_result_read_frequencies(struct gen_perf_query_result *result,
+                              const struct gen_device_info *devinfo,
+                              const uint32_t *start,
+                              const uint32_t *end)
 {
    /* Slice/Unslice frequency is only available in the OA reports when the
     * "Disable OA reports due to clock ratio change" field in
@@ -809,11 +809,11 @@ gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
                                  &result->unslice_frequency[1]);
 }
 
-void
-gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
-                                 const struct gen_perf_query_info *query,
-                                 const uint32_t *start,
-                                 const uint32_t *end)
+static void
+query_result_accumulate(struct gen_perf_query_result *result,
+                        const struct gen_perf_query_info *query,
+                        const uint32_t *start,
+                        const uint32_t *end)
 {
    int i, idx = 0;
 
@@ -851,16 +851,16 @@ gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
 
 }
 
-void
-gen_perf_query_result_clear(struct gen_perf_query_result *result)
+static void
+query_result_clear(struct gen_perf_query_result *result)
 {
    memset(result, 0, sizeof(*result));
    result->hw_id = 0xffffffff; /* invalid */
 }
 
 static void
-gen_perf_query_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
-                                              const struct gen_device_info *devinfo)
+register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
+                               const struct gen_device_info *devinfo)
 {
    if (!(devinfo->gen >= 7 && devinfo->gen <= 11))
       return;
@@ -1088,9 +1088,9 @@ register_mdapi_oa_query(const struct gen_device_info *devinfo,
    }
 }
 
-uint64_t
-gen_perf_query_get_metric_id(struct gen_perf_config *perf,
-                             const struct gen_perf_query_info *query)
+static uint64_t
+get_metric_id(struct gen_perf_config *perf,
+              const struct gen_perf_query_info *query)
 {
    /* These queries are know not to ever change, their config ID has been
     * loaded upon the first query creation. No need to look them up again.
@@ -1112,8 +1112,8 @@ gen_perf_query_get_metric_id(struct gen_perf_config *perf,
    }
 
    struct gen_perf_query_info *raw_query = (struct gen_perf_query_info *)query;
-   if (!gen_perf_load_metric_id(perf, query->guid,
-                                &raw_query->oa_metrics_set_id)) {
+   if (!load_metric_id(perf, query->guid,
+                       &raw_query->oa_metrics_set_id)) {
       DBG("Unable to read query guid=%s ID, falling back to test config\n", query->guid);
       raw_query->oa_metrics_set_id = 1ULL;
    } else {
@@ -1123,8 +1123,8 @@ gen_perf_query_get_metric_id(struct gen_perf_config *perf,
    return query->oa_metrics_set_id;
 }
 
-struct oa_sample_buf *
-gen_perf_get_free_sample_buf(struct gen_perf_context *perf_ctx)
+static struct oa_sample_buf *
+get_free_sample_buf(struct gen_perf_context *perf_ctx)
 {
    struct exec_node *node = exec_list_pop_head(&perf_ctx->free_sample_buffers);
    struct oa_sample_buf *buf;
@@ -1142,8 +1142,8 @@ gen_perf_get_free_sample_buf(struct gen_perf_context *perf_ctx)
    return buf;
 }
 
-void
-gen_perf_reap_old_sample_buffers(struct gen_perf_context *perf_ctx)
+static void
+reap_old_sample_buffers(struct gen_perf_context *perf_ctx)
 {
    struct exec_node *tail_node =
       exec_list_get_tail(&perf_ctx->sample_buffers);
@@ -1166,8 +1166,8 @@ gen_perf_reap_old_sample_buffers(struct gen_perf_context *perf_ctx)
    }
 }
 
-void
-gen_perf_free_sample_bufs(struct gen_perf_context *perf_ctx)
+static void
+free_sample_bufs(struct gen_perf_context *perf_ctx)
 {
    foreach_list_typed_safe(struct oa_sample_buf, buf, link,
                            &perf_ctx->free_sample_buffers)
@@ -1182,11 +1182,11 @@ gen_perf_free_sample_bufs(struct gen_perf_context *perf_ctx)
  * Emit MI_STORE_REGISTER_MEM commands to capture all of the
  * pipeline statistics for the performance query object.
  */
-void
-gen_perf_snapshot_statistics_registers(void *context,
-                                       struct gen_perf_config *perf,
-                                       struct gen_perf_query_object *obj,
-                                       uint32_t offset_in_bytes)
+static void
+snapshot_statistics_registers(void *context,
+                              struct gen_perf_config *perf,
+                              struct gen_perf_query_object *obj,
+                              uint32_t offset_in_bytes)
 {
    const struct gen_perf_query_info *query = obj->queryinfo;
    const int n_counters = query->n_counters;
@@ -1202,7 +1202,7 @@ gen_perf_snapshot_statistics_registers(void *context,
    }
 }
 
-void
+static void
 gen_perf_close(struct gen_perf_context *perfquery,
                const struct gen_perf_query_info *query)
 {
@@ -1217,7 +1217,7 @@ gen_perf_close(struct gen_perf_context *perfquery,
    }
 }
 
-bool
+static bool
 gen_perf_open(struct gen_perf_context *perf_ctx,
               int metrics_set_id,
               int report_format,
@@ -1258,8 +1258,8 @@ gen_perf_open(struct gen_perf_context *perf_ctx,
    return true;
 }
 
-bool
-gen_perf_inc_n_users(struct gen_perf_context *perf_ctx)
+static bool
+inc_n_users(struct gen_perf_context *perf_ctx)
 {
    if (perf_ctx->n_oa_users == 0 &&
        gen_ioctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_ENABLE, 0) < 0)
@@ -1271,8 +1271,8 @@ gen_perf_inc_n_users(struct gen_perf_context *perf_ctx)
    return true;
 }
 
-void
-gen_perf_dec_n_users(struct gen_perf_context *perf_ctx)
+static void
+dec_n_users(struct gen_perf_context *perf_ctx)
 {
    /* Disabling the i915 perf stream will effectively disable the OA
     * counters.  Note it's important to be sure there are no outstanding
@@ -1293,7 +1293,7 @@ gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
                       int drm_fd)
 {
    load_pipeline_statistic_metrics(perf_cfg, devinfo);
-   gen_perf_query_register_mdapi_statistic_query(perf_cfg, devinfo);
+   register_mdapi_statistic_query(perf_cfg, devinfo);
    if (load_oa_metrics(perf_cfg, drm_fd, devinfo))
       register_mdapi_oa_query(devinfo, perf_cfg);
 }
@@ -1327,7 +1327,7 @@ gen_perf_init_context(struct gen_perf_context *perf_ctx,
     * Begin an OA query we can always take a reference on a buffer
     * in this list.
     */
-   struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(perf_ctx);
+   struct oa_sample_buf *buf = get_free_sample_buf(perf_ctx);
    exec_list_push_head(&perf_ctx->sample_buffers, &buf->link);
 
    perf_ctx->oa_stream_fd = -1;
@@ -1421,7 +1421,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
        * require a different counter set or format unless we get an opportunity
        * to close the stream and open a new one...
        */
-      uint64_t metric_id = gen_perf_query_get_metric_id(perf_ctx->perf, queryinfo);
+      uint64_t metric_id = get_metric_id(perf_ctx->perf, queryinfo);
 
       if (perf_ctx->oa_stream_fd != -1 &&
           perf_ctx->current_oa_metrics_set_id != metric_id) {
@@ -1499,7 +1499,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
                 perf_ctx->current_oa_format == queryinfo->oa_format);
       }
 
-      if (!gen_perf_inc_n_users(perf_ctx)) {
+      if (!inc_n_users(perf_ctx)) {
          DBG("WARNING: Error enabling i915 perf stream: %m\n");
          return false;
       }
@@ -1555,7 +1555,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
        */
       buf->refcount++;
 
-      gen_perf_query_result_clear(&query->oa.result);
+      query_result_clear(&query->oa.result);
       query->oa.results_accumulated = false;
 
       add_to_unaccumulated_query_list(perf_ctx, query);
@@ -1574,7 +1574,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
                                  STATS_BO_SIZE);
 
       /* Take starting snapshots. */
-      gen_perf_snapshot_statistics_registers(perf_ctx->ctx , perf_cfg, query, 0);
+      snapshot_statistics_registers(perf_ctx->ctx , perf_cfg, query, 0);
 
       ++perf_ctx->n_active_pipeline_stats_queries;
       break;
@@ -1628,8 +1628,8 @@ gen_perf_end_query(struct gen_perf_context *perf_ctx,
       break;
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
-      gen_perf_snapshot_statistics_registers(perf_ctx->ctx, perf_cfg, query,
-                                             STATS_BO_END_OFFSET_BYTES);
+      snapshot_statistics_registers(perf_ctx->ctx, perf_cfg, query,
+                                    STATS_BO_END_OFFSET_BYTES);
       --perf_ctx->n_active_pipeline_stats_queries;
       break;
 
@@ -1657,7 +1657,7 @@ read_oa_samples_until(struct gen_perf_context *perf_ctx,
    uint32_t last_timestamp = tail_buf->last_timestamp;
 
    while (1) {
-      struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(perf_ctx);
+      struct oa_sample_buf *buf = get_free_sample_buf(perf_ctx);
       uint32_t offset;
       int len;
 
@@ -1869,7 +1869,7 @@ drop_from_unaccumulated_query_list(struct gen_perf_context *perf_ctx,
 
    query->oa.samples_head = NULL;
 
-   gen_perf_reap_old_sample_buffers(perf_ctx);
+   reap_old_sample_buffers(perf_ctx);
 }
 
 /* In general if we see anything spurious while accumulating results,
@@ -1886,7 +1886,7 @@ discard_all_queries(struct gen_perf_context *perf_ctx)
       query->oa.results_accumulated = true;
       drop_from_unaccumulated_query_list(perf_ctx, query);
 
-      gen_perf_dec_n_users(perf_ctx);
+      dec_n_users(perf_ctx);
    }
 }
 
@@ -2023,8 +2023,8 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
             }
 
             if (add) {
-               gen_perf_query_result_accumulate(&query->oa.result, query->queryinfo,
-                                                last, report);
+               query_result_accumulate(&query->oa.result, query->queryinfo,
+                                       last, report);
             }
 
             last = report;
@@ -2044,12 +2044,12 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
 
 end:
 
-   gen_perf_query_result_accumulate(&query->oa.result, query->queryinfo,
-                                    last, end);
+   query_result_accumulate(&query->oa.result, query->queryinfo,
+                           last, end);
 
    query->oa.results_accumulated = true;
    drop_from_unaccumulated_query_list(perf_ctx, query);
-   gen_perf_dec_n_users(perf_ctx);
+   dec_n_users(perf_ctx);
 
    return;
 
@@ -2074,7 +2074,7 @@ gen_perf_delete_query(struct gen_perf_context *perf_ctx,
       if (query->oa.bo) {
          if (!query->oa.results_accumulated) {
             drop_from_unaccumulated_query_list(perf_ctx, query);
-            gen_perf_dec_n_users(perf_ctx);
+            dec_n_users(perf_ctx);
          }
 
          perf_cfg->vtbl.bo_unreference(query->oa.bo);
@@ -2101,7 +2101,7 @@ gen_perf_delete_query(struct gen_perf_context *perf_ctx,
     * buffers and close any current i915-perf stream.
     */
    if (--perf_ctx->n_query_instances == 0) {
-      gen_perf_free_sample_bufs(perf_ctx);
+      free_sample_bufs(perf_ctx);
       gen_perf_close(perf_ctx, query->queryinfo);
    }
 
@@ -2232,10 +2232,10 @@ gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
          read_gt_frequency(perf_ctx, query);
          uint32_t *begin_report = query->oa.map;
          uint32_t *end_report = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
-         gen_perf_query_result_read_frequencies(&query->oa.result,
-                                                perf_ctx->devinfo,
-                                                begin_report,
-                                                end_report);
+         query_result_read_frequencies(&query->oa.result,
+                                       perf_ctx->devinfo,
+                                       begin_report,
+                                       end_report);
          accumulate_oa_reports(perf_ctx, query);
          assert(query->oa.results_accumulated);
 

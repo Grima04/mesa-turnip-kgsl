@@ -423,42 +423,9 @@ gen_perf_new(void *ctx)
    return perf;
 }
 
-bool gen_perf_load_metric_id(struct gen_perf_config *perf, const char *guid,
-                             uint64_t *metric_id);
-
-void gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
-                                            const struct gen_device_info *devinfo,
-                                            const uint32_t *start,
-                                            const uint32_t *end);
-void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
-                                      const struct gen_perf_query_info *query,
-                                      const uint32_t *start,
-                                      const uint32_t *end);
-void gen_perf_query_result_clear(struct gen_perf_query_result *result);
-uint64_t gen_perf_query_get_metric_id(struct gen_perf_config *perf,
-                                      const struct gen_perf_query_info *query);
-struct oa_sample_buf * gen_perf_get_free_sample_buf(struct gen_perf_context *perf);
-void gen_perf_reap_old_sample_buffers(struct gen_perf_context *perf_ctx);
-void gen_perf_free_sample_bufs(struct gen_perf_context *perf_ctx);
-
-void gen_perf_snapshot_statistics_registers(void *context,
-                                            struct gen_perf_config *perf,
-                                            struct gen_perf_query_object *obj,
-                                            uint32_t offset_in_bytes);
 struct gen_perf_query_object *
 gen_perf_new_query(struct gen_perf_context *, unsigned query_index);
 
-void gen_perf_close(struct gen_perf_context *perfquery,
-                    const struct gen_perf_query_info *query);
-bool gen_perf_open(struct gen_perf_context *perfquery,
-                   int metrics_set_id,
-                   int report_format,
-                   int period_exponent,
-                   int drm_fd,
-                   uint32_t ctx_id);
-
-bool gen_perf_inc_n_users(struct gen_perf_context *perfquery);
-void gen_perf_dec_n_users(struct gen_perf_context *perfquery);
 
 bool gen_perf_begin_query(struct gen_perf_context *perf_ctx,
                           struct gen_perf_query_object *query);
