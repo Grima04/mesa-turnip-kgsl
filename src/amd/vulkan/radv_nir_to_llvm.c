@@ -3043,7 +3043,7 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 			continue;
 
 		outputs[noutput].slot_name = i;
-		outputs[noutput].slot_index = 0;
+		outputs[noutput].slot_index = i == VARYING_SLOT_CLIP_DIST1;
 
 		if (ctx->stage == MESA_SHADER_VERTEX &&
 		    !ctx->is_gs_copy_shader) {
