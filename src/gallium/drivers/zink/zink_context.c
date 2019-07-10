@@ -451,8 +451,7 @@ zink_set_stencil_ref(struct pipe_context *pctx,
                      const struct pipe_stencil_ref *ref)
 {
    struct zink_context *ctx = zink_context(pctx);
-   ctx->stencil_ref[0] = ref->ref_value[0];
-   ctx->stencil_ref[1] = ref->ref_value[1];
+   ctx->stencil_ref = *ref;
 }
 
 static void
@@ -1081,8 +1080,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       vkCmdSetScissor(batch->cmdbuf, 0, 1, &fb_scissor);
    }
 
-   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, ctx->stencil_ref[0]);
-   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_BACK_BIT, ctx->stencil_ref[1]);
+   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, ctx->stencil_ref.ref_value[0]);
+   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_BACK_BIT, ctx->stencil_ref.ref_value[1]);
 
    if (depth_bias)
       vkCmdSetDepthBias(batch->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);

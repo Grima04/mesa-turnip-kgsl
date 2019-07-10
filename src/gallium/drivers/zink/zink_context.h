@@ -101,7 +101,7 @@ struct zink_context {
 
    float blend_constants[4];
 
-   uint32_t stencil_ref[2];
+   struct pipe_stencil_ref stencil_ref;
 };
 
 static inline struct zink_context *
