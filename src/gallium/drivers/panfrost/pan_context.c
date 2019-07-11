@@ -530,6 +530,7 @@ panfrost_emit_varyings(
         slot->elements = varying_address | MALI_ATTR_LINEAR;
         slot->stride = stride;
         slot->size = stride * count;
+        slot->shift = slot->extra_flags = 0;
 
         ctx->varying_height += ALIGN_POT(slot->size, 64);
         assert(ctx->varying_height < ctx->varying_mem.bo->size);
@@ -541,7 +542,7 @@ static void
 panfrost_emit_point_coord(union mali_attr *slot)
 {
         slot->elements = MALI_VARYING_POINT_COORD | MALI_ATTR_LINEAR;
-        slot->stride = slot->size = 0;
+        slot->stride = slot->size = slot->shift = slot->extra_flags = 0;
 }
 
 static void

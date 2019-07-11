@@ -308,6 +308,9 @@ panfrost_emit_vertex_data(struct panfrost_job *batch)
                  * correctness) so the data doesn't get clamped away */
                 attrs[k].size += chopped_addr;
 
+                /* For non-instancing make sure we initialize */
+                attrs[k].shift = attrs[k].extra_flags = 0;
+
                 /* Instancing uses a dramatically different code path than
                  * linear, so dispatch for the actual emission now that the
                  * common code is finished */
