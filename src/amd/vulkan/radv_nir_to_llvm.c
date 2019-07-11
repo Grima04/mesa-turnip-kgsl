@@ -4326,7 +4326,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 				ctx.gs_ngg_emit = LLVMBuildIntToPtr(ctx.ac.builder, ctx.ac.i32_0,
 					LLVMPointerType(LLVMArrayType(ctx.ac.i32, 0), AC_ADDR_SPACE_LDS),
 					"ngg_emit");
-				LLVMSetAlignment(ctx.gs_ngg_emit, 4);
 			}
 
 			ctx.gs_max_out_vertices = shaders[i]->info.gs.vertices_out;
