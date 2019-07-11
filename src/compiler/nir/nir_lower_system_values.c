@@ -28,98 +28,25 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-static nir_ssa_def*
-build_local_group_size(nir_builder *b, unsigned bit_size)
-{
-   nir_ssa_def *local_size;
-
-   /*
-    * If the local work group size is variable it can't be lowered at this
-    * point, but its intrinsic can still be used.
-    */
-   if (b->shader->info.cs.local_size_variable) {
-      local_size = nir_load_local_group_size(b);
-   } else {
-      /* using a 32 bit constant is safe here as no device/driver needs more
-       * than 32 bits for the local size */
-      nir_const_value local_size_const[3];
-      memset(local_size_const, 0, sizeof(local_size_const));
-      local_size_const[0].u32 = b->shader->info.cs.local_size[0];
-      local_size_const[1].u32 = b->shader->info.cs.local_size[1];
-      local_size_const[2].u32 = b->shader->info.cs.local_size[2];
-      local_size = nir_build_imm(b, 3, 32, local_size_const);
-   }
-
-   return nir_u2u(b, local_size, bit_size);
-}
-
 static nir_ssa_def *
-build_local_invocation_id(nir_builder *b, unsigned bit_size)
+sanitize_32bit_sysval(nir_builder *b, nir_intrinsic_instr *intrin)
 {
-   /* If lower_cs_local_id_from_index is true, then we derive the local
-    * index from the local id.
-    */
-   if (b->shader->options->lower_cs_local_id_from_index) {
-      /* We lower gl_LocalInvocationID from gl_LocalInvocationIndex based
-       * on this formula:
-       *
-       *    gl_LocalInvocationID.x =
-       *       gl_LocalInvocationIndex % gl_WorkGroupSize.x;
-       *    gl_LocalInvocationID.y =
-       *       (gl_LocalInvocationIndex / gl_WorkGroupSize.x) %
-       *       gl_WorkGroupSize.y;
-       *    gl_LocalInvocationID.z =
-       *       (gl_LocalInvocationIndex /
-       *        (gl_WorkGroupSize.x * gl_WorkGroupSize.y)) %
-       *       gl_WorkGroupSize.z;
-       *
-       * However, the final % gl_WorkGroupSize.z does nothing unless we
-       * accidentally end up with a gl_LocalInvocationIndex that is too
-       * large so it can safely be omitted.
-       */
-      nir_ssa_def *local_index = nir_load_local_invocation_index(b);
-      nir_ssa_def *local_size = build_local_group_size(b, 32);
+   assert(intrin->dest.is_ssa);
+   const unsigned bit_size = intrin->dest.ssa.bit_size;
+   if (bit_size == 32)
+      return NULL;
 
-      /* Because no hardware supports a local workgroup size greater than
-       * about 1K, this calculation can be done in 32-bit and can save some
-       * 64-bit arithmetic.
-       */
-      nir_ssa_def *id_x, *id_y, *id_z;
-      id_x = nir_umod(b, local_index,
-                         nir_channel(b, local_size, 0));
-      id_y = nir_umod(b, nir_udiv(b, local_index,
-                                     nir_channel(b, local_size, 0)),
-                         nir_channel(b, local_size, 1));
-      id_z = nir_udiv(b, local_index,
-                         nir_imul(b, nir_channel(b, local_size, 0),
-                                     nir_channel(b, local_size, 1)));
-      return nir_u2u(b, nir_vec3(b, id_x, id_y, id_z), bit_size);
-   } else {
-      return nir_u2u(b, nir_load_local_invocation_id(b), bit_size);
-   }
+   intrin->dest.ssa.bit_size = 32;
+   return nir_u2u(b, &intrin->dest.ssa, bit_size);
 }
 
 static nir_ssa_def*
 build_global_group_size(nir_builder *b, unsigned bit_size)
 {
-   nir_ssa_def *group_size = build_local_group_size(b, bit_size);
-   nir_ssa_def *num_work_groups = nir_u2u(b, nir_load_num_work_groups(b), bit_size);
-   return nir_imul(b, group_size, num_work_groups);
-}
-
-static nir_ssa_def*
-build_global_invocation_id(nir_builder *b, unsigned bit_size)
-{
-   /* From the GLSL man page for gl_GlobalInvocationID:
-    *
-    *    "The value of gl_GlobalInvocationID is equal to
-    *    gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID"
-    */
-   nir_ssa_def *group_size = build_local_group_size(b, bit_size);
-   nir_ssa_def *group_id = nir_u2u(b, nir_load_work_group_id(b), bit_size);
-   nir_ssa_def *local_id = build_local_invocation_id(b, bit_size);
-
-   return nir_iadd(b, nir_imul(b, group_id, group_size), local_id);
+   nir_ssa_def *group_size = nir_load_local_group_size(b);
+   nir_ssa_def *num_work_groups = nir_load_num_work_groups(b);
+   return nir_imul(b, nir_u2u(b, group_size, bit_size),
+                      nir_u2u(b, num_work_groups, bit_size));
 }
 
 static bool
@@ -132,7 +59,87 @@ static nir_ssa_def *
 lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
 {
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   if (intrin->intrinsic == nir_intrinsic_load_deref) {
+
+   /* All the intrinsics we care about are loads */
+   if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
+      return NULL;
+
+   assert(intrin->dest.is_ssa);
+   const unsigned bit_size = intrin->dest.ssa.bit_size;
+
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_local_invocation_id:
+      /* If lower_cs_local_id_from_index is true, then we derive the local
+       * index from the local id.
+       */
+      if (b->shader->options->lower_cs_local_id_from_index) {
+         /* We lower gl_LocalInvocationID from gl_LocalInvocationIndex based
+          * on this formula:
+          *
+          *    gl_LocalInvocationID.x =
+          *       gl_LocalInvocationIndex % gl_WorkGroupSize.x;
+          *    gl_LocalInvocationID.y =
+          *       (gl_LocalInvocationIndex / gl_WorkGroupSize.x) %
+          *       gl_WorkGroupSize.y;
+          *    gl_LocalInvocationID.z =
+          *       (gl_LocalInvocationIndex /
+          *        (gl_WorkGroupSize.x * gl_WorkGroupSize.y)) %
+          *       gl_WorkGroupSize.z;
+          *
+          * However, the final % gl_WorkGroupSize.z does nothing unless we
+          * accidentally end up with a gl_LocalInvocationIndex that is too
+          * large so it can safely be omitted.
+          */
+         nir_ssa_def *local_index = nir_load_local_invocation_index(b);
+         nir_ssa_def *local_size = nir_load_local_group_size(b);
+
+         /* Because no hardware supports a local workgroup size greater than
+          * about 1K, this calculation can be done in 32-bit and can save some
+          * 64-bit arithmetic.
+          */
+         nir_ssa_def *id_x, *id_y, *id_z;
+         id_x = nir_umod(b, local_index,
+                            nir_channel(b, local_size, 0));
+         id_y = nir_umod(b, nir_udiv(b, local_index,
+                                        nir_channel(b, local_size, 0)),
+                            nir_channel(b, local_size, 1));
+         id_z = nir_udiv(b, local_index,
+                            nir_imul(b, nir_channel(b, local_size, 0),
+                                        nir_channel(b, local_size, 1)));
+         return nir_u2u(b, nir_vec3(b, id_x, id_y, id_z), bit_size);
+      } else {
+         return sanitize_32bit_sysval(b, intrin);
+      }
+
+   case nir_intrinsic_load_local_group_size:
+      if (b->shader->info.cs.local_size_variable) {
+         /* If the local work group size is variable it can't be lowered at
+          * this point.  We do, however, have to make sure that the intrinsic
+          * is only 32-bit.
+          */
+         return sanitize_32bit_sysval(b, intrin);
+      } else {
+         /* using a 32 bit constant is safe here as no device/driver needs more
+          * than 32 bits for the local size */
+         nir_const_value local_size_const[3];
+         memset(local_size_const, 0, sizeof(local_size_const));
+         local_size_const[0].u32 = b->shader->info.cs.local_size[0];
+         local_size_const[1].u32 = b->shader->info.cs.local_size[1];
+         local_size_const[2].u32 = b->shader->info.cs.local_size[2];
+         return nir_u2u(b, nir_build_imm(b, 3, 32, local_size_const), bit_size);
+      }
+
+   case nir_intrinsic_load_global_invocation_id: {
+      nir_ssa_def *group_size = nir_load_local_group_size(b);
+      nir_ssa_def *group_id = nir_load_work_group_id(b);
+      nir_ssa_def *local_id = nir_load_local_invocation_id(b);
+
+      return nir_iadd(b, nir_imul(b, nir_u2u(b, group_id, bit_size),
+                                     nir_u2u(b, group_size, bit_size)),
+                         nir_u2u(b, local_id, bit_size));
+   }
+
+   case nir_intrinsic_load_deref: {
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
       if (deref->mode != nir_var_system_value)
          return NULL;
@@ -148,13 +155,9 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       }
       nir_variable *var = deref->var;
 
-      unsigned bit_size = nir_dest_bit_size(intrin->dest);
       switch (var->data.location) {
-      case SYSTEM_VALUE_GLOBAL_INVOCATION_ID:
-         return build_global_invocation_id(b, bit_size);
-
       case SYSTEM_VALUE_GLOBAL_INVOCATION_INDEX: {
-         nir_ssa_def *global_id = build_global_invocation_id(b, bit_size);
+         nir_ssa_def *global_id = nir_load_global_invocation_id(b, bit_size);
          nir_ssa_def *global_size = build_global_group_size(b, bit_size);
 
          /* index = id.x + ((id.y + (id.z * size.y)) * size.x) */
@@ -201,12 +204,6 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          index = nir_u2u(b, index, bit_size);
          return index;
       }
-
-      case SYSTEM_VALUE_LOCAL_INVOCATION_ID:
-         return build_local_invocation_id(b, bit_size);
-
-      case SYSTEM_VALUE_LOCAL_GROUP_SIZE:
-         return build_local_group_size(b, bit_size);
 
       case SYSTEM_VALUE_VERTEX_ID:
          if (b->shader->options->vertex_id_zero_based) {
@@ -283,7 +280,9 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
                                       intrin->dest.ssa.bit_size);
    }
 
-   return NULL;
+   default:
+      return NULL;
+   }
 }
 
 bool
