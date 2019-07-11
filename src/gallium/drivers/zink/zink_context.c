@@ -428,9 +428,12 @@ zink_set_constant_buffer(struct pipe_context *pctx,
    if (cb) {
       struct pipe_resource *buffer = cb->buffer;
       unsigned offset = cb->buffer_offset;
-      if (cb->user_buffer)
-         u_upload_data(ctx->base.const_uploader, 0, cb->buffer_size, 64,
+      if (cb->user_buffer) {
+         struct zink_screen *screen = zink_screen(pctx->screen);
+         u_upload_data(ctx->base.const_uploader, 0, cb->buffer_size,
+                       screen->props.limits.minUniformBufferOffsetAlignment,
                        cb->user_buffer, &offset, &buffer);
+      }
 
       pipe_resource_reference(&ctx->ubos[shader][index].buffer, buffer);
       ctx->ubos[shader][index].buffer_offset = offset;
