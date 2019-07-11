@@ -244,9 +244,8 @@ dEQP-GLES2.functional.fragment_ops.random.96
 dEQP-GLES2.functional.fragment_ops.random.97
 dEQP-GLES2.functional.fragment_ops.random.98
 dEQP-GLES2.functional.fragment_ops.random.99
-dEQP-GLES2.functional.polygon_offset.fixed16_displacement_with_units
-dEQP-GLES2.functional.polygon_offset.fixed16_render_with_factor
 dEQP-GLES2.functional.polygon_offset.fixed16_render_with_units
+dEQP-GLES2.functional.polygon_offset.fixed16_factor_1_slope
 dEQP-GLES2.functional.shaders.builtin_variable.fragcoord_w
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_fragment
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_vertex
