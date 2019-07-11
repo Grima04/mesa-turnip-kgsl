@@ -3862,6 +3862,197 @@ fs_visitor::lower_load_payload()
    return progress;
 }
 
+void
+fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block,
+                                 const fs_builder &ibld)
+{
+   if (inst->src[1].file == IMM && inst->src[1].ud < (1 << 16)) {
+      /* The MUL instruction isn't commutative. On Gen <= 6, only the low
+       * 16-bits of src0 are read, and on Gen >= 7 only the low 16-bits of
+       * src1 are used.
+       *
+       * If multiplying by an immediate value that fits in 16-bits, do a
+       * single MUL instruction with that value in the proper location.
+       */
+      if (devinfo->gen < 7) {
+         fs_reg imm(VGRF, alloc.allocate(dispatch_width / 8), inst->dst.type);
+         ibld.MOV(imm, inst->src[1]);
+         ibld.MUL(inst->dst, imm, inst->src[0]);
+      } else {
+         const bool ud = (inst->src[1].type == BRW_REGISTER_TYPE_UD);
+         ibld.MUL(inst->dst, inst->src[0],
+                  ud ? brw_imm_uw(inst->src[1].ud)
+                     : brw_imm_w(inst->src[1].d));
+      }
+   } else {
+      /* Gen < 8 (and some Gen8+ low-power parts like Cherryview) cannot
+       * do 32-bit integer multiplication in one instruction, but instead
+       * must do a sequence (which actually calculates a 64-bit result):
+       *
+       *    mul(8)  acc0<1>D   g3<8,8,1>D      g4<8,8,1>D
+       *    mach(8) null       g3<8,8,1>D      g4<8,8,1>D
+       *    mov(8)  g2<1>D     acc0<8,8,1>D
+       *
+       * But on Gen > 6, the ability to use second accumulator register
+       * (acc1) for non-float data types was removed, preventing a simple
+       * implementation in SIMD16. A 16-channel result can be calculated by
+       * executing the three instructions twice in SIMD8, once with quarter
+       * control of 1Q for the first eight channels and again with 2Q for
+       * the second eight channels.
+       *
+       * Which accumulator register is implicitly accessed (by AccWrEnable
+       * for instance) is determined by the quarter control. Unfortunately
+       * Ivybridge (and presumably Baytrail) has a hardware bug in which an
+       * implicit accumulator access by an instruction with 2Q will access
+       * acc1 regardless of whether the data type is usable in acc1.
+       *
+       * Specifically, the 2Q mach(8) writes acc1 which does not exist for
+       * integer data types.
+       *
+       * Since we only want the low 32-bits of the result, we can do two
+       * 32-bit x 16-bit multiplies (like the mul and mach are doing), and
+       * adjust the high result and add them (like the mach is doing):
+       *
+       *    mul(8)  g7<1>D     g3<8,8,1>D      g4.0<8,8,1>UW
+       *    mul(8)  g8<1>D     g3<8,8,1>D      g4.1<8,8,1>UW
+       *    shl(8)  g9<1>D     g8<8,8,1>D      16D
+       *    add(8)  g2<1>D     g7<8,8,1>D      g8<8,8,1>D
+       *
+       * We avoid the shl instruction by realizing that we only want to add
+       * the low 16-bits of the "high" result to the high 16-bits of the
+       * "low" result and using proper regioning on the add:
+       *
+       *    mul(8)  g7<1>D     g3<8,8,1>D      g4.0<16,8,2>UW
+       *    mul(8)  g8<1>D     g3<8,8,1>D      g4.1<16,8,2>UW
+       *    add(8)  g7.1<2>UW  g7.1<16,8,2>UW  g8<16,8,2>UW
+       *
+       * Since it does not use the (single) accumulator register, we can
+       * schedule multi-component multiplications much better.
+       */
+
+      bool needs_mov = false;
+      fs_reg orig_dst = inst->dst;
+
+      /* Get a new VGRF for the "low" 32x16-bit multiplication result if
+       * reusing the original destination is impossible due to hardware
+       * restrictions, source/destination overlap, or it being the null
+       * register.
+       */
+      fs_reg low = inst->dst;
+      if (orig_dst.is_null() || orig_dst.file == MRF ||
+          regions_overlap(inst->dst, inst->size_written,
+                          inst->src[0], inst->size_read(0)) ||
+          regions_overlap(inst->dst, inst->size_written,
+                          inst->src[1], inst->size_read(1)) ||
+          inst->dst.stride >= 4) {
+         needs_mov = true;
+         low = fs_reg(VGRF, alloc.allocate(regs_written(inst)),
+                      inst->dst.type);
+      }
+
+      /* Get a new VGRF but keep the same stride as inst->dst */
+      fs_reg high(VGRF, alloc.allocate(regs_written(inst)), inst->dst.type);
+      high.stride = inst->dst.stride;
+      high.offset = inst->dst.offset % REG_SIZE;
+
+      if (devinfo->gen >= 7) {
+         if (inst->src[1].abs)
+            lower_src_modifiers(this, block, inst, 1);
+
+         if (inst->src[1].file == IMM) {
+            ibld.MUL(low, inst->src[0],
+                     brw_imm_uw(inst->src[1].ud & 0xffff));
+            ibld.MUL(high, inst->src[0],
+                     brw_imm_uw(inst->src[1].ud >> 16));
+         } else {
+            ibld.MUL(low, inst->src[0],
+                     subscript(inst->src[1], BRW_REGISTER_TYPE_UW, 0));
+            ibld.MUL(high, inst->src[0],
+                     subscript(inst->src[1], BRW_REGISTER_TYPE_UW, 1));
+         }
+      } else {
+         if (inst->src[0].abs)
+            lower_src_modifiers(this, block, inst, 0);
+
+         ibld.MUL(low, subscript(inst->src[0], BRW_REGISTER_TYPE_UW, 0),
+                  inst->src[1]);
+         ibld.MUL(high, subscript(inst->src[0], BRW_REGISTER_TYPE_UW, 1),
+                  inst->src[1]);
+      }
+
+      ibld.ADD(subscript(low, BRW_REGISTER_TYPE_UW, 1),
+               subscript(low, BRW_REGISTER_TYPE_UW, 1),
+               subscript(high, BRW_REGISTER_TYPE_UW, 0));
+
+      if (needs_mov || inst->conditional_mod)
+         set_condmod(inst->conditional_mod, ibld.MOV(orig_dst, low));
+   }
+}
+
+void
+fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block,
+                            const fs_builder &ibld)
+{
+   /* According to the BDW+ BSpec page for the "Multiply Accumulate
+    * High" instruction:
+    *
+    *  "An added preliminary mov is required for source modification on
+    *   src1:
+    *      mov (8) r3.0<1>:d -r3<8;8,1>:d
+    *      mul (8) acc0:d r2.0<8;8,1>:d r3.0<16;8,2>:uw
+    *      mach (8) r5.0<1>:d r2.0<8;8,1>:d r3.0<8;8,1>:d"
+    */
+   if (devinfo->gen >= 8 && (inst->src[1].negate || inst->src[1].abs))
+      lower_src_modifiers(this, block, inst, 1);
+
+   /* Should have been lowered to 8-wide. */
+   assert(inst->exec_size <= get_lowered_simd_width(devinfo, inst));
+   const fs_reg acc = retype(brw_acc_reg(inst->exec_size), inst->dst.type);
+   fs_inst *mul = ibld.MUL(acc, inst->src[0], inst->src[1]);
+   fs_inst *mach = ibld.MACH(inst->dst, inst->src[0], inst->src[1]);
+
+   if (devinfo->gen >= 8) {
+      /* Until Gen8, integer multiplies read 32-bits from one source,
+       * and 16-bits from the other, and relying on the MACH instruction
+       * to generate the high bits of the result.
+       *
+       * On Gen8, the multiply instruction does a full 32x32-bit
+       * multiply, but in order to do a 64-bit multiply we can simulate
+       * the previous behavior and then use a MACH instruction.
+       */
+      assert(mul->src[1].type == BRW_REGISTER_TYPE_D ||
+             mul->src[1].type == BRW_REGISTER_TYPE_UD);
+      mul->src[1].type = BRW_REGISTER_TYPE_UW;
+      mul->src[1].stride *= 2;
+
+      if (mul->src[1].file == IMM) {
+         mul->src[1] = brw_imm_uw(mul->src[1].ud);
+      }
+   } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
+              inst->group > 0) {
+      /* Among other things the quarter control bits influence which
+       * accumulator register is used by the hardware for instructions
+       * that access the accumulator implicitly (e.g. MACH).  A
+       * second-half instruction would normally map to acc1, which
+       * doesn't exist on Gen7 and up (the hardware does emulate it for
+       * floating-point instructions *only* by taking advantage of the
+       * extra precision of acc0 not normally used for floating point
+       * arithmetic).
+       *
+       * HSW and up are careful enough not to try to access an
+       * accumulator register that doesn't exist, but on earlier Gen7
+       * hardware we need to make sure that the quarter control bits are
+       * zero to avoid non-deterministic behaviour and emit an extra MOV
+       * to get the result masked correctly according to the current
+       * channel enables.
+       */
+      mach->group = 0;
+      mach->force_writemask_all = true;
+      mach->dst = ibld.vgrf(inst->dst.type);
+      ibld.MOV(inst->dst, mach->dst);
+   }
+}
+
 bool
 fs_visitor::lower_integer_multiplication()
 {
@@ -3879,193 +4070,9 @@ fs_visitor::lower_integer_multiplication()
          if (devinfo->has_integer_dword_mul)
             continue;
 
-         if (inst->src[1].file == IMM &&
-             inst->src[1].ud < (1 << 16)) {
-            /* The MUL instruction isn't commutative. On Gen <= 6, only the low
-             * 16-bits of src0 are read, and on Gen >= 7 only the low 16-bits of
-             * src1 are used.
-             *
-             * If multiplying by an immediate value that fits in 16-bits, do a
-             * single MUL instruction with that value in the proper location.
-             */
-            if (devinfo->gen < 7) {
-               fs_reg imm(VGRF, alloc.allocate(dispatch_width / 8),
-                          inst->dst.type);
-               ibld.MOV(imm, inst->src[1]);
-               ibld.MUL(inst->dst, imm, inst->src[0]);
-            } else {
-               const bool ud = (inst->src[1].type == BRW_REGISTER_TYPE_UD);
-               ibld.MUL(inst->dst, inst->src[0],
-                        ud ? brw_imm_uw(inst->src[1].ud)
-                           : brw_imm_w(inst->src[1].d));
-            }
-         } else {
-            /* Gen < 8 (and some Gen8+ low-power parts like Cherryview) cannot
-             * do 32-bit integer multiplication in one instruction, but instead
-             * must do a sequence (which actually calculates a 64-bit result):
-             *
-             *    mul(8)  acc0<1>D   g3<8,8,1>D      g4<8,8,1>D
-             *    mach(8) null       g3<8,8,1>D      g4<8,8,1>D
-             *    mov(8)  g2<1>D     acc0<8,8,1>D
-             *
-             * But on Gen > 6, the ability to use second accumulator register
-             * (acc1) for non-float data types was removed, preventing a simple
-             * implementation in SIMD16. A 16-channel result can be calculated by
-             * executing the three instructions twice in SIMD8, once with quarter
-             * control of 1Q for the first eight channels and again with 2Q for
-             * the second eight channels.
-             *
-             * Which accumulator register is implicitly accessed (by AccWrEnable
-             * for instance) is determined by the quarter control. Unfortunately
-             * Ivybridge (and presumably Baytrail) has a hardware bug in which an
-             * implicit accumulator access by an instruction with 2Q will access
-             * acc1 regardless of whether the data type is usable in acc1.
-             *
-             * Specifically, the 2Q mach(8) writes acc1 which does not exist for
-             * integer data types.
-             *
-             * Since we only want the low 32-bits of the result, we can do two
-             * 32-bit x 16-bit multiplies (like the mul and mach are doing), and
-             * adjust the high result and add them (like the mach is doing):
-             *
-             *    mul(8)  g7<1>D     g3<8,8,1>D      g4.0<8,8,1>UW
-             *    mul(8)  g8<1>D     g3<8,8,1>D      g4.1<8,8,1>UW
-             *    shl(8)  g9<1>D     g8<8,8,1>D      16D
-             *    add(8)  g2<1>D     g7<8,8,1>D      g8<8,8,1>D
-             *
-             * We avoid the shl instruction by realizing that we only want to add
-             * the low 16-bits of the "high" result to the high 16-bits of the
-             * "low" result and using proper regioning on the add:
-             *
-             *    mul(8)  g7<1>D     g3<8,8,1>D      g4.0<16,8,2>UW
-             *    mul(8)  g8<1>D     g3<8,8,1>D      g4.1<16,8,2>UW
-             *    add(8)  g7.1<2>UW  g7.1<16,8,2>UW  g8<16,8,2>UW
-             *
-             * Since it does not use the (single) accumulator register, we can
-             * schedule multi-component multiplications much better.
-             */
-
-            bool needs_mov = false;
-            fs_reg orig_dst = inst->dst;
-
-            /* Get a new VGRF for the "low" 32x16-bit multiplication result if
-             * reusing the original destination is impossible due to hardware
-             * restrictions, source/destination overlap, or it being the null
-             * register.
-             */
-            fs_reg low = inst->dst;
-            if (orig_dst.is_null() || orig_dst.file == MRF ||
-                regions_overlap(inst->dst, inst->size_written,
-                                inst->src[0], inst->size_read(0)) ||
-                regions_overlap(inst->dst, inst->size_written,
-                                inst->src[1], inst->size_read(1)) ||
-                inst->dst.stride >= 4) {
-               needs_mov = true;
-               low = fs_reg(VGRF, alloc.allocate(regs_written(inst)),
-                            inst->dst.type);
-            }
-
-            /* Get a new VGRF but keep the same stride as inst->dst */
-            fs_reg high(VGRF, alloc.allocate(regs_written(inst)),
-                        inst->dst.type);
-            high.stride = inst->dst.stride;
-            high.offset = inst->dst.offset % REG_SIZE;
-
-            if (devinfo->gen >= 7) {
-               if (inst->src[1].abs)
-                  lower_src_modifiers(this, block, inst, 1);
-
-               if (inst->src[1].file == IMM) {
-                  ibld.MUL(low, inst->src[0],
-                           brw_imm_uw(inst->src[1].ud & 0xffff));
-                  ibld.MUL(high, inst->src[0],
-                           brw_imm_uw(inst->src[1].ud >> 16));
-               } else {
-                  ibld.MUL(low, inst->src[0],
-                           subscript(inst->src[1], BRW_REGISTER_TYPE_UW, 0));
-                  ibld.MUL(high, inst->src[0],
-                           subscript(inst->src[1], BRW_REGISTER_TYPE_UW, 1));
-               }
-            } else {
-               if (inst->src[0].abs)
-                  lower_src_modifiers(this, block, inst, 0);
-
-               ibld.MUL(low, subscript(inst->src[0], BRW_REGISTER_TYPE_UW, 0),
-                        inst->src[1]);
-               ibld.MUL(high, subscript(inst->src[0], BRW_REGISTER_TYPE_UW, 1),
-                        inst->src[1]);
-            }
-
-            ibld.ADD(subscript(low, BRW_REGISTER_TYPE_UW, 1),
-                     subscript(low, BRW_REGISTER_TYPE_UW, 1),
-                     subscript(high, BRW_REGISTER_TYPE_UW, 0));
-
-            if (needs_mov || inst->conditional_mod) {
-               set_condmod(inst->conditional_mod,
-                           ibld.MOV(orig_dst, low));
-            }
-         }
-
+         lower_mul_dword_inst(inst, block, ibld);
       } else if (inst->opcode == SHADER_OPCODE_MULH) {
-         /* According to the BDW+ BSpec page for the "Multiply Accumulate
-          * High" instruction:
-          *
-          *  "An added preliminary mov is required for source modification on
-          *   src1:
-          *      mov (8) r3.0<1>:d -r3<8;8,1>:d
-          *      mul (8) acc0:d r2.0<8;8,1>:d r3.0<16;8,2>:uw
-          *      mach (8) r5.0<1>:d r2.0<8;8,1>:d r3.0<8;8,1>:d"
-          */
-         if (devinfo->gen >= 8 && (inst->src[1].negate || inst->src[1].abs))
-            lower_src_modifiers(this, block, inst, 1);
-
-         /* Should have been lowered to 8-wide. */
-         assert(inst->exec_size <= get_lowered_simd_width(devinfo, inst));
-         const fs_reg acc = retype(brw_acc_reg(inst->exec_size),
-                                   inst->dst.type);
-         fs_inst *mul = ibld.MUL(acc, inst->src[0], inst->src[1]);
-         fs_inst *mach = ibld.MACH(inst->dst, inst->src[0], inst->src[1]);
-
-         if (devinfo->gen >= 8) {
-            /* Until Gen8, integer multiplies read 32-bits from one source,
-             * and 16-bits from the other, and relying on the MACH instruction
-             * to generate the high bits of the result.
-             *
-             * On Gen8, the multiply instruction does a full 32x32-bit
-             * multiply, but in order to do a 64-bit multiply we can simulate
-             * the previous behavior and then use a MACH instruction.
-             */
-            assert(mul->src[1].type == BRW_REGISTER_TYPE_D ||
-                   mul->src[1].type == BRW_REGISTER_TYPE_UD);
-            mul->src[1].type = BRW_REGISTER_TYPE_UW;
-            mul->src[1].stride *= 2;
-
-            if (mul->src[1].file == IMM) {
-               mul->src[1] = brw_imm_uw(mul->src[1].ud);
-            }
-         } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
-                    inst->group > 0) {
-            /* Among other things the quarter control bits influence which
-             * accumulator register is used by the hardware for instructions
-             * that access the accumulator implicitly (e.g. MACH).  A
-             * second-half instruction would normally map to acc1, which
-             * doesn't exist on Gen7 and up (the hardware does emulate it for
-             * floating-point instructions *only* by taking advantage of the
-             * extra precision of acc0 not normally used for floating point
-             * arithmetic).
-             *
-             * HSW and up are careful enough not to try to access an
-             * accumulator register that doesn't exist, but on earlier Gen7
-             * hardware we need to make sure that the quarter control bits are
-             * zero to avoid non-deterministic behaviour and emit an extra MOV
-             * to get the result masked correctly according to the current
-             * channel enables.
-             */
-            mach->group = 0;
-            mach->force_writemask_all = true;
-            mach->dst = ibld.vgrf(inst->dst.type);
-            ibld.MOV(inst->dst, mach->dst);
-         }
+         lower_mulh_inst(inst, block, ibld);
       } else {
          continue;
       }
