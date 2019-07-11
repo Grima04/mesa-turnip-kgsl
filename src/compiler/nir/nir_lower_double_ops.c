@@ -610,35 +610,35 @@ nir_lower_doubles_op_to_options_mask(nir_op opcode)
 }
 
 static bool
-lower_doubles_instr(nir_builder *b, nir_alu_instr *instr,
+lower_doubles_instr(nir_builder *b, nir_alu_instr *alu,
                     const nir_shader *softfp64,
                     nir_lower_doubles_options options)
 {
-   assert(instr->dest.dest.is_ssa);
-   bool is_64 = instr->dest.dest.ssa.bit_size == 64;
+   assert(alu->dest.dest.is_ssa);
+   bool is_64 = alu->dest.dest.ssa.bit_size == 64;
 
-   unsigned num_srcs = nir_op_infos[instr->op].num_inputs;
+   unsigned num_srcs = nir_op_infos[alu->op].num_inputs;
    for (unsigned i = 0; i < num_srcs; i++) {
-      is_64 |= (nir_src_bit_size(instr->src[i].src) == 64);
+      is_64 |= (nir_src_bit_size(alu->src[i].src) == 64);
    }
 
    if (!is_64)
       return false;
 
-   if (lower_doubles_instr_to_soft(b, instr, softfp64, options))
+   if (lower_doubles_instr_to_soft(b, alu, softfp64, options))
       return true;
 
-   if (!(options & nir_lower_doubles_op_to_options_mask(instr->op)))
+   if (!(options & nir_lower_doubles_op_to_options_mask(alu->op)))
       return false;
 
-   b->cursor = nir_before_instr(&instr->instr);
+   b->cursor = nir_before_instr(&alu->instr);
 
-   nir_ssa_def *src = nir_mov_alu(b, instr->src[0],
-                                  instr->dest.dest.ssa.num_components);
+   nir_ssa_def *src = nir_mov_alu(b, alu->src[0],
+                                  alu->dest.dest.ssa.num_components);
 
    nir_ssa_def *result;
 
-   switch (instr->op) {
+   switch (alu->op) {
    case nir_op_frcp:
       result = lower_rcp(b, src);
       break;
@@ -665,8 +665,8 @@ lower_doubles_instr(nir_builder *b, nir_alu_instr *instr,
       break;
 
    case nir_op_fmod: {
-      nir_ssa_def *src1 = nir_mov_alu(b, instr->src[1],
-                                      instr->dest.dest.ssa.num_components);
+      nir_ssa_def *src1 = nir_mov_alu(b, alu->src[1],
+                                      alu->dest.dest.ssa.num_components);
       result = lower_mod(b, src, src1);
    }
       break;
@@ -674,8 +674,8 @@ lower_doubles_instr(nir_builder *b, nir_alu_instr *instr,
       unreachable("unhandled opcode");
    }
 
-   nir_ssa_def_rewrite_uses(&instr->dest.dest.ssa, nir_src_for_ssa(result));
-   nir_instr_remove(&instr->instr);
+   nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(result));
+   nir_instr_remove(&alu->instr);
    return true;
 }
 
