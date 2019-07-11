@@ -796,11 +796,14 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	if (pdevice->rad_info.chip_class >= GFX10 &&
 	    (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_GEOMETRY)) {
 		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
+		gl_shader_stage es_stage = stage;
+		if (stage == MESA_SHADER_GEOMETRY)
+			es_stage = info->gs.es_type;
 
 		/* VGPR5-8: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 / InstanceID) */
-		if (stage == MESA_SHADER_VERTEX) {
+		if (es_stage == MESA_SHADER_VERTEX) {
 			es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 3 : 0;
-		} else if (stage == MESA_SHADER_TESS_EVAL) {
+		} else if (es_stage == MESA_SHADER_TESS_EVAL) {
 			bool enable_prim_id = info->tes.export_prim_id || info->info.uses_prim_id;
 			es_vgpr_comp_cnt = enable_prim_id ? 3 : 2;
 		}
