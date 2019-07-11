@@ -350,7 +350,6 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    copyRegion.bufferOffset = staging_res->offset;
    copyRegion.bufferRowLength = 0;
    copyRegion.bufferImageHeight = 0;
-   copyRegion.imageSubresource.aspectMask = res->aspect;
    copyRegion.imageSubresource.mipLevel = trans->base.level;
    copyRegion.imageSubresource.layerCount = 1;
    if (res->base.array_size > 1) {
@@ -369,10 +368,16 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    zink_batch_reference_resoure(batch, res);
    zink_batch_reference_resoure(batch, staging_res);
 
-   if (buf2img)
-      vkCmdCopyBufferToImage(batch->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
-   else
-      vkCmdCopyImageToBuffer(batch->cmdbuf, res->image, res->layout, staging_res->buffer, 1, &copyRegion);
+   unsigned aspects = res->aspect;
+   while (aspects) {
+      int aspect = 1 << u_bit_scan(&aspects);
+      copyRegion.imageSubresource.aspectMask = aspect;
+
+      if (buf2img)
+         vkCmdCopyBufferToImage(batch->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
+      else
+         vkCmdCopyImageToBuffer(batch->cmdbuf, res->image, res->layout, staging_res->buffer, 1, &copyRegion);
+   }
 
    return true;
 }
