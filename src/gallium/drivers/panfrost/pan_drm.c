@@ -84,6 +84,10 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
                        uint32_t flags)
 {
         struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
+
+        /* Kernel will fail (confusingly) with EPERM otherwise */
+        assert(size > 0);
+
         struct drm_panfrost_create_bo create_bo = {
                 .size = size,
                 .flags = flags,
