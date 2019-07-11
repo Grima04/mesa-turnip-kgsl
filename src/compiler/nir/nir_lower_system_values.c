@@ -123,21 +123,19 @@ build_global_invocation_id(nir_builder *b, unsigned bit_size)
 }
 
 static bool
-convert_block(nir_block *block, nir_builder *b)
+lower_system_value_filter(const nir_instr *instr, const void *_state)
 {
-   bool progress = false;
+   return instr->type == nir_instr_type_intrinsic;
+}
 
-   nir_foreach_instr_safe(instr, block) {
-      if (instr->type != nir_instr_type_intrinsic)
-         continue;
-
-      nir_intrinsic_instr *load_deref = nir_instr_as_intrinsic(instr);
-      if (load_deref->intrinsic != nir_intrinsic_load_deref)
-         continue;
-
-      nir_deref_instr *deref = nir_src_as_deref(load_deref->src[0]);
+static nir_ssa_def *
+lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
+{
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic == nir_intrinsic_load_deref) {
+      nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
       if (deref->mode != nir_var_system_value)
-         continue;
+         return NULL;
 
       if (deref->deref_type != nir_deref_type_var) {
          /* The only one system value that is an array and that is
@@ -150,27 +148,23 @@ convert_block(nir_block *block, nir_builder *b)
       }
       nir_variable *var = deref->var;
 
-      b->cursor = nir_after_instr(&load_deref->instr);
-
-      unsigned bit_size = nir_dest_bit_size(load_deref->dest);
-      nir_ssa_def *sysval = NULL;
+      unsigned bit_size = nir_dest_bit_size(intrin->dest);
       switch (var->data.location) {
-      case SYSTEM_VALUE_GLOBAL_INVOCATION_ID: {
-         sysval = build_global_invocation_id(b, bit_size);
-         break;
-      }
+      case SYSTEM_VALUE_GLOBAL_INVOCATION_ID:
+         return build_global_invocation_id(b, bit_size);
 
       case SYSTEM_VALUE_GLOBAL_INVOCATION_INDEX: {
          nir_ssa_def *global_id = build_global_invocation_id(b, bit_size);
          nir_ssa_def *global_size = build_global_group_size(b, bit_size);
 
          /* index = id.x + ((id.y + (id.z * size.y)) * size.x) */
-         sysval = nir_imul(b, nir_channel(b, global_id, 2),
-                              nir_channel(b, global_size, 1));
-         sysval = nir_iadd(b, nir_channel(b, global_id, 1), sysval);
-         sysval = nir_imul(b, nir_channel(b, global_size, 0), sysval);
-         sysval = nir_iadd(b, nir_channel(b, global_id, 0), sysval);
-         break;
+         nir_ssa_def *index;
+         index = nir_imul(b, nir_channel(b, global_id, 2),
+                             nir_channel(b, global_size, 1));
+         index = nir_iadd(b, nir_channel(b, global_id, 1), index);
+         index = nir_imul(b, nir_channel(b, global_size, 0), index);
+         index = nir_iadd(b, nir_channel(b, global_id, 0), index);
+         return index;
       }
 
       case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX: {
@@ -198,31 +192,26 @@ convert_block(nir_block *block, nir_builder *b)
           * about 1K, this calculation can be done in 32-bit and can save some
           * 64-bit arithmetic.
           */
-         sysval = nir_imul(b, nir_channel(b, local_id, 2),
-                              nir_imul(b, size_x, size_y));
-         sysval = nir_iadd(b, sysval,
-                              nir_imul(b, nir_channel(b, local_id, 1), size_x));
-         sysval = nir_iadd(b, sysval, nir_channel(b, local_id, 0));
-         sysval = nir_u2u(b, sysval, bit_size);
-         break;
+         nir_ssa_def *index;
+         index = nir_imul(b, nir_channel(b, local_id, 2),
+                             nir_imul(b, size_x, size_y));
+         index = nir_iadd(b, index,
+                             nir_imul(b, nir_channel(b, local_id, 1), size_x));
+         index = nir_iadd(b, index, nir_channel(b, local_id, 0));
+         index = nir_u2u(b, index, bit_size);
+         return index;
       }
 
       case SYSTEM_VALUE_LOCAL_INVOCATION_ID:
-         sysval = build_local_invocation_id(b, bit_size);
-         break;
+         return build_local_invocation_id(b, bit_size);
 
-      case SYSTEM_VALUE_LOCAL_GROUP_SIZE: {
-         sysval = build_local_group_size(b, bit_size);
-         break;
-      }
+      case SYSTEM_VALUE_LOCAL_GROUP_SIZE:
+         return build_local_group_size(b, bit_size);
 
       case SYSTEM_VALUE_VERTEX_ID:
          if (b->shader->options->vertex_id_zero_based) {
-            sysval = nir_iadd(b,
-                              nir_load_vertex_id_zero_base(b),
-                              nir_load_first_vertex(b));
-         } else {
-            sysval = nir_load_vertex_id(b);
+            return nir_iadd(b, nir_load_vertex_id_zero_base(b),
+                               nir_load_first_vertex(b));
          }
          break;
 
@@ -235,10 +224,10 @@ convert_block(nir_block *block, nir_builder *b)
           * invocation. In the case where the command has no baseVertex
           * parameter, the value of gl_BaseVertex is zero."
           */
-         if (b->shader->options->lower_base_vertex)
-            sysval = nir_iand(b,
-                              nir_load_is_indexed_draw(b),
-                              nir_load_first_vertex(b));
+         if (b->shader->options->lower_base_vertex) {
+            return nir_iand(b, nir_load_is_indexed_draw(b),
+                               nir_load_first_vertex(b));
+         }
          break;
 
       case SYSTEM_VALUE_HELPER_INVOCATION:
@@ -253,16 +242,13 @@ convert_block(nir_block *block, nir_builder *b)
                            nir_load_sample_mask_in(b),
                            tmp);
 
-            sysval = nir_inot(b, nir_i2b(b, tmp));
+            return nir_inot(b, nir_i2b(b, tmp));
          }
-
          break;
 
       case SYSTEM_VALUE_INSTANCE_INDEX:
-         sysval = nir_iadd(b,
-                           nir_load_instance_id(b),
-                           nir_load_base_instance(b));
-         break;
+         return nir_iadd(b, nir_load_instance_id(b),
+                            nir_load_base_instance(b));
 
       case SYSTEM_VALUE_SUBGROUP_EQ_MASK:
       case SYSTEM_VALUE_SUBGROUP_GE_MASK:
@@ -276,70 +262,43 @@ convert_block(nir_block *block, nir_builder *b)
                                     var->type, NULL);
          load->num_components = load->dest.ssa.num_components;
          nir_builder_instr_insert(b, &load->instr);
-         sysval = &load->dest.ssa;
-         break;
+         return &load->dest.ssa;
       }
 
       case SYSTEM_VALUE_DEVICE_INDEX:
          if (b->shader->options->lower_device_index_to_zero)
-            sysval = nir_imm_int(b, 0);
+            return nir_imm_int(b, 0);
          break;
 
-      case SYSTEM_VALUE_GLOBAL_GROUP_SIZE: {
-         sysval = build_global_group_size(b, bit_size);
-         break;
-      }
+      case SYSTEM_VALUE_GLOBAL_GROUP_SIZE:
+         return build_global_group_size(b, bit_size);
 
       default:
          break;
       }
 
-      if (sysval == NULL) {
-         nir_intrinsic_op sysval_op =
-            nir_intrinsic_from_system_value(var->data.location);
-         sysval = nir_load_system_value(b, sysval_op, 0,
-                                        load_deref->dest.ssa.bit_size);
-      }
-
-      nir_ssa_def_rewrite_uses(&load_deref->dest.ssa, nir_src_for_ssa(sysval));
-      nir_instr_remove(&load_deref->instr);
-
-      progress = true;
+      nir_intrinsic_op sysval_op =
+         nir_intrinsic_from_system_value(var->data.location);
+      return nir_load_system_value(b, sysval_op, 0,
+                                      intrin->dest.ssa.bit_size);
    }
 
-   return progress;
-}
-
-static bool
-convert_impl(nir_function_impl *impl)
-{
-   bool progress = false;
-   nir_builder builder;
-   nir_builder_init(&builder, impl);
-
-   nir_foreach_block(block, impl) {
-      progress |= convert_block(block, &builder);
-   }
-
-   nir_metadata_preserve(impl, nir_metadata_block_index |
-                               nir_metadata_dominance);
-   return progress;
+   return NULL;
 }
 
 bool
 nir_lower_system_values(nir_shader *shader)
 {
-   bool progress = false;
-
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress = convert_impl(function->impl) || progress;
-   }
+   bool progress = nir_shader_lower_instructions(shader,
+                                                 lower_system_value_filter,
+                                                 lower_system_value_instr,
+                                                 NULL);
 
    /* We're going to delete the variables so we need to clean up all those
     * derefs we left lying around.
     */
-   nir_remove_dead_derefs(shader);
+   if (progress)
+      nir_remove_dead_derefs(shader);
 
    exec_list_make_empty(&shader->system_values);
 
