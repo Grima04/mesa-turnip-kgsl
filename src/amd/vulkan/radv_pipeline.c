@@ -3884,7 +3884,7 @@ radv_compute_vgt_shader_stages_en(const struct radv_pipeline *pipeline)
 
 	if (radv_pipeline_has_ngg(pipeline)) {
 		stages |= S_028B54_PRIMGEN_EN(1);
-	} else {
+	} else if (radv_pipeline_has_gs(pipeline)) {
 		stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 	}
 
