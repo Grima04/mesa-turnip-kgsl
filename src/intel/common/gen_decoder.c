@@ -128,7 +128,7 @@ fail(struct location *loc, const char *msg, ...)
 }
 
 static void
-get_group_offset_count(const char **atts, uint32_t *offset, uint32_t *count,
+get_array_offset_count(const char **atts, uint32_t *offset, uint32_t *count,
                        uint32_t *size, bool *variable)
 {
    for (int i = 0; atts[i]; i += 2) {
@@ -203,10 +203,10 @@ create_group(struct parser_context *ctx,
 
    if (parent) {
       group->parent = parent;
-      get_group_offset_count(atts,
-                             &group->group_offset,
-                             &group->group_count,
-                             &group->group_size,
+      get_array_offset_count(atts,
+                             &group->array_offset,
+                             &group->array_count,
+                             &group->array_item_size,
                              &group->variable);
    }
 
@@ -874,22 +874,26 @@ iter_more_fields(const struct gen_field_iterator *iter)
 }
 
 static uint32_t
-iter_group_offset_bits(const struct gen_field_iterator *iter,
-                       uint32_t group_iter)
+iter_array_offset_bits(const struct gen_field_iterator *iter,
+                       uint32_t array_iter)
 {
-   return iter->group->group_offset + (group_iter * iter->group->group_size);
+   return iter->group->array_offset +
+      (array_iter * iter->group->array_item_size);
 }
 
+/* Checks whether we have more items in the array to iterate, or more arrays to
+ * iterate through.
+ */
 static bool
-iter_more_groups(const struct gen_field_iterator *iter)
+iter_more_arrays(const struct gen_field_iterator *iter)
 {
    if (iter->group->variable) {
       int length = gen_group_get_length(iter->group, iter->p);
       assert(length >= 0 && "error the length is unknown!");
-      return iter_group_offset_bits(iter, iter->group_iter + 1) <
+      return iter_array_offset_bits(iter, iter->array_iter + 1) <
               (length * 32);
    } else {
-      return (iter->group_iter + 1) < iter->group->group_count ||
+      return (iter->array_iter + 1) < iter->group->array_count ||
          iter->group->next != NULL;
    }
 }
@@ -899,24 +903,24 @@ iter_start_field(struct gen_field_iterator *iter, struct gen_field *field)
 {
    iter->field = field;
 
-   int group_member_offset = iter_group_offset_bits(iter, iter->group_iter);
+   int array_member_offset = iter_array_offset_bits(iter, iter->array_iter);
 
-   iter->start_bit = group_member_offset + iter->field->start;
-   iter->end_bit = group_member_offset + iter->field->end;
+   iter->start_bit = array_member_offset + iter->field->start;
+   iter->end_bit = array_member_offset + iter->field->end;
    iter->struct_desc = NULL;
 }
 
 static void
-iter_advance_group(struct gen_field_iterator *iter)
+iter_advance_array(struct gen_field_iterator *iter)
 {
    if (iter->group->variable)
-      iter->group_iter++;
+      iter->array_iter++;
    else {
-      if ((iter->group_iter + 1) < iter->group->group_count) {
-         iter->group_iter++;
+      if ((iter->array_iter + 1) < iter->group->array_count) {
+         iter->array_iter++;
       } else {
          iter->group = iter->group->next;
-         iter->group_iter = 0;
+         iter->array_iter = 0;
       }
    }
 
@@ -929,10 +933,10 @@ iter_advance_field(struct gen_field_iterator *iter)
    if (iter_more_fields(iter)) {
       iter_start_field(iter, iter->field->next);
    } else {
-      if (!iter_more_groups(iter))
+      if (!iter_more_arrays(iter))
          return false;
 
-      iter_advance_group(iter);
+      iter_advance_array(iter);
    }
    return true;
 }
@@ -1046,7 +1050,7 @@ iter_decode_field(struct gen_field_iterator *iter)
    if (strlen(iter->group->name) == 0) {
       int length = strlen(iter->name);
       snprintf(iter->name + length, sizeof(iter->name) - length,
-               "[%i]", iter->group_iter);
+               "[%i]", iter->array_iter);
    }
 
    if (enum_name) {

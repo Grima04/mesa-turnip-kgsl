@@ -84,7 +84,7 @@ struct gen_field_iterator {
    int start_bit; /**< current field starts at this bit offset into p */
    int end_bit; /**< current field ends at this bit offset into p */
 
-   int group_iter;
+   int array_iter;
 
    struct gen_field *field;
    bool print_colors;
@@ -112,8 +112,9 @@ struct gen_group {
    uint32_t dw_length;
    uint32_t engine_mask; /* <instruction> specific */
    uint32_t bias; /* <instruction> specific */
-   uint32_t group_offset, group_count;
-   uint32_t group_size;
+   uint32_t array_offset; /* <group> specific */
+   uint32_t array_count; /* number of elements, <group> specific */
+   uint32_t array_item_size; /* <group> specific */
    bool variable; /* <group> specific */
    bool fixed_length; /* True for <struct> & <register> */
 
