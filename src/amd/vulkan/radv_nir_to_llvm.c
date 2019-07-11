@@ -3626,18 +3626,7 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 			outputs[noutput].slot_name = i;
 			outputs[noutput].slot_index = i == VARYING_SLOT_CLIP_DIST1;
 
-			if (ctx->stage == MESA_SHADER_VERTEX &&
-			    !ctx->is_gs_copy_shader) {
-				outputs[noutput].usage_mask =
-					ctx->shader_info->info.vs.output_usage_mask[i];
-			} else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
-				outputs[noutput].usage_mask =
-					ctx->shader_info->info.tes.output_usage_mask[i];
-			} else {
-				assert(ctx->is_gs_copy_shader || ctx->options->key.vs_common_out.as_ngg);
-				outputs[noutput].usage_mask =
-					ctx->shader_info->info.gs.output_usage_mask[i];
-			}
+			outputs[noutput].usage_mask = ctx->shader_info->info.gs.output_usage_mask[i];
 
 			for (unsigned j = 0; j < 4; j++, out_idx++) {
 				gep_idx[2] = LLVMConstInt(ctx->ac.i32, out_idx, false);
