@@ -1805,6 +1805,17 @@ panfrost_bind_rasterizer_state(
         ctx->rasterizer = hwcso;
         ctx->dirty |= PAN_DIRTY_RASTERIZER;
 
+        ctx->fragment_shader_core.depth_units = ctx->rasterizer->base.offset_units;
+        ctx->fragment_shader_core.depth_factor = ctx->rasterizer->base.offset_scale;
+
+        /* Gauranteed with the core GL call, so don't expose ARB_polygon_offset */
+        assert(ctx->rasterizer->base.offset_clamp == 0.0);
+
+        /* XXX: Which bit is which? Does this maybe allow offseting not-tri? */
+
+        SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_DEPTH_RANGE_A, ctx->rasterizer->base.offset_tri);
+        SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_DEPTH_RANGE_B, ctx->rasterizer->base.offset_tri);
+
         /* Point sprites are emulated */
 
         struct panfrost_shader_state *variant =
