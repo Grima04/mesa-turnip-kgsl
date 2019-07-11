@@ -3583,11 +3583,12 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 	ac_build_ifcc(&ctx->ac, tmp, 5145);
 	{
 		struct radv_vs_output_info *outinfo = &ctx->shader_info->vs.outinfo;
+		bool export_view_index = ctx->options->key.has_multiview_view_index;
 		struct radv_shader_output_values *outputs;
 		unsigned noutput = 0;
 
 		/* Allocate a temporary array for the output values. */
-		unsigned num_outputs = util_bitcount64(ctx->output_mask);
+		unsigned num_outputs = util_bitcount64(ctx->output_mask) + export_view_index;
 		outputs = calloc(num_outputs, sizeof(outputs[0]));
 
 		memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
@@ -3639,6 +3640,19 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 			for (unsigned j = length; j < 4; j++)
 				outputs[noutput].values[j] = LLVMGetUndef(ctx->ac.f32);
 
+			noutput++;
+		}
+
+		/* Export ViewIndex. */
+		if (export_view_index) {
+			outinfo->writes_layer = true;
+
+			outputs[noutput].slot_name = VARYING_SLOT_LAYER;
+			outputs[noutput].slot_index = 0;
+			outputs[noutput].usage_mask = 0x1;
+			outputs[noutput].values[0] = ac_to_float(&ctx->ac, ctx->abi.view_index);
+			for (unsigned j = 1; j < 4; j++)
+				outputs[noutput].values[j] = ctx->ac.f32_0;
 			noutput++;
 		}
 
