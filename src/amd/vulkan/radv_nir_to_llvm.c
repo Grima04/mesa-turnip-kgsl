@@ -4372,6 +4372,12 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 		LLVMBasicBlockRef merge_block;
 		if (shader_count >= 2 || is_ngg) {
+
+			if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY &&
+			    ctx.options->key.vs_common_out.as_ngg) {
+				gfx10_ngg_gs_emit_prologue(&ctx);
+			}
+
 			LLVMValueRef fn = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ctx.ac.builder));
 			LLVMBasicBlockRef then_block = LLVMAppendBasicBlockInContext(ctx.ac.context, fn, "");
 			merge_block = LLVMAppendBasicBlockInContext(ctx.ac.context, fn, "");
@@ -4383,11 +4389,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			LLVMBuildCondBr(ctx.ac.builder, cond, then_block, merge_block);
 
 			LLVMPositionBuilderAtEnd(ctx.ac.builder, then_block);
-
-			if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY &&
-			    ctx.options->key.vs_common_out.as_ngg) {
-				gfx10_ngg_gs_emit_prologue(&ctx);
-			}
 		}
 
 		if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT)
