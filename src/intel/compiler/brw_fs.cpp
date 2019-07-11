@@ -4062,23 +4062,20 @@ fs_visitor::lower_integer_multiplication()
 
    foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
       if (inst->opcode == BRW_OPCODE_MUL) {
-         if (inst->dst.is_accumulator() ||
-             (inst->dst.type != BRW_REGISTER_TYPE_D &&
-              inst->dst.type != BRW_REGISTER_TYPE_UD))
-            continue;
-
-         if (devinfo->has_integer_dword_mul)
-            continue;
-
-         lower_mul_dword_inst(inst, block);
+         if (!inst->dst.is_accumulator() &&
+             (inst->dst.type == BRW_REGISTER_TYPE_D ||
+              inst->dst.type == BRW_REGISTER_TYPE_UD) &&
+             !devinfo->has_integer_dword_mul) {
+            lower_mul_dword_inst(inst, block);
+            inst->remove(block);
+            progress = true;
+         }
       } else if (inst->opcode == SHADER_OPCODE_MULH) {
          lower_mulh_inst(inst, block);
-      } else {
-         continue;
+         inst->remove(block);
+         progress = true;
       }
 
-      inst->remove(block);
-      progress = true;
    }
 
    if (progress)
