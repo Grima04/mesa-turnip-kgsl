@@ -272,8 +272,10 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
 static void
 panfrost_emit_vertex_payload(struct panfrost_context *ctx)
 {
+        /* 0x2 bit clear on 32-bit T6XX */
+
         struct midgard_payload_vertex_tiler payload = {
-                .gl_enables = 0x4 | (ctx->is_t6xx ? 0 : 0x2),
+                .gl_enables = 0x4 | 0x2,
         };
 
         memcpy(&ctx->payload_vertex, &payload, sizeof(payload));
@@ -454,9 +456,7 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
                 .unknown2_4 = MALI_NO_MSAA | 0x4e0,
         };
 
-        if (ctx->is_t6xx) {
-                shader.unknown2_4 |= 0x10;
-        }
+        /* unknown2_4 has 0x10 bit set on 32-bit T6XX */
 
         struct pipe_stencil_state default_stencil = {
                 .enabled = 0,
@@ -491,24 +491,14 @@ panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler)
 {
         struct mali_job_descriptor_header job = {
                 .job_type = is_tiler ? JOB_TYPE_TILER : JOB_TYPE_VERTEX,
-#ifdef __LP64__
                 .job_descriptor_size = 1,
-#endif
         };
 
         struct midgard_payload_vertex_tiler *payload = is_tiler ? &ctx->payload_tiler : &ctx->payload_vertex;
 
-        /* There's some padding hacks on 32-bit */
-
-#ifdef __LP64__
-        int offset = 0;
-#else
-        int offset = 4;
-#endif
         struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
-
         memcpy(transfer.cpu, &job, sizeof(job));
-        memcpy(transfer.cpu + sizeof(job) - offset, payload, sizeof(*payload));
+        memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
         return transfer;
 }
 
@@ -1753,7 +1743,7 @@ panfrost_draw_vbo(
                 ctx->payload_tiler.prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
 
                 /* Reverse index state */
-                ctx->payload_tiler.prefix.indices = (uintptr_t) NULL;
+                ctx->payload_tiler.prefix.indices = (u64) NULL;
         }
 
         /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
@@ -1815,13 +1805,12 @@ panfrost_create_rasterizer_state(
         struct pipe_context *pctx,
         const struct pipe_rasterizer_state *cso)
 {
-        struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_rasterizer *so = CALLOC_STRUCT(panfrost_rasterizer);
 
         so->base = *cso;
 
-        /* Bitmask, unknown meaning of the start value */
-        so->tiler_gl_enables = ctx->is_t6xx ? 0x105 : 0x7;
+        /* Bitmask, unknown meaning of the start value. 0x105 on 32-bit T6XX */
+        so->tiler_gl_enables = 0x7;
 
         if (cso->front_ccw)
                 so->tiler_gl_enables |= MALI_FRONT_CCW_TOP;

@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <panfrost-misc.h>
 
-#define MALI_SHORT_PTR_BITS (sizeof(uintptr_t)*8)
+#define MALI_SHORT_PTR_BITS (sizeof(u64)*8)
 
 #define MALI_FBD_HIERARCHY_WEIGHTS 8
 
@@ -935,7 +935,7 @@ struct mali_vertex_tiler_prefix {
          * indices (width depends on flags). Thanks, guys, for not making my
          * life insane for once! NULL for non-indexed draws. */
 
-        uintptr_t indices;
+        u64 indices;
 } __attribute__((packed));
 
 /* Point size / line width can either be specified as a 32-bit float (for
@@ -947,7 +947,7 @@ struct mali_vertex_tiler_prefix {
 
 union midgard_primitive_size {
         float constant;
-        uintptr_t pointer;
+        u64 pointer;
 };
 
 struct bifrost_vertex_only {
@@ -1011,34 +1011,34 @@ struct mali_vertex_tiler_postfix {
          * output from the vertex shader for tiler jobs.
          */
 
-        uintptr_t position_varying;
+        u64 position_varying;
 
         /* An array of mali_uniform_buffer_meta's. The size is given by the
          * shader_meta.
          */
-        uintptr_t uniform_buffers;
+        u64 uniform_buffers;
 
         /* This is a pointer to an array of pointers to the texture
          * descriptors, number of pointers bounded by number of textures. The
          * indirection is needed to accomodate varying numbers and sizes of
          * texture descriptors */
-        uintptr_t texture_trampoline;
+        u64 texture_trampoline;
 
         /* For OpenGL, from what I've seen, this is intimately connected to
          * texture_meta. cwabbott says this is not the case under Vulkan, hence
          * why this field is seperate (Midgard is Vulkan capable). Pointer to
          * array of sampler descriptors (which are uniform in size) */
-        uintptr_t sampler_descriptor;
+        u64 sampler_descriptor;
 
-        uintptr_t uniforms;
+        u64 uniforms;
         u8 flags : 4;
-        uintptr_t _shader_upper : MALI_SHORT_PTR_BITS - 4; /* struct shader_meta */
-        uintptr_t attributes; /* struct attribute_buffer[] */
-        uintptr_t attribute_meta; /* attribute_meta[] */
-        uintptr_t varyings; /* struct attr */
-        uintptr_t varying_meta; /* pointer */
-        uintptr_t viewport;
-        uintptr_t occlusion_counter; /* A single bit as far as I can tell */
+        u64 _shader_upper : MALI_SHORT_PTR_BITS - 4; /* struct shader_meta */
+        u64 attributes; /* struct attribute_buffer[] */
+        u64 attribute_meta; /* attribute_meta[] */
+        u64 varyings; /* struct attr */
+        u64 varying_meta; /* pointer */
+        u64 viewport;
+        u64 occlusion_counter; /* A single bit as far as I can tell */
 
         /* Note: on Bifrost, this isn't actually the FBD. It points to
          * bifrost_scratchpad instead. However, it does point to the same thing
@@ -1048,15 +1048,7 @@ struct mali_vertex_tiler_postfix {
 } __attribute__((packed));
 
 struct midgard_payload_vertex_tiler {
-#ifndef __LP64__
-        union midgard_primitive_size primitive_size;
-#endif
-
         struct mali_vertex_tiler_prefix prefix;
-
-#ifndef __LP64__
-        u32 zero3;
-#endif
 
         u16 gl_enables; // 0x5
 
@@ -1072,13 +1064,11 @@ struct midgard_payload_vertex_tiler {
         /* Offset for first vertex in buffer */
         u32 draw_start;
 
-	uintptr_t zero5;
+	u64 zero5;
 
         struct mali_vertex_tiler_postfix postfix;
 
-#ifdef __LP64__
         union midgard_primitive_size primitive_size;
-#endif
 } __attribute__((packed));
 
 struct bifrost_payload_vertex {

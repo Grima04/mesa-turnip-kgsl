@@ -70,9 +70,7 @@ panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
         struct mali_job_descriptor_header header = {
                 .job_type = JOB_TYPE_FRAGMENT,
                 .job_index = 1,
-#ifdef __LP64__
                 .job_descriptor_size = 1
-#endif
         };
 
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);

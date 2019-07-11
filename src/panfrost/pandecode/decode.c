@@ -2163,15 +2163,6 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         if (v->draw_start)
                 pandecode_prop("draw_start = %d", v->draw_start);
 
-#ifndef __LP64__
-
-        if (v->zero3) {
-                pandecode_msg("Zero tripped\n");
-                pandecode_prop("zero3 = 0x%" PRIx32, v->zero3);
-        }
-
-#endif
-
         if (v->zero5) {
                 pandecode_msg("Zero tripped\n");
                 pandecode_prop("zero5 = 0x%" PRIx64, v->zero5);
