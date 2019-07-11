@@ -35,6 +35,10 @@
 #include "compiler/nir/nir_format_convert.h"
 #include "v3d_compiler.h"
 
+
+typedef nir_ssa_def *(*nir_pack_func)(nir_builder *b, nir_ssa_def *c);
+typedef nir_ssa_def *(*nir_unpack_func)(nir_builder *b, nir_ssa_def *c);
+
 static nir_ssa_def *
 v3d_logicop(nir_builder *b, int logicop_func,
             nir_ssa_def *src, nir_ssa_def *dst)
@@ -100,20 +104,20 @@ v3d_nir_get_swizzled_channel(nir_builder *b, nir_ssa_def **srcs, int swiz)
 
 static nir_ssa_def *
 v3d_nir_swizzle_and_pack(nir_builder *b, nir_ssa_def **chans,
-                         const uint8_t *swiz)
+                         const uint8_t *swiz, nir_pack_func pack_func)
 {
         nir_ssa_def *c[4];
         for (int i = 0; i < 4; i++)
                 c[i] = v3d_nir_get_swizzled_channel(b, chans, swiz[i]);
 
-        return nir_pack_unorm_4x8(b, nir_vec4(b, c[0], c[1], c[2], c[3]));
+        return pack_func(b, nir_vec4(b, c[0], c[1], c[2], c[3]));
 }
 
 static nir_ssa_def *
 v3d_nir_unpack_and_swizzle(nir_builder *b, nir_ssa_def *packed,
-                           const uint8_t *swiz)
+                           const uint8_t *swiz, nir_unpack_func unpack_func)
 {
-        nir_ssa_def *unpacked = nir_unpack_unorm_4x8(b, packed);
+        nir_ssa_def *unpacked = unpack_func(b, packed);
 
         nir_ssa_def *unpacked_chans[4];
         for (int i = 0; i < 4; i++)
@@ -124,6 +128,46 @@ v3d_nir_unpack_and_swizzle(nir_builder *b, nir_ssa_def *packed,
                 c[i] = v3d_nir_get_swizzled_channel(b, unpacked_chans, swiz[i]);
 
         return nir_vec4(b, c[0], c[1], c[2], c[3]);
+}
+
+static nir_ssa_def *
+pack_unorm_rgb10a2(nir_builder *b, nir_ssa_def *c)
+{
+        const unsigned bits[4] = { 10, 10, 10, 2 };
+        nir_ssa_def *unorm = nir_format_float_to_unorm(b, c, bits);
+
+        nir_ssa_def *chans[4];
+        for (int i = 0; i < 4; i++)
+                chans[i] = nir_channel(b, unorm, i);
+
+        nir_ssa_def *result = nir_mov(b, chans[0]);
+        int offset = bits[0];
+        for (int i = 1; i < 4; i++) {
+                nir_ssa_def *shifted_chan =
+                        nir_ishl(b, chans[i], nir_imm_int(b, offset));
+                result = nir_ior(b, result, shifted_chan);
+                offset += bits[i];
+        }
+        return result;
+}
+
+static nir_ssa_def *
+unpack_unorm_rgb10a2(nir_builder *b, nir_ssa_def *c)
+{
+        const unsigned bits[4] = { 10, 10, 10, 2 };
+        const unsigned masks[4] = { BITFIELD_MASK(bits[0]),
+                                    BITFIELD_MASK(bits[1]),
+                                    BITFIELD_MASK(bits[2]),
+                                    BITFIELD_MASK(bits[3]) };
+
+        nir_ssa_def *chans[4];
+        for (int i = 0; i < 4; i++) {
+                nir_ssa_def *unorm = nir_iand(b, c, nir_imm_int(b, masks[i]));
+                chans[i] = nir_format_unorm_to_float(b, unorm, &bits[i]);
+                c = nir_ushr(b, c, nir_imm_int(b, bits[i]));
+        }
+
+        return nir_vec4(b, chans[0], chans[1], chans[2], chans[3]);
 }
 
 static const uint8_t *
@@ -188,20 +232,21 @@ v3d_emit_logic_op_raw(struct v3d_compile *c, nir_builder *b,
 static nir_ssa_def *
 v3d_emit_logic_op_unorm(struct v3d_compile *c, nir_builder *b,
                         nir_ssa_def **src_chans, nir_ssa_def **dst_chans,
-                        int rt, int sample)
+                        int rt, int sample,
+                        nir_pack_func pack_func, nir_unpack_func unpack_func)
 {
         const uint8_t src_swz[4] = { 0, 1, 2, 3 };
         nir_ssa_def *packed_src =
-                v3d_nir_swizzle_and_pack(b, src_chans, src_swz);
+                v3d_nir_swizzle_and_pack(b, src_chans, src_swz, pack_func);
 
         const uint8_t *fmt_swz = v3d_get_format_swizzle_for_rt(c, rt);
         nir_ssa_def *packed_dst =
-                v3d_nir_swizzle_and_pack(b, dst_chans, fmt_swz);
+                v3d_nir_swizzle_and_pack(b, dst_chans, fmt_swz, pack_func);
 
         nir_ssa_def *packed_result =
                 v3d_logicop(b, c->fs_key->logicop_func, packed_src, packed_dst);
 
-        return v3d_nir_unpack_and_swizzle(b, packed_result, fmt_swz);
+        return v3d_nir_unpack_and_swizzle(b, packed_result, fmt_swz, unpack_func);
 }
 
 static nir_ssa_def *
@@ -216,12 +261,19 @@ v3d_nir_emit_logic_op(struct v3d_compile *c, nir_builder *b,
                 dst_chans[i] = nir_channel(b, dst, i);
         }
 
-        if (util_format_is_unorm(c->fs_key->color_fmt[rt].format)) {
-                return v3d_emit_logic_op_unorm(c, b, src_chans, dst_chans,
-                                               rt, 0);
-        } else {
-                return v3d_emit_logic_op_raw(c, b, src_chans, dst_chans, rt, 0);
+        if (c->fs_key->color_fmt[rt].format == PIPE_FORMAT_R10G10B10A2_UNORM) {
+                return v3d_emit_logic_op_unorm(
+                        c, b, src_chans, dst_chans, rt, 0,
+                        pack_unorm_rgb10a2, unpack_unorm_rgb10a2);
         }
+
+        if (util_format_is_unorm(c->fs_key->color_fmt[rt].format)) {
+                return v3d_emit_logic_op_unorm(
+                        c, b, src_chans, dst_chans, rt, 0,
+                        nir_pack_unorm_4x8, nir_unpack_unorm_4x8);
+        }
+
+        return v3d_emit_logic_op_raw(c, b, src_chans, dst_chans, rt, 0);
 }
 
 static void
