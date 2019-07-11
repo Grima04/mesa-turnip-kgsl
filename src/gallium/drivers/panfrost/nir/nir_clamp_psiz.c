@@ -54,7 +54,8 @@ nir_clamp_psiz(nir_shader *shader, float min_size, float max_size)
             nir_builder_init(&b, func->impl);
             b.cursor = nir_before_instr(instr);
 
-            nir_ssa_def *in_size = nir_ssa_for_src(&b, intr->src[1], 1);
+            nir_ssa_def *in_size = nir_ssa_for_src(&b, intr->src[1],
+                  intr->num_components);
 
             nir_ssa_def *clamped =
                nir_fmin(&b,
