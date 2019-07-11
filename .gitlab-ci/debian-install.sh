@@ -5,6 +5,11 @@ set -o xtrace
 
 export DEBIAN_FRONTEND=noninteractive
 
+CROSS_ARCHITECTURES="armhf arm64 i386"
+for arch in $CROSS_ARCHITECTURES; do
+    dpkg --add-architecture $arch
+done
+
 apt-get install -y \
       apt-transport-https \
       ca-certificates \
@@ -74,6 +79,22 @@ apt-get install -y \
       flex \
       gettext \
       make
+
+# Cross-build Mesa deps
+for arch in $CROSS_ARCHITECTURES; do
+    apt-get install -y \
+            libdrm-dev:${arch} \
+            libexpat1-dev:${arch} \
+            libelf-dev:${arch}
+done
+apt-get install -y \
+        dpkg-dev \
+        gcc-aarch64-linux-gnu \
+        g++-aarch64-linux-gnu \
+        gcc-arm-linux-gnueabihf \
+        g++-arm-linux-gnueabihf \
+        gcc-i686-linux-gnu \
+        g++-i686-linux-gnu
 
 # for 64bit windows cross-builds
 apt-get install -y mingw-w64
@@ -185,7 +206,6 @@ apt-get install -y libxml2-utils
 apt-get purge -y \
       automake \
       libtool \
-      make \
       curl \
       unzip \
       wget \
