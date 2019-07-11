@@ -223,8 +223,15 @@ panfrost_attach_vt_sfbd(struct panfrost_context *ctx)
 }
 
 static void
-panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
+panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
 {
+        /* Skip the attach if we can */
+
+        if (skippable && ctx->payload_vertex.postfix.framebuffer) {
+                assert(ctx->payload_tiler.postfix.framebuffer);
+                return;
+        }
+
         mali_ptr framebuffer = ctx->require_sfbd ?
                                panfrost_attach_vt_sfbd(ctx) :
                                panfrost_attach_vt_mfbd(ctx);
@@ -251,6 +258,10 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
         else
                 ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
+        /* The reference is now invalid */
+        ctx->payload_vertex.postfix.framebuffer = 0;
+        ctx->payload_tiler.postfix.framebuffer = 0;
+
         /* Reset varyings allocated */
         ctx->varying_height = 0;
 
@@ -259,9 +270,6 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
 
         ctx->transient_pools[ctx->cmdstream_i].entry_index = 0;
         ctx->transient_pools[ctx->cmdstream_i].entry_offset = 0;
-
-        /* Regenerate payloads */
-        panfrost_attach_vt_framebuffer(ctx);
 
         if (ctx->rasterizer)
                 ctx->dirty |= PAN_DIRTY_RASTERIZER;
@@ -996,6 +1004,8 @@ void
 panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 {
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+
+        panfrost_attach_vt_framebuffer(ctx, true);
 
         if (with_vertex_data) {
                 panfrost_emit_vertex_data(job);
@@ -2374,7 +2384,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 else
                         ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
-                panfrost_attach_vt_framebuffer(ctx);
+                panfrost_attach_vt_framebuffer(ctx, false);
         }
 }
 
