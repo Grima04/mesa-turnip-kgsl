@@ -600,6 +600,8 @@ nir_lower_doubles_op_to_options_mask(nir_op opcode)
    case nir_op_ffract:        return nir_lower_dfract;
    case nir_op_fround_even:   return nir_lower_dround_even;
    case nir_op_fmod:          return nir_lower_dmod;
+   case nir_op_fsub:          return nir_lower_dsub;
+   case nir_op_fdiv:          return nir_lower_ddiv;
    default:                   return 0;
    }
 }
@@ -673,10 +675,21 @@ lower_doubles_instr(nir_builder *b, nir_instr *instr, void *_data)
    case nir_op_fround_even:
       return lower_round_even(b, src);
 
+   case nir_op_fdiv:
+   case nir_op_fsub:
    case nir_op_fmod: {
       nir_ssa_def *src1 = nir_mov_alu(b, alu->src[1],
                                       alu->dest.dest.ssa.num_components);
-      return lower_mod(b, src, src1);
+      switch (alu->op) {
+      case nir_op_fdiv:
+         return nir_fmul(b, src, nir_frcp(b, src1));
+      case nir_op_fsub:
+         return nir_fadd(b, src, nir_fneg(b, src1));
+      case nir_op_fmod:
+         return lower_mod(b, src, src1);
+      default:
+         unreachable("unhandled opcode");
+      }
    }
    default:
       unreachable("unhandled opcode");

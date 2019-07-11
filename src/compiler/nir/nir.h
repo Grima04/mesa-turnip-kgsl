@@ -2476,7 +2476,9 @@ typedef enum {
    nir_lower_dfract = (1 << 6),
    nir_lower_dround_even = (1 << 7),
    nir_lower_dmod = (1 << 8),
-   nir_lower_fp64_full_software = (1 << 9),
+   nir_lower_dsub = (1 << 9),
+   nir_lower_ddiv = (1 << 10),
+   nir_lower_fp64_full_software = (1 << 11),
 } nir_lower_doubles_options;
 
 typedef struct nir_shader_compiler_options {
