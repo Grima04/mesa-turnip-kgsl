@@ -1651,7 +1651,7 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 	unsigned max_verts_per_prim = radv_get_num_input_vertices(pipeline);
 	unsigned min_verts_per_prim =
 		gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
-	unsigned gs_num_invocations = 1;//MAX2(gs_info->gs.invocations, 1);
+	unsigned gs_num_invocations = radv_pipeline_has_gs(pipeline) ? MAX2(gs_info->gs.invocations, 1) : 1;
 	bool uses_adjacency;
 	switch(pCreateInfo->pInputAssemblyState->topology) {
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
