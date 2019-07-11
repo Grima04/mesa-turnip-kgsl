@@ -783,6 +783,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_unop(ctx, spirv_op, dest_type, src[0]); \
       break;
 
+   UNOP(nir_op_ineg, SpvOpSNegate)
    UNOP(nir_op_fneg, SpvOpFNegate)
    UNOP(nir_op_fddx, SpvOpDPdx)
    UNOP(nir_op_fddy, SpvOpDPdy)
