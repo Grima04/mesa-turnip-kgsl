@@ -789,6 +789,8 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    UNOP(nir_op_fddy, SpvOpDPdy)
    UNOP(nir_op_f2i32, SpvOpConvertFToS)
    UNOP(nir_op_f2u32, SpvOpConvertFToU)
+   UNOP(nir_op_i2f32, SpvOpConvertSToF)
+   UNOP(nir_op_u2f32, SpvOpConvertUToF)
 #undef UNOP
 
 #define BUILTIN_UNOP(nir_op, spirv_op) \
