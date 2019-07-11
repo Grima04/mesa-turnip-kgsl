@@ -212,7 +212,6 @@ panfrost_create_scanout_res(struct pipe_screen *screen,
         struct panfrost_resource *pres = pan_resource(res);
 
         pres->scanout = scanout;
-        pscreen->display_target = pres;
 
         return res;
 }

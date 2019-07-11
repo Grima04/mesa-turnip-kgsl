@@ -56,9 +56,6 @@ struct panfrost_screen {
         /* Memory management is based on subdividing slabs with AMD's allocator */
         struct pb_slabs slabs;
 
-        /* TODO: Where? */
-        struct panfrost_resource *display_target;
-
         /* While we're busy building up the job for frame N, the GPU is
          * still busy executing frame N-1. So hold a reference to
          * yesterjob */
