@@ -929,7 +929,8 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
 	if (mask & RADV_PREFETCH_GS) {
 		radv_emit_shader_prefetch(cmd_buffer,
 					  pipeline->shaders[MESA_SHADER_GEOMETRY]);
-		radv_emit_shader_prefetch(cmd_buffer, pipeline->gs_copy_shader);
+		if (pipeline->gs_copy_shader)
+			radv_emit_shader_prefetch(cmd_buffer, pipeline->gs_copy_shader);
 	}
 
 	if (mask & RADV_PREFETCH_PS)
@@ -1123,7 +1124,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 				   pipeline->shaders[i]->bo);
 	}
 
-	if (radv_pipeline_has_gs(pipeline))
+	if (radv_pipeline_has_gs(pipeline) && pipeline->gs_copy_shader)
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
 				   pipeline->gs_copy_shader->bo);
 

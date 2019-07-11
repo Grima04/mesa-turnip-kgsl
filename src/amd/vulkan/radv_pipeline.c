@@ -2392,6 +2392,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 	struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
 	struct radv_shader_variant_key keys[MESA_SHADER_STAGES] = {{{{{0}}}}};
 	unsigned char hash[20], gs_copy_hash[20];
+	bool use_ngg = device->physical_device->rad_info.chip_class >= GFX10;
 
 	radv_start_feedback(pipeline_feedback);
 
@@ -2412,7 +2413,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 	gs_copy_hash[0] ^= 1;
 
 	bool found_in_application_cache = true;
-	if (modules[MESA_SHADER_GEOMETRY]) {
+	if (modules[MESA_SHADER_GEOMETRY] && !use_ngg) {
 		struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
 		radv_create_shader_variants_from_pipeline_cache(device, cache, gs_copy_hash, variants,
 		                                                &found_in_application_cache);
@@ -2563,7 +2564,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		}
 	}
 
-	if(modules[MESA_SHADER_GEOMETRY]) {
+	if(modules[MESA_SHADER_GEOMETRY] && !use_ngg) {
 		struct radv_shader_binary *gs_copy_binary = NULL;
 		if (!pipeline->gs_copy_shader) {
 			pipeline->gs_copy_shader = radv_create_gs_copy_shader(
