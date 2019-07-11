@@ -1152,15 +1152,34 @@ radv_shader_variant_destroy(struct radv_device *device,
 }
 
 const char *
-radv_get_shader_name(struct radv_shader_variant *var, gl_shader_stage stage)
+radv_get_shader_name(struct radv_shader_variant_info *info,
+		     gl_shader_stage stage)
 {
 	switch (stage) {
-	case MESA_SHADER_VERTEX: return var->info.vs.as_ls ? "Vertex Shader as LS" : var->info.vs.as_es ? "Vertex Shader as ES" : "Vertex Shader as VS";
-	case MESA_SHADER_GEOMETRY: return "Geometry Shader";
-	case MESA_SHADER_FRAGMENT: return "Pixel Shader";
-	case MESA_SHADER_COMPUTE: return "Compute Shader";
-	case MESA_SHADER_TESS_CTRL: return "Tessellation Control Shader";
-	case MESA_SHADER_TESS_EVAL: return var->info.tes.as_es ? "Tessellation Evaluation Shader as ES" : "Tessellation Evaluation Shader as VS";
+	case MESA_SHADER_VERTEX:
+		if (info->vs.as_ls)
+			return "Vertex Shader as LS";
+		else if (info->vs.as_es)
+			return "Vertex Shader as ES";
+		else if (info->is_ngg)
+			return "Vertex Shader as ESGS";
+		else
+			return "Vertex Shader as VS";
+	case MESA_SHADER_TESS_CTRL:
+		return "Tessellation Control Shader";
+	case MESA_SHADER_TESS_EVAL:
+		if (info->tes.as_es)
+			return "Tessellation Evaluation Shader as ES";
+		else if (info->is_ngg)
+			return "Tessellation Evaluation Shader as ESGS";
+		else
+			return "Tessellation Evaluation Shader as VS";
+	case MESA_SHADER_GEOMETRY:
+		return "Geometry Shader";
+	case MESA_SHADER_FRAGMENT:
+		return "Pixel Shader";
+	case MESA_SHADER_COMPUTE:
+		return "Compute Shader";
 	default:
 		return "Unknown shader";
 	};
@@ -1244,7 +1263,7 @@ radv_shader_dump_stats(struct radv_device *device,
 
 	generate_shader_stats(device, variant, stage, buf);
 
-	fprintf(file, "\n%s:\n", radv_get_shader_name(variant, stage));
+	fprintf(file, "\n%s:\n", radv_get_shader_name(&variant->info, stage));
 	fprintf(file, "%s", buf->buf);
 
 	_mesa_string_buffer_destroy(buf);
@@ -1317,7 +1336,7 @@ radv_GetShaderInfoAMD(VkDevice _device,
 	case VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD:
 		buf = _mesa_string_buffer_create(NULL, 1024);
 
-		_mesa_string_buffer_printf(buf, "%s:\n", radv_get_shader_name(variant, stage));
+		_mesa_string_buffer_printf(buf, "%s:\n", radv_get_shader_name(&variant->info, stage));
 		_mesa_string_buffer_printf(buf, "%s\n\n", variant->llvm_ir_string);
 		_mesa_string_buffer_printf(buf, "%s\n\n", variant->disasm_string);
 		generate_shader_stats(device, variant, stage, buf);

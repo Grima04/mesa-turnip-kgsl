@@ -406,7 +406,7 @@ radv_dump_annotated_shader(struct radv_shader_variant *shader,
 			    start_addr, &num_inst, instructions);
 
 	fprintf(f, COLOR_YELLOW "%s - annotated disassembly:" COLOR_RESET "\n",
-		radv_get_shader_name(shader, stage));
+		radv_get_shader_name(&shader->info, stage));
 
 	/* Print instructions with annotations. */
 	for (i = 0; i < num_inst; i++) {
@@ -490,7 +490,7 @@ radv_dump_shader(struct radv_pipeline *pipeline,
 	if (!shader)
 		return;
 
-	fprintf(f, "%s:\n\n", radv_get_shader_name(shader, stage));
+	fprintf(f, "%s:\n\n", radv_get_shader_name(&shader->info, stage));
 
 	if (shader->spirv) {
 		unsigned char sha1[21];
