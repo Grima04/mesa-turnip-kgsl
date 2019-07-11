@@ -783,15 +783,16 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_unop(ctx, spirv_op, dest_type, src[0]); \
       break;
 
+   UNOP(nir_op_fneg, SpvOpFNegate)
+   UNOP(nir_op_fddx, SpvOpDPdx)
+   UNOP(nir_op_fddy, SpvOpDPdy)
+#undef UNOP
+
 #define BUILTIN_UNOP(nir_op, spirv_op) \
    case nir_op: \
       assert(nir_op_infos[alu->op].num_inputs == 1); \
       result = emit_builtin_unop(ctx, spirv_op, dest_type, src[0]); \
       break;
-
-   UNOP(nir_op_fneg, SpvOpFNegate)
-   UNOP(nir_op_fddx, SpvOpDPdx)
-   UNOP(nir_op_fddy, SpvOpDPdy)
 
    BUILTIN_UNOP(nir_op_fabs, GLSLstd450FAbs)
    BUILTIN_UNOP(nir_op_fsqrt, GLSLstd450Sqrt)
@@ -806,6 +807,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BUILTIN_UNOP(nir_op_fsign, GLSLstd450FSign)
    BUILTIN_UNOP(nir_op_fsin, GLSLstd450Sin)
    BUILTIN_UNOP(nir_op_fcos, GLSLstd450Cos)
+#undef BUILTIN_UNOP
 
    case nir_op_frcp: {
       assert(nir_op_infos[alu->op].num_inputs == 1);
@@ -816,19 +818,10 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       }
       break;
 
-#undef UNOP
-#undef BUILTIN_UNOP
-
 #define BINOP(nir_op, spirv_op) \
    case nir_op: \
       assert(nir_op_infos[alu->op].num_inputs == 2); \
       result = emit_binop(ctx, spirv_op, dest_type, src[0], src[1]); \
-      break;
-
-#define BUILTIN_BINOP(nir_op, spirv_op) \
-   case nir_op: \
-      assert(nir_op_infos[alu->op].num_inputs == 2); \
-      result = emit_builtin_binop(ctx, spirv_op, dest_type, src[0], src[1]); \
       break;
 
    BINOP(nir_op_iadd, SpvOpIAdd)
@@ -840,11 +833,16 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_fmod, SpvOpFMod)
    BINOP(nir_op_flt, SpvOpFUnordLessThan)
    BINOP(nir_op_fge, SpvOpFUnordGreaterThanEqual)
+#undef BINOP
+
+#define BUILTIN_BINOP(nir_op, spirv_op) \
+   case nir_op: \
+      assert(nir_op_infos[alu->op].num_inputs == 2); \
+      result = emit_builtin_binop(ctx, spirv_op, dest_type, src[0], src[1]); \
+      break;
 
    BUILTIN_BINOP(nir_op_fmin, GLSLstd450FMin)
    BUILTIN_BINOP(nir_op_fmax, GLSLstd450FMax)
-
-#undef BINOP
 #undef BUILTIN_BINOP
 
    case nir_op_fdot2:
