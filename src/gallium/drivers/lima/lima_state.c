@@ -414,7 +414,7 @@ lima_set_sampler_views(struct pipe_context *pctx,
    ctx->dirty |= LIMA_CONTEXT_DIRTY_TEXTURES;
 }
 
-static boolean
+UNUSED static boolean
 lima_set_damage_region(struct pipe_context *pctx, unsigned num_rects, int *rects)
 {
    struct lima_context *ctx = lima_context(pctx);

@@ -1009,6 +1009,7 @@ lima_calculate_alpha_blend(enum pipe_blend_func rgb_func, enum pipe_blend_func a
       0x0C000000; /* need check if this GLESv1 glAlphaFunc */
 }
 
+#if 0
 static int
 lima_stencil_op(enum pipe_stencil_op pipe)
 {
@@ -1032,6 +1033,7 @@ lima_stencil_op(enum pipe_stencil_op pipe)
    }
    return -1;
 }
+#endif
 
 static int
 lima_calculate_depth_test(struct pipe_depth_state *depth, struct pipe_rasterizer_state *rst)
