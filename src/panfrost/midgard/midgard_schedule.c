@@ -504,7 +504,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 
         block->quadword_count = 0;
 
-        mir_foreach_instr_in_block_safe(block, ins) {
+        mir_foreach_instr_in_block(block, ins) {
                 int skip;
                 midgard_bundle bundle = schedule_bundle(ctx, block, ins, &skip);
                 util_dynarray_append(&block->bundles, midgard_bundle, bundle);
