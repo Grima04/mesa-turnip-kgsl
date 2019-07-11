@@ -1150,10 +1150,16 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 		maxArraySize = chip_class >= GFX10 ? 8192 : 2048;
 		break;
 	case VK_IMAGE_TYPE_3D:
-		maxExtent.width = 2048;
-		maxExtent.height = 2048;
-		maxExtent.depth = 2048;
-		maxMipLevels = chip_class >= GFX10 ? 14 : 12; /* log2(maxWidth) + 1 */
+		if (chip_class >= GFX10) {
+			maxExtent.width = 8192;
+			maxExtent.height = 8192;
+			maxExtent.depth = 8192;
+		} else {
+			maxExtent.width = 2048;
+			maxExtent.height = 2048;
+			maxExtent.depth = 2048;
+		}
+		maxMipLevels = util_logbase2(maxExtent.width) + 1;
 		maxArraySize = 1;
 		break;
 	}
