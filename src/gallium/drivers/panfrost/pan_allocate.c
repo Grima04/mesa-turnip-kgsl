@@ -1,5 +1,6 @@
 /*
  * © Copyright 2018 Alyssa Rosenzweig
+ * Copyright (C) 2019 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -53,6 +54,23 @@ panfrost_allocate_chunk(struct panfrost_context *ctx, size_t size, unsigned heap
         };
 
         return transfer;
+}
+
+/* Allocate a new transient slab */
+
+static struct panfrost_bo *
+panfrost_create_slab(struct panfrost_screen *screen)
+{
+        /* Allocate a new slab on the screen */
+
+        struct panfrost_bo **new =
+                util_dynarray_grow(&screen->transient_bo,
+                                struct panfrost_bo *, 1);
+
+        struct panfrost_bo *alloc = panfrost_drm_create_bo(screen, TRANSIENT_SLAB_SIZE, 0);
+
+        *new = alloc;
+        return alloc;
 }
 
 /* Transient command stream pooling: command stream uploads try to simply copy

@@ -529,6 +529,8 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 return NULL;
         }
 
+        util_dynarray_init(&screen->transient_bo, screen);
+
         if (pan_debug & PAN_DBG_TRACE)
                 pandecode_initialize();
 

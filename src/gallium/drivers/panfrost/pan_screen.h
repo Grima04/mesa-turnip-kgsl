@@ -32,6 +32,8 @@
 #include "pipe/p_screen.h"
 #include "pipe/p_defines.h"
 #include "renderonly/renderonly.h"
+#include "util/u_dynarray.h"
+#include "util/bitset.h"
 
 #include <panfrost-misc.h>
 #include "pan_allocate.h"
@@ -46,6 +48,22 @@ struct panfrost_screen;
 #define PAN_ALLOCATE_INVISIBLE (1 << 2)
 #define PAN_ALLOCATE_COHERENT_LOCAL (1 << 3)
 
+/* Transient slab size. This is a balance between fragmentation against cache
+ * locality and ease of bookkeeping */
+
+#define TRANSIENT_SLAB_PAGES (32) /* 128kb */
+#define TRANSIENT_SLAB_SIZE (4096 * TRANSIENT_SLAB_PAGES)
+
+/* Maximum number of transient slabs so we don't need dynamic arrays. Most
+ * interesting Mali boards are 4GB RAM max, so if the entire RAM was filled
+ * with transient slabs, you could never exceed (4GB / TRANSIENT_SLAB_SIZE)
+ * allocations anyway. By capping, we can use a fixed-size bitset for tracking
+ * free slabs, eliminating quite a bit of complexity. We can pack the free
+ * state of 8 slabs into a single byte, so for 128kb transient slabs the bitset
+ * occupies a cheap 4kb of memory */
+
+#define MAX_TRANSIENT_SLABS (1024*1024 / TRANSIENT_SLAB_PAGES)
+
 struct panfrost_screen {
         struct pipe_screen base;
         int fd;
@@ -55,6 +73,15 @@ struct panfrost_screen {
 
         /* Memory management is based on subdividing slabs with AMD's allocator */
         struct pb_slabs slabs;
+
+        /* Transient memory management is based on borrowing fixed-size slabs
+         * off the screen (loaning them out to the batch). Dynamic array
+         * container of panfrost_bo */
+
+        struct util_dynarray transient_bo;
+
+        /* Set of free transient BOs */
+        BITSET_DECLARE(free_transient, MAX_TRANSIENT_SLABS);
 
         /* While we're busy building up the job for frame N, the GPU is
          * still busy executing frame N-1. So hold a reference to
