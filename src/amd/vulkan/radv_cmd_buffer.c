@@ -1857,7 +1857,6 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 	int i;
 	struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
-	unsigned num_bpp64_colorbufs = 0;
 
 	/* this may happen for inherited secondary recording */
 	if (!framebuffer)
@@ -1873,7 +1872,6 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		int idx = subpass->color_attachments[i].attachment;
 		struct radv_attachment_info *att = &framebuffer->attachments[idx];
 		struct radv_image_view *iview = att->attachment;
-		struct radv_image *image = iview->image;
 		VkImageLayout layout = subpass->color_attachments[i].layout;
 
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, att->attachment->bo);
@@ -1883,9 +1881,6 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		radv_emit_fb_color_state(cmd_buffer, i, att, iview, layout);
 
 		radv_load_color_clear_metadata(cmd_buffer, iview, i);
-
-		if (image->planes[0].surface.bpe >= 8)
-			num_bpp64_colorbufs++;
 	}
 
 	if (subpass->depth_stencil_attachment) {
@@ -1924,19 +1919,12 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX8) {
 		bool disable_constant_encode =
 			cmd_buffer->device->physical_device->has_dcc_constant_encode;
-		uint8_t watermark = 4; /* Default value for GFX8. */
-
-		/* For optimal DCC performance. */
-		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
-			if (num_bpp64_colorbufs >= 5) {
-				watermark = 8;
-			} else {
-				watermark = 6;
-			}
-		}
+		enum chip_class chip_class =
+			cmd_buffer->device->physical_device->rad_info.chip_class;
+		uint8_t watermark = chip_class >= GFX10 ? 6 : 4;
 
 		radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_DCC_CONTROL,
-				       S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(1) |
+				       S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(chip_class <= GFX9) |
 				       S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
 				       S_028424_DISABLE_CONSTANT_ENCODE_REG(disable_constant_encode));
 	}
