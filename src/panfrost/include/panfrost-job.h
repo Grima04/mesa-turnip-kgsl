@@ -551,11 +551,7 @@ struct mali_shader_meta {
                 } midgard1;
         };
 
-        /* On bifrost: Exactly the same as glPolygonOffset() for both.
-         * On midgard: Depth factor is exactly as passed to glPolygonOffset.
-         * Depth units is equal to the value passed to glDeptOhffset + 1.0f
-         * (use MALI_NEGATIVE)
-         */
+        /* Same as glPolygoOffset() arguments */
         float depth_units;
         float depth_factor;
 

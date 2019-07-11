@@ -1509,12 +1509,8 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                 }
 
                 if (s->depth_units || s->depth_factor) {
-                        if (is_bifrost)
-                                pandecode_prop("depth_units = %f", s->depth_units);
-                        else
-                                pandecode_prop("depth_units = MALI_NEGATIVE(%f)", s->depth_units - 1.0f);
-
                         pandecode_prop("depth_factor = %f", s->depth_factor);
+                        pandecode_prop("depth_units = %f", s->depth_units);
                 }
 
                 if (s->alpha_coverage) {
