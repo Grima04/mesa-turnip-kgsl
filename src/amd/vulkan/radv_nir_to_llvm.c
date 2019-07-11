@@ -3627,13 +3627,17 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 			outputs[noutput].slot_index = i == VARYING_SLOT_CLIP_DIST1;
 
 			outputs[noutput].usage_mask = ctx->shader_info->info.gs.output_usage_mask[i];
+			int length = util_last_bit(outputs[noutput].usage_mask);
 
-			for (unsigned j = 0; j < 4; j++, out_idx++) {
+			for (unsigned j = 0; j < length; j++, out_idx++) {
 				gep_idx[2] = LLVMConstInt(ctx->ac.i32, out_idx, false);
 				tmp = LLVMBuildGEP(builder, vertexptr, gep_idx, 3, "");
 				tmp = LLVMBuildLoad(builder, tmp, "");
 				outputs[noutput].values[j] = ac_to_float(&ctx->ac, tmp);
 			}
+
+			for (unsigned j = length; j < 4; j++)
+				outputs[noutput].values[j] = LLVMGetUndef(ctx->ac.f32);
 
 			noutput++;
 		}
