@@ -3656,7 +3656,8 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 			noutput++;
 		}
 
-		radv_llvm_export_vs(ctx, outputs, noutput, outinfo, false);
+		radv_llvm_export_vs(ctx, outputs, noutput, outinfo,
+				    ctx->options->key.vs_common_out.export_clip_dists);
 		FREE(outputs);
 	}
 	ac_build_endif(&ctx->ac, 5145);
