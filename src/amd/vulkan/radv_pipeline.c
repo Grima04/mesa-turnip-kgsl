@@ -3865,22 +3865,23 @@ radv_compute_vgt_shader_stages_en(const struct radv_pipeline *pipeline)
 			S_028B54_HS_EN(1) | S_028B54_DYNAMIC_HS(1);
 
 		if (radv_pipeline_has_gs(pipeline))
-			stages |=  S_028B54_ES_EN(V_028B54_ES_STAGE_DS) |
-				S_028B54_GS_EN(1) |
-				S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
-		else if (radv_pipeline_has_ngg(pipeline))
 			stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS) |
-				  S_028B54_PRIMGEN_EN(1);
+				  S_028B54_GS_EN(1);
+		else if (radv_pipeline_has_ngg(pipeline))
+			stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_DS);
 		else
 			stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_DS);
-
 	} else if (radv_pipeline_has_gs(pipeline)) {
 		stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL) |
-			S_028B54_GS_EN(1) |
-			S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
+			S_028B54_GS_EN(1);
 	} else if (radv_pipeline_has_ngg(pipeline)) {
-		stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL) |
-			  S_028B54_PRIMGEN_EN(1);
+		stages |= S_028B54_ES_EN(V_028B54_ES_STAGE_REAL);
+	}
+
+	if (radv_pipeline_has_ngg(pipeline)) {
+		stages |= S_028B54_PRIMGEN_EN(1);
+	} else {
+		stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
 	}
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9)
