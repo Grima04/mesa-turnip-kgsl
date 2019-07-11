@@ -3042,6 +3042,8 @@ nir_instr_remove(nir_instr *instr)
 
 /** @} */
 
+nir_ssa_def *nir_instr_ssa_def(nir_instr *instr);
+
 typedef bool (*nir_foreach_ssa_def_cb)(nir_ssa_def *def, void *state);
 typedef bool (*nir_foreach_dest_cb)(nir_dest *dest, void *state);
 typedef bool (*nir_foreach_src_cb)(nir_src *src, void *state);

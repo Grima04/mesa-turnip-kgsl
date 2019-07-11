@@ -1041,6 +1041,53 @@ nir_foreach_ssa_def(nir_instr *instr, nir_foreach_ssa_def_cb cb, void *state)
    }
 }
 
+nir_ssa_def *
+nir_instr_ssa_def(nir_instr *instr)
+{
+   switch (instr->type) {
+   case nir_instr_type_alu:
+      assert(nir_instr_as_alu(instr)->dest.dest.is_ssa);
+      return &nir_instr_as_alu(instr)->dest.dest.ssa;
+
+   case nir_instr_type_deref:
+      assert(nir_instr_as_deref(instr)->dest.is_ssa);
+      return &nir_instr_as_deref(instr)->dest.ssa;
+
+   case nir_instr_type_tex:
+      assert(nir_instr_as_tex(instr)->dest.is_ssa);
+      return &nir_instr_as_tex(instr)->dest.ssa;
+
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      if (nir_intrinsic_infos[intrin->intrinsic].has_dest) {
+         assert(intrin->dest.is_ssa);
+         return &intrin->dest.ssa;
+      } else {
+         return NULL;
+      }
+   }
+
+   case nir_instr_type_phi:
+      assert(nir_instr_as_phi(instr)->dest.is_ssa);
+      return &nir_instr_as_phi(instr)->dest.ssa;
+
+   case nir_instr_type_parallel_copy:
+      unreachable("Parallel copies are unsupported by this function");
+
+   case nir_instr_type_load_const:
+      return &nir_instr_as_load_const(instr)->def;
+
+   case nir_instr_type_ssa_undef:
+      return &nir_instr_as_ssa_undef(instr)->def;
+
+   case nir_instr_type_call:
+   case nir_instr_type_jump:
+      return NULL;
+   }
+
+   unreachable("Invalid instruction type");
+}
+
 static bool
 visit_src(nir_src *src, nir_foreach_src_cb cb, void *state)
 {
