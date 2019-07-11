@@ -4434,8 +4434,13 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
 	LLVMBuildRetVoid(ctx.ac.builder);
 
-	if (options->dump_preoptir)
+	if (options->dump_preoptir) {
+		fprintf(stderr, "%s LLVM IR:\n\n",
+			radv_get_shader_name(shader_info,
+					     shaders[shader_count - 1]->info.stage));
 		ac_dump_module(ctx.ac.module);
+		fprintf(stderr, "\n");
+	}
 
 	ac_llvm_finalize_module(&ctx, ac_llvm->passmgr, options);
 
@@ -4489,13 +4494,18 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 				   struct radv_shader_binary **rbinary,
 				   struct radv_shader_variant_info *shader_info,
 				   gl_shader_stage stage,
+				   const char *name,
 				   const struct radv_nir_compiler_options *options)
 {
 	char *elf_buffer = NULL;
 	size_t elf_size = 0;
 	char *llvm_ir_string = NULL;
-	if (options->dump_shader)
+
+	if (options->dump_shader) {
+		fprintf(stderr, "%s LLVM IR:\n\n", name);
 		ac_dump_module(llvm_module);
+		fprintf(stderr, "\n");
+	}
 
 	if (options->record_llvm_ir) {
 		char *llvm_ir = LLVMPrintModuleToString(llvm_module);
@@ -4585,7 +4595,10 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 	                                       options);
 
 	ac_compile_llvm_module(ac_llvm, llvm_module, rbinary, shader_info,
-			       nir[nir_count - 1]->info.stage, options);
+			       nir[nir_count - 1]->info.stage,
+			       radv_get_shader_name(shader_info,
+						    nir[nir_count - 1]->info.stage),
+			       options);
 
 	for (int i = 0; i < nir_count; ++i)
 		ac_fill_shader_info(shader_info, nir[i], options);
@@ -4737,7 +4750,7 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 	ac_llvm_finalize_module(&ctx, ac_llvm->passmgr, options);
 
 	ac_compile_llvm_module(ac_llvm, ctx.ac.module, rbinary, shader_info,
-			       MESA_SHADER_VERTEX, options);
+			       MESA_SHADER_VERTEX, "GS Copy Shader", options);
 	(*rbinary)->is_gs_copy_shader = true;
 	
 }
