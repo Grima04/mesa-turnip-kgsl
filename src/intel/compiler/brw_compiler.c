@@ -133,7 +133,9 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       nir_lower_dceil |
       nir_lower_dfract |
       nir_lower_dround_even |
-      nir_lower_dmod;
+      nir_lower_dmod |
+      nir_lower_dsub |
+      nir_lower_ddiv;
 
    if (!devinfo->has_64bit_types || (INTEL_DEBUG & DEBUG_SOFT64)) {
       int64_options |= nir_lower_mov64 |
