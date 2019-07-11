@@ -927,6 +927,11 @@ radv_shader_variant_create(struct radv_device *device,
 			sym->name = "esgs_ring";
 			sym->size = 32 * 1024;
 			sym->align = 64 * 1024;
+
+			/* Make sure to have LDS space for NGG scratch. */
+			/* TODO: Compute this correctly somehow? */
+			if (binary->variant_info.is_ngg)
+				sym->size -= 32;
 		}
 		struct ac_rtld_open_info open_info = {
 			.info = &device->physical_device->rad_info,

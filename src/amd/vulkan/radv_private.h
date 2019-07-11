@@ -2148,6 +2148,30 @@ struct radeon_winsys_sem;
 
 uint64_t radv_get_current_time(void);
 
+static inline uint32_t
+si_conv_gl_prim_to_vertices(unsigned gl_prim)
+{
+	switch (gl_prim) {
+	case 0: /* GL_POINTS */
+		return 1;
+	case 1: /* GL_LINES */
+	case 3: /* GL_LINE_STRIP */
+		return 2;
+	case 4: /* GL_TRIANGLES */
+	case 5: /* GL_TRIANGLE_STRIP */
+		return 3;
+	case 0xA: /* GL_LINE_STRIP_ADJACENCY_ARB */
+		return 4;
+	case 0xc: /* GL_TRIANGLES_ADJACENCY_ARB */
+		return 6;
+	case 7: /* GL_QUADS */
+		return V_028A6C_OUTPRIM_TYPE_TRISTRIP;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
 #define RADV_DEFINE_HANDLE_CASTS(__radv_type, __VkType)		\
 								\
 	static inline struct __radv_type *			\

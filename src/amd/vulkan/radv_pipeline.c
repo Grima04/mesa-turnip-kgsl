@@ -2023,7 +2023,10 @@ static const struct radv_prim_vertex_count prim_size_table[] = {
 static const struct radv_vs_output_info *get_vs_output_info(const struct radv_pipeline *pipeline)
 {
 	if (radv_pipeline_has_gs(pipeline))
-		return &pipeline->gs_copy_shader->info.vs.outinfo;
+		if (radv_pipeline_has_ngg(pipeline))
+			return &pipeline->shaders[MESA_SHADER_GEOMETRY]->info.vs.outinfo;
+		else
+			return &pipeline->gs_copy_shader->info.vs.outinfo;
 	else if (radv_pipeline_has_tess(pipeline))
 		return &pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.outinfo;
 	else
