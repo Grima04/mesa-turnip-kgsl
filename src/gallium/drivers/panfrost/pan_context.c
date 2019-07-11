@@ -141,7 +141,7 @@ panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count)
 
         struct mali_single_framebuffer framebuffer = {
                 .width = MALI_POSITIVE(width),
-                .height = MALI_POSITIVE(width),
+                .height = MALI_POSITIVE(height),
                 .unknown2 = 0x1f,
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
