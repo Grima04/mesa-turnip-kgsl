@@ -1255,7 +1255,8 @@ emit_varying_read(
 static void
 emit_sysval_read(compiler_context *ctx, nir_instr *instr)
 {
-        unsigned dest;
+        unsigned dest = 0;
+
         /* Figure out which uniform this is */
         int sysval = sysval_for_instr(ctx, instr, &dest);
         void *val = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);

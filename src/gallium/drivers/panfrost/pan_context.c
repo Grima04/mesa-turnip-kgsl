@@ -100,10 +100,8 @@ panfrost_emit_midg_tiler(
 
         /* Sanity check */
 
-        unsigned total_size = header_size + body_size;
-
         if (t.hierarchy_mask) {
-                assert(ctx->tiler_polygon_list.bo->size >= total_size);
+                assert(ctx->tiler_polygon_list.bo->size >= (header_size + body_size));
 
                 /* Specify allocated tiler structures */
                 t.polygon_list = ctx->tiler_polygon_list.bo->gpu;
@@ -775,7 +773,7 @@ panfrost_upload_tex(
         struct panfrost_sampler_view *view)
 {
         if (!view)
-                return (mali_ptr) NULL;
+                return (mali_ptr) 0;
 
         struct pipe_sampler_view *pview = &view->base;
         struct panfrost_resource *rsrc = pan_resource(pview->texture);
