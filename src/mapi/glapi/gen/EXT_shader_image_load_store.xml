@@ -61,7 +61,6 @@
 <enum name="MAX_IMAGE_SAMPLES_EXT" value="0x906D"/>
 <enum name="IMAGE_BINDING_FORMAT_EXT" value="0x906E"/>
 
-<!--
 <function name="BindImageTextureEXT">
   <param name="index" type="GLuint"/>
   <param name="texture" type="GLuint"/>
@@ -71,7 +70,6 @@
   <param name="access" type="GLenum"/>
   <param name="format" type="GLint"/>
 </function>
--->
 
 <function name="MemoryBarrierEXT" alias="MemoryBarrier" >
   <param name="barriers" type="GLbitfield"/>

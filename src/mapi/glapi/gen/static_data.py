@@ -1551,6 +1551,7 @@ offsets = {
     "GetMultiTexGenfvEXT": 1515,
     "GetMultiTexGenivEXT": 1516,
     "MultiTexCoordPointerEXT": 1517,
+    "BindImageTextureEXT": 1518,
 }
 
 functions = [
