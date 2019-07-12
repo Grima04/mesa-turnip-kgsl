@@ -2688,7 +2688,9 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
 		if (!radv_image_has_htile(image))
 			flush_DB_meta = false;
 
-		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+		/* TODO: implement shader coherent for GFX10 */
+
+		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
 			if (image->info.samples == 1 &&
 			    (image->usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 					     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
