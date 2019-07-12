@@ -1231,6 +1231,11 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	sscreen->compute_wave_size = 64;
 
 	if (sscreen->info.chip_class >= GFX10) {
+		/* Pixels shaders: Wave64 is recommended.
+		 * Compute shaders: There are piglit failures with Wave32.
+		 */
+		sscreen->ge_wave_size = 32;
+
 		if (sscreen->debug_flags & DBG(W32_GE))
 			sscreen->ge_wave_size = 32;
 		if (sscreen->debug_flags & DBG(W32_PS))
