@@ -97,12 +97,27 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
         bool update_offset = false;
 
         if (sz < TRANSIENT_SLAB_SIZE) {
-                /* TODO: Lookup free */
-
+                /* First, look for a free slot */
+                unsigned count = util_dynarray_num_elements(&screen->transient_bo, void *);
                 unsigned index = 0;
 
-                if (!bo)
+                unsigned free = __bitset_ffs(
+                                screen->free_transient,
+                                count / BITSET_WORDBITS);
+
+                if (likely(free)) {
+                        /* Use this one */
+                        index = free - 1;
+
+                        /* It's ours, so no longer free */
+                        BITSET_CLEAR(screen->free_transient, index);
+
+                        /* Grab the BO */
+                        bo = pan_bo_for_index(screen, index);
+                } else {
+                        /* Otherwise, create a new BO */
                         bo = panfrost_create_slab(screen, &index);
+                }
 
                 /* Remember we created this */
                 util_dynarray_append(&batch->transient_indices, unsigned, index);

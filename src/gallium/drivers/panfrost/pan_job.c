@@ -61,6 +61,14 @@ panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job)
                 panfrost_bo_unreference(ctx->base.screen, bo);
         }
 
+        /* Free up the transient BOs we're sitting on */
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+
+        util_dynarray_foreach(&job->transient_indices, unsigned, index) {
+                /* Mark it free */
+                BITSET_SET(screen->free_transient, *index);
+        }
+
         _mesa_hash_table_remove_key(ctx->jobs, &job->key);
 
         if (ctx->job == job)
