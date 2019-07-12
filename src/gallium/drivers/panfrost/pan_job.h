@@ -106,6 +106,9 @@ struct panfrost_job {
 
         /* BOs referenced -- will be used for flushing logic */
         struct set *bos;
+
+        /* Indices of transient BOs referenced */
+        struct util_dynarray transient_indices;
 };
 
 /* Functions for managing the above */

@@ -59,7 +59,7 @@ panfrost_allocate_chunk(struct panfrost_context *ctx, size_t size, unsigned heap
 /* Allocate a new transient slab */
 
 static struct panfrost_bo *
-panfrost_create_slab(struct panfrost_screen *screen)
+panfrost_create_slab(struct panfrost_screen *screen, unsigned *index)
 {
         /* Allocate a new slab on the screen */
 
@@ -70,6 +70,10 @@ panfrost_create_slab(struct panfrost_screen *screen)
         struct panfrost_bo *alloc = panfrost_drm_create_bo(screen, TRANSIENT_SLAB_SIZE, 0);
 
         *new = alloc;
+
+        /* Return the BO as well as the index we just added */
+
+        *index = util_dynarray_num_elements(&screen->transient_bo, void *) - 1;
         return alloc;
 }
 
@@ -81,6 +85,7 @@ struct panfrost_transfer
 panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
 {
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
 
         /* Pad the size */
         sz = ALIGN_POT(sz, ALIGNMENT);
@@ -94,8 +99,13 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
         if (sz < TRANSIENT_SLAB_SIZE) {
                 /* TODO: Lookup free */
 
+                unsigned index = 0;
+
                 if (!bo)
-                        bo = panfrost_create_slab(screen);
+                        bo = panfrost_create_slab(screen, &index);
+
+                /* Remember we created this */
+                util_dynarray_append(&batch->transient_indices, unsigned, index);
 
                 update_offset = true;
         } else {

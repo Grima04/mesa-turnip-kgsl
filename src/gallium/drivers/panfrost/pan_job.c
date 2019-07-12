@@ -45,6 +45,7 @@ panfrost_create_job(struct panfrost_context *ctx)
 
         util_dynarray_init(&job->headers, job);
         util_dynarray_init(&job->gpu_headers, job);
+        util_dynarray_init(&job->transient_indices, job);
 
         return job;
 }
