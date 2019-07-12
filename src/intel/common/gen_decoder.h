@@ -175,6 +175,7 @@ union gen_field_value {
 struct gen_field {
    struct gen_group *parent;
    struct gen_field *next;
+   struct gen_group *array;
 
    char *name;
    int start, end;

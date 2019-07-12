@@ -339,6 +339,20 @@ create_field(struct parser_context *ctx, const char **atts)
    return field;
 }
 
+static struct gen_field *
+create_array_field(struct parser_context *ctx, struct gen_group *array)
+{
+   struct gen_field *field;
+
+   field = rzalloc(ctx->group, struct gen_field);
+   field->parent = ctx->group;
+
+   field->array = array;
+   field->start = field->array->array_offset;
+
+   return field;
+}
+
 static struct gen_value *
 create_value(struct parser_context *ctx, const char **atts)
 {
@@ -356,9 +370,11 @@ create_value(struct parser_context *ctx, const char **atts)
 
 static struct gen_field *
 create_and_append_field(struct parser_context *ctx,
-                        const char **atts)
+                        const char **atts,
+                        struct gen_group *array)
 {
-   struct gen_field *field = create_field(ctx, atts);
+   struct gen_field *field = array ?
+      create_array_field(ctx, array) : create_field(ctx, atts);
    struct gen_field *prev = NULL, *list = ctx->group->fields;
 
    while (list && field->start > list->start) {
@@ -419,9 +435,10 @@ start_element(void *data, const char *element_name, const char **atts)
 
       struct gen_group *group = create_group(ctx, "", atts, ctx->group, false);
       previous_group->next = group;
+      ctx->last_field = create_and_append_field(ctx, NULL, group);
       ctx->group = group;
    } else if (strcmp(element_name, "field") == 0) {
-      ctx->last_field = create_and_append_field(ctx, atts);
+      ctx->last_field = create_and_append_field(ctx, atts, NULL);
    } else if (strcmp(element_name, "enum") == 0) {
       ctx->enoom = create_enum(ctx, name, atts);
    } else if (strcmp(element_name, "value") == 0) {
