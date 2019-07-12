@@ -939,12 +939,13 @@ static void si_add_split_disasm(struct si_screen *screen,
 				uint64_t *addr,
 				unsigned *num,
 				struct si_shader_inst *instructions,
-				enum pipe_shader_type shader_type)
+				enum pipe_shader_type shader_type,
+				unsigned wave_size)
 {
 	if (!ac_rtld_open(rtld_binary, (struct ac_rtld_open_info){
 			.info = &screen->info,
 			.shader_type = tgsi_processor_to_shader_stage(shader_type),
-			.wave_size = 64,
+			.wave_size = wave_size,
 			.num_parts = 1,
 			.elf_ptrs = &binary->elf_buffer,
 			.elf_sizes = &binary->elf_size }))
@@ -1016,27 +1017,28 @@ static void si_print_annotated_shader(struct si_shader *shader,
 	 */
 	unsigned num_inst = 0;
 	uint64_t inst_addr = start_addr;
+	unsigned wave_size = si_get_shader_wave_size(shader);
 	struct ac_rtld_binary rtld_binaries[5] = {};
 	struct si_shader_inst *instructions =
 		calloc(shader->bo->b.b.width0 / 4, sizeof(struct si_shader_inst));
 
 	if (shader->prolog) {
 		si_add_split_disasm(screen, &rtld_binaries[0], &shader->prolog->binary,
-				    &inst_addr, &num_inst, instructions, shader_type);
+				    &inst_addr, &num_inst, instructions, shader_type, wave_size);
 	}
 	if (shader->previous_stage) {
 		si_add_split_disasm(screen, &rtld_binaries[1], &shader->previous_stage->binary,
-				    &inst_addr, &num_inst, instructions, shader_type);
+				    &inst_addr, &num_inst, instructions, shader_type, wave_size);
 	}
 	if (shader->prolog2) {
 		si_add_split_disasm(screen, &rtld_binaries[2], &shader->prolog2->binary,
-				    &inst_addr, &num_inst, instructions, shader_type);
+				    &inst_addr, &num_inst, instructions, shader_type, wave_size);
 	}
 	si_add_split_disasm(screen, &rtld_binaries[3], &shader->binary,
-			    &inst_addr, &num_inst, instructions, shader_type);
+			    &inst_addr, &num_inst, instructions, shader_type, wave_size);
 	if (shader->epilog) {
 		si_add_split_disasm(screen, &rtld_binaries[4], &shader->epilog->binary,
-				    &inst_addr, &num_inst, instructions, shader_type);
+				    &inst_addr, &num_inst, instructions, shader_type, wave_size);
 	}
 
 	fprintf(f, COLOR_YELLOW "%s - annotated disassembly:" COLOR_RESET "\n",

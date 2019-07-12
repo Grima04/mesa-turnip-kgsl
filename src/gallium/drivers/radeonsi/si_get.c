@@ -883,7 +883,7 @@ static int si_get_compute_param(struct pipe_screen *screen,
 	case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
 		if (ret) {
 			uint32_t *subgroup_size = ret;
-			*subgroup_size = 64;
+			*subgroup_size = sscreen->compute_wave_size;
 		}
 		return sizeof(uint32_t);
 	case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:

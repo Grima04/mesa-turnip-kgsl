@@ -553,7 +553,8 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 	}
 
 	si_pm4_set_reg(pm4, R_00B428_SPI_SHADER_PGM_RSRC1_HS,
-		       S_00B428_VGPRS((shader->config.num_vgprs - 1) / 4) |
+		       S_00B428_VGPRS((shader->config.num_vgprs - 1) /
+				      (sscreen->ge_wave_size == 32 ? 8 : 4)) |
 		       (sscreen->info.chip_class <= GFX9 ?
 				S_00B428_SGPRS((shader->config.num_sgprs - 1) / 8) : 0) |
 		       S_00B428_DX10_CLAMP(1) |
@@ -1153,7 +1154,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
 	si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES, va >> 40);
 	si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
-		       S_00B228_VGPRS((shader->config.num_vgprs - 1) / 4) |
+		       S_00B228_VGPRS((shader->config.num_vgprs - 1) /
+				      (sscreen->ge_wave_size == 32 ? 8 : 4)) |
 		       S_00B228_FLOAT_MODE(shader->config.float_mode) |
 		       S_00B228_DX10_CLAMP(1) |
 		       S_00B228_MEM_ORDERED(1) |
@@ -1399,7 +1401,8 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 	if (sscreen->info.chip_class >= GFX10)
 		si_set_ge_pc_alloc(sscreen, pm4, false);
 
-	uint32_t rsrc1 = S_00B128_VGPRS((shader->config.num_vgprs - 1) / 4) |
+	uint32_t rsrc1 = S_00B128_VGPRS((shader->config.num_vgprs - 1) /
+					(sscreen->ge_wave_size == 32 ? 8 : 4)) |
 			 S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt) |
 			 S_00B128_DX10_CLAMP(1) |
 			 S_00B128_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
@@ -1610,7 +1613,8 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 	shader->ctx_reg.ps.spi_ps_input_addr = shader->config.spi_ps_input_addr;
 
 	/* Set interpolation controls. */
-	spi_ps_in_control = S_0286D8_NUM_INTERP(si_get_ps_num_interp(shader));
+	spi_ps_in_control = S_0286D8_NUM_INTERP(si_get_ps_num_interp(shader)) |
+			    S_0286D8_PS_W32_EN(sscreen->ps_wave_size == 32);
 
 	shader->ctx_reg.ps.spi_baryc_cntl = spi_baryc_cntl;
 	shader->ctx_reg.ps.spi_ps_in_control = spi_ps_in_control;
@@ -1627,7 +1631,8 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 	si_pm4_set_reg(pm4, R_00B024_SPI_SHADER_PGM_HI_PS, S_00B024_MEM_BASE(va >> 40));
 
 	uint32_t rsrc1 =
-		S_00B028_VGPRS((shader->config.num_vgprs - 1) / 4) |
+		S_00B028_VGPRS((shader->config.num_vgprs - 1) /
+			       (sscreen->ps_wave_size == 32 ? 8 : 4)) |
 		S_00B028_DX10_CLAMP(1) |
 		S_00B028_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
 		S_00B028_FLOAT_MODE(shader->config.float_mode);
@@ -2421,8 +2426,11 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 	assert(thread_index < ARRAY_SIZE(sscreen->compiler));
 	compiler = &sscreen->compiler[thread_index];
 
-	if (sel->nir)
-		si_lower_nir(sel);
+	if (sel->nir) {
+		/* TODO: GS always sets wave size = default. Legacy GS will have
+		 * incorrect subgroup_size and ballot_bit_size. */
+		si_lower_nir(sel, si_get_wave_size(sscreen, sel->type, true));
+	}
 
 	/* Compile the main shader part for use with a prolog and/or epilog.
 	 * If this fails, the driver will try to compile a monolithic shader
@@ -3784,6 +3792,12 @@ static struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen,
 
 	if (screen->info.chip_class >= GFX9)
 		stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
+
+	if (screen->info.chip_class >= GFX10 && screen->ge_wave_size == 32) {
+		stages |= S_028B54_HS_W32_EN(1) |
+			  S_028B54_GS_W32_EN(key.u.ngg) | /* legacy GS only supports Wave64 */
+			  S_028B54_VS_W32_EN(1);
+	}
 
 	si_pm4_set_reg(pm4, R_028B54_VGT_SHADER_STAGES_EN, stages);
 	return pm4;

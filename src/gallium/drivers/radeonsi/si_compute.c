@@ -68,7 +68,7 @@ static const amd_kernel_code_t *si_compute_get_code_object(
 	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
 			.info = &sel->screen->info,
 			.shader_type = MESA_SHADER_COMPUTE,
-			.wave_size = 64,
+			.wave_size = sel->screen->compute_wave_size,
 			.num_parts = 1,
 			.elf_ptrs = &program->shader.binary.elf_buffer,
 			.elf_sizes = &program->shader.binary.elf_size }))
@@ -127,7 +127,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 
 		si_nir_opts(sel->nir);
 		si_nir_scan_shader(sel->nir, &sel->info);
-		si_lower_nir(sel);
+		si_lower_nir(sel, sscreen->compute_wave_size);
 	}
 
 	/* Store the declared LDS size into tgsi_shader_info for the shader
@@ -178,7 +178,8 @@ static void si_create_compute_state_async(void *job, int thread_index)
 				      program->num_cs_user_data_dwords;
 
 		shader->config.rsrc1 =
-			S_00B848_VGPRS((shader->config.num_vgprs - 1) / 4) |
+			S_00B848_VGPRS((shader->config.num_vgprs - 1) /
+				       (sscreen->compute_wave_size == 32 ? 8 : 4)) |
 			S_00B848_DX10_CLAMP(1) |
 			S_00B848_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
 			S_00B848_WGP_MODE(sscreen->info.chip_class >= GFX10) |
@@ -746,7 +747,7 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 	unsigned threads_per_threadgroup =
 		info->block[0] * info->block[1] * info->block[2];
 	unsigned waves_per_threadgroup =
-		DIV_ROUND_UP(threads_per_threadgroup, 64);
+		DIV_ROUND_UP(threads_per_threadgroup, sscreen->compute_wave_size);
 	unsigned threadgroups_per_cu = 1;
 
 	if (sctx->chip_class >= GFX10 && waves_per_threadgroup == 1)
@@ -763,7 +764,8 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 		S_00B800_FORCE_START_AT_000(1) |
 		/* If the KMD allows it (there is a KMD hw register for it),
 		 * allow launching waves out-of-order. (same as Vulkan) */
-		S_00B800_ORDER_MODE(sctx->chip_class >= GFX7);
+		S_00B800_ORDER_MODE(sctx->chip_class >= GFX7) |
+		S_00B800_CS_W32_EN(sscreen->compute_wave_size == 32);
 
 	const uint *last_block = info->last_block;
 	bool partial_block_en = last_block[0] || last_block[1] || last_block[2];

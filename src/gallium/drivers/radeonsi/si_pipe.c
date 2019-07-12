@@ -137,6 +137,8 @@ static void si_init_compiler(struct si_screen *sscreen,
 	ac_init_llvm_compiler(compiler, sscreen->info.family, tm_options);
 	compiler->passes = ac_create_llvm_passes(compiler->tm);
 
+	if (compiler->tm_wave32)
+		compiler->passes_wave32 = ac_create_llvm_passes(compiler->tm_wave32);
 	if (compiler->low_opt_tm)
 		compiler->low_opt_passes = ac_create_llvm_passes(compiler->low_opt_tm);
 }
@@ -1211,6 +1213,10 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 		si_init_compiler(sscreen, &sscreen->compiler[i]);
 	for (i = 0; i < num_comp_lo_threads; i++)
 		si_init_compiler(sscreen, &sscreen->compiler_lowp[i]);
+
+	sscreen->ge_wave_size = 64;
+	sscreen->ps_wave_size = 64;
+	sscreen->compute_wave_size = 64;
 
 	/* Create the auxiliary context. This must be done last. */
 	sscreen->aux_context = si_create_context(

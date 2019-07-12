@@ -49,7 +49,8 @@ static const char scratch_rsrc_dword1_symbol[] =
 
 static void si_init_shader_ctx(struct si_shader_context *ctx,
 			       struct si_screen *sscreen,
-			       struct ac_llvm_compiler *compiler);
+			       struct ac_llvm_compiler *compiler,
+			       unsigned wave_size);
 
 static void si_llvm_emit_barrier(const struct lp_build_tgsi_action *action,
 				 struct lp_build_tgsi_context *bld_base,
@@ -2168,7 +2169,7 @@ void si_load_system_value(struct si_shader_context *ctx,
 		break;
 
 	case TGSI_SEMANTIC_SUBGROUP_SIZE:
-		value = LLVMConstInt(ctx->i32, 64, 0);
+		value = LLVMConstInt(ctx->i32, ctx->ac.wave_size, 0);
 		break;
 
 	case TGSI_SEMANTIC_SUBGROUP_INVOCATION:
@@ -3555,7 +3556,7 @@ static void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi,
 		LLVMValueRef wave_idx = si_unpack_param(ctx, ctx->param_merged_wave_info, 24, 4);
 		vertex_idx = LLVMBuildOr(ctx->ac.builder, vertex_idx,
 					 LLVMBuildMul(ctx->ac.builder, wave_idx,
-						      LLVMConstInt(ctx->i32, 64, false), ""), "");
+						      LLVMConstInt(ctx->i32, ctx->ac.wave_size, false), ""), "");
 		lds_base = LLVMBuildMul(ctx->ac.builder, vertex_idx,
 					LLVMConstInt(ctx->i32, itemsize_dw, 0), "");
 	}
@@ -5137,14 +5138,14 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 			/* Limit on the stride field for <= GFX7. */
 			assert(stride < (1 << 14));
 
-			num_records = 64;
+			num_records = ctx->ac.wave_size;
 
 			ring = LLVMBuildBitCast(builder, base_ring, v2i64, "");
 			tmp = LLVMBuildExtractElement(builder, ring, ctx->i32_0, "");
 			tmp = LLVMBuildAdd(builder, tmp,
 					   LLVMConstInt(ctx->i64,
 							stream_offset, 0), "");
-			stream_offset += stride * 64;
+			stream_offset += stride * ctx->ac.wave_size;
 
 			ring = LLVMBuildInsertElement(builder, ring, tmp, ctx->i32_0, "");
 			ring = LLVMBuildBitCast(builder, ring, ctx->v4i32, "");
@@ -5270,7 +5271,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 				.halt_at_entry = screen->options.halt_shaders,
 			},
 			.shader_type = tgsi_processor_to_shader_stage(sel->type),
-			.wave_size = 64,
+			.wave_size = si_get_shader_wave_size(shader),
 			.num_parts = num_parts,
 			.elf_ptrs = part_elfs,
 			.elf_sizes = part_sizes,
@@ -5357,6 +5358,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
 static void si_shader_dump_disassembly(struct si_screen *screen,
 				       const struct si_shader_binary *binary,
 				       enum pipe_shader_type shader_type,
+				       unsigned wave_size,
 				       struct pipe_debug_callback *debug,
 				       const char *name, FILE *file)
 {
@@ -5365,7 +5367,7 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
 	if (!ac_rtld_open(&rtld_binary, (struct ac_rtld_open_info){
 			.info = &screen->info,
 			.shader_type = tgsi_processor_to_shader_stage(shader_type),
-			.wave_size = 64,
+			.wave_size = wave_size,
 			.num_parts = 1,
 			.elf_ptrs = &binary->elf_buffer,
 			.elf_sizes = &binary->elf_size }))
@@ -5449,7 +5451,8 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 			unsigned max_workgroup_size =
 				si_get_max_workgroup_size(shader);
 			lds_per_wave = (conf->lds_size * lds_increment) /
-				       DIV_ROUND_UP(max_workgroup_size, 64);
+				       DIV_ROUND_UP(max_workgroup_size,
+						    sscreen->compute_wave_size);
 		}
 		break;
 	default:;
@@ -5482,6 +5485,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen,
 	if (screen->options.debug_disassembly)
 		si_shader_dump_disassembly(screen, &shader->binary,
 					   shader->selector->type,
+					   si_get_shader_wave_size(shader),
 					   debug, "main", NULL);
 
 	pipe_debug_message(debug, SHADER_INFO,
@@ -5594,23 +5598,26 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
 	if (!check_debug_option ||
 	    (si_can_dump_shader(sscreen, shader_type) &&
 	     !(sscreen->debug_flags & DBG(NO_ASM)))) {
+		unsigned wave_size = si_get_shader_wave_size(shader);
+
 		fprintf(file, "\n%s:\n", si_get_shader_name(shader));
 
 		if (shader->prolog)
 			si_shader_dump_disassembly(sscreen, &shader->prolog->binary,
-						   shader_type, debug, "prolog", file);
+						   shader_type, wave_size, debug, "prolog", file);
 		if (shader->previous_stage)
 			si_shader_dump_disassembly(sscreen, &shader->previous_stage->binary,
-						   shader_type, debug, "previous stage", file);
+						   shader_type, wave_size, debug, "previous stage", file);
 		if (shader->prolog2)
 			si_shader_dump_disassembly(sscreen, &shader->prolog2->binary,
-						   shader_type, debug, "prolog2", file);
+						   shader_type, wave_size, debug, "prolog2", file);
 
-		si_shader_dump_disassembly(sscreen, &shader->binary, shader_type, debug, "main", file);
+		si_shader_dump_disassembly(sscreen, &shader->binary, shader_type,
+					   wave_size, debug, "main", file);
 
 		if (shader->epilog)
 			si_shader_dump_disassembly(sscreen, &shader->epilog->binary,
-						   shader_type, debug, "epilog", file);
+						   shader_type, wave_size, debug, "epilog", file);
 		fprintf(file, "\n");
 	}
 
@@ -5624,6 +5631,7 @@ static int si_compile_llvm(struct si_screen *sscreen,
 			   LLVMModuleRef mod,
 			   struct pipe_debug_callback *debug,
 			   enum pipe_shader_type shader_type,
+			   unsigned wave_size,
 			   const char *name,
 			   bool less_optimized)
 {
@@ -5647,7 +5655,7 @@ static int si_compile_llvm(struct si_screen *sscreen,
 
 	if (!si_replace_shader(count, binary)) {
 		unsigned r = si_llvm_compile(mod, binary, compiler, debug,
-					     less_optimized);
+					     less_optimized, wave_size);
 		if (r)
 			return r;
 	}
@@ -5656,7 +5664,7 @@ static int si_compile_llvm(struct si_screen *sscreen,
 	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
 			.info = &sscreen->info,
 			.shader_type = tgsi_processor_to_shader_stage(shader_type),
-			.wave_size = 64,
+			.wave_size = wave_size,
 			.num_parts = 1,
 			.elf_ptrs = &binary->elf_buffer,
 			.elf_sizes = &binary->elf_size }))
@@ -5718,7 +5726,8 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	shader->selector = gs_selector;
 	shader->is_gs_copy_shader = true;
 
-	si_init_shader_ctx(&ctx, sscreen, compiler);
+	si_init_shader_ctx(&ctx, sscreen, compiler,
+			   si_get_wave_size(sscreen, PIPE_SHADER_VERTEX, false));
 	ctx.shader = shader;
 	ctx.type = PIPE_SHADER_VERTEX;
 
@@ -5817,7 +5826,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	if (si_compile_llvm(sscreen, &ctx.shader->binary,
 			    &ctx.shader->config, ctx.compiler,
 			    ctx.ac.module,
-			    debug, PIPE_SHADER_GEOMETRY,
+			    debug, PIPE_SHADER_GEOMETRY, ctx.ac.wave_size,
 			    "GS Copy Shader", false) == 0) {
 		if (si_can_dump_shader(sscreen, PIPE_SHADER_GEOMETRY))
 			fprintf(stderr, "GS Copy Shader:\n");
@@ -5972,11 +5981,12 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 
 static void si_init_shader_ctx(struct si_shader_context *ctx,
 			       struct si_screen *sscreen,
-			       struct ac_llvm_compiler *compiler)
+			       struct ac_llvm_compiler *compiler,
+			       unsigned wave_size)
 {
 	struct lp_build_tgsi_context *bld_base;
 
-	si_llvm_context_init(ctx, sscreen, compiler);
+	si_llvm_context_init(ctx, sscreen, compiler, wave_size);
 
 	bld_base = &ctx->bld_base;
 	bld_base->emit_fetch_funcs[TGSI_FILE_CONSTANT] = fetch_constant;
@@ -6917,7 +6927,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 		si_dump_streamout(&sel->so);
 	}
 
-	si_init_shader_ctx(&ctx, sscreen, compiler);
+	si_init_shader_ctx(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
 	si_llvm_context_set_tgsi(&ctx, shader);
 
 	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
@@ -7133,7 +7143,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 
 	/* Compile to bytecode. */
 	r = si_compile_llvm(sscreen, &shader->binary, &shader->config, compiler,
-			    ctx.ac.module, debug, ctx.type,
+			    ctx.ac.module, debug, ctx.type, ctx.ac.wave_size,
 			    si_get_shader_name(shader),
 			    si_should_optimize_less(compiler, shader->selector));
 	si_llvm_dispose(&ctx);
@@ -7146,7 +7156,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 	 * LLVM 3.9svn has this bug.
 	 */
 	if (sel->type == PIPE_SHADER_COMPUTE) {
-		unsigned wave_size = 64;
+		unsigned wave_size = sscreen->compute_wave_size;
 		unsigned max_vgprs = 256;
 		unsigned max_sgprs = sscreen->info.chip_class >= GFX8 ? 800 : 512;
 		unsigned max_sgprs_per_wave = 128;
@@ -7294,7 +7304,8 @@ si_get_shader_part(struct si_screen *sscreen,
 	}
 
 	struct si_shader_context ctx;
-	si_init_shader_ctx(&ctx, sscreen, compiler);
+	si_init_shader_ctx(&ctx, sscreen, compiler,
+			   si_get_wave_size(sscreen, type, shader.key.as_ngg));
 	ctx.shader = &shader;
 	ctx.type = type;
 
@@ -7304,7 +7315,8 @@ si_get_shader_part(struct si_screen *sscreen,
 	si_llvm_optimize_module(&ctx);
 
 	if (si_compile_llvm(sscreen, &result->binary, &result->config, compiler,
-			    ctx.ac.module, debug, ctx.type, name, false)) {
+			    ctx.ac.module, debug, ctx.type, ctx.ac.wave_size,
+			    name, false)) {
 		FREE(result);
 		result = NULL;
 		goto out;
@@ -8224,7 +8236,7 @@ static void si_fix_resource_usage(struct si_screen *sscreen,
 	shader->config.num_sgprs = MAX2(shader->config.num_sgprs, min_sgprs);
 
 	if (shader->selector->type == PIPE_SHADER_COMPUTE &&
-	    si_get_max_workgroup_size(shader) > 64) {
+	    si_get_max_workgroup_size(shader) > sscreen->compute_wave_size) {
 		si_multiwave_lds_size_workaround(sscreen,
 						 &shader->config.lds_size);
 	}

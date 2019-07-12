@@ -44,7 +44,7 @@ static LLVMValueRef get_thread_id_in_tg(struct si_shader_context *ctx)
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef tmp;
 	tmp = LLVMBuildMul(builder, get_wave_id_in_tg(ctx),
-			   LLVMConstInt(ctx->ac.i32, 64, false), "");
+			   LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, false), "");
 	return LLVMBuildAdd(builder, tmp, ac_get_thread_id(&ctx->ac), "");
 }
 
@@ -1047,7 +1047,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 
 		LLVMValueRef numprims =
 			LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
-		numprims = ac_build_reduce(&ctx->ac, numprims, nir_op_iadd, 64);
+		numprims = ac_build_reduce(&ctx->ac, numprims, nir_op_iadd, ctx->ac.wave_size);
 
 		tmp = LLVMBuildICmp(builder, LLVMIntEQ, ac_get_thread_id(&ctx->ac), ctx->i32_0, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5105);
@@ -1423,7 +1423,7 @@ void gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 
 	/* Round up towards full wave sizes for better ALU utilization. */
 	if (!max_vert_out_per_gs_instance) {
-		const unsigned wavesize = 64;
+		const unsigned wavesize = gs_sel->screen->ge_wave_size;
 		unsigned orig_max_esverts;
 		unsigned orig_max_gsprims;
 		do {

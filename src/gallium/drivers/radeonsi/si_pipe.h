@@ -602,6 +602,10 @@ struct si_screen {
 	/* Use at most 2 low priority threads on quadcore and better.
 	 * We want to minimize the impact on multithreaded Mesa. */
 	struct ac_llvm_compiler		compiler_lowp[10];
+
+	unsigned			compute_wave_size;
+	unsigned			ps_wave_size;
+	unsigned			ge_wave_size;
 };
 
 struct si_blend_color {
@@ -1887,6 +1891,26 @@ radeon_add_to_gfx_buffer_list_check_mem(struct si_context *sctx,
 static inline bool si_compute_prim_discard_enabled(struct si_context *sctx)
 {
 	return sctx->prim_discard_vertex_count_threshold != UINT_MAX;
+}
+
+static inline unsigned si_get_wave_size(struct si_screen *sscreen,
+					enum pipe_shader_type shader_type,
+					bool ngg)
+{
+	if (shader_type == PIPE_SHADER_COMPUTE)
+		return sscreen->compute_wave_size;
+	else if (shader_type == PIPE_SHADER_FRAGMENT)
+		return sscreen->ps_wave_size;
+	else if (shader_type == PIPE_SHADER_GEOMETRY && !ngg) /* legacy GS only supports Wave64 */
+		return 64;
+	else
+		return sscreen->ge_wave_size;
+}
+
+static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
+{
+	return si_get_wave_size(shader->selector->screen, shader->selector->type,
+				shader->key.as_ngg);
 }
 
 #define PRINT_ERR(fmt, args...) \

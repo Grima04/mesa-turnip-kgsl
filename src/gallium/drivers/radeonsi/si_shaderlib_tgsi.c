@@ -124,6 +124,7 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 				   unsigned num_dwords_per_thread,
 				   bool dst_stream_cache_policy, bool is_copy)
 {
+	struct si_screen *sscreen = (struct si_screen *)ctx->screen;
 	assert(util_is_power_of_two_nonzero(num_dwords_per_thread));
 
 	unsigned store_qualifier = TGSI_MEMORY_COHERENT | TGSI_MEMORY_RESTRICT;
@@ -145,7 +146,7 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 	if (!ureg)
 		return NULL;
 
-	ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH, 64);
+	ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH, sscreen->compute_wave_size);
 	ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT, 1);
 	ureg_property(ureg, TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH, 1);
 
@@ -168,10 +169,11 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 		values = malloc(num_mem_ops * sizeof(struct ureg_src));
 	}
 
-	/* If there are multiple stores, the first store writes into 0+tid,
-	 * the 2nd store writes into 64+tid, the 3rd store writes into 128+tid, etc.
+	/* If there are multiple stores, the first store writes into 0*wavesize+tid,
+	 * the 2nd store writes into 1*wavesize+tid, the 3rd store writes into 2*wavesize+tid, etc.
 	 */
-	ureg_UMAD(ureg, store_addr, blk, ureg_imm1u(ureg, 64 * num_mem_ops), tid);
+	ureg_UMAD(ureg, store_addr, blk,
+		  ureg_imm1u(ureg, sscreen->compute_wave_size * num_mem_ops), tid);
 	/* Convert from a "store size unit" into bytes. */
 	ureg_UMUL(ureg, store_addr, ureg_src(store_addr),
 		  ureg_imm1u(ureg, 4 * inst_dwords[0]));
@@ -186,7 +188,8 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 		if (is_copy && i < num_mem_ops) {
 			if (i) {
 				ureg_UADD(ureg, load_addr, ureg_src(load_addr),
-					  ureg_imm1u(ureg, 4 * inst_dwords[i] * 64));
+					  ureg_imm1u(ureg, 4 * inst_dwords[i] *
+						     sscreen->compute_wave_size));
 			}
 
 			values[i] = ureg_src(ureg_DECL_temporary(ureg));
@@ -201,7 +204,8 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 		if (d >= 0) {
 			if (d) {
 				ureg_UADD(ureg, store_addr, ureg_src(store_addr),
-					  ureg_imm1u(ureg, 4 * inst_dwords[d] * 64));
+					  ureg_imm1u(ureg, 4 * inst_dwords[d] *
+						     sscreen->compute_wave_size));
 			}
 
 			struct ureg_dst dst =

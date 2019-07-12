@@ -901,7 +901,7 @@ si_nir_lower_color(nir_shader *nir)
  * selector is created.
  */
 void
-si_lower_nir(struct si_shader_selector* sel)
+si_lower_nir(struct si_shader_selector* sel, unsigned wave_size)
 {
 	/* Adjust the driver location of inputs and outputs. The state tracker
 	 * interprets them as slots, while the ac/nir backend interprets them
@@ -956,8 +956,8 @@ si_lower_nir(struct si_shader_selector* sel)
 	NIR_PASS_V(sel->nir, nir_lower_tex, &lower_tex_options);
 
 	const nir_lower_subgroups_options subgroups_options = {
-		.subgroup_size = 64,
-		.ballot_bit_size = 64,
+		.subgroup_size = wave_size,
+		.ballot_bit_size = wave_size,
 		.lower_to_scalar = true,
 		.lower_subgroup_masks = true,
 		.lower_vote_trivial = false,

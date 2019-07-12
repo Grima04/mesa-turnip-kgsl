@@ -183,14 +183,16 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	 * occupy significantly more CUs.
 	 */
 	unsigned temp_verts_per_tg = *num_patches * max_verts_per_patch;
-	if (temp_verts_per_tg > 64 && temp_verts_per_tg % 64 < 48)
-		*num_patches = (temp_verts_per_tg & ~63) / max_verts_per_patch;
+	unsigned wave_size = sctx->screen->ge_wave_size;
+
+	if (temp_verts_per_tg > wave_size && temp_verts_per_tg % wave_size < wave_size*3/4)
+		*num_patches = (temp_verts_per_tg & ~(wave_size - 1)) / max_verts_per_patch;
 
 	if (sctx->chip_class == GFX6) {
 		/* GFX6 bug workaround, related to power management. Limit LS-HS
 		 * threadgroups to only one wave.
 		 */
-		unsigned one_wave = 64 / max_verts_per_patch;
+		unsigned one_wave = wave_size / max_verts_per_patch;
 		*num_patches = MIN2(*num_patches, one_wave);
 	}
 
