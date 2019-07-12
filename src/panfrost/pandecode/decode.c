@@ -46,6 +46,14 @@ int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
         } \
 }
 
+#define MEMORY_PROP_DIR(obj, p) {\
+        if (obj.p) { \
+                char *a = pointer_as_memory_reference(obj.p); \
+                pandecode_prop("%s = %s", #p, a); \
+                free(a); \
+        } \
+}
+
 #define DYN_MEMORY_PROP(obj, no, p) { \
 	if (obj->p) \
 		pandecode_prop("%s = %s_%d_p", #p, #p, no); \
@@ -801,10 +809,10 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
                         pandecode_log(".ds_afbc = {\n");
                         pandecode_indent++;
 
-                        MEMORY_PROP((&fbx->ds_afbc), depth_stencil_afbc_metadata);
+                        MEMORY_PROP_DIR(fbx->ds_afbc, depth_stencil_afbc_metadata);
                         pandecode_prop("depth_stencil_afbc_stride = %d",
                                        fbx->ds_afbc.depth_stencil_afbc_stride);
-                        MEMORY_PROP((&fbx->ds_afbc), depth_stencil);
+                        MEMORY_PROP_DIR(fbx->ds_afbc, depth_stencil);
 
                         if (fbx->ds_afbc.zero1 || fbx->ds_afbc.padding) {
                                 pandecode_msg("Depth/stencil AFBC zeros tripped\n");
@@ -821,13 +829,13 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
                         pandecode_indent++;
 
                         if (fbx->ds_linear.depth) {
-                                MEMORY_PROP((&fbx->ds_linear), depth);
+                                MEMORY_PROP_DIR(fbx->ds_linear, depth);
                                 pandecode_prop("depth_stride = %d",
                                                fbx->ds_linear.depth_stride);
                         }
 
                         if (fbx->ds_linear.stencil) {
-                                MEMORY_PROP((&fbx->ds_linear), stencil);
+                                MEMORY_PROP_DIR(fbx->ds_linear, stencil);
                                 pandecode_prop("stencil_stride = %d",
                                                fbx->ds_linear.stencil_stride);
                         }
