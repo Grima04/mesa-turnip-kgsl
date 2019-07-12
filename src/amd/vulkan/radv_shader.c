@@ -739,7 +739,8 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		} else {
 			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
-		config_out->rsrc1 |= S_00B428_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+		config_out->rsrc1 |= S_00B428_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
+				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
 		break;
 	case MESA_SHADER_VERTEX:
 		if (info->is_ngg) {
@@ -775,10 +776,12 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		config_out->rsrc1 |= S_00B028_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		break;
 	case MESA_SHADER_GEOMETRY:
-		config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+		config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
+				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
 		break;
 	case MESA_SHADER_COMPUTE:
-		config_out->rsrc1 |= S_00B848_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+		config_out->rsrc1 |= S_00B848_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
+				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
 		config_out->rsrc2 |=
 			S_00B84C_TGID_X_EN(info->info.cs.uses_block_id[0]) |
 			S_00B84C_TGID_Y_EN(info->info.cs.uses_block_id[1]) |
@@ -820,7 +823,8 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 		}
 
-		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
+		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt) |
+				     S_00B228_WGP_MODE(1);
 		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
 				     S_00B22C_LDS_SIZE(config_in->lds_size);
 	} else if (pdevice->rad_info.chip_class >= GFX9 &&
