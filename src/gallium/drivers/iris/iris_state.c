@@ -106,61 +106,7 @@
 #include "iris_pipe.h"
 #include "iris_resource.h"
 
-#define __gen_address_type struct iris_address
-#define __gen_user_data struct iris_batch
-
-#define ARRAY_BYTES(x) (sizeof(uint32_t) * ARRAY_SIZE(x))
-
-static uint64_t
-__gen_combine_address(struct iris_batch *batch, void *location,
-                      struct iris_address addr, uint32_t delta)
-{
-   uint64_t result = addr.offset + delta;
-
-   if (addr.bo) {
-      iris_use_pinned_bo(batch, addr.bo, addr.write);
-      /* Assume this is a general address, not relative to a base. */
-      result += addr.bo->gtt_offset;
-   }
-
-   return result;
-}
-
-#define __genxml_cmd_length(cmd) cmd ## _length
-#define __genxml_cmd_length_bias(cmd) cmd ## _length_bias
-#define __genxml_cmd_header(cmd) cmd ## _header
-#define __genxml_cmd_pack(cmd) cmd ## _pack
-
-#define _iris_pack_command(batch, cmd, dst, name)                 \
-   for (struct cmd name = { __genxml_cmd_header(cmd) },           \
-        *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
-        ({ __genxml_cmd_pack(cmd)(batch, (void *)_dst, &name);    \
-           _dst = NULL;                                           \
-           }))
-
-#define iris_pack_command(cmd, dst, name) \
-   _iris_pack_command(NULL, cmd, dst, name)
-
-#define iris_pack_state(cmd, dst, name)                           \
-   for (struct cmd name = {},                                     \
-        *_dst = (void *)(dst); __builtin_expect(_dst != NULL, 1); \
-        __genxml_cmd_pack(cmd)(NULL, (void *)_dst, &name),        \
-        _dst = NULL)
-
-#define iris_emit_cmd(batch, cmd, name) \
-   _iris_pack_command(batch, cmd, iris_get_command_space(batch, 4 * __genxml_cmd_length(cmd)), name)
-
-#define iris_emit_merge(batch, dwords0, dwords1, num_dwords)   \
-   do {                                                        \
-      uint32_t *dw = iris_get_command_space(batch, 4 * num_dwords); \
-      for (uint32_t i = 0; i < num_dwords; i++)                \
-         dw[i] = (dwords0)[i] | (dwords1)[i];                  \
-      VG(VALGRIND_CHECK_MEM_IS_DEFINED(dw, num_dwords));       \
-   } while (0)
-
-#include "genxml/genX_pack.h"
-#include "genxml/gen_macros.h"
-#include "genxml/genX_bits.h"
+#include "iris_genx_macros.h"
 #include "intel/common/gen_guardband.h"
 
 #if GEN_GEN == 8
@@ -366,24 +312,6 @@ translate_wrap(unsigned pipe_wrap)
       [PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER] = -1,
    };
    return map[pipe_wrap];
-}
-
-static struct iris_address
-ro_bo(struct iris_bo *bo, uint64_t offset)
-{
-   /* CSOs must pass NULL for bo!  Otherwise it will add the BO to the
-    * validation list at CSO creation time, instead of draw time.
-    */
-   return (struct iris_address) { .bo = bo, .offset = offset };
-}
-
-static struct iris_address
-rw_bo(struct iris_bo *bo, uint64_t offset)
-{
-   /* CSOs must pass NULL for bo!  Otherwise it will add the BO to the
-    * validation list at CSO creation time, instead of draw time.
-    */
-   return (struct iris_address) { .bo = bo, .offset = offset, .write = true };
 }
 
 /**
