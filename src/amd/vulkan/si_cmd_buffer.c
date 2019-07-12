@@ -765,7 +765,8 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 				uint64_t gfx9_eop_bug_va)
 {
 	unsigned op = EVENT_TYPE(event) |
-		EVENT_INDEX(5) |
+		EVENT_INDEX(event == V_028A90_CS_DONE ||
+			    event == V_028A90_PS_DONE ? 6 : 5) |
 		event_flags;
 	unsigned is_gfx8_mec = is_mec && chip_class < GFX9;
 	unsigned sel = EOP_DATA_SEL(data_sel);
