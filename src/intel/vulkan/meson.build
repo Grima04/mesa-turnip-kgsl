@@ -234,9 +234,9 @@ if with_tests
     c_args : anv_flags,
   )
 
-  foreach t : ['block_pool_no_free', 'state_pool_no_free',
-               'state_pool_free_list_only', 'state_pool',
-               'state_pool_padding']
+  foreach t : ['block_pool_no_free', 'block_pool_grow_first',
+               'state_pool_no_free', 'state_pool_free_list_only',
+               'state_pool', 'state_pool_padding']
     test(
       'anv_@0@'.format(t),
       executable(
