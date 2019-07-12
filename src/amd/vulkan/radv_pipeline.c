@@ -3461,7 +3461,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			       S_028838_INDEX_BUF_EDGE_FLAG_ENA(!radv_pipeline_has_tess(pipeline) &&
 			                                        !radv_pipeline_has_gs(pipeline)));
 
-	radeon_set_context_reg(ctx_cs, R_03096C_GE_CNTL,
+	radeon_set_uconfig_reg(ctx_cs, R_03096C_GE_CNTL,
 			       S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
 			       S_03096C_VERT_GRP_SIZE(ngg_state->hw_max_esverts) |
 			       S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi));
