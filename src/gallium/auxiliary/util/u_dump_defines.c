@@ -425,6 +425,7 @@ util_query_type_short_names[] = {
    "primitives_emitted",
    "so_statistics",
    "so_overflow_predicate",
+   "so_overflow_any_predicate",
    "gpu_finished",
    "pipeline_statistics",
 };
