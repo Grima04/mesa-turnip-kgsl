@@ -565,7 +565,7 @@ spirv_builder_emit_image_sample_proj_explicit_lod(struct spirv_builder *b,
 {
    SpvId result = spirv_builder_new_id(b);
    spirv_buffer_prepare(&b->instructions, 7);
-   spirv_buffer_emit_word(&b->instructions, SpvOpImageSampleProjImplicitLod | (7 << 16));
+   spirv_buffer_emit_word(&b->instructions, SpvOpImageSampleProjExplicitLod | (7 << 16));
    spirv_buffer_emit_word(&b->instructions, result_type);
    spirv_buffer_emit_word(&b->instructions, result);
    spirv_buffer_emit_word(&b->instructions, sampled_image);
