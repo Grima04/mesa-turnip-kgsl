@@ -88,9 +88,13 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
         /* Kernel will fail (confusingly) with EPERM otherwise */
         assert(size > 0);
 
+        unsigned translated_flags = 0;
+
+        /* TODO: translate flags to kernel flags, if the kernel supports */
+
         struct drm_panfrost_create_bo create_bo = {
                 .size = size,
-                .flags = flags,
+                .flags = translated_flags,
         };
         int ret;
 
@@ -104,8 +108,12 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
         bo->gpu = create_bo.offset;
         bo->gem_handle = create_bo.handle;
 
-        // TODO map and unmap on demand?
-        panfrost_drm_mmap_bo(screen, bo);
+        /* Only mmap now if we know we need to. For CPU-invisible buffers, we
+         * never map since we don't care about their contents; they're purely
+         * for GPU-internal use. */
+
+        if (!(flags & PAN_ALLOCATE_INVISIBLE))
+                panfrost_drm_mmap_bo(screen, bo);
 
         pipe_reference_init(&bo->reference, 1);
         return bo;
@@ -143,7 +151,7 @@ panfrost_drm_allocate_slab(struct panfrost_screen *screen,
         // TODO cache allocations
         // TODO properly handle errors
         // TODO take into account extra_flags
-        mem->bo = panfrost_drm_create_bo(screen, pages * 4096, 0);
+        mem->bo = panfrost_drm_create_bo(screen, pages * 4096, extra_flags);
         mem->stack_bottom = 0;
 }
 
