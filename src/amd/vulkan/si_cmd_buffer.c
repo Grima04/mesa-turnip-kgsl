@@ -238,9 +238,12 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			       S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE));
 
 	if (physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_context_reg(cs, R_028A98_VGT_DRAW_PAYLOAD_CNTL, 0);
 		radeon_set_uconfig_reg(cs, R_030964_GE_MAX_VTX_INDX, ~0);
 		radeon_set_uconfig_reg(cs, R_030924_GE_MIN_VTX_INDX, 0);
 		radeon_set_uconfig_reg(cs, R_030928_GE_INDX_OFFSET, 0);
+		radeon_set_uconfig_reg(cs, R_03097C_GE_STEREO_CNTL, 0);
+		radeon_set_uconfig_reg(cs, R_030988_GE_USER_VGPR_EN, 0);
 	} else if (physical_device->rad_info.chip_class >= GFX9) {
 		radeon_set_uconfig_reg(cs, R_030920_VGT_MAX_VTX_INDX, ~0);
 		radeon_set_uconfig_reg(cs, R_030924_VGT_MIN_VTX_INDX, 0);
@@ -349,6 +352,12 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 				       S_028410_FMASK_RD_POLICY(V_028410_CACHE_NOA_RD) |
 				       S_028410_DCC_RD_POLICY(V_028410_CACHE_NOA_RD) |
 				       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD));
+		radeon_set_context_reg(cs, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
+
+		radeon_set_sh_reg(cs, R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
+				  S_00B0C0_SOFT_GROUPING_EN(1) |
+				  S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
+		radeon_set_sh_reg(cs, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX8) {
