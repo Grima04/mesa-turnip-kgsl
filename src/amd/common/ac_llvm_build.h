@@ -48,6 +48,7 @@ enum {
 #define AC_WAIT_VSTORE	(1 << 2) /* VMEM store instructions */
 
 struct ac_llvm_flow;
+struct ac_llvm_compiler;
 
 struct ac_llvm_context {
 	LLVMContextRef context;
@@ -110,6 +111,7 @@ struct ac_llvm_context {
 
 void
 ac_llvm_context_init(struct ac_llvm_context *ctx,
+		     struct ac_llvm_compiler *compiler,
 		     enum chip_class chip_class, enum radeon_family family,
 		     unsigned wave_size);
 

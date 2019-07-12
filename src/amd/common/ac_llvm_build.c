@@ -58,6 +58,7 @@ struct ac_llvm_flow {
  */
 void
 ac_llvm_context_init(struct ac_llvm_context *ctx,
+		     struct ac_llvm_compiler *compiler,
 		     enum chip_class chip_class, enum radeon_family family,
 		     unsigned wave_size)
 {
@@ -68,7 +69,9 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->chip_class = chip_class;
 	ctx->family = family;
 	ctx->wave_size = wave_size;
-	ctx->module = NULL;
+	ctx->module = ac_create_module(wave_size == 32 ? compiler->tm_wave32
+						       : compiler->tm,
+				       ctx->context);
 	ctx->builder = NULL;
 
 	ctx->voidt = LLVMVoidTypeInContext(ctx->context);

@@ -962,8 +962,8 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 	ctx->screen = sscreen;
 	ctx->compiler = compiler;
 
-	ac_llvm_context_init(&ctx->ac, sscreen->info.chip_class, sscreen->info.family, 64);
-	ctx->ac.module = ac_create_module(compiler->tm, ctx->ac.context);
+	ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.chip_class,
+			     sscreen->info.family, 64);
 
 	enum ac_float_mode float_mode =
 		sscreen->debug_flags & DBG(UNSAFE_MATH) ?

@@ -4319,9 +4319,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	ctx.options = options;
 	ctx.shader_info = shader_info;
 
-	ac_llvm_context_init(&ctx.ac, options->chip_class, options->family, 64);
+	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class, options->family, 64);
 	ctx.context = ctx.ac.context;
-	ctx.ac.module = ac_create_module(ac_llvm->tm, ctx.context);
 
 	enum ac_float_mode float_mode =
 		options->unsafe_math ? AC_FLOAT_MODE_UNSAFE_FP_MATH :
@@ -4838,9 +4837,8 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 	ctx.options = options;
 	ctx.shader_info = shader_info;
 
-	ac_llvm_context_init(&ctx.ac, options->chip_class, options->family, 64);
+	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class, options->family, 64);
 	ctx.context = ctx.ac.context;
-	ctx.ac.module = ac_create_module(ac_llvm->tm, ctx.context);
 
 	ctx.is_gs_copy_shader = true;
 
