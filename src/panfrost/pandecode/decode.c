@@ -438,14 +438,6 @@ pandecode_mfbd_block_format(enum mali_mfbd_block_format fmt)
 }
 #undef DEFINE_CASE
 
-static inline char *
-pandecode_decode_fbd_type(enum mali_fbd_type type)
-{
-        if (type == MALI_SFBD)      return "SFBD";
-        else if (type == MALI_MFBD) return "MFBD";
-        else return "WATFBD /* XXX */";
-}
-
 /* Midgard's tiler descriptor is embedded within the
  * larger FBD */
 
