@@ -96,6 +96,16 @@ pan_screen(struct pipe_screen *p)
         return (struct panfrost_screen *)p;
 }
 
+/* Get a transient BO off the screen given a
+ * particular index */
+
+static inline struct panfrost_bo *
+pan_bo_for_index(struct panfrost_screen *screen, unsigned index)
+{
+        return *(util_dynarray_element(&screen->transient_bo,
+                                struct panfrost_bo *, index));
+}
+
 void
 panfrost_drm_allocate_slab(struct panfrost_screen *screen,
                            struct panfrost_memory *mem,
