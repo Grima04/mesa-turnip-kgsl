@@ -962,14 +962,13 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 	ctx->screen = sscreen;
 	ctx->compiler = compiler;
 
-	ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.chip_class,
-			     sscreen->info.family, 64);
-
 	enum ac_float_mode float_mode =
 		sscreen->debug_flags & DBG(UNSAFE_MATH) ?
 			AC_FLOAT_MODE_UNSAFE_FP_MATH :
 			AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH;
-	ctx->ac.builder = ac_create_builder(ctx->ac.context, float_mode);
+
+	ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.chip_class,
+			     sscreen->info.family, float_mode, 64);
 
 	ctx->gallivm.context = ctx->ac.context;
 	ctx->gallivm.module = ctx->ac.module;

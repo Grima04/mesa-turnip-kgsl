@@ -4319,14 +4319,13 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	ctx.options = options;
 	ctx.shader_info = shader_info;
 
-	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class, options->family, 64);
-	ctx.context = ctx.ac.context;
-
 	enum ac_float_mode float_mode =
 		options->unsafe_math ? AC_FLOAT_MODE_UNSAFE_FP_MATH :
 				       AC_FLOAT_MODE_DEFAULT;
 
-	ctx.ac.builder = ac_create_builder(ctx.context, float_mode);
+	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
+			     options->family, float_mode, 64);
+	ctx.context = ctx.ac.context;
 
 	radv_nir_shader_info_init(&shader_info->info);
 
@@ -4837,16 +4836,15 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 	ctx.options = options;
 	ctx.shader_info = shader_info;
 
-	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class, options->family, 64);
-	ctx.context = ctx.ac.context;
-
-	ctx.is_gs_copy_shader = true;
-
 	enum ac_float_mode float_mode =
 		options->unsafe_math ? AC_FLOAT_MODE_UNSAFE_FP_MATH :
 				       AC_FLOAT_MODE_DEFAULT;
 
-	ctx.ac.builder = ac_create_builder(ctx.context, float_mode);
+	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
+			     options->family, float_mode, 64);
+	ctx.context = ctx.ac.context;
+
+	ctx.is_gs_copy_shader = true;
 	ctx.stage = MESA_SHADER_VERTEX;
 
 	radv_nir_shader_info_pass(geom_shader, options, &shader_info->info);

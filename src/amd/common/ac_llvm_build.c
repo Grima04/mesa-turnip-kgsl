@@ -60,7 +60,7 @@ void
 ac_llvm_context_init(struct ac_llvm_context *ctx,
 		     struct ac_llvm_compiler *compiler,
 		     enum chip_class chip_class, enum radeon_family family,
-		     unsigned wave_size)
+		     enum ac_float_mode float_mode, unsigned wave_size)
 {
 	LLVMValueRef args[1];
 
@@ -72,7 +72,7 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->module = ac_create_module(wave_size == 32 ? compiler->tm_wave32
 						       : compiler->tm,
 				       ctx->context);
-	ctx->builder = NULL;
+	ctx->builder = ac_create_builder(ctx->context, float_mode);
 
 	ctx->voidt = LLVMVoidTypeInContext(ctx->context);
 	ctx->i1 = LLVMInt1TypeInContext(ctx->context);
