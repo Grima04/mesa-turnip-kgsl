@@ -4289,6 +4289,7 @@ struct gl_extensions
    GLboolean EXT_semaphore;
    GLboolean EXT_semaphore_fd;
    GLboolean EXT_shader_image_load_formatted;
+   GLboolean EXT_shader_image_load_store;
    GLboolean EXT_shader_integer_mix;
    GLboolean EXT_shader_samples_identical;
    GLboolean EXT_sRGB;

@@ -725,6 +725,7 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(ARB_shader_draw_parameters),       PIPE_CAP_DRAW_PARAMETERS                  },
       { o(ARB_shader_group_vote),            PIPE_CAP_TGSI_VOTE                        },
       { o(EXT_shader_image_load_formatted),  PIPE_CAP_IMAGE_LOAD_FORMATTED             },
+      { o(EXT_shader_image_load_store),      PIPE_CAP_TGSI_ATOMINC_WRAP                },
       { o(ARB_shader_stencil_export),        PIPE_CAP_SHADER_STENCIL_EXPORT            },
       { o(ARB_shader_texture_image_samples), PIPE_CAP_TGSI_TXQS                        },
       { o(ARB_shader_texture_lod),           PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD      },
@@ -1178,6 +1179,9 @@ void st_init_extensions(struct pipe_screen *screen,
     */
    extensions->OES_sample_variables = extensions->ARB_sample_shading &&
       extensions->ARB_gpu_shader5;
+
+   extensions->EXT_shader_image_load_store &=
+      screen->get_param(screen, PIPE_CAP_IMAGE_LOAD_FORMATTED);
 
    /* Maximum sample count. */
    {
