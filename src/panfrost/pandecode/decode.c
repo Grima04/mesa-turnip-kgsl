@@ -541,7 +541,8 @@ pandecode_replay_sfbd(uint64_t gpu_va, int job_no)
         }
 
         MEMORY_PROP(s, unknown_address_0);
-        pandecode_midgard_tiler_descriptor(&s->tiler);
+        const struct midgard_tiler_descriptor t = s->tiler;
+        pandecode_midgard_tiler_descriptor(&t);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -766,7 +767,8 @@ pandecode_replay_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
 
         pandecode_prop("unknown2 = 0x%x", fb->unknown2);
         MEMORY_PROP(fb, scratchpad);
-        pandecode_midgard_tiler_descriptor(&fb->tiler);
+        const struct midgard_tiler_descriptor t = fb->tiler;
+        pandecode_midgard_tiler_descriptor(&t);
 
         if (fb->zero3 || fb->zero4) {
                 pandecode_msg("framebuffer zeros tripped\n");
@@ -1178,7 +1180,8 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
 
         pandecode_prop("flags = 0x%" PRIx64, b->flags);
 
-        mali_ptr shader = pandecode_midgard_blend(&b->blend, is_shader);
+        union midgard_blend blend = b->blend;
+        mali_ptr shader = pandecode_midgard_blend(&blend, is_shader);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -1571,7 +1574,8 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                 if (!is_bifrost) {
                         /* TODO: Blend shaders routing/disasm */
 
-                        pandecode_midgard_blend(&s->blend, false);
+                        union midgard_blend blend = s->blend;
+                        pandecode_midgard_blend(&blend, false);
                 }
 
                 pandecode_indent--;
