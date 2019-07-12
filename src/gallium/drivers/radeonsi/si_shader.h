@@ -337,6 +337,7 @@ struct si_shader_selector {
 	struct si_shader	*main_shader_part_ls; /* as_ls is set in the key */
 	struct si_shader	*main_shader_part_es; /* as_es is set in the key */
 	struct si_shader	*main_shader_part_ngg; /* as_ngg is set in the key */
+	struct si_shader	*main_shader_part_ngg_es; /* for Wave32 TES before legacy GS */
 
 	struct si_shader	*gs_copy_shader;
 
@@ -789,6 +790,8 @@ si_get_main_shader_part(struct si_shader_selector *sel,
 {
 	if (key->as_ls)
 		return &sel->main_shader_part_ls;
+	if (key->as_es && key->as_ngg)
+		return &sel->main_shader_part_ngg_es;
 	if (key->as_es)
 		return &sel->main_shader_part_es;
 	if (key->as_ngg)

@@ -1852,10 +1852,11 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 			key->mono.u.ff_tcs_inputs_to_copy = sctx->vs_shader.cso->outputs_written;
 		break;
 	case PIPE_SHADER_TESS_EVAL:
+		key->as_ngg = stages_key.u.ngg;
+
 		if (sctx->gs_shader.cso)
 			key->as_es = 1;
 		else {
-			key->as_ngg = stages_key.u.ngg;
 			si_shader_selector_key_hw_vs(sctx, sel, key);
 
 			if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
@@ -2269,6 +2270,10 @@ current_not_ready:
 			else
 				assert(0);
 
+			if (sel->type == PIPE_SHADER_GEOMETRY &&
+			    previous_stage_sel->type == PIPE_SHADER_TESS_EVAL)
+				shader1_key.as_ngg = key->as_ngg;
+
 			mtx_lock(&previous_stage_sel->mutex);
 			ok = si_check_missing_main_part(sscreen,
 							previous_stage_sel,
@@ -2429,7 +2434,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 	if (sel->nir) {
 		/* TODO: GS always sets wave size = default. Legacy GS will have
 		 * incorrect subgroup_size and ballot_bit_size. */
-		si_lower_nir(sel, si_get_wave_size(sscreen, sel->type, true));
+		si_lower_nir(sel, si_get_wave_size(sscreen, sel->type, true, false));
 	}
 
 	/* Compile the main shader part for use with a prolog and/or epilog.
@@ -2455,9 +2460,9 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 					      sel->so.num_outputs != 0,
 					      &shader->key);
 		if (sscreen->info.chip_class >= GFX10 &&
-		    (((sel->type == PIPE_SHADER_VERTEX ||
-		       sel->type == PIPE_SHADER_TESS_EVAL) &&
+		    ((sel->type == PIPE_SHADER_VERTEX &&
 		      !shader->key.as_ls && !shader->key.as_es) ||
+		     sel->type == PIPE_SHADER_TESS_EVAL ||
 		     sel->type == PIPE_SHADER_GEOMETRY))
 			shader->key.as_ngg = 1;
 

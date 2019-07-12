@@ -5727,7 +5727,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	shader->is_gs_copy_shader = true;
 
 	si_init_shader_ctx(&ctx, sscreen, compiler,
-			   si_get_wave_size(sscreen, PIPE_SHADER_VERTEX, false));
+			   si_get_wave_size(sscreen, PIPE_SHADER_VERTEX, false, false));
 	ctx.shader = shader;
 	ctx.type = PIPE_SHADER_VERTEX;
 
@@ -6172,7 +6172,8 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 		}
 	}
 
-	if (shader->key.as_ngg && ctx->type != PIPE_SHADER_GEOMETRY) {
+	if (ctx->type != PIPE_SHADER_GEOMETRY &&
+	    (shader->key.as_ngg && !shader->key.as_es)) {
 		/* Unconditionally declare scratch space base for streamout and
 		 * vertex compaction. Whether space is actually allocated is
 		 * determined during linking / PM4 creation.
@@ -6219,13 +6220,13 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 						ctx->param_merged_wave_info, 0);
 		} else if (ctx->type == PIPE_SHADER_TESS_CTRL ||
 			   ctx->type == PIPE_SHADER_GEOMETRY ||
-			   shader->key.as_ngg) {
+			   (shader->key.as_ngg && !shader->key.as_es)) {
 			LLVMValueRef num_threads;
 			bool nested_barrier;
 
 			if (!shader->is_monolithic ||
 			    (ctx->type == PIPE_SHADER_TESS_EVAL &&
-			     shader->key.as_ngg))
+			     (shader->key.as_ngg && !shader->key.as_es)))
 				ac_init_exec_full_mask(&ctx->ac);
 
 			if (ctx->type == PIPE_SHADER_TESS_CTRL ||
@@ -7048,6 +7049,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			struct si_shader shader_es = {};
 			shader_es.selector = es;
 			shader_es.key.as_es = 1;
+			shader_es.key.as_ngg = shader->key.as_ngg;
 			shader_es.key.mono = shader->key.mono;
 			shader_es.key.opt = shader->key.opt;
 			shader_es.is_monolithic = true;
@@ -7305,7 +7307,8 @@ si_get_shader_part(struct si_screen *sscreen,
 
 	struct si_shader_context ctx;
 	si_init_shader_ctx(&ctx, sscreen, compiler,
-			   si_get_wave_size(sscreen, type, shader.key.as_ngg));
+			   si_get_wave_size(sscreen, type, shader.key.as_ngg,
+					    shader.key.as_es));
 	ctx.shader = &shader;
 	ctx.type = type;
 
@@ -7703,10 +7706,15 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen,
 				      struct pipe_debug_callback *debug)
 {
 	if (sscreen->info.chip_class >= GFX9) {
-		struct si_shader *es_main_part =
-			shader->key.part.gs.es->main_shader_part_es;
+		struct si_shader *es_main_part;
+		enum pipe_shader_type es_type = shader->key.part.gs.es->type;
 
-		if (shader->key.part.gs.es->type == PIPE_SHADER_VERTEX &&
+		if (es_type == PIPE_SHADER_TESS_EVAL && shader->key.as_ngg)
+			es_main_part = shader->key.part.gs.es->main_shader_part_ngg_es;
+		else
+			es_main_part = shader->key.part.gs.es->main_shader_part_es;
+
+		if (es_type == PIPE_SHADER_VERTEX &&
 		    !si_get_vs_prolog(sscreen, compiler, shader, debug, es_main_part,
 				      &shader->key.part.gs.vs_prolog))
 			return false;
