@@ -5258,6 +5258,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 				.halt_at_entry = screen->options.halt_shaders,
 			},
 			.shader_type = tgsi_processor_to_shader_stage(sel->type),
+			.wave_size = 64,
 			.num_parts = num_parts,
 			.elf_ptrs = part_elfs,
 			.elf_sizes = part_sizes,
@@ -5352,6 +5353,7 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
 	if (!ac_rtld_open(&rtld_binary, (struct ac_rtld_open_info){
 			.info = &screen->info,
 			.shader_type = tgsi_processor_to_shader_stage(shader_type),
+			.wave_size = 64,
 			.num_parts = 1,
 			.elf_ptrs = &binary->elf_buffer,
 			.elf_sizes = &binary->elf_size }))
@@ -5642,6 +5644,7 @@ static int si_compile_llvm(struct si_screen *sscreen,
 	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
 			.info = &sscreen->info,
 			.shader_type = tgsi_processor_to_shader_stage(shader_type),
+			.wave_size = 64,
 			.num_parts = 1,
 			.elf_ptrs = &binary->elf_buffer,
 			.elf_sizes = &binary->elf_size }))

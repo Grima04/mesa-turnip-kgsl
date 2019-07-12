@@ -68,6 +68,7 @@ static const amd_kernel_code_t *si_compute_get_code_object(
 	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
 			.info = &sel->screen->info,
 			.shader_type = MESA_SHADER_COMPUTE,
+			.wave_size = 64,
 			.num_parts = 1,
 			.elf_ptrs = &program->shader.binary.elf_buffer,
 			.elf_sizes = &program->shader.binary.elf_size }))

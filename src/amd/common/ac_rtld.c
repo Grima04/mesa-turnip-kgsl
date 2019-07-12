@@ -262,6 +262,7 @@ bool ac_rtld_open(struct ac_rtld_binary *binary,
 
 	memset(binary, 0, sizeof(*binary));
 	memcpy(&binary->options, &i.options, sizeof(binary->options));
+	binary->wave_size = i.wave_size;
 	binary->num_parts = i.num_parts;
 	binary->parts = calloc(sizeof(*binary->parts), i.num_parts);
 	if (!binary->parts)
@@ -523,7 +524,8 @@ bool ac_rtld_read_config(struct ac_rtld_binary *binary,
 
 		/* TODO: be precise about scratch use? */
 		struct ac_shader_config c = {};
-		ac_parse_shader_binary_config(config_data, config_nbytes, true, &c);
+		ac_parse_shader_binary_config(config_data, config_nbytes,
+					      binary->wave_size, true, &c);
 
 		config->num_sgprs = MAX2(config->num_sgprs, c.num_sgprs);
 		config->num_vgprs = MAX2(config->num_vgprs, c.num_vgprs);

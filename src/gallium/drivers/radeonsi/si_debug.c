@@ -944,6 +944,7 @@ static void si_add_split_disasm(struct si_screen *screen,
 	if (!ac_rtld_open(rtld_binary, (struct ac_rtld_open_info){
 			.info = &screen->info,
 			.shader_type = tgsi_processor_to_shader_stage(shader_type),
+			.wave_size = 64,
 			.num_parts = 1,
 			.elf_ptrs = &binary->elf_buffer,
 			.elf_sizes = &binary->elf_size }))

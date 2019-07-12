@@ -961,6 +961,7 @@ radv_shader_variant_create(struct radv_device *device,
 		struct ac_rtld_open_info open_info = {
 			.info = &device->physical_device->rad_info,
 			.shader_type = binary->stage,
+			.wave_size = 64,
 			.num_parts = 1,
 			.elf_ptrs = &elf_data,
 			.elf_sizes = &elf_size,

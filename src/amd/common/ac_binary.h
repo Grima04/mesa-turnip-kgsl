@@ -47,6 +47,7 @@ struct ac_shader_config {
 };
 
 void ac_parse_shader_binary_config(const char *data, size_t nbytes,
+				   unsigned wave_size,
 				   bool really_needs_scratch,
 				   struct ac_shader_config *conf);
 

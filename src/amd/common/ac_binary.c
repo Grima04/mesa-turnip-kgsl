@@ -37,10 +37,11 @@
 
 /* Parse configuration data in .AMDGPU.config section format. */
 void ac_parse_shader_binary_config(const char *data, size_t nbytes,
+				   unsigned wave_size,
 				   bool really_needs_scratch,
 				   struct ac_shader_config *conf)
 {
-	uint32_t wavesize = 0;
+	uint32_t scratch_size = 0;
 
 	for (size_t i = 0; i < nbytes; i += 8) {
 		unsigned reg = util_le32_to_cpu(*(uint32_t*)(data + i));
@@ -51,8 +52,12 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes,
 		case R_00B228_SPI_SHADER_PGM_RSRC1_GS:
 		case R_00B848_COMPUTE_PGM_RSRC1:
 		case R_00B428_SPI_SHADER_PGM_RSRC1_HS:
+			if (wave_size == 32)
+				conf->num_vgprs = MAX2(conf->num_vgprs, (G_00B028_VGPRS(value) + 1) * 8);
+			else
+				conf->num_vgprs = MAX2(conf->num_vgprs, (G_00B028_VGPRS(value) + 1) * 4);
+
 			conf->num_sgprs = MAX2(conf->num_sgprs, (G_00B028_SGPRS(value) + 1) * 8);
-			conf->num_vgprs = MAX2(conf->num_vgprs, (G_00B028_VGPRS(value) + 1) * 4);
 			conf->float_mode =  G_00B028_FLOAT_MODE(value);
 			conf->rsrc1 = value;
 			break;
@@ -72,7 +77,7 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes,
 		case R_0286E8_SPI_TMPRING_SIZE:
 		case R_00B860_COMPUTE_TMPRING_SIZE:
 			/* WAVESIZE is in units of 256 dwords. */
-			wavesize = value;
+			scratch_size = value;
 			break;
 		case SPILLED_SGPRS:
 			conf->spilled_sgprs = value;
@@ -99,6 +104,6 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes,
 
 	if (really_needs_scratch) {
 		/* sgprs spills aren't spilling */
-	        conf->scratch_bytes_per_wave = G_00B860_WAVESIZE(wavesize) * 256 * 4;
+	        conf->scratch_bytes_per_wave = G_00B860_WAVESIZE(scratch_size) * 256 * 4;
 	}
 }
