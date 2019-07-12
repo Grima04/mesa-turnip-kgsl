@@ -90,6 +90,7 @@ etna_blend_state_create(struct pipe_context *pctx,
 
    co->PE_LOGIC_OP =
          VIVS_PE_LOGIC_OP_OP(logicop_enable ? so->logicop_func : LOGIC_OP_COPY) |
+         VIVS_PE_LOGIC_OP_DITHER_MODE(3) | /* TODO: related to dithering, sometimes 2 */
          0x000E4000 /* ??? */;
 
    co->fo_allowed = !alpha_enable && !logicop_enable;
