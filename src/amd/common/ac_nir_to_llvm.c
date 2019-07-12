@@ -84,7 +84,7 @@ get_ac_sampler_dim(const struct ac_llvm_context *ctx, enum glsl_sampler_dim dim,
 {
 	switch (dim) {
 	case GLSL_SAMPLER_DIM_1D:
-		if (ctx->chip_class >= GFX9)
+		if (ctx->chip_class == GFX9)
 			return is_array ? ac_image_2darray : ac_image_2d;
 		return is_array ? ac_image_1darray : ac_image_1d;
 	case GLSL_SAMPLER_DIM_2D:
@@ -1360,7 +1360,7 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 	}
 
 	/* Fixup for GFX9 which allocates 1D textures as 2D. */
-	if (instr->op == nir_texop_lod && ctx->ac.chip_class >= GFX9) {
+	if (instr->op == nir_texop_lod && ctx->ac.chip_class == GFX9) {
 		if ((args->dim == ac_image_2darray ||
 		     args->dim == ac_image_2d) && !args->coords[1]) {
 			args->coords[1] = ctx->ac.i32_0;
@@ -2334,7 +2334,7 @@ static void get_image_coords(struct ac_nir_context *ctx,
 					  dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
 	bool is_ms = (dim == GLSL_SAMPLER_DIM_MS ||
 		      dim == GLSL_SAMPLER_DIM_SUBPASS_MS);
-	bool gfx9_1d = ctx->ac.chip_class >= GFX9 && dim == GLSL_SAMPLER_DIM_1D;
+	bool gfx9_1d = ctx->ac.chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_1D;
 	assert(!add_frag_pos && "Input attachments should be lowered by this point.");
 	count = image_type_to_components_count(dim, is_array);
 
@@ -2706,7 +2706,7 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx,
 		z = LLVMBuildSDiv(ctx->ac.builder, z, six, "");
 		res = LLVMBuildInsertElement(ctx->ac.builder, res, z, two, "");
 	}
-	if (ctx->ac.chip_class >= GFX9 && dim == GLSL_SAMPLER_DIM_1D && is_array) {
+	if (ctx->ac.chip_class == GFX9 && dim == GLSL_SAMPLER_DIM_1D && is_array) {
 		LLVMValueRef layers = LLVMBuildExtractElement(ctx->ac.builder, res, two, "");
 		res = LLVMBuildInsertElement(ctx->ac.builder, res, layers,
 						ctx->ac.i32_1, "");
@@ -3829,7 +3829,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 			break;
 		case GLSL_SAMPLER_DIM_1D:
 			num_src_deriv_channels = 1;
-			if (ctx->ac.chip_class >= GFX9) {
+			if (ctx->ac.chip_class == GFX9) {
 				num_dest_deriv_channels = 2;
 			} else {
 				num_dest_deriv_channels = 1;
@@ -3877,7 +3877,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 		args.coords[2] = apply_round_slice(&ctx->ac, args.coords[2]);
 	}
 
-	if (ctx->ac.chip_class >= GFX9 &&
+	if (ctx->ac.chip_class == GFX9 &&
 	    instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
 	    instr->op != nir_texop_lod) {
 		LLVMValueRef filler;
@@ -3963,7 +3963,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 		LLVMValueRef z = LLVMBuildExtractElement(ctx->ac.builder, result, two, "");
 		z = LLVMBuildSDiv(ctx->ac.builder, z, six, "");
 		result = LLVMBuildInsertElement(ctx->ac.builder, result, z, two, "");
-	} else if (ctx->ac.chip_class >= GFX9 &&
+	} else if (ctx->ac.chip_class == GFX9 &&
 		   instr->op == nir_texop_txs &&
 		   instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
 		   instr->is_array) {

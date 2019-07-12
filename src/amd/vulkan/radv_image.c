@@ -649,7 +649,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 	}
 
 	type = radv_tex_dim(image->type, view_type, image->info.array_size, image->info.samples,
-			    is_storage_image, device->physical_device->rad_info.chip_class >= GFX9);
+			    is_storage_image, device->physical_device->rad_info.chip_class == GFX9);
 	if (type == V_008F1C_SQ_RSRC_IMG_1D_ARRAY) {
 	        height = 1;
 		depth = image->info.array_size;
@@ -796,7 +796,7 @@ si_make_texture_descriptor(struct radv_device *device,
 			data_format = V_008F14_IMG_DATA_FORMAT_S8_16;
 	}
 	type = radv_tex_dim(image->type, view_type, image->info.array_size, image->info.samples,
-			    is_storage_image, device->physical_device->rad_info.chip_class >= GFX9);
+			    is_storage_image, device->physical_device->rad_info.chip_class == GFX9);
 	if (type == V_008F1C_SQ_RSRC_IMG_1D_ARRAY) {
 	        height = 1;
 		depth = image->info.array_size;
