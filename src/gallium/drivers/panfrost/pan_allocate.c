@@ -96,8 +96,21 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
         unsigned offset = 0;
         bool update_offset = false;
 
-        if (sz < TRANSIENT_SLAB_SIZE) {
-                /* First, look for a free slot */
+        bool has_current = batch->transient_indices.size;
+        bool fits_in_current = (batch->transient_offset + sz) < TRANSIENT_SLAB_SIZE;
+
+        if (likely(has_current && fits_in_current)) {
+                /* We can reuse the topmost BO, so get it */
+                unsigned idx = util_dynarray_top(&batch->transient_indices, unsigned);
+                bo = pan_bo_for_index(screen, idx);
+
+                /* Use the specified offset */
+                offset = batch->transient_offset;
+                update_offset = true;
+        } else if (sz < TRANSIENT_SLAB_SIZE) {
+                /* We can't reuse the topmost BO, but we can get a new one.
+                 * First, look for a free slot */
+
                 unsigned count = util_dynarray_num_elements(&screen->transient_bo, void *);
                 unsigned index = 0;
 
@@ -134,9 +147,8 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
                 .gpu = bo->gpu + offset,
         };
 
-        if (update_offset) {
-                /* TODO: Update the offset */
-        }
+        if (update_offset)
+                batch->transient_offset = offset + sz;
 
         return ret;
 

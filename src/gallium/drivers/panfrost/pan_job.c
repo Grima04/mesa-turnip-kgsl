@@ -42,6 +42,7 @@ panfrost_create_job(struct panfrost_context *ctx)
 
         job->minx = job->miny = ~0;
         job->maxx = job->maxy = 0;
+        job->transient_offset = 0;
 
         util_dynarray_init(&job->headers, job);
         util_dynarray_init(&job->gpu_headers, job);
