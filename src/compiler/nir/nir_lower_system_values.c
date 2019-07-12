@@ -68,6 +68,30 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
    const unsigned bit_size = intrin->dest.ssa.bit_size;
 
    switch (intrin->intrinsic) {
+   case nir_intrinsic_load_vertex_id:
+      if (b->shader->options->vertex_id_zero_based) {
+         return nir_iadd(b, nir_load_vertex_id_zero_base(b),
+                            nir_load_first_vertex(b));
+      } else {
+         return NULL;
+      }
+
+   case nir_intrinsic_load_base_vertex:
+      /**
+       * From the OpenGL 4.6 (11.1.3.9 Shader Inputs) specification:
+       *
+       * "gl_BaseVertex holds the integer value passed to the baseVertex
+       * parameter to the command that resulted in the current shader
+       * invocation. In the case where the command has no baseVertex
+       * parameter, the value of gl_BaseVertex is zero."
+       */
+      if (b->shader->options->lower_base_vertex) {
+         return nir_iand(b, nir_load_is_indexed_draw(b),
+                            nir_load_first_vertex(b));
+      } else {
+         return NULL;
+      }
+
    case nir_intrinsic_load_local_invocation_id:
       /* If lower_cs_local_id_from_index is true, then we derive the local
        * index from the local id.
@@ -111,6 +135,40 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          return sanitize_32bit_sysval(b, intrin);
       }
 
+   case nir_intrinsic_load_local_invocation_index:
+      /* If lower_cs_local_index_from_id is true, then we derive the local
+       * index from the local id.
+       */
+      if (b->shader->options->lower_cs_local_index_from_id) {
+         /* From the GLSL man page for gl_LocalInvocationIndex:
+          *
+          *    "The value of gl_LocalInvocationIndex is equal to
+          *    gl_LocalInvocationID.z * gl_WorkGroupSize.x *
+          *    gl_WorkGroupSize.y + gl_LocalInvocationID.y *
+          *    gl_WorkGroupSize.x + gl_LocalInvocationID.x"
+          */
+         nir_ssa_def *local_id = nir_load_local_invocation_id(b);
+
+         nir_ssa_def *size_x =
+            nir_imm_int(b, b->shader->info.cs.local_size[0]);
+         nir_ssa_def *size_y =
+            nir_imm_int(b, b->shader->info.cs.local_size[1]);
+
+         /* Because no hardware supports a local workgroup size greater than
+          * about 1K, this calculation can be done in 32-bit and can save some
+          * 64-bit arithmetic.
+          */
+         nir_ssa_def *index;
+         index = nir_imul(b, nir_channel(b, local_id, 2),
+                             nir_imul(b, size_x, size_y));
+         index = nir_iadd(b, index,
+                             nir_imul(b, nir_channel(b, local_id, 1), size_x));
+         index = nir_iadd(b, index, nir_channel(b, local_id, 0));
+         return nir_u2u(b, index, bit_size);
+      } else {
+         return sanitize_32bit_sysval(b, intrin);
+      }
+
    case nir_intrinsic_load_local_group_size:
       if (b->shader->info.cs.local_size_variable) {
          /* If the local work group size is variable it can't be lowered at
@@ -139,6 +197,31 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
                          nir_u2u(b, local_id, bit_size));
    }
 
+   case nir_intrinsic_load_global_invocation_index: {
+      nir_ssa_def *global_id = nir_load_global_invocation_id(b, bit_size);
+      nir_ssa_def *global_size = build_global_group_size(b, bit_size);
+
+      /* index = id.x + ((id.y + (id.z * size.y)) * size.x) */
+      nir_ssa_def *index;
+      index = nir_imul(b, nir_channel(b, global_id, 2),
+                          nir_channel(b, global_size, 1));
+      index = nir_iadd(b, nir_channel(b, global_id, 1), index);
+      index = nir_imul(b, nir_channel(b, global_size, 0), index);
+      index = nir_iadd(b, nir_channel(b, global_id, 0), index);
+      return index;
+   }
+
+   case nir_intrinsic_load_helper_invocation:
+      if (b->shader->options->lower_helper_invocation) {
+         nir_ssa_def *tmp;
+         tmp = nir_ishl(b, nir_imm_int(b, 1),
+                           nir_load_sample_id_no_per_sample(b));
+         tmp = nir_iand(b, nir_load_sample_mask_in(b), tmp);
+         return nir_inot(b, nir_i2b(b, tmp));
+      } else {
+         return NULL;
+      }
+
    case nir_intrinsic_load_deref: {
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
       if (deref->mode != nir_var_system_value)
@@ -156,93 +239,6 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       nir_variable *var = deref->var;
 
       switch (var->data.location) {
-      case SYSTEM_VALUE_GLOBAL_INVOCATION_INDEX: {
-         nir_ssa_def *global_id = nir_load_global_invocation_id(b, bit_size);
-         nir_ssa_def *global_size = build_global_group_size(b, bit_size);
-
-         /* index = id.x + ((id.y + (id.z * size.y)) * size.x) */
-         nir_ssa_def *index;
-         index = nir_imul(b, nir_channel(b, global_id, 2),
-                             nir_channel(b, global_size, 1));
-         index = nir_iadd(b, nir_channel(b, global_id, 1), index);
-         index = nir_imul(b, nir_channel(b, global_size, 0), index);
-         index = nir_iadd(b, nir_channel(b, global_id, 0), index);
-         return index;
-      }
-
-      case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX: {
-         /* If lower_cs_local_index_from_id is true, then we derive the local
-          * index from the local id.
-          */
-         if (!b->shader->options->lower_cs_local_index_from_id)
-            break;
-
-         /* From the GLSL man page for gl_LocalInvocationIndex:
-          *
-          *    "The value of gl_LocalInvocationIndex is equal to
-          *    gl_LocalInvocationID.z * gl_WorkGroupSize.x *
-          *    gl_WorkGroupSize.y + gl_LocalInvocationID.y *
-          *    gl_WorkGroupSize.x + gl_LocalInvocationID.x"
-          */
-         nir_ssa_def *local_id = nir_load_local_invocation_id(b);
-
-         nir_ssa_def *size_x =
-            nir_imm_int(b, b->shader->info.cs.local_size[0]);
-         nir_ssa_def *size_y =
-            nir_imm_int(b, b->shader->info.cs.local_size[1]);
-
-         /* Because no hardware supports a local workgroup size greater than
-          * about 1K, this calculation can be done in 32-bit and can save some
-          * 64-bit arithmetic.
-          */
-         nir_ssa_def *index;
-         index = nir_imul(b, nir_channel(b, local_id, 2),
-                             nir_imul(b, size_x, size_y));
-         index = nir_iadd(b, index,
-                             nir_imul(b, nir_channel(b, local_id, 1), size_x));
-         index = nir_iadd(b, index, nir_channel(b, local_id, 0));
-         index = nir_u2u(b, index, bit_size);
-         return index;
-      }
-
-      case SYSTEM_VALUE_VERTEX_ID:
-         if (b->shader->options->vertex_id_zero_based) {
-            return nir_iadd(b, nir_load_vertex_id_zero_base(b),
-                               nir_load_first_vertex(b));
-         }
-         break;
-
-      case SYSTEM_VALUE_BASE_VERTEX:
-         /**
-          * From the OpenGL 4.6 (11.1.3.9 Shader Inputs) specification:
-          *
-          * "gl_BaseVertex holds the integer value passed to the baseVertex
-          * parameter to the command that resulted in the current shader
-          * invocation. In the case where the command has no baseVertex
-          * parameter, the value of gl_BaseVertex is zero."
-          */
-         if (b->shader->options->lower_base_vertex) {
-            return nir_iand(b, nir_load_is_indexed_draw(b),
-                               nir_load_first_vertex(b));
-         }
-         break;
-
-      case SYSTEM_VALUE_HELPER_INVOCATION:
-         if (b->shader->options->lower_helper_invocation) {
-            nir_ssa_def *tmp;
-
-            tmp = nir_ishl(b,
-                           nir_imm_int(b, 1),
-                           nir_load_sample_id_no_per_sample(b));
-
-            tmp = nir_iand(b,
-                           nir_load_sample_mask_in(b),
-                           tmp);
-
-            return nir_inot(b, nir_i2b(b, tmp));
-         }
-         break;
-
       case SYSTEM_VALUE_INSTANCE_INDEX:
          return nir_iadd(b, nir_load_instance_id(b),
                             nir_load_base_instance(b));
