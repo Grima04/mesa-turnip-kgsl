@@ -487,8 +487,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (!sctx->border_color_map)
 		goto fail;
 
-	if (sctx->chip_class >= GFX10)
-		sctx->ngg = !sscreen->options.disable_ngg;
+	sctx->ngg = sctx->chip_class >= GFX10;
 
 	/* Initialize context functions used by graphics and compute. */
 	if (sctx->chip_class >= GFX10)

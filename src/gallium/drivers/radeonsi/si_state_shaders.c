@@ -2447,7 +2447,6 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 					      sel->so.num_outputs != 0,
 					      &shader->key);
 		if (sscreen->info.chip_class >= GFX10 &&
-		    !sscreen->options.disable_ngg &&
 		    (((sel->type == PIPE_SHADER_VERTEX ||
 		       sel->type == PIPE_SHADER_TESS_EVAL) &&
 		      !shader->key.as_ls && !shader->key.as_es) ||
@@ -2982,8 +2981,7 @@ static void si_update_tess_uses_prim_id(struct si_context *sctx)
 
 static bool si_update_ngg(struct si_context *sctx)
 {
-	if (sctx->chip_class <= GFX9 ||
-	    sctx->screen->options.disable_ngg)
+	if (sctx->chip_class <= GFX9)
 		return false;
 
 	bool new_ngg = true;
