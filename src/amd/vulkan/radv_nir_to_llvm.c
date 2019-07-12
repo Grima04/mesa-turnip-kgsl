@@ -4085,10 +4085,10 @@ handle_shader_outputs_post(struct ac_shader_abi *abi, unsigned max_outputs,
 		handle_tcs_outputs_post(ctx);
 		break;
 	case MESA_SHADER_TESS_EVAL:
-		if (ctx->options->key.vs_common_out.as_ngg)
-			break; /* handled outside of the shader body */
-		else if (ctx->options->key.vs_common_out.as_es)
+		if (ctx->options->key.vs_common_out.as_es)
 			handle_es_outputs_post(ctx, &ctx->shader_info->tes.es_info);
+		else if (ctx->options->key.vs_common_out.as_ngg)
+			break; /* handled outside of the shader body */
 		else
 			handle_vs_outputs_post(ctx, ctx->options->key.vs_common_out.export_prim_id,
 					       ctx->options->key.vs_common_out.export_clip_dists,
