@@ -3,6 +3,8 @@
 #include "zink_screen.h"
 
 #include "util/u_memory.h"
+#include "util/u_dump.h"
+
 struct zink_query {
    VkQueryPool queryPool;
    VkQueryType vkqtype;
@@ -28,8 +30,9 @@ convert_query_type(unsigned query_type, bool *use_64bit, bool *precise)
    case PIPE_QUERY_PIPELINE_STATISTICS:
       return VK_QUERY_TYPE_PIPELINE_STATISTICS;
    default:
-      fprintf(stderr, "zink: unknown query type\n");
-      return -1;
+      debug_printf("unknown query: %s\n",
+                   util_str_query_type(query_type, true));
+      unreachable("zink: unknown query type");
    }
 }
 
