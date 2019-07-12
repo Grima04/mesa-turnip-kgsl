@@ -759,7 +759,7 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 				enum chip_class chip_class,
 				bool is_mec,
 				unsigned event, unsigned event_flags,
-				unsigned data_sel,
+				unsigned dst_sel, unsigned data_sel,
 				uint64_t va,
 				uint32_t new_fence,
 				uint64_t gfx9_eop_bug_va)
@@ -769,7 +769,8 @@ void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs,
 			    event == V_028A90_PS_DONE ? 6 : 5) |
 		event_flags;
 	unsigned is_gfx8_mec = is_mec && chip_class < GFX9;
-	unsigned sel = EOP_DATA_SEL(data_sel);
+	unsigned sel = EOP_DST_SEL(dst_sel) |
+		       EOP_DATA_SEL(data_sel);
 
 	/* Wait for write confirmation before writing data, but don't send
 	 * an interrupt. */
@@ -988,6 +989,7 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 					   S_490_GL2_INV(gl2_inv) |
 					   S_490_GL2_WB(gl2_wb) |
 					   S_490_SEQ(gcr_seq),
+					   EOP_DST_SEL_MEM,
 					   EOP_DATA_SEL_VALUE_32BIT,
 					   flush_va, *flush_cnt,
 					   gfx9_eop_bug_va);
@@ -1075,6 +1077,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 							   is_mec,
 							   V_028A90_FLUSH_AND_INV_CB_DATA_TS,
 							   0,
+							   EOP_DST_SEL_MEM,
 							   EOP_DATA_SEL_DISCARD,
 							   0, 0,
 							   gfx9_eop_bug_va);
@@ -1146,6 +1149,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		(*flush_cnt)++;
 
 		si_cs_emit_write_event_eop(cs, chip_class, false, cb_db_event, tc_flags,
+					   EOP_DST_SEL_MEM,
 					   EOP_DATA_SEL_VALUE_32BIT,
 					   flush_va, *flush_cnt,
 					   gfx9_eop_bug_va);
