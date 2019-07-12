@@ -103,13 +103,15 @@ struct ac_llvm_context {
 
 	enum chip_class chip_class;
 	enum radeon_family family;
+	unsigned wave_size;
 
 	LLVMValueRef lds;
 };
 
 void
 ac_llvm_context_init(struct ac_llvm_context *ctx,
-		     enum chip_class chip_class, enum radeon_family family);
+		     enum chip_class chip_class, enum radeon_family family,
+		     unsigned wave_size);
 
 void
 ac_llvm_context_dispose(struct ac_llvm_context *ctx);
