@@ -4423,6 +4423,18 @@ builtin_builder::add_image_functions(bool glsl)
                       flags | IMAGE_FUNCTION_SUPPORTS_FLOAT_DATA_TYPE |
                       IMAGE_FUNCTION_MS_ONLY,
                       ir_intrinsic_image_samples);
+
+   /* EXT_shader_image_load_store */
+   add_image_function(glsl ? "imageAtomicIncWrap" : "__intrinsic_image_atomic_inc_wrap",
+                      "__intrinsic_image_atomic_inc_wrap",
+                      &builtin_builder::_image_prototype, 1,
+                      (atom_flags | IMAGE_FUNCTION_EXT_ONLY),
+                      ir_intrinsic_image_atomic_inc_wrap);
+   add_image_function(glsl ? "imageAtomicDecWrap" : "__intrinsic_image_atomic_dec_wrap",
+                      "__intrinsic_image_atomic_dec_wrap",
+                      &builtin_builder::_image_prototype, 1,
+                      (atom_flags | IMAGE_FUNCTION_EXT_ONLY),
+                      ir_intrinsic_image_atomic_dec_wrap);
 }
 
 ir_variable *

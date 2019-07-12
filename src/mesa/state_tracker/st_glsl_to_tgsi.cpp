@@ -3938,6 +3938,12 @@ glsl_to_tgsi_visitor::visit_image_intrinsic(ir_call *ir)
       case ir_intrinsic_image_atomic_comp_swap:
          opcode = TGSI_OPCODE_ATOMCAS;
          break;
+      case ir_intrinsic_image_atomic_inc_wrap:
+         opcode = TGSI_OPCODE_ATOMINC_WRAP;
+         break;
+      case ir_intrinsic_image_atomic_dec_wrap:
+         opcode = TGSI_OPCODE_ATOMDEC_WRAP;
+         break;
       default:
          assert(!"Unexpected intrinsic");
          return;
@@ -4063,6 +4069,8 @@ glsl_to_tgsi_visitor::visit(ir_call *ir)
    case ir_intrinsic_image_atomic_comp_swap:
    case ir_intrinsic_image_size:
    case ir_intrinsic_image_samples:
+   case ir_intrinsic_image_atomic_inc_wrap:
+   case ir_intrinsic_image_atomic_dec_wrap:
       visit_image_intrinsic(ir);
       return;
 
