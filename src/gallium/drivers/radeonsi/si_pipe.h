@@ -148,6 +148,12 @@ enum {
 	DBG_UNSAFE_MATH,
 	DBG_SI_SCHED,
 	DBG_GISEL,
+	DBG_W32_GE,
+	DBG_W32_PS,
+	DBG_W32_CS,
+	DBG_W64_GE,
+	DBG_W64_PS,
+	DBG_W64_CS,
 
 	/* Shader compiler options (with no effect on the shader cache): */
 	DBG_CHECK_IR,

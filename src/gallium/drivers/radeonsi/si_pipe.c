@@ -63,6 +63,12 @@ static const struct debug_named_value debug_options[] = {
 	{ "unsafemath", DBG(UNSAFE_MATH), "Enable unsafe math shader optimizations" },
 	{ "sisched", DBG(SI_SCHED), "Enable LLVM SI Machine Instruction Scheduler." },
 	{ "gisel", DBG(GISEL), "Enable LLVM global instruction selector." },
+	{ "w32ge", DBG(W32_GE), "Use Wave32 for vertex, tessellation, and geometry shaders." },
+	{ "w32ps", DBG(W32_PS), "Use Wave32 for pixel shaders." },
+	{ "w32cs", DBG(W32_CS), "Use Wave32 for computes shaders." },
+	{ "w64ge", DBG(W64_GE), "Use Wave64 for vertex, tessellation, and geometry shaders." },
+	{ "w64ps", DBG(W64_PS), "Use Wave64 for pixel shaders." },
+	{ "w64cs", DBG(W64_CS), "Use Wave64 for computes shaders." },
 
 	/* Shader compiler options (with no effect on the shader cache): */
 	{ "checkir", DBG(CHECK_IR), "Enable additional sanity checks on shader IR" },
@@ -849,7 +855,13 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 	#define ALL_FLAGS (DBG(FS_CORRECT_DERIVS_AFTER_KILL) |	\
 			   DBG(SI_SCHED) |			\
 			   DBG(GISEL) |				\
-			   DBG(UNSAFE_MATH))
+			   DBG(UNSAFE_MATH) |			\
+			   DBG(W32_GE) |			\
+			   DBG(W32_PS) |			\
+			   DBG(W32_CS) |			\
+			   DBG(W64_GE) |			\
+			   DBG(W64_PS) |			\
+			   DBG(W64_CS))
 	uint64_t shader_debug_flags = sscreen->debug_flags & ALL_FLAGS;
 
 	if (sscreen->options.enable_nir) {
@@ -1217,6 +1229,22 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	sscreen->ge_wave_size = 64;
 	sscreen->ps_wave_size = 64;
 	sscreen->compute_wave_size = 64;
+
+	if (sscreen->info.chip_class >= GFX10) {
+		if (sscreen->debug_flags & DBG(W32_GE))
+			sscreen->ge_wave_size = 32;
+		if (sscreen->debug_flags & DBG(W32_PS))
+			sscreen->ps_wave_size = 32;
+		if (sscreen->debug_flags & DBG(W32_CS))
+			sscreen->compute_wave_size = 32;
+
+		if (sscreen->debug_flags & DBG(W64_GE))
+			sscreen->ge_wave_size = 64;
+		if (sscreen->debug_flags & DBG(W64_PS))
+			sscreen->ps_wave_size = 64;
+		if (sscreen->debug_flags & DBG(W64_CS))
+			sscreen->compute_wave_size = 64;
+	}
 
 	/* Create the auxiliary context. This must be done last. */
 	sscreen->aux_context = si_create_context(
