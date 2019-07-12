@@ -4378,6 +4378,7 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *compute_shader;
 	struct radv_device *device = pipeline->device;
+	unsigned threads_per_threadgroup;
 	unsigned threadgroups_per_cu = 1;
 	unsigned waves_per_threadgroup;
 	unsigned max_waves_per_sh = 0;
@@ -4402,10 +4403,14 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 			  S_00B860_WAVESIZE(pipeline->scratch_bytes_per_wave >> 10));
 
 	/* Calculate best compute resource limits. */
-	waves_per_threadgroup =
-		DIV_ROUND_UP(compute_shader->info.cs.block_size[0] *
-			     compute_shader->info.cs.block_size[1] *
-			     compute_shader->info.cs.block_size[2], 64);
+	threads_per_threadgroup = compute_shader->info.cs.block_size[0] *
+				  compute_shader->info.cs.block_size[1] *
+				  compute_shader->info.cs.block_size[2];
+	waves_per_threadgroup = DIV_ROUND_UP(threads_per_threadgroup, 64);
+
+	if (device->physical_device->rad_info.chip_class >= GFX10 &&
+	    waves_per_threadgroup == 1)
+		threadgroups_per_cu = 2;
 
 	radeon_set_sh_reg(&pipeline->cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
 			  ac_get_compute_resource_limits(&device->physical_device->rad_info,
