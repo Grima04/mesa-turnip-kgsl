@@ -157,7 +157,8 @@ static LLVMTargetMachineRef ac_create_target_machine(enum radeon_family family,
 	snprintf(features, sizeof(features),
 		 "+DumpCode,-fp32-denormals,+fp64-denormals%s%s%s%s%s%s%s",
 		 HAVE_LLVM >= 0x0800 ? "" : ",+vgpr-spilling",
-		 family >= CHIP_NAVI10 ? ",+wavefrontsize64,-wavefrontsize32" : "",
+		 family >= CHIP_NAVI10 && !(tm_options & AC_TM_WAVE32) ?
+			 ",+wavefrontsize64,-wavefrontsize32" : "",
 		 tm_options & AC_TM_SISCHED ? ",+si-scheduler" : "",
 		 tm_options & AC_TM_FORCE_ENABLE_XNACK ? ",+xnack" : "",
 		 tm_options & AC_TM_FORCE_DISABLE_XNACK ? ",-xnack" : "",
@@ -337,6 +338,16 @@ ac_init_llvm_compiler(struct ac_llvm_compiler *compiler,
 			goto fail;
 	}
 
+	if (family >= CHIP_NAVI10) {
+		assert(!(tm_options & AC_TM_CREATE_LOW_OPT));
+		compiler->tm_wave32 = ac_create_target_machine(family,
+							       tm_options | AC_TM_WAVE32,
+							       LLVMCodeGenLevelDefault,
+							       NULL);
+		if (!compiler->tm_wave32)
+			goto fail;
+	}
+
 	compiler->target_library_info =
 		ac_create_target_library_info(triple);
 	if (!compiler->target_library_info)
@@ -357,6 +368,7 @@ void
 ac_destroy_llvm_compiler(struct ac_llvm_compiler *compiler)
 {
 	ac_destroy_llvm_passes(compiler->passes);
+	ac_destroy_llvm_passes(compiler->passes_wave32);
 	ac_destroy_llvm_passes(compiler->low_opt_passes);
 
 	if (compiler->passmgr)
@@ -367,4 +379,6 @@ ac_destroy_llvm_compiler(struct ac_llvm_compiler *compiler)
 		LLVMDisposeTargetMachine(compiler->low_opt_tm);
 	if (compiler->tm)
 		LLVMDisposeTargetMachine(compiler->tm);
+	if (compiler->tm_wave32)
+		LLVMDisposeTargetMachine(compiler->tm_wave32);
 }

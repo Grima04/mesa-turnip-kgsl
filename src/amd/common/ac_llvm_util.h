@@ -65,6 +65,7 @@ enum ac_target_machine_options {
 	AC_TM_ENABLE_GLOBAL_ISEL = (1 << 6),
 	AC_TM_CREATE_LOW_OPT = (1 << 7),
 	AC_TM_NO_LOAD_STORE_OPT = (1 << 8),
+	AC_TM_WAVE32 = (1 << 9),
 };
 
 enum ac_float_mode {
@@ -81,6 +82,10 @@ struct ac_llvm_compiler {
 	/* Default compiler. */
 	LLVMTargetMachineRef		tm;
 	struct ac_compiler_passes	*passes;
+
+	/* Wave32 compiler for GFX10. */
+	LLVMTargetMachineRef		tm_wave32;
+	struct ac_compiler_passes	*passes_wave32;
 
 	/* Optional compiler for faster compilation with fewer optimizations.
 	 * LLVM modules can be created with "tm" too. There is no difference.
