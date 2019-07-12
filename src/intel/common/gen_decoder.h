@@ -72,6 +72,10 @@ struct gen_enum *gen_spec_find_enum(struct gen_spec *spec, const char *name);
 
 bool gen_field_is_header(struct gen_field *field);
 
+/* Only allow 5 levels of subgroup'ing
+ */
+#define DECODE_MAX_ARRAY_DEPTH 5
+
 struct gen_field_iterator {
    struct gen_group *group;
    char name[128];
@@ -84,7 +88,8 @@ struct gen_field_iterator {
    int start_bit; /**< current field starts at this bit offset into p */
    int end_bit; /**< current field ends at this bit offset into p */
 
-   int array_iter;
+   int array_iter[DECODE_MAX_ARRAY_DEPTH];
+   int level;
 
    struct gen_field *field;
    bool print_colors;

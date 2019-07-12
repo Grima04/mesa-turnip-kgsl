@@ -904,13 +904,15 @@ iter_array_offset_bits(const struct gen_field_iterator *iter,
 static bool
 iter_more_arrays(const struct gen_field_iterator *iter)
 {
+   int lvl = iter->level;
+
    if (iter->group->variable) {
       int length = gen_group_get_length(iter->group, iter->p);
       assert(length >= 0 && "error the length is unknown!");
-      return iter_array_offset_bits(iter, iter->array_iter + 1) <
+      return iter_array_offset_bits(iter, iter->array_iter[lvl] + 1) <
               (length * 32);
    } else {
-      return (iter->array_iter + 1) < iter->group->array_count ||
+      return (iter->array_iter[lvl] + 1) < iter->group->array_count ||
          iter->group->next != NULL;
    }
 }
@@ -920,7 +922,8 @@ iter_start_field(struct gen_field_iterator *iter, struct gen_field *field)
 {
    iter->field = field;
 
-   int array_member_offset = iter_array_offset_bits(iter, iter->array_iter);
+   int array_member_offset =
+      iter_array_offset_bits(iter, iter->array_iter[iter->level]);
 
    iter->start_bit = array_member_offset + iter->field->start;
    iter->end_bit = array_member_offset + iter->field->end;
@@ -930,14 +933,16 @@ iter_start_field(struct gen_field_iterator *iter, struct gen_field *field)
 static void
 iter_advance_array(struct gen_field_iterator *iter)
 {
+   int lvl = iter->level;
+
    if (iter->group->variable)
-      iter->array_iter++;
+      iter->array_iter[lvl]++;
    else {
-      if ((iter->array_iter + 1) < iter->group->array_count) {
-         iter->array_iter++;
+      if ((iter->array_iter[lvl] + 1) < iter->group->array_count) {
+         iter->array_iter[lvl]++;
       } else {
          iter->group = iter->group->next;
-         iter->array_iter = 0;
+         iter->array_iter[lvl] = 0;
       }
    }
 
@@ -1067,7 +1072,7 @@ iter_decode_field(struct gen_field_iterator *iter)
    if (strlen(iter->group->name) == 0) {
       int length = strlen(iter->name);
       snprintf(iter->name + length, sizeof(iter->name) - length,
-               "[%i]", iter->array_iter);
+               "[%i]", iter->array_iter[iter->level]);
    }
 
    if (enum_name) {
