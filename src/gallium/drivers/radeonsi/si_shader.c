@@ -7023,6 +7023,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			memset(&gs_prolog_key, 0, sizeof(gs_prolog_key));
 			gs_prolog_key.gs_prolog.states = shader->key.part.gs.prolog;
 			gs_prolog_key.gs_prolog.is_monolithic = true;
+			gs_prolog_key.gs_prolog.as_ngg = shader->key.as_ngg;
 			si_build_gs_prolog_function(&ctx, &gs_prolog_key);
 			gs_prolog = ctx.main_fn;
 
@@ -7260,11 +7261,6 @@ si_get_shader_part(struct si_screen *sscreen,
 	result->key = *key;
 
 	struct si_shader shader = {};
-	struct si_shader_context ctx;
-
-	si_init_shader_ctx(&ctx, sscreen, compiler);
-	ctx.shader = &shader;
-	ctx.type = type;
 
 	switch (type) {
 	case PIPE_SHADER_VERTEX:
@@ -7278,6 +7274,7 @@ si_get_shader_part(struct si_screen *sscreen,
 		break;
 	case PIPE_SHADER_GEOMETRY:
 		assert(prolog);
+		shader.key.as_ngg = key->gs_prolog.as_ngg;
 		break;
 	case PIPE_SHADER_FRAGMENT:
 		if (prolog)
@@ -7288,6 +7285,11 @@ si_get_shader_part(struct si_screen *sscreen,
 	default:
 		unreachable("bad shader part");
 	}
+
+	struct si_shader_context ctx;
+	si_init_shader_ctx(&ctx, sscreen, compiler);
+	ctx.shader = &shader;
+	ctx.type = type;
 
 	build(&ctx, key);
 
@@ -7699,6 +7701,7 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen,
 	union si_shader_part_key prolog_key;
 	memset(&prolog_key, 0, sizeof(prolog_key));
 	prolog_key.gs_prolog.states = shader->key.part.gs.prolog;
+	prolog_key.gs_prolog.as_ngg = shader->key.as_ngg;
 
 	shader->prolog2 = si_get_shader_part(sscreen, &sscreen->gs_prologs,
 					    PIPE_SHADER_GEOMETRY, true,
