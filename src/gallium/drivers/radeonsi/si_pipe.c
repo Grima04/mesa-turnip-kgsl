@@ -849,8 +849,12 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 			   DBG(SI_SCHED) |			\
 			   DBG(GISEL) |				\
 			   DBG(UNSAFE_MATH))
-	uint64_t shader_debug_flags = sscreen->debug_flags &
-		ALL_FLAGS;
+	uint64_t shader_debug_flags = sscreen->debug_flags & ALL_FLAGS;
+
+	if (sscreen->options.enable_nir) {
+		STATIC_ASSERT((ALL_FLAGS & (1u << 31)) == 0);
+		shader_debug_flags |= 1u << 31;
+	}
 
 	/* Add the high bits of 32-bit addresses, which affects
 	 * how 32-bit addresses are expanded to 64 bits.
@@ -858,9 +862,6 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 	STATIC_ASSERT(ALL_FLAGS <= UINT_MAX);
 	assert((int16_t)sscreen->info.address32_hi == (int32_t)sscreen->info.address32_hi);
 	shader_debug_flags |= (uint64_t)(sscreen->info.address32_hi & 0xffff) << 32;
-
-	if (sscreen->options.enable_nir)
-		shader_debug_flags |= 1ull << 48;
 
 	sscreen->disk_shader_cache =
 		disk_cache_create(sscreen->info.name,
