@@ -3488,7 +3488,8 @@ apply_image_qualifier_to_variable(const struct ast_type_qualifier *qual,
       }
    } else {
       if (var->data.mode == ir_var_uniform) {
-         if (state->es_shader) {
+         if (state->es_shader ||
+             !(state->is_version(420, 310) || state->ARB_shader_image_load_store_enable)) {
             _mesa_glsl_error(loc, state, "all image uniforms must have a "
                              "format layout qualifier");
          } else if (!qual->flags.q.write_only) {

@@ -674,7 +674,14 @@ static bool
 shader_image_load_store(const _mesa_glsl_parse_state *state)
 {
    return (state->is_version(420, 310) ||
-           state->ARB_shader_image_load_store_enable);
+           state->ARB_shader_image_load_store_enable ||
+           state->EXT_shader_image_load_store_enable);
+}
+
+static bool
+shader_image_load_store_ext(const _mesa_glsl_parse_state *state)
+{
+   return state->EXT_shader_image_load_store_enable;
 }
 
 static bool
@@ -682,6 +689,7 @@ shader_image_atomic(const _mesa_glsl_parse_state *state)
 {
    return (state->is_version(420, 320) ||
            state->ARB_shader_image_load_store_enable ||
+           state->EXT_shader_image_load_store_enable ||
            state->OES_shader_image_atomic_enable);
 }
 
@@ -1194,6 +1202,7 @@ enum image_function_flags {
    IMAGE_FUNCTION_MS_ONLY = (1 << 7),
    IMAGE_FUNCTION_AVAIL_ATOMIC_EXCHANGE = (1 << 8),
    IMAGE_FUNCTION_AVAIL_ATOMIC_ADD = (1 << 9),
+   IMAGE_FUNCTION_EXT_ONLY = (1 << 10),
 };
 
 } /* anonymous namespace */
@@ -6935,6 +6944,9 @@ get_image_available_predicate(const glsl_type *type, unsigned flags)
                      IMAGE_FUNCTION_AVAIL_ATOMIC_ADD |
                      IMAGE_FUNCTION_AVAIL_ATOMIC))
       return shader_image_atomic;
+
+   else if (flags & IMAGE_FUNCTION_EXT_ONLY)
+      return shader_image_load_store_ext;
 
    else
       return shader_image_load_store;
