@@ -26,7 +26,7 @@
 
 #include "panfrost-job.h"
 
-char *pandecode_format_name(enum mali_format format);
+char *pandecode_format(enum mali_format format);
 void panfrost_print_blend_equation(struct mali_blend_equation eq);
 
 #endif

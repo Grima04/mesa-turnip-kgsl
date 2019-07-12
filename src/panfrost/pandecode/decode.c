@@ -250,7 +250,7 @@ extern char *replace_fragment;
 extern char *replace_vertex;
 
 static char *
-pandecode_job_type_name(enum mali_job_type type)
+pandecode_job_type(enum mali_job_type type)
 {
 #define DEFINE_CASE(name) case JOB_TYPE_ ## name: return "JOB_TYPE_" #name
 
@@ -276,7 +276,7 @@ pandecode_job_type_name(enum mali_job_type type)
 }
 
 static char *
-pandecode_draw_mode_name(enum mali_draw_mode mode)
+pandecode_draw_mode(enum mali_draw_mode mode)
 {
 #define DEFINE_CASE(name) case MALI_ ## name: return "MALI_" #name
 
@@ -302,7 +302,7 @@ pandecode_draw_mode_name(enum mali_draw_mode mode)
 
 #define DEFINE_CASE(name) case MALI_FUNC_ ## name: return "MALI_FUNC_" #name
 static char *
-pandecode_func_name(enum mali_func mode)
+pandecode_func(enum mali_func mode)
 {
         switch (mode) {
                 DEFINE_CASE(NEVER);
@@ -323,7 +323,7 @@ pandecode_func_name(enum mali_func mode)
 /* Why is this duplicated? Who knows... */
 #define DEFINE_CASE(name) case MALI_ALT_FUNC_ ## name: return "MALI_ALT_FUNC_" #name
 static char *
-pandecode_alt_func_name(enum mali_alt_func mode)
+pandecode_alt_func(enum mali_alt_func mode)
 {
         switch (mode) {
                 DEFINE_CASE(NEVER);
@@ -343,7 +343,7 @@ pandecode_alt_func_name(enum mali_alt_func mode)
 
 #define DEFINE_CASE(name) case MALI_STENCIL_ ## name: return "MALI_STENCIL_" #name
 static char *
-pandecode_stencil_op_name(enum mali_stencil_op op)
+pandecode_stencil_op(enum mali_stencil_op op)
 {
         switch (op) {
                 DEFINE_CASE(KEEP);
@@ -363,7 +363,7 @@ pandecode_stencil_op_name(enum mali_stencil_op op)
 #undef DEFINE_CASE
 
 #define DEFINE_CASE(name) case MALI_ATTR_ ## name: return "MALI_ATTR_" #name
-static char *pandecode_attr_mode_name(enum mali_attr_mode mode)
+static char *pandecode_attr_mode(enum mali_attr_mode mode)
 {
         switch(mode) {
                 DEFINE_CASE(UNUSED);
@@ -380,7 +380,7 @@ static char *pandecode_attr_mode_name(enum mali_attr_mode mode)
 
 #define DEFINE_CASE(name) case MALI_CHANNEL_## name: return "MALI_CHANNEL_" #name
 static char *
-pandecode_channel_name(enum mali_channel channel)
+pandecode_channel(enum mali_channel channel)
 {
         switch (channel) {
                 DEFINE_CASE(RED);
@@ -400,7 +400,7 @@ pandecode_channel_name(enum mali_channel channel)
 
 #define DEFINE_CASE(name) case MALI_WRAP_## name: return "MALI_WRAP_" #name
 static char *
-pandecode_wrap_mode_name(enum mali_wrap_mode op)
+pandecode_wrap_mode(enum mali_wrap_mode op)
 {
         switch (op) {
                 DEFINE_CASE(REPEAT);
@@ -608,10 +608,10 @@ static void
 pandecode_replay_swizzle(unsigned swizzle)
 {
         pandecode_prop("swizzle = %s | (%s << 3) | (%s << 6) | (%s << 9)",
-                       pandecode_channel_name((swizzle >> 0) & 0x7),
-                       pandecode_channel_name((swizzle >> 3) & 0x7),
-                       pandecode_channel_name((swizzle >> 6) & 0x7),
-                       pandecode_channel_name((swizzle >> 9) & 0x7));
+                       pandecode_channel((swizzle >> 0) & 0x7),
+                       pandecode_channel((swizzle >> 3) & 0x7),
+                       pandecode_channel((swizzle >> 6) & 0x7),
+                       pandecode_channel((swizzle >> 9) & 0x7));
 }
 
 static void
@@ -1008,7 +1008,7 @@ pandecode_replay_attributes(const struct pandecode_mapped_memory *mem,
                 pandecode_indent++;
 
                 unsigned mode = attr[i].elements & 7;
-                pandecode_prop("elements = (%s_%d_p) | %s", base, i, pandecode_attr_mode_name(mode));
+                pandecode_prop("elements = (%s_%d_p) | %s", base, i, pandecode_attr_mode(mode));
                 pandecode_prop("shift = %d", attr[i].shift);
                 pandecode_prop("extra_flags = %d", attr[i].extra_flags);
                 pandecode_prop("stride = 0x%" PRIx32, attr[i].stride);
@@ -1075,10 +1075,10 @@ pandecode_replay_stencil(const char *name, const struct mali_stencil_test *stenc
         if (all_zero((unsigned *) stencil, sizeof(stencil) / sizeof(unsigned)))
                 return;
 
-        const char *func = pandecode_func_name(stencil->func);
-        const char *sfail = pandecode_stencil_op_name(stencil->sfail);
-        const char *dpfail = pandecode_stencil_op_name(stencil->dpfail);
-        const char *dppass = pandecode_stencil_op_name(stencil->dppass);
+        const char *func = pandecode_func(stencil->func);
+        const char *sfail = pandecode_stencil_op(stencil->sfail);
+        const char *dpfail = pandecode_stencil_op(stencil->dpfail);
+        const char *dppass = pandecode_stencil_op(stencil->dppass);
 
         if (stencil->zero)
                 pandecode_msg("Stencil zero tripped: %X\n", stencil->zero);
@@ -1224,7 +1224,7 @@ pandecode_replay_attribute_meta(int job_no, int count, const struct mali_vertex_
                 if (attr_meta->index > max_index)
                         max_index = attr_meta->index;
                 pandecode_replay_swizzle(attr_meta->swizzle);
-                pandecode_prop("format = %s", pandecode_format_name(attr_meta->format));
+                pandecode_prop("format = %s", pandecode_format(attr_meta->format));
 
                 pandecode_prop("unknown1 = 0x%" PRIx64, (u64) attr_meta->unknown1);
                 pandecode_prop("unknown3 = 0x%" PRIx64, (u64) attr_meta->unknown3);
@@ -1310,7 +1310,7 @@ pandecode_replay_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job
 
         pandecode_prop("workgroups_x_shift_3 = 0x%" PRIx32, p->workgroups_x_shift_3);
 
-        pandecode_prop("draw_mode = %s", pandecode_draw_mode_name(p->draw_mode));
+        pandecode_prop("draw_mode = %s", pandecode_draw_mode(p->draw_mode));
 
         /* Index count only exists for tiler jobs anyway */
 
@@ -1534,7 +1534,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                         /* We're not quite sure what these flags mean without the depth test, if anything */
 
                         if (unknown2_3 & (MALI_DEPTH_TEST | MALI_DEPTH_FUNC_MASK)) {
-                                const char *func = pandecode_func_name(MALI_GET_DEPTH_FUNC(unknown2_3));
+                                const char *func = pandecode_func(MALI_GET_DEPTH_FUNC(unknown2_3));
                                 unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
 
                                 pandecode_log_cont("MALI_DEPTH_FUNC(%s) | ", func);
@@ -1762,7 +1762,7 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                         pandecode_indent++;
 
                                         pandecode_replay_swizzle(f.swizzle);
-                                        pandecode_prop("format = %s", pandecode_format_name(f.format));
+                                        pandecode_prop("format = %s", pandecode_format(f.format));
                                         pandecode_prop("type = %s", pandecode_texture_type(f.type));
                                         pandecode_prop("srgb = %" PRId32, f.srgb);
                                         pandecode_prop("unknown1 = %" PRId32, f.unknown1);
@@ -1867,11 +1867,11 @@ pandecode_replay_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix
                                 pandecode_prop("min_lod = FIXED_16(%f)", DECODE_FIXED_16(s->min_lod));
                                 pandecode_prop("max_lod = FIXED_16(%f)", DECODE_FIXED_16(s->max_lod));
 
-                                pandecode_prop("wrap_s = %s", pandecode_wrap_mode_name(s->wrap_s));
-                                pandecode_prop("wrap_t = %s", pandecode_wrap_mode_name(s->wrap_t));
-                                pandecode_prop("wrap_r = %s", pandecode_wrap_mode_name(s->wrap_r));
+                                pandecode_prop("wrap_s = %s", pandecode_wrap_mode(s->wrap_s));
+                                pandecode_prop("wrap_t = %s", pandecode_wrap_mode(s->wrap_t));
+                                pandecode_prop("wrap_r = %s", pandecode_wrap_mode(s->wrap_r));
 
-                                pandecode_prop("compare_func = %s", pandecode_alt_func_name(s->compare_func));
+                                pandecode_prop("compare_func = %s", pandecode_alt_func(s->compare_func));
 
                                 if (s->zero || s->zero2) {
                                         pandecode_msg("Zero tripped\n");
@@ -2292,7 +2292,7 @@ pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost)
                 pandecode_log("struct mali_job_descriptor_header job_%"PRIx64"_%d = {\n", jc_gpu_va, job_no);
                 pandecode_indent++;
 
-                pandecode_prop("job_type = %s", pandecode_job_type_name(h->job_type));
+                pandecode_prop("job_type = %s", pandecode_job_type(h->job_type));
 
                 /* Save for next job fixing */
                 last_size = h->job_descriptor_size;

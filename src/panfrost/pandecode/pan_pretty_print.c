@@ -31,7 +31,7 @@
  * the main driver */
 
 #define DEFINE_CASE(name) case MALI_## name: return "MALI_" #name
-char *pandecode_format_name(enum mali_format format)
+char *pandecode_format(enum mali_format format)
 {
         static char unk_format_str[5];
 
