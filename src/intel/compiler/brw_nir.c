@@ -821,7 +821,6 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    UNUSED bool progress; /* Written by OPT */
 
    OPT(brw_nir_lower_mem_access_bit_sizes);
-   OPT(nir_lower_int64, nir->options->lower_int64_options);
 
    do {
       progress = false;
@@ -829,6 +828,9 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    } while (progress);
 
    brw_nir_optimize(nir, compiler, is_scalar, false);
+
+   if (OPT(nir_lower_int64, nir->options->lower_int64_options))
+      brw_nir_optimize(nir, compiler, is_scalar, false);
 
    if (devinfo->gen >= 6) {
       /* Try and fuse multiply-adds */
