@@ -246,13 +246,6 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
 static void
 panfrost_invalidate_frame(struct panfrost_context *ctx)
 {
-        unsigned transient_count = ctx->transient_pools[ctx->cmdstream_i].entry_index*ctx->transient_pools[0].entry_size + ctx->transient_pools[ctx->cmdstream_i].entry_offset;
-        DBG("Uploaded transient %d bytes\n", transient_count);
-
-        /* Rotate cmdstream */
-        if ((++ctx->cmdstream_i) == (sizeof(ctx->transient_pools) / sizeof(ctx->transient_pools[0])))
-                ctx->cmdstream_i = 0;
-
         if (ctx->require_sfbd)
                 ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
         else
@@ -264,12 +257,6 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
 
         /* Reset varyings allocated */
         ctx->varying_height = 0;
-
-        /* The transient cmdstream is dirty every frame; the only bits worth preserving
-         * (textures, shaders, etc) are in other buffers anyways */
-
-        ctx->transient_pools[ctx->cmdstream_i].entry_index = 0;
-        ctx->transient_pools[ctx->cmdstream_i].entry_offset = 0;
 
         if (ctx->rasterizer)
                 ctx->dirty |= PAN_DIRTY_RASTERIZER;
@@ -2517,12 +2504,6 @@ panfrost_destroy(struct pipe_context *pipe)
         panfrost_drm_free_slab(screen, &panfrost->tiler_polygon_list);
         panfrost_drm_free_slab(screen, &panfrost->tiler_dummy);
 
-        for (int i = 0; i < ARRAY_SIZE(panfrost->transient_pools); ++i) {
-                struct panfrost_memory_entry *entry;
-                entry = panfrost->transient_pools[i].entries[0];
-                pb_slab_free(&screen->slabs, (struct pb_slab_entry *)entry);
-        }
-
         ralloc_free(pipe);
 }
 
@@ -2662,16 +2643,6 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
 {
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
-
-        for (int i = 0; i < ARRAY_SIZE(ctx->transient_pools); ++i) {
-                /* Allocate the beginning of the transient pool */
-                int entry_size = (1 << 22); /* 4MB */
-
-                ctx->transient_pools[i].entry_size = entry_size;
-                ctx->transient_pools[i].entry_count = 1;
-
-                ctx->transient_pools[i].entries[0] = (struct panfrost_memory_entry *) pb_slab_alloc(&screen->slabs, entry_size, HEAP_TRANSIENT);
-        }
 
         panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64, false, 0, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->varying_mem, 16384, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_COHERENT_LOCAL, 0, 0);
