@@ -390,7 +390,10 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
         size_t bo_size;
 
         panfrost_setup_slices(pres, &bo_size);
-        pres->bo = panfrost_drm_create_bo(screen, bo_size, 0);
+
+        /* We create a BO immediately but don't bother mapping, since we don't
+         * care to map e.g. FBOs which the CPU probably won't touch */
+        pres->bo = panfrost_drm_create_bo(screen, bo_size, PAN_ALLOCATE_DELAY_MMAP);
 }
 
 static struct pipe_resource *
@@ -482,6 +485,13 @@ panfrost_transfer_map(struct pipe_context *pctx,
         pipe_resource_reference(&transfer->base.resource, resource);
 
         *out_transfer = &transfer->base;
+
+        /* If we haven't already mmaped, now's the time */
+
+        if (!bo->cpu) {
+                struct panfrost_screen *screen = pan_screen(pctx->screen);
+                panfrost_drm_mmap_bo(screen, bo);
+        }
 
         /* Check if we're bound for rendering and this is a read pixels. If so,
          * we need to flush */

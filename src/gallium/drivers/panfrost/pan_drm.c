@@ -38,7 +38,7 @@
 #include "pan_util.h"
 #include "pandecode/decode.h"
 
-static void
+void
 panfrost_drm_mmap_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
 {
         struct drm_panfrost_mmap_bo mmap_bo = { .handle = bo->gem_handle };
@@ -112,7 +112,7 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
          * never map since we don't care about their contents; they're purely
          * for GPU-internal use. */
 
-        if (!(flags & PAN_ALLOCATE_INVISIBLE))
+        if (!(flags & (PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_DELAY_MMAP)))
                 panfrost_drm_mmap_bo(screen, bo);
 
         pipe_reference_init(&bo->reference, 1);
