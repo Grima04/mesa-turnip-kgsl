@@ -81,6 +81,7 @@ static const nir_shader_compiler_options options_a6xx = {
 		.lower_bitfield_extract_to_shifts = true,
 		.use_interpolated_input_intrinsics = true,
 		.lower_rotate = true,
+		.vectorize_io = true,
 };
 
 const nir_shader_compiler_options *
