@@ -456,6 +456,15 @@ zink_transfer_map(struct pipe_context *pctx,
                                                    false);
             if (ret == false)
                return NULL;
+
+            /* need to wait for rendering to finish */
+            struct pipe_fence_handle *fence = NULL;
+            pctx->flush(pctx, &fence, PIPE_FLUSH_HINT_FINISH);
+            if (fence) {
+               pctx->screen->fence_finish(pctx->screen, NULL, fence,
+                                          PIPE_TIMEOUT_INFINITE);
+               pctx->screen->fence_reference(pctx->screen, &fence, NULL);
+            }
          }
 
          VkResult result = vkMapMemory(screen->dev, staging_res->mem,
