@@ -771,6 +771,22 @@ v3d_create_sampler_state(struct pipe_context *pctx,
 }
 
 static void
+v3d_flag_dirty_sampler_state(struct v3d_context *v3d,
+                             enum pipe_shader_type shader)
+{
+        switch (shader) {
+        case PIPE_SHADER_VERTEX:
+                v3d->dirty |= VC5_DIRTY_VERTTEX;
+                break;
+        case PIPE_SHADER_FRAGMENT:
+                v3d->dirty |= VC5_DIRTY_FRAGTEX;
+                break;
+        default:
+                unreachable("Unsupported shader stage");
+        }
+}
+
+static void
 v3d_sampler_states_bind(struct pipe_context *pctx,
                         enum pipe_shader_type shader, unsigned start,
                         unsigned nr, void **hwcso)
@@ -793,6 +809,8 @@ v3d_sampler_states_bind(struct pipe_context *pctx,
         }
 
         stage_tex->num_samplers = new_nr;
+
+        v3d_flag_dirty_sampler_state(v3d, shader);
 }
 
 static void
@@ -1158,6 +1176,8 @@ v3d_set_sampler_views(struct pipe_context *pctx,
         }
 
         stage_tex->num_textures = new_nr;
+
+        v3d_flag_dirty_sampler_state(v3d, shader);
 }
 
 static struct pipe_stream_output_target *
