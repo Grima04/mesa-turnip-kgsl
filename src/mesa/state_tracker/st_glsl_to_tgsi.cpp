@@ -6241,6 +6241,8 @@ compile_tgsi_instruction(struct st_translate *t,
    case TGSI_OPCODE_ATOMIMAX:
    case TGSI_OPCODE_ATOMFADD:
    case TGSI_OPCODE_IMG2HND:
+   case TGSI_OPCODE_ATOMINC_WRAP:
+   case TGSI_OPCODE_ATOMDEC_WRAP:
       for (i = num_src - 1; i >= 0; i--)
          src[i + 1] = src[i];
       num_src++;

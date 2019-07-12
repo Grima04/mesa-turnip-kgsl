@@ -2834,6 +2834,36 @@ These atomic operations may only be used with 32-bit integer image formats.
   resource[offset] = (dst_x > src_x ? dst_x : src_x)
 
 
+.. opcode:: ATOMINC_WRAP - Atomic increment + wrap around
+
+  Syntax: ``ATOMINC_WRAP dst, resource, offset, src``
+
+  Example: ``ATOMINC_WRAP TEMP[0], BUFFER[0], TEMP[1], TEMP[2]``
+
+  The following operation is performed atomically:
+
+.. math::
+
+  dst_x = resource[offset] + 1
+
+  resource[offset] = dst_x < src_x ? dst_x : 0
+
+
+.. opcode:: ATOMDEC_WRAP - Atomic decrement + wrap around
+
+  Syntax: ``ATOMDEC_WRAP dst, resource, offset, src``
+
+  Example: ``ATOMDEC_WRAP TEMP[0], BUFFER[0], TEMP[1], TEMP[2]``
+
+  The following operation is performed atomically:
+
+.. math::
+
+  dst_x = resource[offset]
+
+  resource[offset] = (dst_x > 0 && dst_x < src_x) ? dst_x - 1 : 0
+
+
 .. _interlaneopcodes:
 
 Inter-lane opcodes
