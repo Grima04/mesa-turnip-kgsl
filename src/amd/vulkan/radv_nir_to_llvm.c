@@ -125,6 +125,13 @@ struct radv_shader_context {
 	LLVMValueRef vertexptr; /* GFX10 only */
 };
 
+struct radv_shader_output_values {
+	LLVMValueRef values[4];
+	unsigned slot_name;
+	unsigned slot_index;
+	unsigned usage_mask;
+};
+
 enum radeon_llvm_calling_convention {
 	RADEON_LLVM_AMDGPU_VS = 87,
 	RADEON_LLVM_AMDGPU_GS = 88,
@@ -2606,10 +2613,10 @@ static void
 radv_emit_stream_output(struct radv_shader_context *ctx,
 			 LLVMValueRef const *so_buffers,
 			 LLVMValueRef const *so_write_offsets,
-			 const struct radv_stream_output *output)
+			 const struct radv_stream_output *output,
+			 struct radv_shader_output_values *shader_out)
 {
 	unsigned num_comps = util_bitcount(output->component_mask);
-	unsigned loc = output->location;
 	unsigned buf = output->buffer;
 	unsigned offset = output->offset;
 	unsigned start;
@@ -2624,8 +2631,7 @@ radv_emit_stream_output(struct radv_shader_context *ctx,
 
 	/* Load the output as int. */
 	for (int i = 0; i < num_comps; i++) {
-		out[i] = ac_to_integer(&ctx->ac,
-				       radv_load_output(ctx, loc, start + i));
+		out[i] = ac_to_integer(&ctx->ac, shader_out->values[start + i]);
 	}
 
 	/* Pack the output. */
@@ -2722,25 +2728,24 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 
 		/* Write streamout data. */
 		for (i = 0; i < ctx->shader_info->info.so.num_outputs; i++) {
+			struct radv_shader_output_values shader_out = {};
 			struct radv_stream_output *output =
 				&ctx->shader_info->info.so.outputs[i];
 
 			if (stream != output->stream)
 				continue;
 
-			radv_emit_stream_output(ctx, so_buffers,
-						so_write_offset, output);
+			for (int j = 0; j < 4; j++) {
+				shader_out.values[j] =
+					radv_load_output(ctx, output->location, j);
+			}
+
+			radv_emit_stream_output(ctx, so_buffers,so_write_offset,
+						output, &shader_out);
 		}
 	}
 	ac_nir_build_endif(&if_ctx);
 }
-
-struct radv_shader_output_values {
-	LLVMValueRef values[4];
-	unsigned slot_name;
-	unsigned slot_index;
-	unsigned usage_mask;
-};
 
 static void
 radv_build_param_exports(struct radv_shader_context *ctx,
