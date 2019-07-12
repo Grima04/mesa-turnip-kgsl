@@ -365,6 +365,7 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    if (res->base.array_size > 1) {
       copyRegion.imageSubresource.baseArrayLayer = trans->base.box.z;
       copyRegion.imageSubresource.layerCount = trans->base.box.depth;
+      copyRegion.imageExtent.depth = 1;
    } else {
       copyRegion.imageOffset.z = trans->base.box.z;
       copyRegion.imageExtent.depth = trans->base.box.depth;
