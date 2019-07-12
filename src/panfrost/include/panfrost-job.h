@@ -1447,7 +1447,10 @@ struct mali_single_framebuffer {
         u16 width;
         u16 height;
 
-        u32 zero3[8];
+        u32 zero3[4];
+        mali_ptr checksum;
+        u32 checksum_stride;
+        u32 zero5;
 
         /* By default, the framebuffer is upside down from OpenGL's
          * perspective. Set framebuffer to the end and negate the stride to

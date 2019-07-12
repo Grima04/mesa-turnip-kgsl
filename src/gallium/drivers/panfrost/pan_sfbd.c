@@ -147,5 +147,17 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         if (batch->requirements & PAN_REQ_MSAA)
                 fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
 
+        struct pipe_surface *surf = batch->key.cbufs[0];
+        struct panfrost_resource *rsrc = pan_resource(surf->texture);
+        struct panfrost_bo *bo = rsrc->bo;
+
+        if (rsrc->checksummed) {
+                unsigned level = surf->u.tex.level;
+                struct panfrost_slice *slice = &rsrc->slices[level];
+
+                fb.checksum_stride = slice->checksum_stride;
+                fb.checksum = bo->gpu + slice->checksum_offset;
+        }
+
         return panfrost_upload_transient(batch, &fb, sizeof(fb)) | MALI_SFBD;
 }
