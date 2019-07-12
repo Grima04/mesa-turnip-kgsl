@@ -216,7 +216,6 @@ struct panfrost_shader_state {
         /* Compiled, mapped descriptor, ready for the hardware */
         bool compiled;
         struct mali_shader_meta *tripipe;
-        mali_ptr tripipe_gpu;
 
         /* Non-descript information */
         int uniform_count;

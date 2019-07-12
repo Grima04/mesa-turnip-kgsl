@@ -972,7 +972,8 @@ static mali_ptr
 panfrost_patch_shader_state(
         struct panfrost_context *ctx,
         struct panfrost_shader_state *ss,
-        enum pipe_shader_type stage)
+        enum pipe_shader_type stage,
+        bool should_upload)
 {
         ss->tripipe->texture_count = ctx->sampler_view_count[stage];
         ss->tripipe->sampler_count = ctx->sampler_count[stage];
@@ -982,7 +983,18 @@ panfrost_patch_shader_state(
         unsigned ubo_count = panfrost_ubo_count(ctx, stage);
         ss->tripipe->midgard1.uniform_buffer_count = ubo_count;
 
-        return ss->tripipe_gpu;
+        /* We can't reuse over frames; that's not safe. The descriptor must be
+         * transient uploaded */
+
+        if (should_upload) {
+                return panfrost_upload_transient(ctx,
+                                ss->tripipe,
+                                sizeof(struct mali_shader_meta));
+        }
+
+        /* If we don't need an upload, don't bother */
+        return 0;
+
 }
 
 /* Go through dirty flags and actualise them in the cmdstream. */
@@ -1019,13 +1031,16 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 ctx->payload_tiler.postfix.occlusion_counter = ctx->occlusion_query->transfer.gpu;
         }
 
+        /* TODO: Does it make sense to dirty track VS? We need the transient
+         * uploads */
+        ctx->dirty |= PAN_DIRTY_VS;
         if (ctx->dirty & PAN_DIRTY_VS) {
                 assert(ctx->vs);
 
                 struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
 
                 ctx->payload_vertex.postfix._shader_upper =
-                        panfrost_patch_shader_state(ctx, vs, PIPE_SHADER_VERTEX) >> 4;
+                        panfrost_patch_shader_state(ctx, vs, PIPE_SHADER_VERTEX, true) >> 4;
         }
 
         if (ctx->dirty & (PAN_DIRTY_RASTERIZER | PAN_DIRTY_VS)) {
@@ -1047,7 +1062,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 assert(ctx->fs);
                 struct panfrost_shader_state *variant = &ctx->fs->variants[ctx->fs->active_variant];
 
-                panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT);
+                panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT, false);
 
 #define COPY(name) ctx->fragment_shader_core.name = variant->tripipe->name
 
@@ -2066,12 +2081,7 @@ panfrost_bind_shader_state(
                         }
                 }
 
-                /* Allocate the mapped descriptor ahead-of-time. */
-                struct panfrost_context *ctx = pan_context(pctx);
-                struct panfrost_transfer transfer = panfrost_allocate_chunk(ctx, sizeof(struct mali_shader_meta), HEAP_DESCRIPTOR);
-
-                variants->variants[variant].tripipe = (struct mali_shader_meta *) transfer.cpu;
-                variants->variants[variant].tripipe_gpu = transfer.gpu;
+                variants->variants[variant].tripipe = malloc(sizeof(struct mali_shader_meta));
 
         }
 
