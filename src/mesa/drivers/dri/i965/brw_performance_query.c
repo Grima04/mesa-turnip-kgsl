@@ -375,21 +375,14 @@ brw_new_perf_query_object(struct gl_context *ctx, unsigned query_index)
 {
    struct brw_context *brw = brw_context(ctx);
    struct gen_perf_context *perf_ctx = &brw->perf_ctx;
-   const struct gen_perf_query_info *queryinfo =
-      &perf_ctx->perf->queries[query_index];
-   struct gen_perf_query_object *obj =
-      calloc(1, sizeof(struct gen_perf_query_object));
-
-   if (!obj)
+   struct gen_perf_query_object * obj = gen_perf_new_query(perf_ctx, query_index);
+   if (unlikely(!obj))
       return NULL;
-
-   obj->queryinfo = queryinfo;
-
-   perf_ctx->n_query_instances++;
 
    struct brw_perf_query_object *brw_query = calloc(1, sizeof(struct brw_perf_query_object));
    if (unlikely(!brw_query))
       return NULL;
+
    brw_query->query = obj;
    return &brw_query->base;
 }

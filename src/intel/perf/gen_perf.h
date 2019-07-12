@@ -564,6 +564,8 @@ void gen_perf_snapshot_statistics_registers(void *context,
                                             struct gen_perf_config *perf,
                                             struct gen_perf_query_object *obj,
                                             uint32_t offset_in_bytes);
+struct gen_perf_query_object *
+gen_perf_new_query(struct gen_perf_context *, unsigned query_index);
 
 void gen_perf_close(struct gen_perf_context *perfquery,
                     const struct gen_perf_query_info *query);

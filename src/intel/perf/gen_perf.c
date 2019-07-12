@@ -69,6 +69,23 @@
 #define MAP_READ  (1 << 0)
 #define MAP_WRITE (1 << 1)
 
+struct gen_perf_query_object *
+gen_perf_new_query(struct gen_perf_context *perf_ctx, unsigned query_index)
+{
+   const struct gen_perf_query_info *query =
+      &perf_ctx->perf->queries[query_index];
+   struct gen_perf_query_object *obj =
+      calloc(1, sizeof(struct gen_perf_query_object));
+
+   if (!obj)
+      return NULL;
+
+   obj->queryinfo = query;
+
+   perf_ctx->n_query_instances++;
+   return obj;
+}
+
 static bool
 get_sysfs_dev_dir(struct gen_perf_config *perf, int fd)
 {
