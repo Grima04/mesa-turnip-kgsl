@@ -2538,7 +2538,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
                 /* Allocate a word for the query results to be stored */
-                query->transfer = panfrost_allocate_chunk(ctx, sizeof(unsigned), HEAP_DESCRIPTOR);
+                query->transfer = panfrost_allocate_transient(ctx, sizeof(unsigned));
 
                 ctx->occlusion_query = query;
 
