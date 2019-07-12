@@ -1426,8 +1426,10 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 				S_00B84C_LDS_SIZE(shader->config.lds_size));
 
 		radeon_set_sh_reg(cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
-			si_get_compute_resource_limits(sctx->screen, WAVES_PER_TG,
-						       MAX_WAVES_PER_SH, THREADGROUPS_PER_CU));
+			ac_get_compute_resource_limits(&sctx->screen->info,
+						       WAVES_PER_TG,
+						       MAX_WAVES_PER_SH,
+						       THREADGROUPS_PER_CU));
 		sctx->compute_ib_last_shader = shader;
 	}
 

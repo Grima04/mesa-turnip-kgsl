@@ -772,38 +772,6 @@ static void si_setup_tgsi_user_data(struct si_context *sctx,
 	}
 }
 
-unsigned si_get_compute_resource_limits(struct si_screen *sscreen,
-					unsigned waves_per_threadgroup,
-					unsigned max_waves_per_sh,
-					unsigned threadgroups_per_cu)
-{
-	unsigned compute_resource_limits =
-		S_00B854_SIMD_DEST_CNTL(waves_per_threadgroup % 4 == 0);
-
-	if (sscreen->info.chip_class >= GFX7) {
-		unsigned num_cu_per_se = sscreen->info.num_good_compute_units /
-					 sscreen->info.max_se;
-
-		/* Force even distribution on all SIMDs in CU if the workgroup
-		 * size is 64. This has shown some good improvements if # of CUs
-		 * per SE is not a multiple of 4.
-		 */
-		if (num_cu_per_se % 4 && waves_per_threadgroup == 1)
-			compute_resource_limits |= S_00B854_FORCE_SIMD_DIST(1);
-
-		assert(threadgroups_per_cu >= 1 && threadgroups_per_cu <= 8);
-		compute_resource_limits |= S_00B854_WAVES_PER_SH(max_waves_per_sh) |
-					   S_00B854_CU_GROUP_COUNT(threadgroups_per_cu - 1);
-	} else {
-		/* GFX6 */
-		if (max_waves_per_sh) {
-			unsigned limit_div16 = DIV_ROUND_UP(max_waves_per_sh, 16);
-			compute_resource_limits |= S_00B854_WAVES_PER_SH_SI(limit_div16);
-		}
-	}
-	return compute_resource_limits;
-}
-
 static void si_emit_dispatch_packets(struct si_context *sctx,
                                      const struct pipe_grid_info *info)
 {
@@ -820,7 +788,8 @@ static void si_emit_dispatch_packets(struct si_context *sctx,
 		threadgroups_per_cu = 2;
 
 	radeon_set_sh_reg(cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
-			  si_get_compute_resource_limits(sscreen, waves_per_threadgroup,
+			  ac_get_compute_resource_limits(&sscreen->info,
+							 waves_per_threadgroup,
 							 sctx->cs_max_waves_per_sh,
 							 threadgroups_per_cu));
 

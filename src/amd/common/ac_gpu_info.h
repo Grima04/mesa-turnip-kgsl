@@ -167,6 +167,10 @@ void ac_get_harvested_configs(struct radeon_info *info,
 			      unsigned raster_config,
 			      unsigned *cik_raster_config_1_p,
 			      unsigned *raster_config_se);
+unsigned ac_get_compute_resource_limits(struct radeon_info *info,
+					unsigned waves_per_threadgroup,
+					unsigned max_waves_per_sh,
+					unsigned threadgroups_per_cu);
 
 static inline unsigned ac_get_max_simd_waves(enum radeon_family family)
 {
