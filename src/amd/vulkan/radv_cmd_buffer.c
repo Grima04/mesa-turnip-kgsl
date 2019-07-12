@@ -5640,14 +5640,14 @@ static void radv_flush_vgt_streamout(struct radv_cmd_buffer *cmd_buffer)
 	radeon_emit(cs, 4); /* poll interval */
 }
 
-void radv_CmdBeginTransformFeedbackEXT(
-    VkCommandBuffer                             commandBuffer,
-    uint32_t                                    firstCounterBuffer,
-    uint32_t                                    counterBufferCount,
-    const VkBuffer*                             pCounterBuffers,
-    const VkDeviceSize*                         pCounterBufferOffsets)
+static void
+radv_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer,
+			  uint32_t firstCounterBuffer,
+			  uint32_t counterBufferCount,
+			  const VkBuffer *pCounterBuffers,
+			  const VkDeviceSize *pCounterBufferOffsets)
+
 {
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_streamout_binding *sb = cmd_buffer->streamout_bindings;
 	struct radv_streamout_state *so = &cmd_buffer->state.streamout;
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
@@ -5705,7 +5705,7 @@ void radv_CmdBeginTransformFeedbackEXT(
 	radv_set_streamout_enable(cmd_buffer, true);
 }
 
-void radv_CmdEndTransformFeedbackEXT(
+void radv_CmdBeginTransformFeedbackEXT(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    firstCounterBuffer,
     uint32_t                                    counterBufferCount,
@@ -5713,6 +5713,19 @@ void radv_CmdEndTransformFeedbackEXT(
     const VkDeviceSize*                         pCounterBufferOffsets)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+	radv_emit_streamout_begin(cmd_buffer,
+				  firstCounterBuffer, counterBufferCount,
+				  pCounterBuffers, pCounterBufferOffsets);
+}
+
+static void
+radv_emit_streamout_end(struct radv_cmd_buffer *cmd_buffer,
+			uint32_t firstCounterBuffer,
+			uint32_t counterBufferCount,
+			const VkBuffer *pCounterBuffers,
+			const VkDeviceSize *pCounterBufferOffsets)
+{
 	struct radv_streamout_state *so = &cmd_buffer->state.streamout;
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	uint32_t i;
@@ -5756,6 +5769,20 @@ void radv_CmdEndTransformFeedbackEXT(
 	}
 
 	radv_set_streamout_enable(cmd_buffer, false);
+}
+
+void radv_CmdEndTransformFeedbackEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstCounterBuffer,
+    uint32_t                                    counterBufferCount,
+    const VkBuffer*                             pCounterBuffers,
+    const VkDeviceSize*                         pCounterBufferOffsets)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+	radv_emit_streamout_end(cmd_buffer,
+				firstCounterBuffer, counterBufferCount,
+				pCounterBuffers, pCounterBufferOffsets);
 }
 
 void radv_CmdDrawIndirectByteCountEXT(
