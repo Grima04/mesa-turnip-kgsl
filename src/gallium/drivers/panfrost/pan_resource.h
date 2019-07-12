@@ -109,7 +109,6 @@ panfrost_get_texture_address(
         unsigned level, unsigned face);
 
 void panfrost_resource_screen_init(struct panfrost_screen *screen);
-void panfrost_resource_screen_deinit(struct panfrost_screen *screen);
 
 void panfrost_resource_context_init(struct pipe_context *pctx);
 

@@ -34,28 +34,6 @@
 /* TODO: What does this actually have to be? */
 #define ALIGNMENT 128
 
-/* Allocate a mapped chunk directly from a heap */
-
-struct panfrost_transfer
-panfrost_allocate_chunk(struct panfrost_context *ctx, size_t size, unsigned heap_id)
-{
-        size = ALIGN_POT(size, ALIGNMENT);
-
-        struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
-
-        struct pb_slab_entry *entry = pb_slab_alloc(&screen->slabs, size, heap_id);
-        struct panfrost_memory_entry *p_entry = (struct panfrost_memory_entry *) entry;
-        struct panfrost_memory *backing = (struct panfrost_memory *) entry->slab;
-
-        struct panfrost_transfer transfer = {
-                .cpu = backing->bo->cpu + p_entry->offset,
-                .gpu = backing->bo->gpu + p_entry->offset
-        };
-
-        return transfer;
-}
-
 /* Allocate a new transient slab */
 
 static struct panfrost_bo *
@@ -224,14 +202,6 @@ pandev_upload(int cheating_offset, int *stack_bottom, mali_ptr base, void *base_
         return base + offset;
 }
 
-/* Upload immediately after the last allocation */
-
-mali_ptr
-pandev_upload_sequential(mali_ptr base, void *base_map, const void *data, size_t sz)
-{
-        return pandev_upload(last_offset, NULL, base, base_map, data, sz, /* false */ true);
-}
-
 /* Simplified APIs for the real driver, rather than replays */
 
 mali_ptr
@@ -245,23 +215,4 @@ panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz, bool n
         }
 
         return pandev_upload(-1, &mem->stack_bottom, mem->bo->gpu, mem->bo->cpu, data, sz, no_pad);
-}
-
-mali_ptr
-panfrost_upload_sequential(struct panfrost_memory *mem, const void *data, size_t sz)
-{
-        return pandev_upload(last_offset, &mem->stack_bottom, mem->bo->gpu, mem->bo->cpu, data, sz, true);
-}
-
-/* Simplified interface to allocate a chunk without any upload, to allow
- * zero-copy uploads. This is particularly useful when the copy would happen
- * anyway, for instance with texture swizzling. */
-
-void *
-panfrost_allocate_transfer(struct panfrost_memory *mem, size_t sz, mali_ptr *gpu)
-{
-        int offset = pandev_allocate_offset(&mem->stack_bottom, sz);
-
-        *gpu = mem->bo->gpu + offset;
-        return mem->bo->cpu + offset;
 }

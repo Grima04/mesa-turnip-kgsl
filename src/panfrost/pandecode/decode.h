@@ -26,6 +26,7 @@
 #ifndef __PAN_DECODE_H__
 #define __PAN_DECODE_H__
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <panfrost-job.h>

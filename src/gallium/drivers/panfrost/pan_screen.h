@@ -85,9 +85,6 @@ struct panfrost_screen {
 
         struct renderonly *ro;
 
-        /* Memory management is based on subdividing slabs with AMD's allocator */
-        struct pb_slabs slabs;
-
         /* Transient memory management is based on borrowing fixed-size slabs
          * off the screen (loaning them out to the batch). Dynamic array
          * container of panfrost_bo */
