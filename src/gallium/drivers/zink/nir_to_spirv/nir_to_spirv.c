@@ -1094,12 +1094,12 @@ get_src_float(struct ntv_context *ctx, nir_src *src)
 static void
 emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 {
-   assert(tex->op == nir_texop_tex);
+   assert(tex->op == nir_texop_tex ||
+          tex->op == nir_texop_txb);
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
-   bool has_proj = false, has_lod = false;
-   SpvId coord = 0, proj, lod;
+   SpvId coord = 0, proj = 0, bias = 0, lod = 0;
    unsigned coord_components;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -1109,15 +1109,21 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          break;
 
       case nir_tex_src_projector:
-         has_proj = true;
-         proj = get_src_float(ctx, &tex->src[i].src);
          assert(nir_src_num_components(tex->src[i].src) == 1);
+         proj = get_src_float(ctx, &tex->src[i].src);
+         assert(proj != 0);
+         break;
+
+      case nir_tex_src_bias:
+         assert(tex->op == nir_texop_txb);
+         bias = get_src_float(ctx, &tex->src[i].src);
+         assert(bias != 0);
          break;
 
       case nir_tex_src_lod:
-         has_lod = true;
-         lod = get_src_float(ctx, &tex->src[i].src);
          assert(nir_src_num_components(tex->src[i].src) == 1);
+         lod = get_src_float(ctx, &tex->src[i].src);
+         assert(lod != 0);
          break;
 
       default:
@@ -1126,9 +1132,9 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       }
    }
 
-   if (!has_lod && ctx->stage != MESA_SHADER_FRAGMENT) {
-      has_lod = true;
+   if (lod == 0 && ctx->stage != MESA_SHADER_FRAGMENT) {
       lod = spirv_builder_const_float(&ctx->builder, 32, 0);
+      assert(lod != 0);
    }
 
    bool is_ms;
@@ -1146,8 +1152,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    SpvId dest_type = get_dest_type(ctx, &tex->dest, tex->dest_type);
 
-   SpvId result;
-   if (has_proj) {
+   if (proj) {
       SpvId constituents[coord_components + 1];
       SpvId float_type = spirv_builder_type_float(&ctx->builder, 32);
       for (uint32_t i = 0; i < coord_components; ++i)
@@ -1159,34 +1164,17 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       constituents[coord_components++] = proj;
 
       SpvId vec_type = get_fvec_type(ctx, 32, coord_components);
-      SpvId merged = spirv_builder_emit_composite_construct(&ctx->builder,
+      coord = spirv_builder_emit_composite_construct(&ctx->builder,
                                                             vec_type,
                                                             constituents,
                                                             coord_components);
-
-      if (has_lod)
-         result = spirv_builder_emit_image_sample_proj_explicit_lod(&ctx->builder,
-                                                                    dest_type,
-                                                                    load,
-                                                                    merged,
-                                                                    lod);
-      else
-         result = spirv_builder_emit_image_sample_proj_implicit_lod(&ctx->builder,
-                                                                    dest_type,
-                                                                    load,
-                                                                    merged);
-   } else {
-      if (has_lod)
-         result = spirv_builder_emit_image_sample_explicit_lod(&ctx->builder,
-                                                               dest_type,
-                                                               load,
-                                                               coord, lod);
-      else
-         result = spirv_builder_emit_image_sample_implicit_lod(&ctx->builder,
-                                                               dest_type,
-                                                               load,
-                                                               coord);
    }
+
+   SpvId result = spirv_builder_emit_image_sample(&ctx->builder,
+                                                  dest_type, load,
+                                                  coord,
+                                                  proj != 0,
+                                                  lod, bias);
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
 

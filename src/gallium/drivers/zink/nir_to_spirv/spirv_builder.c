@@ -506,72 +506,48 @@ spirv_builder_emit_kill(struct spirv_builder *b)
 }
 
 SpvId
-spirv_builder_emit_image_sample_implicit_lod(struct spirv_builder *b,
-                                             SpvId result_type,
-                                             SpvId sampled_image,
-                                             SpvId coordinate)
+spirv_builder_emit_image_sample(struct spirv_builder *b,
+                                SpvId result_type,
+                                SpvId sampled_image,
+                                SpvId coordinate,
+                                bool proj,
+                                SpvId lod,
+                                SpvId bias)
 {
    SpvId result = spirv_builder_new_id(b);
-   spirv_buffer_prepare(&b->instructions, 5);
-   spirv_buffer_emit_word(&b->instructions, SpvOpImageSampleImplicitLod | (5 << 16));
-   spirv_buffer_emit_word(&b->instructions, result_type);
-   spirv_buffer_emit_word(&b->instructions, result);
-   spirv_buffer_emit_word(&b->instructions, sampled_image);
-   spirv_buffer_emit_word(&b->instructions, coordinate);
-   return result;
-}
 
-SpvId
-spirv_builder_emit_image_sample_explicit_lod(struct spirv_builder *b,
-                                             SpvId result_type,
-                                             SpvId sampled_image,
-                                             SpvId coordinate,
-                                             SpvId lod)
-{
-   SpvId result = spirv_builder_new_id(b);
-   spirv_buffer_prepare(&b->instructions, 7);
-   spirv_buffer_emit_word(&b->instructions, SpvOpImageSampleExplicitLod | (7 << 16));
-   spirv_buffer_emit_word(&b->instructions, result_type);
-   spirv_buffer_emit_word(&b->instructions, result);
-   spirv_buffer_emit_word(&b->instructions, sampled_image);
-   spirv_buffer_emit_word(&b->instructions, coordinate);
-   spirv_buffer_emit_word(&b->instructions, SpvImageOperandsLodMask);
-   spirv_buffer_emit_word(&b->instructions, lod);
-   return result;
-}
+   int opcode = SpvOpImageSampleImplicitLod;
+   if (proj)
+      opcode += SpvOpImageSampleProjImplicitLod - SpvOpImageSampleImplicitLod;
+   if (lod)
+      opcode += SpvOpImageSampleExplicitLod - SpvOpImageSampleImplicitLod;
 
-SpvId
-spirv_builder_emit_image_sample_proj_implicit_lod(struct spirv_builder *b,
-                                                  SpvId result_type,
-                                                  SpvId sampled_image,
-                                                  SpvId coordinate)
-{
-   SpvId result = spirv_builder_new_id(b);
-   spirv_buffer_prepare(&b->instructions, 5);
-   spirv_buffer_emit_word(&b->instructions, SpvOpImageSampleProjImplicitLod | (5 << 16));
-   spirv_buffer_emit_word(&b->instructions, result_type);
-   spirv_buffer_emit_word(&b->instructions, result);
-   spirv_buffer_emit_word(&b->instructions, sampled_image);
-   spirv_buffer_emit_word(&b->instructions, coordinate);
-   return result;
-}
+   SpvImageOperandsMask operand_mask = 0;
+   SpvId extra_operands[3];
+   int num_extra_operands = SpvImageOperandsMaskNone;
+   if (bias) {
+      extra_operands[++num_extra_operands] = bias;
+      operand_mask |= SpvImageOperandsBiasMask;
+   }
+   if (lod) {
+      extra_operands[++num_extra_operands] = lod;
+      operand_mask |= SpvImageOperandsLodMask;
+   }
 
-SpvId
-spirv_builder_emit_image_sample_proj_explicit_lod(struct spirv_builder *b,
-                                                  SpvId result_type,
-                                                  SpvId sampled_image,
-                                                  SpvId coordinate,
-                                                  SpvId lod)
-{
-   SpvId result = spirv_builder_new_id(b);
-   spirv_buffer_prepare(&b->instructions, 7);
-   spirv_buffer_emit_word(&b->instructions, SpvOpImageSampleProjExplicitLod | (7 << 16));
+   /* finalize num_extra_operands / extra_operands */
+   if (num_extra_operands > 0) {
+      extra_operands[0] = operand_mask;
+      num_extra_operands++;
+   }
+
+   spirv_buffer_prepare(&b->instructions, 5 + num_extra_operands);
+   spirv_buffer_emit_word(&b->instructions, opcode | ((5 + num_extra_operands) << 16));
    spirv_buffer_emit_word(&b->instructions, result_type);
    spirv_buffer_emit_word(&b->instructions, result);
    spirv_buffer_emit_word(&b->instructions, sampled_image);
    spirv_buffer_emit_word(&b->instructions, coordinate);
-   spirv_buffer_emit_word(&b->instructions, SpvImageOperandsLodMask);
-   spirv_buffer_emit_word(&b->instructions, lod);
+   for (int i = 0; i < num_extra_operands; ++i)
+      spirv_buffer_emit_word(&b->instructions, extra_operands[i]);
    return result;
 }
 
