@@ -557,9 +557,6 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       OPT(nir_opt_constant_folding);
 
       if (lower_flrp != 0) {
-         /* To match the old behavior, set always_precise only for scalar
-          * shader stages.
-          */
          if (OPT(nir_lower_flrp,
                  lower_flrp,
                  false /* always_precise */,
