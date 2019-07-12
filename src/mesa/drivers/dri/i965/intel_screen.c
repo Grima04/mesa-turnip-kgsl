@@ -2148,6 +2148,36 @@ intel_loader_get_cap(const __DRIscreen *dri_screen, enum dri_loader_cap cap)
    return 0;
 }
 
+static bool
+intel_allowed_format(__DRIscreen *dri_screen, mesa_format format)
+{
+   struct intel_screen *screen = dri_screen->driverPrivate;
+
+   /* Expose only BGRA ordering if the loader doesn't support RGBA ordering. */
+   bool allow_rgba_ordering = intel_loader_get_cap(dri_screen, DRI_LOADER_CAP_RGBA_ORDERING);
+   if (!allow_rgba_ordering &&
+       (format == MESA_FORMAT_R8G8B8A8_UNORM ||
+        format == MESA_FORMAT_R8G8B8X8_UNORM ||
+        format == MESA_FORMAT_R8G8B8A8_SRGB))
+      return false;
+
+    /* Shall we expose 10 bpc formats? */
+   bool allow_rgb10_configs = driQueryOptionb(&screen->optionCache,
+                                              "allow_rgb10_configs");
+   if (!allow_rgb10_configs &&
+       (format == MESA_FORMAT_B10G10R10A2_UNORM ||
+        format == MESA_FORMAT_B10G10R10X2_UNORM))
+      return false;
+
+   /* Shall we expose 565 formats? */
+   bool allow_rgb565_configs = driQueryOptionb(&screen->optionCache,
+                                               "allow_rgb565_configs");
+   if (!allow_rgb565_configs && format == MESA_FORMAT_B5G6R5_UNORM)
+      return false;
+
+   return true;
+}
+
 static __DRIconfig**
 intel_screen_make_configs(__DRIscreen *dri_screen)
 {
@@ -2198,19 +2228,7 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
    uint8_t depth_bits[4], stencil_bits[4];
    __DRIconfig **configs = NULL;
 
-   /* Expose only BGRA ordering if the loader doesn't support RGBA ordering. */
-   unsigned num_formats;
-   if (intel_loader_get_cap(dri_screen, DRI_LOADER_CAP_RGBA_ORDERING))
-      num_formats = ARRAY_SIZE(formats);
-   else
-      num_formats = ARRAY_SIZE(formats) - 3; /* all - RGBA_ORDERING formats */
-
-   /* Shall we expose 10 bpc formats? */
-   bool allow_rgb10_configs = driQueryOptionb(&screen->optionCache,
-                                              "allow_rgb10_configs");
-   /* Shall we expose 565 formats? */
-   bool allow_rgb565_configs = driQueryOptionb(&screen->optionCache,
-                                               "allow_rgb565_configs");
+   unsigned num_formats = ARRAY_SIZE(formats);
 
    /* Generate singlesample configs, each without accumulation buffer
     * and with EGL_MUTABLE_RENDER_BUFFER_BIT_KHR.
@@ -2219,12 +2237,7 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
       __DRIconfig **new_configs;
       int num_depth_stencil_bits = 2;
 
-      if (!allow_rgb10_configs &&
-          (formats[i] == MESA_FORMAT_B10G10R10A2_UNORM ||
-           formats[i] == MESA_FORMAT_B10G10R10X2_UNORM))
-         continue;
-
-      if (!allow_rgb565_configs && formats[i] == MESA_FORMAT_B5G6R5_UNORM)
+      if (!intel_allowed_format(dri_screen, formats[i]))
          continue;
 
       /* Starting with DRI2 protocol version 1.1 we can request a depth/stencil
@@ -2264,12 +2277,7 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
    for (unsigned i = 0; i < num_formats; i++) {
       __DRIconfig **new_configs;
 
-      if (!allow_rgb10_configs &&
-          (formats[i] == MESA_FORMAT_B10G10R10A2_UNORM ||
-          formats[i] == MESA_FORMAT_B10G10R10X2_UNORM))
-         continue;
-
-      if (!allow_rgb565_configs && formats[i] == MESA_FORMAT_B5G6R5_UNORM)
+      if (!intel_allowed_format(dri_screen, formats[i]))
          continue;
 
       if (formats[i] == MESA_FORMAT_B5G6R5_UNORM) {
@@ -2305,12 +2313,7 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
       if (devinfo->gen < 6)
          break;
 
-      if (!allow_rgb10_configs &&
-          (formats[i] == MESA_FORMAT_B10G10R10A2_UNORM ||
-          formats[i] == MESA_FORMAT_B10G10R10X2_UNORM))
-         continue;
-
-      if (!allow_rgb565_configs && formats[i] == MESA_FORMAT_B5G6R5_UNORM)
+      if (!intel_allowed_format(dri_screen, formats[i]))
          continue;
 
       __DRIconfig **new_configs;
