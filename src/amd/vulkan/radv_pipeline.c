@@ -3287,9 +3287,17 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	bool misc_vec_ena = outinfo->writes_pointsize ||
 		outinfo->writes_layer ||
 		outinfo->writes_viewport_index;
+	unsigned spi_vs_out_config, nparams;
 
-	radeon_set_context_reg(ctx_cs, R_0286C4_SPI_VS_OUT_CONFIG,
-	                       S_0286C4_VS_EXPORT_COUNT(MAX2(1, outinfo->param_exports) - 1));
+	/* VS is required to export at least one param. */
+	nparams = MAX2(outinfo->param_exports, 1);
+	spi_vs_out_config = S_0286C4_VS_EXPORT_COUNT(nparams - 1);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
+		spi_vs_out_config |= S_0286C4_NO_PC_EXPORT(outinfo->param_exports == 0);
+	}
+
+	radeon_set_context_reg(ctx_cs, R_0286C4_SPI_VS_OUT_CONFIG, spi_vs_out_config);
 
 	radeon_set_context_reg(ctx_cs, R_02870C_SPI_SHADER_POS_FORMAT,
 	                       S_02870C_POS0_EXPORT_FORMAT(V_02870C_SPI_SHADER_4COMP) |
@@ -3389,9 +3397,13 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 		outinfo->writes_layer ||
 		outinfo->writes_viewport_index;
 	bool break_wave_at_eoi = false;
+	unsigned nparams;
 
+	nparams = MAX2(outinfo->param_exports, 1);
 	radeon_set_context_reg(ctx_cs, R_0286C4_SPI_VS_OUT_CONFIG,
-	                       S_0286C4_VS_EXPORT_COUNT(MAX2(1, outinfo->param_exports) - 1));
+	                       S_0286C4_VS_EXPORT_COUNT(nparams - 1) |
+			       S_0286C4_NO_PC_EXPORT(outinfo->param_exports == 0));
+
 	radeon_set_context_reg(ctx_cs, R_028708_SPI_SHADER_IDX_FORMAT,
 			       S_028708_IDX0_EXPORT_FORMAT(V_028708_SPI_SHADER_1COMP));
 	radeon_set_context_reg(ctx_cs, R_02870C_SPI_SHADER_POS_FORMAT,
