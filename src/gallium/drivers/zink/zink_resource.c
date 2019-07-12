@@ -322,12 +322,22 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
    return true;
 }
 
+static struct pipe_resource *
+zink_resource_from_handle(struct pipe_screen *pscreen,
+                 const struct pipe_resource *templat,
+                 struct winsys_handle *whandle,
+                 unsigned usage)
+{
+   return NULL;
+}
+
 void
 zink_screen_resource_init(struct pipe_screen *pscreen)
 {
    pscreen->resource_create = zink_resource_create;
    pscreen->resource_destroy = zink_resource_destroy;
    pscreen->resource_get_handle = zink_resource_get_handle;
+   pscreen->resource_from_handle = zink_resource_from_handle;
 }
 
 static bool
