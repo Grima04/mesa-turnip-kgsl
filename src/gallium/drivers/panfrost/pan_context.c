@@ -1847,15 +1847,6 @@ panfrost_create_vertex_elements_state(
         so->num_elements = num_elements;
         memcpy(so->pipe, elements, sizeof(*elements) * num_elements);
 
-        /* XXX: What the cornball? This is totally, 100%, unapologetically
-         * nonsense. And yet it somehow fixes a regression in -bshadow
-         * (previously, we allocated the descriptor here... a newer commit
-         * removed that allocation, and then memory corruption led to
-         * shader_meta getting overwritten in bad ways and then the whole test
-         * case falling apart . TODO: LOOK INTO PLEASE XXX XXX BAD XXX XXX XXX
-         */
-        panfrost_allocate_chunk(pan_context(pctx), 0, HEAP_DESCRIPTOR);
-
         for (int i = 0; i < num_elements; ++i) {
                 so->hw[i].index = i;
 
