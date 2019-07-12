@@ -4484,10 +4484,10 @@ static unsigned si_get_max_workgroup_size(const struct si_shader *shader)
 	case PIPE_SHADER_TESS_CTRL:
 		/* Return this so that LLVM doesn't remove s_barrier
 		 * instructions on chips where we use s_barrier. */
-		return shader->selector->screen->info.chip_class >= GFX7 ? 128 : 64;
+		return shader->selector->screen->info.chip_class >= GFX7 ? 128 : 0;
 
 	case PIPE_SHADER_GEOMETRY:
-		return shader->selector->screen->info.chip_class >= GFX9 ? 128 : 64;
+		return shader->selector->screen->info.chip_class >= GFX9 ? 128 : 0;
 
 	case PIPE_SHADER_COMPUTE:
 		break; /* see below */
@@ -7626,7 +7626,7 @@ static void si_build_tcs_epilog_function(struct si_shader_context *ctx,
 
 	/* Create the function. */
 	si_create_function(ctx, "tcs_epilog", NULL, 0, &fninfo,
-			   ctx->screen->info.chip_class >= GFX7 ? 128 : 64);
+			   ctx->screen->info.chip_class >= GFX7 ? 128 : 0);
 	ac_declare_lds_as_pointer(&ctx->ac);
 	func = ctx->main_fn;
 
