@@ -87,6 +87,6 @@ __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
 				       __LINE__, __FILE__)
 
 /* Common entrypoint */
-int pandecode_replay_jc(mali_ptr jc_gpu_va, bool bifrost);
+int pandecode_jc(mali_ptr jc_gpu_va, bool bifrost);
 
 #endif /* __MMAP_TRACE_H__ */

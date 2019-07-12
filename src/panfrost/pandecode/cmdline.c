@@ -85,7 +85,7 @@ pandecode_read_job_submit(const char *base, const char *line)
         unsigned is_bifrost;
 
         sscanf(line, "JS %" PRIx64 " %x %x", &addr, &core_req, &is_bifrost);
-        pandecode_replay_jc(addr, is_bifrost);
+        pandecode_jc(addr, is_bifrost);
 }
 
 

@@ -233,7 +233,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
         if (pan_debug & PAN_DBG_TRACE) {
                 /* Wait so we can get errors reported back */
                 drmSyncobjWait(screen->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
-                pandecode_replay_jc(submit.jc, FALSE);
+                pandecode_jc(submit.jc, FALSE);
         }
 
         return 0;
