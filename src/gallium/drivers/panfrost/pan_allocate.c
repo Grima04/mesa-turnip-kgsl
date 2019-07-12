@@ -140,73 +140,15 @@ panfrost_upload_transient(struct panfrost_context *ctx, const void *data, size_t
         return transfer.gpu;
 }
 
-// TODO: An actual allocator, perhaps
-// TODO: Multiple stacks for multiple bases?
-
-int hack_stack_bottom = 4096; /* Don't interfere with constant offsets */
-int last_offset = 0;
-
-static inline int
-pandev_allocate_offset(int *stack, size_t sz)
-{
-        /* First, align the stack bottom to something nice; it's not critical
-         * at this point if we waste a little space to do so. */
-
-        int excess = *stack & (ALIGNMENT - 1);
-
-        /* Add the secret of my */
-        if (excess)
-                *stack += ALIGNMENT - excess;
-
-        /* Finally, use the new bottom for the allocation and move down the
-         * stack */
-
-        int ret = *stack;
-        *stack += sz;
-        return ret;
-}
-
-inline mali_ptr
-pandev_upload(int cheating_offset, int *stack_bottom, mali_ptr base, void *base_map, const void *data, size_t sz, bool no_pad)
-{
-        int offset;
-
-        /* We're not positive about the sizes of all objects, but we don't want
-         * them to crash against each other either. Let the caller disable
-         * padding if they so choose, though. */
-
-        size_t padded_size = no_pad ? sz : sz * 2;
-
-        /* If no specific bottom is specified, use a global one... don't do
-         * this in production, kids */
-
-        if (!stack_bottom)
-                stack_bottom = &hack_stack_bottom;
-
-        /* Allocate space for the new GPU object, if required */
-
-        if (cheating_offset == -1) {
-                offset = pandev_allocate_offset(stack_bottom, padded_size);
-        } else {
-                offset = cheating_offset;
-                *stack_bottom = offset + sz;
-        }
-
-        /* Save last offset for sequential uploads (job descriptors) */
-        last_offset = offset + padded_size;
-
-        /* Upload it */
-        memcpy((uint8_t *) base_map + offset, data, sz);
-
-        /* Return the GPU address */
-        return base + offset;
-}
-
-/* Simplified APIs for the real driver, rather than replays */
+/* The code below is exclusively for the use of shader memory and is subject to
+ * be rewritten soon enough since it never frees the memory it allocates. Here
+ * be dragons, etc. */
 
 mali_ptr
-panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz, bool no_pad)
+panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz)
 {
+        sz = ALIGN_POT(sz, ALIGNMENT);
+
         /* Bounds check */
         if ((mem->stack_bottom + sz) >= mem->bo->size) {
                 printf("Out of memory, tried to upload %zd but only %zd available\n",
@@ -214,5 +156,9 @@ panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz, bool n
                 assert(0);
         }
 
-        return pandev_upload(-1, &mem->stack_bottom, mem->bo->gpu, mem->bo->cpu, data, sz, no_pad);
+        memcpy((uint8_t *) mem->bo->cpu + mem->stack_bottom, data, sz);
+        mali_ptr gpu = mem->bo->gpu + mem->stack_bottom;
+
+        mem->stack_bottom += sz;
+        return gpu;
 }

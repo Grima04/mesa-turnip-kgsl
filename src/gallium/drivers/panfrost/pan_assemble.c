@@ -77,7 +77,7 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
          * I bet someone just thought that would be a cute pun. At least,
          * that's how I'd do it. */
 
-        meta->shader = panfrost_upload(&ctx->shaders, dst, size, true) | program.first_tag;
+        meta->shader = panfrost_upload(&ctx->shaders, dst, size) | program.first_tag;
 
         util_dynarray_fini(&program.compiled);
 

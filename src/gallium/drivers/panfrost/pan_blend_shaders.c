@@ -178,7 +178,7 @@ panfrost_compile_blend_shader(
         uint8_t *dst = program.compiled.data;
 
         res.shader.cpu = mem_dup(dst, size);
-        res.shader.gpu = panfrost_upload(&ctx->shaders, dst, size, true);
+        res.shader.gpu = panfrost_upload(&ctx->shaders, dst, size);
 
         /* At least two work registers are needed due to an encoding quirk */
         res.work_count = MAX2(program.work_register_count, 2);
