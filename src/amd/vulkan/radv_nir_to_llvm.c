@@ -2965,7 +2965,7 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 			outputs[noutput].usage_mask =
 				ctx->shader_info->info.tes.output_usage_mask[i];
 		} else {
-			assert(ctx->is_gs_copy_shader || ctx->options->key.vs_common_out.as_ngg);
+			assert(ctx->is_gs_copy_shader);
 			outputs[noutput].usage_mask =
 				ctx->shader_info->info.gs.output_usage_mask[i];
 		}
