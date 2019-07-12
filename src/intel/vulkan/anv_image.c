@@ -1539,11 +1539,18 @@ anv_CreateImageView(VkDevice _device,
       conv_format = conversion->format;
    }
 
+   VkImageUsageFlags image_usage = 0;
+   if (range->aspectMask & ~VK_IMAGE_ASPECT_STENCIL_BIT)
+      image_usage |= image->usage;
+   if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+      image_usage |= image->stencil_usage;
+
    const VkImageViewUsageCreateInfo *usage_info =
       vk_find_struct_const(pCreateInfo, IMAGE_VIEW_USAGE_CREATE_INFO);
-   VkImageUsageFlags view_usage = usage_info ? usage_info->usage : image->usage;
+   VkImageUsageFlags view_usage = usage_info ? usage_info->usage : image_usage;
+
    /* View usage should be a subset of image usage */
-   assert((view_usage & ~image->usage) == 0);
+   assert((view_usage & ~image_usage) == 0);
    assert(view_usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
                         VK_IMAGE_USAGE_STORAGE_BIT |
                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
