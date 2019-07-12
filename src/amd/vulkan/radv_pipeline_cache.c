@@ -295,7 +295,9 @@ radv_create_shader_variants_from_pipeline_cache(struct radv_device *device,
 			free(entry);
 			entry = new_entry;
 
-			radv_pipeline_cache_add_entry(cache, new_entry);
+			if (!(device->instance->debug_flags & RADV_DEBUG_NO_MEMORY_CACHE) ||
+			    cache != device->mem_cache)
+				radv_pipeline_cache_add_entry(cache, new_entry);
 		}
 	}
 
@@ -314,11 +316,17 @@ radv_create_shader_variants_from_pipeline_cache(struct radv_device *device,
 
 	}
 
-	for (int i = 0; i < MESA_SHADER_STAGES; ++i)
-		if (entry->variants[i])
-			p_atomic_inc(&entry->variants[i]->ref_count);
-
 	memcpy(variants, entry->variants, sizeof(entry->variants));
+
+	if (device->instance->debug_flags & RADV_DEBUG_NO_MEMORY_CACHE &&
+	    cache == device->mem_cache)
+		vk_free(&cache->alloc, entry);
+	else {
+		for (int i = 0; i < MESA_SHADER_STAGES; ++i)
+			if (entry->variants[i])
+				p_atomic_inc(&entry->variants[i]->ref_count);
+	}
+
 	pthread_mutex_unlock(&cache->mutex);
 	return true;
 }
@@ -396,6 +404,13 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 			       disk_sha1);
 		disk_cache_put(device->physical_device->disk_cache,
 			       disk_sha1, entry, entry_size(entry), NULL);
+	}
+
+	if (device->instance->debug_flags & RADV_DEBUG_NO_MEMORY_CACHE &&
+	    cache == device->mem_cache) {
+		vk_free2(&cache->alloc, NULL, entry);
+		pthread_mutex_unlock(&cache->mutex);
+		return;
 	}
 
 	/* We delay setting the variant so we have reproducible disk cache
