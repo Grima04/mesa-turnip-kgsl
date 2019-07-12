@@ -83,8 +83,10 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    si.commandBufferCount = 1;
    si.pCommandBuffers = &batch->cmdbuf;
 
-   if (vkQueueSubmit(ctx->queue, 1, &si, batch->fence->fence) != VK_SUCCESS)
+   if (vkQueueSubmit(ctx->queue, 1, &si, batch->fence->fence) != VK_SUCCESS) {
       debug_printf("vkQueueSubmit failed\n");
+      abort();
+   }
 }
 
 void
