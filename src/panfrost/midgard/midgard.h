@@ -248,7 +248,7 @@ __attribute__((__packed__))
         unsigned src1 : 13;
         unsigned src2 : 13;
         midgard_dest_override dest_override : 2;
-        midgard_outmod_float outmod               : 2;
+        unsigned outmod               : 2;
         unsigned mask                           : 8;
 }
 midgard_vector_alu;
