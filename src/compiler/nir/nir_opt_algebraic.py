@@ -722,6 +722,14 @@ optimizations = [
    (('pack_64_2x32_split', ('unpack_64_2x32_split_x', a),
                            ('unpack_64_2x32_split_y', a)), a),
 
+   # Comparing two halves of an unpack separately.  While this optimization
+   # should be correct for non-constant values, it's less obvious that it's
+   # useful in that case.  For constant values, the pack will fold and we're
+   # guaranteed to reduce the whole tree to one instruction.
+   (('iand', ('ieq', ('unpack_32_2x16_split_x', a), '#b'),
+             ('ieq', ('unpack_32_2x16_split_y', a), '#c')),
+    ('ieq', a, ('pack_32_2x16_split', b, c))),
+
    # Byte extraction
    (('ushr', 'a@16',  8), ('extract_u8', a, 1), '!options->lower_extract_byte'),
    (('ushr', 'a@32', 24), ('extract_u8', a, 3), '!options->lower_extract_byte'),
