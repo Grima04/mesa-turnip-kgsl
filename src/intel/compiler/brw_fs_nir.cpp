@@ -4018,7 +4018,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
          fs_reg read_result = bld.vgrf(BRW_REGISTER_TYPE_UD);
          bld.emit(SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL,
                   read_result, srcs, SURFACE_LOGICAL_NUM_SRCS);
-         bld.MOV(dest, read_result);
+         bld.MOV(dest, subscript(read_result, dest.type, 0));
       }
       break;
    }
@@ -4644,15 +4644,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          const unsigned bit_size = nir_dest_bit_size(instr->dest);
          assert(bit_size <= 32);
          assert(nir_dest_num_components(instr->dest) == 1);
-         brw_reg_type data_type =
-            brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
          fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
          bld.emit(SHADER_OPCODE_A64_BYTE_SCATTERED_READ_LOGICAL,
                   tmp,
                   get_nir_src(instr->src[0]), /* Address */
                   fs_reg(), /* No source data */
                   brw_imm_ud(bit_size));
-         bld.MOV(retype(dest, data_type), tmp);
+         bld.MOV(dest, subscript(tmp, dest.type, 0));
       }
       break;
    }
@@ -4755,7 +4753,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          fs_reg read_result = bld.vgrf(BRW_REGISTER_TYPE_UD);
          bld.emit(SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL,
                   read_result, srcs, SURFACE_LOGICAL_NUM_SRCS);
-         bld.MOV(dest, read_result);
+         bld.MOV(dest, subscript(read_result, dest.type, 0));
       }
       break;
    }
