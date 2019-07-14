@@ -3382,15 +3382,22 @@ static void gfx10_ngg_gs_emit_prologue(struct radv_shader_context *ctx)
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef scratchptr = ctx->gs_ngg_scratch;
 	LLVMValueRef tid = get_thread_id_in_tg(ctx);
-	LLVMValueRef tmp;
+	LLVMBasicBlockRef merge_block;
+	LLVMValueRef cond;
 
-	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->ac.i32, 4, false), "");
-	ac_build_ifcc(&ctx->ac, tmp, 5090);
-	{
-		LLVMValueRef ptr = ac_build_gep0(&ctx->ac, scratchptr, tid);
-		LLVMBuildStore(builder, ctx->ac.i32_0, ptr);
-	}
-	ac_build_endif(&ctx->ac, 5090);
+	LLVMValueRef fn = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ctx->ac.builder));
+	LLVMBasicBlockRef then_block = LLVMAppendBasicBlockInContext(ctx->ac.context, fn, "");
+	merge_block = LLVMAppendBasicBlockInContext(ctx->ac.context, fn, "");
+
+	cond = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->ac.i32, 4, false), "");
+	LLVMBuildCondBr(ctx->ac.builder, cond, then_block, merge_block);
+	LLVMPositionBuilderAtEnd(ctx->ac.builder, then_block);
+
+	LLVMValueRef ptr = ac_build_gep0(&ctx->ac, scratchptr, tid);
+	LLVMBuildStore(builder, ctx->ac.i32_0, ptr);
+
+	LLVMBuildBr(ctx->ac.builder, merge_block);
+	LLVMPositionBuilderAtEnd(ctx->ac.builder, merge_block);
 
 	ac_build_s_barrier(&ctx->ac);
 }
