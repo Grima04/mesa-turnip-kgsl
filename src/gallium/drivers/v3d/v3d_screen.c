@@ -24,6 +24,7 @@
 
 #include <sys/sysinfo.h>
 
+#include "common/v3d_device_info.h"
 #include "util/os_misc.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
@@ -585,56 +586,6 @@ static int handle_compare(void *key1, void *key2)
     return PTR_TO_UINT(key1) != PTR_TO_UINT(key2);
 }
 
-static bool
-v3d_get_device_info(struct v3d_screen *screen)
-{
-        struct drm_v3d_get_param ident0 = {
-                .param = DRM_V3D_PARAM_V3D_CORE0_IDENT0,
-        };
-        struct drm_v3d_get_param ident1 = {
-                .param = DRM_V3D_PARAM_V3D_CORE0_IDENT1,
-        };
-        int ret;
-
-        ret = v3d_ioctl(screen->fd, DRM_IOCTL_V3D_GET_PARAM, &ident0);
-        if (ret != 0) {
-                fprintf(stderr, "Couldn't get V3D core IDENT0: %s\n",
-                        strerror(errno));
-                return false;
-        }
-        ret = v3d_ioctl(screen->fd, DRM_IOCTL_V3D_GET_PARAM, &ident1);
-        if (ret != 0) {
-                fprintf(stderr, "Couldn't get V3D core IDENT1: %s\n",
-                        strerror(errno));
-                return false;
-        }
-
-        uint32_t major = (ident0.value >> 24) & 0xff;
-        uint32_t minor = (ident1.value >> 0) & 0xf;
-        screen->devinfo.ver = major * 10 + minor;
-
-        screen->devinfo.vpm_size = (ident1.value >> 28 & 0xf) * 8192;
-
-        int nslc = (ident1.value >> 4) & 0xf;
-        int qups = (ident1.value >> 8) & 0xf;
-        screen->devinfo.qpu_count = nslc * qups;
-
-        switch (screen->devinfo.ver) {
-        case 33:
-        case 41:
-        case 42:
-                break;
-        default:
-                fprintf(stderr,
-                        "V3D %d.%d not supported by this version of Mesa.\n",
-                        screen->devinfo.ver / 10,
-                        screen->devinfo.ver % 10);
-                return false;
-        }
-
-        return true;
-}
-
 static const void *
 v3d_screen_get_compiler_options(struct pipe_screen *pscreen,
                                 enum pipe_shader_ir ir, unsigned shader)
@@ -703,7 +654,7 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
         v3d_simulator_init(screen);
 #endif
 
-        if (!v3d_get_device_info(screen))
+        if (!v3d_get_device_info(screen->fd, &screen->devinfo, &v3d_ioctl))
                 goto fail;
 
         /* We have to driCheckOption for the simulator mode to not assertion
