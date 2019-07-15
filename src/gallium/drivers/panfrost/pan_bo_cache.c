@@ -26,6 +26,26 @@
 
 #include "pan_screen.h"
 
+/* This file implements a userspace BO cache. Allocating and freeing
+ * GPU-visible buffers is very expensive, and even the extra kernel roundtrips
+ * adds more work than we would like at this point. So caching BOs in userspace
+ * solves both of these problems and does not require kernel updates.
+ *
+ * Cached BOs are sorted into a bucket based on rounding their size down to the
+ * nearest power-of-two. Each bucket contains a linked list of free panfrost_bo
+ * objects. Putting a BO into the cache is accomplished by adding it to the
+ * corresponding bucket. Getting a BO from the cache consists of finding the
+ * appropriate bucket and sorting. A cache eviction is a kernel-level free of a
+ * BO and removing it from the bucket. We special case evicting all BOs from
+ * the cache, since that's what helpful in practice and avoids extra logic
+ * around the linked list.
+ */
+
+/* Tries to fetch a BO of sufficient size with the appropriate flags from the
+ * BO cache. If it succeeds, it returns that BO and removes the BO from the
+ * cache. If it fails, it returns NULL signaling the caller to allocate a new
+ * BO. */
+
 struct panfrost_bo *
 panfrost_bo_cache_fetch(
                 struct panfrost_screen *screen,
