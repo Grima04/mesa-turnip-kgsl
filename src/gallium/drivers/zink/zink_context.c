@@ -1170,7 +1170,7 @@ zink_blit(struct pipe_context *pctx,
       util_blitter_save_depth_stencil_alpha(ctx->blitter, ctx->gfx_pipeline_state.depth_stencil_alpha_state);
       util_blitter_save_vertex_elements(ctx->blitter, ctx->element_state);
       util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
-      util_blitter_save_rasterizer(ctx->blitter, ctx->gfx_pipeline_state.rast_state);
+      util_blitter_save_rasterizer(ctx->blitter, ctx->rast_state);
       util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]);
       util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
       util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
