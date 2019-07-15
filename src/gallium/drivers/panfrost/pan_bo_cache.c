@@ -25,6 +25,7 @@
  */
 
 #include "pan_screen.h"
+#include "util/u_math.h"
 
 /* This file implements a userspace BO cache. Allocating and freeing
  * GPU-visible buffers is very expensive, and even the extra kernel roundtrips
@@ -40,6 +41,30 @@
  * the cache, since that's what helpful in practice and avoids extra logic
  * around the linked list.
  */
+
+/* Helper to calculate the bucket index of a BO */
+
+static unsigned
+pan_bucket_index(unsigned size)
+{
+        /* Round down to POT to compute a bucket index */
+
+        unsigned bucket_index = util_logbase2(size);
+
+        /* Clamp the bucket index; all huge allocations will be
+         * sorted into the largest bucket */
+
+        bucket_index = MIN2(bucket_index, MAX_BO_CACHE_BUCKET);
+
+        /* The minimum bucket size must equal the minimum allocation
+         * size; the maximum we clamped */
+
+        assert(bucket_index >= MIN_BO_CACHE_BUCKET);
+        assert(bucket_index <= MAX_BO_CACHE_BUCKET);
+
+        /* Reindex from 0 */
+        return (bucket_index - MIN_BO_CACHE_BUCKET);
+}
 
 /* Tries to fetch a BO of sufficient size with the appropriate flags from the
  * BO cache. If it succeeds, it returns that BO and removes the BO from the
