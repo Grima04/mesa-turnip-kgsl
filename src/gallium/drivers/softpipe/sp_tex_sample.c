@@ -333,20 +333,34 @@ wrap_linear_mirror_repeat(float s, unsigned size, int offset,
 {
    int flr;
    float u;
+   bool no_mirror;
 
    s += (float)offset / size;
    flr = util_ifloor(s);
+   no_mirror = !(flr & 1);
+
    u = frac(s);
-   if (flr & 1)
+   if (no_mirror) {
+      u = u * size - 0.5F;
+   } else {
       u = 1.0F - u;
-   u = u * size - 0.5F;
+      u = u * size + 0.5F;
+   }
+
    *icoord0 = util_ifloor(u);
-   *icoord1 = *icoord0 + 1;
+   *icoord1 = (no_mirror) ? *icoord0 + 1 : *icoord0 - 1;
+
    if (*icoord0 < 0)
-      *icoord0 = 0;
+      *icoord0 = 1 + *icoord0;
+   if (*icoord0 >= (int) size)
+      *icoord0 = size - 1;
+
    if (*icoord1 >= (int) size)
       *icoord1 = size - 1;
-   *w = frac(u);
+   if (*icoord1 < 0)
+      *icoord1 = 1 + *icoord1;
+
+   *w = (no_mirror) ? frac(u) : frac(1.0f - u);
 }
 
 
