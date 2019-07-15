@@ -301,6 +301,7 @@ typedef struct ppir_instr {
    int parent_index;
    bool scheduled;
    int offset;
+   int encode_size;
 } ppir_instr;
 
 typedef struct ppir_block {

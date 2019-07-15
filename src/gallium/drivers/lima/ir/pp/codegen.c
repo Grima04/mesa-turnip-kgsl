@@ -543,10 +543,10 @@ static void ppir_codegen_encode_branch(ppir_node *node, void *code)
    b->branch.cond_eq = branch->cond_eq;
    b->branch.cond_lt = branch->cond_lt;
    b->branch.unknown_1 = 0x0;
-   b->branch.unknown_2 = 0x3;
 
    target_instr = list_first_entry(&branch->target->instr_list, ppir_instr, list);
    b->branch.target = target_instr->offset - node->instr->offset;
+   b->branch.next_count = target_instr->encode_size;
 }
 
 typedef void (*ppir_codegen_instr_slot_encode_func)(ppir_node *, void *);
@@ -699,7 +699,8 @@ bool ppir_codegen_prog(ppir_compiler *comp)
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
          instr->offset = size;
-         size += get_instr_encode_size(instr);
+         instr->encode_size = get_instr_encode_size(instr);
+         size += instr->encode_size;
       }
    }
 
