@@ -500,4 +500,10 @@ panfrost_scoreboard_link_batch(struct panfrost_job *batch)
                 }
         }
 
+        /* Cleanup */
+        free(no_incoming);
+        free(dependents);
+        free(edge_removal_1);
+        free(edge_removal_2);
+
 }
