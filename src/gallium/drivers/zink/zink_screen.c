@@ -225,6 +225,11 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 #endif
 
 #if 0 /* TODO: Enable me */
+   case PIPE_CAP_CLIP_HALFZ:
+      return 1;
+#endif
+
+#if 0 /* TODO: Enable me */
    case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
       return 1;
