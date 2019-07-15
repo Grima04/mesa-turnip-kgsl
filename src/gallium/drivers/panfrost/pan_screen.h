@@ -81,6 +81,16 @@ struct panfrost_screen;
 
 #define MAX_TRANSIENT_SLABS (1024*1024 / TRANSIENT_SLAB_PAGES)
 
+/* How many power-of-two levels in the BO cache do we want? 2^12
+ * minimum chosen as it is the page size that all allocations are
+ * rounded to */
+
+#define MIN_BO_CACHE_BUCKET (12) /* 2^12 = 4KB */
+#define MAX_BO_CACHE_BUCKET (22) /* 2^22 = 4MB */
+
+/* Fencepost problem, hence the off-by-one */
+#define NR_BO_CACHE_BUCKETS (MAX_BO_CACHE_BUCKET - MIN_BO_CACHE_BUCKET + 1)
+
 struct panfrost_screen {
         struct pipe_screen base;
         int fd;
@@ -96,6 +106,12 @@ struct panfrost_screen {
 
         /* Set of free transient BOs */
         BITSET_DECLARE(free_transient, MAX_TRANSIENT_SLABS);
+
+        /* The BO cache is a set of buckets with power-of-two sizes ranging
+         * from 2^12 (4096, the page size) to 2^(12 + MAX_BO_CACHE_BUCKETS).
+         * Each bucket is a linked list of free panfrost_bo objects. */
+
+        struct list_head bo_cache[NR_BO_CACHE_BUCKETS];
 
         /* While we're busy building up the job for frame N, the GPU is
          * still busy executing frame N-1. So hold a reference to

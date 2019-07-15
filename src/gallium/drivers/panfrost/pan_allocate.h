@@ -31,6 +31,8 @@
 
 #include <panfrost-misc.h>
 
+#include "util/list.h"
+
 struct panfrost_context;
 
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
@@ -42,6 +44,9 @@ struct panfrost_transfer {
 };
 
 struct panfrost_bo {
+        /* Must be first for casting */
+        struct list_head link;
+
         struct pipe_reference reference;
 
         /* Mapping for the entire object (all levels) */

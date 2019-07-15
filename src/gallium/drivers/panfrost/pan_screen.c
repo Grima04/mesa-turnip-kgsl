@@ -536,6 +536,9 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         util_dynarray_init(&screen->transient_bo, screen);
 
+        for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache); ++i)
+                list_inithead(&screen->bo_cache[i]);
+
         if (pan_debug & PAN_DBG_TRACE)
                 pandecode_initialize();
 
