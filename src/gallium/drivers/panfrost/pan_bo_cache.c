@@ -47,4 +47,17 @@ panfrost_bo_cache_put(
         return false;
 }
 
+/* Evicts all BOs from the cache. Called during context
+ * destroy or during low-memory situations (to free up
+ * memory that may be unused by us just sitting in our
+ * cache, but still reserved from the perspective of the
+ * OS) */
+
+void
+panfrost_bo_cache_evict_all(
+                struct panfrost_screen *screen)
+{
+        /* Stub */
+        return;
+}
 

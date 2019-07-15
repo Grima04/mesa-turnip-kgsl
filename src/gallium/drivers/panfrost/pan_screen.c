@@ -443,6 +443,7 @@ static void
 panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
+        panfrost_bo_cache_evict_all(screen);
         ralloc_free(screen);
 }
 

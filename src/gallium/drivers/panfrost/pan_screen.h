@@ -171,5 +171,8 @@ panfrost_bo_cache_put(
                 struct panfrost_screen *screen,
                 struct panfrost_bo *bo);
 
+void
+panfrost_bo_cache_evict_all(
+                struct panfrost_screen *screen);
 
 #endif /* PAN_SCREEN_H */
