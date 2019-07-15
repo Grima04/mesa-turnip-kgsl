@@ -1338,6 +1338,20 @@ zink_resource_copy_region(struct pipe_context *pctx,
       zink_batch_reference_resoure(batch, src);
       zink_batch_reference_resoure(batch, dst);
 
+      if (src->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
+          src->layout != VK_IMAGE_LAYOUT_GENERAL) {
+         zink_resource_barrier(batch->cmdbuf, src, src->aspect,
+                               VK_IMAGE_LAYOUT_GENERAL);
+         src->layout = VK_IMAGE_LAYOUT_GENERAL;
+      }
+
+      if (dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+          dst->layout != VK_IMAGE_LAYOUT_GENERAL) {
+         zink_resource_barrier(batch->cmdbuf, dst, dst->aspect,
+                               VK_IMAGE_LAYOUT_GENERAL);
+         dst->layout = VK_IMAGE_LAYOUT_GENERAL;
+      }
+
       vkCmdCopyImage(batch->cmdbuf, src->image, src->layout,
                      dst->image, dst->layout,
                      1, &region);
