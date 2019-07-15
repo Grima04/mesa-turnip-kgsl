@@ -239,8 +239,9 @@ panfrost_mfbd_set_cbuf(
                 rt->afbc.stride = 0;
                 rt->afbc.unk = 0x30009;
 
-                /* TODO: Investigate shift */
-                rt->framebuffer_stride = stride << 1;
+                /* TODO: The blob sets this to something nonzero, but it's not
+                 * clear what/how to calculate/if it matters */
+                rt->framebuffer_stride = 0;
         } else {
                 fprintf(stderr, "Invalid render layout (cbuf)");
                 assert(0);
