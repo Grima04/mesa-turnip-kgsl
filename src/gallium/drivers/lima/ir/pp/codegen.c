@@ -533,7 +533,7 @@ static void ppir_codegen_encode_branch(ppir_node *node, void *code)
       return;
    }
 
-   assert(node->op = ppir_op_branch);
+   assert(node->op == ppir_op_branch);
    branch = ppir_node_to_branch(node);
 
    b->branch.unknown_0 = 0x0;
