@@ -127,7 +127,15 @@ void
 panfrost_bo_cache_evict_all(
                 struct panfrost_screen *screen)
 {
-        /* Stub */
+        for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache); ++i) {
+                struct list_head *bucket = &screen->bo_cache[i];
+
+                list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
+                        list_del(&entry->link);
+                        panfrost_drm_release_bo(screen, entry, false);
+                }
+        }
+
         return;
 }
 
