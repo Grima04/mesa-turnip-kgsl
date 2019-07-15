@@ -1471,6 +1471,10 @@ nir_to_spirv(struct nir_shader *s)
       unreachable("invalid stage");
    }
 
+   // TODO: only enable when needed
+   if (s->info.stage == MESA_SHADER_FRAGMENT)
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
+
    ctx.stage = s->info.stage;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageGLSL, 450);
