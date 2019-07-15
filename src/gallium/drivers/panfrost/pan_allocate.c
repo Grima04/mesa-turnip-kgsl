@@ -118,6 +118,10 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
                 /* Create a new BO and reference it */
                 bo = panfrost_drm_create_bo(screen, ALIGN_POT(sz, 4096), 0);
                 panfrost_job_add_bo(batch, bo);
+
+                /* Creating a BO adds a reference, and then the job adds a
+                 * second one. So we need to pop back one reference */
+                panfrost_bo_unreference(&screen->base, bo);
         }
 
         struct panfrost_transfer ret = {
