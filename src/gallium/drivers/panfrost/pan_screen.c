@@ -388,7 +388,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return FALSE;
 
         /* Format wishlist */
-        if (format == PIPE_FORMAT_Z24X8_UNORM || format == PIPE_FORMAT_X8Z24_UNORM)
+        if (format == PIPE_FORMAT_X8Z24_UNORM)
                 return FALSE;
 
         if (format == PIPE_FORMAT_A1B5G5R5_UNORM || format == PIPE_FORMAT_X1B5G5R5_UNORM)
@@ -400,8 +400,11 @@ panfrost_is_format_supported( struct pipe_screen *screen,
 
         /* Don't confuse poorly written apps (workaround dEQP bug) that expect
          * more alpha than they ask for */
+
         bool scanout = bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED | PIPE_BIND_DISPLAY_TARGET);
-        if (scanout && !util_format_is_rgba8_variant(format_desc))
+        bool renderable = bind & PIPE_BIND_RENDER_TARGET;
+
+        if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
                 return FALSE;
 
         if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
@@ -423,6 +426,8 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (bind & PIPE_BIND_DEPTH_STENCIL) {
                 switch (format) {
                         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+                        case PIPE_FORMAT_Z24X8_UNORM:
+                        case PIPE_FORMAT_Z32_UNORM:
                                 return true;
 
                         default:
