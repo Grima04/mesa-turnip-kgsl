@@ -226,6 +226,19 @@ component_mapping(enum pipe_swizzle swizzle)
    }
 }
 
+static VkImageAspectFlags
+sampler_aspect_from_format(enum pipe_format fmt)
+{
+   if (util_format_is_depth_or_stencil(fmt)) {
+      const struct util_format_description *desc = util_format_description(fmt);
+      if (util_format_has_depth(desc))
+         return VK_IMAGE_ASPECT_DEPTH_BIT;
+      assert(util_format_has_stencil(desc));
+      return VK_IMAGE_ASPECT_STENCIL_BIT;
+   } else
+     return VK_IMAGE_ASPECT_COLOR_BIT;
+}
+
 static struct pipe_sampler_view *
 zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
                          const struct pipe_sampler_view *state)
@@ -249,7 +262,8 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    ivci.components.g = component_mapping(state->swizzle_g);
    ivci.components.b = component_mapping(state->swizzle_b);
    ivci.components.a = component_mapping(state->swizzle_a);
-   ivci.subresourceRange.aspectMask = zink_aspect_from_format(state->format);
+
+   ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
    ivci.subresourceRange.baseMipLevel = state->u.tex.first_level;
    ivci.subresourceRange.baseArrayLayer = state->u.tex.first_layer;
    ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;

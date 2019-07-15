@@ -62,9 +62,6 @@ zink_resource(struct pipe_resource *r)
    return (struct zink_resource *)r;
 }
 
-VkImageAspectFlags
-zink_aspect_from_format(enum pipe_format fmt);
-
 void
 zink_screen_resource_init(struct pipe_screen *pscreen);
 

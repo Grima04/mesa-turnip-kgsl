@@ -68,8 +68,8 @@ get_memory_type_index(struct zink_screen *screen,
    return 0;
 }
 
-VkImageAspectFlags
-zink_aspect_from_format(enum pipe_format fmt)
+static VkImageAspectFlags
+aspect_from_format(enum pipe_format fmt)
 {
    if (util_format_is_depth_or_stencil(fmt)) {
       VkImageAspectFlags aspect = 0;
@@ -224,7 +224,7 @@ zink_resource_create(struct pipe_screen *pscreen,
       }
 
       res->optimial_tiling = ici.tiling != VK_IMAGE_TILING_LINEAR;
-      res->aspect = zink_aspect_from_format(templ->format);
+      res->aspect = aspect_from_format(templ->format);
 
       vkGetImageMemoryRequirements(screen->dev, res->image, &reqs);
       if (templ->usage == PIPE_USAGE_STAGING || (screen->winsys && (templ->bind & (PIPE_BIND_SCANOUT|PIPE_BIND_DISPLAY_TARGET|PIPE_BIND_SHARED))))
