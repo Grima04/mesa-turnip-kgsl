@@ -214,7 +214,6 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VIDEO_MEMORY:
       return get_video_mem(screen);
    case PIPE_CAP_UMA:
-      /* inaccurate */
       return screen->props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 
    case PIPE_CAP_MAX_VERTEX_ATTRIB_STRIDE:
