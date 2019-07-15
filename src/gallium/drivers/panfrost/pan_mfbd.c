@@ -247,6 +247,20 @@ panfrost_mfbd_set_cbuf(
         }
 }
 
+/* Is a format encoded like Z24S8 and therefore compatible for render? */
+
+static bool
+panfrost_is_z24s8_variant(enum pipe_format fmt)
+{
+        switch (fmt) {
+                case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+                case PIPE_FORMAT_Z24X8_UNORM:
+                        return true;
+                default:
+                        return false;
+        }
+}
+
 static void
 panfrost_mfbd_set_zsbuf(
         struct bifrost_framebuffer *fb,
@@ -263,7 +277,7 @@ panfrost_mfbd_set_zsbuf(
         if (rsrc->layout == PAN_AFBC) {
                 /* The only Z/S format we can compress is Z24S8 or variants
                  * thereof (handled by the state tracker) */
-                assert(surf->format == PIPE_FORMAT_Z24_UNORM_S8_UINT);
+                assert(panfrost_is_z24s8_variant(surf->format));
 
                 mali_ptr base = rsrc->bo->gpu + offset;
                 unsigned header_size = rsrc->slices[level].header_size;
@@ -286,14 +300,20 @@ panfrost_mfbd_set_zsbuf(
         } else if (rsrc->layout == PAN_LINEAR) {
                 /* TODO: Z32F(S8) support, which is always linear */
 
-                assert(surf->format == PIPE_FORMAT_Z24_UNORM_S8_UINT);
                 int stride = rsrc->slices[level].stride;
-                fb->mfbd_flags |= MALI_MFBD_EXTRA;
 
-                fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS | 0x1;
+                fb->mfbd_flags |= MALI_MFBD_EXTRA;
+                fbx->flags |= MALI_EXTRA_PRESENT | MALI_EXTRA_ZS;
 
                 fbx->ds_linear.depth = rsrc->bo->gpu + offset;
                 fbx->ds_linear.depth_stride = stride;
+
+                if (panfrost_is_z24s8_variant(surf->format)) {
+                        fbx->flags |= 0x1;
+                } else if (surf->format == PIPE_FORMAT_Z32_UNORM) {
+                        /* default flags (0 in bottom place) */
+                }
+
         } else {
                 assert(0);
         }
