@@ -287,6 +287,11 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                         /* We don't need to align depth */
                 }
 
+                /* Align levels to cache-line as a performance improvement for
+                 * linear/tiled and as a requirement for AFBC */
+
+                offset = ALIGN_POT(offset, 64);
+
                 slice->offset = offset;
 
                 /* Compute the would-be stride */
