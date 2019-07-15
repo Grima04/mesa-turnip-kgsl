@@ -94,8 +94,12 @@ panfrost_bo_cache_put(
                 struct panfrost_screen *screen,
                 struct panfrost_bo *bo)
 {
-        /* Stub */
-        return false;
+        struct list_head *bucket = pan_bucket(screen, bo->size);
+
+        /* Add us to the bucket */
+        list_addtail(&bo->link, bucket);
+
+        return true;
 }
 
 /* Evicts all BOs from the cache. Called during context
