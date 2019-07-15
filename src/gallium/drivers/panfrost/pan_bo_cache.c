@@ -66,6 +66,12 @@ pan_bucket_index(unsigned size)
         return (bucket_index - MIN_BO_CACHE_BUCKET);
 }
 
+static struct list_head *
+pan_bucket(struct panfrost_screen *screen, unsigned size)
+{
+        return &screen->bo_cache[pan_bucket_index(size)];
+}
+
 /* Tries to fetch a BO of sufficient size with the appropriate flags from the
  * BO cache. If it succeeds, it returns that BO and removes the BO from the
  * cache. If it fails, it returns NULL signaling the caller to allocate a new
