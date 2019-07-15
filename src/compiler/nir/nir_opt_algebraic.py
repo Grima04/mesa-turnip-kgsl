@@ -1853,8 +1853,43 @@ for op in ['ffma']:
         (('bcsel', a, (op, b, c, d), (op + '(is_used_once)', b, e, d)), (op, b, ('bcsel', a, c, e), d)),
     ]
 
+distribute_src_mods = [
+   # Try to remove some spurious negations rather than pushing them down.
+   (('fmul', ('fneg', a), ('fneg', b)), ('fmul', a, b)),
+   (('ffma', ('fneg', a), ('fneg', b), c), ('ffma', a, b, c)),
+   (('fdot_replicated2', ('fneg', a), ('fneg', b)), ('fdot_replicated2', a, b)),
+   (('fdot_replicated3', ('fneg', a), ('fneg', b)), ('fdot_replicated3', a, b)),
+   (('fdot_replicated4', ('fneg', a), ('fneg', b)), ('fdot_replicated4', a, b)),
+   (('fneg', ('fneg', a)), a),
+
+   (('fneg', ('ffma(is_used_once)', a, b, c)), ('ffma', ('fneg', a), b, ('fneg', c))),
+   (('fneg', ('flrp(is_used_once)', a, b, c)), ('flrp', ('fneg', a), ('fneg', b), c)),
+   (('fneg', ('fadd(is_used_once)', a, b)), ('fadd', ('fneg', a), ('fneg', b))),
+
+   # Note that fmin <-> fmax.  I don't think there is a way to distribute
+   # fabs() into fmin or fmax.
+   (('fneg', ('fmin(is_used_once)', a, b)), ('fmax', ('fneg', a), ('fneg', b))),
+   (('fneg', ('fmax(is_used_once)', a, b)), ('fmin', ('fneg', a), ('fneg', b))),
+
+   # fdph works mostly like fdot, but to get the correct result, the negation
+   # must be applied to the second source.
+   (('fneg', ('fdph_replicated(is_used_once)', a, b)), ('fdph_replicated', a, ('fneg', b))),
+   (('fabs', ('fdph_replicated(is_used_once)', a, b)), ('fdph_replicated', ('fabs', a), ('fabs', b))),
+
+   (('fneg', ('fsign(is_used_once)', a)), ('fsign', ('fneg', a))),
+   (('fabs', ('fsign(is_used_once)', a)), ('fsign', ('fabs', a))),
+]
+
+for op in ['fmul', 'fdot_replicated2', 'fdot_replicated3', 'fdot_replicated4']:
+   distribute_src_mods.extend([
+       (('fneg', (op + '(is_used_once)', a, b)), (op, ('fneg', a), b)),
+       (('fabs', (op + '(is_used_once)', a, b)), (op, ('fabs', a), ('fabs', b))),
+   ])
+
 print(nir_algebraic.AlgebraicPass("nir_opt_algebraic", optimizations).render())
 print(nir_algebraic.AlgebraicPass("nir_opt_algebraic_before_ffma",
                                   before_ffma_optimizations).render())
 print(nir_algebraic.AlgebraicPass("nir_opt_algebraic_late",
                                   late_optimizations).render())
+print(nir_algebraic.AlgebraicPass("nir_opt_algebraic_distribute_src_mods",
+                                  distribute_src_mods).render())
