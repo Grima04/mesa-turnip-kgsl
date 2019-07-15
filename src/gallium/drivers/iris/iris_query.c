@@ -282,13 +282,6 @@ write_overflow_values(struct iris_context *ice, struct iris_query *q, bool end)
    }
 }
 
-uint64_t
-iris_timebase_scale(const struct gen_device_info *devinfo,
-                    uint64_t gpu_timestamp)
-{
-   return (1000000000ull * gpu_timestamp) / devinfo->timestamp_frequency;
-}
-
 static uint64_t
 iris_raw_timestamp_delta(uint64_t time0, uint64_t time1)
 {
@@ -319,12 +312,12 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
    case PIPE_QUERY_TIMESTAMP:
    case PIPE_QUERY_TIMESTAMP_DISJOINT:
       /* The timestamp is the single starting snapshot. */
-      q->result = iris_timebase_scale(devinfo, q->map->start);
+      q->result = gen_device_info_timebase_scale(devinfo, q->map->start);
       q->result &= (1ull << TIMESTAMP_BITS) - 1;
       break;
    case PIPE_QUERY_TIME_ELAPSED:
       q->result = iris_raw_timestamp_delta(q->map->start, q->map->end);
-      q->result = iris_timebase_scale(devinfo, q->result);
+      q->result = gen_device_info_timebase_scale(devinfo, q->result);
       q->result &= (1ull << TIMESTAMP_BITS) - 1;
       break;
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:

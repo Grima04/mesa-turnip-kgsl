@@ -890,8 +890,6 @@ void iris_math_add32_gpr0(struct iris_context *ice,
                           struct iris_batch *batch,
                           uint32_t x);
 
-uint64_t iris_timebase_scale(const struct gen_device_info *devinfo,
-                             uint64_t gpu_timestamp);
 void iris_resolve_conditional_render(struct iris_context *ice);
 
 /* iris_resolve.c */
