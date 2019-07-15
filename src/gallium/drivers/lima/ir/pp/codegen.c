@@ -516,7 +516,7 @@ static void ppir_codegen_encode_const(ppir_const *constant, uint16_t *code)
 static void ppir_codegen_encode_discard(ppir_node *node, void *code)
 {
    ppir_codegen_field_branch *b = code;
-   assert(node->op = ppir_op_discard);
+   assert(node->op == ppir_op_discard);
 
    b->discard.word0 = PPIR_CODEGEN_DISCARD_WORD0;
    b->discard.word1 = PPIR_CODEGEN_DISCARD_WORD1;
