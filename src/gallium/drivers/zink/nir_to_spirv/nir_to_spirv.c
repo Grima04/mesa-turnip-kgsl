@@ -1165,12 +1165,17 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    if (proj) {
       SpvId constituents[coord_components + 1];
-      SpvId float_type = spirv_builder_type_float(&ctx->builder, 32);
-      for (uint32_t i = 0; i < coord_components; ++i)
-         constituents[i] = spirv_builder_emit_composite_extract(&ctx->builder,
-                                              float_type,
-                                              coord,
-                                              &i, 1);
+      if (coord_components == 1)
+         constituents[0] = coord;
+      else {
+         assert(coord_components > 1);
+         SpvId float_type = spirv_builder_type_float(&ctx->builder, 32);
+         for (uint32_t i = 0; i < coord_components; ++i)
+            constituents[i] = spirv_builder_emit_composite_extract(&ctx->builder,
+                                                 float_type,
+                                                 coord,
+                                                 &i, 1);
+      }
 
       constituents[coord_components++] = proj;
 
