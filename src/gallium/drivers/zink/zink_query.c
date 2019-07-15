@@ -6,6 +6,7 @@
 #include "util/u_dump.h"
 
 struct zink_query {
+   enum pipe_query_type type;
    VkQueryPool queryPool;
    VkQueryType vkqtype;
    bool use_64bit;
@@ -47,6 +48,7 @@ zink_create_query(struct pipe_context *pctx,
    if (!query)
       return NULL;
 
+   query->type = query_type;
    query->vkqtype = convert_query_type(query_type, &query->use_64bit, &query->precise);
    if (query->vkqtype == -1)
       return NULL;
@@ -127,10 +129,25 @@ zink_get_query_result(struct pipe_context *pctx,
    if (query->use_64bit)
       flags |= VK_QUERY_RESULT_64_BIT;
 
-   VkResult status = vkGetQueryPoolResults(screen->dev, query->queryPool,
-                                           0, 1, sizeof(*result), result,
-                                           0, flags);
-   return status == VK_SUCCESS;
+   if (vkGetQueryPoolResults(screen->dev, query->queryPool,
+                             0, 1, sizeof(*result), result,
+                             0, flags) != VK_SUCCESS)
+      return false;
+
+   switch (query->type) {
+   case PIPE_QUERY_OCCLUSION_PREDICATE:
+   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+   case PIPE_QUERY_GPU_FINISHED:
+      /* fixup bool-queries */
+      result->b = result->u32 != 0;
+      break;
+   default:
+      ; /* nothing */
+   }
+
+   return TRUE;
 }
 
 void
