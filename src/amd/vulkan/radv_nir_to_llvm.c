@@ -2593,21 +2593,7 @@ radv_export_param(struct radv_shader_context *ctx, unsigned index,
 static LLVMValueRef
 radv_load_output(struct radv_shader_context *ctx, unsigned index, unsigned chan)
 {
-	LLVMValueRef output;
-
-	if (ctx->vertexptr) {
-		LLVMValueRef gep_idx[3] = {
-			ctx->ac.i32_0, /* implicit C-style array */
-			ctx->ac.i32_0, /* second value of struct */
-			ctx->ac.i32_1, /* stream 1: source data index */
-		};
-
-		gep_idx[2] = LLVMConstInt(ctx->ac.i32, ac_llvm_reg_index_soa(index, chan), false);
-		output = LLVMBuildGEP(ctx->ac.builder, ctx->vertexptr, gep_idx, 3, "");
-	} else {
-		output = ctx->abi.outputs[ac_llvm_reg_index_soa(index, chan)];
-	}
-
+	LLVMValueRef output = ctx->abi.outputs[ac_llvm_reg_index_soa(index, chan)];
 	return LLVMBuildLoad(ctx->ac.builder, output, "");
 }
 
