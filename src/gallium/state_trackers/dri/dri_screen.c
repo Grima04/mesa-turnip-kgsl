@@ -172,6 +172,7 @@ dri_fill_in_modes(struct dri_screen *screen)
    struct pipe_screen *p_screen = screen->base.screen;
    bool pf_z16, pf_x8z24, pf_z24x8, pf_s8z24, pf_z24s8, pf_z32;
    bool mixed_color_depth;
+   bool allow_rgba_ordering;
    bool allow_rgb10;
 
    static const GLenum back_buffer_modes[] = {
@@ -189,6 +190,7 @@ dri_fill_in_modes(struct dri_screen *screen)
       depth_buffer_factor = 1;
    }
 
+   allow_rgba_ordering = dri_loader_get_cap(screen, DRI_LOADER_CAP_RGBA_ORDERING);
    allow_rgb10 = driQueryOptionb(&screen->dev->option_cache, "allow_rgb10_configs");
 
    msaa_samples_max = (screen->st_api->feature_mask & ST_API_FEATURE_MS_VISUALS_MASK)
@@ -237,18 +239,17 @@ dri_fill_in_modes(struct dri_screen *screen)
 
    assert(ARRAY_SIZE(mesa_formats) == ARRAY_SIZE(pipe_formats));
 
-   /* Expose only BGRA ordering if the loader doesn't support RGBA ordering. */
-   unsigned num_formats;
-   if (dri_loader_get_cap(screen, DRI_LOADER_CAP_RGBA_ORDERING))
-      num_formats = ARRAY_SIZE(mesa_formats);
-   else
-      num_formats = ARRAY_SIZE(mesa_formats) - 2; /* all - RGBA_ORDERING formats */
-
    /* Add configs. */
-   for (format = 0; format < num_formats; format++) {
+   for (format = 0; format < ARRAY_SIZE(mesa_formats); format++) {
       __DRIconfig **new_configs = NULL;
       unsigned num_msaa_modes = 0; /* includes a single-sample mode */
       uint8_t msaa_modes[MSAA_VISUAL_MAX_SAMPLES];
+
+      /* Expose only BGRA ordering if the loader doesn't support RGBA ordering. */
+      if (!allow_rgba_ordering &&
+          (mesa_formats[format] == MESA_FORMAT_R8G8B8A8_UNORM ||
+           mesa_formats[format] == MESA_FORMAT_R8G8B8X8_UNORM))
+         continue;
 
       if (!allow_rgb10 &&
           (mesa_formats[format] == MESA_FORMAT_B10G10R10A2_UNORM ||
