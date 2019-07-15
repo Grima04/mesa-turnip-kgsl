@@ -2334,6 +2334,32 @@ panfrost_sampler_view_destroy(
         ralloc_free(view);
 }
 
+/* Hints that a framebuffer should use AFBC where possible */
+
+static void
+panfrost_hint_afbc(
+                struct panfrost_screen *screen,
+                const struct pipe_framebuffer_state *fb)
+{
+        /* AFBC implemenation incomplete; hide it */
+        if (!(pan_debug & PAN_DBG_AFBC)) return;
+
+        /* Hint AFBC to the resources bound to each color buffer */
+
+        for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
+                struct pipe_surface *surf = fb->cbufs[i];
+                struct panfrost_resource *rsrc = pan_resource(surf->texture);
+                panfrost_resource_hint_layout(screen, rsrc, PAN_AFBC, 1);
+        }
+
+        /* Also hint it to the depth buffer */
+
+        if (fb->zsbuf) {
+                struct panfrost_resource *rsrc = pan_resource(fb->zsbuf->texture);
+                panfrost_resource_hint_layout(screen, rsrc, PAN_AFBC, 1);
+        }
+}
+
 static void
 panfrost_set_framebuffer_state(struct pipe_context *pctx,
                                const struct pipe_framebuffer_state *fb)
@@ -2379,6 +2405,11 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         }
 
         if (needs_reattach) {
+                /* Given that we're rendering, we'd love to have compression */
+                struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+
+                panfrost_hint_afbc(screen, &ctx->pipe_framebuffer);
+
                 if (ctx->require_sfbd)
                         ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
                 else

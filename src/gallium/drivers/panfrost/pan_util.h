@@ -31,6 +31,7 @@
 #define PAN_DBG_MSGS		0x0001
 #define PAN_DBG_TRACE           0x0002
 #define PAN_DBG_DEQP            0x0004
+#define PAN_DBG_AFBC            0x0008
 
 extern int pan_debug;
 

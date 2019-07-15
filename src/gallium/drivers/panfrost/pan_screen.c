@@ -54,7 +54,7 @@ static const struct debug_named_value debug_options[] = {
         {"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
         {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
-        /* ^^ If Rob can do it, so can I */
+        {"afbc",      PAN_DBG_AFBC,     "Enable non-conformant AFBC impl"},
         DEBUG_NAMED_VALUE_END
 };
 

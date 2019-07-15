@@ -112,6 +112,13 @@ void panfrost_resource_screen_init(struct panfrost_screen *screen);
 
 void panfrost_resource_context_init(struct pipe_context *pctx);
 
+void
+panfrost_resource_hint_layout(
+                struct panfrost_screen *screen,
+                struct panfrost_resource *rsrc,
+                enum panfrost_memory_layout layout,
+                signed weight);
+
 /* AFBC */
 
 bool
