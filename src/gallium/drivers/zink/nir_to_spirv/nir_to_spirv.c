@@ -220,7 +220,8 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
             break;
 
          default:
-            unreachable("unknown varying slot");
+            debug_printf("unknown varying slot: %s\n", gl_varying_slot_name(var->data.location));
+            unreachable("unexpected varying slot");
          }
       }
    } else {
@@ -276,7 +277,8 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             break;
 
          default:
-            unreachable("unknown varying slot");
+            debug_printf("unknown varying slot: %s\n", gl_varying_slot_name(var->data.location));
+            unreachable("unexpected varying slot");
          }
       }
    } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
