@@ -124,7 +124,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                 /* Regardless if that works, we also need to initialize
                  * the blend shaders */
 
-                rt->shaders = _mesa_hash_table_u64_create(NULL);
+                rt->shaders = _mesa_hash_table_u64_create(so);
         }
 
         return so;
@@ -152,8 +152,7 @@ static void
 panfrost_delete_blend_state(struct pipe_context *pipe,
                             void *blend)
 {
-        /* TODO: leaks internally? */
-
+        /* TODO: Free shader binary? */
         ralloc_free(blend);
 }
 
