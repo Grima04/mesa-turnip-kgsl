@@ -137,7 +137,7 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
 void
 panfrost_drm_mmap_bo(struct panfrost_screen *screen, struct panfrost_bo *bo);
 void
-panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo);
+panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo, bool cacheable);
 struct panfrost_bo *
 panfrost_drm_import_bo(struct panfrost_screen *screen, int fd);
 int
@@ -165,6 +165,11 @@ struct panfrost_bo *
 panfrost_bo_cache_fetch(
                 struct panfrost_screen *screen,
                 size_t size, uint32_t flags);
+
+bool
+panfrost_bo_cache_put(
+                struct panfrost_screen *screen,
+                struct panfrost_bo *bo);
 
 
 #endif /* PAN_SCREEN_H */

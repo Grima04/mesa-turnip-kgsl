@@ -445,7 +445,7 @@ panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo)
         /* When the reference count goes to zero, we need to cleanup */
 
         if (pipe_reference(&bo->reference, NULL))
-                panfrost_drm_release_bo(pan_screen(screen), bo);
+                panfrost_drm_release_bo(pan_screen(screen), bo, true);
 }
 
 static void

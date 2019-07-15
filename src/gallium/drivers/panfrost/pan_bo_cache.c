@@ -34,3 +34,17 @@ panfrost_bo_cache_fetch(
         /* Stub */
         return NULL;
 }
+
+/* Tries to add a BO to the cache. Returns if it was
+ * successful */
+
+bool
+panfrost_bo_cache_put(
+                struct panfrost_screen *screen,
+                struct panfrost_bo *bo)
+{
+        /* Stub */
+        return false;
+}
+
+
