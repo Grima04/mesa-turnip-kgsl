@@ -83,7 +83,7 @@ struct panfrost_bo *
 panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
                        uint32_t flags)
 {
-        struct panfrost_bo *bo = rzalloc(screen, struct panfrost_bo);
+        struct panfrost_bo *bo;
 
         /* Kernel will fail (confusingly) with EPERM otherwise */
         assert(size > 0);
@@ -96,17 +96,31 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
                 .size = size,
                 .flags = translated_flags,
         };
-        int ret;
 
-        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
-        if (ret) {
-                fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %d\n", ret);
-                assert(0);
+        /* Before creating a BO, we first want to check the cache */
+
+        bo = panfrost_bo_cache_fetch(screen, size, flags);
+
+        if (bo == NULL) {
+                /* Otherwise, the cache misses and we need to allocate a BO fresh from
+                 * the kernel */
+
+                int ret;
+
+                ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
+                if (ret) {
+                        fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %d\n", ret);
+                        assert(0);
+                }
+
+                /* We have a BO allocated from the kernel; fill in the userspace
+                 * version */
+
+                bo = rzalloc(screen, struct panfrost_bo);
+                bo->size = create_bo.size;
+                bo->gpu = create_bo.offset;
+                bo->gem_handle = create_bo.handle;
         }
-
-        bo->size = create_bo.size;
-        bo->gpu = create_bo.offset;
-        bo->gem_handle = create_bo.handle;
 
         /* Only mmap now if we know we need to. For CPU-invisible buffers, we
          * never map since we don't care about their contents; they're purely

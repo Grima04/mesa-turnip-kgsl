@@ -161,5 +161,10 @@ panfrost_drm_fence_finish(struct pipe_screen *pscreen,
                           struct pipe_context *ctx,
                           struct pipe_fence_handle *fence,
                           uint64_t timeout);
+struct panfrost_bo *
+panfrost_bo_cache_fetch(
+                struct panfrost_screen *screen,
+                size_t size, uint32_t flags);
+
 
 #endif /* PAN_SCREEN_H */
