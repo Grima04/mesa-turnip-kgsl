@@ -318,7 +318,7 @@ static void
 wrap_linear_clamp_to_border(float s, unsigned size, int offset,
                             int *icoord0, int *icoord1, float *w)
 {
-   const float min = -0.5F;
+   const float min = -1.0F;
    const float max = (float)size + 0.5F;
    const float u = CLAMP(s * size + offset, min, max) - 0.5f;
    *icoord0 = util_ifloor(u);
