@@ -826,7 +826,8 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		config_out->rsrc1 |= S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt) |
 				     S_00B228_WGP_MODE(1);
 		config_out->rsrc2 |= S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
-				     S_00B22C_LDS_SIZE(config_in->lds_size);
+				     S_00B22C_LDS_SIZE(config_in->lds_size) |
+				     S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL);
 	} else if (pdevice->rad_info.chip_class >= GFX9 &&
 		   stage == MESA_SHADER_GEOMETRY) {
 		unsigned es_type = info->gs.es_type;
