@@ -27,6 +27,7 @@ sleep 1  # Give some time for Weston to start up
 sed -i '/dEQP-GLES2.performance/d' /tmp/case-list.txt
 sed -i '/dEQP-GLES2.stress/d' /tmp/case-list.txt
 sed -i '/dEQP-GLES2.functional.fbo.render.depth./d' /tmp/case-list.txt
+sed -i '/dEQP-GLES2.functional.flush_finish./d' /tmp/case-list.txt
 
 # Cannot use tee because dash doesn't have pipefail
 touch /tmp/result.txt
