@@ -3677,6 +3677,13 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 				gep_idx[2] = LLVMConstInt(ctx->ac.i32, out_idx, false);
 				tmp = LLVMBuildGEP(builder, vertexptr, gep_idx, 3, "");
 				tmp = LLVMBuildLoad(builder, tmp, "");
+
+				LLVMTypeRef type = LLVMGetAllocatedType(ctx->abi.outputs[ac_llvm_reg_index_soa(i, j)]);
+				if (ac_get_type_size(type) == 2) {
+					tmp = ac_to_integer(&ctx->ac, tmp);
+					tmp = LLVMBuildTrunc(ctx->ac.builder, tmp, ctx->ac.i16, "");
+				}
+
 				outputs[noutput].values[j] = ac_to_float(&ctx->ac, tmp);
 			}
 
@@ -3757,6 +3764,8 @@ static void gfx10_ngg_gs_emit_vertex(struct radv_shader_context *ctx,
 			LLVMValueRef ptr = LLVMBuildGEP(builder, vertexptr, gep_idx, 3, "");
 
 			out_val = ac_to_integer(&ctx->ac, out_val);
+			out_val = LLVMBuildZExtOrBitCast(ctx->ac.builder, out_val, ctx->ac.i32, "");
+
 			LLVMBuildStore(builder, out_val, ptr);
 		}
 	}
