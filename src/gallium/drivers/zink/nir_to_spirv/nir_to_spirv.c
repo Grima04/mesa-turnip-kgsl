@@ -1523,9 +1523,13 @@ nir_to_spirv(struct nir_shader *s)
    spirv_builder_emit_entry_point(&ctx.builder, exec_model, entry_point,
                                   "main", ctx.entry_ifaces,
                                   ctx.num_entry_ifaces);
-   if (s->info.stage == MESA_SHADER_FRAGMENT)
+   if (s->info.stage == MESA_SHADER_FRAGMENT) {
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    SpvExecutionModeOriginUpperLeft);
+      if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
+                                      SpvExecutionModeDepthReplacing);
+   }
 
 
    spirv_builder_function(&ctx.builder, entry_point, type_void,
