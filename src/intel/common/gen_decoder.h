@@ -88,6 +88,8 @@ struct gen_field_iterator {
    int start_bit; /**< current field starts at this bit offset into p */
    int end_bit; /**< current field ends at this bit offset into p */
 
+   struct gen_field *fields[DECODE_MAX_ARRAY_DEPTH];
+   struct gen_group *groups[DECODE_MAX_ARRAY_DEPTH];
    int array_iter[DECODE_MAX_ARRAY_DEPTH];
    int level;
 

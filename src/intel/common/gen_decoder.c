@@ -429,12 +429,7 @@ start_element(void *data, const char *element_name, const char **atts)
       ctx->group = create_group(ctx, name, atts, NULL, true);
       get_register_offset(atts, &ctx->group->register_offset);
    } else if (strcmp(element_name, "group") == 0) {
-      struct gen_group *previous_group = ctx->group;
-      while (previous_group->next)
-         previous_group = previous_group->next;
-
       struct gen_group *group = create_group(ctx, "", atts, ctx->group, false);
-      previous_group->next = group;
       ctx->last_field = create_and_append_field(ctx, NULL, group);
       ctx->group = group;
    } else if (strcmp(element_name, "field") == 0) {
@@ -891,39 +886,61 @@ iter_more_fields(const struct gen_field_iterator *iter)
 }
 
 static uint32_t
-iter_array_offset_bits(const struct gen_field_iterator *iter,
-                       uint32_t array_iter)
+iter_array_offset_bits(const struct gen_field_iterator *iter)
 {
-   return iter->group->array_offset +
-      (array_iter * iter->group->array_item_size);
+   if (iter->level == 0)
+      return 0;
+
+   uint32_t offset = 0;
+   const struct gen_group *group = iter->groups[1];
+   for (int level = 1; level <= iter->level; level++, group = iter->groups[level]) {
+      uint32_t array_idx = iter->array_iter[level];
+      offset += group->array_offset + array_idx * group->array_item_size;
+   }
+
+   return offset;
 }
 
 /* Checks whether we have more items in the array to iterate, or more arrays to
  * iterate through.
  */
-static bool
-iter_more_arrays(const struct gen_field_iterator *iter)
+/* descend into a non-array field */
+static void
+iter_push_array(struct gen_field_iterator *iter)
 {
-   int lvl = iter->level;
+   assert(iter->level >= 0);
 
-   if (iter->group->variable) {
-      int length = gen_group_get_length(iter->group, iter->p);
-      assert(length >= 0 && "error the length is unknown!");
-      return iter_array_offset_bits(iter, iter->array_iter[lvl] + 1) <
-              (length * 32);
-   } else {
-      return (iter->array_iter[lvl] + 1) < iter->group->array_count ||
-         iter->group->next != NULL;
-   }
+   iter->group = iter->field->array;
+   iter->level++;
+   assert(iter->level < DECODE_MAX_ARRAY_DEPTH);
+   iter->groups[iter->level] = iter->group;
+   iter->array_iter[iter->level] = 0;
+
+   assert(iter->group->fields != NULL); /* an empty <group> makes no sense */
+   iter->field = iter->group->fields;
+   iter->fields[iter->level] = iter->field;
+}
+
+static void
+iter_pop_array(struct gen_field_iterator *iter)
+{
+   assert(iter->level > 0);
+
+   iter->level--;
+   iter->field = iter->fields[iter->level];
+   iter->group = iter->groups[iter->level];
 }
 
 static void
 iter_start_field(struct gen_field_iterator *iter, struct gen_field *field)
 {
    iter->field = field;
+   iter->fields[iter->level] = field;
 
-   int array_member_offset =
-      iter_array_offset_bits(iter, iter->array_iter[iter->level]);
+   while (iter->field->array)
+      iter_push_array(iter);
+
+   int array_member_offset = iter_array_offset_bits(iter);
 
    iter->start_bit = array_member_offset + iter->field->start;
    iter->end_bit = array_member_offset + iter->field->end;
@@ -933,6 +950,7 @@ iter_start_field(struct gen_field_iterator *iter, struct gen_field *field)
 static void
 iter_advance_array(struct gen_field_iterator *iter)
 {
+   assert(iter->level > 0);
    int lvl = iter->level;
 
    if (iter->group->variable)
@@ -940,9 +958,6 @@ iter_advance_array(struct gen_field_iterator *iter)
    else {
       if ((iter->array_iter[lvl] + 1) < iter->group->array_count) {
          iter->array_iter[lvl]++;
-      } else {
-         iter->group = iter->group->next;
-         iter->array_iter[lvl] = 0;
       }
    }
 
@@ -950,17 +965,48 @@ iter_advance_array(struct gen_field_iterator *iter)
 }
 
 static bool
+iter_more_array_elems(const struct gen_field_iterator *iter)
+{
+   int lvl = iter->level;
+   assert(lvl >= 0);
+
+   if (iter->group->variable) {
+      int length = gen_group_get_length(iter->group, iter->p);
+      assert(length >= 0 && "error the length is unknown!");
+      return iter_array_offset_bits(iter) + iter->group->array_item_size <
+         (length * 32);
+   } else {
+      return (iter->array_iter[lvl] + 1) < iter->group->array_count;
+   }
+}
+
+static bool
 iter_advance_field(struct gen_field_iterator *iter)
 {
-   if (iter_more_fields(iter)) {
-      iter_start_field(iter, iter->field->next);
-   } else {
-      if (!iter_more_arrays(iter))
-         return false;
+   /* Keep looping while we either have more fields to look at, or we are
+    * inside a <group> and can go up a level.
+    */
+   while (iter_more_fields(iter) || iter->level > 0) {
+      if (iter_more_fields(iter)) {
+         iter_start_field(iter, iter->field->next);
+         return true;
+      }
 
-      iter_advance_array(iter);
+      assert(iter->level >= 0);
+
+      if (iter_more_array_elems(iter)) {
+         iter_advance_array(iter);
+         return true;
+      }
+
+      /* At this point, we reached the end of the <group> and were on the last
+       * iteration. So it's time to go back to the parent and then advance the
+       * field.
+       */
+      iter_pop_array(iter);
    }
-   return true;
+
+   return false;
 }
 
 static bool
@@ -1071,8 +1117,17 @@ iter_decode_field(struct gen_field_iterator *iter)
 
    if (strlen(iter->group->name) == 0) {
       int length = strlen(iter->name);
-      snprintf(iter->name + length, sizeof(iter->name) - length,
-               "[%i]", iter->array_iter[iter->level]);
+      assert(iter->level >= 0);
+
+      int level = 1;
+      char *buf = iter->name + length;
+      while (level <= iter->level) {
+         int printed = snprintf(buf, sizeof(iter->name) - length,
+                                "[%i]", iter->array_iter[level]);
+         level++;
+         length += printed;
+         buf += printed;
+      }
    }
 
    if (enum_name) {
@@ -1100,6 +1155,7 @@ gen_field_iterator_init(struct gen_field_iterator *iter,
 {
    memset(iter, 0, sizeof(*iter));
 
+   iter->groups[iter->level] = group;
    iter->group = group;
    iter->p = p;
    iter->p_bit = p_bit;
@@ -1117,8 +1173,6 @@ gen_field_iterator_next(struct gen_field_iterator *iter)
    if (!iter->field) {
       if (iter->group->fields)
          iter_start_field(iter, iter->group->fields);
-      else
-         iter_start_field(iter, iter->group->next->fields);
 
       bool result = iter_decode_field(iter);
       if (!result && iter->p_end) {
