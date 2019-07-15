@@ -621,6 +621,11 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    ctx->Const.PackedDriverUniformStorage =
       screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS);
 
+   ctx->Const.BitmapUsesRed =
+      screen->is_format_supported(screen, PIPE_FORMAT_R8_UNORM,
+                                  PIPE_TEXTURE_2D, 0, 0,
+                                  PIPE_BIND_SAMPLER_VIEW);
+
    st->has_stencil_export =
       screen->get_param(screen, PIPE_CAP_SHADER_STENCIL_EXPORT);
    st->has_etc1 = screen->is_format_supported(screen, PIPE_FORMAT_ETC1_RGB8,

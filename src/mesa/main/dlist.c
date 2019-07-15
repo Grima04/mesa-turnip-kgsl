@@ -941,9 +941,14 @@ build_bitmap_atlas(struct gl_context *ctx, struct gl_bitmap_atlas *atlas,
       goto out_of_memory;
    }
 
-   _mesa_init_teximage_fields(ctx, atlas->texImage,
-                              atlas->texWidth, atlas->texHeight, 1, 0,
-                              GL_ALPHA, MESA_FORMAT_A_UNORM8);
+   if (ctx->Const.BitmapUsesRed)
+      _mesa_init_teximage_fields(ctx, atlas->texImage,
+                                 atlas->texWidth, atlas->texHeight, 1, 0,
+                                 GL_RED, MESA_FORMAT_R_UNORM8);
+   else
+      _mesa_init_teximage_fields(ctx, atlas->texImage,
+                                 atlas->texWidth, atlas->texHeight, 1, 0,
+                                 GL_ALPHA, MESA_FORMAT_A_UNORM8);
 
    /* alloc image storage */
    if (!ctx->Driver.AllocTextureImageBuffer(ctx, atlas->texImage)) {

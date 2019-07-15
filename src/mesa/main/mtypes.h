@@ -4130,6 +4130,9 @@ struct gl_constants
    /** Is the drivers uniform storage packed or padded to 16 bytes. */
    bool PackedDriverUniformStorage;
 
+   /** Wether or not glBitmap uses red textures rather than alpha */
+   bool BitmapUsesRed;
+
    /** GL_ARB_gl_spirv */
    struct spirv_supported_capabilities SpirVCapabilities;
 
