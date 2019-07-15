@@ -82,7 +82,22 @@ panfrost_bo_cache_fetch(
                 struct panfrost_screen *screen,
                 size_t size, uint32_t flags)
 {
-        /* Stub */
+        struct list_head *bucket = pan_bucket(screen, size);
+
+        /* TODO: Honour flags? */
+
+        /* Iterate the bucket looking for something suitable */
+        list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
+                if (entry->size >= size) {
+                        /* This one works, splice it out of the cache */
+                        list_del(&entry->link);
+
+                        /* Let's go! */
+                        return entry;
+                }
+        }
+
+        /* We didn't find anything */
         return NULL;
 }
 
