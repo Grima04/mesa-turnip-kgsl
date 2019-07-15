@@ -280,14 +280,23 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
          }
       }
    } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      switch (var->data.location) {
-      case FRAG_RESULT_DEPTH:
-         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragDepth);
-         break;
-
-      default:
+      if (var->data.location >= FRAG_RESULT_DATA0)
          spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.driver_location);
+                                     var->data.location - FRAG_RESULT_DATA0);
+      else {
+         switch (var->data.location) {
+         case FRAG_RESULT_COLOR:
+            spirv_builder_emit_location(&ctx->builder, var_id, 0);
+            break;
+
+         case FRAG_RESULT_DEPTH:
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragDepth);
+            break;
+
+         default:
+            spirv_builder_emit_location(&ctx->builder, var_id,
+                                        var->data.driver_location);
+         }
       }
    }
 
