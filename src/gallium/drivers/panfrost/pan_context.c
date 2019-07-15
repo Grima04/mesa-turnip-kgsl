@@ -1283,7 +1283,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 assert(ubo_count >= 1);
 
                 size_t sz = sizeof(struct mali_uniform_buffer_meta) * ubo_count;
-                struct mali_uniform_buffer_meta *ubos = calloc(sz, 1);
+                struct mali_uniform_buffer_meta ubos[PAN_MAX_CONST_BUFFERS];
 
                 /* Upload uniforms as a UBO */
                 ubos[0].size = MALI_POSITIVE((2 + uniform_count));

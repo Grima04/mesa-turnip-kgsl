@@ -258,7 +258,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 16 * 1024 * sizeof(float);
 
         case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
-                return 16;
+                return PAN_MAX_CONST_BUFFERS;
 
         case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
                 return 0;

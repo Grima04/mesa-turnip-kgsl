@@ -42,6 +42,9 @@ struct panfrost_context;
 struct panfrost_resource;
 struct panfrost_screen;
 
+/* Driver limits */
+#define PAN_MAX_CONST_BUFFERS 16
+
 /* Flags for allocated memory */
 
 /* This memory region is executable */
