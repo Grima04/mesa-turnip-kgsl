@@ -763,6 +763,35 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
         }
 }
 
+static unsigned
+panfrost_layout_for_texture(struct panfrost_resource *rsrc, bool manual_stride)
+{
+        /* TODO: other linear depth textures */
+        bool is_depth = rsrc->base.format == PIPE_FORMAT_Z32_UNORM;
+
+        unsigned usage2_layout = 0x10;
+
+        switch (rsrc->layout) {
+        case PAN_AFBC:
+                usage2_layout |= 0x8 | 0x4;
+                break;
+        case PAN_TILED:
+                usage2_layout |= 0x1;
+                break;
+        case PAN_LINEAR:
+                usage2_layout |= is_depth ? 0x1 : 0x2;
+                break;
+        default:
+                assert(0);
+                break;
+        }
+
+        if (manual_stride)
+                usage2_layout |= MALI_TEX_MANUAL_STRIDE;
+
+        return usage2_layout;
+}
+
 static mali_ptr
 panfrost_upload_tex(
         struct panfrost_context *ctx,
@@ -776,8 +805,7 @@ panfrost_upload_tex(
 
         /* Do we interleave an explicit stride with every element? */
 
-        bool has_manual_stride =
-                view->hw.format.usage2 & MALI_TEX_MANUAL_STRIDE;
+        bool has_manual_stride = view->manual_stride;
 
         /* For easy access */
 
@@ -795,6 +823,11 @@ panfrost_upload_tex(
         /* Add the BO to the job so it's retained until the job is done. */
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
         panfrost_job_add_bo(job, rsrc->bo);
+
+        /* Add the usage flags in, since they can change across the CSO
+         * lifetime due to layout switches */
+
+        view->hw.format.usage2 = panfrost_layout_for_texture(rsrc, has_manual_stride);
 
         /* Inject the addresses in, interleaving mip levels, cube faces, and
          * strides in that order */
@@ -2212,25 +2245,6 @@ panfrost_create_sampler_view(
 
         enum mali_format format = panfrost_find_format(desc);
 
-        bool is_depth = desc->format == PIPE_FORMAT_Z32_UNORM;
-
-        unsigned usage2_layout = 0x10;
-
-        switch (prsrc->layout) {
-        case PAN_AFBC:
-                usage2_layout |= 0x8 | 0x4;
-                break;
-        case PAN_TILED:
-                usage2_layout |= 0x1;
-                break;
-        case PAN_LINEAR:
-                usage2_layout |= is_depth ? 0x1 : 0x2;
-                break;
-        default:
-                assert(0);
-                break;
-        }
-
         /* Check if we need to set a custom stride by computing the "expected"
          * stride and comparing it to what the BO actually wants. Only applies
          * to linear textures, since tiled/compressed textures have strict
@@ -2246,7 +2260,7 @@ panfrost_create_sampler_view(
                         unsigned comp_stride = width * bytes_per_pixel;
 
                         if (comp_stride != actual_stride) {
-                                usage2_layout |= MALI_TEX_MANUAL_STRIDE;
+                                so->manual_stride = true;
                                 break;
                         }
                 }
@@ -2276,8 +2290,6 @@ panfrost_create_sampler_view(
 
                         .srgb = desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB,
                         .type = panfrost_translate_texture_type(template->target),
-
-                        .usage2 = usage2_layout
                 },
 
                 .swizzle = panfrost_translate_swizzle_4(user_swizzle)

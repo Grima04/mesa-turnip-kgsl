@@ -264,6 +264,7 @@ struct panfrost_sampler_state {
 struct panfrost_sampler_view {
         struct pipe_sampler_view base;
         struct mali_texture_descriptor hw;
+        bool manual_stride;
 };
 
 static inline struct panfrost_context *
