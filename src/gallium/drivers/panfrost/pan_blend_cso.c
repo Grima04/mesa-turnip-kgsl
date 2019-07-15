@@ -206,10 +206,13 @@ panfrost_blend_constant(float *out, float *in, unsigned mask)
 struct panfrost_blend_final
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 {
-        /* Grab the format */
+        /* Grab the format, falling back gracefully if called invalidly (which
+         * has to happen for no-color-attachment FBOs, for instance)  */
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
-        assert(fb->nr_cbufs > rti);
-        enum pipe_format fmt = fb->cbufs[rti]->format;
+        enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
+
+        if (fb->nr_cbufs > rti)
+                fmt = fb->cbufs[rti]->format;
 
         /* Grab the blend state */
         struct panfrost_blend_state *blend = ctx->blend;
