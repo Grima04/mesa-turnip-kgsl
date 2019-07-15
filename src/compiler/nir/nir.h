@@ -2463,6 +2463,7 @@ typedef enum {
    nir_lower_minmax64 = (1 << 10),
    nir_lower_shift64 = (1 << 11),
    nir_lower_imul_2x32_64 = (1 << 12),
+   nir_lower_extract64 = (1 << 13),
 } nir_lower_int64_options;
 
 typedef enum {
