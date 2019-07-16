@@ -3849,6 +3849,7 @@ radv_compute_db_shader_control(const struct radv_device *device,
 		S_02880C_MASK_EXPORT_ENABLE(mask_export_enable) |
 		S_02880C_Z_ORDER(z_order) |
 		S_02880C_DEPTH_BEFORE_SHADER(ps->info.fs.early_fragment_test) |
+		S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps->info.fs.post_depth_coverage) |
 		S_02880C_EXEC_ON_HIER_FAIL(ps->info.info.ps.writes_memory) |
 		S_02880C_EXEC_ON_NOOP(ps->info.info.ps.writes_memory) |
 		S_02880C_DUAL_QUAD_DISABLE(disable_rbplus);

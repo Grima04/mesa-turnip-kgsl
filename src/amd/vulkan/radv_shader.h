@@ -283,6 +283,7 @@ struct radv_shader_variant_info {
 			uint32_t float16_shaded_mask;
 			bool can_discard;
 			bool early_fragment_test;
+			bool post_depth_coverage;
 		} fs;
 		struct {
 			unsigned block_size[3];

@@ -4637,6 +4637,7 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
                 break;
         case MESA_SHADER_FRAGMENT:
                 shader_info->fs.early_fragment_test = nir->info.fs.early_fragment_tests;
+                shader_info->fs.post_depth_coverage = nir->info.fs.post_depth_coverage;
                 break;
         case MESA_SHADER_GEOMETRY:
                 shader_info->gs.vertices_in = nir->info.gs.vertices_in;
