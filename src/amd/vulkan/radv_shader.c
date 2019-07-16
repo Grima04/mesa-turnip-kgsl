@@ -796,7 +796,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		break;
 	}
 
-	if (pdevice->rad_info.chip_class >= GFX10 &&
+	if (pdevice->rad_info.chip_class >= GFX10 && info->is_ngg &&
 	    (stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_GEOMETRY)) {
 		unsigned gs_vgpr_comp_cnt, es_vgpr_comp_cnt;
 		gl_shader_stage es_stage = stage;

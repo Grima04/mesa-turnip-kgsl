@@ -2306,6 +2306,18 @@ radv_fill_shader_keys(struct radv_device *device,
 		} else {
 			keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = true;
 		}
+
+		if (nir[MESA_SHADER_TESS_CTRL] &&
+		    nir[MESA_SHADER_GEOMETRY] &&
+		    nir[MESA_SHADER_GEOMETRY]->info.gs.invocations *
+		    nir[MESA_SHADER_GEOMETRY]->info.gs.vertices_out > 256) {
+			/* Fallback to the legacy path if tessellation is
+			 * enabled with extreme geometry because
+			 * EN_MAX_VERT_OUT_PER_GS_INSTANCE doesn't work and it
+			 * might hang.
+			 */
+			keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
+		}
 	}
 
 	for(int i = 0; i < MESA_SHADER_STAGES; ++i)
