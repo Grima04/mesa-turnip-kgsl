@@ -5212,7 +5212,6 @@ static bool si_shader_binary_open(struct si_screen *screen,
 				  struct ac_rtld_binary *rtld)
 {
 	const struct si_shader_selector *sel = shader->selector;
-	enum pipe_shader_type shader_type = sel ? sel->type : PIPE_SHADER_COMPUTE;
 	const char *part_elfs[5];
 	size_t part_sizes[5];
 	unsigned num_parts = 0;
@@ -5258,7 +5257,7 @@ static bool si_shader_binary_open(struct si_screen *screen,
 			.options = {
 				.halt_at_entry = screen->options.halt_shaders,
 			},
-			.shader_type = tgsi_processor_to_shader_stage(shader_type),
+			.shader_type = tgsi_processor_to_shader_stage(sel->type),
 			.num_parts = num_parts,
 			.elf_ptrs = part_elfs,
 			.elf_sizes = part_sizes,
@@ -5488,12 +5487,10 @@ static void si_shader_dump_stats(struct si_screen *sscreen,
 				 bool check_debug_option)
 {
 	const struct ac_shader_config *conf = &shader->config;
-	enum pipe_shader_type shader_type =
-		shader->selector ? shader->selector->type : PIPE_SHADER_COMPUTE;
 
 	if (!check_debug_option ||
-	    si_can_dump_shader(sscreen, shader_type)) {
-		if (shader_type == PIPE_SHADER_FRAGMENT) {
+	    si_can_dump_shader(sscreen, shader->selector->type)) {
+		if (shader->selector->type == PIPE_SHADER_FRAGMENT) {
 			fprintf(file, "*** SHADER CONFIG ***\n"
 				"SPI_PS_INPUT_ADDR = 0x%04x\n"
 				"SPI_PS_INPUT_ENA  = 0x%04x\n",
@@ -5522,10 +5519,7 @@ static void si_shader_dump_stats(struct si_screen *sscreen,
 
 const char *si_get_shader_name(const struct si_shader *shader)
 {
-	enum pipe_shader_type shader_type =
-		shader->selector ? shader->selector->type : PIPE_SHADER_COMPUTE;
-
-	switch (shader_type) {
+	switch (shader->selector->type) {
 	case PIPE_SHADER_VERTEX:
 		if (shader->key.as_es)
 			return "Vertex Shader as ES";
@@ -5564,8 +5558,7 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
 		    struct pipe_debug_callback *debug,
 		    FILE *file, bool check_debug_option)
 {
-	enum pipe_shader_type shader_type =
-		shader->selector ? shader->selector->type : PIPE_SHADER_COMPUTE;
+	enum pipe_shader_type shader_type = shader->selector->type;
 
 	if (!check_debug_option ||
 	    si_can_dump_shader(sscreen, shader_type))
@@ -5863,8 +5856,7 @@ static void si_dump_shader_key_vs(const struct si_shader_key *key,
 static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 {
 	const struct si_shader_key *key = &shader->key;
-	enum pipe_shader_type shader_type =
-		shader->selector ? shader->selector->type : PIPE_SHADER_COMPUTE;
+	enum pipe_shader_type shader_type = shader->selector->type;
 
 	fprintf(f, "SHADER KEY\n");
 
