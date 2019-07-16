@@ -942,7 +942,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct zink_rasterizer_state *rast_state = ctx->rast_state;
 
    if (dinfo->mode >= PIPE_PRIM_QUADS ||
-       dinfo->mode == PIPE_PRIM_LINE_LOOP) {
+       dinfo->mode == PIPE_PRIM_LINE_LOOP ||
+       dinfo->index_size == 1) {
       if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&dinfo->count))
          return;
 
