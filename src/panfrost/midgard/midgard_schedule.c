@@ -118,6 +118,68 @@ midgard_has_hazard(
 
 }
 
+/* Fragment writeout (of r0) is allowed when:
+ *
+ *  - All components of r0 are written in the bundle
+ *  - No components of r0 are written in VLUT
+ *  - Dependencies of r0 are not written in the bundle
+ *
+ * This function checks if these requirements are satisfied given the content
+ * of a scheduled bundle.
+ */
+
+static bool
+can_writeout_fragment(midgard_instruction **bundle, unsigned count, unsigned node_count)
+{
+        /* First scan for which components of r0 are written out. Initially
+         * none are written */
+
+        uint8_t r0_written_mask = 0x0;
+
+        /* Simultaneously we scan for the set of dependencies */
+        BITSET_WORD *dependencies = calloc(sizeof(BITSET_WORD), BITSET_WORDS(node_count));
+
+        for (unsigned i = 0; i < count; ++i) {
+                midgard_instruction *ins = bundle[i];
+
+                if (ins->ssa_args.dest != SSA_FIXED_REGISTER(0))
+                        continue;
+
+                /* Record written out mask */
+                r0_written_mask |= ins->mask;
+
+                /* Record dependencies */
+                unsigned src0 = ins->ssa_args.src0;
+                unsigned src1 = ins->ssa_args.src1;
+
+                if ((src0 > 0) && (src0 < node_count))
+                        BITSET_SET(dependencies, src0);
+
+                if ((src1 > 0) && (src1 < node_count))
+                        BITSET_SET(dependencies, src1);
+
+                /* Requirement 2 */
+                if (ins->unit == UNIT_VLUT)
+                        return false;
+        }
+
+        /* Requirement 1 */
+        if ((r0_written_mask & 0xF) != 0xF)
+                return false;
+
+        /* Requirement 3 */
+
+        for (unsigned i = 0; i < count; ++i) {
+                unsigned dest = bundle[i]->ssa_args.dest;
+
+                if (dest < node_count && BITSET_TEST(dependencies, dest))
+                        return false;
+        }
+
+        /* Otherwise, we're good to go */
+        return true;
+}
+
 /* Schedules, but does not emit, a single basic block. After scheduling, the
  * final tag and size of the block are known, which are necessary for branching
  * */
@@ -127,6 +189,8 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 {
         int instructions_emitted = 0, packed_idx = 0;
         midgard_bundle bundle = { 0 };
+
+        midgard_instruction *scheduled[5] = { NULL };
 
         uint8_t tag = ins->type;
 
@@ -386,15 +450,12 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 /* All of r0 has to be written out along with
                                  * the branch writeout */
 
-                                if (ains->writeout) {
-                                        /* The rules for when "bare" writeout
-                                         * is safe are when all components are
-                                         * r0 are written out in the final
-                                         * bundle, earlier than VLUT, where any
-                                         * register dependencies of r0 are from
-                                         * an earlier bundle. We can't verify
-                                         * this before RA, so we don't try. */
+                                unsigned node_count = ctx->func->impl->ssa_alloc + ctx->func->impl->reg_alloc;
 
+                                if (ains->writeout && !can_writeout_fragment(scheduled, index, node_count)) {
+                                        /* We only work on full moves
+                                         * at the beginning. We could
+                                         * probably do better */
                                         if (index != 0)
                                                 break;
 
@@ -422,6 +483,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                         }
 
                         /* Defer marking until after writing to allow for break */
+                        scheduled[index] = ains;
                         control |= ains->unit;
                         last_unit = ains->unit;
                         ++instructions_emitted;
