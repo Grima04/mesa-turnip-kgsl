@@ -212,7 +212,8 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
                                 SpvId coordinate,
                                 bool proj,
                                 SpvId lod,
-                                SpvId bias);
+                                SpvId bias,
+                                SpvId dref);
 
 SpvId
 spirv_builder_emit_ext_inst(struct spirv_builder *b, SpvId result_type,

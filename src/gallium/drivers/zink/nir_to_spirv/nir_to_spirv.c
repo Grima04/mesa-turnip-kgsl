@@ -1111,7 +1111,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
-   SpvId coord = 0, proj = 0, bias = 0, lod = 0;
+   SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0;
    unsigned coord_components;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -1136,6 +1136,12 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          assert(nir_src_num_components(tex->src[i].src) == 1);
          lod = get_src_float(ctx, &tex->src[i].src);
          assert(lod != 0);
+         break;
+
+      case nir_tex_src_comparator:
+         assert(nir_src_num_components(tex->src[i].src) == 1);
+         dref = get_src_float(ctx, &tex->src[i].src);
+         assert(dref != 0);
          break;
 
       default:
@@ -1187,13 +1193,25 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                             coord_components);
    }
 
+   SpvId actual_dest_type = dest_type;
+   if (dref)
+      actual_dest_type = float_type;
+
    SpvId result = spirv_builder_emit_image_sample(&ctx->builder,
-                                                  dest_type, load,
+                                                  actual_dest_type, load,
                                                   coord,
                                                   proj != 0,
-                                                  lod, bias);
+                                                  lod, bias, dref);
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
+
+   if (dref) {
+      SpvId components[4] = { result, result, result, result };
+      result = spirv_builder_emit_composite_construct(&ctx->builder,
+                                                      dest_type,
+                                                      components,
+                                                      4);
+   }
 
    store_dest(ctx, &tex->dest, result, tex->dest_type);
 }
