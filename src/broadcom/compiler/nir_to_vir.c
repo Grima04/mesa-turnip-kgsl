@@ -1112,6 +1112,103 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
 #define TLB_TYPE_STENCIL_ALPHA     ((2 << 6) | (1 << 4))
 
 static void
+vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
+{
+        if (!(c->fs_key->cbufs & (1 << rt)) || !c->output_color_var[rt])
+                return;
+
+        struct qreg tlb_reg = vir_magic_reg(V3D_QPU_WADDR_TLB);
+        struct qreg tlbu_reg = vir_magic_reg(V3D_QPU_WADDR_TLBU);
+
+        nir_variable *var = c->output_color_var[rt];
+        struct qreg *color = &c->outputs[var->data.driver_location * 4];
+        int num_components = glsl_get_vector_elements(var->type);
+        uint32_t conf = 0xffffff00;
+        struct qinst *inst;
+
+        conf |= TLB_SAMPLE_MODE_PER_PIXEL;
+        conf |= (7 - rt) << TLB_RENDER_TARGET_SHIFT;
+
+        if (c->fs_key->swap_color_rb & (1 << rt))
+                num_components = MAX2(num_components, 3);
+
+        assert(num_components != 0);
+        switch (glsl_get_base_type(var->type)) {
+        case GLSL_TYPE_UINT:
+        case GLSL_TYPE_INT:
+                /* The F32 vs I32 distinction was dropped in 4.2. */
+                if (c->devinfo->ver < 42)
+                        conf |= TLB_TYPE_I32_COLOR;
+                else
+                        conf |= TLB_TYPE_F32_COLOR;
+                conf |= ((num_components - 1) << TLB_VEC_SIZE_MINUS_1_SHIFT);
+
+                inst = vir_MOV_dest(c, tlbu_reg, color[0]);
+                inst->uniform =
+                        vir_get_uniform_index(c, QUNIFORM_CONSTANT, conf);
+
+                for (int i = 1; i < num_components; i++)
+                        inst = vir_MOV_dest(c, tlb_reg, color[i]);
+                break;
+
+        default: {
+                struct qreg r = color[0];
+                struct qreg g = color[1];
+                struct qreg b = color[2];
+                struct qreg a = color[3];
+
+                if (c->fs_key->f32_color_rb & (1 << rt)) {
+                        conf |= TLB_TYPE_F32_COLOR;
+                        conf |= ((num_components - 1) <<
+                                TLB_VEC_SIZE_MINUS_1_SHIFT);
+                } else {
+                        conf |= TLB_TYPE_F16_COLOR;
+                        conf |= TLB_F16_SWAP_HI_LO;
+                        if (num_components >= 3)
+                                conf |= TLB_VEC_SIZE_4_F16;
+                        else
+                                conf |= TLB_VEC_SIZE_2_F16;
+                }
+
+                if (c->fs_key->swap_color_rb & (1 << rt))  {
+                        r = color[2];
+                        b = color[0];
+                }
+
+                if (c->fs_key->sample_alpha_to_one)
+                        a = vir_uniform_f(c, 1.0);
+
+                if (c->fs_key->f32_color_rb & (1 << rt)) {
+                        inst = vir_MOV_dest(c, tlbu_reg, r);
+                        inst->uniform =
+                                vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                                      conf);
+
+                        if (num_components >= 2)
+                                vir_MOV_dest(c, tlb_reg, g);
+                        if (num_components >= 3)
+                                vir_MOV_dest(c, tlb_reg, b);
+                        if (num_components >= 4)
+                                vir_MOV_dest(c, tlb_reg, a);
+                } else {
+                        inst = vir_VFPACK_dest(c, tlb_reg, r, g);
+                        if (conf != ~0) {
+                                inst->dst = tlbu_reg;
+                                inst->uniform =
+                                        vir_get_uniform_index(c,
+                                                              QUNIFORM_CONSTANT,
+                                                              conf);
+                        }
+
+                        if (num_components >= 3)
+                                inst = vir_VFPACK_dest(c, tlb_reg, b, a);
+                }
+                break;
+        } /* default */
+        } /* Switch */
+}
+
+static void
 emit_frag_end(struct v3d_compile *c)
 {
         /* XXX
@@ -1136,7 +1233,6 @@ emit_frag_end(struct v3d_compile *c)
                                         vir_FTOC(c, color[3])));
         }
 
-        struct qreg tlb_reg = vir_magic_reg(V3D_QPU_WADDR_TLB);
         struct qreg tlbu_reg = vir_magic_reg(V3D_QPU_WADDR_TLBU);
         if (c->output_position_index != -1) {
                 struct qinst *inst = vir_MOV_dest(c, tlbu_reg,
@@ -1191,100 +1287,8 @@ emit_frag_end(struct v3d_compile *c)
         /* XXX: Performance improvement: Merge Z write and color writes TLB
          * uniform setup
          */
-
-        for (int rt = 0; rt < V3D_MAX_DRAW_BUFFERS; rt++) {
-                if (!(c->fs_key->cbufs & (1 << rt)) || !c->output_color_var[rt])
-                        continue;
-
-                nir_variable *var = c->output_color_var[rt];
-                struct qreg *color = &c->outputs[var->data.driver_location * 4];
-                int num_components = glsl_get_vector_elements(var->type);
-                uint32_t conf = 0xffffff00;
-                struct qinst *inst;
-
-                conf |= TLB_SAMPLE_MODE_PER_PIXEL;
-                conf |= (7 - rt) << TLB_RENDER_TARGET_SHIFT;
-
-                if (c->fs_key->swap_color_rb & (1 << rt))
-                        num_components = MAX2(num_components, 3);
-
-                assert(num_components != 0);
-                switch (glsl_get_base_type(var->type)) {
-                case GLSL_TYPE_UINT:
-                case GLSL_TYPE_INT:
-                        /* The F32 vs I32 distinction was dropped in 4.2. */
-                        if (c->devinfo->ver < 42)
-                                conf |= TLB_TYPE_I32_COLOR;
-                        else
-                                conf |= TLB_TYPE_F32_COLOR;
-                        conf |= ((num_components - 1) <<
-                                 TLB_VEC_SIZE_MINUS_1_SHIFT);
-
-                        inst = vir_MOV_dest(c, tlbu_reg, color[0]);
-                        inst->uniform = vir_get_uniform_index(c,
-                                                              QUNIFORM_CONSTANT,
-                                                              conf);
-
-                        for (int i = 1; i < num_components; i++) {
-                                inst = vir_MOV_dest(c, tlb_reg, color[i]);
-                        }
-                        break;
-
-                default: {
-                        struct qreg r = color[0];
-                        struct qreg g = color[1];
-                        struct qreg b = color[2];
-                        struct qreg a = color[3];
-
-                        if (c->fs_key->f32_color_rb & (1 << rt)) {
-                                conf |= TLB_TYPE_F32_COLOR;
-                                conf |= ((num_components - 1) <<
-                                         TLB_VEC_SIZE_MINUS_1_SHIFT);
-                        } else {
-                                conf |= TLB_TYPE_F16_COLOR;
-                                conf |= TLB_F16_SWAP_HI_LO;
-                                if (num_components >= 3)
-                                        conf |= TLB_VEC_SIZE_4_F16;
-                                else
-                                        conf |= TLB_VEC_SIZE_2_F16;
-                        }
-
-                        if (c->fs_key->swap_color_rb & (1 << rt))  {
-                                r = color[2];
-                                b = color[0];
-                        }
-
-                        if (c->fs_key->sample_alpha_to_one)
-                                a = vir_uniform_f(c, 1.0);
-
-                        if (c->fs_key->f32_color_rb & (1 << rt)) {
-                                inst = vir_MOV_dest(c, tlbu_reg, r);
-                                inst->uniform = vir_get_uniform_index(c,
-                                                                      QUNIFORM_CONSTANT,
-                                                                      conf);
-
-                                if (num_components >= 2)
-                                        vir_MOV_dest(c, tlb_reg, g);
-                                if (num_components >= 3)
-                                        vir_MOV_dest(c, tlb_reg, b);
-                                if (num_components >= 4)
-                                        vir_MOV_dest(c, tlb_reg, a);
-                        } else {
-                                inst = vir_VFPACK_dest(c, tlb_reg, r, g);
-                                if (conf != ~0) {
-                                        inst->dst = tlbu_reg;
-                                        inst->uniform = vir_get_uniform_index(c,
-                                                                              QUNIFORM_CONSTANT,
-                                                                              conf);
-                                }
-
-                                if (num_components >= 3)
-                                        inst = vir_VFPACK_dest(c, tlb_reg, b, a);
-                        }
-                        break;
-                }
-                }
-        }
+        for (int rt = 0; rt < V3D_MAX_DRAW_BUFFERS; rt++)
+                vir_emit_tlb_color_write(c, rt);
 }
 
 static void
