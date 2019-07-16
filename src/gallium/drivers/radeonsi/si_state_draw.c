@@ -768,7 +768,9 @@ static void si_emit_draw_registers(struct si_context *sctx,
 					   instance_count, primitive_restart);
 
 	if (vgt_prim != sctx->last_prim) {
-		if (sctx->chip_class >= GFX7)
+		if (sctx->chip_class >= GFX10)
+			radeon_set_uconfig_reg(cs, R_030908_VGT_PRIMITIVE_TYPE, vgt_prim);
+		else if (sctx->chip_class >= GFX7)
 			radeon_set_uconfig_reg_idx(cs, sctx->screen,
 						   R_030908_VGT_PRIMITIVE_TYPE, 1, vgt_prim);
 		else
