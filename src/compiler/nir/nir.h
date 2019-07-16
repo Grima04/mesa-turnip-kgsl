@@ -3299,6 +3299,13 @@ typedef bool (*nir_instr_filter_cb)(const nir_instr *, const void *);
 typedef nir_ssa_def *(*nir_lower_instr_cb)(struct nir_builder *,
                                            nir_instr *, void *);
 
+/**
+ * Special return value for nir_lower_instr_cb when some progress occurred
+ * (like changing an input to the instr) that didn't result in a replacement
+ * SSA def being generated.
+ */
+#define NIR_LOWER_INSTR_PROGRESS ((nir_ssa_def *)(uintptr_t)1)
+
 /** Iterate over all the instructions in a nir_function_impl and lower them
  *  using the provided callbacks
  *

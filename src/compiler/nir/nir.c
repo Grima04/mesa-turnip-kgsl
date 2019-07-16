@@ -1876,7 +1876,7 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
 
       b.cursor = nir_after_instr(instr);
       nir_ssa_def *new_def = lower(&b, instr, cb_data);
-      if (new_def) {
+      if (new_def && new_def != NIR_LOWER_INSTR_PROGRESS) {
          assert(old_def != NULL);
          if (new_def->parent_instr->block != instr->block)
             preserved = nir_metadata_none;
@@ -1901,6 +1901,9 @@ nir_function_impl_lower_instructions(nir_function_impl *impl,
             list_replace(&old_if_uses, &old_def->if_uses);
          }
          iter = nir_after_instr(instr);
+
+         if (new_def == NIR_LOWER_INSTR_PROGRESS)
+            progress = true;
       }
    }
 
