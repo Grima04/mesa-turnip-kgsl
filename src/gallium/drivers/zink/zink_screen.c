@@ -165,8 +165,10 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return screen->props.limits.minUniformBufferOffsetAlignment;
 
+#if 0 /* TODO: Enable me */
    case PIPE_CAP_QUERY_TIMESTAMP:
       return 1;
+#endif
 
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return screen->props.limits.minMemoryMapAlignment;
