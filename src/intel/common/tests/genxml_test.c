@@ -90,6 +90,41 @@ test_struct(struct gen_spec *spec) {
    }
 }
 
+static void
+test_two_levels(struct gen_spec *spec) {
+   struct GEN9_STRUCT_TWO_LEVELS test;
+
+   for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 8; j++) {
+         test.byte[i][j] = (i * 10 + j) % 256;
+      }
+   }
+
+   uint32_t dw[GEN9_STRUCT_TWO_LEVELS_length];
+   GEN9_STRUCT_TWO_LEVELS_pack(NULL, dw, &test);
+
+   struct gen_group *group;
+   group = gen_spec_find_struct(spec, "STRUCT_TWO_LEVELS");
+
+   assert(group != NULL);
+
+   if (!quiet) {
+      printf("\nSTRUCT_TWO_LEVELS\n");
+      gen_print_group(stdout, group, 0, dw, 0, false);
+   }
+
+   struct gen_field_iterator iter;
+   gen_field_iterator_init(&iter, group, dw, 0, false);
+
+   while (gen_field_iterator_next(&iter)) {
+      int i, j;
+
+      assert(sscanf(iter.name, "byte[%d][%d]", &i, &j) == 2);
+      uint8_t number = iter.raw_value;
+      assert(number == test.byte[i][j]);
+   }
+}
+
 int main(int argc, char **argv)
 {
    struct gen_spec *spec = gen_spec_load_filename(GENXML_PATH);
@@ -98,6 +133,7 @@ int main(int argc, char **argv)
       quiet = true;
 
    test_struct(spec);
+   test_two_levels(spec);
 
    return 0;
 }

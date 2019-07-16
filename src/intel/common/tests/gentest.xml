@@ -9,4 +9,12 @@
     </group>
   </struct>
 
+  <struct name="STRUCT_TWO_LEVELS" length="8">
+    <group count="4" start="0" size="64">
+       <group count="8" start="0" size="8">
+          <field name="byte" start="0" end="7" type="uint"/>
+       </group>
+    </group>
+  </struct>
+
 </genxml>
