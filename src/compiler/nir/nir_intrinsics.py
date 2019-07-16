@@ -785,3 +785,12 @@ load("raw_output_pan", 0, [], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { render_target }
 # BASE = sample index
 load("tlb_color_v3d", 1, [BASE, COMPONENT], [])
+
+# V3D-specific instrinc for per-sample tile buffer color writes.
+#
+# The driver backend needs to identify per-sample color writes and emit
+# specific code for them.
+#
+# src[] = { value, render_target }
+# BASE = sample index
+store("tlb_sample_color_v3d", 2, [BASE, COMPONENT, TYPE], [])
