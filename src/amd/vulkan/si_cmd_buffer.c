@@ -264,9 +264,6 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			/* Logical CUs 16 - 31 */
 			radeon_set_sh_reg(cs, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
 					  S_00B404_CU_EN(0xffff));
-			radeon_set_sh_reg(cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-					  S_00B204_CU_EN(0xffff) |
-					  S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0));
 			radeon_set_sh_reg(cs, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
 					  S_00B104_CU_EN(0xffff));
 			radeon_set_sh_reg(cs, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
@@ -291,28 +288,55 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 					       S_028A44_ES_VERTS_PER_SUBGRP(64) |
 					       S_028A44_GS_PRIMS_PER_SUBGRP(4));
 		}
-		radeon_set_sh_reg(cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-				  S_00B21C_CU_EN(0xffff) | S_00B21C_WAVE_LIMIT(0x3F));
 
-		if (physical_device->rad_info.num_good_cu_per_sh <= 4) {
+		/* Compute LATE_ALLOC_VS.LIMIT. */
+		unsigned num_cu_per_sh = physical_device->rad_info.num_good_cu_per_sh;
+		unsigned late_alloc_limit; /* The limit is per SH. */
+
+		if (physical_device->rad_info.family == CHIP_KABINI) {
+			late_alloc_limit = 0; /* Potential hang on Kabini. */
+		} else if (num_cu_per_sh <= 4) {
 			/* Too few available compute units per SH. Disallowing
-			 * VS to run on CU0 could hurt us more than late VS
+			 * VS to run on one CU could hurt us more than late VS
 			 * allocation would help.
 			 *
-			 * LATE_ALLOC_VS = 2 is the highest safe number.
+			 * 2 is the highest safe number that allows us to keep
+			 * all CUs enabled.
 			 */
-			radeon_set_sh_reg(cs, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-					  S_00B118_CU_EN(0xffff) | S_00B118_WAVE_LIMIT(0x3F) );
-			radeon_set_sh_reg(cs, R_00B11C_SPI_SHADER_LATE_ALLOC_VS, S_00B11C_LIMIT(2));
+			late_alloc_limit = 2;
 		} else {
-			/* Set LATE_ALLOC_VS == 31. It should be less than
-			 * the number of scratch waves. Limitations:
-			 * - VS can't execute on CU0.
-			 * - If HS writes outputs to LDS, LS can't execute on CU0.
+			/* This is a good initial value, allowing 1 late_alloc
+			 * wave per SIMD on num_cu - 2.
 			 */
-			radeon_set_sh_reg(cs, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-					  S_00B118_CU_EN(0xfffe) | S_00B118_WAVE_LIMIT(0x3F));
-			radeon_set_sh_reg(cs, R_00B11C_SPI_SHADER_LATE_ALLOC_VS, S_00B11C_LIMIT(31));
+			late_alloc_limit = (num_cu_per_sh - 2) * 4;
+		}
+
+		unsigned cu_mask_vs = 0xffff;
+		unsigned cu_mask_gs = 0xffff;
+
+		if (late_alloc_limit > 2) {
+			if (physical_device->rad_info.chip_class >= GFX10) {
+				/* CU2 & CU3 disabled because of the dual CU design */
+				cu_mask_vs = 0xfff3;
+				cu_mask_gs = 0xfff3; /* NGG only */
+			} else {
+				cu_mask_vs = 0xfffe; /* 1 CU disabled */
+			}
+		}
+
+		radeon_set_sh_reg(cs, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
+				  S_00B118_CU_EN(cu_mask_vs) |
+				  S_00B118_WAVE_LIMIT(0x3F));
+		radeon_set_sh_reg(cs, R_00B11C_SPI_SHADER_LATE_ALLOC_VS,
+				  S_00B11C_LIMIT(late_alloc_limit));
+
+		radeon_set_sh_reg(cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+				  S_00B21C_CU_EN(cu_mask_gs) | S_00B21C_WAVE_LIMIT(0x3F));
+
+		if (physical_device->rad_info.chip_class >= GFX10) {
+			radeon_set_sh_reg(cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+					  S_00B204_CU_EN(0xffff) |
+					  S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit));
 		}
 
 		radeon_set_sh_reg(cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
