@@ -31,11 +31,13 @@
 #include "pipe/p_state.h"
 
 #include "util/slab.h"
+#include "util/list.h"
 
 #include <vulkan/vulkan.h>
 
 struct blitter_context;
 struct primconvert_context;
+struct list_head;
 
 struct zink_blend_state;
 struct zink_depth_stencil_alpha_state;
@@ -106,6 +108,9 @@ struct zink_context {
    float blend_constants[4];
 
    struct pipe_stencil_ref stencil_ref;
+
+   struct list_head active_queries;
+   bool queries_disabled;
 };
 
 static inline struct zink_context *

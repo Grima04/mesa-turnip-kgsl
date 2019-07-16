@@ -3,6 +3,7 @@
 #include "zink_context.h"
 #include "zink_fence.h"
 #include "zink_framebuffer.h"
+#include "zink_query.h"
 #include "zink_render_pass.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
@@ -58,11 +59,17 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
    if (vkBeginCommandBuffer(batch->cmdbuf, &cbbi) != VK_SUCCESS)
       debug_printf("vkBeginCommandBuffer failed\n");
+
+   if (!ctx->queries_disabled)
+      zink_resume_queries(ctx, batch);
 }
 
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
+   if (!ctx->queries_disabled)
+      zink_suspend_queries(ctx, batch);
+
    if (vkEndCommandBuffer(batch->cmdbuf) != VK_SUCCESS) {
       debug_printf("vkEndCommandBuffer failed\n");
       return;
