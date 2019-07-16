@@ -2809,12 +2809,12 @@ static LLVMValueRef
 visit_first_invocation(struct ac_nir_context *ctx)
 {
 	LLVMValueRef active_set = ac_build_ballot(&ctx->ac, ctx->ac.i32_1);
+	const char *intr = ctx->ac.wave_size == 32 ? "llvm.cttz.i32" : "llvm.cttz.i64";
 
 	/* The second argument is whether cttz(0) should be defined, but we do not care. */
 	LLVMValueRef args[] = {active_set, ctx->ac.i1false};
-	LLVMValueRef result =  ac_build_intrinsic(&ctx->ac,
-	                                          "llvm.cttz.i64",
-	                                          ctx->ac.i64, args, 2,
+	LLVMValueRef result =  ac_build_intrinsic(&ctx->ac, intr,
+	                                          ctx->ac.iN_wavemask, args, 2,
 	                                          AC_FUNC_ATTR_NOUNWIND |
 	                                          AC_FUNC_ATTR_READNONE);
 

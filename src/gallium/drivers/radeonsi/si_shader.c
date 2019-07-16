@@ -2178,8 +2178,12 @@ void si_load_system_value(struct si_shader_context *ctx,
 	case TGSI_SEMANTIC_SUBGROUP_EQ_MASK:
 	{
 		LLVMValueRef id = ac_get_thread_id(&ctx->ac);
-		id = LLVMBuildZExt(ctx->ac.builder, id, ctx->i64, "");
-		value = LLVMBuildShl(ctx->ac.builder, LLVMConstInt(ctx->i64, 1, 0), id, "");
+		if (ctx->ac.wave_size == 64)
+			id = LLVMBuildZExt(ctx->ac.builder, id, ctx->i64, "");
+		value = LLVMBuildShl(ctx->ac.builder,
+				     LLVMConstInt(ctx->ac.iN_wavemask, 1, 0), id, "");
+		if (ctx->ac.wave_size == 32)
+			value = LLVMBuildZExt(ctx->ac.builder, value, ctx->i64, "");
 		value = LLVMBuildBitCast(ctx->ac.builder, value, ctx->v2i32, "");
 		break;
 	}
@@ -2193,16 +2197,19 @@ void si_load_system_value(struct si_shader_context *ctx,
 		if (decl->Semantic.Name == TGSI_SEMANTIC_SUBGROUP_GT_MASK ||
 		    decl->Semantic.Name == TGSI_SEMANTIC_SUBGROUP_LE_MASK) {
 			/* All bits set except LSB */
-			value = LLVMConstInt(ctx->i64, -2, 0);
+			value = LLVMConstInt(ctx->ac.iN_wavemask, -2, 0);
 		} else {
 			/* All bits set */
-			value = LLVMConstInt(ctx->i64, -1, 0);
+			value = LLVMConstInt(ctx->ac.iN_wavemask, -1, 0);
 		}
-		id = LLVMBuildZExt(ctx->ac.builder, id, ctx->i64, "");
+		if (ctx->ac.wave_size == 64)
+			id = LLVMBuildZExt(ctx->ac.builder, id, ctx->i64, "");
 		value = LLVMBuildShl(ctx->ac.builder, value, id, "");
 		if (decl->Semantic.Name == TGSI_SEMANTIC_SUBGROUP_LE_MASK ||
 		    decl->Semantic.Name == TGSI_SEMANTIC_SUBGROUP_LT_MASK)
 			value = LLVMBuildNot(ctx->ac.builder, value, "");
+		if (ctx->ac.wave_size == 32)
+			value = LLVMBuildZExt(ctx->ac.builder, value, ctx->i64, "");
 		value = LLVMBuildBitCast(ctx->ac.builder, value, ctx->v2i32, "");
 		break;
 	}
@@ -4186,10 +4193,15 @@ static void ballot_emit(
 
 	tmp = lp_build_emit_fetch(bld_base, emit_data->inst, 0, TGSI_CHAN_X);
 	tmp = ac_build_ballot(&ctx->ac, tmp);
-	tmp = LLVMBuildBitCast(builder, tmp, ctx->v2i32, "");
 
-	emit_data->output[0] = LLVMBuildExtractElement(builder, tmp, ctx->i32_0, "");
-	emit_data->output[1] = LLVMBuildExtractElement(builder, tmp, ctx->i32_1, "");
+	emit_data->output[0] = LLVMBuildTrunc(builder, tmp, ctx->i32, "");
+
+	if (ctx->ac.wave_size == 32) {
+		emit_data->output[1] = ctx->i32_0;
+	} else {
+		tmp = LLVMBuildLShr(builder, tmp, LLVMConstInt(ctx->i64, 32, 0), "");
+		emit_data->output[1] = LLVMBuildTrunc(builder, tmp, ctx->i32, "");
+	}
 }
 
 static void read_lane_emit(

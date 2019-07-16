@@ -92,6 +92,7 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->v3f32 = LLVMVectorType(ctx->f32, 3);
 	ctx->v4f32 = LLVMVectorType(ctx->f32, 4);
 	ctx->v8i32 = LLVMVectorType(ctx->i32, 8);
+	ctx->iN_wavemask = LLVMIntTypeInContext(ctx->context, ctx->wave_size);
 
 	ctx->i8_0 = LLVMConstInt(ctx->i8, 0, false);
 	ctx->i8_1 = LLVMConstInt(ctx->i8, 1, false);
@@ -447,7 +448,16 @@ LLVMValueRef
 ac_build_ballot(struct ac_llvm_context *ctx,
 		LLVMValueRef value)
 {
-	const char *name = HAVE_LLVM >= 0x900 ? "llvm.amdgcn.icmp.i64.i32" : "llvm.amdgcn.icmp.i32";
+	const char *name;
+
+	if (HAVE_LLVM >= 0x900) {
+		if (ctx->wave_size == 64)
+			name = "llvm.amdgcn.icmp.i64.i32";
+		else
+			name = "llvm.amdgcn.icmp.i32.i32";
+	} else {
+		name = "llvm.amdgcn.icmp.i32";
+	}
 	LLVMValueRef args[3] = {
 		value,
 		ctx->i32_0,
@@ -461,8 +471,7 @@ ac_build_ballot(struct ac_llvm_context *ctx,
 
 	args[0] = ac_to_integer(ctx, args[0]);
 
-	return ac_build_intrinsic(ctx, name,
-				  ctx->i64, args, 3,
+	return ac_build_intrinsic(ctx, name, ctx->iN_wavemask, args, 3,
 				  AC_FUNC_ATTR_NOUNWIND |
 				  AC_FUNC_ATTR_READNONE |
 				  AC_FUNC_ATTR_CONVERGENT);
@@ -498,7 +507,7 @@ ac_build_vote_any(struct ac_llvm_context *ctx, LLVMValueRef value)
 {
 	LLVMValueRef vote_set = ac_build_ballot(ctx, value);
 	return LLVMBuildICmp(ctx->builder, LLVMIntNE, vote_set,
-			     LLVMConstInt(ctx->i64, 0, 0), "");
+			     LLVMConstInt(ctx->iN_wavemask, 0, 0), "");
 }
 
 LLVMValueRef
@@ -511,7 +520,7 @@ ac_build_vote_eq(struct ac_llvm_context *ctx, LLVMValueRef value)
 					 vote_set, active_set, "");
 	LLVMValueRef none = LLVMBuildICmp(ctx->builder, LLVMIntEQ,
 					  vote_set,
-					  LLVMConstInt(ctx->i64, 0, 0), "");
+					  LLVMConstInt(ctx->iN_wavemask, 0, 0), "");
 	return LLVMBuildOr(ctx->builder, all, none, "");
 }
 
@@ -3848,6 +3857,11 @@ ac_build_writelane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef v
 LLVMValueRef
 ac_build_mbcnt(struct ac_llvm_context *ctx, LLVMValueRef mask)
 {
+	if (ctx->wave_size == 32) {
+		return ac_build_intrinsic(ctx, "llvm.amdgcn.mbcnt.lo", ctx->i32,
+					  (LLVMValueRef []) { mask, ctx->i32_0 },
+					  2, AC_FUNC_ATTR_READNONE);
+	}
 	LLVMValueRef mask_vec = LLVMBuildBitCast(ctx->builder, mask,
 						 LLVMVectorType(ctx->i32, 2),
 						 "");

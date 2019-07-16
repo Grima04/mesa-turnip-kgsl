@@ -74,6 +74,7 @@ struct ac_llvm_context {
 	LLVMTypeRef v3f32;
 	LLVMTypeRef v4f32;
 	LLVMTypeRef v8i32;
+	LLVMTypeRef iN_wavemask;
 
 	LLVMValueRef i8_0;
 	LLVMValueRef i8_1;
