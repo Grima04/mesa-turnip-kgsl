@@ -34,6 +34,7 @@
 #include "util/hash_table.h"
 #include "util/set.h"
 #include "iris_context.h"
+#include "compiler/nir/nir.h"
 
 /**
  * Disable auxiliary buffers if a renderbuffer is also bound as a texture
@@ -177,6 +178,11 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                  bool *draw_aux_buffer_disabled)
 {
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+   struct iris_screen *screen = (void *) ice->ctx.screen;
+   struct gen_device_info *devinfo = &screen->devinfo;
+   struct iris_uncompiled_shader *ish =
+      ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
+   const nir_shader *nir = ish->nir;
 
    if (ice->state.dirty & IRIS_DIRTY_DEPTH_BUFFER) {
       struct pipe_surface *zs_surf = cso_fb->zsbuf;
@@ -197,6 +203,21 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
 
          if (s_res) {
             iris_cache_flush_for_depth(batch, s_res->bo);
+         }
+      }
+   }
+
+   if (devinfo->gen == 8 && nir->info.outputs_read != 0) {
+      for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
+         if (cso_fb->cbufs[i]) {
+            struct iris_surface *surf = (void *) cso_fb->cbufs[i];
+            struct iris_resource *res = (void *) cso_fb->cbufs[i]->texture;
+
+            iris_resource_prepare_texture(ice, batch, res, surf->view.format,
+                                          surf->view.base_level, 1,
+                                          surf->view.base_array_layer,
+                                          surf->view.array_len,
+                                          0);
          }
       }
    }

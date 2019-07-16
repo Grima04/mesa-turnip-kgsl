@@ -1735,18 +1735,82 @@ alloc_surface_states(struct u_upload_mgr *mgr,
    return map;
 }
 
+#if GEN_GEN == 8
+/**
+ * Return an ISL surface for use with non-coherent render target reads.
+ *
+ * In a few complex cases, we can't use the SURFACE_STATE for normal render
+ * target writes.  We need to make a separate one for sampling which refers
+ * to the single slice of the texture being read.
+ */
+static void
+get_rt_read_isl_surf(const struct gen_device_info *devinfo,
+                     struct iris_resource *res,
+                     enum pipe_texture_target target,
+                     struct isl_view *view,
+                     uint32_t *tile_x_sa,
+                     uint32_t *tile_y_sa,
+                     struct isl_surf *surf)
+{
+
+   *surf = res->surf;
+
+   const enum isl_dim_layout dim_layout =
+      iris_get_isl_dim_layout(devinfo, res->surf.tiling, target);
+
+   surf->dim = target_to_isl_surf_dim(target);
+
+   if (surf->dim_layout == dim_layout)
+      return;
+
+   /* The layout of the specified texture target is not compatible with the
+    * actual layout of the miptree structure in memory -- You're entering
+    * dangerous territory, this can only possibly work if you only intended
+    * to access a single level and slice of the texture, and the hardware
+    * supports the tile offset feature in order to allow non-tile-aligned
+    * base offsets, since we'll have to point the hardware to the first
+    * texel of the level instead of relying on the usual base level/layer
+    * controls.
+    */
+   assert(view->levels == 1 && view->array_len == 1);
+   assert(*tile_x_sa == 0 && *tile_y_sa == 0);
+
+   res->offset += iris_resource_get_tile_offsets(res, view->base_level,
+                                            view->base_array_layer,
+                                            tile_x_sa, tile_y_sa);
+   const unsigned l = view->base_level;
+
+   surf->logical_level0_px.width = minify(surf->logical_level0_px.width, l);
+   surf->logical_level0_px.height = surf->dim <= ISL_SURF_DIM_1D ? 1 :
+      minify(surf->logical_level0_px.height, l);
+   surf->logical_level0_px.depth = surf->dim <= ISL_SURF_DIM_2D ? 1 :
+      minify(surf->logical_level0_px.depth, l);
+
+   surf->logical_level0_px.array_len = 1;
+   surf->levels = 1;
+   surf->dim_layout = dim_layout;
+
+   view->base_level = 0;
+   view->base_array_layer = 0;
+}
+#endif
+
 static void
 fill_surface_state(struct isl_device *isl_dev,
                    void *map,
                    struct iris_resource *res,
                    struct isl_view *view,
-                   unsigned aux_usage)
+                   unsigned aux_usage,
+                   uint32_t tile_x_sa,
+                   uint32_t tile_y_sa)
 {
    struct isl_surf_fill_state_info f = {
       .surf = &res->surf,
       .view = view,
       .mocs = mocs(res->bo),
       .address = res->bo->gtt_offset + res->offset,
+      .x_offset_sa = tile_x_sa,
+      .y_offset_sa = tile_y_sa,
    };
 
    assert(!iris_resource_unfinished_aux_import(res));
@@ -1852,7 +1916,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
           * surface state with HiZ.
           */
          fill_surface_state(&screen->isl_dev, map, isv->res, &isv->view,
-                            aux_usage);
+                            aux_usage, 0, 0);
 
          map += SURFACE_STATE_ALIGNMENT;
       }
@@ -1928,16 +1992,39 @@ iris_create_surface(struct pipe_context *ctx,
    psurf->u.tex.last_layer = tmpl->u.tex.last_layer;
    psurf->u.tex.level = tmpl->u.tex.level;
 
+   uint32_t array_len = tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1;
+
    struct isl_view *view = &surf->view;
    *view = (struct isl_view) {
       .format = fmt.fmt,
       .base_level = tmpl->u.tex.level,
       .levels = 1,
       .base_array_layer = tmpl->u.tex.first_layer,
-      .array_len = tmpl->u.tex.last_layer - tmpl->u.tex.first_layer + 1,
+      .array_len = array_len,
       .swizzle = ISL_SWIZZLE_IDENTITY,
       .usage = usage,
    };
+
+#if GEN_GEN == 8
+   struct iris_resource res_copy;
+   memcpy(&res_copy, res, sizeof(*res));
+
+   enum pipe_texture_target target = (tex->target == PIPE_TEXTURE_3D &&
+                                      array_len == 1) ? PIPE_TEXTURE_2D :
+                                     tex->target == PIPE_TEXTURE_1D_ARRAY ?
+                                     PIPE_TEXTURE_2D_ARRAY : tex->target;
+
+   struct isl_view *read_view = &surf->read_view;
+   *read_view = (struct isl_view) {
+      .format = fmt.fmt,
+      .base_level = tmpl->u.tex.level,
+      .levels = 1,
+      .base_array_layer = tmpl->u.tex.first_layer,
+      .array_len = array_len,
+      .swizzle = ISL_SWIZZLE_IDENTITY,
+      .usage = ISL_SURF_USAGE_TEXTURE_BIT,
+   };
+#endif
 
    surf->clear_color = res->aux.clear_color;
 
@@ -1953,6 +2040,16 @@ iris_create_surface(struct pipe_context *ctx,
    if (!unlikely(map))
       return NULL;
 
+#if GEN_GEN == 8
+   void *map_read = alloc_surface_states(ice->state.surface_uploader,
+                                         &surf->surface_state_read,
+                                         res_copy.aux.possible_usages);
+   if (!unlikely(map_read)) {
+      pipe_resource_reference(&surf->surface_state_read.res, NULL);
+      return NULL;
+   }
+#endif
+
    if (!isl_format_is_compressed(res->surf.format)) {
       if (iris_resource_unfinished_aux_import(res))
          iris_resource_finish_aux_import(&screen->base, res);
@@ -1963,10 +2060,21 @@ iris_create_surface(struct pipe_context *ctx,
       unsigned aux_modes = res->aux.possible_usages;
       while (aux_modes) {
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-
-         fill_surface_state(&screen->isl_dev, map, res, view, aux_usage);
-
+         fill_surface_state(&screen->isl_dev, map, res, view, aux_usage,
+                            0, 0);
          map += SURFACE_STATE_ALIGNMENT;
+
+#if GEN_GEN == 8
+         struct isl_surf surf;
+         uint32_t tile_x_sa = 0, tile_y_sa = 0;
+         get_rt_read_isl_surf(devinfo, &res_copy, target, read_view,
+                              &tile_x_sa, &tile_y_sa, &surf);
+         res_copy.surf = surf;
+         fill_surface_state(&screen->isl_dev, map_read, &res_copy, read_view,
+                            aux_usage, tile_x_sa, tile_y_sa);
+
+         map_read += SURFACE_STATE_ALIGNMENT;
+#endif
       }
 
       return psurf;
@@ -2162,7 +2270,8 @@ iris_set_shader_images(struct pipe_context *ctx,
                while (aux_modes) {
                   enum isl_aux_usage usage = u_bit_scan(&aux_modes);
 
-                  fill_surface_state(&screen->isl_dev, map, res, &view, usage);
+                  fill_surface_state(&screen->isl_dev, map, res, &view,
+                                     usage, 0, 0);
 
                   map += SURFACE_STATE_ALIGNMENT;
                }
@@ -2257,6 +2366,7 @@ iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
    struct iris_surface *surf = (void *) p_surf;
    pipe_resource_reference(&p_surf->texture, NULL);
    pipe_resource_reference(&surf->surface_state.res, NULL);
+   pipe_resource_reference(&surf->surface_state_read.res, NULL);
    free(surf);
 }
 
@@ -3942,7 +4052,8 @@ update_clear_value(struct iris_context *ice,
                                        state, res->aux.possible_usages);
       while (aux_modes) {
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-         fill_surface_state(&screen->isl_dev, map, res, view, aux_usage);
+         fill_surface_state(&screen->isl_dev, map, res, view,
+                            aux_usage, 0, 0);
          map += SURFACE_STATE_ALIGNMENT;
       }
    }
@@ -3959,13 +4070,19 @@ use_surface(struct iris_context *ice,
             struct iris_batch *batch,
             struct pipe_surface *p_surf,
             bool writeable,
-            enum isl_aux_usage aux_usage)
+            enum isl_aux_usage aux_usage,
+            bool is_read_surface)
 {
    struct iris_surface *surf = (void *) p_surf;
    struct iris_resource *res = (void *) p_surf->texture;
+   uint32_t offset = 0;
 
    iris_use_pinned_bo(batch, iris_resource_bo(p_surf->texture), writeable);
-   iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.res), false);
+   if (GEN_GEN == 8 && is_read_surface) {
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state_read.res), false);
+   } else {
+      iris_use_pinned_bo(batch, iris_resource_bo(surf->surface_state.res), false);
+   }
 
    if (res->aux.bo) {
       iris_use_pinned_bo(batch, res->aux.bo, writeable);
@@ -3976,11 +4093,18 @@ use_surface(struct iris_context *ice,
                  sizeof(surf->clear_color)) != 0) {
          update_clear_value(ice, batch, res, &surf->surface_state,
                             res->aux.possible_usages, &surf->view);
+         if (GEN_GEN == 8) {
+            update_clear_value(ice, batch, res, &surf->surface_state_read,
+                               res->aux.possible_usages, &surf->read_view);
+         }
          surf->clear_color = res->aux.clear_color;
       }
    }
 
-   return surf->surface_state.offset +
+   offset = (GEN_GEN == 8 && is_read_surface) ? surf->surface_state_read.offset
+                                              : surf->surface_state.offset;
+
+   return offset +
           surf_state_offset_for_aux(res, res->aux.possible_usages, aux_usage);
 }
 
@@ -4111,7 +4235,7 @@ iris_populate_binding_table(struct iris_context *ice,
             uint32_t addr;
             if (cso_fb->cbufs[i]) {
                addr = use_surface(ice, batch, cso_fb->cbufs[i], true,
-                                  ice->state.draw_aux_usage[i]);
+                                  ice->state.draw_aux_usage[i], false);
             } else {
                addr = use_null_fb_surface(batch, ice);
             }
@@ -4128,6 +4252,16 @@ iris_populate_binding_table(struct iris_context *ice,
    for (int index = 0; index < bt->sizes[group]; index++) \
       if (iris_group_index_to_bti(bt, group, index) != \
           IRIS_SURFACE_NOT_USED)
+
+   foreach_surface_used(i, IRIS_SURFACE_GROUP_RENDER_TARGET_READ) {
+      struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
+      uint32_t addr;
+      if (cso_fb->cbufs[i]) {
+         addr = use_surface(ice, batch, cso_fb->cbufs[i],
+                            true, ice->state.draw_aux_usage[i], true);
+         push_bt_entry(addr);
+      }
+   }
 
    foreach_surface_used(i, IRIS_SURFACE_GROUP_TEXTURE) {
       struct iris_sampler_view *view = shs->textures[i];
