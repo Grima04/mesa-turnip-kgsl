@@ -64,3 +64,33 @@ if install_intel_gpu_tests
     )
   endforeach
 endif
+
+if with_tests
+  gentest_xml = files('tests/gentest.xml')
+  _name = 'gentest_pack.h'
+  gentest_pack = custom_target(
+    _name,
+    input : [gen_pack_header_py, gentest_xml],
+    output : _name,
+    command : [prog_python, '@INPUT@'],
+    capture : true,
+  )
+
+  genxml_path = join_paths(meson.source_root(),
+                           '@0@'.format(gentest_xml[0]))
+
+  test(
+    'genxml_test',
+    executable(
+      'genxml_test',
+      ['tests/genxml_test.c', gentest_pack],
+      include_directories : [inc_common, inc_intel],
+      link_with : [libintel_common, libmesa_util],
+      c_args : [
+        '-DGENXML_PATH="@0@"'.format(genxml_path)
+      ],
+    ),
+    args : ['-quiet'],
+    suite : ['intel'],
+  )
+endif
