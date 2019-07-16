@@ -649,23 +649,16 @@ gen_spec_load(const struct gen_device_info *devinfo)
 }
 
 struct gen_spec *
-gen_spec_load_from_path(const struct gen_device_info *devinfo,
-                        const char *path)
+gen_spec_load_filename(const char *filename)
 {
    struct parser_context ctx;
-   size_t len, filename_len = strlen(path) + 20;
-   char *filename = malloc(filename_len);
-   void *buf;
    FILE *input;
-
-   len = snprintf(filename, filename_len, "%s/gen%i.xml",
-                  path, devinfo_to_gen(devinfo, false));
-   assert(len < filename_len);
+   void *buf;
+   size_t len;
 
    input = fopen(filename, "r");
    if (input == NULL) {
       fprintf(stderr, "failed to open xml description\n");
-      free(filename);
       return NULL;
    }
 
@@ -675,7 +668,6 @@ gen_spec_load_from_path(const struct gen_device_info *devinfo,
    if (ctx.parser == NULL) {
       fprintf(stderr, "failed to create parser\n");
       fclose(input);
-      free(filename);
       return NULL;
    }
 
@@ -716,7 +708,6 @@ gen_spec_load_from_path(const struct gen_device_info *devinfo,
    XML_ParserFree(ctx.parser);
 
    fclose(input);
-   free(filename);
 
    /* free ctx.spec if genxml is empty */
    if (ctx.spec &&
@@ -729,6 +720,23 @@ gen_spec_load_from_path(const struct gen_device_info *devinfo,
    }
 
    return ctx.spec;
+}
+
+struct gen_spec *
+gen_spec_load_from_path(const struct gen_device_info *devinfo,
+                        const char *path)
+{
+   size_t len, filename_len = strlen(path) + 20;
+   char *filename = malloc(filename_len);
+
+   len = snprintf(filename, filename_len, "%s/gen%i.xml",
+                  path, devinfo_to_gen(devinfo, false));
+   assert(len < filename_len);
+
+   struct gen_spec *spec = gen_spec_load_filename(filename);
+   free(filename);
+
+   return spec;
 }
 
 void gen_spec_destroy(struct gen_spec *spec)
