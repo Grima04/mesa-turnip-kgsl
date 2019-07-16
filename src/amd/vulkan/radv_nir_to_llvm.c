@@ -2407,6 +2407,11 @@ scan_shader_output_decl(struct radv_shader_context *ctx,
 				ctx->shader_info->tes.outinfo.cull_dist_mask = (1 << shader->info.cull_distance_array_size) - 1;
 				ctx->shader_info->tes.outinfo.cull_dist_mask <<= shader->info.clip_distance_array_size;
 			}
+			if (stage == MESA_SHADER_GEOMETRY) {
+				ctx->shader_info->vs.outinfo.clip_dist_mask = (1 << shader->info.clip_distance_array_size) - 1;
+				ctx->shader_info->vs.outinfo.cull_dist_mask = (1 << shader->info.cull_distance_array_size) - 1;
+				ctx->shader_info->vs.outinfo.cull_dist_mask <<= shader->info.clip_distance_array_size;
+			}
 		}
 	}
 
