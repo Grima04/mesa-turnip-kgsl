@@ -262,15 +262,13 @@ etna_rs_gen_clear_surface(struct etna_context *ctx, struct etna_surface *surf,
    case 32:
       format = RS_FORMAT_A8R8G8B8;
       break;
-   default:
-      format = ETNA_NO_MATCH;
+   case 64:
+      assert(ctx->specs.halti >= 2);
+      format = RS_FORMAT_64BPP_CLEAR;
       break;
-   }
-
-   if (format == ETNA_NO_MATCH) {
-      BUG("etna_rs_gen_clear_surface: Unhandled clear fmt %s", util_format_name(surf->base.format));
-      format = RS_FORMAT_A8R8G8B8;
-      assert(0);
+   default:
+      unreachable("bpp not supported for clear by RS");
+      break;
    }
 
    /* use tiled clear if width is multiple of 16 */
