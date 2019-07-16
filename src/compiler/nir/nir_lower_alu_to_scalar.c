@@ -44,7 +44,7 @@ inst_is_vector_alu(const nir_instr *instr, const void *_state)
    assert(alu->dest.dest.is_ssa);
    assert(alu->src[0].src.is_ssa);
    return alu->dest.dest.ssa.num_components > 1 ||
-          alu->src[0].src.ssa->num_components > 1;
+          nir_op_infos[alu->op].input_sizes[0] > 1;
 }
 
 static void
