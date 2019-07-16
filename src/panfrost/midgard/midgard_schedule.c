@@ -527,15 +527,28 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 void
 schedule_program(compiler_context *ctx)
 {
-        /* We run RA prior to scheduling */
+        struct ra_graph *g = NULL;
+        bool spilled = false;
+        int iter_count = 10; /* max iterations */
 
-        mir_foreach_block(ctx, block) {
-                schedule_block(ctx, block);
+        do {
+                /* We would like to run RA after scheduling, but spilling can
+                 * complicate this */
+
+                mir_foreach_block(ctx, block) {
+                        schedule_block(ctx, block);
+                }
+
+                /* Pipeline registers creation is a prepass before RA */
+                mir_create_pipeline_registers(ctx);
+
+                g = allocate_registers(ctx, &spilled);
+        } while(spilled && ((iter_count--) > 0));
+
+        if (iter_count <= 0) {
+                fprintf(stderr, "panfrost: Gave up allocating registers, rendering will be incomplete\n");
+                assert(0);
         }
 
-        /* Pipeline registers creation is a prepass before RA */
-        mir_create_pipeline_registers(ctx);
-
-        struct ra_graph *g = allocate_registers(ctx);
         install_registers(ctx, g);
 }

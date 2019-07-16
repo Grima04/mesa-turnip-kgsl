@@ -186,7 +186,7 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
  * by install_registers */
 
 struct ra_graph *
-allocate_registers(compiler_context *ctx)
+allocate_registers(compiler_context *ctx, bool *spilled)
 {
         /* The number of vec4 work registers available depends on when the
          * uniforms start, so compute that first */
@@ -372,13 +372,14 @@ allocate_registers(compiler_context *ctx)
                 }
         }
 
-        if (!ra_allocate(g)) {
-                unreachable("Error allocating registers\n");
-        }
-
         /* Cleanup */
         free(live_start);
         free(live_end);
+
+        if (!ra_allocate(g)) {
+                *spilled = true;
+                return NULL;
+        }
 
         return g;
 }
