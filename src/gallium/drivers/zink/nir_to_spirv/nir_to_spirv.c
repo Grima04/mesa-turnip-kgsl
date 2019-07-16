@@ -1106,7 +1106,8 @@ static void
 emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 {
    assert(tex->op == nir_texop_tex ||
-          tex->op == nir_texop_txb);
+          tex->op == nir_texop_txb ||
+          tex->op == nir_texop_txl);
    assert(nir_alu_type_get_base_type(tex->dest_type) == nir_type_float);
    assert(tex->texture_index == tex->sampler_index);
 
