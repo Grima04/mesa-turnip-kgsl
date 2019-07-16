@@ -392,6 +392,9 @@ iris_resource_access_raw(struct iris_context *ice,
    }
 }
 
+enum isl_dim_layout iris_get_isl_dim_layout(const struct gen_device_info *devinfo,
+                                            enum isl_tiling tiling,
+                                            enum pipe_texture_target target);
 enum isl_aux_usage iris_resource_texture_aux_usage(struct iris_context *ice,
                                                    const struct iris_resource *res,
                                                    enum isl_format view_fmt,

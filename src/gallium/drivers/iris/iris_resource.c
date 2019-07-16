@@ -253,6 +253,35 @@ iris_get_depth_stencil_resources(struct pipe_resource *res,
    }
 }
 
+enum isl_dim_layout
+iris_get_isl_dim_layout(const struct gen_device_info *devinfo,
+                        enum isl_tiling tiling,
+                        enum pipe_texture_target target)
+{
+   switch (target) {
+   case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
+      return (devinfo->gen >= 9 && tiling == ISL_TILING_LINEAR ?
+              ISL_DIM_LAYOUT_GEN9_1D : ISL_DIM_LAYOUT_GEN4_2D);
+
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      return ISL_DIM_LAYOUT_GEN4_2D;
+
+   case PIPE_TEXTURE_3D:
+      return (devinfo->gen >= 9 ?
+              ISL_DIM_LAYOUT_GEN4_2D : ISL_DIM_LAYOUT_GEN4_3D);
+
+   case PIPE_MAX_TEXTURE_TYPES:
+   case PIPE_BUFFER:
+      break;
+   }
+   unreachable("invalid texture type");
+}
+
 void
 iris_resource_disable_aux(struct iris_resource *res)
 {
