@@ -218,20 +218,6 @@ typedef struct compiler_context {
         /* Constants which have been loaded, for later inlining */
         struct hash_table_u64 *ssa_constants;
 
-        /* SSA values / registers which have been aliased. Naively, these
-         * demand a fmov output; instead, we alias them in a later pass to
-         * avoid the wasted op.
-         *
-         * A note on encoding: to avoid dynamic memory management here, rather
-         * than ampping to a pointer, we map to the source index; the key
-         * itself is just the destination index. */
-
-        struct hash_table_u64 *ssa_to_alias;
-        struct set *leftover_ssa_to_alias;
-
-        /* Actual SSA-to-register for RA */
-        struct hash_table_u64 *ssa_to_register;
-
         /* Mapping of hashes computed from NIR indices to the sequential temp indices ultimately used in MIR */
         struct hash_table_u64 *hash_to_temp;
         int temp_count;

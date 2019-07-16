@@ -518,26 +518,6 @@ optimise_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_opt_dce);
 }
 
-/* Front-half of aliasing the SSA slots, merely by inserting the flag in the
- * appropriate hash table. Intentional off-by-one to avoid confusing NULL with
- * r0. See the comments in compiler_context */
-
-static void
-alias_ssa(compiler_context *ctx, int dest, int src)
-{
-        _mesa_hash_table_u64_insert(ctx->ssa_to_alias, dest + 1, (void *) ((uintptr_t) src + 1));
-        _mesa_set_add(ctx->leftover_ssa_to_alias, (void *) (uintptr_t) (dest + 1));
-}
-
-/* ...or undo it, after which the original index will be used (dummy move should be emitted alongside this) */
-
-static void
-unalias_ssa(compiler_context *ctx, int dest)
-{
-        _mesa_hash_table_u64_remove(ctx->ssa_to_alias, dest + 1);
-        /* TODO: Remove from leftover or no? */
-}
-
 /* Do not actually emit a load; instead, cache the constant for inlining */
 
 static void
@@ -1555,11 +1535,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         int reg = ctx->texture_op_count & 1;
         int in_reg = reg, out_reg = reg;
 
-        /* Make room for the reg */
-
-        if (ctx->texture_index[reg] > -1)
-                unalias_ssa(ctx, ctx->texture_index[reg]);
-
         int texture_index = instr->texture_index;
         int sampler_index = texture_index;
 
@@ -1990,32 +1965,6 @@ embedded_to_inline_constant(compiler_context *ctx)
         }
 }
 
-/* Map normal SSA sources to other SSA sources / fixed registers (like
- * uniforms) */
-
-static void
-map_ssa_to_alias(compiler_context *ctx, int *ref)
-{
-        /* Sign is used quite deliberately for unused */
-        if (*ref < 0)
-                return;
-
-        unsigned int alias = (uintptr_t) _mesa_hash_table_u64_search(ctx->ssa_to_alias, *ref + 1);
-
-        if (alias) {
-                /* Remove entry in leftovers to avoid a redunant fmov */
-
-                struct set_entry *leftover = _mesa_set_search(ctx->leftover_ssa_to_alias, ((void *) (uintptr_t) (*ref + 1)));
-
-                if (leftover)
-                        _mesa_set_remove(ctx->leftover_ssa_to_alias, leftover);
-
-                /* Assign the alias map */
-                *ref = alias - 1;
-                return;
-        }
-}
-
 /* Basic dead code elimination on the MIR itself, which cleans up e.g. the
  * texture pipeline */
 
@@ -2212,32 +2161,6 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
-/* If there are leftovers after the below pass, emit actual fmov
- * instructions for the slow-but-correct path */
-
-static void
-emit_leftover_move(compiler_context *ctx)
-{
-        set_foreach(ctx->leftover_ssa_to_alias, leftover) {
-                int base = ((uintptr_t) leftover->key) - 1;
-                int mapped = base;
-
-                map_ssa_to_alias(ctx, &mapped);
-                EMIT(mov, mapped, blank_alu_src, base);
-        }
-}
-
-static void
-actualise_ssa_to_alias(compiler_context *ctx)
-{
-        mir_foreach_instr(ctx, ins) {
-                map_ssa_to_alias(ctx, &ins->ssa_args.src0);
-                map_ssa_to_alias(ctx, &ins->ssa_args.src1);
-        }
-
-        emit_leftover_move(ctx);
-}
-
 static void
 emit_fragment_epilogue(compiler_context *ctx)
 {
@@ -2287,9 +2210,6 @@ emit_block(compiler_context *ctx, nir_block *block)
 
         inline_alu_constants(ctx);
         embedded_to_inline_constant(ctx);
-
-        /* Perform heavylifting for aliasing */
-        actualise_ssa_to_alias(ctx);
 
         /* Append fragment shader epilogue (value writeout) */
         if (ctx->stage == MESA_SHADER_FRAGMENT) {
@@ -2503,10 +2423,8 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         /* Initialize at a global (not block) level hash tables */
 
         ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);
-        ctx->ssa_to_alias = _mesa_hash_table_u64_create(NULL);
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
         ctx->sysval_to_id = _mesa_hash_table_u64_create(NULL);
-        ctx->leftover_ssa_to_alias = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
         /* Record the varying mapping for the command stream's bookkeeping */
 
