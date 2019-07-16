@@ -496,6 +496,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
 static const char *surface_group_names[] = {
    [IRIS_SURFACE_GROUP_RENDER_TARGET]      = "render target",
+   [IRIS_SURFACE_GROUP_RENDER_TARGET_READ] = "non-coherent render target read",
    [IRIS_SURFACE_GROUP_CS_WORK_GROUPS]     = "CS work groups",
    [IRIS_SURFACE_GROUP_TEXTURE]            = "texture",
    [IRIS_SURFACE_GROUP_UBO]                = "ubo",
@@ -642,7 +643,8 @@ skip_compacting_binding_tables(void)
  * Set up the binding table indices and apply to the shader.
  */
 static void
-iris_setup_binding_table(struct nir_shader *nir,
+iris_setup_binding_table(const struct gen_device_info *devinfo,
+                         struct nir_shader *nir,
                          struct iris_binding_table *bt,
                          unsigned num_render_targets,
                          unsigned num_system_values,
@@ -660,6 +662,15 @@ iris_setup_binding_table(struct nir_shader *nir,
       /* All render targets used. */
       bt->used_mask[IRIS_SURFACE_GROUP_RENDER_TARGET] =
          BITFIELD64_MASK(num_render_targets);
+
+      /* Setup render target read surface group inorder to support non-coherent
+       * framebuffer fetch on Gen8
+       */
+      if (devinfo->gen == 8 && info->outputs_read) {
+         bt->sizes[IRIS_SURFACE_GROUP_RENDER_TARGET_READ] = num_render_targets;
+         bt->used_mask[IRIS_SURFACE_GROUP_RENDER_TARGET_READ] =
+            BITFIELD64_MASK(num_render_targets);
+      }
    } else if (info->stage == MESA_SHADER_COMPUTE) {
       bt->sizes[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
    }
@@ -699,6 +710,13 @@ iris_setup_binding_table(struct nir_shader *nir,
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_num_work_groups:
             bt->used_mask[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
+            break;
+
+         case nir_intrinsic_load_output:
+            if (devinfo->gen == 8) {
+               mark_used_with_src(bt, &intrin->src[0],
+                                  IRIS_SURFACE_GROUP_RENDER_TARGET_READ);
+            }
             break;
 
          case nir_intrinsic_image_size:
@@ -821,6 +839,13 @@ iris_setup_binding_table(struct nir_shader *nir,
                                  IRIS_SURFACE_GROUP_SSBO);
             break;
 
+         case nir_intrinsic_load_output:
+            if (devinfo->gen == 8) {
+               rewrite_src_with_bti(&b, bt, instr, &intrin->src[0],
+                                    IRIS_SURFACE_GROUP_RENDER_TARGET_READ);
+            }
+            break;
+
          case nir_intrinsic_get_buffer_size:
          case nir_intrinsic_ssbo_atomic_add:
          case nir_intrinsic_ssbo_atomic_imin:
@@ -923,7 +948,7 @@ iris_compile_vs(struct iris_context *ice,
                        &num_system_values, &num_cbufs);
 
    struct iris_binding_table bt;
-   iris_setup_binding_table(nir, &bt, /* num_render_targets */ 0,
+   iris_setup_binding_table(devinfo, nir, &bt, /* num_render_targets */ 0,
                             num_system_values, num_cbufs);
 
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
@@ -1095,6 +1120,7 @@ iris_compile_tcs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_tcs_prog_data);
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    enum brw_param_builtin *system_values = NULL;
    unsigned num_system_values = 0;
    unsigned num_cbufs = 0;
@@ -1108,7 +1134,7 @@ iris_compile_tcs(struct iris_context *ice,
 
       iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                           &num_system_values, &num_cbufs);
-      iris_setup_binding_table(nir, &bt, /* num_render_targets */ 0,
+      iris_setup_binding_table(devinfo, nir, &bt, /* num_render_targets */ 0,
                                num_system_values, num_cbufs);
       brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
    } else {
@@ -1241,6 +1267,7 @@ iris_compile_tes(struct iris_context *ice,
    struct brw_vue_prog_data *vue_prog_data = &tes_prog_data->base;
    struct brw_stage_prog_data *prog_data = &vue_prog_data->base;
    enum brw_param_builtin *system_values;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    unsigned num_system_values;
    unsigned num_cbufs;
 
@@ -1259,7 +1286,7 @@ iris_compile_tes(struct iris_context *ice,
                        &num_system_values, &num_cbufs);
 
    struct iris_binding_table bt;
-   iris_setup_binding_table(nir, &bt, /* num_render_targets */ 0,
+   iris_setup_binding_table(devinfo, nir, &bt, /* num_render_targets */ 0,
                             num_system_values, num_cbufs);
 
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
@@ -1379,7 +1406,7 @@ iris_compile_gs(struct iris_context *ice,
                        &num_system_values, &num_cbufs);
 
    struct iris_binding_table bt;
-   iris_setup_binding_table(nir, &bt, /* num_render_targets */ 0,
+   iris_setup_binding_table(devinfo, nir, &bt, /* num_render_targets */ 0,
                             num_system_values, num_cbufs);
 
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
@@ -1474,6 +1501,7 @@ iris_compile_fs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_wm_prog_data);
    struct brw_stage_prog_data *prog_data = &fs_prog_data->base;
    enum brw_param_builtin *system_values;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    unsigned num_system_values;
    unsigned num_cbufs;
 
@@ -1484,8 +1512,15 @@ iris_compile_fs(struct iris_context *ice,
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                        &num_system_values, &num_cbufs);
 
+   /* Lower output variables to load_output intrinsics before setting up
+    * binding tables, so iris_setup_binding_table can map any load_output
+    * intrinsics to IRIS_SURFACE_GROUP_RENDER_TARGET_READ on Gen8 for
+    * non-coherent framebuffer fetches.
+    */
+   brw_nir_lower_fs_outputs(nir);
+
    struct iris_binding_table bt;
-   iris_setup_binding_table(nir, &bt, MAX2(key->nr_color_regions, 1),
+   iris_setup_binding_table(devinfo, nir, &bt, MAX2(key->nr_color_regions, 1),
                             num_system_values, num_cbufs);
 
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);
@@ -1723,6 +1758,7 @@ iris_compile_cs(struct iris_context *ice,
       rzalloc(mem_ctx, struct brw_cs_prog_data);
    struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
    enum brw_param_builtin *system_values;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    unsigned num_system_values;
    unsigned num_cbufs;
 
@@ -1732,7 +1768,7 @@ iris_compile_cs(struct iris_context *ice,
                        &num_system_values, &num_cbufs);
 
    struct iris_binding_table bt;
-   iris_setup_binding_table(nir, &bt, /* num_render_targets */ 0,
+   iris_setup_binding_table(devinfo, nir, &bt, /* num_render_targets */ 0,
                             num_system_values, num_cbufs);
 
    char *error_str = NULL;
