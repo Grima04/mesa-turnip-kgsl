@@ -997,6 +997,7 @@ static void si_delete_compute_state(struct pipe_context *ctx, void* state){
 	if (program == sctx->cs_shader_state.emitted_program)
 		sctx->cs_shader_state.emitted_program = NULL;
 
+	ralloc_free(program->sel.nir);
 	si_compute_reference(&program, NULL);
 }
 
