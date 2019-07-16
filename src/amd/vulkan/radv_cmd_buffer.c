@@ -929,7 +929,7 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
 	if (mask & RADV_PREFETCH_GS) {
 		radv_emit_shader_prefetch(cmd_buffer,
 					  pipeline->shaders[MESA_SHADER_GEOMETRY]);
-		if (pipeline->gs_copy_shader)
+		if (radv_pipeline_has_gs_copy_shader(pipeline))
 			radv_emit_shader_prefetch(cmd_buffer, pipeline->gs_copy_shader);
 	}
 
@@ -1124,7 +1124,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 				   pipeline->shaders[i]->bo);
 	}
 
-	if (radv_pipeline_has_gs(pipeline) && pipeline->gs_copy_shader)
+	if (radv_pipeline_has_gs_copy_shader(pipeline))
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
 				   pipeline->gs_copy_shader->bo);
 
@@ -2362,7 +2362,7 @@ radv_emit_streamout_buffers(struct radv_cmd_buffer *cmd_buffer, uint64_t va)
 					 base_reg + loc->sgpr_idx * 4, va, false);
 	}
 
-	if (pipeline->gs_copy_shader) {
+	if (radv_pipeline_has_gs_copy_shader(pipeline)) {
 		loc = &pipeline->gs_copy_shader->info.user_sgprs_locs.shader_data[AC_UD_STREAMOUT_BUFFERS];
 		if (loc->sgpr_idx != -1) {
 			base_reg = R_00B130_SPI_SHADER_USER_DATA_VS_0;
@@ -4071,7 +4071,7 @@ static void radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned in
 		radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, index);
 
 	}
-	if (pipeline->gs_copy_shader) {
+	if (radv_pipeline_has_gs_copy_shader(pipeline)) {
 		struct radv_userdata_info *loc = &pipeline->gs_copy_shader->info.user_sgprs_locs.shader_data[AC_UD_VIEW_INDEX];
 		if (loc->sgpr_idx != -1) {
 			uint32_t base_reg = R_00B130_SPI_SHADER_USER_DATA_VS_0;

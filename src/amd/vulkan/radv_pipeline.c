@@ -120,6 +120,22 @@ bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 	return variant->info.is_ngg;
 }
 
+bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline)
+{
+	if (!radv_pipeline_has_gs(pipeline))
+		return false;
+
+	/* The GS copy shader is required if the pipeline has GS on GFX6-GFX9.
+	 * On GFX10, it might be required in rare cases if it's not possible to
+	 * enable NGG.
+	 */
+	if (radv_pipeline_has_ngg(pipeline))
+		return false;
+
+	assert(pipeline->gs_copy_shader);
+	return true;
+}
+
 static void
 radv_pipeline_destroy(struct radv_device *device,
                       struct radv_pipeline *pipeline,
@@ -2395,7 +2411,6 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 	struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
 	struct radv_shader_variant_key keys[MESA_SHADER_STAGES] = {{{{{0}}}}};
 	unsigned char hash[20], gs_copy_hash[20];
-	bool use_ngg = device->physical_device->rad_info.chip_class >= GFX10;
 
 	radv_start_feedback(pipeline_feedback);
 
@@ -2416,7 +2431,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 	gs_copy_hash[0] ^= 1;
 
 	bool found_in_application_cache = true;
-	if (modules[MESA_SHADER_GEOMETRY] && !use_ngg) {
+	if (modules[MESA_SHADER_GEOMETRY]) {
 		struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
 		radv_create_shader_variants_from_pipeline_cache(device, cache, gs_copy_hash, variants,
 		                                                &found_in_application_cache);
@@ -2567,7 +2582,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		}
 	}
 
-	if(modules[MESA_SHADER_GEOMETRY] && !use_ngg) {
+	if(modules[MESA_SHADER_GEOMETRY]) {
 		struct radv_shader_binary *gs_copy_binary = NULL;
 		if (!pipeline->gs_copy_shader) {
 			pipeline->gs_copy_shader = radv_create_gs_copy_shader(
