@@ -536,76 +536,29 @@ void virgl_init_screen_resource_functions(struct pipe_screen *screen)
     screen->resource_destroy = u_resource_destroy_vtbl;
 }
 
-static bool virgl_buffer_transfer_extend(struct pipe_context *ctx,
-                                         struct pipe_resource *resource,
-                                         unsigned usage,
-                                         const struct pipe_box *box,
-                                         const void *data)
-{
-   struct virgl_context *vctx = virgl_context(ctx);
-   struct virgl_resource *vbuf = virgl_resource(resource);
-   struct virgl_transfer dummy_trans = { 0 };
-   bool flush;
-
-   /*
-    * Attempts to short circuit the entire process of mapping and unmapping
-    * a resource if there is an existing transfer that can be extended.
-    * Pessimestically falls back if a flush is required.
-    */
-   dummy_trans.base.resource = resource;
-   dummy_trans.hw_res = vbuf->hw_res;
-   dummy_trans.base.usage = usage;
-   dummy_trans.base.box = *box;
-   dummy_trans.base.stride = vbuf->metadata.stride[0];
-   dummy_trans.base.layer_stride = vbuf->metadata.layer_stride[0];
-   dummy_trans.offset = box->x;
-
-   flush = virgl_res_needs_flush(vctx, &dummy_trans);
-   if (flush && util_ranges_intersect(&vbuf->valid_buffer_range,
-                                      box->x, box->x + box->width))
-      return false;
-
-   if (!virgl_transfer_queue_extend_buffer(&vctx->queue,
-            vbuf->hw_res, box->x, box->width, data))
-      return false;
-
-   util_range_add(&vbuf->valid_buffer_range, box->x, box->x + box->width);
-
-   return true;
-}
-
 static void virgl_buffer_subdata(struct pipe_context *pipe,
                                  struct pipe_resource *resource,
                                  unsigned usage, unsigned offset,
                                  unsigned size, const void *data)
 {
-   struct pipe_transfer *transfer;
-   uint8_t *map;
-   struct pipe_box box;
+   struct virgl_context *vctx = virgl_context(pipe);
+   struct virgl_resource *vbuf = virgl_resource(resource);
 
-   assert(!(usage & PIPE_TRANSFER_READ));
-
-   /* the write flag is implicit by the nature of buffer_subdata */
-   usage |= PIPE_TRANSFER_WRITE;
-
-   if (!(usage & PIPE_TRANSFER_MAP_DIRECTLY)) {
-      if (offset == 0 && size == resource->width0)
-         usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
-      else
-         usage |= PIPE_TRANSFER_DISCARD_RANGE;
-   }
-
-   u_box_1d(offset, size, &box);
-
-   if (usage & PIPE_TRANSFER_DISCARD_RANGE &&
-       virgl_buffer_transfer_extend(pipe, resource, usage, &box, data))
+   /* We can try virgl_transfer_queue_extend_buffer when there is no
+    * flush/readback/wait required.  Based on virgl_resource_transfer_prepare,
+    * the simplest way to make sure that is the case is to check the valid
+    * buffer range.
+    */
+   if (!util_ranges_intersect(&vbuf->valid_buffer_range,
+                              offset, offset + size) &&
+       likely(!(virgl_debug & VIRGL_DEBUG_XFER)) &&
+       virgl_transfer_queue_extend_buffer(&vctx->queue,
+                                          vbuf->hw_res, offset, size, data)) {
+      util_range_add(&vbuf->valid_buffer_range, offset, offset + size);
       return;
-
-   map = pipe->transfer_map(pipe, resource, 0, usage, &box, &transfer);
-   if (map) {
-      memcpy(map, data, size);
-      pipe_transfer_unmap(pipe, transfer);
    }
+
+   u_default_buffer_subdata(pipe, resource, usage, offset, size, data);
 }
 
 void virgl_init_context_resource_functions(struct pipe_context *ctx)
