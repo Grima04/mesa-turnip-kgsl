@@ -1131,32 +1131,21 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
 
         if (c->fs_key->swap_color_rb & (1 << rt))
                 num_components = MAX2(num_components, 3);
-
         assert(num_components != 0);
-        switch (glsl_get_base_type(var->type)) {
-        case GLSL_TYPE_UINT:
-        case GLSL_TYPE_INT:
+
+        enum glsl_base_type type = glsl_get_base_type(var->type);
+        bool is_int_format = type == GLSL_TYPE_INT || type == GLSL_TYPE_UINT;
+        bool is_32b_tlb_format = is_int_format ||
+                                 (c->fs_key->f32_color_rb & (1 << rt));
+
+        if (is_int_format) {
                 /* The F32 vs I32 distinction was dropped in 4.2. */
                 if (c->devinfo->ver < 42)
                         conf |= TLB_TYPE_I32_COLOR;
                 else
                         conf |= TLB_TYPE_F32_COLOR;
                 conf |= ((num_components - 1) << TLB_VEC_SIZE_MINUS_1_SHIFT);
-
-                inst = vir_MOV_dest(c, tlbu_reg, color[0]);
-                inst->uniform =
-                        vir_get_uniform_index(c, QUNIFORM_CONSTANT, conf);
-
-                for (int i = 1; i < num_components; i++)
-                        inst = vir_MOV_dest(c, tlb_reg, color[i]);
-                break;
-
-        default: {
-                struct qreg r = color[0];
-                struct qreg g = color[1];
-                struct qreg b = color[2];
-                struct qreg a = color[3];
-
+        } else {
                 if (c->fs_key->f32_color_rb & (1 << rt)) {
                         conf |= TLB_TYPE_F32_COLOR;
                         conf |= ((num_components - 1) <<
@@ -1169,43 +1158,44 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
                         else
                                 conf |= TLB_VEC_SIZE_2_F16;
                 }
+        }
 
-                if (c->fs_key->swap_color_rb & (1 << rt))  {
-                        r = color[2];
-                        b = color[0];
-                }
+        struct qreg r = color[0];
+        struct qreg g = color[1];
+        struct qreg b = color[2];
+        struct qreg a = color[3];
 
-                if (c->fs_key->sample_alpha_to_one)
-                        a = vir_uniform_f(c, 1.0);
+        if (c->fs_key->swap_color_rb & (1 << rt))  {
+                r = color[2];
+                b = color[0];
+        }
 
-                if (c->fs_key->f32_color_rb & (1 << rt)) {
-                        inst = vir_MOV_dest(c, tlbu_reg, r);
-                        inst->uniform =
-                                vir_get_uniform_index(c, QUNIFORM_CONSTANT,
-                                                      conf);
+        if (c->fs_key->sample_alpha_to_one)
+                a = vir_uniform_f(c, 1.0);
 
-                        if (num_components >= 2)
-                                vir_MOV_dest(c, tlb_reg, g);
-                        if (num_components >= 3)
-                                vir_MOV_dest(c, tlb_reg, b);
-                        if (num_components >= 4)
-                                vir_MOV_dest(c, tlb_reg, a);
-                } else {
-                        inst = vir_VFPACK_dest(c, tlb_reg, r, g);
-                        if (conf != ~0) {
-                                inst->dst = tlbu_reg;
-                                inst->uniform =
-                                        vir_get_uniform_index(c,
+        if (is_32b_tlb_format) {
+                inst = vir_MOV_dest(c, tlbu_reg, r);
+                inst->uniform =
+                        vir_get_uniform_index(c, QUNIFORM_CONSTANT, conf);
+
+                if (num_components >= 2)
+                        vir_MOV_dest(c, tlb_reg, g);
+                if (num_components >= 3)
+                        vir_MOV_dest(c, tlb_reg, b);
+                if (num_components >= 4)
+                        vir_MOV_dest(c, tlb_reg, a);
+        } else {
+                inst = vir_VFPACK_dest(c, tlb_reg, r, g);
+                if (conf != ~0) {
+                        inst->dst = tlbu_reg;
+                        inst->uniform = vir_get_uniform_index(c,
                                                               QUNIFORM_CONSTANT,
                                                               conf);
-                        }
-
-                        if (num_components >= 3)
-                                inst = vir_VFPACK_dest(c, tlb_reg, b, a);
                 }
-                break;
-        } /* default */
-        } /* Switch */
+
+                if (num_components >= 3)
+                        inst = vir_VFPACK_dest(c, tlb_reg, b, a);
+        }
 }
 
 static void
