@@ -656,11 +656,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 }
 
 static void
-zink_set_active_query_state(struct pipe_context *pctx, bool enable)
-{
-}
-
-static void
 zink_set_blend_color(struct pipe_context *pctx,
                      const struct pipe_blend_color *color)
 {
@@ -1410,7 +1405,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_framebuffer_state = zink_set_framebuffer_state;
    ctx->base.set_stencil_ref = zink_set_stencil_ref;
    ctx->base.set_clip_state = zink_set_clip_state;
-   ctx->base.set_active_query_state = zink_set_active_query_state;
    ctx->base.set_blend_color = zink_set_blend_color;
 
    ctx->base.set_sample_mask = zink_set_sample_mask;

@@ -150,6 +150,11 @@ zink_get_query_result(struct pipe_context *pctx,
    return TRUE;
 }
 
+static void
+zink_set_active_query_state(struct pipe_context *pctx, bool enable)
+{
+}
+
 void
 zink_context_query_init(struct pipe_context *pctx)
 {
@@ -158,4 +163,5 @@ zink_context_query_init(struct pipe_context *pctx)
    pctx->begin_query = zink_begin_query;
    pctx->end_query = zink_end_query;
    pctx->get_query_result = zink_get_query_result;
+   pctx->set_active_query_state = zink_set_active_query_state;
 }
