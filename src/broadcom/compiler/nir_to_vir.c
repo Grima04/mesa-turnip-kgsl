@@ -1121,12 +1121,12 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
         struct qreg tlbu_reg = vir_magic_reg(V3D_QPU_WADDR_TLBU);
 
         nir_variable *var = c->output_color_var[rt];
-        struct qreg *color = &c->outputs[var->data.driver_location * 4];
         int num_components = glsl_get_vector_elements(var->type);
         uint32_t conf = 0xffffff00;
         struct qinst *inst;
 
-        conf |= TLB_SAMPLE_MODE_PER_PIXEL;
+        conf |= c->msaa_per_sample_output ? TLB_SAMPLE_MODE_PER_SAMPLE :
+                                            TLB_SAMPLE_MODE_PER_PIXEL;
         conf |= (7 - rt) << TLB_RENDER_TARGET_SHIFT;
 
         if (c->fs_key->swap_color_rb & (1 << rt))
@@ -1160,41 +1160,55 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
                 }
         }
 
-        struct qreg r = color[0];
-        struct qreg g = color[1];
-        struct qreg b = color[2];
-        struct qreg a = color[3];
+        int num_samples = c->msaa_per_sample_output ? V3D_MAX_SAMPLES : 1;
+        for (int i = 0; i < num_samples; i++) {
+                struct qreg *color = c->msaa_per_sample_output ?
+                        &c->sample_colors[(rt * V3D_MAX_SAMPLES + i) * 4] :
+                        &c->outputs[var->data.driver_location * 4];
 
-        if (c->fs_key->swap_color_rb & (1 << rt))  {
-                r = color[2];
-                b = color[0];
-        }
+                struct qreg r = color[0];
+                struct qreg g = color[1];
+                struct qreg b = color[2];
+                struct qreg a = color[3];
 
-        if (c->fs_key->sample_alpha_to_one)
-                a = vir_uniform_f(c, 1.0);
-
-        if (is_32b_tlb_format) {
-                inst = vir_MOV_dest(c, tlbu_reg, r);
-                inst->uniform =
-                        vir_get_uniform_index(c, QUNIFORM_CONSTANT, conf);
-
-                if (num_components >= 2)
-                        vir_MOV_dest(c, tlb_reg, g);
-                if (num_components >= 3)
-                        vir_MOV_dest(c, tlb_reg, b);
-                if (num_components >= 4)
-                        vir_MOV_dest(c, tlb_reg, a);
-        } else {
-                inst = vir_VFPACK_dest(c, tlb_reg, r, g);
-                if (conf != ~0) {
-                        inst->dst = tlbu_reg;
-                        inst->uniform = vir_get_uniform_index(c,
-                                                              QUNIFORM_CONSTANT,
-                                                              conf);
+                if (c->fs_key->swap_color_rb & (1 << rt))  {
+                        r = color[2];
+                        b = color[0];
                 }
 
-                if (num_components >= 3)
-                        inst = vir_VFPACK_dest(c, tlb_reg, b, a);
+                if (c->fs_key->sample_alpha_to_one)
+                        a = vir_uniform_f(c, 1.0);
+
+                if (is_32b_tlb_format) {
+                        if (i == 0) {
+                                inst = vir_MOV_dest(c, tlbu_reg, r);
+                                inst->uniform =
+                                        vir_get_uniform_index(c,
+                                                              QUNIFORM_CONSTANT,
+                                                              conf);
+                        } else {
+                                inst = vir_MOV_dest(c, tlb_reg, r);
+                        }
+
+                        if (num_components >= 2)
+                                vir_MOV_dest(c, tlb_reg, g);
+                        if (num_components >= 3)
+                                vir_MOV_dest(c, tlb_reg, b);
+                        if (num_components >= 4)
+                                vir_MOV_dest(c, tlb_reg, a);
+                } else {
+                        inst = vir_VFPACK_dest(c, tlb_reg, r, g);
+                        if (conf != ~0 && i == 0) {
+                                inst->dst = tlbu_reg;
+                                inst->uniform =
+                                        vir_get_uniform_index(c,
+                                                              QUNIFORM_CONSTANT,
+                                                              conf);
+                        }
+
+                        if (num_components >= 3)
+                                inst = vir_VFPACK_dest(c, tlb_reg, b, a);
+                }
         }
 }
 
