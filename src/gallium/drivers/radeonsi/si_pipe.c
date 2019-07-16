@@ -884,11 +884,6 @@ static bool si_is_parallel_shader_compilation_finished(struct pipe_screen *scree
 						       void *shader,
 						       enum pipe_shader_type shader_type)
 {
-	if (shader_type == PIPE_SHADER_COMPUTE) {
-		struct si_compute *cs = (struct si_compute*)shader;
-
-		return util_queue_fence_is_signalled(&cs->ready);
-	}
 	struct si_shader_selector *sel = (struct si_shader_selector *)shader;
 
 	return util_queue_fence_is_signalled(&sel->ready);

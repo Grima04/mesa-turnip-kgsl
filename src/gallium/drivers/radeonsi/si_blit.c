@@ -803,9 +803,9 @@ void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
 
 		si_check_render_feedback(sctx);
 	} else if (shader_mask & (1 << PIPE_SHADER_COMPUTE)) {
-		if (sctx->cs_shader_state.program->uses_bindless_samplers)
+		if (sctx->cs_shader_state.program->sel.info.uses_bindless_samplers)
 			si_decompress_resident_textures(sctx);
-		if (sctx->cs_shader_state.program->uses_bindless_images)
+		if (sctx->cs_shader_state.program->sel.info.uses_bindless_images)
 			si_decompress_resident_images(sctx);
 	}
 }
