@@ -1848,26 +1848,34 @@ ntq_emit_load_input(struct v3d_compile *c, nir_intrinsic_instr *instr)
 }
 
 static void
-ntq_emit_store_output(struct v3d_compile *c, nir_intrinsic_instr *instr)
+ntq_emit_per_sample_color_write(struct v3d_compile *c,
+                                nir_intrinsic_instr *instr)
 {
-        /* XXX perf: Use stvpmv with uniform non-constant offsets and
-         * stvpmd with non-uniform offsets and enable
-         * PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR.
-         */
-        if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
-            unsigned offset = ((nir_intrinsic_base(instr) +
-                    nir_src_as_uint(instr->src[1])) * 4 +
-                    nir_intrinsic_component(instr));
-            for (int i = 0; i < instr->num_components; i++) {
-                    c->outputs[offset + i] =
-                            vir_MOV(c, ntq_get_src(c, instr->src[0], i));
-            }
-        } else {
-                assert(instr->num_components == 1);
+        assert(instr->intrinsic == nir_intrinsic_store_tlb_sample_color_v3d);
 
-                vir_VPM_WRITE(c,
-                              ntq_get_src(c, instr->src[0], 0),
-                              nir_intrinsic_base(instr));
+        unsigned rt = nir_src_as_uint(instr->src[1]);
+        assert(rt < V3D_MAX_DRAW_BUFFERS);
+
+        unsigned sample_idx = nir_intrinsic_base(instr);
+        assert(sample_idx < V3D_MAX_SAMPLES);
+
+        unsigned offset = (rt * V3D_MAX_SAMPLES + sample_idx) * 4;
+        for (int i = 0; i < instr->num_components; i++) {
+                c->sample_colors[offset + i] =
+                        vir_MOV(c, ntq_get_src(c, instr->src[0], i));
+        }
+}
+
+static void
+ntq_emit_color_write(struct v3d_compile *c,
+                     nir_intrinsic_instr *instr)
+{
+        unsigned offset = (nir_intrinsic_base(instr) +
+                           nir_src_as_uint(instr->src[1])) * 4 +
+                          nir_intrinsic_component(instr);
+        for (int i = 0; i < instr->num_components; i++) {
+                c->outputs[offset + i] =
+                        vir_MOV(c, ntq_get_src(c, instr->src[0], i));
         }
 }
 
@@ -2006,8 +2014,24 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_emit_load_input(c, instr);
                 break;
 
-        case nir_intrinsic_store_output:
-                ntq_emit_store_output(c, instr);
+        case nir_intrinsic_store_tlb_sample_color_v3d:
+               ntq_emit_per_sample_color_write(c, instr);
+               break;
+
+       case nir_intrinsic_store_output:
+                /* XXX perf: Use stvpmv with uniform non-constant offsets and
+                 * stvpmd with non-uniform offsets and enable
+                 * PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR.
+                 */
+                if (c->s->info.stage == MESA_SHADER_FRAGMENT) {
+                        ntq_emit_color_write(c, instr);
+                } else {
+                        assert(instr->num_components == 1);
+
+                        vir_VPM_WRITE(c,
+                                      ntq_get_src(c, instr->src[0], 0),
+                                      nir_intrinsic_base(instr));
+                }
                 break;
 
         case nir_intrinsic_image_deref_size:
