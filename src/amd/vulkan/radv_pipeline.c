@@ -4283,9 +4283,15 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	 *    stalls without this setting.
 	 *
 	 * Don't add this to CB_SHADER_MASK.
+	 *
+	 * GFX10 supports pixel shaders without exports by setting both the
+	 * color and Z formats to SPI_SHADER_ZERO. The hw will skip export
+	 * instructions if any are present.
 	 */
 	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
-	if (!blend.spi_shader_col_format) {
+	if ((pipeline->device->physical_device->rad_info.chip_class <= GFX9 ||
+	     ps->info.fs.can_discard) &&
+	    !blend.spi_shader_col_format) {
 		if (!ps->info.info.ps.writes_z &&
 		    !ps->info.info.ps.writes_stencil &&
 		    !ps->info.info.ps.writes_sample_mask)
