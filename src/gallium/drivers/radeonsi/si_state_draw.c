@@ -759,7 +759,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 				   bool primitive_restart)
 {
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
-	unsigned vgt_prim = si_conv_pipe_prim(info->mode);
+	unsigned vgt_prim = si_conv_pipe_prim(prim);
 
 	if (sctx->chip_class >= GFX10)
 		gfx10_emit_ge_cntl(sctx, num_patches);
