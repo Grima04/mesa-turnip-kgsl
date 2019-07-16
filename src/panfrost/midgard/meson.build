@@ -29,6 +29,7 @@ libpanfrost_midgard_files = files(
   'midgard_ra_pipeline.c',
   'midgard_liveness.c',
   'midgard_ops.c',
+  'mir_promote_uniforms.c',
   'cppwrap.cpp',
   'disassemble.c',
 )

@@ -345,6 +345,11 @@ mir_next_op(struct midgard_instruction *ins)
         mir_foreach_block(ctx, v_block) \
                 mir_foreach_instr_in_block(v_block, v)
 
+#define mir_foreach_instr_global_safe(ctx, v) \
+        mir_foreach_block(ctx, v_block) \
+                mir_foreach_instr_in_block_safe(v_block, v)
+
+
 
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
@@ -439,6 +444,18 @@ bool mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_inst
 bool mir_has_multiple_writes(compiler_context *ctx, int src);
 
 void mir_create_pipeline_registers(compiler_context *ctx);
+
+void
+midgard_promote_uniforms(compiler_context *ctx, unsigned pressure);
+
+void
+emit_ubo_read(
+        compiler_context *ctx,
+        unsigned dest,
+        unsigned offset,
+        nir_src *indirect_offset,
+        unsigned index);
+
 
 /* Final emission */
 

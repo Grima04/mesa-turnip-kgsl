@@ -40,6 +40,12 @@
                 op == midgard_alu_op_imov \
         )
 
+#define OP_IS_UBO_READ(op) ( \
+                op == midgard_op_ld_uniform_32  || \
+                op == midgard_op_ld_uniform_16  || \
+                op == midgard_op_ld_uniform_32i \
+        )
+
 /* ALU control words are single bit fields with a lot of space */
 
 #define ALU_ENAB_VEC_MUL  (1 << 17)

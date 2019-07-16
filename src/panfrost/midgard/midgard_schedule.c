@@ -524,12 +524,71 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         block->is_scheduled = true;
 }
 
+/* The following passes reorder MIR instructions to enable better scheduling */
+
+static void
+midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
+{
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != TAG_LOAD_STORE_4) continue;
+
+                /* We've found a load/store op. Check if next is also load/store. */
+                midgard_instruction *next_op = mir_next_op(ins);
+                if (&next_op->link != &block->instructions) {
+                        if (next_op->type == TAG_LOAD_STORE_4) {
+                                /* If so, we're done since we're a pair */
+                                ins = mir_next_op(ins);
+                                continue;
+                        }
+
+                        /* Maximum search distance to pair, to avoid register pressure disasters */
+                        int search_distance = 8;
+
+                        /* Otherwise, we have an orphaned load/store -- search for another load */
+                        mir_foreach_instr_in_block_from(block, c, mir_next_op(ins)) {
+                                /* Terminate search if necessary */
+                                if (!(search_distance--)) break;
+
+                                if (c->type != TAG_LOAD_STORE_4) continue;
+
+                                /* Stores cannot be reordered, since they have
+                                 * dependencies. For the same reason, indirect
+                                 * loads cannot be reordered as their index is
+                                 * loaded in r27.w */
+
+                                if (OP_IS_STORE(c->load_store.op)) continue;
+
+                                /* It appears the 0x800 bit is set whenever a
+                                 * load is direct, unset when it is indirect.
+                                 * Skip indirect loads. */
+
+                                if (!(c->load_store.unknown & 0x800)) continue;
+
+                                /* We found one! Move it up to pair and remove it from the old location */
+
+                                mir_insert_instruction_before(ins, *c);
+                                mir_remove_instruction(c);
+
+                                break;
+                        }
+                }
+        }
+}
+
+
+
 void
 schedule_program(compiler_context *ctx)
 {
         struct ra_graph *g = NULL;
         bool spilled = false;
         int iter_count = 10; /* max iterations */
+
+        midgard_promote_uniforms(ctx, 8);
+
+        mir_foreach_block(ctx, block) {
+                midgard_pair_load_store(ctx, block);
+        }
 
         do {
                 /* We would like to run RA after scheduling, but spilling can

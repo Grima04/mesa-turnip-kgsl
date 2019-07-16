@@ -1157,7 +1157,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 /* Uniforms and UBOs use a shared code path, as uniforms are just (slightly
  * optimized) versions of UBO #0 */
 
-static void
+void
 emit_ubo_read(
         compiler_context *ctx,
         unsigned dest,
@@ -1167,36 +1167,20 @@ emit_ubo_read(
 {
         /* TODO: half-floats */
 
-        if (!indirect_offset && offset < ctx->uniform_cutoff && index == 0) {
-                /* Fast path: For the first 16 uniforms, direct accesses are
-                 * 0-cycle, since they're just a register fetch in the usual
-                 * case.  So, we alias the registers while we're still in
-                 * SSA-space */
+        midgard_instruction ins = m_ld_uniform_32(dest, offset);
 
-                int reg_slot = 23 - offset;
-                alias_ssa(ctx, dest, SSA_FIXED_REGISTER(reg_slot));
+        /* TODO: Don't split */
+        ins.load_store.varying_parameters = (offset & 7) << 7;
+        ins.load_store.address = offset >> 3;
+
+        if (indirect_offset) {
+                emit_indirect_offset(ctx, indirect_offset);
+                ins.load_store.unknown = 0x8700 | index; /* xxx: what is this? */
         } else {
-                /* Otherwise, read from the 'special' UBO to access
-                 * higher-indexed uniforms, at a performance cost. More
-                 * generally, we're emitting a UBO read instruction. */
-
-                midgard_instruction ins = m_ld_uniform_32(dest, offset);
-
-                /* TODO: Don't split */
-                ins.load_store.varying_parameters = (offset & 7) << 7;
-                ins.load_store.address = offset >> 3;
-
-                if (indirect_offset) {
-                        emit_indirect_offset(ctx, indirect_offset);
-                        ins.load_store.unknown = 0x8700 | index; /* xxx: what is this? */
-                } else {
-                        ins.load_store.unknown = 0x1E00 | index; /* xxx: what is this? */
-                }
-
-                /* TODO respect index */
-
-                emit_mir_instruction(ctx, ins);
+                ins.load_store.unknown = 0x1E00 | index; /* xxx: what is this? */
         }
+
+        emit_mir_instruction(ctx, ins);
 }
 
 static void
@@ -2228,57 +2212,6 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
         return progress;
 }
 
-/* The following passes reorder MIR instructions to enable better scheduling */
-
-static void
-midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
-{
-        mir_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != TAG_LOAD_STORE_4) continue;
-
-                /* We've found a load/store op. Check if next is also load/store. */
-                midgard_instruction *next_op = mir_next_op(ins);
-                if (&next_op->link != &block->instructions) {
-                        if (next_op->type == TAG_LOAD_STORE_4) {
-                                /* If so, we're done since we're a pair */
-                                ins = mir_next_op(ins);
-                                continue;
-                        }
-
-                        /* Maximum search distance to pair, to avoid register pressure disasters */
-                        int search_distance = 8;
-
-                        /* Otherwise, we have an orphaned load/store -- search for another load */
-                        mir_foreach_instr_in_block_from(block, c, mir_next_op(ins)) {
-                                /* Terminate search if necessary */
-                                if (!(search_distance--)) break;
-
-                                if (c->type != TAG_LOAD_STORE_4) continue;
-
-                                /* Stores cannot be reordered, since they have
-                                 * dependencies. For the same reason, indirect
-                                 * loads cannot be reordered as their index is
-                                 * loaded in r27.w */
-
-                                if (OP_IS_STORE(c->load_store.op)) continue;
-
-                                /* It appears the 0x800 bit is set whenever a
-                                 * load is direct, unset when it is indirect.
-                                 * Skip indirect loads. */
-
-                                if (!(c->load_store.unknown & 0x800)) continue;
-
-                                /* We found one! Move it up to pair and remove it from the old location */
-
-                                mir_insert_instruction_before(ins, *c);
-                                mir_remove_instruction(c);
-
-                                break;
-                        }
-                }
-        }
-}
-
 /* If there are leftovers after the below pass, emit actual fmov
  * instructions for the slow-but-correct path */
 
@@ -2357,8 +2290,6 @@ emit_block(compiler_context *ctx, nir_block *block)
 
         /* Perform heavylifting for aliasing */
         actualise_ssa_to_alias(ctx);
-
-        midgard_pair_load_store(ctx, this_block);
 
         /* Append fragment shader epilogue (value writeout) */
         if (ctx->stage == MESA_SHADER_FRAGMENT) {
@@ -2564,7 +2495,9 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
         compiler_context *ctx = &ictx;
 
-        /* TODO: Decide this at runtime */
+        /* Start off with a safe cutoff, allowing usage of all 16 work
+         * registers. Later, we'll promote uniform reads to uniform registers
+         * if we determine it is beneficial to do so */
         ctx->uniform_cutoff = 8;
 
         /* Initialize at a global (not block) level hash tables */
