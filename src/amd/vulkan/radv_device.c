@@ -363,6 +363,8 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->has_scissor_bug = device->rad_info.family == CHIP_VEGA10 ||
 				  device->rad_info.family == CHIP_RAVEN;
 
+	device->has_tc_compat_zrange_bug = device->rad_info.chip_class < GFX10;
+
 	/* Out-of-order primitive rasterization. */
 	device->has_out_of_order_rast = device->rad_info.chip_class >= GFX8 &&
 					device->rad_info.max_se >= 2;

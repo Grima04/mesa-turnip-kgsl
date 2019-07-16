@@ -1186,14 +1186,15 @@ radv_image_alloc_dcc(struct radv_image *image)
 }
 
 static void
-radv_image_alloc_htile(struct radv_image *image)
+radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 {
 	image->htile_offset = align64(image->size, image->planes[0].surface.htile_alignment);
 
 	/* + 8 for storing the clear values */
 	image->clear_value_offset = image->htile_offset + image->planes[0].surface.htile_size;
 	image->size = image->clear_value_offset + 8;
-	if (radv_image_is_tc_compat_htile(image)) {
+	if (radv_image_is_tc_compat_htile(image) &&
+	    device->physical_device->has_tc_compat_zrange_bug) {
 		/* Metadata for the TC-compatible HTILE hardware bug which
 		 * have to be fixed by updating ZRANGE_PRECISION when doing
 		 * fast depth clears to 0.0f.
@@ -1402,7 +1403,7 @@ radv_image_create(VkDevice _device,
 			if (radv_image_can_enable_htile(image) &&
 			    !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ)) {
 				image->tc_compatible_htile = image->planes[0].surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
-				radv_image_alloc_htile(image);
+				radv_image_alloc_htile(device, image);
 			} else {
 				radv_image_disable_htile(image);
 			}

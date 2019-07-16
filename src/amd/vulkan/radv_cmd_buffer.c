@@ -1356,7 +1356,8 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t db_z_info = ds->db_z_info;
 	uint32_t db_z_info_reg;
 
-	if (!radv_image_is_tc_compat_htile(image))
+	if (!cmd_buffer->device->physical_device->has_tc_compat_zrange_bug ||
+	    !radv_image_is_tc_compat_htile(image))
 		return;
 
 	if (!radv_layout_has_htile(image, layout,
@@ -1566,6 +1567,10 @@ radv_set_tc_compat_zrange_metadata(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	uint64_t va = radv_buffer_get_va(image->bo);
+
+	if (!cmd_buffer->device->physical_device->has_tc_compat_zrange_bug)
+		return;
+
 	va += image->offset + image->tc_compat_zrange_offset;
 
 	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, cmd_buffer->state.predicating));

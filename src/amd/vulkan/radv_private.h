@@ -317,6 +317,7 @@ struct radv_physical_device {
 	bool has_clear_state;
 	bool cpdma_prefetch_writes_memory;
 	bool has_scissor_bug;
+	bool has_tc_compat_zrange_bug;
 
 	bool has_out_of_order_rast;
 	bool out_of_order_rast_allowed;
