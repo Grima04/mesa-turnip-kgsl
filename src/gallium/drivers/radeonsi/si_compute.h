@@ -41,7 +41,6 @@ struct si_compute {
 	unsigned input_size;
 
 	struct pipe_resource *global_buffers[MAX_GLOBAL_BUFFERS];
-	unsigned use_code_object_v2 : 1;
 	bool reads_variable_block_size;
 	unsigned num_cs_user_data_dwords;
 };

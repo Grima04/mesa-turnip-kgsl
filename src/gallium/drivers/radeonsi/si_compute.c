@@ -61,9 +61,8 @@ static const amd_kernel_code_t *si_compute_get_code_object(
 {
 	const struct si_shader_selector *sel = &program->sel;
 
-	if (!program->use_code_object_v2) {
+	if (program->ir_type != PIPE_SHADER_IR_NATIVE)
 		return NULL;
-	}
 
 	struct ac_rtld_binary rtld;
 	if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
@@ -228,7 +227,6 @@ static void *si_create_compute_state(
 	program->local_size = cso->req_local_mem;
 	program->private_size = cso->req_private_mem;
 	program->input_size = cso->req_input_mem;
-	program->use_code_object_v2 = cso->ir_type == PIPE_SHADER_IR_NATIVE;
 
 	if (cso->ir_type != PIPE_SHADER_IR_NATIVE) {
 		if (cso->ir_type == PIPE_SHADER_IR_TGSI) {
@@ -491,7 +489,7 @@ static bool si_switch_compute_shader(struct si_context *sctx,
 	}
 
 	shader_va = shader->bo->gpu_address + offset;
-	if (program->use_code_object_v2) {
+	if (program->ir_type == PIPE_SHADER_IR_NATIVE) {
 		/* Shader code is placed after the amd_kernel_code_t
 		 * struct. */
 		shader_va += sizeof(amd_kernel_code_t);
@@ -665,7 +663,7 @@ static bool si_upload_compute_input(struct si_context *sctx,
 	struct si_compute *program = sctx->cs_shader_state.program;
 	struct si_resource *input_buffer = NULL;
 	unsigned kernel_args_size;
-	unsigned num_work_size_bytes = program->use_code_object_v2 ? 0 : 36;
+	unsigned num_work_size_bytes = program->ir_type == PIPE_SHADER_IR_NATIVE ? 0 : 36;
 	uint32_t kernel_args_offset = 0;
 	uint32_t *kernel_args;
 	void *kernel_args_ptr;
