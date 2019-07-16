@@ -97,6 +97,24 @@ static inline void radeon_set_sh_reg(struct radeon_cmdbuf *cs, unsigned reg, uns
 	radeon_emit(cs, value);
 }
 
+static inline void radeon_set_sh_reg_idx(const struct radv_physical_device *pdevice,
+					 struct radeon_cmdbuf *cs,
+					 unsigned reg, unsigned idx,
+					 unsigned value)
+{
+	assert(reg >= SI_SH_REG_OFFSET && reg < SI_SH_REG_END);
+	assert(cs->cdw + 3 <= cs->max_dw);
+	assert(idx);
+
+	unsigned opcode = PKT3_SET_SH_REG_INDEX;
+	if (pdevice->rad_info.chip_class < GFX10)
+		opcode = PKT3_SET_SH_REG;
+
+	radeon_emit(cs, PKT3(opcode, 1, 0));
+	radeon_emit(cs, (reg - SI_SH_REG_OFFSET) >> 2 | (idx << 28));
+	radeon_emit(cs, value);
+}
+
 static inline void radeon_set_uconfig_reg_seq(struct radeon_cmdbuf *cs, unsigned reg, unsigned num)
 {
 	assert(reg >= CIK_UCONFIG_REG_OFFSET && reg < CIK_UCONFIG_REG_END);

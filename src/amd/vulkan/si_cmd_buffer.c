@@ -262,17 +262,17 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	if (physical_device->rad_info.chip_class >= GFX7) {
 		if (physical_device->rad_info.chip_class >= GFX10) {
 			/* Logical CUs 16 - 31 */
-			radeon_set_sh_reg(cs, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
-					  S_00B404_CU_EN(0xffff));
-			radeon_set_sh_reg(cs, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
-					  S_00B104_CU_EN(0xffff));
-			radeon_set_sh_reg(cs, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
-					  S_00B004_CU_EN(0xffff));
+			radeon_set_sh_reg_idx(physical_device, cs, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
+					      3, S_00B404_CU_EN(0xffff));
+			radeon_set_sh_reg_idx(physical_device, cs, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
+					      3, S_00B104_CU_EN(0xffff));
+			radeon_set_sh_reg_idx(physical_device, cs, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
+					      3, S_00B004_CU_EN(0xffff));
 		}
 
 		if (physical_device->rad_info.chip_class >= GFX9) {
-			radeon_set_sh_reg(cs, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
-					  S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F));
+			radeon_set_sh_reg_idx(physical_device, cs, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
+					      3, S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F));
 		} else {
 			radeon_set_sh_reg(cs, R_00B51C_SPI_SHADER_PGM_RSRC3_LS,
 					  S_00B51C_CU_EN(0xffff) | S_00B51C_WAVE_LIMIT(0x3F));
@@ -324,23 +324,23 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			}
 		}
 
-		radeon_set_sh_reg(cs, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
-				  S_00B118_CU_EN(cu_mask_vs) |
-				  S_00B118_WAVE_LIMIT(0x3F));
+		radeon_set_sh_reg_idx(physical_device, cs, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
+				      3, S_00B118_CU_EN(cu_mask_vs) |
+				      S_00B118_WAVE_LIMIT(0x3F));
 		radeon_set_sh_reg(cs, R_00B11C_SPI_SHADER_LATE_ALLOC_VS,
 				  S_00B11C_LIMIT(late_alloc_limit));
 
-		radeon_set_sh_reg(cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
-				  S_00B21C_CU_EN(cu_mask_gs) | S_00B21C_WAVE_LIMIT(0x3F));
+		radeon_set_sh_reg_idx(physical_device, cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+				      3, S_00B21C_CU_EN(cu_mask_gs) | S_00B21C_WAVE_LIMIT(0x3F));
 
 		if (physical_device->rad_info.chip_class >= GFX10) {
-			radeon_set_sh_reg(cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
-					  S_00B204_CU_EN(0xffff) |
-					  S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit));
+			radeon_set_sh_reg_idx(physical_device, cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+					      3, S_00B204_CU_EN(0xffff) |
+					      S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit));
 		}
 
-		radeon_set_sh_reg(cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
-				  S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
+		radeon_set_sh_reg_idx(physical_device, cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
+				      3, S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX10) {
