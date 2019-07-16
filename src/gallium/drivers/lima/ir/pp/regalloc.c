@@ -239,6 +239,16 @@ static ppir_reg *ppir_regalloc_build_liveness_info(ppir_compiler *comp)
                reg->live_out = node->instr->seq;
             break;
          }
+         case ppir_node_type_branch:
+         {
+            ppir_branch_node *branch = ppir_node_to_branch(node);
+            for (int i = 0; i < 2; i++) {
+               ppir_reg *reg = get_src_reg(branch->src + i);
+               if (reg && node->instr->seq > reg->live_out)
+                  reg->live_out = node->instr->seq;
+            }
+            break;
+         }
          default:
             break;
          }
@@ -313,6 +323,17 @@ static void ppir_regalloc_print_result(ppir_compiler *comp)
             {
                ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
                printf("%d", ppir_target_get_src_reg_index(&load_tex->src_coords));
+               break;
+            }
+            case ppir_node_type_branch:
+            {
+               ppir_branch_node *branch = ppir_node_to_branch(node);
+               for (int j = 0; j < 2; j++) {
+                  if (j)
+                     printf(" ");
+
+                  printf("%d", ppir_target_get_src_reg_index(branch->src + j));
+               }
                break;
             }
             default:
@@ -607,6 +628,18 @@ static bool ppir_regalloc_spill_reg(ppir_compiler *comp, ppir_reg *chosen)
             if (reg == chosen) {
                ppir_update_spilled_src(comp, block, node, &load_tex->src_coords,
                                        NULL);
+            }
+            break;
+         }
+         case ppir_node_type_branch:
+         {
+            ppir_branch_node *branch = ppir_node_to_branch(node);
+            for (int i = 0; i < 2; i++) {
+               reg = get_src_reg(branch->src + i);
+               if (reg == chosen) {
+                  ppir_update_spilled_src(comp, block, node,
+                                          branch->src + i, NULL);
+               }
             }
             break;
          }
