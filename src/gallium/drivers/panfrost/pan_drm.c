@@ -284,7 +284,6 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool
         panfrost_job_add_bo(job, ctx->shaders.bo);
         panfrost_job_add_bo(job, ctx->scratchpad.bo);
         panfrost_job_add_bo(job, ctx->tiler_heap.bo);
-        panfrost_job_add_bo(job, ctx->varying_mem.bo);
         panfrost_job_add_bo(job, ctx->tiler_polygon_list.bo);
 
         if (job->first_job.gpu) {

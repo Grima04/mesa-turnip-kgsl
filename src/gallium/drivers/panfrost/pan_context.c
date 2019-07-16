@@ -255,9 +255,6 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
         ctx->payload_vertex.postfix.framebuffer = 0;
         ctx->payload_tiler.postfix.framebuffer = 0;
 
-        /* Reset varyings allocated */
-        ctx->varying_height = 0;
-
         if (ctx->rasterizer)
                 ctx->dirty |= PAN_DIRTY_RASTERIZER;
 
@@ -509,18 +506,17 @@ panfrost_emit_varyings(
         unsigned stride,
         unsigned count)
 {
-        mali_ptr varying_address = ctx->varying_mem.bo->gpu + ctx->varying_height;
-
         /* Fill out the descriptor */
-        slot->elements = varying_address | MALI_ATTR_LINEAR;
         slot->stride = stride;
         slot->size = stride * count;
         slot->shift = slot->extra_flags = 0;
 
-        ctx->varying_height += ALIGN_POT(slot->size, 64);
-        assert(ctx->varying_height < ctx->varying_mem.bo->size);
+        struct panfrost_transfer transfer =
+                panfrost_allocate_transient(ctx, slot->size);
 
-        return varying_address;
+        slot->elements = transfer.gpu | MALI_ATTR_LINEAR;
+
+        return transfer.gpu;
 }
 
 static void
@@ -2531,7 +2527,6 @@ panfrost_destroy(struct pipe_context *pipe)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
         panfrost_drm_free_slab(screen, &panfrost->scratchpad);
-        panfrost_drm_free_slab(screen, &panfrost->varying_mem);
         panfrost_drm_free_slab(screen, &panfrost->shaders);
         panfrost_drm_free_slab(screen, &panfrost->tiler_heap);
         panfrost_drm_free_slab(screen, &panfrost->tiler_polygon_list);
@@ -2678,7 +2673,6 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
         panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64, false, 0, 0, 0);
-        panfrost_drm_allocate_slab(screen, &ctx->varying_mem, 16384, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_COHERENT_LOCAL, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_heap, 32768, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
