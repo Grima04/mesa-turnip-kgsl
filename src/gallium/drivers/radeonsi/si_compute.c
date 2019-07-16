@@ -659,21 +659,14 @@ static bool si_upload_compute_input(struct si_context *sctx,
 				    const amd_kernel_code_t *code_object,
 				    const struct pipe_grid_info *info)
 {
-	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 	struct si_compute *program = sctx->cs_shader_state.program;
 	struct si_resource *input_buffer = NULL;
-	unsigned kernel_args_size;
-	unsigned num_work_size_bytes = program->ir_type == PIPE_SHADER_IR_NATIVE ? 0 : 36;
 	uint32_t kernel_args_offset = 0;
 	uint32_t *kernel_args;
 	void *kernel_args_ptr;
 	uint64_t kernel_args_va;
-	unsigned i;
 
-	/* The extra num_work_size_bytes are for work group / work item size information */
-	kernel_args_size = program->input_size + num_work_size_bytes;
-
-	u_upload_alloc(sctx->b.const_uploader, 0, kernel_args_size,
+	u_upload_alloc(sctx->b.const_uploader, 0, program->input_size,
 		       sctx->screen->info.tcc_cache_line_size,
 		       &kernel_args_offset,
 		       (struct pipe_resource**)&input_buffer, &kernel_args_ptr);
@@ -684,38 +677,18 @@ static bool si_upload_compute_input(struct si_context *sctx,
 	kernel_args = (uint32_t*)kernel_args_ptr;
 	kernel_args_va = input_buffer->gpu_address + kernel_args_offset;
 
-	if (!code_object) {
-		for (i = 0; i < 3; i++) {
-			kernel_args[i] = util_cpu_to_le32(info->grid[i]);
-			kernel_args[i + 3] = util_cpu_to_le32(info->grid[i] * info->block[i]);
-			kernel_args[i + 6] = util_cpu_to_le32(info->block[i]);
-		}
-	}
+	memcpy(kernel_args, info->input, program->input_size);
 
-	memcpy(kernel_args + (num_work_size_bytes / 4), info->input,
-	       program->input_size);
-
-
-	for (i = 0; i < (kernel_args_size / 4); i++) {
+	for (unsigned i = 0; i < program->input_size / 4; i++) {
 		COMPUTE_DBG(sctx->screen, "input %u : %u\n", i,
 			kernel_args[i]);
 	}
 
-
 	radeon_add_to_buffer_list(sctx, sctx->gfx_cs, input_buffer,
 				  RADEON_USAGE_READ, RADEON_PRIO_CONST_BUFFER);
 
-	if (code_object) {
-		si_setup_user_sgprs_co_v2(sctx, code_object, info, kernel_args_va);
-	} else {
-		radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 2);
-		radeon_emit(cs, kernel_args_va);
-		radeon_emit(cs, S_008F04_BASE_ADDRESS_HI (kernel_args_va >> 32) |
-		                S_008F04_STRIDE(0));
-	}
-
+	si_setup_user_sgprs_co_v2(sctx, code_object, info, kernel_args_va);
 	si_resource_reference(&input_buffer, NULL);
-
 	return true;
 }
 
@@ -926,11 +899,9 @@ static void si_launch_grid(
 		si_set_atom_dirty(sctx, &sctx->atoms.s.render_cond, false);
 	}
 
-	if ((program->input_size ||
-            program->ir_type == PIPE_SHADER_IR_NATIVE) &&
-           unlikely(!si_upload_compute_input(sctx, code_object, info))) {
+	if (program->ir_type == PIPE_SHADER_IR_NATIVE &&
+	    unlikely(!si_upload_compute_input(sctx, code_object, info)))
 		return;
-	}
 
 	/* Global buffers */
 	for (i = 0; i < MAX_GLOBAL_BUFFERS; i++) {
