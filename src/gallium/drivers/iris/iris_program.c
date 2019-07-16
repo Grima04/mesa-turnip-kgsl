@@ -2131,7 +2131,7 @@ iris_create_fs_state(struct pipe_context *ctx,
       struct brw_wm_prog_key key = {
          KEY_INIT(devinfo->gen),
          .nr_color_regions = util_bitcount(color_outputs),
-         .coherent_fb_fetch = true,
+         .coherent_fb_fetch = devinfo->gen >= 9,
          .input_slots_valid =
             can_rearrange_varyings ? 0 : info->inputs_read | VARYING_BIT_POS,
       };
