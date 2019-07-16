@@ -138,23 +138,6 @@ find_or_allocate_temp(compiler_context *ctx, unsigned hash)
         return temp;
 }
 
-/* Callback for register allocation selection, trivial default for now */
-
-static unsigned int
-midgard_ra_select_callback(struct ra_graph *g, BITSET_WORD *regs, void *data)
-{
-        /* Choose the first available register to minimise register pressure */
-
-        for (int i = 0; i < (16 * WORK_STRIDE); ++i) {
-                if (BITSET_TEST(regs, i)) {
-                        return i;
-                }
-        }
-
-        assert(0);
-        return 0;
-}
-
 /* Helper to return the default phys_reg for a given register */
 
 static struct phys_reg
@@ -388,8 +371,6 @@ allocate_registers(compiler_context *ctx)
                                 ra_add_node_interference(g, i, j);
                 }
         }
-
-        ra_set_select_reg_callback(g, midgard_ra_select_callback, NULL);
 
         if (!ra_allocate(g)) {
                 unreachable("Error allocating registers\n");
