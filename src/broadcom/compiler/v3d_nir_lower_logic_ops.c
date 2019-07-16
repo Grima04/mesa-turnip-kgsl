@@ -39,6 +39,20 @@
 typedef nir_ssa_def *(*nir_pack_func)(nir_builder *b, nir_ssa_def *c);
 typedef nir_ssa_def *(*nir_unpack_func)(nir_builder *b, nir_ssa_def *c);
 
+static bool
+logicop_depends_on_dst_color(int logicop_func)
+{
+        switch (logicop_func) {
+        case PIPE_LOGICOP_SET:
+        case PIPE_LOGICOP_CLEAR:
+        case PIPE_LOGICOP_COPY:
+        case PIPE_LOGICOP_COPY_INVERTED:
+                return false;
+        default:
+                return true;
+        }
+}
+
 static nir_ssa_def *
 v3d_logicop(nir_builder *b, int logicop_func,
             nir_ssa_def *src, nir_ssa_def *dst)
@@ -277,6 +291,24 @@ v3d_nir_emit_logic_op(struct v3d_compile *c, nir_builder *b,
 }
 
 static void
+v3d_emit_ms_output(struct v3d_compile *c, nir_builder *b,
+                   nir_ssa_def *color, nir_src *offset,
+                   nir_alu_type type, int rt, int sample)
+{
+
+        nir_intrinsic_instr *store =
+                nir_intrinsic_instr_create(b->shader,
+                                           nir_intrinsic_store_tlb_sample_color_v3d);
+        store->num_components = 4;
+        nir_intrinsic_set_base(store, sample);
+        nir_intrinsic_set_component(store, 0);
+        nir_intrinsic_set_type(store, type);
+        store->src[0] = nir_src_for_ssa(color);
+        store->src[1] = nir_src_for_ssa(nir_imm_int(b, rt));
+        nir_builder_instr_insert(b, &store->instr);
+}
+
+static void
 v3d_nir_lower_logic_op_instr(struct v3d_compile *c,
                              nir_builder *b,
                              nir_intrinsic_instr *intr,
@@ -284,12 +316,29 @@ v3d_nir_lower_logic_op_instr(struct v3d_compile *c,
 {
         nir_ssa_def *frag_color = intr->src[0].ssa;
 
-        /* XXX: this is not correct for MSAA render targets */
-        nir_ssa_def *result = v3d_nir_emit_logic_op(c, b, frag_color, rt, 0);
 
-        nir_instr_rewrite_src(&intr->instr, &intr->src[0],
-                              nir_src_for_ssa(result));
-        intr->num_components = result->num_components;
+        const int logic_op = c->fs_key->logicop_func;
+        if (c->fs_key->msaa && logicop_depends_on_dst_color(logic_op)) {
+                c->msaa_per_sample_output = true;
+
+                nir_src *offset = &intr->src[1];
+                nir_alu_type type = nir_intrinsic_type(intr);
+                for (int i = 0; i < V3D_MAX_SAMPLES; i++) {
+                        nir_ssa_def *sample =
+                                v3d_nir_emit_logic_op(c, b, frag_color, rt, i);
+
+                        v3d_emit_ms_output(c, b, sample, offset, type, rt, i);
+                }
+
+                nir_instr_remove(&intr->instr);
+        } else {
+                nir_ssa_def *result =
+                        v3d_nir_emit_logic_op(c, b, frag_color, rt, 0);
+
+                nir_instr_rewrite_src(&intr->instr, &intr->src[0],
+                                      nir_src_for_ssa(result));
+                intr->num_components = result->num_components;
+        }
 }
 
 static bool
