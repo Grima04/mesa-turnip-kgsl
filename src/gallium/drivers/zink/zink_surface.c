@@ -86,7 +86,7 @@ zink_create_surface(struct pipe_context *pctx,
       break;
 
    case PIPE_TEXTURE_3D:
-      ivci.viewType = VK_IMAGE_VIEW_TYPE_3D;
+      ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
       break;
 
    default:

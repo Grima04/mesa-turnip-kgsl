@@ -160,6 +160,8 @@ zink_resource_create(struct pipe_screen *pscreen,
 
       case PIPE_TEXTURE_3D:
          ici.imageType = VK_IMAGE_TYPE_3D;
+         if (templ->bind & PIPE_BIND_RENDER_TARGET)
+            ici.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
          break;
 
       case PIPE_BUFFER:
