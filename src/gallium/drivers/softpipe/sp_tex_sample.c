@@ -754,7 +754,7 @@ get_texel_2d(const struct sp_sampler_view *sp_sview,
 
    if (x < 0 || x >= (int) u_minify(texture->width0, level) ||
        y < 0 || y >= (int) u_minify(texture->height0, level)) {
-      return sp_samp->base.border_color.f;
+      return sp_sview->border_color.f;
    }
    else {
       return get_texel_2d_no_border( sp_sview, addr, x, y );
@@ -981,7 +981,7 @@ get_texel_3d(const struct sp_sampler_view *sp_sview,
    if (x < 0 || x >= (int) u_minify(texture->width0, level) ||
        y < 0 || y >= (int) u_minify(texture->height0, level) ||
        z < 0 || z >= (int) u_minify(texture->depth0, level)) {
-      return sp_samp->base.border_color.f;
+      return sp_sview->border_color.f;
    }
    else {
       return get_texel_3d_no_border( sp_sview, addr, x, y, z );
@@ -999,7 +999,7 @@ get_texel_1d_array(const struct sp_sampler_view *sp_sview,
    const unsigned level = addr.bits.level;
 
    if (x < 0 || x >= (int) u_minify(texture->width0, level)) {
-      return sp_samp->base.border_color.f;
+      return sp_sview->border_color.f;
    }
    else {
       return get_texel_2d_no_border(sp_sview, addr, x, y);
@@ -1021,7 +1021,7 @@ get_texel_2d_array(const struct sp_sampler_view *sp_sview,
 
    if (x < 0 || x >= (int) u_minify(texture->width0, level) ||
        y < 0 || y >= (int) u_minify(texture->height0, level)) {
-      return sp_samp->base.border_color.f;
+      return sp_sview->border_color.f;
    }
    else {
       return get_texel_3d_no_border(sp_sview, addr, x, y, layer);
@@ -1097,7 +1097,7 @@ get_texel_cube_array(const struct sp_sampler_view *sp_sview,
 
    if (x < 0 || x >= (int) u_minify(texture->width0, level) ||
        y < 0 || y >= (int) u_minify(texture->height0, level)) {
-      return sp_samp->base.border_color.f;
+      return sp_sview->border_color.f;
    }
    else {
       return get_texel_3d_no_border(sp_sview, addr, x, y, layer);
@@ -3710,20 +3710,36 @@ sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
 {
    const struct sp_tgsi_sampler *sp_tgsi_samp =
       sp_tgsi_sampler_cast_c(tgsi_sampler);
-   const struct sp_sampler_view *sp_sview;
+   struct sp_sampler_view sp_sview;
    const struct sp_sampler *sp_samp;
    struct filter_args filt_args;
    float compare_values[TGSI_QUAD_SIZE];
    float lod[TGSI_QUAD_SIZE];
+   int c;
 
    assert(sview_index < PIPE_MAX_SHADER_SAMPLER_VIEWS);
    assert(sampler_index < PIPE_MAX_SAMPLERS);
    assert(sp_tgsi_samp->sp_sampler[sampler_index]);
 
-   sp_sview = &sp_tgsi_samp->sp_sview[sview_index];
+   memcpy(&sp_sview, &sp_tgsi_samp->sp_sview[sview_index],
+          sizeof(struct sp_sampler_view));
    sp_samp = sp_tgsi_samp->sp_sampler[sampler_index];
+
+   if (util_format_is_unorm(sp_sview.base.format)) {
+      for (c = 0; c < TGSI_NUM_CHANNELS; c++)
+          sp_sview.border_color.f[c] = CLAMP(sp_samp->base.border_color.f[c],
+                                              0.0f, 1.0f);
+   } else if (util_format_is_snorm(sp_sview.base.format)) {
+      for (c = 0; c < TGSI_NUM_CHANNELS; c++)
+          sp_sview.border_color.f[c] = CLAMP(sp_samp->base.border_color.f[c],
+                                              -1.0f, 1.0f);
+   } else {
+      memcpy(sp_sview.border_color.f, sp_samp->base.border_color.f,
+             TGSI_NUM_CHANNELS * sizeof(float));
+   }
+
    /* always have a view here but texture is NULL if no sampler view was set. */
-   if (!sp_sview->base.texture) {
+   if (!sp_sview.base.texture) {
       int i, j;
       for (j = 0; j < TGSI_NUM_CHANNELS; j++) {
          for (i = 0; i < TGSI_QUAD_SIZE; i++) {
@@ -3734,29 +3750,29 @@ sp_tgsi_get_samples(struct tgsi_sampler *tgsi_sampler,
    }
 
    if (sp_samp->base.compare_mode != PIPE_TEX_COMPARE_NONE)
-      prepare_compare_values(sp_sview->base.target, p, c0, lod_in, compare_values);
+      prepare_compare_values(sp_sview.base.target, p, c0, lod_in, compare_values);
 
    filt_args.control = control;
    filt_args.offset = offset;
    int gather_comp = get_gather_component(lod_in);
 
-   compute_lambda_lod(sp_sview,sp_samp, s, t, p, derivs, lod_in, control, lod);
+   compute_lambda_lod(&sp_sview, sp_samp, s, t, p, derivs, lod_in, control, lod);
 
-   if (sp_sview->need_cube_convert) {
+   if (sp_sview.need_cube_convert) {
       float cs[TGSI_QUAD_SIZE];
       float ct[TGSI_QUAD_SIZE];
       float cp[TGSI_QUAD_SIZE];
       uint faces[TGSI_QUAD_SIZE];
 
-      convert_cube(sp_sview, sp_samp, s, t, p, c0, cs, ct, cp, faces);
+      convert_cube(&sp_sview, sp_samp, s, t, p, c0, cs, ct, cp, faces);
 
       filt_args.faces = faces;
-      sample_mip(sp_sview, sp_samp, cs, ct, cp, compare_values, gather_comp, lod, &filt_args, rgba);
+      sample_mip(&sp_sview, sp_samp, cs, ct, cp, compare_values, gather_comp, lod, &filt_args, rgba);
    } else {
       static const uint zero_faces[TGSI_QUAD_SIZE] = {0, 0, 0, 0};
 
       filt_args.faces = zero_faces;
-      sample_mip(sp_sview, sp_samp, s, t, p, compare_values, gather_comp, lod, &filt_args, rgba);
+      sample_mip(&sp_sview, sp_samp, s, t, p, compare_values, gather_comp, lod, &filt_args, rgba);
    }
 }
 
