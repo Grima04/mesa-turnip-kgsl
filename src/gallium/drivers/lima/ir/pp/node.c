@@ -394,14 +394,42 @@ static void _ppir_node_replace_child(ppir_src *src, ppir_node *old_child, ppir_n
 
 void ppir_node_replace_child(ppir_node *parent, ppir_node *old_child, ppir_node *new_child)
 {
-   if (parent->type == ppir_node_type_alu) {
+   switch (parent->type) {
+   case ppir_node_type_alu:
+   {
       ppir_alu_node *alu = ppir_node_to_alu(parent);
       for (int i = 0; i < alu->num_src; i++)
          _ppir_node_replace_child(alu->src + i, old_child, new_child);
+      break;
    }
-   else if (parent->type == ppir_node_type_store) {
+   case ppir_node_type_branch:
+   {
+      ppir_branch_node *branch = ppir_node_to_branch(parent);
+      for (int i = 0; i < 2; i++)
+         _ppir_node_replace_child(branch->src + i, old_child, new_child);
+      break;
+   }
+   case ppir_node_type_load:
+   {
+      ppir_load_node *load = ppir_node_to_load(parent);
+      _ppir_node_replace_child(&load->src, old_child, new_child);
+      break;
+   }
+   case ppir_node_type_load_texture:
+   {
+      ppir_load_texture_node *load_texture = ppir_node_to_load_texture(parent);
+      _ppir_node_replace_child(&load_texture->src_coords, old_child, new_child);
+      break;
+   }
+   case ppir_node_type_store:
+   {
       ppir_store_node *store = ppir_node_to_store(parent);
       _ppir_node_replace_child(&store->src, old_child, new_child);
+      break;
+   }
+   default:
+      ppir_debug("unknown node type in %s\n", __func__);
+      break;
    }
 }
 
