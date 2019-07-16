@@ -3825,8 +3825,12 @@ ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef la
 LLVMValueRef
 ac_build_writelane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef value, LLVMValueRef lane)
 {
-	/* TODO: Use the actual instruction when LLVM adds an intrinsic for it.
-	 */
+	if (HAVE_LLVM >= 0x0800) {
+		return ac_build_intrinsic(ctx, "llvm.amdgcn.writelane", ctx->i32,
+					  (LLVMValueRef []) {value, lane, src}, 3,
+					  AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
+	}
+
 	LLVMValueRef pred = LLVMBuildICmp(ctx->builder, LLVMIntEQ, lane,
 					  ac_get_thread_id(ctx), "");
 	return LLVMBuildSelect(ctx->builder, pred, value, src, "");
