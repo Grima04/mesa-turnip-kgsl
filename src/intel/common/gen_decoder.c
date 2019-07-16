@@ -697,7 +697,7 @@ gen_spec_load_from_path(const struct gen_device_info *devinfo,
          gen_spec_destroy(ctx.spec);
          ctx.spec = NULL;
          goto end;
-      } else if (feof(input))
+      } else if (len == 0 && feof(input))
          goto end;
 
       if (XML_ParseBuffer(ctx.parser, len, len == 0) == 0) {
@@ -719,7 +719,11 @@ gen_spec_load_from_path(const struct gen_device_info *devinfo,
    free(filename);
 
    /* free ctx.spec if genxml is empty */
-   if (ctx.spec && _mesa_hash_table_num_entries(ctx.spec->commands) == 0) {
+   if (ctx.spec &&
+       _mesa_hash_table_num_entries(ctx.spec->commands) == 0 &&
+       _mesa_hash_table_num_entries(ctx.spec->structs) == 0) {
+      fprintf(stderr,
+              "Error parsing XML: empty spec.\n");
       gen_spec_destroy(ctx.spec);
       return NULL;
    }
