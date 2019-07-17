@@ -5455,7 +5455,7 @@ static void si_init_config(struct si_context *sctx)
 	/* CLEAR_STATE doesn't clear these correctly on certain generations.
 	 * I don't know why. Deduced by trial and error.
 	 */
-	if (sctx->chip_class <= GFX7) {
+	if (sctx->chip_class <= GFX7 || !has_clear_state) {
 		si_pm4_set_reg(pm4, R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET, 0);
 		si_pm4_set_reg(pm4, R_028204_PA_SC_WINDOW_SCISSOR_TL, S_028204_WINDOW_OFFSET_DISABLE(1));
 		si_pm4_set_reg(pm4, R_028240_PA_SC_GENERIC_SCISSOR_TL, S_028240_WINDOW_OFFSET_DISABLE(1));
