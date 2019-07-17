@@ -173,6 +173,8 @@ static uint32_t get_hash_flags(struct radv_device *device)
 
 	if (device->instance->debug_flags & RADV_DEBUG_UNSAFE_MATH)
 		hash_flags |= RADV_HASH_SHADER_UNSAFE_MATH;
+	if (device->instance->debug_flags & RADV_DEBUG_NO_NGG)
+		hash_flags |= RADV_HASH_SHADER_NO_NGG;
 	if (device->instance->perftest_flags & RADV_PERFTEST_SISCHED)
 		hash_flags |= RADV_HASH_SHADER_SISCHED;
 	return hash_flags;
@@ -2300,7 +2302,8 @@ radv_fill_shader_keys(struct radv_device *device,
 			keys[MESA_SHADER_VERTEX].vs_common_out.as_es = true;
 	}
 
-	if (device->physical_device->rad_info.chip_class >= GFX10) {
+	if (device->physical_device->rad_info.chip_class >= GFX10 &&
+	    !(device->instance->debug_flags & RADV_DEBUG_NO_NGG)) {
 		if (nir[MESA_SHADER_TESS_CTRL]) {
 			keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = true;
 		} else {
