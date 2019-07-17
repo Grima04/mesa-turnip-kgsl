@@ -2266,3 +2266,33 @@ gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
    if (bytes_written)
       *bytes_written = written;
 }
+
+void
+gen_perf_dump_query_count(struct gen_perf_context *perf_ctx)
+{
+   DBG("Queries: (Open queries = %d, OA users = %d)\n",
+       perf_ctx->n_active_oa_queries, perf_ctx->n_oa_users);
+}
+
+void
+gen_perf_dump_query(struct gen_perf_context *ctx,
+                    struct gen_perf_query_object *obj,
+                    void *current_batch)
+{
+   switch (obj->queryinfo->kind) {
+   case GEN_PERF_QUERY_TYPE_OA:
+   case GEN_PERF_QUERY_TYPE_RAW:
+      DBG("BO: %-4s OA data: %-10s %-15s\n",
+          obj->oa.bo ? "yes," : "no,",
+          gen_perf_is_query_ready(ctx, obj, current_batch) ? "ready," : "not ready,",
+          obj->oa.results_accumulated ? "accumulated" : "not accumulated");
+      break;
+   case GEN_PERF_QUERY_TYPE_PIPELINE:
+      DBG("BO: %-4s\n",
+          obj->pipeline_stats.bo ? "yes" : "no");
+      break;
+   default:
+      unreachable("Unknown query type");
+      break;
+   }
+}

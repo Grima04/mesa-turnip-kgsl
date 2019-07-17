@@ -111,41 +111,24 @@ brw_is_perf_query_ready(struct gl_context *ctx,
 static void
 dump_perf_query_callback(GLuint id, void *query_void, void *brw_void)
 {
-   struct gl_context *ctx = brw_void;
+   struct brw_context *ctx = brw_void;
+   struct gen_perf_context *perf_ctx = &ctx->perf_ctx;
    struct gl_perf_query_object *o = query_void;
    struct brw_perf_query_object * brw_query = brw_perf_query(o);
    struct gen_perf_query_object *obj = brw_query->query;
 
-   switch (obj->queryinfo->kind) {
-   case GEN_PERF_QUERY_TYPE_OA:
-   case GEN_PERF_QUERY_TYPE_RAW:
-      DBG("%4d: %-6s %-8s BO: %-4s OA data: %-10s %-15s\n",
-          id,
-          o->Used ? "Dirty," : "New,",
-          o->Active ? "Active," : (o->Ready ? "Ready," : "Pending,"),
-          obj->oa.bo ? "yes," : "no,",
-          brw_is_perf_query_ready(ctx, o) ? "ready," : "not ready,",
-          obj->oa.results_accumulated ? "accumulated" : "not accumulated");
-      break;
-   case GEN_PERF_QUERY_TYPE_PIPELINE:
-      DBG("%4d: %-6s %-8s BO: %-4s\n",
-          id,
-          o->Used ? "Dirty," : "New,",
-          o->Active ? "Active," : (o->Ready ? "Ready," : "Pending,"),
-          obj->pipeline_stats.bo ? "yes" : "no");
-      break;
-   default:
-      unreachable("Unknown query type");
-      break;
-   }
+   DBG("%4d: %-6s %-8s ",
+       id,
+       o->Used ? "Dirty," : "New,",
+       o->Active ? "Active," : (o->Ready ? "Ready," : "Pending,"));
+   gen_perf_dump_query(perf_ctx, obj, &ctx->batch);
 }
 
 static void
 dump_perf_queries(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
-   DBG("Queries: (Open queries = %d, OA users = %d)\n",
-       brw->perf_ctx.n_active_oa_queries, brw->perf_ctx.n_oa_users);
+   gen_perf_dump_query_count(&brw->perf_ctx);
    _mesa_HashWalk(ctx->PerfQuery.Objects, dump_perf_query_callback, brw);
 }
 

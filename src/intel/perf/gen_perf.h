@@ -445,4 +445,9 @@ void gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
                              unsigned *data,
                              unsigned *bytes_written);
 
+void gen_perf_dump_query_count(struct gen_perf_context *perf_ctx);
+void gen_perf_dump_query(struct gen_perf_context *perf_ctx,
+                         struct gen_perf_query_object *obj,
+                         void *current_batch);
+
 #endif /* GEN_PERF_H */
