@@ -4448,8 +4448,37 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			declare_esgs_ring(&ctx);
 		}
 
-		if (i)
+		bool nested_barrier = false;
+
+		if (i) {
+			if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY &&
+			    ctx.options->key.vs_common_out.as_ngg) {
+				nested_barrier = false;
+			} else {
+				nested_barrier = true;
+			}
+		}
+
+		if (nested_barrier) {
+			/* Execute a barrier before the second shader in
+			 * a merged shader.
+			 *
+			 * Execute the barrier inside the conditional block,
+			 * so that empty waves can jump directly to s_endpgm,
+			 * which will also signal the barrier.
+			 *
+			 * This is possible in gfx9, because an empty wave
+			 * for the second shader does not participate in
+			 * the epilogue. With NGG, empty waves may still
+			 * be required to export data (e.g. GS output vertices),
+			 * so we cannot let them exit early.
+			 *
+			 * If the shader is TCS and the TCS epilog is present
+			 * and contains a barrier, it will wait there and then
+			 * reach s_endpgm.
+			*/
 			ac_emit_barrier(&ctx.ac, ctx.stage);
+		}
 
 		nir_foreach_variable(variable, &shaders[i]->outputs)
 			scan_shader_output_decl(&ctx, variable, shaders[i], shaders[i]->info.stage);
