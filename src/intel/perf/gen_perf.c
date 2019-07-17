@@ -189,6 +189,78 @@ struct oa_sample_buf {
    uint32_t last_timestamp;
 };
 
+/**
+ * gen representation of a performance query object.
+ *
+ * NB: We want to keep this structure relatively lean considering that
+ * applications may expect to allocate enough objects to be able to
+ * query around all draw calls in a frame.
+ */
+struct gen_perf_query_object
+{
+   const struct gen_perf_query_info *queryinfo;
+
+   /* See query->kind to know which state below is in use... */
+   union {
+      struct {
+
+         /**
+          * BO containing OA counter snapshots at query Begin/End time.
+          */
+         void *bo;
+
+         /**
+          * Address of mapped of @bo
+          */
+         void *map;
+
+         /**
+          * The MI_REPORT_PERF_COUNT command lets us specify a unique
+          * ID that will be reflected in the resulting OA report
+          * that's written by the GPU. This is the ID we're expecting
+          * in the begin report and the the end report should be
+          * @begin_report_id + 1.
+          */
+         int begin_report_id;
+
+         /**
+          * Reference the head of the brw->perfquery.sample_buffers
+          * list at the time that the query started (so we only need
+          * to look at nodes after this point when looking for samples
+          * related to this query)
+          *
+          * (See struct brw_oa_sample_buf description for more details)
+          */
+         struct exec_node *samples_head;
+
+         /**
+          * false while in the unaccumulated_elements list, and set to
+          * true when the final, end MI_RPC snapshot has been
+          * accumulated.
+          */
+         bool results_accumulated;
+
+         /**
+          * Frequency of the GT at begin and end of the query.
+          */
+         uint64_t gt_frequency[2];
+
+         /**
+          * Accumulated OA results between begin and end of the query.
+          */
+         struct gen_perf_query_result result;
+      } oa;
+
+      struct {
+         /**
+          * BO containing starting and ending snapshots for the
+          * statistics counters.
+          */
+         void *bo;
+      } pipeline_stats;
+   };
+};
+
 struct gen_perf_context {
    struct gen_perf_config *perf;
 
@@ -253,6 +325,12 @@ struct gen_perf_context {
     */
    int n_query_instances;
 };
+
+const struct gen_perf_query_info*
+gen_perf_query_info(const struct gen_perf_query_object *query)
+{
+   return query->queryinfo;
+}
 
 struct gen_perf_context *
 gen_perf_new_context(void *parent)
