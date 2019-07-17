@@ -2007,7 +2007,8 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 				sel->info.uses_linear_centroid +
 				sel->info.uses_linear_sample > 1;
 
-			if (sel->info.opcode_count[TGSI_OPCODE_INTERP_SAMPLE])
+			if (sel->info.uses_persp_opcode_interp_sample ||
+			    sel->info.uses_linear_opcode_interp_sample)
 				key->mono.u.ps.interpolate_at_sample_force_center = 1;
 		}
 
