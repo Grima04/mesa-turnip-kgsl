@@ -133,12 +133,6 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
                               REG_MASK(GEN9_PARTIAL_RESOLVE_DISABLE_IN_VC) |
                               GEN9_FLOAT_BLEND_OPTIMIZATION_ENABLE |
                               GEN9_PARTIAL_RESOLVE_DISABLE_IN_VC);
-
-      if (gen_device_info_is_9lp(devinfo)) {
-         brw_load_register_imm32(brw, GEN7_GT_MODE,
-                                 GEN9_SUBSLICE_HASHING_MASK_BITS |
-                                 GEN9_SUBSLICE_HASHING_16x16);
-      }
    }
 
    if (devinfo->gen >= 8) {
@@ -542,6 +536,9 @@ brw_upload_pipeline_state(struct brw_context *brw,
       MAX2(_mesa_geometric_samples(ctx->DrawBuffer), 1);
 
    brw_select_pipeline(brw, pipeline);
+
+   if (pipeline == BRW_RENDER_PIPELINE && brw->current_hash_scale != 1)
+      brw_emit_hashing_mode(brw, UINT_MAX, UINT_MAX, 1);
 
    if (unlikely(INTEL_DEBUG & DEBUG_REEMIT)) {
       /* Always re-emit all state. */

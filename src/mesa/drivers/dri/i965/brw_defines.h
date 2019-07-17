@@ -1570,6 +1570,11 @@ enum brw_pixel_shader_coverage_mask_mode {
 # define GEN9_SUBSLICE_HASHING_8x4      (2 << 8)
 # define GEN9_SUBSLICE_HASHING_16x16    (3 << 8)
 # define GEN9_SUBSLICE_HASHING_MASK_BITS REG_MASK(3 << 8)
+# define GEN9_SLICE_HASHING_NORMAL      (0 << 11)
+# define GEN9_SLICE_HASHING_DISABLED    (1 << 11)
+# define GEN9_SLICE_HASHING_32x16       (2 << 11)
+# define GEN9_SLICE_HASHING_32x32       (3 << 11)
+# define GEN9_SLICE_HASHING_MASK_BITS REG_MASK(3 << 11)
 
 /* Predicate registers */
 #define MI_PREDICATE_SRC0               0x2400

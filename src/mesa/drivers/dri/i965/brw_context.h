@@ -1219,6 +1219,9 @@ struct brw_context
 
    enum gen9_astc5x5_wa_tex_type gen9_astc5x5_wa_tex_mask;
 
+   /** Last rendering scale argument provided to brw_emit_hashing_mode(). */
+   unsigned current_hash_scale;
+
    __DRIcontext *driContext;
    struct intel_screen *screen;
 };
@@ -1265,6 +1268,8 @@ GLboolean brwCreateContext(gl_api api,
  */
 void brw_workaround_depthstencil_alignment(struct brw_context *brw,
                                            GLbitfield clear_mask);
+void brw_emit_hashing_mode(struct brw_context *brw, unsigned width,
+                           unsigned height, unsigned scale);
 
 /* brw_object_purgeable.c */
 void brw_init_object_purgeable_functions(struct dd_function_table *functions);

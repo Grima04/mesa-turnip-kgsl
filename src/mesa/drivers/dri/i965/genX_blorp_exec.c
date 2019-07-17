@@ -343,6 +343,12 @@ retry:
    gen8_write_pma_stall_bits(brw, 0);
 #endif
 
+   const unsigned scale = params->fast_clear_op ? UINT_MAX : 1;
+   if (brw->current_hash_scale != scale) {
+      brw_emit_hashing_mode(brw, params->x1 - params->x0,
+                            params->y1 - params->y0, scale);
+   }
+
    blorp_emit(batch, GENX(3DSTATE_DRAWING_RECTANGLE), rect) {
       rect.ClippedDrawingRectangleXMax = MAX2(params->x1, params->x0) - 1;
       rect.ClippedDrawingRectangleYMax = MAX2(params->y1, params->y0) - 1;
