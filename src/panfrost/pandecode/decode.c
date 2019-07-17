@@ -1334,8 +1334,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no)
         if (p->index_count)
                 pandecode_prop("index_count = MALI_POSITIVE(%" PRId32 ")", p->index_count + 1);
 
-        if (p->negative_start)
-                pandecode_prop("negative_start = %d", p->negative_start);
+        if (p->offset_bias_correction)
+                pandecode_prop("offset_bias_correction = %d", p->offset_bias_correction);
 
         DYN_MEMORY_PROP(p, job_no, indices);
 
@@ -2181,8 +2181,8 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
                 pandecode_padded_vertices(v->instance_shift, v->instance_odd);
         }
 
-        if (v->draw_start)
-                pandecode_prop("draw_start = %d", v->draw_start);
+        if (v->offset_start)
+                pandecode_prop("offset_start = %d", v->offset_start);
 
         if (v->zero5) {
                 pandecode_msg("Zero tripped\n");

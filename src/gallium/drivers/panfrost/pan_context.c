@@ -672,7 +672,7 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
          * QED.
          */
 
-        unsigned start = ctx->payloads[PIPE_SHADER_VERTEX].draw_start;
+        unsigned start = ctx->payloads[PIPE_SHADER_VERTEX].offset_start;
 
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
@@ -1617,8 +1617,8 @@ panfrost_draw_vbo(
         if (panfrost_scissor_culls_everything(ctx))
                 return;
 
-        ctx->payloads[PIPE_SHADER_VERTEX].draw_start = info->start;
-        ctx->payloads[PIPE_SHADER_FRAGMENT].draw_start = info->start;
+        ctx->payloads[PIPE_SHADER_VERTEX].offset_start = info->start;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].offset_start = info->start;
 
         int mode = info->mode;
 
@@ -1655,7 +1655,8 @@ panfrost_draw_vbo(
 
         ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode = g2m_draw_mode(mode);
 
-        ctx->vertex_count = info->count;
+        /* Take into account a negative bias */
+        ctx->vertex_count = info->count + abs(info->index_bias);
         ctx->instance_count = info->instance_count;
 
         /* For non-indexed draws, they're the same */
@@ -1704,14 +1705,13 @@ panfrost_draw_vbo(
 
                 /* Use the corresponding values */
                 vertex_count = max_index - min_index + 1;
-                ctx->payloads[PIPE_SHADER_VERTEX].draw_start = min_index;
-                ctx->payloads[PIPE_SHADER_FRAGMENT].draw_start = min_index;
+                ctx->payloads[PIPE_SHADER_VERTEX].offset_start = min_index + info->index_bias;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].offset_start = min_index + info->index_bias;
 
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.negative_start = -min_index;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.offset_bias_correction = -min_index;
                 ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(info->count);
 
                 //assert(!info->restart_index); /* TODO: Research */
-                assert(!info->index_bias);
 
                 draw_flags |= panfrost_translate_index_size(info->index_size);
                 ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices = panfrost_get_index_buffer_mapped(ctx, info);
@@ -1719,7 +1719,7 @@ panfrost_draw_vbo(
                 /* Index count == vertex count, if no indexing is applied, as
                  * if it is internally indexed in the expected order */
 
-                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.negative_start = 0;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.offset_bias_correction = 0;
                 ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
 
                 /* Reverse index state */

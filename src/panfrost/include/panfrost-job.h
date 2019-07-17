@@ -935,8 +935,23 @@ struct mali_vertex_tiler_prefix {
         u32 workgroups_x_shift_3 : 6;
 
 
-        /* Negative of draw_start for TILER jobs from what I've seen */
-        int32_t negative_start;
+        /* Negative of min_index. This is used to compute
+         * the unbiased index in tiler/fragment shader runs.
+         * 
+         * The hardware adds offset_bias_correction in each run,
+         * so that absent an index bias, the first vertex processed is
+         * genuinely the first vertex (0). But with an index bias,
+         * the first vertex process is numbered the same as the bias.
+         *
+         * To represent this more conviniently:
+         * unbiased_index = lower_bound_index +
+         *                  index_bias +
+         *                  offset_bias_correction
+         *
+         * This is done since the hardware doesn't accept a index_bias
+         * and this allows it to recover the unbiased index.
+         */
+        int32_t offset_bias_correction;
         u32 zero1;
 
         /* Like many other strictly nonzero quantities, index_count is
@@ -1080,7 +1095,7 @@ struct midgard_payload_vertex_tiler {
         u8 zero4;
 
         /* Offset for first vertex in buffer */
-        u32 draw_start;
+        u32 offset_start;
 
 	u64 zero5;
 
