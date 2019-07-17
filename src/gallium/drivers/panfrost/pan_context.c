@@ -1225,6 +1225,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 if (is_srgb)
                                         rts[i].flags |= MALI_BLEND_SRGB;
 
+                                if (!ctx->blend->base.dither)
+                                        rts[i].flags |= MALI_BLEND_NO_DITHER;
+
                                 /* TODO: sRGB in blend shaders is currently
                                  * unimplemented. Contact me (Alyssa) if you're
                                  * interested in working on this. We have

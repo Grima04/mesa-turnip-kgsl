@@ -439,6 +439,9 @@ union midgard_blend {
 
 #define MALI_BLEND_SRGB (0x400)
 
+/* Dithering is specified here for MFBD, otherwise NO_DITHER for SFBD */
+#define MALI_BLEND_NO_DITHER (0x800)
+
 struct midgard_blend_rt {
         /* Flags base value of 0x200 to enable the render target.
          * OR with 0x1 for blending (anything other than REPLACE).
