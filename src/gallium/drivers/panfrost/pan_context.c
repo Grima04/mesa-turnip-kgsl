@@ -1126,8 +1126,13 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 ctx->fragment_shader_core.midgard1.flags = flags;
 
                 /* Assign the stencil refs late */
-                ctx->fragment_shader_core.stencil_front.ref = ctx->stencil_ref.ref_value[0];
-                ctx->fragment_shader_core.stencil_back.ref = ctx->stencil_ref.ref_value[1];
+
+                unsigned front_ref = ctx->stencil_ref.ref_value[0];
+                unsigned back_ref = ctx->stencil_ref.ref_value[1];
+                bool back_enab = ctx->depth_stencil->stencil[1].enabled;
+
+                ctx->fragment_shader_core.stencil_front.ref = front_ref;
+                ctx->fragment_shader_core.stencil_back.ref = back_enab ? back_ref : front_ref;
 
                 /* CAN_DISCARD should be set if the fragment shader possibly
                  * contains a 'discard' instruction. It is likely this is
@@ -2431,13 +2436,17 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
         }
 
         /* Stencil state */
-        SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_STENCIL_TEST, depth_stencil->stencil[0].enabled); /* XXX: which one? */
+        SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_STENCIL_TEST, depth_stencil->stencil[0].enabled);
 
         panfrost_make_stencil_state(&depth_stencil->stencil[0], &ctx->fragment_shader_core.stencil_front);
         ctx->fragment_shader_core.stencil_mask_front = depth_stencil->stencil[0].writemask;
 
-        panfrost_make_stencil_state(&depth_stencil->stencil[1], &ctx->fragment_shader_core.stencil_back);
-        ctx->fragment_shader_core.stencil_mask_back = depth_stencil->stencil[1].writemask;
+        /* If back-stencil is not enabled, use the front values */
+        bool back_enab = ctx->depth_stencil->stencil[1].enabled;
+        unsigned back_index = back_enab ? 1 : 0;
+
+        panfrost_make_stencil_state(&depth_stencil->stencil[back_index], &ctx->fragment_shader_core.stencil_back);
+        ctx->fragment_shader_core.stencil_mask_back = depth_stencil->stencil[back_index].writemask;
 
         /* Depth state (TODO: Refactor) */
         SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_DEPTH_TEST, depth_stencil->depth.enabled);
