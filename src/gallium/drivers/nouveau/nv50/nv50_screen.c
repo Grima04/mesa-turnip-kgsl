@@ -329,6 +329,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CS_DERIVED_SYSTEM_VALUES_SUPPORTED:
    case PIPE_CAP_FBFETCH_COHERENT:
    case PIPE_CAP_TGSI_SKIP_SHRINK_IO_ARRAYS:
+   case PIPE_CAP_TGSI_ATOMINC_WRAP:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:

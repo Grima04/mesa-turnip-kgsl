@@ -250,6 +250,7 @@ nv30_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PROGRAMMABLE_SAMPLE_LOCATIONS:
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
    case PIPE_CAP_TGSI_DIV:
+   case PIPE_CAP_TGSI_ATOMINC_WRAP:
       return 0;
 
    case PIPE_CAP_MAX_GS_INVOCATIONS:
