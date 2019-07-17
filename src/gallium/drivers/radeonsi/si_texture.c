@@ -1718,8 +1718,9 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
 	unsigned stride = 0, offset = 0;
 
 	/* Support only 2D textures without mipmaps */
-	if ((templ->target != PIPE_TEXTURE_2D && templ->target != PIPE_TEXTURE_RECT) ||
-	      templ->depth0 != 1 || templ->last_level != 0)
+	if ((templ->target != PIPE_TEXTURE_2D && templ->target != PIPE_TEXTURE_RECT &&
+	     templ->target != PIPE_TEXTURE_2D_ARRAY) ||
+	      templ->last_level != 0)
 		return NULL;
 
 	buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle,
