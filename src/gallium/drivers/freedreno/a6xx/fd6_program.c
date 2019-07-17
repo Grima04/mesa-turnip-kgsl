@@ -263,8 +263,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 	uint8_t psize_loc = ~0;
 	int i, j;
 
-	OUT_WFI5(ring);
-
 	static const struct ir3_shader_variant dummy_fs = {0};
 	const struct ir3_shader_variant *vs = binning_pass ? state->bs : state->vs;
 	const struct ir3_shader_variant *fs = binning_pass ? &dummy_fs : state->fs;
