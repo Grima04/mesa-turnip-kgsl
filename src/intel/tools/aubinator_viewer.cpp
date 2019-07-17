@@ -1085,7 +1085,7 @@ display_windows(void)
          window->destroy(window);
    }
 
-   list_for_each_entry(struct window, window, &context.windows, link) {
+   list_for_each_entry_safe(struct window, window, &context.windows, link) {
       ImGui::SetNextWindowPos(window->position, ImGuiCond_FirstUseEver);
       ImGui::SetNextWindowSize(window->size, ImGuiCond_FirstUseEver);
       if (ImGui::Begin(window->name, &window->opened)) {
