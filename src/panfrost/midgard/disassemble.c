@@ -953,8 +953,12 @@ is_op_varying(unsigned op)
         switch (op) {
         case midgard_op_st_vary_16:
         case midgard_op_st_vary_32:
+        case midgard_op_st_vary_32i:
+        case midgard_op_st_vary_32u:
         case midgard_op_ld_vary_16:
         case midgard_op_ld_vary_32:
+        case midgard_op_ld_vary_32i:
+        case midgard_op_ld_vary_32u:
                 return true;
         }
 
