@@ -722,10 +722,10 @@ miptree_layer_range_length(const struct iris_resource *res, uint32_t level,
    return num_layers;
 }
 
-static bool
-has_color_unresolved(const struct iris_resource *res,
-                     unsigned start_level, unsigned num_levels,
-                     unsigned start_layer, unsigned num_layers)
+bool
+iris_has_color_unresolved(const struct iris_resource *res,
+                          unsigned start_level, unsigned num_levels,
+                          unsigned start_layer, unsigned num_layers)
 {
    if (!res->aux.bo)
       return false;
@@ -1323,8 +1323,8 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
        * ISL_AUX_USAGE_NONE.  This way, texturing won't even look at the
        * aux surface and we can save some bandwidth.
        */
-      if (!has_color_unresolved(res, 0, INTEL_REMAINING_LEVELS,
-                                0, INTEL_REMAINING_LAYERS))
+      if (!iris_has_color_unresolved(res, 0, INTEL_REMAINING_LEVELS,
+                                     0, INTEL_REMAINING_LAYERS))
          return ISL_AUX_USAGE_NONE;
 
       if (can_texture_with_ccs(devinfo, &ice->dbg, res, view_format))
