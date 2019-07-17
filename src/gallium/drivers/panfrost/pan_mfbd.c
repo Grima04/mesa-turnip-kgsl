@@ -313,6 +313,20 @@ panfrost_mfbd_set_zsbuf(
                         fbx->flags |= 0x1;
                 } else if (surf->format == PIPE_FORMAT_Z32_UNORM) {
                         /* default flags (0 in bottom place) */
+                } else if (surf->format == PIPE_FORMAT_Z32_FLOAT) {
+                        fbx->flags |= 0xA;
+                        fb->mfbd_flags ^= 0x100;
+                        fb->mfbd_flags |= 0x200;
+                } else if (surf->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
+                        fbx->flags |= 0x1000A;
+                        fb->mfbd_flags ^= 0x100;
+                        fb->mfbd_flags |= 0x201;
+
+                        struct panfrost_resource *stencil = rsrc->separate_stencil;
+                        struct panfrost_slice stencil_slice = stencil->slices[level];
+
+                        fbx->ds_linear.stencil = stencil->bo->gpu + stencil_slice.offset;
+                        fbx->ds_linear.stencil_stride = stencil_slice.stride;
                 }
 
         } else {

@@ -428,6 +428,8 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
                         case PIPE_FORMAT_Z24X8_UNORM:
                         case PIPE_FORMAT_Z32_UNORM:
+                        case PIPE_FORMAT_Z32_FLOAT:
+                        case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
                                 return true;
 
                         default:
