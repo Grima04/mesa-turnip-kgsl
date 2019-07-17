@@ -355,27 +355,26 @@ bool virgl_transfer_queue_is_queued(struct virgl_transfer_queue *queue,
                                             false);
 }
 
-struct virgl_transfer *
-virgl_transfer_queue_extend(struct virgl_transfer_queue *queue,
-                            struct virgl_transfer *transfer)
+bool
+virgl_transfer_queue_extend_buffer(struct virgl_transfer_queue *queue,
+                                   const struct virgl_hw_res *hw_res,
+                                   unsigned offset, unsigned size,
+                                   const void *data)
 {
-   struct virgl_transfer *queued = NULL;
+   struct virgl_transfer *queued;
+   struct pipe_box box;
 
-   /* We don't support extending from copy transfers. */
-   assert(!transfer->copy_src_hw_res);
+   u_box_1d(offset, size, &box);
+   queued = virgl_transfer_queue_find_overlap(queue, hw_res, 0, &box, true);
+   if (!queued)
+      return false;
 
-   if (transfer->base.resource->target == PIPE_BUFFER) {
-      queued = virgl_transfer_queue_find_overlap(queue,
-                                                 transfer->hw_res,
-                                                 transfer->base.level,
-                                                 &transfer->base.box,
-                                                 true);
-   }
+   assert(queued->base.resource->target == PIPE_BUFFER);
+   assert(queued->hw_res_map);
 
-   if (queued) {
-      u_box_union_2d(&queued->base.box, &queued->base.box, &transfer->base.box);
-      queued->offset = queued->base.box.x;
-   }
+   memcpy(queued->hw_res_map + offset, data, size);
+   u_box_union_2d(&queued->base.box, &queued->base.box, &box);
+   queued->offset = queued->base.box.x;
 
-   return queued;
+   return true;
 }

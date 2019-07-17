@@ -56,9 +56,11 @@ bool virgl_transfer_queue_is_queued(struct virgl_transfer_queue *queue,
 
 /*
  * Search the transfer queue for a transfer suitable for extension and
- * extend it to include the new transfer.
+ * extend it to include the specified data.
  */
-struct virgl_transfer * virgl_transfer_queue_extend(
-   struct virgl_transfer_queue *queue, struct virgl_transfer *transfer);
+bool virgl_transfer_queue_extend_buffer(struct virgl_transfer_queue *queue,
+                                        const struct virgl_hw_res *hw_res,
+                                        unsigned offset, unsigned size,
+                                        const void *data);
 
 #endif /* VIRGL_TRANSFER_QUEUE_H */

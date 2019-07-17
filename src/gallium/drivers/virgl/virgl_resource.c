@@ -546,7 +546,6 @@ static bool virgl_buffer_transfer_extend(struct pipe_context *ctx,
    struct virgl_resource *vbuf = virgl_resource(resource);
    struct virgl_transfer dummy_trans = { 0 };
    bool flush;
-   struct virgl_transfer *queued;
 
    /*
     * Attempts to short circuit the entire process of mapping and unmapping
@@ -566,11 +565,10 @@ static bool virgl_buffer_transfer_extend(struct pipe_context *ctx,
                                       box->x, box->x + box->width))
       return false;
 
-   queued = virgl_transfer_queue_extend(&vctx->queue, &dummy_trans);
-   if (!queued || !queued->hw_res_map)
+   if (!virgl_transfer_queue_extend_buffer(&vctx->queue,
+            vbuf->hw_res, box->x, box->width, data))
       return false;
 
-   memcpy(queued->hw_res_map + dummy_trans.offset, data, box->width);
    util_range_add(&vbuf->valid_buffer_range, box->x, box->x + box->width);
 
    return true;
