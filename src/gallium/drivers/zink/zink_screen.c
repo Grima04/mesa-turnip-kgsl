@@ -104,8 +104,12 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->props.limits.maxColorAttachments;
 
    case PIPE_CAP_OCCLUSION_QUERY:
+      return 1;
+
+#if 0 /* TODO: Enable me */
    case PIPE_CAP_QUERY_TIME_ELAPSED:
       return 1;
+#endif
 
    case PIPE_CAP_TEXTURE_SWIZZLE:
       return 1;
