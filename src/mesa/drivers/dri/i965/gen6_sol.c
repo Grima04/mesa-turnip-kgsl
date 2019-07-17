@@ -218,6 +218,7 @@ brw_delete_transform_feedback(struct gl_context *ctx,
    brw_bo_unreference(brw_obj->offset_bo);
    brw_bo_unreference(brw_obj->prim_count_bo);
 
+   free(obj->Label);
    free(brw_obj);
 }
 

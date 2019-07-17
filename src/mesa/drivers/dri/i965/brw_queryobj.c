@@ -239,6 +239,7 @@ brw_delete_query(struct gl_context *ctx, struct gl_query_object *q)
    struct brw_query_object *query = (struct brw_query_object *)q;
 
    brw_bo_unreference(query->bo);
+   free(query->Base.Label);
    free(query);
 }
 
