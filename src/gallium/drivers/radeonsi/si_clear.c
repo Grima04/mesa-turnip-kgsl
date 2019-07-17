@@ -231,7 +231,7 @@ static bool vi_get_fast_clear_parameters(struct si_screen *sscreen,
 	return true;
 }
 
-void vi_dcc_clear_level(struct si_context *sctx,
+bool vi_dcc_clear_level(struct si_context *sctx,
 			struct si_texture *tex,
 			unsigned level, unsigned clear_value)
 {
@@ -250,21 +250,28 @@ void vi_dcc_clear_level(struct si_context *sctx,
 
 	if (sctx->chip_class >= GFX9) {
 		/* Mipmap level clears aren't implemented. */
-		assert(tex->buffer.b.b.last_level == 0);
+		if (tex->buffer.b.b.last_level > 0)
+			return false;
+
 		/* 4x and 8x MSAA needs a sophisticated compute shader for
 		 * the clear. See AMDVLK. */
-		assert(tex->buffer.b.b.nr_storage_samples <= 2);
+		if (tex->buffer.b.b.nr_storage_samples >= 4)
+			return false;
+
 		clear_size = tex->surface.dcc_size;
 	} else {
 		unsigned num_layers = util_num_layers(&tex->buffer.b.b, level);
 
 		/* If this is 0, fast clear isn't possible. (can occur with MSAA) */
-		assert(tex->surface.u.legacy.level[level].dcc_fast_clear_size);
+		if (!tex->surface.u.legacy.level[level].dcc_fast_clear_size)
+			return false;
+
 		/* Layered 4x and 8x MSAA DCC fast clears need to clear
 		 * dcc_fast_clear_size bytes for each layer. A compute shader
 		 * would be more efficient than separate per-layer clear operations.
 		 */
-		assert(tex->buffer.b.b.nr_storage_samples <= 2 || num_layers == 1);
+		if (tex->buffer.b.b.nr_storage_samples >= 4 && num_layers > 1)
+			return false;
 
 		dcc_offset += tex->surface.u.legacy.level[level].dcc_offset;
 		clear_size = tex->surface.u.legacy.level[level].dcc_fast_clear_size *
@@ -273,6 +280,7 @@ void vi_dcc_clear_level(struct si_context *sctx,
 
 	si_clear_buffer(sctx, dcc_buffer, dcc_offset, clear_size,
 			&clear_value, 4, SI_COHERENCY_CB_META, false);
+	return true;
 }
 
 /* Set the same micro tile mode as the destination of the last MSAA resolve.
@@ -483,11 +491,6 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 			if (sctx->screen->debug_flags & DBG(NO_DCC_CLEAR))
 				continue;
 
-			/* This can happen with mipmapping or MSAA. */
-			if (sctx->chip_class == GFX8 &&
-			    !tex->surface.u.legacy.level[level].dcc_fast_clear_size)
-				continue;
-
 			if (!vi_get_fast_clear_parameters(sctx->screen,
 							  tex->buffer.b.b.format,
 							  fb->cbufs[i]->format,
@@ -498,21 +501,24 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 			if (eliminate_needed && too_small)
 				continue;
 
+			/* TODO: This DCC+CMASK clear doesn't work with MSAA. */
+			if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer &&
+			    eliminate_needed)
+				continue;
+
+			if (!vi_dcc_clear_level(sctx, tex, 0, reset_value))
+				continue;
+
+			tex->separate_dcc_dirty = true;
+
 			/* DCC fast clear with MSAA should clear CMASK to 0xC. */
 			if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer) {
-				/* TODO: This doesn't work with MSAA. */
-				if (eliminate_needed)
-					continue;
-
 				uint32_t clear_value = 0xCCCCCCCC;
 				si_clear_buffer(sctx, &tex->cmask_buffer->b.b,
 						tex->cmask_offset, tex->surface.cmask_size,
 						&clear_value, 4, SI_COHERENCY_CB_META, false);
 				fmask_decompress_needed = true;
 			}
-
-			vi_dcc_clear_level(sctx, tex, 0, reset_value);
-			tex->separate_dcc_dirty = true;
 		} else {
 			if (too_small)
 				continue;
