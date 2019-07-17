@@ -69,6 +69,7 @@
            .aspect = VK_IMAGE_ASPECT_DEPTH_BIT, \
          }, \
       }, \
+      .vk_format = __vk_fmt, \
       .n_planes = 1, \
    }
 
@@ -80,6 +81,7 @@
            .aspect = VK_IMAGE_ASPECT_STENCIL_BIT, \
          }, \
       }, \
+      .vk_format = __vk_fmt, \
       .n_planes = 1, \
    }
 
@@ -795,6 +797,7 @@ anv_get_image_format_properties(
    if (format == NULL)
       goto unsupported;
 
+   assert(format->vk_format == info->format);
    format_feature_flags = anv_get_image_format_features(devinfo, info->format,
                                                         format, info->tiling);
 
