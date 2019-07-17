@@ -1603,12 +1603,13 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                 else
                                         shader = pandecode_midgard_blend_mrt(blend_base, job_no, i);
 
-                                if (shader)
+                                if (shader & ~0xF)
                                         pandecode_shader_disassemble(shader, job_no, job_type, false);
                         }
                 }
 
-                pandecode_shader_disassemble(shader_ptr, job_no, job_type, is_bifrost);
+                if (shader_ptr & ~0xF)
+                   pandecode_shader_disassemble(shader_ptr, job_no, job_type, is_bifrost);
         } else
                 pandecode_msg("<no shader>\n");
 
