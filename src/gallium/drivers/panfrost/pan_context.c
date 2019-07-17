@@ -1371,19 +1371,26 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         };
 
         /* Always scissor to the viewport by default. */
-        int minx = (int) (vp->translate[0] - vp->scale[0]);
-        int maxx = (int) (vp->translate[0] + vp->scale[0]);
+        float vp_minx = (int) (vp->translate[0] - fabsf(vp->scale[0]));
+        float vp_maxx = (int) (vp->translate[0] + fabsf(vp->scale[0]));
 
-        int miny = (int) (vp->translate[1] - vp->scale[1]);
-        int maxy = (int) (vp->translate[1] + vp->scale[1]);
+        float vp_miny = (int) (vp->translate[1] - fabsf(vp->scale[1]));
+        float vp_maxy = (int) (vp->translate[1] + fabsf(vp->scale[1]));
 
         /* Apply the scissor test */
 
+        unsigned minx, miny, maxx, maxy;
+
         if (ss && ctx->rasterizer && ctx->rasterizer->base.scissor) {
-                minx = ss->minx;
-                maxx = ss->maxx;
-                miny = ss->miny;
-                maxy = ss->maxy;
+                minx = MAX2(ss->minx, vp_minx);
+                miny = MAX2(ss->miny, vp_miny);
+                maxx = MIN2(ss->maxx, vp_maxx);
+                maxy = MIN2(ss->maxy, vp_maxy);
+        } else {
+                minx = vp_minx;
+                miny = vp_miny;
+                maxx = vp_maxx;
+                maxy = vp_maxy;
         }
 
         /* Hardware needs the min/max to be strictly ordered, so flip if we
