@@ -1011,18 +1011,20 @@ radv_shader_variant_create(struct radv_device *device,
 			return NULL;
 		}
 
-		const char *disasm_data;
-		size_t disasm_size;
-		if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm_data, &disasm_size)) {
-			radv_shader_variant_destroy(device, variant);
-			ac_rtld_close(&rtld_binary);
-			return NULL;
-		}
+		if (device->keep_shader_info) {
+			const char *disasm_data;
+			size_t disasm_size;
+			if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm_data, &disasm_size)) {
+				radv_shader_variant_destroy(device, variant);
+				ac_rtld_close(&rtld_binary);
+				return NULL;
+			}
 
-		variant->llvm_ir_string = bin->llvm_ir_size ? strdup((const char*)(bin->data + bin->elf_size)) : NULL;
-		variant->disasm_string = malloc(disasm_size + 1);
-		memcpy(variant->disasm_string, disasm_data, disasm_size);
-		variant->disasm_string[disasm_size] = 0;
+			variant->llvm_ir_string = bin->llvm_ir_size ? strdup((const char*)(bin->data + bin->elf_size)) : NULL;
+			variant->disasm_string = malloc(disasm_size + 1);
+			memcpy(variant->disasm_string, disasm_data, disasm_size);
+			variant->disasm_string[disasm_size] = 0;
+		}
 
 		ac_rtld_close(&rtld_binary);
 	} else {
