@@ -3428,7 +3428,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 
 	radeon_set_sh_reg_seq(cs, R_00B320_SPI_SHADER_PGM_LO_ES, 2);
 	radeon_emit(cs, va >> 8);
-	radeon_emit(cs, va >> 40);
+	radeon_emit(cs, S_00B324_MEM_BASE(va >> 40));
 	radeon_set_sh_reg_seq(cs, R_00B228_SPI_SHADER_PGM_RSRC1_GS, 2);
 	radeon_emit(cs, shader->config.rsrc1);
 	radeon_emit(cs, shader->config.rsrc2);
