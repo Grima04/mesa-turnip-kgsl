@@ -44,6 +44,7 @@
 #include "gallivm/lp_bld_tgsi.h"
 
 #include "swr_context.h"
+#include "gen_surf_state_llvm.h"
 #include "gen_swr_context_llvm.h"
 #include "swr_resource.h"
 #include "swr_state.h"

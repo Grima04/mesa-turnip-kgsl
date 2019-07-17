@@ -45,6 +45,7 @@
 
 #include "swr_state.h"
 #include "swr_context.h"
+#include "gen_surf_state_llvm.h"
 #include "gen_swr_context_llvm.h"
 #include "swr_screen.h"
 #include "swr_resource.h"

@@ -193,15 +193,14 @@ HANDLE SwrCreateContext(SWR_CREATECONTEXT_INFO* pCreateInfo)
     pContext->pHotTileMgr = new HotTileMgr();
 
     // initialize callback functions
-    pContext->pfnLoadTile                 = pCreateInfo->pfnLoadTile;
-    pContext->pfnStoreTile                = pCreateInfo->pfnStoreTile;
-    pContext->pfnClearTile                = pCreateInfo->pfnClearTile;
-    pContext->pfnTranslateGfxptrForRead   = pCreateInfo->pfnTranslateGfxptrForRead;
-    pContext->pfnTranslateGfxptrForWrite  = pCreateInfo->pfnTranslateGfxptrForWrite;
-    pContext->pfnMakeGfxPtr               = pCreateInfo->pfnMakeGfxPtr;
-    pContext->pfnUpdateSoWriteOffset      = pCreateInfo->pfnUpdateSoWriteOffset;
-    pContext->pfnUpdateStats              = pCreateInfo->pfnUpdateStats;
-    pContext->pfnUpdateStatsFE            = pCreateInfo->pfnUpdateStatsFE;
+    pContext->pfnLoadTile                = pCreateInfo->pfnLoadTile;
+    pContext->pfnStoreTile               = pCreateInfo->pfnStoreTile;
+    pContext->pfnTranslateGfxptrForRead  = pCreateInfo->pfnTranslateGfxptrForRead;
+    pContext->pfnTranslateGfxptrForWrite = pCreateInfo->pfnTranslateGfxptrForWrite;
+    pContext->pfnMakeGfxPtr              = pCreateInfo->pfnMakeGfxPtr;
+    pContext->pfnUpdateSoWriteOffset     = pCreateInfo->pfnUpdateSoWriteOffset;
+    pContext->pfnUpdateStats             = pCreateInfo->pfnUpdateStats;
+    pContext->pfnUpdateStatsFE           = pCreateInfo->pfnUpdateStatsFE;
 
 
     // pass pointer to bucket manager back to caller
@@ -1769,7 +1768,4 @@ void SwrGetInterface(SWR_INTERFACE& out_funcs)
     out_funcs.pfnSwrEnableStatsBE          = SwrEnableStatsBE;
     out_funcs.pfnSwrEndFrame               = SwrEndFrame;
     out_funcs.pfnSwrInit                   = SwrInit;
-    out_funcs.pfnSwrLoadHotTile = SwrLoadHotTile;
-    out_funcs.pfnSwrStoreHotTileToSurface = SwrStoreHotTileToSurface;
-    out_funcs.pfnSwrStoreHotTileClear = SwrStoreHotTileClear;
 }

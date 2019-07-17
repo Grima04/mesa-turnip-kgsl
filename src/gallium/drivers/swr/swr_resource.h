@@ -24,6 +24,7 @@
 #ifndef SWR_RESOURCE_H
 #define SWR_RESOURCE_H
 
+#include "memory/SurfaceState.h"
 #include "pipe/p_state.h"
 #include "api.h"
 

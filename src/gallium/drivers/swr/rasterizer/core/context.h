@@ -525,7 +525,6 @@ struct SWR_CONTEXT
     // Callback functions, passed in at create context time
     PFN_LOAD_TILE                   pfnLoadTile;
     PFN_STORE_TILE                  pfnStoreTile;
-    PFN_CLEAR_TILE                  pfnClearTile;
     PFN_TRANSLATE_GFXPTR_FOR_READ   pfnTranslateGfxptrForRead;
     PFN_TRANSLATE_GFXPTR_FOR_WRITE  pfnTranslateGfxptrForWrite;
     PFN_MAKE_GFXPTR                 pfnMakeGfxPtr;

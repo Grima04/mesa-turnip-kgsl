@@ -480,7 +480,9 @@ swr_create_context(struct pipe_screen *p_screen, void *priv, unsigned flags)
    memset(ctx, 0, sizeof(struct swr_context));
 
    swr_screen(p_screen)->pfnSwrGetInterface(ctx->api);
+   swr_screen(p_screen)->pfnSwrGetTileInterface(ctx->tileApi);
    ctx->swrDC.pAPI = &ctx->api;
+   ctx->swrDC.pTileAPI = &ctx->tileApi;
 
    ctx->blendJIT =
       new std::unordered_map<BLEND_COMPILE_STATE, PFN_BLEND_JIT_FUNC>;
@@ -492,7 +494,6 @@ swr_create_context(struct pipe_screen *p_screen, void *priv, unsigned flags)
    createInfo.privateStateSize = sizeof(swr_draw_context);
    createInfo.pfnLoadTile = swr_LoadHotTile;
    createInfo.pfnStoreTile = swr_StoreHotTile;
-   createInfo.pfnClearTile = swr_StoreHotTileClear;
    createInfo.pfnUpdateStats = swr_UpdateStats;
    createInfo.pfnUpdateStatsFE = swr_UpdateStatsFE;
    createInfo.pfnMakeGfxPtr = swr_MakeGfxPtr;

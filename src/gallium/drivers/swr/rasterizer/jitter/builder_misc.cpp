@@ -445,11 +445,7 @@ namespace SwrJit
         args.push_back(PointerType::get(mInt8Ty, 0));
         FunctionType* callPrintTy = FunctionType::get(Type::getVoidTy(JM()->mContext), args, true);
         Function*     callPrintFn =
-#if LLVM_VERSION_MAJOR >= 9
-            cast<Function>(JM()->mpCurrentModule->getOrInsertFunction("CallPrint", callPrintTy).getCallee());
-#else
             cast<Function>(JM()->mpCurrentModule->getOrInsertFunction("CallPrint", callPrintTy));
-#endif
 
         // if we haven't yet added the symbol to the symbol table
         if ((sys::DynamicLibrary::SearchForAddressOfSymbol("CallPrint")) == nullptr)
@@ -618,11 +614,7 @@ namespace SwrJit
         {
             FunctionType* pFuncTy   = FunctionType::get(mFP32Ty, mInt16Ty);
             Function*     pCvtPh2Ps = cast<Function>(
-#if LLVM_VERSION_MAJOR >= 9
-                JM()->mpCurrentModule->getOrInsertFunction("ConvertFloat16ToFloat32", pFuncTy).getCallee());
-#else
                 JM()->mpCurrentModule->getOrInsertFunction("ConvertFloat16ToFloat32", pFuncTy));
-#endif
 
             if (sys::DynamicLibrary::SearchForAddressOfSymbol("ConvertFloat16ToFloat32") == nullptr)
             {
@@ -658,11 +650,7 @@ namespace SwrJit
             // call scalar C function for now
             FunctionType* pFuncTy   = FunctionType::get(mInt16Ty, mFP32Ty);
             Function*     pCvtPs2Ph = cast<Function>(
-#if LLVM_VERSION_MAJOR >= 9
-                JM()->mpCurrentModule->getOrInsertFunction("ConvertFloat32ToFloat16", pFuncTy).getCallee());
-#else
                 JM()->mpCurrentModule->getOrInsertFunction("ConvertFloat32ToFloat16", pFuncTy));
-#endif
 
             if (sys::DynamicLibrary::SearchForAddressOfSymbol("ConvertFloat32ToFloat16") == nullptr)
             {
@@ -786,6 +774,14 @@ namespace SwrJit
     {
         SWR_ASSERT((numIntBits + numFracBits) <= 32, "Can only handle 32-bit fixed-point values");
         Value* fixed = nullptr;
+#if 0
+        // This doesn't work for negative numbers!!
+        {
+            fixed = FP_TO_SI(VROUND(FMUL(vFloat, VIMMED1(float(1 << numFracBits))),
+                                    C(_MM_FROUND_TO_NEAREST_INT)),
+                             mSimdInt32Ty);
+        }
+#else
         {
             // Do round to nearest int on fractional bits first
             // Not entirely perfect for negative numbers, but close enough
@@ -808,7 +804,7 @@ namespace SwrJit
 
             fixed = ASHR(vFixed, vExtraBits, name);
         }
-
+#endif
         return fixed;
     }
 
@@ -849,6 +845,7 @@ namespace SwrJit
     {
         SWR_ASSERT((numIntBits + numFracBits) <= 32, "Can only handle 32-bit fixed-point values");
         Value* fixed = nullptr;
+#if 1
         // KNOB_SIM_FAST_MATH?  Below works correctly from a precision
         // standpoint...
         {
@@ -856,6 +853,28 @@ namespace SwrJit
                                     C(_MM_FROUND_TO_NEAREST_INT)),
                              mSimdInt32Ty);
         }
+#else
+        {
+            // Do round to nearest int on fractional bits first
+            vFloat = VROUND(FMUL(vFloat, VIMMED1(float(1 << numFracBits))),
+                            C(_MM_FROUND_TO_NEAREST_INT));
+            vFloat = FMUL(vFloat, VIMMED1(1.0f / float(1 << numFracBits)));
+
+            // TODO: Handle INF, NAN, overflow / underflow, etc.
+
+            Value* vSgn      = FCMP_OLT(vFloat, VIMMED1(0.0f));
+            Value* vFloatInt = BITCAST(vFloat, mSimdInt32Ty);
+            Value* vFixed    = AND(vFloatInt, VIMMED1((1 << 23) - 1));
+            vFixed           = OR(vFixed, VIMMED1(1 << 23));
+
+            Value* vExp = LSHR(SHL(vFloatInt, VIMMED1(1)), VIMMED1(24));
+            vExp        = SUB(vExp, VIMMED1(127));
+
+            Value* vExtraBits = SUB(VIMMED1(23 - numFracBits), vExp);
+
+            fixed = LSHR(vFixed, vExtraBits, name);
+        }
+#endif
         return fixed;
     }
 
@@ -940,11 +959,7 @@ namespace SwrJit
 
             FunctionType* pFuncTy = FunctionType::get(Type::getVoidTy(JM()->mContext), args, false);
             Function*     pFunc   = cast<Function>(
-#if LLVM_VERSION_MAJOR >= 9
-                JM()->mpCurrentModule->getOrInsertFunction("BucketManager_StartBucket", pFuncTy).getCallee());
-#else
                 JM()->mpCurrentModule->getOrInsertFunction("BucketManager_StartBucket", pFuncTy));
-#endif
             if (sys::DynamicLibrary::SearchForAddressOfSymbol("BucketManager_StartBucket") ==
                 nullptr)
             {
@@ -969,11 +984,7 @@ namespace SwrJit
 
             FunctionType* pFuncTy = FunctionType::get(Type::getVoidTy(JM()->mContext), args, false);
             Function*     pFunc   = cast<Function>(
-#if LLVM_VERSION_MAJOR >=9
-                JM()->mpCurrentModule->getOrInsertFunction("BucketManager_StopBucket", pFuncTy).getCallee());
-#else
                 JM()->mpCurrentModule->getOrInsertFunction("BucketManager_StopBucket", pFuncTy));
-#endif
             if (sys::DynamicLibrary::SearchForAddressOfSymbol("BucketManager_StopBucket") ==
                 nullptr)
             {

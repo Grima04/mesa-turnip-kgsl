@@ -29,6 +29,8 @@
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
 #include "util/u_blitter.h"
+#include "rasterizer/memory/SurfaceState.h"
+#include "rasterizer/memory/InitMemory.h"
 #include "jit_api.h"
 #include "swr_state.h"
 #include <unordered_map>
@@ -104,6 +106,7 @@ struct swr_draw_context {
    SWR_SURFACE_STATE renderTargets[SWR_NUM_ATTACHMENTS];
    struct swr_query_result *pStats; // @llvm_struct
    SWR_INTERFACE *pAPI; // @llvm_struct - Needed for the swr_memory callbacks
+   SWR_TILE_INTERFACE *pTileAPI; // @llvm_struct - Needed for the swr_memory callbacks
 };
 
 /* gen_llvm_types FINI */
@@ -173,6 +176,7 @@ struct swr_context {
    unsigned dirty; /**< Mask of SWR_NEW_x flags */
 
    SWR_INTERFACE api;
+   SWR_TILE_INTERFACE tileApi;
 
    uint32_t max_draws_in_flight;
 };

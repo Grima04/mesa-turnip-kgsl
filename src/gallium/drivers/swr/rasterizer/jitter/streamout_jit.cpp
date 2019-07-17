@@ -263,15 +263,12 @@ struct StreamOutJit : public BuilderGfxMem
                                  std::ios_base::in | std::ios_base::out | std::ios_base::ate);
         fnName << ComputeCRC(0, &state, sizeof(state));
 
-        // SO function signature
-        // typedef void(__cdecl *PFN_SO_FUNC)(SimDrawContext, SWR_STREAMOUT_CONTEXT*)
-
         Type* typeParam0;
         typeParam0 = mInt8PtrTy;
 
         std::vector<Type*> args{
-            typeParam0,
-            PointerType::get(Gen_SWR_STREAMOUT_CONTEXT(JM()), 0), // SWR_STREAMOUT_CONTEXT*
+                            typeParam0,
+                            PointerType::get(Gen_SWR_STREAMOUT_CONTEXT(JM()), 0), // SWR_STREAMOUT_CONTEXT*
         };
 
         FunctionType* fTy    = FunctionType::get(IRB()->getVoidTy(), args, false);

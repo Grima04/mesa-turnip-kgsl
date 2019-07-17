@@ -33,6 +33,7 @@
 #include "api.h"
 
 #include "memory/TilingFunctions.h"
+#include "memory/InitMemory.h"
 
 struct sw_winsys;
 
@@ -54,6 +55,7 @@ struct swr_screen {
    /* Dynamic backend implementations */
    util_dl_library *pLibrary;
    PFNSwrGetInterface pfnSwrGetInterface;
+   PFNSwrGetTileInterface pfnSwrGetTileInterface;
 
    /* Do we run on Xeon Phi? */
    bool is_knl;

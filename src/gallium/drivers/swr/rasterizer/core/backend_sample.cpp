@@ -83,7 +83,6 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
         {
             const bool useAlternateOffset = ((xx & SIMD_TILE_X_DIM) != 0);
 
-            psContext.alternateOffset = useAlternateOffset ? 1 : 0;
 
             if (T::InputCoverage != SWR_INPUT_COVERAGE_NONE)
             {

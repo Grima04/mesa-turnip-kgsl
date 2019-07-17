@@ -139,7 +139,7 @@ INLINE Float<SIMD_T> SIMDCALL Clamp(Float<SIMD_T> const& v, uint32_t Component)
 }
 
 template <SWR_FORMAT Format>
-INLINE simdscalar SIMDCALL Clamp(simdscalar const& v, uint32_t Component)
+INLINE simd16scalar SIMDCALL Clamp(simdscalar const& v, uint32_t Component)
 {
     return Clamp<SIMD256, Format>(v, Component);
 }
@@ -168,7 +168,7 @@ INLINE Float<SIMD_T> SIMDCALL Normalize(Float<SIMD_T> const& vComp, uint32_t Com
 }
 
 template <SWR_FORMAT Format>
-INLINE simdscalar SIMDCALL Normalize(simdscalar const& vComp, uint32_t Component)
+INLINE simd16scalar SIMDCALL Normalize(simdscalar const& vComp, uint32_t Component)
 {
     return Normalize<SIMD256, Format>(vComp, Component);
 }

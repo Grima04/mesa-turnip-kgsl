@@ -103,6 +103,16 @@ Depends('rasterizer/jitter/gen_state_llvm.h',
         swrroot + 'rasterizer/codegen/templates/gen_llvm.hpp')
 
 env.CodeGenerate(
+    target = './gen_surf_state_llvm.h',
+    script = swrroot + 'rasterizer/codegen/gen_llvm_types.py',
+    source = 'rasterizer/memory/SurfaceState.h',
+    command = python_cmd + ' $SCRIPT --input $SOURCE --output $TARGET'
+)
+Depends('rasterizer/jitter/gen_state_llvm.h',
+        swrroot + 'rasterizer/codegen/templates/gen_llvm.hpp')
+
+
+env.CodeGenerate(
     script = swrroot + 'rasterizer/codegen/gen_archrast.py',
     target = ['rasterizer/archrast/gen_ar_event.hpp',
               'rasterizer/archrast/gen_ar_event.cpp',

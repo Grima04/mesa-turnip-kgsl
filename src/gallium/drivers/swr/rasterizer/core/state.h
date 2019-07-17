@@ -380,8 +380,6 @@ struct SWR_PS_CONTEXT
 
     uint8_t* pColorBuffer[SWR_NUM_RENDERTARGETS]; // IN: Pointers to render target hottiles
 
-    uint32_t alternateOffset; // IN: for 8x2 tile backend, which 4x2 do we need to read from
-
     SWR_SHADER_STATS stats; // OUT: shader statistics used for archrast.
 };
 
@@ -536,47 +534,6 @@ enum SWR_AUX_MODE
     AUX_MODE_COLOR,
     AUX_MODE_UAV,
     AUX_MODE_DEPTH,
-};
-
-struct SWR_LOD_OFFSETS
-{
-    uint32_t offsets[2][15];
-};
-
-//////////////////////////////////////////////////////////////////////////
-/// SWR_SURFACE_STATE
-//////////////////////////////////////////////////////////////////////////
-struct SWR_SURFACE_STATE
-{
-    gfxptr_t         xpBaseAddress;
-    SWR_SURFACE_TYPE type;   // @llvm_enum
-    SWR_FORMAT       format; // @llvm_enum
-    uint32_t         width;
-    uint32_t         height;
-    uint32_t         depth;
-    uint32_t         numSamples;
-    uint32_t         samplePattern;
-    uint32_t         pitch;
-    uint32_t         qpitch;
-    uint32_t minLod; // for sampled surfaces, the most detailed LOD that can be accessed by sampler
-    uint32_t maxLod; // for sampled surfaces, the max LOD that can be accessed
-    float    resourceMinLod; // for sampled surfaces, the most detailed fractional mip that can be
-                             // accessed by sampler
-    uint32_t lod;            // for render targets, the lod being rendered to
-    uint32_t arrayIndex; // for render targets, the array index being rendered to for arrayed surfaces
-    SWR_TILE_MODE tileMode; // @llvm_enum
-    uint32_t      halign;
-    uint32_t      valign;
-    uint32_t      xOffset;
-    uint32_t      yOffset;
-
-    uint32_t lodOffsets[2][15]; // lod offsets for sampled surfaces
-
-    gfxptr_t     xpAuxBaseAddress; // Used for compression, append/consume counter, etc.
-    SWR_AUX_MODE auxMode;          // @llvm_enum
-
-
-    bool bInterleavedSamples; // are MSAA samples stored interleaved or planar
 };
 
 // vertex fetch state
