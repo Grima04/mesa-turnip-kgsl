@@ -2161,7 +2161,6 @@ fill_geom_tess_rings(struct radv_queue *queue,
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_ELEMENT_SIZE(1) |
 			  S_008F0C_INDEX_STRIDE(3) |
 			  S_008F0C_ADD_TID_ENABLE(1);
 
@@ -2171,7 +2170,8 @@ fill_geom_tess_rings(struct radv_queue *queue,
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+				   S_008F0C_ELEMENT_SIZE(1);
 		}
 
 		/* GS entry for ES->GS ring */
@@ -2231,7 +2231,6 @@ fill_geom_tess_rings(struct radv_queue *queue,
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_ELEMENT_SIZE(1) |
 			  S_008F0C_INDEX_STRIDE(1) |
 			  S_008F0C_ADD_TID_ENABLE(true);
 
@@ -2241,7 +2240,8 @@ fill_geom_tess_rings(struct radv_queue *queue,
 				   S_008F0C_RESOURCE_LEVEL(1);
 		} else {
 			desc[7] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+				   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+				   S_008F0C_ELEMENT_SIZE(1);
 		}
 
 	}
