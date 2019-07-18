@@ -2377,45 +2377,19 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
         }
 
-        ctx->pipe_framebuffer.nr_cbufs = fb->nr_cbufs;
-        ctx->pipe_framebuffer.samples = fb->samples;
-        ctx->pipe_framebuffer.layers = fb->layers;
-        ctx->pipe_framebuffer.width = fb->width;
-        ctx->pipe_framebuffer.height = fb->height;
+        util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
 
-        struct pipe_surface *zb = fb->zsbuf;
-        bool needs_reattach = false;
+        /* Given that we're rendering, we'd love to have compression */
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
-        for (int i = 0; i < PIPE_MAX_COLOR_BUFS; i++) {
-                struct pipe_surface *cb = i < fb->nr_cbufs ? fb->cbufs[i] : NULL;
+        panfrost_hint_afbc(screen, &ctx->pipe_framebuffer);
 
-                /* check if changing cbuf */
-                if (ctx->pipe_framebuffer.cbufs[i] == cb) continue;
+        if (ctx->require_sfbd)
+                ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
+        else
+                ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
-                /* assign new */
-                pipe_surface_reference(&ctx->pipe_framebuffer.cbufs[i], cb);
-
-                needs_reattach |= (cb != NULL);
-        }
-
-        if (ctx->pipe_framebuffer.zsbuf != zb) {
-                pipe_surface_reference(&ctx->pipe_framebuffer.zsbuf, zb);
-                needs_reattach |= (zb != NULL);
-        }
-
-        if (needs_reattach) {
-                /* Given that we're rendering, we'd love to have compression */
-                struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-
-                panfrost_hint_afbc(screen, &ctx->pipe_framebuffer);
-
-                if (ctx->require_sfbd)
-                        ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
-                else
-                        ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
-
-                panfrost_attach_vt_framebuffer(ctx, false);
-        }
+        panfrost_attach_vt_framebuffer(ctx, false);
 }
 
 static void *
