@@ -401,37 +401,39 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         /* TODO: MRT clear */
         panfrost_mfbd_clear(job, &fb, &fbx, rts, fb.rt_count_2);
 
-        for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
+        /* We always upload at least one dummy GL_NONE render target */
+
+        unsigned rt_descriptors =
+                MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
+
+        /* Upload either the render target or a dummy GL_NONE target */
+
+        for (int cb = 0; cb < rt_descriptors; ++cb) {
                 struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
 
-                if (!surf)
-                        continue;
+                if (surf) {
+                        panfrost_mfbd_set_cbuf(&rts[cb], surf);
 
-                unsigned bpp = util_format_get_blocksize(surf->format);
+                        /* What is this? Looks like some extension of the bpp
+                         * field. Maybe it establishes how much internal
+                         * tilebuffer space is reserved? */
 
-                panfrost_mfbd_set_cbuf(&rts[cb], surf);
+                        unsigned bpp = util_format_get_blocksize(surf->format);
+                        fb.rt_count_2 = MAX2(fb.rt_count_2, ALIGN_POT(bpp, 4) / 4);
+                } else {
+                        struct mali_rt_format null_rt = {
+                                .unk1 = 0x4000000,
+                                .unk4 = 0x8
+                        };
 
-                /* What is this? Looks like some extension of the bpp field.
-                 * Maybe it establishes how much internal tilebuffer space is
-                 * reserved? */
-                fb.rt_count_2 = MAX2(fb.rt_count_2, ALIGN_POT(bpp, 4) / 4);
+                        rts[cb].format = null_rt;
+                        rts[cb].framebuffer = 0;
+                        rts[cb].framebuffer_stride = 0;
+                }
         }
 
         if (ctx->pipe_framebuffer.zsbuf) {
                 panfrost_mfbd_set_zsbuf(&fb, &fbx, ctx->pipe_framebuffer.zsbuf);
-        }
-
-        /* For the special case of a depth-only FBO, we need to attach a dummy render target */
-
-        if (ctx->pipe_framebuffer.nr_cbufs == 0) {
-                struct mali_rt_format null_rt = {
-                        .unk1 = 0x4000000,
-                        .unk4 = 0x8
-                };
-
-                rts[0].format = null_rt;
-                rts[0].framebuffer = 0;
-                rts[0].framebuffer_stride = 0;
         }
 
         /* When scanning out, the depth buffer is immediately invalidated, so
