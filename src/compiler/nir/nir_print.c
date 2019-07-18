@@ -801,6 +801,9 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       [NIR_INTRINSIC_TYPE] = "type",
       [NIR_INTRINSIC_SWIZZLE_MASK] = "swizzle_mask",
       [NIR_INTRINSIC_DRIVER_LOCATION] = "driver_location",
+      [NIR_INTRINSIC_MEMORY_SEMANTICS] = "mem_semantics",
+      [NIR_INTRINSIC_MEMORY_MODES] = "mem_modes",
+      [NIR_INTRINSIC_MEMORY_SCOPE] = "mem_scope",
    };
    for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
       if (!info->index_map[idx])
@@ -883,6 +886,42 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
                                                 (mask >> 10) & 0x1F);
          } else {
             fprintf(fp, "%d", mask);
+         }
+         break;
+      }
+
+      case NIR_INTRINSIC_MEMORY_SEMANTICS: {
+         nir_memory_semantics semantics = nir_intrinsic_memory_semantics(instr);
+         fprintf(fp, " mem_semantics=");
+         switch (semantics & (NIR_MEMORY_ACQUIRE | NIR_MEMORY_RELEASE)) {
+         case 0:                  fprintf(fp, "NONE");    break;
+         case NIR_MEMORY_ACQUIRE: fprintf(fp, "ACQ");     break;
+         case NIR_MEMORY_RELEASE: fprintf(fp, "REL");     break;
+         default:                 fprintf(fp, "ACQ|REL"); break;
+         }
+         if (semantics & (NIR_MEMORY_MAKE_AVAILABLE)) fprintf(fp, "|AVAILABLE");
+         if (semantics & (NIR_MEMORY_MAKE_VISIBLE))   fprintf(fp, "|VISIBLE");
+         break;
+      }
+
+      case NIR_INTRINSIC_MEMORY_MODES: {
+         fprintf(fp, " mem_modes=");
+         unsigned int modes = nir_intrinsic_memory_modes(instr);
+         while (modes) {
+            nir_variable_mode m = u_bit_scan(&modes);
+            fprintf(fp, "%s%s", get_variable_mode_str(1 << m, true), modes ? "|" : "");
+         }
+         break;
+      }
+
+      case NIR_INTRINSIC_MEMORY_SCOPE: {
+         fprintf(fp, " mem_scope=");
+         switch (nir_intrinsic_memory_scope(instr)) {
+         case NIR_SCOPE_DEVICE:       fprintf(fp, "DEVICE");       break;
+         case NIR_SCOPE_QUEUE_FAMILY: fprintf(fp, "QUEUE_FAMILY"); break;
+         case NIR_SCOPE_WORKGROUP:    fprintf(fp, "WORKGROUP");    break;
+         case NIR_SCOPE_SUBGROUP:     fprintf(fp, "SUBGROUP");     break;
+         case NIR_SCOPE_INVOCATION:   fprintf(fp, "INVOCATION");   break;
          }
          break;
       }

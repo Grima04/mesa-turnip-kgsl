@@ -134,6 +134,16 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
       state->image_barriers = true;
       break;
 
+   case nir_intrinsic_scoped_memory_barrier:
+      /* TODO: Could be more granular if we had nir_var_mem_image. */
+      if (nir_intrinsic_memory_modes(instr) & (nir_var_mem_ubo |
+                                               nir_var_mem_ssbo |
+                                               nir_var_uniform)) {
+         state->buffer_barriers = true;
+         state->image_barriers = true;
+      }
+      break;
+
    default:
       break;
    }

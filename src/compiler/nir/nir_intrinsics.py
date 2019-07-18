@@ -126,6 +126,12 @@ TYPE = "NIR_INTRINSIC_TYPE"
 SWIZZLE_MASK = "NIR_INTRINSIC_SWIZZLE_MASK"
 # Driver location of attribute
 DRIVER_LOCATION = "NIR_INTRINSIC_DRIVER_LOCATION"
+# Ordering and visibility of a memory operation
+MEMORY_SEMANTICS = "NIR_INTRINSIC_MEMORY_SEMANTICS"
+# Modes affected by a memory operation
+MEMORY_MODES = "NIR_INTRINSIC_MEMORY_MODES"
+# Scope of a memory operation
+MEMORY_SCOPE = "NIR_INTRINSIC_MEMORY_SCOPE"
 
 #
 # Possible flags:
@@ -205,6 +211,12 @@ intrinsic("is_helper_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
 # Memory barrier with semantics analogous to the memoryBarrier() GLSL
 # intrinsic.
 barrier("memory_barrier")
+
+# Memory barrier with explicit scope.  Follows the semantics of SPIR-V
+# OpMemoryBarrier, used to implement Vulkan Memory Model.  Storage that the
+# barrierr applies is represented using NIR variable modes.
+intrinsic("scoped_memory_barrier",
+          indices=[MEMORY_SEMANTICS, MEMORY_MODES, MEMORY_SCOPE])
 
 # Shader clock intrinsic with semantics analogous to the clock2x32ARB()
 # GLSL intrinsic.

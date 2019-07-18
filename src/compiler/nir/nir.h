@@ -1380,6 +1380,24 @@ nir_intrinsic_get_var(nir_intrinsic_instr *intrin, unsigned i)
    return nir_deref_instr_get_variable(nir_src_as_deref(intrin->src[i]));
 }
 
+typedef enum {
+   /* Memory ordering. */
+   NIR_MEMORY_ACQUIRE        = 1 << 0,
+   NIR_MEMORY_RELEASE        = 1 << 1,
+
+   /* Memory visibility operations. */
+   NIR_MEMORY_MAKE_AVAILABLE = 1 << 3,
+   NIR_MEMORY_MAKE_VISIBLE   = 1 << 4,
+} nir_memory_semantics;
+
+typedef enum {
+   NIR_SCOPE_DEVICE,
+   NIR_SCOPE_QUEUE_FAMILY,
+   NIR_SCOPE_WORKGROUP,
+   NIR_SCOPE_SUBGROUP,
+   NIR_SCOPE_INVOCATION,
+} nir_scope;
+
 /**
  * \name NIR intrinsics semantic flags
  *
@@ -1529,6 +1547,21 @@ typedef enum {
    /* Driver location for nir_load_patch_location_ir3 */
    NIR_INTRINSIC_DRIVER_LOCATION,
 
+   /**
+    * Mask of nir_memory_semantics, includes ordering and visibility.
+    */
+   NIR_INTRINSIC_MEMORY_SEMANTICS,
+
+   /**
+    * Mask of nir_variable_modes affected by the memory operation.
+    */
+   NIR_INTRINSIC_MEMORY_MODES,
+
+   /**
+    * Value of nir_scope.
+    */
+   NIR_INTRINSIC_MEMORY_SCOPE,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
@@ -1638,6 +1671,9 @@ INTRINSIC_IDX_ACCESSORS(desc_type, DESC_TYPE, unsigned)
 INTRINSIC_IDX_ACCESSORS(type, TYPE, nir_alu_type)
 INTRINSIC_IDX_ACCESSORS(swizzle_mask, SWIZZLE_MASK, unsigned)
 INTRINSIC_IDX_ACCESSORS(driver_location, DRIVER_LOCATION, unsigned)
+INTRINSIC_IDX_ACCESSORS(memory_semantics, MEMORY_SEMANTICS, nir_memory_semantics)
+INTRINSIC_IDX_ACCESSORS(memory_modes, MEMORY_MODES, nir_variable_mode)
+INTRINSIC_IDX_ACCESSORS(memory_scope, MEMORY_SCOPE, nir_scope)
 
 static inline void
 nir_intrinsic_set_align(nir_intrinsic_instr *intrin,
