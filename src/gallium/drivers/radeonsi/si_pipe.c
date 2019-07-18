@@ -1088,7 +1088,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	 * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
 	 * SPI_VS_OUT_CONFIG. So only enable GFX7 CLEAR_STATE on amdgpu kernel. */
 	sscreen->has_clear_state = sscreen->info.chip_class >= GFX7 &&
-				   sscreen->info.chip_class <= GFX9 &&
 				   sscreen->info.is_amdgpu;
 
 	sscreen->has_distributed_tess =
