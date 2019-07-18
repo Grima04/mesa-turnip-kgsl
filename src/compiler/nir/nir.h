@@ -2544,8 +2544,8 @@ typedef struct nir_shader_compiler_options {
    /** enables rules to lower idiv by power-of-two: */
    bool lower_idiv;
 
-   /** enable rules to avoid bit shifts */
-   bool lower_bitshift;
+   /** enable rules to avoid bit ops */
+   bool lower_bitops;
 
    /** enables rules to lower isign to imin+imax */
    bool lower_isign;

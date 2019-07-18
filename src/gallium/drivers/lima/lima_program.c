@@ -51,7 +51,7 @@ static const nir_shader_compiler_options vs_nir_options = {
    .lower_ftrunc = true,
    /* could be implemented by clamp */
    .lower_fsat = true,
-   .lower_bitshift = true,
+   .lower_bitops = true,
    .lower_rotate = true,
    .lower_sincos = true,
 };
