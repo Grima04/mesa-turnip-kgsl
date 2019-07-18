@@ -31,6 +31,7 @@
 
 #include "util/u_string.h"
 #include "compiler/nir/nir.h"
+#include "compiler/nir/nir_builder.h"
 #include "st_nir.h"
 
 typedef struct {
@@ -103,7 +104,7 @@ assign_extra_samplers(lower_tex_src_state *state, unsigned free_slots)
 }
 
 static void
-lower_tex_src_plane_block(lower_tex_src_state *state, nir_block *block)
+lower_tex_src_plane_block(nir_builder *b, lower_tex_src_state *state, nir_block *block)
 {
    nir_foreach_instr(instr, block) {
       if (instr->type != nir_instr_type_tex)
@@ -129,6 +130,28 @@ lower_tex_src_plane_block(lower_tex_src_state *state, nir_block *block)
                state->sampler_map[y_samp][plane[0].i32 - 1];
 
          state->shader->info.textures_used |= 1u << tex->texture_index;
+
+         /* For drivers using PIPE_CAP_NIR_SAMPLERS_AS_DEREF, we need
+          * to reference the correct sampler nir variable.
+          */
+         int tex_index = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
+         int samp_index = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
+         if (tex_index >= 0 && samp_index >= 0) {
+            b->cursor = nir_before_instr(&tex->instr);
+
+            nir_variable* samp = find_sampler(state, plane[0].i32);
+            assert(samp);
+
+            nir_deref_instr *tex_deref_instr = nir_build_deref_var(b, samp);
+            nir_ssa_def *tex_deref = &tex_deref_instr->dest.ssa;
+
+            nir_instr_rewrite_src(&tex->instr,
+                                  &tex->src[tex_index].src,
+                                  nir_src_for_ssa(tex_deref));
+            nir_instr_rewrite_src(&tex->instr,
+                                  &tex->src[samp_index].src,
+                                  nir_src_for_ssa(tex_deref));
+         }
       }
 
       nir_tex_instr_remove_src(tex, plane_index);
@@ -138,8 +161,11 @@ lower_tex_src_plane_block(lower_tex_src_state *state, nir_block *block)
 static void
 lower_tex_src_plane_impl(lower_tex_src_state *state, nir_function_impl *impl)
 {
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
    nir_foreach_block(block, impl) {
-      lower_tex_src_plane_block(state, block);
+      lower_tex_src_plane_block(&b, state, block);
    }
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
