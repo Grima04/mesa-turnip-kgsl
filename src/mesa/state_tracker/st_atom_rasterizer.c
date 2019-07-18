@@ -61,13 +61,11 @@ translate_fill(GLenum mode)
    }
 }
 
-
 void
 st_update_rasterizer(struct st_context *st)
 {
    struct gl_context *ctx = st->ctx;
    struct pipe_rasterizer_state *raster = &st->state.rasterizer;
-   const struct gl_program *vertProg = ctx->VertexProgram._Current;
    const struct gl_program *fragProg = ctx->FragmentProgram._Current;
 
    memset(raster, 0, sizeof(*raster));
@@ -199,34 +197,7 @@ st_update_rasterizer(struct st_context *st)
 
    /* ST_NEW_VERTEX_PROGRAM
     */
-   if (vertProg) {
-      if (vertProg->Id == 0) {
-         if (vertProg->info.outputs_written &
-             BITFIELD64_BIT(VARYING_SLOT_PSIZ)) {
-            /* generated program which emits point size */
-            raster->point_size_per_vertex = TRUE;
-         }
-      }
-      else if (ctx->API != API_OPENGLES2) {
-         /* PointSizeEnabled is always set in ES2 contexts */
-         raster->point_size_per_vertex = ctx->VertexProgram.PointSizeEnabled;
-      }
-      else {
-         /* ST_NEW_TESSEVAL_PROGRAM | ST_NEW_GEOMETRY_PROGRAM */
-         /* We have to check the last bound stage and see if it writes psize */
-         struct gl_program *last = NULL;
-         if (ctx->GeometryProgram._Current)
-            last = ctx->GeometryProgram._Current;
-         else if (ctx->TessEvalProgram._Current)
-            last = ctx->TessEvalProgram._Current;
-         else if (ctx->VertexProgram._Current)
-            last = ctx->VertexProgram._Current;
-         if (last)
-            raster->point_size_per_vertex =
-               !!(last->info.outputs_written &
-                  BITFIELD64_BIT(VARYING_SLOT_PSIZ));
-      }
-   }
+   raster->point_size_per_vertex = st_point_size_per_vertex(ctx);
    if (!raster->point_size_per_vertex) {
       /* clamp size now */
       raster->point_size = CLAMP(ctx->Point.Size,
