@@ -426,6 +426,12 @@ _mesa_format_to_array_format(mesa_format format)
 static struct hash_table *format_array_format_table;
 static once_flag format_array_format_table_exists = ONCE_FLAG_INIT;
 
+static void
+format_array_format_table_destroy(void)
+{
+   _mesa_hash_table_destroy(format_array_format_table, NULL);
+}
+
 static bool
 array_formats_equal(const void *a, const void *b)
 {
@@ -471,6 +477,8 @@ format_array_format_table_init(void)
                                          (void *)(intptr_t)array_format,
                                          (void *)(intptr_t)f);
    }
+
+   atexit(format_array_format_table_destroy);
 }
 
 mesa_format
