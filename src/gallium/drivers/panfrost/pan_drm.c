@@ -124,10 +124,14 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
 
         /* Only mmap now if we know we need to. For CPU-invisible buffers, we
          * never map since we don't care about their contents; they're purely
-         * for GPU-internal use. */
+         * for GPU-internal use. But we do trace them anyway. */
 
         if (!(flags & (PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_DELAY_MMAP)))
                 panfrost_drm_mmap_bo(screen, bo);
+        else if (flags & PAN_ALLOCATE_INVISIBLE) {
+                if (pan_debug & PAN_DBG_TRACE)
+                        pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
+        }
 
         pipe_reference_init(&bo->reference, 1);
         return bo;
