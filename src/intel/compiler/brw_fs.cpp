@@ -8509,6 +8509,44 @@ brw_nir_demote_sample_qualifiers(nir_shader *nir)
    return progress;
 }
 
+void
+brw_nir_populate_wm_prog_data(const nir_shader *shader,
+                              const struct gen_device_info *devinfo,
+                              const struct brw_wm_prog_key *key,
+                              struct brw_wm_prog_data *prog_data)
+{
+   /* key->alpha_test_func means simulating alpha testing via discards,
+    * so the shader definitely kills pixels.
+    */
+   prog_data->uses_kill = shader->info.fs.uses_discard ||
+      key->alpha_test_func;
+   prog_data->uses_omask = !key->ignore_sample_mask_out &&
+      (shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
+   prog_data->computed_depth_mode = computed_depth_mode(shader);
+   prog_data->computed_stencil =
+      shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
+
+   prog_data->persample_dispatch =
+      key->multisample_fbo &&
+      (key->persample_interp ||
+       (shader->info.system_values_read & (SYSTEM_BIT_SAMPLE_ID |
+                                            SYSTEM_BIT_SAMPLE_POS)) ||
+       shader->info.fs.uses_sample_qualifier ||
+       shader->info.outputs_read);
+
+   prog_data->has_render_target_reads = shader->info.outputs_read != 0ull;
+
+   prog_data->early_fragment_tests = shader->info.fs.early_fragment_tests;
+   prog_data->post_depth_coverage = shader->info.fs.post_depth_coverage;
+   prog_data->inner_coverage = shader->info.fs.inner_coverage;
+
+   prog_data->barycentric_interp_modes =
+      brw_compute_barycentric_interp_modes(devinfo, shader);
+
+   calculate_urb_setup(devinfo, key, prog_data, shader);
+   brw_compute_flat_inputs(prog_data, shader);
+}
+
 /**
  * Pre-gen6, the register file of the EUs was shared between threads,
  * and each thread used some subset allocated on a 16-register block
@@ -8560,36 +8598,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    NIR_PASS_V(shader, brw_nir_move_interpolation_to_top);
    brw_postprocess_nir(shader, compiler, true);
 
-   /* key->alpha_test_func means simulating alpha testing via discards,
-    * so the shader definitely kills pixels.
-    */
-   prog_data->uses_kill = shader->info.fs.uses_discard ||
-      key->alpha_test_func;
-   prog_data->uses_omask = !key->ignore_sample_mask_out &&
-      (shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK));
-   prog_data->computed_depth_mode = computed_depth_mode(shader);
-   prog_data->computed_stencil =
-      shader->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
-
-   prog_data->persample_dispatch =
-      key->multisample_fbo &&
-      (key->persample_interp ||
-       (shader->info.system_values_read & (SYSTEM_BIT_SAMPLE_ID |
-                                            SYSTEM_BIT_SAMPLE_POS)) ||
-       shader->info.fs.uses_sample_qualifier ||
-       shader->info.outputs_read);
-
-   prog_data->has_render_target_reads = shader->info.outputs_read != 0ull;
-
-   prog_data->early_fragment_tests = shader->info.fs.early_fragment_tests;
-   prog_data->post_depth_coverage = shader->info.fs.post_depth_coverage;
-   prog_data->inner_coverage = shader->info.fs.inner_coverage;
-
-   prog_data->barycentric_interp_modes =
-      brw_compute_barycentric_interp_modes(compiler->devinfo, shader);
-
-   calculate_urb_setup(devinfo, key, prog_data, shader);
-   brw_compute_flat_inputs(prog_data, shader);
+   brw_nir_populate_wm_prog_data(shader, compiler->devinfo, key, prog_data);
 
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;

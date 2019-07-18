@@ -194,6 +194,10 @@ nir_shader *brw_nir_create_passthrough_tcs(void *mem_ctx,
 
 bool brw_nir_move_interpolation_to_top(nir_shader *nir);
 bool brw_nir_demote_sample_qualifiers(nir_shader *nir);
+void brw_nir_populate_wm_prog_data(const nir_shader *shader,
+                                   const struct gen_device_info *devinfo,
+                                   const struct brw_wm_prog_key *key,
+                                   struct brw_wm_prog_data *prog_data);
 
 #ifdef __cplusplus
 }
