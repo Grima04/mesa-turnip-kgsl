@@ -4244,9 +4244,10 @@ ac_setup_rings(struct radv_shader_context *ctx)
 
 unsigned
 radv_nir_get_max_workgroup_size(enum chip_class chip_class,
+				gl_shader_stage stage,
 				const struct nir_shader *nir)
 {
-	switch (nir->info.stage) {
+	switch (stage) {
 	case MESA_SHADER_TESS_CTRL:
 		return chip_class >= GFX7 ? 128 : 64;
 	case MESA_SHADER_GEOMETRY:
@@ -4257,6 +4258,8 @@ radv_nir_get_max_workgroup_size(enum chip_class chip_class,
 		return 0;
 	}
 
+	if (!nir)
+		return chip_class >= GFX9 ? 128 : 64;
 	unsigned max_workgroup_size = nir->info.cs.local_size[0] *
 		nir->info.cs.local_size[1] *
 		nir->info.cs.local_size[2];
@@ -4340,7 +4343,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	for (int i = 0; i < shader_count; ++i) {
 		ctx.max_workgroup_size = MAX2(ctx.max_workgroup_size,
 		                              radv_nir_get_max_workgroup_size(ctx.options->chip_class,
-		                                                            shaders[i]));
+									      shaders[i]->info.stage,
+									      shaders[i]));
 	}
 
 	if (ctx.ac.chip_class >= GFX10) {
