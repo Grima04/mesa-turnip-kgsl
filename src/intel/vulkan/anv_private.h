@@ -2422,6 +2422,12 @@ struct anv_cmd_state {
    bool                                         conditional_render_enabled;
 
    /**
+    * Last rendering scale argument provided to
+    * genX(cmd_buffer_emit_hashing_mode)().
+    */
+   unsigned                                     current_hash_scale;
+
+   /**
     * Array length is anv_cmd_state::pass::attachment_count. Array content is
     * valid only when recording a render pass instance.
     */

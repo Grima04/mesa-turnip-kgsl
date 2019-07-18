@@ -1595,6 +1595,7 @@ genX(CmdExecuteCommands)(
     */
    primary->state.current_pipeline = UINT32_MAX;
    primary->state.current_l3_config = NULL;
+   primary->state.current_hash_scale = 0;
 
    /* Each of the secondary command buffers will use its own state base
     * address.  We need to re-emit state base address for the primary after
@@ -2662,6 +2663,8 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    assert((pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT) == 0);
 
    genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->urb.l3_config);
+
+   genX(cmd_buffer_emit_hashing_mode)(cmd_buffer, UINT_MAX, UINT_MAX, 1);
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
@@ -3923,6 +3926,98 @@ genX(cmd_buffer_emit_gen7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
       pipe.DepthStallEnable = true;
    }
+}
+
+/**
+ * Update the pixel hashing modes that determine the balancing of PS threads
+ * across subslices and slices.
+ *
+ * \param width Width bound of the rendering area (already scaled down if \p
+ *              scale is greater than 1).
+ * \param height Height bound of the rendering area (already scaled down if \p
+ *               scale is greater than 1).
+ * \param scale The number of framebuffer samples that could potentially be
+ *              affected by an individual channel of the PS thread.  This is
+ *              typically one for single-sampled rendering, but for operations
+ *              like CCS resolves and fast clears a single PS invocation may
+ *              update a huge number of pixels, in which case a finer
+ *              balancing is desirable in order to maximally utilize the
+ *              bandwidth available.  UINT_MAX can be used as shorthand for
+ *              "finest hashing mode available".
+ */
+void
+genX(cmd_buffer_emit_hashing_mode)(struct anv_cmd_buffer *cmd_buffer,
+                                   unsigned width, unsigned height,
+                                   unsigned scale)
+{
+#if GEN_GEN == 9
+   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   const unsigned slice_hashing[] = {
+      /* Because all Gen9 platforms with more than one slice require
+       * three-way subslice hashing, a single "normal" 16x16 slice hashing
+       * block is guaranteed to suffer from substantial imbalance, with one
+       * subslice receiving twice as much work as the other two in the
+       * slice.
+       *
+       * The performance impact of that would be particularly severe when
+       * three-way hashing is also in use for slice balancing (which is the
+       * case for all Gen9 GT4 platforms), because one of the slices
+       * receives one every three 16x16 blocks in either direction, which
+       * is roughly the periodicity of the underlying subslice imbalance
+       * pattern ("roughly" because in reality the hardware's
+       * implementation of three-way hashing doesn't do exact modulo 3
+       * arithmetic, which somewhat decreases the magnitude of this effect
+       * in practice).  This leads to a systematic subslice imbalance
+       * within that slice regardless of the size of the primitive.  The
+       * 32x32 hashing mode guarantees that the subslice imbalance within a
+       * single slice hashing block is minimal, largely eliminating this
+       * effect.
+       */
+      _32x32,
+      /* Finest slice hashing mode available. */
+      NORMAL
+   };
+   const unsigned subslice_hashing[] = {
+      /* 16x16 would provide a slight cache locality benefit especially
+       * visible in the sampler L1 cache efficiency of low-bandwidth
+       * non-LLC platforms, but it comes at the cost of greater subslice
+       * imbalance for primitives of dimensions approximately intermediate
+       * between 16x4 and 16x16.
+       */
+      _16x4,
+      /* Finest subslice hashing mode available. */
+      _8x4
+   };
+   /* Dimensions of the smallest hashing block of a given hashing mode.  If
+    * the rendering area is smaller than this there can't possibly be any
+    * benefit from switching to this mode, so we optimize out the
+    * transition.
+    */
+   const unsigned min_size[][2] = {
+         { 16, 4 },
+         { 8, 4 }
+   };
+   const unsigned idx = scale > 1;
+
+   if (cmd_buffer->state.current_hash_scale != scale &&
+       (width > min_size[idx][0] || height > min_size[idx][1])) {
+      uint32_t gt_mode;
+
+      anv_pack_struct(&gt_mode, GENX(GT_MODE),
+                      .SliceHashing = (devinfo->num_slices > 1 ? slice_hashing[idx] : 0),
+                      .SliceHashingMask = (devinfo->num_slices > 1 ? -1 : 0),
+                      .SubsliceHashing = subslice_hashing[idx],
+                      .SubsliceHashingMask = -1);
+
+      cmd_buffer->state.pending_pipe_bits |=
+         ANV_PIPE_CS_STALL_BIT | ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
+      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+      emit_lri(&cmd_buffer->batch, GENX(GT_MODE_num), gt_mode);
+
+      cmd_buffer->state.current_hash_scale = scale;
+   }
+#endif
 }
 
 static void
