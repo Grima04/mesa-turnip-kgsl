@@ -1457,10 +1457,9 @@ img_filter_cube_array_nearest(const struct sp_sampler_view *sp_sview,
    const struct pipe_resource *texture = sp_sview->base.texture;
    const int width = u_minify(texture->width0, args->level);
    const int height = u_minify(texture->height0, args->level);
-   const int layerface =
-      coord_to_layer(6 * args->p + sp_sview->base.u.tex.first_layer,
-                     sp_sview->base.u.tex.first_layer,
-                     sp_sview->base.u.tex.last_layer - 5) + args->face_id;
+   const int layerface = CLAMP(6 * util_ifloor(args->p + 0.5f) + sp_sview->base.u.tex.first_layer,
+                               sp_sview->base.u.tex.first_layer,
+                               sp_sview->base.u.tex.last_layer - 5) + args->face_id;
    int x, y;
    union tex_tile_address addr;
    const float *out;
@@ -1811,10 +1810,11 @@ img_filter_cube_array_linear(const struct sp_sampler_view *sp_sview,
    const struct pipe_resource *texture = sp_sview->base.texture;
    const int width = u_minify(texture->width0, args->level);
    const int height = u_minify(texture->height0, args->level);
-   const int layer =
-      coord_to_layer(6 * args->p + sp_sview->base.u.tex.first_layer,
-                     sp_sview->base.u.tex.first_layer,
-                     sp_sview->base.u.tex.last_layer - 5);
+
+   const int layer = CLAMP(6 * util_ifloor(args->p + 0.5f) + sp_sview->base.u.tex.first_layer,
+                           sp_sview->base.u.tex.first_layer,
+                           sp_sview->base.u.tex.last_layer - 5);
+
    int x0, y0, x1, y1;
    float xw, yw; /* weights */
    union tex_tile_address addr;
