@@ -202,7 +202,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	/* CLEAR_STATE doesn't clear these correctly on certain generations.
 	 * I don't know why. Deduced by trial and error.
 	 */
-	if (physical_device->rad_info.chip_class <= GFX7) {
+	if (physical_device->rad_info.chip_class <= GFX7 || !physical_device->has_clear_state) {
 		radeon_set_context_reg(cs, R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET, 0);
 		radeon_set_context_reg(cs, R_028204_PA_SC_WINDOW_SCISSOR_TL,
 				       S_028204_WINDOW_OFFSET_DISABLE(1));
