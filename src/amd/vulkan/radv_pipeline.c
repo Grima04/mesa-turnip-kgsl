@@ -3026,16 +3026,8 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 	                S_028C44_OPTIMAL_BIN_SELECTION(1);
 	}
 
-	radeon_set_context_reg(ctx_cs, R_028C44_PA_SC_BINNER_CNTL_0,
-			       pa_sc_binner_cntl_0);
-
-	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
-		radeon_set_context_reg(ctx_cs, R_028038_DB_DFSM_CONTROL,
-				       db_dfsm_control);
-	} else {
-		radeon_set_context_reg(ctx_cs, R_028060_DB_DFSM_CONTROL,
-				       db_dfsm_control);
-	}
+	pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
+	pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
 }
 
 
