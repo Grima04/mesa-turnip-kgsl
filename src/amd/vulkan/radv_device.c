@@ -2155,7 +2155,6 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		   index stride 64 */
 		desc[0] = esgs_va;
 		desc[1] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32) |
-			  S_008F04_STRIDE(0) |
 			  S_008F04_SWIZZLE_ENABLE(true);
 		desc[2] = esgs_ring_size;
 		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
@@ -2164,7 +2163,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
 			  S_008F0C_ELEMENT_SIZE(1) |
 			  S_008F0C_INDEX_STRIDE(3) |
-			  S_008F0C_ADD_TID_ENABLE(true);
+			  S_008F0C_ADD_TID_ENABLE(1);
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
@@ -2179,17 +2178,12 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		/* stride 0, num records - size, elsize0,
 		   index stride 0 */
 		desc[4] = esgs_va;
-		desc[5] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32)|
-			  S_008F04_STRIDE(0) |
-			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[5] = S_008F04_BASE_ADDRESS_HI(esgs_va >> 32);
 		desc[6] = esgs_ring_size;
 		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_ELEMENT_SIZE(0) |
-			  S_008F0C_INDEX_STRIDE(0) |
-			  S_008F0C_ADD_TID_ENABLE(false);
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[7] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
@@ -2210,17 +2204,12 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		/* stride 0, num records - size, elsize0,
 		   index stride 0 */
 		desc[0] = gsvs_va;
-		desc[1] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32)|
-			  S_008F04_STRIDE(0) |
-			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[1] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32);
 		desc[2] = gsvs_ring_size;
 		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 			  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
-			  S_008F0C_ELEMENT_SIZE(0) |
-			  S_008F0C_INDEX_STRIDE(0) |
-			  S_008F0C_ADD_TID_ENABLE(false);
+			  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
 		if (queue->device->physical_device->rad_info.chip_class >= GFX10) {
 			desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
@@ -2235,9 +2224,8 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		   elsize 4, index stride 16 */
 		/* shader will patch stride and desc[2] */
 		desc[4] = gsvs_va;
-		desc[5] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32)|
-			  S_008F04_STRIDE(0) |
-			  S_008F04_SWIZZLE_ENABLE(true);
+		desc[5] = S_008F04_BASE_ADDRESS_HI(gsvs_va >> 32) |
+			  S_008F04_SWIZZLE_ENABLE(1);
 		desc[6] = 0;
 		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
@@ -2265,9 +2253,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		uint64_t tess_offchip_va = tess_va + tess_offchip_ring_offset;
 
 		desc[0] = tess_va;
-		desc[1] = S_008F04_BASE_ADDRESS_HI(tess_va >> 32) |
-			  S_008F04_STRIDE(0) |
-			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[1] = S_008F04_BASE_ADDRESS_HI(tess_va >> 32);
 		desc[2] = tess_factor_ring_size;
 		desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
@@ -2284,9 +2270,7 @@ fill_geom_tess_rings(struct radv_queue *queue,
 		}
 
 		desc[4] = tess_offchip_va;
-		desc[5] = S_008F04_BASE_ADDRESS_HI(tess_offchip_va >> 32) |
-			  S_008F04_STRIDE(0) |
-			  S_008F04_SWIZZLE_ENABLE(false);
+		desc[5] = S_008F04_BASE_ADDRESS_HI(tess_offchip_va >> 32);
 		desc[6] = tess_offchip_ring_size;
 		desc[7] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 			  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
