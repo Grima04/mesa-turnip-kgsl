@@ -3445,6 +3445,14 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	bool break_wave_at_eoi = false;
 	unsigned nparams;
 
+	if (es_type == MESA_SHADER_TESS_EVAL) {
+		struct radv_shader_variant *gs =
+			pipeline->shaders[MESA_SHADER_GEOMETRY];
+
+		if (es_enable_prim_id || (gs && gs->info.info.uses_prim_id))
+			break_wave_at_eoi = true;
+	}
+
 	nparams = MAX2(outinfo->param_exports, 1);
 	radeon_set_context_reg(ctx_cs, R_0286C4_SPI_VS_OUT_CONFIG,
 	                       S_0286C4_VS_EXPORT_COUNT(nparams - 1) |
