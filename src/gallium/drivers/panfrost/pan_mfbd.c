@@ -403,6 +403,10 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
 
         for (int cb = 0; cb < ctx->pipe_framebuffer.nr_cbufs; ++cb) {
                 struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[cb];
+
+                if (!surf)
+                        continue;
+
                 unsigned bpp = util_format_get_blocksize(surf->format);
 
                 panfrost_mfbd_set_cbuf(&rts[cb], surf);

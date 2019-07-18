@@ -1213,11 +1213,10 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                         struct midgard_blend_rt rts[4];
 
-                        /* TODO: MRT */
-
-                        for (unsigned i = 0; i < 1; ++i) {
+                        for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
                                 bool is_srgb =
                                         (ctx->pipe_framebuffer.nr_cbufs > i) &&
+                                        (ctx->pipe_framebuffer.cbufs[i]) &&
                                         util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
 
                                 rts[i].flags = blend_count;

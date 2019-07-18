@@ -507,7 +507,10 @@ panfrost_transfer_map(struct pipe_context *pctx,
         bool is_bound = false;
 
         for (unsigned c = 0; c < fb->nr_cbufs; ++c) {
-                is_bound |= fb->cbufs[c]->texture == resource;
+                /* If cbufs is NULL, we're definitely not bound here */
+
+                if (fb->cbufs[c])
+                        is_bound |= fb->cbufs[c]->texture == resource;
         }
 
         if (is_bound && (usage & PIPE_TRANSFER_READ)) {

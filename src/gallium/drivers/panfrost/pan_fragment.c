@@ -35,6 +35,9 @@ panfrost_initialize_surface(
                 struct panfrost_job *batch,
                 struct pipe_surface *surf)
 {
+        if (!surf)
+                return;
+
         unsigned level = surf->u.tex.level;
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 

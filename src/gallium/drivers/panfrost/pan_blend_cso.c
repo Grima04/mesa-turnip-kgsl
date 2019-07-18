@@ -212,7 +212,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
         enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
 
-        if (fb->nr_cbufs > rti)
+        if ((fb->nr_cbufs > rti) && fb->cbufs[rti])
                 fmt = fb->cbufs[rti]->format;
 
         /* Grab the blend state */
