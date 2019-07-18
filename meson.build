@@ -1341,9 +1341,6 @@ else
 endif
 
 if with_osmesa != 'none'
-  if with_osmesa == 'classic' and not with_dri_swrast
-    error('OSMesa classic requires dri (classic) swrast.')
-  endif
   if with_osmesa == 'gallium' and not with_gallium_softpipe
     error('OSMesa gallium requires gallium softpipe or llvmpipe.')
   endif
