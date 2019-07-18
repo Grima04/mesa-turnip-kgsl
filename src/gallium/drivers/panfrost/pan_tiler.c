@@ -264,6 +264,10 @@ panfrost_tiler_header_size(unsigned width, unsigned height, uint8_t mask)
 unsigned
 panfrost_tiler_body_size(unsigned width, unsigned height, uint8_t mask)
 {
+        /* No levels means no body */
+        if (!mask)
+                return 0x00;
+
         unsigned header_size = panfrost_tiler_header_size(width, height, mask);
         return ALIGN_POT(header_size * 512 / 8, 512);
 }
