@@ -3805,12 +3805,16 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 
 	/* TC-compatible HTILE on radeonsi promotes Z16 and Z24 to Z32_FLOAT,
 	 * so the depth comparison value isn't clamped for Z16 and
-	 * Z24 anymore. Do it manually here.
+	 * Z24 anymore. Do it manually here for GFX8-9; GFX10 has an explicitly
+	 * clamped 32-bit float format.
 	 *
 	 * It's unnecessary if the original texture format was
 	 * Z32_FLOAT, but we don't know that here.
 	 */
-	if (args.compare && ctx->ac.chip_class >= GFX8 && ctx->abi->clamp_shadow_reference)
+	if (args.compare &&
+	    ctx->ac.chip_class >= GFX8 &&
+	    ctx->ac.chip_class <= GFX9 &&
+	    ctx->abi->clamp_shadow_reference)
 		args.compare = ac_build_clamp(&ctx->ac, ac_to_float(&ctx->ac, args.compare));
 
 	/* pack derivatives */
