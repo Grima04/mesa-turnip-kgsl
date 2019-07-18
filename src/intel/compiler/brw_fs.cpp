@@ -8402,8 +8402,8 @@ computed_depth_mode(const nir_shader *shader)
  *
  * This should be replaced by global value numbering someday.
  */
-static bool
-move_interpolation_to_top(nir_shader *nir)
+bool
+brw_nir_move_interpolation_to_top(nir_shader *nir)
 {
    bool progress = false;
 
@@ -8468,8 +8468,8 @@ move_interpolation_to_top(nir_shader *nir)
  *
  * Useful when rendering to a non-multisampled buffer.
  */
-static bool
-demote_sample_qualifiers(nir_shader *nir)
+bool
+brw_nir_demote_sample_qualifiers(nir_shader *nir)
 {
    bool progress = true;
 
@@ -8556,8 +8556,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    }
 
    if (!key->multisample_fbo)
-      NIR_PASS_V(shader, demote_sample_qualifiers);
-   NIR_PASS_V(shader, move_interpolation_to_top);
+      NIR_PASS_V(shader, brw_nir_demote_sample_qualifiers);
+   NIR_PASS_V(shader, brw_nir_move_interpolation_to_top);
    brw_postprocess_nir(shader, compiler, true);
 
    /* key->alpha_test_func means simulating alpha testing via discards,

@@ -192,6 +192,9 @@ nir_shader *brw_nir_create_passthrough_tcs(void *mem_ctx,
 #define BRW_NIR_FRAG_OUTPUT_LOCATION_SHIFT 1
 #define BRW_NIR_FRAG_OUTPUT_LOCATION_MASK INTEL_MASK(31, 1)
 
+bool brw_nir_move_interpolation_to_top(nir_shader *nir);
+bool brw_nir_demote_sample_qualifiers(nir_shader *nir);
+
 #ifdef __cplusplus
 }
 #endif
