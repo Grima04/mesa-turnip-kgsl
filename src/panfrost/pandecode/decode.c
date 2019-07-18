@@ -464,7 +464,10 @@ pandecode_midgard_tiler_descriptor(const struct midgard_tiler_descriptor *t)
 
         MEMORY_PROP(t, heap_start);
 
-        {
+        if (t->heap_start == t->heap_end) {
+              /* Print identically to show symmetry for empty tiler heaps */  
+                MEMORY_PROP(t, heap_start);
+        } else {
                 /* Points to the end of a buffer */
                 char *a = pointer_as_memory_reference(t->heap_end - 1);
                 pandecode_prop("heap_end = %s + 1", a);
@@ -1970,11 +1973,16 @@ pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
 
         /* this might point to the beginning of another buffer, when it's
          * really the end of the tiler heap buffer, so we have to be careful
-         * here.
+         * here. but for zero length, we need the same pointer.
          */
-        char *a = pointer_as_memory_reference(h->tiler_heap_end - 1);
-        pandecode_prop("tiler_heap_end = %s + 1", a);
-        free(a);
+
+        if (h->tiler_heap_end == h->tiler_heap_start) {
+                MEMORY_PROP(h, tiler_heap_start);
+        } else {
+                char *a = pointer_as_memory_reference(h->tiler_heap_end - 1);
+                pandecode_prop("tiler_heap_end = %s + 1", a);
+                free(a);
+        }
 
         pandecode_indent--;
         pandecode_log("};\n");
