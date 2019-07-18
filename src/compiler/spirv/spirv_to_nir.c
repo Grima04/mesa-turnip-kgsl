@@ -3360,13 +3360,13 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpControlBarrier: {
-      SpvScope execution_scope = vtn_constant_uint(b, w[1]);
-      if (execution_scope == SpvScopeWorkgroup)
-         vtn_emit_barrier(b, nir_intrinsic_barrier);
-
       SpvScope memory_scope = vtn_constant_uint(b, w[2]);
       SpvMemorySemanticsMask memory_semantics = vtn_constant_uint(b, w[3]);
       vtn_emit_memory_barrier(b, memory_scope, memory_semantics);
+
+      SpvScope execution_scope = vtn_constant_uint(b, w[1]);
+      if (execution_scope == SpvScopeWorkgroup)
+         vtn_emit_barrier(b, nir_intrinsic_barrier);
       break;
    }
 
