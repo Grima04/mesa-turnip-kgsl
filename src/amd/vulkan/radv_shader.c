@@ -810,7 +810,8 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		} else if (es_stage == MESA_SHADER_TESS_EVAL) {
 			bool enable_prim_id = info->tes.export_prim_id || info->info.uses_prim_id;
 			es_vgpr_comp_cnt = enable_prim_id ? 3 : 2;
-		}
+		} else
+			unreachable("Unexpected ES shader stage");
 
 		bool tes_triangles = stage == MESA_SHADER_TESS_EVAL &&
 			info->tes.primitive_mode >= 4; /* GL_TRIANGLES */
