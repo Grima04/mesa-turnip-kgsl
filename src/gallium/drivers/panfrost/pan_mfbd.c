@@ -394,17 +394,18 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         struct bifrost_fb_extra fbx = {};
         struct bifrost_render_target rts[4] = {};
 
-        /* XXX: MRT case */
-        fb.rt_count_2 = 1;
+        /* We always upload at least one dummy GL_NONE render target */
+
+        unsigned rt_descriptors =
+                MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
+
+        fb.rt_count_1 = MALI_POSITIVE(rt_descriptors);
+        fb.rt_count_2 = rt_descriptors;
         fb.mfbd_flags = 0x100;
 
         /* TODO: MRT clear */
         panfrost_mfbd_clear(job, &fb, &fbx, rts, fb.rt_count_2);
 
-        /* We always upload at least one dummy GL_NONE render target */
-
-        unsigned rt_descriptors =
-                MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
 
         /* Upload either the render target or a dummy GL_NONE target */
 
@@ -430,6 +431,9 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
                         rts[cb].framebuffer = 0;
                         rts[cb].framebuffer_stride = 0;
                 }
+
+                /* TODO: Break out the field */
+                rts[cb].format.unk1 |= (cb * 0x400);
         }
 
         if (ctx->pipe_framebuffer.zsbuf) {

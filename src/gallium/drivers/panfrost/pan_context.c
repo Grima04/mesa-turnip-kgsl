@@ -165,8 +165,7 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
 
                 .unk1 = 0x1080,
 
-                /* TODO: MRT */
-                .rt_count_1 = MALI_POSITIVE(1),
+                .rt_count_1 = MALI_POSITIVE(ctx->pipe_framebuffer.nr_cbufs),
                 .rt_count_2 = 4,
 
                 .unknown2 = 0x1f,
