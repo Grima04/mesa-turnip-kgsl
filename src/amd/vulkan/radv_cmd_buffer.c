@@ -364,12 +364,14 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 			radv_buffer_get_va(cmd_buffer->upload.upload_bo);
 		cmd_buffer->gfx9_fence_va += fence_offset;
 
-		/* Allocate a buffer for the EOP bug on GFX9. */
-		radv_cmd_buffer_upload_alloc(cmd_buffer, 16 * num_db, 8,
-					     &eop_bug_offset, &fence_ptr);
-		cmd_buffer->gfx9_eop_bug_va =
-			radv_buffer_get_va(cmd_buffer->upload.upload_bo);
-		cmd_buffer->gfx9_eop_bug_va += eop_bug_offset;
+		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
+			/* Allocate a buffer for the EOP bug on GFX9. */
+			radv_cmd_buffer_upload_alloc(cmd_buffer, 16 * num_db, 8,
+						     &eop_bug_offset, &fence_ptr);
+			cmd_buffer->gfx9_eop_bug_va =
+				radv_buffer_get_va(cmd_buffer->upload.upload_bo);
+			cmd_buffer->gfx9_eop_bug_va += eop_bug_offset;
+		}
 	}
 
 	cmd_buffer->status = RADV_CMD_BUFFER_STATUS_INITIAL;
