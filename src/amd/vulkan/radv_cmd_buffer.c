@@ -1294,7 +1294,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 					       cb->cb_color_attrib2);
 			radeon_set_context_reg(cmd_buffer->cs, R_028EE0_CB_COLOR0_ATTRIB3 + index * 4,
 					       cb->cb_color_attrib3);
-	} else if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+	} else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
 		radeon_set_context_reg_seq(cmd_buffer->cs, R_028C60_CB_COLOR0_BASE + index * 0x3c, 11);
 		radeon_emit(cmd_buffer->cs, cb->cb_color_base);
 		radeon_emit(cmd_buffer->cs, S_028C64_BASE_256B(cb->cb_color_base >> 32));
@@ -1432,7 +1432,7 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 		radeon_emit(cmd_buffer->cs, ds->db_z_read_base >> 32);
 		radeon_emit(cmd_buffer->cs, ds->db_stencil_read_base >> 32);
 		radeon_emit(cmd_buffer->cs, ds->db_htile_data_base >> 32);
-	} else if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+	} else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
 		radeon_set_context_reg_seq(cmd_buffer->cs, R_028014_DB_HTILE_DATA_BASE, 3);
 		radeon_emit(cmd_buffer->cs, ds->db_htile_data_base);
 		radeon_emit(cmd_buffer->cs, S_028018_BASE_HI(ds->db_htile_data_base >> 32));
@@ -2508,7 +2508,7 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 					  draw_vertex_count);
 
 	if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
-		if (info->chip_class >= GFX9) {
+		if (info->chip_class == GFX9) {
 			radeon_set_uconfig_reg_idx(cmd_buffer->device->physical_device,
 						   cs,
 						   R_030960_IA_MULTI_VGT_PARAM,

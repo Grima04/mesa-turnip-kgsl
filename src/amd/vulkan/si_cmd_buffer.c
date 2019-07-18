@@ -244,7 +244,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 		radeon_set_uconfig_reg(cs, R_030928_GE_INDX_OFFSET, 0);
 		radeon_set_uconfig_reg(cs, R_03097C_GE_STEREO_CNTL, 0);
 		radeon_set_uconfig_reg(cs, R_030988_GE_USER_VGPR_EN, 0);
-	} else if (physical_device->rad_info.chip_class >= GFX9) {
+	} else if (physical_device->rad_info.chip_class == GFX9) {
 		radeon_set_uconfig_reg(cs, R_030920_VGT_MAX_VTX_INDX, ~0);
 		radeon_set_uconfig_reg(cs, R_030924_VGT_MIN_VTX_INDX, 0);
 		radeon_set_uconfig_reg(cs, R_030928_VGT_INDX_OFFSET, 0);
@@ -1112,7 +1112,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		radeon_emit(cs, EVENT_TYPE(V_028A90_CS_PARTIAL_FLUSH) | EVENT_INDEX(4));
 	}
 
-	if (chip_class >= GFX9 && flush_cb_db) {
+	if (chip_class == GFX9 && flush_cb_db) {
 		unsigned cb_db_event, tc_flags;
 
 		/* Set the CB/DB flush event. */
@@ -1184,7 +1184,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 
 	if ((flush_bits & RADV_CMD_FLAG_INV_L2) ||
 	    (chip_class <= GFX7 && (flush_bits & RADV_CMD_FLAG_WB_L2))) {
-		si_emit_acquire_mem(cs, is_mec, chip_class >= GFX9,
+		si_emit_acquire_mem(cs, is_mec, chip_class == GFX9,
 				    cp_coher_cntl |
 				    S_0085F0_TC_ACTION_ENA(1) |
 				    S_0085F0_TCL1_ACTION_ENA(1) |
@@ -1199,7 +1199,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 			 * WB doesn't work without NC.
 			 */
 			si_emit_acquire_mem(cs, is_mec,
-					    chip_class >= GFX9,
+					    chip_class == GFX9,
 					    cp_coher_cntl |
 					    S_0301F0_TC_WB_ACTION_ENA(1) |
 					    S_0301F0_TC_NC_ACTION_ENA(1));
@@ -1207,7 +1207,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		}
 		if (flush_bits & RADV_CMD_FLAG_INV_VCACHE) {
 			si_emit_acquire_mem(cs, is_mec,
-					    chip_class >= GFX9,
+					    chip_class == GFX9,
 					    cp_coher_cntl |
 					    S_0085F0_TCL1_ACTION_ENA(1));
 			cp_coher_cntl = 0;
@@ -1218,7 +1218,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 	 * Therefore, it should be last. Done in PFP.
 	 */
 	if (cp_coher_cntl)
-		si_emit_acquire_mem(cs, is_mec, chip_class >= GFX9, cp_coher_cntl);
+		si_emit_acquire_mem(cs, is_mec, chip_class == GFX9, cp_coher_cntl);
 
 	if (flush_bits & RADV_CMD_FLAG_START_PIPELINE_STATS) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));

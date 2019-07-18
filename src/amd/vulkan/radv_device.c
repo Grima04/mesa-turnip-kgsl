@@ -2499,7 +2499,7 @@ radv_emit_global_shader_pointers(struct radv_queue *queue,
 			radv_emit_shader_pointer(queue->device, cs, regs[i],
 						 va, true);
 		}
-	} else if (queue->device->physical_device->rad_info.chip_class >= GFX9) {
+	} else if (queue->device->physical_device->rad_info.chip_class == GFX9) {
 		uint32_t regs[] = {R_00B030_SPI_SHADER_USER_DATA_PS_0,
 				   R_00B130_SPI_SHADER_USER_DATA_VS_0,
 				   R_00B208_SPI_SHADER_USER_DATA_ADDR_LO_GS,

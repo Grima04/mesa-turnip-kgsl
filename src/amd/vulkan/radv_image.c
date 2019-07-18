@@ -522,7 +522,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 		}
 
 		state[7] = meta_va >> 16;
-	} else if (chip_class >= GFX9) {
+	} else if (chip_class == GFX9) {
 		state[3] &= C_008F1C_SW_MODE;
 		state[4] &= C_008F20_PITCH;
 
@@ -787,7 +787,7 @@ si_make_texture_descriptor(struct radv_device *device,
 	}
 
 	/* S8 with either Z16 or Z32 HTILE need a special format. */
-	if (device->physical_device->rad_info.chip_class >= GFX9 &&
+	if (device->physical_device->rad_info.chip_class == GFX9 &&
 	    vk_format == VK_FORMAT_S8_UINT &&
 	    radv_image_is_tc_compat_htile(image)) {
 		if (image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT)
@@ -828,7 +828,7 @@ si_make_texture_descriptor(struct radv_device *device,
 	state[6] = 0;
 	state[7] = 0;
 
-	if (device->physical_device->rad_info.chip_class >= GFX9) {
+	if (device->physical_device->rad_info.chip_class == GFX9) {
 		unsigned bc_swizzle = gfx9_border_color_swizzle(swizzle);
 
 		/* Depth is the last accessible layer on Gfx9.
@@ -874,7 +874,7 @@ si_make_texture_descriptor(struct radv_device *device,
 
 		va = gpu_address + image->offset + image->fmask.offset;
 
-		if (device->physical_device->rad_info.chip_class >= GFX9) {
+		if (device->physical_device->rad_info.chip_class == GFX9) {
 			fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK;
 			switch (image->info.samples) {
 			case 2:
@@ -924,7 +924,7 @@ si_make_texture_descriptor(struct radv_device *device,
 		fmask_state[6] = 0;
 		fmask_state[7] = 0;
 
-		if (device->physical_device->rad_info.chip_class >= GFX9) {
+		if (device->physical_device->rad_info.chip_class == GFX9) {
 			fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode);
 			fmask_state[4] |= S_008F20_DEPTH(last_layer) |
 					  S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask.epitch);
