@@ -167,6 +167,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    };
    struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
+      .frag_coord_is_sysval = true,
       .caps = {
          .demote_to_helper_invocation = true,
          .derivative_group = true,
@@ -652,7 +653,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(nir, nir_lower_wpos_center, pipeline->sample_shading_enable);
-      NIR_PASS_V(nir, nir_lower_input_attachments, false);
+      NIR_PASS_V(nir, nir_lower_input_attachments, true);
    }
 
    NIR_PASS_V(nir, anv_nir_lower_ycbcr_textures, layout);

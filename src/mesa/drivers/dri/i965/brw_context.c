@@ -621,6 +621,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    if (devinfo->gen >= 5 || devinfo->is_g4x)
       ctx->Const.MaxClipPlanes = 8;
 
+   ctx->Const.GLSLFragCoordIsSysVal = true;
    ctx->Const.GLSLTessLevelsAsInputs = true;
    ctx->Const.PrimitiveRestartForPatches = true;
 

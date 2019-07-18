@@ -70,12 +70,7 @@ blorp_params_get_clear_kernel(struct blorp_batch *batch,
    nir_ssa_def *color = nir_load_var(&b, v_color);
 
    if (clear_rgb_as_red) {
-      nir_variable *frag_coord =
-         nir_variable_create(b.shader, nir_var_shader_in,
-                             glsl_vec4_type(), "gl_FragCoord");
-      frag_coord->data.location = VARYING_SLOT_POS;
-
-      nir_ssa_def *pos = nir_f2i32(&b, nir_load_var(&b, frag_coord));
+      nir_ssa_def *pos = nir_f2i32(&b, nir_load_frag_coord(&b));
       nir_ssa_def *comp = nir_umod(&b, nir_channel(&b, pos, 0),
                                        nir_imm_int(&b, 3));
       nir_ssa_def *color_component =
@@ -976,7 +971,7 @@ blorp_params_get_mcs_partial_resolve_kernel(struct blorp_batch *batch,
 
    /* Do an MCS fetch and check if it is equal to the magic clear value */
    nir_ssa_def *mcs =
-      blorp_nir_txf_ms_mcs(&b, nir_f2i32(&b, blorp_nir_frag_coord(&b)),
+      blorp_nir_txf_ms_mcs(&b, nir_f2i32(&b, nir_load_frag_coord(&b)),
                                nir_load_layer_id(&b));
    nir_ssa_def *is_clear =
       blorp_nir_mcs_is_clear_color(&b, mcs, blorp_key.num_samples);

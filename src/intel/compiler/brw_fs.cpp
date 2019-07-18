@@ -6822,7 +6822,7 @@ fs_visitor::setup_fs_payload_gen6()
    assert(devinfo->gen >= 6);
 
    prog_data->uses_src_depth = prog_data->uses_src_w =
-      (nir->info.inputs_read & (1 << VARYING_SLOT_POS)) != 0;
+      (nir->info.system_values_read & (1ull << SYSTEM_VALUE_FRAG_COORD)) != 0;
 
    prog_data->uses_sample_mask =
       (nir->info.system_values_read & SYSTEM_BIT_SAMPLE_MASK_IN) != 0;
@@ -7601,6 +7601,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
          emit_shader_time_begin();
 
       if (nir->info.inputs_read > 0 ||
+          (nir->info.system_values_read & (1ull << SYSTEM_VALUE_FRAG_COORD)) ||
           (nir->info.outputs_read > 0 && !wm_key->coherent_fb_fetch)) {
          if (devinfo->gen < 6)
             emit_interpolation_setup_gen4();
@@ -7707,10 +7708,7 @@ is_used_in_not_interp_frag_coord(nir_ssa_def *def)
          return true;
 
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src->parent_instr);
-      if (intrin->intrinsic != nir_intrinsic_load_interpolated_input)
-         return true;
-
-      if (nir_intrinsic_base(intrin) != VARYING_SLOT_POS)
+      if (intrin->intrinsic != nir_intrinsic_load_frag_coord)
          return true;
    }
 

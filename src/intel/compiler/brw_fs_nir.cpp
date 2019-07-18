@@ -3829,12 +3829,11 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       break;
    }
 
-   case nir_intrinsic_load_interpolated_input: {
-      if (nir_intrinsic_base(instr) == VARYING_SLOT_POS) {
-         emit_fragcoord_interpolation(dest);
-         break;
-      }
+   case nir_intrinsic_load_frag_coord:
+      emit_fragcoord_interpolation(dest);
+      break;
 
+   case nir_intrinsic_load_interpolated_input: {
       assert(instr->src[0].ssa &&
              instr->src[0].ssa->parent_instr->type == nir_instr_type_intrinsic);
       nir_intrinsic_instr *bary_intrinsic =
