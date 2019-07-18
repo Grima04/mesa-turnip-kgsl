@@ -3034,22 +3034,14 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 		unsigned persistent_states_per_bin; /* allowed range: [1, 32] */
 		unsigned fpovs_per_batch; /* allowed range: [0, 255], 0 = unlimited */
 
-		switch (pipeline->device->physical_device->rad_info.family) {
-		case CHIP_VEGA10:
-		case CHIP_VEGA12:
-		case CHIP_VEGA20:
+		if (pipeline->device->physical_device->rad_info.has_dedicated_vram) {
 			context_states_per_bin = 1;
 			persistent_states_per_bin = 1;
 			fpovs_per_batch = 63;
-			break;
-		case CHIP_RAVEN:
-		case CHIP_RAVEN2:
+		} else {
 			context_states_per_bin = 6;
 			persistent_states_per_bin = 32;
 			fpovs_per_batch = 63;
-			break;
-		default:
-			unreachable("unhandled family while determining binning state.");
 		}
 
 		const uint32_t pa_sc_binner_cntl_0 =
