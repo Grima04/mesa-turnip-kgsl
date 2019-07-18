@@ -2976,17 +2976,56 @@ radv_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipelineCr
 }
 
 static void
+radv_pipeline_generate_disabled_binning_state(struct radeon_cmdbuf *ctx_cs,
+					      struct radv_pipeline *pipeline,
+					      const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	uint32_t pa_sc_binner_cntl_0 =
+	                S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
+	                S_028C44_DISABLE_START_OF_PRIM(1);
+	uint32_t db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
+		RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+		struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+		const VkPipelineColorBlendStateCreateInfo *vkblend = pCreateInfo->pColorBlendState;
+		unsigned min_bytes_per_pixel = 0;
+
+		if (vkblend) {
+			for (unsigned i = 0; i < subpass->color_count; i++) {
+				if (!vkblend->pAttachments[i].colorWriteMask)
+					continue;
+
+				if (subpass->color_attachments[i].attachment == VK_ATTACHMENT_UNUSED)
+					continue;
+
+				VkFormat format = pass->attachments[subpass->color_attachments[i].attachment].format;
+				unsigned bytes = vk_format_get_blocksize(format);
+				if (!min_bytes_per_pixel || bytes < min_bytes_per_pixel)
+					min_bytes_per_pixel = bytes;
+			}
+		}
+
+		pa_sc_binner_cntl_0 =
+			S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_NEW_SC) |
+			S_028C44_BIN_SIZE_X(0) |
+			S_028C44_BIN_SIZE_Y(0) |
+			S_028C44_BIN_SIZE_X_EXTEND(2) | /* 128 */
+			S_028C44_BIN_SIZE_Y_EXTEND(min_bytes_per_pixel <= 4 ? 2 : 1) | /* 128 or 64 */
+			S_028C44_DISABLE_START_OF_PRIM(1);
+	}
+
+	pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
+	pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
+}
+
+static void
 radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 				     struct radv_pipeline *pipeline,
 				     const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	if (pipeline->device->physical_device->rad_info.chip_class < GFX9)
 		return;
-
-	uint32_t pa_sc_binner_cntl_0 =
-	                S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
-	                S_028C44_DISABLE_START_OF_PRIM(1);
-	uint32_t db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF);
 
 	VkExtent2D bin_size = radv_compute_bin_size(pipeline, pCreateInfo);
 
@@ -3013,7 +3052,7 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 			unreachable("unhandled family while determining binning state.");
 		}
 
-		pa_sc_binner_cntl_0 =
+		const uint32_t pa_sc_binner_cntl_0 =
 	                S_028C44_BINNING_MODE(V_028C44_BINNING_ALLOWED) |
 	                S_028C44_BIN_SIZE_X(bin_size.width == 16) |
 	                S_028C44_BIN_SIZE_Y(bin_size.height == 16) |
@@ -3024,10 +3063,13 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 	                S_028C44_DISABLE_START_OF_PRIM(1) |
 	                S_028C44_FPOVS_PER_BATCH(fpovs_per_batch) |
 	                S_028C44_OPTIMAL_BIN_SELECTION(1);
-	}
 
-	pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
-	pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
+		uint32_t db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF);
+
+		pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
+		pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
+	} else
+		radv_pipeline_generate_disabled_binning_state(ctx_cs, pipeline, pCreateInfo);
 }
 
 
