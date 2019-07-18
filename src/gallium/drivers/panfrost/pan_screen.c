@@ -96,7 +96,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
-                return 1;
+                return is_deqp ? 4 : 1;
 
         case PIPE_CAP_OCCLUSION_QUERY:
                 return 1;
@@ -249,7 +249,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 16;
 
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
-                return shader == PIPE_SHADER_FRAGMENT ? 1 : 8;
+                return shader == PIPE_SHADER_FRAGMENT ? 4 : 8;
 
         case PIPE_SHADER_CAP_MAX_TEMPS:
                 return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */
