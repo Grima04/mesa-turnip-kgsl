@@ -119,6 +119,11 @@ static const struct etna_acc_sample_provider occlusion_provider = {
    .result = occlusion_result,
 };
 
+static const struct etna_acc_sample_provider *acc_sample_provider[] =
+{
+   &occlusion_provider,
+};
+
 static void
 realloc_query_bo(struct etna_context *ctx, struct etna_acc_query *aq)
 {
@@ -224,29 +229,23 @@ static const struct etna_query_funcs acc_query_funcs = {
    .get_query_result = etna_acc_get_query_result,
 };
 
-static inline const struct etna_acc_sample_provider *
-query_sample_provider(unsigned query_type)
-{
-   switch (query_type) {
-   case PIPE_QUERY_OCCLUSION_COUNTER:
-      /* fallthrough */
-   case PIPE_QUERY_OCCLUSION_PREDICATE:
-      /* fallthrough */
-   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-      return &occlusion_provider;
-   default:
-      return NULL;
-   }
-}
-
 struct etna_query *
 etna_acc_create_query(struct etna_context *ctx, unsigned query_type)
 {
+   const struct etna_acc_sample_provider *p = NULL;
    struct etna_acc_query *aq;
    struct etna_query *q;
-   const struct etna_acc_sample_provider *p;
 
-   p = query_sample_provider(query_type);
+   /* find a sample provide for the requested query type */
+   for (unsigned i = 0; i < ARRAY_SIZE(acc_sample_provider); i++) {
+      p = acc_sample_provider[i];
+
+      if (p->supports(query_type))
+         break;
+      else
+         p = NULL;
+   }
+
    if (!p)
       return NULL;
 
