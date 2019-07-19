@@ -575,7 +575,43 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
         }
 }
 
+midgard_instruction
+v_load_store_scratch(unsigned srcdest, unsigned index, bool is_store)
+{
+        /* We index by 32-bit vec4s */
+        unsigned byte = (index * 4 * 4);
 
+        midgard_instruction ins = {
+                .type = TAG_LOAD_STORE_4,
+                .mask = 0xF,
+                .ssa_args = {
+                        .dest = -1,
+                        .src0 = -1,
+                        .src1 = -1
+                },
+                .load_store = {
+                        .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,
+                        .swizzle = SWIZZLE_XYZW,
+
+                        /* For register spilling - to thread local storage */
+                        .unknown = 0x1EEA,
+
+                        /* Splattered across, TODO combine logically */
+                        .varying_parameters = (byte & 0x1FF) << 1,
+                        .address = (byte >> 9)
+                }
+        };
+
+        if (is_store) {
+                /* r0 = r26, r1 = r27 */
+                assert(srcdest == 26 || srcdest == 27);
+                ins.ssa_args.src0 = SSA_FIXED_REGISTER(srcdest - 26);
+        } else {
+                ins.ssa_args.dest = srcdest;
+        }
+
+        return ins;
+}
 
 void
 schedule_program(compiler_context *ctx)

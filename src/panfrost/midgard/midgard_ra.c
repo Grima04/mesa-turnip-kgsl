@@ -445,7 +445,7 @@ install_registers_instr(
         }
 
         case TAG_LOAD_STORE_4: {
-                if (OP_IS_STORE_VARY(ins->load_store.op)) {
+                if (OP_IS_STORE_R26(ins->load_store.op)) {
                         /* TODO: use ssa_args for st_vary */
                         ins->load_store.reg = 0;
                 } else {

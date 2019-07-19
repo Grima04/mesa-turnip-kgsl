@@ -416,6 +416,9 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
         return ins;
 }
 
+midgard_instruction
+v_load_store_scratch(unsigned srcdest, unsigned index, bool is_store);
+
 /* Scheduling */
 
 void schedule_program(compiler_context *ctx);
