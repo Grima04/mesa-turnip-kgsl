@@ -59,12 +59,12 @@ struct ntv_context {
 };
 
 static SpvId
-get_fvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
-                  const float values[]);
+get_fvec_constant(struct ntv_context *ctx, unsigned bit_size,
+                  unsigned num_components, float value);
 
 static SpvId
-get_uvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
-                  const uint32_t values[]);
+get_uvec_constant(struct ntv_context *ctx, unsigned bit_size,
+                  unsigned num_components, uint32_t value);
 
 static SpvId
 emit_unop(struct ntv_context *ctx, SpvOp op, SpvId type, SpvId src);
@@ -554,10 +554,8 @@ static SpvId
 bvec_to_uvec(struct ntv_context *ctx, SpvId value, unsigned num_components)
 {
    SpvId otype = get_uvec_type(ctx, 32, num_components);
-   uint32_t zeros[4] = { 0, 0, 0, 0 };
-   uint32_t ones[4] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
-   SpvId zero = get_uvec_constant(ctx, 32, num_components, zeros);
-   SpvId one = get_uvec_constant(ctx, 32, num_components, ones);
+   SpvId zero = get_uvec_constant(ctx, 32, num_components, 0);
+   SpvId one = get_uvec_constant(ctx, 32, num_components, UINT32_MAX);
    return emit_select(ctx, otype, value, one, zero);
 }
 
@@ -565,10 +563,7 @@ static SpvId
 uvec_to_bvec(struct ntv_context *ctx, SpvId value, unsigned num_components)
 {
    SpvId type = get_bvec_type(ctx, num_components);
-
-   uint32_t zeros[NIR_MAX_VEC_COMPONENTS] = { 0 };
-   SpvId zero = get_uvec_constant(ctx, 32, num_components, zeros);
-
+   SpvId zero = get_uvec_constant(ctx, 32, num_components, 0);
    return emit_binop(ctx, SpvOpINotEqual, type, value, zero);
 }
 
@@ -685,43 +680,43 @@ emit_builtin_binop(struct ntv_context *ctx, enum GLSLstd450 op, SpvId type,
 }
 
 static SpvId
-get_fvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
-                  const float values[])
+get_fvec_constant(struct ntv_context *ctx, unsigned bit_size,
+                  unsigned num_components, float value)
 {
    assert(bit_size == 32);
 
-   if (num_components > 1) {
-      SpvId components[num_components];
-      for (int i = 0; i < num_components; i++)
-         components[i] = emit_float_const(ctx, bit_size, values[i]);
+   SpvId result = emit_float_const(ctx, bit_size, value);
+   if (num_components == 1)
+      return result;
 
-      SpvId type = get_fvec_type(ctx, bit_size, num_components);
-      return spirv_builder_const_composite(&ctx->builder, type, components,
-                                           num_components);
-   }
+   assert(num_components > 1);
+   SpvId components[num_components];
+   for (int i = 0; i < num_components; i++)
+      components[i] = result;
 
-   assert(num_components == 1);
-   return emit_float_const(ctx, bit_size, values[0]);
+   SpvId type = get_fvec_type(ctx, bit_size, num_components);
+   return spirv_builder_const_composite(&ctx->builder, type, components,
+                                        num_components);
 }
 
 static SpvId
-get_uvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
-                  const uint32_t values[])
+get_uvec_constant(struct ntv_context *ctx, unsigned bit_size,
+                  unsigned num_components, uint32_t value)
 {
    assert(bit_size == 32);
 
-   if (num_components > 1) {
-      SpvId components[num_components];
-      for (int i = 0; i < num_components; i++)
-         components[i] = emit_uint_const(ctx, bit_size, values[i]);
+   SpvId result = emit_uint_const(ctx, bit_size, value);
+   if (num_components == 1)
+      return result;
 
-      SpvId type = get_uvec_type(ctx, bit_size, num_components);
-      return spirv_builder_const_composite(&ctx->builder, type, components,
-                                           num_components);
-   }
+   assert(num_components > 1);
+   SpvId components[num_components];
+   for (int i = 0; i < num_components; i++)
+      components[i] = result;
 
-   assert(num_components == 1);
-   return emit_uint_const(ctx, bit_size, values[0]);
+   SpvId type = get_uvec_type(ctx, bit_size, num_components);
+   return spirv_builder_const_composite(&ctx->builder, type, components,
+                                        num_components);
 }
 
 static inline unsigned
@@ -857,22 +852,20 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BUILTIN_UNOP(nir_op_fcos, GLSLstd450Cos)
 #undef BUILTIN_UNOP
 
-   case nir_op_frcp: {
+   case nir_op_frcp:
       assert(nir_op_infos[alu->op].num_inputs == 1);
-      float one[4] = { 1, 1, 1, 1 };
-      src[1] = src[0];
-      src[0] = get_fvec_constant(ctx, bit_size, num_components, one);
-      result = emit_binop(ctx, SpvOpFDiv, dest_type, src[0], src[1]);
-      }
+      result = emit_binop(ctx, SpvOpFDiv, dest_type,
+                          get_fvec_constant(ctx, bit_size, num_components, 1),
+                          src[0]);
       break;
 
-   case nir_op_f2b1: {
+   case nir_op_f2b1:
       assert(nir_op_infos[alu->op].num_inputs == 1);
-      float values[NIR_MAX_VEC_COMPONENTS] = { 0 };
-      SpvId zero = get_fvec_constant(ctx, nir_src_bit_size(alu->src[0].src),
-                                     num_components, values);
-      result = emit_binop(ctx, SpvOpFOrdNotEqual, dest_type, src[0], zero);
-      } break;
+      result = emit_binop(ctx, SpvOpFOrdNotEqual, dest_type, src[0],
+                          get_fvec_constant(ctx,
+                                            nir_src_bit_size(alu->src[0].src),
+                                            num_components, 0));
+      break;
 
 
 #define BINOP(nir_op, spirv_op) \
@@ -960,18 +953,14 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       }
       break;
 
-   case nir_op_fcsel: {
-      assert(nir_op_infos[alu->op].num_inputs == 3);
-      int num_components = nir_dest_num_components(alu->dest.dest);
-      SpvId bool_type = get_bvec_type(ctx, num_components);
-
-      float zero[4] = { 0, 0, 0, 0 };
-      SpvId cmp = get_fvec_constant(ctx, nir_src_bit_size(alu->src[0].src),
-                                         num_components, zero);
-
-      result = emit_binop(ctx, SpvOpFOrdGreaterThan, bool_type, src[0], cmp);
+   case nir_op_fcsel:
+      result = emit_binop(ctx, SpvOpFOrdGreaterThan,
+                          get_bvec_type(ctx, num_components),
+                          src[0],
+                          get_fvec_constant(ctx,
+                                            nir_src_bit_size(alu->src[0].src),
+                                            num_components, 0));
       result = emit_select(ctx, dest_type, result, src[1], src[2]);
-      }
       break;
 
    case nir_op_bcsel:
