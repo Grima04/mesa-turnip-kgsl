@@ -806,6 +806,11 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    UNOP(nir_op_inot, SpvOpNot)
 #undef UNOP
 
+   case nir_op_b2i32:
+      assert(nir_op_infos[alu->op].num_inputs == 1);
+      result = bvec_to_uvec(ctx, src[0], num_components);
+      break;
+
 #define BUILTIN_UNOP(nir_op, spirv_op) \
    case nir_op: \
       assert(nir_op_infos[alu->op].num_inputs == 1); \
