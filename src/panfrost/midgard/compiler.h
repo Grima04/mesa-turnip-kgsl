@@ -417,6 +417,18 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
         return ins;
 }
 
+static inline bool
+mir_has_arg(midgard_instruction *ins, unsigned arg)
+{
+        if (ins->ssa_args.src0 == arg)
+                return true;
+
+        if (ins->ssa_args.src1 == arg && !ins->ssa_args.inline_constant)
+                return true;
+
+        return false;
+}
+
 midgard_instruction
 v_load_store_scratch(unsigned srcdest, unsigned index, bool is_store);
 
