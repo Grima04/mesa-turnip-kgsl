@@ -53,6 +53,8 @@ files_etnaviv = files(
   'etnaviv_format.c',
   'etnaviv_format.h',
   'etnaviv_internal.h',
+  'etnaviv_perfmon.c',
+  'etnaviv_perfmon.h',
   'etnaviv_query.c',
   'etnaviv_query.h',
   'etnaviv_query_acc_occlusion.c',
