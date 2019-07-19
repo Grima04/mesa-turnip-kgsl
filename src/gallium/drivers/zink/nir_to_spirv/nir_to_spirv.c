@@ -484,6 +484,7 @@ get_alu_src_uint(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
       return def;
 
    int bit_size = nir_src_bit_size(alu->src[src].src);
+   assert(bit_size == 32);
 
    SpvId uint_type = spirv_builder_type_uint(&ctx->builder, bit_size);
    if (used_channels == 1) {
