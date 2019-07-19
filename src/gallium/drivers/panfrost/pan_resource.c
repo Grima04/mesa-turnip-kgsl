@@ -592,23 +592,24 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
         struct panfrost_gtransfer *trans = pan_transfer(transfer);
         struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
 
+        /* Mark whatever we wrote as written */
+        if (transfer->usage & PIPE_TRANSFER_WRITE)
+                prsrc->slices[transfer->level].initialized = true;
+
         if (trans->map) {
                 struct panfrost_bo *bo = prsrc->bo;
 
                 if (transfer->usage & PIPE_TRANSFER_WRITE) {
-                        unsigned level = transfer->level;
-                        prsrc->slices[level].initialized = true;
-
                         if (prsrc->layout == PAN_AFBC) {
                                 DBG("Unimplemented: writes to AFBC\n");
                         } else if (prsrc->layout == PAN_TILED) {
                                 assert(transfer->box.depth == 1);
 
                                 panfrost_store_tiled_image(
-                                        bo->cpu + prsrc->slices[level].offset,
+                                        bo->cpu + prsrc->slices[transfer->level].offset,
                                         trans->map,
                                         &transfer->box,
-                                        prsrc->slices[level].stride,
+                                        prsrc->slices[transfer->level].stride,
                                         transfer->stride,
                                         util_format_get_blocksize(prsrc->base.format));
                         }
@@ -638,6 +639,9 @@ panfrost_transfer_flush_region(struct pipe_context *pctx,
                 util_range_add(&rsc->valid_buffer_range,
                                transfer->box.x + box->x,
                                transfer->box.x + box->x + box->width);
+        } else {
+                unsigned level = transfer->level;
+                rsc->slices[level].initialized = true;
         }
 }
 
