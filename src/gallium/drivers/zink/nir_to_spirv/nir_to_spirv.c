@@ -97,6 +97,20 @@ block_label(struct ntv_context *ctx, nir_block *block)
 }
 
 static SpvId
+emit_float_const(struct ntv_context *ctx, int bit_size, float value)
+{
+   assert(bit_size == 32);
+   return spirv_builder_const_float(&ctx->builder, bit_size, value);
+}
+
+static SpvId
+emit_uint_const(struct ntv_context *ctx, int bit_size, uint32_t value)
+{
+   assert(bit_size == 32);
+   return spirv_builder_const_uint(&ctx->builder, bit_size, value);
+}
+
+static SpvId
 get_fvec_type(struct ntv_context *ctx, unsigned bit_size, unsigned num_components)
 {
    assert(bit_size == 32); // only 32-bit floats supported so far
@@ -179,7 +193,7 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
    if (glsl_type_is_array(type)) {
       SpvId ret = spirv_builder_type_array(&ctx->builder,
          get_glsl_type(ctx, glsl_get_array_element(type)),
-         spirv_builder_const_uint(&ctx->builder, 32, glsl_get_length(type)));
+         emit_uint_const(ctx, 32, glsl_get_length(type)));
       uint32_t stride = glsl_get_explicit_stride(type);
       if (stride)
          spirv_builder_emit_array_stride(&ctx->builder, ret, stride);
@@ -371,7 +385,7 @@ emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
 {
    uint32_t size = glsl_count_attribute_slots(var->type, false);
    SpvId vec4_type = get_uvec_type(ctx, 32, 4);
-   SpvId array_length = spirv_builder_const_uint(&ctx->builder, 32, size);
+   SpvId array_length = emit_uint_const(ctx, 32, size);
    SpvId array_type = spirv_builder_type_array(&ctx->builder, vec4_type,
                                                array_length);
    spirv_builder_emit_array_stride(&ctx->builder, array_type, 16);
@@ -671,13 +685,6 @@ emit_builtin_binop(struct ntv_context *ctx, enum GLSLstd450 op, SpvId type,
 }
 
 static SpvId
-emit_float_const(struct ntv_context *ctx, int bit_size, float value)
-{
-   assert(bit_size == 32);
-   return spirv_builder_const_float(&ctx->builder, bit_size, value);
-}
-
-static SpvId
 get_fvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
                   const float values[])
 {
@@ -706,8 +713,7 @@ get_uvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
    if (num_components > 1) {
       SpvId components[num_components];
       for (int i = 0; i < num_components; i++)
-         components[i] = spirv_builder_const_uint(&ctx->builder, bit_size,
-                                                  values[i]);
+         components[i] = emit_uint_const(ctx, bit_size, values[i]);
 
       SpvId type = get_uvec_type(ctx, bit_size, num_components);
       return spirv_builder_const_composite(&ctx->builder, type, components,
@@ -715,7 +721,7 @@ get_uvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
    }
 
    assert(num_components == 1);
-   return spirv_builder_const_uint(&ctx->builder, bit_size, values[0]);
+   return emit_uint_const(ctx, bit_size, values[0]);
 }
 
 static inline unsigned
@@ -1022,8 +1028,8 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                       uvec4_type);
 
       unsigned idx = const_offset->u32;
-      SpvId member = spirv_builder_const_uint(&ctx->builder, 32, 0);
-      SpvId offset = spirv_builder_const_uint(&ctx->builder, 32, idx);
+      SpvId member = emit_uint_const(ctx, 32, 0);
+      SpvId offset = emit_uint_const(ctx, 32, idx);
       SpvId offsets[] = { member, offset };
       SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
                                                   ctx->ubos[0], offsets,
