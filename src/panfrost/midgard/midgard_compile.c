@@ -1720,8 +1720,6 @@ emit_jump(compiler_context *ctx, nir_jump_instr *instr)
                 br.branch.target_type = TARGET_BREAK;
                 br.branch.target_break = ctx->current_loop_depth;
                 emit_mir_instruction(ctx, br);
-
-                DBG("break..\n");
                 break;
         }
 
