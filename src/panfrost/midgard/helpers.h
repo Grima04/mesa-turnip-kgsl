@@ -57,6 +57,13 @@
                 op == midgard_op_ld_uniform_32i \
         )
 
+#define OP_IS_CSEL(op) ( \
+                op == midgard_alu_op_icsel || \
+                op == midgard_alu_op_icsel_v || \
+                op == midgard_alu_op_fcsel_v || \
+                op == midgard_alu_op_fcsel \
+        )
+
 /* ALU control words are single bit fields with a lot of space */
 
 #define ALU_ENAB_VEC_MUL  (1 << 17)
