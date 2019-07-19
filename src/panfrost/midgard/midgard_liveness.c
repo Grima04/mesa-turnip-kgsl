@@ -60,10 +60,23 @@ is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
 
                 succ->visited = true;
 
+                /* Within this block, check if it's overwritten first */
+                bool block_done = false;
+
                 mir_foreach_instr_in_block(succ, ins) {
                         if (midgard_is_live_in_instr(ins, src))
                                 return true;
+
+                        /* If written-before-use, we're gone */
+
+                        if (ins->ssa_args.dest == src && ins->type == TAG_LOAD_STORE_4 && ins->load_store.op == midgard_op_ld_int4 && ins->load_store.unknown == 0x1EEA) {
+                                block_done = true;
+                                break;
+                        }
                 }
+
+                if (block_done)
+                        continue;
 
                 /* ...and also, check *its* successors */
                 if (is_live_after_successors(ctx, succ, src))
