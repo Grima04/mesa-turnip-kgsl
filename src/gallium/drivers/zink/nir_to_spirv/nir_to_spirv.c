@@ -127,9 +127,9 @@ get_fvec_type(struct ntv_context *ctx, unsigned bit_size, unsigned num_component
 static SpvId
 get_ivec_type(struct ntv_context *ctx, unsigned bit_size, unsigned num_components)
 {
-   assert(bit_size == 32); // only 32-bit ints supported so far
+   assert(bit_size == 1 || bit_size == 32); // only 32-bit ints supported so far
 
-   SpvId int_type = spirv_builder_type_int(&ctx->builder, bit_size);
+   SpvId int_type = spirv_builder_type_int(&ctx->builder, MAX2(bit_size, 32));
    if (num_components > 1)
       return spirv_builder_type_vector(&ctx->builder, int_type,
                                        num_components);
@@ -141,9 +141,9 @@ get_ivec_type(struct ntv_context *ctx, unsigned bit_size, unsigned num_component
 static SpvId
 get_uvec_type(struct ntv_context *ctx, unsigned bit_size, unsigned num_components)
 {
-   assert(bit_size == 32); // only 32-bit uints supported so far
+   assert(bit_size == 1 || bit_size == 32); // only 32-bit uints supported so far
 
-   SpvId uint_type = spirv_builder_type_uint(&ctx->builder, bit_size);
+   SpvId uint_type = spirv_builder_type_uint(&ctx->builder, MAX2(bit_size, 32));
    if (num_components > 1)
       return spirv_builder_type_vector(&ctx->builder, uint_type,
                                        num_components);
@@ -498,9 +498,9 @@ get_alu_src_uint(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
       return def;
 
    int bit_size = nir_src_bit_size(alu->src[src].src);
-   assert(bit_size == 32);
+   assert(bit_size == 1 || bit_size == 32);
 
-   SpvId uint_type = spirv_builder_type_uint(&ctx->builder, bit_size);
+   SpvId uint_type = spirv_builder_type_uint(&ctx->builder, MAX2(bit_size, 32));
    if (used_channels == 1) {
       uint32_t indices[] =  { alu->src[src].swizzle[0] };
       return spirv_builder_emit_composite_extract(&ctx->builder, uint_type,
