@@ -237,10 +237,6 @@ dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_fragment
 dEQP-GLES2.functional.shaders.preprocessor.predefined_macros.line_2_vertex
 dEQP-GLES2.functional.shaders.scoping.valid.local_variable_hides_function_parameter_fragment
 dEQP-GLES2.functional.shaders.scoping.valid.local_variable_hides_function_parameter_vertex
-dEQP-GLES2.functional.shaders.struct.local.dynamic_loop_assignment_fragment
-dEQP-GLES2.functional.shaders.struct.local.dynamic_loop_assignment_vertex
-dEQP-GLES2.functional.shaders.struct.local.dynamic_loop_nested_struct_array_fragment
-dEQP-GLES2.functional.shaders.struct.local.dynamic_loop_nested_struct_array_vertex
 dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_alpha
 dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_luminance
 dEQP-GLES2.functional.texture.specification.basic_copytexsubimage2d.cube_luminance_alpha
