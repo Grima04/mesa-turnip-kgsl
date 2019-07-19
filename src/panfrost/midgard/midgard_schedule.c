@@ -769,19 +769,18 @@ schedule_program(compiler_context *ctx)
                 g = allocate_registers(ctx, &spilled);
         } while(spilled && ((iter_count--) > 0));
 
-                /* We would like to run RA after scheduling, but spilling can
-                 * complicate this */
+        /* After RA finishes, we schedule all at once */
 
-                mir_foreach_block(ctx, block) {
-                        schedule_block(ctx, block);
-                }
-#if 0
+        mir_foreach_block(ctx, block) {
+                schedule_block(ctx, block);
+        }
 
-                /* Pipeline registers creation is a prepass before RA */
-                mir_create_pipeline_registers(ctx);
-#endif
+        /* Finally, we create pipeline registers as a peephole pass after
+         * scheduling. This isn't totally optimal, since there are cases where
+         * the usage of pipeline registers can eliminate spills, but it does
+         * save some power */
 
-
+        mir_create_pipeline_registers(ctx);
 
         if (iter_count <= 0) {
                 fprintf(stderr, "panfrost: Gave up allocating registers, rendering will be incomplete\n");
