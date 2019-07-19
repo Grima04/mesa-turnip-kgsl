@@ -98,6 +98,18 @@ util_vasprintf(char **ret, const char *format, va_list ap)
    return vsnprintf(*ret, r + 1, format, ap);
 }
 
+#define asprintf util_asprintf
+static inline char *
+util_asprintf(const char *fmt, ...)
+{
+   char *ptr;
+   va_list args;
+   va_start(args, fmt);
+   if (vasprintf(&ptr, fmt, args) == -1)
+      ptr = NULL;
+   va_end(args);
+   return ptr;
+}
 
 #define strcasecmp stricmp
 #define strdup _strdup
