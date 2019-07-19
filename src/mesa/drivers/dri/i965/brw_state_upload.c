@@ -124,22 +124,6 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
                               REG_MASK(GEN11_DISABLE_REPACKING_FOR_COMPRESSION));
    }
 
-   if (devinfo->gen == 10 || devinfo->gen == 11) {
-      /* From gen10 workaround table in h/w specs:
-       *
-       *    "On 3DSTATE_3D_MODE, driver must always program bits 31:16 of DW1
-       *     a value of 0xFFFF"
-       *
-       * This means that we end up setting the entire 3D_MODE state. Bits
-       * in this register control things such as slice hashing and we want
-       * the default values of zero at the moment.
-       */
-      BEGIN_BATCH(2);
-      OUT_BATCH(_3DSTATE_3D_MODE  << 16 | (2 - 2));
-      OUT_BATCH(0xFFFF << 16);
-      ADVANCE_BATCH();
-   }
-
    if (devinfo->gen == 9) {
       /* Recommended optimizations for Victim Cache eviction and floating
        * point blending.
