@@ -49,6 +49,7 @@ extern "C" {
 struct pipe_resource;
 struct pipe_sampler_view;
 struct pipe_sampler_state;
+struct pipe_image_view;
 struct util_format_description;
 struct lp_type;
 struct lp_build_context;
@@ -121,6 +122,27 @@ struct lp_sampler_size_query_params
    enum lp_sampler_lod_property lod_property;
    LLVMValueRef explicit_lod;
    LLVMValueRef *sizes_out;
+};
+
+#define LP_IMG_LOAD 0
+#define LP_IMG_STORE 1
+#define LP_IMG_ATOMIC 2
+#define LP_IMG_ATOMIC_CAS 3
+
+struct lp_img_params
+{
+   struct lp_type type;
+   unsigned image_index;
+   unsigned img_op;
+   unsigned target;
+   LLVMAtomicRMWBinOp op;
+   LLVMValueRef exec_mask;
+   LLVMValueRef context_ptr;
+   LLVMValueRef thread_data_ptr;
+   const LLVMValueRef *coords;
+   LLVMValueRef indata[4];
+   LLVMValueRef indata2[4];
+   LLVMValueRef *outdata;
 };
 /**
  * Texture static state.
@@ -489,6 +511,9 @@ void
 lp_sampler_static_texture_state(struct lp_static_texture_state *state,
                                 const struct pipe_sampler_view *view);
 
+void
+lp_sampler_static_texture_state_image(struct lp_static_texture_state *state,
+                                      const struct pipe_image_view *view);
 
 void
 lp_build_lod_selector(struct lp_build_sample_context *bld,
@@ -638,6 +663,12 @@ lp_build_minify(struct lp_build_context *bld,
                 LLVMValueRef base_size,
                 LLVMValueRef level,
                 boolean lod_scalar);
+
+void
+lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
+                      struct lp_sampler_dynamic_state *dynamic_state,
+                      struct gallivm_state *gallivm,
+                      const struct lp_img_params *params);
 
 #ifdef __cplusplus
 }

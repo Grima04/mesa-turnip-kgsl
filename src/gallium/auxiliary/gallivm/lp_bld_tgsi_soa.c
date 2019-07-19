@@ -3392,6 +3392,79 @@ lod_emit(
                FALSE, LP_SAMPLER_OP_LODQ, emit_data->output);
 }
 
+static void target_to_dims_layer(unsigned target,
+                                 unsigned *dims,
+                                 unsigned *layer_coord)
+{
+   *layer_coord = 0;
+   switch (target) {
+   case TGSI_TEXTURE_1D:
+   case TGSI_TEXTURE_BUFFER:
+      *dims = 1;
+      break;
+   case TGSI_TEXTURE_1D_ARRAY:
+      *layer_coord = 1;
+      *dims = 1;
+      break;
+   case TGSI_TEXTURE_2D:
+   case TGSI_TEXTURE_RECT:
+      *dims = 2;
+      break;
+   case TGSI_TEXTURE_2D_ARRAY:
+      *layer_coord = 2;
+      *dims = 2;
+      break;
+   case TGSI_TEXTURE_3D:
+   case TGSI_TEXTURE_CUBE:
+   case TGSI_TEXTURE_CUBE_ARRAY:
+      *dims = 3;
+      break;
+   default:
+      assert(0);
+      return;
+   }
+}
+
+static void
+img_load_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct lp_img_params params;
+   LLVMValueRef coords[5];
+   LLVMValueRef coord_undef = LLVMGetUndef(bld->bld_base.base.int_vec_type);
+   unsigned dims;
+   unsigned target = emit_data->inst->Memory.Texture;
+   unsigned layer_coord;
+
+   target_to_dims_layer(target, &dims, &layer_coord);
+
+   for (unsigned i = 0; i < dims; i++) {
+      coords[i] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, i);
+   }
+   for (unsigned i = dims; i < 5; i++) {
+      coords[i] = coord_undef;
+   }
+   if (layer_coord)
+      coords[2] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, layer_coord);
+
+   memset(&params, 0, sizeof(params));
+
+   params.type = bld->bld_base.base.type;
+   params.context_ptr = bld->context_ptr;
+   params.thread_data_ptr = bld->thread_data_ptr;
+   params.coords = coords;
+   params.outdata = emit_data->output;
+   params.target = tgsi_to_pipe_tex_target(target);
+   params.image_index = emit_data->inst->Src[0].Register.Index;
+   params.img_op = LP_IMG_LOAD;
+   bld->image->emit_op(bld->image,
+                         bld->bld_base.base.gallivm,
+                         &params);
+}
+
 static void
 load_emit(
    const struct lp_build_tgsi_action * action,
@@ -3403,10 +3476,12 @@ load_emit(
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
    unsigned buf = bufreg->Register.Index;
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE);
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
 
-   if (0) {
+   if (bufreg->Register.File == TGSI_FILE_IMAGE)
+      img_load_emit(action, bld_base, emit_data);
+   else if (0) {
       /* for indirect support with ARB_gpu_shader5 */
    } else {
       LLVMValueRef index;
@@ -3462,6 +3537,48 @@ load_emit(
 }
 
 static void
+img_store_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct lp_img_params params;
+   LLVMValueRef coords[5];
+   LLVMValueRef coord_undef = LLVMGetUndef(bld->bld_base.base.int_vec_type);
+   unsigned dims;
+   unsigned target = emit_data->inst->Memory.Texture;
+   unsigned layer_coord;
+
+   target_to_dims_layer(target, &dims, &layer_coord);
+   for (unsigned i = 0; i < dims; i++) {
+      coords[i] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 0, i);
+   }
+   for (unsigned i = dims; i < 5; i++) {
+      coords[i] = coord_undef;
+   }
+   if (layer_coord)
+      coords[2] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 0, layer_coord);
+   memset(&params, 0, sizeof(params));
+
+   params.type = bld->bld_base.base.type;
+   params.context_ptr = bld->context_ptr;
+   params.thread_data_ptr = bld->thread_data_ptr;
+   params.coords = coords;
+   params.outdata = NULL;
+   params.exec_mask = mask_vec(bld_base);
+   params.target = tgsi_to_pipe_tex_target(target);
+   params.image_index = emit_data->inst->Dst[0].Register.Index;
+   params.img_op = LP_IMG_STORE;
+   for (unsigned i = 0; i < 4; i++)
+      params.indata[i] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, i);
+
+   bld->image->emit_op(bld->image,
+                       bld->bld_base.base.gallivm,
+                       &params);
+}
+
+static void
 store_emit(
    const struct lp_build_tgsi_action * action,
    struct lp_build_tgsi_context * bld_base,
@@ -3473,9 +3590,11 @@ store_emit(
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    const struct tgsi_full_dst_register *bufreg = &emit_data->inst->Dst[0];
    unsigned buf = bufreg->Register.Index;
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE);
 
-   if (0) {
+   if (bufreg->Register.File == TGSI_FILE_IMAGE) {
+      img_store_emit(action, bld_base, emit_data);
+   } else if (0) {
 
    } else {
       LLVMValueRef index;  /* index into the const buffer */
@@ -3539,11 +3658,74 @@ resq_emit(
    const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
 
    unsigned buf = bufreg->Register.Index;
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE);
 
-   LLVMValueRef num_ssbo = bld->ssbo_sizes[buf];
+   if (bufreg->Register.File == TGSI_FILE_IMAGE) {
+      unsigned target = emit_data->inst->Memory.Texture;
+      struct lp_sampler_size_query_params params = { 0 };
+      params.int_type = bld->bld_base.int_bld.type;
+      params.texture_unit = buf;
+      params.target = tgsi_to_pipe_tex_target(target);
+      params.context_ptr = bld->context_ptr;
+      params.sizes_out = emit_data->output;
 
-   emit_data->output[emit_data->chan] = lp_build_broadcast_scalar(uint_bld, num_ssbo);
+      bld->image->emit_size_query(bld->image,
+                                  bld->bld_base.base.gallivm,
+                                  &params);
+   } else {
+      LLVMValueRef num_ssbo = bld->ssbo_sizes[buf];
+
+      emit_data->output[emit_data->chan] = lp_build_broadcast_scalar(uint_bld, num_ssbo);
+   }
+}
+
+static void
+img_atomic_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data,
+   LLVMAtomicRMWBinOp op)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct lp_img_params params;
+   LLVMValueRef coords[5];
+   LLVMValueRef coord_undef = LLVMGetUndef(bld->bld_base.base.int_vec_type);
+   unsigned dims;
+   unsigned layer_coord;
+   unsigned target = emit_data->inst->Memory.Texture;
+
+   target_to_dims_layer(target, &dims, &layer_coord);
+
+   for (unsigned i = 0; i < dims; i++) {
+      coords[i] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, i);
+   }
+   for (unsigned i = dims; i < 5; i++) {
+      coords[i] = coord_undef;
+   }
+   if (layer_coord)
+      coords[2] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, layer_coord);
+   memset(&params, 0, sizeof(params));
+
+   params.type = bld->bld_base.base.type;
+   params.context_ptr = bld->context_ptr;
+   params.thread_data_ptr = bld->thread_data_ptr;
+   params.exec_mask = mask_vec(bld_base);
+   params.image_index = emit_data->inst->Src[0].Register.Index;
+   params.coords = coords;
+   params.target = tgsi_to_pipe_tex_target(target);
+   params.op = op;
+   params.outdata = emit_data->output;
+   params.img_op = (emit_data->inst->Instruction.Opcode == TGSI_OPCODE_ATOMCAS) ? LP_IMG_ATOMIC_CAS : LP_IMG_ATOMIC;
+
+   for (unsigned i = 0; i < 4; i++)
+      params.indata[i] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 2, i);
+   if (emit_data->inst->Instruction.Opcode == TGSI_OPCODE_ATOMCAS) {
+      for (unsigned i = 0; i < 4; i++)
+         params.indata2[i] = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 3, i);
+   }
+   bld->image->emit_op(bld->image,
+                       bld->bld_base.base.gallivm,
+                       &params);
 }
 
 static void
@@ -3558,7 +3740,7 @@ atomic_emit(
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
 
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE);
    unsigned buf = bufreg->Register.Index;
 
    LLVMAtomicRMWBinOp op;
@@ -3597,7 +3779,9 @@ atomic_emit(
       return;
    }
 
-   if (0) {
+   if (bufreg->Register.File == TGSI_FILE_IMAGE) {
+      img_atomic_emit(action, bld_base, emit_data, op);
+   } else if (0) {
    } else {
       LLVMValueRef index;  /* index into the const buffer */
       LLVMValueRef scalar, scalar_ptr;

@@ -309,6 +309,8 @@ analyse_instruction(struct analysis_context *ctx,
          continue;
       } else if (dst->File == TGSI_FILE_BUFFER) {
          continue;
+      } else if (dst->File == TGSI_FILE_IMAGE) {
+         continue;
       } else {
          assert(0);
          continue;

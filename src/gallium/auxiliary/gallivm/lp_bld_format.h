@@ -151,6 +151,16 @@ lp_build_fetch_rgba_soa(struct gallivm_state *gallivm,
                         LLVMValueRef cache,
                         LLVMValueRef rgba_out[4]);
 
+void
+lp_build_store_rgba_soa(struct gallivm_state *gallivm,
+                        const struct util_format_description *format_desc,
+                        struct lp_type type,
+                        LLVMValueRef exec_mask,
+                        LLVMValueRef base_ptr,
+                        LLVMValueRef offset,
+                        LLVMValueRef out_of_bounds,
+                        const LLVMValueRef rgba_in[4]);
+
 /*
  * YUV
  */
