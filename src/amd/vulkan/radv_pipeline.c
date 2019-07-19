@@ -2968,8 +2968,8 @@ radv_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipelineCr
 		while(ds_entry[1].bpp <= ds_bytes_per_pixel)
 			++ds_entry;
 
-		extent.width = MIN2(extent.width, ds_entry->extent.width);
-		extent.height = MIN2(extent.height, ds_entry->extent.height);
+		if (ds_entry->extent.width * ds_entry->extent.height < extent.width * extent.height)
+			extent = ds_entry->extent;
 	}
 
 	return extent;
