@@ -803,6 +803,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    UNOP(nir_op_f2u32, SpvOpConvertFToU)
    UNOP(nir_op_i2f32, SpvOpConvertSToF)
    UNOP(nir_op_u2f32, SpvOpConvertUToF)
+   UNOP(nir_op_inot, SpvOpNot)
 #undef UNOP
 
 #define BUILTIN_UNOP(nir_op, spirv_op) \
@@ -871,6 +872,8 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_ishl, SpvOpShiftLeftLogical)
    BINOP(nir_op_ishr, SpvOpShiftRightArithmetic)
    BINOP(nir_op_ushr, SpvOpShiftRightLogical)
+   BINOP(nir_op_iand, SpvOpBitwiseAnd)
+   BINOP(nir_op_ior, SpvOpBitwiseOr)
 #undef BINOP
 
 #define BUILTIN_BINOP(nir_op, spirv_op) \
