@@ -3445,6 +3445,12 @@ void nir_assign_io_var_locations(struct exec_list *var_list,
                                  gl_shader_stage stage);
 
 typedef enum {
+   /* If set, this causes all 64-bit IO operations to be lowered on-the-fly
+    * to 32-bit operations.  This is only valid for nir_var_shader_in/out
+    * modes.
+    */
+   nir_lower_io_lower_64bit_to_32 = (1 << 0),
+
    /* If set, this forces all non-flat fragment shader inputs to be
     * interpolated as if with the "sample" qualifier.  This requires
     * nir_shader_compiler_options::use_interpolated_input_intrinsics.

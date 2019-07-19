@@ -202,9 +202,10 @@ get_io_offset(nir_builder *b, nir_deref_instr *deref,
 }
 
 static nir_ssa_def *
-lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
-           nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
-           unsigned component, const struct glsl_type *type)
+emit_load(struct lower_io_state *state,
+          nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
+          unsigned component, unsigned num_components, unsigned bit_size,
+          nir_alu_type type)
 {
    nir_builder *b = &state->builder;
    const nir_shader *nir = b->shader;
@@ -252,7 +253,7 @@ lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
 
    nir_intrinsic_instr *load =
       nir_intrinsic_instr_create(state->builder.shader, op);
-   load->num_components = intrin->num_components;
+   load->num_components = num_components;
 
    nir_intrinsic_set_base(load, var->data.driver_location);
    if (mode == nir_var_shader_in || mode == nir_var_shader_out)
@@ -264,7 +265,7 @@ lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
 
    if (load->intrinsic == nir_intrinsic_load_input ||
        load->intrinsic == nir_intrinsic_load_uniform)
-      nir_intrinsic_set_type(load, nir_get_nir_type_for_glsl_type(type));
+      nir_intrinsic_set_type(load, type);
 
    if (vertex_index) {
       load->src[0] = nir_src_for_ssa(vertex_index);
@@ -276,19 +277,61 @@ lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
       load->src[0] = nir_src_for_ssa(offset);
    }
 
-   assert(intrin->dest.is_ssa);
    nir_ssa_dest_init(&load->instr, &load->dest,
-                     intrin->dest.ssa.num_components,
-                     intrin->dest.ssa.bit_size, NULL);
+                     num_components, bit_size, NULL);
    nir_builder_instr_insert(b, &load->instr);
 
    return &load->dest.ssa;
 }
 
+static nir_ssa_def *
+lower_load(nir_intrinsic_instr *intrin, struct lower_io_state *state,
+           nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
+           unsigned component, const struct glsl_type *type)
+{
+   assert(intrin->dest.is_ssa);
+   if (intrin->dest.ssa.bit_size == 64 &&
+       (state->options & nir_lower_io_lower_64bit_to_32)) {
+      nir_builder *b = &state->builder;
+
+      const unsigned slot_size = state->type_size(glsl_dvec_type(2), false);
+
+      nir_ssa_def *comp64[4];
+      assert(component == 0 || component == 2);
+      unsigned dest_comp = 0;
+      while (dest_comp < intrin->dest.ssa.num_components) {
+         const unsigned num_comps =
+            MIN2(intrin->dest.ssa.num_components - dest_comp,
+                 (4 - component) / 2);
+
+         nir_ssa_def *data32 =
+            emit_load(state, vertex_index, var, offset, component,
+                      num_comps * 2, 32, nir_type_uint32);
+         for (unsigned i = 0; i < num_comps; i++) {
+            comp64[dest_comp + i] =
+               nir_pack_64_2x32(b, nir_channels(b, data32, 3 << (i * 2)));
+         }
+
+         /* Only the first store has a component offset */
+         component = 0;
+         dest_comp += num_comps;
+         offset = nir_iadd_imm(b, offset, slot_size);
+      }
+
+      return nir_vec(b, comp64, intrin->dest.ssa.num_components);
+   } else {
+      return emit_load(state, vertex_index, var, offset, component,
+                       intrin->dest.ssa.num_components,
+                       intrin->dest.ssa.bit_size,
+                       nir_get_nir_type_for_glsl_type(type));
+   }
+}
+
 static void
-lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
-            nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
-            unsigned component, const struct glsl_type *type)
+emit_store(struct lower_io_state *state, nir_ssa_def *data,
+           nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
+           unsigned component, unsigned num_components,
+           nir_component_mask_t write_mask, nir_alu_type type)
 {
    nir_builder *b = &state->builder;
    nir_variable_mode mode = var->data.mode;
@@ -304,9 +347,9 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
 
    nir_intrinsic_instr *store =
       nir_intrinsic_instr_create(state->builder.shader, op);
-   store->num_components = intrin->num_components;
+   store->num_components = num_components;
 
-   nir_src_copy(&store->src[0], &intrin->src[1], store);
+   store->src[0] = nir_src_for_ssa(data);
 
    nir_intrinsic_set_base(store, var->data.driver_location);
 
@@ -314,9 +357,9 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
       nir_intrinsic_set_component(store, component);
 
    if (store->intrinsic == nir_intrinsic_store_output)
-      nir_intrinsic_set_type(store, nir_get_nir_type_for_glsl_type(type));
+      nir_intrinsic_set_type(store, type);
 
-   nir_intrinsic_set_write_mask(store, nir_intrinsic_write_mask(intrin));
+   nir_intrinsic_set_write_mask(store, write_mask);
 
    if (vertex_index)
       store->src[1] = nir_src_for_ssa(vertex_index);
@@ -324,6 +367,57 @@ lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    store->src[vertex_index ? 2 : 1] = nir_src_for_ssa(offset);
 
    nir_builder_instr_insert(b, &store->instr);
+}
+
+static void
+lower_store(nir_intrinsic_instr *intrin, struct lower_io_state *state,
+            nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
+            unsigned component, const struct glsl_type *type)
+{
+   assert(intrin->src[1].is_ssa);
+   if (intrin->src[1].ssa->bit_size == 64 &&
+       (state->options & nir_lower_io_lower_64bit_to_32)) {
+      nir_builder *b = &state->builder;
+
+      const unsigned slot_size = state->type_size(glsl_dvec_type(2), false);
+
+      assert(component == 0 || component == 2);
+      unsigned src_comp = 0;
+      nir_component_mask_t write_mask = nir_intrinsic_write_mask(intrin);
+      while (src_comp < intrin->num_components) {
+         const unsigned num_comps =
+            MIN2(intrin->num_components - src_comp,
+                 (4 - component) / 2);
+
+         if (write_mask & BITFIELD_MASK(num_comps)) {
+            nir_ssa_def *data =
+               nir_channels(b, intrin->src[1].ssa,
+                            BITFIELD_RANGE(src_comp, num_comps));
+            nir_ssa_def *data32 = nir_bitcast_vector(b, data, 32);
+
+            nir_component_mask_t write_mask32 = 0;
+            for (unsigned i = 0; i < num_comps; i++) {
+               if (write_mask & BITFIELD_MASK(num_comps) & (1 << i))
+                  write_mask32 |= 3 << (i * 2);
+            }
+
+            emit_store(state, data32, vertex_index, var, offset,
+                       component, data32->num_components, write_mask32,
+                       nir_type_uint32);
+         }
+
+         /* Only the first store has a component offset */
+         component = 0;
+         src_comp += num_comps;
+         write_mask >>= num_comps;
+         offset = nir_iadd_imm(b, offset, slot_size);
+      }
+   } else {
+      emit_store(state, intrin->src[1].ssa, vertex_index, var, offset,
+                 component, intrin->num_components,
+                 nir_intrinsic_write_mask(intrin),
+                 nir_get_nir_type_for_glsl_type(type));
+   }
 }
 
 static nir_ssa_def *
@@ -391,6 +485,9 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    /* Ignore interpolateAt() for flat variables - flat is flat. */
    if (var->data.interpolation == INTERP_MODE_FLAT)
       return lower_load(intrin, state, NULL, var, offset, component, type);
+
+   /* None of the supported APIs allow interpolation on 64-bit things */
+   assert(intrin->dest.is_ssa && intrin->dest.ssa.bit_size <= 32);
 
    nir_intrinsic_op bary_op;
    switch (intrin->intrinsic) {
