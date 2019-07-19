@@ -1434,7 +1434,7 @@ static SpvId
 get_src_bool(struct ntv_context *ctx, nir_src *src)
 {
    SpvId def = get_src_uint(ctx, src);
-   assert(nir_src_bit_size(*src) == 32);
+   assert(nir_src_bit_size(*src) == 1);
    unsigned num_components = nir_src_num_components(*src);
    return uvec_to_bvec(ctx, def, num_components);
 }

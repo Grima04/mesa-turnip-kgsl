@@ -325,7 +325,6 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir)
    NIR_PASS_V(nir, lower_uniforms_to_ubo);
    NIR_PASS_V(nir, position_to_vulkan);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
-   NIR_PASS_V(nir, nir_lower_bool_to_float);
    optimize_nir(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp);
    NIR_PASS_V(nir, lower_discard_if);
