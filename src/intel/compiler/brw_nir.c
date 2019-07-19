@@ -171,7 +171,8 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
     * loaded as one vec4 or dvec4 per element (or matrix column), depending on
     * whether it is a double-precision type or not.
     */
-   nir_lower_io(nir, nir_var_shader_in, type_size_vec4, 0);
+   nir_lower_io(nir, nir_var_shader_in, type_size_vec4,
+                nir_lower_io_lower_64bit_to_32);
 
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
@@ -294,7 +295,8 @@ brw_nir_lower_vue_inputs(nir_shader *nir,
    }
 
    /* Inputs are stored in vec4 slots, so use type_size_vec4(). */
-   nir_lower_io(nir, nir_var_shader_in, type_size_vec4, 0);
+   nir_lower_io(nir, nir_var_shader_in, type_size_vec4,
+                nir_lower_io_lower_64bit_to_32);
 
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
@@ -345,7 +347,8 @@ brw_nir_lower_tes_inputs(nir_shader *nir, const struct brw_vue_map *vue_map)
       var->data.driver_location = var->data.location;
    }
 
-   nir_lower_io(nir, nir_var_shader_in, type_size_vec4, 0);
+   nir_lower_io(nir, nir_var_shader_in, type_size_vec4,
+                nir_lower_io_lower_64bit_to_32);
 
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
@@ -396,7 +399,7 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
       }
    }
 
-   nir_lower_io_options lower_io_options = 0;
+   nir_lower_io_options lower_io_options = nir_lower_io_lower_64bit_to_32;
    if (key->persample_interp)
       lower_io_options |= nir_lower_io_force_sample_interpolation;
 
@@ -417,7 +420,8 @@ brw_nir_lower_vue_outputs(nir_shader *nir)
       var->data.driver_location = var->data.location;
    }
 
-   nir_lower_io(nir, nir_var_shader_out, type_size_vec4, 0);
+   nir_lower_io(nir, nir_var_shader_out, type_size_vec4,
+                nir_lower_io_lower_64bit_to_32);
 }
 
 void
@@ -428,7 +432,8 @@ brw_nir_lower_tcs_outputs(nir_shader *nir, const struct brw_vue_map *vue_map,
       var->data.driver_location = var->data.location;
    }
 
-   nir_lower_io(nir, nir_var_shader_out, type_size_vec4, 0);
+   nir_lower_io(nir, nir_var_shader_out, type_size_vec4,
+                nir_lower_io_lower_64bit_to_32);
 
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
