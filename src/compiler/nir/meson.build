@@ -285,6 +285,7 @@ if with_tests
     ),
     suite : ['compiler', 'nir'],
   )
+
   test(
     'nir_algebraic_parser',
     prog_python,
@@ -302,7 +303,8 @@ if with_tests
       c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
       include_directories : [inc_common],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
-    )
+    ),
+    suite : ['compiler', 'nir'],
   )
 
   test(
@@ -313,6 +315,7 @@ if with_tests
       c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
       include_directories : [inc_common],
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
-    )
+    ),
+    suite : ['compiler', 'nir'],
   )
 endif
