@@ -67,6 +67,10 @@ get_uvec_constant(struct ntv_context *ctx, unsigned bit_size,
                   unsigned num_components, uint32_t value);
 
 static SpvId
+get_ivec_constant(struct ntv_context *ctx, unsigned bit_size,
+                  unsigned num_components, int32_t value);
+
+static SpvId
 emit_unop(struct ntv_context *ctx, SpvOp op, SpvId type, SpvId src);
 
 static SpvId
@@ -108,6 +112,13 @@ emit_uint_const(struct ntv_context *ctx, int bit_size, uint32_t value)
 {
    assert(bit_size == 32);
    return spirv_builder_const_uint(&ctx->builder, bit_size, value);
+}
+
+static SpvId
+emit_int_const(struct ntv_context *ctx, int bit_size, int32_t value)
+{
+   assert(bit_size == 32);
+   return spirv_builder_const_int(&ctx->builder, bit_size, value);
 }
 
 static SpvId
@@ -719,6 +730,26 @@ get_uvec_constant(struct ntv_context *ctx, unsigned bit_size,
                                         num_components);
 }
 
+static SpvId
+get_ivec_constant(struct ntv_context *ctx, unsigned bit_size,
+                  unsigned num_components, int32_t value)
+{
+   assert(bit_size == 32);
+
+   SpvId result = emit_int_const(ctx, bit_size, value);
+   if (num_components == 1)
+      return result;
+
+   assert(num_components > 1);
+   SpvId components[num_components];
+   for (int i = 0; i < num_components; i++)
+      components[i] = result;
+
+   SpvId type = get_ivec_type(ctx, bit_size, num_components);
+   return spirv_builder_const_composite(&ctx->builder, type, components,
+                                        num_components);
+}
+
 static inline unsigned
 alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
 {
@@ -829,8 +860,8 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    case nir_op_b2i32:
       assert(nir_op_infos[alu->op].num_inputs == 1);
       result = emit_select(ctx, dest_type, src[0],
-                           get_uvec_constant(ctx, 32, num_components, 1),
-                           get_uvec_constant(ctx, 32, num_components, 0));
+                           get_ivec_constant(ctx, 32, num_components, 1),
+                           get_ivec_constant(ctx, 32, num_components, 0));
       break;
 
    case nir_op_b2f32:
