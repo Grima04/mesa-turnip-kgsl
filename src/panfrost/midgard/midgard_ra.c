@@ -338,6 +338,9 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         for (int src = 0; src < 2; ++src) {
                                 int s = sources[src];
 
+                                if (ins->ssa_args.inline_constant && src == 1)
+                                        continue;
+
                                 if (s < 0) continue;
 
                                 if (s >= SSA_FIXED_MINIMUM) continue;
