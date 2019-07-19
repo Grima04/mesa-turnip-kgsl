@@ -71,12 +71,6 @@ create_jit_texture_type(struct gallivm_state *gallivm)
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, depth,
                           gallivm->target, texture_type,
                           LP_JIT_TEXTURE_DEPTH);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, first_level,
-                          gallivm->target, texture_type,
-                          LP_JIT_TEXTURE_FIRST_LEVEL);
-   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, last_level,
-                          gallivm->target, texture_type,
-                          LP_JIT_TEXTURE_LAST_LEVEL);
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, base,
                           gallivm->target, texture_type,
                           LP_JIT_TEXTURE_BASE);
@@ -86,6 +80,12 @@ create_jit_texture_type(struct gallivm_state *gallivm)
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, img_stride,
                           gallivm->target, texture_type,
                           LP_JIT_TEXTURE_IMG_STRIDE);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, first_level,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_FIRST_LEVEL);
+   LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, last_level,
+                          gallivm->target, texture_type,
+                          LP_JIT_TEXTURE_LAST_LEVEL);
    LP_CHECK_MEMBER_OFFSET(struct lp_jit_texture, mip_offsets,
                           gallivm->target, texture_type,
                           LP_JIT_TEXTURE_MIP_OFFSETS);

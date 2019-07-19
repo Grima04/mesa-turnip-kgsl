@@ -49,11 +49,11 @@ struct draw_jit_texture
    uint32_t width;
    uint32_t height;
    uint32_t depth;
-   uint32_t first_level;
-   uint32_t last_level;
    const void *base;
    uint32_t row_stride[PIPE_MAX_TEXTURE_LEVELS];
    uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS];
+   uint32_t first_level;
+   uint32_t last_level;
    uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS];
 };
 
@@ -83,11 +83,11 @@ enum {
    DRAW_JIT_TEXTURE_WIDTH = 0,
    DRAW_JIT_TEXTURE_HEIGHT,
    DRAW_JIT_TEXTURE_DEPTH,
-   DRAW_JIT_TEXTURE_FIRST_LEVEL,
-   DRAW_JIT_TEXTURE_LAST_LEVEL,
    DRAW_JIT_TEXTURE_BASE,
    DRAW_JIT_TEXTURE_ROW_STRIDE,
    DRAW_JIT_TEXTURE_IMG_STRIDE,
+   DRAW_JIT_TEXTURE_FIRST_LEVEL,
+   DRAW_JIT_TEXTURE_LAST_LEVEL,
    DRAW_JIT_TEXTURE_MIP_OFFSETS,
    DRAW_JIT_TEXTURE_NUM_FIELDS  /* number of fields above */
 };
