@@ -429,9 +429,6 @@ mir_has_arg(midgard_instruction *ins, unsigned arg)
         return false;
 }
 
-midgard_instruction
-v_load_store_scratch(unsigned srcdest, unsigned index, bool is_store);
-
 /* Scheduling */
 
 void schedule_program(compiler_context *ctx);

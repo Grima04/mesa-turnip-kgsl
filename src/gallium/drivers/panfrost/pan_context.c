@@ -158,6 +158,7 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
         unsigned height = ctx->pipe_framebuffer.height;
 
         struct bifrost_framebuffer framebuffer = {
+                .unk0 = 0x1e5, /* 1e4 if no spill */
                 .width1 = MALI_POSITIVE(width),
                 .height1 = MALI_POSITIVE(height),
                 .width2 = MALI_POSITIVE(width),
@@ -2663,7 +2664,7 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
-        panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64, false, 0, 0, 0);
+        panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64*4, false, 0, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_heap, 4096, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);

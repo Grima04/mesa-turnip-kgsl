@@ -113,31 +113,6 @@ compose_swizzle(unsigned swizzle, unsigned mask,
         return shifted;
 }
 
-/* When we're 'squeezing down' the values in the IR, we maintain a hash
- * as such */
-
-static unsigned
-find_or_allocate_temp(compiler_context *ctx, unsigned hash)
-{
-        if ((hash < 0) || (hash >= SSA_FIXED_MINIMUM))
-                return hash;
-
-        unsigned temp = (uintptr_t) _mesa_hash_table_u64_search(
-                                ctx->hash_to_temp, hash + 1);
-
-        if (temp)
-                return temp - 1;
-
-        /* If no temp is find, allocate one */
-        temp = ctx->temp_count++;
-        ctx->max_hash = MAX2(ctx->max_hash, hash);
-
-        _mesa_hash_table_u64_insert(ctx->hash_to_temp,
-                                    hash + 1, (void *) ((uintptr_t) temp + 1));
-
-        return temp;
-}
-
 /* Helper to return the default phys_reg for a given register */
 
 static struct phys_reg
@@ -242,21 +217,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         /* We're done setting up */
         ra_set_finalize(regs, NULL);
 
-        /* Transform the MIR into squeezed index form */
-        mir_foreach_block(ctx, block) {
-                mir_foreach_instr_in_block(block, ins) {
-                        if (ins->compact_branch) continue;
-
-                        ins->ssa_args.dest = find_or_allocate_temp(ctx, ins->ssa_args.dest);
-                        ins->ssa_args.src0 = find_or_allocate_temp(ctx, ins->ssa_args.src0);
-
-                        if (!ins->ssa_args.inline_constant)
-                                ins->ssa_args.src1 = find_or_allocate_temp(ctx, ins->ssa_args.src1);
-
-                }
-        }
-
-        /* No register allocation to do with no SSA */
+       /* No register allocation to do with no SSA */
 
         if (!ctx->temp_count)
                 return NULL;
@@ -381,8 +342,12 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         if (!ra_allocate(g)) {
                 *spilled = true;
-                return NULL;
+        } else {
+                *spilled = false;
         }
+
+        /* Whether we were successful or not, report the graph so we can
+         * compute spill nodes */
 
         return g;
 }
