@@ -559,11 +559,17 @@ uvec_to_bvec(struct ntv_context *ctx, SpvId value, unsigned num_components)
 }
 
 static SpvId
+emit_bitcast(struct ntv_context *ctx, SpvId type, SpvId value)
+{
+   return emit_unop(ctx, SpvOpBitcast, type, value);
+}
+
+static SpvId
 bitcast_to_uvec(struct ntv_context *ctx, SpvId value, unsigned bit_size,
                 unsigned num_components)
 {
    SpvId type = get_uvec_type(ctx, bit_size, num_components);
-   return emit_unop(ctx, SpvOpBitcast, type, value);
+   return emit_bitcast(ctx, type, value);
 }
 
 static SpvId
@@ -571,7 +577,7 @@ bitcast_to_ivec(struct ntv_context *ctx, SpvId value, unsigned bit_size,
                 unsigned num_components)
 {
    SpvId type = get_ivec_type(ctx, bit_size, num_components);
-   return emit_unop(ctx, SpvOpBitcast, type, value);
+   return emit_bitcast(ctx, type, value);
 }
 
 static SpvId
@@ -579,7 +585,7 @@ bitcast_to_fvec(struct ntv_context *ctx, SpvId value, unsigned bit_size,
                unsigned num_components)
 {
    SpvId type = get_fvec_type(ctx, bit_size, num_components);
-   return emit_unop(ctx, SpvOpBitcast, type, value);
+   return emit_bitcast(ctx, type, value);
 }
 
 static void
@@ -1086,9 +1092,8 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId src = get_src_uint(ctx, &intr->src[1]);
 
    nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   SpvId result = emit_unop(ctx, SpvOpBitcast,
-                            get_glsl_type(ctx, glsl_without_array(var->type)),
-                            src);
+   SpvId type = get_glsl_type(ctx, glsl_without_array(var->type));
+   SpvId result = emit_bitcast(ctx, type, src);
    spirv_builder_emit_store(&ctx->builder, ptr, result);
 }
 
