@@ -572,11 +572,6 @@ void shuffle_from_32bit_read(const brw::fs_builder &bld,
                              uint32_t first_component,
                              uint32_t components);
 
-fs_reg shuffle_for_32bit_write(const brw::fs_builder &bld,
-                               const fs_reg &src,
-                               uint32_t first_component,
-                               uint32_t components);
-
 fs_reg setup_imm_df(const brw::fs_builder &bld,
                     double v);
 
