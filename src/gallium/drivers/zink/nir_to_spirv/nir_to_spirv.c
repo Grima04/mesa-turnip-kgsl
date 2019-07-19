@@ -530,6 +530,13 @@ store_ssa_def_uint(struct ntv_context *ctx, nir_ssa_def *ssa, SpvId result)
 }
 
 static SpvId
+emit_select(struct ntv_context *ctx, SpvId type, SpvId cond,
+            SpvId if_true, SpvId if_false)
+{
+   return emit_triop(ctx, SpvOpSelect, type, cond, if_true, if_false);
+}
+
+static SpvId
 bvec_to_uvec(struct ntv_context *ctx, SpvId value, unsigned num_components)
 {
    SpvId otype = get_uvec_type(ctx, 32, num_components);
@@ -537,7 +544,7 @@ bvec_to_uvec(struct ntv_context *ctx, SpvId value, unsigned num_components)
    uint32_t ones[4] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
    SpvId zero = get_uvec_constant(ctx, 32, num_components, zeros);
    SpvId one = get_uvec_constant(ctx, 32, num_components, ones);
-   return emit_triop(ctx, SpvOpSelect, otype, value, one, zero);
+   return emit_select(ctx, otype, value, one, zero);
 }
 
 static SpvId
@@ -931,7 +938,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       }
 
       result = emit_binop(ctx, op, bool_type, src[0], src[1]);
-      result = emit_triop(ctx, SpvOpSelect, dest_type, result, one, zero);
+      result = emit_select(ctx, dest_type, result, one, zero);
       }
       break;
 
@@ -945,13 +952,13 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
                                          num_components, zero);
 
       result = emit_binop(ctx, SpvOpFOrdGreaterThan, bool_type, src[0], cmp);
-      result = emit_triop(ctx, SpvOpSelect, dest_type, result, src[1], src[2]);
+      result = emit_select(ctx, dest_type, result, src[1], src[2]);
       }
       break;
 
    case nir_op_bcsel:
       assert(nir_op_infos[alu->op].num_inputs == 3);
-      result = emit_triop(ctx, SpvOpSelect, dest_type, src[0], src[1], src[2]);
+      result = emit_select(ctx, dest_type, src[0], src[1], src[2]);
       break;
 
    case nir_op_vec2:
