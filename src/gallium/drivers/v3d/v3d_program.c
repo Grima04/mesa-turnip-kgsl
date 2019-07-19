@@ -200,6 +200,8 @@ v3d_shader_precompile(struct v3d_context *v3d,
                         }
                 }
 
+                key.logicop_func = PIPE_LOGICOP_COPY;
+
                 v3d_setup_shared_precompile_key(so, &key.base);
                 v3d_get_compiled_shader(v3d, &key.base, sizeof(key));
         } else {
