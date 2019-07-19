@@ -34,6 +34,8 @@
 struct etna_acc_query;
 
 struct etna_acc_sample_provider {
+   bool (*supports)(unsigned query_type);
+
    void (*resume)(struct etna_acc_query *aq, struct etna_context *ctx);
    void (*suspend)(struct etna_acc_query *aq, struct etna_context *ctx);
 

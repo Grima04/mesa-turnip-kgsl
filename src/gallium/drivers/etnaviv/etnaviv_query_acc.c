@@ -42,6 +42,21 @@
  * interpret results
  */
 
+static bool
+occlusion_supports(unsigned query_type)
+{
+   switch (query_type) {
+   case PIPE_QUERY_OCCLUSION_COUNTER:
+      /* fallthrough */
+   case PIPE_QUERY_OCCLUSION_PREDICATE:
+      /* fallthrough */
+   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static void
 occlusion_resume(struct etna_acc_query *aq, struct etna_context *ctx)
 {
@@ -98,6 +113,7 @@ etna_acc_destroy_query(struct etna_context *ctx, struct etna_query *q)
 }
 
 static const struct etna_acc_sample_provider occlusion_provider = {
+   .supports = occlusion_supports,
    .suspend = occlusion_suspend,
    .resume = occlusion_resume,
    .result = occlusion_result,
