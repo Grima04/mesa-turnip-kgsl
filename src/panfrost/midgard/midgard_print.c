@@ -106,13 +106,23 @@ mir_print_instruction(midgard_instruction *ins)
 void
 mir_print_block(midgard_block *block)
 {
-        printf("{\n");
+        printf("%p: {\n", block);
 
         mir_foreach_instr_in_block(block, ins) {
                 mir_print_instruction(ins);
         }
 
-        printf("}\n");
+        printf("}");
+
+        if (block->nr_successors) {
+                printf(" -> ");
+                for (unsigned i = 0; i < block->nr_successors; ++i) {
+                        printf("%p%s", block->successors[i],
+                                        (i + 1) != block->nr_successors ? ", " : "");
+                }
+        }
+
+        printf("\n\n");
 }
 
 void
