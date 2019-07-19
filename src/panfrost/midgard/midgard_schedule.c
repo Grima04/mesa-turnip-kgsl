@@ -702,8 +702,10 @@ schedule_program(compiler_context *ctx)
 
                         int spill_node = ra_get_best_spill_node(g);
 
-                        if (spill_node < 0)
+                        if (spill_node < 0) {
+                                mir_print_shader(ctx);
                                 assert(0);
+                        }
 
                         /* Allocate TLS slot */
                         unsigned spill_slot = spill_count++;
