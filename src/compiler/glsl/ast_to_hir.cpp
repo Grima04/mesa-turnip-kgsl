@@ -2706,7 +2706,9 @@ is_varying_var(ir_variable *var, gl_shader_stage target)
    case MESA_SHADER_VERTEX:
       return var->data.mode == ir_var_shader_out;
    case MESA_SHADER_FRAGMENT:
-      return var->data.mode == ir_var_shader_in;
+      return var->data.mode == ir_var_shader_in ||
+             (var->data.mode == ir_var_system_value &&
+              var->data.location == SYSTEM_VALUE_FRAG_COORD);
    default:
       return var->data.mode == ir_var_shader_out || var->data.mode == ir_var_shader_in;
    }
