@@ -1249,7 +1249,21 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="1"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Mask Bits" start="48" end="63" type="uint"/>
+    <!-- "On 3DSTATE_3D_MODE, driver must always program bits 31:16 of DW1
+    a value of 0xFFFF" -->
+    <field name="Mask" start="48" end="63" type="mbo"/>
+    <field name="Slice Hashing Table Enable" start="38" end="38" type="bool"/>
+    <field name="Subslice Hashing Mode" start="34" end="35" type="uint">
+       <value name="hashing 8x8"   value="0"/>
+       <value name="hashing 16x4"  value="1"/>
+       <value name="hashing 8x4"   value="2"/>
+       <value name="hashing 16x16" value="3"/>
+    </field>
+    <field name="Cross Slice Hashing Mode" start="32" end="33" type="uint">
+       <value name="Normal Mode"    value="0"/>
+       <value name="Disable"        value="1"/>
+       <value name="hashing 32x32"  value="3"/>
+    </field>
   </instruction>
 
   <instruction name="3DSTATE_AA_LINE_PARAMETERS" bias="2" length="3" engine="render">
@@ -2473,6 +2487,24 @@
     <field name="Triangle Strip/List Provoking Vertex Select" start="125" end="126" type="uint"/>
     <field name="Last Pixel Enable" start="127" end="127" type="bool"/>
   </instruction>
+
+  <instruction name="3DSTATE_SLICE_TABLE_STATE_POINTERS" bias="2" length="2">
+    <field name="DWord Length" start="0" end="7" type="uint" default="0"/>
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="32"/>
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="1"/>
+    <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
+    <field name="Command Type" start="29" end="31" type="uint" default="3"/>
+    <field name="Slice Hash State Pointer Valid" start="32" end="32" type="bool"/>
+    <field name="Slice Hash Table State Pointer" start="38" end="63" type="offset"/>
+  </instruction>
+
+  <struct name="SLICE_HASH_TABLE" length="32">
+     <group count="16" start="0" size="64">
+        <group count="16" start="0" size="4">
+           <field name="Entry" start="0" end="3" type="uint"/>
+        </group>
+     </group>
+  </struct>
 
   <instruction name="3DSTATE_SO_BUFFER" bias="2" length="8" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
