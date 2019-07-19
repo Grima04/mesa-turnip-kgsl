@@ -210,6 +210,23 @@ struct lp_build_sampler_aos
                         enum lp_build_tex_modifier modifier);
 };
 
+struct lp_img_params;
+
+struct lp_build_image_soa
+{
+   void
+   (*destroy)( struct lp_build_image_soa *image );
+
+   void
+   (*emit_op)(const struct lp_build_image_soa *image,
+              struct gallivm_state *gallivm,
+              const struct lp_img_params *params);
+
+   void
+   (*emit_size_query)( const struct lp_build_image_soa *sampler,
+                       struct gallivm_state *gallivm,
+                       const struct lp_sampler_size_query_params *params);
+};
 
 void
 lp_build_tgsi_info(const struct tgsi_token *tokens,
@@ -230,6 +247,7 @@ struct lp_build_tgsi_params {
    const struct lp_build_tgsi_gs_iface *gs_iface;
    LLVMValueRef ssbo_ptr;
    LLVMValueRef ssbo_sizes_ptr;
+   const struct lp_build_image_soa *image;
 };
 
 void
@@ -237,7 +255,6 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
                   const struct tgsi_token *tokens,
                   const struct lp_build_tgsi_params *params,
                   LLVMValueRef (*outputs)[4]);
-
 
 void
 lp_build_tgsi_aos(struct gallivm_state *gallivm,
@@ -464,6 +481,7 @@ struct lp_build_tgsi_soa_context
    LLVMValueRef ssbo_sizes[LP_MAX_TGSI_SHADER_BUFFERS];
 
    const struct lp_build_sampler_soa *sampler;
+   const struct lp_build_image_soa *image;
 
    struct tgsi_declaration_sampler_view sv[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
