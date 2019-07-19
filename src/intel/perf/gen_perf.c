@@ -512,12 +512,12 @@ register_oa_config(struct gen_perf_config *perf,
                    const struct gen_perf_query_info *query,
                    uint64_t config_id)
 {
-   struct gen_perf_query_info *registred_query = append_query_info(perf, 0);
+   struct gen_perf_query_info *registered_query = append_query_info(perf, 0);
 
-   *registred_query = *query;
-   registred_query->oa_metrics_set_id = config_id;
-   DBG("metric set registred: id = %" PRIu64", guid = %s\n",
-       registred_query->oa_metrics_set_id, query->guid);
+   *registered_query = *query;
+   registered_query->oa_metrics_set_id = config_id;
+   DBG("metric set registered: id = %" PRIu64", guid = %s\n",
+       registered_query->oa_metrics_set_id, query->guid);
 }
 
 static void
