@@ -85,7 +85,7 @@ occlusion_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
    resource_written(ctx, aq->prsc);
 }
 
-static void
+static bool
 occlusion_result(struct etna_acc_query *aq, void *buf,
                  union pipe_query_result *result)
 {
@@ -99,6 +99,8 @@ occlusion_result(struct etna_acc_query *aq, void *buf,
       result->u64 = sum;
    else
       result->b = !!sum;
+
+   return true;
 }
 
 static void
@@ -214,12 +216,14 @@ etna_acc_get_query_result(struct etna_context *ctx, struct etna_query *q,
       return false;
 
    void *ptr = etna_bo_map(rsc->bo);
-   p->result(aq, ptr, result);
-   aq->samples = 0;
+   bool success = p->result(aq, ptr, result);
+
+   if (success)
+      aq->samples = 0;
 
    etna_bo_cpu_fini(rsc->bo);
 
-   return true;
+   return success;
 }
 
 static const struct etna_query_funcs acc_query_funcs = {
