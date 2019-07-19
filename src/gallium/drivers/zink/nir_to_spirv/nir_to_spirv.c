@@ -665,6 +665,13 @@ emit_builtin_binop(struct ntv_context *ctx, enum GLSLstd450 op, SpvId type,
 }
 
 static SpvId
+emit_float_const(struct ntv_context *ctx, int bit_size, float value)
+{
+   assert(bit_size == 32);
+   return spirv_builder_const_float(&ctx->builder, bit_size, value);
+}
+
+static SpvId
 get_fvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
                   const float values[])
 {
@@ -673,8 +680,7 @@ get_fvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
    if (num_components > 1) {
       SpvId components[num_components];
       for (int i = 0; i < num_components; i++)
-         components[i] = spirv_builder_const_float(&ctx->builder, bit_size,
-                                                   values[i]);
+         components[i] = emit_float_const(ctx, bit_size, values[i]);
 
       SpvId type = get_fvec_type(ctx, bit_size, num_components);
       return spirv_builder_const_composite(&ctx->builder, type, components,
@@ -682,7 +688,7 @@ get_fvec_constant(struct ntv_context *ctx, int bit_size, int num_components,
    }
 
    assert(num_components == 1);
-   return spirv_builder_const_float(&ctx->builder, bit_size, values[0]);
+   return emit_float_const(ctx, bit_size, values[0]);
 }
 
 static SpvId
@@ -913,8 +919,8 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       int num_components = nir_dest_num_components(alu->dest.dest);
       SpvId bool_type = get_bvec_type(ctx, num_components);
 
-      SpvId zero = spirv_builder_const_float(&ctx->builder, 32, 0.0f);
-      SpvId one = spirv_builder_const_float(&ctx->builder, 32, 1.0f);
+      SpvId zero = emit_float_const(ctx, 32, 0.0f);
+      SpvId one = emit_float_const(ctx, 32, 1.0f);
       if (num_components > 1) {
          SpvId zero_comps[num_components], one_comps[num_components];
          for (int i = 0; i < num_components; i++) {
@@ -1181,7 +1187,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    }
 
    if (lod == 0 && ctx->stage != MESA_SHADER_FRAGMENT) {
-      lod = spirv_builder_const_float(&ctx->builder, 32, 0);
+      lod = emit_float_const(ctx, 32, 0.0f);
       assert(lod != 0);
    }
 
