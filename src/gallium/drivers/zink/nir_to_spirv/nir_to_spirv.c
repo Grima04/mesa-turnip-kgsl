@@ -941,6 +941,11 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       }
       break;
 
+   case nir_op_bcsel:
+      assert(nir_op_infos[alu->op].num_inputs == 3);
+      result = emit_triop(ctx, SpvOpSelect, dest_type, src[0], src[1], src[2]);
+      break;
+
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4: {
