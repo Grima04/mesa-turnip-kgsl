@@ -29,6 +29,7 @@
  * This should run after nir_lower_samplers.
  */
 
+#include "util/u_string.h"
 #include "compiler/nir/nir.h"
 #include "st_nir.h"
 
