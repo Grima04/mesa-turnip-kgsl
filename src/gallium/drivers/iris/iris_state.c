@@ -608,6 +608,85 @@ iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
 }
 #endif
 
+#if GEN_GEN == 11
+static void
+iris_upload_slice_hashing_state(struct iris_batch *batch)
+{
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   int subslices_delta =
+      devinfo->ppipe_subslices[0] - devinfo->ppipe_subslices[1];
+   if (subslices_delta == 0)
+      return;
+
+   struct iris_context *ice = NULL;
+   ice = container_of(batch, ice, batches[IRIS_BATCH_RENDER]);
+   assert(&ice->batches[IRIS_BATCH_RENDER] == batch);
+
+   unsigned size = GENX(SLICE_HASH_TABLE_length) * 4;
+   uint32_t hash_address;
+   struct pipe_resource *tmp = NULL;
+   uint32_t *map =
+      stream_state(batch, ice->state.dynamic_uploader, &tmp,
+                   size, 64, &hash_address);
+   pipe_resource_reference(&tmp, NULL);
+
+   struct GENX(SLICE_HASH_TABLE) table0 = {
+      .Entry = {
+         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
+         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
+         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
+         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
+         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
+         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
+         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
+         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
+         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
+         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
+         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
+         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
+         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },
+         { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 },
+         { 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 },
+         { 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 }
+      }
+   };
+
+   struct GENX(SLICE_HASH_TABLE) table1 = {
+      .Entry = {
+         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
+         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
+         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
+         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
+         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
+         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
+         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
+         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
+         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
+         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
+         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
+         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
+         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },
+         { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0 },
+         { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1 },
+         { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 }
+      }
+   };
+
+   const struct GENX(SLICE_HASH_TABLE) *table =
+      subslices_delta < 0 ? &table0 : &table1;
+   GENX(SLICE_HASH_TABLE_pack)(NULL, map, table);
+
+   iris_emit_cmd(batch, GENX(3DSTATE_SLICE_TABLE_STATE_POINTERS), ptr) {
+      ptr.SliceHashStatePointerValid = true;
+      ptr.SliceHashTableStatePointer = hash_address;
+   }
+
+   iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), mode) {
+      mode.SliceHashingTableEnable = true;
+   }
+}
+#endif
+
 /**
  * Upload the initial GPU state for a render context.
  *
@@ -687,7 +766,7 @@ iris_init_render_context(struct iris_screen *screen,
          iris_emit_lri(batch, CACHE_MODE_0, reg_val);
       }
 
-      // XXX: 3D_MODE?
+      iris_upload_slice_hashing_state(batch);
 #endif
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
