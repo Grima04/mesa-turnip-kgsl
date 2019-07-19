@@ -834,6 +834,15 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       }
       break;
 
+   case nir_op_f2b1: {
+      assert(nir_op_infos[alu->op].num_inputs == 1);
+      float values[NIR_MAX_VEC_COMPONENTS] = { 0 };
+      SpvId zero = get_fvec_constant(ctx, nir_src_bit_size(alu->src[0].src),
+                                     num_components, values);
+      result = emit_binop(ctx, SpvOpFOrdNotEqual, dest_type, src[0], zero);
+      } break;
+
+
 #define BINOP(nir_op, spirv_op) \
    case nir_op: \
       assert(nir_op_infos[alu->op].num_inputs == 2); \
