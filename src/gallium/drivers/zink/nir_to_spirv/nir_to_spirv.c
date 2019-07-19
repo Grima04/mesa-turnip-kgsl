@@ -919,8 +919,8 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       int num_components = nir_dest_num_components(alu->dest.dest);
       SpvId bool_type = get_bvec_type(ctx, num_components);
 
-      SpvId zero = emit_float_const(ctx, 32, 0.0f);
-      SpvId one = emit_float_const(ctx, 32, 1.0f);
+      SpvId zero = emit_float_const(ctx, bit_size, 0.0f);
+      SpvId one = emit_float_const(ctx, bit_size, 1.0f);
       if (num_components > 1) {
          SpvId zero_comps[num_components], one_comps[num_components];
          for (int i = 0; i < num_components; i++) {
