@@ -79,6 +79,16 @@ struct draw_jit_sampler
 };
 
 
+struct draw_jit_image
+{
+   uint32_t width;
+   uint32_t height;
+   uint32_t depth;
+   const void *base;
+   uint32_t row_stride;
+   uint32_t img_stride;
+};
+
 enum {
    DRAW_JIT_TEXTURE_WIDTH = 0,
    DRAW_JIT_TEXTURE_HEIGHT,
@@ -108,6 +118,16 @@ enum {
    DRAW_JIT_VERTEX_DATA
 };
 
+enum {
+   DRAW_JIT_IMAGE_WIDTH = 0,
+   DRAW_JIT_IMAGE_HEIGHT,
+   DRAW_JIT_IMAGE_DEPTH,
+   DRAW_JIT_IMAGE_BASE,
+   DRAW_JIT_IMAGE_ROW_STRIDE,
+   DRAW_JIT_IMAGE_IMG_STRIDE,
+   DRAW_JIT_IMAGE_NUM_FIELDS  /* number of fields above */
+};
+
 /**
  * This structure is passed directly to the generated vertex shader.
  *
@@ -128,6 +148,7 @@ struct draw_jit_context
 
    struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
 
    const uint32_t *vs_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    int num_vs_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
@@ -140,8 +161,9 @@ enum {
    DRAW_JIT_CTX_VIEWPORT             = 3,
    DRAW_JIT_CTX_TEXTURES             = 4,
    DRAW_JIT_CTX_SAMPLERS             = 5,
-   DRAW_JIT_CTX_SSBOS                = 6,
-   DRAW_JIT_CTX_NUM_SSBOS            = 7,
+   DRAW_JIT_CTX_IMAGES               = 6,
+   DRAW_JIT_CTX_SSBOS                = 7,
+   DRAW_JIT_CTX_NUM_SSBOS            = 8,
    DRAW_JIT_CTX_NUM_FIELDS
 };
 
@@ -162,6 +184,9 @@ enum {
 
 #define draw_jit_context_samplers(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_JIT_CTX_SAMPLERS, "samplers")
+
+#define draw_jit_context_images(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_JIT_CTX_IMAGES, "images")
 
 #define draw_jit_context_vs_ssbos(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_JIT_CTX_SSBOS, "vs_ssbos")
@@ -221,7 +246,8 @@ struct draw_gs_jit_context
     * DRAW_JIT_CTX_SAMPLERS positions in the struct */
    struct draw_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    struct draw_jit_sampler samplers[PIPE_MAX_SAMPLERS];
-   
+   struct draw_jit_image images[PIPE_MAX_SHADER_IMAGES];
+
    int **prim_lengths;
    int *emitted_vertices;
    int *emitted_prims;
@@ -241,12 +267,13 @@ enum {
     * VS ctx structure for sampling to work. */
    DRAW_GS_JIT_CTX_TEXTURES = DRAW_JIT_CTX_TEXTURES,
    DRAW_GS_JIT_CTX_SAMPLERS = DRAW_JIT_CTX_SAMPLERS,
-   DRAW_GS_JIT_CTX_PRIM_LENGTHS = 6,
-   DRAW_GS_JIT_CTX_EMITTED_VERTICES = 7,
-   DRAW_GS_JIT_CTX_EMITTED_PRIMS = 8,
-   DRAW_GS_JIT_CTX_SSBOS = 9,
-   DRAW_GS_JIT_CTX_NUM_SSBOS = 10,
-   DRAW_GS_JIT_CTX_NUM_FIELDS = 11
+   DRAW_GS_JIT_CTX_IMAGES = DRAW_JIT_CTX_IMAGES,
+   DRAW_GS_JIT_CTX_PRIM_LENGTHS = 7,
+   DRAW_GS_JIT_CTX_EMITTED_VERTICES = 8,
+   DRAW_GS_JIT_CTX_EMITTED_PRIMS = 9,
+   DRAW_GS_JIT_CTX_SSBOS = 10,
+   DRAW_GS_JIT_CTX_NUM_SSBOS = 11,
+   DRAW_GS_JIT_CTX_NUM_FIELDS = 12
 };
 
 #define draw_gs_jit_context_constants(_gallivm, _ptr) \
@@ -266,6 +293,9 @@ enum {
 
 #define draw_gs_jit_context_samplers(_gallivm, _ptr) \
    lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_GS_JIT_CTX_SAMPLERS, "samplers")
+
+#define draw_gs_jit_context_images(_gallivm, _ptr)                      \
+   lp_build_struct_get_ptr(_gallivm, _ptr, DRAW_GS_JIT_CTX_IMAGES, "images")
 
 #define draw_gs_jit_prim_lengths(_gallivm, _ptr) \
    lp_build_struct_get(_gallivm, _ptr, DRAW_GS_JIT_CTX_PRIM_LENGTHS, "prim_lengths")
