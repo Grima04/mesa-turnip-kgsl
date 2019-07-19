@@ -238,10 +238,10 @@ out_unlock:
 /* destroy a buffer object */
 void etna_bo_del(struct etna_bo *bo)
 {
-	struct etna_device *dev = bo->dev;
-
 	if (!bo)
 		return;
+
+	struct etna_device *dev = bo->dev;
 
 	if (!p_atomic_dec_zero(&bo->refcnt))
 		return;
