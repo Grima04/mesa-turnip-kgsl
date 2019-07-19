@@ -194,6 +194,9 @@ typedef struct compiler_context {
         /* Tracking for blend constant patching */
         int blend_constant_offset;
 
+        /* Number of bytes used for Thread Local Storage */
+        unsigned tls_size;
+
         /* Current NIR function */
         nir_function *func;
 

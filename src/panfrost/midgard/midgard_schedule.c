@@ -788,5 +788,10 @@ schedule_program(compiler_context *ctx)
                 assert(0);
         }
 
+        /* Report spilling information. spill_count is in 128-bit slots (vec4 x
+         * fp32), but tls_size is in bytes, so multiply by 16 */
+
+        ctx->tls_size = spill_count * 16;
+
         install_registers(ctx, g);
 }

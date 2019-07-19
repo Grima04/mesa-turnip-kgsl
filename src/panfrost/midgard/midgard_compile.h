@@ -83,6 +83,10 @@ typedef struct {
 
         int blend_patch_offset;
 
+        /* The number of bytes to allocate per-thread for Thread Local Storage
+         * (register spilling), or zero if no spilling is used */
+        unsigned tls_size;
+
         /* IN: For a fragment shader with a lowered alpha test, the ref value */
         float alpha_ref;
 } midgard_program;

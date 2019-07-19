@@ -2706,6 +2706,7 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
         program->uniform_cutoff = ctx->uniform_cutoff;
 
         program->blend_patch_offset = ctx->blend_constant_offset;
+        program->tls_size = ctx->tls_size;
 
         if (midgard_debug & MIDGARD_DBG_SHADERS)
                 disassemble_midgard(program->compiled.data, program->compiled.size);
