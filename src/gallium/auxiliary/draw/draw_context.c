@@ -1034,6 +1034,27 @@ draw_set_samplers(struct draw_context *draw,
 }
 
 void
+draw_set_images(struct draw_context *draw,
+                enum pipe_shader_type shader_stage,
+                struct pipe_image_view *views,
+                unsigned num)
+{
+   unsigned i;
+
+   debug_assert(shader_stage < PIPE_SHADER_TYPES);
+   debug_assert(num <= PIPE_MAX_SHADER_IMAGES);
+
+   draw_do_flush( draw, DRAW_FLUSH_STATE_CHANGE );
+
+   for (i = 0; i < num; ++i)
+      draw->images[shader_stage][i] = &views[i];
+   for (i = num; i < draw->num_sampler_views[shader_stage]; ++i)
+      draw->images[shader_stage][i] = NULL;
+
+   draw->num_images[shader_stage] = num;
+}
+
+void
 draw_set_mapped_texture(struct draw_context *draw,
                         enum pipe_shader_type shader_stage,
                         unsigned sview_idx,
@@ -1052,6 +1073,26 @@ draw_set_mapped_texture(struct draw_context *draw,
                                    width, height, depth, first_level,
                                    last_level, base_ptr,
                                    row_stride, img_stride, mip_offsets);
+#endif
+}
+
+void
+draw_set_mapped_image(struct draw_context *draw,
+                      enum pipe_shader_type shader_stage,
+                      unsigned idx,
+                      uint32_t width, uint32_t height, uint32_t depth,
+                      const void *base_ptr,
+                      uint32_t row_stride,
+                      uint32_t img_stride)
+{
+#ifdef HAVE_LLVM
+   if (draw->llvm)
+      draw_llvm_set_mapped_image(draw,
+                                 shader_stage,
+                                 idx,
+                                 width, height, depth,
+                                 base_ptr,
+                                 row_stride, img_stride);
 #endif
 }
 

@@ -883,7 +883,8 @@ draw_create_geometry_shader(struct draw_context *draw,
       llvm_gs->variant_key_size =
          draw_gs_llvm_variant_key_size(
             MAX2(gs->info.file_max[TGSI_FILE_SAMPLER]+1,
-                 gs->info.file_max[TGSI_FILE_SAMPLER_VIEW]+1));
+                 gs->info.file_max[TGSI_FILE_SAMPLER_VIEW]+1),
+            gs->info.file_max[TGSI_FILE_IMAGE]+1);
    } else
 #endif
    {

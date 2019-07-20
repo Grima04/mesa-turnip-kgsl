@@ -177,6 +177,12 @@ draw_set_samplers(struct draw_context *draw,
                   unsigned num);
 
 void
+draw_set_images(struct draw_context *draw,
+                enum pipe_shader_type shader_stage,
+                struct pipe_image_view *images,
+                unsigned num);
+
+void
 draw_set_mapped_texture(struct draw_context *draw,
                         enum pipe_shader_type shader_stage,
                         unsigned sview_idx,
@@ -187,6 +193,14 @@ draw_set_mapped_texture(struct draw_context *draw,
                         uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS],
                         uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS]);
 
+void
+draw_set_mapped_image(struct draw_context *draw,
+                      enum pipe_shader_type shader_stage,
+                      unsigned idx,
+                      uint32_t width, uint32_t height, uint32_t depth,
+                      const void *base_ptr,
+                      uint32_t row_stride,
+                      uint32_t img_stride);
 
 /*
  * Vertex shader functions

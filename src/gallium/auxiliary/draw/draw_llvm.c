@@ -681,6 +681,7 @@ generate_vs(struct draw_llvm_variant *variant,
             const struct lp_bld_tgsi_system_values *system_values,
             LLVMValueRef context_ptr,
             const struct lp_build_sampler_soa *draw_sampler,
+            const struct lp_build_image_soa *draw_image,
             boolean clamp_vertex_color,
             struct lp_build_mask_context *bld_mask)
 {
@@ -709,6 +710,7 @@ generate_vs(struct draw_llvm_variant *variant,
    params.info = &llvm->draw->vs.vertex_shader->info;
    params.ssbo_ptr = ssbos_ptr;
    params.ssbo_sizes_ptr = num_ssbos_ptr;
+   params.image = draw_image;
 
    lp_build_tgsi_soa(variant->gallivm,
                      tokens,
@@ -1635,6 +1637,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    const int vector_length = lp_native_vector_width / 32;
    LLVMValueRef outputs[PIPE_MAX_SHADER_OUTPUTS][TGSI_NUM_CHANNELS];
    struct lp_build_sampler_soa *sampler = 0;
+   struct lp_build_image_soa *image = NULL;
    LLVMValueRef ret, clipmask_bool_ptr;
    struct draw_llvm_variant_key *key = &variant->key;
    /* If geometry shader is present we need to skip both the viewport
@@ -1749,6 +1752,8 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
 
    /* code generated texture sampling */
    sampler = draw_llvm_sampler_soa_create(draw_llvm_variant_key_samplers(key));
+
+   image = draw_llvm_image_soa_create(draw_llvm_variant_key_images(key));
 
    step = lp_build_const_int32(gallivm, vector_length);
 
@@ -1994,6 +1999,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
                   &system_values,
                   context_ptr,
                   sampler,
+                  image,
                   key->clamp_vertex_color,
                   &mask);
 
@@ -2040,6 +2046,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    lp_build_loop_end_cond(&lp_loop, count, step, LLVMIntUGE);
 
    sampler->destroy(sampler);
+   image->destroy(image);
 
    /* return clipping boolean value for function */
    ret = clipmask_booli8(gallivm, vs_type, clipmask_bool_ptr,
@@ -2057,6 +2064,7 @@ draw_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
    unsigned i;
    struct draw_llvm_variant_key *key;
    struct draw_sampler_static_state *draw_sampler;
+   struct draw_image_static_state *draw_image;
 
    key = (struct draw_llvm_variant_key *)store;
 
@@ -2088,6 +2096,8 @@ draw_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
    else {
       key->nr_sampler_views = key->nr_samplers;
    }
+
+   key->nr_images = llvm->draw->vs.vertex_shader->info.file_max[TGSI_FILE_IMAGE] + 1;
 
    /* Presumably all variants of the shader should have the same
     * number of vertex elements - ie the number of shader inputs.
@@ -2127,6 +2137,13 @@ draw_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
                                       llvm->draw->sampler_views[PIPE_SHADER_VERTEX][i]);
    }
 
+   draw_image = draw_llvm_variant_key_images(key);
+   memset(draw_image, 0,
+          key->nr_images * sizeof *draw_image);
+   for (i = 0; i < key->nr_images; i++) {
+      lp_sampler_static_texture_state_image(&draw_image[i].image_state,
+                                            llvm->draw->images[PIPE_SHADER_VERTEX][i]);
+   }
    return key;
 }
 
@@ -2136,7 +2153,7 @@ draw_llvm_dump_variant_key(struct draw_llvm_variant_key *key)
 {
    unsigned i;
    struct draw_sampler_static_state *sampler = draw_llvm_variant_key_samplers(key);
-
+   struct draw_image_static_state *image = draw_llvm_variant_key_images(key);
    debug_printf("clamp_vertex_color = %u\n", key->clamp_vertex_color);
    debug_printf("clip_xy = %u\n", key->clip_xy);
    debug_printf("clip_z = %u\n", key->clip_z);
@@ -2157,6 +2174,9 @@ draw_llvm_dump_variant_key(struct draw_llvm_variant_key *key)
    for (i = 0 ; i < key->nr_sampler_views; i++) {
       debug_printf("sampler[%i].src_format = %s\n", i, util_format_name(sampler[i].texture_state.format));
    }
+
+   for (i = 0 ; i < key->nr_images; i++)
+      debug_printf("images[%i].format = %s\n", i, util_format_name(image[i].image_state.format));
 }
 
 
@@ -2202,6 +2222,42 @@ draw_llvm_set_mapped_texture(struct draw_context *draw,
       jit_tex->row_stride[j] = row_stride[j];
       jit_tex->img_stride[j] = img_stride[j];
    }
+}
+
+void
+draw_llvm_set_mapped_image(struct draw_context *draw,
+                           enum pipe_shader_type shader_stage,
+                           unsigned idx,
+                           uint32_t width, uint32_t height, uint32_t depth,
+                           const void *base_ptr,
+                           uint32_t row_stride,
+                           uint32_t img_stride)
+{
+   struct draw_jit_image *jit_image;
+
+   assert(shader_stage == PIPE_SHADER_VERTEX ||
+          shader_stage == PIPE_SHADER_GEOMETRY);
+
+   if (shader_stage == PIPE_SHADER_VERTEX) {
+      assert(idx < ARRAY_SIZE(draw->llvm->jit_context.images));
+
+      jit_image = &draw->llvm->jit_context.images[idx];
+   } else if (shader_stage == PIPE_SHADER_GEOMETRY) {
+      assert(idx < ARRAY_SIZE(draw->llvm->gs_jit_context.images));
+
+      jit_image = &draw->llvm->gs_jit_context.images[idx];
+   } else {
+      assert(0);
+      return;
+   }
+
+   jit_image->width = width;
+   jit_image->height = height;
+   jit_image->depth = depth;
+   jit_image->base = base_ptr;
+
+   jit_image->row_stride = row_stride;
+   jit_image->img_stride = img_stride;
 }
 
 
@@ -2331,6 +2387,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    LLVMBuilderRef builder;
    LLVMValueRef io_ptr, input_array, num_prims, mask_val;
    struct lp_build_sampler_soa *sampler = 0;
+   struct lp_build_image_soa *image = NULL;
    struct lp_build_context bld;
    struct lp_bld_tgsi_system_values system_values;
    char func_name[64];
@@ -2427,7 +2484,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
 
    /* code generated texture sampling */
    sampler = draw_llvm_sampler_soa_create(variant->key.samplers);
-
+   image = draw_llvm_image_soa_create(draw_gs_llvm_variant_key_images(&variant->key));
    mask_val = generate_mask_value(variant, gs_type);
    lp_build_mask_begin(&mask, gallivm, gs_type, mask_val);
 
@@ -2454,6 +2511,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    params.gs_iface = (const struct lp_build_tgsi_gs_iface *)&gs_iface;
    params.ssbo_ptr = ssbos_ptr;
    params.ssbo_sizes_ptr = num_ssbos_ptr;
+   params.image = image;
 
    lp_build_tgsi_soa(variant->gallivm,
                      tokens,
@@ -2461,6 +2519,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
                      outputs);
 
    sampler->destroy(sampler);
+   image->destroy(image);
 
    lp_build_mask_end(&mask);
 
@@ -2545,6 +2604,7 @@ draw_gs_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
    unsigned i;
    struct draw_gs_llvm_variant_key *key;
    struct draw_sampler_static_state *draw_sampler;
+   struct draw_image_static_state *draw_image;
 
    key = (struct draw_gs_llvm_variant_key *)store;
 
@@ -2565,6 +2625,8 @@ draw_gs_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
       key->nr_sampler_views = key->nr_samplers;
    }
 
+   key->nr_images = llvm->draw->gs.geometry_shader->info.file_max[TGSI_FILE_IMAGE] + 1;
+
    draw_sampler = key->samplers;
 
    memset(draw_sampler, 0, MAX2(key->nr_samplers, key->nr_sampler_views) * sizeof *draw_sampler);
@@ -2578,6 +2640,13 @@ draw_gs_llvm_make_variant_key(struct draw_llvm *llvm, char *store)
                                       llvm->draw->sampler_views[PIPE_SHADER_GEOMETRY][i]);
    }
 
+   draw_image = draw_gs_llvm_variant_key_images(key);
+   memset(draw_image, 0,
+          key->nr_images * sizeof *draw_image);
+   for (i = 0; i < key->nr_images; i++) {
+      lp_sampler_static_texture_state_image(&draw_image[i].image_state,
+                                            llvm->draw->images[PIPE_SHADER_GEOMETRY][i]);
+   }
    return key;
 }
 
@@ -2586,9 +2655,13 @@ draw_gs_llvm_dump_variant_key(struct draw_gs_llvm_variant_key *key)
 {
    unsigned i;
    struct draw_sampler_static_state *sampler = key->samplers;
-
+   struct draw_image_static_state *image = draw_gs_llvm_variant_key_images(key);
    for (i = 0 ; i < key->nr_sampler_views; i++) {
       debug_printf("sampler[%i].src_format = %s\n", i,
                    util_format_name(sampler[i].texture_state.format));
    }
+
+   for (i = 0 ; i < key->nr_images; i++)
+      debug_printf("images[%i].format = %s\n", i, util_format_name(image[i].image_state.format));
+
 }

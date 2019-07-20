@@ -69,6 +69,11 @@ struct draw_sampler_static_state
    struct lp_static_texture_state texture_state;
 };
 
+struct draw_image_static_state
+{
+   struct lp_static_texture_state image_state;
+};
+
 
 struct draw_jit_sampler
 {
@@ -340,6 +345,7 @@ struct draw_llvm_variant_key
    unsigned nr_vertex_elements:8;
    unsigned nr_samplers:8;
    unsigned nr_sampler_views:8;
+   unsigned nr_images:8;
    unsigned clamp_vertex_color:1;
    unsigned clip_xy:1;
    unsigned clip_z:1;
@@ -359,42 +365,50 @@ struct draw_llvm_variant_key
    /* Followed by variable number of samplers:
     */
 /*   struct draw_sampler_static_state sampler; */
+   /* Followed by variable number of images
+    */
 };
 
 struct draw_gs_llvm_variant_key
 {
    unsigned nr_samplers:8;
    unsigned nr_sampler_views:8;
+   unsigned nr_images:8;
    unsigned num_outputs:8;
    /* note padding here - must use memset */
 
    struct draw_sampler_static_state samplers[1];
+   /* Followed by variable number of images.*/
 };
 
 #define DRAW_LLVM_MAX_VARIANT_KEY_SIZE \
    (sizeof(struct draw_llvm_variant_key) +	\
     PIPE_MAX_SHADER_SAMPLER_VIEWS * sizeof(struct draw_sampler_static_state) +	\
+    PIPE_MAX_SHADER_IMAGES * sizeof(struct draw_image_static_state) + \
     (PIPE_MAX_ATTRIBS-1) * sizeof(struct pipe_vertex_element))
 
 #define DRAW_GS_LLVM_MAX_VARIANT_KEY_SIZE \
    (sizeof(struct draw_gs_llvm_variant_key) +	\
+    PIPE_MAX_SHADER_IMAGES * sizeof(struct draw_image_static_state) + \
     PIPE_MAX_SHADER_SAMPLER_VIEWS * sizeof(struct draw_sampler_static_state))
 
 
 static inline size_t
 draw_llvm_variant_key_size(unsigned nr_vertex_elements,
-                           unsigned nr_samplers)
+                           unsigned nr_samplers, unsigned nr_images)
 {
    return (sizeof(struct draw_llvm_variant_key) +
            nr_samplers * sizeof(struct draw_sampler_static_state) +
+           nr_images * sizeof(struct draw_image_static_state) +
            (nr_vertex_elements - 1) * sizeof(struct pipe_vertex_element));
 }
 
 
 static inline size_t
-draw_gs_llvm_variant_key_size(unsigned nr_samplers)
+draw_gs_llvm_variant_key_size(unsigned nr_samplers, unsigned nr_images)
 {
    return (sizeof(struct draw_gs_llvm_variant_key) +
+           (nr_images) * sizeof(struct draw_sampler_static_state) +
            (nr_samplers - 1) * sizeof(struct draw_sampler_static_state));
 }
 
@@ -406,6 +420,21 @@ draw_llvm_variant_key_samplers(struct draw_llvm_variant_key *key)
       &key->vertex_element[key->nr_vertex_elements];
 }
 
+static inline struct draw_image_static_state *
+draw_llvm_variant_key_images(struct draw_llvm_variant_key *key)
+{
+   struct draw_sampler_static_state *samplers = (struct draw_sampler_static_state *)
+      (&key->vertex_element[key->nr_vertex_elements]);
+   return (struct draw_image_static_state *)
+      &samplers[key->nr_samplers];
+}
+
+static inline struct draw_image_static_state *
+draw_gs_llvm_variant_key_images(struct draw_gs_llvm_variant_key *key)
+{
+   return (struct draw_image_static_state *)
+      &key->samplers[key->nr_samplers];
+}
 
 struct draw_llvm_variant_list_item
 {
@@ -558,6 +587,9 @@ draw_gs_llvm_dump_variant_key(struct draw_gs_llvm_variant_key *key);
 struct lp_build_sampler_soa *
 draw_llvm_sampler_soa_create(const struct draw_sampler_static_state *static_state);
 
+struct lp_build_image_soa *
+draw_llvm_image_soa_create(const struct draw_image_static_state *static_state);
+
 void
 draw_llvm_set_sampler_state(struct draw_context *draw,
                             enum pipe_shader_type shader_stage);
@@ -573,4 +605,12 @@ draw_llvm_set_mapped_texture(struct draw_context *draw,
                              uint32_t img_stride[PIPE_MAX_TEXTURE_LEVELS],
                              uint32_t mip_offsets[PIPE_MAX_TEXTURE_LEVELS]);
 
+void
+draw_llvm_set_mapped_image(struct draw_context *draw,
+                           enum pipe_shader_type shader_stage,
+                           unsigned idx,
+                           uint32_t width, uint32_t height, uint32_t depth,
+                           const void *base_ptr,
+                           uint32_t row_stride,
+                           uint32_t img_stride);
 #endif
