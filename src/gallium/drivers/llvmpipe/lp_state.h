@@ -57,7 +57,7 @@
 #define LP_NEW_SO            0x20000
 #define LP_NEW_SO_BUFFERS    0x40000
 #define LP_NEW_FS_SSBOS      0x80000
-
+#define LP_NEW_FS_IMAGES    0x100000
 
 
 struct vertex_info;

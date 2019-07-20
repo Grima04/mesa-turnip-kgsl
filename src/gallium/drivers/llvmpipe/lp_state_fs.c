@@ -300,6 +300,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
                  LLVMValueRef num_loop,
                  struct lp_build_interp_soa_context *interp,
                  const struct lp_build_sampler_soa *sampler,
+                 const struct lp_build_image_soa *image,
                  LLVMValueRef mask_store,
                  LLVMValueRef (*out_color)[4],
                  LLVMValueRef depth_ptr,
@@ -497,6 +498,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
    params.info = &shader->info.base;
    params.ssbo_ptr = ssbo_ptr;
    params.ssbo_sizes_ptr = num_ssbo_ptr;
+   params.image = image;
 
    /* Build the actual shader */
    lp_build_tgsi_soa(gallivm, tokens, &params,
@@ -2450,6 +2452,7 @@ generate_fragment(struct llvmpipe_context *lp,
    LLVMBasicBlockRef block;
    LLVMBuilderRef builder;
    struct lp_build_sampler_soa *sampler;
+   struct lp_build_image_soa *image;
    struct lp_build_interp_soa_context interp;
    LLVMValueRef fs_mask[16 / 4];
    LLVMValueRef fs_out_color[PIPE_MAX_COLOR_BUFS][TGSI_NUM_CHANNELS][16 / 4];
@@ -2596,6 +2599,7 @@ generate_fragment(struct llvmpipe_context *lp,
 
    /* code generated texture sampling */
    sampler = lp_llvm_sampler_soa_create(key->samplers);
+   image = lp_llvm_image_soa_create(lp_fs_variant_key_images(key));
 
    num_fs = 16 / fs_type.length; /* number of loops per 4x4 stamp */
    /* for 1d resources only run "upper half" of stamp */
@@ -2650,6 +2654,7 @@ generate_fragment(struct llvmpipe_context *lp,
                        num_loop,
                        &interp,
                        sampler,
+                       image,
                        mask_store, /* output */
                        color_store,
                        depth_ptr,
@@ -2684,7 +2689,7 @@ generate_fragment(struct llvmpipe_context *lp,
    }
 
    sampler->destroy(sampler);
-
+   image->destroy(image);
    /* Loop over color outputs / color buffers to do blending.
     */
    for(cbuf = 0; cbuf < key->nr_cbufs; cbuf++) {
@@ -2813,6 +2818,21 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
                    texture->pot_height,
                    texture->pot_depth);
    }
+   struct lp_image_static_state *images = lp_fs_variant_key_images(key);
+   for (i = 0; i < key->nr_images; ++i) {
+      const struct lp_static_texture_state *image = &images[i].image_state;
+      debug_printf("image[%u] = \n", i);
+      debug_printf("  .format = %s\n",
+                   util_format_name(image->format));
+      debug_printf("  .target = %s\n",
+                   util_str_tex_target(image->target, TRUE));
+      debug_printf("  .level_zero_only = %u\n",
+                   image->level_zero_only);
+      debug_printf("  .pot = %u %u %u\n",
+                   image->pot_width,
+                   image->pot_height,
+                   image->pot_depth);
+   }
 }
 
 
@@ -2936,6 +2956,7 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
    struct lp_fragment_shader *shader;
    int nr_samplers;
    int nr_sampler_views;
+   int nr_images;
    int i;
 
    shader = CALLOC_STRUCT(lp_fragment_shader);
@@ -2960,8 +2981,8 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
 
    nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
    nr_sampler_views = shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
-
-   shader->variant_key_size = lp_fs_variant_key_size(MAX2(nr_samplers, nr_sampler_views));
+   nr_images = shader->info.base.file_max[TGSI_FILE_IMAGE] + 1;
+   shader->variant_key_size = lp_fs_variant_key_size(MAX2(nr_samplers, nr_sampler_views), nr_images);
 
    for (i = 0; i < shader->info.base.num_inputs; i++) {
       shader->inputs[i].usage_mask = shader->info.base.input_usage_mask[i];
@@ -3185,6 +3206,32 @@ llvmpipe_set_shader_buffers(struct pipe_context *pipe,
          llvmpipe->dirty |= LP_NEW_FS_SSBOS;
       }
    }
+}
+
+static void
+llvmpipe_set_shader_images(struct pipe_context *pipe,
+                            enum pipe_shader_type shader, unsigned start_slot,
+                           unsigned count, const struct pipe_image_view *images)
+{
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+   unsigned i, idx;
+
+   draw_flush(llvmpipe->draw);
+   for (i = start_slot, idx = 0; i < start_slot + count; i++, idx++) {
+      const struct pipe_image_view *image = images ? &images[idx] : NULL;
+
+      util_copy_image_view(&llvmpipe->images[shader][i], image);
+   }
+
+   llvmpipe->num_images[shader] = start_slot + count;
+   if (shader == PIPE_SHADER_VERTEX ||
+       shader == PIPE_SHADER_GEOMETRY) {
+      draw_set_images(llvmpipe->draw,
+                      shader,
+                      llvmpipe->images[shader],
+                      start_slot + count);
+   } else
+      llvmpipe->dirty |= LP_NEW_FS_IMAGES;
 }
 
 /**
@@ -3413,6 +3460,16 @@ make_variant_key(struct llvmpipe_context *lp,
          }
       }
    }
+
+   struct lp_image_static_state *lp_image;
+   lp_image = lp_fs_variant_key_images(key);
+   key->nr_images = shader->info.base.file_max[TGSI_FILE_IMAGE] + 1;
+   for (i = 0; i < key->nr_images; ++i) {
+      if (shader->info.base.file_mask[TGSI_FILE_IMAGE] & (1 << i)) {
+         lp_sampler_static_texture_state_image(&lp_image[i].image_state,
+                                               &lp->images[PIPE_SHADER_FRAGMENT][i]);
+      }
+   }
    return key;
 }
 
@@ -3542,6 +3599,7 @@ llvmpipe_init_fs_funcs(struct llvmpipe_context *llvmpipe)
    llvmpipe->pipe.set_constant_buffer = llvmpipe_set_constant_buffer;
 
    llvmpipe->pipe.set_shader_buffers = llvmpipe_set_shader_buffers;
+   llvmpipe->pipe.set_shader_images = llvmpipe_set_shader_images;
 }
 
 

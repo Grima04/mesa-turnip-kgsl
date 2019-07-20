@@ -59,6 +59,11 @@ struct lp_sampler_static_state
 };
 
 
+struct lp_image_static_state
+{
+   struct lp_static_texture_state image_state;
+};
+
 struct lp_fragment_shader_variant_key
 {
    struct pipe_depth_state depth;
@@ -73,6 +78,7 @@ struct lp_fragment_shader_variant_key
    unsigned nr_cbufs:8;
    unsigned nr_samplers:8;      /* actually derivable from just the shader */
    unsigned nr_sampler_views:8; /* actually derivable from just the shader */
+   unsigned nr_images:8;        /* actually derivable from just the shader */
    unsigned flatshade:1;
    unsigned occlusion_count:1;
    unsigned resource_1d:1;
@@ -82,18 +88,28 @@ struct lp_fragment_shader_variant_key
    enum pipe_format cbuf_format[PIPE_MAX_COLOR_BUFS];
 
    struct lp_sampler_static_state samplers[1];
+   /* followed by variable number of images */
 };
 
 #define LP_FS_MAX_VARIANT_KEY_SIZE                                      \
    (sizeof(struct lp_fragment_shader_variant_key) +                     \
-    PIPE_MAX_SHADER_SAMPLER_VIEWS * sizeof(struct lp_sampler_static_state))
+    PIPE_MAX_SHADER_SAMPLER_VIEWS * sizeof(struct lp_sampler_static_state) +\
+    PIPE_MAX_SHADER_IMAGES * sizeof(struct lp_image_static_state))
 
 static inline size_t
-lp_fs_variant_key_size(unsigned nr_samplers)
+lp_fs_variant_key_size(unsigned nr_samplers, unsigned nr_images)
 {
    unsigned samplers = nr_samplers > 1 ? (nr_samplers - 1) : 0;
    return (sizeof(struct lp_fragment_shader_variant_key) +
-           samplers * sizeof(struct lp_sampler_static_state));
+           samplers * sizeof(struct lp_sampler_static_state) +
+           nr_images * sizeof(struct lp_image_static_state));
+}
+
+static inline struct lp_image_static_state *
+lp_fs_variant_key_images(struct lp_fragment_shader_variant_key *key)
+{
+   return (struct lp_image_static_state *)
+      &key->samplers[key->nr_samplers];
 }
 
 /** doubly-linked list item */

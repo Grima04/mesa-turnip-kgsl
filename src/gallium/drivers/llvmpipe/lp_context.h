@@ -83,9 +83,11 @@ struct llvmpipe_context {
    struct pipe_vertex_buffer vertex_buffer[PIPE_MAX_ATTRIBS];
 
    struct pipe_shader_buffer ssbos[PIPE_SHADER_TYPES][LP_MAX_TGSI_SHADER_BUFFERS];
+   struct pipe_image_view images[PIPE_SHADER_TYPES][LP_MAX_TGSI_SHADER_IMAGES];
 
    unsigned num_samplers[PIPE_SHADER_TYPES];
    unsigned num_sampler_views[PIPE_SHADER_TYPES];
+   unsigned num_images[PIPE_SHADER_TYPES];
 
    unsigned num_vertex_buffers;
 
