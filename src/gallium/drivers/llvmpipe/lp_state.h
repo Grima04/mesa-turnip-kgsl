@@ -137,4 +137,13 @@ llvmpipe_prepare_geometry_sampling(struct llvmpipe_context *ctx,
                                    unsigned num,
                                    struct pipe_sampler_view **views);
 
+void
+llvmpipe_prepare_vertex_images(struct llvmpipe_context *lp,
+                               unsigned num,
+                               struct pipe_image_view *views);
+
+void
+llvmpipe_prepare_geometry_images(struct llvmpipe_context *lp,
+                                 unsigned num,
+                                 struct pipe_image_view *views);
 #endif
