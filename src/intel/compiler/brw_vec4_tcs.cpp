@@ -257,6 +257,7 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                brw_imm_d(key->input_vertices)));
       break;
    case nir_intrinsic_load_per_vertex_input: {
+      assert(nir_dest_bit_size(instr->dest) == 32);
       src_reg indirect_offset = get_indirect_offset(instr);
       unsigned imm_offset = instr->const_index[0];
 
@@ -264,36 +265,10 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                     BRW_REGISTER_TYPE_UD);
 
       unsigned first_component = nir_intrinsic_component(instr);
-      if (nir_dest_bit_size(instr->dest) == 64) {
-         /* We need to emit up to two 32-bit URB reads, then shuffle
-          * the result into a temporary, then move to the destination
-          * honoring the writemask
-          *
-          * We don't need to divide first_component by 2 because
-          * emit_input_urb_read takes a 32-bit type.
-          */
-         dst_reg tmp = dst_reg(this, glsl_type::dvec4_type);
-         dst_reg tmp_d = retype(tmp, BRW_REGISTER_TYPE_D);
-         emit_input_urb_read(tmp_d, vertex_index, imm_offset,
-                             first_component, indirect_offset);
-         if (instr->num_components > 2) {
-            emit_input_urb_read(byte_offset(tmp_d, REG_SIZE), vertex_index,
-                                imm_offset + 1, 0, indirect_offset);
-         }
-
-         src_reg tmp_src = retype(src_reg(tmp_d), BRW_REGISTER_TYPE_DF);
-         dst_reg shuffled = dst_reg(this, glsl_type::dvec4_type);
-         shuffle_64bit_data(shuffled, tmp_src, false);
-
-         dst_reg dst = get_nir_dest(instr->dest, BRW_REGISTER_TYPE_DF);
-         dst.writemask = brw_writemask_for_size(instr->num_components);
-         emit(MOV(dst, src_reg(shuffled)));
-      } else {
-         dst_reg dst = get_nir_dest(instr->dest, BRW_REGISTER_TYPE_D);
-         dst.writemask = brw_writemask_for_size(instr->num_components);
-         emit_input_urb_read(dst, vertex_index, imm_offset,
-                             first_component, indirect_offset);
-      }
+      dst_reg dst = get_nir_dest(instr->dest, BRW_REGISTER_TYPE_D);
+      dst.writemask = brw_writemask_for_size(instr->num_components);
+      emit_input_urb_read(dst, vertex_index, imm_offset,
+                          first_component, indirect_offset);
       break;
    }
    case nir_intrinsic_load_input:
@@ -313,6 +288,7 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_per_vertex_output: {
+      assert(nir_src_bit_size(instr->src[0]) == 32);
       src_reg value = get_nir_src(instr->src[0]);
       unsigned mask = instr->const_index[1];
       unsigned swiz = BRW_SWIZZLE_XYZW;
@@ -322,40 +298,13 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
       unsigned first_component = nir_intrinsic_component(instr);
       if (first_component) {
-         if (nir_src_bit_size(instr->src[0]) == 64)
-            first_component /= 2;
          assert(swiz == BRW_SWIZZLE_XYZW);
          swiz = BRW_SWZ_COMP_OUTPUT(first_component);
          mask = mask << first_component;
       }
 
-      if (nir_src_bit_size(instr->src[0]) == 64) {
-         /* For 64-bit data we need to shuffle the data before we write and
-          * emit two messages. Also, since each channel is twice as large we
-          * need to fix the writemask in each 32-bit message to account for it.
-          */
-         value = swizzle(retype(value, BRW_REGISTER_TYPE_DF), swiz);
-         dst_reg shuffled = dst_reg(this, glsl_type::dvec4_type);
-         shuffle_64bit_data(shuffled, value, true);
-         src_reg shuffled_float = src_reg(retype(shuffled, BRW_REGISTER_TYPE_F));
-
-         for (int n = 0; n < 2; n++) {
-            unsigned fixed_mask = 0;
-            if (mask & WRITEMASK_X)
-               fixed_mask |= WRITEMASK_XY;
-            if (mask & WRITEMASK_Y)
-               fixed_mask |= WRITEMASK_ZW;
-            emit_urb_write(shuffled_float, fixed_mask,
-                           imm_offset, indirect_offset);
-
-            shuffled_float = byte_offset(shuffled_float, REG_SIZE);
-            mask >>= 2;
-            imm_offset++;
-         }
-      } else {
-         emit_urb_write(swizzle(value, swiz), mask,
-                        imm_offset, indirect_offset);
-      }
+      emit_urb_write(swizzle(value, swiz), mask,
+                     imm_offset, indirect_offset);
       break;
    }
 
