@@ -743,11 +743,11 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
          /* Ask the outer loop to call back in. */
          *spilled = true;
 
-         ppir_debug("ppir: spilled register\n");
+         ppir_debug("spilled register\n");
          goto err_out;
       }
 
-      ppir_error("ppir: regalloc fail\n");
+      ppir_error("regalloc fail\n");
       goto err_out;
    }
 
