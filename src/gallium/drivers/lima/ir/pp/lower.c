@@ -87,6 +87,33 @@ static bool ppir_lower_swap_args(ppir_block *block, ppir_node *node)
    return true;
 }
 
+static bool ppir_lower_load(ppir_block *block, ppir_node *node)
+{
+   ppir_node *move = ppir_node_create(block, ppir_op_mov, -1 , 0);
+   if (unlikely(!move))
+      return false;
+
+   ppir_alu_node *alu = ppir_node_to_alu(move);
+
+   ppir_dest *dest = ppir_node_get_dest(node);
+   alu->dest = *dest;
+
+   ppir_node_replace_all_succ(move, node);
+
+   dest->type = ppir_target_pipeline;
+   dest->pipeline = ppir_pipeline_reg_uniform;
+
+   alu->num_src = 1;
+   ppir_node_target_assign(&alu->src[0], dest);
+   for (int i = 0; i < 4; i++)
+      alu->src->swizzle[i] = i;
+
+   ppir_node_add_dep(move, node);
+   list_addtail(&move->list, &node->list);
+
+   return true;
+}
+
 static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
 {
    ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
@@ -336,6 +363,8 @@ static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_trunc] = ppir_lower_trunc,
    [ppir_op_sat] = ppir_lower_sat,
    [ppir_op_branch] = ppir_lower_branch,
+   [ppir_op_load_uniform] = ppir_lower_load,
+   [ppir_op_load_temp] = ppir_lower_load,
 };
 
 bool ppir_lower_prog(ppir_compiler *comp)

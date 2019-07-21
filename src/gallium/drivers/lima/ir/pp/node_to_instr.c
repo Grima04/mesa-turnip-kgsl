@@ -121,15 +121,6 @@ static bool insert_to_each_succ_instr(ppir_block *block, ppir_node *node)
       dup->instr = instr;
       dup->instr_pos = node->instr_pos;
       ppir_node_replace_pred(dep, dup);
-
-      if ((node->op == ppir_op_load_uniform) || (node->op == ppir_op_load_temp)) {
-         ppir_load_node *load = ppir_node_to_load(node);
-         ppir_load_node *dup_load = ppir_node_to_load(dup);
-         dup_load->dest = load->dest;
-         dup_load->index = load->index;
-         dup_load->num_components = load->num_components;
-         instr->slots[node->instr_pos] = dup;
-      }
    }
 
    list_splicetail(&dup_list, &node->list);
@@ -190,31 +181,10 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
       break;
    }
    case ppir_node_type_load:
-      if ((node->op == ppir_op_load_uniform) || (node->op == ppir_op_load_temp)) {
-         /* merge pred load_uniform into succ instr can save a reg
-          * by using pipeline reg */
-         if (!insert_to_each_succ_instr(block, node))
-            return false;
-
-         ppir_load_node *load = ppir_node_to_load(node);
-         load->dest.type = ppir_target_pipeline;
-         load->dest.pipeline = ppir_pipeline_reg_uniform;
-      }
-      else if (node->op == ppir_op_load_temp) {
-         /* merge pred load_temp into succ instr can save a reg
-          * by using pipeline reg */
-         if (!insert_to_each_succ_instr(block, node))
-            return false;
-
-         ppir_load_node *load = ppir_node_to_load(node);
-         load->dest.type = ppir_target_pipeline;
-         load->dest.pipeline = ppir_pipeline_reg_uniform;
-      }
-      else if (node->op == ppir_op_load_varying ||
-               node->op == ppir_op_load_fragcoord ||
-               node->op == ppir_op_load_pointcoord ||
-               node->op == ppir_op_load_frontface) {
-         /* delay the load varying dup to scheduler */
+      if (node->op == ppir_op_load_varying ||
+          node->op == ppir_op_load_fragcoord ||
+          node->op == ppir_op_load_pointcoord ||
+          node->op == ppir_op_load_frontface) {
          if (!create_new_instr(block, node))
             return false;
       }
