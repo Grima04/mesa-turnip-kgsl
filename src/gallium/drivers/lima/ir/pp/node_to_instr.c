@@ -174,12 +174,6 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
          ppir_node *succ = ppir_node_first_succ(node);
          if (succ->instr_pos == PPIR_INSTR_SLOT_ALU_VEC_ADD) {
             node->instr_pos = PPIR_INSTR_SLOT_ALU_VEC_MUL;
-            /* select instr's condition must be inserted to fmul slot */
-            if (succ->op == ppir_op_select &&
-                ppir_node_first_pred(succ) == node) {
-               assert(alu->dest.ssa.num_components == 1);
-               node->instr_pos = PPIR_INSTR_SLOT_ALU_SCL_MUL;
-            }
             ppir_instr_insert_mul_node(succ, node);
          }
          else if (succ->instr_pos == PPIR_INSTR_SLOT_ALU_SCL_ADD &&

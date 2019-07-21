@@ -201,7 +201,7 @@ static bool ppir_lower_select(ppir_block *block, ppir_node *node)
 {
    ppir_alu_node *alu = ppir_node_to_alu(node);
 
-   ppir_node *move = ppir_node_create(block, ppir_op_mov, -1, 0);
+   ppir_node *move = ppir_node_create(block, ppir_op_sel_cond, -1, 0);
    if (!move)
       return false;
    list_addtail(&move->list, &node->list);
@@ -214,10 +214,8 @@ static bool ppir_lower_select(ppir_block *block, ppir_node *node)
    move_alu->num_src = 1;
 
    ppir_dest *move_dest = &move_alu->dest;
-   move_dest->type = ppir_target_ssa;
-   move_dest->ssa.num_components = 1;
-   move_dest->ssa.live_in = INT_MAX;
-   move_dest->ssa.live_out = 0;
+   move_dest->type = ppir_target_pipeline;
+   move_dest->pipeline = ppir_pipeline_reg_fmul;
    move_dest->write_mask = 1;
 
    ppir_node_foreach_pred(node, dep) {

@@ -53,6 +53,7 @@ typedef enum {
    ppir_op_normalize3,
    ppir_op_normalize4,
 
+   ppir_op_sel_cond,
    ppir_op_select,
 
    ppir_op_sin,
