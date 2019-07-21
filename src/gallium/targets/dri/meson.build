@@ -75,6 +75,7 @@ foreach d : [[with_gallium_kmsro, [
                'imx-drm_dri.so',
                'meson_dri.so',
                'mi0283qt_dri.so',
+               'mxsfb-drm_dri.so',
                'pl111_dri.so',
                'repaper_dri.so',
                'rockchip_dri.so',
