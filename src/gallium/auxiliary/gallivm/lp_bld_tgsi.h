@@ -251,6 +251,7 @@ struct lp_build_tgsi_params {
    LLVMValueRef ssbo_ptr;
    LLVMValueRef ssbo_sizes_ptr;
    const struct lp_build_image_soa *image;
+   LLVMValueRef shared_ptr;
 };
 
 void
@@ -482,6 +483,8 @@ struct lp_build_tgsi_soa_context
    LLVMValueRef ssbo_sizes_ptr;
    LLVMValueRef ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
    LLVMValueRef ssbo_sizes[LP_MAX_TGSI_SHADER_BUFFERS];
+
+   LLVMValueRef shared_ptr;
 
    const struct lp_build_sampler_soa *sampler;
    const struct lp_build_image_soa *image;

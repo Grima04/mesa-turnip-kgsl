@@ -3014,6 +3014,8 @@ lp_emit_declaration_soa(
 
    }
    break;
+   case TGSI_FILE_MEMORY:
+      break;
    default:
       /* don't need to declare other vars */
       break;
@@ -3492,7 +3494,8 @@ load_emit(
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
    unsigned buf = bufreg->Register.Index;
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE || bufreg->Register.File == TGSI_FILE_MEMORY);
+   bool is_shared = bufreg->Register.File == TGSI_FILE_MEMORY;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
 
    if (bufreg->Register.File == TGSI_FILE_IMAGE)
@@ -3507,19 +3510,23 @@ load_emit(
       index = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, 0);
       index = lp_build_shr_imm(uint_bld, index, 2);
 
-      scalar_ptr = bld->ssbos[buf];
+      scalar_ptr = is_shared ? bld->shared_ptr : bld->ssbos[buf];
 
       LLVMValueRef ssbo_limit;
 
-      ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
-      ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+      if (!is_shared) {
+         ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
+         ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+      }
 
       TGSI_FOR_EACH_DST0_ENABLED_CHANNEL(emit_data->inst, chan_index) {
          LLVMValueRef loop_index = lp_build_add(uint_bld, index, lp_build_const_int_vec(gallivm, uint_bld->type, chan_index));
 
          LLVMValueRef exec_mask = mask_vec(bld_base);
-         LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, loop_index, ssbo_limit);
-         exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+         if (!is_shared) {
+            LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, loop_index, ssbo_limit);
+            exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+         }
 
          LLVMValueRef result = lp_build_alloca(gallivm, uint_bld->vec_type, "");
          struct lp_build_loop_state loop_state;
@@ -3606,7 +3613,8 @@ store_emit(
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    const struct tgsi_full_dst_register *bufreg = &emit_data->inst->Dst[0];
    unsigned buf = bufreg->Register.Index;
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE || bufreg->Register.File == TGSI_FILE_MEMORY);
+   bool is_shared = bufreg->Register.File == TGSI_FILE_MEMORY;
 
    if (bufreg->Register.File == TGSI_FILE_IMAGE) {
       img_store_emit(action, bld_base, emit_data);
@@ -3621,12 +3629,14 @@ store_emit(
       index = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 0, 0);
       index = lp_build_shr_imm(uint_bld, index, 2);
 
-      scalar_ptr = bld->ssbos[buf];
+      scalar_ptr = is_shared ? bld->shared_ptr : bld->ssbos[buf];
 
       LLVMValueRef ssbo_limit;
 
-      ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
-      ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+      if (!is_shared) {
+         ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
+         ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+      }
 
       TGSI_FOR_EACH_DST0_ENABLED_CHANNEL(emit_data->inst, chan_index) {
          LLVMValueRef loop_index = lp_build_add(uint_bld, index, lp_build_const_int_vec(gallivm, uint_bld->type, chan_index));
@@ -3634,8 +3644,10 @@ store_emit(
          value = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 1, chan_index);
 
          LLVMValueRef exec_mask = mask_vec(bld_base);
-         LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, loop_index, ssbo_limit);
-         exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+         if (!is_shared) {
+            LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, loop_index, ssbo_limit);
+            exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+         }
 
          struct lp_build_loop_state loop_state;
          lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
@@ -3756,8 +3768,9 @@ atomic_emit(
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    const struct tgsi_full_src_register *bufreg = &emit_data->inst->Src[0];
 
-   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE);
+   assert(bufreg->Register.File == TGSI_FILE_BUFFER || bufreg->Register.File == TGSI_FILE_IMAGE || bufreg->Register.File == TGSI_FILE_MEMORY);
    unsigned buf = bufreg->Register.Index;
+   bool is_shared = bufreg->Register.File == TGSI_FILE_MEMORY;
 
    LLVMAtomicRMWBinOp op;
    switch (emit_data->inst->Instruction.Opcode) {
@@ -3807,20 +3820,28 @@ atomic_emit(
       value = lp_build_emit_fetch(&bld->bld_base, emit_data->inst, 2, 0);
 
       index = lp_build_shr_imm(uint_bld, index, 2);
-      index = lp_build_add(uint_bld, index, lp_build_const_int_vec(gallivm, uint_bld->type, emit_data->chan));
 
-      scalar_ptr = bld->ssbos[buf];
+      if (!is_shared) {
+         index = lp_build_add(uint_bld, index, lp_build_const_int_vec(gallivm, uint_bld->type, emit_data->chan));
+         scalar_ptr = bld->ssbos[buf];
+      } else
+         scalar_ptr = bld->shared_ptr;
 
       LLVMValueRef atom_res = lp_build_alloca(gallivm,
                                               uint_bld->vec_type, "");
 
       LLVMValueRef ssbo_limit;
-      ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
-      ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+      if (!is_shared) {
+         ssbo_limit = LLVMBuildAShr(gallivm->builder, bld->ssbo_sizes[buf], lp_build_const_int32(gallivm, 2), "");
+         ssbo_limit = lp_build_broadcast_scalar(uint_bld, ssbo_limit);
+      }
 
       LLVMValueRef exec_mask = mask_vec(bld_base);
-      LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, index, ssbo_limit);
-      exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+
+      if (!is_shared) {
+         LLVMValueRef ssbo_oob_cmp = lp_build_cmp(uint_bld, PIPE_FUNC_LESS, index, ssbo_limit);
+         exec_mask = LLVMBuildAnd(builder, exec_mask, ssbo_oob_cmp, "");
+      }
 
       struct lp_build_loop_state loop_state;
       lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
@@ -4391,6 +4412,7 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.context_ptr = params->context_ptr;
    bld.thread_data_ptr = params->thread_data_ptr;
    bld.image = params->image;
+   bld.shared_ptr = params->shared_ptr;
 
    /*
     * If the number of temporaries is rather large then we just
