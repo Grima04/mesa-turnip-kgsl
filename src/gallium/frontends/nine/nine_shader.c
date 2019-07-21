@@ -2887,7 +2887,7 @@ DECL_SPECIAL(BEM)
     struct ureg_src src1 = tx_src_param(tx, &tx->insn.src[1]);
     struct ureg_src m00, m01, m10, m11, c8m;
     const int m = tx->insn.dst[0].idx;
-    struct ureg_dst tmp;
+    struct ureg_dst tmp = tx_scratch(tx);
     /*
      * Bump-env-matrix:
      * 00 is X
