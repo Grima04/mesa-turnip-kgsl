@@ -37,45 +37,6 @@ static bool create_new_instr(ppir_block *block, ppir_node *node)
    return true;
 }
 
-static bool insert_to_load_tex(ppir_block *block, ppir_node *load_coords, ppir_node *ldtex)
-{
-   ppir_dest *dest = ppir_node_get_dest(ldtex);
-   ppir_node *move = NULL;
-
-   /* Insert load_coords to ldtex instruction */
-   if (!ppir_instr_insert_node(ldtex->instr, load_coords))
-      return false;
-
-   /* Create move node */
-   move = ppir_node_create(block, ppir_op_mov, -1 , 0);
-   if (unlikely(!move))
-      return false;
-
-   ppir_debug("insert_load_tex: create move %d for %d\n",
-              move->index, ldtex->index);
-
-   ppir_alu_node *alu = ppir_node_to_alu(move);
-   alu->dest = *dest;
-
-   ppir_node_replace_all_succ(move, ldtex);
-
-   dest->type = ppir_target_pipeline;
-   dest->pipeline = ppir_pipeline_reg_sampler;
-
-   alu->num_src = 1;
-   ppir_node_target_assign(&alu->src[0], dest);
-   for (int i = 0; i < 4; i++)
-      alu->src->swizzle[i] = i;
-
-   ppir_node_add_dep(move, ldtex);
-   list_addtail(&move->list, &ldtex->list);
-
-   if (!ppir_instr_insert_node(ldtex->instr, move))
-      return false;
-
-   return true;
-}
-
 static bool insert_to_each_succ_instr(ppir_block *block, ppir_node *node)
 {
    ppir_dest *dest = ppir_node_get_dest(node);
@@ -176,7 +137,31 @@ static bool insert_to_each_succ_instr(ppir_block *block, ppir_node *node)
    return true;
 }
 
-static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
+/*
+ * If a node has a pipeline dest, schedule it in the same instruction as its
+ * successor.
+ * Since it has a pipeline dest, it must have only one successor and since we
+ * schedule nodes backwards, its successor must have already been scheduled.
+ */
+static bool ppir_do_node_to_instr_pipeline(ppir_block *block, ppir_node *node)
+{
+   ppir_dest *dest = ppir_node_get_dest(node);
+
+   if (!dest || dest->type != ppir_target_pipeline)
+      return false;
+
+   assert(ppir_node_has_single_succ(node));
+   ppir_node *succ = ppir_node_first_succ(node);
+   assert(succ);
+   assert(succ->instr);
+
+   if (!ppir_instr_insert_node(succ->instr, node))
+      return false;
+
+   return true;
+}
+
+static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_node **next)
 {
    switch (node->type) {
    case ppir_node_type_alu:
@@ -237,11 +222,6 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
                node->op == ppir_op_load_frontface) {
          /* delay the load varying dup to scheduler */
          if (!create_new_instr(block, node))
-            return false;
-      }
-      else if (node->op == ppir_op_load_coords) {
-         ppir_node *ldtex = ppir_node_first_succ(node);
-         if (!insert_to_load_tex(block, node, ldtex))
             return false;
       }
       else {
@@ -315,7 +295,7 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
       node->instr = move->instr;
 
       /* use move for the following recursion */
-      node = move;
+      *next = move;
       break;
    }
    case ppir_node_type_discard:
@@ -330,6 +310,21 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
    default:
       return false;
    }
+
+   return true;
+}
+
+static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
+{
+   ppir_node *next = node;
+
+   /* first try pipeline sched, if that didn't succeed try normal scheduling */
+   if (!ppir_do_node_to_instr_pipeline(block, node))
+      if (!ppir_do_one_node_to_instr(block, node, &next))
+         return false;
+
+   /* next may have been updated in ppir_do_one_node_to_instr */
+   node = next;
 
    /* we have to make sure the dep not be destroyed (due to
     * succ change) in ppir_do_node_to_instr, otherwise we can't

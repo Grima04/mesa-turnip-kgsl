@@ -112,6 +112,30 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    }
 
    ppir_node_add_dep(node, &load->node);
+
+   /* Create move node */
+   ppir_node *move = ppir_node_create(block, ppir_op_mov, -1 , 0);
+   if (unlikely(!move))
+      return false;
+
+   ppir_alu_node *alu = ppir_node_to_alu(move);
+
+   ppir_dest *dest = ppir_node_get_dest(node);
+   alu->dest = *dest;
+
+   ppir_node_replace_all_succ(move, node);
+
+   dest->type = ppir_target_pipeline;
+   dest->pipeline = ppir_pipeline_reg_sampler;
+
+   alu->num_src = 1;
+   ppir_node_target_assign(&alu->src[0], dest);
+   for (int i = 0; i < 4; i++)
+      alu->src->swizzle[i] = i;
+
+   ppir_node_add_dep(move, node);
+   list_addtail(&move->list, &node->list);
+
    return true;
 }
 
