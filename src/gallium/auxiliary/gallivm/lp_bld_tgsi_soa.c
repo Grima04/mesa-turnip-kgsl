@@ -1690,6 +1690,7 @@ emit_fetch_system_value(
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef res;
    enum tgsi_opcode_type atype; // Actual type of the value
+   unsigned swizzle = swizzle_in & 0xffff;
 
    assert(!reg->Register.Indirect);
 
@@ -1726,6 +1727,21 @@ emit_fetch_system_value(
 
    case TGSI_SEMANTIC_HELPER_INVOCATION:
       res = LLVMBuildNot(gallivm->builder, lp_build_mask_value(bld->mask), "");
+      atype = TGSI_TYPE_UNSIGNED;
+      break;
+
+   case TGSI_SEMANTIC_THREAD_ID:
+      res = LLVMBuildExtractValue(gallivm->builder, bld->system_values.thread_id, swizzle, "");
+      atype = TGSI_TYPE_UNSIGNED;
+      break;
+
+   case TGSI_SEMANTIC_BLOCK_ID:
+      res = lp_build_extract_broadcast(gallivm, lp_type_int_vec(32, 96), bld_base->uint_bld.type, bld->system_values.block_id, lp_build_const_int32(gallivm, swizzle));
+      atype = TGSI_TYPE_UNSIGNED;
+      break;
+
+   case TGSI_SEMANTIC_GRID_SIZE:
+      res = lp_build_extract_broadcast(gallivm, lp_type_int_vec(32, 96), bld_base->uint_bld.type, bld->system_values.grid_size, lp_build_const_int32(gallivm, swizzle));
       atype = TGSI_TYPE_UNSIGNED;
       break;
 
