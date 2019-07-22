@@ -90,6 +90,7 @@ static const struct debug_named_value debug_options[] = {
 	{ "zerovram", DBG(ZERO_VRAM), "Clear VRAM allocations." },
 
 	/* 3D engine options: */
+	{ "nogfx", DBG(NO_GFX), "Disable graphics. Only multimedia compute paths can be used." },
 	{ "alwayspd", DBG(ALWAYS_PD), "Always enable the primitive discard compute shader." },
 	{ "pd", DBG(PD), "Enable the primitive discard compute shader for large draw calls." },
 	{ "nopd", DBG(NO_PD), "Disable the primitive discard compute shader." },
@@ -942,6 +943,9 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 						      debug_options, 0);
 	sscreen->debug_flags |= debug_get_flags_option("AMD_DEBUG",
 						       debug_options, 0);
+
+	if (sscreen->debug_flags & DBG(NO_GFX))
+		sscreen->info.has_graphics = false;
 
 	/* Set functions first. */
 	sscreen->b.context_create = si_pipe_create_context;
