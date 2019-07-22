@@ -43,6 +43,7 @@
 #include "brw_gs.h"
 #include "brw_wm.h"
 #include "brw_cs.h"
+#include "genX_bits.h"
 #include "main/framebuffer.h"
 
 void
@@ -65,6 +66,86 @@ brw_enable_obj_preemption(struct brw_context *brw, bool enable)
                            replay_mode | GEN9_REPLAY_MODE_MASK);
 
    brw->object_preemption = enable;
+}
+
+static void
+brw_upload_gen11_slice_hashing_state(struct brw_context *brw)
+{
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   int subslices_delta =
+      devinfo->ppipe_subslices[0] - devinfo->ppipe_subslices[1];
+   if (subslices_delta == 0)
+      return;
+
+   unsigned size = GEN11_SLICE_HASH_TABLE_length * 4;
+   uint32_t hash_address;
+
+   uint32_t *map = brw_state_batch(brw, size, 64, &hash_address);
+
+   unsigned idx = 0;
+
+   unsigned sl_small = 0;
+   unsigned sl_big = 1;
+   if (subslices_delta > 0) {
+      sl_small = 1;
+      sl_big = 0;
+   }
+
+   /**
+    * Create a 16x16 slice hashing table like the following one:
+    *
+    * [ 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 ]
+    * [ 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 ]
+    * [ 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 ]
+    * [ 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 ]
+    * [ 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 ]
+    * [ 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 ]
+    * [ 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 ]
+    * [ 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 ]
+    * [ 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 ]
+    * [ 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 ]
+    * [ 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 ]
+    * [ 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 ]
+    * [ 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 ]
+    * [ 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1 ]
+    * [ 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0 ]
+    * [ 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 ]
+    *
+    * The table above is used when the pixel pipe 0 has less subslices than
+    * pixel pipe 1. When pixel pipe 0 has more subslices, then a similar table
+    * with 0's and 1's inverted is used.
+    */
+   for (int i = 0; i < GEN11_SLICE_HASH_TABLE_length; i++) {
+      uint32_t dw = 0;
+
+      for (int j = 0; j < 8; j++) {
+         unsigned slice = idx++ % 3 ? sl_big : sl_small;
+         dw |= slice << (j * 4);
+      }
+      map[i] = dw;
+   }
+
+   BEGIN_BATCH(2);
+   OUT_BATCH(_3DSTATE_SLICE_TABLE_STATE_POINTERS << 16 | (2 - 2));
+   OUT_RELOC(brw->batch.state.bo, 0, hash_address | 1);
+   ADVANCE_BATCH();
+
+   /* From gen10/gen11 workaround table in h/w specs:
+    *
+    *    "On 3DSTATE_3D_MODE, driver must always program bits 31:16 of DW1
+    *     a value of 0xFFFF"
+    *
+    * This means that whenever we update a field with this instruction, we need
+    * to update all the others.
+    *
+    * Since this is the first time we emit this
+    * instruction, we are only setting the fSLICE_HASHING_TABLE_ENABLE flag,
+    * and leaving everything else at their default state (0).
+    */
+   BEGIN_BATCH(2);
+   OUT_BATCH(_3DSTATE_3D_MODE  << 16 | (2 - 2));
+   OUT_BATCH(0xffff | SLICE_HASHING_TABLE_ENABLE);
+   ADVANCE_BATCH();
 }
 
 static void
@@ -179,6 +260,9 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
 
    if (devinfo->gen >= 10)
       brw_enable_obj_preemption(brw, true);
+
+   if (devinfo->gen == 11)
+      brw_upload_gen11_slice_hashing_state(brw);
 }
 
 static inline const struct brw_tracked_state *

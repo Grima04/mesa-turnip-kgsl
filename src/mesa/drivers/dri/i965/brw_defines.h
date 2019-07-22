@@ -1334,6 +1334,10 @@ enum brw_pixel_shader_coverage_mask_mode {
 /* DW3: end address. */
 
 #define _3DSTATE_3D_MODE                     0x791e
+# define SLICE_HASHING_TABLE_ENABLE          (1 << 6)
+# define SLICE_HASHING_TABLE_ENABLE_MASK     REG_MASK(1 << 6)
+
+#define _3DSTATE_SLICE_TABLE_STATE_POINTERS  0x7920
 
 #define CMD_MI_FLUSH                  0x0200
 
