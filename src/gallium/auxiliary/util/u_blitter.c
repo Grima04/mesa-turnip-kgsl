@@ -1451,7 +1451,8 @@ static void util_blitter_clear_custom(struct blitter_context *blitter,
                                       unsigned clear_buffers,
                                       const union pipe_color_union *color,
                                       double depth, unsigned stencil,
-                                      void *custom_blend, void *custom_dsa)
+                                      void *custom_blend, void *custom_dsa,
+                                      bool msaa)
 {
    struct blitter_context_priv *ctx = (struct blitter_context_priv*)blitter;
    struct pipe_context *pipe = ctx->base.pipe;
@@ -1477,7 +1478,7 @@ static void util_blitter_clear_custom(struct blitter_context *blitter,
    if (num_layers > 1 && ctx->has_layered) {
       blitter_get_vs_func get_vs = get_vs_layered;
 
-      blitter_set_common_draw_rect_state(ctx, false, false);
+      blitter_set_common_draw_rect_state(ctx, false, msaa);
       blitter->draw_rectangle(blitter, ctx->velem_state, get_vs,
                               0, 0, width, height,
                               (float) depth, num_layers, type, &attrib);
@@ -1489,7 +1490,7 @@ static void util_blitter_clear_custom(struct blitter_context *blitter,
       else
          get_vs = get_vs_passthrough_pos;
 
-      blitter_set_common_draw_rect_state(ctx, false, false);
+      blitter_set_common_draw_rect_state(ctx, false, msaa);
       blitter->draw_rectangle(blitter, ctx->velem_state, get_vs,
                               0, 0, width, height,
                               (float) depth, 1, type, &attrib);
@@ -1505,11 +1506,12 @@ void util_blitter_clear(struct blitter_context *blitter,
                         unsigned width, unsigned height, unsigned num_layers,
                         unsigned clear_buffers,
                         const union pipe_color_union *color,
-                        double depth, unsigned stencil)
+                        double depth, unsigned stencil,
+                        bool msaa)
 {
    util_blitter_clear_custom(blitter, width, height, num_layers,
                              clear_buffers, color, depth, stencil,
-                             NULL, NULL);
+                             NULL, NULL, msaa);
 }
 
 void util_blitter_custom_clear_depth(struct blitter_context *blitter,
@@ -1518,7 +1520,7 @@ void util_blitter_custom_clear_depth(struct blitter_context *blitter,
 {
    static const union pipe_color_union color;
    util_blitter_clear_custom(blitter, width, height, 0, 0, &color, depth, 0,
-                             NULL, custom_dsa);
+                             NULL, custom_dsa, false);
 }
 
 void util_blitter_default_dst_texture(struct pipe_surface *dst_templ,

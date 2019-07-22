@@ -204,7 +204,8 @@ void util_blitter_clear(struct blitter_context *blitter,
                         unsigned width, unsigned height, unsigned num_layers,
                         unsigned clear_buffers,
                         const union pipe_color_union *color,
-                        double depth, unsigned stencil);
+                        double depth, unsigned stencil,
+                        bool msaa);
 
 /**
  * Check if the blitter (with the help of the driver) can blit between

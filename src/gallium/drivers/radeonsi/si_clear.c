@@ -663,7 +663,8 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 	si_blitter_begin(sctx, SI_CLEAR);
 	util_blitter_clear(sctx->blitter, fb->width, fb->height,
 			   util_framebuffer_get_num_layers(fb),
-			   buffers, color, depth, stencil);
+			   buffers, color, depth, stencil,
+			   sctx->framebuffer.nr_samples > 1);
 	si_blitter_end(sctx);
 
 	if (sctx->db_depth_clear) {

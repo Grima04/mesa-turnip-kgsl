@@ -947,7 +947,8 @@ v3d_draw_clear(struct v3d_context *v3d,
                            v3d->framebuffer.width,
                            v3d->framebuffer.height,
                            util_framebuffer_get_num_layers(&v3d->framebuffer),
-                           buffers, color, depth, stencil);
+                           buffers, color, depth, stencil,
+                           util_framebuffer_get_num_samples(&v3d->framebuffer) > 1);
 }
 
 /**
