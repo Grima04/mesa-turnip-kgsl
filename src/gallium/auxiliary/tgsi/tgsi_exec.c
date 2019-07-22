@@ -3087,6 +3087,7 @@ exec_declaration(struct tgsi_exec_machine *mach,
 
             case TGSI_INTERPOLATE_COLOR:
                eval = mach->flatshade_color ? eval_constant_coef : eval_perspective_coef;
+               interp = mach->flatshade_color ? interp_constant_offset : interp_perspective_offset;
                break;
 
             default:
