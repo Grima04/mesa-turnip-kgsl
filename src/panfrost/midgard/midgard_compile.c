@@ -2741,12 +2741,14 @@ midgard_compile_shader_nir(nir_shader *nir, midgard_program *program, bool is_bl
 
                 fprintf(stderr, "shader%d - %s shader: "
                         "%u inst, %u bundles, %u quadwords, "
-                        "%u registers, %u threads, %u loops\n",
+                        "%u registers, %u threads, %u loops, "
+                        "%d:%d spills:fills\n",
                         SHADER_DB_COUNT++,
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_bundles, nr_quadwords,
                         nr_registers, nr_threads,
-                        ctx->loop_count);
+                        ctx->loop_count,
+                        ctx->spills, ctx->fills);
         }
 
 

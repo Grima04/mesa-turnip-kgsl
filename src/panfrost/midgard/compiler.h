@@ -197,6 +197,10 @@ typedef struct compiler_context {
         /* Number of bytes used for Thread Local Storage */
         unsigned tls_size;
 
+        /* Count of spills and fills for shaderdb */
+        unsigned spills;
+        unsigned fills;
+
         /* Current NIR function */
         nir_function *func;
 

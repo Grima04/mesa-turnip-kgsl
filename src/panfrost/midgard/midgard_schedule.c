@@ -720,6 +720,8 @@ schedule_program(compiler_context *ctx)
 
                                 midgard_instruction st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
                                 mir_insert_instruction_before(mir_next_op(ins), st);
+
+                                ctx->spills++;
                         }
 
                         /* Insert a load from TLS before the first consecutive
@@ -759,6 +761,8 @@ schedule_program(compiler_context *ctx)
 
                                 /* Rewrite to use */
                                 mir_rewrite_index_src_single(ins, spill_node, consecutive_index);
+
+                                ctx->fills++;
                         }
                         }
                 }
