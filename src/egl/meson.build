@@ -92,7 +92,8 @@ if with_dri2
     'drivers/dri2/egl_dri2.h',
     'drivers/dri2/egl_dri2_fallbacks.h',
   )
-  link_for_egl += [libloader, libxmlconfig]
+  deps_for_egl += idep_xmlconfig
+  link_for_egl += libloader
   incs_for_egl += inc_loader
 
   files_egl += files('drivers/dri2/platform_device.c')

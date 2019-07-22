@@ -147,7 +147,7 @@ idep_mesautil = declare_dependency(
   dependencies : [dep_zlib, dep_clock, dep_thread, dep_atomic, dep_m],
 )
 
-libxmlconfig = static_library(
+_libxmlconfig = static_library(
   'xmlconfig',
   files_xmlconfig,
   include_directories : inc_common,
@@ -167,7 +167,7 @@ libxmlconfig = static_library(
 idep_xmlconfig = declare_dependency(
   sources : xmlpool_options_h,
   include_directories : inc_util,
-  link_with : libxmlconfig,
+  link_with : _libxmlconfig,
   dependencies : dep_expat,
 )
 

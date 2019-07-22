@@ -49,8 +49,8 @@ libgbm = shared_library(
   include_directories : incs_gbm,
   c_args : [c_vis_args, args_gbm],
   link_args : [ld_args_gc_sections],
-  link_with : [libloader, libxmlconfig],
-  dependencies : [deps_gbm, dep_dl, dep_thread, idep_mesautil],
+  link_with : libloader,
+  dependencies : [deps_gbm, dep_dl, dep_thread, idep_mesautil, idep_xmlconfig],
   version : '1.0.0',
   install : true,
 )

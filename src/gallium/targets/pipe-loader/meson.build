@@ -52,7 +52,7 @@ pipe_loaders = [
   [with_gallium_nouveau, 'nouveau', driver_nouveau, [], []],
   [with_gallium_r300, 'r300', driver_r300, [], []],
   [with_gallium_r600, 'r600', driver_r600, [], []],
-  [with_gallium_radeonsi, 'radeonsi', driver_radeonsi, [libxmlconfig], [xmlpool_options_h]],
+  [with_gallium_radeonsi, 'radeonsi', [driver_radeonsi, idep_xmlconfig], [], []],
   [with_gallium_freedreno, 'msm', driver_freedreno, [], []],
   [with_gallium_svga, 'vmwgfx', driver_svga, [], []],
   [with_gallium_softpipe, 'swrast', [driver_swrast, driver_swr], [libwsw, libws_null], []],
