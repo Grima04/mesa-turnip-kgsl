@@ -921,8 +921,8 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
 		if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
-		struct radv_image_view *src_iview = fb->attachments[src_att.attachment].attachment;
-		struct radv_image_view *dst_iview = fb->attachments[dst_att.attachment].attachment;
+		struct radv_image_view *src_iview = fb->attachments[src_att.attachment];
+		struct radv_image_view *dst_iview = fb->attachments[dst_att.attachment];
 
 		VkImageResolve region = {
 			.extent = (VkExtent3D){ fb->width, fb->height, 0 },
@@ -989,9 +989,9 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_subpass_attachment dest_att = *subpass->ds_resolve_attachment;
 
 	struct radv_image_view *src_iview =
-		cmd_buffer->state.framebuffer->attachments[src_att.attachment].attachment;
+		cmd_buffer->state.framebuffer->attachments[src_att.attachment];
 	struct radv_image_view *dst_iview =
-		cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment;
+		cmd_buffer->state.framebuffer->attachments[dest_att.attachment];
 
 	struct radv_image *src_image = src_iview->image;
 	struct radv_image *dst_image = dst_iview->image;

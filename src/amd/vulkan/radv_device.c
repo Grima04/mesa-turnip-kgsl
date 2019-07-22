@@ -4352,7 +4352,7 @@ radv_init_dcc_control_reg(struct radv_device *device,
 	       S_028C78_INDEPENDENT_128B_BLOCKS(independent_128b_blocks);
 }
 
-static void
+void
 radv_initialise_color_surface(struct radv_device *device,
 			      struct radv_color_buffer_info *cb,
 			      struct radv_image_view *iview)
@@ -4612,7 +4612,7 @@ radv_calc_decompress_on_z_planes(struct radv_device *device,
 	return max_zplanes;
 }
 
-static void
+void
 radv_initialise_ds_surface(struct radv_device *device,
 			   struct radv_ds_buffer_info *ds,
 			   struct radv_image_view *iview)
@@ -4810,7 +4810,7 @@ VkResult radv_CreateFramebuffer(
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
 
 	size_t size = sizeof(*framebuffer) +
-		sizeof(struct radv_attachment_info) * pCreateInfo->attachmentCount;
+		sizeof(struct radv_image_view*) * pCreateInfo->attachmentCount;
 	framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
 				  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (framebuffer == NULL)
@@ -4823,12 +4823,7 @@ VkResult radv_CreateFramebuffer(
 	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
 		VkImageView _iview = pCreateInfo->pAttachments[i];
 		struct radv_image_view *iview = radv_image_view_from_handle(_iview);
-		framebuffer->attachments[i].attachment = iview;
-		if (iview->aspect_mask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-			radv_initialise_ds_surface(device, &framebuffer->attachments[i].ds, iview);
-		} else {
-			radv_initialise_color_surface(device, &framebuffer->attachments[i].cb, iview);
-		}
+		framebuffer->attachments[i] = iview;
 		framebuffer->width = MIN2(framebuffer->width, iview->extent.width);
 		framebuffer->height = MIN2(framebuffer->height, iview->extent.height);
 		framebuffer->layers = MIN2(framebuffer->layers, radv_surface_max_layer_count(iview));

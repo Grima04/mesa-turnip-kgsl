@@ -641,9 +641,9 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
 		struct radv_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
 		struct radv_image_view *src_iview =
-			cmd_buffer->state.framebuffer->attachments[src_att.attachment].attachment;
+			cmd_buffer->state.framebuffer->attachments[src_att.attachment];
 		struct radv_image_view *dst_iview =
-			cmd_buffer->state.framebuffer->attachments[dst_att.attachment].attachment;
+			cmd_buffer->state.framebuffer->attachments[dst_att.attachment];
 
 		radv_pick_resolve_method_images(src_iview->image,
 						src_iview->vk_format,
@@ -694,8 +694,8 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		/* Make sure to not clear color attachments after resolves. */
 		cmd_buffer->state.attachments[dest_att.attachment].pending_clear_aspects = 0;
 
-		struct radv_image *dst_img = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment->image;
-		struct radv_image_view *src_iview= cmd_buffer->state.framebuffer->attachments[src_att.attachment].attachment;
+		struct radv_image *dst_img = cmd_buffer->state.framebuffer->attachments[dest_att.attachment]->image;
+		struct radv_image_view *src_iview= cmd_buffer->state.framebuffer->attachments[src_att.attachment];
 		struct radv_image *src_img = src_iview->image;
 
 		radv_pick_resolve_method_images(src_img, src_iview->vk_format,
@@ -725,7 +725,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
-		struct radv_image_view *dest_iview = cmd_buffer->state.framebuffer->attachments[dest_att.attachment].attachment;
+		struct radv_image_view *dest_iview = cmd_buffer->state.framebuffer->attachments[dest_att.attachment];
 		struct radv_image *dst_img = dest_iview->image;
 
 		if (radv_dcc_enabled(dst_img, dest_iview->base_mip)) {
@@ -787,8 +787,7 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
-		struct radv_image_view *src_iview =
-			fb->attachments[src_att.attachment].attachment;
+		struct radv_image_view *src_iview = fb->attachments[src_att.attachment];
 		struct radv_image *src_image = src_iview->image;
 
 		VkImageResolve region = {};
@@ -803,8 +802,7 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 
 	if (subpass->ds_resolve_attachment) {
 		struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
-		struct radv_image_view *src_iview =
-			fb->attachments[src_att.attachment].attachment;
+		struct radv_image_view *src_iview = fb->attachments[src_att.attachment];
 		struct radv_image *src_image = src_iview->image;
 
 		VkImageResolve region = {};

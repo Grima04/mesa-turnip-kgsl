@@ -206,6 +206,7 @@ radv_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
  * propagating errors. Might be useful to plug in a stack trace here.
  */
 
+struct radv_image_view;
 struct radv_instance;
 
 VkResult __vk_errorf(struct radv_instance *instance, VkResult error, const char *file, int line, const char *format, ...);
@@ -1039,6 +1040,54 @@ radv_get_debug_option_name(int id);
 const char *
 radv_get_perftest_option_name(int id);
 
+struct radv_color_buffer_info {
+	uint64_t cb_color_base;
+	uint64_t cb_color_cmask;
+	uint64_t cb_color_fmask;
+	uint64_t cb_dcc_base;
+	uint32_t cb_color_slice;
+	uint32_t cb_color_view;
+	uint32_t cb_color_info;
+	uint32_t cb_color_attrib;
+	uint32_t cb_color_attrib2; /* GFX9 and later */
+	uint32_t cb_color_attrib3; /* GFX10 and later */
+	uint32_t cb_dcc_control;
+	uint32_t cb_color_cmask_slice;
+	uint32_t cb_color_fmask_slice;
+	union {
+		uint32_t cb_color_pitch; // GFX6-GFX8
+		uint32_t cb_mrt_epitch; // GFX9+
+	};
+};
+
+struct radv_ds_buffer_info {
+	uint64_t db_z_read_base;
+	uint64_t db_stencil_read_base;
+	uint64_t db_z_write_base;
+	uint64_t db_stencil_write_base;
+	uint64_t db_htile_data_base;
+	uint32_t db_depth_info;
+	uint32_t db_z_info;
+	uint32_t db_stencil_info;
+	uint32_t db_depth_view;
+	uint32_t db_depth_size;
+	uint32_t db_depth_slice;
+	uint32_t db_htile_surface;
+	uint32_t pa_su_poly_offset_db_fmt_cntl;
+	uint32_t db_z_info2; /* GFX9 only */
+	uint32_t db_stencil_info2; /* GFX9 only */
+	float offset_scale;
+};
+
+void
+radv_initialise_color_surface(struct radv_device *device,
+			      struct radv_color_buffer_info *cb,
+			      struct radv_image_view *iview);
+void
+radv_initialise_ds_surface(struct radv_device *device,
+			   struct radv_ds_buffer_info *ds,
+			   struct radv_image_view *iview);
+
 /**
  * Attachment state when recording a renderpass instance.
  *
@@ -1050,6 +1099,11 @@ struct radv_attachment_state {
 	VkClearValue                                 clear_value;
 	VkImageLayout                                current_layout;
 	struct radv_sample_locations_state	     sample_location;
+
+	union {
+		struct radv_color_buffer_info cb;
+		struct radv_ds_buffer_info ds;
+	};
 };
 
 struct radv_descriptor_state {
@@ -1895,60 +1949,13 @@ struct radv_sampler {
 	struct radv_sampler_ycbcr_conversion *ycbcr_sampler;
 };
 
-struct radv_color_buffer_info {
-	uint64_t cb_color_base;
-	uint64_t cb_color_cmask;
-	uint64_t cb_color_fmask;
-	uint64_t cb_dcc_base;
-	uint32_t cb_color_slice;
-	uint32_t cb_color_view;
-	uint32_t cb_color_info;
-	uint32_t cb_color_attrib;
-	uint32_t cb_color_attrib2; /* GFX9 and later */
-	uint32_t cb_color_attrib3; /* GFX10 and later */
-	uint32_t cb_dcc_control;
-	uint32_t cb_color_cmask_slice;
-	uint32_t cb_color_fmask_slice;
-	union {
-		uint32_t cb_color_pitch; // GFX6-GFX8
-		uint32_t cb_mrt_epitch; // GFX9+
-	};
-};
-
-struct radv_ds_buffer_info {
-	uint64_t db_z_read_base;
-	uint64_t db_stencil_read_base;
-	uint64_t db_z_write_base;
-	uint64_t db_stencil_write_base;
-	uint64_t db_htile_data_base;
-	uint32_t db_depth_info;
-	uint32_t db_z_info;
-	uint32_t db_stencil_info;
-	uint32_t db_depth_view;
-	uint32_t db_depth_size;
-	uint32_t db_depth_slice;
-	uint32_t db_htile_surface;
-	uint32_t pa_su_poly_offset_db_fmt_cntl;
-	uint32_t db_z_info2; /* GFX9 only */
-	uint32_t db_stencil_info2; /* GFX9 only */
-	float offset_scale;
-};
-
-struct radv_attachment_info {
-	union {
-		struct radv_color_buffer_info cb;
-		struct radv_ds_buffer_info ds;
-	};
-	struct radv_image_view *attachment;
-};
-
 struct radv_framebuffer {
 	uint32_t                                     width;
 	uint32_t                                     height;
 	uint32_t                                     layers;
 
 	uint32_t                                     attachment_count;
-	struct radv_attachment_info                  attachments[0];
+	struct radv_image_view                       *attachments[0];
 };
 
 struct radv_subpass_barrier {

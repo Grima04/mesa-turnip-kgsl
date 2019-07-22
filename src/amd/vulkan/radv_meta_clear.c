@@ -370,7 +370,7 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer,
 	const struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
 	const uint32_t subpass_att = clear_att->colorAttachment;
 	const uint32_t pass_att = subpass->color_attachments[subpass_att].attachment;
-	const struct radv_image_view *iview = fb ? fb->attachments[pass_att].attachment : NULL;
+	const struct radv_image_view *iview = fb ? fb->attachments[pass_att] : NULL;
 	uint32_t samples, samples_log2;
 	VkFormat format;
 	unsigned fs_key;
@@ -725,7 +725,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 	const uint32_t pass_att = ds_att->attachment;
 	VkClearDepthStencilValue clear_value = clear_att->clearValue.depthStencil;
 	VkImageAspectFlags aspects = clear_att->aspectMask;
-	const struct radv_image_view *iview = fb ? fb->attachments[pass_att].attachment : NULL;
+	const struct radv_image_view *iview = fb ? fb->attachments[pass_att] : NULL;
 	uint32_t samples, samples_log2;
 	VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
 
@@ -1679,7 +1679,7 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer,
 			return;
 
 		VkImageLayout image_layout = subpass->color_attachments[subpass_att].layout;
-		const struct radv_image_view *iview = fb ? fb->attachments[pass_att].attachment : NULL;
+		const struct radv_image_view *iview = fb ? fb->attachments[pass_att] : NULL;
 		VkClearColorValue clear_value = clear_att->clearValue.color;
 
 		if (radv_can_fast_clear_color(cmd_buffer, iview, image_layout,
@@ -1700,7 +1700,7 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer,
 			return;
 
 		VkImageLayout image_layout = ds_att->layout;
-		const struct radv_image_view *iview = fb ? fb->attachments[ds_att->attachment].attachment : NULL;
+		const struct radv_image_view *iview = fb ? fb->attachments[ds_att->attachment] : NULL;
 		VkClearDepthStencilValue clear_value = clear_att->clearValue.depthStencil;
 
 		assert(aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
