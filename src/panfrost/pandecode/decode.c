@@ -937,6 +937,7 @@ pandecode_padded_vertices(unsigned shift, unsigned k)
 static void
 pandecode_magic_divisor(uint32_t magic, unsigned shift, unsigned orig_divisor, unsigned extra)
 {
+#if 0
         /* Compute the modular inverse of `magic` with respect to 2^(32 -
          * shift) the most lame way possible... just repeatedly add.
          * Asymptoptically slow but nobody cares in practice, unless you have
@@ -972,6 +973,7 @@ pandecode_magic_divisor(uint32_t magic, unsigned shift, unsigned orig_divisor, u
         unsigned padded_num_vertices = inverse / orig_divisor;
 
         pandecode_msg("padded_num_vertices = %d\n", padded_num_vertices);
+#endif
 }
 
 static void
