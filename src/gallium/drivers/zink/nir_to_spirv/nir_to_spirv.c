@@ -56,6 +56,8 @@ struct ntv_context {
    size_t num_blocks;
    bool block_started;
    SpvId loop_break, loop_cont;
+
+   SpvId front_face_var;
 };
 
 static SpvId
@@ -174,6 +176,9 @@ static SpvId
 get_glsl_basetype(struct ntv_context *ctx, enum glsl_base_type type)
 {
    switch (type) {
+   case GLSL_TYPE_BOOL:
+      return spirv_builder_type_bool(&ctx->builder);
+
    case GLSL_TYPE_FLOAT:
       return spirv_builder_type_float(&ctx->builder, 32);
 
@@ -1147,6 +1152,33 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_load_front_face(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvId var_type = get_glsl_type(ctx, glsl_bool_type());
+   if (!ctx->front_face_var) {
+      SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                      SpvStorageClassInput,
+                                                      var_type);
+      ctx->front_face_var = spirv_builder_emit_var(&ctx->builder,
+                                                   pointer_type,
+                                                   SpvStorageClassInput);
+      spirv_builder_emit_name(&ctx->builder, ctx->front_face_var,
+                              "gl_FrontFacing");
+      spirv_builder_emit_builtin(&ctx->builder, ctx->front_face_var,
+                                 SpvBuiltInFrontFacing);
+
+      assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
+      ctx->entry_ifaces[ctx->num_entry_ifaces++] = ctx->front_face_var;
+   }
+
+   SpvId result = spirv_builder_emit_load(&ctx->builder, var_type,
+                                          ctx->front_face_var);
+   assert(1 == nir_dest_num_components(intr->dest));
+   result = bvec_to_uvec(ctx, result, 1);
+   store_dest_uint(ctx, &intr->dest, result);
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -1164,6 +1196,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_store_deref:
       emit_store_deref(ctx, intr);
+      break;
+
+   case nir_intrinsic_load_front_face:
+      emit_load_front_face(ctx, intr);
       break;
 
    default:
@@ -1638,9 +1674,6 @@ nir_to_spirv(struct nir_shader *s)
    nir_foreach_variable(var, &s->uniforms)
       emit_uniform(&ctx, var);
 
-   spirv_builder_emit_entry_point(&ctx.builder, exec_model, entry_point,
-                                  "main", ctx.entry_ifaces,
-                                  ctx.num_entry_ifaces);
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    SpvExecutionModeOriginUpperLeft);
@@ -1697,6 +1730,10 @@ nir_to_spirv(struct nir_shader *s)
 
    spirv_builder_return(&ctx.builder); // doesn't belong here, but whatevz
    spirv_builder_function_end(&ctx.builder);
+
+   spirv_builder_emit_entry_point(&ctx.builder, exec_model, entry_point,
+                                  "main", ctx.entry_ifaces,
+                                  ctx.num_entry_ifaces);
 
    size_t num_words = spirv_builder_get_num_words(&ctx.builder);
 
