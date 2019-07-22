@@ -1139,6 +1139,8 @@ struct anv_device {
 
     struct anv_state                            border_colors;
 
+    struct anv_state                            slice_hash;
+
     struct anv_queue                            queue;
 
     struct anv_scratch_pool                     scratch_pool;
