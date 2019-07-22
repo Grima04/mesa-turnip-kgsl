@@ -478,12 +478,24 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter);
 
+   struct lp_build_tgsi_params params = {};
+
+   params.type = type;
+   params.mask = &mask;
+   params.consts_ptr = consts_ptr;
+   params.const_sizes_ptr = num_consts_ptr;
+   params.system_values = &system_values;
+   params.inputs = interp->inputs;
+   params.context_ptr = context_ptr;
+   params.thread_data_ptr = thread_data_ptr;
+   params.sampler = sampler;
+   params.info = &shader->info.base;
+   params.ssbo_ptr = ssbo_ptr;
+   params.ssbo_sizes_ptr = num_ssbo_ptr;
+
    /* Build the actual shader */
-   lp_build_tgsi_soa(gallivm, tokens, type, &mask,
-                     consts_ptr, num_consts_ptr, &system_values,
-                     interp->inputs,
-                     outputs, context_ptr, thread_data_ptr,
-                     sampler, &shader->info.base, NULL, ssbo_ptr, num_ssbo_ptr);
+   lp_build_tgsi_soa(gallivm, tokens, &params,
+                     outputs);
 
    /* Alpha test */
    if (key->alpha.enabled) {

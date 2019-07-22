@@ -637,20 +637,24 @@ generate_vs(struct draw_llvm_variant *variant,
    LLVMValueRef num_ssbos_ptr =
       draw_jit_context_num_vs_ssbos(variant->gallivm, context_ptr);
 
+   struct lp_build_tgsi_params params = {};
+
+   params.type = vs_type;
+   params.mask = bld_mask;
+   params.consts_ptr = consts_ptr;
+   params.const_sizes_ptr = num_consts_ptr;
+   params.system_values = system_values;
+   params.inputs = inputs;
+   params.context_ptr = context_ptr;
+   params.sampler = draw_sampler;
+   params.info = &llvm->draw->vs.vertex_shader->info;
+   params.ssbo_ptr = ssbos_ptr;
+   params.ssbo_sizes_ptr = num_ssbos_ptr;
+
    lp_build_tgsi_soa(variant->gallivm,
                      tokens,
-                     vs_type,
-                     bld_mask, /*struct lp_build_mask_context *mask*/
-                     consts_ptr,
-                     num_consts_ptr,
-                     system_values,
-                     inputs,
-                     outputs,
-                     context_ptr,
-                     NULL,
-                     draw_sampler,
-                     &llvm->draw->vs.vertex_shader->info,
-                     NULL, ssbos_ptr, num_ssbos_ptr);
+                     &params,
+                     outputs);
 
    {
       LLVMValueRef out;
@@ -2375,20 +2379,24 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
       draw_gs_llvm_dump_variant_key(&variant->key);
    }
 
+   struct lp_build_tgsi_params params = {};
+
+   params.type = gs_type;
+   params.mask = &mask;
+   params.consts_ptr = consts_ptr;
+   params.const_sizes_ptr = num_consts_ptr;
+   params.system_values = &system_values;
+   params.context_ptr = context_ptr;
+   params.sampler = sampler;
+   params.info = &llvm->draw->gs.geometry_shader->info;
+   params.gs_iface = (const struct lp_build_tgsi_gs_iface *)&gs_iface;
+   params.ssbo_ptr = ssbos_ptr;
+   params.ssbo_sizes_ptr = num_ssbos_ptr;
+
    lp_build_tgsi_soa(variant->gallivm,
                      tokens,
-                     gs_type,
-                     &mask,
-                     consts_ptr,
-                     num_consts_ptr,
-                     &system_values,
-                     NULL,
-                     outputs,
-                     context_ptr,
-                     NULL,
-                     sampler,
-                     &llvm->draw->gs.geometry_shader->info,
-                     (const struct lp_build_tgsi_gs_iface *)&gs_iface, ssbos_ptr, num_ssbos_ptr);
+                     &params,
+                     outputs);
 
    sampler->destroy(sampler);
 

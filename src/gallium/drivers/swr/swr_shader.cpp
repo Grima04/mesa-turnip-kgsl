@@ -681,21 +681,22 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
    gs_iface.info = info;
    gs_iface.pVtxAttribMap = vtxAttribMap;
 
+   struct lp_build_tgsi_params params = {};
+   params.type = lp_type_float_vec(32, 32 * 8);
+   params.mask = & mask;
+   params.consts_ptr = wrap(consts_ptr);
+   params.const_sizes_ptr = wrap(const_sizes_ptr);
+   params.system_values = &system_values;
+   params.inputs = inputs;
+   params.context_ptr = wrap(hPrivateData);
+   params.sampler = sampler;
+   params.info = &gs->info.base;
+   params.gs_iface = &gs_iface.base;
+
    lp_build_tgsi_soa(gallivm,
                      gs->pipe.tokens,
-                     lp_type_float_vec(32, 32 * 8),
-                     &mask,
-                     wrap(consts_ptr),
-                     wrap(const_sizes_ptr),
-                     &system_values,
-                     inputs,
-                     outputs,
-                     wrap(hPrivateData), // (sampler context)
-                     NULL, // thread data
-                     sampler,
-                     &gs->info.base,
-                     &gs_iface.base,
-                     NULL, NULL); // ssbos
+                     &params,
+                     outputs);
 
    lp_build_mask_end(&mask);
 
@@ -833,21 +834,20 @@ BuilderSWR::CompileVS(struct swr_context *ctx, swr_jit_vs_key &key)
    uint32_t vectorWidth = mVWidth;
 #endif
 
+   struct lp_build_tgsi_params params = {};
+   params.type = lp_type_float_vec(32, 32 * vectorWidth);
+   params.consts_ptr = wrap(consts_ptr);
+   params.const_sizes_ptr = wrap(const_sizes_ptr);
+   params.system_values = &system_values;
+   params.inputs = inputs;
+   params.context_ptr = wrap(hPrivateData);
+   params.sampler = sampler;
+   params.info = &swr_vs->info.base;
+
    lp_build_tgsi_soa(gallivm,
                      swr_vs->pipe.tokens,
-                     lp_type_float_vec(32, 32 * vectorWidth),
-                     NULL, // mask
-                     wrap(consts_ptr),
-                     wrap(const_sizes_ptr),
-                     &system_values,
-                     inputs,
-                     outputs,
-                     wrap(hPrivateData), // (sampler context)
-                     NULL, // thread data
-                     sampler, // sampler
-                     &swr_vs->info.base,
-                     NULL, // geometry shader face
-                     NULL, NULL); // ssbos
+                     &params,
+                     outputs);
 
    sampler->destroy(sampler);
 
@@ -1324,21 +1324,21 @@ BuilderSWR::CompileFS(struct swr_context *ctx, swr_jit_fs_key &key)
       uses_mask = true;
    }
 
+   struct lp_build_tgsi_params params = {};
+   params.type = lp_type_float_vec(32, 32 * 8);
+   params.mask = uses_mask ? &mask : NULL;
+   params.consts_ptr = wrap(consts_ptr);
+   params.const_sizes_ptr = wrap(const_sizes_ptr);
+   params.system_values = &system_values;
+   params.inputs = inputs;
+   params.context_ptr = wrap(hPrivateData);
+   params.sampler = sampler;
+   params.info = &swr_fs->info.base;
+
    lp_build_tgsi_soa(gallivm,
                      swr_fs->pipe.tokens,
-                     lp_type_float_vec(32, 32 * 8),
-                     uses_mask ? &mask : NULL, // mask
-                     wrap(consts_ptr),
-                     wrap(const_sizes_ptr),
-                     &system_values,
-                     inputs,
-                     outputs,
-                     wrap(hPrivateData),
-                     NULL, // thread data
-                     sampler, // sampler
-                     &swr_fs->info.base,
-                     NULL, // geometry shader face
-                     NULL, NULL); //ssbos
+                     &params,
+                     outputs);
 
    sampler->destroy(sampler);
 

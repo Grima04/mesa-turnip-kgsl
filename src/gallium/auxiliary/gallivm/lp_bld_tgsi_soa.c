@@ -4124,23 +4124,11 @@ static void emit_epilogue(struct lp_build_tgsi_context * bld_base)
 void
 lp_build_tgsi_soa(struct gallivm_state *gallivm,
                   const struct tgsi_token *tokens,
-                  struct lp_type type,
-                  struct lp_build_mask_context *mask,
-                  LLVMValueRef consts_ptr,
-                  LLVMValueRef const_sizes_ptr,
-                  const struct lp_bld_tgsi_system_values *system_values,
-                  const LLVMValueRef (*inputs)[TGSI_NUM_CHANNELS],
-                  LLVMValueRef (*outputs)[TGSI_NUM_CHANNELS],
-                  LLVMValueRef context_ptr,
-                  LLVMValueRef thread_data_ptr,
-                  const struct lp_build_sampler_soa *sampler,
-                  const struct tgsi_shader_info *info,
-                  const struct lp_build_tgsi_gs_iface *gs_iface,
-                  LLVMValueRef ssbo_ptr,
-                  LLVMValueRef ssbo_sizes_ptr)
+                  const struct lp_build_tgsi_params *params,
+                  LLVMValueRef (*outputs)[TGSI_NUM_CHANNELS])
 {
    struct lp_build_tgsi_soa_context bld;
-
+   struct lp_type type = params->type;
    struct lp_type res_type;
 
    assert(type.length <= LP_MAX_VECTOR_LENGTH);
@@ -4173,25 +4161,25 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
       int64_type.width *= 2;
       lp_build_context_init(&bld.bld_base.int64_bld, gallivm, int64_type);
    }
-   bld.mask = mask;
-   bld.inputs = inputs;
+   bld.mask = params->mask;
+   bld.inputs = params->inputs;
    bld.outputs = outputs;
-   bld.consts_ptr = consts_ptr;
-   bld.const_sizes_ptr = const_sizes_ptr;
-   bld.ssbo_ptr = ssbo_ptr;
-   bld.ssbo_sizes_ptr = ssbo_sizes_ptr;
-   bld.sampler = sampler;
-   bld.bld_base.info = info;
-   bld.indirect_files = info->indirect_files;
-   bld.context_ptr = context_ptr;
-   bld.thread_data_ptr = thread_data_ptr;
+   bld.consts_ptr = params->consts_ptr;
+   bld.const_sizes_ptr = params->const_sizes_ptr;
+   bld.ssbo_ptr = params->ssbo_ptr;
+   bld.ssbo_sizes_ptr = params->ssbo_sizes_ptr;
+   bld.sampler = params->sampler;
+   bld.bld_base.info = params->info;
+   bld.indirect_files = params->info->indirect_files;
+   bld.context_ptr = params->context_ptr;
+   bld.thread_data_ptr = params->thread_data_ptr;
 
    /*
     * If the number of temporaries is rather large then we just
     * allocate them as an array right from the start and treat
     * like indirect temporaries.
     */
-   if (info->file_max[TGSI_FILE_TEMPORARY] >= LP_MAX_INLINED_TEMPS) {
+   if (params->info->file_max[TGSI_FILE_TEMPORARY] >= LP_MAX_INLINED_TEMPS) {
       bld.indirect_files |= (1 << TGSI_FILE_TEMPORARY);
    }
    /*
@@ -4200,7 +4188,7 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
     * a dynamically allocated array.
     */
    bld.use_immediates_array =
-         (info->file_max[TGSI_FILE_IMMEDIATE] >= LP_MAX_INLINED_IMMEDIATES);
+         (params->info->file_max[TGSI_FILE_IMMEDIATE] >= LP_MAX_INLINED_IMMEDIATES);
    if (bld.use_immediates_array) {
       bld.indirect_files |= (1 << TGSI_FILE_IMMEDIATE);
    }
@@ -4284,7 +4272,7 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.bld_base.op_actions[TGSI_OPCODE_ATOMIMIN].emit = atomic_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_ATOMIMAX].emit = atomic_emit;
 
-   if (gs_iface) {
+   if (params->gs_iface) {
       /* There's no specific value for this because it should always
        * be set, but apps using ext_geometry_shader4 quite often
        * were forgetting so we're using MAX_VERTEX_VARYING from
@@ -4294,13 +4282,13 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
 
       /* inputs are always indirect with gs */
       bld.indirect_files |= (1 << TGSI_FILE_INPUT);
-      bld.gs_iface = gs_iface;
+      bld.gs_iface = params->gs_iface;
       bld.bld_base.emit_fetch_funcs[TGSI_FILE_INPUT] = emit_fetch_gs_input;
       bld.bld_base.op_actions[TGSI_OPCODE_EMIT].emit = emit_vertex;
       bld.bld_base.op_actions[TGSI_OPCODE_ENDPRIM].emit = end_primitive;
 
       max_output_vertices =
-            info->properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES];
+         params->info->properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES];
       if (!max_output_vertices)
          max_output_vertices = 32;
 
@@ -4311,7 +4299,7 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
 
    lp_exec_mask_init(&bld.exec_mask, &bld.bld_base.int_bld);
 
-   bld.system_values = *system_values;
+   bld.system_values = *params->system_values;
 
    lp_build_tgsi_llvm(&bld.bld_base, tokens);
 
