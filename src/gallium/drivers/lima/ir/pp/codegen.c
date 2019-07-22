@@ -545,8 +545,8 @@ static void ppir_codegen_encode_branch(ppir_node *node, void *code)
    branch = ppir_node_to_branch(node);
 
    b->branch.unknown_0 = 0x0;
-   b->branch.arg0_source = ppir_target_get_src_reg_index(&branch->src[0]);
-   b->branch.arg1_source = ppir_target_get_src_reg_index(&branch->src[1]);
+   b->branch.arg0_source = get_scl_reg_index(&branch->src[0], 0);
+   b->branch.arg1_source = get_scl_reg_index(&branch->src[1], 0);
    b->branch.cond_gt = branch->cond_gt;
    b->branch.cond_eq = branch->cond_eq;
    b->branch.cond_lt = branch->cond_lt;
