@@ -468,7 +468,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
       /* Dataport doesn't support compression, and we can't resolve an MCS
        * compressed surface.  (Buffer images may have sample count of 0.)
        */
-      supported &= sample_count <= 1;
+      supported &= sample_count == 0;
 
       /* TODO: allow formats that only support untyped reads? */
       supported &= isl_format_supports_typed_reads(devinfo, format) &&
