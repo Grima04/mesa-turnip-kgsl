@@ -256,6 +256,7 @@ ir3_compiler = executable(
   dependencies : [
     dep_thread,
     idep_nir,
+    idep_mesautil,
   ],
   link_with : [
     libfreedreno,
@@ -263,7 +264,6 @@ ir3_compiler = executable(
     libfreedreno_ir3,
     libgallium,
     libglsl_standalone,
-    libmesa_util,
   ],
   build_by_default : with_tools.contains('freedreno'),
   install : with_tools.contains('freedreno'),

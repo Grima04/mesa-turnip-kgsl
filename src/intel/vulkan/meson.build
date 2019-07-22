@@ -194,10 +194,11 @@ libvulkan_intel = shared_library(
   link_whole : [libanv_common, libanv_gen_libs],
   link_with : [
     libintel_compiler, libintel_common, libintel_dev, libisl, libblorp,
-    libvulkan_wsi, libmesa_util,
+    libvulkan_wsi,
   ],
   dependencies : [
-    dep_thread, dep_dl, dep_m, anv_deps, idep_nir, idep_genxml, idep_vulkan_util
+    dep_thread, dep_dl, dep_m, anv_deps,
+    idep_nir, idep_genxml, idep_vulkan_util, idep_mesautil,
   ],
   c_args : anv_flags,
   link_args : ['-Wl,--build-id=sha1', ld_args_bsymbolic, ld_args_gc_sections],
@@ -214,10 +215,11 @@ if with_tests
     link_whole : libanv_common,
     link_with : [
       libanv_gen_libs, libintel_compiler, libintel_common, libintel_dev,
-      libisl, libblorp, libvulkan_wsi, libmesa_util,
+      libisl, libblorp, libvulkan_wsi,
     ],
     dependencies : [
-      dep_thread, dep_dl, dep_m, anv_deps, idep_nir, idep_vulkan_util
+      dep_thread, dep_dl, dep_m, anv_deps,
+      idep_nir, idep_vulkan_util, idep_mesautil,
     ],
     c_args : anv_flags,
   )

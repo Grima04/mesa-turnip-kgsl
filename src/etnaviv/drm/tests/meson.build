@@ -30,8 +30,9 @@ etnaviv_cmd_stream_test = executable(
   dependencies : [
     dep_libdrm,
     dep_valgrind,
+    idep_mesautil,
   ],
-  link_with : [libetnaviv_drm, libmesa_util],
+  link_with : libetnaviv_drm,
   install: false,
 )
 
@@ -47,7 +48,8 @@ etnaviv_bo_cache_test = executable(
   dependencies : [
     dep_libdrm,
     dep_valgrind,
+    idep_mesautil,
   ],
-  link_with : [libetnaviv_drm, libmesa_util],
+  link_with : libetnaviv_drm,
   install: false,
 )

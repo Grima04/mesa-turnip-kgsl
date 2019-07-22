@@ -24,9 +24,8 @@ test(
   executable(
     'fast_urem_by_const_test',
     'fast_urem_by_const_test.cpp',
-    dependencies : [dep_thread, dep_dl, idep_gtest],
+    dependencies : [dep_thread, dep_dl, idep_gtest, idep_mesautil],
     include_directories : inc_common,
-    link_with : [libmesa_util],
   ),
   suite : ['util'],
 )

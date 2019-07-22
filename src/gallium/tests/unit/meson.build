@@ -24,8 +24,8 @@ foreach t : ['pipe_barrier_test', 'u_cache_test', 'u_half_test',
     t,
     '@0@.c'.format(t),
     include_directories : inc_common,
-    link_with : [libgallium, libmesa_util],
-    dependencies : [dep_thread],
+    link_with : libgallium,
+    dependencies : [idep_mesautil, dep_thread],
     install : false,
   )
   # u_cache_test is slow, and translate_test fails.

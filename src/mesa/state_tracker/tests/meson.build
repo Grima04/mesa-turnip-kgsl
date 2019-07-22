@@ -33,9 +33,8 @@ test(
     include_directories : inc_common,
     link_with : [
       libmesa_st_test_common, libmesa_gallium, libglapi, libgallium,
-      libmesa_util,
     ],
-    dependencies : dep_thread,
+    dependencies : [dep_thread, idep_mesautil],
   ),
   suite : ['st_mesa'],
 )
@@ -48,9 +47,8 @@ test(
     include_directories : inc_common,
     link_with : [
       libmesa_st_test_common, libmesa_gallium, libglapi, libgallium,
-      libmesa_util,
     ],
-    dependencies : [idep_gtest, dep_thread],
+    dependencies : [idep_mesautil, idep_gtest, dep_thread],
   ),
   suite : ['st_mesa'],
 )
@@ -63,9 +61,8 @@ test(
     include_directories : inc_common,
     link_with : [
       libmesa_st_test_common, libmesa_gallium, libglapi, libgallium,
-      libmesa_util,
     ],
-    dependencies : [idep_gtest, dep_thread]
+    dependencies : [idep_mesautil, idep_gtest, dep_thread],
   ),
   suite : ['st_mesa'],
 )

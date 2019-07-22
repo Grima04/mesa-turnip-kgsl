@@ -267,8 +267,7 @@ if with_tests
       files('tests/control_flow_tests.cpp'),
       cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
       include_directories : [inc_common],
-      dependencies : [dep_thread, idep_gtest, idep_nir],
-      link_with : libmesa_util,
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
     suite : ['compiler', 'nir'],
   )
@@ -280,8 +279,7 @@ if with_tests
       files('tests/vars_tests.cpp'),
       cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
       include_directories : [inc_common],
-      dependencies : [dep_thread, idep_gtest, idep_nir],
-      link_with : libmesa_util,
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
     suite : ['compiler', 'nir'],
   )
@@ -301,8 +299,7 @@ if with_tests
       files('tests/negative_equal_tests.cpp'),
       c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
       include_directories : [inc_common],
-      dependencies : [dep_thread, idep_gtest, idep_nir],
-      link_with : libmesa_util,
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     )
   )
 
@@ -313,8 +310,7 @@ if with_tests
       files('tests/comparison_pre_tests.cpp'),
       c_args : [c_vis_args, c_msvc_compat_args, no_override_init_args],
       include_directories : [inc_common],
-      dependencies : [dep_thread, idep_gtest, idep_nir],
-      link_with : libmesa_util,
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     )
   )
 endif

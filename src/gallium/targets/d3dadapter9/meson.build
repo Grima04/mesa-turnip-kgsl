@@ -48,12 +48,12 @@ libgallium_nine = shared_library(
   link_args : [ld_args_gc_sections, gallium_nine_ld_args],
   link_depends : gallium_nine_link_depends,
   link_with : [
-    libgalliumvl_stub, libgallium, libnine_st, libmesa_util,
+    libgalliumvl_stub, libgallium, libnine_st,
     libpipe_loader_static, libws_null, libwsw, libswdri,
     libswkmsdri, libnir,
   ],
   dependencies : [
-    dep_selinux, dep_libdrm, dep_llvm, dep_thread, idep_xmlconfig,
+    dep_selinux, dep_libdrm, dep_llvm, dep_thread, idep_xmlconfig, idep_mesautil,
     driver_swrast, driver_r300, driver_r600, driver_radeonsi, driver_nouveau,
     driver_i915, driver_svga, driver_iris
   ],

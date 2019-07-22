@@ -58,8 +58,8 @@ if install_intel_gpu_tests
         '-DGEN_VERSIONx10=@0@'.format(g[0])
       ],
       include_directories : [inc_common, inc_intel],
-      link_with : [libintel_dev, libmesa_util],
-      dependencies : [dep_libdrm, dep_thread, idep_gtest, idep_genxml],
+      link_with : [libintel_dev],
+      dependencies : [dep_libdrm, dep_thread, idep_gtest, idep_genxml, idep_mesautil],
       install : install_intel_gpu_tests,
     )
   endforeach
@@ -85,7 +85,8 @@ if with_tests
       'genxml_test',
       ['tests/genxml_test.c', gentest_pack],
       include_directories : [inc_common, inc_intel],
-      link_with : [libintel_common, libmesa_util],
+      dependencies : idep_mesautil,
+      link_with : libintel_common,
       c_args : [
         '-DGENXML_PATH="@0@"'.format(genxml_path)
       ],
