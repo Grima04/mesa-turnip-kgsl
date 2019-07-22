@@ -725,30 +725,34 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 	sscreen->ws->buffer_set_metadata(tex->buffer.buf, &md);
 }
 
-static void si_get_opaque_metadata(struct si_screen *sscreen,
-				   struct si_texture *tex,
-				   struct radeon_bo_metadata *md)
+static void si_read_tex_bo_metadata(struct si_screen *sscreen,
+				    struct si_texture *tex,
+				    struct radeon_bo_metadata *md)
 {
 	uint32_t *desc = &md->metadata[2];
 
-	if (sscreen->info.chip_class < GFX8)
+	if (md->size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
+	    md->metadata[0] == 0 || /* invalid version number */
+	    md->metadata[1] != si_get_bo_metadata_word1(sscreen)) /* invalid PCI ID */
 		return;
 
-	/* Return if DCC is enabled. The texture should be set up with it
-	 * already.
-	 */
-	if (md->size_metadata >= 10 * 4 && /* at least 2(header) + 8(desc) dwords */
-	    md->metadata[0] != 0 &&
-	    md->metadata[1] == si_get_bo_metadata_word1(sscreen) &&
+	if (sscreen->info.chip_class >= GFX8 &&
 	    G_008F28_COMPRESSION_EN(desc[6])) {
-		tex->dcc_offset = (uint64_t)desc[7] << 8;
+		/* Read DCC information.
+		 *
+		 * Some state trackers don't set the SCANOUT flag when
+		 * importing displayable images, which affects PIPE_ALIGNED
+		 * and RB_ALIGNED, so we need to recover them here.
+		 */
+		switch (sscreen->info.chip_class) {
+		case GFX8:
+			tex->dcc_offset = (uint64_t)desc[7] << 8;
+			break;
 
-		if (sscreen->info.chip_class >= GFX9) {
-			/* Fix up parameters for displayable DCC. Some state
-			 * trackers don't set the SCANOUT flag when importing
-			 * displayable images, so we have to recover the correct
-			 * parameters here.
-			 */
+		case GFX9:
+			tex->dcc_offset =
+				((uint64_t)desc[7] << 8) |
+				((uint64_t)G_008F24_META_DATA_ADDRESS(desc[5]) << 40);
 			tex->surface.u.gfx9.dcc.pipe_aligned =
 				G_008F24_META_PIPE_ALIGNED(desc[5]);
 			tex->surface.u.gfx9.dcc.rb_aligned =
@@ -758,14 +762,26 @@ static void si_get_opaque_metadata(struct si_screen *sscreen,
 			if (!tex->surface.u.gfx9.dcc.pipe_aligned &&
 			    !tex->surface.u.gfx9.dcc.rb_aligned)
 				tex->surface.is_displayable = true;
-		}
-		return;
-	}
+			break;
 
-	/* Disable DCC. These are always set by texture_from_handle and must
-	 * be cleared here.
-	 */
-	tex->dcc_offset = 0;
+		case GFX10:
+			tex->dcc_offset =
+				((uint64_t)G_00A018_META_DATA_ADDRESS_LO(desc[6]) << 8) |
+				((uint64_t)desc[7] << 16);
+			tex->surface.u.gfx9.dcc.pipe_aligned =
+				G_00A018_META_PIPE_ALIGNED(desc[6]);
+			break;
+
+		default:
+			assert(0);
+			return;
+		}
+	} else {
+		/* Disable DCC. dcc_offset is always set by texture_from_handle
+		 * and must be cleared here.
+		 */
+		tex->dcc_offset = 0;
+	}
 }
 
 static bool si_has_displayable_dcc(struct si_texture *tex)
@@ -1691,7 +1707,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 	tex->buffer.b.is_shared = true;
 	tex->buffer.external_usage = usage;
 
-	si_get_opaque_metadata(sscreen, tex, &metadata);
+	si_read_tex_bo_metadata(sscreen, tex, &metadata);
 
 	/* Displayable DCC requires an explicit flush. */
 	if (dedicated &&
