@@ -725,7 +725,7 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 	sscreen->ws->buffer_set_metadata(tex->buffer.buf, &md);
 }
 
-static void si_read_tex_bo_metadata(struct si_screen *sscreen,
+static bool si_read_tex_bo_metadata(struct si_screen *sscreen,
 				    struct si_texture *tex,
 				    struct radeon_bo_metadata *md)
 {
@@ -733,8 +733,36 @@ static void si_read_tex_bo_metadata(struct si_screen *sscreen,
 
 	if (md->size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
 	    md->metadata[0] == 0 || /* invalid version number */
-	    md->metadata[1] != si_get_bo_metadata_word1(sscreen)) /* invalid PCI ID */
-		return;
+	    md->metadata[1] != si_get_bo_metadata_word1(sscreen)) /* invalid PCI ID */ {
+		/* Don't report an error if the texture comes from an incompatible driver,
+		 * but this might not work.
+		 */
+		return true;
+	}
+
+	/* Validate that sample counts and the number of mipmap levels match. */
+	unsigned last_level = G_008F1C_LAST_LEVEL(desc[3]);
+	unsigned type = G_008F1C_TYPE(desc[3]);
+
+	if (type == V_008F1C_SQ_RSRC_IMG_2D_MSAA ||
+	    type == V_008F1C_SQ_RSRC_IMG_2D_MSAA_ARRAY) {
+		unsigned log_samples =
+			util_logbase2(MAX2(1, tex->buffer.b.b.nr_storage_samples));
+
+		if (last_level != log_samples) {
+			fprintf(stderr, "radeonsi: invalid MSAA texture import, "
+					"metadata has log2(samples) = %u, the caller set %u\n",
+				last_level, log_samples);
+			return false;
+		}
+	} else {
+		if (last_level != tex->buffer.b.b.last_level) {
+			fprintf(stderr, "radeonsi: invalid mipmapped texture import, "
+					"metadata has last_level = %u, the caller set %u\n",
+				last_level, tex->buffer.b.b.last_level);
+			return false;
+		}
+	}
 
 	if (sscreen->info.chip_class >= GFX8 &&
 	    G_008F28_COMPRESSION_EN(desc[6])) {
@@ -774,7 +802,7 @@ static void si_read_tex_bo_metadata(struct si_screen *sscreen,
 
 		default:
 			assert(0);
-			return;
+			return false;
 		}
 	} else {
 		/* Disable DCC. dcc_offset is always set by texture_from_handle
@@ -782,6 +810,8 @@ static void si_read_tex_bo_metadata(struct si_screen *sscreen,
 		 */
 		tex->dcc_offset = 0;
 	}
+
+	return true;
 }
 
 static bool si_has_displayable_dcc(struct si_texture *tex)
@@ -1707,7 +1737,10 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 	tex->buffer.b.is_shared = true;
 	tex->buffer.external_usage = usage;
 
-	si_read_tex_bo_metadata(sscreen, tex, &metadata);
+	if (!si_read_tex_bo_metadata(sscreen, tex, &metadata)) {
+		si_texture_reference(&tex, NULL);
+		return NULL;
+	}
 
 	/* Displayable DCC requires an explicit flush. */
 	if (dedicated &&
