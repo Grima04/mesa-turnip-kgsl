@@ -1688,7 +1688,7 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer,
 		if (ds_resolve_clear)
 			ds_att = subpass->ds_resolve_attachment;
 
-		if (ds_att->attachment == VK_ATTACHMENT_UNUSED)
+		if (!ds_att || ds_att->attachment == VK_ATTACHMENT_UNUSED)
 			return;
 
 		VkImageLayout image_layout = ds_att->layout;
