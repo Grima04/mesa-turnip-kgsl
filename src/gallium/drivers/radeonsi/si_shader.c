@@ -6771,7 +6771,7 @@ static void si_build_wrapper_function(struct si_shader_context *ctx,
 	initial_num_out_sgpr = num_out_sgpr;
 
 	/* Now chain the parts. */
-	LLVMValueRef ret;
+	LLVMValueRef ret = NULL;
 	for (unsigned part = 0; part < num_parts; ++part) {
 		LLVMValueRef in[48];
 		LLVMTypeRef ret_type;
