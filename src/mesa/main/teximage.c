@@ -2979,6 +2979,9 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
 
    internalFormat = override_internal_format(internalFormat, width, height);
 
+   if (!texObj)
+      texObj = _mesa_get_current_tex_object(ctx, target);
+
    if (!no_error) {
       /* target error checking */
       if (!legal_teximage_target(ctx, dims, target)) {
@@ -3001,6 +3004,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
             return;
       }
    }
+   assert(texObj);
 
    /* Here we convert a cpal compressed image into a regular glTexImage2D
     * call by decompressing the texture.  If we really want to support cpal
@@ -3160,10 +3164,7 @@ teximage_err(struct gl_context *ctx, GLboolean compressed, GLuint dims,
              GLint border, GLenum format, GLenum type,
              GLsizei imageSize, const GLvoid *pixels)
 {
-   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
-   assert(texObj);
-
-   teximage(ctx, compressed, dims, texObj, target, level, internalFormat, width, height,
+   teximage(ctx, compressed, dims, NULL, target, level, internalFormat, width, height,
             depth, border, format, type, imageSize, pixels, false);
 }
 
@@ -3175,10 +3176,7 @@ teximage_no_error(struct gl_context *ctx, GLboolean compressed, GLuint dims,
                   GLint border, GLenum format, GLenum type,
                   GLsizei imageSize, const GLvoid *pixels)
 {
-   struct gl_texture_object* texObj = _mesa_get_current_tex_object(ctx, target);
-   assert(texObj);
-
-   teximage(ctx, compressed, dims, texObj, target, level, internalFormat, width, height,
+   teximage(ctx, compressed, dims, NULL, target, level, internalFormat, width, height,
             depth, border, format, type, imageSize, pixels, true);
 }
 
