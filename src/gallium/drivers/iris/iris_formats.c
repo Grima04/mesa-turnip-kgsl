@@ -470,9 +470,8 @@ iris_is_format_supported(struct pipe_screen *pscreen,
        */
       supported &= sample_count == 0;
 
-      /* TODO: allow formats that only support untyped reads? */
-      supported &= isl_format_supports_typed_reads(devinfo, format) &&
-                   isl_format_supports_typed_writes(devinfo, format);
+      supported &= isl_format_supports_typed_writes(devinfo, format);
+      supported &= isl_has_matching_typed_storage_image_format(devinfo, format);
    }
 
    if (usage & PIPE_BIND_SAMPLER_VIEW) {
