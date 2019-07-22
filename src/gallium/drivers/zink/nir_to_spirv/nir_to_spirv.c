@@ -35,7 +35,6 @@ struct ntv_context {
    SpvId GLSL_std_450;
 
    gl_shader_stage stage;
-   int var_location;
 
    SpvId ubos[128];
    size_t num_ubos;
@@ -234,11 +233,13 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      if (var->data.location >= VARYING_SLOT_VAR0 ||
-          (var->data.location >= VARYING_SLOT_COL0 &&
-           var->data.location <= VARYING_SLOT_TEX7)) {
+      if (var->data.location >= VARYING_SLOT_VAR0)
          spirv_builder_emit_location(&ctx->builder, var_id,
-                                     ctx->var_location++);
+                                     var->data.location - VARYING_SLOT_VAR0);
+      else if (var->data.location >= VARYING_SLOT_COL0 &&
+               var->data.location <= VARYING_SLOT_TEX7) {
+         spirv_builder_emit_location(&ctx->builder, var_id,
+                                     var->data.location);
       } else {
          switch (var->data.location) {
          case VARYING_SLOT_POS:
@@ -286,11 +287,13 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
 
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
-      if (var->data.location >= VARYING_SLOT_VAR0 ||
-          (var->data.location >= VARYING_SLOT_COL0 &&
-           var->data.location <= VARYING_SLOT_TEX7)) {
+      if (var->data.location >= VARYING_SLOT_VAR0)
          spirv_builder_emit_location(&ctx->builder, var_id,
-                                     ctx->var_location++);
+                                     var->data.location - VARYING_SLOT_VAR0);
+      else if (var->data.location >= VARYING_SLOT_COL0 &&
+               var->data.location <= VARYING_SLOT_TEX7) {
+         spirv_builder_emit_location(&ctx->builder, var_id,
+                                     var->data.location);
       } else {
          switch (var->data.location) {
          case VARYING_SLOT_POS:
