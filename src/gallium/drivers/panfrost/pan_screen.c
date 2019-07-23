@@ -3,6 +3,7 @@
  * Copyright (C) 2014 Broadcom
  * Copyright (C) 2018 Alyssa Rosenzweig
  * Copyright (C) 2019 Collabora, Ltd.
+ * Copyright (C) 2012 Rob Clark <robclark@freedesktop.org>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -462,6 +463,74 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         return true;
 }
 
+static int
+panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
+                enum pipe_compute_cap param, void *ret)
+{
+	const char * const ir = "panfrost";
+
+	if (!(pan_debug & PAN_DBG_DEQP))
+		return 0;
+
+#define RET(x) do {                  \
+   if (ret)                          \
+      memcpy(ret, x, sizeof(x));     \
+   return sizeof(x);                 \
+} while (0)
+
+	switch (param) {
+	case PIPE_COMPUTE_CAP_ADDRESS_BITS:
+                /* TODO: We'll want 64-bit pointers soon */
+		RET((uint32_t []){ 32 });
+
+	case PIPE_COMPUTE_CAP_IR_TARGET:
+		if (ret)
+			sprintf(ret, "%s", ir);
+		return strlen(ir) * sizeof(char);
+
+	case PIPE_COMPUTE_CAP_GRID_DIMENSION:
+		RET((uint64_t []) { 3 });
+
+	case PIPE_COMPUTE_CAP_MAX_GRID_SIZE:
+		RET(((uint64_t []) { 65535, 65535, 65535 }));
+
+	case PIPE_COMPUTE_CAP_MAX_BLOCK_SIZE:
+		RET(((uint64_t []) { 1024, 1024, 64 }));
+
+	case PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK:
+		RET((uint64_t []) { 1024 });
+
+	case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
+		RET((uint64_t []) { 1024*1024*512 /* Maybe get memory */ });
+
+	case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
+		RET((uint64_t []) { 32768 });
+
+	case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
+	case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
+		RET((uint64_t []) { 4096 });
+
+	case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
+		RET((uint64_t []) { 1024*1024*512 /* Maybe get memory */ });
+
+	case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
+		RET((uint32_t []) { 800 /* MHz -- TODO */ });
+
+	case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
+		RET((uint32_t []) { 9999 });  // TODO
+
+	case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
+		RET((uint32_t []) { 1 }); // TODO
+
+	case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
+		RET((uint32_t []) { 32 });  // TODO
+
+	case PIPE_COMPUTE_CAP_MAX_VARIABLE_THREADS_PER_BLOCK:
+		RET((uint64_t []) { 1024 }); // TODO
+	}
+
+	return 0;
+}
 
 static void
 panfrost_destroy_screen(struct pipe_screen *pscreen)
@@ -565,6 +634,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.get_device_vendor = panfrost_get_device_vendor;
         screen->base.get_param = panfrost_get_param;
         screen->base.get_shader_param = panfrost_get_shader_param;
+        screen->base.get_compute_param = panfrost_get_compute_param;
         screen->base.get_paramf = panfrost_get_paramf;
         screen->base.get_timestamp = panfrost_get_timestamp;
         screen->base.is_format_supported = panfrost_is_format_supported;
