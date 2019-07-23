@@ -2053,6 +2053,11 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 			return load_tess_varyings(ctx, instr, false);
 		}
 
+		if (ctx->stage == MESA_SHADER_FRAGMENT &&
+		    var->data.fb_fetch_output &&
+		    ctx->abi->emit_fbfetch)
+			return ctx->abi->emit_fbfetch(ctx->abi);
+
 		for (unsigned chan = comp; chan < ve + comp; chan++) {
 			if (indir_index) {
 				unsigned count = glsl_count_attribute_slots(

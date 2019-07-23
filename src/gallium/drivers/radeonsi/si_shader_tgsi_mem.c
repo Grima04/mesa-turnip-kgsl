@@ -1698,11 +1698,8 @@ static void si_llvm_emit_txqs(
 	emit_data->output[emit_data->chan] = samples;
 }
 
-static void si_llvm_emit_fbfetch(const struct lp_build_tgsi_action *action,
-				 struct lp_build_tgsi_context *bld_base,
-				 struct lp_build_emit_data *emit_data)
+static LLVMValueRef si_llvm_emit_fbfetch(struct si_shader_context *ctx)
 {
-	struct si_shader_context *ctx = si_shader_context(bld_base);
 	struct ac_image_args args = {};
 	LLVMValueRef ptr, image, fmask;
 
@@ -1756,8 +1753,23 @@ static void si_llvm_emit_fbfetch(const struct lp_build_tgsi_action *action,
 		args.dim = ctx->shader->key.mono.u.ps.fbfetch_layered ?
 			ac_image_2darray : ac_image_2d;
 
-	emit_data->output[emit_data->chan] =
-		ac_build_image_opcode(&ctx->ac, &args);
+	return ac_build_image_opcode(&ctx->ac, &args);
+}
+
+static void si_tgsi_emit_fbfetch(const struct lp_build_tgsi_action *action,
+				 struct lp_build_tgsi_context *bld_base,
+				 struct lp_build_emit_data *emit_data)
+{
+	struct si_shader_context *ctx = si_shader_context(bld_base);
+
+	emit_data->output[emit_data->chan] = si_llvm_emit_fbfetch(ctx);
+}
+
+LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi)
+{
+	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+
+	return si_llvm_emit_fbfetch(ctx);
 }
 
 /**
@@ -1783,7 +1795,7 @@ void si_shader_context_init_mem(struct si_shader_context *ctx)
 	bld_base->op_actions[TGSI_OPCODE_LODQ].emit = build_tex_intrinsic;
 	bld_base->op_actions[TGSI_OPCODE_TXQS].emit = si_llvm_emit_txqs;
 
-	bld_base->op_actions[TGSI_OPCODE_FBFETCH].emit = si_llvm_emit_fbfetch;
+	bld_base->op_actions[TGSI_OPCODE_FBFETCH].emit = si_tgsi_emit_fbfetch;
 
 	bld_base->op_actions[TGSI_OPCODE_LOAD].emit = load_emit;
 	bld_base->op_actions[TGSI_OPCODE_STORE].emit = store_emit;
