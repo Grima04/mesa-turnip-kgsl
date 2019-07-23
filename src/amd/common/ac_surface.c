@@ -982,7 +982,6 @@ gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib,
 	/* TODO: We could allow some of these: */
 	sin.forbiddenBlock.micro = 1; /* don't allow the 256B swizzle modes */
 	sin.forbiddenBlock.var = 1; /* don't allow the variable-sized swizzle modes */
-	sin.forbiddenBlock.linear = 1; /* don't allow linear swizzle modes */
 	sin.bpp = in->bpp;
 	sin.width = in->width;
 	sin.height = in->height;
