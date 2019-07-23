@@ -51,12 +51,25 @@ panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
         free(cso);
 }
 
+static void
+panfrost_launch_grid(struct pipe_context *pipe,
+                const struct pipe_grid_info *info)
+{
+        printf("Launch grid %dx%dx%d ... %dx%dx%d\n",
+                        info->block[0], info->block[1], info->block[2],
+                        info->grid[0], info->grid[1], info->grid[2]);
+
+        /* Stub */
+}
+
 void
 panfrost_compute_context_init(struct pipe_context *pctx)
 {
         pctx->create_compute_state = panfrost_create_compute_state;
         pctx->bind_compute_state = panfrost_bind_compute_state;
         pctx->delete_compute_state = panfrost_delete_compute_state;
+
+        pctx->launch_grid = panfrost_launch_grid;
 }
 
 
