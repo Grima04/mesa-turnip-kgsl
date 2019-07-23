@@ -762,22 +762,12 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		/* We rely on the fact that nir_lower_samplers_as_deref has
 		 * eliminated struct dereferences.
 		 */
-		if (base_type == GLSL_TYPE_SAMPLER) {
-			if (variable->data.bindless) {
-				info->const_buffers_declared |= 1;
-				info->const_file_max[0] = max_slot;
-			} else {
-				info->samplers_declared |=
-					u_bit_consecutive(variable->data.binding, aoa_size);
-			}
-		} else if (base_type == GLSL_TYPE_IMAGE) {
-			if (variable->data.bindless) {
-				info->const_buffers_declared |= 1;
-				info->const_file_max[0] = max_slot;
-			} else {
-				info->images_declared |=
-					u_bit_consecutive(variable->data.binding, aoa_size);
-			}
+		if (base_type == GLSL_TYPE_SAMPLER && !variable->data.bindless) {
+			info->samplers_declared |=
+				u_bit_consecutive(variable->data.binding, aoa_size);
+		} else if (base_type == GLSL_TYPE_IMAGE && !variable->data.bindless) {
+			info->images_declared |=
+				u_bit_consecutive(variable->data.binding, aoa_size);
 		} else if (base_type != GLSL_TYPE_ATOMIC_UINT) {
 			info->const_buffers_declared |= 1;
 			info->const_file_max[0] = max_slot;
