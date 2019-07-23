@@ -98,6 +98,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_RENDER_TARGETS:
                 return is_deqp ? 4 : 1;
 
+
         case PIPE_CAP_OCCLUSION_QUERY:
                 return 1;
         case PIPE_CAP_QUERY_TIME_ELAPSED:
@@ -133,6 +134,13 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return is_deqp ? 16 : 0;
 
         case PIPE_CAP_CUBE_MAP_ARRAY:
+                return is_deqp;
+
+        /* For faking GLES 3.1 for dEQP-GLES31 */
+        case PIPE_CAP_TEXTURE_MULTISAMPLE:
+        case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTERS:
+        case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS:
+        case PIPE_CAP_IMAGE_LOAD_FORMATTED:
                 return is_deqp;
 
         /* TODO: Where does this req come from in practice? */
@@ -230,6 +238,8 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
         }
 
+        bool is_deqp = pan_debug & PAN_DBG_DEQP;
+
         /* this is probably not totally correct.. but it's a start: */
         switch (param) {
         case PIPE_SHADER_CAP_SCALAR_ISA:
@@ -307,10 +317,12 @@ panfrost_get_shader_param(struct pipe_screen *screen,
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
         case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-        case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
-        case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
+                return is_deqp;
+
+        case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
+        case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
                 return 0;
 
         default:
