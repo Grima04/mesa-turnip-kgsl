@@ -1013,7 +1013,8 @@ radv_shader_variant_create(struct radv_device *device,
 			return NULL;
 		}
 
-		if (device->keep_shader_info) {
+		if (device->keep_shader_info ||
+		    (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS)) {
 			const char *disasm_data;
 			size_t disasm_size;
 			if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm_data, &disasm_size)) {
