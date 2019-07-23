@@ -95,6 +95,16 @@ static void gather_intrinsic_load_deref_output_info(const nir_shader *nir,
 	assert(var && var->data.mode == nir_var_shader_out);
 
 	switch (nir->info.stage) {
+	case MESA_SHADER_TESS_CTRL:
+		if (var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+		    var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)
+			info->reads_tessfactor_outputs = true;
+		else if (var->data.patch)
+			info->reads_perpatch_outputs = true;
+		else
+			info->reads_pervertex_outputs = true;
+		break;
+
 	case MESA_SHADER_FRAGMENT:
 		if (var->data.fb_fetch_output)
 			info->uses_fbfetch = true;
@@ -662,20 +672,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 				else
 					info->writes_position = true;
 				break;
-			}
-
-			if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
-				switch (semantic_name) {
-				case TGSI_SEMANTIC_PATCH:
-					info->reads_perpatch_outputs = true;
-				break;
-				case TGSI_SEMANTIC_TESSINNER:
-				case TGSI_SEMANTIC_TESSOUTER:
-					info->reads_tessfactor_outputs = true;
-				break;
-				default:
-					info->reads_pervertex_outputs = true;
-				}
 			}
 		}
 
