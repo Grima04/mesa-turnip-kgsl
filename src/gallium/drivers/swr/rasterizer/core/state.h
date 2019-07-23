@@ -1050,6 +1050,7 @@ struct SWR_RASTSTATE
     uint32_t frontWinding : 1;
     uint32_t scissorEnable : 1;
     uint32_t depthClipEnable : 1;
+    uint32_t clipEnable : 1;
     uint32_t clipHalfZ : 1;
     uint32_t pointParam : 1;
     uint32_t pointSpriteEnable : 1;

@@ -24,6 +24,8 @@
 // llvm redefines DEBUG
 #pragma push_macro("DEBUG")
 #undef DEBUG
+
+#include <rasterizer/core/state.h>
 #include "JitManager.h"
 #pragma pop_macro("DEBUG")
 
@@ -1198,6 +1200,7 @@ swr_update_derived(struct pipe_context *pipe,
          rastState->depthFormat = swr_resource(zb->texture)->swr.format;
 
       rastState->depthClipEnable = rasterizer->depth_clip_near;
+      rastState->clipEnable = rasterizer->depth_clip_near | rasterizer->depth_clip_far;
       rastState->clipHalfZ = rasterizer->clip_halfz;
 
       ctx->api.pfnSwrSetRastState(ctx->swrContext, rastState);
@@ -1272,8 +1275,8 @@ swr_update_derived(struct pipe_context *pipe,
       /* vertex buffers */
       SWR_VERTEX_BUFFER_STATE swrVertexBuffers[PIPE_MAX_ATTRIBS];
       for (UINT i = 0; i < ctx->num_vertex_buffers; i++) {
-         uint32_t size, pitch, elems, partial_inbounds;
-         uint32_t min_vertex_index;
+         uint32_t size = 0, pitch = 0, elems = 0, partial_inbounds = 0;
+         uint32_t min_vertex_index = 0;
          const uint8_t *p_data;
          struct pipe_vertex_buffer *vb = &ctx->vertex_buffer[i];
 

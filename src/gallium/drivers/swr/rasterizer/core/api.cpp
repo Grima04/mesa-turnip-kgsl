@@ -904,8 +904,8 @@ void SetupPipeline(DRAW_CONTEXT* pDC)
     };
 
 
-    // Disable clipper if viewport transform is disabled
-    if (pState->state.frontendState.vpTransformDisable)
+    // Disable clipper if viewport transform is disabled or if clipper is disabled
+    if (pState->state.frontendState.vpTransformDisable || !pState->state.rastState.clipEnable)
     {
         pState->pfnProcessPrims = pfnBinner;
 #if USE_SIMD16_FRONTEND
