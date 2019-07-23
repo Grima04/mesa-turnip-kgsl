@@ -64,7 +64,7 @@ JitManager::JitManager(uint32_t simdWidth, const char* arch, const char* core) :
     mArch(arch)
 {
     mpCurrentModule = nullptr;
-    mpExec = nullptr;
+    mpExec          = nullptr;
 
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
@@ -452,7 +452,9 @@ std::string JitManager::GetOutputDir()
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief Dump function to file.
-void JitManager::DumpToFile(Module* M, const char* fileName, llvm::AssemblyAnnotationWriter* annotater)
+void JitManager::DumpToFile(Module*                         M,
+                            const char*                     fileName,
+                            llvm::AssemblyAnnotationWriter* annotater)
 {
     if (KNOB_DUMP_SHADER_IR)
     {
@@ -669,7 +671,6 @@ void JitCache::CalcModuleCacheDir()
     mModuleCacheDir = moduleDir;
 }
 
-
 /// notifyObjectCompiled - Provides a pointer to compiled code for Module M.
 void JitCache::notifyObjectCompiled(const llvm::Module* M, llvm::MemoryBufferRef Obj)
 {
@@ -805,25 +806,25 @@ std::unique_ptr<llvm::MemoryBuffer> JitCache::getObject(const llvm::Module* M)
     return pBuf;
 }
 
-void InterleaveAssemblyAnnotater::emitInstructionAnnot(const llvm::Instruction *pInst, llvm::formatted_raw_ostream &OS)
+void InterleaveAssemblyAnnotater::emitInstructionAnnot(const llvm::Instruction*     pInst,
+                                                       llvm::formatted_raw_ostream& OS)
 {
     auto dbgLoc = pInst->getDebugLoc();
-    if(dbgLoc)
+    if (dbgLoc)
     {
         unsigned int line = dbgLoc.getLine();
-        if(line != mCurrentLineNo)
+        if (line != mCurrentLineNo)
         {
-            if(line > 0 && line <= mAssembly.size())
+            if (line > 0 && line <= mAssembly.size())
             {
                 // HACK: here we assume that OS is a formatted_raw_ostream(ods())
                 // and modify the color accordingly. We can't do the color
                 // modification on OS because formatted_raw_ostream strips
                 // the color information. The only way to fix this behavior
                 // is to patch LLVM.
-                OS << "\n; " << line << ": " << mAssembly[line-1] << "\n";
+                OS << "\n; " << line << ": " << mAssembly[line - 1] << "\n";
             }
             mCurrentLineNo = line;
         }
     }
 }
-
