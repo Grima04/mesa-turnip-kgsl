@@ -237,6 +237,11 @@ static void si_emit_cb_render_state(struct si_context *sctx)
                sx_blend_opt_epsilon |= V_028758_10BIT_FORMAT << (i * 4);
             }
             break;
+
+         case V_028C70_COLOR_5_9_9_9:
+            if (spi_format == V_028714_SPI_SHADER_FP16_ABGR)
+               sx_ps_downconvert |= V_028754_SX_RT_EXPORT_9_9_9_E5 << (i * 4);
+            break;
          }
       }
 
@@ -1414,7 +1419,8 @@ static void si_emit_db_render_state(struct si_context *sctx)
 /*
  * format translation
  */
-static uint32_t si_translate_colorformat(enum pipe_format format)
+static uint32_t si_translate_colorformat(enum chip_class chip_class,
+                                         enum pipe_format format)
 {
    const struct util_format_description *desc = util_format_description(format);
    if (!desc)
@@ -1426,6 +1432,10 @@ static uint32_t si_translate_colorformat(enum pipe_format format)
 
    if (format == PIPE_FORMAT_R11G11B10_FLOAT) /* isn't plain */
       return V_028C70_COLOR_10_11_11;
+
+   if (chip_class >= GFX10_3 &&
+       format == PIPE_FORMAT_R9G9B9E5_FLOAT) /* isn't plain */
+      return V_028C70_COLOR_5_9_9_9;
 
    if (desc->layout != UTIL_FORMAT_LAYOUT_PLAIN)
       return V_028C70_COLOR_INVALID;
@@ -2092,9 +2102,10 @@ static unsigned si_is_vertex_format_supported(struct pipe_screen *screen, enum p
    return usage;
 }
 
-static bool si_is_colorbuffer_format_supported(enum pipe_format format)
+static bool si_is_colorbuffer_format_supported(enum chip_class chip_class,
+                                               enum pipe_format format)
 {
-   return si_translate_colorformat(format) != V_028C70_COLOR_INVALID &&
+   return si_translate_colorformat(chip_class, format) != V_028C70_COLOR_INVALID &&
           si_translate_colorswap(format, false) != ~0U;
 }
 
@@ -2160,7 +2171,7 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
 
    if ((usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT |
                  PIPE_BIND_SHARED | PIPE_BIND_BLENDABLE)) &&
-       si_is_colorbuffer_format_supported(format)) {
+       si_is_colorbuffer_format_supported(sscreen->info.chip_class, format)) {
       retval |= usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT |
                          PIPE_BIND_SHARED);
       if (!util_format_is_pure_integer(format) && !util_format_is_depth_or_stencil(format))
@@ -2207,6 +2218,7 @@ static void si_choose_spi_color_formats(struct si_surface *surf, unsigned format
    case V_028C70_COLOR_4_4_4_4:
    case V_028C70_COLOR_10_11_11:
    case V_028C70_COLOR_11_11_10:
+   case V_028C70_COLOR_5_9_9_9:
    case V_028C70_COLOR_8:
    case V_028C70_COLOR_8_8:
    case V_028C70_COLOR_8_8_8_8:
@@ -2339,7 +2351,7 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
       }
    }
 
-   format = si_translate_colorformat(surf->base.format);
+   format = si_translate_colorformat(sctx->chip_class, surf->base.format);
    if (format == V_028C70_COLOR_INVALID) {
       PRINT_ERR("Invalid CB format: %d, disabling CB.\n", surf->base.format);
    }

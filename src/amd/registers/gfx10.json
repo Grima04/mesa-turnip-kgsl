@@ -89,6 +89,32 @@
     {"name": "CB_RESERVED", "value": 7}
    ]
   },
+  "CB_COLOR0_INFO__FORMAT": {
+   "entries": [
+    {"name": "COLOR_INVALID", "value": 0},
+    {"name": "COLOR_8", "value": 1},
+    {"name": "COLOR_16", "value": 2},
+    {"name": "COLOR_8_8", "value": 3},
+    {"name": "COLOR_32", "value": 4},
+    {"name": "COLOR_16_16", "value": 5},
+    {"name": "COLOR_10_11_11", "value": 6},
+    {"name": "COLOR_11_11_10", "value": 7},
+    {"name": "COLOR_10_10_10_2", "value": 8},
+    {"name": "COLOR_2_10_10_10", "value": 9},
+    {"name": "COLOR_8_8_8_8", "value": 10},
+    {"name": "COLOR_32_32", "value": 11},
+    {"name": "COLOR_16_16_16_16", "value": 12},
+    {"name": "COLOR_32_32_32_32", "value": 14},
+    {"name": "COLOR_5_6_5", "value": 16},
+    {"name": "COLOR_1_5_5_5", "value": 17},
+    {"name": "COLOR_5_5_5_1", "value": 18},
+    {"name": "COLOR_4_4_4_4", "value": 19},
+    {"name": "COLOR_8_24", "value": 20},
+    {"name": "COLOR_24_8", "value": 21},
+    {"name": "COLOR_X24_8_32_FLOAT", "value": 22},
+    {"name": "COLOR_5_9_9_9", "value": 24}
+   ]
+  },
   "CBPerfClearFilterSel": {
    "entries": [
     {"name": "CB_PERF_CLEAR_FILTER_SEL_NONCLEAR", "value": 0},
@@ -5313,7 +5339,8 @@
     {"name": "SX_RT_EXPORT_1_5_5_5", "value": 7},
     {"name": "SX_RT_EXPORT_4_4_4_4", "value": 8},
     {"name": "SX_RT_EXPORT_16_16_GR", "value": 9},
-    {"name": "SX_RT_EXPORT_16_16_AR", "value": 10}
+    {"name": "SX_RT_EXPORT_16_16_AR", "value": 10},
+    {"name": "SX_RT_EXPORT_9_9_9_E5", "value": 11}
    ]
   },
   "SX_OPT_COMB_FCN": {
@@ -17262,7 +17289,7 @@
   "CB_COLOR0_INFO": {
    "fields": [
     {"bits": [0, 1], "name": "ENDIAN"},
-    {"bits": [2, 6], "name": "FORMAT"},
+    {"bits": [2, 6], "enum_ref": "CB_COLOR0_INFO__FORMAT", "name": "FORMAT"},
     {"bits": [7, 7], "name": "LINEAR_GENERAL"},
     {"bits": [8, 10], "name": "NUMBER_TYPE"},
     {"bits": [11, 12], "name": "COMP_SWAP"},

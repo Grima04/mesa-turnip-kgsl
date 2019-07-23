@@ -495,7 +495,8 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    image[1].u.tex.last_layer = dst->target == PIPE_TEXTURE_3D ? u_minify(dst->depth0, dst_level) - 1
                                                               : (unsigned)(dst->array_size - 1);
 
-   if (src->format == PIPE_FORMAT_R9G9B9E5_FLOAT)
+   if (sctx->chip_class < GFX10_3 &&
+       src->format == PIPE_FORMAT_R9G9B9E5_FLOAT)
       image[0].format = image[1].format = PIPE_FORMAT_R32_UINT;
 
    /* SNORM8 blitting has precision issues on some chips. Use the SINT
