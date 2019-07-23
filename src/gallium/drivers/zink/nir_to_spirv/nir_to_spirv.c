@@ -235,7 +235,9 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
       if (var->data.location >= VARYING_SLOT_VAR0)
          spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.location - VARYING_SLOT_VAR0);
+                                     var->data.location -
+                                     VARYING_SLOT_VAR0 +
+                                     VARYING_SLOT_TEX0);
       else if ((var->data.location >= VARYING_SLOT_COL0 &&
                 var->data.location <= VARYING_SLOT_TEX7) ||
                var->data.location == VARYING_SLOT_BFC0 ||
@@ -291,7 +293,9 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    if (ctx->stage == MESA_SHADER_VERTEX) {
       if (var->data.location >= VARYING_SLOT_VAR0)
          spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.location - VARYING_SLOT_VAR0);
+                                     var->data.location -
+                                     VARYING_SLOT_VAR0 +
+                                     VARYING_SLOT_TEX0);
       else if ((var->data.location >= VARYING_SLOT_COL0 &&
                 var->data.location <= VARYING_SLOT_TEX7) ||
                var->data.location == VARYING_SLOT_BFC0 ||
