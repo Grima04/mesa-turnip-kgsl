@@ -94,6 +94,7 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         state->can_discard = program.can_discard;
         state->writes_point_size = program.writes_point_size;
         state->reads_point_coord = false;
+        state->helper_invocations = s->info.fs.needs_helper_invocations;
 
         /* Separate as primary uniform count is truncated */
         state->uniform_count = program.uniform_count;

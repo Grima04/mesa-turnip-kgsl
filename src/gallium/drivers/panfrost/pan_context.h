@@ -227,6 +227,9 @@ struct panfrost_shader_state {
 
         uint16_t point_sprite_mask;
         unsigned point_sprite_upper_left : 1;
+
+        /* Should we enable helper invocations */
+        bool helper_invocations;
 };
 
 /* A collection of varyings (the CSO) */

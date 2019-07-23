@@ -1132,7 +1132,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 /* Any time texturing is used, derivatives are implicitly
                  * calculated, so we need to enable helper invocations */
 
-                if (ctx->sampler_view_count[PIPE_SHADER_FRAGMENT])
+                if (variant->helper_invocations)
                         flags |= MALI_HELPER_INVOCATIONS;
 
                 ctx->fragment_shader_core.midgard1.flags = flags;
