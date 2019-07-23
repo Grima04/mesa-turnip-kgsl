@@ -92,8 +92,8 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         meta->midgard1.work_count = program.work_register_count;
 
         state->can_discard = s->info.fs.uses_discard;
-        state->writes_point_size = program.writes_point_size;
-        state->reads_point_coord = false;
+        state->writes_point_size = s->info.outputs_written & VARYING_SLOT_PSIZ;
+        state->reads_point_coord = s->info.inputs_read & VARYING_SLOT_PNTC;
         state->helper_invocations = s->info.fs.needs_helper_invocations;
 
         /* Separate as primary uniform count is truncated */
@@ -125,14 +125,10 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
                         v.index = 2;
                         v.format = MALI_R16F;
                         v.swizzle = default_vec1_swizzle;
-
-                        state->writes_point_size = true;
                 } else if (location == VARYING_SLOT_PNTC) {
                         v.index = 3;
                         v.format = MALI_RG16F;
                         v.swizzle = default_vec2_swizzle;
-
-                        state->reads_point_coord = true;
                 } else {
                         v.index = 0;
                 }

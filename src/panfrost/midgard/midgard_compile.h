@@ -88,9 +88,6 @@ typedef struct {
 
         unsigned varyings[32];
 
-        /* Boolean properties of the program */
-        bool writes_point_size;
-
         int first_tag;
 
         struct util_dynarray compiled;
