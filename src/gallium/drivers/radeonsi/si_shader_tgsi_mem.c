@@ -196,8 +196,7 @@ LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 	else
 		rsrc = ac_build_load_to_sgpr(&ctx->ac, list, index);
 
-	if (ctx->ac.chip_class <= GFX9 &&
-	    desc_type == AC_DESC_IMAGE && uses_store)
+	if (desc_type == AC_DESC_IMAGE && uses_store)
 		rsrc = force_dcc_off(ctx, rsrc);
 	return rsrc;
 }
