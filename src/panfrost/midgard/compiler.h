@@ -244,9 +244,6 @@ typedef struct compiler_context {
         /* Mapping of texture register -> SSA index for unaliasing */
         int texture_index[2];
 
-        /* If any path hits a discard instruction */
-        bool can_discard;
-
         /* The number of uniforms allowable for the fast path */
         int uniform_cutoff;
 

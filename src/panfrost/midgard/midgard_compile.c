@@ -1248,8 +1248,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 struct midgard_instruction discard = v_branch(conditional, false);
                 discard.branch.target_type = TARGET_DISCARD;
                 emit_mir_instruction(ctx, discard);
-
-                ctx->can_discard = true;
                 break;
         }
 
@@ -2702,8 +2700,6 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
 
         /* Deal with off-by-one related to the fencepost problem */
         program->work_register_count = ctx->work_registers + 1;
-
-        program->can_discard = ctx->can_discard;
         program->uniform_cutoff = ctx->uniform_cutoff;
 
         program->blend_patch_offset = ctx->blend_constant_offset;

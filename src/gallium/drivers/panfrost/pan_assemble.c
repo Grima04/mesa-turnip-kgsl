@@ -91,7 +91,7 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         meta->varying_count = program.varying_count;
         meta->midgard1.work_count = program.work_register_count;
 
-        state->can_discard = program.can_discard;
+        state->can_discard = s->info.fs.uses_discard;
         state->writes_point_size = program.writes_point_size;
         state->reads_point_coord = false;
         state->helper_invocations = s->info.fs.needs_helper_invocations;
