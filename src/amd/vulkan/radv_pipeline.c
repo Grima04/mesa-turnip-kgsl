@@ -33,6 +33,7 @@
 #include "radv_shader.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
+#include "nir/nir_xfb_info.h"
 #include "spirv/nir_spirv.h"
 #include "vk_util.h"
 
@@ -2269,6 +2270,16 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 	return key;
 }
 
+static bool
+radv_nir_stage_uses_xfb(const nir_shader *nir)
+{
+	nir_xfb_info *xfb = nir_gather_xfb_info(nir, NULL);
+	bool uses_xfb = !!xfb;
+
+	ralloc_free(xfb);
+	return uses_xfb;
+}
+
 static void
 radv_fill_shader_keys(struct radv_device *device,
 		      struct radv_shader_variant_key *keys,
@@ -2320,6 +2331,22 @@ radv_fill_shader_keys(struct radv_device *device,
 			 * might hang.
 			 */
 			keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
+		}
+
+		/* TODO: Implement streamout support for NGG. */
+		gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
+
+		for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+			if (nir[i])
+				last_xfb_stage = i;
+		}
+
+		if (nir[last_xfb_stage] &&
+		    radv_nir_stage_uses_xfb(nir[last_xfb_stage])) {
+			if (nir[MESA_SHADER_TESS_CTRL])
+				keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
+			else
+				keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = false;
 		}
 	}
 
