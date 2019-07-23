@@ -552,6 +552,16 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 			if (semantic_name == TGSI_SEMANTIC_PRIMID)
 				info->uses_primid = true;
 
+			if (semantic_name == TGSI_SEMANTIC_COLOR) {
+				/* We only need this for color inputs. */
+				if (variable->data.sample)
+					info->input_interpolate_loc[i] = TGSI_INTERPOLATE_LOC_SAMPLE;
+				else if (variable->data.centroid)
+					info->input_interpolate_loc[i] = TGSI_INTERPOLATE_LOC_CENTROID;
+				else
+					info->input_interpolate_loc[i] = TGSI_INTERPOLATE_LOC_CENTER;
+			}
+
                         enum glsl_base_type base_type =
                                 glsl_get_base_type(glsl_without_array(variable->type));
 
