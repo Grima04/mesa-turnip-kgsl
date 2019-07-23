@@ -550,8 +550,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
  */
 static void
 v3d_tf_statistics_record(struct v3d_context *v3d,
-                         const struct pipe_draw_info *info,
-                         bool prim_tf)
+                         const struct pipe_draw_info *info)
 {
         if (!v3d->active_queries)
                 return;
@@ -559,10 +558,11 @@ v3d_tf_statistics_record(struct v3d_context *v3d,
         uint32_t prims = u_prims_for_vertices(info->mode, info->count);
         v3d->prims_generated += prims;
 
-        if (prim_tf) {
-                /* XXX: Only count if we didn't overflow. */
-                v3d->tf_prims_generated += prims;
-        }
+        if (v3d->streamout.num_targets <= 0)
+                return;
+
+        /* XXX: Only count if we didn't overflow. */
+        v3d->tf_prims_generated += prims;
 }
 
 static void
@@ -757,7 +757,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 prim_tf_enable = (V3D_PRIM_POINTS_TF - V3D_PRIM_POINTS);
 #endif
 
-        v3d_tf_statistics_record(v3d, info, v3d->streamout.num_targets);
+        v3d_tf_statistics_record(v3d, info);
 
         /* Note that the primitive type fields match with OpenGL/gallium
          * definitions, up to but not including QUADS.
