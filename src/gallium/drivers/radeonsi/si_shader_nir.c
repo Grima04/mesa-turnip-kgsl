@@ -52,10 +52,10 @@ static nir_variable* intrinsic_get_var(nir_intrinsic_instr *instr)
 	return nir_deref_instr_get_variable(nir_src_as_deref(instr->src[0]));
 }
 
-static void gather_intrinsic_load_deref_info(const nir_shader *nir,
-					     const nir_intrinsic_instr *instr,
-					     nir_variable *var,
-					     struct tgsi_shader_info *info)
+static void gather_intrinsic_load_deref_input_info(const nir_shader *nir,
+						   const nir_intrinsic_instr *instr,
+						   nir_variable *var,
+						   struct tgsi_shader_info *info)
 {
 	assert(var && var->data.mode == nir_var_shader_in);
 
@@ -86,6 +86,22 @@ static void gather_intrinsic_load_deref_info(const nir_shader *nir,
 		}
 		break;
 	}
+	}
+}
+
+static void gather_intrinsic_load_deref_output_info(const nir_shader *nir,
+						    const nir_intrinsic_instr *instr,
+						    nir_variable *var,
+						    struct tgsi_shader_info *info)
+{
+	assert(var && var->data.mode == nir_var_shader_out);
+
+	switch (nir->info.stage) {
+	case MESA_SHADER_FRAGMENT:
+		if (var->data.fb_fetch_output)
+			info->uses_fbfetch = true;
+		break;
+	default:;
 	}
 }
 
@@ -257,7 +273,7 @@ static void scan_instruction(const struct nir_shader *nir,
 				glsl_get_base_type(glsl_without_array(var->type));
 
 			if (mode == nir_var_shader_in) {
-				gather_intrinsic_load_deref_info(nir, intr, var, info);
+				gather_intrinsic_load_deref_input_info(nir, intr, var, info);
 
 				switch (var->data.interpolation) {
 				case INTERP_MODE_NONE:
@@ -283,6 +299,8 @@ static void scan_instruction(const struct nir_shader *nir,
 						info->uses_linear_center = true;
 					break;
 				}
+			} else if (mode == nir_var_shader_out) {
+				gather_intrinsic_load_deref_output_info(nir, intr, var, info);
 			}
 			break;
 		}
