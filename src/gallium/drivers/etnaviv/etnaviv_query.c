@@ -29,10 +29,10 @@
 #include "util/u_inlines.h"
 
 #include "etnaviv_context.h"
+#include "etnaviv_perfmon.h"
 #include "etnaviv_query.h"
 #include "etnaviv_query_acc.h"
 #include "etnaviv_query_sw.h"
-#include "etnaviv_query_pm.h"
 
 static struct pipe_query *
 etna_create_query(struct pipe_context *pctx, unsigned query_type,
@@ -44,8 +44,6 @@ etna_create_query(struct pipe_context *pctx, unsigned query_type,
    q = etna_sw_create_query(ctx, query_type);
    if (!q)
       q = etna_acc_create_query(ctx, query_type);
-   if (!q)
-      q = etna_pm_create_query(ctx, query_type);
 
    return (struct pipe_query *)q;
 }
