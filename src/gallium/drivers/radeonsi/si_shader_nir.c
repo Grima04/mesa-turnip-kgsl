@@ -282,9 +282,11 @@ static void scan_instruction(const struct nir_shader *nir,
 				info->uses_bindless_image_store = true;
 
 			info->writes_memory = true;
+			info->num_memory_instructions++; /* we only care about stores */
 			break;
 		case nir_intrinsic_image_deref_store:
 			info->writes_memory = true;
+			info->num_memory_instructions++; /* we only care about stores */
 			break;
 		case nir_intrinsic_bindless_image_atomic_add:
 		case nir_intrinsic_bindless_image_atomic_min:
@@ -302,6 +304,7 @@ static void scan_instruction(const struct nir_shader *nir,
 				info->uses_bindless_image_atomic = true;
 
 			info->writes_memory = true;
+			info->num_memory_instructions++; /* we only care about stores */
 			break;
 		case nir_intrinsic_image_deref_atomic_add:
 		case nir_intrinsic_image_deref_atomic_min:
@@ -312,6 +315,7 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_image_deref_atomic_exchange:
 		case nir_intrinsic_image_deref_atomic_comp_swap:
 			info->writes_memory = true;
+			info->num_memory_instructions++; /* we only care about stores */
 			break;
 		case nir_intrinsic_store_ssbo:
 		case nir_intrinsic_ssbo_atomic_add:
@@ -325,6 +329,7 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_ssbo_atomic_exchange:
 		case nir_intrinsic_ssbo_atomic_comp_swap:
 			info->writes_memory = true;
+			info->num_memory_instructions++; /* we only care about stores */
 			break;
 		case nir_intrinsic_load_deref: {
 			nir_variable *var = intrinsic_get_var(intr);
