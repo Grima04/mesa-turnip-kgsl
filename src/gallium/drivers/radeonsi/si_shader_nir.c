@@ -113,6 +113,48 @@ static void gather_intrinsic_load_deref_output_info(const nir_shader *nir,
 	}
 }
 
+static void gather_intrinsic_store_deref_output_info(const nir_shader *nir,
+						     const nir_intrinsic_instr *instr,
+						     nir_variable *var,
+						     struct tgsi_shader_info *info)
+{
+	assert(var && var->data.mode == nir_var_shader_out);
+
+	switch (nir->info.stage) {
+	case MESA_SHADER_VERTEX: /* needed by LS, ES */
+	case MESA_SHADER_TESS_EVAL: /* needed by ES */
+	case MESA_SHADER_GEOMETRY: {
+		unsigned i = var->data.driver_location;
+		unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
+		unsigned mask = nir_intrinsic_write_mask(instr);
+
+		assert(!var->data.compact);
+
+		for (unsigned j = 0; j < attrib_count; j++, i++) {
+			if (glsl_type_is_64bit(glsl_without_array(var->type))) {
+				unsigned dmask = mask;
+
+				if (glsl_type_is_dual_slot(glsl_without_array(var->type)) && j % 2)
+					dmask >>= 2;
+
+				dmask <<= var->data.location_frac / 2;
+
+				if (dmask & 0x1)
+					info->output_usagemask[i] |= TGSI_WRITEMASK_XY;
+				if (dmask & 0x2)
+					info->output_usagemask[i] |= TGSI_WRITEMASK_ZW;
+			} else {
+				info->output_usagemask[i] |=
+					(mask << var->data.location_frac) & 0xf;
+			}
+
+		}
+		break;
+	}
+	default:;
+	}
+}
+
 static void scan_instruction(const struct nir_shader *nir,
 			     struct tgsi_shader_info *info,
 			     nir_instr *instr)
@@ -310,6 +352,13 @@ static void scan_instruction(const struct nir_shader *nir,
 			} else if (mode == nir_var_shader_out) {
 				gather_intrinsic_load_deref_output_info(nir, intr, var, info);
 			}
+			break;
+		}
+		case nir_intrinsic_store_deref: {
+			nir_variable *var = intrinsic_get_var(intr);
+
+			if (var->data.mode == nir_var_shader_out)
+				gather_intrinsic_store_deref_output_info(nir, intr, var, info);
 			break;
 		}
 		case nir_intrinsic_interp_deref_at_centroid:
@@ -606,22 +655,18 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 			unsigned streamw = (gs_out_streams >> 6) & 3;
 
 			if (usagemask & TGSI_WRITEMASK_X) {
-				info->output_usagemask[i] |= TGSI_WRITEMASK_X;
 				info->output_streams[i] |= streamx;
 				info->num_stream_output_components[streamx]++;
 			}
 			if (usagemask & TGSI_WRITEMASK_Y) {
-				info->output_usagemask[i] |= TGSI_WRITEMASK_Y;
 				info->output_streams[i] |= streamy << 2;
 				info->num_stream_output_components[streamy]++;
 			}
 			if (usagemask & TGSI_WRITEMASK_Z) {
-				info->output_usagemask[i] |= TGSI_WRITEMASK_Z;
 				info->output_streams[i] |= streamz << 4;
 				info->num_stream_output_components[streamz]++;
 			}
 			if (usagemask & TGSI_WRITEMASK_W) {
-				info->output_usagemask[i] |= TGSI_WRITEMASK_W;
 				info->output_streams[i] |= streamw << 6;
 				info->num_stream_output_components[streamw]++;
 			}
