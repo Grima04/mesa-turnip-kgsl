@@ -149,6 +149,29 @@ const __DRIuseInvalidateExtension use_invalidate = {
    .base = { __DRI_USE_INVALIDATE, 1 }
 };
 
+static void
+dri2_get_pbuffer_drawable_info(__DRIdrawable * draw,
+                               int *x, int *y, int *w, int *h,
+                               void *loaderPrivate)
+{
+   struct dri2_egl_surface *dri2_surf = loaderPrivate;
+
+   *x = *y = 0;
+   *w = dri2_surf->base.Width;
+   *h = dri2_surf->base.Height;
+}
+
+/* HACK: technically we should have swrast_null, instead of these. We
+ * get away since only pbuffers are supported, thus the callbacks are
+ * unused.
+ */
+const __DRIswrastLoaderExtension swrast_pbuffer_loader_extension = {
+   .base            = { __DRI_SWRAST_LOADER, 1 },
+   .getDrawableInfo = dri2_get_pbuffer_drawable_info,
+   .putImage        = NULL,
+   .getImage        = NULL,
+};
+
 static const EGLint dri2_to_egl_attribute_map[__DRI_ATTRIB_MAX] = {
    [__DRI_ATTRIB_BUFFER_SIZE ]          = EGL_BUFFER_SIZE,
    [__DRI_ATTRIB_LEVEL]                 = EGL_LEVEL,

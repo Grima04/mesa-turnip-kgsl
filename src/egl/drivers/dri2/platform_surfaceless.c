@@ -242,13 +242,6 @@ static const __DRIimageLoaderExtension image_loader_extension = {
    .flushFrontBuffer = surfaceless_flush_front_buffer,
 };
 
-static const __DRIswrastLoaderExtension swrast_loader_extension = {
-   .base            = { __DRI_SWRAST_LOADER, 1 },
-   .getDrawableInfo = NULL,
-   .putImage        = NULL,
-   .getImage        = NULL,
-};
-
 static const __DRIextension *image_loader_extensions[] = {
    &image_loader_extension.base,
    &image_lookup_extension.base,
@@ -257,7 +250,7 @@ static const __DRIextension *image_loader_extensions[] = {
 };
 
 static const __DRIextension *swrast_loader_extensions[] = {
-   &swrast_loader_extension.base,
+   &swrast_pbuffer_loader_extension.base,
    &image_loader_extension.base,
    &image_lookup_extension.base,
    &use_invalidate.base,

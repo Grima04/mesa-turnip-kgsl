@@ -248,29 +248,6 @@ static const __DRIimageLoaderExtension image_loader_extension = {
    .flushFrontBuffer = device_flush_front_buffer,
 };
 
-static void
-device_get_drawable_info(__DRIdrawable * draw,
-                         int *x, int *y, int *w, int *h,
-                         void *loaderPrivate)
-{
-   struct dri2_egl_surface *dri2_surf = loaderPrivate;
-
-   *x = *y = 0;
-   *w = dri2_surf->base.Width;
-   *h = dri2_surf->base.Height;
-}
-
-/* HACK: technically we should have swrast_null, instead of these. We
- * get away since only pbuffers are supported, thus the callbacks are
- * unused.
- */
-static const __DRIswrastLoaderExtension swrast_loader_extension = {
-   .base            = { __DRI_SWRAST_LOADER, 1 },
-   .getDrawableInfo = device_get_drawable_info,
-   .putImage        = NULL,
-   .getImage        = NULL,
-};
-
 static const __DRIextension *image_loader_extensions[] = {
    &image_loader_extension.base,
    &image_lookup_extension.base,
@@ -278,9 +255,8 @@ static const __DRIextension *image_loader_extensions[] = {
    NULL,
 };
 
-/* HACK: second part of the hack above. */
 static const __DRIextension *swrast_loader_extensions[] = {
-   &swrast_loader_extension.base,
+   &swrast_pbuffer_loader_extension.base,
    &image_lookup_extension.base,
    &use_invalidate.base,
    NULL,
