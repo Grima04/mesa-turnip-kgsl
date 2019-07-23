@@ -411,6 +411,9 @@ scan_instruction(struct tgsi_shader_info *info,
             info->uses_bindless_image_store = true;
       }
       break;
+   case TGSI_OPCODE_FBFETCH:
+      info->uses_fbfetch = true;
+      break;
    default:
       break;
    }
