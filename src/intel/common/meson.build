@@ -59,7 +59,7 @@ if install_intel_gpu_tests
       ],
       include_directories : [inc_common, inc_intel],
       link_with : [libintel_dev],
-      dependencies : [dep_libdrm, dep_thread, idep_gtest, idep_genxml, idep_mesautil],
+      dependencies : [dep_libdrm, idep_gtest, idep_genxml, idep_mesautil],
       install : install_intel_gpu_tests,
     )
   endforeach

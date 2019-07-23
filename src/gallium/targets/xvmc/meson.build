@@ -45,7 +45,7 @@ libxvmc_gallium = shared_library(
     libgalliumvlwinsys, libgalliumvl, libgallium,
     libpipe_loader_static, libws_null, libwsw, libswdri, libswkmsdri,
   ],
-  dependencies : [dep_thread, idep_mesautil, driver_r600, driver_nouveau],
+  dependencies : [idep_mesautil, driver_r600, driver_nouveau],
   link_depends : xvmc_link_depends,
   # Will be deleted during installation, see install_megadrivers.py
   install : true,

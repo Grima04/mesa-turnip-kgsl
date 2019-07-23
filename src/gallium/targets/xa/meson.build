@@ -48,7 +48,7 @@ libxatracker = shared_library(
   ],
   link_depends : xa_link_depends,
   dependencies : [
-    dep_thread, idep_mesautil,
+    idep_mesautil,
     driver_nouveau, driver_i915, driver_svga, driver_freedreno,
   ],
   version : _xa_version,

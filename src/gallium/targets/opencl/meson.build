@@ -42,7 +42,7 @@ libopencl = shared_library(
   link_with : [libpipe_loader_dynamic, libgallium],
   dependencies : [
     idep_mesautil,
-    dep_thread, dep_clock, dep_dl, dep_unwind, dep_elf, dep_expat,
+    dep_clock, dep_dl, dep_unwind, dep_elf,
     cpp.find_library('clangCodeGen', dirs : llvm_libdir),
     cpp.find_library('clangFrontendTool', dirs : llvm_libdir),
     cpp.find_library('clangFrontend', dirs : llvm_libdir),

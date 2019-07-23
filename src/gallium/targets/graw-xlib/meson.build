@@ -25,7 +25,7 @@ libgraw_xlib = shared_library(
   link_with : [
     libgraw_util, libgallium, libws_xlib
   ],
-  dependencies : [idep_mesautil, dep_thread, driver_swrast],
+  dependencies : [idep_mesautil, driver_swrast],
   version : '1.0',
 )
 

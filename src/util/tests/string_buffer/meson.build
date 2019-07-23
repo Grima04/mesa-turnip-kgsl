@@ -23,7 +23,7 @@ test(
   executable(
     'string_buffer_test',
     'string_buffer_test.cpp',
-    dependencies : [dep_thread, dep_dl, idep_gtest, idep_mesautil],
+    dependencies : [idep_gtest, idep_mesautil],
     include_directories : inc_common,
   ),
   suite : ['util'],

@@ -214,7 +214,7 @@ if with_tests
        'bitset_test',
        files('bitset_test.cpp'),
        include_directories : inc_common,
-       dependencies : [idep_mesautil, dep_thread, dep_dl, idep_gtest],
+       dependencies : [idep_mesautil, idep_gtest],
      ),
      suite : ['util'],
   )

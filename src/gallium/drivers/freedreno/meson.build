@@ -254,7 +254,6 @@ ir3_compiler = executable(
   'ir3/ir3_cmdline.c',
   include_directories : freedreno_includes,
   dependencies : [
-    dep_thread,
     idep_nir,
     idep_mesautil,
   ],

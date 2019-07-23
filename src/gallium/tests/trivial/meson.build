@@ -24,7 +24,7 @@ foreach t : ['compute', 'tri', 'quad-tex']
     '@0@.c'.format(t),
     include_directories : inc_common,
     link_with : [libgallium, libpipe_loader_dynamic],
-    dependencies : [idep_mesautil, dep_thread],
+    dependencies : idep_mesautil,
     install : false,
   )
 endforeach

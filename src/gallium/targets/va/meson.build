@@ -46,7 +46,7 @@ libva_gallium = shared_library(
     libpipe_loader_static, libws_null, libwsw, libswdri, libswkmsdri,
   ],
   dependencies : [
-    dep_libdrm, dep_thread, driver_r600, driver_radeonsi, driver_nouveau,
+    dep_libdrm, driver_r600, driver_radeonsi, driver_nouveau,
     idep_mesautil,
   ],
   link_depends : va_link_depends,

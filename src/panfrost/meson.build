@@ -48,7 +48,6 @@ pandecode = executable(
   files_pandecode,
   include_directories : [inc_common, inc_include, inc_src, inc_panfrost],
   dependencies : [
-    dep_thread,
     idep_mesautil,
   ],
   build_by_default : true
@@ -68,7 +67,6 @@ bifrost_compiler = executable(
     inc_panfrost,
  ],
   dependencies : [
-    dep_thread,
     idep_nir,
     idep_mesautil,
   ],

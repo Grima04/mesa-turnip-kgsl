@@ -157,7 +157,7 @@ if with_tests
         link_with : [
           libintel_compiler, libintel_common, libintel_dev, libisl,
         ],
-        dependencies : [dep_thread, dep_dl, idep_gtest, idep_nir, idep_mesautil],
+        dependencies : [idep_gtest, idep_nir, idep_mesautil],
       ),
       suite : ['intel'],
     )

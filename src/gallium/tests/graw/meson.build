@@ -31,6 +31,6 @@ foreach t : progs
     t + '.c',
     include_directories : inc_common,
     link_with : [libgraw, libgraw_util, libgallium],
-    dependencies : [dep_m, dep_thread, idep_mesautil],
+    dependencies : [dep_m, idep_mesautil],
   )
 endforeach
