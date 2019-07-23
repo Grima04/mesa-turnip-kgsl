@@ -453,7 +453,15 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
                 .unknown2_4 = MALI_NO_MSAA | 0x4e0,
         };
 
-        /* unknown2_4 has 0x10 bit set on 32-bit T6XX */
+        /* unknown2_4 has 0x10 bit set on T6XX. We don't know why this is
+         * required (independent of 32-bit/64-bit descriptors), or why it's not
+         * used on later GPU revisions. Otherwise, all shader jobs fault on
+         * these earlier chips (perhaps this is a chicken bit of some kind).
+         * More investigation is needed. */
+
+	if (ctx->is_t6xx) {
+		shader.unknown2_4 |= 0x10;
+	}
 
         struct pipe_stencil_state default_stencil = {
                 .enabled = 0,
