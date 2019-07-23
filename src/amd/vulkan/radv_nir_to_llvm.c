@@ -876,9 +876,6 @@ declare_streamout_sgprs(struct radv_shader_context *ctx, gl_shader_stage stage,
 {
 	int i;
 
-	if (ctx->ac.chip_class >= GFX10)
-		return;
-
 	/* Streamout SGPRs. */
 	if (ctx->shader_info->info.so.num_outputs) {
 		assert(stage == MESA_SHADER_VERTEX ||
