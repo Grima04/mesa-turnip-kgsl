@@ -63,14 +63,24 @@ static void gather_intrinsic_load_deref_input_info(const nir_shader *nir,
 	case MESA_SHADER_VERTEX: {
 		unsigned i = var->data.driver_location;
 		unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
+		uint8_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
 
 		for (unsigned j = 0; j < attrib_count; j++, i++) {
 			if (glsl_type_is_64bit(glsl_without_array(var->type))) {
-				/* TODO: set usage mask more accurately for doubles */
-				info->input_usage_mask[i] = TGSI_WRITEMASK_XYZW;
+				unsigned dmask = mask;
+
+				if (glsl_type_is_dual_slot(glsl_without_array(var->type)) && j % 2)
+					dmask >>= 2;
+
+				dmask <<= var->data.location_frac / 2;
+
+				if (dmask & 0x1)
+					info->input_usage_mask[i] |= TGSI_WRITEMASK_XY;
+				if (dmask & 0x2)
+					info->input_usage_mask[i] |= TGSI_WRITEMASK_ZW;
 			} else {
-				uint8_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
-				info->input_usage_mask[i] |= mask << var->data.location_frac;
+				info->input_usage_mask[i] |=
+					(mask << var->data.location_frac) & 0xf;
 			}
 		}
 		break;
