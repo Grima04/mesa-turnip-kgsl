@@ -179,10 +179,10 @@ struct st_fragment_program
 struct st_vp_variant_key
 {
    struct st_context *st;          /**< variants are per-context */
-   boolean passthrough_edgeflags;
+   bool passthrough_edgeflags;
 
    /** for ARB_color_buffer_float */
-   boolean clamp_color;
+   bool clamp_color;
 };
 
 
