@@ -247,7 +247,6 @@ meson-vulkan:
       -D gallium-nine=false
       -D llvm=false
     CROSS: >
-      --libdir lib
       --cross /tmp/cross_file.txt
 
   script:
