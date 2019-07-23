@@ -2682,7 +2682,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         memset(ctx, 0, sizeof(*ctx));
         struct pipe_context *gallium = (struct pipe_context *) ctx;
 
-        ctx->is_t6xx = pscreen->gpu_id <= 0x0750; /* For now, this flag means T760 or less */
+        ctx->is_t6xx = pscreen->gpu_id < 0x0700; /* Literally, "earlier than T700" */
         ctx->require_sfbd = pscreen->gpu_id < 0x0750; /* T760 is the first to support MFBD */
 
         gallium->screen = screen;
