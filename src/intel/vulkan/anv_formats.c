@@ -1079,6 +1079,10 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
          if (external_props)
             external_props->externalMemoryProperties = prime_fd_props;
          break;
+      case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+         if (external_props)
+            external_props->externalMemoryProperties = userptr_props;
+         break;
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
          if (ahw_supported && external_props) {
             external_props->externalMemoryProperties = android_image_props;
