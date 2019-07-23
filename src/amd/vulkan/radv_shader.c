@@ -765,7 +765,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			if (info->vs.export_prim_id) {
 				vgpr_comp_cnt = 2;
 			} else if (info->info.vs.needs_instance_id) {
-				vgpr_comp_cnt = 1;
+				vgpr_comp_cnt = pdevice->rad_info.chip_class >= GFX10 ? 3 : 1;
 			} else {
 				vgpr_comp_cnt = 0;
 			}
@@ -837,7 +837,11 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 
 		if (es_type == MESA_SHADER_VERTEX) {
 			/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
-			es_vgpr_comp_cnt = info->info.vs.needs_instance_id ? 1 : 0;
+			if (info->info.vs.needs_instance_id) {
+				es_vgpr_comp_cnt = pdevice->rad_info.chip_class >= GFX10 ? 3 : 1;
+			} else {
+				es_vgpr_comp_cnt = 0;
+			}
 		} else if (es_type == MESA_SHADER_TESS_EVAL) {
 			es_vgpr_comp_cnt = info->info.uses_prim_id ? 3 : 2;
 		} else {
