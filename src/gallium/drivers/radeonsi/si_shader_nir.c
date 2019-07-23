@@ -75,17 +75,15 @@ static void gather_intrinsic_load_deref_input_info(const nir_shader *nir,
 		}
 		break;
 	}
-	default: {
-		unsigned semantic_name, semantic_index;
-		tgsi_get_gl_varying_semantic(var->data.location, true,
-					     &semantic_name, &semantic_index);
-
-		if (semantic_name == TGSI_SEMANTIC_COLOR) {
+	case MESA_SHADER_FRAGMENT:
+		if (var->data.location == VARYING_SLOT_COL0 ||
+		    var->data.location == VARYING_SLOT_COL1) {
+			unsigned index = var->data.location == VARYING_SLOT_COL1;
 			uint8_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
-			info->colors_read |= mask << (semantic_index * 4);
+			info->colors_read |= mask << (index * 4);
 		}
 		break;
-	}
+	default:;
 	}
 }
 
