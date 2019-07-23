@@ -188,6 +188,9 @@ typedef struct compiler_context {
         nir_shader *nir;
         gl_shader_stage stage;
 
+        /* The screen we correspond to */
+        struct midgard_screen *screen;
+
         /* Is internally a blend shader? Depends on stage == FRAGMENT */
         bool is_blend;
 

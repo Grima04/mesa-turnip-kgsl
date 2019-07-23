@@ -157,17 +157,12 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
         return r;
 }
 
-/* This routine performs the actual register allocation. It should be succeeded
- * by install_registers */
+/* This routine creates a register set. Should be called infrequently since
+ * it's slow and can be cached */
 
-struct ra_graph *
-allocate_registers(compiler_context *ctx, bool *spilled)
+static struct ra_regs *
+create_register_set(unsigned work_count, unsigned *classes)
 {
-        /* The number of vec4 work registers available depends on when the
-         * uniforms start, so compute that first */
-
-        int work_count = 16 - MAX2((ctx->uniform_cutoff - 8), 0);
-
         int virtual_count = work_count * WORK_STRIDE;
 
         /* First, initialize the RA */
@@ -178,12 +173,10 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         int work_vec2 = ra_alloc_reg_class(regs);
         int work_vec1 = ra_alloc_reg_class(regs);
 
-        unsigned classes[4] = {
-                work_vec1,
-                work_vec2,
-                work_vec3,
-                work_vec4
-        };
+        classes[0] = work_vec1;
+        classes[1] = work_vec2;
+        classes[2] = work_vec3;
+        classes[3] = work_vec4;
 
         /* Add the full set of work registers */
         for (unsigned i = 0; i < work_count; ++i) {
@@ -216,6 +209,55 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         /* We're done setting up */
         ra_set_finalize(regs, NULL);
+
+        return regs;
+}
+
+/* This routine gets a precomputed register set off the screen if it's able, or otherwise it computes one on the fly */
+
+static struct ra_regs *
+get_register_set(struct midgard_screen *screen, unsigned work_count, unsigned **classes)
+{
+        /* Bounds check */
+        assert(work_count >= 8);
+        assert(work_count <= 16);
+
+        /* Compute index */
+        unsigned index = work_count - 8;
+
+        /* Find the reg set */
+        struct ra_regs *cached = screen->regs[index];
+
+        if (cached) {
+                assert(screen->reg_classes[index]);
+                *classes = screen->reg_classes[index];
+                return cached;
+        }
+
+        /* Otherwise, create one */
+        struct ra_regs *created = create_register_set(work_count, screen->reg_classes[index]);
+
+        /* Cache it and use it */
+        screen->regs[index] = created;
+
+        *classes = screen->reg_classes[index];
+        return created;
+}
+
+/* This routine performs the actual register allocation. It should be succeeded
+ * by install_registers */
+
+struct ra_graph *
+allocate_registers(compiler_context *ctx, bool *spilled)
+{
+        /* The number of vec4 work registers available depends on when the
+         * uniforms start, so compute that first */
+        int work_count = 16 - MAX2((ctx->uniform_cutoff - 8), 0);
+        unsigned *classes = NULL;
+        struct ra_regs *regs = get_register_set(ctx->screen, work_count, &classes);
+
+        assert(regs != NULL);
+        assert(classes != NULL);
 
        /* No register allocation to do with no SSA */
 

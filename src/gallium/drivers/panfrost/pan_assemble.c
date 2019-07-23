@@ -67,7 +67,7 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
                 .alpha_ref = state->alpha_state.ref_value
         };
 
-        midgard_compile_shader_nir(s, &program, false);
+        midgard_compile_shader_nir(&ctx->compiler, s, &program, false);
 
         /* Prepare the compiled binary for upload */
         int size = program.compiled.size;

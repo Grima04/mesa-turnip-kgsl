@@ -170,7 +170,7 @@ panfrost_compile_blend_shader(
         /* Compile the built shader */
 
         midgard_program program;
-        midgard_compile_shader_nir(shader, &program, true);
+        midgard_compile_shader_nir(&ctx->compiler, shader, &program, true);
 
         /* Upload the shader */
 

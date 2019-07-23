@@ -91,6 +91,9 @@ struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
 
+        /* Compiler context */
+        struct midgard_screen compiler;
+
         /* Bound job and map of panfrost_job_key to jobs */
         struct panfrost_job *job;
         struct hash_table *jobs;
