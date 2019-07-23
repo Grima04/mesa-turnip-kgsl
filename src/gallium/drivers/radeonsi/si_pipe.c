@@ -1131,6 +1131,9 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 #include "si_debug_options.h"
 	}
 
+	if (sscreen->options.always_nir)
+		sscreen->options.enable_nir = true;
+
 	sscreen->has_gfx9_scissor_bug = sscreen->info.family == CHIP_VEGA10 ||
 					sscreen->info.family == CHIP_RAVEN;
 	sscreen->has_msaa_sample_loc_bug = (sscreen->info.family >= CHIP_POLARIS10 &&

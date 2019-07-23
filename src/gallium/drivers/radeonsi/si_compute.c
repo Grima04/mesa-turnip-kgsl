@@ -23,6 +23,7 @@
  *
  */
 
+#include "nir/tgsi_to_nir.h"
 #include "tgsi/tgsi_parse.h"
 #include "util/u_async_debug.h"
 #include "util/u_memory.h"
@@ -231,7 +232,11 @@ static void *si_create_compute_state(
 	program->input_size = cso->req_input_mem;
 
 	if (cso->ir_type != PIPE_SHADER_IR_NATIVE) {
-		if (cso->ir_type == PIPE_SHADER_IR_TGSI) {
+		if (sscreen->options.always_nir &&
+		    cso->ir_type == PIPE_SHADER_IR_TGSI) {
+			program->ir_type = PIPE_SHADER_IR_NIR;
+			sel->nir = tgsi_to_nir(cso->prog, ctx->screen);
+		} else if (cso->ir_type == PIPE_SHADER_IR_TGSI) {
 			sel->tokens = tgsi_dup_tokens(cso->prog);
 			if (!sel->tokens) {
 				FREE(program);

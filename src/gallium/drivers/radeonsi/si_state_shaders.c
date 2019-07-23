@@ -26,6 +26,7 @@
 #include "sid.h"
 
 #include "compiler/nir/nir_serialize.h"
+#include "nir/tgsi_to_nir.h"
 #include "tgsi/tgsi_parse.h"
 #include "util/hash_table.h"
 #include "util/crc32.h"
@@ -2626,7 +2627,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 	sel->so = state->stream_output;
 
-	if (state->type == PIPE_SHADER_IR_TGSI) {
+	if (state->type == PIPE_SHADER_IR_TGSI &&
+	    !sscreen->options.always_nir) {
 		sel->tokens = tgsi_dup_tokens(state->tokens);
 		if (!sel->tokens) {
 			FREE(sel);
@@ -2636,9 +2638,12 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 		tgsi_scan_shader(state->tokens, &sel->info);
 		tgsi_scan_tess_ctrl(state->tokens, &sel->info, &sel->tcs_info);
 	} else {
-		assert(state->type == PIPE_SHADER_IR_NIR);
-
-		sel->nir = state->ir.nir;
+		if (state->type == PIPE_SHADER_IR_TGSI) {
+			sel->nir = tgsi_to_nir(state->tokens, ctx->screen);
+		} else {
+			assert(state->type == PIPE_SHADER_IR_NIR);
+			sel->nir = state->ir.nir;
+		}
 
 		si_nir_opts(sel->nir);
 		si_nir_scan_shader(sel->nir, &sel->info);
