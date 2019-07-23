@@ -143,6 +143,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_IMAGE_LOAD_FORMATTED:
                 return is_deqp;
 
+        /* For faking compute shaders */
+        case PIPE_CAP_COMPUTE:
+                return is_deqp;
+
         /* TODO: Where does this req come from in practice? */
         case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
                 return 1;
@@ -238,12 +242,12 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                           enum pipe_shader_type shader,
                           enum pipe_shader_cap param)
 {
-        if (shader != PIPE_SHADER_VERTEX &&
-            shader != PIPE_SHADER_FRAGMENT) {
-                return 0;
-        }
-
         bool is_deqp = pan_debug & PAN_DBG_DEQP;
+
+        if (shader != PIPE_SHADER_VERTEX &&
+            shader != PIPE_SHADER_FRAGMENT &&
+            !(shader == PIPE_SHADER_COMPUTE && is_deqp))
+                return 0;
 
         /* this is probably not totally correct.. but it's a start: */
         switch (param) {
