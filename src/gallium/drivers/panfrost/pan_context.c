@@ -2774,6 +2774,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         panfrost_resource_context_init(gallium);
         panfrost_blend_context_init(gallium);
+        panfrost_compute_context_init(gallium);
 
         panfrost_drm_init_context(ctx);
 

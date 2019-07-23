@@ -352,5 +352,9 @@ panfrost_padded_vertex_count(
 unsigned
 pan_expand_shift_odd(struct pan_shift_odd o);
 
+/* Compute */
+
+void
+panfrost_compute_context_init(struct pipe_context *pctx);
 
 #endif
