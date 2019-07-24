@@ -351,6 +351,7 @@ void ac_build_type_name_for_intr(LLVMTypeRef type, char *buf, unsigned bufsize)
 			char *type_name = LLVMPrintTypeToString(type);
 			fprintf(stderr, "Error building type name for: %s\n",
 				type_name);
+			LLVMDisposeMessage(type_name);
 			return;
 		}
 		elem_type = LLVMGetElementType(type);
