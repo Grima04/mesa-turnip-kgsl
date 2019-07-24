@@ -337,53 +337,39 @@ etna_resource_create(struct pipe_screen *pscreen,
                      const struct pipe_resource *templat)
 {
    struct etna_screen *screen = etna_screen(pscreen);
+   unsigned layout = ETNA_LAYOUT_TILED;
 
-   /* Figure out what tiling to use -- we always use tiled layouts,
-    * except for scanout/dmabuf (which don't go through this path)
-    * Buffers always have LINEAR layout.
+   /* At this point we don't know if the resource will be used as a texture,
+    * render target, or both, because gallium sets the bits whenever possible
+    * This matters because on some GPUs (GC2000) there is no tiling that is
+    * compatible with both TE and PE.
+    *
+    * We expect that depth/stencil buffers will always be used by PE (rendering),
+    * and any other non-scanout resource will be used as a texture at some point,
+    * So allocate a render-compatible base buffer for scanout/depthstencil buffers,
+    * and a texture-compatible base buffer in other cases
+    *
     */
-   unsigned layout = ETNA_LAYOUT_LINEAR;
 
-   if (etna_resource_sampler_only(templat)) {
-      /* The buffer is only used for texturing, so create something
-       * directly compatible with the sampler.  Such a buffer can
-       * never be rendered to. */
-      layout = ETNA_LAYOUT_TILED;
-
-      if (util_format_is_compressed(templat->format))
-         layout = ETNA_LAYOUT_LINEAR;
-   } else if (templat->target != PIPE_BUFFER) {
-      bool want_multitiled = false;
-      bool want_supertiled = screen->specs.can_supertile;
-
-      /* When this GPU supports single-buffer rendering, don't ever enable
-       * multi-tiling. This replicates the blob behavior on GC3000.
-       */
-      if (!screen->specs.single_buffer)
-         want_multitiled = screen->specs.pixel_pipes > 1;
-
-      /* Keep single byte blocksized resources as tiled, since we
-       * are unable to use the RS blit to de-tile them. However,
-       * if they're used as a render target or depth/stencil, they
-       * must be multi-tiled for GPUs with multiple pixel pipes.
-       * Ignore depth/stencil here, but it is an error for a render
-       * target.
-       */
-      if (util_format_get_blocksize(templat->format) == 1 &&
-          !(templat->bind & PIPE_BIND_DEPTH_STENCIL)) {
-         assert(!(templat->bind & PIPE_BIND_RENDER_TARGET && want_multitiled));
-         want_multitiled = want_supertiled = false;
-      }
-
-      layout = ETNA_LAYOUT_BIT_TILE;
-      if (want_multitiled)
+   if (templat->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL)) {
+      if (screen->specs.pixel_pipes > 1 && !screen->specs.single_buffer)
          layout |= ETNA_LAYOUT_BIT_MULTI;
-      if (want_supertiled)
+      if (screen->specs.can_supertile)
          layout |= ETNA_LAYOUT_BIT_SUPER;
+   } else if (VIV_FEATURE(screen, chipMinorFeatures2, SUPERTILED_TEXTURE) &&
+              /* RS can't tile 1 byte per pixel formats, will have to CPU tile,
+               * which doesn't support super-tiling
+               */
+              util_format_get_blocksize(templat->format) > 1) {
+      layout |= ETNA_LAYOUT_BIT_SUPER;
    }
 
-   if (templat->target == PIPE_TEXTURE_3D)
+   if ((templat->bind & PIPE_BIND_LINEAR) || /* linear base requested */
+       templat->target == PIPE_BUFFER || /* buffer always linear */
+       /* compressed textures don't use tiling, they have their own "tiles" */
+       util_format_is_compressed(templat->format)) {
       layout = ETNA_LAYOUT_LINEAR;
+   }
 
    /* modifier is only used for scanout surfaces, so safe to use LINEAR here */
    return etna_resource_alloc(pscreen, layout, DRM_FORMAT_MOD_LINEAR, templat);
