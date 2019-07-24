@@ -112,7 +112,8 @@ struct si_shader_context {
 	LLVMValueRef *imms;
 	unsigned imms_num;
 
-	struct lp_build_if_state merged_wrap_if_state;
+	LLVMBasicBlockRef merged_wrap_if_entry_block;
+	int merged_wrap_if_label;
 
 	struct tgsi_array_info *temp_arrays;
 	LLVMValueRef *temp_array_allocas;

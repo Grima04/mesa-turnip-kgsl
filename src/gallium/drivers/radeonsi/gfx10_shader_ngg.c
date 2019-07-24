@@ -581,7 +581,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 		}
 	}
 
-	lp_build_endif(&ctx->merged_wrap_if_state);
+	ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
 	LLVMValueRef prims_in_wave = si_unpack_param(ctx, ctx->param_merged_wave_info, 8, 8);
 	LLVMValueRef vtx_in_wave = si_unpack_param(ctx, ctx->param_merged_wave_info, 0, 8);
@@ -1058,7 +1058,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 		ac_build_endif(&ctx->ac, 5105);
 	}
 
-	lp_build_endif(&ctx->merged_wrap_if_state);
+	ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
 	ac_build_s_barrier(&ctx->ac);
 

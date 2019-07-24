@@ -3329,11 +3329,11 @@ static void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi,
 	if (ctx->screen->info.chip_class >= GFX9) {
 		LLVMBasicBlockRef blocks[2] = {
 			LLVMGetInsertBlock(builder),
-			ctx->merged_wrap_if_state.entry_block
+			ctx->merged_wrap_if_entry_block
 		};
 		LLVMValueRef values[2];
 
-		lp_build_endif(&ctx->merged_wrap_if_state);
+		ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
 		values[0] = rel_patch_id;
 		values[1] = LLVMGetUndef(ctx->i32);
@@ -3617,7 +3617,7 @@ static void emit_gs_epilogue(struct si_shader_context *ctx)
 			 si_get_gs_wave_id(ctx));
 
 	if (ctx->screen->info.chip_class >= GFX9)
-		lp_build_endif(&ctx->merged_wrap_if_state);
+		ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 }
 
 static void si_llvm_emit_gs_epilogue(struct ac_shader_abi *abi,
@@ -6246,7 +6246,10 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 			LLVMValueRef ena =
 				LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
 					    ac_get_thread_id(&ctx->ac), num_threads, "");
-			lp_build_if(&ctx->merged_wrap_if_state, &ctx->gallivm, ena);
+
+			ctx->merged_wrap_if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
+			ctx->merged_wrap_if_label = 11500;
+			ac_build_ifcc(&ctx->ac, ena, ctx->merged_wrap_if_label);
 
 			if (nested_barrier) {
 				/* Execute a barrier before the second shader in
