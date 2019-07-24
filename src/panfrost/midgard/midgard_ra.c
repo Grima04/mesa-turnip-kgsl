@@ -649,9 +649,17 @@ install_registers_instr(
         }
 
         case TAG_LOAD_STORE_4: {
-                if (OP_IS_STORE_R26(ins->load_store.op)) {
-                        /* TODO: use ssa_args for st_vary */
-                        ins->load_store.reg = 0;
+                bool fixed = args.src0 >= SSA_FIXED_MINIMUM;
+
+                if (OP_IS_STORE_R26(ins->load_store.op) && fixed) {
+                        ins->load_store.reg = SSA_REG_FROM_FIXED(args.src0);
+                } else if (OP_IS_STORE_VARY(ins->load_store.op)) {
+                        struct phys_reg src = index_to_reg(ctx, g, args.src0);
+                        assert(src.reg == 26 || src.reg == 27);
+
+                        ins->load_store.reg = src.reg - 26;
+
+                        /* TODO: swizzle/mask */
                 } else {
                         /* Which physical register we read off depends on
                          * whether we are loading or storing -- think about the
