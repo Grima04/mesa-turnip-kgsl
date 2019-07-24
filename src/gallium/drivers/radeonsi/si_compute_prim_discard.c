@@ -267,7 +267,6 @@ static LLVMValueRef si_expand_32bit_pointer(struct si_shader_context *ctx, LLVMV
 
 struct si_thread0_section {
 	struct si_shader_context *ctx;
-	struct lp_build_if_state if_thread0;
 	LLVMValueRef vgpr_result; /* a VGPR for the value on thread 0. */
 	LLVMValueRef saved_exec;
 };
@@ -288,9 +287,9 @@ static void si_enter_thread0_section(struct si_shader_context *ctx,
 	 *
 	 * It could just be s_and_saveexec_b64 s, 1.
 	 */
-	lp_build_if(&section->if_thread0, &ctx->gallivm,
-		    LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, thread_id,
-				  ctx->i32_0, ""));
+	ac_build_ifcc(&ctx->ac,
+		      LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, thread_id,
+				    ctx->i32_0, ""), 12601);
 }
 
 /* Exit a section that only executes on thread 0 and broadcast the result
@@ -302,7 +301,7 @@ static void si_exit_thread0_section(struct si_thread0_section *section,
 
 	LLVMBuildStore(ctx->ac.builder, *result, section->vgpr_result);
 
-	lp_build_endif(&section->if_thread0);
+	ac_build_endif(&ctx->ac, 12601);
 
 	/* Broadcast the result from thread 0 to all threads. */
 	*result = ac_build_readlane(&ctx->ac,
@@ -597,10 +596,9 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 				 *    // Just read the value that previous waves stored.
 				 *    first_is_odd = ds.ordered.add(0);
 				 */
-				struct lp_build_if_state if_overwrite_counter;
-				lp_build_if(&if_overwrite_counter, &ctx->gallivm,
-					    LLVMBuildOr(builder, is_first_wave,
-							current_wave_resets_index, ""));
+				ac_build_ifcc(&ctx->ac,
+					      LLVMBuildOr(builder, is_first_wave,
+							  current_wave_resets_index, ""), 12602);
 				{
 					/* The GDS address is always 0 with ordered append. */
 					tmp = si_build_ds_ordered_op(ctx, "swap",
@@ -608,7 +606,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 								     1, true, false);
 					LLVMBuildStore(builder, tmp, ret);
 				}
-				lp_build_else(&if_overwrite_counter);
+				ac_build_else(&ctx->ac, 12603);
 				{
 					/* Just read the value from GDS. */
 					tmp = si_build_ds_ordered_op(ctx, "add",
@@ -616,7 +614,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 								     1, true, false);
 					LLVMBuildStore(builder, tmp, ret);
 				}
-				lp_build_endif(&if_overwrite_counter);
+				ac_build_endif(&ctx->ac, 12602);
 
 				prev_wave_state = LLVMBuildLoad(builder, ret, "");
 				/* Ignore the return value if this is the first wave. */
@@ -760,15 +758,14 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			 *    previous = ds.ordered.add(num_prims_accepted) // add the primitive count
 			 * }
 			 */
-			struct lp_build_if_state if_first_wave;
-			lp_build_if(&if_first_wave, &ctx->gallivm, is_first_wave);
+			ac_build_ifcc(&ctx->ac, is_first_wave, 12604);
 			{
 				/* The GDS address is always 0 with ordered append. */
 				si_build_ds_ordered_op(ctx, "swap", ordered_wave_id,
 						       num_prims_accepted, 0, true, true);
 				LLVMBuildStore(builder, ctx->i32_0, tmp_store);
 			}
-			lp_build_else(&if_first_wave);
+			ac_build_else(&ctx->ac, 12605);
 			{
 				LLVMBuildStore(builder,
 					       si_build_ds_ordered_op(ctx, "add", ordered_wave_id,
@@ -776,7 +773,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 								      true, true),
 					       tmp_store);
 			}
-			lp_build_endif(&if_first_wave);
+			ac_build_endif(&ctx->ac, 12604);
 
 			start = LLVMBuildLoad(builder, tmp_store, "");
 		}
@@ -789,10 +786,9 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	 * event like this.
 	 */
 	if (VERTEX_COUNTER_GDS_MODE == 2) {
-		struct lp_build_if_state if_last_wave;
-		lp_build_if(&if_last_wave, &ctx->gallivm,
-			    LLVMBuildICmp(builder, LLVMIntEQ, global_thread_id,
-					  last_wave_prim_id, ""));
+		ac_build_ifcc(&ctx->ac,
+			      LLVMBuildICmp(builder, LLVMIntEQ, global_thread_id,
+					    last_wave_prim_id, ""), 12606);
 		LLVMValueRef count = LLVMBuildAdd(builder, start, num_prims_accepted, "");
 		count = LLVMBuildMul(builder, count,
 				     LLVMConstInt(ctx->i32, vertices_per_prim, 0), "");
@@ -816,7 +812,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 			LLVMBuildStore(builder, count,
 				       si_expand_32bit_pointer(ctx, vertex_count_addr));
 		}
-		lp_build_endif(&if_last_wave);
+		ac_build_endif(&ctx->ac, 12606);
 	} else {
 		/* For unordered modes that increment a vertex count instead of
 		 * primitive count, convert it into the primitive index.
@@ -828,8 +824,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 	/* Now we need to store the indices of accepted primitives into
 	 * the output index buffer.
 	 */
-	struct lp_build_if_state if_accepted;
-	lp_build_if(&if_accepted, &ctx->gallivm, accepted);
+	ac_build_ifcc(&ctx->ac, accepted, 16607);
 	{
 		/* Get the number of bits set before the index of this thread. */
 		LLVMValueRef prim_index = ac_build_mbcnt(&ctx->ac, accepted_threadmask);
@@ -866,7 +861,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
 					     vindex, ctx->i32_0, 3,
 					     ac_glc | (INDEX_STORES_USE_SLC ? ac_slc : 0));
 	}
-	lp_build_endif(&if_accepted);
+	ac_build_endif(&ctx->ac, 16607);
 
 	LLVMBuildRetVoid(builder);
 }
