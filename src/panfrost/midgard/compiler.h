@@ -381,6 +381,8 @@ void mir_print_instruction(midgard_instruction *ins);
 void mir_print_bundle(midgard_bundle *ctx);
 void mir_print_block(midgard_block *block);
 void mir_print_shader(compiler_context *ctx);
+bool mir_nontrivial_source2_mod(midgard_instruction *ins);
+bool mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask);
 
 /* MIR goodies */
 
@@ -479,5 +481,9 @@ nir_undef_to_zero(nir_shader *shader);
 
 void
 nir_clamp_psiz(nir_shader *shader, float min_size, float max_size);
+
+/* Optimizations */
+
+bool midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block);
 
 #endif

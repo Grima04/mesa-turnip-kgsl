@@ -22,6 +22,7 @@
  */
 
 #include "compiler.h"
+#include "midgard_ops.h"
 
 void mir_rewrite_index_src_single(midgard_instruction *ins, unsigned old, unsigned new)
 {
@@ -78,3 +79,37 @@ mir_single_use(compiler_context *ctx, unsigned value)
         return used_count <= 1;
 
 }
+
+bool
+mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
+{
+        /* abs or neg */
+        if (!is_int && src.mod) return true;
+
+        /* Other int mods don't matter in isolation */
+        if (is_int && src.mod == midgard_int_shift) return true;
+
+        /* size-conversion */
+        if (src.half) return true;
+
+        /* swizzle */
+        for (unsigned c = 0; c < 4; ++c) {
+                if (!(mask & (1 << c))) continue;
+                if (((src.swizzle >> (2*c)) & 3) != c) return true;
+        }
+
+        return false;
+}
+
+bool
+mir_nontrivial_source2_mod(midgard_instruction *ins)
+{
+        bool is_int = midgard_is_integer_op(ins->alu.op);
+
+        midgard_vector_alu_src src2 =
+                vector_alu_from_unsigned(ins->alu.src2);
+
+        return mir_nontrivial_mod(src2, is_int, ins->mask);
+}
+
+
