@@ -7465,9 +7465,9 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 					   key->vs_prolog.num_input_sgprs + i, "");
 	}
 
-	struct lp_build_if_state wrap_if_state;
 	LLVMValueRef original_ret = ret;
 	bool wrapped = false;
+	LLVMBasicBlockRef if_entry_block = NULL;
 
 	if (key->vs_prolog.is_monolithic && key->vs_prolog.as_ngg) {
 		LLVMValueRef num_threads;
@@ -7476,7 +7476,8 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 		num_threads = si_unpack_param(ctx, 3, 0, 8);
 		ena = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT,
 					ac_get_thread_id(&ctx->ac), num_threads, "");
-		lp_build_if(&wrap_if_state, &ctx->gallivm, ena);
+		if_entry_block = LLVMGetInsertBlock(ctx->ac.builder);
+		ac_build_ifcc(&ctx->ac, ena, 11501);
 		wrapped = true;
 	}
 
@@ -7536,15 +7537,15 @@ static void si_build_vs_prolog_function(struct si_shader_context *ctx,
 	}
 
 	if (wrapped) {
-		lp_build_endif(&wrap_if_state);
+		LLVMBasicBlockRef bbs[2] = {
+			LLVMGetInsertBlock(ctx->ac.builder),
+			if_entry_block,
+		};
+		ac_build_endif(&ctx->ac, 11501);
 
 		LLVMValueRef values[2] = {
 			ret,
 			original_ret
-		};
-		LLVMBasicBlockRef bbs[2] = {
-			wrap_if_state.true_block,
-			wrap_if_state.entry_block
 		};
 		ret = ac_build_phi(&ctx->ac, LLVMTypeOf(ret), 2, values, bbs);
 	}
