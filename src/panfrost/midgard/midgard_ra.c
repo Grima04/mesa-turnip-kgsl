@@ -317,6 +317,16 @@ set_class(unsigned *classes, unsigned node, unsigned class)
         classes[node] |= (class << 2);
 }
 
+static void
+force_vec4(unsigned *classes, unsigned node)
+{
+        if ((node < 0) || (node >= SSA_FIXED_MINIMUM))
+                return;
+
+        /* Force vec4 = 3 */
+        classes[node] |= 0x3;
+}
+
 /* Special register classes impose special constraints on who can read their
  * values, so check that */
 
@@ -514,6 +524,12 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
                         set_class(found_class, ins->ssa_args.src0, class);
                         set_class(found_class, ins->ssa_args.src1, class);
+
+                        if (force_r27) {
+                                force_vec4(found_class, ins->ssa_args.dest);
+                                force_vec4(found_class, ins->ssa_args.src0);
+                                force_vec4(found_class, ins->ssa_args.src1);
+                        }
                 }
         }
 
