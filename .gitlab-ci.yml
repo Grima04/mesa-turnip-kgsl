@@ -61,8 +61,11 @@ debian:
     paths:
       - ccache
   artifacts:
-    when: on_failure
-    untracked: true
+    when: always
+    paths:
+      - _build/meson-logs/*.txt
+      # scons:
+      - _build/*/config.log
   variables:
     CCACHE_COMPILERCHECK: "content"
   # Use ccache transparently, and print stats before/after
