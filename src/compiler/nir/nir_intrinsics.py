@@ -378,6 +378,8 @@ image("atomic_comp_swap", src_comp=[4, 1, 1, 1], dest_comp=1)
 image("atomic_fadd",  src_comp=[1, 4, 1, 1], dest_comp=1)
 image("size",    dest_comp=0, flags=[CAN_ELIMINATE, CAN_REORDER])
 image("samples", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
+image("atomic_inc_wrap",  src_comp=[4, 1, 1], dest_comp=1)
+image("atomic_dec_wrap",  src_comp=[4, 1, 1], dest_comp=1)
 
 # Intel-specific query for loading from the brw_image_param struct passed
 # into the shader as a uniform.  The variable is a deref to the image

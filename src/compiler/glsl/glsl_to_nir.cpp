@@ -990,6 +990,12 @@ nir_visitor::visit(ir_call *ir)
       case ir_intrinsic_image_atomic_comp_swap:
          op = nir_intrinsic_image_deref_atomic_comp_swap;
          break;
+      case ir_intrinsic_image_atomic_inc_wrap:
+         op = nir_intrinsic_image_deref_atomic_inc_wrap;
+         break;
+      case ir_intrinsic_image_atomic_dec_wrap:
+         op = nir_intrinsic_image_deref_atomic_dec_wrap;
+         break;
       case ir_intrinsic_memory_barrier:
          op = nir_intrinsic_memory_barrier;
          break;
@@ -1258,7 +1264,9 @@ nir_visitor::visit(ir_call *ir)
       case nir_intrinsic_image_deref_atomic_comp_swap:
       case nir_intrinsic_image_deref_atomic_fadd:
       case nir_intrinsic_image_deref_samples:
-      case nir_intrinsic_image_deref_size: {
+      case nir_intrinsic_image_deref_size:
+      case nir_intrinsic_image_deref_atomic_inc_wrap:
+      case nir_intrinsic_image_deref_atomic_dec_wrap: {
          nir_ssa_undef_instr *instr_undef =
             nir_ssa_undef_instr_create(shader, 1, 32);
          nir_builder_instr_insert(&b, &instr_undef->instr);
