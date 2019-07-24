@@ -376,6 +376,7 @@ void mir_rewrite_index_src_single(midgard_instruction *ins, unsigned old, unsign
 void mir_rewrite_index_src_tag(compiler_context *ctx, unsigned old, unsigned new, unsigned tag);
 bool mir_single_use(compiler_context *ctx, unsigned value);
 bool mir_special_index(compiler_context *ctx, unsigned idx);
+unsigned mir_use_count(compiler_context *ctx, unsigned value);
 
 /* MIR printing */
 
@@ -499,5 +500,6 @@ nir_clamp_psiz(nir_shader *shader, float min_size, float max_size);
 
 bool midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block);
+bool midgard_opt_varying_projection(compiler_context *ctx, midgard_block *block);
 
 #endif

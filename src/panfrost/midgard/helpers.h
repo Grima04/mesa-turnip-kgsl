@@ -25,6 +25,11 @@
 #include "util/macros.h"
 #include <string.h>
 
+#define OP_IS_LOAD_VARY_F(op) (\
+                op == midgard_op_ld_vary_16 || \
+                op == midgard_op_ld_vary_32 \
+        )
+
 #define OP_IS_STORE_VARY(op) (\
 		op == midgard_op_st_vary_16 || \
 		op == midgard_op_st_vary_32 || \
@@ -46,9 +51,13 @@
                 op == midgard_op_st_cubemap_coords \
 	)
 
-#define OP_IS_R27_ONLY(op) ( \
+#define OP_IS_PROJECTION(op) ( \
                 op == midgard_op_ldst_perspective_division_z || \
                 op == midgard_op_ldst_perspective_division_w \
+        )
+
+#define OP_IS_R27_ONLY(op) ( \
+                OP_IS_PROJECTION(op) \
         )
 
 #define OP_IS_MOVE(op) ( \

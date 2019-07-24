@@ -72,25 +72,26 @@ mir_rewrite_index(compiler_context *ctx, unsigned old, unsigned new)
         mir_rewrite_index_dst(ctx, old, new);
 }
 
-/* Checks if a value is used only once (or totally dead), which is an important
- * heuristic to figure out if certain optimizations are Worth It (TM) */
-
-bool
-mir_single_use(compiler_context *ctx, unsigned value)
+unsigned
+mir_use_count(compiler_context *ctx, unsigned value)
 {
         unsigned used_count = 0;
 
         mir_foreach_instr_global(ctx, ins) {
                 if (mir_has_arg(ins, value))
                         ++used_count;
-
-                /* Short circuit for speed */
-                if (used_count > 1)
-                        return false;
         }
 
-        return used_count <= 1;
+        return used_count;
+}
 
+/* Checks if a value is used only once (or totally dead), which is an important
+ * heuristic to figure out if certain optimizations are Worth It (TM) */
+
+bool
+mir_single_use(compiler_context *ctx, unsigned value)
+{
+        return mir_use_count(ctx, value) <= 1;
 }
 
 bool

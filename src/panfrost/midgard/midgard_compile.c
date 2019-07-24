@@ -2421,6 +2421,8 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                         progress |= midgard_opt_pos_propagate(ctx, block);
                         progress |= midgard_opt_copy_prop(ctx, block);
                         progress |= midgard_opt_dead_code_eliminate(ctx, block);
+                        progress |= midgard_opt_combine_projection(ctx, block);
+                        progress |= midgard_opt_varying_projection(ctx, block);
                 }
         } while (progress);
 
