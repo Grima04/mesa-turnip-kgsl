@@ -40,8 +40,6 @@ panfrost_sfbd_clear(
         struct panfrost_job *job,
         struct mali_single_framebuffer *sfbd)
 {
-        struct panfrost_context *ctx = job->ctx;
-
         if (job->clear & PIPE_CLEAR_COLOR) {
                 sfbd->clear_color_1 = job->clear_color[0][0];
                 sfbd->clear_color_2 = job->clear_color[0][1];
@@ -54,16 +52,10 @@ panfrost_sfbd_clear(
                 sfbd->clear_depth_2 = job->clear_depth;
                 sfbd->clear_depth_3 = job->clear_depth;
                 sfbd->clear_depth_4 = job->clear_depth;
-
-                sfbd->depth_buffer = ctx->depth_stencil_buffer.bo->gpu;
-                sfbd->depth_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
         }
 
         if (job->clear & PIPE_CLEAR_STENCIL) {
                 sfbd->clear_stencil = job->clear_stencil;
-
-                sfbd->stencil_buffer = ctx->depth_stencil_buffer.bo->gpu;
-                sfbd->stencil_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
         }
 
         /* Set flags based on what has been cleared, for the SFBD case */
@@ -91,13 +83,44 @@ panfrost_sfbd_set_cbuf(
 {
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-        signed stride = rsrc->slices[0].stride;
+        unsigned level = surf->u.tex.level;
+        assert(surf->u.tex.first_layer == 0);
 
         fb->format = panfrost_sfbd_format(surf);
 
+        unsigned offset = rsrc->slices[level].offset;
+        signed stride = rsrc->slices[level].stride;
+
         if (rsrc->layout == PAN_LINEAR) {
-                fb->framebuffer = rsrc->bo->gpu;
+                fb->framebuffer = rsrc->bo->gpu + offset;
                 fb->stride = stride;
+        } else {
+                fprintf(stderr, "Invalid render layout\n");
+                assert(0);
+        }
+}
+
+static void
+panfrost_sfbd_set_zsbuf(
+        struct mali_single_framebuffer *fb,
+        struct pipe_surface *surf)
+{
+        struct panfrost_resource *rsrc = pan_resource(surf->texture);
+
+        unsigned level = surf->u.tex.level;
+        assert(surf->u.tex.first_layer == 0);
+
+        unsigned offset = rsrc->slices[level].offset;
+
+        if (rsrc->layout == PAN_LINEAR) {
+                /* TODO: What about format selection? */
+                /* TODO: Z/S stride selection? */
+
+                fb->depth_buffer = rsrc->bo->gpu + offset;
+                fb->depth_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
+
+                fb->stencil_buffer = rsrc->bo->gpu + offset;
+                fb->stencil_buffer_enable = MALI_DEPTH_STENCIL_ENABLE;
         } else {
                 fprintf(stderr, "Invalid render layout\n");
                 assert(0);
@@ -118,9 +141,8 @@ panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         assert(ctx->pipe_framebuffer.nr_cbufs == 1);
         panfrost_sfbd_set_cbuf(&fb, ctx->pipe_framebuffer.cbufs[0]);
 
-        if (ctx->pipe_framebuffer.zsbuf) {
-                /* TODO */
-        }
+        if (ctx->pipe_framebuffer.zsbuf)
+                panfrost_sfbd_set_zsbuf(&fb, ctx->pipe_framebuffer.zsbuf);
 
         if (job->requirements & PAN_REQ_MSAA)
                 fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
