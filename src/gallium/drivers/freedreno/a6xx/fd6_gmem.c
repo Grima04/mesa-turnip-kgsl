@@ -679,17 +679,10 @@ set_blit_scissor(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	struct pipe_scissor_state blit_scissor;
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
-	blit_scissor.minx = batch->max_scissor.minx;
-	blit_scissor.miny = batch->max_scissor.miny;
-	blit_scissor.maxx = MIN2(pfb->width, batch->max_scissor.maxx);
-	blit_scissor.maxy = MIN2(pfb->height, batch->max_scissor.maxy);
-
-	/* NOTE: blob switches to CP_BLIT instead of CP_EVENT_WRITE:BLIT for
-	 * small render targets.  But since we align pitch to binw I think
-	 * we can get away avoiding GPU hangs a simpler way, by just rounding
-	 * up the blit scissor:
-	 */
-	blit_scissor.maxx = MAX2(blit_scissor.maxx, batch->ctx->screen->gmem_alignw);
+	blit_scissor.minx = 0;
+	blit_scissor.miny = 0;
+	blit_scissor.maxx = align(pfb->width, batch->ctx->screen->gmem_alignw);
+	blit_scissor.maxy = align(pfb->height, batch->ctx->screen->gmem_alignh);
 
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_SCISSOR_TL, 2);
 	OUT_RING(ring,
