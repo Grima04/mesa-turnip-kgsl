@@ -306,6 +306,8 @@ static void scan_instruction(const struct nir_shader *nir,
 		case nir_intrinsic_image_deref_atomic_xor:
 		case nir_intrinsic_image_deref_atomic_exchange:
 		case nir_intrinsic_image_deref_atomic_comp_swap:
+		case nir_intrinsic_image_deref_atomic_inc_wrap:
+		case nir_intrinsic_image_deref_atomic_dec_wrap:
 			info->writes_memory = true;
 			info->num_memory_instructions++; /* we only care about stores */
 			break;
