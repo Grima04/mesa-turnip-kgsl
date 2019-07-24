@@ -142,20 +142,14 @@ zink_resource_create(struct pipe_screen *pscreen,
          ici.imageType = VK_IMAGE_TYPE_1D;
          break;
 
-      case PIPE_TEXTURE_2D:
-      case PIPE_TEXTURE_2D_ARRAY:
       case PIPE_TEXTURE_CUBE:
       case PIPE_TEXTURE_CUBE_ARRAY:
+         ici.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+         /* fall-through */
+      case PIPE_TEXTURE_2D:
+      case PIPE_TEXTURE_2D_ARRAY:
       case PIPE_TEXTURE_RECT:
          ici.imageType = VK_IMAGE_TYPE_2D;
-         /* cube and 2D array needs some quirks here */
-         if (templ->target == PIPE_TEXTURE_CUBE)
-            ici.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-         else if (templ->target == PIPE_TEXTURE_2D_ARRAY)
-            ici.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
-         else if (templ->target == PIPE_TEXTURE_CUBE_ARRAY)
-            ici.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT |
-                        VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
          break;
 
       case PIPE_TEXTURE_3D:
