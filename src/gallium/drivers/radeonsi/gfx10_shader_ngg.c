@@ -537,7 +537,6 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	struct tgsi_shader_info *info = &sel->info;
 	struct si_shader_output_values outputs[PIPE_MAX_SHADER_OUTPUTS];
 	LLVMBuilderRef builder = ctx->ac.builder;
-	struct lp_build_if_state if_state;
 	LLVMValueRef tmp, tmp2;
 
 	assert(!ctx->shader->is_gs_copy_shader);
@@ -739,7 +738,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	 * TODO: culling depends on the primitive type, so can have some
 	 * interaction here.
 	 */
-	lp_build_if(&if_state, &ctx->gallivm, is_gs_thread);
+	ac_build_ifcc(&ctx->ac, is_gs_thread, 6001);
 	{
 		struct ngg_prim prim = {};
 
@@ -766,10 +765,10 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 
 		build_export_prim(ctx, &prim);
 	}
-	lp_build_endif(&if_state);
+	ac_build_endif(&ctx->ac, 6001);
 
 	/* Export per-vertex data (positions and parameters). */
-	lp_build_if(&if_state, &ctx->gallivm, is_es_thread);
+	ac_build_ifcc(&ctx->ac, is_es_thread, 6002);
 	{
 		unsigned i;
 
@@ -810,7 +809,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 
 		si_llvm_export_vs(ctx, outputs, i);
 	}
-	lp_build_endif(&if_state);
+	ac_build_endif(&ctx->ac, 6002);
 }
 
 static LLVMValueRef
@@ -902,7 +901,6 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 	const struct si_shader_selector *sel = ctx->shader->selector;
 	const struct tgsi_shader_info *info = &sel->info;
 	LLVMBuilderRef builder = ctx->ac.builder;
-	struct lp_build_if_state if_state;
 	LLVMValueRef tmp;
 	const LLVMValueRef vertexidx =
 		LLVMBuildLoad(builder, ctx->gs_next_vertex[stream], "");
@@ -919,7 +917,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 	tmp = LLVMBuildSelect(builder, can_emit, tmp, vertexidx, "");
 	LLVMBuildStore(builder, tmp, ctx->gs_next_vertex[stream]);
 
-	lp_build_if(&if_state, &ctx->gallivm, can_emit);
+	ac_build_ifcc(&ctx->ac, can_emit, 9001);
 
 	const LLVMValueRef vertexptr =
 		ngg_gs_emit_vertex_ptr(ctx, get_thread_id_in_tg(ctx), vertexidx);
@@ -969,7 +967,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx,
 	tmp = LLVMBuildAdd(builder, tmp, LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i32, ""), "");
 	LLVMBuildStore(builder, tmp, ctx->gs_generated_prims[stream]);
 
-	lp_build_endif(&if_state);
+	ac_build_endif(&ctx->ac, 9001);
 }
 
 void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx)
