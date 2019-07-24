@@ -229,6 +229,12 @@ struct v3d_vertex_stateobj {
         uint32_t defaults_offset;
 };
 
+struct v3d_stream_output_target {
+        struct pipe_stream_output_target base;
+        /* Number of transform feedback vertices written to this target */
+        uint32_t recorded_vertex_count;
+};
+
 struct v3d_streamout_stateobj {
         struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
         /* Number of vertices we've written into the buffer so far. */
@@ -547,6 +553,12 @@ static inline struct v3d_sampler_state *
 v3d_sampler_state(struct pipe_sampler_state *psampler)
 {
         return (struct v3d_sampler_state *)psampler;
+}
+
+static inline struct v3d_stream_output_target *
+v3d_stream_output_target(struct pipe_stream_output_target *ptarget)
+{
+        return (struct v3d_stream_output_target *)ptarget;
 }
 
 struct pipe_context *v3d_context_create(struct pipe_screen *pscreen,

@@ -563,6 +563,11 @@ v3d_tf_statistics_record(struct v3d_context *v3d,
 
         /* XXX: Only count if we didn't overflow. */
         v3d->tf_prims_generated += prims;
+        for (int i = 0; i < v3d->streamout.num_targets; i++) {
+                struct v3d_stream_output_target *target =
+                        v3d_stream_output_target(v3d->streamout.targets[i]);
+                target->recorded_vertex_count += info->count;
+        }
 }
 
 static void

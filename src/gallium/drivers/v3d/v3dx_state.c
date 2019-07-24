@@ -1186,20 +1186,20 @@ v3d_create_stream_output_target(struct pipe_context *pctx,
                                 unsigned buffer_offset,
                                 unsigned buffer_size)
 {
-        struct pipe_stream_output_target *target;
+        struct v3d_stream_output_target *target;
 
-        target = CALLOC_STRUCT(pipe_stream_output_target);
+        target = CALLOC_STRUCT(v3d_stream_output_target);
         if (!target)
                 return NULL;
 
-        pipe_reference_init(&target->reference, 1);
-        pipe_resource_reference(&target->buffer, prsc);
+        pipe_reference_init(&target->base.reference, 1);
+        pipe_resource_reference(&target->base.buffer, prsc);
 
-        target->context = pctx;
-        target->buffer_offset = buffer_offset;
-        target->buffer_size = buffer_size;
+        target->base.context = pctx;
+        target->base.buffer_offset = buffer_offset;
+        target->base.buffer_size = buffer_size;
 
-        return target;
+        return &target->base;
 }
 
 static void
