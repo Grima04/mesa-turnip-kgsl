@@ -681,6 +681,10 @@ schedule_program(compiler_context *ctx)
                 midgard_pair_load_store(ctx, block);
         }
 
+        /* Must be lowered right before RA */
+        mir_squeeze_index(ctx);
+        mir_lower_special_reads(ctx);
+
         do {
                 /* If we spill, find the best spill node and spill it */
 

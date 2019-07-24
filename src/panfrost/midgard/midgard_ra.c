@@ -305,6 +305,118 @@ check_read_class(unsigned *classes, unsigned tag, unsigned node)
         }
 }
 
+/* Prepass before RA to ensure special class restrictions are met. The idea is
+ * to create a bit field of types of instructions that read a particular index.
+ * Later, we'll add moves as appropriate and rewrite to specialize by type. */
+
+static void
+mark_node_class (unsigned *bitfield, unsigned node)
+{
+        if ((node >= 0) && (node < SSA_FIXED_MINIMUM))
+                BITSET_SET(bitfield, node);
+}
+
+static midgard_instruction *
+mir_find_last_write(compiler_context *ctx, unsigned i)
+{
+        midgard_instruction *last_write = NULL;
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->compact_branch) continue;
+
+                if (ins->ssa_args.dest == i)
+                        last_write = ins;
+        }
+
+        return last_write;
+}
+
+void
+mir_lower_special_reads(compiler_context *ctx)
+{
+        size_t sz = BITSET_WORDS(ctx->temp_count) * sizeof(BITSET_WORD);
+
+        /* Bitfields for the various types of registers we could have */
+
+        unsigned *alur = calloc(sz, 1);
+        unsigned *ldst = calloc(sz, 1);
+        unsigned *texr = calloc(sz, 1);
+        unsigned *texw = calloc(sz, 1);
+
+        /* Pass #1 is analysis, a linear scan to fill out the bitfields */
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->compact_branch) continue;
+
+                switch (ins->type) {
+                case TAG_ALU_4:
+                        mark_node_class(alur, ins->ssa_args.src0);
+                        mark_node_class(alur, ins->ssa_args.src1);
+                        break;
+                case TAG_LOAD_STORE_4:
+                        mark_node_class(ldst, ins->ssa_args.src0);
+                        mark_node_class(ldst, ins->ssa_args.src1);
+                        break;
+                case TAG_TEXTURE_4:
+                        mark_node_class(texr, ins->ssa_args.src0);
+                        mark_node_class(texr, ins->ssa_args.src1);
+                        mark_node_class(texw, ins->ssa_args.dest);
+                        break;
+                }
+        }
+
+        /* Pass #2 is lowering now that we've analyzed all the classes.
+         * Conceptually, if an index is only marked for a single type of use,
+         * there is nothing to lower. If it is marked for different uses, we
+         * split up based on the number of types of uses. To do so, we divide
+         * into N distinct classes of use (where N>1 by definition), emit N-1
+         * moves from the index to copies of the index, and finally rewrite N-1
+         * of the types of uses to use the corresponding move */
+
+        unsigned spill_idx = ctx->temp_count;
+
+        for (unsigned i = 0; i < ctx->temp_count; ++i) {
+                bool is_alur = BITSET_TEST(alur, i);
+                bool is_ldst = BITSET_TEST(ldst, i);
+                bool is_texr = BITSET_TEST(texr, i);
+                bool is_texw = BITSET_TEST(texw, i);
+
+                /* Analyse to check how many distinct uses there are. ALU ops
+                 * (alur) can read the results of the texture pipeline (texw)
+                 * but not ldst or texr. Load/store ops (ldst) cannot read
+                 * anything but load/store inputs. Texture pipeline cannot read
+                 * anything but texture inputs. TODO: Simplify.  */
+
+                bool collision =
+                        (is_alur && (is_ldst || is_texr)) ||
+                        (is_ldst && (is_alur || is_texr || is_texw)) ||
+                        (is_texr && (is_alur || is_ldst)) ||
+                        (is_texw && (is_ldst));
+        
+                if (!collision)
+                        continue;
+
+                /* Use the index as-is as the work copy. Emit copies for
+                 * special uses */
+
+                if (is_ldst) {
+                        unsigned idx = spill_idx++;
+                        midgard_instruction m = v_mov(i, blank_alu_src, idx);
+                        midgard_instruction *use = mir_next_op(mir_find_last_write(ctx, i));
+                        assert(use);
+                        mir_insert_instruction_before(use, m);
+
+                        /* Rewrite to use */
+                        mir_rewrite_index_src_tag(ctx, i, idx, TAG_LOAD_STORE_4);
+                }
+        }
+
+        free(alur);
+        free(ldst);
+        free(texr);
+        free(texw);
+}
+
 /* This routine performs the actual register allocation. It should be succeeded
  * by install_registers */
 
