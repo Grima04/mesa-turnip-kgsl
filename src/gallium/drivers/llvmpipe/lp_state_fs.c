@@ -478,7 +478,8 @@ generate_fs_loop(struct gallivm_state *gallivm,
 
    lp_build_interp_soa_update_inputs_dyn(interp, gallivm, loop_state.counter);
 
-   struct lp_build_tgsi_params params = {};
+   struct lp_build_tgsi_params params;
+   memset(&params, 0, sizeof(params));
 
    params.type = type;
    params.mask = &mask;

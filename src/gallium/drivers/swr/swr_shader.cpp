@@ -681,7 +681,8 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
    gs_iface.info = info;
    gs_iface.pVtxAttribMap = vtxAttribMap;
 
-   struct lp_build_tgsi_params params = {};
+   struct lp_build_tgsi_params params;
+   memset(&params, 0, sizeof(params));
    params.type = lp_type_float_vec(32, 32 * 8);
    params.mask = & mask;
    params.consts_ptr = wrap(consts_ptr);
@@ -834,7 +835,8 @@ BuilderSWR::CompileVS(struct swr_context *ctx, swr_jit_vs_key &key)
    uint32_t vectorWidth = mVWidth;
 #endif
 
-   struct lp_build_tgsi_params params = {};
+   struct lp_build_tgsi_params params;
+   memset(&params, 0, sizeof(params));
    params.type = lp_type_float_vec(32, 32 * vectorWidth);
    params.consts_ptr = wrap(consts_ptr);
    params.const_sizes_ptr = wrap(const_sizes_ptr);
@@ -1324,7 +1326,8 @@ BuilderSWR::CompileFS(struct swr_context *ctx, swr_jit_fs_key &key)
       uses_mask = true;
    }
 
-   struct lp_build_tgsi_params params = {};
+   struct lp_build_tgsi_params params;
+   memset(&params, 0, sizeof(params));
    params.type = lp_type_float_vec(32, 32 * 8);
    params.mask = uses_mask ? &mask : NULL;
    params.consts_ptr = wrap(consts_ptr);

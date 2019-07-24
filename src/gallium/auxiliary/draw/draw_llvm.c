@@ -637,7 +637,8 @@ generate_vs(struct draw_llvm_variant *variant,
    LLVMValueRef num_ssbos_ptr =
       draw_jit_context_num_vs_ssbos(variant->gallivm, context_ptr);
 
-   struct lp_build_tgsi_params params = {};
+   struct lp_build_tgsi_params params;
+   memset(&params, 0, sizeof(params));
 
    params.type = vs_type;
    params.mask = bld_mask;
@@ -2379,7 +2380,8 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
       draw_gs_llvm_dump_variant_key(&variant->key);
    }
 
-   struct lp_build_tgsi_params params = {};
+   struct lp_build_tgsi_params params;
+   memset(&params, 0, sizeof(params));
 
    params.type = gs_type;
    params.mask = &mask;
