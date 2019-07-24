@@ -94,7 +94,10 @@ struct panfrost_screen;
 struct panfrost_screen {
         struct pipe_screen base;
         int fd;
+
+        /* Properties of the GPU in use */
         unsigned gpu_id;
+        bool require_sfbd;
 
         struct renderonly *ro;
 

@@ -525,6 +525,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->fd = fd;
 
         screen->gpu_id = panfrost_drm_query_gpu_version(screen);
+        screen->require_sfbd = screen->gpu_id < 0x0750; /* T760 is the first to support MFBD */
 
         /* Check if we're loading against a supported GPU model. */
 

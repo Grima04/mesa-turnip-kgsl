@@ -135,6 +135,7 @@ panfrost_bind_blend_state(struct pipe_context *pipe,
                           void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         struct pipe_blend_state *blend = (struct pipe_blend_state *) cso;
         struct panfrost_blend_state *pblend = (struct panfrost_blend_state *) cso;
         ctx->blend = pblend;
@@ -142,7 +143,7 @@ panfrost_bind_blend_state(struct pipe_context *pipe,
         if (!blend)
                 return;
 
-        if (ctx->require_sfbd) {
+        if (screen->require_sfbd) {
                 SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_DITHER, !blend->dither);
         }
 

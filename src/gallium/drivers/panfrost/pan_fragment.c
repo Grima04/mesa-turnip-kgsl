@@ -53,7 +53,9 @@ panfrost_initialize_surface(
 mali_ptr
 panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
 {
-        mali_ptr framebuffer = ctx->require_sfbd ?
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+
+        mali_ptr framebuffer = screen->require_sfbd ?
                                panfrost_sfbd_fragment(ctx, has_draws) :
                                panfrost_mfbd_fragment(ctx, has_draws);
 

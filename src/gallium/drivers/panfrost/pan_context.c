@@ -232,7 +232,8 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
                 return;
         }
 
-        mali_ptr framebuffer = ctx->require_sfbd ?
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        mali_ptr framebuffer = screen->require_sfbd ?
                                panfrost_attach_vt_sfbd(ctx) :
                                panfrost_attach_vt_mfbd(ctx);
 
@@ -246,7 +247,9 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
 static void
 panfrost_invalidate_frame(struct panfrost_context *ctx)
 {
-        if (ctx->require_sfbd)
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+
+        if (screen->require_sfbd)
                 ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
         else
                 ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
@@ -1030,6 +1033,7 @@ void
 panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 {
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
         panfrost_attach_vt_framebuffer(ctx, true);
 
@@ -1174,7 +1178,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         ctx->fragment_shader_core.blend.shader = 0;
                 }
 
-                if (ctx->require_sfbd) {
+                if (screen->require_sfbd) {
                         /* When only a single render target platform is used, the blend
                          * information is inside the shader meta itself. We
                          * additionally need to signal CAN_DISCARD for nontrivial blend
@@ -1198,7 +1202,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 ctx->payload_tiler.postfix._shader_upper = (transfer.gpu) >> 4;
 
-                if (!ctx->require_sfbd) {
+                if (!screen->require_sfbd) {
                         /* Additional blend descriptor tacked on for jobs using MFBD */
 
                         unsigned blend_count = 0x200;
@@ -2392,7 +2396,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 
         panfrost_hint_afbc(screen, &ctx->pipe_framebuffer);
 
-        if (ctx->require_sfbd)
+        if (screen->require_sfbd)
                 ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
         else
                 ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
@@ -2691,7 +2695,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         struct pipe_context *gallium = (struct pipe_context *) ctx;
 
         ctx->is_t6xx = pscreen->gpu_id < 0x0700; /* Literally, "earlier than T700" */
-        ctx->require_sfbd = pscreen->gpu_id < 0x0750; /* T760 is the first to support MFBD */
 
         gallium->screen = screen;
 
