@@ -187,7 +187,18 @@ static LLVMValueRef get_alu_src(struct ac_nir_context *ctx,
 		                                       swizzle, "");
 		}
 	}
-	assert(!src.negate);
+
+	if (src.negate) {
+		LLVMTypeRef type = LLVMTypeOf(value);
+		if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
+			type = LLVMGetElementType(type);
+
+		if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind)
+			value = LLVMBuildNeg(ctx->ac.builder, value, "");
+		else
+			value = LLVMBuildFNeg(ctx->ac.builder, value, "");
+	}
+
 	assert(!src.abs);
 	return value;
 }
