@@ -492,7 +492,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
                 unsigned class = found_class[i];
-                if (!class) continue;
                 ra_set_node_class(g, i, classes[class]);
         }
 
