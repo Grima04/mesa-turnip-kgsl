@@ -266,7 +266,7 @@ static void
 set_class(unsigned *classes, unsigned node, unsigned class)
 {
         /* Check that we're even a node */
-        if ((node < 0) ||(node >= SSA_FIXED_MINIMUM))
+        if ((node < 0) || (node >= SSA_FIXED_MINIMUM))
                 return;
 
         /* First 4 are work, next 4 are load/store.. */
@@ -283,6 +283,26 @@ set_class(unsigned *classes, unsigned node, unsigned class)
         assert(REG_CLASS_WORK == 0);
 
         classes[node] |= (class << 2);
+}
+
+/* Special register classes impose special constraints on who can read their
+ * values, so check that */
+
+static bool
+check_read_class(unsigned *classes, unsigned tag, unsigned node)
+{
+        /* Non-nodes are implicitly ok */
+        if ((node < 0) || (node >= SSA_FIXED_MINIMUM))
+                return true;
+
+        unsigned current_class = classes[node] >> 2;
+
+        switch (current_class) {
+        case REG_CLASS_LDST:
+                return (tag == TAG_LOAD_STORE_4);
+        default:
+                return (tag != TAG_LOAD_STORE_4);
+        }
 }
 
 /* This routine performs the actual register allocation. It should be succeeded
@@ -347,6 +367,15 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         set_class(found_class, ins->ssa_args.src0, REG_CLASS_LDST);
                         set_class(found_class, ins->ssa_args.src1, REG_CLASS_LDST);
                 }
+        }
+
+        /* Check that the semantics of the class are respected */
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->compact_branch) continue;
+
+                /* Non-load-store cannot read load/store */
+                assert(check_read_class(found_class, ins->type, ins->ssa_args.src0));
+                assert(check_read_class(found_class, ins->type, ins->ssa_args.src1));
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
