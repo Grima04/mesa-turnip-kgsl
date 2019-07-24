@@ -1401,25 +1401,19 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         ctx->fragment_output = reg;
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
-                        /* Varyings are written into one of two special
-                         * varying register, r26 or r27. The register itself is
-                         * selected as the register in the st_vary instruction,
-                         * minus the base of 26. E.g. write into r27 and then
-                         * call st_vary(1) */
-
-                        midgard_instruction ins = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(26));
-                        emit_mir_instruction(ctx, ins);
-
                         /* We should have been vectorized, though we don't
                          * currently check that st_vary is emitted only once
                          * per slot (this is relevant, since there's not a mask
                          * parameter available on the store [set to 0 by the
                          * blob]). We do respect the component by adjusting the
-                         * swizzle. */
+                         * swizzle. If this is a constant source, we'll need to
+                         * emit that explicitly. */
+
+                        emit_explicit_constant(ctx, reg, reg);
 
                         unsigned component = nir_intrinsic_component(instr);
 
-                        midgard_instruction st = m_st_vary_32(SSA_FIXED_REGISTER(0), offset);
+                        midgard_instruction st = m_st_vary_32(reg, offset);
                         st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
                         st.load_store.swizzle = SWIZZLE_XYZW << (2*component);
                         emit_mir_instruction(ctx, st);
