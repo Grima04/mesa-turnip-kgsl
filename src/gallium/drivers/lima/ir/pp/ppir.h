@@ -426,6 +426,47 @@ static inline ppir_dest *ppir_node_get_dest(ppir_node *node)
    }
 }
 
+static inline int ppir_node_get_src_num(ppir_node *node)
+{
+   switch (node->type) {
+   case ppir_node_type_alu:
+      return ppir_node_to_alu(node)->num_src;
+   case ppir_node_type_branch:
+      return 2;
+   case ppir_node_type_load_texture:
+   case ppir_node_type_load:
+   case ppir_node_type_store:
+      return 1;
+   default:
+      return 0;
+   }
+
+   return 0;
+}
+
+static inline ppir_src *ppir_node_get_src(ppir_node *node, int idx)
+{
+   if (idx < 0 || idx >= ppir_node_get_src_num(node))
+      return NULL;
+
+   switch (node->type) {
+   case ppir_node_type_alu:
+      return &ppir_node_to_alu(node)->src[idx];
+   case ppir_node_type_branch:
+      return &ppir_node_to_branch(node)->src[idx];
+   case ppir_node_type_load_texture:
+      return &ppir_node_to_load_texture(node)->src_coords;
+   case ppir_node_type_load:
+      return &ppir_node_to_load(node)->src;
+   case ppir_node_type_store:
+      return &ppir_node_to_store(node)->src;
+   default:
+      break;
+   }
+
+   return NULL;
+}
+
 static inline void ppir_node_target_assign(ppir_src *src, ppir_dest *dest)
 {
    src->type = dest->type;
