@@ -530,6 +530,21 @@ emit_load_const(compiler_context *ctx, nir_load_const_instr *instr)
         _mesa_hash_table_u64_insert(ctx->ssa_constants, def.index + 1, v);
 }
 
+/* Normally constants are embedded implicitly, but for I/O and such we have to
+ * explicitly emit a move with the constant source */
+
+static void
+emit_explicit_constant(compiler_context *ctx, unsigned node, unsigned to)
+{
+        void *constant_value = _mesa_hash_table_u64_search(ctx->ssa_constants, node + 1);
+
+        if (constant_value) {
+                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, to);
+                attach_constants(ctx, &ins, constant_value, node + 1);
+                emit_mir_instruction(ctx, ins);
+        }
+}
+
 static unsigned
 nir_src_index(compiler_context *ctx, nir_src *src)
 {
@@ -2077,16 +2092,7 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
 static void
 emit_fragment_epilogue(compiler_context *ctx)
 {
-        /* Special case: writing out constants requires us to include the move
-         * explicitly now, so shove it into r0 */
-
-        void *constant_value = _mesa_hash_table_u64_search(ctx->ssa_constants, ctx->fragment_output + 1);
-
-        if (constant_value) {
-                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, SSA_FIXED_REGISTER(0));
-                attach_constants(ctx, &ins, constant_value, ctx->fragment_output + 1);
-                emit_mir_instruction(ctx, ins);
-        }
+        emit_explicit_constant(ctx, ctx->fragment_output, SSA_FIXED_REGISTER(0));
 
         /* Perform the actual fragment writeout. We have two writeout/branch
          * instructions, forming a loop until writeout is successful as per the
