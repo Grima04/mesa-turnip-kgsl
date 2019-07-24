@@ -153,7 +153,10 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
         };
 
         /* Report that we actually use this register, and return it */
-        ctx->work_registers = MAX2(ctx->work_registers, phys);
+
+        if (phys < 16)
+                ctx->work_registers = MAX2(ctx->work_registers, phys);
+
         return r;
 }
 
@@ -184,8 +187,12 @@ create_register_set(unsigned work_count, unsigned *classes)
                 /* Special register classes have two registers in them */
                 unsigned count = (c == REG_CLASS_WORK) ? work_count : 2;
 
+                unsigned first_reg =
+                        (c == REG_CLASS_LDST) ? 26 :
+                        (c == REG_CLASS_TEX)  ? 28 : 0;
+
                 /* Add the full set of work registers */
-                for (unsigned i = 0; i < count; ++i) {
+                for (unsigned i = first_reg; i < (first_reg + count); ++i) {
                         int base = WORK_STRIDE * i;
 
                         /* Build a full set of subdivisions */
@@ -220,7 +227,8 @@ create_register_set(unsigned work_count, unsigned *classes)
         return regs;
 }
 
-/* This routine gets a precomputed register set off the screen if it's able, or otherwise it computes one on the fly */
+/* This routine gets a precomputed register set off the screen if it's able, or
+ * otherwise it computes one on the fly */
 
 static struct ra_regs *
 get_register_set(struct midgard_screen *screen, unsigned work_count, unsigned **classes)
@@ -251,6 +259,32 @@ get_register_set(struct midgard_screen *screen, unsigned work_count, unsigned **
         return created;
 }
 
+/* Assign a (special) class, ensuring that it is compatible with whatever class
+ * was already set */
+
+static void
+set_class(unsigned *classes, unsigned node, unsigned class)
+{
+        /* Check that we're even a node */
+        if ((node < 0) ||(node >= SSA_FIXED_MINIMUM))
+                return;
+
+        /* First 4 are work, next 4 are load/store.. */
+        unsigned current_class = classes[node] >> 2;
+
+        /* Nothing to do */
+        if (class == current_class)
+                return;
+
+        /* If we're changing, we must not have already assigned a special class
+         */
+
+        assert(current_class == REG_CLASS_WORK);
+        assert(REG_CLASS_WORK == 0);
+
+        classes[node] |= (class << 2);
+}
+
 /* This routine performs the actual register allocation. It should be succeeded
  * by install_registers */
 
@@ -274,32 +308,51 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         /* Let's actually do register allocation */
         int nodes = ctx->temp_count;
         struct ra_graph *g = ra_alloc_interference_graph(regs, nodes);
-
-        /* Determine minimum size needed to hold values, to indirectly
-         * determine class */
+        
+        /* Register class (as known to the Mesa register allocator) is actually
+         * the product of both semantic class (work, load/store, texture..) and
+         * size (vec2/vec3..). First, we'll go through and determine the
+         * minimum size needed to hold values */
 
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
 
-        mir_foreach_block(ctx, block) {
-                mir_foreach_instr_in_block(block, ins) {
-                        if (ins->compact_branch) continue;
-                        if (ins->ssa_args.dest < 0) continue;
-                        if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->compact_branch) continue;
+                if (ins->ssa_args.dest < 0) continue;
+                if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
 
-                        int class = util_logbase2(ins->mask) + 1;
+                /* 0 for x, 1 for xy, 2 for xyz, 3 for xyzw */
+                int class = util_logbase2(ins->mask);
 
-                        /* Use the largest class if there's ambiguity, this
-                         * handles partial writes */
+                /* Use the largest class if there's ambiguity, this
+                 * handles partial writes */
 
-                        int dest = ins->ssa_args.dest;
-                        found_class[dest] = MAX2(found_class[dest], class);
+                int dest = ins->ssa_args.dest;
+                found_class[dest] = MAX2(found_class[dest], class);
+        }
+
+        /* Next, we'll determine semantic class. We default to zero (work).
+         * But, if we're used with a special operation, that will force us to a
+         * particular class. Each node must be assigned to exactly one class; a
+         * prepass before RA should have lowered what-would-have-been
+         * multiclass nodes into a series of moves to break it up into multiple
+         * nodes (TODO) */
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->compact_branch) continue;
+
+                /* Check if this operation imposes any classes */
+
+                if (ins->type == TAG_LOAD_STORE_4) {
+                        set_class(found_class, ins->ssa_args.src0, REG_CLASS_LDST);
+                        set_class(found_class, ins->ssa_args.src1, REG_CLASS_LDST);
                 }
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
                 unsigned class = found_class[i];
                 if (!class) continue;
-                ra_set_node_class(g, i, classes[class - 1]);
+                ra_set_node_class(g, i, classes[class]);
         }
 
         /* Determine liveness */
