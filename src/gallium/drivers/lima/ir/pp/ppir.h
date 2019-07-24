@@ -188,6 +188,7 @@ typedef enum {
 
 typedef struct ppir_src {
    ppir_target type;
+   ppir_node *node;
 
    union {
       ppir_reg *ssa;
@@ -467,18 +468,25 @@ static inline ppir_src *ppir_node_get_src(ppir_node *node, int idx)
    return NULL;
 }
 
-static inline void ppir_node_target_assign(ppir_src *src, ppir_dest *dest)
+static inline void ppir_node_target_assign(ppir_src *src, ppir_node *node)
 {
+   ppir_dest *dest = ppir_node_get_dest(node);
    src->type = dest->type;
    switch (src->type) {
    case ppir_target_ssa:
       src->ssa = &dest->ssa;
+      src->node = node;
       break;
    case ppir_target_register:
       src->reg = dest->reg;
+      /* Registers can be assigned from multiple nodes, so don't keep
+       * pointer to the node here
+       */
+      src->node = NULL;
       break;
    case ppir_target_pipeline:
       src->pipeline = dest->pipeline;
+      src->node = node;
       break;
    }
 }

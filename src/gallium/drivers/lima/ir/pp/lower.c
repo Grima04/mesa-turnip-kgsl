@@ -54,7 +54,7 @@ static bool ppir_lower_const(ppir_block *block, ppir_node *node)
             ppir_alu_node *alu = ppir_node_to_alu(move);
             alu->dest = *dest;
             alu->num_src = 1;
-            ppir_node_target_assign(alu->src, dest);
+            ppir_node_target_assign(alu->src, node);
             for (int i = 0; i < 4; i++)
                alu->src->swizzle[i] = i;
          }
@@ -104,7 +104,7 @@ static bool ppir_lower_load(ppir_block *block, ppir_node *node)
    dest->pipeline = ppir_pipeline_reg_uniform;
 
    alu->num_src = 1;
-   ppir_node_target_assign(&alu->src[0], dest);
+   ppir_node_target_assign(&alu->src[0], node);
    for (int i = 0; i < 4; i++)
       alu->src->swizzle[i] = i;
 
@@ -174,7 +174,7 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    dest->pipeline = ppir_pipeline_reg_sampler;
 
    alu->num_src = 1;
-   ppir_node_target_assign(&alu->src[0], dest);
+   ppir_node_target_assign(&alu->src[0], node);
    for (int i = 0; i < 4; i++)
       alu->src->swizzle[i] = i;
 
@@ -223,7 +223,7 @@ static bool ppir_lower_select(ppir_block *block, ppir_node *node)
    assert(ppir_node_first_pred(node) == move);
 
    src->swizzle[0] = 0;
-   ppir_node_target_assign(alu->src, move_dest);
+   ppir_node_target_assign(alu->src, move);
    return true;
 }
 

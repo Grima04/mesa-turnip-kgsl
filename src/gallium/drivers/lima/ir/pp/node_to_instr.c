@@ -62,7 +62,7 @@ static bool insert_to_each_succ_instr(ppir_block *block, ppir_node *node)
             ppir_alu_node *alu = ppir_node_to_alu(move);
             alu->dest = *dest;
             alu->num_src = 1;
-            ppir_node_target_assign(alu->src, dest);
+            ppir_node_target_assign(alu->src, node);
             for (int i = 0; i < 4; i++)
                alu->src->swizzle[i] = i;
          }

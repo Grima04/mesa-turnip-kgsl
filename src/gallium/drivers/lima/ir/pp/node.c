@@ -407,8 +407,7 @@ static void _ppir_node_replace_child(ppir_src *src, ppir_node *old_child, ppir_n
 {
    ppir_dest *od = ppir_node_get_dest(old_child);
    if (ppir_node_target_equal(src, od)) {
-      ppir_dest *nd = ppir_node_get_dest(new_child);
-      ppir_node_target_assign(src, nd);
+      ppir_node_target_assign(src, new_child);
    }
 }
 

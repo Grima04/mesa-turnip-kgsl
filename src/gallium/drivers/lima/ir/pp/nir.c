@@ -111,8 +111,7 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       }
    }
 
-   ppir_dest *dest = ppir_node_get_dest(child);
-   ppir_node_target_assign(ps, dest);
+   ppir_node_target_assign(ps, child);
 }
 
 static int nir_to_ppir_opcodes[nir_num_opcodes] = {
