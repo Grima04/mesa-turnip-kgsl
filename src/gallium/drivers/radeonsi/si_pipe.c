@@ -31,7 +31,6 @@
 
 #include "ac_llvm_util.h"
 #include "radeon/radeon_uvd.h"
-#include "gallivm/lp_bld_misc.h"
 #include "util/disk_cache.h"
 #include "util/u_log.h"
 #include "util/u_memory.h"

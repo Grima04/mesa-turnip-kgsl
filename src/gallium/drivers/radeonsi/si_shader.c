@@ -6151,9 +6151,9 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 		if (shader->key.as_ngg) {
 			for (unsigned i = 0; i < 4; ++i) {
 				ctx->gs_curprim_verts[i] =
-					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
+					ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
 				ctx->gs_generated_prims[i] =
-					lp_build_alloca(&ctx->gallivm, ctx->ac.i32, "");
+					ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
 			}
 
 			unsigned scratch_size = 8;

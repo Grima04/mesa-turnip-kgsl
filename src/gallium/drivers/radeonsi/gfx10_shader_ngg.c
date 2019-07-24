@@ -1137,7 +1137,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 	/* TODO: culling */
 
 	/* Determine vertex liveness. */
-	LLVMValueRef vertliveptr = lp_build_alloca(&ctx->gallivm, ctx->ac.i1, "vertexlive");
+	LLVMValueRef vertliveptr = ac_build_alloca(&ctx->ac, ctx->ac.i1, "vertexlive");
 
 	tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
 	ac_build_ifcc(&ctx->ac, tmp, 5120);
