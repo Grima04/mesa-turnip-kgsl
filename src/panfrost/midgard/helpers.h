@@ -46,6 +46,11 @@
                 op == midgard_op_st_cubemap_coords \
 	)
 
+#define OP_IS_R27_ONLY(op) ( \
+                op == midgard_op_ldst_perspective_division_z || \
+                op == midgard_op_ldst_perspective_division_w \
+        )
+
 #define OP_IS_MOVE(op) ( \
                 op == midgard_alu_op_fmov || \
                 op == midgard_alu_op_imov \
