@@ -158,51 +158,58 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
 }
 
 /* This routine creates a register set. Should be called infrequently since
- * it's slow and can be cached */
+ * it's slow and can be cached. For legibility, variables are named in terms of
+ * work registers, although it is also used to create the register set for
+ * special register allocation */
 
 static struct ra_regs *
 create_register_set(unsigned work_count, unsigned *classes)
 {
-        int virtual_count = work_count * WORK_STRIDE;
+        int virtual_count = 32 * WORK_STRIDE;
 
         /* First, initialize the RA */
         struct ra_regs *regs = ra_alloc_reg_set(NULL, virtual_count, true);
 
-        int work_vec4 = ra_alloc_reg_class(regs);
-        int work_vec3 = ra_alloc_reg_class(regs);
-        int work_vec2 = ra_alloc_reg_class(regs);
-        int work_vec1 = ra_alloc_reg_class(regs);
+        for (unsigned c = 0; c < NR_REG_CLASSES; ++c) {
+                int work_vec4 = ra_alloc_reg_class(regs);
+                int work_vec3 = ra_alloc_reg_class(regs);
+                int work_vec2 = ra_alloc_reg_class(regs);
+                int work_vec1 = ra_alloc_reg_class(regs);
 
-        classes[0] = work_vec1;
-        classes[1] = work_vec2;
-        classes[2] = work_vec3;
-        classes[3] = work_vec4;
+                classes[4*c + 0] = work_vec1;
+                classes[4*c + 1] = work_vec2;
+                classes[4*c + 2] = work_vec3;
+                classes[4*c + 3] = work_vec4;
 
-        /* Add the full set of work registers */
-        for (unsigned i = 0; i < work_count; ++i) {
-                int base = WORK_STRIDE * i;
+                /* Special register classes have two registers in them */
+                unsigned count = (c == REG_CLASS_WORK) ? work_count : 2;
 
-                /* Build a full set of subdivisions */
-                ra_class_add_reg(regs, work_vec4, base);
-                ra_class_add_reg(regs, work_vec3, base + 1);
-                ra_class_add_reg(regs, work_vec3, base + 2);
-                ra_class_add_reg(regs, work_vec2, base + 3);
-                ra_class_add_reg(regs, work_vec2, base + 4);
-                ra_class_add_reg(regs, work_vec2, base + 5);
-                ra_class_add_reg(regs, work_vec1, base + 6);
-                ra_class_add_reg(regs, work_vec1, base + 7);
-                ra_class_add_reg(regs, work_vec1, base + 8);
-                ra_class_add_reg(regs, work_vec1, base + 9);
+                /* Add the full set of work registers */
+                for (unsigned i = 0; i < count; ++i) {
+                        int base = WORK_STRIDE * i;
 
-                for (unsigned a = 0; a < 10; ++a) {
-                        unsigned mask1 = reg_type_to_mask[a];
+                        /* Build a full set of subdivisions */
+                        ra_class_add_reg(regs, work_vec4, base);
+                        ra_class_add_reg(regs, work_vec3, base + 1);
+                        ra_class_add_reg(regs, work_vec3, base + 2);
+                        ra_class_add_reg(regs, work_vec2, base + 3);
+                        ra_class_add_reg(regs, work_vec2, base + 4);
+                        ra_class_add_reg(regs, work_vec2, base + 5);
+                        ra_class_add_reg(regs, work_vec1, base + 6);
+                        ra_class_add_reg(regs, work_vec1, base + 7);
+                        ra_class_add_reg(regs, work_vec1, base + 8);
+                        ra_class_add_reg(regs, work_vec1, base + 9);
 
-                        for (unsigned b = 0; b < 10; ++b) {
-                                unsigned mask2 = reg_type_to_mask[b];
+                        for (unsigned a = 0; a < 10; ++a) {
+                                unsigned mask1 = reg_type_to_mask[a];
 
-                                if (mask1 & mask2)
-                                        ra_add_reg_conflict(regs,
-                                                            base + a, base + b);
+                                for (unsigned b = 0; b < 10; ++b) {
+                                        unsigned mask2 = reg_type_to_mask[b];
+
+                                        if (mask1 & mask2)
+                                                ra_add_reg_conflict(regs,
+                                                                    base + a, base + b);
+                                }
                         }
                 }
         }

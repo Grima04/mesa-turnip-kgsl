@@ -41,8 +41,10 @@ struct midgard_screen {
 
         struct ra_regs *regs[9];
 
-        /* Work register classes corresponds to the above register sets */
-        unsigned reg_classes[9][4];
+        /* Work register classes corresponds to the above register
+         * sets. 12 per set for 4 classes per work/ldst/tex */
+
+        unsigned reg_classes[9][12];
 };
 
 /* Define the general compiler entry point */

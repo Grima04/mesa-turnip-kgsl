@@ -447,6 +447,15 @@ void schedule_program(compiler_context *ctx);
 
 struct ra_graph;
 
+/* Broad types of register classes so we can handle special
+ * registers */
+
+#define NR_REG_CLASSES 3
+
+#define REG_CLASS_WORK 0
+#define REG_CLASS_LDST 1
+#define REG_CLASS_TEX  2
+
 struct ra_graph* allocate_registers(compiler_context *ctx, bool *spilled);
 void install_registers(compiler_context *ctx, struct ra_graph *g);
 bool mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instruction *start, int src);
