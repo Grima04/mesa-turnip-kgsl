@@ -372,20 +372,13 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 mir_foreach_instr_in_block(block, ins) {
                         if (ins->compact_branch) continue;
 
-                        /* Dest is < 0 for st_vary instructions, which break
-                         * the usual SSA conventions. Liveness analysis doesn't
-                         * make sense on these instructions, so skip them to
-                         * avoid memory corruption */
-
-                        if (ins->ssa_args.dest < 0) continue;
-
                         if (ins->ssa_args.dest < SSA_FIXED_MINIMUM) {
                                 /* If this destination is not yet live, it is
                                  * now since we just wrote it */
 
                                 int dest = ins->ssa_args.dest;
 
-                                if (live_start[dest] == -1)
+                                if (dest >= 0 && live_start[dest] == -1)
                                         live_start[dest] = d;
                         }
 
