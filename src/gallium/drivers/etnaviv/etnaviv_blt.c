@@ -403,12 +403,6 @@ etna_try_blt_blit(struct pipe_context *pctx,
       return false;
    }
 
-   /* Ensure that the Z coordinate is sane */
-   assert(dst->base.target == PIPE_TEXTURE_CUBE || blit_info->dst.box.z == 0);
-   assert(src->base.target == PIPE_TEXTURE_CUBE || blit_info->src.box.z == 0);
-   assert(blit_info->src.box.z < src->base.array_size);
-   assert(blit_info->dst.box.z < dst->base.array_size);
-
    struct etna_resource_level *src_lev = &src->levels[blit_info->src.level];
    struct etna_resource_level *dst_lev = &dst->levels[blit_info->dst.level];
 

@@ -173,6 +173,7 @@ setup_miptree(struct etna_resource *rsc, unsigned paddingX, unsigned paddingY,
 
       mip->width = width;
       mip->height = height;
+      mip->depth = depth;
       mip->padded_width = align(width * msaa_xscale, paddingX);
       mip->padded_height = align(height * msaa_yscale, paddingY);
       mip->stride = util_format_get_stride(prsc->format, mip->padded_width);
@@ -554,6 +555,7 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
 
    level->width = tmpl->width0;
    level->height = tmpl->height0;
+   level->depth = tmpl->depth0;
 
    /* Determine padding of the imported resource. */
    unsigned paddingX = 0, paddingY = 0;

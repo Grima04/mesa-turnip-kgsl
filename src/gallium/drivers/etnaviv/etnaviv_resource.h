@@ -41,6 +41,7 @@ struct util_dynarray;
 struct etna_resource_level {
    unsigned width, padded_width; /* in pixels */
    unsigned height, padded_height; /* in samples */
+   unsigned depth;
    unsigned offset; /* offset into memory area */
    uint32_t stride; /* row stride */
    uint32_t layer_stride; /* layer stride */
