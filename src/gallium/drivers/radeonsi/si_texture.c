@@ -708,7 +708,28 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen,
 	/* Clear the base address and set the relative DCC offset. */
 	desc[0] = 0;
 	desc[1] &= C_008F14_BASE_ADDRESS_HI;
-	desc[7] = tex->dcc_offset >> 8;
+
+	switch (sscreen->info.chip_class) {
+	case GFX6:
+	case GFX7:
+		break;
+	case GFX8:
+		desc[7] = tex->dcc_offset >> 8;
+		break;
+	case GFX9:
+		desc[7] = tex->dcc_offset >> 8;
+		desc[5] &= C_008F24_META_DATA_ADDRESS;
+		desc[5] |= S_008F24_META_DATA_ADDRESS(tex->dcc_offset >> 40);
+		break;
+	case GFX10:
+		desc[6] &= C_00A018_META_DATA_ADDRESS_LO;
+		desc[6] |= S_00A018_META_DATA_ADDRESS_LO(tex->dcc_offset >> 8);
+		desc[7] = tex->dcc_offset >> 16;
+		break;
+	default:
+		assert(0);
+	}
+
 
 	/* Dwords [2:9] contain the image descriptor. */
 	memcpy(&md.metadata[2], desc, sizeof(desc));
