@@ -248,6 +248,15 @@ struct gen_device_info
     */
    int simulator_id;
 
+   /**
+    * holds the pci device id
+    */
+   uint32_t chipset_id;
+
+   /**
+    * no_hw is true when the chipset_id pci device id has been overridden
+    */
+   bool no_hw;
    /** @} */
 };
 
@@ -282,6 +291,8 @@ gen_device_info_timebase_scale(const struct gen_device_info *devinfo,
 {
    return (1000000000ull * gpu_timestamp) / devinfo->timestamp_frequency;
 }
+
+bool gen_get_device_info_from_fd(int fh, struct gen_device_info *devinfo);
 
 #ifdef __cplusplus
 }

@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include "gen_device_info.h"
 #include "compiler/shader_enums.h"
+#include "intel/common/gen_gem.h"
 #include "util/bitscan.h"
 #include "util/macros.h"
 
@@ -1182,6 +1183,24 @@ gen_device_info_update_from_topology(struct gen_device_info *devinfo,
    devinfo->num_eu_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
 }
 
+static bool
+getparam(int fd, uint32_t param, int *value)
+{
+   int tmp;
+
+   struct drm_i915_getparam gp = {
+      .param = param,
+      .value = &tmp,
+   };
+
+   int ret = gen_ioctl(fd, DRM_IOCTL_I915_GETPARAM, &gp);
+   if (ret != 0)
+      return false;
+
+   *value = tmp;
+   return true;
+}
+
 bool
 gen_get_device_info(int devid, struct gen_device_info *devinfo)
 {
@@ -1229,6 +1248,7 @@ gen_get_device_info(int devid, struct gen_device_info *devinfo)
 
    assert(devinfo->num_slices <= ARRAY_SIZE(devinfo->num_subslices));
 
+   devinfo->chipset_id = devid;
    return true;
 }
 
@@ -1242,4 +1262,110 @@ gen_get_device_name(int devid)
    default:
       return NULL;
    }
+}
+
+/**
+ * for gen8/gen9, SLICE_MASK/SUBSLICE_MASK can be used to compute the topology
+ * (kernel 4.13+)
+ */
+static bool
+getparam_topology(struct gen_device_info *devinfo, int fd)
+{
+   int slice_mask = 0;
+   if (!getparam(fd, I915_PARAM_SLICE_MASK, &slice_mask))
+      return false;
+
+   int n_eus;
+   if (!getparam(fd, I915_PARAM_EU_TOTAL, &n_eus))
+      return false;
+
+   int subslice_mask = 0;
+   if (!getparam(fd, I915_PARAM_SUBSLICE_MASK, &subslice_mask))
+      return false;
+
+   return gen_device_info_update_from_masks(devinfo,
+                                            slice_mask,
+                                            subslice_mask,
+                                            n_eus);
+}
+
+/**
+ * preferred API for updating the topology in devinfo (kernel 4.17+)
+ */
+static bool
+query_topology(struct gen_device_info *devinfo, int fd)
+{
+   struct drm_i915_query_item item = {
+      .query_id = DRM_I915_QUERY_TOPOLOGY_INFO,
+   };
+   struct drm_i915_query query = {
+      .num_items = 1,
+      .items_ptr = (uintptr_t) &item,
+   };
+
+   if (gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &query))
+      return false;
+
+   struct drm_i915_query_topology_info *topo_info =
+      (struct drm_i915_query_topology_info *) calloc(1, item.length);
+   item.data_ptr = (uintptr_t) topo_info;
+
+   if (gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &query) ||
+       item.length <= 0)
+      return false;
+
+   gen_device_info_update_from_topology(devinfo,
+                                        topo_info);
+
+   free(topo_info);
+
+   return true;
+
+}
+
+bool
+gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
+{
+   int devid = gen_get_pci_device_id_override();
+   if (devid > 0) {
+      if (!gen_get_device_info(devid, devinfo))
+         return false;
+      devinfo->no_hw = true;
+   } else {
+      /* query the device id */
+      if (!getparam(fd, I915_PARAM_CHIPSET_ID, &devid))
+         return false;
+      if (!gen_get_device_info(devid, devinfo))
+         return false;
+      devinfo->no_hw = false;
+   }
+
+   /* remaining initializion queries the kernel for device info */
+   if (devinfo->no_hw)
+      return true;
+
+   int timestamp_frequency;
+   if (getparam(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
+                &timestamp_frequency))
+      devinfo->timestamp_frequency = timestamp_frequency;
+   else if (devinfo->gen >= 10)
+      /* gen10 and later requires the timestamp_frequency to be updated */
+      return false;
+
+   if (!getparam(fd, I915_PARAM_REVISION, &devinfo->revision))
+       return false;
+
+   if (!query_topology(devinfo, fd)) {
+      if (devinfo->gen >= 10) {
+         /* topology uAPI required for CNL+ (kernel 4.17+) */
+         return false;
+      }
+
+      /* else use the kernel 4.13+ api for gen8+.  For older kernels, topology
+       * will be wrong, affecting GPU metrics. In this case, fail silently.
+       */
+      getparam_topology(devinfo, fd);
+   }
+
+   return true;
 }

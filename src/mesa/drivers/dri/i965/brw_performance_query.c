@@ -1682,67 +1682,6 @@ init_pipeline_statistic_query_registers(struct brw_context *brw)
    query->data_size = sizeof(uint64_t) * query->n_counters;
 }
 
-static bool
-query_topology(struct brw_context *brw)
-{
-   __DRIscreen *screen = brw->screen->driScrnPriv;
-   struct drm_i915_query_item item = {
-      .query_id = DRM_I915_QUERY_TOPOLOGY_INFO,
-   };
-   struct drm_i915_query query = {
-      .num_items = 1,
-      .items_ptr = (uintptr_t) &item,
-   };
-
-   if (drmIoctl(screen->fd, DRM_IOCTL_I915_QUERY, &query))
-      return false;
-
-   struct drm_i915_query_topology_info *topo_info =
-      (struct drm_i915_query_topology_info *) calloc(1, item.length);
-   item.data_ptr = (uintptr_t) topo_info;
-
-   if (drmIoctl(screen->fd, DRM_IOCTL_I915_QUERY, &query) ||
-       item.length <= 0)
-      return false;
-
-   gen_device_info_update_from_topology(&brw->screen->devinfo,
-                                        topo_info);
-
-   free(topo_info);
-
-   return true;
-}
-
-static bool
-getparam_topology(struct brw_context *brw)
-{
-   __DRIscreen *screen = brw->screen->driScrnPriv;
-   drm_i915_getparam_t gp;
-   int ret;
-
-   int slice_mask = 0;
-   gp.param = I915_PARAM_SLICE_MASK;
-   gp.value = &slice_mask;
-   ret = drmIoctl(screen->fd, DRM_IOCTL_I915_GETPARAM, &gp);
-   if (ret)
-      return false;
-
-   int subslice_mask = 0;
-   gp.param = I915_PARAM_SUBSLICE_MASK;
-   gp.value = &subslice_mask;
-   ret = drmIoctl(screen->fd, DRM_IOCTL_I915_GETPARAM, &gp);
-   if (ret)
-      return false;
-
-   if (!gen_device_info_update_from_masks(&brw->screen->devinfo,
-                                          slice_mask,
-                                          subslice_mask,
-                                          brw->screen->eu_total))
-      return false;
-
-   return true;
-}
-
 /* gen_device_info will have incorrect default topology values for unsupported kernels.
  * verify kernel support to ensure OA metrics are accurate.
  */
@@ -1797,28 +1736,9 @@ brw_init_perf_query_info(struct gl_context *ctx)
    brw->perfquery.perf = gen_perf_new(brw, drmIoctl);
 
    init_pipeline_statistic_query_registers(brw);
-   brw_perf_query_register_mdapi_statistic_query(brw);
 
-   if (!oa_metrics_kernel_support(screen->fd, devinfo))
-      return false;
-
-   if (!query_topology(brw)) {
-      /* We need the i915 query uAPI on CNL+ (kernel 4.17+). */
-      if (devinfo->gen >= 10)
-         return false;
-
-      if (!getparam_topology(brw)) {
-         /* We need the SLICE_MASK/SUBSLICE_MASK on gen8+ (kernel 4.13+). */
-         if (devinfo->gen >= 8)
-            return false;
-
-         /* On Haswell, the values are already computed for us in
-          * gen_device_info.
-          */
-      }
-   }
-
-   if (gen_perf_load_oa_metrics(brw->perfquery.perf, screen->fd, devinfo))
+   if ((oa_metrics_kernel_support(screen->fd, devinfo)) &&
+       (gen_perf_load_oa_metrics(brw->perfquery.perf, screen->fd, devinfo)))
       brw_perf_query_register_mdapi_oa_query(brw);
 
    brw->perfquery.unaccumulated =
