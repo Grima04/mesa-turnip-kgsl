@@ -303,4 +303,19 @@ vector_alu_apply_swizzle(unsigned src, unsigned swizzle)
         return vector_alu_srco_unsigned(s);
 }
 
+/* Checks for an xyzw.. swizzle, given a mask */
+
+static inline bool
+mir_is_simple_swizzle(unsigned swizzle, unsigned mask)
+{
+        for (unsigned i = 0; i < 16; ++i) {
+                if (!(mask & (1 << i))) continue;
+
+                if (((swizzle >> (2 * i)) & 0x3) != i)
+                        return false;
+        }
+
+        return true;
+}
+
 #endif
