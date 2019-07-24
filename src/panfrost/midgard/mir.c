@@ -125,4 +125,22 @@ mir_nontrivial_source2_mod(midgard_instruction *ins)
         return mir_nontrivial_mod(src2, is_int, ins->mask);
 }
 
+/* Checks if an index will be used as a special register -- basically, if we're
+ * used as the input to a non-ALU op */
 
+bool
+mir_special_index(compiler_context *ctx, unsigned idx)
+{
+        mir_foreach_instr_global(ctx, ins) {
+                bool is_ldst = ins->type == TAG_LOAD_STORE_4;
+                bool is_tex = ins->type == TAG_TEXTURE_4;
+
+                if (!(is_ldst || is_tex))
+                        continue;
+
+                if (mir_has_arg(ins, idx))
+                        return true;
+        }
+
+        return false;
+}
