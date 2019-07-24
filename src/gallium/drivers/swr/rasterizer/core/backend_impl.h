@@ -755,7 +755,7 @@ struct PixelRateZTestLoop
                                  _simd_vmask_ps(CalcDepthBoundsAcceptMask(z, minz, maxz)));
             }
 
-            RDTSC_BEGIN(BEBarycentric, pDC->drawId);
+            RDTSC_BEGIN(psContext.pBucketManager, BEBarycentric, pDC->drawId);
 
             // calculate per sample positions
             psContext.vX.sample = _simd_add_ps(psContext.vX.UL, samplePos.vX(sample));
@@ -778,7 +778,7 @@ struct PixelRateZTestLoop
                 vZ[sample] = state.pfnQuantizeDepth(vZ[sample]);
             }
 
-            RDTSC_END(BEBarycentric, 0);
+            RDTSC_END(psContext.pBucketManager, BEBarycentric, 0);
 
             ///@todo: perspective correct vs non-perspective correct clipping?
             // if clip distances are enabled, we need to interpolate for each sample
@@ -795,7 +795,7 @@ struct PixelRateZTestLoop
 
             // ZTest for this sample
             ///@todo Need to uncomment out this bucket.
-            // RDTSC_BEGIN(BEDepthBucket, pDC->drawId);
+            // RDTSC_BEGIN(psContext.pBucketManager, BEDepthBucket, pDC->drawId);
             depthPassMask[sample]   = vCoverageMask[sample];
             stencilPassMask[sample] = vCoverageMask[sample];
             depthPassMask[sample]   = DepthStencilTest(&state,
@@ -806,7 +806,7 @@ struct PixelRateZTestLoop
                                                      vCoverageMask[sample],
                                                      pStencilSample,
                                                      &stencilPassMask[sample]);
-            // RDTSC_END(BEDepthBucket, 0);
+            // RDTSC_END(psContext.pBucketManager, BEDepthBucket, 0);
 
             // early-exit if no pixels passed depth or earlyZ is forced on
             if (psState.forceEarlyZ || !_simd_movemask_ps(depthPassMask[sample]))
@@ -1007,8 +1007,8 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
     /// backend
 
 
-    RDTSC_BEGIN(BEPixelRateBackend, pDC->drawId);
-    RDTSC_BEGIN(BESetup, pDC->drawId);
+    RDTSC_BEGIN(pDC->pContext->pBucketMgr, BEPixelRateBackend, pDC->drawId);
+    RDTSC_BEGIN(pDC->pContext->pBucketMgr, BESetup, pDC->drawId);
 
     const API_STATE& state = GetApiState(pDC);
 
@@ -1029,7 +1029,7 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
                        state.colorHottileEnable,
                        renderBuffers);
 
-    RDTSC_END(BESetup, 0);
+    RDTSC_END(pDC->pContext->pBucketMgr, BESetup, 0);
 
     PixelRateZTestLoop<T> PixelRateZTest(pDC,
                                          workerId,
@@ -1075,14 +1075,14 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
                     pCoverageMask, psContext.inputMask, state.blendState.sampleMask);
             }
 
-            RDTSC_BEGIN(BEBarycentric, pDC->drawId);
+            RDTSC_BEGIN(pDC->pContext->pBucketMgr, BEBarycentric, pDC->drawId);
 
             CalcPixelBarycentrics(coeffs, psContext);
 
             CalcCentroid<T, false>(
                 &psContext, samplePos, coeffs, work.coverageMask, state.blendState.sampleMask);
 
-            RDTSC_END(BEBarycentric, 0);
+            RDTSC_END(pDC->pContext->pBucketMgr, BEBarycentric, 0);
 
             if (T::bForcedSampleCount)
             {
@@ -1109,12 +1109,12 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
 
             if (state.psState.usesSourceDepth)
             {
-                RDTSC_BEGIN(BEBarycentric, pDC->drawId);
+                RDTSC_BEGIN(pDC->pContext->pBucketMgr, BEBarycentric, pDC->drawId);
                 // interpolate and quantize z
                 psContext.vZ = vplaneps(
                     coeffs.vZa, coeffs.vZb, coeffs.vZc, psContext.vI.center, psContext.vJ.center);
                 psContext.vZ = state.pfnQuantizeDepth(psContext.vZ);
-                RDTSC_END(BEBarycentric, 0);
+                RDTSC_END(pDC->pContext->pBucketMgr, BEBarycentric, 0);
             }
 
             // pixels that are currently active
@@ -1122,10 +1122,10 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
             psContext.oMask      = T::MultisampleT::FullSampleMask();
 
             // execute pixel shader
-            RDTSC_BEGIN(BEPixelShader, pDC->drawId);
+            RDTSC_BEGIN(pDC->pContext->pBucketMgr, BEPixelShader, pDC->drawId);
             state.psState.pfnPixelShader(GetPrivateState(pDC), pWorkerData, &psContext);
             UPDATE_STAT_BE(PsInvocations, _mm_popcnt_u32(_simd_movemask_ps(activeLanes)));
-            RDTSC_END(BEPixelShader, 0);
+            RDTSC_END(pDC->pContext->pBucketMgr, BEPixelShader, 0);
 
             // update stats
             UPDATE_STAT_BE(PsInvocations, _mm_popcnt_u32(_simd_movemask_ps(activeLanes)));
@@ -1159,7 +1159,7 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
             for (uint32_t sample = 0; sample < GetNumOMSamples<T>(state.blendState.sampleCount);
                  sample++)
             {
-                RDTSC_BEGIN(BEOutputMerger, pDC->drawId);
+                RDTSC_BEGIN(pDC->pContext->pBucketMgr, BEOutputMerger, pDC->drawId);
                 // center pattern does a single coverage/depth/stencil test, standard pattern tests
                 // all samples
                 uint32_t   coverageSampleNum = (T::bIsCenterPattern) ? 0 : sample;
@@ -1175,7 +1175,7 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
                     if (!_simd_movemask_ps(depthMask))
                     {
                         // stencil should already have been written in early/lateZ tests
-                        RDTSC_END(BEOutputMerger, 0);
+                        RDTSC_END(pDC->pContext->pBucketMgr, BEOutputMerger, 0);
                         continue;
                     }
                 }
@@ -1210,10 +1210,10 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
                                       pStencilSample,
                                       PixelRateZTest.stencilPassMask[coverageSampleNum]);
                 }
-                RDTSC_END(BEOutputMerger, 0);
+                RDTSC_END(pDC->pContext->pBucketMgr, BEOutputMerger, 0);
             }
         Endtile:
-            RDTSC_BEGIN(BEEndTile, pDC->drawId);
+            RDTSC_BEGIN(pDC->pContext->pBucketMgr, BEEndTile, pDC->drawId);
 
             for (uint32_t sample = 0; sample < T::MultisampleT::numCoverageSamples; sample++)
             {
@@ -1242,7 +1242,7 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
             pStencilBuffer +=
                 (KNOB_SIMD_WIDTH * FormatTraits<KNOB_STENCIL_HOT_TILE_FORMAT>::bpp) / 8;
 
-            RDTSC_END(BEEndTile, 0);
+            RDTSC_END(pDC->pContext->pBucketMgr, BEEndTile, 0);
 
             psContext.vX.UL     = _simd_add_ps(psContext.vX.UL, dx);
             psContext.vX.center = _simd_add_ps(psContext.vX.center, dx);
@@ -1252,7 +1252,7 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
         psContext.vY.center = _simd_add_ps(psContext.vY.center, dy);
     }
 
-    RDTSC_END(BEPixelRateBackend, 0);
+    RDTSC_END(pDC->pContext->pBucketMgr, BEPixelRateBackend, 0);
 }
 
 template <uint32_t sampleCountT = SWR_MULTISAMPLE_1X,

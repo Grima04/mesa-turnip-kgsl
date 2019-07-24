@@ -489,8 +489,8 @@ swr_create_context(struct pipe_screen *p_screen, void *priv, unsigned flags)
 
    ctx->max_draws_in_flight = KNOB_MAX_DRAWS_IN_FLIGHT;
 
-   SWR_CREATECONTEXT_INFO createInfo;
-   memset(&createInfo, 0, sizeof(createInfo));
+   SWR_CREATECONTEXT_INFO createInfo {0};
+
    createInfo.privateStateSize = sizeof(swr_draw_context);
    createInfo.pfnLoadTile = swr_LoadHotTile;
    createInfo.pfnStoreTile = swr_StoreHotTile;

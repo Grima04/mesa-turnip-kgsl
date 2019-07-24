@@ -277,6 +277,8 @@ struct SWR_CREATECONTEXT_INFO
     // Input: if set to non-zero value, overrides KNOB value for maximum
     // number of draws in flight
     uint32_t MAX_DRAWS_IN_FLIGHT;
+
+    std::string contextName;
 };
 
 //////////////////////////////////////////////////////////////////////////

@@ -609,7 +609,7 @@ bool WorkOnFifoBE(SWR_CONTEXT* pContext,
             {
                 BE_WORK* pWork;
 
-                RDTSC_BEGIN(WorkerFoundWork, pDC->drawId);
+                RDTSC_BEGIN(pContext->pBucketMgr, WorkerFoundWork, pDC->drawId);
 
                 uint32_t numWorkItems = tile->getNumQueued();
                 SWR_ASSERT(numWorkItems);
@@ -630,7 +630,7 @@ bool WorkOnFifoBE(SWR_CONTEXT* pContext,
                     pWork->pfnWork(pDC, workerId, tileID, &pWork->desc);
                     tile->dequeue();
                 }
-                RDTSC_END(WorkerFoundWork, numWorkItems);
+                RDTSC_END(pContext->pBucketMgr, WorkerFoundWork, numWorkItems);
 
                 _ReadWriteBarrier();
 
@@ -868,7 +868,7 @@ DWORD workerThreadMain(LPVOID pData)
         SetCurrentThreadName(threadName);
     }
 
-    RDTSC_INIT(threadId);
+    RDTSC_INIT(pContext->pBucketMgr, threadId);
 
     // Only need offset numa index from base for correct masking
     uint32_t numaNode = pThreadData->numaId - pContext->threadInfo.BASE_NUMA_NODE;
@@ -936,10 +936,10 @@ DWORD workerThreadMain(LPVOID pData)
 
         if (IsBEThread)
         {
-            RDTSC_BEGIN(WorkerWorkOnFifoBE, 0);
+            RDTSC_BEGIN(pContext->pBucketMgr, WorkerWorkOnFifoBE, 0);
             bShutdown |=
                 WorkOnFifoBE(pContext, workerId, curDrawBE, lockedTiles, numaNode, numaMask);
-            RDTSC_END(WorkerWorkOnFifoBE, 0);
+            RDTSC_END(pContext->pBucketMgr, WorkerWorkOnFifoBE, 0);
 
             WorkOnCompute(pContext, workerId, curDrawBE);
         }

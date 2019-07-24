@@ -31,6 +31,7 @@
 
 #include "common/formats.h"
 #include "common/intrin.h"
+#include "common/rdtsc_buckets.h"
 #include <functional>
 #include <algorithm>
 
@@ -381,6 +382,8 @@ struct SWR_PS_CONTEXT
     uint8_t* pColorBuffer[SWR_NUM_RENDERTARGETS]; // IN: Pointers to render target hottiles
 
     SWR_SHADER_STATS stats; // OUT: shader statistics used for archrast.
+
+    BucketManager *pBucketManager; // @llvm_struct - IN: performance buckets.
 };
 
 //////////////////////////////////////////////////////////////////////////
