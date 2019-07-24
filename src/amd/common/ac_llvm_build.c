@@ -127,14 +127,15 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 							"amdgpu.uniform", 14);
 
 	ctx->empty_md = LLVMMDNodeInContext(ctx->context, NULL, 0);
+	ctx->flow = calloc(1, sizeof(*ctx->flow));
 }
 
 void
 ac_llvm_context_dispose(struct ac_llvm_context *ctx)
 {
+	free(ctx->flow->stack);
 	free(ctx->flow);
 	ctx->flow = NULL;
-	ctx->flow_depth_max = 0;
 }
 
 int
@@ -3495,17 +3496,17 @@ LLVMTypeRef ac_array_in_const32_addr_space(LLVMTypeRef elem_type)
 static struct ac_llvm_flow *
 get_current_flow(struct ac_llvm_context *ctx)
 {
-	if (ctx->flow_depth > 0)
-		return &ctx->flow[ctx->flow_depth - 1];
+	if (ctx->flow->depth > 0)
+		return &ctx->flow->stack[ctx->flow->depth - 1];
 	return NULL;
 }
 
 static struct ac_llvm_flow *
 get_innermost_loop(struct ac_llvm_context *ctx)
 {
-	for (unsigned i = ctx->flow_depth; i > 0; --i) {
-		if (ctx->flow[i - 1].loop_entry_block)
-			return &ctx->flow[i - 1];
+	for (unsigned i = ctx->flow->depth; i > 0; --i) {
+		if (ctx->flow->stack[i - 1].loop_entry_block)
+			return &ctx->flow->stack[i - 1];
 	}
 	return NULL;
 }
@@ -3515,16 +3516,16 @@ push_flow(struct ac_llvm_context *ctx)
 {
 	struct ac_llvm_flow *flow;
 
-	if (ctx->flow_depth >= ctx->flow_depth_max) {
-		unsigned new_max = MAX2(ctx->flow_depth << 1,
+	if (ctx->flow->depth >= ctx->flow->depth_max) {
+		unsigned new_max = MAX2(ctx->flow->depth << 1,
 					AC_LLVM_INITIAL_CF_DEPTH);
 
-		ctx->flow = realloc(ctx->flow, new_max * sizeof(*ctx->flow));
-		ctx->flow_depth_max = new_max;
+		ctx->flow->stack = realloc(ctx->flow->stack, new_max * sizeof(*ctx->flow->stack));
+		ctx->flow->depth_max = new_max;
 	}
 
-	flow = &ctx->flow[ctx->flow_depth];
-	ctx->flow_depth++;
+	flow = &ctx->flow->stack[ctx->flow->depth];
+	ctx->flow->depth++;
 
 	flow->next_block = NULL;
 	flow->loop_entry_block = NULL;
@@ -3544,10 +3545,10 @@ static void set_basicblock_name(LLVMBasicBlockRef bb, const char *base,
 static LLVMBasicBlockRef append_basic_block(struct ac_llvm_context *ctx,
 					    const char *name)
 {
-	assert(ctx->flow_depth >= 1);
+	assert(ctx->flow->depth >= 1);
 
-	if (ctx->flow_depth >= 2) {
-		struct ac_llvm_flow *flow = &ctx->flow[ctx->flow_depth - 2];
+	if (ctx->flow->depth >= 2) {
+		struct ac_llvm_flow *flow = &ctx->flow->stack[ctx->flow->depth - 2];
 
 		return LLVMInsertBasicBlockInContext(ctx->context,
 						     flow->next_block, name);
@@ -3617,7 +3618,7 @@ void ac_build_endif(struct ac_llvm_context *ctx, int label_id)
 	LLVMPositionBuilderAtEnd(ctx->builder, current_branch->next_block);
 	set_basicblock_name(current_branch->next_block, "endif", label_id);
 
-	ctx->flow_depth--;
+	ctx->flow->depth--;
 }
 
 void ac_build_endloop(struct ac_llvm_context *ctx, int label_id)
@@ -3630,7 +3631,7 @@ void ac_build_endloop(struct ac_llvm_context *ctx, int label_id)
 
 	LLVMPositionBuilderAtEnd(ctx->builder, current_loop->next_block);
 	set_basicblock_name(current_loop->next_block, "endloop", label_id);
-	ctx->flow_depth--;
+	ctx->flow->depth--;
 }
 
 void ac_build_ifcc(struct ac_llvm_context *ctx, LLVMValueRef cond, int label_id)

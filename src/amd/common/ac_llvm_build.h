@@ -51,6 +51,12 @@ struct ac_llvm_flow;
 struct ac_llvm_compiler;
 enum ac_float_mode;
 
+struct ac_llvm_flow_state {
+	struct ac_llvm_flow *stack;
+	unsigned depth_max;
+	unsigned depth;
+};
+
 struct ac_llvm_context {
 	LLVMContextRef context;
 	LLVMModuleRef module;
@@ -93,9 +99,11 @@ struct ac_llvm_context {
 	LLVMValueRef i1true;
 	LLVMValueRef i1false;
 
-	struct ac_llvm_flow *flow;
-	unsigned flow_depth;
-	unsigned flow_depth_max;
+	/* Since ac_nir_translate makes a local copy of ac_llvm_context, there
+	 * are two ac_llvm_contexts. Declare a pointer here, so that the control
+	 * flow stack is shared by both ac_llvm_contexts.
+	 */
+	struct ac_llvm_flow_state *flow;
 
 	unsigned range_md_kind;
 	unsigned invariant_load_md_kind;
