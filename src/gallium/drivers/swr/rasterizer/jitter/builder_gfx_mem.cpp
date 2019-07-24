@@ -237,7 +237,8 @@ namespace SwrJit
         return Builder::MASKED_LOAD(Ptr, Align, Mask, PassThru, Name, Ty, usage);
     }
 
-    StoreInst* BuilderGfxMem::STORE(Value *Val, Value *Ptr, bool isVolatile, Type* Ty, JIT_MEM_CLIENT usage)
+    StoreInst*
+    BuilderGfxMem::STORE(Value* Val, Value* Ptr, bool isVolatile, Type* Ty, JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
 
@@ -245,7 +246,11 @@ namespace SwrJit
         return Builder::STORE(Val, Ptr, isVolatile, Ty, usage);
     }
 
-    StoreInst* BuilderGfxMem::STORE(Value* Val, Value* BasePtr, const std::initializer_list<uint32_t>& offset, Type* Ty, JIT_MEM_CLIENT usage)
+    StoreInst* BuilderGfxMem::STORE(Value*                                 Val,
+                                    Value*                                 BasePtr,
+                                    const std::initializer_list<uint32_t>& offset,
+                                    Type*                                  Ty,
+                                    JIT_MEM_CLIENT                         usage)
     {
         AssertGFXMemoryParams(BasePtr, usage);
 
@@ -253,7 +258,8 @@ namespace SwrJit
         return Builder::STORE(Val, BasePtr, offset, Ty, usage);
     }
 
-    CallInst* BuilderGfxMem::MASKED_STORE(Value *Val, Value *Ptr, unsigned Align, Value *Mask, Type* Ty, JIT_MEM_CLIENT usage)
+    CallInst* BuilderGfxMem::MASKED_STORE(
+        Value* Val, Value* Ptr, unsigned Align, Value* Mask, Type* Ty, JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
 

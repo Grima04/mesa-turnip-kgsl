@@ -82,6 +82,7 @@ files_swr_mesa = files(
   'rasterizer/jitter/streamout_jit.cpp',
   'rasterizer/jitter/streamout_jit.h',
   'rasterizer/jitter/shader_lib/DebugOutput.cpp',
+  'rasterizer/jitter/shader_lib/Scatter.cpp',
   'rasterizer/jitter/functionpasses/lower_x86.cpp',
   'rasterizer/memory/SurfaceState.h'
 )

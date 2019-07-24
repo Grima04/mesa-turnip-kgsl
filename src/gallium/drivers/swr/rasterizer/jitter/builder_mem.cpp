@@ -647,6 +647,10 @@ namespace SwrJit
     {
         AssertMemoryUsageParams(pDst, usage);
 
+        SWR_ASSERT(vSrc->getType()->getVectorElementType()->isFloatTy());
+        VSCATTERPS(pDst, vMask, vOffsets, vSrc, C(1));
+        return;
+
         /* Scatter algorithm
 
         while(Index = BitScanForward(mask))
@@ -656,6 +660,10 @@ namespace SwrJit
         Update mask (&= ~(1<<Index)
 
         */
+
+        /*
+
+        // Reference implementation kept around for reference
 
         BasicBlock* pCurBB = IRB()->GetInsertBlock();
         Function*   pFunc  = pCurBB->getParent();
@@ -744,5 +752,7 @@ namespace SwrJit
 
         // Move builder to beginning of post loop
         IRB()->SetInsertPoint(pPostLoop, pPostLoop->begin());
+
+        */
     }
 } // namespace SwrJit
