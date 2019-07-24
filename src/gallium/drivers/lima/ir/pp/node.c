@@ -571,3 +571,26 @@ void ppir_node_print_prog(ppir_compiler *comp)
    }
    printf("====================\n");
 }
+
+ppir_node *ppir_node_clone_const(ppir_block *block, ppir_node *node)
+{
+   ppir_const_node *cnode = ppir_node_to_const(node);
+   ppir_const_node *new_cnode = ppir_node_create(block, ppir_op_const, -1, 0);
+
+   if (!new_cnode)
+      return NULL;
+
+   list_addtail(&new_cnode->node.list, &block->node_list);
+
+   new_cnode->constant.num = cnode->constant.num;
+   for (int i = 0; i < cnode->constant.num; i++) {
+      new_cnode->constant.value[i] = cnode->constant.value[i];
+   }
+   new_cnode->dest.type = ppir_target_ssa;
+   new_cnode->dest.ssa.num_components = cnode->dest.ssa.num_components;
+   new_cnode->dest.ssa.live_in = INT_MAX;
+   new_cnode->dest.ssa.live_out = 0;
+   new_cnode->dest.write_mask = cnode->dest.write_mask;
+
+   return &new_cnode->node;
+}

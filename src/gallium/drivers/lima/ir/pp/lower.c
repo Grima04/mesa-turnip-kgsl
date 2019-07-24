@@ -34,41 +34,55 @@ static bool ppir_lower_const(ppir_block *block, ppir_node *node)
       return true;
    }
 
-   ppir_node *move = NULL;
+   assert(ppir_node_has_single_succ(node));
+
+   ppir_node *succ = ppir_node_first_succ(node);
+   ppir_src *src = ppir_node_get_src_for_pred(succ, node);
    ppir_dest *dest = ppir_node_get_dest(node);
+   assert(src != NULL);
 
-   /* const (register) can only be used in alu node, create a move
-    * node for other types of node */
+   switch (succ->type) {
+   case ppir_node_type_alu:
+   case ppir_node_type_branch:
+      /* ALU and branch can consume consts directly */
+      dest->type = src->type = ppir_target_pipeline;
+      /* Reg will be updated in node_to_instr later */
+      dest->pipeline = src->pipeline = ppir_pipeline_reg_const0;
+      return true;
+   default:
+      /* Create a move for everyone else */
+      break;
+   }
+
+   ppir_node *move = ppir_node_create(block, ppir_op_mov, -1, 0);
+   if (unlikely(!move))
+      return false;
+
+   ppir_debug("lower const create move %d for %d\n",
+              move->index, node->index);
+
+   ppir_alu_node *alu = ppir_node_to_alu(move);
+   alu->dest = *dest;
+   alu->num_src = 1;
+   ppir_node_target_assign(alu->src, node);
+   for (int s = 0; s < 4; s++)
+      alu->src->swizzle[s] = s;
+
    ppir_node_foreach_succ_safe(node, dep) {
-      ppir_node *succ = dep->succ;
-
-      if (succ->type != ppir_node_type_alu) {
-         if (!move) {
-            move = ppir_node_create(block, ppir_op_mov, -1, 0);
-            if (unlikely(!move))
-               return false;
-
-            ppir_debug("lower const create move %d for %d\n",
-                       move->index, node->index);
-
-            ppir_alu_node *alu = ppir_node_to_alu(move);
-            alu->dest = *dest;
-            alu->num_src = 1;
-            ppir_node_target_assign(alu->src, node);
-            for (int i = 0; i < 4; i++)
-               alu->src->swizzle[i] = i;
-         }
-
-         ppir_node_replace_pred(dep, move);
-         ppir_node_replace_child(succ, node, move);
-      }
+      ppir_node_replace_pred(dep, move);
+      ppir_node_replace_child(succ, node, move);
    }
 
-   if (move) {
-      ppir_node_add_dep(move, node);
-      list_addtail(&move->list, &node->list);
-   }
+   /* Need to be careful with changing src/dst type here:
+    * it has to be done *after* successors have their children
+    * replaced, otherwise ppir_node_replace_child() won't find
+    * matching src/dst and as result won't work
+    */
+   alu->src->type = dest->type = ppir_target_pipeline;
+   alu->src->pipeline = dest->pipeline = ppir_pipeline_reg_const0;
 
+   ppir_node_add_dep(move, node);
+   list_addtail(&move->list, &node->list);
    return true;
 }
 
@@ -287,11 +301,10 @@ static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
    if (!zero)
       return false;
 
-   list_addtail(&zero->node.list, &node->list);
-
    zero->constant.value[0].f = 0;
    zero->constant.num = 1;
-   zero->dest.type = ppir_target_ssa;
+   zero->dest.type = ppir_target_pipeline;
+   zero->dest.pipeline = ppir_pipeline_reg_const0;
    zero->dest.ssa.num_components = 1;
    zero->dest.ssa.live_in = INT_MAX;
    zero->dest.ssa.live_out = 0;
@@ -302,13 +315,13 @@ static bool ppir_lower_branch(ppir_block *block, ppir_node *node)
     * comparision node into branch itself and use current
     * way as a fallback for complex conditions.
     */
-   branch->src[1].type = ppir_target_ssa;
-   branch->src[1].ssa = &zero->dest.ssa;
+   ppir_node_target_assign(&branch->src[1], &zero->node);
 
    branch->cond_gt = true;
    branch->cond_lt = true;
 
    ppir_node_add_dep(&branch->node, &zero->node);
+   list_addtail(&zero->node.list, &node->list);
 
    return true;
 }
@@ -340,6 +353,5 @@ bool ppir_lower_prog(ppir_compiler *comp)
       }
    }
 
-   ppir_node_print_prog(comp);
    return true;
 }

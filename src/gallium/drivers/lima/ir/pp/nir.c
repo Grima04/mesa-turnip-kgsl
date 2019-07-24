@@ -100,6 +100,10 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
 
    if (ns->is_ssa) {
       child = comp->var_nodes[ns->ssa->index];
+      /* Clone consts for each successor */
+      if (child->type == ppir_node_type_const)
+         child = ppir_node_clone_const(node->block, child);
+
       ppir_node_add_dep(node, child);
    }
    else {
@@ -623,6 +627,8 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
 
    if (!ppir_lower_prog(comp))
       goto err_out0;
+
+   ppir_node_print_prog(comp);
 
    if (!ppir_node_to_instr(comp))
       goto err_out0;

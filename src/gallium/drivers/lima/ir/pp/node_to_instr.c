@@ -37,97 +37,6 @@ static bool create_new_instr(ppir_block *block, ppir_node *node)
    return true;
 }
 
-static bool insert_to_each_succ_instr(ppir_block *block, ppir_node *node)
-{
-   ppir_dest *dest = ppir_node_get_dest(node);
-   assert(dest->type == ppir_target_ssa);
-
-   ppir_node *move = NULL;
-
-   ppir_node_foreach_succ_safe(node, dep) {
-      ppir_node *succ = dep->succ;
-      assert(succ->type == ppir_node_type_alu ||
-             succ->type == ppir_node_type_branch);
-
-      if (!ppir_instr_insert_node(succ->instr, node)) {
-         /* create a move node to insert for failed node */
-         if (!move) {
-            move = ppir_node_create(block, ppir_op_mov, -1, 0);
-            if (unlikely(!move))
-               return false;
-
-            ppir_debug("node_to_instr create move %d for %d\n",
-                       move->index, node->index);
-
-            ppir_alu_node *alu = ppir_node_to_alu(move);
-            alu->dest = *dest;
-            alu->num_src = 1;
-            ppir_node_target_assign(alu->src, node);
-            for (int i = 0; i < 4; i++)
-               alu->src->swizzle[i] = i;
-         }
-
-         ppir_node_replace_pred(dep, move);
-         ppir_node_replace_child(succ, node, move);
-      }
-   }
-
-   if (move) {
-      if (!create_new_instr(block, move))
-         return false;
-
-      ASSERTED bool insert_result =
-         ppir_instr_insert_node(move->instr, node);
-      assert(insert_result);
-
-      ppir_node_add_dep(move, node);
-      list_addtail(&move->list, &node->list);
-   }
-
-   /* dupliacte node for each successor */
-
-   bool first = true;
-   struct list_head dup_list;
-   list_inithead(&dup_list);
-
-   ppir_node_foreach_succ_safe(node, dep) {
-      ppir_node *succ = dep->succ;
-
-      if (first) {
-         first = false;
-         node->instr = succ->instr;
-         continue;
-      }
-
-      if (succ->instr == node->instr)
-         continue;
-
-      list_for_each_entry(ppir_node, dup, &dup_list, list) {
-         if (succ->instr == dup->instr) {
-            ppir_node_replace_pred(dep, dup);
-            continue;
-         }
-      }
-
-      ppir_node *dup = ppir_node_create(block, node->op, -1, 0);
-      if (unlikely(!dup))
-         return false;
-      list_addtail(&dup->list, &dup_list);
-
-      ppir_debug("node_to_instr duplicate %s %d from %d\n",
-                 ppir_op_infos[dup->op].name, dup->index, node->index);
-
-      ppir_instr *instr = succ->instr;
-      dup->instr = instr;
-      dup->instr_pos = node->instr_pos;
-      ppir_node_replace_pred(dep, dup);
-   }
-
-   list_splicetail(&dup_list, &node->list);
-
-   return true;
-}
-
 /*
  * If a node has a pipeline dest, schedule it in the same instruction as its
  * successor.
@@ -199,8 +108,8 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
          return false;
       break;
    case ppir_node_type_const:
-      if (!insert_to_each_succ_instr(block, node))
-         return false;
+      /* Const nodes are supposed to go through do_node_to_instr_pipeline() */
+      assert(false);
       break;
    case ppir_node_type_store:
    {
