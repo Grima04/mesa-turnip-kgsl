@@ -561,6 +561,12 @@ v3d_stream_output_target(struct pipe_stream_output_target *ptarget)
         return (struct v3d_stream_output_target *)ptarget;
 }
 
+static inline uint32_t
+v3d_stream_output_target_get_vertex_count(struct pipe_stream_output_target *ptarget)
+{
+    return v3d_stream_output_target(ptarget)->recorded_vertex_count;
+}
+
 struct pipe_context *v3d_context_create(struct pipe_screen *pscreen,
                                         void *priv, unsigned flags);
 void v3d_program_init(struct pipe_context *pctx);
