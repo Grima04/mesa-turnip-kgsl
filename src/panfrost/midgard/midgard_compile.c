@@ -2477,9 +2477,6 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
         program->sysval_count = ctx->sysval_count;
         memcpy(program->sysvals, ctx->sysvals, sizeof(ctx->sysvals[0]) * ctx->sysval_count);
 
-        program->attribute_count = (ctx->stage == MESA_SHADER_VERTEX) ? nir->num_inputs : 0;
-        program->varying_count = max_varying + 1; /* Fencepost off-by-one */
-
         nir_foreach_function(func, nir) {
                 if (!func->impl)
                         continue;

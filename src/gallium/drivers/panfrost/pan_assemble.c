@@ -87,9 +87,20 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         memcpy(state->sysval, program.sysvals, sizeof(state->sysval[0]) * state->sysval_count);
 
         meta->midgard1.uniform_count = MIN2(program.uniform_count, program.uniform_cutoff);
-        meta->attribute_count = program.attribute_count;
-        meta->varying_count = program.varying_count;
         meta->midgard1.work_count = program.work_register_count;
+
+        switch (s->info.stage) {
+        case MESA_SHADER_VERTEX:
+                meta->attribute_count = util_bitcount64(s->info.inputs_read);
+                meta->varying_count = util_bitcount64(s->info.outputs_written);
+                break;
+        case MESA_SHADER_FRAGMENT:
+                meta->attribute_count = 0;
+                meta->varying_count = util_bitcount64(s->info.inputs_read);
+                break;
+        default:
+                unreachable("Unknown shader state");
+        }
 
         state->can_discard = s->info.fs.uses_discard;
         state->writes_point_size = s->info.outputs_written & VARYING_SLOT_PSIZ;
@@ -106,7 +117,7 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
         unsigned default_vec4_swizzle = panfrost_get_default_swizzle(4);
 
         /* Iterate the varyings and emit the corresponding descriptor */
-        for (unsigned i = 0; i < program.varying_count; ++i) {
+        for (unsigned i = 0; i < meta->varying_count; ++i) {
                 unsigned location = program.varyings[i];
 
                 /* Default to a vec4 varying */

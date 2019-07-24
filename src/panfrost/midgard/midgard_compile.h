@@ -77,9 +77,6 @@ typedef struct {
         int uniform_count;
         int uniform_cutoff;
 
-        int attribute_count;
-        int varying_count;
-
         /* Prepended before uniforms, mapping to SYSVAL_ names for the
          * sysval */
 
