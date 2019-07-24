@@ -616,16 +616,14 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
       return NULL;
 
    screen->fd = fd;
-   screen->pci_id = iris_getparam_integer(screen, I915_PARAM_CHIPSET_ID);
 
-   if (!gen_get_device_info(screen->pci_id, &screen->devinfo))
+   if (!gen_get_device_info_from_fd(fd, &screen->devinfo))
       return NULL;
+   screen->pci_id = screen->devinfo.chipset_id;
+   screen->no_hw = screen->devinfo.no_hw;
 
    if (screen->devinfo.gen < 8 || screen->devinfo.is_cherryview)
       return NULL;
-
-   screen->devinfo.timestamp_frequency =
-      iris_getparam_integer(screen, I915_PARAM_CS_TIMESTAMP_FREQUENCY);
 
    screen->aperture_bytes = get_aperture_size(fd);
 
