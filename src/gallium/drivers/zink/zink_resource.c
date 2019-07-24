@@ -84,8 +84,10 @@ aspect_from_format(enum pipe_format fmt)
 }
 
 static struct pipe_resource *
-zink_resource_create(struct pipe_screen *pscreen,
-                     const struct pipe_resource *templ)
+resource_create(struct pipe_screen *pscreen,
+                const struct pipe_resource *templ,
+                struct winsys_handle *whandle,
+                unsigned external_usage)
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = CALLOC_STRUCT(zink_resource);
@@ -241,6 +243,20 @@ zink_resource_create(struct pipe_screen *pscreen,
       mai.pNext = &emai;
    }
 
+   VkImportMemoryFdInfoKHR imfi = {
+      VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
+      NULL,
+   };
+
+   if (whandle && whandle->type == WINSYS_HANDLE_TYPE_FD) {
+      imfi.sType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+      imfi.pNext = NULL;
+      imfi.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+      imfi.fd = whandle->handle;
+
+      emai.pNext = &imfi;
+   }
+
    if (vkAllocateMemory(screen->dev, &mai, NULL, &res->mem) != VK_SUCCESS)
       goto fail;
 
@@ -276,6 +292,13 @@ fail:
    FREE(res);
 
    return NULL;
+}
+
+static struct pipe_resource *
+zink_resource_create(struct pipe_screen *pscreen,
+                     const struct pipe_resource *templ)
+{
+   return resource_create(pscreen, templ, NULL, 0);
 }
 
 static bool
@@ -320,11 +343,11 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
 
 static struct pipe_resource *
 zink_resource_from_handle(struct pipe_screen *pscreen,
-                 const struct pipe_resource *templat,
+                 const struct pipe_resource *templ,
                  struct winsys_handle *whandle,
                  unsigned usage)
 {
-   return NULL;
+   return resource_create(pscreen, templ, whandle, usage);
 }
 
 void
