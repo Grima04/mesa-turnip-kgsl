@@ -516,6 +516,8 @@ enum ac_atomic_op {
 	ac_atomic_and,
 	ac_atomic_or,
 	ac_atomic_xor,
+	ac_atomic_inc_wrap,
+	ac_atomic_dec_wrap,
 };
 
 enum ac_image_dim {

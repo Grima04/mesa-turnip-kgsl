@@ -2580,6 +2580,8 @@ static const char *get_atomic_name(enum ac_atomic_op op)
 	case ac_atomic_and: return "and";
 	case ac_atomic_or: return "or";
 	case ac_atomic_xor: return "xor";
+	case ac_atomic_inc_wrap: return "inc";
+	case ac_atomic_dec_wrap: return "dec";
 	}
 	unreachable("bad atomic op");
 }
