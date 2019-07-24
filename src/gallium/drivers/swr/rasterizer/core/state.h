@@ -169,8 +169,8 @@ enum SWR_INNER_TESSFACTOR_ID
 enum SWR_OUTER_TESSFACTOR_ID
 {
     SWR_QUAD_U_EQ0_TRI_U_LINE_DETAIL,
-    SWR_QUAD_V_EQ0_TRI_V_LINE_DENSITY,
-    SWR_QUAD_U_EQ1_TRI_W,
+    SWR_QUAD_U_EQ1_TRI_V_LINE_DENSITY,
+    SWR_QUAD_V_EQ0_TRI_W,
     SWR_QUAD_V_EQ1,
 
     SWR_NUM_OUTER_TESS_FACTORS,
@@ -281,7 +281,10 @@ struct SWR_TESSELLATION_FACTORS
 {
     float OuterTessFactors[SWR_NUM_OUTER_TESS_FACTORS];
     float InnerTessFactors[SWR_NUM_INNER_TESS_FACTORS];
+    float pad[2];
 };
+
+SWR_STATIC_ASSERT(sizeof(SWR_TESSELLATION_FACTORS) == 32);
 
 #define MAX_NUM_VERTS_PER_PRIM 32 // support up to 32 control point patches
 struct ScalarPatch
@@ -300,6 +303,7 @@ struct SWR_HS_CONTEXT
     simdvertex       vert[MAX_NUM_VERTS_PER_PRIM]; // IN: (SIMD) input primitive data
     simdscalari      PrimitiveID;                  // IN: (SIMD) primitive ID generated from the draw call
     simdscalari      mask;                         // IN: Active mask for shader
+    uint32_t         outputSize;                   // IN: Size of HS output (per lane)
     ScalarPatch*     pCPout;                       // OUT: Output control point patch SIMD-sized-array of SCALAR patches
     SWR_SHADER_STATS stats;                        // OUT: shader statistics used for archrast.
 };
@@ -818,11 +822,16 @@ struct SWR_TS_STATE
 
     uint32_t numHsInputAttribs;
     uint32_t numHsOutputAttribs;
+    uint32_t hsAllocationSize; // Size of HS output in bytes, per lane
+
     uint32_t numDsOutputAttribs;
     uint32_t dsAllocationSize;
     uint32_t dsOutVtxAttribOffset;
 
     // Offset to the start of the attributes of the input vertices, in simdvector units
+    uint32_t srcVertexAttribOffset;
+
+    // Offset to the start of the attributes expected by the hull shader
     uint32_t vertexAttribOffset;
 };
 

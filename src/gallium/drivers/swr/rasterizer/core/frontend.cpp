@@ -583,8 +583,9 @@ static void StreamOut(
     {
         if (state.soBuffer[i].pWriteOffset)
         {
-            bool nullTileAccessed = false;
-            void* pWriteOffset = pDC->pContext->pfnTranslateGfxptrForWrite(GetPrivateState(pDC), soContext.pBuffer[i]->pWriteOffset, &nullTileAccessed);
+            bool  nullTileAccessed = false;
+            void* pWriteOffset     = pDC->pContext->pfnTranslateGfxptrForWrite(
+                GetPrivateState(pDC), soContext.pBuffer[i]->pWriteOffset, &nullTileAccessed);
             *((uint32_t*)pWriteOffset) = soContext.pBuffer[i]->streamOffset * sizeof(uint32_t);
         }
 
@@ -786,21 +787,20 @@ void TransposeSOAtoAOS(uint8_t* pDst, uint8_t* pSrc, uint32_t numVerts, uint32_t
         {
             auto attribGatherX = SIMD_T::mask_i32gather_ps(
                 SIMD_T::setzero_ps(), (const float*)pSrcBase, vGatherOffsets, vMask);
-            auto attribGatherY = SIMD_T::mask_i32gather_ps(
-                SIMD_T::setzero_ps(),
-                (const float*)(pSrcBase + sizeof(float)),
-                vGatherOffsets,
-                vMask);
-            auto attribGatherZ = SIMD_T::mask_i32gather_ps(
-                SIMD_T::setzero_ps(),
-                (const float*)(pSrcBase + sizeof(float) * 2),
-                vGatherOffsets,
-                vMask);
-            auto attribGatherW = SIMD_T::mask_i32gather_ps(
-                SIMD_T::setzero_ps(),
-                (const float*)(pSrcBase + sizeof(float) * 3),
-                vGatherOffsets,
-                vMask);
+            auto attribGatherY = SIMD_T::mask_i32gather_ps(SIMD_T::setzero_ps(),
+                                                           (const float*)(pSrcBase + sizeof(float)),
+                                                           vGatherOffsets,
+                                                           vMask);
+            auto attribGatherZ =
+                SIMD_T::mask_i32gather_ps(SIMD_T::setzero_ps(),
+                                          (const float*)(pSrcBase + sizeof(float) * 2),
+                                          vGatherOffsets,
+                                          vMask);
+            auto attribGatherW =
+                SIMD_T::mask_i32gather_ps(SIMD_T::setzero_ps(),
+                                          (const float*)(pSrcBase + sizeof(float) * 3),
+                                          vGatherOffsets,
+                                          vMask);
 
             SIMD_T::maskstore_ps((float*)pDstBase, viMask, attribGatherX);
             SIMD_T::maskstore_ps((float*)(pDstBase + sizeof(Float<SIMD_T>)), viMask, attribGatherY);
@@ -1235,9 +1235,11 @@ static INLINE void AllocateGsBuffers(DRAW_CONTEXT*    pDC,
 struct TessellationThreadLocalData
 {
     SWR_HS_CONTEXT hsContext;
-    ScalarPatch    patchData[KNOB_SIMD_WIDTH];
     void*          pTxCtx;
     size_t         tsCtxSize;
+
+    uint8_t*    pHSOutput;
+    size_t      hsOutputAllocSize;
 
     simdscalar* pDSOutput;
     size_t      dsOutputAllocSize;
@@ -1340,9 +1342,9 @@ static void TessellationStages(DRAW_CONTEXT* pDC,
     }
 
 #endif
-    SWR_HS_CONTEXT& hsContext = gt_pTessellationThreadData->hsContext;
-    hsContext.pCPout          = gt_pTessellationThreadData->patchData;
-    hsContext.PrimitiveID     = primID;
+    SWR_HS_CONTEXT& hsContext       = gt_pTessellationThreadData->hsContext;
+    hsContext.PrimitiveID           = primID;
+    hsContext.outputSize = tsState.hsAllocationSize;
 
     uint32_t numVertsPerPrim = NumVertsPerPrim(pa.binTopology, false);
     // Max storage for one attribute for an entire simdprimitive
@@ -1351,17 +1353,29 @@ static void TessellationStages(DRAW_CONTEXT* pDC,
     // assemble all attributes for the input primitives
     for (uint32_t slot = 0; slot < tsState.numHsInputAttribs; ++slot)
     {
-        uint32_t attribSlot = tsState.vertexAttribOffset + slot;
+        uint32_t attribSlot = tsState.srcVertexAttribOffset + slot;
         pa.Assemble(attribSlot, simdattrib);
 
         for (uint32_t i = 0; i < numVertsPerPrim; ++i)
         {
-            hsContext.vert[i].attrib[VERTEX_ATTRIB_START_SLOT + slot] = simdattrib[i];
+            hsContext.vert[i].attrib[tsState.vertexAttribOffset + slot] = simdattrib[i];
         }
     }
 
+    // Allocate HS output storage
+    uint32_t requiredAllocSize = KNOB_SIMD_WIDTH * tsState.hsAllocationSize;
+
+    if (requiredAllocSize > gt_pTessellationThreadData->hsOutputAllocSize)
+    {
+        AlignedFree(gt_pTessellationThreadData->pHSOutput);
+        gt_pTessellationThreadData->pHSOutput = (uint8_t*)AlignedMalloc(requiredAllocSize, 64);
+        gt_pTessellationThreadData->hsOutputAllocSize = requiredAllocSize;
+    }
+
+    hsContext.pCPout = (ScalarPatch*)gt_pTessellationThreadData->pHSOutput;
+
 #if defined(_DEBUG)
-    memset(hsContext.pCPout, 0x90, sizeof(ScalarPatch) * KNOB_SIMD_WIDTH);
+    //memset(hsContext.pCPout, 0x90, sizeof(ScalarPatch) * KNOB_SIMD_WIDTH);
 #endif
 
 #if USE_SIMD16_FRONTEND
@@ -1383,10 +1397,15 @@ static void TessellationStages(DRAW_CONTEXT* pDC,
 
     for (uint32_t p = 0; p < numPrims; ++p)
     {
+        ScalarPatch* pCPout = (ScalarPatch*)(gt_pTessellationThreadData->pHSOutput + tsState.hsAllocationSize * p);
+
+        SWR_TESSELLATION_FACTORS tessFactors;
+        tessFactors                    = hsContext.pCPout[p].tessFactors;
+
         // Run Tessellator
         SWR_TS_TESSELLATED_DATA tsData = {0};
         RDTSC_BEGIN(pDC->pContext->pBucketMgr, FETessellation, pDC->drawId);
-        TSTessellate(tsCtx, hsContext.pCPout[p].tessFactors, tsData);
+        TSTessellate(tsCtx, tessFactors, tsData);
         AR_EVENT(TessPrimCount(1));
         RDTSC_END(pDC->pContext->pBucketMgr, FETessellation, 0);
 
@@ -1423,7 +1442,7 @@ static void TessellationStages(DRAW_CONTEXT* pDC,
         // Run Domain Shader
         SWR_DS_CONTEXT dsContext;
         dsContext.PrimitiveID           = pPrimId[p];
-        dsContext.pCpIn                 = &hsContext.pCPout[p];
+        dsContext.pCpIn                 = pCPout;
         dsContext.pDomainU              = (simdscalar*)tsData.pDomainPointsU;
         dsContext.pDomainV              = (simdscalar*)tsData.pDomainPointsV;
         dsContext.pOutputData           = gt_pTessellationThreadData->pDSOutput;
