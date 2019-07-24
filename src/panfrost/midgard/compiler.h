@@ -454,9 +454,10 @@ struct ra_graph;
 
 #define NR_REG_CLASSES 3
 
-#define REG_CLASS_WORK 0
-#define REG_CLASS_LDST 1
-#define REG_CLASS_TEX  2
+#define REG_CLASS_WORK          0
+#define REG_CLASS_LDST          1
+#define REG_CLASS_LDST27        2
+#define REG_CLASS_TEX           3
 
 void mir_lower_special_reads(compiler_context *ctx);
 struct ra_graph* allocate_registers(compiler_context *ctx, bool *spilled);

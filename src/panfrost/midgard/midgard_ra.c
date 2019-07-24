@@ -44,6 +44,7 @@
  */
 
 #define WORK_STRIDE 10
+#define SHADOW_R27 17
 
 /* Prepacked masks/swizzles for virtual register types */
 static unsigned reg_type_to_mask[WORK_STRIDE] = {
@@ -146,6 +147,11 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
         int phys = virt / WORK_STRIDE;
         int type = virt % WORK_STRIDE;
 
+        /* Apply shadow registers */
+
+        if (phys == SHADOW_R27)
+                phys = 27;
+
         struct phys_reg r = {
                 .reg = phys,
                 .mask = reg_type_to_mask[type],
@@ -184,12 +190,16 @@ create_register_set(unsigned work_count, unsigned *classes)
                 classes[4*c + 2] = work_vec3;
                 classes[4*c + 3] = work_vec4;
 
-                /* Special register classes have two registers in them */
-                unsigned count = (c == REG_CLASS_WORK) ? work_count : 2;
+                /* Special register classes have other register counts */
+                unsigned count =
+                        (c == REG_CLASS_WORK)   ? work_count :
+                        (c == REG_CLASS_LDST27) ? 1 : 2;
 
+                /* We arbitraily pick r17 (RA unused) as the shadow for r27 */
                 unsigned first_reg =
-                        (c == REG_CLASS_LDST) ? 26 :
-                        (c == REG_CLASS_TEX)  ? 28 : 0;
+                        (c == REG_CLASS_LDST)   ? 26 :
+                        (c == REG_CLASS_LDST27) ? SHADOW_R27 :
+                        (c == REG_CLASS_TEX)    ? 28 : 0;
 
                 /* Add the full set of work registers */
                 for (unsigned i = first_reg; i < (first_reg + count); ++i) {
@@ -218,6 +228,21 @@ create_register_set(unsigned work_count, unsigned *classes)
                                                                     base + a, base + b);
                                 }
                         }
+                }
+        }
+
+
+        /* All of the r27 registers in in LDST conflict with all of the
+         * registers in LD27 (pseudo/shadow register) */
+
+        for (unsigned a = 0; a < WORK_STRIDE; ++a) {
+                unsigned reg_a = (WORK_STRIDE * 27) + a;
+
+                for (unsigned b = 0; b < WORK_STRIDE; ++b) {
+                        unsigned reg_b = (WORK_STRIDE * SHADOW_R27) + b;
+
+                        ra_add_reg_conflict(regs, reg_a, reg_b);
+                        ra_add_reg_conflict(regs, reg_b, reg_a);
                 }
         }
 
@@ -276,12 +301,19 @@ set_class(unsigned *classes, unsigned node, unsigned class)
         if (class == current_class)
                 return;
 
+
+        if ((current_class == REG_CLASS_LDST27) && (class == REG_CLASS_LDST))
+                return;
+
         /* If we're changing, we must not have already assigned a special class
          */
 
-        assert(current_class == REG_CLASS_WORK);
-        assert(REG_CLASS_WORK == 0);
+        bool compat = current_class == REG_CLASS_WORK;
+        compat |= (current_class == REG_CLASS_LDST) && (class == REG_CLASS_LDST27);
 
+        assert(compat);
+
+        classes[node] &= 0x3;
         classes[node] |= (class << 2);
 }
 
@@ -299,6 +331,7 @@ check_read_class(unsigned *classes, unsigned tag, unsigned node)
 
         switch (current_class) {
         case REG_CLASS_LDST:
+        case REG_CLASS_LDST27:
                 return (tag == TAG_LOAD_STORE_4);
         default:
                 return (tag != TAG_LOAD_STORE_4);
@@ -476,8 +509,11 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 /* Check if this operation imposes any classes */
 
                 if (ins->type == TAG_LOAD_STORE_4) {
-                        set_class(found_class, ins->ssa_args.src0, REG_CLASS_LDST);
-                        set_class(found_class, ins->ssa_args.src1, REG_CLASS_LDST);
+                        bool force_r27 = OP_IS_R27_ONLY(ins->load_store.op);
+                        unsigned class = force_r27 ? REG_CLASS_LDST27 : REG_CLASS_LDST;
+
+                        set_class(found_class, ins->ssa_args.src0, class);
+                        set_class(found_class, ins->ssa_args.src1, class);
                 }
         }
 
