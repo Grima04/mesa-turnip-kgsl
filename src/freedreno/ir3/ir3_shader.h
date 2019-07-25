@@ -29,6 +29,7 @@
 
 #include <stdio.h>
 
+#include "c11/threads.h"
 #include "compiler/shader_enums.h"
 #include "compiler/nir/nir.h"
 #include "util/bitscan.h"
@@ -544,6 +545,7 @@ struct ir3_shader {
 	struct ir3_stream_output_info stream_output;
 
 	struct ir3_shader_variant *variants;
+	mtx_t variants_lock;
 };
 
 void * ir3_shader_assemble(struct ir3_shader_variant *v, uint32_t gpu_id);

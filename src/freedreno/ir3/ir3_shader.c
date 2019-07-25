@@ -239,6 +239,7 @@ struct ir3_shader_variant *
 ir3_shader_get_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
 		bool binning_pass, bool *created)
 {
+	mtx_lock(&shader->variants_lock);
 	struct ir3_shader_variant *v =
 			shader_variant(shader, key, created);
 
@@ -247,8 +248,10 @@ ir3_shader_get_variant(struct ir3_shader *shader, struct ir3_shader_key *key,
 			v->binning = create_variant(shader, key, true);
 			*created = true;
 		}
+		mtx_unlock(&shader->variants_lock);
 		return v->binning;
 	}
+	mtx_unlock(&shader->variants_lock);
 
 	return v;
 }
@@ -264,6 +267,7 @@ ir3_shader_destroy(struct ir3_shader *shader)
 	}
 	free(shader->const_state.immediates);
 	ralloc_free(shader->nir);
+	mtx_destroy(&shader->variants_lock);
 	free(shader);
 }
 
@@ -272,6 +276,7 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir)
 {
 	struct ir3_shader *shader = CALLOC_STRUCT(ir3_shader);
 
+	mtx_init(&shader->variants_lock, mtx_plain);
 	shader->compiler = compiler;
 	shader->id = ++shader->compiler->shader_count;
 	shader->type = nir->info.stage;
