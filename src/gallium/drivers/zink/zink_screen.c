@@ -276,8 +276,12 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT:
       return 1;
 
+   case PIPE_CAP_NIR_COMPACT_ARRAYS:
+      return 1;
+
    case PIPE_CAP_FLATSHADE:
    case PIPE_CAP_ALPHA_TEST:
+   case PIPE_CAP_CLIP_PLANES:
       return 0;
 
    default:

@@ -176,6 +176,17 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
          get_glsl_basetype(ctx, glsl_get_base_type(type)),
          glsl_get_vector_elements(type));
 
+   if (glsl_type_is_array(type)) {
+      SpvId ret = spirv_builder_type_array(&ctx->builder,
+         get_glsl_type(ctx, glsl_get_array_element(type)),
+         spirv_builder_const_uint(&ctx->builder, 32, glsl_get_length(type)));
+      uint32_t stride = glsl_get_explicit_stride(type);
+      if (stride)
+         spirv_builder_emit_array_stride(&ctx->builder, ret, stride);
+      return ret;
+   }
+
+
    unreachable("we shouldn't get here, I think...");
 }
 
@@ -257,6 +268,11 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
 
          case VARYING_SLOT_PSIZ:
             spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInPointSize);
+            break;
+
+         case VARYING_SLOT_CLIP_DIST0:
+            assert(glsl_type_is_array(var->type));
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInClipDistance);
             break;
 
          default:
@@ -382,10 +398,13 @@ emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
 static void
 emit_uniform(struct ntv_context *ctx, struct nir_variable *var)
 {
-   if (glsl_type_is_sampler(var->type))
-      emit_sampler(ctx, var);
-   else if (var->interface_type)
+   if (var->data.mode == nir_var_mem_ubo)
       emit_ubo(ctx, var);
+   else {
+      assert(var->data.mode == nir_var_uniform);
+      if (glsl_type_is_sampler(var->type))
+         emit_sampler(ctx, var);
+   }
 }
 
 static SpvId
@@ -984,12 +1003,10 @@ emit_discard(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, var);
-   assert(he);
-   SpvId ptr = (SpvId)(intptr_t)he->data;
+   /* uint is a bit of a lie here; it's really just a pointer */
+   SpvId ptr = get_src_uint(ctx, intr->src);
 
-   // SpvId ptr = get_src_uint(ctx, intr->src); /* uint is a bit of a lie here; it's really just a pointer */
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
    SpvId result = spirv_builder_emit_load(&ctx->builder,
                                           get_glsl_type(ctx, var->type),
                                           ptr);
@@ -1002,14 +1019,13 @@ emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
-   nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, var);
-   assert(he);
-   SpvId ptr = (SpvId)(intptr_t)he->data;
-   // SpvId ptr = get_src_uint(ctx, &intr->src[0]); /* uint is a bit of a lie here; it's really just a pointer */
-
+   /* uint is a bit of a lie here; it's really just a pointer */
+   SpvId ptr = get_src_uint(ctx, &intr->src[0]);
    SpvId src = get_src_uint(ctx, &intr->src[1]);
-   SpvId result = emit_unop(ctx, SpvOpBitcast, get_glsl_type(ctx, var->type),
+
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   SpvId result = emit_unop(ctx, SpvOpBitcast,
+                            get_glsl_type(ctx, glsl_without_array(var->type)),
                             src);
    spirv_builder_emit_store(&ctx->builder, ptr, result);
 }
@@ -1212,12 +1228,25 @@ emit_jump(struct ntv_context *ctx, nir_jump_instr *jump)
 }
 
 static void
-emit_deref(struct ntv_context *ctx, nir_deref_instr *deref)
+emit_deref_var(struct ntv_context *ctx, nir_deref_instr *deref)
 {
    assert(deref->deref_type == nir_deref_type_var);
 
+   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, deref->var);
+   assert(he);
+   SpvId result = (SpvId)(intptr_t)he->data;
+   /* uint is a bit of a lie here, it's really just an opaque type */
+   store_dest_uint(ctx, &deref->dest, result);
+}
+
+static void
+emit_deref_array(struct ntv_context *ctx, nir_deref_instr *deref)
+{
+   assert(deref->deref_type == nir_deref_type_array);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+
    SpvStorageClass storage_class;
-   switch (deref->var->data.mode) {
+   switch (var->data.mode) {
    case nir_var_shader_in:
       storage_class = SpvStorageClassInput;
       break;
@@ -1230,8 +1259,7 @@ emit_deref(struct ntv_context *ctx, nir_deref_instr *deref)
       unreachable("Unsupported nir_variable_mode\n");
    }
 
-   struct hash_entry *he = _mesa_hash_table_search(ctx->vars, deref->var);
-   assert(he);
+   SpvId index = get_src_uint(ctx, &deref->arr.index);
 
    SpvId ptr_type = spirv_builder_type_pointer(&ctx->builder,
                                                storage_class,
@@ -1239,10 +1267,27 @@ emit_deref(struct ntv_context *ctx, nir_deref_instr *deref)
 
    SpvId result = spirv_builder_emit_access_chain(&ctx->builder,
                                                   ptr_type,
-                                                  (SpvId)(intptr_t)he->data,
-                                                  NULL, 0);
+                                                  get_src_uint(ctx, &deref->parent),
+                                                  &index, 1);
    /* uint is a bit of a lie here, it's really just an opaque type */
    store_dest_uint(ctx, &deref->dest, result);
+}
+
+static void
+emit_deref(struct ntv_context *ctx, nir_deref_instr *deref)
+{
+   switch (deref->deref_type) {
+   case nir_deref_type_var:
+      emit_deref_var(ctx, deref);
+      break;
+
+   case nir_deref_type_array:
+      emit_deref_array(ctx, deref);
+      break;
+
+   default:
+      unreachable("unexpected deref_type");
+   }
 }
 
 static void
@@ -1279,8 +1324,7 @@ emit_block(struct ntv_context *ctx, struct nir_block *block)
          unreachable("nir_instr_type_parallel_copy not supported");
          break;
       case nir_instr_type_deref:
-         /* these are handled in emit_{load,store}_deref */
-         /* emit_deref(ctx, nir_instr_as_deref(instr)); */
+         emit_deref(ctx, nir_instr_as_deref(instr));
          break;
       }
    }
