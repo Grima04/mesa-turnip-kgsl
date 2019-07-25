@@ -173,7 +173,7 @@ M_LOAD(ld_uniform_32);
 M_LOAD(ld_color_buffer_8);
 //M_STORE(st_vary_16);
 M_STORE(st_vary_32);
-M_STORE(st_cubemap_coords);
+M_LOAD(st_cubemap_coords);
 
 static midgard_instruction
 v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, unsigned cond)
@@ -1578,17 +1578,12 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 /* texelFetch is undefined on samplerCube */
                                 assert(midgard_texop != TEXTURE_OP_TEXEL_FETCH);
 
-                                /* For cubemaps, we need to load coords into
-                                 * special r27, and then use a special ld/st op
-                                 * to select the face and copy the xy into the
+                                /* For cubemaps, we use a special ld/st op to
+                                 * select the face and copy the xy into the
                                  * texture register */
 
-                                alu_src.swizzle = SWIZZLE(COMPONENT_X, COMPONENT_Y, COMPONENT_Z, COMPONENT_X);
-
-                                midgard_instruction move = v_mov(index, alu_src, SSA_FIXED_REGISTER(27));
-                                emit_mir_instruction(ctx, move);
-
                                 midgard_instruction st = m_st_cubemap_coords(reg, 0);
+                                st.ssa_args.src0 = index;
                                 st.load_store.unknown = 0x24; /* XXX: What is this? */
                                 st.mask = 0x3; /* xy */
                                 st.load_store.swizzle = alu_src.swizzle;

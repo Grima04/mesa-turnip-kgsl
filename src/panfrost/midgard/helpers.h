@@ -57,7 +57,8 @@
         )
 
 #define OP_IS_R27_ONLY(op) ( \
-                OP_IS_PROJECTION(op) \
+                OP_IS_PROJECTION(op) || \
+                op == midgard_op_st_cubemap_coords \
         )
 
 #define OP_IS_MOVE(op) ( \

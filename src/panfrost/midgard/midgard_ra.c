@@ -704,6 +704,8 @@ install_registers_instr(
 
                 if (OP_IS_STORE_R26(ins->load_store.op) && fixed) {
                         ins->load_store.reg = SSA_REG_FROM_FIXED(args.src0);
+                } else if (ins->load_store.op == midgard_op_st_cubemap_coords) {
+                        ins->load_store.reg = SSA_REG_FROM_FIXED(args.dest);
                 } else if (OP_IS_STORE_VARY(ins->load_store.op)) {
                         struct phys_reg src = index_to_reg(ctx, g, args.src0);
                         assert(src.reg == 26 || src.reg == 27);
