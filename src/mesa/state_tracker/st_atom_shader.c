@@ -131,6 +131,11 @@ st_update_fp( struct st_context *st )
          st->ctx->Multisample.MinSampleShadingValue *
          _mesa_geometric_samples(st->ctx->DrawBuffer) > 1;
 
+      key.lower_depth_clamp =
+         st->clamp_frag_depth_in_shader &&
+         (st->ctx->Transform.DepthClampNear ||
+          st->ctx->Transform.DepthClampFar);
+
       if (stfp->ati_fs) {
          key.fog = st->ctx->Fog._PackedEnabledMode;
 

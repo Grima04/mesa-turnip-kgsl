@@ -123,6 +123,9 @@ struct st_fp_variant_key
    /** needed for ATI_fragment_shader */
    GLuint fog:2;
 
+   /** for ARB_depth_clamp */
+   GLuint lower_depth_clamp:1;
+
    /** needed for ATI_fragment_shader */
    char texture_targets[MAX_NUM_FRAGMENT_REGISTERS_ATI];
 

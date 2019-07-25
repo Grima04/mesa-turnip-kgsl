@@ -1365,6 +1365,16 @@ st_create_fp_variant(struct st_context *st,
       }
    }
 
+   if (key->lower_depth_clamp) {
+      unsigned depth_range_const = _mesa_add_state_reference(params, depth_range_state);
+
+      const struct tgsi_token *tokens;
+      tokens = st_tgsi_lower_depth_clamp_fs(tgsi.tokens, depth_range_const);
+      if (tgsi.tokens != stfp->tgsi.tokens)
+         tgsi_free_tokens(tgsi.tokens);
+      tgsi.tokens = tokens;
+   }
+
    if (ST_DEBUG & DEBUG_TGSI) {
       tgsi_dump(tgsi.tokens, 0);
       debug_printf("\n");
