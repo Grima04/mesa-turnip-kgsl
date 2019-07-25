@@ -390,19 +390,15 @@ anv_physical_device_init(struct anv_physical_device *device,
    assert(strlen(path) < ARRAY_SIZE(device->path));
    snprintf(device->path, ARRAY_SIZE(device->path), "%s", path);
 
-   device->no_hw = getenv("INTEL_NO_HW") != NULL;
-
-   const int pci_id_override = gen_get_pci_device_id_override();
-   if (pci_id_override < 0) {
-      device->chipset_id = anv_gem_get_param(fd, I915_PARAM_CHIPSET_ID);
-      if (!device->chipset_id) {
-         result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
-         goto fail;
-      }
-   } else {
-      device->chipset_id = pci_id_override;
-      device->no_hw = true;
+   if (!gen_get_device_info_from_fd(fd, &device->info)) {
+      result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
+      goto fail;
    }
+   device->chipset_id = device->info.chipset_id;
+   device->no_hw = device->info.no_hw;
+
+   if (getenv("INTEL_NO_HW") != NULL)
+      device->no_hw = true;
 
    device->pci_info.domain = drm_device->businfo.pci->domain;
    device->pci_info.bus = drm_device->businfo.pci->bus;
@@ -410,10 +406,6 @@ anv_physical_device_init(struct anv_physical_device *device,
    device->pci_info.function = drm_device->businfo.pci->func;
 
    device->name = gen_get_device_name(device->chipset_id);
-   if (!gen_get_device_info(device->chipset_id, &device->info)) {
-      result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
-      goto fail;
-   }
 
    if (device->info.is_haswell) {
       intel_logw("Haswell Vulkan support is incomplete");
