@@ -17,6 +17,7 @@ fi
 rm -rf _build
 meson _build --native-file=native.file \
       ${CROSS+--cross /cross_file-$CROSS.txt} \
+      -D prefix=`pwd`/install \
       -D libdir=lib \
       -D buildtype=debug \
       -D build-tests=true \
@@ -32,7 +33,7 @@ cd _build
 meson configure
 ninja -j4
 LC_ALL=C.UTF-8 ninja test
-DESTDIR=$PWD/../install ninja install
+ninja install
 cd ..
 
 if test -n "$MESON_SHADERDB"; then
