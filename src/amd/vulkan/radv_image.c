@@ -1039,7 +1039,8 @@ radv_query_opaque_metadata(struct radv_device *device,
 		for (i = 0; i <= image->info.levels - 1; i++)
 			md->metadata[10+i] = image->planes[0].surface.u.legacy.level[i].offset >> 8;
 		md->size_metadata = (11 + image->info.levels - 1) * 4;
-	}
+	} else
+		md->size_metadata = 10 * 4;
 }
 
 void
