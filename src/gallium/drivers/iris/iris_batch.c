@@ -44,6 +44,7 @@
 
 #include "drm-uapi/i915_drm.h"
 
+#include "intel/common/gen_gem.h"
 #include "util/hash_table.h"
 #include "util/set.h"
 #include "main/macros.h"
@@ -574,7 +575,7 @@ submit_batch(struct iris_batch *batch)
 
    int ret = 0;
    if (!batch->screen->no_hw &&
-       drm_ioctl(batch->screen->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, &execbuf))
+       gen_ioctl(batch->screen->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, &execbuf))
       ret = -errno;
 
    for (int i = 0; i < batch->exec_count; i++) {

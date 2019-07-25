@@ -52,6 +52,7 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 #include "intel/compiler/brw_compiler.h"
+#include "intel/common/gen_gem.h"
 
 static void
 iris_flush_frontbuffer(struct pipe_screen *_screen,
@@ -97,7 +98,7 @@ static uint64_t
 get_aperture_size(int fd)
 {
    struct drm_i915_gem_get_aperture aperture = {};
-   drm_ioctl(fd, DRM_IOCTL_I915_GEM_GET_APERTURE, &aperture);
+   gen_ioctl(fd, DRM_IOCTL_I915_GEM_GET_APERTURE, &aperture);
    return aperture.aper_size;
 }
 

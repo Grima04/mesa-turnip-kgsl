@@ -93,20 +93,6 @@
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
-/**
- * Call ioctl, restarting if it is interupted
- */
-int
-drm_ioctl(int fd, unsigned long request, void *arg)
-{
-    int ret;
-
-    do {
-        ret = ioctl(fd, request, arg);
-    } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
-    return ret;
-}
-
 static inline int
 atomic_add_unless(int *v, int add, int unless)
 {
@@ -320,7 +306,7 @@ iris_bo_busy(struct iris_bo *bo)
    struct iris_bufmgr *bufmgr = bo->bufmgr;
    struct drm_i915_gem_busy busy = { .handle = bo->gem_handle };
 
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_BUSY, &busy);
+   int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_BUSY, &busy);
    if (ret == 0) {
       bo->idle = !busy.busy;
       return busy.busy;
@@ -337,7 +323,7 @@ iris_bo_madvise(struct iris_bo *bo, int state)
       .retained = 1,
    };
 
-   drm_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_MADVISE, &madv);
+   gen_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_MADVISE, &madv);
 
    return madv.retained;
 }
@@ -429,7 +415,7 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
    /* All new BOs we get from the kernel are zeroed, so we don't need to
     * worry about that here.
     */
-   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE, &create) != 0) {
+   if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE, &create) != 0) {
       free(bo);
       return NULL;
    }
@@ -452,7 +438,7 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size)
       .write_domain = 0,
    };
 
-   if (drm_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0) {
+   if (gen_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd) != 0) {
       bo_free(bo);
       return NULL;
    }
@@ -531,7 +517,7 @@ bo_alloc_internal(struct iris_bufmgr *bufmgr,
          .handle = bo->gem_handle,
          .caching = 1,
       };
-      if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) == 0) {
+      if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_CACHING, &arg) == 0) {
          bo->cache_coherent = true;
          bo->reusable = false;
       }
@@ -582,7 +568,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
       .user_ptr = (uintptr_t)ptr,
       .user_size = size,
    };
-   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_USERPTR, &arg))
+   if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_USERPTR, &arg))
       goto err_free;
    bo->gem_handle = arg.handle;
 
@@ -591,7 +577,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
       .handle = bo->gem_handle,
       .read_domains = I915_GEM_DOMAIN_CPU,
    };
-   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd))
+   if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd))
       goto err_close;
 
    bo->name = name;
@@ -617,7 +603,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    return bo;
 
 err_close:
-   drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &bo->gem_handle);
+   gen_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &bo->gem_handle);
 err_free:
    free(bo);
    return NULL;
@@ -649,7 +635,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    }
 
    struct drm_gem_open open_arg = { .name = handle };
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_OPEN, &open_arg);
+   int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_GEM_OPEN, &open_arg);
    if (ret != 0) {
       DBG("Couldn't reference %s handle 0x%08x: %s\n",
           name, handle, strerror(errno));
@@ -687,7 +673,7 @@ iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
    _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
 
    struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
-   ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling);
+   ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling);
    if (ret != 0)
       goto err_unref;
 
@@ -713,7 +699,7 @@ bo_close(struct iris_bo *bo)
 
    /* Close this object */
    struct drm_gem_close close = { .handle = bo->gem_handle };
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
+   int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
    if (ret != 0) {
       DBG("DRM_IOCTL_GEM_CLOSE %d failed (%s): %s\n",
           bo->gem_handle, bo->name, strerror(errno));
@@ -904,7 +890,7 @@ iris_bo_map_cpu(struct pipe_debug_callback *dbg,
          .handle = bo->gem_handle,
          .size = bo->size,
       };
-      int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
+      int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
       if (ret != 0) {
          DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
              __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
@@ -965,7 +951,7 @@ iris_bo_map_wc(struct pipe_debug_callback *dbg,
          .size = bo->size,
          .flags = I915_MMAP_WC,
       };
-      int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
+      int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP, &mmap_arg);
       if (ret != 0) {
          DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
              __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
@@ -1027,7 +1013,7 @@ iris_bo_map_gtt(struct pipe_debug_callback *dbg,
       struct drm_i915_gem_mmap_gtt mmap_arg = { .handle = bo->gem_handle };
 
       /* Get the fake offset back... */
-      int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP_GTT, &mmap_arg);
+      int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_MMAP_GTT, &mmap_arg);
       if (ret != 0) {
          DBG("%s:%d: Error preparing buffer map %d (%s): %s .\n",
              __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
@@ -1185,7 +1171,7 @@ iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns)
       .bo_handle = bo->gem_handle,
       .timeout_ns = timeout_ns,
    };
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_WAIT, &wait);
+   int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_WAIT, &wait);
    if (ret != 0)
       return -errno;
 
@@ -1322,7 +1308,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
 
    struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
-   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
+   if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
       goto err;
 
    bo->tiling_mode = get_tiling.tiling_mode;
@@ -1393,7 +1379,7 @@ iris_bo_flink(struct iris_bo *bo, uint32_t *name)
    if (!bo->global_name) {
       struct drm_gem_flink flink = { .handle = bo->gem_handle };
 
-      if (drm_ioctl(bufmgr->fd, DRM_IOCTL_GEM_FLINK, &flink))
+      if (gen_ioctl(bufmgr->fd, DRM_IOCTL_GEM_FLINK, &flink))
          return -errno;
 
       mtx_lock(&bufmgr->lock);
@@ -1458,7 +1444,7 @@ uint32_t
 iris_create_hw_context(struct iris_bufmgr *bufmgr)
 {
    struct drm_i915_gem_context_create create = { };
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE, &create);
+   int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_CREATE, &create);
    if (ret != 0) {
       DBG("DRM_IOCTL_I915_GEM_CONTEXT_CREATE failed: %s\n", strerror(errno));
       return 0;
@@ -1513,7 +1499,7 @@ iris_hw_context_set_priority(struct iris_bufmgr *bufmgr,
    int err;
 
    err = 0;
-   if (drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p))
+   if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM, &p))
       err = -errno;
 
    return err;
@@ -1538,7 +1524,7 @@ iris_destroy_hw_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
    struct drm_i915_gem_context_destroy d = { .ctx_id = ctx_id };
 
    if (ctx_id != 0 &&
-       drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_DESTROY, &d) != 0) {
+       gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CONTEXT_DESTROY, &d) != 0) {
       fprintf(stderr, "DRM_IOCTL_I915_GEM_CONTEXT_DESTROY failed: %s\n",
               strerror(errno));
    }
@@ -1548,7 +1534,7 @@ int
 iris_reg_read(struct iris_bufmgr *bufmgr, uint32_t offset, uint64_t *result)
 {
    struct drm_i915_reg_read reg_read = { .offset = offset };
-   int ret = drm_ioctl(bufmgr->fd, DRM_IOCTL_I915_REG_READ, &reg_read);
+   int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_REG_READ, &reg_read);
 
    *result = reg_read.val;
    return ret;
@@ -1563,7 +1549,7 @@ iris_gtt_size(int fd)
    struct drm_i915_gem_context_param p = {
       .param = I915_CONTEXT_PARAM_GTT_SIZE,
    };
-   if (!drm_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p))
+   if (!gen_ioctl(fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &p))
       return p.value;
 
    return 0;
