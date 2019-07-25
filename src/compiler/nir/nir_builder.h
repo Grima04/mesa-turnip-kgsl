@@ -807,9 +807,9 @@ nir_ssa_for_src(nir_builder *build, nir_src src, int num_components)
 static inline nir_ssa_def *
 nir_ssa_for_alu_src(nir_builder *build, nir_alu_instr *instr, unsigned srcn)
 {
-   static uint8_t trivial_swizzle[NIR_MAX_VEC_COMPONENTS];
-   for (int i = 0; i < NIR_MAX_VEC_COMPONENTS; ++i)
-      trivial_swizzle[i] = i;
+   static uint8_t trivial_swizzle[] = { 0, 1, 2, 3 };
+   STATIC_ASSERT(ARRAY_SIZE(trivial_swizzle) == NIR_MAX_VEC_COMPONENTS);
+
    nir_alu_src *src = &instr->src[srcn];
    unsigned num_components = nir_ssa_alu_instr_src_components(instr, srcn);
 
