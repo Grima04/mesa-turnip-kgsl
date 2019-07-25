@@ -8328,6 +8328,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    prog_data->local_size[0] = src_shader->info.cs.local_size[0];
    prog_data->local_size[1] = src_shader->info.cs.local_size[1];
    prog_data->local_size[2] = src_shader->info.cs.local_size[2];
+   prog_data->slm_size = src_shader->num_shared;
    unsigned local_workgroup_size =
       src_shader->info.cs.local_size[0] * src_shader->info.cs.local_size[1] *
       src_shader->info.cs.local_size[2];
