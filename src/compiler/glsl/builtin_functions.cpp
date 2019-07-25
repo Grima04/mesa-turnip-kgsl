@@ -365,6 +365,13 @@ v130_or_gpu_shader4(const _mesa_glsl_parse_state *state)
 }
 
 static bool
+v130_or_gpu_shader4_and_tex_shadow_lod(const _mesa_glsl_parse_state *state)
+{
+   return v130_or_gpu_shader4(state) &&
+          state->EXT_texture_shadow_lod_enable;
+}
+
+static bool
 gpu_shader5(const _mesa_glsl_parse_state *state)
 {
    return state->is_version(400, 0) || state->ARB_gpu_shader5_enable;
@@ -489,6 +496,14 @@ static bool
 texture_cube_map_array(const _mesa_glsl_parse_state *state)
 {
    return state->has_texture_cube_map_array();
+}
+
+static bool
+v130_or_gpu_shader4_and_tex_cube_map_array(const _mesa_glsl_parse_state *state)
+{
+   return texture_cube_map_array(state) &&
+          v130_or_gpu_shader4(state) &&
+          state->EXT_texture_shadow_lod_enable;
 }
 
 static bool
@@ -2211,6 +2226,11 @@ builtin_builder::create_builtins()
                 _texture(ir_txb, derivatives_texture_cube_map_array, glsl_type::uvec4_type, glsl_type::usamplerCubeArray_type, glsl_type::vec4_type),
 
                 _texture(ir_txb, v130_derivatives_only, glsl_type::float_type, glsl_type::sampler1DArrayShadow_type, glsl_type::vec3_type),
+                _texture(ir_tex, v130_or_gpu_shader4_and_tex_shadow_lod, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type),
+                _texture(ir_txb, v130_or_gpu_shader4_and_tex_shadow_lod, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type),
+
+                _textureCubeArrayShadow(ir_tex, v130_or_gpu_shader4_and_tex_cube_map_array, glsl_type::samplerCubeArrayShadow_type),
+                _textureCubeArrayShadow(ir_txb, v130_or_gpu_shader4_and_tex_cube_map_array, glsl_type::samplerCubeArrayShadow_type),
                 NULL);
 
    add_function("textureLod",
@@ -2246,6 +2266,9 @@ builtin_builder::create_builtins()
                 _texture(ir_txl, texture_cube_map_array, glsl_type::uvec4_type, glsl_type::usamplerCubeArray_type, glsl_type::vec4_type),
 
                 _texture(ir_txl, v130, glsl_type::float_type, glsl_type::sampler1DArrayShadow_type, glsl_type::vec3_type),
+                _texture(ir_txl, v130_or_gpu_shader4_and_tex_shadow_lod, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type),
+                _texture(ir_txl, v130_or_gpu_shader4_and_tex_shadow_lod, glsl_type::float_type, glsl_type::samplerCubeShadow_type, glsl_type::vec4_type),
+                _textureCubeArrayShadow(ir_txl, v130_or_gpu_shader4_and_tex_cube_map_array, glsl_type::samplerCubeArrayShadow_type),
                 NULL);
 
    add_function("textureOffset",
@@ -2311,6 +2334,8 @@ builtin_builder::create_builtins()
                 _texture(ir_txb, v130_derivatives_only, glsl_type::uvec4_type, glsl_type::usampler2DArray_type, glsl_type::vec3_type, TEX_OFFSET),
 
                 _texture(ir_txb, v130_derivatives_only, glsl_type::float_type, glsl_type::sampler1DArrayShadow_type, glsl_type::vec3_type, TEX_OFFSET),
+                _texture(ir_tex, v130_or_gpu_shader4_and_tex_shadow_lod, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type, TEX_OFFSET),
+                _texture(ir_txb, v130_or_gpu_shader4_and_tex_shadow_lod, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type, TEX_OFFSET),
                 NULL);
 
    add_function("texture1DOffset",
@@ -2729,6 +2754,7 @@ builtin_builder::create_builtins()
                 _texture(ir_txl, v130, glsl_type::uvec4_type, glsl_type::usampler2DArray_type, glsl_type::vec3_type, TEX_OFFSET),
 
                 _texture(ir_txl, v130, glsl_type::float_type, glsl_type::sampler1DArrayShadow_type, glsl_type::vec3_type, TEX_OFFSET),
+                _texture(ir_txl, v130_or_gpu_shader4_and_tex_shadow_lod, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type, TEX_OFFSET),
                 NULL);
 
    add_function("texture1DLodOffset",
