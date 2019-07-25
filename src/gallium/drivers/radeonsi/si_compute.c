@@ -953,6 +953,7 @@ void si_destroy_compute(struct si_compute *program)
 	}
 
 	si_shader_destroy(&program->shader);
+	ralloc_free(program->sel.nir);
 	FREE(program);
 }
 
@@ -969,7 +970,6 @@ static void si_delete_compute_state(struct pipe_context *ctx, void* state){
 	if (program == sctx->cs_shader_state.emitted_program)
 		sctx->cs_shader_state.emitted_program = NULL;
 
-	ralloc_free(program->sel.nir);
 	si_compute_reference(&program, NULL);
 }
 
