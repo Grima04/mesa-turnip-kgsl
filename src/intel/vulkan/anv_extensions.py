@@ -149,7 +149,7 @@ EXTENSIONS = [
     Extension('VK_EXT_shader_viewport_index_layer',       1, True),
     Extension('VK_EXT_subgroup_size_control',             1, True),
     Extension('VK_EXT_texel_buffer_alignment',            1, True),
-    Extension('VK_EXT_transform_feedback',                1, True),
+    Extension('VK_EXT_transform_feedback',                1, 'device->info.gen >= 8'),
     Extension('VK_EXT_vertex_attribute_divisor',          3, True),
     Extension('VK_EXT_ycbcr_image_arrays',                1, True),
     Extension('VK_ANDROID_external_memory_android_hardware_buffer', 3, 'ANDROID'),
