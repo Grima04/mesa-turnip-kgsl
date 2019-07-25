@@ -1368,8 +1368,16 @@ else
 endif
 
 _shared_llvm = get_option('shared-llvm')
-
 _llvm = get_option('llvm')
+
+# The cmake method will never find libllvm.so|dylib; this is fine for windows
+# because llvm doesn't support libllvm.dll
+_llvm_method = 'config-tool'
+if (meson.version().version_compare('>= 0.51.0') and
+    host_machine.system() == 'windows')
+  _llvm_method = 'cmake'
+endif
+
 dep_llvm = null_dep
 with_llvm = false
 if _llvm != 'false'
@@ -1383,7 +1391,7 @@ if _llvm != 'false'
       with_gallium_opencl or _llvm == 'true'
     ),
     static : not _shared_llvm,
-    method : 'config-tool',
+    method : _llvm_method,
     fallback : ['llvm', 'dep_llvm'],
   )
   with_llvm = dep_llvm.found()
