@@ -25,22 +25,6 @@
 #include "compiler.h"
 #include "midgard_ops.h"
 
-static bool
-mir_nontrivial_outmod(midgard_instruction *ins)
-{
-        bool is_int = midgard_is_integer_op(ins->alu.op);
-        unsigned mod = ins->alu.outmod;
-
-        /* Type conversion is a sort of outmod */
-        if (ins->alu.dest_override != midgard_dest_override_none)
-                return true;
-
-        if (is_int)
-                return mod != midgard_outmod_int_wrap;
-        else
-                return mod != midgard_outmod_none;
-}
-
 bool
 midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 {

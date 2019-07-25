@@ -140,6 +140,22 @@ mir_nontrivial_source2_mod(midgard_instruction *ins)
         return mir_nontrivial_mod(src2, is_int, ins->mask);
 }
 
+bool
+mir_nontrivial_outmod(midgard_instruction *ins)
+{
+        bool is_int = midgard_is_integer_op(ins->alu.op);
+        unsigned mod = ins->alu.outmod;
+
+        /* Type conversion is a sort of outmod */
+        if (ins->alu.dest_override != midgard_dest_override_none)
+                return true;
+
+        if (is_int)
+                return mod != midgard_outmod_int_wrap;
+        else
+                return mod != midgard_outmod_none;
+}
+
 /* Checks if an index will be used as a special register -- basically, if we're
  * used as the input to a non-ALU op */
 
