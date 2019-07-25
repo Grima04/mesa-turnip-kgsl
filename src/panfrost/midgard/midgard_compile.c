@@ -1650,10 +1650,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         midgard_tex_register_select sel = {
                                 .select = in_reg,
                                 .full = 1,
-
-                                /* w */
-                                .component_lo = 1,
-                                .component_hi = 1
+                                .component = COMPONENT_W,
                         };
 
                         uint8_t packed;
