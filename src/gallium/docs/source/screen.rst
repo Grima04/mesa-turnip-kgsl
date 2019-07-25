@@ -542,6 +542,8 @@ The integer capabilities:
   derivatives in fragment shaders.
 * ``PIPE_CAP_VERTEX_SHADER_SATURATE``: True if the driver supports saturate
   modifiers in the vertex shader.
+* ``PIPE_CAP_TEXTURE_SHADOW_LOD``: True if the driver supports shadow sampler
+  types with texture functions having interaction with LOD of texture lookup.
 
 .. _pipe_capf:
 
