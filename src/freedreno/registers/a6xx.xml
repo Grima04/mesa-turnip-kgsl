@@ -1771,6 +1771,16 @@ to upconvert to 32b float internally?
 	TODO now there seem to be two buffers of VSC data (both referenced by
 	CP_SET_BIN_DATA packet.  Not sure what this new DATA2 one is, but seems
 	to have the larger pitch.
+
+	The "DATA2" buffer is probably actually the main visibility stream; it
+	is at least the larger of the two.
+
+	For VSC_DATA_PITCH, 0x20 actually seems to be sufficient (although blob
+	uses something somewhat larger) for many cases, although required value
+	can ramp up somewhat higher.  Values less than 0x20 trigger GPU hangs
+	even with small amount of geometry (so possibly 0x20 is minimum
+	alignment or something like that).  So far I can't seem to find any-
+	thing that needs values larger than 0x20
 	 -->
 	<reg32 offset="0x0c30" name="VSC_PIPE_DATA2_ADDRESS_LO"/>
 	<reg32 offset="0x0c31" name="VSC_PIPE_DATA2_ADDRESS_HI"/>
@@ -1781,10 +1791,25 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0c36" name="VSC_PIPE_DATA_PITCH"/>
 	<reg32 offset="0x0c37" name="VSC_PIPE_DATA_ARRAY_PITCH" shr="4" type="uint"/>
 
-	<!--
-	note, also a range starting at 0x0c58, one or the other probably
-	corresponds to the new "VSC_XXX" thing, whatever it is..
-	 -->
+	<array offset="0x0c38" name="VSC_STATE" stride="1" length="32">
+		<doc>
+			Seems to be a bitmap of which tiles mapped to the VSC
+			pipe contain geometry.
+
+			I suppose we can connect a maximum of 32 tiles to a
+			single VSC pipe.
+		</doc>
+		<reg32 offset="0x0" name="REG"/>
+	</array>
+
+	<array offset="0x0c58" name="VSC_SIZE2" stride="1" length="32">
+		<doc>
+			Has the size of data written to corresponding VSC_DATA2
+			buffer.
+		</doc>
+		<reg32 offset="0x0" name="REG"/>
+	</array>
+
 	<array offset="0x0c78" name="VSC_SIZE" stride="1" length="32">
 		<doc>
 			Has the size of data written to corresponding VSC pipe, ie.

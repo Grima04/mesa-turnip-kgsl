@@ -41,6 +41,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="LRZ_FLUSH" value="38" variants="A5XX,A6XX"/>
 	<value name="UNK_2C" value="44" variants="A5XX"/>
 	<value name="UNK_2D" value="45" variants="A5XX"/>
+
+	<!-- a6xx events -->
+	<value name="CACHE_INVALIDATE" value="49" variants="A6XX"/>
 </enum>
 
 <enum name="pc_di_primtype">
@@ -1153,6 +1156,16 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<!-- the bit to test -->
 		<bitfield name="BIT" low="20" high="24" type="uint"/>
 		<bitfield name="UNK25" pos="25" type="boolean"/>
+	</reg32>
+</domain>
+
+<!-- I *think* this existed at least as far back as a4xx -->
+<domain name="CP_COND_REG_EXEC" width="32">
+	<reg32 offset="0" name="0">
+		<bitfield name="UNK28" pos="28" type="boolean"/>
+	</reg32>
+	<reg32 offset="1" name="1">
+		<bitfield name="DWORDS" low="0" high="31" type="uint"/>
 	</reg32>
 </domain>
 
