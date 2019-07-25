@@ -1204,7 +1204,6 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
 
    iris_pack_command(GENX(3DSTATE_SF), cso->sf, sf) {
       sf.StatisticsEnable = true;
-      sf.ViewportTransformEnable = true;
       sf.AALineDistanceMode = AALINEDISTANCE_TRUE;
       sf.LineEndCapAntialiasingRegionWidth =
          state->line_smooth ? _10pixels : _05pixels;
@@ -4335,6 +4334,18 @@ iris_update_surface_base_address(struct iris_batch *batch,
    batch->last_surface_base_address = binder->bo->gtt_offset;
 }
 
+static inline void
+iris_viewport_zmin_zmax(const struct pipe_viewport_state *vp, bool halfz,
+                        bool window_space_position, float *zmin, float *zmax)
+{
+   if (window_space_position) {
+      *zmin = 0.f;
+      *zmax = 1.f;
+      return;
+   }
+   util_viewport_zmin_zmax(vp, halfz, zmin, zmax);
+}
+
 static void
 iris_upload_dirty_render_state(struct iris_context *ice,
                                struct iris_batch *batch,
@@ -4362,7 +4373,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                       GENX(CC_VIEWPORT_length), 32, &cc_vp_address);
       for (int i = 0; i < ice->state.num_viewports; i++) {
          float zmin, zmax;
-         util_viewport_zmin_zmax(&ice->state.viewports[i],
+         iris_viewport_zmin_zmax(&ice->state.viewports[i],
+                                 ice->state.window_space_position,
                                  cso_rast->clip_halfz, &zmin, &zmax);
          if (cso_rast->depth_clip_near)
             zmin = 0.0;
@@ -4773,8 +4785,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       uint32_t dynamic_clip[GENX(3DSTATE_CLIP_length)];
       iris_pack_command(GENX(3DSTATE_CLIP), &dynamic_clip, cl) {
          cl.StatisticsEnable = ice->state.statistics_counters_enabled;
-         cl.ClipMode = cso_rast->rasterizer_discard ? CLIPMODE_REJECT_ALL
-                                                    : CLIPMODE_NORMAL;
+         if (cso_rast->rasterizer_discard)
+            cl.ClipMode = CLIPMODE_REJECT_ALL;
+         else if (ice->state.window_space_position)
+            cl.ClipMode = CLIPMODE_ACCEPT_ALL;
+         else
+            cl.ClipMode = CLIPMODE_NORMAL;
+
+         cl.PerspectiveDivideDisable = ice->state.window_space_position;
          cl.ViewportXYClipTestEnable = !points_or_lines;
 
          if (wm_prog_data->barycentric_interp_modes &
@@ -4791,8 +4809,13 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    if (dirty & IRIS_DIRTY_RASTER) {
       struct iris_rasterizer_state *cso = ice->state.cso_rast;
       iris_batch_emit(batch, cso->raster, sizeof(cso->raster));
-      iris_batch_emit(batch, cso->sf, sizeof(cso->sf));
 
+      uint32_t dynamic_sf[GENX(3DSTATE_SF_length)];
+      iris_pack_command(GENX(3DSTATE_SF), &dynamic_sf, sf) {
+         sf.ViewportTransformEnable = !ice->state.window_space_position;
+      }
+      iris_emit_merge(batch, cso->sf, dynamic_sf,
+                      ARRAY_SIZE(dynamic_sf));
    }
 
    if (dirty & IRIS_DIRTY_WM) {

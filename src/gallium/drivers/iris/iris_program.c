@@ -2232,6 +2232,20 @@ bind_shader_state(struct iris_context *ice,
 static void
 iris_bind_vs_state(struct pipe_context *ctx, void *state)
 {
+   struct iris_context *ice = (struct iris_context *)ctx;
+   struct iris_uncompiled_shader *new_ish = state;
+
+   if (new_ish &&
+       ice->state.window_space_position !=
+       new_ish->nir->info.vs.window_space_position) {
+      ice->state.window_space_position =
+         new_ish->nir->info.vs.window_space_position;
+
+      ice->state.dirty |= IRIS_DIRTY_CLIP |
+                          IRIS_DIRTY_RASTER |
+                          IRIS_DIRTY_CC_VIEWPORT;
+   }
+
    bind_shader_state((void *) ctx, state, MESA_SHADER_VERTEX);
 }
 

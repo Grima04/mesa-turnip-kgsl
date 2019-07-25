@@ -631,6 +631,8 @@ struct iris_context {
       bool prim_is_points_or_lines;
       uint8_t vertices_per_patch;
 
+      bool window_space_position;
+
       /** The last compute grid size */
       uint32_t last_grid[3];
       /** Reference to the BO containing the compute grid size */
