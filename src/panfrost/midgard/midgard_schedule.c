@@ -827,6 +827,12 @@ schedule_program(compiler_context *ctx)
                 g = allocate_registers(ctx, &spilled);
         } while(spilled && ((iter_count--) > 0));
 
+        /* We can simplify a bit after RA */
+
+        mir_foreach_block(ctx, block) {
+                midgard_opt_post_move_eliminate(ctx, block, g);
+        }
+
         /* After RA finishes, we schedule all at once */
 
         mir_foreach_block(ctx, block) {

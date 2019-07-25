@@ -509,5 +509,6 @@ bool midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block)
 bool midgard_opt_varying_projection(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_dead_move_eliminate(compiler_context *ctx, midgard_block *block);
+void midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, struct ra_graph *g);
 
 #endif
