@@ -136,7 +136,7 @@ fd6_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
 	if (timestamp) {
 		struct fd6_context *fd6_ctx = fd6_context(batch->ctx);
 		seqno = ++fd6_ctx->seqno;
-		OUT_RELOCW(ring, fd6_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
+		OUT_RELOCW(ring, control_ptr(fd6_ctx, seqno));  /* ADDR_LO/HI */
 		OUT_RING(ring, seqno);
 	}
 
@@ -159,7 +159,7 @@ fd6_cache_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
 	OUT_RING(ring, 0x00000013);
-	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
 	OUT_RING(ring, seqno);
 	OUT_RING(ring, 0xffffffff);
 	OUT_RING(ring, 0x00000010);
@@ -168,7 +168,7 @@ fd6_cache_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 	OUT_PKT7(ring, CP_UNK_A6XX_14, 4);
 	OUT_RING(ring, 0x00000000);
-	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
 	OUT_RING(ring, seqno);
 }
 

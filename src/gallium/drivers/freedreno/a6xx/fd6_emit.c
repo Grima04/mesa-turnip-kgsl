@@ -728,7 +728,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 		// TODO just give hw a dummy addr for now.. we should
 		// be using this an then CP_MEM_TO_REG to set the
 		// VPC_SO[i].BUFFER_OFFSET for the next draw..
-		OUT_RELOCW(ring, fd6_context(ctx)->blit_mem, 0x100, 0, 0);
+		OUT_RELOCW(ring, control_ptr(fd6_context(ctx), flush_base));
 
 		emit->streamout_mask |= (1 << i);
 	}
@@ -1312,7 +1312,7 @@ fd6_framebuffer_barrier(struct fd_context *ctx)
 
 	OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
 	OUT_RING(ring, 0x00000013);
-	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
 	OUT_RING(ring, seqno);
 	OUT_RING(ring, 0xffffffff);
 	OUT_RING(ring, 0x00000010);
@@ -1326,7 +1326,7 @@ fd6_framebuffer_barrier(struct fd_context *ctx)
 
 	OUT_PKT7(ring, CP_UNK_A6XX_14, 4);
 	OUT_RING(ring, 0x00000000);
-	OUT_RELOC(ring, fd6_ctx->blit_mem, 0, 0, 0);
+	OUT_RELOC(ring, control_ptr(fd6_ctx, seqno));
 	OUT_RING(ring, seqno);
 }
 
