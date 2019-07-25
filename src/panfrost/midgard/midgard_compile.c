@@ -1962,28 +1962,6 @@ embedded_to_inline_constant(compiler_context *ctx)
         }
 }
 
-/* Basic dead code elimination on the MIR itself, which cleans up e.g. the
- * texture pipeline */
-
-static bool
-midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
-{
-        bool progress = false;
-
-        mir_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != TAG_ALU_4) continue;
-                if (ins->compact_branch) continue;
-
-                if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
-                if (mir_is_live_after(ctx, block, ins, ins->ssa_args.dest)) continue;
-
-                mir_remove_instruction(ins);
-                progress = true;
-        }
-
-        return progress;
-}
-
 /* Dead code elimination for branches at the end of a block - only one branch
  * per block is legal semantically */
 
