@@ -490,7 +490,7 @@ read_data_file(FILE *file)
                matched = sscanf(pci_id_start, "PCI ID: 0x%04x\n", &reg);
          }
          if (matched == 1) {
-            if (!gen_get_device_info(reg, &devinfo)) {
+            if (!gen_get_device_info_from_pci_id(reg, &devinfo)) {
                printf("Unable to identify devid=%x\n", reg);
                exit(EXIT_FAILURE);
             }

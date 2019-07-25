@@ -172,7 +172,7 @@ aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, co
    aub->verbose_log_file = debug;
    aub->file = file;
    aub->pci_id = pci_id;
-   fail_if(!gen_get_device_info(pci_id, &aub->devinfo),
+   fail_if(!gen_get_device_info_from_pci_id(pci_id, &aub->devinfo),
            "failed to identify chipset=0x%x\n", pci_id);
    aub->addr_bits = aub->devinfo.gen >= 8 ? 48 : 32;
 

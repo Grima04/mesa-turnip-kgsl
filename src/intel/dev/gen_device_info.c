@@ -1202,15 +1202,16 @@ getparam(int fd, uint32_t param, int *value)
 }
 
 bool
-gen_get_device_info(int devid, struct gen_device_info *devinfo)
+gen_get_device_info_from_pci_id(int pci_id,
+                                struct gen_device_info *devinfo)
 {
-   switch (devid) {
+   switch (pci_id) {
 #undef CHIPSET
 #define CHIPSET(id, family, name) \
       case id: *devinfo = gen_device_info_##family; break;
 #include "pci_ids/i965_pci_ids.h"
    default:
-      fprintf(stderr, "Driver does not support the 0x%x PCI ID.\n", devid);
+      fprintf(stderr, "Driver does not support the 0x%x PCI ID.\n", pci_id);
       return false;
    }
 
@@ -1248,7 +1249,7 @@ gen_get_device_info(int devid, struct gen_device_info *devinfo)
 
    assert(devinfo->num_slices <= ARRAY_SIZE(devinfo->num_subslices));
 
-   devinfo->chipset_id = devid;
+   devinfo->chipset_id = pci_id;
    return true;
 }
 
@@ -1328,14 +1329,14 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
 {
    int devid = gen_get_pci_device_id_override();
    if (devid > 0) {
-      if (!gen_get_device_info(devid, devinfo))
+      if (!gen_get_device_info_from_pci_id(devid, devinfo))
          return false;
       devinfo->no_hw = true;
    } else {
       /* query the device id */
       if (!getparam(fd, I915_PARAM_CHIPSET_ID, &devid))
          return false;
-      if (!gen_get_device_info(devid, devinfo))
+      if (!gen_get_device_info_from_pci_id(devid, devinfo))
          return false;
       devinfo->no_hw = false;
    }

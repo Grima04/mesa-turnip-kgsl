@@ -79,7 +79,7 @@ i965_disasm_init(uint16_t pci_id)
    if (devinfo == NULL)
       return NULL;
 
-   if (!gen_get_device_info(pci_id, devinfo)) {
+   if (!gen_get_device_info_from_pci_id(pci_id, devinfo)) {
       fprintf(stderr, "can't find device information: pci_id=0x%x\n",
               pci_id);
       free(devinfo);
