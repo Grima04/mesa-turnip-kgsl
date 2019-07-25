@@ -296,6 +296,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_ALPHA_TEST:
    case PIPE_CAP_CLIP_PLANES:
    case PIPE_CAP_POINT_SIZE_FIXED:
+   case PIPE_CAP_TWO_SIDED_COLOR:
       return 0;
 
    default:

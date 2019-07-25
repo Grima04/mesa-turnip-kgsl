@@ -236,8 +236,10 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       if (var->data.location >= VARYING_SLOT_VAR0)
          spirv_builder_emit_location(&ctx->builder, var_id,
                                      var->data.location - VARYING_SLOT_VAR0);
-      else if (var->data.location >= VARYING_SLOT_COL0 &&
-               var->data.location <= VARYING_SLOT_TEX7) {
+      else if ((var->data.location >= VARYING_SLOT_COL0 &&
+                var->data.location <= VARYING_SLOT_TEX7) ||
+               var->data.location == VARYING_SLOT_BFC0 ||
+               var->data.location == VARYING_SLOT_BFC1) {
          spirv_builder_emit_location(&ctx->builder, var_id,
                                      var->data.location);
       } else {
@@ -290,8 +292,10 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       if (var->data.location >= VARYING_SLOT_VAR0)
          spirv_builder_emit_location(&ctx->builder, var_id,
                                      var->data.location - VARYING_SLOT_VAR0);
-      else if (var->data.location >= VARYING_SLOT_COL0 &&
-               var->data.location <= VARYING_SLOT_TEX7) {
+      else if ((var->data.location >= VARYING_SLOT_COL0 &&
+                var->data.location <= VARYING_SLOT_TEX7) ||
+               var->data.location == VARYING_SLOT_BFC0 ||
+               var->data.location == VARYING_SLOT_BFC1) {
          spirv_builder_emit_location(&ctx->builder, var_id,
                                      var->data.location);
       } else {
