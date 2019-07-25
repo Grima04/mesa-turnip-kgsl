@@ -503,5 +503,6 @@ bool midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_varying_projection(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block);
+bool midgard_opt_dead_move_eliminate(compiler_context *ctx, midgard_block *block);
 
 #endif

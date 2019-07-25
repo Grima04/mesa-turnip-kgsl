@@ -44,3 +44,46 @@ midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
 
         return progress;
 }
+
+/* Removes dead moves, that is, moves with a destination overwritten before
+ * being read. Normally handled implicitly as part of DCE, but this has to run
+ * after the out-of-SSA pass */
+
+bool
+midgard_opt_dead_move_eliminate(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != TAG_ALU_4) continue;
+                if (ins->compact_branch) continue;
+                if (!OP_IS_MOVE(ins->alu.op)) continue;
+
+                /* Check if it's overwritten in this block before being read */
+                bool overwritten = false;
+
+                mir_foreach_instr_in_block_from(block, q, mir_next_op(ins)) {
+                        if (q->compact_branch) continue;
+
+                        /* Check if used */
+                        if (mir_has_arg(q, ins->ssa_args.dest))
+                                break;
+
+                        /* Check if overwritten */
+                        if (q->ssa_args.dest == ins->ssa_args.dest) {
+                                /* Special case to vec4; component tracking is
+                                 * harder */
+
+                                overwritten = (q->mask == 0xF);
+                                break;
+                        }
+                }
+
+                if (overwritten) {
+                        mir_remove_instruction(ins);
+                        progress = true;
+                }
+        }
+
+        return progress;
+}
