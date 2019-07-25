@@ -135,8 +135,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 		 * (as otherwise nothing will trigger the shader to be
 		 * actually compiled)
 		 */
-		static struct ir3_shader_key key;
-		memset(&key, 0, sizeof(key));
+		static struct ir3_shader_key key; /* static is implicitly zeroed */
 		ir3_shader_variant(shader, key, false, debug);
 
 		if (nir->info.stage != MESA_SHADER_FRAGMENT)
