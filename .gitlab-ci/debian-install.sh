@@ -16,12 +16,11 @@ apt-get install -y \
       curl \
       wget \
       unzip \
-      gnupg \
-      software-properties-common
+      gnupg
 
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-add-apt-repository "deb https://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main"
-add-apt-repository "deb https://apt.llvm.org/stretch/ llvm-toolchain-stretch-8 main"
+echo "deb [trusted=yes] https://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main" >/etc/apt/sources.list.d/llvm7.list
+echo "deb [trusted=yes] https://apt.llvm.org/stretch/ llvm-toolchain-stretch-8 main" >/etc/apt/sources.list.d/llvm8.list
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
@@ -46,8 +45,8 @@ apt-get install -y -t stretch-backports \
       clang-8
 
 # Install remaining packages from Debian buster to get newer versions
-add-apt-repository "deb https://deb.debian.org/debian/ buster main"
-add-apt-repository "deb https://deb.debian.org/debian/ buster-updates main"
+echo "deb https://deb.debian.org/debian/ buster main" >/etc/apt/sources.list.d/buster.list
+echo "deb https://deb.debian.org/debian/ buster-updates main" >/etc/apt/sources.list.d/buster-updates.list
 apt-get update
 apt-get install -y \
       bzip2 \
