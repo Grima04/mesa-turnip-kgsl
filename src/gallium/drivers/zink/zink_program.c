@@ -236,7 +236,7 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 
       struct pipeline_cache_entry *pc_entry = CALLOC_STRUCT(pipeline_cache_entry);
       if (!pc_entry)
-         return NULL;
+         return VK_NULL_HANDLE;
 
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
