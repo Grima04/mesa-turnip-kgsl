@@ -4276,7 +4276,6 @@ static void visit_cf_list(struct ac_nir_context *ctx,
 
 static void visit_block(struct ac_nir_context *ctx, nir_block *block)
 {
-	LLVMBasicBlockRef llvm_block = LLVMGetInsertBlock(ctx->ac.builder);
 	nir_foreach_instr(instr, block)
 	{
 		switch (instr->type) {
@@ -4312,7 +4311,8 @@ static void visit_block(struct ac_nir_context *ctx, nir_block *block)
 		}
 	}
 
-	_mesa_hash_table_insert(ctx->defs, block, llvm_block);
+	_mesa_hash_table_insert(ctx->defs, block,
+				LLVMGetInsertBlock(ctx->ac.builder));
 }
 
 static void visit_if(struct ac_nir_context *ctx, nir_if *if_stmt)
