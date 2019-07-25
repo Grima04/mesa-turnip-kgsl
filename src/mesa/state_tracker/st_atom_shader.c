@@ -251,6 +251,17 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
                           VARYING_SLOT_COL1 |
                           VARYING_SLOT_BFC0 |
                           VARYING_SLOT_BFC1));
+
+      key.lower_depth_clamp =
+            (pipe_shader == PIPE_SHADER_GEOMETRY || !st->gp) &&
+            st->clamp_frag_depth_in_shader &&
+            (st->ctx->Transform.DepthClampNear ||
+             st->ctx->Transform.DepthClampFar);
+
+      if (key.lower_depth_clamp)
+         key.clip_negative_one_to_one =
+               st->ctx->Transform.ClipDepthMode == GL_NEGATIVE_ONE_TO_ONE;
+
    }
 
    return st_get_basic_variant(st, pipe_shader, stp, &key)->driver_shader;

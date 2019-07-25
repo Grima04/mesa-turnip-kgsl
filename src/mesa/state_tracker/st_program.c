@@ -1697,8 +1697,27 @@ st_get_basic_variant(struct st_context *st,
                NIR_PASS_V(tgsi.ir.nir, nir_lower_clamp_color_outputs);
 
             tgsi.stream_output = prog->tgsi.stream_output;
-	 } else
+	 } else {
+            if (key->lower_depth_clamp) {
+               struct gl_program_parameter_list *params = prog->Base.Parameters;
+
+               unsigned depth_range_const =
+                     _mesa_add_state_reference(params, depth_range_state);
+
+               const struct tgsi_token *tokens;
+               tokens =
+                     st_tgsi_lower_depth_clamp(prog->tgsi.tokens,
+                                               depth_range_const,
+                                               key->clip_negative_one_to_one);
+
+               if (tokens != prog->tgsi.tokens)
+                  tgsi_free_tokens(prog->tgsi.tokens);
+
+               prog->tgsi.tokens = tokens;
+               prog->num_tgsi_tokens = tgsi_num_tokens(tokens);
+            }
 	    tgsi = prog->tgsi;
+         }
          /* fill in new variant */
          switch (pipe_shader) {
          case PIPE_SHADER_TESS_CTRL:

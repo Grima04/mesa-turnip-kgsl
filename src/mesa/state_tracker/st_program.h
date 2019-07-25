@@ -269,6 +269,11 @@ struct st_basic_variant_key
 
    /** For compat profile */
    bool clamp_color;
+
+   /** both for ARB_depth_clamp */
+   bool lower_depth_clamp;
+   bool clip_negative_one_to_one;
+
 };
 
 
