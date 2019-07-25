@@ -103,12 +103,12 @@ rm -rf /VK-GL-CTS-opengl-es-cts-3.2.5.0
 
 
 ############### Cross-build kernel
-KERNEL_URL="https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux/+archive/refs/tags/v5.2-rc2.tar.gz"
+KERNEL_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-5.2.tar.gz"
 export ARCH=${KERNEL_ARCH}
 export CROSS_COMPILE="${GCC_ARCH}-"
 
 mkdir -p /kernel
-wget -qO- ${KERNEL_URL} | tar -xz -C /kernel
+wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C /kernel
 cd /kernel
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ${PANFROST_CI_DIR}/${KERNEL_ARCH}.config
 make -j12 ${KERNEL_IMAGE_NAME} dtbs
