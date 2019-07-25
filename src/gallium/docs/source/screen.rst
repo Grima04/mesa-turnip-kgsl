@@ -67,7 +67,9 @@ The integer capabilities:
 * ``PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER``: Whether the TGSI
   property FS_COORD_PIXEL_CENTER with value INTEGER is supported.
 * ``PIPE_CAP_DEPTH_CLIP_DISABLE``: Whether the driver is capable of disabling
-  depth clipping (through pipe_rasterizer_state)
+  depth clipping (=1) (through pipe_rasterizer_state) or supports lowering
+  depth_clamp in the client shader code (=2), for this the driver must
+  currently use TGSI.
 * ``PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE``: Whether the driver is capable of
   disabling depth clipping (through pipe_rasterizer_state) separately for
   the near and far plane. If not, depth_clip_near and depth_clip_far will be

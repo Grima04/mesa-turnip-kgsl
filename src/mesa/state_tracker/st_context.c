@@ -699,6 +699,9 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       }
    }
 
+   if (screen->get_param(screen, PIPE_CAP_DEPTH_CLIP_DISABLE) == 2)
+      st->clamp_frag_depth_in_shader = true;
+
    /* called after _mesa_create_context/_mesa_init_point, fix default user
     * settable max point size up
     */
