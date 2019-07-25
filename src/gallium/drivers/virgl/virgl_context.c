@@ -464,6 +464,9 @@ static void *virgl_create_rasterizer_state(struct pipe_context *ctx,
    vrs->rs = *rs_state;
    vrs->handle = virgl_object_assign_handle();
 
+   assert(rs_state->depth_clip_near ||
+          virgl_screen(ctx->screen)->caps.caps.v1.bset.depth_clip_disable);
+
    virgl_encode_rasterizer_state(vctx, vrs->handle, rs_state);
    return (void *)vrs;
 }
