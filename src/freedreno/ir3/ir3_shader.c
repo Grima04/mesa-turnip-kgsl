@@ -24,6 +24,7 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
+#include "util/u_atomic.h"
 #include "util/u_string.h"
 #include "util/u_memory.h"
 #include "util/u_format.h"
@@ -278,7 +279,7 @@ ir3_shader_from_nir(struct ir3_compiler *compiler, nir_shader *nir)
 
 	mtx_init(&shader->variants_lock, mtx_plain);
 	shader->compiler = compiler;
-	shader->id = ++shader->compiler->shader_count;
+	shader->id = p_atomic_inc_return(&shader->compiler->shader_count);
 	shader->type = nir->info.stage;
 
 	NIR_PASS_V(nir, nir_lower_io, nir_var_all, ir3_glsl_type_size,
