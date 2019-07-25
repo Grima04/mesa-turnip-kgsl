@@ -196,6 +196,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_INVALIDATE_BUFFER:
    case PIPE_CAP_SURFACE_REINTERPRET_BLOCKS:
    case PIPE_CAP_CS_DERIVED_SYSTEM_VALUES_SUPPORTED:
+   case PIPE_CAP_TEXTURE_SHADOW_LOD:
       return true;
    case PIPE_CAP_FBFETCH:
       /* TODO: Support non-coherent FB fetch on Broadwell */
