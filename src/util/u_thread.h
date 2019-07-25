@@ -61,11 +61,7 @@ static inline thrd_t u_thread_create(int (*routine)(void *), void *param)
 static inline void u_thread_setname( const char *name )
 {
 #if defined(HAVE_PTHREAD)
-#  if defined(__GNU_LIBRARY__) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
-      (__GLIBC__ >= 3 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12)) && \
-      defined(__linux__)
    pthread_setname_np(pthread_self(), name);
-#  endif
 #endif
    (void)name;
 }
@@ -150,10 +146,7 @@ u_thread_get_time_nano(thrd_t thread)
 static inline bool u_thread_is_self(thrd_t thread)
 {
 #if defined(HAVE_PTHREAD)
-#  if defined(__GNU_LIBRARY__) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
-      (__GLIBC__ >= 3 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12))
    return pthread_equal(pthread_self(), thread);
-#  endif
 #endif
    return false;
 }
