@@ -680,6 +680,31 @@ st_create_vp_variant(struct st_context *st,
                     point_size_state);
       }
 
+      if (key->lower_ucp) {
+         struct pipe_screen *screen = pipe->screen;
+         bool can_compact = screen->get_param(screen,
+                                              PIPE_CAP_NIR_COMPACT_ARRAYS);
+
+         bool use_eye = st->ctx->_Shader->CurrentProgram[MESA_SHADER_VERTEX] != NULL;
+         gl_state_index16 clipplane_state[MAX_CLIP_PLANES][STATE_LENGTH];
+         for (int i = 0; i < MAX_CLIP_PLANES; ++i) {
+            if (use_eye) {
+               clipplane_state[i][0] = STATE_CLIPPLANE;
+               clipplane_state[i][1] = i;
+            } else {
+               clipplane_state[i][0] = STATE_INTERNAL;
+               clipplane_state[i][1] = STATE_CLIP_INTERNAL;
+               clipplane_state[i][2] = i;
+            }
+            _mesa_add_state_reference(params, clipplane_state[i]);
+         }
+
+         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_clip_vs, key->lower_ucp,
+                    true, can_compact, clipplane_state);
+         NIR_PASS_V(vpv->tgsi.ir.nir, nir_lower_io_to_temporaries,
+                    nir_shader_get_entrypoint(vpv->tgsi.ir.nir), true, false);
+      }
+
       st_finalize_nir(st, &stvp->Base, stvp->shader_program,
                       vpv->tgsi.ir.nir);
 

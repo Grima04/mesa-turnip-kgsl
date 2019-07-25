@@ -529,7 +529,6 @@ st_init_driver_flags(struct st_context *st)
 
    f->NewClipControl = ST_NEW_VIEWPORT | ST_NEW_RASTERIZER;
    f->NewClipPlane = ST_NEW_CLIP_STATE;
-   f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
 
    if (st->clamp_frag_depth_in_shader) {
       f->NewClipControl |= ST_NEW_VS_STATE | ST_NEW_GS_STATE |
@@ -540,6 +539,11 @@ st_init_driver_flags(struct st_context *st)
    } else {
       f->NewDepthClamp = ST_NEW_RASTERIZER;
    }
+
+   if (st->lower_ucp)
+      f->NewClipPlaneEnable = ST_NEW_VS_STATE;
+   else
+      f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
 
    f->NewLineState = ST_NEW_RASTERIZER;
    f->NewPolygonState = ST_NEW_RASTERIZER;
@@ -681,6 +685,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !screen->get_param(screen, PIPE_CAP_POINT_SIZE_FIXED);
    st->lower_two_sided_color =
       !screen->get_param(screen, PIPE_CAP_TWO_SIDED_COLOR);
+   st->lower_ucp =
+      !screen->get_param(screen, PIPE_CAP_CLIP_PLANES);
 
    st->has_hw_atomics =
       screen->get_shader_param(screen, PIPE_SHADER_FRAGMENT,
@@ -745,7 +751,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
          st->has_shareable_shaders &&
          !st->clamp_frag_depth_in_shader &&
          !st->clamp_vert_color_in_shader &&
-         !st->lower_point_size;
+         !st->lower_point_size &&
+         !st->lower_ucp;
 
    st->shader_has_one_variant[MESA_SHADER_FRAGMENT] =
          st->has_shareable_shaders &&

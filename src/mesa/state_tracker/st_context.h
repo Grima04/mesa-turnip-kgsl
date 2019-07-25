@@ -151,6 +151,7 @@ struct st_context
    boolean lower_alpha_test;
    boolean lower_point_size;
    boolean lower_two_sided_color;
+   boolean lower_ucp;
 
    /**
     * If a shader can be created when we get its source.

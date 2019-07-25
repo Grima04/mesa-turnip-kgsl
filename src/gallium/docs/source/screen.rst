@@ -563,6 +563,7 @@ The integer capabilities:
 * ``PIPE_CAP_POINT_SIZE_FIXED``: Driver supports point-sizes that are fixed,
   as opposed to writing gl_PointSize for every point.
 * ``PIPE_CAP_TWO_SIDED_COLOR``: Driver supports two-sided coloring.
+* ``PIPE_CAP_CLIP_PLANES``: Driver supports user-defined clip-planes.
 
 .. _pipe_capf:
 

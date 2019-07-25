@@ -398,6 +398,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_ALPHA_TEST:
    case PIPE_CAP_POINT_SIZE_FIXED:
    case PIPE_CAP_TWO_SIDED_COLOR:
+   case PIPE_CAP_CLIP_PLANES:
       return 1;
 
    default:

@@ -226,6 +226,10 @@ st_update_vp( struct st_context *st )
       key.lower_point_size = st->lower_point_size &&
                              !st_point_size_per_vertex(st->ctx);
 
+      /* _NEW_TRANSFORM */
+      if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx))
+         key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
+
       st->vp_variant = st_get_vp_variant(st, stvp, &key);
    }
 
