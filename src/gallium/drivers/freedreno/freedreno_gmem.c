@@ -238,10 +238,10 @@ calculate_tiles(struct fd_batch *batch)
 		tpp_y = 6;
 	} else {
 		tpp_x = tpp_y = 1;
-		while (div_round_up(nbins_y, tpp_y) > screen->num_vsc_pipes)
+		while (div_round_up(nbins_y, tpp_y) > npipes)
 			tpp_y += 2;
 		while ((div_round_up(nbins_y, tpp_y) *
-				div_round_up(nbins_x, tpp_x)) > screen->num_vsc_pipes)
+				div_round_up(nbins_x, tpp_x)) > npipes)
 			tpp_x += 1;
 	}
 
