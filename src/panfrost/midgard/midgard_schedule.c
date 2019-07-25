@@ -685,6 +685,12 @@ schedule_program(compiler_context *ctx)
         mir_squeeze_index(ctx);
         mir_lower_special_reads(ctx);
 
+        /* Lowering can introduce some dead moves */
+
+        mir_foreach_block(ctx, block) {
+                midgard_opt_dead_move_eliminate(ctx, block);
+        }
+
         do {
                 /* If we spill, find the best spill node and spill it */
 
@@ -716,24 +722,35 @@ schedule_program(compiler_context *ctx)
                          * registers */
                         unsigned class = ra_get_node_class(g, spill_node);
                         bool is_special = (class >> 2) != REG_CLASS_WORK;
+                        bool is_special_w = (class >> 2) == REG_CLASS_TEXW;
 
                         /* Allocate TLS slot (maybe) */
                         unsigned spill_slot = !is_special ? spill_count++ : 0;
+                        midgard_instruction *spill_move = NULL;
 
                         /* For TLS, replace all stores to the spilled node. For
-                         * special, just keep as-is; the class will be demoted
-                         * implicitly */
+                         * special reads, just keep as-is; the class will be demoted
+                         * implicitly. For special writes, spill to a work register */
 
-                        if (!is_special) {
+                        if (!is_special || is_special_w) {
                                 mir_foreach_instr_global_safe(ctx, ins) {
                                         if (ins->compact_branch) continue;
                                         if (ins->ssa_args.dest != spill_node) continue;
-                                        ins->ssa_args.dest = SSA_FIXED_REGISTER(26);
 
-                                        midgard_instruction st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
-                                        mir_insert_instruction_before(mir_next_op(ins), st);
+                                        midgard_instruction st;
 
-                                        ctx->spills++;
+                                        if (is_special_w) {
+                                                spill_slot = spill_index++;
+                                                st = v_mov(spill_node, blank_alu_src, spill_slot);
+                                        } else {
+                                                ins->ssa_args.dest = SSA_FIXED_REGISTER(26);
+                                                st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
+                                        }
+
+                                        spill_move = mir_insert_instruction_before(mir_next_op(ins), st);
+
+                                        if (!is_special)
+                                                ctx->spills++;
                                 }
                         }
 
@@ -753,6 +770,9 @@ schedule_program(compiler_context *ctx)
 
                         mir_foreach_instr_in_block(block, ins) {
                                 if (ins->compact_branch) continue;
+
+                                /* We can't rewrite the move used to spill in the first place */
+                                if (ins == spill_move) continue;
                                 
                                 if (!mir_has_arg(ins, spill_node)) {
                                         consecutive_skip = false;
@@ -765,26 +785,31 @@ schedule_program(compiler_context *ctx)
                                         continue;
                                 }
 
-                                consecutive_index = ++spill_index;
+                                if (!is_special_w) {
+                                        consecutive_index = ++spill_index;
 
-                                midgard_instruction *before = ins;
+                                        midgard_instruction *before = ins;
 
-                                /* For a csel, go back one more not to break up the bundle */
-                                if (ins->type == TAG_ALU_4 && OP_IS_CSEL(ins->alu.op))
-                                        before = mir_prev_op(before);
+                                        /* For a csel, go back one more not to break up the bundle */
+                                        if (ins->type == TAG_ALU_4 && OP_IS_CSEL(ins->alu.op))
+                                                before = mir_prev_op(before);
 
-                                midgard_instruction st;
+                                        midgard_instruction st;
 
-                                if (is_special) {
-                                        /* Move */
-                                        st = v_mov(spill_node, blank_alu_src, consecutive_index);
+                                        if (is_special) {
+                                                /* Move */
+                                                st = v_mov(spill_node, blank_alu_src, consecutive_index);
+                                        } else {
+                                                /* TLS load */
+                                                st = v_load_store_scratch(consecutive_index, spill_slot, false, 0xF);
+                                        }
+
+                                        mir_insert_instruction_before(before, st);
+                                       // consecutive_skip = true;
                                 } else {
-                                        /* TLS load */
-                                        st = v_load_store_scratch(consecutive_index, spill_slot, false, 0xF);
+                                        /* Special writes already have their move spilled in */
+                                        consecutive_index = spill_slot;
                                 }
-
-                                mir_insert_instruction_before(before, st);
-                               // consecutive_skip = true;
 
 
                                 /* Rewrite to use */

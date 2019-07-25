@@ -304,6 +304,12 @@ nir_dest_index(compiler_context *ctx, nir_dest *dst)
         }
 }
 
+static unsigned
+make_compiler_temp(compiler_context *ctx)
+{
+        return ctx->func->impl->ssa_alloc + ctx->func->impl->reg_alloc + ctx->temp_alloc++;
+}
+
 static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
                             unsigned *dest)
 {
@@ -1538,10 +1544,6 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         //assert (!instr->sampler);
         //assert (!instr->texture_array_size);
 
-        /* Allocate registers via a round robin scheme to alternate between the two registers */
-        int reg = ctx->texture_op_count & 1;
-        int in_reg = reg, out_reg = reg;
-
         int texture_index = instr->texture_index;
         int sampler_index = texture_index;
 
@@ -1549,14 +1551,18 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
                 .mask = 0xF,
+                .ssa_args = {
+                        .dest = nir_dest_index(ctx, &instr->dest),
+                        .src0 = -1,
+                        .src1 = -1,
+                },
                 .texture = {
                         .op = midgard_texop,
                         .format = midgard_tex_format(instr->sampler_dim),
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,
-
-                        /* TODO: Regalloc it in */
                         .swizzle = SWIZZLE_XYZW,
+                        .in_reg_swizzle = SWIZZLE_XYZW,
 
                         /* TODO: half */
                         .in_reg_full = 1,
@@ -1567,13 +1573,36 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         };
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
-                int reg = SSA_FIXED_REGISTER(REGISTER_TEXTURE_BASE + in_reg);
                 int index = nir_src_index(ctx, &instr->src[i].src);
-                int nr_comp = nir_src_num_components(instr->src[i].src);
                 midgard_vector_alu_src alu_src = blank_alu_src;
 
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord: {
+                        emit_explicit_constant(ctx, index, index);
+
+                        /* Texelfetch coordinates uses all four elements
+                         * (xyz/index) regardless of texture dimensionality,
+                         * which means it's necessary to zero the unused
+                         * components to keep everything happy */
+
+                        if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
+                                unsigned old_index = index;
+
+                                index = make_compiler_temp(ctx);
+
+                                /* mov index, old_index */
+                                midgard_instruction mov = v_mov(old_index, blank_alu_src, index);
+                                mov.mask = 0x3;
+                                emit_mir_instruction(ctx, mov);
+
+                                /* mov index.zw, #0 */
+                                mov = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT),
+                                                blank_alu_src, index);
+                                mov.has_constants = true;
+                                mov.mask = (1 << COMPONENT_Z) | (1 << COMPONENT_W);
+                                emit_mir_instruction(ctx, mov);
+                        }
+
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
                                 /* texelFetch is undefined on samplerCube */
                                 assert(midgard_texop != TEXTURE_OP_TEXEL_FETCH);
@@ -1582,46 +1611,23 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                  * select the face and copy the xy into the
                                  * texture register */
 
-                                midgard_instruction st = m_st_cubemap_coords(reg, 0);
+                                unsigned temp = make_compiler_temp(ctx);
+
+                                midgard_instruction st = m_st_cubemap_coords(temp, 0);
                                 st.ssa_args.src0 = index;
                                 st.load_store.unknown = 0x24; /* XXX: What is this? */
                                 st.mask = 0x3; /* xy */
                                 st.load_store.swizzle = alu_src.swizzle;
                                 emit_mir_instruction(ctx, st);
 
-                                ins.texture.in_reg_swizzle = swizzle_of(2);
+                                ins.ssa_args.src0 = temp;
                         } else {
-                                ins.texture.in_reg_swizzle = alu_src.swizzle = swizzle_of(nr_comp);
+                                ins.ssa_args.src0 = index;
+                        }
 
-                                midgard_instruction mov = v_mov(index, alu_src, reg);
-                                mov.mask = mask_of(nr_comp);
-                                emit_mir_instruction(ctx, mov);
-
-                                if (midgard_texop == TEXTURE_OP_TEXEL_FETCH) {
-                                        /* Texel fetch opcodes care about the
-                                         * values of z and w, so we actually
-                                         * need to spill into a second register
-                                         * for a texel fetch with register bias
-                                         * (for non-2D). TODO: Implement that
-                                         */
-
-                                        assert(instr->sampler_dim == GLSL_SAMPLER_DIM_2D);
-
-                                        midgard_instruction zero = v_mov(index, alu_src, reg);
-                                        zero.ssa_args.inline_constant = true;
-                                        zero.ssa_args.src1 = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
-                                        zero.has_constants = true;
-                                        zero.mask = ~mov.mask;
-                                        emit_mir_instruction(ctx, zero);
-
-                                        ins.texture.in_reg_swizzle = SWIZZLE_XYZZ;
-                                } else {
-                                        /* Non-texel fetch doesn't need that
-                                         * nonsense. However we do use the Z
-                                         * for array indexing */
-                                        bool is_3d = instr->sampler_dim == GLSL_SAMPLER_DIM_3D;
-                                        ins.texture.in_reg_swizzle = is_3d ? SWIZZLE_XYZZ : SWIZZLE_XYXZ;
-                                }
+                        if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D) {
+                                /* Array component in w but NIR wants it in z */
+                                ins.texture.in_reg_swizzle = SWIZZLE_XYZZ;
                         }
 
                         break;
@@ -1635,27 +1641,9 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         if (!is_txf && pan_attach_constant_bias(ctx, instr->src[i].src, &ins.texture))
                                 break;
 
-                        /* Otherwise we use a register. To keep RA simple, we
-                         * put the bias/LOD into the w component of the input
-                         * source, which is otherwise in xy */
-
-                        alu_src.swizzle = SWIZZLE_XXXX;
-
-                        midgard_instruction mov = v_mov(index, alu_src, reg);
-                        mov.mask = 1 << COMPONENT_W;
-                        emit_mir_instruction(ctx, mov);
-
                         ins.texture.lod_register = true;
-
-                        midgard_tex_register_select sel = {
-                                .select = in_reg,
-                                .full = 1,
-                                .component = COMPONENT_W,
-                        };
-
-                        uint8_t packed;
-                        memcpy(&packed, &sel, sizeof(packed));
-                        ins.texture.bias = packed;
+                        ins.ssa_args.src1 = index;
+                        emit_explicit_constant(ctx, index, index);
 
                         break;
                 };
@@ -1665,15 +1653,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 }
         }
 
-        /* Set registers to read and write from the same place */
-        ins.texture.in_reg_select = in_reg;
-        ins.texture.out_reg_select = out_reg;
-
         emit_mir_instruction(ctx, ins);
-
-        int o_reg = REGISTER_TEXTURE_BASE + out_reg, o_index = nir_dest_index(ctx, &instr->dest);
-        midgard_instruction ins2 = v_mov(SSA_FIXED_REGISTER(o_reg), blank_alu_src, o_index);
-        emit_mir_instruction(ctx, ins2);
 
         /* Used for .cont and .last hinting */
         ctx->texture_op_count++;
@@ -2290,6 +2270,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                 .nir = nir,
                 .screen = screen,
                 .stage = nir->info.stage,
+                .temp_alloc = 0,
 
                 .is_blend = is_blend,
                 .blend_constant_offset = 0,

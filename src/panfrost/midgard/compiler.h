@@ -207,6 +207,9 @@ typedef struct compiler_context {
         /* Current NIR function */
         nir_function *func;
 
+        /* Allocated compiler temporary counter */
+        unsigned temp_alloc;
+
         /* Unordered list of midgard_blocks */
         int block_count;
         struct list_head blocks;
@@ -280,10 +283,12 @@ emit_mir_instruction(struct compiler_context *ctx, struct midgard_instruction in
         list_addtail(&(mir_upload_ins(ins))->link, &ctx->current_block->instructions);
 }
 
-static inline void
+static inline struct midgard_instruction *
 mir_insert_instruction_before(struct midgard_instruction *tag, struct midgard_instruction ins)
 {
-        list_addtail(&(mir_upload_ins(ins))->link, &tag->link);
+        struct midgard_instruction *u = mir_upload_ins(ins);
+        list_addtail(&u->link, &tag->link);
+        return u;
 }
 
 static inline void
@@ -341,8 +346,6 @@ mir_next_op(struct midgard_instruction *ins)
 #define mir_foreach_instr_global_safe(ctx, v) \
         mir_foreach_block(ctx, v_block) \
                 mir_foreach_instr_in_block_safe(v_block, v)
-
-
 
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
@@ -454,12 +457,13 @@ struct ra_graph;
 /* Broad types of register classes so we can handle special
  * registers */
 
-#define NR_REG_CLASSES 3
+#define NR_REG_CLASSES 5
 
 #define REG_CLASS_WORK          0
 #define REG_CLASS_LDST          1
 #define REG_CLASS_LDST27        2
-#define REG_CLASS_TEX           3
+#define REG_CLASS_TEXR          3
+#define REG_CLASS_TEXW          4
 
 void mir_lower_special_reads(compiler_context *ctx);
 struct ra_graph* allocate_registers(compiler_context *ctx, bool *spilled);
