@@ -183,6 +183,10 @@ struct st_vp_variant_key
 
    /** for ARB_color_buffer_float */
    bool clamp_color;
+
+   /** both for ARB_depth_clamp */
+   bool lower_depth_clamp;
+   bool clip_negative_one_to_one;
 };
 
 

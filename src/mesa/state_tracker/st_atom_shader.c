@@ -193,6 +193,16 @@ st_update_vp( struct st_context *st )
                           VARYING_SLOT_BFC0 |
                           VARYING_SLOT_BFC1));
 
+      key.lower_depth_clamp =
+            !st->gp && !st->tep &&
+            st->clamp_frag_depth_in_shader &&
+            (st->ctx->Transform.DepthClampNear ||
+             st->ctx->Transform.DepthClampFar);
+
+      if (key.lower_depth_clamp)
+         key.clip_negative_one_to_one =
+               st->ctx->Transform.ClipDepthMode == GL_NEGATIVE_ONE_TO_ONE;
+
       st->vp_variant = st_get_vp_variant(st, stvp, &key);
    }
 

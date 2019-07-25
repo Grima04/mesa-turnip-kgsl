@@ -131,6 +131,7 @@ struct st_context
    struct draw_stage *rastpos_stage;  /**< For glRasterPos */
    GLboolean clamp_frag_color_in_shader;
    GLboolean clamp_vert_color_in_shader;
+   boolean clamp_frag_depth_in_shader;
    boolean has_stencil_export; /**< can do shader stencil export? */
    boolean has_time_elapsed;
    boolean has_etc1;
