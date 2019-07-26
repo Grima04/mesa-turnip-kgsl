@@ -284,17 +284,6 @@ patch_fb_read(struct fd_batch *batch)
 }
 
 static void
-patch_draws(struct fd_batch *batch, enum pc_di_vis_cull_mode vismode)
-{
-	unsigned i;
-	for (i = 0; i < fd_patch_num_elements(&batch->draw_patches); i++) {
-		struct fd_cs_patch *patch = fd_patch_element(&batch->draw_patches, i);
-		*patch->cs = patch->val | DRAW4(0, 0, 0, vismode);
-	}
-	util_dynarray_clear(&batch->draw_patches);
-}
-
-static void
 update_render_cntl(struct fd_batch *batch, struct pipe_framebuffer_state *pfb, bool binning)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -552,7 +541,6 @@ fd6_emit_tile_init(struct fd_batch *batch)
 				A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
 		update_render_cntl(batch, pfb, true);
 		emit_binning_pass(batch);
-		patch_draws(batch, USE_VISIBILITY);
 
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h,
 				A6XX_RB_BIN_CONTROL_USE_VIZ | 0x6000000);
@@ -570,7 +558,6 @@ fd6_emit_tile_init(struct fd_batch *batch)
 		OUT_RING(ring, 0x1);
 	} else {
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h, 0x6000000);
-		patch_draws(batch, IGNORE_VISIBILITY);
 	}
 
 	update_render_cntl(batch, pfb, false);
@@ -1183,8 +1170,6 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 
 	OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
 	OUT_RING(ring, 0x1);
-
-	patch_draws(batch, IGNORE_VISIBILITY);
 
 	emit_zs(ring, pfb->zsbuf, NULL);
 	emit_mrt(ring, pfb, NULL);

@@ -41,7 +41,7 @@
 #include "fd6_zsa.h"
 
 static void
-draw_emit_indirect(struct fd_batch *batch, struct fd_ringbuffer *ring,
+draw_emit_indirect(struct fd_ringbuffer *ring,
 				   uint32_t draw0,
 				   const struct pipe_draw_info *info,
 				   unsigned index_offset)
@@ -53,20 +53,20 @@ draw_emit_indirect(struct fd_batch *batch, struct fd_ringbuffer *ring,
 		unsigned max_indicies = (idx->width0 - index_offset) / info->index_size;
 
 		OUT_PKT7(ring, CP_DRAW_INDX_INDIRECT, 6);
-		OUT_RINGP(ring, draw0, &batch->draw_patches);
+		OUT_RING(ring, draw0);
 		OUT_RELOC(ring, fd_resource(idx)->bo,
 				  index_offset, 0, 0);
 		OUT_RING(ring, A5XX_CP_DRAW_INDX_INDIRECT_3_MAX_INDICES(max_indicies));
 		OUT_RELOC(ring, ind->bo, info->indirect->offset, 0, 0);
 	} else {
 		OUT_PKT7(ring, CP_DRAW_INDIRECT, 3);
-		OUT_RINGP(ring, draw0, &batch->draw_patches);
+		OUT_RING(ring, draw0);
 		OUT_RELOC(ring, ind->bo, info->indirect->offset, 0, 0);
 	}
 }
 
 static void
-draw_emit(struct fd_batch *batch, struct fd_ringbuffer *ring,
+draw_emit(struct fd_ringbuffer *ring,
 		  uint32_t draw0,
 		  const struct pipe_draw_info *info,
 		  unsigned index_offset)
@@ -79,7 +79,7 @@ draw_emit(struct fd_batch *batch, struct fd_ringbuffer *ring,
 		uint32_t idx_offset = index_offset + info->start * info->index_size;
 
 		OUT_PKT7(ring, CP_DRAW_INDX_OFFSET, 7);
-		OUT_RINGP(ring, draw0, &batch->draw_patches);
+		OUT_RING(ring, draw0);
 		OUT_RING(ring, info->instance_count);    /* NumInstances */
 		OUT_RING(ring, info->count);             /* NumIndices */
 		OUT_RING(ring, 0x0);           /* XXX */
@@ -87,7 +87,7 @@ draw_emit(struct fd_batch *batch, struct fd_ringbuffer *ring,
 		OUT_RING (ring, idx_size);
 	} else {
 		OUT_PKT7(ring, CP_DRAW_INDX_OFFSET, 3);
-		OUT_RINGP(ring, draw0, &batch->draw_patches);
+		OUT_RING(ring, draw0);
 		OUT_RING(ring, info->instance_count);    /* NumInstances */
 		OUT_RING(ring, info->count);             /* NumIndices */
 	}
@@ -208,6 +208,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	 */
 	uint32_t draw0 =
 		CP_DRAW_INDX_OFFSET_0_PRIM_TYPE(primtype) |
+		CP_DRAW_INDX_OFFSET_0_VIS_CULL(USE_VISIBILITY) |
 		0x2000;
 
 	if (info->index_size) {
@@ -220,9 +221,9 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	}
 
 	if (info->indirect) {
-		draw_emit_indirect(ctx->batch, ring, draw0, info, index_offset);
+		draw_emit_indirect(ring, draw0, info, index_offset);
 	} else {
-		draw_emit(ctx->batch, ring, draw0, info, index_offset);
+		draw_emit(ring, draw0, info, index_offset);
 	}
 
 	emit_marker6(ring, 7);
