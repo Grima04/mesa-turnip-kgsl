@@ -4559,7 +4559,6 @@ static unsigned radv_llvm_compile(LLVMModuleRef M,
 static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 				   LLVMModuleRef llvm_module,
 				   struct radv_shader_binary **rbinary,
-				   struct radv_shader_variant_info *shader_info,
 				   gl_shader_stage stage,
 				   const char *name,
 				   const struct radv_nir_compiler_options *options)
@@ -4662,7 +4661,7 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 	llvm_module = ac_translate_nir_to_llvm(ac_llvm, nir, nir_count, shader_info,
 	                                       options);
 
-	ac_compile_llvm_module(ac_llvm, llvm_module, rbinary, shader_info,
+	ac_compile_llvm_module(ac_llvm, llvm_module, rbinary,
 			       nir[nir_count - 1]->info.stage,
 			       radv_get_shader_name(shader_info,
 						    nir[nir_count - 1]->info.stage),
@@ -4816,7 +4815,7 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 
 	ac_llvm_finalize_module(&ctx, ac_llvm->passmgr, options);
 
-	ac_compile_llvm_module(ac_llvm, ctx.ac.module, rbinary, shader_info,
+	ac_compile_llvm_module(ac_llvm, ctx.ac.module, rbinary,
 			       MESA_SHADER_VERTEX, "GS Copy Shader", options);
 	(*rbinary)->is_gs_copy_shader = true;
 	
