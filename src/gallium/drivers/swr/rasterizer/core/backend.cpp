@@ -233,7 +233,17 @@ void ProcessDiscardInvalidateTilesBE(DRAW_CONTEXT* pDC,
                                                         numSamples);
             if (pHotTile)
             {
-                pHotTile->state = (HOTTILE_STATE)pDesc->newTileState;
+                HOTTILE_STATE newState = (HOTTILE_STATE)pDesc->newTileState;;
+                if (pHotTile->state == HOTTILE_DIRTY || pHotTile->state == HOTTILE_CLEAR)
+                {
+                    if (newState == HOTTILE_INVALID)
+                    {
+                        // This is OK for APIs that explicitly allow discards
+                        // (for e.g. depth / stencil data)
+                        //SWR_INVALID("Discarding valid data!");
+                    }
+                }
+                pHotTile->state = newState;
             }
         }
     }

@@ -155,7 +155,7 @@ struct StreamOutJit : public BuilderGfxMem
 
             // cast mask to <4xi1>
             Value* mask = ToMask(packedMask);
-            MASKED_STORE(src, pOut, 4, mask, PointerType::get(simd4Ty, 0), JIT_MEM_CLIENT::GFX_MEM_CLIENT_STREAMOUT);
+            MASKED_STORE(src, pOut, 4, mask, PointerType::get(simd4Ty, 0), MEM_CLIENT::GFX_MEM_CLIENT_STREAMOUT);
         }
 
         // increment SO buffer
@@ -223,7 +223,7 @@ struct StreamOutJit : public BuilderGfxMem
             Value* pBuf              = getSOBuffer(pSoCtx, b);
             Value* pData             = LOAD(pBuf, {0, SWR_STREAMOUT_BUFFER_pBuffer});
             Value* streamOffset      = LOAD(pBuf, {0, SWR_STREAMOUT_BUFFER_streamOffset});
-            pOutBuffer[b] = GEP(pData, streamOffset, PointerType::get(IRB()->getInt32Ty(), 0)); 
+            pOutBuffer[b] = GEP(pData, streamOffset, PointerType::get(IRB()->getInt32Ty(), 0));
             pOutBufferStartVertex[b] = pOutBuffer[b];
 
             outBufferPitch[b] = LOAD(pBuf, {0, SWR_STREAMOUT_BUFFER_pitch});

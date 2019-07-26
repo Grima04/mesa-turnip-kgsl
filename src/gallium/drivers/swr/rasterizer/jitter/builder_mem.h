@@ -30,7 +30,7 @@
 #pragma once
 
 public:
-enum class JIT_MEM_CLIENT
+enum class MEM_CLIENT
 {
     MEM_CLIENT_INTERNAL,
     GFX_MEM_CLIENT_FETCH,
@@ -41,7 +41,7 @@ enum class JIT_MEM_CLIENT
 
 protected:
 virtual Value* OFFSET_TO_NEXT_COMPONENT(Value* base, Constant* offset);
-void           AssertMemoryUsageParams(Value* ptr, JIT_MEM_CLIENT usage);
+void           AssertMemoryUsageParams(Value* ptr, MEM_CLIENT usage);
 
 public:
 virtual Value* GEP(Value* Ptr, Value* Idx, Type* Ty = nullptr, const Twine& Name = "");
@@ -57,23 +57,23 @@ Value* IN_BOUNDS_GEP(Value* ptr, const std::initializer_list<Value*>& indexList)
 Value* IN_BOUNDS_GEP(Value* ptr, const std::initializer_list<uint32_t>& indexList);
 
 virtual LoadInst*
-                  LOAD(Value* Ptr, const char* Name, Type* Ty = nullptr, JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                  LOAD(Value* Ptr, const char* Name, Type* Ty = nullptr, MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 virtual LoadInst* LOAD(Value*         Ptr,
                        const Twine&   Name  = "",
                        Type*          Ty    = nullptr,
-                       JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                       MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 virtual LoadInst*
-                  LOAD(Type* Ty, Value* Ptr, const Twine& Name = "", JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                  LOAD(Type* Ty, Value* Ptr, const Twine& Name = "", MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 virtual LoadInst* LOAD(Value*         Ptr,
                        bool           isVolatile,
                        const Twine&   Name  = "",
                        Type*          Ty    = nullptr,
-                       JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                       MEM_CLIENT     usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 virtual LoadInst* LOAD(Value*                                 BasePtr,
                        const std::initializer_list<uint32_t>& offset,
                        const llvm::Twine&                     Name  = "",
                        Type*                                  Ty    = nullptr,
-                       JIT_MEM_CLIENT                         usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                       MEM_CLIENT                             usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
 virtual CallInst* MASKED_LOAD(Value*         Ptr,
                               unsigned       Align,
@@ -81,19 +81,19 @@ virtual CallInst* MASKED_LOAD(Value*         Ptr,
                               Value*         PassThru = nullptr,
                               const Twine&   Name     = "",
                               Type*          Ty       = nullptr,
-                              JIT_MEM_CLIENT usage    = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL)
+                              MEM_CLIENT usage    = MEM_CLIENT::MEM_CLIENT_INTERNAL)
 {
     return IRB()->CreateMaskedLoad(Ptr, Align, Mask, PassThru, Name);
 }
 
-virtual StoreInst* STORE(Value *Val, Value *Ptr, bool isVolatile = false, Type* Ty = nullptr, JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL)
+virtual StoreInst* STORE(Value *Val, Value *Ptr, bool isVolatile = false, Type* Ty = nullptr, MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL)
 {
     return IRB()->CreateStore(Val, Ptr, isVolatile);
 }
 
-virtual StoreInst* STORE(Value* Val, Value* BasePtr, const std::initializer_list<uint32_t>& offset, Type* Ty = nullptr, JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+virtual StoreInst* STORE(Value* Val, Value* BasePtr, const std::initializer_list<uint32_t>& offset, Type* Ty = nullptr, MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
-virtual CallInst* MASKED_STORE(Value *Val, Value *Ptr, unsigned Align, Value *Mask, Type* Ty = nullptr, JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL)
+virtual CallInst* MASKED_STORE(Value *Val, Value *Ptr, unsigned Align, Value *Mask, Type* Ty = nullptr, MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL)
 {
     return IRB()->CreateMaskedStore(Val, Ptr, Align, Mask);
 }
@@ -112,14 +112,14 @@ void Gather4(const SWR_FORMAT format,
              Value*           mask,
              Value*           vGatherComponents[],
              bool             bPackedOutput,
-             JIT_MEM_CLIENT   usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+             MEM_CLIENT       usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
 virtual Value* GATHERPS(Value*         src,
                         Value*         pBase,
                         Value*         indices,
                         Value*         mask,
                         uint8_t        scale = 1,
-                        JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                        MEM_CLIENT     usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
 void GATHER4PS(const SWR_FORMAT_INFO& info,
                Value*                 pSrcBase,
@@ -127,14 +127,14 @@ void GATHER4PS(const SWR_FORMAT_INFO& info,
                Value*                 mask,
                Value*                 vGatherComponents[],
                bool                   bPackedOutput,
-               JIT_MEM_CLIENT         usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+               MEM_CLIENT             usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
 virtual Value* GATHERDD(Value*         src,
                         Value*         pBase,
                         Value*         indices,
                         Value*         mask,
                         uint8_t        scale = 1,
-                        JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                        MEM_CLIENT     usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
 void GATHER4DD(const SWR_FORMAT_INFO& info,
                Value*                 pSrcBase,
@@ -142,7 +142,7 @@ void GATHER4DD(const SWR_FORMAT_INFO& info,
                Value*                 mask,
                Value*                 vGatherComponents[],
                bool                   bPackedOutput,
-               JIT_MEM_CLIENT         usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+               MEM_CLIENT             usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
 Value* GATHERPD(Value* src, Value* pBase, Value* indices, Value* mask, uint8_t scale = 1);
 
@@ -152,7 +152,7 @@ virtual void SCATTERPS(Value*         pDst,
                        Value*         vSrc,
                        Value*         vOffsets,
                        Value*         vMask,
-                       JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
+                       MEM_CLIENT     usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
 void Shuffle8bpcGather4(const SWR_FORMAT_INFO& info,
                         Value*                 vGatherInput,

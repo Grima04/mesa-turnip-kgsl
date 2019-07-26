@@ -480,6 +480,8 @@ event MemoryStatsEvent
     uint64_t baseAddr;
     uint32_t accessCountRead;
     uint32_t accessCountWrite;
+	uint32_t totalSizeRead;
+	uint32_t totalSizeWrite;
     uint64_t tscMin;
     uint64_t tscMax;
 };

@@ -98,6 +98,8 @@ namespace ArchRast
         {
             uint32_t accessCountRead;
             uint32_t accessCountWrite;
+            uint32_t totalSizeRead;
+            uint32_t totalSizeWrite;
             uint64_t tscMin;
             uint64_t tscMax;
         };
@@ -113,7 +115,7 @@ namespace ArchRast
         typedef std::map<MemoryTrackerKey, MemoryTrackerData, AddressRangeComparator> MemoryTrackerMap;
         MemoryTrackerMap trackedMemory = {};
 
-        void TrackMemoryAccess(uint64_t address, uint64_t addressMask, uint8_t isRead, uint64_t tsc)
+        void TrackMemoryAccess(uint64_t address, uint64_t addressMask, uint8_t isRead, uint64_t tsc, uint32_t size)
         {
             MemoryTrackerKey key;
             key.address = address;
@@ -126,10 +128,12 @@ namespace ArchRast
                 if (isRead)
                 {
                     i->second.accessCountRead++;
+                    i->second.totalSizeRead += size;
                 }
                 else
                 {
                     i->second.accessCountWrite++;
+                    i->second.totalSizeWrite += size;
                 }
                 i->second.tscMax = tsc;
             }
@@ -140,12 +144,16 @@ namespace ArchRast
                 if (isRead)
                 {
                     data.accessCountRead = 1;
+                    data.totalSizeRead = size;
                     data.accessCountWrite = 0;
+                    data.totalSizeWrite = 0;
                 }
                 else
                 {
                     data.accessCountRead = 0;
+                    data.totalSizeRead = 0;
                     data.accessCountWrite = 1;
+                    data.totalSizeWrite = size;
                 }
                 data.tscMin = tsc;
                 data.tscMax = tsc;
@@ -258,6 +266,7 @@ namespace ArchRast
                 mAddressMask = (mAddressMask << 1) | 1;
                 addressRangeBytes = addressRangeBytes >> 1;
             }
+            mMemGranularity = mAddressMask + 1;
             mAddressMask = ~mAddressMask;
         }
 
@@ -666,7 +675,19 @@ namespace ArchRast
 
         virtual void Handle(const MemoryAccessEvent& event)
         {
-            mMemoryStats.TrackMemoryAccess(event.data.ptr, mAddressMask, event.data.isRead, event.data.tsc);
+            uint64_t trackAddr = event.data.ptr;
+            uint64_t nextAddr = (trackAddr & mAddressMask);
+            uint32_t sizeTracked = 0;
+
+            while (sizeTracked < event.data.size)
+            {
+                nextAddr += mMemGranularity;
+                uint32_t size = nextAddr - trackAddr;
+                size = std::min(event.data.size, size);
+                mMemoryStats.TrackMemoryAccess(trackAddr, mAddressMask, event.data.isRead, event.data.tsc, size);
+                sizeTracked += size;
+                trackAddr = nextAddr;
+            }            
         }
 
         virtual void Handle(const MemoryStatsEndEvent& event)
@@ -678,6 +699,8 @@ namespace ArchRast
                                      i->first.address & mAddressMask, 
                                      i->second.accessCountRead, 
                                      i->second.accessCountWrite, 
+                                     i->second.totalSizeRead, 
+                                     i->second.totalSizeWrite, 
                                      i->second.tscMin, 
                                      i->second.tscMax);
                 EventHandlerFile::Handle(mse);
@@ -734,6 +757,7 @@ namespace ArchRast
 
         MemoryStats      mMemoryStats     = {};
         uint64_t         mAddressMask     = 0;
+        uint64_t         mMemGranularity  = 0;
 
     };
 
