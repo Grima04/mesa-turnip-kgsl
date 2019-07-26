@@ -63,6 +63,39 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
         }
 }
 
+/* Propagate the .not up to the source */
+
+bool
+midgard_opt_not_propagate(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                if (ins->type != TAG_ALU_4) continue;
+                if (ins->alu.op != midgard_alu_op_imov) continue;
+                if (!ins->invert) continue;
+                if (mir_nontrivial_source2_mod_simple(ins)) continue;
+                if (ins->ssa_args.src1 & IS_REG) continue;
+
+                /* Is it beneficial to propagate? */
+                if (!mir_single_use(ctx, ins->ssa_args.src1)) continue;
+
+                /* We found an imov.not, propagate the invert back */
+
+                mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
+                        if (v->ssa_args.dest != ins->ssa_args.src1) continue;
+                        if (v->type != TAG_ALU_4) break;
+
+                        v->invert = !v->invert;
+                        ins->invert = false;
+                        progress |= true;
+                        break;
+                }
+        }
+
+        return progress;
+}
+
 /* With that lowering out of the way, we can focus on more interesting
  * optimizations. One easy one is fusing inverts into bitwise operations:
  *
