@@ -1902,7 +1902,8 @@ embedded_to_inline_constant(compiler_context *ctx)
 
                         /* We don't know how to handle these with a constant */
 
-                        if (src->mod || src->half || src->rep_low || src->rep_high) {
+                        bool is_int = midgard_is_integer_op(ins->alu.op);
+                        if (mir_nontrivial_raw_mod(*src, is_int) || src->half || src->rep_low || src->rep_high) {
                                 DBG("Bailing inline constant...\n");
                                 continue;
                         }

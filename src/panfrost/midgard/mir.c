@@ -109,13 +109,18 @@ mir_single_use(compiler_context *ctx, unsigned value)
 }
 
 bool
+mir_nontrivial_raw_mod(midgard_vector_alu_src src, bool is_int)
+{
+        if (is_int)
+                return src.mod == midgard_int_shift;
+        else
+                return src.mod;
+}
+
+bool
 mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
 {
-        /* abs or neg */
-        if (!is_int && src.mod) return true;
-
-        /* Other int mods don't matter in isolation */
-        if (is_int && src.mod == midgard_int_shift) return true;
+        if (mir_nontrivial_raw_mod(src, is_int)) return true;
 
         /* size-conversion */
         if (src.half) return true;
@@ -128,7 +133,6 @@ mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask)
 
         return false;
 }
-
 bool
 mir_nontrivial_source2_mod(midgard_instruction *ins)
 {
