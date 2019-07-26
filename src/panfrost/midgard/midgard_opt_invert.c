@@ -62,3 +62,58 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                 mir_insert_instruction_before(mir_next_op(ins), not);
         }
 }
+
+/* With that lowering out of the way, we can focus on more interesting
+ * optimizations. One easy one is fusing inverts into bitwise operations:
+ *
+ * ~iand = inand
+ * ~ior  = inor
+ * ~ixor = inxor
+ */
+
+static bool
+mir_is_bitwise(midgard_instruction *ins)
+{
+        switch (ins->alu.op) {
+        case midgard_alu_op_iand:
+        case midgard_alu_op_ior:
+        case midgard_alu_op_ixor:
+                return true;
+        default:
+                return false;
+        }
+}
+
+static midgard_alu_op
+mir_invert_op(midgard_alu_op op)
+{
+        switch (op) {
+        case midgard_alu_op_iand:
+                return midgard_alu_op_inand;
+        case midgard_alu_op_ior:
+                return midgard_alu_op_inor;
+        case midgard_alu_op_ixor:
+                return midgard_alu_op_inxor;
+        default:
+                unreachable("Op not invertible");
+        }
+}
+
+bool
+midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                /* Search for inverted bitwise */
+                if (ins->type != TAG_ALU_4) continue;
+                if (!mir_is_bitwise(ins)) continue;
+                if (!ins->invert) continue;
+
+                ins->alu.op = mir_invert_op(ins->alu.op);
+                ins->invert = false;
+                progress |= true;
+        }
+
+        return progress;
+}
