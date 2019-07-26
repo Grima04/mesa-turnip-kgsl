@@ -132,6 +132,32 @@ mir_invert_op(midgard_alu_op op)
         }
 }
 
+static midgard_alu_op
+mir_demorgan_op(midgard_alu_op op)
+{
+        switch (op) {
+        case midgard_alu_op_iand:
+                return midgard_alu_op_inor;
+        case midgard_alu_op_ior:
+                return midgard_alu_op_inand;
+        default:
+                unreachable("Op not De Morgan-able");
+        }
+}
+
+static midgard_alu_op
+mir_notright_op(midgard_alu_op op)
+{
+        switch (op) {
+        case midgard_alu_op_iand:
+                return midgard_alu_op_iandnot;
+        case midgard_alu_op_ior:
+                return midgard_alu_op_iornot;
+        default:
+                unreachable("Op not right able");
+        }
+}
+
 bool
 midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block)
 {
@@ -146,6 +172,102 @@ midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block)
                 ins->alu.op = mir_invert_op(ins->alu.op);
                 ins->invert = false;
                 progress |= true;
+        }
+
+        return progress;
+}
+
+/* Next up, we can fuse inverts into the sources of bitwise ops:
+ *
+ * ~a & b = b & ~a = iandnot(b, a)
+ * a & ~b = iandnot(a, b)
+ * ~a & ~b = ~(a | b) = inor(a, b)
+ *
+ * ~a | b = b | ~a = iornot(b, a)
+ *  a | ~b = iornot(a, b)
+ * ~a | ~b = ~(a & b) = inand(a, b)
+ *
+ * ~a ^ b = ~(a ^ b) = inxor(a, b)
+ * a ^ ~b = ~(a ^ b) + inxor(a, b)
+ * ~a ^ ~b = a ^ b
+ * ~(a ^ b) = inxor(a, b)
+ */
+
+static bool
+mir_strip_inverted(compiler_context *ctx, unsigned node)
+{
+       /* Strips and returns the invert off a node */
+       mir_foreach_instr_global(ctx, ins) {
+               if (ins->compact_branch) continue;
+               if (ins->ssa_args.dest != node) continue;
+
+               bool status = ins->invert;
+               ins->invert = false;
+               return status;
+       }
+
+       unreachable("Invalid node stripped");
+}
+
+bool
+midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
+{
+        bool progress = false;
+
+        mir_foreach_instr_in_block_safe(block, ins) {
+                /* Search for inverted bitwise */
+                if (ins->type != TAG_ALU_4) continue;
+                if (!mir_is_bitwise(ins)) continue;
+                if (ins->invert) continue;
+
+                if (ins->ssa_args.src0 & IS_REG) continue;
+                if (ins->ssa_args.src1 & IS_REG) continue;
+                if (!mir_single_use(ctx, ins->ssa_args.src0)) continue;
+                if (!ins->ssa_args.inline_constant && !mir_single_use(ctx, ins->ssa_args.src1)) continue;
+
+                bool not_a = mir_strip_inverted(ctx, ins->ssa_args.src0);
+                bool not_b =
+                        ins->ssa_args.inline_constant ? false :
+                        mir_strip_inverted(ctx, ins->ssa_args.src1);
+
+                /* Edge case: if src0 == src1, it'll've been stripped */
+                if ((ins->ssa_args.src0 == ins->ssa_args.src1) && !ins->ssa_args.inline_constant)
+                        not_b = not_a;
+
+                progress |= (not_a || not_b);
+
+                /* No point */
+                if (!(not_a || not_b)) continue;
+
+                bool both = not_a && not_b;
+                bool left = not_a && !not_b;
+                bool right = !not_a && not_b;
+
+                /* No-op, but we got to strip the inverts */
+                if (both && ins->alu.op == midgard_alu_op_ixor)
+                        continue;
+
+                if (both) {
+                        ins->alu.op = mir_demorgan_op(ins->alu.op);
+                } else if (right || (left && !ins->ssa_args.inline_constant)) {
+                        if (left) {
+                                /* Commute */
+                                unsigned temp = ins->ssa_args.src0;
+                                ins->ssa_args.src0 = ins->ssa_args.src1;
+                                ins->ssa_args.src1 = temp;
+                        }
+
+                        ins->alu.op = mir_notright_op(ins->alu.op);
+                } else if (left && ins->ssa_args.inline_constant) {
+                        /* Some special transformations:
+                         *
+                         * ~A & c = ~(~(~A) | (~c)) = ~(A | ~c) = inor(A, ~c)
+                         * ~A | c = ~(~(~A) & (~c)) = ~(A & ~c) = inand(A, ~c)
+                         */
+
+                        ins->alu.op = mir_demorgan_op(ins->alu.op);
+                        ins->inline_constant = ~ins->inline_constant;
+                }
         }
 
         return progress;

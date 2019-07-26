@@ -577,6 +577,7 @@ void midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block
 
 void midgard_lower_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_not_propagate(compiler_context *ctx, midgard_block *block);
+bool midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block);
 
 #endif

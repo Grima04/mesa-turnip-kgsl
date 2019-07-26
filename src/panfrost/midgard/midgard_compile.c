@@ -2358,6 +2358,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                         progress |= midgard_opt_combine_projection(ctx, block);
                         progress |= midgard_opt_varying_projection(ctx, block);
                         progress |= midgard_opt_not_propagate(ctx, block);
+                        progress |= midgard_opt_fuse_src_invert(ctx, block);
                         progress |= midgard_opt_fuse_dest_invert(ctx, block);
                 }
         } while (progress);
