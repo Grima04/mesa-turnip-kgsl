@@ -123,7 +123,14 @@ typedef struct midgard_instruction {
         /* Masks in a saneish format. One bit per channel, not packed fancy.
          * Use this instead of the op specific ones, and switch over at emit
          * time */
+
         uint16_t mask;
+
+        /* For ALU ops only: set to true to invert (bitwise NOT) the
+         * destination of an integer-out op. Not imeplemented in hardware but
+         * allows more optimizations */
+
+        bool invert;
 
         union {
                 midgard_load_store_word load_store;
@@ -523,5 +530,7 @@ bool midgard_opt_varying_projection(compiler_context *ctx, midgard_block *block)
 bool midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block);
 bool midgard_opt_dead_move_eliminate(compiler_context *ctx, midgard_block *block);
 void midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, struct ra_graph *g);
+
+void midgard_lower_invert(compiler_context *ctx, midgard_block *block);
 
 #endif

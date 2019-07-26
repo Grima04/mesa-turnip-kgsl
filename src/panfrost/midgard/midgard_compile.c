@@ -304,12 +304,6 @@ nir_dest_index(compiler_context *ctx, nir_dest *dst)
         }
 }
 
-static unsigned
-make_compiler_temp(compiler_context *ctx)
-{
-        return ctx->func->impl->ssa_alloc + ctx->func->impl->reg_alloc + ctx->temp_alloc++;
-}
-
 static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
                             unsigned *dest)
 {
@@ -859,8 +853,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(fsin, fsin);
                 ALU_CASE(fcos, fcos);
 
-                /* Second op implicit #0 */
-                ALU_CASE(inot, inor);
+                /* We'll set invert */
+                ALU_CASE(inot, imov);
                 ALU_CASE(iand, iand);
                 ALU_CASE(ior, ior);
                 ALU_CASE(ixor, ixor);
@@ -1120,9 +1114,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.constants[0] = 0.0f;
                 ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
         } else if (instr->op == nir_op_inot) {
-                /* ~b = ~(b & b), so duplicate the source */
-                ins.ssa_args.src1 = ins.ssa_args.src0;
-                ins.alu.src2 = ins.alu.src1;
+                ins.invert = true;
         }
 
         if ((opcode_props & UNITS_ALL) == UNIT_VLUT) {
@@ -2380,11 +2372,20 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                 }
         } while (progress);
 
+        mir_foreach_block(ctx, block) {
+                midgard_lower_invert(ctx, block);
+        }
+
         /* Nested control-flow can result in dead branches at the end of the
          * block. This messes with our analysis and is just dead code, so cull
          * them */
         mir_foreach_block(ctx, block) {
                 midgard_opt_cull_dead_branch(ctx, block);
+        }
+
+        /* Ensure we were lowered */
+        mir_foreach_instr_global(ctx, ins) {
+                assert(!ins->invert);
         }
 
         /* Schedule! */

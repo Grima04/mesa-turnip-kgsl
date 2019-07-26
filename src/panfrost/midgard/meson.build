@@ -32,6 +32,7 @@ libpanfrost_midgard_files = files(
   'mir_promote_uniforms.c',
   'midgard_opt_copy_prop.c',
   'midgard_opt_dce.c',
+  'midgard_opt_invert.c',
   'midgard_opt_perspective.c',
   'cppwrap.cpp',
   'disassemble.c',
