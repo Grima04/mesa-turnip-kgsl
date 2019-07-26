@@ -177,8 +177,11 @@ etna_acc_get_query_result(struct etna_context *ctx, struct etna_query *q,
           * wait to flush unnecessarily but we also don't want to
           * spin forever.
           */
-         if (aq->no_wait_cnt++ > 5)
+         if (aq->no_wait_cnt++ > 5) {
             ctx->base.flush(&ctx->base, NULL, 0);
+            aq->no_wait_cnt = 0;
+         }
+
          return false;
       }
 
