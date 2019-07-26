@@ -100,6 +100,7 @@ st_delete_transform_feedback(struct gl_context *ctx,
       _mesa_reference_buffer_object(ctx, &sobj->base.Buffers[i], NULL);
    }
 
+   free(obj->Label);
    free(obj);
 }
 

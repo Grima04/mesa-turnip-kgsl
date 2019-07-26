@@ -86,6 +86,7 @@ st_DeleteQuery(struct gl_context *ctx, struct gl_query_object *q)
 
    free_queries(pipe, stq);
 
+   free(q->Label);
    free(stq);
 }
 
