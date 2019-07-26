@@ -83,6 +83,9 @@ mir_print_instruction(midgard_instruction *ins)
                 assert(0);
         }
 
+        if (ins->invert)
+                printf(".not");
+
         ssa_args *args = &ins->ssa_args;
 
         printf(" %d, ", args->dest);
