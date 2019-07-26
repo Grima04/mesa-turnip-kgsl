@@ -42,15 +42,6 @@
 #include <iostream>
 
 //////////////////////////////////////////////////////////////////////////
-/// @brief Helper macro to generate a bitmask
-static INLINE uint32_t GenMask(uint32_t numBits)
-{
-    SWR_ASSERT(
-        numBits <= (sizeof(uint32_t) * 8), "Too many bits (%d) for %s", numBits, __FUNCTION__);
-    return ((1U << numBits) - 1);
-}
-
-//////////////////////////////////////////////////////////////////////////
 /// @brief FE handler for SwrSync.
 /// @param pContext - pointer to SWR context.
 /// @param pDC - pointer to draw context.
@@ -400,7 +391,7 @@ uint32_t GetNumVerts(PRIMITIVE_TOPOLOGY mode, uint32_t numPrims)
 /// @brief Return number of verts per primitive.
 /// @param topology - topology
 /// @param includeAdjVerts - include adjacent verts in primitive vertices
-INLINE uint32_t NumVertsPerPrim(PRIMITIVE_TOPOLOGY topology, bool includeAdjVerts)
+uint32_t NumVertsPerPrim(PRIMITIVE_TOPOLOGY topology, bool includeAdjVerts)
 {
     uint32_t numVerts = 0;
     switch (topology)
