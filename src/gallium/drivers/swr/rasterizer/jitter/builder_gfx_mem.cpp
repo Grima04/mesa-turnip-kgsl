@@ -42,7 +42,9 @@ namespace SwrJit
         mpTranslationFuncTy             = nullptr;
         mpfnTranslateGfxAddressForRead  = nullptr;
         mpfnTranslateGfxAddressForWrite = nullptr;
+        mpfnTrackMemAccess              = nullptr;
         mpParamSimDC                    = nullptr;
+        mpWorkerData                    = nullptr;
 
     }
 
@@ -167,9 +169,57 @@ namespace SwrJit
         return Ptr;
     }
 
+    void BuilderGfxMem::TrackerHelper(Value* Ptr, Type* Ty, JIT_MEM_CLIENT usage, bool isRead)
+    {
+#if defined(KNOB_ENABLE_AR)
+        if (!KNOB_TRACK_MEMORY_WORKING_SET)
+        {
+            return;
+        }
+
+        Value* tmpPtr;
+        // convert actual pointers to int64.
+        uint32_t size = 0;
+
+        if (Ptr->getType() == mInt64Ty)
+        {
+            DataLayout dataLayout(JM()->mpCurrentModule);
+            size = (uint32_t)dataLayout.getTypeAllocSize(Ty);
+
+            tmpPtr = Ptr;
+        }
+        else
+        {
+            DataLayout dataLayout(JM()->mpCurrentModule);
+            size = (uint32_t)dataLayout.getTypeAllocSize(Ptr->getType());
+
+            tmpPtr = PTR_TO_INT(Ptr, mInt64Ty);
+        }
+
+        // There are some shader compile setups where there's no translation functions set up.
+        // This would be a situation where the accesses are to internal rasterizer memory and won't
+        // be logged.
+        // TODO:  we may wish to revisit this for URB reads/writes, though.
+        if (mpfnTrackMemAccess)
+        {
+            SWR_ASSERT(mpWorkerData != nullptr);
+            CALL(mpfnTrackMemAccess,
+                 {mpParamSimDC,
+                  mpWorkerData,
+                  tmpPtr,
+                  C((uint32_t)size),
+                  C((uint8_t)isRead),
+                  C((uint32_t)usage)});
+        }
+#endif
+
+        return;
+    }
+
     LoadInst* BuilderGfxMem::LOAD(Value* Ptr, const char* Name, Type* Ty, JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
+        TrackerHelper(Ptr, Ty, usage, true);
 
         Ptr = TranslationHelper(Ptr, Ty);
         return Builder::LOAD(Ptr, Name);
@@ -178,6 +228,7 @@ namespace SwrJit
     LoadInst* BuilderGfxMem::LOAD(Value* Ptr, const Twine& Name, Type* Ty, JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
+        TrackerHelper(Ptr, Ty, usage, true);
 
         Ptr = TranslationHelper(Ptr, Ty);
         return Builder::LOAD(Ptr, Name);
@@ -188,6 +239,7 @@ namespace SwrJit
         Value* Ptr, bool isVolatile, const Twine& Name, Type* Ty, JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
+        TrackerHelper(Ptr, Ty, usage, true);
 
         Ptr = TranslationHelper(Ptr, Ty);
         return Builder::LOAD(Ptr, isVolatile, Name);
@@ -232,6 +284,7 @@ namespace SwrJit
                                          JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
+        TrackerHelper(Ptr, Ty, usage, true);
 
         Ptr = TranslationHelper(Ptr, Ty);
         return Builder::MASKED_LOAD(Ptr, Align, Mask, PassThru, Name, Ty, usage);
@@ -241,6 +294,7 @@ namespace SwrJit
     BuilderGfxMem::STORE(Value* Val, Value* Ptr, bool isVolatile, Type* Ty, JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
+        TrackerHelper(Ptr, Ty, usage, false);
 
         Ptr = TranslationHelper(Ptr, Ty);
         return Builder::STORE(Val, Ptr, isVolatile, Ty, usage);
@@ -253,6 +307,7 @@ namespace SwrJit
                                     JIT_MEM_CLIENT                         usage)
     {
         AssertGFXMemoryParams(BasePtr, usage);
+        TrackerHelper(BasePtr, Ty, usage, false);
 
         BasePtr = TranslationHelper(BasePtr, Ty);
         return Builder::STORE(Val, BasePtr, offset, Ty, usage);
@@ -262,6 +317,8 @@ namespace SwrJit
         Value* Val, Value* Ptr, unsigned Align, Value* Mask, Type* Ty, JIT_MEM_CLIENT usage)
     {
         AssertGFXMemoryParams(Ptr, usage);
+
+        TrackerHelper(Ptr, Ty, usage, false);
 
         Ptr = TranslationHelper(Ptr, Ty);
         return Builder::MASKED_STORE(Val, Ptr, Align, Mask, Ty, usage);

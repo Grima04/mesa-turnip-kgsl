@@ -90,6 +90,21 @@ event FrontendDrawEndEvent
     uint32_t drawId;
 };
 
+event MemoryAccessEvent
+{
+    uint32_t drawId;
+    uint64_t tsc;
+    uint64_t ptr;
+    uint32_t size;
+    uint8_t isRead;
+    uint8_t client;
+};
+
+event MemoryStatsEndEvent
+{
+    uint32_t drawId;
+};
+
 event TessPrimCount
 {
     uint64_t primCount;

@@ -181,7 +181,12 @@ HANDLE SwrCreateContext(SWR_CREATECONTEXT_INFO* pCreateInfo)
 #if defined(KNOB_ENABLE_AR)
         // Initialize worker thread context for ArchRast.
         pContext->pArContext[i] = ArchRast::CreateThreadContext(ArchRast::AR_THREAD::WORKER);
+
+        SWR_WORKER_DATA* pWorkerData = (SWR_WORKER_DATA*)pContext->threadPool.pThreadData[i].pWorkerPrivateData;
+        pWorkerData->hArContext = pContext->pArContext[i];
 #endif
+
+
     }
 
 #if defined(KNOB_ENABLE_AR)

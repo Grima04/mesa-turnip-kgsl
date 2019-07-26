@@ -113,7 +113,6 @@ struct FetchJit : public BuilderGfxMem
         SWR_FORMAT format, Value* pMask, Value* pBase, Value* offsets, Value* result[4]);
     void ConvertFormat(SWR_FORMAT format, Value* texels[4]);
 
-    Value* mpWorkerData;
     Value* mpFetchInfo;
 };
 
@@ -141,6 +140,7 @@ Function* FetchJit::Create(const FETCH_COMPILE_STATE& fetchState)
     mpWorkerData = &*argitr;
     ++argitr;
     mpWorkerData->setName("pWorkerData");
+
     mpFetchInfo = &*argitr;
     ++argitr;
     mpFetchInfo->setName("fetchInfo");

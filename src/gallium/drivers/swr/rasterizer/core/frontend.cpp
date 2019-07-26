@@ -520,6 +520,8 @@ static void StreamOut(
 {
     RDTSC_BEGIN(pDC->pContext->pBucketMgr, FEStreamout, pDC->drawId);
 
+    void* pWorkerData = pDC->pContext->threadPool.pThreadData[workerId].pWorkerPrivateData;
+
     const API_STATE&           state   = GetApiState(pDC);
     const SWR_STREAMOUT_STATE& soState = state.soState;
 
@@ -575,7 +577,7 @@ static void StreamOut(
         // Call SOS
         SWR_ASSERT(state.pfnSoFunc[streamIndex] != nullptr,
                    "Trying to execute uninitialized streamout jit function.");
-        state.pfnSoFunc[streamIndex](GetPrivateState(pDC), soContext);
+        state.pfnSoFunc[streamIndex](GetPrivateState(pDC), pWorkerData, soContext);
     }
 
     // Update SO write offset. The driver provides memory for the update.

@@ -458,6 +458,9 @@ INLINE int32_t CompleteDrawContextInl(SWR_CONTEXT* pContext, uint32_t workerId, 
     {
         ExecuteCallbacks(pContext, workerId, pDC);
 
+        // Report accumulated memory access stats
+        AR_EVENT(MemoryStatsEndEvent(pDC->drawId));
+
         // Cleanup memory allocations
         pDC->pArena->Reset(true);
         if (!pDC->isCompute)
@@ -1193,26 +1196,31 @@ void CreateThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
 
     // Allocate worker private data
     pPool->pWorkerPrivateDataArray = nullptr;
-    if (pContext->workerPrivateState.perWorkerPrivateStateSize)
+    if (pContext->workerPrivateState.perWorkerPrivateStateSize == 0)
     {
-        size_t perWorkerSize =
-            AlignUpPow2(pContext->workerPrivateState.perWorkerPrivateStateSize, 64);
-        size_t totalSize = perWorkerSize * pPool->numThreads;
-        if (totalSize)
-        {
-            pPool->pWorkerPrivateDataArray = AlignedMalloc(totalSize, 64);
-            SWR_ASSERT(pPool->pWorkerPrivateDataArray);
+        pContext->workerPrivateState.perWorkerPrivateStateSize = sizeof(SWR_WORKER_DATA);
+        pContext->workerPrivateState.pfnInitWorkerData = nullptr;
+        pContext->workerPrivateState.pfnFinishWorkerData = nullptr;
+    }
+ 
+    // initialize contents of SWR_WORKER_DATA
+    size_t perWorkerSize =
+        AlignUpPow2(pContext->workerPrivateState.perWorkerPrivateStateSize, 64);
+    size_t totalSize = perWorkerSize * pPool->numThreads;
+    if (totalSize)
+    {
+        pPool->pWorkerPrivateDataArray = AlignedMalloc(totalSize, 64);
+        SWR_ASSERT(pPool->pWorkerPrivateDataArray);
 
-            void* pWorkerData = pPool->pWorkerPrivateDataArray;
-            for (uint32_t i = 0; i < pPool->numThreads; ++i)
+        void* pWorkerData = pPool->pWorkerPrivateDataArray;
+        for (uint32_t i = 0; i < pPool->numThreads; ++i)
+        {
+            pPool->pThreadData[i].pWorkerPrivateData = pWorkerData;
+            if (pContext->workerPrivateState.pfnInitWorkerData)
             {
-                pPool->pThreadData[i].pWorkerPrivateData = pWorkerData;
-                if (pContext->workerPrivateState.pfnInitWorkerData)
-                {
-                    pContext->workerPrivateState.pfnInitWorkerData(pWorkerData, i);
-                }
-                pWorkerData = PtrAdd(pWorkerData, perWorkerSize);
+                pContext->workerPrivateState.pfnInitWorkerData(pWorkerData, i);
             }
+            pWorkerData = PtrAdd(pWorkerData, perWorkerSize);
         }
     }
 

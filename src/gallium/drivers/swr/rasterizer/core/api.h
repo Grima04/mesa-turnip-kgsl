@@ -219,10 +219,17 @@ struct SWR_API_THREADING_INFO
                                    // Independent of KNOB_MAX_THREADS_PER_CORE.
 };
 
+struct SWR_WORKER_DATA
+{
+    HANDLE hArContext;  // handle to the archrast context
+};
+
 //////////////////////////////////////////////////////////////////////////
 /// SWR_WORKER_PRIVATE_STATE
 /// Data used to allocate per-worker thread private data.  A pointer
 /// to this data will be passed in to each shader function.
+/// The first field of this private data must be SWR_WORKER_DATA
+/// perWorkerPrivateStateSize must be >= sizeof SWR_WORKER_DATA 
 /////////////////////////////////////////////////////////////////////////
 struct SWR_WORKER_PRIVATE_STATE
 {

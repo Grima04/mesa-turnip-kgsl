@@ -263,12 +263,10 @@ struct StreamOutJit : public BuilderGfxMem
                                  std::ios_base::in | std::ios_base::out | std::ios_base::ate);
         fnName << ComputeCRC(0, &state, sizeof(state));
 
-        Type* typeParam0;
-        typeParam0 = mInt8PtrTy;
-
         std::vector<Type*> args{
-                            typeParam0,
-                            PointerType::get(Gen_SWR_STREAMOUT_CONTEXT(JM()), 0), // SWR_STREAMOUT_CONTEXT*
+            mInt8PtrTy,
+            mInt8PtrTy,
+            PointerType::get(Gen_SWR_STREAMOUT_CONTEXT(JM()), 0), // SWR_STREAMOUT_CONTEXT*
         };
 
         FunctionType* fTy    = FunctionType::get(IRB()->getVoidTy(), args, false);
@@ -289,6 +287,10 @@ struct StreamOutJit : public BuilderGfxMem
         Value* privateContext = &*argitr++;
         privateContext->setName("privateContext");
         SetPrivateContext(privateContext);
+
+        mpWorkerData = &*argitr;
+        ++argitr;
+        mpWorkerData->setName("pWorkerData");
 
         Value* pSoCtx = &*argitr++;
         pSoCtx->setName("pSoCtx");

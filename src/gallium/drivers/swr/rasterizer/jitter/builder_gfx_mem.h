@@ -110,7 +110,7 @@ namespace SwrJit
                                            Type*          PtrTy = nullptr,
                                            const Twine&   Name  = "",
                                            JIT_MEM_CLIENT usage = JIT_MEM_CLIENT::MEM_CLIENT_INTERNAL);
-
+        
 
     protected:
         void AssertGFXMemoryParams(Value* ptr, Builder::JIT_MEM_CLIENT usage);
@@ -120,6 +120,8 @@ namespace SwrJit
         virtual Value* OFFSET_TO_NEXT_COMPONENT(Value* base, Constant* offset);
 
         Value* TranslationHelper(Value* Ptr, Type* Ty);
+        void   TrackerHelper(Value* Ptr, Type* Ty, JIT_MEM_CLIENT usage, bool isRead);
+
 
         FunctionType* GetTranslationFunctionType() { return mpTranslationFuncTy; }
         Value*        GetTranslationFunctionForRead() { return mpfnTranslateGfxAddressForRead; }
@@ -127,10 +129,14 @@ namespace SwrJit
         Value*        GetParamSimDC() { return mpParamSimDC; }
 
 
+        Value*        mpWorkerData;
+
     private:
         FunctionType* mpTranslationFuncTy;
         Value*        mpfnTranslateGfxAddressForRead;
         Value*        mpfnTranslateGfxAddressForWrite;
         Value*        mpParamSimDC;
+        FunctionType* mpTrackMemAccessFuncTy;
+        Value*        mpfnTrackMemAccess;
     };
 } // namespace SwrJit

@@ -26,6 +26,7 @@
  *
  ******************************************************************************/
 #include <atomic>
+#include <map>
 
 #include "common/os.h"
 #include "archrast/archrast.h"
@@ -83,6 +84,74 @@ namespace ArchRast
     {
         uint32_t alphaTestCount  = 0;
         uint32_t alphaBlendCount = 0;
+    };
+
+    struct MemoryStats
+    {
+        struct MemoryTrackerKey
+        {
+            uint64_t address;
+            uint64_t mask;
+        };
+
+        struct MemoryTrackerData
+        {
+            uint32_t accessCountRead;
+            uint32_t accessCountWrite;
+            uint64_t tscMin;
+            uint64_t tscMax;
+        };
+
+        struct AddressRangeComparator 
+        {
+            bool operator()(MemoryTrackerKey a, MemoryTrackerKey b) const 
+            {
+                return (a.address & a.mask) < (b.address & b.mask);
+            }
+        };
+
+        typedef std::map<MemoryTrackerKey, MemoryTrackerData, AddressRangeComparator> MemoryTrackerMap;
+        MemoryTrackerMap trackedMemory = {};
+
+        void TrackMemoryAccess(uint64_t address, uint64_t addressMask, uint8_t isRead, uint64_t tsc)
+        {
+            MemoryTrackerKey key;
+            key.address = address;
+            key.mask = addressMask;
+
+            MemoryTrackerMap::iterator i = trackedMemory.lower_bound(key);
+            if (i != trackedMemory.end() && !(trackedMemory.key_comp()(key, i->first)))
+            {
+                // already in map
+                if (isRead)
+                {
+                    i->second.accessCountRead++;
+                }
+                else
+                {
+                    i->second.accessCountWrite++;
+                }
+                i->second.tscMax = tsc;
+            }
+            else
+            {
+                // new entry
+                MemoryTrackerData data;
+                if (isRead)
+                {
+                    data.accessCountRead = 1;
+                    data.accessCountWrite = 0;
+                }
+                else
+                {
+                    data.accessCountRead = 0;
+                    data.accessCountWrite = 1;
+                }
+                data.tscMin = tsc;
+                data.tscMax = tsc;
+                trackedMemory.insert(i, MemoryTrackerMap::value_type(key, data));
+            }
+        }
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -180,6 +249,16 @@ namespace ArchRast
         EventHandlerWorkerStats(uint32_t id) : EventHandlerFile(id), mNeedFlush(false)
         {
             memset(mShaderStats, 0, sizeof(mShaderStats));
+
+            // compute address mask for memory tracking
+            mAddressMask = 0;
+            uint64_t addressRangeBytes = 64;
+            while (addressRangeBytes > 0)
+            {
+                mAddressMask = (mAddressMask << 1) | 1;
+                addressRangeBytes = addressRangeBytes >> 1;
+            }
+            mAddressMask = ~mAddressMask;
         }
 
         virtual void Handle(const EarlyDepthStencilInfoSingleSample& event)
@@ -585,6 +664,28 @@ namespace ArchRast
             mGS      = {};
         }
 
+        virtual void Handle(const MemoryAccessEvent& event)
+        {
+            mMemoryStats.TrackMemoryAccess(event.data.ptr, mAddressMask, event.data.isRead, event.data.tsc);
+        }
+
+        virtual void Handle(const MemoryStatsEndEvent& event)
+        {
+            MemoryStats::MemoryTrackerMap::iterator i = mMemoryStats.trackedMemory.begin();
+            while (i != mMemoryStats.trackedMemory.end())
+            {
+                MemoryStatsEvent mse(event.data.drawId, 
+                                     i->first.address & mAddressMask, 
+                                     i->second.accessCountRead, 
+                                     i->second.accessCountWrite, 
+                                     i->second.tscMin, 
+                                     i->second.tscMax);
+                EventHandlerFile::Handle(mse);
+                i++;
+            }
+            mMemoryStats.trackedMemory.clear();
+        }
+
         virtual void Handle(const GSPrimInfo& event)
         {
             mGS.inputPrimCount += event.data.inputPrimCount;
@@ -630,6 +731,9 @@ namespace ArchRast
         AlphaStats        mAlphaStats     = {};
 
         SWR_SHADER_STATS mShaderStats[NUM_SHADER_TYPES];
+
+        MemoryStats      mMemoryStats     = {};
+        uint64_t         mAddressMask     = 0;
 
     };
 

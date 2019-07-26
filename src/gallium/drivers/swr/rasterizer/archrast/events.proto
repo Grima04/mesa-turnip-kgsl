@@ -464,3 +464,22 @@ event SWTagFlushEvent
     char swTagFlushReason[256];
     uint32_t swTagFlushType;
 };
+
+event SWTagApiCallEvent
+{
+	uint64_t swTagFrame;
+	uint32_t swTagDrawOrDispatch;
+	uint32_t swTagDraw;
+	uint32_t swTagDispatch;
+    char swTagApiCall[256];
+};
+
+event MemoryStatsEvent
+{
+    uint32_t drawId;
+    uint64_t baseAddr;
+    uint32_t accessCountRead;
+    uint32_t accessCountWrite;
+    uint64_t tscMin;
+    uint64_t tscMax;
+};
