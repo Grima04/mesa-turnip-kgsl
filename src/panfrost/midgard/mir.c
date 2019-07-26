@@ -194,3 +194,43 @@ mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned 
 
         return false;
 }
+
+/* Creates a mask of the components of a node read by an instruction, by
+ * analyzing the swizzle with respect to the instruction's mask. E.g.:
+ *
+ *  fadd r0.xz, r1.yyyy, r2.zwyx
+ *
+ * will return a mask of Z/Y for r2
+ */
+
+static unsigned
+mir_mask_of_read_components_single(unsigned src, unsigned outmask)
+{
+        midgard_vector_alu_src s = vector_alu_from_unsigned(src);
+        unsigned mask = 0;
+
+        for (unsigned c = 0; c < 4; ++c) {
+                if (!(outmask & (1 << c))) continue;
+
+                unsigned comp = (s.swizzle >> (2*c)) & 3;
+                mask |= (1 << comp);
+        }
+
+        return mask;
+}
+
+unsigned
+mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
+{
+        assert(ins->type == TAG_ALU_4);
+
+        unsigned mask = 0;
+
+        if (ins->ssa_args.src0 == node)
+                mask |= mir_mask_of_read_components_single(ins->alu.src1, ins->mask);
+
+        if (ins->ssa_args.src1 == node && !ins->ssa_args.inline_constant)
+                mask |= mir_mask_of_read_components_single(ins->alu.src2, ins->mask);
+
+        return mask;
+}
