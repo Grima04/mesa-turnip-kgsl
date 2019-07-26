@@ -2510,7 +2510,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          struct vtn_pointer *ptr =
             vtn_pointer_dereference(b, base_val->pointer, chain);
          ptr->ptr_type = ptr_type;
-         ptr->access = access;
+         ptr->access |= access;
          vtn_push_value_pointer(b, w[2], ptr);
       }
       break;
