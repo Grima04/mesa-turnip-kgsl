@@ -4298,7 +4298,7 @@ Converter::BindArgumentsPass::visit(Function *f)
       }
    }
 
-   if (func == prog->main && prog->getType() != Program::TYPE_COMPUTE)
+   if (func == prog->main /* && prog->getType() != Program::TYPE_COMPUTE */)
       return true;
    updatePrototype(&BasicBlock::get(f->cfg.getRoot())->liveSet,
                    &Function::buildLiveSets, &Function::ins);
