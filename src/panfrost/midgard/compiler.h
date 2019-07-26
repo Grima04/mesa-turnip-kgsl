@@ -370,6 +370,16 @@ mir_is_alu_bundle(midgard_bundle *bundle)
         return IS_ALU(bundle->tag);
 }
 
+/* Registers/SSA are distinguish in the backend by the bottom-most bit */
+
+#define IS_REG (1)
+
+static inline unsigned
+make_compiler_temp(compiler_context *ctx)
+{
+        return (ctx->func->impl->ssa_alloc + ctx->temp_alloc++) << 1;
+}
+
 /* MIR manipulation */
 
 void mir_rewrite_index(compiler_context *ctx, unsigned old, unsigned new);

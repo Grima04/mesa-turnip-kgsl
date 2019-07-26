@@ -297,10 +297,10 @@ static unsigned
 nir_dest_index(compiler_context *ctx, nir_dest *dst)
 {
         if (dst->is_ssa)
-                return dst->ssa.index;
+                return (dst->ssa.index << 1) | 0;
         else {
                 assert(!dst->reg.indirect);
-                return ctx->func->impl->ssa_alloc + dst->reg.reg->index;
+                return (dst->reg.reg->index << 1) | IS_REG;
         }
 }
 
@@ -533,7 +533,9 @@ emit_load_const(compiler_context *ctx, nir_load_const_instr *instr)
 
         float *v = rzalloc_array(NULL, float, 4);
         nir_const_load_to_arr(v, instr, f32);
-        _mesa_hash_table_u64_insert(ctx->ssa_constants, def.index + 1, v);
+
+        /* Shifted for SSA, +1 for off-by-one */
+        _mesa_hash_table_u64_insert(ctx->ssa_constants, (def.index << 1) + 1, v);
 }
 
 /* Normally constants are embedded implicitly, but for I/O and such we have to
@@ -555,10 +557,10 @@ static unsigned
 nir_src_index(compiler_context *ctx, nir_src *src)
 {
         if (src->is_ssa)
-                return src->ssa->index;
+                return (src->ssa->index << 1) | 0;
         else {
                 assert(!src->reg.indirect);
-                return ctx->func->impl->ssa_alloc + src->reg.reg->index;
+                return (src->reg.reg->index << 1) | IS_REG;
         }
 }
 
@@ -2003,7 +2005,7 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
 
                 /* TODO: Registers? */
                 unsigned src = ins->ssa_args.src1;
-                if (src >= ctx->func->impl->ssa_alloc) continue;
+                if (src & IS_REG) continue;
                 assert(!mir_has_multiple_writes(ctx, src));
 
                 /* There might be a source modifier, too */

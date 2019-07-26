@@ -41,8 +41,8 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
                 if (to >= SSA_FIXED_MINIMUM) continue;
                 if (from >= SSA_FIXED_MINIMUM) continue;
-                if (to >= ctx->func->impl->ssa_alloc) continue;
-                if (from >= ctx->func->impl->ssa_alloc) continue;
+                if (to & IS_REG) continue;
+                if (from & IS_REG) continue;
 
                 /* Constant propagation is not handled here, either */
                 if (ins->ssa_args.inline_constant) continue;

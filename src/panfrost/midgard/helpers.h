@@ -177,8 +177,8 @@ quadword_size(int tag)
 #define SSA_UNUSED_1 -2
 
 #define SSA_FIXED_SHIFT 24
-#define SSA_FIXED_REGISTER(reg) ((1 + reg) << SSA_FIXED_SHIFT)
-#define SSA_REG_FROM_FIXED(reg) ((reg >> SSA_FIXED_SHIFT) - 1)
+#define SSA_FIXED_REGISTER(reg) (((1 + (reg)) << SSA_FIXED_SHIFT) | 1)
+#define SSA_REG_FROM_FIXED(reg) ((((reg) & ~1) >> SSA_FIXED_SHIFT) - 1)
 #define SSA_FIXED_MINIMUM SSA_FIXED_REGISTER(0)
 
 /* Swizzle support */
