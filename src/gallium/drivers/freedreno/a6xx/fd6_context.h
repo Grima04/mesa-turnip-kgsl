@@ -48,11 +48,7 @@ struct fd6_context {
 	 */
 	struct fd_bo *vsc_data, *vsc_data2;
 
-// TODO annoyingly large sizes to prevent hangs with larger amounts
-// of geometry, like aquarium with max # of fish.  Need to figure
-// out how to calculate the required size.
-#define A6XX_VSC_DATA_PITCH  0x4400
-#define A6XX_VSC_DATA2_PITCH 0x10400
+	unsigned vsc_data_pitch, vsc_data2_pitch;
 
 	/* The 'control' mem BO is used for various housekeeping
 	 * functions.  See 'struct fd6_control'
@@ -113,6 +109,11 @@ struct fd6_control {
 	uint32_t _pad0;
 	uint32_t flush_base;     /* dummy address for VPC_SO[i].FLUSH_BASE_LO/HI */
 	uint32_t _pad1;
+	/* flag set from cmdstream when VSC overflow detected: */
+	volatile uint32_t vsc_overflow;
+	uint32_t _pad2;
+	uint32_t vsc_scratch;
+	uint32_t _pad3;
 };
 
 #define control_ptr(fd6_ctx, member)  \
