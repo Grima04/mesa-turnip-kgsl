@@ -49,11 +49,26 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (ins->has_constants) continue;
 
                 /* Modifier propagation is not handled here */
-                if (mir_nontrivial_source2_mod(ins)) continue;
+                if (mir_nontrivial_source2_mod_simple(ins)) continue;
                 if (mir_nontrivial_outmod(ins)) continue;
 
-                /* We're clear -- rewrite */
-                mir_rewrite_index_src(ctx, to, from);
+                /* Texture ops have some weirdness around bias */
+
+                bool skip = false;
+
+                mir_foreach_instr_global(ctx, q) {
+                        if (q->ssa_args.src1 != to) continue;
+                        if (q->type == TAG_TEXTURE_4) skip = true;
+                }
+
+                if (skip)
+                        continue;
+
+                /* We're clear -- rewrite, composing the swizzle */
+                midgard_vector_alu_src src2 =
+                        vector_alu_from_unsigned(ins->alu.src2);
+
+                mir_rewrite_index_src_swizzle(ctx, to, from, src2.swizzle);
                 mir_remove_instruction(ins);
                 progress |= true;
         }

@@ -34,12 +34,98 @@ void mir_rewrite_index_src_single(midgard_instruction *ins, unsigned old, unsign
                 ins->ssa_args.src1 = new;
 }
 
+static unsigned
+mir_get_swizzle(midgard_instruction *ins, unsigned idx)
+{
+        if (ins->type == TAG_ALU_4) {
+                unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
+
+                midgard_vector_alu_src s =
+                        vector_alu_from_unsigned(b);
+
+                return s.swizzle;
+        } else if (ins->type == TAG_LOAD_STORE_4) {
+                assert(idx == 0);
+                return ins->load_store.swizzle;
+        } else if (ins->type == TAG_TEXTURE_4) {
+                switch (idx) {
+                case 0:
+                        return ins->texture.in_reg_swizzle;
+                case 1:
+                        /* Swizzle on bias doesn't make sense */
+                        return 0;
+                default:
+                        unreachable("Unknown texture source");
+                }
+        } else {
+                unreachable("Unknown type");
+        }
+}
+
+static void
+mir_set_swizzle(midgard_instruction *ins, unsigned idx, unsigned new)
+{
+        if (ins->type == TAG_ALU_4) {
+                unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
+
+                midgard_vector_alu_src s =
+                        vector_alu_from_unsigned(b);
+
+                s.swizzle = new;
+                unsigned pack = vector_alu_srco_unsigned(s);
+
+                if (idx == 0)
+                        ins->alu.src1 = pack;
+                else
+                        ins->alu.src2 = pack;
+        } else if (ins->type == TAG_LOAD_STORE_4) {
+                ins->load_store.swizzle = new;
+        } else if (ins->type == TAG_TEXTURE_4) {
+                switch (idx) {
+                case 0:
+                        ins->texture.in_reg_swizzle = new;
+                        break;
+                default:
+                        assert(new == 0);
+                        break;
+                }
+        } else {
+                unreachable("Unknown type");
+        }
+}
+
+static void
+mir_rewrite_index_src_single_swizzle(midgard_instruction *ins, unsigned old, unsigned new, unsigned swizzle)
+{
+        if (ins->ssa_args.src0 == old) {
+                ins->ssa_args.src0 = new;
+
+                mir_set_swizzle(ins, 0,
+                        pan_compose_swizzle(mir_get_swizzle(ins, 0), swizzle));
+        }
+
+        if (ins->ssa_args.src1 == old &&
+            !ins->ssa_args.inline_constant) {
+                ins->ssa_args.src1 = new;
+
+                mir_set_swizzle(ins, 1,
+                        pan_compose_swizzle(mir_get_swizzle(ins, 1), swizzle));
+        }
+}
 
 void
 mir_rewrite_index_src(compiler_context *ctx, unsigned old, unsigned new)
 {
         mir_foreach_instr_global(ctx, ins) {
                 mir_rewrite_index_src_single(ins, old, new);
+        }
+}
+
+void
+mir_rewrite_index_src_swizzle(compiler_context *ctx, unsigned old, unsigned new, unsigned swizzle)
+{
+        mir_foreach_instr_global(ctx, ins) {
+                mir_rewrite_index_src_single_swizzle(ins, old, new, swizzle);
         }
 }
 
@@ -153,7 +239,7 @@ mir_nontrivial_source2_mod_simple(midgard_instruction *ins)
         midgard_vector_alu_src src2 =
                 vector_alu_from_unsigned(ins->alu.src2);
 
-        return mir_nontrivial_raw_mod(src2, is_int) && !src2.half;
+        return mir_nontrivial_raw_mod(src2, is_int) || src2.half;
 }
 
 bool
