@@ -122,14 +122,14 @@ midgard_has_hazard(
  *
  *  - All components of r0 are written in the bundle
  *  - No components of r0 are written in VLUT
- *  - Dependencies of r0 are not written in the bundle
+ *  - Non-pipelined dependencies of r0 are not written in the bundle
  *
  * This function checks if these requirements are satisfied given the content
  * of a scheduled bundle.
  */
 
 static bool
-can_writeout_fragment(midgard_instruction **bundle, unsigned count, unsigned node_count)
+can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsigned count, unsigned node_count)
 {
         /* First scan for which components of r0 are written out. Initially
          * none are written */
@@ -148,9 +148,19 @@ can_writeout_fragment(midgard_instruction **bundle, unsigned count, unsigned nod
                 /* Record written out mask */
                 r0_written_mask |= ins->mask;
 
-                /* Record dependencies */
+                /* Record dependencies, but only if they won't become pipeline
+                 * registers. We know we can't be live after this, because
+                 * we're writeout at the very end of the shader. So check if
+                 * they were written before us. */
+
                 unsigned src0 = ins->ssa_args.src0;
                 unsigned src1 = ins->ssa_args.src1;
+
+                if (!mir_is_written_before(ctx, bundle[0], src0))
+                        src0 = -1;
+
+                if (!mir_is_written_before(ctx, bundle[0], src1))
+                        src1 = -1;
 
                 if ((src0 > 0) && (src0 < node_count))
                         BITSET_SET(dependencies, src0);
@@ -452,7 +462,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                                 unsigned node_count = ctx->func->impl->ssa_alloc + ctx->func->impl->reg_alloc;
 
-                                if (ains->writeout && !can_writeout_fragment(scheduled, index, node_count)) {
+                                if (ains->writeout && !can_writeout_fragment(ctx, scheduled, index, node_count)) {
                                         /* We only work on full moves
                                          * at the beginning. We could
                                          * probably do better */
