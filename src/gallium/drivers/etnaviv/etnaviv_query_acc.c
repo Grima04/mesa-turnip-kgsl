@@ -32,7 +32,7 @@
 #include "etnaviv_context.h"
 #include "etnaviv_debug.h"
 #include "etnaviv_emit.h"
-#include "etnaviv_query_hw.h"
+#include "etnaviv_query_acc.h"
 #include "etnaviv_screen.h"
 
 /*
@@ -43,72 +43,72 @@
  */
 
 static void
-occlusion_start(struct etna_hw_query *hq, struct etna_context *ctx)
+occlusion_start(struct etna_acc_query *aq, struct etna_context *ctx)
 {
-   struct etna_resource *rsc = etna_resource(hq->prsc);
+   struct etna_resource *rsc = etna_resource(aq->prsc);
    struct etna_reloc r = {
       .bo = rsc->bo,
       .flags = ETNA_RELOC_WRITE
    };
 
-   if (hq->samples > 63) {
-      hq->samples = 63;
+   if (aq->samples > 63) {
+      aq->samples = 63;
       BUG("samples overflow");
    }
 
-   r.offset = hq->samples * 8; /* 64bit value */
+   r.offset = aq->samples * 8; /* 64bit value */
 
    etna_set_state_reloc(ctx->stream, VIVS_GL_OCCLUSION_QUERY_ADDR, &r);
 }
 
 static void
-occlusion_stop(struct etna_hw_query *hq, struct etna_context *ctx)
+occlusion_stop(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    /* 0x1DF5E76 is the value used by blob - but any random value will work */
    etna_set_state(ctx->stream, VIVS_GL_OCCLUSION_QUERY_CONTROL, 0x1DF5E76);
 }
 
 static void
-occlusion_suspend(struct etna_hw_query *hq, struct etna_context *ctx)
+occlusion_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
 {
-   occlusion_stop(hq, ctx);
+   occlusion_stop(aq, ctx);
 }
 
 static void
-occlusion_resume(struct etna_hw_query *hq, struct etna_context *ctx)
+occlusion_resume(struct etna_acc_query *aq, struct etna_context *ctx)
 {
-   hq->samples++;
-   occlusion_start(hq, ctx);
+   aq->samples++;
+   occlusion_start(aq, ctx);
 }
 
 static void
-occlusion_result(struct etna_hw_query *hq, void *buf,
-                         union pipe_query_result *result)
+occlusion_result(struct etna_acc_query *aq, void *buf,
+                 union pipe_query_result *result)
 {
    uint64_t sum = 0;
    uint64_t *ptr = (uint64_t *)buf;
 
-   for (unsigned i = 0; i <= hq->samples; i++)
+   for (unsigned i = 0; i <= aq->samples; i++)
       sum += *(ptr + i);
 
-   if (hq->base.type == PIPE_QUERY_OCCLUSION_COUNTER)
+   if (aq->base.type == PIPE_QUERY_OCCLUSION_COUNTER)
       result->u64 = sum;
    else
       result->b = !!sum;
 }
 
 static void
-etna_hw_destroy_query(struct etna_context *ctx, struct etna_query *q)
+etna_acc_destroy_query(struct etna_context *ctx, struct etna_query *q)
 {
-   struct etna_hw_query *hq = etna_hw_query(q);
+   struct etna_acc_query *aq = etna_acc_query(q);
 
-   pipe_resource_reference(&hq->prsc, NULL);
-   list_del(&hq->node);
+   pipe_resource_reference(&aq->prsc, NULL);
+   list_del(&aq->node);
 
-   FREE(hq);
+   FREE(aq);
 }
 
-static const struct etna_hw_sample_provider occlusion_provider = {
+static const struct etna_acc_sample_provider occlusion_provider = {
    .start = occlusion_start,
    .stop = occlusion_stop,
    .suspend = occlusion_suspend,
@@ -117,19 +117,19 @@ static const struct etna_hw_sample_provider occlusion_provider = {
 };
 
 static void
-realloc_query_bo(struct etna_context *ctx, struct etna_hw_query *hq)
+realloc_query_bo(struct etna_context *ctx, struct etna_acc_query *aq)
 {
    struct etna_resource *rsc;
    void *map;
 
-   pipe_resource_reference(&hq->prsc, NULL);
+   pipe_resource_reference(&aq->prsc, NULL);
 
    /* allocate resource with space for 64 * 64bit values */
-   hq->prsc = pipe_buffer_create(&ctx->screen->base, PIPE_BIND_QUERY_BUFFER,
+   aq->prsc = pipe_buffer_create(&ctx->screen->base, PIPE_BIND_QUERY_BUFFER,
                                  0, 0x1000);
 
    /* don't assume the buffer is zero-initialized */
-   rsc = etna_resource(hq->prsc);
+   rsc = etna_resource(aq->prsc);
 
    etna_bo_cpu_prep(rsc->bo, DRM_ETNA_PREP_WRITE);
 
@@ -139,44 +139,44 @@ realloc_query_bo(struct etna_context *ctx, struct etna_hw_query *hq)
 }
 
 static bool
-etna_hw_begin_query(struct etna_context *ctx, struct etna_query *q)
+etna_acc_begin_query(struct etna_context *ctx, struct etna_query *q)
 {
-   struct etna_hw_query *hq = etna_hw_query(q);
-   const struct etna_hw_sample_provider *p = hq->provider;
+   struct etna_acc_query *aq = etna_acc_query(q);
+   const struct etna_acc_sample_provider *p = aq->provider;
 
    /* ->begin_query() discards previous results, so realloc bo */
-   realloc_query_bo(ctx, hq);
+   realloc_query_bo(ctx, aq);
 
-   p->start(hq, ctx);
+   p->start(aq, ctx);
 
    /* add to active list */
-   assert(list_is_empty(&hq->node));
-   list_addtail(&hq->node, &ctx->active_hw_queries);
+   assert(list_is_empty(&aq->node));
+   list_addtail(&aq->node, &ctx->active_acc_queries);
 
    return true;
 }
 
 static void
-etna_hw_end_query(struct etna_context *ctx, struct etna_query *q)
+etna_acc_end_query(struct etna_context *ctx, struct etna_query *q)
 {
-   struct etna_hw_query *hq = etna_hw_query(q);
-   const struct etna_hw_sample_provider *p = hq->provider;
+   struct etna_acc_query *aq = etna_acc_query(q);
+   const struct etna_acc_sample_provider *p = aq->provider;
 
-   p->stop(hq, ctx);
+   p->stop(aq, ctx);
 
    /* remove from active list */
-   list_delinit(&hq->node);
+   list_delinit(&aq->node);
 }
 
 static bool
-etna_hw_get_query_result(struct etna_context *ctx, struct etna_query *q,
-                         bool wait, union pipe_query_result *result)
+etna_acc_get_query_result(struct etna_context *ctx, struct etna_query *q,
+                          bool wait, union pipe_query_result *result)
 {
-   struct etna_hw_query *hq = etna_hw_query(q);
-   struct etna_resource *rsc = etna_resource(hq->prsc);
-   const struct etna_hw_sample_provider *p = hq->provider;
+   struct etna_acc_query *aq = etna_acc_query(q);
+   struct etna_resource *rsc = etna_resource(aq->prsc);
+   const struct etna_acc_sample_provider *p = aq->provider;
 
-   assert(list_is_empty(&hq->node));
+   assert(list_is_empty(&aq->node));
 
    if (!wait) {
       int ret;
@@ -188,7 +188,7 @@ etna_hw_get_query_result(struct etna_context *ctx, struct etna_query *q,
           * wait to flush unnecessarily but we also don't want to
           * spin forever.
           */
-         if (hq->no_wait_cnt++ > 5)
+         if (aq->no_wait_cnt++ > 5)
             ctx->base.flush(&ctx->base, NULL, 0);
          return false;
       }
@@ -207,21 +207,21 @@ etna_hw_get_query_result(struct etna_context *ctx, struct etna_query *q,
    etna_bo_cpu_prep(rsc->bo, DRM_ETNA_PREP_READ);
 
    void *ptr = etna_bo_map(rsc->bo);
-   p->result(hq, ptr, result);
+   p->result(aq, ptr, result);
 
    etna_bo_cpu_fini(rsc->bo);
 
    return true;
 }
 
-static const struct etna_query_funcs hw_query_funcs = {
-   .destroy_query = etna_hw_destroy_query,
-   .begin_query = etna_hw_begin_query,
-   .end_query = etna_hw_end_query,
-   .get_query_result = etna_hw_get_query_result,
+static const struct etna_query_funcs acc_query_funcs = {
+   .destroy_query = etna_acc_destroy_query,
+   .begin_query = etna_acc_begin_query,
+   .end_query = etna_acc_end_query,
+   .get_query_result = etna_acc_get_query_result,
 };
 
-static inline const struct etna_hw_sample_provider *
+static inline const struct etna_acc_sample_provider *
 query_sample_provider(unsigned query_type)
 {
    switch (query_type) {
@@ -237,26 +237,26 @@ query_sample_provider(unsigned query_type)
 }
 
 struct etna_query *
-etna_hw_create_query(struct etna_context *ctx, unsigned query_type)
+etna_acc_create_query(struct etna_context *ctx, unsigned query_type)
 {
-   struct etna_hw_query *hq;
+   struct etna_acc_query *aq;
    struct etna_query *q;
-   const struct etna_hw_sample_provider *p;
+   const struct etna_acc_sample_provider *p;
 
    p = query_sample_provider(query_type);
    if (!p)
       return NULL;
 
-   hq = CALLOC_STRUCT(etna_hw_query);
-   if (!hq)
+   aq = CALLOC_STRUCT(etna_acc_query);
+   if (!aq)
       return NULL;
 
-   hq->provider = p;
+   aq->provider = p;
 
-   list_inithead(&hq->node);
+   list_inithead(&aq->node);
 
-   q = &hq->base;
-   q->funcs = &hw_query_funcs;
+   q = &aq->base;
+   q->funcs = &acc_query_funcs;
    q->type = query_type;
 
    return q;

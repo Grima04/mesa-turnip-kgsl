@@ -31,19 +31,19 @@
 
 #include "etnaviv_query.h"
 
-struct etna_hw_query;
+struct etna_acc_query;
 
-struct etna_hw_sample_provider {
-   void (*start)(struct etna_hw_query *hq, struct etna_context *ctx);
-   void (*stop)(struct etna_hw_query *hq, struct etna_context *ctx);
-   void (*suspend)(struct etna_hw_query *hq, struct etna_context *ctx);
-   void (*resume)(struct etna_hw_query *hq, struct etna_context *ctx);
+struct etna_acc_sample_provider {
+   void (*start)(struct etna_acc_query *aq, struct etna_context *ctx);
+   void (*stop)(struct etna_acc_query *aq, struct etna_context *ctx);
+   void (*suspend)(struct etna_acc_query *aq, struct etna_context *ctx);
+   void (*resume)(struct etna_acc_query *aq, struct etna_context *ctx);
 
-   void (*result)(struct etna_hw_query *hq, void *buf,
+   void (*result)(struct etna_acc_query *aq, void *buf,
            union pipe_query_result *result);
 };
 
-struct etna_hw_query {
+struct etna_acc_query {
    struct etna_query base;
 
    struct pipe_resource *prsc;
@@ -51,38 +51,38 @@ struct etna_hw_query {
    unsigned no_wait_cnt;    /* see etna_hw_get_query_result() */
    struct list_head node;   /* list-node in ctx->active_hw_queries */
 
-   const struct etna_hw_sample_provider *provider;
+   const struct etna_acc_sample_provider *provider;
 };
 
-static inline struct etna_hw_query *
-etna_hw_query(struct etna_query *q)
+static inline struct etna_acc_query *
+etna_acc_query(struct etna_query *q)
 {
-   return (struct etna_hw_query *)q;
+   return (struct etna_acc_query *)q;
 }
 
 struct etna_query *
-etna_hw_create_query(struct etna_context *ctx, unsigned query_type);
+etna_acc_create_query(struct etna_context *ctx, unsigned query_type);
 
 static inline void
-etna_hw_query_suspend(struct etna_hw_query *hq, struct etna_context *ctx)
+etna_acc_query_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
 {
-   const struct etna_hw_sample_provider *p = hq->provider;
+   const struct etna_acc_sample_provider *p = aq->provider;
 
-   if (!hq->base.active)
+   if (!aq->base.active)
       return;
 
-   p->suspend(hq, ctx);
+   p->suspend(aq, ctx);
 }
 
 static inline void
-etna_hw_query_resume(struct etna_hw_query *hq, struct etna_context *ctx)
+etna_acc_query_resume(struct etna_acc_query *aq, struct etna_context *ctx)
 {
-   const struct etna_hw_sample_provider *p = hq->provider;
+   const struct etna_acc_sample_provider *p = aq->provider;
 
-   if (!hq->base.active)
+   if (!aq->base.active)
       return;
 
-   p->resume(hq, ctx);
+   p->resume(aq, ctx);
 }
 
 #endif

@@ -36,8 +36,8 @@ C_SOURCES :=  \
 	etnaviv_internal.h \
 	etnaviv_query.c \
 	etnaviv_query.h \
-	etnaviv_query_hw.c \
-	etnaviv_query_hw.h \
+	etnaviv_query_acc.c \
+	etnaviv_query_acc.h \
 	etnaviv_query_sw.c \
 	etnaviv_query_sw.h \
 	etnaviv_query_pm.c \

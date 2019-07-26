@@ -30,7 +30,7 @@
 
 #include "etnaviv_context.h"
 #include "etnaviv_query.h"
-#include "etnaviv_query_hw.h"
+#include "etnaviv_query_acc.h"
 #include "etnaviv_query_sw.h"
 #include "etnaviv_query_pm.h"
 
@@ -43,7 +43,7 @@ etna_create_query(struct pipe_context *pctx, unsigned query_type,
 
    q = etna_sw_create_query(ctx, query_type);
    if (!q)
-      q = etna_hw_create_query(ctx, query_type);
+      q = etna_acc_create_query(ctx, query_type);
    if (!q)
       q = etna_pm_create_query(ctx, query_type);
 
@@ -139,11 +139,11 @@ etna_set_active_query_state(struct pipe_context *pctx, bool enable)
    struct etna_context *ctx = etna_context(pctx);
 
    if (enable) {
-      list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
-         etna_hw_query_resume(hq, ctx);
+      list_for_each_entry(struct etna_acc_query, aq, &ctx->active_acc_queries, node)
+         etna_acc_query_resume(aq, ctx);
    } else {
-      list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
-         etna_hw_query_suspend(hq, ctx);
+      list_for_each_entry(struct etna_acc_query, aq, &ctx->active_acc_queries, node)
+         etna_acc_query_suspend(aq, ctx);
    }
 }
 

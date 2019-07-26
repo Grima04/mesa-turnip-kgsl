@@ -190,8 +190,8 @@ struct etna_context {
    struct pipe_debug_callback debug;
    int in_fence_fd;
 
-   /* list of active hardware queries */
-   struct list_head active_hw_queries;
+   /* list of accumulated HW queries */
+   struct list_head active_acc_queries;
 
    struct etna_bo *dummy_rt;
    struct etna_reloc dummy_rt_reloc;
