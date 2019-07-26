@@ -381,6 +381,7 @@ void mir_rewrite_index_src_tag(compiler_context *ctx, unsigned old, unsigned new
 bool mir_single_use(compiler_context *ctx, unsigned value);
 bool mir_special_index(compiler_context *ctx, unsigned idx);
 unsigned mir_use_count(compiler_context *ctx, unsigned value);
+bool mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned node);
 
 /* MIR printing */
 
