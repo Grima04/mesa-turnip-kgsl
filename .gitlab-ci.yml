@@ -65,7 +65,7 @@ debian:
     paths:
       - _build/meson-logs/*.txt
       # scons:
-      - _build/*/config.log
+      - build/*/config.log
       - shader-db
   variables:
     CCACHE_COMPILERCHECK: "content"
