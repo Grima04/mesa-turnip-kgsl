@@ -748,6 +748,11 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
    gen7_convert_mrf_to_grf(p, &dest);
 
    assert(dest.nr < 128);
+
+   if (devinfo->gen >= 10)
+      assert(!(src0.file == BRW_IMMEDIATE_VALUE &&
+               src2.file == BRW_IMMEDIATE_VALUE));
+
    assert(src0.file == BRW_IMMEDIATE_VALUE || src0.nr < 128);
    assert(src1.file != BRW_IMMEDIATE_VALUE && src1.nr < 128);
    assert(src2.file == BRW_IMMEDIATE_VALUE || src2.nr < 128);
@@ -791,27 +796,26 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
       brw_inst_set_3src_a1_src1_type(devinfo, inst, src1.type);
       brw_inst_set_3src_a1_src2_type(devinfo, inst, src2.type);
 
-      brw_inst_set_3src_a1_src0_vstride(
-         devinfo, inst, to_3src_align1_vstride(devinfo, src0.vstride));
+      if (src0.file == BRW_IMMEDIATE_VALUE) {
+         brw_inst_set_3src_a1_src0_imm(devinfo, inst, src0.ud);
+      } else {
+         brw_inst_set_3src_a1_src0_vstride(
+            devinfo, inst, to_3src_align1_vstride(devinfo, src0.vstride));
+         brw_inst_set_3src_a1_src0_hstride(devinfo, inst,
+                                           to_3src_align1_hstride(src0.hstride));
+         brw_inst_set_3src_a1_src0_subreg_nr(devinfo, inst, src0.subnr);
+         if (src0.type == BRW_REGISTER_TYPE_NF) {
+            brw_inst_set_3src_src0_reg_nr(devinfo, inst, BRW_ARF_ACCUMULATOR);
+         } else {
+            brw_inst_set_3src_src0_reg_nr(devinfo, inst, src0.nr);
+         }
+         brw_inst_set_3src_src0_abs(devinfo, inst, src0.abs);
+         brw_inst_set_3src_src0_negate(devinfo, inst, src0.negate);
+      }
       brw_inst_set_3src_a1_src1_vstride(
          devinfo, inst, to_3src_align1_vstride(devinfo, src1.vstride));
-      /* no vstride on src2 */
-
-      brw_inst_set_3src_a1_src0_hstride(devinfo, inst,
-                                        to_3src_align1_hstride(src0.hstride));
       brw_inst_set_3src_a1_src1_hstride(devinfo, inst,
                                         to_3src_align1_hstride(src1.hstride));
-      brw_inst_set_3src_a1_src2_hstride(devinfo, inst,
-                                        to_3src_align1_hstride(src2.hstride));
-
-      brw_inst_set_3src_a1_src0_subreg_nr(devinfo, inst, src0.subnr);
-      if (src0.type == BRW_REGISTER_TYPE_NF) {
-         brw_inst_set_3src_src0_reg_nr(devinfo, inst, BRW_ARF_ACCUMULATOR);
-      } else {
-         brw_inst_set_3src_src0_reg_nr(devinfo, inst, src0.nr);
-      }
-      brw_inst_set_3src_src0_abs(devinfo, inst, src0.abs);
-      brw_inst_set_3src_src0_negate(devinfo, inst, src0.negate);
 
       brw_inst_set_3src_a1_src1_subreg_nr(devinfo, inst, src1.subnr);
       if (src1.file == BRW_ARCHITECTURE_REGISTER_FILE) {
@@ -822,10 +826,17 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
       brw_inst_set_3src_src1_abs(devinfo, inst, src1.abs);
       brw_inst_set_3src_src1_negate(devinfo, inst, src1.negate);
 
-      brw_inst_set_3src_a1_src2_subreg_nr(devinfo, inst, src2.subnr);
-      brw_inst_set_3src_src2_reg_nr(devinfo, inst, src2.nr);
-      brw_inst_set_3src_src2_abs(devinfo, inst, src2.abs);
-      brw_inst_set_3src_src2_negate(devinfo, inst, src2.negate);
+      if (src2.file == BRW_IMMEDIATE_VALUE) {
+         brw_inst_set_3src_a1_src2_imm(devinfo, inst, src2.ud);
+      } else {
+         brw_inst_set_3src_a1_src2_hstride(devinfo, inst,
+                                           to_3src_align1_hstride(src2.hstride));
+         /* no vstride on src2 */
+         brw_inst_set_3src_a1_src2_subreg_nr(devinfo, inst, src2.subnr);
+         brw_inst_set_3src_src2_reg_nr(devinfo, inst, src2.nr);
+         brw_inst_set_3src_src2_abs(devinfo, inst, src2.abs);
+         brw_inst_set_3src_src2_negate(devinfo, inst, src2.negate);
+      }
 
       assert(src0.file == BRW_GENERAL_REGISTER_FILE ||
              src0.file == BRW_IMMEDIATE_VALUE ||
