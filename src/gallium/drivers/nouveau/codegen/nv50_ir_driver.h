@@ -54,7 +54,7 @@ struct nv50_ir_varying
    ubyte si; /* TGSI semantic index */
 };
 
-#ifdef DEBUG
+#ifndef NDEBUG
 # define NV50_IR_DEBUG_BASIC     (1 << 0)
 # define NV50_IR_DEBUG_VERBOSE   (2 << 0)
 # define NV50_IR_DEBUG_REG_ALLOC (1 << 2)

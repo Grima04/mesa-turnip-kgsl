@@ -544,7 +544,7 @@ nvc0_program_create_tfb_state(const struct nv50_ir_prog_info *info,
    return tfb;
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 static void
 nvc0_program_dump(struct nvc0_program *prog)
 {
@@ -594,7 +594,7 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
       return false;
    }
 
-#ifdef DEBUG
+#ifndef NDEBUG
    info->target = debug_get_num_option("NV50_PROG_CHIPSET", chipset);
    info->optLevel = debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
    info->dbgFlags = debug_get_num_option("NV50_PROG_DEBUG", 0);
@@ -714,7 +714,7 @@ nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
                       prog->num_gprs, info->bin.instructions,
                       info->bin.codeSize);
 
-#ifdef DEBUG
+#ifndef NDEBUG
    if (debug_get_option("NV50_PROG_CHIPSET", NULL) && info->dbgFlags)
       nvc0_program_dump(prog);
 #endif
@@ -880,7 +880,7 @@ nvc0_program_upload(struct nvc0_context *nvc0, struct nvc0_program *prog)
 
    nvc0_program_upload_code(nvc0, prog);
 
-#ifdef DEBUG
+#ifndef NDEBUG
    if (debug_get_bool_option("NV50_PROG_DEBUG", false))
       nvc0_program_dump(prog);
 #endif

@@ -32,7 +32,6 @@ files_libnouveau = files(
   'nouveau_mm.h',
   'nouveau_screen.c',
   'nouveau_screen.h',
-  'nouveau_statebuf.h',
   'nouveau_video.c',
   'nouveau_video.h',
   'nouveau_vp3_video_bsp.c',
