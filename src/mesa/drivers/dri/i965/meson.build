@@ -157,8 +157,11 @@ libi965 = static_library(
   c_args : [c_vis_args, no_override_init_args, c_sse2_args],
   cpp_args : [cpp_vis_args, c_sse2_args],
   link_with : [
-    i965_gen_libs, libintel_common, libintel_dev, libisl, libintel_compiler,
-    libblorp, libintel_perf
+    i965_gen_libs, libintel_dev, libisl, libintel_compiler, libblorp,
+    libintel_perf
   ],
-  dependencies : [dep_libdrm, dep_valgrind, idep_nir_headers, idep_genxml, idep_xmlconfig],
+  dependencies : [
+    dep_libdrm, dep_valgrind, idep_libintel_common, idep_nir_headers, idep_genxml,
+    idep_xmlconfig,
+  ],
 )

@@ -45,6 +45,16 @@ libintel_common = static_library(
   dependencies : [dep_expat, dep_libdrm, dep_thread, idep_genxml],
 )
 
+libintel_extra_dependencies = []
+if with_platform_android
+  libintel_extra_dependencies += dep_android
+endif
+
+idep_libintel_common = declare_dependency(
+  link_with: [libintel_common],
+  dependencies: [libintel_extra_dependencies],
+)
+
 install_intel_gpu_tests = get_option('install-intel-gpu-tests')
 
 if install_intel_gpu_tests
