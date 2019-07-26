@@ -193,15 +193,16 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    /* Texturing. */
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
+   case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS: /* TODO: verify */
       return screen->specs.max_texture_size;
    case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
+   case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
    {
       int log2_max_tex_size = util_last_bit(screen->specs.max_texture_size);
       assert(log2_max_tex_size > 0);
       return log2_max_tex_size;
    }
-   case PIPE_CAP_MAX_TEXTURE_3D_LEVELS: /* 3D textures not supported - fake it */
-      return 5;
+
    case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
    case PIPE_CAP_MIN_TEXEL_OFFSET:
       return -8;
@@ -403,12 +404,14 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
    struct etna_screen *screen = etna_screen(pscreen);
    unsigned allowed = 0;
 
-   if (target != PIPE_BUFFER &&
-       target != PIPE_TEXTURE_1D &&
-       target != PIPE_TEXTURE_2D &&
-       target != PIPE_TEXTURE_3D &&
-       target != PIPE_TEXTURE_CUBE &&
-       target != PIPE_TEXTURE_RECT)
+   if (translate_texture_target(target) == ETNA_NO_MATCH)
+      return false;
+
+   /* pre-halti has no array/3D */
+   if (screen->specs.halti < 0 &&
+       (target == PIPE_TEXTURE_1D_ARRAY ||
+        target == PIPE_TEXTURE_2D_ARRAY ||
+        target == PIPE_TEXTURE_3D))
       return false;
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))

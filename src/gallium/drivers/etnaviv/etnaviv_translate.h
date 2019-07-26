@@ -476,4 +476,25 @@ translate_samples_to_xyscale(int num_samples, int *xscale_out, int *yscale_out,
    return true;
 }
 
+static inline uint32_t
+translate_texture_target(unsigned target)
+{
+   switch (target) {
+   case PIPE_TEXTURE_1D:
+      return TEXTURE_TYPE_1D;
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_1D_ARRAY:
+      return TEXTURE_TYPE_2D;
+   case PIPE_TEXTURE_CUBE:
+      return TEXTURE_TYPE_CUBE_MAP;
+   case PIPE_TEXTURE_3D:
+   case PIPE_TEXTURE_2D_ARRAY:
+      return TEXTURE_TYPE_3D;
+   default:
+      DBG("Unhandled texture target: %i", target);
+      return ETNA_NO_MATCH;
+   }
+}
+
 #endif
