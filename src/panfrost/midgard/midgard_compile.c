@@ -1322,7 +1322,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         /* For blend shaders, load the input color, which is
                          * preloaded to r0 */
 
-                        midgard_instruction move = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
+                        midgard_instruction move = v_mov(SSA_FIXED_REGISTER(0), blank_alu_src, reg);
                         emit_mir_instruction(ctx, move);
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
