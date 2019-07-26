@@ -34,10 +34,8 @@
 struct etna_acc_query;
 
 struct etna_acc_sample_provider {
-   void (*start)(struct etna_acc_query *aq, struct etna_context *ctx);
-   void (*stop)(struct etna_acc_query *aq, struct etna_context *ctx);
-   void (*suspend)(struct etna_acc_query *aq, struct etna_context *ctx);
    void (*resume)(struct etna_acc_query *aq, struct etna_context *ctx);
+   void (*suspend)(struct etna_acc_query *aq, struct etna_context *ctx);
 
    void (*result)(struct etna_acc_query *aq, void *buf,
            union pipe_query_result *result);
@@ -72,6 +70,7 @@ etna_acc_query_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
       return;
 
    p->suspend(aq, ctx);
+   aq->samples++;
 }
 
 static inline void
@@ -83,6 +82,7 @@ etna_acc_query_resume(struct etna_acc_query *aq, struct etna_context *ctx)
       return;
 
    p->resume(aq, ctx);
+   aq->samples++;
 }
 
 #endif

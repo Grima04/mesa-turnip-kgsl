@@ -43,7 +43,7 @@
  */
 
 static void
-occlusion_start(struct etna_acc_query *aq, struct etna_context *ctx)
+occlusion_resume(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    struct etna_resource *rsc = etna_resource(aq->prsc);
    struct etna_reloc r = {
@@ -62,23 +62,10 @@ occlusion_start(struct etna_acc_query *aq, struct etna_context *ctx)
 }
 
 static void
-occlusion_stop(struct etna_acc_query *aq, struct etna_context *ctx)
+occlusion_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    /* 0x1DF5E76 is the value used by blob - but any random value will work */
    etna_set_state(ctx->stream, VIVS_GL_OCCLUSION_QUERY_CONTROL, 0x1DF5E76);
-}
-
-static void
-occlusion_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
-{
-   occlusion_stop(aq, ctx);
-}
-
-static void
-occlusion_resume(struct etna_acc_query *aq, struct etna_context *ctx)
-{
-   aq->samples++;
-   occlusion_start(aq, ctx);
 }
 
 static void
@@ -88,7 +75,7 @@ occlusion_result(struct etna_acc_query *aq, void *buf,
    uint64_t sum = 0;
    uint64_t *ptr = (uint64_t *)buf;
 
-   for (unsigned i = 0; i <= aq->samples; i++)
+   for (unsigned i = 0; i < aq->samples; i++)
       sum += *(ptr + i);
 
    if (aq->base.type == PIPE_QUERY_OCCLUSION_COUNTER)
@@ -109,8 +96,6 @@ etna_acc_destroy_query(struct etna_context *ctx, struct etna_query *q)
 }
 
 static const struct etna_acc_sample_provider occlusion_provider = {
-   .start = occlusion_start,
-   .stop = occlusion_stop,
    .suspend = occlusion_suspend,
    .resume = occlusion_resume,
    .result = occlusion_result,
@@ -147,7 +132,8 @@ etna_acc_begin_query(struct etna_context *ctx, struct etna_query *q)
    /* ->begin_query() discards previous results, so realloc bo */
    realloc_query_bo(ctx, aq);
 
-   p->start(aq, ctx);
+   p->resume(aq, ctx);
+   aq->samples++;
 
    /* add to active list */
    assert(list_is_empty(&aq->node));
@@ -162,7 +148,8 @@ etna_acc_end_query(struct etna_context *ctx, struct etna_query *q)
    struct etna_acc_query *aq = etna_acc_query(q);
    const struct etna_acc_sample_provider *p = aq->provider;
 
-   p->stop(aq, ctx);
+   p->suspend(aq, ctx);
+   aq->samples++;
 
    /* remove from active list */
    list_delinit(&aq->node);
@@ -208,6 +195,7 @@ etna_acc_get_query_result(struct etna_context *ctx, struct etna_query *q,
 
    void *ptr = etna_bo_map(rsc->bo);
    p->result(aq, ptr, result);
+   aq->samples = 0;
 
    etna_bo_cpu_fini(rsc->bo);
 
