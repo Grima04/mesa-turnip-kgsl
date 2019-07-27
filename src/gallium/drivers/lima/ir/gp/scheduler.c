@@ -441,7 +441,8 @@ static void schedule_insert_ready_list(sched_ctx *ctx,
 
    struct list_head *insert_pos = &ctx->ready_list;
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
-      if (insert_node->sched.dist > node->sched.dist) {
+      if (insert_node->sched.dist > node->sched.dist ||
+          gpir_op_infos[insert_node->op].schedule_first) {
          insert_pos = &node->list;
          break;
       }
@@ -916,7 +917,7 @@ static void spill_node(sched_ctx *ctx, gpir_node *node, gpir_store_node *store)
       }
       if (node->sched.next_max_node) {
          node->sched.next_max_node = false;
-         ctx->instr->alu_num_slot_needed_by_next_max--;
+         ctx->instr->alu_num_unscheduled_next_max--;
       }
    }
 }
@@ -1153,7 +1154,7 @@ static bool can_use_complex(gpir_node *node)
 
 static void sched_find_max_nodes(sched_ctx *ctx)
 {
-   ctx->instr->alu_num_slot_needed_by_next_max = -5;
+   ctx->instr->alu_num_unscheduled_next_max = 0;
    ctx->instr->alu_num_slot_needed_by_max = 0;
 
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
@@ -1169,7 +1170,7 @@ static void sched_find_max_nodes(sched_ctx *ctx)
       if (node->sched.max_node)
          ctx->instr->alu_num_slot_needed_by_max++;
       if (node->sched.next_max_node)
-         ctx->instr->alu_num_slot_needed_by_next_max++;
+         ctx->instr->alu_num_unscheduled_next_max++;
    }
 }
 
@@ -1179,9 +1180,10 @@ static void sched_find_max_nodes(sched_ctx *ctx)
 static void verify_max_nodes(sched_ctx *ctx)
 {
    int alu_num_slot_needed_by_max = 0;
-   int alu_num_slot_needed_by_next_max = -5;
+   int alu_num_unscheduled_next_max = 0;
    int alu_num_slot_needed_by_store = 0;
    int alu_num_slot_needed_by_non_cplx_store = 0;
+   int alu_max_allowed_next_max = 5;
 
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
       if (!gpir_is_input_node(node))
@@ -1190,7 +1192,7 @@ static void verify_max_nodes(sched_ctx *ctx)
       if (node->sched.max_node)
          alu_num_slot_needed_by_max++;
       if (node->sched.next_max_node)
-         alu_num_slot_needed_by_next_max++;
+         alu_num_unscheduled_next_max++;
       if (used_by_store(node, ctx->instr)) {
          alu_num_slot_needed_by_store++;
          if (node->sched.next_max_node && !node->sched.complex_allowed)
@@ -1198,12 +1200,17 @@ static void verify_max_nodes(sched_ctx *ctx)
       }
    }
 
+   if (ctx->instr->slots[GPIR_INSTR_SLOT_MUL0] &&
+       ctx->instr->slots[GPIR_INSTR_SLOT_MUL0]->op == gpir_op_complex1)
+      alu_max_allowed_next_max = 4;
+
    assert(ctx->instr->alu_num_slot_needed_by_max == alu_num_slot_needed_by_max);
-   assert(ctx->instr->alu_num_slot_needed_by_next_max == alu_num_slot_needed_by_next_max);
+   assert(ctx->instr->alu_num_unscheduled_next_max == alu_num_unscheduled_next_max);
+   assert(ctx->instr->alu_max_allowed_next_max == alu_max_allowed_next_max);
    assert(ctx->instr->alu_num_slot_needed_by_store == alu_num_slot_needed_by_store);
    assert(ctx->instr->alu_num_slot_needed_by_non_cplx_store ==
           alu_num_slot_needed_by_non_cplx_store);
-   assert(ctx->instr->alu_num_slot_free >= alu_num_slot_needed_by_store + alu_num_slot_needed_by_max + MAX2(alu_num_slot_needed_by_next_max, 0));
+   assert(ctx->instr->alu_num_slot_free >= alu_num_slot_needed_by_store + alu_num_slot_needed_by_max + MAX2(alu_num_unscheduled_next_max - alu_max_allowed_next_max, 0));
    assert(ctx->instr->alu_non_cplx_slot_free >= alu_num_slot_needed_by_max + alu_num_slot_needed_by_non_cplx_store);
 }
 
@@ -1235,6 +1242,13 @@ static bool try_node(sched_ctx *ctx)
              ctx->total_spill_needed > 0 &&
              try_spill_nodes(ctx, node)) {
             score = schedule_try_node(ctx, node, true);
+         }
+
+         /* schedule_first nodes must be scheduled if possible */
+         if (gpir_op_infos[node->op].schedule_first && score != INT_MIN) {
+            best_node = node;
+            best_score = score;
+            break;
          }
 
          if (score > best_score) {
@@ -1382,7 +1396,8 @@ static bool sched_move(sched_ctx *ctx)
     * need to insert the move.
     */
 
-   if (ctx->instr->alu_num_slot_needed_by_next_max > 0) {
+   if (ctx->instr->alu_num_unscheduled_next_max >
+       ctx->instr->alu_max_allowed_next_max) {
       list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
          if (!can_place_move(ctx, node))
             continue;

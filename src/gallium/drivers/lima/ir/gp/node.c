@@ -58,6 +58,7 @@ const gpir_op_info gpir_op_infos[] = {
       .name = "complex2",
       .slots = (int []) { GPIR_INSTR_SLOT_MUL0, GPIR_INSTR_SLOT_END },
       .spillless = true,
+      .schedule_first = true,
    },
    [gpir_op_add] = {
       .name = "add",
@@ -154,11 +155,13 @@ const gpir_op_info gpir_op_infos[] = {
       .name = "rcp_impl",
       .slots = (int []) { GPIR_INSTR_SLOT_COMPLEX, GPIR_INSTR_SLOT_END },
       .spillless = true,
+      .schedule_first = true,
    },
    [gpir_op_rsqrt_impl] = {
       .name = "rsqrt_impl",
       .slots = (int []) { GPIR_INSTR_SLOT_COMPLEX, GPIR_INSTR_SLOT_END },
       .spillless = true,
+      .schedule_first = true,
    },
    [gpir_op_load_uniform] = {
       .name = "ld_uni",

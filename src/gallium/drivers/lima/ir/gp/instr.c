@@ -37,6 +37,7 @@ gpir_instr *gpir_instr_create(gpir_block *block)
    instr->index = block->sched.instr_index++;
    instr->alu_num_slot_free = 6;
    instr->alu_non_cplx_slot_free = 5;
+   instr->alu_max_allowed_next_max = 5;
 
    list_add(&instr->list, &block->instr_list);
    return instr;
@@ -96,6 +97,8 @@ static bool gpir_instr_insert_alu_check(gpir_instr *instr, gpir_node *node)
    int non_cplx_store_reduce_slot = 0;
    int max_reduce_slot = node->sched.max_node ? 1 : 0;
    int next_max_reduce_slot = node->sched.next_max_node ? 1 : 0;
+   int alu_new_max_allowed_next_max =
+      node->op == gpir_op_complex1 ? 4 : instr->alu_max_allowed_next_max;
 
    /* check if this node is child of one store node.
     * complex1 won't be any of this instr's store node's child,
@@ -117,7 +120,8 @@ static bool gpir_instr_insert_alu_check(gpir_instr *instr, gpir_node *node)
    int slot_difference = 
        instr->alu_num_slot_needed_by_store - store_reduce_slot +
        instr->alu_num_slot_needed_by_max - max_reduce_slot +
-       MAX2(instr->alu_num_slot_needed_by_next_max - next_max_reduce_slot, 0) -
+       MAX2(instr->alu_num_unscheduled_next_max - next_max_reduce_slot -
+            alu_new_max_allowed_next_max, 0) -
       (instr->alu_num_slot_free - consume_slot);
    if (slot_difference > 0) {
       gpir_debug("failed %d because of alu slot\n", node->index);
@@ -141,7 +145,8 @@ static bool gpir_instr_insert_alu_check(gpir_instr *instr, gpir_node *node)
    instr->alu_num_slot_needed_by_store -= store_reduce_slot;
    instr->alu_num_slot_needed_by_non_cplx_store -= non_cplx_store_reduce_slot;
    instr->alu_num_slot_needed_by_max -= max_reduce_slot;
-   instr->alu_num_slot_needed_by_next_max -= next_max_reduce_slot;
+   instr->alu_num_unscheduled_next_max -= next_max_reduce_slot;
+   instr->alu_max_allowed_next_max = alu_new_max_allowed_next_max;
    return true;
 }
 
@@ -165,7 +170,9 @@ static void gpir_instr_remove_alu(gpir_instr *instr, gpir_node *node)
    if (node->sched.max_node)
       instr->alu_num_slot_needed_by_max++;
    if (node->sched.next_max_node)
-      instr->alu_num_slot_needed_by_next_max++;
+      instr->alu_num_unscheduled_next_max++;
+   if (node->op == gpir_op_complex1)
+      instr->alu_max_allowed_next_max = 5;
 }
 
 static bool gpir_instr_insert_reg0_check(gpir_instr *instr, gpir_node *node)
@@ -312,7 +319,7 @@ static bool gpir_instr_insert_store_check(gpir_instr *instr, gpir_node *node)
     */
    int slot_difference = instr->alu_num_slot_needed_by_store + 1
       + instr->alu_num_slot_needed_by_max +
-      MAX2(instr->alu_num_slot_needed_by_next_max, 0) -
+      MAX2(instr->alu_num_unscheduled_next_max - instr->alu_max_allowed_next_max, 0) -
       instr->alu_num_slot_free;
    if (slot_difference > 0) {
       instr->slot_difference = slot_difference;

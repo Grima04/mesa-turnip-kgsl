@@ -120,6 +120,7 @@ typedef struct {
    int *slots;
    gpir_node_type type;
    bool spillless;
+   bool schedule_first;
    bool may_consume_two_slots;
 } gpir_op_info;
 
@@ -299,14 +300,20 @@ typedef struct gpir_instr {
     *
     * (1) alu_num_slot_free >= alu_num_slot_needed_by_store +
     *       alu_num_slot_needed_by_max +
-    *       alu_num_slot_needed_by_next_max
+    *       max(alu_num_unscheduled_next_max - alu_max_allowed_next_max, 0)
     * (2) alu_non_cplx_slot_free >= alu_num_slot_needed_by_max +
     *       alu_num_slot_neede_by_non_cplx_store
+    *
+    * alu_max_allowed_next_max is normally 5 (since there can be at most 5 max
+    * nodes for the next instruction) but when there is a complex1 node in
+    * this instruction it reduces to 4 to reserve a slot for complex2 in the
+    * next instruction.
     */
    int alu_num_slot_needed_by_store;
    int alu_num_slot_needed_by_non_cplx_store;
    int alu_num_slot_needed_by_max;
-   int alu_num_slot_needed_by_next_max;
+   int alu_num_unscheduled_next_max;
+   int alu_max_allowed_next_max;
 
    /* Used to communicate to the scheduler how many slots need to be cleared
     * up in order to satisfy the invariants.
