@@ -1212,13 +1212,10 @@ static bool try_node(sched_ctx *ctx)
          ctx->total_spill_needed = 0;
          ctx->max_node_spill_needed = 0;
          int score = schedule_try_node(ctx, node, true);
-         if (score == INT_MIN) {
-            if (ctx->total_spill_needed > 0 &&
-                try_spill_nodes(ctx, node)) {
-               score = schedule_try_node(ctx, node, true);
-               if (score == INT_MIN)
-                  continue;
-            }
+         if (score == INT_MIN && !best_node &&
+             ctx->total_spill_needed > 0 &&
+             try_spill_nodes(ctx, node)) {
+            score = schedule_try_node(ctx, node, true);
          }
 
          if (score > best_score) {
