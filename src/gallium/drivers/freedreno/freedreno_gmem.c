@@ -376,7 +376,11 @@ render_tiles(struct fd_batch *batch)
 			ctx->query_prepare_tile(batch, i, batch->gmem);
 
 		/* emit IB to drawcmds: */
-		ctx->emit_ib(batch->gmem, batch->draw);
+		if (ctx->emit_tile) {
+			ctx->emit_tile(batch, tile);
+		} else {
+			ctx->emit_ib(batch->gmem, batch->draw);
+		}
 		fd_reset_wfi(batch);
 
 		/* emit gmem2mem to transfer tile back to system memory: */

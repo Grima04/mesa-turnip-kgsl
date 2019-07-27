@@ -545,6 +545,45 @@ check_vsc_overflow(struct fd_context *ctx)
 	}
 }
 
+/*
+ * Emit conditional CP_INDIRECT_BRANCH based on VSC_STATE[p], ie. the IB
+ * is skipped for tiles that have no visible geometry.
+ */
+static void
+emit_conditional_ib(struct fd_batch *batch, struct fd_tile *tile,
+		struct fd_ringbuffer *target)
+{
+	struct fd_ringbuffer *ring = batch->gmem;
+
+	if (target->cur == target->start)
+		return;
+
+	emit_marker6(ring, 6);
+
+	unsigned count = fd_ringbuffer_cmd_count(target);
+
+	BEGIN_RING(ring, 5 + 4 * count);  /* ensure conditional doesn't get split */
+
+	OUT_PKT7(ring, CP_REG_TEST, 1);
+	OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(REG_A6XX_VSC_STATE_REG(tile->p)) |
+			A6XX_CP_REG_TEST_0_BIT(tile->n) |
+			A6XX_CP_REG_TEST_0_UNK25);
+
+	OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
+	OUT_RING(ring, 0x10000000);
+	OUT_RING(ring, 4 * count);  /* conditionally execute next 4*count dwords */
+
+	for (unsigned i = 0; i < count; i++) {
+		uint32_t dwords;
+		OUT_PKT7(ring, CP_INDIRECT_BUFFER, 3);
+		dwords = fd_ringbuffer_emit_reloc_ring_full(ring, target, i) / 4;
+		assert(dwords > 0);
+		OUT_RING(ring, dwords);
+	}
+
+	emit_marker6(ring, 6);
+}
+
 static void
 set_scissor(struct fd_ringbuffer *ring, uint32_t x1, uint32_t y1, uint32_t x2, uint32_t y2)
 {
@@ -1211,7 +1250,11 @@ fd6_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 static void
 fd6_emit_tile_renderprep(struct fd_batch *batch, struct fd_tile *tile)
 {
-	fd6_emit_ib(batch->gmem, batch->tile_setup);
+	if (batch->fast_cleared || !use_hw_binning(batch)) {
+		fd6_emit_ib(batch->gmem, batch->tile_setup);
+	} else {
+		emit_conditional_ib(batch, tile, batch->tile_setup);
+	}
 }
 
 static void
@@ -1295,6 +1338,16 @@ prepare_tile_fini_ib(struct fd_batch *batch)
 }
 
 static void
+fd6_emit_tile(struct fd_batch *batch, struct fd_tile *tile)
+{
+	if (!use_hw_binning(batch)) {
+		fd6_emit_ib(batch->gmem, batch->draw);
+	} else {
+		emit_conditional_ib(batch, tile, batch->draw);
+	}
+}
+
+static void
 fd6_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
@@ -1334,7 +1387,11 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE) | 0x10);
 	emit_marker6(ring, 7);
 
-	fd6_emit_ib(ring, batch->tile_fini);
+	if (batch->fast_cleared || !use_hw_binning(batch)) {
+		fd6_emit_ib(batch->gmem, batch->tile_fini);
+	} else {
+		emit_conditional_ib(batch, tile, batch->tile_fini);
+	}
 
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(0x7));
@@ -1431,6 +1488,7 @@ fd6_gmem_init(struct pipe_context *pctx)
 	ctx->emit_tile_prep = fd6_emit_tile_prep;
 	ctx->emit_tile_mem2gmem = fd6_emit_tile_mem2gmem;
 	ctx->emit_tile_renderprep = fd6_emit_tile_renderprep;
+	ctx->emit_tile = fd6_emit_tile;
 	ctx->emit_tile_gmem2mem = fd6_emit_tile_gmem2mem;
 	ctx->emit_tile_fini = fd6_emit_tile_fini;
 	ctx->emit_sysmem_prep = fd6_emit_sysmem_prep;

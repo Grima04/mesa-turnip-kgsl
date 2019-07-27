@@ -310,6 +310,7 @@ struct fd_context {
 	void (*emit_tile_prep)(struct fd_batch *batch, struct fd_tile *tile);
 	void (*emit_tile_mem2gmem)(struct fd_batch *batch, struct fd_tile *tile);
 	void (*emit_tile_renderprep)(struct fd_batch *batch, struct fd_tile *tile);
+	void (*emit_tile)(struct fd_batch *batch, struct fd_tile *tile);
 	void (*emit_tile_gmem2mem)(struct fd_batch *batch, struct fd_tile *tile);
 	void (*emit_tile_fini)(struct fd_batch *batch);   /* optional */
 
