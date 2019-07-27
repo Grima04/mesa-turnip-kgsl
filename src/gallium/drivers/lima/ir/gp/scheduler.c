@@ -1114,13 +1114,32 @@ static bool can_use_complex(gpir_node *node)
       if (succ->type != gpir_node_type_alu)
          continue;
 
+      /* Note: this must be consistent with gpir_codegen_{mul,add}_slot{0,1}
+       */
       gpir_alu_node *alu = gpir_node_to_alu(succ);
-      if (alu->num_child >= 2 && alu->children[1] == node)
+      switch (alu->node.op) {
+      case gpir_op_complex1:
+         /* complex1 puts its third source in the fourth slot */
+         if (alu->children[1] == node || alu->children[2] == node)
+            return false;
+         break;
+      case gpir_op_complex2:
+         /* complex2 has its source duplicated, since it actually takes two
+          * sources but we only ever use it with both sources the same. Hence
+          * its source can never be the complex slot.
+          */
          return false;
-
-      /* complex1 puts its third source in the fourth slot */
-      if (alu->node.op == gpir_op_complex1 && alu->children[2] == node)
-         return false;
+      case gpir_op_select:
+         /* Select has its sources rearranged */
+         if (alu->children[0] == node)
+            return false;
+         break;
+      default:
+         assert(alu->num_child <= 2);
+         if (alu->num_child == 2 && alu->children[1] == node)
+            return false;
+         break;
+      }
    }
 
    return true;
