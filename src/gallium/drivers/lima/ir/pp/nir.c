@@ -122,9 +122,8 @@ static int nir_to_ppir_opcodes[nir_num_opcodes] = {
    [nir_op_fabs] = ppir_op_abs,
    [nir_op_fneg] = ppir_op_neg,
    [nir_op_fadd] = ppir_op_add,
-   [nir_op_fdot2] = ppir_op_dot2,
-   [nir_op_fdot3] = ppir_op_dot3,
-   [nir_op_fdot4] = ppir_op_dot4,
+   [nir_op_fsum3] = ppir_op_sum3,
+   [nir_op_fsum4] = ppir_op_sum4,
    [nir_op_frsq] = ppir_op_rsqrt,
    [nir_op_flog2] = ppir_op_log2,
    [nir_op_fexp2] = ppir_op_exp2,
@@ -173,13 +172,10 @@ static ppir_node *ppir_emit_alu(ppir_block *block, nir_instr *ni)
 
    unsigned src_mask;
    switch (op) {
-   case ppir_op_dot2:
-      src_mask = 0b0011;
-      break;
-   case ppir_op_dot3:
+   case ppir_op_sum3:
       src_mask = 0b0111;
       break;
-   case ppir_op_dot4:
+   case ppir_op_sum4:
       src_mask = 0b1111;
       break;
    default:

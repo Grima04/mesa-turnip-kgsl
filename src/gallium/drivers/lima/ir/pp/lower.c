@@ -72,62 +72,6 @@ static bool ppir_lower_const(ppir_block *block, ppir_node *node)
    return true;
 }
 
-/* lower dot to mul+sum */
-static bool ppir_lower_dot(ppir_block *block, ppir_node *node)
-{
-   ppir_alu_node *mul = ppir_node_create(block, ppir_op_mul, -1, 0);
-   if (!mul)
-      return false;
-   list_addtail(&mul->node.list, &node->list);
-
-   ppir_alu_node *dot = ppir_node_to_alu(node);
-   mul->src[0] = dot->src[0];
-   mul->src[1] = dot->src[1];
-   mul->num_src = 2;
-
-   int num_components = node->op - ppir_op_dot2 + 2;
-   ppir_dest *dest = &mul->dest;
-   dest->type = ppir_target_ssa;
-   dest->ssa.num_components = num_components;
-   dest->ssa.live_in = INT_MAX;
-   dest->ssa.live_out = 0;
-   dest->write_mask = u_bit_consecutive(0, num_components);
-
-   ppir_node_foreach_pred_safe(node, dep) {
-      ppir_node *pred = dep->pred;
-      ppir_node_remove_dep(dep);
-      ppir_node_add_dep(&mul->node, pred);
-   }
-   ppir_node_add_dep(node, &mul->node);
-
-   if (node->op == ppir_op_dot2) {
-      node->op = ppir_op_add;
-
-      ppir_node_target_assign(dot->src, dest);
-      dot->src[0].swizzle[0] = 0;
-      dot->src[0].absolute = false;
-      dot->src[0].negate = false;
-
-      ppir_node_target_assign(dot->src + 1, dest);
-      dot->src[1].swizzle[0] = 1;
-      dot->src[1].absolute = false;
-      dot->src[1].negate = false;
-   }
-   else {
-      node->op = node->op == ppir_op_dot3 ? ppir_op_sum3 : ppir_op_sum4;
-
-      ppir_node_target_assign(dot->src, dest);
-      for (int i = 0; i < 4; i++)
-         dot->src[0].swizzle[i] = i;
-      dot->src[0].absolute = false;
-      dot->src[0].negate = false;
-
-      dot->num_src = 1;
-   }
-
-   return true;
-}
-
 static ppir_reg *create_reg(ppir_compiler *comp, int num_components)
 {
    ppir_reg *r = rzalloc(comp, ppir_reg);
@@ -458,9 +402,6 @@ static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_abs] = ppir_lower_abs,
    [ppir_op_neg] = ppir_lower_neg,
    [ppir_op_const] = ppir_lower_const,
-   [ppir_op_dot2] = ppir_lower_dot,
-   [ppir_op_dot3] = ppir_lower_dot,
-   [ppir_op_dot4] = ppir_lower_dot,
    [ppir_op_rcp] = ppir_lower_vec_to_scalar,
    [ppir_op_rsqrt] = ppir_lower_vec_to_scalar,
    [ppir_op_log2] = ppir_lower_vec_to_scalar,

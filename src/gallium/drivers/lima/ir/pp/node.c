@@ -60,15 +60,6 @@ const ppir_op_info ppir_op_infos[] = {
          PPIR_INSTR_SLOT_END
       },
    },
-   [ppir_op_dot2] = {
-      .name = "dot2",
-   },
-   [ppir_op_dot3] = {
-      .name = "dot3",
-   },
-   [ppir_op_dot4] = {
-      .name = "dot4",
-   },
    [ppir_op_sum3] = {
       .name = "sum3",
       .slots = (int []) {
