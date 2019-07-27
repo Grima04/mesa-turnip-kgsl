@@ -194,6 +194,12 @@ optimizations = [
    (('fdot2', ('vec2', a, 0.0), b), ('fmul', a, b)),
    (('fdot2', a, 1.0), ('fadd', 'a.x', 'a.y')),
 
+   # Lower fdot to fsum when it is available
+   (('fdot2', a, b), ('fsum2', ('fmul', a, b)), 'options->lower_fdot'),
+   (('fdot3', a, b), ('fsum3', ('fmul', a, b)), 'options->lower_fdot'),
+   (('fdot4', a, b), ('fsum4', ('fmul', a, b)), 'options->lower_fdot'),
+   (('fsum2', a), ('fadd', 'a.x', 'a.y'), 'options->lower_fdot'),
+
    # If x >= 0 and x <= 1: fsat(1 - x) == 1 - fsat(x) trivially
    # If x < 0: 1 - fsat(x) => 1 - 0 => 1 and fsat(1 - x) => fsat(> 1) => 1
    # If x > 1: 1 - fsat(x) => 1 - 1 => 0 and fsat(1 - x) => fsat(< 0) => 0

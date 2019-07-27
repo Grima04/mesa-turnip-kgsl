@@ -439,6 +439,8 @@ if (src0.z >= 0 && absZ >= absX && absZ >= absY) dst.x = 4;
 if (src0.z < 0 && absZ >= absX && absZ >= absY) dst.x = 5;
 """)
 
+# Sum of vector components
+unop_reduce("fsum", 1, tfloat, tfloat, "{src}", "{src0} + {src1}", "{src}")
 
 def binop_convert(name, out_type, in_type, alg_props, const_expr):
    opcode(name, 0, out_type, [0, 0], [in_type, in_type],
