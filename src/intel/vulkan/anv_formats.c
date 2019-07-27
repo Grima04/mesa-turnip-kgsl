@@ -467,6 +467,14 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
    const struct isl_format_layout *isl_layout =
       isl_format_get_layout(plane_format.isl_format);
 
+   /* On Ivy Bridge we don't even have enough 24 and 48-bit formats that we
+    * can reliably do texture upload with BLORP so just don't claim support
+    * for any of them.
+    */
+   if (devinfo->gen == 7 && !devinfo->is_haswell &&
+       (isl_layout->bpb == 24 || isl_layout->bpb == 48))
+      return unsupported;
+
    if (tiling == VK_IMAGE_TILING_OPTIMAL &&
        !util_is_power_of_two_or_zero(isl_layout->bpb)) {
       /* Tiled formats *must* be power-of-two because we need up upload
