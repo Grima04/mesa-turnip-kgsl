@@ -3840,6 +3840,8 @@ ac_build_readlane(struct ac_llvm_context *ctx, LLVMValueRef src, LLVMValueRef la
 						LLVMConstInt(ctx->i32, i, 0), "");
 		}
 	}
+	if (LLVMGetTypeKind(src_type) == LLVMPointerTypeKind)
+		return LLVMBuildIntToPtr(ctx->builder, ret, src_type, "");
 	return LLVMBuildBitCast(ctx->builder, ret, src_type, "");
 }
 
