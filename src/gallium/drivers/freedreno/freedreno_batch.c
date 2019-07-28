@@ -325,6 +325,8 @@ batch_flush(struct fd_batch *batch)
 
 	batch->flushed = true;
 
+	fd_fence_ref(&batch->ctx->last_fence, batch->fence);
+
 	if (batch->ctx->screen->reorder) {
 		struct fd_batch *tmp = NULL;
 		fd_batch_reference(&tmp, batch);
