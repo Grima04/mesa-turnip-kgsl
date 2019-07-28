@@ -68,6 +68,10 @@ static const nir_shader_compiler_options fs_nir_options = {
    .lower_rotate = true,
 };
 
+static const struct nir_lower_tex_options tex_options = {
+   .lower_txp = ~0u,
+};
+
 const void *
 lima_program_get_compiler_options(enum pipe_shader_type shader)
 {
@@ -138,6 +142,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
    NIR_PASS_V(s, nir_lower_fragcoord_wtrans);
    NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
    NIR_PASS_V(s, nir_lower_regs_to_ssa);
+   NIR_PASS_V(s, nir_lower_tex, &tex_options);
 
    do {
       progress = false;
