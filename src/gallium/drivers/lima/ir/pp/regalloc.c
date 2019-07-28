@@ -231,14 +231,6 @@ static ppir_reg *ppir_regalloc_build_liveness_info(ppir_compiler *comp)
                reg->live_out = node->instr->seq;
             break;
          }
-         case ppir_node_type_load_texture:
-         {
-            ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
-            ppir_reg *reg = get_src_reg(&load_tex->src_coords);
-            if (reg && node->instr->seq > reg->live_out)
-               reg->live_out = node->instr->seq;
-            break;
-         }
          case ppir_node_type_branch:
          {
             ppir_branch_node *branch = ppir_node_to_branch(node);
@@ -317,12 +309,6 @@ static void ppir_regalloc_print_result(ppir_compiler *comp)
                ppir_load_node *load = ppir_node_to_load(node);
                if (!load->num_components)
                   printf("%d", ppir_target_get_src_reg_index(&load->src));
-               break;
-            }
-            case ppir_node_type_load_texture:
-            {
-               ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
-               printf("%d", ppir_target_get_src_reg_index(&load_tex->src_coords));
                break;
             }
             case ppir_node_type_branch:
@@ -618,16 +604,6 @@ static bool ppir_regalloc_spill_reg(ppir_compiler *comp, ppir_reg *chosen)
             reg = get_src_reg(&load->src);
             if (reg == chosen) {
                ppir_update_spilled_src(comp, block, node, &load->src, NULL);
-            }
-            break;
-         }
-         case ppir_node_type_load_texture:
-         {
-            ppir_load_texture_node *load_tex = ppir_node_to_load_texture(node);
-            reg = get_src_reg(&load_tex->src_coords);
-            if (reg == chosen) {
-               ppir_update_spilled_src(comp, block, node, &load_tex->src_coords,
-                                       NULL);
             }
             break;
          }

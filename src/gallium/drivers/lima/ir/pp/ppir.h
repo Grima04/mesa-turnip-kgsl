@@ -258,7 +258,7 @@ typedef struct {
 typedef struct {
    ppir_node node;
    ppir_dest dest;
-   ppir_src src_coords;
+   ppir_src src_coords; /* not to be used after lowering */
    int sampler;
    int sampler_dim;
 } ppir_load_texture_node;

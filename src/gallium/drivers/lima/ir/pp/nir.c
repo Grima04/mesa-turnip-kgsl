@@ -382,7 +382,7 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
    case GLSL_SAMPLER_DIM_EXTERNAL:
       break;
    default:
-      ppir_debug("unsupported sampler dim: %d\n", instr->sampler_dim);
+      ppir_error("unsupported sampler dim: %d\n", instr->sampler_dim);
       return NULL;
    }
 
@@ -391,7 +391,6 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
    for (int i = 0; i < instr->coord_components; i++)
          node->src_coords.swizzle[i] = i;
 
-   assert(instr->num_srcs == 1);
    for (int i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord:
@@ -399,7 +398,8 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
                            u_bit_consecutive(0, instr->coord_components));
          break;
       default:
-         ppir_debug("unknown texture source");
+         ppir_error("unsupported texture source type\n");
+         assert(0);
          return NULL;
       }
    }
