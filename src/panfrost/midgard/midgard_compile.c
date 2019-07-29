@@ -224,7 +224,11 @@ midgard_create_branch_extended( midgard_condition cond,
                                 unsigned dest_tag,
                                 signed quadword_offset)
 {
-        /* For unclear reasons, the condition code is repeated 8 times */
+        /* The condition code is actually a LUT describing a function to
+         * combine multiple condition codes. However, we only support a single
+         * condition code at the moment, so we just duplicate over a bunch of
+         * times. */
+
         uint16_t duplicated_cond =
                 (cond << 14) |
                 (cond << 12) |

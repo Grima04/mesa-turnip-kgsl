@@ -740,15 +740,18 @@ print_extended_branch_writeout_field(uint8_t *words)
 
         print_branch_op(br.op);
 
-        /* Condition repeated 8 times in all known cases. Check this. */
+        /* Condition codes are a LUT in the general case, but simply repeated 8 times for single-channel conditions.. Check this. */
 
-        unsigned cond = br.cond & 0x3;
+        bool single_channel = true;
 
         for (unsigned i = 0; i < 16; i += 2) {
-                assert(((br.cond >> i) & 0x3) == cond);
+                single_channel &= (((br.cond >> i) & 0x3) == (br.cond & 0x3));
         }
 
-        print_branch_cond(cond);
+        if (single_channel)
+                print_branch_cond(br.cond & 0x3);
+        else
+                printf("lut%X", br.cond);
 
         if (br.unknown)
                 printf(".unknown%d", br.unknown);

@@ -359,6 +359,19 @@ __attribute__((__packed__))
         unsigned dest_tag : 4; /* tag of branch destination */
         unsigned unknown : 2;
         signed offset : 23;
+
+        /* Extended branches permit inputting up to 4 conditions loaded into
+         * r31 (two in r31.w and two in r31.x). In the most general case, we
+         * specify a function f(A, B, C, D) mapping 4 1-bit conditions to a
+         * single 1-bit branch criteria. Note that the domain of f has 2^(2^4)
+         * elements, each mapping to 1-bit of output, so we can trivially
+         * construct a Godel numbering of f as a (2^4)=16-bit integer. This
+         * 16-bit integer serves as a lookup table to compute f, subject to
+         * some swaps for ordering.
+         *
+         * Interesting, the standard 2-bit condition codes are also a LUT with
+         * the same format (2^1-bit), but it's usually easier to use enums. */
+
         unsigned cond : 16;
 }
 midgard_branch_extended;
