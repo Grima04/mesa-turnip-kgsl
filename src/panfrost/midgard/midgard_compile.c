@@ -714,6 +714,14 @@ reg_mode_for_nir(nir_alu_instr *instr)
 static void
 emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 {
+        /* Derivatives end up emitted on the texture pipe, not the ALUs. This
+         * is handled elsewhere */
+
+        if (instr->op == nir_op_fddx || instr->op == nir_op_fddy) {
+                midgard_emit_derivatives(ctx, instr);
+                return;
+        }
+
         bool is_ssa = instr->dest.dest.is_ssa;
 
         unsigned dest = nir_dest_index(ctx, &instr->dest.dest);
@@ -2347,6 +2355,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
 
         mir_foreach_block(ctx, block) {
                 midgard_lower_invert(ctx, block);
+                midgard_lower_derivatives(ctx, block);
         }
 
         /* Nested control-flow can result in dead branches at the end of the

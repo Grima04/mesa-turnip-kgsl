@@ -258,7 +258,7 @@ emit_binary_bundle(compiler_context *ctx,
 
                 ctx->texture_op_count--;
 
-                if (ins->texture.op == TEXTURE_OP_NORMAL) {
+                if (mir_op_computes_derivatives(ins->texture.op)) {
                         bool continues = ctx->texture_op_count > 0;
                         ins->texture.cont = continues;
                         ins->texture.last = !continues;

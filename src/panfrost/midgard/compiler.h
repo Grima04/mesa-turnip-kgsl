@@ -541,6 +541,13 @@ emit_ubo_read(
         nir_src *indirect_offset,
         unsigned index);
 
+void
+midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr);
+
+void
+midgard_lower_derivatives(compiler_context *ctx, midgard_block *block);
+
+bool mir_op_computes_derivatives(unsigned op);
 
 /* Final emission */
 
