@@ -5319,7 +5319,7 @@ iris_upload_render_state(struct iris_context *ice,
       struct iris_address addr =
          ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
       struct gen_mi_value offset =
-         gen_mi_iadd_imm(&b, gen_mi_mem64(addr), -so->base.buffer_offset);
+         gen_mi_iadd_imm(&b, gen_mi_mem32(addr), -so->base.buffer_offset);
 
       gen_mi_store(&b, gen_mi_reg32(_3DPRIM_VERTEX_COUNT),
                        gen_mi_udiv32_imm(&b, offset, so->stride));
