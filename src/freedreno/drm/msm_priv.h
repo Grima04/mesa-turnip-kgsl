@@ -66,11 +66,6 @@ struct fd_submit * msm_submit_sp_new(struct fd_pipe *pipe);
 struct msm_bo {
 	struct fd_bo base;
 	uint64_t offset;
-	/* to avoid excess hashtable lookups, cache the ring this bo was
-	 * last emitted on (since that will probably also be the next ring
-	 * it is emitted on)
-	 */
-	unsigned current_submit_seqno;
 	uint32_t idx;
 };
 FD_DEFINE_CAST(fd_bo, msm_bo);
@@ -137,5 +132,7 @@ grow(void *ptr, uint16_t nr, uint16_t *max, uint16_t sz)
 	(x)->name = grow((x)->name, (x)->nr_ ## name, &(x)->max_ ## name, sizeof((x)->name[0])); \
 	(x)->nr_ ## name ++; \
 })
+
+#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 
 #endif /* MSM_PRIV_H_ */
