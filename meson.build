@@ -1035,6 +1035,13 @@ foreach f : ['strtof', 'mkostemp', 'posix_memalign', 'timespec_get', 'memfd_crea
   endif
 endforeach
 
+if cc.has_header_symbol('errno.h', 'program_invocation_name',
+                        args : '-D_GNU_SOURCE')
+   pre_args += '-DHAVE_PROGRAM_INVOCATION_NAME'
+elif with_tools.contains('intel')
+  error('Intel tools require the program_invocation_name variable')
+endif
+
 # strtod locale support
 if cc.links('''
     #define _GNU_SOURCE

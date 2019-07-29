@@ -32,11 +32,7 @@
 
 #undef GET_PROGRAM_NAME
 
-#if (defined(__GNU_LIBRARY__) || defined(__GLIBC__)) && !defined(__UCLIBC__)
-#    if !defined(__GLIBC__) || (__GLIBC__ < 2)
-/* These aren't declared in any libc5 header */
-extern char *program_invocation_name, *program_invocation_short_name;
-#    endif
+#if defined(__linux__) && defined(HAVE_PROGRAM_INVOCATION_NAME)
 static const char *
 __getProgramName()
 {
@@ -79,7 +75,7 @@ __getProgramName()
    return program_invocation_name;
 }
 #    define GET_PROGRAM_NAME() __getProgramName()
-#elif defined(__CYGWIN__)
+#elif defined(HAVE_PROGRAM_INVOCATION_NAME)
 #    define GET_PROGRAM_NAME() program_invocation_short_name
 #elif defined(__FreeBSD__) && (__FreeBSD__ >= 2)
 #    include <osreldate.h>
