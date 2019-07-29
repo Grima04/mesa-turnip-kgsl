@@ -115,6 +115,7 @@ EXTENSIONS = [
     Extension('VK_EXT_external_memory_host',              1, 'device->rad_info.has_userptr'),
     Extension('VK_EXT_global_priority',                   1, 'device->rad_info.has_ctx_priority'),
     Extension('VK_EXT_host_query_reset',                  1, True),
+    Extension('VK_EXT_index_type_uint8',                  1, 'device->rad_info.chip_class >= GFX8'),
     Extension('VK_EXT_inline_uniform_block',              1, True),
     Extension('VK_EXT_memory_budget',                     1, True),
     Extension('VK_EXT_memory_priority',                   1, True),

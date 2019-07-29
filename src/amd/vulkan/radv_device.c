@@ -987,6 +987,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->uniformBufferStandardLayout = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+			VkPhysicalDeviceIndexTypeUint8FeaturesEXT *features =
+				(VkPhysicalDeviceIndexTypeUint8FeaturesEXT *)ext;
+			features->indexTypeUint8 = pdevice->rad_info.chip_class >= GFX8;
+			break;
+		}
 		default:
 			break;
 		}

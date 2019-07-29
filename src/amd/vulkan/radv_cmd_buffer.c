@@ -2541,6 +2541,21 @@ struct radv_draw_info {
 	uint64_t strmout_buffer_offset;
 };
 
+static uint32_t
+radv_get_primitive_reset_index(struct radv_cmd_buffer *cmd_buffer)
+{
+	switch (cmd_buffer->state.index_type) {
+	case V_028A7C_VGT_INDEX_8:
+		return 0xffu;
+	case V_028A7C_VGT_INDEX_16:
+		return 0xffffu;
+	case V_028A7C_VGT_INDEX_32:
+		return 0xffffffffu;
+	default:
+		unreachable("invalid index type");
+	}
+}
+
 static void
 si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 			   bool instanced_draw, bool indirect_draw,
@@ -2612,7 +2627,7 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer,
 
 	if (primitive_reset_en) {
 		uint32_t primitive_reset_index =
-			state->index_type ? 0xffffffffu : 0xffffu;
+			radv_get_primitive_reset_index(cmd_buffer);
 
 		if (primitive_reset_index != state->last_primitive_reset_index) {
 			radeon_set_context_reg(cs,
@@ -3233,6 +3248,36 @@ void radv_CmdBindVertexBuffers(
 	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
 }
 
+static uint32_t
+vk_to_index_type(VkIndexType type)
+{
+	switch (type) {
+	case VK_INDEX_TYPE_UINT8_EXT:
+		return V_028A7C_VGT_INDEX_8;
+	case VK_INDEX_TYPE_UINT16:
+		return V_028A7C_VGT_INDEX_16;
+	case VK_INDEX_TYPE_UINT32:
+		return V_028A7C_VGT_INDEX_32;
+	default:
+		unreachable("invalid index type");
+	}
+}
+
+static uint32_t
+radv_get_vgt_index_size(uint32_t type)
+{
+	switch (type) {
+	case V_028A7C_VGT_INDEX_8:
+		return 1;
+	case V_028A7C_VGT_INDEX_16:
+		return 2;
+	case V_028A7C_VGT_INDEX_32:
+		return 4;
+	default:
+		unreachable("invalid index type");
+	}
+}
+
 void radv_CmdBindIndexBuffer(
 	VkCommandBuffer                             commandBuffer,
 	VkBuffer buffer,
@@ -3251,12 +3296,12 @@ void radv_CmdBindIndexBuffer(
 
 	cmd_buffer->state.index_buffer = index_buffer;
 	cmd_buffer->state.index_offset = offset;
-	cmd_buffer->state.index_type = indexType; /* vk matches hw */
+	cmd_buffer->state.index_type = vk_to_index_type(indexType);
 	cmd_buffer->state.index_va = radv_buffer_get_va(index_buffer->bo);
 	cmd_buffer->state.index_va += index_buffer->offset + offset;
 
-	int index_size_shift = cmd_buffer->state.index_type ? 2 : 1;
-	cmd_buffer->state.max_index_count = (index_buffer->size - offset) >> index_size_shift;
+	int index_size = radv_get_vgt_index_size(indexType);
+	cmd_buffer->state.max_index_count = (index_buffer->size - offset) / index_size;
 	cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
 	radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, index_buffer->bo);
 }
@@ -4275,7 +4320,7 @@ radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
 		}
 
 		if (info->indexed) {
-			int index_size = state->index_type ? 4 : 2;
+			int index_size = radv_get_vgt_index_size(state->index_type);
 			uint64_t index_va;
 
 			index_va = state->index_va;
@@ -4354,8 +4399,11 @@ static bool radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 	if (cmd_buffer->state.dirty & used_states)
 		return true;
 
+	uint32_t primitive_reset_index =
+		radv_get_primitive_reset_index(cmd_buffer);
+
 	if (info->indexed && state->pipeline->graphics.prim_restart_enable &&
-	    (state->index_type ? 0xffffffffu : 0xffffu) != state->last_primitive_reset_index)
+	    primitive_reset_index != state->last_primitive_reset_index)
 		return true;
 
 	return false;
