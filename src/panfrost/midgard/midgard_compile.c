@@ -293,17 +293,6 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         }
 }
 
-static unsigned
-nir_dest_index(compiler_context *ctx, nir_dest *dst)
-{
-        if (dst->is_ssa)
-                return (dst->ssa.index << 1) | 0;
-        else {
-                assert(!dst->reg.indirect);
-                return (dst->reg.reg->index << 1) | IS_REG;
-        }
-}
-
 static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
                             unsigned *dest)
 {
@@ -545,23 +534,6 @@ emit_explicit_constant(compiler_context *ctx, unsigned node, unsigned to)
                 attach_constants(ctx, &ins, constant_value, node + 1);
                 emit_mir_instruction(ctx, ins);
         }
-}
-
-static unsigned
-nir_src_index(compiler_context *ctx, nir_src *src)
-{
-        if (src->is_ssa)
-                return (src->ssa->index << 1) | 0;
-        else {
-                assert(!src->reg.indirect);
-                return (src->reg.reg->index << 1) | IS_REG;
-        }
-}
-
-static unsigned
-nir_alu_src_index(compiler_context *ctx, nir_alu_src *src)
-{
-        return nir_src_index(ctx, &src->src);
 }
 
 static bool

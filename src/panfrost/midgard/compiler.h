@@ -387,6 +387,36 @@ make_compiler_temp(compiler_context *ctx)
         return (ctx->func->impl->ssa_alloc + ctx->temp_alloc++) << 1;
 }
 
+static inline unsigned
+nir_src_index(compiler_context *ctx, nir_src *src)
+{
+        if (src->is_ssa)
+                return (src->ssa->index << 1) | 0;
+        else {
+                assert(!src->reg.indirect);
+                return (src->reg.reg->index << 1) | IS_REG;
+        }
+}
+
+static inline unsigned
+nir_alu_src_index(compiler_context *ctx, nir_alu_src *src)
+{
+        return nir_src_index(ctx, &src->src);
+}
+
+static inline unsigned
+nir_dest_index(compiler_context *ctx, nir_dest *dst)
+{
+        if (dst->is_ssa)
+                return (dst->ssa.index << 1) | 0;
+        else {
+                assert(!dst->reg.indirect);
+                return (dst->reg.reg->index << 1) | IS_REG;
+        }
+}
+
+
+
 /* MIR manipulation */
 
 void mir_rewrite_index(compiler_context *ctx, unsigned old, unsigned new);
