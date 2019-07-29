@@ -3842,15 +3842,9 @@ bool si_update_shaders(struct si_context *sctx)
 	if (sctx->gs_shader.cso)
 		key.u.gs = 1;
 
-	if (sctx->chip_class >= GFX10) {
-		key.u.ngg = sctx->ngg;
-
-		if (sctx->gs_shader.cso)
-			key.u.streamout = !!sctx->gs_shader.cso->so.num_outputs;
-		else if (sctx->tes_shader.cso)
-			key.u.streamout = !!sctx->tes_shader.cso->so.num_outputs;
-		else
-			key.u.streamout = !!sctx->vs_shader.cso->so.num_outputs;
+	if (sctx->ngg) {
+		key.u.ngg = 1;
+		key.u.streamout = !!si_get_vs(sctx)->cso->so.num_outputs;
 	}
 
 	/* Update TCS and TES. */
