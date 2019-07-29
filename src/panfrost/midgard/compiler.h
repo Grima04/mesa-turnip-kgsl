@@ -388,6 +388,12 @@ make_compiler_temp(compiler_context *ctx)
 }
 
 static inline unsigned
+make_compiler_temp_reg(compiler_context *ctx)
+{
+        return ((ctx->func->impl->reg_alloc + ctx->temp_alloc++) << 1) | IS_REG;
+}
+
+static inline unsigned
 nir_src_index(compiler_context *ctx, nir_src *src)
 {
         if (src->is_ssa)
