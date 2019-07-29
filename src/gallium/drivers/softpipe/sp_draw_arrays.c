@@ -69,9 +69,6 @@ softpipe_draw_vbo(struct pipe_context *pipe,
    if (!softpipe_check_render_cond(sp))
       return;
 
-   if (sp->rasterizer && sp->rasterizer->rasterizer_discard)
-      return;
-
    if (info->indirect) {
       util_draw_indirect(pipe, info);
       return;
