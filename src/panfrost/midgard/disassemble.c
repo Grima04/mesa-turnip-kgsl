@@ -1078,7 +1078,7 @@ print_texture_op(unsigned op, bool gather)
                 DEFINE_CASE(TEXTURE_OP_DFDY, "dFdy");
 
         default:
-                printf("tex_%d", op);
+                printf("tex_%X", op);
                 break;
         }
 }
