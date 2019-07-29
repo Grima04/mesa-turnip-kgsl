@@ -294,8 +294,9 @@ surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
           * are unavailable since 6c5ab, and kms_swrast is more
           * feature complete than swrast.
           */
-         if (strcmp(driver_name, "vgem") == 0 ||
-             strcmp(driver_name, "virtio_gpu") == 0)
+         if (driver_name &&
+             (strcmp(driver_name, "vgem") == 0 ||
+              strcmp(driver_name, "virtio_gpu") == 0))
             dri2_dpy->driver_name = strdup("kms_swrast");
          free(driver_name);
       } else {
