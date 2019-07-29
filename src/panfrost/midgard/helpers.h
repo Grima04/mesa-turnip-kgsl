@@ -79,6 +79,11 @@
                 op == midgard_alu_op_fcsel \
         )
 
+#define OP_IS_DERIVATIVE(op) ( \
+                op == TEXTURE_OP_DFDX || \
+                op == TEXTURE_OP_DFDY \
+        )
+
 /* ALU control words are single bit fields with a lot of space */
 
 #define ALU_ENAB_VEC_MUL  (1 << 17)
