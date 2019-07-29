@@ -82,6 +82,7 @@ files_mesa_util = files(
   'strtod.c',
   'strtod.h',
   'texcompress_rgtc_tmp.h',
+  'timespec.h',
   'u_atomic.c',
   'u_atomic.h',
   'u_dynarray.h',
@@ -218,6 +219,7 @@ if with_tests
   subdir('tests/fast_urem_by_const')
   subdir('tests/hash_table')
   subdir('tests/string_buffer')
+  subdir('tests/timespec')
   subdir('tests/vma')
   subdir('tests/set')
 endif
