@@ -526,7 +526,7 @@ gen_mi_store_if(struct gen_mi_builder *b,
    assert(dst.type == GEN_MI_VALUE_TYPE_MEM64 ||
           dst.type == GEN_MI_VALUE_TYPE_MEM32);
 
-   if (src.type != GEN_MI_VALUE_TYPE_REG32 ||
+   if (src.type != GEN_MI_VALUE_TYPE_REG32 &&
        src.type != GEN_MI_VALUE_TYPE_REG64) {
       struct gen_mi_value tmp = gen_mi_new_gpr(b);
       _gen_mi_copy_no_unref(b, tmp, src);
