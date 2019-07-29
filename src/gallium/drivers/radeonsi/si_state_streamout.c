@@ -50,7 +50,7 @@ si_create_so_target(struct pipe_context *ctx,
 		return NULL;
 	}
 
-	unsigned buf_filled_size_size = sctx->chip_class >= GFX10 ? 8 : 4;
+	unsigned buf_filled_size_size = sctx->screen->use_ngg_streamout ? 8 : 4;
 	u_suballocator_alloc(sctx->allocator_zeroed_memory, buf_filled_size_size, 4,
 			     &t->buf_filled_size_offset,
 			     (struct pipe_resource**)&t->buf_filled_size);
@@ -127,7 +127,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 			       SI_CONTEXT_INV_VCACHE;
 
 		/* The BUFFER_FILLED_SIZE is written using a PS_DONE event. */
-		if (sctx->chip_class >= GFX10) {
+		if (sctx->screen->use_ngg_streamout) {
 			sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
 
 			/* Wait now. This is needed to make sure that GDS is not
@@ -146,7 +146,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 	 * start writing to the targets.
 	 */
 	if (num_targets) {
-		if (sctx->chip_class >= GFX10)
+		if (sctx->screen->use_ngg_streamout)
 			si_allocate_gds(sctx);
 
 		sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH |
@@ -197,7 +197,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx,
 			struct pipe_shader_buffer sbuf;
 			sbuf.buffer = targets[i]->buffer;
 
-			if (sctx->chip_class >= GFX10) {
+			if (sctx->screen->use_ngg_streamout) {
 				sbuf.buffer_offset = targets[i]->buffer_offset;
 				sbuf.buffer_size = targets[i]->buffer_size;
 			} else {
@@ -370,7 +370,7 @@ static void si_emit_streamout_begin(struct si_context *sctx)
 
 void si_emit_streamout_end(struct si_context *sctx)
 {
-	if (sctx->chip_class >= GFX10) {
+	if (sctx->screen->use_ngg_streamout) {
 		gfx10_emit_streamout_end(sctx);
 		return;
 	}
@@ -423,7 +423,7 @@ void si_emit_streamout_end(struct si_context *sctx)
 
 static void si_emit_streamout_enable(struct si_context *sctx)
 {
-	assert(sctx->chip_class < GFX10);
+	assert(!sctx->screen->use_ngg_streamout);
 
 	radeon_set_context_reg_seq(sctx->gfx_cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
 	radeon_emit(sctx->gfx_cs,
@@ -449,7 +449,7 @@ static void si_set_streamout_enable(struct si_context *sctx, bool enable)
 					  (sctx->streamout.enabled_mask << 8) |
 					  (sctx->streamout.enabled_mask << 12);
 
-	if (sctx->chip_class < GFX10 &&
+	if (!sctx->screen->use_ngg_streamout &&
 	    ((old_strmout_en != si_get_strmout_en(sctx)) ||
 	     (old_hw_enabled_mask != sctx->streamout.hw_enabled_mask)))
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.streamout_enable);
@@ -458,7 +458,7 @@ static void si_set_streamout_enable(struct si_context *sctx, bool enable)
 void si_update_prims_generated_query_state(struct si_context *sctx,
 					   unsigned type, int diff)
 {
-	if (sctx->chip_class < GFX10 &&
+	if (!sctx->screen->use_ngg_streamout &&
 	    type == PIPE_QUERY_PRIMITIVES_GENERATED) {
 		bool old_strmout_en = si_get_strmout_en(sctx);
 
@@ -479,7 +479,7 @@ void si_init_streamout_functions(struct si_context *sctx)
 	sctx->b.stream_output_target_destroy = si_so_target_destroy;
 	sctx->b.set_stream_output_targets = si_set_streamout_targets;
 
-	if (sctx->chip_class >= GFX10) {
+	if (sctx->screen->use_ngg_streamout) {
 		sctx->atoms.s.streamout_begin.emit = gfx10_emit_streamout_begin;
 	} else {
 		sctx->atoms.s.streamout_begin.emit = si_emit_streamout_begin;

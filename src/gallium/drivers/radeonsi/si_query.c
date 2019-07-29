@@ -1013,7 +1013,7 @@ static void si_emit_query_predication(struct si_context *ctx)
 	if (!query)
 		return;
 
-	if (ctx->chip_class == GFX10 &&
+	if (ctx->screen->use_ngg_streamout &&
 	    (query->b.type == PIPE_QUERY_SO_OVERFLOW_PREDICATE ||
 	     query->b.type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)) {
 		assert(!"not implemented");
@@ -1100,7 +1100,7 @@ static struct pipe_query *si_create_query(struct pipe_context *ctx, unsigned que
 	     query_type != SI_QUERY_TIME_ELAPSED_SDMA))
 		return si_query_sw_create(query_type);
 
-	if (sscreen->info.chip_class >= GFX10 &&
+	if (sscreen->use_ngg_streamout &&
 	    (query_type == PIPE_QUERY_PRIMITIVES_EMITTED ||
 	     query_type == PIPE_QUERY_PRIMITIVES_GENERATED ||
 	     query_type == PIPE_QUERY_SO_STATISTICS ||

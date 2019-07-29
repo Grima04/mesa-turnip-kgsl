@@ -161,7 +161,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return 1;
 
 	case PIPE_CAP_QUERY_SO_OVERFLOW:
-		return sscreen->info.chip_class <= GFX9;
+		return !sscreen->use_ngg_streamout;
 
 	case PIPE_CAP_POST_DEPTH_COVERAGE:
 		return sscreen->info.chip_class >= GFX10;

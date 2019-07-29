@@ -3460,7 +3460,7 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
 	ret = si_insert_input_ptr(ctx, ret,
 				  ctx->param_bindless_samplers_and_images,
 				  8 + SI_SGPR_BINDLESS_SAMPLERS_AND_IMAGES);
-	if (ctx->screen->info.chip_class >= GFX10) {
+	if (ctx->screen->use_ngg) {
 		ret = si_insert_input_ptr(ctx, ret, ctx->param_vs_state_bits,
 					  8 + SI_SGPR_VS_STATE_BITS);
 	}
@@ -3666,7 +3666,7 @@ static void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi,
 		}
 	}
 
-	if (ctx->ac.chip_class <= GFX9 &&
+	if (!ctx->screen->use_ngg_streamout &&
 	    ctx->shader->selector->so.num_outputs)
 		si_llvm_emit_streamout(ctx, outputs, i, 0);
 
@@ -4462,7 +4462,7 @@ static void declare_streamout_params(struct si_shader_context *ctx,
 				     struct pipe_stream_output_info *so,
 				     struct si_function_info *fninfo)
 {
-	if (ctx->ac.chip_class >= GFX10)
+	if (ctx->screen->use_ngg_streamout)
 		return;
 
 	/* Streamout SGPRs. */
@@ -5738,7 +5738,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	/* Fetch the vertex stream ID.*/
 	LLVMValueRef stream_id;
 
-	if (ctx.ac.chip_class <= GFX9 && gs_selector->so.num_outputs)
+	if (!sscreen->use_ngg_streamout && gs_selector->so.num_outputs)
 		stream_id = si_unpack_param(&ctx, ctx.param_streamout_config, 24, 2);
 	else
 		stream_id = ctx.i32_0;
@@ -5798,7 +5798,7 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 		}
 
 		/* Streamout and exports. */
-		if (ctx.ac.chip_class <= GFX9 && gs_selector->so.num_outputs) {
+		if (!sscreen->use_ngg_streamout && gs_selector->so.num_outputs) {
 			si_llvm_emit_streamout(&ctx, outputs,
 					       gsinfo->num_outputs,
 					       stream);

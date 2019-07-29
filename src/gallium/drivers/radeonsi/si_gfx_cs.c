@@ -162,11 +162,11 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags,
 			si_emit_streamout_end(ctx);
 			ctx->streamout.suspended = true;
 
-			/* Since streamout uses GDS on gfx10, we need to make
-			 * GDS idle when we leave the IB, otherwise another
-			 * process might overwrite it while our shaders are busy.
+			/* Since NGG streamout uses GDS, we need to make GDS
+			 * idle when we leave the IB, otherwise another process
+			 * might overwrite it while our shaders are busy.
 			 */
-			if (ctx->chip_class >= GFX10)
+			if (ctx->screen->use_ngg_streamout)
 				wait_flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
 		}
 	}
@@ -303,7 +303,7 @@ void si_allocate_gds(struct si_context *sctx)
 	if (sctx->gds)
 		return;
 
-	assert(sctx->chip_class >= GFX10); /* for gfx10 streamout */
+	assert(sctx->screen->use_ngg_streamout);
 
 	/* 4 streamout GDS counters.
 	 * We need 256B (64 dw) of GDS, otherwise streamout hangs.
@@ -405,7 +405,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		si_mark_atom_dirty(ctx, &ctx->atoms.s.dpbb_state);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.stencil_ref);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.spi_map);
-	if (ctx->chip_class < GFX10)
+	if (!ctx->screen->use_ngg_streamout)
 		si_mark_atom_dirty(ctx, &ctx->atoms.s.streamout_enable);
 	si_mark_atom_dirty(ctx, &ctx->atoms.s.render_cond);
 	/* CLEAR_STATE disables all window rectangles. */

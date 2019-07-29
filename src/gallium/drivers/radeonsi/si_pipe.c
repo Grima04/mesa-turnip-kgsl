@@ -501,7 +501,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 	if (!sctx->border_color_map)
 		goto fail;
 
-	sctx->ngg = sctx->chip_class >= GFX10;
+	sctx->ngg = sscreen->use_ngg;
 
 	/* Initialize context functions used by graphics and compute. */
 	if (sctx->chip_class >= GFX10)
@@ -1154,6 +1154,8 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 					sscreen->info.family == CHIP_RAVEN;
 	sscreen->has_dcc_constant_encode = sscreen->info.family == CHIP_RAVEN2 ||
 					   sscreen->info.chip_class >= GFX10;
+	sscreen->use_ngg = sscreen->info.chip_class >= GFX10;
+	sscreen->use_ngg_streamout = sscreen->info.chip_class >= GFX10;
 
 	/* Only enable primitive binning on APUs by default. */
 	if (sscreen->info.chip_class >= GFX10) {

@@ -505,6 +505,8 @@ struct si_screen {
 	bool				dpbb_allowed;
 	bool				dfsm_allowed;
 	bool				llvm_has_working_vgpr_indexing;
+	bool				use_ngg;
+	bool				use_ngg_streamout;
 
 	struct {
 #define OPT_BOOL(name, dflt, description) bool name:1;

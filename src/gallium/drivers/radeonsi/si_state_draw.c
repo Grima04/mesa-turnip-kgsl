@@ -586,10 +586,11 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 	struct radeon_cmdbuf *cs = sctx->gfx_cs;
 	enum pipe_prim_type rast_prim = sctx->current_rast_prim;
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+	bool use_ngg = sctx->screen->use_ngg;
 
 	if (likely(rast_prim == sctx->last_rast_prim &&
 		   rs->pa_sc_line_stipple == sctx->last_sc_line_stipple &&
-		   (sctx->chip_class <= GFX9 ||
+		   (!use_ngg ||
 		    rs->flatshade_first == sctx->last_flatshade_first)))
 		return;
 
@@ -610,13 +611,13 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 		radeon_set_context_reg(cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
 		sctx->context_roll = true;
 
-		if (sctx->chip_class >= GFX10) {
+		if (use_ngg) {
 			sctx->current_vs_state &= C_VS_STATE_OUTPRIM;
 			sctx->current_vs_state |= S_VS_STATE_OUTPRIM(gs_out);
 		}
 	}
 
-	if (sctx->chip_class >= GFX10) {
+	if (use_ngg) {
 		unsigned vtx_index = rs->flatshade_first ? 0 : gs_out;
 		sctx->current_vs_state &= C_VS_STATE_PROVOKING_VTX_INDEX;
 		sctx->current_vs_state |= S_VS_STATE_PROVOKING_VTX_INDEX(vtx_index);
@@ -662,7 +663,7 @@ static void si_emit_vs_state(struct si_context *sctx,
 		}
 
 		/* For NGG: */
-		if (sctx->chip_class >= GFX10 &&
+		if (sctx->screen->use_ngg &&
 		    sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX] !=
 		    R_00B230_SPI_SHADER_USER_DATA_GS_0) {
 			radeon_set_sh_reg(cs,

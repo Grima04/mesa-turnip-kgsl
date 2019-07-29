@@ -1413,8 +1413,10 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 			 S_00B12C_OC_LDS_EN(oc_lds_en) |
 			 S_00B12C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 
-	if (sscreen->info.chip_class <= GFX9) {
+	if (sscreen->info.chip_class <= GFX9)
 		rsrc1 |= S_00B128_SGPRS((shader->config.num_sgprs - 1) / 8);
+
+	if (!sscreen->use_ngg_streamout) {
 		rsrc2 |= S_00B12C_SO_BASE0_EN(!!shader->selector->so.stride[0]) |
 			 S_00B12C_SO_BASE1_EN(!!shader->selector->so.stride[1]) |
 			 S_00B12C_SO_BASE2_EN(!!shader->selector->so.stride[2]) |
@@ -2453,7 +2455,9 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		si_parse_next_shader_property(&sel->info,
 					      sel->so.num_outputs != 0,
 					      &shader->key);
-		if (sscreen->info.chip_class >= GFX10 &&
+
+		if (sscreen->use_ngg &&
+		    (!sel->so.num_outputs || sscreen->use_ngg_streamout) &&
 		    ((sel->type == PIPE_SHADER_VERTEX &&
 		      !shader->key.as_ls && !shader->key.as_es) ||
 		     sel->type == PIPE_SHADER_TESS_EVAL ||
@@ -2537,7 +2541,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 
 	/* The GS copy shader is always pre-compiled. */
 	if (sel->type == PIPE_SHADER_GEOMETRY &&
-	    (sscreen->info.chip_class <= GFX9 || sel->tess_turns_off_ngg)) {
+	    (!sscreen->use_ngg || sel->tess_turns_off_ngg)) {
 		sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
 		if (!sel->gs_copy_shader) {
 			fprintf(stderr, "radeonsi: can't create GS copy shader\n");
@@ -2993,7 +2997,7 @@ static void si_update_tess_uses_prim_id(struct si_context *sctx)
 
 static bool si_update_ngg(struct si_context *sctx)
 {
-	if (sctx->chip_class <= GFX9)
+	if (!sctx->screen->use_ngg)
 		return false;
 
 	bool new_ngg = true;
