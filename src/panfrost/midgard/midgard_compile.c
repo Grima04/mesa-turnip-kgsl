@@ -1440,9 +1440,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 float ref_value = ctx->alpha_ref;
 
+                /* See emit_load_const */
                 float *v = ralloc_array(NULL, float, 4);
                 memcpy(v, &ref_value, sizeof(float));
-                _mesa_hash_table_u64_insert(ctx->ssa_constants, instr->dest.ssa.index + 1, v);
+                _mesa_hash_table_u64_insert(ctx->ssa_constants, (instr->dest.ssa.index << 1) + 1, v);
                 break;
 
         case nir_intrinsic_load_viewport_scale:
