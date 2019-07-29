@@ -833,8 +833,10 @@ install_registers_instr(
                 ins->texture.out_full = 1;
                 ins->texture.out_upper = 0;
                 ins->texture.out_reg_select = dest.reg - 28;
-                ins->texture.swizzle = dest.swizzle;
-                ins->texture.mask = dest.mask;
+                ins->texture.swizzle =
+                        compose_swizzle(ins->texture.swizzle, dest.mask, dest, dest);
+                ins->mask =
+                        compose_writemask(ins->mask, dest);
 
                 /* If there is a register LOD/bias, use it */
                 if (args.src1 > -1) {
