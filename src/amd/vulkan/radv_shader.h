@@ -28,25 +28,14 @@
 #ifndef RADV_SHADER_H
 #define RADV_SHADER_H
 
-#include "radv_debug.h"
-#include "radv_private.h"
+#include "ac_binary.h"
+#include "amd_family.h"
+#include "radv_constants.h"
 
 #include "nir/nir.h"
+#include "vulkan/vulkan.h"
 
-/* descriptor index into scratch ring offsets */
-#define RING_SCRATCH 0
-#define RING_ESGS_VS 1
-#define RING_ESGS_GS 2
-#define RING_GSVS_VS 3
-#define RING_GSVS_GS 4
-#define RING_HS_TESS_FACTOR 5
-#define RING_HS_TESS_OFFCHIP 6
-#define RING_PS_SAMPLE_POSITIONS 7
-
-// Match MAX_SETS from radv_descriptor_set.h
-#define RADV_UD_MAX_SETS MAX_SETS
-
-#define RADV_NUM_PHYSICAL_VGPRS 256
+struct radv_device;
 
 struct radv_shader_module {
 	struct nir_shader *nir;
@@ -238,7 +227,7 @@ struct radv_userdata_info {
 };
 
 struct radv_userdata_locations {
-	struct radv_userdata_info descriptor_sets[RADV_UD_MAX_SETS];
+	struct radv_userdata_info descriptor_sets[MAX_SETS];
 	struct radv_userdata_info shader_data[AC_UD_MAX_UD];
 	uint32_t descriptor_sets_enabled;
 };
@@ -431,48 +420,16 @@ radv_shader_dump_stats(struct radv_device *device,
 		       gl_shader_stage stage,
 		       FILE *file);
 
-static inline bool
+bool
 radv_can_dump_shader(struct radv_device *device,
 		     struct radv_shader_module *module,
-		     bool is_gs_copy_shader)
-{
-	if (!(device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS))
-		return false;
+		     bool is_gs_copy_shader);
 
-	/* Only dump non-meta shaders, useful for debugging purposes. */
-	return (module && !module->nir) || is_gs_copy_shader;
-}
-
-static inline bool
+bool
 radv_can_dump_shader_stats(struct radv_device *device,
-			   struct radv_shader_module *module)
-{
-	/* Only dump non-meta shader stats. */
-	return device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS &&
-	       module && !module->nir;
-}
+			   struct radv_shader_module *module);
 
-static inline unsigned shader_io_get_unique_index(gl_varying_slot slot)
-{
-	/* handle patch indices separate */
-	if (slot == VARYING_SLOT_TESS_LEVEL_OUTER)
-		return 0;
-	if (slot == VARYING_SLOT_TESS_LEVEL_INNER)
-		return 1;
-	if (slot >= VARYING_SLOT_PATCH0 && slot <= VARYING_SLOT_TESS_MAX)
-		return 2 + (slot - VARYING_SLOT_PATCH0);
-	if (slot == VARYING_SLOT_POS)
-		return 0;
-	if (slot == VARYING_SLOT_PSIZ)
-		return 1;
-	if (slot == VARYING_SLOT_CLIP_DIST0)
-		return 2;
-	if (slot == VARYING_SLOT_CLIP_DIST1)
-		return 3;
-	/* 3 is reserved for clip dist as well */
-	if (slot >= VARYING_SLOT_VAR0 && slot <= VARYING_SLOT_VAR31)
-		return 4 + (slot - VARYING_SLOT_VAR0);
-	unreachable("illegal slot in get unique index\n");
-}
+unsigned
+shader_io_get_unique_index(gl_varying_slot slot);
 
 #endif

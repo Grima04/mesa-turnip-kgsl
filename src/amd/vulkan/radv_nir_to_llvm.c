@@ -55,7 +55,7 @@ struct radv_shader_context {
 	LLVMContextRef context;
 	LLVMValueRef main_function;
 
-	LLVMValueRef descriptor_sets[RADV_UD_MAX_SETS];
+	LLVMValueRef descriptor_sets[MAX_SETS];
 	LLVMValueRef ring_offsets;
 
 	LLVMValueRef vertex_buffers;
@@ -4342,7 +4342,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	for(int i = 0; i < shader_count; ++i)
 		radv_nir_shader_info_pass(shaders[i], options, &shader_info->info);
 
-	for (i = 0; i < RADV_UD_MAX_SETS; i++)
+	for (i = 0; i < MAX_SETS; i++)
 		shader_info->user_sgprs_locs.descriptor_sets[i].sgpr_idx = -1;
 	for (i = 0; i < AC_UD_MAX_UD; i++)
 		shader_info->user_sgprs_locs.shader_data[i].sgpr_idx = -1;

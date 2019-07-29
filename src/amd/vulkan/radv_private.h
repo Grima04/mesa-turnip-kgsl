@@ -60,6 +60,7 @@
 #include "ac_surface.h"
 #include "ac_llvm_build.h"
 #include "ac_llvm_util.h"
+#include "radv_constants.h"
 #include "radv_descriptor_set.h"
 #include "radv_extensions.h"
 #include "sid.h"
@@ -93,40 +94,6 @@ struct gfx10_format {
 };
 
 #include "gfx10_format_table.h"
-
-#define ATI_VENDOR_ID 0x1002
-
-#define MAX_VBS         32
-#define MAX_VERTEX_ATTRIBS 32
-#define MAX_RTS          8
-#define MAX_VIEWPORTS   16
-#define MAX_SCISSORS    16
-#define MAX_DISCARD_RECTANGLES 4
-#define MAX_SAMPLE_LOCATIONS 32
-#define MAX_PUSH_CONSTANTS_SIZE 128
-#define MAX_PUSH_DESCRIPTORS 32
-#define MAX_DYNAMIC_UNIFORM_BUFFERS 16
-#define MAX_DYNAMIC_STORAGE_BUFFERS 8
-#define MAX_DYNAMIC_BUFFERS (MAX_DYNAMIC_UNIFORM_BUFFERS + MAX_DYNAMIC_STORAGE_BUFFERS)
-#define MAX_SAMPLES_LOG2 4
-#define NUM_META_FS_KEYS 12
-#define RADV_MAX_DRM_DEVICES 8
-#define MAX_VIEWS        8
-#define MAX_SO_STREAMS 4
-#define MAX_SO_BUFFERS 4
-#define MAX_SO_OUTPUTS 64
-#define MAX_INLINE_UNIFORM_BLOCK_SIZE (4ull * 1024 * 1024)
-#define MAX_INLINE_UNIFORM_BLOCK_COUNT 64
-
-#define NUM_DEPTH_CLEAR_PIPELINES 3
-
-/*
- * This is the point we switch from using CP to compute shader
- * for certain buffer operations.
- */
-#define RADV_BUFFER_OPS_CS_THRESHOLD 4096
-
-#define RADV_BUFFER_UPDATE_THRESHOLD 1024
 
 enum radv_mem_heap {
 	RADV_MEM_HEAP_VRAM,
