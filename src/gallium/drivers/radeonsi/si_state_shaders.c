@@ -1354,11 +1354,15 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 		vgpr_comp_cnt = 0; /* only VertexID is needed for GS-COPY. */
 		num_user_sgprs = SI_GSCOPY_NUM_USER_SGPR;
 	} else if (shader->selector->type == PIPE_SHADER_VERTEX) {
-		/* VGPR0-3: (VertexID, InstanceID / StepRate0, PrimID, InstanceID)
-		 * If PrimID is disabled. InstanceID / StepRate1 is loaded instead.
-		 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
-		 */
-		vgpr_comp_cnt = enable_prim_id ? 2 : (shader->info.uses_instanceid ? 1 : 0);
+		if (sscreen->info.chip_class >= GFX10) {
+			vgpr_comp_cnt = shader->info.uses_instanceid ? 3 : (enable_prim_id ? 2 : 0);
+		} else {
+			/* VGPR0-3: (VertexID, InstanceID / StepRate0, PrimID, InstanceID)
+			 * If PrimID is disabled. InstanceID / StepRate1 is loaded instead.
+			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
+			 */
+			vgpr_comp_cnt = enable_prim_id ? 2 : (shader->info.uses_instanceid ? 1 : 0);
+		}
 
 		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS]) {
 			num_user_sgprs = SI_SGPR_VS_BLIT_DATA +
