@@ -5886,6 +5886,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 				      "part.vs.prolog", f);
 		fprintf(f, "  as_es = %u\n", key->as_es);
 		fprintf(f, "  as_ls = %u\n", key->as_ls);
+		fprintf(f, "  as_ngg = %u\n", key->as_ngg);
 		fprintf(f, "  mono.u.vs_export_prim_id = %u\n",
 			key->mono.u.vs_export_prim_id);
 		fprintf(f, "  opt.vs_as_prim_discard_cs = %u\n",
@@ -5923,6 +5924,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 
 	case PIPE_SHADER_TESS_EVAL:
 		fprintf(f, "  as_es = %u\n", key->as_es);
+		fprintf(f, "  as_ngg = %u\n", key->as_ngg);
 		fprintf(f, "  mono.u.vs_export_prim_id = %u\n",
 			key->mono.u.vs_export_prim_id);
 		break;
@@ -5937,6 +5939,8 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 					      "part.gs.vs_prolog", f);
 		}
 		fprintf(f, "  part.gs.prolog.tri_strip_adj_fix = %u\n", key->part.gs.prolog.tri_strip_adj_fix);
+		fprintf(f, "  part.gs.prolog.gfx9_prev_is_vs = %u\n", key->part.gs.prolog.gfx9_prev_is_vs);
+		fprintf(f, "  as_ngg = %u\n", key->as_ngg);
 		break;
 
 	case PIPE_SHADER_COMPUTE:
@@ -5952,6 +5956,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 		fprintf(f, "  part.ps.prolog.force_linear_center_interp = %u\n", key->part.ps.prolog.force_linear_center_interp);
 		fprintf(f, "  part.ps.prolog.bc_optimize_for_persp = %u\n", key->part.ps.prolog.bc_optimize_for_persp);
 		fprintf(f, "  part.ps.prolog.bc_optimize_for_linear = %u\n", key->part.ps.prolog.bc_optimize_for_linear);
+		fprintf(f, "  part.ps.prolog.samplemask_log_ps_iter = %u\n", key->part.ps.prolog.samplemask_log_ps_iter);
 		fprintf(f, "  part.ps.epilog.spi_shader_col_format = 0x%x\n", key->part.ps.epilog.spi_shader_col_format);
 		fprintf(f, "  part.ps.epilog.color_is_int8 = 0x%X\n", key->part.ps.epilog.color_is_int8);
 		fprintf(f, "  part.ps.epilog.color_is_int10 = 0x%X\n", key->part.ps.epilog.color_is_int10);
@@ -5960,6 +5965,10 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 		fprintf(f, "  part.ps.epilog.alpha_to_one = %u\n", key->part.ps.epilog.alpha_to_one);
 		fprintf(f, "  part.ps.epilog.poly_line_smoothing = %u\n", key->part.ps.epilog.poly_line_smoothing);
 		fprintf(f, "  part.ps.epilog.clamp_color = %u\n", key->part.ps.epilog.clamp_color);
+		fprintf(f, "  mono.u.ps.interpolate_at_sample_force_center = %u\n", key->mono.u.ps.interpolate_at_sample_force_center);
+		fprintf(f, "  mono.u.ps.fbfetch_msaa = %u\n", key->mono.u.ps.fbfetch_msaa);
+		fprintf(f, "  mono.u.ps.fbfetch_is_1D = %u\n", key->mono.u.ps.fbfetch_is_1D);
+		fprintf(f, "  mono.u.ps.fbfetch_layered = %u\n", key->mono.u.ps.fbfetch_layered);
 		break;
 
 	default:
