@@ -51,7 +51,7 @@ struct msm_submit_sp {
 	/* maps fd_bo to idx in bos table: */
 	struct hash_table *bo_table;
 
-	struct slab_mempool ring_pool;
+	struct slab_child_pool ring_pool;
 
 	struct fd_ringbuffer *primary;
 
@@ -210,7 +210,7 @@ msm_submit_sp_new_ringbuffer(struct fd_submit *submit, uint32_t size,
 	struct msm_submit_sp *msm_submit = to_msm_submit_sp(submit);
 	struct msm_ringbuffer_sp *msm_ring;
 
-	msm_ring = slab_alloc_st(&msm_submit->ring_pool);
+	msm_ring = slab_alloc(&msm_submit->ring_pool);
 
 	msm_ring->u.submit = submit;
 
@@ -317,7 +317,7 @@ msm_submit_sp_destroy(struct fd_submit *submit)
 	// TODO it would be nice to have a way to debug_assert() if all
 	// rb's haven't been free'd back to the slab, because that is
 	// an indication that we are leaking bo's
-	slab_destroy(&msm_submit->ring_pool);
+	slab_destroy_child(&msm_submit->ring_pool);
 
 	for (unsigned i = 0; i < msm_submit->nr_bos; i++)
 		fd_bo_del(msm_submit->bos[i]);
@@ -341,8 +341,8 @@ msm_submit_sp_new(struct fd_pipe *pipe)
 
 	msm_submit->bo_table = _mesa_hash_table_create(NULL,
 			_mesa_hash_pointer, _mesa_key_pointer_equal);
-	// TODO tune size:
-	slab_create(&msm_submit->ring_pool, sizeof(struct msm_ringbuffer_sp), 16);
+
+	slab_create_child(&msm_submit->ring_pool, &to_msm_pipe(pipe)->ring_pool);
 
 	submit = &msm_submit->base;
 	submit->pipe = pipe;
@@ -351,6 +351,19 @@ msm_submit_sp_new(struct fd_pipe *pipe)
 	return submit;
 }
 
+void
+msm_pipe_sp_ringpool_init(struct msm_pipe *msm_pipe)
+{
+	// TODO tune size:
+	slab_create_parent(&msm_pipe->ring_pool, sizeof(struct msm_ringbuffer_sp), 16);
+}
+
+void
+msm_pipe_sp_ringpool_fini(struct msm_pipe *msm_pipe)
+{
+	if (msm_pipe->ring_pool.num_elements)
+		slab_destroy_parent(&msm_pipe->ring_pool);
+}
 
 static void
 finalize_current_cmd(struct fd_ringbuffer *ring)
@@ -511,7 +524,7 @@ msm_ringbuffer_sp_destroy(struct fd_ringbuffer *ring)
 			fd_bo_del(msm_ring->u.cmds[i].ring_bo);
 		}
 
-		slab_free_st(&to_msm_submit_sp(submit)->ring_pool, msm_ring);
+		slab_free(&to_msm_submit_sp(submit)->ring_pool, msm_ring);
 	}
 }
 

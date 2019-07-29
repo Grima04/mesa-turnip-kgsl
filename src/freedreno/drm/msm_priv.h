@@ -29,6 +29,8 @@
 
 #include "freedreno_priv.h"
 
+#include "util/slab.h"
+
 #ifndef __user
 #  define __user
 #endif
@@ -51,6 +53,7 @@ struct msm_pipe {
 	uint32_t gmem;
 	uint32_t chip_id;
 	uint32_t queue_id;
+	struct slab_parent_pool ring_pool;
 };
 FD_DEFINE_CAST(fd_pipe, msm_pipe);
 
@@ -62,6 +65,10 @@ struct fd_ringbuffer * msm_ringbuffer_sp_new_object(struct fd_pipe *pipe, uint32
 
 struct fd_submit * msm_submit_new(struct fd_pipe *pipe);
 struct fd_submit * msm_submit_sp_new(struct fd_pipe *pipe);
+
+void msm_pipe_sp_ringpool_init(struct msm_pipe *msm_pipe);
+void msm_pipe_sp_ringpool_fini(struct msm_pipe *msm_pipe);
+
 
 struct msm_bo {
 	struct fd_bo base;
