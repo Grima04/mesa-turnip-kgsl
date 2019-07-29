@@ -541,6 +541,16 @@ midgard_tex_register_select;
 #define TEXTURE_OP_LOD 0x12             /* textureLod */
 #define TEXTURE_OP_TEXEL_FETCH 0x14     /* texelFetch */
 
+/* Computes horizontal and vertical derivatives respectively. Use with a float
+ * sampler and a "2D" texture.  Leave texture/sampler IDs as zero; they ought
+ * to be ignored. Only works for fp32 on 64-bit at a time, so derivatives of a
+ * vec4 require 2 texture ops.  For some reason, the blob computes both X and Y
+ * derivatives at the same time and just throws out whichever is unused; it's
+ * not known if this is a quirk of the hardware or just of the blob. */
+
+#define TEXTURE_OP_DFDX 0x0D
+#define TEXTURE_OP_DFDY 0x1D
+
 enum mali_sampler_type {
         MALI_SAMPLER_UNK        = 0x0,
         MALI_SAMPLER_FLOAT      = 0x1, /* sampler */

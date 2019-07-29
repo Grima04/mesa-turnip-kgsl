@@ -1074,6 +1074,8 @@ print_texture_op(unsigned op, bool gather)
                 DEFINE_CASE(TEXTURE_OP_NORMAL, "texture");
                 DEFINE_CASE(TEXTURE_OP_LOD, "textureLod");
                 DEFINE_CASE(TEXTURE_OP_TEXEL_FETCH, "texelFetch");
+                DEFINE_CASE(TEXTURE_OP_DFDX, "dFdx");
+                DEFINE_CASE(TEXTURE_OP_DFDY, "dFdy");
 
         default:
                 printf("tex_%d", op);
