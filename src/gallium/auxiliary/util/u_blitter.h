@@ -155,6 +155,7 @@ void util_blitter_destroy(struct blitter_context *blitter);
 
 void util_blitter_cache_all_shaders(struct blitter_context *blitter);
 void *util_blitter_get_noop_blend_state(struct blitter_context *blitter);
+void *util_blitter_get_noop_dsa_state(struct blitter_context *blitter);
 
 
 /**

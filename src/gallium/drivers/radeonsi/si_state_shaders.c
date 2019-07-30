@@ -1689,10 +1689,7 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen,
 static unsigned si_get_alpha_test_func(struct si_context *sctx)
 {
 	/* Alpha-test should be disabled if colorbuffer 0 is integer. */
-	if (sctx->queued.named.dsa)
-		return sctx->queued.named.dsa->alpha_func;
-
-	return PIPE_FUNC_ALWAYS;
+	return sctx->queued.named.dsa->alpha_func;
 }
 
 void si_shader_selector_key_vs(struct si_context *sctx,

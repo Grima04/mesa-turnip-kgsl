@@ -347,6 +347,13 @@ void *util_blitter_get_noop_blend_state(struct blitter_context *blitter)
    return ctx->blend[0][0];
 }
 
+void *util_blitter_get_noop_dsa_state(struct blitter_context *blitter)
+{
+   struct blitter_context_priv *ctx = (struct blitter_context_priv*)blitter;
+
+   return ctx->dsa_keep_depth_stencil;
+}
+
 static void bind_vs_pos_only(struct blitter_context_priv *ctx,
                              unsigned num_so_channels)
 {

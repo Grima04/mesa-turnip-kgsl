@@ -1303,8 +1303,8 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
 	struct si_state_dsa *old_dsa = sctx->queued.named.dsa;
         struct si_state_dsa *dsa = state;
 
-        if (!state)
-                return;
+        if (!dsa)
+                dsa = (struct si_state_dsa *)sctx->noop_dsa;
 
 	si_pm4_bind_state(sctx, dsa, dsa);
 
@@ -1314,19 +1314,17 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.stencil_ref);
 	}
 
-	if (!old_dsa || old_dsa->alpha_func != dsa->alpha_func)
+	if (old_dsa->alpha_func != dsa->alpha_func)
 		sctx->do_update_shaders = true;
 
 	if (sctx->screen->dpbb_allowed &&
-	    (!old_dsa ||
-	     (old_dsa->depth_enabled != dsa->depth_enabled ||
+	    ((old_dsa->depth_enabled != dsa->depth_enabled ||
 	      old_dsa->stencil_enabled != dsa->stencil_enabled ||
 	      old_dsa->db_can_write != dsa->db_can_write)))
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
 
 	if (sctx->screen->has_out_of_order_rast &&
-	    (!old_dsa ||
-	     memcmp(old_dsa->order_invariance, dsa->order_invariance,
+	    (memcmp(old_dsa->order_invariance, dsa->order_invariance,
 		    sizeof(old_dsa->order_invariance))))
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
 }
