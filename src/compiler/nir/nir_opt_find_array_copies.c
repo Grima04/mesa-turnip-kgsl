@@ -100,14 +100,15 @@ node_for_deref(nir_deref_instr *instr, struct match_node *parent,
    }
 
    case nir_deref_type_array_wildcard:
-      idx = glsl_get_length(instr->type);
+      idx = parent->num_children - 1;
       break;
 
    case nir_deref_type_array:
       if (nir_src_is_const(instr->arr.index)) {
          idx = nir_src_as_uint(instr->arr.index);
+         assert(idx < parent->num_children - 1);
       } else {
-         idx = glsl_get_length(instr->type);
+         idx = parent->num_children - 1;
       }
       break;
 
