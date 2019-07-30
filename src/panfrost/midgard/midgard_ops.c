@@ -88,10 +88,10 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_ule]		 = {"ule", UNITS_MOST},
 
         /* csel must run in the second pipeline stage (r31 written in first) */
-        [midgard_alu_op_icsel]		 = {"icsel", UNITS_VADD | UNIT_SMUL},
-        [midgard_alu_op_icsel_v]         = {"icsel_v", UNITS_VADD | UNIT_SMUL}, /* Acts as bitselect() */
-        [midgard_alu_op_fcsel_v]	 = {"fcsel_v", UNITS_VADD | UNIT_SMUL},
-        [midgard_alu_op_fcsel]		 = {"fcsel", UNITS_VADD | UNIT_SMUL},
+        [midgard_alu_op_icsel]		 = {"icsel", UNIT_VADD | UNIT_SMUL},
+        [midgard_alu_op_icsel_v]         = {"icsel_v", UNIT_VADD | UNIT_SMUL}, /* Acts as bitselect() */
+        [midgard_alu_op_fcsel_v]	 = {"fcsel_v", UNIT_VADD | UNIT_SMUL},
+        [midgard_alu_op_fcsel]		 = {"fcsel", UNIT_VADD | UNIT_SMUL},
 
         [midgard_alu_op_frcp]		 = {"frcp", UNIT_VLUT},
         [midgard_alu_op_frsqrt]		 = {"frsqrt", UNIT_VLUT},
