@@ -500,7 +500,15 @@ static void cik_sdma_copy(struct pipe_context *ctx,
 		return;
 	}
 
-	if ((sctx->chip_class == GFX7 || sctx->chip_class == GFX8) &&
+	/* SDMA causes corruption. See:
+	 *   https://bugs.freedesktop.org/show_bug.cgi?id=110575
+	 *   https://bugs.freedesktop.org/show_bug.cgi?id=110635
+	 *
+	 * Keep SDMA enabled on APUs.
+	 */
+	if ((sctx->screen->debug_flags & DBG(FORCE_DMA) ||
+	     !sctx->screen->info.has_dedicated_vram) &&
+	    (sctx->chip_class == GFX7 || sctx->chip_class == GFX8) &&
 	    cik_sdma_copy_texture(sctx, dst, dst_level, dstx, dsty, dstz,
 				  src, src_level, src_box))
 		return;
