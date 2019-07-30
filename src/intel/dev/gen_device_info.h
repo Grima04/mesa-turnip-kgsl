@@ -271,18 +271,8 @@ gen_device_info_subslice_available(const struct gen_device_info *devinfo,
                                    subslice / 8] & (1U << (subslice % 8))) != 0;
 }
 
-int gen_get_pci_device_id_override(void);
 int gen_device_name_to_pci_device_id(const char *name);
 const char *gen_get_device_name(int devid);
-
-/* Used with SLICE_MASK/SUBSLICE_MASK values from DRM_I915_GETPARAM. */
-bool gen_device_info_update_from_masks(struct gen_device_info *devinfo,
-                                       uint32_t slice_mask,
-                                       uint32_t subslice_mask,
-                                       uint32_t n_eus);
-/* Used with DRM_IOCTL_I915_QUERY & DRM_I915_QUERY_TOPOLOGY_INFO. */
-void gen_device_info_update_from_topology(struct gen_device_info *devinfo,
-                                          const struct drm_i915_query_topology_info *topology);
 
 static inline uint64_t
 gen_device_info_timebase_scale(const struct gen_device_info *devinfo,

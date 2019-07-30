@@ -82,8 +82,8 @@ gen_device_name_to_pci_device_id(const char *name)
  *
  * Returns -1 if the override is not set.
  */
-int
-gen_get_pci_device_id_override(void)
+static int
+get_pci_device_id_override(void)
 {
    if (geteuid() == getuid()) {
       const char *devid_override = getenv("INTEL_DEVID_OVERRIDE");
@@ -1059,11 +1059,71 @@ fill_masks(struct gen_device_info *devinfo)
    }
 }
 
-bool
-gen_device_info_update_from_masks(struct gen_device_info *devinfo,
-                                  uint32_t slice_mask,
-                                  uint32_t subslice_mask,
-                                  uint32_t n_eus)
+static void
+reset_masks(struct gen_device_info *devinfo)
+{
+   devinfo->subslice_slice_stride = 0;
+   devinfo->eu_subslice_stride = 0;
+   devinfo->eu_slice_stride = 0;
+
+   devinfo->num_slices = 0;
+   devinfo->num_eu_per_subslice = 0;
+   memset(devinfo->num_subslices, 0, sizeof(devinfo->num_subslices));
+
+   memset(&devinfo->slice_masks, 0, sizeof(devinfo->slice_masks));
+   memset(devinfo->subslice_masks, 0, sizeof(devinfo->subslice_masks));
+   memset(devinfo->eu_masks, 0, sizeof(devinfo->eu_masks));
+}
+
+static void
+update_from_topology(struct gen_device_info *devinfo,
+                     const struct drm_i915_query_topology_info *topology)
+{
+   reset_masks(devinfo);
+
+   devinfo->subslice_slice_stride = topology->subslice_stride;
+
+   devinfo->eu_subslice_stride = DIV_ROUND_UP(topology->max_eus_per_subslice, 8);
+   devinfo->eu_slice_stride = topology->max_subslices * devinfo->eu_subslice_stride;
+
+   assert(sizeof(devinfo->slice_masks) >= DIV_ROUND_UP(topology->max_slices, 8));
+   memcpy(&devinfo->slice_masks, topology->data, DIV_ROUND_UP(topology->max_slices, 8));
+   devinfo->num_slices = __builtin_popcount(devinfo->slice_masks);
+
+   uint32_t subslice_mask_len =
+      topology->max_slices * topology->subslice_stride;
+   assert(sizeof(devinfo->subslice_masks) >= subslice_mask_len);
+   memcpy(devinfo->subslice_masks, &topology->data[topology->subslice_offset],
+          subslice_mask_len);
+
+   uint32_t n_subslices = 0;
+   for (int s = 0; s < topology->max_slices; s++) {
+      if ((devinfo->slice_masks & (1UL << s)) == 0)
+         continue;
+
+      for (int b = 0; b < devinfo->subslice_slice_stride; b++) {
+         devinfo->num_subslices[s] +=
+            __builtin_popcount(devinfo->subslice_masks[b]);
+      }
+      n_subslices += devinfo->num_subslices[s];
+   }
+   assert(n_subslices > 0);
+
+   uint32_t eu_mask_len =
+      topology->eu_stride * topology->max_subslices * topology->max_slices;
+   assert(sizeof(devinfo->eu_masks) >= eu_mask_len);
+   memcpy(devinfo->eu_masks, &topology->data[topology->eu_offset], eu_mask_len);
+
+   uint32_t n_eus = 0;
+   for (int b = 0; b < eu_mask_len; b++)
+      n_eus += __builtin_popcount(devinfo->eu_masks[b]);
+
+   devinfo->num_eu_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
+}
+
+static bool
+update_from_masks(struct gen_device_info *devinfo, uint32_t slice_mask,
+                  uint32_t subslice_mask, uint32_t n_eus)
 {
    struct drm_i915_query_topology_info *topology;
 
@@ -1115,72 +1175,10 @@ gen_device_info_update_from_masks(struct gen_device_info *devinfo,
       }
    }
 
-   gen_device_info_update_from_topology(devinfo, topology);
+   update_from_topology(devinfo, topology);
    free(topology);
 
    return true;
-}
-
-static void
-reset_masks(struct gen_device_info *devinfo)
-{
-   devinfo->subslice_slice_stride = 0;
-   devinfo->eu_subslice_stride = 0;
-   devinfo->eu_slice_stride = 0;
-
-   devinfo->num_slices = 0;
-   devinfo->num_eu_per_subslice = 0;
-   memset(devinfo->num_subslices, 0, sizeof(devinfo->num_subslices));
-
-   memset(&devinfo->slice_masks, 0, sizeof(devinfo->slice_masks));
-   memset(devinfo->subslice_masks, 0, sizeof(devinfo->subslice_masks));
-   memset(devinfo->eu_masks, 0, sizeof(devinfo->eu_masks));
-}
-
-void
-gen_device_info_update_from_topology(struct gen_device_info *devinfo,
-                                     const struct drm_i915_query_topology_info *topology)
-{
-   reset_masks(devinfo);
-
-   devinfo->subslice_slice_stride = topology->subslice_stride;
-
-   devinfo->eu_subslice_stride = DIV_ROUND_UP(topology->max_eus_per_subslice, 8);
-   devinfo->eu_slice_stride = topology->max_subslices * devinfo->eu_subslice_stride;
-
-   assert(sizeof(devinfo->slice_masks) >= DIV_ROUND_UP(topology->max_slices, 8));
-   memcpy(&devinfo->slice_masks, topology->data, DIV_ROUND_UP(topology->max_slices, 8));
-   devinfo->num_slices = __builtin_popcount(devinfo->slice_masks);
-
-   uint32_t subslice_mask_len =
-      topology->max_slices * topology->subslice_stride;
-   assert(sizeof(devinfo->subslice_masks) >= subslice_mask_len);
-   memcpy(devinfo->subslice_masks, &topology->data[topology->subslice_offset],
-          subslice_mask_len);
-
-   uint32_t n_subslices = 0;
-   for (int s = 0; s < topology->max_slices; s++) {
-      if ((devinfo->slice_masks & (1UL << s)) == 0)
-         continue;
-
-      for (int b = 0; b < devinfo->subslice_slice_stride; b++) {
-         devinfo->num_subslices[s] +=
-            __builtin_popcount(devinfo->subslice_masks[b]);
-      }
-      n_subslices += devinfo->num_subslices[s];
-   }
-   assert(n_subslices > 0);
-
-   uint32_t eu_mask_len =
-      topology->eu_stride * topology->max_subslices * topology->max_slices;
-   assert(sizeof(devinfo->eu_masks) >= eu_mask_len);
-   memcpy(devinfo->eu_masks, &topology->data[topology->eu_offset], eu_mask_len);
-
-   uint32_t n_eus = 0;
-   for (int b = 0; b < eu_mask_len; b++)
-      n_eus += __builtin_popcount(devinfo->eu_masks[b]);
-
-   devinfo->num_eu_per_subslice = DIV_ROUND_UP(n_eus, n_subslices);
 }
 
 static bool
@@ -1284,10 +1282,7 @@ getparam_topology(struct gen_device_info *devinfo, int fd)
    if (!getparam(fd, I915_PARAM_SUBSLICE_MASK, &subslice_mask))
       return false;
 
-   return gen_device_info_update_from_masks(devinfo,
-                                            slice_mask,
-                                            subslice_mask,
-                                            n_eus);
+   return update_from_masks(devinfo, slice_mask, subslice_mask, n_eus);
 }
 
 /**
@@ -1315,8 +1310,7 @@ query_topology(struct gen_device_info *devinfo, int fd)
        item.length <= 0)
       return false;
 
-   gen_device_info_update_from_topology(devinfo,
-                                        topo_info);
+   update_from_topology(devinfo, topo_info);
 
    free(topo_info);
 
@@ -1327,7 +1321,7 @@ query_topology(struct gen_device_info *devinfo, int fd)
 bool
 gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
 {
-   int devid = gen_get_pci_device_id_override();
+   int devid = get_pci_device_id_override();
    if (devid > 0) {
       if (!gen_get_device_info_from_pci_id(devid, devinfo))
          return false;
