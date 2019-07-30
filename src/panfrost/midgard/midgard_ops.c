@@ -64,6 +64,7 @@ struct mir_op_props alu_opcode_props[256] = {
 
         /* Incredibly, iadd can run on vmul, etc */
         [midgard_alu_op_iadd]		 = {"iadd", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_ishladd]         = {"ishladd", UNITS_MUL},
         [midgard_alu_op_iaddsat]	 = {"iaddsat", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_uaddsat]	 = {"uaddsat", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_iabsdiff]	 = {"iabsdiff", UNITS_ADD},
@@ -161,12 +162,11 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_ubany_lt]	 = {"ubany_lt",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
         [midgard_alu_op_ubany_lte]	 = {"ubany_lte", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
 
-        /* These instructions are not yet emitted by the compiler, so
-         * don't speculate about units yet */
-        [midgard_alu_op_ishladd]        = {"ishladd", 0},
+        [midgard_alu_op_fatan2_pt1]     = {"fatan2_pt1", UNIT_VLUT},
+        [midgard_alu_op_fatan_pt2]      = {"fatan_pt2", UNIT_VLUT},
+
+        /* Haven't seen in a while */
         [midgard_alu_op_freduce]        = {"freduce", 0},
-        [midgard_alu_op_fatan2_pt1]     = {"fatan2_pt1", 0},
-        [midgard_alu_op_fatan_pt2]      = {"fatan_pt2", 0},
 };
 
 const char *load_store_opcode_names[256] = {

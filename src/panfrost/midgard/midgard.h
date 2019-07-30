@@ -78,7 +78,7 @@ typedef enum {
         midgard_alu_op_freduce    = 0x3F,
 
         midgard_alu_op_iadd       = 0x40,
-        midgard_alu_op_ishladd    = 0x41,
+        midgard_alu_op_ishladd    = 0x41, /* a + (b<<1) */
         midgard_alu_op_isub       = 0x46,
         midgard_alu_op_iaddsat    = 0x48,
         midgard_alu_op_uaddsat    = 0x49,
