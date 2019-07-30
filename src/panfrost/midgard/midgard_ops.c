@@ -34,8 +34,8 @@
 struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_fadd]		 = {"fadd", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_fmul]		 = {"fmul", UNITS_MUL | UNIT_VLUT | OP_COMMUTES},
-        [midgard_alu_op_fmin]		 = {"fmin", UNITS_MUL | UNITS_ADD | OP_COMMUTES},
-        [midgard_alu_op_fmax]		 = {"fmax", UNITS_MUL | UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_fmin]		 = {"fmin", UNITS_MOST | OP_COMMUTES},
+        [midgard_alu_op_fmax]		 = {"fmax", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_imin]		 = {"imin", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_imax]		 = {"imax", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_umin]		 = {"umin", UNITS_MOST | OP_COMMUTES},
@@ -87,10 +87,11 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_ult]		 = {"ult", UNITS_MOST},
         [midgard_alu_op_ule]		 = {"ule", UNITS_MOST},
 
-        [midgard_alu_op_icsel]		 = {"icsel", UNITS_ADD},
-        [midgard_alu_op_icsel_v]         = {"icsel_v", UNITS_ADD}, /* Acts as bitselect() */
-        [midgard_alu_op_fcsel_v]	 = {"fcsel_v", UNITS_ADD},
-        [midgard_alu_op_fcsel]		 = {"fcsel", UNITS_ADD | UNIT_SMUL},
+        /* csel must run in the second pipeline stage (r31 written in first) */
+        [midgard_alu_op_icsel]		 = {"icsel", UNITS_VADD | UNIT_SMUL},
+        [midgard_alu_op_icsel_v]         = {"icsel_v", UNITS_VADD | UNIT_SMUL}, /* Acts as bitselect() */
+        [midgard_alu_op_fcsel_v]	 = {"fcsel_v", UNITS_VADD | UNIT_SMUL},
+        [midgard_alu_op_fcsel]		 = {"fcsel", UNITS_VADD | UNIT_SMUL},
 
         [midgard_alu_op_frcp]		 = {"frcp", UNIT_VLUT},
         [midgard_alu_op_frsqrt]		 = {"frsqrt", UNIT_VLUT},
@@ -121,7 +122,6 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_fsin]		 = {"fsin", UNIT_VLUT},
         [midgard_alu_op_fcos]		 = {"fcos", UNIT_VLUT},
 
-        /* XXX: Test case where it's right on smul but not sadd */
         [midgard_alu_op_iand]		 = {"iand", UNITS_MOST | OP_COMMUTES},
         [midgard_alu_op_iandnot]         = {"iandnot", UNITS_MOST},
 
