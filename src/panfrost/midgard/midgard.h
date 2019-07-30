@@ -119,12 +119,12 @@ typedef enum {
         midgard_alu_op_flt        = 0x82,
         midgard_alu_op_fle        = 0x83,
         midgard_alu_op_fball_eq   = 0x88,
-        midgard_alu_op_bball_eq   = 0x89,
+        midgard_alu_op_fball_neq  = 0x89,
         midgard_alu_op_fball_lt   = 0x8A, /* all(lessThan(.., ..)) */
         midgard_alu_op_fball_lte  = 0x8B, /* all(lessThanEqual(.., ..)) */
 
-        midgard_alu_op_bbany_neq  = 0x90, /* used for bvec4(1) */
-        midgard_alu_op_fbany_neq  = 0x91, /* bvec4(0) also */
+        midgard_alu_op_fbany_eq   = 0x90,
+        midgard_alu_op_fbany_neq  = 0x91,
         midgard_alu_op_fbany_lt   = 0x92, /* any(lessThan(.., ..)) */
         midgard_alu_op_fbany_lte  = 0x93, /* any(lessThanEqual(.., ..)) */
 

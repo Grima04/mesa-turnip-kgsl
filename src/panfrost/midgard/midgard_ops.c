@@ -137,29 +137,34 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_iasr]		 = {"iasr", UNITS_ADD},
         [midgard_alu_op_ilsr]		 = {"ilsr", UNITS_ADD},
 
-        [midgard_alu_op_fball_eq]	 = {"fball_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
-        [midgard_alu_op_fbany_neq]	 = {"fbany_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_fball_eq]	 = {"fball_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+        [midgard_alu_op_fball_neq]	 = {"fball_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+        [midgard_alu_op_fball_lt]	 = {"fball_lt",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+        [midgard_alu_op_fball_lte]	 = {"fball_lte", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+
+        [midgard_alu_op_fbany_eq]	 = {"fbany_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+        [midgard_alu_op_fbany_neq]	 = {"fbany_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+        [midgard_alu_op_fbany_lt]	 = {"fbany_lt",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+        [midgard_alu_op_fbany_lte]	 = {"fbany_lte", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES | OP_TYPE_CONVERT},
+
         [midgard_alu_op_iball_eq]	 = {"iball_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
         [midgard_alu_op_iball_neq]	 = {"iball_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_iball_lt]	 = {"iball_lt",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_iball_lte]	 = {"iball_lte", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_uball_lt]	 = {"uball_lt",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_uball_lte]	 = {"uball_lte", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+
         [midgard_alu_op_ibany_eq]	 = {"ibany_eq",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
         [midgard_alu_op_ibany_neq]	 = {"ibany_neq", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_ibany_lt]	 = {"ibany_lt",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_ibany_lte]	 = {"ibany_lte", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_ubany_lt]	 = {"ubany_lt",  UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
+        [midgard_alu_op_ubany_lte]	 = {"ubany_lte", UNITS_VECTOR | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
 
         /* These instructions are not yet emitted by the compiler, so
          * don't speculate about units yet */
         [midgard_alu_op_ishladd]        = {"ishladd", 0},
-
-        [midgard_alu_op_uball_lt]       = {"uball_lt", 0},
-        [midgard_alu_op_uball_lte]      = {"uball_lte", 0},
-        [midgard_alu_op_iball_lt]       = {"iball_lt", 0},
-        [midgard_alu_op_iball_lte]      = {"iball_lte", 0},
-        [midgard_alu_op_ubany_lt]       = {"ubany_lt", 0},
-        [midgard_alu_op_ubany_lte]      = {"ubany_lte", 0},
-        [midgard_alu_op_ibany_lt]       = {"ibany_lt", 0},
-        [midgard_alu_op_ibany_lte]      = {"ibany_lte", 0},
-
         [midgard_alu_op_freduce]        = {"freduce", 0},
-        [midgard_alu_op_bball_eq]       = {"bball_eq", 0 | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
-        [midgard_alu_op_bbany_neq]      = {"bball_eq", 0 | OP_CHANNEL_COUNT(4) | OP_COMMUTES},
         [midgard_alu_op_fatan2_pt1]     = {"fatan2_pt1", 0},
         [midgard_alu_op_fatan_pt2]      = {"fatan_pt2", 0},
 };
