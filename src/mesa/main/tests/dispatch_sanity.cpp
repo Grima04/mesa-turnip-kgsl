@@ -1412,6 +1412,10 @@ const struct function common_desktop_functions_possible[] = {
    /* GL_EXT_shader_image_load_store */
    { "glBindImageTextureEXT", 30, -1 },
 
+   /* GL_MESA_framebuffer_flip_y */
+   { "glFramebufferParameteriMESA", 43, -1 },
+   { "glGetFramebufferParameterivMESA", 43, -1 },
+
    { NULL, 0, -1 }
 };
 
@@ -2652,6 +2656,10 @@ const struct function gles3_functions_possible[] = {
    /* GL_AMD_framebuffer_multisample_advanced */
    { "glRenderbufferStorageMultisampleAdvancedAMD", 11, -1 },
    { "glNamedRenderbufferStorageMultisampleAdvancedAMD", 11, -1 },
+
+   /* GL_MESA_framebuffer_flip_y */
+   { "glFramebufferParameteriMESA", 30, -1 },
+   { "glGetFramebufferParameterivMESA", 30, -1 },
 
    { NULL, 0, -1 }
 };

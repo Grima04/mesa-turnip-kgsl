@@ -405,7 +405,13 @@ extern void GLAPIENTRY
 _mesa_FramebufferParameteri(GLenum target, GLenum pname, GLint param);
 
 extern void GLAPIENTRY
+_mesa_FramebufferParameteriMESA(GLenum target, GLenum pname, GLint param);
+
+extern void GLAPIENTRY
 _mesa_GetFramebufferParameteriv(GLenum target, GLenum pname, GLint *params);
+
+extern void GLAPIENTRY
+_mesa_GetFramebufferParameterivMESA(GLenum target, GLenum pname, GLint *params);
 
 extern void GLAPIENTRY
 _mesa_FramebufferSampleLocationsfvARB(GLenum target, GLuint start,

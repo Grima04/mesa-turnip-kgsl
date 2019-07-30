@@ -150,6 +150,10 @@ functions = {
     "FramebufferParameteri": exec_info(compatibility=30, core=31, es2=31),
     "GetFramebufferParameteriv": exec_info(compatibility=30, core=31, es2=31),
 
+    # OpenGL 4.3 / GL_MESA_framebuffer_flip_y.
+    "FramebufferParameteriMESA": exec_info(core=31, es2=30),
+    "GetFramebufferParameterivMESA": exec_info(core=31, es2=30),
+
     # OpenGL 4.5 / GL_ARB_direct_state_access.   Mesa can expose the extension
     # with core profile.
     "CreateTransformFeedbacks": exec_info(compatibility=31, core=31),

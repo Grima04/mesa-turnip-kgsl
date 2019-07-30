@@ -1625,18 +1625,46 @@ invalid_pname_enum:
    _mesa_error(ctx, GL_INVALID_ENUM, "%s(pname=0x%x)", func, pname);
 }
 
+static bool
+validate_framebuffer_parameter_extensions(GLenum pname, const char *func)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (!ctx->Extensions.ARB_framebuffer_no_attachments &&
+       !ctx->Extensions.ARB_sample_locations &&
+       !ctx->Extensions.MESA_framebuffer_flip_y) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s not supported "
+                  "(none of ARB_framebuffer_no_attachments,"
+                  " ARB_sample_locations, or"
+                  " MESA_framebuffer_flip_y extensions are available)",
+                  func);
+      return false;
+   }
+
+   /*
+    * If only the MESA_framebuffer_flip_y extension is enabled
+    * pname can only be GL_FRAMEBUFFER_FLIP_Y_MESA
+    */
+   if (ctx->Extensions.MESA_framebuffer_flip_y &&
+       pname != GL_FRAMEBUFFER_FLIP_Y_MESA &&
+       !(ctx->Extensions.ARB_framebuffer_no_attachments ||
+         ctx->Extensions.ARB_sample_locations)) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(pname=0x%x)", func, pname);
+      return false;
+   }
+
+   return true;
+}
+
 void GLAPIENTRY
 _mesa_FramebufferParameteri(GLenum target, GLenum pname, GLint param)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_framebuffer *fb;
 
-   if (!ctx->Extensions.ARB_framebuffer_no_attachments &&
-       !ctx->Extensions.ARB_sample_locations) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "glFramebufferParameteriv not supported "
-                  "(neither ARB_framebuffer_no_attachments nor ARB_sample_locations"
-                  " is available)");
+   if (!validate_framebuffer_parameter_extensions(pname,
+       "glFramebufferParameteri")) {
       return;
    }
 
@@ -1648,6 +1676,12 @@ _mesa_FramebufferParameteri(GLenum target, GLenum pname, GLint param)
    }
 
    framebuffer_parameteri(ctx, fb, pname, param, "glFramebufferParameteri");
+}
+
+void GLAPIENTRY
+_mesa_FramebufferParameteriMESA(GLenum target, GLenum pname, GLint param)
+{
+   _mesa_FramebufferParameteri(target, pname, param);
 }
 
 static bool
@@ -1779,12 +1813,8 @@ _mesa_GetFramebufferParameteriv(GLenum target, GLenum pname, GLint *params)
    GET_CURRENT_CONTEXT(ctx);
    struct gl_framebuffer *fb;
 
-   if (!ctx->Extensions.ARB_framebuffer_no_attachments &&
-       !ctx->Extensions.ARB_sample_locations) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "glGetFramebufferParameteriv not supported "
-                  "(neither ARB_framebuffer_no_attachments nor ARB_sample_locations"
-                  " is available)");
+   if (!validate_framebuffer_parameter_extensions(pname,
+       "glGetFramebufferParameteriv")) {
       return;
    }
 
@@ -1799,6 +1829,11 @@ _mesa_GetFramebufferParameteriv(GLenum target, GLenum pname, GLint *params)
                                "glGetFramebufferParameteriv");
 }
 
+void GLAPIENTRY
+_mesa_GetFramebufferParameterivMESA(GLenum target, GLenum pname, GLint *params)
+{
+   _mesa_GetFramebufferParameteriv(target, pname, params);
+}
 
 /**
  * Remove the specified renderbuffer or texture from any attachment point in
