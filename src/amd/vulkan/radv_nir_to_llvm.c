@@ -4317,6 +4317,15 @@ static void declare_esgs_ring(struct radv_shader_context *ctx)
 	LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
 }
 
+static uint8_t
+radv_nir_shader_wave_size(struct nir_shader *const *shaders, int shader_count,
+			  const struct radv_nir_compiler_options *options)
+{
+	if (shaders[0]->info.stage == MESA_SHADER_COMPUTE)
+		return options->cs_wave_size;
+	return 64;
+}
+
 static
 LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
                                        struct nir_shader *const *shaders,
@@ -4333,8 +4342,11 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		options->unsafe_math ? AC_FLOAT_MODE_UNSAFE_FP_MATH :
 				       AC_FLOAT_MODE_DEFAULT;
 
+	uint8_t wave_size = radv_nir_shader_wave_size(shaders,
+						      shader_count, options);
+
 	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
-			     options->family, float_mode, 64);
+			     options->family, float_mode, wave_size);
 	ctx.context = ctx.ac.context;
 
 	radv_nir_shader_info_init(&shader_info->info);

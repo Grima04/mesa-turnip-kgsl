@@ -4649,7 +4649,8 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 	threads_per_threadgroup = compute_shader->info.cs.block_size[0] *
 				  compute_shader->info.cs.block_size[1] *
 				  compute_shader->info.cs.block_size[2];
-	waves_per_threadgroup = DIV_ROUND_UP(threads_per_threadgroup, 64);
+	waves_per_threadgroup = DIV_ROUND_UP(threads_per_threadgroup,
+					     device->physical_device->cs_wave_size);
 
 	if (device->physical_device->rad_info.chip_class >= GFX10 &&
 	    waves_per_threadgroup == 1)
