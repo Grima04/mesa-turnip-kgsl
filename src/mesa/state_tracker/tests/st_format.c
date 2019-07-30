@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
       pf = st_mesa_format_to_pipe_format(st, i);
       if (pf != PIPE_FORMAT_NONE) {
-         mesa_format MAYBE_UNUSED mf = st_pipe_format_to_mesa_format(pf);
+         mesa_format mf = st_pipe_format_to_mesa_format(pf);
          if (mf != i) {
             fprintf(stderr, "Round-tripping %s -> %s -> %s failed\n",
                     _mesa_get_format_name(i), util_format_short_name(pf),
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
          continue;
 
       if (mf != MESA_FORMAT_NONE) {
-         enum pipe_format MAYBE_UNUSED pf =
+         enum pipe_format pf =
             st_mesa_format_to_pipe_format(st, mf);
          if (pf != i) {
             fprintf(stderr, "Round-tripping %s -> %s -> %s failed\n",
