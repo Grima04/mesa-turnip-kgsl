@@ -868,6 +868,12 @@ static void si_emit_draw_packets(struct si_context *sctx,
 		if (original_index_size) {
 			index_max_size = (indexbuf->width0 - index_offset) /
 					  original_index_size;
+			/* Skip draw calls with 0-sized index buffers.
+			 * They cause a hang on some chips, like Navi10-14.
+			 */
+			if (!index_max_size)
+				return;
+
 			index_va = si_resource(indexbuf)->gpu_address + index_offset;
 
 			radeon_add_to_buffer_list(sctx, sctx->gfx_cs,
