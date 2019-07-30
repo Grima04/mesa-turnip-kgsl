@@ -477,6 +477,8 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 	struct si_pm4_state *pm4 = &blend->pm4;
 	uint32_t sx_mrt_blend_opt[8] = {0};
 	uint32_t color_control = 0;
+	bool logicop_enable = state->logicop_enable &&
+			      state->logicop_func != PIPE_LOGICOP_COPY;
 
 	if (!blend)
 		return NULL;
@@ -484,9 +486,9 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 	blend->alpha_to_coverage = state->alpha_to_coverage;
 	blend->alpha_to_one = state->alpha_to_one;
 	blend->dual_src_blend = util_blend_state_is_dual(state, 0);
-	blend->logicop_enable = state->logicop_enable;
+	blend->logicop_enable = logicop_enable;
 
-	if (state->logicop_enable) {
+	if (logicop_enable) {
 		color_control |= S_028808_ROP3(state->logicop_func | (state->logicop_func << 4));
 	} else {
 		color_control |= S_028808_ROP3(0xcc);
@@ -652,7 +654,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 				       sx_mrt_blend_opt[i]);
 
 		/* RB+ doesn't work with dual source blending, logic op, and RESOLVE. */
-		if (blend->dual_src_blend || state->logicop_enable ||
+		if (blend->dual_src_blend || logicop_enable ||
 		    mode == V_028808_CB_RESOLVE)
 			color_control |= S_028808_DISABLE_DUAL_QUAD(1);
 	}
