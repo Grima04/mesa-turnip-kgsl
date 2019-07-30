@@ -3022,6 +3022,16 @@ static bool si_update_ngg(struct si_context *sctx)
 		new_ngg = false;
 
 	if (new_ngg != sctx->ngg) {
+		/* Transitioning from NGG to legacy GS requires VGT_FLUSH on Navi10-14.
+		 * VGT_FLUSH is also emitted at the beginning of IBs when legacy GS ring
+		 * pointers are set.
+		 */
+		if ((sctx->family == CHIP_NAVI10 ||
+		     sctx->family == CHIP_NAVI12 ||
+		     sctx->family == CHIP_NAVI14) &&
+		    !new_ngg)
+			sctx->flags |= SI_CONTEXT_VGT_FLUSH;
+
 		sctx->ngg = new_ngg;
 		sctx->last_rast_prim = -1; /* reset this so that it gets updated */
 		return true;

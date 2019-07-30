@@ -1106,9 +1106,13 @@ void gfx10_emit_cache_flush(struct si_context *ctx)
 	}
 
 	/* We don't need these. */
-	assert(!(flags & (SI_CONTEXT_VGT_FLUSH |
-			  SI_CONTEXT_VGT_STREAMOUT_SYNC |
+	assert(!(flags & (SI_CONTEXT_VGT_STREAMOUT_SYNC |
 			  SI_CONTEXT_FLUSH_AND_INV_DB_META)));
+
+	if (flags & SI_CONTEXT_VGT_FLUSH) {
+		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+		radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+	}
 
 	if (flags & SI_CONTEXT_FLUSH_AND_INV_CB)
 		ctx->num_cb_cache_flushes++;
