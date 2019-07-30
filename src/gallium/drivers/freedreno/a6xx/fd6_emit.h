@@ -146,7 +146,7 @@ fd6_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
 static inline void
 fd6_cache_inv(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
-	fd6_event_write(batch, ring, 0x31, false);
+	fd6_event_write(batch, ring, CACHE_INVALIDATE, false);
 }
 
 static inline void
