@@ -750,6 +750,13 @@ fd_screen_bo_from_handle(struct pipe_screen *pscreen,
 	return bo;
 }
 
+static void _fd_fence_ref(struct pipe_screen *pscreen,
+		struct pipe_fence_handle **ptr,
+		struct pipe_fence_handle *pfence)
+{
+	fd_fence_ref(ptr, pfence);
+}
+
 struct pipe_screen *
 fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 {
@@ -936,7 +943,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 
 	pscreen->get_timestamp = fd_screen_get_timestamp;
 
-	pscreen->fence_reference = fd_fence_ref;
+	pscreen->fence_reference = _fd_fence_ref;
 	pscreen->fence_finish = fd_fence_finish;
 	pscreen->fence_get_fd = fd_fence_get_fd;
 

@@ -663,7 +663,7 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 	if (!can_do_blit(info))
 		return false;
 
-	fd_fence_ref(ctx->base.screen, &ctx->last_fence, NULL);
+	fd_fence_ref(&ctx->last_fence, NULL);
 
 	batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
 

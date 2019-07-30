@@ -70,8 +70,7 @@ static void fd_fence_destroy(struct pipe_fence_handle *fence)
 	FREE(fence);
 }
 
-void fd_fence_ref(struct pipe_screen *pscreen,
-		struct pipe_fence_handle **ptr,
+void fd_fence_ref(struct pipe_fence_handle **ptr,
 		struct pipe_fence_handle *pfence)
 {
 	if (pipe_reference(&(*ptr)->reference, &pfence->reference))

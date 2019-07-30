@@ -139,7 +139,7 @@ batch_fini(struct fd_batch *batch)
 	/* in case batch wasn't flushed but fence was created: */
 	fd_fence_populate(batch->fence, 0, -1);
 
-	fd_fence_ref(NULL, &batch->fence, NULL);
+	fd_fence_ref(&batch->fence, NULL);
 
 	fd_ringbuffer_del(batch->draw);
 	if (!batch->nondraw) {
