@@ -9285,6 +9285,10 @@ GLAPI void APIENTRY glGetPerfQueryInfoINTEL (GLuint queryId, GLuint queryNameLen
 #define GL_FRAMEBUFFER_FLIP_Y_MESA        0x8BBB
 #endif /* GL_MESA_framebuffer_flip_y */
 
+#ifndef GL_MESA_EGL_sync
+#define GL_MESA_EGL_sync 1
+#endif /* GL_MESA_EGL_sync */
+
 #ifndef GL_MESA_pack_invert
 #define GL_MESA_pack_invert 1
 #define GL_PACK_INVERT_MESA               0x8758
