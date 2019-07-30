@@ -1230,6 +1230,24 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
 		S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
+	/* Bug workaround for a possible hang with non-tessellation cases.
+	 * Tessellation always sets GE_CNTL.VERT_GRP_SIZE = 0
+	 *
+	 * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
+	 */
+	if ((sscreen->info.family == CHIP_NAVI10 ||
+	     sscreen->info.family == CHIP_NAVI12 ||
+	     sscreen->info.family == CHIP_NAVI14) &&
+	    (es_type == PIPE_SHADER_VERTEX || gs_type == PIPE_SHADER_VERTEX) && /* = no tess */
+	    shader->ngg.hw_max_esverts != 256) {
+		shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
+
+		if (shader->ngg.hw_max_esverts > 5) {
+			shader->ge_cntl |=
+				S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
+		}
+	}
+
 	if (window_space) {
 		shader->ctx_reg.ngg.pa_cl_vte_cntl =
 			S_028818_VTX_XY_FMT(1) | S_028818_VTX_Z_FMT(1);
