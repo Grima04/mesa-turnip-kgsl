@@ -467,8 +467,8 @@ mir_lower_special_reads(compiler_context *ctx)
                 bool collision =
                         (is_alur && (is_ldst || is_texr)) ||
                         (is_ldst && (is_alur || is_texr || is_texw)) ||
-                        (is_texr && (is_alur || is_ldst)) ||
-                        (is_texw && (is_aluw || is_ldst));
+                        (is_texr && (is_alur || is_ldst || is_texw)) ||
+                        (is_texw && (is_aluw || is_ldst || is_texr));
         
                 if (!collision)
                         continue;
