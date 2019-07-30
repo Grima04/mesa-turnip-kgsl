@@ -65,6 +65,8 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
                        state.colorHottileEnable,
                        renderBuffers);
 
+    bool isTileDirty = false;
+
     RDTSC_END(pDC->pContext->pBucketMgr, BESetup, 0);
 
     psContext.vY.UL     = _simd_add_ps(vULOffsetsY, _simd_set1_ps(static_cast<float>(y)));
@@ -211,6 +213,11 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
 
                     vCoverageMask = _simd_castsi_ps(psContext.activeMask);
 
+                    if (_simd_movemask_ps(vCoverageMask))
+                    {
+                        isTileDirty = true;
+                    }
+
                     // late-Z
                     if (!T::bCanEarlyZ)
                     {
@@ -317,6 +324,11 @@ void BackendSampleRate(DRAW_CONTEXT*        pDC,
 
         psContext.vY.UL     = _simd_add_ps(psContext.vY.UL, dy);
         psContext.vY.center = _simd_add_ps(psContext.vY.center, dy);
+    }
+
+    if (isTileDirty)
+    {
+        SetRenderHotTilesDirty(pDC, renderBuffers);
     }
 
     RDTSC_END(pDC->pContext->pBucketMgr, BESampleRateBackend, 0);

@@ -56,10 +56,11 @@ namespace SwrJit
         mInt8Ty     = Type::getInt8Ty(pJitMgr->mContext);
         mInt16Ty    = Type::getInt16Ty(pJitMgr->mContext);
         mInt32Ty    = Type::getInt32Ty(pJitMgr->mContext);
+        mInt64Ty    = Type::getInt64Ty(pJitMgr->mContext);
         mInt8PtrTy  = PointerType::get(mInt8Ty, 0);
         mInt16PtrTy = PointerType::get(mInt16Ty, 0);
         mInt32PtrTy = PointerType::get(mInt32Ty, 0);
-        mInt64Ty    = Type::getInt64Ty(pJitMgr->mContext);
+        mInt64PtrTy = PointerType::get(mInt64Ty, 0);
 
         mSimd4FP64Ty = VectorType::get(mDoubleTy, 4);
 

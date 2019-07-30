@@ -204,7 +204,7 @@ HOTTILE* HotTileMgr::GetHotTile(SWR_CONTEXT*                pContext,
                                   hotTile.pBuffer);
 
             hotTile.renderTargetArrayIndex = renderTargetArrayIndex;
-            hotTile.state                  = HOTTILE_DIRTY;
+            hotTile.state = HOTTILE_RESOLVED;
         }
     }
     return &tile.Attachment[attachment];
@@ -378,7 +378,7 @@ void HotTileMgr::InitializeHotTiles(SWR_CONTEXT*  pContext,
                                   y,
                                   pHotTile->renderTargetArrayIndex,
                                   pHotTile->pBuffer);
-            pHotTile->state = HOTTILE_DIRTY;
+            pHotTile->state = HOTTILE_RESOLVED;
             RDTSC_END(pContext->pBucketMgr, BELoadTiles, 0);
         }
         else if (pHotTile->state == HOTTILE_CLEAR)

@@ -91,6 +91,7 @@ namespace SwrJit
         Type* mInt8PtrTy;
         Type* mInt16PtrTy;
         Type* mInt32PtrTy;
+        Type* mInt64PtrTy;
 
         Type* mSimd4FP64Ty;
 

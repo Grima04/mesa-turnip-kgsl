@@ -185,7 +185,7 @@ void ProcessStoreTileBE(DRAW_CONTEXT*               pDC,
                                    pHotTile->pBuffer);
         }
 
-        if (pHotTile->state == HOTTILE_DIRTY || pHotTile->state == HOTTILE_RESOLVED)
+        if (pHotTile->state == HOTTILE_DIRTY || pHotTile->state == HOTTILE_RESOLVED) 
         {
             if (!(pDesc->postStoreTileState == (SWR_TILE_STATE)HOTTILE_DIRTY &&
                   pHotTile->state == HOTTILE_RESOLVED))

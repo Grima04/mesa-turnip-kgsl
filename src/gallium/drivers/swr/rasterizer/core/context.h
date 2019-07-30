@@ -330,12 +330,17 @@ OSALIGNLINE(struct) API_STATE
 
 class MacroTileMgr;
 class DispatchQueue;
+class HOTTILE;
 
 struct RenderOutputBuffers
 {
     uint8_t* pColor[SWR_NUM_RENDERTARGETS];
     uint8_t* pDepth;
     uint8_t* pStencil;
+
+    HOTTILE* pColorHotTile[SWR_NUM_RENDERTARGETS];
+    HOTTILE* pDepthHotTile;
+    HOTTILE* pStencilHotTile;
 };
 
 // Plane equation A/B/C coeffs used to evaluate I/J barycentric coords

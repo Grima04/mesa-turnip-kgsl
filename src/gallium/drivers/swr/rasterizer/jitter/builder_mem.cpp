@@ -646,7 +646,10 @@ namespace SwrJit
         Value* pDst, Value* vSrc, Value* vOffsets, Value* vMask, MEM_CLIENT usage)
     {
         AssertMemoryUsageParams(pDst, usage);
-
+//        if (vSrc->getType() != mSimdFP32Ty)
+//        {
+//            vSrc = BITCAST(vSrc, mSimdFP32Ty);
+//        }                                               
         SWR_ASSERT(vSrc->getType()->getVectorElementType()->isFloatTy());
         VSCATTERPS(pDst, vMask, vOffsets, vSrc, C(1));
         return;

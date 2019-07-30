@@ -1459,8 +1459,8 @@ void GetRenderHotTiles(DRAW_CONTEXT*        pDC,
             true,
             numSamples,
             renderTargetArrayIndex);
-        pColor->state                = HOTTILE_DIRTY;
         renderBuffers.pColor[rtSlot] = pColor->pBuffer + offset;
+        renderBuffers.pColorHotTile[rtSlot] = pColor;
 
         colorHottileEnableMask &= ~(1 << rtSlot);
     }
@@ -1483,6 +1483,7 @@ void GetRenderHotTiles(DRAW_CONTEXT*        pDC,
         pDepth->state   = HOTTILE_DIRTY;
         SWR_ASSERT(pDepth->pBuffer != nullptr);
         renderBuffers.pDepth = pDepth->pBuffer + offset;
+        renderBuffers.pDepthHotTile = pDepth;
     }
     if (state.stencilHottileEnable)
     {
@@ -1503,6 +1504,7 @@ void GetRenderHotTiles(DRAW_CONTEXT*        pDC,
         pStencil->state   = HOTTILE_DIRTY;
         SWR_ASSERT(pStencil->pBuffer != nullptr);
         renderBuffers.pStencil = pStencil->pBuffer + offset;
+        renderBuffers.pStencilHotTile = pStencil;
     }
 }
 

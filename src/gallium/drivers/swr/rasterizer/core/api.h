@@ -588,6 +588,7 @@ SWR_FUNC(void,
          uint32_t threadGroupCountY,
          uint32_t threadGroupCountZ);
 
+/// @note this enum needs to be kept in sync with HOTTILE_STATE!
 enum SWR_TILE_STATE
 {
     SWR_TILE_INVALID = 0, // tile is in unitialized state and should be loaded with surface contents

@@ -66,6 +66,9 @@ void BackendSingleSample(DRAW_CONTEXT*        pDC,
                        state.colorHottileEnable,
                        renderBuffers);
 
+    // Indicates backend rendered something to the color buffer
+    bool isTileDirty = false;
+
     RDTSC_END(pDC->pContext->pBucketMgr, BESetup, 1);
 
     psContext.vY.UL     = _simd_add_ps(vULOffsetsY, _simd_set1_ps(static_cast<float>(y)));
@@ -192,6 +195,11 @@ void BackendSingleSample(DRAW_CONTEXT*        pDC,
 
                 vCoverageMask = _simd_castsi_ps(psContext.activeMask);
 
+                if (_simd_movemask_ps(vCoverageMask))
+                {
+                    isTileDirty = true;
+                }
+
                 // late-Z
                 if (!T::bCanEarlyZ)
                 {
@@ -299,6 +307,11 @@ void BackendSingleSample(DRAW_CONTEXT*        pDC,
 
         psContext.vY.UL     = _simd_add_ps(psContext.vY.UL, dy);
         psContext.vY.center = _simd_add_ps(psContext.vY.center, dy);
+    }
+
+    if (isTileDirty)
+    {
+        SetRenderHotTilesDirty(pDC, renderBuffers);
     }
 
     RDTSC_END(pDC->pContext->pBucketMgr, BESingleSampleBackend, 0);
