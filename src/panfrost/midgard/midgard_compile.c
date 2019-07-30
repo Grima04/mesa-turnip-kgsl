@@ -193,7 +193,12 @@ v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, u
                 .unit = ALU_ENAB_BR_COMPACT,
                 .prepacked_branch = true,
                 .compact_branch = true,
-                .br_compact = compact
+                .br_compact = compact,
+                .ssa_args = {
+                        .dest = -1,
+                        .src0 = -1,
+                        .src1 = -1,
+                }
         };
 
         if (op == midgard_jmp_writeout_op_writeout)
@@ -212,6 +217,11 @@ v_branch(bool conditional, bool invert)
                 .branch = {
                         .conditional = conditional,
                         .invert_conditional = invert
+                },
+                .ssa_args = {
+                        .dest = -1,
+                        .src0 = -1,
+                        .src1 = -1
                 }
         };
 
@@ -1743,9 +1753,6 @@ inline_alu_constants(compiler_context *ctx)
 
                 /* If there is already a constant here, we can do nothing */
                 if (alu->has_constants) continue;
-
-                /* It makes no sense to inline constants on a branch */
-                if (alu->compact_branch || alu->prepacked_branch) continue;
 
                 CONDITIONAL_ATTACH(src0);
 

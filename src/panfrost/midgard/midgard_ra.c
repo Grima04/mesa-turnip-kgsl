@@ -418,8 +418,6 @@ mir_lower_special_reads(compiler_context *ctx)
         /* Pass #1 is analysis, a linear scan to fill out the bitfields */
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->compact_branch) continue;
-
                 switch (ins->type) {
                 case TAG_ALU_4:
                         mark_node_class(aluw, ins->ssa_args.dest);
@@ -497,7 +495,6 @@ mir_lower_special_reads(compiler_context *ctx)
 
                         /* Insert move after each write */
                         mir_foreach_instr_global_safe(ctx, pre_use) {
-                                if (pre_use->compact_branch) continue;
                                 if (pre_use->ssa_args.dest != i)
                                         continue;
 
@@ -561,7 +558,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->compact_branch) continue;
                 if (ins->ssa_args.dest < 0) continue;
                 if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
 
@@ -583,8 +579,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
          * nodes (TODO) */
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->compact_branch) continue;
-
                 /* Check if this operation imposes any classes */
 
                 if (ins->type == TAG_LOAD_STORE_4) {
@@ -608,8 +602,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         /* Check that the semantics of the class are respected */
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->compact_branch) continue;
-
                 assert(check_write_class(found_class, ins->type, ins->ssa_args.dest));
                 assert(check_read_class(found_class, ins->type, ins->ssa_args.src0));
 
@@ -637,8 +629,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
         mir_foreach_block(ctx, block) {
                 mir_foreach_instr_in_block(block, ins) {
-                        if (ins->compact_branch) continue;
-
                         if (ins->ssa_args.dest < SSA_FIXED_MINIMUM) {
                                 /* If this destination is not yet live, it is
                                  * now since we just wrote it */
@@ -864,7 +854,6 @@ install_registers(compiler_context *ctx, struct ra_graph *g)
 {
         mir_foreach_block(ctx, block) {
                 mir_foreach_instr_in_block(block, ins) {
-                        if (ins->compact_branch) continue;
                         install_registers_instr(ctx, g, ins);
                 }
         }

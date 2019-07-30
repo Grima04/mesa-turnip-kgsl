@@ -686,8 +686,6 @@ mir_squeeze_index(compiler_context *ctx)
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->compact_branch) continue;
-
                 ins->ssa_args.dest = find_or_allocate_temp(ctx, ins->ssa_args.dest);
                 ins->ssa_args.src0 = find_or_allocate_temp(ctx, ins->ssa_args.src0);
 
@@ -808,7 +806,6 @@ schedule_program(compiler_context *ctx)
 
                         if (!is_special || is_special_w) {
                                 mir_foreach_instr_global_safe(ctx, ins) {
-                                        if (ins->compact_branch) continue;
                                         if (ins->ssa_args.dest != spill_node) continue;
 
                                         midgard_instruction st;
@@ -843,8 +840,6 @@ schedule_program(compiler_context *ctx)
                         unsigned consecutive_index = 0;
 
                         mir_foreach_instr_in_block(block, ins) {
-                                if (ins->compact_branch) continue;
-
                                 /* We can't rewrite the move used to spill in the first place */
                                 if (ins == spill_move) continue;
                                 

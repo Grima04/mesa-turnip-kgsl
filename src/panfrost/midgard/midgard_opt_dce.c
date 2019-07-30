@@ -63,8 +63,6 @@ midgard_opt_dead_move_eliminate(compiler_context *ctx, midgard_block *block)
                 bool overwritten = false;
 
                 mir_foreach_instr_in_block_from(block, q, mir_next_op(ins)) {
-                        if (q->compact_branch) continue;
-
                         /* Check if used */
                         if (mir_has_arg(q, ins->ssa_args.dest))
                                 break;

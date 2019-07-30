@@ -48,11 +48,6 @@ mir_pipeline_ins(
         midgard_instruction *ins = bundle->instructions[i];
         unsigned dest = ins->ssa_args.dest;
 
-        /* Check to make sure we're legal */
-
-        if (ins->compact_branch)
-                return false;
-
         /* We could be pipelining a register, so we need to make sure that all
          * of the components read in this bundle are written in this bundle,
          * and that no components are written before this bundle */

@@ -31,9 +31,6 @@
 static bool
 midgard_is_live_in_instr(midgard_instruction *ins, int src)
 {
-        if (ins->compact_branch)
-                return false;
-
         if (ins->ssa_args.src0 == src)
                 return true;
 
