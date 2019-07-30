@@ -127,7 +127,7 @@ nir_deref_instr_is_known_out_of_bounds(nir_deref_instr *instr)
    for (; instr; instr = nir_deref_instr_parent(instr)) {
       if (instr->deref_type == nir_deref_type_array &&
           nir_src_is_const(instr->arr.index) &&
-           nir_src_as_uint(instr->arr.index) >
+           nir_src_as_uint(instr->arr.index) >=
            glsl_get_length(nir_deref_instr_parent(instr)->type))
          return true;
    }
