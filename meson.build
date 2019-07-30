@@ -252,6 +252,7 @@ endif
 
 if host_machine.system() == 'darwin'
   with_dri_platform = 'apple'
+  pre_args += '-DBUILDING_MESA'
 elif ['windows', 'cygwin'].contains(host_machine.system())
   with_dri_platform = 'windows'
 elif system_has_kms_drm
