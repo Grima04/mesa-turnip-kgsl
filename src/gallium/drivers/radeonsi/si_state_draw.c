@@ -717,13 +717,18 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx,
  */
 static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 {
+	union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
 	unsigned ge_cntl;
 
 	if (sctx->ngg) {
-		ge_cntl = si_get_vs_state(sctx)->ge_cntl |
-			  S_03096C_PACKET_TO_ONE_PA(sctx->ia_multi_vgt_param_key.u.line_stipple_enabled);
+		if (sctx->tes_shader.cso) {
+			ge_cntl = S_03096C_PRIM_GRP_SIZE(num_patches) |
+				  S_03096C_VERT_GRP_SIZE(0) |
+				  S_03096C_BREAK_WAVE_AT_EOI(key.u.tess_uses_prim_id);
+		} else {
+			ge_cntl = si_get_vs_state(sctx)->ge_cntl;
+		}
 	} else {
-		union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
 		unsigned primgroup_size;
 		unsigned vertgroup_size;
 
@@ -741,9 +746,10 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 
 		ge_cntl = S_03096C_PRIM_GRP_SIZE(primgroup_size) |
 			  S_03096C_VERT_GRP_SIZE(vertgroup_size) |
-			  S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id) |
-			  S_03096C_PACKET_TO_ONE_PA(key.u.line_stipple_enabled);
+			  S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
 	}
+
+	ge_cntl |= S_03096C_PACKET_TO_ONE_PA(key.u.line_stipple_enabled);
 
 	if (ge_cntl != sctx->last_multi_vgt_param) {
 		radeon_set_uconfig_reg(sctx->gfx_cs, R_03096C_GE_CNTL, ge_cntl);
