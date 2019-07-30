@@ -824,7 +824,7 @@ static void si_update_poly_offset_state(struct si_context *sctx)
 {
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 
-	if (!rs || !rs->uses_poly_offset || !sctx->framebuffer.state.zsbuf) {
+	if (!rs->uses_poly_offset || !sctx->framebuffer.state.zsbuf) {
 		si_pm4_bind_state(sctx, poly_offset, NULL);
 		return;
 	}
@@ -1027,10 +1027,10 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 		(struct si_state_rasterizer*)sctx->queued.named.rasterizer;
 	struct si_state_rasterizer *rs = (struct si_state_rasterizer *)state;
 
-	if (!state)
-		return;
+	if (!rs)
+		rs = (struct si_state_rasterizer *)sctx->discard_rasterizer_state;
 
-	if (!old_rs || old_rs->multisample_enable != rs->multisample_enable) {
+	if (old_rs->multisample_enable != rs->multisample_enable) {
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 
 		/* Update the small primitive filter workaround if necessary. */
@@ -1045,30 +1045,25 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 	si_pm4_bind_state(sctx, rasterizer, rs);
 	si_update_poly_offset_state(sctx);
 
-	if (!old_rs ||
-	    old_rs->scissor_enable != rs->scissor_enable)
+	if (old_rs->scissor_enable != rs->scissor_enable)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.scissors);
 
-	if (!old_rs ||
-	    old_rs->line_width != rs->line_width ||
+	if (old_rs->line_width != rs->line_width ||
 	    old_rs->max_point_size != rs->max_point_size ||
 	    old_rs->half_pixel_center != rs->half_pixel_center)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.guardband);
 
-	if (!old_rs ||
-	    old_rs->clip_halfz != rs->clip_halfz)
+	if (old_rs->clip_halfz != rs->clip_halfz)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.viewports);
 
-	if (!old_rs ||
-	    old_rs->clip_plane_enable != rs->clip_plane_enable ||
+	if (old_rs->clip_plane_enable != rs->clip_plane_enable ||
 	    old_rs->pa_cl_clip_cntl != rs->pa_cl_clip_cntl)
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 
 	sctx->ia_multi_vgt_param_key.u.line_stipple_enabled =
 		rs->line_stipple_enable;
 
-	if (!old_rs ||
-	    old_rs->clip_plane_enable != rs->clip_plane_enable ||
+	if (old_rs->clip_plane_enable != rs->clip_plane_enable ||
 	    old_rs->rasterizer_discard != rs->rasterizer_discard ||
 	    old_rs->sprite_coord_enable != rs->sprite_coord_enable ||
 	    old_rs->flatshade != rs->flatshade ||

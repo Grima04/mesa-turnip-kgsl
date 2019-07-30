@@ -550,6 +550,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 		sctx->noop_dsa = util_blitter_get_noop_dsa_state(sctx->blitter);
 		sctx->queued.named.dsa = sctx->noop_dsa;
 
+		sctx->discard_rasterizer_state =
+			util_blitter_get_discard_rasterizer_state(sctx->blitter);
+		sctx->queued.named.rasterizer = sctx->discard_rasterizer_state;
+
 		si_init_draw_functions(sctx);
 		si_initialize_prim_discard_tunables(sctx);
 	}

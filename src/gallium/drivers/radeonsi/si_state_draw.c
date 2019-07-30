@@ -1768,7 +1768,6 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	}
 
 	if (unlikely(!sctx->vs_shader.cso ||
-		     !rs ||
 		     (!sctx->ps_shader.cso && !rs->rasterizer_discard) ||
 		     (!!sctx->tes_shader.cso != (prim == PIPE_PRIM_PATCHES)))) {
 		assert(0);
