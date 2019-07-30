@@ -796,9 +796,13 @@ VkResult radv_AllocateDescriptorSets(
 		pDescriptorSets[i] = radv_descriptor_set_to_handle(set);
 	}
 
-	if (result != VK_SUCCESS)
+	if (result != VK_SUCCESS) {
 		radv_FreeDescriptorSets(_device, pAllocateInfo->descriptorPool,
 					i, pDescriptorSets);
+		for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
+			pDescriptorSets[i] = VK_NULL_HANDLE;
+		}
+	}
 	return result;
 }
 
