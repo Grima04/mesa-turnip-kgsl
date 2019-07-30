@@ -32,9 +32,6 @@ install:
   - pip3 install --user mako
 
 script:
-  - meson _build
-      -Dbuild-tests=true
-      -Dplatforms=x11
-      -Dgallium-drivers=swrast
+  - meson _build -Dbuild-tests=true
   - ninja -C _build
   - ninja -C _build test
