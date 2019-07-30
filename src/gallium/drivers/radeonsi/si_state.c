@@ -115,12 +115,12 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 				   SI_TRACKED_CB_TARGET_MASK, cb_target_mask);
 
 	if (sctx->chip_class >= GFX8) {
-		/* DCC MSAA workaround for blending.
+		/* DCC MSAA workaround.
 		 * Alternatively, we can set CB_COLORi_DCC_CONTROL.OVERWRITE_-
 		 * COMBINER_DISABLE, but that would be more complicated.
 		 */
 		bool oc_disable = blend &&
-				  blend->blend_enable_4bit & cb_target_mask &&
+				  blend->dcc_msaa_corruption_4bit & cb_target_mask &&
 				  sctx->framebuffer.nr_samples >= 2;
 		unsigned watermark = sctx->framebuffer.dcc_overwrite_combiner_watermark;
 
@@ -621,6 +621,9 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 
 		blend->blend_enable_4bit |= 0xfu << (i * 4);
 
+		if (sctx->family <= CHIP_NAVI14)
+			blend->dcc_msaa_corruption_4bit |= 0xfu << (i * 4);
+
 		/* This is only important for formats without alpha. */
 		if (srcRGB == PIPE_BLENDFACTOR_SRC_ALPHA ||
 		    dstRGB == PIPE_BLENDFACTOR_SRC_ALPHA ||
@@ -630,6 +633,9 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 		    dstRGB == PIPE_BLENDFACTOR_INV_SRC_ALPHA)
 			blend->need_src_alpha_4bit |= 0xfu << (i * 4);
 	}
+
+	if (sctx->family <= CHIP_NAVI14 && logicop_enable)
+		blend->dcc_msaa_corruption_4bit |= blend->cb_target_enabled_4bit;
 
 	if (blend->cb_target_mask) {
 		color_control |= S_028808_MODE(mode);
