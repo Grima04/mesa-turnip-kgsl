@@ -1024,6 +1024,7 @@ void st_init_extensions(struct pipe_screen *screen,
    extensions->ATI_fragment_shader = GL_TRUE;
    extensions->ATI_texture_env_combine3 = GL_TRUE;
 
+   extensions->MESA_framebuffer_flip_y = GL_TRUE;
    extensions->MESA_pack_invert = GL_TRUE;
 
    extensions->NV_fog_distance = GL_TRUE;

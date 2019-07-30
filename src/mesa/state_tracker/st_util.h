@@ -71,7 +71,7 @@ st_invalidate_readpix_cache(struct st_context *st)
 static inline GLuint
 st_fb_orientation(const struct gl_framebuffer *fb)
 {
-   if (fb && _mesa_is_winsys_fbo(fb)) {
+   if (fb && fb->FlipY) {
       /* Drawing into a window (on-screen buffer).
        *
        * Negate Y scale to flip image vertically.
