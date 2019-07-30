@@ -1921,7 +1921,7 @@ embedded_to_inline_constant(compiler_context *ctx)
 
                         /* Get rid of the embedded constant */
                         ins->has_constants = false;
-                        ins->ssa_args.src1 = SSA_UNUSED_0;
+                        ins->ssa_args.src1 = -1;
                         ins->ssa_args.inline_constant = true;
                         ins->inline_constant = scaled_constant;
                 }

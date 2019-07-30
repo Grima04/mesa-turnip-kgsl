@@ -113,7 +113,6 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
                         ra_get_node_reg(g, iB);
 
                 if (A != B) continue;
-                if (ins->ssa_args.inline_constant) continue;
 
                 /* Check we're in the work zone. TODO: promoted
                  * uniforms? */

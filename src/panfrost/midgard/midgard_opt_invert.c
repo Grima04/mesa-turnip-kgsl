@@ -42,7 +42,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                         .mask = ins->mask,
                         .ssa_args = {
                                 .src0 = temp,
-                                .src1 = 0,
+                                .src1 = -1,
                                 .dest = ins->ssa_args.dest,
                                 .inline_constant = true
                         },

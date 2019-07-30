@@ -422,9 +422,7 @@ mir_lower_special_reads(compiler_context *ctx)
                 case TAG_ALU_4:
                         mark_node_class(aluw, ins->ssa_args.dest);
                         mark_node_class(alur, ins->ssa_args.src0);
-
-                        if (!ins->ssa_args.inline_constant)
-                                mark_node_class(alur, ins->ssa_args.src1);
+                        mark_node_class(alur, ins->ssa_args.src1);
 
                         break;
                 case TAG_LOAD_STORE_4:
@@ -604,9 +602,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         mir_foreach_instr_global(ctx, ins) {
                 assert(check_write_class(found_class, ins->type, ins->ssa_args.dest));
                 assert(check_read_class(found_class, ins->type, ins->ssa_args.src0));
-
-                if (!ins->ssa_args.inline_constant)
-                        assert(check_read_class(found_class, ins->type, ins->ssa_args.src1));
+                assert(check_read_class(found_class, ins->type, ins->ssa_args.src1));
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
@@ -650,9 +646,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
 
                         for (int src = 0; src < 2; ++src) {
                                 int s = sources[src];
-
-                                if (ins->ssa_args.inline_constant && src == 1)
-                                        continue;
 
                                 if (s < 0) continue;
 
@@ -718,9 +711,8 @@ install_registers_instr(
 
         switch (ins->type) {
         case TAG_ALU_4: {
-                int adjusted_src = args.inline_constant ? -1 : args.src1;
                 struct phys_reg src1 = index_to_reg(ctx, g, args.src0);
-                struct phys_reg src2 = index_to_reg(ctx, g, adjusted_src);
+                struct phys_reg src2 = index_to_reg(ctx, g, args.src1);
                 struct phys_reg dest = index_to_reg(ctx, g, args.dest);
 
                 unsigned uncomposed_mask = ins->mask;

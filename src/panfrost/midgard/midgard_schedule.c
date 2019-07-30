@@ -285,13 +285,10 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
                                         could_scalar &= !s1.half;
 
-                                        if (!ains->ssa_args.inline_constant) {
-                                                midgard_vector_alu_src s2 =
-                                                        vector_alu_from_unsigned(ains->alu.src2);
+                                        midgard_vector_alu_src s2 =
+                                                vector_alu_from_unsigned(ains->alu.src2);
 
-                                                could_scalar &= !s2.half;
-                                        }
-
+                                        could_scalar &= !s2.half;
                                 }
 
                                 bool scalar = could_scalar && scalarable;
@@ -688,10 +685,7 @@ mir_squeeze_index(compiler_context *ctx)
         mir_foreach_instr_global(ctx, ins) {
                 ins->ssa_args.dest = find_or_allocate_temp(ctx, ins->ssa_args.dest);
                 ins->ssa_args.src0 = find_or_allocate_temp(ctx, ins->ssa_args.src0);
-
-                if (!ins->ssa_args.inline_constant)
-                        ins->ssa_args.src1 = find_or_allocate_temp(ctx, ins->ssa_args.src1);
-
+                ins->ssa_args.src1 = find_or_allocate_temp(ctx, ins->ssa_args.src1);
         }
 }
 

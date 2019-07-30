@@ -29,8 +29,7 @@ void mir_rewrite_index_src_single(midgard_instruction *ins, unsigned old, unsign
         if (ins->ssa_args.src0 == old)
                 ins->ssa_args.src0 = new;
 
-        if (ins->ssa_args.src1 == old &&
-            !ins->ssa_args.inline_constant)
+        if (ins->ssa_args.src1 == old)
                 ins->ssa_args.src1 = new;
 }
 
@@ -104,8 +103,7 @@ mir_rewrite_index_src_single_swizzle(midgard_instruction *ins, unsigned old, uns
                         pan_compose_swizzle(mir_get_swizzle(ins, 0), swizzle));
         }
 
-        if (ins->ssa_args.src1 == old &&
-            !ins->ssa_args.inline_constant) {
+        if (ins->ssa_args.src1 == old) {
                 ins->ssa_args.src1 = new;
 
                 mir_set_swizzle(ins, 1,
@@ -335,7 +333,7 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
         if (ins->ssa_args.src0 == node)
                 mask |= mir_mask_of_read_components_single(ins->alu.src1, ins->mask);
 
-        if (ins->ssa_args.src1 == node && !ins->ssa_args.inline_constant)
+        if (ins->ssa_args.src1 == node)
                 mask |= mir_mask_of_read_components_single(ins->alu.src2, ins->mask);
 
         return mask;
