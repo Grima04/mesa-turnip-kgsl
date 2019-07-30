@@ -85,14 +85,6 @@ static void gather_intrinsic_load_deref_input_info(const nir_shader *nir,
 		}
 		break;
 	}
-	case MESA_SHADER_FRAGMENT:
-		if (var->data.location == VARYING_SLOT_COL0 ||
-		    var->data.location == VARYING_SLOT_COL1) {
-			unsigned index = var->data.location == VARYING_SLOT_COL1;
-			uint8_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
-			info->colors_read |= mask << (index * 4);
-		}
-		break;
 	default:;
 	}
 }
@@ -331,39 +323,54 @@ static void scan_instruction(const struct nir_shader *nir,
 			info->writes_memory = true;
 			info->num_memory_instructions++; /* we only care about stores */
 			break;
+		case nir_intrinsic_load_color0:
+		case nir_intrinsic_load_color1: {
+			unsigned index = intr->intrinsic == nir_intrinsic_load_color1;
+			uint8_t mask = nir_ssa_def_components_read(&intr->dest.ssa);
+			info->colors_read |= mask << (index * 4);
+			break;
+		}
+		case nir_intrinsic_load_barycentric_pixel:
+		case nir_intrinsic_load_barycentric_centroid:
+		case nir_intrinsic_load_barycentric_sample:
+		case nir_intrinsic_load_barycentric_at_offset: /* uses center */
+		case nir_intrinsic_load_barycentric_at_sample: { /* uses center */
+			unsigned mode = nir_intrinsic_interp_mode(intr);
+
+			if (mode == INTERP_MODE_FLAT)
+				break;
+
+			if (mode == INTERP_MODE_NOPERSPECTIVE) {
+				if (intr->intrinsic == nir_intrinsic_load_barycentric_sample)
+					info->uses_linear_sample = true;
+				else if (intr->intrinsic == nir_intrinsic_load_barycentric_centroid)
+					info->uses_linear_centroid = true;
+				else
+					info->uses_linear_center = true;
+
+				if (intr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
+					info->uses_linear_opcode_interp_sample = true;
+			} else {
+				if (intr->intrinsic == nir_intrinsic_load_barycentric_sample)
+					info->uses_persp_sample = true;
+				else if (intr->intrinsic == nir_intrinsic_load_barycentric_centroid)
+					info->uses_persp_centroid = true;
+				else
+					info->uses_persp_center = true;
+
+				if (intr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
+					info->uses_persp_opcode_interp_sample = true;
+			}
+			break;
+		}
 		case nir_intrinsic_load_deref: {
 			nir_variable *var = intrinsic_get_var(intr);
 			nir_variable_mode mode = var->data.mode;
-			enum glsl_base_type base_type =
-				glsl_get_base_type(glsl_without_array(var->type));
 
 			if (mode == nir_var_shader_in) {
+				/* PS inputs use the interpolated load intrinsics. */
+				assert(nir->info.stage != MESA_SHADER_FRAGMENT);
 				gather_intrinsic_load_deref_input_info(nir, intr, var, info);
-
-				switch (var->data.interpolation) {
-				case INTERP_MODE_NONE:
-					if (glsl_base_type_is_integer(base_type))
-						break;
-
-					/* fall-through */
-				case INTERP_MODE_SMOOTH:
-					if (var->data.sample)
-						info->uses_persp_sample = true;
-					else if (var->data.centroid)
-						info->uses_persp_centroid = true;
-					else
-						info->uses_persp_center = true;
-					break;
-
-				case INTERP_MODE_NOPERSPECTIVE:
-					if (var->data.sample)
-						info->uses_linear_sample = true;
-					else if (var->data.centroid)
-						info->uses_linear_centroid = true;
-					else
-						info->uses_linear_center = true;
-					break;
-				}
 			} else if (mode == nir_var_shader_out) {
 				gather_intrinsic_load_deref_output_info(nir, intr, var, info);
 			}
@@ -378,33 +385,9 @@ static void scan_instruction(const struct nir_shader *nir,
 		}
 		case nir_intrinsic_interp_deref_at_centroid:
 		case nir_intrinsic_interp_deref_at_sample:
-		case nir_intrinsic_interp_deref_at_offset: {
-			enum glsl_interp_mode interp = intrinsic_get_var(intr)->data.interpolation;
-			switch (interp) {
-			case INTERP_MODE_SMOOTH:
-			case INTERP_MODE_NONE:
-				if (intr->intrinsic == nir_intrinsic_interp_deref_at_centroid)
-					info->uses_persp_opcode_interp_centroid = true;
-				else if (intr->intrinsic == nir_intrinsic_interp_deref_at_sample)
-					info->uses_persp_opcode_interp_sample = true;
-				else
-					info->uses_persp_opcode_interp_offset = true;
-				break;
-			case INTERP_MODE_NOPERSPECTIVE:
-				if (intr->intrinsic == nir_intrinsic_interp_deref_at_centroid)
-					info->uses_linear_opcode_interp_centroid = true;
-				else if (intr->intrinsic == nir_intrinsic_interp_deref_at_sample)
-					info->uses_linear_opcode_interp_sample = true;
-				else
-					info->uses_linear_opcode_interp_offset = true;
-				break;
-			case INTERP_MODE_FLAT:
-				break;
-			default:
-				unreachable("Unsupported interpoation type");
-			}
+		case nir_intrinsic_interp_deref_at_offset:
+			unreachable("interp opcodes should have been lowered");
 			break;
-		}
 		default:
 			break;
 		}
@@ -968,6 +951,31 @@ si_nir_lower_color(nir_shader *nir)
         }
 }
 
+void si_nir_lower_ps_inputs(struct nir_shader *nir)
+{
+	if (nir->info.stage != MESA_SHADER_FRAGMENT)
+		return;
+
+	NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+		   nir_shader_get_entrypoint(nir), false, true);
+
+	/* Since we're doing nir_lower_io_to_temporaries late, we need
+	 * to lower all the copy_deref's introduced by
+	 * lower_io_to_temporaries before calling nir_lower_io.
+	 */
+	NIR_PASS_V(nir, nir_split_var_copies);
+	NIR_PASS_V(nir, nir_lower_var_copies);
+	NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+
+	si_nir_lower_color(nir);
+	NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, type_size_vec4, 0);
+
+	/* This pass needs actual constants */
+	NIR_PASS_V(nir, nir_opt_constant_folding);
+	NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
+		   nir_var_shader_in);
+}
+
 /**
  * Perform "lowering" operations on the NIR that are run once when the shader
  * selector is created.
@@ -982,25 +990,6 @@ si_lower_nir(struct si_shader_selector* sel, unsigned wave_size)
 	if (sel->nir->info.stage != MESA_SHADER_FRAGMENT) {
 		nir_foreach_variable(variable, &sel->nir->inputs)
 			variable->data.driver_location *= 4;
-	} else {
-		NIR_PASS_V(sel->nir, nir_lower_io_to_temporaries,
-			   nir_shader_get_entrypoint(sel->nir), false, true);
-
-		/* Since we're doing nir_lower_io_to_temporaries late, we need
-		 * to lower all the copy_deref's introduced by
-		 * lower_io_to_temporaries before calling nir_lower_io.
-		 */
-		NIR_PASS_V(sel->nir, nir_split_var_copies);
-                NIR_PASS_V(sel->nir, nir_lower_var_copies);
-		NIR_PASS_V(sel->nir, nir_lower_global_vars_to_local);
-
-		si_nir_lower_color(sel->nir);
-		NIR_PASS_V(sel->nir, nir_lower_io, nir_var_shader_in, type_size_vec4, 0);
-
-                /* This pass needs actual constants */
-                NIR_PASS_V(sel->nir, nir_opt_constant_folding);
-                NIR_PASS_V(sel->nir, nir_io_add_const_offset_to_base,
-                           nir_var_shader_in);
 	}
 
 	nir_foreach_variable(variable, &sel->nir->outputs) {

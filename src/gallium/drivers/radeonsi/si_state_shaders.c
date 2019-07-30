@@ -2637,6 +2637,21 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 		tgsi_scan_shader(state->tokens, &sel->info);
 		tgsi_scan_tess_ctrl(state->tokens, &sel->info, &sel->tcs_info);
+
+		/* Fixup for TGSI: Set which opcode uses which (i,j) pair. */
+		if (sel->info.uses_persp_opcode_interp_centroid)
+			sel->info.uses_persp_centroid = true;
+
+		if (sel->info.uses_linear_opcode_interp_centroid)
+			sel->info.uses_linear_centroid = true;
+
+		if (sel->info.uses_persp_opcode_interp_offset ||
+		    sel->info.uses_persp_opcode_interp_sample)
+			sel->info.uses_persp_center = true;
+
+		if (sel->info.uses_linear_opcode_interp_offset ||
+		    sel->info.uses_linear_opcode_interp_sample)
+			sel->info.uses_linear_center = true;
 	} else {
 		if (state->type == PIPE_SHADER_IR_TGSI) {
 			sel->nir = tgsi_to_nir(state->tokens, ctx->screen);
@@ -2645,6 +2660,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 			sel->nir = state->ir.nir;
 		}
 
+		si_nir_lower_ps_inputs(sel->nir);
 		si_nir_opts(sel->nir);
 		si_nir_scan_shader(sel->nir, &sel->info);
 		si_nir_scan_tess_ctrl(sel->nir, &sel->tcs_info);
@@ -2690,21 +2706,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 		else
 			sel->pos_writes_edgeflag = true;
 	}
-
-	/* Set which opcode uses which (i,j) pair. */
-	if (sel->info.uses_persp_opcode_interp_centroid)
-		sel->info.uses_persp_centroid = true;
-
-	if (sel->info.uses_linear_opcode_interp_centroid)
-		sel->info.uses_linear_centroid = true;
-
-	if (sel->info.uses_persp_opcode_interp_offset ||
-	    sel->info.uses_persp_opcode_interp_sample)
-		sel->info.uses_persp_center = true;
-
-	if (sel->info.uses_linear_opcode_interp_offset ||
-	    sel->info.uses_linear_opcode_interp_sample)
-		sel->info.uses_linear_center = true;
 
 	switch (sel->type) {
 	case PIPE_SHADER_GEOMETRY:
