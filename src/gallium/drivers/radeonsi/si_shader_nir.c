@@ -1243,7 +1243,10 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
                                 ac_to_integer(&ctx->ac,
                                               ac_build_gather_values(&ctx->ac, values, 4));
                 }
-        }
+
+		ctx->abi.interp_at_sample_force_center =
+			ctx->shader->key.mono.u.ps.interpolate_at_sample_force_center;
+	}
 
 	ctx->abi.inputs = &ctx->inputs[0];
 	ctx->abi.load_sampler_desc = si_nir_load_sampler_desc;

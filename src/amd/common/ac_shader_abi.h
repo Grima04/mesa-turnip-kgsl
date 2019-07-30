@@ -203,6 +203,7 @@ struct ac_shader_abi {
 	/* Whether to clamp the shadow reference value to [0,1]on GFX8. Radeonsi currently
 	 * uses it due to promoting D16 to D32, but radv needs it off. */
 	bool clamp_shadow_reference;
+	bool interp_at_sample_force_center;
 
 	/* Whether to workaround GFX9 ignoring the stride for the buffer size if IDXEN=0
 	* and LLVM optimizes an indexed load with constant index to IDXEN=0. */

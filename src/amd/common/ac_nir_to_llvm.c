@@ -3080,6 +3080,9 @@ static LLVMValueRef barycentric_at_sample(struct ac_nir_context *ctx,
 					  unsigned mode,
 					  LLVMValueRef sample_id)
 {
+	if (ctx->abi->interp_at_sample_force_center)
+		return barycentric_center(ctx, mode);
+
 	LLVMValueRef halfval = LLVMConstReal(ctx->ac.f32, 0.5f);
 
 	/* fetch sample ID */
