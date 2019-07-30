@@ -66,8 +66,7 @@ struct tgsi_shader_info;
 struct lp_build_mask_context;
 struct gallivm_state;
 struct lp_derivatives;
-struct lp_build_tgsi_gs_iface;
-struct lp_build_coro_suspend_info;
+struct lp_build_gs_iface;
 
 enum lp_build_tex_modifier {
    LP_BLD_TEX_MODIFIER_NONE = 0,
@@ -247,7 +246,7 @@ struct lp_build_tgsi_params {
    LLVMValueRef thread_data_ptr;
    const struct lp_build_sampler_soa *sampler;
    const struct tgsi_shader_info *info;
-   const struct lp_build_tgsi_gs_iface *gs_iface;
+   const struct lp_build_gs_iface *gs_iface;
    LLVMValueRef ssbo_ptr;
    LLVMValueRef ssbo_sizes_ptr;
    const struct lp_build_image_soa *image;
@@ -435,25 +434,26 @@ struct lp_build_tgsi_context
    void (*emit_epilogue)(struct lp_build_tgsi_context*);
 };
 
-struct lp_build_tgsi_gs_iface
+struct lp_build_gs_iface
 {
-   LLVMValueRef (*fetch_input)(const struct lp_build_tgsi_gs_iface *gs_iface,
-                               struct lp_build_tgsi_context * bld_base,
+   LLVMValueRef (*fetch_input)(const struct lp_build_gs_iface *gs_iface,
+                               struct lp_build_context * bld,
                                boolean is_vindex_indirect,
                                LLVMValueRef vertex_index,
                                boolean is_aindex_indirect,
                                LLVMValueRef attrib_index,
                                LLVMValueRef swizzle_index);
-   void (*emit_vertex)(const struct lp_build_tgsi_gs_iface *gs_iface,
-                       struct lp_build_tgsi_context * bld_base,
+   void (*emit_vertex)(const struct lp_build_gs_iface *gs_iface,
+                       struct lp_build_context * bld,
                        LLVMValueRef (*outputs)[4],
                        LLVMValueRef emitted_vertices_vec);
-   void (*end_primitive)(const struct lp_build_tgsi_gs_iface *gs_iface,
-                         struct lp_build_tgsi_context * bld_base,
+   void (*end_primitive)(const struct lp_build_gs_iface *gs_iface,
+                         struct lp_build_context * bld,
+                         LLVMValueRef total_emitted_vertices_vec,
                          LLVMValueRef verts_per_prim_vec,
-                         LLVMValueRef emitted_prims_vec);
-   void (*gs_epilogue)(const struct lp_build_tgsi_gs_iface *gs_iface,
-                       struct lp_build_tgsi_context * bld_base,
+                         LLVMValueRef emitted_prims_vec,
+                         LLVMValueRef mask_vec);
+   void (*gs_epilogue)(const struct lp_build_gs_iface *gs_iface,
                        LLVMValueRef total_emitted_vertices_vec,
                        LLVMValueRef emitted_prims_vec);
 };
@@ -465,7 +465,7 @@ struct lp_build_tgsi_soa_context
    /* Builder for scalar elements of shader's data type (float) */
    struct lp_build_context elem_bld;
 
-   const struct lp_build_tgsi_gs_iface *gs_iface;
+   const struct lp_build_gs_iface *gs_iface;
    LLVMValueRef emitted_prims_vec_ptr;
    LLVMValueRef total_emitted_vertices_vec_ptr;
    LLVMValueRef emitted_vertices_vec_ptr;

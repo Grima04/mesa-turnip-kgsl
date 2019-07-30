@@ -240,35 +240,36 @@ struct BuilderSWR : public Builder {
    PFN_GS_FUNC CompileGS(struct swr_context *ctx, swr_jit_gs_key &key);
 
    LLVMValueRef
-   swr_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
-                           struct lp_build_tgsi_context * bld_base,
+   swr_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
+                           struct lp_build_context * bld,
                            boolean is_vindex_indirect,
                            LLVMValueRef vertex_index,
                            boolean is_aindex_indirect,
                            LLVMValueRef attrib_index,
                            LLVMValueRef swizzle_index);
    void
-   swr_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base,
-                           struct lp_build_tgsi_context * bld_base,
+   swr_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
+                           struct lp_build_context * bld,
                            LLVMValueRef (*outputs)[4],
                            LLVMValueRef emitted_vertices_vec);
 
    void
-   swr_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_base,
-                             struct lp_build_tgsi_context * bld_base,
+   swr_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
+                             struct lp_build_context * bld,
+                             LLVMValueRef total_emitted_vertices_vec_ptr,
                              LLVMValueRef verts_per_prim_vec,
-                             LLVMValueRef emitted_prims_vec);
+                             LLVMValueRef emitted_prims_vec,
+                             LLVMValueRef mask_vec);
 
    void
-   swr_gs_llvm_epilogue(const struct lp_build_tgsi_gs_iface *gs_base,
-                        struct lp_build_tgsi_context * bld_base,
+   swr_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                         LLVMValueRef total_emitted_vertices_vec,
                         LLVMValueRef emitted_prims_vec);
 
 };
 
 struct swr_gs_llvm_iface {
-   struct lp_build_tgsi_gs_iface base;
+   struct lp_build_gs_iface base;
    struct tgsi_shader_info *info;
 
    BuilderSWR *pBuilder;
@@ -283,8 +284,8 @@ struct swr_gs_llvm_iface {
 
 // trampoline functions so we can use the builder llvm construction methods
 static LLVMValueRef
-swr_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
-                           struct lp_build_tgsi_context * bld_base,
+swr_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
+                           struct lp_build_context * bld,
                            boolean is_vindex_indirect,
                            LLVMValueRef vertex_index,
                            boolean is_aindex_indirect,
@@ -293,7 +294,7 @@ swr_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_iface;
 
-    return iface->pBuilder->swr_gs_llvm_fetch_input(gs_iface, bld_base,
+    return iface->pBuilder->swr_gs_llvm_fetch_input(gs_iface, bld,
                                                    is_vindex_indirect,
                                                    vertex_index,
                                                    is_aindex_indirect,
@@ -302,47 +303,50 @@ swr_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
 }
 
 static void
-swr_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base,
-                           struct lp_build_tgsi_context * bld_base,
+swr_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
+                           struct lp_build_context * bld,
                            LLVMValueRef (*outputs)[4],
                            LLVMValueRef emitted_vertices_vec)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
-    iface->pBuilder->swr_gs_llvm_emit_vertex(gs_base, bld_base,
+    iface->pBuilder->swr_gs_llvm_emit_vertex(gs_base, bld,
                                             outputs,
                                             emitted_vertices_vec);
 }
 
 static void
-swr_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_base,
-                             struct lp_build_tgsi_context * bld_base,
+swr_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
+                             struct lp_build_context * bld,
+                             LLVMValueRef total_emitted_vertices_vec_ptr,
                              LLVMValueRef verts_per_prim_vec,
-                             LLVMValueRef emitted_prims_vec)
+                             LLVMValueRef emitted_prims_vec,
+                             LLVMValueRef mask_vec)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
-    iface->pBuilder->swr_gs_llvm_end_primitive(gs_base, bld_base,
+    iface->pBuilder->swr_gs_llvm_end_primitive(gs_base, bld,
+                                              total_emitted_vertices_vec_ptr,
                                               verts_per_prim_vec,
-                                              emitted_prims_vec);
+                                              emitted_prims_vec,
+                                              mask_vec);
 }
 
 static void
-swr_gs_llvm_epilogue(const struct lp_build_tgsi_gs_iface *gs_base,
-                        struct lp_build_tgsi_context * bld_base,
+swr_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                         LLVMValueRef total_emitted_vertices_vec,
                         LLVMValueRef emitted_prims_vec)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
-    iface->pBuilder->swr_gs_llvm_epilogue(gs_base, bld_base,
+    iface->pBuilder->swr_gs_llvm_epilogue(gs_base,
                                          total_emitted_vertices_vec,
                                          emitted_prims_vec);
 }
 
 LLVMValueRef
-BuilderSWR::swr_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
-                           struct lp_build_tgsi_context * bld_base,
+BuilderSWR::swr_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
+                           struct lp_build_context * bld,
                            boolean is_vindex_indirect,
                            LLVMValueRef vertex_index,
                            boolean is_aindex_indirect,
@@ -357,8 +361,8 @@ BuilderSWR::swr_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_ifac
 
     if (is_vindex_indirect || is_aindex_indirect) {
        int i;
-       Value *res = unwrap(bld_base->base.zero);
-       struct lp_type type = bld_base->base.type;
+       Value *res = unwrap(bld->zero);
+       struct lp_type type = bld->type;
 
        for (i = 0; i < type.length; i++) {
           Value *vert_chan_index = vert_index;
@@ -404,8 +408,8 @@ BuilderSWR::swr_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_ifac
 #define CONTROL_HEADER_SIZE (8*32)
 
 void
-BuilderSWR::swr_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base,
-                           struct lp_build_tgsi_context * bld_base,
+BuilderSWR::swr_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
+                           struct lp_build_context * bld,
                            LLVMValueRef (*outputs)[4],
                            LLVMValueRef emitted_vertices_vec)
 {
@@ -478,10 +482,12 @@ BuilderSWR::swr_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base
 }
 
 void
-BuilderSWR::swr_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_base,
-                             struct lp_build_tgsi_context * bld_base,
+BuilderSWR::swr_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
+                             struct lp_build_context * bld,
+                             LLVMValueRef total_emitted_vertices_vec,
                              LLVMValueRef verts_per_prim_vec,
-                             LLVMValueRef emitted_prims_vec)
+                             LLVMValueRef emitted_prims_vec,
+                             LLVMValueRef mask_vec)
 {
     swr_gs_llvm_iface *iface = (swr_gs_llvm_iface*)gs_base;
 
@@ -496,14 +502,9 @@ BuilderSWR::swr_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_ba
        ADD(MUL(unwrap(emitted_prims_vec), VIMMED1(vertsPerPrim)),
            unwrap(verts_per_prim_vec));
 
-    struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
-    vCount = LOAD(unwrap(bld->total_emitted_vertices_vec_ptr));
+    vCount = unwrap(total_emitted_vertices_vec);
 
-    struct lp_exec_mask *exec_mask = &bld->exec_mask;
-    Value *mask = unwrap(lp_build_mask_value(bld->mask));
-    if (exec_mask->has_mask)
-       mask = AND(mask, unwrap(exec_mask->exec_mask));
-
+    Value *mask = unwrap(mask_vec);
     Value *cmpMask = VMASK(ICMP_NE(unwrap(verts_per_prim_vec), VIMMED1(0)));
     mask = AND(mask, cmpMask);
     vMask1 = TRUNC(mask, VectorType::get(mInt1Ty, 8));
@@ -534,8 +535,7 @@ BuilderSWR::swr_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_ba
 }
 
 void
-BuilderSWR::swr_gs_llvm_epilogue(const struct lp_build_tgsi_gs_iface *gs_base,
-                        struct lp_build_tgsi_context * bld_base,
+BuilderSWR::swr_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                         LLVMValueRef total_emitted_vertices_vec,
                         LLVMValueRef emitted_prims_vec)
 {

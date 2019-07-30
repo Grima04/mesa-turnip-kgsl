@@ -67,14 +67,14 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *var);
 
 
 struct draw_gs_llvm_iface {
-   struct lp_build_tgsi_gs_iface base;
+   struct lp_build_gs_iface base;
 
    struct draw_gs_llvm_variant *variant;
    LLVMValueRef input;
 };
 
 static inline const struct draw_gs_llvm_iface *
-draw_gs_llvm_iface(const struct lp_build_tgsi_gs_iface *iface)
+draw_gs_llvm_iface(const struct lp_build_gs_iface *iface)
 {
    return (const struct draw_gs_llvm_iface *)iface;
 }
@@ -1462,8 +1462,8 @@ clipmask_booli8(struct gallivm_state *gallivm,
 }
 
 static LLVMValueRef
-draw_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
-                         struct lp_build_tgsi_context * bld_base,
+draw_gs_llvm_fetch_input(const struct lp_build_gs_iface *gs_iface,
+                         struct lp_build_context * bld,
                          boolean is_vindex_indirect,
                          LLVMValueRef vertex_index,
                          boolean is_aindex_indirect,
@@ -1471,15 +1471,15 @@ draw_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
                          LLVMValueRef swizzle_index)
 {
    const struct draw_gs_llvm_iface *gs = draw_gs_llvm_iface(gs_iface);
-   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   struct gallivm_state *gallivm = bld->gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    LLVMValueRef indices[3];
    LLVMValueRef res;
-   struct lp_type type = bld_base->base.type;
+   struct lp_type type = bld->type;
 
    if (is_vindex_indirect || is_aindex_indirect) {
       int i;
-      res = bld_base->base.zero;
+      res = bld->zero;
       for (i = 0; i < type.length; ++i) {
          LLVMValueRef idx = lp_build_const_int32(gallivm, i);
          LLVMValueRef vert_chan_index = vertex_index;
@@ -1518,8 +1518,8 @@ draw_gs_llvm_fetch_input(const struct lp_build_tgsi_gs_iface *gs_iface,
 }
 
 static void
-draw_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base,
-                         struct lp_build_tgsi_context * bld_base,
+draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
+                         struct lp_build_context * bld,
                          LLVMValueRef (*outputs)[4],
                          LLVMValueRef emitted_vertices_vec)
 {
@@ -1527,7 +1527,7 @@ draw_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base,
    struct draw_gs_llvm_variant *variant = gs_iface->variant;
    struct gallivm_state *gallivm = variant->gallivm;
    LLVMBuilderRef builder = gallivm->builder;
-   struct lp_type gs_type = bld_base->base.type;
+   struct lp_type gs_type = bld->type;
    LLVMValueRef clipmask = lp_build_const_int_vec(gallivm,
                                                   lp_int_type(gs_type), 0);
    LLVMValueRef indices[LP_MAX_VECTOR_LENGTH];
@@ -1552,10 +1552,12 @@ draw_gs_llvm_emit_vertex(const struct lp_build_tgsi_gs_iface *gs_base,
 }
 
 static void
-draw_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_base,
-                           struct lp_build_tgsi_context * bld_base,
+draw_gs_llvm_end_primitive(const struct lp_build_gs_iface *gs_base,
+                           struct lp_build_context * bld,
+                           LLVMValueRef total_emitted_vertices_vec_ptr,
                            LLVMValueRef verts_per_prim_vec,
-                           LLVMValueRef emitted_prims_vec)
+                           LLVMValueRef emitted_prims_vec,
+                           LLVMValueRef mask_vec)
 {
    const struct draw_gs_llvm_iface *gs_iface = draw_gs_llvm_iface(gs_base);
    struct draw_gs_llvm_variant *variant = gs_iface->variant;
@@ -1565,7 +1567,7 @@ draw_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_base,
       draw_gs_jit_prim_lengths(variant->gallivm, variant->context_ptr);
    unsigned i;
 
-   for (i = 0; i < bld_base->base.type.length; ++i) {
+   for (i = 0; i < bld->type.length; ++i) {
       LLVMValueRef ind = lp_build_const_int32(gallivm, i);
       LLVMValueRef prims_emitted =
          LLVMBuildExtractElement(builder, emitted_prims_vec, ind, "");
@@ -1581,8 +1583,7 @@ draw_gs_llvm_end_primitive(const struct lp_build_tgsi_gs_iface *gs_base,
 }
 
 static void
-draw_gs_llvm_epilogue(const struct lp_build_tgsi_gs_iface *gs_base,
-                      struct lp_build_tgsi_context * bld_base,
+draw_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
                       LLVMValueRef total_emitted_vertices_vec,
                       LLVMValueRef emitted_prims_vec)
 {
@@ -2508,7 +2509,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    params.context_ptr = context_ptr;
    params.sampler = sampler;
    params.info = &llvm->draw->gs.geometry_shader->info;
-   params.gs_iface = (const struct lp_build_tgsi_gs_iface *)&gs_iface;
+   params.gs_iface = (const struct lp_build_gs_iface *)&gs_iface;
    params.ssbo_ptr = ssbos_ptr;
    params.ssbo_sizes_ptr = num_ssbos_ptr;
    params.image = image;
