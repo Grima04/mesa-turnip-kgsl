@@ -82,11 +82,9 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 	struct si_state_blend *blend = sctx->queued.named.blend;
 	/* CB_COLORn_INFO.FORMAT=INVALID should disable unbound colorbuffers,
 	 * but you never know. */
-	uint32_t cb_target_mask = sctx->framebuffer.colorbuf_enabled_4bit;
+	uint32_t cb_target_mask = sctx->framebuffer.colorbuf_enabled_4bit &
+				  blend->cb_target_mask;
 	unsigned i;
-
-	if (blend)
-		cb_target_mask &= blend->cb_target_mask;
 
 	/* Avoid a hang that happens when dual source blending is enabled
 	 * but there is not enough color outputs. This is undefined behavior,
@@ -94,7 +92,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 	 *
 	 * Reproducible with Unigine Heaven 4.0 and drirc missing.
 	 */
-	if (blend && blend->dual_src_blend &&
+	if (blend->dual_src_blend &&
 	    sctx->ps_shader.cso &&
 	    (sctx->ps_shader.cso->info.colors_written & 0x3) != 0x3)
 		cb_target_mask = 0;
@@ -119,8 +117,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 		 * Alternatively, we can set CB_COLORi_DCC_CONTROL.OVERWRITE_-
 		 * COMBINER_DISABLE, but that would be more complicated.
 		 */
-		bool oc_disable = blend &&
-				  blend->dcc_msaa_corruption_4bit & cb_target_mask &&
+		bool oc_disable = blend->dcc_msaa_corruption_4bit & cb_target_mask &&
 				  sctx->framebuffer.nr_samples >= 2;
 		unsigned watermark = sctx->framebuffer.dcc_overwrite_combiner_watermark;
 
@@ -681,21 +678,19 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
 	struct si_state_blend *old_blend = sctx->queued.named.blend;
 	struct si_state_blend *blend = (struct si_state_blend *)state;
 
-	if (!state)
-		return;
+	if (!blend)
+		blend = (struct si_state_blend *)sctx->noop_blend;
 
-	si_pm4_bind_state(sctx, blend, state);
+	si_pm4_bind_state(sctx, blend, blend);
 
-	if (!old_blend ||
-	    old_blend->cb_target_mask != blend->cb_target_mask ||
+	if (old_blend->cb_target_mask != blend->cb_target_mask ||
 	    old_blend->dual_src_blend != blend->dual_src_blend ||
 	    (old_blend->blend_enable_4bit != blend->blend_enable_4bit &&
 	     sctx->framebuffer.nr_samples >= 2 &&
 	     sctx->screen->dcc_msaa_allowed))
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
 
-	if (!old_blend ||
-	    old_blend->cb_target_mask != blend->cb_target_mask ||
+	if (old_blend->cb_target_mask != blend->cb_target_mask ||
 	    old_blend->alpha_to_coverage != blend->alpha_to_coverage ||
 	    old_blend->alpha_to_one != blend->alpha_to_one ||
 	    old_blend->dual_src_blend != blend->dual_src_blend ||
@@ -704,15 +699,13 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
 		sctx->do_update_shaders = true;
 
 	if (sctx->screen->dpbb_allowed &&
-	    (!old_blend ||
-	     old_blend->alpha_to_coverage != blend->alpha_to_coverage ||
+	    (old_blend->alpha_to_coverage != blend->alpha_to_coverage ||
 	     old_blend->blend_enable_4bit != blend->blend_enable_4bit ||
 	     old_blend->cb_target_enabled_4bit != blend->cb_target_enabled_4bit))
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
 
 	if (sctx->screen->has_out_of_order_rast &&
-	    (!old_blend ||
-	     (old_blend->blend_enable_4bit != blend->blend_enable_4bit ||
+	    ((old_blend->blend_enable_4bit != blend->blend_enable_4bit ||
 	      old_blend->cb_target_enabled_4bit != blend->cb_target_enabled_4bit ||
 	      old_blend->commutative_4bit != blend->commutative_4bit ||
 	      old_blend->logicop_enable != blend->logicop_enable)))
@@ -3543,11 +3536,7 @@ static bool si_out_of_order_rasterization(struct si_context *sctx)
 
 	unsigned colormask = sctx->framebuffer.colorbuf_enabled_4bit;
 
-	if (blend) {
-		colormask &= blend->cb_target_enabled_4bit;
-	} else {
-		colormask = 0;
-	}
+	colormask &= blend->cb_target_enabled_4bit;
 
 	/* Conservative: No logic op. */
 	if (colormask && blend->logicop_enable)

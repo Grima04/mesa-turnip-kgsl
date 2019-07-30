@@ -886,6 +886,7 @@ struct si_context {
 	void (*emit_cache_flush)(struct si_context *ctx);
 
 	struct blitter_context		*blitter;
+	void				*noop_blend;
 	void				*custom_dsa_flush;
 	void				*custom_blend_resolve;
 	void				*custom_blend_fmask_decompress;

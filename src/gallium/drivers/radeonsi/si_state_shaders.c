@@ -1759,13 +1759,11 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx,
 	/* Find out if PS is disabled. */
 	bool ps_disabled = true;
 	if (ps) {
-		const struct si_state_blend *blend = sctx->queued.named.blend;
-		bool alpha_to_coverage = blend && blend->alpha_to_coverage;
 		bool ps_modifies_zs = ps->info.uses_kill ||
 				      ps->info.writes_z ||
 				      ps->info.writes_stencil ||
 				      ps->info.writes_samplemask ||
-				      alpha_to_coverage ||
+				      sctx->queued.named.blend->alpha_to_coverage ||
 				      si_get_alpha_test_func(sctx) != PIPE_FUNC_ALWAYS;
 		unsigned ps_colormask = si_get_total_colormask(sctx);
 
@@ -1904,35 +1902,33 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 		    sel->info.colors_written == 0x1)
 			key->part.ps.epilog.last_cbuf = MAX2(sctx->framebuffer.state.nr_cbufs, 1) - 1;
 
-		if (blend) {
-			/* Select the shader color format based on whether
-			 * blending or alpha are needed.
-			 */
-			key->part.ps.epilog.spi_shader_col_format =
-				(blend->blend_enable_4bit & blend->need_src_alpha_4bit &
-				 sctx->framebuffer.spi_shader_col_format_blend_alpha) |
-				(blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
-				 sctx->framebuffer.spi_shader_col_format_blend) |
-				(~blend->blend_enable_4bit & blend->need_src_alpha_4bit &
-				 sctx->framebuffer.spi_shader_col_format_alpha) |
-				(~blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
-				 sctx->framebuffer.spi_shader_col_format);
-			key->part.ps.epilog.spi_shader_col_format &= blend->cb_target_enabled_4bit;
+		/* Select the shader color format based on whether
+		 * blending or alpha are needed.
+		 */
+		key->part.ps.epilog.spi_shader_col_format =
+			(blend->blend_enable_4bit & blend->need_src_alpha_4bit &
+			 sctx->framebuffer.spi_shader_col_format_blend_alpha) |
+			(blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
+			 sctx->framebuffer.spi_shader_col_format_blend) |
+			(~blend->blend_enable_4bit & blend->need_src_alpha_4bit &
+			 sctx->framebuffer.spi_shader_col_format_alpha) |
+			(~blend->blend_enable_4bit & ~blend->need_src_alpha_4bit &
+			 sctx->framebuffer.spi_shader_col_format);
+		key->part.ps.epilog.spi_shader_col_format &= blend->cb_target_enabled_4bit;
 
-			/* The output for dual source blending should have
-			 * the same format as the first output.
-			 */
-			if (blend->dual_src_blend)
-				key->part.ps.epilog.spi_shader_col_format |=
-					(key->part.ps.epilog.spi_shader_col_format & 0xf) << 4;
-		} else
-			key->part.ps.epilog.spi_shader_col_format = sctx->framebuffer.spi_shader_col_format;
+		/* The output for dual source blending should have
+		 * the same format as the first output.
+		 */
+		if (blend->dual_src_blend) {
+			key->part.ps.epilog.spi_shader_col_format |=
+				(key->part.ps.epilog.spi_shader_col_format & 0xf) << 4;
+		}
 
 		/* If alpha-to-coverage is enabled, we have to export alpha
 		 * even if there is no color buffer.
 		 */
 		if (!(key->part.ps.epilog.spi_shader_col_format & 0xf) &&
-		    blend && blend->alpha_to_coverage)
+		    blend->alpha_to_coverage)
 			key->part.ps.epilog.spi_shader_col_format |= V_028710_SPI_SHADER_32_AR;
 
 		/* On GFX6 and GFX7 except Hawaii, the CB doesn't clamp outputs
@@ -1957,10 +1953,8 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 		key->part.ps.prolog.color_two_side = rs->two_side && sel->info.colors_read;
 		key->part.ps.prolog.flatshade_colors = rs->flatshade && sel->info.colors_read;
 
-		if (sctx->queued.named.blend) {
-			key->part.ps.epilog.alpha_to_one = sctx->queued.named.blend->alpha_to_one &&
-							   rs->multisample_enable;
-		}
+		key->part.ps.epilog.alpha_to_one = blend->alpha_to_one &&
+						   rs->multisample_enable;
 
 		key->part.ps.prolog.poly_stipple = rs->poly_stipple_enable && is_poly;
 		key->part.ps.epilog.poly_line_smoothing = ((is_poly && rs->poly_smooth) ||

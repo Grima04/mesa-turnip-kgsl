@@ -543,6 +543,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen,
 			goto fail;
 		sctx->blitter->skip_viewport_restore = true;
 
+		/* Some states are expected to be always non-NULL. */
+		sctx->noop_blend = util_blitter_get_noop_blend_state(sctx->blitter);
+		sctx->queued.named.blend = sctx->noop_blend;
+
 		si_init_draw_functions(sctx);
 		si_initialize_prim_discard_tunables(sctx);
 	}
