@@ -315,27 +315,6 @@ translate_tex_wrap(enum pipe_tex_wrap w)
 }
 
 static unsigned
-translate_tex_filter(enum pipe_tex_filter f)
-{
-        switch (f) {
-        case PIPE_TEX_FILTER_NEAREST:
-                return MALI_NEAREST;
-
-        case PIPE_TEX_FILTER_LINEAR:
-                return MALI_LINEAR;
-
-        default:
-                unreachable("Invalid filter");
-        }
-}
-
-static unsigned
-translate_mip_filter(enum pipe_tex_mipfilter f)
-{
-        return (f == PIPE_TEX_MIPFILTER_LINEAR) ? MALI_MIP_LINEAR : 0;
-}
-
-static unsigned
 panfrost_translate_compare_func(enum pipe_compare_func in)
 {
         switch (in) {
@@ -1959,10 +1938,17 @@ panfrost_create_sampler_state(
 
         /* sampler_state corresponds to mali_sampler_descriptor, which we can generate entirely here */
 
+        bool min_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
+        bool mag_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
+        bool mip_linear  = cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR;
+
+        unsigned min_filter = min_nearest ? MALI_SAMP_MIN_NEAREST : 0;
+        unsigned mag_filter = mag_nearest ? MALI_SAMP_MAG_NEAREST : 0;
+        unsigned mip_filter = mip_linear  ?
+                (MALI_SAMP_MIP_LINEAR_1 | MALI_SAMP_MIP_LINEAR_2) : 0;
+
         struct mali_sampler_descriptor sampler_descriptor = {
-                .filter_mode = MALI_TEX_MIN(translate_tex_filter(cso->min_img_filter))
-                | MALI_TEX_MAG(translate_tex_filter(cso->mag_img_filter))
-                | translate_mip_filter(cso->min_mip_filter)
+                .filter_mode = min_filter | mag_filter | mip_filter
                 | 0x20,
 
                 .wrap_s = translate_tex_wrap(cso->wrap_s),

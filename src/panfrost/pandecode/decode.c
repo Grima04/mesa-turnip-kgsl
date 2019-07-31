@@ -245,6 +245,15 @@ static const struct pandecode_flag_info mfbd_flag_info [] = {
 };
 #undef FLAG_INFO
 
+#define FLAG_INFO(flag) { MALI_SAMP_##flag, "MALI_SAMP_" #flag }
+static const struct pandecode_flag_info sampler_flag_info [] = {
+        FLAG_INFO(MAG_NEAREST),
+        FLAG_INFO(MIN_NEAREST),
+        FLAG_INFO(MIP_LINEAR_1),
+        FLAG_INFO(MIP_LINEAR_2),
+        {}
+};
+#undef FLAG_INFO
 
 extern char *replace_fragment;
 extern char *replace_vertex;
@@ -1865,11 +1874,9 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                 pandecode_log("struct mali_sampler_descriptor sampler_descriptor_%"PRIx64"_%d_%d = {\n", d + sizeof(*s) * i, job_no, i);
                                 pandecode_indent++;
 
-                                /* Only the lower two bits are understood right now; the rest we display as hex */
-                                pandecode_log(".filter_mode = MALI_TEX_MIN(%s) | MALI_TEX_MAG(%s) | 0x%" PRIx32",\n",
-                                              MALI_FILTER_NAME(s->filter_mode & MALI_TEX_MIN_MASK),
-                                              MALI_FILTER_NAME(s->filter_mode & MALI_TEX_MAG_MASK),
-                                              s->filter_mode & ~3);
+                                pandecode_log(".filter_mode = ");
+                                pandecode_log_decoded_flags(sampler_flag_info, s->filter_mode);
+                                pandecode_log_cont(",\n");
 
                                 pandecode_prop("min_lod = FIXED_16(%f)", DECODE_FIXED_16(s->min_lod));
                                 pandecode_prop("max_lod = FIXED_16(%f)", DECODE_FIXED_16(s->max_lod));

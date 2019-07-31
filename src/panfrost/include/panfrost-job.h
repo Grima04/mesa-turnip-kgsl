@@ -1188,21 +1188,15 @@ struct mali_texture_descriptor {
         mali_ptr payload[MAX_MIP_LEVELS * MAX_CUBE_FACES * MAX_ELEMENTS];
 } __attribute__((packed));
 
-/* Used as part of filter_mode */
+/* filter_mode */
 
-#define MALI_LINEAR 0
-#define MALI_NEAREST 1
-#define MALI_MIP_LINEAR (0x18)
+#define MALI_SAMP_MAG_NEAREST (1 << 0)
+#define MALI_SAMP_MIN_NEAREST (1 << 1)
 
-/* Used to construct low bits of filter_mode */
+/* TODO: What do these bits mean individually? Only seen set together */
 
-#define MALI_TEX_MAG(mode) (((mode) & 1) << 0)
-#define MALI_TEX_MIN(mode) (((mode) & 1) << 1)
-
-#define MALI_TEX_MAG_MASK (1)
-#define MALI_TEX_MIN_MASK (2)
-
-#define MALI_FILTER_NAME(filter) (filter ? "MALI_NEAREST" : "MALI_LINEAR")
+#define MALI_SAMP_MIP_LINEAR_1 (1 << 3)
+#define MALI_SAMP_MIP_LINEAR_2 (1 << 4)
 
 /* Used for lod encoding. Thanks @urjaman for pointing out these routines can
  * be cleaned up a lot. */
