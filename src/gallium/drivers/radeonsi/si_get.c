@@ -214,6 +214,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 				RADEON_SPARSE_PAGE_SIZE : 0;
 
 	case PIPE_CAP_PACKED_UNIFORMS:
+	case PIPE_CAP_SHADER_SAMPLES_IDENTICAL:
 		if (sscreen->options.enable_nir)
 			return 1;
 		return 0;
