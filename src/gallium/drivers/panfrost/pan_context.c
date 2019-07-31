@@ -1256,7 +1256,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         }
 
         /* We stage to transient, so always dirty.. */
-        panfrost_stage_attributes(ctx);
+        if (ctx->vertex)
+                panfrost_stage_attributes(ctx);
 
         if (ctx->dirty & PAN_DIRTY_SAMPLERS)
                 panfrost_upload_sampler_descriptors(ctx);
