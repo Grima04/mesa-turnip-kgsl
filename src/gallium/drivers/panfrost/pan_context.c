@@ -1267,12 +1267,15 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
 
-        for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
+        for (int i = 0; i < PIPE_SHADER_TYPES; ++i) {
+                struct panfrost_shader_variants *all = ctx->shader[i];
+
+                if (!all)
+                        continue;
+
                 struct panfrost_constant_buffer *buf = &ctx->constant_buffer[i];
 
-                struct panfrost_shader_state *vs = &ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant];
-                struct panfrost_shader_state *fs = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
-                struct panfrost_shader_state *ss = (i == PIPE_SHADER_FRAGMENT) ? fs : vs;
+                struct panfrost_shader_state *ss = &all->variants[all->active_variant];
 
                 /* Uniforms are implicitly UBO #0 */
                 bool has_uniforms = buf->enabled_mask & (1 << 0);
