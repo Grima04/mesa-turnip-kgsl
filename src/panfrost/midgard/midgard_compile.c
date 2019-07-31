@@ -2409,23 +2409,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                                 int quadword_offset = 0;
 
                                 if (is_discard) {
-                                        /* Jump to the end of the shader. We
-                                         * need to include not only the
-                                         * following blocks, but also the
-                                         * contents of our current block (since
-                                         * discard can come in the middle of
-                                         * the block) */
-
-                                        midgard_block *blk = mir_get_block(ctx, br_block_idx + 1);
-
-                                        for (midgard_bundle *bun = bundle + 1; bun < (midgard_bundle *)((char*) block->bundles.data + block->bundles.size); ++bun) {
-                                                quadword_offset += quadword_size(bun->tag);
-                                        }
-
-                                        mir_foreach_block_from(ctx, blk, b) {
-                                                quadword_offset += b->quadword_count;
-                                        }
-
+                                        /* Ignored */
                                 } else if (target_number > br_block_idx) {
                                         /* Jump forward */
 
