@@ -1946,11 +1946,10 @@ panfrost_create_sampler_state(
         unsigned mag_filter = mag_nearest ? MALI_SAMP_MAG_NEAREST : 0;
         unsigned mip_filter = mip_linear  ?
                 (MALI_SAMP_MIP_LINEAR_1 | MALI_SAMP_MIP_LINEAR_2) : 0;
+        unsigned normalized = cso->normalized_coords ? MALI_SAMP_NORM_COORDS : 0;
 
         struct mali_sampler_descriptor sampler_descriptor = {
-                .filter_mode = min_filter | mag_filter | mip_filter
-                | 0x20,
-
+                .filter_mode = min_filter | mag_filter | mip_filter | normalized,
                 .wrap_s = translate_tex_wrap(cso->wrap_s),
                 .wrap_t = translate_tex_wrap(cso->wrap_t),
                 .wrap_r = translate_tex_wrap(cso->wrap_r),

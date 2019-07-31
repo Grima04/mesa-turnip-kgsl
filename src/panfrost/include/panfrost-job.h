@@ -1198,6 +1198,11 @@ struct mali_texture_descriptor {
 #define MALI_SAMP_MIP_LINEAR_1 (1 << 3)
 #define MALI_SAMP_MIP_LINEAR_2 (1 << 4)
 
+/* Flag in filter_mode, corresponding to OpenCL's NORMALIZED_COORDS_TRUE
+ * sampler_t flag. For typical OpenGL textures, this is always set. */
+
+#define MALI_SAMP_NORM_COORDS (1 << 5)
+
 /* Used for lod encoding. Thanks @urjaman for pointing out these routines can
  * be cleaned up a lot. */
 

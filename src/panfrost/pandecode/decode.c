@@ -251,6 +251,7 @@ static const struct pandecode_flag_info sampler_flag_info [] = {
         FLAG_INFO(MIN_NEAREST),
         FLAG_INFO(MIP_LINEAR_1),
         FLAG_INFO(MIP_LINEAR_2),
+        FLAG_INFO(NORM_COORDS),
         {}
 };
 #undef FLAG_INFO
