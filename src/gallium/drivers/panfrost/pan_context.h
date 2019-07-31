@@ -202,8 +202,6 @@ struct panfrost_rasterizer {
 
 /* A shader state corresponds to the actual, current variant of the shader */
 struct panfrost_shader_state {
-        struct pipe_shader_state *base;
-
         /* Compiled, mapped descriptor, ready for the hardware */
         bool compiled;
         struct mali_shader_meta *tripipe;

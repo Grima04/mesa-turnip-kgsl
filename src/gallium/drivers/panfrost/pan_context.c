@@ -2094,8 +2094,6 @@ panfrost_bind_shader_state(
                 struct panfrost_shader_state *v =
                                 &variants->variants[variant];
 
-                v->base = hwcso;
-
                 if (type == PIPE_SHADER_FRAGMENT) {
                         v->alpha_state = ctx->depth_stencil->alpha;
 
