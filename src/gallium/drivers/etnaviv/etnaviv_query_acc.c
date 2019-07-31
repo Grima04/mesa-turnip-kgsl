@@ -35,73 +35,13 @@
 #include "etnaviv_query_acc.h"
 #include "etnaviv_screen.h"
 
-/*
- * Occlusion Query:
- *
- * OCCLUSION_COUNTER and OCCLUSION_PREDICATE differ only in how they
- * interpret results
- */
 
-static bool
-occlusion_supports(unsigned query_type)
+extern const struct etna_acc_sample_provider occlusion_provider;
+
+static const struct etna_acc_sample_provider *acc_sample_provider[] =
 {
-   switch (query_type) {
-   case PIPE_QUERY_OCCLUSION_COUNTER:
-      /* fallthrough */
-   case PIPE_QUERY_OCCLUSION_PREDICATE:
-      /* fallthrough */
-   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-      return true;
-   default:
-      return false;
-   }
-}
-
-static void
-occlusion_resume(struct etna_acc_query *aq, struct etna_context *ctx)
-{
-   struct etna_resource *rsc = etna_resource(aq->prsc);
-   struct etna_reloc r = {
-      .bo = rsc->bo,
-      .flags = ETNA_RELOC_WRITE
-   };
-
-   if (aq->samples > 63) {
-      aq->samples = 63;
-      BUG("samples overflow");
-   }
-
-   r.offset = aq->samples * 8; /* 64bit value */
-
-   etna_set_state_reloc(ctx->stream, VIVS_GL_OCCLUSION_QUERY_ADDR, &r);
-   resource_written(ctx, aq->prsc);
-}
-
-static void
-occlusion_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
-{
-   /* 0x1DF5E76 is the value used by blob - but any random value will work */
-   etna_set_state(ctx->stream, VIVS_GL_OCCLUSION_QUERY_CONTROL, 0x1DF5E76);
-   resource_written(ctx, aq->prsc);
-}
-
-static bool
-occlusion_result(struct etna_acc_query *aq, void *buf,
-                 union pipe_query_result *result)
-{
-   uint64_t sum = 0;
-   uint64_t *ptr = (uint64_t *)buf;
-
-   for (unsigned i = 0; i < aq->samples; i++)
-      sum += *(ptr + i);
-
-   if (aq->base.type == PIPE_QUERY_OCCLUSION_COUNTER)
-      result->u64 = sum;
-   else
-      result->b = !!sum;
-
-   return true;
-}
+   &occlusion_provider,
+};
 
 static void
 etna_acc_destroy_query(struct etna_context *ctx, struct etna_query *q)
@@ -113,18 +53,6 @@ etna_acc_destroy_query(struct etna_context *ctx, struct etna_query *q)
 
    FREE(aq);
 }
-
-static const struct etna_acc_sample_provider occlusion_provider = {
-   .supports = occlusion_supports,
-   .suspend = occlusion_suspend,
-   .resume = occlusion_resume,
-   .result = occlusion_result,
-};
-
-static const struct etna_acc_sample_provider *acc_sample_provider[] =
-{
-   &occlusion_provider,
-};
 
 static void
 realloc_query_bo(struct etna_context *ctx, struct etna_acc_query *aq)
@@ -253,7 +181,7 @@ etna_acc_create_query(struct etna_context *ctx, unsigned query_type)
    if (!p)
       return NULL;
 
-   aq = CALLOC_STRUCT(etna_acc_query);
+   aq = p->allocate(ctx, query_type);
    if (!aq)
       return NULL;
 
