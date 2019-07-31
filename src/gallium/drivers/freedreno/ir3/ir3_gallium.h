@@ -46,6 +46,19 @@ struct ir3_shader_variant * ir3_shader_variant(struct ir3_shader *shader,
 
 struct fd_ringbuffer;
 struct fd_context;
+
+static inline bool
+ir3_needs_vs_driver_params(const struct ir3_shader_variant *v)
+{
+	const struct ir3_const_state *const_state = &v->shader->const_state;
+	uint32_t offset = const_state->offsets.driver_param;
+
+	return v->constlen > offset;
+}
+
+void ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring, struct fd_context *ctx,
+		const struct pipe_draw_info *info);
 void ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx, const struct pipe_draw_info *info);
 void ir3_emit_fs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,

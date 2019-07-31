@@ -503,6 +503,87 @@ emit_common_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 }
 
 void
+ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring, struct fd_context *ctx,
+		const struct pipe_draw_info *info)
+{
+	debug_assert(ir3_needs_vs_driver_params(v));
+
+	const struct ir3_const_state *const_state = &v->shader->const_state;
+	uint32_t offset = const_state->offsets.driver_param;
+	uint32_t vertex_params[IR3_DP_VS_COUNT] = {
+			[IR3_DP_VTXID_BASE] = info->index_size ?
+					info->index_bias : info->start,
+					[IR3_DP_VTXCNT_MAX] = max_tf_vtx(ctx, v),
+	};
+	/* if no user-clip-planes, we don't need to emit the
+	 * entire thing:
+	 */
+	uint32_t vertex_params_size = 4;
+
+	if (v->key.ucp_enables) {
+		struct pipe_clip_state *ucp = &ctx->ucp;
+		unsigned pos = IR3_DP_UCP0_X;
+		for (unsigned i = 0; pos <= IR3_DP_UCP7_W; i++) {
+			for (unsigned j = 0; j < 4; j++) {
+				vertex_params[pos] = fui(ucp->ucp[i][j]);
+				pos++;
+			}
+		}
+		vertex_params_size = ARRAY_SIZE(vertex_params);
+	}
+
+	ring_wfi(ctx->batch, ring);
+
+	bool needs_vtxid_base =
+			ir3_find_sysval_regid(v, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) != regid(63, 0);
+
+	/* for indirect draw, we need to copy VTXID_BASE from
+	 * indirect-draw parameters buffer.. which is annoying
+	 * and means we can't easily emit these consts in cmd
+	 * stream so need to copy them to bo.
+	 */
+	if (info->indirect && needs_vtxid_base) {
+		struct pipe_draw_indirect_info *indirect = info->indirect;
+		struct pipe_resource *vertex_params_rsc =
+				pipe_buffer_create(&ctx->screen->base,
+						PIPE_BIND_CONSTANT_BUFFER, PIPE_USAGE_STREAM,
+						vertex_params_size * 4);
+		unsigned src_off = info->indirect->offset;;
+		void *ptr;
+
+		ptr = fd_bo_map(fd_resource(vertex_params_rsc)->bo);
+		memcpy(ptr, vertex_params, vertex_params_size * 4);
+
+		if (info->index_size) {
+			/* indexed draw, index_bias is 4th field: */
+			src_off += 3 * 4;
+		} else {
+			/* non-indexed draw, start is 3rd field: */
+			src_off += 2 * 4;
+		}
+
+		/* copy index_bias or start from draw params: */
+		ctx->mem_to_mem(ring, vertex_params_rsc, 0,
+				indirect->buffer, src_off, 1);
+
+		emit_const(ctx, ring, v, offset * 4, 0,
+				vertex_params_size, NULL, vertex_params_rsc);
+
+		pipe_resource_reference(&vertex_params_rsc, NULL);
+	} else {
+		emit_const(ctx, ring, v, offset * 4, 0,
+				vertex_params_size, vertex_params, NULL);
+	}
+
+	/* if needed, emit stream-out buffer addresses: */
+	if (vertex_params[IR3_DP_VTXCNT_MAX] > 0) {
+		emit_tfbos(ctx, v, ring);
+	}
+
+}
+
+void
 ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *ring,
 		struct fd_context *ctx, const struct pipe_draw_info *info)
 {
@@ -511,81 +592,8 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_VERTEX);
 
 	/* emit driver params every time: */
-	if (info) {
-		const struct ir3_const_state *const_state = &v->shader->const_state;
-		uint32_t offset = const_state->offsets.driver_param;
-		if (v->constlen > offset) {
-			uint32_t vertex_params[IR3_DP_VS_COUNT] = {
-				[IR3_DP_VTXID_BASE] = info->index_size ?
-						info->index_bias : info->start,
-				[IR3_DP_VTXCNT_MAX] = max_tf_vtx(ctx, v),
-			};
-			/* if no user-clip-planes, we don't need to emit the
-			 * entire thing:
-			 */
-			uint32_t vertex_params_size = 4;
-
-			if (v->key.ucp_enables) {
-				struct pipe_clip_state *ucp = &ctx->ucp;
-				unsigned pos = IR3_DP_UCP0_X;
-				for (unsigned i = 0; pos <= IR3_DP_UCP7_W; i++) {
-					for (unsigned j = 0; j < 4; j++) {
-						vertex_params[pos] = fui(ucp->ucp[i][j]);
-						pos++;
-					}
-				}
-				vertex_params_size = ARRAY_SIZE(vertex_params);
-			}
-
-			ring_wfi(ctx->batch, ring);
-
-			bool needs_vtxid_base =
-				ir3_find_sysval_regid(v, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) != regid(63, 0);
-
-			/* for indirect draw, we need to copy VTXID_BASE from
-			 * indirect-draw parameters buffer.. which is annoying
-			 * and means we can't easily emit these consts in cmd
-			 * stream so need to copy them to bo.
-			 */
-			if (info->indirect && needs_vtxid_base) {
-				struct pipe_draw_indirect_info *indirect = info->indirect;
-				struct pipe_resource *vertex_params_rsc =
-					pipe_buffer_create(&ctx->screen->base,
-						PIPE_BIND_CONSTANT_BUFFER, PIPE_USAGE_STREAM,
-						vertex_params_size * 4);
-				unsigned src_off = info->indirect->offset;;
-				void *ptr;
-
-				ptr = fd_bo_map(fd_resource(vertex_params_rsc)->bo);
-				memcpy(ptr, vertex_params, vertex_params_size * 4);
-
-				if (info->index_size) {
-					/* indexed draw, index_bias is 4th field: */
-					src_off += 3 * 4;
-				} else {
-					/* non-indexed draw, start is 3rd field: */
-					src_off += 2 * 4;
-				}
-
-				/* copy index_bias or start from draw params: */
-				ctx->mem_to_mem(ring, vertex_params_rsc, 0,
-						indirect->buffer, src_off, 1);
-
-				emit_const(ctx, ring, v, offset * 4, 0,
-						vertex_params_size, NULL, vertex_params_rsc);
-
-				pipe_resource_reference(&vertex_params_rsc, NULL);
-			} else {
-				emit_const(ctx, ring, v, offset * 4, 0,
-						vertex_params_size, vertex_params, NULL);
-			}
-
-			/* if needed, emit stream-out buffer addresses: */
-			if (vertex_params[IR3_DP_VTXCNT_MAX] > 0) {
-				emit_tfbos(ctx, v, ring);
-			}
-		}
-	}
+	if (info && ir3_needs_vs_driver_params(v))
+		ir3_emit_vs_driver_params(v, ring, ctx, info);
 }
 
 void
