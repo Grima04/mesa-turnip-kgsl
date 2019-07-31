@@ -371,6 +371,7 @@ static char *pandecode_attr_mode(enum mali_attr_mode mode)
                 DEFINE_CASE(POT_DIVIDE);
                 DEFINE_CASE(MODULO);
                 DEFINE_CASE(NPOT_DIVIDE);
+                DEFINE_CASE(IMAGE);
         default:
                 return "MALI_ATTR_UNUSED /* XXX: Unknown stencil op, check dump */";
         }

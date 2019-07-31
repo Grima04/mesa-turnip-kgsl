@@ -783,6 +783,11 @@ struct mali_payload_set_value {
  * 3. If e <= 2^shift, then we need to use the round-down algorithm. Set
  * magic_divisor = m - 1 and extra_flags = 1.
  * 4. Otherwise, set magic_divisor = m and extra_flags = 0.
+ *
+ * Unrelated to instancing/actual attributes, images (the OpenCL kind) are
+ * implemented as special attributes, denoted by MALI_ATTR_IMAGE. For images,
+ * let shift=extra_flags=0. Stride is set to the image format's bytes-per-pixel
+ * (*NOT the row stride*). Size is set to the size of the image itself.
  */
 
 enum mali_attr_mode {
@@ -791,6 +796,7 @@ enum mali_attr_mode {
 	MALI_ATTR_POT_DIVIDE = 2,
 	MALI_ATTR_MODULO = 3,
 	MALI_ATTR_NPOT_DIVIDE = 4,
+        MALI_ATTR_IMAGE = 5
 };
 
 /* This magic "pseudo-address" is used as `elements` to implement
