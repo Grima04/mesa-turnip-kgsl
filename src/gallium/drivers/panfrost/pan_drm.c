@@ -93,7 +93,11 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
 
         unsigned translated_flags = 0;
 
-        /* TODO: translate flags to kernel flags, if the kernel supports */
+        if (screen->kernel_version->version_major > 1 ||
+            screen->kernel_version->version_minor >= 1) {
+                if (!(flags & PAN_ALLOCATE_EXECUTE))
+                        translated_flags |= PANFROST_BO_NOEXEC;
+        }
 
         struct drm_panfrost_create_bo create_bo = {
                 .size = size,

@@ -29,6 +29,7 @@
 #ifndef PAN_SCREEN_H
 #define PAN_SCREEN_H
 
+#include <xf86drm.h>
 #include "pipe/p_screen.h"
 #include "pipe/p_defines.h"
 #include "renderonly/renderonly.h"
@@ -98,6 +99,8 @@ struct panfrost_screen {
         /* Properties of the GPU in use */
         unsigned gpu_id;
         bool require_sfbd;
+
+        drmVersionPtr kernel_version;
 
         struct renderonly *ro;
 

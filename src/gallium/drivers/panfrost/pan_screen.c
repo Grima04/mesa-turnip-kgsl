@@ -37,7 +37,6 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 #include "draw/draw_context.h"
-#include <xf86drm.h>
 
 #include <fcntl.h>
 
@@ -537,6 +536,7 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
         panfrost_bo_cache_evict_all(screen);
+        drmFreeVersion(screen->kernel_version);
         ralloc_free(screen);
 }
 
@@ -617,6 +617,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         screen->gpu_id = panfrost_drm_query_gpu_version(screen);
         screen->require_sfbd = screen->gpu_id < 0x0750; /* T760 is the first to support MFBD */
+        screen->kernel_version = drmGetVersion(fd);
 
         /* Check if we're loading against a supported GPU model. */
 
