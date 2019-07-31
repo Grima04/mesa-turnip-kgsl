@@ -851,7 +851,6 @@ tgsi_scan_shader(const struct tgsi_token *tokens,
       info->file_max[i] = -1;
    for (i = 0; i < ARRAY_SIZE(info->const_file_max); i++)
       info->const_file_max[i] = -1;
-   info->properties[TGSI_PROPERTY_GS_INVOCATIONS] = 1;
    for (i = 0; i < ARRAY_SIZE(info->sampler_targets); i++)
       info->sampler_targets[i] = TGSI_TEXTURE_UNKNOWN;
 
@@ -871,6 +870,9 @@ tgsi_scan_shader(const struct tgsi_token *tokens,
           procType == PIPE_SHADER_COMPUTE);
    info->processor = procType;
    info->num_tokens = tgsi_num_tokens(parse.Tokens);
+
+   if (procType == PIPE_SHADER_GEOMETRY)
+      info->properties[TGSI_PROPERTY_GS_INVOCATIONS] = 1;
 
    /**
     ** Loop over incoming program tokens/instructions
