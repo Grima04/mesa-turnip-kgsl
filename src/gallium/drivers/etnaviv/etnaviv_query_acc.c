@@ -167,10 +167,8 @@ etna_acc_get_query_result(struct etna_context *ctx, struct etna_query *q,
 
    assert(list_is_empty(&aq->node));
 
-   if (!wait) {
-      int ret;
-
-      if (rsc->status & ETNA_PENDING_WRITE) {
+   if (rsc->status & ETNA_PENDING_WRITE) {
+      if (!wait) {
          /* piglit spec@arb_occlusion_query@occlusion_query_conform
           * test, and silly apps perhaps, get stuck in a loop trying
           * to get query result forever with wait==false..  we don't
@@ -183,20 +181,16 @@ etna_acc_get_query_result(struct etna_context *ctx, struct etna_query *q,
          }
 
          return false;
+      } else {
+         /* flush that GPU executes all query related actions */
+         ctx->base.flush(&ctx->base, NULL, 0);
       }
-
-      ret = etna_bo_cpu_prep(rsc->bo, DRM_ETNA_PREP_READ | DRM_ETNA_PREP_NOSYNC);
-      if (ret)
-         return false;
-
-      etna_bo_cpu_fini(rsc->bo);
    }
 
-   /* flush that GPU executes all query related actions */
-   ctx->base.flush(&ctx->base, NULL, 0);
-
    /* get the result */
-   etna_bo_cpu_prep(rsc->bo, DRM_ETNA_PREP_READ);
+   int ret = etna_bo_cpu_prep(rsc->bo, DRM_ETNA_PREP_READ);
+   if (ret)
+      return false;
 
    void *ptr = etna_bo_map(rsc->bo);
    p->result(aq, ptr, result);
