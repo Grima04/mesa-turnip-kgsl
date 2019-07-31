@@ -41,7 +41,7 @@ panfrost_shader_compile(
                 enum pipe_shader_ir ir_type,
                 const void *ir,
                 const char *src,
-                int type,
+                gl_shader_stage stage,
                 struct panfrost_shader_state *state)
 {
         uint8_t *dst;
@@ -55,9 +55,9 @@ panfrost_shader_compile(
                 s = tgsi_to_nir(ir, ctx->base.screen);
         }
 
-        s->info.stage = type == JOB_TYPE_VERTEX ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;
+        s->info.stage = stage;
 
-        if (s->info.stage == MESA_SHADER_FRAGMENT) {
+        if (stage == MESA_SHADER_FRAGMENT) {
                 /* Inject the alpha test now if we need to */
 
                 if (state->alpha_state.enabled) {
@@ -93,7 +93,7 @@ panfrost_shader_compile(
         meta->midgard1.uniform_count = MIN2(program.uniform_count, program.uniform_cutoff);
         meta->midgard1.work_count = program.work_register_count;
 
-        switch (s->info.stage) {
+        switch (stage) {
         case MESA_SHADER_VERTEX:
                 meta->attribute_count = util_bitcount64(s->info.inputs_read);
                 meta->varying_count = util_bitcount64(s->info.outputs_written);

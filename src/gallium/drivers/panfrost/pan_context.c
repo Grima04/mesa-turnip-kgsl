@@ -40,6 +40,7 @@
 #include "util/u_prim_restart.h"
 #include "indices/u_primconvert.h"
 #include "tgsi/tgsi_parse.h"
+#include "tgsi/tgsi_from_mesa.h"
 #include "util/u_math.h"
 
 #include "pan_screen.h"
@@ -50,31 +51,6 @@
 
 /* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
 //#define DRY_RUN
-
-static enum mali_job_type
-panfrost_job_type_for_pipe(enum pipe_shader_type type) {
-        switch (type)
-        {
-        case PIPE_SHADER_VERTEX:
-                                return JOB_TYPE_VERTEX;
-
-        case PIPE_SHADER_FRAGMENT:
-                /* Note: JOB_TYPE_FRAGMENT is different.
-                 * JOB_TYPE_FRAGMENT actually executes the
-                 * fragment shader, but JOB_TYPE_TILER is how you
-                 * specify it*/
-                return JOB_TYPE_TILER;
-
-        case PIPE_SHADER_GEOMETRY:
-                return JOB_TYPE_GEOMETRY;
-
-        case PIPE_SHADER_COMPUTE:
-                return JOB_TYPE_COMPUTE;
-
-        default:
-                unreachable("Unsupported shader stage");
-        }
-}
 
 /* Framebuffer descriptor */
 
@@ -2124,7 +2100,7 @@ panfrost_bind_shader_state(
                                       variants->base.ir.nir :
                                       variants->base.tokens,
                               NULL,
-                                        panfrost_job_type_for_pipe(type), shader_state);
+                                        tgsi_processor_to_shader_stage(type), shader_state);
 
                 shader_state->compiled = true;
         }

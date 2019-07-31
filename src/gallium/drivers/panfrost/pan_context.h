@@ -44,6 +44,7 @@
 #include "util/hash_table.h"
 
 #include "midgard/midgard_compile.h"
+#include "compiler/shader_enums.h"
 
 /* Forward declare to avoid extra header dep */
 struct prim_convert_context;
@@ -314,7 +315,7 @@ panfrost_shader_compile(
                 enum pipe_shader_ir ir_type,
                 const void *ir,
                 const char *src,
-                int type,
+                gl_shader_stage stage,
                 struct panfrost_shader_state *state);
 
 void
