@@ -1013,6 +1013,25 @@ panfrost_patch_shader_state(
 
 }
 
+static void
+panfrost_patch_shader_state_compute(
+        struct panfrost_context *ctx,
+        enum pipe_shader_type stage,
+        bool should_upload)
+{
+        struct panfrost_shader_variants *all = ctx->shader[stage];
+
+        if (!all) {
+                ctx->payloads[stage].postfix._shader_upper = 0;
+                return;
+        }
+
+        struct panfrost_shader_state *s = &all->variants[all->active_variant];
+
+        ctx->payloads[stage].postfix._shader_upper =
+                panfrost_patch_shader_state(ctx, s, stage, should_upload) >> 4;
+}
+
 /* Go through dirty flags and actualise them in the cmdstream. */
 
 void
@@ -1048,17 +1067,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.occlusion_counter = ctx->occlusion_query->transfer.gpu;
         }
 
-        /* TODO: Does it make sense to dirty track VS? We need the transient
-         * uploads */
-        ctx->dirty |= PAN_DIRTY_VS;
-        if (ctx->dirty & PAN_DIRTY_VS) {
-                assert(ctx->shader[PIPE_SHADER_VERTEX]);
-
-                struct panfrost_shader_state *vs = &ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant];
-
-                ctx->payloads[PIPE_SHADER_VERTEX].postfix._shader_upper =
-                        panfrost_patch_shader_state(ctx, vs, PIPE_SHADER_VERTEX, true) >> 4;
-        }
+        panfrost_patch_shader_state_compute(ctx, PIPE_SHADER_VERTEX, true);
+        panfrost_patch_shader_state_compute(ctx, PIPE_SHADER_COMPUTE, true);
 
         if (ctx->dirty & (PAN_DIRTY_RASTERIZER | PAN_DIRTY_VS)) {
                 /* Check if we need to link the gl_PointSize varying */
