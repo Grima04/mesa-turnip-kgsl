@@ -1743,6 +1743,47 @@ getparam_topology(struct brw_context *brw)
    return true;
 }
 
+/* gen_device_info will have incorrect default topology values for unsupported kernels.
+ * verify kernel support to ensure OA metrics are accurate.
+ */
+static bool
+oa_metrics_kernel_support(int fd, const struct gen_device_info *devinfo)
+{
+   if (devinfo->gen >= 10) {
+      /* topology uAPI required for CNL+ (kernel 4.17+) make a call to the api
+       * to verify support
+       */
+      struct drm_i915_query_item item = {
+         .query_id = DRM_I915_QUERY_TOPOLOGY_INFO,
+      };
+      struct drm_i915_query query = {
+         .num_items = 1,
+         .items_ptr = (uintptr_t) &item,
+      };
+
+      /* kernel 4.17+ supports the query */
+      return drmIoctl(fd, DRM_IOCTL_I915_QUERY, &query) == 0;
+   }
+
+   if (devinfo->gen >= 8) {
+      /* 4.13+ api required for gen8 - gen9 */
+      int mask;
+      struct drm_i915_getparam gp = {
+         .param = I915_PARAM_SLICE_MASK,
+         .value = &mask,
+      };
+      /* kernel 4.13+ supports this parameter */
+      return drmIoctl(fd, DRM_IOCTL_I915_GETPARAM, &gp) == 0;
+   }
+
+   if (devinfo->gen == 7)
+      /* default topology values are correct for HSW */
+      return true;
+
+   /* oa not supported before gen 7*/
+   return false;
+}
+
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
 {
@@ -1757,6 +1798,9 @@ brw_init_perf_query_info(struct gl_context *ctx)
 
    init_pipeline_statistic_query_registers(brw);
    brw_perf_query_register_mdapi_statistic_query(brw);
+
+   if (!oa_metrics_kernel_support(screen->fd, devinfo))
+      return false;
 
    if (!query_topology(brw)) {
       /* We need the i915 query uAPI on CNL+ (kernel 4.17+). */
