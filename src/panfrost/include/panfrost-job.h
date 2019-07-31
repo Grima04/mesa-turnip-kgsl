@@ -788,6 +788,10 @@ struct mali_payload_set_value {
  * implemented as special attributes, denoted by MALI_ATTR_IMAGE. For images,
  * let shift=extra_flags=0. Stride is set to the image format's bytes-per-pixel
  * (*NOT the row stride*). Size is set to the size of the image itself.
+ *
+ * Special internal varyings (including gl_FrontFacing) are handled vai
+ * MALI_ATTR_INTERNAL, which has all fields set to zero and uses a special
+ * elements pseudo-pointer.
  */
 
 enum mali_attr_mode {
@@ -796,8 +800,13 @@ enum mali_attr_mode {
 	MALI_ATTR_POT_DIVIDE = 2,
 	MALI_ATTR_MODULO = 3,
 	MALI_ATTR_NPOT_DIVIDE = 4,
-        MALI_ATTR_IMAGE = 5
+        MALI_ATTR_IMAGE = 5,
+        MALI_ATTR_INTERNAL = 6
 };
+
+/* Pseudo-address for gl_FrontFacing */
+
+#define MALI_VARYING_FRONT_FACING (0x20)
 
 /* This magic "pseudo-address" is used as `elements` to implement
  * gl_PointCoord. When read from a fragment shader, it generates a point
