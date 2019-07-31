@@ -158,6 +158,13 @@ typedef struct shader_info {
          /* Which inputs are doubles */
          uint64_t double_inputs;
 
+         /* For AMD-specific driver-internal shaders. It replaces vertex
+          * buffer loads with code generating VS inputs from scalar registers.
+          *
+          * Valid values: SI_VS_BLIT_SGPRS_POS_*
+          */
+         unsigned blit_sgprs_amd;
+
          /* True if the shader writes position in window space coordinates pre-transform */
          bool window_space_position;
       } vs;

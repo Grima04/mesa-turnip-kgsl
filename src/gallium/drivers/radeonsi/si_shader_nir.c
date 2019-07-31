@@ -424,6 +424,8 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	if (nir->info.stage == MESA_SHADER_VERTEX) {
 		info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] =
 			nir->info.vs.window_space_position;
+		info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] =
+			nir->info.vs.blit_sgprs_amd;
 	}
 
 	if (nir->info.stage == MESA_SHADER_TESS_CTRL) {

@@ -2106,6 +2106,9 @@ ttn_compile_init(const void *tgsi_tokens,
       case TGSI_PROPERTY_NEXT_SHADER:
          s->info.next_stage = tgsi_processor_to_shader_stage(value);
          break;
+      case TGSI_PROPERTY_VS_BLIT_SGPRS_AMD:
+         s->info.vs.blit_sgprs_amd = value;
+         break;
       default:
          if (value) {
             fprintf(stderr, "tgsi_to_nir: unhandled TGSI property %u = %u\n",
