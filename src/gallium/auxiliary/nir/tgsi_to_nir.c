@@ -162,6 +162,25 @@ tgsi_varying_semantic_to_slot(unsigned semantic, unsigned index)
    }
 }
 
+static enum gl_frag_depth_layout
+ttn_get_depth_layout(unsigned tgsi_fs_depth_layout)
+{
+   switch (tgsi_fs_depth_layout) {
+   case TGSI_FS_DEPTH_LAYOUT_NONE:
+      return FRAG_DEPTH_LAYOUT_NONE;
+   case TGSI_FS_DEPTH_LAYOUT_ANY:
+      return FRAG_DEPTH_LAYOUT_ANY;
+   case TGSI_FS_DEPTH_LAYOUT_GREATER:
+      return FRAG_DEPTH_LAYOUT_GREATER;
+   case TGSI_FS_DEPTH_LAYOUT_LESS:
+      return FRAG_DEPTH_LAYOUT_LESS;
+   case TGSI_FS_DEPTH_LAYOUT_UNCHANGED:
+      return FRAG_DEPTH_LAYOUT_UNCHANGED;
+   default:
+      unreachable("bad TGSI FS depth layout");
+   }
+}
+
 static nir_ssa_def *
 ttn_src_for_dest(nir_builder *b, nir_alu_dest *dest)
 {
@@ -2066,7 +2085,35 @@ ttn_compile_init(const void *tgsi_tokens,
    s->num_uniforms = scan.const_file_max[0] + 1;
    s->num_outputs = scan.file_max[TGSI_FILE_OUTPUT] + 1;
 
-   s->info.vs.window_space_position = scan.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
+   for (unsigned i = 0; i < TGSI_PROPERTY_COUNT; i++) {
+      unsigned value = scan.properties[i];
+
+      switch (i) {
+      case TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS:
+         break; /* handled in ttn_emit_declaration */
+      case TGSI_PROPERTY_FS_COORD_ORIGIN:
+         s->info.fs.origin_upper_left = value == TGSI_FS_COORD_ORIGIN_UPPER_LEFT;
+         break;
+      case TGSI_PROPERTY_FS_COORD_PIXEL_CENTER:
+         s->info.fs.pixel_center_integer = value == TGSI_FS_COORD_PIXEL_CENTER_INTEGER;
+         break;
+      case TGSI_PROPERTY_FS_DEPTH_LAYOUT:
+         s->info.fs.depth_layout = ttn_get_depth_layout(value);
+         break;
+      case TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION:
+         s->info.vs.window_space_position = value;
+         break;
+      case TGSI_PROPERTY_NEXT_SHADER:
+         s->info.next_stage = tgsi_processor_to_shader_stage(value);
+         break;
+      default:
+         if (value) {
+            fprintf(stderr, "tgsi_to_nir: unhandled TGSI property %u = %u\n",
+                    i, value);
+            unreachable("unhandled TGSI property");
+         }
+      }
+   }
 
    c->inputs = rzalloc_array(c, struct nir_variable *, s->num_inputs);
    c->outputs = rzalloc_array(c, struct nir_variable *, s->num_outputs);
