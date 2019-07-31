@@ -277,7 +277,10 @@ panfrost_emit_vertex_payload(struct panfrost_context *ctx)
                 .gl_enables = 0x4 | 0x2,
         };
 
+        /* Vertex and compute are closely coupled, so share a payload */
+
         memcpy(&ctx->payloads[PIPE_SHADER_VERTEX], &payload, sizeof(payload));
+        memcpy(&ctx->payloads[PIPE_SHADER_COMPUTE], &payload, sizeof(payload));
 }
 
 static void
