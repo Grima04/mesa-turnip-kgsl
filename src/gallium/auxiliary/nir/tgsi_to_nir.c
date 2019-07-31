@@ -1312,6 +1312,7 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       samp = 2;
       break;
    case TGSI_OPCODE_TXF:
+   case TGSI_OPCODE_TXF_LZ:
       if (tgsi_inst->Texture.Texture == TGSI_TEXTURE_2D_MSAA ||
           tgsi_inst->Texture.Texture == TGSI_TEXTURE_2D_ARRAY_MSAA) {
          op = nir_texop_txf_ms;
@@ -1447,12 +1448,18 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       src_number++;
    }
 
-   if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXF) {
-      instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
-      if (op == nir_texop_txf_ms)
+   if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXF ||
+       tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXF_LZ) {
+      if (op == nir_texop_txf_ms) {
+         instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
          instr->src[src_number].src_type = nir_tex_src_ms_index;
-      else
+      } else {
+         if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXF_LZ)
+            instr->src[src_number].src = nir_src_for_ssa(nir_imm_int(b, 0));
+         else
+            instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
          instr->src[src_number].src_type = nir_tex_src_lod;
+      }
       src_number++;
    }
 
@@ -1596,6 +1603,7 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_LRP] = 0,
    [TGSI_OPCODE_SQRT] = nir_op_fsqrt,
    [TGSI_OPCODE_FRC] = nir_op_ffract,
+   [TGSI_OPCODE_TXF_LZ] = 0,
    [TGSI_OPCODE_FLR] = nir_op_ffloor,
    [TGSI_OPCODE_ROUND] = nir_op_fround_even,
    [TGSI_OPCODE_EX2] = nir_op_fexp2,
@@ -1885,6 +1893,7 @@ ttn_emit_instruction(struct ttn_compile *c)
    case TGSI_OPCODE_TXL2:
    case TGSI_OPCODE_TXB2:
    case TGSI_OPCODE_TXF:
+   case TGSI_OPCODE_TXF_LZ:
    case TGSI_OPCODE_TG4:
    case TGSI_OPCODE_LODQ:
       ttn_tex(c, dest, src);
