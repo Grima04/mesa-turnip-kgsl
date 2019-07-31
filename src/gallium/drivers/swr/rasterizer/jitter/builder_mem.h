@@ -148,6 +148,7 @@ void GATHER4DD(const SWR_FORMAT_INFO& info,
 Value* GATHERPD(Value* src, Value* pBase, Value* indices, Value* mask, uint8_t scale = 1);
 
 Value* GATHER_PTR(Value* pVecSrcPtr, Value* pVecMask, Value* pVecPassthru);
+void SCATTER_PTR(Value* pVecDstPtr, Value* pVecSrc, Value* pVecMask);
 
 virtual void SCATTERPS(Value*         pDst,
                        Value*         vSrc,

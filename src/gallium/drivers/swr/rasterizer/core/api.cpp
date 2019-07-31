@@ -1551,6 +1551,7 @@ void SwrDispatch(HANDLE   hContext,
     pTaskData->threadGroupCountX = threadGroupCountX;
     pTaskData->threadGroupCountY = threadGroupCountY;
     pTaskData->threadGroupCountZ = threadGroupCountZ;
+    pTaskData->enableThreadDispatch = false;
 
     uint32_t totalThreadGroups = threadGroupCountX * threadGroupCountY * threadGroupCountZ;
     uint32_t dcIndex           = pDC->drawId % pContext->MAX_DRAWS_IN_FLIGHT;

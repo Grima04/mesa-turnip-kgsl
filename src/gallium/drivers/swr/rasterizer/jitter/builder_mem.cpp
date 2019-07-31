@@ -237,6 +237,11 @@ namespace SwrJit
         return MASKED_GATHER(pVecSrcPtr, 4, pVecMask, pVecPassthru);
     }
 
+    void Builder::SCATTER_PTR(Value* pVecDstPtr, Value* pVecSrc, Value* pVecMask)
+    {
+        MASKED_SCATTER(pVecSrc, pVecDstPtr, 4, pVecMask);
+    }
+
     void Builder::Gather4(const SWR_FORMAT format,
                           Value*           pSrcBase,
                           Value*           byteOffsets,

@@ -140,6 +140,7 @@ struct COMPUTE_DESC
     uint32_t threadGroupCountX;
     uint32_t threadGroupCountY;
     uint32_t threadGroupCountZ;
+    bool     enableThreadDispatch;
 };
 
 typedef void (*PFN_WORK_FUNC)(DRAW_CONTEXT* pDC,

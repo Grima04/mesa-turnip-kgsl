@@ -170,6 +170,16 @@ namespace SwrJit
         return ConstantInt::get(IRB()->getInt1Ty(), (pred ? 1 : 0));
     }
 
+    Value* Builder::VIMMED1(uint64_t i)
+    {
+        return ConstantVector::getSplat(mVWidth, cast<ConstantInt>(C(i)));
+    }
+
+    Value* Builder::VIMMED1_16(uint64_t i)
+    {
+        return ConstantVector::getSplat(mVWidth16, cast<ConstantInt>(C(i)));
+    }
+
     Value* Builder::VIMMED1(int i)
     {
         return ConstantVector::getSplat(mVWidth, cast<ConstantInt>(C(i)));

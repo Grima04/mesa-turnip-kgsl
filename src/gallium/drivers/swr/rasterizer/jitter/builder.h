@@ -78,6 +78,7 @@ namespace SwrJit
         // Built in types: scalar
 
         Type* mVoidTy;
+        Type* mHandleTy;
         Type* mInt1Ty;
         Type* mInt8Ty;
         Type* mInt16Ty;

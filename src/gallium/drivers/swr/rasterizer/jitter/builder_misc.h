@@ -71,6 +71,9 @@ Constant* CInc(uint32_t base, uint32_t count)
 
 Constant* PRED(bool pred);
 
+Value* VIMMED1(uint64_t i);
+Value* VIMMED1_16(uint64_t i);
+
 Value* VIMMED1(int i);
 Value* VIMMED1_16(int i);
 

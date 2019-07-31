@@ -61,6 +61,7 @@ namespace SwrJit
         mInt16PtrTy = PointerType::get(mInt16Ty, 0);
         mInt32PtrTy = PointerType::get(mInt32Ty, 0);
         mInt64PtrTy = PointerType::get(mInt64Ty, 0);
+        mHandleTy   = mInt8PtrTy;
 
         mSimd4FP64Ty = VectorType::get(mDoubleTy, 4);
 

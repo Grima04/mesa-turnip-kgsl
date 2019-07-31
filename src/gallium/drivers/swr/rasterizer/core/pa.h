@@ -1447,7 +1447,7 @@ struct PA_TESS : PA_STATE
             SIMDSCALARI indices = _simd16_load_si((const SIMDSCALARI*)m_ppIndices[i]);
             if (!m_SOA)
             {
-                indices = _simd16_mul_epi32(indices, _simd16_set1_epi32(vertexStride / 4));
+                indices = _simd16_mullo_epi32(indices, _simd16_set1_epi32(vertexStride / 4));
             }
 #else
             SIMDSCALARI indices = _simd_load_si((const SIMDSCALARI*)m_ppIndices[i]);

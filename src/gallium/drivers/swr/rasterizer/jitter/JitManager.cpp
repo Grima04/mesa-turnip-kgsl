@@ -584,7 +584,7 @@ struct JitCacheFileHeader
     uint64_t GetObjectCRC() const { return m_objCRC; }
 
 private:
-    static const uint64_t JC_MAGIC_NUMBER = 0xfedcba9876543210ULL + 6;
+    static const uint64_t JC_MAGIC_NUMBER = 0xfedcba9876543210ULL + 7;
     static const size_t   JC_STR_MAX_LEN  = 32;
     static const uint32_t JC_PLATFORM_KEY = (LLVM_VERSION_MAJOR << 24) |
                                             (LLVM_VERSION_MINOR << 16) | (LLVM_VERSION_PATCH << 8) |
