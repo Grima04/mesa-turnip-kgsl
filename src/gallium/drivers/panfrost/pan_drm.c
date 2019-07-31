@@ -91,10 +91,16 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
         /* To maximize BO cache usage, don't allocate tiny BOs */
         size = MAX2(size, 4096);
 
+        /* GROWABLE BOs cannot be mmapped */
+        if (flags & PAN_ALLOCATE_GROWABLE)
+                assert(flags & PAN_ALLOCATE_INVISIBLE);
+
         unsigned translated_flags = 0;
 
         if (screen->kernel_version->version_major > 1 ||
             screen->kernel_version->version_minor >= 1) {
+                if (flags & PAN_ALLOCATE_GROWABLE)
+                        translated_flags |= PANFROST_BO_HEAP;
                 if (!(flags & PAN_ALLOCATE_EXECUTE))
                         translated_flags |= PANFROST_BO_NOEXEC;
         }
