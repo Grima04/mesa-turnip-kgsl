@@ -70,6 +70,23 @@ panfrost_launch_grid(struct pipe_context *pipe,
         /* TODO: Stub */
         struct midgard_payload_vertex_tiler *payload = &ctx->payloads[PIPE_SHADER_COMPUTE];
 
+        /* Compute jobs have a "compute FBD". It's not a real framebuffer
+         * descriptor - there is no framebuffer - but it takes the place of
+         * one. As far as I can tell, it's actually the beginning of a
+         * single-render-target framebuffer descriptor with almost everything
+         * zeroed out.
+         */
+        struct mali_compute_fbd compute_fbd = {
+                .unknown1 = {
+                        0, 0x1F, 0, 0, 0, 0, 0, 0
+                }
+        };
+
+        payload->postfix.framebuffer =
+                panfrost_upload_transient(ctx, &compute_fbd, sizeof(compute_fbd));
+
+        /* Upload the payload */
+
         struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
