@@ -31,6 +31,7 @@
 #include <stdbool.h>
 
 #include "c11/threads.h"
+#include "detect_os.h"
 
 #ifdef HAVE_PTHREAD
 #include <signal.h>
@@ -61,7 +62,17 @@ static inline thrd_t u_thread_create(int (*routine)(void *), void *param)
 static inline void u_thread_setname( const char *name )
 {
 #if defined(HAVE_PTHREAD)
+#if DETECT_OS_LINUX
    pthread_setname_np(pthread_self(), name);
+#elif DETECT_OS_FREEBSD || DETECT_OS_OPENBSD
+   pthread_set_name_np(pthread_self(), name);
+#elif DETECT_OS_NETBSD
+   pthread_setname_np(pthread_self(), "%s", name);
+#elif DETECT_OS_APPLE
+   pthread_setname_np(name);
+#else
+#error Not sure how to call pthread_setname_np
+#endif
 #endif
    (void)name;
 }
