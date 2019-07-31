@@ -51,15 +51,34 @@ panfrost_delete_compute_state(struct pipe_context *pipe, void *cso)
         free(cso);
 }
 
+/* Launch grid is the compute equivalent of draw_vbo, so in this routine, we
+ * construct the COMPUTE job and some of its payload.
+ */
+
 static void
 panfrost_launch_grid(struct pipe_context *pipe,
                 const struct pipe_grid_info *info)
 {
-        printf("Launch grid %dx%dx%d ... %dx%dx%d\n",
-                        info->block[0], info->block[1], info->block[2],
-                        info->grid[0], info->grid[1], info->grid[2]);
+        struct panfrost_context *ctx = pan_context(pipe);
 
-        /* Stub */
+        struct mali_job_descriptor_header job = {
+                .job_type = JOB_TYPE_COMPUTE,
+                .job_descriptor_size = 1,
+                .job_barrier = 1
+        };
+
+        /* TODO: Stub */
+        struct midgard_payload_vertex_tiler *payload = &ctx->payloads[PIPE_SHADER_COMPUTE];
+
+        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
+        memcpy(transfer.cpu, &job, sizeof(job));
+        memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
+
+        /* TODO: Do we want a special compute-only batch? */
+        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+
+        /* Queue the job */
+        panfrost_scoreboard_queue_compute_job(batch, transfer);
 }
 
 void
