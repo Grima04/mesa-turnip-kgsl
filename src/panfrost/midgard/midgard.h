@@ -652,8 +652,8 @@ __attribute__((__packed__))
         unsigned bias : 8;
         signed bias_int  : 8;
 
-        unsigned texture_handle : 16;
         unsigned sampler_handle : 16;
+        unsigned texture_handle : 16;
 }
 midgard_texture_word;
 
