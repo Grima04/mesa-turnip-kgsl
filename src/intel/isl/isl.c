@@ -1662,6 +1662,9 @@ isl_surf_get_hiz_surf(const struct isl_device *dev,
 {
    assert(ISL_DEV_GEN(dev) >= 5 && ISL_DEV_USE_SEPARATE_STENCIL(dev));
 
+   if (!isl_surf_usage_is_depth(surf->usage))
+      return false;
+
    /* HiZ only works with Y-tiled depth buffers */
    if (!isl_tiling_is_any_y(surf->tiling))
       return false;
@@ -1766,15 +1769,15 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
                       struct isl_surf *mcs_surf)
 {
+   /* It must be multisampled with an array layout */
+   if (surf->msaa_layout != ISL_MSAA_LAYOUT_ARRAY)
+      return false;
+
    /* The following are true of all multisampled surfaces */
    assert(surf->samples > 1);
    assert(surf->dim == ISL_SURF_DIM_2D);
    assert(surf->levels == 1);
    assert(surf->logical_level0_px.depth == 1);
-
-   /* It must be multisampled with an array layout */
-   if (surf->msaa_layout != ISL_MSAA_LAYOUT_ARRAY)
-      return false;
 
    /* From the Ivy Bridge PRM, Vol4 Part1 p77 ("MCS Enable"):
     *
@@ -1829,13 +1832,20 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
                       struct isl_surf *ccs_surf,
                       uint32_t row_pitch_B)
 {
-   assert(surf->samples == 1 && surf->msaa_layout == ISL_MSAA_LAYOUT_NONE);
+   if (surf->samples > 1)
+      return false;
+
+   assert(surf->msaa_layout == ISL_MSAA_LAYOUT_NONE);
 
    /* CCS support does not exist prior to Gen7 */
    if (ISL_DEV_GEN(dev) <= 6)
       return false;
 
    if (surf->usage & ISL_SURF_USAGE_DISABLE_AUX_BIT)
+      return false;
+
+   /* Callers don't yet support this configuration. */
+   if (isl_surf_usage_is_depth_or_stencil(surf->usage))
       return false;
 
    /* The PRM doesn't say this explicitly, but fast-clears don't appear to
