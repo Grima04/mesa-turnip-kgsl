@@ -28,14 +28,34 @@
 #include "pan_context.h"
 #include "util/u_memory.h"
 
+/* Compute CSOs are tracked like graphics shader CSOs, but are
+ * considerably simpler. We do not implement multiple
+ * variants/keying. So the CSO create function just goes ahead and
+ * compiles the thing. */
+
 static void *
 panfrost_create_compute_state(
         struct pipe_context *pctx,
         const struct pipe_compute_state *cso)
 {
+        struct panfrost_context *ctx = pan_context(pctx);
+
         struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
         so->cbase = *cso;
         so->is_compute = true;
+
+        struct panfrost_shader_state *v = &so->variants[0];
+
+        so->variant_count = 1;
+        so->active_variant = 0;
+
+        v->tripipe = malloc(sizeof(struct mali_shader_meta));
+
+        panfrost_shader_compile(ctx, v->tripipe,
+                        cso->ir_type, cso->prog, NULL,
+                        JOB_TYPE_COMPUTE, v);
+
+
 
         return so;
 }
@@ -43,10 +63,12 @@ panfrost_create_compute_state(
 static void
 panfrost_bind_compute_state(struct pipe_context *pipe, void *cso)
 {
-        struct pipe_compute_state *state = (struct pipe_compute_state *) cso;
+        struct panfrost_context *ctx = pan_context(pipe);
 
-        printf("Binding compute %p\n", state);
-        /* Stub */
+        struct panfrost_shader_variants *variants =
+                (struct panfrost_shader_variants *) cso;
+
+        ctx->shader[PIPE_SHADER_COMPUTE] = variants;
 }
 
 static void
