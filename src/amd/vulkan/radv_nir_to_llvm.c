@@ -86,9 +86,6 @@ struct radv_shader_context {
 	LLVMValueRef hs_ring_tess_offchip;
 	LLVMValueRef hs_ring_tess_factor;
 
-	LLVMValueRef persp_sample, persp_center, persp_centroid;
-	LLVMValueRef linear_sample, linear_center, linear_centroid;
-
 	/* Streamout */
 	LLVMValueRef streamout_buffers;
 	LLVMValueRef streamout_write_idx;
@@ -1232,13 +1229,13 @@ static void create_function(struct radv_shader_context *ctx,
 					   &desc_sets);
 
 		add_arg(&args, ARG_SGPR, ctx->ac.i32, &ctx->abi.prim_mask);
-		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->persp_sample);
-		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->persp_center);
-		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->persp_centroid);
+		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->abi.persp_sample);
+		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->abi.persp_center);
+		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->abi.persp_centroid);
 		add_arg(&args, ARG_VGPR, ctx->ac.v3i32, NULL); /* persp pull model */
-		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->linear_sample);
-		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->linear_center);
-		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->linear_centroid);
+		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->abi.linear_sample);
+		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->abi.linear_center);
+		add_arg(&args, ARG_VGPR, ctx->ac.v2i32, &ctx->abi.linear_centroid);
 		add_arg(&args, ARG_VGPR, ctx->ac.f32, NULL);  /* line stipple tex */
 		add_arg(&args, ARG_VGPR, ctx->ac.f32, &ctx->abi.frag_pos[0]);
 		add_arg(&args, ARG_VGPR, ctx->ac.f32, &ctx->abi.frag_pos[1]);
@@ -1774,19 +1771,19 @@ static LLVMValueRef lookup_interp_param(struct ac_shader_abi *abi,
 	case INTERP_MODE_SMOOTH:
 	case INTERP_MODE_NONE:
 		if (location == INTERP_CENTER)
-			return ctx->persp_center;
+			return ctx->abi.persp_center;
 		else if (location == INTERP_CENTROID)
-			return ctx->persp_centroid;
+			return ctx->abi.persp_centroid;
 		else if (location == INTERP_SAMPLE)
-			return ctx->persp_sample;
+			return ctx->abi.persp_sample;
 		break;
 	case INTERP_MODE_NOPERSPECTIVE:
 		if (location == INTERP_CENTER)
-			return ctx->linear_center;
+			return ctx->abi.linear_center;
 		else if (location == INTERP_CENTROID)
-			return ctx->linear_centroid;
+			return ctx->abi.linear_centroid;
 		else if (location == INTERP_SAMPLE)
-			return ctx->linear_sample;
+			return ctx->abi.linear_sample;
 		break;
 	}
 	return NULL;
@@ -2382,8 +2379,8 @@ prepare_interp_optimize(struct radv_shader_context *ctx,
 
 	if (uses_center && uses_centroid) {
 		LLVMValueRef sel = LLVMBuildICmp(ctx->ac.builder, LLVMIntSLT, ctx->abi.prim_mask, ctx->ac.i32_0, "");
-		ctx->persp_centroid = LLVMBuildSelect(ctx->ac.builder, sel, ctx->persp_center, ctx->persp_centroid, "");
-		ctx->linear_centroid = LLVMBuildSelect(ctx->ac.builder, sel, ctx->linear_center, ctx->linear_centroid, "");
+		ctx->abi.persp_centroid = LLVMBuildSelect(ctx->ac.builder, sel, ctx->abi.persp_center, ctx->abi.persp_centroid, "");
+		ctx->abi.linear_centroid = LLVMBuildSelect(ctx->ac.builder, sel, ctx->abi.linear_center, ctx->abi.linear_centroid, "");
 	}
 }
 

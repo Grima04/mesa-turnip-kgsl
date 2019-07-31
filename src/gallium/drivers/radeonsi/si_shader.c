@@ -4904,13 +4904,19 @@ static void create_function(struct si_shader_context *ctx)
 		add_arg_assign_checked(&fninfo, ARG_SGPR, ctx->i32,
 				       &ctx->abi.prim_mask, SI_PARAM_PRIM_MASK);
 
-		add_arg_checked(&fninfo, ARG_VGPR, ctx->v2i32, SI_PARAM_PERSP_SAMPLE);
-		add_arg_checked(&fninfo, ARG_VGPR, ctx->v2i32, SI_PARAM_PERSP_CENTER);
-		add_arg_checked(&fninfo, ARG_VGPR, ctx->v2i32, SI_PARAM_PERSP_CENTROID);
+		add_arg_assign_checked(&fninfo, ARG_VGPR, ctx->v2i32,
+				       &ctx->abi.persp_sample, SI_PARAM_PERSP_SAMPLE);
+		add_arg_assign_checked(&fninfo, ARG_VGPR, ctx->v2i32,
+				       &ctx->abi.persp_center, SI_PARAM_PERSP_CENTER);
+		add_arg_assign_checked(&fninfo, ARG_VGPR, ctx->v2i32,
+				       &ctx->abi.persp_centroid, SI_PARAM_PERSP_CENTROID);
 		add_arg_checked(&fninfo, ARG_VGPR, v3i32, SI_PARAM_PERSP_PULL_MODEL);
-		add_arg_checked(&fninfo, ARG_VGPR, ctx->v2i32, SI_PARAM_LINEAR_SAMPLE);
-		add_arg_checked(&fninfo, ARG_VGPR, ctx->v2i32, SI_PARAM_LINEAR_CENTER);
-		add_arg_checked(&fninfo, ARG_VGPR, ctx->v2i32, SI_PARAM_LINEAR_CENTROID);
+		add_arg_assign_checked(&fninfo, ARG_VGPR, ctx->v2i32,
+				       &ctx->abi.linear_sample, SI_PARAM_LINEAR_SAMPLE);
+		add_arg_assign_checked(&fninfo, ARG_VGPR, ctx->v2i32,
+				       &ctx->abi.linear_center, SI_PARAM_LINEAR_CENTER);
+		add_arg_assign_checked(&fninfo, ARG_VGPR, ctx->v2i32,
+				       &ctx->abi.linear_centroid, SI_PARAM_LINEAR_CENTROID);
 		add_arg_checked(&fninfo, ARG_VGPR, ctx->f32, SI_PARAM_LINE_STIPPLE_TEX);
 		add_arg_assign_checked(&fninfo, ARG_VGPR, ctx->f32,
 				       &ctx->abi.frag_pos[0], SI_PARAM_POS_X_FLOAT);

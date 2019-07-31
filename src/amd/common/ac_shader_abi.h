@@ -58,6 +58,8 @@ struct ac_shader_abi {
 	LLVMValueRef tes_patch_id;
 	LLVMValueRef gs_prim_id;
 	LLVMValueRef gs_invocation_id;
+
+	/* PS */
 	LLVMValueRef frag_pos[4];
 	LLVMValueRef front_face;
 	LLVMValueRef ancillary;
@@ -66,6 +68,13 @@ struct ac_shader_abi {
 	LLVMValueRef color0;
 	LLVMValueRef color1;
 	LLVMValueRef user_data;
+	LLVMValueRef persp_sample;
+	LLVMValueRef persp_center;
+	LLVMValueRef persp_centroid;
+	LLVMValueRef linear_sample;
+	LLVMValueRef linear_center;
+	LLVMValueRef linear_centroid;
+
 	/* CS */
 	LLVMValueRef local_invocation_ids;
 	LLVMValueRef num_work_groups;
