@@ -401,31 +401,30 @@ fd_batch_flush(struct fd_batch *batch, bool sync)
 	fd_batch_reference(&tmp, NULL);
 }
 
-/* does 'batch' depend directly or indirectly on 'other' ? */
-static bool
-batch_depends_on(struct fd_batch *batch, struct fd_batch *other)
+/* find a batches dependents mask, including recursive dependencies: */
+static uint32_t
+recursive_dependents_mask(struct fd_batch *batch)
 {
 	struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
 	struct fd_batch *dep;
+	uint32_t dependents_mask = batch->dependents_mask;
 
-	if (batch->dependents_mask & (1 << other->idx))
-		return true;
+	foreach_batch(dep, cache, batch->dependents_mask)
+		dependents_mask |= recursive_dependents_mask(dep);
 
-	foreach_batch(dep, cache, other->dependents_mask)
-		if (batch_depends_on(batch, dep))
-			return true;
-
-	return false;
+	return dependents_mask;
 }
 
 void
 fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep)
 {
+	pipe_mutex_assert_locked(batch->ctx->screen->lock);
+
 	if (batch->dependents_mask & (1 << dep->idx))
 		return;
 
 	/* a loop should not be possible */
-	debug_assert(!batch_depends_on(dep, batch));
+	debug_assert(!((1 << batch->idx) & recursive_dependents_mask(dep)));
 
 	struct fd_batch *other = NULL;
 	fd_batch_reference_locked(&other, dep);
