@@ -41,7 +41,7 @@ namespace SwrJit
         BuilderGfxMem(JitManager* pJitMgr);
         virtual ~BuilderGfxMem() {}
 
-        virtual Value* GEP(Value* Ptr, Value* Idx, Type* Ty = nullptr, const Twine& Name = "");
+        virtual Value* GEP(Value* Ptr, Value* Idx, Type* Ty = nullptr, bool isReadOnly = true, const Twine& Name = "");
         virtual Value* GEP(Type* Ty, Value* Ptr, Value* Idx, const Twine& Name = "");
         virtual Value*
         GEP(Value* Ptr, const std::initializer_list<Value*>& indexList, Type* Ty = nullptr);
@@ -76,7 +76,7 @@ namespace SwrJit
                                       MEM_CLIENT     usage    = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
         virtual StoreInst* STORE(Value *Val, Value *Ptr, bool isVolatile = false, Type* Ty = nullptr, MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
-
+        
         virtual StoreInst* STORE(Value* Val, Value* BasePtr, const std::initializer_list<uint32_t>& offset, Type* Ty = nullptr, MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
 
         virtual CallInst* MASKED_STORE(Value *Val, Value *Ptr, unsigned Align, Value *Mask, Type* Ty = nullptr, MEM_CLIENT usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
@@ -108,7 +108,7 @@ namespace SwrJit
                                            Type*          PtrTy = nullptr,
                                            const Twine&   Name  = "",
                                            MEM_CLIENT     usage = MEM_CLIENT::MEM_CLIENT_INTERNAL);
-
+        
     protected:
         void AssertGFXMemoryParams(Value* ptr, MEM_CLIENT usage);
 
@@ -116,7 +116,7 @@ namespace SwrJit
 
         virtual Value* OFFSET_TO_NEXT_COMPONENT(Value* base, Constant* offset);
 
-        Value* TranslationHelper(Value* Ptr, Type* Ty);
+        Value* TranslationHelper(Value* Ptr, Type* Ty, Value* pfnTranslateGfxAddress);
         void   TrackerHelper(Value* Ptr, Type* Ty, MEM_CLIENT usage, bool isRead);
 
         FunctionType* GetTranslationFunctionType() { return mpTranslationFuncTy; }

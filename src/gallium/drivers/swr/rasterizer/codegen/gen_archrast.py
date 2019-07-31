@@ -87,14 +87,20 @@ def parse_protos(files, verbose=False):
     """
         Parses a proto file and returns a dictionary of event definitions
     """
-    protos = {}
-    protos['events'] = {}       # event dictionary containing events with their fields
-    protos['event_names'] = []  # needed to keep events in order parsed. dict is not ordered.
-    protos['event_map'] = {}    # dictionary to map event ids to event names
-    protos['enums'] = {}
-    protos['enum_names'] = []
+    protos = {
+        'events': {
+            'defs': {},             # event dictionary containing events with their fields
+            'map': {},              # dictionary to map event ids to event names
+            'groups': {}            # event keys stored by groups
+        },
+        'enums': {
+            'defs': {},
+            'map': {}
+        }
+    }
 
-    eventId = 0
+    event_id = 0
+    enum_id = 0
 
     if type(files) is not list:
         files = [files]
@@ -104,38 +110,72 @@ def parse_protos(files, verbose=False):
             print("Parsing proto file: %s" % os.path.normpath(filename))
 
         with open(filename, 'r') as f:
-            lines=f.readlines()
+            lines = f.readlines()
 
             idx = 0
-
-            raw_text = []
             while idx < len(lines):
-                line = lines[idx].rstrip()
+                line = lines[idx].strip()
                 idx += 1
 
-                # search for event definitions.
-                match = re.match(r'(\s*)event(\s*)(\w+)', line)
-
+                # Match event definition
+                match = re.match(r'event(\s*)(((\w*)::){0,1}(\w+))', line)          # i.e. "event SWTag::CounterEvent"
                 if match:
-                    eventId += 1
-                    event_name = match.group(3)
-                    protos["event_names"].append(event_name)
+                    event_id += 1
 
-                    protos["events"][event_name] = {}
-                    protos["events"][event_name]["event_id"] = eventId
-                    protos["event_map"][eventId] = event_name
-                    idx = parse_event_fields(lines, idx, protos["events"][event_name])
+                    # Parse event attributes
+                    event_key = match.group(2)                                      # i.e. SWTag::CounterEvent
+                    event_group = match.group(4) if match.group(4) else ""      # i.e. SWTag
+                    event_name = match.group(5)                                     # i.e. CounterEvent
 
-                # search for enums.
-                match = re.match(r'(\s*)enum(\s*)(\w+)', line)
+                    # Define event attributes
+                    event = {
+                        'id': event_id,
+                        'group': event_group,
+                        'name': event_name
+                    }
 
+                    # Now add event fields
+                    idx = parse_event_fields(lines, idx, event)
+
+                    protos['events']['defs'][event_key] = event
+                    protos['events']['map'][event_id] = event_key
+
+                    continue
+
+                # Match enum definition
+                match = re.match(r'enum(\s*)(\w+)', line)
                 if match:
-                    enum_name = match.group(3)
-                    protos["enum_names"].append(enum_name)
+                    enum_id += 1
 
-                    protos["enums"][enum_name] = {}
-                    idx = parse_enums(lines, idx, protos["enums"][enum_name])
+                    # Parse enum attributes
+                    enum_name = match.group(2)
+
+                    # Define enum attr
+                    enum = {
+                        'name': enum_name
+                    }
+
+                    # Now add enum fields
+                    idx = parse_enums(lines, idx, enum)
+
+                    protos['enums']['defs'][enum_name] = enum
+                    protos['enums']['map'][enum_id] = enum_name
+
+                    continue
+
+    # Sort and group events
+    event_groups = protos['events']['groups']
+    for key in sorted(protos['events']['defs']):
+        group = protos['events']['defs'][key]['group']
+        if group not in event_groups:
+            event_groups[group] = []
+        event_groups[group].append(key)
+
     return protos
+
+
+def get_sorted_protos(protos):
+    protos["groups"]
 
 
 def main():

@@ -41,7 +41,7 @@ namespace SwrJit
             "Address appears to be GFX access.  Requires translation through BuilderGfxMem.");
     }
 
-    Value* Builder::GEP(Value* Ptr, Value* Idx, Type* Ty, const Twine& Name)
+    Value* Builder::GEP(Value* Ptr, Value* Idx, Type* Ty, bool isReadOnly, const Twine& Name)
     {
         return IRB()->CreateGEP(Ptr, Idx, Name);
     }

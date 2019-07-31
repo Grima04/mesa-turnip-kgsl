@@ -304,7 +304,7 @@ KNOBS = [
                        'NOTE: Requires KNOB_ENABLE_TOSS_POINTS to be enabled in core/knobs.h'],
         'category'  : 'perf_adv',
     }],
-    
+
     ['DISABLE_SPLIT_DRAW', {
         'type'      : 'bool',
         'default'   : 'false',
@@ -314,5 +314,42 @@ KNOBS = [
                        'Useful to disable split draws for gathering archrast stats.'],
         'category'  : 'perf_adv',
     }],
+
+    ['AR_ENABLE_PIPELINE_EVENTS', {
+        'type'      : 'bool',
+        'default'   : 'true',
+        'desc'      : ['Enable pipeline events when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
+    ['AR_ENABLE_SHADER_EVENTS', {
+        'type'      : 'bool',
+        'default'   : 'true',
+        'desc'      : ['Enable shader events when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
+    ['AR_ENABLE_SWTAG_EVENTS', {
+        'type'      : 'bool',
+        'default'   : 'false',
+        'desc'      : ['Enable SWTag events when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
+    ['AR_ENABLE_MEMORY_EVENTS', {
+        'type'      : 'bool',
+        'default'   : 'false',
+        'desc'      : ['Enable memory events when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
+    ['AR_MEM_SET_BYTE_GRANULARITY', {
+        'type'      : 'uint32_t',
+        'default'   : '64',
+        'desc'      : ['Granularity and alignment of tracking of memory accesses',
+                       'ONLY ACTIVE UNDER ArchRast.'],
+        'category'  : 'archrast',
+    }],
+
 
     ]

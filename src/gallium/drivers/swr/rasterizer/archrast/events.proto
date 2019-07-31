@@ -29,15 +29,15 @@ enum AR_DRAW_TYPE
     IndexedInstancedSplit = 3
 };
 
-event ThreadStartApiEvent
+event Framework::ThreadStartApiEvent
 {
 };
 
-event ThreadStartWorkerEvent
+event Framework::ThreadStartWorkerEvent
 {
 };
 
-event DrawInfoEvent
+event SwrApi::DrawInfoEvent
 {
     uint32_t drawId;
     AR_DRAW_TYPE type;
@@ -55,7 +55,7 @@ event DrawInfoEvent
     uint32_t splitId; // Split draw count or id.
 };
 
-event DispatchEvent
+event SwrApi::DispatchEvent
 {
     uint32_t drawId;
     uint32_t threadGroupCountX;
@@ -63,37 +63,37 @@ event DispatchEvent
     uint32_t threadGroupCountZ;
 };
 
-event FrameEndEvent
+event SwrApi::FrameEndEvent
 {
     uint32_t frameId;
     uint32_t nextDrawId;
 };
 
 ///@brief API Stat: Synchonization event.
-event SwrSyncEvent
+event SwrApi::SwrSyncEvent
 {
     uint32_t drawId;
 };
 
 ///@brief API Stat: Invalidate hot tiles (i.e. tile cache)
-event SwrInvalidateTilesEvent
+event SwrApi::SwrInvalidateTilesEvent
 {
     uint32_t drawId;
 };
 
 ///@brief API Stat: Invalidate and discard hot tiles within pixel region
-event SwrDiscardRectEvent
+event SwrApi::SwrDiscardRectEvent
 {
     uint32_t drawId;
 };
 
 ///@brief API Stat: Flush tiles out to memory that is typically owned by driver (e.g. Flush RT cache)
-event SwrStoreTilesEvent
+event SwrApi::SwrStoreTilesEvent
 {
     uint32_t drawId;
 };
 
-event FrontendStatsEvent
+event Pipeline::FrontendStatsEvent
 {
     uint32_t drawId;
     uint64_t counter IaVertices;
@@ -115,7 +115,7 @@ event FrontendStatsEvent
     uint64_t counter SoNumPrimsWritten3;
 };
 
-event BackendStatsEvent
+event Pipeline::BackendStatsEvent
 {
     uint32_t drawId;
     uint64_t counter DepthPassCount;
@@ -124,56 +124,56 @@ event BackendStatsEvent
 
 };
 
-event EarlyZSingleSample
+event Pipeline::EarlyZSingleSample
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event LateZSingleSample
+event Pipeline::LateZSingleSample
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event EarlyStencilSingleSample
+event Pipeline::EarlyStencilSingleSample
 {
     uint32_t drawId; 
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event LateStencilSingleSample
+event Pipeline::LateStencilSingleSample
 {
     uint32_t drawId; 
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event EarlyZSampleRate
+event Pipeline::EarlyZSampleRate
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event LateZSampleRate
+event Pipeline::LateZSampleRate
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event EarlyStencilSampleRate
+event Pipeline::EarlyStencilSampleRate
 {
     uint32_t drawId; 
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event LateStencilSampleRate
+event Pipeline::LateStencilSampleRate
 {
     uint32_t drawId; 
     uint64_t counter passCount;
@@ -181,7 +181,7 @@ event LateStencilSampleRate
 };
 
 // Total Early-Z counts, SingleSample and SampleRate
-event EarlyZ
+event Pipeline::EarlyZ
 {
     uint32_t drawId;
     uint64_t counter passCount;
@@ -189,7 +189,7 @@ event EarlyZ
 };
 
 // Total LateZ counts, SingleSample and SampleRate
-event LateZ
+event Pipeline::LateZ
 {
     uint32_t drawId;
     uint64_t counter passCount;
@@ -197,7 +197,7 @@ event LateZ
 };
 
 // Total EarlyStencil counts, SingleSample and SampleRate
-event EarlyStencil
+event Pipeline::EarlyStencil
 {
     uint32_t drawId; 
     uint64_t counter passCount;
@@ -205,35 +205,35 @@ event EarlyStencil
 };
 
 // Total LateStencil counts, SingleSample and SampleRate
-event LateStencil
+event Pipeline::LateStencil
 {
     uint32_t drawId; 
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event EarlyZNullPS
+event Pipeline::EarlyZNullPS
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event EarlyStencilNullPS
+event Pipeline::EarlyStencilNullPS
 {
     uint32_t drawId; 
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event EarlyZPixelRate
+event Pipeline::EarlyZPixelRate
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event LateZPixelRate
+event Pipeline::LateZPixelRate
 {
     uint32_t drawId;
     uint64_t counter passCount;
@@ -241,65 +241,65 @@ event LateZPixelRate
 };
 
 
-event EarlyOmZ
+event Pipeline::EarlyOmZ
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event EarlyOmStencil
+event Pipeline::EarlyOmStencil
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event LateOmZ
+event Pipeline::LateOmZ
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event LateOmStencil
+event Pipeline::LateOmStencil
 {
     uint32_t drawId;
     uint64_t counter passCount;
     uint64_t counter failCount;
 };
 
-event GSInputPrims
+event Pipeline::GSInputPrims
 {
     uint32_t drawId;
     uint64_t counter inputPrimCount;
 };
 
-event GSPrimsGen
+event Pipeline::GSPrimsGen
 {
     uint32_t drawId;
     uint64_t counter primGeneratedCount;
 };
 
-event GSVertsInput
+event Pipeline::GSVertsInput
 {
     uint32_t drawId;
     uint64_t counter vertsInput;
 };
 
-event TessPrims
+event Pipeline::TessPrims
 {
     uint32_t drawId;
     uint64_t counter primCount;
 };
 
-event RasterTiles
+event Pipeline::RasterTiles
 {
     uint32_t drawId;
     uint32_t counter rastTileCount;
 };
 
-event ClipperEvent
+event Pipeline::ClipperEvent
 {
     uint32_t drawId;
     uint32_t counter trivialRejectCount;
@@ -307,21 +307,21 @@ event ClipperEvent
     uint32_t counter mustClipCount;
 };
 
-event CullEvent
+event Pipeline::CullEvent
 {
     uint32_t drawId;
     uint64_t counter backfacePrimCount;
     uint64_t counter degeneratePrimCount;
 };
 
-event AlphaEvent
+event Pipeline::AlphaEvent
 {
     uint32_t drawId;
     uint32_t counter alphaTestCount;
     uint32_t counter alphaBlendCount;
 };
 
-event VSInfo
+event Shader::VSInfo
 {
     uint32_t drawId;
     uint32_t counter numInstExecuted;
@@ -338,7 +338,7 @@ event VSInfo
     uint32_t counter numLodExecuted;
 };
 
-event HSInfo
+event Shader::HSInfo
 {
     uint32_t drawId;
     uint32_t counter numInstExecuted;
@@ -355,7 +355,7 @@ event HSInfo
     uint32_t counter numLodExecuted;
 };
 
-event DSInfo
+event Shader::DSInfo
 {
     uint32_t drawId;
     uint32_t counter numInstExecuted;
@@ -372,7 +372,7 @@ event DSInfo
     uint32_t counter numLodExecuted;
 };
 
-event GSInfo
+event Shader::GSInfo
 {
     uint32_t drawId;
     uint32_t counter numInstExecuted;
@@ -390,7 +390,7 @@ event GSInfo
 
 };
 
-event PSInfo
+event Shader::PSInfo
 {
     uint32_t drawId;
     uint32_t counter numInstExecuted;
@@ -407,7 +407,7 @@ event PSInfo
     uint32_t counter numLodExecuted;
 };
 
-event CSInfo
+event Shader::CSInfo
 {
     uint32_t drawId;
     uint32_t counter numInstExecuted;
@@ -424,64 +424,62 @@ event CSInfo
     uint32_t counter numLodExecuted;
 };
 
-event SWTagFrameEvent
+event SWTagApi::SWTagEndFrameEvent
 {
-	uint64_t swTagFrame;
+	uint64_t frameCount;
+	uint32_t renderpassCount;
+	uint32_t drawOrDispatchCount;
+	uint32_t drawCount;
+	uint32_t dispatchCount;
 };
 
-event SWTagRenderpassEvent
+event SWTagApi::SWTagRenderpassEvent
 {
-	uint64_t swTagFrame;
-	uint32_t swTagDrawOrDispatch;
-	uint32_t swTagDraw;
-	uint32_t swTagDispatch;
-	uint32_t swTagRenderpassCount;
+	uint64_t frameCount;
+	uint32_t renderpassCount;
+	uint32_t drawOrDispatchCount;
+	uint32_t drawCount;
+	uint32_t dispatchCount;
 };
 
-event SWTagDrawEvent
+event SWTagApi::SWTagDrawEvent
 {
-	uint64_t swTagFrame;
-	uint32_t swTagDrawOrDispatch;
-	uint32_t swTagDraw;
-	uint32_t swTagDispatch;
+	uint64_t frameCount;
+	uint32_t renderpassCount;
+	uint32_t drawOrDispatchCount;
+	uint32_t drawCount;
+	uint32_t dispatchCount;
 };
 
-event SWTagDispatchEvent
+event SWTagApi::SWTagDispatchEvent
 {
-	uint64_t swTagFrame;
-	uint32_t swTagDrawOrDispatch;
-	uint32_t swTagDraw;
-	uint32_t swTagDispatch;
+	uint64_t frameCount;
+	uint32_t renderpassCount;
+	uint32_t drawOrDispatchCount;
+	uint32_t drawCount;
+	uint32_t dispatchCount;
 };
 
-event SWTagFlushEvent
+event SWTagApi::SWTagDriverCallEvent
 {
-	uint64_t swTagFrame;
-	uint32_t swTagDrawOrDispatch;
-	uint32_t swTagDraw;
-	uint32_t swTagDispatch;
-	uint32_t swTagFlushCounter;
-    char swTagFlushReason[256];
-    uint32_t swTagFlushType;
+    char cmd[256];
 };
 
-event SWTagApiCallEvent
+event SWTag::SWTagFlushEvent
 {
-	uint64_t swTagFrame;
-	uint32_t swTagDrawOrDispatch;
-	uint32_t swTagDraw;
-	uint32_t swTagDispatch;
-    char swTagApiCall[256];
+	uint32_t count;
+    char	 reason[256];
+    uint32_t type;
 };
 
-event MemoryStatsEvent
+event Memory::MemoryStatsEvent
 {
     uint32_t drawId;
     uint64_t baseAddr;
     uint32_t accessCountRead;
     uint32_t accessCountWrite;
-	uint32_t totalSizeRead;
-	uint32_t totalSizeWrite;
+    uint32_t totalSizeRead;
+    uint32_t totalSizeWrite;
     uint64_t tscMin;
     uint64_t tscMax;
 };

@@ -45,7 +45,7 @@ virtual Value* OFFSET_TO_NEXT_COMPONENT(Value* base, Constant* offset);
 void           AssertMemoryUsageParams(Value* ptr, MEM_CLIENT usage);
 
 public:
-virtual Value* GEP(Value* Ptr, Value* Idx, Type* Ty = nullptr, const Twine& Name = "");
+virtual Value* GEP(Value* Ptr, Value* Idx, Type* Ty = nullptr, bool isReadOnly = true, const Twine& Name = "");
 virtual Value* GEP(Type* Ty, Value* Ptr, Value* Idx, const Twine& Name = "");
 virtual Value* GEP(Value* ptr, const std::initializer_list<Value*>& indexList, Type* Ty = nullptr);
 virtual Value*

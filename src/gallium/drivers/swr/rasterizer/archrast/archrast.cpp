@@ -31,6 +31,7 @@
 #include "common/os.h"
 #include "archrast/archrast.h"
 #include "archrast/eventmanager.h"
+#include "gen_ar_event.hpp"
 #include "gen_ar_eventhandlerfile.hpp"
 
 namespace ArchRast
@@ -104,9 +105,9 @@ namespace ArchRast
             uint64_t tscMax;
         };
 
-        struct AddressRangeComparator 
+        struct AddressRangeComparator
         {
-            bool operator()(MemoryTrackerKey a, MemoryTrackerKey b) const 
+            bool operator()(MemoryTrackerKey a, MemoryTrackerKey b) const
             {
                 return (a.address & a.mask) < (b.address & b.mask);
             }
@@ -260,7 +261,7 @@ namespace ArchRast
 
             // compute address mask for memory tracking
             mAddressMask = 0;
-            uint64_t addressRangeBytes = 64;
+            uint64_t addressRangeBytes = 4096;
             while (addressRangeBytes > 0)
             {
                 mAddressMask = (mAddressMask << 1) | 1;
@@ -687,7 +688,7 @@ namespace ArchRast
                 mMemoryStats.TrackMemoryAccess(trackAddr, mAddressMask, event.data.isRead, event.data.tsc, size);
                 sizeTracked += size;
                 trackAddr = nextAddr;
-            }            
+            }
         }
 
         virtual void Handle(const MemoryStatsEndEvent& event)
@@ -695,13 +696,13 @@ namespace ArchRast
             MemoryStats::MemoryTrackerMap::iterator i = mMemoryStats.trackedMemory.begin();
             while (i != mMemoryStats.trackedMemory.end())
             {
-                MemoryStatsEvent mse(event.data.drawId, 
-                                     i->first.address & mAddressMask, 
-                                     i->second.accessCountRead, 
-                                     i->second.accessCountWrite, 
-                                     i->second.totalSizeRead, 
-                                     i->second.totalSizeWrite, 
-                                     i->second.tscMin, 
+                MemoryStatsEvent mse(event.data.drawId,
+                                     i->first.address & mAddressMask,
+                                     i->second.accessCountRead,
+                                     i->second.accessCountWrite,
+                                     i->second.totalSizeRead,
+                                     i->second.totalSizeWrite,
+                                     i->second.tscMin,
                                      i->second.tscMax);
                 EventHandlerFile::Handle(mse);
                 i++;
@@ -812,10 +813,12 @@ namespace ArchRast
     // Dispatch event for this thread.
     void Dispatch(HANDLE hThreadContext, const Event& event)
     {
-        EventManager* pManager = FromHandle(hThreadContext);
-        SWR_ASSERT(pManager != nullptr);
-
-        pManager->Dispatch(event);
+        if (event.IsEnabled())
+        {
+            EventManager* pManager = reinterpret_cast<EventManager*>(hThreadContext);
+            SWR_ASSERT(pManager != nullptr);
+            pManager->Dispatch(event);
+        }
     }
 
     // Flush for this thread.

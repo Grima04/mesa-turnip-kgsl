@@ -44,6 +44,7 @@ namespace SwrJit
         mpfnTrackMemAccess              = nullptr;
         mpParamSimDC                    = nullptr;
         mpWorkerData                    = nullptr;
+
     }
 
     void BuilderGfxMem::NotifyPrivateContextSet()
@@ -96,6 +97,7 @@ namespace SwrJit
                                    uint8_t        scale,
                                    MEM_CLIENT     usage)
     {
+
         // address may be coming in as 64bit int now so get the pointer
         if (pBase->getType() == mInt64Ty)
         {
@@ -109,6 +111,7 @@ namespace SwrJit
     void BuilderGfxMem::SCATTERPS(
         Value* pDst, Value* vSrc, Value* vOffsets, Value* vMask, MEM_CLIENT usage)
     {
+
         // address may be coming in as 64bit int now so get the pointer
         if (pDst->getType() == mInt64Ty)
         {
@@ -123,32 +126,83 @@ namespace SwrJit
         return ADD(base, offset);
     }
 
-    Value* BuilderGfxMem::GEP(Value* Ptr, Value* Idx, Type* Ty, const Twine& Name)
+    Value* BuilderGfxMem::GEP(Value* Ptr, Value* Idx, Type* Ty, bool isReadOnly, const Twine& Name)
     {
-        Ptr = TranslationHelper(Ptr, Ty);
-        return Builder::GEP(Ptr, Idx, nullptr, Name);
+        bool xlate = (Ptr->getType() == mInt64Ty);
+        if (xlate)
+        {
+            Ptr = INT_TO_PTR(Ptr, Ty);
+            Ptr = Builder::GEP(Ptr, Idx, nullptr, isReadOnly, Name);
+            Ptr = PTR_TO_INT(Ptr, mInt64Ty);
+            if (isReadOnly)
+            {
+                Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
+            }
+            else
+            {
+                Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForWrite);
+            }
+        }
+        else
+        {
+            Ptr = Builder::GEP(Ptr, Idx, nullptr, isReadOnly, Name);
+        }
+        return Ptr;
     }
 
     Value* BuilderGfxMem::GEP(Type* Ty, Value* Ptr, Value* Idx, const Twine& Name)
     {
-        Ptr = TranslationHelper(Ptr, Ty);
-        return Builder::GEP(Ty, Ptr, Idx, Name);
+        bool xlate = (Ptr->getType() == mInt64Ty);
+        if (xlate)
+        {
+            Ptr = INT_TO_PTR(Ptr, Ty);
+            Ptr = Builder::GEP(Ty, Ptr, Idx, Name);
+            Ptr = PTR_TO_INT(Ptr, mInt64Ty);
+            Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
+        }
+        else
+        {
+            Ptr = Builder::GEP(Ty, Ptr, Idx, Name);
+        }
+        return Ptr;
     }
 
     Value* BuilderGfxMem::GEP(Value* Ptr, const std::initializer_list<Value*>& indexList, Type* Ty)
     {
-        Ptr = TranslationHelper(Ptr, Ty);
-        return Builder::GEP(Ptr, indexList);
+        bool xlate = (Ptr->getType() == mInt64Ty);
+        if (xlate)
+        {
+            Ptr = INT_TO_PTR(Ptr, Ty);
+            Ptr = Builder::GEP(Ptr, indexList);
+            Ptr = PTR_TO_INT(Ptr, mInt64Ty);
+            Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
+        }
+        else
+        {
+            Ptr = Builder::GEP(Ptr, indexList);
+        }
+        return Ptr;
     }
 
     Value*
     BuilderGfxMem::GEP(Value* Ptr, const std::initializer_list<uint32_t>& indexList, Type* Ty)
     {
-        Ptr = TranslationHelper(Ptr, Ty);
-        return Builder::GEP(Ptr, indexList);
+        bool xlate = (Ptr->getType() == mInt64Ty);
+        if (xlate)
+        {
+            Ptr = INT_TO_PTR(Ptr, Ty);
+            Ptr = Builder::GEP(Ptr, indexList);
+            Ptr = PTR_TO_INT(Ptr, mInt64Ty);
+            Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
+        }
+        else
+        {
+            Ptr = Builder::GEP(Ptr, indexList);
+        }
+        return Ptr;
     }
 
-    Value* BuilderGfxMem::TranslationHelper(Value* Ptr, Type* Ty)
+    Value* BuilderGfxMem::TranslationHelper(Value* Ptr, Type* Ty, Value* pfnTranslateGfxAddress)
     {
         SWR_ASSERT(!(Ptr->getType() == mInt64Ty && Ty == nullptr),
                    "Access of GFX pointers must have non-null type specified.");
@@ -165,7 +219,7 @@ namespace SwrJit
     void BuilderGfxMem::TrackerHelper(Value* Ptr, Type* Ty, MEM_CLIENT usage, bool isRead)
     {
 #if defined(KNOB_ENABLE_AR)
-        if (!KNOB_TRACK_MEMORY_WORKING_SET)
+        if (!KNOB_AR_ENABLE_MEMORY_EVENTS)
         {
             return;
         }
@@ -214,7 +268,7 @@ namespace SwrJit
         AssertGFXMemoryParams(Ptr, usage);
         TrackerHelper(Ptr, Ty, usage, true);
 
-        Ptr = TranslationHelper(Ptr, Ty);
+        Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
         return Builder::LOAD(Ptr, Name);
     }
 
@@ -223,7 +277,7 @@ namespace SwrJit
         AssertGFXMemoryParams(Ptr, usage);
         TrackerHelper(Ptr, Ty, usage, true);
 
-        Ptr = TranslationHelper(Ptr, Ty);
+        Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
         return Builder::LOAD(Ptr, Name);
     }
 
@@ -233,7 +287,7 @@ namespace SwrJit
         AssertGFXMemoryParams(Ptr, usage);
         TrackerHelper(Ptr, Ty, usage, true);
 
-        Ptr = TranslationHelper(Ptr, Ty);
+        Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
         return Builder::LOAD(Ptr, isVolatile, Name);
     }
 
@@ -277,7 +331,7 @@ namespace SwrJit
         AssertGFXMemoryParams(Ptr, usage);
         TrackerHelper(Ptr, Ty, usage, true);
 
-        Ptr = TranslationHelper(Ptr, Ty);
+        Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
         return Builder::MASKED_LOAD(Ptr, Align, Mask, PassThru, Name, Ty, usage);
     }
 
@@ -287,7 +341,7 @@ namespace SwrJit
         AssertGFXMemoryParams(Ptr, usage);
         TrackerHelper(Ptr, Ty, usage, false);
 
-        Ptr = TranslationHelper(Ptr, Ty);
+        Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
         return Builder::STORE(Val, Ptr, isVolatile, Ty, usage);
     }
 
@@ -300,7 +354,7 @@ namespace SwrJit
         AssertGFXMemoryParams(BasePtr, usage);
         TrackerHelper(BasePtr, Ty, usage, false);
 
-        BasePtr = TranslationHelper(BasePtr, Ty);
+        BasePtr = TranslationHelper(BasePtr, Ty, mpfnTranslateGfxAddressForRead);
         return Builder::STORE(Val, BasePtr, offset, Ty, usage);
     }
 
@@ -311,7 +365,7 @@ namespace SwrJit
 
         TrackerHelper(Ptr, Ty, usage, false);
 
-        Ptr = TranslationHelper(Ptr, Ty);
+        Ptr = TranslationHelper(Ptr, Ty, mpfnTranslateGfxAddressForRead);
         return Builder::MASKED_STORE(Val, Ptr, Align, Mask, Ty, usage);
     }
 

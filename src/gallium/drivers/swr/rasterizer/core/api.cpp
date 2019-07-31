@@ -1212,7 +1212,7 @@ void DrawInstanced(HANDLE             hContext,
         uint32_t numVertsForDraw =
             (remainingVerts < maxVertsPerDraw) ? remainingVerts : maxVertsPerDraw;
 
-        bool          isSplitDraw = (draw > 0) ? true : false;
+        bool          isSplitDraw = (draw > 0) ? !KNOB_DISABLE_SPLIT_DRAW : false;
         DRAW_CONTEXT* pDC         = GetDrawContext(pContext, isSplitDraw);
         InitDraw(pDC, isSplitDraw);
 
@@ -1366,7 +1366,7 @@ void DrawIndexedInstance(HANDLE             hContext,
             (remainingIndices < maxIndicesPerDraw) ? remainingIndices : maxIndicesPerDraw;
 
         // When breaking up draw, we need to obtain new draw context for each iteration.
-        bool isSplitDraw = (draw > 0) ? true : false;
+        bool isSplitDraw = (draw > 0) ? !KNOB_DISABLE_SPLIT_DRAW : false;
 
         pDC = GetDrawContext(pContext, isSplitDraw);
         InitDraw(pDC, isSplitDraw);

@@ -36,11 +36,13 @@
 #include "common/os.h"
 #include "core/state.h"
 
+<% always_enabled_knob_groups = ['', 'Framework', 'SWTagApi', 'SwrApi'] %>
 namespace ArchRast
 {
-% for name in protos['enum_names']:
+<% sorted_enums = sorted(protos['enums']['defs']) %>
+% for name in sorted_enums:
     enum ${name}
-    {<% names = protos['enums'][name]['names'] %>
+    {<% names = protos['enums']['defs'][name]['names'] %>
         % for i in range(len(names)):
         ${names[i].lstrip()}
         % endfor
@@ -58,17 +60,23 @@ namespace ArchRast
         Event() {}
         virtual ~Event() {}
 
+        virtual bool IsEnabled() const { return true; };
         virtual void Accept(EventHandler* pHandler) const = 0;
     };
-% for name in protos['event_names']:
 
+<%  sorted_groups = sorted(protos['events']['groups']) %>
+% for group in sorted_groups:
+    % for event_key in protos['events']['groups'][group]:
+<%
+        event = protos['events']['defs'][event_key]
+%>
     //////////////////////////////////////////////////////////////////////////
-    /// ${name}Data
+    /// ${event_key}Data
     //////////////////////////////////////////////////////////////////////////
 #pragma pack(push, 1)
-    struct ${name}Data
+    struct ${event['name']}Data
     {<%
-        fields = protos['events'][name]['fields'] %>
+        fields = event['fields'] %>
         // Fields
         % for i in range(len(fields)):
             % if fields[i]['size'] > 1:
@@ -81,15 +89,15 @@ namespace ArchRast
 #pragma pack(pop)
 
     //////////////////////////////////////////////////////////////////////////
-    /// ${name}
+    /// ${event_key}
     //////////////////////////////////////////////////////////////////////////
-    struct ${name} : Event
+    struct ${event['name']} : Event
     {<%
-        fields = protos['events'][name]['fields'] %>
-        ${name}Data data;
+        fields = event['fields'] %>
+        ${event['name']}Data data;
 
         // Constructor
-        ${name}(
+        ${event['name']}(
         % for i in range(len(fields)):
             % if i < len(fields)-1:
                 % if fields[i]['size'] > 1:
@@ -127,7 +135,18 @@ namespace ArchRast
         }
 
         virtual void Accept(EventHandler* pHandler) const;
+        % if group not in always_enabled_knob_groups:
+        <%  group_knob_define = 'KNOB_AR_ENABLE_' + group.upper() + '_EVENTS' %>
+        bool IsEnabled() const
+        {
+            static const bool IsEventEnabled = true;    // TODO: Replace with knob for each event
+            return ${group_knob_define} && IsEventEnabled;
+        }
+        % endif
     };
+
     % endfor
+
+% endfor
 } // namespace ArchRast
 // clang-format on
