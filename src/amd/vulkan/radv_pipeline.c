@@ -25,6 +25,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
 #include "radv_debug.h"
@@ -4618,6 +4619,139 @@ radv_pipeline_get_streamout_shader(struct radv_pipeline *pipeline)
 	}
 
 	return NULL;
+}
+
+static void
+radv_secure_compile(struct radv_pipeline *pipeline,
+		    struct radv_device *device,
+		    const struct radv_pipeline_key *key,
+		    const VkPipelineShaderStageCreateInfo **pStages,
+		    const VkPipelineCreateFlags flags,
+		    unsigned num_stages)
+{
+	unsigned process = 0;
+	uint8_t sc_threads = device->instance->num_sc_threads;
+	while (true) {
+		mtx_lock(&device->sc_state->secure_compile_mutex);
+		if (device->sc_state->secure_compile_thread_counter < sc_threads) {
+			device->sc_state->secure_compile_thread_counter++;
+			for (unsigned i = 0; i < sc_threads; i++) {
+				if (!device->sc_state->secure_compile_processes[i].in_use) {
+					device->sc_state->secure_compile_processes[i].in_use = true;
+					process = i;
+					break;
+				}
+			}
+			mtx_unlock(&device->sc_state->secure_compile_mutex);
+			break;
+		}
+		mtx_unlock(&device->sc_state->secure_compile_mutex);
+	}
+
+	int fd_secure_input = device->sc_state->secure_compile_processes[process].fd_secure_input;
+	int fd_secure_output = device->sc_state->secure_compile_processes[process].fd_secure_output;
+
+	/* Write pipeline / shader module out to secure process via pipe */
+	enum radv_secure_compile_type sc_type = RADV_SC_TYPE_COMPILE_PIPELINE;
+	write(fd_secure_input, &sc_type, sizeof(sc_type));
+
+	/* Write pipeline layout out to secure process */
+	struct radv_pipeline_layout *layout = pipeline->layout;
+	write(fd_secure_input, layout, sizeof(struct radv_pipeline_layout));
+	write(fd_secure_input, &layout->num_sets, sizeof(uint32_t));
+	for (uint32_t set = 0; set < layout->num_sets; set++) {
+		write(fd_secure_input, &layout->set[set].layout->layout_size, sizeof(uint32_t));
+		write(fd_secure_input, layout->set[set].layout, layout->set[set].layout->layout_size);
+	}
+
+	/* Write pipeline key out to secure process */
+	write(fd_secure_input, key, sizeof(struct radv_pipeline_key));
+
+	/* Write pipeline create flags out to secure process */
+	write(fd_secure_input, &flags, sizeof(VkPipelineCreateFlags));
+
+	/* Write stage and shader information out to secure process */
+	write(fd_secure_input, &num_stages, sizeof(uint32_t));
+	for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+		if (!pStages[i])
+			continue;
+
+		/* Write stage out to secure process */
+		gl_shader_stage stage = ffs(pStages[i]->stage) - 1;
+		write(fd_secure_input, &stage, sizeof(gl_shader_stage));
+
+		/* Write entry point name out to secure process */
+		size_t name_size = strlen(pStages[i]->pName) + 1;
+		write(fd_secure_input, &name_size, sizeof(size_t));
+		write(fd_secure_input, pStages[i]->pName, name_size);
+
+		/* Write shader module out to secure process */
+		struct radv_shader_module *module = radv_shader_module_from_handle(pStages[i]->module);
+		assert(!module->nir);
+		size_t module_size = sizeof(struct radv_shader_module) + module->size;
+		write(fd_secure_input, &module_size, sizeof(size_t));
+		write(fd_secure_input, module, module_size);
+
+		/* Write specialization info out to secure process */
+		const VkSpecializationInfo *specInfo = pStages[i]->pSpecializationInfo;
+		bool has_spec_info = specInfo ? true : false;
+		write(fd_secure_input, &has_spec_info, sizeof(bool));
+		if (specInfo) {
+			write(fd_secure_input, &specInfo->dataSize, sizeof(size_t));
+			write(fd_secure_input, specInfo->pData, specInfo->dataSize);
+
+			write(fd_secure_input, &specInfo->mapEntryCount, sizeof(uint32_t));
+			for (uint32_t j = 0; j < specInfo->mapEntryCount; j++)
+				write(fd_secure_input, &specInfo->pMapEntries[j], sizeof(VkSpecializationMapEntry));
+		}
+	}
+
+	/* Read the data returned from the secure process */
+	while (sc_type != RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED) {
+		read(fd_secure_output, &sc_type, sizeof(sc_type));
+
+		if (sc_type == RADV_SC_TYPE_WRITE_DISK_CACHE) {
+			assert(device->physical_device->disk_cache);
+
+			uint8_t disk_sha1[20];
+			read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20);
+
+			uint32_t entry_size;
+			read(fd_secure_output, &entry_size, sizeof(uint32_t));
+
+			struct cache_entry *entry = malloc(entry_size);
+			read(fd_secure_output, entry, entry_size);
+
+			disk_cache_put(device->physical_device->disk_cache,
+				       disk_sha1, entry, entry_size,
+				       NULL);
+
+			free(entry);
+		} else if (sc_type == RADV_SC_TYPE_READ_DISK_CACHE) {
+			uint8_t disk_sha1[20];
+			read(fd_secure_output, disk_sha1, sizeof(uint8_t) * 20);
+
+			size_t size;
+			struct cache_entry *entry = (struct cache_entry *)
+				disk_cache_get(device->physical_device->disk_cache,
+					       disk_sha1, &size);
+
+			uint8_t found = entry ? 1 : 0;
+			write(fd_secure_input, &found, sizeof(uint8_t));
+
+			if (found) {
+				write(fd_secure_input, &size, sizeof(size_t));
+				write(fd_secure_input, entry, size);
+			}
+
+			free(entry);
+		}
+	}
+
+	mtx_lock(&device->sc_state->secure_compile_mutex);
+	device->sc_state->secure_compile_thread_counter--;
+	device->sc_state->secure_compile_processes[process].in_use = false;
+	mtx_unlock(&device->sc_state->secure_compile_mutex);
 }
 
 static VkResult
