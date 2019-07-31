@@ -2336,6 +2336,10 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
       ice->state.dirty |= IRIS_DIRTY_SF_CL_VIEWPORT;
    }
 
+   if (cso->zsbuf || state->zsbuf) {
+      ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
+   }
+
    util_copy_framebuffer_state(cso, state);
    cso->samples = samples;
    cso->layers = layers;
@@ -2400,8 +2404,6 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
                                     cso->layers ? cso->layers : 1));
    ice->state.null_fb.offset +=
       iris_bo_offset_from_base_address(iris_resource_bo(ice->state.null_fb.res));
-
-   ice->state.dirty |= IRIS_DIRTY_DEPTH_BUFFER;
 
    /* Render target change */
    ice->state.dirty |= IRIS_DIRTY_BINDINGS_FS;
