@@ -1278,23 +1278,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         memcpy(transfer.cpu + sys_size, cpu, uniform_size);
                 }
 
-                int uniform_count = 0;
+                int uniform_count =
+                        ctx->shader[i]->variants[ctx->shader[i]->active_variant].uniform_count;
 
                 struct mali_vertex_tiler_postfix *postfix =
                         &ctx->payloads[i].postfix;
-
-                switch (i) {
-                case PIPE_SHADER_VERTEX:
-                        uniform_count = ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant].uniform_count;
-                        break;
-
-                case PIPE_SHADER_FRAGMENT:
-                        uniform_count = ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant].uniform_count;
-                        break;
-
-                default:
-                        unreachable("Invalid shader stage\n");
-                }
 
                 /* Next up, attach UBOs. UBO #0 is the uniforms we just
                  * uploaded */
@@ -2060,14 +2048,12 @@ panfrost_bind_shader_state(
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        if (type == PIPE_SHADER_FRAGMENT) {
-                ctx->shader[PIPE_SHADER_FRAGMENT] = hwcso;
+        ctx->shader[type] = hwcso;
+
+        if (type == PIPE_SHADER_FRAGMENT)
                 ctx->dirty |= PAN_DIRTY_FS;
-        } else {
-                assert(type == PIPE_SHADER_VERTEX);
-                ctx->shader[PIPE_SHADER_VERTEX] = hwcso;
+        else
                 ctx->dirty |= PAN_DIRTY_VS;
-        }
 
         if (!hwcso) return;
 
