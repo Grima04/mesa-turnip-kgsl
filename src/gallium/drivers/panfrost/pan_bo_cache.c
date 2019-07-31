@@ -23,6 +23,8 @@
  * Authors (Collabora):
  *   Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
+#include <xf86drm.h>
+#include "drm-uapi/panfrost_drm.h"
 
 #include "pan_screen.h"
 #include "util/u_math.h"
@@ -88,9 +90,21 @@ panfrost_bo_cache_fetch(
         list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
                 if (entry->size >= size &&
                     entry->flags == flags) {
+                        int ret;
+                        struct drm_panfrost_madvise madv;
+
                         /* This one works, splice it out of the cache */
                         list_del(&entry->link);
 
+                        madv.handle = entry->gem_handle;
+                        madv.madv = PANFROST_MADV_WILLNEED;
+                        madv.retained = 0;
+
+                        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
+                        if (!ret && !madv.retained) {
+                                panfrost_drm_release_bo(screen, entry, false);
+                                continue;
+                        }
                         /* Let's go! */
                         return entry;
                 }
@@ -109,6 +123,13 @@ panfrost_bo_cache_put(
                 struct panfrost_bo *bo)
 {
         struct list_head *bucket = pan_bucket(screen, bo->size);
+        struct drm_panfrost_madvise madv;
+
+        madv.handle = bo->gem_handle;
+        madv.madv = PANFROST_MADV_DONTNEED;
+	madv.retained = 0;
+
+        drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
 
         /* Add us to the bucket */
         list_addtail(&bo->link, bucket);

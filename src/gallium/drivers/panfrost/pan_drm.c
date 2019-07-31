@@ -163,6 +163,8 @@ panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo, 
         /* Rather than freeing the BO now, we'll cache the BO for later
          * allocations if we're allowed to */
 
+        panfrost_drm_munmap_bo(screen, bo);
+
         if (cacheable) {
                 bool cached = panfrost_bo_cache_put(screen, bo);
 
@@ -171,8 +173,6 @@ panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo, 
         }
 
         /* Otherwise, if the BO wasn't cached, we'll legitimately free the BO */
-
-        panfrost_drm_munmap_bo(screen, bo);
 
         ret = drmIoctl(screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
         if (ret) {
