@@ -6118,7 +6118,6 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 		ctx->load_input = declare_input_fs;
 		ctx->abi.emit_outputs = si_llvm_return_fs_outputs;
 		bld_base->emit_epilogue = si_tgsi_emit_epilogue;
-		ctx->abi.lookup_interp_param = si_nir_lookup_interp_param;
 		ctx->abi.load_sample_position = load_sample_position;
 		ctx->abi.load_sample_mask_in = load_sample_mask_in;
 		ctx->abi.emit_fbfetch = si_nir_emit_fbfetch;

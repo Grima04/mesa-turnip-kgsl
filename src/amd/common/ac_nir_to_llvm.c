@@ -3077,10 +3077,38 @@ static LLVMValueRef load_sample_pos(struct ac_nir_context *ctx)
 	return ac_build_gather_values(&ctx->ac, values, 2);
 }
 
+static LLVMValueRef lookup_interp_param(struct ac_nir_context *ctx,
+					enum glsl_interp_mode interp, unsigned location)
+{
+	switch (interp) {
+	case INTERP_MODE_FLAT:
+	default:
+		return NULL;
+	case INTERP_MODE_SMOOTH:
+	case INTERP_MODE_NONE:
+		if (location == INTERP_CENTER)
+			return ctx->abi->persp_center;
+		else if (location == INTERP_CENTROID)
+			return ctx->abi->persp_centroid;
+		else if (location == INTERP_SAMPLE)
+			return ctx->abi->persp_sample;
+		break;
+	case INTERP_MODE_NOPERSPECTIVE:
+		if (location == INTERP_CENTER)
+			return ctx->abi->linear_center;
+		else if (location == INTERP_CENTROID)
+			return ctx->abi->linear_centroid;
+		else if (location == INTERP_SAMPLE)
+			return ctx->abi->linear_sample;
+		break;
+	}
+	return NULL;
+}
+
 static LLVMValueRef barycentric_center(struct ac_nir_context *ctx,
 				       unsigned mode)
 {
-	LLVMValueRef interp_param = ctx->abi->lookup_interp_param(ctx->abi, mode, INTERP_CENTER);
+	LLVMValueRef interp_param = lookup_interp_param(ctx, mode, INTERP_CENTER);
 	return LLVMBuildBitCast(ctx->ac.builder, interp_param, ctx->ac.v2i32, "");
 }
 
@@ -3088,7 +3116,7 @@ static LLVMValueRef barycentric_offset(struct ac_nir_context *ctx,
 				       unsigned mode,
 				       LLVMValueRef offset)
 {
-	LLVMValueRef interp_param = ctx->abi->lookup_interp_param(ctx->abi, mode, INTERP_CENTER);
+	LLVMValueRef interp_param = lookup_interp_param(ctx, mode, INTERP_CENTER);
 	LLVMValueRef src_c0 = ac_to_float(&ctx->ac, LLVMBuildExtractElement(ctx->ac.builder, offset, ctx->ac.i32_0, ""));
 	LLVMValueRef src_c1 = ac_to_float(&ctx->ac, LLVMBuildExtractElement(ctx->ac.builder, offset, ctx->ac.i32_1, ""));
 
@@ -3130,7 +3158,7 @@ static LLVMValueRef barycentric_offset(struct ac_nir_context *ctx,
 static LLVMValueRef barycentric_centroid(struct ac_nir_context *ctx,
 					 unsigned mode)
 {
-	LLVMValueRef interp_param = ctx->abi->lookup_interp_param(ctx->abi, mode, INTERP_CENTROID);
+	LLVMValueRef interp_param = lookup_interp_param(ctx, mode, INTERP_CENTROID);
 	return LLVMBuildBitCast(ctx->ac.builder, interp_param, ctx->ac.v2i32, "");
 }
 
@@ -3160,7 +3188,7 @@ static LLVMValueRef barycentric_at_sample(struct ac_nir_context *ctx,
 static LLVMValueRef barycentric_sample(struct ac_nir_context *ctx,
 				       unsigned mode)
 {
-	LLVMValueRef interp_param = ctx->abi->lookup_interp_param(ctx->abi, mode, INTERP_SAMPLE);
+	LLVMValueRef interp_param = lookup_interp_param(ctx, mode, INTERP_SAMPLE);
 	return LLVMBuildBitCast(ctx->ac.builder, interp_param, ctx->ac.v2i32, "");
 }
 

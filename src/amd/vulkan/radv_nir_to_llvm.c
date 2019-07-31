@@ -1759,36 +1759,6 @@ static void radv_emit_kill(struct ac_shader_abi *abi, LLVMValueRef visible)
 	ac_build_kill_if_false(&ctx->ac, visible);
 }
 
-static LLVMValueRef lookup_interp_param(struct ac_shader_abi *abi,
-					enum glsl_interp_mode interp, unsigned location)
-{
-	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-
-	switch (interp) {
-	case INTERP_MODE_FLAT:
-	default:
-		return NULL;
-	case INTERP_MODE_SMOOTH:
-	case INTERP_MODE_NONE:
-		if (location == INTERP_CENTER)
-			return ctx->abi.persp_center;
-		else if (location == INTERP_CENTROID)
-			return ctx->abi.persp_centroid;
-		else if (location == INTERP_SAMPLE)
-			return ctx->abi.persp_sample;
-		break;
-	case INTERP_MODE_NOPERSPECTIVE:
-		if (location == INTERP_CENTER)
-			return ctx->abi.linear_center;
-		else if (location == INTERP_CENTROID)
-			return ctx->abi.linear_centroid;
-		else if (location == INTERP_SAMPLE)
-			return ctx->abi.linear_sample;
-		break;
-	}
-	return NULL;
-}
-
 static uint32_t
 radv_get_sample_pos_offset(uint32_t num_samples)
 {
@@ -4425,7 +4395,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			ctx.abi.load_base_vertex = radv_load_base_vertex;
 		} else if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT) {
 			shader_info->fs.can_discard = shaders[i]->info.fs.uses_discard;
-			ctx.abi.lookup_interp_param = lookup_interp_param;
 			ctx.abi.load_sample_position = load_sample_position;
 			ctx.abi.load_sample_mask_in = load_sample_mask_in;
 			ctx.abi.emit_kill = radv_emit_kill;

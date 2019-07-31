@@ -196,10 +196,6 @@ struct ac_shader_abi {
 				      unsigned desc_set,
 				      unsigned binding);
 
-	LLVMValueRef (*lookup_interp_param)(struct ac_shader_abi *abi,
-					    enum glsl_interp_mode interp,
-					    unsigned location);
-
 	LLVMValueRef (*load_sample_position)(struct ac_shader_abi *abi,
 					     LLVMValueRef sample_id);
 
