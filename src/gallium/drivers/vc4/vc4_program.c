@@ -1441,11 +1441,6 @@ emit_point_size_write(struct vc4_compile *c)
         else
                 point_size = qir_uniform_f(c, 1.0);
 
-        /* Workaround: HW-2726 PTB does not handle zero-size points (BCM2835,
-         * BCM21553).
-         */
-        point_size = qir_FMAX(c, point_size, qir_uniform_f(c, .125));
-
         qir_VPM_WRITE(c, point_size);
 }
 
@@ -2455,6 +2450,9 @@ vc4_shader_state_create(struct pipe_context *pctx,
                 }
                 s = tgsi_to_nir(cso->tokens, pctx->screen);
         }
+
+        if (s->info.stage == MESA_SHADER_VERTEX)
+                NIR_PASS_V(s, nir_lower_point_size, 1.0f, 0.0f);
 
         NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size,
                    (nir_lower_io_options)0);
