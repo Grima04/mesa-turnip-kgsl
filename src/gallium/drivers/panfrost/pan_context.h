@@ -231,7 +231,15 @@ struct panfrost_shader_state {
 
 /* A collection of varyings (the CSO) */
 struct panfrost_shader_variants {
-        struct pipe_shader_state base;
+        /* A panfrost_shader_variants can represent a shader for
+         * either graphics or compute */
+
+        bool is_compute;
+
+        union {
+                struct pipe_shader_state base;
+                struct pipe_compute_state cbase;
+        };
 
         struct panfrost_shader_state variants[MAX_SHADER_VARIANTS];
         unsigned variant_count;

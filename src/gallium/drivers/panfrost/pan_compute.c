@@ -33,7 +33,11 @@ panfrost_create_compute_state(
         struct pipe_context *pctx,
         const struct pipe_compute_state *cso)
 {
-        return mem_dup(cso, sizeof(*cso));
+        struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
+        so->cbase = *cso;
+        so->is_compute = true;
+
+        return so;
 }
 
 static void
