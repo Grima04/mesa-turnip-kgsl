@@ -347,9 +347,6 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
       }
    }
 
-   list_for_each_entry(struct etna_acc_query, aq, &ctx->active_acc_queries, node)
-      resource_written(ctx, aq->prsc);
-
    ctx->stats.prims_emitted += u_reduced_prims_for_vertices(info->mode, info->count);
    ctx->stats.draw_calls++;
 

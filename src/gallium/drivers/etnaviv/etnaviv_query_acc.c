@@ -59,6 +59,7 @@ occlusion_resume(struct etna_acc_query *aq, struct etna_context *ctx)
    r.offset = aq->samples * 8; /* 64bit value */
 
    etna_set_state_reloc(ctx->stream, VIVS_GL_OCCLUSION_QUERY_ADDR, &r);
+   resource_written(ctx, aq->prsc);
 }
 
 static void
@@ -66,6 +67,7 @@ occlusion_suspend(struct etna_acc_query *aq, struct etna_context *ctx)
 {
    /* 0x1DF5E76 is the value used by blob - but any random value will work */
    etna_set_state(ctx->stream, VIVS_GL_OCCLUSION_QUERY_CONTROL, 0x1DF5E76);
+   resource_written(ctx, aq->prsc);
 }
 
 static void
