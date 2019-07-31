@@ -878,8 +878,7 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 	unsigned cb_db_event = 0;
 
 	/* We don't need these. */
-	assert(!(flush_bits & (RADV_CMD_FLAG_VGT_FLUSH |
-			       RADV_CMD_FLAG_VGT_STREAMOUT_SYNC)));
+	assert(!(flush_bits & (RADV_CMD_FLAG_VGT_STREAMOUT_SYNC)));
 
 	if (flush_bits & RADV_CMD_FLAG_INV_ICACHE)
 		gcr_cntl |= S_586_GLI_INV(V_586_GLI_ALL);
@@ -996,6 +995,12 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 
 		radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, flush_va,
 				 *flush_cnt, 0xffffffff);
+	}
+
+	/* VGT state sync */
+	if (flush_bits & RADV_CMD_FLAG_VGT_FLUSH) {
+		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+		radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
 	}
 
 	/* Ignore fields that only modify the behavior of other fields. */
