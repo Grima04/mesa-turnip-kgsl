@@ -3886,6 +3886,8 @@ bool nir_lower_doubles(nir_shader *shader, const nir_shader *softfp64,
                        nir_lower_doubles_options options);
 bool nir_lower_pack(nir_shader *shader);
 
+bool nir_lower_point_size(nir_shader *shader, float min, float max);
+
 typedef enum {
    nir_lower_interpolation_at_sample = (1 << 1),
    nir_lower_interpolation_at_offset = (1 << 2),
