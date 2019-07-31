@@ -1253,7 +1253,7 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
         pandecode_indent--;
         pandecode_log("};\n");
 
-        return max_index;
+        return count ? (max_index + 1) : 0;
 }
 
 static void
@@ -1666,17 +1666,17 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
          * pass a zero buffer with the right stride/size set, (or whatever)
          * since the GPU will write to it itself */
 
+        if (p->varying_meta) {
+                varying_count = pandecode_attribute_meta(job_no, varying_count, p, true, suffix);
+        }
+
         if (p->varyings) {
                 attr_mem = pandecode_find_mapped_gpu_mem_containing(p->varyings);
 
                 /* Number of descriptors depends on whether there are
                  * non-internal varyings */
 
-                pandecode_attributes(attr_mem, p->varyings, job_no, suffix, varying_count > 1 ? 4 : 1, true);
-        }
-
-        if (p->varying_meta) {
-                pandecode_attribute_meta(job_no, varying_count, p, true, suffix);
+                pandecode_attributes(attr_mem, p->varyings, job_no, suffix, varying_count, true);
         }
 
         bool is_compute = job_type == JOB_TYPE_COMPUTE;
