@@ -102,6 +102,11 @@ panfrost_shader_compile(
                 meta->attribute_count = 0;
                 meta->varying_count = util_bitcount64(s->info.inputs_read);
                 break;
+        case MESA_SHADER_COMPUTE:
+                /* TODO: images */
+                meta->attribute_count = 0;
+                meta->varying_count = 0;
+                break;
         default:
                 unreachable("Unknown shader state");
         }
