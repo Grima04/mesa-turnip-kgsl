@@ -3641,12 +3641,6 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			       S_028A84_PRIMITIVEID_EN(es_enable_prim_id) |
 			       S_028A84_NGG_DISABLE_PROVOK_REUSE(es_enable_prim_id));
 
-	bool vgt_reuse_off = pipeline->device->physical_device->rad_info.family == CHIP_NAVI10 &&
-			     pipeline->device->physical_device->rad_info.chip_external_rev == 0x1 &&
-			     es_type == MESA_SHADER_TESS_EVAL;
-
-	radeon_set_context_reg(ctx_cs, R_028AB4_VGT_REUSE_OFF,
-			       S_028AB4_REUSE_OFF(vgt_reuse_off));
 	radeon_set_context_reg(ctx_cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
 			       ngg_state->vgt_esgs_ring_itemsize);
 
