@@ -218,6 +218,7 @@ struct panfrost_shader_state {
         bool can_discard;
         bool writes_point_size;
         bool reads_point_coord;
+        bool reads_face;
 
         struct mali_attr_meta varyings[PIPE_MAX_ATTRIBS];
         gl_varying_slot varyings_loc[PIPE_MAX_ATTRIBS];

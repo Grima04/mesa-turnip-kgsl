@@ -517,6 +517,12 @@ panfrost_emit_point_coord(union mali_attr *slot)
 }
 
 static void
+panfrost_emit_front_face(union mali_attr *slot)
+{
+        slot->elements = MALI_VARYING_FRONT_FACING | MALI_ATTR_INTERNAL;
+}
+
+static void
 panfrost_emit_varying_descriptor(
         struct panfrost_context *ctx,
         unsigned vertex_count)
@@ -618,11 +624,20 @@ panfrost_emit_varying_descriptor(
                 ctx->payload_tiler.primitive_size.pointer =
                         panfrost_emit_varyings(ctx, &varyings[idx++],
                                                2, vertex_count);
+        } else if (fs->reads_face) {
+                /* Dummy to advance index */
+                ++idx;
         }
 
         if (fs->reads_point_coord) {
                 /* Special descriptor */
                 panfrost_emit_point_coord(&varyings[idx++]);
+        } else if (fs->reads_face) {
+                ++idx;
+        }
+
+        if (fs->reads_face) {
+                panfrost_emit_front_face(&varyings[idx++]);
         }
 
         mali_ptr varyings_p = panfrost_upload_transient(ctx, &varyings, idx * sizeof(union mali_attr));

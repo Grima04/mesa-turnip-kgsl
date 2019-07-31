@@ -168,6 +168,11 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_GENERATE_MIPMAP:
                 return 1;
 
+        /* We would prefer varyings */
+        case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
+        case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
+                return 0;
+
         case PIPE_CAP_SEAMLESS_CUBE_MAP:
         case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
                 return 1;

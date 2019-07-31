@@ -144,6 +144,12 @@ panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *m
                         v.swizzle = default_vec2_swizzle;
 
                         state->reads_point_coord = true;
+                } else if (location == VARYING_SLOT_FACE) {
+                        v.index = 4;
+                        v.format = MALI_R32I;
+                        v.swizzle = default_vec1_swizzle;
+
+                        state->reads_face = true;
                 } else {
                         v.index = 0;
                 }
