@@ -6043,7 +6043,6 @@ ast_function::hir(exec_list *instructions,
     */
    if (state->es_shader) {
       /* Local shader has no exact candidates; check the built-ins. */
-      _mesa_glsl_initialize_builtin_functions();
       if (state->language_version >= 300 &&
           _mesa_glsl_has_builtin_function(state, name)) {
          YYLTYPE loc = this->get_location();

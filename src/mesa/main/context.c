@@ -149,6 +149,7 @@
 #endif
 
 #include "compiler/glsl_types.h"
+#include "compiler/glsl/builtin_functions.h"
 #include "compiler/glsl/glsl_parser_extras.h"
 #include <stdbool.h>
 
@@ -360,7 +361,7 @@ mtx_t OneTimeLock = _MTX_INITIALIZER_NP;
 static void
 one_time_fini(void)
 {
-   _mesa_destroy_shader_compiler();
+   glsl_type_singleton_decref();
    _mesa_locale_fini();
 }
 
@@ -408,6 +409,11 @@ one_time_init( struct gl_context *ctx )
          _mesa_debug(ctx, "Mesa " PACKAGE_VERSION " DEBUG build" MESA_GIT_SHA1 "\n");
       }
 #endif
+
+      /* Take a glsl type reference for the duration of libGL's life to avoid
+       * unecessary creation/destruction of glsl types.
+       */
+      glsl_type_singleton_init_or_ref();
    }
 
    /* per-API one-time init */
@@ -1205,8 +1211,6 @@ _mesa_initialize_context(struct gl_context *ctx,
    /* misc one-time initializations */
    one_time_init(ctx);
 
-   _mesa_init_shader_compiler_types();
-
    /* Plug in driver functions and context pointer here.
     * This is important because when we call alloc_shared_state() below
     * we'll call ctx->Driver.NewTextureObject() to create the default
@@ -1394,14 +1398,17 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_compiler_types)
 
    free(ctx->VersionString);
 
-   if (destroy_compiler_types)
-      _mesa_destroy_shader_compiler_types();
-
    ralloc_free(ctx->SoftFP64);
 
    /* unbind the context if it's currently bound */
    if (ctx == _mesa_get_current_context()) {
       _mesa_make_current(NULL, NULL, NULL);
+   }
+
+   /* Do this after unbinding context to ensure any thread is finished. */
+   if (ctx->shader_builtin_ref) {
+      _mesa_glsl_builtin_functions_decref();
+      ctx->shader_builtin_ref = false;
    }
 
    free(ctx->Const.SpirVExtensions);

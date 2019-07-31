@@ -48,6 +48,7 @@
 #include "main/state.h"
 #include "main/transformfeedback.h"
 #include "main/uniforms.h"
+#include "compiler/glsl/builtin_functions.h"
 #include "compiler/glsl/glsl_parser_extras.h"
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/ir_uniform.h"
@@ -1155,6 +1156,14 @@ set_shader_source(struct gl_shader *sh, const GLchar *source)
 #endif
 }
 
+static void
+ensure_builtin_types(struct gl_context *ctx)
+{
+   if (!ctx->shader_builtin_ref) {
+      _mesa_glsl_builtin_functions_init_or_ref();
+      ctx->shader_builtin_ref = true;
+   }
+}
 
 /**
  * Compile a shader.
@@ -1188,6 +1197,8 @@ _mesa_compile_shader(struct gl_context *ctx, struct gl_shader *sh)
                  _mesa_shader_stage_to_string(sh->Stage), sh->Name);
          _mesa_log("%s\n", sh->Source);
       }
+
+      ensure_builtin_types(ctx);
 
       /* this call will set the shader->CompileStatus field to indicate if
        * compilation was successful.
@@ -1265,6 +1276,8 @@ link_program(struct gl_context *ctx, struct gl_shader_program *shProg,
             programs_in_use |= 1 << stage;
          }
    }
+
+   ensure_builtin_types(ctx);
 
    FLUSH_VERTICES(ctx, 0);
    _mesa_glsl_link_shader(ctx, shProg);
@@ -2245,7 +2258,12 @@ _mesa_GetShaderPrecisionFormat(GLenum shadertype, GLenum precisiontype,
 void GLAPIENTRY
 _mesa_ReleaseShaderCompiler(void)
 {
-   _mesa_destroy_shader_compiler_caches();
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (ctx->shader_builtin_ref) {
+      _mesa_glsl_builtin_functions_decref();
+      ctx->shader_builtin_ref = false;
+   }
 }
 
 

@@ -5174,6 +5174,8 @@ struct gl_context
    struct hash_table_u64 *ResidentTextureHandles;
    struct hash_table_u64 *ResidentImageHandles;
    /*@}*/
+
+   bool shader_builtin_ref;
 };
 
 /**

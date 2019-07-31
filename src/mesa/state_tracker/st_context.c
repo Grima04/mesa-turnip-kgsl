@@ -1036,11 +1036,6 @@ st_destroy_context(struct st_context *st)
    st_destroy_context_priv(st, true);
    st = NULL;
 
-   /* This must be called after st_destroy_context_priv() to avoid a race
-    * condition between any shader compiler threads and context destruction.
-    */
-   _mesa_destroy_shader_compiler_types();
-
    free(ctx);
 
    if (save_ctx == ctx) {
