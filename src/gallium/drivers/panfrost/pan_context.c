@@ -528,8 +528,8 @@ panfrost_emit_varying_descriptor(
 {
         /* Load the shaders */
 
-        struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
-        struct panfrost_shader_state *fs = &ctx->fs->variants[ctx->fs->active_variant];
+        struct panfrost_shader_state *vs = &ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant];
+        struct panfrost_shader_state *fs = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
         unsigned int num_gen_varyings = 0;
 
         /* Allocate the varying descriptor */
@@ -656,8 +656,8 @@ panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i)
 static bool
 panfrost_writes_point_size(struct panfrost_context *ctx)
 {
-        assert(ctx->vs);
-        struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
+        assert(ctx->shader[PIPE_SHADER_VERTEX]);
+        struct panfrost_shader_state *vs = &ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant];
 
         return vs->writes_point_size && ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
 }
@@ -1049,9 +1049,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
          * uploads */
         ctx->dirty |= PAN_DIRTY_VS;
         if (ctx->dirty & PAN_DIRTY_VS) {
-                assert(ctx->vs);
+                assert(ctx->shader[PIPE_SHADER_VERTEX]);
 
-                struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
+                struct panfrost_shader_state *vs = &ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant];
 
                 ctx->payloads[PIPE_SHADER_VERTEX].postfix._shader_upper =
                         panfrost_patch_shader_state(ctx, vs, PIPE_SHADER_VERTEX, true) >> 4;
@@ -1069,12 +1069,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         }
 
         /* TODO: Maybe dirty track FS, maybe not. For now, it's transient. */
-        if (ctx->fs)
+        if (ctx->shader[PIPE_SHADER_FRAGMENT])
                 ctx->dirty |= PAN_DIRTY_FS;
 
         if (ctx->dirty & PAN_DIRTY_FS) {
-                assert(ctx->fs);
-                struct panfrost_shader_state *variant = &ctx->fs->variants[ctx->fs->active_variant];
+                assert(ctx->shader[PIPE_SHADER_FRAGMENT]);
+                struct panfrost_shader_state *variant = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
 
                 panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT, false);
 
@@ -1256,8 +1256,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         for (int i = 0; i <= PIPE_SHADER_FRAGMENT; ++i) {
                 struct panfrost_constant_buffer *buf = &ctx->constant_buffer[i];
 
-                struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
-                struct panfrost_shader_state *fs = &ctx->fs->variants[ctx->fs->active_variant];
+                struct panfrost_shader_state *vs = &ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant];
+                struct panfrost_shader_state *fs = &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant];
                 struct panfrost_shader_state *ss = (i == PIPE_SHADER_FRAGMENT) ? fs : vs;
 
                 /* Uniforms are implicitly UBO #0 */
@@ -1285,11 +1285,11 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 switch (i) {
                 case PIPE_SHADER_VERTEX:
-                        uniform_count = ctx->vs->variants[ctx->vs->active_variant].uniform_count;
+                        uniform_count = ctx->shader[PIPE_SHADER_VERTEX]->variants[ctx->shader[PIPE_SHADER_VERTEX]->active_variant].uniform_count;
                         break;
 
                 case PIPE_SHADER_FRAGMENT:
-                        uniform_count = ctx->fs->variants[ctx->fs->active_variant].uniform_count;
+                        uniform_count = ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant].uniform_count;
                         break;
 
                 default:
@@ -1856,10 +1856,10 @@ panfrost_bind_rasterizer_state(
         /* Point sprites are emulated */
 
         struct panfrost_shader_state *variant =
-                        ctx->fs ? &ctx->fs->variants[ctx->fs->active_variant] : NULL;
+                        ctx->shader[PIPE_SHADER_FRAGMENT] ? &ctx->shader[PIPE_SHADER_FRAGMENT]->variants[ctx->shader[PIPE_SHADER_FRAGMENT]->active_variant] : NULL;
 
         if (ctx->rasterizer->base.sprite_coord_enable || (variant && variant->point_sprite_mask))
-                ctx->base.bind_fs_state(&ctx->base, ctx->fs);
+                ctx->base.bind_fs_state(&ctx->base, ctx->shader[PIPE_SHADER_FRAGMENT]);
 }
 
 static void *
@@ -2061,11 +2061,11 @@ panfrost_bind_shader_state(
         struct panfrost_context *ctx = pan_context(pctx);
 
         if (type == PIPE_SHADER_FRAGMENT) {
-                ctx->fs = hwcso;
+                ctx->shader[PIPE_SHADER_FRAGMENT] = hwcso;
                 ctx->dirty |= PAN_DIRTY_FS;
         } else {
                 assert(type == PIPE_SHADER_VERTEX);
-                ctx->vs = hwcso;
+                ctx->shader[PIPE_SHADER_VERTEX] = hwcso;
                 ctx->dirty |= PAN_DIRTY_VS;
         }
 
@@ -2429,7 +2429,7 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
 
         if (depth_stencil->alpha.enabled) {
                 /* We need to trigger a new shader (maybe) */
-                ctx->base.bind_fs_state(&ctx->base, ctx->fs);
+                ctx->base.bind_fs_state(&ctx->base, ctx->shader[PIPE_SHADER_FRAGMENT]);
         }
 
         /* Stencil state */

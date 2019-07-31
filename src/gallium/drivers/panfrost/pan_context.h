@@ -144,12 +144,8 @@ struct panfrost_context {
 
         struct panfrost_constant_buffer constant_buffer[PIPE_SHADER_TYPES];
 
-        /* CSOs */
         struct panfrost_rasterizer *rasterizer;
-
-        struct panfrost_shader_variants *vs;
-        struct panfrost_shader_variants *fs;
-
+        struct panfrost_shader_variants *shader[PIPE_SHADER_TYPES];
         struct panfrost_vertex_state *vertex;
 
         struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
