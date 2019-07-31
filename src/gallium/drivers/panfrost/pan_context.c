@@ -237,8 +237,8 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
                                panfrost_attach_vt_sfbd(ctx) :
                                panfrost_attach_vt_mfbd(ctx);
 
-        ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer = framebuffer;
-        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer = framebuffer;
+        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
+                ctx->payloads[i].postfix.framebuffer = framebuffer;
 }
 
 /* Reset per-frame context, called on context initialisation as well as after
@@ -254,9 +254,8 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
         else
                 ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
-        /* The reference is now invalid */
-        ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer = 0;
-        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer = 0;
+        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
+                ctx->payloads[i].postfix.framebuffer = 0;
 
         if (ctx->rasterizer)
                 ctx->dirty |= PAN_DIRTY_RASTERIZER;
@@ -745,12 +744,7 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
                         upload = transfer.gpu;
                 }
 
-                if (t == PIPE_SHADER_FRAGMENT)
-                        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.sampler_descriptor = upload;
-                else if (t == PIPE_SHADER_VERTEX)
-                        ctx->payloads[PIPE_SHADER_VERTEX].postfix.sampler_descriptor = upload;
-                else
-                        assert(0);
+                ctx->payloads[t].postfix.sampler_descriptor = upload;
         }
 }
 
@@ -858,12 +852,7 @@ panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
                         trampoline = panfrost_upload_transient(ctx, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
                 }
 
-                if (t == PIPE_SHADER_FRAGMENT)
-                        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.texture_trampoline = trampoline;
-                else if (t == PIPE_SHADER_VERTEX)
-                        ctx->payloads[PIPE_SHADER_VERTEX].postfix.texture_trampoline = trampoline;
-                else
-                        assert(0);
+                ctx->payloads[t].postfix.texture_trampoline = trampoline;
         }
 }
 
@@ -1291,17 +1280,16 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 int uniform_count = 0;
 
-                struct mali_vertex_tiler_postfix *postfix;
+                struct mali_vertex_tiler_postfix *postfix =
+                        &ctx->payloads[i].postfix;
 
                 switch (i) {
                 case PIPE_SHADER_VERTEX:
                         uniform_count = ctx->vs->variants[ctx->vs->active_variant].uniform_count;
-                        postfix = &ctx->payloads[PIPE_SHADER_VERTEX].postfix;
                         break;
 
                 case PIPE_SHADER_FRAGMENT:
                         uniform_count = ctx->fs->variants[ctx->fs->active_variant].uniform_count;
-                        postfix = &ctx->payloads[PIPE_SHADER_FRAGMENT].postfix;
                         break;
 
                 default:
