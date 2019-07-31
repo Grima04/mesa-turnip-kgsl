@@ -369,7 +369,7 @@ def generate(env):
         if check_functions(env, ['strtod_l', 'strtof_l']):
             cppdefines += ['HAVE_STRTOD_L']
 
-        if check_functions(env, 'random_r'):
+        if check_functions(env, ['random_r']):
             cppdefines += ['HAVE_RANDOM_R']
 
         if check_functions(env, ['timespec_get']):
