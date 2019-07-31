@@ -97,6 +97,8 @@ protected:
 
 nir_vars_test::nir_vars_test()
 {
+   glsl_type_singleton_init_or_ref();
+
    mem_ctx = ralloc_context(NULL);
    lin_ctx = linear_alloc_parent(mem_ctx, 0);
    static const nir_shader_compiler_options options = { };
@@ -112,6 +114,8 @@ nir_vars_test::~nir_vars_test()
    }
 
    ralloc_free(mem_ctx);
+
+   glsl_type_singleton_decref();
 }
 
 unsigned
