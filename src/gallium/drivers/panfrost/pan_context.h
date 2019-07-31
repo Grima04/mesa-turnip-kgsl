@@ -117,8 +117,7 @@ struct panfrost_context {
         struct panfrost_query *occlusion_query;
 
         /* Each draw has corresponding vertex and tiler payloads */
-        struct midgard_payload_vertex_tiler payload_vertex;
-        struct midgard_payload_vertex_tiler payload_tiler;
+        struct midgard_payload_vertex_tiler payloads[PIPE_SHADER_TYPES];
 
         /* The fragment shader binary itself is pointed here (for the tripipe) but
          * also everything else in the shader core, including blending, the

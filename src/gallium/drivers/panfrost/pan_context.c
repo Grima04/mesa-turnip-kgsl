@@ -227,8 +227,8 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
 {
         /* Skip the attach if we can */
 
-        if (skippable && ctx->payload_vertex.postfix.framebuffer) {
-                assert(ctx->payload_tiler.postfix.framebuffer);
+        if (skippable && ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer) {
+                assert(ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer);
                 return;
         }
 
@@ -237,8 +237,8 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
                                panfrost_attach_vt_sfbd(ctx) :
                                panfrost_attach_vt_mfbd(ctx);
 
-        ctx->payload_vertex.postfix.framebuffer = framebuffer;
-        ctx->payload_tiler.postfix.framebuffer = framebuffer;
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer = framebuffer;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer = framebuffer;
 }
 
 /* Reset per-frame context, called on context initialisation as well as after
@@ -255,8 +255,8 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
                 ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
 
         /* The reference is now invalid */
-        ctx->payload_vertex.postfix.framebuffer = 0;
-        ctx->payload_tiler.postfix.framebuffer = 0;
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer = 0;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer = 0;
 
         if (ctx->rasterizer)
                 ctx->dirty |= PAN_DIRTY_RASTERIZER;
@@ -278,7 +278,7 @@ panfrost_emit_vertex_payload(struct panfrost_context *ctx)
                 .gl_enables = 0x4 | 0x2,
         };
 
-        memcpy(&ctx->payload_vertex, &payload, sizeof(payload));
+        memcpy(&ctx->payloads[PIPE_SHADER_VERTEX], &payload, sizeof(payload));
 }
 
 static void
@@ -290,7 +290,7 @@ panfrost_emit_tiler_payload(struct panfrost_context *ctx)
                 },
         };
 
-        memcpy(&ctx->payload_tiler, &payload, sizeof(payload));
+        memcpy(&ctx->payloads[PIPE_SHADER_FRAGMENT], &payload, sizeof(payload));
 }
 
 static unsigned
@@ -481,7 +481,7 @@ panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler)
                 .job_descriptor_size = 1,
         };
 
-        struct midgard_payload_vertex_tiler *payload = is_tiler ? &ctx->payload_tiler : &ctx->payload_vertex;
+        struct midgard_payload_vertex_tiler *payload = is_tiler ? &ctx->payloads[PIPE_SHADER_FRAGMENT] : &ctx->payloads[PIPE_SHADER_VERTEX];
 
         struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
         memcpy(transfer.cpu, &job, sizeof(job));
@@ -603,8 +603,8 @@ panfrost_emit_varying_descriptor(
         memcpy(trans.cpu, vs->varyings, vs_size);
         memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
 
-        ctx->payload_vertex.postfix.varying_meta = trans.gpu;
-        ctx->payload_tiler.postfix.varying_meta = trans.gpu + vs_size;
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.varying_meta = trans.gpu;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.varying_meta = trans.gpu + vs_size;
 
         /* Buffer indices must be in this order per our convention */
         union mali_attr varyings[PIPE_MAX_ATTRIBS];
@@ -614,14 +614,14 @@ panfrost_emit_varying_descriptor(
                                vertex_count);
 
         /* fp32 vec4 gl_Position */
-        ctx->payload_tiler.postfix.position_varying =
+        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.position_varying =
                 panfrost_emit_varyings(ctx, &varyings[idx++],
                                        sizeof(float) * 4, vertex_count);
 
 
         if (vs->writes_point_size || fs->reads_point_coord) {
                 /* fp16 vec1 gl_PointSize */
-                ctx->payload_tiler.primitive_size.pointer =
+                ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.pointer =
                         panfrost_emit_varyings(ctx, &varyings[idx++],
                                                2, vertex_count);
         } else if (fs->reads_face) {
@@ -641,8 +641,8 @@ panfrost_emit_varying_descriptor(
         }
 
         mali_ptr varyings_p = panfrost_upload_transient(ctx, &varyings, idx * sizeof(union mali_attr));
-        ctx->payload_vertex.postfix.varyings = varyings_p;
-        ctx->payload_tiler.postfix.varyings = varyings_p;
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.varyings = varyings_p;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.varyings = varyings_p;
 }
 
 mali_ptr
@@ -660,7 +660,7 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
         assert(ctx->vs);
         struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
 
-        return vs->writes_point_size && ctx->payload_tiler.prefix.draw_mode == MALI_POINTS;
+        return vs->writes_point_size && ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode == MALI_POINTS;
 }
 
 /* Stage the attribute descriptors so we can adjust src_offset
@@ -699,7 +699,7 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
          * QED.
          */
 
-        unsigned start = ctx->payload_vertex.draw_start;
+        unsigned start = ctx->payloads[PIPE_SHADER_VERTEX].draw_start;
 
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
@@ -719,7 +719,7 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
 
         }
 
-        ctx->payload_vertex.postfix.attribute_meta = transfer.gpu;
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.attribute_meta = transfer.gpu;
 }
 
 static void
@@ -746,9 +746,9 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
                 }
 
                 if (t == PIPE_SHADER_FRAGMENT)
-                        ctx->payload_tiler.postfix.sampler_descriptor = upload;
+                        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.sampler_descriptor = upload;
                 else if (t == PIPE_SHADER_VERTEX)
-                        ctx->payload_vertex.postfix.sampler_descriptor = upload;
+                        ctx->payloads[PIPE_SHADER_VERTEX].postfix.sampler_descriptor = upload;
                 else
                         assert(0);
         }
@@ -859,9 +859,9 @@ panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
                 }
 
                 if (t == PIPE_SHADER_FRAGMENT)
-                        ctx->payload_tiler.postfix.texture_trampoline = trampoline;
+                        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.texture_trampoline = trampoline;
                 else if (t == PIPE_SHADER_VERTEX)
-                        ctx->payload_vertex.postfix.texture_trampoline = trampoline;
+                        ctx->payloads[PIPE_SHADER_VERTEX].postfix.texture_trampoline = trampoline;
                 else
                         assert(0);
         }
@@ -1042,7 +1042,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         bool msaa = ctx->rasterizer->base.multisample;
 
         if (ctx->dirty & PAN_DIRTY_RASTERIZER) {
-                ctx->payload_tiler.gl_enables = ctx->rasterizer->tiler_gl_enables;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables = ctx->rasterizer->tiler_gl_enables;
 
                 /* TODO: Sample size */
                 SET_BIT(ctx->fragment_shader_core.unknown2_3, MALI_HAS_MSAA, msaa);
@@ -1052,8 +1052,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         panfrost_job_set_requirements(ctx, job);
 
         if (ctx->occlusion_query) {
-                ctx->payload_tiler.gl_enables |= MALI_OCCLUSION_QUERY | MALI_OCCLUSION_PRECISE;
-                ctx->payload_tiler.postfix.occlusion_counter = ctx->occlusion_query->transfer.gpu;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables |= MALI_OCCLUSION_QUERY | MALI_OCCLUSION_PRECISE;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.occlusion_counter = ctx->occlusion_query->transfer.gpu;
         }
 
         /* TODO: Does it make sense to dirty track VS? We need the transient
@@ -1064,7 +1064,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 struct panfrost_shader_state *vs = &ctx->vs->variants[ctx->vs->active_variant];
 
-                ctx->payload_vertex.postfix._shader_upper =
+                ctx->payloads[PIPE_SHADER_VERTEX].postfix._shader_upper =
                         panfrost_patch_shader_state(ctx, vs, PIPE_SHADER_VERTEX, true) >> 4;
         }
 
@@ -1075,7 +1075,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                          * don't touch primitive_size (since we would clobber
                          * the pointer there) */
 
-                        ctx->payload_tiler.primitive_size.constant = ctx->rasterizer->base.line_width;
+                        ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.constant = ctx->rasterizer->base.line_width;
                 }
         }
 
@@ -1194,7 +1194,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
                 memcpy(transfer.cpu, &ctx->fragment_shader_core, sizeof(struct mali_shader_meta));
 
-                ctx->payload_tiler.postfix._shader_upper = (transfer.gpu) >> 4;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].postfix._shader_upper = (transfer.gpu) >> 4;
 
                 if (!screen->require_sfbd) {
                         /* Additional blend descriptor tacked on for jobs using MFBD */
@@ -1296,12 +1296,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 switch (i) {
                 case PIPE_SHADER_VERTEX:
                         uniform_count = ctx->vs->variants[ctx->vs->active_variant].uniform_count;
-                        postfix = &ctx->payload_vertex.postfix;
+                        postfix = &ctx->payloads[PIPE_SHADER_VERTEX].postfix;
                         break;
 
                 case PIPE_SHADER_FRAGMENT:
                         uniform_count = ctx->fs->variants[ctx->fs->active_variant].uniform_count;
-                        postfix = &ctx->payload_tiler.postfix;
+                        postfix = &ctx->payloads[PIPE_SHADER_FRAGMENT].postfix;
                         break;
 
                 default:
@@ -1444,7 +1444,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         view.viewport0[1] = miny;
         view.viewport1[1] = MALI_POSITIVE(maxy);
 
-        ctx->payload_tiler.postfix.viewport =
+        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.viewport =
                 panfrost_upload_transient(ctx,
                                           &view,
                                           sizeof(struct mali_viewport));
@@ -1653,8 +1653,8 @@ panfrost_draw_vbo(
         if (panfrost_scissor_culls_everything(ctx))
                 return;
 
-        ctx->payload_vertex.draw_start = info->start;
-        ctx->payload_tiler.draw_start = info->start;
+        ctx->payloads[PIPE_SHADER_VERTEX].draw_start = info->start;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].draw_start = info->start;
 
         int mode = info->mode;
 
@@ -1689,7 +1689,7 @@ panfrost_draw_vbo(
 
         /* struct panfrost_job *job = */ panfrost_get_job_for_fbo(ctx);
 
-        ctx->payload_tiler.prefix.draw_mode = g2m_draw_mode(mode);
+        ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode = g2m_draw_mode(mode);
 
         ctx->vertex_count = info->count;
         ctx->instance_count = info->instance_count;
@@ -1740,38 +1740,38 @@ panfrost_draw_vbo(
 
                 /* Use the corresponding values */
                 vertex_count = max_index - min_index + 1;
-                ctx->payload_vertex.draw_start = min_index;
-                ctx->payload_tiler.draw_start = min_index;
+                ctx->payloads[PIPE_SHADER_VERTEX].draw_start = min_index;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].draw_start = min_index;
 
-                ctx->payload_tiler.prefix.negative_start = -min_index;
-                ctx->payload_tiler.prefix.index_count = MALI_POSITIVE(info->count);
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.negative_start = -min_index;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(info->count);
 
                 //assert(!info->restart_index); /* TODO: Research */
                 assert(!info->index_bias);
 
                 draw_flags |= panfrost_translate_index_size(info->index_size);
-                ctx->payload_tiler.prefix.indices = panfrost_get_index_buffer_mapped(ctx, info);
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices = panfrost_get_index_buffer_mapped(ctx, info);
         } else {
                 /* Index count == vertex count, if no indexing is applied, as
                  * if it is internally indexed in the expected order */
 
-                ctx->payload_tiler.prefix.negative_start = 0;
-                ctx->payload_tiler.prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.negative_start = 0;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
 
                 /* Reverse index state */
-                ctx->payload_tiler.prefix.indices = (u64) NULL;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.indices = (u64) NULL;
         }
 
         /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
          * vertex_count, 1) */
 
         panfrost_pack_work_groups_fused(
-                &ctx->payload_vertex.prefix,
-                &ctx->payload_tiler.prefix,
+                &ctx->payloads[PIPE_SHADER_VERTEX].prefix,
+                &ctx->payloads[PIPE_SHADER_FRAGMENT].prefix,
                 1, vertex_count, info->instance_count,
                 1, 1, 1);
 
-        ctx->payload_tiler.prefix.unknown_draw = draw_flags;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.unknown_draw = draw_flags;
 
         /* Encode the padded vertex count */
 
@@ -1787,21 +1787,21 @@ panfrost_draw_vbo(
                 struct pan_shift_odd so =
                         panfrost_padded_vertex_count(vertex_count, !is_triangle);
 
-                ctx->payload_vertex.instance_shift = so.shift;
-                ctx->payload_tiler.instance_shift = so.shift;
+                ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = so.shift;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift = so.shift;
 
-                ctx->payload_vertex.instance_odd = so.odd;
-                ctx->payload_tiler.instance_odd = so.odd;
+                ctx->payloads[PIPE_SHADER_VERTEX].instance_odd = so.odd;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd = so.odd;
 
                 ctx->padded_count = pan_expand_shift_odd(so);
         } else {
                 ctx->padded_count = ctx->vertex_count;
 
                 /* Reset instancing state */
-                ctx->payload_vertex.instance_shift = 0;
-                ctx->payload_vertex.instance_odd = 0;
-                ctx->payload_tiler.instance_shift = 0;
-                ctx->payload_tiler.instance_odd = 0;
+                ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = 0;
+                ctx->payloads[PIPE_SHADER_VERTEX].instance_odd = 0;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift = 0;
+                ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd = 0;
         }
 
         /* Fire off the draw itself */

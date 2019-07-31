@@ -175,8 +175,8 @@ panfrost_vertex_instanced(
         /* First, grab the padded vertex count */
 
         struct pan_shift_odd o = {
-                .shift = batch->ctx->payload_tiler.instance_shift,
-                .odd = batch->ctx->payload_tiler.instance_odd,
+                .shift = batch->ctx->payloads[PIPE_SHADER_FRAGMENT].instance_shift,
+                .odd = batch->ctx->payloads[PIPE_SHADER_FRAGMENT].instance_odd,
         };
 
         unsigned padded_count = batch->ctx->padded_count;
@@ -337,7 +337,7 @@ panfrost_emit_vertex_data(struct panfrost_job *batch)
 
         /* Upload whatever we emitted and go */
 
-        ctx->payload_vertex.postfix.attributes =
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.attributes =
                 panfrost_upload_transient(ctx, attrs, k * sizeof(union mali_attr));
 }
 
