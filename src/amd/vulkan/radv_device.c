@@ -619,8 +619,18 @@ VkResult radv_CreateInstance(
 	instance->apiVersion = client_version;
 	instance->physicalDeviceCount = -1;
 
+	/* Get secure compile thread count. NOTE: We cap this at 32 */
+#define MAX_SC_PROCS 32
+	char *num_sc_threads = getenv("RADV_SECURE_COMPILE_THREADS");
+	if (num_sc_threads)
+		instance->num_sc_threads = MIN2(strtoul(num_sc_threads, NULL, 10), MAX_SC_PROCS);
+
 	instance->debug_flags = parse_debug_string(getenv("RADV_DEBUG"),
 						   radv_debug_options);
+
+	/* Disable memory cache when secure compile is set */
+	if (radv_device_use_secure_compile(instance))
+		instance->debug_flags |= RADV_DEBUG_NO_MEMORY_CACHE;
 
 	instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"),
 						   radv_perftest_options);
@@ -2142,7 +2152,6 @@ static VkResult fork_secure_compile_device(struct radv_device *device)
 
 	mtx_init(&device->sc_state->secure_compile_mutex, mtx_plain);
 
-#define MAX_SC_PROCS 32
 	uint8_t sc_threads = device->instance->num_sc_threads;
 	int fd_secure_input[MAX_SC_PROCS][2];
 	int fd_secure_output[MAX_SC_PROCS][2];
