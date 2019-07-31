@@ -2229,19 +2229,16 @@ midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
 
         unsigned first_tag = 0;
 
-        do {
-                midgard_bundle *initial_bundle = util_dynarray_element(&initial_block->bundles, midgard_bundle, 0);
+        mir_foreach_block_from(ctx, initial_block, v) {
+                midgard_bundle *initial_bundle =
+                        util_dynarray_element(&v->bundles, midgard_bundle, 0);
 
                 if (initial_bundle) {
                         first_tag = initial_bundle->tag;
                         break;
                 }
+        }
 
-                /* Initial block is empty, try the next block */
-                initial_block = list_first_entry(&(initial_block->link), midgard_block, link);
-        } while(initial_block != NULL);
-
-        assert(first_tag);
         return first_tag;
 }
 
