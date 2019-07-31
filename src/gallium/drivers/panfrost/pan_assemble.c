@@ -35,20 +35,24 @@
 #include "tgsi/tgsi_dump.h"
 
 void
-panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *meta, const char *src, int type, struct panfrost_shader_state *state)
+panfrost_shader_compile(
+                struct panfrost_context *ctx,
+                struct mali_shader_meta *meta,
+                enum pipe_shader_ir ir_type,
+                const void *ir,
+                const char *src,
+                int type,
+                struct panfrost_shader_state *state)
 {
         uint8_t *dst;
 
         nir_shader *s;
 
-        struct pipe_shader_state *cso = state->base;
-
-        if (cso->type == PIPE_SHADER_IR_NIR) {
-                s = nir_shader_clone(NULL, cso->ir.nir);
+        if (ir_type == PIPE_SHADER_IR_NIR) {
+                s = nir_shader_clone(NULL, ir);
         } else {
-                assert (cso->type == PIPE_SHADER_IR_TGSI);
-                //tgsi_dump(cso->tokens, 0);
-                s = tgsi_to_nir(cso->tokens, ctx->base.screen);
+                assert (ir_type == PIPE_SHADER_IR_TGSI);
+                s = tgsi_to_nir(ir, ctx->base.screen);
         }
 
         s->info.stage = type == JOB_TYPE_VERTEX ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;

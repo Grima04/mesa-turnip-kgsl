@@ -2120,7 +2120,12 @@ panfrost_bind_shader_state(
         /* We finally have a variant, so compile it */
 
         if (!shader_state->compiled) {
-                panfrost_shader_compile(ctx, shader_state->tripipe, NULL,
+                panfrost_shader_compile(ctx, shader_state->tripipe,
+                              variants->base.type,
+                              variants->base.type == PIPE_SHADER_IR_NIR ?
+                                      variants->base.ir.nir :
+                                      variants->base.tokens,
+                              NULL,
                                         panfrost_job_type_for_pipe(type), shader_state);
 
                 shader_state->compiled = true;

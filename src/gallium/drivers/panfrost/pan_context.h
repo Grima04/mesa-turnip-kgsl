@@ -302,7 +302,14 @@ mali_ptr
 panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws);
 
 void
-panfrost_shader_compile(struct panfrost_context *ctx, struct mali_shader_meta *meta, const char *src, int type, struct panfrost_shader_state *state);
+panfrost_shader_compile(
+                struct panfrost_context *ctx,
+                struct mali_shader_meta *meta,
+                enum pipe_shader_ir ir_type,
+                const void *ir,
+                const char *src,
+                int type,
+                struct panfrost_shader_state *state);
 
 void
 panfrost_pack_work_groups_compute(
