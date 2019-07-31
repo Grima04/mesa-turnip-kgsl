@@ -600,7 +600,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 	LLVMValueRef num_vertices_val;
 
 	if (ctx->type == PIPE_SHADER_VERTEX) {
-		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS]) {
+		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 			/* Blits always use axis-aligned rectangles with 3 vertices. */
 			num_vertices = 3;
 			num_vertices_val = LLVMConstInt(ctx->i32, 3, 0);
@@ -689,7 +689,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi,
 
 	/* Update query buffer */
 	/* TODO: this won't catch 96-bit clear_buffer via transform feedback. */
-	if (!info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS]) {
+	if (!info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 		tmp = si_unpack_param(ctx, ctx->param_vs_state_bits, 6, 1);
 		tmp = LLVMBuildTrunc(builder, tmp, ctx->i1, "");
 		ac_build_ifcc(&ctx->ac, tmp, 5029); /* if (STREAMOUT_QUERY_ENABLED) */

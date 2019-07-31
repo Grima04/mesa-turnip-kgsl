@@ -1108,9 +1108,9 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		/* VGPR5-8: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 / InstanceID) */
 		es_vgpr_comp_cnt = shader->info.uses_instanceid ? 3 : 0;
 
-		if (es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS]) {
+		if (es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 			num_user_sgprs = SI_SGPR_VS_BLIT_DATA +
-					 es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS];
+					 es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 		} else {
 			num_user_sgprs = si_get_num_vs_user_sgprs(GFX9_VSGS_NUM_USER_SGPR);
 		}
@@ -1365,9 +1365,9 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 			vgpr_comp_cnt = enable_prim_id ? 2 : (shader->info.uses_instanceid ? 1 : 0);
 		}
 
-		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS]) {
+		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 			num_user_sgprs = SI_SGPR_VS_BLIT_DATA +
-					 info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS];
+					 info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 		} else {
 			num_user_sgprs = si_get_num_vs_user_sgprs(SI_VS_NUM_USER_SGPR);
 		}
@@ -1703,7 +1703,7 @@ void si_shader_selector_key_vs(struct si_context *sctx,
 			       struct si_vs_prolog_bits *prolog_key)
 {
 	if (!sctx->vertex_elements ||
-	    vs->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS])
+	    vs->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD])
 		return;
 
 	struct si_vertex_elements *elts = sctx->vertex_elements;
@@ -2680,7 +2680,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	/* The prolog is a no-op if there are no inputs. */
 	sel->vs_needs_prolog = sel->type == PIPE_SHADER_VERTEX &&
 			       sel->info.num_inputs &&
-			       !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS];
+			       !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 
 	sel->force_correct_derivs_after_kill =
 		sel->type == PIPE_SHADER_FRAGMENT &&
@@ -2972,7 +2972,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 
 	sctx->vs_shader.cso = sel;
 	sctx->vs_shader.current = sel ? sel->first_variant : NULL;
-	sctx->num_vs_blit_sgprs = sel ? sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS] : 0;
+	sctx->num_vs_blit_sgprs = sel ? sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] : 0;
 
 	si_update_common_shader_state(sctx);
 	si_update_vs_viewport_state(sctx);

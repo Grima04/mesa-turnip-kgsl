@@ -442,7 +442,7 @@ void si_llvm_load_input_vs(
 	LLVMValueRef out[4])
 {
 	const struct tgsi_shader_info *info = &ctx->shader->selector->info;
-	unsigned vs_blit_property = info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS];
+	unsigned vs_blit_property = info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 
 	if (vs_blit_property) {
 		LLVMValueRef vertex_id = ctx->abi.vertex_id;
@@ -4662,7 +4662,7 @@ static void create_function(struct si_shader_context *ctx)
 	unsigned num_prolog_vgprs = 0;
 	unsigned type = ctx->type;
 	unsigned vs_blit_property =
-		shader->selector->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS];
+		shader->selector->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 
 	si_init_function_info(&fninfo);
 

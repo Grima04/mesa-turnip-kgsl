@@ -159,6 +159,7 @@ const char *tgsi_property_names[TGSI_PROPERTY_COUNT] =
    "CS_FIXED_BLOCK_HEIGHT",
    "CS_FIXED_BLOCK_DEPTH",
    "MUL_ZERO_WINS",
+   "VS_BLIT_SGPRS_AMD",
 };
 
 const char *tgsi_return_type_names[TGSI_RETURN_TYPE_COUNT] =

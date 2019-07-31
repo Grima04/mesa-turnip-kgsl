@@ -273,9 +273,6 @@ enum {
 	/* The number of used user data dwords in the range [1, 4]. */
 	TGSI_PROPERTY_CS_USER_DATA_DWORDS = TGSI_PROPERTY_FS_COORD_PIXEL_CENTER,
 
-	/* Use a property enum that VS wouldn't use. */
-	TGSI_PROPERTY_VS_BLIT_SGPRS = TGSI_PROPERTY_FS_COORD_ORIGIN,
-
 	/* These represent the number of SGPRs the shader uses. */
 	SI_VS_BLIT_SGPRS_POS = 3,
 	SI_VS_BLIT_SGPRS_POS_COLOR = 7,
