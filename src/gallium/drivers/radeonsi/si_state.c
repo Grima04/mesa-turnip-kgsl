@@ -5545,6 +5545,7 @@ static void si_init_config(struct si_context *sctx)
 			late_alloc_limit = (num_cu_per_sh - 2) * 4;
 		}
 
+		unsigned late_alloc_limit_gs = late_alloc_limit;
 		unsigned cu_mask_vs = 0xffff;
 		unsigned cu_mask_gs = 0xffff;
 
@@ -5556,6 +5557,12 @@ static void si_init_config(struct si_context *sctx)
 			} else {
 				cu_mask_vs = 0xfffe; /* 1 CU disabled */
 			}
+		}
+
+		/* Don't use late alloc for NGG on Navi14 due to a hw bug. */
+		if (sctx->family == CHIP_NAVI14) {
+			late_alloc_limit_gs = 0;
+			cu_mask_gs = 0xffff;
 		}
 
 		/* VS can't execute on one CU if the limit is > 2. */
@@ -5571,7 +5578,7 @@ static void si_init_config(struct si_context *sctx)
 		if (sctx->chip_class >= GFX10) {
 			si_pm4_set_reg(pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
 				       S_00B204_CU_EN(0xffff) |
-				       S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit));
+				       S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit_gs));
 		}
 
 		si_pm4_set_reg(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
