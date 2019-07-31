@@ -85,6 +85,12 @@ panfrost_launch_grid(struct pipe_context *pipe,
         payload->postfix.framebuffer =
                 panfrost_upload_transient(ctx, &compute_fbd, sizeof(compute_fbd));
 
+        /* Invoke according to the grid info */
+
+        panfrost_pack_work_groups_compute(&payload->prefix,
+                        info->grid[0], info->grid[1], info->grid[2],
+                        info->block[0], info->block[1], info->block[2]);
+
         /* Upload the payload */
 
         struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
