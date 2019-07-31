@@ -1440,8 +1440,8 @@ typedef enum {
    NIR_INTRINSIC_SWIZZLE_MASK,
 
    /* Separate source/dest access flags for copies */
-   NIR_INTRINSIC_SRC_ACCESS = 21,
-   NIR_INTRINSIC_DST_ACCESS = 22,
+   NIR_INTRINSIC_SRC_ACCESS,
+   NIR_INTRINSIC_DST_ACCESS,
 
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
