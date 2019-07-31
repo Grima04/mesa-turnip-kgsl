@@ -696,7 +696,6 @@ struct si_shader {
 			unsigned	vgt_gs_onchip_cntl;
 			unsigned	vgt_gs_instance_cnt;
 			unsigned	vgt_esgs_ring_itemsize;
-			unsigned	vgt_reuse_off;
 			unsigned	spi_vs_out_config;
 			unsigned	spi_shader_idx_format;
 			unsigned	spi_shader_pos_format;

@@ -973,9 +973,6 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx,
 	radeon_opt_set_context_reg(sctx, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
 				   SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
 				   shader->ctx_reg.ngg.vgt_esgs_ring_itemsize);
-	radeon_opt_set_context_reg(sctx, R_028AB4_VGT_REUSE_OFF,
-				   SI_TRACKED_VGT_REUSE_OFF,
-				   shader->ctx_reg.ngg.vgt_reuse_off);
 	radeon_opt_set_context_reg(sctx, R_0286C4_SPI_VS_OUT_CONFIG,
 				   SI_TRACKED_SPI_VS_OUT_CONFIG,
 				   shader->ctx_reg.ngg.spi_vs_out_config);
@@ -1249,11 +1246,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 			S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
 			S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1);
 	}
-
-	shader->ctx_reg.ngg.vgt_reuse_off =
-		S_028AB4_REUSE_OFF(sscreen->info.family == CHIP_NAVI10 &&
-				   sscreen->info.chip_external_rev == 0x1 &&
-				   es_type == PIPE_SHADER_TESS_EVAL);
 }
 
 static void si_emit_shader_vs(struct si_context *sctx)
