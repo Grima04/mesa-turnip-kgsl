@@ -136,6 +136,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
         case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
         case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
+        case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
                 return 1;
 
         case PIPE_CAP_PACKED_UNIFORMS:

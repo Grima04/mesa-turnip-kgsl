@@ -622,6 +622,7 @@ brw_initialize_context_constants(struct brw_context *brw)
       ctx->Const.MaxClipPlanes = 8;
 
    ctx->Const.GLSLFragCoordIsSysVal = true;
+   ctx->Const.GLSLFrontFacingIsSysVal = true;
    ctx->Const.GLSLTessLevelsAsInputs = true;
    ctx->Const.PrimitiveRestartForPatches = true;
 

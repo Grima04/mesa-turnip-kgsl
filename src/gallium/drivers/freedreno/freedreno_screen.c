@@ -365,6 +365,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		if (is_ir3(screen))
 			return 1;
 		return 0;
+	case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
+		return 1;
 	case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
 	case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
 		if (is_ir3(screen))
