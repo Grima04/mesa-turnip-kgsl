@@ -1547,7 +1547,7 @@ panfrost_flush(
         /* Nothing to do! */
         if (!job->last_job.gpu && !job->clear) return;
 
-        if (!job->clear)
+        if (!job->clear && job->last_tiler.gpu)
                 panfrost_draw_wallpaper(&ctx->base);
 
         /* Whether to stall the pipeline for immediately correct results. Since
