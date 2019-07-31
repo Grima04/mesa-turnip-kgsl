@@ -124,6 +124,17 @@ enum radv_mem_type {
 	RADV_MEM_TYPE_COUNT
 };
 
+enum radv_secure_compile_type {
+	RADV_SC_TYPE_INIT_SUCCESS,
+	RADV_SC_TYPE_INIT_FAILURE,
+	RADV_SC_TYPE_COMPILE_PIPELINE,
+	RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED,
+	RADV_SC_TYPE_READ_DISK_CACHE,
+	RADV_SC_TYPE_WRITE_DISK_CACHE,
+	RADV_SC_TYPE_DESTROY_DEVICE,
+	RADV_SC_TYPE_COUNT
+};
+
 #define radv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
 static inline uint32_t
