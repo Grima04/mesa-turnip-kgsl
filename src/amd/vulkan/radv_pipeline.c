@@ -2563,7 +2563,6 @@ bool radv_aco_supported_stage(gl_shader_stage stage, bool has_gs, bool has_ts)
 	       stage == MESA_SHADER_COMPUTE;
 }
 
-static
 void radv_create_shaders(struct radv_pipeline *pipeline,
                          struct radv_device *device,
                          struct radv_pipeline_cache *cache,

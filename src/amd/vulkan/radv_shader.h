@@ -407,6 +407,16 @@ radv_alloc_shader_memory(struct radv_device *device,
 void
 radv_destroy_shader_slabs(struct radv_device *device);
 
+void
+radv_create_shaders(struct radv_pipeline *pipeline,
+		    struct radv_device *device,
+		    struct radv_pipeline_cache *cache,
+		    const struct radv_pipeline_key *key,
+		    const VkPipelineShaderStageCreateInfo **pStages,
+		    const VkPipelineCreateFlags flags,
+		    VkPipelineCreationFeedbackEXT *pipeline_feedback,
+		    VkPipelineCreationFeedbackEXT **stage_feedbacks);
+
 struct radv_shader_variant *
 radv_shader_variant_create(struct radv_device *device,
 			   const struct radv_shader_binary *binary,
