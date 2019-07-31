@@ -5559,8 +5559,10 @@ static void si_init_config(struct si_context *sctx)
 			}
 		}
 
-		/* Don't use late alloc for NGG on Navi14 due to a hw bug. */
-		if (sctx->family == CHIP_NAVI14) {
+		/* Don't use late alloc for NGG on Navi14 due to a hw bug.
+		 * If NGG is never used, enable all CUs.
+		 */
+		if (!sscreen->use_ngg || sctx->family == CHIP_NAVI14) {
 			late_alloc_limit_gs = 0;
 			cu_mask_gs = 0xffff;
 		}
