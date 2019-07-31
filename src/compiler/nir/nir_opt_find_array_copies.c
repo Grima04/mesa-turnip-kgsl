@@ -541,13 +541,16 @@ opt_find_array_copies_block(nir_builder *b, nir_block *block,
       /* There must be no indirects in the source or destination and no known
        * out-of-bounds accesses in the source, and the copy must be fully
        * qualified, or else we can't build up the array copy. We handled
-       * out-of-bounds accesses to the dest above.
+       * out-of-bounds accesses to the dest above. The types must match, since
+       * copy_deref currently can't bitcast mismatched deref types.
        */
       if (src_deref &&
           (nir_deref_instr_has_indirect(src_deref) ||
            nir_deref_instr_is_known_out_of_bounds(src_deref) ||
            nir_deref_instr_has_indirect(dst_deref) ||
-           !glsl_type_is_vector_or_scalar(src_deref->type))) {
+           !glsl_type_is_vector_or_scalar(src_deref->type) ||
+           glsl_get_bare_type(src_deref->type) !=
+           glsl_get_bare_type(dst_deref->type))) {
          src_deref = NULL;
       }
 
