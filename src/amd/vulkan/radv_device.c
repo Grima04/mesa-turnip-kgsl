@@ -25,11 +25,23 @@
  * IN THE SOFTWARE.
  */
 
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/audit.h>
+#include <linux/bpf.h>
+#include <linux/filter.h>
+#include <linux/seccomp.h>
+#include <linux/unistd.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/prctl.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <llvm/Config/llvm-config.h>
+
 #include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_shader.h"
@@ -1920,6 +1932,270 @@ radv_get_int_debug_option(const char *name, int default_value)
 	return result;
 }
 
+static int install_seccomp_filter() {
+
+	struct sock_filter filter[] = {
+		/* Check arch is 64bit x86 */
+		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, arch))),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, AUDIT_ARCH_X86_64, 0, 10),
+
+		/* Allow system exit calls for the forked process */
+		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, nr))),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, __NR_exit_group, 9, 0),
+
+		/* Allow system read calls */
+		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, nr))),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, __NR_read, 7, 0),
+
+		/* Allow system write calls */
+		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, nr))),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, __NR_write, 5, 0),
+
+		/* Allow system brk calls (we need this for malloc) */
+		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, nr))),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, __NR_brk, 3, 0),
+
+		/* Futex is required for mutex locks */
+		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, (offsetof(struct seccomp_data, nr))),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, __NR_futex, 1, 0),
+
+		/* Return error if we hit a system call not on the whitelist */
+		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ERRNO | (EPERM & SECCOMP_RET_DATA)),
+
+		/* Allow whitelisted system calls */
+		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW),
+	};
+
+	struct sock_fprog prog = {
+		.len = (unsigned short)(sizeof(filter) / sizeof(filter[0])),
+		.filter = filter,
+	};
+
+	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
+		return -1;
+
+	if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &prog))
+		return -1;
+
+	return 0;
+}
+
+static void run_secure_compile_device(struct radv_device *device, unsigned process,
+				      int *fd_secure_input, int *fd_secure_output)
+{
+	enum radv_secure_compile_type sc_type;
+	if (install_seccomp_filter() == -1) {
+		sc_type = RADV_SC_TYPE_INIT_FAILURE;
+	} else {
+		sc_type = RADV_SC_TYPE_INIT_SUCCESS;
+		device->sc_state->secure_compile_processes[process].fd_secure_input = fd_secure_input[0];
+		device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output[1];
+	}
+
+	write(fd_secure_output[1], &sc_type, sizeof(sc_type));
+
+	if (sc_type == RADV_SC_TYPE_INIT_FAILURE)
+		goto secure_compile_exit;
+
+	while (true) {
+		read(fd_secure_input[0], &sc_type, sizeof(sc_type));
+
+		if (sc_type == RADV_SC_TYPE_COMPILE_PIPELINE) {
+			struct radv_pipeline *pipeline;
+
+			pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(*pipeline), 8,
+					      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+			pipeline->device = device;
+
+			/* Read pipeline layout */
+			struct radv_pipeline_layout layout;
+			read(fd_secure_input[0], &layout, sizeof(struct radv_pipeline_layout));
+			read(fd_secure_input[0], &layout.num_sets, sizeof(uint32_t));
+			for (uint32_t set = 0; set < layout.num_sets; set++) {
+				uint32_t layout_size;
+				read(fd_secure_input[0], &layout_size, sizeof(uint32_t));
+				layout.set[set].layout = malloc(layout_size);
+				layout.set[set].layout->layout_size = layout_size;
+				read(fd_secure_input[0], layout.set[set].layout, layout.set[set].layout->layout_size);
+			}
+
+			pipeline->layout = &layout;
+
+			/* Read pipeline key */
+			struct radv_pipeline_key key;
+			read(fd_secure_input[0], &key, sizeof(struct radv_pipeline_key));
+
+			/* Read pipeline create flags */
+			VkPipelineCreateFlags flags;
+			read(fd_secure_input[0], &flags, sizeof(VkPipelineCreateFlags));
+
+			/* Read stage and shader information */
+			uint32_t num_stages;
+			const VkPipelineShaderStageCreateInfo *pStages[MESA_SHADER_STAGES] = { 0, };
+			read(fd_secure_input[0], &num_stages, sizeof(uint32_t));
+			for (uint32_t i = 0; i < num_stages; i++) {
+
+				/* Read stage */
+				gl_shader_stage stage;
+				read(fd_secure_input[0], &stage, sizeof(gl_shader_stage));
+
+				VkPipelineShaderStageCreateInfo *pStage = calloc(1, sizeof(VkPipelineShaderStageCreateInfo));
+
+				/* Read entry point name */
+				size_t name_size;
+				read(fd_secure_input[0], &name_size, sizeof(size_t));
+				char *ep_name = malloc(name_size);
+				read(fd_secure_input[0], ep_name, name_size);
+				pStage->pName = ep_name;
+
+				/* Read shader module */
+				size_t module_size;
+				read(fd_secure_input[0], &module_size, sizeof(size_t));
+				struct radv_shader_module *module = malloc(module_size);
+				read(fd_secure_input[0], module, module_size);
+				pStage->module = radv_shader_module_to_handle(module);
+
+				/* Read specialization info */
+				bool has_spec_info;
+				read(fd_secure_input[0], &has_spec_info, sizeof(bool));
+				if (has_spec_info) {
+					VkSpecializationInfo *specInfo = malloc(sizeof(VkSpecializationInfo));
+					pStage->pSpecializationInfo = specInfo;
+
+					read(fd_secure_input[0], &specInfo->dataSize, sizeof(size_t));
+
+					void *si_data = malloc(specInfo->dataSize);
+					read(fd_secure_input[0], si_data, specInfo->dataSize);
+					specInfo->pData = si_data;
+
+					read(fd_secure_input[0], &specInfo->mapEntryCount, sizeof(uint32_t));
+					VkSpecializationMapEntry *mapEntries = malloc(sizeof(VkSpecializationMapEntry) * specInfo->mapEntryCount);
+					for (uint32_t j = 0; j < specInfo->mapEntryCount; j++)
+						read(fd_secure_input[0], &mapEntries[j], sizeof(VkSpecializationMapEntry));
+
+					specInfo->pMapEntries = mapEntries;
+				}
+
+				pStages[stage] = pStage;
+			}
+
+			/* Compile the shaders */
+			VkPipelineCreationFeedbackEXT *stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
+			radv_create_shaders(pipeline, device, NULL, &key, pStages, flags, NULL, stage_feedbacks);
+
+			/* free memory allocated above */
+			for (uint32_t set = 0; set < layout.num_sets; set++)
+				free(layout.set[set].layout);
+
+			for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
+				if (!pStages[i])
+					continue;
+
+				free((void *) pStages[i]->pName);
+				free(radv_shader_module_from_handle(pStages[i]->module));
+				if (pStages[i]->pSpecializationInfo) {
+					free((void *) pStages[i]->pSpecializationInfo->pData);
+					free((void *) pStages[i]->pSpecializationInfo->pMapEntries);
+					free((void *) pStages[i]->pSpecializationInfo);
+				}
+				free((void *) pStages[i]);
+			}
+
+			vk_free(&device->alloc, pipeline);
+
+			sc_type = RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED;
+			write(fd_secure_output[1], &sc_type, sizeof(sc_type));
+
+		} else if (sc_type == RADV_SC_TYPE_DESTROY_DEVICE) {
+			goto secure_compile_exit;
+		}
+	}
+
+secure_compile_exit:
+	close(fd_secure_input[1]);
+	close(fd_secure_input[0]);
+	close(fd_secure_output[1]);
+	close(fd_secure_output[0]);
+	_exit(0);
+}
+
+static void destroy_secure_compile_device(struct radv_device *device, unsigned process)
+{
+	int fd_secure_input = device->sc_state->secure_compile_processes[process].fd_secure_input;
+
+	enum radv_secure_compile_type sc_type = RADV_SC_TYPE_DESTROY_DEVICE;
+	write(fd_secure_input, &sc_type, sizeof(sc_type));
+
+	close(device->sc_state->secure_compile_processes[process].fd_secure_input);
+	close(device->sc_state->secure_compile_processes[process].fd_secure_output);
+
+	int status;
+	waitpid(device->sc_state->secure_compile_processes[process].sc_pid, &status, 0);
+}
+
+static VkResult fork_secure_compile_device(struct radv_device *device)
+{
+	device->sc_state = vk_zalloc(&device->alloc,
+				     sizeof(struct radv_secure_compile_state),
+				     8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+	mtx_init(&device->sc_state->secure_compile_mutex, mtx_plain);
+
+#define MAX_SC_PROCS 32
+	uint8_t sc_threads = device->instance->num_sc_threads;
+	int fd_secure_input[MAX_SC_PROCS][2];
+	int fd_secure_output[MAX_SC_PROCS][2];
+
+	/* create pipe descriptors (used to communicate between processes) */
+	for (unsigned i = 0; i < sc_threads; i++) {
+		if (pipe(fd_secure_input[i]) == -1 ||
+		    pipe(fd_secure_output[i]) == -1) {
+			return VK_ERROR_INITIALIZATION_FAILED;
+		}
+	}
+
+	device->sc_state->secure_compile_processes = vk_zalloc(&device->alloc,
+								sizeof(struct radv_secure_compile_process) * sc_threads, 8,
+								VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+	for (unsigned process = 0; process < sc_threads; process++) {
+		if ((device->sc_state->secure_compile_processes[process].sc_pid = fork()) == 0) {
+			device->sc_state->secure_compile_thread_counter = process;
+			run_secure_compile_device(device, process, fd_secure_input[process], fd_secure_output[process]);
+		} else {
+			if (device->sc_state->secure_compile_processes[process].sc_pid == -1)
+				return VK_ERROR_INITIALIZATION_FAILED;
+
+			/* Read the init result returned from the secure process */
+			enum radv_secure_compile_type sc_type;
+			read(fd_secure_output[process][0], &sc_type, sizeof(sc_type));
+
+			if (sc_type == RADV_SC_TYPE_INIT_FAILURE) {
+				close(fd_secure_input[process][0]);
+				close(fd_secure_input[process][1]);
+				close(fd_secure_output[process][1]);
+				close(fd_secure_output[process][0]);
+				int status;
+				waitpid(device->sc_state->secure_compile_processes[process].sc_pid, &status, 0);
+
+				/* Destroy any forks that were created sucessfully */
+				for (unsigned i = 0; i < process; i++) {
+					destroy_secure_compile_device(device, i);
+				}
+
+				return VK_ERROR_INITIALIZATION_FAILED;
+			} else {
+				assert(sc_type == RADV_SC_TYPE_INIT_SUCCESS);
+				device->sc_state->secure_compile_processes[process].fd_secure_input = fd_secure_input[process][1];
+				device->sc_state->secure_compile_processes[process].fd_secure_output = fd_secure_output[process][0];
+			}
+		}
+	}
+
+	return VK_SUCCESS;
+}
+
 VkResult radv_CreateDevice(
 	VkPhysicalDevice                            physicalDevice,
 	const VkDeviceCreateInfo*                   pCreateInfo,
@@ -2076,8 +2352,12 @@ VkResult radv_CreateDevice(
 		radv_dump_enabled_options(device, stderr);
 	}
 
-	device->keep_shader_info = keep_shader_info;
+	/* Temporarily disable secure compile while we create meta shaders, etc */
+	uint8_t sc_threads = device->instance->num_sc_threads;
+	if (sc_threads)
+		device->instance->num_sc_threads = 0;
 
+	device->keep_shader_info = keep_shader_info;
 	result = radv_device_init_meta(device);
 	if (result != VK_SUCCESS)
 		goto fail;
@@ -2122,6 +2402,14 @@ VkResult radv_CreateDevice(
 	if (device->force_aniso >= 0) {
 		fprintf(stderr, "radv: Forcing anisotropy filter to %ix\n",
 			1 << util_logbase2(device->force_aniso));
+	}
+
+	/* Fork device for secure compile as required */
+	device->instance->num_sc_threads = sc_threads;
+	if (radv_device_use_secure_compile(device->instance)) {
+		result = fork_secure_compile_device(device);
+		if (result != VK_SUCCESS)
+			goto fail_meta;
 	}
 
 	*pDevice = radv_device_to_handle(device);
@@ -2180,6 +2468,16 @@ void radv_DestroyDevice(
 	radv_destroy_shader_slabs(device);
 
 	radv_bo_list_finish(&device->bo_list);
+
+	if (radv_device_use_secure_compile(device->instance)) {
+		for (unsigned i = 0; i < device->instance->num_sc_threads; i++ ) {
+			destroy_secure_compile_device(device, i);
+		}
+	}
+
+	if (device->sc_state)
+		vk_free(&device->alloc, device->sc_state->secure_compile_processes);
+	vk_free(&device->alloc, device->sc_state);
 	vk_free(&device->alloc, device);
 }
 
