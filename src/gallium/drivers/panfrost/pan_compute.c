@@ -96,6 +96,8 @@ panfrost_launch_grid(struct pipe_context *pipe,
         /* TODO: Stub */
         struct midgard_payload_vertex_tiler *payload = &ctx->payloads[PIPE_SHADER_COMPUTE];
 
+        panfrost_emit_for_draw(ctx, false);
+
         /* Compute jobs have a "compute FBD". It's not a real framebuffer
          * descriptor - there is no framebuffer - but it takes the place of
          * one. As far as I can tell, it's actually the beginning of a
