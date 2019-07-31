@@ -3592,6 +3592,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	bool es_enable_prim_id = outinfo->export_prim_id ||
 				 (es && es->info.info.uses_prim_id);
 	bool break_wave_at_eoi = false;
+	unsigned ge_cntl;
 	unsigned nparams;
 
 	if (es_type == MESA_SHADER_TESS_EVAL) {
@@ -3674,10 +3675,28 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			       S_028838_INDEX_BUF_EDGE_FLAG_ENA(!radv_pipeline_has_tess(pipeline) &&
 			                                        !radv_pipeline_has_gs(pipeline)));
 
-	radeon_set_uconfig_reg(ctx_cs, R_03096C_GE_CNTL,
-			       S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
-			       S_03096C_VERT_GRP_SIZE(ngg_state->hw_max_esverts) |
-			       S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi));
+	ge_cntl = S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
+		  S_03096C_VERT_GRP_SIZE(ngg_state->hw_max_esverts) |
+		  S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+
+	/* Bug workaround for a possible hang with non-tessellation cases.
+	 * Tessellation always sets GE_CNTL.VERT_GRP_SIZE = 0
+	 *
+	 * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
+	 */
+	if ((pipeline->device->physical_device->rad_info.family == CHIP_NAVI10 ||
+	     pipeline->device->physical_device->rad_info.family == CHIP_NAVI12 ||
+	     pipeline->device->physical_device->rad_info.family == CHIP_NAVI14) &&
+	    !radv_pipeline_has_tess(pipeline) &&
+	    ngg_state->hw_max_esverts != 256) {
+		ge_cntl &= C_03096C_VERT_GRP_SIZE;
+
+		if (ngg_state->hw_max_esverts > 5) {
+			ge_cntl |= S_03096C_VERT_GRP_SIZE(ngg_state->hw_max_esverts - 5);
+		}
+	}
+
+	radeon_set_uconfig_reg(ctx_cs, R_03096C_GE_CNTL, ge_cntl);
 }
 
 static void
