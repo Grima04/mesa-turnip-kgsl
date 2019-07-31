@@ -4323,6 +4323,12 @@ radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
 			int index_size = radv_get_vgt_index_size(state->index_type);
 			uint64_t index_va;
 
+			/* Skip draw calls with 0-sized index buffers. They
+			 * cause a hang on some chips, like Navi10-14.
+			 */
+			if (!cmd_buffer->state.max_index_count)
+				return;
+
 			index_va = state->index_va;
 			index_va += info->first_index * index_size;
 
