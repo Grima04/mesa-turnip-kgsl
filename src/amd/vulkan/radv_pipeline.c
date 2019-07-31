@@ -3457,18 +3457,6 @@ radv_pipeline_generate_vgt_gs_mode(struct radeon_cmdbuf *ctx_cs,
 }
 
 static void
-gfx10_set_ge_pc_alloc(struct radeon_cmdbuf *ctx_cs,
-		      struct radv_pipeline *pipeline,
-		      bool culling)
-{
-	struct radeon_info *info = &pipeline->device->physical_device->rad_info;
-
-	radeon_set_uconfig_reg(ctx_cs, R_030980_GE_PC_ALLOC,
-			       S_030980_OVERSUB_EN(1) |
-			       S_030980_NUM_PC_LINES((culling ? 256 : 128) * info->max_se - 1));
-}
-
-static void
 radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 			     struct radeon_cmdbuf *cs,
 			     struct radv_pipeline *pipeline,
@@ -3534,9 +3522,6 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	if (pipeline->device->physical_device->rad_info.chip_class <= GFX8)
 		radeon_set_context_reg(ctx_cs, R_028AB4_VGT_REUSE_OFF,
 		                       outinfo->writes_viewport_index);
-
-	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10)
-		gfx10_set_ge_pc_alloc(ctx_cs, pipeline, false);
 }
 
 static void
@@ -3699,8 +3684,6 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			       S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
 			       S_03096C_VERT_GRP_SIZE(ngg_state->hw_max_esverts) |
 			       S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi));
-
-	gfx10_set_ge_pc_alloc(ctx_cs, pipeline, false);
 }
 
 static void

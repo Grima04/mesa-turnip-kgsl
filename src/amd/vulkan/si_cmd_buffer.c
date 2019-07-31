@@ -382,6 +382,19 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 				  S_00B0C0_SOFT_GROUPING_EN(1) |
 				  S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
 		radeon_set_sh_reg(cs, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
+
+		if (physical_device->rad_info.family == CHIP_NAVI10 ||
+		    physical_device->rad_info.family == CHIP_NAVI12 ||
+		    physical_device->rad_info.family == CHIP_NAVI14) {
+			/* SQ_NON_EVENT must be emitted before GE_PC_ALLOC is written. */
+			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+			radeon_emit(cs, EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
+		}
+
+		/* TODO: For culling, replace 128 with 256. */
+		radeon_set_uconfig_reg(cs, R_030980_GE_PC_ALLOC,
+				       S_030980_OVERSUB_EN(1) |
+				       S_030980_NUM_PC_LINES(128 * physical_device->rad_info.max_se - 1));
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX8) {
