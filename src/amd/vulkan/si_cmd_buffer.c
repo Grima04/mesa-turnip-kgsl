@@ -311,6 +311,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			late_alloc_limit = (num_cu_per_sh - 2) * 4;
 		}
 
+		unsigned late_alloc_limit_gs = late_alloc_limit;
 		unsigned cu_mask_vs = 0xffff;
 		unsigned cu_mask_gs = 0xffff;
 
@@ -322,6 +323,12 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			} else {
 				cu_mask_vs = 0xfffe; /* 1 CU disabled */
 			}
+		}
+
+		/* Don't use late alloc for NGG on Navi14 due to a hw bug. */
+		if (physical_device->rad_info.family == CHIP_NAVI14) {
+			late_alloc_limit_gs = 0;
+			cu_mask_gs = 0xffff;
 		}
 
 		radeon_set_sh_reg_idx(physical_device, cs, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
@@ -336,7 +343,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 		if (physical_device->rad_info.chip_class >= GFX10) {
 			radeon_set_sh_reg_idx(physical_device, cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
 					      3, S_00B204_CU_EN(0xffff) |
-					      S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit));
+					      S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_limit_gs));
 		}
 
 		radeon_set_sh_reg_idx(physical_device, cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
