@@ -1053,14 +1053,6 @@ static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx)
 	gfx10_emit_shader_ngg_tail(sctx, shader, initial_cdw);
 }
 
-static void si_set_ge_pc_alloc(struct si_screen *sscreen,
-			       struct si_pm4_state *pm4, bool culling)
-{
-	si_pm4_set_reg(pm4, R_030980_GE_PC_ALLOC,
-		       S_030980_OVERSUB_EN(1) |
-		       S_030980_NUM_PC_LINES((culling ? 256 : 128) * sscreen->info.max_se - 1));
-}
-
 unsigned si_get_input_prim(const struct si_shader_selector *gs)
 {
 	if (gs->type == PIPE_SHADER_GEOMETRY)
@@ -1167,7 +1159,6 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 		       S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5) |
 		       S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
 		       S_00B22C_LDS_SIZE(shader->config.lds_size));
-	si_set_ge_pc_alloc(sscreen, pm4, false);
 
 	nparams = MAX2(shader->info.nr_param_exports, 1);
 	shader->ctx_reg.ngg.spi_vs_out_config =
@@ -1419,8 +1410,6 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 
 	si_pm4_set_reg(pm4, R_00B120_SPI_SHADER_PGM_LO_VS, va >> 8);
 	si_pm4_set_reg(pm4, R_00B124_SPI_SHADER_PGM_HI_VS, S_00B124_MEM_BASE(va >> 40));
-	if (sscreen->info.chip_class >= GFX10)
-		si_set_ge_pc_alloc(sscreen, pm4, false);
 
 	uint32_t rsrc1 = S_00B128_VGPRS((shader->config.num_vgprs - 1) /
 					(sscreen->ge_wave_size == 32 ? 8 : 4)) |
