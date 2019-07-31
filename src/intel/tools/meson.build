@@ -190,22 +190,29 @@ i965_asm = executable(
 )
 
 asm_testcases = [
-  ['brw', 'tests/gen4'],
-  ['g4x', 'tests/gen4.5'],
-  ['ilk', 'tests/gen5'],
-  ['snb', 'tests/gen6'],
-  ['ivb', 'tests/gen7'],
-  ['hsw', 'tests/gen7.5'],
-  ['bdw', 'tests/gen8'],
-  ['skl', 'tests/gen9'],
-  ['icl', 'tests/gen11'],
+  ['brw', 'gen4'],
+  ['g4x', 'gen4.5'],
+  ['ilk', 'gen5'],
+  ['snb', 'gen6'],
+  ['ivb', 'gen7'],
+  ['hsw', 'gen7.5'],
+  ['bdw', 'gen8'],
+  ['skl', 'gen9'],
+  ['icl', 'gen11'],
 ]
 
-test_runner = find_program('tests/run-test.sh')
+test_runner = find_program('tests/run-test.py')
 foreach testcase : asm_testcases
+  _gen_name = testcase[0]
+  _gen_num = testcase[1]
+  _gen_folder = join_paths(meson.current_source_dir(), 'tests', _gen_num)
   test(
-    'i965_asm : ' + testcase[1], test_runner,
-    args : [i965_asm, testcase[1], testcase[0]],
-    env : ['srcdir=' + meson.current_source_dir()]
+    'i965_asm : ' + _gen_num, test_runner,
+    args : [
+      '--i965_asm', i965_asm,
+      '--gen_name', _gen_name,
+      '--gen_folder', _gen_folder,
+    ],
+    suite : 'intel',
   )
 endforeach
