@@ -354,6 +354,7 @@ struct radv_instance {
 
 	uint64_t debug_flags;
 	uint64_t perftest_flags;
+	uint8_t num_sc_threads;
 
 	struct vk_debug_report_instance             debug_report_callbacks;
 
@@ -723,6 +724,24 @@ struct radv_bo_list {
 	pthread_mutex_t mutex;
 };
 
+struct radv_secure_compile_process {
+	/* Secure process file descriptors */
+	int fd_secure_input;
+	int fd_secure_output;
+
+	/* Secure compile process id */
+	pid_t sc_pid;
+
+	/* Is the secure compile process currently in use by a thread */
+	bool in_use;
+};
+
+struct radv_secure_compile_state {
+	struct radv_secure_compile_process *secure_compile_processes;
+	uint32_t secure_compile_thread_counter;
+	mtx_t secure_compile_mutex;
+};
+
 struct radv_device {
 	VK_LOADER_DATA                              _loader_data;
 
@@ -793,6 +812,8 @@ struct radv_device {
 
 	/* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
 	int force_aniso;
+
+	struct radv_secure_compile_state *sc_state;
 };
 
 struct radv_device_memory {
