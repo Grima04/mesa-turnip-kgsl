@@ -108,7 +108,6 @@ struct panfrost_context {
         struct pipe_framebuffer_state pipe_framebuffer;
 
         struct panfrost_memory cmdstream_persistent;
-        struct panfrost_memory shaders;
         struct panfrost_memory scratchpad;
         struct panfrost_memory tiler_heap;
         struct panfrost_memory tiler_dummy;
@@ -224,6 +223,8 @@ struct panfrost_shader_state {
 
         /* Should we enable helper invocations */
         bool helper_invocations;
+
+        struct panfrost_bo *bo;
 };
 
 /* A collection of varyings (the CSO) */

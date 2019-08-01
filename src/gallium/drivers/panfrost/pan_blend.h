@@ -33,8 +33,10 @@
 /* An internal blend shader descriptor, from the compiler */
 
 struct panfrost_blend_shader {
-        /* The compiled shader in GPU memory */
-        struct panfrost_transfer shader;
+        struct panfrost_context *ctx;
+
+        /* The compiled shader */
+        void *buffer;
 
         /* Byte count of the shader */
         unsigned size;
@@ -53,8 +55,11 @@ struct panfrost_blend_shader {
 /* A blend shader descriptor ready for actual use */
 
 struct panfrost_blend_shader_final {
-        /* The upload, possibly to transient memory */
-        mali_ptr gpu;
+        /* The compiled shader in GPU memory, possibly patched */
+        struct panfrost_bo *bo;
+
+        /* First instruction tag (for tagging the pointer) */
+        unsigned first_tag;
 
         /* Same meaning as panfrost_blend_shader */
         unsigned work_count;

@@ -43,6 +43,7 @@ panfrost_shader_compile(
                 gl_shader_stage stage,
                 struct panfrost_shader_state *state)
 {
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         uint8_t *dst;
 
         nir_shader *s;
@@ -80,7 +81,9 @@ panfrost_shader_compile(
          * I bet someone just thought that would be a cute pun. At least,
          * that's how I'd do it. */
 
-        meta->shader = panfrost_upload(&ctx->shaders, dst, size) | program.first_tag;
+        state->bo = panfrost_drm_create_bo(screen, size, PAN_ALLOCATE_EXECUTE);
+        memcpy(state->bo->cpu, dst, size);
+        meta->shader = state->bo->gpu | program.first_tag;
 
         util_dynarray_fini(&program.compiled);
 

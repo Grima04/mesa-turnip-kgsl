@@ -88,6 +88,9 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
         /* Kernel will fail (confusingly) with EPERM otherwise */
         assert(size > 0);
 
+        /* To maximize BO cache usage, don't allocate tiny BOs */
+        size = MAX2(size, 4096);
+
         unsigned translated_flags = 0;
 
         /* TODO: translate flags to kernel flags, if the kernel supports */
@@ -285,7 +288,6 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
         /* TODO: Add here the transient pools */
-        panfrost_job_add_bo(job, ctx->shaders.bo);
         panfrost_job_add_bo(job, ctx->scratchpad.bo);
         panfrost_job_add_bo(job, ctx->tiler_heap.bo);
         panfrost_job_add_bo(job, job->polygon_list);

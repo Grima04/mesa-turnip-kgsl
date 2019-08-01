@@ -133,6 +133,8 @@ panfrost_compile_blend_shader(
 {
         struct panfrost_blend_shader res;
 
+        res.ctx = ctx;
+
         /* Build the shader */
 
         nir_shader *shader = nir_shader_create(NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
@@ -172,21 +174,14 @@ panfrost_compile_blend_shader(
         midgard_program program;
         midgard_compile_shader_nir(&ctx->compiler, shader, &program, true);
 
-        /* Upload the shader */
-
-        int size = program.compiled.size;
-        uint8_t *dst = program.compiled.data;
-
-        res.shader.cpu = mem_dup(dst, size);
-        res.shader.gpu = panfrost_upload(&ctx->shaders, dst, size);
-
         /* At least two work registers are needed due to an encoding quirk */
         res.work_count = MAX2(program.work_register_count, 2);
 
         /* Allow us to patch later */
         res.patch_index = program.blend_patch_offset;
         res.first_tag = program.first_tag;
-        res.size = size;
+        res.size = program.compiled.size;
+        res.buffer = program.compiled.data;
 
         return res;
 }

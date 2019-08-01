@@ -152,10 +152,23 @@ panfrost_bind_blend_state(struct pipe_context *pipe,
 }
 
 static void
-panfrost_delete_blend_state(struct pipe_context *pipe,
-                            void *blend)
+panfrost_delete_blend_shader(struct hash_entry *entry)
 {
-        /* TODO: Free shader binary? */
+        struct panfrost_blend_shader *shader = (struct panfrost_blend_shader *)entry->data;
+        free(shader->buffer);
+        free(shader);
+}
+
+static void
+panfrost_delete_blend_state(struct pipe_context *pipe,
+                            void *cso)
+{
+        struct panfrost_blend_state *blend = (struct panfrost_blend_state *) cso;
+
+        for (unsigned c = 0; c < 4; ++c) {
+                struct panfrost_blend_rt *rt = &blend->rt[c];
+                _mesa_hash_table_u64_clear(rt->shaders, panfrost_delete_blend_shader);
+        }
         ralloc_free(blend);
 }
 
@@ -208,6 +221,9 @@ panfrost_blend_constant(float *out, float *in, unsigned mask)
 struct panfrost_blend_final
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 {
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+
         /* Grab the format, falling back gracefully if called invalidly (which
          * has to happen for no-color-attachment FBOs, for instance)  */
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
@@ -241,23 +257,24 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         struct panfrost_blend_shader *shader = panfrost_get_blend_shader(ctx, blend, fmt, rti);
         final.is_shader = true;
         final.shader.work_count = shader->work_count;
+        final.shader.first_tag = shader->first_tag;
+
+        /* Upload the shader */
+        final.shader.bo = panfrost_drm_create_bo(screen, shader->size, PAN_ALLOCATE_EXECUTE);
+        memcpy(final.shader.bo->cpu, shader->buffer, shader->size);
+
+        /* Pass BO ownership to job */
+        panfrost_job_add_bo(job, final.shader.bo);
+        panfrost_bo_unreference(ctx->base.screen, final.shader.bo);
 
         if (shader->patch_index) {
                 /* We have to specialize the blend shader to use constants, so
-                 * patch in the current constants and upload to transient
-                 * memory */
+                 * patch in the current constants */
 
-                float *patch = (float *) (shader->shader.cpu + shader->patch_index);
+                float *patch = (float *) (final.shader.bo->cpu + shader->patch_index);
                 memcpy(patch, ctx->blend_color.color, sizeof(float) * 4);
-
-                final.shader.gpu = panfrost_upload_transient(
-                                           ctx, shader->shader.cpu, shader->size);
-        } else {
-                /* No need to specialize further, use the preuploaded */
-                final.shader.gpu = shader->shader.gpu;
         }
 
-        final.shader.gpu |= shader->first_tag;
         return final;
 }
 

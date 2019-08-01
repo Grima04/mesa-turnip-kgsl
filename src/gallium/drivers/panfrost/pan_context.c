@@ -1062,6 +1062,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT, false);
 
+                panfrost_job_add_bo(job, variant->bo);
+
 #define COPY(name) ctx->fragment_shader_core.name = variant->tripipe->name
 
                 COPY(shader);
@@ -1140,7 +1142,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 if (blend.is_shader) {
                         ctx->fragment_shader_core.blend.shader =
-                                blend.shader.gpu;
+                                blend.shader.bo->gpu | blend.shader.first_tag;
                 } else {
                         ctx->fragment_shader_core.blend.shader = 0;
                 }
@@ -1215,7 +1217,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 assert(!(is_srgb && blend.is_shader));
 
                                 if (blend.is_shader) {
-                                        rts[i].blend.shader = blend.shader.gpu;
+                                        rts[i].blend.shader = blend.shader.bo->gpu | blend.shader.first_tag;
                                 } else {
                                         rts[i].blend.equation = *blend.equation.equation;
                                         rts[i].blend.constant = blend.equation.constant;
@@ -1904,6 +1906,12 @@ panfrost_delete_shader_state(
                 DBG("Deleting TGSI shader leaks duplicated tokens\n");
         }
 
+        for (unsigned i = 0; i < cso->variant_count; ++i) {
+                struct panfrost_shader_state *shader_state = &cso->variants[i];
+                panfrost_bo_unreference(pctx->screen, shader_state->bo);
+                shader_state->bo = NULL;
+        }
+
         free(so);
 }
 
@@ -2528,7 +2536,6 @@ panfrost_destroy(struct pipe_context *pipe)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
         panfrost_drm_free_slab(screen, &panfrost->scratchpad);
-        panfrost_drm_free_slab(screen, &panfrost->shaders);
         panfrost_drm_free_slab(screen, &panfrost->tiler_heap);
         panfrost_drm_free_slab(screen, &panfrost->tiler_dummy);
 
@@ -2673,7 +2680,6 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
         panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64*4, false, 0, 0, 0);
-        panfrost_drm_allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_heap, 4096, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_dummy, 1, false, PAN_ALLOCATE_INVISIBLE, 0, 0);
 }
