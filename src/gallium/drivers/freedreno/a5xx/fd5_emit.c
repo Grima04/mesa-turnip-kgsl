@@ -1125,12 +1125,11 @@ fd5_emit_init_screen(struct pipe_screen *pscreen)
 	struct fd_screen *screen = fd_screen(pscreen);
 	screen->emit_const = fd5_emit_const;
 	screen->emit_const_bo = fd5_emit_const_bo;
+	screen->emit_ib = fd5_emit_ib;
+	screen->mem_to_mem = fd5_mem_to_mem;
 }
 
 void
 fd5_emit_init(struct pipe_context *pctx)
 {
-	struct fd_context *ctx = fd_context(pctx);
-	ctx->emit_ib = fd5_emit_ib;
-	ctx->mem_to_mem = fd5_mem_to_mem;
 }

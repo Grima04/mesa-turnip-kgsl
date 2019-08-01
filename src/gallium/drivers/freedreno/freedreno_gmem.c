@@ -379,7 +379,7 @@ render_tiles(struct fd_batch *batch)
 		if (ctx->emit_tile) {
 			ctx->emit_tile(batch, tile);
 		} else {
-			ctx->emit_ib(batch->gmem, batch->draw);
+			ctx->screen->emit_ib(batch->gmem, batch->draw);
 		}
 		fd_reset_wfi(batch);
 
@@ -402,7 +402,7 @@ render_sysmem(struct fd_batch *batch)
 		ctx->query_prepare_tile(batch, 0, batch->gmem);
 
 	/* emit IB to drawcmds: */
-	ctx->emit_ib(batch->gmem, batch->draw);
+	ctx->screen->emit_ib(batch->gmem, batch->draw);
 	fd_reset_wfi(batch);
 
 	if (ctx->emit_sysmem_fini)

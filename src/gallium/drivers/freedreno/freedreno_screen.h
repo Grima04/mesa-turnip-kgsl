@@ -102,6 +102,14 @@ struct fd_screen {
 	void (*emit_const_bo)(struct fd_ringbuffer *ring, gl_shader_stage type, boolean write,
 			uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets);
 
+	/* indirect-branch emit: */
+	void (*emit_ib)(struct fd_ringbuffer *ring, struct fd_ringbuffer *target);
+
+	/* simple gpu "memcpy": */
+	void (*mem_to_mem)(struct fd_ringbuffer *ring, struct pipe_resource *dst,
+			unsigned dst_off, struct pipe_resource *src, unsigned src_off,
+			unsigned sizedwords);
+
 	int64_t cpu_gpu_time_delta;
 
 	struct fd_batch_cache batch_cache;

@@ -1336,13 +1336,13 @@ fd6_emit_init_screen(struct pipe_screen *pscreen)
 	struct fd_screen *screen = fd_screen(pscreen);
 	screen->emit_const = fd6_emit_const;
 	screen->emit_const_bo = fd6_emit_const_bo;
+	screen->emit_ib = fd6_emit_ib;
+	screen->mem_to_mem = fd6_mem_to_mem;
 }
 
 void
 fd6_emit_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
-	ctx->emit_ib = fd6_emit_ib;
-	ctx->mem_to_mem = fd6_mem_to_mem;
 	ctx->framebuffer_barrier = fd6_framebuffer_barrier;
 }

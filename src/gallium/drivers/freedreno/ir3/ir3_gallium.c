@@ -564,7 +564,7 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 		}
 
 		/* copy index_bias or start from draw params: */
-		ctx->mem_to_mem(ring, vertex_params_rsc, 0,
+		ctx->screen->mem_to_mem(ring, vertex_params_rsc, 0,
 				indirect->buffer, src_off, 1);
 
 		emit_const(ctx, ring, v, offset * 4, 0,
@@ -638,7 +638,7 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 					0x1000);
 				indirect_offset = 0;
 
-				ctx->mem_to_mem(ring, indirect, 0, info->indirect,
+				ctx->screen->mem_to_mem(ring, indirect, 0, info->indirect,
 						info->indirect_offset, 3);
 			} else {
 				pipe_resource_reference(&indirect, info->indirect);

@@ -566,11 +566,11 @@ fd2_emit_restore(struct fd_context *ctx, struct fd_ringbuffer *ring)
 void
 fd2_emit_init_screen(struct pipe_screen *pscreen)
 {
+	struct fd_screen *screen = fd_screen(pscreen);
+	screen->emit_ib = fd2_emit_ib;
 }
 
 void
 fd2_emit_init(struct pipe_context *pctx)
 {
-	struct fd_context *ctx = fd_context(pctx);
-	ctx->emit_ib = fd2_emit_ib;
 }
