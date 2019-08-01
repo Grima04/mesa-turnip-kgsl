@@ -620,6 +620,14 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          op = nir_intrinsic_load_point_coord;
          load = nir_load_point_coord(b);
          break;
+      case TGSI_SEMANTIC_THREAD_ID:
+         op = nir_intrinsic_load_local_invocation_id;
+         load = nir_load_local_invocation_id(b);
+         break;
+      case TGSI_SEMANTIC_BLOCK_ID:
+         op = nir_intrinsic_load_work_group_id;
+         load = nir_load_work_group_id(b);
+         break;
       default:
          unreachable("bad system value");
       }
@@ -2438,6 +2446,15 @@ ttn_compile_init(const void *tgsi_tokens,
       case TGSI_PROPERTY_VS_BLIT_SGPRS_AMD:
          s->info.vs.blit_sgprs_amd = value;
          break;
+      case TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH:
+         s->info.cs.local_size[0] = value;
+         break;
+      case TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT:
+         s->info.cs.local_size[1] = value;
+         break;
+      case TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH:
+         s->info.cs.local_size[2] = value;
+         break;
       default:
          if (value) {
             fprintf(stderr, "tgsi_to_nir: unhandled TGSI property %u = %u\n",
@@ -2446,6 +2463,12 @@ ttn_compile_init(const void *tgsi_tokens,
          }
       }
    }
+
+   if (s->info.stage == MESA_SHADER_COMPUTE &&
+       (!s->info.cs.local_size[0] ||
+        !s->info.cs.local_size[1] ||
+        !s->info.cs.local_size[2]))
+      s->info.cs.local_size_variable = true;
 
    c->inputs = rzalloc_array(c, struct nir_variable *, s->num_inputs);
    c->outputs = rzalloc_array(c, struct nir_variable *, s->num_outputs);
