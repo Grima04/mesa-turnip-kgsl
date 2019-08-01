@@ -232,6 +232,99 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
 
    struct ssa_result_range r = {unknown, false};
 
+   /* ge_zero: ge_zero + ge_zero
+    *
+    * gt_zero: gt_zero + eq_zero
+    *        | gt_zero + ge_zero
+    *        | eq_zero + gt_zero   # Addition is commutative
+    *        | ge_zero + gt_zero   # Addition is commutative
+    *        | gt_zero + gt_zero
+    *        ;
+    *
+    * le_zero: le_zero + le_zero
+    *
+    * lt_zero: lt_zero + eq_zero
+    *        | lt_zero + le_zero
+    *        | eq_zero + lt_zero   # Addition is commutative
+    *        | le_zero + lt_zero   # Addition is commutative
+    *        | lt_zero + lt_zero
+    *        ;
+    *
+    * eq_zero: eq_zero + eq_zero
+    *
+    * All other cases are 'unknown'.
+    */
+   static const enum ssa_ranges fadd_table[last_range + 1][last_range + 1] = {
+      /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+      /* unknown */ { _______, _______, _______, _______, _______, _______, _______ },
+      /* lt_zero */ { _______, lt_zero, lt_zero, _______, _______, _______, lt_zero },
+      /* le_zero */ { _______, lt_zero, le_zero, _______, _______, _______, le_zero },
+      /* gt_zero */ { _______, _______, _______, gt_zero, gt_zero, _______, gt_zero },
+      /* ge_zero */ { _______, _______, _______, gt_zero, ge_zero, _______, ge_zero },
+      /* ne_zero */ { _______, _______, _______, _______, _______, ne_zero, ne_zero },
+      /* eq_zero */ { _______, lt_zero, le_zero, gt_zero, ge_zero, ne_zero, eq_zero },
+   };
+
+   ASSERT_TABLE_IS_COMMUTATIVE(fadd_table);
+   ASSERT_TABLE_IS_DIAGONAL(fadd_table);
+
+   /* ge_zero: ge_zero * ge_zero
+    *        | ge_zero * gt_zero
+    *        | ge_zero * eq_zero
+    *        | le_zero * lt_zero
+    *        | lt_zero * le_zero  # Multiplication is commutative
+    *        | le_zero * le_zero
+    *        | gt_zero * ge_zero  # Multiplication is commutative
+    *        | eq_zero * ge_zero  # Multiplication is commutative
+    *        | a * a              # Left source == right source
+    *        ;
+    *
+    * gt_zero: gt_zero * gt_zero
+    *        | lt_zero * lt_zero
+    *        ;
+    *
+    * le_zero: ge_zero * le_zero
+    *        | ge_zero * lt_zero
+    *        | lt_zero * ge_zero  # Multiplication is commutative
+    *        | le_zero * ge_zero  # Multiplication is commutative
+    *        | le_zero * gt_zero
+    *        ;
+    *
+    * lt_zero: lt_zero * gt_zero
+    *        | gt_zero * lt_zero  # Multiplication is commutative
+    *        ;
+    *
+    * ne_zero: ne_zero * gt_zero
+    *        | ne_zero * lt_zero
+    *        | gt_zero * ne_zero  # Multiplication is commutative
+    *        | lt_zero * ne_zero  # Multiplication is commutative
+    *        | ne_zero * ne_zero
+    *        ;
+    *
+    * eq_zero: eq_zero * <any>
+    *          <any> * eq_zero    # Multiplication is commutative
+    *
+    * All other cases are 'unknown'.
+    */
+   static const enum ssa_ranges fmul_table[last_range + 1][last_range + 1] = {
+      /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+      /* unknown */ { _______, _______, _______, _______, _______, _______, eq_zero },
+      /* lt_zero */ { _______, gt_zero, ge_zero, lt_zero, le_zero, ne_zero, eq_zero },
+      /* le_zero */ { _______, ge_zero, ge_zero, le_zero, le_zero, _______, eq_zero },
+      /* gt_zero */ { _______, lt_zero, le_zero, gt_zero, ge_zero, ne_zero, eq_zero },
+      /* ge_zero */ { _______, le_zero, le_zero, ge_zero, ge_zero, _______, eq_zero },
+      /* ne_zero */ { _______, ne_zero, _______, ne_zero, _______, ne_zero, eq_zero },
+      /* eq_zero */ { eq_zero, eq_zero, eq_zero, eq_zero, eq_zero, eq_zero, eq_zero }
+   };
+
+   ASSERT_TABLE_IS_COMMUTATIVE(fmul_table);
+
+   static const enum ssa_ranges fneg_table[last_range + 1] = {
+   /* unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+      _______, gt_zero, ge_zero, lt_zero, le_zero, ne_zero, eq_zero
+   };
+
+
    switch (alu->op) {
    case nir_op_b2f32:
    case nir_op_b2i32:
@@ -353,44 +446,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       const struct ssa_result_range right = analyze_expression(alu, 1, ht);
 
       r.is_integral = left.is_integral && right.is_integral;
-
-      /* ge_zero: ge_zero + ge_zero
-       *
-       * gt_zero: gt_zero + eq_zero
-       *        | gt_zero + ge_zero
-       *        | eq_zero + gt_zero   # Addition is commutative
-       *        | ge_zero + gt_zero   # Addition is commutative
-       *        | gt_zero + gt_zero
-       *        ;
-       *
-       * le_zero: le_zero + le_zero
-       *
-       * lt_zero: lt_zero + eq_zero
-       *        | lt_zero + le_zero
-       *        | eq_zero + lt_zero   # Addition is commutative
-       *        | le_zero + lt_zero   # Addition is commutative
-       *        | lt_zero + lt_zero
-       *        ;
-       *
-       * eq_zero: eq_zero + eq_zero
-       *
-       * All other cases are 'unknown'.
-       */
-      static const enum ssa_ranges table[last_range + 1][last_range + 1] = {
-         /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
-         /* unknown */ { _______, _______, _______, _______, _______, _______, _______ },
-         /* lt_zero */ { _______, lt_zero, lt_zero, _______, _______, _______, lt_zero },
-         /* le_zero */ { _______, lt_zero, le_zero, _______, _______, _______, le_zero },
-         /* gt_zero */ { _______, _______, _______, gt_zero, gt_zero, _______, gt_zero },
-         /* ge_zero */ { _______, _______, _______, gt_zero, ge_zero, _______, ge_zero },
-         /* ne_zero */ { _______, _______, _______, _______, _______, ne_zero, ne_zero },
-         /* eq_zero */ { _______, lt_zero, le_zero, gt_zero, ge_zero, ne_zero, eq_zero },
-      };
-
-      ASSERT_TABLE_IS_COMMUTATIVE(table);
-      ASSERT_TABLE_IS_DIAGONAL(table);
-
-      r.range = table[left.range][right.range];
+      r.range = fadd_table[left.range][right.range];
       break;
    }
 
@@ -528,57 +584,6 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
 
       r.is_integral = left.is_integral && right.is_integral;
 
-      /* ge_zero: ge_zero * ge_zero
-       *        | ge_zero * gt_zero
-       *        | ge_zero * eq_zero
-       *        | le_zero * lt_zero
-       *        | lt_zero * le_zero  # Multiplication is commutative
-       *        | le_zero * le_zero
-       *        | gt_zero * ge_zero  # Multiplication is commutative
-       *        | eq_zero * ge_zero  # Multiplication is commutative
-       *        | a * a              # Left source == right source
-       *        ;
-       *
-       * gt_zero: gt_zero * gt_zero
-       *        | lt_zero * lt_zero
-       *        ;
-       *
-       * le_zero: ge_zero * le_zero
-       *        | ge_zero * lt_zero
-       *        | lt_zero * ge_zero  # Multiplication is commutative
-       *        | le_zero * ge_zero  # Multiplication is commutative
-       *        | le_zero * gt_zero
-       *        ;
-       *
-       * lt_zero: lt_zero * gt_zero
-       *        | gt_zero * lt_zero  # Multiplication is commutative
-       *        ;
-       *
-       * ne_zero: ne_zero * gt_zero
-       *        | ne_zero * lt_zero
-       *        | gt_zero * ne_zero  # Multiplication is commutative
-       *        | lt_zero * ne_zero  # Multiplication is commutative
-       *        | ne_zero * ne_zero
-       *        ;
-       *
-       * eq_zero: eq_zero * <any>
-       *          <any> * eq_zero    # Multiplication is commutative
-       *
-       * All other cases are 'unknown'.
-       */
-      static const enum ssa_ranges table[last_range + 1][last_range + 1] = {
-         /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
-         /* unknown */ { _______, _______, _______, _______, _______, _______, eq_zero },
-         /* lt_zero */ { _______, gt_zero, ge_zero, lt_zero, le_zero, ne_zero, eq_zero },
-         /* le_zero */ { _______, ge_zero, ge_zero, le_zero, le_zero, _______, eq_zero },
-         /* gt_zero */ { _______, lt_zero, le_zero, gt_zero, ge_zero, ne_zero, eq_zero },
-         /* ge_zero */ { _______, le_zero, le_zero, ge_zero, ge_zero, _______, eq_zero },
-         /* ne_zero */ { _______, ne_zero, _______, ne_zero, _______, ne_zero, eq_zero },
-         /* eq_zero */ { eq_zero, eq_zero, eq_zero, eq_zero, eq_zero, eq_zero, eq_zero }
-      };
-
-      ASSERT_TABLE_IS_COMMUTATIVE(table);
-
       /* x * x => ge_zero */
       if (left.range != eq_zero && nir_alu_srcs_equal(alu, alu, 0, 1)) {
          /* x * x => ge_zero or gt_zero depending on the range of x. */
@@ -587,7 +592,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
          /* -x * x => le_zero or lt_zero depending on the range of x. */
          r.range = is_not_zero(left.range) ? lt_zero : le_zero;
       } else
-         r.range = table[left.range][right.range];
+         r.range = fmul_table[left.range][right.range];
 
       break;
    }
@@ -603,30 +608,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
    case nir_op_fneg:
       r = analyze_expression(alu, 0, ht);
 
-      switch (r.range) {
-      case le_zero:
-         r.range = ge_zero;
-         break;
-
-      case ge_zero:
-         r.range = le_zero;
-         break;
-
-      case lt_zero:
-         r.range = gt_zero;
-         break;
-
-      case gt_zero:
-         r.range = lt_zero;
-         break;
-
-      case ne_zero:
-      case eq_zero:
-      case unknown:
-         /* Negation doesn't change anything about these ranges. */
-         break;
-      }
-
+      r.range = fneg_table[r.range];
       break;
 
    case nir_op_fsat:
@@ -723,6 +705,48 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       /* Boolean results are 0 or -1. */
       r = (struct ssa_result_range){le_zero, false};
       break;
+
+   case nir_op_ffma: {
+      const struct ssa_result_range first = analyze_expression(alu, 0, ht);
+      const struct ssa_result_range second = analyze_expression(alu, 1, ht);
+      const struct ssa_result_range third = analyze_expression(alu, 2, ht);
+
+      r.is_integral = first.is_integral && second.is_integral &&
+                      third.is_integral;
+
+      enum ssa_ranges fmul_range;
+
+      if (first.range != eq_zero && nir_alu_srcs_equal(alu, alu, 0, 1)) {
+         /* x * x => ge_zero or gt_zero depending on the range of x. */
+         fmul_range = is_not_zero(first.range) ? gt_zero : ge_zero;
+      } else if (first.range != eq_zero && nir_alu_srcs_negative_equal(alu, alu, 0, 1)) {
+         /* -x * x => le_zero or lt_zero depending on the range of x. */
+         fmul_range = is_not_zero(first.range) ? lt_zero : le_zero;
+      } else
+         fmul_range = fmul_table[first.range][second.range];
+
+      r.range = fadd_table[fmul_range][third.range];
+      break;
+   }
+
+   case nir_op_flrp: {
+      const struct ssa_result_range first = analyze_expression(alu, 0, ht);
+      const struct ssa_result_range second = analyze_expression(alu, 1, ht);
+      const struct ssa_result_range third = analyze_expression(alu, 2, ht);
+
+      r.is_integral = first.is_integral && second.is_integral &&
+                      third.is_integral;
+
+      /* Decompose the flrp to first + third * (second + -first) */
+      const enum ssa_ranges inner_fadd_range =
+         fadd_table[second.range][fneg_table[first.range]];
+
+      const enum ssa_ranges fmul_range =
+         fmul_table[third.range][inner_fadd_range];
+
+      r.range = fadd_table[first.range][fmul_range];
+      break;
+   }
 
    default:
       r = (struct ssa_result_range){unknown, false};
