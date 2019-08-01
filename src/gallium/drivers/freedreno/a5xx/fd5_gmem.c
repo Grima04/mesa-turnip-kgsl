@@ -345,7 +345,7 @@ emit_binning_pass(struct fd_batch *batch)
 			A5XX_RB_WINDOW_OFFSET_Y(0));
 
 	/* emit IB to binning drawcmds: */
-	ctx->emit_ib(ring, batch->binning);
+	fd5_emit_ib(ring, batch->binning);
 
 	fd_reset_wfi(batch);
 
@@ -376,7 +376,7 @@ fd5_emit_tile_init(struct fd_batch *batch)
 	fd5_emit_restore(batch, ring);
 
 	if (batch->lrz_clear)
-		ctx->emit_ib(ring, batch->lrz_clear);
+		fd5_emit_ib(ring, batch->lrz_clear);
 
 	fd5_emit_lrz_flush(ring);
 
