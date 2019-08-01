@@ -406,7 +406,7 @@ def generate(env):
     if platform == 'windows':
         cppdefines += ['PIPE_SUBSYSTEM_WINDOWS_USER']
     if env['embedded']:
-        cppdefines += ['PIPE_SUBSYSTEM_EMBEDDED']
+        cppdefines += ['EMBEDDED_DEVICE']
     env.Append(CPPDEFINES = cppdefines)
 
     # C compiler options

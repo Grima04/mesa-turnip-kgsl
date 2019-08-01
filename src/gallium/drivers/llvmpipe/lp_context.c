@@ -48,7 +48,7 @@
 #include "lp_setup.h"
 
 /* This is only safe if there's just one concurrent context */
-#ifdef PIPE_SUBSYSTEM_EMBEDDED
+#ifdef EMBEDDED_DEVICE
 #define USE_GLOBAL_LLVM_CONTEXT
 #endif
 

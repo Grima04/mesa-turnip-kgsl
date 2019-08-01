@@ -39,7 +39,7 @@
 #include "pipe/p_compiler.h"
 
 
-#if defined(PIPE_SUBSYSTEM_EMBEDDED)
+#if defined(EMBEDDED_DEVICE)
 
 #ifdef __cplusplus
 extern "C" {
