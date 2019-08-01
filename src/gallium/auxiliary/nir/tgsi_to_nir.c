@@ -418,6 +418,10 @@ ttn_emit_declaration(struct ttn_compile *c)
                   var->data.location = FRAG_RESULT_DEPTH;
                   var->type = glsl_float_type();
                   break;
+               case TGSI_SEMANTIC_STENCIL:
+                  var->data.location = FRAG_RESULT_STENCIL;
+                  var->type = glsl_int_type();
+                  break;
                default:
                   fprintf(stderr, "Bad TGSI semantic: %d/%d\n",
                           decl->Semantic.Name, decl->Semantic.Index);
@@ -2330,12 +2334,15 @@ ttn_add_output_stores(struct ttn_compile *c)
       src.reg.base_offset = c->output_regs[i].offset;
 
       nir_ssa_def *store_value = nir_ssa_for_src(b, src, 4);
-      if (c->build.shader->info.stage == MESA_SHADER_FRAGMENT &&
-          var->data.location == FRAG_RESULT_DEPTH) {
-         /* TGSI uses TGSI_SEMANTIC_POSITION.z for the depth output, while
-          * NIR uses a single float FRAG_RESULT_DEPTH.
+      if (c->build.shader->info.stage == MESA_SHADER_FRAGMENT) {
+         /* TGSI uses TGSI_SEMANTIC_POSITION.z for the depth output
+          * and TGSI_SEMANTIC_STENCIL.y for the stencil output,
+          * while NIR uses a single-component output.
           */
-         store_value = nir_channel(b, store_value, 2);
+         if (var->data.location == FRAG_RESULT_DEPTH)
+            store_value = nir_channel(b, store_value, 2);
+         else if (var->data.location == FRAG_RESULT_STENCIL)
+            store_value = nir_channel(b, store_value, 1);
       }
 
       nir_store_deref(b, nir_build_deref_var(b, var), store_value,
