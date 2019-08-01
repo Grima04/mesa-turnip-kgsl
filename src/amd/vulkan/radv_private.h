@@ -1561,15 +1561,6 @@ struct radv_fmask_info {
 	uint64_t slice_size;
 };
 
-struct radv_cmask_info {
-	uint64_t offset;
-	uint64_t size;
-	unsigned alignment;
-	unsigned slice_tile_max;
-	unsigned slice_size;
-};
-
-
 struct radv_image_plane {
 	VkFormat format;
 	struct radeon_surf surface;
@@ -1604,7 +1595,7 @@ struct radv_image {
 	bool tc_compatible_cmask;
 
 	struct radv_fmask_info fmask;
-	struct radv_cmask_info cmask;
+	uint64_t cmask_offset;
 	uint64_t clear_value_offset;
 	uint64_t fce_pred_offset;
 	uint64_t dcc_pred_offset;
@@ -1654,7 +1645,7 @@ bool radv_layout_dcc_compressed(const struct radv_image *image,
 static inline bool
 radv_image_has_cmask(const struct radv_image *image)
 {
-	return image->cmask.size;
+	return image->planes[0].surface.cmask_size;
 }
 
 /**

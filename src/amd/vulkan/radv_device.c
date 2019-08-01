@@ -4408,7 +4408,7 @@ radv_initialise_color_surface(struct radv_device *device,
 
 		cb->cb_color_pitch = S_028C64_TILE_MAX(pitch_tile_max);
 		cb->cb_color_slice = S_028C68_TILE_MAX(slice_tile_max);
-		cb->cb_color_cmask_slice = iview->image->cmask.slice_tile_max;
+		cb->cb_color_cmask_slice = surf->u.legacy.cmask_slice_tile_max;
 
 		cb->cb_color_attrib |= S_028C74_TILE_MODE_INDEX(tile_mode_index);
 
@@ -4428,7 +4428,7 @@ radv_initialise_color_surface(struct radv_device *device,
 
 	/* CMASK variables */
 	va = radv_buffer_get_va(iview->bo) + iview->image->offset;
-	va += iview->image->cmask.offset;
+	va += iview->image->cmask_offset;
 	cb->cb_color_cmask = va >> 8;
 
 	va = radv_buffer_get_va(iview->bo) + iview->image->offset;

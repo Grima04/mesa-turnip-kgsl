@@ -937,7 +937,7 @@ si_make_texture_descriptor(struct radv_device *device,
 					  S_008F24_META_RB_ALIGNED(image->planes[0].surface.u.gfx9.cmask.rb_aligned);
 
 			if (radv_image_is_tc_compat_cmask(image)) {
-				va = gpu_address + image->offset + image->cmask.offset;
+				va = gpu_address + image->offset + image->cmask_offset;
 
 				fmask_state[5] |= S_008F24_META_DATA_ADDRESS(va >> 40);
 				fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
@@ -950,7 +950,7 @@ si_make_texture_descriptor(struct radv_device *device,
 			fmask_state[5] |= S_008F24_LAST_ARRAY(last_layer);
 
 			if (radv_image_is_tc_compat_cmask(image)) {
-				va = gpu_address + image->offset + image->cmask.offset;
+				va = gpu_address + image->offset + image->cmask_offset;
 
 				fmask_state[6] |= S_008F28_COMPRESSION_EN(1);
 				fmask_state[7] |= va >> 8;
@@ -1137,44 +1137,26 @@ radv_image_alloc_fmask(struct radv_device *device,
 }
 
 static void
-radv_image_get_cmask_info(struct radv_device *device,
-			  struct radv_image *image,
-			  struct radv_cmask_info *out)
-{
-	assert(image->plane_count == 1);
-
-	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		out->alignment = image->planes[0].surface.cmask_alignment;
-		out->size = image->planes[0].surface.cmask_size;
-		return;
-	}
-
-	out->slice_tile_max = image->planes[0].surface.u.legacy.cmask_slice_tile_max;
-	out->alignment = image->planes[0].surface.cmask_alignment;
-	out->slice_size = image->planes[0].surface.cmask_slice_size;
-	out->size = image->planes[0].surface.cmask_size;
-}
-
-static void
 radv_image_alloc_cmask(struct radv_device *device,
 		       struct radv_image *image)
 {
+	unsigned cmask_alignment = image->planes[0].surface.cmask_alignment;
+	unsigned cmask_size = image->planes[0].surface.cmask_size;
 	uint32_t clear_value_size = 0;
-	radv_image_get_cmask_info(device, image, &image->cmask);
 
-	if (!image->cmask.size)
+	if (!cmask_size)
 		return;
 
-	assert(image->cmask.alignment);
+	assert(cmask_alignment);
 
-	image->cmask.offset = align64(image->size, image->cmask.alignment);
+	image->cmask_offset = align64(image->size, cmask_alignment);
 	/* + 8 for storing the clear values */
 	if (!image->clear_value_offset) {
-		image->clear_value_offset = image->cmask.offset + image->cmask.size;
+		image->clear_value_offset = image->cmask_offset + cmask_size;
 		clear_value_size = 8;
 	}
-	image->size = image->cmask.offset + image->cmask.size + clear_value_size;
-	image->alignment = MAX2(image->alignment, image->cmask.alignment);
+	image->size = image->cmask_offset + cmask_size + clear_value_size;
+	image->alignment = MAX2(image->alignment, cmask_alignment);
 }
 
 static void
