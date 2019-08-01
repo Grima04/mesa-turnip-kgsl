@@ -2330,6 +2330,20 @@ panfrost_sampler_view_destroy(
         ralloc_free(view);
 }
 
+static void
+panfrost_set_shader_buffers(
+        struct pipe_context *pctx,
+        enum pipe_shader_type shader,
+        unsigned start, unsigned count,
+        const struct pipe_shader_buffer *buffers,
+        unsigned writable_bitmask)
+{
+        struct panfrost_context *ctx = pan_context(pctx);
+
+        util_set_shader_buffers_mask(ctx->ssbo[shader], &ctx->ssbo_mask[shader],
+                        buffers, start, count);
+}
+
 /* Hints that a framebuffer should use AFBC where possible */
 
 static void
@@ -2693,6 +2707,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         gallium->set_vertex_buffers = panfrost_set_vertex_buffers;
         gallium->set_constant_buffer = panfrost_set_constant_buffer;
+        gallium->set_shader_buffers = panfrost_set_shader_buffers;
 
         gallium->set_stencil_ref = panfrost_set_stencil_ref;
 
