@@ -335,6 +335,24 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 					} else {
 						layout->num_ubos = shader->info.num_ubos;
 					}
+					break;
+				case nir_intrinsic_load_base_vertex:
+				case nir_intrinsic_load_first_vertex:
+					layout->num_driver_params =
+						MAX2(layout->num_driver_params, IR3_DP_VTXID_BASE + 1);
+					break;
+				case nir_intrinsic_load_user_clip_plane:
+					layout->num_driver_params =
+						MAX2(layout->num_driver_params, IR3_DP_UCP7_W + 1);
+					break;
+				case nir_intrinsic_load_num_work_groups:
+					layout->num_driver_params =
+						MAX2(layout->num_driver_params, IR3_DP_NUM_WORK_GROUPS_Z + 1);
+					break;
+				case nir_intrinsic_load_local_group_size:
+					layout->num_driver_params =
+						MAX2(layout->num_driver_params, IR3_DP_LOCAL_GROUP_SIZE_Z + 1);
+					break;
 				default:
 					break;
 				}
@@ -353,8 +371,17 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 
 	ir3_nir_scan_driver_consts(nir, const_state);
 
+	if ((compiler->gpu_id < 500) &&
+			(shader->stream_output.num_outputs > 0)) {
+		const_state->num_driver_params =
+			MAX2(const_state->num_driver_params, IR3_DP_VTXCNT_MAX + 1);
+	}
+
+	/* num_driver_params is scalar, align to vec4: */
+	const_state->num_driver_params = align(const_state->num_driver_params, 4);
+
 	debug_assert((shader->ubo_state.size % 16) == 0);
-	unsigned constoff = align(shader->ubo_state.size / 16, 4);
+	unsigned constoff = align(shader->ubo_state.size / 16, 8);
 	unsigned ptrsz = ir3_pointer_size(compiler);
 
 	if (const_state->num_ubos > 0) {
@@ -374,15 +401,9 @@ ir3_setup_const_state(struct ir3_shader *shader, nir_shader *nir)
 		constoff += align(cnt, 4) / 4;
 	}
 
-	unsigned num_driver_params = 0;
-	if (shader->type == MESA_SHADER_VERTEX) {
-		num_driver_params = IR3_DP_VS_COUNT;
-	} else if (shader->type == MESA_SHADER_COMPUTE) {
-		num_driver_params = IR3_DP_CS_COUNT;
-	}
-
-	const_state->offsets.driver_param = constoff;
-	constoff += align(num_driver_params, 4) / 4;
+	if (const_state->num_driver_params > 0)
+		const_state->offsets.driver_param = constoff;
+	constoff += const_state->num_driver_params / 4;
 
 	if ((shader->type == MESA_SHADER_VERTEX) &&
 			(compiler->gpu_id < 500) &&

@@ -532,6 +532,8 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 		vertex_params_size = ARRAY_SIZE(vertex_params);
 	}
 
+	vertex_params_size = MAX2(vertex_params_size, const_state->num_driver_params);
+
 	bool needs_vtxid_base =
 		ir3_find_sysval_regid(v, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) != regid(63, 0);
 
@@ -656,7 +658,7 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 				[IR3_DP_LOCAL_GROUP_SIZE_Y] = info->block[1],
 				[IR3_DP_LOCAL_GROUP_SIZE_Z] = info->block[2],
 			};
-			uint32_t size = MIN2(ARRAY_SIZE(compute_params),
+			uint32_t size = MIN2(const_state->num_driver_params,
 					v->constlen * 4 - offset * 4);
 
 			emit_const(ctx->screen, ring, v, offset * 4, 0, size,

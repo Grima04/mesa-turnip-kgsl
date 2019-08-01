@@ -112,6 +112,7 @@ enum ir3_driver_param {
  */
 struct ir3_const_state {
 	unsigned num_ubos;
+	unsigned num_driver_params;   /* scalar */
 
 	struct {
 		/* user const start at zero */
