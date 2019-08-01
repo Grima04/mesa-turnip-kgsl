@@ -158,6 +158,10 @@ tgsi_varying_semantic_to_slot(unsigned semantic, unsigned index)
       return VARYING_SLOT_VIEWPORT;
    case TGSI_SEMANTIC_LAYER:
       return VARYING_SLOT_LAYER;
+   case TGSI_SEMANTIC_TESSINNER:
+      return VARYING_SLOT_TESS_LEVEL_INNER;
+   case TGSI_SEMANTIC_TESSOUTER:
+      return VARYING_SLOT_TESS_LEVEL_OUTER;
    default:
       fprintf(stderr, "Bad TGSI semantic: %d/%d\n", semantic, index);
       abort();
@@ -393,6 +397,9 @@ ttn_emit_declaration(struct ttn_compile *c)
             var->data.index = 0;
             var->data.interpolation =
                ttn_translate_interp_mode(decl->Interp.Interpolate);
+            var->data.patch = semantic_name == TGSI_SEMANTIC_TESSINNER ||
+                              semantic_name == TGSI_SEMANTIC_TESSOUTER ||
+                              semantic_name == TGSI_SEMANTIC_PATCH;
 
             if (c->scan->processor == PIPE_SHADER_FRAGMENT) {
                switch (semantic_name) {
