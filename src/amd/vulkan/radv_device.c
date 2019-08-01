@@ -385,10 +385,15 @@ radv_physical_device_init(struct radv_physical_device *device,
 
 	/* Determine the number of threads per wave for all stages. */
 	device->cs_wave_size = 64;
+	device->ps_wave_size = 64;
 
 	if (device->rad_info.chip_class >= GFX10) {
 		if (device->instance->perftest_flags & RADV_PERFTEST_CS_WAVE_32)
 			device->cs_wave_size = 32;
+
+		/* For pixel shaders, wave64 is recommanded. */
+		if (device->instance->perftest_flags & RADV_PERFTEST_PS_WAVE_32)
+			device->ps_wave_size = 32;
 	}
 
 	radv_physical_device_init_mem_types(device);
@@ -503,6 +508,7 @@ static const struct debug_control radv_perftest_options[] = {
 	{"shader_ballot", RADV_PERFTEST_SHADER_BALLOT},
 	{"tccompatcmask", RADV_PERFTEST_TC_COMPAT_CMASK},
 	{"cswave32", RADV_PERFTEST_CS_WAVE_32},
+	{"pswave32", RADV_PERFTEST_PS_WAVE_32},
 	{NULL, 0}
 };
 

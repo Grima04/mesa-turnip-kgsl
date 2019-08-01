@@ -673,7 +673,8 @@ radv_get_shader_wave_size(const struct radv_physical_device *pdevice,
 {
 	if (stage == MESA_SHADER_COMPUTE)
 		return pdevice->cs_wave_size;
-
+	else if (stage == MESA_SHADER_FRAGMENT)
+		return pdevice->ps_wave_size;
 	return 64;
 }
 
@@ -1142,6 +1143,7 @@ shader_variant_compile(struct radv_device *device,
 	options->tess_offchip_block_dw_size = device->tess_offchip_block_dw_size;
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
 	options->cs_wave_size = device->physical_device->cs_wave_size;
+	options->ps_wave_size = device->physical_device->ps_wave_size;
 
 	if (options->supports_spill)
 		tm_options |= AC_TM_SUPPORTS_SPILL;

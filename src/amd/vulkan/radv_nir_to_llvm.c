@@ -4323,6 +4323,8 @@ radv_nir_shader_wave_size(struct nir_shader *const *shaders, int shader_count,
 {
 	if (shaders[0]->info.stage == MESA_SHADER_COMPUTE)
 		return options->cs_wave_size;
+	else if (shaders[0]->info.stage == MESA_SHADER_FRAGMENT)
+		return options->ps_wave_size;
 	return 64;
 }
 

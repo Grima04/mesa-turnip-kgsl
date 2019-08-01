@@ -302,6 +302,7 @@ struct radv_physical_device {
 	bool has_dcc_constant_encode;
 
 	/* Number of threads per wave. */
+	uint8_t ps_wave_size;
 	uint8_t cs_wave_size;
 
 	/* This is the drivers on-disk cache used as a fallback as opposed to

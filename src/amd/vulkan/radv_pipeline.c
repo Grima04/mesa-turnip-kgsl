@@ -4060,7 +4060,8 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs,
 			       ps->config.spi_ps_input_addr);
 
 	radeon_set_context_reg(ctx_cs, R_0286D8_SPI_PS_IN_CONTROL,
-			       S_0286D8_NUM_INTERP(ps->info.fs.num_interp));
+			       S_0286D8_NUM_INTERP(ps->info.fs.num_interp) |
+			       S_0286D8_PS_W32_EN(pipeline->device->physical_device->ps_wave_size == 32));
 
 	radeon_set_context_reg(ctx_cs, R_0286E0_SPI_BARYC_CNTL, pipeline->graphics.spi_baryc_cntl);
 
