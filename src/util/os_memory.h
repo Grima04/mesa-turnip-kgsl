@@ -34,10 +34,7 @@
 #ifndef _OS_MEMORY_H_
 #define _OS_MEMORY_H_
 
-
-#include "pipe/p_config.h"
-#include "pipe/p_compiler.h"
-
+#include "detect_os.h"
 
 #if defined(EMBEDDED_DEVICE)
 
@@ -67,7 +64,7 @@ os_free_aligned(void *ptr);
 }
 #endif
 
-#elif defined(PIPE_OS_WINDOWS) && defined(DEBUG) && !defined(DEBUG_MEMORY_IMPLEMENTATION)
+#elif DETECT_OS_WINDOWS && defined(DEBUG) && !defined(DEBUG_MEMORY_IMPLEMENTATION)
 
 #  include "os_memory_debug.h"
 
