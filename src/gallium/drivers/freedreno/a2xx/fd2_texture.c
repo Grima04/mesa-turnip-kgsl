@@ -238,13 +238,6 @@ fd2_get_const_idx(struct fd_context *ctx, struct fd_texture_stateobj *tex,
 	return samp_id + ctx->tex[PIPE_SHADER_FRAGMENT].num_samplers;
 }
 
-/* for reasons unknown, it appears ETC1 cubemap needs swapped xy coordinates */
-bool fd2_texture_swap_xy(struct fd_texture_stateobj *tex, unsigned samp_id)
-{
-	return tex->textures[samp_id]->format == PIPE_FORMAT_ETC1_RGB8 &&
-		tex->textures[samp_id]->texture->target == PIPE_TEXTURE_CUBE;
-}
-
 void
 fd2_texture_init(struct pipe_context *pctx)
 {

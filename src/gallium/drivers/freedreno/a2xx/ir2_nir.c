@@ -716,7 +716,7 @@ emit_tex(struct ir2_context *ctx, nir_tex_instr * tex)
 
 	instr = ir2_instr_create_fetch(ctx, &tex->dest, TEX_FETCH);
 	instr->src[0] = src_coord;
-	instr->src[0].swizzle = is_cube ? IR2_SWIZZLE_XYW : 0;
+	instr->src[0].swizzle = is_cube ? IR2_SWIZZLE_YXW : 0;
 	instr->fetch.tex.is_cube = is_cube;
 	instr->fetch.tex.is_rect = is_rect;
 	instr->fetch.tex.samp_id = tex->sampler_index;
