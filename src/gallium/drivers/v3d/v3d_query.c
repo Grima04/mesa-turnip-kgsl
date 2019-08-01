@@ -143,10 +143,10 @@ v3d_get_query_result(struct pipe_context *pctx, struct pipe_query *query,
                 v3d_flush_jobs_using_bo(v3d, q->bo);
 
                 if (wait) {
-                        if (!v3d_bo_wait(q->bo, 0, "query"))
+                        if (!v3d_bo_wait(q->bo, ~0ull, "query"))
                                 return false;
                 } else {
-                        if (!v3d_bo_wait(q->bo, ~0ull, "query"))
+                        if (!v3d_bo_wait(q->bo, 0, "query"))
                                 return false;
                 }
 
