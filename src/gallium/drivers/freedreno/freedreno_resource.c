@@ -918,6 +918,9 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 		struct renderonly_scanout *scanout;
 		struct winsys_handle handle;
 
+		/* apply freedreno alignment requirement */
+		scanout_templat.width0 = align(tmpl->width0, screen->gmem_alignw);
+
 		scanout = renderonly_scanout_for_resource(&scanout_templat,
 												  screen->ro, &handle);
 		if (!scanout)
