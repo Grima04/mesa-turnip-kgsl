@@ -1380,6 +1380,7 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       samp = 2;
       break;
    case TGSI_OPCODE_TXL:
+   case TGSI_OPCODE_TEX_LZ:
       op = nir_texop_txl;
       num_srcs = 2;
       break;
@@ -1514,8 +1515,12 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       src_number++;
    }
 
-   if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXL) {
-      instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
+   if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TXL ||
+       tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TEX_LZ) {
+      if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_TEX_LZ)
+         instr->src[src_number].src = nir_src_for_ssa(nir_imm_int(b, 0));
+      else
+         instr->src[src_number].src = nir_src_for_ssa(ttn_channel(b, src[0], W));
       instr->src[src_number].src_type = nir_tex_src_lod;
       src_number++;
    }
@@ -1924,6 +1929,7 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_SLT] = nir_op_slt,
    [TGSI_OPCODE_SGE] = nir_op_sge,
    [TGSI_OPCODE_MAD] = nir_op_ffma,
+   [TGSI_OPCODE_TEX_LZ] = 0,
    [TGSI_OPCODE_LRP] = 0,
    [TGSI_OPCODE_SQRT] = nir_op_fsqrt,
    [TGSI_OPCODE_FRC] = nir_op_ffract,
@@ -2212,6 +2218,7 @@ ttn_emit_instruction(struct ttn_compile *c)
       break;
 
    case TGSI_OPCODE_TEX:
+   case TGSI_OPCODE_TEX_LZ:
    case TGSI_OPCODE_TXP:
    case TGSI_OPCODE_TXL:
    case TGSI_OPCODE_TXB:
