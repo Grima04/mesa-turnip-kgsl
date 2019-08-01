@@ -3495,6 +3495,18 @@ A bit mask of ``bit index < TGSI_SEMANTIC_SUBGROUP_INVOCATION``, i.e.
 ``(1 << subgroup_invocation) - 1`` in arbitrary precision arithmetic.
 
 
+TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL
+""""""""""""""""""""""""""""""""""""""
+
+A system value equal to the default_outer_level array set via set_tess_level.
+
+
+TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL
+""""""""""""""""""""""""""""""""""""""
+
+A system value equal to the default_inner_level array set via set_tess_level.
+
+
 Declaration Interpolate
 ^^^^^^^^^^^^^^^^^^^^^^^
 

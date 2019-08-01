@@ -256,13 +256,6 @@ enum {
 #define S_VS_STATE_LS_OUT_VERTEX_SIZE(x)	(((unsigned)(x) & 0xFF) << 24)
 #define C_VS_STATE_LS_OUT_VERTEX_SIZE		0x00FFFFFF
 
-/* Driver-specific system values. */
-enum {
-	/* Values from set_tess_state. */
-	TGSI_SEMANTIC_DEFAULT_TESSOUTER_SI = TGSI_SEMANTIC_COUNT,
-	TGSI_SEMANTIC_DEFAULT_TESSINNER_SI,
-};
-
 enum {
 	/* Use a property enum that CS wouldn't use. */
 	TGSI_PROPERTY_CS_LOCAL_SIZE = TGSI_PROPERTY_FS_COORD_ORIGIN,

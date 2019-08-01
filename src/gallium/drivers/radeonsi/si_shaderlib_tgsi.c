@@ -105,9 +105,9 @@ void *si_create_fixed_func_tcs(struct si_context *sctx)
 		return NULL;
 
 	outer = ureg_DECL_system_value(ureg,
-				       TGSI_SEMANTIC_DEFAULT_TESSOUTER_SI, 0);
+				       TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL, 0);
 	inner = ureg_DECL_system_value(ureg,
-				       TGSI_SEMANTIC_DEFAULT_TESSINNER_SI, 0);
+				       TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL, 0);
 
 	tessouter = ureg_DECL_output(ureg, TGSI_SEMANTIC_TESSOUTER, 0);
 	tessinner = ureg_DECL_output(ureg, TGSI_SEMANTIC_TESSINNER, 0);

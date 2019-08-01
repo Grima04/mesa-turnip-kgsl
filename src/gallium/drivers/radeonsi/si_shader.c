@@ -2116,8 +2116,8 @@ void si_load_system_value(struct si_shader_context *ctx,
 		value = load_tess_level(ctx, decl->Semantic.Name);
 		break;
 
-	case TGSI_SEMANTIC_DEFAULT_TESSOUTER_SI:
-	case TGSI_SEMANTIC_DEFAULT_TESSINNER_SI:
+	case TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL:
+	case TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL:
 	{
 		LLVMValueRef buf, slot, val[4];
 		int i, offset;
@@ -2125,7 +2125,7 @@ void si_load_system_value(struct si_shader_context *ctx,
 		slot = LLVMConstInt(ctx->i32, SI_HS_CONST_DEFAULT_TESS_LEVELS, 0);
 		buf = LLVMGetParam(ctx->main_fn, ctx->param_rw_buffers);
 		buf = ac_build_load_to_sgpr(&ctx->ac, buf, slot);
-		offset = decl->Semantic.Name == TGSI_SEMANTIC_DEFAULT_TESSINNER_SI ? 4 : 0;
+		offset = decl->Semantic.Name == TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL ? 4 : 0;
 
 		for (i = 0; i < 4; i++)
 			val[i] = buffer_load_const(ctx, buf,
