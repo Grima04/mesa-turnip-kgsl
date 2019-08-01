@@ -144,71 +144,62 @@
 /*
  * Auto-detect the operating system family.
  */
+#include "util/detect_os.h"
 
-#if defined(__linux__)
+#if DETECT_OS_LINUX
 #define PIPE_OS_LINUX
+#endif
+
+#if DETECT_OS_UNIX
 #define PIPE_OS_UNIX
 #endif
 
-/*
- * Android defines __linux__ so PIPE_OS_LINUX and PIPE_OS_UNIX will also be
- * defined.
- */
-#if defined(ANDROID)
+#if DETECT_OS_ANDROID
 #define PIPE_OS_ANDROID
 #endif
 
-#if defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+#if DETECT_OS_FREEBSD
 #define PIPE_OS_FREEBSD
-#define PIPE_OS_BSD
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(__OpenBSD__)
+#if DETECT_OS_BSD
+#define PIPE_OS_BSD
+#endif
+
+#if DETECT_OS_OPENBSD
 #define PIPE_OS_OPENBSD
-#define PIPE_OS_BSD
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(__NetBSD__)
+#if DETECT_OS_NETBSD
 #define PIPE_OS_NETBSD
-#define PIPE_OS_BSD
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(__DragonFly__)
+#if DETECT_OS_DRAGONFLY
 #define PIPE_OS_DRAGONFLY
-#define PIPE_OS_BSD
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(__GNU__)
+#if DETECT_OS_HURD
 #define PIPE_OS_HURD
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(__sun)
+#if DETECT_OS_SOLARIS
 #define PIPE_OS_SOLARIS
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(__APPLE__)
+#if DETECT_OS_APPLE
 #define PIPE_OS_APPLE
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(_WIN32) || defined(WIN32)
+#if DETECT_OS_WINDOWS
 #define PIPE_OS_WINDOWS
 #endif
 
-#if defined(__HAIKU__)
+#if DETECT_OS_HAIKU
 #define PIPE_OS_HAIKU
-#define PIPE_OS_UNIX
 #endif
 
-#if defined(__CYGWIN__)
+#if DETECT_OS_CYGWIN
 #define PIPE_OS_CYGWIN
-#define PIPE_OS_UNIX
 #endif
 
 #endif /* P_CONFIG_H_ */
