@@ -868,7 +868,7 @@ emit_binning_pass(struct fd_batch *batch)
 			A3XX_PC_VSTREAM_CONTROL_N(0));
 
 	/* emit IB to binning drawcmds: */
-	ctx->emit_ib(ring, batch->binning);
+	fd3_emit_ib(ring, batch->binning);
 	fd_reset_wfi(batch);
 
 	fd_wfi(batch, ring);

@@ -95,6 +95,12 @@ void fd3_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring);
 void fd3_emit_init(struct pipe_context *pctx);
 
 static inline void
+fd3_emit_ib(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
+{
+	__OUT_IB(ring, true, target);
+}
+
+static inline void
 fd3_emit_cache_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
 	fd_wfi(batch, ring);
