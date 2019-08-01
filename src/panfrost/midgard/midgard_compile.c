@@ -183,6 +183,8 @@ M_LOAD(ld_attr_32);
 M_LOAD(ld_vary_32);
 //M_LOAD(ld_uniform_16);
 M_LOAD(ld_uniform_32);
+M_LOAD(ld_int4);
+M_STORE(st_int4);
 M_LOAD(ld_color_buffer_8);
 //M_STORE(st_vary_16);
 M_STORE(st_vary_32);
@@ -308,7 +310,11 @@ midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
 static int
 midgard_sysval_for_ssbo(nir_intrinsic_instr *instr)
 {
-        nir_src index = instr->src[0];
+        /* This is way too meta */
+        bool is_store = instr->intrinsic == nir_intrinsic_store_ssbo;
+        unsigned idx_idx = is_store ? 1 : 0;
+
+        nir_src index = instr->src[idx_idx];
         assert(nir_src_is_const(index));
         uint32_t uindex = nir_src_as_uint(index);
 
@@ -324,6 +330,7 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         case nir_intrinsic_load_viewport_offset:
                 return PAN_SYSVAL_VIEWPORT_OFFSET;
         case nir_intrinsic_load_ssbo: 
+        case nir_intrinsic_store_ssbo: 
                 return midgard_sysval_for_ssbo(instr);
         default:
                 return -1;
@@ -338,11 +345,14 @@ static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
         nir_tex_instr *tex;
         int sysval = -1;
 
+        bool is_store = false;
+
         switch (instr->type) {
         case nir_instr_type_intrinsic:
                 intr = nir_instr_as_intrinsic(instr);
                 sysval = midgard_nir_sysval_for_intrinsic(intr);
                 dst = &intr->dest;
+                is_store |= intr->intrinsic == nir_intrinsic_store_ssbo;
                 break;
         case nir_instr_type_tex:
                 tex = nir_instr_as_tex(instr);
@@ -360,7 +370,7 @@ static int sysval_for_instr(compiler_context *ctx, nir_instr *instr,
                 break;
         }
 
-        if (dest && dst)
+        if (dest && dst && !is_store)
                 *dest = nir_dest_index(ctx, dst);
 
         return sysval;
@@ -1167,6 +1177,81 @@ emit_ubo_read(
         return emit_mir_instruction(ctx, ins);
 }
 
+/* SSBO reads are like UBO reads if you squint */
+
+static void
+emit_ssbo_access(
+        compiler_context *ctx,
+        nir_instr *instr,
+        bool is_read,
+        unsigned srcdest,
+        unsigned offset,
+        nir_src *indirect_offset,
+        unsigned index)
+{
+        /* TODO: types */
+
+        midgard_instruction ins; 
+
+        if (is_read)
+                ins = m_ld_int4(srcdest, offset);
+        else
+                ins = m_st_int4(srcdest, offset);
+
+        /* SSBO reads use a generic memory read interface, so we need the
+         * address of the SSBO as the first argument. This is a sysval. */
+
+        unsigned addr = make_compiler_temp(ctx);
+        emit_sysval_read(ctx, instr, addr, 2);
+
+        /* The source array is a bit of a leaky abstraction for SSBOs.
+         * Nevertheless, for loads:
+         *
+         *  src[0] = arg_1
+         *  src[1] = arg_2
+         *  src[2] = unused
+         *
+         * Whereas for stores:
+         *
+         *  src[0] = value
+         *  src[1] = arg_1
+         *  src[2] = arg_2
+         *
+         * We would like arg_1 = the address and
+         * arg_2 = the offset.
+         */
+
+        ins.ssa_args.src[is_read ? 0 : 1] = addr;
+
+        /* TODO: What is this? It looks superficially like a shift << 5, but
+         * arg_1 doesn't take a shift Should it be E0 or A0? */
+        if (indirect_offset)
+                ins.load_store.arg_1 |= 0xE0;
+
+        /* We also need to emit the indirect offset */
+
+        if (indirect_offset)
+                ins.ssa_args.src[is_read ? 1 : 2] = nir_src_index(ctx, indirect_offset);
+        else
+                ins.load_store.arg_2 = 0x7E;
+
+        /* TODO: Bounds check */
+
+        /* Finally, we emit the direct offset */
+
+        ins.load_store.varying_parameters = (offset & 0x1FF) << 1;
+        ins.load_store.address = (offset >> 9);
+
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+        if (is_read)
+                ins.mask = mask_of(nir_intrinsic_dest_components(intr));
+        else
+                ins.mask = nir_intrinsic_write_mask(intr);
+
+        emit_mir_instruction(ctx, ins);
+}
+
 static void
 emit_varying_read(
         compiler_context *ctx,
@@ -1262,17 +1347,19 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_uniform:
         case nir_intrinsic_load_ubo:
+        case nir_intrinsic_load_ssbo:
         case nir_intrinsic_load_input: {
                 bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
                 bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
+                bool is_ssbo = instr->intrinsic == nir_intrinsic_load_ssbo;
 
                 /* Get the base type of the intrinsic */
                 /* TODO: Infer type? Does it matter? */
                 nir_alu_type t =
-                        is_ubo ? nir_type_uint : nir_intrinsic_type(instr);
+                        (is_ubo || is_ssbo) ? nir_type_uint : nir_intrinsic_type(instr);
                 t = nir_alu_type_get_base_type(t);
 
-                if (!is_ubo) {
+                if (!(is_ubo || is_ssbo)) {
                         offset = nir_intrinsic_base(instr);
                 }
 
@@ -1281,6 +1368,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 nir_src *src_offset = nir_get_io_offset_src(instr);
 
                 bool direct = nir_src_is_const(*src_offset);
+                nir_src *indirect_offset = direct ? NULL : src_offset;
 
                 if (direct)
                         offset += nir_src_as_uint(*src_offset);
@@ -1291,7 +1379,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(ctx, &instr->dest);
 
                 if (is_uniform && !ctx->is_blend) {
-                        emit_ubo_read(ctx, reg, ctx->sysval_count + offset, !direct ? &instr->src[0] : NULL, 0);
+                        emit_ubo_read(ctx, reg, ctx->sysval_count + offset, indirect_offset, 0);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
 
@@ -1310,6 +1398,12 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         uint32_t uindex = nir_src_as_uint(index) + 1;
                         emit_ubo_read(ctx, reg, offset / 16, NULL, uindex);
+                } else if (is_ssbo) {
+                        nir_src index = instr->src[0];
+                        assert(nir_src_is_const(index));
+                        uint32_t uindex = nir_src_as_uint(index);
+
+                        emit_ssbo_access(ctx, &instr->instr, true, reg, offset, indirect_offset, uindex);
                 } else if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->is_blend) {
                         emit_varying_read(ctx, reg, offset, nr_comp, component, !direct ? &instr->src[0] : NULL, t);
                 } else if (ctx->is_blend) {
@@ -1429,6 +1523,20 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 emit_mir_instruction(ctx, move);
                 ctx->fragment_output = reg;
 
+                break;
+
+        case nir_intrinsic_store_ssbo:
+                assert(nir_src_is_const(instr->src[1]));
+
+                bool direct_offset = nir_src_is_const(instr->src[2]);
+                offset = direct_offset ? nir_src_as_uint(instr->src[2]) : 0;
+                nir_src *indirect_offset = direct_offset ? NULL : &instr->src[2];
+                reg = nir_src_index(ctx, &instr->src[0]);
+
+                uint32_t uindex = nir_src_as_uint(instr->src[1]);
+
+                emit_explicit_constant(ctx, reg, reg);
+                emit_ssbo_access(ctx, &instr->instr, false, reg, offset, indirect_offset, uindex);
                 break;
 
         case nir_intrinsic_load_alpha_ref_float:

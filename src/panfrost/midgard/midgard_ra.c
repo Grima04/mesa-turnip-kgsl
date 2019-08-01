@@ -753,8 +753,6 @@ install_registers_instr(
         }
 
         case TAG_LOAD_STORE_4: {
-                bool fixed = args.src[0] >= SSA_FIXED_MINIMUM;
-
                 /* Which physical register we read off depends on
                  * whether we are loading or storing -- think about the
                  * logical dataflow */
@@ -763,9 +761,7 @@ install_registers_instr(
                         OP_IS_STORE(ins->load_store.op) &&
                         ins->load_store.op != midgard_op_st_cubemap_coords;
 
-                if (OP_IS_STORE_R26(ins->load_store.op) && fixed) {
-                        ins->load_store.reg = SSA_REG_FROM_FIXED(args.src[0]);
-                } else if (OP_IS_STORE_VARY(ins->load_store.op)) {
+                if (encodes_src) {
                         struct phys_reg src = index_to_reg(ctx, g, args.src[0]);
                         assert(src.reg == 26 || src.reg == 27);
 
@@ -806,7 +802,7 @@ install_registers_instr(
                         encodes_src ? args.src[1] : args.src[0];
 
                 int src3 =
-                        encodes_src ? -1 : args.src[1];
+                        encodes_src ? args.src[2] : args.src[1];
 
                 if (src2 >= 0) {
                         struct phys_reg src = index_to_reg(ctx, g, src2);
