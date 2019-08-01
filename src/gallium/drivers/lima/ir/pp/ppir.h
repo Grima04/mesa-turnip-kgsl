@@ -100,6 +100,7 @@ typedef enum {
    ppir_op_load_coords,
    ppir_op_load_fragcoord,
    ppir_op_load_pointcoord,
+   ppir_op_load_frontface,
    ppir_op_load_texture,
    ppir_op_load_temp,
 

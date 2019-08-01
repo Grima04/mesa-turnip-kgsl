@@ -233,7 +233,8 @@ static bool ppir_do_node_to_instr(ppir_block *block, ppir_node *node)
       }
       else if (node->op == ppir_op_load_varying ||
                node->op == ppir_op_load_fragcoord ||
-               node->op == ppir_op_load_pointcoord) {
+               node->op == ppir_op_load_pointcoord ||
+               node->op == ppir_op_load_frontface) {
          /* delay the load varying dup to scheduler */
          if (!create_new_instr(block, node))
             return false;

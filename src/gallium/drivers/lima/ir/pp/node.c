@@ -252,6 +252,13 @@ const ppir_op_info ppir_op_infos[] = {
          PPIR_INSTR_SLOT_VARYING, PPIR_INSTR_SLOT_END
       },
    },
+   [ppir_op_load_frontface] = {
+      .name = "ld_frontface",
+      .type = ppir_node_type_load,
+      .slots = (int []) {
+         PPIR_INSTR_SLOT_VARYING, PPIR_INSTR_SLOT_END
+      },
+   },
    [ppir_op_load_uniform] = {
       .name = "ld_uni",
       .type = ppir_node_type_load,

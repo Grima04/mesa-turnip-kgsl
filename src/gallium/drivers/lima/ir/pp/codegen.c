@@ -57,7 +57,8 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
       assert(node->op == ppir_op_load_varying ||
              node->op == ppir_op_load_coords ||
              node->op == ppir_op_load_fragcoord ||
-             node->op == ppir_op_load_pointcoord);
+             node->op == ppir_op_load_pointcoord ||
+             node->op == ppir_op_load_frontface);
 
       f->imm.dest = index >> 2;
       f->imm.mask = dest->write_mask << (index & 0x3);
@@ -78,6 +79,10 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
             break;
          case ppir_op_load_pointcoord:
             f->imm.source_type = 3;
+            break;
+         case ppir_op_load_frontface:
+            f->imm.source_type = 3;
+            f->imm.perspective = 1;
             break;
          default:
             break;
