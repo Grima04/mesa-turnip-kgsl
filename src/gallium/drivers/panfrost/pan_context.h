@@ -314,7 +314,6 @@ panfrost_shader_compile(
                 struct mali_shader_meta *meta,
                 enum pipe_shader_ir ir_type,
                 const void *ir,
-                const char *src,
                 gl_shader_stage stage,
                 struct panfrost_shader_state *state);
 

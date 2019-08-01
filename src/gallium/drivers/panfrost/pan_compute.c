@@ -52,7 +52,7 @@ panfrost_create_compute_state(
         v->tripipe = malloc(sizeof(struct mali_shader_meta));
 
         panfrost_shader_compile(ctx, v->tripipe,
-                        cso->ir_type, cso->prog, NULL,
+                        cso->ir_type, cso->prog,
                         MESA_SHADER_COMPUTE, v);
 
 

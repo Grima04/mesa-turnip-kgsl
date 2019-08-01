@@ -2099,7 +2099,6 @@ panfrost_bind_shader_state(
                               variants->base.type == PIPE_SHADER_IR_NIR ?
                                       variants->base.ir.nir :
                                       variants->base.tokens,
-                              NULL,
                                         tgsi_processor_to_shader_stage(type), shader_state);
 
                 shader_state->compiled = true;
