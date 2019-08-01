@@ -1333,14 +1333,15 @@ fd6_framebuffer_barrier(struct fd_context *ctx)
 void
 fd6_emit_init_screen(struct pipe_screen *pscreen)
 {
+	struct fd_screen *screen = fd_screen(pscreen);
+	screen->emit_const = fd6_emit_const;
+	screen->emit_const_bo = fd6_emit_const_bo;
 }
 
 void
 fd6_emit_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
-	ctx->emit_const = fd6_emit_const;
-	ctx->emit_const_bo = fd6_emit_const_bo;
 	ctx->emit_ib = fd6_emit_ib;
 	ctx->mem_to_mem = fd6_mem_to_mem;
 	ctx->framebuffer_barrier = fd6_framebuffer_barrier;

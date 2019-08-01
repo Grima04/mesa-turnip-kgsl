@@ -327,14 +327,6 @@ struct fd_context {
 	/* compute: */
 	void (*launch_grid)(struct fd_context *ctx, const struct pipe_grid_info *info);
 
-	/* constant emit:  (note currently not used/needed for a2xx) */
-	void (*emit_const)(struct fd_ringbuffer *ring, gl_shader_stage type,
-			uint32_t regid, uint32_t offset, uint32_t sizedwords,
-			const uint32_t *dwords, struct pipe_resource *prsc);
-	/* emit bo addresses as constant: */
-	void (*emit_const_bo)(struct fd_ringbuffer *ring, gl_shader_stage type, boolean write,
-			uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets);
-
 	/* indirect-branch emit: */
 	void (*emit_ib)(struct fd_ringbuffer *ring, struct fd_ringbuffer *target);
 

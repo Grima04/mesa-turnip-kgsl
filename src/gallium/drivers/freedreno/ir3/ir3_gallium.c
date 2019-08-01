@@ -207,7 +207,7 @@ emit_const(struct fd_context *ctx, struct fd_ringbuffer *ring,
 {
 	assert(dst_offset + size <= v->constlen * 4);
 
-	ctx->emit_const(ring, v->type, dst_offset,
+	ctx->screen->emit_const(ring, v->type, dst_offset,
 			offset, size, user_buffer, buffer);
 }
 
@@ -274,7 +274,7 @@ emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		assert(offset * 4 + params < v->constlen * 4);
 
 		ring_wfi(ctx->batch, ring);
-		ctx->emit_const_bo(ring, v->type, false, offset * 4, params, prscs, offsets);
+		ctx->screen->emit_const_bo(ring, v->type, false, offset * 4, params, prscs, offsets);
 	}
 }
 
@@ -408,7 +408,7 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		assert(offset * 4 + params < v->constlen * 4);
 
 		ring_wfi(ctx->batch, ring);
-		ctx->emit_const_bo(ring, v->type, true, offset * 4, params, prscs, offsets);
+		ctx->screen->emit_const_bo(ring, v->type, true, offset * 4, params, prscs, offsets);
 	}
 }
 

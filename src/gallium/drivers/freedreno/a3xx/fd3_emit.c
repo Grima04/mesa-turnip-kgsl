@@ -948,13 +948,14 @@ fd3_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 void
 fd3_emit_init_screen(struct pipe_screen *pscreen)
 {
+	struct fd_screen *screen = fd_screen(pscreen);
+	screen->emit_const = fd3_emit_const;
+	screen->emit_const_bo = fd3_emit_const_bo;
 }
 
 void
 fd3_emit_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
-	ctx->emit_const = fd3_emit_const;
-	ctx->emit_const_bo = fd3_emit_const_bo;
 	ctx->emit_ib = fd3_emit_ib;
 }
