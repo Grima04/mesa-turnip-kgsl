@@ -29,6 +29,7 @@
 
 #include "fd4_screen.h"
 #include "fd4_context.h"
+#include "fd4_emit.h"
 #include "fd4_format.h"
 
 #include "ir3/ir3_compiler.h"
@@ -110,4 +111,5 @@ fd4_screen_init(struct pipe_screen *pscreen)
 	screen->compiler = ir3_compiler_create(screen->dev, screen->gpu_id);
 	pscreen->context_create = fd4_context_create;
 	pscreen->is_format_supported = fd4_screen_is_format_supported;
+	fd4_emit_init_screen(pscreen);
 }

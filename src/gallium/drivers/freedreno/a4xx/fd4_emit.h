@@ -101,6 +101,7 @@ void fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 void fd4_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring);
 
+void fd4_emit_init_screen(struct pipe_screen *pscreen);
 void fd4_emit_init(struct pipe_context *pctx);
 
 static inline void
