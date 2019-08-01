@@ -498,6 +498,20 @@ __attribute__((__packed__))
 }
 midgard_varying_parameter;
 
+/* 8-bit register/etc selector for load/store ops */
+typedef struct
+__attribute__((__packed__))
+{
+        /* Indexes into the register */
+        unsigned component : 2;
+
+        /* Register select between r26/r27 */
+        unsigned select : 1;
+
+        unsigned unknown : 5;
+}
+midgard_ldst_register_select;
+
 typedef struct
 __attribute__((__packed__))
 {
@@ -510,7 +524,8 @@ __attribute__((__packed__))
          * these are limited to load/store registers with only a few supported
          * mask/swizzle combinations. The tradeoff is these are much more
          * compact, requiring 8-bits each rather than 17-bits for a full
-         * reg/mask/swizzle */
+         * reg/mask/swizzle. Usually (?) encoded as
+         * midgard_ldst_register_select. */
         unsigned arg_1   : 8;
         unsigned arg_2   : 8;
 

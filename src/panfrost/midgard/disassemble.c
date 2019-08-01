@@ -971,7 +971,14 @@ is_op_varying(unsigned op)
 static void
 print_load_store_arg(uint8_t arg)
 {
-        printf("0x%X", arg);
+        /* Try to interpret as a register */
+        midgard_ldst_register_select sel;
+        memcpy(&sel, &arg, sizeof(arg));
+
+        unsigned reg = REGISTER_LDST_BASE + sel.select;
+        char comp = components[sel.component];
+
+        printf("r%d.%c /* 0x%X */", reg, comp, arg);
 }
 
 static void
