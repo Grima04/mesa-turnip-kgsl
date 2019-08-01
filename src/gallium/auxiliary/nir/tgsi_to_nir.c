@@ -1155,76 +1155,85 @@ ttn_endloop(struct ttn_compile *c)
 }
 
 static void
-setup_texture_info(nir_tex_instr *instr, unsigned texture)
+get_texture_info(unsigned texture,
+                 enum glsl_sampler_dim *dim,
+                 bool *is_shadow,
+                 bool *is_array)
 {
+   assert(is_array);
+   *is_array = false;
+
+   if (is_shadow)
+      *is_shadow = false;
+
    switch (texture) {
    case TGSI_TEXTURE_BUFFER:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_BUF;
+      *dim = GLSL_SAMPLER_DIM_BUF;
       break;
    case TGSI_TEXTURE_1D:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_1D;
+      *dim = GLSL_SAMPLER_DIM_1D;
       break;
    case TGSI_TEXTURE_1D_ARRAY:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_1D;
-      instr->is_array = true;
+      *dim = GLSL_SAMPLER_DIM_1D;
+      *is_array = true;
       break;
    case TGSI_TEXTURE_SHADOW1D:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_1D;
-      instr->is_shadow = true;
+      *dim = GLSL_SAMPLER_DIM_1D;
+      *is_shadow = true;
       break;
    case TGSI_TEXTURE_SHADOW1D_ARRAY:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_1D;
-      instr->is_shadow = true;
-      instr->is_array = true;
+      *dim = GLSL_SAMPLER_DIM_1D;
+      *is_shadow = true;
+      *is_array = true;
       break;
    case TGSI_TEXTURE_2D:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      *dim = GLSL_SAMPLER_DIM_2D;
       break;
    case TGSI_TEXTURE_2D_ARRAY:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_2D;
-      instr->is_array = true;
+      *dim = GLSL_SAMPLER_DIM_2D;
+      *is_array = true;
       break;
    case TGSI_TEXTURE_2D_MSAA:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_MS;
+      *dim = GLSL_SAMPLER_DIM_MS;
       break;
    case TGSI_TEXTURE_2D_ARRAY_MSAA:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_MS;
-      instr->is_array = true;
+      *dim = GLSL_SAMPLER_DIM_MS;
+      *is_array = true;
       break;
    case TGSI_TEXTURE_SHADOW2D:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_2D;
-      instr->is_shadow = true;
+      *dim = GLSL_SAMPLER_DIM_2D;
+      *is_shadow = true;
       break;
    case TGSI_TEXTURE_SHADOW2D_ARRAY:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_2D;
-      instr->is_shadow = true;
-      instr->is_array = true;
+      *dim = GLSL_SAMPLER_DIM_2D;
+      *is_shadow = true;
+      *is_array = true;
       break;
    case TGSI_TEXTURE_3D:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_3D;
+      *dim = GLSL_SAMPLER_DIM_3D;
       break;
    case TGSI_TEXTURE_CUBE:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_CUBE;
+      *dim = GLSL_SAMPLER_DIM_CUBE;
       break;
    case TGSI_TEXTURE_CUBE_ARRAY:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_CUBE;
-      instr->is_array = true;
+      *dim = GLSL_SAMPLER_DIM_CUBE;
+      *is_array = true;
       break;
    case TGSI_TEXTURE_SHADOWCUBE:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_CUBE;
-      instr->is_shadow = true;
+      *dim = GLSL_SAMPLER_DIM_CUBE;
+      *is_shadow = true;
       break;
    case TGSI_TEXTURE_SHADOWCUBE_ARRAY:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_CUBE;
-      instr->is_shadow = true;
-      instr->is_array = true;
+      *dim = GLSL_SAMPLER_DIM_CUBE;
+      *is_shadow = true;
+      *is_array = true;
       break;
    case TGSI_TEXTURE_RECT:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_RECT;
+      *dim = GLSL_SAMPLER_DIM_RECT;
       break;
    case TGSI_TEXTURE_SHADOWRECT:
-      instr->sampler_dim = GLSL_SAMPLER_DIM_RECT;
-      instr->is_shadow = true;
+      *dim = GLSL_SAMPLER_DIM_RECT;
+      *is_shadow = true;
       break;
    default:
       fprintf(stderr, "Unknown TGSI texture target %d\n", texture);
@@ -1354,7 +1363,8 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    instr = nir_tex_instr_create(b->shader, num_srcs);
    instr->op = op;
 
-   setup_texture_info(instr, tgsi_inst->Texture.Texture);
+   get_texture_info(tgsi_inst->Texture.Texture,
+                    &instr->sampler_dim, &instr->is_shadow, &instr->is_array);
 
    switch (instr->sampler_dim) {
    case GLSL_SAMPLER_DIM_1D:
@@ -1544,11 +1554,13 @@ ttn_txq(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
    txs = nir_tex_instr_create(b->shader, 2);
    txs->op = nir_texop_txs;
-   setup_texture_info(txs, tgsi_inst->Texture.Texture);
+   get_texture_info(tgsi_inst->Texture.Texture,
+                    &txs->sampler_dim, &txs->is_shadow, &txs->is_array);
 
    qlv = nir_tex_instr_create(b->shader, 1);
    qlv->op = nir_texop_query_levels;
-   setup_texture_info(qlv, tgsi_inst->Texture.Texture);
+   get_texture_info(tgsi_inst->Texture.Texture,
+                    &qlv->sampler_dim, &qlv->is_shadow, &qlv->is_array);
 
    assert(tgsi_inst->Src[1].Register.File == TGSI_FILE_SAMPLER);
    int tex_index = tgsi_inst->Src[1].Register.Index;
