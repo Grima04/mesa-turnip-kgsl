@@ -429,6 +429,19 @@ v3d_clif_dump(struct v3d_context *v3d, struct v3d_job *job)
         clif_dump_destroy(clif);
 }
 
+static void
+v3d_read_and_accumulate_primitive_counters(struct v3d_context *v3d)
+{
+        assert(v3d->prim_counts);
+
+        perf_debug("stalling on TF counts readback");
+        struct v3d_resource *rsc = v3d_resource(v3d->prim_counts);
+        if (v3d_bo_wait(rsc->bo, PIPE_TIMEOUT_INFINITE, "prim-counts")) {
+                uint32_t *map = v3d_bo_map(rsc->bo);
+                v3d->tf_prims_generated += map[V3D_PRIM_COUNTS_TF_WRITTEN];
+        }
+}
+
 /**
  * Submits the job to the kernel and then reinitializes it.
  */
@@ -488,6 +501,14 @@ v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job)
                                         "Expect corruption.\n", strerror(errno));
                         warned = true;
                 }
+
+                /* If we are submitting a job in the middle of transform
+                 * feedback we need to read the primitive counts and accumulate
+                 * them, otherwise they will be reset at the start of the next
+                 * draw when we emit the Tile Binning Mode Configuration packet.
+                 */
+                if (v3d->streamout.num_targets)
+                        v3d_read_and_accumulate_primitive_counters(v3d);
         }
 
 done:

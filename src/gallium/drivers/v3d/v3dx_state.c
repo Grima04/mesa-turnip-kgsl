@@ -1222,6 +1222,14 @@ v3d_set_stream_output_targets(struct pipe_context *pctx,
 
         assert(num_targets <= ARRAY_SIZE(so->targets));
 
+        /* Update recorded vertex counts when we are ending the recording of
+         * transform feedback. We do this when we switch primitive types
+         * at draw time, but if we haven't switched primitives in our last
+         * draw we need to do it here as well.
+         */
+        if (num_targets == 0 && so->num_targets > 0)
+                v3d_tf_update_counters(ctx);
+
         for (i = 0; i < num_targets; i++) {
                 if (offsets[i] != -1)
                         so->offsets[i] = offsets[i];
@@ -1233,6 +1241,15 @@ v3d_set_stream_output_targets(struct pipe_context *pctx,
                 pipe_so_target_reference(&so->targets[i], NULL);
 
         so->num_targets = num_targets;
+
+        /* Create primitive counters BO if needed */
+        if (num_targets > 0 && !ctx->prim_counts) {
+                uint32_t zeroes[7] = { 0 }; /* Init all 7 counters to 0 */
+                u_upload_data(ctx->uploader,
+                              0, sizeof(zeroes), 32, zeroes,
+                              &ctx->prim_counts_offset,
+                              &ctx->prim_counts);
+        }
 
         ctx->dirty |= VC5_DIRTY_STREAMOUT;
 }

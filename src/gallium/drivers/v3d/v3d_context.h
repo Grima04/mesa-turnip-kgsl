@@ -498,6 +498,8 @@ struct v3d_context {
         struct v3d_vertexbuf_stateobj vertexbuf;
         struct v3d_streamout_stateobj streamout;
         struct v3d_bo *current_oq;
+        struct pipe_resource *prim_counts;
+        uint32_t prim_counts_offset;
         struct pipe_debug_callback debug;
         /** @} */
 };
@@ -651,6 +653,8 @@ bool v3d_generate_mipmap(struct pipe_context *pctx,
                          unsigned int last_layer);
 
 struct v3d_fence *v3d_fence_create(struct v3d_context *v3d);
+
+void v3d_tf_update_counters(struct v3d_context *v3d);
 
 #ifdef v3dX
 #  include "v3dx_context.h"

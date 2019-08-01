@@ -75,6 +75,11 @@ v3d_begin_query(struct pipe_context *pctx, struct pipe_query *query)
                 q->start = v3d->prims_generated;
                 break;
         case PIPE_QUERY_PRIMITIVES_EMITTED:
+                /* If we are inside transform feedback we need to update the
+                 * primitive counts to skip primtives recorded before this.
+                 */
+                if (v3d->streamout.num_targets > 0)
+                        v3d_tf_update_counters(v3d);
                 q->start = v3d->tf_prims_generated;
                 break;
         case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -105,6 +110,12 @@ v3d_end_query(struct pipe_context *pctx, struct pipe_query *query)
                 q->end = v3d->prims_generated;
                 break;
         case PIPE_QUERY_PRIMITIVES_EMITTED:
+                /* If transform feedback has ended, then we have already
+                 * updated the primitive counts at glEndTransformFeedback()
+                 * time. Otherwise, we have to do it now.
+                 */
+                if (v3d->streamout.num_targets > 0)
+                        v3d_tf_update_counters(v3d);
                 q->end = v3d->tf_prims_generated;
                 break;
         case PIPE_QUERY_OCCLUSION_COUNTER:
