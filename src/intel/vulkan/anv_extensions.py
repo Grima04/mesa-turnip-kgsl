@@ -155,7 +155,7 @@ EXTENSIONS = [
     Extension('VK_EXT_vertex_attribute_divisor',          3, True),
     Extension('VK_EXT_ycbcr_image_arrays',                1, True),
     Extension('VK_ANDROID_external_memory_android_hardware_buffer', 3, 'ANDROID'),
-    Extension('VK_ANDROID_native_buffer',                 5, 'ANDROID'),
+    Extension('VK_ANDROID_native_buffer',                 7, 'ANDROID'),
     Extension('VK_GOOGLE_decorate_string',                1, True),
     Extension('VK_GOOGLE_hlsl_functionality1',            1, True),
     Extension('VK_NV_compute_shader_derivatives',         1, True),
