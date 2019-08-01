@@ -152,8 +152,8 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx,
 
 	struct ureg_src value;
 	if (!is_copy) {
-		ureg_property(ureg, TGSI_PROPERTY_CS_USER_DATA_DWORDS, inst_dwords[0]);
-		value = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_CS_USER_DATA, 0);
+		ureg_property(ureg, TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD, inst_dwords[0]);
+		value = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_CS_USER_DATA_AMD, 0);
 	}
 
 	struct ureg_src tid = ureg_DECL_system_value(ureg, TGSI_SEMANTIC_THREAD_ID, 0);

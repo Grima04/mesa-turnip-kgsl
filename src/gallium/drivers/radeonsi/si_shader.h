@@ -261,17 +261,11 @@ enum {
 	/* Values from set_tess_state. */
 	TGSI_SEMANTIC_DEFAULT_TESSOUTER_SI = TGSI_SEMANTIC_COUNT,
 	TGSI_SEMANTIC_DEFAULT_TESSINNER_SI,
-
-	/* Up to 4 dwords in user SGPRs for compute shaders. */
-	TGSI_SEMANTIC_CS_USER_DATA,
 };
 
 enum {
 	/* Use a property enum that CS wouldn't use. */
 	TGSI_PROPERTY_CS_LOCAL_SIZE = TGSI_PROPERTY_FS_COORD_ORIGIN,
-
-	/* The number of used user data dwords in the range [1, 4]. */
-	TGSI_PROPERTY_CS_USER_DATA_DWORDS = TGSI_PROPERTY_FS_COORD_PIXEL_CENTER,
 
 	/* These represent the number of SGPRs the shader uses. */
 	SI_VS_BLIT_SGPRS_POS = 3,

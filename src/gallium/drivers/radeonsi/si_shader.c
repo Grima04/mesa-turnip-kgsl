@@ -2215,7 +2215,7 @@ void si_load_system_value(struct si_shader_context *ctx,
 		break;
 	}
 
-	case TGSI_SEMANTIC_CS_USER_DATA:
+	case TGSI_SEMANTIC_CS_USER_DATA_AMD:
 		value = LLVMGetParam(ctx->main_fn, ctx->param_cs_user_data);
 		break;
 
@@ -4978,7 +4978,7 @@ static void create_function(struct si_shader_context *ctx)
 			ctx->param_block_size = add_arg(&fninfo, ARG_SGPR, v3i32);
 
 		unsigned cs_user_data_dwords =
-			shader->selector->info.properties[TGSI_PROPERTY_CS_USER_DATA_DWORDS];
+			shader->selector->info.properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD];
 		if (cs_user_data_dwords) {
 			ctx->param_cs_user_data = add_arg(&fninfo, ARG_SGPR,
 							  LLVMVectorType(ctx->i32, cs_user_data_dwords));

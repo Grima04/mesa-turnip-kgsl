@@ -145,7 +145,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 		sel->info.uses_block_size &&
 		sel->info.properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] == 0;
 	program->num_cs_user_data_dwords =
-		sel->info.properties[TGSI_PROPERTY_CS_USER_DATA_DWORDS];
+		sel->info.properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD];
 
 	void *ir_binary = si_get_ir_binary(sel);
 
