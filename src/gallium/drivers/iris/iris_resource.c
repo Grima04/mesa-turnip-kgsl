@@ -399,6 +399,28 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res)
    }
 }
 
+static bool
+want_ccs_e_for_format(const struct gen_device_info *devinfo,
+                      enum isl_format format)
+{
+   if (!isl_format_supports_ccs_e(devinfo, format))
+      return false;
+
+   const struct isl_format_layout *fmtl = isl_format_get_layout(format);
+
+   /* CCS_E seems to significantly hurt performance with 32-bit floating
+    * point formats.  For example, Paraview's "Wavelet Volume" case uses
+    * both R32_FLOAT and R32G32B32A32_FLOAT, and enabling CCS_E for those
+    * formats causes a 62% FPS drop.
+    *
+    * However, many benchmarks seem to use 16-bit float with no issues.
+    */
+   if (fmtl->channels.r.bits == 32 && fmtl->channels.r.type == ISL_SFLOAT)
+      return false;
+
+   return true;
+}
+
 /**
  * Configure aux for the resource, but don't allocate it. For images which
  * might be shared with modifiers, we must allocate the image and aux data in
@@ -410,22 +432,65 @@ iris_resource_configure_aux(struct iris_screen *screen,
                             uint64_t *aux_size_B,
                             uint32_t *alloc_flags)
 {
-   struct isl_device *isl_dev = &screen->isl_dev;
-   enum isl_aux_state initial_state;
-   UNUSED bool ok = false;
+   const struct gen_device_info *devinfo = &screen->devinfo;
 
+   /* Try to create the auxiliary surfaces allowed by the modifier or by
+    * the user if no modifier is specified.
+    */
+   assert(!res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE ||
+                            res->mod_info->aux_usage == ISL_AUX_USAGE_CCS_E);
+
+   const bool has_mcs = !res->mod_info &&
+      isl_surf_get_mcs_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
+
+   const bool has_hiz = !res->mod_info && !(INTEL_DEBUG & DEBUG_NO_HIZ) &&
+      isl_surf_get_hiz_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
+
+   const bool has_ccs =
+      ((!res->mod_info && !(INTEL_DEBUG & DEBUG_NO_RBC)) ||
+       (res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE)) &&
+      isl_surf_get_ccs_surf(&screen->isl_dev, &res->surf, &res->aux.surf,
+                            NULL, 0);
+
+   /* We should have at most one aux surface. */
+   assert(has_mcs + has_hiz + has_ccs <= 1);
+
+   if (res->mod_info && has_ccs) {
+      /* Only allow a CCS modifier if the aux was created successfully. */
+      res->aux.possible_usages |= 1 << res->mod_info->aux_usage;
+   } else if (has_mcs) {
+      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS;
+   } else if (has_hiz) {
+      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
+   } else if (has_ccs) {
+      if (want_ccs_e_for_format(devinfo, res->surf.format))
+         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
+
+      if (isl_format_supports_ccs_d(devinfo, res->surf.format))
+         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
+   }
+
+   res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
+
+   res->aux.sampler_usages = res->aux.possible_usages;
+
+   /* We don't always support sampling with hiz. But when we do, it must be
+    * single sampled.
+    */
+   if (!devinfo->has_sample_with_hiz || res->surf.samples > 1)
+      res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ);
+
+   enum isl_aux_state initial_state;
    *aux_size_B = 0;
    *alloc_flags = 0;
    assert(!res->aux.bo);
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_NONE:
-      res->aux.surf.size_B = 0;
-      ok = true;
-      break;
+      /* Having no aux buffer is only okay if there's no modifier with aux. */
+      return !res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE;
    case ISL_AUX_USAGE_HIZ:
       initial_state = ISL_AUX_STATE_AUX_INVALID;
-      ok = isl_surf_get_hiz_surf(isl_dev, &res->surf, &res->aux.surf);
       break;
    case ISL_AUX_USAGE_MCS:
       /* The Ivybridge PRM, Vol 2 Part 1 p326 says:
@@ -438,7 +503,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
        * 1's, so we simply memset it to 0xff.
        */
       initial_state = ISL_AUX_STATE_CLEAR;
-      ok = isl_surf_get_mcs_surf(isl_dev, &res->surf, &res->aux.surf);
       break;
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
@@ -461,17 +525,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
       else
          initial_state = ISL_AUX_STATE_PASS_THROUGH;
       *alloc_flags |= BO_ALLOC_ZEROED;
-      ok = isl_surf_get_ccs_surf(isl_dev, &res->surf, &res->aux.surf, NULL, 0);
       break;
    }
-
-   /* We should have a valid aux_surf. */
-   if (!ok)
-      return false;
-
-   /* No work is needed for a zero-sized auxiliary buffer. */
-   if (res->aux.surf.size_B == 0)
-      return true;
 
    if (!res->aux.state) {
       /* Create the aux_state for the auxiliary buffer. */
@@ -619,55 +674,6 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
    res->base.next = NULL;
 }
 
-static bool
-supports_mcs(const struct isl_surf *surf)
-{
-   /* MCS compression only applies to multisampled resources. */
-   if (surf->samples <= 1)
-      return false;
-
-   /* Depth and stencil buffers use the IMS (interleaved) layout. */
-   if (isl_surf_usage_is_depth_or_stencil(surf->usage))
-      return false;
-
-   return true;
-}
-
-static bool
-supports_ccs(const struct gen_device_info *devinfo,
-             const struct isl_surf *surf)
-{
-   /* CCS only supports singlesampled resources. */
-   if (surf->samples > 1)
-      return false;
-
-   /* Note: still need to check the format! */
-
-   return true;
-}
-
-static bool
-want_ccs_e_for_format(const struct gen_device_info *devinfo,
-                      enum isl_format format)
-{
-   if (!isl_format_supports_ccs_e(devinfo, format))
-      return false;
-
-   const struct isl_format_layout *fmtl = isl_format_get_layout(format);
-
-   /* CCS_E seems to significantly hurt performance with 32-bit floating
-    * point formats.  For example, Paraview's "Wavelet Volume" case uses
-    * both R32_FLOAT and R32G32B32A32_FLOAT, and enabling CCS_E for those
-    * formats causes a 62% FPS drop.
-    *
-    * However, many benchmarks seem to use 16-bit float with no issues.
-    */
-   if (fmtl->channels.r.bits == 32 && fmtl->channels.r.type == ISL_SFLOAT)
-      return false;
-
-   return true;
-}
-
 static struct pipe_resource *
 iris_resource_create_for_buffer(struct pipe_screen *pscreen,
                                 const struct pipe_resource *templ)
@@ -780,33 +786,6 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                     .usage = usage,
                     .tiling_flags = tiling_flags);
    assert(isl_surf_created_successfully);
-
-   if (res->mod_info) {
-      res->aux.possible_usages |= 1 << res->mod_info->aux_usage;
-   } else if (supports_mcs(&res->surf)) {
-      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS;
-   } else if (has_depth) {
-      if (likely(!(INTEL_DEBUG & DEBUG_NO_HIZ)))
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
-   } else if (likely(!(INTEL_DEBUG & DEBUG_NO_RBC)) &&
-              supports_ccs(devinfo, &res->surf)) {
-      if (want_ccs_e_for_format(devinfo, res->surf.format))
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
-
-      if (isl_format_supports_ccs_d(devinfo, res->surf.format))
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
-   }
-
-   res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
-
-   res->aux.sampler_usages = res->aux.possible_usages;
-
-   /* We don't always support sampling with hiz. But when we do, it must be
-    * single sampled.
-    */
-   if (!devinfo->has_sample_with_hiz || res->surf.samples > 1) {
-      res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ);
-   }
 
    const char *name = "miptree";
    enum iris_memory_zone memzone = IRIS_MEMZONE_OTHER;
@@ -1003,9 +982,6 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
             if (res->mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
                uint32_t alloc_flags;
                uint64_t size;
-               res->aux.usage = res->mod_info->aux_usage;
-               res->aux.possible_usages = 1 << res->mod_info->aux_usage;
-               res->aux.sampler_usages = res->aux.possible_usages;
                bool ok = iris_resource_configure_aux(screen, res, true, &size,
                                                      &alloc_flags);
                assert(ok);
