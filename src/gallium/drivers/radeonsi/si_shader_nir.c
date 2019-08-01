@@ -1240,6 +1240,12 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
 
 		ctx->abi.interp_at_sample_force_center =
 			ctx->shader->key.mono.u.ps.interpolate_at_sample_force_center;
+	} else if (nir->info.stage == MESA_SHADER_COMPUTE) {
+		if (nir->info.cs.user_data_components_amd) {
+			ctx->abi.user_data = LLVMGetParam(ctx->main_fn, ctx->param_cs_user_data);
+			ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
+								     nir->info.cs.user_data_components_amd);
+		}
 	}
 
 	ctx->abi.inputs = &ctx->inputs[0];

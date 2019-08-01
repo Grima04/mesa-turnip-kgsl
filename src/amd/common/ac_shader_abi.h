@@ -65,6 +65,7 @@ struct ac_shader_abi {
 	LLVMValueRef prim_mask;
 	LLVMValueRef color0;
 	LLVMValueRef color1;
+	LLVMValueRef user_data;
 	/* CS */
 	LLVMValueRef local_invocation_ids;
 	LLVMValueRef num_work_groups;

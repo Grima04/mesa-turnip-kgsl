@@ -2022,6 +2022,8 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_global_invocation_index;
    case SYSTEM_VALUE_WORK_DIM:
       return nir_intrinsic_load_work_dim;
+   case SYSTEM_VALUE_USER_DATA_AMD:
+      return nir_intrinsic_load_user_data_amd;
    default:
       unreachable("system value does not directly correspond to intrinsic");
    }
@@ -2109,6 +2111,8 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_LOCAL_GROUP_SIZE;
    case nir_intrinsic_load_global_invocation_id:
       return SYSTEM_VALUE_GLOBAL_INVOCATION_ID;
+   case nir_intrinsic_load_user_data_amd:
+      return SYSTEM_VALUE_USER_DATA_AMD;
    default:
       unreachable("intrinsic doesn't produce a system value");
    }

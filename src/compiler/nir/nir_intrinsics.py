@@ -614,6 +614,9 @@ system_value("blend_const_color_aaaa8888_unorm", 1)
 system_value("color0", 4)
 system_value("color1", 4)
 
+# System value for internal compute shaders in radeonsi.
+system_value("user_data_amd", 4)
+
 # Barycentric coordinate intrinsics.
 #
 # These set up the barycentric coordinates for a particular interpolation.

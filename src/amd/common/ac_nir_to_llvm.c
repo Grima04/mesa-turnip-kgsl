@@ -3313,6 +3313,10 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_load_color1:
 		result = ctx->abi->color1;
 		break;
+	case nir_intrinsic_load_user_data_amd:
+		assert(LLVMTypeOf(ctx->abi->user_data) == ctx->ac.v4i32);
+		result = ctx->abi->user_data;
+		break;
 	case nir_intrinsic_load_instance_id:
 		result = ctx->abi->instance_id;
 		break;
