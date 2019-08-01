@@ -32,6 +32,7 @@
 #include "fd6_screen.h"
 #include "fd6_blitter.h"
 #include "fd6_context.h"
+#include "fd6_emit.h"
 #include "fd6_format.h"
 #include "fd6_resource.h"
 
@@ -154,4 +155,6 @@ fd6_screen_init(struct pipe_screen *pscreen)
 		screen->perfcntr_groups = a6xx_perfcntr_groups;
 		screen->num_perfcntr_groups = a6xx_num_perfcntr_groups;
 	}
+
+	fd6_emit_init_screen(pscreen);
 }

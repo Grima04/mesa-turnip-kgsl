@@ -1331,6 +1331,11 @@ fd6_framebuffer_barrier(struct fd_context *ctx)
 }
 
 void
+fd6_emit_init_screen(struct pipe_screen *pscreen)
+{
+}
+
+void
 fd6_emit_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
