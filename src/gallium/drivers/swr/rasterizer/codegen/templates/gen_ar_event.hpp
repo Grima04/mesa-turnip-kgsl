@@ -36,7 +36,14 @@
 #include "common/os.h"
 #include "core/state.h"
 
-<% always_enabled_knob_groups = ['', 'Framework', 'SWTagApi', 'SwrApi'] %>
+<%
+    always_enabled_knob_groups = ['Framework', 'SWTagFramework', 'ApiSwr']
+    group_knob_remap_table = {
+        "ShaderStats": "KNOB_AR_ENABLE_SHADER_STATS",
+        "PipelineStats" : "KNOB_AR_ENABLE_PIPELINE_STATS",
+        "SWTagData" : "KNOB_AR_ENABLE_SWTAG_DATA",
+ }
+%>
 namespace ArchRast
 {
 <% sorted_enums = sorted(protos['enums']['defs']) %>
@@ -57,10 +64,12 @@ namespace ArchRast
     //////////////////////////////////////////////////////////////////////////
     struct Event
     {
+        const uint32_t eventId = {0xFFFFFFFF};
         Event() {}
         virtual ~Event() {}
 
         virtual bool IsEnabled() const { return true; };
+        virtual const uint32_t GetEventId() const = 0;
         virtual void Accept(EventHandler* pHandler) const = 0;
     };
 
@@ -94,6 +103,7 @@ namespace ArchRast
     struct ${event['name']} : Event
     {<%
         fields = event['fields'] %>
+        const uint32_t eventId = {${ event['id'] }};
         ${event['name']}Data data;
 
         // Constructor
@@ -135,8 +145,14 @@ namespace ArchRast
         }
 
         virtual void Accept(EventHandler* pHandler) const;
+        inline const uint32_t GetEventId() const { return eventId; }
         % if group not in always_enabled_knob_groups:
-        <%  group_knob_define = 'KNOB_AR_ENABLE_' + group.upper() + '_EVENTS' %>
+        <% 
+            if group in group_knob_remap_table:
+                group_knob_define = group_knob_remap_table[group]
+            else:
+                group_knob_define = 'KNOB_AR_ENABLE_' + group.upper() + '_EVENTS'
+        %>
         bool IsEnabled() const
         {
             static const bool IsEventEnabled = true;    // TODO: Replace with knob for each event

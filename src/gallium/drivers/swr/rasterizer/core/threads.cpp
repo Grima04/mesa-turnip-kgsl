@@ -458,8 +458,6 @@ INLINE int32_t CompleteDrawContextInl(SWR_CONTEXT* pContext, uint32_t workerId, 
     {
         ExecuteCallbacks(pContext, workerId, pDC);
 
-        // Report accumulated memory access stats
-        AR_EVENT(MemoryStatsEndEvent(pDC->drawId));
 
         // Cleanup memory allocations
         pDC->pArena->Reset(true);

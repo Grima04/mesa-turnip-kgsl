@@ -24,68 +24,68 @@
 # ArchRast is to not pollute the Rasty code with lots of calculations, etc. that
 # are needed to compute per draw statistics, etc.
 
-event Pipeline::EarlyDepthStencilInfoSingleSample
+event PipelineStats::EarlyDepthStencilInfoSingleSample
 {
     uint64_t depthPassMask;
     uint64_t stencilPassMask;
     uint64_t coverageMask;
 };
 
-event Pipeline::EarlyDepthStencilInfoSampleRate
+event PipelineStats::EarlyDepthStencilInfoSampleRate
 {
     uint64_t depthPassMask;
     uint64_t stencilPassMask;
     uint64_t coverageMask;
 };
 
-event Pipeline::EarlyDepthStencilInfoNullPS
+event PipelineStats::EarlyDepthStencilInfoNullPS
 {
     uint64_t depthPassMask;
     uint64_t stencilPassMask;
     uint64_t coverageMask;
 };
 
-event Pipeline::LateDepthStencilInfoSingleSample
+event PipelineStats::LateDepthStencilInfoSingleSample
 {
     uint64_t depthPassMask;
     uint64_t stencilPassMask;
     uint64_t coverageMask;
 };
 
-event Pipeline::LateDepthStencilInfoSampleRate
+event PipelineStats::LateDepthStencilInfoSampleRate
 {
     uint64_t depthPassMask;
     uint64_t stencilPassMask;
     uint64_t coverageMask;
 };
 
-event Pipeline::LateDepthStencilInfoNullPS
+event PipelineStats::LateDepthStencilInfoNullPS
 {
     uint64_t depthPassMask;
     uint64_t stencilPassMask;
     uint64_t coverageMask;
 };
 
-event Pipeline::EarlyDepthInfoPixelRate
+event PipelineStats::EarlyDepthInfoPixelRate
 {
     uint64_t depthPassCount;
     uint64_t activeLanes;
 };
 
 
-event Pipeline::LateDepthInfoPixelRate
+event PipelineStats::LateDepthInfoPixelRate
 {
     uint64_t depthPassCount;
     uint64_t activeLanes;
 };
 
 
-event Pipeline::BackendDrawEndEvent
+event PipelineStats::BackendDrawEndEvent
 {
     uint32_t drawId;
 };
 
-event Pipeline::FrontendDrawEndEvent
+event PipelineStats::FrontendDrawEndEvent
 {
     uint32_t drawId;
 };
@@ -105,18 +105,18 @@ event Memory::MemoryStatsEndEvent
     uint32_t drawId;
 };
 
-event Pipeline::TessPrimCount
+event PipelineStats::TessPrimCount
 {
     uint64_t primCount;
 };
 
-event Pipeline::RasterTileCount
+event PipelineStats::RasterTileCount
 {
     uint32_t drawId;
     uint64_t rasterTiles;
 };
 
-event Pipeline::GSPrimInfo
+event PipelineStats::GSPrimInfo
 {
     uint64_t inputPrimCount;
     uint64_t primGeneratedCount;
@@ -128,14 +128,14 @@ event Pipeline::GSPrimInfo
 // Trivial reject is numInvocations - pop_cnt32(validMask)
 // Trivial accept is validMask & ~clipMask
 // Must clip count is pop_cnt32(clipMask)
-event Pipeline::ClipInfoEvent
+event PipelineStats::ClipInfoEvent
 {
     uint32_t numInvocations;
     uint32_t validMask;
     uint32_t clipMask;
 };
 
-event Pipeline::CullInfoEvent
+event PipelineStats::CullInfoEvent
 {
     uint32_t drawId;
     uint64_t degeneratePrimMask;
@@ -143,14 +143,14 @@ event Pipeline::CullInfoEvent
     uint32_t validMask;
 };
 
-event Pipeline::AlphaInfoEvent
+event PipelineStats::AlphaInfoEvent
 {
     uint32_t drawId;
     uint32_t alphaTestEnable;
     uint32_t alphaBlendEnable;
 };
 
-event SwrApi::DrawInstancedEvent
+event PipelineStats::DrawInstancedEvent
 {
     uint32_t drawId;
     uint32_t topology;
@@ -165,7 +165,7 @@ event SwrApi::DrawInstancedEvent
     uint32_t splitId; // Split draw count or id.
 };
 
-event SwrApi::DrawIndexedInstancedEvent
+event PipelineStats::DrawIndexedInstancedEvent
 {
     uint32_t drawId;
     uint32_t topology;
@@ -181,32 +181,32 @@ event SwrApi::DrawIndexedInstancedEvent
     uint32_t splitId; // Split draw count or id.
 };
 
-event Shader::VSStats
+event ShaderStats::VSStats
 {
     HANDLE hStats;      // SWR_SHADER_STATS
 };
 
-event Shader::HSStats
+event ShaderStats::HSStats
 {
     HANDLE hStats;      // SWR_SHADER_STATS
 };
 
-event Shader::DSStats
+event ShaderStats::DSStats
 {
     HANDLE hStats;      // SWR_SHADER_STATS
 };
 
-event Shader::GSStats
+event ShaderStats::GSStats
 {
     HANDLE hStats;      // SWR_SHADER_STATS
 };
 
-event Shader::PSStats
+event ShaderStats::PSStats
 {
     HANDLE hStats;      // SWR_SHADER_STATS
 };
 
-event Shader::CSStats
+event ShaderStats::CSStats
 {
     HANDLE hStats;      // SWR_SHADER_STATS
 };

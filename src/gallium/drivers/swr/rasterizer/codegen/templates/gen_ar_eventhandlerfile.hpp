@@ -147,9 +147,9 @@ namespace ArchRast
         virtual void Handle(const ${event['name']}& event)
         {
 % if event['num_fields'] == 0:
-            Write(${event['id']}, (char*)&event.data, 0);
+            Write(event.eventId, (char*)&event.data, 0);
 % else:
-            Write(${event['id']}, (char*)&event.data, sizeof(event.data));
+            Write(event.eventId, (char*)&event.data, sizeof(event.data));
 % endif
         }
 %       endfor

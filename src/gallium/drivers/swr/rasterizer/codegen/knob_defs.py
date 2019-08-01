@@ -315,6 +315,34 @@ KNOBS = [
         'category'  : 'perf_adv',
     }],
 
+    ['AR_ENABLE_PIPELINE_STATS', {
+        'type'      : 'bool',
+        'default'   : 'true',
+        'desc'      : ['Enable pipeline stats when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
+    ['AR_ENABLE_SHADER_STATS', {
+        'type'      : 'bool',
+        'default'   : 'true',
+        'desc'      : ['Enable shader stats when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
+    ['AR_ENABLE_SWTAG_DATA', {
+        'type'      : 'bool',
+        'default'   : 'false',
+        'desc'      : ['Enable SWTag data when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
+    ['AR_ENABLE_SWR_EVENTS', {
+        'type'      : 'bool',
+        'default'   : 'true',
+        'desc'      : ['Enable internal SWR events when using Archrast'],
+        'category'  : 'archrast',
+    }],
+
     ['AR_ENABLE_PIPELINE_EVENTS', {
         'type'      : 'bool',
         'default'   : 'true',

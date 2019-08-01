@@ -39,14 +39,22 @@ def parse_event_fields(lines, idx, event_dict):
         line = lines[idx].rstrip()
         idx += 1
 
-        match = re.match(r'(\s*)([\w\*]+)(\s+)(counter\s+)*([\w]+)(\[\d+\])*', line)
+        # ex 1: uint32_t    numSampleCLZExecuted; // number of sample_cl_z instructions executed
+        # ex 2: char        reason[256]; // size of reason
+        match = re.match(r'^(\s*)([\w\*]+)(\s+)([\w]+)(\[\d+\])*;\s*(\/\/.*)*$', line)
+        # group 1 -
+        # group 2 type
+        # group 3 -
+        # group 4 name
+        # group 5 [array size]
+        # group 6 //comment
 
         if match:
             field = {
                 "type": match.group(2),
-                "name": match.group(5),
-                "size": int(match.group(6)[1:-1]) if match.group(6) else 1,
-                "counter": True if match.group(4) else False
+                "name": match.group(4),
+                "size": int(match.group(5)[1:-1]) if match.group(5) else 1,
+                "desc": match.group(6)[2:].strip() if match.group(6) else "",
             }
             fields.append(field)
 
@@ -87,6 +95,53 @@ def parse_protos(files, verbose=False):
     """
         Parses a proto file and returns a dictionary of event definitions
     """
+
+    # Protos structure:
+    #
+    # {
+    #   "events": {
+    #     "defs": {     // dict of event definitions where keys are 'group_name::event_name"
+    #       ...,
+    #       "ApiStat::DrawInfoEvent": {
+    #         "id": 3,
+    #         "group": "ApiStat",
+    #         "name": "DrawInfoEvent",  // name of event without 'group_name::' prefix
+    #         "desc": "",
+    #         "fields": [
+    #           {
+    #             "type": "uint32_t",
+    #             "name": "drawId",
+    #             "size": 1,
+    #             "desc": "",
+    #           },
+    #           ...
+    #         ]
+    #       },
+    #       ...
+    #     },
+    #     "groups": {   // dict of groups with lists of event keys
+    #       "ApiStat": [
+    #         "ApiStat::DispatchEvent",
+    #         "ApiStat::DrawInfoEvent",
+    #         ...
+    #       ],
+    #       "Framework": [
+    #         "Framework::ThreadStartApiEvent",
+    #         "Framework::ThreadStartWorkerEvent",
+    #         ...
+    #       ],
+    #       ...
+    #     },
+    #     "map": {  // map of event ids to match archrast output to event key
+    #       "1": "Framework::ThreadStartApiEvent",
+    #       "2": "Framework::ThreadStartWorkerEvent",
+    #       "3": "ApiStat::DrawInfoEvent",
+    #       ...
+    #     }
+    #   },
+    #   "enums": { ... }    // enums follow similar defs, map (groups?) structure
+    # }
+
     protos = {
         'events': {
             'defs': {},             # event dictionary containing events with their fields
@@ -111,11 +166,28 @@ def parse_protos(files, verbose=False):
 
         with open(filename, 'r') as f:
             lines = f.readlines()
-
+            in_brief = False
+            brief = []
             idx = 0
             while idx < len(lines):
                 line = lines[idx].strip()
                 idx += 1
+
+                # If currently processing a brief, keep processing or change state
+                if in_brief:
+                    match = re.match(r'^\s*\/\/\/\s*(.*)$', line)                   # i.e. "/// more event desc..."
+                    if match:
+                        brief.append(match.group(1).strip())
+                        continue
+                    else:
+                        in_brief = False
+
+                # Match event/enum brief
+                match = re.match(r'^\s*\/\/\/\s*@(brief|breif)\s*(.*)$', line)       # i.e. "///@brief My event desc..."
+                if match:
+                    in_brief = True
+                    brief.append(match.group(2).strip())
+                    continue
 
                 # Match event definition
                 match = re.match(r'event(\s*)(((\w*)::){0,1}(\w+))', line)          # i.e. "event SWTag::CounterEvent"
@@ -124,19 +196,27 @@ def parse_protos(files, verbose=False):
 
                     # Parse event attributes
                     event_key = match.group(2)                                      # i.e. SWTag::CounterEvent
-                    event_group = match.group(4) if match.group(4) else ""      # i.e. SWTag
+                    event_group = match.group(4) if match.group(4) else ""          # i.e. SWTag
                     event_name = match.group(5)                                     # i.e. CounterEvent
 
                     # Define event attributes
                     event = {
                         'id': event_id,
                         'group': event_group,
-                        'name': event_name
+                        'name': event_name,
+                        'desc': ' '.join(brief)
                     }
+                    # Add period at end of event desc if necessary
+                    if event["desc"] and event["desc"][-1] != '.':
+                        event["desc"] += '.'
+
+                    # Reset brief
+                    brief = []
 
                     # Now add event fields
                     idx = parse_event_fields(lines, idx, event)
 
+                    # Register event and mapping
                     protos['events']['defs'][event_key] = event
                     protos['events']['map'][event_id] = event_key
 
@@ -152,12 +232,20 @@ def parse_protos(files, verbose=False):
 
                     # Define enum attr
                     enum = {
-                        'name': enum_name
+                        'name': enum_name,
+                        'desc': ' '.join(brief)
                     }
+                    # Add period at end of event desc if necessary
+                    if enum["desc"] and enum["desc"][-1] != '.':
+                        enum["desc"] += '.'
+
+                    # Reset brief
+                    brief = []
 
                     # Now add enum fields
                     idx = parse_enums(lines, idx, enum)
 
+                    # Register enum and mapping
                     protos['enums']['defs'][enum_name] = enum
                     protos['enums']['map'][enum_id] = enum_name
 
@@ -172,10 +260,6 @@ def parse_protos(files, verbose=False):
         event_groups[group].append(key)
 
     return protos
-
-
-def get_sorted_protos(protos):
-    protos["groups"]
 
 
 def main():
