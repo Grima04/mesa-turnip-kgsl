@@ -1027,6 +1027,21 @@ enum pipe_compute_cap
 };
 
 /**
+ * Resource parameters. They can be queried using
+ * pipe_screen::get_resource_param.
+ */
+enum pipe_resource_param
+{
+   PIPE_RESOURCE_PARAM_NPLANES,
+   PIPE_RESOURCE_PARAM_STRIDE,
+   PIPE_RESOURCE_PARAM_OFFSET,
+   PIPE_RESOURCE_PARAM_MODIFIER,
+   PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED,
+   PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS,
+   PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD,
+};
+
+/**
  * Types of parameters for pipe_context::set_context_param.
  */
 enum pipe_context_param

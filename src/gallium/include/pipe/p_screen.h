@@ -263,6 +263,16 @@ struct pipe_screen {
                                unsigned usage);
 
    /**
+    * Get info for the given pipe resource without the need to get a
+    * winsys_handle.
+    */
+   bool (*resource_get_param)(struct pipe_screen *screen,
+                              struct pipe_resource *resource,
+                              unsigned int plane,
+                              enum pipe_resource_param param,
+                              uint64_t *value);
+
+   /**
     * Get stride and offset for the given pipe resource without the need to get
     * a winsys_handle.
     */
