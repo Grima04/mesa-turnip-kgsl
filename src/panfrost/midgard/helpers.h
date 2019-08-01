@@ -340,4 +340,22 @@ mir_is_simple_swizzle(unsigned swizzle, unsigned mask)
         return true;
 }
 
+/* Packs a load/store argument */
+
+static inline uint8_t
+midgard_ldst_reg(unsigned reg, unsigned component)
+{
+        assert(reg == REGISTER_LDST_BASE || (reg == REGISTER_LDST_BASE + 1));
+
+        midgard_ldst_register_select sel = {
+                .component = component,
+                .select = reg - 26
+        };
+
+        uint8_t packed;
+        memcpy(&packed, &sel, sizeof(packed));
+
+        return packed;
+}
+
 #endif
