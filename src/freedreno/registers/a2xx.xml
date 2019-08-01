@@ -1596,7 +1596,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<bitfield name="CLAMP_Y" low="13" high="15" type="sq_tex_clamp"/>"
 		<bitfield name="CLAMP_Z" low="16" high="18" type="sq_tex_clamp"/>"
 		<bitfield name="PITCH" low="22" high="30" shr="5" type="uint"/>
-		<bitfield name="TILED" pos="1" type="boolean"/>
+		<bitfield name="TILED" pos="31" type="boolean"/>
 	</reg32>
 	<reg32 offset="1" name="1">
 		<bitfield name="FORMAT" low="0" high="5" type="a2xx_sq_surfaceformat"/>

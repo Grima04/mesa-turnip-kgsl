@@ -116,7 +116,10 @@ fd2_screen_init(struct pipe_screen *pscreen)
 	screen->max_rts = 1;
 	pscreen->context_create = fd2_context_create;
 	pscreen->is_format_supported = fd2_screen_is_format_supported;
+
 	screen->setup_slices = fd2_setup_slices;
+	if (fd_mesa_debug & FD_DBG_TTILE)
+		screen->tile_mode = fd2_tile_mode;
 
 	if (fd_mesa_debug & FD_DBG_PERFC) {
 		screen->perfcntr_groups = a2xx_perfcntr_groups;
