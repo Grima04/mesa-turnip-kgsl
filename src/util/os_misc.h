@@ -35,10 +35,11 @@
 #define _OS_MISC_H_
 
 
+#include "detect_os.h"
 #include "pipe/p_compiler.h"
 
 
-#if defined(PIPE_OS_UNIX)
+#if DETECT_OS_UNIX
 #  include <signal.h> /* for kill() */
 #  include <unistd.h> /* getpid() */
 #endif
@@ -56,7 +57,7 @@ extern "C" {
 #  define os_break() __asm("int3")
 #elif defined(PIPE_CC_MSVC)
 #  define os_break()  __debugbreak()
-#elif defined(PIPE_OS_UNIX)
+#elif DETECT_OS_UNIX
 #  define os_break() kill(getpid(), SIGTRAP)
 #else
 #  define os_break() abort()
