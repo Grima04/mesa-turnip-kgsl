@@ -29,6 +29,7 @@
 
 #include "fd2_screen.h"
 #include "fd2_context.h"
+#include "fd2_emit.h"
 #include "fd2_util.h"
 #include "fd2_resource.h"
 
@@ -125,4 +126,6 @@ fd2_screen_init(struct pipe_screen *pscreen)
 		screen->perfcntr_groups = a2xx_perfcntr_groups;
 		screen->num_perfcntr_groups = a2xx_num_perfcntr_groups;
 	}
+
+	fd2_emit_init_screen(pscreen);
 }
