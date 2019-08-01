@@ -139,7 +139,8 @@ struct ac_shader_abi {
 	LLVMValueRef (*load_patch_vertices_in)(struct ac_shader_abi *abi);
 
 	LLVMValueRef (*load_tess_level)(struct ac_shader_abi *abi,
-					unsigned varying_id);
+					unsigned varying_id,
+					bool load_default_state);
 
 
 	LLVMValueRef (*load_ubo)(struct ac_shader_abi *abi, LLVMValueRef index);

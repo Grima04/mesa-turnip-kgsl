@@ -3537,10 +3537,16 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		result = ctx->abi->load_tess_coord(ctx->abi);
 		break;
 	case nir_intrinsic_load_tess_level_outer:
-		result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_OUTER);
+		result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_OUTER, false);
 		break;
 	case nir_intrinsic_load_tess_level_inner:
-		result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_INNER);
+		result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_INNER, false);
+		break;
+	case nir_intrinsic_load_tess_level_outer_default:
+		result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_OUTER, true);
+		break;
+	case nir_intrinsic_load_tess_level_inner_default:
+		result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_INNER, true);
 		break;
 	case nir_intrinsic_load_patch_vertices_in:
 		result = ctx->abi->load_patch_vertices_in(ctx->abi);

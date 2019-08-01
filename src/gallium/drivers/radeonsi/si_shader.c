@@ -1977,11 +1977,43 @@ static LLVMValueRef load_tess_level(struct si_shader_context *ctx,
 
 }
 
+static LLVMValueRef load_tess_level_default(struct si_shader_context *ctx,
+					    unsigned semantic_name)
+{
+	LLVMValueRef buf, slot, val[4];
+	int i, offset;
+
+	slot = LLVMConstInt(ctx->i32, SI_HS_CONST_DEFAULT_TESS_LEVELS, 0);
+	buf = LLVMGetParam(ctx->main_fn, ctx->param_rw_buffers);
+	buf = ac_build_load_to_sgpr(&ctx->ac, buf, slot);
+	offset = semantic_name == TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL ? 4 : 0;
+
+	for (i = 0; i < 4; i++)
+		val[i] = buffer_load_const(ctx, buf,
+					   LLVMConstInt(ctx->i32, (offset + i) * 4, 0));
+	return ac_build_gather_values(&ctx->ac, val, 4);
+}
+
 static LLVMValueRef si_load_tess_level(struct ac_shader_abi *abi,
-				       unsigned varying_id)
+				       unsigned varying_id,
+				       bool load_default_state)
 {
 	struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 	unsigned semantic_name;
+
+	if (load_default_state) {
+		switch (varying_id) {
+		case VARYING_SLOT_TESS_LEVEL_INNER:
+			semantic_name = TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL;
+			break;
+		case VARYING_SLOT_TESS_LEVEL_OUTER:
+			semantic_name = TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL;
+			break;
+		default:
+			unreachable("unknown tess level");
+		}
+		return load_tess_level_default(ctx, semantic_name);
+	}
 
 	switch (varying_id) {
 	case VARYING_SLOT_TESS_LEVEL_INNER:
@@ -2118,21 +2150,8 @@ void si_load_system_value(struct si_shader_context *ctx,
 
 	case TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL:
 	case TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL:
-	{
-		LLVMValueRef buf, slot, val[4];
-		int i, offset;
-
-		slot = LLVMConstInt(ctx->i32, SI_HS_CONST_DEFAULT_TESS_LEVELS, 0);
-		buf = LLVMGetParam(ctx->main_fn, ctx->param_rw_buffers);
-		buf = ac_build_load_to_sgpr(&ctx->ac, buf, slot);
-		offset = decl->Semantic.Name == TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL ? 4 : 0;
-
-		for (i = 0; i < 4; i++)
-			val[i] = buffer_load_const(ctx, buf,
-						   LLVMConstInt(ctx->i32, (offset + i) * 4, 0));
-		value = ac_build_gather_values(&ctx->ac, val, 4);
+		value = load_tess_level_default(ctx, decl->Semantic.Name);
 		break;
-	}
 
 	case TGSI_SEMANTIC_PRIMID:
 		value = si_get_primitive_id(ctx, 0);
@@ -6086,6 +6105,7 @@ static bool si_compile_tgsi_main(struct si_shader_context *ctx)
 	case PIPE_SHADER_TESS_CTRL:
 		bld_base->emit_fetch_funcs[TGSI_FILE_INPUT] = fetch_input_tcs;
 		ctx->abi.load_tess_varyings = si_nir_load_tcs_varyings;
+		ctx->abi.load_tess_level = si_load_tess_level;
 		bld_base->emit_fetch_funcs[TGSI_FILE_OUTPUT] = fetch_output_tcs;
 		bld_base->emit_store = store_output_tcs;
 		ctx->abi.store_tcs_outputs = si_nir_store_output_tcs;
