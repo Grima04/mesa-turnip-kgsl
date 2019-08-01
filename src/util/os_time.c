@@ -45,7 +45,7 @@
 #  include <sys/time.h> /* timeval */
 #  include <sched.h> /* sched_yield */
 #  include <errno.h>
-#elif defined(PIPE_SUBSYSTEM_WINDOWS_USER)
+#elif DETECT_OS_WINDOWS
 #  include <windows.h>
 #else
 #  error Unsupported OS
@@ -67,7 +67,7 @@ os_time_get_nano(void)
    gettimeofday(&tv, NULL);
    return tv.tv_usec*INT64_C(1000) + tv.tv_sec*INT64_C(1000000000);
 
-#elif defined(PIPE_SUBSYSTEM_WINDOWS_USER)
+#elif DETECT_OS_WINDOWS
 
    static LARGE_INTEGER frequency;
    LARGE_INTEGER counter;
@@ -104,7 +104,7 @@ os_time_sleep(int64_t usecs)
 #elif defined(PIPE_OS_UNIX)
    usleep(usecs);
 
-#elif defined(PIPE_SUBSYSTEM_WINDOWS_USER)
+#elif DETECT_OS_WINDOWS
    DWORD dwMilliseconds = (DWORD) ((usecs + 999) / 1000);
    /* Avoid Sleep(O) as that would cause to sleep for an undetermined duration */
    if (dwMilliseconds) {

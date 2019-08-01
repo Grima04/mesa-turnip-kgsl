@@ -143,8 +143,6 @@
 
 /*
  * Auto-detect the operating system family.
- * 
- * See subsystem below for a more fine-grained distinction.
  */
 
 #if defined(__linux__)
@@ -212,20 +210,5 @@
 #define PIPE_OS_CYGWIN
 #define PIPE_OS_UNIX
 #endif
-
-/*
- * Try to auto-detect the subsystem.
- * 
- * NOTE: There is no way to auto-detect most of these.
- */
-
-#if defined(PIPE_OS_WINDOWS)
-#if defined(PIPE_SUBSYSTEM_WINDOWS_USER)
-/* Windows User-space Library */
-#else
-#define PIPE_SUBSYSTEM_WINDOWS_USER
-#endif
-#endif /* PIPE_OS_WINDOWS */
-
 
 #endif /* P_CONFIG_H_ */

@@ -31,7 +31,7 @@
 #include <stdarg.h>
 
 
-#if defined(PIPE_SUBSYSTEM_WINDOWS_USER)
+#if DETECT_OS_WINDOWS
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN      // Exclude rarely-used stuff from Windows headers
@@ -88,7 +88,7 @@ os_log_message(const char *message)
          fout = stderr;
    }
 
-#if defined(PIPE_SUBSYSTEM_WINDOWS_USER)
+#if DETECT_OS_WINDOWS
    OutputDebugStringA(message);
    if(GetConsoleWindow() && !IsDebuggerPresent()) {
       fflush(stdout);
@@ -99,7 +99,7 @@ os_log_message(const char *message)
       fputs(message, fout);
       fflush(fout);
    }
-#else /* !PIPE_SUBSYSTEM_WINDOWS_USER */
+#else /* !DETECT_OS_WINDOWS */
    fflush(stdout);
    fputs(message, fout);
    fflush(fout);

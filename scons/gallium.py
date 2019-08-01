@@ -403,8 +403,6 @@ def generate(env):
             ]
         if env['build'] in ('debug', 'checked'):
             cppdefines += ['_DEBUG']
-    if platform == 'windows':
-        cppdefines += ['PIPE_SUBSYSTEM_WINDOWS_USER']
     if env['embedded']:
         cppdefines += ['EMBEDDED_DEVICE']
     env.Append(CPPDEFINES = cppdefines)
