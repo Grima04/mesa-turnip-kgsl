@@ -96,12 +96,7 @@ st_delete_transform_feedback(struct gl_context *ctx,
       pipe_so_target_reference(&sobj->targets[i], NULL);
    }
 
-   for (i = 0; i < ARRAY_SIZE(sobj->base.Buffers); i++) {
-      _mesa_reference_buffer_object(ctx, &sobj->base.Buffers[i], NULL);
-   }
-
-   free(obj->Label);
-   free(obj);
+   _mesa_delete_transform_feedback_object(ctx, obj);
 }
 
 
