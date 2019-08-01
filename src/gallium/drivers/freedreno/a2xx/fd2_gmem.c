@@ -590,14 +590,14 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		for (int i = 0; i < gmem->num_vsc_pipes; i++) {
 			struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[i];
 
-			/* XXX we know how large this needs to be..
-			 * should do some sort of realloc
-			 * it should be ctx->batch->num_vertices bytes large
-			 * with this size it will break with more than 256k vertices..
-			 */
-			if (!pipe->bo) {
-				pipe->bo = fd_bo_new(ctx->dev, 0x40000,
+			/* allocate in 64k increments to avoid reallocs */
+			uint32_t bo_size = align(batch->num_vertices, 0x10000);
+			if (!pipe->bo || fd_bo_size(pipe->bo) < bo_size) {
+				if (pipe->bo)
+					fd_bo_del(pipe->bo);
+				pipe->bo = fd_bo_new(ctx->dev, bo_size,
 						DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_pipe[%u]", i);
+				assert(pipe->bo);
 			}
 
 			/* memory export address (export32):
@@ -609,7 +609,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 			OUT_RELOCW(ring, pipe->bo, 0, 0x40000000, -2);
 			OUT_RING(ring, 0x00000000);
 			OUT_RING(ring, 0x4B00D000);
-			OUT_RING(ring, 0x4B000000 | 0x40000);
+			OUT_RING(ring, 0x4B000000 | bo_size);
 		}
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 1 + gmem->num_vsc_pipes * 8);
