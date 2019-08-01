@@ -273,7 +273,6 @@ emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 
 		assert(offset * 4 + params < v->constlen * 4);
 
-		ring_wfi(ctx->batch, ring);
 		ctx->screen->emit_const_bo(ring, v->type, false, offset * 4, params, prscs, offsets);
 	}
 }
@@ -294,7 +293,6 @@ emit_ssbo_sizes(struct fd_context *ctx, const struct ir3_shader_variant *v,
 			sizes[off] = sb->sb[index].buffer_size;
 		}
 
-		ring_wfi(ctx->batch, ring);
 		emit_const(ctx, ring, v, offset * 4,
 			0, ARRAY_SIZE(sizes), sizes, NULL);
 	}
@@ -348,7 +346,6 @@ emit_image_dims(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		}
 		uint32_t size = MIN2(ARRAY_SIZE(dims), v->constlen * 4 - offset * 4);
 
-		ring_wfi(ctx->batch, ring);
 		emit_const(ctx, ring, v, offset * 4, 0, size, dims, NULL);
 	}
 }
@@ -371,7 +368,6 @@ emit_immediates(struct fd_context *ctx, const struct ir3_shader_variant *v,
 	size *= 4;
 
 	if (size > 0) {
-		ring_wfi(ctx->batch, ring);
 		emit_const(ctx, ring, v, base,
 			0, size, const_state->immediates[0].val, NULL);
 	}
@@ -407,7 +403,6 @@ emit_tfbos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 
 		assert(offset * 4 + params < v->constlen * 4);
 
-		ring_wfi(ctx->batch, ring);
 		ctx->screen->emit_const_bo(ring, v->type, true, offset * 4, params, prscs, offsets);
 	}
 }
@@ -485,6 +480,8 @@ emit_common_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 		constbuf = &ctx->constbuf[t];
 		shader_dirty = !!(dirty & FD_DIRTY_SHADER_PROG);
 
+		ring_wfi(ctx->batch, ring);
+
 		emit_user_consts(ctx, v, ring, constbuf);
 		emit_ubos(ctx, v, ring, constbuf);
 		if (shader_dirty)
@@ -493,11 +490,13 @@ emit_common_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 
 	if (dirty & (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_SSBO)) {
 		struct fd_shaderbuf_stateobj *sb = &ctx->shaderbuf[t];
+		ring_wfi(ctx->batch, ring);
 		emit_ssbo_sizes(ctx, v, ring, sb);
 	}
 
 	if (dirty & (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_IMAGE)) {
 		struct fd_shaderimg_stateobj *si = &ctx->shaderimg[t];
+		ring_wfi(ctx->batch, ring);
 		emit_image_dims(ctx, v, ring, si);
 	}
 }
@@ -533,10 +532,8 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 		vertex_params_size = ARRAY_SIZE(vertex_params);
 	}
 
-	ring_wfi(ctx->batch, ring);
-
 	bool needs_vtxid_base =
-			ir3_find_sysval_regid(v, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) != regid(63, 0);
+		ir3_find_sysval_regid(v, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) != regid(63, 0);
 
 	/* for indirect draw, we need to copy VTXID_BASE from
 	 * indirect-draw parameters buffer.. which is annoying
@@ -580,7 +577,6 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 	if (vertex_params[IR3_DP_VTXCNT_MAX] > 0) {
 		emit_tfbos(ctx, v, ring);
 	}
-
 }
 
 void
@@ -592,8 +588,10 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_VERTEX);
 
 	/* emit driver params every time: */
-	if (info && ir3_needs_vs_driver_params(v))
+	if (info && ir3_needs_vs_driver_params(v)) {
+		ring_wfi(ctx->batch, ring);
 		ir3_emit_vs_driver_params(v, ring, ctx, info);
+	}
 }
 
 void
