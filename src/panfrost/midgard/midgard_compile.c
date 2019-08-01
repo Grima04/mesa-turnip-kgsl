@@ -662,7 +662,7 @@ emit_indirect_offset(compiler_context *ctx, nir_src *src)
                 .ssa_args = {
                         .src0 = SSA_UNUSED_1,
                         .src1 = offset,
-                        .dest = SSA_FIXED_REGISTER(REGISTER_OFFSET),
+                        .dest = SSA_FIXED_REGISTER(REGISTER_LDST_BASE + 1),
                 },
                 .alu = {
                         .op = midgard_alu_op_imov,
