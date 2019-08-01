@@ -219,10 +219,6 @@
  * NOTE: There is no way to auto-detect most of these.
  */
 
-#if defined(PIPE_OS_LINUX) || defined(PIPE_OS_BSD) || defined(PIPE_OS_SOLARIS)
-#define PIPE_SUBSYSTEM_DRI
-#endif /* PIPE_OS_LINUX || PIPE_OS_BSD || PIPE_OS_SOLARIS */
-
 #if defined(PIPE_OS_WINDOWS)
 #if defined(PIPE_SUBSYSTEM_WINDOWS_USER)
 /* Windows User-space Library */
