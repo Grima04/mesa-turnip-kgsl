@@ -46,6 +46,21 @@ struct ir3_shader_variant * ir3_shader_variant(struct ir3_shader *shader,
 
 struct fd_ringbuffer;
 struct fd_context;
+struct fd_screen;
+struct fd_constbuf_stateobj;
+struct fd_shaderbuf_stateobj;
+struct fd_shaderimg_stateobj;
+
+void ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf);
+void ir3_emit_ubos(struct fd_screen *screen, const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf);
+void ir3_emit_ssbo_sizes(struct fd_screen *screen, const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring, struct fd_shaderbuf_stateobj *sb);
+void ir3_emit_image_dims(struct fd_screen *screen, const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring, struct fd_shaderimg_stateobj *si);
+void ir3_emit_immediates(struct fd_screen *screen, const struct ir3_shader_variant *v,
+		struct fd_ringbuffer *ring);
 
 static inline bool
 ir3_needs_vs_driver_params(const struct ir3_shader_variant *v)

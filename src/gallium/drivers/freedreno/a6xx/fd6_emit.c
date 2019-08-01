@@ -934,7 +934,19 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *vsconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
 
-		ir3_emit_vs_consts(vp, vsconstobj, ctx, emit->info);
+		ir3_emit_user_consts(ctx->screen, vp, vsconstobj,
+				&ctx->constbuf[PIPE_SHADER_VERTEX]);
+		ir3_emit_ubos(ctx->screen, vp, vsconstobj,
+				&ctx->constbuf[PIPE_SHADER_VERTEX]);
+		ir3_emit_immediates(ctx->screen, vp, vsconstobj);
+		ir3_emit_ssbo_sizes(ctx->screen, vp, vsconstobj,
+				&ctx->shaderbuf[PIPE_SHADER_VERTEX]);
+		ir3_emit_image_dims(ctx->screen, vp, vsconstobj,
+				&ctx->shaderimg[PIPE_SHADER_VERTEX]);
+
+		if (ir3_needs_vs_driver_params(vp))
+			ir3_emit_vs_driver_params(vp, vsconstobj, ctx, emit->info);
+
 		fd6_emit_add_group(emit, vsconstobj, FD6_GROUP_VS_CONST, 0x7);
 		fd_ringbuffer_del(vsconstobj);
 	}
@@ -943,7 +955,16 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *fsconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
 
-		ir3_emit_fs_consts(fp, fsconstobj, ctx);
+		ir3_emit_user_consts(ctx->screen, fp, fsconstobj,
+				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
+		ir3_emit_ubos(ctx->screen, fp, fsconstobj,
+				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
+		ir3_emit_immediates(ctx->screen, fp, fsconstobj);
+		ir3_emit_ssbo_sizes(ctx->screen, fp, fsconstobj,
+				&ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
+		ir3_emit_image_dims(ctx->screen, fp, fsconstobj,
+				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
+
 		fd6_emit_add_group(emit, fsconstobj, FD6_GROUP_FS_CONST, 0x6);
 		fd_ringbuffer_del(fsconstobj);
 	}
