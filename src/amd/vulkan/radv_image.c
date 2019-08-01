@@ -483,6 +483,8 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			meta_va = gpu_address + image->dcc_offset;
 			if (chip_class <= GFX8)
 				meta_va += base_level_info->dcc_offset;
+
+			meta_va |= (uint32_t)plane->surface.tile_swizzle << 8;
 		} else if (!is_storage_image &&
 			   radv_image_is_tc_compat_htile(image)) {
 			meta_va = gpu_address + image->htile_offset;
@@ -490,10 +492,8 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 
 		if (meta_va) {
 			state[6] |= S_008F28_COMPRESSION_EN(1);
-			if (chip_class <= GFX9) {
+			if (chip_class <= GFX9)
 				state[7] = meta_va >> 8;
-				state[7] |= plane->surface.tile_swizzle;
-			}
 		}
 	}
 
