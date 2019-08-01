@@ -487,8 +487,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	}
 
 	info->has_gds_ordered_append = info->chip_class >= GFX7 &&
-				       info->drm_minor >= 29 &&
-				       HAVE_LLVM >= 0x0800;
+				       info->drm_minor >= 29;
 	return true;
 }
 

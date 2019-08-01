@@ -1308,21 +1308,12 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx,
 	if (instr->sampler_dim == GLSL_SAMPLER_DIM_BUF) {
 		unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
 
-		if (ctx->abi->gfx9_stride_size_workaround) {
-			return ac_build_buffer_load_format_gfx9_safe(&ctx->ac,
-			                                             args->resource,
-			                                             args->coords[0],
-			                                             ctx->ac.i32_0,
-			                                             util_last_bit(mask),
-			                                             0, true);
-		} else {
-			return ac_build_buffer_load_format(&ctx->ac,
-			                                   args->resource,
-			                                   args->coords[0],
-			                                   ctx->ac.i32_0,
-			                                   util_last_bit(mask),
-			                                   0, true);
-		}
+		return ac_build_buffer_load_format(&ctx->ac,
+			                           args->resource,
+			                           args->coords[0],
+			                           ctx->ac.i32_0,
+			                           util_last_bit(mask),
+			                           0, true);
 	}
 
 	args->opcode = ac_image_sample;
@@ -2477,8 +2468,7 @@ static LLVMValueRef get_image_buffer_descriptor(struct ac_nir_context *ctx,
 						bool write, bool atomic)
 {
 	LLVMValueRef rsrc = get_image_descriptor(ctx, instr, AC_DESC_BUFFER, write);
-	if (ctx->abi->gfx9_stride_size_workaround ||
-	    (ctx->abi->gfx9_stride_size_workaround_for_atomic && atomic)) {
+	if (ctx->abi->gfx9_stride_size_workaround_for_atomic && atomic) {
 		LLVMValueRef elem_count = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 2, 0), "");
 		LLVMValueRef stride = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 1, 0), "");
 		stride = LLVMBuildLShr(ctx->ac.builder, stride, LLVMConstInt(ctx->ac.i32, 16, 0), "");

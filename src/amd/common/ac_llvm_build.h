@@ -324,16 +324,6 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx,
 					 unsigned cache_policy,
 					 bool can_speculate);
 
-/* load_format that handles the stride & element count better if idxen is
- * disabled by LLVM. */
-LLVMValueRef ac_build_buffer_load_format_gfx9_safe(struct ac_llvm_context *ctx,
-                                                  LLVMValueRef rsrc,
-                                                  LLVMValueRef vindex,
-                                                  LLVMValueRef voffset,
-                                                  unsigned num_channels,
-                                                  unsigned cache_policy,
-                                                  bool can_speculate);
-
 LLVMValueRef
 ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 			    LLVMValueRef rsrc,

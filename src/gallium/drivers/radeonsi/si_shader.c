@@ -5305,11 +5305,6 @@ static bool si_get_external_symbol(void *data, const char *name, uint64_t *value
 		/* Enable scratch coalescing. */
 		*value = S_008F04_BASE_ADDRESS_HI(*scratch_va >> 32) |
 			 S_008F04_SWIZZLE_ENABLE(1);
-		if (HAVE_LLVM < 0x0800) {
-			/* Old LLVM created an R_ABS32_HI relocation for
-			 * this symbol. */
-			*value <<= 32;
-		}
 		return true;
 	}
 

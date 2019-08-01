@@ -840,8 +840,7 @@ static void atomic_emit(
 		vindex = args.coords[0]; /* for buffers only */
 	}
 
-	if (HAVE_LLVM >= 0x0800 &&
-	    inst->Src[0].Register.File != TGSI_FILE_BUFFER &&
+	if (inst->Src[0].Register.File != TGSI_FILE_BUFFER &&
 	    inst->Memory.Texture == TGSI_TEXTURE_BUFFER) {
 		LLVMValueRef buf_args[7];
 		unsigned num_args = 0;
@@ -866,9 +865,7 @@ static void atomic_emit(
 		return;
 	}
 
-	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER ||
-	    (HAVE_LLVM < 0x0800 &&
-	     inst->Memory.Texture == TGSI_TEXTURE_BUFFER)) {
+	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
 		LLVMValueRef buf_args[7];
 		unsigned num_args = 0;
 

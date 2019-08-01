@@ -3801,14 +3801,7 @@ si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf,
 	 * - For VMEM and inst.IDXEN == 0 or STRIDE == 0, it's in byte units.
 	 * - For VMEM and inst.IDXEN == 1 and STRIDE != 0, it's in units of STRIDE.
 	 */
-	if (screen->info.chip_class == GFX9 && HAVE_LLVM < 0x0800)
-		/* When vindex == 0, LLVM < 8.0 sets IDXEN = 0, thus changing units
-		 * from STRIDE to bytes. This works around it by setting
-		 * NUM_RECORDS to at least the size of one element, so that
-		 * the first element is readable when IDXEN == 0.
-		 */
-		num_records = num_records ? MAX2(num_records, stride) : 0;
-	else if (screen->info.chip_class == GFX8)
+	if (screen->info.chip_class == GFX8)
 		num_records *= stride;
 
 	state[4] = 0;
