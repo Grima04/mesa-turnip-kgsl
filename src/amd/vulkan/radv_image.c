@@ -715,7 +715,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 
 		assert(image->plane_count == 1);
 
-		va = gpu_address + image->offset + image->fmask.offset;
+		va = gpu_address + image->offset + image->fmask_offset;
 
 		switch (image->info.samples) {
 		case 2:
@@ -879,7 +879,7 @@ si_make_texture_descriptor(struct radv_device *device,
 
 		assert(image->plane_count == 1);
 
-		va = gpu_address + image->offset + image->fmask.offset;
+		va = gpu_address + image->offset + image->fmask_offset;
 
 		if (device->physical_device->rad_info.chip_class == GFX9) {
 			fmask_format = V_008F14_IMG_DATA_FORMAT_FMASK;
@@ -915,7 +915,7 @@ si_make_texture_descriptor(struct radv_device *device,
 		}
 
 		fmask_state[0] = va >> 8;
-		fmask_state[0] |= image->fmask.tile_swizzle;
+		fmask_state[0] |= image->planes[0].surface.fmask_tile_swizzle;
 		fmask_state[1] = S_008F14_BASE_ADDRESS_HI(va >> 40) |
 			S_008F14_DATA_FORMAT(fmask_format) |
 			S_008F14_NUM_FORMAT(num_format);
@@ -946,9 +946,9 @@ si_make_texture_descriptor(struct radv_device *device,
 				fmask_state[7] |= va >> 8;
 			}
 		} else {
-			fmask_state[3] |= S_008F1C_TILING_INDEX(image->fmask.tile_mode_index);
+			fmask_state[3] |= S_008F1C_TILING_INDEX(image->planes[0].surface.u.legacy.fmask.tiling_index);
 			fmask_state[4] |= S_008F20_DEPTH(depth - 1) |
-				S_008F20_PITCH(image->fmask.pitch_in_pixels - 1);
+				S_008F20_PITCH(image->planes[0].surface.u.legacy.fmask.pitch_in_pixels - 1);
 			fmask_state[5] |= S_008F24_LAST_ARRAY(last_layer);
 
 			if (radv_image_is_tc_compat_cmask(image)) {
@@ -1101,41 +1101,15 @@ radv_image_override_offset_stride(struct radv_device *device,
 	}
 }
 
-/* The number of samples can be specified independently of the texture. */
-static void
-radv_image_get_fmask_info(struct radv_device *device,
-			  struct radv_image *image,
-			  unsigned nr_samples,
-			  struct radv_fmask_info *out)
-{
-	if (device->physical_device->rad_info.chip_class >= GFX9) {
-		out->alignment = image->planes[0].surface.fmask_alignment;
-		out->size = image->planes[0].surface.fmask_size;
-		out->tile_swizzle = image->planes[0].surface.fmask_tile_swizzle;
-		return;
-	}
-
-	out->slice_tile_max = image->planes[0].surface.u.legacy.fmask.slice_tile_max;
-	out->tile_mode_index = image->planes[0].surface.u.legacy.fmask.tiling_index;
-	out->pitch_in_pixels = image->planes[0].surface.u.legacy.fmask.pitch_in_pixels;
-	out->slice_size = image->planes[0].surface.u.legacy.fmask.slice_size;
-	out->bank_height = image->planes[0].surface.u.legacy.fmask.bankh;
-	out->tile_swizzle = image->planes[0].surface.fmask_tile_swizzle;
-	out->alignment = image->planes[0].surface.fmask_alignment;
-	out->size = image->planes[0].surface.fmask_size;
-
-	assert(!out->tile_swizzle || !image->shareable);
-}
-
 static void
 radv_image_alloc_fmask(struct radv_device *device,
 		       struct radv_image *image)
 {
-	radv_image_get_fmask_info(device, image, image->info.samples, &image->fmask);
+	unsigned fmask_alignment = image->planes[0].surface.fmask_alignment;
 
-	image->fmask.offset = align64(image->size, image->fmask.alignment);
-	image->size = image->fmask.offset + image->fmask.size;
-	image->alignment = MAX2(image->alignment, image->fmask.alignment);
+	image->fmask_offset = align64(image->size, fmask_alignment);
+	image->size = image->fmask_offset + image->planes[0].surface.fmask_size;
+	image->alignment = MAX2(image->alignment, fmask_alignment);
 }
 
 static void

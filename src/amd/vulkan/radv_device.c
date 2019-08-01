@@ -4414,9 +4414,9 @@ radv_initialise_color_surface(struct radv_device *device,
 
 		if (radv_image_has_fmask(iview->image)) {
 			if (device->physical_device->rad_info.chip_class >= GFX7)
-				cb->cb_color_pitch |= S_028C64_FMASK_TILE_MAX(iview->image->fmask.pitch_in_pixels / 8 - 1);
-			cb->cb_color_attrib |= S_028C74_FMASK_TILE_MODE_INDEX(iview->image->fmask.tile_mode_index);
-			cb->cb_color_fmask_slice = S_028C88_TILE_MAX(iview->image->fmask.slice_tile_max);
+				cb->cb_color_pitch |= S_028C64_FMASK_TILE_MAX(surf->u.legacy.fmask.pitch_in_pixels / 8 - 1);
+			cb->cb_color_attrib |= S_028C74_FMASK_TILE_MODE_INDEX(surf->u.legacy.fmask.tiling_index);
+			cb->cb_color_fmask_slice = S_028C88_TILE_MAX(surf->u.legacy.fmask.slice_tile_max);
 		} else {
 			/* This must be set for fast clear to work without FMASK. */
 			if (device->physical_device->rad_info.chip_class >= GFX7)
@@ -4457,9 +4457,9 @@ radv_initialise_color_surface(struct radv_device *device,
 	}
 
 	if (radv_image_has_fmask(iview->image)) {
-		va = radv_buffer_get_va(iview->bo) + iview->image->offset + iview->image->fmask.offset;
+		va = radv_buffer_get_va(iview->bo) + iview->image->offset + iview->image->fmask_offset;
 		cb->cb_color_fmask = va >> 8;
-		cb->cb_color_fmask |= iview->image->fmask.tile_swizzle;
+		cb->cb_color_fmask |= surf->fmask_tile_swizzle;
 	} else {
 		cb->cb_color_fmask = cb->cb_color_base;
 	}
@@ -4509,7 +4509,7 @@ radv_initialise_color_surface(struct radv_device *device,
 	if (radv_image_has_fmask(iview->image)) {
 		cb->cb_color_info |= S_028C70_COMPRESSION(1);
 		if (device->physical_device->rad_info.chip_class == GFX6) {
-			unsigned fmask_bankh = util_logbase2(iview->image->fmask.bank_height);
+			unsigned fmask_bankh = util_logbase2(surf->u.legacy.fmask.bankh);
 			cb->cb_color_attrib |= S_028C74_FMASK_BANK_HEIGHT(fmask_bankh);
 		}
 

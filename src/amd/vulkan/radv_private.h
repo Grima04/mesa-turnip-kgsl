@@ -1549,18 +1549,6 @@ bool radv_dcc_formats_compatible(VkFormat format1,
                                  VkFormat format2);
 bool radv_device_supports_etc(struct radv_physical_device *physical_device);
 
-struct radv_fmask_info {
-	uint64_t offset;
-	uint64_t size;
-	unsigned alignment;
-	unsigned pitch_in_pixels;
-	unsigned bank_height;
-	unsigned slice_tile_max;
-	unsigned tile_mode_index;
-	unsigned tile_swizzle;
-	uint64_t slice_size;
-};
-
 struct radv_image_plane {
 	VkFormat format;
 	struct radeon_surf surface;
@@ -1594,8 +1582,8 @@ struct radv_image {
 	bool tc_compatible_htile;
 	bool tc_compatible_cmask;
 
-	struct radv_fmask_info fmask;
 	uint64_t cmask_offset;
+	uint64_t fmask_offset;
 	uint64_t clear_value_offset;
 	uint64_t fce_pred_offset;
 	uint64_t dcc_pred_offset;
@@ -1654,7 +1642,7 @@ radv_image_has_cmask(const struct radv_image *image)
 static inline bool
 radv_image_has_fmask(const struct radv_image *image)
 {
-	return image->fmask.size;
+	return image->planes[0].surface.fmask_size;
 }
 
 /**
