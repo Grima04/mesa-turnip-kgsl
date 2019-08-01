@@ -295,7 +295,7 @@ get_tcs_num_patches(struct radv_shader_context *ctx)
 
 	/* GFX6 bug workaround - limit LS-HS threadgroups to only one wave. */
 	if (ctx->options->chip_class == GFX6) {
-		unsigned one_wave = 64 / MAX2(num_tcs_input_cp, num_tcs_output_cp);
+		unsigned one_wave = ctx->options->ge_wave_size / MAX2(num_tcs_input_cp, num_tcs_output_cp);
 		num_patches = MIN2(num_patches, one_wave);
 	}
 	return num_patches;
@@ -3038,7 +3038,8 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 		LLVMValueRef wave_idx = ac_unpack_param(&ctx->ac, ctx->merged_wave_info, 24, 4);
 		vertex_idx = LLVMBuildOr(ctx->ac.builder, vertex_idx,
 					 LLVMBuildMul(ctx->ac.builder, wave_idx,
-						      LLVMConstInt(ctx->ac.i32, 64, false), ""), "");
+						      LLVMConstInt(ctx->ac.i32,
+								   ctx->ac.wave_size, false), ""), "");
 		lds_base = LLVMBuildMul(ctx->ac.builder, vertex_idx,
 					LLVMConstInt(ctx->ac.i32, itemsize_dw, 0), "");
 	}
@@ -3140,7 +3141,7 @@ static LLVMValueRef get_thread_id_in_tg(struct radv_shader_context *ctx)
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef tmp;
 	tmp = LLVMBuildMul(builder, get_wave_id_in_tg(ctx),
-			   LLVMConstInt(ctx->ac.i32, 64, false), "");
+			   LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, false), "");
 	return LLVMBuildAdd(builder, tmp, ac_get_thread_id(&ctx->ac), "");
 }
 
@@ -4190,7 +4191,7 @@ ac_setup_rings(struct radv_shader_context *ctx)
 		 */
 		LLVMTypeRef v2i64 = LLVMVectorType(ctx->ac.i64, 2);
 		uint64_t stream_offset = 0;
-		unsigned num_records = 64;
+		unsigned num_records = ctx->ac.wave_size;
 		LLVMValueRef base_ring;
 
 		base_ring =
@@ -4223,7 +4224,7 @@ ac_setup_rings(struct radv_shader_context *ctx)
 			ring = LLVMBuildInsertElement(ctx->ac.builder,
 						      ring, tmp, ctx->ac.i32_0, "");
 
-			stream_offset += stride * 64;
+			stream_offset += stride * ctx->ac.wave_size;
 
 			ring = LLVMBuildBitCast(ctx->ac.builder, ring,
 						ctx->ac.v4i32, "");
@@ -4325,7 +4326,7 @@ radv_nir_shader_wave_size(struct nir_shader *const *shaders, int shader_count,
 		return options->cs_wave_size;
 	else if (shaders[0]->info.stage == MESA_SHADER_FRAGMENT)
 		return options->ps_wave_size;
-	return 64;
+	return options->ge_wave_size;
 }
 
 static

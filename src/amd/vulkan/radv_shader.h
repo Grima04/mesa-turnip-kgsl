@@ -130,6 +130,7 @@ struct radv_nir_compiler_options {
 	uint32_t address32_hi;
 	uint8_t cs_wave_size;
 	uint8_t ps_wave_size;
+	uint8_t ge_wave_size;
 };
 
 enum radv_ud_index {

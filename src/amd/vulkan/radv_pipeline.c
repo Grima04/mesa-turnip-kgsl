@@ -1782,7 +1782,7 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 
 	/* Round up towards full wave sizes for better ALU utilization. */
 	if (!max_vert_out_per_gs_instance) {
-		const unsigned wavesize = 64;
+		const unsigned wavesize = pipeline->device->physical_device->ge_wave_size;
 		unsigned orig_max_esverts;
 		unsigned orig_max_gsprims;
 		do {
@@ -4124,6 +4124,14 @@ radv_compute_vgt_shader_stages_en(const struct radv_pipeline *pipeline)
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9)
 		stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 &&
+	    pipeline->device->physical_device->ge_wave_size == 32) {
+		/* legacy GS only supports Wave64 */
+		stages |= S_028B54_HS_W32_EN(1) |
+			  S_028B54_GS_W32_EN(radv_pipeline_has_ngg(pipeline)) |
+			  S_028B54_VS_W32_EN(1);
+	}
 
 	return stages;
 }

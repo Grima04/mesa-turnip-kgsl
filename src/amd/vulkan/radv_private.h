@@ -304,6 +304,7 @@ struct radv_physical_device {
 	/* Number of threads per wave. */
 	uint8_t ps_wave_size;
 	uint8_t cs_wave_size;
+	uint8_t ge_wave_size;
 
 	/* This is the drivers on-disk cache used as a fallback as opposed to
 	 * the pipeline cache defined by apps.

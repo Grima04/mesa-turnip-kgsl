@@ -675,7 +675,7 @@ radv_get_shader_wave_size(const struct radv_physical_device *pdevice,
 		return pdevice->cs_wave_size;
 	else if (stage == MESA_SHADER_FRAGMENT)
 		return pdevice->ps_wave_size;
-	return 64;
+	return pdevice->ge_wave_size;
 }
 
 static void radv_postprocess_config(const struct radv_physical_device *pdevice,
@@ -1144,6 +1144,7 @@ shader_variant_compile(struct radv_device *device,
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
 	options->cs_wave_size = device->physical_device->cs_wave_size;
 	options->ps_wave_size = device->physical_device->ps_wave_size;
+	options->ge_wave_size = device->physical_device->ge_wave_size;
 
 	if (options->supports_spill)
 		tm_options |= AC_TM_SUPPORTS_SPILL;
