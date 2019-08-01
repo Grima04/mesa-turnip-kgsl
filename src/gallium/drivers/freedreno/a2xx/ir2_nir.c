@@ -41,6 +41,7 @@ static const nir_shader_compiler_options options = {
 	.vertex_id_zero_based = true, /* its not implemented anyway */
 	.lower_bitops = true,
 	.lower_rotate = true,
+	.lower_vector_cmp = true,
 };
 
 const nir_shader_compiler_options *
@@ -1084,8 +1085,17 @@ ir2_nir_compile(struct ir2_context *ctx, bool binning)
 	OPT_V(ctx->nir, nir_lower_bool_to_float);
 	OPT_V(ctx->nir, nir_lower_to_source_mods, nir_lower_all_source_mods);
 
-	/* lower to scalar instructions that can only be scalar on a2xx */
-	OPT_V(ctx->nir, ir2_nir_lower_scalar);
+	/* TODO: static bitset ? */
+	BITSET_DECLARE(scalar_ops, nir_num_opcodes);
+	BITSET_ZERO(scalar_ops);
+	BITSET_SET(scalar_ops, nir_op_frsq);
+	BITSET_SET(scalar_ops, nir_op_frcp);
+	BITSET_SET(scalar_ops, nir_op_flog2);
+	BITSET_SET(scalar_ops, nir_op_fexp2);
+	BITSET_SET(scalar_ops, nir_op_fsqrt);
+	BITSET_SET(scalar_ops, nir_op_fcos);
+	BITSET_SET(scalar_ops, nir_op_fsin);
+	OPT_V(ctx->nir, nir_lower_alu_to_scalar, scalar_ops);
 
 	OPT_V(ctx->nir, nir_lower_locals_to_regs);
 
