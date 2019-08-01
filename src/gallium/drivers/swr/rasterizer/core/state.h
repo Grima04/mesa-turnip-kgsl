@@ -213,6 +213,11 @@ struct SIMDVERTEX_T
     typename SIMD_T::Vec4 attrib[SWR_VTX_NUM_SLOTS];
 };
 
+struct SWR_WORKER_DATA
+{
+    HANDLE hArContext;  // handle to the archrast context
+};
+
 //////////////////////////////////////////////////////////////////////////
 /// SWR_SHADER_STATS
 /// @brief Structure passed to shader for stats collection.

@@ -51,6 +51,17 @@ Constant* C(const std::initializer_list<Ty>& constList)
 }
 
 template <typename Ty>
+Constant* C(const std::vector<Ty>& constList)
+{
+    std::vector<Constant*> vConsts;
+    for (auto i : constList)
+    {
+        vConsts.push_back(C((Ty)i));
+    }
+    return ConstantVector::get(vConsts);
+}
+
+template <typename Ty>
 Constant* CA(LLVMContext& ctx, ArrayRef<Ty> constList)
 {
     return ConstantDataArray::get(ctx, constList);

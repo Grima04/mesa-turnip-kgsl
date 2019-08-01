@@ -108,6 +108,7 @@ namespace SwrJit
         Type* mSimdVectorTy;
         Type* mSimdVectorTRTy;
         Type* mSimdVectorIntTy;
+        Type* mSimdVectorTRIntTy;
 
         // Built in types: simd16
 

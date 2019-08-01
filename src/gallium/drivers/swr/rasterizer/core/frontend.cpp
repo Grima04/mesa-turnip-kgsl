@@ -578,7 +578,7 @@ static void StreamOut(
         {
             bool  nullTileAccessed = false;
             void* pWriteOffset     = pDC->pContext->pfnTranslateGfxptrForWrite(
-                GetPrivateState(pDC), soContext.pBuffer[i]->pWriteOffset, &nullTileAccessed);
+                GetPrivateState(pDC), soContext.pBuffer[i]->pWriteOffset, &nullTileAccessed, pWorkerData);
             *((uint32_t*)pWriteOffset) = soContext.pBuffer[i]->streamOffset * sizeof(uint32_t);
         }
 

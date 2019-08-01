@@ -1216,7 +1216,7 @@ void CreateThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
             pPool->pThreadData[i].pWorkerPrivateData = pWorkerData;
             if (pContext->workerPrivateState.pfnInitWorkerData)
             {
-                pContext->workerPrivateState.pfnInitWorkerData(pWorkerData, i);
+                pContext->workerPrivateState.pfnInitWorkerData(pContext, pWorkerData, i);
             }
             pWorkerData = PtrAdd(pWorkerData, perWorkerSize);
         }
@@ -1396,7 +1396,7 @@ void DestroyThreadPool(SWR_CONTEXT* pContext, THREAD_POOL* pPool)
         if (pContext->workerPrivateState.pfnFinishWorkerData)
         {
             pContext->workerPrivateState.pfnFinishWorkerData(
-                pPool->pThreadData[t].pWorkerPrivateData, t);
+                pContext, pPool->pThreadData[t].pWorkerPrivateData, t);
         }
     }
 

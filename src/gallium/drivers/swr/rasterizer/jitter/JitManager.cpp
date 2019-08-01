@@ -649,7 +649,8 @@ JitCache::JitCache()
 
 int ExecUnhookedProcess(const std::string& CmdLine, std::string* pStdOut, std::string* pStdErr)
 {
-    return ExecCmd(CmdLine, "", pStdOut, pStdErr);
+
+    return ExecCmd(CmdLine, nullptr, pStdOut, pStdErr);
 }
 
 /// Calculate actual directory where module will be cached.

@@ -147,13 +147,19 @@ typedef void(SWR_API* PFN_CLEAR_TILE)(HANDLE                      hPrivateContex
 
 typedef void*(SWR_API* PFN_TRANSLATE_GFXPTR_FOR_READ)(HANDLE   hPrivateContext,
                                                       gfxptr_t xpAddr,
-                                                      bool*    pbNullTileAccessed);
+                                                      bool*    pbNullTileAccessed,
+                                                      HANDLE   hPrivateWorkerData);
 
 typedef void*(SWR_API* PFN_TRANSLATE_GFXPTR_FOR_WRITE)(HANDLE   hPrivateContext,
                                                        gfxptr_t xpAddr,
-                                                       bool*    pbNullTileAccessed);
+                                                       bool*    pbNullTileAccessed,
+                                                       HANDLE   hPrivateWorkerData);
 
 typedef gfxptr_t(SWR_API* PFN_MAKE_GFXPTR)(HANDLE hPrivateContext, void* sysAddr);
+
+typedef HANDLE(SWR_API* PFN_CREATE_MEMORY_CONTEXT)(HANDLE hExternalMemory);
+
+typedef void(SWR_API* PFN_DESTROY_MEMORY_CONTEXT)(HANDLE hExternalMemory, HANDLE hMemoryContext);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief Callback to allow driver to update their copy of streamout write offset.
@@ -219,10 +225,11 @@ struct SWR_API_THREADING_INFO
                                    // Independent of KNOB_MAX_THREADS_PER_CORE.
 };
 
-struct SWR_WORKER_DATA
-{
-    HANDLE hArContext;  // handle to the archrast context
-};
+//////////////////////////////////////////////////////////////////////////
+/// SWR_CONTEXT
+/// Forward Declaration (see context.h for full definition)
+/////////////////////////////////////////////////////////////////////////
+class SWR_CONTEXT;
 
 //////////////////////////////////////////////////////////////////////////
 /// SWR_WORKER_PRIVATE_STATE
@@ -233,7 +240,7 @@ struct SWR_WORKER_DATA
 /////////////////////////////////////////////////////////////////////////
 struct SWR_WORKER_PRIVATE_STATE
 {
-    typedef void(SWR_API* PFN_WORKER_DATA)(HANDLE hWorkerPrivateData, uint32_t iWorkerNum);
+    typedef void(SWR_API* PFN_WORKER_DATA)(SWR_CONTEXT* pContext, HANDLE hWorkerPrivateData, uint32_t iWorkerNum);
 
     size_t          perWorkerPrivateStateSize; ///< Amount of data to allocate per-worker
     PFN_WORKER_DATA pfnInitWorkerData;         ///< Init function for worker data.  If null
@@ -260,6 +267,8 @@ struct SWR_CREATECONTEXT_INFO
     PFN_TRANSLATE_GFXPTR_FOR_READ  pfnTranslateGfxptrForRead;
     PFN_TRANSLATE_GFXPTR_FOR_WRITE pfnTranslateGfxptrForWrite;
     PFN_MAKE_GFXPTR                pfnMakeGfxPtr;
+    PFN_CREATE_MEMORY_CONTEXT      pfnCreateMemoryContext;
+    PFN_DESTROY_MEMORY_CONTEXT     pfnDestroyMemoryContext;
     PFN_UPDATE_SO_WRITE_OFFSET     pfnUpdateSoWriteOffset;
     PFN_UPDATE_STATS               pfnUpdateStats;
     PFN_UPDATE_STATS_FE            pfnUpdateStatsFE;
@@ -274,6 +283,9 @@ struct SWR_CREATECONTEXT_INFO
 
     // ArchRast event manager.
     HANDLE hArEventManager;
+
+    // handle to external memory for worker datas to create memory contexts
+    HANDLE hExternalMemory;
 
     // Input (optional): Threading info that overrides any set KNOB values.
     SWR_THREADING_INFO* pThreadInfo;
@@ -587,7 +599,6 @@ SWR_FUNC(void,
          uint32_t threadGroupCountX,
          uint32_t threadGroupCountY,
          uint32_t threadGroupCountZ);
-
 
 /// @note this enum needs to be kept in sync with HOTTILE_STATE!
 enum SWR_TILE_STATE

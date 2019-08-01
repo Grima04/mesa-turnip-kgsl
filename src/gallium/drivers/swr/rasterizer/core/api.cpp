@@ -71,6 +71,21 @@ HANDLE SwrCreateContext(SWR_CREATECONTEXT_INFO* pCreateInfo)
 
     pContext->privateStateSize = pCreateInfo->privateStateSize;
 
+    // initialize callback functions
+    pContext->pfnLoadTile                = pCreateInfo->pfnLoadTile;
+    pContext->pfnStoreTile               = pCreateInfo->pfnStoreTile;
+    pContext->pfnTranslateGfxptrForRead  = pCreateInfo->pfnTranslateGfxptrForRead;
+    pContext->pfnTranslateGfxptrForWrite = pCreateInfo->pfnTranslateGfxptrForWrite;
+    pContext->pfnMakeGfxPtr              = pCreateInfo->pfnMakeGfxPtr;
+    pContext->pfnCreateMemoryContext     = pCreateInfo->pfnCreateMemoryContext;
+    pContext->pfnDestroyMemoryContext    = pCreateInfo->pfnDestroyMemoryContext;
+    pContext->pfnUpdateSoWriteOffset     = pCreateInfo->pfnUpdateSoWriteOffset;
+    pContext->pfnUpdateStats             = pCreateInfo->pfnUpdateStats;
+    pContext->pfnUpdateStatsFE           = pCreateInfo->pfnUpdateStatsFE;
+
+
+    pContext->hExternalMemory = pCreateInfo->hExternalMemory;
+
     pContext->MAX_DRAWS_IN_FLIGHT = KNOB_MAX_DRAWS_IN_FLIGHT;
     if (pCreateInfo->MAX_DRAWS_IN_FLIGHT != 0)
     {
@@ -169,13 +184,13 @@ HANDLE SwrCreateContext(SWR_CREATECONTEXT_INFO* pCreateInfo)
             pContext->threadPool.pThreadData ? pContext->threadPool.pThreadData[i].numaId : 0;
         pContext->ppScratch[i] = (uint8_t*)VirtualAllocExNuma(GetCurrentProcess(),
                                                               nullptr,
-                                                              32 * sizeof(KILOBYTE),
+                                                              KNOB_WORKER_SCRATCH_SPACE_SIZE,
                                                               MEM_RESERVE | MEM_COMMIT,
                                                               PAGE_READWRITE,
                                                               numaNode);
 #else
         pContext->ppScratch[i] =
-            (uint8_t*)AlignedMalloc(32 * sizeof(KILOBYTE), KNOB_SIMD_WIDTH * 4);
+            (uint8_t*)AlignedMalloc(KNOB_WORKER_SCRATCH_SPACE_SIZE, KNOB_SIMD_WIDTH * 4);
 #endif
 
 #if defined(KNOB_ENABLE_AR)
@@ -199,17 +214,6 @@ HANDLE SwrCreateContext(SWR_CREATECONTEXT_INFO* pCreateInfo)
 
     // initialize hot tile manager
     pContext->pHotTileMgr = new HotTileMgr();
-
-    // initialize callback functions
-    pContext->pfnLoadTile                = pCreateInfo->pfnLoadTile;
-    pContext->pfnStoreTile               = pCreateInfo->pfnStoreTile;
-    pContext->pfnTranslateGfxptrForRead  = pCreateInfo->pfnTranslateGfxptrForRead;
-    pContext->pfnTranslateGfxptrForWrite = pCreateInfo->pfnTranslateGfxptrForWrite;
-    pContext->pfnMakeGfxPtr              = pCreateInfo->pfnMakeGfxPtr;
-    pContext->pfnUpdateSoWriteOffset     = pCreateInfo->pfnUpdateSoWriteOffset;
-    pContext->pfnUpdateStats             = pCreateInfo->pfnUpdateStats;
-    pContext->pfnUpdateStatsFE           = pCreateInfo->pfnUpdateStatsFE;
-
 
     // pass pointer to bucket manager back to caller
 #ifdef KNOB_ENABLE_RDTSC
@@ -1531,7 +1535,9 @@ void SWR_API SwrDiscardRect(HANDLE hContext, uint32_t attachmentMask, const SWR_
 void SwrDispatch(HANDLE   hContext,
                  uint32_t threadGroupCountX,
                  uint32_t threadGroupCountY,
-                 uint32_t threadGroupCountZ)
+                 uint32_t threadGroupCountZ
+
+)
 {
     if (KNOB_TOSS_DRAW)
     {
@@ -1551,6 +1557,7 @@ void SwrDispatch(HANDLE   hContext,
     pTaskData->threadGroupCountX = threadGroupCountX;
     pTaskData->threadGroupCountY = threadGroupCountY;
     pTaskData->threadGroupCountZ = threadGroupCountZ;
+
     pTaskData->enableThreadDispatch = false;
 
     uint32_t totalThreadGroups = threadGroupCountX * threadGroupCountY * threadGroupCountZ;

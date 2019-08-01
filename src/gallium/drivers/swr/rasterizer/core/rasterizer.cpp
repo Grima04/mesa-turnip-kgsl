@@ -271,7 +271,7 @@ void RasterizeSimplePoint(DRAW_CONTEXT* pDC, uint32_t workerId, uint32_t macroTi
                                                {48, 49, 52, 53, 56, 57, 60, 61},
                                                {50, 51, 54, 55, 58, 59, 62, 63}};
 
-    OSALIGNSIMD(SWR_TRIANGLE_DESC) triDesc;
+    OSALIGNSIMD(SWR_TRIANGLE_DESC) triDesc = {};
 
     // pull point information from triangle buffer
     // @todo use structs for readability
@@ -287,8 +287,12 @@ void RasterizeSimplePoint(DRAW_CONTEXT* pDC, uint32_t workerId, uint32_t macroTi
     // mask indices by the maximum valid index for x/y of coveragemap.
     uint32_t tX = workDesc.triFlags.coverageMask & 0x7;
     uint32_t tY = (workDesc.triFlags.coverageMask >> 4) & 0x7;
-    // todo: multisample points?
-    triDesc.coverageMask[0] = 1ULL << coverageMap[tY][tX];
+    for (uint32_t i = 0; i < _countof(triDesc.coverageMask); ++i)
+    {
+        triDesc.coverageMask[i] = 1ULL << coverageMap[tY][tX];
+    }
+    triDesc.anyCoveredSamples = triDesc.coverageMask[0];
+    triDesc.innerCoverageMask = triDesc.coverageMask[0];
 
     // no persp divide needed for points
     triDesc.pAttribs = triDesc.pPerspAttribs = workDesc.pAttribs;

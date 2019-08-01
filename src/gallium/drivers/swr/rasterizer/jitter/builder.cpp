@@ -110,6 +110,7 @@ namespace SwrJit
         mSimdVectorTy    = ArrayType::get(mSimdFP32Ty, 4);
         mSimdVectorIntTy = ArrayType::get(mSimdInt32Ty, 4);
         mSimdVectorTRTy  = ArrayType::get(mSimdFP32Ty, 5);
+        mSimdVectorTRIntTy  = ArrayType::get(mSimdInt32Ty, 5);
     }
 
     /// @brief Mark this alloca as temporary to avoid hoisting later on

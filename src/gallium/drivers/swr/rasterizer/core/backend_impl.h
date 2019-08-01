@@ -1141,7 +1141,6 @@ void BackendPixelRate(DRAW_CONTEXT*        pDC,
             // execute pixel shader
             RDTSC_BEGIN(pDC->pContext->pBucketMgr, BEPixelShader, pDC->drawId);
             state.psState.pfnPixelShader(GetPrivateState(pDC), pWorkerData, &psContext);
-            UPDATE_STAT_BE(PsInvocations, _mm_popcnt_u32(_simd_movemask_ps(activeLanes)));
             RDTSC_END(pDC->pContext->pBucketMgr, BEPixelShader, 0);
 
             // update stats

@@ -1103,6 +1103,63 @@ void FetchJit::JitGatherVertices(const FETCH_COMPILE_STATE& fetchState,
     }
 }
 
+
+typedef void* (*PFN_TRANSLATEGFXADDRESS_FUNC)(void* pdc, gfxptr_t va, bool* out_pbNullTileAccessed, void* pWorkerData);
+
+template <typename T>
+void GetSimdValidIndicesGfx(gfxptr_t                     indices,
+                            gfxptr_t                     lastIndex,
+                            uint32_t                     vWidth,
+                            PFN_TRANSLATEGFXADDRESS_FUNC pfnTranslate,
+                            void*                        pdc,
+                            uint32_t*                    outIndices,
+                            void*                        pWorkerData)
+{
+    SWR_ASSERT(outIndices != nullptr);
+
+    gfxptr_t indexPtr = indices;
+    for (int64_t lane = 0; lane < vWidth; lane++)
+    {
+        uint32_t index = 0;
+
+        if (indexPtr < lastIndex)
+        {
+            // translate indexPtr and load from it
+            T* addr = (T*)pfnTranslate(pdc, indexPtr, nullptr, pWorkerData);
+            SWR_ASSERT(addr != nullptr);
+            index = *addr;
+        }
+
+        // index to 32 bits and insert into the correct simd lane
+        outIndices[lane] = index;
+
+        indexPtr += sizeof(T);
+    }
+}
+
+void GetSimdValid8bitIndicesGfx(gfxptr_t                     indices,
+                                gfxptr_t                     lastIndex,
+                                uint32_t                     vWidth,
+                                PFN_TRANSLATEGFXADDRESS_FUNC pfnTranslate,
+                                void*                        pdc,
+                                uint32_t*                    outIndices,
+                                void*                        pWorkerData)
+{
+    GetSimdValidIndicesGfx<uint8_t>(indices, lastIndex, vWidth, pfnTranslate, pdc, outIndices, pWorkerData);
+}
+
+void GetSimdValid16bitIndicesGfx(gfxptr_t                     indices,
+                                 gfxptr_t                     lastIndex,
+                                 uint32_t                     vWidth,
+                                 PFN_TRANSLATEGFXADDRESS_FUNC pfnTranslate,
+                                 void*                        pdc,
+                                 uint32_t*                    outIndices,
+                                 void*                        pWorkerData)
+{
+    GetSimdValidIndicesGfx<uint16_t>(indices, lastIndex, vWidth, pfnTranslate, pdc, outIndices, pWorkerData);
+}
+
+
 template <typename T>
 Value* FetchJit::GetSimdValidIndicesHelper(Value* pIndices, Value* pLastIndex)
 {

@@ -535,6 +535,8 @@ struct SWR_CONTEXT
     PFN_TRANSLATE_GFXPTR_FOR_READ  pfnTranslateGfxptrForRead;
     PFN_TRANSLATE_GFXPTR_FOR_WRITE pfnTranslateGfxptrForWrite;
     PFN_MAKE_GFXPTR                pfnMakeGfxPtr;
+    PFN_CREATE_MEMORY_CONTEXT      pfnCreateMemoryContext;
+    PFN_DESTROY_MEMORY_CONTEXT     pfnDestroyMemoryContext;
     PFN_UPDATE_SO_WRITE_OFFSET     pfnUpdateSoWriteOffset;
     PFN_UPDATE_STATS               pfnUpdateStats;
     PFN_UPDATE_STATS_FE            pfnUpdateStatsFE;
@@ -557,6 +559,9 @@ struct SWR_CONTEXT
 
     // ArchRast thread contexts.
     HANDLE* pArContext;
+
+    // handle to external memory for worker datas to create memory contexts
+    HANDLE hExternalMemory;
 
     BucketManager *pBucketMgr;
 };
