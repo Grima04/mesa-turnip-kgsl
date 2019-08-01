@@ -251,8 +251,9 @@ next_regid(uint32_t reg, uint32_t increment)
 }
 
 static void
-setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
-		const struct ir3_shader_key *key, bool binning_pass)
+setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
+		struct fd6_program_state *state, const struct ir3_shader_key *key,
+		bool binning_pass)
 {
 	uint32_t pos_regid, psize_regid, color_regid[8], posz_regid;
 	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
@@ -585,6 +586,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state,
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_SU_DEPTH_PLANE_CNTL, 1);
 	OUT_RING(ring, COND(fragz, A6XX_GRAS_SU_DEPTH_PLANE_CNTL_FRAG_WRITES_Z));
+
+	ir3_emit_immediates(screen, vs, ring);
+	if (!binning_pass)
+		ir3_emit_immediates(screen, fs, ring);
 }
 
 /* emits the program state which is not part of the stateobj because of
@@ -699,8 +704,8 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 
 	setup_config_stateobj(state->config_stateobj, state);
-	setup_stateobj(state->binning_stateobj, state, key, true);
-	setup_stateobj(state->stateobj, state, key, false);
+	setup_stateobj(state->binning_stateobj, ctx->screen, state, key, true);
+	setup_stateobj(state->stateobj, ctx->screen, state, key, false);
 
 	return &state->base;
 }

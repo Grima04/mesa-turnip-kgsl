@@ -938,7 +938,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				&ctx->constbuf[PIPE_SHADER_VERTEX]);
 		ir3_emit_ubos(ctx->screen, vp, vsconstobj,
 				&ctx->constbuf[PIPE_SHADER_VERTEX]);
-		ir3_emit_immediates(ctx->screen, vp, vsconstobj);
 		ir3_emit_ssbo_sizes(ctx->screen, vp, vsconstobj,
 				&ctx->shaderbuf[PIPE_SHADER_VERTEX]);
 		ir3_emit_image_dims(ctx->screen, vp, vsconstobj,
@@ -959,7 +958,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
 		ir3_emit_ubos(ctx->screen, fp, fsconstobj,
 				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
-		ir3_emit_immediates(ctx->screen, fp, fsconstobj);
 		ir3_emit_ssbo_sizes(ctx->screen, fp, fsconstobj,
 				&ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
 		ir3_emit_image_dims(ctx->screen, fp, fsconstobj,
