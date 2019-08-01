@@ -913,12 +913,6 @@ fd4_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 }
 
 static void
-fd4_emit_ib(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
-{
-	__OUT_IB(ring, true, target);
-}
-
-static void
 fd4_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
 		unsigned dst_off, struct pipe_resource *src, unsigned src_off,
 		unsigned sizedwords)
