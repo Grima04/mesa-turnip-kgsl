@@ -19,7 +19,7 @@ meson _build --native-file=native.file \
       ${CROSS+--cross /cross_file-$CROSS.txt} \
       -D prefix=`pwd`/install \
       -D libdir=lib \
-      -D buildtype=debug \
+      -D buildtype=${BUILDTYPE:-debug} \
       -D build-tests=true \
       -D libunwind=${UNWIND} \
       ${DRI_LOADERS} \

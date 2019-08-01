@@ -175,6 +175,7 @@ meson-main:
       -D osmesa=gallium
       -D tools=all
     MESON_SHADERDB: "true"
+    BUILDTYPE: "debugoptimized"
 
 meson-clover:
   extends: .meson-build
