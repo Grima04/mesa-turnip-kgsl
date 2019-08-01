@@ -283,6 +283,50 @@ u_reduced_prims_for_vertices(enum pipe_prim_type primitive, int vertices)
    }
 }
 
+static inline enum pipe_prim_type
+u_base_prim_type(enum pipe_prim_type prim_type)
+{
+   switch(prim_type) {
+      case PIPE_PRIM_POINTS:
+         return PIPE_PRIM_POINTS;
+      case PIPE_PRIM_LINES:
+      case PIPE_PRIM_LINE_LOOP:
+      case PIPE_PRIM_LINE_STRIP:
+      case PIPE_PRIM_LINES_ADJACENCY:
+      case PIPE_PRIM_LINE_STRIP_ADJACENCY:
+         return PIPE_PRIM_LINES;
+      case PIPE_PRIM_TRIANGLES:
+      case PIPE_PRIM_TRIANGLE_STRIP:
+      case PIPE_PRIM_TRIANGLE_FAN:
+      case PIPE_PRIM_TRIANGLES_ADJACENCY:
+      case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
+         return PIPE_PRIM_TRIANGLES;
+      case PIPE_PRIM_QUADS:
+      case PIPE_PRIM_QUAD_STRIP:
+         return PIPE_PRIM_QUADS;
+      default:
+         return prim_type;
+   }
+}
+
+static inline unsigned
+u_vertices_for_prims(enum pipe_prim_type prim_type, int count)
+{
+   if (count <= 0)
+      return 0;
+
+   /* We can only figure out the number of vertices from a number of primitives
+    * if we are using basic primitives (so no loops, strips, fans, etc).
+    */
+   assert(prim_type == u_base_prim_type(prim_type) &&
+          prim_type != PIPE_PRIM_PATCHES && prim_type != PIPE_PRIM_POLYGON);
+
+   const struct u_prim_vertex_count *info = u_prim_vertex_count(prim_type);
+   assert(info);
+
+   return info->min + (count - 1) * info->incr;
+}
+
 const char *u_prim_name(enum pipe_prim_type pipe_prim);
 
 
