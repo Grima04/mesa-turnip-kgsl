@@ -31,6 +31,7 @@
 #include "fd5_blitter.h"
 #include "fd5_context.h"
 #include "fd5_format.h"
+#include "fd5_emit.h"
 #include "fd5_resource.h"
 
 #include "ir3/ir3_compiler.h"
@@ -140,4 +141,6 @@ fd5_screen_init(struct pipe_screen *pscreen)
 		screen->perfcntr_groups = a5xx_perfcntr_groups;
 		screen->num_perfcntr_groups = a5xx_num_perfcntr_groups;
 	}
+
+	fd5_emit_init_screen(pscreen);
 }

@@ -1120,6 +1120,11 @@ fd5_mem_to_mem(struct fd_ringbuffer *ring, struct pipe_resource *dst,
 }
 
 void
+fd5_emit_init_screen(struct pipe_screen *pscreen)
+{
+}
+
+void
 fd5_emit_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
