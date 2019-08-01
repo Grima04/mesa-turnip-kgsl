@@ -71,6 +71,8 @@ struct ttn_compile {
    nir_variable **inputs;
    nir_variable **outputs;
    nir_variable *samplers[PIPE_MAX_SAMPLERS];
+   nir_variable *images[PIPE_MAX_SHADER_IMAGES];
+   nir_variable *ssbo[PIPE_MAX_SHADER_BUFFERS];
 
    nir_variable *input_var_face;
    nir_variable *input_var_position;
@@ -262,6 +264,10 @@ ttn_emit_declaration(struct ttn_compile *c)
       c->addr_reg->num_components = 4;
    } else if (file == TGSI_FILE_SYSTEM_VALUE) {
       /* Nothing to record for system values. */
+   } else if (file == TGSI_FILE_BUFFER) {
+      /* Nothing to record for buffers. */
+   } else if (file == TGSI_FILE_IMAGE) {
+      /* Nothing to record for images. */
    } else if (file == TGSI_FILE_SAMPLER) {
       /* Nothing to record for samplers. */
    } else if (file == TGSI_FILE_SAMPLER_VIEW) {
@@ -810,8 +816,10 @@ ttn_get_src(struct ttn_compile *c, struct tgsi_full_src_register *tgsi_fsrc,
 
    if (tgsi_src->File == TGSI_FILE_NULL) {
       return nir_imm_float(b, 0.0);
-   } else if (tgsi_src->File == TGSI_FILE_SAMPLER) {
-      /* Only the index of the sampler gets used in texturing, and it will
+   } else if (tgsi_src->File == TGSI_FILE_SAMPLER ||
+              tgsi_src->File == TGSI_FILE_IMAGE ||
+              tgsi_src->File == TGSI_FILE_BUFFER) {
+      /* Only the index of the resource gets used in texturing, and it will
        * handle looking that up on its own instead of using the nir_alu_src.
        */
       assert(!tgsi_src->Indirect);
@@ -1279,6 +1287,54 @@ get_sampler_var(struct ttn_compile *c, int binding,
    return var;
 }
 
+static nir_variable *
+get_image_var(struct ttn_compile *c, int binding,
+              enum glsl_sampler_dim dim,
+              bool is_array,
+              enum glsl_base_type base_type,
+              enum gl_access_qualifier access,
+              GLenum format)
+{
+   nir_variable *var = c->images[binding];
+
+   if (!var) {
+      const struct glsl_type *type = glsl_image_type(dim, is_array, base_type);
+
+      var = nir_variable_create(c->build.shader, nir_var_uniform, type, "image");
+      var->data.binding = binding;
+      var->data.explicit_binding = true;
+      var->data.image.access = access;
+      var->data.image.format = format;
+      c->images[binding] = var;
+   }
+
+   return var;
+}
+
+static void
+add_ssbo_var(struct ttn_compile *c, int binding)
+{
+   nir_variable *var = c->ssbo[binding];
+
+   if (!var) {
+      /* A length of 0 is used to denote unsized arrays */
+      const struct glsl_type *type = glsl_array_type(glsl_uint_type(), 0, 0);
+
+      struct glsl_struct_field field = {
+            .type = type,
+            .name = "data",
+            .location = -1,
+      };
+
+      var = nir_variable_create(c->build.shader, nir_var_mem_ssbo, type, "ssbo");
+      var->data.binding = binding;
+      var->interface_type =
+         glsl_interface_type(&field, 1, GLSL_INTERFACE_PACKING_STD430,
+                             false, "data");
+      c->ssbo[binding] = var;
+   }
+}
+
 static void
 ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 {
@@ -1594,6 +1650,250 @@ ttn_txq(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
    ttn_move_dest_masked(b, dest, &qlv->dest.ssa, TGSI_WRITEMASK_W);
 }
 
+static enum glsl_base_type
+get_image_base_type(struct tgsi_full_instruction *tgsi_inst)
+{
+   const struct util_format_description *desc =
+      util_format_description(tgsi_inst->Memory.Format);
+
+   if (desc->channel[0].pure_integer) {
+      if (desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED)
+         return GLSL_TYPE_INT;
+      else
+         return GLSL_TYPE_UINT;
+   }
+   return GLSL_TYPE_FLOAT;
+}
+
+static enum gl_access_qualifier
+get_mem_qualifier(struct tgsi_full_instruction *tgsi_inst)
+{
+   enum gl_access_qualifier access = 0;
+
+   if (tgsi_inst->Memory.Qualifier & TGSI_MEMORY_COHERENT)
+      access |= ACCESS_COHERENT;
+   if (tgsi_inst->Memory.Qualifier & TGSI_MEMORY_RESTRICT)
+      access |= ACCESS_RESTRICT;
+   if (tgsi_inst->Memory.Qualifier & TGSI_MEMORY_VOLATILE)
+      access |= ACCESS_VOLATILE;
+   if (tgsi_inst->Memory.Qualifier & TGSI_MEMORY_STREAM_CACHE_POLICY)
+      access |= ACCESS_STREAM_CACHE_POLICY;
+
+   return access;
+}
+
+static GLenum
+get_image_format(struct tgsi_full_instruction *tgsi_inst)
+{
+   switch (tgsi_inst->Memory.Format) {
+   case PIPE_FORMAT_R8_UNORM:
+      return GL_R8;
+   case PIPE_FORMAT_R8G8_UNORM:
+      return GL_RG8;
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+      return GL_RGBA8;
+   case PIPE_FORMAT_R16_UNORM:
+      return GL_R16;
+   case PIPE_FORMAT_R16G16_UNORM:
+      return GL_RG16;
+   case PIPE_FORMAT_R16G16B16A16_UNORM:
+      return GL_RGBA16;
+
+   case PIPE_FORMAT_R8_SNORM:
+      return GL_R8_SNORM;
+   case PIPE_FORMAT_R8G8_SNORM:
+      return GL_RG8_SNORM;
+   case PIPE_FORMAT_R8G8B8A8_SNORM:
+      return GL_RGBA8_SNORM;
+   case PIPE_FORMAT_R16_SNORM:
+      return GL_R16_SNORM;
+   case PIPE_FORMAT_R16G16_SNORM:
+      return GL_RG16_SNORM;
+   case PIPE_FORMAT_R16G16B16A16_SNORM:
+      return GL_RGBA16_SNORM;
+
+   case PIPE_FORMAT_R8_UINT:
+      return GL_R8UI;
+   case PIPE_FORMAT_R8G8_UINT:
+      return GL_RG8UI;
+   case PIPE_FORMAT_R8G8B8A8_UINT:
+      return GL_RGBA8UI;
+   case PIPE_FORMAT_R16_UINT:
+      return GL_R16UI;
+   case PIPE_FORMAT_R16G16_UINT:
+      return GL_RG16UI;
+   case PIPE_FORMAT_R16G16B16A16_UINT:
+      return GL_RGBA16UI;
+   case PIPE_FORMAT_R32_UINT:
+      return GL_R32UI;
+   case PIPE_FORMAT_R32G32_UINT:
+      return GL_RG32UI;
+   case PIPE_FORMAT_R32G32B32A32_UINT:
+      return GL_RGBA32UI;
+
+   case PIPE_FORMAT_R8_SINT:
+      return GL_R8I;
+   case PIPE_FORMAT_R8G8_SINT:
+      return GL_RG8I;
+   case PIPE_FORMAT_R8G8B8A8_SINT:
+      return GL_RGBA8I;
+   case PIPE_FORMAT_R16_SINT:
+      return GL_R16I;
+   case PIPE_FORMAT_R16G16_SINT:
+      return GL_RG16I;
+   case PIPE_FORMAT_R16G16B16A16_SINT:
+      return GL_RGBA16I;
+   case PIPE_FORMAT_R32_SINT:
+      return GL_R32I;
+   case PIPE_FORMAT_R32G32_SINT:
+      return GL_RG32I;
+   case PIPE_FORMAT_R32G32B32A32_SINT:
+      return GL_RGBA32I;
+
+   case PIPE_FORMAT_R16_FLOAT:
+      return GL_R16F;
+   case PIPE_FORMAT_R16G16_FLOAT:
+      return GL_RG16F;
+   case PIPE_FORMAT_R16G16B16A16_FLOAT:
+      return GL_RGBA16F;
+   case PIPE_FORMAT_R32_FLOAT:
+      return GL_R32F;
+   case PIPE_FORMAT_R32G32_FLOAT:
+      return GL_RG32F;
+   case PIPE_FORMAT_R32G32B32A32_FLOAT:
+      return GL_RGBA32F;
+
+   case PIPE_FORMAT_R11G11B10_FLOAT:
+      return GL_R11F_G11F_B10F;
+   case PIPE_FORMAT_R10G10B10A2_UINT:
+      return GL_RGB10_A2UI;
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+      return GL_RGB10_A2;
+
+   default:
+      unreachable("unhandled image format");
+   }
+}
+
+static void
+ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
+{
+   nir_builder *b = &c->build;
+   struct tgsi_full_instruction *tgsi_inst = &c->token->FullInstruction;
+   nir_intrinsic_instr *instr = NULL;
+   unsigned resource_index, addr_src_index, file;
+
+   switch (tgsi_inst->Instruction.Opcode) {
+   case TGSI_OPCODE_LOAD:
+      assert(!tgsi_inst->Src[0].Register.Indirect);
+      resource_index = tgsi_inst->Src[0].Register.Index;
+      file = tgsi_inst->Src[0].Register.File;
+      addr_src_index = 1;
+      break;
+   case TGSI_OPCODE_STORE:
+      assert(!tgsi_inst->Dst[0].Register.Indirect);
+      resource_index = tgsi_inst->Dst[0].Register.Index;
+      file = tgsi_inst->Dst[0].Register.File;
+      addr_src_index = 0;
+      break;
+   default:
+      unreachable("unexpected memory opcode");
+   }
+
+   if (file == TGSI_FILE_BUFFER) {
+      nir_intrinsic_op op;
+
+      switch (tgsi_inst->Instruction.Opcode) {
+      case TGSI_OPCODE_LOAD:
+         op = nir_intrinsic_load_ssbo;
+         break;
+      case TGSI_OPCODE_STORE:
+         op = nir_intrinsic_store_ssbo;
+         break;
+      }
+
+      add_ssbo_var(c, resource_index);
+
+      instr = nir_intrinsic_instr_create(b->shader, op);
+      instr->num_components = util_last_bit(tgsi_inst->Dst[0].Register.WriteMask);
+      nir_intrinsic_set_access(instr, get_mem_qualifier(tgsi_inst));
+      nir_intrinsic_set_align(instr, 4, 0);
+
+      unsigned i = 0;
+      if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_STORE)
+         instr->src[i++] = nir_src_for_ssa(nir_swizzle(b, src[1], SWIZ(X, Y, Z, W),
+                                                       instr->num_components));
+      instr->src[i++] = nir_src_for_ssa(nir_imm_int(b, resource_index));
+      instr->src[i++] = nir_src_for_ssa(ttn_channel(b, src[addr_src_index], X));
+
+      if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_STORE)
+         nir_intrinsic_set_write_mask(instr, tgsi_inst->Dst[0].Register.WriteMask);
+
+   } else if (file == TGSI_FILE_IMAGE) {
+      nir_intrinsic_op op;
+
+      switch (tgsi_inst->Instruction.Opcode) {
+      case TGSI_OPCODE_LOAD:
+         op = nir_intrinsic_image_deref_load;
+         break;
+      case TGSI_OPCODE_STORE:
+         op = nir_intrinsic_image_deref_store;
+         break;
+      }
+
+      instr = nir_intrinsic_instr_create(b->shader, op);
+
+      /* Set the image variable dereference. */
+      enum glsl_sampler_dim dim;
+      bool is_array;
+      get_texture_info(tgsi_inst->Memory.Texture, &dim, NULL, &is_array);
+
+      enum glsl_base_type base_type = get_image_base_type(tgsi_inst);
+      enum gl_access_qualifier access = get_mem_qualifier(tgsi_inst);
+      GLenum format = get_image_format(tgsi_inst);
+
+      nir_variable *image =
+         get_image_var(c, resource_index,
+                       dim, is_array, base_type, access, format);
+      nir_deref_instr *image_deref = nir_build_deref_var(b, image);
+      const struct glsl_type *type = image_deref->type;
+      unsigned coord_components = glsl_get_sampler_coordinate_components(type);
+
+      nir_intrinsic_set_access(instr, image_deref->var->data.image.access);
+
+      instr->src[0] = nir_src_for_ssa(&image_deref->dest.ssa);
+      instr->src[1] = nir_src_for_ssa(nir_swizzle(b, src[addr_src_index],
+                                                  SWIZ(X, Y, Z, W),
+                                                  coord_components));
+
+      /* Set the sample argument, which is undefined for single-sample images. */
+      if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS) {
+         instr->src[2] = nir_src_for_ssa(ttn_channel(b, src[addr_src_index], W));
+      } else {
+         instr->src[2] = nir_src_for_ssa(nir_ssa_undef(b, 1, 32));
+      }
+
+      if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_STORE) {
+         instr->src[3] = nir_src_for_ssa(nir_swizzle(b, src[1], SWIZ(X, Y, Z, W), 4));
+      }
+
+      instr->num_components = 4;
+   } else {
+      unreachable("unexpected file");
+   }
+
+
+   if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_LOAD) {
+      nir_ssa_dest_init(&instr->instr, &instr->dest,
+                        util_last_bit(tgsi_inst->Dst[0].Register.WriteMask),
+                        32, NULL);
+      nir_builder_instr_insert(b, &instr->instr);
+      ttn_move_dest(b, dest, &instr->dest.ssa);
+   } else {
+      nir_builder_instr_insert(b, &instr->instr);
+   }
+}
+
 static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_ARL] = 0,
    [TGSI_OPCODE_MOV] = nir_op_mov,
@@ -1729,6 +2029,9 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_UCMP] = 0,
    [TGSI_OPCODE_IABS] = nir_op_iabs,
    [TGSI_OPCODE_ISSG] = nir_op_isign,
+
+   [TGSI_OPCODE_LOAD] = 0,
+   [TGSI_OPCODE_STORE] = 0,
 
    /* XXX: atomics */
 
@@ -1913,6 +2216,11 @@ ttn_emit_instruction(struct ttn_compile *c)
 
    case TGSI_OPCODE_TXQ:
       ttn_txq(c, dest, src);
+      break;
+
+   case TGSI_OPCODE_LOAD:
+   case TGSI_OPCODE_STORE:
+      ttn_mem(c, dest, src);
       break;
 
    case TGSI_OPCODE_NOP:
