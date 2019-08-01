@@ -521,7 +521,8 @@ static nir_src
 ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
                            struct tgsi_ind_register *indirect,
                            struct tgsi_dimension *dim,
-                           struct tgsi_ind_register *dimind)
+                           struct tgsi_ind_register *dimind,
+                           bool src_is_float)
 {
    nir_builder *b = &c->build;
    nir_src src;
@@ -639,13 +640,17 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
       }
 
       load = nir_intrinsic_instr_create(b->shader, op);
+      if (op == nir_intrinsic_load_uniform) {
+         nir_intrinsic_set_type(load, src_is_float ? nir_type_float :
+                                                     nir_type_int);
+      }
 
       load->num_components = 4;
       if (dim && (dim->Index > 0 || dim->Indirect)) {
          if (dimind) {
             load->src[srcn] =
                ttn_src_for_file_and_index(c, dimind->File, dimind->Index,
-                                          NULL, NULL, NULL);
+                                          NULL, NULL, NULL, false);
          } else {
             /* UBOs start at index 1 in TGSI: */
             load->src[srcn] =
@@ -699,7 +704,8 @@ ttn_src_for_indirect(struct ttn_compile *c, struct tgsi_ind_register *indirect)
    src.src = ttn_src_for_file_and_index(c,
                                         indirect->File,
                                         indirect->Index,
-                                        NULL, NULL, NULL);
+                                        NULL, NULL, NULL,
+                                        false);
    return nir_mov_alu(b, src, 1);
 }
 
@@ -804,7 +810,8 @@ ttn_get_src(struct ttn_compile *c, struct tgsi_full_src_register *tgsi_fsrc,
       src.src = ttn_src_for_file_and_index(c,
                                            tgsi_src->File,
                                            tgsi_src->Index,
-                                           ind, dim, dimind);
+                                           ind, dim, dimind,
+                                           src_is_float);
    }
 
    src.swizzle[0] = tgsi_src->SwizzleX;
@@ -1456,7 +1463,8 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       src.src = ttn_src_for_file_and_index(c,
                                            tex_offset->File,
                                            tex_offset->Index,
-                                           NULL, NULL, NULL);
+                                           NULL, NULL, NULL,
+                                           true);
 
       src.swizzle[0] = tex_offset->SwizzleX;
       src.swizzle[1] = tex_offset->SwizzleY;
