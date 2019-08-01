@@ -46,4 +46,10 @@ void fd2_emit_restore(struct fd_context *ctx, struct fd_ringbuffer *ring);
 
 void fd2_emit_init(struct pipe_context *pctx);
 
+static inline void
+fd2_emit_ib(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
+{
+	__OUT_IB(ring, false, target);
+}
+
 #endif /* FD2_EMIT_H */

@@ -221,7 +221,7 @@ prepare_tile_fini_ib(struct fd_batch *batch)
 static void
 fd2_emit_tile_gmem2mem(struct fd_batch *batch, struct fd_tile *tile)
 {
-	batch->ctx->emit_ib(batch->gmem, batch->tile_fini);
+	fd2_emit_ib(batch->gmem, batch->tile_fini);
 }
 
 /* transfer from system memory to gmem */
@@ -648,7 +648,7 @@ fd2_emit_tile_init(struct fd_batch *batch)
 		OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
 		OUT_RING(ring, 0);
 
-		ctx->emit_ib(ring, batch->binning);
+		fd2_emit_ib(ring, batch->binning);
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 		OUT_RING(ring, CP_REG(REG_A2XX_VGT_VERTEX_REUSE_BLOCK_CNTL));
