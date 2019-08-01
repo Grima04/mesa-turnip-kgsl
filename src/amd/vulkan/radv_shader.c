@@ -1159,7 +1159,8 @@ shader_variant_compile(struct radv_device *device,
 	radv_init_llvm_once();
 	radv_init_llvm_compiler(&ac_llvm,
 				thread_compiler,
-				chip_family, tm_options);
+				chip_family, tm_options,
+				radv_get_shader_wave_size(device->physical_device, stage));
 	if (gs_copy_shader) {
 		assert(shader_count == 1);
 		radv_compile_gs_copy_shader(&ac_llvm, *shaders, &binary,
