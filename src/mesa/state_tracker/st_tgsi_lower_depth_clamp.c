@@ -351,7 +351,7 @@ st_tgsi_lower_depth_clamp(const struct tgsi_token *tokens,
                           int depth_range_const,
                           bool clip_negative_one_to_one)
 {
-   struct tgsi_depth_clamp_transform ctx = {};
+   struct tgsi_depth_clamp_transform ctx = {0};
    struct tgsi_token *newtoks;
    int newlen;
 
