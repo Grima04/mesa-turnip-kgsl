@@ -99,7 +99,7 @@ os_log_message(const char *message)
       fputs(message, fout);
       fflush(fout);
    }
-#else /* !PIPE_SUBSYSTEM_WINDOWS */
+#else /* !PIPE_SUBSYSTEM_WINDOWS_USER */
    fflush(stdout);
    fputs(message, fout);
    fflush(fout);
