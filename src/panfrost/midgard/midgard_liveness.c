@@ -66,7 +66,11 @@ is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
 
                         /* If written-before-use, we're gone */
 
-                        if (ins->ssa_args.dest == src && ins->type == TAG_LOAD_STORE_4 && ins->load_store.op == midgard_op_ld_int4 && ins->load_store.unknown == 0x1EEA) {
+                        if (ins->ssa_args.dest == src &&
+                                ins->type == TAG_LOAD_STORE_4 &&
+                                ins->load_store.op == midgard_op_ld_int4 &&
+                                ins->load_store.arg_1 == 0xEA &&
+                                ins->load_store.arg_2 == 0x1E) {
                                 block_done = true;
                                 break;
                         }

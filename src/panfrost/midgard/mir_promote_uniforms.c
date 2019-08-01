@@ -53,10 +53,10 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned register_pressure)
                 unsigned address = (hi << 3) | lo;
 
                 /* Check this is UBO 0 */
-                if (ins->load_store.unknown & 0xF) continue;
+                if (ins->load_store.arg_1) continue;
 
                 /* Check we're accessing directly */
-                if (ins->load_store.unknown != 0x1E00) continue;
+                if (ins->load_store.arg_2 != 0x1E) continue;
 
                 /* Check if it's a promotable range */
                 unsigned uniform_reg = 23 - address;

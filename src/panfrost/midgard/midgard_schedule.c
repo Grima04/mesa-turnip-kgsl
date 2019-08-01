@@ -630,11 +630,11 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
 
                                 if (OP_IS_STORE(c->load_store.op)) continue;
 
-                                /* It appears the 0x800 bit is set whenever a
+                                /* It appears the 0x8 bit is set whenever a
                                  * load is direct, unset when it is indirect.
                                  * Skip indirect loads. */
 
-                                if (!(c->load_store.unknown & 0x800)) continue;
+                                if (!(c->load_store.arg_2 & 0x8)) continue;
 
                                 /* We found one! Move it up to pair and remove it from the old location */
 
@@ -712,7 +712,8 @@ v_load_store_scratch(
                         .swizzle = SWIZZLE_XYZW,
 
                         /* For register spilling - to thread local storage */
-                        .unknown = 0x1EEA,
+                        .arg_1 = 0xEA,
+                        .arg_2 = 0x1E,
 
                         /* Splattered across, TODO combine logically */
                         .varying_parameters = (byte & 0x1FF) << 1,
@@ -772,7 +773,8 @@ schedule_program(compiler_context *ctx)
                         mir_foreach_instr_global(ctx, ins) {
                                 if (ins->type != TAG_LOAD_STORE_4)  continue;
                                 if (ins->load_store.op != midgard_op_ld_int4) continue;
-                                if (ins->load_store.unknown != 0x1EEA) continue;
+                                if (ins->load_store.arg_1 != 0xEA) continue;
+                                if (ins->load_store.arg_2 != 0x1E) continue;
                                 ra_set_node_spill_cost(g, ins->ssa_args.dest, -1.0);
                         }
 

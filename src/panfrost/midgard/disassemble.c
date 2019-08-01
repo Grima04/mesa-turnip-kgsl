@@ -969,6 +969,12 @@ is_op_varying(unsigned op)
 }
 
 static void
+print_load_store_arg(uint8_t arg)
+{
+        printf("0x%X", arg);
+}
+
+static void
 print_load_store_instr(uint64_t data,
                        unsigned tabs)
 {
@@ -998,7 +1004,11 @@ print_load_store_instr(uint64_t data,
 
         print_swizzle_vec4(word->swizzle, false, false);
 
-        printf(", 0x%X /* %X */\n", word->unknown, word->varying_parameters);
+        printf(", ");
+        print_load_store_arg(word->arg_1);
+        printf(", ");
+        print_load_store_arg(word->arg_2);
+        printf(" /* %X */\n", word->varying_parameters);
 }
 
 static void

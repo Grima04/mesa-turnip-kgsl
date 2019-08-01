@@ -1164,10 +1164,12 @@ emit_ubo_read(
 
         if (indirect_offset) {
                 emit_indirect_offset(ctx, indirect_offset);
-                ins.load_store.unknown = 0x8700 | index; /* xxx: what is this? */
+                ins.load_store.arg_2 = 0x87;
         } else {
-                ins.load_store.unknown = 0x1E00 | index; /* xxx: what is this? */
+                ins.load_store.arg_2 = 0x1E;
         }
+
+        ins.load_store.arg_1 = index;
 
         emit_mir_instruction(ctx, ins);
 }
@@ -1199,11 +1201,13 @@ emit_varying_read(
         if (indirect_offset) {
                 /* We need to add in the dynamic index, moved to r27.w */
                 emit_indirect_offset(ctx, indirect_offset);
-                ins.load_store.unknown = 0x79e; /* xxx: what is this? */
+                ins.load_store.arg_2 = 0x07;
         } else {
                 /* Just a direct load */
-                ins.load_store.unknown = 0x1e9e; /* xxx: what is this? */
+                ins.load_store.arg_2 = 0x1E;
         }
+
+        ins.load_store.arg_1 = 0x9E;
 
         /* Use the type appropriate load */
         switch (type) {
@@ -1320,7 +1324,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         emit_mir_instruction(ctx, move);
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
-                        ins.load_store.unknown = 0x1E1E; /* XXX: What is this? */
+                        ins.load_store.arg_1 = 0x1E;
+                        ins.load_store.arg_2 = 0x1E;
                         ins.mask = mask_of(nr_comp);
 
                         /* Use the type appropriate load */
@@ -1408,7 +1413,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         unsigned component = nir_intrinsic_component(instr);
 
                         midgard_instruction st = m_st_vary_32(reg, offset);
-                        st.load_store.unknown = 0x1E9E; /* XXX: What is this? */
+                        st.load_store.arg_1 = 0x9E;
+                        st.load_store.arg_2 = 0x1E;
                         st.load_store.swizzle = SWIZZLE_XYZW << (2*component);
                         emit_mir_instruction(ctx, st);
                 } else {
@@ -1604,7 +1610,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                                 midgard_instruction st = m_st_cubemap_coords(temp, 0);
                                 st.ssa_args.src0 = index;
-                                st.load_store.unknown = 0x24; /* XXX: What is this? */
+                                st.load_store.arg_1 = 0x24;
                                 st.mask = 0x3; /* xy */
                                 st.load_store.swizzle = alu_src.swizzle;
                                 emit_mir_instruction(ctx, st);

@@ -505,7 +505,14 @@ __attribute__((__packed__))
         unsigned reg     : 5;
         unsigned mask    : 4;
         unsigned swizzle : 8;
-        unsigned unknown : 16;
+
+        /* Load/store ops can take two additional registers as arguments, but
+         * these are limited to load/store registers with only a few supported
+         * mask/swizzle combinations. The tradeoff is these are much more
+         * compact, requiring 8-bits each rather than 17-bits for a full
+         * reg/mask/swizzle */
+        unsigned arg_1   : 8;
+        unsigned arg_2   : 8;
 
         unsigned varying_parameters : 10;
 
