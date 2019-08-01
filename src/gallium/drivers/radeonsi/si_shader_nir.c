@@ -491,6 +491,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] = nir->info.cs.local_size[0];
 		info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT] = nir->info.cs.local_size[1];
 		info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH] = nir->info.cs.local_size[2];
+		info->properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD] = nir->info.cs.user_data_components_amd;
 	}
 
 	i = 0;

@@ -261,6 +261,7 @@ typedef struct shader_info {
          unsigned local_size[3];
 
          bool local_size_variable;
+         char user_data_components_amd;
 
          /**
           * Size of shared variables accessed by the compute shader.

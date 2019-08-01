@@ -2455,6 +2455,9 @@ ttn_compile_init(const void *tgsi_tokens,
       case TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH:
          s->info.cs.local_size[2] = value;
          break;
+      case TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD:
+         s->info.cs.user_data_components_amd = value;
+         break;
       default:
          if (value) {
             fprintf(stderr, "tgsi_to_nir: unhandled TGSI property %u = %u\n",
