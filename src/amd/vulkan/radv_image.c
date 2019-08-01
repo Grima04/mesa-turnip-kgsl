@@ -484,7 +484,9 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			if (chip_class <= GFX8)
 				meta_va += base_level_info->dcc_offset;
 
-			meta_va |= (uint32_t)plane->surface.tile_swizzle << 8;
+			unsigned dcc_tile_swizzle = plane->surface.tile_swizzle << 8;
+			dcc_tile_swizzle &= plane->surface.dcc_alignment - 1;
+			meta_va |= dcc_tile_swizzle;
 		} else if (!is_storage_image &&
 			   radv_image_is_tc_compat_htile(image)) {
 			meta_va = gpu_address + image->htile_offset;
