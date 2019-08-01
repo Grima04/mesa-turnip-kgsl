@@ -1986,6 +1986,10 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_tess_level_outer;
    case SYSTEM_VALUE_TESS_LEVEL_INNER:
       return nir_intrinsic_load_tess_level_inner;
+   case SYSTEM_VALUE_TESS_LEVEL_OUTER_DEFAULT:
+      return nir_intrinsic_load_tess_level_outer_default;
+   case SYSTEM_VALUE_TESS_LEVEL_INNER_DEFAULT:
+      return nir_intrinsic_load_tess_level_inner_default;
    case SYSTEM_VALUE_VERTICES_IN:
       return nir_intrinsic_load_patch_vertices_in;
    case SYSTEM_VALUE_HELPER_INVOCATION:
@@ -2079,6 +2083,10 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_TESS_LEVEL_OUTER;
    case nir_intrinsic_load_tess_level_inner:
       return SYSTEM_VALUE_TESS_LEVEL_INNER;
+   case nir_intrinsic_load_tess_level_outer_default:
+      return SYSTEM_VALUE_TESS_LEVEL_OUTER_DEFAULT;
+   case nir_intrinsic_load_tess_level_inner_default:
+      return SYSTEM_VALUE_TESS_LEVEL_INNER_DEFAULT;
    case nir_intrinsic_load_patch_vertices_in:
       return SYSTEM_VALUE_VERTICES_IN;
    case nir_intrinsic_load_helper_invocation:

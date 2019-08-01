@@ -643,6 +643,14 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          op = nir_intrinsic_load_user_data_amd;
          load = nir_load_user_data_amd(b);
          break;
+      case TGSI_SEMANTIC_TESS_DEFAULT_INNER_LEVEL:
+         op = nir_intrinsic_load_tess_level_inner_default;
+         load = nir_load_tess_level_inner_default(b);
+         break;
+      case TGSI_SEMANTIC_TESS_DEFAULT_OUTER_LEVEL:
+         op = nir_intrinsic_load_tess_level_outer_default;
+         load = nir_load_tess_level_outer_default(b);
+         break;
       default:
          unreachable("bad system value");
       }
