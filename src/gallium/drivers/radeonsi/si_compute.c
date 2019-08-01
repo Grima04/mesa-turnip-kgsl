@@ -232,7 +232,7 @@ static void *si_create_compute_state(
 	program->input_size = cso->req_input_mem;
 
 	if (cso->ir_type != PIPE_SHADER_IR_NATIVE) {
-		if (sscreen->options.always_nir &&
+		if (sscreen->options.enable_nir &&
 		    cso->ir_type == PIPE_SHADER_IR_TGSI) {
 			program->ir_type = PIPE_SHADER_IR_NIR;
 			sel->nir = tgsi_to_nir(cso->prog, ctx->screen);

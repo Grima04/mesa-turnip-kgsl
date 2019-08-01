@@ -2626,7 +2626,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	sel->so = state->stream_output;
 
 	if (state->type == PIPE_SHADER_IR_TGSI &&
-	    !sscreen->options.always_nir) {
+	    !sscreen->options.enable_nir) {
 		sel->tokens = tgsi_dup_tokens(state->tokens);
 		if (!sel->tokens) {
 			FREE(sel);
