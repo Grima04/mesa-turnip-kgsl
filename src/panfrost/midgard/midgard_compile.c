@@ -306,6 +306,16 @@ midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
 }
 
 static int
+midgard_sysval_for_ssbo(nir_intrinsic_instr *instr)
+{
+        nir_src index = instr->src[0];
+        assert(nir_src_is_const(index));
+        uint32_t uindex = nir_src_as_uint(index);
+
+        return PAN_SYSVAL(SSBO, uindex);
+}
+
+static int
 midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
 {
         switch (instr->intrinsic) {
@@ -313,6 +323,8 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
                 return PAN_SYSVAL_VIEWPORT_SCALE;
         case nir_intrinsic_load_viewport_offset:
                 return PAN_SYSVAL_VIEWPORT_OFFSET;
+        case nir_intrinsic_load_ssbo: 
+                return midgard_sysval_for_ssbo(instr);
         default:
                 return -1;
         }

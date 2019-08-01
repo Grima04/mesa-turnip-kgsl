@@ -680,6 +680,7 @@ struct sysval_uniform {
                 float f[4];
                 int32_t i[4];
                 uint32_t u[4];
+                uint64_t du[2];
         };
 };
 
@@ -728,6 +729,26 @@ static void panfrost_upload_txs_sysval(struct panfrost_context *ctx,
                 uniform->i[dim] = tex->texture->array_size;
 }
 
+static void panfrost_upload_ssbo_sysval(
+        struct panfrost_context *ctx,
+        enum pipe_shader_type st,
+        unsigned ssbo_id,
+        struct sysval_uniform *uniform)
+{
+        assert(ctx->ssbo_mask[st] & (1 << ssbo_id));
+        struct pipe_shader_buffer sb = ctx->ssbo[st][ssbo_id];
+
+        /* Compute address */
+        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_bo *bo = pan_resource(sb.buffer)->bo;
+
+        panfrost_job_add_bo(batch, bo);
+
+        /* Upload address and size as sysval */
+        uniform->du[0] = bo->gpu + sb.buffer_offset;
+        uniform->u[2] = sb.buffer_size;
+}
+
 static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
                                     struct panfrost_shader_state *ss,
                                     enum pipe_shader_type st)
@@ -747,6 +768,10 @@ static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
                 case PAN_SYSVAL_TEXTURE_SIZE:
                         panfrost_upload_txs_sysval(ctx, st, PAN_SYSVAL_ID(sysval),
                                                    &uniforms[i]);
+                        break;
+                case PAN_SYSVAL_SSBO:
+                        panfrost_upload_ssbo_sysval(ctx, st, PAN_SYSVAL_ID(sysval),
+                                                    &uniforms[i]);
                         break;
                 default:
                         assert(0);
