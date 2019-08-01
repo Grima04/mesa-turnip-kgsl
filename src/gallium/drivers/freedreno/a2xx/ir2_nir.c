@@ -286,6 +286,9 @@ instr_create_alu(struct ir2_context *ctx, nir_op opcode, unsigned ncomp)
 		[0 ... nir_num_opcodes - 1] = {-1, -1},
 
 		[nir_op_mov] = {MAXs, MAXv},
+		[nir_op_fneg] = {MAXs, MAXv},
+		[nir_op_fabs] = {MAXs, MAXv},
+		[nir_op_fsat] = {MAXs, MAXv},
 		[nir_op_fsign] = {-1, CNDGTEv},
 		[nir_op_fadd] = {ADDs, ADDv},
 		[nir_op_fsub] = {ADDs, ADDv},
@@ -428,6 +431,15 @@ emit_alu(struct ir2_context *ctx, nir_alu_instr * alu)
 
 	/* workarounds for NIR ops that don't map directly to a2xx ops */
 	switch (alu->op) {
+	case nir_op_fneg:
+		instr->src[0].negate = 1;
+		break;
+	case nir_op_fabs:
+		instr->src[0].abs = 1;
+		break;
+	case nir_op_fsat:
+		instr->alu.saturate = 1;
+		break;
 	case nir_op_slt:
 		tmp = instr->src[0];
 		instr->src[0] = instr->src[1];
