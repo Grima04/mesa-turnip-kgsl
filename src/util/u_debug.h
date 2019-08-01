@@ -40,8 +40,9 @@
 
 
 #include "util/os_misc.h"
+#include "util/detect_os.h"
 
-#if defined(PIPE_OS_HAIKU)
+#if DETECT_OS_HAIKU
 /* Haiku provides debug_printf in libroot with OS.h */
 #include <OS.h>
 #endif
@@ -82,7 +83,7 @@ _debug_printf(const char *format, ...)
  * - avoid outputing large strings (512 bytes is the current maximum length
  * that is guaranteed to be printed in all platforms)
  */
-#if !defined(PIPE_OS_HAIKU)
+#if !DETECT_OS_HAIKU
 static inline void
 debug_printf(const char *format, ...) _util_printf_format(1,2);
 
