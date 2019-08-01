@@ -1045,6 +1045,8 @@ struct anv_execbuf {
 
    bool                                      has_relocs;
 
+   const VkAllocationCallbacks *             alloc;
+   VkSystemAllocationScope                   alloc_scope;
    uint32_t                                  fence_count;
    uint32_t                                  fence_array_length;
    struct drm_i915_gem_exec_fence *          fences;
@@ -1058,13 +1060,12 @@ anv_execbuf_init(struct anv_execbuf *exec)
 }
 
 static void
-anv_execbuf_finish(struct anv_execbuf *exec,
-                   const VkAllocationCallbacks *alloc)
+anv_execbuf_finish(struct anv_execbuf *exec)
 {
-   vk_free(alloc, exec->objects);
-   vk_free(alloc, exec->bos);
-   vk_free(alloc, exec->fences);
-   vk_free(alloc, exec->syncobjs);
+   vk_free(exec->alloc, exec->objects);
+   vk_free(exec->alloc, exec->bos);
+   vk_free(exec->alloc, exec->fences);
+   vk_free(exec->alloc, exec->syncobjs);
 }
 
 static VkResult
@@ -1072,16 +1073,14 @@ anv_execbuf_add_bo_bitset(struct anv_device *device,
                           struct anv_execbuf *exec,
                           uint32_t dep_words,
                           BITSET_WORD *deps,
-                          uint32_t extra_flags,
-                          const VkAllocationCallbacks *alloc);
+                          uint32_t extra_flags);
 
 static VkResult
 anv_execbuf_add_bo(struct anv_device *device,
                    struct anv_execbuf *exec,
                    struct anv_bo *bo,
                    struct anv_reloc_list *relocs,
-                   uint32_t extra_flags,
-                   const VkAllocationCallbacks *alloc)
+                   uint32_t extra_flags)
 {
    struct drm_i915_gem_exec_object2 *obj = NULL;
 
@@ -1098,16 +1097,14 @@ anv_execbuf_add_bo(struct anv_device *device,
          uint32_t new_len = exec->objects ? exec->array_length * 2 : 64;
 
          struct drm_i915_gem_exec_object2 *new_objects =
-            vk_alloc(alloc, new_len * sizeof(*new_objects),
-                     8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+            vk_alloc(exec->alloc, new_len * sizeof(*new_objects), 8, exec->alloc_scope);
          if (new_objects == NULL)
             return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
          struct anv_bo **new_bos =
-            vk_alloc(alloc, new_len * sizeof(*new_bos),
-                      8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+            vk_alloc(exec->alloc, new_len * sizeof(*new_bos), 8, exec->alloc_scope);
          if (new_bos == NULL) {
-            vk_free(alloc, new_objects);
+            vk_free(exec->alloc, new_objects);
             return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          }
 
@@ -1118,8 +1115,8 @@ anv_execbuf_add_bo(struct anv_device *device,
                    exec->bo_count * sizeof(*new_bos));
          }
 
-         vk_free(alloc, exec->objects);
-         vk_free(alloc, exec->bos);
+         vk_free(exec->alloc, exec->objects);
+         vk_free(exec->alloc, exec->bos);
 
          exec->objects = new_objects;
          exec->bos = new_bos;
@@ -1160,15 +1157,14 @@ anv_execbuf_add_bo(struct anv_device *device,
             /* A quick sanity check on relocations */
             assert(relocs->relocs[i].offset < bo->size);
             result = anv_execbuf_add_bo(device, exec, relocs->reloc_bos[i],
-                                        NULL, extra_flags, alloc);
-
+                                        NULL, extra_flags);
             if (result != VK_SUCCESS)
                return result;
          }
       }
 
       return anv_execbuf_add_bo_bitset(device, exec, relocs->dep_words,
-                                       relocs->deps, extra_flags, alloc);
+                                       relocs->deps, extra_flags);
    }
 
    return VK_SUCCESS;
@@ -1180,8 +1176,7 @@ anv_execbuf_add_bo_bitset(struct anv_device *device,
                           struct anv_execbuf *exec,
                           uint32_t dep_words,
                           BITSET_WORD *deps,
-                          uint32_t extra_flags,
-                          const VkAllocationCallbacks *alloc)
+                          uint32_t extra_flags)
 {
    for (uint32_t w = 0; w < dep_words; w++) {
       BITSET_WORD mask = deps[w];
@@ -1190,8 +1185,8 @@ anv_execbuf_add_bo_bitset(struct anv_device *device,
          uint32_t gem_handle = w * BITSET_WORDBITS + i;
          struct anv_bo *bo = anv_device_lookup_bo(device, gem_handle);
          assert(bo->refcount > 0);
-         VkResult result = anv_execbuf_add_bo(device, exec,
-                                              bo, NULL, extra_flags, alloc);
+         VkResult result =
+            anv_execbuf_add_bo(device, exec, bo, NULL, extra_flags);
          if (result != VK_SUCCESS)
             return result;
       }
@@ -1202,17 +1197,16 @@ anv_execbuf_add_bo_bitset(struct anv_device *device,
 
 static VkResult
 anv_execbuf_add_syncobj(struct anv_execbuf *exec,
-                        uint32_t handle, uint32_t flags,
-                        const VkAllocationCallbacks *alloc)
+                        uint32_t handle, uint32_t flags)
 {
    assert(flags != 0);
 
    if (exec->fence_count >= exec->fence_array_length) {
       uint32_t new_len = MAX2(exec->fence_array_length * 2, 64);
 
-      exec->fences = vk_realloc(alloc, exec->fences,
+      exec->fences = vk_realloc(exec->alloc, exec->fences,
                                 new_len * sizeof(*exec->fences),
-                                8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                                8, exec->alloc_scope);
       if (exec->fences == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1418,23 +1412,20 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
    if (cmd_buffer->device->instance->physicalDevice.use_softpin) {
       anv_block_pool_foreach_bo(bo, &ss_pool->block_pool) {
          result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0,
-                                     &cmd_buffer->device->alloc);
+                                     bo, NULL, 0);
          if (result != VK_SUCCESS)
             return result;
       }
       /* Add surface dependencies (BOs) to the execbuf */
       anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
                                 cmd_buffer->surface_relocs.dep_words,
-                                cmd_buffer->surface_relocs.deps,
-                                0, &cmd_buffer->device->alloc);
+                                cmd_buffer->surface_relocs.deps, 0);
 
       /* Add the BOs for all memory objects */
       list_for_each_entry(struct anv_device_memory, mem,
                           &cmd_buffer->device->memory_objects, link) {
          result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     mem->bo, NULL, 0,
-                                     &cmd_buffer->device->alloc);
+                                     mem->bo, NULL, 0);
          if (result != VK_SUCCESS)
             return result;
       }
@@ -1443,8 +1434,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       pool = &cmd_buffer->device->dynamic_state_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {
          result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0,
-                                     &cmd_buffer->device->alloc);
+                                     bo, NULL, 0);
          if (result != VK_SUCCESS)
             return result;
       }
@@ -1452,8 +1442,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       pool = &cmd_buffer->device->instruction_state_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {
          result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0,
-                                     &cmd_buffer->device->alloc);
+                                     bo, NULL, 0);
          if (result != VK_SUCCESS)
             return result;
       }
@@ -1461,8 +1450,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
       pool = &cmd_buffer->device->binding_table_pool.block_pool;
       anv_block_pool_foreach_bo(bo, pool) {
          result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                     bo, NULL, 0,
-                                     &cmd_buffer->device->alloc);
+                                     bo, NULL, 0);
          if (result != VK_SUCCESS)
             return result;
       }
@@ -1474,8 +1462,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
        */
       result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
                                   ss_pool->block_pool.bo,
-                                  &cmd_buffer->surface_relocs, 0,
-                                  &cmd_buffer->device->alloc);
+                                  &cmd_buffer->surface_relocs, 0);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -1489,8 +1476,7 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
                                        cmd_buffer->last_ss_pool_center);
 
       result = anv_execbuf_add_bo(cmd_buffer->device, execbuf,
-                                  (*bbo)->bo, &(*bbo)->relocs, 0,
-                                  &cmd_buffer->device->alloc);
+                                  (*bbo)->bo, &(*bbo)->relocs, 0);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -1610,7 +1596,7 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
 {
    VkResult result = anv_execbuf_add_bo(device, execbuf,
                                         device->trivial_batch_bo,
-                                        NULL, 0, &device->alloc);
+                                        NULL, 0);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1641,6 +1627,8 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
 
    struct anv_execbuf execbuf;
    anv_execbuf_init(&execbuf);
+   execbuf.alloc = &device->alloc;
+   execbuf.alloc_scope = VK_SYSTEM_ALLOCATION_SCOPE_COMMAND;
 
    int in_fence = -1;
    VkResult result = VK_SUCCESS;
@@ -1653,8 +1641,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       switch (impl->type) {
       case ANV_SEMAPHORE_TYPE_BO:
          assert(!pdevice->has_syncobj);
-         result = anv_execbuf_add_bo(device, &execbuf, impl->bo, NULL,
-                                     0, &device->alloc);
+         result = anv_execbuf_add_bo(device, &execbuf, impl->bo, NULL, 0);
          if (result != VK_SUCCESS)
             return result;
          break;
@@ -1680,8 +1667,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
 
       case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ:
          result = anv_execbuf_add_syncobj(&execbuf, impl->syncobj,
-                                          I915_EXEC_FENCE_WAIT,
-                                          &device->alloc);
+                                          I915_EXEC_FENCE_WAIT);
          if (result != VK_SUCCESS)
             return result;
          break;
@@ -1714,7 +1700,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       case ANV_SEMAPHORE_TYPE_BO:
          assert(!pdevice->has_syncobj);
          result = anv_execbuf_add_bo(device, &execbuf, impl->bo, NULL,
-                                     EXEC_OBJECT_WRITE, &device->alloc);
+                                     EXEC_OBJECT_WRITE);
          if (result != VK_SUCCESS)
             return result;
          break;
@@ -1726,8 +1712,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
 
       case ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ:
          result = anv_execbuf_add_syncobj(&execbuf, impl->syncobj,
-                                          I915_EXEC_FENCE_SIGNAL,
-                                          &device->alloc);
+                                          I915_EXEC_FENCE_SIGNAL);
          if (result != VK_SUCCESS)
             return result;
          break;
@@ -1757,15 +1742,14 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       case ANV_FENCE_TYPE_BO:
          assert(!pdevice->has_syncobj_wait);
          result = anv_execbuf_add_bo(device, &execbuf, impl->bo.bo, NULL,
-                                     EXEC_OBJECT_WRITE, &device->alloc);
+                                     EXEC_OBJECT_WRITE);
          if (result != VK_SUCCESS)
             return result;
          break;
 
       case ANV_FENCE_TYPE_SYNCOBJ:
          result = anv_execbuf_add_syncobj(&execbuf, impl->syncobj,
-                                          I915_EXEC_FENCE_SIGNAL,
-                                          &device->alloc);
+                                          I915_EXEC_FENCE_SIGNAL);
          if (result != VK_SUCCESS)
             return result;
          break;
@@ -1865,7 +1849,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
       close(out_fence);
    }
 
-   anv_execbuf_finish(&execbuf, &device->alloc);
+   anv_execbuf_finish(&execbuf);
 
    return result;
 }
