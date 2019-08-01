@@ -655,37 +655,6 @@ emit_condition_mixed(compiler_context *ctx, nir_alu_src *src, unsigned nr_comp)
         emit_mir_instruction(ctx, ins);
 }
 
-
-
-/* Likewise, indirect offsets are put in r27.w. TODO: Allow componentwise
- * pinning to eliminate this move in all known cases */
-
-static void
-emit_indirect_offset(compiler_context *ctx, nir_src *src)
-{
-        int offset = nir_src_index(ctx, src);
-
-        midgard_instruction ins = {
-                .type = TAG_ALU_4,
-                .mask = 1 << COMPONENT_W,
-                .ssa_args = {
-                        .src0 = SSA_UNUSED_1,
-                        .src1 = offset,
-                        .dest = SSA_FIXED_REGISTER(REGISTER_LDST_BASE + 1),
-                },
-                .alu = {
-                        .op = midgard_alu_op_imov,
-                        .outmod = midgard_outmod_int_wrap,
-                        .reg_mode = midgard_reg_mode_32,
-                        .dest_override = midgard_dest_override_none,
-                        .src1 = vector_alu_srco_unsigned(zero_alu_src),
-                        .src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx)
-                },
-        };
-
-        emit_mir_instruction(ctx, ins);
-}
-
 #define ALU_CASE(nir, _op) \
 	case nir_op_##nir: \
 		op = midgard_alu_op_##_op; \
@@ -1172,8 +1141,8 @@ emit_ubo_read(
         ins.load_store.address = offset >> 3;
 
         if (indirect_offset) {
-                emit_indirect_offset(ctx, indirect_offset);
-                ins.load_store.arg_2 = 0x87;
+                ins.ssa_args.src1 = nir_src_index(ctx, indirect_offset);
+                ins.load_store.arg_2 = 0x80;
         } else {
                 ins.load_store.arg_2 = 0x1E;
         }
@@ -1207,14 +1176,10 @@ emit_varying_read(
         memcpy(&u, &p, sizeof(p));
         ins.load_store.varying_parameters = u;
 
-        if (indirect_offset) {
-                /* We need to add in the dynamic index, moved to r27.w */
-                emit_indirect_offset(ctx, indirect_offset);
-                ins.load_store.arg_2 = 0x07;
-        } else {
-                /* Just a direct load */
+        if (indirect_offset)
+                ins.ssa_args.src1 = nir_src_index(ctx, indirect_offset);
+        else
                 ins.load_store.arg_2 = 0x1E;
-        }
 
         ins.load_store.arg_1 = 0x9E;
 
@@ -1616,11 +1581,10 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                  * texture register */
 
                                 unsigned temp = make_compiler_temp(ctx);
-
                                 midgard_instruction st = m_st_cubemap_coords(temp, 0);
                                 st.ssa_args.src0 = index;
-                                st.load_store.arg_1 = 0x24;
                                 st.mask = 0x3; /* xy */
+                                st.load_store.arg_1 = 0x20;
                                 st.load_store.swizzle = alu_src.swizzle;
                                 emit_mir_instruction(ctx, st);
 

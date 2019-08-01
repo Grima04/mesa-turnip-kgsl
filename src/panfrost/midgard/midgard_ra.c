@@ -48,7 +48,6 @@
 /* We have overlapping register classes for special registers, handled via
  * shadows */
 
-#define SHADOW_R27 17
 #define SHADOW_R28 18
 #define SHADOW_R29 19
 
@@ -155,8 +154,8 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
 
         /* Apply shadow registers */
 
-        if (phys >= SHADOW_R27 && phys <= SHADOW_R29)
-                phys += 27 - SHADOW_R27;
+        if (phys >= SHADOW_R28 && phys <= SHADOW_R29)
+                phys += 28 - SHADOW_R28;
 
         struct phys_reg r = {
                 .reg = phys,
@@ -213,13 +212,10 @@ create_register_set(unsigned work_count, unsigned *classes)
 
                 /* Special register classes have other register counts */
                 unsigned count =
-                        (c == REG_CLASS_WORK)   ? work_count :
-                        (c == REG_CLASS_LDST27) ? 1 : 2;
+                        (c == REG_CLASS_WORK)   ? work_count : 2;
 
-                /* We arbitraily pick r17 (RA unused) as the shadow for r27 */
                 unsigned first_reg =
                         (c == REG_CLASS_LDST)   ? 26 :
-                        (c == REG_CLASS_LDST27) ? SHADOW_R27 :
                         (c == REG_CLASS_TEXR)   ? 28 :
                         (c == REG_CLASS_TEXW)   ? SHADOW_R28 :
                         0;
@@ -256,7 +252,6 @@ create_register_set(unsigned work_count, unsigned *classes)
 
 
         /* We have duplicate classes */
-        add_shadow_conflicts(regs, 27, SHADOW_R27);
         add_shadow_conflicts(regs, 28, SHADOW_R28);
         add_shadow_conflicts(regs, 29, SHADOW_R29);
 
@@ -315,17 +310,8 @@ set_class(unsigned *classes, unsigned node, unsigned class)
         if (class == current_class)
                 return;
 
-
-        if ((current_class == REG_CLASS_LDST27) && (class == REG_CLASS_LDST))
-                return;
-
-        /* If we're changing, we must not have already assigned a special class
-         */
-
-        bool compat = current_class == REG_CLASS_WORK;
-        compat |= (current_class == REG_CLASS_LDST) && (class == REG_CLASS_LDST27);
-
-        assert(compat);
+        /* If we're changing, we haven't assigned a special class */
+        assert(current_class == REG_CLASS_WORK);
 
         classes[node] &= 0x3;
         classes[node] |= (class << 2);
@@ -355,7 +341,6 @@ check_read_class(unsigned *classes, unsigned tag, unsigned node)
 
         switch (current_class) {
         case REG_CLASS_LDST:
-        case REG_CLASS_LDST27:
                 return (tag == TAG_LOAD_STORE_4);
         case REG_CLASS_TEXR:
                 return (tag == TAG_TEXTURE_4);
@@ -383,7 +368,6 @@ check_write_class(unsigned *classes, unsigned tag, unsigned node)
         case REG_CLASS_TEXW:
                 return (tag == TAG_TEXTURE_4);
         case REG_CLASS_LDST:
-        case REG_CLASS_LDST27:
         case REG_CLASS_WORK:
                 return (tag == TAG_ALU_4) || (tag == TAG_LOAD_STORE_4);
         default:
@@ -491,22 +475,28 @@ mir_lower_special_reads(compiler_context *ctx)
                                 v_mov(idx, blank_alu_src, i) :
                                 v_mov(i, blank_alu_src, idx);
 
-                        /* Insert move after each write */
+                        /* Insert move before each read/write, depending on the
+                         * hazard we're trying to account for */
+
                         mir_foreach_instr_global_safe(ctx, pre_use) {
-                                if (pre_use->ssa_args.dest != i)
+                                if (pre_use->type != classes[j])
                                         continue;
 
-                                /* If the hazard is writing, we need to
-                                 * specific insert moves for the contentious
-                                 * class. If the hazard is reading, we insert
-                                 * moves whenever it is written */
+                                if (hazard_write) {
+                                        if (pre_use->ssa_args.dest != i)
+                                                continue;
+                                } else {
+                                        if (!mir_has_arg(pre_use, i))
+                                                continue;
+                                }
 
-                                if (hazard_write && pre_use->type != classes[j])
-                                        continue;
-
-                                midgard_instruction *use = mir_next_op(pre_use);
-                                assert(use);
-                                mir_insert_instruction_before(use, m);
+                                if (hazard_write) {
+                                        midgard_instruction *use = mir_next_op(pre_use);
+                                        assert(use);
+                                        mir_insert_instruction_before(use, m);
+                                } else {
+                                        mir_insert_instruction_before(pre_use, m);
+                                }
                         }
 
                         /* Rewrite to use */
@@ -580,13 +570,12 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 /* Check if this operation imposes any classes */
 
                 if (ins->type == TAG_LOAD_STORE_4) {
-                        bool force_r27 = OP_IS_R27_ONLY(ins->load_store.op);
-                        unsigned class = force_r27 ? REG_CLASS_LDST27 : REG_CLASS_LDST;
+                        bool force_vec4_only = OP_IS_VEC4_ONLY(ins->load_store.op);
 
-                        set_class(found_class, ins->ssa_args.src0, class);
-                        set_class(found_class, ins->ssa_args.src1, class);
+                        set_class(found_class, ins->ssa_args.src0, REG_CLASS_LDST);
+                        set_class(found_class, ins->ssa_args.src1, REG_CLASS_LDST);
 
-                        if (force_r27) {
+                        if (force_vec4_only) {
                                 force_vec4(found_class, ins->ssa_args.dest);
                                 force_vec4(found_class, ins->ssa_args.src0);
                                 force_vec4(found_class, ins->ssa_args.src1);
@@ -759,6 +748,14 @@ install_registers_instr(
         case TAG_LOAD_STORE_4: {
                 bool fixed = args.src0 >= SSA_FIXED_MINIMUM;
 
+                /* Which physical register we read off depends on
+                 * whether we are loading or storing -- think about the
+                 * logical dataflow */
+
+                bool encodes_src =
+                        OP_IS_STORE(ins->load_store.op) &&
+                        ins->load_store.op != midgard_op_st_cubemap_coords;
+
                 if (OP_IS_STORE_R26(ins->load_store.op) && fixed) {
                         ins->load_store.reg = SSA_REG_FROM_FIXED(args.src0);
                 } else if (OP_IS_STORE_VARY(ins->load_store.op)) {
@@ -769,14 +766,6 @@ install_registers_instr(
 
                         /* TODO: swizzle/mask */
                 } else {
-                        /* Which physical register we read off depends on
-                         * whether we are loading or storing -- think about the
-                         * logical dataflow */
-
-                        bool encodes_src =
-                                OP_IS_STORE(ins->load_store.op) &&
-                                ins->load_store.op != midgard_op_st_cubemap_coords;
-
                         unsigned r = encodes_src ?
                                      args.src0 : args.dest;
 
@@ -792,6 +781,26 @@ install_registers_instr(
                                             ins->mask, src);
                 }
 
+                /* We also follow up by actual arguments */
+
+                int src2 =
+                        encodes_src ? args.src1 : args.src0;
+
+                int src3 =
+                        encodes_src ? -1 : args.src1;
+
+                if (src2 >= 0) {
+                        struct phys_reg src = index_to_reg(ctx, g, src2);
+                        unsigned component = __builtin_ctz(src.mask);
+                        ins->load_store.arg_1 |= midgard_ldst_reg(src.reg, component);
+                }
+
+                if (src3 >= 0) {
+                        struct phys_reg src = index_to_reg(ctx, g, src3);
+                        unsigned component = __builtin_ctz(src.mask);
+                        ins->load_store.arg_2 |= midgard_ldst_reg(src.reg, component);
+                }
+ 
                 break;
         }
 

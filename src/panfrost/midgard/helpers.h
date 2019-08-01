@@ -47,7 +47,7 @@
         )
 
 #define OP_IS_STORE(op) (\
-                OP_IS_STORE_VARY(op) || \
+                OP_IS_STORE_R26(op) || \
                 op == midgard_op_st_cubemap_coords \
 	)
 
@@ -56,7 +56,7 @@
                 op == midgard_op_ldst_perspective_division_w \
         )
 
-#define OP_IS_R27_ONLY(op) ( \
+#define OP_IS_VEC4_ONLY(op) ( \
                 OP_IS_PROJECTION(op) || \
                 op == midgard_op_st_cubemap_coords \
         )
@@ -345,7 +345,7 @@ mir_is_simple_swizzle(unsigned swizzle, unsigned mask)
 static inline uint8_t
 midgard_ldst_reg(unsigned reg, unsigned component)
 {
-        assert(reg == REGISTER_LDST_BASE || (reg == REGISTER_LDST_BASE + 1));
+        assert((reg == REGISTER_LDST_BASE) || (reg == REGISTER_LDST_BASE + 1));
 
         midgard_ldst_register_select sel = {
                 .component = component,

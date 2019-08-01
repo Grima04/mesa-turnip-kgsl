@@ -124,7 +124,7 @@ midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block)
                                         midgard_op_ldst_perspective_division_w : 
                                         midgard_op_ldst_perspective_division_z,
                                 .swizzle = SWIZZLE_XYZW,
-                                .arg_1 = 0x24,
+                                .arg_1 = 0x20
                         }
                 };
 
