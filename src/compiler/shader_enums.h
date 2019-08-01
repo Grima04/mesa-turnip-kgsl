@@ -736,6 +736,9 @@ enum gl_access_qualifier
     * a lack of ACCESS_COHERENT and ACCESS_VOLATILE.
     */
    ACCESS_CAN_REORDER = (1 << 6),
+
+   /** Use as little cache space as possible. */
+   ACCESS_STREAM_CACHE_POLICY = (1 << 7),
 };
 
 /**

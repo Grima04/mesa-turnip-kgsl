@@ -1549,6 +1549,9 @@ static unsigned get_cache_policy(struct ac_nir_context *ctx,
 		cache_policy |= ac_glc;
 	}
 
+	if (access & ACCESS_STREAM_CACHE_POLICY)
+		cache_policy |= ac_slc;
+
 	return cache_policy;
 }
 
