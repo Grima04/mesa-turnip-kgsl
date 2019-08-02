@@ -1715,6 +1715,11 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_INTERP_CENTROID] = 0, /* XXX */
    [TGSI_OPCODE_INTERP_SAMPLE] = 0, /* XXX */
    [TGSI_OPCODE_INTERP_OFFSET] = 0, /* XXX */
+
+   [TGSI_OPCODE_U64ADD] = nir_op_iadd,
+   [TGSI_OPCODE_U64MUL] = nir_op_imul,
+   [TGSI_OPCODE_U64DIV] = nir_op_udiv,
+   [TGSI_OPCODE_U64SNE] = nir_op_ine,
 };
 
 static void
