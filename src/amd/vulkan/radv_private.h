@@ -1633,7 +1633,7 @@ bool radv_layout_dcc_compressed(const struct radv_image *image,
 static inline bool
 radv_image_has_cmask(const struct radv_image *image)
 {
-	return image->planes[0].surface.cmask_size;
+	return image->cmask_offset;
 }
 
 /**
@@ -1642,7 +1642,7 @@ radv_image_has_cmask(const struct radv_image *image)
 static inline bool
 radv_image_has_fmask(const struct radv_image *image)
 {
-	return image->planes[0].surface.fmask_size;
+	return image->fmask_offset;
 }
 
 /**
