@@ -564,7 +564,8 @@ void si_emit_dpbb_state(struct si_context *sctx)
 		persistent_states_per_bin = 1;
 	} else {
 		context_states_per_bin = 6;
-		persistent_states_per_bin = 32;
+		/* Using 32 here can cause GPU hangs on RAVEN1 */
+		persistent_states_per_bin = 16;
 	}
 	fpovs_per_batch = 63;
 
