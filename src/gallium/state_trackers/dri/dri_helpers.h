@@ -47,6 +47,16 @@ extern const __DRI2fenceExtension dri2FenceExtension;
 const struct dri2_format_mapping *
 dri2_get_mapping_by_fourcc(int fourcc);
 
+const struct dri2_format_mapping *
+dri2_get_mapping_by_format(int format);
+
+enum pipe_format
+dri2_get_pipe_format_for_dri_format(int format);
+
+boolean
+dri2_query_dma_buf_formats(__DRIscreen *_screen, int max, int *formats,
+                           int *count);
+
 __DRIimage *
 dri2_lookup_egl_image(struct dri_screen *screen, void *handle);
 
