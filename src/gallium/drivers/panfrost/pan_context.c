@@ -2369,9 +2369,21 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         if (util_framebuffer_state_equal(&ctx->pipe_framebuffer, fb))
                 return;
 
-        if (!ctx->wallpaper_batch && (!is_scanout || has_draws)) {
-                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+        /* The wallpaper logic sets a new FB state before doing the blit and
+         * restore the old one when it's done. Those FB states are reported to
+         * be different because the surface they are pointing to are different,
+         * but those surfaces actually point to the same cbufs/zbufs. In that
+         * case we definitely don't want new FB descs to be emitted/attached
+         * since the job is expected to be flushed just after the blit is done,
+         * so let's just copy the new state and return here.
+         */
+        if (ctx->wallpaper_batch) {
+                util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
+                return;
         }
+
+        if (!is_scanout || has_draws)
+                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
 
         /* Invalidate the FBO job cache since we've just been assigned a new
          * FB state.
