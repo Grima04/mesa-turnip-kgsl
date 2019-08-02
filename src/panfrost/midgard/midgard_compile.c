@@ -78,6 +78,15 @@ midgard_is_branch_unit(unsigned unit)
 static void
 midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 {
+        assert(block);
+        assert(successor);
+
+        /* Deduplicate */
+        for (unsigned i = 0; i < block->nr_successors; ++i) {
+                if (block->successors[i] == successor)
+                        return;
+        }
+
         block->successors[block->nr_successors++] = successor;
         assert(block->nr_successors <= ARRAY_SIZE(block->successors));
 }
@@ -2082,7 +2091,12 @@ emit_fragment_epilogue(compiler_context *ctx)
 static midgard_block *
 emit_block(compiler_context *ctx, nir_block *block)
 {
-        midgard_block *this_block = calloc(sizeof(midgard_block), 1);
+        midgard_block *this_block = ctx->after_block;
+        ctx->after_block = NULL;
+
+        if (!this_block)
+                this_block = calloc(sizeof(midgard_block), 1);
+
         list_addtail(&this_block->link, &ctx->blocks);
 
         this_block->is_scheduled = false;
@@ -2090,10 +2104,6 @@ emit_block(compiler_context *ctx, nir_block *block)
 
         ctx->texture_index[0] = -1;
         ctx->texture_index[1] = -1;
-
-        /* Add us as a successor to the block we are following */
-        if (ctx->current_block)
-                midgard_block_add_successor(ctx->current_block, this_block);
 
         /* Set up current block */
         list_inithead(&this_block->instructions);
@@ -2114,18 +2124,9 @@ emit_block(compiler_context *ctx, nir_block *block)
                 }
         }
 
-        if (block == nir_start_block(ctx->func->impl))
-                ctx->initial_block = this_block;
-
-        if (block == nir_impl_last_block(ctx->func->impl))
-                ctx->final_block = this_block;
-
         /* Allow the next control flow to access us retroactively, for
          * branching etc */
         ctx->current_block = this_block;
-
-        /* Document the fallthrough chain */
-        ctx->previous_source_block = this_block;
 
         return this_block;
 }
@@ -2135,6 +2136,8 @@ static midgard_block *emit_cf_list(struct compiler_context *ctx, struct exec_lis
 static void
 emit_if(struct compiler_context *ctx, nir_if *nif)
 {
+        midgard_block *before_block = ctx->current_block;
+
         /* Conditional branches expect the condition in r31.w; emit a move for
          * that in the _previous_ block (which is the current block). */
         emit_condition(ctx, &nif->condition, true, COMPONENT_X);
@@ -2143,8 +2146,9 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
         EMIT(branch, true, true);
         midgard_instruction *then_branch = mir_last_in_block(ctx->current_block);
 
-        /* Emit the two subblocks */
+        /* Emit the two subblocks. */
         midgard_block *then_block = emit_cf_list(ctx, &nif->then_list);
+        midgard_block *end_then_block = ctx->current_block;
 
         /* Emit a jump from the end of the then block to the end of the else */
         EMIT(branch, false, false);
@@ -2155,6 +2159,7 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
         int else_idx = ctx->block_count;
         int count_in = ctx->instruction_count;
         midgard_block *else_block = emit_cf_list(ctx, &nif->else_list);
+        midgard_block *end_else_block = ctx->current_block;
         int after_else_idx = ctx->block_count;
 
         /* Now that we have the subblocks emitted, fix up the branches */
@@ -2170,6 +2175,16 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
                 then_branch->branch.target_block = else_idx;
                 then_exit->branch.target_block = after_else_idx;
         }
+
+        /* Wire up the successors */
+
+        ctx->after_block = calloc(sizeof(midgard_block), 1);
+
+        midgard_block_add_successor(before_block, then_block);
+        midgard_block_add_successor(before_block, else_block);
+
+        midgard_block_add_successor(end_then_block, ctx->after_block);
+        midgard_block_add_successor(end_else_block, ctx->after_block);
 }
 
 static void
@@ -2185,17 +2200,16 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
         int start_idx = ctx->block_count;
 
         /* Emit the body itself */
-        emit_cf_list(ctx, &nloop->body);
+        midgard_block *loop_block = emit_cf_list(ctx, &nloop->body);
 
         /* Branch back to loop back */
         struct midgard_instruction br_back = v_branch(false, false);
         br_back.branch.target_block = start_idx;
         emit_mir_instruction(ctx, br_back);
 
-        /* Mark down that branch in the graph. Note that we're really branching
-         * to the block *after* we started in. TODO: Why doesn't the branch
-         * itself have an off-by-one then...? */
-        midgard_block_add_successor(ctx->current_block, start_block->successors[0]);
+        /* Mark down that branch in the graph. */
+        midgard_block_add_successor(start_block, loop_block);
+        midgard_block_add_successor(ctx->current_block, loop_block);
 
         /* Find the index of the block about to follow us (note: we don't add
          * one; blocks are 0-indexed so we get a fencepost problem) */
@@ -2203,6 +2217,7 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
 
         /* Fix up the break statements we emitted to point to the right place,
          * now that we can allocate a block number for them */
+        ctx->after_block = calloc(sizeof(midgard_block), 1);
 
         list_for_each_entry_from(struct midgard_block, block, start_block, &ctx->blocks, link) {
                 mir_foreach_instr_in_block(block, ins) {
@@ -2221,6 +2236,8 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
 
                         ins->branch.target_type = TARGET_GOTO;
                         ins->branch.target_block = break_block_idx;
+
+                        midgard_block_add_successor(block, ctx->after_block);
                 }
         }
 

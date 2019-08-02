@@ -160,11 +160,9 @@ typedef struct midgard_block {
         /* Number of quadwords _actually_ emitted, as determined after scheduling */
         unsigned quadword_count;
 
-        /* Successors: always one forward (the block after us), maybe
-         * one backwards (for a backward branch). No need for a second
-         * forward, since graph traversal would get there eventually
-         * anyway */
-        struct midgard_block *successors[2];
+        /* Succeeding blocks. The compiler should not necessarily rely on
+         * source-order traversal */
+        struct midgard_block *successors[4];
         unsigned nr_successors;
 
         /* The successors pointer form a graph, and in the case of
@@ -221,12 +219,11 @@ typedef struct compiler_context {
         int block_count;
         struct list_head blocks;
 
-        midgard_block *initial_block;
-        midgard_block *previous_source_block;
-        midgard_block *final_block;
-
         /* List of midgard_instructions emitted for the current block */
         midgard_block *current_block;
+
+        /* If there is a preset after block, use this, otherwise emit_block will create one if NULL */
+        midgard_block *after_block;
 
         /* The current "depth" of the loop, for disambiguating breaks/continues
          * when using nested loops */
