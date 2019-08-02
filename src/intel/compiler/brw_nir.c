@@ -1045,17 +1045,25 @@ enum brw_conditional_mod
 brw_cmod_for_nir_comparison(nir_op op)
 {
    switch (op) {
+   case nir_op_flt:
    case nir_op_flt32:
+   case nir_op_ilt:
    case nir_op_ilt32:
+   case nir_op_ult:
    case nir_op_ult32:
       return BRW_CONDITIONAL_L;
 
+   case nir_op_fge:
    case nir_op_fge32:
+   case nir_op_ige:
    case nir_op_ige32:
+   case nir_op_uge:
    case nir_op_uge32:
       return BRW_CONDITIONAL_GE;
 
+   case nir_op_feq:
    case nir_op_feq32:
+   case nir_op_ieq:
    case nir_op_ieq32:
    case nir_op_b32all_fequal2:
    case nir_op_b32all_iequal2:
@@ -1065,7 +1073,9 @@ brw_cmod_for_nir_comparison(nir_op op)
    case nir_op_b32all_iequal4:
       return BRW_CONDITIONAL_Z;
 
+   case nir_op_fne:
    case nir_op_fne32:
+   case nir_op_ine:
    case nir_op_ine32:
    case nir_op_b32any_fnequal2:
    case nir_op_b32any_inequal2:
