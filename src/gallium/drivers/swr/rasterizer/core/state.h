@@ -387,6 +387,7 @@ struct SWR_PS_CONTEXT
     uint32_t frontFace;              // IN: front- 1, back- 0
     uint32_t sampleIndex;            // IN: sampleIndex
     uint32_t renderTargetArrayIndex; // IN: render target array index from GS
+    uint32_t viewportIndex;          // IN: viewport index from GS
     uint32_t rasterizerSampleCount;  // IN: sample count used by the rasterizer
 
     uint8_t* pColorBuffer[SWR_NUM_RENDERTARGETS]; // IN: Pointers to render target hottiles

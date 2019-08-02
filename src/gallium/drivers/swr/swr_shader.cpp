@@ -1170,8 +1170,23 @@ BuilderSWR::CompileFS(struct swr_context *ctx, swr_jit_fs_key &key)
          inputs[attrib][3] =
             wrap(LOAD(pPS, {0, SWR_PS_CONTEXT_vOneOverW, PixelPositions_center}, "vOneOverW"));
          continue;
+      } else if (semantic_name == TGSI_SEMANTIC_LAYER) { // gl_Layer
+         Value *ff = LOAD(pPS, {0, SWR_PS_CONTEXT_renderTargetArrayIndex});
+         ff = VECTOR_SPLAT(JM()->mVWidth, ff, "vRenderTargetArrayIndex");
+         inputs[attrib][0] = wrap(ff);
+         inputs[attrib][1] = wrap(VIMMED1(0.0f));
+         inputs[attrib][2] = wrap(VIMMED1(0.0f));
+         inputs[attrib][3] = wrap(VIMMED1(0.0f));
+         continue;
+      } else if (semantic_name == TGSI_SEMANTIC_VIEWPORT_INDEX) { // gl_ViewportIndex
+         Value *ff = LOAD(pPS, {0, SWR_PS_CONTEXT_viewportIndex});
+         ff = VECTOR_SPLAT(JM()->mVWidth, ff, "vViewportIndex");
+         inputs[attrib][0] = wrap(ff);
+         inputs[attrib][1] = wrap(VIMMED1(0.0f));
+         inputs[attrib][2] = wrap(VIMMED1(0.0f));
+         inputs[attrib][3] = wrap(VIMMED1(0.0f));
+         continue;
       }
-
       unsigned linkedAttrib =
          locate_linkage(semantic_name, semantic_idx, pPrevShader) - 1;
 
