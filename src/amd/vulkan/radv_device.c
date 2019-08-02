@@ -4806,11 +4806,15 @@ VkResult radv_CreateFramebuffer(
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	struct radv_framebuffer *framebuffer;
+	const VkFramebufferAttachmentsCreateInfoKHR *imageless_create_info =
+		vk_find_struct_const(pCreateInfo->pNext,
+			FRAMEBUFFER_ATTACHMENTS_CREATE_INFO_KHR);
 
 	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
 
-	size_t size = sizeof(*framebuffer) +
-		sizeof(struct radv_image_view*) * pCreateInfo->attachmentCount;
+	size_t size = sizeof(*framebuffer);
+	if (!imageless_create_info)
+		size += sizeof(struct radv_image_view*) * pCreateInfo->attachmentCount;
 	framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
 				  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (framebuffer == NULL)
@@ -4820,13 +4824,23 @@ VkResult radv_CreateFramebuffer(
 	framebuffer->width = pCreateInfo->width;
 	framebuffer->height = pCreateInfo->height;
 	framebuffer->layers = pCreateInfo->layers;
-	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-		VkImageView _iview = pCreateInfo->pAttachments[i];
-		struct radv_image_view *iview = radv_image_view_from_handle(_iview);
-		framebuffer->attachments[i] = iview;
-		framebuffer->width = MIN2(framebuffer->width, iview->extent.width);
-		framebuffer->height = MIN2(framebuffer->height, iview->extent.height);
-		framebuffer->layers = MIN2(framebuffer->layers, radv_surface_max_layer_count(iview));
+	if (imageless_create_info) {
+		for (unsigned i = 0; i < imageless_create_info->attachmentImageInfoCount; ++i) {
+			const VkFramebufferAttachmentImageInfoKHR *attachment =
+				imageless_create_info->pAttachmentImageInfos + i;
+			framebuffer->width = MIN2(framebuffer->width, attachment->width);
+			framebuffer->height = MIN2(framebuffer->height, attachment->height);
+			framebuffer->layers = MIN2(framebuffer->layers, attachment->layerCount);
+		}
+	} else {
+		for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+			VkImageView _iview = pCreateInfo->pAttachments[i];
+			struct radv_image_view *iview = radv_image_view_from_handle(_iview);
+			framebuffer->attachments[i] = iview;
+			framebuffer->width = MIN2(framebuffer->width, iview->extent.width);
+			framebuffer->height = MIN2(framebuffer->height, iview->extent.height);
+			framebuffer->layers = MIN2(framebuffer->layers, radv_surface_max_layer_count(iview));
+		}
 	}
 
 	*pFramebuffer = radv_framebuffer_to_handle(framebuffer);

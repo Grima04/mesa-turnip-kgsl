@@ -3008,6 +3008,13 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer,
 				 const VkRenderPassBeginInfo *info)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
+	const struct VkRenderPassAttachmentBeginInfoKHR *attachment_info = NULL;
+
+	if (info) {
+		attachment_info = vk_find_struct_const(info->pNext,
+		                                       RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR);
+	}
+
 
 	if (pass->attachment_count == 0) {
 		state->attachments = NULL;
@@ -3058,7 +3065,14 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer,
 		state->attachments[i].current_layout = att->initial_layout;
 		state->attachments[i].sample_location.count = 0;
 
-		struct radv_image_view *iview = state->framebuffer->attachments[i];
+		struct radv_image_view *iview;
+		if (attachment_info && attachment_info->attachmentCount > i) {
+			iview = radv_image_view_from_handle(attachment_info->pAttachments[i]);
+		} else {
+			iview = state->framebuffer->attachments[i];
+		}
+
+		state->attachments[i].iview = iview;
 		if (iview->aspect_mask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
 			radv_initialise_ds_surface(cmd_buffer->device, &state->attachments[i].ds, iview);
 		} else {
