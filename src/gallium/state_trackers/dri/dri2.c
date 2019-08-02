@@ -759,12 +759,18 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    for (i = num_handles - 1; i >= 0; i--) {
       struct pipe_resource *tex;
 
-      templ.width0 = width >> map->planes[i].width_shift;
-      templ.height0 = height >> map->planes[i].height_shift;
-      if (is_yuv)
-         templ.format = dri2_get_pipe_format_for_dri_format(map->planes[i].dri_format);
-      else
+      if (whandle[i].modifier == DRM_FORMAT_MOD_INVALID) {
+         templ.width0 = width >> map->planes[i].width_shift;
+         templ.height0 = height >> map->planes[i].height_shift;
+         if (is_yuv)
+            templ.format = dri2_get_pipe_format_for_dri_format(map->planes[i].dri_format);
+         else
+            templ.format = map->pipe_format;
+      } else {
+         templ.width0 = width;
+         templ.height0 = height;
          templ.format = map->pipe_format;
+      }
       assert(templ.format != PIPE_FORMAT_NONE);
 
       tex = pscreen->resource_from_handle(pscreen,
@@ -862,11 +868,14 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    __DRIimage *img = NULL;
    unsigned err = __DRI_IMAGE_ERROR_SUCCESS;
    int i, expected_num_fds;
+   uint64_t mod_planes = dri2_get_modifier_num_planes(modifier);
 
-   if (!map) {
+   if (!map || (modifier != DRM_FORMAT_MOD_INVALID && mod_planes == 0)) {
       err = __DRI_IMAGE_ERROR_BAD_MATCH;
       goto exit;
    }
+
+   int num_handles = mod_planes > 0 ? mod_planes : map->nplanes;
 
    switch (fourcc) {
    case __DRI_IMAGE_FOURCC_YUYV:
@@ -874,7 +883,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
       expected_num_fds = 1;
       break;
    default:
-      expected_num_fds = map->nplanes;
+      expected_num_fds = num_handles;
       break;
    }
 
@@ -885,9 +894,9 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
 
    memset(whandles, 0, sizeof(whandles));
 
-   for (i = 0; i < map->nplanes; i++) {
+   for (i = 0; i < num_handles; i++) {
       int fdnum = i >= num_fds ? 0 : i;
-      int index = map->planes[i].buffer_index;
+      int index = mod_planes > 0 ? i : map->planes[i].buffer_index;
       if (fds[fdnum] < 0) {
          err = __DRI_IMAGE_ERROR_BAD_ALLOC;
          goto exit;
@@ -901,7 +910,7 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    }
 
    img = dri2_create_image_from_winsys(_screen, width, height, map,
-                                       map->nplanes, whandles, loaderPrivate);
+                                       num_handles, whandles, loaderPrivate);
    if(img == NULL) {
       err = __DRI_IMAGE_ERROR_BAD_ALLOC;
       goto exit;
