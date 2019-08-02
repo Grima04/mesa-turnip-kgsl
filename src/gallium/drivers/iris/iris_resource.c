@@ -888,8 +888,12 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       }
    }
 
-   if (!aux_enabled)
-      iris_resource_disable_aux(res);
+   if (!aux_enabled) {
+      if (res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE)
+         goto fail;
+      else
+         iris_resource_disable_aux(res);
+   }
 
    return &res->base;
 
