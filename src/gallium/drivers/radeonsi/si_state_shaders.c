@@ -2960,6 +2960,8 @@ static void si_update_common_shader_state(struct si_context *sctx)
 	sctx->do_update_shaders = true;
 }
 
+static bool si_update_ngg(struct si_context *sctx);
+
 static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
@@ -2973,6 +2975,9 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 	sctx->vs_shader.cso = sel;
 	sctx->vs_shader.current = sel ? sel->first_variant : NULL;
 	sctx->num_vs_blit_sgprs = sel ? sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] : 0;
+
+	if (si_update_ngg(sctx))
+		si_shader_change_notify(sctx);
 
 	si_update_common_shader_state(sctx);
 	si_update_vs_viewport_state(sctx);
@@ -2997,14 +3002,22 @@ static void si_update_tess_uses_prim_id(struct si_context *sctx)
 
 static bool si_update_ngg(struct si_context *sctx)
 {
-	if (!sctx->screen->use_ngg)
+	if (!sctx->screen->use_ngg) {
+		assert(!sctx->ngg);
 		return false;
+	}
 
 	bool new_ngg = true;
 
 	if (sctx->gs_shader.cso && sctx->tes_shader.cso &&
-	    sctx->gs_shader.cso->tess_turns_off_ngg)
+	    sctx->gs_shader.cso->tess_turns_off_ngg) {
 		new_ngg = false;
+	} else if (!sctx->screen->use_ngg_streamout) {
+		struct si_shader_selector *last = si_get_vs(sctx)->cso;
+
+		if (last && last->so.num_outputs)
+			new_ngg = false;
+	}
 
 	if (new_ngg != sctx->ngg) {
 		/* Transitioning from NGG to legacy GS requires VGT_FLUSH on Navi10-14.
@@ -3097,11 +3110,11 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
 	si_update_common_shader_state(sctx);
 	sctx->last_rast_prim = -1; /* reset this so that it gets updated */
 
-	if (enable_changed) {
-		si_update_ngg(sctx);
+	bool ngg_changed = si_update_ngg(sctx);
+	if (ngg_changed || enable_changed)
 		si_shader_change_notify(sctx);
+	if (enable_changed)
 		sctx->last_tes_sh_base = -1; /* invalidate derived tess state */
-	}
 	si_update_vs_viewport_state(sctx);
 	si_set_active_descriptors_for_shader(sctx, sel);
 	si_update_streamout_state(sctx);
