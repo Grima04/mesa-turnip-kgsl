@@ -3725,6 +3725,7 @@ static bool si_update_spi_tmpring_size(struct si_context *sctx)
 static void si_init_tess_factor_ring(struct si_context *sctx)
 {
 	assert(!sctx->tess_rings);
+	assert(((sctx->screen->tess_factor_ring_size / 4) & C_030938_SIZE) == 0);
 
 	/* The address must be aligned to 2^19, because the shader only
 	 * receives the high 13 bits.
