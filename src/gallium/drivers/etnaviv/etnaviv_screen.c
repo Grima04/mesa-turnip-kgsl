@@ -897,6 +897,11 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
    if (!etna_get_specs(screen))
       goto fail;
 
+   if (screen->specs.halti >= 5 && !etnaviv_device_softpin_capable(dev)) {
+      DBG("halti5 requires softpin");
+      goto fail;
+   }
+
    screen->options = (nir_shader_compiler_options) {
       .lower_fpow = true,
       .lower_sub = true,
