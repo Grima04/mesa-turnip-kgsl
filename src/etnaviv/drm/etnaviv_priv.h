@@ -44,6 +44,7 @@
 #include "util/macros.h"
 #include "util/u_atomic.h"
 #include "util/u_debug.h"
+#include "util/vma.h"
 
 #include "etnaviv_drmif.h"
 #include "drm-uapi/etnaviv_drm.h"
@@ -76,6 +77,9 @@ struct etna_device {
 
 	struct etna_bo_cache bo_cache;
 
+	int use_softpin;
+	struct util_vma_heap address_space;
+
 	int closefd;        /* call close(fd) upon destruction */
 };
 
@@ -97,6 +101,7 @@ struct etna_bo {
 	uint32_t        flags;
 	uint32_t        name;           /* flink global handle (DRI2 name) */
 	uint64_t        offset;         /* offset to mmap() */
+	uint32_t        va;             /* GPU virtual address */
 	int		refcnt;
 
 	/*

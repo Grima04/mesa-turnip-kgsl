@@ -159,6 +159,7 @@ static uint32_t append_bo(struct etna_cmd_stream *stream, struct etna_bo *bo)
 
 	priv->submit.bos[idx].flags = 0;
 	priv->submit.bos[idx].handle = bo->handle;
+	priv->submit.bos[idx].presumed = bo->va;
 
 	priv->bos[idx] = etna_bo_ref(bo);
 
@@ -232,6 +233,9 @@ void etna_cmd_stream_flush(struct etna_cmd_stream *stream, int in_fence_fd,
 	if (out_fence_fd)
 		req.flags |= ETNA_SUBMIT_FENCE_FD_OUT;
 
+	if (gpu->dev->use_softpin)
+		req.flags |= ETNA_SUBMIT_SOFTPIN;
+
 	ret = drmCommandWriteRead(gpu->dev->fd, DRM_ETNAVIV_GEM_SUBMIT,
 			&req, sizeof(req));
 
@@ -267,17 +271,27 @@ void etna_cmd_stream_reloc(struct etna_cmd_stream *stream,
 {
 	struct etna_cmd_stream_priv *priv = etna_cmd_stream_priv(stream);
 	struct drm_etnaviv_gem_submit_reloc *reloc;
-	uint32_t idx = APPEND(&priv->submit, relocs);
-	uint32_t addr = 0;
+	uint32_t addr = r->bo->va + r->offset;
+	uint32_t bo_idx = bo2idx(stream, r->bo, r->flags);
+	uint32_t idx;
 
-	reloc = &priv->submit.relocs[idx];
+	if (!priv->pipe->gpu->dev->use_softpin) {
+		idx = APPEND(&priv->submit, relocs);
+		reloc = &priv->submit.relocs[idx];
 
-	reloc->reloc_idx = bo2idx(stream, r->bo, r->flags);
-	reloc->reloc_offset = r->offset;
-	reloc->submit_offset = stream->offset * 4; /* in bytes */
-	reloc->flags = 0;
+		reloc->reloc_idx = bo_idx;
+		reloc->reloc_offset = r->offset;
+		reloc->submit_offset = stream->offset * 4; /* in bytes */
+		reloc->flags = 0;
+	}
 
 	etna_cmd_stream_emit(stream, addr);
+}
+
+void etna_cmd_stream_ref_bo(struct etna_cmd_stream *stream, struct etna_bo *bo,
+		uint32_t flags)
+{
+	bo2idx(stream, bo, flags);
 }
 
 void etna_cmd_stream_perf(struct etna_cmd_stream *stream, const struct etna_perf *p)

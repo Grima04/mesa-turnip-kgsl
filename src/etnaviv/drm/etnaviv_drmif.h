@@ -28,6 +28,7 @@
 #define ETNAVIV_DRMIF_H_
 
 #include <xf86drm.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 struct etna_bo;
@@ -92,6 +93,7 @@ struct etna_device *etna_device_new_dup(int fd);
 struct etna_device *etna_device_ref(struct etna_device *dev);
 void etna_device_del(struct etna_device *dev);
 int etna_device_fd(struct etna_device *dev);
+bool etnaviv_device_softpin_capable(struct etna_device *dev);
 
 /* gpu functions:
  */
@@ -124,6 +126,7 @@ int etna_bo_get_name(struct etna_bo *bo, uint32_t *name);
 uint32_t etna_bo_handle(struct etna_bo *bo);
 int etna_bo_dmabuf(struct etna_bo *bo);
 uint32_t etna_bo_size(struct etna_bo *bo);
+uint32_t etna_bo_gpu_va(struct etna_bo *bo);
 void * etna_bo_map(struct etna_bo *bo);
 int etna_bo_cpu_prep(struct etna_bo *bo, uint32_t op);
 void etna_bo_cpu_fini(struct etna_bo *bo);
@@ -192,6 +195,8 @@ struct etna_reloc {
 };
 
 void etna_cmd_stream_reloc(struct etna_cmd_stream *stream, const struct etna_reloc *r);
+void etna_cmd_stream_ref_bo(struct etna_cmd_stream *stream,
+		struct etna_bo *bo, uint32_t flags);
 
 /* performance monitoring functions:
  */
