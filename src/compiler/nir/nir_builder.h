@@ -1167,6 +1167,18 @@ nir_b2f(nir_builder *build, nir_ssa_def *b, uint32_t bit_size)
 }
 
 static inline nir_ssa_def *
+nir_b2i(nir_builder *build, nir_ssa_def *b, uint32_t bit_size)
+{
+   switch (bit_size) {
+   case 64: return nir_b2i64(build, b);
+   case 32: return nir_b2i32(build, b);
+   case 16: return nir_b2i16(build, b);
+   case 8:  return nir_b2i8(build, b);
+   default:
+      unreachable("Invalid bit-size");
+   };
+}
+static inline nir_ssa_def *
 nir_load_barycentric(nir_builder *build, nir_intrinsic_op op,
                      unsigned interp_mode)
 {
