@@ -479,12 +479,66 @@ void ppir_node_delete(ppir_node *node)
    ralloc_free(node);
 }
 
+static void ppir_node_print_dest(ppir_dest *dest)
+{
+   switch (dest->type) {
+   case ppir_target_ssa:
+      printf("ssa%d", dest->ssa.index);
+      break;
+   case ppir_target_pipeline:
+      printf("pipeline %d", dest->pipeline);
+      break;
+   case ppir_target_register:
+      printf("reg %d", dest->reg->index);
+      break;
+   }
+}
+
+static void ppir_node_print_src(ppir_src *src)
+{
+   switch (src->type) {
+   case ppir_target_ssa: {
+      if (src->node)
+         printf("ssa node %d", src->node->index);
+      else
+         printf("ssa idx %d", src->ssa ? src->ssa->index : -1);
+      break;
+   }
+   case ppir_target_pipeline:
+      if (src->node)
+         printf("pipeline %d node %d", src->pipeline, src->node->index);
+      else
+         printf("pipeline %d", src->pipeline);
+      break;
+   case ppir_target_register:
+      printf("reg %d", src->reg->index);
+      break;
+   }
+}
+
 static void ppir_node_print_node(ppir_node *node, int space)
 {
    for (int i = 0; i < space; i++)
       printf(" ");
-   printf("%s%s %d %s\n", node->printed && !ppir_node_is_leaf(node) ? "+" : "",
-          ppir_op_infos[node->op].name, node->index, node->name);
+
+   printf("%s%d: %s %s: ", node->printed && !ppir_node_is_leaf(node) ? "+" : "",
+          node->index, ppir_op_infos[node->op].name, node->name);
+
+   ppir_dest *dest = ppir_node_get_dest(node);
+   if (dest) {
+      printf("dest: ");
+      ppir_node_print_dest(dest);
+   }
+
+   if (ppir_node_get_src_num(node) > 0) {
+      printf(" src: ");
+   }
+   for (int i = 0; i < ppir_node_get_src_num(node); i++) {
+      ppir_node_print_src(ppir_node_get_src(node, i));
+      if (i != (ppir_node_get_src_num(node) - 1))
+         printf(", ");
+   }
+   printf("\n");
 
    if (!node->printed) {
       ppir_node_foreach_pred(node, dep) {
