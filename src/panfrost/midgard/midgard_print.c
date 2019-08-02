@@ -90,13 +90,16 @@ mir_print_instruction(midgard_instruction *ins)
 
         printf(" %d, ", args->dest);
 
-        mir_print_source(args->src0);
+        mir_print_source(args->src[0]);
         printf(", ");
 
         if (args->inline_constant)
                 printf("#%d", ins->inline_constant);
         else
-                mir_print_source(args->src1);
+                mir_print_source(args->src[1]);
+
+        printf(", ");
+        mir_print_source(args->src[2]);
 
         if (ins->has_constants)
                 printf(" <%f, %f, %f, %f>", ins->constants[0], ins->constants[1], ins->constants[2], ins->constants[3]);

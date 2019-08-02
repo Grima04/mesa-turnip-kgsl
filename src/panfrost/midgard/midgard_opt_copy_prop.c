@@ -34,7 +34,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (ins->type != TAG_ALU_4) continue;
                 if (!OP_IS_MOVE(ins->alu.op)) continue;
 
-                unsigned from = ins->ssa_args.src1;
+                unsigned from = ins->ssa_args.src[1];
                 unsigned to = ins->ssa_args.dest;
 
                 /* We only work on pure SSA */
@@ -57,7 +57,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 bool skip = false;
 
                 mir_foreach_instr_global(ctx, q) {
-                        if (q->ssa_args.src1 != to) continue;
+                        if (q->ssa_args.src[1] != to) continue;
                         if (q->type == TAG_TEXTURE_4) skip = true;
                 }
 

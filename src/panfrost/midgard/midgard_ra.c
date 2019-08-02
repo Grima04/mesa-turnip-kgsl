@@ -405,17 +405,20 @@ mir_lower_special_reads(compiler_context *ctx)
                 switch (ins->type) {
                 case TAG_ALU_4:
                         mark_node_class(aluw, ins->ssa_args.dest);
-                        mark_node_class(alur, ins->ssa_args.src0);
-                        mark_node_class(alur, ins->ssa_args.src1);
+                        mark_node_class(alur, ins->ssa_args.src[0]);
+                        mark_node_class(alur, ins->ssa_args.src[1]);
+                        break;
 
-                        break;
                 case TAG_LOAD_STORE_4:
-                        mark_node_class(ldst, ins->ssa_args.src0);
-                        mark_node_class(ldst, ins->ssa_args.src1);
+                        mark_node_class(ldst, ins->ssa_args.src[0]);
+                        mark_node_class(ldst, ins->ssa_args.src[1]);
+                        mark_node_class(ldst, ins->ssa_args.src[2]);
                         break;
+
                 case TAG_TEXTURE_4:
-                        mark_node_class(texr, ins->ssa_args.src0);
-                        mark_node_class(texr, ins->ssa_args.src1);
+                        mark_node_class(texr, ins->ssa_args.src[0]);
+                        mark_node_class(texr, ins->ssa_args.src[1]);
+                        mark_node_class(texr, ins->ssa_args.src[2]);
                         mark_node_class(texw, ins->ssa_args.dest);
                         break;
                 }
@@ -572,26 +575,30 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 if (ins->type == TAG_LOAD_STORE_4) {
                         bool force_vec4_only = OP_IS_VEC4_ONLY(ins->load_store.op);
 
-                        set_class(found_class, ins->ssa_args.src0, REG_CLASS_LDST);
-                        set_class(found_class, ins->ssa_args.src1, REG_CLASS_LDST);
+                        set_class(found_class, ins->ssa_args.src[0], REG_CLASS_LDST);
+                        set_class(found_class, ins->ssa_args.src[1], REG_CLASS_LDST);
+                        set_class(found_class, ins->ssa_args.src[2], REG_CLASS_LDST);
 
                         if (force_vec4_only) {
                                 force_vec4(found_class, ins->ssa_args.dest);
-                                force_vec4(found_class, ins->ssa_args.src0);
-                                force_vec4(found_class, ins->ssa_args.src1);
+                                force_vec4(found_class, ins->ssa_args.src[0]);
+                                force_vec4(found_class, ins->ssa_args.src[1]);
+                                force_vec4(found_class, ins->ssa_args.src[2]);
                         }
                 } else if (ins->type == TAG_TEXTURE_4) {
                         set_class(found_class, ins->ssa_args.dest, REG_CLASS_TEXW);
-                        set_class(found_class, ins->ssa_args.src0, REG_CLASS_TEXR);
-                        set_class(found_class, ins->ssa_args.src1, REG_CLASS_TEXR);
+                        set_class(found_class, ins->ssa_args.src[0], REG_CLASS_TEXR);
+                        set_class(found_class, ins->ssa_args.src[1], REG_CLASS_TEXR);
+                        set_class(found_class, ins->ssa_args.src[2], REG_CLASS_TEXR);
                 }
         }
 
         /* Check that the semantics of the class are respected */
         mir_foreach_instr_global(ctx, ins) {
                 assert(check_write_class(found_class, ins->type, ins->ssa_args.dest));
-                assert(check_read_class(found_class, ins->type, ins->ssa_args.src0));
-                assert(check_read_class(found_class, ins->type, ins->ssa_args.src1));
+                assert(check_read_class(found_class, ins->type, ins->ssa_args.src[0]));
+                assert(check_read_class(found_class, ins->type, ins->ssa_args.src[1]));
+                assert(check_read_class(found_class, ins->type, ins->ssa_args.src[2]));
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
@@ -630,7 +637,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                          * */
 
                         int sources[2] = {
-                                ins->ssa_args.src0, ins->ssa_args.src1
+                                ins->ssa_args.src[0], ins->ssa_args.src[1]
                         };
 
                         for (int src = 0; src < 2; ++src) {
@@ -700,8 +707,8 @@ install_registers_instr(
 
         switch (ins->type) {
         case TAG_ALU_4: {
-                struct phys_reg src1 = index_to_reg(ctx, g, args.src0);
-                struct phys_reg src2 = index_to_reg(ctx, g, args.src1);
+                struct phys_reg src1 = index_to_reg(ctx, g, args.src[0]);
+                struct phys_reg src2 = index_to_reg(ctx, g, args.src[1]);
                 struct phys_reg dest = index_to_reg(ctx, g, args.dest);
 
                 unsigned uncomposed_mask = ins->mask;
@@ -746,7 +753,7 @@ install_registers_instr(
         }
 
         case TAG_LOAD_STORE_4: {
-                bool fixed = args.src0 >= SSA_FIXED_MINIMUM;
+                bool fixed = args.src[0] >= SSA_FIXED_MINIMUM;
 
                 /* Which physical register we read off depends on
                  * whether we are loading or storing -- think about the
@@ -757,9 +764,9 @@ install_registers_instr(
                         ins->load_store.op != midgard_op_st_cubemap_coords;
 
                 if (OP_IS_STORE_R26(ins->load_store.op) && fixed) {
-                        ins->load_store.reg = SSA_REG_FROM_FIXED(args.src0);
+                        ins->load_store.reg = SSA_REG_FROM_FIXED(args.src[0]);
                 } else if (OP_IS_STORE_VARY(ins->load_store.op)) {
-                        struct phys_reg src = index_to_reg(ctx, g, args.src0);
+                        struct phys_reg src = index_to_reg(ctx, g, args.src[0]);
                         assert(src.reg == 26 || src.reg == 27);
 
                         ins->load_store.reg = src.reg - 26;
@@ -767,7 +774,7 @@ install_registers_instr(
                         /* TODO: swizzle/mask */
                 } else {
                         unsigned r = encodes_src ?
-                                     args.src0 : args.dest;
+                                     args.src[0] : args.dest;
 
                         struct phys_reg src = index_to_reg(ctx, g, r);
 
@@ -784,10 +791,10 @@ install_registers_instr(
                 /* We also follow up by actual arguments */
 
                 int src2 =
-                        encodes_src ? args.src1 : args.src0;
+                        encodes_src ? args.src[1] : args.src[0];
 
                 int src3 =
-                        encodes_src ? -1 : args.src1;
+                        encodes_src ? -1 : args.src[1];
 
                 if (src2 >= 0) {
                         struct phys_reg src = index_to_reg(ctx, g, src2);
@@ -807,8 +814,8 @@ install_registers_instr(
         case TAG_TEXTURE_4: {
                 /* Grab RA results */
                 struct phys_reg dest = index_to_reg(ctx, g, args.dest);
-                struct phys_reg coord = index_to_reg(ctx, g, args.src0);
-                struct phys_reg lod = index_to_reg(ctx, g, args.src1);
+                struct phys_reg coord = index_to_reg(ctx, g, args.src[0]);
+                struct phys_reg lod = index_to_reg(ctx, g, args.src[1]);
 
                 assert(dest.reg == 28 || dest.reg == 29);
                 assert(coord.reg == 28 || coord.reg == 29);
@@ -830,7 +837,7 @@ install_registers_instr(
                         compose_writemask(ins->mask, dest);
 
                 /* If there is a register LOD/bias, use it */
-                if (args.src1 > -1) {
+                if (args.src[1] > -1) {
                         midgard_tex_register_select sel = {
                                 .select = lod.reg,
                                 .full = 1,

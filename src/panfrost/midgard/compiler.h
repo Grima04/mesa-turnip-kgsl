@@ -71,12 +71,9 @@ typedef struct midgard_branch {
  * registers. Negative values mean unused. */
 
 typedef struct {
-        int src0;
-        int src1;
+        int src[3];
         int dest;
 
-        /* src1 is -not- SSA but instead a 16-bit inline constant to be smudged
-         * in. Only valid for ALU ops. */
         bool inline_constant;
 } ssa_args;
 
@@ -472,8 +469,7 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
                 .type = TAG_ALU_4,
                 .mask = 0xF,
                 .ssa_args = {
-                        .src0 = SSA_UNUSED_1,
-                        .src1 = src,
+                        .src = { SSA_UNUSED_1, src, -1 },
                         .dest = dest,
                 },
                 .alu = {
@@ -492,11 +488,10 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
 static inline bool
 mir_has_arg(midgard_instruction *ins, unsigned arg)
 {
-        if (ins->ssa_args.src0 == arg)
-                return true;
-
-        if (ins->ssa_args.src1 == arg && !ins->ssa_args.inline_constant)
-                return true;
+        for (unsigned i = 0; i < ARRAY_SIZE(ins->ssa_args.src); ++i) {
+                if (ins->ssa_args.src[i] == arg)
+                        return true;
+        }
 
         return false;
 }

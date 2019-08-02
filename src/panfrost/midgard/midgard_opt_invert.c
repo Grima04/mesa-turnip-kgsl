@@ -41,8 +41,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                         .type = TAG_ALU_4,
                         .mask = ins->mask,
                         .ssa_args = {
-                                .src0 = temp,
-                                .src1 = -1,
+                                .src = { temp, -1, -1 },
                                 .dest = ins->ssa_args.dest,
                                 .inline_constant = true
                         },
@@ -75,15 +74,15 @@ midgard_opt_not_propagate(compiler_context *ctx, midgard_block *block)
                 if (ins->alu.op != midgard_alu_op_imov) continue;
                 if (!ins->invert) continue;
                 if (mir_nontrivial_source2_mod_simple(ins)) continue;
-                if (ins->ssa_args.src1 & IS_REG) continue;
+                if (ins->ssa_args.src[1] & IS_REG) continue;
 
                 /* Is it beneficial to propagate? */
-                if (!mir_single_use(ctx, ins->ssa_args.src1)) continue;
+                if (!mir_single_use(ctx, ins->ssa_args.src[1])) continue;
 
                 /* We found an imov.not, propagate the invert back */
 
                 mir_foreach_instr_in_block_from_rev(block, v, mir_prev_op(ins)) {
-                        if (v->ssa_args.dest != ins->ssa_args.src1) continue;
+                        if (v->ssa_args.dest != ins->ssa_args.src[1]) continue;
                         if (v->type != TAG_ALU_4) break;
 
                         v->invert = !v->invert;
@@ -220,18 +219,18 @@ midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
                 if (!mir_is_bitwise(ins)) continue;
                 if (ins->invert) continue;
 
-                if (ins->ssa_args.src0 & IS_REG) continue;
-                if (ins->ssa_args.src1 & IS_REG) continue;
-                if (!mir_single_use(ctx, ins->ssa_args.src0)) continue;
-                if (!ins->ssa_args.inline_constant && !mir_single_use(ctx, ins->ssa_args.src1)) continue;
+                if (ins->ssa_args.src[0] & IS_REG) continue;
+                if (ins->ssa_args.src[1] & IS_REG) continue;
+                if (!mir_single_use(ctx, ins->ssa_args.src[0])) continue;
+                if (!ins->ssa_args.inline_constant && !mir_single_use(ctx, ins->ssa_args.src[1])) continue;
 
-                bool not_a = mir_strip_inverted(ctx, ins->ssa_args.src0);
+                bool not_a = mir_strip_inverted(ctx, ins->ssa_args.src[0]);
                 bool not_b =
                         ins->ssa_args.inline_constant ? false :
-                        mir_strip_inverted(ctx, ins->ssa_args.src1);
+                        mir_strip_inverted(ctx, ins->ssa_args.src[1]);
 
                 /* Edge case: if src0 == src1, it'll've been stripped */
-                if ((ins->ssa_args.src0 == ins->ssa_args.src1) && !ins->ssa_args.inline_constant)
+                if ((ins->ssa_args.src[0] == ins->ssa_args.src[1]) && !ins->ssa_args.inline_constant)
                         not_b = not_a;
 
                 progress |= (not_a || not_b);
@@ -252,9 +251,9 @@ midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
                 } else if (right || (left && !ins->ssa_args.inline_constant)) {
                         if (left) {
                                 /* Commute */
-                                unsigned temp = ins->ssa_args.src0;
-                                ins->ssa_args.src0 = ins->ssa_args.src1;
-                                ins->ssa_args.src1 = temp;
+                                unsigned temp = ins->ssa_args.src[0];
+                                ins->ssa_args.src[0] = ins->ssa_args.src[1];
+                                ins->ssa_args.src[1] = temp;
                         }
 
                         ins->alu.op = mir_notright_op(ins->alu.op);

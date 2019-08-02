@@ -72,7 +72,7 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
         int source_mask = first->mask;
 
         /* As long as the second doesn't read from the first, we're okay */
-        if (second->ssa_args.src0 == source) {
+        if (second->ssa_args.src[0] == source) {
                 if (first->type == TAG_ALU_4) {
                         /* Figure out which components we just read from */
 
@@ -87,7 +87,7 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
 
         }
 
-        if (second->ssa_args.src1 == source)
+        if (second->ssa_args.src[1] == source)
                 return false;
 
         /* Otherwise, it's safe in that regard. Another data hazard is both
@@ -153,8 +153,8 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
                  * we're writeout at the very end of the shader. So check if
                  * they were written before us. */
 
-                unsigned src0 = ins->ssa_args.src0;
-                unsigned src1 = ins->ssa_args.src1;
+                unsigned src0 = ins->ssa_args.src[0];
+                unsigned src1 = ins->ssa_args.src[1];
 
                 if (!mir_is_written_before(ctx, bundle[0], src0))
                         src0 = -1;
@@ -445,10 +445,10 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 unsigned swizzle = SWIZZLE_FROM_ARRAY(indices);
                                 unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
 
-                                if (ains->ssa_args.src0 == r_constant)
+                                if (ains->ssa_args.src[0] == r_constant)
                                         ains->alu.src1 = vector_alu_apply_swizzle(ains->alu.src1, swizzle);
 
-                                if (ains->ssa_args.src1 == r_constant)
+                                if (ains->ssa_args.src[1] == r_constant)
                                         ains->alu.src2 = vector_alu_apply_swizzle(ains->alu.src2, swizzle);
 
                                 bundle.has_embedded_constants = true;
@@ -684,8 +684,9 @@ mir_squeeze_index(compiler_context *ctx)
 
         mir_foreach_instr_global(ctx, ins) {
                 ins->ssa_args.dest = find_or_allocate_temp(ctx, ins->ssa_args.dest);
-                ins->ssa_args.src0 = find_or_allocate_temp(ctx, ins->ssa_args.src0);
-                ins->ssa_args.src1 = find_or_allocate_temp(ctx, ins->ssa_args.src1);
+
+                for (unsigned i = 0; i < ARRAY_SIZE(ins->ssa_args.src); ++i)
+                        ins->ssa_args.src[i] = find_or_allocate_temp(ctx, ins->ssa_args.src[i]);
         }
 }
 
@@ -704,8 +705,7 @@ v_load_store_scratch(
                 .mask = mask,
                 .ssa_args = {
                         .dest = -1,
-                        .src0 = -1,
-                        .src1 = -1
+                        .src = { -1, -1, -1 },
                 },
                 .load_store = {
                         .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,
@@ -724,7 +724,7 @@ v_load_store_scratch(
        if (is_store) {
                 /* r0 = r26, r1 = r27 */
                 assert(srcdest == SSA_FIXED_REGISTER(26) || srcdest == SSA_FIXED_REGISTER(27));
-                ins.ssa_args.src0 = (srcdest == SSA_FIXED_REGISTER(27)) ? SSA_FIXED_REGISTER(1) : SSA_FIXED_REGISTER(0);
+                ins.ssa_args.src[0] = (srcdest == SSA_FIXED_REGISTER(27)) ? SSA_FIXED_REGISTER(1) : SSA_FIXED_REGISTER(0);
         } else {
                 ins.ssa_args.dest = srcdest;
         }

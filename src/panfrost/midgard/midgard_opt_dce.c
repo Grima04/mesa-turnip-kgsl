@@ -100,7 +100,7 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
 
                 /* Check we're to the same place post-RA */
                 unsigned iA = ins->ssa_args.dest;
-                unsigned iB = ins->ssa_args.src1;
+                unsigned iB = ins->ssa_args.src[1];
 
                 if ((iA < 0) || (iB < 0)) continue;
 
@@ -125,7 +125,7 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
 
                 /* We do want to rewrite to keep the graph sane for pipeline
                  * register creation (TODO: is this the best approach?) */
-                mir_rewrite_index_dst(ctx, ins->ssa_args.src1, ins->ssa_args.dest);
+                mir_rewrite_index_dst(ctx, ins->ssa_args.src[1], ins->ssa_args.dest);
 
                 /* We're good to go */
                 mir_remove_instruction(ins);

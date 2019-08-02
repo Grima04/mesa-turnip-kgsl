@@ -28,18 +28,6 @@
 
 #include "compiler.h"
 
-static bool
-midgard_is_live_in_instr(midgard_instruction *ins, int src)
-{
-        if (ins->ssa_args.src0 == src)
-                return true;
-
-        if (ins->ssa_args.src1 == src)
-                return true;
-
-        return false;
-}
-
 /* Determine if a variable is live in the successors of a block */
 static bool
 is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
@@ -61,7 +49,7 @@ is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
                 bool block_done = false;
 
                 mir_foreach_instr_in_block(succ, ins) {
-                        if (midgard_is_live_in_instr(ins, src))
+                        if (mir_has_arg(ins, src))
                                 return true;
 
                         /* If written-before-use, we're gone */
@@ -92,7 +80,7 @@ mir_is_live_after(compiler_context *ctx, midgard_block *block, midgard_instructi
         /* Check the rest of the block for liveness */
 
         mir_foreach_instr_in_block_from(block, ins, mir_next_op(start)) {
-                if (midgard_is_live_in_instr(ins, src))
+                if (mir_has_arg(ins, src))
                         return true;
         }
 

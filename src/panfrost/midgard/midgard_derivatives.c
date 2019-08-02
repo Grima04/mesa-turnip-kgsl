@@ -96,8 +96,7 @@ midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr)
                 .mask = mask_of(nr_components),
                 .ssa_args = {
                         .dest = nir_dest_index(ctx, &instr->dest.dest),
-                        .src0 = nir_alu_src_index(ctx, &instr->src[0]),
-                        .src1 = -1,
+                        .src = { nir_alu_src_index(ctx, &instr->src[0]), -1, -1 },
                 },
                 .texture = {
                         .op = mir_derivative_op(instr->op),
