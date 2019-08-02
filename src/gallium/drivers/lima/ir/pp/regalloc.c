@@ -204,45 +204,11 @@ static ppir_reg *ppir_regalloc_build_liveness_info(ppir_compiler *comp)
          }
 
          /* update reg live_out from node src (read) */
-         switch (node->type) {
-         case ppir_node_type_alu:
+         for (int i = 0; i < ppir_node_get_src_num(node); i++)
          {
-            ppir_alu_node *alu = ppir_node_to_alu(node);
-            for (int i = 0; i < alu->num_src; i++) {
-               ppir_reg *reg = get_src_reg(alu->src + i);
-               if (reg && node->instr->seq > reg->live_out)
-                  reg->live_out = node->instr->seq;
-            }
-            break;
-         }
-         case ppir_node_type_store:
-         {
-            ppir_store_node *store = ppir_node_to_store(node);
-            ppir_reg *reg = get_src_reg(&store->src);
+            ppir_reg *reg = get_src_reg(ppir_node_get_src(node, i));
             if (reg && node->instr->seq > reg->live_out)
                reg->live_out = node->instr->seq;
-            break;
-         }
-         case ppir_node_type_load:
-         {
-            ppir_load_node *load = ppir_node_to_load(node);
-            ppir_reg *reg = get_src_reg(&load->src);
-            if (reg && node->instr->seq > reg->live_out)
-               reg->live_out = node->instr->seq;
-            break;
-         }
-         case ppir_node_type_branch:
-         {
-            ppir_branch_node *branch = ppir_node_to_branch(node);
-            for (int i = 0; i < 2; i++) {
-               ppir_reg *reg = get_src_reg(branch->src + i);
-               if (reg && node->instr->seq > reg->live_out)
-                  reg->live_out = node->instr->seq;
-            }
-            break;
-         }
-         default:
-            break;
          }
       }
    }
@@ -286,44 +252,10 @@ static void ppir_regalloc_print_result(ppir_compiler *comp)
 
             printf("|");
 
-            switch (node->type) {
-            case ppir_node_type_alu:
-            {
-               ppir_alu_node *alu = ppir_node_to_alu(node);
-               for (int j = 0; j < alu->num_src; j++) {
-                  if (j)
-                     printf(" ");
-
-                  printf("%d", ppir_target_get_src_reg_index(alu->src + j));
-               }
-               break;
-            }
-            case ppir_node_type_store:
-            {
-               ppir_store_node *store = ppir_node_to_store(node);
-               printf("%d", ppir_target_get_src_reg_index(&store->src));
-               break;
-            }
-            case ppir_node_type_load:
-            {
-               ppir_load_node *load = ppir_node_to_load(node);
-               if (!load->num_components)
-                  printf("%d", ppir_target_get_src_reg_index(&load->src));
-               break;
-            }
-            case ppir_node_type_branch:
-            {
-               ppir_branch_node *branch = ppir_node_to_branch(node);
-               for (int j = 0; j < 2; j++) {
-                  if (j)
-                     printf(" ");
-
-                  printf("%d", ppir_target_get_src_reg_index(branch->src + j));
-               }
-               break;
-            }
-            default:
-               break;
+            for (int i = 0; i < ppir_node_get_src_num(node); i++) {
+               if (i)
+                  printf(" ");
+               printf("%d", ppir_target_get_src_reg_index(ppir_node_get_src(node, i)));
             }
 
             printf(")");
@@ -592,38 +524,17 @@ static bool ppir_regalloc_spill_reg(ppir_compiler *comp, ppir_reg *chosen)
             }
             break;
          }
-         case ppir_node_type_store:
+         default:
          {
-            ppir_store_node *store = ppir_node_to_store(node);
-            reg = get_src_reg(&store->src);
-            if (reg == chosen) {
-               ppir_update_spilled_src(comp, block, node, &store->src, NULL);
-            }
-            break;
-         }
-         case ppir_node_type_load:
-         {
-            ppir_load_node *load = ppir_node_to_load(node);
-            reg = get_src_reg(&load->src);
-            if (reg == chosen) {
-               ppir_update_spilled_src(comp, block, node, &load->src, NULL);
-            }
-            break;
-         }
-         case ppir_node_type_branch:
-         {
-            ppir_branch_node *branch = ppir_node_to_branch(node);
-            for (int i = 0; i < 2; i++) {
-               reg = get_src_reg(branch->src + i);
+            for (int i = 0; i < ppir_node_get_src_num(node); i++) {
+               ppir_src *src = ppir_node_get_src(node, i);
+               reg = get_src_reg(src);
                if (reg == chosen) {
-                  ppir_update_spilled_src(comp, block, node,
-                                          branch->src + i, NULL);
+                  ppir_update_spilled_src(comp, block, node, src, NULL);
                }
             }
             break;
          }
-         default:
-            break;
          }
       }
    }

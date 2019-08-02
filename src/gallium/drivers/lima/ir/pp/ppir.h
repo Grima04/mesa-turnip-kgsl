@@ -506,9 +506,13 @@ static inline int ppir_target_get_src_reg_index(ppir_src *src)
 {
    switch (src->type) {
    case ppir_target_ssa:
-      return src->ssa->index;
+      if (src->ssa)
+         return src->ssa->index;
+      break;
    case ppir_target_register:
-      return src->reg->index;
+      if (src->reg)
+         return src->reg->index;
+      break;
    case ppir_target_pipeline:
       if (src->pipeline == ppir_pipeline_reg_discard)
          return 15 * 4;
