@@ -198,6 +198,14 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
 	 */
         assert(!ctx->job || job == ctx->job);
         ctx->job = NULL;
+
+        /* Remove the job from the ctx->jobs set so that future
+         * panfrost_get_job() calls don't see it.
+         * We must reset the job key to avoid removing another valid entry when
+         * the job is freed.
+         */
+        _mesa_hash_table_remove_key(ctx->jobs, &job->key);
+        memset(&job->key, 0, sizeof(job->key));
 }
 
 void
