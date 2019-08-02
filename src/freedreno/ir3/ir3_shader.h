@@ -183,6 +183,39 @@ struct ir3_stream_output_info {
 	struct ir3_stream_output output[IR3_MAX_SO_OUTPUTS];
 };
 
+
+/**
+ * Starting from a4xx, HW supports pre-dispatching texture sampling
+ * instructions prior to scheduling a shader stage, when the
+ * coordinate maps exactly to an output of the previous stage.
+ */
+
+/**
+ * There is a limit in the number of pre-dispatches allowed for any
+ * given stage.
+ */
+#define IR3_MAX_SAMPLER_PREFETCH 4
+
+/**
+ * This is the output stream value for 'cmd', as used by blob. It may
+ * encode the return type (in 3 bits) but it hasn't been verified yet.
+ */
+#define IR3_SAMPLER_PREFETCH_CMD 0x4
+
+/**
+ * Stream output for texture sampling pre-dispatches.
+ */
+struct ir3_sampler_prefetch {
+	uint8_t src;
+	uint8_t samp_id;
+	uint8_t tex_id;
+	uint8_t dst;
+	uint8_t wrmask;
+	uint8_t half_precision;
+	uint8_t cmd;
+};
+
+
 /* Configuration key used to identify a shader variant.. different
  * shader variants can be used to implement features not supported
  * in hw (two sided color), binning-pass vertex shader, etc.
@@ -520,6 +553,10 @@ struct ir3_shader_variant {
 	/* replicated here to avoid passing extra ptrs everywhere: */
 	gl_shader_stage type;
 	struct ir3_shader *shader;
+
+	/* texture sampler pre-dispatches */
+	uint32_t num_sampler_prefetch;
+	struct ir3_sampler_prefetch sampler_prefetch[IR3_MAX_SAMPLER_PREFETCH];
 };
 
 struct ir3_ubo_range {
