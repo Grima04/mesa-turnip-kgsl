@@ -1528,19 +1528,18 @@ radv_update_bound_fast_clear_ds(struct radv_cmd_buffer *cmd_buffer,
 				VkClearDepthStencilValue ds_clear_value,
 				VkImageAspectFlags aspects)
 {
-	struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	uint32_t att_idx;
 
-	if (!framebuffer || !subpass)
+	if (!cmd_buffer->state.attachments || !subpass)
 		return;
 
 	if (!subpass->depth_stencil_attachment)
 		return;
 
 	att_idx = subpass->depth_stencil_attachment->attachment;
-	if (framebuffer->attachments[att_idx]->image != image)
+	if (cmd_buffer->state.attachments[att_idx].iview->image != image)
 		return;
 
 	radeon_set_context_reg_seq(cs, R_028028_DB_STENCIL_CLEAR, 2);
@@ -1776,19 +1775,18 @@ radv_update_bound_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 				   int cb_idx,
 				   uint32_t color_values[2])
 {
-	struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	uint32_t att_idx;
 
-	if (!framebuffer || !subpass)
+	if (!cmd_buffer->state.attachments || !subpass)
 		return;
 
 	att_idx = subpass->color_attachments[cb_idx].attachment;
 	if (att_idx == VK_ATTACHMENT_UNUSED)
 		return;
 
-	if (framebuffer->attachments[att_idx]->image != image)
+	if (cmd_buffer->state.attachments[att_idx].iview->image != image)
 		return;
 
 	radeon_set_context_reg_seq(cs, R_028C8C_CB_COLOR0_CLEAR_WORD0 + cb_idx * 0x3c, 2);
@@ -1913,7 +1911,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		}
 
 		int idx = subpass->color_attachments[i].attachment;
-		struct radv_image_view *iview = framebuffer->attachments[idx];
+		struct radv_image_view *iview = cmd_buffer->state.attachments[idx].iview;
 		VkImageLayout layout = subpass->color_attachments[i].layout;
 
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->bo);
@@ -1928,8 +1926,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 	if (subpass->depth_stencil_attachment) {
 		int idx = subpass->depth_stencil_attachment->attachment;
 		VkImageLayout layout = subpass->depth_stencil_attachment->layout;
-		struct radv_image *image = framebuffer->attachments[idx]->image;
-		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, framebuffer->attachments[idx]->bo);
+		struct radv_image *image = cmd_buffer->state.attachments[idx].iview->image;
+		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, cmd_buffer->state.attachments[idx].iview->bo);
 		ASSERTED uint32_t queue_mask = radv_image_queue_family_mask(image,
 										cmd_buffer->queue_family_index,
 										cmd_buffer->queue_family_index);
@@ -2839,7 +2837,7 @@ radv_get_attachment_sample_locations(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	uint32_t subpass_id = radv_get_subpass_id(cmd_buffer);
-	struct radv_image_view *view = state->framebuffer->attachments[att_idx];
+	struct radv_image_view *view = state->attachments[att_idx].iview;
 
 	if (view->image->info.samples == 1)
 		return NULL;
@@ -2878,7 +2876,7 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 						 bool begin_subpass)
 {
 	unsigned idx = att.attachment;
-	struct radv_image_view *view = cmd_buffer->state.framebuffer->attachments[idx];
+	struct radv_image_view *view = cmd_buffer->state.attachments[idx].iview;
 	struct radv_sample_locations_state *sample_locs;
 	VkImageSubresourceRange range;
 	range.aspectMask = 0;
@@ -2932,7 +2930,6 @@ radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
 		vk_find_struct_const(info->pNext,
 				     RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT);
 	struct radv_cmd_state *state = &cmd_buffer->state;
-	struct radv_framebuffer *framebuffer = state->framebuffer;
 
 	if (!sample_locs) {
 		state->subpass_sample_locs = NULL;
@@ -2943,7 +2940,7 @@ radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
 		const VkAttachmentSampleLocationsEXT *att_sample_locs =
 			&sample_locs->pAttachmentInitialSampleLocations[i];
 		uint32_t att_idx = att_sample_locs->attachmentIndex;
-		struct radv_image *image = framebuffer->attachments[att_idx]->image;
+		struct radv_image *image = cmd_buffer->state.attachments[att_idx].iview->image;
 
 		assert(vk_format_is_depth_or_stencil(image->vk_format));
 

@@ -1104,6 +1104,7 @@ struct radv_attachment_state {
 		struct radv_color_buffer_info cb;
 		struct radv_ds_buffer_info ds;
 	};
+	struct radv_image_view *iview;
 };
 
 struct radv_descriptor_state {

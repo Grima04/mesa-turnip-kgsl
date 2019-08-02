@@ -1146,8 +1146,8 @@ radv_cmd_buffer_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer)
 		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
-		struct radv_image_view *dest_iview = cmd_buffer->state.framebuffer->attachments[dest_att.attachment];
-		struct radv_image_view *src_iview = cmd_buffer->state.framebuffer->attachments[src_att.attachment];
+		struct radv_image_view *dest_iview = cmd_buffer->state.attachments[dest_att.attachment].iview;
+		struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;
 
 		struct radv_subpass resolve_subpass = {
 			.color_count = 1,
@@ -1201,10 +1201,10 @@ radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
 
 	struct radv_image_view *src_iview =
-		cmd_buffer->state.framebuffer->attachments[src_att.attachment];
+		cmd_buffer->state.attachments[src_att.attachment].iview;
 	struct radv_image *src_image = src_iview->image;
 	struct radv_image_view *dst_iview =
-		cmd_buffer->state.framebuffer->attachments[dst_att.attachment];
+		cmd_buffer->state.attachments[dst_att.attachment].iview;
 
 	struct radv_subpass resolve_subpass = {
 		.color_count = 0,
