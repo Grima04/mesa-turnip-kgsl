@@ -358,4 +358,41 @@ midgard_ldst_reg(unsigned reg, unsigned component)
         return packed;
 }
 
+/* Unpacks a load/store argument */
+
+static inline midgard_ldst_register_select
+midgard_ldst_select(uint8_t u)
+{
+        midgard_ldst_register_select sel;
+        memcpy(&sel, &u, sizeof(u));
+        return sel;
+}
+
+static inline uint8_t
+midgard_ldst_pack(midgard_ldst_register_select sel)
+{
+        uint8_t packed;
+        memcpy(&packed, &sel, sizeof(packed));
+        return packed;
+}
+
+/* Gets a swizzle like yyyy and returns y */
+
+static inline unsigned
+swizzle_to_component(unsigned swizzle)
+{
+        unsigned c = swizzle & 3;
+        assert(((swizzle >> 2) & 3) == c);
+        assert(((swizzle >> 4) & 3) == c);
+        assert(((swizzle >> 6) & 3) == c);
+        return  c;
+}
+
+
+static inline unsigned
+component_to_swizzle(unsigned c)
+{
+        return SWIZZLE(c, c, c, c);
+}
+
 #endif

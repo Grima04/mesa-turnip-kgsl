@@ -44,8 +44,23 @@ mir_get_swizzle(midgard_instruction *ins, unsigned idx)
 
                 return s.swizzle;
         } else if (ins->type == TAG_LOAD_STORE_4) {
-                assert(idx == 0);
-                return ins->load_store.swizzle;
+                /* Main swizzle of a load is on the destination */
+                if (!OP_IS_STORE(ins->load_store.op))
+                        idx++;
+
+                switch (idx) {
+                case 0:
+                        return ins->load_store.swizzle;
+                case 1:
+                case 2: {
+                        uint8_t raw =
+                                (idx == 2) ? ins->load_store.arg_2 : ins->load_store.arg_1;
+
+                        return component_to_swizzle(midgard_ldst_select(raw).component);
+                }
+                default:
+                        unreachable("Unknown load/store source");
+                }
         } else if (ins->type == TAG_TEXTURE_4) {
                 switch (idx) {
                 case 0:
@@ -78,7 +93,35 @@ mir_set_swizzle(midgard_instruction *ins, unsigned idx, unsigned new)
                 else
                         ins->alu.src2 = pack;
         } else if (ins->type == TAG_LOAD_STORE_4) {
-                ins->load_store.swizzle = new;
+                /* Main swizzle of a load is on the destination */
+                if (!OP_IS_STORE(ins->load_store.op))
+                        idx++;
+
+                switch (idx) {
+                case 0:
+                        ins->load_store.swizzle = new;
+                        break;
+                case 1:
+                case 2: {
+                        uint8_t raw =
+                                (idx == 2) ? ins->load_store.arg_2 : ins->load_store.arg_1;
+
+                        midgard_ldst_register_select sel
+                                = midgard_ldst_select(raw);
+                        sel.component = swizzle_to_component(new);
+                        uint8_t packed = midgard_ldst_pack(sel);
+
+                        if (idx == 2)
+                                ins->load_store.arg_2 = packed;
+                        else
+                                ins->load_store.arg_1 = packed;
+
+                        break;
+                }
+                default:
+                        assert(new == 0);
+                        break;
+                }
         } else if (ins->type == TAG_TEXTURE_4) {
                 switch (idx) {
                 case 0:
