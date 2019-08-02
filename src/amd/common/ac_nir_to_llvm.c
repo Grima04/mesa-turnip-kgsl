@@ -153,12 +153,6 @@ static LLVMBasicBlockRef get_block(struct ac_nir_context *nir,
 	return (LLVMBasicBlockRef)entry->data;
 }
 
-static LLVMValueRef emit_iabs(struct ac_llvm_context *ctx,
-			      LLVMValueRef src0)
-{
-	return ac_build_imax(ctx, src0, LLVMBuildNeg(ctx->builder, src0, ""));
-}
-
 static LLVMValueRef get_alu_src(struct ac_nir_context *ctx,
                                 nir_alu_src src,
                                 unsigned num_components)
@@ -194,37 +188,18 @@ static LLVMValueRef get_alu_src(struct ac_nir_context *ctx,
 		}
 	}
 
-	LLVMTypeRef type = LLVMTypeOf(value);
-	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
-		type = LLVMGetElementType(type);
-
-	if (src.abs) {
-		if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind) {
-			value = emit_iabs(&ctx->ac, value);
-		} else {
-			char name[128];
-			unsigned fsize = type == ctx->ac.f16 ? 16 :
-					 type == ctx->ac.f32 ? 32 : 64;
-
-			if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind) {
-				snprintf(name, sizeof(name), "llvm.fabs.v%uf%u",
-					 LLVMGetVectorSize(LLVMTypeOf(value)), fsize);
-			} else {
-				snprintf(name, sizeof(name), "llvm.fabs.f%u", fsize);
-			}
-
-			value = ac_build_intrinsic(&ctx->ac, name, LLVMTypeOf(value),
-						   &value, 1, AC_FUNC_ATTR_READNONE);
-		}
-	}
-
 	if (src.negate) {
+		LLVMTypeRef type = LLVMTypeOf(value);
+		if (LLVMGetTypeKind(type) == LLVMVectorTypeKind)
+			type = LLVMGetElementType(type);
+
 		if (LLVMGetTypeKind(type) == LLVMIntegerTypeKind)
 			value = LLVMBuildNeg(ctx->ac.builder, value, "");
 		else
 			value = LLVMBuildFNeg(ctx->ac.builder, value, "");
 	}
 
+	assert(!src.abs);
 	return value;
 }
 
@@ -312,6 +287,12 @@ static LLVMValueRef emit_bcsel(struct ac_llvm_context *ctx,
 	return LLVMBuildSelect(ctx->builder, v,
 			       ac_to_integer_or_pointer(ctx, src1),
 			       ac_to_integer_or_pointer(ctx, src2), "");
+}
+
+static LLVMValueRef emit_iabs(struct ac_llvm_context *ctx,
+			      LLVMValueRef src0)
+{
+	return ac_build_imax(ctx, src0, LLVMBuildNeg(ctx->builder, src0, ""));
 }
 
 static LLVMValueRef emit_uint_carry(struct ac_llvm_context *ctx,
