@@ -120,6 +120,7 @@ struct radv_nir_compiler_options {
 	bool unsafe_math;
 	bool supports_spill;
 	bool clamp_shadow_reference;
+	bool robust_buffer_access;
 	bool dump_shader;
 	bool dump_preoptir;
 	bool record_llvm_ir;

@@ -1217,6 +1217,7 @@ radv_shader_variant_compile(struct radv_device *device,
 
 	options.unsafe_math = !!(device->instance->debug_flags & RADV_DEBUG_UNSAFE_MATH);
 	options.supports_spill = true;
+	options.robust_buffer_access = device->robust_buffer_access;
 
 	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage,
 				     &options, false, binary_out);

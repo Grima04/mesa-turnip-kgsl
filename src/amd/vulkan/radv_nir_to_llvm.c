@@ -4389,6 +4389,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	ctx.abi.load_resource = radv_load_resource;
 	ctx.abi.clamp_shadow_reference = false;
 	ctx.abi.gfx9_stride_size_workaround = ctx.ac.chip_class == GFX9 && HAVE_LLVM < 0x800;
+	ctx.abi.robust_buffer_access = options->robust_buffer_access;
 
 	/* Because the new raw/struct atomic intrinsics are buggy with LLVM 8,
 	 * we fallback to the old intrinsics for atomic buffer image operations

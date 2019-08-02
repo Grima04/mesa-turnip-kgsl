@@ -208,6 +208,9 @@ struct ac_shader_abi {
 	* and LLVM optimizes an indexed load with constant index to IDXEN=0. */
 	bool gfx9_stride_size_workaround;
 	bool gfx9_stride_size_workaround_for_atomic;
+
+	/* Whether bounds checks are required */
+	bool robust_buffer_access;
 };
 
 #endif /* AC_SHADER_ABI_H */

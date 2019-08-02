@@ -1644,14 +1644,17 @@ static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx,
 					   LLVMValueRef compare,
 					   LLVMValueRef exchange)
 {
-	LLVMValueRef size = ac_llvm_extract_elem(&ctx->ac, descriptor, 2);
+	LLVMBasicBlockRef start_block = NULL, then_block = NULL;
+	if (ctx->abi->robust_buffer_access) {
+		LLVMValueRef size = ac_llvm_extract_elem(&ctx->ac, descriptor, 2);
 
-	LLVMValueRef cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, offset, size, "");
-	LLVMBasicBlockRef start_block = LLVMGetInsertBlock(ctx->ac.builder);
+		LLVMValueRef cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, offset, size, "");
+		start_block = LLVMGetInsertBlock(ctx->ac.builder);
 
-	ac_build_ifcc(&ctx->ac, cond, -1);
+		ac_build_ifcc(&ctx->ac, cond, -1);
 
-	LLVMBasicBlockRef then_block = LLVMGetInsertBlock(ctx->ac.builder);
+		then_block = LLVMGetInsertBlock(ctx->ac.builder);
+	}
 
 	LLVMValueRef ptr_parts[2] = {
 		ac_llvm_extract_elem(&ctx->ac, descriptor, 0),
@@ -1673,20 +1676,24 @@ static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx,
 	LLVMValueRef result = ac_build_atomic_cmp_xchg(&ctx->ac, ptr, compare, exchange, "singlethread-one-as");
 	result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
 
-	ac_build_endif(&ctx->ac, -1);
+	if (ctx->abi->robust_buffer_access) {
+		ac_build_endif(&ctx->ac, -1);
 
-	LLVMBasicBlockRef incoming_blocks[2] = {
-		start_block,
-		then_block,
-	};
+		LLVMBasicBlockRef incoming_blocks[2] = {
+			start_block,
+			then_block,
+		};
 
-	LLVMValueRef incoming_values[2] = {
-		LLVMConstInt(ctx->ac.i64, 0, 0),
-		result,
-	};
-	LLVMValueRef ret = LLVMBuildPhi(ctx->ac.builder, ctx->ac.i64, "");
-	LLVMAddIncoming(ret, incoming_values, incoming_blocks, 2);
-	return ret;
+		LLVMValueRef incoming_values[2] = {
+			LLVMConstInt(ctx->ac.i64, 0, 0),
+			result,
+		};
+		LLVMValueRef ret = LLVMBuildPhi(ctx->ac.builder, ctx->ac.i64, "");
+		LLVMAddIncoming(ret, incoming_values, incoming_blocks, 2);
+		return ret;
+	} else {
+		return result;
+	}
 }
 
 static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
