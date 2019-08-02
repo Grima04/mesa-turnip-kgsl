@@ -878,7 +878,7 @@ schedule_program(compiler_context *ctx)
         /* Number of 128-bit slots in memory we've spilled into */
         unsigned spill_count = 0;
 
-        midgard_promote_uniforms(ctx, 8);
+        midgard_promote_uniforms(ctx, 16);
 
         mir_foreach_block(ctx, block) {
                 midgard_pair_load_store(ctx, block);

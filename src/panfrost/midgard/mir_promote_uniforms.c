@@ -36,12 +36,8 @@
  * spilling. If we spill anyway, I mean, it's a lose-lose at that point. */
 
 void
-midgard_promote_uniforms(compiler_context *ctx, unsigned register_pressure)
+midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
 {
-        /* For our purposes, pressure is capped at the number of vec4 work
-         * registers, not live values which would consider spills */
-        register_pressure = MAX2(register_pressure, 16);
-
         mir_foreach_instr_global_safe(ctx, ins) {
                 if (ins->type != TAG_LOAD_STORE_4) continue;
                 if (!OP_IS_UBO_READ(ins->load_store.op)) continue;
@@ -61,8 +57,7 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned register_pressure)
                 /* Check if it's a promotable range */
                 unsigned uniform_reg = 23 - address;
 
-                if (address > 16) continue;
-                if (register_pressure > uniform_reg) continue;
+                if (address >= promoted_count) continue;
 
                 /* It is, great! Let's promote */
 

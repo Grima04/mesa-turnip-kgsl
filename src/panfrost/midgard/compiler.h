@@ -524,7 +524,7 @@ bool mir_has_multiple_writes(compiler_context *ctx, int src);
 void mir_create_pipeline_registers(compiler_context *ctx);
 
 void
-midgard_promote_uniforms(compiler_context *ctx, unsigned pressure);
+midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count);
 
 void
 emit_ubo_read(
