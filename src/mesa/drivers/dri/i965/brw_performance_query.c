@@ -1146,8 +1146,8 @@ brw_begin_perf_query(struct gl_context *ctx,
       intel_batchbuffer_flush(brw);
 
       /* Take a starting OA counter snapshot. */
-      brw->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
-                                          obj->oa.begin_report_id);
+      brw->perfquery.perf->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
+                                                          obj->oa.begin_report_id);
       capture_frequency_stat_register(brw, obj->oa.bo, MI_FREQ_START_OFFSET_BYTES);
 
       ++brw->perfquery.n_active_oa_queries;
@@ -1732,7 +1732,21 @@ brw_oa_bo_alloc(void *bufmgr, const char *name, uint64_t size)
    return brw_bo_alloc(bufmgr, name, size, BRW_MEMZONE_OTHER);
 }
 
+static void
+brw_oa_emit_mi_report_perf_count(void *c,
+                                 void *bo,
+                                 uint32_t offset_in_bytes,
+                                 uint32_t report_id)
+{
+   struct brw_context *ctx = c;
+   ctx->vtbl.emit_mi_report_perf_count(ctx,
+                                       bo,
+                                       offset_in_bytes,
+                                       report_id);
+}
+
 typedef void (*bo_unreference_t)(void *);
+typedef void (* emit_mi_report_t)(void *, void *, uint32_t, uint32_t);
 
 static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
@@ -1749,6 +1763,8 @@ brw_init_perf_query_info(struct gl_context *ctx)
    struct gen_perf_config *perf_cfg = brw->perfquery.perf;
    perf_cfg->vtbl.bo_alloc = brw_oa_bo_alloc;
    perf_cfg->vtbl.bo_unreference = (bo_unreference_t)brw_bo_unreference;
+   perf_cfg->vtbl.emit_mi_report_perf_count =
+      (emit_mi_report_t)brw_oa_emit_mi_report_perf_count;
 
    init_pipeline_statistic_query_registers(brw);
    brw_perf_query_register_mdapi_statistic_query(brw);

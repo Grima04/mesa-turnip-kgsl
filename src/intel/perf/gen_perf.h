@@ -192,6 +192,10 @@ struct gen_perf_config {
    struct {
       void *(*bo_alloc)(void *bufmgr, const char *name, uint64_t size);
       void (*bo_unreference)(void *bo);
+      void (*emit_mi_report_perf_count)(void *ctx,
+                                        void *bo,
+                                        uint32_t offset_in_bytes,
+                                        uint32_t report_id);
    } vtbl;
 };
 
