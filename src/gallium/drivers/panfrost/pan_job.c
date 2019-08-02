@@ -72,6 +72,9 @@ panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job)
                 BITSET_SET(screen->free_transient, *index);
         }
 
+        /* Unreference the polygon list */
+        panfrost_bo_unreference(ctx->base.screen, job->polygon_list);
+
         _mesa_hash_table_remove_key(ctx->jobs, &job->key);
 
         if (ctx->job == job)
@@ -158,6 +161,27 @@ panfrost_job_add_bo(struct panfrost_job *job, struct panfrost_bo *bo)
 
         panfrost_bo_reference(bo);
         _mesa_set_add(job->bos, bo);
+}
+
+/* Returns the polygon list's GPU address if available, or otherwise allocates
+ * the polygon list.  It's perfectly fast to use allocate/free BO directly,
+ * since we'll hit the BO cache and this is one-per-batch anyway. */
+
+mali_ptr
+panfrost_job_get_polygon_list(struct panfrost_job *batch, unsigned size)
+{
+        if (batch->polygon_list) {
+                assert(batch->polygon_list->size >= size);
+        } else {
+                struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
+
+                /* Create the BO as invisible, as there's no reason to map */
+
+                batch->polygon_list = panfrost_drm_create_bo(screen,
+                                size, PAN_ALLOCATE_INVISIBLE);
+        }
+
+        return batch->polygon_list->gpu;
 }
 
 void

@@ -62,6 +62,7 @@ panfrost_emit_midg_tiler(
         unsigned vertex_count)
 {
         struct midgard_tiler_descriptor t = {};
+        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
 
         t.hierarchy_mask =
                 panfrost_choose_hierarchy_mask(width, height, vertex_count);
@@ -77,10 +78,7 @@ panfrost_emit_midg_tiler(
         /* Sanity check */
 
         if (t.hierarchy_mask) {
-                assert(ctx->tiler_polygon_list.bo->size >= (header_size + body_size));
-
-                /* Specify allocated tiler structures */
-                t.polygon_list = ctx->tiler_polygon_list.bo->gpu;
+                t.polygon_list = panfrost_job_get_polygon_list(batch, header_size + body_size);
 
                 /* Allow the entire tiler heap */
                 t.heap_start = ctx->tiler_heap.bo->gpu;
@@ -2532,7 +2530,6 @@ panfrost_destroy(struct pipe_context *pipe)
         panfrost_drm_free_slab(screen, &panfrost->scratchpad);
         panfrost_drm_free_slab(screen, &panfrost->shaders);
         panfrost_drm_free_slab(screen, &panfrost->tiler_heap);
-        panfrost_drm_free_slab(screen, &panfrost->tiler_polygon_list);
         panfrost_drm_free_slab(screen, &panfrost->tiler_dummy);
 
         ralloc_free(pipe);
@@ -2678,7 +2675,6 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64*4, false, 0, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->shaders, 4096, true, PAN_ALLOCATE_EXECUTE, 0, 0);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_heap, 4096, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
-        panfrost_drm_allocate_slab(screen, &ctx->tiler_polygon_list, 128*128, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
         panfrost_drm_allocate_slab(screen, &ctx->tiler_dummy, 1, false, PAN_ALLOCATE_INVISIBLE, 0, 0);
 }
 

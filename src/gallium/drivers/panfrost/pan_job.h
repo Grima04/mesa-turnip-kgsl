@@ -112,6 +112,9 @@ struct panfrost_job {
 
         /* Within the topmost transient BO, how much has been used? */
         unsigned transient_offset;
+
+        /* Polygon list bound to the batch, or NULL if none bound yet */
+        struct panfrost_bo *polygon_list;
 };
 
 /* Functions for managing the above */
@@ -149,6 +152,9 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job);
 void
 panfrost_job_set_requirements(struct panfrost_context *ctx,
                               struct panfrost_job *job);
+
+mali_ptr
+panfrost_job_get_polygon_list(struct panfrost_job *batch, unsigned size);
 
 void
 panfrost_job_clear(struct panfrost_context *ctx,

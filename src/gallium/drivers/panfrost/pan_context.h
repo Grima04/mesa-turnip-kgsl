@@ -111,7 +111,6 @@ struct panfrost_context {
         struct panfrost_memory shaders;
         struct panfrost_memory scratchpad;
         struct panfrost_memory tiler_heap;
-        struct panfrost_memory tiler_polygon_list;
         struct panfrost_memory tiler_dummy;
         struct panfrost_memory depth_stencil_buffer;
 
