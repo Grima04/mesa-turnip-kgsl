@@ -498,7 +498,6 @@ struct si_screen {
 	bool				has_gfx9_scissor_bug;
 	bool				has_msaa_sample_loc_bug;
 	bool				has_ls_vgpr_init_bug;
-	bool				has_dcc_constant_encode;
 	bool				dpbb_allowed;
 	bool				dfsm_allowed;
 	bool				llvm_has_working_vgpr_indexing;

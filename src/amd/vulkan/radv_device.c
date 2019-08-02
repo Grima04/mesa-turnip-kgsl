@@ -386,10 +386,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 				       (device->rad_info.chip_class >= GFX8 &&
 				        device->rad_info.me_fw_feature >= 41);
 
-	device->has_dcc_constant_encode = device->rad_info.family == CHIP_RAVEN2 ||
-					  device->rad_info.family == CHIP_RENOIR ||
-					  device->rad_info.chip_class >= GFX10;
-
 	device->use_shader_ballot = device->rad_info.chip_class >= GFX8 &&
 				    device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT;
 

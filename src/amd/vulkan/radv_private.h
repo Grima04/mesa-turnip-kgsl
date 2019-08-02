@@ -298,9 +298,6 @@ struct radv_physical_device {
 	/* Whether to enable the AMD_shader_ballot extension */
 	bool use_shader_ballot;
 
-	/* Whether DISABLE_CONSTANT_ENCODE_REG is supported. */
-	bool has_dcc_constant_encode;
-
 	/* Number of threads per wave. */
 	uint8_t ps_wave_size;
 	uint8_t cs_wave_size;

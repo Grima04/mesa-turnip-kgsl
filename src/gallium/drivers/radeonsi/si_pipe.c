@@ -1144,9 +1144,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 					   sscreen->info.family == CHIP_RAVEN;
 	sscreen->has_ls_vgpr_init_bug = sscreen->info.family == CHIP_VEGA10 ||
 					sscreen->info.family == CHIP_RAVEN;
-	sscreen->has_dcc_constant_encode = sscreen->info.family == CHIP_RAVEN2 ||
-					   sscreen->info.family == CHIP_RENOIR ||
-					   sscreen->info.chip_class >= GFX10;
 	sscreen->use_ngg = sscreen->info.chip_class >= GFX10;
 	sscreen->use_ngg_streamout = sscreen->info.chip_class >= GFX10;
 

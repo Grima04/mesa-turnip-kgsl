@@ -60,6 +60,7 @@ struct radeon_info {
 	uint32_t                    tcc_cache_line_size;
 	bool                        has_clear_state;
 	bool                        has_distributed_tess;
+	bool                        has_dcc_constant_encode;
 
 	/* There are 2 display DCC codepaths, because display expects unaligned DCC. */
 	/* Disable RB and pipe alignment to skip the retile blit. (1 RB chips only) */

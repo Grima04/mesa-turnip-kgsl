@@ -2005,7 +2005,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 
 	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX8) {
 		bool disable_constant_encode =
-			cmd_buffer->device->physical_device->has_dcc_constant_encode;
+			cmd_buffer->device->physical_device->rad_info.has_dcc_constant_encode;
 		enum chip_class chip_class =
 			cmd_buffer->device->physical_device->rad_info.chip_class;
 		uint8_t watermark = chip_class >= GFX10 ? 6 : 4;

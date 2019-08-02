@@ -559,7 +559,7 @@ static void si_do_fast_color_clear(struct si_context *sctx,
 		/* Chips with DCC constant encoding don't need to set the clear
 		 * color registers for DCC clear values 0 and 1.
 		 */
-		if (sctx->screen->has_dcc_constant_encode && !eliminate_needed)
+		if (sctx->screen->info.has_dcc_constant_encode && !eliminate_needed)
 			continue;
 
 		if (si_set_clear_color(tex, fb->cbufs[i]->format, color)) {
