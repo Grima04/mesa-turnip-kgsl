@@ -782,8 +782,9 @@ ttn_get_src(struct ttn_compile *c, struct tgsi_full_src_register *tgsi_fsrc,
    struct tgsi_src_register *tgsi_src = &tgsi_fsrc->Register;
    enum tgsi_opcode opcode = c->token->FullInstruction.Instruction.Opcode;
    unsigned tgsi_src_type = tgsi_opcode_infer_src_type(opcode, src_idx);
-   bool src_is_float = !(tgsi_src_type == TGSI_TYPE_SIGNED ||
-                         tgsi_src_type == TGSI_TYPE_UNSIGNED);
+   bool src_is_float = (tgsi_src_type == TGSI_TYPE_FLOAT ||
+                        tgsi_src_type == TGSI_TYPE_DOUBLE ||
+                        tgsi_src_type == TGSI_TYPE_UNTYPED);
    nir_alu_src src;
 
    memset(&src, 0, sizeof(src));
@@ -820,6 +821,9 @@ ttn_get_src(struct ttn_compile *c, struct tgsi_full_src_register *tgsi_fsrc,
    src.swizzle[3] = tgsi_src->SwizzleW;
 
    nir_ssa_def *def = nir_mov_alu(b, src, 4);
+
+   if (tgsi_type_is_64bit(tgsi_src_type))
+      def = nir_bitcast_vector(b, def, 64);
 
    if (tgsi_src->Absolute) {
       if (src_is_float)
@@ -861,11 +865,23 @@ ttn_move_dest(nir_builder *b, nir_alu_dest dest, nir_ssa_def *def)
 }
 
 static void
-ttn_alu(nir_builder *b, nir_op op, nir_alu_dest dest, nir_ssa_def **src)
+ttn_alu(nir_builder *b, nir_op op, nir_alu_dest dest, unsigned dest_bitsize,
+        nir_ssa_def **src)
 {
    nir_ssa_def *def = nir_build_alu_src_arr(b, op, src);
    if (def->bit_size == 1)
-      def = nir_ineg(b, nir_b2i(b, def, 32));
+      def = nir_ineg(b, nir_b2i(b, def, dest_bitsize));
+   assert(def->bit_size == dest_bitsize);
+   if (dest_bitsize == 64) {
+      if (def->num_components > 2) {
+         /* 32 -> 64 bit conversion ops are supposed to only convert the first
+          * two components, and we need to truncate here to avoid creating a
+          * vec8 after bitcasting the destination.
+          */
+         def = nir_channels(b, def, 0x3);
+      }
+      def = nir_bitcast_vector(b, def, 32);
+   }
    ttn_move_dest(b, dest, def);
 }
 
@@ -1719,6 +1735,14 @@ ttn_emit_instruction(struct ttn_compile *c)
    }
    nir_alu_dest dest = ttn_get_dest(c, tgsi_dst);
 
+   unsigned tgsi_dst_type = tgsi_opcode_infer_dst_type(tgsi_op, 0);
+
+   /* The destination bitsize of the NIR opcode (not TGSI, where it's always
+    * 32 bits). This needs to be passed into ttn_alu() because it can't be
+    * inferred for comparison opcodes.
+    */
+   unsigned dst_bitsize = tgsi_type_is_64bit(tgsi_dst_type) ? 64 : 32;
+
    switch (tgsi_op) {
    case TGSI_OPCODE_RSQ:
       ttn_move_dest(b, dest, nir_frsq(b, ttn_channel(b, src[0], X)));
@@ -1877,7 +1901,7 @@ ttn_emit_instruction(struct ttn_compile *c)
 
    default:
       if (op_trans[tgsi_op] != 0 || tgsi_op == TGSI_OPCODE_MOV) {
-         ttn_alu(b, op_trans[tgsi_op], dest, src);
+         ttn_alu(b, op_trans[tgsi_op], dest, dst_bitsize, src);
       } else {
          fprintf(stderr, "unknown TGSI opcode: %s\n",
                  tgsi_get_opcode_name(tgsi_op));
