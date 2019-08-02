@@ -189,13 +189,17 @@ panfrost_clear(
 static mali_ptr
 panfrost_attach_vt_mfbd(struct panfrost_context *ctx)
 {
-        return panfrost_upload_transient(ctx, &ctx->vt_framebuffer_mfbd, sizeof(ctx->vt_framebuffer_mfbd)) | MALI_MFBD;
+        struct bifrost_framebuffer mfbd = panfrost_emit_mfbd(ctx, ~0);
+
+        return panfrost_upload_transient(ctx, &mfbd, sizeof(mfbd)) | MALI_MFBD;
 }
 
 static mali_ptr
 panfrost_attach_vt_sfbd(struct panfrost_context *ctx)
 {
-        return panfrost_upload_transient(ctx, &ctx->vt_framebuffer_sfbd, sizeof(ctx->vt_framebuffer_sfbd)) | MALI_SFBD;
+        struct mali_single_framebuffer sfbd = panfrost_emit_sfbd(ctx, ~0);
+
+        return panfrost_upload_transient(ctx, &sfbd, sizeof(sfbd)) | MALI_SFBD;
 }
 
 static void
@@ -223,13 +227,6 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
 static void
 panfrost_invalidate_frame(struct panfrost_context *ctx)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-
-        if (screen->require_sfbd)
-                ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
-        else
-                ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
-
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
                 ctx->payloads[i].postfix.framebuffer = 0;
 
@@ -2383,12 +2380,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
         panfrost_hint_afbc(screen, &ctx->pipe_framebuffer);
-
-        if (screen->require_sfbd)
-                ctx->vt_framebuffer_sfbd = panfrost_emit_sfbd(ctx, ~0);
-        else
-                ctx->vt_framebuffer_mfbd = panfrost_emit_mfbd(ctx, ~0);
-
         panfrost_attach_vt_framebuffer(ctx, false);
 }
 

@@ -138,9 +138,6 @@ struct panfrost_context {
 
         union mali_attr attributes[PIPE_MAX_ATTRIBS];
 
-        struct mali_single_framebuffer vt_framebuffer_sfbd;
-        struct bifrost_framebuffer vt_framebuffer_mfbd;
-
         /* TODO: Multiple uniform buffers (index =/= 0), finer updates? */
 
         struct panfrost_constant_buffer constant_buffer[PIPE_SHADER_TYPES];
