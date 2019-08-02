@@ -1151,6 +1151,9 @@ print_texture_word(uint32_t *word, unsigned tabs)
         if (texture->last)
                 printf(".last");
 
+        /* Output modifiers are always interpreted floatly */
+        print_outmod(texture->outmod, false);
+
         printf(" ");
 
         print_texture_reg(texture->out_full, texture->out_reg_select, texture->out_upper);
@@ -1263,11 +1266,9 @@ print_texture_word(uint32_t *word, unsigned tabs)
         /* While not zero in general, for these simple instructions the
          * following unknowns are zero, so we don't include them */
 
-        if (texture->unknown2 ||
-            texture->unknown4 ||
+        if (texture->unknown4 ||
             texture->unknownA ||
             texture->unknown8) {
-                printf("// unknown2 = 0x%x\n", texture->unknown2);
                 printf("// unknown4 = 0x%x\n", texture->unknown4);
                 printf("// unknownA = 0x%x\n", texture->unknownA);
                 printf("// unknown8 = 0x%x\n", texture->unknown8);
