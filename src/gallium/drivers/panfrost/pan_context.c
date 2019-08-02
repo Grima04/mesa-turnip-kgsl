@@ -2372,6 +2372,11 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
         }
 
+        /* Invalidate the FBO job cache since we've just been assigned a new
+         * FB state.
+         */
+        ctx->job = NULL;
+
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
 
         /* Given that we're rendering, we'd love to have compression */

@@ -23,6 +23,8 @@
  *
  */
 
+#include <assert.h>
+
 #include "pan_context.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
@@ -124,8 +126,13 @@ panfrost_get_job_for_fbo(struct panfrost_context *ctx)
 
         /* If we already began rendering, use that */
 
-        if (ctx->job)
+        if (ctx->job) {
+                assert(ctx->job->key.zsbuf == ctx->pipe_framebuffer.zsbuf &&
+                       !memcmp(ctx->job->key.cbufs,
+                               ctx->pipe_framebuffer.cbufs,
+                               sizeof(ctx->job->key.cbufs)));
                 return ctx->job;
+        }
 
         /* If not, look up the job */
 
@@ -133,6 +140,10 @@ panfrost_get_job_for_fbo(struct panfrost_context *ctx)
         struct pipe_surface *zsbuf = ctx->pipe_framebuffer.zsbuf;
         struct panfrost_job *job = panfrost_get_job(ctx, cbufs, zsbuf);
 
+        /* Set this job as the current FBO job. Will be reset when updating the
+         * FB state and when submitting or releasing a job.
+         */
+        ctx->job = job;
         return job;
 }
 
@@ -181,6 +192,12 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
 
         if (ret)
                 fprintf(stderr, "panfrost_job_submit failed: %d\n", ret);
+
+        /* The job has been submitted, let's invalidate the current FBO job
+         * cache.
+	 */
+        assert(!ctx->job || job == ctx->job);
+        ctx->job = NULL;
 }
 
 void
