@@ -555,7 +555,7 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
 
    pGS->gsEnable = true;
 
-   pGS->numInputAttribs = info->num_inputs;
+   pGS->numInputAttribs = (VERTEX_ATTRIB_START_SLOT - VERTEX_POSITION_SLOT) + info->num_inputs;
    pGS->outputTopology =
       swr_convert_prim_topology(info->properties[TGSI_PROPERTY_GS_OUTPUT_PRIM]);
    pGS->maxNumVerts = info->properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES];
@@ -565,8 +565,7 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
    pGS->isSingleStream = true;
    pGS->singleStreamID = 0;
 
-   pGS->vertexAttribOffset = VERTEX_ATTRIB_START_SLOT; // TODO: optimize
-   pGS->srcVertexAttribOffset = VERTEX_ATTRIB_START_SLOT; // TODO: optimize
+   pGS->vertexAttribOffset = VERTEX_POSITION_SLOT;
    pGS->inputVertStride = pGS->numInputAttribs + pGS->vertexAttribOffset;
    pGS->outputVertexSize = SWR_VTX_NUM_SLOTS;
    pGS->controlDataSize = 8; // GS ouputs max of 8 32B units
@@ -793,7 +792,7 @@ BuilderSWR::CompileVS(struct swr_context *ctx, swr_jit_vs_key &key)
    pWorkerData->setName("pWorkerData");
    Value *pVsCtx = &*argitr++;
    pVsCtx->setName("vsCtx");
-   
+
    Value *consts_ptr = GEP(hPrivateData, {C(0), C(swr_draw_context_constantVS)});
 
    consts_ptr->setName("vs_constants");
