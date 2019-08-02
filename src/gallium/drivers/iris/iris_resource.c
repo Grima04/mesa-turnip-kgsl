@@ -828,6 +828,53 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 }
 
 static bool
+iris_resource_get_param(struct pipe_screen *screen,
+                        struct pipe_resource *resource,
+                        unsigned int plane,
+                        enum pipe_resource_param param,
+                        uint64_t *value)
+{
+   struct iris_resource *res = (struct iris_resource *)resource;
+   bool mod_with_aux =
+      res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
+   bool wants_aux = mod_with_aux && plane > 0;
+   struct iris_bo *bo = wants_aux ? res->aux.bo : res->bo;
+   bool result;
+   unsigned handle;
+
+   switch (param) {
+   case PIPE_RESOURCE_PARAM_NPLANES:
+      *value = mod_with_aux ? 2 : 1;
+      return true;
+   case PIPE_RESOURCE_PARAM_STRIDE:
+      *value = wants_aux ? res->aux.surf.row_pitch_B : res->surf.row_pitch_B;
+      return true;
+   case PIPE_RESOURCE_PARAM_OFFSET:
+      *value = wants_aux ? res->aux.offset : 0;
+      return true;
+   case PIPE_RESOURCE_PARAM_MODIFIER:
+      *value = res->mod_info ? res->mod_info->modifier :
+               tiling_to_modifier(res->bo->tiling_mode);
+      return true;
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
+      result = iris_bo_flink(bo, &handle) == 0;
+      if (result)
+         *value = handle;
+      return result;
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS:
+      *value = iris_bo_export_gem_handle(bo);
+      return true;
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD:
+      result = iris_bo_export_dmabuf(bo, (int *) &handle) == 0;
+      if (result)
+         *value = handle;
+      return result;
+   default:
+      return false;
+   }
+}
+
+static bool
 iris_resource_get_handle(struct pipe_screen *pscreen,
                          struct pipe_context *ctx,
                          struct pipe_resource *resource,
@@ -1640,6 +1687,7 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->resource_from_user_memory = iris_resource_from_user_memory;
    pscreen->resource_from_handle = iris_resource_from_handle;
    pscreen->resource_get_handle = iris_resource_get_handle;
+   pscreen->resource_get_param = iris_resource_get_param;
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
    pscreen->transfer_helper =
       u_transfer_helper_create(&transfer_vtbl, true, true, false, true);
