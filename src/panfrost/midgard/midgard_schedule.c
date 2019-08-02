@@ -732,6 +732,142 @@ v_load_store_scratch(
         return ins;
 }
 
+/* If register allocation fails, find the best spill node and spill it to fix
+ * whatever the issue was. This spill node could be a work register (spilling
+ * to thread local storage), but it could also simply be a special register
+ * that needs to spill to become a work register. */
+
+static void mir_spill_register(
+                compiler_context *ctx,
+                struct ra_graph *g,
+                unsigned *spill_count)
+{
+        unsigned spill_index = ctx->temp_count;
+
+        /* Our first step is to calculate spill cost to figure out the best
+         * spill node. All nodes are equal in spill cost, but we can't spill
+         * nodes written to from an unspill */
+
+        for (unsigned i = 0; i < ctx->temp_count; ++i) {
+                ra_set_node_spill_cost(g, i, 1.0);
+        }
+
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->type != TAG_LOAD_STORE_4)  continue;
+                if (ins->load_store.op != midgard_op_ld_int4) continue;
+                if (ins->load_store.arg_1 != 0xEA) continue;
+                if (ins->load_store.arg_2 != 0x1E) continue;
+                ra_set_node_spill_cost(g, ins->ssa_args.dest, -1.0);
+        }
+
+        int spill_node = ra_get_best_spill_node(g);
+
+        if (spill_node < 0) {
+                mir_print_shader(ctx);
+                assert(0);
+        }
+
+        /* We have a spill node, so check the class. Work registers
+         * legitimately spill to TLS, but special registers just spill to work
+         * registers */
+
+        unsigned class = ra_get_node_class(g, spill_node);
+        bool is_special = (class >> 2) != REG_CLASS_WORK;
+        bool is_special_w = (class >> 2) == REG_CLASS_TEXW;
+
+        /* Allocate TLS slot (maybe) */
+        unsigned spill_slot = !is_special ? (*spill_count)++ : 0;
+        midgard_instruction *spill_move = NULL;
+
+        /* For TLS, replace all stores to the spilled node. For
+         * special reads, just keep as-is; the class will be demoted
+         * implicitly. For special writes, spill to a work register */
+
+        if (!is_special || is_special_w) {
+                mir_foreach_instr_global_safe(ctx, ins) {
+                        if (ins->ssa_args.dest != spill_node) continue;
+
+                        midgard_instruction st;
+
+                        if (is_special_w) {
+                                spill_slot = spill_index++;
+                                st = v_mov(spill_node, blank_alu_src, spill_slot);
+                        } else {
+                                ins->ssa_args.dest = SSA_FIXED_REGISTER(26);
+                                st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
+                        }
+
+                        spill_move = mir_insert_instruction_before(mir_next_op(ins), st);
+
+                        if (!is_special)
+                                ctx->spills++;
+                }
+        }
+
+        /* Insert a load from TLS before the first consecutive
+         * use of the node, rewriting to use spilled indices to
+         * break up the live range. Or, for special, insert a
+         * move. Ironically the latter *increases* register
+         * pressure, but the two uses of the spilling mechanism
+         * are somewhat orthogonal. (special spilling is to use
+         * work registers to back special registers; TLS
+         * spilling is to use memory to back work registers) */
+
+        mir_foreach_block(ctx, block) {
+                bool consecutive_skip = false;
+                unsigned consecutive_index = 0;
+
+                mir_foreach_instr_in_block(block, ins) {
+                        /* We can't rewrite the move used to spill in the first place */
+                        if (ins == spill_move) continue;
+
+                        if (!mir_has_arg(ins, spill_node)) {
+                                consecutive_skip = false;
+                                continue;
+                        }
+
+                        if (consecutive_skip) {
+                                /* Rewrite */
+                                mir_rewrite_index_src_single(ins, spill_node, consecutive_index);
+                                continue;
+                        }
+
+                        if (!is_special_w) {
+                                consecutive_index = ++spill_index;
+
+                                midgard_instruction *before = ins;
+
+                                /* For a csel, go back one more not to break up the bundle */
+                                if (ins->type == TAG_ALU_4 && OP_IS_CSEL(ins->alu.op))
+                                        before = mir_prev_op(before);
+
+                                midgard_instruction st;
+
+                                if (is_special) {
+                                        /* Move */
+                                        st = v_mov(spill_node, blank_alu_src, consecutive_index);
+                                } else {
+                                        /* TLS load */
+                                        st = v_load_store_scratch(consecutive_index, spill_slot, false, 0xF);
+                                }
+
+                                mir_insert_instruction_before(before, st);
+                               // consecutive_skip = true;
+                        } else {
+                                /* Special writes already have their move spilled in */
+                                consecutive_index = spill_slot;
+                        }
+
+
+                        /* Rewrite to use */
+                        mir_rewrite_index_src_single(ins, spill_node, consecutive_index);
+
+                        if (!is_special)
+                                ctx->fills++;
+                }
+        }
+}
+
 void
 schedule_program(compiler_context *ctx)
 {
@@ -759,132 +895,8 @@ schedule_program(compiler_context *ctx)
         }
 
         do {
-                /* If we spill, find the best spill node and spill it */
-
-                unsigned spill_index = ctx->temp_count;
-                if (g && spilled) {
-                        /* All nodes are equal in spill cost, but we can't
-                         * spill nodes written to from an unspill */
-
-                        for (unsigned i = 0; i < ctx->temp_count; ++i) {
-                                ra_set_node_spill_cost(g, i, 1.0);
-                        }
-
-                        mir_foreach_instr_global(ctx, ins) {
-                                if (ins->type != TAG_LOAD_STORE_4)  continue;
-                                if (ins->load_store.op != midgard_op_ld_int4) continue;
-                                if (ins->load_store.arg_1 != 0xEA) continue;
-                                if (ins->load_store.arg_2 != 0x1E) continue;
-                                ra_set_node_spill_cost(g, ins->ssa_args.dest, -1.0);
-                        }
-
-                        int spill_node = ra_get_best_spill_node(g);
-
-                        if (spill_node < 0) {
-                                mir_print_shader(ctx);
-                                assert(0);
-                        }
-
-                        /* Check the class. Work registers legitimately spill
-                         * to TLS, but special registers just spill to work
-                         * registers */
-                        unsigned class = ra_get_node_class(g, spill_node);
-                        bool is_special = (class >> 2) != REG_CLASS_WORK;
-                        bool is_special_w = (class >> 2) == REG_CLASS_TEXW;
-
-                        /* Allocate TLS slot (maybe) */
-                        unsigned spill_slot = !is_special ? spill_count++ : 0;
-                        midgard_instruction *spill_move = NULL;
-
-                        /* For TLS, replace all stores to the spilled node. For
-                         * special reads, just keep as-is; the class will be demoted
-                         * implicitly. For special writes, spill to a work register */
-
-                        if (!is_special || is_special_w) {
-                                mir_foreach_instr_global_safe(ctx, ins) {
-                                        if (ins->ssa_args.dest != spill_node) continue;
-
-                                        midgard_instruction st;
-
-                                        if (is_special_w) {
-                                                spill_slot = spill_index++;
-                                                st = v_mov(spill_node, blank_alu_src, spill_slot);
-                                        } else {
-                                                ins->ssa_args.dest = SSA_FIXED_REGISTER(26);
-                                                st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
-                                        }
-
-                                        spill_move = mir_insert_instruction_before(mir_next_op(ins), st);
-
-                                        if (!is_special)
-                                                ctx->spills++;
-                                }
-                        }
-
-                        /* Insert a load from TLS before the first consecutive
-                         * use of the node, rewriting to use spilled indices to
-                         * break up the live range. Or, for special, insert a
-                         * move. Ironically the latter *increases* register
-                         * pressure, but the two uses of the spilling mechanism
-                         * are somewhat orthogonal. (special spilling is to use
-                         * work registers to back special registers; TLS
-                         * spilling is to use memory to back work registers) */
-
-                        mir_foreach_block(ctx, block) {
-
-                        bool consecutive_skip = false;
-                        unsigned consecutive_index = 0;
-
-                        mir_foreach_instr_in_block(block, ins) {
-                                /* We can't rewrite the move used to spill in the first place */
-                                if (ins == spill_move) continue;
-                                
-                                if (!mir_has_arg(ins, spill_node)) {
-                                        consecutive_skip = false;
-                                        continue;
-                                }
-
-                                if (consecutive_skip) {
-                                        /* Rewrite */
-                                        mir_rewrite_index_src_single(ins, spill_node, consecutive_index);
-                                        continue;
-                                }
-
-                                if (!is_special_w) {
-                                        consecutive_index = ++spill_index;
-
-                                        midgard_instruction *before = ins;
-
-                                        /* For a csel, go back one more not to break up the bundle */
-                                        if (ins->type == TAG_ALU_4 && OP_IS_CSEL(ins->alu.op))
-                                                before = mir_prev_op(before);
-
-                                        midgard_instruction st;
-
-                                        if (is_special) {
-                                                /* Move */
-                                                st = v_mov(spill_node, blank_alu_src, consecutive_index);
-                                        } else {
-                                                /* TLS load */
-                                                st = v_load_store_scratch(consecutive_index, spill_slot, false, 0xF);
-                                        }
-
-                                        mir_insert_instruction_before(before, st);
-                                       // consecutive_skip = true;
-                                } else {
-                                        /* Special writes already have their move spilled in */
-                                        consecutive_index = spill_slot;
-                                }
-
-
-                                /* Rewrite to use */
-                                mir_rewrite_index_src_single(ins, spill_node, consecutive_index);
-
-                                if (!is_special)
-                                        ctx->fills++;
-                        }
-                        }
-                }
+                if (spilled) 
+                        mir_spill_register(ctx, g, &spill_count);
 
                 mir_squeeze_index(ctx);
 
