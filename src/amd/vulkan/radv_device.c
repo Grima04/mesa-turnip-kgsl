@@ -364,11 +364,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 		                         device->rad_info.family == CHIP_RENOIR;
 	}
 
-	/* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
-	 * on GFX6.
-	 */
-	device->has_clear_state = device->rad_info.chip_class >= GFX7;
-
 	device->cpdma_prefetch_writes_memory = device->rad_info.chip_class <= GFX8;
 
 	/* Vega10/Raven need a special workaround for a hardware bug. */

@@ -372,7 +372,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx)
 		ctx->prefetch_L2_mask |= SI_PREFETCH_VBO_DESCRIPTORS;
 
 	/* CLEAR_STATE disables all colorbuffers, so only enable bound ones. */
-	bool has_clear_state = ctx->screen->has_clear_state;
+	bool has_clear_state = ctx->screen->info.has_clear_state;
 	if (has_clear_state) {
 		ctx->framebuffer.dirty_cbufs =
 			 u_bit_consecutive(0, ctx->framebuffer.state.nr_cbufs);

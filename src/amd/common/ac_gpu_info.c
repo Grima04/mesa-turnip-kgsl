@@ -441,6 +441,12 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->num_sdma_rings = util_bitcount(dma.available_rings);
 	info->num_compute_rings = util_bitcount(compute.available_rings);
 
+	/* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
+	 * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
+	 * SPI_VS_OUT_CONFIG. So only enable GFX7 CLEAR_STATE on amdgpu kernel.
+	 */
+	info->has_clear_state = info->chip_class >= GFX7;
+
 	/* Get the number of good compute units. */
 	info->num_good_compute_units = 0;
 	for (i = 0; i < info->max_se; i++)

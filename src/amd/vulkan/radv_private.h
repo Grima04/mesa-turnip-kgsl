@@ -282,7 +282,6 @@ struct radv_physical_device {
 
 	bool has_rbplus; /* if RB+ register exist */
 	bool rbplus_allowed; /* if RB+ is allowed */
-	bool has_clear_state;
 	bool cpdma_prefetch_writes_memory;
 	bool has_scissor_bug;
 	bool has_tc_compat_zrange_bug;

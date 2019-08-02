@@ -5390,7 +5390,7 @@ static void si_init_config(struct si_context *sctx)
 {
 	struct si_screen *sscreen = sctx->screen;
 	uint64_t border_color_va = sctx->border_color_buffer->gpu_address;
-	bool has_clear_state = sscreen->has_clear_state;
+	bool has_clear_state = sscreen->info.has_clear_state;
 	struct si_pm4_state *pm4 = CALLOC_STRUCT(si_pm4_state);
 
 	if (!pm4)
