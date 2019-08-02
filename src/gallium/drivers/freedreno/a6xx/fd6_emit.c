@@ -602,10 +602,8 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 			needs_border |= fd6_emit_textures(ctx->pipe, stateobj, type, tex,
 					bcolor_offset, v, ctx);
 
-			fd6_emit_add_group(emit, stateobj, s[type].state_id,
+			fd6_emit_take_group(emit, stateobj, s[type].state_id,
 					s[type].enable_mask);
-
-			fd_ringbuffer_del(stateobj);
 		}
 	}
 
@@ -793,12 +791,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *state;
 
 		state = build_vbo_state(emit, emit->vs);
-		fd6_emit_add_group(emit, state, FD6_GROUP_VBO, 0x6);
-		fd_ringbuffer_del(state);
+		fd6_emit_take_group(emit, state, FD6_GROUP_VBO, 0x6);
 
 		state = build_vbo_state(emit, emit->bs);
-		fd6_emit_add_group(emit, state, FD6_GROUP_VBO_BINNING, 0x1);
-		fd_ringbuffer_del(state);
+		fd6_emit_take_group(emit, state, FD6_GROUP_VBO_BINNING, 0x1);
 	}
 
 	if (dirty & FD_DIRTY_ZSA) {
@@ -814,12 +810,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *state;
 
 		state = build_lrz(emit, false);
-		fd6_emit_add_group(emit, state, FD6_GROUP_LRZ, 0x6);
-		fd_ringbuffer_del(state);
+		fd6_emit_take_group(emit, state, FD6_GROUP_LRZ, 0x6);
 
 		state = build_lrz(emit, true);
-		fd6_emit_add_group(emit, state, FD6_GROUP_LRZ_BINNING, 0x1);
-		fd_ringbuffer_del(state);
+		fd6_emit_take_group(emit, state, FD6_GROUP_LRZ_BINNING, 0x1);
 	}
 
 	if (dirty & FD_DIRTY_STENCIL_REF) {
@@ -946,8 +940,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		if (ir3_needs_vs_driver_params(vp))
 			ir3_emit_vs_driver_params(vp, vsconstobj, ctx, emit->info);
 
-		fd6_emit_add_group(emit, vsconstobj, FD6_GROUP_VS_CONST, 0x7);
-		fd_ringbuffer_del(vsconstobj);
+		fd6_emit_take_group(emit, vsconstobj, FD6_GROUP_VS_CONST, 0x7);
 	}
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & DIRTY_CONST) {
@@ -963,8 +956,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		ir3_emit_image_dims(ctx->screen, fp, fsconstobj,
 				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
 
-		fd6_emit_add_group(emit, fsconstobj, FD6_GROUP_FS_CONST, 0x6);
-		fd_ringbuffer_del(fsconstobj);
+		fd6_emit_take_group(emit, fsconstobj, FD6_GROUP_FS_CONST, 0x6);
 	}
 
 	struct ir3_stream_output_info *info = &vp->shader->stream_output;
@@ -1057,8 +1049,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_COUNT, 1);
 		OUT_RING(obj, mapping->num_ibo);
 
-		fd6_emit_add_group(emit, obj, FD6_GROUP_IBO, 0x6);
-		fd_ringbuffer_del(obj);
+		fd6_emit_take_group(emit, obj, FD6_GROUP_IBO, 0x6);
 		fd_ringbuffer_del(state);
 	}
 

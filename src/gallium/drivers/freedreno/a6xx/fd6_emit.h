@@ -113,14 +113,21 @@ fd6_emit_get_prog(struct fd6_emit *emit)
 }
 
 static inline void
-fd6_emit_add_group(struct fd6_emit *emit, struct fd_ringbuffer *stateobj,
+fd6_emit_take_group(struct fd6_emit *emit, struct fd_ringbuffer *stateobj,
 		enum fd6_state_id group_id, unsigned enable_mask)
 {
 	debug_assert(emit->num_groups < ARRAY_SIZE(emit->groups));
 	struct fd6_state_group *g = &emit->groups[emit->num_groups++];
-	g->stateobj = fd_ringbuffer_ref(stateobj);
+	g->stateobj = stateobj;
 	g->group_id = group_id;
 	g->enable_mask = enable_mask;
+}
+
+static inline void
+fd6_emit_add_group(struct fd6_emit *emit, struct fd_ringbuffer *stateobj,
+		enum fd6_state_id group_id, unsigned enable_mask)
+{
+	fd6_emit_take_group(emit, fd_ringbuffer_ref(stateobj), group_id, enable_mask);
 }
 
 static inline unsigned
