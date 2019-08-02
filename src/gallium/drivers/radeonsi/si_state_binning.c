@@ -589,7 +589,10 @@ void si_emit_dpbb_state(struct si_context *sctx)
 		S_028C44_DISABLE_START_OF_PRIM(disable_start_of_prim) |
 		S_028C44_FPOVS_PER_BATCH(fpovs_per_batch) |
 		S_028C44_OPTIMAL_BIN_SELECTION(1) |
-		G_028C44_FLUSH_ON_BINNING_TRANSITION(sctx->last_binning_enabled != 1));
+		S_028C44_FLUSH_ON_BINNING_TRANSITION((sctx->family == CHIP_VEGA12 ||
+						      sctx->family == CHIP_VEGA20 ||
+						      sctx->family >= CHIP_RAVEN2) &&
+						     sctx->last_binning_enabled != 1));
 
 	unsigned db_dfsm_control = sctx->chip_class >= GFX10 ? R_028038_DB_DFSM_CONTROL
 							     : R_028060_DB_DFSM_CONTROL;
