@@ -356,7 +356,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 
 	if (device->rad_info.family == CHIP_STONEY ||
 	    device->rad_info.chip_class >= GFX9) {
-		device->has_rbplus = true;
 		device->rbplus_allowed = device->rad_info.family == CHIP_STONEY ||
 					 device->rad_info.family == CHIP_VEGA12 ||
 		                         device->rad_info.family == CHIP_RAVEN ||

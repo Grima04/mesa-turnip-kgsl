@@ -454,6 +454,9 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 					info->family == CHIP_RENOIR ||
 					info->chip_class >= GFX10;
 
+	info->has_rbplus = info->family == CHIP_STONEY ||
+			   info->chip_class >= GFX9;
+
 	/* Get the number of good compute units. */
 	info->num_good_compute_units = 0;
 	for (i = 0; i < info->max_se; i++)

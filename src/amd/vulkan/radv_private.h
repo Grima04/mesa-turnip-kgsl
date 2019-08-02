@@ -280,7 +280,6 @@ struct radv_physical_device {
 	int master_fd;
 	struct wsi_device                       wsi_device;
 
-	bool has_rbplus; /* if RB+ register exist */
 	bool rbplus_allowed; /* if RB+ is allowed */
 	bool cpdma_prefetch_writes_memory;
 	bool has_scissor_bug;

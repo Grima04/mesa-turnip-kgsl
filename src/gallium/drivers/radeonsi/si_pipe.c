@@ -1181,8 +1181,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	 */
 	if (sscreen->info.family == CHIP_STONEY ||
 	    sscreen->info.chip_class >= GFX9) {
-		sscreen->has_rbplus = true;
-
 		sscreen->rbplus_allowed =
 			!(sscreen->debug_flags & DBG(NO_RB_PLUS)) &&
 			(sscreen->info.family == CHIP_STONEY ||

@@ -512,7 +512,6 @@ struct si_screen {
 	/* Whether shaders are monolithic (1-part) or separate (3-part). */
 	bool				use_monolithic_shaders;
 	bool				record_llvm_ir;
-	bool				has_rbplus;     /* if RB+ registers exist */
 	bool				rbplus_allowed; /* if RB+ is allowed */
 	bool				dcc_msaa_allowed;
 	bool				cpdma_prefetch_writes_memory;

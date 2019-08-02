@@ -1482,7 +1482,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
 	if (!rs->multisample_enable)
 		db_shader_control &= C_02880C_MASK_EXPORT_ENABLE;
 
-	if (sctx->screen->has_rbplus &&
+	if (sctx->screen->info.has_rbplus &&
 	    !sctx->screen->rbplus_allowed)
 		db_shader_control |= S_02880C_DUAL_QUAD_DISABLE(1);
 

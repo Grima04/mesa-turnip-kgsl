@@ -865,7 +865,7 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
 		blend.sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED) | S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 	}
 
-	if (pipeline->device->physical_device->has_rbplus) {
+	if (pipeline->device->physical_device->rad_info.has_rbplus) {
 		/* Disable RB+ blend optimizations for dual source blending. */
 		if (blend.mrt0_is_dual_src) {
 			for (i = 0; i < 8; i++) {
@@ -3329,7 +3329,7 @@ radv_pipeline_generate_blend_state(struct radeon_cmdbuf *ctx_cs,
 	radeon_set_context_reg(ctx_cs, R_028808_CB_COLOR_CONTROL, blend->cb_color_control);
 	radeon_set_context_reg(ctx_cs, R_028B70_DB_ALPHA_TO_MASK, blend->db_alpha_to_mask);
 
-	if (pipeline->device->physical_device->has_rbplus) {
+	if (pipeline->device->physical_device->rad_info.has_rbplus) {
 
 		radeon_set_context_reg_seq(ctx_cs, R_028760_SX_MRT0_BLEND_OPT, 8);
 		radeon_emit_array(ctx_cs, blend->sx_mrt_blend_opt, 8);
@@ -4054,7 +4054,7 @@ radv_compute_db_shader_control(const struct radv_device *device,
 	else
 		z_order = V_02880C_LATE_Z;
 
-	bool disable_rbplus = device->physical_device->has_rbplus &&
+	bool disable_rbplus = device->physical_device->rad_info.has_rbplus &&
 	                      !device->physical_device->rbplus_allowed;
 
 	/* It shouldn't be needed to export gl_SampleMask when MSAA is disabled
