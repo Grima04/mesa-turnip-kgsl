@@ -535,6 +535,9 @@ emit_ubo_read(
         unsigned index);
 
 void
+emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override);
+
+void
 midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr);
 
 void

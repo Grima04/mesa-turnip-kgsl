@@ -1218,14 +1218,17 @@ emit_varying_read(
         emit_mir_instruction(ctx, ins);
 }
 
-static void
-emit_sysval_read(compiler_context *ctx, nir_instr *instr)
+void
+emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override)
 {
         unsigned dest = 0;
 
         /* Figure out which uniform this is */
         int sysval = sysval_for_instr(ctx, instr, &dest);
         void *val = _mesa_hash_table_u64_search(ctx->sysval_to_id, sysval);
+
+        if (dest_override >= 0)
+                dest = dest_override;
 
         /* Sysvals are prefix uniforms */
         unsigned uniform = ((uintptr_t) val) - 1;
@@ -1437,7 +1440,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
-                emit_sysval_read(ctx, &instr->instr);
+                emit_sysval_read(ctx, &instr->instr, -1);
                 break;
 
         default:
@@ -1664,7 +1667,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
                 break;
         case nir_texop_txs:
-                emit_sysval_read(ctx, &instr->instr);
+                emit_sysval_read(ctx, &instr->instr, -1);
                 break;
         default:
                 unreachable("Unhanlded texture op");
