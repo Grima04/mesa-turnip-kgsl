@@ -786,45 +786,6 @@ brw_swizzle_for_nir_swizzle(uint8_t swizzle[4])
    return BRW_SWIZZLE4(swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
 }
 
-static enum brw_conditional_mod
-brw_conditional_for_nir_comparison(nir_op op)
-{
-   switch (op) {
-   case nir_op_flt32:
-   case nir_op_ilt32:
-   case nir_op_ult32:
-      return BRW_CONDITIONAL_L;
-
-   case nir_op_fge32:
-   case nir_op_ige32:
-   case nir_op_uge32:
-      return BRW_CONDITIONAL_GE;
-
-   case nir_op_feq32:
-   case nir_op_ieq32:
-   case nir_op_b32all_fequal2:
-   case nir_op_b32all_iequal2:
-   case nir_op_b32all_fequal3:
-   case nir_op_b32all_iequal3:
-   case nir_op_b32all_fequal4:
-   case nir_op_b32all_iequal4:
-      return BRW_CONDITIONAL_Z;
-
-   case nir_op_fne32:
-   case nir_op_ine32:
-   case nir_op_b32any_fnequal2:
-   case nir_op_b32any_inequal2:
-   case nir_op_b32any_fnequal3:
-   case nir_op_b32any_inequal3:
-   case nir_op_b32any_fnequal4:
-   case nir_op_b32any_inequal4:
-      return BRW_CONDITIONAL_NZ;
-
-   default:
-      unreachable("not reached: bad operation for comparison");
-   }
-}
-
 bool
 vec4_visitor::optimize_predicate(nir_alu_instr *instr,
                                  enum brw_predicate *predicate)
@@ -875,7 +836,7 @@ vec4_visitor::optimize_predicate(nir_alu_instr *instr,
    }
 
    emit(CMP(dst_null_d(), op[0], op[1],
-            brw_conditional_for_nir_comparison(cmp_instr->op)));
+            brw_cmod_for_nir_comparison(cmp_instr->op)));
 
    return true;
 }
@@ -1529,7 +1490,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_feq32:
    case nir_op_fne32: {
       enum brw_conditional_mod conditional_mod =
-         brw_conditional_for_nir_comparison(instr->op);
+         brw_cmod_for_nir_comparison(instr->op);
 
       if (nir_src_bit_size(instr->src[0].src) < 64) {
          /* If the order of the sources is changed due to an immediate value,
@@ -1566,7 +1527,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
          brw_swizzle_for_size(nir_op_infos[instr->op].input_sizes[0]);
 
       emit(CMP(dst_null_d(), swizzle(op[0], swiz), swizzle(op[1], swiz),
-               brw_conditional_for_nir_comparison(instr->op)));
+               brw_cmod_for_nir_comparison(instr->op)));
       emit(MOV(dst, brw_imm_d(0)));
       inst = emit(MOV(dst, brw_imm_d(~0)));
       inst->predicate = BRW_PREDICATE_ALIGN16_ALL4H;
@@ -1585,7 +1546,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
          brw_swizzle_for_size(nir_op_infos[instr->op].input_sizes[0]);
 
       emit(CMP(dst_null_d(), swizzle(op[0], swiz), swizzle(op[1], swiz),
-               brw_conditional_for_nir_comparison(instr->op)));
+               brw_cmod_for_nir_comparison(instr->op)));
 
       emit(MOV(dst, brw_imm_d(0)));
       inst = emit(MOV(dst, brw_imm_d(~0)));

@@ -1041,6 +1041,45 @@ brw_nir_apply_key(nir_shader *nir,
       brw_nir_optimize(nir, compiler, is_scalar, false);
 }
 
+enum brw_conditional_mod
+brw_cmod_for_nir_comparison(nir_op op)
+{
+   switch (op) {
+   case nir_op_flt32:
+   case nir_op_ilt32:
+   case nir_op_ult32:
+      return BRW_CONDITIONAL_L;
+
+   case nir_op_fge32:
+   case nir_op_ige32:
+   case nir_op_uge32:
+      return BRW_CONDITIONAL_GE;
+
+   case nir_op_feq32:
+   case nir_op_ieq32:
+   case nir_op_b32all_fequal2:
+   case nir_op_b32all_iequal2:
+   case nir_op_b32all_fequal3:
+   case nir_op_b32all_iequal3:
+   case nir_op_b32all_fequal4:
+   case nir_op_b32all_iequal4:
+      return BRW_CONDITIONAL_Z;
+
+   case nir_op_fne32:
+   case nir_op_ine32:
+   case nir_op_b32any_fnequal2:
+   case nir_op_b32any_inequal2:
+   case nir_op_b32any_fnequal3:
+   case nir_op_b32any_inequal3:
+   case nir_op_b32any_fnequal4:
+   case nir_op_b32any_inequal4:
+      return BRW_CONDITIONAL_NZ;
+
+   default:
+      unreachable("Unsupported NIR comparison op");
+   }
+}
+
 enum brw_reg_type
 brw_type_for_nir_type(const struct gen_device_info *devinfo, nir_alu_type type)
 {
