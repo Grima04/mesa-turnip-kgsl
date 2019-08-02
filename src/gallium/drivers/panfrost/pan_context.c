@@ -203,11 +203,11 @@ panfrost_attach_vt_sfbd(struct panfrost_context *ctx)
 }
 
 static void
-panfrost_attach_vt_framebuffer(struct panfrost_context *ctx, bool skippable)
+panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
 {
         /* Skip the attach if we can */
 
-        if (skippable && ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer) {
+        if (ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer) {
                 assert(ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer);
                 return;
         }
@@ -1013,7 +1013,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
-        panfrost_attach_vt_framebuffer(ctx, true);
+        panfrost_attach_vt_framebuffer(ctx);
 
         if (with_vertex_data) {
                 panfrost_emit_vertex_data(job);
