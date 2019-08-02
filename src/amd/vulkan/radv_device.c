@@ -1010,6 +1010,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->indexTypeUint8 = pdevice->rad_info.chip_class >= GFX8;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: {
+			VkPhysicalDeviceImagelessFramebufferFeaturesKHR *features =
+				(VkPhysicalDeviceImagelessFramebufferFeaturesKHR *)ext;
+			features->imagelessFramebuffer = true;
+			break;
+		}
 		default:
 			break;
 		}
