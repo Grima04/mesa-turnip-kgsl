@@ -1245,6 +1245,9 @@ dri2_create_context(_EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
                && dri2_ctx->base.ClientMinorVersion >= 2))
           && dri2_ctx->base.Profile == EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR)
          api = __DRI_API_OPENGL_CORE;
+      else if (dri2_ctx->base.ClientMajorVersion == 3 &&
+               dri2_ctx->base.ClientMinorVersion == 1)
+         api = __DRI_API_OPENGL_CORE;
       else
          api = __DRI_API_OPENGL;
       break;
