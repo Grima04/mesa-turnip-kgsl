@@ -1716,6 +1716,12 @@ static const nir_op op_trans[TGSI_OPCODE_LAST] = {
    [TGSI_OPCODE_INTERP_SAMPLE] = 0, /* XXX */
    [TGSI_OPCODE_INTERP_OFFSET] = 0, /* XXX */
 
+   [TGSI_OPCODE_F2D] = nir_op_f2f64,
+   [TGSI_OPCODE_D2F] = nir_op_f2f32,
+   [TGSI_OPCODE_DMUL] = nir_op_fmul,
+   [TGSI_OPCODE_D2U] = nir_op_f2u32,
+   [TGSI_OPCODE_U2D] = nir_op_u2f64,
+
    [TGSI_OPCODE_U64ADD] = nir_op_iadd,
    [TGSI_OPCODE_U64MUL] = nir_op_imul,
    [TGSI_OPCODE_U64DIV] = nir_op_udiv,
