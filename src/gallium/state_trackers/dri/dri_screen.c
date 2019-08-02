@@ -89,6 +89,11 @@ dri_fill_st_options(struct dri_screen *screen)
    options->allow_glsl_layout_qualifier_on_function_parameters =
       driQueryOptionb(optionCache, "allow_glsl_layout_qualifier_on_function_parameters");
 
+   char *vendor_str = driQueryOptionstr(optionCache, "force_gl_vendor");
+   /* not an empty string */
+   if (*vendor_str)
+      options->force_gl_vendor = strdup(vendor_str);
+
    driComputeOptionsSha1(optionCache, options->config_options_sha1);
 }
 
@@ -480,6 +485,8 @@ dri_destroy_screen(__DRIscreen * sPriv)
    dri_destroy_screen_helper(screen);
 
    pipe_loader_release(&screen->dev, 1);
+
+   free(screen->options.force_gl_vendor);
 
    /* The caller in dri_util preserves the fd ownership */
    free(screen);

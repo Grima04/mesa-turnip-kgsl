@@ -1153,6 +1153,8 @@ void st_init_extensions(struct pipe_screen *screen,
 
    consts->GLSLZeroInit = options->glsl_zero_init;
 
+   consts->VendorOverride = options->force_gl_vendor;
+
    consts->UniformBooleanTrue = consts->NativeIntegers ? ~0U : fui(1.0f);
 
    /* Below are the cases which cannot be moved into tables easily. */

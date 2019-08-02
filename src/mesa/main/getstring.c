@@ -124,6 +124,10 @@ _mesa_GetString( GLenum name )
 
    ASSERT_OUTSIDE_BEGIN_END_WITH_RETVAL(ctx, NULL);
 
+   if (ctx->Const.VendorOverride && name == GL_VENDOR) {
+      return (const GLubyte *) ctx->Const.VendorOverride;
+   }
+
    /* this is a required driver function */
    assert(ctx->Driver.GetString);
    {

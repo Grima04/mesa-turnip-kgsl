@@ -4135,6 +4135,8 @@ struct gl_constants
 
    /** GL_ARB_spirv_extensions */
    struct spirv_supported_extensions *SpirVExtensions;
+
+   char *VendorOverride;
 };
 
 
