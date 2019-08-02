@@ -2906,6 +2906,32 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 	if (so->binning_pass && (ctx->compiler->gpu_id >= 600))
 		fixup_binning_pass(ctx);
 
+	/* for a6xx+, binning and draw pass VS use same VBO state, so we
+	 * need to make sure not to remove any inputs that are used by
+	 * the nonbinning VS.
+	 */
+	if (ctx->compiler->gpu_id >= 600 && so->binning_pass) {
+		debug_assert(so->type == MESA_SHADER_VERTEX);
+		for (int i = 0; i < ir->ninputs; i++) {
+			struct ir3_instruction *in = ir->inputs[i];
+
+			if (!in)
+				continue;
+
+			unsigned n = i / 4;
+			unsigned c = i % 4;
+
+			debug_assert(n < so->nonbinning->inputs_count);
+
+			if (so->nonbinning->inputs[n].sysval)
+				continue;
+
+			/* be sure to keep inputs, even if only used in VS */
+			if (so->nonbinning->inputs[n].compmask & (1 << c))
+				array_insert(in->block, in->block->keeps, in);
+		}
+	}
+
 	/* Insert mov if there's same instruction for each output.
 	 * eg. dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_expression.vertex.sampler2dshadow
 	 */
@@ -2962,7 +2988,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ir3_print(ir);
 	}
 
-	ret = ir3_ra(ir);
+	ret = ir3_ra(so);
 	if (ret) {
 		DBG("RA failed!");
 		goto out;
@@ -3003,13 +3029,17 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		for (j = 0; j < 4; j++) {
 			struct ir3_instruction *in = inputs[(i*4) + j];
 
-			if (in && !(in->flags & IR3_INSTR_UNUSED)) {
-				reg = in->regs[0]->num - j;
-				if (half) {
-					compile_assert(ctx, in->regs[0]->flags & IR3_REG_HALF);
-				} else {
-					half = !!(in->regs[0]->flags & IR3_REG_HALF);
-				}
+			if (!in)
+				continue;
+
+			if (in->flags & IR3_INSTR_UNUSED)
+				continue;
+
+			reg = in->regs[0]->num - j;
+			if (half) {
+				compile_assert(ctx, in->regs[0]->flags & IR3_REG_HALF);
+			} else {
+				half = !!(in->regs[0]->flags & IR3_REG_HALF);
 			}
 		}
 		so->inputs[i].regid = reg;

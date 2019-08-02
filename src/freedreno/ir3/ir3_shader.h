@@ -391,7 +391,10 @@ struct ir3_shader_variant {
 	 * which is pointed to by so->binning:
 	 */
 	bool binning_pass;
-	struct ir3_shader_variant *binning;
+//	union {
+		struct ir3_shader_variant *binning;
+		struct ir3_shader_variant *nonbinning;
+//	};
 
 	struct ir3_info info;
 	struct ir3 *ir;

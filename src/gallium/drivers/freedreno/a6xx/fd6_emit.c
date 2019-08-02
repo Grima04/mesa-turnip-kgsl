@@ -791,10 +791,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct fd_ringbuffer *state;
 
 		state = build_vbo_state(emit, emit->vs);
-		fd6_emit_take_group(emit, state, FD6_GROUP_VBO, 0x6);
-
-		state = build_vbo_state(emit, emit->bs);
-		fd6_emit_take_group(emit, state, FD6_GROUP_VBO_BINNING, 0x1);
+		fd6_emit_take_group(emit, state, FD6_GROUP_VBO, 0x7);
 	}
 
 	if (dirty & FD_DIRTY_ZSA) {

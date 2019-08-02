@@ -703,6 +703,14 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	state->binning_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 
+#ifdef DEBUG
+	for (unsigned i = 0; i < bs->inputs_count; i++) {
+		if (vs->inputs[i].sysval)
+			continue;
+		debug_assert(bs->inputs[i].regid == vs->inputs[i].regid);
+	}
+#endif
+
 	setup_config_stateobj(state->config_stateobj, state);
 	setup_stateobj(state->binning_stateobj, ctx->screen, state, key, true);
 	setup_stateobj(state->stateobj, ctx->screen, state, key, false);
