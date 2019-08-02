@@ -67,7 +67,7 @@ static inline void u_thread_setname( const char *name )
 #elif DETECT_OS_FREEBSD || DETECT_OS_OPENBSD
    pthread_set_name_np(pthread_self(), name);
 #elif DETECT_OS_NETBSD
-   pthread_setname_np(pthread_self(), "%s", name);
+   pthread_setname_np(pthread_self(), "%s", (void *)name);
 #elif DETECT_OS_APPLE
    pthread_setname_np(name);
 #else
