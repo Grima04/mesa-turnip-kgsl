@@ -447,6 +447,9 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	 */
 	info->has_clear_state = info->chip_class >= GFX7;
 
+	info->has_distributed_tess = info->chip_class >= GFX8 &&
+				     info->max_se >= 2;
+
 	/* Get the number of good compute units. */
 	info->num_good_compute_units = 0;
 	for (i = 0; i < info->max_se; i++)

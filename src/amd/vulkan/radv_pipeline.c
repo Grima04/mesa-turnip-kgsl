@@ -2010,7 +2010,7 @@ calculate_tess_state(struct radv_pipeline *pipeline,
 	else
 		topology = V_028B6C_OUTPUT_TRIANGLE_CW;
 
-	if (pipeline->device->has_distributed_tess) {
+	if (pipeline->device->physical_device->rad_info.has_distributed_tess) {
 		if (pipeline->device->physical_device->rad_info.family == CHIP_FIJI ||
 		    pipeline->device->physical_device->rad_info.family >= CHIP_POLARIS10)
 			distribution_mode = V_028B6C_DISTRIBUTION_MODE_TRAPEZOIDS;
@@ -4378,7 +4378,7 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline,
 		    radv_pipeline_has_gs(pipeline))
 			ia_multi_vgt_param.partial_vs_wave = true;
 		/* Needed for 028B6C_DISTRIBUTION_MODE != 0 */
-		if (device->has_distributed_tess) {
+		if (device->physical_device->rad_info.has_distributed_tess) {
 			if (radv_pipeline_has_gs(pipeline)) {
 				if (device->physical_device->rad_info.chip_class <= GFX8)
 					ia_multi_vgt_param.partial_es_wave = true;

@@ -382,7 +382,7 @@ static void si_set_tesseval_regs(struct si_screen *sscreen,
 	else
 		topology = V_028B6C_OUTPUT_TRIANGLE_CW;
 
-	if (sscreen->has_distributed_tess) {
+	if (sscreen->info.has_distributed_tess) {
 		if (sscreen->info.family == CHIP_FIJI ||
 		    sscreen->info.family >= CHIP_POLARIS10)
 			distribution_mode = V_028B6C_DISTRIBUTION_MODE_TRAPEZOIDS;

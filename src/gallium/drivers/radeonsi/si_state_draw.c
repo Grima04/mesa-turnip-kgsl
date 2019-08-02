@@ -175,7 +175,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx,
 	/* When distributed tessellation is unsupported, switch between SEs
 	 * at a higher frequency to compensate for it.
 	 */
-	if (!sctx->screen->has_distributed_tess && sctx->screen->info.max_se > 1)
+	if (!sctx->screen->info.has_distributed_tess && sctx->screen->info.max_se > 1)
 		*num_patches = MIN2(*num_patches, 16); /* recommended */
 
 	/* Make sure that vector lanes are reasonably occupied. It probably
@@ -363,7 +363,7 @@ si_get_init_multi_vgt_param(struct si_screen *sscreen,
 			partial_vs_wave = true;
 
 		/* Needed for 028B6C_DISTRIBUTION_MODE != 0. (implies >= GFX8) */
-		if (sscreen->has_distributed_tess) {
+		if (sscreen->info.has_distributed_tess) {
 			if (key->u.uses_gs) {
 				if (sscreen->info.chip_class == GFX8)
 					partial_es_wave = true;

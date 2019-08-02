@@ -1109,10 +1109,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 			S_0089B0_OFFCHIP_BUFFERING(max_offchip_buffers);
 	}
 
-	sscreen->has_distributed_tess =
-		sscreen->info.chip_class >= GFX8 &&
-		sscreen->info.max_se >= 2;
-
 	sscreen->has_draw_indirect_multi =
 		(sscreen->info.family >= CHIP_POLARIS10) ||
 		(sscreen->info.chip_class == GFX8 &&
