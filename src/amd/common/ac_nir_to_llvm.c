@@ -1638,13 +1638,64 @@ static void visit_store_ssbo(struct ac_nir_context *ctx,
 	}
 }
 
+static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx,
+                                           LLVMValueRef descriptor,
+					   LLVMValueRef offset,
+					   LLVMValueRef compare,
+					   LLVMValueRef exchange)
+{
+	LLVMValueRef size = ac_llvm_extract_elem(&ctx->ac, descriptor, 2);
+
+	LLVMValueRef cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, offset, size, "");
+	LLVMBasicBlockRef start_block = LLVMGetInsertBlock(ctx->ac.builder);
+
+	ac_build_ifcc(&ctx->ac, cond, -1);
+
+	LLVMBasicBlockRef then_block = LLVMGetInsertBlock(ctx->ac.builder);
+
+	LLVMValueRef ptr_parts[2] = {
+		ac_llvm_extract_elem(&ctx->ac, descriptor, 0),
+		LLVMBuildAnd(ctx->ac.builder,
+		             ac_llvm_extract_elem(&ctx->ac, descriptor, 1),
+		             LLVMConstInt(ctx->ac.i32, 65535, 0), "")
+	};
+
+	ptr_parts[1] = LLVMBuildTrunc(ctx->ac.builder, ptr_parts[1], ctx->ac.i16, "");
+	ptr_parts[1] = LLVMBuildSExt(ctx->ac.builder, ptr_parts[1], ctx->ac.i32, "");
+
+	offset = LLVMBuildZExt(ctx->ac.builder, offset, ctx->ac.i64, "");
+
+	LLVMValueRef ptr = ac_build_gather_values(&ctx->ac, ptr_parts, 2);
+	ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ctx->ac.i64, "");
+	ptr = LLVMBuildAdd(ctx->ac.builder, ptr, offset, "");
+	ptr = LLVMBuildIntToPtr(ctx->ac.builder, ptr, LLVMPointerType(ctx->ac.i64, AC_ADDR_SPACE_GLOBAL), "");
+
+	LLVMValueRef result = ac_build_atomic_cmp_xchg(&ctx->ac, ptr, compare, exchange, "singlethread-one-as");
+	result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
+
+	ac_build_endif(&ctx->ac, -1);
+
+	LLVMBasicBlockRef incoming_blocks[2] = {
+		start_block,
+		then_block,
+	};
+
+	LLVMValueRef incoming_values[2] = {
+		LLVMConstInt(ctx->ac.i64, 0, 0),
+		result,
+	};
+	LLVMValueRef ret = LLVMBuildPhi(ctx->ac.builder, ctx->ac.i64, "");
+	LLVMAddIncoming(ret, incoming_values, incoming_blocks, 2);
+	return ret;
+}
+
 static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
                                       const nir_intrinsic_instr *instr)
 {
 	LLVMTypeRef return_type = LLVMTypeOf(get_src(ctx, instr->src[2]));
 	const char *op;
 	char name[64], type[8];
-	LLVMValueRef params[6];
+	LLVMValueRef params[6], descriptor;
 	int arg_count = 0;
 
 	switch (instr->intrinsic) {
@@ -1682,13 +1733,22 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 		abort();
 	}
 
+	descriptor = ctx->abi->load_ssbo(ctx->abi,
+	                                 get_src(ctx, instr->src[0]),
+	                                 true);
+
+	if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap &&
+	    return_type == ctx->ac.i64) {
+		return emit_ssbo_comp_swap_64(ctx, descriptor,
+					      get_src(ctx, instr->src[1]),
+					      get_src(ctx, instr->src[2]),
+					      get_src(ctx, instr->src[3]));
+	}
 	if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
 		params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
 	}
 	params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
-	params[arg_count++] = ctx->abi->load_ssbo(ctx->abi,
-						  get_src(ctx, instr->src[0]),
-						  true);
+	params[arg_count++] = descriptor;
 
 	if (HAVE_LLVM >= 0x900) {
 		/* XXX: The new raw/struct atomic intrinsics are buggy with
