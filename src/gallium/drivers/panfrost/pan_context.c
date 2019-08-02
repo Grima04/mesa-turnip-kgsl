@@ -2384,6 +2384,9 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 
         if (!is_scanout || has_draws)
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+        else
+                assert(!ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer &&
+                       !ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer);
 
         /* Invalidate the FBO job cache since we've just been assigned a new
          * FB state.
@@ -2396,7 +2399,8 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
         panfrost_hint_afbc(screen, &ctx->pipe_framebuffer);
-        panfrost_attach_vt_framebuffer(ctx, false);
+        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
+                ctx->payloads[i].postfix.framebuffer = 0;
 }
 
 static void *
