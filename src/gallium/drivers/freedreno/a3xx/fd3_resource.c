@@ -30,26 +30,17 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 {
 	struct pipe_resource *prsc = &rsc->base;
 	struct fd_screen *screen = fd_screen(prsc->screen);
-	enum util_format_layout layout = util_format_description(format)->layout;
 	uint32_t pitchalign = screen->gmem_alignw;
 	uint32_t level, size = 0;
 	uint32_t width = prsc->width0;
 	uint32_t height = prsc->height0;
 	uint32_t depth = prsc->depth0;
-	/* in layer_first layout, the level (slice) contains just one
-	 * layer (since in fact the layer contains the slices)
-	 */
-	uint32_t layers_in_level = rsc->layer_first ? 1 : prsc->array_size;
 
 	for (level = 0; level <= prsc->last_level; level++) {
 		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
 		uint32_t blocks;
 
-		if (layout == UTIL_FORMAT_LAYOUT_ASTC)
-			slice->pitch = width =
-				util_align_npot(width, pitchalign * util_format_get_blockwidth(format));
-		else
-			slice->pitch = width = align(width, pitchalign);
+		slice->pitch = width = align(width, pitchalign);
 		slice->offset = size;
 		blocks = util_format_get_nblocks(format, width, height);
 		/* 1d array and 2d array textures must all have the same layer size
@@ -62,12 +53,12 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 					level == 1 ||
 					(level > 1 && rsc->slices[level - 1].size0 > 0xf000)))
 			slice->size0 = align(blocks * rsc->cpp, alignment);
-		else if (level == 0 || rsc->layer_first || alignment == 1)
+		else if (level == 0 || alignment == 1)
 			slice->size0 = align(blocks * rsc->cpp, alignment);
 		else
 			slice->size0 = rsc->slices[level - 1].size0;
 
-		size += slice->size0 * depth * layers_in_level;
+		size += slice->size0 * depth * prsc->array_size;
 
 		width = u_minify(width, 1);
 		height = u_minify(height, 1);
