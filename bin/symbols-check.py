@@ -27,6 +27,8 @@ def get_symbols(nm, lib):
                                      stderr=open(os.devnull, 'w')).decode("ascii")
     for line in output.splitlines():
         (_, _, symbol_name) = line.split()
+        if symbol_name in PLATFORM_SYMBOLS:
+            continue
         symbols.append(symbol_name)
     return symbols
 
@@ -96,8 +98,6 @@ def main():
         if symbol in mandatory_symbols:
             continue
         if symbol in optional_symbols:
-            continue
-        if symbol in PLATFORM_SYMBOLS:
             continue
         unknown_symbols.append(symbol)
 
