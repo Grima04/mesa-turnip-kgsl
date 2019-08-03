@@ -285,6 +285,7 @@ def generate(env):
     llvm_version_minor = int(llvm_version.version[1])
     llvm_version_hex = '0x%02x%02x' % (llvm_version_major, llvm_version_minor)
     env.Prepend(CPPDEFINES = [('HAVE_LLVM', llvm_version_hex)])
+    env.Prepend(CPPDEFINES = [('MESA_LLVM_VERSION_STRING=\\"%s\\"' % llvm_version)])
 
 def exists(env):
     return True
