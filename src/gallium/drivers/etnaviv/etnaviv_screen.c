@@ -507,7 +507,7 @@ etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    *count = num_modifiers;
 }
 
-static boolean
+static bool
 etna_get_specs(struct etna_screen *screen)
 {
    uint64_t val;

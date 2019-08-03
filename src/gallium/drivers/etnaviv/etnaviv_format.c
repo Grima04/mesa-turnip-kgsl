@@ -40,7 +40,7 @@ struct etna_format {
    unsigned vtx;
    unsigned tex;
    unsigned rs;
-   boolean present;
+   bool present;
    const unsigned char tex_swiz[4];
 };
 
