@@ -47,7 +47,12 @@ def main():
                         help='path to binary (or name in $PATH)')
     args = parser.parse_args()
 
-    lib_symbols = get_symbols(args.nm, args.lib)
+    try:
+        lib_symbols = get_symbols(args.nm, args.lib)
+    except:
+        # We can't run this test, but we haven't technically failed it either
+        # Return the GNU "skip" error code
+        exit(77)
     mandatory_symbols = []
     optional_symbols = []
     with open(args.symbols_file) as symbols_file:
