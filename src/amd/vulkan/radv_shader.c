@@ -667,17 +667,6 @@ radv_get_shader_binary_size(size_t code_size)
 	return code_size + DEBUGGER_NUM_MARKERS * 4;
 }
 
-static uint8_t
-radv_get_shader_wave_size(const struct radv_physical_device *pdevice,
-			  gl_shader_stage stage)
-{
-	if (stage == MESA_SHADER_COMPUTE)
-		return pdevice->cs_wave_size;
-	else if (stage == MESA_SHADER_FRAGMENT)
-		return pdevice->ps_wave_size;
-	return pdevice->ge_wave_size;
-}
-
 static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 				    const struct ac_shader_config *config_in,
 				    const struct radv_shader_variant_info *info,
@@ -685,7 +674,6 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 				    struct ac_shader_config *config_out)
 {
 	bool scratch_enabled = config_in->scratch_bytes_per_wave > 0;
-	uint8_t wave_size = radv_get_shader_wave_size(pdevice, stage);
 	unsigned vgpr_comp_cnt = 0;
 	unsigned num_input_vgprs = info->num_input_vgprs;
 
@@ -756,7 +744,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			    S_00B12C_SO_EN(!!info->info.so.num_outputs);
 
 	config_out->rsrc1 = S_00B848_VGPRS((num_vgprs - 1) /
-					   (wave_size == 32 ? 8 : 4)) |
+					   (info->info.wave_size == 32 ? 8 : 4)) |
 			    S_00B848_DX10_CLAMP(1) |
 			    S_00B848_FLOAT_MODE(config_out->float_mode);
 
@@ -1023,14 +1011,10 @@ radv_shader_variant_create(struct radv_device *device,
 				sym->size -= 32;
 		}
 
-		uint8_t wave_size =
-			radv_get_shader_wave_size(device->physical_device,
-						  binary->stage);
-
 		struct ac_rtld_open_info open_info = {
 			.info = &device->physical_device->rad_info,
 			.shader_type = binary->stage,
-			.wave_size = wave_size,
+			.wave_size = binary->variant_info.info.wave_size,
 			.num_parts = 1,
 			.elf_ptrs = &elf_data,
 			.elf_sizes = &elf_size,
@@ -1142,9 +1126,13 @@ shader_variant_compile(struct radv_device *device,
 	options->check_ir = device->instance->debug_flags & RADV_DEBUG_CHECKIR;
 	options->tess_offchip_block_dw_size = device->tess_offchip_block_dw_size;
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
-	options->cs_wave_size = device->physical_device->cs_wave_size;
-	options->ps_wave_size = device->physical_device->ps_wave_size;
-	options->ge_wave_size = device->physical_device->ge_wave_size;
+
+	if (stage == MESA_SHADER_COMPUTE)
+		options->wave_size = device->physical_device->cs_wave_size;
+	else if (stage == MESA_SHADER_FRAGMENT)
+		options->wave_size = device->physical_device->ps_wave_size;
+	else
+		options->wave_size = device->physical_device->ge_wave_size;
 
 	if (options->supports_spill)
 		tm_options |= AC_TM_SUPPORTS_SPILL;
@@ -1160,7 +1148,7 @@ shader_variant_compile(struct radv_device *device,
 	radv_init_llvm_compiler(&ac_llvm,
 				thread_compiler,
 				chip_family, tm_options,
-				radv_get_shader_wave_size(device->physical_device, stage));
+				options->wave_size);
 	if (gs_copy_shader) {
 		assert(shader_count == 1);
 		radv_compile_gs_copy_shader(&ac_llvm, *shaders, &binary,
@@ -1296,7 +1284,7 @@ generate_shader_stats(struct radv_device *device,
 {
 	enum chip_class chip_class = device->physical_device->rad_info.chip_class;
 	unsigned lds_increment = chip_class >= GFX7 ? 512 : 256;
-	uint8_t wave_size = radv_get_shader_wave_size(device->physical_device, stage);
+	uint8_t wave_size = variant->info.info.wave_size;
 	struct ac_shader_config *conf;
 	unsigned max_simd_waves;
 	unsigned lds_per_wave = 0;

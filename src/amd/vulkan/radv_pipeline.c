@@ -4063,7 +4063,7 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs,
 
 	radeon_set_context_reg(ctx_cs, R_0286D8_SPI_PS_IN_CONTROL,
 			       S_0286D8_NUM_INTERP(ps->info.fs.num_interp) |
-			       S_0286D8_PS_W32_EN(pipeline->device->physical_device->ps_wave_size == 32));
+			       S_0286D8_PS_W32_EN(ps->info.info.wave_size == 32));
 
 	radeon_set_context_reg(ctx_cs, R_0286E0_SPI_BARYC_CNTL, pipeline->graphics.spi_baryc_cntl);
 
@@ -4127,12 +4127,28 @@ radv_compute_vgt_shader_stages_en(const struct radv_pipeline *pipeline)
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9)
 		stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
 
-	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 &&
-	    pipeline->device->physical_device->ge_wave_size == 32) {
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
+		uint8_t hs_size = 64, gs_size = 64, vs_size = 64;
+
+		if (radv_pipeline_has_tess(pipeline))
+			hs_size = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.info.wave_size;
+
+		if (pipeline->shaders[MESA_SHADER_GEOMETRY]) {
+			vs_size = gs_size = pipeline->shaders[MESA_SHADER_GEOMETRY]->info.info.wave_size;
+			if (pipeline->gs_copy_shader)
+				vs_size = pipeline->gs_copy_shader->info.info.wave_size;
+		} else if (pipeline->shaders[MESA_SHADER_TESS_EVAL])
+			vs_size = pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.info.wave_size;
+		else if (pipeline->shaders[MESA_SHADER_VERTEX])
+			vs_size = pipeline->shaders[MESA_SHADER_VERTEX]->info.info.wave_size;
+		
+		if (radv_pipeline_has_ngg(pipeline))
+			gs_size = vs_size;
+			
 		/* legacy GS only supports Wave64 */
-		stages |= S_028B54_HS_W32_EN(1) |
-			  S_028B54_GS_W32_EN(radv_pipeline_has_ngg(pipeline)) |
-			  S_028B54_VS_W32_EN(1);
+		stages |= S_028B54_HS_W32_EN(hs_size == 32 ? 1 : 0) |
+			  S_028B54_GS_W32_EN(gs_size == 32 ? 1 : 0) |
+			  S_028B54_VS_W32_EN(vs_size == 32 ? 1 : 0);
 	}
 
 	return stages;

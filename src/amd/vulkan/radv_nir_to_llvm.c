@@ -295,7 +295,7 @@ get_tcs_num_patches(struct radv_shader_context *ctx)
 
 	/* GFX6 bug workaround - limit LS-HS threadgroups to only one wave. */
 	if (ctx->options->chip_class == GFX6) {
-		unsigned one_wave = ctx->options->ge_wave_size / MAX2(num_tcs_input_cp, num_tcs_output_cp);
+		unsigned one_wave = ctx->options->wave_size / MAX2(num_tcs_input_cp, num_tcs_output_cp);
 		num_patches = MIN2(num_patches, one_wave);
 	}
 	return num_patches;
@@ -4318,17 +4318,6 @@ static void declare_esgs_ring(struct radv_shader_context *ctx)
 	LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
 }
 
-static uint8_t
-radv_nir_shader_wave_size(struct nir_shader *const *shaders, int shader_count,
-			  const struct radv_nir_compiler_options *options)
-{
-	if (shaders[0]->info.stage == MESA_SHADER_COMPUTE)
-		return options->cs_wave_size;
-	else if (shaders[0]->info.stage == MESA_SHADER_FRAGMENT)
-		return options->ps_wave_size;
-	return options->ge_wave_size;
-}
-
 static
 LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
                                        struct nir_shader *const *shaders,
@@ -4345,11 +4334,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		options->unsafe_math ? AC_FLOAT_MODE_UNSAFE_FP_MATH :
 				       AC_FLOAT_MODE_DEFAULT;
 
-	uint8_t wave_size = radv_nir_shader_wave_size(shaders,
-						      shader_count, options);
-
 	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
-			     options->family, float_mode, wave_size);
+			     options->family, float_mode, options->wave_size);
 	ctx.context = ctx.ac.context;
 
 	radv_nir_shader_info_init(&shader_info->info);
@@ -4750,6 +4736,7 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 			shader_info->gs.es_type = nir[0]->info.stage;
 		}
 	}
+	shader_info->info.wave_size = options->wave_size;
 }
 
 static void

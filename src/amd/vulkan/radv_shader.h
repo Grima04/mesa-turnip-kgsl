@@ -129,9 +129,7 @@ struct radv_nir_compiler_options {
 	enum chip_class chip_class;
 	uint32_t tess_offchip_block_dw_size;
 	uint32_t address32_hi;
-	uint8_t cs_wave_size;
-	uint8_t ps_wave_size;
-	uint8_t ge_wave_size;
+	uint8_t wave_size;
 };
 
 enum radv_ud_index {
@@ -182,6 +180,7 @@ struct radv_shader_info {
 	bool needs_multiview_view_index;
 	bool uses_invocation_id;
 	bool uses_prim_id;
+	uint8_t wave_size;
 	struct {
 		uint64_t ls_outputs_written;
 		uint8_t input_usage_mask[VERT_ATTRIB_MAX];
