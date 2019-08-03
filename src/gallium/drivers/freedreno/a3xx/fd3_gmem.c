@@ -49,12 +49,6 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 	enum a3xx_tile_mode tile_mode;
 	unsigned i;
 
-	if (bin_w) {
-		tile_mode = TILE_32X32;
-	} else {
-		tile_mode = LINEAR;
-	}
-
 	for (i = 0; i < A3XX_MAX_RENDER_TARGETS; i++) {
 		enum pipe_format pformat = 0;
 		enum a3xx_color_fmt format = 0;
@@ -65,6 +59,12 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 		uint32_t stride = 0;
 		uint32_t base = 0;
 		uint32_t offset = 0;
+
+		if (bin_w) {
+			tile_mode = TILE_32X32;
+		} else {
+			tile_mode = LINEAR;
+		}
 
 		if ((i < nr_bufs) && bufs[i]) {
 			struct pipe_surface *psurf = bufs[i];
@@ -82,7 +82,6 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 			}
 			slice = fd_resource_slice(rsc, psurf->u.tex.level);
 			format = fd3_pipe2color(pformat);
-			swap = fd3_pipe2swap(pformat);
 			if (decode_srgb)
 				srgb = util_format_is_srgb(pformat);
 			else
@@ -92,6 +91,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 
 			offset = fd_resource_offset(rsc, psurf->u.tex.level,
 					psurf->u.tex.first_layer);
+			swap = rsc->tile_mode ? WZYX : fd3_pipe2swap(pformat);
 
 			if (bin_w) {
 				stride = bin_w * rsc->cpp;
@@ -101,6 +101,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 				}
 			} else {
 				stride = slice->pitch * rsc->cpp;
+				tile_mode = rsc->tile_mode;
 			}
 		} else if (i < nr_bufs && bases) {
 			base = bases[i];

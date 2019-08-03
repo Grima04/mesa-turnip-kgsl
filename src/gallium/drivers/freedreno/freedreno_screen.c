@@ -85,7 +85,7 @@ static const struct debug_named_value debug_options[] = {
 		{"noindirect",FD_DBG_NOINDR, "Disable hw indirect draws (emulate on CPU)"},
 		{"noblit",    FD_DBG_NOBLIT, "Disable blitter (fallback to generic blit path)"},
 		{"hiprio",    FD_DBG_HIPRIO, "Force high-priority context"},
-		{"ttile",     FD_DBG_TTILE,  "Enable texture tiling (a2xx/a5xx)"},
+		{"ttile",     FD_DBG_TTILE,  "Enable texture tiling (a2xx/a3xx/a5xx)"},
 		{"perfcntrs", FD_DBG_PERFC,  "Expose performance counters"},
 		{"noubwc",    FD_DBG_NOUBWC, "Disable UBWC for all internal buffers"},
 		DEBUG_NAMED_VALUE_END

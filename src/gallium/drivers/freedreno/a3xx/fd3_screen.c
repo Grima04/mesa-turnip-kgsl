@@ -30,6 +30,7 @@
 #include "fd3_screen.h"
 #include "fd3_context.h"
 #include "fd3_format.h"
+#include "fd3_resource.h"
 
 #include "ir3/ir3_compiler.h"
 
@@ -106,4 +107,8 @@ fd3_screen_init(struct pipe_screen *pscreen)
 	screen->compiler = ir3_compiler_create(screen->dev, screen->gpu_id);
 	pscreen->context_create = fd3_context_create;
 	pscreen->is_format_supported = fd3_screen_is_format_supported;
+
+	screen->setup_slices = fd3_setup_slices;
+	if (fd_mesa_debug & FD_DBG_TTILE)
+		screen->tile_mode = fd3_tile_mode;
 }

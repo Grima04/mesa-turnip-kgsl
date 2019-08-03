@@ -188,6 +188,9 @@ fd_resource_ubwc_offset(struct fd_resource *rsc, unsigned level, unsigned layer)
 static inline bool
 fd_resource_level_linear(struct pipe_resource *prsc, int level)
 {
+	struct fd_screen *screen = fd_screen(prsc->screen);
+	debug_assert(!is_a3xx(screen));
+
 	unsigned w = u_minify(prsc->width0, level);
 	if (w < 16)
 		return true;
