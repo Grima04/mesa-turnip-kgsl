@@ -1127,7 +1127,10 @@ shader_variant_compile(struct radv_device *device,
 	options->tess_offchip_block_dw_size = device->tess_offchip_block_dw_size;
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
 
-	if (stage == MESA_SHADER_COMPUTE)
+	if ((stage == MESA_SHADER_GEOMETRY && !options->key.vs_common_out.as_ngg) ||
+	    gs_copy_shader)
+		options->wave_size = 64;
+	else if (stage == MESA_SHADER_COMPUTE)
 		options->wave_size = device->physical_device->cs_wave_size;
 	else if (stage == MESA_SHADER_FRAGMENT)
 		options->wave_size = device->physical_device->ps_wave_size;
