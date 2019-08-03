@@ -3645,23 +3645,6 @@ iris_store_fs_state(struct iris_context *ice,
        */
       ps.PositionXYOffsetSelect =
          wm_prog_data->uses_pos_offset ? POSOFFSET_SAMPLE : POSOFFSET_NONE;
-      ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
-      ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
-      /* ps._32PixelDispatchEnable is filled in at draw time. */
-
-      ps.DispatchGRFStartRegisterForConstantSetupData0 =
-         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
-      ps.DispatchGRFStartRegisterForConstantSetupData1 =
-         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 1);
-      ps.DispatchGRFStartRegisterForConstantSetupData2 =
-         brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
-
-      ps.KernelStartPointer0 =
-         KSP(shader) + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
-      ps.KernelStartPointer1 =
-         KSP(shader) + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
-      ps.KernelStartPointer2 =
-         KSP(shader) + brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
 
       if (prog_data->total_scratch) {
          struct iris_bo *bo =
@@ -3686,8 +3669,6 @@ iris_store_fs_state(struct iris_context *ice,
 #if GEN_GEN >= 9
       psx.PixelShaderPullsBary = wm_prog_data->pulls_bary;
       psx.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
-#else
-      psx.PixelShaderUsesInputCoverageMask = wm_prog_data->uses_sample_mask;
 #endif
    }
 }
@@ -4655,47 +4636,72 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                iris_get_scratch_space(ice, prog_data->total_scratch, stage);
             iris_use_pinned_bo(batch, bo, true);
          }
-#if GEN_GEN >= 9
-         if (stage == MESA_SHADER_FRAGMENT && wm_prog_data->uses_sample_mask) {
-            uint32_t *shader_ps = (uint32_t *) shader->derived_data;
-            uint32_t *shader_psx = shader_ps + GENX(3DSTATE_PS_length);
-            uint32_t ps_state[GENX(3DSTATE_PS_length)] = {0};
-            uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)] = {0};
-            struct iris_rasterizer_state *cso = ice->state.cso_rast;
+
+         if (stage == MESA_SHADER_FRAGMENT) {
+            UNUSED struct iris_rasterizer_state *cso = ice->state.cso_rast;
             struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
 
-           /* The docs for 3DSTATE_PS::32 Pixel Dispatch Enable say:
-            *
-            *    "When NUM_MULTISAMPLES = 16 or FORCE_SAMPLE_COUNT = 16,
-            *     SIMD32 Dispatch must not be enabled for PER_PIXEL dispatch
-            *     mode."
-            *
-            * 16x MSAA only exists on Gen9+, so we can skip this on Gen8.
-            */
-            iris_pack_command(GENX(3DSTATE_PS), &ps_state, ps) {
-               ps._32PixelDispatchEnable = wm_prog_data->dispatch_32 &&
-                  (cso_fb->samples != 16 || wm_prog_data->persample_dispatch);
+            uint32_t ps_state[GENX(3DSTATE_PS_length)] = {0};
+            iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
+               ps._8PixelDispatchEnable = wm_prog_data->dispatch_8;
+               ps._16PixelDispatchEnable = wm_prog_data->dispatch_16;
+               ps._32PixelDispatchEnable = wm_prog_data->dispatch_32;
+
+              /* The docs for 3DSTATE_PS::32 Pixel Dispatch Enable say:
+               *
+               *    "When NUM_MULTISAMPLES = 16 or FORCE_SAMPLE_COUNT = 16,
+               *     SIMD32 Dispatch must not be enabled for PER_PIXEL dispatch
+               *     mode."
+               *
+               * 16x MSAA only exists on Gen9+, so we can skip this on Gen8.
+               */
+               if (GEN_GEN >= 9 && cso_fb->samples == 16 &&
+                   !wm_prog_data->persample_dispatch) {
+                  assert(ps._8PixelDispatchEnable || ps._16PixelDispatchEnable);
+                  ps._32PixelDispatchEnable = false;
+               }
+
+               ps.DispatchGRFStartRegisterForConstantSetupData0 =
+                  brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 0);
+               ps.DispatchGRFStartRegisterForConstantSetupData1 =
+                  brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 1);
+               ps.DispatchGRFStartRegisterForConstantSetupData2 =
+                  brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, ps, 2);
+
+               ps.KernelStartPointer0 = KSP(shader) +
+                  brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
+               ps.KernelStartPointer1 = KSP(shader) +
+                  brw_wm_prog_data_prog_offset(wm_prog_data, ps, 1);
+               ps.KernelStartPointer2 = KSP(shader) +
+                  brw_wm_prog_data_prog_offset(wm_prog_data, ps, 2);
             }
 
-            iris_pack_command(GENX(3DSTATE_PS_EXTRA), &psx_state, psx) {
+            uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)] = {0};
+            iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
+#if GEN_GEN >= 9
                if (wm_prog_data->post_depth_coverage)
                   psx.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
-               else if (wm_prog_data->inner_coverage && cso->conservative_rasterization)
+               else if (wm_prog_data->inner_coverage &&
+                        cso->conservative_rasterization)
                   psx.InputCoverageMaskState = ICMS_INNER_CONSERVATIVE;
                else
                   psx.InputCoverageMaskState = ICMS_NORMAL;
+#else
+               psx.PixelShaderUsesInputCoverageMask =
+                  wm_prog_data->uses_sample_mask;
+#endif
             }
 
+            uint32_t *shader_ps = (uint32_t *) shader->derived_data;
+            uint32_t *shader_psx = shader_ps + GENX(3DSTATE_PS_length);
             iris_emit_merge(batch, shader_ps, ps_state,
                             GENX(3DSTATE_PS_length));
-            iris_emit_merge(batch,
-                            shader_psx,
-                            psx_state,
+            iris_emit_merge(batch, shader_psx, psx_state,
                             GENX(3DSTATE_PS_EXTRA_length));
-         } else
-#endif
+         } else {
             iris_batch_emit(batch, shader->derived_data,
                             iris_derived_program_state_size(stage));
+         }
       } else {
          if (stage == MESA_SHADER_TESS_EVAL) {
             iris_emit_cmd(batch, GENX(3DSTATE_HS), hs);
