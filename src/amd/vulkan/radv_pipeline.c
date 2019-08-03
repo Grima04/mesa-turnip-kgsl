@@ -178,6 +178,12 @@ static uint32_t get_hash_flags(struct radv_device *device)
 		hash_flags |= RADV_HASH_SHADER_NO_NGG;
 	if (device->instance->perftest_flags & RADV_PERFTEST_SISCHED)
 		hash_flags |= RADV_HASH_SHADER_SISCHED;
+	if (device->physical_device->cs_wave_size == 32)
+		hash_flags |= RADV_HASH_SHADER_CS_WAVE32;
+	if (device->physical_device->ps_wave_size == 32)
+		hash_flags |= RADV_HASH_SHADER_PS_WAVE32;
+	if (device->physical_device->ge_wave_size == 32)
+		hash_flags |= RADV_HASH_SHADER_GE_WAVE32;
 	return hash_flags;
 }
 
