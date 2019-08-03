@@ -375,9 +375,9 @@ if with_egl and not (with_platform_drm or with_platform_surfaceless or with_plat
   endif
 endif
 
-# Android uses emutls for versions <= P/28. For GLX_USE_TLS we need ELF TLS.
+# Android uses emutls for versions <= P/28. For USE_ELF_TLS we need ELF TLS.
 if not with_platform_android or get_option('platform-sdk-version') >= 29
-  pre_args += '-DGLX_USE_TLS'
+  pre_args += '-DUSE_ELF_TLS'
 endif
 
 if with_glx != 'disabled'
