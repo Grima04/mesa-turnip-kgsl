@@ -61,6 +61,7 @@ if with_tools.contains('all')
     'freedreno',
     'glsl',
     'intel',
+    'intel-ui',
     'nir',
     'nouveau',
     'xvmc',
