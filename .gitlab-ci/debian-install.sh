@@ -69,6 +69,7 @@ apt-get install -y \
       libelf-dev \
       libunwind-dev \
       libglvnd-dev \
+      libgtk-3-dev \
       python-mako \
       python3-mako \
       meson \
@@ -120,14 +121,14 @@ export          DRI2PROTO_VERSION=dri2proto-2.8
 export       LIBPCIACCESS_VERSION=libpciaccess-0.13.4
 export             LIBDRM_VERSION=libdrm-2.4.99
 export           XCBPROTO_VERSION=xcb-proto-1.13
-export         RANDRPROTO_VERSION=randrproto-1.3.0
-export          LIBXRANDR_VERSION=libXrandr-1.3.0
+export         RANDRPROTO_VERSION=randrproto-1.5.0
+export          LIBXRANDR_VERSION=libXrandr-1.5.0
 export             LIBXCB_VERSION=libxcb-1.13
 export       LIBXSHMFENCE_VERSION=libxshmfence-1.3
 export           LIBVDPAU_VERSION=libvdpau-1.1
 export              LIBVA_VERSION=libva-1.7.0
 export         LIBWAYLAND_VERSION=wayland-1.15.0
-export  WAYLAND_PROTOCOLS_VERSION=wayland-protocols-1.8
+export  WAYLAND_PROTOCOLS_VERSION=wayland-protocols-1.12
 
 wget $XORG_RELEASES/util/$XORGMACROS_VERSION.tar.bz2
 tar -xvf $XORGMACROS_VERSION.tar.bz2 && rm $XORGMACROS_VERSION.tar.bz2
