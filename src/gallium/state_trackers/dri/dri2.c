@@ -1020,70 +1020,24 @@ dri2_create_image_with_modifiers(__DRIscreen *dri_screen,
                                    loaderPrivate);
 }
 
-static GLboolean
-dri2_query_image(__DRIimage *image, int attrib, int *value)
+static bool
+dri2_query_image_common(__DRIimage *image, int attrib, int *value)
 {
-   struct winsys_handle whandle;
-   unsigned usage;
-
-   if (image->use & __DRI_IMAGE_USE_BACKBUFFER)
-      usage = PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
-   else
-      usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
-
-   memset(&whandle, 0, sizeof(whandle));
-
    switch (attrib) {
-   case __DRI_IMAGE_ATTRIB_STRIDE:
-      whandle.type = WINSYS_HANDLE_TYPE_KMS;
-      if (!image->texture->screen->resource_get_handle(image->texture->screen,
-            NULL, image->texture, &whandle, usage))
-         return GL_FALSE;
-      *value = whandle.stride;
-      return GL_TRUE;
-   case __DRI_IMAGE_ATTRIB_OFFSET:
-      whandle.type = WINSYS_HANDLE_TYPE_KMS;
-      if (!image->texture->screen->resource_get_handle(image->texture->screen,
-            NULL, image->texture, &whandle, usage))
-         return GL_FALSE;
-      *value = whandle.offset;
-      return GL_TRUE;
-   case __DRI_IMAGE_ATTRIB_HANDLE:
-      whandle.type = WINSYS_HANDLE_TYPE_KMS;
-      if (!image->texture->screen->resource_get_handle(image->texture->screen,
-         NULL, image->texture, &whandle, usage))
-         return GL_FALSE;
-      *value = whandle.handle;
-      return GL_TRUE;
-   case __DRI_IMAGE_ATTRIB_NAME:
-      whandle.type = WINSYS_HANDLE_TYPE_SHARED;
-      if (!image->texture->screen->resource_get_handle(image->texture->screen,
-         NULL, image->texture, &whandle, usage))
-         return GL_FALSE;
-      *value = whandle.handle;
-      return GL_TRUE;
-   case __DRI_IMAGE_ATTRIB_FD:
-      whandle.type= WINSYS_HANDLE_TYPE_FD;
-      if (!image->texture->screen->resource_get_handle(image->texture->screen,
-            NULL, image->texture, &whandle, usage))
-         return GL_FALSE;
-
-      *value = whandle.handle;
-      return GL_TRUE;
    case __DRI_IMAGE_ATTRIB_FORMAT:
       *value = image->dri_format;
-      return GL_TRUE;
+      return true;
    case __DRI_IMAGE_ATTRIB_WIDTH:
       *value = image->texture->width0;
-      return GL_TRUE;
+      return true;
    case __DRI_IMAGE_ATTRIB_HEIGHT:
       *value = image->texture->height0;
-      return GL_TRUE;
+      return true;
    case __DRI_IMAGE_ATTRIB_COMPONENTS:
       if (image->dri_components == 0)
-         return GL_FALSE;
+         return false;
       *value = image->dri_components;
-      return GL_TRUE;
+      return true;
    case __DRI_IMAGE_ATTRIB_FOURCC:
       if (image->dri_fourcc) {
          *value = image->dri_fourcc;
@@ -1092,37 +1046,93 @@ dri2_query_image(__DRIimage *image, int attrib, int *value)
 
          map = dri2_get_mapping_by_format(image->dri_format);
          if (!map)
-            return GL_FALSE;
+            return false;
 
          *value = map->dri_fourcc;
       }
-      return GL_TRUE;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+dri2_query_image_by_resource_handle(__DRIimage *image, int attrib, int *value)
+{
+   struct pipe_screen *pscreen = image->texture->screen;
+   struct winsys_handle whandle;
+   unsigned usage;
+   memset(&whandle, 0, sizeof(whandle));
+
+   switch (attrib) {
+   case __DRI_IMAGE_ATTRIB_STRIDE:
+   case __DRI_IMAGE_ATTRIB_OFFSET:
+   case __DRI_IMAGE_ATTRIB_HANDLE:
+      whandle.type = WINSYS_HANDLE_TYPE_KMS;
+      break;
+   case __DRI_IMAGE_ATTRIB_NAME:
+      whandle.type = WINSYS_HANDLE_TYPE_SHARED;
+      break;
+   case __DRI_IMAGE_ATTRIB_FD:
+      whandle.type = WINSYS_HANDLE_TYPE_FD;
+      break;
    case __DRI_IMAGE_ATTRIB_NUM_PLANES:
       *value = 1;
-      return GL_TRUE;
+      return true;
    case __DRI_IMAGE_ATTRIB_MODIFIER_UPPER:
-      whandle.type = WINSYS_HANDLE_TYPE_KMS;
-      whandle.modifier = DRM_FORMAT_MOD_INVALID;
-      if (!image->texture->screen->resource_get_handle(image->texture->screen,
-            NULL, image->texture, &whandle, usage))
-         return GL_FALSE;
-      if (whandle.modifier == DRM_FORMAT_MOD_INVALID)
-         return GL_FALSE;
-      *value = (whandle.modifier >> 32) & 0xffffffff;
-      return GL_TRUE;
    case __DRI_IMAGE_ATTRIB_MODIFIER_LOWER:
       whandle.type = WINSYS_HANDLE_TYPE_KMS;
       whandle.modifier = DRM_FORMAT_MOD_INVALID;
-      if (!image->texture->screen->resource_get_handle(image->texture->screen,
-            NULL, image->texture, &whandle, usage))
-         return GL_FALSE;
-      if (whandle.modifier == DRM_FORMAT_MOD_INVALID)
-         return GL_FALSE;
-      *value = whandle.modifier & 0xffffffff;
-      return GL_TRUE;
+      break;
    default:
-      return GL_FALSE;
+      return false;
    }
+
+   if (image->use & __DRI_IMAGE_USE_BACKBUFFER)
+      usage = PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
+   else
+      usage = PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
+
+   if (!pscreen->resource_get_handle(pscreen, NULL, image->texture,
+                                     &whandle, usage))
+      return false;
+
+   switch (attrib) {
+   case __DRI_IMAGE_ATTRIB_STRIDE:
+      *value = whandle.stride;
+      return true;
+   case __DRI_IMAGE_ATTRIB_OFFSET:
+      *value = whandle.offset;
+      return true;
+   case __DRI_IMAGE_ATTRIB_HANDLE:
+   case __DRI_IMAGE_ATTRIB_NAME:
+   case __DRI_IMAGE_ATTRIB_FD:
+      *value = whandle.handle;
+      return true;
+   case __DRI_IMAGE_ATTRIB_MODIFIER_UPPER:
+      if (whandle.modifier == DRM_FORMAT_MOD_INVALID)
+         return false;
+      *value = (whandle.modifier >> 32) & 0xffffffff;
+      return true;
+   case __DRI_IMAGE_ATTRIB_MODIFIER_LOWER:
+      if (whandle.modifier == DRM_FORMAT_MOD_INVALID)
+         return false;
+      *value = whandle.modifier & 0xffffffff;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static GLboolean
+dri2_query_image(__DRIimage *image, int attrib, int *value)
+{
+   if (dri2_query_image_common(image, attrib, value))
+      return GL_TRUE;
+   else if (dri2_query_image_by_resource_handle(image, attrib, value))
+      return GL_TRUE;
+   else
+      return GL_FALSE;
 }
 
 static __DRIimage *
