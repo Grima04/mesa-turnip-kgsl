@@ -1219,7 +1219,8 @@ emit_varying_read(
 }
 
 void
-emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override)
+emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
+                unsigned nr_components)
 {
         unsigned dest = 0;
 
@@ -1234,7 +1235,10 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override)
         unsigned uniform = ((uintptr_t) val) - 1;
 
         /* Emit the read itself -- this is never indirect */
-        emit_ubo_read(ctx, dest, uniform, NULL, 0);
+        midgard_instruction *ins =
+                emit_ubo_read(ctx, dest, uniform, NULL, 0);
+
+        ins->mask = mask_of(nr_components);
 }
 
 static void
@@ -1440,7 +1444,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
-                emit_sysval_read(ctx, &instr->instr, -1);
+                emit_sysval_read(ctx, &instr->instr, -1, 3);
                 break;
 
         default:
@@ -1667,7 +1671,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
                 break;
         case nir_texop_txs:
-                emit_sysval_read(ctx, &instr->instr, -1);
+                emit_sysval_read(ctx, &instr->instr, -1, 4);
                 break;
         default:
                 unreachable("Unhanlded texture op");
