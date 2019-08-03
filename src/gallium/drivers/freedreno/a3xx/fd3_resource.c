@@ -40,9 +40,17 @@ setup_slices(struct fd_resource *rsc, uint32_t alignment, enum pipe_format forma
 		struct fd_resource_slice *slice = fd_resource_slice(rsc, level);
 		uint32_t blocks;
 
-		slice->pitch = width = align(width, pitchalign);
+		if (rsc->tile_mode) {
+			width = util_next_power_of_two(width);
+			height = util_next_power_of_two(height);
+			uint32_t tpitch = width * rsc->cpp;
+			slice->pitch = (tpitch > 32) ? tpitch : 32;
+		} else {
+			slice->pitch = width = align(width, pitchalign);
+		}
+
 		slice->offset = size;
-		blocks = util_format_get_nblocks(format, width, height);
+		blocks = util_format_get_nblocks(format, slice->pitch, height);
 		/* 1d array and 2d array textures must all have the same layer size
 		 * for each miplevel on a3xx. 3d textures can have different layer
 		 * sizes for high levels, but the hw auto-sizer is buggy (or at least
@@ -94,6 +102,15 @@ ok_format(enum pipe_format pfmt)
 
 	if (fmt == ~0)
 		return false;
+
+	switch (pfmt) {
+	case PIPE_FORMAT_R8_UINT:
+	case PIPE_FORMAT_R8_SINT:
+	case PIPE_FORMAT_Z32_FLOAT:
+		return false;
+	default:
+		break;
+	}
 
 	return true;
 }
