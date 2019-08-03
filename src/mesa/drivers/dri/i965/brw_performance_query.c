@@ -1736,6 +1736,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
    brw->perfquery.perf = gen_perf_new(brw, drmIoctl);
 
    init_pipeline_statistic_query_registers(brw);
+   brw_perf_query_register_mdapi_statistic_query(brw);
 
    if ((oa_metrics_kernel_support(screen->fd, devinfo)) &&
        (gen_perf_load_oa_metrics(brw->perfquery.perf, screen->fd, devinfo)))
