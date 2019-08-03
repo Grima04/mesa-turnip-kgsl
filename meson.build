@@ -375,7 +375,11 @@ if with_egl and not (with_platform_drm or with_platform_surfaceless or with_plat
   endif
 endif
 
-pre_args += '-DGLX_USE_TLS'
+# Android uses emutls for versions <= P/28. For GLX_USE_TLS we need ELF TLS.
+if not with_platform_android or get_option('platform-sdk-version') >= 29
+  pre_args += '-DGLX_USE_TLS'
+endif
+
 if with_glx != 'disabled'
   if not (with_platform_x11 and with_any_opengl)
     error('Cannot build GLX support without X11 platform support and at least one OpenGL API')
