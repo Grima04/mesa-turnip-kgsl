@@ -72,17 +72,11 @@ apt-get install -y \
       libgtk-3-dev \
       python-mako \
       python3-mako \
-      meson \
-      scons
-
-# autotools build deps
-apt-get install -y \
-      automake \
-      libtool \
       bison \
       flex \
       gettext \
-      make
+      meson \
+      scons
 
 # Cross-build Mesa deps
 for arch in $CROSS_ARCHITECTURES; do
@@ -215,9 +209,7 @@ apt-get install -y libxml2-utils
 
 # Remove unused packages
 apt-get purge -y \
-      automake \
       git \
-      libtool \
       curl \
       unzip \
       gnupg
