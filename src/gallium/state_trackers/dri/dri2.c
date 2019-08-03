@@ -1138,10 +1138,81 @@ dri2_resource_get_param(__DRIimage *image, enum pipe_resource_param param,
                                       param, value);
 }
 
+static bool
+dri2_query_image_by_resource_param(__DRIimage *image, int attrib, int *value)
+{
+   enum pipe_resource_param param;
+   uint64_t res_param;
+
+   if (!image->texture->screen->resource_get_param)
+      return false;
+
+   switch (attrib) {
+   case __DRI_IMAGE_ATTRIB_STRIDE:
+      param = PIPE_RESOURCE_PARAM_STRIDE;
+      break;
+   case __DRI_IMAGE_ATTRIB_OFFSET:
+      param = PIPE_RESOURCE_PARAM_OFFSET;
+      break;
+   case __DRI_IMAGE_ATTRIB_NUM_PLANES:
+      param = PIPE_RESOURCE_PARAM_NPLANES;
+      break;
+   case __DRI_IMAGE_ATTRIB_MODIFIER_UPPER:
+   case __DRI_IMAGE_ATTRIB_MODIFIER_LOWER:
+      param = PIPE_RESOURCE_PARAM_MODIFIER;
+      break;
+   case __DRI_IMAGE_ATTRIB_HANDLE:
+      param = PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS;
+      break;
+   case __DRI_IMAGE_ATTRIB_NAME:
+      param = PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED;
+      break;
+   case __DRI_IMAGE_ATTRIB_FD:
+      param = PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD;
+      break;
+   default:
+      return false;
+   }
+
+   if (!dri2_resource_get_param(image, param, &res_param))
+      return false;
+
+   switch (attrib) {
+   case __DRI_IMAGE_ATTRIB_STRIDE:
+   case __DRI_IMAGE_ATTRIB_OFFSET:
+   case __DRI_IMAGE_ATTRIB_NUM_PLANES:
+      if (res_param > INT_MAX)
+         return false;
+      *value = (int)res_param;
+      return true;
+   case __DRI_IMAGE_ATTRIB_HANDLE:
+   case __DRI_IMAGE_ATTRIB_NAME:
+   case __DRI_IMAGE_ATTRIB_FD:
+      if (res_param > UINT_MAX)
+         return false;
+      *value = (int)res_param;
+      return true;
+   case __DRI_IMAGE_ATTRIB_MODIFIER_UPPER:
+      if (res_param == DRM_FORMAT_MOD_INVALID)
+         return false;
+      *value = (res_param >> 32) & 0xffffffff;
+      return true;
+   case __DRI_IMAGE_ATTRIB_MODIFIER_LOWER:
+      if (res_param == DRM_FORMAT_MOD_INVALID)
+         return false;
+      *value = res_param & 0xffffffff;
+      return true;
+   default:
+      return false;
+   }
+}
+
 static GLboolean
 dri2_query_image(__DRIimage *image, int attrib, int *value)
 {
    if (dri2_query_image_common(image, attrib, value))
+      return GL_TRUE;
+   else if (dri2_query_image_by_resource_param(image, attrib, value))
       return GL_TRUE;
    else if (dri2_query_image_by_resource_handle(image, attrib, value))
       return GL_TRUE;
