@@ -505,6 +505,9 @@ struct gen_perf_context {
    int n_query_instances;
 };
 
+void gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
+                           const struct gen_device_info *devinfo,
+                           int drm_fd);
 void gen_perf_init_context(struct gen_perf_context *perf_ctx,
                            struct gen_perf_config *perf_cfg,
                            void * ctx,  /* driver context (eg, brw_context) */
@@ -532,58 +535,6 @@ gen_perf_query_counter_get_size(const struct gen_perf_query_counter *counter)
    }
 }
 
-static inline struct gen_perf_query_info *
-gen_perf_query_append_query_info(struct gen_perf_config *perf, int max_counters)
-{
-   struct gen_perf_query_info *query;
-
-   perf->queries = reralloc(perf, perf->queries,
-                            struct gen_perf_query_info,
-                            ++perf->n_queries);
-   query = &perf->queries[perf->n_queries - 1];
-   memset(query, 0, sizeof(*query));
-
-   if (max_counters > 0) {
-      query->max_counters = max_counters;
-      query->counters =
-         rzalloc_array(perf, struct gen_perf_query_counter, max_counters);
-   }
-
-   return query;
-}
-
-static inline void
-gen_perf_query_info_add_stat_reg(struct gen_perf_query_info *query,
-                                 uint32_t reg,
-                                 uint32_t numerator,
-                                 uint32_t denominator,
-                                 const char *name,
-                                 const char *description)
-{
-   struct gen_perf_query_counter *counter;
-
-   assert(query->n_counters < query->max_counters);
-
-   counter = &query->counters[query->n_counters];
-   counter->name = name;
-   counter->desc = description;
-   counter->type = GEN_PERF_COUNTER_TYPE_RAW;
-   counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_UINT64;
-   counter->offset = sizeof(uint64_t) * query->n_counters;
-   counter->pipeline_stat.reg = reg;
-   counter->pipeline_stat.numerator = numerator;
-   counter->pipeline_stat.denominator = denominator;
-
-   query->n_counters++;
-}
-
-static inline void
-gen_perf_query_info_add_basic_stat_reg(struct gen_perf_query_info *query,
-                                       uint32_t reg, const char *name)
-{
-   gen_perf_query_info_add_stat_reg(query, reg, 1, 1, name, name);
-}
-
 static inline struct gen_perf_config *
 gen_perf_new(void *ctx)
 {
@@ -591,8 +542,6 @@ gen_perf_new(void *ctx)
    return perf;
 }
 
-bool gen_perf_load_oa_metrics(struct gen_perf_config *perf, int fd,
-                              const struct gen_device_info *devinfo);
 bool gen_perf_load_metric_id(struct gen_perf_config *perf, const char *guid,
                              uint64_t *metric_id);
 
@@ -605,10 +554,6 @@ void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                                       const uint32_t *start,
                                       const uint32_t *end);
 void gen_perf_query_result_clear(struct gen_perf_query_result *result);
-void gen_perf_query_register_mdapi_statistic_query(const struct gen_device_info *devinfo,
-                                                   struct gen_perf_config *perf);
-void gen_perf_query_register_mdapi_oa_query(const struct gen_device_info *devinfo,
-                                            struct gen_perf_config *perf);
 uint64_t gen_perf_query_get_metric_id(struct gen_perf_config *perf,
                                       const struct gen_perf_query_info *query);
 struct oa_sample_buf * gen_perf_get_free_sample_buf(struct gen_perf_context *perf);

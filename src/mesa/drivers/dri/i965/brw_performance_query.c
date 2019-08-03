@@ -420,94 +420,6 @@ brw_delete_perf_query(struct gl_context *ctx,
 }
 
 /******************************************************************************/
-
-static void
-init_pipeline_statistic_query_registers(struct brw_context *brw)
-{
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   struct gen_perf_config *perf = brw->perf_ctx.perf;
-   struct gen_perf_query_info *query =
-      gen_perf_query_append_query_info(perf, MAX_STAT_COUNTERS);
-
-   query->kind = GEN_PERF_QUERY_TYPE_PIPELINE;
-   query->name = "Pipeline Statistics Registers";
-
-   gen_perf_query_info_add_basic_stat_reg(query, IA_VERTICES_COUNT,
-                                            "N vertices submitted");
-   gen_perf_query_info_add_basic_stat_reg(query, IA_PRIMITIVES_COUNT,
-                                            "N primitives submitted");
-   gen_perf_query_info_add_basic_stat_reg(query, VS_INVOCATION_COUNT,
-                                            "N vertex shader invocations");
-
-   if (devinfo->gen == 6) {
-      gen_perf_query_info_add_stat_reg(query, GEN6_SO_PRIM_STORAGE_NEEDED, 1, 1,
-                                       "SO_PRIM_STORAGE_NEEDED",
-                                       "N geometry shader stream-out primitives (total)");
-      gen_perf_query_info_add_stat_reg(query, GEN6_SO_NUM_PRIMS_WRITTEN, 1, 1,
-                                       "SO_NUM_PRIMS_WRITTEN",
-                                       "N geometry shader stream-out primitives (written)");
-   } else {
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(0), 1, 1,
-                                       "SO_PRIM_STORAGE_NEEDED (Stream 0)",
-                                       "N stream-out (stream 0) primitives (total)");
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(1), 1, 1,
-                                       "SO_PRIM_STORAGE_NEEDED (Stream 1)",
-                                       "N stream-out (stream 1) primitives (total)");
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(2), 1, 1,
-                                       "SO_PRIM_STORAGE_NEEDED (Stream 2)",
-                                       "N stream-out (stream 2) primitives (total)");
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(3), 1, 1,
-                                       "SO_PRIM_STORAGE_NEEDED (Stream 3)",
-                                       "N stream-out (stream 3) primitives (total)");
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(0), 1, 1,
-                                       "SO_NUM_PRIMS_WRITTEN (Stream 0)",
-                                       "N stream-out (stream 0) primitives (written)");
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(1), 1, 1,
-                                       "SO_NUM_PRIMS_WRITTEN (Stream 1)",
-                                       "N stream-out (stream 1) primitives (written)");
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(2), 1, 1,
-                                       "SO_NUM_PRIMS_WRITTEN (Stream 2)",
-                                       "N stream-out (stream 2) primitives (written)");
-      gen_perf_query_info_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(3), 1, 1,
-                                       "SO_NUM_PRIMS_WRITTEN (Stream 3)",
-                                       "N stream-out (stream 3) primitives (written)");
-   }
-
-   gen_perf_query_info_add_basic_stat_reg(query, HS_INVOCATION_COUNT,
-                                          "N TCS shader invocations");
-   gen_perf_query_info_add_basic_stat_reg(query, DS_INVOCATION_COUNT,
-                                          "N TES shader invocations");
-
-   gen_perf_query_info_add_basic_stat_reg(query, GS_INVOCATION_COUNT,
-                                          "N geometry shader invocations");
-   gen_perf_query_info_add_basic_stat_reg(query, GS_PRIMITIVES_COUNT,
-                                          "N geometry shader primitives emitted");
-
-   gen_perf_query_info_add_basic_stat_reg(query, CL_INVOCATION_COUNT,
-                                          "N primitives entering clipping");
-   gen_perf_query_info_add_basic_stat_reg(query, CL_PRIMITIVES_COUNT,
-                                          "N primitives leaving clipping");
-
-   if (devinfo->is_haswell || devinfo->gen == 8) {
-      gen_perf_query_info_add_stat_reg(query, PS_INVOCATION_COUNT, 1, 4,
-                                       "N fragment shader invocations",
-                                       "N fragment shader invocations");
-   } else {
-      gen_perf_query_info_add_basic_stat_reg(query, PS_INVOCATION_COUNT,
-                                             "N fragment shader invocations");
-   }
-
-   gen_perf_query_info_add_basic_stat_reg(query, PS_DEPTH_COUNT,
-                                          "N z-pass fragments");
-
-   if (devinfo->gen >= 7) {
-      gen_perf_query_info_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
-                                             "N compute shader invocations");
-   }
-
-   query->data_size = sizeof(uint64_t) * query->n_counters;
-}
-
 /* gen_device_info will have incorrect default topology values for unsupported kernels.
  * verify kernel support to ensure OA metrics are accurate.
  */
@@ -620,12 +532,10 @@ brw_init_perf_query_info(struct gl_context *ctx)
    gen_perf_init_context(perf_ctx, perf_cfg, brw, brw->bufmgr, devinfo,
                          brw->hw_ctx, brw->screen->driScrnPriv->fd);
 
-   init_pipeline_statistic_query_registers(brw);
-   gen_perf_query_register_mdapi_statistic_query(devinfo, perf_cfg);
+   if (!oa_metrics_kernel_support(perf_ctx->drm_fd, devinfo))
+      return 0;
 
-   if ((oa_metrics_kernel_support(perf_ctx->drm_fd, devinfo)) &&
-       (gen_perf_load_oa_metrics(perf_cfg, perf_ctx->drm_fd, devinfo)))
-      gen_perf_query_register_mdapi_oa_query(devinfo, perf_cfg);
+   gen_perf_init_metrics(perf_cfg, devinfo, perf_ctx->drm_fd);
 
    return perf_cfg->n_queries;
 }
