@@ -278,10 +278,12 @@ mir_upload_ins(struct midgard_instruction ins)
         return heap;
 }
 
-static inline void
+static inline midgard_instruction *
 emit_mir_instruction(struct compiler_context *ctx, struct midgard_instruction ins)
 {
-        list_addtail(&(mir_upload_ins(ins))->link, &ctx->current_block->instructions);
+        midgard_instruction *u = mir_upload_ins(ins);
+        list_addtail(&u->link, &ctx->current_block->instructions);
+        return u;
 }
 
 static inline struct midgard_instruction *
@@ -526,7 +528,7 @@ void mir_create_pipeline_registers(compiler_context *ctx);
 void
 midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count);
 
-void
+midgard_instruction *
 emit_ubo_read(
         compiler_context *ctx,
         unsigned dest,

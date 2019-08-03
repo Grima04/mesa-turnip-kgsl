@@ -1139,7 +1139,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 /* Uniforms and UBOs use a shared code path, as uniforms are just (slightly
  * optimized) versions of UBO #0 */
 
-void
+midgard_instruction *
 emit_ubo_read(
         compiler_context *ctx,
         unsigned dest,
@@ -1164,7 +1164,7 @@ emit_ubo_read(
 
         ins.load_store.arg_1 = index;
 
-        emit_mir_instruction(ctx, ins);
+        return emit_mir_instruction(ctx, ins);
 }
 
 static void
