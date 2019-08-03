@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 import argparse
-import subprocess
 import os
+import platform
+import subprocess
 
 # This list contains symbols that _might_ be exported for some platforms
 PLATFORM_SYMBOLS = [
@@ -23,13 +24,22 @@ def get_symbols(nm, lib):
     List all the (non platform-specific) symbols exported by the library
     '''
     symbols = []
-    output = subprocess.check_output([nm, '--format=bsd', '-D', '--defined-only', lib],
+    platform_name = platform.system()
+    output = subprocess.check_output([nm, '-gP', lib],
                                      stderr=open(os.devnull, 'w')).decode("ascii")
     for line in output.splitlines():
-        (_, _, symbol_name) = line.split()
-        if symbol_name in PLATFORM_SYMBOLS:
+        fields = line.split()
+        if len(fields) == 2 or fields[1] == 'U':
             continue
+        symbol_name = fields[0]
+        if platform_name == 'Linux':
+            if symbol_name in PLATFORM_SYMBOLS:
+                continue
+        elif platform_name == 'Darwin':
+            assert symbol_name[0] == '_'
+            symbol_name = symbol_name[1:]
         symbols.append(symbol_name)
+
     return symbols
 
 
