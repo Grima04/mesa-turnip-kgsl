@@ -139,7 +139,16 @@ lima_program_optimize_vs_nir(struct nir_shader *s)
 void
 lima_program_optimize_fs_nir(struct nir_shader *s)
 {
+   BITSET_DECLARE(alu_lower, nir_num_opcodes) = {0};
    bool progress;
+
+   BITSET_SET(alu_lower, nir_op_frcp);
+   BITSET_SET(alu_lower, nir_op_frsq);
+   BITSET_SET(alu_lower, nir_op_flog2);
+   BITSET_SET(alu_lower, nir_op_fexp2);
+   BITSET_SET(alu_lower, nir_op_fsqrt);
+   BITSET_SET(alu_lower, nir_op_fsin);
+   BITSET_SET(alu_lower, nir_op_fcos);
 
    NIR_PASS_V(s, nir_lower_fragcoord_wtrans);
    NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
@@ -150,7 +159,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
       progress = false;
 
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
-      //NIR_PASS(progress, s, nir_lower_alu_to_scalar, NULL);
+      NIR_PASS(progress, s, nir_lower_alu_to_scalar, alu_lower);
       NIR_PASS(progress, s, nir_lower_phis_to_scalar);
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_remove_phis);
