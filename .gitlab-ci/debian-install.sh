@@ -219,6 +219,5 @@ apt-get purge -y \
       libtool \
       curl \
       unzip \
-      gnupg \
-      software-properties-common
+      gnupg
 apt-get autoremove -y --purge
