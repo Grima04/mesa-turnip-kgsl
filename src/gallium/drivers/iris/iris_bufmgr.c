@@ -180,6 +180,15 @@ find_and_ref_external_bo(struct hash_table *ht, unsigned int key)
 
    if (bo) {
       assert(bo->external);
+      assert(!bo->reusable);
+
+      /* Being non-reusable, the BO cannot be in the cache lists, but it
+       * may be in the zombie list if it had reached zero references, but
+       * we hadn't yet closed it...and then reimported the same BO.  If it
+       * is, then remove it since it's now been resurrected.
+       */
+      if (bo->head.prev || bo->head.next)
+         list_del(&bo->head);
 
       iris_bo_reference(bo);
    }
@@ -701,6 +710,18 @@ bo_close(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
+   if (bo->external) {
+      struct hash_entry *entry;
+
+      if (bo->global_name) {
+         entry = _mesa_hash_table_search(bufmgr->name_table, &bo->global_name);
+         _mesa_hash_table_remove(bufmgr->name_table, entry);
+      }
+
+      entry = _mesa_hash_table_search(bufmgr->handle_table, &bo->gem_handle);
+      _mesa_hash_table_remove(bufmgr->handle_table, entry);
+   }
+
    /* Close this object */
    struct drm_gem_close close = { .handle = bo->gem_handle };
    int ret = gen_ioctl(bufmgr->fd, DRM_IOCTL_GEM_CLOSE, &close);
@@ -731,18 +752,6 @@ bo_free(struct iris_bo *bo)
    if (bo->map_gtt) {
       VG_NOACCESS(bo->map_gtt, bo->size);
       munmap(bo->map_gtt, bo->size);
-   }
-
-   if (bo->external) {
-      struct hash_entry *entry;
-
-      if (bo->global_name) {
-         entry = _mesa_hash_table_search(bufmgr->name_table, &bo->global_name);
-         _mesa_hash_table_remove(bufmgr->name_table, entry);
-      }
-
-      entry = _mesa_hash_table_search(bufmgr->handle_table, &bo->gem_handle);
-      _mesa_hash_table_remove(bufmgr->handle_table, entry);
    }
 
    if (bo->idle) {
