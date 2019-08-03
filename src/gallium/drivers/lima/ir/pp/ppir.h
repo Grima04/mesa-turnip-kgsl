@@ -346,6 +346,11 @@ typedef struct ppir_compiler {
    /* for regalloc spilling debug */
    int force_spilling;
 
+   /* shaderdb */
+   int num_loops;
+   int num_spills;
+   int num_fills;
+
    ppir_block *discard_block;
 } ppir_compiler;
 

@@ -388,6 +388,12 @@ typedef struct gpir_compiler {
 
    struct lima_vs_shader_state *prog;
    int constant_base;
+
+   /* shaderdb */
+   int num_instr;
+   int num_loops;
+   int num_spills;
+   int num_fills;
 } gpir_compiler;
 
 #define GPIR_VALUE_REG_NUM 11

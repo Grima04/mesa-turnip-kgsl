@@ -36,6 +36,7 @@
 #define LIMA_DEBUG_GP      (1 << 0)
 #define LIMA_DEBUG_PP      (1 << 1)
 #define LIMA_DEBUG_DUMP    (1 << 2)
+#define LIMA_DEBUG_SHADERDB (1 << 3)
 
 extern uint32_t lima_debug;
 extern FILE *lima_dump_command_stream;

@@ -214,6 +214,7 @@ static void *
 lima_create_fs_state(struct pipe_context *pctx,
                      const struct pipe_shader_state *cso)
 {
+   struct lima_context *ctx = lima_context(pctx);
    struct lima_screen *screen = lima_screen(pctx->screen);
    struct lima_fs_shader_state *so = rzalloc(NULL, struct lima_fs_shader_state);
 
@@ -234,7 +235,7 @@ lima_create_fs_state(struct pipe_context *pctx,
    if (lima_debug & LIMA_DEBUG_PP)
       nir_print_shader(nir, stdout);
 
-   if (!ppir_compile_nir(so, nir, screen->pp_ra)) {
+   if (!ppir_compile_nir(so, nir, screen->pp_ra, &ctx->debug)) {
       ralloc_free(so);
       return NULL;
    }
@@ -306,6 +307,7 @@ static void *
 lima_create_vs_state(struct pipe_context *pctx,
                      const struct pipe_shader_state *cso)
 {
+   struct lima_context *ctx = lima_context(pctx);
    struct lima_vs_shader_state *so = rzalloc(NULL, struct lima_vs_shader_state);
 
    if (!so)
@@ -325,7 +327,7 @@ lima_create_vs_state(struct pipe_context *pctx,
    if (lima_debug & LIMA_DEBUG_GP)
       nir_print_shader(nir, stdout);
 
-   if (!gpir_compile_nir(so, nir)) {
+   if (!gpir_compile_nir(so, nir, &ctx->debug)) {
       ralloc_free(so);
       return NULL;
    }

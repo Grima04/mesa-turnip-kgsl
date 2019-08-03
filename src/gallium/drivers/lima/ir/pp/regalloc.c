@@ -392,6 +392,7 @@ static ppir_alu_node* ppir_update_spilled_src(ppir_compiler *comp,
    if (!load_node)
       return NULL;
    list_addtail(&load_node->list, &node->list);
+   comp->num_fills++;
 
    ppir_load_node *load = ppir_node_to_load(load_node);
 
@@ -484,6 +485,7 @@ static bool ppir_update_spilled_dest(ppir_compiler *comp, ppir_block *block,
    if (!load_node)
       return NULL;
    list_addtail(&load_node->list, &node->list);
+   comp->num_fills++;
 
    ppir_load_node *load = ppir_node_to_load(load_node);
 
@@ -533,6 +535,7 @@ static bool ppir_update_spilled_dest(ppir_compiler *comp, ppir_block *block,
    if (!store_node)
       return false;
    list_addtail(&store_node->list, &node->list);
+   comp->num_spills++;
 
    ppir_store_node *store = ppir_node_to_store(store_node);
 

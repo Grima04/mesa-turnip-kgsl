@@ -440,6 +440,8 @@ static const struct debug_named_value debug_options[] = {
           "print PP shader compiler result of each stage" },
         { "dump",     LIMA_DEBUG_DUMP,
           "dump GPU command stream to $PWD/lima.dump" },
+        { "shaderdb", LIMA_DEBUG_SHADERDB,
+          "print shader information for shaderdb" },
         { NULL }
 };
 

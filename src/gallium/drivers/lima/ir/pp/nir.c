@@ -27,6 +27,8 @@
 #include "util/ralloc.h"
 #include "util/bitscan.h"
 #include "compiler/nir/nir.h"
+#include "pipe/p_state.h"
+
 
 #include "ppir.h"
 
@@ -562,8 +564,30 @@ static void ppir_add_ordering_deps(ppir_compiler *comp)
    }
 }
 
+static void ppir_print_shader_db(struct nir_shader *nir, ppir_compiler *comp,
+                                 const struct pipe_debug_callback *debug)
+{
+   const struct shader_info *info = &nir->info;
+   char *shaderdb;
+   int ret = asprintf(&shaderdb,
+                      "%s shader: %d inst, %d loops, %d:%d spills:fills\n",
+                      gl_shader_stage_name(info->stage),
+                      comp->cur_instr_index,
+                      comp->num_loops,
+                      comp->num_spills,
+                      comp->num_fills);
+   assert(ret >= 0);
+
+   if (lima_debug & LIMA_DEBUG_SHADERDB)
+      fprintf(stderr, "SHADER-DB: %s\n", shaderdb);
+
+   pipe_debug_message(debug, SHADER_INFO, "%s", shaderdb);
+   free(shaderdb);
+}
+
 bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
-                      struct ra_regs *ra)
+                      struct ra_regs *ra,
+                      const struct pipe_debug_callback *debug)
 {
    nir_function_impl *func = nir_shader_get_entrypoint(nir);
    ppir_compiler *comp = ppir_compiler_create(prog, func->reg_alloc, func->ssa_alloc);
@@ -610,6 +634,8 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
 
    if (!ppir_codegen_prog(comp))
       goto err_out0;
+
+   ppir_print_shader_db(nir, comp, debug);
 
    ralloc_free(comp);
    return true;
