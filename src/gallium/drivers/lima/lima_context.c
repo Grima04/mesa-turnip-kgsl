@@ -166,6 +166,18 @@ plb_pp_stream_compare(const void *key1, const void *key2)
    return memcmp(key1, key2, sizeof(struct lima_ctx_plb_pp_stream_key)) == 0;
 }
 
+static void
+lima_set_debug_callback(struct pipe_context *pctx,
+                        const struct pipe_debug_callback *cb)
+{
+   struct lima_context *ctx = lima_context(pctx);
+
+   if (cb)
+      ctx->debug = *cb;
+   else
+      memset(&ctx->debug, 0, sizeof(ctx->debug));
+}
+
 struct pipe_context *
 lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -184,6 +196,7 @@ lima_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.screen = pscreen;
    ctx->base.destroy = lima_context_destroy;
+   ctx->base.set_debug_callback = lima_set_debug_callback;
 
    lima_resource_context_init(ctx);
    lima_fence_context_init(ctx);

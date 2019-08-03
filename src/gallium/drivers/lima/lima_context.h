@@ -242,6 +242,8 @@ struct lima_context {
    struct lima_submit *pp_submit;
 
    int id;
+
+   struct pipe_debug_callback debug;
 };
 
 static inline struct lima_context *
