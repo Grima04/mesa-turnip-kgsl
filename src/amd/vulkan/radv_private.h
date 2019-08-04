@@ -1883,6 +1883,7 @@ radv_image_from_gralloc(VkDevice device_h,
                        VkImage *out_image_h);
 
 struct radv_image_view_extra_create_info {
+	bool disable_compression;
 };
 
 void radv_image_view_init(struct radv_image_view *view,

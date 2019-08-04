@@ -454,7 +454,8 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			       unsigned plane_id,
 			       unsigned base_level, unsigned first_level,
 			       unsigned block_width, bool is_stencil,
-			       bool is_storage_image, uint32_t *state)
+			       bool is_storage_image, bool disable_compression,
+			       uint32_t *state)
 {
 	struct radv_image_plane *plane = &image->planes[plane_id];
 	uint64_t gpu_address = image->bo ? radv_buffer_get_va(image->bo) + image->offset : 0;
@@ -479,7 +480,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 	if (chip_class >= GFX8) {
 		state[6] &= C_008F28_COMPRESSION_EN;
 		state[7] = 0;
-		if (!is_storage_image && radv_dcc_enabled(image, first_level)) {
+		if (!disable_compression && radv_dcc_enabled(image, first_level)) {
 			meta_va = gpu_address + image->dcc_offset;
 			if (chip_class <= GFX8)
 				meta_va += base_level_info->dcc_offset;
@@ -487,7 +488,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			unsigned dcc_tile_swizzle = plane->surface.tile_swizzle << 8;
 			dcc_tile_swizzle &= plane->surface.dcc_alignment - 1;
 			meta_va |= dcc_tile_swizzle;
-		} else if (!is_storage_image &&
+		} else if (!disable_compression &&
 			   radv_image_is_tc_compat_htile(image)) {
 			meta_va = gpu_address + image->htile_offset;
 		}
@@ -1026,7 +1027,7 @@ radv_query_opaque_metadata(struct radv_device *device,
 				     desc, NULL);
 
 	si_set_mutable_tex_desc_fields(device, image, &image->planes[0].surface.u.legacy.level[0], 0, 0, 0,
-				       image->planes[0].surface.blk_w, false, false, desc);
+				       image->planes[0].surface.blk_w, false, false, false, desc);
 
 	/* Clear the base address and set the relative DCC offset. */
 	desc[0] = 0;
@@ -1400,8 +1401,8 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 				struct radv_device *device,
 				VkFormat vk_format,
 				const VkComponentMapping *components,
-				bool is_storage_image, unsigned plane_id,
-				unsigned descriptor_plane_id)
+				bool is_storage_image, bool disable_compression,
+				unsigned plane_id, unsigned descriptor_plane_id)
 {
 	struct radv_image *image = iview->image;
 	struct radv_image_plane *plane = &image->planes[plane_id];
@@ -1448,7 +1449,9 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 				       plane_id,
 				       iview->base_mip,
 				       iview->base_mip,
-				       blk_w, is_stencil, is_storage_image, descriptor->plane_descriptors[descriptor_plane_id]);
+				       blk_w, is_stencil, is_storage_image,
+				       is_storage_image || disable_compression,
+				       descriptor->plane_descriptors[descriptor_plane_id]);
 }
 
 static unsigned
@@ -1589,10 +1592,17 @@ radv_image_view_init(struct radv_image_view *iview,
 	iview->base_mip = range->baseMipLevel;
 	iview->level_count = radv_get_levelCount(image, range);
 
+	bool disable_compression = extra_create_info ? extra_create_info->disable_compression: false;
 	for (unsigned i = 0; i < (iview->multiple_planes ? vk_format_get_plane_count(image->vk_format) : 1); ++i) {
 		VkFormat format = vk_format_get_plane_format(iview->vk_format, i);
-		radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, false, iview->plane_id + i, i);
-		radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, true, iview->plane_id + i, i);
+		radv_image_view_make_descriptor(iview, device, format,
+						&pCreateInfo->components,
+						false, disable_compression,
+						iview->plane_id + i, i);
+		radv_image_view_make_descriptor(iview, device,
+						format, &pCreateInfo->components,
+						true, disable_compression,
+						iview->plane_id + i, i);
 	}
 }
 
