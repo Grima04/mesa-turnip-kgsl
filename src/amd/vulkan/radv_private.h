@@ -1971,6 +1971,7 @@ void radv_subpass_barrier(struct radv_cmd_buffer *cmd_buffer,
 struct radv_subpass_attachment {
 	uint32_t         attachment;
 	VkImageLayout    layout;
+	bool             in_render_loop;
 };
 
 struct radv_subpass {
