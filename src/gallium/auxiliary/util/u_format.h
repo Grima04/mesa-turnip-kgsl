@@ -996,6 +996,12 @@ util_format_srgb(enum pipe_format format)
       return PIPE_FORMAT_B5G6R5_SRGB;
    case PIPE_FORMAT_BPTC_RGBA_UNORM:
       return PIPE_FORMAT_BPTC_SRGBA;
+   case PIPE_FORMAT_ETC2_RGB8:
+      return PIPE_FORMAT_ETC2_SRGB8;
+   case PIPE_FORMAT_ETC2_RGB8A1:
+      return PIPE_FORMAT_ETC2_SRGB8A1;
+   case PIPE_FORMAT_ETC2_RGBA8:
+      return PIPE_FORMAT_ETC2_SRGBA8;
    case PIPE_FORMAT_ASTC_4x4:
       return PIPE_FORMAT_ASTC_4x4_SRGB;
    case PIPE_FORMAT_ASTC_5x4:
@@ -1074,6 +1080,12 @@ util_format_linear(enum pipe_format format)
       return PIPE_FORMAT_B5G6R5_UNORM;
    case PIPE_FORMAT_BPTC_SRGBA:
       return PIPE_FORMAT_BPTC_RGBA_UNORM;
+   case PIPE_FORMAT_ETC2_SRGB8:
+      return PIPE_FORMAT_ETC2_RGB8;
+   case PIPE_FORMAT_ETC2_SRGB8A1:
+      return PIPE_FORMAT_ETC2_RGB8A1;
+   case PIPE_FORMAT_ETC2_SRGBA8:
+      return PIPE_FORMAT_ETC2_RGBA8;
    case PIPE_FORMAT_ASTC_4x4_SRGB:
       return PIPE_FORMAT_ASTC_4x4;
    case PIPE_FORMAT_ASTC_5x4_SRGB:
