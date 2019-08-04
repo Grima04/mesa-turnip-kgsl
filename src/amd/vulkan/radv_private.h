@@ -1882,9 +1882,13 @@ radv_image_from_gralloc(VkDevice device_h,
                        const VkAllocationCallbacks *alloc,
                        VkImage *out_image_h);
 
+struct radv_image_view_extra_create_info {
+};
+
 void radv_image_view_init(struct radv_image_view *view,
 			  struct radv_device *device,
-			  const VkImageViewCreateInfo* pCreateInfo);
+			  const VkImageViewCreateInfo *pCreateInfo,
+			  const struct radv_image_view_extra_create_info* extra_create_info);
 
 VkFormat radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask);
 

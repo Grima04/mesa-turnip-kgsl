@@ -551,7 +551,7 @@ void radv_CmdResolveImage(
 							     .baseArrayLayer = src_base_layer + layer,
 							     .layerCount = 1,
 						     },
-					     });
+					     }, NULL);
 
 			struct radv_image_view dest_iview;
 			radv_image_view_init(&dest_iview, cmd_buffer->device,
@@ -567,7 +567,7 @@ void radv_CmdResolveImage(
 							     .baseArrayLayer = dest_base_layer + layer,
 							     .layerCount = 1,
 						     },
-					      });
+					      }, NULL);
 
 			VkFramebuffer fb_h;
 			radv_CreateFramebuffer(device_h,

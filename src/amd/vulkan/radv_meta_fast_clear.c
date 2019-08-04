@@ -590,7 +590,7 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer,
 					.baseArrayLayer = range->baseArrayLayer + layer,
 					.layerCount = 1,
 				 },
-			      });
+			      }, NULL);
 
 	VkFramebuffer fb_h;
 	radv_CreateFramebuffer(radv_device_to_handle(device),
@@ -832,7 +832,7 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer,
 								.baseArrayLayer = subresourceRange->baseArrayLayer + s,
 								.layerCount = 1
 							     },
-					     });
+					     }, NULL);
 
 			radv_meta_push_descriptor_set(cmd_buffer,
 						      VK_PIPELINE_BIND_POINT_COMPUTE,

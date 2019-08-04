@@ -1488,7 +1488,8 @@ radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask)
 void
 radv_image_view_init(struct radv_image_view *iview,
 		     struct radv_device *device,
-		     const VkImageViewCreateInfo* pCreateInfo)
+		     const VkImageViewCreateInfo* pCreateInfo,
+		     const struct radv_image_view_extra_create_info* extra_create_info)
 {
 	RADV_FROM_HANDLE(radv_image, image, pCreateInfo->image);
 	const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
@@ -1766,7 +1767,7 @@ radv_CreateImageView(VkDevice _device,
 	if (view == NULL)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-	radv_image_view_init(view, device, pCreateInfo);
+	radv_image_view_init(view, device, pCreateInfo, NULL);
 
 	*pView = radv_image_view_to_handle(view);
 

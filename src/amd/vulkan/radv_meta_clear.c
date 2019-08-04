@@ -1896,7 +1896,7 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer,
 					     .baseArrayLayer = range->baseArrayLayer + layer,
 					     .layerCount = 1
 				     },
-			     });
+			     }, NULL);
 
 	VkFramebuffer fb;
 	radv_CreateFramebuffer(device_h,
@@ -2026,7 +2026,7 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer,
 					.baseArrayLayer = range->baseArrayLayer,
 					.layerCount = range->layerCount,
 				   },
-			     });
+			     }, NULL);
 
 	VkClearRect clear_rect = {
 		.rect = {
