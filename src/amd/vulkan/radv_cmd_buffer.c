@@ -1294,7 +1294,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t cb_color_info = cb->cb_color_info;
 	struct radv_image *image = iview->image;
 
-	if (!radv_layout_dcc_compressed(image, layout, in_render_loop,
+	if (!radv_layout_dcc_compressed(cmd_buffer->device, image, layout, in_render_loop,
 	                                radv_image_queue_family_mask(image,
 	                                                             cmd_buffer->queue_family_index,
 	                                                             cmd_buffer->queue_family_index))) {
@@ -5231,7 +5231,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		uint32_t value = 0xffffffffu; /* Fully expanded mode. */
 		bool need_decompress_pass = false;
 
-		if (radv_layout_dcc_compressed(image, dst_layout,
+		if (radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout,
 					       dst_render_loop,
 					       dst_queue_mask)) {
 			value = 0x20202020u;
@@ -5277,8 +5277,8 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 	if (radv_dcc_enabled(image, range->baseMipLevel)) {
 		if (src_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
 			radv_initialize_dcc(cmd_buffer, image, range, 0xffffffffu);
-		} else if (radv_layout_dcc_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
-		           !radv_layout_dcc_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
+		} else if (radv_layout_dcc_compressed(cmd_buffer->device, image, src_layout, src_render_loop, src_queue_mask) &&
+		           !radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout, dst_render_loop, dst_queue_mask)) {
 			radv_decompress_dcc(cmd_buffer, image, range);
 		} else if (radv_layout_can_fast_clear(image, src_layout, src_render_loop, src_queue_mask) &&
 			   !radv_layout_can_fast_clear(image, dst_layout, dst_render_loop, dst_queue_mask)) {

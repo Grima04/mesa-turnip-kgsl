@@ -330,7 +330,8 @@ enum radv_resolve_method {
 	RESOLVE_FRAGMENT,
 };
 
-static void radv_pick_resolve_method_images(struct radv_image *src_image,
+static void radv_pick_resolve_method_images(struct radv_device *device,
+					    struct radv_image *src_image,
 					    VkFormat src_format,
 					    struct radv_image *dest_image,
 					    VkImageLayout dest_image_layout,
@@ -353,7 +354,7 @@ static void radv_pick_resolve_method_images(struct radv_image *src_image,
 			 dest_image->info.array_size > 1)
 			*method = RESOLVE_COMPUTE;
 	
-		if (radv_layout_dcc_compressed(dest_image, dest_image_layout,
+		if (radv_layout_dcc_compressed(device, dest_image, dest_image_layout,
 		                               dest_render_loop, queue_mask)) {
 			*method = RESOLVE_FRAGMENT;
 		} else if (dest_image->planes[0].surface.micro_tile_mode !=
@@ -433,9 +434,10 @@ void radv_CmdResolveImage(
 	} else
 		resolve_method = RESOLVE_COMPUTE;
 
-	radv_pick_resolve_method_images(src_image, src_image->vk_format,
-					dest_image, dest_image_layout,
-					false, cmd_buffer, &resolve_method);
+	radv_pick_resolve_method_images(cmd_buffer->device, src_image,
+					src_image->vk_format, dest_image,
+					dest_image_layout, false, cmd_buffer,
+					&resolve_method);
 
 	if (resolve_method == RESOLVE_FRAGMENT) {
 		radv_meta_resolve_fragment_image(cmd_buffer,
@@ -647,7 +649,8 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_image_view *dst_iview =
 			cmd_buffer->state.attachments[dst_att.attachment].iview;
 
-		radv_pick_resolve_method_images(src_iview->image,
+		radv_pick_resolve_method_images(cmd_buffer->device,
+						src_iview->image,
 						src_iview->vk_format,
 						dst_iview->image,
 						dst_att.layout,
@@ -701,8 +704,9 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_image_view *src_iview= cmd_buffer->state.attachments[src_att.attachment].iview;
 		struct radv_image *src_img = src_iview->image;
 
-		radv_pick_resolve_method_images(src_img, src_iview->vk_format,
-						dst_img, dest_att.layout,
+		radv_pick_resolve_method_images(cmd_buffer->device, src_img,
+						src_iview->vk_format, dst_img,
+						dest_att.layout,
 						dest_att.in_render_loop,
 						cmd_buffer, &resolve_method);
 
