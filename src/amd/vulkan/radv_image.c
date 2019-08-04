@@ -1597,6 +1597,7 @@ radv_image_view_init(struct radv_image_view *iview,
 
 bool radv_layout_has_htile(const struct radv_image *image,
                            VkImageLayout layout,
+			   bool in_render_loop,
                            unsigned queue_mask)
 {
 	if (radv_image_is_tc_compat_htile(image))
@@ -1610,6 +1611,7 @@ bool radv_layout_has_htile(const struct radv_image *image,
 
 bool radv_layout_is_htile_compressed(const struct radv_image *image,
                                      VkImageLayout layout,
+				     bool in_render_loop,
                                      unsigned queue_mask)
 {
 	if (radv_image_is_tc_compat_htile(image))
@@ -1623,6 +1625,7 @@ bool radv_layout_is_htile_compressed(const struct radv_image *image,
 
 bool radv_layout_can_fast_clear(const struct radv_image *image,
 			        VkImageLayout layout,
+				bool in_render_loop,
 			        unsigned queue_mask)
 {
 	return layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -1630,6 +1633,7 @@ bool radv_layout_can_fast_clear(const struct radv_image *image,
 
 bool radv_layout_dcc_compressed(const struct radv_image *image,
 			        VkImageLayout layout,
+				bool in_render_loop,
 			        unsigned queue_mask)
 {
 	/* Don't compress compute transfer dst, as image stores are not supported. */

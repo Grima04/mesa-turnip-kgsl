@@ -54,7 +54,9 @@ enum {
 static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					 struct radv_image *image,
 					 VkImageLayout src_layout,
+					 bool src_render_loop,
 					 VkImageLayout dst_layout,
+					 bool dst_render_loop,
 					 uint32_t src_family,
 					 uint32_t dst_family,
 					 const VkImageSubresourceRange *range,
@@ -1285,13 +1287,14 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 			 int index,
 			 struct radv_color_buffer_info *cb,
 			 struct radv_image_view *iview,
-			 VkImageLayout layout)
+			 VkImageLayout layout,
+			 bool in_render_loop)
 {
 	bool is_vi = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX8;
 	uint32_t cb_color_info = cb->cb_color_info;
 	struct radv_image *image = iview->image;
 
-	if (!radv_layout_dcc_compressed(image, layout,
+	if (!radv_layout_dcc_compressed(image, layout, in_render_loop,
 	                                radv_image_queue_family_mask(image,
 	                                                             cmd_buffer->queue_family_index,
 	                                                             cmd_buffer->queue_family_index))) {
@@ -1393,7 +1396,7 @@ static void
 radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer,
 			     struct radv_ds_buffer_info *ds,
 			     struct radv_image *image, VkImageLayout layout,
-			     bool requires_cond_exec)
+			     bool in_render_loop, bool requires_cond_exec)
 {
 	uint32_t db_z_info = ds->db_z_info;
 	uint32_t db_z_info_reg;
@@ -1402,7 +1405,7 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer,
 	    !radv_image_is_tc_compat_htile(image))
 		return;
 
-	if (!radv_layout_has_htile(image, layout,
+	if (!radv_layout_has_htile(image, layout, in_render_loop,
 	                           radv_image_queue_family_mask(image,
 	                                                        cmd_buffer->queue_family_index,
 	                                                        cmd_buffer->queue_family_index))) {
@@ -1439,12 +1442,13 @@ static void
 radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 		      struct radv_ds_buffer_info *ds,
 		      struct radv_image *image,
-		      VkImageLayout layout)
+		      VkImageLayout layout,
+		      bool in_render_loop)
 {
 	uint32_t db_z_info = ds->db_z_info;
 	uint32_t db_stencil_info = ds->db_stencil_info;
 
-	if (!radv_layout_has_htile(image, layout,
+	if (!radv_layout_has_htile(image, layout, in_render_loop,
 	                           radv_image_queue_family_mask(image,
 	                                                        cmd_buffer->queue_family_index,
 	                                                        cmd_buffer->queue_family_index))) {
@@ -1512,7 +1516,7 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	/* Update the ZRANGE_PRECISION value for the TC-compat bug. */
-	radv_update_zrange_precision(cmd_buffer, ds, image, layout, true);
+	radv_update_zrange_precision(cmd_buffer, ds, image, layout, in_render_loop, true);
 
 	radeon_set_context_reg(cmd_buffer->cs, R_028B78_PA_SU_POLY_OFFSET_DB_FMT_CNTL,
 			       ds->pa_su_poly_offset_db_fmt_cntl);
@@ -1552,9 +1556,10 @@ radv_update_bound_fast_clear_ds(struct radv_cmd_buffer *cmd_buffer,
 	if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
 	    ds_clear_value.depth == 0.0) {
 		VkImageLayout layout = subpass->depth_stencil_attachment->layout;
+		bool in_render_loop = subpass->depth_stencil_attachment->in_render_loop;
 
 		radv_update_zrange_precision(cmd_buffer, &cmd_buffer->state.attachments[att_idx].ds, image,
-					     layout, false);
+					     layout, in_render_loop, false);
 	}
 
 	cmd_buffer->state.context_roll_without_scissor_emitted = true;
@@ -1913,12 +1918,13 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		int idx = subpass->color_attachments[i].attachment;
 		struct radv_image_view *iview = cmd_buffer->state.attachments[idx].iview;
 		VkImageLayout layout = subpass->color_attachments[i].layout;
+		bool in_render_loop = subpass->color_attachments[i].in_render_loop;
 
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->bo);
 
 		assert(iview->aspect_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT |
 		                                       VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
-		radv_emit_fb_color_state(cmd_buffer, i, &cmd_buffer->state.attachments[idx].cb, iview, layout);
+		radv_emit_fb_color_state(cmd_buffer, i, &cmd_buffer->state.attachments[idx].cb, iview, layout, in_render_loop);
 
 		radv_load_color_clear_metadata(cmd_buffer, iview, i);
 	}
@@ -1926,16 +1932,17 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 	if (subpass->depth_stencil_attachment) {
 		int idx = subpass->depth_stencil_attachment->attachment;
 		VkImageLayout layout = subpass->depth_stencil_attachment->layout;
+		bool in_render_loop = subpass->depth_stencil_attachment->in_render_loop;
 		struct radv_image *image = cmd_buffer->state.attachments[idx].iview->image;
 		radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, cmd_buffer->state.attachments[idx].iview->bo);
 		ASSERTED uint32_t queue_mask = radv_image_queue_family_mask(image,
 										cmd_buffer->queue_family_index,
 										cmd_buffer->queue_family_index);
 		/* We currently don't support writing decompressed HTILE */
-		assert(radv_layout_has_htile(image, layout, queue_mask) ==
-		       radv_layout_is_htile_compressed(image, layout, queue_mask));
+		assert(radv_layout_has_htile(image, layout, in_render_loop, queue_mask) ==
+		       radv_layout_is_htile_compressed(image, layout, in_render_loop, queue_mask));
 
-		radv_emit_fb_ds_state(cmd_buffer, &cmd_buffer->state.attachments[idx].ds, image, layout);
+		radv_emit_fb_ds_state(cmd_buffer, &cmd_buffer->state.attachments[idx].ds, image, layout, in_render_loop);
 
 		if (cmd_buffer->state.attachments[idx].ds.offset_scale != cmd_buffer->state.offset_scale) {
 			cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
@@ -2905,9 +2912,12 @@ static void radv_handle_subpass_image_transition(struct radv_cmd_buffer *cmd_buf
 	radv_handle_image_transition(cmd_buffer,
 				     view->image,
 				     cmd_buffer->state.attachments[idx].current_layout,
-				     att.layout, 0, 0, &range, sample_locs);
+				     cmd_buffer->state.attachments[idx].current_in_render_loop,
+				     att.layout, att.in_render_loop,
+				     0, 0, &range, sample_locs);
 
 	cmd_buffer->state.attachments[idx].current_layout = att.layout;
+	cmd_buffer->state.attachments[idx].current_in_render_loop = att.in_render_loop;
 
 
 }
@@ -5066,7 +5076,9 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
 static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					       struct radv_image *image,
 					       VkImageLayout src_layout,
+					       bool src_render_loop,
 					       VkImageLayout dst_layout,
+					       bool dst_render_loop,
 					       unsigned src_queue_mask,
 					       unsigned dst_queue_mask,
 					       const VkImageSubresourceRange *range,
@@ -5078,18 +5090,18 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
 		uint32_t clear_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
 
-		if (radv_layout_is_htile_compressed(image, dst_layout,
+		if (radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop,
 						    dst_queue_mask)) {
 			clear_value = 0;
 		}
 
 		radv_initialize_htile(cmd_buffer, image, range, clear_value);
-	} else if (!radv_layout_is_htile_compressed(image, src_layout, src_queue_mask) &&
-	           radv_layout_is_htile_compressed(image, dst_layout, dst_queue_mask)) {
+	} else if (!radv_layout_is_htile_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
+	           radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
 		uint32_t clear_value = vk_format_is_stencil(image->vk_format) ? 0xfffff30f : 0xfffc000f;
 		radv_initialize_htile(cmd_buffer, image, range, clear_value);
-	} else if (radv_layout_is_htile_compressed(image, src_layout, src_queue_mask) &&
-	           !radv_layout_is_htile_compressed(image, dst_layout, dst_queue_mask)) {
+	} else if (radv_layout_is_htile_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
+	           !radv_layout_is_htile_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
 		VkImageSubresourceRange local_range = *range;
 		local_range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		local_range.baseMipLevel = 0;
@@ -5193,7 +5205,9 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 					   struct radv_image *image,
 					   VkImageLayout src_layout,
+					   bool src_render_loop,
 					   VkImageLayout dst_layout,
+					   bool dst_render_loop,
 					   unsigned src_queue_mask,
 					   unsigned dst_queue_mask,
 					   const VkImageSubresourceRange *range)
@@ -5218,6 +5232,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		bool need_decompress_pass = false;
 
 		if (radv_layout_dcc_compressed(image, dst_layout,
+					       dst_render_loop,
 					       dst_queue_mask)) {
 			value = 0x20202020u;
 			need_decompress_pass = true;
@@ -5243,14 +5258,17 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					       struct radv_image *image,
 					       VkImageLayout src_layout,
+					       bool src_render_loop,
 					       VkImageLayout dst_layout,
+					       bool dst_render_loop,
 					       unsigned src_queue_mask,
 					       unsigned dst_queue_mask,
 					       const VkImageSubresourceRange *range)
 {
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
 		radv_init_color_image_metadata(cmd_buffer, image,
-					       src_layout, dst_layout,
+					       src_layout, src_render_loop,
+					       dst_layout, dst_render_loop,
 					       src_queue_mask, dst_queue_mask,
 					       range);
 		return;
@@ -5259,18 +5277,18 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 	if (radv_dcc_enabled(image, range->baseMipLevel)) {
 		if (src_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
 			radv_initialize_dcc(cmd_buffer, image, range, 0xffffffffu);
-		} else if (radv_layout_dcc_compressed(image, src_layout, src_queue_mask) &&
-		           !radv_layout_dcc_compressed(image, dst_layout, dst_queue_mask)) {
+		} else if (radv_layout_dcc_compressed(image, src_layout, src_render_loop, src_queue_mask) &&
+		           !radv_layout_dcc_compressed(image, dst_layout, dst_render_loop, dst_queue_mask)) {
 			radv_decompress_dcc(cmd_buffer, image, range);
-		} else if (radv_layout_can_fast_clear(image, src_layout, src_queue_mask) &&
-			   !radv_layout_can_fast_clear(image, dst_layout, dst_queue_mask)) {
+		} else if (radv_layout_can_fast_clear(image, src_layout, src_render_loop, src_queue_mask) &&
+			   !radv_layout_can_fast_clear(image, dst_layout, dst_render_loop, dst_queue_mask)) {
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
 		}
 	} else if (radv_image_has_cmask(image) || radv_image_has_fmask(image)) {
 		bool fce_eliminate = false, fmask_expand = false;
 
-		if (radv_layout_can_fast_clear(image, src_layout, src_queue_mask) &&
-		    !radv_layout_can_fast_clear(image, dst_layout, dst_queue_mask)) {
+		if (radv_layout_can_fast_clear(image, src_layout, src_render_loop, src_queue_mask) &&
+		    !radv_layout_can_fast_clear(image, dst_layout, dst_render_loop, dst_queue_mask)) {
 			fce_eliminate = true;
 		}
 
@@ -5295,7 +5313,9 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 					 struct radv_image *image,
 					 VkImageLayout src_layout,
+					 bool src_render_loop,
 					 VkImageLayout dst_layout,
+					 bool dst_render_loop,
 					 uint32_t src_family,
 					 uint32_t dst_family,
 					 const VkImageSubresourceRange *range,
@@ -5334,12 +5354,14 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
 
 	if (vk_format_is_depth(image->vk_format)) {
 		radv_handle_depth_image_transition(cmd_buffer, image,
-						   src_layout, dst_layout,
+						   src_layout, src_render_loop,
+						   dst_layout, dst_render_loop,
 						   src_queue_mask, dst_queue_mask,
 						   range, sample_locs);
 	} else {
 		radv_handle_color_image_transition(cmd_buffer, image,
-						   src_layout, dst_layout,
+						   src_layout, src_render_loop,
+						   dst_layout, dst_render_loop,
 						   src_queue_mask, dst_queue_mask,
 						   range);
 	}
@@ -5436,7 +5458,9 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer,
 
 		radv_handle_image_transition(cmd_buffer, image,
 					     pImageMemoryBarriers[i].oldLayout,
+					     false, /* Outside of a renderpass we are never in a renderloop */
 					     pImageMemoryBarriers[i].newLayout,
+					     false, /* Outside of a renderpass we are never in a renderloop */
 					     pImageMemoryBarriers[i].srcQueueFamilyIndex,
 					     pImageMemoryBarriers[i].dstQueueFamilyIndex,
 					     &pImageMemoryBarriers[i].subresourceRange,

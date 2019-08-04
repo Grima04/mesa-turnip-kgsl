@@ -334,6 +334,7 @@ static void radv_pick_resolve_method_images(struct radv_image *src_image,
 					    VkFormat src_format,
 					    struct radv_image *dest_image,
 					    VkImageLayout dest_image_layout,
+					    bool dest_render_loop,
 					    struct radv_cmd_buffer *cmd_buffer,
 					    enum radv_resolve_method *method)
 
@@ -352,7 +353,8 @@ static void radv_pick_resolve_method_images(struct radv_image *src_image,
 			 dest_image->info.array_size > 1)
 			*method = RESOLVE_COMPUTE;
 	
-		if (radv_layout_dcc_compressed(dest_image, dest_image_layout, queue_mask)) {
+		if (radv_layout_dcc_compressed(dest_image, dest_image_layout,
+		                               dest_render_loop, queue_mask)) {
 			*method = RESOLVE_FRAGMENT;
 		} else if (dest_image->planes[0].surface.micro_tile_mode !=
 		           src_image->planes[0].surface.micro_tile_mode) {
@@ -433,7 +435,7 @@ void radv_CmdResolveImage(
 
 	radv_pick_resolve_method_images(src_image, src_image->vk_format,
 					dest_image, dest_image_layout,
-					cmd_buffer, &resolve_method);
+					false, cmd_buffer, &resolve_method);
 
 	if (resolve_method == RESOLVE_FRAGMENT) {
 		radv_meta_resolve_fragment_image(cmd_buffer,
@@ -649,6 +651,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 						src_iview->vk_format,
 						dst_iview->image,
 						dst_att.layout,
+						dst_att.in_render_loop,
 						cmd_buffer,
 						&resolve_method);
 
@@ -700,6 +703,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 
 		radv_pick_resolve_method_images(src_img, src_iview->vk_format,
 						dst_img, dest_att.layout,
+						dest_att.in_render_loop,
 						cmd_buffer, &resolve_method);
 
 		if (resolve_method == RESOLVE_FRAGMENT) {
