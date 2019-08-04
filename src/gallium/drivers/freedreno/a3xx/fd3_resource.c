@@ -96,11 +96,14 @@ fd3_setup_slices(struct fd_resource *rsc)
 }
 
 static bool
-ok_format(enum pipe_format pfmt)
+ok_format(enum pipe_format pfmt, const struct pipe_resource * tmpl)
 {
 	enum a3xx_color_fmt fmt = fd3_pipe2color(pfmt);
 
 	if (fmt == ~0)
+		return false;
+
+	if (tmpl->target == PIPE_TEXTURE_CUBE)
 		return false;
 
 	switch (pfmt) {
@@ -118,7 +121,7 @@ ok_format(enum pipe_format pfmt)
 unsigned
 fd3_tile_mode(const struct pipe_resource *tmpl)
 {
-	if (ok_format(tmpl->format))
+	if (ok_format(tmpl->format, tmpl))
 		return TILE_4X4;
 	return LINEAR;
 }
