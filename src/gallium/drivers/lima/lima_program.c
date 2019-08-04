@@ -68,6 +68,7 @@ static const nir_shader_compiler_options fs_nir_options = {
    .lower_rotate = true,
    .lower_fdot = true,
    .lower_bitops = true,
+   .lower_vector_cmp = true,
 };
 
 static const struct nir_lower_tex_options tex_options = {
