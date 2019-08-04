@@ -1601,7 +1601,7 @@ bool radv_layout_has_htile(const struct radv_image *image,
                            unsigned queue_mask)
 {
 	if (radv_image_is_tc_compat_htile(image))
-		return layout != VK_IMAGE_LAYOUT_GENERAL;
+		return !in_render_loop;
 
 	return radv_image_has_htile(image) &&
 	       (layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ||
@@ -1615,7 +1615,7 @@ bool radv_layout_is_htile_compressed(const struct radv_image *image,
                                      unsigned queue_mask)
 {
 	if (radv_image_is_tc_compat_htile(image))
-		return layout != VK_IMAGE_LAYOUT_GENERAL;
+		return !in_render_loop;
 
 	return radv_image_has_htile(image) &&
 	       (layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ||
@@ -1641,7 +1641,7 @@ bool radv_layout_dcc_compressed(const struct radv_image *image,
 	    (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
 		return false;
 
-	return radv_image_has_dcc(image) && layout != VK_IMAGE_LAYOUT_GENERAL;
+	return radv_image_has_dcc(image) &&!in_render_loop;
 }
 
 
