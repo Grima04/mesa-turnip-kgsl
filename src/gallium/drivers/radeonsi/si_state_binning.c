@@ -563,7 +563,11 @@ void si_emit_dpbb_state(struct si_context *sctx)
 		context_states_per_bin = 1;
 		persistent_states_per_bin = 1;
 	} else {
-		context_states_per_bin = 6;
+		/* This is a workaround for:
+		 *    https://bugs.freedesktop.org/show_bug.cgi?id=110214
+		 * (an alternative is to insert manual BATCH_BREAK event when
+		 * a context_roll is detected). */
+		context_states_per_bin = sctx->screen->has_gfx9_scissor_bug ? 1 : 6;
 		/* Using 32 here can cause GPU hangs on RAVEN1 */
 		persistent_states_per_bin = 16;
 	}
