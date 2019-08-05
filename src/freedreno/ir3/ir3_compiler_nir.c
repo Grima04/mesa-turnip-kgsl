@@ -1872,6 +1872,24 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	}
 
 	switch (tex->op) {
+	case nir_texop_tex_prefetch:
+		compile_assert(ctx, !has_bias);
+		compile_assert(ctx, !has_lod);
+		compile_assert(ctx, !compare);
+		compile_assert(ctx, !has_proj);
+		compile_assert(ctx, !has_off);
+		compile_assert(ctx, !ddx);
+		compile_assert(ctx, !ddy);
+		compile_assert(ctx, !sample_index);
+		compile_assert(ctx, nir_tex_instr_src_index(tex, nir_tex_src_texture_offset) < 0);
+		compile_assert(ctx, nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset) < 0);
+
+		if (ctx->so->num_sampler_prefetch < IR3_MAX_SAMPLER_PREFETCH) {
+			opc = OPC_META_TEX_PREFETCH;
+			ctx->so->num_sampler_prefetch++;
+			break;
+		}
+		/* fallthru */
 	case nir_texop_tex:      opc = has_lod ? OPC_SAML : OPC_SAM; break;
 	case nir_texop_txb:      opc = OPC_SAMB;     break;
 	case nir_texop_txl:      opc = OPC_SAML;     break;
@@ -2049,10 +2067,25 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	struct ir3_instruction *col0 = ir3_create_collect(ctx, src0, nsrc0);
 	struct ir3_instruction *col1 = ir3_create_collect(ctx, src1, nsrc1);
 
-	sam = ir3_SAM(b, opc, type, MASK(ncomp), flags,
-			samp_tex, col0, col1);
+	if (opc == OPC_META_TEX_PREFETCH) {
+		int idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+
+		compile_assert(ctx, tex->src[idx].src.is_ssa);
+
+		sam = ir3_META_TEX_PREFETCH(b);
+		ir3_reg_create(sam, 0, 0)->wrmask = MASK(ncomp);   /* dst */
+		sam->prefetch.input_offset =
+				ir3_nir_coord_offset(tex->src[idx].src.ssa);
+		sam->prefetch.tex  = tex->texture_index;
+		sam->prefetch.samp = tex->sampler_index;
+	} else {
+		sam = ir3_SAM(b, opc, type, MASK(ncomp), flags,
+				samp_tex, col0, col1);
+	}
 
 	if ((ctx->astc_srgb & (1 << tex->texture_index)) && !nir_tex_instr_is_query(tex)) {
+		assert(opc != OPC_META_TEX_PREFETCH);
+
 		/* only need first 3 components: */
 		sam->regs[0]->wrmask = 0x7;
 		ir3_split_dest(b, dst, sam, 0, 3);
@@ -3010,6 +3043,41 @@ fixup_binning_pass(struct ir3_context *ctx)
 	ir->noutputs = j * 4;
 }
 
+static void
+collect_tex_prefetches(struct ir3_context *ctx, struct ir3 *ir)
+{
+	unsigned idx = 0;
+
+	/* Collect sampling instructions eligible for pre-dispatch. */
+	list_for_each_entry(struct ir3_block, block, &ir->block_list, node) {
+		list_for_each_entry_safe(struct ir3_instruction, instr,
+				&block->instr_list, node) {
+			if (instr->opc == OPC_META_TEX_PREFETCH) {
+				assert(idx < ARRAY_SIZE(ctx->so->sampler_prefetch));
+				struct ir3_sampler_prefetch *fetch =
+					&ctx->so->sampler_prefetch[idx];
+				idx++;
+
+				fetch->cmd = IR3_SAMPLER_PREFETCH_CMD;
+				fetch->wrmask = instr->regs[0]->wrmask;
+				fetch->tex_id = instr->prefetch.tex;
+				fetch->samp_id = instr->prefetch.samp;
+				fetch->dst = instr->regs[0]->num;
+				fetch->src = instr->prefetch.input_offset;
+
+				ctx->so->total_in =
+					MAX2(ctx->so->total_in, instr->prefetch.input_offset + 2);
+
+				/* Disable half precision until supported. */
+				fetch->half_precision = 0x0;
+
+				/* Remove the prefetch placeholder instruction: */
+				list_delinit(&instr->node);
+			}
+		}
+	}
+}
+
 int
 ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		struct ir3_shader_variant *so)
@@ -3327,6 +3395,9 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		so->total_in = max_bary + 1;
 
 	so->max_sun = ir->max_sun;
+
+	/* Collect sampling instructions eligible for pre-dispatch. */
+	collect_tex_prefetches(ctx, ir);
 
 out:
 	if (ret) {
