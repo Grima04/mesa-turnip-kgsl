@@ -233,7 +233,7 @@ util_end_pipestat_query(struct pipe_context *ctx, struct pipe_query *q,
            "    hs_invocations = %"PRIu64"\n"
            "    ds_invocations = %"PRIu64"\n"
            "    cs_invocations = %"PRIu64"\n",
-           p_atomic_inc_return(&counter),
+           (unsigned)p_atomic_inc_return(&counter),
            stats.ia_vertices,
            stats.ia_primitives,
            stats.vs_invocations,
