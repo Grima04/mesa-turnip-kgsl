@@ -129,6 +129,11 @@ typedef struct midgard_instruction {
 
         bool invert;
 
+        /* Hint for the register allocator not to spill the destination written
+         * from this instruction (because it is a spill/unspill node itself) */
+
+        bool no_spill;
+
         union {
                 midgard_load_store_word load_store;
                 midgard_vector_alu alu;

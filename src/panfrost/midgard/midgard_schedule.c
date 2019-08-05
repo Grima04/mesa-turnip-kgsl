@@ -717,7 +717,10 @@ v_load_store_scratch(
                         /* Splattered across, TODO combine logically */
                         .varying_parameters = (byte & 0x1FF) << 1,
                         .address = (byte >> 9)
-                }
+                },
+
+                /* If we spill an unspill, RA goes into an infinite loop */
+                .no_spill = true
         };
 
        if (is_store) {
@@ -752,11 +755,10 @@ static void mir_spill_register(
         }
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->type != TAG_LOAD_STORE_4)  continue;
-                if (ins->load_store.op != midgard_op_ld_int4) continue;
-                if (ins->load_store.arg_1 != 0xEA) continue;
-                if (ins->load_store.arg_2 != 0x1E) continue;
-                ra_set_node_spill_cost(g, ins->ssa_args.dest, -1.0);
+                if (ins->no_spill &&
+                    ins->ssa_args.dest >= 0 &&
+                    ins->ssa_args.dest < ctx->temp_count)
+                        ra_set_node_spill_cost(g, ins->ssa_args.dest, -1.0);
         }
 
         int spill_node = ra_get_best_spill_node(g);
@@ -791,6 +793,7 @@ static void mir_spill_register(
                         if (is_special_w) {
                                 spill_slot = spill_index++;
                                 st = v_mov(spill_node, blank_alu_src, spill_slot);
+                                st.no_spill = true;
                         } else {
                                 ins->ssa_args.dest = SSA_FIXED_REGISTER(26);
                                 st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
@@ -852,6 +855,7 @@ static void mir_spill_register(
                                 if (is_special) {
                                         /* Move */
                                         st = v_mov(spill_node, blank_alu_src, consecutive_index);
+                                        st.no_spill = true;
                                 } else {
                                         /* TLS load */
                                         st = v_load_store_scratch(consecutive_index, spill_slot, false, 0xF);
