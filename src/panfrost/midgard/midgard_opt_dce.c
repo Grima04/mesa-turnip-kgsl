@@ -123,9 +123,8 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
                 if (mir_nontrivial_outmod(ins)) continue;
                 if (ins->mask != 0xF) continue;
 
-                /* We do want to rewrite to keep the graph sane for pipeline
-                 * register creation (TODO: is this the best approach?) */
-                mir_rewrite_index_dst(ctx, ins->ssa_args.src[1], ins->ssa_args.dest);
+                /* We do need to rewrite to facilitate pipelining/scheduling */
+                mir_rewrite_index(ctx, ins->ssa_args.src[1], ins->ssa_args.dest);
 
                 /* We're good to go */
                 mir_remove_instruction(ins);
