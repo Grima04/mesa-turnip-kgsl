@@ -49,14 +49,14 @@ panfrost_drm_mmap_bo(struct panfrost_screen *screen, struct panfrost_bo *bo)
 
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
         if (ret) {
-                fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %d\n", ret);
+                fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %m\n");
                 assert(0);
         }
 
         bo->cpu = os_mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
                           screen->fd, mmap_bo.offset);
         if (bo->cpu == MAP_FAILED) {
-                fprintf(stderr, "mmap failed: %p\n", bo->cpu);
+                fprintf(stderr, "mmap failed: %p %m\n", bo->cpu);
                 assert(0);
         }
 
@@ -122,7 +122,7 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
 
                 ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
                 if (ret) {
-                        fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %d\n", ret);
+                        fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
                         assert(0);
                 }
 
@@ -176,7 +176,7 @@ panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo, 
 
         ret = drmIoctl(screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
         if (ret) {
-                fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %d\n", ret);
+                fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %m\n");
                 assert(0);
         }
 
@@ -332,7 +332,7 @@ panfrost_fence_create(struct panfrost_context *ctx)
          */
         drmSyncobjExportSyncFile(screen->fd, ctx->out_sync, &f->fd);
         if (f->fd == -1) {
-                fprintf(stderr, "export failed\n");
+                fprintf(stderr, "export failed: %m\n");
                 free(f);
                 return NULL;
         }
