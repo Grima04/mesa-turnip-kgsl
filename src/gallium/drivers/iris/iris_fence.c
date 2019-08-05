@@ -28,6 +28,7 @@
 
 #include <linux/sync_file.h>
 
+#include "util/u_debug.h"
 #include "util/u_inlines.h"
 #include "intel/common/gen_gem.h"
 
@@ -114,6 +115,9 @@ iris_batch_add_syncobj(struct iris_batch *batch,
 
 struct pipe_fence_handle {
    struct pipe_reference ref;
+
+   struct pipe_context *unflushed_ctx;
+
    struct iris_seqno *seqno[IRIS_BATCH_COUNT];
 };
 
@@ -170,6 +174,14 @@ iris_fence_flush(struct pipe_context *ctx,
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_context *ice = (struct iris_context *)ctx;
 
+   /* We require DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT (kernel 5.2+) for
+    * deferred flushes.  Just ignore the request to defer on older kernels.
+    */
+   if (!(screen->kernel_features & KERNEL_HAS_WAIT_FOR_SUBMIT))
+      flags &= ~PIPE_FLUSH_DEFERRED;
+
+   const bool deferred = flags & PIPE_FLUSH_DEFERRED;
+
    if (flags & PIPE_FLUSH_END_OF_FRAME) {
       ice->frame++;
 
@@ -181,9 +193,10 @@ iris_fence_flush(struct pipe_context *ctx,
       }
    }
 
-   /* XXX PIPE_FLUSH_DEFERRED */
-   for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++)
-      iris_batch_flush(&ice->batches[i]);
+   if (!deferred) {
+      for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++)
+         iris_batch_flush(&ice->batches[i]);
+   }
 
    if (!out_fence)
       return;
@@ -194,13 +207,27 @@ iris_fence_flush(struct pipe_context *ctx,
 
    pipe_reference_init(&fence->ref, 1);
 
+   if (deferred)
+      fence->unflushed_ctx = ctx;
+
    for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
       struct iris_batch *batch = &ice->batches[b];
 
-      if (iris_seqno_signaled(batch->last_seqno))
-         continue;
+      if (deferred && iris_batch_bytes_used(batch) > 0) {
+         struct iris_seqno *seqno =
+            iris_seqno_new(batch, IRIS_SEQNO_BOTTOM_OF_PIPE);
+         iris_seqno_reference(screen, &fence->seqno[b], seqno);
+         iris_seqno_reference(screen, &seqno, NULL);
+      } else {
+         /* This batch has no commands queued up (perhaps we just flushed,
+          * or all the commands are on the other batch).  Wait for the last
+          * syncobj on this engine - unless it's already finished by now.
+          */
+         if (iris_seqno_signaled(batch->last_seqno))
+            continue;
 
-      iris_seqno_reference(screen, &fence->seqno[b], batch->last_seqno);
+         iris_seqno_reference(screen, &fence->seqno[b], batch->last_seqno);
+      }
    }
 
    iris_fence_reference(ctx->screen, out_fence, NULL);
@@ -212,6 +239,23 @@ iris_fence_await(struct pipe_context *ctx,
                  struct pipe_fence_handle *fence)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
+
+   /* Unflushed fences from the same context are no-ops. */
+   if (ctx && ctx == fence->unflushed_ctx)
+      return;
+
+   /* XXX: We can't safely flush the other context, because it might be
+    *      bound to another thread, and poking at its internals wouldn't
+    *      be safe.  In the future we should use MI_SEMAPHORE_WAIT and
+    *      block until the other job has been submitted, relying on
+    *      kernel timeslicing to preempt us until the other job is
+    *      actually flushed and the seqno finally passes.
+    */
+   if (fence->unflushed_ctx) {
+      pipe_debug_message(&ice->dbg, CONFORMANCE, "%s",
+                         "glWaitSync on unflushed fence from another context "
+                         "is unlikely to work without kernel 5.8+\n");
+   }
 
    /* Flush any current work in our context as it doesn't need to wait
     * for this fence.  Any future work in our context must wait.
@@ -263,7 +307,31 @@ iris_fence_finish(struct pipe_screen *p_screen,
                   struct pipe_fence_handle *fence,
                   uint64_t timeout)
 {
+   struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_screen *screen = (struct iris_screen *)p_screen;
+
+   /* If we created the fence with PIPE_FLUSH_DEFERRED, we may not have
+    * flushed yet.  Check if our syncobj is the current batch's signalling
+    * syncobj - if so, we haven't flushed and need to now.
+    *
+    * The Gallium docs mention that a flush will occur if \p ctx matches
+    * the context the fence was created with.  It may be NULL, so we check
+    * that it matches first.
+    */
+   if (ctx && ctx == fence->unflushed_ctx) {
+      for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++) {
+         struct iris_seqno *seqno = fence->seqno[i];
+
+         if (iris_seqno_signaled(seqno))
+            continue;
+
+         if (seqno->syncobj == iris_batch_get_signal_syncobj(&ice->batches[i]))
+            iris_batch_flush(&ice->batches[i]);
+      }
+
+      /* The fence is no longer deferred. */
+      fence->unflushed_ctx = NULL;
+   }
 
    unsigned int handle_count = 0;
    uint32_t handles[ARRAY_SIZE(fence->seqno)];
@@ -285,6 +353,18 @@ iris_fence_finish(struct pipe_screen *p_screen,
       .timeout_nsec = rel2abs(timeout),
       .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL
    };
+
+   if (fence->unflushed_ctx) {
+      /* This fence had a deferred flush from another context.  We can't
+       * safely flush it here, because the context might be bound to a
+       * different thread, and poking at its internals wouldn't be safe.
+       *
+       * Instead, use the WAIT_FOR_SUBMIT flag to block and hope that
+       * another thread submits the work.
+       */
+      args.flags |= DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT;
+   }
+
    return gen_ioctl(screen->fd, DRM_IOCTL_SYNCOBJ_WAIT, &args) == 0;
 }
 
@@ -316,6 +396,10 @@ iris_fence_get_fd(struct pipe_screen *p_screen,
 {
    struct iris_screen *screen = (struct iris_screen *)p_screen;
    int fd = -1;
+
+   /* Deferred fences aren't supported. */
+   if (fence->unflushed_ctx)
+      return -1;
 
    for (unsigned i = 0; i < ARRAY_SIZE(fence->seqno); i++) {
       struct iris_seqno *seqno = fence->seqno[i];
