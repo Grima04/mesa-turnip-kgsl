@@ -25,6 +25,7 @@
  */
 
 #include "compiler.h"
+#include "util/u_math.h"
 
 /* This pass promotes reads from uniforms from load/store ops to uniform
  * registers if it is beneficial to do so. Normally, this saves both
@@ -70,11 +71,26 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
                 bool needs_move = ins->ssa_args.dest & IS_REG;
                 needs_move |= mir_special_index(ctx, ins->ssa_args.dest);
 
+                /* Ensure this is a contiguous X-bound mask. It should be since
+                 * we haven't done RA and per-component masked UBO reads don't
+                 * make much sense. */
+
+                assert(((ins->mask + 1) & ins->mask) == 0);
+
+                /* Check the component count from the mask so we can setup a
+                 * swizzle appropriately when promoting. The idea is to ensure
+                 * the component count is preserved so RA can be smarter if we
+                 * need to spill */
+
+                unsigned nr_components = util_bitcount(ins->mask);
+
                 if (needs_move) {
                         midgard_instruction mov = v_mov(promoted, blank_alu_src, ins->ssa_args.dest);
+                        mov.mask = ins->mask;
                         mir_insert_instruction_before(ins, mov);
                 } else {
-                        mir_rewrite_index_src(ctx, ins->ssa_args.dest, promoted);
+                        mir_rewrite_index_src_swizzle(ctx, ins->ssa_args.dest,
+                                        promoted, swizzle_of(nr_components));
                 }
 
                 mir_remove_instruction(ins);

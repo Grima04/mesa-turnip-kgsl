@@ -723,7 +723,7 @@ v_load_store_scratch(
        if (is_store) {
                 /* r0 = r26, r1 = r27 */
                 assert(srcdest == SSA_FIXED_REGISTER(26) || srcdest == SSA_FIXED_REGISTER(27));
-                ins.ssa_args.src[0] = (srcdest == SSA_FIXED_REGISTER(27)) ? SSA_FIXED_REGISTER(1) : SSA_FIXED_REGISTER(0);
+                ins.ssa_args.src[0] = srcdest;
         } else {
                 ins.ssa_args.dest = srcdest;
         }
@@ -803,6 +803,13 @@ static void mir_spill_register(
                 }
         }
 
+        /* For special reads, figure out how many components we need */
+        unsigned read_mask = 0;
+
+        mir_foreach_instr_global_safe(ctx, ins) {
+                read_mask |= mir_mask_of_read_components(ins, spill_node);
+        }
+
         /* Insert a load from TLS before the first consecutive
          * use of the node, rewriting to use spilled indices to
          * break up the live range. Or, for special, insert a
@@ -849,6 +856,11 @@ static void mir_spill_register(
                                         /* TLS load */
                                         st = v_load_store_scratch(consecutive_index, spill_slot, false, 0xF);
                                 }
+
+                                /* Mask the load based on the component count
+                                 * actually needed to prvent RA loops */
+
+                                st.mask = read_mask;
 
                                 mir_insert_instruction_before(before, st);
                                // consecutive_skip = true;
