@@ -969,16 +969,34 @@ is_op_varying(unsigned op)
 }
 
 static void
-print_load_store_arg(uint8_t arg)
+print_load_store_arg(uint8_t arg, unsigned index)
 {
         /* Try to interpret as a register */
         midgard_ldst_register_select sel;
         memcpy(&sel, &arg, sizeof(arg));
 
+        /* If unknown is set, we're not sure what this is or how to
+         * interpret it. But if it's zero, we get it. */
+
+        if (sel.unknown) {
+                printf("0x%02X", arg);
+                return;
+        }
+
         unsigned reg = REGISTER_LDST_BASE + sel.select;
         char comp = components[sel.component];
 
-        printf("r%d.%c /* 0x%X */", reg, comp, arg);
+        printf("r%d.%c", reg, comp);
+
+        /* Only print a shift if it's non-zero. Shifts only make sense for the
+         * second index. For the first, we're not sure what it means yet */
+
+        if (index == 1) {
+                if (sel.shift)
+                        printf(" << %d", sel.shift);
+        } else {
+                printf(" /* %X */", sel.shift);
+        }
 }
 
 static void
@@ -1012,9 +1030,9 @@ print_load_store_instr(uint64_t data,
         print_swizzle_vec4(word->swizzle, false, false);
 
         printf(", ");
-        print_load_store_arg(word->arg_1);
+        print_load_store_arg(word->arg_1, 0);
         printf(", ");
-        print_load_store_arg(word->arg_2);
+        print_load_store_arg(word->arg_2, 1);
         printf(" /* %X */\n", word->varying_parameters);
 }
 

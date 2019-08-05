@@ -508,7 +508,14 @@ __attribute__((__packed__))
         /* Register select between r26/r27 */
         unsigned select : 1;
 
-        unsigned unknown : 5;
+        unsigned unknown : 2;
+
+        /* Like any good Arm instruction set, load/store arguments can be
+         * implicitly left-shifted... but only the second argument. Zero for no
+         * shifting, up to <<7 possible though. This is useful for indexing.
+         *
+         * For the first argument, it's unknown what these bits mean */
+        unsigned shift : 3;
 }
 midgard_ldst_register_select;
 
