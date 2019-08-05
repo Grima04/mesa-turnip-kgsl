@@ -33,6 +33,7 @@
 #include "util/u_video.h"
 #include "util/u_screen.h"
 #include "util/os_time.h"
+#include "util/u_process.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 #include "draw/draw_context.h"
@@ -583,9 +584,22 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
 struct pipe_screen *
 panfrost_create_screen(int fd, struct renderonly *ro)
 {
-        struct panfrost_screen *screen = rzalloc(NULL, struct panfrost_screen);
-
         pan_debug = debug_get_option_pan_debug();
+
+        /* Blacklist apps known to be buggy under Panfrost */
+        const char *proc = util_get_process_name();
+        const char *blacklist[] = {
+                "chromium",
+                "chrome",
+        };
+
+        for (unsigned i = 0; i < ARRAY_SIZE(blacklist); ++i) {
+                if ((strcmp(blacklist[i], proc) == 0))
+                        return NULL;
+        }
+
+        /* Create the screen */
+        struct panfrost_screen *screen = rzalloc(NULL, struct panfrost_screen);
 
         if (!screen)
                 return NULL;
