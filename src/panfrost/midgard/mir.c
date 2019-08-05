@@ -345,35 +345,48 @@ mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned 
  */
 
 static unsigned
-mir_mask_of_read_components_single(unsigned src, unsigned outmask)
+mir_mask_of_read_components_single(unsigned swizzle, unsigned outmask)
 {
-        midgard_vector_alu_src s = vector_alu_from_unsigned(src);
         unsigned mask = 0;
 
         for (unsigned c = 0; c < 4; ++c) {
                 if (!(outmask & (1 << c))) continue;
 
-                unsigned comp = (s.swizzle >> (2*c)) & 3;
+                unsigned comp = (swizzle >> (2*c)) & 3;
                 mask |= (1 << comp);
         }
 
         return mask;
 }
 
+static unsigned
+mir_source_count(midgard_instruction *ins)
+{
+        if (ins->type == TAG_ALU_4) {
+                /* ALU is always binary */
+                return 2;
+        } else if (ins->type == TAG_LOAD_STORE_4) {
+                bool load = !OP_IS_STORE(ins->load_store.op);
+                return (load ? 2 : 3);
+        } else if (ins->type == TAG_TEXTURE_4) {
+                /* Coords, bias.. TODO: Offsets? */
+                return 2;
+        } else {
+                unreachable("Invalid instruction type");
+        }
+}
+
 unsigned
 mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
 {
-        assert(ins->type == TAG_ALU_4);
-
         unsigned mask = 0;
 
-        if (ins->ssa_args.src[0] == node)
-                mask |= mir_mask_of_read_components_single(ins->alu.src1, ins->mask);
+        for (unsigned i = 0; i < mir_source_count(ins); ++i) {
+                if (ins->ssa_args.src[i] != node) continue;
 
-        if (ins->ssa_args.src[1] == node)
-                mask |= mir_mask_of_read_components_single(ins->alu.src2, ins->mask);
-
-        assert(ins->ssa_args.src[2] == -1);
+                unsigned swizzle = mir_get_swizzle(ins, i);
+                mask |= mir_mask_of_read_components_single(swizzle, ins->mask);
+        }
 
         return mask;
 }
