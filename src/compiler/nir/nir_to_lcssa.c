@@ -48,6 +48,7 @@ typedef struct {
 
    /* Whether to skip loop invariant variables */
    bool skip_invariants;
+   bool skip_bool_invariants;
 
    bool progress;
 } lcssa_state;
@@ -193,7 +194,8 @@ convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
    bool all_uses_inside_loop = true;
 
    /* Don't create LCSSA-Phis for loop-invariant variables */
-   if (state->skip_invariants) {
+   if (state->skip_invariants &&
+       (def->bit_size != 1 || state->skip_bool_invariants)) {
       assert(def->parent_instr->pass_flags != undefined);
       if (def->parent_instr->pass_flags == invariant)
          return true;
@@ -361,6 +363,7 @@ nir_convert_loop_to_lcssa(nir_loop *loop)
    state->loop = loop;
    state->shader = impl->function->shader;
    state->skip_invariants = false;
+   state->skip_bool_invariants = false;
 
    nir_foreach_block_in_cf_node (block, &loop->cf_node) {
       nir_foreach_instr(instr, block)
@@ -371,12 +374,13 @@ nir_convert_loop_to_lcssa(nir_loop *loop)
 }
 
 bool
-nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants)
+nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants, bool skip_bool_invariants)
 {
    bool progress = false;
    lcssa_state *state = rzalloc(NULL, lcssa_state);
    state->shader = shader;
    state->skip_invariants = skip_invariants;
+   state->skip_bool_invariants = skip_bool_invariants;
 
    nir_foreach_function(function, shader) {
       if (function->impl == NULL)
