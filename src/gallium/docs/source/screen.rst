@@ -552,6 +552,8 @@ The integer capabilities:
   turn arrays whose contents can be deduced at compile time into constant
   buffer loads, or false if the driver can handle such arrays itself in a more
   efficient manner.
+* ``PIPE_CAP_GL_SPIRV``: True if the driver supports ARB_gl_spirv extension.
+* ``PIPE_CAP_GL_SPIRV_VARIABLE_POINTERS``: True if the driver supports Variable Pointers in SPIR-V shaders.
 
 .. _pipe_capf:
 

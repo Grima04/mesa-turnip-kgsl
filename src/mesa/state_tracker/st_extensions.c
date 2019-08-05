@@ -31,6 +31,7 @@
 #include "main/imports.h"
 #include "main/context.h"
 #include "main/macros.h"
+#include "main/spirv_extensions.h"
 #include "main/version.h"
 
 #include "pipe/p_context.h"
@@ -708,6 +709,7 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(ARB_draw_instanced),               PIPE_CAP_TGSI_INSTANCEID                  },
       { o(ARB_framebuffer_object),           PIPE_CAP_MIXED_FRAMEBUFFER_SIZES          },
       { o(ARB_gpu_shader_int64),             PIPE_CAP_INT64                            },
+      { o(ARB_gl_spirv),                     PIPE_CAP_GL_SPIRV                         },
       { o(ARB_indirect_parameters),          PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS       },
       { o(ARB_instanced_arrays),             PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR  },
       { o(ARB_occlusion_query),              PIPE_CAP_OCCLUSION_QUERY                  },
@@ -732,6 +734,7 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(ARB_shader_texture_image_samples), PIPE_CAP_TGSI_TXQS                        },
       { o(ARB_shader_texture_lod),           PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD      },
       { o(ARB_sparse_buffer),                PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE          },
+      { o(ARB_spirv_extensions),             PIPE_CAP_GL_SPIRV                         },
       { o(ARB_texture_buffer_object),        PIPE_CAP_TEXTURE_BUFFER_OBJECTS           },
       { o(ARB_texture_cube_map_array),       PIPE_CAP_CUBE_MAP_ARRAY                   },
       { o(ARB_texture_gather),               PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS    },
@@ -1655,5 +1658,23 @@ void st_init_extensions(struct pipe_screen *screen,
          extensions->NV_conservative_raster_pre_snap =
             pre_snap_triangles && pre_snap_points_lines;
       }
+   }
+
+   if (extensions->ARB_gl_spirv) {
+      struct spirv_supported_capabilities *spirv_caps = &consts->SpirVCapabilities;
+
+      spirv_caps->atomic_storage             = extensions->ARB_shader_atomic_counters;
+      spirv_caps->draw_parameters            = extensions->ARB_shader_draw_parameters;
+      spirv_caps->float64                    = extensions->ARB_gpu_shader_fp64;
+      spirv_caps->geometry_streams           = extensions->ARB_gpu_shader5;
+      spirv_caps->image_write_without_format = extensions->ARB_shader_image_load_store;
+      spirv_caps->int64                      = extensions->ARB_gpu_shader_int64;
+      spirv_caps->tessellation               = extensions->ARB_tessellation_shader;
+      spirv_caps->transform_feedback         = extensions->ARB_transform_feedback3;
+      spirv_caps->variable_pointers          =
+         screen->get_param(screen, PIPE_CAP_GL_SPIRV_VARIABLE_POINTERS);
+
+      consts->SpirVExtensions = CALLOC_STRUCT(spirv_supported_extensions);
+      _mesa_fill_supported_spirv_extensions(consts->SpirVExtensions, spirv_caps);
    }
 }
