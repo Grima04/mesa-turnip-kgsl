@@ -246,4 +246,11 @@ static inline void list_validate(const struct list_head *list)
 	&pos->member != (head);                                         \
 	pos = LIST_ENTRY(type, pos->member.prev, member))
 
+#define list_pair_for_each_entry(type, pos1, pos2, head1, head2, member) \
+   for (type *pos1 = LIST_ENTRY(type, (head1)->next, member),           \
+             *pos2 = LIST_ENTRY(type, (head2)->next, member);           \
+        &pos1->member != (head1) && &pos2->member != (head2);           \
+	pos1 = LIST_ENTRY(type, pos1->member.next, member),               \
+	pos2 = LIST_ENTRY(type, pos2->member.next, member))
+
 #endif /*_UTIL_LIST_H_*/
