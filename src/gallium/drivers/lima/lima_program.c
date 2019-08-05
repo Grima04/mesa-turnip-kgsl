@@ -195,6 +195,9 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
       NIR_PASS(progress, s, nir_opt_algebraic);
    } while (progress);
 
+   /* Must be run after optimization loop */
+   NIR_PASS_V(s, lima_nir_scale_trig);
+
    /* Lower modifiers */
    NIR_PASS_V(s, nir_lower_to_source_mods, nir_lower_all_source_mods);
    NIR_PASS_V(s, nir_copy_prop);

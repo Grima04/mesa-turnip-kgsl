@@ -166,61 +166,6 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    return true;
 }
 
-static bool ppir_lower_sin_cos(ppir_block *block, ppir_node *node)
-{
-   ppir_alu_node *alu = ppir_node_to_alu(node);
-
-   ppir_node *inv_2pi_node = ppir_node_create(block, ppir_op_const, -1, 0);
-   if (!inv_2pi_node)
-      return false;
-   list_addtail(&inv_2pi_node->list, &node->list);
-
-   /* For sin and cos, the input has to multiplied by the constant
-    * 1/(2*pi), presumably to simplify the hardware. */
-   ppir_const_node *inv_2pi_const = ppir_node_to_const(inv_2pi_node);
-   inv_2pi_const->constant.num = 1;
-   inv_2pi_const->constant.value[0].f = (1.0f/(2.0f * M_PI));
-
-   inv_2pi_const->dest.type = ppir_target_ssa;
-   inv_2pi_const->dest.ssa.num_components = 1;
-   inv_2pi_const->dest.ssa.live_in = INT_MAX;
-   inv_2pi_const->dest.ssa.live_out = 0;
-   inv_2pi_const->dest.write_mask = 0x01;
-
-   ppir_node *mul_node = ppir_node_create(block, ppir_op_mul, -1, 0);
-   if (!mul_node)
-      return false;
-   list_addtail(&mul_node->list, &node->list);
-
-   ppir_alu_node *mul_alu = ppir_node_to_alu(mul_node);
-   mul_alu->num_src = 2;
-   mul_alu->src[0] = alu->src[0];
-   mul_alu->src[1].type = ppir_target_ssa;
-   mul_alu->src[1].ssa = &inv_2pi_const->dest.ssa;
-
-   int num_components = alu->src[0].ssa->num_components;
-   mul_alu->dest.type = ppir_target_ssa;
-   mul_alu->dest.ssa.num_components = num_components;
-   mul_alu->dest.ssa.live_in = INT_MAX;
-   mul_alu->dest.ssa.live_out = 0;
-   mul_alu->dest.write_mask = u_bit_consecutive(0, num_components);
-
-   alu->src[0].type = ppir_target_ssa;
-   alu->src[0].ssa = &mul_alu->dest.ssa;
-   for (int i = 0; i < 4; i++)
-      alu->src->swizzle[i] = i;
-
-   ppir_node_foreach_pred_safe(node, dep) {
-      ppir_node *pred = dep->pred;
-      ppir_node_remove_dep(dep);
-      ppir_node_add_dep(mul_node, pred);
-   }
-   ppir_node_add_dep(node, mul_node);
-   ppir_node_add_dep(mul_node, inv_2pi_node);
-
-   return true;
-}
-
 /* insert a move as the select condition to make sure it can
  * be inserted to select instr float mul slot
  */
@@ -354,8 +299,6 @@ static bool (*ppir_lower_funcs[ppir_op_num])(ppir_block *, ppir_node *) = {
    [ppir_op_abs] = ppir_lower_abs,
    [ppir_op_neg] = ppir_lower_neg,
    [ppir_op_const] = ppir_lower_const,
-   [ppir_op_sin] = ppir_lower_sin_cos,
-   [ppir_op_cos] = ppir_lower_sin_cos,
    [ppir_op_lt] = ppir_lower_swap_args,
    [ppir_op_le] = ppir_lower_swap_args,
    [ppir_op_load_texture] = ppir_lower_texture,

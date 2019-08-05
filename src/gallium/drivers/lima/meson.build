@@ -70,9 +70,21 @@ files_lima = files(
   'lima_fence.h',
 )
 
+lima_nir_algebraic_c = custom_target(
+  'ir/lima_nir_algebraic.c',
+  input : 'ir/lima_nir_algebraic.py',
+  output : 'lima_nir_algebraic.c',
+  command : [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/compiler/nir/'),
+  ],
+  capture : true,
+  depend_files : nir_algebraic_py,
+)
+
 liblima = static_library(
   'lima',
-  files_lima,
+  files_lima, lima_nir_algebraic_c,
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_drivers,
     inc_panfrost
