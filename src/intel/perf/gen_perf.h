@@ -188,8 +188,6 @@ struct gen_perf_config {
 
    /* Location of the device's sysfs entry. */
    char sysfs_dev_dir[256];
-
-   int (*ioctl)(int, unsigned long, void *);
 };
 
 static inline size_t
@@ -264,12 +262,9 @@ gen_perf_query_info_add_basic_stat_reg(struct gen_perf_query_info *query,
 }
 
 static inline struct gen_perf_config *
-gen_perf_new(void *ctx, int (*ioctl_cb)(int, unsigned long, void *))
+gen_perf_new(void *ctx)
 {
    struct gen_perf_config *perf = rzalloc(ctx, struct gen_perf_config);
-
-   perf->ioctl = ioctl_cb;
-
    return perf;
 }
 

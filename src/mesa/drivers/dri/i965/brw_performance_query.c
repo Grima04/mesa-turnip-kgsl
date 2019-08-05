@@ -1733,7 +1733,7 @@ brw_init_perf_query_info(struct gl_context *ctx)
    if (brw->perfquery.perf)
       return brw->perfquery.perf->n_queries;
 
-   brw->perfquery.perf = gen_perf_new(brw, drmIoctl);
+   brw->perfquery.perf = gen_perf_new(brw);
 
    init_pipeline_statistic_query_registers(brw);
    brw_perf_query_register_mdapi_statistic_query(brw);

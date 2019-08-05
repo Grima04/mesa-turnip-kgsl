@@ -31,6 +31,7 @@
 
 #include <drm-uapi/i915_drm.h>
 
+#include "common/gen_gem.h"
 #include "gen_perf.h"
 #include "perf/gen_perf_metrics.h"
 
@@ -214,8 +215,8 @@ kernel_has_dynamic_config_support(struct gen_perf_config *perf, int fd)
 {
    uint64_t invalid_config_id = UINT64_MAX;
 
-   return perf->ioctl(fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG,
-                      &invalid_config_id) < 0 && errno == ENOENT;
+   return gen_ioctl(fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG,
+                    &invalid_config_id) < 0 && errno == ENOENT;
 }
 
 bool
@@ -259,7 +260,7 @@ init_oa_configs(struct gen_perf_config *perf, int fd)
       config.n_flex_regs = query->n_flex_regs;
       config.flex_regs_ptr = (uintptr_t) query->flex_regs;
 
-      ret = perf->ioctl(fd, DRM_IOCTL_I915_PERF_ADD_CONFIG, &config);
+      ret = gen_ioctl(fd, DRM_IOCTL_I915_PERF_ADD_CONFIG, &config);
       if (ret < 0) {
          DBG("Failed to load \"%s\" (%s) metrics set in kernel: %s\n",
              query->name, query->guid, strerror(errno));
