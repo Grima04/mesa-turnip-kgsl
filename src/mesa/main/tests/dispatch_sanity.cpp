@@ -675,12 +675,6 @@ const struct function common_desktop_functions_possible[] = {
    { "glBlendFunciARB", 43, -1 },
    { "glBlendFuncSeparateiARB", 43, -1 },
    { "glMinSampleShadingARB", 43, -1 },                 // XXX: Add to xml
-// { "glNamedStringARB", 43, -1 },                      // XXX: Add to xml
-// { "glDeleteNamedStringARB", 43, -1 },                // XXX: Add to xml
-// { "glCompileShaderIncludeARB", 43, -1 },             // XXX: Add to xml
-// { "glIsNamedStringARB", 43, -1 },                    // XXX: Add to xml
-// { "glGetNamedStringARB", 43, -1 },                   // XXX: Add to xml
-// { "glGetNamedStringivARB", 43, -1 },                 // XXX: Add to xml
    { "glBindFragDataLocationIndexed", 43, -1 },
    { "glGetFragDataIndex", 43, -1 },
    { "glGenSamplers", 43, -1 },
@@ -1207,6 +1201,14 @@ const struct function common_desktop_functions_possible[] = {
    { "glBindSamplers", 44, -1 },
    { "glBindImageTextures", 44, -1 },
    { "glBindVertexBuffers", 44, -1 },
+
+   /* GL_ARB_shading_language_include */
+   { "glNamedStringARB", 20, -1 },
+   { "glDeleteNamedStringARB", 20, -1 },
+   { "glCompileShaderIncludeARB", 20, -1 },
+   { "glIsNamedStringARB", 20, -1 },
+   { "glGetNamedStringARB", 20, -1 },
+   { "glGetNamedStringivARB", 20, -1 },
 
    /* GL_KHR_debug/GL_ARB_debug_output */
    { "glPushDebugGroup", 11, -1 },

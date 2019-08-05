@@ -1632,6 +1632,12 @@ offsets = {
     "VertexArrayVertexAttribBindingEXT": 1596,
     "VertexArrayVertexBindingDivisorEXT": 1597,
     "NamedBufferPageCommitmentEXT": 1598,
+    "NamedStringARB": 1599,
+    "DeleteNamedStringARB": 1600,
+    "CompileShaderIncludeARB": 1601,
+    "IsNamedStringARB": 1602,
+    "GetNamedStringARB": 1603,
+    "GetNamedStringivARB": 1604,
 }
 
 functions = [

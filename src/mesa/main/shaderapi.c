@@ -3138,6 +3138,41 @@ _mesa_GetProgramStageiv(GLuint program, GLenum shadertype,
    }
 }
 
+GLvoid GLAPIENTRY
+_mesa_NamedStringARB(GLenum type, GLint namelen, const GLchar *name,
+                     GLint stringlen, const GLchar *string)
+{
+}
+
+GLvoid GLAPIENTRY
+_mesa_DeleteNamedStringARB(GLint namelen, const GLchar *name)
+{
+}
+
+GLvoid GLAPIENTRY
+_mesa_CompileShaderIncludeARB(GLuint shader, GLsizei count,
+                              const GLchar* const *path, const GLint *length)
+{
+}
+
+GLboolean GLAPIENTRY
+_mesa_IsNamedStringARB(GLint namelen, const GLchar *name)
+{
+   return false;
+}
+
+GLvoid GLAPIENTRY
+_mesa_GetNamedStringARB(GLint namelen, const GLchar *name, GLsizei bufSize,
+                        GLint *stringlen, GLchar *string)
+{
+}
+
+GLvoid GLAPIENTRY
+_mesa_GetNamedStringivARB(GLint namelen, const GLchar *name,
+                          GLenum pname, GLint *params)
+{
+}
+
 static int
 find_compat_subroutine(struct gl_program *p, const struct glsl_type *type)
 {
