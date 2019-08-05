@@ -2962,7 +2962,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 		ir3_print(ir);
 	}
 
-	ret = ir3_ra(ir, so->type, so->frag_coord, so->frag_face);
+	ret = ir3_ra(ir);
 	if (ret) {
 		DBG("RA failed!");
 		goto out;
