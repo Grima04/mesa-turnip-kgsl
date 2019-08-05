@@ -72,23 +72,22 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
         int source_mask = first->mask;
 
         /* As long as the second doesn't read from the first, we're okay */
-        if (second->ssa_args.src[0] == source) {
-                if (first->type == TAG_ALU_4) {
-                        /* Figure out which components we just read from */
+        for (unsigned i = 0; i < ARRAY_SIZE(second->ssa_args.src); ++i) {
+                if (second->ssa_args.src[i] != source)
+                        continue;
 
-                        int q = second->alu.src1;
-                        midgard_vector_alu_src *m = (midgard_vector_alu_src *) &q;
-
-                        /* Check if there are components in common, and fail if so */
-                        if (swizzle_to_access_mask(m->swizzle) & source_mask)
-                                return false;
-                } else
+                if (first->type != TAG_ALU_4)
                         return false;
 
-        }
+                /* Figure out which components we just read from */
 
-        if (second->ssa_args.src[1] == source)
-                return false;
+                int q = (i == 0) ? second->alu.src1 : second->alu.src2;
+                midgard_vector_alu_src *m = (midgard_vector_alu_src *) &q;
+
+                /* Check if there are components in common, and fail if so */
+                if (swizzle_to_access_mask(m->swizzle) & source_mask)
+                        return false;
+        }
 
         /* Otherwise, it's safe in that regard. Another data hazard is both
          * writing to the same place, of course */
