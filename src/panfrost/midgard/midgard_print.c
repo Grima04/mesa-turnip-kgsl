@@ -48,6 +48,19 @@ mir_print_source(int source)
         }
 }
 
+static const char components[16] = "xyzwefghijklmnop";
+
+static void
+mir_print_mask(unsigned mask)
+{
+        printf(".");
+
+        for (unsigned i = 0; i < 16; ++i) {
+                if (mask & (1 << i))
+                        putchar(components[i]);
+        }
+}
+
 void
 mir_print_instruction(midgard_instruction *ins)
 {
@@ -88,7 +101,12 @@ mir_print_instruction(midgard_instruction *ins)
 
         ssa_args *args = &ins->ssa_args;
 
-        printf(" %d, ", args->dest);
+        printf(" %d", args->dest);
+
+        if (ins->mask != 0xF)
+                mir_print_mask(ins->mask);
+
+        printf(", ");
 
         mir_print_source(args->src[0]);
         printf(", ");
