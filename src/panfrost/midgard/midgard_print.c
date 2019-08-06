@@ -151,6 +151,9 @@ mir_print_instruction(midgard_instruction *ins)
         if (ins->has_constants)
                 printf(" <%f, %f, %f, %f>", ins->constants[0], ins->constants[1], ins->constants[2], ins->constants[3]);
 
+        if (ins->no_spill)
+                printf(" /* no spill */");
+
         printf("\n");
 }
 
