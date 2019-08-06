@@ -5603,8 +5603,11 @@ static void si_init_config(struct si_context *sctx)
 		si_pm4_set_reg(pm4, R_028C50_PA_SC_NGG_MODE_CNTL,
 			       S_028C50_MAX_DEALLOCS_IN_WAVE(512));
 		si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
-		si_pm4_set_reg(pm4, R_02835C_PA_SC_TILE_STEERING_OVERRIDE,
-			       sscreen->info.pa_sc_tile_steering_override);
+
+		if (!has_clear_state) {
+			si_pm4_set_reg(pm4, R_02835C_PA_SC_TILE_STEERING_OVERRIDE,
+				       sscreen->info.pa_sc_tile_steering_override);
+		}
 
 		si_pm4_set_reg(pm4, R_02807C_DB_RMI_L2_CACHE_CONTROL,
 			       S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
