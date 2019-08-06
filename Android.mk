@@ -115,7 +115,8 @@ SUBDIRS := \
 	src/broadcom \
 	src/intel \
 	src/mesa/drivers/dri \
-	src/vulkan
+	src/vulkan \
+	src/panfrost \
 
 INC_DIRS := $(call all-named-subdir-makefiles,$(SUBDIRS))
 INC_DIRS += $(call all-named-subdir-makefiles,src/gallium)
