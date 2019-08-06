@@ -26,6 +26,8 @@
 #include "core/device.hpp"
 #include "core/module.hpp"
 #include "llvm/invocation.hpp"
+#include "nir/invocation.hpp"
+#include "spirv/invocation.hpp"
 
 namespace clover {
    namespace compiler {
@@ -34,6 +36,10 @@ namespace clover {
                       const device &dev, const std::string &opts,
                       std::string &log) {
          switch (dev.ir_format()) {
+#ifdef HAVE_CLOVER_SPIRV
+         case PIPE_SHADER_IR_NIR_SERIALIZED:
+            return llvm::compile_to_spirv(source, headers, dev, opts, log);
+#endif
          case PIPE_SHADER_IR_NATIVE:
             return llvm::compile_program(source, headers, dev, opts, log);
          default:
@@ -46,6 +52,9 @@ namespace clover {
       link_program(const std::vector<module> &ms, const device &dev,
                    const std::string &opts, std::string &log) {
          switch (dev.ir_format()) {
+         case PIPE_SHADER_IR_NIR_SERIALIZED:
+            return nir::spirv_to_nir(spirv::link_program(ms, dev, opts, log),
+                                     dev, log);
          case PIPE_SHADER_IR_NATIVE:
             return llvm::link_program(ms, dev, opts, log);
          default:

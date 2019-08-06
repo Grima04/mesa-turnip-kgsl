@@ -418,6 +418,9 @@ st_release_cp_variants(struct st_context *st, struct st_compute_program *stcp)
          /* ??? */
          stcp->tgsi.prog = NULL;
          break;
+      case PIPE_SHADER_IR_NIR_SERIALIZED:
+         unreachable("serialized nirs aren't passed through st/mesa");
+         break;
       }
    }
 }

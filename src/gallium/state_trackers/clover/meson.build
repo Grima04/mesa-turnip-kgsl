@@ -66,6 +66,15 @@ libclspirv = static_library(
   override_options : clover_cpp_std,
 )
 
+libclnir = static_library(
+  'clnir',
+  [files('nir/invocation.cpp', 'nir/invocation.hpp'), nir_opcodes_h],
+  include_directories : [clover_incs, inc_mesa],
+  cpp_args : [clover_spirv_cpp_args, cpp_vis_args],
+  link_with : [libnir],
+  override_options : clover_cpp_std,
+)
+
 clover_files = files(
   'api/context.cpp',
   'api/device.cpp',
@@ -127,6 +136,6 @@ libclover = static_library(
   [clover_files, sha1_h],
   include_directories : clover_incs,
   cpp_args : [clover_spirv_cpp_args, clover_cpp_args, cpp_vis_args],
-  link_with : [libclllvm, libclspirv],
+  link_with : [libclllvm, libclspirv, libclnir],
   override_options : clover_cpp_std,
 )
