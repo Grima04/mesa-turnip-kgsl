@@ -224,7 +224,31 @@ optimizations = [
    # (a * #b) << #c
    # a * (#b << #c)
    (('ishl', ('imul', a, '#b'), '#c'), ('imul', a, ('ishl', b, c))),
+]
 
+# Care must be taken here.  Shifts in NIR uses only the lower log2(bitsize)
+# bits of the second source.  These replacements must correctly handle the
+# case where (b % bitsize) + (c % bitsize) >= bitsize.
+for s in [8, 16, 32, 64]:
+   mask = (1 << s) - 1
+
+   ishl = "ishl@{}".format(s)
+   ishr = "ishr@{}".format(s)
+   ushr = "ushr@{}".format(s)
+
+   in_bounds = ('ult', ('iadd', ('iand', b, mask), ('iand', c, mask)), s)
+
+   optimizations.extend([
+       ((ishl, (ishl, a, '#b'), '#c'), ('bcsel', in_bounds, (ishl, a, ('iadd', b, c)), 0)),
+       ((ushr, (ushr, a, '#b'), '#c'), ('bcsel', in_bounds, (ushr, a, ('iadd', b, c)), 0)),
+
+       # To get get -1 for large shifts of negative values, ishr must instead
+       # clamp the shift count to the maximum value.
+       ((ishr, (ishr, a, '#b'), '#c'),
+        (ishr, a, ('imin', ('iadd', ('iand', b, mask), ('iand', c, mask)), s - 1))),
+   ])
+
+optimizations.extend([
    # This is common for address calculations.  Reassociating may enable the
    # 'a<<c' to be CSE'd.  It also helps architectures that have an ISHLADD
    # instruction or a constant offset field for in load / store instructions.
@@ -859,7 +883,7 @@ optimizations = [
    (('ishr', 'a@32', 24), ('extract_i8', a, 3), '!options->lower_extract_byte'),
    (('ishr', 'a@64', 56), ('extract_i8', a, 7), '!options->lower_extract_byte'),
    (('iand', 0xff, a), ('extract_u8', a, 0), '!options->lower_extract_byte')
-]
+])
 
 # After the ('extract_u8', a, 0) pattern, above, triggers, there will be
 # patterns like those below.
