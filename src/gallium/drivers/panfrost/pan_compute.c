@@ -87,6 +87,8 @@ panfrost_launch_grid(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
 
+        ctx->compute_grid = info;
+
         struct mali_job_descriptor_header job = {
                 .job_type = JOB_TYPE_COMPUTE,
                 .job_descriptor_size = 1,

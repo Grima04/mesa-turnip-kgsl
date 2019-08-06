@@ -749,6 +749,14 @@ static void panfrost_upload_ssbo_sysval(
         uniform->u[2] = sb.buffer_size;
 }
 
+static void panfrost_upload_num_work_groups_sysval(struct panfrost_context *ctx,
+                struct sysval_uniform *uniform)
+{
+        uniform->u[0] = ctx->compute_grid->grid[0];
+        uniform->u[1] = ctx->compute_grid->grid[1];
+        uniform->u[2] = ctx->compute_grid->grid[2];
+}
+
 static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
                                     struct panfrost_shader_state *ss,
                                     enum pipe_shader_type st)
@@ -773,6 +781,10 @@ static void panfrost_upload_sysvals(struct panfrost_context *ctx, void *buf,
                         panfrost_upload_ssbo_sysval(ctx, st, PAN_SYSVAL_ID(sysval),
                                                     &uniforms[i]);
                         break;
+                case PAN_SYSVAL_NUM_WORK_GROUPS:
+                        panfrost_upload_num_work_groups_sysval(ctx, &uniforms[i]);
+                        break;
+
                 default:
                         assert(0);
                 }

@@ -330,6 +330,8 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
                 return PAN_SYSVAL_VIEWPORT_SCALE;
         case nir_intrinsic_load_viewport_offset:
                 return PAN_SYSVAL_VIEWPORT_OFFSET;
+        case nir_intrinsic_load_num_work_groups:
+                return PAN_SYSVAL_NUM_WORK_GROUPS;
         case nir_intrinsic_load_ssbo: 
         case nir_intrinsic_store_ssbo: 
                 return midgard_sysval_for_ssbo(instr);
@@ -1575,6 +1577,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
+        case nir_intrinsic_load_num_work_groups:
                 emit_sysval_read(ctx, &instr->instr, -1, 3);
                 break;
 

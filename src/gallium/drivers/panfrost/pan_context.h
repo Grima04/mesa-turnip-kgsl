@@ -108,6 +108,9 @@ struct panfrost_context {
         /* panfrost_resource -> panfrost_job */
         struct hash_table *write_jobs;
 
+        /* Within a launch_grid call.. */
+        const struct pipe_grid_info *compute_grid;
+
         /* Bit mask for supported PIPE_DRAW for this hardware */
         unsigned draw_modes;
 
