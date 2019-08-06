@@ -428,6 +428,13 @@ struct gen_perf_query_object
 struct gen_perf_context {
    struct gen_perf_config *perf;
 
+   void * ctx;  /* driver context (eg, brw_context) */
+   void * bufmgr;
+   const struct gen_device_info *devinfo;
+
+   uint32_t hw_ctx;
+   int drm_fd;
+
    /* The i915 perf stream we open to setup + enable the OA counters */
    int oa_stream_fd;
 
@@ -482,6 +489,14 @@ struct gen_perf_context {
     */
    int n_query_instances;
 };
+
+void gen_perf_init_context(struct gen_perf_context *perf_ctx,
+                           struct gen_perf_config *perf_cfg,
+                           void * ctx,  /* driver context (eg, brw_context) */
+                           void * bufmgr,  /* eg brw_bufmgr */
+                           const struct gen_device_info *devinfo,
+                           uint32_t hw_ctx,
+                           int drm_fd);
 
 static inline size_t
 gen_perf_query_counter_get_size(const struct gen_perf_query_counter *counter)

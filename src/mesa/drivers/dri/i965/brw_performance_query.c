@@ -706,7 +706,7 @@ brw_begin_perf_query(struct gl_context *ctx,
     * This is our Begin synchronization point to drain current work on the
     * GPU before we capture our first counter snapshot...
     */
-   perf_cfg->vtbl.emit_mi_flush(brw);
+   perf_cfg->vtbl.emit_mi_flush(perf_ctx->ctx);
 
    switch (query->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
@@ -734,8 +734,7 @@ brw_begin_perf_query(struct gl_context *ctx,
       /* If the OA counters aren't already on, enable them. */
 
       if (perf_ctx->oa_stream_fd == -1) {
-         __DRIscreen *screen = brw->screen->driScrnPriv;
-         const struct gen_device_info *devinfo = &brw->screen->devinfo;
+         const struct gen_device_info *devinfo = perf_ctx->devinfo;
 
          /* The period_exponent gives a sampling period as follows:
           *   sample_period = timestamp_period * 2^(period_exponent + 1)
@@ -791,7 +790,8 @@ brw_begin_perf_query(struct gl_context *ctx,
              prev_sample_period / 1000000ul);
 
          if (!gen_perf_open(perf_ctx, metric_id, query->oa_format,
-                            period_exponent, screen->fd, brw->hw_ctx))
+                            period_exponent, perf_ctx->drm_fd,
+                            perf_ctx->hw_ctx))
             return false;
       } else {
          assert(perf_ctx->current_oa_metrics_set_id == metric_id &&
@@ -808,15 +808,14 @@ brw_begin_perf_query(struct gl_context *ctx,
          obj->oa.bo = NULL;
       }
 
-      obj->oa.bo =
-         brw->perf_ctx.perf->vtbl.bo_alloc(brw->bufmgr,
-                                            "perf. query OA MI_RPC bo",
-                                            MI_RPC_BO_SIZE);
+      obj->oa.bo = perf_cfg->vtbl.bo_alloc(perf_ctx->bufmgr,
+                                           "perf. query OA MI_RPC bo",
+                                           MI_RPC_BO_SIZE);
 #ifdef DEBUG
       /* Pre-filling the BO helps debug whether writes landed. */
-      void *map = brw->perf_ctx.perf->vtbl.bo_map(brw, obj->oa.bo, MAP_WRITE);
+      void *map = perf_cfg->vtbl.bo_map(perf_ctx->ctx, obj->oa.bo, MAP_WRITE);
       memset(map, 0x80, MI_RPC_BO_SIZE);
-      brw->perf_ctx.perf->vtbl.bo_unmap(obj->oa.bo);
+      perf_cfg->vtbl.bo_unmap(obj->oa.bo);
 #endif
 
       obj->oa.begin_report_id = perf_ctx->next_query_start_report_id;
@@ -828,12 +827,12 @@ brw_begin_perf_query(struct gl_context *ctx,
        * scheduler to load a new request into the hardware. This is manifested in
        * tools like frameretrace by spikes in the "GPU Core Clocks" counter.
        */
-      perf_cfg->vtbl.batchbuffer_flush(brw, __FILE__, __LINE__);
+      perf_cfg->vtbl.batchbuffer_flush(perf_ctx->ctx, __FILE__, __LINE__);
 
       /* Take a starting OA counter snapshot. */
-      perf_cfg->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo, 0,
-                                            obj->oa.begin_report_id);
-      perf_cfg->vtbl.capture_frequency_stat_register(brw, obj->oa.bo,
+      perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, obj->oa.bo, 0,
+                                               obj->oa.begin_report_id);
+      perf_cfg->vtbl.capture_frequency_stat_register(perf_ctx->ctx, obj->oa.bo,
                                                      MI_FREQ_START_OFFSET_BYTES);
 
       ++perf_ctx->n_active_oa_queries;
@@ -858,23 +857,23 @@ brw_begin_perf_query(struct gl_context *ctx,
       gen_perf_query_result_clear(&obj->oa.result);
       obj->oa.results_accumulated = false;
 
-      add_to_unaccumulated_query_list(brw, obj);
+      add_to_unaccumulated_query_list(perf_ctx->ctx, obj);
       break;
    }
 
    case GEN_PERF_QUERY_TYPE_PIPELINE:
       if (obj->pipeline_stats.bo) {
-         brw->perf_ctx.perf->vtbl.bo_unreference(obj->pipeline_stats.bo);
+         perf_cfg->vtbl.bo_unreference(obj->pipeline_stats.bo);
          obj->pipeline_stats.bo = NULL;
       }
 
       obj->pipeline_stats.bo =
-         brw->perf_ctx.perf->vtbl.bo_alloc(brw->bufmgr,
-                                            "perf. query pipeline stats bo",
-                                            STATS_BO_SIZE);
+         perf_cfg->vtbl.bo_alloc(perf_ctx->bufmgr,
+                                 "perf. query pipeline stats bo",
+                                 STATS_BO_SIZE);
 
       /* Take starting snapshots. */
-      gen_perf_snapshot_statistics_registers(brw, perf_cfg, obj, 0);
+      gen_perf_snapshot_statistics_registers(perf_ctx->ctx, perf_cfg, obj, 0);
 
       ++perf_ctx->n_active_pipeline_stats_queries;
       break;
@@ -911,7 +910,7 @@ brw_end_perf_query(struct gl_context *ctx,
     * For more details see comment in brw_begin_perf_query for
     * corresponding flush.
     */
-   perf_cfg->vtbl.emit_mi_flush(brw);
+   perf_cfg->vtbl.emit_mi_flush(perf_ctx->ctx);
 
    switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:
@@ -924,9 +923,9 @@ brw_end_perf_query(struct gl_context *ctx,
        */
       if (!obj->oa.results_accumulated) {
          /* Take an ending OA counter snapshot. */
-         perf_cfg->vtbl.capture_frequency_stat_register(brw, obj->oa.bo,
+         perf_cfg->vtbl.capture_frequency_stat_register(perf_ctx->ctx, obj->oa.bo,
                                                         MI_FREQ_END_OFFSET_BYTES);
-         brw->vtbl.emit_mi_report_perf_count(brw, obj->oa.bo,
+         brw->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, obj->oa.bo,
                                              MI_RPC_BO_END_OFFSET_BYTES,
                                              obj->oa.begin_report_id + 1);
       }
@@ -1127,7 +1126,7 @@ get_pipeline_stats_data(struct brw_context *brw,
    int n_counters = obj->queryinfo->n_counters;
    uint8_t *p = data;
 
-   uint64_t *start = perf_cfg->vtbl.bo_map(brw, obj->pipeline_stats.bo, MAP_READ);
+   uint64_t *start = perf_cfg->vtbl.bo_map(perf_ctx->ctx, obj->pipeline_stats.bo, MAP_READ);
    uint64_t *end = start + (STATS_BO_END_OFFSET_BYTES / sizeof(uint64_t));
 
    for (int i = 0; i < n_counters; i++) {
@@ -1471,7 +1470,6 @@ brw_init_perf_query_info(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   __DRIscreen *screen = brw->screen->driScrnPriv;
 
    struct gen_perf_context *perf_ctx = &brw->perf_ctx;
    if (perf_ctx->perf)
@@ -1493,33 +1491,15 @@ brw_init_perf_query_info(struct gl_context *ctx)
    perf_cfg->vtbl.store_register_mem64 =
       (store_register_mem64_t) brw_store_register_mem64;
 
+   gen_perf_init_context(perf_ctx, perf_cfg, brw, brw->bufmgr, devinfo,
+                         brw->hw_ctx, brw->screen->driScrnPriv->fd);
+
    init_pipeline_statistic_query_registers(brw);
-   gen_perf_query_register_mdapi_statistic_query(&brw->screen->devinfo,
-                                                 brw->perf_ctx.perf);
+   gen_perf_query_register_mdapi_statistic_query(devinfo, perf_cfg);
 
-   if ((oa_metrics_kernel_support(screen->fd, devinfo)) &&
-       (gen_perf_load_oa_metrics(perf_cfg, screen->fd, devinfo)))
+   if ((oa_metrics_kernel_support(perf_ctx->drm_fd, devinfo)) &&
+       (gen_perf_load_oa_metrics(perf_cfg, perf_ctx->drm_fd, devinfo)))
       gen_perf_query_register_mdapi_oa_query(devinfo, perf_cfg);
-
-   perf_ctx->unaccumulated =
-      ralloc_array(brw, struct gen_perf_query_object *, 2);
-   perf_ctx->unaccumulated_elements = 0;
-   perf_ctx->unaccumulated_array_size = 2;
-
-   exec_list_make_empty(&perf_ctx->sample_buffers);
-   exec_list_make_empty(&perf_ctx->free_sample_buffers);
-
-   /* It's convenient to guarantee that this linked list of sample
-    * buffers is never empty so we add an empty head so when we
-    * Begin an OA query we can always take a reference on a buffer
-    * in this list.
-    */
-   struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(&brw->perf_ctx);
-   exec_list_push_head(&perf_ctx->sample_buffers, &buf->link);
-
-   perf_ctx->oa_stream_fd = -1;
-
-   perf_ctx->next_query_start_report_id = 1000;
 
    return perf_cfg->n_queries;
 }

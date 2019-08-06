@@ -991,3 +991,39 @@ gen_perf_dec_n_users(struct gen_perf_context *perf_ctx)
       DBG("WARNING: Error disabling gen perf stream: %m\n");
    }
 }
+
+void
+gen_perf_init_context(struct gen_perf_context *perf_ctx,
+                      struct gen_perf_config *perf_cfg,
+                      void * ctx,  /* driver context (eg, brw_context) */
+                      void * bufmgr,  /* eg brw_bufmgr */
+                      const struct gen_device_info *devinfo,
+                      uint32_t hw_ctx,
+                      int drm_fd)
+{
+   perf_ctx->perf = perf_cfg;
+   perf_ctx->ctx = ctx;
+   perf_ctx->bufmgr = bufmgr;
+   perf_ctx->drm_fd = drm_fd;
+   perf_ctx->hw_ctx = hw_ctx;
+   perf_ctx->devinfo = devinfo;
+
+   perf_ctx->unaccumulated =
+      ralloc_array(ctx, struct gen_perf_query_object *, 2);
+   perf_ctx->unaccumulated_elements = 0;
+   perf_ctx->unaccumulated_array_size = 2;
+
+   exec_list_make_empty(&perf_ctx->sample_buffers);
+   exec_list_make_empty(&perf_ctx->free_sample_buffers);
+
+   /* It's convenient to guarantee that this linked list of sample
+    * buffers is never empty so we add an empty head so when we
+    * Begin an OA query we can always take a reference on a buffer
+    * in this list.
+    */
+   struct oa_sample_buf *buf = gen_perf_get_free_sample_buf(perf_ctx);
+   exec_list_push_head(&perf_ctx->sample_buffers, &buf->link);
+
+   perf_ctx->oa_stream_fd = -1;
+   perf_ctx->next_query_start_report_id = 1000;
+}
