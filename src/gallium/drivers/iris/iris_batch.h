@@ -39,7 +39,7 @@
 #define MAX_BATCH_SIZE (256 * 1024)
 
 /* Our target batch size - flush approximately at this point. */
-#define BATCH_SZ (20 * 1024)
+#define BATCH_SZ (64 * 1024)
 
 enum iris_batch_name {
    IRIS_BATCH_RENDER,
