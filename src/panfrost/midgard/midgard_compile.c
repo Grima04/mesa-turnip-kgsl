@@ -189,6 +189,7 @@ M_LOAD(ld_color_buffer_8);
 //M_STORE(st_vary_16);
 M_STORE(st_vary_32);
 M_LOAD(st_cubemap_coords);
+M_LOAD(ld_compute_id);
 
 static midgard_instruction
 v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, unsigned cond)
@@ -1326,6 +1327,28 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
         ins->mask = mask_of(nr_components);
 }
 
+static unsigned
+compute_builtin_arg(nir_op op)
+{
+        switch (op) {
+        case nir_intrinsic_load_work_group_id:
+                return 0x14;
+        case nir_intrinsic_load_local_invocation_id:
+                return 0x10;
+        default:
+                unreachable("Invalid compute paramater loaded");
+        }
+}
+
+static void
+emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
+{
+        unsigned reg = nir_dest_index(ctx, &instr->dest);
+        midgard_instruction ins = m_ld_compute_id(reg, 0);
+        ins.mask = mask_of(3);
+        ins.load_store.arg_1 = compute_builtin_arg(instr->intrinsic);
+        emit_mir_instruction(ctx, ins);
+}
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1553,6 +1576,11 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
                 emit_sysval_read(ctx, &instr->instr, -1, 3);
+                break;
+
+        case nir_intrinsic_load_work_group_id:
+        case nir_intrinsic_load_local_invocation_id:
+                emit_compute_builtin(ctx, instr);
                 break;
 
         default:
