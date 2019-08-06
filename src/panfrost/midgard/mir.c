@@ -376,6 +376,26 @@ mir_source_count(midgard_instruction *ins)
         }
 }
 
+static unsigned
+mir_component_count_implicit(midgard_instruction *ins, unsigned i)
+{
+        if (ins->type == TAG_LOAD_STORE_4) {
+                switch (ins->load_store.op) {
+                        /* Address implicitly 64-bit */
+                case midgard_op_ld_int4:
+                        return (i == 0) ? 1 : 0;
+
+                case midgard_op_st_int4:
+                        return (i == 1) ? 1 : 0;
+
+                default:
+                        return 0;
+                }
+        }
+
+        return 0;
+}
+
 unsigned
 mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
 {
@@ -385,7 +405,22 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
                 if (ins->ssa_args.src[i] != node) continue;
 
                 unsigned swizzle = mir_get_swizzle(ins, i);
-                mask |= mir_mask_of_read_components_single(swizzle, ins->mask);
+                unsigned m = mir_mask_of_read_components_single(swizzle, ins->mask);
+
+                /* Sometimes multi-arg ops are passed implicitly */
+                unsigned implicit = mir_component_count_implicit(ins, i);
+                assert(implicit < 2);
+
+                /* Extend the mask */
+                if (implicit == 1) {
+                        /* Ensure it's a single bit currently */
+                        assert((m >> __builtin_ctz(m)) == 0x1);
+
+                        /* Set the next bit to extend one*/
+                        m |= (m << 1);
+                }
+
+                mask |= m;
         }
 
         return mask;
