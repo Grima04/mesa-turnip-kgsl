@@ -61,6 +61,29 @@ mir_print_mask(unsigned mask)
         }
 }
 
+static const char *
+mir_get_unit(unsigned unit)
+{
+        switch (unit) {
+        case ALU_ENAB_VEC_MUL:
+                return "vmul";
+        case ALU_ENAB_SCAL_ADD:
+                return "sadd";
+        case ALU_ENAB_VEC_ADD:
+                return "vadd";
+        case ALU_ENAB_SCAL_MUL:
+                return "smul";
+        case ALU_ENAB_VEC_LUT:
+                return "lut";
+        case ALU_ENAB_BR_COMPACT:
+                return "br";
+        case ALU_ENAB_BRANCH:
+                return "brx";
+        default:
+                return "???";
+        }
+}
+
 void
 mir_print_instruction(midgard_instruction *ins)
 {
@@ -72,7 +95,7 @@ mir_print_instruction(midgard_instruction *ins)
                 const char *name = alu_opcode_props[op].name;
 
                 if (ins->unit)
-                        printf("%d.", ins->unit);
+                        printf("%s.", mir_get_unit(ins->unit));
 
                 printf("%s", name ? name : "??");
                 break;
