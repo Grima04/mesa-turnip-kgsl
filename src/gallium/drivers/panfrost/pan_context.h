@@ -88,6 +88,12 @@ struct panfrost_fence {
         int fd;
 };
 
+struct panfrost_streamout {
+        struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
+        uint32_t offsets[PIPE_MAX_SO_BUFFERS];
+        unsigned num_targets;
+};
+
 struct panfrost_context {
         /* Gallium context */
         struct pipe_context base;
@@ -106,6 +112,7 @@ struct panfrost_context {
         unsigned draw_modes;
 
         struct pipe_framebuffer_state pipe_framebuffer;
+        struct panfrost_streamout streamout;
 
         struct panfrost_memory cmdstream_persistent;
         struct panfrost_memory scratchpad;

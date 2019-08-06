@@ -1,5 +1,6 @@
 /*
  * © Copyright 2018 Alyssa Rosenzweig
+ * Copyright © 2014-2017 Broadcom
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -2670,7 +2671,22 @@ panfrost_set_stream_output_targets(struct pipe_context *pctx,
                                    struct pipe_stream_output_target **targets,
                                    const unsigned *offsets)
 {
-        /* STUB */
+        struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_streamout *so = &ctx->streamout;
+
+        assert(num_targets <= ARRAY_SIZE(so->targets));
+
+        for (unsigned i = 0; i < num_targets; i++) {
+                if (offsets[i] != -1)
+                        so->offsets[i] = offsets[i];
+
+                pipe_so_target_reference(&so->targets[i], targets[i]);
+        }
+
+        for (unsigned i = 0; i < so->num_targets; i++)
+                pipe_so_target_reference(&so->targets[i], NULL);
+
+        so->num_targets = num_targets;
 }
 
 static void
