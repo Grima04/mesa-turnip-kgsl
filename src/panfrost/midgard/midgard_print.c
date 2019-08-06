@@ -32,7 +32,7 @@
  * registers */
 
 static void
-mir_print_source(int source)
+mir_print_index(int source)
 {
         if (source >= SSA_FIXED_MINIMUM) {
                 /* Specific register */
@@ -124,23 +124,24 @@ mir_print_instruction(midgard_instruction *ins)
 
         ssa_args *args = &ins->ssa_args;
 
-        printf(" %d", args->dest);
+        printf(" ");
+        mir_print_index(args->dest);
 
         if (ins->mask != 0xF)
                 mir_print_mask(ins->mask);
 
         printf(", ");
 
-        mir_print_source(args->src[0]);
+        mir_print_index(args->src[0]);
         printf(", ");
 
         if (args->inline_constant)
                 printf("#%d", ins->inline_constant);
         else
-                mir_print_source(args->src[1]);
+                mir_print_index(args->src[1]);
 
         printf(", ");
-        mir_print_source(args->src[2]);
+        mir_print_index(args->src[2]);
 
         if (ins->has_constants)
                 printf(" <%f, %f, %f, %f>", ins->constants[0], ins->constants[1], ins->constants[2], ins->constants[3]);
