@@ -352,6 +352,7 @@ cfg_t::cfg_t(exec_list *instructions)
           */
          assert(cur_do != NULL);
          cur->add_successor(mem_ctx, cur_do, bblock_link_physical);
+         cur->add_successor(mem_ctx, cur_while, bblock_link_logical);
 
 	 next = new_block();
 	 if (inst->predicate)
