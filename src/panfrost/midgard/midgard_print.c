@@ -34,6 +34,11 @@
 static void
 mir_print_index(int source)
 {
+        if (source < 0) {
+                printf("_");
+                return;
+        }
+
         if (source >= SSA_FIXED_MINIMUM) {
                 /* Specific register */
                 int reg = SSA_REG_FROM_FIXED(source);
