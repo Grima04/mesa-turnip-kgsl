@@ -28,8 +28,9 @@
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <xf86drm.h>
 #include "drm-uapi/drm_fourcc.h"
+#include "drm-uapi/drm.h"
+#include <xf86drm.h>
 
 #include "anv_private.h"
 #include "util/debug.h"
@@ -439,6 +440,9 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->has_syncobj = anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_FENCE_ARRAY);
    device->has_syncobj_wait = device->has_syncobj &&
                               anv_gem_supports_syncobj_wait(fd);
+   device->has_syncobj_wait_available =
+      anv_gem_get_drm_cap(fd, DRM_CAP_SYNCOBJ_TIMELINE) != 0;
+
    device->has_context_priority = anv_gem_has_context_priority(fd);
 
    result = anv_physical_device_init_heaps(device, fd);
@@ -450,6 +454,11 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    device->has_context_isolation =
       anv_gem_get_param(fd, I915_PARAM_HAS_CONTEXT_ISOLATION);
+
+   device->has_exec_timeline =
+      anv_gem_get_param(fd, I915_PARAM_HAS_EXEC_TIMELINE_FENCES);
+   if (env_var_as_boolean("ANV_QUEUE_THREAD_DISABLE", false))
+      device->has_exec_timeline = false;
 
    device->always_use_bindless =
       env_var_as_boolean("ANV_ALWAYS_BINDLESS", false);

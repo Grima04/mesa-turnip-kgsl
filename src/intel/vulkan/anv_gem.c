@@ -285,6 +285,17 @@ anv_gem_get_param(int fd, uint32_t param)
    return 0;
 }
 
+uint64_t
+anv_gem_get_drm_cap(int fd, uint32_t capability)
+{
+   struct drm_get_cap cap = {
+      .capability = capability,
+   };
+
+   gen_ioctl(fd, DRM_IOCTL_GET_CAP, &cap);
+   return cap.value;
+}
+
 bool
 anv_gem_get_bit6_swizzle(int fd, uint32_t tiling)
 {
@@ -574,7 +585,7 @@ anv_gem_supports_syncobj_wait(int fd)
 
 int
 anv_gem_syncobj_wait(struct anv_device *device,
-                     uint32_t *handles, uint32_t num_handles,
+                     const uint32_t *handles, uint32_t num_handles,
                      int64_t abs_timeout_ns, bool wait_all)
 {
    struct drm_syncobj_wait args = {
@@ -588,4 +599,60 @@ anv_gem_syncobj_wait(struct anv_device *device,
       args.flags |= DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL;
 
    return gen_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &args);
+}
+
+int
+anv_gem_syncobj_timeline_wait(struct anv_device *device,
+                              const uint32_t *handles, const uint64_t *points,
+                              uint32_t num_items, int64_t abs_timeout_ns,
+                              bool wait_all, bool wait_materialize)
+{
+   assert(device->physical->has_syncobj_wait_available);
+
+   struct drm_syncobj_timeline_wait args = {
+      .handles = (uint64_t)(uintptr_t)handles,
+      .points = (uint64_t)(uintptr_t)points,
+      .count_handles = num_items,
+      .timeout_nsec = abs_timeout_ns,
+      .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT,
+   };
+
+   if (wait_all)
+      args.flags |= DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL;
+   if (wait_materialize)
+      args.flags |= DRM_SYNCOBJ_WAIT_FLAGS_WAIT_AVAILABLE;
+
+   return gen_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_TIMELINE_WAIT, &args);
+}
+
+int
+anv_gem_syncobj_timeline_signal(struct anv_device *device,
+                                const uint32_t *handles, const uint64_t *points,
+                                uint32_t num_items)
+{
+   assert(device->physical->has_syncobj_wait_available);
+
+   struct drm_syncobj_timeline_array args = {
+      .handles = (uint64_t)(uintptr_t)handles,
+      .points = (uint64_t)(uintptr_t)points,
+      .count_handles = num_items,
+   };
+
+   return gen_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_TIMELINE_SIGNAL, &args);
+}
+
+int
+anv_gem_syncobj_timeline_query(struct anv_device *device,
+                               const uint32_t *handles, uint64_t *points,
+                               uint32_t num_items)
+{
+   assert(device->physical->has_syncobj_wait_available);
+
+   struct drm_syncobj_timeline_array args = {
+      .handles = (uint64_t)(uintptr_t)handles,
+      .points = (uint64_t)(uintptr_t)points,
+      .count_handles = num_items,
+   };
+
+   return gen_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_QUERY, &args);
 }

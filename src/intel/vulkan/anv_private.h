@@ -1079,6 +1079,7 @@ struct anv_physical_device {
     bool                                        has_exec_fence;
     bool                                        has_syncobj;
     bool                                        has_syncobj_wait;
+    bool                                        has_syncobj_wait_available;
     bool                                        has_context_priority;
     bool                                        has_context_isolation;
     bool                                        has_mem_available;
@@ -1095,6 +1096,8 @@ struct anv_physical_device {
     bool                                        has_bindless_images;
     /** True if we can use bindless access for samplers */
     bool                                        has_bindless_samplers;
+    /** True if we can use timeline semaphores through execbuf */
+    bool                                        has_exec_timeline;
 
     /** True if we can read the GPU timestamp register
      *
@@ -1561,6 +1564,7 @@ int anv_gem_set_context_param(int fd, int context, uint32_t param,
 int anv_gem_get_context_param(int fd, int context, uint32_t param,
                               uint64_t *value);
 int anv_gem_get_param(int fd, uint32_t param);
+uint64_t anv_gem_get_drm_cap(int fd, uint32_t capability);
 int anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle);
 bool anv_gem_get_bit6_swizzle(int fd, uint32_t tiling);
 int anv_gem_gpu_get_reset_stats(struct anv_device *device,
@@ -1583,8 +1587,18 @@ int anv_gem_syncobj_import_sync_file(struct anv_device *device,
 void anv_gem_syncobj_reset(struct anv_device *device, uint32_t handle);
 bool anv_gem_supports_syncobj_wait(int fd);
 int anv_gem_syncobj_wait(struct anv_device *device,
-                         uint32_t *handles, uint32_t num_handles,
+                         const uint32_t *handles, uint32_t num_handles,
                          int64_t abs_timeout_ns, bool wait_all);
+int anv_gem_syncobj_timeline_wait(struct anv_device *device,
+                                  const uint32_t *handles, const uint64_t *points,
+                                  uint32_t num_items, int64_t abs_timeout_ns,
+                                  bool wait_all, bool wait_materialize);
+int anv_gem_syncobj_timeline_signal(struct anv_device *device,
+                                    const uint32_t *handles, const uint64_t *points,
+                                    uint32_t num_items);
+int anv_gem_syncobj_timeline_query(struct anv_device *device,
+                                   const uint32_t *handles, uint64_t *points,
+                                   uint32_t num_items);
 
 uint64_t anv_vma_alloc(struct anv_device *device,
                        uint64_t size, uint64_t align,
