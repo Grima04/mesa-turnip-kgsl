@@ -196,13 +196,20 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                      instr->intrinsic == nir_intrinsic_shared_atomic_add) &&
                                     (tmu_op == V3D_TMU_OP_WRITE_AND_READ_INC ||
                                      tmu_op == V3D_TMU_OP_WRITE_OR_READ_DEC));
+
         bool is_store = (instr->intrinsic == nir_intrinsic_store_ssbo ||
                          instr->intrinsic == nir_intrinsic_store_scratch ||
                          instr->intrinsic == nir_intrinsic_store_shared);
+
+        bool is_load = (instr->intrinsic == nir_intrinsic_load_uniform ||
+                        instr->intrinsic == nir_intrinsic_load_ubo ||
+                        instr->intrinsic == nir_intrinsic_load_ssbo ||
+                        instr->intrinsic == nir_intrinsic_load_scratch ||
+                        instr->intrinsic == nir_intrinsic_load_shared);
+
         bool has_index = !is_shared_or_scratch;
 
         int offset_src;
-        int tmu_writes = 1; /* address */
         if (instr->intrinsic == nir_intrinsic_load_uniform) {
                 offset_src = 0;
         } else if (instr->intrinsic == nir_intrinsic_load_ssbo ||
@@ -213,37 +220,14 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 offset_src = 0 + has_index;
         } else if (is_store) {
                 offset_src = 1 + has_index;
-                for (int i = 0; i < instr->num_components; i++) {
-                        vir_MOV_dest(c,
-                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                                     ntq_get_src(c, instr->src[0], i));
-                        tmu_writes++;
-                }
         } else {
                 offset_src = 0 + has_index;
-                vir_MOV_dest(c,
-                             vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                             ntq_get_src(c, instr->src[1 + has_index], 0));
-                tmu_writes++;
-                if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
-                        vir_MOV_dest(c,
-                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                                     ntq_get_src(c, instr->src[2 + has_index],
-                                                 0));
-                        tmu_writes++;
-                }
         }
 
         bool dynamic_src = !nir_src_is_const(instr->src[offset_src]);
         uint32_t const_offset = 0;
         if (!dynamic_src)
                 const_offset = nir_src_as_uint(instr->src[offset_src]);
-
-        /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
-         * storing at the same time.
-         */
-        while (tmu_writes > 16 / c->threads)
-                c->threads /= 2;
 
         struct qreg offset;
         if (instr->intrinsic == nir_intrinsic_load_uniform) {
@@ -276,6 +260,34 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                      nir_src_as_uint(instr->src[is_store ?
                                                                 1 : 0]));
         }
+
+        int tmu_writes = 1; /* address */
+        if (is_store) {
+                for (int i = 0; i < instr->num_components; i++) {
+                        vir_MOV_dest(c,
+                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
+                                     ntq_get_src(c, instr->src[0], i));
+                        tmu_writes++;
+                }
+        } else if (!is_load && !atomic_add_replaced) {
+                vir_MOV_dest(c,
+                             vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
+                             ntq_get_src(c, instr->src[1 + has_index], 0));
+                tmu_writes++;
+                if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
+                        vir_MOV_dest(c,
+                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
+                                     ntq_get_src(c, instr->src[2 + has_index],
+                                                 0));
+                        tmu_writes++;
+                }
+        }
+
+        /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
+         * storing at the same time.
+         */
+        while (tmu_writes > 16 / c->threads)
+                c->threads /= 2;
 
         /* The spec says that for atomics, the TYPE field is ignored, but that
          * doesn't seem to be the case for CMPXCHG.  Just use the number of
