@@ -398,8 +398,8 @@ typedef enum {
 
         midgard_op_st_cubemap_coords = 0x0E,
 
-        /* Used in OpenCL. Probably can ld other things as well */
-        midgard_op_ld_global_id = 0x10,
+        /* Loads a global/local/group ID, depending on arguments */
+        midgard_op_ld_compute_id = 0x10,
 
         /* The L/S unit can do perspective division a clock faster than the ALU
          * if you're lucky. Put the vec4 in r27, and call with 0x24 as the

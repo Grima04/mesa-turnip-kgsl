@@ -171,7 +171,7 @@ struct mir_op_props alu_opcode_props[256] = {
 
 const char *load_store_opcode_names[256] = {
         [midgard_op_st_cubemap_coords] = "st_cubemap_coords",
-        [midgard_op_ld_global_id] = "ld_global_id",
+        [midgard_op_ld_compute_id] = "ld_compute_id",
         [midgard_op_ldst_perspective_division_z] = "ldst_perspective_division_z",
         [midgard_op_ldst_perspective_division_w] = "ldst_perspective_division_w",
 
