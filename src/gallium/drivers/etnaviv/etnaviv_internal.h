@@ -269,12 +269,6 @@ struct compiled_shader_state {
    struct etna_reloc VS_INST_ADDR;
 };
 
-/* state of some 3d and common registers relevant to etna driver */
-struct etna_3d_state {
-   uint32_t /*05000*/ VS_UNIFORMS[VIVS_VS_UNIFORMS__LEN];
-   uint32_t /*07000*/ PS_UNIFORMS[VIVS_PS_UNIFORMS__LEN];
-};
-
 /* Helpers to assist creating and setting bitarrays (eg, for varyings).
  * field_size must be a power of two, and <= 32. */
 #define DEFINE_ETNA_BITARRAY(name, num, field_size) \

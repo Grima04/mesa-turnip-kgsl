@@ -224,15 +224,8 @@ etna_emit_state(struct etna_context *ctx)
 
    /* Pre-processing: see what caches we need to flush before making state changes. */
    uint32_t to_flush = 0;
-   if (unlikely(dirty & (ETNA_DIRTY_BLEND))) {
-      /* Need flush COLOR when changing PE.COLOR_FORMAT.OVERWRITE. */
-#if 0
-        /* TODO*/
-        if ((ctx->gpu3d.PE_COLOR_FORMAT & VIVS_PE_COLOR_FORMAT_OVERWRITE) !=
-           (etna_blend_state(ctx->blend)->PE_COLOR_FORMAT & VIVS_PE_COLOR_FORMAT_OVERWRITE))
-#endif
+   if (unlikely(dirty & (ETNA_DIRTY_BLEND)))
       to_flush |= VIVS_GL_FLUSH_CACHE_COLOR;
-   }
    if (unlikely(dirty & (ETNA_DIRTY_TEXTURE_CACHES)))
       to_flush |= VIVS_GL_FLUSH_CACHE_TEXTURE;
    if (unlikely(dirty & (ETNA_DIRTY_FRAMEBUFFER))) /* Framebuffer config changed? */

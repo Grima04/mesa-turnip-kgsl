@@ -175,9 +175,6 @@ struct etna_context {
    struct pipe_viewport_state viewport_s;
    struct pipe_scissor_state scissor_s;
 
-   /* cached state of entire GPU */
-   struct etna_3d_state gpu3d;
-
    /* stats/counters */
    struct {
       uint64_t prims_emitted;
