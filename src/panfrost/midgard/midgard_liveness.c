@@ -46,22 +46,18 @@ is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
                 succ->visited = true;
 
                 /* Within this block, check if it's overwritten first */
-                bool block_done = false;
+                unsigned overwritten_mask = 0;
 
                 mir_foreach_instr_in_block(succ, ins) {
-                        if (mir_has_arg(ins, src))
+                        /* Did we read any components that we haven't overwritten yet? */
+                        if (mir_mask_of_read_components(ins, src) & ~overwritten_mask)
                                 return true;
 
                         /* If written-before-use, we're gone */
 
-                        if (ins->ssa_args.dest == src && ins->mask == 0xF) {
-                                block_done = true;
-                                break;
-                        }
+                        if (ins->ssa_args.dest == src)
+                                overwritten_mask |= ins->mask;
                 }
-
-                if (block_done)
-                        continue;
 
                 /* ...and also, check *its* successors */
                 if (is_live_after_successors(ctx, succ, src))
