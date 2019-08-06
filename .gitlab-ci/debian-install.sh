@@ -207,6 +207,18 @@ apt-get install -y ccache
 # We need xmllint to validate the XML files in Mesa
 apt-get install -y libxml2-utils
 
+
+# Generate cross build files for Meson
+for arch in $CROSS_ARCHITECTURES; do
+  cross_file="/cross_file-$arch.txt"
+  /usr/share/meson/debcrossgen --arch "$arch" -o "$cross_file"
+  # Work around a bug in debcrossgen that should be fixed in the next release
+  if [ "$arch" = "i386" ]; then
+    sed -i "s|cpu_family = 'i686'|cpu_family = 'x86'|g" "$cross_file"
+  fi
+done
+
+
 # Remove unused packages
 apt-get purge -y \
       git \

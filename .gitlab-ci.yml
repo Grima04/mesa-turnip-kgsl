@@ -14,7 +14,7 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-08-07"
+  DEBIAN_TAG: "2019-08-08"
   DEBIAN_VERSION: stretch-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
 
@@ -251,19 +251,13 @@ meson-vulkan:
       -D gallium-xa=false
       -D gallium-nine=false
       -D llvm=false
-    CROSS: >
-      --cross /tmp/cross_file.txt
-
   script:
-    - /usr/share/meson/debcrossgen --arch ${ARCH} -o /tmp/cross_file.txt
-    # Work around a bug in debcrossgen that should be fixed in the next release
-    - sed -i "s|cpu_family = 'i686'|cpu_family = 'x86'|g" /tmp/cross_file.txt
     - .gitlab-ci/meson-build.sh
 
 meson-armhf:
   extends: .meson-cross
   variables:
-    ARCH: armhf
+    CROSS: --cross /cross_file-armhf.txt
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
     # Disable the tests since we're cross compiling.
@@ -275,7 +269,7 @@ meson-armhf:
 meson-arm64:
   extends: .meson-cross
   variables:
-    ARCH: arm64
+    CROSS: --cross /cross_file-arm64.txt
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
     # Disable the tests since we're cross compiling.
@@ -287,7 +281,7 @@ meson-arm64:
 meson-i386:
   extends: .meson-cross
   variables:
-    ARCH: i386
+    CROSS: --cross /cross_file-i386.txt
     VULKAN_DRIVERS: intel
     GALLIUM_DRIVERS: "swrast"
     # Disable i386 tests, because u_format_tests gets precision
