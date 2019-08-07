@@ -369,4 +369,11 @@ pan_expand_shift_odd(struct pan_shift_odd o);
 void
 panfrost_compute_context_init(struct pipe_context *pctx);
 
+/* Varyings */
+
+void
+panfrost_emit_varying_descriptor(
+        struct panfrost_context *ctx,
+        unsigned vertex_count);
+
 #endif
