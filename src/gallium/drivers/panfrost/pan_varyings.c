@@ -60,6 +60,20 @@ panfrost_emit_front_face(union mali_attr *slot)
 
 /* Given a shader and buffer indices, link varying metadata together */
 
+static bool
+is_special_varying(gl_varying_slot loc)
+{
+        switch (loc) {
+        case VARYING_SLOT_POS:
+        case VARYING_SLOT_PSIZ:
+        case VARYING_SLOT_PNTC:
+        case VARYING_SLOT_FACE:
+                return true;
+        default:
+                return false;
+        }
+}
+
 static void
 panfrost_emit_varying_meta(
                 void *outptr, struct panfrost_shader_state *ss,
@@ -115,19 +129,9 @@ panfrost_emit_varying_descriptor(
         struct panfrost_transfer trans = panfrost_allocate_transient(ctx,
                                          vs_size + fs_size);
 
-        /*
-         * Assign ->src_offset now that we know about all the general purpose
-         * varyings that will be used by the fragment and vertex shaders.
-         */
         for (unsigned i = 0; i < vs->tripipe->varying_count; i++) {
-                /*
-                 * General purpose varyings have ->index set to 0, skip other
-                 * entries.
-                 */
-                if (vs->varyings[i].index)
-                        continue;
-
-                vs->varyings[i].src_offset = 16 * (num_gen_varyings++);
+                if (!is_special_varying(vs->varyings_loc[i]))
+                        vs->varyings[i].src_offset = 16 * (num_gen_varyings++);
         }
 
         for (unsigned i = 0; i < fs->tripipe->varying_count; i++) {
@@ -177,15 +181,14 @@ panfrost_emit_varying_descriptor(
         memcpy(trans.cpu, vs->varyings, vs_size);
         memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
 
-        /* Buffer indices must be in this order per our convention */
         union mali_attr varyings[PIPE_MAX_ATTRIBS];
-        unsigned idx = 0;
 
+        unsigned idx = 0;
         signed general = idx++;
         signed gl_Position = idx++;
-        signed gl_PointSize = (vs->writes_point_size || fs->reads_point_coord || fs->reads_face) ? (idx++) : -1;
-        signed gl_PointCoord = (fs->reads_point_coord || fs->reads_face) ? (idx++) : -1;
-        signed gl_FrontFacing = (fs->reads_face) ? (idx++) : -1;
+        signed gl_PointSize = vs->writes_point_size ? (idx++) : -1;
+        signed gl_PointCoord = fs->reads_point_coord ? (idx++) : -1;
+        signed gl_FrontFacing = fs->reads_face ? (idx++) : -1;
 
         panfrost_emit_varyings(ctx, &varyings[general], num_gen_varyings * 16,
                                vertex_count);
@@ -196,26 +199,16 @@ panfrost_emit_varying_descriptor(
                                        sizeof(float) * 4, vertex_count);
 
 
-        if (vs->writes_point_size || fs->reads_point_coord) {
-                /* fp16 vec1 gl_PointSize */
+        if (vs->writes_point_size)
                 ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.pointer =
                         panfrost_emit_varyings(ctx, &varyings[gl_PointSize],
                                                2, vertex_count);
-        } else if (fs->reads_face) {
-                /* Dummy to advance index */
-                ++idx;
-        }
 
-        if (fs->reads_point_coord) {
-                /* Special descriptor */
+        if (fs->reads_point_coord)
                 panfrost_emit_point_coord(&varyings[gl_PointCoord]);
-        } else if (fs->reads_face) {
-                ++idx;
-        }
 
-        if (fs->reads_face) {
+        if (fs->reads_face)
                 panfrost_emit_front_face(&varyings[gl_FrontFacing]);
-        }
 
         /* Let's go ahead and link varying meta to the buffer in question, now
          * that that information is available */
