@@ -58,6 +58,44 @@ panfrost_emit_front_face(union mali_attr *slot)
         slot->elements = MALI_VARYING_FRONT_FACING | MALI_ATTR_INTERNAL;
 }
 
+/* Given a shader and buffer indices, link varying metadata together */
+
+static void
+panfrost_emit_varying_meta(
+                void *outptr, struct panfrost_shader_state *ss,
+                signed general, signed gl_Position,
+                signed gl_PointSize, signed gl_PointCoord,
+                signed gl_FrontFacing)
+{
+        struct mali_attr_meta *out = (struct mali_attr_meta *) outptr;
+
+        for (unsigned i = 0; i < ss->tripipe->varying_count; ++i) {
+                gl_varying_slot location = ss->varyings_loc[i];
+                int index = -1;
+
+                switch (location) {
+                case VARYING_SLOT_POS:
+                        index = gl_Position;
+                        break;
+                case VARYING_SLOT_PSIZ:
+                        index = gl_PointSize;
+                        break;
+                case VARYING_SLOT_PNTC:
+                        index = gl_PointCoord;
+                        break;
+                case VARYING_SLOT_FACE:
+                        index = gl_FrontFacing;
+                        break;
+                default:
+                        index = general;
+                        break;
+                }
+
+                assert(index >= 0);
+                out[i].index = index;
+        }
+}
+
 void
 panfrost_emit_varying_descriptor(
         struct panfrost_context *ctx,
@@ -139,26 +177,29 @@ panfrost_emit_varying_descriptor(
         memcpy(trans.cpu, vs->varyings, vs_size);
         memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
 
-        ctx->payloads[PIPE_SHADER_VERTEX].postfix.varying_meta = trans.gpu;
-        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.varying_meta = trans.gpu + vs_size;
-
         /* Buffer indices must be in this order per our convention */
         union mali_attr varyings[PIPE_MAX_ATTRIBS];
         unsigned idx = 0;
 
-        panfrost_emit_varyings(ctx, &varyings[idx++], num_gen_varyings * 16,
+        signed general = idx++;
+        signed gl_Position = idx++;
+        signed gl_PointSize = (vs->writes_point_size || fs->reads_point_coord || fs->reads_face) ? (idx++) : -1;
+        signed gl_PointCoord = (fs->reads_point_coord || fs->reads_face) ? (idx++) : -1;
+        signed gl_FrontFacing = (fs->reads_face) ? (idx++) : -1;
+
+        panfrost_emit_varyings(ctx, &varyings[general], num_gen_varyings * 16,
                                vertex_count);
 
         /* fp32 vec4 gl_Position */
         ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.position_varying =
-                panfrost_emit_varyings(ctx, &varyings[idx++],
+                panfrost_emit_varyings(ctx, &varyings[gl_Position],
                                        sizeof(float) * 4, vertex_count);
 
 
         if (vs->writes_point_size || fs->reads_point_coord) {
                 /* fp16 vec1 gl_PointSize */
                 ctx->payloads[PIPE_SHADER_FRAGMENT].primitive_size.pointer =
-                        panfrost_emit_varyings(ctx, &varyings[idx++],
+                        panfrost_emit_varyings(ctx, &varyings[gl_PointSize],
                                                2, vertex_count);
         } else if (fs->reads_face) {
                 /* Dummy to advance index */
@@ -167,16 +208,30 @@ panfrost_emit_varying_descriptor(
 
         if (fs->reads_point_coord) {
                 /* Special descriptor */
-                panfrost_emit_point_coord(&varyings[idx++]);
+                panfrost_emit_point_coord(&varyings[gl_PointCoord]);
         } else if (fs->reads_face) {
                 ++idx;
         }
 
         if (fs->reads_face) {
-                panfrost_emit_front_face(&varyings[idx++]);
+                panfrost_emit_front_face(&varyings[gl_FrontFacing]);
         }
+
+        /* Let's go ahead and link varying meta to the buffer in question, now
+         * that that information is available */
+
+        panfrost_emit_varying_meta(trans.cpu, vs,
+                general, gl_Position, gl_PointSize,
+                gl_PointCoord, gl_FrontFacing);
+
+        panfrost_emit_varying_meta(trans.cpu + vs_size, fs,
+                general, gl_Position, gl_PointSize,
+                gl_PointCoord, gl_FrontFacing);
 
         mali_ptr varyings_p = panfrost_upload_transient(ctx, &varyings, idx * sizeof(union mali_attr));
         ctx->payloads[PIPE_SHADER_VERTEX].postfix.varyings = varyings_p;
         ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.varyings = varyings_p;
+
+        ctx->payloads[PIPE_SHADER_VERTEX].postfix.varying_meta = trans.gpu;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.varying_meta = trans.gpu + vs_size;
 }
