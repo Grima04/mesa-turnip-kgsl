@@ -1,6 +1,7 @@
 /*
  * © Copyright 2018 Alyssa Rosenzweig
  * Copyright © 2014-2017 Broadcom
+ * Copyright (C) 2017 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -2015,6 +2016,45 @@ panfrost_variant_matches(
 
         /* Otherwise, we're good to go */
         return true;
+}
+
+/**
+ * Fix an uncompiled shader's stream output info, and produce a bitmask
+ * of which VARYING_SLOT_* are captured for stream output.
+ *
+ * Core Gallium stores output->register_index as a "slot" number, where
+ * slots are assigned consecutively to all outputs in info->outputs_written.
+ * This naive packing of outputs doesn't work for us - we too have slots,
+ * but the layout is defined by the VUE map, which we won't have until we
+ * compile a specific shader variant.  So, we remap these and simply store
+ * VARYING_SLOT_* in our copy's output->register_index fields.
+ *
+ * We then produce a bitmask of outputs which are used for SO.
+ *
+ * Implementation from iris.
+ */
+
+static uint64_t
+update_so_info(struct pipe_stream_output_info *so_info,
+               uint64_t outputs_written)
+{
+	uint64_t so_outputs = 0;
+	uint8_t reverse_map[64] = {};
+	unsigned slot = 0;
+
+	while (outputs_written)
+		reverse_map[slot++] = u_bit_scan64(&outputs_written);
+
+	for (unsigned i = 0; i < so_info->num_outputs; i++) {
+		struct pipe_stream_output *output = &so_info->output[i];
+
+		/* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
+		output->register_index = reverse_map[output->register_index];
+
+		so_outputs |= 1ull << output->register_index;
+	}
+
+	return so_outputs;
 }
 
 static void
