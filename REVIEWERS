@@ -108,3 +108,13 @@ VULKAN
 R: Eric Engestrom <eric@engestrom.ch>
 F: src/vulkan/
 F: include/vulkan/
+
+VMWARE DRIVER
+R: Brian Paul <brianp@vmware.com>
+R: Charmaine Lee <charmainel@vmware.com>
+F: src/gallium/drivers/svga/
+
+VMWARE WINSYS CODE
+R: Thomas Hellstrom <thellstrom@vmware.com>
+R: Deepak Rawat <drawat@vmware.com>
+F: src/gallium/winsys/svga/
