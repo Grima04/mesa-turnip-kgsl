@@ -2846,7 +2846,7 @@ These atomic operations may only be used with 32-bit integer image formats.
 
   dst_x = resource[offset] + 1
 
-  resource[offset] = dst_x < src_x ? dst_x : 0
+  resource[offset] = dst_x <= src_x ? dst_x : 0
 
 
 .. opcode:: ATOMDEC_WRAP - Atomic decrement + wrap around

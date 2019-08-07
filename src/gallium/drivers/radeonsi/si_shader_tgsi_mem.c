@@ -828,18 +828,6 @@ static void atomic_emit(
 	args.data[num_data++] =
 		ac_to_integer(&ctx->ac, lp_build_emit_fetch(bld_base, inst, 2, 0));
 
-	if (inst->Instruction.Opcode == TGSI_OPCODE_ATOMINC_WRAP) {
-		/* ATOMIC_INC instruction does:
-		 *      value = (value + 1) % (data + 1)
-		 * but we want:
-		 *      value = (value + 1) % data
-		 * So replace 'data' by 'data - 1'.
-		 */
-		args.data[0] = LLVMBuildSub(ctx->ac.builder,
-					    args.data[0],
-					    ctx->ac.i32_1, "");
-	}
-
 	args.cache_policy = get_cache_policy(ctx, inst, true, false, false);
 
 	if (inst->Src[0].Register.File == TGSI_FILE_BUFFER) {
