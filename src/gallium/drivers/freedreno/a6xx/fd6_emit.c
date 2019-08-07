@@ -918,8 +918,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL1_MRT(nr));
 	}
 
-#define DIRTY_CONST (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_CONST | \
-					 FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE)
+#define DIRTY_CONST (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_CONST)
 
 	if (ctx->dirty_shader[PIPE_SHADER_VERTEX] & DIRTY_CONST) {
 		struct fd_ringbuffer *vsconstobj = fd_submit_new_ringbuffer(
@@ -929,10 +928,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				&ctx->constbuf[PIPE_SHADER_VERTEX]);
 		ir3_emit_ubos(ctx->screen, vp, vsconstobj,
 				&ctx->constbuf[PIPE_SHADER_VERTEX]);
-		ir3_emit_ssbo_sizes(ctx->screen, vp, vsconstobj,
-				&ctx->shaderbuf[PIPE_SHADER_VERTEX]);
-		ir3_emit_image_dims(ctx->screen, vp, vsconstobj,
-				&ctx->shaderimg[PIPE_SHADER_VERTEX]);
 
 		fd6_emit_take_group(emit, vsconstobj, FD6_GROUP_VS_CONST, 0x7);
 	}
@@ -945,10 +940,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
 		ir3_emit_ubos(ctx->screen, fp, fsconstobj,
 				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
-		ir3_emit_ssbo_sizes(ctx->screen, fp, fsconstobj,
-				&ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
-		ir3_emit_image_dims(ctx->screen, fp, fsconstobj,
-				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
 
 		fd6_emit_take_group(emit, fsconstobj, FD6_GROUP_FS_CONST, 0x6);
 	}
@@ -1028,12 +1019,13 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	if (needs_border)
 		emit_border_color(ctx, ring);
 
-	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] &
-			(FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE)) {
+#define DIRTY_IBO (FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE | \
+				   FD_DIRTY_SHADER_PROG)
+	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & DIRTY_IBO) {
 		struct fd_ringbuffer *state =
 			fd6_build_ibo_state(ctx, fp, PIPE_SHADER_FRAGMENT);
 		struct fd_ringbuffer *obj = fd_submit_new_ringbuffer(
-			ctx->batch->submit, 9 * 4, FD_RINGBUFFER_STREAMING);
+			ctx->batch->submit, 0x100, FD_RINGBUFFER_STREAMING);
 		const struct ir3_ibo_mapping *mapping = &fp->image_mapping;
 
 		OUT_PKT7(obj, CP_LOAD_STATE6, 3);
@@ -1052,6 +1044,11 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		 */
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_COUNT, 1);
 		OUT_RING(obj, mapping->num_ibo);
+
+		ir3_emit_ssbo_sizes(ctx->screen, fp, obj,
+				&ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
+		ir3_emit_image_dims(ctx->screen, fp, obj,
+				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
 
 		fd6_emit_take_group(emit, obj, FD6_GROUP_IBO, 0x6);
 		fd_ringbuffer_del(state);
