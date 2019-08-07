@@ -842,21 +842,19 @@ virgl_destroy_screen(struct pipe_screen *screen)
 }
 
 static void
-fixup_readback_format(union virgl_caps *caps)
+fixup_formats(union virgl_caps *caps, struct virgl_supported_format_mask *mask)
 {
-   const size_t size = ARRAY_SIZE(caps->v2.supported_readback_formats.bitmask);
+   const size_t size = ARRAY_SIZE(mask->bitmask);
    for (int i = 0; i < size; ++i) {
-      if (caps->v2.supported_readback_formats.bitmask[i] != 0)
+      if (mask->bitmask[i] != 0)
          return; /* we got some formats, we definately have a new protocol */
    }
 
    /* old protocol used; fall back to considering all sampleable formats valid
     * readback-formats
     */
-   for (int i = 0; i < size; ++i) {
-      caps->v2.supported_readback_formats.bitmask[i] =
-         caps->v1.sampler.bitmask[i];
-   }
+   for (int i = 0; i < size; ++i)
+      mask->bitmask[i] = caps->v1.sampler.bitmask[i];
 }
 
 struct pipe_screen *
@@ -905,7 +903,8 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    virgl_init_screen_resource_functions(&screen->base);
 
    vws->get_caps(vws, &screen->caps);
-   fixup_readback_format(&screen->caps.caps);
+   fixup_formats(&screen->caps.caps,
+                 &screen->caps.caps.v2.supported_readback_formats);
 
    screen->refcnt = 1;
 
