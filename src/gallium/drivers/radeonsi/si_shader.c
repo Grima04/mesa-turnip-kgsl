@@ -6956,7 +6956,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 	}
 
 	si_init_shader_ctx(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
-	si_llvm_context_set_tgsi(&ctx, shader);
+	si_llvm_context_set_ir(&ctx, shader);
 
 	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
 	       sizeof(shader->info.vs_output_param_offset));
@@ -7013,7 +7013,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			shader_ls.key.mono = shader->key.mono;
 			shader_ls.key.opt = shader->key.opt;
 			shader_ls.is_monolithic = true;
-			si_llvm_context_set_tgsi(&ctx, &shader_ls);
+			si_llvm_context_set_ir(&ctx, &shader_ls);
 
 			if (!si_compile_tgsi_main(&ctx)) {
 				si_llvm_dispose(&ctx);
@@ -7080,7 +7080,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 			shader_es.key.mono = shader->key.mono;
 			shader_es.key.opt = shader->key.opt;
 			shader_es.is_monolithic = true;
-			si_llvm_context_set_tgsi(&ctx, &shader_es);
+			si_llvm_context_set_ir(&ctx, &shader_es);
 
 			if (!si_compile_tgsi_main(&ctx)) {
 				si_llvm_dispose(&ctx);

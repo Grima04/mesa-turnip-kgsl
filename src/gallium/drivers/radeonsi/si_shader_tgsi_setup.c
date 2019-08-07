@@ -1033,19 +1033,14 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 
 /* Set the context to a certain TGSI shader. Can be called repeatedly
  * to change the shader. */
-void si_llvm_context_set_tgsi(struct si_shader_context *ctx,
-			      struct si_shader *shader)
+void si_llvm_context_set_ir(struct si_shader_context *ctx,
+			    struct si_shader *shader)
 {
-	const struct tgsi_shader_info *info = NULL;
-	const struct tgsi_token *tokens = NULL;
-
-	if (shader && shader->selector) {
-		info = &shader->selector->info;
-		tokens = shader->selector->tokens;
-	}
+	struct si_shader_selector *sel = shader->selector;
+	const struct tgsi_shader_info *info = &sel->info;
 
 	ctx->shader = shader;
-	ctx->type = info ? info->processor : -1;
+	ctx->type = sel->type;
 	ctx->bld_base.info = info;
 
 	/* Clean up the old contents. */
@@ -1062,16 +1057,13 @@ void si_llvm_context_set_tgsi(struct si_shader_context *ctx,
 	ctx->temps = NULL;
 	ctx->temps_count = 0;
 
-	if (!info)
-		return;
-
 	ctx->num_const_buffers = util_last_bit(info->const_buffers_declared);
 	ctx->num_shader_buffers = util_last_bit(info->shader_buffers_declared);
 
 	ctx->num_samplers = util_last_bit(info->samplers_declared);
 	ctx->num_images = util_last_bit(info->images_declared);
 
-	if (!tokens)
+	if (sel->nir)
 		return;
 
 	if (info->array_max[TGSI_FILE_TEMPORARY] > 0) {
@@ -1080,7 +1072,7 @@ void si_llvm_context_set_tgsi(struct si_shader_context *ctx,
 		ctx->temp_arrays = CALLOC(size, sizeof(ctx->temp_arrays[0]));
 		ctx->temp_array_allocas = CALLOC(size, sizeof(ctx->temp_array_allocas[0]));
 
-		tgsi_scan_arrays(tokens, TGSI_FILE_TEMPORARY, size,
+		tgsi_scan_arrays(sel->tokens, TGSI_FILE_TEMPORARY, size,
 				 ctx->temp_arrays);
 	}
 	if (info->file_max[TGSI_FILE_IMMEDIATE] >= 0) {
