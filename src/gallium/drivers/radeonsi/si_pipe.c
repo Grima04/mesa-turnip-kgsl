@@ -743,6 +743,9 @@ static void si_destroy_screen(struct pipe_screen* pscreen)
 	util_queue_destroy(&sscreen->shader_compiler_queue);
 	util_queue_destroy(&sscreen->shader_compiler_queue_low_priority);
 
+	/* Release the reference on glsl types of the compiler threads. */
+	glsl_type_singleton_decref();
+
 	for (i = 0; i < ARRAY_SIZE(sscreen->compiler); i++)
 		si_destroy_compiler(&sscreen->compiler[i]);
 
@@ -1029,12 +1032,16 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	num_comp_lo_threads = MIN2(num_comp_lo_threads,
 				   ARRAY_SIZE(sscreen->compiler_lowp));
 
+	/* Take a reference on the glsl types for the compiler threads. */
+	glsl_type_singleton_init_or_ref();
+
 	if (!util_queue_init(&sscreen->shader_compiler_queue, "sh",
 			     64, num_comp_hi_threads,
 			     UTIL_QUEUE_INIT_RESIZE_IF_FULL |
 			     UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY)) {
 		si_destroy_shader_cache(sscreen);
 		FREE(sscreen);
+		glsl_type_singleton_decref();
 		return NULL;
 	}
 
@@ -1046,6 +1053,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 			     UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY)) {
 	       si_destroy_shader_cache(sscreen);
 	       FREE(sscreen);
+	       glsl_type_singleton_decref();
 	       return NULL;
 	}
 
