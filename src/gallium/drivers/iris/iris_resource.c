@@ -287,6 +287,7 @@ void
 iris_resource_disable_aux(struct iris_resource *res)
 {
    iris_bo_unreference(res->aux.bo);
+   iris_bo_unreference(res->aux.extra_aux.bo);
    iris_bo_unreference(res->aux.clear_color_bo);
    free(res->aux.state);
 
@@ -296,6 +297,8 @@ iris_resource_disable_aux(struct iris_resource *res)
    res->aux.has_hiz = 0;
    res->aux.surf.size_B = 0;
    res->aux.bo = NULL;
+   res->aux.extra_aux.surf.size_B = 0;
+   res->aux.extra_aux.bo = NULL;
    res->aux.clear_color_bo = NULL;
    res->aux.state = NULL;
 }
@@ -393,9 +396,14 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res)
    if (devinfo->gen >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
       void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
       assert(aux_map_ctx);
+      const bool has_extra_ccs = res->aux.extra_aux.surf.size_B > 0;
+      struct iris_bo *aux_bo = has_extra_ccs ?
+         res->aux.extra_aux.bo : res->aux.bo;
+      const unsigned aux_offset = has_extra_ccs ?
+         res->aux.extra_aux.offset : res->aux.offset;
       gen_aux_map_add_image(aux_map_ctx, &res->surf, res->bo->gtt_offset,
-                            res->aux.bo->gtt_offset + res->aux.offset);
-      res->bo->aux_map_address = res->aux.bo->gtt_offset;
+                            aux_bo->gtt_offset + aux_offset);
+      res->bo->aux_map_address = aux_bo->gtt_offset;
    }
 }
 
@@ -450,10 +458,19 @@ iris_resource_configure_aux(struct iris_screen *screen,
       ((!res->mod_info && !(INTEL_DEBUG & DEBUG_NO_RBC)) ||
        (res->mod_info && res->mod_info->aux_usage != ISL_AUX_USAGE_NONE)) &&
       isl_surf_get_ccs_surf(&screen->isl_dev, &res->surf, &res->aux.surf,
-                            NULL, 0);
+                            &res->aux.extra_aux.surf, 0);
 
-   /* We should have at most one aux surface. */
-   assert(has_mcs + has_hiz + has_ccs <= 1);
+   /* Having both HIZ and MCS is impossible. */
+   assert(!has_mcs || !has_hiz);
+
+   /* Ensure aux surface creation for MCS_CCS and HIZ_CCS is correct. */
+   if (has_ccs && (has_mcs || has_hiz)) {
+      assert(res->aux.extra_aux.surf.size_B > 0 &&
+             res->aux.extra_aux.surf.usage & ISL_SURF_USAGE_CCS_BIT);
+      assert(res->aux.surf.size_B > 0 &&
+             res->aux.surf.usage &
+             (ISL_SURF_USAGE_HIZ_BIT | ISL_SURF_USAGE_MCS_BIT));
+   }
 
    if (res->mod_info && has_ccs) {
       /* Only allow a CCS modifier if the aux was created successfully. */
@@ -537,6 +554,13 @@ iris_resource_configure_aux(struct iris_screen *screen,
 
    uint64_t size = res->aux.surf.size_B;
 
+   /* Allocate space in the buffer for storing the CCS. */
+   if (res->aux.extra_aux.surf.size_B > 0) {
+      res->aux.extra_aux.offset =
+         ALIGN(size, res->aux.extra_aux.surf.alignment_B);
+      size = res->aux.extra_aux.offset + res->aux.extra_aux.surf.size_B;
+   }
+
    /* Allocate space in the buffer for storing the clear color. On modern
     * platforms (gen > 9), we can read it directly from such buffer.
     *
@@ -584,11 +608,20 @@ iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
                 res->aux.surf.size_B);
       }
 
+      /* Resolved is usually a safe state for CCS_E. */
+      memset((char*)map + res->aux.extra_aux.offset, 0,
+             res->aux.extra_aux.surf.size_B);
+
       /* Zero the indirect clear color to match ::fast_clear_color. */
       memset((char *)map + res->aux.clear_color_offset, 0,
              clear_color_state_size);
 
       iris_bo_unmap(res->aux.bo);
+   }
+
+   if (res->aux.extra_aux.surf.size_B > 0) {
+      res->aux.extra_aux.bo = res->aux.bo;
+      iris_bo_reference(res->aux.extra_aux.bo);
    }
 
    if (clear_color_state_size > 0) {
