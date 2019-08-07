@@ -91,6 +91,8 @@ struct gen_perf_config;
 #include "common/intel_log.h"
 #include "wsi_common.h"
 
+#define NSEC_PER_SEC 1000000000ull
+
 /* anv Virtual Memory Layout
  * =========================
  *
@@ -1307,6 +1309,9 @@ anv_device_lookup_bo(struct anv_device *device, uint32_t gem_handle)
 VkResult anv_device_bo_busy(struct anv_device *device, struct anv_bo *bo);
 VkResult anv_device_wait(struct anv_device *device, struct anv_bo *bo,
                          int64_t timeout);
+
+uint64_t anv_gettime_ns(void);
+uint64_t anv_get_absolute_timeout(uint64_t timeout);
 
 void* anv_gem_mmap(struct anv_device *device,
                    uint32_t gem_handle, uint64_t offset, uint64_t size, uint32_t flags);

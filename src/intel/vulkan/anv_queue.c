@@ -33,6 +33,49 @@
 
 #include "genxml/gen7_pack.h"
 
+uint64_t anv_gettime_ns(void)
+{
+   struct timespec current;
+   clock_gettime(CLOCK_MONOTONIC, &current);
+   return (uint64_t)current.tv_sec * NSEC_PER_SEC + current.tv_nsec;
+}
+
+uint64_t anv_get_absolute_timeout(uint64_t timeout)
+{
+   if (timeout == 0)
+      return 0;
+   uint64_t current_time = anv_gettime_ns();
+   uint64_t max_timeout = (uint64_t) INT64_MAX - current_time;
+
+   timeout = MIN2(max_timeout, timeout);
+
+   return (current_time + timeout);
+}
+
+static int64_t anv_get_relative_timeout(uint64_t abs_timeout)
+{
+   uint64_t now = anv_gettime_ns();
+
+   /* We don't want negative timeouts.
+    *
+    * DRM_IOCTL_I915_GEM_WAIT uses a signed 64 bit timeout and is
+    * supposed to block indefinitely timeouts < 0.  Unfortunately,
+    * this was broken for a couple of kernel releases.  Since there's
+    * no way to know whether or not the kernel we're using is one of
+    * the broken ones, the best we can do is to clamp the timeout to
+    * INT64_MAX.  This limits the maximum timeout from 584 years to
+    * 292 years - likely not a big deal.
+    */
+   if (abs_timeout < now)
+      return 0;
+
+   uint64_t rel_timeout = abs_timeout - now;
+   if (rel_timeout > (uint64_t) INT64_MAX)
+      rel_timeout = INT64_MAX;
+
+   return rel_timeout;
+}
+
 VkResult
 anv_device_execbuf(struct anv_device *device,
                    struct drm_i915_gem_execbuffer2 *execbuf,
@@ -449,53 +492,6 @@ VkResult anv_GetFenceStatus(
    }
 }
 
-#define NSEC_PER_SEC 1000000000
-#define INT_TYPE_MAX(type) ((1ull << (sizeof(type) * 8 - 1)) - 1)
-
-static uint64_t
-gettime_ns(void)
-{
-   struct timespec current;
-   clock_gettime(CLOCK_MONOTONIC, &current);
-   return (uint64_t)current.tv_sec * NSEC_PER_SEC + current.tv_nsec;
-}
-
-static uint64_t anv_get_absolute_timeout(uint64_t timeout)
-{
-   if (timeout == 0)
-      return 0;
-   uint64_t current_time = gettime_ns();
-   uint64_t max_timeout = (uint64_t) INT64_MAX - current_time;
-
-   timeout = MIN2(max_timeout, timeout);
-
-   return (current_time + timeout);
-}
-
-static int64_t anv_get_relative_timeout(uint64_t abs_timeout)
-{
-   uint64_t now = gettime_ns();
-
-   /* We don't want negative timeouts.
-    *
-    * DRM_IOCTL_I915_GEM_WAIT uses a signed 64 bit timeout and is
-    * supposed to block indefinitely timeouts < 0.  Unfortunately,
-    * this was broken for a couple of kernel releases.  Since there's
-    * no way to know whether or not the kernel we're using is one of
-    * the broken ones, the best we can do is to clamp the timeout to
-    * INT64_MAX.  This limits the maximum timeout from 584 years to
-    * 292 years - likely not a big deal.
-    */
-   if (abs_timeout < now)
-      return 0;
-
-   uint64_t rel_timeout = abs_timeout - now;
-   if (rel_timeout > (uint64_t) INT64_MAX)
-      rel_timeout = INT64_MAX;
-
-   return rel_timeout;
-}
-
 static VkResult
 anv_wait_for_syncobj_fences(struct anv_device *device,
                             uint32_t fenceCount,
@@ -529,7 +525,7 @@ anv_wait_for_syncobj_fences(struct anv_device *device,
    do {
       ret = anv_gem_syncobj_wait(device, syncobjs, fenceCount,
                                  abs_timeout_ns, waitAll);
-   } while (ret == -1 && errno == ETIME && gettime_ns() < abs_timeout_ns);
+   } while (ret == -1 && errno == ETIME && anv_gettime_ns() < abs_timeout_ns);
 
    vk_free(&device->alloc, syncobjs);
 
@@ -641,7 +637,7 @@ anv_wait_for_bo_fences(struct anv_device *device,
             ret = pthread_cond_timedwait(&device->queue_submit,
                                          &device->mutex, &abstime);
             assert(ret != EINVAL);
-            if (gettime_ns() >= abs_timeout_ns) {
+            if (anv_gettime_ns() >= abs_timeout_ns) {
                pthread_mutex_unlock(&device->mutex);
                result = VK_TIMEOUT;
                goto done;
@@ -707,7 +703,7 @@ anv_wait_for_fences(struct anv_device *device,
             if (anv_wait_for_fences(device, 1, &pFences[i], true, 0) == VK_SUCCESS)
                return VK_SUCCESS;
          }
-      } while (gettime_ns() < abs_timeout);
+      } while (anv_gettime_ns() < abs_timeout);
       result = VK_TIMEOUT;
    }
    return result;
