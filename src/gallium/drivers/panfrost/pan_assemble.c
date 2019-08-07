@@ -41,7 +41,8 @@ panfrost_shader_compile(
                 enum pipe_shader_ir ir_type,
                 const void *ir,
                 gl_shader_stage stage,
-                struct panfrost_shader_state *state)
+                struct panfrost_shader_state *state,
+                uint64_t *outputs_written)
 {
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         uint8_t *dst;
@@ -117,6 +118,9 @@ panfrost_shader_compile(
         state->writes_point_size = program.writes_point_size;
         state->reads_point_coord = false;
         state->helper_invocations = s->info.fs.needs_helper_invocations;
+
+        if (outputs_written)
+                *outputs_written = s->info.outputs_written;
 
         /* Separate as primary uniform count is truncated */
         state->uniform_count = program.uniform_count;

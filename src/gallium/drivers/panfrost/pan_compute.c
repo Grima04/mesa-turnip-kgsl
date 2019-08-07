@@ -53,7 +53,7 @@ panfrost_create_compute_state(
 
         panfrost_shader_compile(ctx, v->tripipe,
                         cso->ir_type, cso->prog,
-                        MESA_SHADER_COMPUTE, v);
+                        MESA_SHADER_COMPUTE, v, NULL);
 
 
 

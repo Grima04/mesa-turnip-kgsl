@@ -333,7 +333,8 @@ panfrost_shader_compile(
                 enum pipe_shader_ir ir_type,
                 const void *ir,
                 gl_shader_stage stage,
-                struct panfrost_shader_state *state);
+                struct panfrost_shader_state *state,
+                uint64_t *outputs_written);
 
 void
 panfrost_pack_work_groups_compute(

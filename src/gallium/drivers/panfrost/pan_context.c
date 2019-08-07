@@ -2118,12 +2118,15 @@ panfrost_bind_shader_state(
         /* We finally have a variant, so compile it */
 
         if (!shader_state->compiled) {
+                uint64_t outputs_written = 0;
+
                 panfrost_shader_compile(ctx, shader_state->tripipe,
                               variants->base.type,
                               variants->base.type == PIPE_SHADER_IR_NIR ?
                                       variants->base.ir.nir :
                                       variants->base.tokens,
-                                        tgsi_processor_to_shader_stage(type), shader_state);
+                                        tgsi_processor_to_shader_stage(type), shader_state,
+                                        &outputs_written);
 
                 shader_state->compiled = true;
         }
