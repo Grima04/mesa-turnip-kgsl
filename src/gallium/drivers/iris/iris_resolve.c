@@ -304,10 +304,10 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice,
       }
 
       if (s_res) {
-         if (may_have_resolved_depth) {
+         if (may_have_resolved_depth && ice->state.stencil_writes_enabled) {
             iris_resource_finish_write(ice, s_res, zs_surf->u.tex.level,
                                        zs_surf->u.tex.first_layer, num_layers,
-                                       ISL_AUX_USAGE_NONE);
+                                       s_res->aux.usage);
          }
 
          if (ice->state.stencil_writes_enabled)
@@ -502,9 +502,17 @@ iris_resolve_color(struct iris_context *ice,
 
    struct blorp_batch blorp_batch;
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-   blorp_ccs_resolve(&blorp_batch, &surf, level, layer, 1,
-                     isl_format_srgb_to_linear(res->surf.format),
-                     resolve_op);
+   /* On Gen >= 12, Stencil buffer with lossless compression needs to be
+    * resolve with WM_HZ_OP packet.
+    */
+   if (isl_surf_usage_is_stencil(res->surf.usage)) {
+      blorp_hiz_stencil_op(&blorp_batch, &surf, level, layer,
+                           1, resolve_op);
+   } else {
+      blorp_ccs_resolve(&blorp_batch, &surf, level, layer, 1,
+                        isl_format_srgb_to_linear(res->surf.format),
+                        resolve_op);
+   }
    blorp_batch_finish(&blorp_batch);
 
    /* See comment above */
@@ -1260,8 +1268,6 @@ iris_resource_get_aux_state(const struct iris_resource *res,
 
    if (res->surf.usage & ISL_SURF_USAGE_DEPTH_BIT) {
       assert(iris_resource_level_has_hiz(res, level));
-   } else if (res->surf.usage & ISL_SURF_USAGE_STENCIL_BIT) {
-      unreachable("Cannot get aux state for stencil");
    } else {
       assert(res->surf.samples == 1 ||
              res->surf.msaa_layout == ISL_MSAA_LAYOUT_ARRAY);
@@ -1280,8 +1286,6 @@ iris_resource_set_aux_state(struct iris_context *ice,
 
    if (res->surf.usage & ISL_SURF_USAGE_DEPTH_BIT) {
       assert(iris_resource_level_has_hiz(res, level));
-   } else if (res->surf.usage & ISL_SURF_USAGE_STENCIL_BIT) {
-      unreachable("Cannot set aux state for stencil");
    } else {
       assert(res->surf.samples == 1 ||
              res->surf.msaa_layout == ISL_MSAA_LAYOUT_ARRAY);
