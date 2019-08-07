@@ -551,18 +551,18 @@ nvc0_program_dump(struct nvc0_program *prog)
    unsigned pos;
 
    if (prog->type != PIPE_SHADER_COMPUTE) {
-      debug_printf("dumping HDR for type %i\n", prog->type);
+      _debug_printf("dumping HDR for type %i\n", prog->type);
       for (pos = 0; pos < ARRAY_SIZE(prog->hdr); ++pos)
-         debug_printf("HDR[%02"PRIxPTR"] = 0x%08x\n",
+         _debug_printf("HDR[%02"PRIxPTR"] = 0x%08x\n",
                       pos * sizeof(prog->hdr[0]), prog->hdr[pos]);
    }
-   debug_printf("shader binary code (0x%x bytes):", prog->code_size);
+   _debug_printf("shader binary code (0x%x bytes):", prog->code_size);
    for (pos = 0; pos < prog->code_size / 4; ++pos) {
       if ((pos % 8) == 0)
-         debug_printf("\n");
-      debug_printf("%08x ", prog->code[pos]);
+         _debug_printf("\n");
+      _debug_printf("%08x ", prog->code[pos]);
    }
-   debug_printf("\n");
+   _debug_printf("\n");
 }
 #endif
 
