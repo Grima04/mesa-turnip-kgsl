@@ -2129,6 +2129,13 @@ panfrost_bind_shader_state(
                                         &outputs_written);
 
                 shader_state->compiled = true;
+
+                /* Fixup the stream out information, since what Gallium returns
+                 * normally is mildly insane */
+
+                shader_state->stream_output = variants->base.stream_output;
+                shader_state->so_mask =
+                        update_so_info(&shader_state->stream_output, outputs_written);
         }
 }
 

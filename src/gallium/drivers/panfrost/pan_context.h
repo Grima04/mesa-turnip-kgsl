@@ -232,6 +232,8 @@ struct panfrost_shader_state {
 
         struct mali_attr_meta varyings[PIPE_MAX_ATTRIBS];
         gl_varying_slot varyings_loc[PIPE_MAX_ATTRIBS];
+        struct pipe_stream_output_info stream_output;
+        uint64_t so_mask;
 
         unsigned sysval_count;
         unsigned sysval[MAX_SYSVAL_COUNT];
