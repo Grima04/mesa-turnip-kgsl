@@ -2035,8 +2035,10 @@ iris_create_surface(struct pipe_context *ctx,
    void *map = alloc_surface_states(ice->state.surface_uploader,
                                     &surf->surface_state,
                                     res->aux.possible_usages);
-   if (!unlikely(map))
+   if (!unlikely(map)) {
+      pipe_resource_reference(&surf->surface_state.res, NULL);
       return NULL;
+   }
 
 #if GEN_GEN == 8
    void *map_read = alloc_surface_states(ice->state.surface_uploader,
