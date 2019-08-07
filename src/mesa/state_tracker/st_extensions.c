@@ -1182,9 +1182,6 @@ void st_init_extensions(struct pipe_screen *screen,
    extensions->OES_sample_variables = extensions->ARB_sample_shading &&
       extensions->ARB_gpu_shader5;
 
-   extensions->EXT_shader_image_load_store &=
-      screen->get_param(screen, PIPE_CAP_IMAGE_LOAD_FORMATTED);
-
    /* Maximum sample count. */
    {
       static const enum pipe_format color_formats[] = {
