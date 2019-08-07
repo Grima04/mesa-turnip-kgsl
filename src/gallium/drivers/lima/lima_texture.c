@@ -39,8 +39,14 @@
 
 #include <drm-uapi/lima_drm.h>
 
+#define LIMA_TEXEL_FORMAT_L8           0x09
+#define LIMA_TEXEL_FORMAT_A8           0x0a
+#define LIMA_TEXEL_FORMAT_I8           0x0b
 #define LIMA_TEXEL_FORMAT_BGR_565      0x0e
-#define LIMA_TEXEL_FORMAT_Z16          0x12
+#define LIMA_TEXEL_FORMAT_L8A8         0x11
+#define LIMA_TEXEL_FORMAT_L16          0x12
+#define LIMA_TEXEL_FORMAT_A16          0x13
+#define LIMA_TEXEL_FORMAT_I16          0x14
 #define LIMA_TEXEL_FORMAT_RGB_888      0x15
 #define LIMA_TEXEL_FORMAT_RGBA_8888    0x16
 #define LIMA_TEXEL_FORMAT_RGBX_8888    0x17
@@ -48,41 +54,45 @@
 
 #define lima_tex_list_size 64
 
-static uint32_t pipe_format_to_lima(enum pipe_format pformat)
+typedef struct {
+   bool present;
+   uint32_t lima_format;
+   bool swap_r_b;
+} lima_format;
+
+#define LIMA_FORMAT(pipe, lima, swap) \
+        [PIPE_FORMAT_##pipe] = { .present = true, .lima_format = lima, \
+                                 .swap_r_b = swap }
+
+static const lima_format lima_format_table[] = {
+   LIMA_FORMAT(R8G8B8A8_UNORM, LIMA_TEXEL_FORMAT_RGBA_8888, true),
+   LIMA_FORMAT(B8G8R8A8_UNORM, LIMA_TEXEL_FORMAT_RGBA_8888, false),
+   LIMA_FORMAT(R8G8B8A8_SRGB, LIMA_TEXEL_FORMAT_RGBA_8888, true),
+   LIMA_FORMAT(B8G8R8A8_SRGB, LIMA_TEXEL_FORMAT_RGBA_8888, false),
+   LIMA_FORMAT(R8G8B8X8_UNORM, LIMA_TEXEL_FORMAT_RGBX_8888, true),
+   LIMA_FORMAT(B8G8R8X8_UNORM, LIMA_TEXEL_FORMAT_RGBX_8888, false),
+   LIMA_FORMAT(R8G8B8_UNORM, LIMA_TEXEL_FORMAT_RGB_888, true),
+   LIMA_FORMAT(B5G6R5_UNORM, LIMA_TEXEL_FORMAT_BGR_565, false),
+   LIMA_FORMAT(Z24_UNORM_S8_UINT, LIMA_TEXEL_FORMAT_Z24S8, false),
+   LIMA_FORMAT(Z24X8_UNORM, LIMA_TEXEL_FORMAT_Z24S8, false),
+   /* Blob uses L16 for Z16 */
+   LIMA_FORMAT(Z16_UNORM, LIMA_TEXEL_FORMAT_L16, false),
+   LIMA_FORMAT(L16_UNORM, LIMA_TEXEL_FORMAT_L16, false),
+   LIMA_FORMAT(L8_UNORM, LIMA_TEXEL_FORMAT_L8, false),
+   LIMA_FORMAT(A16_UNORM, LIMA_TEXEL_FORMAT_A16, false),
+   LIMA_FORMAT(A8_UNORM, LIMA_TEXEL_FORMAT_A8, false),
+   LIMA_FORMAT(I16_UNORM, LIMA_TEXEL_FORMAT_I16, false),
+   LIMA_FORMAT(I8_UNORM, LIMA_TEXEL_FORMAT_I8, false),
+   LIMA_FORMAT(L8A8_UNORM, LIMA_TEXEL_FORMAT_L8A8, false),
+};
+
+bool
+lima_texel_format_supported(enum pipe_format pformat)
 {
-   unsigned swap_chans = 0, flag1 = 0, format;
+   if (pformat >= ARRAY_SIZE(lima_format_table))
+      return false;
 
-   switch (pformat) {
-   case PIPE_FORMAT_R8G8B8A8_UNORM:
-      swap_chans = 1;
-   case PIPE_FORMAT_B8G8R8A8_UNORM:
-      format = LIMA_TEXEL_FORMAT_RGBA_8888;
-      break;
-   case PIPE_FORMAT_R8G8B8X8_UNORM:
-      swap_chans = 1;
-   case PIPE_FORMAT_B8G8R8X8_UNORM:
-      format = LIMA_TEXEL_FORMAT_RGBX_8888;
-      break;
-   case PIPE_FORMAT_R8G8B8_UNORM:
-      swap_chans = 1;
-      format = LIMA_TEXEL_FORMAT_RGB_888;
-      break;
-   case PIPE_FORMAT_B5G6R5_UNORM:
-      format = LIMA_TEXEL_FORMAT_BGR_565;
-      break;
-   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-   case PIPE_FORMAT_Z24X8_UNORM:
-      format = LIMA_TEXEL_FORMAT_Z24S8;
-      break;
-   case PIPE_FORMAT_Z16_UNORM:
-      format = LIMA_TEXEL_FORMAT_Z16;
-      break;
-   default:
-      assert(0);
-      break;
-   }
-
-   return (swap_chans << 7) | (flag1 << 6) | format;
+   return lima_format_table[pformat].present;
 }
 
 void
@@ -100,7 +110,11 @@ lima_texture_desc_set_res(struct lima_context *ctx, uint32_t *desc,
       height = u_minify(height, first_level);
    }
 
-   desc[0] |= pipe_format_to_lima(prsc->format);
+   assert(prsc->format < ARRAY_SIZE(lima_format_table));
+   assert(lima_format_table[prsc->format].present);
+
+   desc[0] |= lima_format_table[prsc->format].lima_format;
+   desc[0] |= lima_format_table[prsc->format].swap_r_b ? (1 << 7) : 0;
    desc[2] |= (width << 22);
    desc[3] |= 0x10000 | (height << 3) | (width >> 10);
 

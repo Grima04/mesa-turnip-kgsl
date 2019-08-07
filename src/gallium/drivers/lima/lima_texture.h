@@ -31,5 +31,6 @@ void lima_texture_desc_set_res(struct lima_context *ctx, uint32_t *desc,
                                struct pipe_resource *prsc,
                                unsigned first_level, unsigned last_level);
 void lima_update_textures(struct lima_context *ctx);
+bool lima_texel_format_supported(enum pipe_format pformat);
 
 #endif

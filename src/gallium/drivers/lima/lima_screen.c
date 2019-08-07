@@ -38,6 +38,7 @@
 #include "lima_program.h"
 #include "lima_bo.h"
 #include "lima_fence.h"
+#include "lima_texture.h"
 #include "ir/lima_ir.h"
 
 #include "xf86drm.h"
@@ -320,22 +321,8 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
       }
    }
 
-   if (usage & PIPE_BIND_SAMPLER_VIEW) {
-      switch (format) {
-      case PIPE_FORMAT_R8G8B8X8_UNORM:
-      case PIPE_FORMAT_R8G8B8A8_UNORM:
-      case PIPE_FORMAT_B8G8R8X8_UNORM:
-      case PIPE_FORMAT_B8G8R8A8_UNORM:
-      case PIPE_FORMAT_A8B8G8R8_SRGB:
-      case PIPE_FORMAT_B8G8R8A8_SRGB:
-      case PIPE_FORMAT_Z16_UNORM:
-      case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-      case PIPE_FORMAT_Z24X8_UNORM:
-         break;
-      default:
-         return false;
-      }
-   }
+   if (usage & PIPE_BIND_SAMPLER_VIEW)
+      return lima_texel_format_supported(format);
 
    return true;
 }
