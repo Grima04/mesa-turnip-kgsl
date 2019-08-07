@@ -934,9 +934,6 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		ir3_emit_image_dims(ctx->screen, vp, vsconstobj,
 				&ctx->shaderimg[PIPE_SHADER_VERTEX]);
 
-		if (ir3_needs_vs_driver_params(vp))
-			ir3_emit_vs_driver_params(vp, vsconstobj, ctx, emit->info);
-
 		fd6_emit_take_group(emit, vsconstobj, FD6_GROUP_VS_CONST, 0x7);
 	}
 
@@ -954,6 +951,16 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
 
 		fd6_emit_take_group(emit, fsconstobj, FD6_GROUP_FS_CONST, 0x6);
+	}
+
+	/* if driver-params are needed, emit each time: */
+	if (ir3_needs_vs_driver_params(vp)) {
+		struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
+				ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
+		ir3_emit_vs_driver_params(vp, dpconstobj, ctx, emit->info);
+		fd6_emit_take_group(emit, dpconstobj, FD6_GROUP_VS_DRIVER_PARAMS, 0x7);
+	} else {
+		fd6_emit_take_group(emit, NULL, FD6_GROUP_VS_DRIVER_PARAMS, 0x7);
 	}
 
 	struct ir3_stream_output_info *info = &vp->shader->stream_output;
@@ -1054,7 +1061,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT7(ring, CP_SET_DRAW_STATE, 3 * emit->num_groups);
 		for (unsigned i = 0; i < emit->num_groups; i++) {
 			struct fd6_state_group *g = &emit->groups[i];
-			unsigned n = fd_ringbuffer_size(g->stateobj) / 4;
+			unsigned n = g->stateobj ?
+				fd_ringbuffer_size(g->stateobj) / 4 : 0;
 
 			if (n == 0) {
 				OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(0) |
@@ -1070,7 +1078,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				OUT_RB(ring, g->stateobj);
 			}
 
-			fd_ringbuffer_del(g->stateobj);
+			if (g->stateobj)
+				fd_ringbuffer_del(g->stateobj);
 		}
 		emit->num_groups = 0;
 	}
