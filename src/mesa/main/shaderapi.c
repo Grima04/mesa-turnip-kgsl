@@ -29,11 +29,6 @@
  *
  * Implementation of GLSL-related API functions.
  * The glUniform* functions are in uniforms.c
- *
- *
- * XXX things to do:
- * 1. Check that the right error code is generated for all _mesa_error() calls.
- * 2. Insert FLUSH_VERTICES calls in various places
  */
 
 
