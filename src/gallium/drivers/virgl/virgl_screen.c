@@ -651,7 +651,10 @@ virgl_is_format_supported( struct pipe_screen *screen,
    const struct util_format_description *format_desc;
    int i;
 
-   boolean may_emulate_bgra = false;
+   union virgl_caps *caps = &vscreen->caps.caps; 
+   boolean may_emulate_bgra = (caps->v2.capability_bits &
+                               VIRGL_CAP_APP_TWEAK_SUPPORT) &&
+                               vscreen->tweak_gles_emulate_bgra;
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
@@ -674,15 +677,15 @@ virgl_is_format_supported( struct pipe_screen *screen,
       return false;
 
    if (sample_count > 1) {
-      if (!vscreen->caps.caps.v1.bset.texture_multisample)
+      if (!caps->v1.bset.texture_multisample)
          return false;
 
       if (bind & PIPE_BIND_SHADER_IMAGE) {
-         if (sample_count > vscreen->caps.caps.v2.max_image_samples)
+         if (sample_count > caps->v2.max_image_samples)
             return false;
       }
 
-      if (sample_count > vscreen->caps.caps.v1.max_samples)
+      if (sample_count > caps->v1.max_samples)
          return false;
    }
 
@@ -706,9 +709,6 @@ virgl_is_format_supported( struct pipe_screen *screen,
        target == PIPE_TEXTURE_3D)
       return false;
 
-   may_emulate_bgra = (vscreen->caps.caps.v2.capability_bits &
-                       VIRGL_CAP_APP_TWEAK_SUPPORT) &&
-                      vscreen->tweak_gles_emulate_bgra;
 
    if (bind & PIPE_BIND_RENDER_TARGET) {
       /* For ARB_framebuffer_no_attachments. */
@@ -728,7 +728,7 @@ virgl_is_format_supported( struct pipe_screen *screen,
          return false;
 
       if (!virgl_format_check_bitmask(format,
-                                      vscreen->caps.caps.v1.render.bitmask,
+                                      caps->v1.render.bitmask,
                                       may_emulate_bgra))
          return false;
    }
@@ -774,7 +774,7 @@ virgl_is_format_supported( struct pipe_screen *screen,
 
  out_lookup:
    return virgl_format_check_bitmask(format,
-                                     vscreen->caps.caps.v1.sampler.bitmask,
+                                     caps->v1.sampler.bitmask,
                                      may_emulate_bgra);
 }
 
