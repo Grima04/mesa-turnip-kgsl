@@ -1129,7 +1129,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 	}
 
 	unsigned num_slots = image ? ctx->num_images : ctx->num_samplers;
-	assert(const_index < num_slots);
+	assert(const_index < num_slots || dynamic_index);
 
 	LLVMValueRef list = LLVMGetParam(ctx->main_fn, ctx->param_samplers_and_images);
 	LLVMValueRef index = LLVMConstInt(ctx->ac.i32, const_index, false);
