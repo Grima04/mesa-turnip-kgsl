@@ -1066,61 +1066,6 @@ tgsi_exec_set_constant_buffers(struct tgsi_exec_machine *mach,
    }
 }
 
-
-/**
- * Check if there's a potential src/dst register data dependency when
- * using SOA execution.
- * Example:
- *   MOV T, T.yxwz;
- * This would expand into:
- *   MOV t0, t1;
- *   MOV t1, t0;
- *   MOV t2, t3;
- *   MOV t3, t2;
- * The second instruction will have the wrong value for t0 if executed as-is.
- */
-boolean
-tgsi_check_soa_dependencies(const struct tgsi_full_instruction *inst)
-{
-   uint i, chan;
-
-   uint writemask = inst->Dst[0].Register.WriteMask;
-   if (writemask == TGSI_WRITEMASK_X ||
-       writemask == TGSI_WRITEMASK_Y ||
-       writemask == TGSI_WRITEMASK_Z ||
-       writemask == TGSI_WRITEMASK_W ||
-       writemask == TGSI_WRITEMASK_NONE) {
-      /* no chance of data dependency */
-      return FALSE;
-   }
-
-   /* loop over src regs */
-   for (i = 0; i < inst->Instruction.NumSrcRegs; i++) {
-      if ((inst->Src[i].Register.File ==
-           inst->Dst[0].Register.File) &&
-          ((inst->Src[i].Register.Index ==
-            inst->Dst[0].Register.Index) ||
-           inst->Src[i].Register.Indirect ||
-           inst->Dst[0].Register.Indirect)) {
-         /* loop over dest channels */
-         uint channelsWritten = 0x0;
-         for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-            if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-               /* check if we're reading a channel that's been written */
-               uint swizzle = tgsi_util_get_full_src_register_swizzle(&inst->Src[i], chan);
-               if (channelsWritten & (1 << swizzle)) {
-                  return TRUE;
-               }
-
-               channelsWritten |= (1 << chan);
-            }
-         }
-      }
-   }
-   return FALSE;
-}
-
-
 /**
  * Initialize machine state by expanding tokens to full instructions,
  * allocating temporary storage, setting up constants, etc.

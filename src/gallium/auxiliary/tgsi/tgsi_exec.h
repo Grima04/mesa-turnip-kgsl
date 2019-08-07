@@ -467,10 +467,6 @@ void
 tgsi_exec_machine_free_data(struct tgsi_exec_machine *mach);
 
 
-boolean
-tgsi_check_soa_dependencies(const struct tgsi_full_instruction *inst);
-
-
 extern void
 tgsi_exec_set_constant_buffers(struct tgsi_exec_machine *mach,
                                unsigned num_bufs,
