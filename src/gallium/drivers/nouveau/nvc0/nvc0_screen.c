@@ -280,6 +280,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_DEST_SURFACE_SRGB_CONTROL:
    case PIPE_CAP_TGSI_DIV:
+   case PIPE_CAP_TGSI_ATOMINC_WRAP:
       return 1;
    case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
       return nouveau_screen(pscreen)->vram_domain & NOUVEAU_BO_VRAM ? 1 : 0;
@@ -364,7 +365,6 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CS_DERIVED_SYSTEM_VALUES_SUPPORTED:
    case PIPE_CAP_FBFETCH_COHERENT:
    case PIPE_CAP_TGSI_SKIP_SHRINK_IO_ARRAYS:
-   case PIPE_CAP_TGSI_ATOMINC_WRAP:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
