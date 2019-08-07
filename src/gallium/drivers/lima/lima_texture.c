@@ -86,6 +86,8 @@ static const lima_format lima_format_table[] = {
    LIMA_FORMAT(L8A8_UNORM, LIMA_TEXEL_FORMAT_L8A8, false),
 };
 
+static_assert(offsetof(lima_tex_desc, va) == 24, "lima_tex_desc->va offset isn't 24");
+
 bool
 lima_texel_format_supported(enum pipe_format pformat)
 {
@@ -95,8 +97,25 @@ lima_texel_format_supported(enum pipe_format pformat)
    return lima_format_table[pformat].present;
 }
 
+static void
+lima_texture_desc_set_va(lima_tex_desc *desc,
+                         int idx,
+                         uint32_t va)
+{
+   unsigned va_bit_idx = VA_BIT_OFFSET + (VA_BIT_SIZE * idx);
+   unsigned va_idx = va_bit_idx / 32;
+   va_bit_idx %= 32;
+
+   va >>= 6;
+
+   desc->va[va_idx] |= va << va_bit_idx;
+   if (va_bit_idx <= 6)
+      return;
+   desc->va[va_idx + 1] |= va >> (32 - va_bit_idx);
+}
+
 void
-lima_texture_desc_set_res(struct lima_context *ctx, uint32_t *desc,
+lima_texture_desc_set_res(struct lima_context *ctx, lima_tex_desc *desc,
                           struct pipe_resource *prsc,
                           unsigned first_level, unsigned last_level)
 {
@@ -113,18 +132,19 @@ lima_texture_desc_set_res(struct lima_context *ctx, uint32_t *desc,
    assert(prsc->format < ARRAY_SIZE(lima_format_table));
    assert(lima_format_table[prsc->format].present);
 
-   desc[0] |= lima_format_table[prsc->format].lima_format;
-   desc[0] |= lima_format_table[prsc->format].swap_r_b ? (1 << 7) : 0;
-   desc[2] |= (width << 22);
-   desc[3] |= 0x10000 | (height << 3) | (width >> 10);
+   desc->format = lima_format_table[prsc->format].lima_format;
+   desc->swap_r_b = lima_format_table[prsc->format].swap_r_b;
+   desc->width  = width;
+   desc->height = height;
+   desc->unknown_3_1 = 1;
 
    if (lima_res->tiled)
       layout = 3;
    else {
       /* for padded linear texture */
       if (lima_res->levels[first_level].width != width) {
-         desc[0] |= lima_res->levels[first_level].width << 18;
-         desc[2] |= 0x100;
+         desc->stride = lima_res->levels[first_level].width;
+         desc->has_stride = 1;
       }
       layout = 0;
    }
@@ -135,45 +155,32 @@ lima_texture_desc_set_res(struct lima_context *ctx, uint32_t *desc,
 
    /* attach first level */
    uint32_t first_va = base_va + lima_res->levels[first_level].offset;
-   desc[6] |= (first_va << 24) | (layout << 13);
-   desc[7] |= first_va >> 8;
+   desc->va_s.va_0 = first_va >> 6;
+   desc->va_s.layout = layout;
 
    /* Attach remaining levels.
     * Each subsequent mipmap address is specified using the 26 msbs.
     * These addresses are then packed continuously in memory */
-   unsigned current_desc_index = 7;
-   unsigned current_desc_bit_index = 24;
-   for (i = first_level + 1; i <= last_level; i++) {
-      uint32_t address = base_va + lima_res->levels[i].offset;
-      address = (address >> 6);
-      desc[current_desc_index] |= (address << current_desc_bit_index);
-      if (current_desc_bit_index <= 6) {
-         current_desc_bit_index += 26;
-         if (current_desc_bit_index >= 32) {
-            current_desc_bit_index &= 0x1F;
-            current_desc_index++;
-         }
-         continue;
-      }
-      desc[current_desc_index + 1] |= (address >> (32 - current_desc_bit_index));
-      current_desc_bit_index = (current_desc_bit_index + 26) & 0x1F;
-      current_desc_index++;
+   for (i = 1; i <= (last_level - first_level); i++) {
+      uint32_t address = base_va + lima_res->levels[first_level + i].offset;
+      lima_texture_desc_set_va(desc, i, address);
    }
 }
 
 static void
 lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sampler,
-                     struct lima_sampler_view *texture, void *pdesc)
+                     struct lima_sampler_view *texture, void *pdesc,
+                     unsigned desc_size)
 {
-   uint32_t *desc = pdesc;
+   lima_tex_desc *desc = pdesc;
    unsigned first_level;
    unsigned last_level;
    bool mipmapping;
 
-   memset(desc, 0, lima_tex_desc_size);
+   memset(desc, 0, desc_size);
 
    /* 2D texture */
-   desc[1] |= 0x400;
+   desc->texture_2d = 1;
 
    first_level = texture->base.u.tex.first_level;
    last_level = texture->base.u.tex.last_level;
@@ -182,10 +189,10 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
 
    switch (sampler->base.min_mip_filter) {
       case PIPE_TEX_MIPFILTER_LINEAR:
-         desc[2] |= 0x0600;
+         desc->min_mipfilter = 3;
       case PIPE_TEX_MIPFILTER_NEAREST:
          mipmapping = true;
-         desc[1] |= ((last_level - first_level) << 24);
+         desc->miplevels = (last_level - first_level);
          break;
       case PIPE_TEX_MIPFILTER_NONE:
       default:
@@ -195,40 +202,39 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
 
    switch (sampler->base.mag_img_filter) {
    case PIPE_TEX_FILTER_LINEAR:
-      desc[2] &= ~0x1000;
+      desc->mag_img_filter_nearest = 0;
       /* no mipmap, filter_mag = linear */
       if (!mipmapping)
-         desc[1] |= 0x80000000;
+         desc->disable_mipmap = 1;
       break;
    case PIPE_TEX_FILTER_NEAREST:
    default:
-      desc[2] |= 0x1000;
+      desc->mag_img_filter_nearest = 1;
       break;
    }
 
    switch (sampler->base.min_img_filter) {
       break;
    case PIPE_TEX_FILTER_LINEAR:
-      desc[2] &= ~0x0800;
+      desc->min_img_filter_nearest = 0;
       break;
    case PIPE_TEX_FILTER_NEAREST:
    default:
-      desc[2] |= 0x0800;
+      desc->min_img_filter_nearest = 1;
       break;
    }
 
    /* Only clamp, clamp to edge, repeat and mirror repeat are supported */
-   desc[2] &= ~0xe000;
    switch (sampler->base.wrap_s) {
    case PIPE_TEX_WRAP_CLAMP:
-      desc[2] |= 0x4000;
+      desc->wrap_s_clamp = 1;
       break;
    case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
    case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-      desc[2] |= 0x2000;
+      desc->wrap_s_clamp_to_edge = 1;
       break;
    case PIPE_TEX_WRAP_MIRROR_REPEAT:
-      desc[2] |= 0x8000;
+      desc->wrap_s_mirror_repeat = 1;
       break;
    case PIPE_TEX_WRAP_REPEAT:
    default:
@@ -236,17 +242,16 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    }
 
    /* Only clamp, clamp to edge, repeat and mirror repeat are supported */
-   desc[2] &= ~0x070000;
    switch (sampler->base.wrap_t) {
    case PIPE_TEX_WRAP_CLAMP:
-      desc[2] |= 0x020000;
+      desc->wrap_t_clamp = 1;
       break;
    case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
    case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-      desc[2] |= 0x010000;
+      desc->wrap_t_clamp_to_edge = 1;
       break;
    case PIPE_TEX_WRAP_MIRROR_REPEAT:
-      desc[2] |= 0x040000;
+      desc->wrap_t_mirror_repeat = 1;
       break;
    case PIPE_TEX_WRAP_REPEAT:
    default:
@@ -255,6 +260,24 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
 
    lima_texture_desc_set_res(ctx, desc, texture->base.texture,
                              first_level, last_level);
+}
+
+static unsigned
+lima_calc_tex_desc_size(struct lima_sampler_view *texture)
+{
+   unsigned size = offsetof(lima_tex_desc, va);
+   unsigned va_bit_size;
+   unsigned first_level = texture->base.u.tex.first_level;
+   unsigned last_level = texture->base.u.tex.last_level;
+
+   if (last_level - first_level >= LIMA_MAX_MIP_LEVELS)
+      last_level = first_level + LIMA_MAX_MIP_LEVELS - 1;
+
+   va_bit_size = VA_BIT_OFFSET + VA_BIT_SIZE * (last_level - first_level + 1);
+   size += (va_bit_size + 7) >> 3;
+   size = align(size, lima_min_tex_desc_size);
+
+   return size;
 }
 
 void
@@ -268,18 +291,25 @@ lima_update_textures(struct lima_context *ctx)
    if (!lima_tex->num_samplers || !lima_tex->num_textures)
       return;
 
-   unsigned size = lima_tex_list_size + lima_tex->num_samplers * lima_tex_desc_size;
+   unsigned size = lima_tex_list_size;
+   for (int i = 0; i < lima_tex->num_samplers; i++) {
+      struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
+      size += lima_calc_tex_desc_size(texture);
+   }
+
    uint32_t *descs =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_tex_desc, size, true);
 
+   off_t offset = lima_tex_list_size;
    for (int i = 0; i < lima_tex->num_samplers; i++) {
-      off_t offset = lima_tex_desc_size * i + lima_tex_list_size;
       struct lima_sampler_state *sampler = lima_sampler_state(lima_tex->samplers[i]);
       struct lima_sampler_view *texture = lima_sampler_view(lima_tex->textures[i]);
+      unsigned desc_size = lima_calc_tex_desc_size(texture);
 
       descs[i] = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_tex_desc,
                                   LIMA_CTX_BUFF_SUBMIT_PP) + offset;
-      lima_update_tex_desc(ctx, sampler, texture, (void *)descs + offset);
+      lima_update_tex_desc(ctx, sampler, texture, (void *)descs + offset, desc_size);
+      offset += desc_size;
    }
 
    lima_dump_command_stream_print(
