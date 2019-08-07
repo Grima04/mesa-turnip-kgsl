@@ -143,7 +143,7 @@ panfrost_emit_varying_descriptor(
 
                 unsigned loc = fs->varyings_loc[i];
                 unsigned pnt_loc =
-                        (loc >= VARYING_SLOT_VAR0) ? (loc - VARYING_SLOT_VAR0) :
+                        (loc >= VARYING_SLOT_TEX0) ? (loc - VARYING_SLOT_TEX0) :
                         (loc == VARYING_SLOT_PNTC) ? 8 :
                         ~0;
 

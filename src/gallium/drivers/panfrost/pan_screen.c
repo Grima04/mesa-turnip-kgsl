@@ -180,6 +180,11 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
                 return 0;
 
+        /* I really don't want to set this CAP but let's not swim against the
+         * tide.. */
+        case PIPE_CAP_TGSI_TEXCOORD:
+                return 1;
+
         case PIPE_CAP_SEAMLESS_CUBE_MAP:
         case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
                 return 1;
