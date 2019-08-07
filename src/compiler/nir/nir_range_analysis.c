@@ -453,9 +453,21 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       break;
    }
 
-   case nir_op_fexp2:
-      r = (struct ssa_result_range){gt_zero, analyze_expression(alu, 0, ht).is_integral};
+   case nir_op_fexp2: {
+      /* If the parameter might be less than zero, the mathematically result
+       * will be on (0, 1).  For sufficiently large magnitude negative
+       * parameters, the result will flush to zero.
+       */
+      static const enum ssa_ranges table[last_range + 1] = {
+      /* unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+         ge_zero, ge_zero, ge_zero, gt_zero, gt_zero, ge_zero, gt_zero
+      };
+
+      r = analyze_expression(alu, 0, ht);
+
+      r.range = table[r.range];
       break;
+   }
 
    case nir_op_fmax: {
       const struct ssa_result_range left = analyze_expression(alu, 0, ht);
