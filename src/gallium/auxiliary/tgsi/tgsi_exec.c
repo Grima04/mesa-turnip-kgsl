@@ -1351,20 +1351,6 @@ tgsi_exec_machine_create(enum pipe_shader_type shader_type)
          goto fail;
    }
 
-   /* Setup constants needed by the SSE2 executor. */
-   for( i = 0; i < 4; i++ ) {
-      mach->Temps[TGSI_EXEC_TEMP_00000000_I].xyzw[TGSI_EXEC_TEMP_00000000_C].u[i] = 0x00000000;
-      mach->Temps[TGSI_EXEC_TEMP_7FFFFFFF_I].xyzw[TGSI_EXEC_TEMP_7FFFFFFF_C].u[i] = 0x7FFFFFFF;
-      mach->Temps[TGSI_EXEC_TEMP_80000000_I].xyzw[TGSI_EXEC_TEMP_80000000_C].u[i] = 0x80000000;
-      mach->Temps[TGSI_EXEC_TEMP_FFFFFFFF_I].xyzw[TGSI_EXEC_TEMP_FFFFFFFF_C].u[i] = 0xFFFFFFFF;    /* not used */
-      mach->Temps[TGSI_EXEC_TEMP_ONE_I].xyzw[TGSI_EXEC_TEMP_ONE_C].f[i] = 1.0f;
-      mach->Temps[TGSI_EXEC_TEMP_TWO_I].xyzw[TGSI_EXEC_TEMP_TWO_C].f[i] = 2.0f;    /* not used */
-      mach->Temps[TGSI_EXEC_TEMP_128_I].xyzw[TGSI_EXEC_TEMP_128_C].f[i] = 128.0f;
-      mach->Temps[TGSI_EXEC_TEMP_MINUS_128_I].xyzw[TGSI_EXEC_TEMP_MINUS_128_C].f[i] = -128.0f;
-      mach->Temps[TGSI_EXEC_TEMP_THREE_I].xyzw[TGSI_EXEC_TEMP_THREE_C].f[i] = 3.0f;
-      mach->Temps[TGSI_EXEC_TEMP_HALF_I].xyzw[TGSI_EXEC_TEMP_HALF_C].f[i] = 0.5f;
-   }
-
 #ifdef DEBUG
    /* silence warnings */
    (void) print_chan;
