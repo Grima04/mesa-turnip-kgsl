@@ -738,6 +738,11 @@ virgl_is_format_supported( struct pipe_screen *screen,
          return false;
    }
 
+   if (bind & PIPE_BIND_SCANOUT) {
+      if (!virgl_format_check_bitmask(format, caps->v2.scanout.bitmask, false))
+         return false;
+   }
+
    /*
     * All other operations (sampling, transfer, etc).
     */
@@ -905,6 +910,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    vws->get_caps(vws, &screen->caps);
    fixup_formats(&screen->caps.caps,
                  &screen->caps.caps.v2.supported_readback_formats);
+   fixup_formats(&screen->caps.caps, &screen->caps.caps.v2.scanout);
 
    screen->refcnt = 1;
 
