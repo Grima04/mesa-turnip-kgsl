@@ -1799,13 +1799,14 @@ static void
 fill_surface_state(struct isl_device *isl_dev,
                    void *map,
                    struct iris_resource *res,
+                   struct isl_surf *surf,
                    struct isl_view *view,
                    unsigned aux_usage,
                    uint32_t tile_x_sa,
                    uint32_t tile_y_sa)
 {
    struct isl_surf_fill_state_info f = {
-      .surf = &res->surf,
+      .surf = surf,
       .view = view,
       .mocs = mocs(res->bo),
       .address = res->bo->gtt_offset + res->offset,
@@ -1915,8 +1916,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
          /* If we have a multisampled depth buffer, do not create a sampler
           * surface state with HiZ.
           */
-         fill_surface_state(&screen->isl_dev, map, isv->res, &isv->view,
-                            aux_usage, 0, 0);
+         fill_surface_state(&screen->isl_dev, map, isv->res, &isv->res->surf,
+                            &isv->view, aux_usage, 0, 0);
 
          map += SURFACE_STATE_ALIGNMENT;
       }
@@ -2006,9 +2007,6 @@ iris_create_surface(struct pipe_context *ctx,
    };
 
 #if GEN_GEN == 8
-   struct iris_resource res_copy;
-   memcpy(&res_copy, res, sizeof(*res));
-
    enum pipe_texture_target target = (tex->target == PIPE_TEXTURE_3D &&
                                       array_len == 1) ? PIPE_TEXTURE_2D :
                                      tex->target == PIPE_TEXTURE_1D_ARRAY ?
@@ -2043,7 +2041,7 @@ iris_create_surface(struct pipe_context *ctx,
 #if GEN_GEN == 8
    void *map_read = alloc_surface_states(ice->state.surface_uploader,
                                          &surf->surface_state_read,
-                                         res_copy.aux.possible_usages);
+                                         res->aux.possible_usages);
    if (!unlikely(map_read)) {
       pipe_resource_reference(&surf->surface_state_read.res, NULL);
       return NULL;
@@ -2059,20 +2057,25 @@ iris_create_surface(struct pipe_context *ctx,
        */
       unsigned aux_modes = res->aux.possible_usages;
       while (aux_modes) {
+#if GEN_GEN == 8
+         uint32_t offset = res->offset;
+#endif
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-         fill_surface_state(&screen->isl_dev, map, res, view, aux_usage,
-                            0, 0);
+         fill_surface_state(&screen->isl_dev, map, res, &res->surf,
+                            view, aux_usage, 0, 0);
          map += SURFACE_STATE_ALIGNMENT;
 
 #if GEN_GEN == 8
          struct isl_surf surf;
          uint32_t tile_x_sa = 0, tile_y_sa = 0;
-         get_rt_read_isl_surf(devinfo, &res_copy, target, read_view,
+         get_rt_read_isl_surf(devinfo, res, target, read_view,
                               &tile_x_sa, &tile_y_sa, &surf);
-         res_copy.surf = surf;
-         fill_surface_state(&screen->isl_dev, map_read, &res_copy, read_view,
+         fill_surface_state(&screen->isl_dev, map_read, res, &surf, read_view,
                             aux_usage, tile_x_sa, tile_y_sa);
-
+         /* Restore offset because we change offset in case of handling
+          * non_coherent fb fetch
+          */
+         res->offset = offset;
          map_read += SURFACE_STATE_ALIGNMENT;
 #endif
       }
@@ -2270,8 +2273,8 @@ iris_set_shader_images(struct pipe_context *ctx,
                while (aux_modes) {
                   enum isl_aux_usage usage = u_bit_scan(&aux_modes);
 
-                  fill_surface_state(&screen->isl_dev, map, res, &view,
-                                     usage, 0, 0);
+                  fill_surface_state(&screen->isl_dev, map, res, &res->surf,
+                                     &view, usage, 0, 0);
 
                   map += SURFACE_STATE_ALIGNMENT;
                }
@@ -4052,7 +4055,7 @@ update_clear_value(struct iris_context *ice,
                                        state, res->aux.possible_usages);
       while (aux_modes) {
          enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-         fill_surface_state(&screen->isl_dev, map, res, view,
+         fill_surface_state(&screen->isl_dev, map, res, &res->surf, view,
                             aux_usage, 0, 0);
          map += SURFACE_STATE_ALIGNMENT;
       }
