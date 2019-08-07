@@ -496,7 +496,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 
 	i = 0;
 	uint64_t processed_inputs = 0;
-	unsigned num_inputs = 0;
 	nir_foreach_variable(variable, &nir->inputs) {
 		unsigned semantic_name, semantic_index;
 
@@ -516,10 +515,10 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		 * variable->data.driver_location.
 		 */
 		if (nir->info.stage == MESA_SHADER_VERTEX) {
-			if (glsl_type_is_dual_slot(glsl_without_array(variable->type)))
-				num_inputs++;
+			processed_inputs |= 1ull << i;
 
-			num_inputs++;
+			if (glsl_type_is_dual_slot(glsl_without_array(variable->type)))
+				processed_inputs |= 2ull << i;
 			continue;
 		}
 
@@ -529,7 +528,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 				continue;
 
 			processed_inputs |= ((uint64_t)1 << i);
-			num_inputs++;
 
 			tgsi_get_gl_varying_semantic(variable->data.location + j, true,
 						     &semantic_name, &semantic_index);
@@ -585,11 +583,8 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		}
 	}
 
-	info->num_inputs = num_inputs;
-
 	i = 0;
 	uint64_t processed_outputs = 0;
-	unsigned num_outputs = 0;
 	nir_foreach_variable(variable, &nir->outputs) {
 		unsigned semantic_name, semantic_index;
 
@@ -691,7 +686,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 				continue;
 
 			processed_outputs |= ((uint64_t)1 << i);
-			num_outputs++;
 
 			info->output_semantic_name[i] = semantic_name;
 			info->output_semantic_index[i] = semantic_index;
@@ -742,7 +736,14 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		}
 	}
 
-	info->num_outputs = num_outputs;
+	info->num_inputs = util_last_bit64(processed_inputs);
+	info->num_outputs = util_last_bit64(processed_outputs);
+
+	/* Inputs and outputs can't have holes. If this fails, use
+	 * nir_assign_io_var_locations to re-assign driver_location.
+	 */
+	assert(processed_inputs == u_bit_consecutive64(0, info->num_inputs));
+	assert(processed_outputs == u_bit_consecutive64(0, info->num_outputs));
 
 	struct set *ubo_set = _mesa_set_create(NULL, _mesa_hash_pointer,
 					       _mesa_key_pointer_equal);
