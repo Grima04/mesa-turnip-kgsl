@@ -192,10 +192,11 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
          * need/can to do things slightly different, like not loading the
          * amount to add/sub, as that is implicit.
          */
-        bool atomic_add_replaced = ((instr->intrinsic == nir_intrinsic_ssbo_atomic_add ||
-                                     instr->intrinsic == nir_intrinsic_shared_atomic_add) &&
-                                    (tmu_op == V3D_TMU_OP_WRITE_AND_READ_INC ||
-                                     tmu_op == V3D_TMU_OP_WRITE_OR_READ_DEC));
+        bool atomic_add_replaced =
+                ((instr->intrinsic == nir_intrinsic_ssbo_atomic_add ||
+                  instr->intrinsic == nir_intrinsic_shared_atomic_add) &&
+                 (tmu_op == V3D_TMU_OP_WRITE_AND_READ_INC ||
+                  tmu_op == V3D_TMU_OP_WRITE_OR_READ_DEC));
 
         bool is_store = (instr->intrinsic == nir_intrinsic_store_ssbo ||
                          instr->intrinsic == nir_intrinsic_store_scratch ||
@@ -240,8 +241,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 /* Note that QUNIFORM_UBO_ADDR takes a UBO index shifted up by
                  * 1 (0 is gallium's constant buffer 0).
                  */
-                base_offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
-                                          v3d_unit_data_create(index, const_offset));
+                base_offset =
+                        vir_uniform(c, QUNIFORM_UBO_ADDR,
+                                    v3d_unit_data_create(index, const_offset));
                 const_offset = 0;
         } else if (is_shared_or_scratch) {
                 /* Shared and scratch variables have no buffer index, and all
@@ -261,6 +263,7 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                                                       1 : 0]));
         }
 
+        struct qreg tmud = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD);
         unsigned writemask = is_store ? nir_intrinsic_write_mask(instr) : 0;
         uint32_t base_const_offset = const_offset;
         int first_component = -1;
@@ -301,29 +304,28 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                 BITFIELD_RANGE(first_component, tmu_writes - 1);
                         writemask &= ~written_mask;
                 } else if (!is_load && !atomic_add_replaced) {
-                        vir_MOV_dest(c,
-                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                                     ntq_get_src(c, instr->src[1 + has_index], 0));
+                        struct qreg data =
+                                ntq_get_src(c, instr->src[1 + has_index], 0);
+                        vir_MOV_dest(c, tmud, data);
                         tmu_writes++;
                         if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
-                                vir_MOV_dest(c,
-                                             vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                                             ntq_get_src(c, instr->src[2 + has_index],
-                                                         0));
+                                data = ntq_get_src(c, instr->src[2 + has_index],
+                                                   0);
+                                vir_MOV_dest(c, tmud, data);
                                 tmu_writes++;
                         }
                 }
 
-                /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
-                 * storing at the same time.
+                /* Make sure we won't exceed the 16-entry TMU fifo if each
+                 * thread is storing at the same time.
                  */
                 while (tmu_writes > 16 / c->threads)
                         c->threads /= 2;
 
-                /* The spec says that for atomics, the TYPE field is ignored, but that
-                 * doesn't seem to be the case for CMPXCHG.  Just use the number of
-                 * tmud writes we did to decide the type (or choose "32bit" for atomic
-                 * reads, which has been fine).
+                /* The spec says that for atomics, the TYPE field is ignored,
+                 * but that doesn't seem to be the case for CMPXCHG.  Just use
+                 * the number of tmud writes we did to decide the type (or
+                 * choose "32bit" for atomic reads, which has been fine).
                  */
                 uint32_t num_components;
                 if (is_load || atomic_add_replaced) {
@@ -339,7 +341,8 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 if (num_components == 1) {
                         config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
                 } else {
-                        config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 + num_components - 2;
+                        config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 +
+                                  num_components - 2;
                 }
 
                 if (vir_in_nonuniform_control_flow(c)) {
@@ -360,8 +363,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                                 offset = vir_ADD(c, offset,
                                                  vir_uniform_ui(c, const_offset));
                         }
-                        tmu = vir_ADD_dest(c, tmua, offset,
-                                           ntq_get_src(c, instr->src[offset_src], 0));
+                        struct qreg data =
+                                ntq_get_src(c, instr->src[offset_src], 0);
+                        tmu = vir_ADD_dest(c, tmua, offset, data);
                 } else {
                         if (const_offset != 0) {
                                 tmu = vir_ADD_dest(c, tmua, base_offset,
@@ -372,8 +376,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 }
 
                 if (config != ~0) {
-                        tmu->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT,
-                                                             config);
+                        tmu->uniform =
+                                vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                                      config);
                 }
 
                 if (vir_in_nonuniform_control_flow(c))
@@ -382,8 +387,10 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                 vir_emit_thrsw(c);
 
                 /* Read the result, or wait for the TMU op to complete. */
-                for (int i = 0; i < nir_intrinsic_dest_components(instr); i++)
-                        ntq_store_dest(c, &instr->dest, i, vir_MOV(c, vir_LDTMU(c)));
+                for (int i = 0; i < nir_intrinsic_dest_components(instr); i++) {
+                        ntq_store_dest(c, &instr->dest, i,
+                                       vir_MOV(c, vir_LDTMU(c)));
+                }
 
                 if (nir_intrinsic_dest_components(instr) == 0)
                         vir_TMUWT(c);
