@@ -229,19 +229,19 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
         if (!dynamic_src)
                 const_offset = nir_src_as_uint(instr->src[offset_src]);
 
-        struct qreg offset;
+        struct qreg base_offset;
         if (instr->intrinsic == nir_intrinsic_load_uniform) {
                 const_offset += nir_intrinsic_base(instr);
-                offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
-                                     v3d_unit_data_create(0, const_offset));
+                base_offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
+                                          v3d_unit_data_create(0, const_offset));
                 const_offset = 0;
         } else if (instr->intrinsic == nir_intrinsic_load_ubo) {
                 uint32_t index = nir_src_as_uint(instr->src[0]) + 1;
                 /* Note that QUNIFORM_UBO_ADDR takes a UBO index shifted up by
                  * 1 (0 is gallium's constant buffer 0).
                  */
-                offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
-                                     v3d_unit_data_create(index, const_offset));
+                base_offset = vir_uniform(c, QUNIFORM_UBO_ADDR,
+                                          v3d_unit_data_create(index, const_offset));
                 const_offset = 0;
         } else if (is_shared_or_scratch) {
                 /* Shared and scratch variables have no buffer index, and all
@@ -250,109 +250,144 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                  */
                 if (instr->intrinsic == nir_intrinsic_load_scratch ||
                     instr->intrinsic == nir_intrinsic_store_scratch) {
-                        offset = c->spill_base;
+                        base_offset = c->spill_base;
                 } else {
-                        offset = c->cs_shared_offset;
+                        base_offset = c->cs_shared_offset;
                         const_offset += nir_intrinsic_base(instr);
                 }
         } else {
-                offset = vir_uniform(c, QUNIFORM_SSBO_OFFSET,
-                                     nir_src_as_uint(instr->src[is_store ?
-                                                                1 : 0]));
+                base_offset = vir_uniform(c, QUNIFORM_SSBO_OFFSET,
+                                          nir_src_as_uint(instr->src[is_store ?
+                                                                      1 : 0]));
         }
 
-        int tmu_writes = 1; /* address */
-        if (is_store) {
-                for (int i = 0; i < instr->num_components; i++) {
+        unsigned writemask = is_store ? nir_intrinsic_write_mask(instr) : 0;
+        uint32_t base_const_offset = const_offset;
+        int first_component = -1;
+        int last_component = -1;
+        do {
+                int tmu_writes = 1; /* address */
+
+                if (is_store) {
+                        /* Find the first set of consecutive components that
+                         * are enabled in the writemask and emit the TMUD
+                         * instructions for them.
+                         */
+                        first_component = ffs(writemask) - 1;
+                        last_component = first_component;
+                        while (writemask & BITFIELD_BIT(last_component + 1))
+                                last_component++;
+
+                        assert(first_component >= 0 &&
+                               first_component <= last_component &&
+                               last_component < instr->num_components);
+
+                        struct qreg tmud = vir_reg(QFILE_MAGIC,
+                                                   V3D_QPU_WADDR_TMUD);
+                        for (int i = first_component; i <= last_component; i++) {
+                                struct qreg data =
+                                        ntq_get_src(c, instr->src[0], i);
+                                vir_MOV_dest(c, tmud, data);
+                                tmu_writes++;
+                        }
+
+                        /* Update the offset for the TMU write based on the
+                         * the first component we are writing.
+                         */
+                        const_offset = base_const_offset + first_component * 4;
+
+                        /* Clear these components from the writemask */
+                        uint32_t written_mask =
+                                BITFIELD_RANGE(first_component, tmu_writes - 1);
+                        writemask &= ~written_mask;
+                } else if (!is_load && !atomic_add_replaced) {
                         vir_MOV_dest(c,
                                      vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                                     ntq_get_src(c, instr->src[0], i));
+                                     ntq_get_src(c, instr->src[1 + has_index], 0));
                         tmu_writes++;
+                        if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
+                                vir_MOV_dest(c,
+                                             vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
+                                             ntq_get_src(c, instr->src[2 + has_index],
+                                                         0));
+                                tmu_writes++;
+                        }
                 }
-        } else if (!is_load && !atomic_add_replaced) {
-                vir_MOV_dest(c,
-                             vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                             ntq_get_src(c, instr->src[1 + has_index], 0));
-                tmu_writes++;
-                if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
-                        vir_MOV_dest(c,
-                                     vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD),
-                                     ntq_get_src(c, instr->src[2 + has_index],
-                                                 0));
-                        tmu_writes++;
-                }
-        }
 
-        /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
-         * storing at the same time.
-         */
-        while (tmu_writes > 16 / c->threads)
-                c->threads /= 2;
+                /* Make sure we won't exceed the 16-entry TMU fifo if each thread is
+                 * storing at the same time.
+                 */
+                while (tmu_writes > 16 / c->threads)
+                        c->threads /= 2;
 
-        /* The spec says that for atomics, the TYPE field is ignored, but that
-         * doesn't seem to be the case for CMPXCHG.  Just use the number of
-         * tmud writes we did to decide the type (or choose "32bit" for atomic
-         * reads, which has been fine).
-         */
-        int num_components;
-        if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH)
-                num_components = 2;
-        else
-                num_components = instr->num_components;
-
-        uint32_t config = (0xffffff00 |
-                           tmu_op << 3|
-                           GENERAL_TMU_LOOKUP_PER_PIXEL);
-        if (num_components == 1) {
-                config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
-        } else {
-                config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 + num_components - 2;
-        }
-
-        if (vir_in_nonuniform_control_flow(c)) {
-                vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
-                           V3D_QPU_PF_PUSHZ);
-        }
-
-        struct qreg tmua;
-        if (config == ~0)
-                tmua = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUA);
-        else
-                tmua = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUAU);
-
-        struct qinst *tmu;
-        if (dynamic_src) {
-                if (const_offset != 0) {
-                        offset = vir_ADD(c, offset,
-                                         vir_uniform_ui(c, const_offset));
-                }
-                tmu = vir_ADD_dest(c, tmua, offset,
-                                   ntq_get_src(c, instr->src[offset_src], 0));
-        } else {
-                if (const_offset != 0) {
-                        tmu = vir_ADD_dest(c, tmua, offset,
-                                           vir_uniform_ui(c, const_offset));
+                /* The spec says that for atomics, the TYPE field is ignored, but that
+                 * doesn't seem to be the case for CMPXCHG.  Just use the number of
+                 * tmud writes we did to decide the type (or choose "32bit" for atomic
+                 * reads, which has been fine).
+                 */
+                uint32_t num_components;
+                if (is_load || atomic_add_replaced) {
+                        num_components = instr->num_components;
                 } else {
-                        tmu = vir_MOV_dest(c, tmua, offset);
+                        assert(tmu_writes > 1);
+                        num_components = tmu_writes - 1;
                 }
-        }
 
-        if (config != ~0) {
-                tmu->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT,
-                                                     config);
-        }
+                uint32_t config = (0xffffff00 |
+                                   tmu_op << 3|
+                                   GENERAL_TMU_LOOKUP_PER_PIXEL);
+                if (num_components == 1) {
+                        config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
+                } else {
+                        config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 + num_components - 2;
+                }
 
-        if (vir_in_nonuniform_control_flow(c))
-                vir_set_cond(tmu, V3D_QPU_COND_IFA);
+                if (vir_in_nonuniform_control_flow(c)) {
+                        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), c->execute),
+                                   V3D_QPU_PF_PUSHZ);
+                }
 
-        vir_emit_thrsw(c);
+                struct qreg tmua;
+                if (config == ~0)
+                        tmua = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUA);
+                else
+                        tmua = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUAU);
 
-        /* Read the result, or wait for the TMU op to complete. */
-        for (int i = 0; i < nir_intrinsic_dest_components(instr); i++)
-                ntq_store_dest(c, &instr->dest, i, vir_MOV(c, vir_LDTMU(c)));
+                struct qinst *tmu;
+                if (dynamic_src) {
+                        struct qreg offset = base_offset;
+                        if (const_offset != 0) {
+                                offset = vir_ADD(c, offset,
+                                                 vir_uniform_ui(c, const_offset));
+                        }
+                        tmu = vir_ADD_dest(c, tmua, offset,
+                                           ntq_get_src(c, instr->src[offset_src], 0));
+                } else {
+                        if (const_offset != 0) {
+                                tmu = vir_ADD_dest(c, tmua, base_offset,
+                                                   vir_uniform_ui(c, const_offset));
+                        } else {
+                                tmu = vir_MOV_dest(c, tmua, base_offset);
+                        }
+                }
 
-        if (nir_intrinsic_dest_components(instr) == 0)
-                vir_TMUWT(c);
+                if (config != ~0) {
+                        tmu->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                                             config);
+                }
+
+                if (vir_in_nonuniform_control_flow(c))
+                        vir_set_cond(tmu, V3D_QPU_COND_IFA);
+
+                vir_emit_thrsw(c);
+
+                /* Read the result, or wait for the TMU op to complete. */
+                for (int i = 0; i < nir_intrinsic_dest_components(instr); i++)
+                        ntq_store_dest(c, &instr->dest, i, vir_MOV(c, vir_LDTMU(c)));
+
+                if (nir_intrinsic_dest_components(instr) == 0)
+                        vir_TMUWT(c);
+        } while (is_store && writemask != 0);
 }
 
 static struct qreg *
