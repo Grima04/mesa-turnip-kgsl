@@ -1640,6 +1640,7 @@ panfrost_draw_vbo(
         /* Take into account a negative bias */
         ctx->vertex_count = info->count + abs(info->index_bias);
         ctx->instance_count = info->instance_count;
+        ctx->active_prim = info->mode;
 
         /* For non-indexed draws, they're the same */
         unsigned vertex_count = ctx->vertex_count;
@@ -1754,6 +1755,15 @@ panfrost_draw_vbo(
 
         /* Fire off the draw itself */
         panfrost_queue_draw(ctx);
+
+        /* Increment transform feedback offsets */
+
+        for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
+                unsigned output_count = u_stream_outputs_for_vertices(
+                                ctx->active_prim, ctx->vertex_count);
+
+                ctx->streamout.offsets[i] += output_count;
+        }
 }
 
 /* CSO state */
