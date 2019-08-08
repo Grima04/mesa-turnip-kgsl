@@ -995,6 +995,11 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
 {
         char *prefix = varying ? "varyings" : "attributes";
 
+        if (!addr) {
+                pandecode_msg("no %s\n", prefix);
+                return;
+        }
+
         union mali_attr *attr = pandecode_fetch_gpu_mem(mem, addr, sizeof(union mali_attr) * count);
 
         char base[128];
