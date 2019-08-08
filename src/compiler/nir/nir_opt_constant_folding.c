@@ -32,12 +32,6 @@
  * Implements SSA-based constant folding.
  */
 
-struct constant_fold_state {
-   void *mem_ctx;
-   nir_function_impl *impl;
-   bool progress;
-};
-
 static bool
 constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
 {
