@@ -838,31 +838,41 @@ optimizations.extend([
    (('fne', 'a(is_not_zero)', 0.0), True),
    (('feq', 'a(is_not_zero)', 0.0), False),
 
+   # In this chart, + means value > 0 and - means value < 0.
+   #
+   # + >= + -> unknown  0 >= + -> false    - >= + -> false
+   # + >= 0 -> true     0 >= 0 -> true     - >= 0 -> false
+   # + >= - -> true     0 >= - -> true     - >= - -> unknown
+   #
+   # Using grouping conceptually similar to a Karnaugh map...
+   #
+   # (+ >= 0, + >= -, 0 >= 0, 0 >= -) == (is_not_negative >= is_not_positive) -> true
+   # (0 >= +, - >= +) == (is_not_positive >= gt_zero) -> false
+   # (- >= +, - >= 0) == (lt_zero >= is_not_negative) -> false
+   #
+   # The flt / ilt cases just invert the expected result.
+   #
    # The results expecting true, must be marked imprecise.  The results
    # expecting false are fine because NaN compared >= or < anything is false.
 
    (('~fge', 'a(is_not_negative)', 'b(is_not_positive)'), True),
-   (('fge',  'b(is_not_positive)', 'a(is_gt_zero)'),      False),
+   (('fge',  'a(is_not_positive)', 'b(is_gt_zero)'),      False),
    (('fge',  'a(is_lt_zero)',      'b(is_not_negative)'), False),
-   (('~fge', 'b(is_not_negative)', 'a(is_not_positive)'), True),
 
    (('flt',  'a(is_not_negative)', 'b(is_not_positive)'), False),
-   (('~flt', 'b(is_not_positive)', 'a(is_gt_zero)'),      True),
+   (('~flt', 'a(is_not_positive)', 'b(is_gt_zero)'),      True),
    (('~flt', 'a(is_lt_zero)',      'b(is_not_negative)'), True),
-   (('flt',  'b(is_not_negative)', 'a(is_not_positive)'), False),
 
    (('ine', 'a(is_not_zero)', 0), True),
    (('ieq', 'a(is_not_zero)', 0), False),
 
    (('ige', 'a(is_not_negative)', 'b(is_not_positive)'), True),
-   (('ige', 'b(is_not_positive)', 'a(is_gt_zero)'),      False),
+   (('ige', 'a(is_not_positive)', 'b(is_gt_zero)'),      False),
    (('ige', 'a(is_lt_zero)',      'b(is_not_negative)'), False),
-   (('ige', 'b(is_not_negative)', 'a(is_not_positive)'), True),
 
    (('ilt', 'a(is_not_negative)', 'b(is_not_positive)'), False),
-   (('ilt', 'b(is_not_positive)', 'a(is_gt_zero)'),      True),
+   (('ilt', 'a(is_not_positive)', 'b(is_gt_zero)'),      True),
    (('ilt', 'a(is_lt_zero)',      'b(is_not_negative)'), True),
-   (('ilt', 'b(is_not_negative)', 'a(is_not_positive)'), False),
 
    (('ult', 0, 'a(is_gt_zero)'), True),
 
