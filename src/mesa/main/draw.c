@@ -1640,7 +1640,7 @@ _mesa_exec_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect
 
          /* Convert offset to pointer */
          void *offset = (void *)
-            ((cmd->firstIndex * _mesa_sizeof_type(type)) & 0xffffffffUL);
+            (uintptr_t)((cmd->firstIndex * _mesa_sizeof_type(type)) & 0xffffffffUL);
 
          _mesa_exec_DrawElementsInstancedBaseVertexBaseInstance(mode, cmd->count,
                                                                 type, offset,
