@@ -2688,5 +2688,18 @@ glsl_float64_funcs_to_nir(struct gl_context *ctx,
    NIR_PASS_V(nir, nir_inline_functions);
    NIR_PASS_V(nir, nir_opt_deref);
 
+   /* Do some optimizations to clean up the shader now.  By optimizing the
+    * functions in the library, we avoid having to re-do that work every
+    * time we inline a copy of a function.  Reducing basic blocks also helps
+    * with compile times.
+    */
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_copy_prop);
+   NIR_PASS_V(nir, nir_opt_dce);
+   NIR_PASS_V(nir, nir_opt_cse);
+   NIR_PASS_V(nir, nir_opt_gcm, true);
+   NIR_PASS_V(nir, nir_opt_peephole_select, 1, false, false);
+   NIR_PASS_V(nir, nir_opt_dce);
+
    return nir;
 }
