@@ -454,7 +454,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 		}
 
 		radeon_set_context_reg(cs, R_028C48_PA_SC_BINNER_CNTL_1,
-				       S_028C48_MAX_ALLOC_COUNT(max_alloc_count) |
+				       S_028C48_MAX_ALLOC_COUNT(max_alloc_count - 1) |
 				       S_028C48_MAX_PRIM_PER_BATCH(1023));
 		radeon_set_context_reg(cs, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
 				       S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1));
