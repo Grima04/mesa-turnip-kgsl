@@ -2629,6 +2629,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
         case PIPE_QUERY_PRIMITIVES_GENERATED:
         case PIPE_QUERY_PRIMITIVES_EMITTED:
+                panfrost_flush(pipe, NULL, PIPE_FLUSH_END_OF_FRAME);
                 vresult->u64 = query->end - query->start;
                 break;
 
