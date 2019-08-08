@@ -72,7 +72,13 @@ v3d_memory_barrier(struct pipe_context *pctx, unsigned int flags)
 {
         struct v3d_context *v3d = v3d_context(pctx);
 
-	if (!(flags & ~PIPE_BARRIER_UPDATE))
+        /* We only need to flush for SSBOs and images, because for everything
+         * else we flush the job automatically when we needed.
+         */
+        const unsigned int flush_flags = PIPE_BARRIER_SHADER_BUFFER |
+                                         PIPE_BARRIER_IMAGE;
+
+	if (!(flags & flush_flags))
 		return;
 
         /* We only need to flush jobs writing to SSBOs/images. */
