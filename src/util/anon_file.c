@@ -112,7 +112,7 @@ create_tmpfile_cloexec(char *tmpname)
  * SCM_RIGHTS methods.
  */
 int
-os_create_anonymous_file(off_t size, char *debug_name)
+os_create_anonymous_file(off_t size, const char *debug_name)
 {
    int fd, ret;
 #ifdef __FreeBSD__
