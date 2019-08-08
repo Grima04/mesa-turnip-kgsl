@@ -771,8 +771,20 @@ install_registers_instr(
 
                         ins->load_store.reg = src.reg - 26;
 
-                        /* TODO: swizzle/mask */
-                } else {
+                        unsigned shift = __builtin_ctz(src.mask);
+                        unsigned adjusted_mask = src.mask >> shift;
+                        assert(((adjusted_mask + 1) & adjusted_mask) == 0);
+
+                        unsigned new_swizzle = 0;
+                        for (unsigned q = 0; q < 4; ++q) {
+                                unsigned c = (ins->load_store.swizzle >> (2*q)) & 3;
+                                new_swizzle |= (c + shift) << (2*q);
+                        }
+
+                        ins->load_store.swizzle = compose_swizzle(
+                                                          new_swizzle, src.mask,
+                                                          default_phys_reg(0), src);
+               } else {
                         unsigned r = encodes_src ?
                                      args.src[0] : args.dest;
 
