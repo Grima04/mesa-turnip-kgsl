@@ -33,6 +33,7 @@
 #include "glsl_parser_extras.h"
 #include "compiler/glsl_types.h"
 #include "main/context.h"
+#include "util/u_string.h"
 
 #ifdef _MSC_VER
 #pragma warning( disable : 4065 ) // switch statement contains 'default' but no 'case' labels
