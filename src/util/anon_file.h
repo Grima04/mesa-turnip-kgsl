@@ -27,7 +27,6 @@
 #define _ANON_FILE_H_
 
 #include <sys/types.h>
-#include "util/macros.h"
 
 int os_create_anonymous_file(off_t size, char *debug_name);
 
