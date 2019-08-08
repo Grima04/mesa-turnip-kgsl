@@ -1576,6 +1576,16 @@ void anv_GetPhysicalDeviceProperties2(
          break;
       }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch"
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID: {
+         VkPhysicalDevicePresentationPropertiesANDROID *props =
+            (VkPhysicalDevicePresentationPropertiesANDROID *)ext;
+         props->sharedImage = VK_FALSE;
+         break;
+      }
+#pragma GCC diagnostic pop
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
          VkPhysicalDeviceProtectedMemoryProperties *props =
             (VkPhysicalDeviceProtectedMemoryProperties *)ext;
