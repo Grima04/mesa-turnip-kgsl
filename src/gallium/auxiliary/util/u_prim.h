@@ -327,6 +327,25 @@ u_vertices_for_prims(enum pipe_prim_type prim_type, int count)
    return info->min + (count - 1) * info->incr;
 }
 
+/**
+ * Returns the number of stream out outputs for a given number of vertices and
+ * primitive type.
+ */
+
+static inline unsigned
+u_stream_outputs_for_vertices(enum pipe_prim_type primitive, unsigned nr)
+{
+   /* Extraneous vertices don't contribute to stream outputs */
+   u_trim_pipe_prim(primitive, &nr);
+
+   /* Consider how many primitives are actually generated */
+   unsigned prims = u_decomposed_prims_for_vertices(primitive, nr);
+
+   /* One output per vertex after decomposition */
+   enum pipe_prim_type base = u_base_prim_type(primitive);
+   return u_vertices_for_prims(base, prims);
+}
+
 const char *u_prim_name(enum pipe_prim_type pipe_prim);
 
 
