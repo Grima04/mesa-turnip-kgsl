@@ -58,7 +58,7 @@ nir_deref_path_init(nir_deref_path *path,
 #ifndef NDEBUG
    /* Just in case someone uses short_path by accident */
    for (unsigned i = 0; i < ARRAY_SIZE(path->_short_path); i++)
-      path->_short_path[i] = (void *)0xdeadbeef;
+      path->_short_path[i] = (void *)(uintptr_t)0xdeadbeef;
 #endif
 
    path->path = ralloc_array(mem_ctx, nir_deref_instr *, count + 1);
