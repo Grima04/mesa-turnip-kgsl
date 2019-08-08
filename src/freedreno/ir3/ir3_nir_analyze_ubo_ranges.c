@@ -108,20 +108,20 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 
 	nir_ssa_def *ubo_offset = nir_ssa_for_src(b, instr->src[1], 1);
 	nir_ssa_def *new_offset = ir3_nir_try_propagate_bit_shift(b, ubo_offset, -2);
+	nir_ssa_def *uniform_offset;
 	if (new_offset)
-		ubo_offset = new_offset;
+		uniform_offset = new_offset;
 	else
-		ubo_offset = nir_ushr(b, ubo_offset, nir_imm_int(b, 2));
+		uniform_offset = nir_ushr(b, ubo_offset, nir_imm_int(b, 2));
 
 	const int range_offset =
 		(state->range[block].offset - state->range[block].start) / 4;
-	nir_ssa_def *uniform_offset =
-		nir_iadd(b, ubo_offset, nir_imm_int(b, range_offset));
 
 	nir_intrinsic_instr *uniform =
 		nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
 	uniform->num_components = instr->num_components;
 	uniform->src[0] = nir_src_for_ssa(uniform_offset);
+	nir_intrinsic_set_base(uniform, range_offset);
 	nir_ssa_dest_init(&uniform->instr, &uniform->dest,
 					  uniform->num_components, instr->dest.ssa.bit_size,
 					  instr->dest.ssa.name);
