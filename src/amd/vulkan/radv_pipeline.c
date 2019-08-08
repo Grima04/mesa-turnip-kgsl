@@ -3178,7 +3178,8 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 			fpovs_per_batch = 63;
 		} else {
 			context_states_per_bin = 6;
-			persistent_states_per_bin = 32;
+			/* 32 causes hangs for RAVEN. */
+			persistent_states_per_bin = 16;
 			fpovs_per_batch = 63;
 		}
 
