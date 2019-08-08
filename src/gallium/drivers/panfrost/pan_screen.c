@@ -121,6 +121,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
         case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
                 return is_deqp ? 64 : 0;
+        case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
+                return 1;
 
         case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
                 return is_deqp ? 256 : 0; /* for GL3 */
