@@ -157,6 +157,18 @@ brw_create_nir(struct brw_context *brw,
    return nir;
 }
 
+static void
+shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   uint32_t comp_size = glsl_type_is_boolean(type)
+      ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+   *size = comp_size * length,
+   *align = comp_size * (length == 3 ? 4 : length);
+}
+
 void
 brw_nir_lower_resources(nir_shader *nir, struct gl_shader_program *shader_prog,
                         struct gl_program *prog,
@@ -167,6 +179,14 @@ brw_nir_lower_resources(nir_shader *nir, struct gl_shader_program *shader_prog,
    prog->info.textures_used_by_txf = prog->nir->info.textures_used_by_txf;
 
    NIR_PASS_V(prog->nir, brw_nir_lower_image_load_store, devinfo);
+
+   if (prog->nir->info.stage == MESA_SHADER_COMPUTE &&
+       shader_prog->data->spirv) {
+      NIR_PASS_V(prog->nir, nir_lower_vars_to_explicit_types,
+                 nir_var_mem_shared, shared_type_info);
+      NIR_PASS_V(prog->nir, nir_lower_explicit_io,
+                 nir_var_mem_shared, nir_address_format_32bit_offset);
+   }
 
    NIR_PASS_V(prog->nir, gl_nir_lower_buffers, shader_prog);
    /* Do a round of constant folding to clean up address calculations */
