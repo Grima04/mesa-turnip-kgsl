@@ -84,11 +84,10 @@ panfrost_bo_cache_fetch(
 {
         struct list_head *bucket = pan_bucket(screen, size);
 
-        /* TODO: Honour flags? */
-
         /* Iterate the bucket looking for something suitable */
         list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
-                if (entry->size >= size) {
+                if (entry->size >= size &&
+                    entry->flags == flags) {
                         /* This one works, splice it out of the cache */
                         list_del(&entry->link);
 

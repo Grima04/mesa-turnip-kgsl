@@ -59,6 +59,8 @@ struct panfrost_bo {
         size_t size;
 
         int gem_handle;
+
+        uint32_t flags;
 };
 
 struct panfrost_memory {

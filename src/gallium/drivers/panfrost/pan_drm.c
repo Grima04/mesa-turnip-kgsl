@@ -123,6 +123,7 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
                 bo->size = create_bo.size;
                 bo->gpu = create_bo.offset;
                 bo->gem_handle = create_bo.handle;
+                bo->flags = flags;
         }
 
         /* Only mmap now if we know we need to. For CPU-invisible buffers, we
