@@ -39,6 +39,9 @@
 #elif defined(HAVE_MEMFD_CREATE)
 #include <sys/syscall.h>
 #include <linux/memfd.h>
+#else
+#include <stdio.h>
+#include <stdlib.h>
 #endif
 
 #if !(defined(__FreeBSD__) || defined(HAVE_MEMFD_CREATE) || defined(HAVE_MKOSTEMP))
