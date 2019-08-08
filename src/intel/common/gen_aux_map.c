@@ -321,6 +321,7 @@ get_format_encoding(const struct isl_surf *isl_surf)
    case ISL_FORMAT_R32_SINT: return 0x12;
    case ISL_FORMAT_R32_UINT: return 0x13;
    case ISL_FORMAT_R32_FLOAT: return 0x11;
+   case ISL_FORMAT_R24_UNORM_X8_TYPELESS: return 0x11;
    case ISL_FORMAT_B5G6R5_UNORM: return 0xA;
    case ISL_FORMAT_B5G6R5_UNORM_SRGB: return 0xA;
    case ISL_FORMAT_B5G5R5A1_UNORM: return 0xA;
