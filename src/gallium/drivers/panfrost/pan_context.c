@@ -38,6 +38,7 @@
 #include "util/half_float.h"
 #include "util/u_helpers.h"
 #include "util/u_format.h"
+#include "util/u_prim.h"
 #include "util/u_prim_restart.h"
 #include "indices/u_primconvert.h"
 #include "tgsi/tgsi_parse.h"
@@ -234,6 +235,9 @@ panfrost_invalidate_frame(struct panfrost_context *ctx)
 
         /* XXX */
         ctx->dirty |= PAN_DIRTY_SAMPLERS | PAN_DIRTY_TEXTURES;
+
+        /* TODO: When does this need to be handled? */
+        ctx->active_queries = true;
 }
 
 /* In practice, every field of these payloads should be configurable
@@ -1560,6 +1564,26 @@ panfrost_scissor_culls_everything(struct panfrost_context *ctx)
         return (ss->minx == ss->maxx) || (ss->miny == ss->maxy);
 }
 
+/* Count generated primitives (when there is no geom/tess shaders) for
+ * transform feedback */
+
+static void
+panfrost_statistics_record(
+                struct panfrost_context *ctx,
+                const struct pipe_draw_info *info)
+{
+        if (!ctx->active_queries)
+                return;
+
+        uint32_t prims = u_prims_for_vertices(info->mode, info->count);
+        ctx->prims_generated += prims;
+
+        if (ctx->streamout.num_targets <= 0)
+                return;
+
+        ctx->tf_prims_generated += prims;
+}
+
 static void
 panfrost_draw_vbo(
         struct pipe_context *pipe,
@@ -1645,6 +1669,8 @@ panfrost_draw_vbo(
         if (mode == PIPE_PRIM_LINE_STRIP) {
                 draw_flags |= 0x800;
         }
+
+        panfrost_statistics_record(ctx, info);
 
         if (info->index_size) {
                 /* Calculate the min/max index used so we can figure out how
