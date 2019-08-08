@@ -754,7 +754,9 @@ intel_create_image_common(__DRIscreen *dri_screen,
                       .samples = 1,
                       .usage = ISL_SURF_USAGE_RENDER_TARGET_BIT |
                                ISL_SURF_USAGE_TEXTURE_BIT |
-                               ISL_SURF_USAGE_STORAGE_BIT,
+                               ISL_SURF_USAGE_STORAGE_BIT |
+                               ((use & __DRI_IMAGE_USE_SCANOUT) ?
+                                ISL_SURF_USAGE_DISPLAY_BIT : 0),
                       .tiling_flags = (1 << mod_info->tiling));
    assert(ok);
    if (!ok) {
