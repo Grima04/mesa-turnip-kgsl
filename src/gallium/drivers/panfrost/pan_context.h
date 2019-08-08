@@ -79,8 +79,16 @@ struct panfrost_query {
         unsigned type;
         unsigned index;
 
-        /* Memory for the GPU to writeback the value of the query */
-        struct panfrost_transfer transfer;
+        union {
+                /* For computed queries. 64-bit to prevent overflow */
+                struct {
+                        uint64_t start;
+                        uint64_t end;
+                };
+
+                /* Memory for the GPU to writeback the value of the query */
+                struct panfrost_transfer transfer;
+        };
 };
 
 struct panfrost_fence {
@@ -123,6 +131,9 @@ struct panfrost_context {
         struct panfrost_memory tiler_dummy;
         struct panfrost_memory depth_stencil_buffer;
 
+        bool active_queries;
+        uint64_t prims_generated;
+        uint64_t tf_prims_generated;
         struct panfrost_query *occlusion_query;
 
         /* Each draw has corresponding vertex and tiler payloads */

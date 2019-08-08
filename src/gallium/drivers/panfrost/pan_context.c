@@ -2475,7 +2475,8 @@ static void
 panfrost_set_active_query_state(struct pipe_context *pipe,
                                 bool enable)
 {
-        //struct panfrost_context *panfrost = pan_context(pipe);
+        struct panfrost_context *ctx = pan_context(pipe);
+        ctx->active_queries = enable;
 }
 
 static void
@@ -2525,17 +2526,24 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
         switch (query->type) {
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
-        case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
+        case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
                 /* Allocate a word for the query results to be stored */
                 query->transfer = panfrost_allocate_transient(ctx, sizeof(unsigned));
-
                 ctx->occlusion_query = query;
-
                 break;
-        }
+
+        /* Geometry statistics are computed in the driver. XXX: geom/tess
+         * shaders.. */
+
+        case PIPE_QUERY_PRIMITIVES_GENERATED:
+                query->start = ctx->prims_generated;
+                break;
+        case PIPE_QUERY_PRIMITIVES_EMITTED:
+                query->start = ctx->tf_prims_generated;
+                break;
 
         default:
-                DBG("Skipping query %d\n", query->type);
+                fprintf(stderr, "Skipping query %d\n", query->type);
                 break;
         }
 
@@ -2546,7 +2554,22 @@ static bool
 panfrost_end_query(struct pipe_context *pipe, struct pipe_query *q)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        ctx->occlusion_query = NULL;
+        struct panfrost_query *query = (struct panfrost_query *) q;
+
+        switch (query->type) {
+        case PIPE_QUERY_OCCLUSION_COUNTER:
+        case PIPE_QUERY_OCCLUSION_PREDICATE:
+        case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+                ctx->occlusion_query = NULL;
+                break;
+        case PIPE_QUERY_PRIMITIVES_GENERATED:
+                query->end = ctx->prims_generated;
+                break;
+        case PIPE_QUERY_PRIMITIVES_EMITTED:
+                query->end = ctx->tf_prims_generated;
+                break;
+        }
+
         return true;
 }
 
@@ -2556,18 +2579,16 @@ panfrost_get_query_result(struct pipe_context *pipe,
                           bool wait,
                           union pipe_query_result *vresult)
 {
-        /* STUB */
         struct panfrost_query *query = (struct panfrost_query *) q;
 
-        /* We need to flush out the jobs to actually run the counter, TODO
-         * check wait, TODO wallpaper after if needed */
-
-        panfrost_flush(pipe, NULL, PIPE_FLUSH_END_OF_FRAME);
 
         switch (query->type) {
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
-        case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
+        case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+                /* Flush first */
+                panfrost_flush(pipe, NULL, PIPE_FLUSH_END_OF_FRAME);
+
                 /* Read back the query results */
                 unsigned *result = (unsigned *) query->transfer.cpu;
                 unsigned passed = *result;
@@ -2579,7 +2600,12 @@ panfrost_get_query_result(struct pipe_context *pipe,
                 }
 
                 break;
-        }
+
+        case PIPE_QUERY_PRIMITIVES_GENERATED:
+        case PIPE_QUERY_PRIMITIVES_EMITTED:
+                vresult->u64 = query->end - query->start;
+                break;
+
         default:
                 DBG("Skipped query get %d\n", query->type);
                 break;
