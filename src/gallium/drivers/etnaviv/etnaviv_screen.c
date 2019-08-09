@@ -363,6 +363,23 @@ etna_screen_get_timestamp(struct pipe_screen *pscreen)
 }
 
 static bool
+gpu_supports_texture_target(struct etna_screen *screen,
+                            enum pipe_texture_target target)
+{
+   if (target == PIPE_TEXTURE_CUBE_ARRAY)
+      return false;
+
+   /* pre-halti has no array/3D */
+   if (screen->specs.halti < 0 &&
+       (target == PIPE_TEXTURE_1D_ARRAY ||
+        target == PIPE_TEXTURE_2D_ARRAY ||
+        target == PIPE_TEXTURE_3D))
+      return false;
+
+   return true;
+}
+
+static bool
 gpu_supports_texure_format(struct etna_screen *screen, uint32_t fmt,
                            enum pipe_format format)
 {
@@ -404,14 +421,7 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
    struct etna_screen *screen = etna_screen(pscreen);
    unsigned allowed = 0;
 
-   if (translate_texture_target(target) == ETNA_NO_MATCH)
-      return false;
-
-   /* pre-halti has no array/3D */
-   if (screen->specs.halti < 0 &&
-       (target == PIPE_TEXTURE_1D_ARRAY ||
-        target == PIPE_TEXTURE_2D_ARRAY ||
-        target == PIPE_TEXTURE_3D))
+   if (!gpu_supports_texture_target(screen, target))
       return false;
 
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
