@@ -166,12 +166,18 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
                         v3d_flush_jobs_writing_resource(v3d, cb->buffer, false);
         }
 
-        /* Flush writes to our image views */
+        /* Flush reads/writes to our SSBOs */
+        foreach_bit(i, v3d->ssbo[s].enabled_mask) {
+                struct pipe_shader_buffer *sb = &v3d->ssbo[s].sb[i];
+                if (sb->buffer)
+                        v3d_flush_jobs_reading_resource(v3d, sb->buffer);
+        }
+
+        /* Flush reads/writes to our image views */
         foreach_bit(i, v3d->shaderimg[s].enabled_mask) {
                 struct v3d_image_view *view = &v3d->shaderimg[s].si[i];
 
-                v3d_flush_jobs_writing_resource(v3d, view->base.resource,
-                                                false);
+                v3d_flush_jobs_reading_resource(v3d, view->base.resource);
         }
 
         /* Flush writes to our vertex buffers (i.e. from transform feedback) */
