@@ -1107,6 +1107,7 @@ void anv_GetPhysicalDeviceFeatures2(
          features->stippledRectangularLines = false;
          features->stippledBresenhamLines = true;
          features->stippledSmoothLines = false;
+         break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
