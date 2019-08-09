@@ -92,11 +92,12 @@ static unsigned cp_flags(unsigned flags)
 static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 		unsigned flags)
 {
+	struct ir3_compiler *compiler = instr->block->shader->compiler;
 	unsigned valid_flags;
 
 	if ((flags & IR3_REG_HIGH) &&
 			(opc_cat(instr->opc) > 1) &&
-			(instr->block->shader->compiler->gpu_id >= 600))
+			(compiler->gpu_id >= 600))
 		return false;
 
 	flags = cp_flags(flags);
@@ -108,14 +109,23 @@ static bool valid_flags(struct ir3_instruction *instr, unsigned n,
 			(flags & IR3_REG_RELATIV))
 		return false;
 
-	/* TODO it seems to *mostly* work to cp RELATIV, except we get some
-	 * intermittent piglit variable-indexing fails.  Newer blob driver
-	 * doesn't seem to cp these.  Possibly this is hw workaround?  Not
-	 * sure, but until that is understood better, lets just switch off
-	 * cp for indirect src's:
-	 */
-	if (flags & IR3_REG_RELATIV)
-		return false;
+	if (flags & IR3_REG_RELATIV) {
+		/* TODO need to test on earlier gens.. pretty sure the earlier
+		 * problem was just that we didn't check that the src was from
+		 * same block (since we can't propagate address register values
+		 * across blocks currently)
+		 */
+		if (compiler->gpu_id < 600)
+			return false;
+
+		/* NOTE in the special try_swap_mad_two_srcs() case we can be
+		 * called on a src that has already had an indirect load folded
+		 * in, in which case ssa() returns NULL
+		 */
+		struct ir3_instruction *src = ssa(instr->regs[n+1]);
+		if (src && src->address->block != instr->block)
+			return false;
+	}
 
 	switch (opc_cat(instr->opc)) {
 	case 1:
