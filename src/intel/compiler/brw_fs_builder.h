@@ -514,12 +514,35 @@ namespace brw {
                right = horiz_offset(tmp, 8 + 4);
                set_condmod(mod, ubld.emit(opcode, right, left, right));
             }
+
+            if (dispatch_width() > 16) {
+               left = component(tmp, 16 + 3);
+               right = horiz_offset(tmp, 16 + 4);
+               set_condmod(mod, ubld.emit(opcode, right, left, right));
+
+               left = component(tmp, 24 + 3);
+               right = horiz_offset(tmp, 24 + 4);
+               set_condmod(mod, ubld.emit(opcode, right, left, right));
+            }
          }
 
          if (cluster_size > 8 && dispatch_width() > 8) {
             const fs_builder ubld = exec_all().group(8, 0);
             src_reg left = component(tmp, 7);
             dst_reg right = horiz_offset(tmp, 8);
+            set_condmod(mod, ubld.emit(opcode, right, left, right));
+
+            if (dispatch_width() > 16) {
+               left = component(tmp, 16 + 7);
+               right = horiz_offset(tmp, 16 + 8);
+               set_condmod(mod, ubld.emit(opcode, right, left, right));
+            }
+         }
+
+         if (cluster_size > 16 && dispatch_width() > 16) {
+            const fs_builder ubld = exec_all().group(16, 0);
+            src_reg left = component(tmp, 15);
+            dst_reg right = horiz_offset(tmp, 16);
             set_condmod(mod, ubld.emit(opcode, right, left, right));
          }
       }
