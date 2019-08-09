@@ -336,37 +336,9 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
       pipe_resource_reference(&indexbuf, NULL);
 }
 
-static void
-etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
-           enum pipe_flush_flags flags)
+static void etna_reset_gpu_state(struct etna_context *ctx)
 {
-   struct etna_context *ctx = etna_context(pctx);
-   struct etna_screen *screen = ctx->screen;
-   int out_fence_fd = -1;
-
-   mtx_lock(&screen->lock);
-
-   list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
-      etna_hw_query_suspend(hq, ctx);
-
-   etna_cmd_stream_flush2(ctx->stream, ctx->in_fence_fd,
-                              (flags & PIPE_FLUSH_FENCE_FD) ? &out_fence_fd :
-                              NULL);
-
-   list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
-      etna_hw_query_resume(hq, ctx);
-
-   if (fence)
-      *fence = etna_fence_create(pctx, out_fence_fd);
-
-   mtx_unlock(&screen->lock);
-}
-
-static void
-etna_cmd_stream_reset_notify(struct etna_cmd_stream *stream, void *priv)
-{
-   struct etna_context *ctx = priv;
-   struct etna_screen *screen = ctx->screen;
+   struct etna_cmd_stream *stream = ctx->stream;
 
    etna_set_state(stream, VIVS_GL_API_MODE, VIVS_GL_API_MODE_OPENGL);
    etna_set_state(stream, VIVS_GL_VERTEX_ELEMENT_CONFIG, 0x00000001);
@@ -417,12 +389,34 @@ etna_cmd_stream_reset_notify(struct etna_cmd_stream *stream, void *priv)
 
    ctx->dirty = ~0L;
    ctx->dirty_sampler_views = ~0L;
+}
+
+static void
+etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
+           enum pipe_flush_flags flags)
+{
+   struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
+   int out_fence_fd = -1;
+
+   mtx_lock(&screen->lock);
+
+   list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
+      etna_hw_query_suspend(hq, ctx);
+
+   etna_cmd_stream_flush(ctx->stream, ctx->in_fence_fd,
+                          (flags & PIPE_FLUSH_FENCE_FD) ? &out_fence_fd : NULL);
+
+   list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
+      etna_hw_query_resume(hq, ctx);
+
+   if (fence)
+      *fence = etna_fence_create(pctx, out_fence_fd);
 
    /*
-    * Go through all _resources_ pending in this _context_ and mark them as
-    * not pending in this _context_ anymore, since they were just flushed.
-    */
-   mtx_lock(&screen->lock);
+   * Go through all _resources_ pending in this _context_ and mark them as
+   * not pending in this _context_ anymore, since they were just flushed.
+   */
    set_foreach(ctx->used_resources, entry) {
       struct etna_resource *rsc = (struct etna_resource *)entry->key;
       struct pipe_resource *referenced = &rsc->base;
@@ -434,7 +428,19 @@ etna_cmd_stream_reset_notify(struct etna_cmd_stream *stream, void *priv)
       pipe_resource_reference(&referenced, NULL);
    }
    _mesa_set_clear(ctx->used_resources, NULL);
+
    mtx_unlock(&screen->lock);
+
+   etna_reset_gpu_state(ctx);
+}
+
+static void
+etna_context_force_flush(struct etna_cmd_stream *stream, void *priv)
+{
+   struct pipe_context *pctx = priv;
+
+   pctx->flush(pctx, NULL, 0);
+
 }
 
 static void
@@ -468,7 +474,8 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    pctx->const_uploader = pctx->stream_uploader;
 
    screen = etna_screen(pscreen);
-   ctx->stream = etna_cmd_stream_new(screen->pipe, 0x2000, &etna_cmd_stream_reset_notify, ctx);
+   ctx->stream = etna_cmd_stream_new(screen->pipe, 0x2000,
+                                     &etna_context_force_flush, pctx);
    if (ctx->stream == NULL)
       goto fail;
 
@@ -484,7 +491,7 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->sample_mask = 0xffff;
 
    /*  Set sensible defaults for state */
-   etna_cmd_stream_reset_notify(ctx->stream, ctx);
+   etna_reset_gpu_state(ctx);
 
    ctx->in_fence_fd = -1;
 

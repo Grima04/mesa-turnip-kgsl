@@ -143,9 +143,9 @@ struct etna_cmd_stream *etna_cmd_stream_new(struct etna_pipe *pipe, uint32_t siz
 		void *priv);
 void etna_cmd_stream_del(struct etna_cmd_stream *stream);
 uint32_t etna_cmd_stream_timestamp(struct etna_cmd_stream *stream);
-void etna_cmd_stream_flush(struct etna_cmd_stream *stream);
-void etna_cmd_stream_flush2(struct etna_cmd_stream *stream, int in_fence_fd,
+void etna_cmd_stream_flush(struct etna_cmd_stream *stream, int in_fence_fd,
 			    int *out_fence_fd);
+void etna_cmd_stream_force_flush(struct etna_cmd_stream *stream);
 
 static inline uint32_t etna_cmd_stream_avail(struct etna_cmd_stream *stream)
 {
@@ -157,7 +157,7 @@ static inline uint32_t etna_cmd_stream_avail(struct etna_cmd_stream *stream)
 static inline void etna_cmd_stream_reserve(struct etna_cmd_stream *stream, size_t n)
 {
 	if (etna_cmd_stream_avail(stream) < n)
-		etna_cmd_stream_flush(stream);
+		etna_cmd_stream_force_flush(stream);
 }
 
 static inline void etna_cmd_stream_emit(struct etna_cmd_stream *stream, uint32_t data)

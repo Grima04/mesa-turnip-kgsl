@@ -57,7 +57,7 @@ etna_cmd_stream_priv(struct etna_cmd_stream *stream)
 
 struct etna_cmd_stream *etna_cmd_stream_new(struct etna_pipe *pipe,
         uint32_t size,
-		void (*reset_notify)(struct etna_cmd_stream *stream, void *priv),
+		void (*force_flush)(struct etna_cmd_stream *stream, void *priv),
 		void *priv)
 {
 	struct etna_cmd_stream_priv *stream = NULL;
@@ -84,8 +84,8 @@ struct etna_cmd_stream *etna_cmd_stream_new(struct etna_pipe *pipe,
 
 	stream->base.size = size;
 	stream->pipe = pipe;
-	stream->reset_notify = reset_notify;
-	stream->reset_notify_priv = priv;
+	stream->force_flush = force_flush;
+	stream->force_flush_priv = priv;
 
 	return &stream->base;
 
@@ -106,18 +106,12 @@ void etna_cmd_stream_del(struct etna_cmd_stream *stream)
 	free(priv);
 }
 
-static void reset_buffer(struct etna_cmd_stream *stream)
+void etna_cmd_stream_force_flush(struct etna_cmd_stream *stream)
 {
 	struct etna_cmd_stream_priv *priv = etna_cmd_stream_priv(stream);
 
-	stream->offset = 0;
-	priv->submit.nr_bos = 0;
-	priv->submit.nr_relocs = 0;
-	priv->submit.nr_pmrs = 0;
-	priv->nr_bos = 0;
-
-	if (priv->reset_notify)
-		priv->reset_notify(stream, priv->reset_notify_priv);
+	if (priv->force_flush)
+		priv->force_flush(stream, priv->force_flush_priv);
 }
 
 uint32_t etna_cmd_stream_timestamp(struct etna_cmd_stream *stream)
@@ -180,8 +174,8 @@ static uint32_t bo2idx(struct etna_cmd_stream *stream, struct etna_bo *bo,
 	return idx;
 }
 
-static void flush(struct etna_cmd_stream *stream, int in_fence_fd,
-		  int *out_fence_fd)
+void etna_cmd_stream_flush(struct etna_cmd_stream *stream, int in_fence_fd,
+		int *out_fence_fd)
 {
 	struct etna_cmd_stream_priv *priv = etna_cmd_stream_priv(stream);
 	int ret, id = priv->pipe->id;
@@ -230,20 +224,12 @@ static void flush(struct etna_cmd_stream *stream, int in_fence_fd,
 
 	if (out_fence_fd)
 		*out_fence_fd = req.fence_fd;
-}
 
-void etna_cmd_stream_flush(struct etna_cmd_stream *stream)
-{
-	flush(stream, -1, NULL);
-	reset_buffer(stream);
-}
-
-void etna_cmd_stream_flush2(struct etna_cmd_stream *stream,
-									   int in_fence_fd,
-									   int *out_fence_fd)
-{
-	flush(stream, in_fence_fd, out_fence_fd);
-	reset_buffer(stream);
+	stream->offset = 0;
+	priv->submit.nr_bos = 0;
+	priv->submit.nr_relocs = 0;
+	priv->submit.nr_pmrs = 0;
+	priv->nr_bos = 0;
 }
 
 void etna_cmd_stream_reloc(struct etna_cmd_stream *stream,
