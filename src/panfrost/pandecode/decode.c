@@ -30,6 +30,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include "decode.h"
+#include "util/macros.h"
 #include "util/u_math.h"
 
 #include "pan_pretty_print.h"
