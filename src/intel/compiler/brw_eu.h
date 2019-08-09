@@ -311,6 +311,28 @@ brw_message_ex_desc_ex_mlen(UNUSED const struct gen_device_info *devinfo,
    return GET_BITS(ex_desc, 9, 6);
 }
 
+static inline uint32_t
+brw_urb_desc(const struct gen_device_info *devinfo,
+             unsigned msg_type,
+             bool per_slot_offset_present,
+             bool channel_mask_present,
+             unsigned global_offset)
+{
+   if (devinfo->gen >= 8) {
+      return (SET_BITS(per_slot_offset_present, 17, 17) |
+              SET_BITS(channel_mask_present, 15, 15) |
+              SET_BITS(global_offset, 14, 4) |
+              SET_BITS(msg_type, 3, 0));
+   } else if (devinfo->gen >= 7) {
+      assert(!channel_mask_present);
+      return (SET_BITS(per_slot_offset_present, 16, 16) |
+              SET_BITS(global_offset, 13, 3) |
+              SET_BITS(msg_type, 3, 0));
+   } else {
+      unreachable("unhandled URB write generation");
+   }
+}
+
 /**
  * Construct a message descriptor immediate with the specified sampler
  * function controls.
