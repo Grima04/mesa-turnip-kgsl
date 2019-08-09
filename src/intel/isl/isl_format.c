@@ -533,8 +533,10 @@ bool
 isl_format_supports_ccs_d(const struct gen_device_info *devinfo,
                           enum isl_format format)
 {
-   /* Fast clears were first added on Ivy Bridge */
-   if (devinfo->gen < 7)
+   /* Clear-only compression was first added on Ivy Bridge and was last
+    * implemented on Ice lake (see BSpec: 43862).
+    */
+   if (devinfo->gen < 7 || devinfo->gen > 11)
       return false;
 
    if (!isl_format_supports_rendering(devinfo, format))
