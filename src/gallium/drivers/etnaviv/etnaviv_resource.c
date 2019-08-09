@@ -464,17 +464,9 @@ etna_resource_changed(struct pipe_screen *pscreen, struct pipe_resource *prsc)
 static void
 etna_resource_destroy(struct pipe_screen *pscreen, struct pipe_resource *prsc)
 {
-   struct etna_screen *screen = etna_screen(pscreen);
    struct etna_resource *rsc = etna_resource(prsc);
 
-   mtx_lock(&screen->lock);
-   set_foreach(rsc->pending_ctx, entry) {
-      struct etna_context *ctx = (struct etna_context *)entry->key;
-
-      _mesa_set_remove_key(rsc->pending_ctx, ctx);
-   }
-   _mesa_set_destroy(rsc->pending_ctx, NULL);
-   mtx_unlock(&screen->lock);
+   assert(!_mesa_set_next_entry(rsc->pending_ctx, NULL));
 
    if (rsc->bo)
       etna_bo_del(rsc->bo);
@@ -618,6 +610,7 @@ etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
                    enum etna_resource_status status)
 {
    struct etna_screen *screen = ctx->screen;
+   struct pipe_resource *referenced = NULL;
    struct etna_resource *rsc;
 
    if (!prsc)
@@ -654,8 +647,11 @@ etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
 
    rsc->status |= status;
 
-   _mesa_set_add(ctx->used_resources, rsc);
-   _mesa_set_add(rsc->pending_ctx, ctx);
+   if (!_mesa_set_search(rsc->pending_ctx, ctx)) {
+      pipe_resource_reference(&referenced, prsc);
+      _mesa_set_add(ctx->used_resources, rsc);
+      _mesa_set_add(rsc->pending_ctx, ctx);
+   }
 
    mtx_unlock(&screen->lock);
 }

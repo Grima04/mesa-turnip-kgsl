@@ -425,10 +425,13 @@ etna_cmd_stream_reset_notify(struct etna_cmd_stream *stream, void *priv)
    mtx_lock(&screen->lock);
    set_foreach(ctx->used_resources, entry) {
       struct etna_resource *rsc = (struct etna_resource *)entry->key;
+      struct pipe_resource *referenced = &rsc->base;
 
       rsc->status = 0;
 
       _mesa_set_remove_key(rsc->pending_ctx, ctx);
+
+      pipe_resource_reference(&referenced, NULL);
    }
    _mesa_set_clear(ctx->used_resources, NULL);
    mtx_unlock(&screen->lock);
