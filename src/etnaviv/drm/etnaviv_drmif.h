@@ -146,7 +146,6 @@ uint32_t etna_cmd_stream_timestamp(struct etna_cmd_stream *stream);
 void etna_cmd_stream_flush(struct etna_cmd_stream *stream);
 void etna_cmd_stream_flush2(struct etna_cmd_stream *stream, int in_fence_fd,
 			    int *out_fence_fd);
-void etna_cmd_stream_finish(struct etna_cmd_stream *stream);
 
 static inline uint32_t etna_cmd_stream_avail(struct etna_cmd_stream *stream)
 {

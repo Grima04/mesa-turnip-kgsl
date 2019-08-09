@@ -246,15 +246,6 @@ void etna_cmd_stream_flush2(struct etna_cmd_stream *stream,
 	reset_buffer(stream);
 }
 
-void etna_cmd_stream_finish(struct etna_cmd_stream *stream)
-{
-	struct etna_cmd_stream_priv *priv = etna_cmd_stream_priv(stream);
-
-	flush(stream, -1, NULL);
-	etna_pipe_wait(priv->pipe, priv->last_timestamp, 5000);
-	reset_buffer(stream);
-}
-
 void etna_cmd_stream_reloc(struct etna_cmd_stream *stream,
 									  const struct etna_reloc *r)
 {
