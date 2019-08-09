@@ -479,7 +479,7 @@ pandecode_midgard_tiler_descriptor(const struct midgard_tiler_descriptor *t)
 
         if (t->heap_start == t->heap_end) {
               /* Print identically to show symmetry for empty tiler heaps */  
-                MEMORY_PROP(t, heap_start);
+                MEMORY_PROP(t, heap_end);
         } else {
                 /* Points to the end of a buffer */
                 char *a = pointer_as_memory_reference(t->heap_end - 1);
