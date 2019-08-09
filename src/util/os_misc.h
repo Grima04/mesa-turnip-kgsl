@@ -34,9 +34,10 @@
 #ifndef _OS_MISC_H_
 #define _OS_MISC_H_
 
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "detect_os.h"
-#include "pipe/p_compiler.h"
 
 
 #if DETECT_OS_UNIX
