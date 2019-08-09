@@ -4480,7 +4480,7 @@ radv_initialise_color_surface(struct radv_device *device,
 	format = radv_translate_colorformat(iview->vk_format);
 	if (format == V_028C70_COLOR_INVALID || ntype == ~0u)
 		radv_finishme("Illegal color\n");
-	swap = radv_translate_colorswap(iview->vk_format, FALSE);
+	swap = radv_translate_colorswap(iview->vk_format, false);
 	endian = radv_colorformat_endian_swap(format);
 
 	/* blend clamp should be set for all NORM/SRGB types */

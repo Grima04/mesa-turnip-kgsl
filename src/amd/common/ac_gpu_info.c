@@ -26,6 +26,7 @@
 #include "ac_gpu_info.h"
 #include "sid.h"
 
+#include "util/macros.h"
 #include "util/u_math.h"
 
 #include <stdio.h>
@@ -460,7 +461,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->gart_page_size = alignment_info.size_remote;
 
 	if (info->chip_class == GFX6)
-		info->gfx_ib_pad_with_type2 = TRUE;
+		info->gfx_ib_pad_with_type2 = true;
 
 	unsigned ib_align = 0;
 	ib_align = MAX2(ib_align, gfx.ib_start_alignment);

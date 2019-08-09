@@ -1265,7 +1265,7 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 							return ret;
 
 						surf->u.gfx9.dcc_retile_map[index * 2] = addrout.addr;
-						if (addrout.addr > USHRT_MAX)
+						if (addrout.addr > UINT16_MAX)
 							surf->u.gfx9.dcc_retile_use_uint16 = false;
 
 						/* Compute dst DCC address */
@@ -1278,7 +1278,7 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 							return ret;
 
 						surf->u.gfx9.dcc_retile_map[index * 2 + 1] = addrout.addr;
-						if (addrout.addr > USHRT_MAX)
+						if (addrout.addr > UINT16_MAX)
 							surf->u.gfx9.dcc_retile_use_uint16 = false;
 
 						assert(index * 2 + 1 < surf->u.gfx9.dcc_retile_num_elements);
