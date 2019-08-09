@@ -50,6 +50,21 @@
 
 #include <assert.h>
 
+/* return a RS "compatible" format for use when copying */
+static uint32_t
+etna_compatible_rs_format(enum pipe_format fmt)
+{
+   /* YUYV and UYVY are blocksize 4, but 2 bytes per pixel */
+   if (fmt == PIPE_FORMAT_YUYV || fmt == PIPE_FORMAT_UYVY)
+      return RS_FORMAT_A4R4G4B4;
+
+   switch (util_format_get_blocksize(fmt)) {
+   case 2: return RS_FORMAT_A4R4G4B4;
+   case 4: return RS_FORMAT_A8R8G8B8;
+   default: return ETNA_NO_MATCH;
+   }
+}
+
 void
 etna_compile_rs_state(struct etna_context *ctx, struct compiled_rs_state *cs,
                       const struct rs_state *rs)
@@ -602,18 +617,19 @@ etna_try_rs_blit(struct pipe_context *pctx,
       return false;
    }
 
-   unsigned src_format = blit_info->src.format;
-   unsigned dst_format = blit_info->dst.format;
+   /* Only support same format (used tiling/detiling) blits for now.
+    * TODO: figure out which different-format blits are possible and test them
+    *  - fail if swizzle needed
+    *  - avoid trying to convert between float/int formats?
+    */
+   if (blit_info->src.format != blit_info->dst.format)
+      return false;
 
-   /* for a copy with same dst/src format, we can use a different format */
-   if (translate_rs_format(src_format) == ETNA_NO_MATCH &&
-       src_format == dst_format) {
-      src_format = dst_format = etna_compatible_rs_format(src_format);
-   }
+   uint32_t format = etna_compatible_rs_format(blit_info->dst.format);
+   if (format == ETNA_NO_MATCH)
+      return false;
 
-   if (translate_rs_format(src_format) == ETNA_NO_MATCH ||
-       translate_rs_format(dst_format) == ETNA_NO_MATCH ||
-       blit_info->scissor_enable ||
+   if (blit_info->scissor_enable ||
        blit_info->dst.box.depth != blit_info->src.box.depth ||
        blit_info->dst.box.depth != 1) {
       return false;
@@ -740,7 +756,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
 
    /* Kick off RS here */
    etna_compile_rs_state(ctx, &copy_to_screen, &(struct rs_state) {
-      .source_format = translate_rs_format(src_format),
+      .source_format = format,
       .source_tiling = src->layout,
       .source = src->bo,
       .source_offset = src_offset,
@@ -749,7 +765,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
       .source_padded_height = src_lev->padded_height,
       .source_ts_valid = source_ts_valid,
       .source_ts_compressed = src_lev->ts_compress_fmt >= 0,
-      .dest_format = translate_rs_format(dst_format),
+      .dest_format = format,
       .dest_tiling = dst->layout,
       .dest = dst->bo,
       .dest_offset = dst_offset,

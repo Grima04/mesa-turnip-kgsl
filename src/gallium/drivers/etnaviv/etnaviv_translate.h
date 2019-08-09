@@ -234,28 +234,10 @@ translate_texture_filter(unsigned filter)
    }
 }
 
-/* return a RS "compatible" format for use when copying */
-static inline enum pipe_format
-etna_compatible_rs_format(enum pipe_format fmt)
-{
-   /* YUYV and UYVY are blocksize 4, but 2 bytes per pixel */
-   if (fmt == PIPE_FORMAT_YUYV || fmt == PIPE_FORMAT_UYVY)
-      return PIPE_FORMAT_B4G4R4A4_UNORM;
-
-   switch (util_format_get_blocksize(fmt)) {
-   case 2:
-      return PIPE_FORMAT_B4G4R4A4_UNORM;
-   case 4:
-      return PIPE_FORMAT_B8G8R8A8_UNORM;
-   default:
-      return fmt;
-   }
-}
-
 static inline int
 translate_rb_src_dst_swap(enum pipe_format src, enum pipe_format dst)
 {
-   return translate_rs_format_rb_swap(src) ^ translate_rs_format_rb_swap(dst);
+   return translate_pe_format_rb_swap(src) ^ translate_pe_format_rb_swap(dst);
 }
 
 static inline uint32_t

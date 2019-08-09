@@ -39,19 +39,19 @@
 struct etna_format {
    unsigned vtx;
    unsigned tex;
-   unsigned rs;
+   unsigned pe;
    bool present;
    const unsigned char tex_swiz[4];
 };
 
-#define RS_FORMAT_NONE ~0
+#define PE_FORMAT_NONE ~0
 
-#define RS_FORMAT_MASK        0xf
-#define RS_FORMAT(x)          ((x) & RS_FORMAT_MASK)
-#define RS_FORMAT_RB_SWAP     0x10
+#define PE_FORMAT_MASK        0x7f
+#define PE_FORMAT(x)          ((x) & PE_FORMAT_MASK)
+#define PE_FORMAT_RB_SWAP     0x80
 
-#define RS_FORMAT_X8B8G8R8    (RS_FORMAT_X8R8G8B8 | RS_FORMAT_RB_SWAP)
-#define RS_FORMAT_A8B8G8R8    (RS_FORMAT_A8R8G8B8 | RS_FORMAT_RB_SWAP)
+#define PE_FORMAT_X8B8G8R8    (PE_FORMAT_X8R8G8B8 | PE_FORMAT_RB_SWAP)
+#define PE_FORMAT_A8B8G8R8    (PE_FORMAT_A8R8G8B8 | PE_FORMAT_RB_SWAP)
 
 #define TS_SAMPLER_FORMAT_NONE      ETNA_NO_MATCH
 
@@ -67,7 +67,7 @@ struct etna_format {
    [PIPE_FORMAT_##pipe] = {                               \
       .vtx = FE_DATA_TYPE_##vtxfmt, \
       .tex = TEXTURE_FORMAT_##texfmt,                     \
-      .rs = RS_FORMAT_##rsfmt,                            \
+      .pe = PE_FORMAT_##rsfmt,                            \
       .present = 1,                                       \
       .tex_swiz = texswiz,                                \
    }
@@ -77,7 +77,7 @@ struct etna_format {
    [PIPE_FORMAT_##pipe] = {        \
       .vtx = ETNA_NO_MATCH,        \
       .tex = TEXTURE_FORMAT_##fmt, \
-      .rs = RS_FORMAT_##rsfmt,     \
+      .pe = PE_FORMAT_##rsfmt,     \
       .present = 1,                \
       .tex_swiz = swiz,            \
    }
@@ -87,7 +87,7 @@ struct etna_format {
    [PIPE_FORMAT_##pipe] = {                            \
       .vtx = FE_DATA_TYPE_##fmt, \
       .tex = ETNA_NO_MATCH,                            \
-      .rs = RS_FORMAT_##rsfmt,                         \
+      .pe = PE_FORMAT_##rsfmt,                         \
       .present = 1,                                    \
    }
 
@@ -118,7 +118,7 @@ static struct etna_format formats[PIPE_FORMAT_COUNT] = {
 
    _T(L8A8_UNORM, A8L8, SWIZ(X, Y, Z, W), NONE),
 
-   _T(Z16_UNORM,      D16,      SWIZ(X, Y, Z, W), A4R4G4B4),
+   _T(Z16_UNORM,      D16,      SWIZ(X, Y, Z, W), NONE),
    _T(B5G6R5_UNORM,   R5G6B5,   SWIZ(X, Y, Z, W), R5G6B5),
    _T(B5G5R5A1_UNORM, A1R5G5B5, SWIZ(X, Y, Z, W), A1R5G5B5),
    _T(B5G5R5X1_UNORM, X1R5G5B5, SWIZ(X, Y, Z, W), X1R5G5B5),
@@ -176,8 +176,8 @@ static struct etna_format formats[PIPE_FORMAT_COUNT] = {
    V_(R10G10B10A2_USCALED, UNSIGNED_INT_10_10_10_2, NONE),
    V_(R10G10B10A2_SSCALED, INT_10_10_10_2,          NONE),
 
-   _T(X8Z24_UNORM,       D24X8, SWIZ(X, Y, Z, W), A8R8G8B8),
-   _T(S8_UINT_Z24_UNORM, D24X8, SWIZ(X, Y, Z, W), A8R8G8B8),
+   _T(X8Z24_UNORM,       D24X8, SWIZ(X, Y, Z, W), NONE),
+   _T(S8_UINT_Z24_UNORM, D24X8, SWIZ(X, Y, Z, W), NONE),
 
    /* 48-bit */
    V_(R16G16B16_UNORM,   UNSIGNED_SHORT, NONE),
@@ -330,23 +330,23 @@ get_texture_swiz(enum pipe_format fmt, unsigned swizzle_r,
 }
 
 uint32_t
-translate_rs_format(enum pipe_format fmt)
+translate_pe_format(enum pipe_format fmt)
 {
    if (!formats[fmt].present)
       return ETNA_NO_MATCH;
 
-   if (formats[fmt].rs == ETNA_NO_MATCH)
+   if (formats[fmt].pe == ETNA_NO_MATCH)
       return ETNA_NO_MATCH;
 
-   return RS_FORMAT(formats[fmt].rs);
+   return PE_FORMAT(formats[fmt].pe);
 }
 
 int
-translate_rs_format_rb_swap(enum pipe_format fmt)
+translate_pe_format_rb_swap(enum pipe_format fmt)
 {
    assert(formats[fmt].present);
 
-   return formats[fmt].rs & RS_FORMAT_RB_SWAP;
+   return formats[fmt].pe & PE_FORMAT_RB_SWAP;
 }
 
 /* Return type flags for vertex element format */

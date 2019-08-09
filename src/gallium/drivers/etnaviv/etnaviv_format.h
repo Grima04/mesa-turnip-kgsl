@@ -45,10 +45,10 @@ get_texture_swiz(enum pipe_format fmt, unsigned swizzle_r,
                  unsigned swizzle_g, unsigned swizzle_b, unsigned swizzle_a);
 
 uint32_t
-translate_rs_format(enum pipe_format fmt);
+translate_pe_format(enum pipe_format fmt);
 
 int
-translate_rs_format_rb_swap(enum pipe_format fmt);
+translate_pe_format_rb_swap(enum pipe_format fmt);
 
 uint32_t
 translate_vertex_format_type(enum pipe_format fmt);
