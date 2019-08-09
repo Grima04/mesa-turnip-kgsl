@@ -459,6 +459,22 @@ pandecode_mfbd_block_format(enum mali_mfbd_block_format fmt)
 }
 #undef DEFINE_CASE
 
+#define DEFINE_CASE(name) case MALI_EXCEPTION_ACCESS_## name: return ""#name
+static char *
+pandecode_exception_access(enum mali_exception_access fmt)
+{
+        switch (fmt) {
+                DEFINE_CASE(NONE);
+                DEFINE_CASE(EXECUTE);
+                DEFINE_CASE(READ);
+                DEFINE_CASE(WRITE);
+
+        default:
+                unreachable("Invalid case");
+        }
+}
+#undef DEFINE_CASE
+
 /* Midgard's tiler descriptor is embedded within the
  * larger FBD */
 
@@ -2333,10 +2349,10 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost)
                         pandecode_prop("job_descriptor_size = %d", h->job_descriptor_size);
 
                 if (h->exception_status != 0x1)
-                        pandecode_prop("exception_status = %x (source ID: 0x%x access: 0x%x exception: 0x%x)",
+                        pandecode_prop("exception_status = %x (source ID: 0x%x access: %s exception: 0x%x)",
                                        h->exception_status,
                                        (h->exception_status >> 16) & 0xFFFF,
-                                       (h->exception_status >> 8) & 0x3,
+                                       pandecode_exception_access((h->exception_status >> 8) & 0x3),
                                        h->exception_status  & 0xFF);
 
                 if (h->first_incomplete_task)
