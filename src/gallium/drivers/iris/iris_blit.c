@@ -240,7 +240,7 @@ iris_blorp_surf_for_resource(struct iris_vtable *vtbl,
 
    assert(!iris_resource_unfinished_aux_import(res));
 
-   if (aux_usage == ISL_AUX_USAGE_HIZ &&
+   if (isl_aux_usage_has_hiz(aux_usage) &&
        !iris_resource_level_has_hiz(res, level))
       aux_usage = ISL_AUX_USAGE_NONE;
 

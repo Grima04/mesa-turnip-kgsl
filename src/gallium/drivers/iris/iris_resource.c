@@ -507,6 +507,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       /* Having no aux buffer is only okay if there's no modifier with aux. */
       return !res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE;
    case ISL_AUX_USAGE_HIZ:
+   case ISL_AUX_USAGE_HIZ_CCS:
       initial_state = ISL_AUX_STATE_AUX_INVALID;
       break;
    case ISL_AUX_USAGE_MCS:

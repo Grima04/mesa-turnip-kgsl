@@ -663,13 +663,13 @@ iris_hiz_exec(struct iris_context *ice,
    iris_emit_pipe_control_flush(batch, "hiz op: pre-flushes (2/2)",
                                 PIPE_CONTROL_DEPTH_STALL);
 
-   assert(res->aux.usage == ISL_AUX_USAGE_HIZ && res->aux.bo);
+   assert(isl_aux_usage_has_hiz(res->aux.usage) && res->aux.bo);
 
    iris_batch_maybe_flush(batch, 1500);
 
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&ice->vtbl, &surf, &res->base,
-                                ISL_AUX_USAGE_HIZ, level, true);
+                                res->aux.usage, level, true);
 
    struct blorp_batch blorp_batch;
    enum blorp_batch_flags flags = 0;
@@ -1038,18 +1038,21 @@ iris_resource_prepare_hiz_access(struct iris_context *ice,
                                  enum isl_aux_usage aux_usage,
                                  bool fast_clear_supported)
 {
-   assert(aux_usage == ISL_AUX_USAGE_NONE || aux_usage == ISL_AUX_USAGE_HIZ);
+   assert(aux_usage == ISL_AUX_USAGE_NONE ||
+          aux_usage == ISL_AUX_USAGE_HIZ ||
+          aux_usage == ISL_AUX_USAGE_HIZ_CCS ||
+          aux_usage == ISL_AUX_USAGE_CCS_E);
 
    enum isl_aux_op hiz_op = ISL_AUX_OP_NONE;
    switch (iris_resource_get_aux_state(res, level, layer)) {
    case ISL_AUX_STATE_CLEAR:
    case ISL_AUX_STATE_COMPRESSED_CLEAR:
-      if (aux_usage != ISL_AUX_USAGE_HIZ || !fast_clear_supported)
+      if (aux_usage == ISL_AUX_USAGE_NONE || !fast_clear_supported)
          hiz_op = ISL_AUX_OP_FULL_RESOLVE;
       break;
 
    case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
-      if (aux_usage != ISL_AUX_USAGE_HIZ)
+      if (aux_usage == ISL_AUX_USAGE_NONE)
          hiz_op = ISL_AUX_OP_FULL_RESOLVE;
       break;
 
@@ -1058,7 +1061,7 @@ iris_resource_prepare_hiz_access(struct iris_context *ice,
       break;
 
    case ISL_AUX_STATE_AUX_INVALID:
-      if (aux_usage == ISL_AUX_USAGE_HIZ)
+      if (aux_usage != ISL_AUX_USAGE_NONE)
          hiz_op = ISL_AUX_OP_AMBIGUATE;
       break;
 
@@ -1093,22 +1096,23 @@ iris_resource_finish_hiz_write(struct iris_context *ice,
                                uint32_t level, uint32_t layer,
                                enum isl_aux_usage aux_usage)
 {
-   assert(aux_usage == ISL_AUX_USAGE_NONE || aux_usage == ISL_AUX_USAGE_HIZ);
+   assert(aux_usage == ISL_AUX_USAGE_NONE ||
+          isl_aux_usage_has_hiz(aux_usage));
 
    switch (iris_resource_get_aux_state(res, level, layer)) {
    case ISL_AUX_STATE_CLEAR:
-      assert(aux_usage == ISL_AUX_USAGE_HIZ);
+      assert(isl_aux_usage_has_hiz(aux_usage));
       iris_resource_set_aux_state(ice, res, level, layer, 1,
                                   ISL_AUX_STATE_COMPRESSED_CLEAR);
       break;
 
    case ISL_AUX_STATE_COMPRESSED_NO_CLEAR:
    case ISL_AUX_STATE_COMPRESSED_CLEAR:
-      assert(aux_usage == ISL_AUX_USAGE_HIZ);
+      assert(isl_aux_usage_has_hiz(aux_usage));
       break; /* Nothing to do */
 
    case ISL_AUX_STATE_RESOLVED:
-      if (aux_usage == ISL_AUX_USAGE_HIZ) {
+      if (isl_aux_usage_has_hiz(aux_usage)) {
          iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
       } else {
@@ -1118,14 +1122,14 @@ iris_resource_finish_hiz_write(struct iris_context *ice,
       break;
 
    case ISL_AUX_STATE_PASS_THROUGH:
-      if (aux_usage == ISL_AUX_USAGE_HIZ) {
+      if (isl_aux_usage_has_hiz(aux_usage)) {
          iris_resource_set_aux_state(ice, res, level, layer, 1,
                                      ISL_AUX_STATE_COMPRESSED_NO_CLEAR);
       }
       break;
 
    case ISL_AUX_STATE_AUX_INVALID:
-      assert(aux_usage != ISL_AUX_USAGE_HIZ);
+      assert(!isl_aux_usage_has_hiz(aux_usage));
       break;
 
    case ISL_AUX_STATE_PARTIAL_CLEAR:
@@ -1174,6 +1178,7 @@ iris_resource_prepare_access(struct iris_context *ice,
       break;
 
    case ISL_AUX_USAGE_HIZ:
+   case ISL_AUX_USAGE_HIZ_CCS:
       for (uint32_t l = 0; l < num_levels; l++) {
          const uint32_t level = start_level + l;
          if (!iris_resource_level_has_hiz(res, level))
@@ -1222,6 +1227,7 @@ iris_resource_finish_write(struct iris_context *ice,
       break;
 
    case ISL_AUX_USAGE_HIZ:
+   case ISL_AUX_USAGE_HIZ_CCS:
       if (!iris_resource_level_has_hiz(res, level))
          return;
 
