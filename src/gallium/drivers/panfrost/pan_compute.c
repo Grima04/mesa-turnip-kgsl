@@ -130,6 +130,8 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* Queue the job */
         panfrost_scoreboard_queue_compute_job(batch, transfer);
+
+        panfrost_flush(pipe, NULL, PIPE_FLUSH_END_OF_FRAME);
 }
 
 void
