@@ -352,3 +352,31 @@ test-llvmpipe-gles2:
   extends: .deqp-test
   dependencies:
     - meson-main
+
+test-softpipe-gles2:
+  parallel: 4
+  variables:
+    DEQP_VER: gles2
+    DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
+    LIBGL_ALWAYS_SOFTWARE: "true"
+    DEQP_RENDERER_MATCH: "softpipe"
+    GALLIUM_DRIVER: "softpipe"
+  extends: .deqp-test
+  dependencies:
+    - meson-main
+
+# The GLES2 CTS run takes about 8 minutes of CPU time, while GLES3 is
+# 25 minutes.  Until we can get its runtime down, just do a partial
+# (every 10 tests) run.
+test-softpipe-gles3-limited:
+  variables:
+    DEQP_VER: gles3
+    DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
+    LIBGL_ALWAYS_SOFTWARE: "true"
+    DEQP_RENDERER_MATCH: "softpipe"
+    GALLIUM_DRIVER: "softpipe"
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 10
+  extends: .deqp-test
+  dependencies:
+    - meson-main
