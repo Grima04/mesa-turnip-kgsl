@@ -349,7 +349,7 @@ panfrost_mfbd_upload(
         struct bifrost_framebuffer *fb,
         struct bifrost_fb_extra *fbx,
         struct bifrost_render_target *rts,
-        unsigned cbufs)
+        unsigned rt_count)
 {
         off_t offset = 0;
 
@@ -361,7 +361,7 @@ panfrost_mfbd_upload(
         size_t total_sz =
                 sizeof(struct bifrost_framebuffer) +
                 (has_extra ? sizeof(struct bifrost_fb_extra) : 0) +
-                sizeof(struct bifrost_render_target) * cbufs;
+                sizeof(struct bifrost_render_target) * 4;
 
         struct panfrost_transfer m_f_trans =
                 panfrost_allocate_transient(ctx, total_sz);
@@ -373,12 +373,17 @@ panfrost_mfbd_upload(
         if (has_extra)
                 UPLOAD(m_f_trans, offset, fbx, total_sz);
 
-        for (unsigned c = 0; c < cbufs; ++c) {
+        for (unsigned c = 0; c < 4; ++c) {
                 UPLOAD(m_f_trans, offset, &rts[c], total_sz);
         }
 
         /* Return pointer suitable for the fragment section */
-        return m_f_trans.gpu | MALI_MFBD | (has_extra ? 2 : 0);
+        unsigned tag =
+                MALI_MFBD |
+                (has_extra ? 0x2 : 0x0) |
+                (MALI_POSITIVE(rt_count) << 2);
+
+        return m_f_trans.gpu | tag;
 }
 
 #undef UPLOAD
@@ -483,8 +488,5 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
                 }
         }
 
-        /* We always upload at least one (dummy) cbuf */
-        unsigned cbufs = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
-
-        return panfrost_mfbd_upload(ctx, &fb, &fbx, rts, cbufs);
+        return panfrost_mfbd_upload(ctx, &fb, &fbx, rts, rt_descriptors);
 }
