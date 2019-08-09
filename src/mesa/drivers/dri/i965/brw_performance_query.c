@@ -350,8 +350,10 @@ brw_new_perf_query_object(struct gl_context *ctx, unsigned query_index)
       return NULL;
 
    struct brw_perf_query_object *brw_query = calloc(1, sizeof(struct brw_perf_query_object));
-   if (unlikely(!brw_query))
+   if (unlikely(!brw_query)) {
+      gen_perf_delete_query(perf_ctx, obj);
       return NULL;
+   }
 
    brw_query->query = obj;
    return &brw_query->base;
