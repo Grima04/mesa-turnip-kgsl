@@ -636,12 +636,8 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                          * invocations, and if there are none, the source dies
                          * */
 
-                        int sources[2] = {
-                                ins->ssa_args.src[0], ins->ssa_args.src[1]
-                        };
-
-                        for (int src = 0; src < 2; ++src) {
-                                int s = sources[src];
+                        for (int src = 0; src < ARRAY_SIZE(ins->ssa_args.src); ++src) {
+                                int s = ins->ssa_args.src[src];
 
                                 if (s < 0) continue;
 
