@@ -31,6 +31,12 @@
  * the result.
  */
 
+static bool
+is_not_negative(enum ssa_ranges r)
+{
+   return r == gt_zero || r == ge_zero || r == eq_zero;
+}
+
 static void *
 pack_data(const struct ssa_result_range r)
 {
@@ -721,6 +727,66 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       /* Boolean results are 0 or -1. */
       r = (struct ssa_result_range){le_zero, false};
       break;
+
+   case nir_op_fpow: {
+      /* Due to flush-to-zero semanatics of floating-point numbers with very
+       * small mangnitudes, we can never really be sure a result will be
+       * non-zero.
+       *
+       * NIR uses pow() and powf() to constant evaluate nir_op_fpow.  The man
+       * page for that function says:
+       *
+       *    If y is 0, the result is 1.0 (even if x is a NaN).
+       *
+       * gt_zero: pow(*, eq_zero)
+       *        | pow(eq_zero, lt_zero)   # 0^-y = +inf
+       *        | pow(eq_zero, le_zero)   # 0^-y = +inf or 0^0 = 1.0
+       *        ;
+       *
+       * eq_zero: pow(eq_zero, gt_zero)
+       *        ;
+       *
+       * ge_zero: pow(gt_zero, gt_zero)
+       *        | pow(gt_zero, ge_zero)
+       *        | pow(gt_zero, lt_zero)
+       *        | pow(gt_zero, le_zero)
+       *        | pow(gt_zero, ne_zero)
+       *        | pow(gt_zero, unknown)
+       *        | pow(ge_zero, gt_zero)
+       *        | pow(ge_zero, ge_zero)
+       *        | pow(ge_zero, lt_zero)
+       *        | pow(ge_zero, le_zero)
+       *        | pow(ge_zero, ne_zero)
+       *        | pow(ge_zero, unknown)
+       *        | pow(eq_zero, ge_zero)  # 0^0 = 1.0 or 0^+y = 0.0
+       *        | pow(eq_zero, ne_zero)  # 0^-y = +inf or 0^+y = 0.0
+       *        | pow(eq_zero, unknown)  # union of all other y cases
+       *        ;
+       *
+       * All other cases are unknown.
+       *
+       * We could do better if the right operand is a constant, integral
+       * value.
+       */
+      static const enum ssa_ranges table[last_range + 1][last_range + 1] = {
+         /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+         /* unknown */ { _______, _______, _______, _______, _______, _______, gt_zero },
+         /* lt_zero */ { _______, _______, _______, _______, _______, _______, gt_zero },
+         /* le_zero */ { _______, _______, _______, _______, _______, _______, gt_zero },
+         /* gt_zero */ { ge_zero, ge_zero, ge_zero, ge_zero, ge_zero, ge_zero, gt_zero },
+         /* ge_zero */ { ge_zero, ge_zero, ge_zero, ge_zero, ge_zero, ge_zero, gt_zero },
+         /* ne_zero */ { _______, _______, _______, _______, _______, _______, gt_zero },
+         /* eq_zero */ { ge_zero, gt_zero, gt_zero, eq_zero, ge_zero, ge_zero, gt_zero },
+      };
+
+      const struct ssa_result_range left = analyze_expression(alu, 0, ht);
+      const struct ssa_result_range right = analyze_expression(alu, 1, ht);
+
+      r.is_integral = left.is_integral && right.is_integral &&
+                      is_not_negative(right.range);
+      r.range = table[left.range][right.range];
+      break;
+   }
 
    case nir_op_ffma: {
       const struct ssa_result_range first = analyze_expression(alu, 0, ht);
