@@ -590,23 +590,6 @@ set_image_fast_clear_state(struct anv_cmd_buffer *cmd_buffer,
       set_image_compressed_bit(cmd_buffer, image, aspect, 0, 0, 1, true);
 }
 
-#if GEN_IS_HASWELL || GEN_GEN >= 8
-static inline uint32_t
-mi_alu(uint32_t opcode, uint32_t operand1, uint32_t operand2)
-{
-   struct GENX(MI_MATH_ALU_INSTRUCTION) instr = {
-      .ALUOpcode = opcode,
-      .Operand1 = operand1,
-      .Operand2 = operand2,
-   };
-
-   uint32_t dw;
-   GENX(MI_MATH_ALU_INSTRUCTION_pack)(NULL, &dw, &instr);
-
-   return dw;
-}
-#endif
-
 /* This is only really practical on haswell and above because it requires
  * MI math in order to get it correct.
  */
