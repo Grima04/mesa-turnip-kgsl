@@ -1356,7 +1356,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
    }
 
    /* Blorp doesn't support HiZ in any of the blit or slow-clear paths */
-   assert(surface->aux_usage != ISL_AUX_USAGE_HIZ);
+   assert(!isl_aux_usage_has_hiz(surface->aux_usage));
    enum isl_aux_usage aux_usage = surface->aux_usage;
 
    isl_channel_mask_t write_disable_mask = 0;
@@ -1572,7 +1572,7 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
                           params->depth.addr, 0);
 
       info.hiz_usage = params->depth.aux_usage;
-      if (info.hiz_usage == ISL_AUX_USAGE_HIZ) {
+      if (isl_aux_usage_has_hiz(info.hiz_usage)) {
          info.hiz_surf = &params->depth.aux_surf;
 
          struct blorp_address hiz_address = params->depth.aux_addr;
