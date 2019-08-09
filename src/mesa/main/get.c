@@ -1336,7 +1336,7 @@ check_extra(struct gl_context *ctx, const char *func, const struct value_desc *d
             api_found = GL_TRUE;
          break;
       case EXTRA_VERSION_43:
-         api_check = TRUE;
+         api_check = GL_TRUE;
          if (_mesa_is_desktop_gl(ctx) && version >= 43)
             api_found = GL_TRUE;
          break;
@@ -1454,7 +1454,7 @@ check_extra(struct gl_context *ctx, const char *func, const struct value_desc *d
             api_found = GL_TRUE;
          break;
       case EXTRA_EXT_PROVOKING_VERTEX_32:
-         api_check = TRUE;
+         api_check = GL_TRUE;
          if (ctx->API == API_OPENGL_COMPAT || version == 32)
             api_found = ctx->Extensions.EXT_provoking_vertex;
          break;

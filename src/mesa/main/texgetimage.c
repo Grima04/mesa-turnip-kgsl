@@ -640,7 +640,7 @@ get_tex_memcpy(struct gl_context *ctx,
 
    if (depth > 1) {
       /* only a single slice is supported at this time */
-      memCopy = FALSE;
+      memCopy = GL_FALSE;
    }
 
    if (memCopy) {
