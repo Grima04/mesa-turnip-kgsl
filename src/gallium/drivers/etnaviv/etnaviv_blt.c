@@ -291,6 +291,10 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
    if (buffers & PIPE_CLEAR_STENCIL)
       new_clear_bits |= clear_bits_stencil;
 
+   /* if all bits are cleared, update TS clear value */
+   if (new_clear_bits == 0xffffffff)
+      surf->level->clear_value = new_clear_value;
+
    /* TODO unduplicate this */
    struct etna_resource *res = etna_resource(surf->base.texture);
    struct blt_clear_op clr = {};
@@ -306,8 +310,8 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
       clr.dest.ts_addr.bo = res->ts_bo;
       clr.dest.ts_addr.offset = 0;
       clr.dest.ts_addr.flags = ETNA_RELOC_WRITE;
-      clr.dest.ts_clear_value[0] = new_clear_value;
-      clr.dest.ts_clear_value[1] = new_clear_value;
+      clr.dest.ts_clear_value[0] = surf->level->clear_value;
+      clr.dest.ts_clear_value[1] = surf->level->clear_value;
       clr.dest.ts_mode = surf->level->ts_mode;
       clr.dest.ts_compress_fmt = surf->level->ts_compress_fmt;
    }
@@ -325,12 +329,11 @@ etna_blit_clear_zs_blt(struct pipe_context *pctx, struct pipe_surface *dst,
 
    /* This made the TS valid */
    if (surf->surf.ts_size) {
-      ctx->framebuffer.TS_DEPTH_CLEAR_VALUE = new_clear_value;
+      ctx->framebuffer.TS_DEPTH_CLEAR_VALUE = surf->level->clear_value;
       surf->level->ts_valid = true;
       ctx->dirty |= ETNA_DIRTY_TS | ETNA_DIRTY_DERIVE_TS;
    }
 
-   surf->level->clear_value = new_clear_value;
    resource_written(ctx, surf->base.texture);
    etna_resource(surf->base.texture)->seqno++;
 }
