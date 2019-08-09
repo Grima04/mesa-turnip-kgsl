@@ -33,8 +33,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #ifdef __FreeBSD__
 #include <sys/mman.h>
