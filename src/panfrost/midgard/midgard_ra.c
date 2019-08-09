@@ -497,16 +497,14 @@ mir_lower_special_reads(compiler_context *ctx)
                                         midgard_instruction *use = mir_next_op(pre_use);
                                         assert(use);
                                         mir_insert_instruction_before(use, m);
+                                        mir_rewrite_index_dst_tag(ctx, i, idx, classes[j]);
                                 } else {
+                                        idx = spill_idx++;
+                                        m = v_mov(i, blank_alu_src, idx);
                                         mir_insert_instruction_before(pre_use, m);
+                                        mir_rewrite_index_src_single(pre_use, i, idx);
                                 }
                         }
-
-                        /* Rewrite to use */
-                        if (hazard_write)
-                                mir_rewrite_index_dst_tag(ctx, i, idx, classes[j]);
-                        else
-                                mir_rewrite_index_src_tag(ctx, i, idx, classes[j]);
                 }
         }
 
