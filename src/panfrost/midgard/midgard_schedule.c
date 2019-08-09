@@ -622,18 +622,15 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
 
                                 if (c->type != TAG_LOAD_STORE_4) continue;
 
-                                /* Stores cannot be reordered, since they have
-                                 * dependencies. For the same reason, indirect
-                                 * loads cannot be reordered as their index is
-                                 * loaded in r27.w */
+                                /* We can only reorder if there are no sources */
 
-                                if (OP_IS_STORE(c->load_store.op)) continue;
+                                bool deps = false;
 
-                                /* It appears the 0x8 bit is set whenever a
-                                 * load is direct, unset when it is indirect.
-                                 * Skip indirect loads. */
+                                for (unsigned s = 0; s < ARRAY_SIZE(ins->ssa_args.src); ++s)
+                                        deps |= (c->ssa_args.src[s] != -1);
 
-                                if (!(c->load_store.arg_2 & 0x8)) continue;
+                                if (deps)
+                                        continue;
 
                                 /* We found one! Move it up to pair and remove it from the old location */
 
