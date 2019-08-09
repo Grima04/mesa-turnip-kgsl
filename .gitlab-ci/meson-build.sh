@@ -16,7 +16,7 @@ fi
 
 rm -rf _build
 meson _build --native-file=native.file \
-      ${CROSS} \
+      ${CROSS+--cross /cross_file-$CROSS.txt} \
       -D libdir=lib \
       -D buildtype=debug \
       -D build-tests=true \

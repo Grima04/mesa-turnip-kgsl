@@ -257,7 +257,7 @@ meson-vulkan:
 meson-armhf:
   extends: .meson-cross
   variables:
-    CROSS: --cross /cross_file-armhf.txt
+    CROSS: armhf
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
     # Disable the tests since we're cross compiling.
@@ -269,7 +269,7 @@ meson-armhf:
 meson-arm64:
   extends: .meson-cross
   variables:
-    CROSS: --cross /cross_file-arm64.txt
+    CROSS: arm64
     VULKAN_DRIVERS: freedreno
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
     # Disable the tests since we're cross compiling.
@@ -281,7 +281,7 @@ meson-arm64:
 meson-i386:
   extends: .meson-cross
   variables:
-    CROSS: --cross /cross_file-i386.txt
+    CROSS: i386
     VULKAN_DRIVERS: intel
     GALLIUM_DRIVERS: "swrast"
     # Disable i386 tests, because u_format_tests gets precision
