@@ -49,8 +49,21 @@
 
 #include <assert.h>
 
-/* Currently, used BLT formats overlap 100% with RS formats */
-#define translate_blt_format translate_rs_format
+static uint32_t
+etna_compatible_blt_format(enum pipe_format fmt)
+{
+   /* YUYV and UYVY are blocksize 4, but 2 bytes per pixel */
+   if (fmt == PIPE_FORMAT_YUYV || fmt == PIPE_FORMAT_UYVY)
+      return BLT_FORMAT_R8G8;
+
+   switch (util_format_get_blocksize(fmt)) {
+   case 1: return BLT_FORMAT_R8;
+   case 2: return BLT_FORMAT_R8G8;
+   case 4: return BLT_FORMAT_A8R8G8B8;
+   case 8: return BLT_FORMAT_A16R16G16B16;
+   default: return ETNA_NO_MATCH;
+   }
+}
 
 static inline uint32_t
 blt_compute_stride_bits(const struct blt_imginfo *img)
@@ -384,21 +397,20 @@ etna_try_blt_blit(struct pipe_context *pctx,
       return false;
    }
 
-   /* TODO: 1 byte per pixel formats aren't handled by etna_compatible_rs_format nor
-    * translate_rs_format.
+   /* Only support same format (used tiling/detiling) blits for now.
+    * TODO: figure out which different-format blits are possible and test them
+    *  - need to use correct swizzle
+    *  - set sRGB bits correctly
+    *  - avoid trying to convert between float/int formats?
     */
-   unsigned src_format = blit_info->src.format;
-   unsigned dst_format = blit_info->dst.format;
+   if (blit_info->src.format != blit_info->dst.format)
+      return false;
 
-   /* for a copy with same dst/src format, we can use a different format */
-   if (translate_blt_format(src_format) == ETNA_NO_MATCH &&
-       src_format == dst_format) {
-      src_format = dst_format = etna_compatible_rs_format(src_format);
-   }
+   uint32_t format = etna_compatible_blt_format(blit_info->dst.format);
+   if (format == ETNA_NO_MATCH)
+      return false;
 
-   if (translate_blt_format(src_format) == ETNA_NO_MATCH ||
-       translate_blt_format(dst_format) == ETNA_NO_MATCH ||
-       blit_info->scissor_enable ||
+   if (blit_info->scissor_enable ||
        blit_info->dst.box.depth != blit_info->src.box.depth ||
        blit_info->dst.box.depth != 1) {
       return false;
@@ -445,13 +457,11 @@ etna_try_blt_blit(struct pipe_context *pctx,
       op.src.addr.bo = src->bo;
       op.src.addr.offset = src_lev->offset + blit_info->src.box.z * src_lev->layer_stride;
       op.src.addr.flags = ETNA_RELOC_READ;
-      op.src.format = translate_blt_format(src_format);
+      op.src.format = format;
       op.src.stride = src_lev->stride;
       op.src.tiling = src->layout;
-      const struct util_format_description *src_format_desc =
-         util_format_description(src_format);
       for (unsigned x=0; x<4; ++x)
-         op.src.swizzle[x] = src_format_desc->swizzle[x];
+         op.src.swizzle[x] = x;
 
       if (src_lev->ts_size && src_lev->ts_valid) {
          op.src.use_ts = 1;
@@ -467,13 +477,11 @@ etna_try_blt_blit(struct pipe_context *pctx,
       op.dest.addr.bo = dst->bo;
       op.dest.addr.offset = dst_lev->offset + blit_info->dst.box.z * dst_lev->layer_stride;
       op.dest.addr.flags = ETNA_RELOC_WRITE;
-      op.dest.format = translate_blt_format(dst_format);
+      op.dest.format = format;
       op.dest.stride = dst_lev->stride;
       op.dest.tiling = dst->layout;
-      const struct util_format_description *dst_format_desc =
-         util_format_description(dst_format);
       for (unsigned x=0; x<4; ++x)
-         op.dest.swizzle[x] = dst_format_desc->swizzle[x];
+         op.dest.swizzle[x] = x;
 
       op.dest_x = blit_info->dst.box.x;
       op.dest_y = blit_info->dst.box.y;
