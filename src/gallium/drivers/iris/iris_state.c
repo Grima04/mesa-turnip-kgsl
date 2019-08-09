@@ -2985,7 +2985,7 @@ iris_set_framebuffer_state(struct pipe_context *ctx,
          view.format = zres->surf.format;
 
          if (iris_resource_level_has_hiz(zres, view.base_level)) {
-            info.hiz_usage = ISL_AUX_USAGE_HIZ;
+            info.hiz_usage = zres->aux.usage;
             info.hiz_surf = &zres->aux.surf;
             info.hiz_address = zres->aux.bo->gtt_offset + zres->aux.offset;
          }

@@ -478,7 +478,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
    } else if (has_mcs) {
       res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS;
    } else if (has_hiz) {
-      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
+      res->aux.possible_usages |=
+         1 << (has_ccs ? ISL_AUX_USAGE_HIZ_CCS : ISL_AUX_USAGE_HIZ);
    } else if (has_ccs) {
       if (want_ccs_e_for_format(devinfo, res->surf.format))
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
@@ -496,6 +497,9 @@ iris_resource_configure_aux(struct iris_screen *screen,
     */
    if (!devinfo->has_sample_with_hiz || res->surf.samples > 1)
       res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ);
+
+   /* We don't yet support sampling with HIZ_CCS. */
+   res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ_CCS);
 
    enum isl_aux_state initial_state;
    *aux_size_B = 0;
@@ -572,7 +576,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
    size += iris_get_aux_clear_color_state_size(screen);
    *aux_size_B = size;
 
-   if (res->aux.usage == ISL_AUX_USAGE_HIZ) {
+   if (isl_aux_usage_has_hiz(res->aux.usage)) {
       for (unsigned level = 0; level < res->surf.levels; ++level) {
          uint32_t width = u_minify(res->surf.phys_level0_sa.width, level);
          uint32_t height = u_minify(res->surf.phys_level0_sa.height, level);
