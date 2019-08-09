@@ -420,7 +420,7 @@ intel_image_format_lookup(int fourcc)
    return NULL;
 }
 
-static boolean
+static bool
 intel_image_get_fourcc(__DRIimage *image, int *fourcc)
 {
    if (image->planar_format) {
