@@ -380,8 +380,8 @@ gpu_supports_texture_target(struct etna_screen *screen,
 }
 
 static bool
-gpu_supports_texure_format(struct etna_screen *screen, uint32_t fmt,
-                           enum pipe_format format)
+gpu_supports_texture_format(struct etna_screen *screen, uint32_t fmt,
+                            enum pipe_format format)
 {
    bool supported = true;
 
@@ -451,7 +451,7 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
    if (usage & PIPE_BIND_SAMPLER_VIEW) {
       uint32_t fmt = translate_texture_format(format);
 
-      if (!gpu_supports_texure_format(screen, fmt, format))
+      if (!gpu_supports_texture_format(screen, fmt, format))
          fmt = ETNA_NO_MATCH;
 
       if (sample_count < 2 && fmt != ETNA_NO_MATCH)
