@@ -111,7 +111,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
 #endif
 
 #if GEN_GEN >= 12
-      db.DepthBufferCompressionEnable =
+      db.ControlSurfaceEnable = db.DepthBufferCompressionEnable =
          info->hiz_usage == ISL_AUX_USAGE_HIZ_CCS;
 #endif
    }

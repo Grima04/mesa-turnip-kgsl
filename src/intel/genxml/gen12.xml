@@ -1584,6 +1584,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
     <field name="Surface Pitch" start="32" end="49" type="uint"/>
+    <field name="Control Surface Enable" start="51" end="51" type="bool"/>
     <field name="Depth Buffer Compression Enable" start="53" end="53" type="bool"/>
     <field name="Hierarchical Depth Buffer Enable" start="54" end="54" type="bool"/>
     <field name="Corner Texel Mode" start="55" end="55" type="bool"/>
