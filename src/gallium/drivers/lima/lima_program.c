@@ -171,6 +171,11 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
 
    do {
       progress = false;
+      NIR_PASS(progress, s, nir_opt_vectorize);
+   } while (progress);
+
+   do {
+      progress = false;
 
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
       NIR_PASS(progress, s, nir_lower_alu_to_scalar, alu_lower);
