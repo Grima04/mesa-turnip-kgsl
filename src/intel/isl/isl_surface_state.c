@@ -281,6 +281,11 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
    s.SurfaceFormat = info->view->format;
 
+#if GEN_GEN >= 12
+   s.DepthStencilResource =
+      isl_surf_usage_is_depth_or_stencil(info->surf->usage);
+#endif
+
 #if GEN_GEN <= 5
    s.ColorBufferComponentWriteDisables = info->write_disables;
 #else

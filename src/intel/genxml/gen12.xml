@@ -711,6 +711,7 @@
     <field name="Enable Unorm Path In Color Pipe" start="63" end="63" type="bool"/>
     <field name="Width" start="64" end="77" type="uint"/>
     <field name="Height" start="80" end="93" type="uint"/>
+    <field name="Depth Stencil Resource" start="95" end="95" type="bool"/>
     <field name="Surface Pitch" start="96" end="113" type="uint"/>
     <field name="Null Probing Enable" start="114" end="114" type="uint"/>
     <field name="Standard Tiling Mode Extensions" start="115" end="115" type="uint"/>
