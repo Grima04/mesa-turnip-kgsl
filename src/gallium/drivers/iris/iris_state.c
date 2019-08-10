@@ -5192,6 +5192,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
+   if (ice->state.current_hash_scale != 1)
+      genX(emit_hashing_mode)(ice, batch, UINT_MAX, UINT_MAX, 1);
+
    /* TODO: Gen8 PMA fix */
 }
 
@@ -6460,6 +6463,99 @@ iris_emit_mi_report_perf_count(struct iris_batch *batch,
       mi_rpc.MemoryAddress = rw_bo(bo, offset_in_bytes);
       mi_rpc.ReportID = report_id;
    }
+}
+
+/**
+ * Update the pixel hashing modes that determine the balancing of PS threads
+ * across subslices and slices.
+ *
+ * \param width Width bound of the rendering area (already scaled down if \p
+ *              scale is greater than 1).
+ * \param height Height bound of the rendering area (already scaled down if \p
+ *               scale is greater than 1).
+ * \param scale The number of framebuffer samples that could potentially be
+ *              affected by an individual channel of the PS thread.  This is
+ *              typically one for single-sampled rendering, but for operations
+ *              like CCS resolves and fast clears a single PS invocation may
+ *              update a huge number of pixels, in which case a finer
+ *              balancing is desirable in order to maximally utilize the
+ *              bandwidth available.  UINT_MAX can be used as shorthand for
+ *              "finest hashing mode available".
+ */
+void
+genX(emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
+                        unsigned width, unsigned height, unsigned scale)
+{
+#if GEN_GEN == 9
+   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const unsigned slice_hashing[] = {
+      /* Because all Gen9 platforms with more than one slice require
+       * three-way subslice hashing, a single "normal" 16x16 slice hashing
+       * block is guaranteed to suffer from substantial imbalance, with one
+       * subslice receiving twice as much work as the other two in the
+       * slice.
+       *
+       * The performance impact of that would be particularly severe when
+       * three-way hashing is also in use for slice balancing (which is the
+       * case for all Gen9 GT4 platforms), because one of the slices
+       * receives one every three 16x16 blocks in either direction, which
+       * is roughly the periodicity of the underlying subslice imbalance
+       * pattern ("roughly" because in reality the hardware's
+       * implementation of three-way hashing doesn't do exact modulo 3
+       * arithmetic, which somewhat decreases the magnitude of this effect
+       * in practice).  This leads to a systematic subslice imbalance
+       * within that slice regardless of the size of the primitive.  The
+       * 32x32 hashing mode guarantees that the subslice imbalance within a
+       * single slice hashing block is minimal, largely eliminating this
+       * effect.
+       */
+      _32x32,
+      /* Finest slice hashing mode available. */
+      NORMAL
+   };
+   const unsigned subslice_hashing[] = {
+      /* 16x16 would provide a slight cache locality benefit especially
+       * visible in the sampler L1 cache efficiency of low-bandwidth
+       * non-LLC platforms, but it comes at the cost of greater subslice
+       * imbalance for primitives of dimensions approximately intermediate
+       * between 16x4 and 16x16.
+       */
+      _16x4,
+      /* Finest subslice hashing mode available. */
+      _8x4
+   };
+   /* Dimensions of the smallest hashing block of a given hashing mode.  If
+    * the rendering area is smaller than this there can't possibly be any
+    * benefit from switching to this mode, so we optimize out the
+    * transition.
+    */
+   const unsigned min_size[][2] = {
+      { 16, 4 },
+      { 8, 4 }
+   };
+   const unsigned idx = scale > 1;
+
+   if (width > min_size[idx][0] || height > min_size[idx][1]) {
+      uint32_t gt_mode;
+
+      iris_pack_state(GENX(GT_MODE), &gt_mode, reg) {
+         reg.SliceHashing = (devinfo->num_slices > 1 ? slice_hashing[idx] : 0);
+         reg.SliceHashingMask = (devinfo->num_slices > 1 ? -1 : 0);
+         reg.SubsliceHashing = subslice_hashing[idx];
+         reg.SubsliceHashingMask = -1;
+      };
+
+      iris_emit_raw_pipe_control(batch,
+                                 "workaround: CS stall before GT_MODE LRI",
+                                 PIPE_CONTROL_STALL_AT_SCOREBOARD |
+                                 PIPE_CONTROL_CS_STALL,
+                                 NULL, 0, 0);
+
+      iris_emit_lri(batch, GT_MODE, gt_mode);
+
+      ice->state.current_hash_scale = scale;
+   }
+#endif
 }
 
 void

@@ -733,6 +733,9 @@ struct iris_context {
 
       /** Records the size of variable-length state for INTEL_DEBUG=bat */
       struct hash_table_u64 *sizes;
+
+      /** Last rendering scale argument provided to genX(emit_hashing_mode). */
+      unsigned current_hash_scale;
    } state;
 };
 
