@@ -3207,9 +3207,11 @@ VkResult radv_BeginCommandBuffer(
 		struct radv_subpass *subpass =
 			&cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
 
-		result = radv_cmd_state_setup_attachments(cmd_buffer, cmd_buffer->state.pass, NULL);
-		if (result != VK_SUCCESS)
-			return result;
+		if (cmd_buffer->state.framebuffer) {
+			result = radv_cmd_state_setup_attachments(cmd_buffer, cmd_buffer->state.pass, NULL);
+			if (result != VK_SUCCESS)
+				return result;
+		}
 
 		radv_cmd_buffer_set_subpass(cmd_buffer, subpass);
 	}
