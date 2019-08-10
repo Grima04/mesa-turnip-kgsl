@@ -168,8 +168,6 @@ static struct etna_format formats[PIPE_FORMAT_COUNT] = {
 
    _T(B8G8R8A8_UNORM, A8R8G8B8, SWIZ(X, Y, Z, W), A8R8G8B8),
    _T(B8G8R8X8_UNORM, X8R8G8B8, SWIZ(X, Y, Z, W), X8R8G8B8),
-   _T(B8G8R8A8_SRGB,  A8R8G8B8, SWIZ(X, Y, Z, W), A8R8G8B8),
-   _T(B8G8R8X8_SRGB,  X8R8G8B8, SWIZ(X, Y, Z, W), X8R8G8B8),
 
    V_(R10G10B10A2_UNORM,   UNSIGNED_INT_2_10_10_10_REV, NONE),
    V_(R10G10B10A2_SNORM,   INT_2_10_10_10_REV,          NONE),
@@ -230,19 +228,13 @@ static struct etna_format formats[PIPE_FORMAT_COUNT] = {
    _T(ETC1_RGB8, ETC1, SWIZ(X, Y, Z, W), NONE),
 
    _T(DXT1_RGB,  DXT1,      SWIZ(X, Y, Z, W), NONE),
-   _T(DXT1_SRGBA,DXT1,      SWIZ(X, Y, Z, W), NONE),
    _T(DXT1_RGBA, DXT1,      SWIZ(X, Y, Z, W), NONE),
-   _T(DXT3_SRGBA,DXT2_DXT3, SWIZ(X, Y, Z, W), NONE),
    _T(DXT3_RGBA, DXT2_DXT3, SWIZ(X, Y, Z, W), NONE),
-   _T(DXT5_SRGBA,DXT4_DXT5, SWIZ(X, Y, Z, W), NONE),
    _T(DXT5_RGBA, DXT4_DXT5, SWIZ(X, Y, Z, W), NONE),
 
    _T(ETC2_RGB8,       EXT_NONE | EXT_FORMAT,                          SWIZ(X, Y, Z, W), NONE), /* Extd. format NONE doubles as ETC2_RGB8 */
-   _T(ETC2_SRGB8,      EXT_NONE | EXT_FORMAT,                          SWIZ(X, Y, Z, W), NONE),
    _T(ETC2_RGB8A1,     EXT_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 | EXT_FORMAT, SWIZ(X, Y, Z, W), NONE),
-   _T(ETC2_SRGB8A1,    EXT_RGB8_PUNCHTHROUGH_ALPHA1_ETC2 | EXT_FORMAT, SWIZ(X, Y, Z, W), NONE),
    _T(ETC2_RGBA8,      EXT_RGBA8_ETC2_EAC | EXT_FORMAT,                SWIZ(X, Y, Z, W), NONE),
-   _T(ETC2_SRGBA8,     EXT_RGBA8_ETC2_EAC | EXT_FORMAT,                SWIZ(X, Y, Z, W), NONE),
    _T(ETC2_R11_UNORM,  EXT_R11_EAC | EXT_FORMAT,                       SWIZ(X, Y, Z, W), NONE),
    _T(ETC2_R11_SNORM,  EXT_SIGNED_R11_EAC | EXT_FORMAT,                SWIZ(X, Y, Z, W), NONE),
    _T(ETC2_RG11_UNORM, EXT_RG11_EAC | EXT_FORMAT,                      SWIZ(X, Y, Z, W), NONE),
@@ -263,21 +255,6 @@ static struct etna_format formats[PIPE_FORMAT_COUNT] = {
    _T(ASTC_12x10,      ASTC_RGBA_12x10 | ASTC_FORMAT,                  SWIZ(X, Y, Z, W), NONE),
    _T(ASTC_12x12,      ASTC_RGBA_12x12 | ASTC_FORMAT,                  SWIZ(X, Y, Z, W), NONE),
 
-   _T(ASTC_4x4_SRGB,   ASTC_RGBA_4x4 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_5x4_SRGB,   ASTC_RGBA_5x4 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_5x5_SRGB,   ASTC_RGBA_5x5 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_6x5_SRGB,   ASTC_RGBA_6x5 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_6x6_SRGB,   ASTC_RGBA_6x6 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_8x5_SRGB,   ASTC_RGBA_8x5 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_8x6_SRGB,   ASTC_RGBA_8x6 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_8x8_SRGB,   ASTC_RGBA_8x8 | ASTC_FORMAT,                    SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_10x5_SRGB,  ASTC_RGBA_10x5 | ASTC_FORMAT,                   SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_10x6_SRGB,  ASTC_RGBA_10x6 | ASTC_FORMAT,                   SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_10x8_SRGB,  ASTC_RGBA_10x8 | ASTC_FORMAT,                   SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_10x10_SRGB, ASTC_RGBA_10x10 | ASTC_FORMAT,                  SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_12x10_SRGB, ASTC_RGBA_12x10 | ASTC_FORMAT,                  SWIZ(X, Y, Z, W), NONE),
-   _T(ASTC_12x12_SRGB, ASTC_RGBA_12x12 | ASTC_FORMAT,                  SWIZ(X, Y, Z, W), NONE),
-
    /* YUV */
    _T(YUYV, YUY2, SWIZ(X, Y, Z, W), YUY2),
    _T(UYVY, UYVY, SWIZ(X, Y, Z, W), NONE),
@@ -286,6 +263,8 @@ static struct etna_format formats[PIPE_FORMAT_COUNT] = {
 uint32_t
 translate_texture_format(enum pipe_format fmt)
 {
+   fmt = util_format_linear(fmt);
+
    if (!formats[fmt].present)
       return ETNA_NO_MATCH;
 
@@ -297,6 +276,8 @@ texture_format_needs_swiz(enum pipe_format fmt)
 {
    static const unsigned char def[4] = SWIZ(X, Y, Z, W);
    bool swiz = false;
+
+   fmt = util_format_linear(fmt);
 
    if (formats[fmt].present)
       swiz = !!memcmp(def, formats[fmt].tex_swiz, sizeof(formats[fmt].tex_swiz));
@@ -311,6 +292,8 @@ get_texture_swiz(enum pipe_format fmt, unsigned swizzle_r,
    unsigned char swiz[4] = {
       swizzle_r, swizzle_g, swizzle_b, swizzle_a,
    }, rswiz[4];
+
+   fmt = util_format_linear(fmt);
 
    assert(formats[fmt].present);
    util_format_compose_swizzles(formats[fmt].tex_swiz, swiz, rswiz);
@@ -332,6 +315,8 @@ get_texture_swiz(enum pipe_format fmt, unsigned swizzle_r,
 uint32_t
 translate_pe_format(enum pipe_format fmt)
 {
+   fmt = util_format_linear(fmt);
+
    if (!formats[fmt].present)
       return ETNA_NO_MATCH;
 
@@ -344,6 +329,7 @@ translate_pe_format(enum pipe_format fmt)
 int
 translate_pe_format_rb_swap(enum pipe_format fmt)
 {
+   fmt = util_format_linear(fmt);
    assert(formats[fmt].present);
 
    return formats[fmt].pe & PE_FORMAT_RB_SWAP;
