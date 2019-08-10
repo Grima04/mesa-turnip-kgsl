@@ -158,6 +158,11 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
    BITSET_SET(alu_lower, nir_op_fsqrt);
    BITSET_SET(alu_lower, nir_op_fsin);
    BITSET_SET(alu_lower, nir_op_fcos);
+   /* nir vec4 fcsel assumes that each component of the condition will be
+    * used to select the same component from the two options, but lima
+    * can't implement that since we only have 1 component condition */
+   BITSET_SET(alu_lower, nir_op_fcsel);
+   BITSET_SET(alu_lower, nir_op_bcsel);
 
    NIR_PASS_V(s, nir_lower_fragcoord_wtrans);
    NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
