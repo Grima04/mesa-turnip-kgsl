@@ -84,13 +84,10 @@ struct etna_resource {
 
    struct etna_resource_level levels[ETNA_NUM_LOD];
 
-   /* When we are rendering to a texture, we need a differently tiled resource */
+   /* for when TE doesn't support the base layout */
    struct pipe_resource *texture;
-   /*
-    * If imported resources have an render/sampler incompatible tiling, we keep
-    * them as an external resource, which is blitted as needed.
-    */
-   struct pipe_resource *external;
+   /* for when PE doesn't support the base layout */
+   struct pipe_resource *render;
 
    enum etna_resource_status status;
 

@@ -138,10 +138,10 @@ etna_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
    struct etna_resource *rsc = etna_resource(prsc);
 
-   if (rsc->external) {
-      if (etna_resource_older(etna_resource(rsc->external), rsc)) {
-         etna_copy_resource(pctx, rsc->external, prsc, 0, 0);
-         etna_resource(rsc->external)->seqno = rsc->seqno;
+   if (rsc->render) {
+      if (etna_resource_older(rsc, etna_resource(rsc->render))) {
+         etna_copy_resource(pctx, prsc, rsc->render, 0, 0);
+         rsc->seqno = etna_resource(rsc->render)->seqno;
       }
    } else if (etna_resource_needs_flush(rsc)) {
       etna_copy_resource(pctx, prsc, prsc, 0, 0);

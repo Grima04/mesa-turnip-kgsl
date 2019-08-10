@@ -108,14 +108,19 @@ etna_set_constant_buffer(struct pipe_context *pctx,
 }
 
 static void
-etna_update_render_resource(struct pipe_context *pctx, struct pipe_resource *pres)
+etna_update_render_resource(struct pipe_context *pctx, struct etna_resource *base)
 {
-   struct etna_resource *res = etna_resource(pres);
+   struct etna_resource *to = base, *from = base;
 
-   if (res->texture && etna_resource_older(res, etna_resource(res->texture))) {
-      /* The render buffer is older than the texture buffer. Copy it over. */
-      etna_copy_resource(pctx, pres, res->texture, 0, pres->last_level);
-      res->seqno = etna_resource(res->texture)->seqno;
+   if (base->texture && etna_resource_newer(etna_resource(base->texture), base))
+      from = etna_resource(base->texture);
+
+   if (base->render)
+      to = etna_resource(base->render);
+
+   if ((to != from) && etna_resource_older(to, from)) {
+      etna_copy_resource(pctx, &to->base, &from->base, 0, base->base.last_level);
+      to->seqno = from->seqno;
    }
 }
 
@@ -138,7 +143,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
       bool color_supertiled = (res->layout & ETNA_LAYOUT_BIT_SUPER) != 0;
 
       assert(res->layout & ETNA_LAYOUT_BIT_TILE); /* Cannot render to linear surfaces */
-      etna_update_render_resource(pctx, cbuf->base.texture);
+      etna_update_render_resource(pctx, etna_resource(cbuf->prsc));
 
       cs->PE_COLOR_FORMAT =
          VIVS_PE_COLOR_FORMAT_FORMAT(translate_rs_format(cbuf->base.format)) |
@@ -215,7 +220,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
       struct etna_surface *zsbuf = etna_surface(sv->zsbuf);
       struct etna_resource *res = etna_resource(zsbuf->base.texture);
 
-      etna_update_render_resource(pctx, zsbuf->base.texture);
+      etna_update_render_resource(pctx, etna_resource(zsbuf->prsc));
 
       assert(res->layout &ETNA_LAYOUT_BIT_TILE); /* Cannot render to linear surfaces */
 

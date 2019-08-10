@@ -472,12 +472,7 @@ etna_resource_create_modifiers(struct pipe_screen *pscreen,
 static void
 etna_resource_changed(struct pipe_screen *pscreen, struct pipe_resource *prsc)
 {
-   struct etna_resource *res = etna_resource(prsc);
-
-   if (res->external)
-      etna_resource(res->external)->seqno++;
-   else
-      res->seqno++;
+   etna_resource(prsc)->seqno++;
 }
 
 static void
@@ -501,7 +496,7 @@ etna_resource_destroy(struct pipe_screen *pscreen, struct pipe_resource *prsc)
       renderonly_scanout_destroy(rsc->scanout, etna_screen(pscreen)->ro);
 
    pipe_resource_reference(&rsc->texture, NULL);
-   pipe_resource_reference(&rsc->external, NULL);
+   pipe_resource_reference(&rsc->render, NULL);
 
    for (unsigned i = 0; i < ETNA_NUM_LOD; i++)
       FREE(rsc->levels[i].patch_offsets);
@@ -587,29 +582,6 @@ etna_resource_from_handle(struct pipe_screen *pscreen,
    if (!rsc->pending_ctx)
       goto fail;
 
-   if (rsc->layout == ETNA_LAYOUT_LINEAR) {
-      /*
-       * Both sampler and pixel pipes can't handle linear, create a compatible
-       * base resource, where we can attach the imported buffer as an external
-       * resource.
-       */
-      struct pipe_resource tiled_templat = *tmpl;
-
-      /*
-       * Remove BIND_SCANOUT to avoid recursion, as etna_resource_create uses
-       * this function to import the scanout buffer and get a tiled resource.
-       */
-      tiled_templat.bind &= ~PIPE_BIND_SCANOUT;
-
-      ptiled = etna_resource_create(pscreen, &tiled_templat);
-      if (!ptiled)
-         goto fail;
-
-      etna_resource(ptiled)->external = prsc;
-
-      return ptiled;
-   }
-
    return prsc;
 
 fail:
@@ -629,13 +601,6 @@ etna_resource_get_handle(struct pipe_screen *pscreen,
    struct etna_resource *rsc = etna_resource(prsc);
    /* Scanout is always attached to the base resource */
    struct renderonly_scanout *scanout = rsc->scanout;
-
-   /*
-    * External resources are preferred, so a import->export chain of
-    * render/sampler incompatible buffers yield the same handle.
-    */
-   if (rsc->external)
-      rsc = etna_resource(rsc->external);
 
    handle->stride = rsc->levels[0].stride;
    handle->offset = rsc->levels[0].offset;

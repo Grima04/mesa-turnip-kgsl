@@ -147,8 +147,8 @@ etna_update_sampler_source(struct pipe_sampler_view *view, int num)
    struct etna_context *ctx = etna_context(view->context);
    bool enable_sampler_ts = false;
 
-   if (base->external && etna_resource_newer(etna_resource(base->external), base))
-      from = etna_resource(base->external);
+   if (base->render && etna_resource_newer(etna_resource(base->render), base))
+      from = etna_resource(base->render);
 
    if (base->texture)
       to = etna_resource(base->texture);
