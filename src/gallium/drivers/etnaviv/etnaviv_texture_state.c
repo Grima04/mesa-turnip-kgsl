@@ -161,7 +161,7 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
       break;
    }
 
-   if (res->addressing_mode == ETNA_ADDRESSING_MODE_LINEAR) {
+   if (res->layout == ETNA_LAYOUT_LINEAR && !util_format_is_compressed(so->format)) {
       sv->TE_SAMPLER_CONFIG0 |= VIVS_TE_SAMPLER_CONFIG0_ADDRESSING_MODE(TEXTURE_ADDRESSING_MODE_LINEAR);
 
       for (int lod = 0; lod <= res->base.last_level; ++lod)

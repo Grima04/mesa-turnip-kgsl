@@ -60,11 +60,6 @@ struct etna_resource_level {
    struct util_dynarray *patch_offsets;
 };
 
-enum etna_resource_addressing_mode {
-   ETNA_ADDRESSING_MODE_TILED = 0,
-   ETNA_ADDRESSING_MODE_LINEAR,
-};
-
 /* status of queued up but not flushed reads and write operations.
  * In _transfer_map() we need to know if queued up rendering needs
  * to be flushed to preserve the order of cpu and gpu access. */
@@ -82,7 +77,6 @@ struct etna_resource {
    /* only lod 0 used for non-texture buffers */
    /* Layout for surface (tiled, multitiled, split tiled, ...) */
    enum etna_surface_layout layout;
-   enum etna_resource_addressing_mode addressing_mode;
    /* Horizontal alignment for texture unit (TEXTURE_HALIGN_*) */
    unsigned halign;
    struct etna_bo *bo; /* Surface video memory */
@@ -169,8 +163,7 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
 
 struct pipe_resource *
 etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
-                    enum etna_resource_addressing_mode mode, uint64_t modifier,
-                    const struct pipe_resource *templat);
+                    uint64_t modifier, const struct pipe_resource *templat);
 
 void
 etna_resource_screen_init(struct pipe_screen *pscreen);
