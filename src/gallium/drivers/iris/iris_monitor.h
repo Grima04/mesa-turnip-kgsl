@@ -36,7 +36,6 @@ struct iris_monitor_config {
    /* gallium requires an index for each counter */
    int num_counters;
    struct iris_monitor_counter *counters;
-
 };
 
 int iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,

@@ -39,8 +39,9 @@ struct iris_monitor_object {
    struct gen_perf_query_object *query;
 };
 
-int iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,
-                          struct pipe_driver_query_info *info)
+int
+iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,
+                      struct pipe_driver_query_info *info)
 {
    const struct iris_screen *screen = (struct iris_screen *)pscreen;
    assert(screen->monitor_cfg);
@@ -48,15 +49,19 @@ int iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,
       return 0;
 
    const struct iris_monitor_config *monitor_cfg = screen->monitor_cfg;
-   if (!info)
+
+   if (!info) {
       /* return the number of metrics */
       return monitor_cfg->num_counters;
+   }
+
    const struct gen_perf_config *perf_cfg = monitor_cfg->perf_cfg;
    const int group = monitor_cfg->counters[index].group;
    const int counter_index = monitor_cfg->counters[index].counter;
-   info->group_id = group;
    struct gen_perf_query_counter *counter =
       &perf_cfg->queries[group].counters[counter_index];
+
+   info->group_id = group;
    info->name = counter->name;
    info->query_type = PIPE_QUERY_DRIVER_SPECIFIC + index;
 
@@ -92,7 +97,7 @@ int iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,
 typedef void (*bo_unreference_t)(void *);
 typedef void *(*bo_map_t)(void *, void *, unsigned flags);
 typedef void (*bo_unmap_t)(void *);
-typedef void (* emit_mi_report_t)(void *, void *, uint32_t, uint32_t);
+typedef void (*emit_mi_report_t)(void *, void *, uint32_t, uint32_t);
 typedef void (*emit_mi_flush_t)(void *);
 typedef void (*capture_frequency_stat_register_t)(void *, void *,
                                                   uint32_t );
@@ -103,9 +108,7 @@ typedef void (*bo_wait_rendering_t)(void *bo);
 typedef int (*bo_busy_t)(void *bo);
 
 static void *
-iris_oa_bo_alloc(void *bufmgr,
-                 const char *name,
-                 uint64_t size)
+iris_oa_bo_alloc(void *bufmgr, const char *name, uint64_t size)
 {
    return iris_bo_alloc(bufmgr, name, size, IRIS_MEMZONE_OTHER);
 }
@@ -122,8 +125,7 @@ iris_monitor_emit_mi_flush(struct iris_context *ice)
                      PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
                      PIPE_CONTROL_CS_STALL;
    iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
-                                "OA metrics",
-                                flags);
+                                "OA metrics", flags);
 }
 
 static void
@@ -133,10 +135,8 @@ iris_monitor_emit_mi_report_perf_count(void *c,
                                        uint32_t report_id)
 {
    struct iris_context *ice = c;
-   ice->vtbl.emit_mi_report_perf_count(&ice->batches[IRIS_BATCH_RENDER],
-                                       bo,
-                                       offset_in_bytes,
-                                       report_id);
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   ice->vtbl.emit_mi_report_perf_count(batch, bo, offset_in_bytes, report_id);
 }
 
 static void
@@ -152,8 +152,8 @@ iris_monitor_capture_frequency_stat_register(void *ctx,
                                              uint32_t bo_offset)
 {
    struct iris_context *ice = ctx;
-   ice->vtbl.store_register_mem32(&ice->batches[IRIS_BATCH_RENDER],
-                                  GEN9_RPSTAT0, bo, bo_offset, false);
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   ice->vtbl.store_register_mem32(batch, GEN9_RPSTAT0, bo, bo_offset, false);
 }
 
 static void
@@ -161,8 +161,8 @@ iris_monitor_store_register_mem64(void *ctx, void *bo,
                                   uint32_t reg, uint32_t offset)
 {
    struct iris_context *ice = ctx;
-   ice->vtbl.store_register_mem64(&ice->batches[IRIS_BATCH_RENDER], reg, bo,
-                                  offset, false);
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
+   ice->vtbl.store_register_mem64(batch, reg, bo, offset, false);
 }
 
 
@@ -237,7 +237,8 @@ iris_monitor_init_metrics(struct iris_screen *screen)
             for (int existing_counter = 0;
                  existing_counter < perf_cfg->queries[existing_group].n_counters && !duplicate;
                  ++existing_counter) {
-               const char *current_name = perf_cfg->queries[group].counters[counter].name;
+               const char *current_name =
+                  perf_cfg->queries[group].counters[counter].name;
                const char *existing_name =
                   perf_cfg->queries[existing_group].counters[existing_counter].name;
                if (strcmp(current_name, existing_name) == 0) {
@@ -263,9 +264,10 @@ allocation_error:
    return false;
 }
 
-int iris_get_monitor_group_info(struct pipe_screen *pscreen,
-                                unsigned group_index,
-                                struct pipe_driver_query_group_info *info)
+int
+iris_get_monitor_group_info(struct pipe_screen *pscreen,
+                            unsigned group_index,
+                            struct pipe_driver_query_group_info *info)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    if (!screen->monitor_cfg) {
@@ -275,18 +277,23 @@ int iris_get_monitor_group_info(struct pipe_screen *pscreen,
 
    const struct iris_monitor_config *monitor_cfg = screen->monitor_cfg;
    const struct gen_perf_config *perf_cfg = monitor_cfg->perf_cfg;
-   if (!info)
+
+   if (!info) {
       /* return the count that can be queried */
       return perf_cfg->n_queries;
+   }
 
-   if (group_index >= perf_cfg->n_queries)
+   if (group_index >= perf_cfg->n_queries) {
       /* out of range */
       return 0;
+   }
 
    struct gen_perf_query_info *query = &perf_cfg->queries[group_index];
+
    info->name = query->name;
    info->max_active_queries = query->n_counters;
    info->num_queries = query->n_counters;
+
    return 1;
 }
 
@@ -295,10 +302,10 @@ iris_init_monitor_ctx(struct iris_context *ice)
 {
    struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
    struct iris_monitor_config *monitor_cfg = screen->monitor_cfg;
+
    ice->perf_ctx = gen_perf_new_context(ice);
-   if (unlikely(!ice->perf_ctx)) {
+   if (unlikely(!ice->perf_ctx))
       return;
-   }
 
    struct gen_perf_context *perf_ctx = ice->perf_ctx;
    struct gen_perf_config *perf_cfg = monitor_cfg->perf_cfg;
@@ -379,10 +386,12 @@ allocation_failure:
    return NULL;
 }
 
-void iris_destroy_monitor_object(struct pipe_context *ctx,
-                                 struct iris_monitor_object *monitor)
+void
+iris_destroy_monitor_object(struct pipe_context *ctx,
+                            struct iris_monitor_object *monitor)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
+
    gen_perf_delete_query(ice->perf_ctx, monitor->query);
    free(monitor->result_buffer);
    monitor->result_buffer = NULL;
@@ -420,19 +429,18 @@ iris_get_monitor_result(struct pipe_context *ctx,
 {
    struct iris_context *ice = (void *) ctx;
    struct gen_perf_context *perf_ctx = ice->perf_ctx;
+   struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
-   bool monitor_ready = gen_perf_is_query_ready(perf_ctx, monitor->query,
-                                                &ice->batches[IRIS_BATCH_RENDER]);
+   bool monitor_ready =
+      gen_perf_is_query_ready(perf_ctx, monitor->query, batch);
 
    if (!monitor_ready) {
       if (!wait)
          return false;
-      gen_perf_wait_query(perf_ctx, monitor->query,
-                          &ice->batches[IRIS_BATCH_RENDER]);
+      gen_perf_wait_query(perf_ctx, monitor->query, batch);
    }
 
-   assert (gen_perf_is_query_ready(perf_ctx, monitor->query,
-                                   &ice->batches[IRIS_BATCH_RENDER]));
+   assert(gen_perf_is_query_ready(perf_ctx, monitor->query, batch));
 
    unsigned bytes_written;
    gen_perf_get_query_data(perf_ctx, monitor->query,
