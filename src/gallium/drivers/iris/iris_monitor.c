@@ -472,6 +472,7 @@ iris_get_monitor_result(struct pipe_context *ctx,
       case GEN_PERF_COUNTER_DATA_TYPE_DOUBLE: {
          double v = *(double*)(monitor->result_buffer + counter->offset);
          result[i].f = v;
+         break;
       }
       default:
          unreachable("unexpected counter data type");
