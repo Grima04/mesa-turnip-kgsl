@@ -462,8 +462,10 @@ iris_create_batch_query(struct pipe_context *ctx,
    q->type = PIPE_QUERY_DRIVER_SPECIFIC;
    q->index = -1;
    q->monitor = iris_create_monitor_object(ice, num_queries, query_types);
-   if (unlikely(!q->monitor))
+   if (unlikely(!q->monitor)) {
+      free(q);
       return NULL;
+   }
 
    return (struct pipe_query *) q;
 }
