@@ -94,6 +94,34 @@ etna_clear_blit_pack_rgba(enum pipe_format format, const union pipe_color_union 
 }
 
 static void
+etna_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
+{
+   struct etna_context *ctx = etna_context(pctx);
+   struct pipe_blit_info info = *blit_info;
+
+   if (ctx->blit(pctx, &info))
+      return;
+
+   if (util_try_blit_via_copy_region(pctx, &info))
+      return;
+
+   if (info.mask & PIPE_MASK_S) {
+      DBG("cannot blit stencil, skipping");
+      info.mask &= ~PIPE_MASK_S;
+   }
+
+   if (!util_blitter_is_blit_supported(ctx->blitter, &info)) {
+      DBG("blit unsupported %s -> %s",
+          util_format_short_name(info.src.resource->format),
+          util_format_short_name(info.dst.resource->format));
+      return;
+   }
+
+   etna_blit_save_state(ctx);
+   util_blitter_blit(ctx->blitter, &info);
+}
+
+static void
 etna_clear_render_target(struct pipe_context *pctx, struct pipe_surface *dst,
                          const union pipe_color_union *color, unsigned dstx,
                          unsigned dsty, unsigned width, unsigned height,
@@ -238,6 +266,7 @@ etna_clear_blit_init(struct pipe_context *pctx)
    struct etna_context *ctx = etna_context(pctx);
    struct etna_screen *screen = ctx->screen;
 
+   pctx->blit = etna_blit;
    pctx->clear_render_target = etna_clear_render_target;
    pctx->clear_depth_stencil = etna_clear_depth_stencil;
    pctx->resource_copy_region = etna_resource_copy_region;

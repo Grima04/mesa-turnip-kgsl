@@ -803,7 +803,7 @@ manual:
    return false;
 }
 
-static void
+static bool
 etna_blit_rs(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
 {
    /* This is a more extended version of resource_copy_region */
@@ -820,43 +820,24 @@ etna_blit_rs(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
     *
     * For the rest, fall back to util_blitter
     * XXX this goes wrong when source surface is supertiled. */
-   struct etna_context *ctx = etna_context(pctx);
-   struct pipe_blit_info info = *blit_info;
 
-   if (info.src.resource->nr_samples > 1 &&
-       info.dst.resource->nr_samples <= 1 &&
-       !util_format_is_depth_or_stencil(info.src.resource->format) &&
-       !util_format_is_pure_integer(info.src.resource->format)) {
+   if (blit_info->src.resource->nr_samples > 1 &&
+       blit_info->dst.resource->nr_samples <= 1 &&
+       !util_format_is_depth_or_stencil(blit_info->src.resource->format) &&
+       !util_format_is_pure_integer(blit_info->src.resource->format)) {
       DBG("color resolve unimplemented");
-      return;
+      return false;
    }
 
-   if (etna_try_rs_blit(pctx, blit_info))
-      return;
-
-   if (util_try_blit_via_copy_region(pctx, blit_info))
-      return;
-
-   if (info.mask & PIPE_MASK_S) {
-      DBG("cannot blit stencil, skipping");
-      info.mask &= ~PIPE_MASK_S;
-   }
-
-   if (!util_blitter_is_blit_supported(ctx->blitter, &info)) {
-      DBG("blit unsupported %s -> %s",
-          util_format_short_name(info.src.resource->format),
-          util_format_short_name(info.dst.resource->format));
-      return;
-   }
-
-   etna_blit_save_state(ctx);
-   util_blitter_blit(ctx->blitter, &info);
+   return etna_try_rs_blit(pctx, blit_info);
 }
 
 void
 etna_clear_blit_rs_init(struct pipe_context *pctx)
 {
+   struct etna_context *ctx = etna_context(pctx);
+
    DBG("etnaviv: Using RS blit engine");
    pctx->clear = etna_clear_rs;
-   pctx->blit = etna_blit_rs;
+   ctx->blit = etna_blit_rs;
 }
