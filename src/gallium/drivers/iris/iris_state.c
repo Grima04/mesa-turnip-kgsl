@@ -4373,9 +4373,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                       GENX(CC_VIEWPORT_length), 32, &cc_vp_address);
       for (int i = 0; i < ice->state.num_viewports; i++) {
          float zmin, zmax;
-         iris_viewport_zmin_zmax(&ice->state.viewports[i],
+         iris_viewport_zmin_zmax(&ice->state.viewports[i], cso_rast->clip_halfz,
                                  ice->state.window_space_position,
-                                 cso_rast->clip_halfz, &zmin, &zmax);
+                                 &zmin, &zmax);
          if (cso_rast->depth_clip_near)
             zmin = 0.0;
          if (cso_rast->depth_clip_far)
