@@ -247,9 +247,15 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
     *        | lt_zero + lt_zero
     *        ;
     *
-    * eq_zero: eq_zero + eq_zero
+    * ne_zero: eq_zero + ne_zero
+    *        | ne_zero + eq_zero   # Addition is commutative
+    *        ;
     *
-    * All other cases are 'unknown'.
+    * eq_zero: eq_zero + eq_zero
+    *        ;
+    *
+    * All other cases are 'unknown'.  The seeming odd entry is (ne_zero,
+    * ne_zero), but that could be (-5, +5) which is not ne_zero.
     */
    static const enum ssa_ranges fadd_table[last_range + 1][last_range + 1] = {
       /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
@@ -258,12 +264,11 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       /* le_zero */ { _______, lt_zero, le_zero, _______, _______, _______, le_zero },
       /* gt_zero */ { _______, _______, _______, gt_zero, gt_zero, _______, gt_zero },
       /* ge_zero */ { _______, _______, _______, gt_zero, ge_zero, _______, ge_zero },
-      /* ne_zero */ { _______, _______, _______, _______, _______, ne_zero, ne_zero },
+      /* ne_zero */ { _______, _______, _______, _______, _______, _______, ne_zero },
       /* eq_zero */ { _______, lt_zero, le_zero, gt_zero, ge_zero, ne_zero, eq_zero },
    };
 
    ASSERT_TABLE_IS_COMMUTATIVE(fadd_table);
-   ASSERT_TABLE_IS_DIAGONAL(fadd_table);
 
    /* Due to flush-to-zero semanatics of floating-point numbers with very
     * small mangnitudes, we can never really be sure a result will be
