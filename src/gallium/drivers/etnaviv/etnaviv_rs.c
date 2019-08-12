@@ -265,7 +265,7 @@ etna_submit_rs_state(struct etna_context *ctx,
 /* Generate clear command for a surface (non-fast clear case) */
 void
 etna_rs_gen_clear_surface(struct etna_context *ctx, struct etna_surface *surf,
-                          uint32_t clear_value)
+                          uint64_t clear_value)
 {
    struct etna_resource *dst = etna_resource(surf->base.texture);
    uint32_t format;
@@ -301,7 +301,7 @@ etna_rs_gen_clear_surface(struct etna_context *ctx, struct etna_surface *surf,
       .dither = {0xffffffff, 0xffffffff},
       .width = surf->surf.padded_width, /* These must be padded to 16x4 if !LINEAR, otherwise RS will hang */
       .height = surf->surf.padded_height,
-      .clear_value = {clear_value},
+      .clear_value = {clear_value, clear_value >> 32, clear_value, clear_value >> 32},
       .clear_mode = VIVS_RS_CLEAR_CONTROL_MODE_ENABLED1,
       .clear_bits = 0xffff
    });
@@ -313,10 +313,11 @@ etna_blit_clear_color_rs(struct pipe_context *pctx, struct pipe_surface *dst,
 {
    struct etna_context *ctx = etna_context(pctx);
    struct etna_surface *surf = etna_surface(dst);
-   uint32_t new_clear_value = etna_clear_blit_pack_rgba(surf->base.format, color->f);
+   uint64_t new_clear_value = etna_clear_blit_pack_rgba(surf->base.format, color);
 
    if (surf->surf.ts_size) { /* TS: use precompiled clear command */
       ctx->framebuffer.TS_COLOR_CLEAR_VALUE = new_clear_value;
+      ctx->framebuffer.TS_COLOR_CLEAR_VALUE_EXT = new_clear_value >> 32;
 
       if (VIV_FEATURE(ctx->screen, chipMinorFeatures1, AUTO_DISABLE)) {
          /* Set number of color tiles to be filled */
@@ -742,6 +743,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
       etna_set_state_reloc(ctx->stream, VIVS_TS_COLOR_SURFACE_BASE, &reloc);
 
       etna_set_state(ctx->stream, VIVS_TS_COLOR_CLEAR_VALUE, src_lev->clear_value);
+      etna_set_state(ctx->stream, VIVS_TS_COLOR_CLEAR_VALUE_EXT, src_lev->clear_value >> 32);
 
       source_ts_valid = true;
    } else {

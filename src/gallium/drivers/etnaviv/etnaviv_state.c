@@ -187,6 +187,7 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
 
       if (cbuf->surf.ts_size) {
          cs->TS_COLOR_CLEAR_VALUE = cbuf->level->clear_value;
+         cs->TS_COLOR_CLEAR_VALUE_EXT = cbuf->level->clear_value >> 32;
 
          cs->TS_COLOR_STATUS_BASE = cbuf->ts_reloc;
          cs->TS_COLOR_STATUS_BASE.flags = ETNA_RELOC_READ | ETNA_RELOC_WRITE;

@@ -212,6 +212,7 @@ struct compiled_framebuffer_state {
    struct etna_reloc TS_DEPTH_STATUS_BASE;
    struct etna_reloc TS_DEPTH_SURFACE_BASE;
    uint32_t TS_COLOR_CLEAR_VALUE;
+   uint32_t TS_COLOR_CLEAR_VALUE_EXT;
    struct etna_reloc TS_COLOR_STATUS_BASE;
    struct etna_reloc TS_COLOR_SURFACE_BASE;
    uint32_t PE_LOGIC_OP;
