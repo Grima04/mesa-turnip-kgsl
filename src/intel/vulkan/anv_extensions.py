@@ -149,7 +149,7 @@ EXTENSIONS = [
     Extension('VK_EXT_shader_demote_to_helper_invocation', 1, True),
     Extension('VK_EXT_shader_stencil_export',             1, 'device->info.gen >= 9'),
     Extension('VK_EXT_shader_viewport_index_layer',       1, True),
-    Extension('VK_EXT_subgroup_size_control',             1, True),
+    Extension('VK_EXT_subgroup_size_control',             2, True),
     Extension('VK_EXT_texel_buffer_alignment',            1, True),
     Extension('VK_EXT_transform_feedback',                1, 'device->info.gen >= 8'),
     Extension('VK_EXT_vertex_attribute_divisor',          3, True),
