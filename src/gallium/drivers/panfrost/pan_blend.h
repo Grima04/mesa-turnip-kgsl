@@ -99,6 +99,10 @@ struct panfrost_blend_final {
         /* Set for a shader, clear for an equation */
         bool is_shader;
 
+        /* Set if the destination needs to be loaded from the tilebuffer,
+         * basically (for an equation) or if a shader is present */
+        bool no_blending;
+
         union {
                 struct panfrost_blend_shader_final shader;
                 struct panfrost_blend_equation_final equation;

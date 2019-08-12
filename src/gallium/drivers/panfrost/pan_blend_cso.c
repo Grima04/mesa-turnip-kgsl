@@ -108,18 +108,23 @@ panfrost_create_blend_state(struct pipe_context *pipe,
         assert(!blend->alpha_to_coverage);
         assert(!blend->alpha_to_one);
 
-        for (unsigned c = 0; c < 4; ++c) {
+        for (unsigned c = 0; c < PIPE_MAX_COLOR_BUFS; ++c) {
                 struct panfrost_blend_rt *rt = &so->rt[c];
 
                 /* There are two paths. First, we would like to try a
                  * fixed-function if we can */
 
+                /* Without indep blending, the first RT settings replicate */
+
+                unsigned g =
+                        blend->independent_blend_enable ? c : 0;
+
                 rt->has_fixed_function =
                         panfrost_make_fixed_blend_mode(
-                                &blend->rt[c],
+                                &blend->rt[g],
                                 &rt->equation,
                                 &rt->constant_mask,
-                                blend->rt[c].colormask);
+                                blend->rt[g].colormask);
 
                 /* Regardless if that works, we also need to initialize
                  * the blend shaders */
@@ -249,6 +254,12 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
                         /* There's an equation and suitable constant, so we're good to go */
                         final.is_shader = false;
                         final.equation.equation = &rt->equation;
+
+                        final.no_blending =
+                                (rt->equation.rgb_mode == 0x122) &&
+                                (rt->equation.alpha_mode == 0x122) &&
+                                (rt->equation.color_mask == 0xf);
+
                         return final;
                 }
         }
@@ -256,6 +267,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         /* Otherwise, we need to grab a shader */
         struct panfrost_blend_shader *shader = panfrost_get_blend_shader(ctx, blend, fmt, rti);
         final.is_shader = true;
+        final.no_blending = false;
         final.shader.work_count = shader->work_count;
         final.shader.first_tag = shader->first_tag;
 

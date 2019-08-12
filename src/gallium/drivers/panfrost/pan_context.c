@@ -968,13 +968,19 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 #undef COPY
 
                 /* Get blending setup */
-                struct panfrost_blend_final blend =
-                        panfrost_get_blend_for_context(ctx, 0);
+                unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
 
-                /* If there is a blend shader, work registers are shared */
+                struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
 
-                if (blend.is_shader)
-                        ctx->fragment_shader_core.midgard1.work_count = /*MAX2(ctx->fragment_shader_core.midgard1.work_count, ctx->blend->blend_work_count)*/16;
+                for (unsigned c = 0; c < rt_count; ++c)
+                        blend[c] = panfrost_get_blend_for_context(ctx, c);
+
+                /* If there is a blend shader, work registers are shared. XXX: opt */
+
+                for (unsigned c = 0; c < rt_count; ++c) {
+                        if (blend[c].is_shader)
+                                ctx->fragment_shader_core.midgard1.work_count = 16;
+                }
 
                 /* Set late due to depending on render state */
                 unsigned flags = ctx->fragment_shader_core.midgard1.flags;
@@ -1014,22 +1020,14 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         ctx->fragment_shader_core.midgard1.flags |= 0x400;
                 }
 
-                /* Check if we're using the default blend descriptor (fast path) */
-
-                bool no_blending =
-                        !blend.is_shader &&
-                        (blend.equation.equation->rgb_mode == 0x122) &&
-                        (blend.equation.equation->alpha_mode == 0x122) &&
-                        (blend.equation.equation->color_mask == 0xf);
-
                 /* Even on MFBD, the shader descriptor gets blend shaders. It's
                  * *also* copied to the blend_meta appended (by convention),
                  * but this is the field actually read by the hardware. (Or
                  * maybe both are read...?) */
 
-                if (blend.is_shader) {
+                if (blend[0].is_shader) {
                         ctx->fragment_shader_core.blend.shader =
-                                blend.shader.bo->gpu | blend.shader.first_tag;
+                                blend[0].shader.bo->gpu | blend[0].shader.first_tag;
                 } else {
                         ctx->fragment_shader_core.blend.shader = 0;
                 }
@@ -1040,19 +1038,19 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                          * additionally need to signal CAN_DISCARD for nontrivial blend
                          * modes (so we're able to read back the destination buffer) */
 
-                        if (!blend.is_shader) {
+                        if (!blend[0].is_shader) {
                                 ctx->fragment_shader_core.blend.equation =
-                                        *blend.equation.equation;
+                                        *blend[0].equation.equation;
                                 ctx->fragment_shader_core.blend.constant =
-                                        blend.equation.constant;
+                                        blend[0].equation.constant;
                         }
 
-                        if (!no_blending) {
+                        if (!blend[0].no_blending) {
                                 ctx->fragment_shader_core.unknown2_3 |= MALI_CAN_DISCARD;
                         }
                 }
 
-                size_t size = sizeof(struct mali_shader_meta) + sizeof(struct midgard_blend_rt);
+                size_t size = sizeof(struct mali_shader_meta) + (sizeof(struct midgard_blend_rt) * rt_count);
                 struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
                 memcpy(transfer.cpu, &ctx->fragment_shader_core, sizeof(struct mali_shader_meta));
 
@@ -1061,27 +1059,27 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 if (!screen->require_sfbd) {
                         /* Additional blend descriptor tacked on for jobs using MFBD */
 
-                        unsigned blend_count = 0x200;
-
-                        if (blend.is_shader) {
-                                /* For a blend shader, the bottom nibble corresponds to
-                                 * the number of work registers used, which signals the
-                                 * -existence- of a blend shader */
-
-                                assert(blend.shader.work_count >= 2);
-                                blend_count |= MIN2(blend.shader.work_count, 3);
-                        } else {
-                                /* Otherwise, the bottom bit simply specifies if
-                                 * blending (anything other than REPLACE) is enabled */
-
-
-                                if (!no_blending)
-                                        blend_count |= 0x1;
-                        }
-
                         struct midgard_blend_rt rts[4];
 
-                        for (unsigned i = 0; i < 1; ++i) {
+                        for (unsigned i = 0; i < rt_count; ++i) {
+                                unsigned blend_count = 0x200;
+
+                                if (blend[i].is_shader) {
+                                        /* For a blend shader, the bottom nibble corresponds to
+                                         * the number of work registers used, which signals the
+                                         * -existence- of a blend shader */
+
+                                        assert(blend[i].shader.work_count >= 2);
+                                        blend_count |= MIN2(blend[i].shader.work_count, 3);
+                                } else {
+                                        /* Otherwise, the bottom bit simply specifies if
+                                         * blending (anything other than REPLACE) is enabled */
+
+                                        if (!blend[i].no_blending)
+                                                blend_count |= 0x1;
+                                }
+
+
                                 bool is_srgb =
                                         (ctx->pipe_framebuffer.nr_cbufs > i) &&
                                         (ctx->pipe_framebuffer.cbufs[i]) &&
@@ -1101,17 +1099,17 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                  * native Midgard ops for helping here, but
                                  * they're not well-understood yet. */
 
-                                assert(!(is_srgb && blend.is_shader));
+                                assert(!(is_srgb && blend[i].is_shader));
 
-                                if (blend.is_shader) {
-                                        rts[i].blend.shader = blend.shader.bo->gpu | blend.shader.first_tag;
+                                if (blend[i].is_shader) {
+                                        rts[i].blend.shader = blend[i].shader.bo->gpu | blend[i].shader.first_tag;
                                 } else {
-                                        rts[i].blend.equation = *blend.equation.equation;
-                                        rts[i].blend.constant = blend.equation.constant;
+                                        rts[i].blend.equation = *blend[i].equation.equation;
+                                        rts[i].blend.constant = blend[i].equation.constant;
                                 }
                         }
 
-                        memcpy(transfer.cpu + sizeof(struct mali_shader_meta), rts, sizeof(rts[0]) * 1);
+                        memcpy(transfer.cpu + sizeof(struct mali_shader_meta), rts, sizeof(rts[0]) * rt_count);
                 }
         }
 
