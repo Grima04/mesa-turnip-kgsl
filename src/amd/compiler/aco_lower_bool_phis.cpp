@@ -29,6 +29,7 @@
 
 #include "aco_ir.h"
 #include "aco_builder.h"
+#include <algorithm>
 
 
 namespace aco {
@@ -120,24 +121,19 @@ Temp write_ssa(Program *program, Block *block, ssa_state *state, unsigned previo
    return {id, s2};
 }
 
-void insert_before_branch(Block *block, aco_ptr<Instruction> instr)
-{
-   int end = block->instructions.size() - 1;
-   if (block->instructions[end]->format == Format::PSEUDO_BRANCH)
-      block->instructions.emplace(std::prev(block->instructions.end()), std::move(instr));
-   else
-      block->instructions.emplace_back(std::move(instr));
-}
-
 void insert_before_logical_end(Block *block, aco_ptr<Instruction> instr)
 {
-   for (int i = block->instructions.size() - 1; i >= 0; --i) {
-      if (block->instructions[i]->opcode == aco_opcode::p_logical_end) {
-         block->instructions.emplace(std::next(block->instructions.begin(), i), std::move(instr));
-         return;
-      }
+   auto IsLogicalEnd = [] (const aco_ptr<Instruction>& instr) -> bool {
+      return instr->opcode == aco_opcode::p_logical_end;
+   };
+   auto it = std::find_if(block->instructions.crbegin(), block->instructions.crend(), IsLogicalEnd);
+
+   if (it == block->instructions.crend()) {
+      assert(block->instructions.back()->format == Format::PSEUDO_BRANCH);
+      block->instructions.insert(std::prev(block->instructions.end()), std::move(instr));
    }
-   insert_before_branch(block, std::move(instr));
+   else
+      block->instructions.insert(std::prev(it.base()), std::move(instr));
 }
 
 aco_ptr<Instruction> lower_divergent_bool_phi(Program *program, Block *block, aco_ptr<Instruction>& phi)
