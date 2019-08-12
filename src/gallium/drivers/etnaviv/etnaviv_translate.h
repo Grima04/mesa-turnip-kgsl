@@ -307,6 +307,28 @@ translate_vertex_format_normalize(enum pipe_format fmt)
 }
 
 static inline uint32_t
+translate_output_mode(enum pipe_format fmt, bool halti5)
+{
+   const unsigned bits =
+      util_format_get_component_bits(fmt, UTIL_FORMAT_COLORSPACE_RGB, 0);
+
+   if (bits == 32)
+      return COLOR_OUTPUT_MODE_UIF32;
+
+   if (!util_format_is_pure_integer(fmt))
+      return COLOR_OUTPUT_MODE_NORMAL;
+
+   /* generic integer output mode pre-halti5 (?) */
+   if (bits == 10 || !halti5)
+      return COLOR_OUTPUT_MODE_A2B10G10R10UI;
+
+   if (util_format_is_pure_sint(fmt))
+      return bits == 8 ? COLOR_OUTPUT_MODE_I8 : COLOR_OUTPUT_MODE_I16;
+
+   return bits == 8 ? COLOR_OUTPUT_MODE_U8 : COLOR_OUTPUT_MODE_U16;
+}
+
+static inline uint32_t
 translate_index_size(unsigned index_size)
 {
    switch (index_size) {

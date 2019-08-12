@@ -216,6 +216,8 @@ struct compiled_framebuffer_state {
    struct etna_reloc TS_COLOR_STATUS_BASE;
    struct etna_reloc TS_COLOR_SURFACE_BASE;
    uint32_t PE_LOGIC_OP;
+   uint32_t PS_CONTROL;
+   uint32_t PS_CONTROL_EXT;
    bool msaa_mode; /* adds input (and possible temp) to PS */
 };
 
@@ -256,7 +258,6 @@ struct compiled_shader_state {
    uint32_t PS_INPUT_COUNT_MSAA; /* Adds an input */
    uint32_t PS_TEMP_REGISTER_CONTROL;
    uint32_t PS_TEMP_REGISTER_CONTROL_MSAA; /* Adds a temporary if needed to make space for extra input */
-   uint32_t PS_CONTROL;
    uint32_t PS_START_PC;
    uint32_t PE_DEPTH_CONFIG;
    uint32_t GL_VARYING_TOTAL_COMPONENTS;

@@ -213,6 +213,10 @@ etna_set_framebuffer_state(struct pipe_context *pctx,
 
       if (util_format_is_srgb(cbuf->base.format))
          pe_logic_op |= VIVS_PE_LOGIC_OP_SRGB;
+
+      cs->PS_CONTROL = COND(util_format_is_unorm(cbuf->base.format), VIVS_PS_CONTROL_SATURATE_RT0);
+      cs->PS_CONTROL_EXT =
+         VIVS_PS_CONTROL_EXT_OUTPUT_MODE0(translate_output_mode(cbuf->base.format, ctx->specs.halti >= 5));
    } else {
       /* Clearing VIVS_PE_COLOR_FORMAT_COMPONENTS__MASK and
        * VIVS_PE_COLOR_FORMAT_OVERWRITE prevents us from overwriting the
