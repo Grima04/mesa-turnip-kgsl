@@ -268,9 +268,6 @@ typedef struct compiler_context {
         /* Alpha ref value passed in */
         float alpha_ref;
 
-        /* The index corresponding to the fragment output */
-        unsigned fragment_output;
-
         /* The mapping of sysvals to uniforms, the count, and the off-by-one inverse */
         unsigned sysvals[MAX_SYSVAL_COUNT];
         unsigned sysval_count;

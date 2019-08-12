@@ -1342,6 +1342,64 @@ compute_builtin_arg(nir_op op)
         }
 }
 
+/* Emit store for a fragment shader, which is encoded via a fancy branch. TODO:
+ * Handle MRT here */
+
+static void
+emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
+{
+        /* First, move in whatever we're outputting */
+        midgard_instruction move = v_mov(src, blank_alu_src, SSA_FIXED_REGISTER(0));
+        if (rt != 0) {
+                /* Force a tight schedule. TODO: Make the scheduler MRT aware */
+                move.unit = UNIT_VMUL;
+                move.precede_break = true;
+                move.dont_eliminate = true;
+        }
+
+        emit_mir_instruction(ctx, move);
+
+        /* If we're doing MRT, we need to specify the render target */
+
+        midgard_instruction rt_move = {
+                .ssa_args = {
+                        .dest = -1
+                }
+        };
+
+        if (rt != 0) {
+                /* We'll write to r1.z */
+                rt_move = v_mov(-1, blank_alu_src, SSA_FIXED_REGISTER(1));
+                rt_move.mask = 1 << COMPONENT_Z;
+                rt_move.unit = UNIT_SADD;
+
+                /* r1.z = (rt * 0x100) */
+                rt_move.ssa_args.inline_constant = true;
+                rt_move.inline_constant = (rt * 0x100);
+
+                /* r1 */
+                ctx->work_registers = MAX2(ctx->work_registers, 1);
+
+                /* Do the write */
+                emit_mir_instruction(ctx, rt_move);
+        }
+
+        /* Next, generate the branch. For R render targets in the writeout, the
+         * i'th render target jumps to pseudo-offset [2(R-1) + i] */
+
+        unsigned offset = (2 * (ctx->nir->num_outputs - 1)) + rt;
+
+        struct midgard_instruction ins =
+                v_alu_br_compact_cond(midgard_jmp_writeout_op_writeout, TAG_ALU_4, offset, midgard_condition_always);
+
+        /* Add dependencies */
+        ins.ssa_args.src[0] = move.ssa_args.dest;
+        ins.ssa_args.src[1] = rt_move.ssa_args.dest;
+
+        /* Emit the branch */
+        emit_mir_instruction(ctx, ins);
+}
+
 static void
 emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1501,19 +1559,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_src_index(ctx, &instr->src[0]);
 
                 if (ctx->stage == MESA_SHADER_FRAGMENT) {
-                        /* gl_FragColor is not emitted with load/store
-                         * instructions. Instead, it gets plonked into
-                         * r0 at the end of the shader and we do the
-                         * framebuffer writeout dance. TODO: Defer
-                         * writes */
-
-                        midgard_instruction move = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
-                        emit_mir_instruction(ctx, move);
-
-                        /* Save the index we're writing to for later reference
-                         * in the epilogue */
-
-                        ctx->fragment_output = reg;
+                        /* Determine number of render targets */
+                        emit_fragment_store(ctx, reg, offset);
                 } else if (ctx->stage == MESA_SHADER_VERTEX) {
                         /* We should have been vectorized, though we don't
                          * currently check that st_vary is emitted only once
@@ -1543,10 +1590,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_store_raw_output_pan:
                 assert (ctx->stage == MESA_SHADER_FRAGMENT);
                 reg = nir_src_index(ctx, &instr->src[0]);
-
-                midgard_instruction move = v_mov(reg, blank_alu_src, SSA_FIXED_REGISTER(0));
-                emit_mir_instruction(ctx, move);
-                ctx->fragment_output = reg;
+                emit_fragment_store(ctx, reg, 0);
 
                 break;
 
@@ -2202,13 +2246,7 @@ midgard_opt_pos_propagate(compiler_context *ctx, midgard_block *block)
 static void
 emit_fragment_epilogue(compiler_context *ctx)
 {
-        emit_explicit_constant(ctx, ctx->fragment_output, SSA_FIXED_REGISTER(0));
-
-        /* Perform the actual fragment writeout. We have two writeout/branch
-         * instructions, forming a loop until writeout is successful as per the
-         * docs. TODO: gl_FragDepth */
-
-        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, 0, midgard_condition_always);
+        /* Just emit the last chunk with the branch */
         EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, -1, midgard_condition_always);
 }
 
