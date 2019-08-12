@@ -2290,10 +2290,15 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 
         const char *fbd_type = s->framebuffer & MALI_MFBD ? "MALI_MFBD" : "MALI_SFBD";
 
+        /* TODO: Decode */
+        unsigned extra_flags = (s->framebuffer & ~FBD_MASK) & ~MALI_MFBD;
+
         if (fbd_dumped)
-                pandecode_prop("framebuffer = framebuffer_%d_p | %s", job_no, fbd_type);
+                pandecode_prop("framebuffer = framebuffer_%d_p | %s | 0x%X", job_no,
+                                fbd_type, extra_flags);
         else
-                pandecode_prop("framebuffer = %s | %s", pointer_as_memory_reference(p), fbd_type);
+                pandecode_prop("framebuffer = %s | %s | 0x%X", pointer_as_memory_reference(p),
+                                fbd_type, extra_flags);
 
         pandecode_indent--;
         pandecode_log("};\n");
