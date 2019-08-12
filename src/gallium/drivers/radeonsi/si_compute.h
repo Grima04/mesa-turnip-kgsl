@@ -29,8 +29,6 @@
 
 #include "si_shader.h"
 
-#define MAX_GLOBAL_BUFFERS 32
-
 struct si_compute {
 	struct si_shader_selector sel;
 	struct si_shader shader;
@@ -40,7 +38,9 @@ struct si_compute {
 	unsigned private_size;
 	unsigned input_size;
 
-	struct pipe_resource *global_buffers[MAX_GLOBAL_BUFFERS];
+	int max_global_buffers;
+	struct pipe_resource **global_buffers;
+
 	bool reads_variable_block_size;
 	unsigned num_cs_user_data_dwords;
 };

@@ -318,7 +318,22 @@ static void si_set_global_binding(
 	struct si_context *sctx = (struct si_context*)ctx;
 	struct si_compute *program = sctx->cs_shader_state.program;
 
-	assert(first + n <= MAX_GLOBAL_BUFFERS);
+	if (first + n > program->max_global_buffers) {
+		unsigned old_max = program->max_global_buffers;
+		program->max_global_buffers = first + n;
+		program->global_buffers =
+			realloc(program->global_buffers,
+				program->max_global_buffers *
+				sizeof(program->global_buffers[0]));
+		if (!program->global_buffers) {
+			fprintf(stderr, "radeonsi: failed to allocate compute global_buffers\n");
+			return;
+		}
+
+		memset(&program->global_buffers[old_max], 0,
+		       (program->max_global_buffers - old_max) *
+		       sizeof(program->global_buffers[0]));
+	}
 
 	if (!resources) {
 		for (i = 0; i < n; i++) {
@@ -912,7 +927,7 @@ static void si_launch_grid(
 		return;
 
 	/* Global buffers */
-	for (i = 0; i < MAX_GLOBAL_BUFFERS; i++) {
+	for (i = 0; i < program->max_global_buffers; i++) {
 		struct si_resource *buffer =
 			si_resource(program->global_buffers[i]);
 		if (!buffer) {
@@ -951,6 +966,10 @@ void si_destroy_compute(struct si_compute *program)
 				    &sel->ready);
 		util_queue_fence_destroy(&sel->ready);
 	}
+
+	for (unsigned i = 0; i < program->max_global_buffers; i++)
+		pipe_resource_reference(&program->global_buffers[i], NULL);
+	FREE(program->global_buffers);
 
 	si_shader_destroy(&program->shader);
 	ralloc_free(program->sel.nir);
