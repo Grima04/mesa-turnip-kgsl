@@ -384,6 +384,16 @@ static const struct vgpu10_format_entry format_conversion_table[] =
 };
 
 
+static const struct vgpu10_format_entry *
+svga_format_entry(enum pipe_format format)
+{
+   assert(format < ARRAY_SIZE(format_conversion_table));
+   if (format >= ARRAY_SIZE(format_conversion_table))
+      return &format_conversion_table[PIPE_FORMAT_NONE];
+   else
+      return &format_conversion_table[format];
+}
+
 /**
  * Translate a gallium vertex format to a vgpu10 vertex format.
  * Also, return any special vertex format flags.
@@ -393,12 +403,10 @@ svga_translate_vertex_format_vgpu10(enum pipe_format format,
                                     SVGA3dSurfaceFormat *svga_format,
                                     unsigned *vf_flags)
 {
-   assert(format < ARRAY_SIZE(format_conversion_table));
-   if (format >= ARRAY_SIZE(format_conversion_table)) {
-      format = PIPE_FORMAT_NONE;
-   }
-   *svga_format = format_conversion_table[format].vertex_format;
-   *vf_flags = format_conversion_table[format].flags;
+   const struct vgpu10_format_entry *entry = svga_format_entry(format);
+
+   *svga_format = entry->vertex_format;
+   *vf_flags = entry->flags;
 }
 
 
@@ -413,12 +421,10 @@ svga_translate_texture_buffer_view_format(enum pipe_format format,
                                           SVGA3dSurfaceFormat *svga_format,
                                           unsigned *tf_flags)
 {
-   assert(format < ARRAY_SIZE(format_conversion_table));
-   if (format >= ARRAY_SIZE(format_conversion_table)) {
-      format = PIPE_FORMAT_NONE;
-   }
-   *svga_format = format_conversion_table[format].view_format;
-   *tf_flags = format_conversion_table[format].flags;
+   const struct vgpu10_format_entry *entry = svga_format_entry(format);
+
+   *svga_format = entry->view_format;
+   *tf_flags = entry->flags;
 }
 
 
@@ -453,15 +459,17 @@ svga_translate_format(const struct svga_screen *ss,
                       enum pipe_format format,
                       unsigned bind)
 {
+   const struct vgpu10_format_entry *entry = svga_format_entry(format);
+
    if (ss->sws->have_vgpu10) {
       if (bind & (PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_INDEX_BUFFER)) {
-         return format_conversion_table[format].vertex_format;
+         return entry->vertex_format;
       }
       else if (bind & PIPE_BIND_SCANOUT) {
          return svga_translate_screen_target_format_vgpu10(format);
       }
       else {
-         return format_conversion_table[format].pixel_format;
+         return entry->pixel_format;
       }
    }
 
@@ -1914,8 +1922,9 @@ svga_format_is_integer(SVGA3dSurfaceFormat format)
 boolean
 svga_format_support_gen_mips(enum pipe_format format)
 {
-   assert(format < ARRAY_SIZE(format_conversion_table));
-   return ((format_conversion_table[format].flags & TF_GEN_MIPS) > 0);
+   const struct vgpu10_format_entry *entry = svga_format_entry(format);
+
+   return (entry->flags & TF_GEN_MIPS) > 0;
 }
 
 
