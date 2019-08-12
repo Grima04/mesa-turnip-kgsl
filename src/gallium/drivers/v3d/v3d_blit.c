@@ -380,8 +380,8 @@ v3d_tfu(struct pipe_context *pctx,
         if (dst_base_slice->tiling == VC5_TILING_RASTER)
                 return false;
 
-        v3d_flush_jobs_writing_resource(v3d, psrc, false);
-        v3d_flush_jobs_reading_resource(v3d, pdst);
+        v3d_flush_jobs_writing_resource(v3d, psrc, V3D_FLUSH_DEFAULT);
+        v3d_flush_jobs_reading_resource(v3d, pdst, V3D_FLUSH_DEFAULT);
 
         struct drm_v3d_submit_tfu tfu = {
                 .ios = (height << 16) | width,
@@ -537,5 +537,6 @@ v3d_blit(struct pipe_context *pctx, const struct pipe_blit_info *blit_info)
          * run into unexpected OOMs when blits are used for a large series of
          * texture uploads before using the textures.
          */
-        v3d_flush_jobs_writing_resource(v3d, info.dst.resource, false);
+        v3d_flush_jobs_writing_resource(v3d, info.dst.resource,
+                                        V3D_FLUSH_DEFAULT);
 }

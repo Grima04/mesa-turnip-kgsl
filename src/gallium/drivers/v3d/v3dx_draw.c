@@ -156,28 +156,34 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
                     view->base.format != PIPE_FORMAT_X32_S8X24_UINT)
                         v3d_update_shadow_texture(pctx, &view->base);
 
-                v3d_flush_jobs_writing_resource(v3d, view->texture, false);
+                v3d_flush_jobs_writing_resource(v3d, view->texture,
+                                                V3D_FLUSH_DEFAULT);
         }
 
         /* Flush writes to UBOs. */
         foreach_bit(i, v3d->constbuf[s].enabled_mask) {
                 struct pipe_constant_buffer *cb = &v3d->constbuf[s].cb[i];
-                if (cb->buffer)
-                        v3d_flush_jobs_writing_resource(v3d, cb->buffer, false);
+                if (cb->buffer) {
+                        v3d_flush_jobs_writing_resource(v3d, cb->buffer,
+                                                        V3D_FLUSH_DEFAULT);
+                }
         }
 
         /* Flush reads/writes to our SSBOs */
         foreach_bit(i, v3d->ssbo[s].enabled_mask) {
                 struct pipe_shader_buffer *sb = &v3d->ssbo[s].sb[i];
-                if (sb->buffer)
-                        v3d_flush_jobs_reading_resource(v3d, sb->buffer);
+                if (sb->buffer) {
+                        v3d_flush_jobs_reading_resource(v3d, sb->buffer,
+                                                        V3D_FLUSH_NOT_CURRENT_JOB);
+                }
         }
 
         /* Flush reads/writes to our image views */
         foreach_bit(i, v3d->shaderimg[s].enabled_mask) {
                 struct v3d_image_view *view = &v3d->shaderimg[s].si[i];
 
-                v3d_flush_jobs_reading_resource(v3d, view->base.resource);
+                v3d_flush_jobs_reading_resource(v3d, view->base.resource,
+                                                V3D_FLUSH_NOT_CURRENT_JOB);
         }
 
         /* Flush writes to our vertex buffers (i.e. from transform feedback) */
@@ -186,7 +192,7 @@ v3d_predraw_check_stage_inputs(struct pipe_context *pctx,
                         struct pipe_vertex_buffer *vb = &v3d->vertexbuf.vb[i];
 
                         v3d_flush_jobs_writing_resource(v3d, vb->buffer.resource,
-                                                        false);
+                                                        V3D_FLUSH_DEFAULT);
                 }
         }
 }
@@ -206,7 +212,8 @@ v3d_predraw_check_outputs(struct pipe_context *pctx)
 
                         const struct pipe_stream_output_target *target =
                                 so->targets[i];
-                        v3d_flush_jobs_reading_resource(v3d, target->buffer);
+                        v3d_flush_jobs_reading_resource(v3d, target->buffer,
+                                                        V3D_FLUSH_DEFAULT);
                 }
         }
 }
@@ -657,7 +664,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
 
         if (info->indirect) {
                 v3d_flush_jobs_writing_resource(v3d, info->indirect->buffer,
-                                                false);
+                                                V3D_FLUSH_DEFAULT);
         }
 
         v3d_predraw_check_outputs(pctx);

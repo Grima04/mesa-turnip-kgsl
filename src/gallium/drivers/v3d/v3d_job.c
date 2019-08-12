@@ -184,7 +184,7 @@ v3d_job_writes_resource_from_tf(struct v3d_job *job,
 void
 v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
                                 struct pipe_resource *prsc,
-                                bool always_flush)
+                                enum v3d_flush_cond flush_cond)
 {
         struct hash_entry *entry = _mesa_hash_table_search(v3d->write_jobs,
                                                            prsc);
@@ -193,21 +193,23 @@ v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
 
         struct v3d_job *job = entry->data;
 
-        /* For writes from TF in the same job we use the "Wait for TF"
-         * feature provided by the hardware so we don't want to flush.
-         * The exception to this is when the caller is about to map the
-         * resource since in that case we don't have a 'Wait for TF' command
-         * the in command stream. In this scenario the caller is expected
-         * to set 'always_flush' to True.
-         */
         bool needs_flush;
-        if (always_flush) {
+        switch (flush_cond) {
+        case V3D_FLUSH_ALWAYS:
                 needs_flush = true;
-        } else if (!v3d->job || v3d->job != job) {
-                /* Write from a different job: always flush */
-                needs_flush = true;
-        } else {
-                /* Write from currrent job: flush if not TF */
+                break;
+        case V3D_FLUSH_NOT_CURRENT_JOB:
+                needs_flush = !v3d->job || v3d->job != job;
+                break;
+        case V3D_FLUSH_DEFAULT:
+        default:
+                /* For writes from TF in the same job we use the "Wait for TF"
+                 * feature provided by the hardware so we don't want to flush.
+                 * The exception to this is when the caller is about to map the
+                 * resource since in that case we don't have a 'Wait for TF'
+                 * command the in command stream. In this scenario the caller
+                 * is expected to set 'always_flush' to True.
+                 */
                 needs_flush = !v3d_job_writes_resource_from_tf(job, prsc);
         }
 
@@ -217,7 +219,8 @@ v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
 
 void
 v3d_flush_jobs_reading_resource(struct v3d_context *v3d,
-                                struct pipe_resource *prsc)
+                                struct pipe_resource *prsc,
+                                enum v3d_flush_cond flush_cond)
 {
         struct v3d_resource *rsc = v3d_resource(prsc);
 
@@ -227,18 +230,32 @@ v3d_flush_jobs_reading_resource(struct v3d_context *v3d,
          * caller intends to write to the resource, so we don't care if
          * there was a previous TF write to it.
          */
-        v3d_flush_jobs_writing_resource(v3d, prsc, false);
+        v3d_flush_jobs_writing_resource(v3d, prsc, flush_cond);
 
         hash_table_foreach(v3d->jobs, entry) {
                 struct v3d_job *job = entry->data;
 
-                if (_mesa_set_search(job->bos, rsc->bo)) {
-                        v3d_job_submit(v3d, job);
-                        /* Reminder: v3d->jobs is safe to keep iterating even
-                         * after deletion of an entry.
-                         */
+                if (!_mesa_set_search(job->bos, rsc->bo))
                         continue;
+
+                bool needs_flush;
+                switch (flush_cond) {
+                case V3D_FLUSH_NOT_CURRENT_JOB:
+                        needs_flush = !v3d->job || v3d->job != job;
+                        break;
+                case V3D_FLUSH_ALWAYS:
+                case V3D_FLUSH_DEFAULT:
+                default:
+                        needs_flush = true;
                 }
+
+                if (needs_flush)
+                        v3d_job_submit(v3d, job);
+
+                /* Reminder: v3d->jobs is safe to keep iterating even
+                 * after deletion of an entry.
+                 */
+                continue;
         }
 }
 
@@ -311,7 +328,8 @@ v3d_get_job(struct v3d_context *v3d,
 
         for (int i = 0; i < V3D_MAX_DRAW_BUFFERS; i++) {
                 if (cbufs[i]) {
-                        v3d_flush_jobs_reading_resource(v3d, cbufs[i]->texture);
+                        v3d_flush_jobs_reading_resource(v3d, cbufs[i]->texture,
+                                                        V3D_FLUSH_DEFAULT);
                         pipe_surface_reference(&job->cbufs[i], cbufs[i]);
 
                         if (cbufs[i]->texture->nr_samples > 1)
@@ -319,7 +337,8 @@ v3d_get_job(struct v3d_context *v3d,
                 }
         }
         if (zsbuf) {
-                v3d_flush_jobs_reading_resource(v3d, zsbuf->texture);
+                v3d_flush_jobs_reading_resource(v3d, zsbuf->texture,
+                                                V3D_FLUSH_DEFAULT);
                 pipe_surface_reference(&job->zsbuf, zsbuf);
                 if (zsbuf->texture->nr_samples > 1)
                         job->msaa = true;
@@ -336,7 +355,8 @@ v3d_get_job(struct v3d_context *v3d,
                 struct v3d_resource *rsc = v3d_resource(zsbuf->texture);
                 if (rsc->separate_stencil) {
                         v3d_flush_jobs_reading_resource(v3d,
-                                                        &rsc->separate_stencil->base);
+                                                        &rsc->separate_stencil->base,
+                                                        V3D_FLUSH_DEFAULT);
                         _mesa_hash_table_insert(v3d->write_jobs,
                                                 &rsc->separate_stencil->base,
                                                 job);

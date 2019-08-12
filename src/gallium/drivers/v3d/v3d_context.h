@@ -117,6 +117,23 @@ enum v3d_sampler_state_variant {
         V3D_SAMPLER_STATE_VARIANT_COUNT,
 };
 
+enum v3d_flush_cond {
+        /* Flush job unless we are flushing for transform feedback, where we
+         * handle flushing in the driver via the 'Wait for TF' packet.
+         */
+        V3D_FLUSH_DEFAULT,
+        /* Always flush the job, even for cases where we would normally not
+         * do it, such as transform feedback.
+         */
+        V3D_FLUSH_ALWAYS,
+        /* Flush job if it is not the current FBO job. This is intended to
+         * skip automatic flushes of the current job for resources that we
+         * expect to be externally synchronized by the application using
+         * glMemoryBarrier(), such as SSBOs and shader images.
+         */
+        V3D_FLUSH_NOT_CURRENT_JOB,
+};
+
 struct v3d_sampler_view {
         struct pipe_sampler_view base;
         uint32_t p0;
@@ -615,9 +632,10 @@ void v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job);
 void v3d_flush_jobs_using_bo(struct v3d_context *v3d, struct v3d_bo *bo);
 void v3d_flush_jobs_writing_resource(struct v3d_context *v3d,
                                      struct pipe_resource *prsc,
-                                     bool always_flush);
+                                     enum v3d_flush_cond flush_cond);
 void v3d_flush_jobs_reading_resource(struct v3d_context *v3d,
-                                     struct pipe_resource *prsc);
+                                     struct pipe_resource *prsc,
+                                     enum v3d_flush_cond flush_cond);
 void v3d_update_compiled_shaders(struct v3d_context *v3d, uint8_t prim_mode);
 void v3d_update_compiled_cs(struct v3d_context *v3d);
 
