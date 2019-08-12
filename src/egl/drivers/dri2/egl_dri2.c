@@ -452,6 +452,7 @@ static const struct dri2_extension_match optional_core_extensions[] = {
    { __DRI2_NO_ERROR, 1, offsetof(struct dri2_egl_display, no_error) },
    { __DRI2_CONFIG_QUERY, 1, offsetof(struct dri2_egl_display, config) },
    { __DRI2_FENCE, 1, offsetof(struct dri2_egl_display, fence) },
+   { __DRI2_BUFFER_DAMAGE, 1, offsetof(struct dri2_egl_display, buffer_damage) },
    { __DRI2_RENDERER_QUERY, 1, offsetof(struct dri2_egl_display, rendererQuery) },
    { __DRI2_INTEROP, 1, offsetof(struct dri2_egl_display, interop) },
    { __DRI_IMAGE, 1, offsetof(struct dri2_egl_display, image) },
@@ -721,6 +722,9 @@ dri2_setup_screen(_EGLDisplay *disp)
 
    if (dri2_dpy->flush_control)
       disp->Extensions.KHR_context_flush_control = EGL_TRUE;
+
+   if (dri2_dpy->buffer_damage && dri2_dpy->buffer_damage->set_damage_region)
+      disp->Extensions.KHR_partial_update = EGL_TRUE;
 }
 
 void
@@ -1661,11 +1665,22 @@ static EGLBoolean
 dri2_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   __DRIdrawable *dri_drawable = dri2_dpy->vtbl->get_dri_drawable(surf);
    _EGLContext *ctx = _eglGetCurrentContext();
+   EGLBoolean ret;
 
    if (ctx && surf)
       dri2_surf_update_fence_fd(ctx, disp, surf);
-   return dri2_dpy->vtbl->swap_buffers(drv, disp, surf);
+   ret = dri2_dpy->vtbl->swap_buffers(drv, disp, surf);
+
+   /* SwapBuffers marks the end of the frame; reset the damage region for
+    * use again next time.
+    */
+   if (ret && dri2_dpy->buffer_damage &&
+       dri2_dpy->buffer_damage->set_damage_region)
+      dri2_dpy->buffer_damage->set_damage_region(dri_drawable, 0, NULL);
+
+   return ret;
 }
 
 static EGLBoolean
@@ -1674,12 +1689,23 @@ dri2_swap_buffers_with_damage(_EGLDriver *drv, _EGLDisplay *disp,
                               const EGLint *rects, EGLint n_rects)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   __DRIdrawable *dri_drawable = dri2_dpy->vtbl->get_dri_drawable(surf);
    _EGLContext *ctx = _eglGetCurrentContext();
+   EGLBoolean ret;
 
    if (ctx && surf)
       dri2_surf_update_fence_fd(ctx, disp, surf);
-   return dri2_dpy->vtbl->swap_buffers_with_damage(drv, disp, surf,
-                                                   rects, n_rects);
+   ret = dri2_dpy->vtbl->swap_buffers_with_damage(drv, disp, surf,
+                                                  rects, n_rects);
+
+   /* SwapBuffers marks the end of the frame; reset the damage region for
+    * use again next time.
+    */
+   if (ret && dri2_dpy->buffer_damage &&
+       dri2_dpy->buffer_damage->set_damage_region)
+      dri2_dpy->buffer_damage->set_damage_region(dri_drawable, 0, NULL);
+
+   return ret;
 }
 
 static EGLBoolean
@@ -1687,14 +1713,33 @@ dri2_swap_buffers_region(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
                          EGLint numRects, const EGLint *rects)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   return dri2_dpy->vtbl->swap_buffers_region(drv, disp, surf, numRects, rects);
+   __DRIdrawable *dri_drawable = dri2_dpy->vtbl->get_dri_drawable(surf);
+   EGLBoolean ret;
+
+   ret = dri2_dpy->vtbl->swap_buffers_region(drv, disp, surf, numRects, rects);
+
+   /* SwapBuffers marks the end of the frame; reset the damage region for
+    * use again next time.
+    */
+   if (ret && dri2_dpy->buffer_damage &&
+       dri2_dpy->buffer_damage->set_damage_region)
+      dri2_dpy->buffer_damage->set_damage_region(dri_drawable, 0, NULL);
+
+   return ret;
 }
 
 static EGLBoolean
 dri2_set_damage_region(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
                        EGLint *rects, EGLint n_rects)
 {
-   return false;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   __DRIdrawable *drawable = dri2_dpy->vtbl->get_dri_drawable(surf);
+
+   if (!dri2_dpy->buffer_damage || !dri2_dpy->buffer_damage->set_damage_region)
+      return EGL_FALSE;
+
+   dri2_dpy->buffer_damage->set_damage_region(drawable, n_rects, rects);
+   return EGL_TRUE;
 }
 
 static EGLBoolean
