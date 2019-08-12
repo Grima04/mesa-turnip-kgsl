@@ -217,6 +217,9 @@ static struct ssa_result_range
 analyze_expression(const nir_alu_instr *instr, unsigned src,
                    struct hash_table *ht)
 {
+   if (!instr->src[src].src.is_ssa)
+      return (struct ssa_result_range){unknown, false};
+
    if (nir_src_is_const(instr->src[src].src))
       return analyze_constant(instr, src);
 
