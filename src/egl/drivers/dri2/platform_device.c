@@ -229,7 +229,6 @@ static const struct dri2_egl_display_vtbl dri2_device_display_vtbl = {
    .destroy_surface = device_destroy_surface,
    .create_image = dri2_create_image_khr,
    .swap_buffers_region = dri2_fallback_swap_buffers_region,
-   .set_damage_region = dri2_fallback_set_damage_region,
    .post_sub_buffer = dri2_fallback_post_sub_buffer,
    .copy_buffers = dri2_fallback_copy_buffers,
    .query_buffer_age = dri2_fallback_query_buffer_age,
