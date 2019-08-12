@@ -900,7 +900,7 @@ ra_assign(struct state *state, nir_shader *shader)
    ralloc_free(defs);
 
    /* Allocate registers */
-   bool ok = ra_allocate(g);
+   ASSERTED bool ok = ra_allocate(g);
    assert(ok);
 
    state->g = g;

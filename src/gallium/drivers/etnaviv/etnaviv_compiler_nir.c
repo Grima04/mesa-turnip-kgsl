@@ -660,7 +660,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    };
 
    unsigned num_consts;
-   bool ok = emit_shader(c->nir, &options, &v->num_temps, &num_consts);
+   ASSERTED bool ok = emit_shader(c->nir, &options, &v->num_temps, &num_consts);
    assert(ok);
 
    /* empty shader, emit NOP */
