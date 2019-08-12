@@ -179,6 +179,12 @@ analyze_constant(const struct nir_alu_instr *instr, unsigned src)
    }
 }
 
+/**
+ * Short-hand name for use in the tables in analyze_expression.  If this name
+ * becomes a problem on some compiler, we can change it to _.
+ */
+#define _______ unknown
+
 #ifndef NDEBUG
 #define ASSERT_TABLE_IS_COMMUTATIVE(t)                        \
    do {                                                       \
@@ -193,16 +199,116 @@ analyze_constant(const struct nir_alu_instr *instr, unsigned src)
       for (unsigned r = 0; r < ARRAY_SIZE(t); r++)            \
          assert(t[r][r] == r);                                \
    } while (false)
+
+static enum ssa_ranges
+union_ranges(enum ssa_ranges a, enum ssa_ranges b)
+{
+   static const enum ssa_ranges union_table[last_range + 1][last_range + 1] = {
+      /* left\right   unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
+      /* unknown */ { _______, _______, _______, _______, _______, _______, _______ },
+      /* lt_zero */ { _______, lt_zero, le_zero, ne_zero, _______, ne_zero, le_zero },
+      /* le_zero */ { _______, le_zero, le_zero, _______, _______, _______, le_zero },
+      /* gt_zero */ { _______, ne_zero, _______, gt_zero, ge_zero, ne_zero, ge_zero },
+      /* ge_zero */ { _______, _______, _______, ge_zero, ge_zero, _______, ge_zero },
+      /* ne_zero */ { _______, ne_zero, _______, ne_zero, _______, ne_zero, _______ },
+      /* eq_zero */ { _______, le_zero, le_zero, ge_zero, ge_zero, _______, eq_zero },
+   };
+
+   ASSERT_TABLE_IS_COMMUTATIVE(union_table);
+   ASSERT_TABLE_IS_DIAGONAL(union_table);
+
+   return union_table[a][b];
+}
+
+/* Verify that the 'unknown' entry in each row (or column) of the table is the
+ * union of all the other values in the row (or column).
+ */
+#define ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(t)              \
+   do {                                                                 \
+      for (unsigned i = 0; i < last_range; i++) {                       \
+         enum ssa_ranges col_range = t[i][unknown + 1];                 \
+         enum ssa_ranges row_range = t[unknown + 1][i];                 \
+                                                                        \
+         for (unsigned j = unknown + 2; j < last_range; j++) {          \
+            col_range = union_ranges(col_range, t[i][j]);               \
+            row_range = union_ranges(row_range, t[j][i]);               \
+         }                                                              \
+                                                                        \
+         assert(col_range == t[i][unknown]);                            \
+         assert(row_range == t[unknown][i]);                            \
+      }                                                                 \
+   } while (false)
+
+/* For most operations, the union of ranges for a strict inequality and
+ * equality should be the range of the non-strict inequality (e.g.,
+ * union_ranges(range(op(lt_zero), range(op(eq_zero))) == range(op(le_zero)).
+ *
+ * Does not apply to selection-like opcodes (bcsel, fmin, fmax, etc.).
+ */
+#define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(t) \
+   do {                                                                 \
+      assert(union_ranges(t[lt_zero], t[eq_zero]) == t[le_zero]);       \
+      assert(union_ranges(t[gt_zero], t[eq_zero]) == t[ge_zero]);       \
+   } while (false)
+
+#define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(t) \
+   do {                                                                 \
+      for (unsigned i = 0; i < last_range; i++) {                       \
+         assert(union_ranges(t[i][lt_zero], t[i][eq_zero]) == t[i][le_zero]); \
+         assert(union_ranges(t[i][gt_zero], t[i][eq_zero]) == t[i][ge_zero]); \
+         assert(union_ranges(t[lt_zero][i], t[eq_zero][i]) == t[le_zero][i]); \
+         assert(union_ranges(t[gt_zero][i], t[eq_zero][i]) == t[ge_zero][i]); \
+      }                                                                 \
+   } while (false)
+
+/* Several other unordered tuples span the range of "everything."  Each should
+ * have the same value as unknown: (lt_zero, ge_zero), (le_zero, gt_zero), and
+ * (eq_zero, ne_zero).  union_ranges is already commutative, so only one
+ * ordering needs to be checked.
+ *
+ * Does not apply to selection-like opcodes (bcsel, fmin, fmax, etc.).
+ *
+ * In cases where this can be used, it is unnecessary to also use
+ * ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_*_SOURCE.  For any range X,
+ * union_ranges(X, X) == X.  The disjoint ranges cover all of the non-unknown
+ * possibilities, so the union of all the unions of disjoint ranges is
+ * equivalent to the union of "others."
+ */
+#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(t)            \
+   do {                                                                 \
+      assert(union_ranges(t[lt_zero], t[ge_zero]) == t[unknown]);       \
+      assert(union_ranges(t[le_zero], t[gt_zero]) == t[unknown]);       \
+      assert(union_ranges(t[eq_zero], t[ne_zero]) == t[unknown]);       \
+   } while (false)
+
+#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(t)            \
+   do {                                                                 \
+      for (unsigned i = 0; i < last_range; i++) {                       \
+         assert(union_ranges(t[i][lt_zero], t[i][ge_zero]) ==           \
+                t[i][unknown]);                                         \
+         assert(union_ranges(t[i][le_zero], t[i][gt_zero]) ==           \
+                t[i][unknown]);                                         \
+         assert(union_ranges(t[i][eq_zero], t[i][ne_zero]) ==           \
+                t[i][unknown]);                                         \
+                                                                        \
+         assert(union_ranges(t[lt_zero][i], t[ge_zero][i]) ==           \
+                t[unknown][i]);                                         \
+         assert(union_ranges(t[le_zero][i], t[gt_zero][i]) ==           \
+                t[unknown][i]);                                         \
+         assert(union_ranges(t[eq_zero][i], t[ne_zero][i]) ==           \
+                t[unknown][i]);                                         \
+      }                                                                 \
+   } while (false)
+
 #else
 #define ASSERT_TABLE_IS_COMMUTATIVE(t)
 #define ASSERT_TABLE_IS_DIAGONAL(t)
+#define ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(t)
+#define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(t)
+#define ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(t)
+#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(t)
+#define ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(t)
 #endif
-
-/**
- * Short-hand name for use in the tables in analyze_expression.  If this name
- * becomes a problem on some compiler, we can change it to _.
- */
-#define _______ unknown
 
 /**
  * Analyze an expression to determine the range of its result
@@ -275,6 +381,8 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
    };
 
    ASSERT_TABLE_IS_COMMUTATIVE(fadd_table);
+   ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(fadd_table);
+   ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(fadd_table);
 
    /* Due to flush-to-zero semanatics of floating-point numbers with very
     * small mangnitudes, we can never really be sure a result will be
@@ -319,11 +427,16 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
    };
 
    ASSERT_TABLE_IS_COMMUTATIVE(fmul_table);
+   ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(fmul_table);
+   ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(fmul_table);
 
    static const enum ssa_ranges fneg_table[last_range + 1] = {
    /* unknown  lt_zero  le_zero  gt_zero  ge_zero  ne_zero  eq_zero */
       _______, gt_zero, ge_zero, lt_zero, le_zero, ne_zero, eq_zero
    };
+
+   ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(fneg_table);
+   ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(fneg_table);
 
 
    switch (alu->op) {
@@ -404,6 +517,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
 
       ASSERT_TABLE_IS_COMMUTATIVE(table);
       ASSERT_TABLE_IS_DIAGONAL(table);
+      ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(table);
 
       r.range = table[left.range][right.range];
       break;
@@ -462,6 +576,9 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       };
 
       r = analyze_expression(alu, 0, ht);
+
+      ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(table);
+      ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(table);
 
       r.range = table[r.range];
       break;
@@ -524,6 +641,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       /* Treat fmax as commutative. */
       ASSERT_TABLE_IS_COMMUTATIVE(table);
       ASSERT_TABLE_IS_DIAGONAL(table);
+      ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(table);
 
       r.range = table[left.range][right.range];
       break;
@@ -586,6 +704,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       /* Treat fmin as commutative. */
       ASSERT_TABLE_IS_COMMUTATIVE(table);
       ASSERT_TABLE_IS_DIAGONAL(table);
+      ASSERT_UNION_OF_OTHERS_MATCHES_UNKNOWN_2_SOURCE(table);
 
       r.range = table[left.range][right.range];
       break;
@@ -781,6 +900,9 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
 
       const struct ssa_result_range left = analyze_expression(alu, 0, ht);
       const struct ssa_result_range right = analyze_expression(alu, 1, ht);
+
+      ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_2_SOURCE(table);
+      ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_2_SOURCE(table);
 
       r.is_integral = left.is_integral && right.is_integral &&
                       is_not_negative(right.range);
