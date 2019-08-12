@@ -1121,6 +1121,8 @@ void
 _mesa_update_clamp_fragment_color(struct gl_context *ctx,
                                   const struct gl_framebuffer *drawFb)
 {
+   GLboolean clamp;
+
    /* Don't clamp if:
     * - there is no colorbuffer
     * - all colorbuffers are unsigned normalized, so clamping has no effect
@@ -1128,10 +1130,15 @@ _mesa_update_clamp_fragment_color(struct gl_context *ctx,
     */
    if (!drawFb || !drawFb->_HasSNormOrFloatColorBuffer ||
        drawFb->_IntegerBuffers)
-      ctx->Color._ClampFragmentColor = GL_FALSE;
+      clamp = GL_FALSE;
    else
-      ctx->Color._ClampFragmentColor =
-         _mesa_get_clamp_fragment_color(ctx, drawFb);
+      clamp = _mesa_get_clamp_fragment_color(ctx, drawFb);
+
+   if (ctx->Color._ClampFragmentColor == clamp)
+      return;
+
+   ctx->NewDriverState |= ctx->DriverFlags.NewFragClamp;
+   ctx->Color._ClampFragmentColor = clamp;
 }
 
 /**

@@ -219,13 +219,6 @@ st_invalidate_state(struct gl_context *ctx)
 
       if (new_state & _NEW_FOG)
          st->dirty |= ST_NEW_FS_STATE;
-
-      if (new_state & _NEW_FRAG_CLAMP) {
-         if (st->clamp_frag_color_in_shader)
-            st->dirty |= ST_NEW_FS_STATE;
-         else
-            st->dirty |= ST_NEW_RASTERIZER;
-      }
    }
 
    if (new_state & (_NEW_LIGHT |
@@ -541,6 +534,12 @@ st_init_driver_flags(struct st_context *st)
 
    f->NewClipControl = ST_NEW_VIEWPORT | ST_NEW_RASTERIZER;
    f->NewClipPlane = ST_NEW_CLIP_STATE;
+
+   if (st->clamp_frag_color_in_shader) {
+      f->NewFragClamp = ST_NEW_FS_STATE;
+   } else {
+      f->NewFragClamp = ST_NEW_RASTERIZER;
+   }
 
    if (st->clamp_frag_depth_in_shader) {
       f->NewClipControl |= ST_NEW_VS_STATE | ST_NEW_GS_STATE |

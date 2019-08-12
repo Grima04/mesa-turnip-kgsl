@@ -4707,6 +4707,9 @@ struct gl_driver_flags
    /** gl_context::Transform::ClipPlanesEnabled */
    uint64_t NewClipPlaneEnable;
 
+   /** gl_context::Color::ClampFragmentColor */
+   uint64_t NewFragClamp;
+
    /** gl_context::Transform::DepthClamp */
    uint64_t NewDepthClamp;
 
