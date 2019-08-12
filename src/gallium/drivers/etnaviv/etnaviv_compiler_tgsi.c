@@ -2535,9 +2535,6 @@ etna_dump_shader(const struct etna_shader_variant *shader)
 void
 etna_destroy_shader(struct etna_shader_variant *shader)
 {
-   if (DBG_ENABLED(ETNA_DBG_NIR))
-      return etna_destroy_shader_nir(shader);
-
    assert(shader);
 
    FREE(shader->code);

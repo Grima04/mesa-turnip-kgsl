@@ -417,7 +417,11 @@ etna_delete_shader_state(struct pipe_context *pctx, void *ss)
       v = v->next;
       if (t->bo)
          etna_bo_del(t->bo);
-      etna_destroy_shader(t);
+
+      if (DBG_ENABLED(ETNA_DBG_NIR))
+         etna_destroy_shader_nir(t);
+      else
+         etna_destroy_shader(t);
    }
 
    ralloc_free(shader->nir);
