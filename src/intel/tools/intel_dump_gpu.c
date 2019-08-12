@@ -207,6 +207,12 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
       fail_if(!gen_get_device_info_from_fd(fd, &devinfo),
               "failed to identify chipset.\n");
       device = devinfo.chipset_id;
+   } else if (devinfo.gen == 0) {
+      fail_if(!gen_get_device_info_from_pci_id(device, &devinfo),
+              "failed to identify chipset.\n");
+   }
+
+   if (!aub_file.file) {
       aub_file_init(&aub_file, output_file,
                     verbose == 2 ? stdout : NULL,
                     device, program_invocation_short_name);
