@@ -103,7 +103,7 @@ panfrost_blit(struct pipe_context *pipe,
  */
 
 void
-panfrost_blit_wallpaper(struct panfrost_context *ctx)
+panfrost_blit_wallpaper(struct panfrost_context *ctx, struct pipe_box *box)
 {
         struct pipe_blit_info binfo = { };
 
@@ -116,11 +116,11 @@ panfrost_blit_wallpaper(struct panfrost_context *ctx)
 
         binfo.src.resource = binfo.dst.resource = ctx->pipe_framebuffer.cbufs[0]->texture;
         binfo.src.level = binfo.dst.level = level;
-        binfo.src.box.x = binfo.dst.box.x = 0;
-        binfo.src.box.y = binfo.dst.box.y = 0;
+        binfo.src.box.x = binfo.dst.box.x = box->x;
+        binfo.src.box.y = binfo.dst.box.y = box->y;
         binfo.src.box.z = binfo.dst.box.z = layer;
-        binfo.src.box.width = binfo.dst.box.width = ctx->pipe_framebuffer.width;
-        binfo.src.box.height = binfo.dst.box.height = ctx->pipe_framebuffer.height;
+        binfo.src.box.width = binfo.dst.box.width = box->width;
+        binfo.src.box.height = binfo.dst.box.height = box->height;
         binfo.src.box.depth = binfo.dst.box.depth = 1;
 
         binfo.src.format = binfo.dst.format = ctx->pipe_framebuffer.cbufs[0]->format;

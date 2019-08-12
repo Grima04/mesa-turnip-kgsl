@@ -65,6 +65,10 @@ panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo);
 
 struct panfrost_resource {
         struct pipe_resource base;
+        struct {
+                struct pipe_box biggest_rect;
+                struct pipe_scissor_state extent;
+        } damage;
 
         struct panfrost_bo *bo;
         struct renderonly_scanout *scanout;
@@ -134,6 +138,13 @@ panfrost_blit(struct pipe_context *pipe,
               const struct pipe_blit_info *info);
 
 void
-panfrost_blit_wallpaper(struct panfrost_context *ctx);
+panfrost_blit_wallpaper(struct panfrost_context *ctx,
+                        struct pipe_box *box);
+
+void
+panfrost_resource_set_damage_region(struct pipe_screen *screen,
+                                    struct pipe_resource *res,
+                                    unsigned int nrects,
+                                    const struct pipe_box *rects);
 
 #endif /* PAN_RESOURCE_H */

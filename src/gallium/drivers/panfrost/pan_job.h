@@ -168,6 +168,11 @@ panfrost_job_union_scissor(struct panfrost_job *job,
                            unsigned minx, unsigned miny,
                            unsigned maxx, unsigned maxy);
 
+void
+panfrost_job_intersection_scissor(struct panfrost_job *job,
+                                  unsigned minx, unsigned miny,
+                                  unsigned maxx, unsigned maxy);
+
 /* Scoreboarding */
 
 void

@@ -420,6 +420,17 @@ panfrost_job_union_scissor(struct panfrost_job *job,
 }
 
 void
+panfrost_job_intersection_scissor(struct panfrost_job *job,
+                                  unsigned minx, unsigned miny,
+                                  unsigned maxx, unsigned maxy)
+{
+        job->minx = MAX2(job->minx, minx);
+        job->miny = MAX2(job->miny, miny);
+        job->maxx = MIN2(job->maxx, maxx);
+        job->maxy = MIN2(job->maxy, maxy);
+}
+
+void
 panfrost_job_init(struct panfrost_context *ctx)
 {
         ctx->jobs = _mesa_hash_table_create(ctx,

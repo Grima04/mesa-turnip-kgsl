@@ -1379,7 +1379,80 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
         struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
 
         ctx->wallpaper_batch = batch;
-        panfrost_blit_wallpaper(ctx);
+
+        /* Clamp the rendering area to the damage extent. The
+         * KHR_partial_update() spec states that trying to render outside of
+         * the damage region is "undefined behavior", so we should be safe.
+         */
+        panfrost_job_intersection_scissor(batch, rsrc->damage.extent.minx,
+                                          rsrc->damage.extent.miny,
+                                          rsrc->damage.extent.maxx,
+                                          rsrc->damage.extent.maxy);
+
+        /* FIXME: Looks like aligning on a tile is not enough, but
+         * aligning on twice the tile size seems to works. We don't
+         * know exactly what happens here but this deserves extra
+         * investigation to figure it out.
+         */
+        batch->minx = batch->minx & ~((MALI_TILE_LENGTH * 2) - 1);
+        batch->miny = batch->miny & ~((MALI_TILE_LENGTH * 2) - 1);
+        batch->maxx = MIN2(ALIGN_POT(batch->maxx, MALI_TILE_LENGTH * 2),
+                           rsrc->base.width0);
+        batch->maxy = MIN2(ALIGN_POT(batch->maxy, MALI_TILE_LENGTH * 2),
+                           rsrc->base.height0);
+
+        struct pipe_scissor_state damage;
+        struct pipe_box rects[4];
+
+        /* Clamp the damage box to the rendering area. */
+        damage.minx = MAX2(batch->minx, rsrc->damage.biggest_rect.x);
+        damage.miny = MAX2(batch->miny, rsrc->damage.biggest_rect.y);
+        damage.maxx = MIN2(batch->maxx,
+                           rsrc->damage.biggest_rect.x +
+                           rsrc->damage.biggest_rect.width);
+        damage.maxy = MIN2(batch->maxy,
+                           rsrc->damage.biggest_rect.y +
+                           rsrc->damage.biggest_rect.height);
+
+        /* One damage rectangle means we can end up with at most 4 reload
+         * regions:
+         * 1: left region, only exists if damage.x > 0
+         * 2: right region, only exists if damage.x + damage.width < fb->width
+         * 3: top region, only exists if damage.y > 0. The intersection with
+         *    the left and right regions are dropped
+         * 4: bottom region, only exists if damage.y + damage.height < fb->height.
+         *    The intersection with the left and right regions are dropped
+         *
+         *                    ____________________________
+         *                    |       |     3     |      |
+         *                    |       |___________|      |
+         *                    |       |   damage  |      |
+         *                    |   1   |    rect   |   2  |
+         *                    |       |___________|      |
+         *                    |       |     4     |      |
+         *                    |_______|___________|______|
+         */
+        u_box_2d(batch->minx, batch->miny, damage.minx - batch->minx,
+                 batch->maxy - batch->miny, &rects[0]);
+        u_box_2d(damage.maxx, batch->miny, batch->maxx - damage.maxx,
+                 batch->maxy - batch->miny, &rects[1]);
+        u_box_2d(damage.minx, batch->miny, damage.maxx - damage.minx,
+                 damage.miny - batch->miny, &rects[2]);
+        u_box_2d(damage.minx, damage.maxy, damage.maxx - damage.minx,
+                 batch->maxy - damage.maxy, &rects[3]);
+
+        for (unsigned i = 0; i < 4; i++) {
+                /* Width and height are always >= 0 even if width is declared as a
+                 * signed integer: u_box_2d() helper takes unsigned args and
+                 * panfrost_set_damage_region() is taking care of clamping
+                 * negative values.
+                 */
+                if (!rects[i].width || !rects[i].height)
+                        continue;
+
+                /* Blit the wallpaper in */
+                panfrost_blit_wallpaper(ctx, &rects[i]);
+        }
         ctx->wallpaper_batch = NULL;
 }
 

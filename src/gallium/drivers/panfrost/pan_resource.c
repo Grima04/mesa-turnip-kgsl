@@ -403,6 +403,84 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
         pres->bo = panfrost_drm_create_bo(screen, bo_size, PAN_ALLOCATE_DELAY_MMAP);
 }
 
+static void
+panfrost_resource_reset_damage(struct panfrost_resource *pres)
+{
+        /* We set the damage extent to the full resource size but keep the
+         * damage box empty so that the FB content is reloaded by default.
+         */
+        memset(&pres->damage, 0, sizeof(pres->damage));
+        pres->damage.extent.maxx = pres->base.width0;
+        pres->damage.extent.maxy = pres->base.height0;
+}
+
+void
+panfrost_resource_set_damage_region(struct pipe_screen *screen,
+                                    struct pipe_resource *res,
+                                    unsigned int nrects,
+                                    const struct pipe_box *rects)
+{
+        struct panfrost_resource *pres = pan_resource(res);
+        struct pipe_box *damage_rect = &pres->damage.biggest_rect;
+        struct pipe_scissor_state *damage_extent = &pres->damage.extent;
+        unsigned int i;
+
+	if (!nrects) {
+		panfrost_resource_reset_damage(pres);
+		return;
+	}
+
+        /* We keep track of 2 different things here:
+         * 1 the damage extent: the quad including all damage regions. Will be
+         *   used restrict the rendering area
+         * 2 the biggest damage rectangle: when there are more than one damage
+         *   rect we keep the biggest one and will generate 4 wallpaper quads
+         *   out of it (see panfrost_draw_wallpaper() for more details). We
+         *   might want to do something smarter at some point.
+         *
+         *                _________________________________
+         *                |                               |
+         *                |    _________________________  |
+         *                |   | rect1|         _________| |
+         *                |   |______|_____   | rect 3: | |
+         *                |   |    | rect2 |  | biggest | |
+         *                |   |    |_______|  |  rect   | |
+         *                |   |_______________|_________| |
+         *                |        damage extent          |
+         *                |_______________________________|
+         *                            resource
+         */
+        memset(&pres->damage, 0, sizeof(pres->damage));
+        damage_extent->minx = 0xffff;
+        damage_extent->miny = 0xffff;
+        for (i = 0; i < nrects; i++) {
+                int x = rects[i].x, w = rects[i].width, h = rects[i].height;
+                int y = res->height0 - (rects[i].y + h);
+
+                /* Clamp x,y,w,h to prevent negative values. */
+                if (x < 0) {
+                        h += x;
+                        x = 0;
+                }
+                if (y < 0) {
+                        w += y;
+                        y = 0;
+                }
+                w = MAX2(w, 0);
+                h = MAX2(h, 0);
+
+                if (damage_rect->width * damage_rect->height < w * h)
+                       u_box_2d(x, y, w, h, damage_rect);
+
+                damage_extent->minx = MIN2(damage_extent->minx, x);
+                damage_extent->miny = MIN2(damage_extent->miny, y);
+                damage_extent->maxx = MAX2(damage_extent->maxx,
+                                           MIN2(x + w, res->width0));
+                damage_extent->maxy = MAX2(damage_extent->maxy,
+                                           MIN2(y + h, res->height0));
+        }
+}
+
 static struct pipe_resource *
 panfrost_resource_create(struct pipe_screen *screen,
                          const struct pipe_resource *template)
@@ -437,6 +515,8 @@ panfrost_resource_create(struct pipe_screen *screen,
         util_range_init(&so->valid_buffer_range);
 
         panfrost_resource_create_bo(pscreen, so);
+        panfrost_resource_reset_damage(so);
+
         return (struct pipe_resource *)so;
 }
 
