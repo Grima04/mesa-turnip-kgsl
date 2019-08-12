@@ -48,7 +48,6 @@ IRIS_C_SOURCES = \
 	iris_pipe_control.c \
 	iris_program.c \
 	iris_program_cache.c \
-	iris_query.c \
 	iris_resolve.c \
 	iris_resource.c \
 	iris_resource.h \
