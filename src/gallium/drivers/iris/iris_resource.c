@@ -564,7 +564,8 @@ iris_resource_alloc_separate_aux(struct iris_screen *screen,
     * block sizes.
     */
    res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer", size, 4096,
-                                     IRIS_MEMZONE_OTHER, I915_TILING_Y,
+                                     IRIS_MEMZONE_OTHER,
+                                     isl_tiling_to_i915_tiling(res->aux.surf.tiling),
                                      res->aux.surf.row_pitch_B, alloc_flags);
    if (!res->aux.bo) {
       return false;
