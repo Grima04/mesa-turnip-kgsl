@@ -30,6 +30,7 @@
 #include "etnaviv_internal.h"
 #include "etnaviv_tiling.h"
 #include "pipe/p_state.h"
+#include "util/format/u_format.h"
 #include "util/list.h"
 #include "util/set.h"
 #include "util/u_helpers.h"
@@ -130,6 +131,17 @@ etna_resource_sampler_only(const struct pipe_resource *pres)
    return (pres->bind & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_RENDER_TARGET |
                          PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_BLENDABLE)) ==
           PIPE_BIND_SAMPLER_VIEW;
+}
+
+static inline bool
+etna_resource_hw_tileable(bool use_blt, const struct pipe_resource *pres)
+{
+   if (use_blt)
+      return true;
+
+   /* RS can only tile 16bpp or 32bpp formats */
+   return util_format_get_blocksize(pres->format) == 2 ||
+          util_format_get_blocksize(pres->format) == 4;
 }
 
 static inline struct etna_resource *

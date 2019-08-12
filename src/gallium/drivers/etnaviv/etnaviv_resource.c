@@ -351,17 +351,13 @@ etna_resource_create(struct pipe_screen *pscreen,
     * and a texture-compatible base buffer in other cases
     *
     */
-
    if (templat->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL)) {
       if (screen->specs.pixel_pipes > 1 && !screen->specs.single_buffer)
          layout |= ETNA_LAYOUT_BIT_MULTI;
       if (screen->specs.can_supertile)
          layout |= ETNA_LAYOUT_BIT_SUPER;
    } else if (VIV_FEATURE(screen, chipMinorFeatures2, SUPERTILED_TEXTURE) &&
-              /* RS can't tile 1 byte per pixel formats, will have to CPU tile,
-               * which doesn't support super-tiling
-               */
-              util_format_get_blocksize(templat->format) > 1) {
+              etna_resource_hw_tileable(screen->specs.use_blt, templat)) {
       layout |= ETNA_LAYOUT_BIT_SUPER;
    }
 

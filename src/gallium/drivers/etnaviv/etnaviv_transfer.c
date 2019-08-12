@@ -247,7 +247,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
       rsc = etna_resource(rsc->texture);
    } else if (rsc->ts_bo ||
               (rsc->layout != ETNA_LAYOUT_LINEAR &&
-               util_format_get_blocksize(format) > 1 &&
+               etna_resource_hw_tileable(ctx->specs.use_blt, prsc) &&
                /* HALIGN 4 resources are incompatible with the resolve engine,
                 * so fall back to using software to detile this resource. */
                rsc->halign != TEXTURE_HALIGN_FOUR)) {
