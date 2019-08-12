@@ -436,6 +436,7 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 			break;
 		case CHIP_RAVEN:
 		case CHIP_RAVEN2:
+		case CHIP_RENOIR:
 		case CHIP_NAVI10:
 		case CHIP_NAVI12:
 			pc_lines = 1024;

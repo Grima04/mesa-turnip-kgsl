@@ -348,7 +348,8 @@ radv_physical_device_init(struct radv_physical_device *device,
 		device->rbplus_allowed = device->rad_info.family == CHIP_STONEY ||
 					 device->rad_info.family == CHIP_VEGA12 ||
 		                         device->rad_info.family == CHIP_RAVEN ||
-		                         device->rad_info.family == CHIP_RAVEN2;
+		                         device->rad_info.family == CHIP_RAVEN2 ||
+		                         device->rad_info.family == CHIP_RENOIR;
 	}
 
 	/* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
@@ -379,6 +380,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 				        device->rad_info.me_fw_feature >= 41);
 
 	device->has_dcc_constant_encode = device->rad_info.family == CHIP_RAVEN2 ||
+					  device->rad_info.family == CHIP_RENOIR ||
 					  device->rad_info.chip_class >= GFX10;
 
 	device->use_shader_ballot = device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT;
@@ -1937,10 +1939,10 @@ VkResult radv_CreateDevice(
 	device->pbb_allowed = device->physical_device->rad_info.chip_class >= GFX9 &&
 			      !(device->instance->debug_flags & RADV_DEBUG_NOBINNING);
 
-	/* Disabled and not implemented for now. */
 	device->dfsm_allowed = device->pbb_allowed &&
 	                       (device->physical_device->rad_info.family == CHIP_RAVEN ||
-	                        device->physical_device->rad_info.family == CHIP_RAVEN2);
+	                        device->physical_device->rad_info.family == CHIP_RAVEN2 ||
+	                        device->physical_device->rad_info.family == CHIP_RENOIR);
 
 #ifdef ANDROID
 	device->always_use_syncobj = device->physical_device->rad_info.has_syncobj_wait_for_submit;
