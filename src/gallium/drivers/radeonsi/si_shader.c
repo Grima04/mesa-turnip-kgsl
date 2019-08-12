@@ -4459,22 +4459,6 @@ void si_create_function(struct si_shader_context *ctx,
 	LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
 					   "no-signed-zeros-fp-math",
 					   "true");
-
-	if (ctx->screen->debug_flags & DBG(UNSAFE_MATH)) {
-		/* These were copied from some LLVM test. */
-		LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
-						   "less-precise-fpmad",
-						   "true");
-		LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
-						   "no-infs-fp-math",
-						   "true");
-		LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
-						   "no-nans-fp-math",
-						   "true");
-		LLVMAddTargetDependentFunctionAttr(ctx->main_fn,
-						   "unsafe-fp-math",
-						   "true");
-	}
 }
 
 static void declare_streamout_params(struct si_shader_context *ctx,
