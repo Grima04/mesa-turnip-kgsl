@@ -117,6 +117,9 @@ typedef struct midgard_instruction {
         bool writeout;
         bool prepacked_branch;
 
+        /* Kind of a hack, but hint against aggressive DCE */
+        bool dont_eliminate;
+
         /* Masks in a saneish format. One bit per channel, not packed fancy.
          * Use this instead of the op specific ones, and switch over at emit
          * time */

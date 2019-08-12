@@ -97,6 +97,7 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
                 if (ins->type != TAG_ALU_4) continue;
                 if (ins->compact_branch) continue;
                 if (!OP_IS_MOVE(ins->alu.op)) continue;
+                if (ins->dont_eliminate) continue;
 
                 /* Check we're to the same place post-RA */
                 unsigned iA = ins->ssa_args.dest;
