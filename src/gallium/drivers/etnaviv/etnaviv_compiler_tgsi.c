@@ -2561,9 +2561,6 @@ bool
 etna_link_shader(struct etna_shader_link_info *info,
                  const struct etna_shader_variant *vs, const struct etna_shader_variant *fs)
 {
-   if (DBG_ENABLED(ETNA_DBG_NIR))
-      return etna_link_shader_nir(info, vs, fs);
-
    int comp_ofs = 0;
    /* For each fragment input we need to find the associated vertex shader
     * output, which can be found by matching on semantic name and index. A
