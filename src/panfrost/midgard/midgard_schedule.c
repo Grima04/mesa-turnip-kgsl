@@ -775,7 +775,6 @@ static void mir_spill_register(
 
         /* Allocate TLS slot (maybe) */
         unsigned spill_slot = !is_special ? (*spill_count)++ : 0;
-        midgard_instruction *spill_move = NULL;
 
         /* For TLS, replace all stores to the spilled node. For
          * special reads, just keep as-is; the class will be demoted
@@ -796,7 +795,10 @@ static void mir_spill_register(
                                 st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
                         }
 
-                        spill_move = mir_insert_instruction_before(mir_next_op(ins), st);
+                        /* Hint: don't rewrite this node */
+                        st.hint = true;
+
+                        mir_insert_instruction_before(mir_next_op(ins), st);
 
                         if (!is_special)
                                 ctx->spills++;
@@ -824,8 +826,9 @@ static void mir_spill_register(
                 unsigned consecutive_index = 0;
 
                 mir_foreach_instr_in_block(block, ins) {
-                        /* We can't rewrite the move used to spill in the first place */
-                        if (ins == spill_move) continue;
+                        /* We can't rewrite the moves used to spill in the
+                         * first place. These moves are hinted. */
+                        if (ins->hint) continue;
 
                         if (!mir_has_arg(ins, spill_node)) {
                                 consecutive_skip = false;
@@ -877,6 +880,12 @@ static void mir_spill_register(
                         if (!is_special)
                                 ctx->fills++;
                 }
+        }
+
+        /* Reset hints */
+
+        mir_foreach_instr_global(ctx, ins) {
+                ins->hint = false;
         }
 }
 

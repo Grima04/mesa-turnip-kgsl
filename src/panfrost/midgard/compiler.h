@@ -134,6 +134,9 @@ typedef struct midgard_instruction {
 
         bool no_spill;
 
+        /* Generic hint for intra-pass use */
+        bool hint;
+
         union {
                 midgard_load_store_word load_store;
                 midgard_vector_alu alu;
