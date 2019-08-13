@@ -870,7 +870,7 @@ static inline size_t
 util_format_get_stride(enum pipe_format format,
                        unsigned width)
 {
-   return util_format_get_nblocksx(format, width) * util_format_get_blocksize(format);
+   return (size_t)util_format_get_nblocksx(format, width) * util_format_get_blocksize(format);
 }
 
 static inline size_t
