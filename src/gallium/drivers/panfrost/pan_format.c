@@ -176,6 +176,10 @@ panfrost_find_format(const struct util_format_description *desc) {
         case PIPE_FORMAT_B10G10R10A2_UINT:
                 return MALI_RGB10_A2UI;
 
+        case PIPE_FORMAT_R10G10B10A2_SSCALED:
+        case PIPE_FORMAT_B10G10R10A2_SSCALED:
+                return MALI_RGB10_A2I;
+
         case PIPE_FORMAT_Z32_UNORM:
         case PIPE_FORMAT_Z24X8_UNORM:
                 return MALI_Z32_UNORM;
