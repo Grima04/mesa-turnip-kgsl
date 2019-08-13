@@ -43,7 +43,7 @@
 #include "brw_gs.h"
 #include "brw_wm.h"
 #include "brw_cs.h"
-#include "genX_bits.h"
+#include "genxml/genX_bits.h"
 #include "main/framebuffer.h"
 
 void
