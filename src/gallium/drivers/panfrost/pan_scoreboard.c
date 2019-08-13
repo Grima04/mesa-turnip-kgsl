@@ -143,10 +143,6 @@ panfrost_add_dependency(
         struct mali_job_descriptor_header *second =
                 job_descriptor_header(depender);
 
-        /* Ensure we're ready for dependencies */
-        assert(second->job_index);
-        assert(first->job_index);
-
         /* Look for an open slot */
 
         if (!second->job_dependency_index_1)
