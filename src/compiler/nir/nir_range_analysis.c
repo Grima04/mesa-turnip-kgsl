@@ -498,22 +498,9 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
 
    case nir_op_bcsel: {
       const struct ssa_result_range left =
-         analyze_expression(alu, 1, ht, nir_alu_src_type(alu, 1));
+         analyze_expression(alu, 1, ht, use_type);
       const struct ssa_result_range right =
-         analyze_expression(alu, 2, ht, nir_alu_src_type(alu, 2));
-
-      /* If either source is a constant load that is not zero, punt.  The type
-       * will always be uint regardless of the actual type.  We can't even
-       * decide if the value is non-zero because -0.0 is 0x80000000, and that
-       * will (possibly incorrectly) be considered non-zero.
-       */
-      /* FINISHME: We could do better, but it would require having the expected
-       * FINISHME: type passed in.
-       */
-      if ((nir_src_is_const(alu->src[1].src) && left.range != eq_zero) ||
-          (nir_src_is_const(alu->src[2].src) && right.range != eq_zero)) {
-         return (struct ssa_result_range){unknown, false};
-      }
+         analyze_expression(alu, 2, ht, use_type);
 
       r.is_integral = left.is_integral && right.is_integral;
 
@@ -800,17 +787,9 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       };
       break;
 
-   case nir_op_mov: {
-      const struct ssa_result_range left =
-         analyze_expression(alu, 0, ht, nir_alu_src_type(alu, 0));
-
-      /* See commentary in nir_op_bcsel for the reasons this is necessary. */
-      if (nir_src_is_const(alu->src[0].src) && left.range != eq_zero)
-         return (struct ssa_result_range){unknown, false};
-
-      r = left;
+   case nir_op_mov:
+      r = analyze_expression(alu, 0, ht, use_type);
       break;
-   }
 
    case nir_op_fneg:
       r = analyze_expression(alu, 0, ht, nir_alu_src_type(alu, 0));
