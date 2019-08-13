@@ -181,8 +181,7 @@ vector_alu_modifiers(nir_alu_src *src, bool is_int, unsigned broadcast_count,
 M_LOAD(ld_attr_32);
 //M_LOAD(ld_vary_16);
 M_LOAD(ld_vary_32);
-//M_LOAD(ld_uniform_16);
-M_LOAD(ld_uniform_32);
+M_LOAD(ld_ubo_int4);
 M_LOAD(ld_int4);
 M_STORE(st_int4);
 M_LOAD(ld_color_buffer_8);
@@ -1162,7 +1161,7 @@ emit_ubo_read(
 {
         /* TODO: half-floats */
 
-        midgard_instruction ins = m_ld_uniform_32(dest, offset);
+        midgard_instruction ins = m_ld_ubo_int4(dest, offset);
 
         /* TODO: Don't split */
         ins.load_store.varying_parameters = (offset & 7) << 7;

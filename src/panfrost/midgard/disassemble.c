@@ -1034,8 +1034,8 @@ print_load_store_instr(uint64_t data,
 
         int address = word->address;
 
-        if (word->op == midgard_op_ld_uniform_32) {
-                /* Uniforms use their own addressing scheme */
+        if (OP_IS_UBO_READ(word->op)) {
+                /* UBOs use their own addressing scheme */
 
                 int lo = word->varying_parameters >> 7;
                 int hi = word->address;

@@ -441,10 +441,20 @@ typedef enum {
         midgard_op_ld_vary_32i = 0x9B,
         midgard_op_ld_color_buffer_16 = 0x9D,
 
-        midgard_op_ld_uniform_16 = 0xAC,
-        midgard_op_ld_uniform_32i = 0xA8,
+        /* The distinction between these ops is the alignment requirement /
+         * accompanying shift. Thus, the offset to ld_ubo_int4 is in 16-byte
+         * units and can load 128-bit. The offset to ld_ubo_short4 is in 8-byte
+         * units; ld_ubo_char4 in 4-byte units. ld_ubo_char/ld_ubo_char2 are
+         * purely theoretical (never seen in the wild) since int8/int16/fp16
+         * UBOs don't really exist. The ops are still listed to maintain
+         * symmetry with generic I/O ops. */
 
-        midgard_op_ld_uniform_32 = 0xB0,
+        midgard_op_ld_ubo_char   = 0xA0, /* theoretical */
+        midgard_op_ld_ubo_char2  = 0xA4, /* theoretical */
+        midgard_op_ld_ubo_char4  = 0xA8,
+        midgard_op_ld_ubo_short4 = 0xAC,
+        midgard_op_ld_ubo_int4   = 0xB0,
+
         midgard_op_ld_color_buffer_8 = 0xBA,
 
         midgard_op_st_char = 0xC0,
