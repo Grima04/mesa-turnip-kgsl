@@ -1175,6 +1175,9 @@ emit_ubo_read(
 
         midgard_instruction ins = m_ld_ubo_int4(dest, offset);
 
+        assert((offset & 0xF) == 0);
+        offset /= 16;
+
         /* TODO: Don't split */
         ins.load_store.varying_parameters = (offset & 7) << 7;
         ins.load_store.address = offset >> 3;
@@ -1330,7 +1333,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
 
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
-                emit_ubo_read(ctx, instr, dest, uniform, NULL, 0);
+                emit_ubo_read(ctx, instr, dest, uniform * 16, NULL, 0);
 
         ins->mask = mask_of(nr_components);
 }
@@ -1468,7 +1471,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(ctx, &instr->dest);
 
                 if (is_uniform && !ctx->is_blend) {
-                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysval_count + offset), indirect_offset, 0);
+                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysval_count + offset) * 16, indirect_offset, 0);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
 
@@ -1482,11 +1485,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         assert(nir_src_is_const(index));
                         assert(nir_src_is_const(*src_offset));
 
-                        /* TODO: Alignment */
-                        assert((offset & 0xF) == 0);
-
                         uint32_t uindex = nir_src_as_uint(index) + 1;
-                        emit_ubo_read(ctx, &instr->instr, reg, offset / 16, NULL, uindex);
+                        emit_ubo_read(ctx, &instr->instr, reg, offset, NULL, uindex);
                 } else if (is_ssbo) {
                         nir_src index = instr->src[0];
                         assert(nir_src_is_const(index));
