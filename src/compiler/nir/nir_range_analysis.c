@@ -610,9 +610,16 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       r = (struct ssa_result_range){analyze_expression(alu, 0, ht).range, false};
       break;
 
-   case nir_op_mov:
-      r = analyze_expression(alu, 0, ht);
+   case nir_op_mov: {
+      const struct ssa_result_range left = analyze_expression(alu, 0, ht);
+
+      /* See commentary in nir_op_bcsel for the reasons this is necessary. */
+      if (nir_src_is_const(alu->src[0].src) && left.range != eq_zero)
+         return (struct ssa_result_range){unknown, false};
+
+      r = left;
       break;
+   }
 
    case nir_op_fneg:
       r = analyze_expression(alu, 0, ht);
