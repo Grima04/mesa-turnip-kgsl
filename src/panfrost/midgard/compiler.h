@@ -539,6 +539,7 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count);
 midgard_instruction *
 emit_ubo_read(
         compiler_context *ctx,
+        nir_instr *instr,
         unsigned dest,
         unsigned offset,
         nir_src *indirect_offset,

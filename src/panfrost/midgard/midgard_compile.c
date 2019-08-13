@@ -1148,12 +1148,24 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
 #undef ALU_CASE
 
+static unsigned
+mir_mask_for_intr(nir_instr *instr, bool is_read)
+{
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+        if (is_read)
+                return mask_of(nir_intrinsic_dest_components(intr));
+        else
+                return nir_intrinsic_write_mask(intr);
+}
+
 /* Uniforms and UBOs use a shared code path, as uniforms are just (slightly
  * optimized) versions of UBO #0 */
 
 midgard_instruction *
 emit_ubo_read(
         compiler_context *ctx,
+        nir_instr *instr,
         unsigned dest,
         unsigned offset,
         nir_src *indirect_offset,
@@ -1166,6 +1178,7 @@ emit_ubo_read(
         /* TODO: Don't split */
         ins.load_store.varying_parameters = (offset & 7) << 7;
         ins.load_store.address = offset >> 3;
+        ins.mask = mir_mask_for_intr(instr, true);
 
         if (indirect_offset) {
                 ins.ssa_args.src[1] = nir_src_index(ctx, indirect_offset);
@@ -1243,13 +1256,7 @@ emit_ssbo_access(
 
         ins.load_store.varying_parameters = (offset & 0x1FF) << 1;
         ins.load_store.address = (offset >> 9);
-
-        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
-        if (is_read)
-                ins.mask = mask_of(nir_intrinsic_dest_components(intr));
-        else
-                ins.mask = nir_intrinsic_write_mask(intr);
+        ins.mask = mir_mask_for_intr(instr, is_read);
 
         emit_mir_instruction(ctx, ins);
 }
@@ -1323,7 +1330,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr, signed dest_override,
 
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
-                emit_ubo_read(ctx, dest, uniform, NULL, 0);
+                emit_ubo_read(ctx, instr, dest, uniform, NULL, 0);
 
         ins->mask = mask_of(nr_components);
 }
@@ -1461,7 +1468,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(ctx, &instr->dest);
 
                 if (is_uniform && !ctx->is_blend) {
-                        emit_ubo_read(ctx, reg, ctx->sysval_count + offset, indirect_offset, 0);
+                        emit_ubo_read(ctx, &instr->instr, reg, (ctx->sysval_count + offset), indirect_offset, 0);
                 } else if (is_ubo) {
                         nir_src index = instr->src[0];
 
@@ -1479,7 +1486,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         assert((offset & 0xF) == 0);
 
                         uint32_t uindex = nir_src_as_uint(index) + 1;
-                        emit_ubo_read(ctx, reg, offset / 16, NULL, uindex);
+                        emit_ubo_read(ctx, &instr->instr, reg, offset / 16, NULL, uindex);
                 } else if (is_ssbo) {
                         nir_src index = instr->src[0];
                         assert(nir_src_is_const(index));
