@@ -370,6 +370,7 @@ bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
 
    struct stat sb;
    if (fstat(fd, &sb) != 0 || (!S_ISREG(sb.st_mode))) {
+      close(fd);
       return false;
    }
 
