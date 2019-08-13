@@ -1034,7 +1034,9 @@ print_load_store_instr(uint64_t data,
 
         int address = word->address;
 
-        if (OP_IS_UBO_READ(word->op)) {
+        bool is_ubo = OP_IS_UBO_READ(word->op);
+
+        if (is_ubo) {
                 /* UBOs use their own addressing scheme */
 
                 int lo = word->varying_parameters >> 7;
@@ -1049,7 +1051,12 @@ print_load_store_instr(uint64_t data,
         print_swizzle_vec4(word->swizzle, false, false);
 
         printf(", ");
-        print_load_store_arg(word->arg_1, 0);
+
+        if (is_ubo)
+                printf("ubo%d", word->arg_1);
+        else
+                print_load_store_arg(word->arg_1, 0);
+
         printf(", ");
         print_load_store_arg(word->arg_2, 1);
         printf(" /* %X */\n", word->varying_parameters);
