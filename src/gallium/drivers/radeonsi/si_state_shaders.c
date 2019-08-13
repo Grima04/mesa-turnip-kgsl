@@ -2427,11 +2427,8 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 	assert(thread_index < ARRAY_SIZE(sscreen->compiler));
 	compiler = &sscreen->compiler[thread_index];
 
-	if (sel->nir) {
-		/* TODO: GS always sets wave size = default. Legacy GS will have
-		 * incorrect subgroup_size and ballot_bit_size. */
-		si_lower_nir(sel, si_get_wave_size(sscreen, sel->type, true, false));
-	}
+	if (sel->nir)
+		si_lower_nir(sel);
 
 	/* Compile the main shader part for use with a prolog and/or epilog.
 	 * If this fails, the driver will try to compile a monolithic shader

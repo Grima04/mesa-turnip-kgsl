@@ -60,7 +60,8 @@ void
 ac_llvm_context_init(struct ac_llvm_context *ctx,
 		     struct ac_llvm_compiler *compiler,
 		     enum chip_class chip_class, enum radeon_family family,
-		     enum ac_float_mode float_mode, unsigned wave_size)
+		     enum ac_float_mode float_mode, unsigned wave_size,
+		     unsigned ballot_mask_bits)
 {
 	LLVMValueRef args[1];
 
@@ -69,6 +70,7 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->chip_class = chip_class;
 	ctx->family = family;
 	ctx->wave_size = wave_size;
+	ctx->ballot_mask_bits = ballot_mask_bits;
 	ctx->module = ac_create_module(wave_size == 32 ? compiler->tm_wave32
 						       : compiler->tm,
 				       ctx->context);
@@ -93,6 +95,7 @@ ac_llvm_context_init(struct ac_llvm_context *ctx,
 	ctx->v4f32 = LLVMVectorType(ctx->f32, 4);
 	ctx->v8i32 = LLVMVectorType(ctx->i32, 8);
 	ctx->iN_wavemask = LLVMIntTypeInContext(ctx->context, ctx->wave_size);
+	ctx->iN_ballotmask = LLVMIntTypeInContext(ctx->context, ballot_mask_bits);
 
 	ctx->i8_0 = LLVMConstInt(ctx->i8, 0, false);
 	ctx->i8_1 = LLVMConstInt(ctx->i8, 1, false);

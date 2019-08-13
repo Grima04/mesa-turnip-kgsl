@@ -50,7 +50,8 @@ static const char scratch_rsrc_dword1_symbol[] =
 static void si_init_shader_ctx(struct si_shader_context *ctx,
 			       struct si_screen *sscreen,
 			       struct ac_llvm_compiler *compiler,
-			       unsigned wave_size);
+			       unsigned wave_size,
+			       bool nir);
 
 static void si_llvm_emit_barrier(const struct lp_build_tgsi_action *action,
 				 struct lp_build_tgsi_context *bld_base,
@@ -5725,7 +5726,8 @@ si_generate_gs_copy_shader(struct si_screen *sscreen,
 	shader->is_gs_copy_shader = true;
 
 	si_init_shader_ctx(&ctx, sscreen, compiler,
-			   si_get_wave_size(sscreen, PIPE_SHADER_VERTEX, false, false));
+			   si_get_wave_size(sscreen, PIPE_SHADER_VERTEX, false, false),
+			   false);
 	ctx.shader = shader;
 	ctx.type = PIPE_SHADER_VERTEX;
 
@@ -5989,11 +5991,13 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 static void si_init_shader_ctx(struct si_shader_context *ctx,
 			       struct si_screen *sscreen,
 			       struct ac_llvm_compiler *compiler,
-			       unsigned wave_size)
+			       unsigned wave_size,
+			       bool nir)
 {
 	struct lp_build_tgsi_context *bld_base;
 
-	si_llvm_context_init(ctx, sscreen, compiler, wave_size);
+	si_llvm_context_init(ctx, sscreen, compiler, wave_size,
+			     nir ? 64 : wave_size);
 
 	bld_base = &ctx->bld_base;
 	bld_base->emit_fetch_funcs[TGSI_FILE_CONSTANT] = fetch_constant;
@@ -6939,7 +6943,8 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 		si_dump_streamout(&sel->so);
 	}
 
-	si_init_shader_ctx(&ctx, sscreen, compiler, si_get_shader_wave_size(shader));
+	si_init_shader_ctx(&ctx, sscreen, compiler, si_get_shader_wave_size(shader),
+			   sel->nir != NULL);
 	si_llvm_context_set_ir(&ctx, shader);
 
 	memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
@@ -7319,7 +7324,8 @@ si_get_shader_part(struct si_screen *sscreen,
 	struct si_shader_context ctx;
 	si_init_shader_ctx(&ctx, sscreen, compiler,
 			   si_get_wave_size(sscreen, type, shader.key.as_ngg,
-					    shader.key.as_es));
+					    shader.key.as_es),
+			   false);
 	ctx.shader = &shader;
 	ctx.type = type;
 

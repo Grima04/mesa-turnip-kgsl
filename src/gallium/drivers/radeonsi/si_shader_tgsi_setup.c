@@ -954,7 +954,8 @@ static void emit_immediate(struct lp_build_tgsi_context *bld_base,
 void si_llvm_context_init(struct si_shader_context *ctx,
 			  struct si_screen *sscreen,
 			  struct ac_llvm_compiler *compiler,
-			  unsigned wave_size)
+			  unsigned wave_size,
+			  unsigned ballot_mask_bits)
 {
 	struct lp_type type;
 
@@ -970,7 +971,7 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 	ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.chip_class,
 			     sscreen->info.family,
 			     AC_FLOAT_MODE_NO_SIGNED_ZEROS_FP_MATH,
-			     wave_size);
+			     wave_size, ballot_mask_bits);
 
 	ctx->gallivm.context = ctx->ac.context;
 	ctx->gallivm.module = ctx->ac.module;
