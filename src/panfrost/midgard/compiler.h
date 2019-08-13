@@ -315,6 +315,7 @@ static inline void
 mir_remove_instruction(struct midgard_instruction *ins)
 {
         list_del(&ins->link);
+        free(ins);
 }
 
 static inline midgard_instruction*
