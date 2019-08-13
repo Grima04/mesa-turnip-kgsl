@@ -425,3 +425,24 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
 
         return mask;
 }
+
+unsigned
+mir_ubo_shift(midgard_load_store_op op)
+{
+        switch (op) {
+        case midgard_op_ld_ubo_char:
+                return 0;
+        case midgard_op_ld_ubo_char2:
+                return 1;
+        case midgard_op_ld_ubo_char4:
+                return 2;
+        case midgard_op_ld_ubo_short4:
+                return 3;
+        case midgard_op_ld_ubo_int4:
+                return 4;
+        default:
+                unreachable("Invalid op");
+        }
+}
+
+
