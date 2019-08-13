@@ -218,6 +218,17 @@ micro_ddx(union tgsi_exec_channel *dst,
 }
 
 static void
+micro_ddx_fine(union tgsi_exec_channel *dst,
+          const union tgsi_exec_channel *src)
+{
+   dst->f[0] =
+   dst->f[1] = src->f[TILE_TOP_RIGHT] - src->f[TILE_TOP_LEFT];
+   dst->f[2] =
+   dst->f[3] = src->f[TILE_BOTTOM_RIGHT] - src->f[TILE_BOTTOM_LEFT];
+}
+
+
+static void
 micro_ddy(union tgsi_exec_channel *dst,
           const union tgsi_exec_channel *src)
 {
@@ -225,6 +236,16 @@ micro_ddy(union tgsi_exec_channel *dst,
    dst->f[1] =
    dst->f[2] =
    dst->f[3] = src->f[TILE_BOTTOM_LEFT] - src->f[TILE_TOP_LEFT];
+}
+
+static void
+micro_ddy_fine(union tgsi_exec_channel *dst,
+          const union tgsi_exec_channel *src)
+{
+   dst->f[0] =
+   dst->f[2] = src->f[TILE_BOTTOM_LEFT] - src->f[TILE_TOP_LEFT];
+   dst->f[1] =
+   dst->f[3] = src->f[TILE_BOTTOM_RIGHT] - src->f[TILE_TOP_RIGHT];
 }
 
 static void
@@ -5398,8 +5419,16 @@ exec_instruction(
       exec_scalar_unary(mach, inst, micro_cos, TGSI_EXEC_DATA_FLOAT, TGSI_EXEC_DATA_FLOAT);
       break;
 
+   case TGSI_OPCODE_DDX_FINE:
+      exec_vector_unary(mach, inst, micro_ddx_fine, TGSI_EXEC_DATA_FLOAT, TGSI_EXEC_DATA_FLOAT);
+      break;
+
    case TGSI_OPCODE_DDX:
       exec_vector_unary(mach, inst, micro_ddx, TGSI_EXEC_DATA_FLOAT, TGSI_EXEC_DATA_FLOAT);
+      break;
+
+   case TGSI_OPCODE_DDY_FINE:
+      exec_vector_unary(mach, inst, micro_ddy_fine, TGSI_EXEC_DATA_FLOAT, TGSI_EXEC_DATA_FLOAT);
       break;
 
    case TGSI_OPCODE_DDY:
