@@ -136,6 +136,7 @@ tgsi_varying_semantic_to_slot(unsigned semantic, unsigned index)
    case TGSI_SEMANTIC_PSIZE:
       return VARYING_SLOT_PSIZ;
    case TGSI_SEMANTIC_GENERIC:
+      assert(index < 32);
       return VARYING_SLOT_VAR0 + index;
    case TGSI_SEMANTIC_FACE:
       return VARYING_SLOT_FACE;
@@ -151,6 +152,7 @@ tgsi_varying_semantic_to_slot(unsigned semantic, unsigned index)
    case TGSI_SEMANTIC_CLIPVERTEX:
       return VARYING_SLOT_CLIP_VERTEX;
    case TGSI_SEMANTIC_TEXCOORD:
+      assert(index < 8);
       return VARYING_SLOT_TEX0 + index;
    case TGSI_SEMANTIC_PCOORD:
       return VARYING_SLOT_PNTC;
