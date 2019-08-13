@@ -36,6 +36,22 @@
  * program so we allow that many registers through at minimum, to prevent
  * spilling. If we spill anyway, I mean, it's a lose-lose at that point. */
 
+static unsigned
+mir_ubo_offset(midgard_instruction *ins)
+{
+        assert(ins->type == TAG_LOAD_STORE_4);
+        assert(OP_IS_UBO_READ(ins->load_store.op));
+
+        /* Grab the offset as the hw understands it */
+        unsigned lo = ins->load_store.varying_parameters >> 7;
+        unsigned hi = ins->load_store.address;
+        unsigned raw = ((hi << 3) | lo);
+
+        /* Account for the op's shift */
+        unsigned shift = mir_ubo_shift(ins->load_store.op);
+        return (raw << shift);
+}
+
 void
 midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
 {
@@ -43,11 +59,11 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
                 if (ins->type != TAG_LOAD_STORE_4) continue;
                 if (!OP_IS_UBO_READ(ins->load_store.op)) continue;
 
-                unsigned lo = ins->load_store.varying_parameters >> 7;
-                unsigned hi = ins->load_store.address;
+                /* Get the offset. TODO: can we promote unaligned access? */
+                unsigned off = mir_ubo_offset(ins);
+                if (off & 0xF) continue;
 
-                /* TODO: Combine fields logically */
-                unsigned address = (hi << 3) | lo;
+                unsigned address = off / 16;
 
                 /* Check this is UBO 0 */
                 if (ins->load_store.arg_1) continue;
