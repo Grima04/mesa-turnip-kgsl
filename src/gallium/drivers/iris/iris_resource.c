@@ -579,7 +579,12 @@ iris_resource_configure_aux(struct iris_screen *screen,
     *
     * On gen <= 9, we are going to store the clear color on the buffer
     * anyways, and copy it back to the surface state during state emission.
+    *
+    * Also add some padding to make sure the fast clear color state buffer
+    * starts at a 4K alignment. We believe that 256B might be enough, but due
+    * to lack of testing we will leave this as 4K for now.
     */
+   size = ALIGN(size, 4096);
    res->aux.clear_color_offset = res->aux.offset + size;
    size += iris_get_aux_clear_color_state_size(screen);
    *aux_size_B = size;
