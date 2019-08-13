@@ -1389,10 +1389,15 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
          * KHR_partial_update() spec states that trying to render outside of
          * the damage region is "undefined behavior", so we should be safe.
          */
-        panfrost_job_intersection_scissor(batch, rsrc->damage.extent.minx,
-                                          rsrc->damage.extent.miny,
-                                          rsrc->damage.extent.maxx,
-                                          rsrc->damage.extent.maxy);
+        unsigned damage_width = (rsrc->damage.extent.maxx - rsrc->damage.extent.minx);
+        unsigned damage_height = (rsrc->damage.extent.maxy - rsrc->damage.extent.miny);
+
+        if (damage_width && damage_height) {
+                panfrost_job_intersection_scissor(batch, rsrc->damage.extent.minx,
+                                                  rsrc->damage.extent.miny,
+                                                  rsrc->damage.extent.maxx,
+                                                  rsrc->damage.extent.maxy);
+        }
 
         /* FIXME: Looks like aligning on a tile is not enough, but
          * aligning on twice the tile size seems to works. We don't
