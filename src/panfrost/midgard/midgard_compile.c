@@ -2835,6 +2835,9 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                         ctx->spills, ctx->fills);
         }
 
+        mir_foreach_block_safe(ctx, block)
+                mir_remove_block(block);
+
         ralloc_free(ctx);
 
         return 0;
