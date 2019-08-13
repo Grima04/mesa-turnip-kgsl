@@ -1893,14 +1893,11 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
                        dim, is_array, base_type, access, format);
       nir_deref_instr *image_deref = nir_build_deref_var(b, image);
       const struct glsl_type *type = image_deref->type;
-      unsigned coord_components = glsl_get_sampler_coordinate_components(type);
 
       nir_intrinsic_set_access(instr, image_deref->var->data.image.access);
 
       instr->src[0] = nir_src_for_ssa(&image_deref->dest.ssa);
-      instr->src[1] = nir_src_for_ssa(nir_swizzle(b, src[addr_src_index],
-                                                  SWIZ(X, Y, Z, W),
-                                                  coord_components));
+      instr->src[1] = nir_src_for_ssa(src[addr_src_index]);
 
       /* Set the sample argument, which is undefined for single-sample images. */
       if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS) {
