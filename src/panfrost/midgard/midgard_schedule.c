@@ -781,13 +781,15 @@ static void mir_spill_register(
          * implicitly. For special writes, spill to a work register */
 
         if (!is_special || is_special_w) {
+                if (is_special_w)
+                        spill_slot = spill_index++;
+
                 mir_foreach_instr_global_safe(ctx, ins) {
                         if (ins->ssa_args.dest != spill_node) continue;
 
                         midgard_instruction st;
 
                         if (is_special_w) {
-                                spill_slot = spill_index++;
                                 st = v_mov(spill_node, blank_alu_src, spill_slot);
                                 st.no_spill = true;
                         } else {
