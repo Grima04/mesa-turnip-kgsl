@@ -710,6 +710,7 @@ v3d_set_prog_data(struct v3d_compile *c,
         prog_data->threads = c->threads;
         prog_data->single_seg = !c->last_thrsw;
         prog_data->spill_size = c->spill_size;
+        prog_data->tmu_dirty_rcl = c->tmu_dirty_rcl;
 
         v3d_set_prog_data_uniforms(c, prog_data);
 

@@ -208,6 +208,9 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         instr->intrinsic == nir_intrinsic_load_scratch ||
                         instr->intrinsic == nir_intrinsic_load_shared);
 
+        if (!is_load)
+                c->tmu_dirty_rcl = true;
+
         bool has_index = !is_shared_or_scratch;
 
         int offset_src;

@@ -349,6 +349,11 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                 v3d_write_uniforms(v3d, v3d->prog.cs,
                                    PIPE_SHADER_VERTEX);
 
+        /* Update the cache dirty flag based on the shader progs data */
+        job->tmu_dirty_rcl |= v3d->prog.cs->prog_data.vs->base.tmu_dirty_rcl;
+        job->tmu_dirty_rcl |= v3d->prog.vs->prog_data.vs->base.tmu_dirty_rcl;
+        job->tmu_dirty_rcl |= v3d->prog.fs->prog_data.fs->base.tmu_dirty_rcl;
+
         /* See GFXH-930 workaround below */
         uint32_t num_elements_to_emit = MAX2(vtx->num_elements, 1);
         uint32_t shader_rec_offset =
