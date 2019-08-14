@@ -30,6 +30,8 @@
 #include "compiler/nir_types.h"
 #include "util/u_dynarray.h"
 
+#include "bifrost_compile.h"
+
 static void
 compile_shader(char **argv)
 {
@@ -100,8 +102,7 @@ main(int argc, char **argv)
         }
         if (strcmp(argv[1], "compile") == 0) {
                 compile_shader(&argv[2]);
-        }
-        else if (strcmp(argv[1], "disasm") == 0) {
+        } else if (strcmp(argv[1], "disasm") == 0) {
                 disassemble(argv[2]);
         }
         return 0;
