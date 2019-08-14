@@ -1081,7 +1081,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                         struct midgard_blend_rt rts[4];
 
-                        for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
+                        for (unsigned i = 0; i < 1; ++i) {
                                 bool is_srgb =
                                         (ctx->pipe_framebuffer.nr_cbufs > i) &&
                                         (ctx->pipe_framebuffer.cbufs[i]) &&
