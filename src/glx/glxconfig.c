@@ -59,7 +59,7 @@ glx_config_get(struct glx_config * mode, int attribute, int *value_return)
       *value_return = mode->rgbBits;
       return 0;
    case GLX_RGBA:
-      *value_return = mode->rgbMode;
+      *value_return = !(mode->renderType & GLX_COLOR_INDEX_BIT);
       return 0;
    case GLX_RED_SIZE:
       *value_return = mode->redBits;
