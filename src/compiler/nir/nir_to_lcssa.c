@@ -111,9 +111,6 @@ convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
    if (all_uses_inside_loop)
       return true;
 
-   /* We don't want derefs ending up in phi sources */
-   assert(def->parent_instr->type != nir_instr_type_deref);
-
    /* Initialize a phi-instruction */
    nir_phi_instr *phi = nir_phi_instr_create(state->shader);
    nir_ssa_dest_init(&phi->instr, &phi->dest,
@@ -131,6 +128,25 @@ convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
    }
 
    nir_instr_insert_before_block(block_after_loop, &phi->instr);
+   nir_ssa_def *dest = &phi->dest.ssa;
+
+   /* deref instructions need a cast after the phi */
+   if (def->parent_instr->type == nir_instr_type_deref) {
+      nir_deref_instr *cast =
+         nir_deref_instr_create(state->shader, nir_deref_type_cast);
+
+      nir_deref_instr *instr = nir_instr_as_deref(def->parent_instr);
+      cast->mode = instr->mode;
+      cast->type = instr->type;
+      cast->parent = nir_src_for_ssa(&phi->dest.ssa);
+      cast->cast.ptr_stride = nir_deref_instr_ptr_as_array_stride(instr);
+
+      nir_ssa_dest_init(&cast->instr, &cast->dest,
+                        phi->dest.ssa.num_components,
+                        phi->dest.ssa.bit_size, NULL);
+      nir_instr_insert(nir_after_phis(block_after_loop), &cast->instr);
+      dest = &cast->dest.ssa;
+   }
 
    /* Run through all uses and rewrite those outside the loop to point to
     * the phi instead of pointing to the ssa-def.
@@ -142,15 +158,13 @@ convert_loop_exit_for_ssa(nir_ssa_def *def, void *void_state)
       }
 
       if (!is_use_inside_loop(use, state->loop)) {
-         nir_instr_rewrite_src(use->parent_instr, use,
-                               nir_src_for_ssa(&phi->dest.ssa));
+         nir_instr_rewrite_src(use->parent_instr, use, nir_src_for_ssa(dest));
       }
    }
 
    nir_foreach_if_use_safe(use, def) {
       if (!is_if_use_inside_loop(use, state->loop)) {
-         nir_if_rewrite_condition(use->parent_if,
-                                  nir_src_for_ssa(&phi->dest.ssa));
+         nir_if_rewrite_condition(use->parent_if, nir_src_for_ssa(dest));
       }
    }
 
