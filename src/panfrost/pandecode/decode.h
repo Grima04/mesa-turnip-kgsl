@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <panfrost-job.h>
+#include <inttypes.h>
 #include "util/list.h"
 
 struct pandecode_mapped_memory {
@@ -38,23 +38,23 @@ struct pandecode_mapped_memory {
         size_t length;
 
         void *addr;
-        mali_ptr gpu_va;
+        uint64_t gpu_va;
 
         char name[32];
 };
 
 void pandecode_initialize(void);
 
-char *pointer_as_memory_reference(mali_ptr ptr);
+char *pointer_as_memory_reference(uint64_t ptr);
 
-struct pandecode_mapped_memory *pandecode_find_mapped_gpu_mem_containing(mali_ptr addr);
+struct pandecode_mapped_memory *pandecode_find_mapped_gpu_mem_containing(uint64_t addr);
 
 void
-pandecode_inject_mmap(mali_ptr gpu_va, void *cpu, unsigned sz, const char *name);
+pandecode_inject_mmap(uint64_t gpu_va, void *cpu, unsigned sz, const char *name);
 
 static inline void *
 __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
-                          mali_ptr gpu_va, size_t size,
+                          uint64_t gpu_va, size_t size,
                           int line, const char *filename)
 {
         if (!mem)
@@ -88,6 +88,6 @@ __pandecode_fetch_gpu_mem(const struct pandecode_mapped_memory *mem,
 				       __LINE__, __FILE__)
 
 /* Common entrypoint */
-int pandecode_jc(mali_ptr jc_gpu_va, bool bifrost);
+int pandecode_jc(uint64_t jc_gpu_va, bool bifrost);
 
 #endif /* __MMAP_TRACE_H__ */

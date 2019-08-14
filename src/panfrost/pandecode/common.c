@@ -37,7 +37,7 @@
 static struct pandecode_mapped_memory mmaps;
 
 struct pandecode_mapped_memory *
-pandecode_find_mapped_gpu_mem_containing(mali_ptr addr)
+pandecode_find_mapped_gpu_mem_containing(uint64_t addr)
 {
         list_for_each_entry(struct pandecode_mapped_memory, pos, &mmaps.node, node) {
                 if (addr >= pos->gpu_va && addr < pos->gpu_va + pos->length)
@@ -48,7 +48,7 @@ pandecode_find_mapped_gpu_mem_containing(mali_ptr addr)
 }
 
 void
-pandecode_inject_mmap(mali_ptr gpu_va, void *cpu, unsigned sz, const char *name)
+pandecode_inject_mmap(uint64_t gpu_va, void *cpu, unsigned sz, const char *name)
 {
         struct pandecode_mapped_memory *mapped_mem = NULL;
 
@@ -73,7 +73,7 @@ pandecode_inject_mmap(mali_ptr gpu_va, void *cpu, unsigned sz, const char *name)
 }
 
 char *
-pointer_as_memory_reference(mali_ptr ptr)
+pointer_as_memory_reference(uint64_t ptr)
 {
         struct pandecode_mapped_memory *mapped;
         char *out = malloc(128);
@@ -89,7 +89,7 @@ pointer_as_memory_reference(mali_ptr ptr)
 
         /* Just use the raw address if other options are exhausted */
 
-        snprintf(out, 128, MALI_PTR_FMT, ptr);
+        snprintf(out, 128, "0x%" PRIx64, ptr);
         return out;
 
 }

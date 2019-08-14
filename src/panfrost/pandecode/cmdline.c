@@ -44,7 +44,7 @@ pandecode_read_filename(const char *base, const char *name)
 }
 
 static void
-pandecode_read_memory(const char *base, const char *name, mali_ptr gpu_va)
+pandecode_read_memory(const char *base, const char *name, uint64_t gpu_va)
 {
         FILE *fp = pandecode_read_filename(base, name);
 
@@ -70,7 +70,7 @@ pandecode_read_mmap(const char *base, const char *line)
 {
         assert(strlen(line) < 500);
 
-        mali_ptr addr;
+        uint64_t addr;
         char name[512];
 
         sscanf(line, "MMAP %" PRIx64 " %s", &addr, name);
@@ -80,7 +80,7 @@ pandecode_read_mmap(const char *base, const char *line)
 static void
 pandecode_read_job_submit(const char *base, const char *line)
 {
-        mali_ptr addr;
+        uint64_t addr;
         unsigned core_req;
         unsigned is_bifrost;
 
