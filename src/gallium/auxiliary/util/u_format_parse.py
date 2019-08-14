@@ -112,11 +112,12 @@ class Channel:
 class Format:
     '''Describe a pixel format.'''
 
-    def __init__(self, name, layout, block_width, block_height, le_channels, le_swizzles, be_channels, be_swizzles, colorspace):
+    def __init__(self, name, layout, block_width, block_height, block_depth, le_channels, le_swizzles, be_channels, be_swizzles, colorspace):
         self.name = name
         self.layout = layout
         self.block_width = block_width
         self.block_height = block_height
+        self.block_depth = block_depth
         self.le_channels = le_channels
         self.le_swizzles = le_swizzles
         self.be_channels = be_channels
@@ -358,20 +359,20 @@ def parse(filename):
             continue
 
         fields = [field.strip() for field in line.split(',')]
-        if len (fields) == 10:
-           fields += fields[4:9]
-        assert len (fields) == 15
-        
+        if len (fields) == 11:
+            fields += fields[5:10]
+        assert len (fields) == 16
+
         name = fields[0]
         layout = fields[1]
-        block_width, block_height = map(int, fields[2:4])
-        colorspace = fields[9]
+        block_width, block_height, block_depth = map(int, fields[2:5])
+        colorspace = fields[10]
 
-        le_swizzles = [_swizzle_parse_map[swizzle] for swizzle in fields[8]]
-        le_channels = _parse_channels(fields[4:8], layout, colorspace, le_swizzles)
+        le_swizzles = [_swizzle_parse_map[swizzle] for swizzle in fields[9]]
+        le_channels = _parse_channels(fields[5:9], layout, colorspace, le_swizzles)
 
-        be_swizzles = [_swizzle_parse_map[swizzle] for swizzle in fields[14]]
-        be_channels = _parse_channels(fields[10:14], layout, colorspace, be_swizzles)
+        be_swizzles = [_swizzle_parse_map[swizzle] for swizzle in fields[15]]
+        be_channels = _parse_channels(fields[11:15], layout, colorspace, be_swizzles)
 
         le_shift = 0
         for channel in le_channels:
@@ -387,7 +388,7 @@ def parse(filename):
         for i in range(4):
             assert (le_swizzles[i] != SWIZZLE_NONE) == (be_swizzles[i] != SWIZZLE_NONE)
 
-        format = Format(name, layout, block_width, block_height, le_channels, le_swizzles, be_channels, be_swizzles, colorspace)
+        format = Format(name, layout, block_width, block_height, block_depth, le_channels, le_swizzles, be_channels, be_swizzles, colorspace)
         formats.append(format)
     return formats
 
