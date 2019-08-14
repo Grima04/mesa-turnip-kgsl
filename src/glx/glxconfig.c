@@ -212,10 +212,6 @@ glx_config_get(struct glx_config * mode, int attribute, int *value_return)
  * values from the extension specification.
  * 
  * \param count         Number of structures to allocate.
- * \param minimum_size  Minimum size of a structure to allocate.  This allows
- *                      for differences in the version of the
- *                      \c struct glx_config stucture used in libGL and in a
- *                      DRI-based driver.
  * \returns A pointer to the first element in a linked list of \c count
  *          stuctures on success, or \c NULL on failure.
  */
