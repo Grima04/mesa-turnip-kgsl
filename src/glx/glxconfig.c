@@ -225,14 +225,13 @@ glx_config_create_list(unsigned count)
 
    next = &base;
    for (i = 0; i < count; i++) {
-      *next = malloc(size);
+      *next = calloc(1, size);
       if (*next == NULL) {
 	 glx_config_destroy_list(base);
 	 base = NULL;
 	 break;
       }
 
-      (void) memset(*next, 0, size);
       (*next)->visualID = GLX_DONT_CARE;
       (*next)->visualType = GLX_DONT_CARE;
       (*next)->visualRating = GLX_NONE;
