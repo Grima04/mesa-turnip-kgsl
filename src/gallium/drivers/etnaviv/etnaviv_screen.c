@@ -331,7 +331,9 @@ etna_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return DBG_ENABLED(ETNA_DBG_NIR) ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
    case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
-      return 4096;
+      return shader == PIPE_SHADER_FRAGMENT
+                ? screen->specs.max_ps_uniforms * sizeof(float[4])
+                : screen->specs.max_vs_uniforms * sizeof(float[4]);
    case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
