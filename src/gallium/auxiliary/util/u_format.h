@@ -102,6 +102,9 @@ struct util_format_block
    /** Block height in pixels */
    unsigned height;
 
+   /** Block depth in pixels */
+   unsigned depth;
+
    /** Block size in bits */
    unsigned bits;
 };
@@ -842,6 +845,19 @@ util_format_get_blockheight(enum pipe_format format)
    return desc->block.height;
 }
 
+static inline uint
+util_format_get_blockdepth(enum pipe_format format)
+{
+   const struct util_format_description *desc = util_format_description(format);
+
+   assert(desc);
+   if (!desc) {
+      return 1;
+   }
+
+   return desc->block.depth;
+}
+
 static inline unsigned
 util_format_get_nblocksx(enum pipe_format format,
                          unsigned x)
@@ -859,10 +875,19 @@ util_format_get_nblocksy(enum pipe_format format,
 }
 
 static inline unsigned
+util_format_get_nblocksz(enum pipe_format format,
+                         unsigned z)
+{
+   unsigned blockdepth = util_format_get_blockdepth(format);
+   return (z + blockdepth - 1) / blockdepth;
+}
+
+static inline unsigned
 util_format_get_nblocks(enum pipe_format format,
                         unsigned width,
                         unsigned height)
 {
+   assert(util_format_get_blockdepth(format) == 1);
    return util_format_get_nblocksx(format, width) * util_format_get_nblocksy(format, height);
 }
 
