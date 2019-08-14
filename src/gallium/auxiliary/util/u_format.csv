@@ -249,6 +249,27 @@ PIPE_FORMAT_ASTC_10x10_SRGB         , astc,10,10, 1, x128,     ,     ,     , xyz
 PIPE_FORMAT_ASTC_12x10_SRGB         , astc,12,10, 1, x128,     ,     ,     , xyzw, srgb
 PIPE_FORMAT_ASTC_12x12_SRGB         , astc,12,12, 1, x128,     ,     ,     , xyzw, srgb
 
+PIPE_FORMAT_ASTC_3x3x3              , astc, 3, 3, 3, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_4x3x3              , astc, 4, 3, 3, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_4x4x3              , astc, 4, 4, 3, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_4x4x4              , astc, 4, 4, 4, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_5x4x4              , astc, 5, 4, 4, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_5x5x4              , astc, 5, 5, 4, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_5x5x5              , astc, 5, 5, 5, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_6x5x5              , astc, 6, 5, 5, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_6x6x5              , astc, 6, 6, 5, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_6x6x6              , astc, 6, 6, 6, x128,     ,     ,     , xyzw, rgb
+PIPE_FORMAT_ASTC_3x3x3_SRGB         , astc, 3, 3, 3, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_4x3x3_SRGB         , astc, 4, 3, 3, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_4x4x3_SRGB         , astc, 4, 4, 3, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_4x4x4_SRGB         , astc, 4, 4, 4, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_5x4x4_SRGB         , astc, 5, 4, 4, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_5x5x4_SRGB         , astc, 5, 5, 4, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_5x5x5_SRGB         , astc, 5, 5, 5, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_6x5x5_SRGB         , astc, 6, 5, 5, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_6x6x5_SRGB         , astc, 6, 6, 5, x128,     ,     ,     , xyzw, srgb
+PIPE_FORMAT_ASTC_6x6x6_SRGB         , astc, 6, 6, 6, x128,     ,     ,     , xyzw, srgb
+
 PIPE_FORMAT_ATC_RGB                 ,  atc, 4, 4, 1, x64,      ,     ,     , xyz1, rgb
 PIPE_FORMAT_ATC_RGBA_EXPLICIT       ,  atc, 4, 4, 1, x128,     ,     ,     , xyzw, rgb
 PIPE_FORMAT_ATC_RGBA_INTERPOLATED   ,  atc, 4, 4, 1, x128,     ,     ,     , xyzw, rgb
