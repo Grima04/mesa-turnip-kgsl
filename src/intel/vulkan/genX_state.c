@@ -92,6 +92,8 @@ static void
 genX(emit_slice_hashing_state)(struct anv_device *device,
                                struct anv_batch *batch)
 {
+   device->slice_hash = (struct anv_state) { 0 };
+
 #if GEN_GEN == 11
    const unsigned *ppipe_subslices = device->info.ppipe_subslices;
    int subslices_delta = ppipe_subslices[0] - ppipe_subslices[1];
@@ -156,8 +158,6 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
    anv_batch_emit(batch, GENX(3DSTATE_3D_MODE), mode) {
       mode.SliceHashingTableEnable = true;
    }
-#else
-   device->slice_hash = (struct anv_state) { 0 };
 #endif
 }
 
