@@ -3382,23 +3382,25 @@ _mesa_TexImage3D_no_error(GLenum target, GLint level, GLint internalFormat,
                      width, height, depth, border, format, type, 0, pixels);
 }
 
-
-void GLAPIENTRY
-_mesa_EGLImageTargetTexture2DOES (GLenum target, GLeglImageOES image)
+/*
+ * Helper used by __mesa_EGLImageTargetTexture2DOES.
+ */
+static void
+egl_image_target_texture(struct gl_context *ctx,
+                         struct gl_texture_object *texObj, GLenum target,
+                         GLeglImageOES image, const char *caller)
 {
-   struct gl_texture_object *texObj;
    struct gl_texture_image *texImage;
    bool valid_target;
-   GET_CURRENT_CONTEXT(ctx);
    FLUSH_VERTICES(ctx, 0);
 
    switch (target) {
    case GL_TEXTURE_2D:
-      valid_target = ctx->Extensions.OES_EGL_image;
+      valid_target = _mesa_has_OES_EGL_image(ctx);
       break;
    case GL_TEXTURE_EXTERNAL_OES:
       valid_target =
-         _mesa_is_gles(ctx) ? ctx->Extensions.OES_EGL_image_external : false;
+         _mesa_is_gles(ctx) ? _mesa_has_OES_EGL_image_external(ctx) : false;
       break;
    default:
       valid_target = false;
@@ -3406,36 +3408,29 @@ _mesa_EGLImageTargetTexture2DOES (GLenum target, GLeglImageOES image)
    }
 
    if (!valid_target) {
-      _mesa_error(ctx, GL_INVALID_ENUM,
-                  "glEGLImageTargetTexture2D(target=%d)", target);
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target=%d)", caller, target);
       return;
    }
 
    if (!image) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "glEGLImageTargetTexture2D(image=%p)", image);
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(image=%p)", caller, image);
       return;
    }
 
    if (ctx->NewState & _NEW_PIXEL)
       _mesa_update_state(ctx);
 
-   texObj = _mesa_get_current_tex_object(ctx, target);
-   if (!texObj)
-      return;
-
    _mesa_lock_texture(ctx, texObj);
 
    if (texObj->Immutable) {
-      _mesa_error(ctx, GL_INVALID_OPERATION,
-                  "glEGLImageTargetTexture2D(texture is immutable)");
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(texture is immutable)", caller);
       _mesa_unlock_texture(ctx, texObj);
       return;
    }
 
    texImage = _mesa_get_tex_image(ctx, texObj, target, 0);
    if (!texImage) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glEGLImageTargetTexture2D");
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
    } else {
       ctx->Driver.FreeTextureImageBuffer(ctx, texImage);
 
@@ -3445,6 +3440,22 @@ _mesa_EGLImageTargetTexture2DOES (GLenum target, GLeglImageOES image)
       _mesa_dirty_texobj(ctx, texObj);
    }
    _mesa_unlock_texture(ctx, texObj);
+}
+
+void GLAPIENTRY
+_mesa_EGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
+{
+   struct gl_texture_object *texObj;
+   const char *func = "glEGLImageTargetTexture2D";
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_current_tex_object(ctx, target);
+   if (!texObj) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(target=%d)", func, target);
+      return;
+   }
+
+   egl_image_target_texture(ctx, texObj, target, image, func);
 }
 
 /**
