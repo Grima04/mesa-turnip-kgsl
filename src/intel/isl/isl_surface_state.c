@@ -454,6 +454,10 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    s.RenderCacheReadWriteMode = 0;
 #endif
 
+#if GEN_GEN >= 11
+   s.EnableUnormPathInColorPipe = true;
+#endif
+
    s.CubeFaceEnablePositiveZ = 1;
    s.CubeFaceEnableNegativeZ = 1;
    s.CubeFaceEnablePositiveY = 1;
@@ -758,6 +762,10 @@ isl_genX(buffer_fill_state_s)(void *state,
    s.RenderCacheReadWriteMode = WriteOnlyCache;
 #else
    s.RenderCacheReadWriteMode = 0;
+#endif
+
+#if GEN_GEN >= 11
+   s.EnableUnormPathInColorPipe = true;
 #endif
 
    s.SurfaceBaseAddress = info->address;
