@@ -205,6 +205,7 @@ EXT(ATI_texture_env_combine3                , ATI_texture_env_combine3          
 EXT(ATI_texture_float                       , ARB_texture_float                      , GLL, GLC,  x ,  x , 2002)
 EXT(ATI_texture_mirror_once                 , ATI_texture_mirror_once                , GLL, GLC,  x ,  x , 2006)
 
+EXT(EXT_EGL_image_storage                   , EXT_EGL_image_storage                  , GLL, GLC , x ,  30, 2018)
 EXT(EXT_EGL_sync                            , dummy_true                             , GLL, GLC,  x ,  x , 2019)
 EXT(EXT_abgr                                , dummy_true                             , GLL, GLC,  x ,  x , 1995)
 EXT(EXT_base_instance                       , ARB_base_instance                      ,  x ,  x ,  x ,  30, 2014)
