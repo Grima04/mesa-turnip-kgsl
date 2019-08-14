@@ -514,6 +514,25 @@ zink_transfer_map(struct pipe_context *pctx,
       if (result != VK_SUCCESS)
          return NULL;
 
+#if defined(__APPLE__)
+      if (!(usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)) {
+         // Work around for MoltenVk limitation
+         // MoltenVk returns blank memory ranges when there should be data present
+         // This is a known limitation of MoltenVK.
+         // See https://github.com/KhronosGroup/MoltenVK/blob/master/Docs/MoltenVK_Runtime_UserGuide.md#known-moltenvk-limitations
+         VkMappedMemoryRange range = {
+            VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+            NULL,
+            res->mem,
+            res->offset,
+            res->size
+         };
+         result = vkFlushMappedMemoryRanges(screen->dev, 1, &range);
+         if (result != VK_SUCCESS)
+            return NULL;
+      }
+#endif
+
       trans->base.stride = 0;
       trans->base.layer_stride = 0;
       ptr = ((uint8_t *)ptr) + box->x;
