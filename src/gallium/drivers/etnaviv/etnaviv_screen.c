@@ -526,6 +526,19 @@ etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    *count = num_modifiers;
 }
 
+static void
+etna_determine_uniform_limits(struct etna_screen *screen)
+{
+   /* from QueryShaderCaps in kernel driver */
+   if (screen->model < chipModel_GC4000) {
+      screen->specs.max_vs_uniforms = 168;
+      screen->specs.max_ps_uniforms = 64;
+   } else {
+      screen->specs.max_vs_uniforms = 256;
+      screen->specs.max_ps_uniforms = 256;
+   }
+}
+
 static bool
 etna_get_specs(struct etna_screen *screen)
 {
@@ -688,14 +701,7 @@ etna_get_specs(struct etna_screen *screen)
    if (screen->specs.max_varyings > ETNA_NUM_VARYINGS)
       screen->specs.max_varyings = ETNA_NUM_VARYINGS;
 
-   /* from QueryShaderCaps in kernel driver */
-   if (screen->model < chipModel_GC4000) {
-      screen->specs.max_vs_uniforms = 168;
-      screen->specs.max_ps_uniforms = 64;
-   } else {
-      screen->specs.max_vs_uniforms = 256;
-      screen->specs.max_ps_uniforms = 256;
-   }
+   etna_determine_uniform_limits(screen);
 
    if (screen->specs.halti >= 5) {
       screen->specs.has_unified_uniforms = true;
