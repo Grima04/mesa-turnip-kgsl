@@ -529,14 +529,36 @@ etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
 static void
 etna_determine_uniform_limits(struct etna_screen *screen)
 {
-   /* from QueryShaderCaps in kernel driver */
-   if (screen->model < chipModel_GC4000) {
-      screen->specs.max_vs_uniforms = 168;
+   /* values for the non unified case are taken from
+    * gcmCONFIGUREUNIFORMS in the Vivante kernel driver file
+    * drivers/mxc/gpu-viv/hal/kernel/inc/gc_hal_base.h.
+    */
+   if (screen->model == chipModel_GC2000 &&
+       (screen->revision == 0x5118 || screen->revision == 0x5140)) {
+      screen->specs.max_vs_uniforms = 256;
       screen->specs.max_ps_uniforms = 64;
-   } else {
+   } else if (screen->specs.num_constants == 320) {
+      screen->specs.max_vs_uniforms = 256;
+      screen->specs.max_ps_uniforms = 64;
+   } else if (screen->specs.num_constants > 256 &&
+              screen->model == chipModel_GC1000) {
+      /* All GC1000 series chips can only support 64 uniforms for ps on non-unified const mode. */
+      screen->specs.max_vs_uniforms = 256;
+      screen->specs.max_ps_uniforms = 64;
+   } else if (screen->specs.num_constants > 256) {
       screen->specs.max_vs_uniforms = 256;
       screen->specs.max_ps_uniforms = 256;
    }
+    else if (screen->specs.num_constants == 256)
+    {
+      screen->specs.max_vs_uniforms = 256;
+      screen->specs.max_ps_uniforms = 256;
+    }
+    else
+    {
+      screen->specs.max_vs_uniforms = 168;
+      screen->specs.max_ps_uniforms = 64;
+    }
 }
 
 static bool
