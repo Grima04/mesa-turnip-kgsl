@@ -64,11 +64,17 @@ def print_channels(format, func):
     if format.nr_channels() <= 1:
         func(format.le_channels, format.le_swizzles)
     else:
-        print('#ifdef PIPE_ARCH_BIG_ENDIAN')
-        func(format.be_channels, format.be_swizzles)
-        print('#else')
-        func(format.le_channels, format.le_swizzles)
-        print('#endif')
+        if (format.le_channels == format.be_channels and
+            [c.shift for c in format.le_channels] ==
+            [c.shift for c in format.be_channels] and
+            format.le_swizzles == format.be_swizzles):
+            func(format.le_channels, format.le_swizzles)
+        else:
+            print('#ifdef PIPE_ARCH_BIG_ENDIAN')
+            func(format.be_channels, format.be_swizzles)
+            print('#else')
+            func(format.le_channels, format.le_swizzles)
+            print('#endif')
 
 def generate_format_type(format):
     '''Generate a structure that describes the format.'''
