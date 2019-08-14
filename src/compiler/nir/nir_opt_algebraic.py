@@ -204,6 +204,7 @@ optimizations = [
    # If x < 0: 1 - fsat(x) => 1 - 0 => 1 and fsat(1 - x) => fsat(> 1) => 1
    # If x > 1: 1 - fsat(x) => 1 - 1 => 0 and fsat(1 - x) => fsat(< 0) => 0
    (('~fadd', ('fneg(is_used_once)', ('fsat(is_used_once)', 'a(is_not_fmul)')), 1.0), ('fsat', ('fadd', 1.0, ('fneg', a)))),
+   (('~fsub', 1.0, ('fsat', a)), ('fsat', ('fsub', 1.0, a))),
 
    # 1 - ((1 - a) * (1 - b))
    # 1 - (1 - a - b + a*b)
@@ -920,6 +921,8 @@ optimizations.extend([
    # Subtracts
    (('~fsub', a, ('fsub', 0.0, b)), ('fadd', a, b)),
    (('isub', a, ('isub', 0, b)), ('iadd', a, b)),
+   (('isub', ('iadd', a, b), b), a),
+   (('~fsub', ('fadd', a, b), b), a),
    (('ussub_4x8', a, 0), a),
    (('ussub_4x8', a, ~0), 0),
    (('fsub', a, b), ('fadd', a, ('fneg', b)), 'options->lower_sub'),
