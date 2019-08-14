@@ -714,7 +714,7 @@ def generate(formats):
     for format in formats:
         if not is_format_hand_written(format):
             
-            if is_format_supported(format):
+            if is_format_supported(format) and not format.is_bitmask():
                 generate_format_type(format)
 
             if format.is_pure_unsigned():
