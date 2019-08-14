@@ -1387,8 +1387,6 @@ disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_register
 
                 unsigned next = (words[i] & 0xF0) >> 4;
 
-                i += 4 * num_quad_words;
-
                 /* We are parsing per bundle anyway */
                 nr_bundles++;
                 nr_quadwords += num_quad_words;
@@ -1401,6 +1399,8 @@ disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_register
                         if (midgard_word_types[words[i] & 0xF] != midgard_word_type_alu)
                                 break;
                 }
+
+                i += 4 * num_quad_words;
         }
 
         if (stats) {
