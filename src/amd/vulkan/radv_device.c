@@ -497,6 +497,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"noloadstoreopt", RADV_DEBUG_NO_LOAD_STORE_OPT},
 	{"nongg", RADV_DEBUG_NO_NGG},
 	{"noshaderballot", RADV_DEBUG_NO_SHADER_BALLOT},
+	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{NULL, 0}
 };
 
@@ -3271,11 +3272,16 @@ PFN_vkVoidFunction radv_GetInstanceProcAddr(
 	const char*                                 pName)
 {
 	RADV_FROM_HANDLE(radv_instance, instance, _instance);
+	bool unchecked = instance ? instance->debug_flags & RADV_DEBUG_ALL_ENTRYPOINTS : false;
 
-	return radv_lookup_entrypoint_checked(pName,
-	                                      instance ? instance->apiVersion : 0,
-	                                      instance ? &instance->enabled_extensions : NULL,
-	                                      NULL);
+	if (unchecked) {
+		return radv_lookup_entrypoint_unchecked(pName);
+	} else {
+		return radv_lookup_entrypoint_checked(pName,
+						      instance ? instance->apiVersion : 0,
+						      instance ? &instance->enabled_extensions : NULL,
+						      NULL);
+	}
 }
 
 /* The loader wants us to expose a second GetInstanceProcAddr function
@@ -3316,11 +3322,16 @@ PFN_vkVoidFunction radv_GetDeviceProcAddr(
 	const char*                                 pName)
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
+	bool unchecked = device ? device->instance->debug_flags & RADV_DEBUG_ALL_ENTRYPOINTS : false;
 
-	return radv_lookup_entrypoint_checked(pName,
-	                                      device->instance->apiVersion,
-	                                      &device->instance->enabled_extensions,
-	                                      &device->enabled_extensions);
+	if (unchecked) {
+		return radv_lookup_entrypoint_unchecked(pName);
+	} else {
+		return radv_lookup_entrypoint_checked(pName,
+						      device->instance->apiVersion,
+						      &device->instance->enabled_extensions,
+						      &device->enabled_extensions);
+	}
 }
 
 bool radv_get_memory_fd(struct radv_device *device,
