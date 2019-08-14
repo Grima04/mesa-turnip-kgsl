@@ -665,6 +665,7 @@ static const _mesa_glsl_extension _mesa_glsl_supported_extensions[] = {
    EXT(ARB_shader_texture_lod),
    EXT(ARB_shader_viewport_layer_array),
    EXT(ARB_shading_language_420pack),
+   EXT(ARB_shading_language_include),
    EXT(ARB_shading_language_packing),
    EXT(ARB_tessellation_shader),
    EXT(ARB_texture_cube_map_array),
