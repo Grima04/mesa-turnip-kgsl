@@ -73,8 +73,13 @@ etna_link_shaders(struct etna_context *ctx, struct compiled_shader_state *cs,
 
 #ifdef DEBUG
    if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS)) {
-      etna_dump_shader(vs);
-      etna_dump_shader(fs);
+      if (DBG_ENABLED(ETNA_DBG_NIR)) {
+         etna_dump_shader_nir(vs);
+         etna_dump_shader_nir(fs);
+      } else {
+         etna_dump_shader(vs);
+         etna_dump_shader(fs);
+      }
    }
 #endif
 

@@ -2506,39 +2506,19 @@ etna_dump_shader(const struct etna_shader_variant *shader)
              shader->uniforms.imm_data[idx],
              shader->uniforms.imm_contents[idx]);
    }
-
-   if (DBG_ENABLED(ETNA_DBG_NIR)) {
-      printf("inputs:\n");
-      for (int idx = 0; idx < shader->infile.num_reg; ++idx) {
-         printf(" [%i] name=%s comps=%i\n", shader->infile.reg[idx].reg,
-                (shader->stage == MESA_SHADER_VERTEX) ?
-                  gl_vert_attrib_name(shader->infile.reg[idx].slot) :
-                  gl_varying_slot_name(shader->infile.reg[idx].slot),
-                shader->infile.reg[idx].num_components);
-      }
-      printf("outputs:\n");
-      for (int idx = 0; idx < shader->outfile.num_reg; ++idx) {
-         printf(" [%i] name=%s comps=%i\n", shader->outfile.reg[idx].reg,
-                (shader->stage == MESA_SHADER_VERTEX) ?
-                  gl_varying_slot_name(shader->outfile.reg[idx].slot) :
-                  gl_frag_result_name(shader->outfile.reg[idx].slot),
-                shader->outfile.reg[idx].num_components);
-      }
-   } else {
-      printf("inputs:\n");
-      for (int idx = 0; idx < shader->infile.num_reg; ++idx) {
-         printf(" [%i] name=%s index=%i comps=%i\n", shader->infile.reg[idx].reg,
-                tgsi_semantic_names[shader->infile.reg[idx].semantic.Name],
-                shader->infile.reg[idx].semantic.Index,
-                shader->infile.reg[idx].num_components);
-      }
-      printf("outputs:\n");
-      for (int idx = 0; idx < shader->outfile.num_reg; ++idx) {
-         printf(" [%i] name=%s index=%i comps=%i\n", shader->outfile.reg[idx].reg,
-                tgsi_semantic_names[shader->outfile.reg[idx].semantic.Name],
-                shader->outfile.reg[idx].semantic.Index,
-                shader->outfile.reg[idx].num_components);
-      }
+   printf("inputs:\n");
+   for (int idx = 0; idx < shader->infile.num_reg; ++idx) {
+      printf(" [%i] name=%s index=%i comps=%i\n", shader->infile.reg[idx].reg,
+               tgsi_semantic_names[shader->infile.reg[idx].semantic.Name],
+               shader->infile.reg[idx].semantic.Index,
+               shader->infile.reg[idx].num_components);
+   }
+   printf("outputs:\n");
+   for (int idx = 0; idx < shader->outfile.num_reg; ++idx) {
+      printf(" [%i] name=%s index=%i comps=%i\n", shader->outfile.reg[idx].reg,
+               tgsi_semantic_names[shader->outfile.reg[idx].semantic.Name],
+               shader->outfile.reg[idx].semantic.Index,
+               shader->outfile.reg[idx].num_components);
    }
    printf("special:\n");
    if (shader->stage == MESA_SHADER_VERTEX) {
