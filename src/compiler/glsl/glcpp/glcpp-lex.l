@@ -202,6 +202,7 @@ DIGITS			[0-9][0-9]*
 DECIMAL_INTEGER		[1-9][0-9]*[uU]?
 OCTAL_INTEGER		0[0-7]*[uU]?
 HEXADECIMAL_INTEGER	0[xX][0-9a-fA-F]+[uU]?
+PATH			["][]^./ _A-Za-z0-9+*%[(){}|&~=!:;,?-]*["]
 
 %%
 
@@ -556,6 +557,10 @@ HEXADECIMAL_INTEGER	0[xX][0-9a-fA-F]+[uU]?
 	if (yyextra->space_tokens) {
 		RETURN_TOKEN (SPACE);
 	}
+}
+
+{PATH} {
+	RETURN_STRING_TOKEN (PATH);
 }
 
 	/* We preserve all newlines, even between #if 0..#endif, so no

@@ -68,6 +68,8 @@ typedef struct YYLTYPE {
    int last_line;
    int last_column;
    unsigned source;
+   /* Path for ARB_shading_language_include include source */
+   char *path;
 } YYLTYPE;
 # define YYLTYPE_IS_DECLARED 1
 # define YYLTYPE_IS_TRIVIAL 1

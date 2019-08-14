@@ -495,11 +495,15 @@ _mesa_glsl_msg(const YYLTYPE *locp, _mesa_glsl_parse_state *state,
    /* Get the offset that the new message will be written to. */
    int msg_offset = strlen(state->info_log);
 
-   ralloc_asprintf_append(&state->info_log, "%u:%u(%u): %s: ",
-					    locp->source,
-					    locp->first_line,
-					    locp->first_column,
-					    error ? "error" : "warning");
+   if (locp->path) {
+      ralloc_asprintf_append(&state->info_log, "\"%s\"", locp->path);
+   } else {
+      ralloc_asprintf_append(&state->info_log, "%u", locp->source);
+   }
+   ralloc_asprintf_append(&state->info_log, ":%u(%u): %s: ",
+                          locp->first_line, locp->first_column,
+                          error ? "error" : "warning");
+
    ralloc_vasprintf_append(&state->info_log, fmt, ap);
 
    const char *const msg = &state->info_log[msg_offset];

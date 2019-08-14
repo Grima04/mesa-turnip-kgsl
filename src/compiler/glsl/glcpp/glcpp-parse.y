@@ -174,11 +174,11 @@ add_builtin_define(glcpp_parser_t *parser, const char *name, int value);
         /* We use HASH_TOKEN, DEFINE_TOKEN and VERSION_TOKEN (as opposed to
          * HASH, DEFINE, and VERSION) to avoid conflicts with other symbols,
          * (such as the <HASH> and <DEFINE> start conditions in the lexer). */
-%token DEFINED ELIF_EXPANDED HASH_TOKEN DEFINE_TOKEN FUNC_IDENTIFIER OBJ_IDENTIFIER ELIF ELSE ENDIF ERROR_TOKEN IF IFDEF IFNDEF LINE PRAGMA UNDEF VERSION_TOKEN GARBAGE IDENTIFIER IF_EXPANDED INTEGER INTEGER_STRING LINE_EXPANDED NEWLINE OTHER PLACEHOLDER SPACE PLUS_PLUS MINUS_MINUS
+%token DEFINED ELIF_EXPANDED HASH_TOKEN DEFINE_TOKEN FUNC_IDENTIFIER OBJ_IDENTIFIER ELIF ELSE ENDIF ERROR_TOKEN IF IFDEF IFNDEF LINE PRAGMA UNDEF VERSION_TOKEN GARBAGE IDENTIFIER IF_EXPANDED INTEGER INTEGER_STRING LINE_EXPANDED NEWLINE OTHER PLACEHOLDER SPACE PLUS_PLUS MINUS_MINUS PATH
 %token PASTE
 %type <ival> INTEGER operator SPACE integer_constant version_constant
 %type <expression_value> expression
-%type <str> IDENTIFIER FUNC_IDENTIFIER OBJ_IDENTIFIER INTEGER_STRING OTHER ERROR_TOKEN PRAGMA
+%type <str> IDENTIFIER FUNC_IDENTIFIER OBJ_IDENTIFIER INTEGER_STRING OTHER ERROR_TOKEN PRAGMA PATH
 %type <string_list> identifier_list
 %type <token> preprocessing_token
 %type <token_list> pp_tokens replacement_list text_line
@@ -236,6 +236,13 @@ expanded_line:
 		parser->new_source_number = $3;
 		_mesa_string_buffer_printf(parser->output,
 					   "#line %" PRIiMAX " %" PRIiMAX "\n",
+					    $2, $3);
+	}
+|	LINE_EXPANDED integer_constant PATH NEWLINE {
+		parser->has_new_line_number = 1;
+		parser->new_line_number = $2;
+		_mesa_string_buffer_printf(parser->output,
+					   "#line %" PRIiMAX " %s\n",
 					    $2, $3);
 	}
 ;
@@ -704,6 +711,10 @@ preprocessing_token:
 	}
 |	INTEGER_STRING {
 		$$ = _token_create_str (parser, INTEGER_STRING, $1);
+		$$->location = yylloc;
+	}
+|	PATH {
+		$$ = _token_create_str (parser, PATH, $1);
 		$$->location = yylloc;
 	}
 |	operator {
