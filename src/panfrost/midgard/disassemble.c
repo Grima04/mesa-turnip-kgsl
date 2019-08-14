@@ -1308,7 +1308,7 @@ print_texture_word(uint32_t *word, unsigned tabs)
 }
 
 void
-disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_registers)
+disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_registers, const char *prefix)
 {
         uint32_t *words = (uint32_t *) code;
         unsigned num_words = size / 4;
@@ -1400,10 +1400,10 @@ disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_register
                         (nr_registers <= 8) ? 2 :
                         1;
 
-                printf("%s shader: "
+                printf("%s"
                         "%u inst, %u bundles, %u quadwords, "
                         "%u registers, %u threads, 0 loops\n",
-                        "FRAGMENT", /* TODO */
+                        prefix,
                         nr_ins, nr_bundles, nr_quadwords,
                         nr_registers, nr_threads);
 

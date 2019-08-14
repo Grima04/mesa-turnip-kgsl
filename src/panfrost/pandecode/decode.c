@@ -1428,6 +1428,8 @@ pandecode_scratchpad(uintptr_t pscratchpad, int job_no, char *suffix)
         pandecode_log("};\n");
 }
 
+static unsigned shader_id = 0;
+
 static void
 pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                              bool is_bifrost, unsigned nr_regs)
@@ -1443,10 +1445,16 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 
         printf("\n\n");
 
+        char prefix[512];
+
+        snprintf(prefix, sizeof(prefix) - 1, "shader%d - %s shader: ",
+                        shader_id++,
+                        (type == JOB_TYPE_TILER) ? "FRAGMENT" : "VERTEX");
+
         if (is_bifrost) {
                 disassemble_bifrost(code, sz, false);
         } else {
-                disassemble_midgard(code, sz, true, nr_regs);
+                disassemble_midgard(code, sz, true, nr_regs, prefix);
         }
 
         printf("\n\n");
