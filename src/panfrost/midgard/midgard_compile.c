@@ -460,17 +460,12 @@ optimise_nir(nir_shader *nir)
         NIR_PASS(progress, nir, midgard_nir_lower_fdot2);
         NIR_PASS(progress, nir, nir_lower_idiv);
 
-        nir_lower_tex_options lower_tex_1st_pass_options = {
-                .lower_rect = true,
+        nir_lower_tex_options lower_tex_options = {
+                .lower_txs_lod = true,
                 .lower_txp = ~0
         };
 
-        nir_lower_tex_options lower_tex_2nd_pass_options = {
-                .lower_txs_lod = true,
-        };
-
-        NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_1st_pass_options);
-        NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_2nd_pass_options);
+        NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
 
         do {
                 progress = false;
@@ -1653,6 +1648,7 @@ midgard_tex_format(enum glsl_sampler_dim dim)
 
         case GLSL_SAMPLER_DIM_2D:
         case GLSL_SAMPLER_DIM_EXTERNAL:
+        case GLSL_SAMPLER_DIM_RECT:
                 return MALI_TEX_2D;
 
         case GLSL_SAMPLER_DIM_3D:
