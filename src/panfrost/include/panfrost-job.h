@@ -1482,7 +1482,16 @@ struct mali_rt_format {
 
         unsigned swizzle : 12;
 
-        unsigned unk4 : 4;
+        unsigned zero : 3;
+
+        /* Disables MFBD preload. When this bit is set, the render target will
+         * be cleared every frame. When this bit is clear, the hardware will
+         * automatically wallpaper the render target back from main memory.
+         * Unfortunately, MFBD preload is very broken on Midgard, so in
+         * practice, this is a chicken bit that should always be set.
+         * Discovered by accident, as all good chicken bits are. */
+
+        unsigned no_preload : 1;
 } __attribute__((packed));
 
 struct bifrost_render_target {

@@ -73,7 +73,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 .unk3 = 0x4,
                 .flags = 0x8,
                 .swizzle = panfrost_translate_swizzle_4(swizzle),
-                .unk4 = 0x8
+                .no_preload = true
         };
 
         if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
@@ -424,7 +424,7 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
                 } else {
                         struct mali_rt_format null_rt = {
                                 .unk1 = 0x4000000,
-                                .unk4 = 0x8
+                                .no_preload = true
                         };
 
                         rts[cb].format = null_rt;

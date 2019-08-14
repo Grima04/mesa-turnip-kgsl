@@ -652,7 +652,10 @@ pandecode_rt_format(struct mali_rt_format format)
 
         pandecode_swizzle(format.swizzle);
 
-        pandecode_prop("unk4 = 0x%" PRIx32, format.unk4);
+        pandecode_prop("no_preload = 0x%" PRIx32, format.no_preload);
+
+        if (format.zero)
+                pandecode_prop("zero = 0x%" PRIx32, format.zero);
 
         pandecode_indent--;
         pandecode_log("},\n");
