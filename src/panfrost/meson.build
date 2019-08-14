@@ -32,27 +32,6 @@ subdir('midgard')
 subdir('bifrost')
 subdir('pandecode')
 
-files_pandecode = files(
-  'pandecode/cmdline.c',
-  'pandecode/common.c',
-  'pandecode/decode.c',
-  'pandecode/pan_pretty_print.c',
-
-  'midgard/disassemble.c',
-  'midgard/midgard_ops.c',
-  'bifrost/disassemble.c',
-)
-
-pandecode = executable(
-  'pandecoder',
-  files_pandecode,
-  include_directories : [inc_common, inc_include, inc_src, inc_panfrost],
-  dependencies : [
-    idep_mesautil,
-  ],
-  build_by_default : true
-)
-
 files_bifrost = files(
   'bifrost/cmdline.c',
 )
