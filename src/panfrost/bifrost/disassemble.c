@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "bifrost.h"
+#include "bifrost_ops.h"
 #include "disassemble.h"
 #include "util/macros.h"
 
@@ -166,21 +167,6 @@ struct bifrost_dual_tex_ctrl {
         unsigned unk1 : 22;
 };
 
-enum branch_cond {
-        BR_COND_LT = 0,
-        BR_COND_LE = 1,
-        BR_COND_GE = 2,
-        BR_COND_GT = 3,
-        // Equal vs. not-equal determined by src0/src1 comparison
-        BR_COND_EQ = 4,
-        // floating-point comparisons
-        // Becomes UNE when you flip the arguments
-        BR_COND_OEQ = 5,
-        // TODO what happens when you flip the arguments?
-        BR_COND_OGT = 6,
-        BR_COND_OLT = 7,
-};
-
 enum branch_bit_size {
         BR_SIZE_32 = 0,
         BR_SIZE_16XX = 1,
@@ -199,10 +185,6 @@ enum branch_bit_size {
         // Used for comparisons with zero and always-true, see below. I think this
         // only works for integer comparisons.
         BR_SIZE_ZERO = 7,
-};
-
-enum branch_code {
-        BR_ALWAYS = 63,
 };
 
 void dump_header(struct bifrost_header header, bool verbose);
@@ -287,6 +269,7 @@ static struct bifrost_reg_ctrl DecodeRegCtrl(struct bifrost_regs regs)
                 case 1:
                         decoded.fma_write_unit = REG_WRITE_TWO;
                         break;
+                case 2:
                 case 3:
                         decoded.fma_write_unit = REG_WRITE_TWO;
                         decoded.read_reg3 = true;
@@ -318,6 +301,8 @@ static struct bifrost_reg_ctrl DecodeRegCtrl(struct bifrost_regs regs)
                         decoded.add_write_unit = REG_WRITE_TWO;
                         decoded.clause_start = true;
                         break;
+
+                case 7:
                 case 15:
                         decoded.fma_write_unit = REG_WRITE_THREE;
                         decoded.add_write_unit = REG_WRITE_TWO;
@@ -677,14 +662,18 @@ static const struct fma_op_info FMAOpInfos[] = {
         // integer.
         { 0xe03ad, "FRSQ_FREXPE", FMA_ONE_SRC },
         { 0xe03c5, "LOG_FREXPE", FMA_ONE_SRC },
+        { 0xe03fa, "CLZ", FMA_ONE_SRC },
         { 0xe0b80, "IMAX3", FMA_THREE_SRC },
         { 0xe0bc0, "UMAX3", FMA_THREE_SRC },
         { 0xe0c00, "IMIN3", FMA_THREE_SRC },
         { 0xe0c40, "UMIN3", FMA_THREE_SRC },
+        { 0xe0ec5, "ROUND", FMA_ONE_SRC },
         { 0xe0f40, "CSEL", FMA_THREE_SRC }, // src2 != 0 ? src1 : src0
         { 0xe0fc0, "MUX.i32", FMA_THREE_SRC }, // see ADD comment
+        { 0xe1805, "ROUNDEVEN", FMA_ONE_SRC },
         { 0xe1845, "CEIL", FMA_ONE_SRC },
         { 0xe1885, "FLOOR", FMA_ONE_SRC },
+        { 0xe18c5, "TRUNC", FMA_ONE_SRC },
         { 0xe19b0, "ATAN_LDEXP.Y.f32", FMA_TWO_SRC },
         { 0xe19b8, "ATAN_LDEXP.X.f32", FMA_TWO_SRC },
         // These instructions in the FMA slot, together with LSHIFT_ADD_HIGH32.i32
@@ -1177,6 +1166,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x07bc5, "FLOG_FREXPE", ADD_ONE_SRC },
         { 0x07d45, "CEIL", ADD_ONE_SRC },
         { 0x07d85, "FLOOR", ADD_ONE_SRC },
+        { 0x07dc5, "TRUNC", ADD_ONE_SRC },
         { 0x07f18, "LSHIFT_ADD_HIGH32.i32", ADD_TWO_SRC },
         { 0x08000, "LD_ATTR.f16", ADD_LOAD_ATTR, true },
         { 0x08100, "LD_ATTR.v2f16", ADD_LOAD_ATTR, true },
