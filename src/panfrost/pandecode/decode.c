@@ -1430,7 +1430,7 @@ pandecode_scratchpad(uintptr_t pscratchpad, int job_no, char *suffix)
 
 static void
 pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
-                             bool is_bifrost)
+                             bool is_bifrost, unsigned nr_regs)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(shader_ptr);
         uint8_t *PANDECODE_PTR_VAR(code, mem, shader_ptr);
@@ -1446,7 +1446,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
         if (is_bifrost) {
                 disassemble_bifrost(code, sz, false);
         } else {
-                disassemble_midgard(code, sz);
+                disassemble_midgard(code, sz, true, nr_regs);
         }
 
         printf("\n\n");
@@ -1507,6 +1507,8 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                 pandecode_prop("attribute_count = %" PRId16, s->attribute_count);
                 pandecode_prop("varying_count = %" PRId16, s->varying_count);
 
+                unsigned nr_registers = 0;
+
                 if (is_bifrost) {
                         pandecode_log(".bifrost1 = {\n");
                         pandecode_indent++;
@@ -1523,6 +1525,7 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                         pandecode_prop("uniform_count = %" PRId16, s->midgard1.uniform_count);
                         pandecode_prop("uniform_buffer_count = %" PRId16, s->midgard1.uniform_buffer_count);
                         pandecode_prop("work_count = %" PRId16, s->midgard1.work_count);
+                        nr_registers = s->midgard1.work_count;
 
                         pandecode_log(".flags = ");
                         pandecode_log_decoded_flags(shader_midgard1_flag_info, s->midgard1.flags);
@@ -1627,12 +1630,12 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                         shader = pandecode_midgard_blend_mrt(blend_base, job_no, i);
 
                                 if (shader & ~0xF)
-                                        pandecode_shader_disassemble(shader, job_no, job_type, false);
+                                        pandecode_shader_disassemble(shader, job_no, job_type, false, 0);
                         }
                 }
 
                 if (shader_ptr & ~0xF)
-                   pandecode_shader_disassemble(shader_ptr, job_no, job_type, is_bifrost);
+                   pandecode_shader_disassemble(shader_ptr, job_no, job_type, is_bifrost, nr_registers);
         } else
                 pandecode_msg("<no shader>\n");
 
