@@ -311,6 +311,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_ARB_shader_clock                                   DONE (i965/gen7+, nv50, nvc0, r600, radeonsi, virgl)
   GL_ARB_shader_stencil_export                          DONE (i965/gen9+, r600, radeonsi, softpipe, llvmpipe, swr, virgl)
   GL_ARB_shader_viewport_layer_array                    DONE (i965/gen6+, nvc0, radeonsi)
+  GL_ARB_shading_language_include                       DONE
   GL_ARB_sparse_buffer                                  DONE (radeonsi/CIK+)
   GL_ARB_sparse_texture                                 not started
   GL_ARB_sparse_texture2                                not started
@@ -408,7 +409,6 @@ we DO NOT WANT implementations of these extensions for Mesa.
 
   GL_ARB_geometry_shader4                               Superseded by GL 3.2 geometry shaders
   GL_ARB_matrix_palette                                 Superseded by GL_ARB_vertex_program
-  GL_ARB_shading_language_include                       Not interesting
   GL_ARB_shadow_ambient                                 Superseded by GL_ARB_fragment_program
   GL_ARB_vertex_blend                                   Superseded by GL_ARB_vertex_program
 
