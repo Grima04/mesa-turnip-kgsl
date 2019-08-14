@@ -1338,9 +1338,6 @@ disassemble_midgard(uint8_t *code, size_t size)
                 case midgard_word_type_alu:
                         print_alu_word(&words[i], num_quad_words, tabs);
 
-                        if (prefetch_flag)
-                                return;
-
                         /* Reset word static analysis state */
                         is_embedded_constant_half = false;
                         is_embedded_constant_int = false;
@@ -1355,6 +1352,9 @@ disassemble_midgard(uint8_t *code, size_t size)
                         break;
                 }
 
+                if (prefetch_flag && midgard_word_types[tag] == midgard_word_type_alu)
+                        break;
+
                 printf("\n");
 
                 unsigned next = (words[i] & 0xF0) >> 4;
@@ -1367,7 +1367,7 @@ disassemble_midgard(uint8_t *code, size_t size)
                         prefetch_flag = true;
 
                         if (midgard_word_types[words[i] & 0xF] != midgard_word_type_alu)
-                                return;
+                                break;
                 }
         }
 
