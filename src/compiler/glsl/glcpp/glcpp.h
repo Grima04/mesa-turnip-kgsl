@@ -211,6 +211,7 @@ struct glcpp_parser {
 	const struct gl_extensions *extension_list;
 	void *state;
 	gl_api api;
+	struct gl_context *gl_ctx;
 	unsigned version;
 
 	/**

@@ -322,6 +322,11 @@ PATH			["][]^./ _A-Za-z0-9+*%[(){}|&~=!:;,?-]*["]
 	RETURN_STRING_TOKEN (PRAGMA);
 }
 
+<HASH>include{HSPACE}+["<][]^./ _A-Za-z0-9+*%[(){}|&~=!:;,?-]+[">] {
+	BEGIN INITIAL;
+	RETURN_STRING_TOKEN (INCLUDE);
+}
+
 <HASH>line{HSPACE}+ {
 	BEGIN INITIAL;
 	RETURN_TOKEN (LINE);
