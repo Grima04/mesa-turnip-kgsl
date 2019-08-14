@@ -550,17 +550,13 @@ etna_determine_uniform_limits(struct etna_screen *screen)
    } else if (screen->specs.num_constants > 256) {
       screen->specs.max_vs_uniforms = 256;
       screen->specs.max_ps_uniforms = 256;
-   }
-    else if (screen->specs.num_constants == 256)
-    {
+   } else if (screen->specs.num_constants == 256) {
       screen->specs.max_vs_uniforms = 256;
       screen->specs.max_ps_uniforms = 256;
-    }
-    else
-    {
+   } else {
       screen->specs.max_vs_uniforms = 168;
       screen->specs.max_ps_uniforms = 64;
-    }
+   }
 }
 
 static bool
