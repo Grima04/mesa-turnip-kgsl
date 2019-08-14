@@ -368,11 +368,16 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
 {
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
-   if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-       res->layout != VK_IMAGE_LAYOUT_GENERAL) {
-      zink_resource_barrier(batch->cmdbuf, res, res->aspect,
-                            VK_IMAGE_LAYOUT_GENERAL);
-      res->layout = VK_IMAGE_LAYOUT_GENERAL;
+   if (buf2img) {
+      if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      }
+   } else {
+      if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      }
    }
 
    VkBufferImageCopy copyRegion = {};

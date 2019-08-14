@@ -44,10 +44,10 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-      attachments[i].initialLayout = VK_IMAGE_LAYOUT_GENERAL;
-      attachments[i].finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+      attachments[i].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      attachments[i].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       color_refs[i].attachment = i;
-      color_refs[i].layout = VK_IMAGE_LAYOUT_GENERAL;
+      color_refs[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
    }
 
    int num_attachments = state->num_cbufs;
@@ -60,8 +60,8 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachments[num_attachments].initialLayout = VK_IMAGE_LAYOUT_GENERAL;
-      attachments[num_attachments].finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+      attachments[num_attachments].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      attachments[num_attachments].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
       zs_ref.attachment = num_attachments++;
       zs_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;

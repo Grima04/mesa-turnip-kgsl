@@ -555,13 +555,15 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    assert(batch == zink_curr_batch(ctx));
    assert(ctx->gfx_pipeline_state.render_pass);
 
+   struct pipe_framebuffer_state *fb_state = &ctx->fb_state;
+
    VkRenderPassBeginInfo rpbi = {};
    rpbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
    rpbi.renderPass = ctx->gfx_pipeline_state.render_pass->render_pass;
    rpbi.renderArea.offset.x = 0;
    rpbi.renderArea.offset.y = 0;
-   rpbi.renderArea.extent.width = ctx->fb_state.width;
-   rpbi.renderArea.extent.height = ctx->fb_state.height;
+   rpbi.renderArea.extent.width = fb_state->width;
+   rpbi.renderArea.extent.height = fb_state->height;
    rpbi.clearValueCount = 0;
    rpbi.pClearValues = NULL;
    rpbi.framebuffer = ctx->framebuffer->fb;
@@ -569,6 +571,20 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    assert(ctx->gfx_pipeline_state.render_pass && ctx->framebuffer);
    assert(!batch->rp || batch->rp == ctx->gfx_pipeline_state.render_pass);
    assert(!batch->fb || batch->fb == ctx->framebuffer);
+
+   for (int i = 0; i < fb_state->nr_cbufs; i++) {
+      struct zink_resource *res = zink_resource(fb_state->cbufs[i]->texture);
+      if (res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+   }
+
+   if (fb_state->zsbuf) {
+      struct zink_resource *res = zink_resource(fb_state->zsbuf->texture);
+      if (res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+   }
 
    zink_render_pass_reference(screen, &batch->rp, ctx->gfx_pipeline_state.render_pass);
    zink_framebuffer_reference(screen, &batch->fb, ctx->framebuffer);
@@ -642,18 +658,16 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    for (int i = 0; i < state->nr_cbufs; i++) {
       struct zink_resource *res = zink_resource(state->cbufs[i]->texture);
-      if (res->layout != VK_IMAGE_LAYOUT_GENERAL &&
-          res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+      if (res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
          zink_resource_barrier(batch->cmdbuf, res, res->aspect,
-                               VK_IMAGE_LAYOUT_GENERAL);
+                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
    }
 
    if (state->zsbuf) {
       struct zink_resource *res = zink_resource(state->zsbuf->texture);
-      if (res->layout != VK_IMAGE_LAYOUT_GENERAL &&
-          res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+      if (res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
          zink_resource_barrier(batch->cmdbuf, res, res->aspect,
-                               VK_IMAGE_LAYOUT_GENERAL);
+                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
    }
 }
 
@@ -673,7 +687,7 @@ zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 }
 
 static VkAccessFlags
-access_flags(VkImageLayout layout)
+access_src_flags(VkImageLayout layout)
 {
    switch (layout) {
    case VK_IMAGE_LAYOUT_UNDEFINED:
@@ -681,9 +695,9 @@ access_flags(VkImageLayout layout)
       return 0;
 
    case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-      return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      return VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-      return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
       return VK_ACCESS_SHADER_READ_BIT;
@@ -702,6 +716,69 @@ access_flags(VkImageLayout layout)
    }
 }
 
+static VkAccessFlags
+access_dst_flags(VkImageLayout layout)
+{
+   switch (layout) {
+   case VK_IMAGE_LAYOUT_UNDEFINED:
+   case VK_IMAGE_LAYOUT_GENERAL:
+      return 0;
+
+   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+      return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+      return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+      return VK_ACCESS_TRANSFER_READ_BIT;
+
+   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+      return VK_ACCESS_TRANSFER_WRITE_BIT;
+
+   default:
+      unreachable("unexpected layout");
+   }
+}
+
+static VkPipelineStageFlags
+pipeline_dst_stage(VkImageLayout layout)
+{
+   switch (layout) {
+   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+      return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+      return VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+      return VK_PIPELINE_STAGE_TRANSFER_BIT;
+   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+      return VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+   default:
+      return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+   }
+}
+
+static VkPipelineStageFlags
+pipeline_src_stage(VkImageLayout layout)
+{
+   switch (layout) {
+   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+      return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+      return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
+   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+      return VK_PIPELINE_STAGE_TRANSFER_BIT;
+   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+      return VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+   default:
+      return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+   }
+}
+
+
 void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
                       VkImageAspectFlags aspect, VkImageLayout new_layout)
@@ -715,8 +792,8 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
    VkImageMemoryBarrier imb = {
       VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
       NULL,
-      access_flags(res->layout),
-      access_flags(new_layout),
+      access_src_flags(res->layout),
+      access_dst_flags(new_layout),
       res->layout,
       new_layout,
       VK_QUEUE_FAMILY_IGNORED,
@@ -726,8 +803,8 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
    };
    vkCmdPipelineBarrier(
       cmdbuf,
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+      pipeline_src_stage(res->layout),
+      pipeline_dst_stage(new_layout),
       0,
       0, NULL,
       0, NULL,
@@ -1207,10 +1284,9 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    zink_batch_reference_resoure(batch, src);
    zink_batch_reference_resoure(batch, dst);
 
-   if (dst->layout != VK_IMAGE_LAYOUT_GENERAL &&
-       dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+   if (dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
       zink_resource_barrier(batch->cmdbuf, dst, dst->aspect,
-                            VK_IMAGE_LAYOUT_GENERAL);
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
    VkImageBlit region = {};
    region.srcSubresource.aspectMask = src->aspect;
@@ -1362,18 +1438,14 @@ zink_resource_copy_region(struct pipe_context *pctx,
       zink_batch_reference_resoure(batch, src);
       zink_batch_reference_resoure(batch, dst);
 
-      if (src->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
-          src->layout != VK_IMAGE_LAYOUT_GENERAL) {
+      if (src->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
          zink_resource_barrier(batch->cmdbuf, src, src->aspect,
-                               VK_IMAGE_LAYOUT_GENERAL);
-         src->layout = VK_IMAGE_LAYOUT_GENERAL;
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       }
 
-      if (dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-          dst->layout != VK_IMAGE_LAYOUT_GENERAL) {
+      if (dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
          zink_resource_barrier(batch->cmdbuf, dst, dst->aspect,
-                               VK_IMAGE_LAYOUT_GENERAL);
-         dst->layout = VK_IMAGE_LAYOUT_GENERAL;
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
       }
 
       vkCmdCopyImage(batch->cmdbuf, src->image, src->layout,
