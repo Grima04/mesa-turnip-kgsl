@@ -2120,7 +2120,7 @@ panfrost_bind_shader_state(
                         }
                 }
 
-                variants->variants[variant].tripipe = malloc(sizeof(struct mali_shader_meta));
+                variants->variants[variant].tripipe = calloc(1, sizeof(struct mali_shader_meta));
 
         }
 
