@@ -59,7 +59,15 @@ static void ac_init_llvm_target()
 	 * This option tells the backend to fall-back to SelectionDAG and print
 	 * a diagnostic message if global isel fails.
 	 */
-	const char *argv[] = { "mesa", "-simplifycfg-sink-common=false", "-global-isel-abort=2" };
+	const char *argv[] = {
+		"mesa",
+		"-simplifycfg-sink-common=false",
+		"-global-isel-abort=2",
+#if HAVE_LLVM >= 0x1000
+		/* Atomic optimizations require LLVM 10.0 for gfx10 support. */
+		"-amdgpu-atomic-optimizations=true",
+#endif
+	};
 	LLVMParseCommandLineOptions(ARRAY_SIZE(argv), argv, NULL);
 }
 
