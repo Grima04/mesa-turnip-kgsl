@@ -143,13 +143,6 @@ radv_surface_has_scanout(struct radv_device *device, const struct radv_image_cre
 }
 
 static bool
-radv_support_storage_dcc(const struct radv_physical_device *pdevice)
-{
-	return pdevice->rad_info.chip_class >= GFX10 &&
-	       (pdevice->instance->perftest_flags & RADV_PERFTEST_STORAGE_DCC);
-}
-
-static bool
 radv_use_dcc_for_image(struct radv_device *device,
 		       const struct radv_image *image,
 		       const struct radv_image_create_info *create_info,
@@ -168,8 +161,8 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (image->shareable)
 		return false;
 
-	if (((pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT)  &&
-	     !radv_support_storage_dcc(device->physical_device))||
+	/* TODO: Enable DCC for storage images. */
+	if ((pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT) ||
 	    (pCreateInfo->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT))
 		return false;
 
@@ -1451,17 +1444,13 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 		else
 			base_level_info = &plane->surface.u.legacy.level[iview->base_mip];
 	}
-
-	if (is_storage_image && radv_image_has_dcc(iview->image) &&
-	    !radv_support_storage_dcc(device->physical_device))
-		disable_compression = true;
 	si_set_mutable_tex_desc_fields(device, image,
 				       base_level_info,
 				       plane_id,
 				       iview->base_mip,
 				       iview->base_mip,
 				       blk_w, is_stencil, is_storage_image,
-				       disable_compression,
+				       is_storage_image || disable_compression,
 				       descriptor->plane_descriptors[descriptor_plane_id]);
 }
 
@@ -1661,8 +1650,7 @@ bool radv_layout_dcc_compressed(const struct radv_device *device,
 {
 	/* Don't compress compute transfer dst, as image stores are not supported. */
 	if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-	    (queue_mask & (1u << RADV_QUEUE_COMPUTE)) &&
-	    !radv_support_storage_dcc(device->physical_device))
+	    (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
 		return false;
 
 	return radv_image_has_dcc(image) && layout != VK_IMAGE_LAYOUT_GENERAL;

@@ -514,7 +514,6 @@ static const struct debug_control radv_perftest_options[] = {
 	{"cswave32", RADV_PERFTEST_CS_WAVE_32},
 	{"pswave32", RADV_PERFTEST_PS_WAVE_32},
 	{"gewave32", RADV_PERFTEST_GE_WAVE_32},
-	{"storagedcc", RADV_PERFTEST_STORAGE_DCC},
 	{NULL, 0}
 };
 
