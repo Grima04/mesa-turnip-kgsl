@@ -2259,7 +2259,7 @@ emit_block(compiler_context *ctx, nir_block *block)
         ctx->after_block = NULL;
 
         if (!this_block)
-                this_block = calloc(sizeof(midgard_block), 1);
+                this_block = rzalloc(ctx, midgard_block);
 
         list_addtail(&this_block->link, &ctx->blocks);
 
@@ -2342,7 +2342,7 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
 
         /* Wire up the successors */
 
-        ctx->after_block = calloc(sizeof(midgard_block), 1);
+        ctx->after_block = rzalloc(ctx, midgard_block);
 
         midgard_block_add_successor(before_block, then_block);
         midgard_block_add_successor(before_block, else_block);
@@ -2381,7 +2381,7 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
 
         /* Fix up the break statements we emitted to point to the right place,
          * now that we can allocate a block number for them */
-        ctx->after_block = calloc(sizeof(midgard_block), 1);
+        ctx->after_block = rzalloc(ctx, midgard_block);
 
         list_for_each_entry_from(struct midgard_block, block, start_block, &ctx->blocks, link) {
                 mir_foreach_instr_in_block(block, ins) {
@@ -2477,19 +2477,14 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
 
         midgard_debug = debug_get_option_midgard_debug();
 
-        compiler_context ictx = {
-                .nir = nir,
-                .screen = screen,
-                .stage = nir->info.stage,
-                .temp_alloc = 0,
+        /* TODO: Bound against what? */
+        compiler_context *ctx = rzalloc(NULL, compiler_context);
 
-                .is_blend = is_blend,
-                .blend_constant_offset = 0,
-
-                .alpha_ref = program->alpha_ref
-        };
-
-        compiler_context *ctx = &ictx;
+        ctx->nir = nir;
+        ctx->screen = screen;
+        ctx->stage = nir->info.stage;
+        ctx->is_blend = is_blend;
+        ctx->alpha_ref = program->alpha_ref;
 
         /* Start off with a safe cutoff, allowing usage of all 16 work
          * registers. Later, we'll promote uniform reads to uniform registers
@@ -2823,6 +2818,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                         ctx->spills, ctx->fills);
         }
 
+        ralloc_free(ctx);
 
         return 0;
 }
