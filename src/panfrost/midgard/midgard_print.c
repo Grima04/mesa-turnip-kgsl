@@ -178,6 +178,11 @@ mir_print_block(midgard_block *block)
                 }
         }
 
+        printf(" from { ");
+        mir_foreach_predecessor(block, pred)
+                printf("block%d ", pred->source_id);
+        printf("}");
+
         printf("\n\n");
 }
 
