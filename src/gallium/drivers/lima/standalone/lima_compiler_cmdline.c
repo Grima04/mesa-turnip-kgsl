@@ -221,7 +221,7 @@ main(int argc, char **argv)
       nir_print_shader(nir, stdout);
 
       struct lima_vs_shader_state *vs = ralloc(nir, struct lima_vs_shader_state);
-      gpir_compile_nir(vs, nir);
+      gpir_compile_nir(vs, nir, NULL);
       break;
    case MESA_SHADER_FRAGMENT:
       lima_program_optimize_fs_nir(nir);
@@ -230,7 +230,7 @@ main(int argc, char **argv)
 
       struct lima_fs_shader_state *so = rzalloc(NULL, struct lima_fs_shader_state);
       struct ra_regs *ra = ppir_regalloc_init(NULL);
-      ppir_compile_nir(so, nir, ra);
+      ppir_compile_nir(so, nir, ra, NULL);
       break;
    default:
       errx(1, "unhandled shader stage: %d", stage);
