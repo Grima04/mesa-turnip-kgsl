@@ -445,8 +445,6 @@ def generate_unpack_kernel(format, dst_channel, dst_native_type):
     
     assert format.layout == PLAIN
 
-    src_native_type = native_type(format)
-
     def unpack_from_bitmask(channels, swizzles):
         depth = format.block_size()
         print('         uint%u_t value = *(const uint%u_t *)src;' % (depth, depth)) 
