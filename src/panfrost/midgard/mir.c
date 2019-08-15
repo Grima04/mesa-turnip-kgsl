@@ -32,6 +32,12 @@ void mir_rewrite_index_src_single(midgard_instruction *ins, unsigned old, unsign
         }
 }
 
+void mir_rewrite_index_dst_single(midgard_instruction *ins, unsigned old, unsigned new)
+{
+        if (ins->ssa_args.dest == old)
+                ins->ssa_args.dest = new;
+}
+
 static unsigned
 mir_get_swizzle(midgard_instruction *ins, unsigned idx)
 {
@@ -181,8 +187,7 @@ void
 mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new)
 {
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->ssa_args.dest == old)
-                        ins->ssa_args.dest = new;
+                mir_rewrite_index_dst_single(ins, old, new);
         }
 }
 

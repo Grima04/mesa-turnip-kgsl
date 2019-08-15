@@ -478,6 +478,7 @@ void mir_rewrite_index(compiler_context *ctx, unsigned old, unsigned new);
 void mir_rewrite_index_src(compiler_context *ctx, unsigned old, unsigned new);
 void mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new);
 void mir_rewrite_index_dst_tag(compiler_context *ctx, unsigned old, unsigned new, unsigned tag);
+void mir_rewrite_index_dst_single(midgard_instruction *ins, unsigned old, unsigned new);
 void mir_rewrite_index_src_single(midgard_instruction *ins, unsigned old, unsigned new);
 void mir_rewrite_index_src_tag(compiler_context *ctx, unsigned old, unsigned new, unsigned tag);
 void mir_rewrite_index_src_swizzle(compiler_context *ctx, unsigned old, unsigned new, unsigned swizzle);
