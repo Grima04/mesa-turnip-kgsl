@@ -184,6 +184,14 @@ typedef struct midgard_block {
          * boolean for passes to use as they see fit, provided they
          * clean up later */
         bool visited;
+
+        /* In liveness analysis, these are live masks (per-component) for
+         * indices for the block. Scalar compilers have the luxury of using
+         * simple bit fields, but for us, liveness is a vector idea. We use
+         * 8-bit to allow finegrained tracking up to vec8. If you're
+         * implementing vec16 on Panfrost... I'm sorry. */
+        uint8_t *live_in;
+        uint8_t *live_out;
 } midgard_block;
 
 typedef struct midgard_bundle {
