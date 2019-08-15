@@ -2575,7 +2575,15 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                 ctx->func = func;
 
                 emit_cf_list(ctx, &func->impl->body);
-                emit_block(ctx, func->impl->end_block);
+
+                /* Emit empty exit block with successor */
+
+                struct midgard_block *semi_end = ctx->current_block;
+
+                struct midgard_block *end =
+                        emit_block(ctx, func->impl->end_block);
+
+                midgard_block_add_successor(semi_end, end);
 
                 break; /* TODO: Multi-function shaders */
         }
