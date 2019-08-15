@@ -28,19 +28,16 @@
 #include "bifrost_print.h"
 
 #define BI_DEBUG
-const unsigned max_primary_reg = 64; // XXX: Not correct since there are special ones in the top end
-const unsigned max_vec2_reg = max_primary_reg / 2;
-const unsigned max_vec3_reg = max_primary_reg / 4; // XXX: Do we need to align vec3 to vec4 boundary?
-const unsigned max_vec4_reg = max_primary_reg / 4;
-const unsigned max_registers = max_primary_reg +
-                               max_vec2_reg +
-                               max_vec3_reg +
-                               max_vec4_reg;
+const unsigned max_primary_reg = 64; /* Overestimate because of special regs */
+const unsigned max_vec2_reg = 32;
+const unsigned max_vec3_reg = 16; // XXX: Do we need to align vec3 to vec4 boundary?
+const unsigned max_vec4_reg = 16;
+const unsigned max_registers = 128; /* Sum of classes */
 const unsigned primary_base = 0;
-const unsigned vec2_base = primary_base + max_primary_reg;
-const unsigned vec3_base = vec2_base + max_vec2_reg;
-const unsigned vec4_base = vec3_base + max_vec3_reg;
-const unsigned vec4_end = vec4_base + max_vec4_reg;
+const unsigned vec2_base = 64;
+const unsigned vec3_base = 96; /* above base + max_class_reg */
+const unsigned vec4_base = 112;
+const unsigned vec4_end = 128;
 
 static unsigned
 find_or_allocate_temp(compiler_context *ctx, unsigned hash)
