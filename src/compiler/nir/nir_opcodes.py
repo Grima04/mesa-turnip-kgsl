@@ -815,10 +815,10 @@ opcode("fdph", 1, tfloat, [3, 4], [tfloat, tfloat], False, "",
 opcode("fdph_replicated", 4, tfloat, [3, 4], [tfloat, tfloat], False, "",
        "src0.x * src1.x + src0.y * src1.y + src0.z * src1.z + src1.w")
 
-binop("fmin", tfloat, "", "fmin(src0, src1)")
+binop("fmin", tfloat, _2src_commutative + associative, "fmin(src0, src1)")
 binop("imin", tint, _2src_commutative + associative, "src1 > src0 ? src0 : src1")
 binop("umin", tuint, _2src_commutative + associative, "src1 > src0 ? src0 : src1")
-binop("fmax", tfloat, "", "fmax(src0, src1)")
+binop("fmax", tfloat, _2src_commutative + associative, "fmax(src0, src1)")
 binop("imax", tint, _2src_commutative + associative, "src1 > src0 ? src1 : src0")
 binop("umax", tuint, _2src_commutative + associative, "src1 > src0 ? src1 : src0")
 
