@@ -336,6 +336,8 @@ mir_next_op(struct midgard_instruction *ins)
 
 #define mir_foreach_instr_in_block(block, v) \
         list_for_each_entry(struct midgard_instruction, v, &block->instructions, link)
+#define mir_foreach_instr_in_block_rev(block, v) \
+        list_for_each_entry_rev(struct midgard_instruction, v, &block->instructions, link)
 
 #define mir_foreach_instr_in_block_safe(block, v) \
         list_for_each_entry_safe(struct midgard_instruction, v, &block->instructions, link)
