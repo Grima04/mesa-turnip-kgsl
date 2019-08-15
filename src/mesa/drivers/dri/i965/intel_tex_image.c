@@ -649,6 +649,17 @@ intel_image_target_texture(struct gl_context *ctx, GLenum target,
          internal_format = GL_RGB10_A2;
    }
 
+   /* Guess sized internal format for dma-bufs, as specified by
+    * EXT_EGL_image_storage.
+    */
+   if (storage && target == GL_TEXTURE_2D && image->imported_dmabuf) {
+      internal_format = driGLFormatToSizedInternalGLFormat(image->format);
+      if (internal_format == GL_NONE) {
+         _mesa_error(ctx, GL_INVALID_OPERATION, __func__);
+         return;
+      }
+   }
+
    intel_set_texture_image_mt(brw, texImage, internal_format, mt->format, mt);
    intel_miptree_release(&mt);
 }
@@ -661,6 +672,23 @@ intel_image_target_texture_2d(struct gl_context *ctx, GLenum target,
 {
    intel_image_target_texture(ctx, target, texObj, texImage, image_handle,
                               false);
+}
+
+static void
+intel_image_target_tex_storage(struct gl_context *ctx, GLenum target,
+                              struct gl_texture_object *texObj,
+                              struct gl_texture_image *texImage,
+                              GLeglImageOES image_handle)
+{
+   struct intel_texture_object *intel_texobj = intel_texture_object(texObj);
+   intel_image_target_texture(ctx, target, texObj, texImage, image_handle,
+                              true);
+
+   /* The miptree is in a validated state, so no need to check later. */
+   intel_texobj->needs_validate = false;
+   intel_texobj->validated_first_level = 0;
+   intel_texobj->validated_last_level = 0;
+   intel_texobj->_Format = texImage->TexFormat;
 }
 
 static bool
@@ -955,6 +983,7 @@ intelInitTextureImageFuncs(struct dd_function_table *functions)
    functions->TexSubImage = intelTexSubImage;
    functions->CompressedTexSubImage = intelCompressedTexSubImage;
    functions->EGLImageTargetTexture2D = intel_image_target_texture_2d;
+   functions->EGLImageTargetTexStorage = intel_image_target_tex_storage;
    functions->BindRenderbufferTexImage = intel_bind_renderbuffer_tex_image;
    functions->GetTexSubImage = intel_get_tex_sub_image;
 }
