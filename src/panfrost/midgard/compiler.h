@@ -381,6 +381,9 @@ mir_next_op(struct midgard_instruction *ins)
                 _entry_##v = _mesa_set_next_entry(blk->predecessors, _entry_##v), \
                 v = (struct midgard_block *) (_entry_##v ? _entry_##v->key : NULL))
 
+#define mir_foreach_src(ins, v) \
+        for (unsigned v = 0; v < ARRAY_SIZE(ins->ssa_args.src); ++v)
+
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
 {
