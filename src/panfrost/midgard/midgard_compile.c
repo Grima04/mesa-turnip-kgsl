@@ -1753,6 +1753,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 int index = nir_src_index(ctx, &instr->src[i].src);
                 midgard_vector_alu_src alu_src = blank_alu_src;
+                unsigned nr_components = nir_src_num_components(instr->src[i].src);
 
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord: {
@@ -1804,7 +1805,12 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
 
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D) {
                                 /* Array component in w but NIR wants it in z */
-                                ins.texture.in_reg_swizzle = SWIZZLE_XYZZ;
+                                if (nr_components == 3)
+                                        ins.texture.in_reg_swizzle = SWIZZLE_XYZZ;
+                                else if (nr_components == 2)
+                                        ins.texture.in_reg_swizzle = SWIZZLE_XYXX;
+                                else
+                                        unreachable("Invalid texture 2D components");
                         }
 
                         break;
