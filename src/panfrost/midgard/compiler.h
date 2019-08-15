@@ -173,6 +173,8 @@ typedef struct midgard_block {
         struct midgard_block *successors[2];
         unsigned nr_successors;
 
+        struct set *predecessors;
+
         /* The successors pointer form a graph, and in the case of
          * complex control flow, this graph has a cycles. To aid
          * traversal during liveness analysis, we have a visited?

@@ -89,6 +89,9 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 
         block->successors[block->nr_successors++] = successor;
         assert(block->nr_successors <= ARRAY_SIZE(block->successors));
+
+        /* Note the predecessor in the other direction */
+        _mesa_set_add(successor->predecessors, block);
 }
 
 /* Helpers to generate midgard_instruction's using macro magic, since every
@@ -2253,13 +2256,25 @@ emit_fragment_epilogue(compiler_context *ctx)
 }
 
 static midgard_block *
+create_empty_block(compiler_context *ctx)
+{
+        midgard_block *blk = rzalloc(ctx, midgard_block);
+
+        blk->predecessors = _mesa_set_create(blk,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        return blk;
+}
+
+static midgard_block *
 emit_block(compiler_context *ctx, nir_block *block)
 {
         midgard_block *this_block = ctx->after_block;
         ctx->after_block = NULL;
 
         if (!this_block)
-                this_block = rzalloc(ctx, midgard_block);
+                this_block = create_empty_block(ctx);
 
         list_addtail(&this_block->link, &ctx->blocks);
 
@@ -2342,7 +2357,7 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
 
         /* Wire up the successors */
 
-        ctx->after_block = rzalloc(ctx, midgard_block);
+        ctx->after_block = create_empty_block(ctx);
 
         midgard_block_add_successor(before_block, then_block);
         midgard_block_add_successor(before_block, else_block);
@@ -2381,7 +2396,7 @@ emit_loop(struct compiler_context *ctx, nir_loop *nloop)
 
         /* Fix up the break statements we emitted to point to the right place,
          * now that we can allocate a block number for them */
-        ctx->after_block = rzalloc(ctx, midgard_block);
+        ctx->after_block = create_empty_block(ctx);
 
         list_for_each_entry_from(struct midgard_block, block, start_block, &ctx->blocks, link) {
                 mir_foreach_instr_in_block(block, ins) {
