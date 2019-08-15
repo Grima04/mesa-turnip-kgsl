@@ -92,7 +92,7 @@ int main(int argc, char **argv)
          if (pf != i) {
             fprintf(stderr, "Round-tripping %s -> %s -> %s failed\n",
                     util_format_short_name(i),
-                    _mesa_get_format_name(pf),
+                    _mesa_get_format_name(mf),
                     util_format_short_name(pf));
             return 1;
          }
