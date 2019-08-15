@@ -360,6 +360,17 @@ mir_next_op(struct midgard_instruction *ins)
         mir_foreach_block(ctx, v_block) \
                 mir_foreach_instr_in_block_safe(v_block, v)
 
+/* Based on set_foreach, expanded with automatic type casts */
+
+#define mir_foreach_predecessor(blk, v) \
+        struct set_entry *_entry_##v; \
+        struct midgard_block *v; \
+        for (_entry_##v = _mesa_set_next_entry(blk->predecessors, NULL), \
+                v = (struct midgard_block *) (_entry_##v ? _entry_##v->key : NULL);  \
+                _entry_##v != NULL; \
+                _entry_##v = _mesa_set_next_entry(blk->predecessors, _entry_##v), \
+                v = (struct midgard_block *) (_entry_##v ? _entry_##v->key : NULL))
+
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
 {
