@@ -3138,6 +3138,61 @@ _mesa_GetProgramStageiv(GLuint program, GLenum shadertype,
    }
 }
 
+/* This is simple list entry that will be used to hold a list of string
+ * tokens of a parsed shader include path.
+ */
+struct sh_incl_path_entry
+{
+   struct sh_incl_path_entry *next;
+   struct sh_incl_path_entry *prev;
+
+   char *path;
+};
+
+/* Nodes of the shader include tree */
+struct sh_incl_path_ht_entry
+{
+   struct hash_table *path;
+   char *shader_source;
+};
+
+struct shader_includes {
+   /* Array to hold include paths given to glCompileShaderIncludeARB() */
+   struct sh_incl_path_entry **include_paths;
+   size_t num_include_paths;
+
+   /* Root hash table holding the shader include tree */
+   struct hash_table *shader_include_tree;
+};
+
+void
+_mesa_init_shader_includes(struct gl_shared_state *shared)
+{
+   shared->ShaderIncludes = calloc(1, sizeof(struct shader_includes));
+   shared->ShaderIncludes->shader_include_tree =
+      _mesa_hash_table_create(NULL, _mesa_hash_string,
+                              _mesa_key_string_equal);
+}
+
+static void
+destroy_shader_include(struct hash_entry *entry)
+{
+   struct sh_incl_path_ht_entry *sh_incl_ht_entry =
+      (struct sh_incl_path_ht_entry *) entry->data;
+
+   _mesa_hash_table_destroy(sh_incl_ht_entry->path, destroy_shader_include);
+   free(sh_incl_ht_entry->shader_source);
+   free(sh_incl_ht_entry);
+}
+
+void
+_mesa_destroy_shader_includes(struct gl_shared_state *shared)
+{
+   _mesa_hash_table_destroy(shared->ShaderIncludes->shader_include_tree,
+                            destroy_shader_include);
+   free(shared->ShaderIncludes);
+}
+
 GLvoid GLAPIENTRY
 _mesa_NamedStringARB(GLenum type, GLint namelen, const GLchar *name,
                      GLint stringlen, const GLchar *string)
