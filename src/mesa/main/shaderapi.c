@@ -3333,6 +3333,65 @@ GLvoid GLAPIENTRY
 _mesa_NamedStringARB(GLenum type, GLint namelen, const GLchar *name,
                      GLint stringlen, const GLchar *string)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const char *caller = "glNamedStringARB";
+
+   if (type != GL_SHADER_INCLUDE_ARB) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(invalid type)", caller);
+      return;
+   }
+
+   char *name_cp = copy_string(ctx, name, namelen, caller);
+   char *string_cp = copy_string(ctx, string, stringlen, caller);
+   if (!name_cp || !string_cp) {
+      free(string_cp);
+      free(name_cp);
+      return;
+   }
+
+   void *mem_ctx = ralloc_context(NULL);
+   struct sh_incl_path_entry *path_list;
+
+   if (!validate_and_tokenise_sh_incl(ctx, mem_ctx, &path_list, name_cp)) {
+      free(string_cp);
+      free(name_cp);
+      ralloc_free(mem_ctx);
+      return;
+   }
+
+   mtx_lock(&ctx->Shared->ShaderIncludeMutex);
+
+   struct hash_table *path_ht =
+      ctx->Shared->ShaderIncludes->shader_include_tree;
+
+   struct sh_incl_path_entry *entry;
+   foreach(entry, path_list) {
+      struct hash_entry *ht_entry =
+         _mesa_hash_table_search(path_ht, entry->path);
+
+      struct sh_incl_path_ht_entry *sh_incl_ht_entry;
+      if (!ht_entry) {
+         sh_incl_ht_entry = calloc(1, sizeof(struct sh_incl_path_ht_entry));
+         sh_incl_ht_entry->path =
+            _mesa_hash_table_create(NULL, _mesa_hash_string,
+                                    _mesa_key_string_equal);
+         _mesa_hash_table_insert(path_ht, entry->path, sh_incl_ht_entry);
+      } else {
+         sh_incl_ht_entry = (struct sh_incl_path_ht_entry *) ht_entry->data;
+      }
+
+      path_ht = sh_incl_ht_entry->path;
+
+      if (last_elem(path_list) == entry) {
+         free(sh_incl_ht_entry->shader_source);
+         sh_incl_ht_entry->shader_source = string_cp;
+      }
+   }
+
+   mtx_unlock(&ctx->Shared->ShaderIncludeMutex);
+
+   free(name_cp);
+   ralloc_free(mem_ctx);
 }
 
 GLvoid GLAPIENTRY
