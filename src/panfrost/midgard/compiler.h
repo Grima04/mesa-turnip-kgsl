@@ -377,6 +377,19 @@ mir_get_block(compiler_context *ctx, int idx)
         return (struct midgard_block *) lst;
 }
 
+static inline midgard_block *
+mir_exit_block(struct compiler_context *ctx)
+{
+        midgard_block *last = list_last_entry(&ctx->blocks,
+                        struct midgard_block, link);
+
+        /* The last block must be empty (the exit block) */
+        assert(list_empty(&last->instructions));
+        assert(last->nr_successors == 0);
+
+        return last;
+}
+
 static inline bool
 mir_is_alu_bundle(midgard_bundle *bundle)
 {
