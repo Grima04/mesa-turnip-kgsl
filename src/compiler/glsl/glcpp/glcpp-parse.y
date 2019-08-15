@@ -1368,8 +1368,8 @@ add_builtin_define(glcpp_parser_t *parser, const char *name, int value)
 #define INITIAL_PP_OUTPUT_BUF_SIZE 4048
 
 glcpp_parser_t *
-glcpp_parser_create(const struct gl_extensions *extension_list,
-                    glcpp_extension_iterator extensions, void *state, gl_api api)
+glcpp_parser_create(struct gl_context *gl_ctx,
+                    glcpp_extension_iterator extensions, void *state)
 {
    glcpp_parser_t *parser;
 
@@ -1404,9 +1404,9 @@ glcpp_parser_create(const struct gl_extensions *extension_list,
    parser->error = 0;
 
    parser->extensions = extensions;
-   parser->extension_list = extension_list;
+   parser->extension_list = &gl_ctx->Extensions;
    parser->state = state;
-   parser->api = api;
+   parser->api = gl_ctx->API;
    parser->version = 0;
    parser->version_set = false;
 
