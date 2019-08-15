@@ -1577,11 +1577,12 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         emit_explicit_constant(ctx, reg, reg);
 
                         unsigned component = nir_intrinsic_component(instr);
+                        unsigned nr_comp = nir_src_num_components(instr->src[0]);
 
                         midgard_instruction st = m_st_vary_32(reg, offset);
                         st.load_store.arg_1 = 0x9E;
                         st.load_store.arg_2 = 0x1E;
-                        st.load_store.swizzle = SWIZZLE_XYZW << (2*component);
+                        st.load_store.swizzle = swizzle_of(nr_comp) << (2*component);
                         emit_mir_instruction(ctx, st);
                 } else {
                         DBG("Unknown store\n");
