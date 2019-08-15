@@ -170,7 +170,7 @@ typedef struct midgard_block {
 
         /* Succeeding blocks. The compiler should not necessarily rely on
          * source-order traversal */
-        struct midgard_block *successors[4];
+        struct midgard_block *successors[2];
         unsigned nr_successors;
 
         /* The successors pointer form a graph, and in the case of
