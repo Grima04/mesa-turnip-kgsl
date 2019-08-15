@@ -497,7 +497,7 @@ mir_lower_special_reads(compiler_context *ctx)
                                         midgard_instruction *use = mir_next_op(pre_use);
                                         assert(use);
                                         mir_insert_instruction_before(use, m);
-                                        mir_rewrite_index_dst_tag(ctx, i, idx, classes[j]);
+                                        mir_rewrite_index_dst_single(pre_use, i, idx);
                                 } else {
                                         idx = spill_idx++;
                                         m = v_mov(i, blank_alu_src, idx);
