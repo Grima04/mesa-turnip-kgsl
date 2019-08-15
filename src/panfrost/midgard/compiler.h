@@ -160,6 +160,9 @@ typedef struct midgard_block {
         /* List of midgard_instructions emitted for the current block */
         struct list_head instructions;
 
+        /* Index of the block in source order */
+        unsigned source_id;
+
         bool is_scheduled;
 
         /* List of midgard_bundles emitted (after the scheduler has run) */
@@ -228,6 +231,9 @@ typedef struct compiler_context {
         /* Unordered list of midgard_blocks */
         int block_count;
         struct list_head blocks;
+
+        /* TODO merge with block_count? */
+        unsigned block_source_count;
 
         /* List of midgard_instructions emitted for the current block */
         midgard_block *current_block;

@@ -2264,6 +2264,8 @@ create_empty_block(compiler_context *ctx)
                         _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
+        blk->source_id = ctx->block_source_count++;
+
         return blk;
 }
 
