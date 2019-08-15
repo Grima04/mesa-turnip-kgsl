@@ -50,21 +50,11 @@ actions:
           - mount -t devtmpfs none /dev
           - mkdir -p /dev/pts
           - mount -t devpts devpts /dev/pts
-          - echo 1 > /proc/sys/kernel/printk
-#          - echo performance > /sys/devices/platform/ff9a0000.gpu/devfreq/devfreq0/governor
+          - echo 3 > /proc/sys/kernel/printk
+          - echo performance > /sys/devices/platform/ff9a0000.gpu/devfreq/devfreq0/governor
           - sh /deqp/deqp-runner.sh
         parse:
-          pattern: 'Test case ''(?P<test_case_id>\S*)''..\s+(?P<result>(Pass|NotSupported|QualityWarning|CompatibilityWarning|Fail|ResourceError|Crash|Timeout|InternalError))'
-          fixupdict:
-            Pass: pass
-            NotSupported: pass
-            QualityWarning: pass
-            CompatibilityWarning: pass
-            Fail: fail
-            ResourceError: fail
-            Crash: fail
-            Timeout: fail
-            InternalError: fail
+          pattern: '(?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
       from: inline
       name: deqp
       path: inline/lava-deqp.yaml

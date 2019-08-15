@@ -15,9 +15,9 @@ ln -s /bin/sh /init
 rm -rf /etc/localtime
 cp /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
-
-UNNEEDED_PACKAGES=" libfdisk1"\
-" tzdata"\
+UNNEEDED_PACKAGES="libfdisk1
+                   tzdata
+                   diffutils"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -182,4 +182,4 @@ rm usr/lib/*/libdb-5.3.so
 rm usr/lib/*/libnss_hesiod*
 rm usr/lib/*/libnss_nis*
 
-rm usr/bin/tar
+rm bin/tar

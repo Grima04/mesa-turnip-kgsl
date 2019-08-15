@@ -16,7 +16,7 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_VERSION: testing-slim
-  IMAGE_TAG: "2019-07-25-1"
+  IMAGE_TAG: "2019-08-21-1"
 
 include:
   - project: 'wayland/ci-templates'
@@ -51,15 +51,15 @@ stages:
                   KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
                   bash src/gallium/drivers/panfrost/ci/debian-install.sh'
 
-container:armhf:
-  extends: .container
-  variables:
-    DEBIAN_ARCH: "armhf"
-    GCC_ARCH: "arm-linux-gnueabihf"
-    KERNEL_ARCH: "arm"
-    DEFCONFIG: "arch/arm/configs/multi_v7_defconfig"
-    DEVICE_TREES: "arch/arm/boot/dts/rk3288-veyron-jaq.dtb"
-    KERNEL_IMAGE_NAME: "zImage"
+#container:armhf:
+#  extends: .container
+#  variables:
+#    DEBIAN_ARCH: "armhf"
+#    GCC_ARCH: "arm-linux-gnueabihf"
+#    KERNEL_ARCH: "arm"
+#    DEFCONFIG: "arch/arm/configs/multi_v7_defconfig"
+#    DEVICE_TREES: "arch/arm/boot/dts/rk3288-veyron-jaq.dtb"
+#    KERNEL_IMAGE_NAME: "zImage"
 
 container:arm64:
   extends: .container
@@ -101,6 +101,7 @@ container:arm64:
 
     # Pack rootfs
     - cp src/gallium/drivers/panfrost/ci/deqp-runner.sh /artifacts/rootfs/deqp/.
+    - cp src/gallium/drivers/panfrost/ci/expected-failures.txt /artifacts/rootfs/deqp/.
     - du -sh /artifacts/rootfs/deqp/*
     - find /artifacts/rootfs/ -type f -printf "%s\t%p\n" | sort -n
     - cd /artifacts/rootfs/ ; find -H  |  cpio -H newc -v -o | gzip -c - > $CI_PROJECT_DIR/results/panfrost-rootfs-${DEBIAN_ARCH}.cpio.gz
@@ -123,13 +124,13 @@ container:arm64:
     paths:
       - results/
 
-build:armhf:
-  extends: .build
-  variables:
-    DEBIAN_ARCH: "armhf"
-    GCC_ARCH: "arm-linux-gnueabihf"
-    DEVICE_TYPE: "rk3288-veyron-jaq"
-    KERNEL_IMAGE_NAME: "zImage"
+#build:armhf:
+#  extends: .build
+#  variables:
+#    DEBIAN_ARCH: "armhf"
+#    GCC_ARCH: "arm-linux-gnueabihf"
+#    DEVICE_TYPE: "rk3288-veyron-jaq"
+#    KERNEL_IMAGE_NAME: "zImage"
 
 build:arm64:
   extends: .build
@@ -155,107 +156,22 @@ build:arm64:
         username: jenkins-fdo
         token: $LAVA_TOKEN
       " > ~/.config/lavacli.yaml
-    - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp.yml` || echo $lava_job_id
+    - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp.yml`
+    - echo $lava_job_id
     - lavacli jobs logs $lava_job_id | grep -a -v "{'case':" | tee results/lava-deqp-$lava_job_id.log
     - lavacli jobs show $lava_job_id
-    - curl "https://lava.collabora.co.uk/results/$lava_job_id/csv?user=jenkins-fdo&token=$LAVA_TOKEN" > raw_results.csv
-    - cat raw_results.csv | csvcut -c 12,3 | grep dEQP-GLES2 | sort > results/results-$lava_job_id.csv
-
-    # FIXME: Remove flip-flops from comparison files
-    - |
-      FLIP_FLOPS="
-        dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_neg_x_neg_z_and_pos_x_pos_z_and_neg_x_neg_y_pos_z
-        dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_pos_y_pos_z_and_neg_x_neg_y_pos_z_and_pos_x_pos_y_neg_z
-        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgb5_a1
-        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgb5_a1_depth_component16
-        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgba4
-        dEQP-GLES2.functional.fbo.render.color.blend_rbo_rgba4_depth_component16
-        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgb5_a1
-        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgb5_a1_depth_component16
-        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgba4
-        dEQP-GLES2.functional.fbo.render.color.blend_npot_rbo_rgba4_depth_component16
-        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgb5_a1
-        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgb5_a1_depth_component16
-        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgb5_a1_stencil_index8
-        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgba4_depth_component16
-        dEQP-GLES2.functional.fbo.render.color_clear.rbo_rgba4_stencil_index8
-        dEQP-GLES2.functional.fbo.render.recreate_depthbuffer.
-        dEQP-GLES2.functional.fbo.render.recreate_stencilbuffer.
-        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.rbo_rgb5_a1
-        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.rbo_rgba4
-        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.tex2d_rgb
-        dEQP-GLES2.functional.fbo.render.shared_colorbuffer_clear.tex2d_rgba
-        dEQP-GLES2.functional.fbo.render.shared_colorbuffer.rbo_rgb5_a1
-        dEQP-GLES2.functional.fbo.render.shared_colorbuffer.rbo_rgba4
-        dEQP-GLES2.functional.fbo.render.shared_depthbuffer.rbo_rgb5_a1_depth_component16
-        dEQP-GLES2.functional.fbo.render.shared_depthbuffer.rbo_rgba4_depth_component16
-        dEQP-GLES2.functional.fbo.render.stencil_clear.rbo_rgb5_a1_stencil_index8
-        dEQP-GLES2.functional.fbo.render.stencil.npot_rbo_rgb5_a1_stencil_index8
-        dEQP-GLES2.functional.fbo.render.stencil.npot_rbo_rgba4_stencil_index8
-        dEQP-GLES2.functional.fbo.render.stencil.rbo_rgb5_a1_stencil_index8
-        dEQP-GLES2.functional.fbo.render.stencil.rbo_rgba4_stencil_index8
-        dEQP-GLES2.functional.lifetime.attach.deleted_input.renderbuffer_framebuffer
-        dEQP-GLES2.functional.lifetime.attach.deleted_output.renderbuffer_framebuffer
-        dEQP-GLES2.functional.polygon_offset.fixed16_factor_0_slope
-        dEQP-GLES2.functional.polygon_offset.fixed16_factor_1_slope
-        dEQP-GLES2.functional.shaders.invariance.highp.loop_4
-        dEQP-GLES2.functional.shaders.matrix.mul.dynamic_highp_mat4_vec4_vertex
-        dEQP-GLES2.functional.shaders.matrix.mul.dynamic_highp_vec4_mat4_fragment
-        dEQP-GLES2.functional.shaders.operator.common_functions.smoothstep.mediump_vec3_vertex
-        dEQP-GLES2.functional.shaders.random.all_features.fragment.12
-        dEQP-GLES2.functional.shaders.random.all_features.fragment.37
-        dEQP-GLES2.functional.texture.units.2_units.mixed.1
-        dEQP-GLES2.functional.texture.units.2_units.mixed.3
-        dEQP-GLES2.functional.texture.units.2_units.only_2d.2
-        dEQP-GLES2.functional.texture.units.4_units.mixed.5
-        dEQP-GLES2.functional.texture.units.4_units.only_2d.0
-        dEQP-GLES2.functional.texture.units.8_units.only_cube.2
-        dEQP-GLES2.functional.texture.units.all_units.mixed.6
-        dEQP-GLES2.functional.texture.units.all_units.only_cube.4
-        dEQP-GLES2.functional.texture.units.all_units.only_cube.7
-        dEQP-GLES2.functional.texture.units.all_units.only_cube.8
-        "
-
-    # FIXME: These tests fail in RK3288 but pass on RK3399
-    - |
-      FLIP_FLOPS="$FLIP_FLOPS
-        dEQP-GLES2.functional.fragment_ops.blend.*
-        dEQP-GLES2.functional.shaders.builtin_variable.max_draw_buffers_vertex
-        dEQP-GLES2.functional.shaders.matrix.div.const_lowp_mat2_mat2_vertex
-        dEQP-GLES2.functional.shaders.operator.unary_operator.pre_increment_effect.highp_ivec4_vertex
-        dEQP-GLES2.functional.shaders.texture_functions.vertex.texture2dprojlod_vec3
-        dEQP-GLES2.functional.shaders.swizzles.vector_swizzles.mediump_ivec3_stts_fragment
-        dEQP-GLES2.functional.texture.filtering.2d.nearest_mipmap_nearest_linear_repeat_rgba8888
-        dEQP-GLES2.functional.shaders.swizzles.vector_swizzles.mediump_ivec3_stts_fragment
-        dEQP-GLES2.functional.shaders.loops.do_while_constant_iterations.only_continue_vertex
-        dEQP-GLES2.functional.fbo.render.resize.tex2d_rgb_depth_component16
-        dEQP-GLES2.functional.fbo.render.resize.tex2d_rgba_depth_component16
-        dEQP-GLES2.functional.texture.filtering.2d.linear_mipmap_nearest_nearest_clamp_rgba8888
-        "
-
-    - for test in $FLIP_FLOPS; do sed -i "/$test/d" results/expected-failures.txt results/results-$lava_job_id.csv; done
-
-    - PASSED=$(grep pass$ results/results-$lava_job_id.csv | wc -l)
-    - FAILED=$(grep fail$ results/results-$lava_job_id.csv | wc -l)
-    - TOTAL=$(wc -l < results/results-$lava_job_id.csv)
-    - 'echo "Passed: $PASSED ($(expr $PASSED \* 100 / $TOTAL)%)"'
-    - 'echo "Failed: $FAILED ($(expr $FAILED \* 100 / $TOTAL)%)"'
-    - 'echo "Total: $TOTAL"'
-    - 'if [ $TOTAL != 16374 ]; then echo "WARNING: Unexpected count of results. Incomplete run?"; fi'
-
-    - sed '/,pass/d' results/results-$lava_job_id.csv | sed 's/,fail//' > results/failures-$lava_job_id.txt
-
-    # Don't error out on RK3288
-    - diff -u results/expected-failures.txt results/failures-$lava_job_id.txt || [ -f results/rk3288-veyron-jaq.dtb ]
+    - result=`lavacli results $lava_job_id 0_deqp deqp | head -1`
+    - echo $result
+    - '[[ "$result" == "pass" ]]'
   artifacts:
     when: always
     paths:
       - results/
 
-test:armhf:
-  extends: .test
-  dependencies:
-    - build:armhf
+#test:armhf:
+#  extends: .test
+#  dependencies:
+#    - build:armhf
 
 test:arm64:
   extends: .test

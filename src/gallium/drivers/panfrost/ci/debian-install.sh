@@ -42,6 +42,13 @@ apt-get -y install --no-install-recommends \
 	procps \
 	qemu-user-static \
 	cpio \
+	clang-8 \
+	llvm-8 \
+	libclang-8-dev \
+	llvm-8-dev \
+	gdc-9 \
+	lld-8 \
+	nasm \
 	\
 	libdrm-dev:${DEBIAN_ARCH} \
 	libx11-dev:${DEBIAN_ARCH} \
@@ -65,11 +72,11 @@ apt-get -y install --no-install-recommends \
 	libelf-dev:${DEBIAN_ARCH} \
 	libwayland-dev:${DEBIAN_ARCH} \
 	libwayland-egl-backend-dev:${DEBIAN_ARCH} \
-	libclang-7-dev:${DEBIAN_ARCH} \
 	zlib1g-dev:${DEBIAN_ARCH} \
 	libglvnd-core-dev:${DEBIAN_ARCH} \
 	wayland-protocols:${DEBIAN_ARCH} \
 	libpng-dev:${DEBIAN_ARCH}
+
 
 ############### Cross-build dEQP
 mkdir -p /artifacts/rootfs/deqp
@@ -89,7 +96,6 @@ cmake -DDEQP_TARGET=wayland                   \
       /VK-GL-CTS-opengl-es-cts-3.2.5.0
 make -j$(nproc)
 rm -rf /artifacts/rootfs/deqp/external
-rm -rf /artifacts/rootfs/deqp/modules/gles3
 rm -rf /artifacts/rootfs/deqp/modules/gles31
 rm -rf /artifacts/rootfs/deqp/modules/internal
 rm -rf /artifacts/rootfs/deqp/executor
@@ -100,6 +106,32 @@ find . -name CMakeFiles | xargs rm -rf
 find . -name lib\*.a | xargs rm -rf
 du -sh *
 rm -rf /VK-GL-CTS-opengl-es-cts-3.2.5.0
+
+
+############### Cross-build Volt dEQP runner
+mkdir -p /battery
+cd /battery
+wget https://github.com/VoltLang/Battery/releases/download/v0.1.22/battery-0.1.22-x86_64-linux.tar.gz
+tar xzvf battery-0.1.22-x86_64-linux.tar.gz
+rm battery-0.1.22-x86_64-linux.tar.gz
+mv battery /usr/local/bin
+rm -rf /battery
+
+mkdir -p /volt
+cd /volt
+git clone --depth=1 https://github.com/VoltLang/Watt.git
+git clone --depth=1 https://github.com/VoltLang/Volta.git
+git clone --depth=1 https://github.com/Wallbraker/dEQP.git
+battery config --release --lto Volta Watt
+battery build
+battery config --arch aarch64 --cmd-volta Volta/volta Volta/rt Watt dEQP
+battery build
+cp dEQP/deqp /artifacts/rootfs/deqp/deqp-volt
+rm -rf /volt
+
+
+############### Remove LLVM now, so the container image is smaller
+apt-get -y remove \*llvm\*
 
 
 ############### Cross-build kernel
