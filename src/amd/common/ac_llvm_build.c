@@ -626,6 +626,22 @@ ac_build_expand(struct ac_llvm_context *ctx,
 	return ac_build_gather_values(ctx, chan, dst_channels);
 }
 
+/* Extract components [start, start + channels) from a vector.
+ */
+LLVMValueRef
+ac_extract_components(struct ac_llvm_context *ctx,
+		      LLVMValueRef value,
+		      unsigned start,
+		      unsigned channels)
+{
+	LLVMValueRef chan[channels];
+
+	for (unsigned i = 0; i < channels; i++)
+		chan[i] = ac_llvm_extract_elem(ctx, value, i + start);
+
+	return ac_build_gather_values(ctx, chan, channels);
+}
+
 /* Expand a scalar or vector to <4 x type> by filling the remaining channels
  * with undef. Extract at most num_channels components from the input.
  */

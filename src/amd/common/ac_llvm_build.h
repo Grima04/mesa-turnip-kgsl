@@ -190,6 +190,13 @@ LLVMValueRef
 ac_build_gather_values(struct ac_llvm_context *ctx,
 		       LLVMValueRef *values,
 		       unsigned value_count);
+
+LLVMValueRef
+ac_extract_components(struct ac_llvm_context *ctx,
+		      LLVMValueRef value,
+		      unsigned start,
+		      unsigned channels);
+
 LLVMValueRef ac_build_expand_to_vec4(struct ac_llvm_context *ctx,
 				     LLVMValueRef value,
 				     unsigned num_channels);

@@ -3637,13 +3637,27 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 						 offset);
 		LLVMTypeRef comp_type =
 			LLVMIntTypeInContext(ctx->ac.context, instr->src[0].ssa->bit_size);
-		LLVMTypeRef vec_type =
-			instr->src[0].ssa->num_components == 1 ? comp_type :
-			LLVMVectorType(comp_type, instr->src[0].ssa->num_components);
 		unsigned addr_space = LLVMGetPointerAddressSpace(LLVMTypeOf(ptr));
 		ptr = LLVMBuildBitCast(ctx->ac.builder, ptr,
-				       LLVMPointerType(vec_type, addr_space), "");
-		LLVMBuildStore(ctx->ac.builder, get_src(ctx, instr->src[0]), ptr);
+				       LLVMPointerType(comp_type, addr_space), "");
+		LLVMValueRef src = get_src(ctx, instr->src[0]);
+		unsigned wrmask = nir_intrinsic_write_mask(instr);
+		while (wrmask) {
+			int start, count;
+			u_bit_scan_consecutive_range(&wrmask, &start, &count);
+			
+			LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, start, false);
+			LLVMValueRef offset_ptr = LLVMBuildGEP(ctx->ac.builder, ptr, &offset, 1, "");
+			LLVMTypeRef vec_type =
+				count == 1 ? comp_type : LLVMVectorType(comp_type, count);
+			offset_ptr = LLVMBuildBitCast(ctx->ac.builder,
+						      offset_ptr,
+						      LLVMPointerType(vec_type, addr_space),
+						      "");
+			LLVMValueRef offset_src =
+				ac_extract_components(&ctx->ac, src, start, count);
+			LLVMBuildStore(ctx->ac.builder, offset_src, offset_ptr);
+		}
 		break;
 	}
 	default:
