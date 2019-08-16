@@ -65,8 +65,8 @@ pandecode_inject_mmap(uint64_t gpu_va, void *cpu, unsigned sz, const char *name)
                 snprintf(mapped_mem->name, ARRAY_SIZE(mapped_mem->name) - 1,
                          "memory_%" PRIx64, gpu_va);
         } else {
-                assert(strlen(name) < ARRAY_SIZE(mapped_mem->name));
-                memcpy(mapped_mem->name, name, strlen(name));
+                assert((strlen(name) + 1) < ARRAY_SIZE(mapped_mem->name));
+                memcpy(mapped_mem->name, name, strlen(name) + 1);
         }
 
         list_add(&mapped_mem->node, &mmaps.node);
