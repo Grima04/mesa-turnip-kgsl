@@ -45,7 +45,6 @@ files_panfrost = files(
   'pan_blend_cso.c',
   'pan_compute.c',
   'pan_fragment.c',
-  'pan_invocation.c',
   'pan_instancing.c',
   'pan_scoreboard.c',
   'pan_sfbd.c',
@@ -82,5 +81,5 @@ libpanfrost = static_library(
 
 driver_panfrost = declare_dependency(
   compile_args : compile_args_panfrost,
-  link_with : [libpanfrost, libpanfrostwinsys, libpanfrost_shared, libpanfrost_midgard, libpanfrost_bifrost, libpanfrost_decode],
+  link_with : [libpanfrost, libpanfrostwinsys, libpanfrost_shared, libpanfrost_midgard, libpanfrost_bifrost, libpanfrost_decode, libpanfrost_encoder],
 )

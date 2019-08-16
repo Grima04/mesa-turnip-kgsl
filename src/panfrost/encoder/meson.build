@@ -19,40 +19,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_panfrost_hw = include_directories([
-   'include'
-])
+libpanfrost_encoder_files = files(
+  'pan_encoder.h',
 
-inc_panfrost = include_directories([
-   '.', 'include', 'shared', 'midgard', 'bifrost', 'encoder'
-])
-
-subdir('shared')
-subdir('midgard')
-subdir('bifrost')
-subdir('pandecode')
-subdir('encoder')
-
-files_bifrost = files(
-  'bifrost/cmdline.c',
+  'pan_invocation.c',
 )
 
-bifrost_compiler = executable(
-  'bifrost_compiler',
-  [files_bifrost],
-  include_directories : [
-    inc_common,
-    inc_include,
-    inc_src,
-    inc_panfrost,
- ],
-  dependencies : [
-    idep_nir,
-    idep_mesautil,
-  ],
-  link_with : [
-    libglsl_standalone,
-    libpanfrost_bifrost
-  ],
-  build_by_default : true
+libpanfrost_encoder = static_library(
+  'panfrost_encoder',
+  [libpanfrost_encoder_files],
+  include_directories : [inc_common, inc_panfrost_hw],
+  c_args : [c_vis_args, no_override_init_args],
+  cpp_args : [cpp_vis_args],
+  build_by_default : false,
 )

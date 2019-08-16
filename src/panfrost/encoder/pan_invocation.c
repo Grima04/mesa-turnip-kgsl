@@ -25,7 +25,9 @@
  *
  */
 
-#include "pan_context.h"
+#include <assert.h>
+#include "util/u_math.h"
+#include "pan_encoder.h"
 
 /* Compute shaders are invoked with a gl_NumWorkGroups X/Y/Z triplet. Vertex
  * shaders, it turns out, are invoked with the same mechanism, with the triplet
