@@ -62,6 +62,7 @@ if with_tools.contains('all')
     'glsl',
     'intel',
     'intel-ui',
+    'lima',
     'nir',
     'nouveau',
     'xvmc',
