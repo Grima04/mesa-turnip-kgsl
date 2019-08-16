@@ -1800,6 +1800,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                 emit_mir_instruction(ctx, st);
 
                                 ins.ssa_args.src[0] = temp;
+                                ins.texture.in_reg_swizzle = SWIZZLE_XYXX;
                         } else {
                                 ins.ssa_args.src[0] = index;
                         }
