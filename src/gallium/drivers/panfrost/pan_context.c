@@ -605,11 +605,11 @@ panfrost_upload_tex(
 
         /* For easy access */
 
-        assert(pview->target != PIPE_BUFFER);
-        unsigned first_level = pview->u.tex.first_level;
-        unsigned last_level = pview->u.tex.last_level;
-        unsigned first_layer = pview->u.tex.first_layer;
-        unsigned last_layer = pview->u.tex.last_layer;
+        bool is_buffer = pview->target == PIPE_BUFFER;
+        unsigned first_level = is_buffer ? 0 : pview->u.tex.first_level;
+        unsigned last_level  = is_buffer ? 0 : pview->u.tex.last_level;
+        unsigned first_layer = is_buffer ? 0 : pview->u.tex.first_layer;
+        unsigned last_layer  = is_buffer ? 0 : pview->u.tex.last_layer;
 
         /* Lower-bit is set when sampling from colour AFBC */
         bool is_afbc = rsrc->layout == PAN_AFBC;
