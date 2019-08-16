@@ -39,7 +39,8 @@ panfrost_pack_work_groups_compute(
         unsigned num_z,
         unsigned size_x,
         unsigned size_y,
-        unsigned size_z);
+        unsigned size_z,
+        bool quirk_graphics);
 
 void
 panfrost_pack_work_groups_fused(

@@ -119,7 +119,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         panfrost_pack_work_groups_compute(&payload->prefix,
                         info->grid[0], info->grid[1], info->grid[2],
-                        info->block[0], info->block[1], info->block[2]);
+                        info->block[0], info->block[1], info->block[2], false);
 
         /* Upload the payload */
 
