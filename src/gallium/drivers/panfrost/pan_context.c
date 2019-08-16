@@ -2205,9 +2205,9 @@ panfrost_translate_texture_type(enum pipe_texture_target t) {
         switch (t)
         {
         case PIPE_BUFFER:
-                        case PIPE_TEXTURE_1D:
-                                case PIPE_TEXTURE_1D_ARRAY:
-                                                return MALI_TEX_1D;
+        case PIPE_TEXTURE_1D:
+        case PIPE_TEXTURE_1D_ARRAY:
+                return MALI_TEX_1D;
 
         case PIPE_TEXTURE_2D:
         case PIPE_TEXTURE_2D_ARRAY:
