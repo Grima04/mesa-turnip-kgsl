@@ -391,12 +391,11 @@ midgard_writeout;
 typedef enum {
         midgard_op_ld_st_noop   = 0x03,
 
-        /* Unclear why this is on the L/S unit, but (with an address of 0,
-         * appropriate swizzle, magic constant 0x24, and xy mask?) moves fp32 cube
-         * map coordinates in r27 to its cube map texture coordinate
-         * destination (e.g r29). 0x4 magic for lding from fp16 instead */
+        /* Unclear why this is on the L/S unit, but moves fp32 cube map
+         * coordinates in r27 to its cube map texture coordinate destination
+         * (e.g r29). */
 
-        midgard_op_st_cubemap_coords = 0x0E,
+        midgard_op_ld_cubemap_coords = 0x0E,
 
         /* Loads a global/local/group ID, depending on arguments */
         midgard_op_ld_compute_id = 0x10,

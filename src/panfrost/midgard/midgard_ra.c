@@ -752,9 +752,7 @@ install_registers_instr(
                  * whether we are loading or storing -- think about the
                  * logical dataflow */
 
-                bool encodes_src =
-                        OP_IS_STORE(ins->load_store.op) &&
-                        ins->load_store.op != midgard_op_st_cubemap_coords;
+                bool encodes_src = OP_IS_STORE(ins->load_store.op);
 
                 if (encodes_src) {
                         struct phys_reg src = index_to_reg(ctx, g, args.src[0]);

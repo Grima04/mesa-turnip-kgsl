@@ -47,8 +47,7 @@
         )
 
 #define OP_IS_STORE(op) (\
-                OP_IS_STORE_R26(op) || \
-                op == midgard_op_st_cubemap_coords \
+                OP_IS_STORE_R26(op) \
 	)
 
 #define OP_IS_PROJECTION(op) ( \
@@ -58,7 +57,7 @@
 
 #define OP_IS_VEC4_ONLY(op) ( \
                 OP_IS_PROJECTION(op) || \
-                op == midgard_op_st_cubemap_coords \
+                op == midgard_op_ld_cubemap_coords \
         )
 
 #define OP_IS_MOVE(op) ( \

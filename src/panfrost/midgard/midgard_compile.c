@@ -190,7 +190,7 @@ M_STORE(st_int4);
 M_LOAD(ld_color_buffer_8);
 //M_STORE(st_vary_16);
 M_STORE(st_vary_32);
-M_LOAD(st_cubemap_coords);
+M_LOAD(ld_cubemap_coords);
 M_LOAD(ld_compute_id);
 
 static midgard_instruction
@@ -1792,12 +1792,12 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                                  * texture register */
 
                                 unsigned temp = make_compiler_temp(ctx);
-                                midgard_instruction st = m_st_cubemap_coords(temp, 0);
-                                st.ssa_args.src[0] = index;
-                                st.mask = 0x3; /* xy */
-                                st.load_store.arg_1 = 0x20;
-                                st.load_store.swizzle = alu_src.swizzle;
-                                emit_mir_instruction(ctx, st);
+                                midgard_instruction ld = m_ld_cubemap_coords(temp, 0);
+                                ld.ssa_args.src[0] = index;
+                                ld.mask = 0x3; /* xy */
+                                ld.load_store.arg_1 = 0x20;
+                                ld.load_store.swizzle = alu_src.swizzle;
+                                emit_mir_instruction(ctx, ld);
 
                                 ins.ssa_args.src[0] = temp;
                                 ins.texture.in_reg_swizzle = SWIZZLE_XYXX;
