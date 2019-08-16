@@ -55,11 +55,6 @@ int pandecode_jc(mali_ptr jc_gpu_va, bool bifrost);
         } \
 }
 
-#define DYN_MEMORY_PROP(obj, no, p) { \
-	if (obj->p) \
-		pandecode_prop("%s = %s_%d_p", #p, #p, no); \
-}
-
 /* Semantic logging type.
  *
  * Raw: for raw messages to be printed as is.
@@ -1362,8 +1357,6 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no)
         if (p->offset_bias_correction)
                 pandecode_prop("offset_bias_correction = %d", p->offset_bias_correction);
 
-        DYN_MEMORY_PROP(p, job_no, indices);
-
         if (p->zero1) {
                 pandecode_msg("Zero tripped\n");
                 pandecode_prop("zero1 = 0x%" PRIx32, p->zero1);
@@ -1948,28 +1941,17 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
 static void
 pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int job_no, bool is_bifrost)
 {
-        pandecode_log_cont("{\n");
+        if (!(p->position_varying || p->occlusion_counter || p->flags))
+                return;
+
+        pandecode_log(".postfix = {\n");
         pandecode_indent++;
 
         MEMORY_PROP(p, position_varying);
-        DYN_MEMORY_PROP(p, job_no, uniform_buffers);
-        DYN_MEMORY_PROP(p, job_no, texture_trampoline);
-        DYN_MEMORY_PROP(p, job_no, sampler_descriptor);
-        DYN_MEMORY_PROP(p, job_no, uniforms);
-        DYN_MEMORY_PROP(p, job_no, attributes);
-        DYN_MEMORY_PROP(p, job_no, attribute_meta);
-        DYN_MEMORY_PROP(p, job_no, varyings);
-        DYN_MEMORY_PROP(p, job_no, varying_meta);
-        DYN_MEMORY_PROP(p, job_no, viewport);
-        DYN_MEMORY_PROP(p, job_no, occlusion_counter);
+        MEMORY_PROP(p, occlusion_counter);
 
-        if (is_bifrost)
-                pandecode_prop("framebuffer = scratchpad_%d_p", job_no);
-        else
-                pandecode_prop("framebuffer = framebuffer_%d_p | %s", job_no, p->framebuffer & MALI_MFBD ? "MALI_MFBD" : "0");
-
-        pandecode_prop("_shader_upper = (shader_meta_%d_p) >> 4", job_no);
-        pandecode_prop("flags = %d", p->flags);
+        if (p->flags)
+                pandecode_prop("flags = %d", p->flags);
 
         pandecode_indent--;
         pandecode_log("},\n");
@@ -2058,7 +2040,6 @@ pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
 
         pandecode_prop("width = MALI_POSITIVE(%d)", t->width + 1);
         pandecode_prop("height = MALI_POSITIVE(%d)", t->height + 1);
-        DYN_MEMORY_PROP(t, job_no, tiler_heap_meta);
 
         for (int i = 0; i < 12; i++) {
                 if (t->zeros[i] != 0) {
@@ -2109,7 +2090,6 @@ pandecode_tiler_only_bfr(const struct bifrost_tiler_only *t, int job_no)
         /* TODO: gl_PointSize on Bifrost */
         pandecode_primitive_size(t->primitive_size, true);
 
-        DYN_MEMORY_PROP(t, job_no, tiler_meta);
         pandecode_gl_enables(t->gl_enables, JOB_TYPE_TILER);
 
         if (t->zero1 || t->zero2 || t->zero3 || t->zero4 || t->zero5
@@ -2147,7 +2127,6 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
         pandecode_log(".vertex = ");
         pandecode_vertex_only_bfr(&v->vertex);
 
-        pandecode_log(".postfix = ");
         pandecode_vertex_tiler_postfix(&v->postfix, job_no, true);
 
         pandecode_indent--;
@@ -2177,7 +2156,6 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
         pandecode_log(".tiler = ");
         pandecode_tiler_only_bfr(&t->tiler, job_no);
 
-        pandecode_log(".postfix = ");
         pandecode_vertex_tiler_postfix(&t->postfix, job_no, true);
 
         pandecode_indent--;
@@ -2225,7 +2203,6 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
                 pandecode_prop("zero5 = 0x%" PRIx64, v->zero5);
         }
 
-        pandecode_log(".postfix = ");
         pandecode_vertex_tiler_postfix(&v->postfix, job_no, false);
 
         pandecode_indent--;
