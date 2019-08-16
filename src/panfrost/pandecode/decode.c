@@ -37,6 +37,8 @@
 #include "midgard/disassemble.h"
 #include "bifrost/disassemble.h"
 
+#include "pan_encoder.h"
+
 int pandecode_jc(mali_ptr jc_gpu_va, bool bifrost);
 
 #define MEMORY_PROP(obj, p) {\
@@ -1312,39 +1314,70 @@ bits(u32 word, u32 lo, u32 hi)
 }
 
 static void
-pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no)
+pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bool noninstanced)
 {
         pandecode_log_cont("{\n");
         pandecode_indent++;
 
-        pandecode_prop("invocation_count = 0x%" PRIx32, p->invocation_count);
-        pandecode_prop("size_y_shift = %d", p->size_y_shift);
-        pandecode_prop("size_z_shift = %d", p->size_z_shift);
-        pandecode_prop("workgroups_x_shift = %d", p->workgroups_x_shift);
-        pandecode_prop("workgroups_y_shift = %d", p->workgroups_y_shift);
-        pandecode_prop("workgroups_z_shift = %d", p->workgroups_z_shift);
-        pandecode_prop("workgroups_x_shift_2 = 0x%" PRIx32, p->workgroups_x_shift_2);
-
         /* Decode invocation_count. See the comment before the definition of
          * invocation_count for an explanation.
          */
-        pandecode_msg("size: (%d, %d, %d)\n",
-                      bits(p->invocation_count, 0, p->size_y_shift) + 1,
-                      bits(p->invocation_count, p->size_y_shift, p->size_z_shift) + 1,
-                      bits(p->invocation_count, p->size_z_shift,
-                           p->workgroups_x_shift) + 1);
-        pandecode_msg("workgroups: (%d, %d, %d)\n",
-                      bits(p->invocation_count, p->workgroups_x_shift,
-                           p->workgroups_y_shift) + 1,
-                      bits(p->invocation_count, p->workgroups_y_shift,
-                           p->workgroups_z_shift) + 1,
-                      bits(p->invocation_count, p->workgroups_z_shift,
-                           32) + 1);
+
+        unsigned size_x = bits(p->invocation_count, 0, p->size_y_shift) + 1;
+        unsigned size_y = bits(p->invocation_count, p->size_y_shift, p->size_z_shift) + 1;
+        unsigned size_z = bits(p->invocation_count, p->size_z_shift, p->workgroups_x_shift) + 1;
+
+        unsigned groups_x = bits(p->invocation_count, p->workgroups_x_shift, p->workgroups_y_shift) + 1;
+        unsigned groups_y = bits(p->invocation_count, p->workgroups_y_shift, p->workgroups_z_shift) + 1;
+        unsigned groups_z = bits(p->invocation_count, p->workgroups_z_shift, 32) + 1;
+
+        /* Even though we have this decoded, we want to ensure that the
+         * representation is "unique" so we don't lose anything by printing only
+         * the final result. More specifically, we need to check that we were
+         * passed something in canonical form, since the definition per the
+         * hardware is inherently not unique. How? Well, take the resulting
+         * decode and pack it ourselves! If it is bit exact with what we
+         * decoded, we're good to go. */
+
+        struct mali_vertex_tiler_prefix ref;
+        panfrost_pack_work_groups_compute(&ref, groups_x, groups_y, groups_z, size_x, size_y, size_z, noninstanced);
+
+        bool canonical =
+                (p->invocation_count == ref.invocation_count) &&
+                (p->size_y_shift == ref.size_y_shift) &&
+                (p->size_z_shift == ref.size_z_shift) &&
+                (p->workgroups_x_shift == ref.workgroups_x_shift) &&
+                (p->workgroups_y_shift == ref.workgroups_y_shift) &&
+                (p->workgroups_z_shift == ref.workgroups_z_shift);
+
+        if (!canonical) {
+                pandecode_msg("XXX: non-canonical workgroups packing\n");
+                pandecode_msg("expected: %X, %d, %d, %d, %d, %d\n",
+                                ref.invocation_count,
+                                ref.size_y_shift,
+                                ref.size_z_shift,
+                                ref.workgroups_x_shift,
+                                ref.workgroups_y_shift,
+                                ref.workgroups_z_shift);
+
+                pandecode_prop("invocation_count = 0x%" PRIx32, p->invocation_count);
+                pandecode_prop("size_y_shift = %d", p->size_y_shift);
+                pandecode_prop("size_z_shift = %d", p->size_z_shift);
+                pandecode_prop("workgroups_x_shift = %d", p->workgroups_x_shift);
+                pandecode_prop("workgroups_y_shift = %d", p->workgroups_y_shift);
+                pandecode_prop("workgroups_z_shift = %d", p->workgroups_z_shift);
+        }
+
+        /* Regardless, print the decode */
+        pandecode_msg("size (%d, %d, %d), count (%d, %d, %d)\n",
+                        size_x, size_y, size_z,
+                        groups_x, groups_y, groups_z);
 
         /* TODO: Decode */
         if (p->unknown_draw)
                 pandecode_prop("unknown_draw = 0x%" PRIx32, p->unknown_draw);
 
+        pandecode_prop("workgroups_x_shift_2 = 0x%" PRIx32, p->workgroups_x_shift_2);
         pandecode_prop("workgroups_x_shift_3 = 0x%" PRIx32, p->workgroups_x_shift_3);
 
         if (p->draw_mode != MALI_DRAW_NONE)
@@ -2123,7 +2156,7 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
         pandecode_indent++;
 
         pandecode_log(".prefix = ");
-        pandecode_vertex_tiler_prefix(&v->prefix, job_no);
+        pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
 
         pandecode_log(".vertex = ");
         pandecode_vertex_only_bfr(&v->vertex);
@@ -2152,7 +2185,7 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
         pandecode_indent++;
 
         pandecode_log(".prefix = ");
-        pandecode_vertex_tiler_prefix(&t->prefix, job_no);
+        pandecode_vertex_tiler_prefix(&t->prefix, job_no, false);
 
         pandecode_log(".tiler = ");
         pandecode_tiler_only_bfr(&t->tiler, job_no);
@@ -2182,8 +2215,11 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         bool has_primitive_pointer = v->prefix.unknown_draw & MALI_DRAW_VARYING_SIZE;
         pandecode_primitive_size(v->primitive_size, !has_primitive_pointer);
 
+        bool instanced = v->instance_shift || v->instance_odd;
+        bool is_graphics = (h->job_type == JOB_TYPE_VERTEX) || (h->job_type == JOB_TYPE_TILER);
+
         pandecode_log(".prefix = ");
-        pandecode_vertex_tiler_prefix(&v->prefix, job_no);
+        pandecode_vertex_tiler_prefix(&v->prefix, job_no, !instanced && is_graphics);
 
         pandecode_gl_enables(v->gl_enables, h->job_type);
 
