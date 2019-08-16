@@ -1348,7 +1348,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
                 (p->size_z_shift == ref.size_z_shift) &&
                 (p->workgroups_x_shift == ref.workgroups_x_shift) &&
                 (p->workgroups_y_shift == ref.workgroups_y_shift) &&
-                (p->workgroups_z_shift == ref.workgroups_z_shift);
+                (p->workgroups_z_shift == ref.workgroups_z_shift) &&
+                (p->workgroups_x_shift_2 == ref.workgroups_x_shift_2);
 
         if (!canonical) {
                 pandecode_msg("XXX: non-canonical workgroups packing\n");
@@ -1358,7 +1359,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
                                 ref.size_z_shift,
                                 ref.workgroups_x_shift,
                                 ref.workgroups_y_shift,
-                                ref.workgroups_z_shift);
+                                ref.workgroups_z_shift,
+                                ref.workgroups_x_shift_2);
 
                 pandecode_prop("invocation_count = 0x%" PRIx32, p->invocation_count);
                 pandecode_prop("size_y_shift = %d", p->size_y_shift);
@@ -1366,6 +1368,7 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
                 pandecode_prop("workgroups_x_shift = %d", p->workgroups_x_shift);
                 pandecode_prop("workgroups_y_shift = %d", p->workgroups_y_shift);
                 pandecode_prop("workgroups_z_shift = %d", p->workgroups_z_shift);
+                pandecode_prop("workgroups_x_shift_2 = %d", p->workgroups_x_shift_2);
         }
 
         /* Regardless, print the decode */
@@ -1377,7 +1380,6 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
         if (p->unknown_draw)
                 pandecode_prop("unknown_draw = 0x%" PRIx32, p->unknown_draw);
 
-        pandecode_prop("workgroups_x_shift_2 = 0x%" PRIx32, p->workgroups_x_shift_2);
         pandecode_prop("workgroups_x_shift_3 = 0x%" PRIx32, p->workgroups_x_shift_3);
 
         if (p->draw_mode != MALI_DRAW_NONE)
