@@ -1347,7 +1347,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no)
 
         pandecode_prop("workgroups_x_shift_3 = 0x%" PRIx32, p->workgroups_x_shift_3);
 
-        pandecode_prop("draw_mode = %s", pandecode_draw_mode(p->draw_mode));
+        if (p->draw_mode != MALI_DRAW_NONE)
+                pandecode_prop("draw_mode = %s", pandecode_draw_mode(p->draw_mode));
 
         /* Index count only exists for tiler jobs anyway */
 
