@@ -106,8 +106,17 @@ panfrost_pack_work_groups_compute(
         if (quirk_graphics && (num_z <= 1))
                 out->workgroups_z_shift = 32;
 
-        /* Special fields */
-        out->workgroups_x_shift_2 = MAX2(out->workgroups_x_shift, 2);
+        /* Quirk: for graphics, workgroups_x_shift_2 must be at least 2,
+         * whereas for OpenCL it is simply equal to workgroups_x_shift. For GL
+         * compute, it seems it might *always* be 2, but this is suspicious and
+         * needs further investigation. (I'm probably just using GL wrong). */
+
+        if (quirk_graphics)
+                out->workgroups_x_shift_2 = MAX2(out->workgroups_x_shift, 2);
+        else
+                out->workgroups_x_shift_2 = out->workgroups_x_shift;
+
+        /* TODO: Compute workgroups_x_shift_3 */
         out->workgroups_x_shift_3 = out->workgroups_x_shift_2;
 }
 
