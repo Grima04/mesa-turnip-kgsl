@@ -1209,9 +1209,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 .clip_miny = -INFINITY,
                 .clip_maxx = INFINITY,
                 .clip_maxy = INFINITY,
-
-                .clip_minz = 0.0,
-                .clip_maxz = 1.0,
         };
 
         /* Always scissor to the viewport by default. */
@@ -1220,6 +1217,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
         float vp_miny = (int) (vp->translate[1] - fabsf(vp->scale[1]));
         float vp_maxy = (int) (vp->translate[1] + fabsf(vp->scale[1]));
+
+        float minz = (vp->translate[2] - fabsf(vp->scale[2]));
+        float maxz = (vp->translate[2] + fabsf(vp->scale[2]));
 
         /* Apply the scissor test */
 
@@ -1253,6 +1253,12 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 maxx = temp;
         }
 
+        if (minz > maxz) {
+                float temp = minz;
+                minz = maxz;
+                maxz = temp;
+        }
+
         /* Clamp to the framebuffer size as a last check */
 
         minx = MIN2(ctx->pipe_framebuffer.width, minx);
@@ -1275,6 +1281,9 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
         view.viewport0[1] = miny;
         view.viewport1[1] = MALI_POSITIVE(maxy);
+
+        view.clip_minz = minz;
+        view.clip_maxz = maxz;
 
         ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.viewport =
                 panfrost_upload_transient(ctx,
