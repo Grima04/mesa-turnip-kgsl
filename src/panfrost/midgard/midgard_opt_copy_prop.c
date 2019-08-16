@@ -52,13 +52,31 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (mir_nontrivial_source2_mod_simple(ins)) continue;
                 if (mir_nontrivial_outmod(ins)) continue;
 
-                /* Texture ops have some weirdness around bias */
+                /* Shortened arguments (bias for textures, extra load/store
+                 * arguments, etc.) do not get a swizzlw, only a start
+                 * component and even that is restricted. */
 
                 bool skip = false;
 
                 mir_foreach_instr_global(ctx, q) {
-                        if (q->ssa_args.src[1] != to) continue;
-                        if (q->type == TAG_TEXTURE_4) skip = true;
+                        bool is_tex = q->type == TAG_TEXTURE_4;
+                        bool is_ldst = q->type == TAG_LOAD_STORE_4;
+
+                        if (!(is_tex || is_ldst)) continue;
+
+                        /* For textures, we get one real swizzle. For stores,
+                         * we also get one. For loads, we get none. */
+
+                        unsigned start =
+                                is_tex ? 1 :
+                                OP_IS_STORE(q->load_store.op) ? 1 : 0;
+
+                        mir_foreach_src(q, s) {
+                                if ((s >= start) && q->ssa_args.src[s] == to) {
+                                        skip = true;
+                                        break;
+                                }
+                        }
                 }
 
                 if (skip)
