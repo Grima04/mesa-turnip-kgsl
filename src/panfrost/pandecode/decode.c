@@ -2369,7 +2369,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost)
                 if (h->job_descriptor_size)
                         pandecode_prop("job_descriptor_size = %d", h->job_descriptor_size);
 
-                if (h->exception_status != 0x1)
+                if (h->exception_status && h->exception_status != 0x1)
                         pandecode_prop("exception_status = %x (source ID: 0x%x access: %s exception: 0x%x)",
                                        h->exception_status,
                                        (h->exception_status >> 16) & 0xFFFF,
