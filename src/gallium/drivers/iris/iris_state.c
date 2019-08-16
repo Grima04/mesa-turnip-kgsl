@@ -4778,7 +4778,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             uint32_t psx_state[GENX(3DSTATE_PS_EXTRA_length)] = {0};
             iris_pack_command(GENX(3DSTATE_PS_EXTRA), psx_state, psx) {
 #if GEN_GEN >= 9
-               if (wm_prog_data->post_depth_coverage)
+               if (!wm_prog_data->uses_sample_mask)
+                  psx.InputCoverageMaskState  = ICMS_NONE;
+               else if (wm_prog_data->post_depth_coverage)
                   psx.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
                else if (wm_prog_data->inner_coverage &&
                         cso->conservative_rasterization)
