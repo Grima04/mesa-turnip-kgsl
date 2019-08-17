@@ -26,7 +26,7 @@ project(
   ).stdout(),
   license : 'MIT',
   meson_version : '>= 0.46',
-  default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c99', 'cpp_std=c++11']
+  default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c99', 'cpp_std=c++14']
 )
 
 cc = meson.get_compiler('c')

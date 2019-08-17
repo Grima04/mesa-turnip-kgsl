@@ -269,7 +269,7 @@ def generate(env):
             env.ParseConfig('%s --ldflags' % llvm_config)
             if llvm_version >= distutils.version.LooseVersion('3.5'):
                 env.ParseConfig('%s --system-libs' % llvm_config)
-                env.Append(CXXFLAGS = ['-std=c++11'])
+                env.Append(CXXFLAGS = ['-std=c++14'])
         except OSError:
             print('scons: llvm-config version %s failed' % llvm_version)
             return
