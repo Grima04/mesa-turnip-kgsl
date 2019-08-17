@@ -68,7 +68,9 @@ LOCAL_SRC_FILES := \
 	lima_texture.c \
 	lima_texture.h \
 	lima_util.c \
-	lima_util.h
+	lima_util.h \
+	lima_format.c \
+	lima_format.h
 
 LOCAL_MODULE := libmesa_pipe_lima
 
