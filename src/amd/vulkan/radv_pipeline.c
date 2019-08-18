@@ -2339,6 +2339,26 @@ radv_fill_shader_keys(struct radv_device *device,
 			keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
 		}
 
+		/*
+		 * Disable NGG with geometry shaders. There are a bunch of
+		 * issues still:
+		 *   * GS primitives in pipeline statistic queries do not get
+		 *     updates. See dEQP-VK.query_pool.statistics_query.geometry_shader_primitives
+		 *   * dEQP-VK.clipping.user_defined.clip_cull_distance_dynamic_index.*geom* failures
+		 *   * Interactions with tessellation failing:
+		 *     dEQP-VK.tessellation.geometry_interaction.passthrough.tessellate_isolines_passthrough_geometry_no_change
+		 *   * General issues with the last primitive missing/corrupt:
+		 *     https://bugs.freedesktop.org/show_bug.cgi?id=111248
+		 *
+		 * Furthermore, XGL/AMDVLK also disables this as of 9b632ef.
+		 */
+		if (nir[MESA_SHADER_GEOMETRY]) {
+			if (nir[MESA_SHADER_TESS_CTRL])
+				keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = false;
+			else
+				keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg = false;
+		}
+
 		/* TODO: Implement streamout support for NGG. */
 		gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
 
