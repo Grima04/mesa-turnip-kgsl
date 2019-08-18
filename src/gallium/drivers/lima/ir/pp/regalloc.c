@@ -545,20 +545,35 @@ static bool ppir_regalloc_spill_reg(ppir_compiler *comp, ppir_reg *chosen)
 static ppir_reg *ppir_regalloc_choose_spill_node(ppir_compiler *comp,
                                                  struct ra_graph *g)
 {
-   int max_range = -1;
+   int i = 0;
    ppir_reg *chosen = NULL;
 
    list_for_each_entry(ppir_reg, reg, &comp->reg_list, list) {
-      int range = reg->live_out - reg->live_in;
-
-      if (!reg->spilled && reg->live_out != INT_MAX && range > max_range) {
-         chosen = reg;
-         max_range = range;
+      if (reg->spilled || reg->live_out == INT_MAX) {
+         /* not considered for spilling */
+         ra_set_node_spill_cost(g, i++, 0.0f);
+         continue;
       }
+
+      /* It is beneficial to spill registers with higher component number,
+       * so increase the cost of spilling registers with few components */
+      float spill_cost = 4.0f / (float)reg->num_components;
+      ra_set_node_spill_cost(g, i++, spill_cost);
    }
 
-   if (chosen)
-      chosen->spilled = true;
+   int r = ra_get_best_spill_node(g);
+   if (r == -1)
+      return NULL;
+
+   i = 0;
+   list_for_each_entry(ppir_reg, reg, &comp->reg_list, list) {
+      if (i++ == r) {
+         chosen = reg;
+         break;
+      }
+   }
+   assert(chosen);
+   chosen->spilled = true;
 
    return chosen;
 }
