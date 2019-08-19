@@ -712,7 +712,7 @@ create_ccs_buf_for_image(struct brw_context *brw,
                          struct intel_mipmap_tree *mt,
                          enum isl_aux_state initial_state)
 {
-   struct isl_surf temp_ccs_surf;
+   struct isl_surf temp_ccs_surf = {0,};
 
    /* CCS is only supported for very simple miptrees */
    assert(image->aux_offset != 0 && image->aux_pitch != 0);
@@ -727,7 +727,7 @@ create_ccs_buf_for_image(struct brw_context *brw,
    /* We shouldn't already have a CCS */
    assert(!mt->aux_buf);
 
-   if (!isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, &temp_ccs_surf,
+   if (!isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, &temp_ccs_surf, NULL,
                               image->aux_pitch))
       return false;
 
@@ -1576,7 +1576,7 @@ intel_miptree_alloc_aux(struct brw_context *brw,
    /* Get the aux buf allocation parameters for this miptree. */
    enum isl_aux_state initial_state;
    uint8_t memset_value;
-   struct isl_surf aux_surf;
+   struct isl_surf aux_surf = {0,};
    bool aux_surf_ok = false;
 
    switch (mt->aux_usage) {
@@ -1624,7 +1624,7 @@ intel_miptree_alloc_aux(struct brw_context *brw,
       initial_state = ISL_AUX_STATE_PASS_THROUGH;
       memset_value = 0;
       aux_surf_ok =
-         isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, &aux_surf, 0);
+         isl_surf_get_ccs_surf(&brw->isl_dev, &mt->surf, &aux_surf, NULL, 0);
       break;
 
    default:

@@ -461,7 +461,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       else
          initial_state = ISL_AUX_STATE_PASS_THROUGH;
       *alloc_flags |= BO_ALLOC_ZEROED;
-      ok = isl_surf_get_ccs_surf(isl_dev, &res->surf, &res->aux.surf, 0);
+      ok = isl_surf_get_ccs_surf(isl_dev, &res->surf, &res->aux.surf, NULL, 0);
       break;
    }
 

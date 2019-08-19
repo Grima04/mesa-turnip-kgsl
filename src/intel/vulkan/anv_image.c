@@ -451,7 +451,8 @@ make_surface(const struct anv_device *dev,
          assert(image->planes[plane].aux_surface.isl.size_B == 0);
          ok = isl_surf_get_ccs_surf(&dev->isl_dev,
                                     &image->planes[plane].surface.isl,
-                                    &image->planes[plane].aux_surface.isl, 0);
+                                    &image->planes[plane].aux_surface.isl,
+                                    NULL, 0);
          if (ok) {
 
             /* Disable CCS when it is not useful (i.e., when you can't render

@@ -1829,13 +1829,28 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
 bool
 isl_surf_get_ccs_surf(const struct isl_device *dev,
                       const struct isl_surf *surf,
-                      struct isl_surf *ccs_surf,
+                      struct isl_surf *aux_surf,
+                      struct isl_surf *extra_aux_surf,
                       uint32_t row_pitch_B)
 {
-   if (surf->samples > 1)
+   assert(aux_surf);
+
+   /* An uninitialized surface is needed to get a CCS surface. */
+   if (aux_surf->size_B > 0 &&
+       (extra_aux_surf == NULL || extra_aux_surf->size_B > 0)) {
+      return false;
+   }
+
+   /* A surface can't have two CCS surfaces. */
+   if (aux_surf->usage & ISL_SURF_USAGE_CCS_BIT)
       return false;
 
-   assert(surf->msaa_layout == ISL_MSAA_LAYOUT_NONE);
+   /* Only multisampled depth buffers with HiZ can have CCS. */
+   if (surf->samples > 1 && !(aux_surf->usage & ISL_SURF_USAGE_HIZ_BIT))
+      return false;
+
+   assert(surf->msaa_layout == ISL_MSAA_LAYOUT_NONE ||
+          surf->msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED);
 
    /* CCS support does not exist prior to Gen7 */
    if (ISL_DEV_GEN(dev) <= 6)
@@ -1845,8 +1860,20 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
       return false;
 
    /* Callers don't yet support this configuration. */
-   if (isl_surf_usage_is_depth_or_stencil(surf->usage))
+   if (isl_surf_usage_is_stencil(surf->usage))
       return false;
+
+   /* [TGL+] CCS can only be added to a non-D16-formatted depth buffer if it
+    * has HiZ. If not for GEN:BUG:1406512483 "deprecate compression enable
+    * states", D16 would be supported. Supporting D16 requires being able to
+    * specify that the control surface is present and simultaneously disabling
+    * compression. The above bug makes it so that it's not possible to specify
+    * this configuration.
+    */
+   if (isl_surf_usage_is_depth(surf->usage) && (aux_surf->size_B == 0 ||
+       ISL_DEV_GEN(dev) < 12 || surf->format == ISL_FORMAT_R16_UNORM)) {
+      return false;
+   }
 
    /* The PRM doesn't say this explicitly, but fast-clears don't appear to
     * work for 3D textures until gen9 where the layout of 3D textures changes
@@ -1966,6 +1993,8 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
       /* On Gen12, the CCS is a scaled-down version of the main surface. We
        * model this as the CCS compressing a 2D-view of the entire surface.
        */
+      struct isl_surf *ccs_surf =
+         aux_surf->size_B > 0 ? extra_aux_surf : aux_surf;
       const bool ok =
          isl_surf_init(dev, ccs_surf,
                        .dim = ISL_SURF_DIM_2D,
@@ -1982,7 +2011,7 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
       assert(!ok || ccs_surf->size_B == surf->size_B / 256);
       return ok;
    } else {
-      return isl_surf_init(dev, ccs_surf,
+      return isl_surf_init(dev, aux_surf,
                            .dim = surf->dim,
                            .format = ccs_format,
                            .width = surf->logical_level0_px.width,
