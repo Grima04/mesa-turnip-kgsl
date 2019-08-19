@@ -53,4 +53,17 @@ panfrost_pack_work_groups_fused(
         unsigned size_y,
         unsigned size_z);
 
+/* Tiler structure size computation */
+
+unsigned
+panfrost_tiler_header_size(unsigned width, unsigned height, uint8_t mask);
+
+unsigned
+panfrost_tiler_body_size(unsigned width, unsigned height, uint8_t mask);
+
+unsigned
+panfrost_choose_hierarchy_mask(
+        unsigned width, unsigned height,
+        unsigned vertex_count);
+
 #endif

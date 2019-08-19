@@ -49,7 +49,6 @@ files_panfrost = files(
   'pan_scoreboard.c',
   'pan_sfbd.c',
   'pan_mfbd.c',
-  'pan_tiler.c',
   'pan_varyings.c',
 )
 

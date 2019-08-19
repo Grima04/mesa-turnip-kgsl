@@ -23,6 +23,7 @@ libpanfrost_encoder_files = files(
   'pan_encoder.h',
 
   'pan_invocation.c',
+  'pan_tiler.c',
 )
 
 libpanfrost_encoder = static_library(
