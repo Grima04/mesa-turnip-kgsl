@@ -2464,34 +2464,43 @@ ttn_compile_init(const void *tgsi_tokens,
       case TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS:
          break; /* handled in ttn_emit_declaration */
       case TGSI_PROPERTY_FS_COORD_ORIGIN:
-         s->info.fs.origin_upper_left = value == TGSI_FS_COORD_ORIGIN_UPPER_LEFT;
+         if (s->info.stage == MESA_SHADER_FRAGMENT)
+            s->info.fs.origin_upper_left = value == TGSI_FS_COORD_ORIGIN_UPPER_LEFT;
          break;
       case TGSI_PROPERTY_FS_COORD_PIXEL_CENTER:
-         s->info.fs.pixel_center_integer = value == TGSI_FS_COORD_PIXEL_CENTER_INTEGER;
+         if (s->info.stage == MESA_SHADER_FRAGMENT)
+            s->info.fs.pixel_center_integer = value == TGSI_FS_COORD_PIXEL_CENTER_INTEGER;
          break;
       case TGSI_PROPERTY_FS_DEPTH_LAYOUT:
-         s->info.fs.depth_layout = ttn_get_depth_layout(value);
+         if (s->info.stage == MESA_SHADER_FRAGMENT)
+            s->info.fs.depth_layout = ttn_get_depth_layout(value);
          break;
       case TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION:
-         s->info.vs.window_space_position = value;
+         if (s->info.stage == MESA_SHADER_VERTEX)
+            s->info.vs.window_space_position = value;
          break;
       case TGSI_PROPERTY_NEXT_SHADER:
          s->info.next_stage = tgsi_processor_to_shader_stage(value);
          break;
       case TGSI_PROPERTY_VS_BLIT_SGPRS_AMD:
-         s->info.vs.blit_sgprs_amd = value;
+         if (s->info.stage == MESA_SHADER_VERTEX)
+            s->info.vs.blit_sgprs_amd = value;
          break;
       case TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH:
-         s->info.cs.local_size[0] = value;
+         if (s->info.stage == MESA_SHADER_COMPUTE)
+            s->info.cs.local_size[0] = value;
          break;
       case TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT:
-         s->info.cs.local_size[1] = value;
+         if (s->info.stage == MESA_SHADER_COMPUTE)
+            s->info.cs.local_size[1] = value;
          break;
       case TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH:
-         s->info.cs.local_size[2] = value;
+         if (s->info.stage == MESA_SHADER_COMPUTE)
+            s->info.cs.local_size[2] = value;
          break;
       case TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD:
-         s->info.cs.user_data_components_amd = value;
+         if (s->info.stage == MESA_SHADER_COMPUTE)
+            s->info.cs.user_data_components_amd = value;
          break;
       default:
          if (value) {
