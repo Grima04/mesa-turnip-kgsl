@@ -51,9 +51,6 @@
 #include "pan_blend_shaders.h"
 #include "pan_util.h"
 
-/* Do not actually send anything to the GPU; merely generate the cmdstream as fast as possible. Disables framebuffer writes */
-//#define DRY_RUN
-
 /* Framebuffer descriptor */
 
 static struct midgard_tiler_descriptor
@@ -1341,8 +1338,6 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
-#ifndef DRY_RUN
-
         panfrost_job_submit(ctx, job);
 
         /* If visual, we can stall a frame */
@@ -1356,7 +1351,6 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
         /* If readback, flush now (hurts the pipelined performance) */
         if (flush_immediate)
                 panfrost_drm_force_flush_fragment(ctx, fence);
-#endif
 }
 
 static void
