@@ -8,15 +8,15 @@ http://0x04.net/cgit/index.cgi/rules-ng-ng
 git clone git://0x04.net/rules-ng-ng
 
 The rules-ng-ng source files this header was generated from are:
-- state.xml     (  26087 bytes, from 2019-06-10 23:29:22)
-- common.xml    (  35468 bytes, from 2019-06-10 23:29:22)
-- common_3d.xml (  14984 bytes, from 2019-07-01 19:47:22)
-- state_hi.xml  (  30232 bytes, from 2019-06-10 23:29:22)
-- copyright.xml (   1597 bytes, from 2019-06-10 23:29:22)
-- state_2d.xml  (  51552 bytes, from 2019-06-10 23:29:22)
-- state_3d.xml  (  79878 bytes, from 2019-07-01 19:47:36)
-- state_blt.xml (  13381 bytes, from 2019-07-01 19:46:55)
-- state_vg.xml  (   5975 bytes, from 2019-06-10 23:29:22)
+- state.xml     (  26666 bytes, from 2019-08-19 14:35:07)
+- common.xml    (  35468 bytes, from 2019-01-07 09:52:31)
+- common_3d.xml (  14322 bytes, from 2019-08-19 14:35:07)
+- state_hi.xml  (  30232 bytes, from 2019-01-07 09:52:31)
+- copyright.xml (   1597 bytes, from 2019-01-07 09:52:31)
+- state_2d.xml  (  51552 bytes, from 2019-01-07 09:52:31)
+- state_3d.xml  (  83505 bytes, from 2019-08-19 14:46:17)
+- state_blt.xml (  14252 bytes, from 2019-08-19 14:35:07)
+- state_vg.xml  (   5975 bytes, from 2019-01-07 09:52:31)
 
 Copyright (C) 2012-2019 by the following authors:
 - Wladimir J. van der Laan <laanwj@gmail.com>
@@ -47,10 +47,22 @@ DEALINGS IN THE SOFTWARE.
 
 #define BLT_TILING_LINEAR					0x00000000
 #define BLT_TILING_SUPER_TILED					0x00000003
+#define BLT_FORMAT_X4R4G4B4					0x00000000
 #define BLT_FORMAT_A4R4G4B4					0x00000001
+#define BLT_FORMAT_X1R5G5B5					0x00000002
+#define BLT_FORMAT_A1R5G5B5					0x00000003
+#define BLT_FORMAT_R5G6B5					0x00000004
 #define BLT_FORMAT_X8R8G8B8					0x00000005
 #define BLT_FORMAT_A8R8G8B8					0x00000006
+#define BLT_FORMAT_YUY2						0x00000007
+#define BLT_FORMAT_UYVY						0x00000008
+#define BLT_FORMAT_A8						0x00000010
+#define BLT_FORMAT_A2R10G10B10					0x00000016
+#define BLT_FORMAT_X24S8					0x00000017
+#define BLT_FORMAT_D16						0x00000018
 #define BLT_FORMAT_A16R16G16B16					0x0000001c
+#define BLT_FORMAT_A8L8						0x00000020
+#define BLT_FORMAT_L8						0x00000021
 #define BLT_FORMAT_R8G8B8					0x00000022
 #define BLT_FORMAT_R8						0x00000023
 #define BLT_FORMAT_R8G8						0x00000024
@@ -59,7 +71,7 @@ DEALINGS IN THE SOFTWARE.
 #define BLT_IMAGE_CONFIG_COMPRESSION_FORMAT__MASK		0x000000f0
 #define BLT_IMAGE_CONFIG_COMPRESSION_FORMAT__SHIFT		4
 #define BLT_IMAGE_CONFIG_COMPRESSION_FORMAT(x)			(((x) << BLT_IMAGE_CONFIG_COMPRESSION_FORMAT__SHIFT) & BLT_IMAGE_CONFIG_COMPRESSION_FORMAT__MASK)
-#define BLT_IMAGE_CONFIG_UNK8					0x00000100
+#define BLT_IMAGE_CONFIG_SRGB					0x00000100
 #define BLT_IMAGE_CONFIG_SWIZ_R__MASK				0x00000600
 #define BLT_IMAGE_CONFIG_SWIZ_R__SHIFT				9
 #define BLT_IMAGE_CONFIG_SWIZ_R(x)				(((x) << BLT_IMAGE_CONFIG_SWIZ_R__SHIFT) & BLT_IMAGE_CONFIG_SWIZ_R__MASK)
@@ -200,8 +212,19 @@ DEALINGS IN THE SOFTWARE.
 #define VIVS_BLT_YUV						0x00000000
 
 #define VIVS_BLT_YUV_CONFIG					0x0001406c
+#define VIVS_BLT_YUV_CONFIG_ENABLE				0x00000001
+#define VIVS_BLT_YUV_CONFIG_SOURCE_FORMAT__MASK			0x00000030
+#define VIVS_BLT_YUV_CONFIG_SOURCE_FORMAT__SHIFT		4
+#define VIVS_BLT_YUV_CONFIG_SOURCE_FORMAT(x)			(((x) << VIVS_BLT_YUV_CONFIG_SOURCE_FORMAT__SHIFT) & VIVS_BLT_YUV_CONFIG_SOURCE_FORMAT__MASK)
+#define VIVS_BLT_YUV_CONFIG_UV_SWAP				0x00000100
 
-#define VIVS_BLT_YUV_UNK14070					0x00014070
+#define VIVS_BLT_YUV_WINDOW_SIZE				0x00014070
+#define VIVS_BLT_YUV_WINDOW_SIZE_HEIGHT__MASK			0xffff0000
+#define VIVS_BLT_YUV_WINDOW_SIZE_HEIGHT__SHIFT			16
+#define VIVS_BLT_YUV_WINDOW_SIZE_HEIGHT(x)			(((x) << VIVS_BLT_YUV_WINDOW_SIZE_HEIGHT__SHIFT) & VIVS_BLT_YUV_WINDOW_SIZE_HEIGHT__MASK)
+#define VIVS_BLT_YUV_WINDOW_SIZE_WIDTH__MASK			0x0000ffff
+#define VIVS_BLT_YUV_WINDOW_SIZE_WIDTH__SHIFT			0
+#define VIVS_BLT_YUV_WINDOW_SIZE_WIDTH(x)			(((x) << VIVS_BLT_YUV_WINDOW_SIZE_WIDTH__SHIFT) & VIVS_BLT_YUV_WINDOW_SIZE_WIDTH__MASK)
 
 #define VIVS_BLT_YUV_SRC_YADDR					0x00014074
 

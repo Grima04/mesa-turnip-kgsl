@@ -8,10 +8,10 @@ http://0x04.net/cgit/index.cgi/rules-ng-ng
 git clone git://0x04.net/rules-ng-ng
 
 The rules-ng-ng source files this header was generated from are:
-- texdesc_3d.xml (   3183 bytes, from 2019-06-10 23:29:22)
-- copyright.xml  (   1597 bytes, from 2019-06-10 23:29:22)
-- common.xml     (  35468 bytes, from 2019-06-10 23:29:22)
-- common_3d.xml  (  14984 bytes, from 2019-07-01 19:47:22)
+- texdesc_3d.xml (   3183 bytes, from 2019-01-07 09:52:31)
+- copyright.xml  (   1597 bytes, from 2019-01-07 09:52:31)
+- common.xml     (  35468 bytes, from 2019-01-07 09:52:31)
+- common_3d.xml  (  14322 bytes, from 2019-08-19 14:35:07)
 
 Copyright (C) 2012-2019 by the following authors:
 - Wladimir J. van der Laan <laanwj@gmail.com>
@@ -118,9 +118,10 @@ DEALINGS IN THE SOFTWARE.
 #define TEXDESC_STRIDE_YUV					0x00000054
 
 #define TEXDESC_ASTC0						0x00000058
-#define TEXDESC_ASTC0_ASTC_FORMAT__MASK				0x000000ff
+#define TEXDESC_ASTC0_ASTC_FORMAT__MASK				0x0000000f
 #define TEXDESC_ASTC0_ASTC_FORMAT__SHIFT			0
 #define TEXDESC_ASTC0_ASTC_FORMAT(x)				(((x) << TEXDESC_ASTC0_ASTC_FORMAT__SHIFT) & TEXDESC_ASTC0_ASTC_FORMAT__MASK)
+#define TEXDESC_ASTC0_ASTC_SRGB					0x00000010
 #define TEXDESC_ASTC0_UNK8__MASK				0x0000ff00
 #define TEXDESC_ASTC0_UNK8__SHIFT				8
 #define TEXDESC_ASTC0_UNK8(x)					(((x) << TEXDESC_ASTC0_UNK8__SHIFT) & TEXDESC_ASTC0_UNK8__MASK)

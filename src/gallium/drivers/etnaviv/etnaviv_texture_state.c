@@ -104,6 +104,7 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
    const uint32_t format = translate_texture_format(so->format);
    const bool ext = !!(format & EXT_FORMAT);
    const bool astc = !!(format & ASTC_FORMAT);
+   const bool srgb = util_format_is_srgb(so->format);
    const uint32_t swiz = get_texture_swiz(so->format, so->swizzle_r,
                                           so->swizzle_g, so->swizzle_b,
                                           so->swizzle_a);
@@ -172,6 +173,7 @@ etna_create_sampler_view_state(struct pipe_context *pctx, struct pipe_resource *
                              COND(is_array, VIVS_TE_SAMPLER_CONFIG1_TEXTURE_ARRAY) |
                              VIVS_TE_SAMPLER_CONFIG1_HALIGN(res->halign) | swiz;
    sv->TE_SAMPLER_ASTC0 = COND(astc, VIVS_NTE_SAMPLER_ASTC0_ASTC_FORMAT(format)) |
+                          COND(astc && srgb, VIVS_NTE_SAMPLER_ASTC0_ASTC_SRGB) |
                           VIVS_NTE_SAMPLER_ASTC0_UNK8(0xc) |
                           VIVS_NTE_SAMPLER_ASTC0_UNK16(0xc) |
                           VIVS_NTE_SAMPLER_ASTC0_UNK24(0xc);
