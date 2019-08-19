@@ -715,6 +715,10 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
 static void si_delete_blend_state(struct pipe_context *ctx, void *state)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
+
+	if (sctx->queued.named.blend == state)
+		si_bind_blend_state(ctx, sctx->noop_blend);
+
 	si_pm4_delete_state(sctx, blend, (struct si_state_blend *)state);
 }
 
@@ -1091,7 +1095,7 @@ static void si_delete_rs_state(struct pipe_context *ctx, void *state)
 	struct si_state_rasterizer *rs = (struct si_state_rasterizer *)state;
 
 	if (sctx->queued.named.rasterizer == state)
-		si_pm4_bind_state(sctx, poly_offset, NULL);
+		si_bind_rs_state(ctx, sctx->discard_rasterizer_state);
 
 	FREE(rs->pm4_poly_offset);
 	si_pm4_delete_state(sctx, rasterizer, rs);
@@ -1335,6 +1339,10 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
 static void si_delete_dsa_state(struct pipe_context *ctx, void *state)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
+
+	if (sctx->queued.named.dsa == state)
+		si_bind_dsa_state(ctx, sctx->noop_dsa);
+
 	si_pm4_delete_state(sctx, dsa, (struct si_state_dsa *)state);
 }
 
