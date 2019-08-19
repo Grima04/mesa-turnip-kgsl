@@ -1926,12 +1926,7 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                         int max_count = sizeof(t->payload) / sizeof(t->payload[0]);
                                         assert (bitmap_count <= max_count);
 
-                                        /* Dump more to be safe, but not _that_ much more */
-                                        int safe_count = MIN2(bitmap_count * 2, max_count);
-
-                                        for (int i = 0; i < safe_count; ++i) {
-                                                char *prefix = (i >= bitmap_count) ? "// " : "";
-
+                                        for (int i = 0; i < bitmap_count; ++i) {
                                                 /* How we dump depends if this is a stride or a pointer */
 
                                                 if ((f.usage2 & MALI_TEX_MANUAL_STRIDE) && (i & 1)) {
@@ -1940,10 +1935,10 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                                         uint32_t clamped_stride = stride_set;
                                                         int32_t stride = clamped_stride;
                                                         assert(stride_set == clamped_stride);
-                                                        pandecode_log("%s(mali_ptr) %d /* stride */, \n", prefix, stride);
+                                                        pandecode_log("(mali_ptr) %d /* stride */, \n", stride);
                                                 } else {
                                                         char *a = pointer_as_memory_reference(t->payload[i]);
-                                                        pandecode_log("%s%s, \n", prefix, a);
+                                                        pandecode_log("%s, \n", a);
                                                         free(a);
                                                 }
                                         }
