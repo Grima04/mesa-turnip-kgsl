@@ -71,13 +71,15 @@ panfrost_emit_midg_tiler(
         unsigned header_size = panfrost_tiler_header_size(
                                        width, height, t.hierarchy_mask);
 
-        unsigned body_size = panfrost_tiler_body_size(
+        t.polygon_list_size = panfrost_tiler_full_size(
                                      width, height, t.hierarchy_mask);
 
         /* Sanity check */
 
         if (t.hierarchy_mask) {
-                t.polygon_list = panfrost_job_get_polygon_list(batch, header_size + body_size);
+                t.polygon_list = panfrost_job_get_polygon_list(batch,
+                                header_size + t.polygon_list_size);
+
 
                 /* Allow the entire tiler heap */
                 t.heap_start = ctx->tiler_heap.bo->gpu;
@@ -97,9 +99,6 @@ panfrost_emit_midg_tiler(
 
         t.polygon_list_body =
                 t.polygon_list + header_size;
-
-        t.polygon_list_size =
-                header_size + body_size;
 
         return t;
 }

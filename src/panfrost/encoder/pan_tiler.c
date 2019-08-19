@@ -40,7 +40,7 @@
  * tile size, but Midgard features "hierarchical tiling", where power-of-two
  * multiples of the base tile size can be used: hierarchy level 0 (16x16),
  * level 1 (32x32), level 2 (64x64), per public information about Midgard's
- * tiling. In fact, tiling goes up to 2048x2048 (!), although in practice
+ * tiling. In fact, tiling goes up to 4096x4096 (!), although in practice
  * 128x128 is the largest usually used (though higher modes are enabled).  The
  * idea behind hierarchical tiling is to use low tiling levels for small
  * triangles and high levels for large triangles, to minimize memory bandwidth
@@ -147,17 +147,17 @@
  *
  * From this heuristic (or whatever), we determine the minimum allowable tile
  * size, and we use that to decide the hierarchy masking, selecting from the
- * minimum "ideal" tile size to the maximum tile size (2048x2048).
+ * minimum "ideal" tile size to the maximum tile size (2048x2048 in practice).
  *
  * Once we have that mask and the framebuffer dimensions, we can compute the
  * size of the statically-sized polygon list structures, allocate them, and go!
  *
  */
 
-/* Hierarchical tiling spans from 16x16 to 2048x2048 tiles */
+/* Hierarchical tiling spans from 16x16 to 4096x4096 tiles */
 
 #define MIN_TILE_SIZE 16
-#define MAX_TILE_SIZE 2048
+#define MAX_TILE_SIZE 4096
 
 /* Constants as shifts for easier power-of-two iteration */
 
@@ -170,8 +170,15 @@
 /* For each tile (across all hierarchy levels), there is 8 bytes of header */
 #define HEADER_BYTES_PER_TILE 0x8
 
+/* Likewise, each tile per level has 512 bytes of body */
+#define FULL_BYTES_PER_TILE 0x200
+
 /* Absent any geometry, the minimum size of the header */
 #define MINIMUM_HEADER_SIZE 0x200
+
+/* Mask of valid hierarchy levels: one bit for each level from min...max
+ * inclusive */
+#define HIERARCHY_MASK (((MAX_TILE_SIZE / MIN_TILE_SIZE) << 1) - 1)
 
 /* If the width-x-height framebuffer is divided into tile_size-x-tile_size
  * tiles, how many tiles are there? Rounding up in each direction. For the
@@ -201,7 +208,12 @@ pan_tile_count(unsigned width, unsigned height, unsigned tile_size)
  * byte counts across the levels to find a byte count for all levels. */
 
 static unsigned
-panfrost_raw_header_size(unsigned width, unsigned height, unsigned masked_count)
+panfrost_raw_segment_size(
+                unsigned width,
+                unsigned height,
+                unsigned masked_count,
+                unsigned end_level,
+                unsigned bytes_per_tile)
 {
         unsigned size = PROLOGUE_SIZE;
 
@@ -212,66 +224,89 @@ panfrost_raw_header_size(unsigned width, unsigned height, unsigned masked_count)
 
         /* Iterate hierarchy levels / tile sizes */
 
-        for (unsigned i = start_level; i < MAX_TILE_SHIFT; ++i) {
+        for (unsigned i = start_level; i <= end_level; ++i) {
                 /* Shift from a level to a tile size */
                 unsigned tile_size = (1 << i);
 
                 unsigned tile_count = pan_tile_count(width, height, tile_size);
-                unsigned header_bytes = HEADER_BYTES_PER_TILE * tile_count;
+                unsigned level_count = bytes_per_tile * tile_count;
 
-                size += header_bytes;
+                size += level_count;
         }
 
         /* This size will be used as an offset, so ensure it's aligned */
         return ALIGN_POT(size, 512);
 }
 
+/* Given a hierarchy mask and a framebuffer size, compute the size of one of
+ * the segments (header or body) */
+
+static unsigned
+panfrost_segment_size(
+                unsigned width, unsigned height,
+                unsigned mask, unsigned bytes_per_tile)
+{
+        /* The tiler-disabled case should have been handled by the caller */
+        assert(mask);
+
+        /* Some levels are enabled. Ensure that only smaller levels are
+         * disabled and there are no gaps. Theoretically the hardware is more
+         * flexible, but there's no known reason to use other configurations
+         * and this keeps the code simple. Since we know the 0x80 or 0x100 bit
+         * is set, ctz(mask) will return the number of masked off levels. */
+
+        unsigned masked_count = __builtin_ctz(mask);
+
+        assert(mask & (0x80 | 0x100));
+        assert(((mask >> masked_count) & ((mask >> masked_count) + 1)) == 0);
+
+        /* Figure out the top level */
+        unsigned unused_count = __builtin_clz(mask);
+        unsigned top_bit = ((8 * sizeof(mask)) - 1) - unused_count;
+
+        /* We don't have bits for nonexistant levels below 16x16 */
+        unsigned top_level = top_bit + 4;
+
+        /* Everything looks good. Use the number of trailing zeroes we found to
+         * figure out how many smaller levels are disabled to compute the
+         * actual header size */
+
+        return panfrost_raw_segment_size(width, height,
+                        masked_count, top_level, bytes_per_tile);
+}
+
+
 /* Given a hierarchy mask and a framebuffer size, compute the header size */
 
 unsigned
-panfrost_tiler_header_size(unsigned width, unsigned height, uint8_t mask)
+panfrost_tiler_header_size(unsigned width, unsigned height, unsigned mask)
 {
+        mask &= HIERARCHY_MASK;
+
         /* If no hierarchy levels are enabled, that means there is no geometry
          * for the tiler to process, so use a minimum size. Used for clears */
 
         if (mask == 0x00)
                 return MINIMUM_HEADER_SIZE;
 
-        /* Some levels are enabled. Ensure that only smaller levels are
-         * disabled and there are no gaps. Theoretically the hardware is more
-         * flexible, but there's no known reason to use other configurations
-         * and this keeps the code simple. Since we know the 0x80 bit is set,
-         * ctz(mask) will return the number of masked off levels. */
-
-        unsigned masked_count = __builtin_ctz(mask);
-
-        assert(mask & 0x80);
-        assert(((mask >> masked_count) & ((mask >> masked_count) + 1)) == 0);
-
-        /* Everything looks good. Use the number of trailing zeroes we found to
-         * figure out how many smaller levels are disabled to compute the
-         * actual header size */
-
-        return panfrost_raw_header_size(width, height, masked_count);
+        return panfrost_segment_size(width, height, mask, HEADER_BYTES_PER_TILE);
 }
 
-/* The body seems to be about 512 bytes per tile. Noting that the header is
- * about 8 bytes per tile, we can be a little sloppy and estimate the body size
- * to be equal to the header size * (512/8). Given the header size is a
- * considerable overestimate, this is fine. Eventually, we should maybe figure
- * out how to actually implement this. */
+/* The combined header/body is sized similarly (but it is significantly
+ * larger), except that it can be empty when the tiler disabled, rather than
+ * getting clamped to a minimum size.
+ */
 
 unsigned
-panfrost_tiler_body_size(unsigned width, unsigned height, uint8_t mask)
+panfrost_tiler_full_size(unsigned width, unsigned height, unsigned mask)
 {
-        /* No levels means no body */
-        if (!mask)
-                return 0x00;
+        mask &= HIERARCHY_MASK;
 
-        unsigned header_size = panfrost_tiler_header_size(width, height, mask);
-        return ALIGN_POT(header_size * 512 / 8, 512);
+        if (mask == 0x00)
+                return MINIMUM_HEADER_SIZE;
+
+        return panfrost_segment_size(width, height, mask, FULL_BYTES_PER_TILE);
 }
-
 
 /* In the future, a heuristic to choose a tiler hierarchy mask would go here.
  * At the moment, we just default to 0xFF, which enables all possible hierarchy

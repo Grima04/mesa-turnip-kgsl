@@ -506,8 +506,7 @@ pandecode_midgard_tiler_descriptor(
          * ourselves for comparison */
 
         unsigned ref_header = panfrost_tiler_header_size(width, height, t->hierarchy_mask);
-        unsigned ref_body = panfrost_tiler_body_size(width, height, t->hierarchy_mask);
-        unsigned ref_size = ref_header + ref_body;
+        unsigned ref_size = panfrost_tiler_full_size(width, height, t->hierarchy_mask);
 
         if (!((ref_header == body_offset) && (ref_size == t->polygon_list_size))) {
                 pandecode_msg("XXX: bad polygon list size (expected %d / 0x%x)\n",
