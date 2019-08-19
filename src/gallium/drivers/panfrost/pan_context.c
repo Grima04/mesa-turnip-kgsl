@@ -93,8 +93,8 @@ panfrost_emit_midg_tiler(
                 /* Use a dummy polygon list */
                 t.polygon_list = ctx->tiler_dummy.bo->gpu;
 
-                /* Also, set a "tiler disabled?" flag? */
-                t.hierarchy_mask |= 0x1000;
+                /* Disable the tiler */
+                t.hierarchy_mask |= MALI_TILER_DISABLED;
         }
 
         t.polygon_list_body =

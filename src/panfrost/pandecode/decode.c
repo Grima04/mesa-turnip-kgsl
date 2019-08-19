@@ -479,13 +479,20 @@ static void
 pandecode_midgard_tiler_descriptor(
                 const struct midgard_tiler_descriptor *t,
                 unsigned width,
-                unsigned height)
+                unsigned height,
+                bool is_fragment)
 {
         pandecode_log(".tiler = {\n");
         pandecode_indent++;
 
-        pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
-        pandecode_prop("flags = 0x%" PRIx16, t->flags);
+        if (t->hierarchy_mask == MALI_TILER_DISABLED)
+                pandecode_prop("hierarchy_mask = MALI_TILER_DISABLED");
+        else
+                pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
+
+        /* We know this name from the kernel, but we never see it nonzero */
+        if (t->flags)
+                pandecode_prop("flags = 0x%" PRIx16 " /* XXX: unexpected */", t->flags);
 
         MEMORY_PROP(t, polygon_list);
 
@@ -515,9 +522,9 @@ pandecode_midgard_tiler_descriptor(
                 pandecode_msg("body offset %d\n", body_offset);
         }
 
-        /* The tiler heap has a start and end specified, so check that
-         * everything fits in a contiguous BO (otherwise, we risk out-of-bounds
-         * reads) */
+        /* The tiler heap has a start and end specified -- it should be
+         * identical to what we have in the BO. The exception is if tiling is
+         * disabled. */
 
         MEMORY_PROP(t, heap_start);
         assert(t->heap_end >= t->heap_start);
@@ -526,9 +533,48 @@ pandecode_midgard_tiler_descriptor(
                 pandecode_find_mapped_gpu_mem_containing(t->heap_start);
 
         unsigned heap_size = t->heap_end - t->heap_start;
-        assert(heap_size <= heap->length);
 
-        pandecode_msg("heap size %d\n", heap_size);
+        /* Tiling is enabled with a special flag */
+        unsigned hierarchy_mask = t->hierarchy_mask & MALI_HIERARCHY_MASK;
+        unsigned tiler_flags = t->hierarchy_mask ^ hierarchy_mask;
+
+        bool tiling_enabled = hierarchy_mask;
+
+        if (tiling_enabled) {
+                /* When tiling is enabled, the heap should be a tight fit */
+                unsigned heap_offset = t->heap_start - heap->gpu_va;
+                if ((heap_offset + heap_size) != heap->length) {
+                        pandecode_msg("XXX: heap size %d (expected %d)\n",
+                                        heap_size, heap->length - heap_offset);
+                }
+
+                /* We should also have no other flags */
+                if (tiler_flags)
+                        pandecode_msg("XXX: unexpected tiler %X\n", tiler_flags);
+        } else {
+                /* When tiling is disabled, we should have that flag and no others */
+
+                if (tiler_flags != MALI_TILER_DISABLED) {
+                        pandecode_msg("XXX: unexpected tiler flag %X, expected MALI_TILER_DISABLED\n",
+                                        tiler_flags);
+                }
+
+                /* We should also have an empty heap */
+                if (heap_size) {
+                        pandecode_msg("XXX: tiler heap size %d given, expected empty\n",
+                                        heap_size);
+                }
+
+                /* Disabled tiling is used only for clear-only jobs, which are
+                 * purely FRAGMENT, so we should never see this for
+                 * non-FRAGMENT descriptors. */
+
+                if (!is_fragment)
+                        pandecode_msg("XXX: tiler disabled for non-FRAGMENT job\n");
+        }
+
+        /* We've never seen weights used in practice, but we know from the
+         * kernel these fields is there */
 
         bool nonzero_weights = false;
 
@@ -551,7 +597,7 @@ pandecode_midgard_tiler_descriptor(
 }
 
 static void
-pandecode_sfbd(uint64_t gpu_va, int job_no)
+pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct mali_single_framebuffer *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
@@ -609,7 +655,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no)
 
         MEMORY_PROP(s, unknown_address_0);
         const struct midgard_tiler_descriptor t = s->tiler;
-        pandecode_midgard_tiler_descriptor(&t, s->width + 1, s->height + 1);
+        pandecode_midgard_tiler_descriptor(&t, s->width + 1, s->height + 1, is_fragment);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -774,7 +820,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
 }
 
 static unsigned
-pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
+pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct bifrost_framebuffer *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
@@ -838,7 +884,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
         pandecode_prop("unknown2 = 0x%x", fb->unknown2);
         MEMORY_PROP(fb, scratchpad);
         const struct midgard_tiler_descriptor t = fb->tiler;
-        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1);
+        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment);
 
         if (fb->zero3 || fb->zero4) {
                 pandecode_msg("framebuffer zeros tripped\n");
@@ -851,7 +897,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
 
         gpu_va += sizeof(struct bifrost_framebuffer);
 
-        if ((fb->mfbd_flags & MALI_MFBD_EXTRA) && with_render_targets) {
+        if ((fb->mfbd_flags & MALI_MFBD_EXTRA) && is_fragment) {
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
                 const struct bifrost_fb_extra *PANDECODE_PTR_VAR(fbx, mem, (mali_ptr) gpu_va);
 
@@ -932,7 +978,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
                 gpu_va += sizeof(struct bifrost_fb_extra);
         }
 
-        if (with_render_targets)
+        if (is_fragment)
                 pandecode_render_target(gpu_va, job_no, fb);
 
         /* Passback the render target count */
@@ -1560,7 +1606,7 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
         else if (job_type == JOB_TYPE_COMPUTE)
                 pandecode_compute_fbd((u64) (uintptr_t) p->framebuffer, job_no);
         else
-                pandecode_sfbd((u64) (uintptr_t) p->framebuffer, job_no);
+                pandecode_sfbd((u64) (uintptr_t) p->framebuffer, job_no, false);
 
         int varying_count = 0, attribute_count = 0, uniform_count = 0, uniform_buffer_count = 0;
         int texture_count = 0, sampler_count = 0;
@@ -2293,7 +2339,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
                  * including Gxx). In any event, there's some field shuffling
                  * that we haven't looked into yet. */
 
-                pandecode_sfbd(s->framebuffer & FBD_MASK, job_no);
+                pandecode_sfbd(s->framebuffer & FBD_MASK, job_no, true);
                 fbd_dumped = true;
         } else if ((s->framebuffer & FBD_TYPE) == MALI_MFBD) {
                 /* We don't know if Bifrost supports SFBD's at all, since the

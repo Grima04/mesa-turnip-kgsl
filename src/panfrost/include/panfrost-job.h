@@ -1371,6 +1371,12 @@ struct mali_payload_fragment {
  * within the larget framebuffer descriptor). Analogous to
  * bifrost_tiler_heap_meta and bifrost_tiler_meta*/
 
+/* See pan_tiler.c for derivation */
+#define MALI_HIERARCHY_MASK ((1 << 9) - 1)
+
+/* Flag disabling the tiler for clear-only jobs */
+#define MALI_TILER_DISABLED (1 << 12)
+
 struct midgard_tiler_descriptor {
         /* Size of the entire polygon list; see pan_tiler.c for the
          * computation. It's based on hierarchical tiling */
@@ -1381,7 +1387,9 @@ struct midgard_tiler_descriptor {
          * flagged here is less known. We do that (tiler_hierarchy_mask & 0x1ff)
          * specifies a mask of hierarchy weights, which explains some of the
          * performance mysteries around setting it. We also see the bottom bit
-         * of tiler_flags set in the kernel, but no comment why. */
+         * of tiler_flags set in the kernel, but no comment why.
+         *
+         * hierarchy_mask can have the TILER_DISABLED flag */
 
         u16 hierarchy_mask;
         u16 flags;
