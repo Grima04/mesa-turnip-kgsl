@@ -576,12 +576,14 @@ static void ppir_add_ordering_deps(ppir_compiler *comp)
     */
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       ppir_node *prev_node = NULL;
-      list_for_each_entry(ppir_node, node, &block->node_list, list) {
-         if (node->type == ppir_node_type_discard ||
-             node->type == ppir_node_type_store ||
-             node->type == ppir_node_type_branch) {
-            if (prev_node)
-               ppir_node_add_dep(node, prev_node);
+      list_for_each_entry_rev(ppir_node, node, &block->node_list, list) {
+         if (prev_node && ppir_node_is_root(node) && node->op != ppir_op_const) {
+            ppir_node_add_dep(prev_node, node);
+         }
+         if (node->op == ppir_op_discard ||
+             node->op == ppir_op_store_color ||
+             node->op == ppir_op_store_temp ||
+             node->op == ppir_op_branch) {
             prev_node = node;
          }
       }
