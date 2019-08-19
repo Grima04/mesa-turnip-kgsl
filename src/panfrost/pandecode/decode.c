@@ -494,13 +494,28 @@ pandecode_midgard_tiler_descriptor(const struct midgard_tiler_descriptor *t)
         /* It needs to fit inside the reported size */
         assert(t->polygon_list_size >= body_offset);
 
-        /* TODO: Check BO size */
+        /* Check that we fit */
+        struct pandecode_mapped_memory *plist =
+                pandecode_find_mapped_gpu_mem_containing(t->polygon_list);
+
+        assert(t->polygon_list_size <= plist->length);
+
         pandecode_msg("body offset %d\n", body_offset);
 
-        /* The tiler heap has a start and end specified. TODO: Check size */
+        /* The tiler heap has a start and end specified, so check that
+         * everything fits in a contiguous BO (otherwise, we risk out-of-bounds
+         * reads) */
+
         MEMORY_PROP(t, heap_start);
         assert(t->heap_end >= t->heap_start);
-        pandecode_msg("heap size %d\n", t->heap_end - t->heap_start);
+
+        struct pandecode_mapped_memory *heap =
+                pandecode_find_mapped_gpu_mem_containing(t->heap_start);
+
+        unsigned heap_size = t->heap_end - t->heap_start;
+        assert(heap_size <= heap->length);
+
+        pandecode_msg("heap size %d\n", heap_size);
 
         bool nonzero_weights = false;
 
