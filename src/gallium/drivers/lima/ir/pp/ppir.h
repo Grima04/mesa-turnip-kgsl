@@ -369,6 +369,9 @@ typedef struct ppir_compiler {
    int num_fills;
 
    ppir_block *discard_block;
+   ppir_block *current_block;
+   ppir_block *loop_break_block;
+   ppir_block *loop_cont_block;
 } ppir_compiler;
 
 void *ppir_node_create(ppir_block *block, ppir_op op, int index, unsigned mask);
@@ -379,6 +382,7 @@ void ppir_node_print_prog(ppir_compiler *comp);
 void ppir_node_replace_child(ppir_node *parent, ppir_node *old_child, ppir_node *new_child);
 void ppir_node_replace_all_succ(ppir_node *dst, ppir_node *src);
 void ppir_node_replace_pred(ppir_dep *dep, ppir_node *new_pred);
+ppir_dep *ppir_dep_for_pred(ppir_node *node, ppir_node *pred);
 ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node);
 
 static inline bool ppir_node_is_root(ppir_node *node)

@@ -227,22 +227,20 @@ static bool ppir_lower_select(ppir_block *block, ppir_node *node)
    move_dest->pipeline = ppir_pipeline_reg_fmul;
    move_dest->write_mask = 1;
 
-   ppir_node_foreach_pred(node, dep) {
-      ppir_node *pred = dep->pred;
-      ppir_dest *dest = ppir_node_get_dest(pred);
-      if (ppir_node_target_equal(alu->src, dest)) {
-         ppir_node_replace_pred(dep, move);
-         ppir_node_add_dep(move, pred);
-      }
-   }
+   ppir_node *pred = alu->src[0].node;
+   ppir_dep *dep = ppir_dep_for_pred(node, pred);
+   if (dep)
+      ppir_node_replace_pred(dep, move);
+   else
+      ppir_node_add_dep(node, move);
 
-   /* move must be the first pred of select node which make sure
-    * the float mul slot is free when node to instr
-    */
-   assert(ppir_node_first_pred(node) == move);
+   /* pred can be a register */
+   if (pred)
+      ppir_node_add_dep(move, pred);
 
    src->swizzle[0] = 0;
    ppir_node_target_assign(alu->src, move);
+
    return true;
 }
 

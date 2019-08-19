@@ -558,6 +558,7 @@ static void ppir_codegen_encode_branch(ppir_node *node, void *code)
    ppir_codegen_field_branch *b = code;
    ppir_branch_node *branch;
    ppir_instr *target_instr;
+   ppir_block *target;
    if (node->op == ppir_op_discard) {
       ppir_codegen_encode_discard(node, code);
       return;
@@ -586,7 +587,16 @@ static void ppir_codegen_encode_branch(ppir_node *node, void *code)
       assert(false);
    }
 
-   target_instr = list_first_entry(&branch->target->instr_list, ppir_instr, list);
+   target = branch->target;
+   while (list_empty(&target->instr_list)) {
+      if (!target->list.next)
+         break;
+      target = LIST_ENTRY(ppir_block, target->list.next, list);
+   }
+
+   assert(!list_empty(&target->instr_list));
+
+   target_instr = list_first_entry(&target->instr_list, ppir_instr, list);
    b->branch.target = target_instr->offset - node->instr->offset;
    b->branch.next_count = target_instr->encode_size;
 }

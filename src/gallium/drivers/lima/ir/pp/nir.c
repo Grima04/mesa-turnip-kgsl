@@ -463,8 +463,39 @@ static ppir_block *ppir_get_block(ppir_compiler *comp, nir_block *nblock)
 
 static ppir_node *ppir_emit_jump(ppir_block *block, nir_instr *ni)
 {
-   ppir_error("nir_jump_instr not support\n");
-   return NULL;
+   ppir_node *node;
+   ppir_compiler *comp = block->comp;
+   ppir_branch_node *branch;
+   ppir_block *jump_block;
+   nir_jump_instr *jump = nir_instr_as_jump(ni);
+
+   switch (jump->type) {
+   case nir_jump_break: {
+      assert(comp->current_block->successors[0]);
+      assert(!comp->current_block->successors[1]);
+      jump_block = comp->current_block->successors[0];
+   }
+   break;
+   case nir_jump_continue:
+      jump_block = comp->loop_cont_block;
+   break;
+   default:
+      ppir_error("nir_jump_instr not support\n");
+      return NULL;
+   }
+
+   assert(jump_block != NULL);
+
+   node = ppir_node_create(block, ppir_op_branch, -1, 0);
+   if (!node)
+      return NULL;
+   branch = ppir_node_to_branch(node);
+
+   /* Unconditional */
+   branch->num_src = 0;
+   branch->target = jump_block;
+
+   return node;
 }
 
 static ppir_node *(*ppir_emit_instr[nir_instr_type_phi])(ppir_block *, nir_instr *) = {
@@ -494,6 +525,8 @@ static bool ppir_emit_block(ppir_compiler *comp, nir_block *nblock)
 {
    ppir_block *block = ppir_get_block(comp, nblock);
 
+   comp->current_block = block;
+
    list_addtail(&block->list, &comp->block_list);
 
    nir_foreach_instr(instr, nblock) {
@@ -508,16 +541,99 @@ static bool ppir_emit_block(ppir_compiler *comp, nir_block *nblock)
    return true;
 }
 
-static bool ppir_emit_if(ppir_compiler *comp, nir_if *nif)
+static bool ppir_emit_cf_list(ppir_compiler *comp, struct exec_list *list);
+
+static bool ppir_emit_if(ppir_compiler *comp, nir_if *if_stmt)
 {
-   ppir_error("if nir_cf_node not support\n");
-   return false;
+   ppir_node *node;
+   ppir_branch_node *else_branch, *after_branch;
+   nir_block *nir_else_block = nir_if_first_else_block(if_stmt);
+   bool empty_else_block =
+      (nir_else_block == nir_if_last_else_block(if_stmt) &&
+      exec_list_is_empty(&nir_else_block->instr_list));
+   ppir_block *block = comp->current_block;
+
+   node = ppir_node_create(block, ppir_op_branch, -1, 0);
+   if (!node)
+      return false;
+   else_branch = ppir_node_to_branch(node);
+   ppir_node_add_src(block->comp, node, &else_branch->src[0],
+                     &if_stmt->condition, 1);
+   else_branch->num_src = 1;
+   /* Negate condition to minimize branching. We're generating following:
+    * current_block: { ...; if (!statement) branch else_block; }
+    * then_block: { ...; branch after_block; }
+    * else_block: { ... }
+    * after_block: { ... }
+    *
+    * or if else list is empty:
+    * block: { if (!statement) branch else_block; }
+    * then_block: { ... }
+    * else_block: after_block: { ... }
+    */
+   else_branch->negate = true;
+   list_addtail(&else_branch->node.list, &block->node_list);
+
+   ppir_emit_cf_list(comp, &if_stmt->then_list);
+   if (empty_else_block) {
+      nir_block *nblock = nir_if_last_else_block(if_stmt);
+      assert(nblock->successors[0]);
+      assert(!nblock->successors[1]);
+      else_branch->target = ppir_get_block(comp, nblock->successors[0]);
+      /* Add empty else block to the list */
+      list_addtail(&block->successors[1]->list, &comp->block_list);
+      return true;
+   }
+
+   else_branch->target = ppir_get_block(comp, nir_if_first_else_block(if_stmt));
+
+   nir_block *last_then_block = nir_if_last_then_block(if_stmt);
+   assert(last_then_block->successors[0]);
+   assert(!last_then_block->successors[1]);
+   block = ppir_get_block(comp, last_then_block);
+   node = ppir_node_create(block, ppir_op_branch, -1, 0);
+   if (!node)
+      return false;
+   after_branch = ppir_node_to_branch(node);
+   /* Unconditional */
+   after_branch->num_src = 0;
+   after_branch->target = ppir_get_block(comp, last_then_block->successors[0]);
+   /* Target should be after_block, will fixup later */
+   list_addtail(&after_branch->node.list, &block->node_list);
+
+   ppir_emit_cf_list(comp, &if_stmt->else_list);
+
+   return true;
 }
 
 static bool ppir_emit_loop(ppir_compiler *comp, nir_loop *nloop)
 {
-   ppir_error("loop nir_cf_node not support\n");
-   return false;
+   ppir_block *save_loop_cont_block = comp->loop_cont_block;
+   ppir_block *block;
+   ppir_branch_node *loop_branch;
+   nir_block *loop_last_block;
+   ppir_node *node;
+
+   comp->loop_cont_block = ppir_get_block(comp, nir_loop_first_block(nloop));
+
+   ppir_emit_cf_list(comp, &nloop->body);
+
+   loop_last_block = nir_loop_last_block(nloop);
+   block = ppir_get_block(comp, loop_last_block);
+   node = ppir_node_create(block, ppir_op_branch, -1, 0);
+   if (!node)
+      return false;
+   loop_branch = ppir_node_to_branch(node);
+   /* Unconditional */
+   loop_branch->num_src = 0;
+   loop_branch->target = comp->loop_cont_block;
+   list_addtail(&loop_branch->node.list, &block->node_list);
+
+   comp->loop_cont_block = save_loop_cont_block;
+
+   comp->num_loops++;
+
+   return true;
 }
 
 static bool ppir_emit_function(ppir_compiler *comp, nir_function_impl *nfunc)

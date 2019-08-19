@@ -273,6 +273,7 @@ void ppir_instr_print_list(ppir_compiler *comp)
    printf("const0|1\n");
 
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
+      printf("-------block %3d-------\n", block->index);
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
          printf("%c%03d: ", instr->is_end ? '*' : ' ', instr->index);
          for (int i = 0; i < PPIR_INSTR_SLOT_NUM; i++) {
@@ -291,8 +292,8 @@ void ppir_instr_print_list(ppir_compiler *comp)
          }
          printf("\n");
       }
-      printf("------------------------\n");
    }
+   printf("===========================\n");
 }
 
 static void ppir_instr_print_sub(ppir_instr *instr)
@@ -325,12 +326,13 @@ void ppir_instr_print_dep(ppir_compiler *comp)
 
    printf("======ppir instr depend======\n");
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
+      printf("-------block %3d-------\n", block->index);
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
          if (ppir_instr_is_root(instr)) {
             ppir_instr_print_sub(instr);
             printf("\n");
          }
       }
-      printf("------------------------\n");
    }
+   printf("=============================\n");
 }

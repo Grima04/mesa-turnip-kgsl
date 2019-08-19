@@ -469,6 +469,21 @@ void ppir_node_replace_pred(ppir_dep *dep, ppir_node *new_pred)
    list_addtail(&dep->succ_link, &new_pred->succ_list);
 }
 
+ppir_dep *ppir_dep_for_pred(ppir_node *node, ppir_node *pred)
+{
+   if (!pred)
+      return NULL;
+
+   if (node->block != pred->block)
+      return NULL;
+
+   ppir_node_foreach_pred(node, dep) {
+      if (dep->pred == pred)
+         return dep;
+   }
+   return NULL;
+}
+
 void ppir_node_replace_all_succ(ppir_node *dst, ppir_node *src)
 {
    ppir_node_foreach_succ_safe(src, dep) {
@@ -573,7 +588,7 @@ void ppir_node_print_prog(ppir_compiler *comp)
 
    printf("========prog========\n");
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
-      printf("-------block------\n");
+      printf("-------block %3d-------\n", block->index);
       list_for_each_entry(ppir_node, node, &block->node_list, list) {
          if (ppir_node_is_root(node))
             ppir_node_print_node(node, 0);
