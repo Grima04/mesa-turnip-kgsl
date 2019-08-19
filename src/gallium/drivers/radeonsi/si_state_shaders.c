@@ -3625,11 +3625,6 @@ static int si_update_scratch_buffer(struct si_context *sctx,
 	return 1;
 }
 
-static unsigned si_get_current_scratch_buffer_size(struct si_context *sctx)
-{
-	return sctx->scratch_buffer ? sctx->scratch_buffer->b.b.width0 : 0;
-}
-
 static unsigned si_get_scratch_buffer_bytes_per_wave(struct si_shader *shader)
 {
 	return shader ? shader->config.scratch_bytes_per_wave : 0;
@@ -3642,23 +3637,6 @@ static struct si_shader *si_get_tcs_current(struct si_context *sctx)
 
 	return sctx->tcs_shader.cso ? sctx->tcs_shader.current :
 				      sctx->fixed_func_tcs_shader.current;
-}
-
-static unsigned si_get_max_scratch_bytes_per_wave(struct si_context *sctx)
-{
-	unsigned bytes = 0;
-
-	bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->ps_shader.current));
-	bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->gs_shader.current));
-	bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->vs_shader.current));
-	bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->tes_shader.current));
-
-	if (sctx->tes_shader.cso) {
-		struct si_shader *tcs = si_get_tcs_current(sctx);
-
-		bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(tcs));
-	}
-	return bytes;
 }
 
 static bool si_update_scratch_relocs(struct si_context *sctx)
@@ -3722,16 +3700,40 @@ static bool si_update_scratch_relocs(struct si_context *sctx)
 
 static bool si_update_spi_tmpring_size(struct si_context *sctx)
 {
-	unsigned current_scratch_buffer_size =
-		si_get_current_scratch_buffer_size(sctx);
-	unsigned scratch_bytes_per_wave =
-		si_get_max_scratch_bytes_per_wave(sctx);
-	unsigned scratch_needed_size = scratch_bytes_per_wave *
-		sctx->scratch_waves;
+	/* SPI_TMPRING_SIZE.WAVESIZE must be constant for each scratch buffer.
+	 * There are 2 cases to handle:
+	 *
+	 * - If the current needed size is less than the maximum seen size,
+	 *   use the maximum seen size, so that WAVESIZE remains the same.
+	 *
+	 * - If the current needed size is greater than the maximum seen size,
+	 *   the scratch buffer is reallocated, so we can increase WAVESIZE.
+	 *
+	 * Shaders that set SCRATCH_EN=0 don't allocate scratch space.
+	 * Otherwise, the number of waves that can use scratch is
+	 * SPI_TMPRING_SIZE.WAVES.
+	 */
+	unsigned bytes = 0;
+
+	bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->ps_shader.current));
+	bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->gs_shader.current));
+	bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->vs_shader.current));
+
+	if (sctx->tes_shader.cso) {
+		bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(sctx->tes_shader.current));
+		bytes = MAX2(bytes, si_get_scratch_buffer_bytes_per_wave(si_get_tcs_current(sctx)));
+	}
+
+	sctx->max_seen_scratch_bytes_per_wave =
+		MAX2(sctx->max_seen_scratch_bytes_per_wave, bytes);
+
+	unsigned scratch_needed_size =
+		sctx->max_seen_scratch_bytes_per_wave * sctx->scratch_waves;
 	unsigned spi_tmpring_size;
 
 	if (scratch_needed_size > 0) {
-		if (scratch_needed_size > current_scratch_buffer_size) {
+		if (!sctx->scratch_buffer ||
+		    scratch_needed_size > sctx->scratch_buffer->b.b.width0) {
 			/* Create a bigger scratch buffer */
 			si_resource_reference(&sctx->scratch_buffer, NULL);
 
@@ -3758,7 +3760,7 @@ static bool si_update_spi_tmpring_size(struct si_context *sctx)
 		"scratch size should already be aligned correctly.");
 
 	spi_tmpring_size = S_0286E8_WAVES(sctx->scratch_waves) |
-			   S_0286E8_WAVESIZE(scratch_bytes_per_wave >> 10);
+			   S_0286E8_WAVESIZE(sctx->max_seen_scratch_bytes_per_wave >> 10);
 	if (spi_tmpring_size != sctx->spi_tmpring_size) {
 		sctx->spi_tmpring_size = spi_tmpring_size;
 		si_mark_atom_dirty(sctx, &sctx->atoms.s.scratch_state);

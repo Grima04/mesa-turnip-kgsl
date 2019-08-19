@@ -532,9 +532,13 @@ static bool si_switch_compute_shader(struct si_context *sctx,
 	COMPUTE_DBG(sctx->screen, "COMPUTE_PGM_RSRC1: 0x%08x "
 		"COMPUTE_PGM_RSRC2: 0x%08x\n", config->rsrc1, config->rsrc2);
 
+	sctx->max_seen_compute_scratch_bytes_per_wave =
+		MAX2(sctx->max_seen_compute_scratch_bytes_per_wave,
+		     config->scratch_bytes_per_wave);
+
 	radeon_set_sh_reg(cs, R_00B860_COMPUTE_TMPRING_SIZE,
 	          S_00B860_WAVES(sctx->scratch_waves)
-	             | S_00B860_WAVESIZE(config->scratch_bytes_per_wave >> 10));
+	             | S_00B860_WAVESIZE(sctx->max_seen_compute_scratch_bytes_per_wave >> 10));
 
 	sctx->cs_shader_state.emitted_program = program;
 	sctx->cs_shader_state.offset = offset;

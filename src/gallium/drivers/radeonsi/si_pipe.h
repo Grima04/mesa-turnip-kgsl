@@ -1078,6 +1078,8 @@ struct si_context {
 	struct si_resource	*scratch_buffer;
 	unsigned		scratch_waves;
 	unsigned		spi_tmpring_size;
+	unsigned		max_seen_scratch_bytes_per_wave;
+	unsigned		max_seen_compute_scratch_bytes_per_wave;
 
 	struct si_resource	*compute_scratch_buffer;
 
