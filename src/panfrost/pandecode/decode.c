@@ -1801,7 +1801,7 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                 unsigned max_attr_index = pandecode_attribute_meta(job_no, attribute_count, p, false, suffix);
 
                 attr_mem = pandecode_find_mapped_gpu_mem_containing(p->attributes);
-                pandecode_attributes(attr_mem, p->attributes, job_no, suffix, max_attr_index + 1, false);
+                pandecode_attributes(attr_mem, p->attributes, job_no, suffix, max_attr_index, false);
         }
 
         /* Varyings are encoded like attributes but not actually sent; we just
