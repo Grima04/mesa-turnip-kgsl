@@ -1102,6 +1102,30 @@ print_texture_reg_triple(unsigned triple)
 }
 
 static void
+print_texture_reg_select(uint8_t u)
+{
+        midgard_tex_register_select sel;
+        memcpy(&sel, &u, sizeof(u));
+
+        if (!sel.full)
+                printf("h");
+
+        printf("r%d", REG_TEX_BASE + sel.select);
+
+        unsigned component = sel.component;
+
+        /* Use the upper half in half-reg mode */
+        if (sel.upper) {
+                assert(!sel.full);
+                component += 4;
+        }
+
+        printf(".%c", components[component]);
+
+        assert(sel.zero == 0);
+}
+
+static void
 print_texture_format(int format)
 {
         /* Act like a modifier */
@@ -1273,19 +1297,12 @@ print_texture_word(uint32_t *word, unsigned tabs)
         char lod_operand = texture_op_takes_bias(texture->op) ? '+' : '=';
 
         if (texture->lod_register) {
-                midgard_tex_register_select sel;
-                uint8_t raw = texture->bias;
-                memcpy(&sel, &raw, sizeof(raw));
-
                 printf("lod %c ", lod_operand);
-                print_texture_reg(sel.full, sel.select, sel.upper);
-                printf(".%c, ", components[sel.component]);
+                print_texture_reg_select(texture->bias);
+                printf(", ");
 
                 if (texture->bias_int)
                         printf(" /* bias_int = 0x%X */", texture->bias_int);
-
-                if (sel.zero)
-                        printf(" /* sel.zero = 0x%X */", sel.zero);
         } else if (texture->op == TEXTURE_OP_TEXEL_FETCH) {
                 /* For texel fetch, the int LOD is in the fractional place and
                  * there is no fraction / possibility of bias. We *always* have
