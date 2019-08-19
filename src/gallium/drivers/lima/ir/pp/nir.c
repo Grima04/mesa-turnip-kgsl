@@ -395,7 +395,11 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
       return NULL;
    }
 
-   node = ppir_node_create_dest(block, ppir_op_load_texture, &instr->dest, 0);
+   unsigned mask = 0;
+   if (!instr->dest.is_ssa)
+      mask = u_bit_consecutive(0, nir_tex_instr_dest_size(instr));
+
+   node = ppir_node_create_dest(block, ppir_op_load_texture, &instr->dest, mask);
    if (!node)
       return NULL;
 
