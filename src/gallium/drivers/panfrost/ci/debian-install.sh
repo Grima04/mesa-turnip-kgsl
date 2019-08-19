@@ -151,7 +151,10 @@ rm -rf /kernel
 
 ############### Create rootfs
 cp ${PANFROST_CI_DIR}/create-rootfs.sh /artifacts/rootfs/.
+set +e
 debootstrap --variant=minbase --arch=${DEBIAN_ARCH} testing /artifacts/rootfs/ http://deb.debian.org/debian
+cat /artifacts/rootfs/debootstrap/debootstrap.log
+set -e
 chroot /artifacts/rootfs sh /create-rootfs.sh
 rm /artifacts/rootfs/create-rootfs.sh
 
