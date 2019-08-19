@@ -113,6 +113,8 @@ typedef enum {
    ppir_op_discard,
    ppir_op_branch,
 
+   ppir_op_dummy,
+
    ppir_op_num,
 } ppir_op;
 

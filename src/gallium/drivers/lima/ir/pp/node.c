@@ -331,6 +331,12 @@ const ppir_op_info ppir_op_infos[] = {
          PPIR_INSTR_SLOT_BRANCH, PPIR_INSTR_SLOT_END
       },
    },
+   [ppir_op_dummy] = {
+      .name = "dummy",
+      .type = ppir_node_type_alu,
+      .slots = (int []) {
+      },
+   },
 };
 
 void *ppir_node_create(ppir_block *block, ppir_op op, int index, unsigned mask)

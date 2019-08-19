@@ -53,16 +53,16 @@ static void *ppir_node_create_ssa(ppir_block *block, ppir_op op, nir_ssa_def *ss
 }
 
 static void *ppir_node_create_reg(ppir_block *block, ppir_op op,
-                                  nir_reg_dest *reg, unsigned mask)
+                                  nir_register *reg, unsigned mask)
 {
-   ppir_node *node = ppir_node_create(block, op, reg->reg->index, mask);
+   ppir_node *node = ppir_node_create(block, op, reg->index, mask);
    if (!node)
       return NULL;
 
    ppir_dest *dest = ppir_node_get_dest(node);
 
    list_for_each_entry(ppir_reg, r, &block->comp->reg_list, list) {
-      if (r->index == reg->reg->index) {
+      if (r->index == reg->index) {
          dest->reg = r;
          break;
       }
@@ -87,7 +87,7 @@ static void *ppir_node_create_dest(ppir_block *block, ppir_op op,
       if (dest->is_ssa)
          return ppir_node_create_ssa(block, op, &dest->ssa);
       else
-         return ppir_node_create_reg(block, op, &dest->reg, mask);
+         return ppir_node_create_reg(block, op, dest->reg.reg, mask);
    }
 
    return ppir_node_create(block, op, index, 0);
@@ -125,7 +125,15 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       while (mask) {
          int swizzle = ps->swizzle[u_bit_scan(&mask)];
          child = comp->var_nodes[(reg->index << 2) + comp->reg_base + swizzle];
-         ppir_node_add_dep(node, child);
+         /* Reg is read before it was written, create a dummy node for it */
+         if (!child) {
+            child = ppir_node_create_reg(node->block, ppir_op_dummy, reg,
+               u_bit_consecutive(0, 4));
+            comp->var_nodes[(reg->index << 2) + comp->reg_base + swizzle] = child;
+         }
+         /* Don't add dummies or recursive deps for ops like r1 = r1 + ssa1 */
+         if (child && node != child && child->op != ppir_op_dummy)
+            ppir_node_add_dep(node, child);
       }
    }
 
