@@ -628,7 +628,13 @@ __attribute__((__packed__))
         unsigned last  : 1;
 
         enum mali_texture_type format : 2;
-        unsigned zero : 2;
+
+        /* Are sampler_handle/texture_handler respectively set by registers? If
+         * true, the lower 8-bits of the respective field is a register word.
+         * If false, they are an immediate */
+
+        unsigned sampler_register : 1;
+        unsigned texture_register : 1;
 
         /* Is a register used to specify the
          * LOD/bias/offset? If set, use the `bias` field as
@@ -692,6 +698,10 @@ __attribute__((__packed__))
 
         unsigned bias : 8;
         signed bias_int  : 8;
+
+        /* If sampler/texture_register is set, the bottom 8-bits are
+         * midgard_tex_register_select and the top 8-bits are zero. If they are
+         * clear, they are immediate texture indices */
 
         unsigned sampler_handle : 16;
         unsigned texture_handle : 16;

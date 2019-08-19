@@ -1208,8 +1208,6 @@ print_texture_word(uint32_t *word, unsigned tabs)
         /* Specific format in question */
         print_texture_format(texture->format);
 
-        assert(texture->zero == 0);
-
         /* Instruction "modifiers" parallel the ALU instructions. */
 
         if (texture->shadow)
@@ -1230,11 +1228,25 @@ print_texture_word(uint32_t *word, unsigned tabs)
         print_mask_4(texture->mask);
         printf(", ");
 
-        printf("texture%d, ", texture->texture_handle);
+        if (texture->texture_register) {
+                printf("texture[");
+                print_texture_reg_select(texture->texture_handle);
+                printf("], ");
+        } else {
+                printf("texture%d, ", texture->texture_handle);
+        }
 
         /* Print the type, GL style */
-        printf("%c", sampler_type_name(texture->sampler_type));
-        printf("sampler%d", texture->sampler_handle);
+        printf("%csampler", sampler_type_name(texture->sampler_type));
+
+        if (texture->sampler_register) {
+                printf("[");
+                print_texture_reg_select(texture->sampler_handle);
+                printf("]");
+        } else {
+                printf("%d", texture->sampler_handle);
+        }
+
         print_swizzle_vec4(texture->swizzle, false, false);
         printf(", ");
 
