@@ -611,6 +611,28 @@ static void ppir_print_shader_db(struct nir_shader *nir, ppir_compiler *comp,
    free(shaderdb);
 }
 
+static void ppir_add_write_after_read_deps(ppir_compiler *comp)
+{
+   list_for_each_entry(ppir_block, block, &comp->block_list, list) {
+      list_for_each_entry(ppir_reg, reg, &comp->reg_list, list) {
+         ppir_node *write = NULL;
+         list_for_each_entry_rev(ppir_node, node, &block->node_list, list) {
+            for (int i = 0; i < ppir_node_get_src_num(node); i++) {
+               ppir_src *src = ppir_node_get_src(node, i);
+               if (src && src->type == ppir_target_register &&
+                   src->reg == reg &&
+                   write)
+                  ppir_node_add_dep(write, node);
+            }
+            ppir_dest *dest = ppir_node_get_dest(node);
+            if (dest && dest->type == ppir_target_register &&
+                dest->reg == reg)
+               write = node;
+         }
+      }
+   }
+}
+
 bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
                       struct ra_regs *ra,
                       struct pipe_debug_callback *debug)
@@ -642,12 +664,13 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
    if (comp->discard_block)
       list_addtail(&comp->discard_block->list, &comp->block_list);
 
-   ppir_add_ordering_deps(comp);
-
    ppir_node_print_prog(comp);
 
    if (!ppir_lower_prog(comp))
       goto err_out0;
+
+   ppir_add_ordering_deps(comp);
+   ppir_add_write_after_read_deps(comp);
 
    ppir_node_print_prog(comp);
 
