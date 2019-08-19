@@ -46,6 +46,7 @@ LOCAL_SRC_FILES := \
 	ir/pp/node_to_instr.c \
 	ir/pp/ppir.h \
 	ir/pp/regalloc.c \
+	ir/pp/liveness.c \
 	ir/pp/scheduler.c \
 	lima_bo.c \
 	lima_bo.h \

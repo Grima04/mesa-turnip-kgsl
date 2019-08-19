@@ -39,6 +39,7 @@ files_lima = files(
   'ir/pp/scheduler.c',
   'ir/pp/instr.c',
   'ir/pp/regalloc.c',
+  'ir/pp/liveness.c',
   'ir/pp/codegen.h',
   'ir/pp/codegen.c',
   'ir/pp/node_to_instr.c',

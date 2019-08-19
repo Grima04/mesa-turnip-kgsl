@@ -171,6 +171,7 @@ typedef enum {
 typedef struct ppir_reg {
    struct list_head list;
    int index;
+   int regalloc_index;
    int num_components;
    /* whether this reg has to start from the x component
     * of a full physical reg, this is true for reg used
@@ -319,6 +320,12 @@ typedef struct ppir_block {
    int sched_instr_index;
    int sched_instr_base;
    int index;
+
+   /*  for liveness analysis */
+   BITSET_WORD *def;
+   BITSET_WORD *use;
+   BITSET_WORD *live_in;
+   BITSET_WORD *live_out;
 } ppir_block;
 
 typedef struct {
@@ -478,6 +485,30 @@ static inline ppir_src *ppir_node_get_src(ppir_node *node, int idx)
    return NULL;
 }
 
+static inline ppir_reg *ppir_src_get_reg(ppir_src *src)
+{
+   switch (src->type) {
+   case ppir_target_ssa:
+      return src->ssa;
+   case ppir_target_register:
+      return src->reg;
+   default:
+      return NULL;
+   }
+}
+
+static inline ppir_reg *ppir_dest_get_reg(ppir_dest *dest)
+{
+   switch (dest->type) {
+   case ppir_target_ssa:
+      return &dest->ssa;
+   case ppir_target_register:
+      return dest->reg;
+   default:
+      return NULL;
+   }
+}
+
 static inline ppir_src *ppir_node_get_src_for_pred(ppir_node *node, ppir_node *pred)
 {
    for (int i = 0; i < ppir_node_get_src_num(node); i++) {
@@ -616,5 +647,6 @@ bool ppir_node_to_instr(ppir_compiler *comp);
 bool ppir_schedule_prog(ppir_compiler *comp);
 bool ppir_regalloc_prog(ppir_compiler *comp);
 bool ppir_codegen_prog(ppir_compiler *comp);
+void ppir_liveness_analysis(ppir_compiler *comp);
 
 #endif
