@@ -4032,36 +4032,32 @@ update_clear_value(struct iris_context *ice,
                    unsigned aux_modes,
                    struct isl_view *view)
 {
-   struct iris_screen *screen = batch->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   UNUSED struct isl_device *isl_dev = &batch->screen->isl_dev;
 
    /* We only need to update the clear color in the surface state for gen8 and
     * gen9. Newer gens can read it directly from the clear color state buffer.
     */
-   if (devinfo->gen > 9)
-      return;
+#if GEN_GEN == 9
+   /* Skip updating the ISL_AUX_USAGE_NONE surface state */
+   aux_modes &= ~(1 << ISL_AUX_USAGE_NONE);
 
-   if (devinfo->gen == 9) {
-      /* Skip updating the ISL_AUX_USAGE_NONE surface state */
-      aux_modes &= ~(1 << ISL_AUX_USAGE_NONE);
+   while (aux_modes) {
+      enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
 
-      while (aux_modes) {
-         enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-
-         surf_state_update_clear_value(batch, res, state, aux_modes,
-                                       aux_usage);
-      }
-   } else if (devinfo->gen == 8) {
-      pipe_resource_reference(&state->res, NULL);
-      void *map = alloc_surface_states(ice->state.surface_uploader,
-                                       state, res->aux.possible_usages);
-      while (aux_modes) {
-         enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
-         fill_surface_state(&screen->isl_dev, map, res, &res->surf, view,
-                            aux_usage, 0, 0);
-         map += SURFACE_STATE_ALIGNMENT;
-      }
+      surf_state_update_clear_value(batch, res, state, aux_modes, aux_usage);
    }
+#elif GEN_GEN == 8
+   pipe_resource_reference(&state->res, NULL);
+
+   void *map = alloc_surface_states(ice->state.surface_uploader,
+                                    state, res->aux.possible_usages);
+
+   while (aux_modes) {
+      enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
+      fill_surface_state(isl_dev, map, res, &res->surf, view, aux_usage, 0, 0);
+      map += SURFACE_STATE_ALIGNMENT;
+   }
+#endif
 }
 
 /**
