@@ -486,19 +486,21 @@ pandecode_midgard_tiler_descriptor(const struct midgard_tiler_descriptor *t)
         pandecode_prop("polygon_list_size = 0x%x", t->polygon_list_size);
 
         MEMORY_PROP(t, polygon_list);
-        MEMORY_PROP(t, polygon_list_body);
 
+        /* The body is offset from the base of the polygon list */
+        assert(t->polygon_list_body > t->polygon_list);
+        unsigned body_offset = t->polygon_list_body - t->polygon_list;
+
+        /* It needs to fit inside the reported size */
+        assert(t->polygon_list_size >= body_offset);
+
+        /* TODO: Check BO size */
+        pandecode_msg("body offset %d\n", body_offset);
+
+        /* The tiler heap has a start and end specified. TODO: Check size */
         MEMORY_PROP(t, heap_start);
-
-        if (t->heap_start == t->heap_end) {
-              /* Print identically to show symmetry for empty tiler heaps */  
-                MEMORY_PROP(t, heap_end);
-        } else {
-                /* Points to the end of a buffer */
-                char *a = pointer_as_memory_reference(t->heap_end - 1);
-                pandecode_prop("heap_end = %s + 1", a);
-                free(a);
-        }
+        assert(t->heap_end >= t->heap_start);
+        pandecode_msg("heap size %d\n", t->heap_end - t->heap_start);
 
         bool nonzero_weights = false;
 
