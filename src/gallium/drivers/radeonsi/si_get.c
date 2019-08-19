@@ -643,9 +643,7 @@ static int si_get_video_param(struct pipe_screen *screen,
 				return profile == PIPE_VIDEO_PROFILE_HEVC_MAIN;
 			return false;
 		case PIPE_VIDEO_FORMAT_JPEG:
-			if (sscreen->info.family == CHIP_RAVEN ||
-			    sscreen->info.family == CHIP_RAVEN2 ||
-			    sscreen->info.family == CHIP_NAVI10)
+			if (sscreen->info.family >= CHIP_RAVEN)
 				return true;
 			if (sscreen->info.family < CHIP_CARRIZO || sscreen->info.family >= CHIP_VEGA10)
 				return false;
