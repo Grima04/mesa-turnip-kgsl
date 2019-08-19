@@ -151,10 +151,17 @@ rm -rf /kernel
 
 ############### Create rootfs
 cp ${PANFROST_CI_DIR}/create-rootfs.sh /artifacts/rootfs/.
+mkdir -p /artifacts/rootfs/bin
+cp /usr/bin/qemu-aarch64-static /artifacts/rootfs/bin
+cp /usr/bin/qemu-arm-static /artifacts/rootfs/bin
+
 set +e
 debootstrap --variant=minbase --arch=${DEBIAN_ARCH} testing /artifacts/rootfs/ http://deb.debian.org/debian
 cat /artifacts/rootfs/debootstrap/debootstrap.log
 set -e
 chroot /artifacts/rootfs sh /create-rootfs.sh
+
+rm /artifacts/rootfs/bin/qemu-arm-static
+rm /artifacts/rootfs/bin/qemu-aarch64-static
 rm /artifacts/rootfs/create-rootfs.sh
 
