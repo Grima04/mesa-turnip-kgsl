@@ -3512,6 +3512,36 @@ get_swizzle_from_gl_format(GLenum format, uint8_t *swizzle)
    }
 }
 
+bool
+_mesa_swap_bytes_in_type_enum(GLenum *type)
+{
+   switch (*type) {
+   case GL_UNSIGNED_INT_8_8_8_8:
+      *type = GL_UNSIGNED_INT_8_8_8_8_REV;
+      return true;
+   case GL_UNSIGNED_INT_8_8_8_8_REV:
+      *type = GL_UNSIGNED_INT_8_8_8_8;
+      return true;
+   case GL_UNSIGNED_SHORT_8_8_MESA:
+      *type = GL_UNSIGNED_SHORT_8_8_REV_MESA;
+      return true;
+   case GL_UNSIGNED_SHORT_8_8_REV_MESA:
+      *type = GL_UNSIGNED_SHORT_8_8_MESA;
+      return true;
+   case GL_BYTE:
+   case GL_UNSIGNED_BYTE:
+      /* format/types that are arrays of 8-bit values are unaffected by
+       * swapBytes.
+       */
+      return true;
+   default:
+      /* swapping bytes on 4444, 1555, or >8 bit per channel types etc. will
+       * never match a Mesa format.
+       */
+      return false;
+   }
+}
+
 /**
 * Take an OpenGL format (GL_RGB, GL_RGBA, etc), OpenGL data type (GL_INT,
 * GL_FOAT, etc) and return a matching mesa_array_format or a mesa_format
