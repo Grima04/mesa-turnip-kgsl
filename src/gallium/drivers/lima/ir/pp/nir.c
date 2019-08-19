@@ -24,6 +24,7 @@
 
 #include <string.h>
 
+#include "util/hash_table.h"
 #include "util/ralloc.h"
 #include "util/bitscan.h"
 #include "compiler/nir/nir.h"
@@ -444,6 +445,13 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
    return &node->node;
 }
 
+static ppir_block *ppir_get_block(ppir_compiler *comp, nir_block *nblock)
+{
+   ppir_block *block = _mesa_hash_table_u64_search(comp->blocks, (uint64_t)nblock);
+
+   return block;
+}
+
 static ppir_node *ppir_emit_jump(ppir_block *block, nir_instr *ni)
 {
    ppir_error("nir_jump_instr not support\n");
@@ -468,17 +476,16 @@ static ppir_block *ppir_block_create(ppir_compiler *comp)
    list_inithead(&block->node_list);
    list_inithead(&block->instr_list);
 
+   block->comp = comp;
+
    return block;
 }
 
 static bool ppir_emit_block(ppir_compiler *comp, nir_block *nblock)
 {
-   ppir_block *block = ppir_block_create(comp);
-   if (!block)
-      return false;
+   ppir_block *block = ppir_get_block(comp, nblock);
 
    list_addtail(&block->list, &comp->block_list);
-   block->comp = comp;
 
    nir_foreach_instr(instr, nblock) {
       assert(instr->type < nir_instr_type_phi);
@@ -549,6 +556,7 @@ static ppir_compiler *ppir_compiler_create(void *prog, unsigned num_reg, unsigne
 
    list_inithead(&comp->block_list);
    list_inithead(&comp->reg_list);
+   comp->blocks = _mesa_hash_table_u64_create(prog);
 
    comp->var_nodes = (ppir_node **)(comp + 1);
    comp->reg_base = num_ssa;
@@ -652,6 +660,36 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
 
    comp->ra = ra;
 
+   /* 1st pass: create ppir blocks */
+   nir_foreach_function(function, nir) {
+      if (!function->impl)
+         continue;
+
+      nir_foreach_block(nblock, function->impl) {
+         ppir_block *block = ppir_block_create(comp);
+         if (!block)
+            return false;
+         block->index = nblock->index;
+         _mesa_hash_table_u64_insert(comp->blocks, (uint64_t)nblock, block);
+      }
+   }
+
+   /* 2nd pass: populate successors */
+   nir_foreach_function(function, nir) {
+      if (!function->impl)
+         continue;
+
+      nir_foreach_block(nblock, function->impl) {
+         ppir_block *block = ppir_get_block(comp, nblock);
+         assert(block);
+
+         for (int i = 0; i < 2; i++) {
+            if (nblock->successors[i])
+               block->successors[i] = ppir_get_block(comp, nblock->successors[i]);
+         }
+      }
+   }
+
    foreach_list_typed(nir_register, reg, node, &func->registers) {
       ppir_reg *r = rzalloc(comp, ppir_reg);
       if (!r)
@@ -696,10 +734,12 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
 
    ppir_print_shader_db(nir, comp, debug);
 
+   _mesa_hash_table_u64_destroy(comp->blocks, NULL);
    ralloc_free(comp);
    return true;
 
 err_out0:
+   _mesa_hash_table_u64_destroy(comp->blocks, NULL);
    ralloc_free(comp);
    return false;
 }

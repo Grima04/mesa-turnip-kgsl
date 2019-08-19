@@ -310,11 +310,15 @@ typedef struct ppir_block {
    struct list_head list;
    struct list_head node_list;
    struct list_head instr_list;
+
+   struct ppir_block *successors[2];
+
    struct ppir_compiler *comp;
 
    /* for scheduler */
    int sched_instr_index;
    int sched_instr_base;
+   int index;
 } ppir_block;
 
 typedef struct {
@@ -333,6 +337,7 @@ struct lima_fs_shader_state;
 
 typedef struct ppir_compiler {
    struct list_head block_list;
+   struct hash_table_u64 *blocks;
    int cur_index;
    int cur_instr_index;
 
