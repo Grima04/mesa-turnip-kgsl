@@ -1827,19 +1827,30 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
    case nir_tex_src_projector:
    case nir_tex_src_comparator:
    case nir_tex_src_bias:
+   case nir_tex_src_min_lod:
    case nir_tex_src_ddx:
    case nir_tex_src_ddy:
       return nir_type_float;
 
    case nir_tex_src_offset:
    case nir_tex_src_ms_index:
-   case nir_tex_src_texture_offset:
-   case nir_tex_src_sampler_offset:
+   case nir_tex_src_plane:
       return nir_type_int;
 
-   default:
-      unreachable("Invalid texture source type");
+   case nir_tex_src_ms_mcs:
+   case nir_tex_src_texture_deref:
+   case nir_tex_src_sampler_deref:
+   case nir_tex_src_texture_offset:
+   case nir_tex_src_sampler_offset:
+   case nir_tex_src_texture_handle:
+   case nir_tex_src_sampler_handle:
+      return nir_type_uint;
+
+   case nir_num_tex_src_types:
+      unreachable("nir_num_tex_src_types is not a valid source type");
    }
+
+   unreachable("Invalid texture source type");
 }
 
 static inline unsigned
