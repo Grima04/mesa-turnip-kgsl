@@ -1520,37 +1520,7 @@ static void
 pandecode_uniform_buffers(mali_ptr pubufs, int ubufs_count, int job_no)
 {
         struct pandecode_mapped_memory *umem = pandecode_find_mapped_gpu_mem_containing(pubufs);
-
         struct mali_uniform_buffer_meta *PANDECODE_PTR_VAR(ubufs, umem, pubufs);
-
-        for (int i = 0; i < ubufs_count; i++) {
-                mali_ptr ptr = ubufs[i].ptr << 2;
-                struct pandecode_mapped_memory *umem2 = pandecode_find_mapped_gpu_mem_containing(ptr);
-                uint32_t *PANDECODE_PTR_VAR(ubuf, umem2, ptr);
-                char name[50];
-                snprintf(name, sizeof(name), "ubuf_%d", i);
-                /* The blob uses ubuf 0 to upload internal stuff and
-                 * uniforms that won't fit/are accessed indirectly, so
-                 * it puts it in the batchbuffer.
-                 */
-                pandecode_log("uint32_t %s_%d[] = {\n", name, job_no);
-                pandecode_indent++;
-
-                for (int j = 0; j <= ubufs[i].size; j++) {
-                        for (int k = 0; k < 4; k++) {
-                                if (k == 0)
-                                        pandecode_log("0x%"PRIx32", ", ubuf[4 * j + k]);
-                                else
-                                        pandecode_log_cont("0x%"PRIx32", ", ubuf[4 * j + k]);
-
-                        }
-
-                        pandecode_log_cont("\n");
-                }
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-        }
 
         pandecode_log("struct mali_uniform_buffer_meta uniform_buffers_%"PRIx64"_%d[] = {\n",
                       pubufs, job_no);
@@ -1559,10 +1529,18 @@ pandecode_uniform_buffers(mali_ptr pubufs, int ubufs_count, int job_no)
         for (int i = 0; i < ubufs_count; i++) {
                 pandecode_log("{\n");
                 pandecode_indent++;
-                pandecode_prop("size = MALI_POSITIVE(%d)", ubufs[i].size + 1);
-                pandecode_prop("ptr = ubuf_%d_%d_p >> 2", i, job_no);
+
+                unsigned size = (ubufs[i].size + 1) * 16;
+                mali_ptr addr = ubufs[i].ptr << 2;
+
+                pandecode_validate_buffer(addr, size);
+
+                char *ptr = pointer_as_memory_reference(ubufs[i].ptr << 2);
+                pandecode_prop("size = %u", size);
+                pandecode_prop("ptr = (%s) >> 2", ptr);
                 pandecode_indent--;
                 pandecode_log("},\n");
+                free(ptr);
         }
 
         pandecode_indent--;
@@ -1666,7 +1644,7 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                         uniform_count = s->bifrost2.uniform_count;
                         uniform_buffer_count = s->bifrost1.uniform_buffer_count;
                 } else {
-                        uniform_count = s->midgard1.uniform_count;
+                        uniform_count = s->midgard1.uniform_buffer_count;
                         uniform_buffer_count = s->midgard1.uniform_buffer_count;
                 }
 
@@ -1859,61 +1837,24 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                 pandecode_attributes(attr_mem, p->varyings, job_no, suffix, varying_count, true);
         }
 
-        bool is_compute = job_type == JOB_TYPE_COMPUTE;
-
-        if (p->uniforms && !is_compute) {
-                int rows = uniform_count, width = 4;
-                size_t sz = rows * width * sizeof(float);
-
-                struct pandecode_mapped_memory *uniform_mem = pandecode_find_mapped_gpu_mem_containing(p->uniforms);
-                pandecode_fetch_gpu_mem(uniform_mem, p->uniforms, sz);
-                u32 *PANDECODE_PTR_VAR(uniforms, uniform_mem, p->uniforms);
-
-                pandecode_log("u32 uniforms_%d%s[] = {\n", job_no, suffix);
-
-                pandecode_indent++;
-
-                for (int row = 0; row < rows; row++) {
-                        for (int i = 0; i < width; i++) {
-                                u32 v = uniforms[i];
-                                float f;
-                                memcpy(&f, &v, sizeof(v));
-                                pandecode_log_cont("%X /* %f */, ", v, f);
-                        }
-
-                        pandecode_log_cont("\n");
-
-                        uniforms += width;
-                }
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-        } else if (p->uniforms) {
-                int rows = uniform_count * 2;
-                size_t sz = rows * sizeof(mali_ptr);
-
-                struct pandecode_mapped_memory *uniform_mem = pandecode_find_mapped_gpu_mem_containing(p->uniforms);
-                pandecode_fetch_gpu_mem(uniform_mem, p->uniforms, sz);
-                mali_ptr *PANDECODE_PTR_VAR(uniforms, uniform_mem, p->uniforms);
-
-                pandecode_log("mali_ptr uniforms_%d%s[] = {\n", job_no, suffix);
-
-                pandecode_indent++;
-
-                for (int row = 0; row < rows; row++) {
-                        char *a = pointer_as_memory_reference(uniforms[row]);
-                        pandecode_log("%s,\n", a);
-                        free(a);
-                }
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-
-        }
-
         if (p->uniform_buffers) {
-                pandecode_uniform_buffers(p->uniform_buffers, uniform_buffer_count, job_no);
-        }
+                if (uniform_buffer_count)
+                        pandecode_uniform_buffers(p->uniform_buffers, uniform_buffer_count, job_no);
+                else
+                        pandecode_msg("XXX: UBOs specified but not referenced\n");
+        } else if (uniform_buffer_count)
+                pandecode_msg("XXX: UBOs referenced but not specified\n");
+
+        /* We don't want to actually dump uniforms, but we do need to validate
+         * that the counts we were given are sane */
+
+        if (p->uniforms) {
+                if (uniform_count)
+                        pandecode_validate_buffer(p->uniforms, uniform_count * 16);
+                else
+                        pandecode_msg("XXX: Uniforms specified but not referenced");
+        } else if (uniform_count)
+                pandecode_msg("XXX: UBOs referenced but not specified\n");
 
         if (p->texture_trampoline) {
                 struct pandecode_mapped_memory *mmem = pandecode_find_mapped_gpu_mem_containing(p->texture_trampoline);
