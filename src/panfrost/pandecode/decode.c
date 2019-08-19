@@ -115,6 +115,44 @@ pandecode_log_cont(const char *format, ...)
         va_end(ap);
 }
 
+/* To check for memory safety issues, validates that the given pointer in GPU
+ * memory is valid, containing at least sz bytes. The goal is to eliminate
+ * GPU-side memory bugs (NULL pointer dereferences, buffer overflows, or buffer
+ * overruns) by statically validating pointers.
+ */
+
+static void
+pandecode_validate_buffer(mali_ptr addr, size_t sz)
+{
+        if (!addr) {
+                pandecode_msg("XXX: null pointer deref");
+                return;
+        }
+
+        /* Find a BO */
+
+        struct pandecode_mapped_memory *bo =
+                pandecode_find_mapped_gpu_mem_containing(addr);
+
+        if (!bo) {
+                pandecode_msg("XXX: invalid memory dereference\n");
+                return;
+        }
+
+        /* Bounds check */
+
+        unsigned offset = addr - bo->gpu_va;
+        unsigned total = offset + sz;
+
+        if (total > bo->length) {
+                pandecode_msg("XXX: buffer overrun."
+                                "Chunk of size %d at offset %d in buffer of size %d. "
+                                "Overrun by %d bytes.",
+                                sz, offset, bo->length, total - bo->length);
+                return;
+        }
+}
+
 struct pandecode_flag_info {
         u64 flag;
         const char *name;
