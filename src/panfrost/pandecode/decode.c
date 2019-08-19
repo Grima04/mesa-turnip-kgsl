@@ -476,14 +476,16 @@ pandecode_exception_access(enum mali_exception_access fmt)
  * larger FBD */
 
 static void
-pandecode_midgard_tiler_descriptor(const struct midgard_tiler_descriptor *t)
+pandecode_midgard_tiler_descriptor(
+                const struct midgard_tiler_descriptor *t,
+                unsigned width,
+                unsigned height)
 {
         pandecode_log(".tiler = {\n");
         pandecode_indent++;
 
         pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
         pandecode_prop("flags = 0x%" PRIx16, t->flags);
-        pandecode_prop("polygon_list_size = 0x%x", t->polygon_list_size);
 
         MEMORY_PROP(t, polygon_list);
 
@@ -500,7 +502,19 @@ pandecode_midgard_tiler_descriptor(const struct midgard_tiler_descriptor *t)
 
         assert(t->polygon_list_size <= plist->length);
 
-        pandecode_msg("body offset %d\n", body_offset);
+        /* Now that we've sanity checked, we'll try to calculate the sizes
+         * ourselves for comparison */
+
+        unsigned ref_header = panfrost_tiler_header_size(width, height, t->hierarchy_mask);
+        unsigned ref_body = panfrost_tiler_body_size(width, height, t->hierarchy_mask);
+        unsigned ref_size = ref_header + ref_body;
+
+        if (!((ref_header == body_offset) && (ref_size == t->polygon_list_size))) {
+                pandecode_msg("XXX: bad polygon list size (expected %d / 0x%x)\n",
+                                ref_header, ref_size);
+                pandecode_prop("polygon_list_size = 0x%x", t->polygon_list_size);
+                pandecode_msg("body offset %d\n", body_offset);
+        }
 
         /* The tiler heap has a start and end specified, so check that
          * everything fits in a contiguous BO (otherwise, we risk out-of-bounds
@@ -596,7 +610,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no)
 
         MEMORY_PROP(s, unknown_address_0);
         const struct midgard_tiler_descriptor t = s->tiler;
-        pandecode_midgard_tiler_descriptor(&t);
+        pandecode_midgard_tiler_descriptor(&t, s->width + 1, s->height + 1);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -825,7 +839,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool with_render_targets)
         pandecode_prop("unknown2 = 0x%x", fb->unknown2);
         MEMORY_PROP(fb, scratchpad);
         const struct midgard_tiler_descriptor t = fb->tiler;
-        pandecode_midgard_tiler_descriptor(&t);
+        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1);
 
         if (fb->zero3 || fb->zero4) {
                 pandecode_msg("framebuffer zeros tripped\n");
