@@ -381,9 +381,7 @@ static unsigned
 iris_get_aux_clear_color_state_size(struct iris_screen *screen)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
-   return
-      (devinfo->gen >= 10 ? screen->isl_dev.ss.clear_color_state_size :
-       (devinfo->gen >= 9 ? screen->isl_dev.ss.clear_value_size : 0));
+   return devinfo->gen >= 10 ? screen->isl_dev.ss.clear_color_state_size : 0;
 }
 
 /**

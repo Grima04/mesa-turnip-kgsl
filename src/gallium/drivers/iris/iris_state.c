@@ -4011,17 +4011,36 @@ surf_state_update_clear_value(struct iris_batch *batch,
 {
    struct isl_device *isl_dev = &batch->screen->isl_dev;
    struct iris_bo *state_bo = iris_resource_bo(state->res);
-   uint64_t real_offset = state->offset +
-      IRIS_MEMZONE_BINDER_START;
+   uint64_t real_offset = state->offset + IRIS_MEMZONE_BINDER_START;
    uint32_t offset_into_bo = real_offset - state_bo->gtt_offset;
    uint32_t clear_offset = offset_into_bo +
       isl_dev->ss.clear_value_offset +
       surf_state_offset_for_aux(res, aux_modes, aux_usage);
+   uint32_t *color = res->aux.clear_color.u32;
 
-   batch->vtbl->copy_mem_mem(batch, state_bo, clear_offset,
-                             res->aux.clear_color_bo,
-                             res->aux.clear_color_offset,
-                             isl_dev->ss.clear_value_size);
+   assert(isl_dev->ss.clear_value_size == 16);
+
+   if (aux_usage == ISL_AUX_USAGE_HIZ) {
+      iris_emit_pipe_control_write(batch, "update fast clear value (Z)",
+                                   PIPE_CONTROL_WRITE_IMMEDIATE,
+                                   state_bo, clear_offset, color[0]);
+   } else {
+      iris_emit_pipe_control_write(batch, "update fast clear color (RG__)",
+                                   PIPE_CONTROL_WRITE_IMMEDIATE,
+                                   state_bo, clear_offset,
+                                   (uint64_t) color[0] |
+                                   (uint64_t) color[1] << 32);
+      iris_emit_pipe_control_write(batch, "update fast clear color (__BA)",
+                                   PIPE_CONTROL_WRITE_IMMEDIATE,
+                                   state_bo, clear_offset + 8,
+                                   (uint64_t) color[2] |
+                                   (uint64_t) color[3] << 32);
+   }
+
+   iris_emit_pipe_control_flush(batch,
+                                "update fast clear: state cache invalidate",
+                                PIPE_CONTROL_FLUSH_ENABLE |
+                                PIPE_CONTROL_STATE_CACHE_INVALIDATE);
 }
 
 static void
