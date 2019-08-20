@@ -2067,6 +2067,7 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 			unsigned const_index, vertex_index;
 			get_deref_offset(ctx, deref, false, &vertex_index, NULL,
 			                 &const_index, &indir_index);
+			assert(indir_index == NULL);
 
 			return ctx->abi->load_inputs(ctx->abi, var->data.location,
 						     var->data.driver_location,
