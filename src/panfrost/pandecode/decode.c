@@ -29,6 +29,7 @@
 #include <memory.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include "decode.h"
 #include "util/macros.h"
 #include "util/u_math.h"
@@ -431,25 +432,6 @@ static char *pandecode_attr_mode(enum mali_attr_mode mode)
 
 #undef DEFINE_CASE
 
-#define DEFINE_CASE(name) case MALI_CHANNEL_## name: return "MALI_CHANNEL_" #name
-static char *
-pandecode_channel(enum mali_channel channel)
-{
-        switch (channel) {
-                DEFINE_CASE(RED);
-                DEFINE_CASE(GREEN);
-                DEFINE_CASE(BLUE);
-                DEFINE_CASE(ALPHA);
-                DEFINE_CASE(ZERO);
-                DEFINE_CASE(ONE);
-
-        default:
-                pandecode_msg("XXX: invalid channel %X\n", channel);
-                return "";
-        }
-}
-#undef DEFINE_CASE
-
 #define DEFINE_CASE(name) case MALI_WRAP_## name: return "MALI_WRAP_" #name
 static char *
 pandecode_wrap_mode(enum mali_wrap_mode op)
@@ -753,14 +735,118 @@ pandecode_compute_fbd(uint64_t gpu_va, int job_no)
         printf("},\n");
 }
 
-static void
-pandecode_swizzle(unsigned swizzle)
+/* Extracts the number of components associated with a Mali format */
+
+static unsigned
+pandecode_format_component_count(enum mali_format fmt)
 {
-        pandecode_prop("swizzle = %s | (%s << 3) | (%s << 6) | (%s << 9)",
-                       pandecode_channel((swizzle >> 0) & 0x7),
-                       pandecode_channel((swizzle >> 3) & 0x7),
-                       pandecode_channel((swizzle >> 6) & 0x7),
-                       pandecode_channel((swizzle >> 9) & 0x7));
+        /* Mask out the format class */
+        unsigned top = fmt & 0b11100000;
+
+        switch (top) {
+        case MALI_FORMAT_SNORM:
+        case MALI_FORMAT_UINT:
+        case MALI_FORMAT_UNORM:
+        case MALI_FORMAT_SINT:
+                return ((fmt >> 3) & 3) + 1;
+        default:
+                /* TODO: Validate */
+                return 4;
+        }
+}
+
+/* Extracts a mask of accessed components from a 12-bit Mali swizzle */
+
+static unsigned
+pandecode_access_mask_from_channel_swizzle(unsigned swizzle)
+{
+        unsigned mask = 0;
+        assert(MALI_CHANNEL_RED == 0);
+
+        for (unsigned c = 0; c < 4; ++c) {
+                enum mali_channel chan = (swizzle >> (3*c)) & 0x7;
+
+                if (chan <= MALI_CHANNEL_ALPHA)
+                        mask |= (1 << chan);
+        }
+
+        return mask;
+}
+
+/* Validates that a (format, swizzle) pair is valid, in the sense that the
+ * swizzle doesn't access any components that are undefined in the format.
+ * Returns whether the swizzle is trivial (doesn't do any swizzling) and can be
+ * omitted */
+
+static bool
+pandecode_validate_format_swizzle(enum mali_format fmt, unsigned swizzle)
+{
+        unsigned nr_comp = pandecode_format_component_count(fmt);
+        unsigned access_mask = pandecode_access_mask_from_channel_swizzle(swizzle);
+        unsigned valid_mask = (1 << nr_comp) - 1;
+        unsigned invalid_mask = ~valid_mask;
+
+        if (access_mask & invalid_mask) {
+                pandecode_msg("XXX: invalid components accessed\n");
+                return false;
+        }
+
+        /* Check for the default non-swizzling swizzle so we can suppress
+         * useless printing for the defaults */
+
+        unsigned default_swizzles[4] = {
+                MALI_CHANNEL_RED | (MALI_CHANNEL_ZERO  << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
+                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
+                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ONE   << 9),
+                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9)
+        };
+
+        return (swizzle == default_swizzles[nr_comp - 1]);
+}
+
+/* Maps MALI_RGBA32F to rgba32f, etc */
+
+static void
+pandecode_format_short(enum mali_format fmt)
+{
+        /* We want a type-like format, so cut off the initial MALI_ */
+        char *format = pandecode_format(fmt);
+        format += strlen("MALI_");
+
+        unsigned len = strlen(format);
+        char *lower_format = calloc(1, len + 1);
+
+        for (unsigned i = 0; i < len; ++i)
+                lower_format[i] = tolower(format[i]);
+
+        pandecode_log_cont("%s", lower_format);
+        free(lower_format);
+}
+
+static void
+pandecode_swizzle(unsigned swizzle, enum mali_format format)
+{
+        /* First, do some validation */
+        bool trivial_swizzle = pandecode_validate_format_swizzle(
+                        format, swizzle);
+
+        if (trivial_swizzle)
+                return;
+
+        /* Next, print the swizzle */
+        pandecode_log_cont(".");
+
+        static const char components[] = "rgba01";
+
+        for (unsigned c = 0; c < 4; ++c) {
+                enum mali_channel chan = (swizzle >> (3 * c)) & 0x7;
+
+                if (chan >= MALI_CHANNEL_RESERVED_0) {
+                        pandecode_log("XXX: invalid swizzle channel %d\n", chan);
+                        continue;
+                }
+                pandecode_log_cont("%c", components[chan]);
+        }
 }
 
 static void
@@ -776,14 +862,17 @@ pandecode_rt_format(struct mali_rt_format format)
         pandecode_prop("block = %s",
                        pandecode_mfbd_block_format(format.block));
 
+        /* TODO: Map formats so we can check swizzles and print nicely */
+        pandecode_log("swizzle");
+        pandecode_swizzle(format.swizzle, MALI_RGBA8_UNORM);
+        pandecode_log_cont(",\n");
+
         pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
                        MALI_NEGATIVE(format.nr_channels));
 
         pandecode_log(".flags = ");
         pandecode_log_decoded_flags(mfbd_fmt_flag_info, format.flags);
         pandecode_log_cont(",\n");
-
-        pandecode_swizzle(format.swizzle);
 
         /* In theory, the no_preload bit can be cleared to enable MFBD preload,
          * which is a faster hardware-based alternative to the wallpaper method
@@ -1370,75 +1459,6 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
  * want to validate that the combinations specified are self-consistent.
  */
 
-/* Extracts the number of components associated with a Mali format */
-
-static unsigned
-pandecode_format_component_count(enum mali_format fmt)
-{
-        /* Mask out the format class */
-        unsigned top = fmt & 0b11100000;
-
-        switch (top) {
-        case MALI_FORMAT_SNORM:
-        case MALI_FORMAT_UINT:
-        case MALI_FORMAT_UNORM:
-        case MALI_FORMAT_SINT:
-                return ((fmt >> 3) & 3) + 1;
-        default:
-                /* TODO: Validate */
-                return 4;
-        }
-}
-
-/* Extracts a mask of accessed components from a 12-bit Mali swizzle */
-
-static unsigned
-pandecode_access_mask_from_channel_swizzle(unsigned swizzle)
-{
-        unsigned mask = 0;
-        assert(MALI_CHANNEL_RED == 0);
-
-        for (unsigned c = 0; c < 4; ++c) {
-                enum mali_channel chan = (swizzle >> (3*c)) & 0x7;
-
-                if (chan <= MALI_CHANNEL_ALPHA)
-                        mask |= (1 << chan);
-        }
-
-        return mask;
-}
-
-/* Validates that a (format, swizzle) pair is valid, in the sense that the
- * swizzle doesn't access any components that are undefined in the format.
- * Returns whether the swizzle is trivial (doesn't do any swizzling) and can be
- * omitted */
-
-static bool
-pandecode_validate_format_swizzle(enum mali_format fmt, unsigned swizzle)
-{
-        unsigned nr_comp = pandecode_format_component_count(fmt);
-        unsigned access_mask = pandecode_access_mask_from_channel_swizzle(swizzle);
-        unsigned valid_mask = (1 << nr_comp) - 1;
-        unsigned invalid_mask = ~valid_mask;
-
-        if (access_mask & invalid_mask) {
-                pandecode_msg("XXX: invalid components accessed\n");
-                return false;
-        }
-
-        /* Check for the default non-swizzling swizzle so we can suppress
-         * useless printing for the defaults */
-
-        unsigned default_swizzles[4] = {
-                MALI_CHANNEL_RED | (MALI_CHANNEL_ZERO  << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
-                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
-                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ONE   << 9),
-                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9)
-        };
-
-        return (swizzle == default_swizzles[nr_comp - 1]);
-}
-
 static int
 pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_postfix *v, bool varying, char *suffix)
 {
@@ -1491,24 +1511,8 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
                         }
                 }
 
-                pandecode_log("{\n");
-                pandecode_indent++;
-                pandecode_prop("index = %d", attr_meta->index);
-
                 if (attr_meta->index > max_index)
                         max_index = attr_meta->index;
-
-                /* Check the swizzle/format, and if they match and the swizzle
-                 * is simple enough, we can avoid printing the swizzle since
-                 * it's just noise */
-
-                bool trivial_swizzle = pandecode_validate_format_swizzle(
-                                attr_meta->format, attr_meta->swizzle);
-
-                if (!trivial_swizzle)
-                        pandecode_swizzle(attr_meta->swizzle);
-
-                pandecode_prop("format = %s", pandecode_format(attr_meta->format));
 
                 if (attr_meta->unknown1 != 0x2) {
                         pandecode_msg("XXX: expected unknown1 = 0x2\n");
@@ -1520,10 +1524,16 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
                         pandecode_prop("unknown3 = 0x%" PRIx64, (u64) attr_meta->unknown3);
                 }
 
-                pandecode_prop("src_offset = %d", attr_meta->src_offset);
-                pandecode_indent--;
-                pandecode_log("},\n");
+                pandecode_make_indent();
+                pandecode_format_short(attr_meta->format);
+                pandecode_log_cont(" %s_%u", prefix, attr_meta->index);
 
+                if (attr_meta->src_offset)
+                        pandecode_log_cont("[%u]", attr_meta->src_offset);
+
+                pandecode_swizzle(attr_meta->swizzle, attr_meta->format);
+
+                pandecode_log_cont(";\n");
         }
 
         pandecode_indent--;
@@ -2038,8 +2048,11 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                         pandecode_log(".format = {\n");
                                         pandecode_indent++;
 
-                                        pandecode_swizzle(f.swizzle);
-                                        pandecode_prop("format = %s", pandecode_format(f.format));
+                                        pandecode_log(".format = ");
+                                        pandecode_format_short(f.format);
+                                        pandecode_swizzle(f.swizzle, f.format);
+                                        pandecode_log_cont(",\n");
+
                                         pandecode_prop("type = %s", pandecode_texture_type(f.type));
                                         pandecode_prop("srgb = %" PRId32, f.srgb);
                                         pandecode_prop("unknown1 = %" PRId32, f.unknown1);
@@ -2047,8 +2060,6 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
 
                                         pandecode_indent--;
                                         pandecode_log("},\n");
-
-                                        pandecode_swizzle(t->swizzle);
 
                                         if (t->swizzle_zero) {
                                                 /* Shouldn't happen */
