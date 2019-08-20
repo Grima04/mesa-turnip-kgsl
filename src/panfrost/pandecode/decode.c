@@ -779,7 +779,16 @@ pandecode_rt_format(struct mali_rt_format format)
 
         pandecode_swizzle(format.swizzle);
 
-        pandecode_prop("no_preload = 0x%" PRIx32, format.no_preload);
+        /* In theory, the no_preload bit can be cleared to enable MFBD preload,
+         * which is a faster hardware-based alternative to the wallpaper method
+         * to preserve framebuffer contents across frames. In practice, MFBD
+         * preload is buggy on Midgard, and so this is a chicken bit. If this
+         * bit isn't set, most likely something broke unrelated to preload */
+
+        if (!format.no_preload) {
+                pandecode_msg("XXX: buggy MFBD preload enabled - chicken bit should be clear\n");
+                pandecode_prop("no_preload = 0x%" PRIx32, format.no_preload);
+        }
 
         if (format.zero)
                 pandecode_prop("zero = 0x%" PRIx32, format.zero);
