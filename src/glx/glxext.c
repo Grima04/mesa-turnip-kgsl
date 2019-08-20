@@ -69,7 +69,7 @@ _X_HIDDEN int __glXDebug = 0;
 /* Extension required boiler plate */
 
 static const char __glXExtensionName[] = GLX_EXTENSION_NAME;
-  static struct glx_display *glx_displays;
+static struct glx_display *glx_displays;
 
 static /* const */ char *error_list[] = {
    "GLXBadContext",
@@ -894,7 +894,7 @@ __glXInitialize(Display * dpy)
    }
 
    XESetCloseDisplay(dpy, dpyPriv->codes->extension, __glXCloseDisplay);
-   XESetErrorString (dpy, dpyPriv->codes->extension,__glXErrorString);
+   XESetErrorString (dpy, dpyPriv->codes->extension, __glXErrorString);
 
    dpyPriv->glXDrawHash = __glxHashCreate();
 
