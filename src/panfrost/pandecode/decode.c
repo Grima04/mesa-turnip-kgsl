@@ -1387,6 +1387,38 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
                 attr_meta = pandecode_fetch_gpu_mem(attr_mem, p,
                                                     sizeof(*attr_mem));
 
+                /* If the record is discard, it should be zero for everything else */
+
+                if (attr_meta->format == MALI_VARYING_DISCARD) {
+                        uint64_t zero =
+                                attr_meta->index |
+                                attr_meta->unknown1 |
+                                attr_meta->unknown3 |
+                                attr_meta->src_offset;
+
+                        if (zero)
+                                pandecode_msg("XXX: expected empty record for varying discard\n");
+
+                        /* We want to look for a literal 0000 swizzle -- this
+                         * is not encoded with all zeroes, however */
+
+                        enum mali_channel z = MALI_CHANNEL_ZERO;
+                        unsigned zero_swizzle = z | (z << 3) | (z << 6) | (z << 9);
+                        bool good_swizzle = attr_meta->swizzle == zero_swizzle;
+
+                        if (!good_swizzle)
+                                pandecode_msg("XXX: expected zero swizzle for discard\n");
+
+                        if (!varying)
+                                pandecode_msg("XXX: cannot discard attribute\n");
+
+                        /* If we're all good, omit the record */
+                        if (!zero && varying && good_swizzle) {
+                                pandecode_log("/* discarded varying */\n");
+                                continue;
+                        }
+                }
+
                 pandecode_log("{\n");
                 pandecode_indent++;
                 pandecode_prop("index = %d", attr_meta->index);
