@@ -1121,8 +1121,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 		 sscreen->info.pfp_fw_version >= 79 &&
 		 sscreen->info.me_fw_version >= 142);
 
-	sscreen->has_out_of_order_rast = sscreen->info.chip_class >= GFX8 &&
-					 sscreen->info.max_se >= 2 &&
+	sscreen->has_out_of_order_rast = sscreen->info.has_out_of_order_rast &&
 					 !(sscreen->debug_flags & DBG(NO_OUT_OF_ORDER));
 	sscreen->assume_no_z_fights =
 		driQueryOptionb(config->options, "radeonsi_assume_no_z_fights");
