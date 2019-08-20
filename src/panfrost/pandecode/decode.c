@@ -1812,11 +1812,17 @@ pandecode_texture(mali_ptr u,
         pandecode_log_cont(",\n");
 
         pandecode_prop("type = %s", pandecode_texture_type(f.type));
-        pandecode_prop("usage2 = 0x%" PRIx32, f.usage2);
+        pandecode_prop("layout = %" PRId32, f.layout);
 
-        if (f.unknown1) {
+        if (f.unknown1 | f.zero) {
                 pandecode_msg("XXX: texture format zero tripped\n");
                 pandecode_prop("unknown1 = %" PRId32, f.unknown1);
+                pandecode_prop("zero = %" PRId32, f.zero);
+        }
+
+        if (!f.unknown2) {
+                pandecode_msg("XXX: expected unknown texture bit set\n");
+                pandecode_prop("unknown2 = %" PRId32, f.unknown1);
         }
 
         pandecode_indent--;
@@ -1846,7 +1852,6 @@ pandecode_texture(mali_ptr u,
          * possibilities to futureproof */
 
         int bitmap_count = MALI_NEGATIVE(t->levels);
-        bool manual_stride = f.usage2 & MALI_TEX_MANUAL_STRIDE;
 
         /* Miptree for each face */
         if (f.type == MALI_TEX_CUBE)
@@ -1856,7 +1861,7 @@ pandecode_texture(mali_ptr u,
         bitmap_count *= MALI_NEGATIVE(t->array_size);
 
         /* Stride for each element */
-        if (manual_stride)
+        if (f.manual_stride)
                 bitmap_count *= 2;
 
         /* Sanity check the size */
@@ -1866,7 +1871,7 @@ pandecode_texture(mali_ptr u,
         for (int i = 0; i < bitmap_count; ++i) {
                 /* How we dump depends if this is a stride or a pointer */
 
-                if ((f.usage2 & MALI_TEX_MANUAL_STRIDE) && (i & 1)) {
+                if (f.manual_stride && (i & 1)) {
                         /* signed 32-bit snuck in as a 64-bit pointer */
                         uint64_t stride_set = t->payload[i];
                         uint32_t clamped_stride = stride_set;

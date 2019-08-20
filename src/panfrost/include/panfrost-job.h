@@ -1179,10 +1179,21 @@ enum mali_texture_type {
 /* For each pointer, there is an address and optionally also a stride */
 #define MAX_ELEMENTS (2)
 
-/* Corresponds to the type passed to glTexImage2D and so forth */
+/* It's not known why there are 4-bits allocated -- this enum is almost
+ * certainly incomplete */
 
-/* Flags for usage2 */
-#define MALI_TEX_MANUAL_STRIDE (0x20)
+enum mali_texture_layout {
+        /* For a Z/S texture, this is linear */
+        MALI_TEXTURE_TILED = 0x1,
+
+        /* Z/S textures cannot be tiled */
+        MALI_TEXTURE_LINEAR = 0x2,
+
+        /* 16x16 sparse */
+        MALI_TEXTURE_AFBC = 0xC
+};
+
+/* Corresponds to the type passed to glTexImage2D and so forth */
 
 struct mali_texture_format {
         unsigned swizzle : 12;
@@ -1192,8 +1203,15 @@ struct mali_texture_format {
         unsigned unknown1 : 1;
 
         enum mali_texture_type type : 2;
+        enum mali_texture_layout layout : 4;
 
-        unsigned usage2 : 8;
+        /* Always set */
+        unsigned unknown2 : 1;
+
+        /* Set to allow packing an explicit stride */
+        unsigned manual_stride : 1;
+
+        unsigned zero : 2;
 } __attribute__((packed));
 
 struct mali_texture_descriptor {
