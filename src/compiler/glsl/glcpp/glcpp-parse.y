@@ -377,6 +377,13 @@ control_line_success:
 						glcpp_parser_copy_defines,
 						&di);
 
+			/* Print out '#include' to the glsl parser. We do this
+			 * so that it can do the error checking require to
+			 * make sure the ARB_shading_language_include
+			 * extension is enabled.
+			 */
+			_mesa_string_buffer_printf(parser->output, "#include\n");
+
 			/* Parse the include string before adding to the
 			 * preprocessor output.
 			 */

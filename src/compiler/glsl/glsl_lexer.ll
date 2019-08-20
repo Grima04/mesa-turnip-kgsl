@@ -236,6 +236,14 @@ PATH		["][./ _A-Za-z0-9]*["]
 ^[ \t]*#[ \t]*$			;
 ^[ \t]*#[ \t]*version		{ BEGIN PP; return VERSION_TOK; }
 ^[ \t]*#[ \t]*extension		{ BEGIN PP; return EXTENSION; }
+{HASH}include {
+                                  if (!yyextra->ARB_shading_language_include_enable) {
+                                     struct _mesa_glsl_parse_state *state = yyextra;
+                                     _mesa_glsl_error(yylloc, state,
+                                                      "ARB_shading_language_include required "
+                                                      "to use #include");
+                                   }
+}
 {HASH}line{SPCP}{INT}{SPCP}{INT}{SPC}$ {
 				   /* Eat characters until the first digit is
 				    * encountered
