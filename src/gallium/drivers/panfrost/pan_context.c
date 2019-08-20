@@ -274,6 +274,8 @@ translate_tex_wrap(enum pipe_tex_wrap w)
         case PIPE_TEX_WRAP_REPEAT:
                 return MALI_WRAP_REPEAT;
 
+                /* TODO: lower GL_CLAMP? */
+        case PIPE_TEX_WRAP_CLAMP:
         case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
                 return MALI_WRAP_CLAMP_TO_EDGE;
 
