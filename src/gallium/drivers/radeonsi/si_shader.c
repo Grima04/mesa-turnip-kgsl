@@ -1149,11 +1149,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi,
 		}
 	}
 
-	if (param_index) {
-		/* Add the constant index to the indirect index */
-		param_index = LLVMBuildAdd(ctx->ac.builder, param_index,
-					   LLVMConstInt(ctx->i32, const_index, 0), "");
-	} else {
+	if (!param_index) {
 		param_index = LLVMConstInt(ctx->i32, const_index, 0);
 	}
 
@@ -1244,11 +1240,7 @@ LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi,
 
 	base = LLVMGetParam(ctx->main_fn, ctx->param_tcs_offchip_offset);
 
-	if (param_index) {
-		/* Add the constant index to the indirect index */
-		param_index = LLVMBuildAdd(ctx->ac.builder, param_index,
-					   LLVMConstInt(ctx->i32, const_index, 0), "");
-	} else {
+	if (!param_index) {
 		param_index = LLVMConstInt(ctx->i32, const_index, 0);
 	}
 
@@ -1407,14 +1399,9 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 
 	driver_location = driver_location / 4;
 
-	if (param_index) {
-		/* Add the constant index to the indirect index */
-		param_index = LLVMBuildAdd(ctx->ac.builder, param_index,
-					   LLVMConstInt(ctx->i32, const_index, 0), "");
-	} else {
-		if (const_index != 0)
-			param_index = LLVMConstInt(ctx->i32, const_index, 0);
-	}
+	bool is_const = !param_index;
+	if (!param_index)
+		param_index = LLVMConstInt(ctx->i32, const_index, 0);
 
 	if (!is_patch) {
 		stride = get_tcs_out_vertex_dw_stride(ctx);
@@ -1438,7 +1425,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
 
 		skip_lds_store = !info->reads_perpatch_outputs;
 
-		if (!param_index) {
+		if (is_const && const_index == 0) {
 			int name = info->output_semantic_name[driver_location];
 
 			/* Always write tess factors into LDS for the TCS epilog. */
