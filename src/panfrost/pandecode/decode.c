@@ -1790,9 +1790,10 @@ pandecode_texture(mali_ptr u,
         if (t->array_size)
                 pandecode_log_cont("[%u]", t->array_size + 1);
 
-        pandecode_log_cont("\n");
+        if (t->levels)
+                pandecode_log_cont(" mip %u", t->levels);
 
-        pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
+        pandecode_log_cont("\n");
 
         pandecode_log(".format = {\n");
         pandecode_indent++;
@@ -1837,7 +1838,7 @@ pandecode_texture(mali_ptr u,
          * properties, but dump extra
          * possibilities to futureproof */
 
-        int bitmap_count = MALI_NEGATIVE(t->nr_mipmap_levels);
+        int bitmap_count = MALI_NEGATIVE(t->levels);
         bool manual_stride = f.usage2 & MALI_TEX_MANUAL_STRIDE;
 
         /* Miptree for each face */

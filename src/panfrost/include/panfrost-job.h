@@ -1210,7 +1210,7 @@ struct mali_texture_descriptor {
         uint8_t unknown3A;
 
         /* Zero for non-mipmapped, (number of levels - 1) for mipmapped */
-        uint8_t nr_mipmap_levels;
+        uint8_t levels;
 
         /* Swizzling is a single 32-bit word, broken up here for convenience.
          * Here, swizzling refers to the ES 3.0 texture parameters for channel
