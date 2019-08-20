@@ -1939,12 +1939,17 @@ get_deref_offset(struct ac_nir_context *ctx, nir_deref_instr *instr,
 			}
 		} else if(path.path[idx_lvl]->deref_type == nir_deref_type_array) {
 			unsigned size = glsl_count_attribute_slots(path.path[idx_lvl]->type, vs_in);
-			LLVMValueRef array_off = LLVMBuildMul(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, size, 0),
-			                                      get_src(ctx, path.path[idx_lvl]->arr.index), "");
-			if (offset)
-				offset = LLVMBuildAdd(ctx->ac.builder, offset, array_off, "");
-			else
-				offset = array_off;
+			if (nir_src_is_const(path.path[idx_lvl]->arr.index)) {
+				const_offset += size *
+					nir_src_as_uint(path.path[idx_lvl]->arr.index);
+			} else {
+				LLVMValueRef array_off = LLVMBuildMul(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, size, 0),
+								      get_src(ctx, path.path[idx_lvl]->arr.index), "");
+				if (offset)
+					offset = LLVMBuildAdd(ctx->ac.builder, offset, array_off, "");
+				else
+					offset = array_off;
+			}
 		} else
 			unreachable("Uhandled deref type in get_deref_instr_offset");
 	}
