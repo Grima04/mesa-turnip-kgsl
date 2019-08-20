@@ -449,22 +449,6 @@ pandecode_wrap_mode(enum mali_wrap_mode op)
 }
 #undef DEFINE_CASE
 
-#define DEFINE_CASE(name) case MALI_TEX_## name: return "MALI_TEX_" #name
-static char *
-pandecode_texture_type(enum mali_texture_type type)
-{
-        switch (type) {
-                DEFINE_CASE(1D);
-                DEFINE_CASE(2D);
-                DEFINE_CASE(3D);
-                DEFINE_CASE(CUBE);
-
-        default:
-                unreachable("Unknown case");
-        }
-}
-#undef DEFINE_CASE
-
 #define DEFINE_CASE(name) case MALI_MFBD_BLOCK_## name: return "MALI_MFBD_BLOCK_" #name
 static char *
 pandecode_mfbd_block_format(enum mali_mfbd_block_format fmt)
@@ -1771,8 +1755,40 @@ pandecode_texture(mali_ptr u,
 
         /* See the definiton of enum mali_texture_type */
 
-        unsigned dimension =
-                (f.type == MALI_TEX_CUBE) ? 2 : f.type;
+        bool is_cube = f.type == MALI_TEX_CUBE;
+        unsigned dimension = is_cube ? 2 : f.type;
+
+        pandecode_make_indent();
+
+        /* TODO: Are there others? */
+        bool is_zs = f.format == MALI_Z32_UNORM;
+
+        /* Recall Z/S switched the meaning of linear/tiled .. */
+        if (is_zs && f.layout == MALI_TEXTURE_LINEAR)
+                pandecode_msg("XXX: depth/stencil cannot be tiled\n");
+
+        /* Print the layout. Default is linear; a modifier can denote AFBC or
+         * u-interleaved/tiled modes */
+
+        if (f.layout == MALI_TEXTURE_AFBC)
+                pandecode_log_cont("afbc");
+        else if (f.layout == MALI_TEXTURE_TILED)
+                pandecode_log_cont(is_zs ? "linear" : "tiled");
+        else if (f.layout == MALI_TEXTURE_LINEAR)
+                pandecode_log_cont("linear");
+        else
+                pandecode_msg("XXX: invalid texture layout 0x%X\n", f.layout);
+
+        pandecode_swizzle(t->swizzle, f.format);
+        pandecode_log_cont(" ");
+
+        /* Distinguish cube/2D with modifier */
+
+        if (is_cube)
+                pandecode_log_cont("cube ");
+
+        pandecode_format_short(f.format, f.srgb);
+        pandecode_swizzle(f.swizzle, f.format);
 
         /* All four width/height/depth/array_size dimensions are present
          * regardless of the type of texture, but it is an error to have
@@ -1787,7 +1803,7 @@ pandecode_texture(mali_ptr u,
 
         /* Print only the dimensions that are actually there */
 
-        pandecode_log("dim: %d", t->width + 1);
+        pandecode_log_cont(": %d", t->width + 1);
 
         if (dimension >= 2)
                 pandecode_log_cont("x%u", t->height + 1);
@@ -1803,17 +1819,6 @@ pandecode_texture(mali_ptr u,
 
         pandecode_log_cont("\n");
 
-        pandecode_log(".format = {\n");
-        pandecode_indent++;
-
-        pandecode_log(".format = ");
-        pandecode_format_short(f.format, f.srgb);
-        pandecode_swizzle(f.swizzle, f.format);
-        pandecode_log_cont(",\n");
-
-        pandecode_prop("type = %s", pandecode_texture_type(f.type));
-        pandecode_prop("layout = %" PRId32, f.layout);
-
         if (f.unknown1 | f.zero) {
                 pandecode_msg("XXX: texture format zero tripped\n");
                 pandecode_prop("unknown1 = %" PRId32, f.unknown1);
@@ -1824,9 +1829,6 @@ pandecode_texture(mali_ptr u,
                 pandecode_msg("XXX: expected unknown texture bit set\n");
                 pandecode_prop("unknown2 = %" PRId32, f.unknown1);
         }
-
-        pandecode_indent--;
-        pandecode_log("},\n");
 
         if (t->swizzle_zero) {
                 pandecode_msg("XXX: swizzle zero tripped\n");
