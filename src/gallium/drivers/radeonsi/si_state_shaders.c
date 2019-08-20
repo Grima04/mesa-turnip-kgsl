@@ -45,7 +45,7 @@
  * Return the IR binary in a buffer. For TGSI the first 4 bytes contain its
  * size as integer.
  */
-void *si_get_ir_binary(struct si_shader_selector *sel, bool as_ngg)
+void *si_get_ir_binary(struct si_shader_selector *sel, bool ngg, bool es)
 {
 	struct blob blob;
 	unsigned ir_size;
@@ -64,13 +64,27 @@ void *si_get_ir_binary(struct si_shader_selector *sel, bool as_ngg)
 		ir_size = blob.size;
 	}
 
+	/* These settings affect the compilation, but they are not derived
+	 * from the input shader IR.
+	 */
+	unsigned shader_variant_flags = 0;
+
+	if (ngg)
+		shader_variant_flags |= 1 << 0;
+	if (sel->nir)
+		shader_variant_flags |= 1 << 1;
+	if (si_get_wave_size(sel->screen, sel->type, ngg, es) == 32)
+		shader_variant_flags |= 1 << 2;
+	if (sel->force_correct_derivs_after_kill)
+		shader_variant_flags |= 1 << 3;
+
 	unsigned size = 4 + 4 + ir_size + sizeof(sel->so);
 	char *result = (char*)MALLOC(size);
 	if (!result)
 		return NULL;
 
 	((uint32_t*)result)[0] = size;
-	((uint32_t*)result)[1] = as_ngg;
+	((uint32_t*)result)[1] = shader_variant_flags;
 	memcpy(result + 8, ir_binary, ir_size);
 	memcpy(result + 8 + ir_size, &sel->so, sizeof(sel->so));
 
@@ -2462,8 +2476,10 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 		     sel->type == PIPE_SHADER_GEOMETRY))
 			shader->key.as_ngg = 1;
 
-		if (sel->tokens || sel->nir)
-			ir_binary = si_get_ir_binary(sel, shader->key.as_ngg);
+		if (sel->tokens || sel->nir) {
+			ir_binary = si_get_ir_binary(sel, shader->key.as_ngg,
+						     shader->key.as_es);
+		}
 
 		/* Try to load the shader from the shader cache. */
 		mtx_lock(&sscreen->shader_cache_mutex);

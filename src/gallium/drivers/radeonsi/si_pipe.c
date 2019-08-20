@@ -871,21 +871,8 @@ static void si_disk_cache_create(struct si_screen *sscreen)
 	disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
 
 	/* These flags affect shader compilation. */
-	#define ALL_FLAGS (DBG(FS_CORRECT_DERIVS_AFTER_KILL) |	\
-			   DBG(SI_SCHED) |			\
-			   DBG(GISEL) |				\
-			   DBG(W32_GE) |			\
-			   DBG(W32_PS) |			\
-			   DBG(W32_CS) |			\
-			   DBG(W64_GE) |			\
-			   DBG(W64_PS) |			\
-			   DBG(W64_CS))
+	#define ALL_FLAGS (DBG(SI_SCHED) | DBG(GISEL))
 	uint64_t shader_debug_flags = sscreen->debug_flags & ALL_FLAGS;
-
-	if (sscreen->options.enable_nir) {
-		STATIC_ASSERT((ALL_FLAGS & (1u << 31)) == 0);
-		shader_debug_flags |= 1u << 31;
-	}
 
 	/* Add the high bits of 32-bit addresses, which affects
 	 * how 32-bit addresses are expanded to 64 bits.
