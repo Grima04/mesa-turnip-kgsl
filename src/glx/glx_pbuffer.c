@@ -414,7 +414,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
    UnlockDisplay(dpy);
    SyncHandle();
 
-   return 0;
+   return 1;
 }
 
 static void
