@@ -1426,8 +1426,17 @@ pandecode_validate_format_swizzle(enum mali_format fmt, unsigned swizzle)
                 return false;
         }
 
-        /* TODO: Trivial swizzle check */
-        return false;
+        /* Check for the default non-swizzling swizzle so we can suppress
+         * useless printing for the defaults */
+
+        unsigned default_swizzles[4] = {
+                MALI_CHANNEL_RED | (MALI_CHANNEL_ZERO  << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
+                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
+                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ONE   << 9),
+                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9)
+        };
+
+        return (swizzle == default_swizzles[nr_comp - 1]);
 }
 
 static int
