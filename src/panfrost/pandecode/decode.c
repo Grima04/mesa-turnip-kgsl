@@ -1246,6 +1246,9 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                 pandecode_prop("elements = (%s) | %s", a, pandecode_attr_mode(mode));
                 free(a);
 
+                /* Check the pointer */
+                pandecode_validate_buffer(raw_elements, attr[i].size);
+
                 pandecode_prop("shift = %d", attr[i].shift);
                 pandecode_prop("extra_flags = %d", attr[i].extra_flags);
                 pandecode_prop("stride = 0x%" PRIx32, attr[i].stride);
