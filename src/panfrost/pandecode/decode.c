@@ -340,7 +340,8 @@ pandecode_draw_mode(enum mali_draw_mode mode)
                 DEFINE_CASE(QUAD_STRIP);
 
         default:
-                return "MALI_TRIANGLES /* XXX: Unknown GL mode, check dump */";
+                pandecode_msg("XXX: invalid draw mode %X\n", mode);
+                return "";
         }
 
 #undef DEFINE_CASE
@@ -361,7 +362,8 @@ pandecode_func(enum mali_func mode)
                 DEFINE_CASE(ALWAYS);
 
         default:
-                return "MALI_FUNC_NEVER /* XXX: Unknown function, check dump */";
+                pandecode_msg("XXX: invalid func %X\n", mode);
+                return "";
         }
 }
 #undef DEFINE_CASE
@@ -382,7 +384,8 @@ pandecode_alt_func(enum mali_alt_func mode)
                 DEFINE_CASE(ALWAYS);
 
         default:
-                return "MALI_FUNC_NEVER /* XXX: Unknown function, check dump */";
+                pandecode_msg("XXX: invalid alt func %X\n", mode);
+                return "";
         }
 }
 #undef DEFINE_CASE
@@ -402,7 +405,8 @@ pandecode_stencil_op(enum mali_stencil_op op)
                 DEFINE_CASE(DECR);
 
         default:
-                return "MALI_STENCIL_KEEP /* XXX: Unknown stencil op, check dump */";
+                pandecode_msg("XXX: invalid stencil op %X\n", op);
+                return "";
         }
 }
 
@@ -420,7 +424,8 @@ static char *pandecode_attr_mode(enum mali_attr_mode mode)
                 DEFINE_CASE(IMAGE);
                 DEFINE_CASE(INTERNAL);
         default:
-                return "MALI_ATTR_UNUSED /* XXX: Unknown stencil op, check dump */";
+                pandecode_msg("XXX: invalid attribute mode %X\n", mode);
+                return "";
         }
 }
 
@@ -441,7 +446,8 @@ pandecode_channel(enum mali_channel channel)
                 DEFINE_CASE(RESERVED_1);
 
         default:
-                return "MALI_CHANNEL_ZERO /* XXX: Unknown channel, check dump */";
+                pandecode_msg("XXX: invalid channel %X\n", channel);
+                return "";
         }
 }
 #undef DEFINE_CASE
@@ -457,7 +463,8 @@ pandecode_wrap_mode(enum mali_wrap_mode op)
                 DEFINE_CASE(MIRRORED_REPEAT);
 
         default:
-                return "MALI_WRAP_REPEAT /* XXX: Unknown wrap mode, check dump */";
+                pandecode_msg("XXX: invalid wrap mode %X\n", op);
+                return "";
         }
 }
 #undef DEFINE_CASE
@@ -496,9 +503,9 @@ pandecode_mfbd_block_format(enum mali_mfbd_block_format fmt)
 
 #define DEFINE_CASE(name) case MALI_EXCEPTION_ACCESS_## name: return ""#name
 static char *
-pandecode_exception_access(enum mali_exception_access fmt)
+pandecode_exception_access(enum mali_exception_access access)
 {
-        switch (fmt) {
+        switch (access) {
                 DEFINE_CASE(NONE);
                 DEFINE_CASE(EXECUTE);
                 DEFINE_CASE(READ);
