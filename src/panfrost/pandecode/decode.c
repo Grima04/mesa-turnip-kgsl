@@ -536,8 +536,9 @@ pandecode_midgard_tiler_descriptor(
                 pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
 
         /* We know this name from the kernel, but we never see it nonzero */
+
         if (t->flags)
-                pandecode_prop("flags = 0x%" PRIx16 " /* XXX: unexpected */", t->flags);
+                pandecode_msg("XXX: unexpected tiler flags 0x%" PRIx16, t->flags);
 
         MEMORY_PROP(t, polygon_list);
 
@@ -925,8 +926,15 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_log_decoded_flags(mfbd_flag_info, fb->mfbd_flags);
         pandecode_log_cont(",\n");
 
-        pandecode_prop("clear_stencil = 0x%x", fb->clear_stencil);
-        pandecode_prop("clear_depth = %f", fb->clear_depth);
+        if (fb->clear_stencil)
+                pandecode_prop("clear_stencil = 0x%x", fb->clear_stencil);
+
+        if (fb->clear_depth)
+                pandecode_prop("clear_depth = %f", fb->clear_depth);
+
+        /* TODO: What is this? Let's not blow up.. */
+        if (fb->unknown2 != 0x1F)
+                pandecode_prop("unknown2 = 0x%x", fb->unknown2);
 
         pandecode_prop("unknown2 = 0x%x", fb->unknown2);
         MEMORY_PROP(fb, scratchpad);
