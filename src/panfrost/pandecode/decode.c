@@ -1532,10 +1532,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
         if (p->offset_bias_correction)
                 pandecode_prop("offset_bias_correction = %d", p->offset_bias_correction);
 
-        if (p->zero1) {
-                pandecode_msg("XXX: payload zero tripped\n");
-                pandecode_prop("zero1 = 0x%" PRIx32, p->zero1);
-        }
+        /* TODO: Figure out what this is. It's not zero */
+        pandecode_prop("zero1 = 0x%" PRIx32, p->zero1);
 
         pandecode_indent--;
         pandecode_log("},\n");
