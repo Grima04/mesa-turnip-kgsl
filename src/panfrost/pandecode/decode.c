@@ -1365,6 +1365,71 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
         return shader;
 }
 
+/* Attributes and varyings have descriptor records, which contain information
+ * about their format and ordering with the attribute/varying buffers. We'll
+ * want to validate that the combinations specified are self-consistent.
+ */
+
+/* Extracts the number of components associated with a Mali format */
+
+static unsigned
+pandecode_format_component_count(enum mali_format fmt)
+{
+        /* Mask out the format class */
+        unsigned top = fmt & 0b11100000;
+
+        switch (top) {
+        case MALI_FORMAT_SNORM:
+        case MALI_FORMAT_UINT:
+        case MALI_FORMAT_UNORM:
+        case MALI_FORMAT_SINT:
+                return ((fmt >> 3) & 3) + 1;
+        default:
+                /* TODO: Validate */
+                return 4;
+        }
+}
+
+/* Extracts a mask of accessed components from a 12-bit Mali swizzle */
+
+static unsigned
+pandecode_access_mask_from_channel_swizzle(unsigned swizzle)
+{
+        unsigned mask = 0;
+        assert(MALI_CHANNEL_RED == 0);
+
+        for (unsigned c = 0; c < 4; ++c) {
+                enum mali_channel chan = (swizzle >> (3*c)) & 0x7;
+
+                if (chan <= MALI_CHANNEL_ALPHA)
+                        mask |= (1 << chan);
+        }
+
+        return mask;
+}
+
+/* Validates that a (format, swizzle) pair is valid, in the sense that the
+ * swizzle doesn't access any components that are undefined in the format.
+ * Returns whether the swizzle is trivial (doesn't do any swizzling) and can be
+ * omitted */
+
+static bool
+pandecode_validate_format_swizzle(enum mali_format fmt, unsigned swizzle)
+{
+        unsigned nr_comp = pandecode_format_component_count(fmt);
+        unsigned access_mask = pandecode_access_mask_from_channel_swizzle(swizzle);
+        unsigned valid_mask = (1 << nr_comp) - 1;
+        unsigned invalid_mask = ~valid_mask;
+
+        if (access_mask & invalid_mask) {
+                pandecode_msg("XXX: invalid components accessed\n");
+                return false;
+        }
+
+        /* TODO: Trivial swizzle check */
+        return false;
+}
+
 static int
 pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_postfix *v, bool varying, char *suffix)
 {
@@ -1423,7 +1488,17 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
 
                 if (attr_meta->index > max_index)
                         max_index = attr_meta->index;
-                pandecode_swizzle(attr_meta->swizzle);
+
+                /* Check the swizzle/format, and if they match and the swizzle
+                 * is simple enough, we can avoid printing the swizzle since
+                 * it's just noise */
+
+                bool trivial_swizzle = pandecode_validate_format_swizzle(
+                                attr_meta->format, attr_meta->swizzle);
+
+                if (!trivial_swizzle)
+                        pandecode_swizzle(attr_meta->swizzle);
+
                 pandecode_prop("format = %s", pandecode_format(attr_meta->format));
 
                 if (attr_meta->unknown1 != 0x2) {
