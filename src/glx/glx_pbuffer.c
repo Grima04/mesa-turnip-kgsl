@@ -834,11 +834,11 @@ glXQueryDrawable(Display * dpy, GLXDrawable drawable,
 /**
  * Query an attribute of a pbuffer.
  */
-_GLX_PUBLIC int
+_GLX_PUBLIC void
 glXQueryGLXPbufferSGIX(Display * dpy, GLXPbufferSGIX drawable,
                        int attribute, unsigned int *value)
 {
-   return __glXGetDrawableAttribute(dpy, drawable, attribute, value);
+   __glXGetDrawableAttribute(dpy, drawable, attribute, value);
 }
 #endif
 

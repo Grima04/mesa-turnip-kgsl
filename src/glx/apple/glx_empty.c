@@ -147,7 +147,7 @@ glXCopySubBufferMESA(Display * dpy, GLXDrawable drawable,
 }
 
 
-_X_EXPORT int
+_X_EXPORT void
 glXQueryGLXPbufferSGIX(Display * dpy, GLXDrawable drawable,
                        int attribute, unsigned int *value)
 {

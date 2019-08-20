@@ -2495,7 +2495,7 @@ glXDestroyGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf)
 }
 
 
-PUBLIC int
+PUBLIC void
 glXQueryGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf, int attribute,
                        unsigned int *value)
 {
@@ -2503,7 +2503,7 @@ glXQueryGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf, int attribute,
 
    if (!xmbuf) {
       /* Generate GLXBadPbufferSGIX for bad pbuffer */
-      return 0;
+      return;
    }
 
    switch (attribute) {
@@ -2525,7 +2525,6 @@ glXQueryGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf, int attribute,
       default:
          *value = 0;
    }
-   return 0;
 }
 
 
@@ -2654,7 +2653,7 @@ glXAssociateDMPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuffer,
 
 PUBLIC Status
 glXGetTransparentIndexSUN(Display *dpy, Window overlay, Window underlay,
-                          long *pTransparent)
+                          unsigned long *pTransparent)
 {
    (void) dpy;
    (void) overlay;

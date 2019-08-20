@@ -2536,14 +2536,14 @@ Fake_glXDestroyGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf)
 }
 
 
-static int
+static void
 Fake_glXQueryGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf, int attribute, unsigned int *value)
 {
    const XMesaBuffer xmbuf = XMesaFindBuffer(dpy, pbuf);
 
    if (!xmbuf) {
       /* Generate GLXBadPbufferSGIX for bad pbuffer */
-      return 0;
+      return;
    }
 
    switch (attribute) {
@@ -2565,7 +2565,6 @@ Fake_glXQueryGLXPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuf, int attribute, un
       default:
          *value = 0;
    }
-   return 0;
 }
 
 
@@ -2687,7 +2686,7 @@ Fake_glXAssociateDMPbufferSGIX(Display *dpy, GLXPbufferSGIX pbuffer, DMparams *p
 /*** GLX_SUN_get_transparent_index ***/
 
 static Status
-Fake_glXGetTransparentIndexSUN(Display *dpy, Window overlay, Window underlay, long *pTransparent)
+Fake_glXGetTransparentIndexSUN(Display *dpy, Window overlay, Window underlay, unsigned long *pTransparent)
 {
    (void) dpy;
    (void) overlay;
