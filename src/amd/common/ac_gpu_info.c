@@ -457,6 +457,11 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->has_rbplus = info->family == CHIP_STONEY ||
 			   info->chip_class >= GFX9;
 
+	/* TODO: Figure out how to use LOAD_CONTEXT_REG on GFX6-GFX7. */
+	info->has_load_ctx_reg_pkt = info->chip_class >= GFX9 ||
+				     (info->chip_class >= GFX8 &&
+				      info->me_fw_feature >= 41);
+
 	/* Get the number of good compute units. */
 	info->num_good_compute_units = 0;
 	for (i = 0; i < info->max_se; i++)

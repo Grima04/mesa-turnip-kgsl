@@ -380,11 +380,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->dcc_msaa_allowed =
 		(device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
-	/* TODO: Figure out how to use LOAD_CONTEXT_REG on GFX6-GFX7. */
-	device->has_load_ctx_reg_pkt = device->rad_info.chip_class >= GFX9 ||
-				       (device->rad_info.chip_class >= GFX8 &&
-				        device->rad_info.me_fw_feature >= 41);
-
 	device->use_shader_ballot = device->rad_info.chip_class >= GFX8 &&
 				    device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT;
 

@@ -62,6 +62,7 @@ struct radeon_info {
 	bool                        has_distributed_tess;
 	bool                        has_dcc_constant_encode;
 	bool                        has_rbplus; /* if RB+ registers exist */
+	bool                        has_load_ctx_reg_pkt;
 
 	/* There are 2 display DCC codepaths, because display expects unaligned DCC. */
 	/* Disable RB and pipe alignment to skip the retile blit. (1 RB chips only) */
