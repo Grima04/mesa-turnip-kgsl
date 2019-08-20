@@ -45,7 +45,7 @@
  * Return the IR binary in a buffer. For TGSI the first 4 bytes contain its
  * size as integer.
  */
-void *si_get_ir_binary(struct si_shader_selector *sel)
+void *si_get_ir_binary(struct si_shader_selector *sel, bool as_ngg)
 {
 	struct blob blob;
 	unsigned ir_size;
@@ -64,14 +64,15 @@ void *si_get_ir_binary(struct si_shader_selector *sel)
 		ir_size = blob.size;
 	}
 
-	unsigned size = 4 + ir_size + sizeof(sel->so);
+	unsigned size = 4 + 4 + ir_size + sizeof(sel->so);
 	char *result = (char*)MALLOC(size);
 	if (!result)
 		return NULL;
 
-	*((uint32_t*)result) = size;
-	memcpy(result + 4, ir_binary, ir_size);
-	memcpy(result + 4 + ir_size, &sel->so, sizeof(sel->so));
+	((uint32_t*)result)[0] = size;
+	((uint32_t*)result)[1] = as_ngg;
+	memcpy(result + 8, ir_binary, ir_size);
+	memcpy(result + 8 + ir_size, &sel->so, sizeof(sel->so));
 
 	if (sel->nir)
 		blob_finish(&blob);
@@ -2462,7 +2463,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 			shader->key.as_ngg = 1;
 
 		if (sel->tokens || sel->nir)
-			ir_binary = si_get_ir_binary(sel);
+			ir_binary = si_get_ir_binary(sel, shader->key.as_ngg);
 
 		/* Try to load the shader from the shader cache. */
 		mtx_lock(&sscreen->shader_cache_mutex);

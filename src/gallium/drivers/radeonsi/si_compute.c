@@ -147,7 +147,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 	program->num_cs_user_data_dwords =
 		sel->info.properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD];
 
-	void *ir_binary = si_get_ir_binary(sel);
+	void *ir_binary = si_get_ir_binary(sel, false);
 
 	/* Try to load the shader from the shader cache. */
 	mtx_lock(&sscreen->shader_cache_mutex);
