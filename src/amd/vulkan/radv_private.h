@@ -281,7 +281,6 @@ struct radv_physical_device {
 	struct wsi_device                       wsi_device;
 
 	bool rbplus_allowed; /* if RB+ is allowed */
-	bool cpdma_prefetch_writes_memory;
 	bool has_scissor_bug;
 	bool has_tc_compat_zrange_bug;
 

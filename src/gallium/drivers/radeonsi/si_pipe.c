@@ -1192,8 +1192,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	sscreen->dcc_msaa_allowed =
 		!(sscreen->debug_flags & DBG(NO_DCC_MSAA));
 
-	sscreen->cpdma_prefetch_writes_memory = sscreen->info.chip_class <= GFX8;
-
 	(void) mtx_init(&sscreen->shader_parts_mutex, mtx_plain);
 	sscreen->use_monolithic_shaders =
 		(sscreen->debug_flags & DBG(MONOLITHIC_SHADERS)) != 0;

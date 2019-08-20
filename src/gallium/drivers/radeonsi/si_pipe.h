@@ -514,7 +514,6 @@ struct si_screen {
 	bool				record_llvm_ir;
 	bool				rbplus_allowed; /* if RB+ is allowed */
 	bool				dcc_msaa_allowed;
-	bool				cpdma_prefetch_writes_memory;
 
 	struct slab_parent_pool		pool_transfers;
 

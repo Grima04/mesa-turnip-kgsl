@@ -363,8 +363,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 		                         device->rad_info.family == CHIP_RENOIR;
 	}
 
-	device->cpdma_prefetch_writes_memory = device->rad_info.chip_class <= GFX8;
-
 	/* Vega10/Raven need a special workaround for a hardware bug. */
 	device->has_scissor_bug = device->rad_info.family == CHIP_VEGA10 ||
 				  device->rad_info.family == CHIP_RAVEN;

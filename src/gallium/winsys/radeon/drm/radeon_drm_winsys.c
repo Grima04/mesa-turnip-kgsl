@@ -588,6 +588,7 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     ws->info.has_read_registers_query = ws->info.drm_minor >= 42;
     ws->info.max_alignment = 1024*1024;
     ws->info.has_graphics = true;
+    ws->info.cpdma_prefetch_writes_memory = true;
 
     ws->check_vm = strstr(debug_get_option("R600_DEBUG", ""), "check_vm") != NULL;
 

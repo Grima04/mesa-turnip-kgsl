@@ -465,6 +465,8 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 				     (info->chip_class >= GFX8 &&
 				      info->me_fw_feature >= 41);
 
+	info->cpdma_prefetch_writes_memory = info->chip_class <= GFX8;
+
 	/* Get the number of good compute units. */
 	info->num_good_compute_units = 0;
 	for (i = 0; i < info->max_se; i++)
