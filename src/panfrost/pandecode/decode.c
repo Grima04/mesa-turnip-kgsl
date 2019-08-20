@@ -1396,8 +1396,16 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
                 pandecode_swizzle(attr_meta->swizzle);
                 pandecode_prop("format = %s", pandecode_format(attr_meta->format));
 
-                pandecode_prop("unknown1 = 0x%" PRIx64, (u64) attr_meta->unknown1);
-                pandecode_prop("unknown3 = 0x%" PRIx64, (u64) attr_meta->unknown3);
+                if (attr_meta->unknown1 != 0x2) {
+                        pandecode_msg("XXX: expected unknown1 = 0x2\n");
+                        pandecode_prop("unknown1 = 0x%" PRIx64, (u64) attr_meta->unknown1);
+                }
+
+                if (attr_meta->unknown3) {
+                        pandecode_msg("XXX: unexpected unknown3 set\n");
+                        pandecode_prop("unknown3 = 0x%" PRIx64, (u64) attr_meta->unknown3);
+                }
+
                 pandecode_prop("src_offset = %d", attr_meta->src_offset);
                 pandecode_indent--;
                 pandecode_log("},\n");
