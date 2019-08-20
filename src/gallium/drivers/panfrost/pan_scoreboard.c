@@ -414,12 +414,12 @@ panfrost_scoreboard_link_batch(struct panfrost_job *batch)
 
                 if (dep_1) {
                         assert(!dependents[dep_1 - 1]);
-                        dependents[dep_1 - 1] = i;
+                        dependents[dep_1 - 1] = i + 1;
                 }
 
                 if (dep_2) {
                         assert(!dependents[dep_2 - 1]);
-                        dependents[dep_2 - 1] = i;
+                        dependents[dep_2 - 1] = i + 1;
                 }
         }
 
@@ -461,9 +461,11 @@ panfrost_scoreboard_link_batch(struct panfrost_job *batch)
                 tail = n;
 
                 /* Grab the dependent, if there is one */
-                unsigned node_m = dependents[node_n];
+                unsigned node_m_1 = dependents[node_n];
 
-                if (node_m) {
+                if (node_m_1) {
+                        unsigned node_m = node_m_1 - 1;
+
                         struct mali_job_descriptor_header *m =
                                 DESCRIPTOR_FOR_NODE(node_m);
 
