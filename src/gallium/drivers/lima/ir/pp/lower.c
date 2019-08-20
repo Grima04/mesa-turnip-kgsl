@@ -103,13 +103,18 @@ static bool ppir_lower_swap_args(ppir_block *block, ppir_node *node)
 
 static bool ppir_lower_load(ppir_block *block, ppir_node *node)
 {
+   ppir_dest *dest = ppir_node_get_dest(node);
+   if (ppir_node_is_root(node) && dest->type == ppir_target_ssa) {
+      ppir_node_delete(node);
+      return true;
+   }
+
    ppir_node *move = ppir_node_create(block, ppir_op_mov, -1 , 0);
    if (unlikely(!move))
       return false;
 
    ppir_alu_node *alu = ppir_node_to_alu(move);
 
-   ppir_dest *dest = ppir_node_get_dest(node);
    alu->dest = *dest;
 
    ppir_node_replace_all_succ(move, node);

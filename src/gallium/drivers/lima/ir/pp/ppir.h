@@ -363,7 +363,7 @@ void ppir_node_print_prog(ppir_compiler *comp);
 void ppir_node_replace_child(ppir_node *parent, ppir_node *old_child, ppir_node *new_child);
 void ppir_node_replace_all_succ(ppir_node *dst, ppir_node *src);
 void ppir_node_replace_pred(ppir_dep *dep, ppir_node *new_pred);
-ppir_node *ppir_node_clone_const(ppir_block *block, ppir_node *node);
+ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node);
 
 static inline bool ppir_node_is_root(ppir_node *node)
 {

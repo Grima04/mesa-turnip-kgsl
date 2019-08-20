@@ -572,7 +572,7 @@ void ppir_node_print_prog(ppir_compiler *comp)
    printf("====================\n");
 }
 
-ppir_node *ppir_node_clone_const(ppir_block *block, ppir_node *node)
+static ppir_node *ppir_node_clone_const(ppir_block *block, ppir_node *node)
 {
    ppir_const_node *cnode = ppir_node_to_const(node);
    ppir_const_node *new_cnode = ppir_node_create(block, ppir_op_const, -1, 0);
@@ -593,4 +593,83 @@ ppir_node *ppir_node_clone_const(ppir_block *block, ppir_node *node)
    new_cnode->dest.write_mask = cnode->dest.write_mask;
 
    return &new_cnode->node;
+}
+
+static ppir_node *
+ppir_node_clone_tex(ppir_block *block, ppir_node *node)
+{
+   ppir_load_texture_node *tex_node = ppir_node_to_load_texture(node);
+   ppir_load_texture_node *new_tnode = ppir_node_create(block, ppir_op_load_texture, -1, 0);
+
+   if (!new_tnode)
+      return NULL;
+
+   list_addtail(&new_tnode->node.list, &block->node_list);
+
+   ppir_dest *dest = ppir_node_get_dest(node);
+   new_tnode->dest = *dest;
+
+   new_tnode->sampler_dim = tex_node->sampler_dim;
+
+   for (int i = 0; i < 4; i++)
+      new_tnode->src_coords.swizzle[i] = tex_node->src_coords.swizzle[i];
+
+   for (int i = 0; i < ppir_node_get_src_num(node); i++) {
+      ppir_src *src = ppir_node_get_src(node, i);
+      ppir_src *new_src = ppir_node_get_src(&new_tnode->node, i);
+      switch (src->type) {
+      case ppir_target_ssa: {
+         ppir_node_target_assign(new_src, src->node);
+         ppir_node_add_dep(&new_tnode->node, src->node);
+         break;
+      }
+      case ppir_target_register: {
+         new_src->type = src->type;
+         new_src->reg = src->reg;
+         new_src->node = NULL;
+         break;
+      }
+      default:
+         /* pipeline is not expected here */
+         assert(0);
+      }
+   }
+
+   return &new_tnode->node;
+}
+
+static ppir_node *
+ppir_node_clone_load(ppir_block *block, ppir_node *node)
+{
+   ppir_load_node *load_node = ppir_node_to_load(node);
+   ppir_load_node *new_lnode = ppir_node_create(block, node->op, -1, 0);
+
+   if (!new_lnode)
+      return NULL;
+
+   list_addtail(&new_lnode->node.list, &block->node_list);
+
+   new_lnode->num_components = load_node->num_components;
+   new_lnode->index = load_node->index;
+
+   ppir_dest *dest = ppir_node_get_dest(node);
+   new_lnode->dest = *dest;
+
+   return &new_lnode->node;
+}
+
+ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node)
+{
+   switch (node->op) {
+   case ppir_op_const:
+      return ppir_node_clone_const(block, node);
+   case ppir_op_load_texture:
+      return ppir_node_clone_tex(block, node);
+   case ppir_op_load_uniform:
+   case ppir_op_load_varying:
+   case ppir_op_load_temp:
+      return ppir_node_clone_load(block, node);
+   default:
+      return NULL;
+   }
 }

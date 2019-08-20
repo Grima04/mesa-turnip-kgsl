@@ -101,8 +101,22 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
    if (ns->is_ssa) {
       child = comp->var_nodes[ns->ssa->index];
       /* Clone consts for each successor */
-      if (child->type == ppir_node_type_const)
-         child = ppir_node_clone_const(node->block, child);
+      switch (child->op) {
+      case ppir_op_const:
+         child = ppir_node_clone(node->block, child);
+         break;
+      /* Clone uniforms and load textures for each block */
+      case ppir_op_load_texture:
+      case ppir_op_load_uniform:
+      case ppir_op_load_varying:
+         if (child->block != node->block) {
+            child = ppir_node_clone(node->block, child);
+            comp->var_nodes[ns->ssa->index] = child;
+         }
+         break;
+      default:
+         break;
+      }
 
       ppir_node_add_dep(node, child);
    }
