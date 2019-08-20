@@ -612,7 +612,10 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
       list_for_each_entry_from(ppir_reg, reg2, reg1->list.next,
                                &comp->reg_list, list) {
          bool interference = false;
-         if (reg1->live_in < reg2->live_in) {
+
+         if (reg1->undef || reg2->undef)
+            interference = false;
+         else if (reg1->live_in < reg2->live_in) {
             if (reg1->live_out > reg2->live_in)
                interference = true;
          }

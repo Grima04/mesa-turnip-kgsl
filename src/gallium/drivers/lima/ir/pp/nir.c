@@ -142,7 +142,8 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
          break;
       }
 
-      ppir_node_add_dep(node, child);
+      if (child->op != ppir_op_undef)
+         ppir_node_add_dep(node, child);
    }
    else {
       nir_register *reg = ns->reg.reg;
@@ -418,8 +419,19 @@ static ppir_node *ppir_emit_load_const(ppir_block *block, nir_instr *ni)
 
 static ppir_node *ppir_emit_ssa_undef(ppir_block *block, nir_instr *ni)
 {
-   ppir_error("nir_ssa_undef_instr not support\n");
-   return NULL;
+   nir_ssa_undef_instr *undef = nir_instr_as_ssa_undef(ni);
+   ppir_node *node = ppir_node_create_ssa(block, ppir_op_undef, &undef->def);
+   if (!node)
+      return NULL;
+   ppir_alu_node *alu = ppir_node_to_alu(node);
+
+   ppir_dest *dest = &alu->dest;
+   dest->ssa.undef = true;
+   ppir_reg *ssa = &dest->ssa;
+
+   list_add(&ssa->list, &block->comp->reg_list);
+
+   return node;
 }
 
 static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)

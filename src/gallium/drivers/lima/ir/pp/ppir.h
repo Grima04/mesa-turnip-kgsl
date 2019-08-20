@@ -181,6 +181,7 @@ typedef struct ppir_reg {
    /* instr live range */
    int live_in, live_out;
    bool spilled;
+   bool undef;
 } ppir_reg;
 
 typedef enum {

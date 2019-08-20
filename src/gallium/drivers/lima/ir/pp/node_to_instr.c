@@ -66,6 +66,10 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
    switch (node->type) {
    case ppir_node_type_alu:
    {
+      /* don't create an instr for undef node */
+      if (node->op == ppir_op_undef)
+         break;
+
       /* merge pred mul and succ add in the same instr can save a reg
        * by using pipeline reg ^vmul/^fmul */
       ppir_alu_node *alu = ppir_node_to_alu(node);
