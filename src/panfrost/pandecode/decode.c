@@ -807,7 +807,7 @@ pandecode_validate_format_swizzle(enum mali_format fmt, unsigned swizzle)
 /* Maps MALI_RGBA32F to rgba32f, etc */
 
 static void
-pandecode_format_short(enum mali_format fmt)
+pandecode_format_short(enum mali_format fmt, bool srgb)
 {
         /* We want a type-like format, so cut off the initial MALI_ */
         char *format = pandecode_format(fmt);
@@ -818,6 +818,14 @@ pandecode_format_short(enum mali_format fmt)
 
         for (unsigned i = 0; i < len; ++i)
                 lower_format[i] = tolower(format[i]);
+
+        /* Sanity check sRGB flag is applied to RGB, per the name */
+        if (srgb && lower_format[0] != 'r')
+                pandecode_msg("XXX: sRGB applied to non-colour format\n");
+
+        /* Just prefix with an s, so you get formats like srgba8_unorm */
+        if (srgb)
+                pandecode_log_cont("s");
 
         pandecode_log_cont("%s", lower_format);
         free(lower_format);
@@ -1525,7 +1533,7 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
                 }
 
                 pandecode_make_indent();
-                pandecode_format_short(attr_meta->format);
+                pandecode_format_short(attr_meta->format, false);
                 pandecode_log_cont(" %s_%u", prefix, attr_meta->index);
 
                 if (attr_meta->src_offset)
@@ -1799,12 +1807,11 @@ pandecode_texture(mali_ptr u,
         pandecode_indent++;
 
         pandecode_log(".format = ");
-        pandecode_format_short(f.format);
+        pandecode_format_short(f.format, f.srgb);
         pandecode_swizzle(f.swizzle, f.format);
         pandecode_log_cont(",\n");
 
         pandecode_prop("type = %s", pandecode_texture_type(f.type));
-        pandecode_prop("srgb = %" PRId32, f.srgb);
         pandecode_prop("usage2 = 0x%" PRIx32, f.usage2);
 
         if (f.unknown1) {
