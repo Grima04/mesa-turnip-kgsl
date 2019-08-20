@@ -2304,11 +2304,9 @@ panfrost_create_sampler_view(
                 .depth = MALI_POSITIVE(u_minify(texture->depth0, first_level)),
                 .array_size = MALI_POSITIVE(array_size),
 
-                /* TODO: Decode */
                 .format = {
                         .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
                         .format = format,
-
                         .srgb = desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB,
                         .type = panfrost_translate_texture_type(template->target),
                 },
