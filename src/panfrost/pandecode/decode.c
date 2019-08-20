@@ -442,8 +442,6 @@ pandecode_channel(enum mali_channel channel)
                 DEFINE_CASE(ALPHA);
                 DEFINE_CASE(ZERO);
                 DEFINE_CASE(ONE);
-                DEFINE_CASE(RESERVED_0);
-                DEFINE_CASE(RESERVED_1);
 
         default:
                 pandecode_msg("XXX: invalid channel %X\n", channel);
