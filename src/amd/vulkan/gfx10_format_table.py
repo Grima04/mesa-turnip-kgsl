@@ -66,6 +66,11 @@ HARDCODED = {
     'VK_FORMAT_BC6H_SFLOAT_BLOCK': hardcoded_format('BC6_SFLOAT'),
     'VK_FORMAT_BC7_UNORM_BLOCK': hardcoded_format('BC7_UNORM'),
     'VK_FORMAT_BC7_SRGB_BLOCK': hardcoded_format('BC7_SRGB'),
+
+    # DS
+    'VK_FORMAT_D16_UNORM_S8_UINT': hardcoded_format('INVALID'),
+    'VK_FORMAT_D24_UNORM_S8_UINT': hardcoded_format('8_24_UNORM'),
+    'VK_FORMAT_D32_SFLOAT_S8_UINT': hardcoded_format('X24_8_32_FLOAT'),
 }
 
 
