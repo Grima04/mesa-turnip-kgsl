@@ -1759,13 +1759,40 @@ pandecode_texture(mali_ptr u,
         pandecode_log("struct mali_texture_descriptor texture_descriptor_%"PRIx64"_%d_%d = {\n", u, job_no, tex);
         pandecode_indent++;
 
-        pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", t->width + 1);
-        pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", t->height + 1);
-        pandecode_prop("depth = MALI_POSITIVE(%" PRId16 ")", t->depth + 1);
-        pandecode_prop("array_size = MALI_POSITIVE(%" PRId16 ")", t->array_size + 1);
-        pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
-
         struct mali_texture_format f = t->format;
+
+        /* See the definiton of enum mali_texture_type */
+
+        unsigned dimension =
+                (f.type == MALI_TEX_CUBE) ? 2 : f.type;
+
+        /* All four width/height/depth/array_size dimensions are present
+         * regardless of the type of texture, but it is an error to have
+         * non-zero dimensions for unused dimensions. Verify this. array_size
+         * can always be set, as can width. */
+
+        if (t->height && dimension < 2)
+                pandecode_msg("XXX: nonzero height for <2D texture\n");
+
+        if (t->depth && dimension < 3)
+                pandecode_msg("XXX: nonzero depth for <2D texture\n");
+
+        /* Print only the dimensions that are actually there */
+
+        pandecode_log("dim: %d", t->width + 1);
+
+        if (dimension >= 2)
+                pandecode_log_cont("x%u", t->height + 1);
+
+        if (dimension >= 3)
+                pandecode_log_cont("x%u", t->depth + 1);
+
+        if (t->array_size)
+                pandecode_log_cont("[%u]", t->array_size + 1);
+
+        pandecode_log_cont("\n");
+
+        pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
 
         pandecode_log(".format = {\n");
         pandecode_indent++;
