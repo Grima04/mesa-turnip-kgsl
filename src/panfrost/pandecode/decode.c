@@ -818,18 +818,11 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
 
                         pandecode_indent--;
                         pandecode_log("},\n");
-                } else {
-                        pandecode_log(".chunknown = {\n");
-                        pandecode_indent++;
-
-                        pandecode_prop("unk = 0x%" PRIx64, rt->chunknown.unk);
-
-                        char *a = pointer_as_memory_reference(rt->chunknown.pointer);
-                        pandecode_prop("pointer = %s", a);
-                        free(a);
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
+                } else if (rt->afbc.metadata || rt->afbc.stride || rt->afbc.unk) {
+                        pandecode_msg("XXX: AFBC disabled but AFBC field set (0x%lX, 0x%x, 0x%x)\n",
+                                        rt->afbc.metadata,
+                                        rt->afbc.stride,
+                                        rt->afbc.unk);
                 }
 
                 MEMORY_PROP(rt, framebuffer);

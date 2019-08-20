@@ -1522,27 +1522,21 @@ struct bifrost_render_target {
 
         u64 zero1;
 
-        union {
-                struct {
-                        /* Stuff related to ARM Framebuffer Compression. When AFBC is enabled,
-                         * there is an extra metadata buffer that contains 16 bytes per tile.
-                         * The framebuffer needs to be the same size as before, since we don't
-                         * know ahead of time how much space it will take up. The
-                         * framebuffer_stride is set to 0, since the data isn't stored linearly
-                         * anymore.
-                         */
+        struct {
+                /* Stuff related to ARM Framebuffer Compression. When AFBC is enabled,
+                 * there is an extra metadata buffer that contains 16 bytes per tile.
+                 * The framebuffer needs to be the same size as before, since we don't
+                 * know ahead of time how much space it will take up. The
+                 * framebuffer_stride is set to 0, since the data isn't stored linearly
+                 * anymore.
+                 *
+                 * When AFBC is disabled, these fields are zero.
+                 */
 
-                        mali_ptr metadata;
-                        u32 stride; // stride in units of tiles
-                        u32 unk; // = 0x20000
-                } afbc;
-
-                struct {
-                        /* Heck if I know */
-                        u64 unk;
-                        mali_ptr pointer;
-                } chunknown;
-        };
+                mali_ptr metadata;
+                u32 stride; // stride in units of tiles
+                u32 unk; // = 0x20000
+        } afbc;
 
         mali_ptr framebuffer;
 
