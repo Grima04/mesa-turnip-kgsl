@@ -5617,9 +5617,9 @@ compressed_tex_sub_image(unsigned dim, GLenum target, GLuint textureOrIndex,
                                                          false,
                                                          caller);
          break;
-      case TEX_MODE_CURRENT_ERROR:
-         no_error = true;
       case TEX_MODE_CURRENT_NO_ERROR:
+         no_error = true;
+      case TEX_MODE_CURRENT_ERROR:
       default:
          assert(textureOrIndex == 0);
          texObj = _mesa_get_current_tex_object(ctx, target);
