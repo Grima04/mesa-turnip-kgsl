@@ -2527,6 +2527,11 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
    screen->deviceID = devinfo->chipset_id;
    screen->no_hw = devinfo->no_hw;
 
+   if (devinfo->gen >= 12) {
+      fprintf(stderr, "gen12 and newer are not supported on i965\n");
+      return NULL;
+   }
+
    if (!intel_init_bufmgr(screen))
        return NULL;
 
