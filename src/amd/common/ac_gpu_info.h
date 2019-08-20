@@ -156,6 +156,9 @@ struct radeon_info {
 	/* Tile modes. */
 	uint32_t                    si_tile_mode_array[32];
 	uint32_t                    cik_macrotile_mode_array[16];
+
+	/* Hardware bugs. */
+	bool                        has_gfx9_scissor_bug;
 };
 
 bool ac_query_gpu_info(int fd, void *dev_p,

@@ -2043,10 +2043,9 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	 * written (i.e. the GPU rolls the context), PA_SC_VPORT_SCISSOR
 	 * registers must be written too.
 	 */
-	bool has_gfx9_scissor_bug = sctx->screen->has_gfx9_scissor_bug;
 	unsigned masked_atoms = 0;
 
-	if (has_gfx9_scissor_bug) {
+	if (sctx->screen->info.has_gfx9_scissor_bug) {
 		masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
 
 		if (info->count_from_stream_output ||
@@ -2080,7 +2079,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond))
 			sctx->atoms.s.render_cond.emit(sctx);
 
-		if (has_gfx9_scissor_bug &&
+		if (sctx->screen->info.has_gfx9_scissor_bug &&
 		    (sctx->context_roll ||
 		     si_is_atom_dirty(sctx, &sctx->atoms.s.scissors)))
 			sctx->atoms.s.scissors.emit(sctx);
@@ -2114,7 +2113,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 		si_emit_all_states(sctx, info, prim, instance_count,
 				   primitive_restart, masked_atoms);
 
-		if (has_gfx9_scissor_bug &&
+		if (sctx->screen->info.has_gfx9_scissor_bug &&
 		    (sctx->context_roll ||
 		     si_is_atom_dirty(sctx, &sctx->atoms.s.scissors)))
 			sctx->atoms.s.scissors.emit(sctx);

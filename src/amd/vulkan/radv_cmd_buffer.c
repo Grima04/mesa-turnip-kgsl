@@ -2125,7 +2125,7 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 		radv_emit_viewport(cmd_buffer);
 
 	if (states & (RADV_CMD_DIRTY_DYNAMIC_SCISSOR | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT) &&
-	    !cmd_buffer->device->physical_device->has_scissor_bug)
+	    !cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug)
 		radv_emit_scissor(cmd_buffer);
 
 	if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH)
@@ -4468,7 +4468,7 @@ static bool radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
 
-	if (!cmd_buffer->device->physical_device->has_scissor_bug)
+	if (!cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug)
 		return false;
 
 	if (cmd_buffer->state.context_roll_without_scissor_emitted || info->strmout_buffer)
