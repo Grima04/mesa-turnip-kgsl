@@ -1308,6 +1308,16 @@ static void si_emit_shader_vs(struct si_context *sctx)
 
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
+
+	/* Required programming for tessellation. (legacy pipeline only) */
+	if (sctx->chip_class == GFX10 &&
+	    shader->selector->type == PIPE_SHADER_TESS_EVAL) {
+		radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL,
+					   SI_TRACKED_VGT_GS_ONCHIP_CNTL,
+					   S_028A44_ES_VERTS_PER_SUBGRP(250) |
+					   S_028A44_GS_PRIMS_PER_SUBGRP(126) |
+					   S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
+	}
 }
 
 /**
