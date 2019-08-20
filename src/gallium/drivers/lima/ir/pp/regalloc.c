@@ -602,7 +602,9 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
          /* Ask the outer loop to call back in. */
          *spilled = true;
 
-         ppir_debug("spilled register\n");
+         ppir_debug("spilled register %d/%d, num_components: %d\n",
+                    chosen->regalloc_index, list_length(&comp->reg_list),
+                    chosen->num_components);
          goto err_out;
       }
 
