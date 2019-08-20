@@ -2039,8 +2039,6 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                         pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", t->height + 1);
                                         pandecode_prop("depth = MALI_POSITIVE(%" PRId16 ")", t->depth + 1);
                                         pandecode_prop("array_size = MALI_POSITIVE(%" PRId16 ")", t->array_size + 1);
-                                        pandecode_prop("unknown3 = %" PRId16, t->unknown3);
-                                        pandecode_prop("unknown3A = %" PRId8, t->unknown3A);
                                         pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
 
                                         struct mali_texture_format f = t->format;
@@ -2055,23 +2053,29 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
 
                                         pandecode_prop("type = %s", pandecode_texture_type(f.type));
                                         pandecode_prop("srgb = %" PRId32, f.srgb);
-                                        pandecode_prop("unknown1 = %" PRId32, f.unknown1);
                                         pandecode_prop("usage2 = 0x%" PRIx32, f.usage2);
+
+                                        if (f.unknown1) {
+                                                pandecode_msg("XXX: texture format zero tripped\n");
+                                                pandecode_prop("unknown1 = %" PRId32, f.unknown1);
+                                        }
 
                                         pandecode_indent--;
                                         pandecode_log("},\n");
 
                                         if (t->swizzle_zero) {
-                                                /* Shouldn't happen */
                                                 pandecode_msg("XXX: swizzle zero tripped\n");
                                                 pandecode_prop("swizzle_zero = %d", t->swizzle_zero);
                                         }
 
-                                        pandecode_prop("unknown3 = 0x%" PRIx32, t->unknown3);
-
-                                        pandecode_prop("unknown5 = 0x%" PRIx32, t->unknown5);
-                                        pandecode_prop("unknown6 = 0x%" PRIx32, t->unknown6);
-                                        pandecode_prop("unknown7 = 0x%" PRIx32, t->unknown7);
+                                        if (t->unknown3 | t->unknown3A | t->unknown5 | t->unknown6 | t->unknown7) {
+                                                pandecode_msg("XXX: texture zero tripped\n");
+                                                pandecode_prop("unknown3 = %" PRId16, t->unknown3);
+                                                pandecode_prop("unknown3A = %" PRId8, t->unknown3A);
+                                                pandecode_prop("unknown5 = 0x%" PRIx32, t->unknown5);
+                                                pandecode_prop("unknown6 = 0x%" PRIx32, t->unknown6);
+                                                pandecode_prop("unknown7 = 0x%" PRIx32, t->unknown7);
+                                        }
 
                                         pandecode_log(".payload = {\n");
                                         pandecode_indent++;
