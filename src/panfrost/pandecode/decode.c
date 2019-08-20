@@ -1750,7 +1750,111 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 }
 
 static void
-pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
+pandecode_texture(mali_ptr u,
+                struct pandecode_mapped_memory *tmem,
+                unsigned job_no, unsigned tex)
+{
+        struct mali_texture_descriptor *PANDECODE_PTR_VAR(t, tmem, u);
+
+        pandecode_log("struct mali_texture_descriptor texture_descriptor_%"PRIx64"_%d_%d = {\n", u, job_no, tex);
+        pandecode_indent++;
+
+        pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", t->width + 1);
+        pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", t->height + 1);
+        pandecode_prop("depth = MALI_POSITIVE(%" PRId16 ")", t->depth + 1);
+        pandecode_prop("array_size = MALI_POSITIVE(%" PRId16 ")", t->array_size + 1);
+        pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
+
+        struct mali_texture_format f = t->format;
+
+        pandecode_log(".format = {\n");
+        pandecode_indent++;
+
+        pandecode_log(".format = ");
+        pandecode_format_short(f.format);
+        pandecode_swizzle(f.swizzle, f.format);
+        pandecode_log_cont(",\n");
+
+        pandecode_prop("type = %s", pandecode_texture_type(f.type));
+        pandecode_prop("srgb = %" PRId32, f.srgb);
+        pandecode_prop("usage2 = 0x%" PRIx32, f.usage2);
+
+        if (f.unknown1) {
+                pandecode_msg("XXX: texture format zero tripped\n");
+                pandecode_prop("unknown1 = %" PRId32, f.unknown1);
+        }
+
+        pandecode_indent--;
+        pandecode_log("},\n");
+
+        if (t->swizzle_zero) {
+                pandecode_msg("XXX: swizzle zero tripped\n");
+                pandecode_prop("swizzle_zero = %d", t->swizzle_zero);
+        }
+
+        if (t->unknown3 | t->unknown3A | t->unknown5 | t->unknown6 | t->unknown7) {
+                pandecode_msg("XXX: texture zero tripped\n");
+                pandecode_prop("unknown3 = %" PRId16, t->unknown3);
+                pandecode_prop("unknown3A = %" PRId8, t->unknown3A);
+                pandecode_prop("unknown5 = 0x%" PRIx32, t->unknown5);
+                pandecode_prop("unknown6 = 0x%" PRIx32, t->unknown6);
+                pandecode_prop("unknown7 = 0x%" PRIx32, t->unknown7);
+        }
+
+        pandecode_log(".payload = {\n");
+        pandecode_indent++;
+
+        /* A bunch of bitmap pointers follow.
+         * We work out the correct number,
+         * based on the mipmap/cubemap
+         * properties, but dump extra
+         * possibilities to futureproof */
+
+        int bitmap_count = MALI_NEGATIVE(t->nr_mipmap_levels);
+        bool manual_stride = f.usage2 & MALI_TEX_MANUAL_STRIDE;
+
+        /* Miptree for each face */
+        if (f.type == MALI_TEX_CUBE)
+                bitmap_count *= 6;
+
+        /* Array of textures */
+        bitmap_count *= MALI_NEGATIVE(t->array_size);
+
+        /* Stride for each element */
+        if (manual_stride)
+                bitmap_count *= 2;
+
+        /* Sanity check the size */
+        int max_count = sizeof(t->payload) / sizeof(t->payload[0]);
+        assert (bitmap_count <= max_count);
+
+        for (int i = 0; i < bitmap_count; ++i) {
+                /* How we dump depends if this is a stride or a pointer */
+
+                if ((f.usage2 & MALI_TEX_MANUAL_STRIDE) && (i & 1)) {
+                        /* signed 32-bit snuck in as a 64-bit pointer */
+                        uint64_t stride_set = t->payload[i];
+                        uint32_t clamped_stride = stride_set;
+                        int32_t stride = clamped_stride;
+                        assert(stride_set == clamped_stride);
+                        pandecode_log("(mali_ptr) %d /* stride */, \n", stride);
+                } else {
+                        char *a = pointer_as_memory_reference(t->payload[i]);
+                        pandecode_log("%s, \n", a);
+                        free(a);
+                }
+        }
+
+        pandecode_indent--;
+        pandecode_log("},\n");
+
+        pandecode_indent--;
+        pandecode_log("};\n");
+}
+
+static void
+pandecode_vertex_tiler_postfix_pre(
+                const struct mali_vertex_tiler_postfix *p,
                 int job_no, enum mali_job_type job_type,
                 char *suffix, bool is_bifrost)
 {
@@ -2025,108 +2129,11 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                         pandecode_log("};\n");
 
                         /* Now, finally, descend down into the texture descriptor */
-                        for (int tex = 0; tex < texture_count; ++tex) {
+                        for (unsigned tex = 0; tex < texture_count; ++tex) {
                                 mali_ptr *PANDECODE_PTR_VAR(u, mmem, p->texture_trampoline + tex * sizeof(mali_ptr));
                                 struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(*u);
-
-                                if (tmem) {
-                                        struct mali_texture_descriptor *PANDECODE_PTR_VAR(t, tmem, *u);
-
-                                        pandecode_log("struct mali_texture_descriptor texture_descriptor_%"PRIx64"_%d_%d = {\n", *u, job_no, tex);
-                                        pandecode_indent++;
-
-                                        pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", t->width + 1);
-                                        pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", t->height + 1);
-                                        pandecode_prop("depth = MALI_POSITIVE(%" PRId16 ")", t->depth + 1);
-                                        pandecode_prop("array_size = MALI_POSITIVE(%" PRId16 ")", t->array_size + 1);
-                                        pandecode_prop("nr_mipmap_levels = %" PRId8, t->nr_mipmap_levels);
-
-                                        struct mali_texture_format f = t->format;
-
-                                        pandecode_log(".format = {\n");
-                                        pandecode_indent++;
-
-                                        pandecode_log(".format = ");
-                                        pandecode_format_short(f.format);
-                                        pandecode_swizzle(f.swizzle, f.format);
-                                        pandecode_log_cont(",\n");
-
-                                        pandecode_prop("type = %s", pandecode_texture_type(f.type));
-                                        pandecode_prop("srgb = %" PRId32, f.srgb);
-                                        pandecode_prop("usage2 = 0x%" PRIx32, f.usage2);
-
-                                        if (f.unknown1) {
-                                                pandecode_msg("XXX: texture format zero tripped\n");
-                                                pandecode_prop("unknown1 = %" PRId32, f.unknown1);
-                                        }
-
-                                        pandecode_indent--;
-                                        pandecode_log("},\n");
-
-                                        if (t->swizzle_zero) {
-                                                pandecode_msg("XXX: swizzle zero tripped\n");
-                                                pandecode_prop("swizzle_zero = %d", t->swizzle_zero);
-                                        }
-
-                                        if (t->unknown3 | t->unknown3A | t->unknown5 | t->unknown6 | t->unknown7) {
-                                                pandecode_msg("XXX: texture zero tripped\n");
-                                                pandecode_prop("unknown3 = %" PRId16, t->unknown3);
-                                                pandecode_prop("unknown3A = %" PRId8, t->unknown3A);
-                                                pandecode_prop("unknown5 = 0x%" PRIx32, t->unknown5);
-                                                pandecode_prop("unknown6 = 0x%" PRIx32, t->unknown6);
-                                                pandecode_prop("unknown7 = 0x%" PRIx32, t->unknown7);
-                                        }
-
-                                        pandecode_log(".payload = {\n");
-                                        pandecode_indent++;
-
-                                        /* A bunch of bitmap pointers follow.
-                                         * We work out the correct number,
-                                         * based on the mipmap/cubemap
-                                         * properties, but dump extra
-                                         * possibilities to futureproof */
-
-                                        int bitmap_count = MALI_NEGATIVE(t->nr_mipmap_levels);
-                                        bool manual_stride = f.usage2 & MALI_TEX_MANUAL_STRIDE;
-
-                                        /* Miptree for each face */
-                                        if (f.type == MALI_TEX_CUBE)
-                                                bitmap_count *= 6;
-
-                                        /* Array of textures */
-                                        bitmap_count *= MALI_NEGATIVE(t->array_size);
-
-                                        /* Stride for each element */
-                                        if (manual_stride)
-                                                bitmap_count *= 2;
-
-                                        /* Sanity check the size */
-                                        int max_count = sizeof(t->payload) / sizeof(t->payload[0]);
-                                        assert (bitmap_count <= max_count);
-
-                                        for (int i = 0; i < bitmap_count; ++i) {
-                                                /* How we dump depends if this is a stride or a pointer */
-
-                                                if ((f.usage2 & MALI_TEX_MANUAL_STRIDE) && (i & 1)) {
-                                                        /* signed 32-bit snuck in as a 64-bit pointer */
-                                                        uint64_t stride_set = t->payload[i];
-                                                        uint32_t clamped_stride = stride_set;
-                                                        int32_t stride = clamped_stride;
-                                                        assert(stride_set == clamped_stride);
-                                                        pandecode_log("(mali_ptr) %d /* stride */, \n", stride);
-                                                } else {
-                                                        char *a = pointer_as_memory_reference(t->payload[i]);
-                                                        pandecode_log("%s, \n", a);
-                                                        free(a);
-                                                }
-                                        }
-
-                                        pandecode_indent--;
-                                        pandecode_log("},\n");
-
-                                        pandecode_indent--;
-                                        pandecode_log("};\n");
-                                }
+                                if (tmem)
+                                        pandecode_texture(*u, tmem, job_no, tex);
                         }
                 }
         }
