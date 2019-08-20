@@ -845,7 +845,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
                 }
 
                 if (rt->zero1 || rt->zero2 || rt->zero3) {
-                        pandecode_msg("render target zeros tripped\n");
+                        pandecode_msg("XXX: render target zeros tripped\n");
                         pandecode_prop("zero1 = 0x%" PRIx64, rt->zero1);
                         pandecode_prop("zero2 = 0x%" PRIx32, rt->zero2);
                         pandecode_prop("zero3 = 0x%" PRIx32, rt->zero3);
@@ -927,7 +927,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment);
 
         if (fb->zero3 || fb->zero4) {
-                pandecode_msg("framebuffer zeros tripped\n");
+                pandecode_msg("XXX: framebuffer zeros tripped\n");
                 pandecode_prop("zero3 = 0x%" PRIx32, fb->zero3);
                 pandecode_prop("zero4 = 0x%" PRIx32, fb->zero4);
         }
@@ -963,7 +963,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
                         MEMORY_PROP_DIR(fbx->ds_afbc, depth_stencil);
 
                         if (fbx->ds_afbc.zero1 || fbx->ds_afbc.padding) {
-                                pandecode_msg("Depth/stencil AFBC zeros tripped\n");
+                                pandecode_msg("XXX: Depth/stencil AFBC zeros tripped\n");
                                 pandecode_prop("zero1 = 0x%" PRIx32,
                                                fbx->ds_afbc.zero1);
                                 pandecode_prop("padding = 0x%" PRIx64,
@@ -991,7 +991,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
                         if (fbx->ds_linear.depth_stride_zero ||
                             fbx->ds_linear.stencil_stride_zero ||
                             fbx->ds_linear.zero1 || fbx->ds_linear.zero2) {
-                                pandecode_msg("Depth/stencil zeros tripped\n");
+                                pandecode_msg("XXX: Depth/stencil zeros tripped\n");
                                 pandecode_prop("depth_stride_zero = 0x%x",
                                                fbx->ds_linear.depth_stride_zero);
                                 pandecode_prop("stencil_stride_zero = 0x%x",
@@ -1007,7 +1007,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
                 }
 
                 if (fbx->zero3 || fbx->zero4) {
-                        pandecode_msg("fb_extra zeros tripped\n");
+                        pandecode_msg("XXX: fb_extra zeros tripped\n");
                         pandecode_prop("zero3 = 0x%" PRIx64, fbx->zero3);
                         pandecode_prop("zero4 = 0x%" PRIx64, fbx->zero4);
                 }
@@ -1187,7 +1187,7 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                         pandecode_prop("unk = 0x%x", attr[i].unk);
                         pandecode_prop("magic_divisor = 0x%08x", attr[i].magic_divisor);
                         if (attr[i].zero != 0)
-                                pandecode_prop("zero = 0x%x /* XXX zero tripped */", attr[i].zero);
+                                pandecode_prop("XXX: zero tripped (0x%x)\n", attr[i].zero);
                         pandecode_prop("divisor = %d", attr[i].divisor);
                         pandecode_magic_divisor(attr[i].magic_divisor, attr[i - 1].shift, attr[i].divisor, attr[i - 1].extra_flags);
                         pandecode_indent--;
@@ -1236,7 +1236,7 @@ pandecode_stencil(const char *name, const struct mali_stencil_test *stencil)
         const char *dppass = pandecode_stencil_op(stencil->dppass);
 
         if (stencil->zero)
-                pandecode_msg("Stencil zero tripped: %X\n", stencil->zero);
+                pandecode_msg("XXX: stencil zero tripped: %X\n", stencil->zero);
 
         pandecode_log(".stencil_%s = {\n", name);
         pandecode_indent++;
@@ -1254,7 +1254,7 @@ static void
 pandecode_blend_equation(const struct mali_blend_equation *blend)
 {
         if (blend->zero1)
-                pandecode_msg("Blend zero tripped: %X\n", blend->zero1);
+                pandecode_msg("XXX: blend zero tripped: %X\n", blend->zero1);
 
         pandecode_log(".equation = {\n");
         pandecode_indent++;
@@ -1510,7 +1510,7 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
                 pandecode_prop("offset_bias_correction = %d", p->offset_bias_correction);
 
         if (p->zero1) {
-                pandecode_msg("Zero tripped\n");
+                pandecode_msg("XXX: payload zero tripped\n");
                 pandecode_prop("zero1 = 0x%" PRIx32, p->zero1);
         }
 
@@ -1557,8 +1557,10 @@ pandecode_scratchpad(uintptr_t pscratchpad, int job_no, char *suffix)
 
         struct bifrost_scratchpad *PANDECODE_PTR_VAR(scratchpad, mem, pscratchpad);
 
-        if (scratchpad->zero)
-                pandecode_msg("XXX scratchpad zero tripped");
+        if (scratchpad->zero) {
+                pandecode_msg("XXX: scratchpad zero tripped");
+                pandecode_prop("zero = 0x%x\n", scratchpad->zero);
+        }
 
         pandecode_log("struct bifrost_scratchpad scratchpad_%"PRIx64"_%d%s = {\n", pscratchpad, job_no, suffix);
         pandecode_indent++;
@@ -1915,7 +1917,7 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
 
                                         if (t->swizzle_zero) {
                                                 /* Shouldn't happen */
-                                                pandecode_msg("Swizzle zero tripped but replay will be fine anyway");
+                                                pandecode_msg("XXX: swizzle zero tripped\n");
                                                 pandecode_prop("swizzle_zero = %d", t->swizzle_zero);
                                         }
 
@@ -2007,7 +2009,7 @@ pandecode_vertex_tiler_postfix_pre(const struct mali_vertex_tiler_postfix *p,
                                 pandecode_prop("compare_func = %s", pandecode_alt_func(s->compare_func));
 
                                 if (s->zero || s->zero2) {
-                                        pandecode_msg("Zero tripped\n");
+                                        pandecode_msg("XXX: sampler zero tripped\n");
                                         pandecode_prop("zero = 0x%X, 0x%X\n", s->zero, s->zero2);
                                 }
 
@@ -2054,7 +2056,7 @@ pandecode_vertex_only_bfr(struct bifrost_vertex_only *v)
         pandecode_prop("unk2 = 0x%x", v->unk2);
 
         if (v->zero0 || v->zero1) {
-                pandecode_msg("vertex only zero tripped");
+                pandecode_msg("XXX: vertex only zero tripped");
                 pandecode_prop("zero0 = 0x%" PRIx32, v->zero0);
                 pandecode_prop("zero1 = 0x%" PRIx64, v->zero1);
         }
@@ -2074,13 +2076,13 @@ pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
         pandecode_indent++;
 
         if (h->zero) {
-                pandecode_msg("tiler heap zero tripped\n");
+                pandecode_msg("XXX: tiler heap zero tripped\n");
                 pandecode_prop("zero = 0x%x", h->zero);
         }
 
         for (int i = 0; i < 12; i++) {
                 if (h->zeros[i] != 0) {
-                        pandecode_msg("tiler heap zero %d tripped, value %x\n",
+                        pandecode_msg("XXX: tiler heap zero %d tripped, value %x\n",
                                       i, h->zeros[i]);
                 }
         }
@@ -2118,7 +2120,7 @@ pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
         pandecode_indent++;
 
         if (t->zero0 || t->zero1) {
-                pandecode_msg("tiler meta zero tripped");
+                pandecode_msg("XXX: tiler meta zero tripped\n");
                 pandecode_prop("zero0 = 0x%" PRIx64, t->zero0);
                 pandecode_prop("zero1 = 0x%" PRIx64, t->zero1);
         }
@@ -2131,7 +2133,7 @@ pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
 
         for (int i = 0; i < 12; i++) {
                 if (t->zeros[i] != 0) {
-                        pandecode_msg("tiler heap zero %d tripped, value %" PRIx64 "\n",
+                        pandecode_msg("XXX: tiler heap zero %d tripped, value %" PRIx64 "\n",
                                       i, t->zeros[i]);
                 }
         }
@@ -2182,7 +2184,7 @@ pandecode_tiler_only_bfr(const struct bifrost_tiler_only *t, int job_no)
 
         if (t->zero1 || t->zero2 || t->zero3 || t->zero4 || t->zero5
             || t->zero6 || t->zero7 || t->zero8) {
-                pandecode_msg("tiler only zero tripped");
+                pandecode_msg("XXX: tiler only zero tripped\n");
                 pandecode_prop("zero1 = 0x%" PRIx64, t->zero1);
                 pandecode_prop("zero2 = 0x%" PRIx64, t->zero2);
                 pandecode_prop("zero3 = 0x%" PRIx64, t->zero3);
@@ -2290,7 +2292,7 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
                 pandecode_prop("offset_start = %d", v->offset_start);
 
         if (v->zero5) {
-                pandecode_msg("Zero tripped\n");
+                pandecode_msg("XXX: midgard payload zero tripped\n");
                 pandecode_prop("zero5 = 0x%" PRIx64, v->zero5);
         }
 
