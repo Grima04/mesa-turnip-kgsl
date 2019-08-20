@@ -1229,26 +1229,6 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
 
         union mali_attr *attr = pandecode_fetch_gpu_mem(mem, addr, sizeof(union mali_attr) * count);
 
-        char base[128];
-        snprintf(base, sizeof(base), "%s_data_%d%s", prefix, job_no, suffix);
-
-        for (int i = 0; i < count; ++i) {
-                enum mali_attr_mode mode = attr[i].elements & 7;
-
-                if (mode == MALI_ATTR_UNUSED)
-                        continue;
-
-                mali_ptr raw_elements = attr[i].elements & ~7;
-
-                /* TODO: Do we maybe want to dump the attribute values
-                 * themselves given the specified format? Or is that too hard?
-                 * */
-
-                char *a = pointer_as_memory_reference(raw_elements);
-                pandecode_log("mali_ptr %s_%d_p = %s;\n", base, i, a);
-                free(a);
-        }
-
         pandecode_log("union mali_attr %s_%d[] = {\n", prefix, job_no);
         pandecode_indent++;
 
@@ -1256,8 +1236,16 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                 pandecode_log("{\n");
                 pandecode_indent++;
 
-                unsigned mode = attr[i].elements & 7;
-                pandecode_prop("elements = (%s_%d_p) | %s", base, i, pandecode_attr_mode(mode));
+                enum mali_attr_mode mode = attr[i].elements & 7;
+
+                if (mode == MALI_ATTR_UNUSED)
+                        pandecode_msg("XXX: unused attribute record\n");
+
+                mali_ptr raw_elements = attr[i].elements & ~7;
+                char *a = pointer_as_memory_reference(raw_elements);
+                pandecode_prop("elements = (%s) | %s", a, pandecode_attr_mode(mode));
+                free(a);
+
                 pandecode_prop("shift = %d", attr[i].shift);
                 pandecode_prop("extra_flags = %d", attr[i].extra_flags);
                 pandecode_prop("stride = 0x%" PRIx32, attr[i].stride);
