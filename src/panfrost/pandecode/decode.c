@@ -414,16 +414,21 @@ pandecode_stencil_op(enum mali_stencil_op op)
 #undef DEFINE_CASE
 
 #define DEFINE_CASE(name) case MALI_ATTR_ ## name: return "MALI_ATTR_" #name
-static char *pandecode_attr_mode(enum mali_attr_mode mode)
+static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
 {
         switch(mode) {
-                DEFINE_CASE(UNUSED);
-                DEFINE_CASE(LINEAR);
-                DEFINE_CASE(POT_DIVIDE);
-                DEFINE_CASE(MODULO);
-                DEFINE_CASE(NPOT_DIVIDE);
-                DEFINE_CASE(IMAGE);
-                DEFINE_CASE(INTERNAL);
+                /* TODO: Combine to just "instanced" once this can be done
+                 * unambiguously in all known cases */
+        case MALI_ATTR_POT_DIVIDE:
+                return "instanced_pot";
+        case MALI_ATTR_MODULO:
+                return "instanced_mod";
+        case MALI_ATTR_NPOT_DIVIDE:
+                return "instanced_npot";
+        case MALI_ATTR_IMAGE:
+                return "image";
+        case MALI_ATTR_INTERNAL:
+                return "internal";
         default:
                 pandecode_msg("XXX: invalid attribute mode %X\n", mode);
                 return "";
@@ -1220,7 +1225,7 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                             mali_ptr addr, int job_no, char *suffix,
                             int count, bool varying)
 {
-        char *prefix = varying ? "varyings" : "attributes";
+        char *prefix = varying ? "varying" : "attribute";
 
         if (!addr) {
                 pandecode_msg("no %s\n", prefix);
@@ -1233,26 +1238,48 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
         pandecode_indent++;
 
         for (int i = 0; i < count; ++i) {
-                pandecode_log("{\n");
-                pandecode_indent++;
-
                 enum mali_attr_mode mode = attr[i].elements & 7;
 
                 if (mode == MALI_ATTR_UNUSED)
                         pandecode_msg("XXX: unused attribute record\n");
 
+                pandecode_make_indent();
+
+                /* For non-linear records, we need to print the type of record */
+                if (mode != MALI_ATTR_LINEAR)
+                        pandecode_log_cont("%s ", pandecode_attr_mode_short(mode));
+
+                /* Print the name to link with attr_meta */
+                pandecode_log_cont("%s_%d", prefix, i);
+
+                /* Print the stride and size */
+                pandecode_log_cont("<%u>[%u]", attr[i].stride, attr[i].size);
+
+                /* Check: the size must be divisible by the stride */
+                if (attr[i].size % attr[i].stride)
+                        pandecode_msg("XXX: size not divisible by stride\n");
+
+                /* TODO: Sanity check the quotient itself -- it should equal
+                 * vertex count (or something computed from it for instanced)
+                 * which means we can check and elide */
+
+                /* Finally, print the pointer */
                 mali_ptr raw_elements = attr[i].elements & ~7;
                 char *a = pointer_as_memory_reference(raw_elements);
-                pandecode_prop("elements = (%s) | %s", a, pandecode_attr_mode(mode));
+                pandecode_log_cont(" = (%s);\n", a);
                 free(a);
 
                 /* Check the pointer */
                 pandecode_validate_buffer(raw_elements, attr[i].size);
 
-                pandecode_prop("shift = %d", attr[i].shift);
-                pandecode_prop("extra_flags = %d", attr[i].extra_flags);
-                pandecode_prop("stride = 0x%" PRIx32, attr[i].stride);
-                pandecode_prop("size = 0x%" PRIx32, attr[i].size);
+                /* shift/extra_flags exist only for instanced */
+                if (attr[i].shift | attr[i].extra_flags) {
+                        if (mode == MALI_ATTR_LINEAR)
+                                pandecode_msg("XXX: instancing fields set for linear\n");
+
+                        pandecode_prop("shift = %d", attr[i].shift);
+                        pandecode_prop("extra_flags = %d", attr[i].extra_flags);
+                }
 
                 /* Decode further where possible */
 
@@ -1261,9 +1288,6 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                                 attr[i].shift,
                                 attr[i].extra_flags);
                 }
-
-                pandecode_indent--;
-                pandecode_log("}, \n");
 
                 if (mode == MALI_ATTR_NPOT_DIVIDE) {
                         i++;
