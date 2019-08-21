@@ -175,6 +175,7 @@ enum {
 
 	/* 3D engine options: */
 	DBG_NO_GFX,
+	DBG_NO_NGG,
 	DBG_ALWAYS_PD,
 	DBG_PD,
 	DBG_NO_PD,

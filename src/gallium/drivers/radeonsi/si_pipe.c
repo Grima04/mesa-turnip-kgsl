@@ -89,6 +89,7 @@ static const struct debug_named_value debug_options[] = {
 
 	/* 3D engine options: */
 	{ "nogfx", DBG(NO_GFX), "Disable graphics. Only multimedia compute paths can be used." },
+	{ "nongg", DBG(NO_NGG), "Disable NGG and use the legacy pipeline." },
 	{ "alwayspd", DBG(ALWAYS_PD), "Always enable the primitive discard compute shader." },
 	{ "pd", DBG(PD), "Enable the primitive discard compute shader for large draw calls." },
 	{ "nopd", DBG(NO_PD), "Disable the primitive discard compute shader." },
@@ -1123,7 +1124,8 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	}
 
 	sscreen->use_ngg = sscreen->info.chip_class >= GFX10 &&
-			   sscreen->info.family != CHIP_NAVI14;
+			   sscreen->info.family != CHIP_NAVI14 &&
+			   !(sscreen->debug_flags & DBG(NO_NGG));
 	sscreen->use_ngg_streamout = false;
 
 	/* Only enable primitive binning on APUs by default. */
