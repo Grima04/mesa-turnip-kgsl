@@ -1294,8 +1294,13 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
 
                 /* shift/extra_flags exist only for instanced */
                 if (attr[i].shift | attr[i].extra_flags) {
+                        /* These are set to random values by the blob for
+                         * varyings, most likely a symptom of uninitialized
+                         * memory where the hardware masked the bug. As such we
+                         * put this at a warning, not an error. */
+
                         if (mode == MALI_ATTR_LINEAR)
-                                pandecode_msg("XXX: instancing fields set for linear\n");
+                                pandecode_msg("warn: instancing fields set for linear\n");
 
                         pandecode_prop("shift = %d", attr[i].shift);
                         pandecode_prop("extra_flags = %d", attr[i].extra_flags);
@@ -1744,13 +1749,13 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                 disassemble_bifrost(code, sz, false);
 
                 /* TODO: Extend stats to Bifrost */
-                stats.texture_count = -1;
-                stats.sampler_count = -1;
-                stats.attribute_count = -1;
-                stats.varying_count = -1;
-                stats.uniform_count = -1;
-                stats.uniform_buffer_count = -1;
-                stats.work_count = -1;
+                stats.texture_count = -128;
+                stats.sampler_count = -128;
+                stats.attribute_count = -128;
+                stats.varying_count = -128;
+                stats.uniform_count = -128;
+                stats.uniform_buffer_count = -128;
+                stats.work_count = -128;
 
                 stats.instruction_count = 0;
                 stats.bundle_count = 0;
@@ -1931,6 +1936,36 @@ pandecode_texture(mali_ptr u,
         pandecode_log("};\n");
 }
 
+/* For shader properties like texture_count, we have a claimed property in the shader_meta, and the actual Truth from static analysis (this may just be an upper limit). We validate accordingly */
+
+static void
+pandecode_shader_prop(const char *name, unsigned claim, signed truth, bool fuzzy)
+{
+        /* Nothing to do */
+        if (claim == truth)
+                return;
+
+        if (fuzzy)
+                assert(truth >= 0);
+
+        if ((truth >= 0) && !fuzzy) {
+                pandecode_msg("XXX: expected %s = %d, claimed %u\n",
+                                name, truth, claim);
+        } else if ((claim > -truth) && !fuzzy) {
+                pandecode_msg("XXX: expected %s <= %u, claimed %u\n",
+                                name, -truth, claim);
+        } else if (fuzzy && (claim < truth))
+                pandecode_msg("XXX: expected %s >= %u, claimed %u\n",
+                                name, truth, claim);
+
+        pandecode_log(".%s = %" PRId16, name, claim);
+
+        if (fuzzy)
+                pandecode_log_cont(" /* %u used */", truth);
+
+        pandecode_log_cont(",\n");
+}
+
 static void
 pandecode_vertex_tiler_postfix_pre(
                 const struct mali_vertex_tiler_postfix *p,
@@ -1967,10 +2002,23 @@ pandecode_vertex_tiler_postfix_pre(
                 struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(shader_meta_ptr);
                 struct mali_shader_meta *PANDECODE_PTR_VAR(s, smem, shader_meta_ptr);
 
-                /* Disassemble ahead-of-time to get stats */
+                /* Disassemble ahead-of-time to get stats. Initialize with
+                 * stats for the missing-shader case so we get validation
+                 * there, too */
+
+                struct midgard_disasm_stats info = {
+                        .texture_count = 0,
+                        .sampler_count = 0,
+                        .attribute_count = 0,
+                        .varying_count = 0,
+                        .work_count = 1,
+
+                        .uniform_count = -128,
+                        .uniform_buffer_count = 0
+                };
 
                 if (s->shader & ~0xF)
-                        pandecode_shader_disassemble(s->shader & ~0xF, job_no, job_type, is_bifrost);
+                        info = pandecode_shader_disassemble(s->shader & ~0xF, job_no, job_type, is_bifrost);
 
                 pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", shader_meta_ptr, job_no, suffix);
                 pandecode_indent++;
@@ -1991,36 +2039,31 @@ pandecode_vertex_tiler_postfix_pre(
 
                 pandecode_shader_address("shader", s->shader);
 
-                pandecode_prop("texture_count = %" PRId16, s->texture_count);
-                pandecode_prop("sampler_count = %" PRId16, s->sampler_count);
-                pandecode_prop("attribute_count = %" PRId16, s->attribute_count);
-                pandecode_prop("varying_count = %" PRId16, s->varying_count);
+                pandecode_shader_prop("texture_count", s->texture_count, info.texture_count, false);
+                pandecode_shader_prop("sampler_count", s->sampler_count, info.sampler_count, false);
+                pandecode_shader_prop("attribute_count", s->attribute_count, info.attribute_count, false);
+                pandecode_shader_prop("varying_count", s->varying_count, info.varying_count, false);
+                pandecode_shader_prop("uniform_buffer_count",
+                                uniform_buffer_count,
+                                info.uniform_buffer_count, true);
+
+                if (!is_bifrost) {
+                        pandecode_shader_prop("uniform_count",
+                                        uniform_count,
+                                        info.uniform_count, false);
+
+                        pandecode_shader_prop("work_count",
+                                        s->midgard1.work_count, info.work_count, false);
+                }
 
                 if (is_bifrost) {
-                        pandecode_log(".bifrost1 = {\n");
-                        pandecode_indent++;
-
-                        pandecode_prop("uniform_buffer_count = %" PRId32, s->bifrost1.uniform_buffer_count);
-                        pandecode_prop("unk1 = 0x%" PRIx32, s->bifrost1.unk1);
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
+                        pandecode_prop("bifrost1.unk1 = 0x%" PRIx32, s->bifrost1.unk1);
                 } else {
-                        pandecode_log(".midgard1 = {\n");
-                        pandecode_indent++;
-
-                        pandecode_prop("uniform_count = %" PRId16, s->midgard1.uniform_count);
-                        pandecode_prop("uniform_buffer_count = %" PRId16, s->midgard1.uniform_buffer_count);
-                        pandecode_prop("work_count = %" PRId16, s->midgard1.work_count);
-
-                        pandecode_log(".flags = ");
+                        pandecode_log(".midgard1.flags = ");
                         pandecode_log_decoded_flags(shader_midgard1_flag_info, s->midgard1.flags);
                         pandecode_log_cont(",\n");
 
-                        pandecode_prop("unknown2 = 0x%" PRIx32, s->midgard1.unknown2);
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
+                        pandecode_prop("midgard1.unknown2 = 0x%" PRIx32, s->midgard1.unknown2);
                 }
 
                 if (s->depth_units || s->depth_factor) {
@@ -2195,7 +2238,7 @@ pandecode_vertex_tiler_postfix_pre(
                 if (uniform_buffer_count)
                         pandecode_uniform_buffers(p->uniform_buffers, uniform_buffer_count, job_no);
                 else
-                        pandecode_msg("XXX: UBOs specified but not referenced\n");
+                        pandecode_msg("warn: UBOs specified but not referenced\n");
         } else if (uniform_buffer_count)
                 pandecode_msg("XXX: UBOs referenced but not specified\n");
 
@@ -2206,7 +2249,7 @@ pandecode_vertex_tiler_postfix_pre(
                 if (uniform_count)
                         pandecode_validate_buffer(p->uniforms, uniform_count * 16);
                 else
-                        pandecode_msg("XXX: Uniforms specified but not referenced\n");
+                        pandecode_msg("warn: Uniforms specified but not referenced\n");
         } else if (uniform_count)
                 pandecode_msg("XXX: Uniforms referenced but not specified\n");
 
