@@ -1322,21 +1322,14 @@ pandecode_shader_address(const char *name, mali_ptr ptr)
         return shader_ptr;
 }
 
-static bool
-all_zero(unsigned *buffer, unsigned count)
-{
-        for (unsigned i = 0; i < count; ++i) {
-                if (buffer[i])
-                        return false;
-        }
-
-        return true;
-}
-
 static void
 pandecode_stencil(const char *name, const struct mali_stencil_test *stencil)
 {
-        if (all_zero((unsigned *) stencil, sizeof(stencil) / sizeof(unsigned)))
+        unsigned any_nonzero =
+                stencil->ref | stencil->mask | stencil->func |
+                stencil->sfail | stencil->dpfail | stencil->dppass;
+
+        if (any_nonzero == 0)
                 return;
 
         const char *func = pandecode_func(stencil->func);
@@ -1418,7 +1411,8 @@ pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
 static mali_ptr
 pandecode_midgard_blend(union midgard_blend *blend, bool is_shader)
 {
-        if (all_zero((unsigned *) blend, sizeof(blend) / sizeof(unsigned)))
+        /* constant/equation is in a union */
+        if (!blend->shader)
                 return 0;
 
         pandecode_log(".blend = {\n");
