@@ -2565,7 +2565,9 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 
 	/* The GS copy shader is always pre-compiled. */
 	if (sel->type == PIPE_SHADER_GEOMETRY &&
-	    (!sscreen->use_ngg || sel->tess_turns_off_ngg)) {
+	    (!sscreen->use_ngg ||
+	     !sscreen->use_ngg_streamout || /* also for PRIMITIVES_GENERATED */
+	     sel->tess_turns_off_ngg)) {
 		sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
 		if (!sel->gs_copy_shader) {
 			fprintf(stderr, "radeonsi: can't create GS copy shader\n");
