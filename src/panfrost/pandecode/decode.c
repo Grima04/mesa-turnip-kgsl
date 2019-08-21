@@ -2114,8 +2114,27 @@ pandecode_vertex_tiler_postfix_pre(
                                 else
                                         shader = pandecode_midgard_blend_mrt(blend_base, job_no, i);
 
-                                if (shader & ~0xF)
-                                        pandecode_shader_disassemble(shader, job_no, job_type, false, 0);
+                                if (shader & ~0xF) {
+                                        struct midgard_disasm_stats stats =
+                                                pandecode_shader_disassemble(shader, job_no, job_type, false, 0);
+
+                                        bool has_texture = (stats.texture_count > 0);
+                                        bool has_sampler = (stats.sampler_count > 0);
+                                        bool has_attribute = (stats.attribute_count > 0);
+                                        bool has_varying = (stats.varying_count > 0);
+                                        bool has_uniform = (stats.uniform_count > 0);
+                                        bool has_ubo = (stats.uniform_buffer_count > 0);
+
+                                        if (has_texture || has_sampler)
+                                                pandecode_msg("XXX: blend shader accessing textures\n");
+
+                                        if (has_attribute || has_varying)
+                                                pandecode_msg("XXX: blend shader accessing interstage\n");
+
+                                        if (has_uniform || has_ubo)
+                                                pandecode_msg("XXX: blend shader accessing uniforms\n");
+                                }
+
                         }
                 }
 
