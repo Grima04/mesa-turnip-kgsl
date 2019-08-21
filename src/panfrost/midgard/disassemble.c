@@ -114,6 +114,12 @@ prefix_for_bits(unsigned bits)
         }
 }
 
+/* For static analysis to ensure all registers are written at least once before
+ * use along the source code path (TODO: does this break done for complex CF?)
+ */
+
+uint16_t midg_ever_written = 0;
+
 static void
 print_reg(unsigned reg, unsigned bits)
 {
@@ -123,6 +129,27 @@ print_reg(unsigned reg, unsigned bits)
                 is_embedded_constant_int = is_instruction_int;
                 is_embedded_constant_half = (bits < 32);
         }
+
+        unsigned uniform_reg = 23 - reg;
+        bool is_uniform = false;
+
+        /* For r8-r15, it could be a work or uniform. We distinguish based on
+         * the fact work registers are ALWAYS written before use, but uniform
+         * registers are NEVER written before use. */
+
+        if ((reg >= 8 && reg < 16) && !(midg_ever_written & (1 << reg)))
+                is_uniform = true;
+
+        /* r16-r23 are always uniform */
+
+        if (reg >= 16 && reg <= 23)
+                is_uniform = true;
+
+        /* Update the uniform count appropriately */
+
+        if (is_uniform)
+                midg_stats.uniform_count =
+                        MAX2(uniform_reg + 1, midg_stats.uniform_count);
 
         char prefix = prefix_for_bits(bits);
 
