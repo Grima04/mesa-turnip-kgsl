@@ -1159,7 +1159,7 @@ radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 	image->clear_value_offset = image->htile_offset + image->planes[0].surface.htile_size;
 	image->size = image->clear_value_offset + image->info.levels * 8;
 	if (radv_image_is_tc_compat_htile(image) &&
-	    device->physical_device->has_tc_compat_zrange_bug) {
+	    device->physical_device->rad_info.has_tc_compat_zrange_bug) {
 		/* Metadata for the TC-compatible HTILE hardware bug which
 		 * have to be fixed by updating ZRANGE_PRECISION when doing
 		 * fast depth clears to 0.0f.

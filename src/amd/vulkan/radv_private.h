@@ -281,7 +281,6 @@ struct radv_physical_device {
 	struct wsi_device                       wsi_device;
 
 	bool rbplus_allowed; /* if RB+ is allowed */
-	bool has_tc_compat_zrange_bug;
 
 	bool out_of_order_rast_allowed;
 

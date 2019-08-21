@@ -1403,7 +1403,7 @@ radv_update_zrange_precision(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t db_z_info = ds->db_z_info;
 	uint32_t db_z_info_reg;
 
-	if (!cmd_buffer->device->physical_device->has_tc_compat_zrange_bug ||
+	if (!cmd_buffer->device->physical_device->rad_info.has_tc_compat_zrange_bug ||
 	    !radv_image_is_tc_compat_htile(image))
 		return;
 
@@ -1632,7 +1632,7 @@ radv_set_tc_compat_zrange_metadata(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-	if (!cmd_buffer->device->physical_device->has_tc_compat_zrange_bug)
+	if (!cmd_buffer->device->physical_device->rad_info.has_tc_compat_zrange_bug)
 		return;
 
 	uint64_t va = radv_get_tc_compat_zrange_va(image, range->baseMipLevel);

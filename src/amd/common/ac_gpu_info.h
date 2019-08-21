@@ -159,6 +159,7 @@ struct radeon_info {
 
 	/* Hardware bugs. */
 	bool                        has_gfx9_scissor_bug;
+	bool                        has_tc_compat_zrange_bug;
 };
 
 bool ac_query_gpu_info(int fd, void *dev_p,

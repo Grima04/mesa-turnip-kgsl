@@ -363,8 +363,6 @@ radv_physical_device_init(struct radv_physical_device *device,
 		                         device->rad_info.family == CHIP_RENOIR;
 	}
 
-	device->has_tc_compat_zrange_bug = device->rad_info.chip_class < GFX10;
-
 	device->out_of_order_rast_allowed = device->rad_info.has_out_of_order_rast &&
 					    !(device->instance->debug_flags & RADV_DEBUG_NO_OUT_OF_ORDER);
 
