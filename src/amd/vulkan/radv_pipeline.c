@@ -3812,6 +3812,14 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 	else
 		radeon_set_context_reg(ctx_cs, R_028B58_VGT_LS_HS_CONFIG,
 				       tess->ls_hs_config);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 &&
+	    !radv_pipeline_has_gs(pipeline) && !radv_pipeline_has_ngg(pipeline)) {
+		radeon_set_context_reg(ctx_cs, R_028A44_VGT_GS_ONCHIP_CNTL,
+		                       S_028A44_ES_VERTS_PER_SUBGRP(250) |
+		                       S_028A44_GS_PRIMS_PER_SUBGRP(126) |
+		                       S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
+	}
 }
 
 static void
