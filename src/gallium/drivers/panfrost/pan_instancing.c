@@ -228,7 +228,7 @@ panfrost_vertex_instanced(
 
                 /* Apply round-down algorithm? e <= 2^shift?. XXX: The blob
                  * seems to use a different condition */
-                if (e <= (1 << shift)) {
+                if (e <= (1ll << shift)) {
                         magic_divisor = m - 1;
                         extra_flags = 1;
                 }
