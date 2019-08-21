@@ -1912,11 +1912,6 @@ typedef struct {
    nir_const_value value[];
 } nir_load_const_instr;
 
-#define nir_const_load_to_arr(arr, l, m) \
-{ \
-   nir_const_value_to_array(arr, l->value, l->def.num_components, m); \
-} while (false);
-
 typedef enum {
    nir_jump_return,
    nir_jump_break,
