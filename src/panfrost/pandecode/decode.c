@@ -2523,33 +2523,17 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 {
         const struct mali_payload_fragment *PANDECODE_PTR_VAR(s, mem, payload);
 
-        bool fbd_dumped = false;
-
-        if (!is_bifrost && (s->framebuffer & FBD_TYPE) == MALI_SFBD) {
-                /* Only SFBDs are understood, not MFBDs. We're speculating,
-                 * based on the versioning, kernel code, etc, that the
-                 * difference is between Single FrameBuffer Descriptor and
-                 * Multiple FrmaeBuffer Descriptor; the change apparently lines
-                 * up with multi-framebuffer support being added (T7xx onwards,
-                 * including Gxx). In any event, there's some field shuffling
-                 * that we haven't looked into yet. */
+        if ((s->framebuffer & FBD_TYPE) == MALI_SFBD) {
+                if (is_bifrost)
+                        pandecode_msg("XXX: Bifrost fragment must use MFBD\n");
 
                 pandecode_sfbd(s->framebuffer & FBD_MASK, job_no, true);
-                fbd_dumped = true;
         } else if ((s->framebuffer & FBD_TYPE) == MALI_MFBD) {
-                /* We don't know if Bifrost supports SFBD's at all, since the
-                 * driver never uses them. And the format is different from
-                 * Midgard anyways, due to the tiler heap and scratchpad being
-                 * moved out into separate structures, so it's not clear what a
-                 * Bifrost SFBD would even look like without getting an actual
-                 * trace, which appears impossible.
-                 */
-
                 pandecode_mfbd_bfr(s->framebuffer & FBD_MASK, job_no, true);
-                fbd_dumped = true;
+        } else {
+                pandecode_msg("XXX: invalid fragment framebuffer type\n");
         }
 
-        uintptr_t p = (uintptr_t) s->framebuffer & FBD_MASK;
         pandecode_log("struct mali_payload_fragment payload_%"PRIx64"_%d = {\n", payload, job_no);
         pandecode_indent++;
 
@@ -2575,14 +2559,8 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         /* TODO: Decode */
         unsigned extra_flags = (s->framebuffer & ~FBD_MASK) & ~MALI_MFBD;
 
-        if (fbd_dumped)
-                pandecode_prop("framebuffer = framebuffer_%d_p | %s | 0x%X", job_no,
-                                fbd_type, extra_flags);
-        else {
-                char *a = pointer_as_memory_reference(p);
-                pandecode_prop("framebuffer = %s | %s | 0x%X", a, fbd_type, extra_flags);
-                free(a);
-        }
+        pandecode_prop("framebuffer = framebuffer_%d_p | %s | 0x%X", job_no,
+                        fbd_type, extra_flags);
 
         pandecode_indent--;
         pandecode_log("};\n");
