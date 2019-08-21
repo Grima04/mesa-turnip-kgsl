@@ -868,10 +868,7 @@ install_registers_instr(
                                                           new_swizzle, src.mask,
                                                           default_phys_reg(0), src);
                } else {
-                        unsigned r = encodes_src ?
-                                     args.src[0] : args.dest;
-
-                        struct phys_reg src = index_to_reg(ctx, g, r);
+                        struct phys_reg src = index_to_reg(ctx, g, args.dest);
 
                         ins->load_store.reg = src.reg;
 
