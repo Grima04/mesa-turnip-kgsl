@@ -117,7 +117,7 @@ emit_load_const(struct compiler_context *ctx, nir_load_const_instr *instr)
         nir_ssa_def def = instr->def;
 
         float *v = ralloc_array(NULL, float, 1);
-        nir_const_load_to_arr(v, instr, f32);
+        nir_const_value_to_array(v, instr->value, instr->def.num_components, f32);
         _mesa_hash_table_u64_insert(ctx->ssa_constants, def.index + 1, v);
 }
 
