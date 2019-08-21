@@ -2536,13 +2536,7 @@ _mesa_associate_uniform_storage(struct gl_context *ctx,
       if (params->Parameters[i].Type != PROGRAM_UNIFORM)
          continue;
 
-      unsigned location;
-      const bool found =
-         shader_program->UniformHash->get(location, params->Parameters[i].Name);
-      assert(found);
-
-      if (!found)
-         continue;
+      unsigned location = params->Parameters[i].UniformStorageIndex;
 
       struct gl_uniform_storage *storage =
          &shader_program->data->UniformStorage[location];
