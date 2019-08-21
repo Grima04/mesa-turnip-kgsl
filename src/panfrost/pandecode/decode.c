@@ -1659,29 +1659,18 @@ pandecode_uniform_buffers(mali_ptr pubufs, int ubufs_count, int job_no)
         struct pandecode_mapped_memory *umem = pandecode_find_mapped_gpu_mem_containing(pubufs);
         struct mali_uniform_buffer_meta *PANDECODE_PTR_VAR(ubufs, umem, pubufs);
 
-        pandecode_log("struct mali_uniform_buffer_meta uniform_buffers_%"PRIx64"_%d[] = {\n",
-                      pubufs, job_no);
-        pandecode_indent++;
-
         for (int i = 0; i < ubufs_count; i++) {
-                pandecode_log("{\n");
-                pandecode_indent++;
-
                 unsigned size = (ubufs[i].size + 1) * 16;
                 mali_ptr addr = ubufs[i].ptr << 2;
 
                 pandecode_validate_buffer(addr, size);
 
                 char *ptr = pointer_as_memory_reference(ubufs[i].ptr << 2);
-                pandecode_prop("size = %u", size);
-                pandecode_prop("ptr = (%s) >> 2", ptr);
-                pandecode_indent--;
-                pandecode_log("},\n");
+                pandecode_log("ubuf_%d[%u] = %s;\n", i, size, ptr);
                 free(ptr);
         }
 
-        pandecode_indent--;
-        pandecode_log("};\n");
+        pandecode_log("\n");
 }
 
 static void
