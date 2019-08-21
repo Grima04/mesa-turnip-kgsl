@@ -478,10 +478,34 @@ static unsigned si_get_num_vs_user_sgprs(unsigned num_always_on_user_sgprs)
 	return num_always_on_user_sgprs + 1;
 }
 
+/* Return VGPR_COMP_CNT for the API vertex shader. This can be hw LS, LSHS, ES, ESGS, VS. */
+static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen,
+					struct si_shader *shader, bool legacy_vs_prim_id)
+{
+	assert(shader->selector->type == PIPE_SHADER_VERTEX ||
+	       (shader->previous_stage_sel &&
+		shader->previous_stage_sel->type == PIPE_SHADER_VERTEX));
+
+	/* GFX6-9 LS    (VertexID, RelAutoindex,                InstanceID / StepRate0(==1), ...).
+	 * GFX6-9 ES,VS (VertexID, InstanceID / StepRate0(==1), VSPrimID,                    ...)
+	 * GFX10  LS    (VertexID, RelAutoindex,                UserVGPR1,                   InstanceID).
+	 * GFX10  ES,VS (VertexID, UserVGPR0,                   UserVGPR1 or VSPrimID,       UserVGPR2 or InstanceID)
+	 */
+	bool is_ls = shader->selector->type == PIPE_SHADER_TESS_CTRL || shader->key.as_ls;
+
+	if (sscreen->info.chip_class >= GFX10 && shader->info.uses_instanceid)
+		return 3;
+	else if ((is_ls && shader->info.uses_instanceid) || legacy_vs_prim_id)
+		return 2;
+	else if (is_ls || shader->info.uses_instanceid)
+		return 1;
+	else
+		return 0;
+}
+
 static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
 {
 	struct si_pm4_state *pm4;
-	unsigned vgpr_comp_cnt;
 	uint64_t va;
 
 	assert(sscreen->info.chip_class <= GFX8);
@@ -493,18 +517,12 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
 	va = shader->bo->gpu_address;
 	si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
-	/* We need at least 2 components for LS.
-	 * VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
-	 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
-	 */
-	vgpr_comp_cnt = shader->info.uses_instanceid ? 2 : 1;
-
 	si_pm4_set_reg(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
 	si_pm4_set_reg(pm4, R_00B524_SPI_SHADER_PGM_HI_LS, S_00B524_MEM_BASE(va >> 40));
 
 	shader->config.rsrc1 = S_00B528_VGPRS((shader->config.num_vgprs - 1) / 4) |
 			   S_00B528_SGPRS((shader->config.num_sgprs - 1) / 8) |
-		           S_00B528_VGPR_COMP_CNT(vgpr_comp_cnt) |
+		           S_00B528_VGPR_COMP_CNT(si_get_vs_vgpr_comp_cnt(sscreen, shader, false)) |
 			   S_00B528_DX10_CLAMP(1) |
 			   S_00B528_FLOAT_MODE(shader->config.float_mode);
 	shader->config.rsrc2 = S_00B52C_USER_SGPR(si_get_num_vs_user_sgprs(SI_VS_NUM_USER_SGPR)) |
@@ -515,7 +533,6 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 {
 	struct si_pm4_state *pm4;
 	uint64_t va;
-	unsigned ls_vgpr_comp_cnt = 0;
 
 	pm4 = si_get_shader_pm4_state(shader);
 	if (!pm4)
@@ -531,20 +548,6 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 		} else {
 			si_pm4_set_reg(pm4, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
 			si_pm4_set_reg(pm4, R_00B414_SPI_SHADER_PGM_HI_LS, S_00B414_MEM_BASE(va >> 40));
-		}
-
-		/* We need at least 2 components for LS.
-		 * GFX9  VGPR0-3: (VertexID, RelAutoindex, InstanceID / StepRate0, InstanceID).
-		 * GFX10 VGPR0-3: (VertexID, RelAutoindex, UserVGPR1, InstanceID).
-		 * On gfx9, StepRate0 is set to 1 so that VGPR3 doesn't have to
-		 * be loaded.
-		 */
-		ls_vgpr_comp_cnt = 1;
-		if (shader->info.uses_instanceid) {
-			if (sscreen->info.chip_class >= GFX10)
-				ls_vgpr_comp_cnt = 3;
-			else
-				ls_vgpr_comp_cnt = 2;
 		}
 
 		unsigned num_user_sgprs =
@@ -577,7 +580,8 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 		       S_00B428_MEM_ORDERED(sscreen->info.chip_class >= GFX10) |
 		       S_00B428_WGP_MODE(sscreen->info.chip_class >= GFX10) |
 		       S_00B428_FLOAT_MODE(shader->config.float_mode) |
-		       S_00B428_LS_VGPR_COMP_CNT(ls_vgpr_comp_cnt));
+		       S_00B428_LS_VGPR_COMP_CNT(sscreen->info.chip_class >= GFX9 ?
+						 si_get_vs_vgpr_comp_cnt(sscreen, shader, false) : 0));
 
 	if (sscreen->info.chip_class <= GFX8) {
 		si_pm4_set_reg(pm4, R_00B42C_SPI_SHADER_PGM_RSRC2_HS,
@@ -630,8 +634,7 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
 	si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
 	if (shader->selector->type == PIPE_SHADER_VERTEX) {
-		/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
-		vgpr_comp_cnt = shader->info.uses_instanceid ? 1 : 0;
+		vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
 		num_user_sgprs = si_get_num_vs_user_sgprs(SI_VS_NUM_USER_SGPR);
 	} else if (shader->selector->type == PIPE_SHADER_TESS_EVAL) {
 		vgpr_comp_cnt = shader->selector->info.uses_primid ? 3 : 2;
@@ -879,13 +882,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 		unsigned es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
 
 		if (es_type == PIPE_SHADER_VERTEX) {
-			/* GFX10: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 or InstanceID)
-			 * GFX9: (VertexID, InstanceID / StepRate0, ...)
-			 */
-			if (sscreen->info.chip_class >= GFX10)
-				es_vgpr_comp_cnt = shader->info.uses_instanceid ? 3 : 0;
-			else
-				es_vgpr_comp_cnt = shader->info.uses_instanceid ? 1 : 0;
+			es_vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
 		} else if (es_type == PIPE_SHADER_TESS_EVAL)
 			es_vgpr_comp_cnt = shader->key.part.gs.es->info.uses_primid ? 3 : 2;
 		else
@@ -1143,8 +1140,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	si_pm4_add_bo(pm4, shader->bo, RADEON_USAGE_READ, RADEON_PRIO_SHADER_BINARY);
 
 	if (es_type == PIPE_SHADER_VERTEX) {
-		/* VGPR5-8: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 / InstanceID) */
-		es_vgpr_comp_cnt = shader->info.uses_instanceid ? 3 : 0;
+		es_vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
 
 		if (es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 			num_user_sgprs = SI_SGPR_VS_BLIT_DATA +
@@ -1411,15 +1407,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 		vgpr_comp_cnt = 0; /* only VertexID is needed for GS-COPY. */
 		num_user_sgprs = SI_GSCOPY_NUM_USER_SGPR;
 	} else if (shader->selector->type == PIPE_SHADER_VERTEX) {
-		if (sscreen->info.chip_class >= GFX10) {
-			vgpr_comp_cnt = shader->info.uses_instanceid ? 3 : (enable_prim_id ? 2 : 0);
-		} else {
-			/* VGPR0-3: (VertexID, InstanceID / StepRate0, PrimID, InstanceID)
-			 * If PrimID is disabled. InstanceID / StepRate1 is loaded instead.
-			 * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
-			 */
-			vgpr_comp_cnt = enable_prim_id ? 2 : (shader->info.uses_instanceid ? 1 : 0);
-		}
+		vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, enable_prim_id);
 
 		if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
 			num_user_sgprs = SI_SGPR_VS_BLIT_DATA +
