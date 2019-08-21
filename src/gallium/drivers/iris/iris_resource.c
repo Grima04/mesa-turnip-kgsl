@@ -498,8 +498,11 @@ iris_resource_configure_aux(struct iris_screen *screen,
    if (!devinfo->has_sample_with_hiz || res->surf.samples > 1)
       res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ);
 
-   /* We don't yet support sampling with HIZ_CCS. */
+   /* We don't always support sampling with HIZ_CCS. But when we do, treat it
+    * as CCS_E.*/
    res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ_CCS);
+   if (isl_surf_supports_hiz_ccs_wt(devinfo, &res->surf, res->aux.usage))
+      res->aux.sampler_usages |= 1 << ISL_AUX_USAGE_CCS_E;
 
    enum isl_aux_state initial_state;
    *aux_size_B = 0;

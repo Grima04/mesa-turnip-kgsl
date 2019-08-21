@@ -558,14 +558,22 @@ format_ccs_e_compat_with_resource(const struct gen_device_info *devinfo,
 }
 
 static bool
-sample_with_hiz(const struct gen_device_info *devinfo,
-                const struct iris_resource *res)
+sample_with_depth_aux(const struct gen_device_info *devinfo,
+                      const struct iris_resource *res)
 {
-   if (!devinfo->has_sample_with_hiz)
+   switch (res->aux.usage) {
+   case ISL_AUX_USAGE_HIZ:
+      if (devinfo->has_sample_with_hiz)
+         break;
       return false;
-
-   if (res->aux.usage != ISL_AUX_USAGE_HIZ)
+   case ISL_AUX_USAGE_HIZ_CCS:
+      /* Write through mode must have been enabled for prior writes. */
+      if (isl_surf_supports_hiz_ccs_wt(devinfo, &res->surf, res->aux.usage))
+         break;
       return false;
+   default:
+      return false;
+   }
 
    /* It seems the hardware won't fallback to the depth buffer if some of the
     * mipmap levels aren't available in the HiZ buffer. So we need all levels
@@ -1342,8 +1350,13 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
-      if (sample_with_hiz(devinfo, res))
+      if (sample_with_depth_aux(devinfo, res))
          return ISL_AUX_USAGE_HIZ;
+      break;
+
+   case ISL_AUX_USAGE_HIZ_CCS:
+      if (sample_with_depth_aux(devinfo, res))
+         return ISL_AUX_USAGE_CCS_E;
       break;
 
    case ISL_AUX_USAGE_MCS:

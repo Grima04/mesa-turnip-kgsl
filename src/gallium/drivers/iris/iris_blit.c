@@ -355,7 +355,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    enum isl_aux_usage src_aux_usage =
       iris_resource_texture_aux_usage(ice, src_res, src_fmt.fmt, 0);
 
-   if (src_aux_usage == ISL_AUX_USAGE_HIZ)
+   if (iris_resource_level_has_hiz(src_res, info->src.level))
       src_aux_usage = ISL_AUX_USAGE_NONE;
 
    bool src_clear_supported = src_aux_usage != ISL_AUX_USAGE_NONE &&
