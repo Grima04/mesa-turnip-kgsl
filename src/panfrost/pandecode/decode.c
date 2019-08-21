@@ -146,9 +146,9 @@ pandecode_validate_buffer(mali_ptr addr, size_t sz)
         unsigned total = offset + sz;
 
         if (total > bo->length) {
-                pandecode_msg("XXX: buffer overrun."
+                pandecode_msg("XXX: buffer overrun. "
                                 "Chunk of size %d at offset %d in buffer of size %d. "
-                                "Overrun by %d bytes.",
+                                "Overrun by %d bytes. \n",
                                 sz, offset, bo->length, total - bo->length);
                 return;
         }
@@ -1562,30 +1562,6 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
         return count ? (max_index + 1) : 0;
 }
 
-static void
-pandecode_indices(uintptr_t pindices, uint32_t index_count, int job_no)
-{
-        struct pandecode_mapped_memory *imem = pandecode_find_mapped_gpu_mem_containing(pindices);
-
-        if (imem) {
-                /* Indices are literally just a u32 array :) */
-
-                uint32_t *PANDECODE_PTR_VAR(indices, imem, pindices);
-
-                pandecode_log("uint32_t indices_%d[] = {\n", job_no);
-                pandecode_indent++;
-
-                for (unsigned i = 0; i < (index_count + 1); i += 3)
-                        pandecode_log("%d, %d, %d,\n",
-                                      indices[i],
-                                      indices[i + 1],
-                                      indices[i + 2]);
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-        }
-}
-
 /* return bits [lo, hi) of word */
 static u32
 bits(u32 word, u32 lo, u32 hi)
@@ -1672,6 +1648,30 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
 
         if (p->index_count)
                 pandecode_prop("index_count = MALI_POSITIVE(%" PRId32 ")", p->index_count + 1);
+
+
+        unsigned index_raw_size = (p->unknown_draw & MALI_DRAW_INDEXED_SIZE);
+        index_raw_size >>= MALI_DRAW_INDEXED_SHIFT;
+
+        /* Validate an index buffer is present if we need one. TODO: verify
+         * relationship between invocation_count and index_count */
+
+        if (p->indices) {
+                unsigned count = p->index_count;
+
+                /* Grab the size */
+                unsigned size = (index_raw_size == 0x3) ? 4 : index_raw_size;
+
+                /* Ensure we got a size, and if so, validate the index buffer
+                 * is large enough to hold a full set of indices of the given
+                 * size */
+
+                if (!index_raw_size)
+                        pandecode_msg("XXX: index size missing\n");
+                else
+                        pandecode_validate_buffer(p->indices, count * size);
+        } else if (index_raw_size)
+                pandecode_msg("XXX: unexpected index size %u\n", index_raw_size);
 
         if (p->offset_bias_correction)
                 pandecode_prop("offset_bias_correction = %d", p->offset_bias_correction);
@@ -2534,8 +2534,6 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
         struct bifrost_payload_tiler *PANDECODE_PTR_VAR(t, mem, payload);
 
         pandecode_vertex_tiler_postfix_pre(&t->postfix, job_no, h->job_type, "", true);
-
-        pandecode_indices(t->prefix.indices, t->prefix.index_count, job_no);
         pandecode_tiler_meta(t->tiler.tiler_meta, job_no);
 
         pandecode_log("struct bifrost_payload_tiler payload_%d = {\n", job_no);
@@ -2563,8 +2561,6 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         struct midgard_payload_vertex_tiler *PANDECODE_PTR_VAR(v, mem, payload);
 
         pandecode_vertex_tiler_postfix_pre(&v->postfix, job_no, h->job_type, "", false);
-
-        pandecode_indices(v->prefix.indices, v->prefix.index_count, job_no);
 
         pandecode_log("struct midgard_payload_vertex_tiler payload_%d = {\n", job_no);
         pandecode_indent++;
