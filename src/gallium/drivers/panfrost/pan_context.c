@@ -1242,23 +1242,16 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
          * handle the negatives if we don't */
 
         if (miny > maxy) {
-                int temp = miny;
+                unsigned temp = miny;
                 miny = maxy;
                 maxy = temp;
         }
 
         if (minx > maxx) {
-                int temp = minx;
+                unsigned temp = minx;
                 minx = maxx;
                 maxx = temp;
         }
-
-        /* Clamp everything positive, just in case */
-
-        maxx = MAX2(0, maxx);
-        maxy = MAX2(0, maxy);
-        minx = MAX2(0, minx);
-        miny = MAX2(0, miny);
 
         /* Clamp to the framebuffer size as a last check */
 
