@@ -153,11 +153,11 @@ has_point_coord(unsigned mask, gl_varying_slot loc)
  * accordingly. Compute the src_offset for a given captured varying */
 
 static struct pipe_stream_output
-pan_get_so(struct pipe_stream_output_info info, gl_varying_slot loc)
+pan_get_so(struct pipe_stream_output_info *info, gl_varying_slot loc)
 {
-        for (unsigned i = 0; i < info.num_outputs; ++i) {
-                if (info.output[i].register_index == loc)
-                        return  info.output[i];
+        for (unsigned i = 0; i < info->num_outputs; ++i) {
+                if (info->output[i].register_index == loc)
+                        return  info->output[i];
         }
 
         unreachable("Varying not captured");
@@ -209,7 +209,7 @@ panfrost_emit_varying_descriptor(
                 bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
 
                 if (captured) {
-                        struct pipe_stream_output o = pan_get_so(so, loc);
+                        struct pipe_stream_output o = pan_get_so(&so, loc);
 
                         unsigned dst_offset = o.dst_offset * 4; /* dwords */
                         vs->varyings[i].src_offset = dst_offset;
@@ -259,7 +259,7 @@ panfrost_emit_varying_descriptor(
                 bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
                 if (!captured) continue;
 
-                struct pipe_stream_output o = pan_get_so(so, loc);
+                struct pipe_stream_output o = pan_get_so(&so, loc);
                 so_count = MAX2(so_count, o.output_buffer + 1);
         }
 
@@ -332,7 +332,7 @@ panfrost_emit_varying_descriptor(
                 bool captured = ((vs->so_mask & (1ll << loc)) ? true : false);
                 if (!captured) continue;
 
-                struct pipe_stream_output o = pan_get_so(so, loc);
+                struct pipe_stream_output o = pan_get_so(&so, loc);
                 ovs[i].index = o.output_buffer;
 
                 /* Set the type appropriately. TODO: Integer varyings XXX */
