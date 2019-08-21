@@ -77,11 +77,11 @@ disassemble(const char *filename)
         assert(fp);
 
         fseek(fp, 0, SEEK_END);
-        int filesize = ftell(fp);
+        unsigned filesize = ftell(fp);
         rewind(fp);
 
         unsigned char *code = malloc(filesize);
-        int res = fread(code, 1, filesize, fp);
+        unsigned res = fread(code, 1, filesize, fp);
         if (res != filesize) {
                 printf("Couldn't read full file\n");
         }
