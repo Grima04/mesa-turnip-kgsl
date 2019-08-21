@@ -947,8 +947,8 @@ print_alu_word(uint32_t *words, unsigned num_quad_words,
                                        sconsts[2],
                                        sconsts[3]);
                         } else {
-                                int32_t *iconsts = (int32_t *) consts;
-                                printf("iconstants %d, %d, %d, %d\n",
+                                uint32_t *iconsts = (uint32_t *) consts;
+                                printf("iconstants 0x%X, 0x%X, 0x%X, 0x%X\n",
                                        iconsts[0],
                                        iconsts[1],
                                        iconsts[2],
