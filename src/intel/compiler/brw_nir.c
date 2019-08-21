@@ -1090,6 +1090,72 @@ brw_cmod_for_nir_comparison(nir_op op)
    }
 }
 
+uint32_t
+brw_aop_for_nir_intrinsic(const nir_intrinsic_instr *atomic)
+{
+   switch (atomic->intrinsic) {
+#define AOP_CASE(atom) \
+   case nir_intrinsic_image_atomic_##atom:            \
+   case nir_intrinsic_bindless_image_atomic_##atom:   \
+   case nir_intrinsic_ssbo_atomic_##atom:             \
+   case nir_intrinsic_shared_atomic_##atom:           \
+   case nir_intrinsic_global_atomic_##atom
+
+   AOP_CASE(add): {
+      unsigned src_idx;
+      switch (atomic->intrinsic) {
+      case nir_intrinsic_image_atomic_add:
+      case nir_intrinsic_bindless_image_atomic_add:
+         src_idx = 3;
+         break;
+      case nir_intrinsic_ssbo_atomic_add:
+         src_idx = 2;
+         break;
+      case nir_intrinsic_shared_atomic_add:
+      case nir_intrinsic_global_atomic_add:
+         src_idx = 1;
+         break;
+      default:
+         unreachable("Invalid add atomic opcode");
+      }
+
+      if (nir_src_is_const(atomic->src[src_idx])) {
+         int64_t add_val = nir_src_as_int(atomic->src[src_idx]);
+         if (add_val == 1)
+            return BRW_AOP_INC;
+         else if (add_val == -1)
+            return BRW_AOP_DEC;
+      }
+      return BRW_AOP_ADD;
+   }
+
+   AOP_CASE(imin):         return BRW_AOP_IMIN;
+   AOP_CASE(umin):         return BRW_AOP_UMIN;
+   AOP_CASE(imax):         return BRW_AOP_IMAX;
+   AOP_CASE(umax):         return BRW_AOP_UMAX;
+   AOP_CASE(and):          return BRW_AOP_AND;
+   AOP_CASE(or):           return BRW_AOP_OR;
+   AOP_CASE(xor):          return BRW_AOP_XOR;
+   AOP_CASE(exchange):     return BRW_AOP_MOV;
+   AOP_CASE(comp_swap):    return BRW_AOP_CMPWR;
+
+#undef AOP_CASE
+#define AOP_CASE(atom) \
+   case nir_intrinsic_ssbo_atomic_##atom:          \
+   case nir_intrinsic_shared_atomic_##atom:        \
+   case nir_intrinsic_global_atomic_##atom
+
+   AOP_CASE(fmin):         return BRW_AOP_FMIN;
+   AOP_CASE(fmax):         return BRW_AOP_FMAX;
+   AOP_CASE(fcomp_swap):   return BRW_AOP_FCMPWR;
+
+#undef AOP_CASE
+
+   default:
+      unreachable("Unsupported NIR atomic intrinsic");
+   }
+}
+
 enum brw_reg_type
 brw_type_for_nir_type(const struct gen_device_info *devinfo, nir_alu_type type)
 {

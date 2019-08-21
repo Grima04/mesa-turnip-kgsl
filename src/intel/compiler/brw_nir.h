@@ -147,6 +147,7 @@ void brw_nir_apply_key(nir_shader *nir,
                        bool is_scalar);
 
 enum brw_conditional_mod brw_cmod_for_nir_comparison(nir_op op);
+uint32_t brw_aop_for_nir_intrinsic(const nir_intrinsic_instr *atomic);
 enum brw_reg_type brw_type_for_nir_type(const struct gen_device_info *devinfo,
                                         nir_alu_type type);
 

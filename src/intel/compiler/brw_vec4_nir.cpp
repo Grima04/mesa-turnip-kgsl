@@ -548,46 +548,17 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       break;
    }
 
-   case nir_intrinsic_ssbo_atomic_add: {
-      int op = BRW_AOP_ADD;
-
-      if (nir_src_is_const(instr->src[2])) {
-         int add_val = nir_src_as_int(instr->src[2]);
-         if (add_val == 1)
-            op = BRW_AOP_INC;
-         else if (add_val == -1)
-            op = BRW_AOP_DEC;
-      }
-
-      nir_emit_ssbo_atomic(op, instr);
-      break;
-   }
+   case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
-      nir_emit_ssbo_atomic(BRW_AOP_IMIN, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_umin:
-      nir_emit_ssbo_atomic(BRW_AOP_UMIN, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_imax:
-      nir_emit_ssbo_atomic(BRW_AOP_IMAX, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_umax:
-      nir_emit_ssbo_atomic(BRW_AOP_UMAX, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_and:
-      nir_emit_ssbo_atomic(BRW_AOP_AND, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_or:
-      nir_emit_ssbo_atomic(BRW_AOP_OR, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_xor:
-      nir_emit_ssbo_atomic(BRW_AOP_XOR, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_exchange:
-      nir_emit_ssbo_atomic(BRW_AOP_MOV, instr);
-      break;
    case nir_intrinsic_ssbo_atomic_comp_swap:
-      nir_emit_ssbo_atomic(BRW_AOP_CMPWR, instr);
+      nir_emit_ssbo_atomic(brw_aop_for_nir_intrinsic(instr), instr);
       break;
 
    case nir_intrinsic_load_vertex_id:
