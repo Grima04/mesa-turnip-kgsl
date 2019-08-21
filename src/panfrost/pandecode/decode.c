@@ -2141,7 +2141,7 @@ pandecode_vertex_tiler_postfix_pre(
                 if (shader_ptr & ~0xF)
                    pandecode_shader_disassemble(shader_ptr, job_no, job_type, is_bifrost, nr_registers);
         } else
-                pandecode_msg("<no shader>\n");
+                pandecode_msg("XXX: missing shader descriptor\n");
 
         if (p->viewport) {
                 struct pandecode_mapped_memory *fmem = pandecode_find_mapped_gpu_mem_containing(p->viewport);
