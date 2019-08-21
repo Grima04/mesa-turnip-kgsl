@@ -2581,22 +2581,51 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
                 expected_tag |= (MALI_POSITIVE(info.rt_count) << 2);
         }
 
-        pandecode_log("struct mali_payload_fragment payload_%"PRIx64"_%d = {\n", payload, job_no);
-        pandecode_indent++;
-
         if ((s->min_tile_coord | s->max_tile_coord) & ~(MALI_X_COORD_MASK | MALI_Y_COORD_MASK)) {
                 pandecode_msg("XXX: unexpected tile coordinate bits\n");
                 pandecode_prop("min_tile_coord = 0x%X\n", s->min_tile_coord);
                 pandecode_prop("max_tile_coord = 0x%X\n", s->min_tile_coord);
         }
 
-        pandecode_prop("min_tile_coord = MALI_COORDINATE_TO_TILE_MIN(%d, %d)",
-                       MALI_TILE_COORD_X(s->min_tile_coord) << MALI_TILE_SHIFT,
-                       MALI_TILE_COORD_Y(s->min_tile_coord) << MALI_TILE_SHIFT);
+        /* Extract tile coordinates */
 
-        pandecode_prop("max_tile_coord = MALI_COORDINATE_TO_TILE_MAX(%d, %d)",
-                       (MALI_TILE_COORD_X(s->max_tile_coord) + 1) << MALI_TILE_SHIFT,
-                       (MALI_TILE_COORD_Y(s->max_tile_coord) + 1) << MALI_TILE_SHIFT);
+        unsigned min_x = MALI_TILE_COORD_X(s->min_tile_coord) << MALI_TILE_SHIFT;
+        unsigned min_y = MALI_TILE_COORD_Y(s->min_tile_coord) << MALI_TILE_SHIFT;
+
+        unsigned max_x = (MALI_TILE_COORD_X(s->max_tile_coord) + 1) << MALI_TILE_SHIFT;
+        unsigned max_y = (MALI_TILE_COORD_Y(s->max_tile_coord) + 1) << MALI_TILE_SHIFT;
+
+        /* For the max, we also want the floored (rather than ceiled) version for checking */
+
+        unsigned max_x_f = (MALI_TILE_COORD_X(s->max_tile_coord)) << MALI_TILE_SHIFT;
+        unsigned max_y_f = (MALI_TILE_COORD_Y(s->max_tile_coord)) << MALI_TILE_SHIFT;
+
+        /* Validate the coordinates are well-ordered */
+
+        if (min_x == max_x)
+                pandecode_msg("XXX: empty X coordinates (%u = %u)\n", min_x, max_x);
+        else if (min_x > max_x)
+                pandecode_msg("XXX: misordered X coordinates (%u > %u)\n", min_x, max_x);
+
+        if (min_y == max_y)
+                pandecode_msg("XXX: empty X coordinates (%u = %u)\n", min_x, max_x);
+        else if (min_y > max_y)
+                pandecode_msg("XXX: misordered X coordinates (%u > %u)\n", min_x, max_x);
+
+        /* Validate the coordinates fit inside the framebuffer. We use floor,
+         * rather than ceil, for the max coordinates, since the tile
+         * coordinates for something like an 800x600 framebuffer will actually
+         * resolve to 800x608, which would otherwise trigger a Y-overflow */
+
+        if ((min_x > info.width) || (max_x_f > info.width))
+                pandecode_msg("XXX: tile coordinates overflow in X direction\n");
+
+        if ((min_y > info.height) || (max_y_f > info.height))
+                pandecode_msg("XXX: tile coordinates overflow in Y direction\n");
+
+        /* After validation, we print */
+
+        pandecode_log("fragment (%u, %u) ... (%u, %u)\n\n", min_x, min_y, max_x, max_y);
 
         /* The FBD is a tagged pointer */
 
@@ -2604,9 +2633,6 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 
         if (tag != expected_tag)
                 pandecode_msg("XXX: expected FBD tag %X but got %X\n", expected_tag, tag);
-
-        pandecode_indent--;
-        pandecode_log("};\n");
 
         return sizeof(*s);
 }
