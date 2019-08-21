@@ -243,7 +243,7 @@ panfrost_emit_varying_descriptor(
                         fs->varyings[i].src_offset = 16 * (num_gen_varyings++);
 
                 if (has_point_coord(fs->point_sprite_mask, loc))
-                        reads_point_coord |= true;
+                        reads_point_coord = true;
         }
 
         memcpy(trans.cpu, vs->varyings, vs_size);
