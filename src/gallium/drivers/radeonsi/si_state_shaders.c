@@ -878,10 +878,15 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 		unsigned es_type = shader->key.part.gs.es->type;
 		unsigned es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
 
-		if (es_type == PIPE_SHADER_VERTEX)
-			/* VGPR0-3: (VertexID, InstanceID / StepRate0, ...) */
-			es_vgpr_comp_cnt = shader->info.uses_instanceid ? 1 : 0;
-		else if (es_type == PIPE_SHADER_TESS_EVAL)
+		if (es_type == PIPE_SHADER_VERTEX) {
+			/* GFX10: (VertexID, UserVGPR0, UserVGPR1, UserVGPR2 or InstanceID)
+			 * GFX9: (VertexID, InstanceID / StepRate0, ...)
+			 */
+			if (sscreen->info.chip_class >= GFX10)
+				es_vgpr_comp_cnt = shader->info.uses_instanceid ? 3 : 0;
+			else
+				es_vgpr_comp_cnt = shader->info.uses_instanceid ? 1 : 0;
+		} else if (es_type == PIPE_SHADER_TESS_EVAL)
 			es_vgpr_comp_cnt = shader->key.part.gs.es->info.uses_primid ? 3 : 2;
 		else
 			unreachable("invalid shader selector type");
