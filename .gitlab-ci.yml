@@ -213,12 +213,13 @@ meson-clover:
   script:
     - export GALLIUM_DRIVERS="r600,radeonsi"
     - .gitlab-ci/meson-build.sh
-    - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=8 .gitlab-ci/meson-build.sh
     - export GALLIUM_DRIVERS="i915,r600"
     - LLVM_VERSION=3.9 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=4.0 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=5.0 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=6.0 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
 
 meson-vulkan:
   extends: .meson-build
@@ -240,7 +241,7 @@ meson-vulkan:
       -D gallium-nine=false
       -D gallium-opencl=disabled
     VULKAN_DRIVERS: intel,amd,freedreno
-    LLVM_VERSION: "7"
+    LLVM_VERSION: "8"
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
 
