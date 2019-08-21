@@ -54,6 +54,9 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_ftrunc]          = {"ftrunc", UNITS_ADD},
         [midgard_alu_op_ffloor]		 = {"ffloor", UNITS_ADD},
         [midgard_alu_op_fceil]		 = {"fceil", UNITS_ADD},
+
+        /* Multiplies the X/Y components of the first arg and adds the second
+         * arg. Like other LUTs, it must be scalarized. */
         [midgard_alu_op_ffma]		 = {"ffma", UNIT_VLUT},
 
         /* Though they output a scalar, they need to run on a vector unit
