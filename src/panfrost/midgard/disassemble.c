@@ -411,16 +411,16 @@ print_mask_vec16(uint8_t mask, midgard_dest_override override)
 static void
 print_mask(uint8_t mask, unsigned bits, midgard_dest_override override)
 {
+        if (bits == 8) {
+                print_mask_vec16(mask, override);
+                return;
+        }
+
         if (bits < 16) {
                 /* Shouldn't happen but with junk / out-of-spec shaders it
                  * would cause an infinite loop */
 
                 printf("/* XXX: bits = %d */", bits);
-                return;
-        }
-
-        if (bits == 8) {
-                print_mask_vec16(mask, override);
                 return;
         }
 
