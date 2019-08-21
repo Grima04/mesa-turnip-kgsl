@@ -1596,8 +1596,10 @@ panfrost_draw_vbo(
 
         /* Fallback for unsupported modes */
 
+        assert(ctx->rasterizer != NULL);
+
         if (!(ctx->draw_modes & (1 << mode))) {
-                if (mode == PIPE_PRIM_QUADS && info->count == 4 && ctx->rasterizer && !ctx->rasterizer->base.flatshade) {
+                if (mode == PIPE_PRIM_QUADS && info->count == 4 && !ctx->rasterizer->base.flatshade) {
                         mode = PIPE_PRIM_TRIANGLE_FAN;
                 } else {
                         if (info->count < 4) {
