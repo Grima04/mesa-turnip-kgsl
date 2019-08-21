@@ -44,7 +44,7 @@ static bool is_instruction_int = false;
 
 /* Stats */
 
-static unsigned nr_ins = 0;
+static struct midgard_disasm_stats midg_stats;
 
 /* Prints a short form of the tag for branching, the minimum needed to be
  * legible and unambiguous */
@@ -554,7 +554,7 @@ print_vector_field(const char *name, uint16_t *words, uint16_t reg_word,
                                  reg_info->src2_reg, override, is_int);
         }
 
-        nr_ins++;
+        midg_stats.instruction_count++;
         printf("\n");
 }
 
@@ -635,7 +635,7 @@ print_scalar_field(const char *name, uint16_t *words, uint16_t reg_word,
         } else
                 print_scalar_src(alu_field->src2, reg_info->src2_reg);
 
-        nr_ins++;
+        midg_stats.instruction_count++;
         printf("\n");
 }
 
@@ -744,7 +744,7 @@ print_compact_branch_writeout_field(uint16_t word)
         }
         }
 
-        nr_ins++;
+        midg_stats.instruction_count++;
 }
 
 static void
@@ -782,7 +782,7 @@ print_extended_branch_writeout_field(uint8_t *words)
         print_tag_short(br.dest_tag);
         printf("\n");
 
-        nr_ins++;
+        midg_stats.instruction_count++;
 }
 
 static unsigned
@@ -1061,7 +1061,7 @@ print_load_store_instr(uint64_t data,
         print_load_store_arg(word->arg_2, 1);
         printf(" /* %X */\n", word->varying_parameters);
 
-        nr_ins++;
+        midg_stats.instruction_count++;
 }
 
 static void
@@ -1349,11 +1349,11 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 printf("// unknown8 = 0x%x\n", texture->unknown8);
         }
 
-        nr_ins++;
+        midg_stats.instruction_count++;
 }
 
-void
-disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_registers, const char *prefix)
+struct midgard_disasm_stats
+disassemble_midgard(uint8_t *code, size_t size)
 {
         uint32_t *words = (uint32_t *) code;
         unsigned num_words = size / 4;
@@ -1366,9 +1366,7 @@ disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_register
         unsigned i = 0;
 
         /* Stats for shader-db */
-        unsigned nr_bundles = 0;
-        unsigned nr_quadwords = 0;
-        nr_ins = 0;
+        memset(&midg_stats, 0, sizeof(midg_stats));
 
         while (i < num_words) {
                 unsigned tag = words[i] & 0xF;
@@ -1424,8 +1422,8 @@ disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_register
                 unsigned next = (words[i] & 0xF0) >> 4;
 
                 /* We are parsing per bundle anyway */
-                nr_bundles++;
-                nr_quadwords += num_quad_words;
+                midg_stats.bundle_count++;
+                midg_stats.quadword_count += num_quad_words;
 
                 /* Break based on instruction prefetch flag */
 
@@ -1439,18 +1437,5 @@ disassemble_midgard(uint8_t *code, size_t size, bool stats, unsigned nr_register
                 i += 4 * num_quad_words;
         }
 
-        if (stats) {
-                unsigned nr_threads =
-                        (nr_registers <= 4) ? 4 :
-                        (nr_registers <= 8) ? 2 :
-                        1;
-
-                printf("%s"
-                        "%u inst, %u bundles, %u quadwords, "
-                        "%u registers, %u threads, 0 loops\n",
-                        prefix,
-                        nr_ins, nr_bundles, nr_quadwords,
-                        nr_registers, nr_threads);
-
-        }
+        return midg_stats;
 }

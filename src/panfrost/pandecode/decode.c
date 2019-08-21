@@ -1720,7 +1720,7 @@ pandecode_scratchpad(uintptr_t pscratchpad, int job_no, char *suffix)
 
 static unsigned shader_id = 0;
 
-static void
+static struct midgard_disasm_stats
 pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                              bool is_bifrost, unsigned nr_regs)
 {
@@ -1735,19 +1735,45 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 
         printf("\n\n");
 
-        char prefix[512];
-
-        snprintf(prefix, sizeof(prefix) - 1, "shader%d - %s shader: ",
-                        shader_id++,
-                        (type == JOB_TYPE_TILER) ? "FRAGMENT" : "VERTEX");
+        struct midgard_disasm_stats stats;
 
         if (is_bifrost) {
                 disassemble_bifrost(code, sz, false);
+
+                /* TODO: Extend stats to Bifrost */
+                stats.texture_count = -1;
+                stats.sampler_count = -1;
+                stats.attribute_count = -1;
+                stats.varying_count = -1;
+                stats.uniform_count = -1;
+                stats.uniform_buffer_count = -1;
+                stats.work_count = -1;
+
+                stats.instruction_count = 0;
+                stats.bundle_count = 0;
+                stats.quadword_count = 0;
         } else {
-                disassemble_midgard(code, sz, true, nr_regs, prefix);
+                stats = disassemble_midgard(code, sz);
+                stats.work_count = nr_regs;
         }
 
-        printf("\n\n");
+        /* Print shader-db stats */
+
+        unsigned nr_threads =
+                (stats.work_count <= 4) ? 4 :
+                (stats.work_count <= 8) ? 2 :
+                1;
+
+        printf("shader%d - %s shader: "
+                "%u inst, %u bundles, %u quadwords, "
+                "%u registers, %u threads, 0 loops\n\n\n",
+                shader_id++,
+                (type == JOB_TYPE_TILER) ? "FRAGMENT" : "VERTEX",
+                stats.instruction_count, stats.bundle_count, stats.quadword_count,
+                stats.work_count, nr_threads);
+
+
+        return stats;
 }
 
 static void
