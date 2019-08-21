@@ -42,7 +42,8 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
                 unsigned char i = in[c];
 
                 /* Who cares? */
-                if (i < PIPE_SWIZZLE_X || i > PIPE_SWIZZLE_W)
+                assert(PIPE_SWIZZLE_X == 0);
+                if (i > PIPE_SWIZZLE_W)
                         continue;
 
                 /* Invert */
