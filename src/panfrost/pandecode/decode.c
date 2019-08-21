@@ -1981,7 +1981,7 @@ pandecode_vertex_tiler_postfix_pre(
                         uniform_count = s->bifrost2.uniform_count;
                         uniform_buffer_count = s->bifrost1.uniform_buffer_count;
                 } else {
-                        uniform_count = s->midgard1.uniform_buffer_count;
+                        uniform_count = s->midgard1.uniform_count;
                         uniform_buffer_count = s->midgard1.uniform_buffer_count;
                 }
 
@@ -2208,9 +2208,9 @@ pandecode_vertex_tiler_postfix_pre(
                 if (uniform_count)
                         pandecode_validate_buffer(p->uniforms, uniform_count * 16);
                 else
-                        pandecode_msg("XXX: Uniforms specified but not referenced");
+                        pandecode_msg("XXX: Uniforms specified but not referenced\n");
         } else if (uniform_count)
-                pandecode_msg("XXX: UBOs referenced but not specified\n");
+                pandecode_msg("XXX: Uniforms referenced but not specified\n");
 
         if (p->texture_trampoline) {
                 struct pandecode_mapped_memory *mmem = pandecode_find_mapped_gpu_mem_containing(p->texture_trampoline);
