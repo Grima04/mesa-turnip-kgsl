@@ -1028,6 +1028,20 @@ is_op_varying(unsigned op)
         return false;
 }
 
+static bool
+is_op_attribute(unsigned op)
+{
+        switch (op) {
+        case midgard_op_ld_attr_16:
+        case midgard_op_ld_attr_32:
+        case midgard_op_ld_attr_32i:
+        case midgard_op_ld_attr_32u:
+                return true;
+        }
+
+        return false;
+}
+
 static void
 print_load_store_arg(uint8_t arg, unsigned index)
 {
@@ -1060,6 +1074,13 @@ print_load_store_arg(uint8_t arg, unsigned index)
 }
 
 static void
+update_stats(signed *stat, unsigned address)
+{
+        if (*stat >= 0)
+                *stat = MAX2(*stat, address + 1);
+}
+
+static void
 print_load_store_instr(uint64_t data,
                        unsigned tabs)
 {
@@ -1067,13 +1088,26 @@ print_load_store_instr(uint64_t data,
 
         print_ld_st_opcode(word->op);
 
-        if (is_op_varying(word->op))
+        unsigned address = word->address;
+
+        if (is_op_varying(word->op)) {
                 print_varying_parameters(word);
+
+                /* Do some analysis: check if direct cacess */
+
+                if ((word->arg_2 == 0x1E) && midg_stats.varying_count >= 0)
+                        update_stats(&midg_stats.varying_count, address);
+                else
+                        midg_stats.varying_count = -16;
+        } else if (is_op_attribute(word->op)) {
+                if ((word->arg_2 == 0x1E) && midg_stats.attribute_count >= 0)
+                        update_stats(&midg_stats.attribute_count, address);
+                else
+                        midg_stats.attribute_count = -16;
+        }
 
         printf(" r%d", word->reg);
         print_mask_4(word->mask);
-
-        unsigned address = word->address;
 
         if (!OP_IS_STORE(word->op))
                 update_dest(word->reg);
@@ -1096,9 +1130,10 @@ print_load_store_instr(uint64_t data,
 
         printf(", ");
 
-        if (is_ubo)
+        if (is_ubo) {
                 printf("ubo%d", word->arg_1);
-        else
+                update_stats(&midg_stats.uniform_buffer_count, word->arg_1);
+        } else
                 print_load_store_arg(word->arg_1, 0);
 
         printf(", ");
@@ -1272,12 +1307,19 @@ print_texture_word(uint32_t *word, unsigned tabs)
         print_mask_4(texture->mask);
         printf(", ");
 
+        /* Depending on whether we read from textures directly or indirectly,
+         * we may be able to update our analysis */
+
         if (texture->texture_register) {
                 printf("texture[");
                 print_texture_reg_select(texture->texture_handle);
                 printf("], ");
+
+                /* Indirect, tut tut */
+                midg_stats.texture_count = -16;
         } else {
                 printf("texture%d, ", texture->texture_handle);
+                update_stats(&midg_stats.texture_count, texture->texture_handle);
         }
 
         /* Print the type, GL style */
@@ -1287,8 +1329,11 @@ print_texture_word(uint32_t *word, unsigned tabs)
                 printf("[");
                 print_texture_reg_select(texture->sampler_handle);
                 printf("]");
+
+                midg_stats.sampler_count = -16;
         } else {
                 printf("%d", texture->sampler_handle);
+                update_stats(&midg_stats.sampler_count, texture->sampler_handle);
         }
 
         print_swizzle_vec4(texture->swizzle, false, false);
