@@ -2726,14 +2726,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 		!sel->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] &&
 		!sel->so.num_outputs;
 
-	if (sel->type == PIPE_SHADER_VERTEX &&
-	    sel->info.writes_edgeflag) {
-		if (sscreen->info.chip_class >= GFX10)
-			sel->ngg_writes_edgeflag = true;
-		else
-			sel->pos_writes_edgeflag = true;
-	}
-
 	switch (sel->type) {
 	case PIPE_SHADER_GEOMETRY:
 		sel->gs_output_prim =
@@ -2865,11 +2857,11 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
 	/* PA_CL_VS_OUT_CNTL */
 	bool misc_vec_ena =
-		sel->info.writes_psize || sel->pos_writes_edgeflag ||
+		sel->info.writes_psize || sel->info.writes_edgeflag ||
 		sel->info.writes_layer || sel->info.writes_viewport_index;
 	sel->pa_cl_vs_out_cntl =
 		S_02881C_USE_VTX_POINT_SIZE(sel->info.writes_psize) |
-		S_02881C_USE_VTX_EDGE_FLAG(sel->pos_writes_edgeflag) |
+		S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag) |
 		S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
 		S_02881C_USE_VTX_VIEWPORT_INDX(sel->info.writes_viewport_index) |
 		S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
