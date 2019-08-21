@@ -668,6 +668,8 @@ mir_compute_liveness(
                         /* Update live_in */
                         liveness_ins_update(live, ins, ctx->temp_count);
                 }
+
+                free(live);
         }
 
         mir_foreach_block(ctx, blk) {
