@@ -192,6 +192,12 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       hiz.SurfaceBaseAddress = info->hiz_address;
       hiz.MOCS = info->mocs;
       hiz.SurfacePitch = info->hiz_surf->row_pitch_B - 1;
+#if GEN_GEN >= 12
+      hiz.HierarchicalDepthBufferWriteThruEnable =
+         isl_surf_supports_hiz_ccs_wt(dev->info, info->depth_surf,
+                                      info->hiz_usage);
+#endif
+
 #if GEN_GEN >= 8
       /* From the SKL PRM Vol2a:
        *

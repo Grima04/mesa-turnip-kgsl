@@ -1893,6 +1893,7 @@
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
     <field name="Surface Pitch" start="32" end="48" type="uint"/>
+    <field name="Hierarchical Depth Buffer Write Thru Enable" start="52" end="52" type="bool"/>
     <field name="Tiled Resource Mode" start="54" end="55" type="uint">
       <value name="NONE" value="0"/>
       <value name="TILEYF" value="1"/>
