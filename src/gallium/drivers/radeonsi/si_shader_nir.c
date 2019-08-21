@@ -32,6 +32,7 @@
 #include "compiler/nir/nir.h"
 #include "compiler/nir_types.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_deref.h"
 
 static nir_variable* tex_get_texture_var(nir_tex_instr *instr)
 {
@@ -52,39 +53,87 @@ static nir_variable* intrinsic_get_var(nir_intrinsic_instr *instr)
 	return nir_deref_instr_get_variable(nir_src_as_deref(instr->src[0]));
 }
 
+static void gather_usage_helper(const nir_deref_instr **deref_ptr,
+				unsigned location,
+				uint8_t mask,
+				uint8_t *usage_mask)
+{
+	for (; *deref_ptr; deref_ptr++) {
+		const nir_deref_instr *deref = *deref_ptr;
+		switch (deref->deref_type) {
+		case nir_deref_type_array: {
+			unsigned elem_size =
+				glsl_count_attribute_slots(deref->type, false);
+			if (nir_src_is_const(deref->arr.index)) {
+				location += elem_size * nir_src_as_uint(deref->arr.index);
+			} else {
+				unsigned array_elems =
+					glsl_get_length(deref_ptr[-1]->type);
+				for (unsigned i = 0; i < array_elems; i++) {
+					gather_usage_helper(deref_ptr + 1,
+							    location + elem_size * i,
+							    mask, usage_mask);
+				}
+				return;
+			}
+			break;
+		}
+		case nir_deref_type_struct: {
+			const struct glsl_type *parent_type =
+				deref_ptr[-1]->type;
+			unsigned index = deref->strct.index;
+			for (unsigned i = 0; i < index; i++) {
+				const struct glsl_type *ft = glsl_get_struct_field(parent_type, i);
+				location += glsl_count_attribute_slots(ft, false);
+			}
+			break;
+		}
+		default:
+			unreachable("Unhandled deref type in gather_components_used_helper");
+		}
+	}
+
+	usage_mask[location] |= mask & 0xf;
+	if (mask & 0xf0)
+		usage_mask[location + 1] |= (mask >> 4) & 0xf;
+}
+
+static void gather_usage(const nir_deref_instr *deref,
+			 uint8_t mask,
+			 uint8_t *usage_mask)
+{
+	nir_deref_path path;
+	nir_deref_path_init(&path, (nir_deref_instr *)deref, NULL);
+
+	unsigned location_frac = path.path[0]->var->data.location_frac;
+	if (glsl_type_is_64bit(deref->type)) {
+		uint8_t new_mask = 0;
+		for (unsigned i = 0; i < 4; i++) {
+			if (mask & (1 << i))
+				new_mask |= 0x3 << (2 * i);
+		}
+		mask = new_mask << location_frac;
+	} else {
+		mask <<= location_frac;
+		mask &= 0xf;
+	}
+
+	gather_usage_helper((const nir_deref_instr **)&path.path[1],
+			    path.path[0]->var->data.driver_location,
+			    mask, usage_mask);
+
+	nir_deref_path_finish(&path);
+}
+
 static void gather_intrinsic_load_deref_input_info(const nir_shader *nir,
 						   const nir_intrinsic_instr *instr,
-						   nir_variable *var,
+						   const nir_deref_instr *deref,
 						   struct tgsi_shader_info *info)
 {
-	assert(var && var->data.mode == nir_var_shader_in);
-
 	switch (nir->info.stage) {
-	case MESA_SHADER_VERTEX: {
-		unsigned i = var->data.driver_location;
-		unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
-		uint8_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
-
-		for (unsigned j = 0; j < attrib_count; j++, i++) {
-			if (glsl_type_is_64bit(glsl_without_array(var->type))) {
-				unsigned dmask = mask;
-
-				if (glsl_type_is_dual_slot(glsl_without_array(var->type)) && j % 2)
-					dmask >>= 2;
-
-				dmask <<= var->data.location_frac / 2;
-
-				if (dmask & 0x1)
-					info->input_usage_mask[i] |= TGSI_WRITEMASK_XY;
-				if (dmask & 0x2)
-					info->input_usage_mask[i] |= TGSI_WRITEMASK_ZW;
-			} else {
-				info->input_usage_mask[i] |=
-					(mask << var->data.location_frac) & 0xf;
-			}
-		}
-		break;
-	}
+	case MESA_SHADER_VERTEX:
+		gather_usage(deref, nir_ssa_def_components_read(&instr->dest.ssa),
+			     info->input_usage_mask);
 	default:;
 	}
 }
@@ -117,42 +166,16 @@ static void gather_intrinsic_load_deref_output_info(const nir_shader *nir,
 
 static void gather_intrinsic_store_deref_output_info(const nir_shader *nir,
 						     const nir_intrinsic_instr *instr,
-						     nir_variable *var,
+						     const nir_deref_instr *deref,
 						     struct tgsi_shader_info *info)
 {
-	assert(var && var->data.mode == nir_var_shader_out);
-
 	switch (nir->info.stage) {
 	case MESA_SHADER_VERTEX: /* needed by LS, ES */
 	case MESA_SHADER_TESS_EVAL: /* needed by ES */
-	case MESA_SHADER_GEOMETRY: {
-		unsigned i = var->data.driver_location;
-		unsigned attrib_count = glsl_count_attribute_slots(var->type, false);
-		unsigned mask = nir_intrinsic_write_mask(instr);
-
-		assert(!var->data.compact);
-
-		for (unsigned j = 0; j < attrib_count; j++, i++) {
-			if (glsl_type_is_64bit(glsl_without_array(var->type))) {
-				unsigned dmask = mask;
-
-				if (glsl_type_is_dual_slot(glsl_without_array(var->type)) && j % 2)
-					dmask >>= 2;
-
-				dmask <<= var->data.location_frac / 2;
-
-				if (dmask & 0x1)
-					info->output_usagemask[i] |= TGSI_WRITEMASK_XY;
-				if (dmask & 0x2)
-					info->output_usagemask[i] |= TGSI_WRITEMASK_ZW;
-			} else {
-				info->output_usagemask[i] |=
-					(mask << var->data.location_frac) & 0xf;
-			}
-
-		}
+	case MESA_SHADER_GEOMETRY:
+		gather_usage(deref, nir_intrinsic_write_mask(instr),
+			     info->output_usagemask);
 		break;
-	}
 	default:;
 	}
 }
@@ -376,7 +399,8 @@ static void scan_instruction(const struct nir_shader *nir,
 			if (mode == nir_var_shader_in) {
 				/* PS inputs use the interpolated load intrinsics. */
 				assert(nir->info.stage != MESA_SHADER_FRAGMENT);
-				gather_intrinsic_load_deref_input_info(nir, intr, var, info);
+				gather_intrinsic_load_deref_input_info(nir, intr,
+								       nir_src_as_deref(intr->src[0]), info);
 			} else if (mode == nir_var_shader_out) {
 				gather_intrinsic_load_deref_output_info(nir, intr, var, info);
 			}
@@ -386,7 +410,8 @@ static void scan_instruction(const struct nir_shader *nir,
 			nir_variable *var = intrinsic_get_var(intr);
 
 			if (var->data.mode == nir_var_shader_out)
-				gather_intrinsic_store_deref_output_info(nir, intr, var, info);
+				gather_intrinsic_store_deref_output_info(nir, intr,
+									 nir_src_as_deref(intr->src[0]), info);
 			break;
 		}
 		case nir_intrinsic_interp_deref_at_centroid:
