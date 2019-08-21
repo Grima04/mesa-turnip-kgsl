@@ -2108,13 +2108,10 @@ opt_shader_and_create_symbol_table(struct gl_context *ctx,
                                       shader->symbols);
 }
 
-void
-_mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
-                          bool dump_ast, bool dump_hir, bool force_recompile)
+static bool
+can_skip_compile(struct gl_context *ctx, struct gl_shader *shader,
+                 const char *source, bool force_recompile)
 {
-   const char *source = force_recompile && shader->FallbackSource ?
-      shader->FallbackSource : shader->Source;
-
    if (!force_recompile) {
       if (ctx->Cache) {
          char buf[41];
@@ -2130,19 +2127,32 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
 
             free((void *)shader->FallbackSource);
             shader->FallbackSource = NULL;
-            return;
+            return true;
          }
       }
    } else {
       /* We should only ever end up here if a re-compile has been forced by a
        * shader cache miss. In which case we can skip the compile if its
-       * already be done by a previous fallback or the initial compile call.
+       * already been done by a previous fallback or the initial compile call.
        */
       if (shader->CompileStatus == COMPILE_SUCCESS)
-         return;
+         return true;
    }
 
-   struct _mesa_glsl_parse_state *state =
+   return false;
+}
+
+void
+_mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
+                          bool dump_ast, bool dump_hir, bool force_recompile)
+{
+   const char *source = force_recompile && shader->FallbackSource ?
+      shader->FallbackSource : shader->Source;
+
+   if (can_skip_compile(ctx, shader, source, force_recompile))
+      return;
+
+    struct _mesa_glsl_parse_state *state =
       new(shader) _mesa_glsl_parse_state(ctx, shader->Stage, shader);
 
    if (ctx->Const.GenerateTemporaryNames)
