@@ -136,7 +136,10 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
         uint8_t r0_written_mask = 0x0;
 
         /* Simultaneously we scan for the set of dependencies */
-        BITSET_WORD *dependencies = calloc(sizeof(BITSET_WORD), BITSET_WORDS(node_count));
+
+        size_t sz = sizeof(BITSET_WORD) * BITSET_WORDS(node_count);
+        BITSET_WORD *dependencies = alloca(sz);
+        memset(dependencies, 0, sz);
 
         for (unsigned i = 0; i < count; ++i) {
                 midgard_instruction *ins = bundle[i];
