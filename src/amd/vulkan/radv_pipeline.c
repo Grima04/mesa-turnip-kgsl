@@ -2320,6 +2320,7 @@ radv_fill_shader_keys(struct radv_device *device,
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX10 &&
+	    device->physical_device->rad_info.family != CHIP_NAVI14 &&
 	    !(device->instance->debug_flags & RADV_DEBUG_NO_NGG)) {
 		if (nir[MESA_SHADER_TESS_CTRL]) {
 			keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg = true;
