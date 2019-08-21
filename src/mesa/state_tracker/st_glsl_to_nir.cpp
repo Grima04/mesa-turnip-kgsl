@@ -183,7 +183,7 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
             loc = imageidx;
             imageidx += type_size(uniform->type);
          }
-      } else if (strncmp(uniform->name, "gl_", 3) == 0) {
+      } else if (uniform->state_slots) {
          const gl_state_index16 *const stateTokens = uniform->state_slots[0].tokens;
          /* This state reference has already been setup by ir_to_mesa, but we'll
           * get the same index back here.
@@ -409,10 +409,8 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
     * get sent to the shader.
     */
    nir_foreach_variable(var, &nir->uniforms) {
-      if (strncmp(var->name, "gl_", 3) == 0) {
-         const nir_state_slot *const slots = var->state_slots;
-         assert(var->state_slots != NULL);
-
+      const nir_state_slot *const slots = var->state_slots;
+      if (slots != NULL) {
          const struct glsl_type *type = glsl_without_array(var->type);
          for (unsigned int i = 0; i < var->num_state_slots; i++) {
             unsigned comps;
