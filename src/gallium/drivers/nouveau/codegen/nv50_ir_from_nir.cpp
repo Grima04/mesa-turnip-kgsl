@@ -515,12 +515,18 @@ Converter::getOperation(nir_intrinsic_op op)
    case nir_intrinsic_bindless_image_atomic_exchange:
    case nir_intrinsic_image_atomic_exchange:
    case nir_intrinsic_image_deref_atomic_exchange:
-   case nir_intrinsic_bindless_image_atomic_max:
-   case nir_intrinsic_image_atomic_max:
-   case nir_intrinsic_image_deref_atomic_max:
-   case nir_intrinsic_bindless_image_atomic_min:
-   case nir_intrinsic_image_atomic_min:
-   case nir_intrinsic_image_deref_atomic_min:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_bindless_image_atomic_or:
    case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_image_deref_atomic_or:
@@ -608,17 +614,23 @@ Converter::getSubOp(nir_intrinsic_op op)
    case nir_intrinsic_shared_atomic_or:
    case nir_intrinsic_ssbo_atomic_or:
       return  NV50_IR_SUBOP_ATOM_OR;
-   case nir_intrinsic_bindless_image_atomic_max:
-   case nir_intrinsic_image_atomic_max:
-   case nir_intrinsic_image_deref_atomic_max:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_umax:
    case nir_intrinsic_shared_atomic_imax:
    case nir_intrinsic_shared_atomic_umax:
    case nir_intrinsic_ssbo_atomic_imax:
    case nir_intrinsic_ssbo_atomic_umax:
       return  NV50_IR_SUBOP_ATOM_MAX;
-   case nir_intrinsic_bindless_image_atomic_min:
-   case nir_intrinsic_image_atomic_min:
-   case nir_intrinsic_image_deref_atomic_min:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_shared_atomic_imin:
    case nir_intrinsic_shared_atomic_umin:
    case nir_intrinsic_ssbo_atomic_imin:
@@ -2374,8 +2386,10 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_bindless_image_atomic_and:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
    case nir_intrinsic_bindless_image_atomic_exchange:
-   case nir_intrinsic_bindless_image_atomic_max:
-   case nir_intrinsic_bindless_image_atomic_min:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umin:
    case nir_intrinsic_bindless_image_atomic_or:
    case nir_intrinsic_bindless_image_atomic_xor:
    case nir_intrinsic_bindless_image_load:
@@ -2405,8 +2419,10 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_bindless_image_atomic_and:
       case nir_intrinsic_bindless_image_atomic_comp_swap:
       case nir_intrinsic_bindless_image_atomic_exchange:
-      case nir_intrinsic_bindless_image_atomic_max:
-      case nir_intrinsic_bindless_image_atomic_min:
+      case nir_intrinsic_bindless_image_atomic_imax:
+      case nir_intrinsic_bindless_image_atomic_umax:
+      case nir_intrinsic_bindless_image_atomic_imin:
+      case nir_intrinsic_bindless_image_atomic_umin:
       case nir_intrinsic_bindless_image_atomic_or:
       case nir_intrinsic_bindless_image_atomic_xor:
          ty = getDType(insn);
@@ -2472,8 +2488,10 @@ Converter::visit(nir_intrinsic_instr *insn)
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_exchange:
-   case nir_intrinsic_image_deref_atomic_max:
-   case nir_intrinsic_image_deref_atomic_min:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_image_deref_atomic_or:
    case nir_intrinsic_image_deref_atomic_xor:
    case nir_intrinsic_image_deref_load:
@@ -2507,8 +2525,10 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_image_deref_atomic_and:
       case nir_intrinsic_image_deref_atomic_comp_swap:
       case nir_intrinsic_image_deref_atomic_exchange:
-      case nir_intrinsic_image_deref_atomic_max:
-      case nir_intrinsic_image_deref_atomic_min:
+      case nir_intrinsic_image_deref_atomic_imax:
+      case nir_intrinsic_image_deref_atomic_umax:
+      case nir_intrinsic_image_deref_atomic_imin:
+      case nir_intrinsic_image_deref_atomic_umin:
       case nir_intrinsic_image_deref_atomic_or:
       case nir_intrinsic_image_deref_atomic_xor:
          ty = getDType(insn);

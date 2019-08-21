@@ -152,8 +152,10 @@ iris_lower_storage_image_derefs(nir_shader *nir)
          case nir_intrinsic_image_deref_load:
          case nir_intrinsic_image_deref_store:
          case nir_intrinsic_image_deref_atomic_add:
-         case nir_intrinsic_image_deref_atomic_min:
-         case nir_intrinsic_image_deref_atomic_max:
+         case nir_intrinsic_image_deref_atomic_imin:
+         case nir_intrinsic_image_deref_atomic_umin:
+         case nir_intrinsic_image_deref_atomic_imax:
+         case nir_intrinsic_image_deref_atomic_umax:
          case nir_intrinsic_image_deref_atomic_and:
          case nir_intrinsic_image_deref_atomic_or:
          case nir_intrinsic_image_deref_atomic_xor:
@@ -723,8 +725,10 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
          case nir_intrinsic_image_load:
          case nir_intrinsic_image_store:
          case nir_intrinsic_image_atomic_add:
-         case nir_intrinsic_image_atomic_min:
-         case nir_intrinsic_image_atomic_max:
+         case nir_intrinsic_image_atomic_imin:
+         case nir_intrinsic_image_atomic_umin:
+         case nir_intrinsic_image_atomic_imax:
+         case nir_intrinsic_image_atomic_umax:
          case nir_intrinsic_image_atomic_and:
          case nir_intrinsic_image_atomic_or:
          case nir_intrinsic_image_atomic_xor:
@@ -816,8 +820,10 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
          case nir_intrinsic_image_load:
          case nir_intrinsic_image_store:
          case nir_intrinsic_image_atomic_add:
-         case nir_intrinsic_image_atomic_min:
-         case nir_intrinsic_image_atomic_max:
+         case nir_intrinsic_image_atomic_imin:
+         case nir_intrinsic_image_atomic_umin:
+         case nir_intrinsic_image_atomic_imax:
+         case nir_intrinsic_image_atomic_umax:
          case nir_intrinsic_image_atomic_and:
          case nir_intrinsic_image_atomic_or:
          case nir_intrinsic_image_atomic_xor:

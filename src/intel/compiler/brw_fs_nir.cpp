@@ -3972,8 +3972,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_store:
    case nir_intrinsic_image_atomic_add:
-   case nir_intrinsic_image_atomic_min:
-   case nir_intrinsic_image_atomic_max:
+   case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_image_atomic_umax:
    case nir_intrinsic_image_atomic_and:
    case nir_intrinsic_image_atomic_or:
    case nir_intrinsic_image_atomic_xor:
@@ -3982,8 +3984,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_store:
    case nir_intrinsic_bindless_image_atomic_add:
-   case nir_intrinsic_bindless_image_atomic_min:
-   case nir_intrinsic_bindless_image_atomic_max:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_umax:
    case nir_intrinsic_bindless_image_atomic_and:
    case nir_intrinsic_bindless_image_atomic_or:
    case nir_intrinsic_bindless_image_atomic_xor:
@@ -4003,8 +4007,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       case nir_intrinsic_image_load:
       case nir_intrinsic_image_store:
       case nir_intrinsic_image_atomic_add:
-      case nir_intrinsic_image_atomic_min:
-      case nir_intrinsic_image_atomic_max:
+      case nir_intrinsic_image_atomic_imin:
+      case nir_intrinsic_image_atomic_umin:
+      case nir_intrinsic_image_atomic_imax:
+      case nir_intrinsic_image_atomic_umax:
       case nir_intrinsic_image_atomic_and:
       case nir_intrinsic_image_atomic_or:
       case nir_intrinsic_image_atomic_xor:
@@ -4053,15 +4059,25 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             if (op != BRW_AOP_ADD)
                num_srcs = 3;
             break;
-         case nir_intrinsic_image_atomic_min:
-         case nir_intrinsic_bindless_image_atomic_min:
-            assert(format == GL_R32UI || format == GL_R32I);
-            op = (format == GL_R32I) ? BRW_AOP_IMIN : BRW_AOP_UMIN;
+         case nir_intrinsic_image_atomic_imin:
+         case nir_intrinsic_bindless_image_atomic_imin:
+            assert(format == GL_R32I);
+            op = BRW_AOP_IMIN;
             break;
-         case nir_intrinsic_image_atomic_max:
-         case nir_intrinsic_bindless_image_atomic_max:
-            assert(format == GL_R32UI || format == GL_R32I);
-            op = (format == GL_R32I) ? BRW_AOP_IMAX : BRW_AOP_UMAX;
+         case nir_intrinsic_image_atomic_umin:
+         case nir_intrinsic_bindless_image_atomic_umin:
+            assert(format == GL_R32UI);
+            op = BRW_AOP_UMIN;
+            break;
+         case nir_intrinsic_image_atomic_imax:
+         case nir_intrinsic_bindless_image_atomic_imax:
+            assert(format == GL_R32I);
+            op = BRW_AOP_IMAX;
+            break;
+         case nir_intrinsic_image_atomic_umax:
+         case nir_intrinsic_bindless_image_atomic_umax:
+            assert(format == GL_R32UI);
+            op = BRW_AOP_UMAX;
             break;
          case nir_intrinsic_image_atomic_and:
          case nir_intrinsic_bindless_image_atomic_and:

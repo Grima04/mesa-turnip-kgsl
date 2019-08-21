@@ -284,8 +284,10 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 	case nir_intrinsic_image_deref_load:
 	case nir_intrinsic_image_deref_store:
 	case nir_intrinsic_image_deref_atomic_add:
-	case nir_intrinsic_image_deref_atomic_min:
-	case nir_intrinsic_image_deref_atomic_max:
+	case nir_intrinsic_image_deref_atomic_imin:
+	case nir_intrinsic_image_deref_atomic_umin:
+	case nir_intrinsic_image_deref_atomic_imax:
+	case nir_intrinsic_image_deref_atomic_umax:
 	case nir_intrinsic_image_deref_atomic_and:
 	case nir_intrinsic_image_deref_atomic_or:
 	case nir_intrinsic_image_deref_atomic_xor:
@@ -297,8 +299,10 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 
 		if (instr->intrinsic == nir_intrinsic_image_deref_store ||
 		    instr->intrinsic == nir_intrinsic_image_deref_atomic_add ||
-		    instr->intrinsic == nir_intrinsic_image_deref_atomic_min ||
-		    instr->intrinsic == nir_intrinsic_image_deref_atomic_max ||
+		    instr->intrinsic == nir_intrinsic_image_deref_atomic_imin ||
+		    instr->intrinsic == nir_intrinsic_image_deref_atomic_umin ||
+		    instr->intrinsic == nir_intrinsic_image_deref_atomic_imax ||
+		    instr->intrinsic == nir_intrinsic_image_deref_atomic_umax ||
 		    instr->intrinsic == nir_intrinsic_image_deref_atomic_and ||
 		    instr->intrinsic == nir_intrinsic_image_deref_atomic_or ||
 		    instr->intrinsic == nir_intrinsic_image_deref_atomic_xor ||

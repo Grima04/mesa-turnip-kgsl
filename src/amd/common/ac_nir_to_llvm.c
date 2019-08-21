@@ -2621,20 +2621,19 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 	ASSERTED int length;
 
 	enum glsl_sampler_dim dim;
-	bool is_unsigned = false;
 	bool is_array;
 	if (bindless) {
-		if (instr->intrinsic == nir_intrinsic_bindless_image_atomic_min ||
-		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_max) {
+		if (instr->intrinsic == nir_intrinsic_bindless_image_atomic_imin ||
+		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_umin ||
+		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_imax ||
+		    instr->intrinsic == nir_intrinsic_bindless_image_atomic_umax) {
 			const GLenum format = nir_intrinsic_format(instr);
 			assert(format == GL_R32UI || format == GL_R32I);
-			is_unsigned = format == GL_R32UI;
 		}
 		dim = nir_intrinsic_image_dim(instr);
 		is_array = nir_intrinsic_image_array(instr);
 	} else {
 		const struct glsl_type *type = get_image_deref(instr)->type;
-		is_unsigned = glsl_get_sampler_result_type(type) == GLSL_TYPE_UINT;
 		dim = glsl_get_sampler_dim(type);
 		is_array = glsl_sampler_type_is_array(type);
 	}
@@ -2645,15 +2644,25 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		atomic_name = "add";
 		atomic_subop = ac_atomic_add;
 		break;
-	case nir_intrinsic_bindless_image_atomic_min:
-	case nir_intrinsic_image_deref_atomic_min:
-		atomic_name = is_unsigned ? "umin" : "smin";
-		atomic_subop = is_unsigned ? ac_atomic_umin : ac_atomic_smin;
+	case nir_intrinsic_bindless_image_atomic_imin:
+	case nir_intrinsic_image_deref_atomic_imin:
+		atomic_name = "smin";
+		atomic_subop = ac_atomic_smin;
 		break;
-	case nir_intrinsic_bindless_image_atomic_max:
-	case nir_intrinsic_image_deref_atomic_max:
-		atomic_name = is_unsigned ? "umax" : "smax";
-		atomic_subop = is_unsigned ? ac_atomic_umax : ac_atomic_smax;
+	case nir_intrinsic_bindless_image_atomic_umin:
+	case nir_intrinsic_image_deref_atomic_umin:
+		atomic_name = "umin";
+		atomic_subop = ac_atomic_umin;
+		break;
+	case nir_intrinsic_bindless_image_atomic_imax:
+	case nir_intrinsic_image_deref_atomic_imax:
+		atomic_name = "smax";
+		atomic_subop = ac_atomic_smax;
+		break;
+	case nir_intrinsic_bindless_image_atomic_umax:
+	case nir_intrinsic_image_deref_atomic_umax:
+		atomic_name = "umax";
+		atomic_subop = ac_atomic_umax;
 		break;
 	case nir_intrinsic_bindless_image_atomic_and:
 	case nir_intrinsic_image_deref_atomic_and:
@@ -3407,8 +3416,10 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		visit_image_store(ctx, instr, false);
 		break;
 	case nir_intrinsic_bindless_image_atomic_add:
-	case nir_intrinsic_bindless_image_atomic_min:
-	case nir_intrinsic_bindless_image_atomic_max:
+	case nir_intrinsic_bindless_image_atomic_imin:
+	case nir_intrinsic_bindless_image_atomic_umin:
+	case nir_intrinsic_bindless_image_atomic_imax:
+	case nir_intrinsic_bindless_image_atomic_umax:
 	case nir_intrinsic_bindless_image_atomic_and:
 	case nir_intrinsic_bindless_image_atomic_or:
 	case nir_intrinsic_bindless_image_atomic_xor:
@@ -3419,8 +3430,10 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		result = visit_image_atomic(ctx, instr, true);
 		break;
 	case nir_intrinsic_image_deref_atomic_add:
-	case nir_intrinsic_image_deref_atomic_min:
-	case nir_intrinsic_image_deref_atomic_max:
+	case nir_intrinsic_image_deref_atomic_imin:
+	case nir_intrinsic_image_deref_atomic_umin:
+	case nir_intrinsic_image_deref_atomic_imax:
+	case nir_intrinsic_image_deref_atomic_umax:
 	case nir_intrinsic_image_deref_atomic_and:
 	case nir_intrinsic_image_deref_atomic_or:
 	case nir_intrinsic_image_deref_atomic_xor:

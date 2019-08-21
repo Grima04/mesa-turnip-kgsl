@@ -970,10 +970,20 @@ nir_visitor::visit(ir_call *ir)
             : nir_intrinsic_image_deref_atomic_fadd;
          break;
       case ir_intrinsic_image_atomic_min:
-         op = nir_intrinsic_image_deref_atomic_min;
+         if (ir->return_deref->type == glsl_type::int_type)
+            op = nir_intrinsic_image_deref_atomic_imin;
+         else if (ir->return_deref->type == glsl_type::uint_type)
+            op = nir_intrinsic_image_deref_atomic_umin;
+         else
+            unreachable("Invalid type");
          break;
       case ir_intrinsic_image_atomic_max:
-         op = nir_intrinsic_image_deref_atomic_max;
+         if (ir->return_deref->type == glsl_type::int_type)
+            op = nir_intrinsic_image_deref_atomic_imax;
+         else if (ir->return_deref->type == glsl_type::uint_type)
+            op = nir_intrinsic_image_deref_atomic_umax;
+         else
+            unreachable("Invalid type");
          break;
       case ir_intrinsic_image_atomic_and:
          op = nir_intrinsic_image_deref_atomic_and;
@@ -1255,8 +1265,10 @@ nir_visitor::visit(ir_call *ir)
       case nir_intrinsic_image_deref_load:
       case nir_intrinsic_image_deref_store:
       case nir_intrinsic_image_deref_atomic_add:
-      case nir_intrinsic_image_deref_atomic_min:
-      case nir_intrinsic_image_deref_atomic_max:
+      case nir_intrinsic_image_deref_atomic_imin:
+      case nir_intrinsic_image_deref_atomic_umin:
+      case nir_intrinsic_image_deref_atomic_imax:
+      case nir_intrinsic_image_deref_atomic_umax:
       case nir_intrinsic_image_deref_atomic_and:
       case nir_intrinsic_image_deref_atomic_or:
       case nir_intrinsic_image_deref_atomic_xor:
