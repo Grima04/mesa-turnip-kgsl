@@ -1834,9 +1834,10 @@ static inline void si_shader_selector_key(struct pipe_context *ctx,
 
 		if (sctx->tes_shader.cso)
 			key->as_ls = 1;
-		else if (sctx->gs_shader.cso)
+		else if (sctx->gs_shader.cso) {
 			key->as_es = 1;
-		else {
+			key->as_ngg = stages_key.u.ngg;
+		} else {
 			key->as_ngg = stages_key.u.ngg;
 			si_shader_selector_key_hw_vs(sctx, sel, key);
 
@@ -2284,16 +2285,14 @@ current_not_ready:
 		if (previous_stage_sel) {
 			struct si_shader_key shader1_key = zeroed;
 
-			if (sel->type == PIPE_SHADER_TESS_CTRL)
+			if (sel->type == PIPE_SHADER_TESS_CTRL) {
 				shader1_key.as_ls = 1;
-			else if (sel->type == PIPE_SHADER_GEOMETRY)
+			} else if (sel->type == PIPE_SHADER_GEOMETRY) {
 				shader1_key.as_es = 1;
-			else
+				shader1_key.as_ngg = key->as_ngg; /* for Wave32 vs Wave64 */
+			} else {
 				assert(0);
-
-			if (sel->type == PIPE_SHADER_GEOMETRY &&
-			    previous_stage_sel->type == PIPE_SHADER_TESS_EVAL)
-				shader1_key.as_ngg = key->as_ngg;
+			}
 
 			mtx_lock(&previous_stage_sel->mutex);
 			ok = si_check_missing_main_part(sscreen,
@@ -2480,8 +2479,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
 
 		if (sscreen->use_ngg &&
 		    (!sel->so.num_outputs || sscreen->use_ngg_streamout) &&
-		    ((sel->type == PIPE_SHADER_VERTEX &&
-		      !shader->key.as_ls && !shader->key.as_es) ||
+		    ((sel->type == PIPE_SHADER_VERTEX && !shader->key.as_ls) ||
 		     sel->type == PIPE_SHADER_TESS_EVAL ||
 		     sel->type == PIPE_SHADER_GEOMETRY))
 			shader->key.as_ngg = 1;

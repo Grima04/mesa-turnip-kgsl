@@ -7709,7 +7709,7 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen,
 		struct si_shader *es_main_part;
 		enum pipe_shader_type es_type = shader->key.part.gs.es->type;
 
-		if (es_type == PIPE_SHADER_TESS_EVAL && shader->key.as_ngg)
+		if (shader->key.as_ngg)
 			es_main_part = shader->key.part.gs.es->main_shader_part_ngg_es;
 		else
 			es_main_part = shader->key.part.gs.es->main_shader_part_es;

@@ -1903,7 +1903,8 @@ static inline unsigned si_get_wave_size(struct si_screen *sscreen,
 		return sscreen->compute_wave_size;
 	else if (shader_type == PIPE_SHADER_FRAGMENT)
 		return sscreen->ps_wave_size;
-	else if ((shader_type == PIPE_SHADER_TESS_EVAL && es && !ngg) ||
+	else if ((shader_type == PIPE_SHADER_VERTEX && es && !ngg) ||
+		 (shader_type == PIPE_SHADER_TESS_EVAL && es && !ngg) ||
 		 (shader_type == PIPE_SHADER_GEOMETRY && !ngg)) /* legacy GS only supports Wave64 */
 		return 64;
 	else
