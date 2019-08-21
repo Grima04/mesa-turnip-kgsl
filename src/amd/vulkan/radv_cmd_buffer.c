@@ -988,7 +988,7 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 {
-	if (!cmd_buffer->device->physical_device->rbplus_allowed)
+	if (!cmd_buffer->device->physical_device->rad_info.rbplus_allowed)
 		return;
 
 	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;

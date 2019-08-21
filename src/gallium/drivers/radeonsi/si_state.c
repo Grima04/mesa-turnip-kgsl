@@ -131,7 +131,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
 	}
 
 	/* RB+ register settings. */
-	if (sctx->screen->rbplus_allowed) {
+	if (sctx->screen->info.rbplus_allowed) {
 		unsigned spi_shader_col_format =
 			sctx->ps_shader.cso ?
 			sctx->ps_shader.current->key.part.ps.epilog.spi_shader_col_format : 0;
@@ -640,7 +640,7 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 		color_control |= S_028808_MODE(V_028808_CB_DISABLE);
 	}
 
-	if (sctx->screen->rbplus_allowed) {
+	if (sctx->screen->info.rbplus_allowed) {
 		/* Disable RB+ blend optimizations for dual source blending.
 		 * Vulkan does this.
 		 */
@@ -1483,7 +1483,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
 		db_shader_control &= C_02880C_MASK_EXPORT_ENABLE;
 
 	if (sctx->screen->info.has_rbplus &&
-	    !sctx->screen->rbplus_allowed)
+	    !sctx->screen->info.rbplus_allowed)
 		db_shader_control |= S_02880C_DUAL_QUAD_DISABLE(1);
 
 	radeon_opt_set_context_reg(sctx, R_02880C_DB_SHADER_CONTROL,

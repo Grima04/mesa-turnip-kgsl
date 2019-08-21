@@ -457,6 +457,16 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->has_rbplus = info->family == CHIP_STONEY ||
 			   info->chip_class >= GFX9;
 
+	/* Some chips have RB+ registers, but don't support RB+. Those must
+	 * always disable it.
+	 */
+	info->rbplus_allowed = info->has_rbplus &&
+			       (info->family == CHIP_STONEY ||
+			        info->family == CHIP_VEGA12 ||
+			        info->family == CHIP_RAVEN ||
+			        info->family == CHIP_RAVEN2 ||
+			        info->family == CHIP_RENOIR);
+
 	info->has_out_of_order_rast = info->chip_class >= GFX8 &&
 				      info->max_se >= 2;
 

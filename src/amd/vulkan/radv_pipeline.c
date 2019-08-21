@@ -4055,7 +4055,7 @@ radv_compute_db_shader_control(const struct radv_device *device,
 		z_order = V_02880C_LATE_Z;
 
 	bool disable_rbplus = device->physical_device->rad_info.has_rbplus &&
-	                      !device->physical_device->rbplus_allowed;
+	                      !device->physical_device->rad_info.rbplus_allowed;
 
 	/* It shouldn't be needed to export gl_SampleMask when MSAA is disabled
 	 * but this appears to break Project Cars (DXVK). See

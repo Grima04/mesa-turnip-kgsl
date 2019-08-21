@@ -3992,7 +3992,7 @@ bool si_update_shaders(struct si_context *sctx)
 			si_mark_atom_dirty(sctx, &sctx->atoms.s.spi_map);
 		}
 
-		if (sctx->screen->rbplus_allowed &&
+		if (sctx->screen->info.rbplus_allowed &&
 		    si_pm4_state_changed(sctx, ps) &&
 		    (!old_ps ||
 		     old_spi_shader_col_format !=

@@ -511,7 +511,6 @@ struct si_screen {
 	/* Whether shaders are monolithic (1-part) or separate (3-part). */
 	bool				use_monolithic_shaders;
 	bool				record_llvm_ir;
-	bool				rbplus_allowed; /* if RB+ is allowed */
 	bool				dcc_msaa_allowed;
 
 	struct slab_parent_pool		pool_transfers;

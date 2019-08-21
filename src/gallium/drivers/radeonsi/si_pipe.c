@@ -1173,20 +1173,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	 */
 	sscreen->llvm_has_working_vgpr_indexing = sscreen->info.chip_class != GFX9;
 
-	/* Some chips have RB+ registers, but don't support RB+. Those must
-	 * always disable it.
-	 */
-	if (sscreen->info.family == CHIP_STONEY ||
-	    sscreen->info.chip_class >= GFX9) {
-		sscreen->rbplus_allowed =
-			!(sscreen->debug_flags & DBG(NO_RB_PLUS)) &&
-			(sscreen->info.family == CHIP_STONEY ||
-			 sscreen->info.family == CHIP_VEGA12 ||
-			 sscreen->info.family == CHIP_RAVEN ||
-			 sscreen->info.family == CHIP_RAVEN2 ||
-			 sscreen->info.family == CHIP_RENOIR);
-	}
-
 	sscreen->dcc_msaa_allowed =
 		!(sscreen->debug_flags & DBG(NO_DCC_MSAA));
 

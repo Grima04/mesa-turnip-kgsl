@@ -280,8 +280,6 @@ struct radv_physical_device {
 	int master_fd;
 	struct wsi_device                       wsi_device;
 
-	bool rbplus_allowed; /* if RB+ is allowed */
-
 	bool out_of_order_rast_allowed;
 
 	/* Whether DCC should be enabled for MSAA textures. */
