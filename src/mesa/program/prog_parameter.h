@@ -112,6 +112,17 @@ struct gl_program_parameter
     * A sequence of STATE_* tokens and integers to identify GL state.
     */
    gl_state_index16 StateIndexes[STATE_LENGTH];
+
+   /**
+    * Index of this parameter's uniform storage.
+    */
+   uint32_t UniformStorageIndex;
+
+   /**
+    * Index of the first uniform storage that is associated with the same
+    * variable as this parameter.
+    */
+   uint32_t MainUniformStorageIndex;
 };
 
 

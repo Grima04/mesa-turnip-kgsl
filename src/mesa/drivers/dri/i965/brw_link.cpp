@@ -273,7 +273,7 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
          return GL_FALSE;
       }
 
-      if (!gl_nir_link_uniforms(ctx, shProg))
+      if (!gl_nir_link_uniforms(ctx, shProg, /* fill_parameters */ false))
          return GL_FALSE;
 
       gl_nir_link_assign_atomic_counter_resources(ctx, shProg);

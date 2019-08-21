@@ -32,7 +32,8 @@ struct gl_context;
 struct gl_shader_program;
 
 bool gl_nir_link_uniforms(struct gl_context *ctx,
-                          struct gl_shader_program *prog);
+                          struct gl_shader_program *prog,
+                          bool fill_parameters);
 
 void gl_nir_set_uniform_initializers(struct gl_context *ctx,
                                      struct gl_shader_program *prog);
