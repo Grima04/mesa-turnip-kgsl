@@ -175,12 +175,9 @@ quadword_size(int tag)
 #define REGISTER_TEXTURE_BASE 28
 #define REGISTER_SELECT 31
 
-/* SSA helper aliases to mimic the registers. UNUSED_0 encoded as an inline
- * constant. UNUSED_1 encoded as REGISTER_UNUSED */
+/* SSA helper aliases to mimic the registers. */
 
-#define SSA_UNUSED_0 0
-#define SSA_UNUSED_1 -2
-
+#define SSA_UNUSED ~0
 #define SSA_FIXED_SHIFT 24
 #define SSA_FIXED_REGISTER(reg) (((1 + (reg)) << SSA_FIXED_SHIFT) | 1)
 #define SSA_REG_FROM_FIXED(reg) ((((reg) & ~1) >> SSA_FIXED_SHIFT) - 1)

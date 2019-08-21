@@ -105,8 +105,8 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 			.type = TAG_LOAD_STORE_4, \
                         .mask = 0xF, \
 			.ssa_args = { \
-				.dest = -1, \
-				.src = { -1, -1, -1 }, \
+				.dest = ~0, \
+				.src = { ~0, ~0, ~0 }, \
 			}, \
 			.load_store = { \
 				.op = midgard_op_##name, \
@@ -213,8 +213,8 @@ v_alu_br_compact_cond(midgard_jmp_writeout_op op, unsigned tag, signed offset, u
                 .compact_branch = true,
                 .br_compact = compact,
                 .ssa_args = {
-                        .dest = -1,
-                        .src = { -1, -1, -1 },
+                        .dest = ~0,
+                        .src = { ~0, ~0, ~0 },
                 }
         };
 
@@ -236,8 +236,8 @@ v_branch(bool conditional, bool invert)
                         .invert_conditional = invert
                 },
                 .ssa_args = {
-                        .dest = -1,
-                        .src = { -1, -1, -1 },
+                        .dest = ~0,
+                        .src = { ~0, ~0, ~0 },
                 }
         };
 
@@ -338,7 +338,7 @@ midgard_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
         case nir_intrinsic_store_ssbo: 
                 return midgard_sysval_for_ssbo(instr);
         default:
-                return -1;
+                return ~0;
         }
 }
 
@@ -622,7 +622,7 @@ emit_condition(compiler_context *ctx, nir_src *src, bool for_branch, unsigned co
                 .mask = 1 << COMPONENT_W,
 
                 .ssa_args = {
-                        .src = { condition, condition, -1 },
+                        .src = { condition, condition, ~0 },
                         .dest = SSA_FIXED_REGISTER(31),
                 },
 
@@ -661,7 +661,7 @@ emit_condition_mixed(compiler_context *ctx, nir_alu_src *src, unsigned nr_comp)
                 .precede_break = true,
                 .mask = mask_of(nr_comp),
                 .ssa_args = {
-                        .src = { condition, condition, -1 },
+                        .src = { condition, condition, ~0 },
                         .dest = SSA_FIXED_REGISTER(31),
                 },
                 .alu = {
@@ -1021,7 +1021,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * needs it, or else we may segfault. */
 
         unsigned src0 = nir_alu_src_index(ctx, &instr->src[0]);
-        unsigned src1 = nr_inputs == 2 ? nir_alu_src_index(ctx, &instr->src[1]) : SSA_UNUSED_0;
+        unsigned src1 = nr_inputs == 2 ? nir_alu_src_index(ctx, &instr->src[1]) : ~0;
 
         /* Rather than use the instruction generation helpers, we do it
          * ourselves here to avoid the mess */
@@ -1030,9 +1030,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 .type = TAG_ALU_4,
                 .ssa_args = {
                         .src = {
-                                quirk_flipped_r24 ? SSA_UNUSED_1 : src0,
-                                quirk_flipped_r24 ? src0         : src1,
-                                -1
+                                quirk_flipped_r24 ? ~0 : src0,
+                                quirk_flipped_r24 ? src0       : src1,
+                                ~0
                         },
                         .dest = dest,
                 }
@@ -1370,13 +1370,13 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
 
         midgard_instruction rt_move = {
                 .ssa_args = {
-                        .dest = -1
+                        .dest = ~0
                 }
         };
 
         if (rt != 0) {
                 /* We'll write to r1.z */
-                rt_move = v_mov(-1, blank_alu_src, SSA_FIXED_REGISTER(1));
+                rt_move = v_mov(~0, blank_alu_src, SSA_FIXED_REGISTER(1));
                 rt_move.mask = 1 << COMPONENT_Z;
                 rt_move.unit = UNIT_SADD;
 
@@ -1627,7 +1627,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_viewport_scale:
         case nir_intrinsic_load_viewport_offset:
         case nir_intrinsic_load_num_work_groups:
-                emit_sysval_read(ctx, &instr->instr, -1, 3);
+                emit_sysval_read(ctx, &instr->instr, ~0, 3);
                 break;
 
         case nir_intrinsic_load_work_group_id:
@@ -1733,7 +1733,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 .mask = 0xF,
                 .ssa_args = {
                         .dest = nir_dest_index(ctx, &instr->dest),
-                        .src = { -1, -1, -1 },
+                        .src = { ~0, ~0, ~0 },
                 },
                 .texture = {
                         .op = midgard_texop,
@@ -1867,7 +1867,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
                 break;
         case nir_texop_txs:
-                emit_sysval_read(ctx, &instr->instr, -1, 4);
+                emit_sysval_read(ctx, &instr->instr, ~0, 4);
                 break;
         default:
                 unreachable("Unhanlded texture op");
@@ -2158,7 +2158,7 @@ embedded_to_inline_constant(compiler_context *ctx)
 
                         /* Get rid of the embedded constant */
                         ins->has_constants = false;
-                        ins->ssa_args.src[1] = -1;
+                        ins->ssa_args.src[1] = ~0;
                         ins->ssa_args.inline_constant = true;
                         ins->inline_constant = scaled_constant;
                 }
@@ -2260,7 +2260,7 @@ static void
 emit_fragment_epilogue(compiler_context *ctx)
 {
         /* Just emit the last chunk with the branch */
-        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, -1, midgard_condition_always);
+        EMIT(alu_br_compact_cond, midgard_jmp_writeout_op_writeout, TAG_ALU_4, ~0, midgard_condition_always);
 }
 
 static midgard_block *
@@ -2291,8 +2291,8 @@ emit_block(compiler_context *ctx, nir_block *block)
         this_block->is_scheduled = false;
         ++ctx->block_count;
 
-        ctx->texture_index[0] = -1;
-        ctx->texture_index[1] = -1;
+        ctx->texture_index[0] = ~0;
+        ctx->texture_index[1] = ~0;
 
         /* Set up current block */
         list_inithead(&this_block->instructions);

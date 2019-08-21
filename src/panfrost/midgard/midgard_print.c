@@ -34,7 +34,7 @@
 static void
 mir_print_index(int source)
 {
-        if (source < 0) {
+        if (source == ~0) {
                 printf("_");
                 return;
         }

@@ -68,11 +68,11 @@ typedef struct midgard_branch {
 } midgard_branch;
 
 /* Instruction arguments represented as block-local SSA indices, rather than
- * registers. Negative values mean unused. */
+ * registers. ~0 means unused. */
 
 typedef struct {
-        int src[3];
-        int dest;
+        unsigned src[3];
+        unsigned dest;
 
         bool inline_constant;
 } ssa_args;
@@ -534,7 +534,7 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
                 .type = TAG_ALU_4,
                 .mask = 0xF,
                 .ssa_args = {
-                        .src = { SSA_UNUSED_1, src, -1 },
+                        .src = { SSA_UNUSED, src, SSA_UNUSED },
                         .dest = dest,
                 },
                 .alu = {

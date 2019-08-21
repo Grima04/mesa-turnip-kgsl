@@ -103,7 +103,7 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
                 unsigned iA = ins->ssa_args.dest;
                 unsigned iB = ins->ssa_args.src[1];
 
-                if ((iA < 0) || (iB < 0)) continue;
+                if ((iA == ~0) || (iB == ~0)) continue;
 
                 unsigned A = iA >= SSA_FIXED_MINIMUM ?
                         SSA_REG_FROM_FIXED(iA) : 

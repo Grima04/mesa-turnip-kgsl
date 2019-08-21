@@ -41,7 +41,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
                         .type = TAG_ALU_4,
                         .mask = ins->mask,
                         .ssa_args = {
-                                .src = { temp, -1, -1 },
+                                .src = { temp, ~0, ~0 },
                                 .dest = ins->ssa_args.dest,
                                 .inline_constant = true
                         },

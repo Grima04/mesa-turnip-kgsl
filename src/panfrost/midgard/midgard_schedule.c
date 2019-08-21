@@ -159,15 +159,15 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
                 unsigned src1 = ins->ssa_args.src[1];
 
                 if (!mir_is_written_before(ctx, bundle[0], src0))
-                        src0 = -1;
+                        src0 = ~0;
 
                 if (!mir_is_written_before(ctx, bundle[0], src1))
-                        src1 = -1;
+                        src1 = ~0;
 
-                if ((src0 > 0) && (src0 < node_count))
+                if (src0 < node_count)
                         BITSET_SET(dependencies, src0);
 
-                if ((src1 > 0) && (src1 < node_count))
+                if (src1 < node_count)
                         BITSET_SET(dependencies, src1);
 
                 /* Requirement 2 */
@@ -630,7 +630,7 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
                                 bool deps = false;
 
                                 for (unsigned s = 0; s < ARRAY_SIZE(ins->ssa_args.src); ++s)
-                                        deps |= (c->ssa_args.src[s] != -1);
+                                        deps |= (c->ssa_args.src[s] != ~0);
 
                                 if (deps)
                                         continue;
@@ -652,7 +652,7 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
 static unsigned
 find_or_allocate_temp(compiler_context *ctx, unsigned hash)
 {
-        if ((hash < 0) || (hash >= SSA_FIXED_MINIMUM))
+        if (hash >= SSA_FIXED_MINIMUM)
                 return hash;
 
         unsigned temp = (uintptr_t) _mesa_hash_table_u64_search(
@@ -703,8 +703,8 @@ v_load_store_scratch(
                 .type = TAG_LOAD_STORE_4,
                 .mask = mask,
                 .ssa_args = {
-                        .dest = -1,
-                        .src = { -1, -1, -1 },
+                        .dest = ~0,
+                        .src = { ~0, ~0, ~0 },
                 },
                 .load_store = {
                         .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,

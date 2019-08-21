@@ -138,12 +138,14 @@ default_phys_reg(int reg)
  * register corresponds to */
 
 static struct phys_reg
-index_to_reg(compiler_context *ctx, struct ra_graph *g, int reg)
+index_to_reg(compiler_context *ctx, struct ra_graph *g, unsigned reg)
 {
         /* Check for special cases */
-        if (reg >= SSA_FIXED_MINIMUM)
+        if ((reg == ~0) && g)
+                return default_phys_reg(REGISTER_UNUSED);
+        else if (reg >= SSA_FIXED_MINIMUM)
                 return default_phys_reg(SSA_REG_FROM_FIXED(reg));
-        else if ((reg < 0) || !g)
+        else if (!g)
                 return default_phys_reg(REGISTER_UNUSED);
 
         /* Special cases aside, we pick the underlying register */
@@ -301,7 +303,7 @@ static void
 set_class(unsigned *classes, unsigned node, unsigned class)
 {
         /* Check that we're even a node */
-        if ((node < 0) || (node >= SSA_FIXED_MINIMUM))
+        if (node >= SSA_FIXED_MINIMUM)
                 return;
 
         /* First 4 are work, next 4 are load/store.. */
@@ -321,7 +323,7 @@ set_class(unsigned *classes, unsigned node, unsigned class)
 static void
 force_vec4(unsigned *classes, unsigned node)
 {
-        if ((node < 0) || (node >= SSA_FIXED_MINIMUM))
+        if (node >= SSA_FIXED_MINIMUM)
                 return;
 
         /* Force vec4 = 3 */
@@ -335,7 +337,7 @@ static bool
 check_read_class(unsigned *classes, unsigned tag, unsigned node)
 {
         /* Non-nodes are implicitly ok */
-        if ((node < 0) || (node >= SSA_FIXED_MINIMUM))
+        if (node >= SSA_FIXED_MINIMUM)
                 return true;
 
         unsigned current_class = classes[node] >> 2;
@@ -358,7 +360,7 @@ static bool
 check_write_class(unsigned *classes, unsigned tag, unsigned node)
 {
         /* Non-nodes are implicitly ok */
-        if ((node < 0) || (node >= SSA_FIXED_MINIMUM))
+        if (node >= SSA_FIXED_MINIMUM)
                 return true;
 
         unsigned current_class = classes[node] >> 2;
@@ -383,7 +385,7 @@ check_write_class(unsigned *classes, unsigned tag, unsigned node)
 static void
 mark_node_class (unsigned *bitfield, unsigned node)
 {
-        if ((node >= 0) && (node < SSA_FIXED_MINIMUM))
+        if (node < SSA_FIXED_MINIMUM)
                 BITSET_SET(bitfield, node);
 }
 
@@ -522,7 +524,7 @@ mir_lower_special_reads(compiler_context *ctx)
 static void
 liveness_gen(uint8_t *live, unsigned node, unsigned max, unsigned mask)
 {
-        if ((node < 0) || (node >= max))
+        if (node >= max)
                 return;
 
         live[node] |= mask;
@@ -531,7 +533,7 @@ liveness_gen(uint8_t *live, unsigned node, unsigned max, unsigned mask)
 static void
 liveness_kill(uint8_t *live, unsigned node, unsigned max, unsigned mask)
 {
-        if ((node < 0) || (node >= max))
+        if (node >= max)
                 return;
 
         live[node] &= ~mask;
@@ -659,7 +661,7 @@ mir_compute_liveness(
 
                         unsigned dest = ins->ssa_args.dest;
 
-                        if (dest >= 0 && dest < ctx->temp_count) {
+                        if (dest < ctx->temp_count) {
                                 for (unsigned i = 0; i < ctx->temp_count; ++i)
                                         if (live[i])
                                                 ra_add_node_interference(g, dest, i);
@@ -710,7 +712,6 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->ssa_args.dest < 0) continue;
                 if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
 
                 /* 0 for x, 1 for xy, 2 for xyz, 3 for xyzw */
@@ -931,7 +932,7 @@ install_registers_instr(
                         compose_writemask(ins->mask, dest);
 
                 /* If there is a register LOD/bias, use it */
-                if (args.src[1] > -1) {
+                if (args.src[1] != ~0) {
                         midgard_tex_register_select sel = {
                                 .select = lod.reg,
                                 .full = 1,

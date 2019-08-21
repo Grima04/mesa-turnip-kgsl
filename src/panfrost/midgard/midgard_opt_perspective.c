@@ -116,7 +116,7 @@ midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block)
                         .mask = ins->mask,
                         .ssa_args = {
                                 .dest = to,
-                                .src = { frcp_from, -1, -1 },
+                                .src = { frcp_from, ~0, ~0 },
                         },
                         .load_store = {
                                 .op = frcp_component == COMPONENT_W ?
