@@ -85,6 +85,11 @@ LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
                                     LLVMBool SingleThread);
 #endif
 
+#if HAVE_LLVM < 0x305
+LLVMValueRef LLVMBuildFence(LLVMBuilderRef B,
+			    LLVMAtomicOrdering ordering,
+			    LLVMBool singleThread, const char *Name);
+#endif
 #ifdef __cplusplus
 }
 #endif

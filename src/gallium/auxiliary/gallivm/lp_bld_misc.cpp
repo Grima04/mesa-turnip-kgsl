@@ -836,3 +836,14 @@ LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
                                                           SingleThread ? llvm::SynchronizationScope::SingleThread : llvm::SynchronizationScope::CrossThread));
 }
 #endif
+
+#if HAVE_LLVM < 0x305
+LLVMValueRef LLVMBuildFence(LLVMBuilderRef B,
+			    LLVMAtomicOrdering ordering,
+			    LLVMBool singleThread,
+			    const char *Name)
+{
+  return llvm::wrap(llvm::unwrap(B)->CreateFence(mapFromLLVMOrdering(ordering),
+						 singleThread ? llvm::SynchronizationScope::SingleThread : llvm::SynchronizationScope::CrossThread));
+}
+#endif
