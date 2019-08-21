@@ -876,6 +876,9 @@ enum mali_fbd_type {
 #define FBD_TYPE (1)
 #define FBD_MASK (~0x3f)
 
+/* ORed into an MFBD address to specify the fbx section is included */
+#define MALI_MFBD_TAG_EXTRA (0x2)
+
 struct mali_uniform_buffer_meta {
         /* This is actually the size minus 1 (MALI_POSITIVE), in units of 16
          * bytes. This gives a maximum of 2^14 bytes, which just so happens to
@@ -1346,11 +1349,6 @@ struct mali_viewport {
 
 #define MALI_TILE_COORD_X(coord) ((coord) & MALI_X_COORD_MASK)
 #define MALI_TILE_COORD_Y(coord) (((coord) & MALI_Y_COORD_MASK) >> 16)
-#define MALI_TILE_COORD_FLAGS(coord) ((coord) & ~(MALI_X_COORD_MASK | MALI_Y_COORD_MASK))
-
-/* No known flags yet, but just in case...? */
-
-#define MALI_TILE_NO_FLAG (0)
 
 /* Helpers to generate tile coordinates based on the boundary coordinates in
  * screen space. So, with the bounds (0, 0) to (128, 128) for the screen, these

@@ -611,11 +611,23 @@ pandecode_midgard_tiler_descriptor(
         pandecode_log("}\n");
 }
 
-static void
+/* Information about the framebuffer passed back for
+ * additional analysis */
+
+struct pandecode_fbd {
+        unsigned width;
+        unsigned height;
+        unsigned rt_count;
+        bool has_extra;
+};
+
+static struct pandecode_fbd
 pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct mali_single_framebuffer *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
+
+        struct pandecode_fbd info;
 
         pandecode_log("struct mali_single_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
@@ -627,8 +639,12 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
         pandecode_log_decoded_flags(fb_fmt_flag_info, s->format);
         pandecode_log_cont(",\n");
 
-        pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", s->width + 1);
-        pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", s->height + 1);
+        info.width = s->width + 1;
+        info.height = s->height + 1;
+        info.rt_count = 1;
+
+        pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", info.width);
+        pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", info.height);
 
         MEMORY_PROP(s, framebuffer);
         pandecode_prop("stride = %d", s->stride);
@@ -693,6 +709,8 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
                 printf("%X, ", s->zero6[i]);
 
         printf("},\n");
+
+        return info;
 }
 
 static void
@@ -951,12 +969,14 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct bifrost_f
         pandecode_log("};\n");
 }
 
-static unsigned
+static struct pandecode_fbd
 pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct bifrost_framebuffer *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
 
+        struct pandecode_fbd info;
+ 
         if (fb->sample_locations) {
                 /* The blob stores all possible sample locations in a single buffer
                  * allocated on startup, and just switches the pointer when switching
@@ -995,6 +1015,10 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
         /* Assume that unknown1 was emitted in the last job for
          * now */
         MEMORY_PROP(fb, unknown1);
+
+        info.width = fb->width1 + 1;
+        info.height = fb->height1 + 1;
+        info.rt_count = fb->rt_count_1 + 1;
 
         pandecode_prop("width1 = MALI_POSITIVE(%d)", fb->width1 + 1);
         pandecode_prop("height1 = MALI_POSITIVE(%d)", fb->height1 + 1);
@@ -1036,7 +1060,9 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
 
         gpu_va += sizeof(struct bifrost_framebuffer);
 
-        if ((fb->mfbd_flags & MALI_MFBD_EXTRA) && is_fragment) {
+        info.has_extra = (fb->mfbd_flags & MALI_MFBD_EXTRA) && is_fragment;
+
+        if (info.has_extra) {
                 mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
                 const struct bifrost_fb_extra *PANDECODE_PTR_VAR(fbx, mem, (mali_ptr) gpu_va);
 
@@ -1120,8 +1146,7 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment)
         if (is_fragment)
                 pandecode_render_target(gpu_va, job_no, fb);
 
-        /* Passback the render target count */
-        return MALI_NEGATIVE(fb->rt_count_1);
+        return info;
 }
 
 /* Just add a comment decoding the shift/odd fields forming the padded vertices
@@ -1916,21 +1941,25 @@ pandecode_vertex_tiler_postfix_pre(
         mali_ptr shader_meta_ptr = (u64) (uintptr_t) (p->_shader_upper << 4);
         struct pandecode_mapped_memory *attr_mem;
 
-        unsigned rt_count = 1;
-
         /* On Bifrost, since the tiler heap (for tiler jobs) and the scratchpad
          * are the only things actually needed from the FBD, vertex/tiler jobs
          * no longer reference the FBD -- instead, this field points to some
          * info about the scratchpad.
          */
+
+        struct pandecode_fbd fbd_info = {
+                /* Default for Bifrost */
+                .rt_count = 1
+        };
+
         if (is_bifrost)
                 pandecode_scratchpad(p->framebuffer & ~FBD_TYPE, job_no, suffix);
         else if (p->framebuffer & MALI_MFBD)
-                rt_count = pandecode_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
+                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->framebuffer) & FBD_MASK, job_no, false);
         else if (job_type == JOB_TYPE_COMPUTE)
                 pandecode_compute_fbd((u64) (uintptr_t) p->framebuffer, job_no);
         else
-                pandecode_sfbd((u64) (uintptr_t) p->framebuffer, job_no, false);
+                fbd_info = pandecode_sfbd((u64) (uintptr_t) p->framebuffer, job_no, false);
 
         int varying_count = 0, attribute_count = 0, uniform_count = 0, uniform_buffer_count = 0;
         int texture_count = 0, sampler_count = 0;
@@ -2077,7 +2106,7 @@ pandecode_vertex_tiler_postfix_pre(
                 if (job_type == JOB_TYPE_TILER) {
                         void* blend_base = (void *) (s + 1);
 
-                        for (unsigned i = 0; i < rt_count; i++) {
+                        for (unsigned i = 0; i < fbd_info.rt_count; i++) {
                                 mali_ptr shader = 0;
 
                                 if (is_bifrost)
@@ -2523,25 +2552,43 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 {
         const struct mali_payload_fragment *PANDECODE_PTR_VAR(s, mem, payload);
 
-        if ((s->framebuffer & FBD_TYPE) == MALI_SFBD) {
-                if (is_bifrost)
-                        pandecode_msg("XXX: Bifrost fragment must use MFBD\n");
+        bool is_mfbd = (s->framebuffer & FBD_TYPE) == MALI_MFBD;
 
-                pandecode_sfbd(s->framebuffer & FBD_MASK, job_no, true);
-        } else if ((s->framebuffer & FBD_TYPE) == MALI_MFBD) {
-                pandecode_mfbd_bfr(s->framebuffer & FBD_MASK, job_no, true);
-        } else {
-                pandecode_msg("XXX: invalid fragment framebuffer type\n");
+        /* Bifrost theoretically may retain support for SFBD on compute jobs,
+         * but for graphics workloads with a FRAGMENT payload, use MFBD */
+
+        if (!is_mfbd && is_bifrost)
+                pandecode_msg("XXX: Bifrost fragment must use MFBD\n");
+
+        struct pandecode_fbd info;
+
+        if (is_mfbd)
+                info = pandecode_mfbd_bfr(s->framebuffer & FBD_MASK, job_no, true);
+        else
+                info = pandecode_sfbd(s->framebuffer & FBD_MASK, job_no, true);
+
+        /* Compute the tag for the tagged pointer. This contains the type of
+         * FBD (MFBD/SFBD), and in the case of an MFBD, information about which
+         * additional structures follow the MFBD header (an extra payload or
+         * not, as well as a count of render targets) */
+
+        unsigned expected_tag = is_mfbd ? MALI_MFBD : MALI_SFBD;
+
+        if (is_mfbd) {
+                if (info.has_extra)
+                        expected_tag |= MALI_MFBD_TAG_EXTRA;
+
+                expected_tag |= (MALI_POSITIVE(info.rt_count) << 2);
         }
 
         pandecode_log("struct mali_payload_fragment payload_%"PRIx64"_%d = {\n", payload, job_no);
         pandecode_indent++;
 
-        /* See the comments by the macro definitions for mathematical context
-         * on why this is so weird */
-
-        if (MALI_TILE_COORD_FLAGS(s->max_tile_coord) || MALI_TILE_COORD_FLAGS(s->min_tile_coord))
-                pandecode_msg("Tile coordinate flag missed, replay wrong\n");
+        if ((s->min_tile_coord | s->max_tile_coord) & ~(MALI_X_COORD_MASK | MALI_Y_COORD_MASK)) {
+                pandecode_msg("XXX: unexpected tile coordinate bits\n");
+                pandecode_prop("min_tile_coord = 0x%X\n", s->min_tile_coord);
+                pandecode_prop("max_tile_coord = 0x%X\n", s->min_tile_coord);
+        }
 
         pandecode_prop("min_tile_coord = MALI_COORDINATE_TO_TILE_MIN(%d, %d)",
                        MALI_TILE_COORD_X(s->min_tile_coord) << MALI_TILE_SHIFT,
@@ -2551,16 +2598,12 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
                        (MALI_TILE_COORD_X(s->max_tile_coord) + 1) << MALI_TILE_SHIFT,
                        (MALI_TILE_COORD_Y(s->max_tile_coord) + 1) << MALI_TILE_SHIFT);
 
-        /* If the FBD was just decoded, we can refer to it by pointer. If not,
-         * we have to fallback on offsets. */
+        /* The FBD is a tagged pointer */
 
-        const char *fbd_type = s->framebuffer & MALI_MFBD ? "MALI_MFBD" : "MALI_SFBD";
+        unsigned tag = (s->framebuffer & ~FBD_MASK);
 
-        /* TODO: Decode */
-        unsigned extra_flags = (s->framebuffer & ~FBD_MASK) & ~MALI_MFBD;
-
-        pandecode_prop("framebuffer = framebuffer_%d_p | %s | 0x%X", job_no,
-                        fbd_type, extra_flags);
+        if (tag != expected_tag)
+                pandecode_msg("XXX: expected FBD tag %X but got %X\n", expected_tag, tag);
 
         pandecode_indent--;
         pandecode_log("};\n");

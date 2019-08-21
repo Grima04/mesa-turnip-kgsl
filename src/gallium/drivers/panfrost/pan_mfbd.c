@@ -381,7 +381,7 @@ panfrost_mfbd_upload(
         /* Return pointer suitable for the fragment section */
         unsigned tag =
                 MALI_MFBD |
-                (has_extra ? 0x2 : 0x0) |
+                (has_extra ? MALI_MFBD_TAG_EXTRA : 0) |
                 (MALI_POSITIVE(rt_count) << 2);
 
         return m_f_trans.gpu | tag;
