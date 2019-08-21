@@ -709,6 +709,7 @@ struct si_shader {
 	/*For save precompute registers value */
 	unsigned vgt_tf_param; /* VGT_TF_PARAM */
 	unsigned vgt_vertex_reuse_block_cntl; /* VGT_VERTEX_REUSE_BLOCK_CNTL */
+	unsigned pa_cl_vs_out_cntl;
 	unsigned ge_cntl;
 };
 

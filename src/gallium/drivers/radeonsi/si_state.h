@@ -259,6 +259,14 @@ struct si_shader_data {
 	uint32_t		sh_base[SI_NUM_SHADERS];
 };
 
+#define SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK \
+	(S_02881C_USE_VTX_POINT_SIZE(1) | \
+	 S_02881C_USE_VTX_EDGE_FLAG(1) | \
+	 S_02881C_USE_VTX_RENDER_TARGET_INDX(1) | \
+	 S_02881C_USE_VTX_VIEWPORT_INDX(1) | \
+	 S_02881C_VS_OUT_MISC_VEC_ENA(1) | \
+	 S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(1))
+
 /* The list of registers whose emitted values are remembered by si_context. */
 enum si_tracked_reg {
 	SI_TRACKED_DB_RENDER_CONTROL, /* 2 consecutive registers */
@@ -283,7 +291,8 @@ enum si_tracked_reg {
 	SI_TRACKED_PA_SU_PRIM_FILTER_CNTL,
 	SI_TRACKED_PA_SU_SMALL_PRIM_FILTER_CNTL,
 
-	SI_TRACKED_PA_CL_VS_OUT_CNTL,
+	SI_TRACKED_PA_CL_VS_OUT_CNTL__VS, /* set with SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK*/
+	SI_TRACKED_PA_CL_VS_OUT_CNTL__CL, /* set with ~SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK */
 	SI_TRACKED_PA_CL_CLIP_CNTL,
 
 	SI_TRACKED_PA_SC_BINNER_CNTL_0,

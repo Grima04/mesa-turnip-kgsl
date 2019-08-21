@@ -1007,6 +1007,11 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx,
 				   SI_TRACKED_PA_CL_NGG_CNTL,
 				   shader->ctx_reg.ngg.pa_cl_ngg_cntl);
 
+	radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
+				       SI_TRACKED_PA_CL_VS_OUT_CNTL__VS,
+				       shader->pa_cl_vs_out_cntl,
+				       SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
+
 	if (initial_cdw != sctx->gfx_cs->current.cdw)
 		sctx->context_roll = true;
 }
@@ -1085,6 +1090,19 @@ unsigned si_get_input_prim(const struct si_shader_selector *gs)
 
 	/* TODO: Set this correctly if the primitive type is set in the shader key. */
 	return PIPE_PRIM_TRIANGLES; /* worst case for all callers */
+}
+
+static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel, bool ngg)
+{
+	bool misc_vec_ena =
+		sel->info.writes_psize || (sel->info.writes_edgeflag && !ngg) ||
+		sel->info.writes_layer || sel->info.writes_viewport_index;
+	return S_02881C_USE_VTX_POINT_SIZE(sel->info.writes_psize) |
+	       S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag && !ngg) |
+	       S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
+	       S_02881C_USE_VTX_VIEWPORT_INDX(sel->info.writes_viewport_index) |
+	       S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
+	       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena);
 }
 
 /**
@@ -1232,6 +1250,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 	 */
 	shader->ctx_reg.ngg.pa_cl_ngg_cntl =
 		S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX);
+	shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(gs_sel, true);
 
 	shader->ge_cntl =
 		S_03096C_PRIM_GRP_SIZE(shader->ngg.max_gsprims) |
@@ -1322,6 +1341,13 @@ static void si_emit_shader_vs(struct si_context *sctx)
 					   S_028A44_ES_VERTS_PER_SUBGRP(250) |
 					   S_028A44_GS_PRIMS_PER_SUBGRP(126) |
 					   S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
+	}
+
+	if (sctx->chip_class >= GFX10) {
+		radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
+					       SI_TRACKED_PA_CL_VS_OUT_CNTL__VS,
+					       shader->pa_cl_vs_out_cntl,
+					       SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
 	}
 }
 
@@ -1427,6 +1453,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 			S_02870C_POS3_EXPORT_FORMAT(shader->info.nr_pos_exports > 3 ?
 						    V_02870C_SPI_SHADER_4COMP :
 						    V_02870C_SPI_SHADER_NONE);
+	shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, false);
 
 	oc_lds_en = shader->selector->type == PIPE_SHADER_TESS_EVAL ? 1 : 0;
 
@@ -2856,16 +2883,9 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 	}
 
 	/* PA_CL_VS_OUT_CNTL */
-	bool misc_vec_ena =
-		sel->info.writes_psize || sel->info.writes_edgeflag ||
-		sel->info.writes_layer || sel->info.writes_viewport_index;
-	sel->pa_cl_vs_out_cntl =
-		S_02881C_USE_VTX_POINT_SIZE(sel->info.writes_psize) |
-		S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag) |
-		S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
-		S_02881C_USE_VTX_VIEWPORT_INDX(sel->info.writes_viewport_index) |
-		S_02881C_VS_OUT_MISC_VEC_ENA(misc_vec_ena) |
-		S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena);
+	if (sctx->chip_class <= GFX9)
+		sel->pa_cl_vs_out_cntl = si_get_vs_out_cntl(sel, false);
+
 	sel->clipdist_mask = sel->info.writes_clipvertex ?
 				     SIX_BITS : sel->info.clipdist_writemask;
 	sel->culldist_mask = sel->info.culldist_writemask <<

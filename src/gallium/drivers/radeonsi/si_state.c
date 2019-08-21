@@ -801,12 +801,20 @@ static void si_emit_clip_regs(struct si_context *sctx)
 	culldist_mask |= clipdist_mask;
 
 	unsigned initial_cdw = sctx->gfx_cs->current.cdw;
-	radeon_opt_set_context_reg(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
-		SI_TRACKED_PA_CL_VS_OUT_CNTL,
-		vs_sel->pa_cl_vs_out_cntl |
-		S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0F) != 0) |
-		S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xF0) != 0) |
-		clipdist_mask | (culldist_mask << 8));
+	unsigned pa_cl_cntl = S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0F) != 0) |
+			      S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xF0) != 0) |
+			      clipdist_mask | (culldist_mask << 8);
+
+	if (sctx->chip_class >= GFX10) {
+		radeon_opt_set_context_reg_rmw(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
+					       SI_TRACKED_PA_CL_VS_OUT_CNTL__CL,
+					       pa_cl_cntl,
+					       ~SI_TRACKED_PA_CL_VS_OUT_CNTL__VS_MASK);
+	} else {
+		radeon_opt_set_context_reg(sctx, R_02881C_PA_CL_VS_OUT_CNTL,
+					   SI_TRACKED_PA_CL_VS_OUT_CNTL__CL,
+					   vs_sel->pa_cl_vs_out_cntl | pa_cl_cntl);
+	}
 	radeon_opt_set_context_reg(sctx, R_028810_PA_CL_CLIP_CNTL,
 		SI_TRACKED_PA_CL_CLIP_CNTL,
 		rs->pa_cl_clip_cntl |
