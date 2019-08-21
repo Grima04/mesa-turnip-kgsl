@@ -674,6 +674,12 @@ glsl_contains_atomic(const struct glsl_type *type)
    return type->contains_atomic();
 }
 
+bool
+glsl_contains_opaque(const struct glsl_type *type)
+{
+   return type->contains_opaque();
+}
+
 int
 glsl_get_cl_size(const struct glsl_type *type)
 {
