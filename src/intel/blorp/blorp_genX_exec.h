@@ -1356,9 +1356,8 @@ blorp_emit_surface_state(struct blorp_batch *batch,
    }
 
    /* Blorp doesn't support HiZ in any of the blit or slow-clear paths */
+   assert(surface->aux_usage != ISL_AUX_USAGE_HIZ);
    enum isl_aux_usage aux_usage = surface->aux_usage;
-   if (aux_usage == ISL_AUX_USAGE_HIZ)
-      aux_usage = ISL_AUX_USAGE_NONE;
 
    isl_channel_mask_t write_disable_mask = 0;
    if (is_render_target && GEN_GEN <= 5) {
