@@ -2580,9 +2580,11 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         if (fbd_dumped)
                 pandecode_prop("framebuffer = framebuffer_%d_p | %s | 0x%X", job_no,
                                 fbd_type, extra_flags);
-        else
-                pandecode_prop("framebuffer = %s | %s | 0x%X", pointer_as_memory_reference(p),
-                                fbd_type, extra_flags);
+        else {
+                char *a = pointer_as_memory_reference(p);
+                pandecode_prop("framebuffer = %s | %s | 0x%X", a, fbd_type, extra_flags);
+                free(a);
+        }
 
         pandecode_indent--;
         pandecode_log("};\n");
