@@ -1739,7 +1739,7 @@ typedef struct {
 extern const nir_intrinsic_info nir_intrinsic_infos[nir_num_intrinsics];
 
 static inline unsigned
-nir_intrinsic_src_components(nir_intrinsic_instr *intr, unsigned srcn)
+nir_intrinsic_src_components(const nir_intrinsic_instr *intr, unsigned srcn)
 {
    const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
    assert(srcn < info->num_srcs);
