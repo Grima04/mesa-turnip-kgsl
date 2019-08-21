@@ -1310,6 +1310,15 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->vgprAllocationGranularity = 4;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD: {
+			VkPhysicalDeviceShaderCoreProperties2AMD *properties =
+				(VkPhysicalDeviceShaderCoreProperties2AMD *)ext;
+
+			properties->shaderCoreFeatures = 0;
+			properties->activeComputeUnitCount =
+				pdevice->rad_info.num_good_compute_units;
+			break;
+		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
 			VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *properties =
 				(VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
