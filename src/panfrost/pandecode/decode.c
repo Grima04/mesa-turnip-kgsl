@@ -1234,16 +1234,11 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
 
         union mali_attr *attr = pandecode_fetch_gpu_mem(mem, addr, sizeof(union mali_attr) * count);
 
-        pandecode_log("union mali_attr %s_%d[] = {\n", prefix, job_no);
-        pandecode_indent++;
-
         for (int i = 0; i < count; ++i) {
                 enum mali_attr_mode mode = attr[i].elements & 7;
 
                 if (mode == MALI_ATTR_UNUSED)
                         pandecode_msg("XXX: unused attribute record\n");
-
-                pandecode_make_indent();
 
                 /* For non-linear records, we need to print the type of record */
                 if (mode != MALI_ATTR_LINEAR)
@@ -1305,8 +1300,7 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
 
         }
 
-        pandecode_indent--;
-        pandecode_log("};\n");
+        pandecode_log("\n");
 }
 
 static mali_ptr
@@ -1468,9 +1462,6 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
         unsigned max_index = 0;
         snprintf(base, sizeof(base), "%s_meta", prefix);
 
-        pandecode_log("struct mali_attr_meta %s_%d%s[] = {\n", base, job_no, suffix);
-        pandecode_indent++;
-
         struct mali_attr_meta *attr_meta;
         mali_ptr p = varying ? (v->varying_meta & ~0xF) : v->attribute_meta;
 
@@ -1525,7 +1516,6 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
                         pandecode_prop("unknown3 = 0x%" PRIx64, (u64) attr_meta->unknown3);
                 }
 
-                pandecode_make_indent();
                 pandecode_format_short(attr_meta->format, false);
                 pandecode_log_cont(" %s_%u", prefix, attr_meta->index);
 
@@ -1537,8 +1527,7 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
                 pandecode_log_cont(";\n");
         }
 
-        pandecode_indent--;
-        pandecode_log("};\n");
+        pandecode_log("\n");
 
         return count ? (max_index + 1) : 0;
 }
