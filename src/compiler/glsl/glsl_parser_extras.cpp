@@ -2110,7 +2110,8 @@ opt_shader_and_create_symbol_table(struct gl_context *ctx,
 
 static bool
 can_skip_compile(struct gl_context *ctx, struct gl_shader *shader,
-                 const char *source, bool force_recompile)
+                 const char *source, bool force_recompile,
+                 bool source_has_shader_include)
 {
    if (!force_recompile) {
       if (ctx->Cache) {
@@ -2126,7 +2127,13 @@ can_skip_compile(struct gl_context *ctx, struct gl_shader *shader,
             shader->CompileStatus = COMPILE_SKIPPED;
 
             free((void *)shader->FallbackSource);
-            shader->FallbackSource = NULL;
+
+            /* Copy pre-processed shader include to fallback source otherwise
+             * we have no guarantee the shader include source tree has not
+             * changed.
+             */
+            shader->FallbackSource = source_has_shader_include ?
+               strdup(source) : NULL;
             return true;
          }
       }
@@ -2149,7 +2156,19 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
    const char *source = force_recompile && shader->FallbackSource ?
       shader->FallbackSource : shader->Source;
 
-   if (can_skip_compile(ctx, shader, source, force_recompile))
+   /* Note this will be true for shaders the have #include inside comments
+    * however that should be rare enough not to worry about.
+    */
+   bool source_has_shader_include =
+      strstr(source, "#include") == NULL ? false : true;
+
+   /* If there was no shader include we can check the shader cache and skip
+    * compilation before we run the preprocessor. We never skip compiling
+    * shaders that use ARB_shading_language_include because we would need to
+    * keep duplicate copies of the shader include source tree and paths.
+    */
+   if (!source_has_shader_include &&
+       can_skip_compile(ctx, shader, source, force_recompile, false))
       return;
 
     struct _mesa_glsl_parse_state *state =
@@ -2159,8 +2178,18 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
       (void) p_atomic_cmpxchg(&ir_variable::temporaries_allocate_names,
                               false, true);
 
-   state->error = glcpp_preprocess(state, &source, &state->info_log,
-                                   add_builtin_defines, state, ctx);
+   if (!source_has_shader_include || !force_recompile) {
+      state->error = glcpp_preprocess(state, &source, &state->info_log,
+                                      add_builtin_defines, state, ctx);
+   }
+
+   /* Now that we have run the preprocessor we can check the shader cache and
+    * skip compilation if possible for those shaders that contained a shader
+    * include.
+    */
+   if (source_has_shader_include &&
+       can_skip_compile(ctx, shader, source, force_recompile, true))
+      return;
 
    if (!state->error) {
      _mesa_glsl_lexer_ctor(state, source);
@@ -2210,7 +2239,12 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
 
    if (!force_recompile) {
       free((void *)shader->FallbackSource);
-      shader->FallbackSource = NULL;
+
+      /* Copy pre-processed shader include to fallback source otherwise we
+       * have no guarantee the shader include source tree has not changed.
+       */
+      shader->FallbackSource = source_has_shader_include ?
+         strdup(source) : NULL;
    }
 
    delete state->symbols;
