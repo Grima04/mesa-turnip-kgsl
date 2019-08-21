@@ -3859,6 +3859,16 @@ atomic_emit(
 }
 
 static void
+membar_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   LLVMBuilderRef builder = bld_base->base.gallivm->builder;
+   LLVMBuildFence(builder, LLVMAtomicOrderingSequentiallyConsistent, false, "");
+}
+
+static void
 increment_vec_ptr_by_mask(struct lp_build_tgsi_context * bld_base,
                           LLVMValueRef ptr,
                           LLVMValueRef mask)
@@ -4464,6 +4474,7 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.bld_base.op_actions[TGSI_OPCODE_ATOMIMIN].emit = atomic_emit;
    bld.bld_base.op_actions[TGSI_OPCODE_ATOMIMAX].emit = atomic_emit;
 
+   bld.bld_base.op_actions[TGSI_OPCODE_MEMBAR].emit = membar_emit;
    if (params->gs_iface) {
       /* There's no specific value for this because it should always
        * be set, but apps using ext_geometry_shader4 quite often
