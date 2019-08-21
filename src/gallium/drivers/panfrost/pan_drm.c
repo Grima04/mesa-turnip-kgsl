@@ -154,11 +154,11 @@ panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
 void
 panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo, bool cacheable)
 {
-        struct drm_gem_close gem_close = { .handle = bo->gem_handle };
-        int ret;
-
         if (!bo)
                 return;
+
+        struct drm_gem_close gem_close = { .handle = bo->gem_handle };
+        int ret;
 
         /* Rather than freeing the BO now, we'll cache the BO for later
          * allocations if we're allowed to */
