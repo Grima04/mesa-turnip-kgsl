@@ -1725,7 +1725,7 @@ static unsigned shader_id = 0;
 
 static struct midgard_disasm_stats
 pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
-                             bool is_bifrost, unsigned nr_regs)
+                             bool is_bifrost)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(shader_ptr);
         uint8_t *PANDECODE_PTR_VAR(code, mem, shader_ptr);
@@ -1757,7 +1757,6 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                 stats.quadword_count = 0;
         } else {
                 stats = disassemble_midgard(code, sz);
-                stats.work_count = nr_regs;
         }
 
         /* Print shader-db stats */
@@ -1968,6 +1967,11 @@ pandecode_vertex_tiler_postfix_pre(
                 struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(shader_meta_ptr);
                 struct mali_shader_meta *PANDECODE_PTR_VAR(s, smem, shader_meta_ptr);
 
+                /* Disassemble ahead-of-time to get stats */
+
+                if (s->shader & ~0xF)
+                        pandecode_shader_disassemble(s->shader & ~0xF, job_no, job_type, is_bifrost);
+
                 pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", shader_meta_ptr, job_no, suffix);
                 pandecode_indent++;
 
@@ -1985,14 +1989,12 @@ pandecode_vertex_tiler_postfix_pre(
                         uniform_buffer_count = s->midgard1.uniform_buffer_count;
                 }
 
-                mali_ptr shader_ptr = pandecode_shader_address("shader", s->shader);
+                pandecode_shader_address("shader", s->shader);
 
                 pandecode_prop("texture_count = %" PRId16, s->texture_count);
                 pandecode_prop("sampler_count = %" PRId16, s->sampler_count);
                 pandecode_prop("attribute_count = %" PRId16, s->attribute_count);
                 pandecode_prop("varying_count = %" PRId16, s->varying_count);
-
-                unsigned nr_registers = 0;
 
                 if (is_bifrost) {
                         pandecode_log(".bifrost1 = {\n");
@@ -2010,7 +2012,6 @@ pandecode_vertex_tiler_postfix_pre(
                         pandecode_prop("uniform_count = %" PRId16, s->midgard1.uniform_count);
                         pandecode_prop("uniform_buffer_count = %" PRId16, s->midgard1.uniform_buffer_count);
                         pandecode_prop("work_count = %" PRId16, s->midgard1.work_count);
-                        nr_registers = s->midgard1.work_count;
 
                         pandecode_log(".flags = ");
                         pandecode_log_decoded_flags(shader_midgard1_flag_info, s->midgard1.flags);
@@ -2116,7 +2117,7 @@ pandecode_vertex_tiler_postfix_pre(
 
                                 if (shader & ~0xF) {
                                         struct midgard_disasm_stats stats =
-                                                pandecode_shader_disassemble(shader, job_no, job_type, false, 0);
+                                                pandecode_shader_disassemble(shader, job_no, job_type, false);
 
                                         bool has_texture = (stats.texture_count > 0);
                                         bool has_sampler = (stats.sampler_count > 0);
@@ -2137,9 +2138,6 @@ pandecode_vertex_tiler_postfix_pre(
 
                         }
                 }
-
-                if (shader_ptr & ~0xF)
-                   pandecode_shader_disassemble(shader_ptr, job_no, job_type, is_bifrost, nr_registers);
         } else
                 pandecode_msg("XXX: missing shader descriptor\n");
 
