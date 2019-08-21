@@ -2984,8 +2984,6 @@ static void si_update_common_shader_state(struct si_context *sctx)
 	sctx->do_update_shaders = true;
 }
 
-static bool si_update_ngg(struct si_context *sctx);
-
 static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 {
 	struct si_context *sctx = (struct si_context *)ctx;
@@ -3024,7 +3022,7 @@ static void si_update_tess_uses_prim_id(struct si_context *sctx)
 		 sctx->ps_shader.cso->info.uses_primid);
 }
 
-static bool si_update_ngg(struct si_context *sctx)
+bool si_update_ngg(struct si_context *sctx)
 {
 	if (!sctx->screen->use_ngg) {
 		assert(!sctx->ngg);
@@ -3039,7 +3037,8 @@ static bool si_update_ngg(struct si_context *sctx)
 	} else if (!sctx->screen->use_ngg_streamout) {
 		struct si_shader_selector *last = si_get_vs(sctx)->cso;
 
-		if (last && last->so.num_outputs)
+		if ((last && last->so.num_outputs) ||
+		    sctx->streamout.prims_gen_query_enabled)
 			new_ngg = false;
 	}
 
