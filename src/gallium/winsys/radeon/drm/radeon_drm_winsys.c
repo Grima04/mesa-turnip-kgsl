@@ -590,7 +590,8 @@ static bool do_winsys_init(struct radeon_drm_winsys *ws)
     ws->info.has_graphics = true;
     ws->info.cpdma_prefetch_writes_memory = true;
 
-    ws->check_vm = strstr(debug_get_option("R600_DEBUG", ""), "check_vm") != NULL;
+    ws->check_vm = strstr(debug_get_option("R600_DEBUG", ""), "check_vm") != NULL ||
+                   strstr(debug_get_option("AMD_DEBUG", ""), "check_vm") != NULL;
 
     return true;
 }
