@@ -891,6 +891,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                  * operand (the second argument) */
 
                 sext_2 = true;
+                /* fallthrough */
         case nir_op_u2u8:
         case nir_op_u2u16:
         case nir_op_u2u32: {
