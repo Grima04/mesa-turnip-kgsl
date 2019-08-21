@@ -389,6 +389,18 @@ print_immediate(uint16_t imm)
                 printf("#%g", _mesa_half_to_float(imm));
 }
 
+static void
+update_dest(unsigned reg)
+{
+        /* We should record writes as marking this as a work register. Store
+         * the max register in work_count; we'll add one at the end */
+
+        if (reg < 16) {
+                midg_stats.work_count = MAX2(reg, midg_stats.work_count);
+                midg_ever_written |= (1 << reg);
+        }
+}
+
 static unsigned
 print_dest(unsigned reg, midgard_reg_mode mode, midgard_dest_override override)
 {
@@ -401,6 +413,7 @@ print_dest(unsigned reg, midgard_reg_mode mode, midgard_dest_override override)
         if (override != midgard_dest_override_none)
                 bits /= 2;
 
+        update_dest(reg);
         print_reg(reg, bits);
 
         return bits;
@@ -641,6 +654,7 @@ print_scalar_field(const char *name, uint16_t *words, uint16_t reg_word,
         printf(" ");
 
         bool full = alu_field->output_full;
+        update_dest(reg_info->out_reg);
         print_reg(reg_info->out_reg, full ? 32 : 16);
         unsigned c = alu_field->output_component;
 
@@ -1059,7 +1073,10 @@ print_load_store_instr(uint64_t data,
         printf(" r%d", word->reg);
         print_mask_4(word->mask);
 
-        int address = word->address;
+        unsigned address = word->address;
+
+        if (!OP_IS_STORE(word->op))
+                update_dest(word->reg);
 
         bool is_ubo = OP_IS_UBO_READ(word->op);
 
@@ -1394,6 +1411,7 @@ disassemble_midgard(uint8_t *code, size_t size)
 
         /* Stats for shader-db */
         memset(&midg_stats, 0, sizeof(midg_stats));
+        midg_ever_written = 0;
 
         while (i < num_words) {
                 unsigned tag = words[i] & 0xF;
@@ -1463,6 +1481,12 @@ disassemble_midgard(uint8_t *code, size_t size)
 
                 i += 4 * num_quad_words;
         }
+
+        /* We computed work_count as max_work_registers, so add one to get the
+         * count. If no work registers are written, you still have one work
+         * reported, which is exactly what the hardware expects */
+
+        midg_stats.work_count++;
 
         return midg_stats;
 }
