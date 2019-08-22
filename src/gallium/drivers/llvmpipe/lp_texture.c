@@ -768,6 +768,13 @@ llvmpipe_resource_size(const struct pipe_resource *resource)
    return size;
 }
 
+static void
+llvmpipe_memory_barrier(struct pipe_context *pipe,
+			unsigned flags)
+{
+   /* this may be an overly large hammer for this nut. */
+   llvmpipe_finish(pipe, "barrier");
+}
 
 #ifdef DEBUG
 void
@@ -824,4 +831,6 @@ llvmpipe_init_context_resource_funcs(struct pipe_context *pipe)
    pipe->transfer_flush_region = u_default_transfer_flush_region;
    pipe->buffer_subdata = u_default_buffer_subdata;
    pipe->texture_subdata = u_default_texture_subdata;
+
+   pipe->memory_barrier = llvmpipe_memory_barrier;
 }
