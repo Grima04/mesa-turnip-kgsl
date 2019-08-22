@@ -1704,6 +1704,16 @@ pandecode_uniform_buffers(mali_ptr pubufs, int ubufs_count, int job_no)
 }
 
 static void
+pandecode_uniforms(mali_ptr uniforms, unsigned uniform_count)
+{
+        pandecode_validate_buffer(uniforms, uniform_count * 16);
+
+        char *ptr = pointer_as_memory_reference(uniforms);
+        pandecode_log("vec4 uniforms[%u] = %s;\n", uniform_count, ptr);
+        free(ptr);
+}
+
+static void
 pandecode_scratchpad(uintptr_t pscratchpad, int job_no, char *suffix)
 {
 
@@ -2248,7 +2258,7 @@ pandecode_vertex_tiler_postfix_pre(
 
         if (p->uniforms) {
                 if (uniform_count)
-                        pandecode_validate_buffer(p->uniforms, uniform_count * 16);
+                        pandecode_uniforms(p->uniforms, uniform_count);
                 else
                         pandecode_msg("warn: Uniforms specified but not referenced\n");
         } else if (uniform_count)
