@@ -518,13 +518,8 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		 * tracker has already mapped them to attributes via
 		 * variable->data.driver_location.
 		 */
-		if (nir->info.stage == MESA_SHADER_VERTEX) {
-			processed_inputs |= 1ull << i;
-
-			if (glsl_type_is_dual_slot(glsl_without_array(variable->type)))
-				processed_inputs |= 2ull << i;
+		if (nir->info.stage == MESA_SHADER_VERTEX)
 			continue;
-		}
 
 		for (unsigned j = 0; j < attrib_count; j++, i++) {
 
@@ -587,8 +582,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		}
 	}
 
-	i = 0;
-	uint64_t processed_outputs = 0;
 	nir_foreach_variable(variable, &nir->outputs) {
 		unsigned semantic_name, semantic_index;
 
@@ -683,14 +676,6 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 				info->num_stream_output_components[streamw]++;
 			}
 
-			/* make sure we only count this location once against
-			 * the num_outputs counter.
-			 */
-			if (processed_outputs & ((uint64_t)1 << i))
-				continue;
-
-			processed_outputs |= ((uint64_t)1 << i);
-
 			info->output_semantic_name[i] = semantic_name;
 			info->output_semantic_index[i] = semantic_index;
 
@@ -740,14 +725,8 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 		}
 	}
 
-	info->num_inputs = util_last_bit64(processed_inputs);
-	info->num_outputs = util_last_bit64(processed_outputs);
-
-	/* Inputs and outputs can't have holes. If this fails, use
-	 * nir_assign_io_var_locations to re-assign driver_location.
-	 */
-	assert(processed_inputs == u_bit_consecutive64(0, info->num_inputs));
-	assert(processed_outputs == u_bit_consecutive64(0, info->num_outputs));
+	info->num_inputs = nir->num_inputs;
+	info->num_outputs = nir->num_outputs;
 
 	struct set *ubo_set = _mesa_set_create(NULL, _mesa_hash_pointer,
 					       _mesa_key_pointer_equal);
