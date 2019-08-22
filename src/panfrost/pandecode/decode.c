@@ -267,7 +267,6 @@ static const struct pandecode_flag_info mfbd_extra_flag_info[] = {
 #define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
 static const struct pandecode_flag_info shader_midgard1_flag_info [] = {
         FLAG_INFO(EARLY_Z),
-        FLAG_INFO(HELPER_INVOCATIONS),
         FLAG_INFO(READS_TILEBUFFER),
         FLAG_INFO(READS_ZS),
         {}
@@ -2103,6 +2102,14 @@ pandecode_vertex_tiler_postfix_pre(
                 if (is_bifrost) {
                         pandecode_prop("bifrost1.unk1 = 0x%" PRIx32, s->bifrost1.unk1);
                 } else {
+                        bool helpers = s->midgard1.flags & MALI_HELPER_INVOCATIONS;
+                        s->midgard1.flags &= ~MALI_HELPER_INVOCATIONS;
+
+                        if (helpers != info.helper_invocations) {
+                                pandecode_msg("XXX: expected helpers %u but got %u\n",
+                                                info.helper_invocations, helpers);
+                        }
+
                         pandecode_log(".midgard1.flags = ");
                         pandecode_log_decoded_flags(shader_midgard1_flag_info, s->midgard1.flags);
                         pandecode_log_cont(",\n");
