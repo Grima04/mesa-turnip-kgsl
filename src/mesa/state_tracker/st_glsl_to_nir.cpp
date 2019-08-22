@@ -269,10 +269,10 @@ st_nir_opts(nir_shader *nir, bool scalar)
  * nir_lower_io state, so that shader variants can more easily insert/
  * replace variables, etc.
  */
-static nir_shader *
-st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
-               struct gl_shader_program *shader_program,
-               gl_shader_stage stage)
+static void
+st_nir_preprocess(struct st_context *st, struct gl_program *prog,
+                  struct gl_shader_program *shader_program,
+                  gl_shader_stage stage)
 {
    const nir_shader_compiler_options *options =
       st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
@@ -282,11 +282,7 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
    assert(options);
    bool lower_64bit =
       options->lower_int64_options || options->lower_doubles_options;
-
-   if (prog->nir)
-      return prog->nir;
-
-   nir_shader *nir = glsl_to_nir(st->ctx, shader_program, stage, options);
+   nir_shader *nir = prog->nir;
 
    /* Set the next shader stage hint for VS and TES. */
    if (!nir->info.separate_shader &&
@@ -355,8 +351,6 @@ st_glsl_to_nir(struct st_context *st, struct gl_program *prog,
       if (lowered_64bit_ops)
          st_nir_opts(nir, is_scalar);
    }
-
-   return nir;
 }
 
 /* Second third of converting glsl_to_nir. This creates uniforms, gathers
@@ -510,10 +504,17 @@ st_nir_get_mesa_program(struct gl_context *ctx,
    prog->ExternalSamplersUsed = gl_external_samplers(prog);
    _mesa_update_shader_textures_used(shader_program, prog);
 
-   nir_shader *nir = st_glsl_to_nir(st, prog, shader_program, shader->Stage);
+   if (!prog->nir) {
+      const nir_shader_compiler_options *options =
+         st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
+      assert(options);
 
-   set_st_program(prog, shader_program, nir);
-   prog->nir = nir;
+      prog->nir = glsl_to_nir(st->ctx, shader_program,
+                              prog->info.stage, options);
+      st_nir_preprocess(st, prog, shader_program, prog->info.stage);
+   }
+
+   set_st_program(prog, shader_program, prog->nir);
 }
 
 static void
