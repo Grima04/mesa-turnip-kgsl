@@ -1251,9 +1251,10 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                             int count, bool varying)
 {
         char *prefix = varying ? "varying" : "attribute";
+        assert(addr);
 
-        if (!addr) {
-                pandecode_msg("no %s\n", prefix);
+        if (!count) {
+                pandecode_msg("warn: No %s records\n", prefix);
                 return;
         }
 
@@ -2221,9 +2222,12 @@ pandecode_vertex_tiler_postfix_pre(
                 pandecode_log("};\n");
         }
 
-        if (p->attribute_meta) {
-                unsigned max_attr_index = pandecode_attribute_meta(job_no, attribute_count, p, false, suffix);
+        unsigned max_attr_index = 0;
 
+        if (p->attribute_meta)
+                max_attr_index = pandecode_attribute_meta(job_no, attribute_count, p, false, suffix);
+
+        if (p->attributes) {
                 attr_mem = pandecode_find_mapped_gpu_mem_containing(p->attributes);
                 pandecode_attributes(attr_mem, p->attributes, job_no, suffix, max_attr_index, false);
         }
