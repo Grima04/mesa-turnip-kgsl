@@ -413,7 +413,6 @@ pandecode_stencil_op(enum mali_stencil_op op)
 
 #undef DEFINE_CASE
 
-#define DEFINE_CASE(name) case MALI_ATTR_ ## name: return "MALI_ATTR_" #name
 static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
 {
         switch(mode) {
@@ -435,7 +434,21 @@ static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
         }
 }
 
-#undef DEFINE_CASE
+static const char *
+pandecode_special_varying(uint64_t v)
+{
+        switch(v) {
+        case MALI_VARYING_FRAG_COORD:
+                return "gl_FragCoord";
+        case MALI_VARYING_FRONT_FACING:
+                return "gl_FrontFacing";
+        case MALI_VARYING_POINT_COORD:
+                return "gl_PointCoord";
+        default:
+                pandecode_msg("XXX: invalid special varying %X\n", v);
+                return "";
+        }
+}
 
 #define DEFINE_CASE(name) case MALI_WRAP_## name: return "MALI_WRAP_" #name
 static char *
@@ -1248,7 +1261,7 @@ pandecode_magic_divisor(uint32_t magic, unsigned shift, unsigned orig_divisor, u
 static void
 pandecode_attributes(const struct pandecode_mapped_memory *mem,
                             mali_ptr addr, int job_no, char *suffix,
-                            int count, bool varying)
+                            int count, bool varying, enum mali_job_type job_type)
 {
         char *prefix = varying ? "varying" : "attribute";
         assert(addr);
@@ -1261,6 +1274,29 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
         union mali_attr *attr = pandecode_fetch_gpu_mem(mem, addr, sizeof(union mali_attr) * count);
 
         for (int i = 0; i < count; ++i) {
+                /* First, check for special records */
+                if (attr[i].elements < MALI_VARYING_SPECIAL) {
+                        /* Special records are always varyings */
+
+                        if (!varying)
+                                pandecode_msg("XXX: Special varying in attribute field\n");
+
+                        if (job_type != JOB_TYPE_TILER)
+                                pandecode_msg("XXX: Special varying in non-FS\n");
+
+                        /* We're special, so all fields should be zero */
+                        unsigned zero = attr[i].stride | attr[i].size;
+                        zero |= attr[i].shift | attr[i].extra_flags;
+
+                        if (zero)
+                                pandecode_msg("XXX: Special varying has non-zero fields\n");
+                        else {
+                                /* Print the special varying name */
+                                pandecode_log("varying_%d = %s;", i, pandecode_special_varying(attr[i].elements));
+                                continue;
+                        }
+                }
+
                 enum mali_attr_mode mode = attr[i].elements & 7;
 
                 if (mode == MALI_ATTR_UNUSED)
@@ -2225,7 +2261,7 @@ pandecode_vertex_tiler_postfix_pre(
 
         if (p->attributes) {
                 attr_mem = pandecode_find_mapped_gpu_mem_containing(p->attributes);
-                pandecode_attributes(attr_mem, p->attributes, job_no, suffix, max_attr_index, false);
+                pandecode_attributes(attr_mem, p->attributes, job_no, suffix, max_attr_index, false, job_type);
         }
 
         /* Varyings are encoded like attributes but not actually sent; we just
@@ -2242,7 +2278,7 @@ pandecode_vertex_tiler_postfix_pre(
                 /* Number of descriptors depends on whether there are
                  * non-internal varyings */
 
-                pandecode_attributes(attr_mem, p->varyings, job_no, suffix, varying_count, true);
+                pandecode_attributes(attr_mem, p->varyings, job_no, suffix, varying_count, true, job_type);
         }
 
         if (p->uniform_buffers) {
