@@ -83,19 +83,18 @@ st_nir_fixup_varying_slots(struct st_context *st, struct exec_list *var_list)
 static void
 st_nir_assign_vs_in_locations(nir_shader *nir)
 {
-   nir->num_inputs = 0;
+   nir->num_inputs = util_bitcount64(nir->info.inputs_read);
    nir_foreach_variable_safe(var, &nir->inputs) {
       /* NIR already assigns dual-slot inputs to two locations so all we have
        * to do is compact everything down.
        */
       if (var->data.location == VERT_ATTRIB_EDGEFLAG) {
          /* bit of a hack, mirroring st_translate_vertex_program */
-         var->data.driver_location = util_bitcount64(nir->info.inputs_read);
+         var->data.driver_location = nir->num_inputs++;
       } else if (nir->info.inputs_read & BITFIELD64_BIT(var->data.location)) {
          var->data.driver_location =
             util_bitcount64(nir->info.inputs_read &
                               BITFIELD64_MASK(var->data.location));
-         nir->num_inputs++;
       } else {
          /* Move unused input variables to the globals list (with no
           * initialization), to avoid confusing drivers looking through the
