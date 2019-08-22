@@ -804,9 +804,9 @@ struct mali_payload_set_value {
  * let shift=extra_flags=0. Stride is set to the image format's bytes-per-pixel
  * (*NOT the row stride*). Size is set to the size of the image itself.
  *
- * Special internal varyings (including gl_FrontFacing) are handled vai
- * MALI_ATTR_INTERNAL, which has all fields set to zero and uses a special
- * elements pseudo-pointer.
+ * Special internal varyings (including gl_FrontFacing) could be seen as
+ * IMAGE/INTERNAL as well as LINEAR, setting all fields set to zero and using a
+ * special elements pseudo-pointer.
  */
 
 enum mali_attr_mode {
@@ -819,16 +819,23 @@ enum mali_attr_mode {
         MALI_ATTR_INTERNAL = 6
 };
 
-/* Pseudo-address for gl_FrontFacing */
+/* Pseudo-address for gl_FrontFacing, used with INTERNAL. Same addres is used
+ * for gl_FragCoord with IMAGE, needing a coordinate flip. Who knows. */
 
-#define MALI_VARYING_FRONT_FACING (0x20)
+#define MALI_VARYING_FRAG_COORD (0x25)
+#define MALI_VARYING_FRONT_FACING (0x26)
 
 /* This magic "pseudo-address" is used as `elements` to implement
  * gl_PointCoord. When read from a fragment shader, it generates a point
  * coordinate per the OpenGL ES 2.0 specification. Flipped coordinate spaces
  * require an affine transformation in the shader. */
 
-#define MALI_VARYING_POINT_COORD (0x60)
+#define MALI_VARYING_POINT_COORD (0x61)
+
+/* Used for comparison to check if an address is special. Mostly a guess, but
+ * it doesn't really matter. */
+
+#define MALI_VARYING_SPECIAL (0x100)
 
 union mali_attr {
 	/* This is used for actual attributes. */

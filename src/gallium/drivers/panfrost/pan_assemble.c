@@ -145,7 +145,10 @@ panfrost_shader_compile(
                 /* Check for special cases, otherwise assume general varying */
 
                 if (location == VARYING_SLOT_POS) {
-                        v.format = MALI_VARYING_POS;
+                        if (stage == MESA_SHADER_FRAGMENT)
+                                state->reads_frag_coord = true;
+                        else
+                                v.format = MALI_VARYING_POS;
                 } else if (location == VARYING_SLOT_PSIZ) {
                         v.format = MALI_R16F;
                         v.swizzle = default_vec1_swizzle;

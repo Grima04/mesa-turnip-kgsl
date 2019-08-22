@@ -73,19 +73,6 @@ panfrost_emit_streamout(
         slot->elements = addr;
 }
 
-static void
-panfrost_emit_point_coord(union mali_attr *slot)
-{
-        slot->elements = MALI_VARYING_POINT_COORD | MALI_ATTR_LINEAR;
-        slot->stride = slot->size = slot->shift = slot->extra_flags = 0;
-}
-
-static void
-panfrost_emit_front_face(union mali_attr *slot)
-{
-        slot->elements = MALI_VARYING_FRONT_FACING | MALI_ATTR_INTERNAL;
-}
-
 /* Given a shader and buffer indices, link varying metadata together */
 
 static bool
@@ -250,6 +237,7 @@ panfrost_emit_varying_descriptor(
         memcpy(trans.cpu + vs_size, fs->varyings, fs_size);
 
         union mali_attr varyings[PIPE_MAX_ATTRIBS];
+        memset(varyings, 0, sizeof(varyings));
 
         /* Figure out how many streamout buffers could be bound */
         unsigned so_count = ctx->streamout.num_targets;
@@ -269,6 +257,7 @@ panfrost_emit_varying_descriptor(
         signed gl_PointSize = vs->writes_point_size ? (idx++) : -1;
         signed gl_PointCoord = reads_point_coord ? (idx++) : -1;
         signed gl_FrontFacing = fs->reads_face ? (idx++) : -1;
+        signed gl_FragCoord = fs->reads_frag_coord ? (idx++) : -1;
 
         /* Emit the stream out buffers */
 
@@ -305,20 +294,25 @@ panfrost_emit_varying_descriptor(
                                                2, vertex_count);
 
         if (reads_point_coord)
-                panfrost_emit_point_coord(&varyings[gl_PointCoord]);
+                varyings[gl_PointCoord].elements = MALI_VARYING_POINT_COORD;
 
         if (fs->reads_face)
-                panfrost_emit_front_face(&varyings[gl_FrontFacing]);
+                varyings[gl_FrontFacing].elements = MALI_VARYING_FRONT_FACING;
+
+        if (fs->reads_frag_coord)
+                varyings[gl_FragCoord].elements = MALI_VARYING_FRAG_COORD;
 
         /* Let's go ahead and link varying meta to the buffer in question, now
-         * that that information is available */
+         * that that information is available. VARYING_SLOT_POS is mapped to
+         * gl_FragCoord for fragment shaders but gl_Positionf or vertex shaders
+         * */
 
         panfrost_emit_varying_meta(trans.cpu, vs,
                 general, gl_Position, gl_PointSize,
                 gl_PointCoord, gl_FrontFacing);
 
         panfrost_emit_varying_meta(trans.cpu + vs_size, fs,
-                general, gl_Position, gl_PointSize,
+                general, gl_FragCoord, gl_PointSize,
                 gl_PointCoord, gl_FrontFacing);
 
         /* Replace streamout */
@@ -376,6 +370,9 @@ panfrost_emit_varying_descriptor(
 
         /* Fix up unaligned addresses */
         for (unsigned i = 0; i < so_count; ++i) {
+                if (varyings[i].elements < MALI_VARYING_SPECIAL)
+                        continue;
+
                 unsigned align = (varyings[i].elements & 63);
 
                 /* While we're at it, the SO buffers are linear */
