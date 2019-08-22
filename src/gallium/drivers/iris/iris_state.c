@@ -528,6 +528,7 @@ init_state_base_address(struct iris_batch *batch)
       sba.DynamicStateMOCS            = MOCS_WB;
       sba.IndirectObjectMOCS          = MOCS_WB;
       sba.InstructionMOCS             = MOCS_WB;
+      sba.SurfaceStateMOCS            = MOCS_WB;
 
       sba.GeneralStateBaseAddressModifyEnable   = true;
       sba.DynamicStateBaseAddressModifyEnable   = true;
@@ -4568,9 +4569,21 @@ iris_update_surface_base_address(struct iris_batch *batch,
    flush_for_state_base_change(batch);
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
-      sba.SurfaceStateMOCS = MOCS_WB;
       sba.SurfaceStateBaseAddressModifyEnable = true;
       sba.SurfaceStateBaseAddress = ro_bo(binder->bo, 0);
+
+      /* The hardware appears to pay attention to the MOCS fields even
+       * if you don't set the "Address Modify Enable" bit for the base.
+       */
+      sba.GeneralStateMOCS            = MOCS_WB;
+      sba.StatelessDataPortAccessMOCS = MOCS_WB;
+      sba.DynamicStateMOCS            = MOCS_WB;
+      sba.IndirectObjectMOCS          = MOCS_WB;
+      sba.InstructionMOCS             = MOCS_WB;
+      sba.SurfaceStateMOCS            = MOCS_WB;
+#if GEN_GEN >= 9
+      sba.BindlessSurfaceStateMOCS    = MOCS_WB;
+#endif
    }
 
    batch->last_surface_base_address = binder->bo->gtt_offset;
