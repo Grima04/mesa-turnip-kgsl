@@ -33,6 +33,7 @@
 #include "program/ir_to_mesa.h"
 #include "main/mtypes.h"
 #include "main/errors.h"
+#include "main/glspirv.h"
 #include "main/shaderapi.h"
 #include "main/uniforms.h"
 
@@ -45,6 +46,7 @@
 #include "compiler/glsl_types.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/glsl/gl_nir.h"
+#include "compiler/glsl/gl_nir_linker.h"
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/ir_optimization.h"
 #include "compiler/glsl/string_to_uint_map.h"
@@ -265,6 +267,18 @@ st_nir_opts(nir_shader *nir, bool scalar)
    } while (progress);
 }
 
+static void
+shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   uint32_t comp_size = glsl_type_is_boolean(type)
+      ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+   *size = comp_size * length,
+   *align = comp_size * (length == 3 ? 4 : length);
+}
+
 /* First third of converting glsl_to_nir.. this leaves things in a pre-
  * nir_lower_io state, so that shader variants can more easily insert/
  * replace variables, etc.
@@ -332,6 +346,15 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    /* before buffers and vars_to_ssa */
    NIR_PASS_V(nir, gl_nir_lower_bindless_images);
    st_nir_opts(nir, is_scalar);
+
+   /* TODO: Change GLSL to not lower shared memory. */
+   if (prog->nir->info.stage == MESA_SHADER_COMPUTE &&
+       shader_program->data->spirv) {
+      NIR_PASS_V(prog->nir, nir_lower_vars_to_explicit_types,
+                 nir_var_mem_shared, shared_type_info);
+      NIR_PASS_V(prog->nir, nir_lower_explicit_io,
+                 nir_var_mem_shared, nir_address_format_32bit_offset);
+   }
 
    NIR_PASS_V(nir, gl_nir_lower_buffers, shader_program);
    /* Do a round of constant folding to clean up address calculations */
@@ -410,7 +433,12 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 
    st_set_prog_affected_state_flags(prog);
 
-   NIR_PASS_V(nir, st_nir_lower_builtin);
+   /* None of the builtins being lowered here can be produced by SPIR-V.  See
+    * _mesa_builtin_uniform_desc.
+    */
+   if (!shader_program->data->spirv)
+      NIR_PASS_V(nir, st_nir_lower_builtin);
+
    NIR_PASS_V(nir, gl_nir_lower_atomics, shader_program, true);
    NIR_PASS_V(nir, nir_opt_intrinsics);
 
@@ -467,54 +495,6 @@ set_st_program(struct gl_program *prog,
    default:
       unreachable("unknown shader stage");
    }
-}
-
-static void
-st_nir_get_mesa_program(struct gl_context *ctx,
-                        struct gl_shader_program *shader_program,
-                        struct gl_linked_shader *shader)
-{
-   struct st_context *st = st_context(ctx);
-   struct pipe_screen *pscreen = ctx->st->pipe->screen;
-   struct gl_program *prog;
-
-   validate_ir_tree(shader->ir);
-
-   prog = shader->Program;
-
-   prog->Parameters = _mesa_new_parameter_list();
-
-   _mesa_copy_linked_program_data(shader_program, shader);
-   _mesa_generate_parameters_list_for_uniforms(ctx, shader_program, shader,
-                                               prog->Parameters);
-
-   /* Remove reads from output registers. */
-   if (!pscreen->get_param(pscreen, PIPE_CAP_TGSI_CAN_READ_OUTPUTS))
-      lower_output_reads(shader->Stage, shader->ir);
-
-   if (ctx->_Shader->Flags & GLSL_DUMP) {
-      _mesa_log("\n");
-      _mesa_log("GLSL IR for linked %s program %d:\n",
-             _mesa_shader_stage_to_string(shader->Stage),
-             shader_program->Name);
-      _mesa_print_ir(_mesa_get_log_file(), shader->ir, NULL);
-      _mesa_log("\n\n");
-   }
-
-   prog->ExternalSamplersUsed = gl_external_samplers(prog);
-   _mesa_update_shader_textures_used(shader_program, prog);
-
-   if (!prog->nir) {
-      const nir_shader_compiler_options *options =
-         st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
-      assert(options);
-
-      prog->nir = glsl_to_nir(st->ctx, shader_program,
-                              prog->info.stage, options);
-      st_nir_preprocess(st, prog, shader_program, prog->info.stage);
-   }
-
-   set_st_program(prog, shader_program, prog->nir);
 }
 
 static void
@@ -650,11 +630,85 @@ st_link_nir(struct gl_context *ctx,
       is_scalar[i] = screen->get_shader_param(screen, type,
                                               PIPE_SHADER_CAP_SCALAR_ISA);
 
-      st_nir_get_mesa_program(ctx, shader_program, shader);
+      struct gl_program *prog = shader->Program;
+      _mesa_copy_linked_program_data(shader_program, shader);
+
+      if (shader_program->data->spirv) {
+         const nir_shader_compiler_options *options =
+            st->ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions;
+
+         prog->Parameters = _mesa_new_parameter_list();
+         /* Parameters will be filled during NIR linking. */
+
+         /* TODO: Properly handle or dismiss `if (prog->nir)` case. */
+         prog->nir = _mesa_spirv_to_nir(ctx, shader_program, shader->Stage, options);
+         set_st_program(prog, shader_program, prog->nir);
+      } else {
+         validate_ir_tree(shader->ir);
+
+         prog->Parameters = _mesa_new_parameter_list();
+         _mesa_generate_parameters_list_for_uniforms(ctx, shader_program, shader,
+                                                     prog->Parameters);
+
+         /* Remove reads from output registers. */
+         if (!screen->get_param(screen, PIPE_CAP_TGSI_CAN_READ_OUTPUTS))
+            lower_output_reads(shader->Stage, shader->ir);
+
+         if (ctx->_Shader->Flags & GLSL_DUMP) {
+            _mesa_log("\n");
+            _mesa_log("GLSL IR for linked %s program %d:\n",
+                      _mesa_shader_stage_to_string(shader->Stage),
+                      shader_program->Name);
+            _mesa_print_ir(_mesa_get_log_file(), shader->ir, NULL);
+            _mesa_log("\n\n");
+         }
+
+         prog->ExternalSamplersUsed = gl_external_samplers(prog);
+         _mesa_update_shader_textures_used(shader_program, prog);
+
+         const nir_shader_compiler_options *options =
+            st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
+         assert(options);
+
+         if (!prog->nir) {
+            prog->nir = glsl_to_nir(st->ctx, shader_program, shader->Stage, options);
+            set_st_program(prog, shader_program, prog->nir);
+            st_nir_preprocess(st, prog, shader_program, shader->Stage);
+         }
+      }
+
       last_stage = i;
 
       if (is_scalar[i]) {
          NIR_PASS_V(shader->Program->nir, nir_lower_load_const_to_scalar);
+      }
+   }
+
+   /* For SPIR-V, we have to perform the NIR linking before applying
+    * st_nir_preprocess.
+    */
+   if (shader_program->data->spirv) {
+      if (!gl_nir_link_uniform_blocks(ctx, shader_program))
+         return GL_FALSE;
+
+      if (!gl_nir_link_uniforms(ctx, shader_program, /* fill_parameters */ true))
+         return GL_FALSE;
+
+      gl_nir_link_assign_atomic_counter_resources(ctx, shader_program);
+      gl_nir_link_assign_xfb_resources(ctx, shader_program);
+
+      nir_build_program_resource_list(ctx, shader_program);
+
+      for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+         struct gl_linked_shader *shader = shader_program->_LinkedShaders[i];
+         if (shader == NULL)
+            continue;
+
+         struct gl_program *prog = shader->Program;
+         prog->ExternalSamplersUsed = gl_external_samplers(prog);
+         _mesa_update_shader_textures_used(shader_program, prog);
+
+         st_nir_preprocess(st, prog, shader_program, shader->Stage);
       }
    }
 
