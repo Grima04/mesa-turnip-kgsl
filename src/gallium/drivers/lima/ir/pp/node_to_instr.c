@@ -87,6 +87,9 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
       if (!node->instr && !create_new_instr(block, node))
          return false;
 
+      if (node->op == ppir_op_store_color)
+         node->instr->is_end = true;
+
       break;
    }
    case ppir_node_type_load:
@@ -118,58 +121,6 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node, ppir_n
             return false;
          break;
       }
-
-      /* Only the store color node should appear here.
-       * Currently we always insert a move node as the end instr.
-       * But it should only be done when:
-       *   1. store a const node
-       *   2. store a load node
-       *   3. store a reg assigned in another block like loop/if
-       */
-
-      assert(node->op == ppir_op_store_color);
-
-      ppir_node *move = ppir_node_create(block, ppir_op_mov, -1, 0);
-      if (unlikely(!move))
-         return false;
-
-      ppir_debug("node_to_instr create move %d from store %d\n",
-                 move->index, node->index);
-
-      ppir_node_foreach_pred_safe(node, dep) {
-         ppir_node *pred = dep->pred;
-         /* we can't do this in this function except here as this
-          * store is the root of this recursion */
-         ppir_node_remove_dep(dep);
-         ppir_node_add_dep(move, pred);
-      }
-
-      ppir_node_add_dep(node, move);
-      list_addtail(&move->list, &node->list);
-
-      ppir_alu_node *alu = ppir_node_to_alu(move);
-      ppir_store_node *store = ppir_node_to_store(node);
-      alu->src[0] = store->src;
-      alu->num_src = 1;
-
-      alu->dest.type = ppir_target_ssa;
-      alu->dest.ssa.num_components = 4;
-      alu->dest.ssa.live_in = INT_MAX;
-      alu->dest.ssa.live_out = 0;
-      alu->dest.write_mask = 0xf;
-
-      store->src.type = ppir_target_ssa;
-      store->src.ssa = &alu->dest.ssa;
-
-      if (!create_new_instr(block, move))
-         return false;
-
-      move->instr->is_end = true;
-      node->instr = move->instr;
-
-      /* use move for the following recursion */
-      *next = move;
-      break;
    }
    case ppir_node_type_discard:
       if (!create_new_instr(block, node))

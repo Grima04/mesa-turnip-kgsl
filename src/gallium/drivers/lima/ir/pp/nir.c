@@ -286,7 +286,7 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
    nir_intrinsic_instr *instr = nir_instr_as_intrinsic(ni);
    unsigned mask = 0;
    ppir_load_node *lnode;
-   ppir_store_node *snode;
+   ppir_alu_node *alu_node;
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_input:
@@ -344,20 +344,29 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
 
       return &lnode->node;
 
-   case nir_intrinsic_store_output:
-      snode = ppir_node_create_dest(block, ppir_op_store_color, NULL, 0);
-      if (!snode)
+   case nir_intrinsic_store_output: {
+      alu_node = ppir_node_create_dest(block, ppir_op_store_color, NULL, 0);
+      if (!alu_node)
          return NULL;
 
-      snode->index = nir_intrinsic_base(instr);
+      ppir_dest *dest = ppir_node_get_dest(&alu_node->node);
+      dest->type = ppir_target_ssa;
+      dest->ssa.num_components = instr->num_components;
+      dest->ssa.live_in = INT_MAX;
+      dest->ssa.live_out = 0;
+      dest->ssa.index = 0;
+      dest->write_mask = u_bit_consecutive(0, instr->num_components);
+
+      alu_node->num_src = 1;
 
       for (int i = 0; i < instr->num_components; i++)
-         snode->src.swizzle[i] = i;
+         alu_node->src[0].swizzle[i] = i;
 
-      ppir_node_add_src(block->comp, &snode->node, &snode->src, instr->src,
+      ppir_node_add_src(block->comp, &alu_node->node, alu_node->src, instr->src,
                         u_bit_consecutive(0, instr->num_components));
 
-      return &snode->node;
+      return &alu_node->node;
+   }
 
    case nir_intrinsic_discard:
       return ppir_emit_discard(block, ni);

@@ -308,7 +308,11 @@ const ppir_op_info ppir_op_infos[] = {
    },
    [ppir_op_store_color] = {
       .name = "st_col",
-      .type = ppir_node_type_store,
+      .type = ppir_node_type_alu,
+      .slots = (int []) {
+         PPIR_INSTR_SLOT_ALU_VEC_ADD, PPIR_INSTR_SLOT_ALU_VEC_MUL,
+         PPIR_INSTR_SLOT_END
+      },
    },
    [ppir_op_store_temp] = {
       .name = "st_temp",
