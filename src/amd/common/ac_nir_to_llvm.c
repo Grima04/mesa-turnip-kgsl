@@ -114,9 +114,19 @@ get_ac_image_dim(const struct ac_llvm_context *ctx, enum glsl_sampler_dim sdim,
 {
 	enum ac_image_dim dim = get_ac_sampler_dim(ctx, sdim, is_array);
 
+	/* Match the resource type set in the descriptor. */
 	if (dim == ac_image_cube ||
 	    (ctx->chip_class <= GFX8 && dim == ac_image_3d))
 		dim = ac_image_2darray;
+	else if (sdim == GLSL_SAMPLER_DIM_2D && !is_array && ctx->chip_class == GFX9) {
+		/* When a single layer of a 3D texture is bound, the shader
+		 * will refer to a 2D target, but the descriptor has a 3D type.
+		 * Since the HW ignores BASE_ARRAY in this case, we need to
+		 * send 3 coordinates. This doesn't hurt when the underlying
+		 * texture is non-3D.
+		 */
+		dim = ac_image_3d;
+	}
 
 	return dim;
 }
@@ -2461,6 +2471,25 @@ static void get_image_coords(struct ac_nir_context *ctx,
 				args->coords[1] = ctx->ac.i32_0;
 			count++;
 		}
+		if (ctx->ac.chip_class == GFX9 &&
+		    dim == GLSL_SAMPLER_DIM_2D &&
+		    !is_array) {
+			/* The hw can't bind a slice of a 3D image as a 2D
+			 * image, because it ignores BASE_ARRAY if the target
+			 * is 3D. The workaround is to read BASE_ARRAY and set
+			 * it as the 3rd address operand for all 2D images.
+			 */
+			LLVMValueRef first_layer, const5, mask;
+
+			const5 = LLVMConstInt(ctx->ac.i32, 5, 0);
+			mask = LLVMConstInt(ctx->ac.i32, S_008F24_BASE_ARRAY(~0), 0);
+			first_layer = LLVMBuildExtractElement(ctx->ac.builder, args->resource, const5, "");
+			first_layer = LLVMBuildAnd(ctx->ac.builder, first_layer, mask, "");
+
+			args->coords[count] = first_layer;
+			count++;
+		}
+
 
 		if (is_ms) {
 			args->coords[count] = sample_index;
@@ -2535,8 +2564,8 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 		res = ac_to_integer(&ctx->ac, res);
 	} else {
 		args.opcode = ac_image_load;
-		get_image_coords(ctx, instr, &args, dim, is_array);
 		args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, false);
+		get_image_coords(ctx, instr, &args, dim, is_array);
 		args.dim = get_ac_image_dim(&ctx->ac, dim, is_array);
 		args.dmask = 15;
 		args.attributes = AC_FUNC_ATTR_READONLY;
@@ -2592,8 +2621,8 @@ static void visit_image_store(struct ac_nir_context *ctx,
 	} else {
 		args.opcode = ac_image_store;
 		args.data[0] = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));
-		get_image_coords(ctx, instr, &args, dim, is_array);
 		args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, true);
+		get_image_coords(ctx, instr, &args, dim, is_array);
 		args.dim = get_ac_image_dim(&ctx->ac, dim, is_array);
 		args.dmask = 15;
 
@@ -2745,8 +2774,8 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		args.data[0] = params[0];
 		if (cmpswap)
 			args.data[1] = params[1];
-		get_image_coords(ctx, instr, &args, dim, is_array);
 		args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, true);
+		get_image_coords(ctx, instr, &args, dim, is_array);
 		args.dim = get_ac_image_dim(&ctx->ac, dim, is_array);
 
 		return ac_build_image_opcode(&ctx->ac, &args);
