@@ -1221,6 +1221,22 @@ print_texture_format(int format)
         }
 }
 
+static bool
+midgard_op_has_helpers(unsigned op, bool gather)
+{
+        if (gather)
+                return true;
+
+        switch (op) {
+        case TEXTURE_OP_NORMAL:
+        case TEXTURE_OP_DFDX:
+        case TEXTURE_OP_DFDY:
+                return true;
+        default:
+                return false;
+        }
+}
+
 static void
 print_texture_op(unsigned op, bool gather)
 {
@@ -1280,6 +1296,9 @@ static void
 print_texture_word(uint32_t *word, unsigned tabs)
 {
         midgard_texture_word *texture = (midgard_texture_word *) word;
+
+        midg_stats.helper_invocations |=
+                midgard_op_has_helpers(texture->op, texture->is_gather);
 
         /* Broad category of texture operation in question */
         print_texture_op(texture->op, texture->is_gather);

@@ -17,6 +17,9 @@ struct midgard_disasm_stats {
         unsigned instruction_count;
         unsigned bundle_count;
         unsigned quadword_count;
+
+        /* Should we enable helper invocations? */
+        bool helper_invocations;
 };
 
 struct midgard_disasm_stats
