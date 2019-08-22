@@ -1276,13 +1276,9 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                 /* Print the stride and size */
                 pandecode_log_cont("<%u>[%u]", attr[i].stride, attr[i].size);
 
-                /* Check: the size must be divisible by the stride */
-                if (attr[i].size % attr[i].stride)
-                        pandecode_msg("XXX: size not divisible by stride\n");
-
-                /* TODO: Sanity check the quotient itself -- it should equal
-                 * vertex count (or something computed from it for instanced)
-                 * which means we can check and elide */
+                /* TODO: Sanity check the quotient itself. It must be equal to
+                 * (or be greater than, if the driver added padding) the padded
+                 * vertex count. */
 
                 /* Finally, print the pointer */
                 mali_ptr raw_elements = attr[i].elements & ~7;
