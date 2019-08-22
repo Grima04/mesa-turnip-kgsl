@@ -1493,7 +1493,7 @@ pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_p
         snprintf(base, sizeof(base), "%s_meta", prefix);
 
         struct mali_attr_meta *attr_meta;
-        mali_ptr p = varying ? (v->varying_meta & ~0xF) : v->attribute_meta;
+        mali_ptr p = varying ? v->varying_meta : v->attribute_meta;
 
         struct pandecode_mapped_memory *attr_mem = pandecode_find_mapped_gpu_mem_containing(p);
 
