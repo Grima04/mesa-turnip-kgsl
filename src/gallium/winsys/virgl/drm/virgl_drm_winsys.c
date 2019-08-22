@@ -186,7 +186,6 @@ virgl_drm_winsys_resource_create(struct virgl_winsys *qws,
    }
 
    res->bind = bind;
-   res->format = format;
 
    res->res_handle = createcmd.res_handle;
    res->bo_handle = createcmd.bo_handle;

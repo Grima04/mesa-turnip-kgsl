@@ -44,7 +44,6 @@ struct virgl_hw_res {
    uint32_t stride;
 
    struct virgl_resource_cache_entry cache_entry;
-   uint32_t format;
    uint32_t bind;
    uint32_t flink_name;
 
