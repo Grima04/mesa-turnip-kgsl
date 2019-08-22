@@ -633,6 +633,8 @@ st_link_nir(struct gl_context *ctx,
       struct gl_program *prog = shader->Program;
       _mesa_copy_linked_program_data(shader_program, shader);
 
+      assert(!prog->nir);
+
       if (shader_program->data->spirv) {
          const nir_shader_compiler_options *options =
             st->ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions;
@@ -640,7 +642,6 @@ st_link_nir(struct gl_context *ctx,
          prog->Parameters = _mesa_new_parameter_list();
          /* Parameters will be filled during NIR linking. */
 
-         /* TODO: Properly handle or dismiss `if (prog->nir)` case. */
          prog->nir = _mesa_spirv_to_nir(ctx, shader_program, shader->Stage, options);
          set_st_program(prog, shader_program, prog->nir);
       } else {
@@ -670,11 +671,9 @@ st_link_nir(struct gl_context *ctx,
             st->ctx->Const.ShaderCompilerOptions[prog->info.stage].NirOptions;
          assert(options);
 
-         if (!prog->nir) {
-            prog->nir = glsl_to_nir(st->ctx, shader_program, shader->Stage, options);
-            set_st_program(prog, shader_program, prog->nir);
-            st_nir_preprocess(st, prog, shader_program, shader->Stage);
-         }
+         prog->nir = glsl_to_nir(st->ctx, shader_program, shader->Stage, options);
+         set_st_program(prog, shader_program, prog->nir);
+         st_nir_preprocess(st, prog, shader_program, shader->Stage);
       }
 
       last_stage = i;
