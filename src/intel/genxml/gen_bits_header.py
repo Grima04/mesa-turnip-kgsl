@@ -135,7 +135,7 @@ ${emit_per_gen_prop_func(field, 'start')}
 alphanum_nono = re.compile(r'[ /\[\]()\-:.,=>#&*"+\\]+')
 def to_alphanum(name):
     global alphanum_nono
-    return alphanum_nono.sub('', name).replace('α', 'alpha')
+    return alphanum_nono.sub('', name)
 
 def safe_name(name):
     name = to_alphanum(name)
