@@ -2959,19 +2959,11 @@ VkResult anv_DeviceWaitIdle(
     VkDevice                                    _device)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
+
    if (anv_device_is_lost(device))
       return VK_ERROR_DEVICE_LOST;
 
-   struct anv_batch batch;
-
-   uint32_t cmds[8];
-   batch.start = batch.next = cmds;
-   batch.end = (void *) cmds + sizeof(cmds);
-
-   anv_batch_emit(&batch, GEN7_MI_BATCH_BUFFER_END, bbe);
-   anv_batch_emit(&batch, GEN7_MI_NOOP, noop);
-
-   return anv_device_submit_simple_batch(device, &batch);
+   return anv_device_submit_simple_batch(device, NULL);
 }
 
 bool

@@ -123,15 +123,20 @@ anv_device_submit_simple_batch(struct anv_device *device,
    VkResult result = VK_SUCCESS;
    uint32_t size;
 
-   /* Kernel driver requires 8 byte aligned batch length */
-   size = align_u32(batch->next - batch->start, 8);
-   result = anv_bo_pool_alloc(&device->batch_bo_pool, size, &bo);
-   if (result != VK_SUCCESS)
-      return result;
+   if (batch) {
+      /* Kernel driver requires 8 byte aligned batch length */
+      size = align_u32(batch->next - batch->start, 8);
+      result = anv_bo_pool_alloc(&device->batch_bo_pool, size, &bo);
+      if (result != VK_SUCCESS)
+         return result;
 
-   memcpy(bo->map, batch->start, size);
-   if (!device->info.has_llc)
-      gen_flush_range(bo->map, size);
+      memcpy(bo->map, batch->start, size);
+      if (!device->info.has_llc)
+         gen_flush_range(bo->map, size);
+   } else {
+      size = device->trivial_batch_bo->size;
+      bo = device->trivial_batch_bo;
+   }
 
    exec2_objects[0].handle = bo->gem_handle;
    exec2_objects[0].relocation_count = 0;
@@ -168,7 +173,8 @@ anv_device_submit_simple_batch(struct anv_device *device,
    result = anv_device_wait(device, bo, INT64_MAX);
 
  fail:
-   anv_bo_pool_free(&device->batch_bo_pool, bo);
+   if (batch)
+      anv_bo_pool_free(&device->batch_bo_pool, bo);
 
    return result;
 }
