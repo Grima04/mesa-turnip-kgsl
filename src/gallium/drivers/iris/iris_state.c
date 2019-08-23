@@ -4003,6 +4003,7 @@ surf_state_offset_for_aux(struct iris_resource *res,
           util_bitcount(aux_modes & ((1 << aux_usage) - 1));
 }
 
+#if GEN_GEN == 9
 static void
 surf_state_update_clear_value(struct iris_batch *batch,
                               struct iris_resource *res,
@@ -4043,6 +4044,7 @@ surf_state_update_clear_value(struct iris_batch *batch,
                                 PIPE_CONTROL_FLUSH_ENABLE |
                                 PIPE_CONTROL_STATE_CACHE_INVALIDATE);
 }
+#endif
 
 static void
 update_clear_value(struct iris_context *ice,
