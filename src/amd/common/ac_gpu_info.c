@@ -483,6 +483,11 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->has_tc_compat_zrange_bug = info->chip_class >= GFX8 &&
 					 info->chip_class <= GFX9;
 
+	info->has_msaa_sample_loc_bug = (info->family >= CHIP_POLARIS10 &&
+					 info->family <= CHIP_POLARIS12) ||
+					info->family == CHIP_VEGA10 ||
+					info->family == CHIP_RAVEN;
+
 	/* Get the number of good compute units. */
 	info->num_good_compute_units = 0;
 	for (i = 0; i < info->max_se; i++)

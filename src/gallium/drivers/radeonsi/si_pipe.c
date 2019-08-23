@@ -1135,10 +1135,6 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 #include "si_debug_options.h"
 	}
 
-	sscreen->has_msaa_sample_loc_bug = (sscreen->info.family >= CHIP_POLARIS10 &&
-					    sscreen->info.family <= CHIP_POLARIS12) ||
-					   sscreen->info.family == CHIP_VEGA10 ||
-					   sscreen->info.family == CHIP_RAVEN;
 	sscreen->has_ls_vgpr_init_bug = sscreen->info.family == CHIP_VEGA10 ||
 					sscreen->info.family == CHIP_RAVEN;
 	sscreen->use_ngg = sscreen->info.chip_class >= GFX10;
