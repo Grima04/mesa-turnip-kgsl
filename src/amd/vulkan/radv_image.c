@@ -1157,7 +1157,7 @@ radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 
 	/* + 8 for storing the clear values */
 	image->clear_value_offset = image->htile_offset + image->planes[0].surface.htile_size;
-	image->size = image->clear_value_offset + 8;
+	image->size = image->clear_value_offset + image->info.levels * 8;
 	if (radv_image_is_tc_compat_htile(image) &&
 	    device->physical_device->has_tc_compat_zrange_bug) {
 		/* Metadata for the TC-compatible HTILE hardware bug which
@@ -1165,7 +1165,7 @@ radv_image_alloc_htile(struct radv_device *device, struct radv_image *image)
 		 * fast depth clears to 0.0f.
 		 */
 		image->tc_compat_zrange_offset = image->size;
-		image->size = image->tc_compat_zrange_offset + 4;
+		image->size = image->tc_compat_zrange_offset + image->info.levels * 4;
 	}
 	image->alignment = align64(image->alignment, image->planes[0].surface.htile_alignment);
 }
