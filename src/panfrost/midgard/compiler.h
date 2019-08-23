@@ -109,7 +109,7 @@ typedef struct midgard_instruction {
         bool precede_break;
 
         bool has_constants;
-        float constants[4];
+        uint32_t constants[4];
         uint16_t inline_constant;
         bool has_blend_constant;
 

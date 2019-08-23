@@ -1096,11 +1096,10 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.has_constants = true;
 
                 if (instr->op == nir_op_b2f32) {
-                        ins.constants[0] = 1.0f;
+                        float f = 1.0f;
+                        memcpy(&ins.constants, &f, sizeof(float));
                 } else {
-                        /* Type pun it into place */
-                        uint32_t one = 0x1;
-                        memcpy(&ins.constants[0], &one, sizeof(uint32_t));
+                        ins.constants[0] = 1;
                 }
 
                 ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
@@ -1109,7 +1108,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.ssa_args.inline_constant = false;
                 ins.ssa_args.src[1] = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
                 ins.has_constants = true;
-                ins.constants[0] = 0.0f;
+                ins.constants[0] = 0;
                 ins.alu.src2 = vector_alu_srco_unsigned(blank_alu_src_xxxx);
         } else if (instr->op == nir_op_inot) {
                 ins.invert = true;
@@ -2108,7 +2107,8 @@ embedded_to_inline_constant(compiler_context *ctx)
                                 if (scaled_constant != iconstants[component])
                                         continue;
                         } else {
-                                float original = (float) ins->constants[component];
+                                float *f = (float *) ins->constants;
+                                float original = f[component];
                                 scaled_constant = _mesa_float_to_half(original);
 
                                 /* Check for loss of precision. If this is
@@ -2135,7 +2135,7 @@ embedded_to_inline_constant(compiler_context *ctx)
                          * vector by checking if all accessed values
                          * (by the swizzle) are the same. */
 
-                        uint32_t *cons = (uint32_t *) ins->constants;
+                        uint32_t *cons = ins->constants;
                         uint32_t value = cons[component];
 
                         bool is_vector = false;
