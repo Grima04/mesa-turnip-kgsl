@@ -69,6 +69,7 @@ typedef struct xcb_connection_t xcb_connection_t;
 typedef uint32_t xcb_visualid_t;
 typedef uint32_t xcb_window_t;
 
+struct anv_batch;
 struct anv_buffer;
 struct anv_buffer_view;
 struct anv_image_view;
@@ -1181,7 +1182,7 @@ struct anv_device {
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
-    bool                                        _lost;
+    int                                         _lost;
 
     struct gen_batch_decode_ctx                 decoder_ctx;
     /*
@@ -1231,22 +1232,26 @@ anv_mocs_for_bo(const struct anv_device *device, const struct anv_bo *bo)
 void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
 
+void _anv_device_set_all_queue_lost(struct anv_device *device);
 VkResult _anv_device_set_lost(struct anv_device *device,
+                              const char *file, int line,
+                              const char *msg, ...)
+   anv_printflike(4, 5);
+VkResult _anv_queue_set_lost(struct anv_queue *queue,
                               const char *file, int line,
                               const char *msg, ...)
    anv_printflike(4, 5);
 #define anv_device_set_lost(dev, ...) \
    _anv_device_set_lost(dev, __FILE__, __LINE__, __VA_ARGS__)
+#define anv_queue_set_lost(queue, ...) \
+   _anv_queue_set_lost(queue, __FILE__, __LINE__, __VA_ARGS__)
 
 static inline bool
 anv_device_is_lost(struct anv_device *device)
 {
-   return unlikely(device->_lost);
+   return unlikely(p_atomic_read(&device->_lost));
 }
 
-VkResult anv_device_execbuf(struct anv_device *device,
-                            struct drm_i915_gem_execbuffer2 *execbuf,
-                            struct anv_bo **execbuf_bos);
 VkResult anv_device_query_status(struct anv_device *device);
 
 
@@ -1313,6 +1318,11 @@ VkResult anv_device_wait(struct anv_device *device, struct anv_bo *bo,
 VkResult anv_queue_init(struct anv_device *device, struct anv_queue *queue);
 void anv_queue_finish(struct anv_queue *queue);
 
+VkResult anv_queue_execbuf(struct anv_queue *queue,
+                           struct drm_i915_gem_execbuffer2 *execbuf,
+                           struct anv_bo **execbuf_bos);
+VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
+                                       struct anv_batch *batch);
 
 uint64_t anv_gettime_ns(void);
 uint64_t anv_get_absolute_timeout(uint64_t timeout);
@@ -1427,8 +1437,6 @@ void *anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords);
 void anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other);
 uint64_t anv_batch_emit_reloc(struct anv_batch *batch,
                               void *location, struct anv_bo *bo, uint32_t offset);
-VkResult anv_device_submit_simple_batch(struct anv_device *device,
-                                        struct anv_batch *batch);
 
 static inline VkResult
 anv_batch_set_error(struct anv_batch *batch, VkResult error)
@@ -2636,7 +2644,7 @@ void anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer);
 void anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
                                   struct anv_cmd_buffer *secondary);
 void anv_cmd_buffer_prepare_execbuf(struct anv_cmd_buffer *cmd_buffer);
-VkResult anv_cmd_buffer_execbuf(struct anv_device *device,
+VkResult anv_cmd_buffer_execbuf(struct anv_queue *queue,
                                 struct anv_cmd_buffer *cmd_buffer,
                                 const VkSemaphore *in_semaphores,
                                 uint32_t num_in_semaphores,

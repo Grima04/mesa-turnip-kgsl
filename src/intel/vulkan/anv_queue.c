@@ -77,14 +77,15 @@ static int64_t anv_get_relative_timeout(uint64_t abs_timeout)
 }
 
 VkResult
-anv_device_execbuf(struct anv_device *device,
-                   struct drm_i915_gem_execbuffer2 *execbuf,
-                   struct anv_bo **execbuf_bos)
+anv_queue_execbuf(struct anv_queue *queue,
+                  struct drm_i915_gem_execbuffer2 *execbuf,
+                  struct anv_bo **execbuf_bos)
 {
+   struct anv_device *device = queue->device;
    int ret = device->no_hw ? 0 : anv_gem_execbuffer(device, execbuf);
    if (ret != 0) {
       /* We don't know the real error. */
-      return anv_device_set_lost(device, "execbuf2 failed: %m");
+      return anv_queue_set_lost(queue, "execbuf2 failed: %m");
    }
 
    struct drm_i915_gem_exec_object2 *objects =
@@ -114,9 +115,10 @@ anv_queue_finish(struct anv_queue *queue)
 }
 
 VkResult
-anv_device_submit_simple_batch(struct anv_device *device,
-                               struct anv_batch *batch)
+anv_queue_submit_simple_batch(struct anv_queue *queue,
+                              struct anv_batch *batch)
 {
+   struct anv_device *device = queue->device;
    struct drm_i915_gem_execbuffer2 execbuf;
    struct drm_i915_gem_exec_object2 exec2_objects[1];
    struct anv_bo *bo;
@@ -166,7 +168,7 @@ anv_device_submit_simple_batch(struct anv_device *device,
                       bo->size, bo->offset, false);
    }
 
-   result = anv_device_execbuf(device, &execbuf, &bo);
+   result = anv_queue_execbuf(queue, &execbuf, &bo);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -232,7 +234,7 @@ VkResult anv_QueueSubmit(
        * come up with something more efficient but this shouldn't be a
        * common case.
        */
-      result = anv_cmd_buffer_execbuf(device, NULL, NULL, 0, NULL, 0, fence);
+      result = anv_cmd_buffer_execbuf(queue, NULL, NULL, 0, NULL, 0, fence);
       goto out;
    }
 
@@ -246,7 +248,7 @@ VkResult anv_QueueSubmit(
           * come up with something more efficient but this shouldn't be a
           * common case.
           */
-         result = anv_cmd_buffer_execbuf(device, NULL,
+         result = anv_cmd_buffer_execbuf(queue, NULL,
                                          pSubmits[i].pWaitSemaphores,
                                          pSubmits[i].waitSemaphoreCount,
                                          pSubmits[i].pSignalSemaphores,
@@ -283,7 +285,7 @@ VkResult anv_QueueSubmit(
             num_out_semaphores = pSubmits[i].signalSemaphoreCount;
          }
 
-         result = anv_cmd_buffer_execbuf(device, cmd_buffer,
+         result = anv_cmd_buffer_execbuf(queue, cmd_buffer,
                                          in_semaphores, num_in_semaphores,
                                          out_semaphores, num_out_semaphores,
                                          execbuf_fence);
@@ -321,7 +323,10 @@ VkResult anv_QueueWaitIdle(
 {
    ANV_FROM_HANDLE(anv_queue, queue, _queue);
 
-   return anv_DeviceWaitIdle(anv_device_to_handle(queue->device));
+   if (anv_device_is_lost(queue->device))
+      return VK_ERROR_DEVICE_LOST;
+
+   return anv_queue_submit_simple_batch(queue, NULL);
 }
 
 VkResult anv_CreateFence(

@@ -2871,10 +2871,32 @@ _anv_device_set_lost(struct anv_device *device,
    VkResult err;
    va_list ap;
 
-   device->_lost = true;
+   p_atomic_inc(&device->_lost);
 
    va_start(ap, msg);
    err = __vk_errorv(device->instance, device,
+                     VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
+                     VK_ERROR_DEVICE_LOST, file, line, msg, ap);
+   va_end(ap);
+
+   if (env_var_as_boolean("ANV_ABORT_ON_DEVICE_LOSS", false))
+      abort();
+
+   return err;
+}
+
+VkResult
+_anv_queue_set_lost(struct anv_queue *queue,
+                    const char *file, int line,
+                    const char *msg, ...)
+{
+   VkResult err;
+   va_list ap;
+
+   p_atomic_inc(&queue->device->_lost);
+
+   va_start(ap, msg);
+   err = __vk_errorv(queue->device->instance, queue->device,
                      VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
                      VK_ERROR_DEVICE_LOST, file, line, msg, ap);
    va_end(ap);
@@ -2963,7 +2985,7 @@ VkResult anv_DeviceWaitIdle(
    if (anv_device_is_lost(device))
       return VK_ERROR_DEVICE_LOST;
 
-   return anv_device_submit_simple_batch(device, NULL);
+   return anv_queue_submit_simple_batch(&device->queue, NULL);
 }
 
 bool

@@ -1614,7 +1614,7 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_device *device)
 }
 
 VkResult
-anv_cmd_buffer_execbuf(struct anv_device *device,
+anv_cmd_buffer_execbuf(struct anv_queue *queue,
                        struct anv_cmd_buffer *cmd_buffer,
                        const VkSemaphore *in_semaphores,
                        uint32_t num_in_semaphores,
@@ -1623,6 +1623,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
                        VkFence _fence)
 {
    ANV_FROM_HANDLE(anv_fence, fence, _fence);
+   struct anv_device *device = queue->device;
    UNUSED struct anv_physical_device *pdevice = &device->instance->physicalDevice;
 
    struct anv_execbuf execbuf;
@@ -1792,7 +1793,7 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
    if (need_out_fence)
       execbuf.execbuf.flags |= I915_EXEC_FENCE_OUT;
 
-   result = anv_device_execbuf(device, &execbuf.execbuf, execbuf.bos);
+   result = anv_queue_execbuf(queue, &execbuf.execbuf, execbuf.bos);
 
    /* Execbuf does not consume the in_fence.  It's our job to close it. */
    if (in_fence != -1)
