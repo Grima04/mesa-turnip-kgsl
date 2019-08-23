@@ -4362,12 +4362,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	ctx.abi.clamp_shadow_reference = false;
 	ctx.abi.robust_buffer_access = options->robust_buffer_access;
 
-	/* Because the new raw/struct atomic intrinsics are buggy with LLVM 8,
-	 * we fallback to the old intrinsics for atomic buffer image operations
-	 * and thus we need to apply the indexing workaround...
-	 */
-	ctx.abi.gfx9_stride_size_workaround_for_atomic = ctx.ac.chip_class == GFX9 && HAVE_LLVM < 0x900;
-
 	bool is_ngg = is_pre_gs_stage(shaders[0]->info.stage) &&  ctx.options->key.vs_common_out.as_ngg;
 	if (shader_count >= 2 || is_ngg)
 		ac_init_exec_full_mask(&ctx.ac);

@@ -207,10 +207,6 @@ struct ac_shader_abi {
 	bool clamp_shadow_reference;
 	bool interp_at_sample_force_center;
 
-	/* Whether to workaround GFX9 ignoring the stride for the buffer size if IDXEN=0
-	* and LLVM optimizes an indexed load with constant index to IDXEN=0. */
-	bool gfx9_stride_size_workaround_for_atomic;
-
 	/* Whether bounds checks are required */
 	bool robust_buffer_access;
 };

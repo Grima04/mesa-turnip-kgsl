@@ -2503,7 +2503,7 @@ static LLVMValueRef get_image_buffer_descriptor(struct ac_nir_context *ctx,
 						bool write, bool atomic)
 {
 	LLVMValueRef rsrc = get_image_descriptor(ctx, instr, AC_DESC_BUFFER, write);
-	if (ctx->abi->gfx9_stride_size_workaround_for_atomic && atomic) {
+	if (ctx->ac.chip_class == GFX9 && HAVE_LLVM < 0x900 && atomic) {
 		LLVMValueRef elem_count = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 2, 0), "");
 		LLVMValueRef stride = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 1, 0), "");
 		stride = LLVMBuildLShr(ctx->ac.builder, stride, LLVMConstInt(ctx->ac.i32, 16, 0), "");
