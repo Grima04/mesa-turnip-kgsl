@@ -963,7 +963,7 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
    case BRW_REGISTER_TYPE_D:
    case BRW_REGISTER_TYPE_UD: {
       int first_comp = -1;
-      int d;
+      int d = 0;
 
       for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++) {
          if (nir_alu_instr_channel_used(instr, idx, i)) {
@@ -977,6 +977,8 @@ try_immediate_source(const nir_alu_instr *instr, src_reg *op,
             }
          }
       }
+
+      assert(first_comp >= 0);
 
       if (op[idx].abs)
          d = MAX2(-d, d);
