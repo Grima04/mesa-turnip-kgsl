@@ -415,6 +415,9 @@ _mesa_init_shader_includes(struct gl_shared_state *shared);
 void
 _mesa_destroy_shader_includes(struct gl_shared_state *shared);
 
+const char *
+_mesa_lookup_shader_include(struct gl_context *ctx, char *path);
+
 #ifdef __cplusplus
 }
 #endif

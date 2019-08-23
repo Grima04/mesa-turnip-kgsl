@@ -3275,6 +3275,40 @@ validate_and_tokenise_sh_incl(struct gl_context *ctx,
    return true;
 }
 
+const char *
+_mesa_lookup_shader_include(struct gl_context *ctx, char *path)
+{
+   void *mem_ctx = ralloc_context(NULL);
+   struct sh_incl_path_entry *path_list;
+
+   if (!validate_and_tokenise_sh_incl(ctx, mem_ctx, &path_list, path)) {
+      ralloc_free(mem_ctx);
+      return NULL;
+   }
+
+   struct sh_incl_path_ht_entry *sh_incl_ht_entry = NULL;
+   struct hash_table *path_ht =
+      ctx->Shared->ShaderIncludes->shader_include_tree;
+
+   struct sh_incl_path_entry *entry;
+   foreach(entry, path_list) {
+      struct hash_entry *ht_entry =
+         _mesa_hash_table_search(path_ht, entry->path);
+
+      if (!ht_entry) {
+         return NULL;
+      } else {
+         sh_incl_ht_entry = (struct sh_incl_path_ht_entry *) ht_entry->data;
+      }
+
+      path_ht = sh_incl_ht_entry->path;
+   }
+
+   ralloc_free(mem_ctx);
+
+   return sh_incl_ht_entry ? sh_incl_ht_entry->shader_source : NULL;
+}
+
 GLvoid GLAPIENTRY
 _mesa_NamedStringARB(GLenum type, GLint namelen, const GLchar *name,
                      GLint stringlen, const GLchar *string)
