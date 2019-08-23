@@ -399,10 +399,6 @@ indirect_create_context(struct glx_screen *psc,
 
    gc->attributes.stackPointer = &gc->attributes.stack[0];
 
-   /*
-    ** PERFORMANCE NOTE: A mode dependent fill image can speed things up.
-    */
-   gc->fillImage = __glFillImage;
    gc->pc = gc->buf;
    gc->bufEnd = gc->buf + bufSize;
    gc->isDirect = GL_FALSE;
