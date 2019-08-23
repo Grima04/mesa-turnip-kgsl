@@ -2114,19 +2114,6 @@ anv_DebugReportMessageEXT(VkInstance _instance,
                    object, location, messageCode, pLayerPrefix, pMessage);
 }
 
-static void
-anv_queue_init(struct anv_device *device, struct anv_queue *queue)
-{
-   queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
-   queue->device = device;
-   queue->flags = 0;
-}
-
-static void
-anv_queue_finish(struct anv_queue *queue)
-{
-}
-
 static struct anv_state
 anv_state_pool_emit_data(struct anv_state_pool *pool, size_t size, size_t align, const void *p)
 {
@@ -2529,10 +2516,14 @@ VkResult anv_CreateDevice(
       goto fail_fd;
    }
 
+   result = anv_queue_init(device, &device->queue);
+   if (result != VK_SUCCESS)
+      goto fail_context_id;
+
    if (physical_device->use_softpin) {
       if (pthread_mutex_init(&device->vma_mutex, NULL) != 0) {
          result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
-         goto fail_context_id;
+         goto fail_queue;
       }
 
       /* keep the page with address zero out of the allocator */
@@ -2583,7 +2574,7 @@ VkResult anv_CreateDevice(
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_context_id;
+      goto fail_queue;
    }
 
    pthread_condattr_t condattr;
@@ -2660,8 +2651,6 @@ VkResult anv_CreateDevice(
 
    anv_scratch_pool_init(device, &device->scratch_pool);
 
-   anv_queue_init(device, &device->queue);
-
    switch (device->info.gen) {
    case 7:
       if (!device->info.is_haswell)
@@ -2690,7 +2679,7 @@ VkResult anv_CreateDevice(
       unreachable("unhandled gen");
    }
    if (result != VK_SUCCESS)
-      goto fail_queue;
+      goto fail_workaround_bo;
 
    anv_pipeline_cache_init(&device->default_pipeline_cache, device, true);
 
@@ -2704,15 +2693,13 @@ VkResult anv_CreateDevice(
 
    return VK_SUCCESS;
 
- fail_queue:
-   anv_queue_finish(&device->queue);
+ fail_workaround_bo:
    anv_scratch_pool_finish(device, &device->scratch_pool);
    if (device->info.gen >= 10)
       anv_device_release_bo(device, device->hiz_clear_bo);
+   anv_device_release_bo(device, device->workaround_bo);
  fail_trivial_batch_bo:
    anv_device_release_bo(device, device->trivial_batch_bo);
- fail_workaround_bo:
-   anv_device_release_bo(device, device->workaround_bo);
  fail_surface_aux_map_pool:
    if (device->info.gen >= 12) {
       gen_aux_map_finish(device->aux_map_ctx);
@@ -2739,6 +2726,8 @@ VkResult anv_CreateDevice(
       util_vma_heap_finish(&device->vma_hi);
       util_vma_heap_finish(&device->vma_lo);
    }
+ fail_queue:
+   anv_queue_finish(&device->queue);
  fail_context_id:
    anv_gem_destroy_context(device, device->context_id);
  fail_fd:

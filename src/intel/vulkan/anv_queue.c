@@ -99,6 +99,21 @@ anv_device_execbuf(struct anv_device *device,
 }
 
 VkResult
+anv_queue_init(struct anv_device *device, struct anv_queue *queue)
+{
+   queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   queue->device = device;
+   queue->flags = 0;
+
+   return VK_SUCCESS;
+}
+
+void
+anv_queue_finish(struct anv_queue *queue)
+{
+}
+
+VkResult
 anv_device_submit_simple_batch(struct anv_device *device,
                                struct anv_batch *batch)
 {

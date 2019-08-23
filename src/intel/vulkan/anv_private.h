@@ -1310,6 +1310,10 @@ VkResult anv_device_bo_busy(struct anv_device *device, struct anv_bo *bo);
 VkResult anv_device_wait(struct anv_device *device, struct anv_bo *bo,
                          int64_t timeout);
 
+VkResult anv_queue_init(struct anv_device *device, struct anv_queue *queue);
+void anv_queue_finish(struct anv_queue *queue);
+
+
 uint64_t anv_gettime_ns(void);
 uint64_t anv_get_absolute_timeout(uint64_t timeout);
 
