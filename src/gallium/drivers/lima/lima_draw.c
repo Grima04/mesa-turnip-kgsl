@@ -1535,6 +1535,8 @@ lima_pack_pp_frame_reg(struct lima_context *ctx, uint32_t *frame_reg,
 static void
 _lima_flush(struct lima_context *ctx, bool end_of_frame)
 {
+   #define pp_stack_pp_size 0x400
+
    lima_finish_plbu_cmd(ctx);
 
    int vs_cmd_size = ctx->vs_cmd_array.size;
@@ -1600,6 +1602,14 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       }
    }
 
+   uint32_t pp_stack_va = 0;
+   if (ctx->pp_max_stack_size) {
+      lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_stack, screen->num_pp *
+                          ctx->pp_max_stack_size * pp_stack_pp_size, true);
+      pp_stack_va = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_stack,
+                                     LIMA_CTX_BUFF_SUBMIT_PP);
+   }
+
    struct lima_pp_stream_state *ps = &ctx->pp_stream;
    if (screen->gpu_type == DRM_LIMA_PARAM_GPU_ID_MALI400) {
       struct drm_lima_m400_pp_frame pp_frame = {0};
@@ -1608,8 +1618,9 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
 
       for (int i = 0; i < screen->num_pp; i++) {
          pp_frame.plbu_array_address[i] = ps->bo->va + ps->bo_offset + ps->offset[i];
-         pp_frame.fragment_stack_address[i] = screen->pp_buffer->va +
-            pp_stack_offset + pp_stack_pp_size * i;
+         if (ctx->pp_max_stack_size)
+            pp_frame.fragment_stack_address[i] = pp_stack_va +
+               ctx->pp_max_stack_size * pp_stack_pp_size * i;
       }
 
       lima_dump_command_stream_print(
@@ -1623,9 +1634,10 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       lima_pack_pp_frame_reg(ctx, pp_frame.frame, pp_frame.wb);
       pp_frame.num_pp = screen->num_pp;
 
-      for (int i = 0; i < screen->num_pp; i++)
-         pp_frame.fragment_stack_address[i] = screen->pp_buffer->va +
-            pp_stack_offset + pp_stack_pp_size * i;
+      if (ctx->pp_max_stack_size)
+         for (int i = 0; i < screen->num_pp; i++)
+            pp_frame.fragment_stack_address[i] = pp_stack_va +
+               ctx->pp_max_stack_size * pp_stack_pp_size * i;
 
       if (ps->bo) {
          for (int i = 0; i < screen->num_pp; i++)
@@ -1663,6 +1675,8 @@ _lima_flush(struct lima_context *ctx, bool end_of_frame)
       struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
       surf->reload = true;
    }
+
+   ctx->pp_max_stack_size = 0;
 }
 
 void

@@ -303,6 +303,8 @@ lima_update_fs_state(struct lima_context *ctx)
       fs->shader = NULL;
    }
 
+   ctx->pp_max_stack_size = MAX2(ctx->pp_max_stack_size, ctx->fs->stack_size);
+
    return true;
 }
 
