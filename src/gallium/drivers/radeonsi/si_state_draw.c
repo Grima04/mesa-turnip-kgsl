@@ -1833,7 +1833,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 	}
 
 	if (sctx->tes_shader.cso &&
-	    sctx->screen->has_ls_vgpr_init_bug) {
+	    sctx->screen->info.has_ls_vgpr_init_bug) {
 		/* Determine whether the LS VGPR fix should be applied.
 		 *
 		 * It is only required when num input CPs > num output CPs,

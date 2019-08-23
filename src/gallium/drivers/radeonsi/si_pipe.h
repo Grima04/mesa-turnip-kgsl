@@ -495,7 +495,6 @@ struct si_screen {
 	bool				has_out_of_order_rast;
 	bool				assume_no_z_fights;
 	bool				commutative_blend_add;
-	bool				has_ls_vgpr_init_bug;
 	bool				dpbb_allowed;
 	bool				dfsm_allowed;
 	bool				llvm_has_working_vgpr_indexing;
