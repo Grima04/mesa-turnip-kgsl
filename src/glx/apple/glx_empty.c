@@ -155,7 +155,6 @@ glXQueryGLXPbufferSGIX(Display * dpy, GLXDrawable drawable,
    (void) drawable;
    (void) attribute;
    (void) value;
-   return 0;
 }
 
 _X_EXPORT GLXDrawable
