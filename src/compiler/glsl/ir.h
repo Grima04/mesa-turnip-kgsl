@@ -1222,7 +1222,7 @@ public:
    /**
     * Function return type.
     *
-    * \note This discards the optional precision qualifier.
+    * \note The precision qualifier is stored separately in return_precision.
     */
    const struct glsl_type *return_type;
 
@@ -1236,6 +1236,13 @@ public:
 
    /** Whether or not this function has a body (which may be empty). */
    unsigned is_defined:1;
+
+   /*
+    * Precision qualifier for the return type.
+    *
+    * See the comment for ir_variable_data::precision for more details.
+    */
+   unsigned return_precision:2;
 
    /** Whether or not this function signature is a built-in. */
    bool is_builtin() const;

@@ -6015,6 +6015,19 @@ ast_function::hir(exec_list *instructions,
                        name);
    }
 
+   /* Get the precision for the return type */
+   unsigned return_precision;
+
+   if (state->es_shader) {
+      YYLTYPE loc = this->get_location();
+      return_precision =
+         select_gles_precision(this->return_type->qualifier.precision,
+                               return_type,
+                               state,
+                               &loc);
+   } else {
+      return_precision = GLSL_PRECISION_NONE;
+   }
 
    /* Create an ir_function if one doesn't already exist. */
    f = state->symbols->get_function(name);
@@ -6085,6 +6098,13 @@ ast_function::hir(exec_list *instructions,
                              "match prototype", name);
          }
 
+         if (sig->return_precision != return_precision) {
+            YYLTYPE loc = this->get_location();
+
+            _mesa_glsl_error(&loc, state, "function `%s' return type precision "
+                             "doesn't match prototype", name);
+         }
+
          if (sig->is_defined) {
             if (is_definition) {
                YYLTYPE loc = this->get_location();
@@ -6129,6 +6149,7 @@ ast_function::hir(exec_list *instructions,
     */
    if (sig == NULL) {
       sig = new(ctx) ir_function_signature(return_type);
+      sig->return_precision = return_precision;
       f->add_signature(sig);
    }
 
