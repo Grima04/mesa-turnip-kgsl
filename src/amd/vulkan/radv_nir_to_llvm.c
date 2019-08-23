@@ -4366,8 +4366,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	if (shader_count >= 2 || is_ngg)
 		ac_init_exec_full_mask(&ctx.ac);
 
-	if ((ctx.ac.family == CHIP_VEGA10 ||
-	     ctx.ac.family == CHIP_RAVEN) &&
+	if (options->has_ls_vgpr_init_bug &&
 	    shaders[shader_count - 1]->info.stage == MESA_SHADER_TESS_CTRL)
 		ac_nir_fixup_ls_hs_input_vgprs(&ctx);
 
