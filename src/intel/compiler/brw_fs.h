@@ -69,7 +69,6 @@ public:
               void *mem_ctx,
               const brw_base_prog_key *key,
               struct brw_stage_prog_data *prog_data,
-              struct gl_program *prog,
               const nir_shader *shader,
               unsigned dispatch_width,
               int shader_time_index,
@@ -312,7 +311,6 @@ public:
    struct brw_gs_compile *gs_compile;
 
    struct brw_stage_prog_data *prog_data;
-   struct gl_program *prog;
 
    const struct brw_vue_map *input_vue_map;
 

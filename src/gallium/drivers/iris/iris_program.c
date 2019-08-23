@@ -1304,7 +1304,7 @@ iris_compile_tes(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_tes(compiler, &ice->dbg, mem_ctx, key, &input_vue_map,
-                      tes_prog_data, nir, NULL, -1, NULL, &error_str);
+                      tes_prog_data, nir, -1, NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile evaluation shader: %s\n", error_str);
       ralloc_free(mem_ctx);
@@ -1534,7 +1534,7 @@ iris_compile_fs(struct iris_context *ice,
    char *error_str = NULL;
    const unsigned *program =
       brw_compile_fs(compiler, &ice->dbg, mem_ctx, key, fs_prog_data,
-                     nir, NULL, -1, -1, -1, true, false, vue_map,
+                     nir, -1, -1, -1, true, false, vue_map,
                      NULL, &error_str);
    if (program == NULL) {
       dbg_printf("Failed to compile fragment shader: %s\n", error_str);

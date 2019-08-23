@@ -8029,7 +8029,6 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                const struct brw_wm_prog_key *key,
                struct brw_wm_prog_data *prog_data,
                nir_shader *shader,
-               struct gl_program *prog,
                int shader_time_index8, int shader_time_index16,
                int shader_time_index32, bool allow_spilling,
                bool use_rep_send, struct brw_vue_map *vue_map,
@@ -8086,7 +8085,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    cfg_t *simd8_cfg = NULL, *simd16_cfg = NULL, *simd32_cfg = NULL;
 
    fs_visitor v8(compiler, log_data, mem_ctx, &key->base,
-                 &prog_data->base, prog, shader, 8,
+                 &prog_data->base, shader, 8,
                  shader_time_index8);
    if (!v8.run_fs(allow_spilling, false /* do_rep_send */)) {
       if (error_str)
@@ -8103,7 +8102,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
        likely(!(INTEL_DEBUG & DEBUG_NO16) || use_rep_send)) {
       /* Try a SIMD16 compile */
       fs_visitor v16(compiler, log_data, mem_ctx, &key->base,
-                     &prog_data->base, prog, shader, 16,
+                     &prog_data->base, shader, 16,
                      shader_time_index16);
       v16.import_uniforms(&v8);
       if (!v16.run_fs(allow_spilling, use_rep_send)) {
@@ -8123,7 +8122,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
        unlikely(INTEL_DEBUG & DEBUG_DO32)) {
       /* Try a SIMD32 compile */
       fs_visitor v32(compiler, log_data, mem_ctx, &key->base,
-                     &prog_data->base, prog, shader, 32,
+                     &prog_data->base, shader, 32,
                      shader_time_index32);
       v32.import_uniforms(&v8);
       if (!v32.run_fs(allow_spilling, false)) {
@@ -8368,7 +8367,6 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                                            src_shader, 8);
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base,
-                          NULL, /* Never used in core profile */
                           nir8, 8, shader_time_index);
       if (!v8->run_cs(min_dispatch_width)) {
          fail_msg = v8->fail_msg;
@@ -8389,7 +8387,6 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                                             src_shader, 16);
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base,
-                           NULL, /* Never used in core profile */
                            nir16, 16, shader_time_index);
       if (v8)
          v16->import_uniforms(v8);
@@ -8423,7 +8420,6 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                                             src_shader, 32);
       v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base,
-                           NULL, /* Never used in core profile */
                            nir32, 32, shader_time_index);
       if (v8)
          v32->import_uniforms(v8);

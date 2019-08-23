@@ -878,7 +878,7 @@ anv_pipeline_compile_tes(const struct brw_compiler *compiler,
                                      &tes_stage->key.tes,
                                      &tcs_stage->prog_data.tcs.base.vue_map,
                                      &tes_stage->prog_data.tes,
-                                     tes_stage->nir, NULL, -1,
+                                     tes_stage->nir, -1,
                                      tes_stage->stats, NULL);
 }
 
@@ -1043,7 +1043,7 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
    fs_stage->code = brw_compile_fs(compiler, device, mem_ctx,
                                    &fs_stage->key.wm,
                                    &fs_stage->prog_data.wm,
-                                   fs_stage->nir, NULL, -1, -1, -1,
+                                   fs_stage->nir, -1, -1, -1,
                                    true, false, NULL,
                                    fs_stage->stats, NULL);
 

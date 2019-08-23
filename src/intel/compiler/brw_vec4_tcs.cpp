@@ -426,7 +426,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
    if (is_scalar) {
       fs_visitor v(compiler, log_data, mem_ctx, &key->base,
-                   &prog_data->base.base, NULL, nir, 8,
+                   &prog_data->base.base, nir, 8,
                    shader_time_index, &input_vue_map);
       if (!v.run_tcs()) {
          if (error_str)
