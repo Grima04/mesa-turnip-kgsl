@@ -2305,6 +2305,7 @@ emit_block(compiler_context *ctx, nir_block *block)
         }
 
         inline_alu_constants(ctx);
+        midgard_opt_promote_fmov(ctx, ctx->current_block);
         embedded_to_inline_constant(ctx);
 
         /* Append fragment shader epilogue (value writeout) */
