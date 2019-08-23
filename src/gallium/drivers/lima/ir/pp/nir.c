@@ -699,6 +699,19 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
       }
    }
 
+   /* Validate outputs, we support only gl_FragColor */
+   nir_foreach_variable(var, &nir->outputs) {
+      switch (var->data.location) {
+      case FRAG_RESULT_COLOR:
+      case FRAG_RESULT_DATA0:
+         break;
+      default:
+         ppir_error("unsupported output type\n");
+         goto err_out0;
+         break;
+      }
+   }
+
    foreach_list_typed(nir_register, reg, node, &func->registers) {
       ppir_reg *r = rzalloc(comp, ppir_reg);
       if (!r)
