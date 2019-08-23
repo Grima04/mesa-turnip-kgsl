@@ -687,14 +687,11 @@ st_link_nir(struct gl_context *ctx,
     * st_nir_preprocess.
     */
    if (shader_program->data->spirv) {
-      if (!gl_nir_link_uniform_blocks(ctx, shader_program))
+      static const gl_nir_linker_options opts = {
+         .fill_parameters = true,
+      };
+      if (!gl_nir_link(ctx, shader_program, &opts))
          return GL_FALSE;
-
-      if (!gl_nir_link_uniforms(ctx, shader_program, /* fill_parameters */ true))
-         return GL_FALSE;
-
-      gl_nir_link_assign_atomic_counter_resources(ctx, shader_program);
-      gl_nir_link_assign_xfb_resources(ctx, shader_program);
 
       nir_build_program_resource_list(ctx, shader_program);
 
