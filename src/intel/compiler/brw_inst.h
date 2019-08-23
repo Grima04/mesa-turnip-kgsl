@@ -532,6 +532,9 @@ brw_inst_set_uip(const struct gen_device_info *devinfo,
 {
    assert(devinfo->gen >= 6);
 
+   if (devinfo->gen >= 12)
+      brw_inst_set_src1_is_imm(devinfo, inst, 1);
+
    if (devinfo->gen >= 8) {
       brw_inst_set_bits(inst, 95, 64, (uint32_t)value);
    } else {
@@ -558,6 +561,9 @@ brw_inst_set_jip(const struct gen_device_info *devinfo,
                  brw_inst *inst, int32_t value)
 {
    assert(devinfo->gen >= 6);
+
+   if (devinfo->gen >= 12)
+      brw_inst_set_src0_is_imm(devinfo, inst, 1);
 
    if (devinfo->gen >= 8) {
       brw_inst_set_bits(inst, 127, 96, (uint32_t)value);
