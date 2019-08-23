@@ -1405,7 +1405,7 @@ brw_blorp_clear_depth_stencil(struct brw_context *brw,
    if (x0 == x1 || y0 == y1)
       return;
 
-   uint32_t level, start_layer, num_layers;
+   uint32_t level = 0, start_layer = 0, num_layers;
    struct blorp_surf depth_surf, stencil_surf;
 
    struct intel_mipmap_tree *depth_mt = NULL;
