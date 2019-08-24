@@ -612,17 +612,23 @@ FC(gen4_pop_count,  /* 4+ */ 115, 112, /* 12+ */ -1, -1, devinfo->gen < 6)
  * SEND instructions:
  *  @{
  */
-FC(send_ex_desc_ia_subreg_nr, /* 4+ */ 82, 80, /* 12+ */ -1, -1, devinfo->gen >= 9)
-FC(send_src0_address_mode,    /* 4+ */ 79, 79, /* 12+ */ -1, -1, devinfo->gen >= 9)
-FC(send_sel_reg32_desc,       /* 4+ */ 77, 77, /* 12+ */ -1, -1, devinfo->gen >= 9)
-FC(send_sel_reg32_ex_desc,    /* 4+ */ 61, 61, /* 12+ */ -1, -1, devinfo->gen >= 9)
-FC(send_src1_reg_nr,          /* 4+ */ 51, 44, /* 12+ */ -1, -1, devinfo->gen >= 9)
-FC(send_src1_reg_file,        /* 4+ */ 36, 36, /* 12+ */ -1, -1, devinfo->gen >= 9)
-FC(send_dst_reg_file,         /* 4+ */ 35, 35, /* 12+ */ -1, -1, devinfo->gen >= 9)
+FC(send_ex_desc_ia_subreg_nr, /* 4+ */ 82, 80, /* 12+ */  42,  40, devinfo->gen >= 9)
+FC(send_src0_address_mode,    /* 4+ */ 79, 79, /* 12+ */  -1,  -1, devinfo->gen >= 9)
+FC(send_sel_reg32_desc,       /* 4+ */ 77, 77, /* 12+ */  48,  48, devinfo->gen >= 9)
+FC(send_sel_reg32_ex_desc,    /* 4+ */ 61, 61, /* 12+ */  49,  49, devinfo->gen >= 9)
+F8(send_src0_reg_file,        /* 4+ */ 38, 37, /* 8+ */   42,  41, /* 12+ */ 66, 66)
+FC(send_src1_reg_nr,          /* 4+ */ 51, 44, /* 12+ */ 111, 104, devinfo->gen >= 9)
+FC(send_src1_reg_file,        /* 4+ */ 36, 36, /* 12+ */  98,  98, devinfo->gen >= 9)
+FC(send_dst_reg_file,         /* 4+ */ 35, 35, /* 12+ */  50,  50, devinfo->gen >= 9)
 /** @} */
 
 /* Message descriptor bits */
 #define MD(x) ((x) + 96)
+#define MD12(x) ((x) >= 30 ? (x) - 30 + 122 :        \
+                 (x) >= 25 ? (x) - 25 + 67 :         \
+                 (x) >= 20 ? (x) - 20 + 51 :         \
+                 (x) >= 11 ? (x) - 11 + 113 :        \
+                 (x) - 0 + 81)
 
 /**
  * Set the SEND(C) message descriptor immediate.
@@ -637,7 +643,13 @@ static inline void
 brw_inst_set_send_desc(const struct gen_device_info *devinfo,
                        brw_inst *inst, uint32_t value)
 {
-   if (devinfo->gen >= 9) {
+   if (devinfo->gen >= 12) {
+      brw_inst_set_bits(inst, 123, 122, GET_BITS(value, 31, 30));
+      brw_inst_set_bits(inst, 71, 67, GET_BITS(value, 29, 25));
+      brw_inst_set_bits(inst, 55, 51, GET_BITS(value, 24, 20));
+      brw_inst_set_bits(inst, 121, 113, GET_BITS(value, 19, 11));
+      brw_inst_set_bits(inst, 91, 81, GET_BITS(value, 10, 0));
+   } else if (devinfo->gen >= 9) {
       brw_inst_set_bits(inst, 126, 96, value);
       assert(value >> 31 == 0);
    } else if (devinfo->gen >= 5) {
@@ -657,12 +669,19 @@ brw_inst_set_send_desc(const struct gen_device_info *devinfo,
 static inline uint32_t
 brw_inst_send_desc(const struct gen_device_info *devinfo, const brw_inst *inst)
 {
-   if (devinfo->gen >= 9)
+   if (devinfo->gen >= 12) {
+      return (brw_inst_bits(inst, 123, 122) << 30 |
+              brw_inst_bits(inst, 71, 67) << 25 |
+              brw_inst_bits(inst, 55, 51) << 20 |
+              brw_inst_bits(inst, 121, 113) << 11 |
+              brw_inst_bits(inst, 91, 81));
+   } else if (devinfo->gen >= 9) {
       return brw_inst_bits(inst, 126, 96);
-   else if (devinfo->gen >= 5)
+   } else if (devinfo->gen >= 5) {
       return brw_inst_bits(inst, 124, 96);
-   else
+   } else {
       return brw_inst_bits(inst, 119, 96);
+   }
 }
 
 /**
@@ -678,12 +697,21 @@ static inline void
 brw_inst_set_send_ex_desc(const struct gen_device_info *devinfo,
                           brw_inst *inst, uint32_t value)
 {
-   assert(devinfo->gen >= 9);
-   brw_inst_set_bits(inst, 94, 91, GET_BITS(value, 31, 28));
-   brw_inst_set_bits(inst, 88, 85, GET_BITS(value, 27, 24));
-   brw_inst_set_bits(inst, 83, 80, GET_BITS(value, 23, 20));
-   brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 19, 16));
-   assert(GET_BITS(value, 15, 0) == 0);
+   if (devinfo->gen >= 12) {
+      brw_inst_set_bits(inst, 127, 124, GET_BITS(value, 31, 28));
+      brw_inst_set_bits(inst, 97, 96, GET_BITS(value, 27, 26));
+      brw_inst_set_bits(inst, 65, 64, GET_BITS(value, 25, 24));
+      brw_inst_set_bits(inst, 47, 35, GET_BITS(value, 23, 11));
+      brw_inst_set_bits(inst, 103, 99, GET_BITS(value, 10, 6));
+      assert(GET_BITS(value, 5, 0) == 0);
+   } else {
+      assert(devinfo->gen >= 9);
+      brw_inst_set_bits(inst, 94, 91, GET_BITS(value, 31, 28));
+      brw_inst_set_bits(inst, 88, 85, GET_BITS(value, 27, 24));
+      brw_inst_set_bits(inst, 83, 80, GET_BITS(value, 23, 20));
+      brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 19, 16));
+      assert(GET_BITS(value, 15, 0) == 0);
+   }
 }
 
 /**
@@ -699,10 +727,14 @@ static inline void
 brw_inst_set_sends_ex_desc(const struct gen_device_info *devinfo,
                            brw_inst *inst, uint32_t value)
 {
-   brw_inst_set_bits(inst, 95, 80, GET_BITS(value, 31, 16));
-   assert(GET_BITS(value, 15, 10) == 0);
-   brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 9, 6));
-   assert(GET_BITS(value, 5, 0) == 0);
+   if (devinfo->gen >= 12) {
+      brw_inst_set_send_ex_desc(devinfo, inst, value);
+   } else {
+      brw_inst_set_bits(inst, 95, 80, GET_BITS(value, 31, 16));
+      assert(GET_BITS(value, 15, 10) == 0);
+      brw_inst_set_bits(inst, 67, 64, GET_BITS(value, 9, 6));
+      assert(GET_BITS(value, 5, 0) == 0);
+   }
 }
 
 /**
@@ -714,11 +746,19 @@ static inline uint32_t
 brw_inst_send_ex_desc(const struct gen_device_info *devinfo,
                       const brw_inst *inst)
 {
-   assert(devinfo->gen >= 9);
-   return (brw_inst_bits(inst, 94, 91) << 28 |
-           brw_inst_bits(inst, 88, 85) << 24 |
-           brw_inst_bits(inst, 83, 80) << 20 |
-           brw_inst_bits(inst, 67, 64) << 16);
+   if (devinfo->gen >= 12) {
+      return (brw_inst_bits(inst, 127, 124) << 28 |
+              brw_inst_bits(inst, 97, 96) << 26 |
+              brw_inst_bits(inst, 65, 64) << 24 |
+              brw_inst_bits(inst, 47, 35) << 11 |
+              brw_inst_bits(inst, 103, 99) << 6);
+   } else {
+      assert(devinfo->gen >= 9);
+      return (brw_inst_bits(inst, 94, 91) << 28 |
+              brw_inst_bits(inst, 88, 85) << 24 |
+              brw_inst_bits(inst, 83, 80) << 20 |
+              brw_inst_bits(inst, 67, 64) << 16);
+   }
 }
 
 /**
@@ -730,15 +770,19 @@ static inline uint32_t
 brw_inst_sends_ex_desc(const struct gen_device_info *devinfo,
                        const brw_inst *inst)
 {
-   return (brw_inst_bits(inst, 95, 80) << 16 |
-           brw_inst_bits(inst, 67, 64) << 6);
+   if (devinfo->gen >= 12) {
+      return brw_inst_send_ex_desc(devinfo, inst);
+   } else {
+      return (brw_inst_bits(inst, 95, 80) << 16 |
+              brw_inst_bits(inst, 67, 64) << 6);
+   }
 }
 
 /**
  * Fields for SEND messages:
  *  @{
  */
-F(eot,                 /* 4+ */ 127, 127, /* 12+ */ -1, -1)
+F(eot,                 /* 4+ */ 127, 127, /* 12+ */ 34, 34)
 FF(mlen,
    /* 4:   */ 119, 116,
    /* 4.5: */ 119, 116,
@@ -746,7 +790,7 @@ FF(mlen,
    /* 6:   */ 124, 121,
    /* 7:   */ 124, 121,
    /* 8:   */ 124, 121,
-   /* 12:  */ -1, -1);
+   /* 12:  */ MD12(28), MD12(25));
 FF(rlen,
    /* 4:   */ 115, 112,
    /* 4.5: */ 115, 112,
@@ -754,23 +798,23 @@ FF(rlen,
    /* 6:   */ 120, 116,
    /* 7:   */ 120, 116,
    /* 8:   */ 120, 116,
-   /* 12:  */ -1, -1);
+   /* 12:  */ MD12(24), MD12(20));
 FF(header_present,
    /* 4: doesn't exist */ -1, -1, -1, -1,
    /* 5:   */ 115, 115,
    /* 6:   */ 115, 115,
    /* 7:   */ 115, 115,
    /* 8:   */ 115, 115,
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(19), MD12(19))
 F(gateway_notify, /* 4+ */ MD(16), MD(15), /* 12+ */ -1, -1)
-FF(function_control,
+FD(function_control,
    /* 4:   */ 111,  96,
    /* 4.5: */ 111,  96,
    /* 5:   */ 114,  96,
    /* 6:   */ 114,  96,
    /* 7:   */ 114,  96,
    /* 8:   */ 114,  96,
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(18), MD12(11), MD12(10), MD12(0))
 FF(gateway_subfuncid,
    /* 4:   */ MD(1), MD(0),
    /* 4.5: */ MD(1), MD(0),
@@ -778,7 +822,7 @@ FF(gateway_subfuncid,
    /* 6:   */ MD(2), MD(0),
    /* 7:   */ MD(2), MD(0),
    /* 8:   */ MD(2), MD(0),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(2), MD12(0))
 FF(sfid,
    /* 4:   */ 123, 120, /* called msg_target */
    /* 4.5  */ 123, 120,
@@ -786,12 +830,20 @@ FF(sfid,
    /* 6:   */  27,  24,
    /* 7:   */  27,  24,
    /* 8:   */  27,  24,
-   /* 12:  */ -1, -1)
+   /* 12:  */  95,  92)
 FF(null_rt,
    /* 4-7: */ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
    /* 8:   */ 80, 80,
-   /* 12: */ -1, -1) /* actually only Gen11+ */
+   /* 12:  */ 44, 44) /* actually only Gen11+ */
 FC(base_mrf,   /* 4+ */ 27,  24, /* 12+ */ -1, -1, devinfo->gen < 6);
+FF(send_rta_index,
+   /* 4:   */  -1,  -1,
+   /* 4.5  */  -1,  -1,
+   /* 5:   */  -1,  -1,
+   /* 6:   */  -1,  -1,
+   /* 7:   */  -1,  -1,
+   /* 8:   */  -1,  -1,
+   /* 12:  */  38,  36)
 /** @} */
 
 /**
@@ -802,8 +854,8 @@ FF(urb_per_slot_offset,
    /* 4-6: */ -1, -1, -1, -1, -1, -1, -1, -1,
    /* 7:   */ MD(16), MD(16),
    /* 8:   */ MD(17), MD(17),
-   /* 12:  */ -1, -1)
-FC(urb_channel_mask_present, /* 4+ */ MD(15), MD(15), /* 12+ */ -1, -1, devinfo->gen >= 8)
+   /* 12:  */ MD12(17), MD12(17))
+FC(urb_channel_mask_present, /* 4+ */ MD(15), MD(15), /* 12+ */ MD12(15), MD12(15), devinfo->gen >= 8)
 FC(urb_complete, /* 4+ */ MD(15), MD(15), /* 12+ */ -1, -1, devinfo->gen < 8)
 FC(urb_used,     /* 4+ */ MD(14), MD(14), /* 12+ */ -1, -1, devinfo->gen < 7)
 FC(urb_allocate, /* 4+ */ MD(13), MD(13), /* 12+ */ -1, -1, devinfo->gen < 7)
@@ -815,14 +867,14 @@ FF(urb_swizzle_control,
    /* 7:   */ MD(14), MD(14),
    /* 8:   */ MD(15), MD(15),
    /* 12:  */ -1, -1)
-FF(urb_global_offset,
+FD(urb_global_offset,
    /* 4:   */ MD( 9), MD(4),
    /* 4.5: */ MD( 9), MD(4),
    /* 5:   */ MD( 9), MD(4),
    /* 6:   */ MD( 9), MD(4),
    /* 7:   */ MD(13), MD(3),
    /* 8:   */ MD(14), MD(4),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(14), MD12(11), MD12(10), MD12(4))
 FF(urb_opcode,
    /* 4:   */ MD( 3), MD(0),
    /* 4.5: */ MD( 3), MD(0),
@@ -830,7 +882,7 @@ FF(urb_opcode,
    /* 6:   */ MD( 3), MD(0),
    /* 7:   */ MD( 2), MD(0),
    /* 8:   */ MD( 3), MD(0),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(3), MD12(0))
 /** @} */
 
 /**
@@ -854,7 +906,7 @@ FF(sampler_simd_mode,
    /* 6:   */ MD(17), MD(16),
    /* 7:   */ MD(18), MD(17),
    /* 8:   */ MD(18), MD(17),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(18), MD12(17))
 FF(sampler_msg_type,
    /* 4:   */ MD(15), MD(14),
    /* 4.5: */ MD(15), MD(12),
@@ -862,17 +914,24 @@ FF(sampler_msg_type,
    /* 6:   */ MD(15), MD(12),
    /* 7:   */ MD(16), MD(12),
    /* 8:   */ MD(16), MD(12),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(16), MD12(12))
 FC(sampler_return_format, /* 4+ */ MD(13), MD(12), /* 12+ */ -1, -1, devinfo->gen == 4 && !devinfo->is_g4x)
-F(sampler,                /* 4+ */ MD(11), MD(8),  /* 12+ */ -1, -1)
-F(binding_table_index,    /* 4+ */ MD( 7), MD(0),  /* 12+ */ -1, -1) /* also used by other messages */
+FD(sampler,
+   /* 4:   */ MD(11), MD(8),
+   /* 4.5: */ MD(11), MD(8),
+   /* 5:   */ MD(11), MD(8),
+   /* 6:   */ MD(11), MD(8),
+   /* 7:   */ MD(11), MD(8),
+   /* 8:   */ MD(11), MD(8),
+   /* 12:   */ MD12(11), MD12(11), MD12(10), MD12(8))
+F(binding_table_index,    /* 4+ */ MD(7), MD(0),  /* 12+ */ MD12(7), MD12(0)) /* also used by other messages */
 /** @} */
 
 /**
  * Data port message function control bits:
  *  @{
  */
-FC(dp_category,           /* 4+ */ MD(18), MD(18), /* 12+ */ -1, -1, devinfo->gen >= 7)
+FC(dp_category,           /* 4+ */ MD(18), MD(18), /* 12+ */ MD12(18), MD12(18), devinfo->gen >= 7)
 
 /* Gen4-5 store fields in different bits for read/write messages. */
 FF(dp_read_msg_type,
@@ -882,7 +941,7 @@ FF(dp_read_msg_type,
    /* 6:   */ MD(16), MD(13),
    /* 7:   */ MD(17), MD(14),
    /* 8:   */ MD(17), MD(14),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(17), MD12(14))
 FF(dp_write_msg_type,
    /* 4:   */ MD(14), MD(12),
    /* 4.5: */ MD(14), MD(12),
@@ -890,23 +949,23 @@ FF(dp_write_msg_type,
    /* 6:   */ MD(16), MD(13),
    /* 7:   */ MD(17), MD(14),
    /* 8:   */ MD(17), MD(14),
-   /* 12:  */ -1, -1)
-FF(dp_read_msg_control,
+   /* 12:  */ MD12(17), MD12(14))
+FD(dp_read_msg_control,
    /* 4:   */ MD(11), MD( 8),
    /* 4.5: */ MD(10), MD( 8),
    /* 5:   */ MD(10), MD( 8),
    /* 6:   */ MD(12), MD( 8),
    /* 7:   */ MD(13), MD( 8),
    /* 8:   */ MD(13), MD( 8),
-   /* 12:  */ -1, -1)
-FF(dp_write_msg_control,
+   /* 12:  */ MD12(13), MD12(11), MD12(10), MD12(8))
+FD(dp_write_msg_control,
    /* 4:   */ MD(11), MD( 8),
    /* 4.5: */ MD(11), MD( 8),
    /* 5:   */ MD(11), MD( 8),
    /* 6:   */ MD(12), MD( 8),
    /* 7:   */ MD(13), MD( 8),
    /* 8:   */ MD(13), MD( 8),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(13), MD12(11), MD12(10), MD12(8))
 FC(dp_read_target_cache, /* 4+ */ MD(15), MD(14), /* 12+ */ -1, -1, devinfo->gen < 6);
 
 FF(dp_write_commit,
@@ -924,25 +983,32 @@ FF(dp_msg_type,
    /* 6:   */ MD(16), MD(13),
    /* 7:   */ MD(17), MD(14),
    /* 8:   */ MD(18), MD(14),
-   /* 12:  */ -1, -1)
-FF(dp_msg_control,
+   /* 12:  */ MD12(18), MD12(14))
+FD(dp_msg_control,
    /* 4:   */ MD(11), MD( 8),
    /* 4.5-5: use dp_read_msg_control or dp_write_msg_control */ -1, -1, -1, -1,
    /* 6:   */ MD(12), MD( 8),
    /* 7:   */ MD(13), MD( 8),
    /* 8:   */ MD(13), MD( 8),
-   /* 12:  */ -1, -1)
+   /* 12:  */ MD12(13), MD12(11), MD12(10), MD12(8))
 /** @} */
 
 /**
  * Scratch message bits (Gen7+):
  *  @{
  */
-FC(scratch_read_write, /* 4+ */ MD(17), MD(17), /* 12+ */ -1, -1, devinfo->gen >= 7) /* 0 = read,  1 = write */
+FC(scratch_read_write, /* 4+ */ MD(17), MD(17), /* 12+ */ MD12(17), MD12(17), devinfo->gen >= 7) /* 0 = read,  1 = write */
 FC(scratch_type,       /* 4+ */ MD(16), MD(16), /* 12+ */ -1, -1, devinfo->gen >= 7) /* 0 = OWord, 1 = DWord */
-FC(scratch_invalidate_after_read, /* 4+ */ MD(15), MD(15), /* 12+ */ -1, -1, devinfo->gen >= 7)
-FC(scratch_block_size,  /* 4+ */ MD(13),  MD(12), /* 12+ */ -1, -1, devinfo->gen >= 7)
-FC(scratch_addr_offset, /* 4+ */ MD(11),  MD( 0), /* 12+ */ -1, -1, devinfo->gen >= 7)
+FC(scratch_invalidate_after_read, /* 4+ */ MD(15), MD(15), /* 12+ */ MD12(15), MD12(15), devinfo->gen >= 7)
+FC(scratch_block_size, /* 4+ */ MD(13), MD(12), /* 12+ */ MD12(13), MD12(12), devinfo->gen >= 7)
+FD(scratch_addr_offset,
+   /* 4:   */ -1, -1,
+   /* 4.5: */ -1, -1,
+   /* 5:   */ -1, -1,
+   /* 6:   */ -1, -1,
+   /* 7:   */ MD(11), MD(0),
+   /* 8:   */ MD(11), MD(0),
+   /* 12:  */ MD12(11), MD12(11), MD12(10), MD12(0))
 /** @} */
 
 /**
@@ -956,9 +1022,9 @@ FF(rt_last,
    /* 6:   */ MD(12), MD(12),
    /* 7:   */ MD(12), MD(12),
    /* 8:   */ MD(12), MD(12),
-   /* 12:  */ -1, -1)
-FC(rt_slot_group,      /* 4+ */ MD(11),  MD(11), /* 12+ */ -1, -1, devinfo->gen >= 6)
-F(rt_message_type,     /* 4+ */ MD(10),  MD( 8), /* 12+ */ -1, -1)
+   /* 12:  */ MD12(12), MD12(12))
+FC(rt_slot_group,      /* 4+ */ MD(11),  MD(11), /* 12+ */ MD12(11), MD12(11), devinfo->gen >= 6)
+F(rt_message_type,     /* 4+ */ MD(10),  MD( 8), /* 12+ */ MD12(10), MD12(8))
 /** @} */
 
 /**
@@ -967,18 +1033,18 @@ F(rt_message_type,     /* 4+ */ MD(10),  MD( 8), /* 12+ */ -1, -1)
  */
 F(ts_resource_select,  /* 4+ */ MD( 4),  MD( 4), /* 12+ */ -1, -1)
 F(ts_request_type,     /* 4+ */ MD( 1),  MD( 1), /* 12+ */ -1, -1)
-F(ts_opcode,           /* 4+ */ MD( 0),  MD( 0), /* 12+ */ -1, -1)
+F(ts_opcode,           /* 4+ */ MD( 0),  MD( 0), /* 12+ */ MD12(0), MD12(0))
 /** @} */
 
 /**
  * Pixel Interpolator message function control bits:
  *  @{
  */
-F(pi_simd_mode,        /* 4+ */ MD(16),  MD(16), /* 12+ */ -1, -1)
-F(pi_nopersp,          /* 4+ */ MD(14),  MD(14), /* 12+ */ -1, -1)
-F(pi_message_type,     /* 4+ */ MD(13),  MD(12), /* 12+ */ -1, -1)
-F(pi_slot_group,       /* 4+ */ MD(11),  MD(11), /* 12+ */ -1, -1)
-F(pi_message_data,     /* 4+ */ MD(7),   MD(0),  /* 12+ */ -1, -1)
+F(pi_simd_mode,        /* 4+ */ MD(16),  MD(16), /* 12+ */ MD12(16), MD12(16))
+F(pi_nopersp,          /* 4+ */ MD(14),  MD(14), /* 12+ */ MD12(14), MD12(14))
+F(pi_message_type,     /* 4+ */ MD(13),  MD(12), /* 12+ */ MD12(13), MD12(12))
+F(pi_slot_group,       /* 4+ */ MD(11),  MD(11), /* 12+ */ MD12(11), MD12(11))
+F(pi_message_data,     /* 4+ */ MD(7),   MD(0),  /* 12+ */  MD12(7), MD12(0))
 /** @} */
 
 /**
