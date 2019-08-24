@@ -4281,8 +4281,8 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       length = 2;
    } else if ((devinfo->gen <= 7 && !devinfo->is_haswell &&
                prog_data->uses_kill) ||
-              color1.file != BAD_FILE ||
-              key->nr_color_regions > 1) {
+              (devinfo->gen < 11 &&
+               (color1.file != BAD_FILE || key->nr_color_regions > 1))) {
       /* From the Sandy Bridge PRM, volume 4, page 198:
        *
        *     "Dispatched Pixel Enables. One bit per pixel indicating
@@ -4356,6 +4356,8 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       length++;
    }
 
+   bool src0_alpha_present = false;
+
    if (src0_alpha.file != BAD_FILE) {
       for (unsigned i = 0; i < bld.dispatch_width() / 8; i++) {
          const fs_builder &ubld = bld.exec_all().group(8, i)
@@ -4365,12 +4367,14 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          setup_color_payload(ubld, key, &sources[length], tmp, 1);
          length++;
       }
+      src0_alpha_present = true;
    } else if (prog_data->replicate_alpha && inst->target != 0) {
       /* Handle the case when fragment shader doesn't write to draw buffer
        * zero. No need to call setup_color_payload() for src0_alpha because
        * alpha value will be undefined.
        */
       length += bld.dispatch_width() / 8;
+      src0_alpha_present = true;
    }
 
    if (sample_mask.file != BAD_FILE) {
@@ -4447,6 +4451,13 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          brw_dp_write_desc(devinfo, inst->target, msg_ctl,
                            GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE,
                            inst->last_rt, false);
+
+      if (devinfo->gen >= 11) {
+         /* Set the "Render Target Index" and "Src0 Alpha Present" fields
+          * in the extended message descriptor, in lieu of using a header.
+          */
+         ex_desc = inst->target << 12 | src0_alpha_present << 15;
+      }
 
       inst->opcode = SHADER_OPCODE_SEND;
       inst->resize_sources(3);
