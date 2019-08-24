@@ -764,10 +764,6 @@ isl_genX(buffer_fill_state_s)(void *state,
    s.RenderCacheReadWriteMode = 0;
 #endif
 
-#if GEN_GEN >= 11
-   s.EnableUnormPathInColorPipe = true;
-#endif
-
    s.SurfaceBaseAddress = info->address;
 #if GEN_GEN >= 6
    s.MOCS = info->mocs;
