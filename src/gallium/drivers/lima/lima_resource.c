@@ -347,6 +347,36 @@ lima_resource_get_handle(struct pipe_screen *pscreen,
 }
 
 static void
+get_scissor_from_box(struct pipe_scissor_state *s,
+                     const struct pipe_box *b, int h)
+{
+   int y = h - (b->y + b->height);
+   /* region in tile unit */
+   s->minx = b->x >> 4;
+   s->miny = y >> 4;
+   s->maxx = (b->x + b->width + 0xf) >> 4;
+   s->maxy = (y + b->height + 0xf) >> 4;
+}
+
+static void
+get_damage_bound_box(struct pipe_resource *pres,
+                     const struct pipe_box *rects,
+                     unsigned int nrects,
+                     struct pipe_scissor_state *bound)
+{
+   struct pipe_box b = rects[0];
+
+   for (int i = 1; i < nrects; i++)
+      u_box_union_2d(&b, &b, rects + i);
+
+   int ret = u_box_clip_2d(&b, &b, pres->width0, pres->height0);
+   if (ret < 0)
+      memset(bound, 0, sizeof(*bound));
+   else
+      get_scissor_from_box(bound, &b, pres->height0);
+}
+
+static void
 lima_resource_set_damage_region(struct pipe_screen *pscreen,
                                 struct pipe_resource *pres,
                                 unsigned int nrects,
@@ -379,19 +409,16 @@ lima_resource_set_damage_region(struct pipe_screen *pscreen,
          return;
    }
 
+   struct pipe_scissor_state *bound = &damage->bound;
+   get_damage_bound_box(pres, rects, nrects, bound);
+
    damage->region = CALLOC(nrects, sizeof(*damage->region));
    if (!damage->region)
       return;
 
-   for (i = 0; i < nrects; i++) {
-      struct pipe_scissor_state *r = damage->region + i;
-      int y = pres->height0 - (rects[i].y + rects[i].height);
-      /* region in tile unit */
-      r->minx = rects[i].x >> 4;
-      r->miny = y >> 4;
-      r->maxx = (rects[i].x + rects[i].width + 0xf) >> 4;
-      r->maxy = (y + rects[i].height + 0xf) >> 4;
-   }
+   for (i = 0; i < nrects; i++)
+      get_scissor_from_box(damage->region + i, rects + i,
+                           pres->height0);
 
    /* is region aligned to tiles? */
    damage->aligned = true;

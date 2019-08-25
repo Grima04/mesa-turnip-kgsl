@@ -601,19 +601,10 @@ static void
 lima_update_damage_pp_stream(struct lima_context *ctx)
 {
    struct lima_damage_region *ds = lima_ctx_get_damage(ctx);
-   struct pipe_scissor_state max = ds->region[0];
+   struct pipe_scissor_state *bound = &ds->bound;
 
-   /* find a max region to cover all the damage region */
-   for (int i = 1; i < ds->num_region; i++) {
-      struct pipe_scissor_state *ss = ds->region + i;
-      max.minx = MIN2(max.minx, ss->minx);
-      max.miny = MIN2(max.miny, ss->miny);
-      max.maxx = MAX2(max.maxx, ss->maxx);
-      max.maxy = MAX2(max.maxy, ss->maxy);
-   }
-
-   int tiled_w = max.maxx - max.minx;
-   int tiled_h = max.maxy - max.miny;
+   int tiled_w = bound->maxx - bound->minx;
+   int tiled_h = bound->maxy - bound->miny;
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    int size = lima_get_pp_stream_size(
       screen->num_pp, tiled_w, tiled_h, ctx->pp_stream.offset);
@@ -627,7 +618,7 @@ lima_update_damage_pp_stream(struct lima_context *ctx)
    ctx->pp_stream.bo = res->bo;
    ctx->pp_stream.bo_offset = offset;
 
-   lima_update_pp_stream(ctx, max.minx, max.miny, tiled_w, tiled_h);
+   lima_update_pp_stream(ctx, bound->minx, bound->miny, tiled_w, tiled_h);
 
    lima_submit_add_bo(ctx->pp_submit, res->bo, LIMA_SUBMIT_BO_READ);
    pipe_resource_reference(&pres, NULL);

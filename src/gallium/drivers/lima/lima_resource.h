@@ -40,6 +40,7 @@ struct lima_resource_level {
 
 struct lima_damage_region {
    struct pipe_scissor_state *region;
+   struct pipe_scissor_state bound;
    unsigned num_region;
    bool aligned;
 };
