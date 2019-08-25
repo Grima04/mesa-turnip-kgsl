@@ -346,7 +346,7 @@ emit_gmem2mem_surf(struct fd_batch *batch,
 
 	OUT_RELOCW(ring, rsc->bo, offset, 0, -1);    /* RB_COPY_DEST_BASE */
 	OUT_RING(ring, A3XX_RB_COPY_DEST_PITCH_PITCH(slice->pitch * rsc->cpp));
-	OUT_RING(ring, A3XX_RB_COPY_DEST_INFO_TILE(LINEAR) |
+	OUT_RING(ring, A3XX_RB_COPY_DEST_INFO_TILE(rsc->tile_mode) |
 			A3XX_RB_COPY_DEST_INFO_FORMAT(fd3_pipe2color(format)) |
 			A3XX_RB_COPY_DEST_INFO_COMPONENT_ENABLE(0xf) |
 			A3XX_RB_COPY_DEST_INFO_ENDIAN(ENDIAN_NONE) |
