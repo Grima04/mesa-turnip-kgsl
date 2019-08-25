@@ -324,55 +324,57 @@ F(hw_opcode,           /* 4+ */   6,  0,  /* 12+ */ 6,  0)
  * Three-source instructions:
  *  @{
  */
-F(3src_src2_reg_nr,        /* 4+ */ 125, 118, /* 12+ */ -1, -1) /* same in align1 */
-F(3src_a16_src2_subreg_nr, /* 4+ */ 117, 115, /* 12+ */ -1, -1) /* Extra discontiguous bit on CHV? */
-F(3src_a16_src2_swizzle,   /* 4+ */ 114, 107, /* 12+ */ -1, -1)
-F(3src_a16_src2_rep_ctrl,  /* 4+ */ 106, 106, /* 12+ */ -1, -1)
-F(3src_src1_reg_nr,        /* 4+ */ 104,  97, /* 12+ */ -1, -1) /* same in align1 */
-F(3src_a16_src1_subreg_nr, /* 4+ */ 96,  94,  /* 12+ */ -1, -1) /* Extra discontiguous bit on CHV? */
-F(3src_a16_src1_swizzle,   /* 4+ */ 93,  86,  /* 12+ */ -1, -1)
-F(3src_a16_src1_rep_ctrl,  /* 4+ */ 85,  85,  /* 12+ */ -1, -1)
-F(3src_src0_reg_nr,        /* 4+ */ 83,  76,  /* 12+ */ -1, -1) /* same in align1 */
-F(3src_a16_src0_subreg_nr, /* 4+ */ 75,  73,  /* 12+ */ -1, -1) /* Extra discontiguous bit on CHV? */
-F(3src_a16_src0_swizzle,   /* 4+ */ 72,  65,  /* 12+ */ -1, -1)
-F(3src_a16_src0_rep_ctrl,  /* 4+ */ 64,  64,  /* 12+ */ -1, -1)
-F(3src_dst_reg_nr,         /* 4+ */ 63,  56,  /* 12+ */ -1, -1) /* same in align1 */
-F(3src_a16_dst_subreg_nr,  /* 4+ */ 55,  53,  /* 12+ */ -1, -1)
-F(3src_a16_dst_writemask,  /* 4+ */ 52,  49,  /* 12+ */ -1, -1)
-F8(3src_a16_nib_ctrl,      /* 4+ */ 47, 47,   /* 8+ */ 11, 11, /* 12+ */ -1, -1) /* only exists on IVB+ */
-F8(3src_a16_dst_hw_type,   /* 4+ */ 45, 44,   /* 8+ */ 48, 46, /* 12+ */ -1, -1) /* only exists on IVB+ */
-F8(3src_a16_src_hw_type,   /* 4+ */ 43, 42,   /* 8+ */ 45, 43, /* 12+ */ -1, -1)
-F8(3src_src2_negate,       /* 4+ */ 41, 41,   /* 8+ */ 42, 42, /* 12+ */ -1, -1)
-F8(3src_src2_abs,          /* 4+ */ 40, 40,   /* 8+ */ 41, 41, /* 12+ */ -1, -1)
-F8(3src_src1_negate,       /* 4+ */ 39, 39,   /* 8+ */ 40, 40, /* 12+ */ -1, -1)
-F8(3src_src1_abs,          /* 4+ */ 38, 38,   /* 8+ */ 39, 39, /* 12+ */ -1, -1)
-F8(3src_src0_negate,       /* 4+ */ 37, 37,   /* 8+ */ 38, 38, /* 12+ */ -1, -1)
-F8(3src_src0_abs,          /* 4+ */ 36, 36,   /* 8+ */ 37, 37, /* 12+ */ -1, -1)
-F8(3src_a16_src1_type,     /* 4+ */ -1, -1,   /* 8+ */ 36, 36, /* 12+ */ -1, -1)
-F8(3src_a16_src2_type,     /* 4+ */ -1, -1,   /* 8+ */ 35, 35, /* 12+ */ -1, -1)
-F8(3src_a16_flag_reg_nr,   /* 4+ */ 34, 34,   /* 8+ */ 33, 33, /* 12+ */ -1, -1)
-F8(3src_a16_flag_subreg_nr,/* 4+ */ 33, 33,   /* 8+ */ 32, 32, /* 12+ */ -1, -1)
+F(3src_src2_reg_nr,         /* 4+ */ 125, 118, /* 12+ */ 127, 120) /* same in align1 */
+F(3src_a16_src2_subreg_nr,  /* 4+ */ 117, 115, /* 12+ */ -1, -1) /* Extra discontiguous bit on CHV? */
+F(3src_a16_src2_swizzle,    /* 4+ */ 114, 107, /* 12+ */ -1, -1)
+F(3src_a16_src2_rep_ctrl,   /* 4+ */ 106, 106, /* 12+ */ -1, -1)
+F(3src_src1_reg_nr,         /* 4+ */ 104,  97, /* 12+ */ 111, 104) /* same in align1 */
+F(3src_a16_src1_subreg_nr,  /* 4+ */ 96,  94,  /* 12+ */ -1, -1) /* Extra discontiguous bit on CHV? */
+F(3src_a16_src1_swizzle,    /* 4+ */ 93,  86,  /* 12+ */ -1, -1)
+F(3src_a16_src1_rep_ctrl,   /* 4+ */ 85,  85,  /* 12+ */ -1, -1)
+F(3src_src0_reg_nr,         /* 4+ */ 83,  76,  /* 12+ */ 79, 72) /* same in align1 */
+F(3src_a16_src0_subreg_nr,  /* 4+ */ 75,  73,  /* 12+ */ -1, -1) /* Extra discontiguous bit on CHV? */
+F(3src_a16_src0_swizzle,    /* 4+ */ 72,  65,  /* 12+ */ -1, -1)
+F(3src_a16_src0_rep_ctrl,   /* 4+ */ 64,  64,  /* 12+ */ -1, -1)
+F(3src_dst_reg_nr,          /* 4+ */ 63,  56,  /* 12+ */ 63, 56) /* same in align1 */
+F(3src_a16_dst_subreg_nr,   /* 4+ */ 55,  53,  /* 12+ */ -1, -1)
+F(3src_a16_dst_writemask,   /* 4+ */ 52,  49,  /* 12+ */ -1, -1)
+F8(3src_a16_nib_ctrl,       /* 4+ */ 47, 47,   /* 8+ */  11, 11, /* 12+ */ -1, -1) /* only exists on IVB+ */
+F8(3src_a16_dst_hw_type,    /* 4+ */ 45, 44,   /* 8+ */  48, 46, /* 12+ */ -1, -1) /* only exists on IVB+ */
+F8(3src_a16_src_hw_type,    /* 4+ */ 43, 42,   /* 8+ */  45, 43, /* 12+ */ -1, -1)
+F8(3src_src2_negate,        /* 4+ */ 41, 41,   /* 8+ */  42, 42, /* 12+ */ 85, 85)
+F8(3src_src2_abs,           /* 4+ */ 40, 40,   /* 8+ */  41, 41, /* 12+ */ 84, 84)
+F8(3src_src1_negate,        /* 4+ */ 39, 39,   /* 8+ */  40, 40, /* 12+ */ 87, 87)
+F8(3src_src1_abs,           /* 4+ */ 38, 38,   /* 8+ */  39, 39, /* 12+ */ 86, 86)
+F8(3src_src0_negate,        /* 4+ */ 37, 37,   /* 8+ */  38, 38, /* 12+ */ 45, 45)
+F8(3src_src0_abs,           /* 4+ */ 36, 36,   /* 8+ */  37, 37, /* 12+ */ 44, 44)
+F8(3src_a16_src1_type,      /* 4+ */ -1, -1,   /* 8+ */  36, 36, /* 12+ */ -1, -1)
+F8(3src_a16_src2_type,      /* 4+ */ -1, -1,   /* 8+ */  35, 35, /* 12+ */ -1, -1)
+F8(3src_a16_flag_reg_nr,    /* 4+ */ 34, 34,   /* 8+ */  33, 33, /* 12+ */ -1, -1)
+F8(3src_a16_flag_subreg_nr, /* 4+ */ 33, 33,   /* 8+ */  32, 32, /* 12+ */ -1, -1)
 FF(3src_a16_dst_reg_file,
    /* 4-5: doesn't exist - no 3-source instructions */ -1, -1, -1, -1, -1, -1,
    /* 6: */ 32, 32,
    /* 7-8: doesn't exist - no MRFs */ -1, -1, -1, -1,
    /* 12: */ -1, -1)
-F(3src_saturate,           /* 4+ */ 31, 31,      /* 12+ */ -1, -1)
-F(3src_debug_control,      /* 4+ */ 30, 30,      /* 12+ */ -1, -1)
-F(3src_cmpt_control,       /* 4+ */ 29, 29,      /* 12+ */ -1, -1)
-F(3src_acc_wr_control,     /* 4+ */ 28, 28,      /* 12+ */ -1, -1)
-F(3src_cond_modifier,      /* 4+ */ 27, 24,      /* 12+ */ -1, -1)
-F(3src_exec_size,          /* 4+ */ 23, 21,      /* 12+ */ -1, -1)
-F(3src_pred_inv,           /* 4+ */ 20, 20,      /* 12+ */ -1, -1)
-F(3src_pred_control,       /* 4+ */ 19, 16,      /* 12+ */ -1, -1)
-F(3src_thread_control,     /* 4+ */ 15, 14,      /* 12+ */ -1, -1)
-F(3src_qtr_control,        /* 4+ */ 13, 12,      /* 12+ */ -1, -1)
-F8(3src_no_dd_check,       /* 4+ */ 11, 11,      /* 8+ */ 10, 10, /* 12+ */ -1, -1)
-F8(3src_no_dd_clear,       /* 4+ */ 10, 10,      /* 8+ */  9,  9, /* 12+ */ -1, -1)
-F8(3src_mask_control,      /* 4+ */ 9,  9,       /* 8+ */ 34, 34, /* 12+ */ -1, -1)
-F(3src_access_mode,        /* 4+ */ 8,  8,       /* 12+ */ -1, -1)
+F(3src_saturate,            /* 4+ */ 31, 31,   /* 12+ */ 34, 34)
+F(3src_debug_control,       /* 4+ */ 30, 30,   /* 12+ */ 30, 30)
+F(3src_cmpt_control,        /* 4+ */ 29, 29,   /* 12+ */ 29, 29)
+F(3src_acc_wr_control,      /* 4+ */ 28, 28,   /* 12+ */ 33, 33)
+F(3src_cond_modifier,       /* 4+ */ 27, 24,   /* 12+ */ 95, 92)
+F(3src_exec_size,           /* 4+ */ 23, 21,   /* 12+ */ 18, 16)
+F(3src_pred_inv,            /* 4+ */ 20, 20,   /* 12+ */ 28, 28)
+F(3src_pred_control,        /* 4+ */ 19, 16,   /* 12+ */ 27, 24)
+F(3src_thread_control,      /* 4+ */ 15, 14,   /* 12+ */ -1, -1)
+F(3src_atomic_control,      /* 4+ */ -1, -1,   /* 12+ */ 32, 32)
+F(3src_qtr_control,         /* 4+ */ 13, 12,   /* 12+ */ 21, 20)
+F8(3src_no_dd_check,        /* 4+ */ 11, 11,   /* 8+ */  10, 10, /* 12+ */ -1, -1)
+F8(3src_no_dd_clear,        /* 4+ */ 10, 10,   /* 8+ */   9,  9, /* 12+ */ -1, -1)
+F8(3src_mask_control,       /* 4+ */ 9,  9,    /* 8+ */  34, 34, /* 12+ */ 31, 31)
+FK(3src_access_mode,        /* 4+ */ 8,  8,    /* 12+ */ BRW_ALIGN_1)
+F(3src_swsb,                /* 4+ */ -1, -1,   /* 12+ */ 15,  8)
 /* Bit 7 is Reserved (for future Opcode expansion) */
-F(3src_hw_opcode,          /* 4+ */ 6,  0,       /* 12+ */ -1, -1)
+F(3src_hw_opcode,           /* 4+ */ 6,  0,    /* 12+ */ 6, 0)
 /** @} */
 
 #define REG_TYPE(reg)                                                         \
@@ -402,34 +404,38 @@ REG_TYPE(src)
  */
 /* Reserved 127:126 */
 /* src2_reg_nr same in align16 */
-FC(3src_a1_src2_subreg_nr, /* 4+ */ 117, 113, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src2_hstride,   /* 4+ */ 112, 111, /* 12+ */ -1, -1, devinfo->gen >= 10)
+FC(3src_a1_src2_subreg_nr,  /* 4+ */   117, 113, /* 12+ */ 119, 115, devinfo->gen >= 10)
+FC(3src_a1_src2_hstride,    /* 4+ */   112, 111, /* 12+ */ 113, 112, devinfo->gen >= 10)
 /* Reserved 110:109. src2 vstride is an implied parameter */
-FC(3src_a1_src2_hw_type,   /* 4+ */ 108, 106, /* 12+ */ -1, -1, devinfo->gen >= 10)
+FC(3src_a1_src2_hw_type,    /* 4+ */   108, 106, /* 12+ */ 82, 80, devinfo->gen >= 10)
 /* Reserved 105 */
 /* src1_reg_nr same in align16 */
-FC(3src_a1_src1_subreg_nr,  /* 4+ */ 96,  92, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src1_hstride,    /* 4+ */ 91,  90, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src1_vstride,    /* 4+ */ 89,  88, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src1_hw_type,    /* 4+ */ 87,  85, /* 12+ */ -1, -1, devinfo->gen >= 10)
+FC(3src_a1_src1_subreg_nr,  /* 4+ */   96,  92,  /* 12+ */ 103, 99, devinfo->gen >= 10)
+FC(3src_a1_src1_hstride,    /* 4+ */   91,  90,  /* 12+ */ 97, 96, devinfo->gen >= 10)
+FDC(3src_a1_src1_vstride,  /* 4+ */   89,  88,  /* 12+ */ 91, 91, 83, 83, devinfo->gen >= 10)
+FC(3src_a1_src1_hw_type,    /* 4+ */   87,  85,  /* 12+ */ 90, 88, devinfo->gen >= 10)
 /* Reserved 84 */
 /* src0_reg_nr same in align16 */
-FC(3src_a1_src0_subreg_nr,  /* 4+ */ 75,  71, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src0_hstride,    /* 4+ */ 70,  69, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src0_vstride,    /* 4+ */ 68,  67, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src0_hw_type,    /* 4+ */ 66,  64, /* 12+ */ -1, -1, devinfo->gen >= 10)
+FC(3src_a1_src0_subreg_nr,  /* 4+ */   75,  71,  /* 12+ */ 71, 67, devinfo->gen >= 10)
+FC(3src_a1_src0_hstride,    /* 4+ */   70,  69,  /* 12+ */ 65, 64, devinfo->gen >= 10)
+FDC(3src_a1_src0_vstride,  /* 4+ */   68,  67,  /* 12+ */ 43, 43, 35, 35, devinfo->gen >= 10)
+FC(3src_a1_src0_hw_type,    /* 4+ */   66,  64,  /* 12+ */ 42, 40, devinfo->gen >= 10)
 /* dst_reg_nr same in align16 */
-FC(3src_a1_dst_subreg_nr,   /* 4+ */ 55,  54, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_special_acc,     /* 4+ */ 55,  52, /* 12+ */ -1, -1, devinfo->gen >= 10) /* aliases dst_subreg_nr */
+FC(3src_a1_dst_subreg_nr,   /* 4+ */   55,  54,  /* 12+ */ 55, 54, devinfo->gen >= 10)
+FC(3src_a1_special_acc,     /* 4+ */   55,  52,  /* 12+ */ 54, 51, devinfo->gen >= 10) /* aliases dst_subreg_nr */
 /* Reserved 51:50 */
-FC(3src_a1_dst_hstride,     /* 4+ */ 49,  49, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_dst_hw_type,     /* 4+ */ 48,  46, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src2_reg_file,   /* 4+ */ 45,  45, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src1_reg_file,   /* 4+ */ 44,  44, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_src0_reg_file,   /* 4+ */ 43,  43, /* 12+ */ -1, -1, devinfo->gen >= 10)
+FC(3src_a1_dst_hstride,     /* 4+ */   49,  49,  /* 12+ */ 48, 48, devinfo->gen >= 10)
+FC(3src_a1_dst_hw_type,     /* 4+ */   48,  46,  /* 12+ */ 38, 36, devinfo->gen >= 10)
+FI(3src_a1_src2_reg_file,   /* 4+ */   -1,  -1,  /* 8+ */  45, 45,  /* 12+ */ 47, 114)
+FC(3src_a1_src1_reg_file,   /* 4+ */   44,  44,  /* 12+ */ 98, 98, devinfo->gen >= 10)
+FI(3src_a1_src0_reg_file,   /* 4+ */   -1,  -1,  /* 8+ */  43, 43,  /* 12+ */ 46, 66)
+
+F(3src_a1_src2_is_imm,      /* 4+ */   -1,  -1,  /* 12+ */ 47, 47)
+F(3src_a1_src0_is_imm,      /* 4+ */   -1,  -1,  /* 12+ */ 46, 46)
+
 /* Source Modifier fields same in align16 */
-FC(3src_a1_dst_reg_file,    /* 4+ */ 36,  36, /* 12+ */ -1, -1, devinfo->gen >= 10)
-FC(3src_a1_exec_type,       /* 4+ */ 35,  35, /* 12+ */ -1, -1, devinfo->gen >= 10)
+FC(3src_a1_dst_reg_file,    /* 4+ */    36,  36, /* 12+ */ 50, 50, devinfo->gen >= 10)
+FC(3src_a1_exec_type,       /* 4+ */    35,  35, /* 12+ */ 39, 39, devinfo->gen >= 10)
 /* Fields below this same in align16 */
 /** @} */
 
@@ -476,7 +482,10 @@ brw_inst_3src_a1_src0_imm(ASSERTED const struct gen_device_info *devinfo,
                           const brw_inst *insn)
 {
    assert(devinfo->gen >= 10);
-   return brw_inst_bits(insn, 82, 67);
+   if (devinfo->gen >= 12)
+      return brw_inst_bits(insn, 79, 64);
+   else
+      return brw_inst_bits(insn, 82, 67);
 }
 
 static inline uint16_t
@@ -484,7 +493,10 @@ brw_inst_3src_a1_src2_imm(ASSERTED const struct gen_device_info *devinfo,
                           const brw_inst *insn)
 {
    assert(devinfo->gen >= 10);
-   return brw_inst_bits(insn, 124, 109);
+   if (devinfo->gen >= 12)
+      return brw_inst_bits(insn, 127, 112);
+   else
+      return brw_inst_bits(insn, 124, 109);
 }
 
 static inline void
@@ -492,7 +504,10 @@ brw_inst_set_3src_a1_src0_imm(ASSERTED const struct gen_device_info *devinfo,
                               brw_inst *insn, uint16_t value)
 {
    assert(devinfo->gen >= 10);
-   brw_inst_set_bits(insn, 82, 67, value);
+   if (devinfo->gen >= 12)
+      brw_inst_set_bits(insn, 79, 64, value);
+   else
+      brw_inst_set_bits(insn, 82, 67, value);
 }
 
 static inline void
@@ -500,7 +515,10 @@ brw_inst_set_3src_a1_src2_imm(ASSERTED const struct gen_device_info *devinfo,
                               brw_inst *insn, uint16_t value)
 {
    assert(devinfo->gen >= 10);
-   brw_inst_set_bits(insn, 124, 109, value);
+   if (devinfo->gen >= 12)
+      brw_inst_set_bits(insn, 127, 112, value);
+   else
+      brw_inst_set_bits(insn, 124, 109, value);
 }
 /** @} */
 
