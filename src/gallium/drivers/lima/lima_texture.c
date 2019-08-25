@@ -121,7 +121,6 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    lima_tex_desc *desc = pdesc;
    unsigned first_level;
    unsigned last_level;
-   bool mipmapping;
 
    memset(desc, 0, desc_size);
 
@@ -133,25 +132,25 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
    if (last_level - first_level >= LIMA_MAX_MIP_LEVELS)
       last_level = first_level + LIMA_MAX_MIP_LEVELS - 1;
 
+   desc->miplevels = (last_level - first_level);
+
    switch (sampler->base.min_mip_filter) {
       case PIPE_TEX_MIPFILTER_LINEAR:
-         desc->min_mipfilter = 3;
+         desc->min_mipfilter_1 = 0;
+         desc->min_mipfilter_2 = 3;
+         break;
       case PIPE_TEX_MIPFILTER_NEAREST:
-         mipmapping = true;
-         desc->miplevels = (last_level - first_level);
+         desc->min_mipfilter_1 = 0x1ff;
+         desc->min_mipfilter_2 = 0;
          break;
       case PIPE_TEX_MIPFILTER_NONE:
       default:
-         mipmapping = false;
          break;
    }
 
    switch (sampler->base.mag_img_filter) {
    case PIPE_TEX_FILTER_LINEAR:
       desc->mag_img_filter_nearest = 0;
-      /* no mipmap, filter_mag = linear */
-      if (!mipmapping)
-         desc->disable_mipmap = 1;
       break;
    case PIPE_TEX_FILTER_NEAREST:
    default:
