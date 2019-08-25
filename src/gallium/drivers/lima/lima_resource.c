@@ -365,6 +365,20 @@ lima_resource_set_damage_region(struct pipe_screen *pscreen,
    if (!nrects)
       return;
 
+   /* check full damage
+    *
+    * TODO: currently only check if there is any single damage
+    * region that can cover the full render target; there may
+    * be some accurate way, but a single window size damage
+    * region is most of the case from weston
+    */
+   for (i = 0; i < nrects; i++) {
+      if (rects[i].x <= 0 && rects[i].y <= 0 &&
+          rects[i].x + rects[i].width >= pres->width0 &&
+          rects[i].y + rects[i].height >= pres->height0)
+         return;
+   }
+
    damage->region = CALLOC(nrects, sizeof(*damage->region));
    if (!damage->region)
       return;
