@@ -3234,11 +3234,13 @@ static bool
 validate_and_tokenise_sh_incl(struct gl_context *ctx,
                               void *mem_ctx,
                               struct sh_incl_path_entry **path_list,
-                              char *full_path)
+                              char *full_path, bool error_check)
 {
    if (!valid_path_format(full_path)) {
-       _mesa_error(ctx, GL_INVALID_VALUE,
-                   "glNamedStringARB(invalid name %s)", full_path);
+      if (error_check) {
+         _mesa_error(ctx, GL_INVALID_VALUE,
+                     "glNamedStringARB(invalid name %s)", full_path);
+      }
       return false;
    }
 
@@ -3251,8 +3253,11 @@ validate_and_tokenise_sh_incl(struct gl_context *ctx,
 
    while (path_str != NULL) {
       if (strlen(path_str) == 0) {
-         _mesa_error(ctx, GL_INVALID_VALUE,
-                     "glNamedStringARB(invalid name %s)", full_path);
+         if (error_check) {
+            _mesa_error(ctx, GL_INVALID_VALUE,
+                        "glNamedStringARB(invalid name %s)", full_path);
+         }
+
          return false;
       }
 
@@ -3276,12 +3281,14 @@ validate_and_tokenise_sh_incl(struct gl_context *ctx,
 }
 
 const char *
-_mesa_lookup_shader_include(struct gl_context *ctx, char *path)
+_mesa_lookup_shader_include(struct gl_context *ctx, char *path,
+                            bool error_check)
 {
    void *mem_ctx = ralloc_context(NULL);
    struct sh_incl_path_entry *path_list;
 
-   if (!validate_and_tokenise_sh_incl(ctx, mem_ctx, &path_list, path)) {
+   if (!validate_and_tokenise_sh_incl(ctx, mem_ctx, &path_list, path,
+                                      error_check)) {
       ralloc_free(mem_ctx);
       return NULL;
    }
@@ -3352,7 +3359,8 @@ _mesa_NamedStringARB(GLenum type, GLint namelen, const GLchar *name,
    void *mem_ctx = ralloc_context(NULL);
    struct sh_incl_path_entry *path_list;
 
-   if (!validate_and_tokenise_sh_incl(ctx, mem_ctx, &path_list, name_cp)) {
+   if (!validate_and_tokenise_sh_incl(ctx, mem_ctx, &path_list, name_cp,
+                                      true)) {
       free(string_cp);
       free(name_cp);
       ralloc_free(mem_ctx);
@@ -3422,7 +3430,7 @@ _mesa_GetNamedStringARB(GLint namelen, const GLchar *name, GLsizei bufSize,
    if (!name_cp)
       return;
 
-   const char *source = _mesa_lookup_shader_include(ctx, name_cp);
+   const char *source = _mesa_lookup_shader_include(ctx, name_cp, true);
    if (!source) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "%s(no string associated with path %s)", caller, name_cp);
