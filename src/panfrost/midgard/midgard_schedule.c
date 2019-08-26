@@ -236,6 +236,21 @@ mir_is_scalar(midgard_instruction *ains)
         return could_scalar;
 }
 
+/* How many bytes does this ALU instruction add to the bundle? */
+
+static unsigned
+bytes_for_instruction(midgard_instruction *ains)
+{
+        if (ains->unit & UNITS_ANY_VECTOR)
+                return sizeof(midgard_reg_info) + sizeof(midgard_vector_alu);
+        else if (ains->unit == ALU_ENAB_BRANCH)
+                return sizeof(midgard_branch_extended);
+        else if (ains->compact_branch)
+                return sizeof(ains->br_compact);
+        else
+                return sizeof(midgard_reg_info) + sizeof(midgard_scalar_alu);
+}
+
 /* Schedules, but does not emit, a single basic block. After scheduling, the
  * final tag and size of the block are known, which are necessary for branching
  * */
@@ -468,10 +483,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 bundle.has_embedded_constants = true;
                         }
 
-                        if (ains->unit & UNITS_ANY_VECTOR) {
-                                bytes_emitted += sizeof(midgard_reg_info);
-                                bytes_emitted += sizeof(midgard_vector_alu);
-                        } else if (ains->compact_branch) {
+                        if (ains->compact_branch) {
                                 /* All of r0 has to be written out along with
                                  * the branch writeout */
 
@@ -490,20 +502,12 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                         /* TODO don't leak */
                                         midgard_instruction *move =
                                                 mem_dup(&ins, sizeof(midgard_instruction));
-                                        bytes_emitted += sizeof(midgard_reg_info);
-                                        bytes_emitted += sizeof(midgard_vector_alu);
+                                        bytes_emitted += bytes_for_instruction(move);
                                         bundle.instructions[packed_idx++] = move;
                                 }
-
-                                if (ains->unit == ALU_ENAB_BRANCH) {
-                                        bytes_emitted += sizeof(midgard_branch_extended);
-                                } else {
-                                        bytes_emitted += sizeof(ains->br_compact);
-                                }
-                        } else {
-                                bytes_emitted += sizeof(midgard_reg_info);
-                                bytes_emitted += sizeof(midgard_scalar_alu);
                         }
+
+                        bytes_emitted += bytes_for_instruction(ains);
 
                         /* Defer marking until after writing to allow for break */
                         scheduled[index] = ains;
