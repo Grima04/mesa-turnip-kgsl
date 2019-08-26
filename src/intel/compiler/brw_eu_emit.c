@@ -2688,7 +2688,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
       ex_desc = addr;
    }
 
-   send = next_insn(p, BRW_OPCODE_SENDS);
+   send = next_insn(p, devinfo->gen >= 12 ? BRW_OPCODE_SEND : BRW_OPCODE_SENDS);
    brw_set_dest(p, send, dst);
    brw_set_src0(p, send, retype(payload0, BRW_REGISTER_TYPE_UD));
    brw_set_src1(p, send, retype(payload1, BRW_REGISTER_TYPE_UD));

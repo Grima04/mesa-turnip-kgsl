@@ -285,7 +285,8 @@ fs_generator::generate_send(fs_inst *inst,
                                       desc, desc_imm, ex_desc, ex_desc_imm,
                                       inst->eot);
       if (inst->check_tdr)
-         brw_inst_set_opcode(p->devinfo, brw_last_inst, BRW_OPCODE_SENDSC);
+         brw_inst_set_opcode(p->devinfo, brw_last_inst,
+                             devinfo->gen >= 12 ? BRW_OPCODE_SENDC : BRW_OPCODE_SENDSC);
    } else {
       brw_send_indirect_message(p, inst->sfid, dst, payload, desc, desc_imm,
                                    inst->eot);
