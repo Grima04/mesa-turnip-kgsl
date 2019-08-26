@@ -298,8 +298,6 @@ fs_generator::fire_fb_write(fs_inst *inst,
                             struct brw_reg implied_header,
                             GLuint nr)
 {
-   uint32_t msg_control;
-
    struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
 
    if (devinfo->gen < 6) {
@@ -313,30 +311,7 @@ fs_generator::fire_fb_write(fs_inst *inst,
       brw_pop_insn_state(p);
    }
 
-   if (inst->opcode == FS_OPCODE_REP_FB_WRITE) {
-      assert(inst->group == 0 && inst->exec_size == 16);
-      msg_control = BRW_DATAPORT_RENDER_TARGET_WRITE_SIMD16_SINGLE_SOURCE_REPLICATED;
-
-   } else if (prog_data->dual_src_blend) {
-      assert(inst->exec_size == 8);
-
-      if (inst->group % 16 == 0)
-         msg_control = BRW_DATAPORT_RENDER_TARGET_WRITE_SIMD8_DUAL_SOURCE_SUBSPAN01;
-      else if (inst->group % 16 == 8)
-         msg_control = BRW_DATAPORT_RENDER_TARGET_WRITE_SIMD8_DUAL_SOURCE_SUBSPAN23;
-      else
-         unreachable("Invalid dual-source FB write instruction group");
-
-   } else {
-      assert(inst->group == 0 || (inst->group == 16 && inst->exec_size == 16));
-
-      if (inst->exec_size == 16)
-         msg_control = BRW_DATAPORT_RENDER_TARGET_WRITE_SIMD16_SINGLE_SOURCE;
-      else if (inst->exec_size == 8)
-         msg_control = BRW_DATAPORT_RENDER_TARGET_WRITE_SIMD8_SINGLE_SOURCE_SUBSPAN01;
-      else
-         unreachable("Invalid FB write execution size");
-   }
+   uint32_t msg_control = brw_fb_write_msg_control(inst, prog_data);
 
    /* We assume render targets start at 0, because headerless FB write
     * messages set "Render Target Index" to 0.  Using a different binding
