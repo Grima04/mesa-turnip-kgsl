@@ -3415,6 +3415,28 @@ GLvoid GLAPIENTRY
 _mesa_GetNamedStringARB(GLint namelen, const GLchar *name, GLsizei bufSize,
                         GLint *stringlen, GLchar *string)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const char *caller = "glGetNamedStringARB";
+
+   char *name_cp = copy_string(ctx, name, namelen, caller);
+   if (!name_cp)
+      return;
+
+   const char *source = _mesa_lookup_shader_include(ctx, name_cp);
+   if (!source) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(no string associated with path %s)", caller, name_cp);
+      free(name_cp);
+      return;
+   }
+
+   size_t size = MIN2(strlen(source), bufSize - 1);
+   memcpy(string, source, size);
+   string[size] = '\0';
+
+   *stringlen = size;
+
+   free(name_cp);
 }
 
 GLvoid GLAPIENTRY
