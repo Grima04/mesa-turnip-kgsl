@@ -298,6 +298,7 @@ static ppir_alu_node* ppir_update_spilled_src(ppir_compiler *comp,
    alu_dest->ssa.num_components = 4;
    alu_dest->ssa.live_in = INT_MAX;
    alu_dest->ssa.live_out = 0;
+   alu_dest->ssa.spilled = true;
    alu_dest->write_mask = 0xf;
 
    list_addtail(&alu_dest->ssa.list, &comp->reg_list);
