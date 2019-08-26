@@ -3309,6 +3309,26 @@ _mesa_lookup_shader_include(struct gl_context *ctx, char *path)
    return sh_incl_ht_entry ? sh_incl_ht_entry->shader_source : NULL;
 }
 
+static char *
+copy_string(struct gl_context *ctx, const char *str, int str_len,
+            const char *caller)
+{
+   if (!str) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(NULL string)", caller);
+      return NULL;
+   }
+
+   char *cp;
+   if (str_len == -1)
+      cp = strdup(str);
+   else {
+      cp = calloc(sizeof(char), str_len + 1);
+      memcpy(cp, str, str_len);
+   }
+
+   return cp;
+}
+
 GLvoid GLAPIENTRY
 _mesa_NamedStringARB(GLenum type, GLint namelen, const GLchar *name,
                      GLint stringlen, const GLchar *string)
