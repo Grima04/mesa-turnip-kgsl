@@ -26,16 +26,16 @@
 
 void mir_rewrite_index_src_single(midgard_instruction *ins, unsigned old, unsigned new)
 {
-        for (unsigned i = 0; i < ARRAY_SIZE(ins->ssa_args.src); ++i) {
-                if (ins->ssa_args.src[i] == old)
-                        ins->ssa_args.src[i] = new;
+        for (unsigned i = 0; i < ARRAY_SIZE(ins->src); ++i) {
+                if (ins->src[i] == old)
+                        ins->src[i] = new;
         }
 }
 
 void mir_rewrite_index_dst_single(midgard_instruction *ins, unsigned old, unsigned new)
 {
-        if (ins->ssa_args.dest == old)
-                ins->ssa_args.dest = new;
+        if (ins->dest == old)
+                ins->dest = new;
 }
 
 static unsigned
@@ -144,10 +144,10 @@ mir_set_swizzle(midgard_instruction *ins, unsigned idx, unsigned new)
 static void
 mir_rewrite_index_src_single_swizzle(midgard_instruction *ins, unsigned old, unsigned new, unsigned swizzle)
 {
-        for (unsigned i = 0; i < ARRAY_SIZE(ins->ssa_args.src); ++i) {
-                if (ins->ssa_args.src[i] != old) continue;
+        for (unsigned i = 0; i < ARRAY_SIZE(ins->src); ++i) {
+                if (ins->src[i] != old) continue;
 
-                ins->ssa_args.src[i] = new;
+                ins->src[i] = new;
 
                 mir_set_swizzle(ins, i,
                         pan_compose_swizzle(mir_get_swizzle(ins, i), swizzle));
@@ -198,8 +198,8 @@ mir_rewrite_index_dst_tag(compiler_context *ctx, unsigned old, unsigned new, uns
                 if (ins->type != tag)
                         continue;
 
-                if (ins->ssa_args.dest == old)
-                        ins->ssa_args.dest = new;
+                if (ins->dest == old)
+                        ins->dest = new;
         }
 }
 
@@ -334,7 +334,7 @@ mir_is_written_before(compiler_context *ctx, midgard_instruction *ins, unsigned 
                 if (q == ins)
                         break;
 
-                if (q->ssa_args.dest == node)
+                if (q->dest == node)
                         return true;
         }
 
@@ -407,7 +407,7 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
         unsigned mask = 0;
 
         for (unsigned i = 0; i < mir_source_count(ins); ++i) {
-                if (ins->ssa_args.src[i] != node) continue;
+                if (ins->src[i] != node) continue;
 
                 unsigned swizzle = mir_get_swizzle(ins, i);
                 unsigned m = mir_mask_of_read_components_single(swizzle, ins->mask);

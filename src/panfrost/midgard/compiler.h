@@ -67,16 +67,6 @@ typedef struct midgard_branch {
         };
 } midgard_branch;
 
-/* Instruction arguments represented as block-local SSA indices, rather than
- * registers. ~0 means unused. */
-
-typedef struct {
-        unsigned src[3];
-        unsigned dest;
-
-        bool inline_constant;
-} ssa_args;
-
 /* Generic in-memory data type repesenting a single logical instruction, rather
  * than a single instruction group. This is the preferred form for code gen.
  * Multiple midgard_insturctions will later be combined during scheduling,
@@ -93,8 +83,10 @@ typedef struct midgard_instruction {
 
         unsigned type; /* ALU, load/store, texture */
 
-        /* If the register allocator has not run yet... */
-        ssa_args ssa_args;
+        /* Instruction arguments represented as block-local SSA
+         * indices, rather than registers. ~0 means unused. */
+        unsigned src[3];
+        unsigned dest;
 
         /* Special fields for an ALU instruction */
         midgard_reg_info registers;
@@ -112,6 +104,7 @@ typedef struct midgard_instruction {
         uint32_t constants[4];
         uint16_t inline_constant;
         bool has_blend_constant;
+        bool has_inline_constant;
 
         bool compact_branch;
         bool writeout;
@@ -396,7 +389,7 @@ mir_next_op(struct midgard_instruction *ins)
                 v = (struct midgard_block *) (_entry_##v ? _entry_##v->key : NULL))
 
 #define mir_foreach_src(ins, v) \
-        for (unsigned v = 0; v < ARRAY_SIZE(ins->ssa_args.src); ++v)
+        for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
 
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
@@ -533,10 +526,8 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
         midgard_instruction ins = {
                 .type = TAG_ALU_4,
                 .mask = 0xF,
-                .ssa_args = {
-                        .src = { SSA_UNUSED, src, SSA_UNUSED },
-                        .dest = dest,
-                },
+                .src = { SSA_UNUSED, src, SSA_UNUSED },
+                .dest = dest,
                 .alu = {
                         .op = midgard_alu_op_imov,
                         .reg_mode = midgard_reg_mode_32,
@@ -553,8 +544,8 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
 static inline bool
 mir_has_arg(midgard_instruction *ins, unsigned arg)
 {
-        for (unsigned i = 0; i < ARRAY_SIZE(ins->ssa_args.src); ++i) {
-                if (ins->ssa_args.src[i] == arg)
+        for (unsigned i = 0; i < ARRAY_SIZE(ins->src); ++i) {
+                if (ins->src[i] == arg)
                         return true;
         }
 

@@ -35,8 +35,8 @@ midgard_opt_dead_code_eliminate(compiler_context *ctx, midgard_block *block)
                 if (ins->type != TAG_ALU_4) continue;
                 if (ins->compact_branch) continue;
 
-                if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
-                if (mir_is_live_after(ctx, block, ins, ins->ssa_args.dest)) continue;
+                if (ins->dest >= SSA_FIXED_MINIMUM) continue;
+                if (mir_is_live_after(ctx, block, ins, ins->dest)) continue;
 
                 mir_remove_instruction(ins);
                 progress = true;
@@ -64,11 +64,11 @@ midgard_opt_dead_move_eliminate(compiler_context *ctx, midgard_block *block)
 
                 mir_foreach_instr_in_block_from(block, q, mir_next_op(ins)) {
                         /* Check if used */
-                        if (mir_has_arg(q, ins->ssa_args.dest))
+                        if (mir_has_arg(q, ins->dest))
                                 break;
 
                         /* Check if overwritten */
-                        if (q->ssa_args.dest == ins->ssa_args.dest) {
+                        if (q->dest == ins->dest) {
                                 /* Special case to vec4; component tracking is
                                  * harder */
 
@@ -100,8 +100,8 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
                 if (ins->dont_eliminate) continue;
 
                 /* Check we're to the same place post-RA */
-                unsigned iA = ins->ssa_args.dest;
-                unsigned iB = ins->ssa_args.src[1];
+                unsigned iA = ins->dest;
+                unsigned iB = ins->src[1];
 
                 if ((iA == ~0) || (iB == ~0)) continue;
 
@@ -125,7 +125,7 @@ midgard_opt_post_move_eliminate(compiler_context *ctx, midgard_block *block, str
                 if (ins->mask != 0xF) continue;
 
                 /* We do need to rewrite to facilitate pipelining/scheduling */
-                mir_rewrite_index(ctx, ins->ssa_args.src[1], ins->ssa_args.dest);
+                mir_rewrite_index(ctx, ins->src[1], ins->dest);
 
                 /* We're good to go */
                 mir_remove_instruction(ins);

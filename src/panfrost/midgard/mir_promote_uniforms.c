@@ -84,8 +84,8 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
                 /* We do need the move for safety for a non-SSA dest, or if
                  * we're being fed into a special class */
 
-                bool needs_move = ins->ssa_args.dest & IS_REG;
-                needs_move |= mir_special_index(ctx, ins->ssa_args.dest);
+                bool needs_move = ins->dest & IS_REG;
+                needs_move |= mir_special_index(ctx, ins->dest);
 
                 /* Ensure this is a contiguous X-bound mask. It should be since
                  * we haven't done RA and per-component masked UBO reads don't
@@ -101,11 +101,11 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
                 unsigned nr_components = util_bitcount(ins->mask);
 
                 if (needs_move) {
-                        midgard_instruction mov = v_mov(promoted, blank_alu_src, ins->ssa_args.dest);
+                        midgard_instruction mov = v_mov(promoted, blank_alu_src, ins->dest);
                         mov.mask = ins->mask;
                         mir_insert_instruction_before(ins, mov);
                 } else {
-                        mir_rewrite_index_src_swizzle(ctx, ins->ssa_args.dest,
+                        mir_rewrite_index_src_swizzle(ctx, ins->dest,
                                         promoted, swizzle_of(nr_components));
                 }
 

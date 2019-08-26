@@ -127,26 +127,24 @@ mir_print_instruction(midgard_instruction *ins)
         if (ins->invert)
                 printf(".not");
 
-        ssa_args *args = &ins->ssa_args;
-
         printf(" ");
-        mir_print_index(args->dest);
+        mir_print_index(ins->dest);
 
         if (ins->mask != 0xF)
                 mir_print_mask(ins->mask);
 
         printf(", ");
 
-        mir_print_index(args->src[0]);
+        mir_print_index(ins->src[0]);
         printf(", ");
 
-        if (args->inline_constant)
+        if (ins->has_inline_constant)
                 printf("#%d", ins->inline_constant);
         else
-                mir_print_index(args->src[1]);
+                mir_print_index(ins->src[1]);
 
         printf(", ");
-        mir_print_index(args->src[2]);
+        mir_print_index(ins->src[2]);
 
         if (ins->has_constants) {
                 uint32_t *uc = ins->constants;

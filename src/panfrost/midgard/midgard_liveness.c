@@ -55,7 +55,7 @@ is_live_after_successors(compiler_context *ctx, midgard_block *bl, int src)
 
                         /* If written-before-use, we're gone */
 
-                        if (ins->ssa_args.dest == src)
+                        if (ins->dest == src)
                                 overwritten_mask |= ins->mask;
                 }
 
@@ -100,7 +100,7 @@ mir_has_multiple_writes(compiler_context *ctx, int dest)
         unsigned write_count = 0;
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->ssa_args.dest == dest)
+                if (ins->dest == dest)
                         write_count++;
         }
 

@@ -71,12 +71,12 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
         /* Each instruction reads some registers and writes to a register. See
          * where the first writes */
 
-        int source = first->ssa_args.dest;
+        int source = first->dest;
         int source_mask = first->mask;
 
         /* As long as the second doesn't read from the first, we're okay */
-        for (unsigned i = 0; i < ARRAY_SIZE(second->ssa_args.src); ++i) {
-                if (second->ssa_args.src[i] != source)
+        for (unsigned i = 0; i < ARRAY_SIZE(second->src); ++i) {
+                if (second->src[i] != source)
                         continue;
 
                 if (first->type != TAG_ALU_4)
@@ -95,7 +95,7 @@ can_run_concurrent_ssa(midgard_instruction *first, midgard_instruction *second)
         /* Otherwise, it's safe in that regard. Another data hazard is both
          * writing to the same place, of course */
 
-        if (second->ssa_args.dest == source) {
+        if (second->dest == source) {
                 /* ...but only if the components overlap */
 
                 if (second->mask & source_mask)
@@ -147,7 +147,7 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
         for (unsigned i = 0; i < count; ++i) {
                 midgard_instruction *ins = bundle[i];
 
-                if (ins->ssa_args.dest != SSA_FIXED_REGISTER(0))
+                if (ins->dest != SSA_FIXED_REGISTER(0))
                         continue;
 
                 /* Record written out mask */
@@ -158,8 +158,8 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
                  * we're writeout at the very end of the shader. So check if
                  * they were written before us. */
 
-                unsigned src0 = ins->ssa_args.src[0];
-                unsigned src1 = ins->ssa_args.src[1];
+                unsigned src0 = ins->src[0];
+                unsigned src1 = ins->src[1];
 
                 if (!mir_is_written_before(ctx, bundle[0], src0))
                         src0 = ~0;
@@ -185,7 +185,7 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
         /* Requirement 3 */
 
         for (unsigned i = 0; i < count; ++i) {
-                unsigned dest = bundle[i]->ssa_args.dest;
+                unsigned dest = bundle[i]->dest;
 
                 if (dest < node_count && BITSET_TEST(dependencies, dest))
                         return false;
@@ -450,10 +450,10 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 unsigned swizzle = SWIZZLE_FROM_ARRAY(indices);
                                 unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
 
-                                if (ains->ssa_args.src[0] == r_constant)
+                                if (ains->src[0] == r_constant)
                                         ains->alu.src1 = vector_alu_apply_swizzle(ains->alu.src1, swizzle);
 
-                                if (ains->ssa_args.src[1] == r_constant)
+                                if (ains->src[1] == r_constant)
                                         ains->alu.src2 = vector_alu_apply_swizzle(ains->alu.src2, swizzle);
 
                                 bundle.has_embedded_constants = true;
@@ -632,8 +632,8 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
 
                                 bool deps = false;
 
-                                for (unsigned s = 0; s < ARRAY_SIZE(ins->ssa_args.src); ++s)
-                                        deps |= (c->ssa_args.src[s] != ~0);
+                                for (unsigned s = 0; s < ARRAY_SIZE(ins->src); ++s)
+                                        deps |= (c->src[s] != ~0);
 
                                 if (deps)
                                         continue;
@@ -685,10 +685,10 @@ mir_squeeze_index(compiler_context *ctx)
         ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
 
         mir_foreach_instr_global(ctx, ins) {
-                ins->ssa_args.dest = find_or_allocate_temp(ctx, ins->ssa_args.dest);
+                ins->dest = find_or_allocate_temp(ctx, ins->dest);
 
-                for (unsigned i = 0; i < ARRAY_SIZE(ins->ssa_args.src); ++i)
-                        ins->ssa_args.src[i] = find_or_allocate_temp(ctx, ins->ssa_args.src[i]);
+                for (unsigned i = 0; i < ARRAY_SIZE(ins->src); ++i)
+                        ins->src[i] = find_or_allocate_temp(ctx, ins->src[i]);
         }
 }
 
@@ -705,10 +705,8 @@ v_load_store_scratch(
         midgard_instruction ins = {
                 .type = TAG_LOAD_STORE_4,
                 .mask = mask,
-                .ssa_args = {
-                        .dest = ~0,
-                        .src = { ~0, ~0, ~0 },
-                },
+                .dest = ~0,
+                .src = { ~0, ~0, ~0 },
                 .load_store = {
                         .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,
                         .swizzle = SWIZZLE_XYZW,
@@ -729,9 +727,9 @@ v_load_store_scratch(
        if (is_store) {
                 /* r0 = r26, r1 = r27 */
                 assert(srcdest == SSA_FIXED_REGISTER(26) || srcdest == SSA_FIXED_REGISTER(27));
-                ins.ssa_args.src[0] = srcdest;
+                ins.src[0] = srcdest;
         } else {
-                ins.ssa_args.dest = srcdest;
+                ins.dest = srcdest;
         }
 
         return ins;
@@ -759,9 +757,9 @@ static void mir_spill_register(
 
         mir_foreach_instr_global(ctx, ins) {
                 if (ins->no_spill &&
-                    ins->ssa_args.dest >= 0 &&
-                    ins->ssa_args.dest < ctx->temp_count)
-                        ra_set_node_spill_cost(g, ins->ssa_args.dest, -1.0);
+                    ins->dest >= 0 &&
+                    ins->dest < ctx->temp_count)
+                        ra_set_node_spill_cost(g, ins->dest, -1.0);
         }
 
         int spill_node = ra_get_best_spill_node(g);
@@ -791,7 +789,7 @@ static void mir_spill_register(
                         spill_slot = spill_index++;
 
                 mir_foreach_instr_global_safe(ctx, ins) {
-                        if (ins->ssa_args.dest != spill_node) continue;
+                        if (ins->dest != spill_node) continue;
 
                         midgard_instruction st;
 
@@ -799,8 +797,8 @@ static void mir_spill_register(
                                 st = v_mov(spill_node, blank_alu_src, spill_slot);
                                 st.no_spill = true;
                         } else {
-                                ins->ssa_args.dest = SSA_FIXED_REGISTER(26);
-                                st = v_load_store_scratch(ins->ssa_args.dest, spill_slot, true, ins->mask);
+                                ins->dest = SSA_FIXED_REGISTER(26);
+                                st = v_load_store_scratch(ins->dest, spill_slot, true, ins->mask);
                         }
 
                         /* Hint: don't rewrite this node */

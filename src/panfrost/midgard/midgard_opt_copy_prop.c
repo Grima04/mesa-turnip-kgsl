@@ -34,8 +34,8 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (ins->type != TAG_ALU_4) continue;
                 if (!OP_IS_MOVE(ins->alu.op)) continue;
 
-                unsigned from = ins->ssa_args.src[1];
-                unsigned to = ins->ssa_args.dest;
+                unsigned from = ins->src[1];
+                unsigned to = ins->dest;
 
                 /* We only work on pure SSA */
 
@@ -45,7 +45,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                 if (from & IS_REG) continue;
 
                 /* Constant propagation is not handled here, either */
-                if (ins->ssa_args.inline_constant) continue;
+                if (ins->has_inline_constant) continue;
                 if (ins->has_constants) continue;
 
                 /* Modifier propagation is not handled here */
@@ -72,7 +72,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
                                 OP_IS_STORE(q->load_store.op) ? 1 : 0;
 
                         mir_foreach_src(q, s) {
-                                if ((s >= start) && q->ssa_args.src[s] == to) {
+                                if ((s >= start) && q->src[s] == to) {
                                         skip = true;
                                         break;
                                 }

@@ -52,7 +52,7 @@ midgard_opt_promote_fmov(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
                 if (ins->alu.op != midgard_alu_op_imov) continue;
-                if (ins->ssa_args.inline_constant) continue;
+                if (ins->has_inline_constant) continue;
                 if (!ins->has_constants) continue;
                 if (mir_nontrivial_source2_mod_simple(ins)) continue;
                 if (mir_nontrivial_outmod(ins)) continue;

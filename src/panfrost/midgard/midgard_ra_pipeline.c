@@ -46,13 +46,13 @@ mir_pipeline_ins(
         unsigned pipeline_count)
 {
         midgard_instruction *ins = bundle->instructions[i];
-        unsigned dest = ins->ssa_args.dest;
+        unsigned dest = ins->dest;
 
         /* We could be pipelining a register, so we need to make sure that all
          * of the components read in this bundle are written in this bundle,
          * and that no components are written before this bundle */
 
-        unsigned node = ins->ssa_args.dest;
+        unsigned node = ins->dest;
         unsigned read_mask = 0;
 
         /* Analyze the bundle for a read mask */
@@ -65,7 +65,7 @@ mir_pipeline_ins(
         /* Now analyze for a write mask */
         for (unsigned i = 0; i < bundle->instruction_count; ++i) {
                 midgard_instruction *q = bundle->instructions[i];
-                if (q->ssa_args.dest != node) continue;
+                if (q->dest != node) continue;
 
                 /* Remove the written mask from the read requirements */
                 read_mask &= ~q->mask;
@@ -87,7 +87,7 @@ mir_pipeline_ins(
         midgard_instruction *end = bundle->instructions[
                                     bundle->instruction_count - 1];
 
-        if (mir_is_live_after(ctx, block, end, ins->ssa_args.dest))
+        if (mir_is_live_after(ctx, block, end, ins->dest))
                 return false;
 
         /* We're only live in this bundle -- pipeline! */

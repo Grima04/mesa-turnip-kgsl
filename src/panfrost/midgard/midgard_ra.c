@@ -407,22 +407,22 @@ mir_lower_special_reads(compiler_context *ctx)
         mir_foreach_instr_global(ctx, ins) {
                 switch (ins->type) {
                 case TAG_ALU_4:
-                        mark_node_class(aluw, ins->ssa_args.dest);
-                        mark_node_class(alur, ins->ssa_args.src[0]);
-                        mark_node_class(alur, ins->ssa_args.src[1]);
+                        mark_node_class(aluw, ins->dest);
+                        mark_node_class(alur, ins->src[0]);
+                        mark_node_class(alur, ins->src[1]);
                         break;
 
                 case TAG_LOAD_STORE_4:
-                        mark_node_class(ldst, ins->ssa_args.src[0]);
-                        mark_node_class(ldst, ins->ssa_args.src[1]);
-                        mark_node_class(ldst, ins->ssa_args.src[2]);
+                        mark_node_class(ldst, ins->src[0]);
+                        mark_node_class(ldst, ins->src[1]);
+                        mark_node_class(ldst, ins->src[2]);
                         break;
 
                 case TAG_TEXTURE_4:
-                        mark_node_class(texr, ins->ssa_args.src[0]);
-                        mark_node_class(texr, ins->ssa_args.src[1]);
-                        mark_node_class(texr, ins->ssa_args.src[2]);
-                        mark_node_class(texw, ins->ssa_args.dest);
+                        mark_node_class(texr, ins->src[0]);
+                        mark_node_class(texr, ins->src[1]);
+                        mark_node_class(texr, ins->src[2]);
+                        mark_node_class(texw, ins->dest);
                         break;
                 }
         }
@@ -489,7 +489,7 @@ mir_lower_special_reads(compiler_context *ctx)
                                         continue;
 
                                 if (hazard_write) {
-                                        if (pre_use->ssa_args.dest != i)
+                                        if (pre_use->dest != i)
                                                 continue;
                                 } else {
                                         if (!mir_has_arg(pre_use, i))
@@ -546,10 +546,10 @@ liveness_ins_update(uint8_t *live, midgard_instruction *ins, unsigned max)
 {
         /* live_in[s] = GEN[s] + (live_out[s] - KILL[s]) */
 
-        liveness_kill(live, ins->ssa_args.dest, max, ins->mask);
+        liveness_kill(live, ins->dest, max, ins->mask);
 
         mir_foreach_src(ins, src) {
-                unsigned node = ins->ssa_args.src[src];
+                unsigned node = ins->src[src];
                 unsigned mask = mir_mask_of_read_components(ins, node);
 
                 liveness_gen(live, node, max, mask);
@@ -659,7 +659,7 @@ mir_compute_liveness(
                         /* Mark all registers live after the instruction as
                          * interfering with the destination */
 
-                        unsigned dest = ins->ssa_args.dest;
+                        unsigned dest = ins->dest;
 
                         if (dest < ctx->temp_count) {
                                 for (unsigned i = 0; i < ctx->temp_count; ++i)
@@ -712,7 +712,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         unsigned *found_class = calloc(sizeof(unsigned), ctx->temp_count);
 
         mir_foreach_instr_global(ctx, ins) {
-                if (ins->ssa_args.dest >= SSA_FIXED_MINIMUM) continue;
+                if (ins->dest >= SSA_FIXED_MINIMUM) continue;
 
                 /* 0 for x, 1 for xy, 2 for xyz, 3 for xyzw */
                 int class = util_logbase2(ins->mask);
@@ -720,7 +720,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 /* Use the largest class if there's ambiguity, this
                  * handles partial writes */
 
-                int dest = ins->ssa_args.dest;
+                int dest = ins->dest;
                 found_class[dest] = MAX2(found_class[dest], class);
         }
 
@@ -737,30 +737,30 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 if (ins->type == TAG_LOAD_STORE_4) {
                         bool force_vec4_only = OP_IS_VEC4_ONLY(ins->load_store.op);
 
-                        set_class(found_class, ins->ssa_args.src[0], REG_CLASS_LDST);
-                        set_class(found_class, ins->ssa_args.src[1], REG_CLASS_LDST);
-                        set_class(found_class, ins->ssa_args.src[2], REG_CLASS_LDST);
+                        set_class(found_class, ins->src[0], REG_CLASS_LDST);
+                        set_class(found_class, ins->src[1], REG_CLASS_LDST);
+                        set_class(found_class, ins->src[2], REG_CLASS_LDST);
 
                         if (force_vec4_only) {
-                                force_vec4(found_class, ins->ssa_args.dest);
-                                force_vec4(found_class, ins->ssa_args.src[0]);
-                                force_vec4(found_class, ins->ssa_args.src[1]);
-                                force_vec4(found_class, ins->ssa_args.src[2]);
+                                force_vec4(found_class, ins->dest);
+                                force_vec4(found_class, ins->src[0]);
+                                force_vec4(found_class, ins->src[1]);
+                                force_vec4(found_class, ins->src[2]);
                         }
                 } else if (ins->type == TAG_TEXTURE_4) {
-                        set_class(found_class, ins->ssa_args.dest, REG_CLASS_TEXW);
-                        set_class(found_class, ins->ssa_args.src[0], REG_CLASS_TEXR);
-                        set_class(found_class, ins->ssa_args.src[1], REG_CLASS_TEXR);
-                        set_class(found_class, ins->ssa_args.src[2], REG_CLASS_TEXR);
+                        set_class(found_class, ins->dest, REG_CLASS_TEXW);
+                        set_class(found_class, ins->src[0], REG_CLASS_TEXR);
+                        set_class(found_class, ins->src[1], REG_CLASS_TEXR);
+                        set_class(found_class, ins->src[2], REG_CLASS_TEXR);
                 }
         }
 
         /* Check that the semantics of the class are respected */
         mir_foreach_instr_global(ctx, ins) {
-                assert(check_write_class(found_class, ins->type, ins->ssa_args.dest));
-                assert(check_read_class(found_class, ins->type, ins->ssa_args.src[0]));
-                assert(check_read_class(found_class, ins->type, ins->ssa_args.src[1]));
-                assert(check_read_class(found_class, ins->type, ins->ssa_args.src[2]));
+                assert(check_write_class(found_class, ins->type, ins->dest));
+                assert(check_read_class(found_class, ins->type, ins->src[0]));
+                assert(check_read_class(found_class, ins->type, ins->src[1]));
+                assert(check_read_class(found_class, ins->type, ins->src[2]));
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
@@ -792,13 +792,11 @@ install_registers_instr(
         struct ra_graph *g,
         midgard_instruction *ins)
 {
-        ssa_args args = ins->ssa_args;
-
         switch (ins->type) {
         case TAG_ALU_4: {
-                struct phys_reg src1 = index_to_reg(ctx, g, args.src[0]);
-                struct phys_reg src2 = index_to_reg(ctx, g, args.src[1]);
-                struct phys_reg dest = index_to_reg(ctx, g, args.dest);
+                struct phys_reg src1 = index_to_reg(ctx, g, ins->src[0]);
+                struct phys_reg src2 = index_to_reg(ctx, g, ins->src[1]);
+                struct phys_reg dest = index_to_reg(ctx, g, ins->dest);
 
                 unsigned uncomposed_mask = ins->mask;
                 ins->mask = compose_writemask(uncomposed_mask, dest);
@@ -814,9 +812,9 @@ install_registers_instr(
 
                 ins->registers.src1_reg = src1.reg;
 
-                ins->registers.src2_imm = args.inline_constant;
+                ins->registers.src2_imm = ins->has_inline_constant;
 
-                if (args.inline_constant) {
+                if (ins->has_inline_constant) {
                         /* Encode inline 16-bit constant. See disassembler for
                          * where the algorithm is from */
 
@@ -849,7 +847,7 @@ install_registers_instr(
                 bool encodes_src = OP_IS_STORE(ins->load_store.op);
 
                 if (encodes_src) {
-                        struct phys_reg src = index_to_reg(ctx, g, args.src[0]);
+                        struct phys_reg src = index_to_reg(ctx, g, ins->src[0]);
                         assert(src.reg == 26 || src.reg == 27);
 
                         ins->load_store.reg = src.reg - 26;
@@ -868,7 +866,7 @@ install_registers_instr(
                                                           new_swizzle, src.mask,
                                                           default_phys_reg(0), src);
                } else {
-                        struct phys_reg src = index_to_reg(ctx, g, args.dest);
+                        struct phys_reg src = index_to_reg(ctx, g, ins->dest);
 
                         ins->load_store.reg = src.reg;
 
@@ -883,10 +881,10 @@ install_registers_instr(
                 /* We also follow up by actual arguments */
 
                 int src2 =
-                        encodes_src ? args.src[1] : args.src[0];
+                        encodes_src ? ins->src[1] : ins->src[0];
 
                 int src3 =
-                        encodes_src ? args.src[2] : args.src[1];
+                        encodes_src ? ins->src[2] : ins->src[1];
 
                 if (src2 >= 0) {
                         struct phys_reg src = index_to_reg(ctx, g, src2);
@@ -905,9 +903,9 @@ install_registers_instr(
 
         case TAG_TEXTURE_4: {
                 /* Grab RA results */
-                struct phys_reg dest = index_to_reg(ctx, g, args.dest);
-                struct phys_reg coord = index_to_reg(ctx, g, args.src[0]);
-                struct phys_reg lod = index_to_reg(ctx, g, args.src[1]);
+                struct phys_reg dest = index_to_reg(ctx, g, ins->dest);
+                struct phys_reg coord = index_to_reg(ctx, g, ins->src[0]);
+                struct phys_reg lod = index_to_reg(ctx, g, ins->src[1]);
 
                 assert(dest.reg == 28 || dest.reg == 29);
                 assert(coord.reg == 28 || coord.reg == 29);
@@ -929,7 +927,7 @@ install_registers_instr(
                         compose_writemask(ins->mask, dest);
 
                 /* If there is a register LOD/bias, use it */
-                if (args.src[1] != ~0) {
+                if (ins->src[1] != ~0) {
                         midgard_tex_register_select sel = {
                                 .select = lod.reg,
                                 .full = 1,
