@@ -2525,8 +2525,8 @@ brw_send_indirect_message(struct brw_codegen *p,
 
    if (desc.file == BRW_IMMEDIATE_VALUE) {
       send = next_insn(p, BRW_OPCODE_SEND);
+      brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
       brw_set_desc(p, send, desc.ud | desc_imm);
-
    } else {
       struct brw_reg addr = retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD);
 
@@ -2545,11 +2545,11 @@ brw_send_indirect_message(struct brw_codegen *p,
       brw_pop_insn_state(p);
 
       send = next_insn(p, BRW_OPCODE_SEND);
+      brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
       brw_set_src1(p, send, addr);
    }
 
    brw_set_dest(p, send, dst);
-   brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
    brw_inst_set_sfid(devinfo, send, sfid);
    brw_inst_set_eot(devinfo, send, eot);
 }
