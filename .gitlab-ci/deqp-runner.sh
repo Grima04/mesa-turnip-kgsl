@@ -102,6 +102,13 @@ if grep -q "dEQP-.*.info.renderer" /tmp/case-list.txt; then
     fi
 fi
 
+if grep -q "dEQP-.*.info.version" /tmp/case-list.txt; then
+    # This is an ugly dependency on the .qpa format: Print 3 lines after the
+    # match, which happens to contain the result.
+    VERSION=`sed -n '/#beginTestCaseResult dEQP-.*.info.version/{n;n;n;p}' $RESULTS/results.qpa | sed -n -E "s|<Text>(.*)</Text>|\1|p"`
+    echo "Driver version tested: $VERSION"
+fi
+
 if [ $DEQP_EXITCODE -ne 0 ]; then
    exit $DEQP_EXITCODE
 fi
