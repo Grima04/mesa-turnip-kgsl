@@ -3416,7 +3416,20 @@ _mesa_CompileShaderIncludeARB(GLuint shader, GLsizei count,
 GLboolean GLAPIENTRY
 _mesa_IsNamedStringARB(GLint namelen, const GLchar *name)
 {
-   return false;
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (!name)
+      return false;
+
+   char *name_cp = copy_string(ctx, name, namelen, "");
+
+   const char *source = _mesa_lookup_shader_include(ctx, name_cp, false);
+   free(name_cp);
+
+   if (!source)
+      return false;
+
+   return true;
 }
 
 GLvoid GLAPIENTRY
