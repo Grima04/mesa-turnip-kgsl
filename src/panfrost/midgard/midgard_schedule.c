@@ -26,6 +26,35 @@
 #include "util/u_memory.h"
 #include "util/register_allocate.h"
 
+/* Scheduling for Midgard is complicated, to say the least. ALU instructions
+ * must be grouped into VLIW bundles according to following model:
+ *
+ * [VMUL] [SADD]
+ * [VADD] [SMUL] [VLUT]
+ *
+ * A given instruction can execute on some subset of the units (or a few can
+ * execute on all). Instructions can be either vector or scalar; only scalar
+ * instructions can execute on SADD/SMUL units. Units on a given line execute
+ * in parallel. Subsequent lines execute separately and can pass results
+ * directly via pipeline registers r24/r25, bypassing the register file.
+ *
+ * A bundle can optionally have 128-bits of embedded constants, shared across
+ * all of the instructions within a bundle.
+ *
+ * Instructions consuming conditionals (branches and conditional selects)
+ * require their condition to be written into the conditional register (r31)
+ * within the same bundle they are consumed.
+ *
+ * Fragment writeout requires its argument to be written in full within the
+ * same bundle as the branch, with no hanging dependencies.
+ *
+ * Load/store instructions are also in bundles of simply two instructions, and
+ * texture instructions have no bundling.
+ *
+ * -------------------------------------------------------------------------
+ *
+ */
+
 /* Create a mask of accessed components from a swizzle to figure out vector
  * dependencies */
 
