@@ -635,13 +635,8 @@ void emit_binary_bundle(
         struct util_dynarray *emission,
         int next_tag);
 
-/* NIR stuff. TODO: Move? Share? Something? */
-
 bool
 nir_undef_to_zero(nir_shader *shader);
-
-void
-nir_clamp_psiz(nir_shader *shader, float min_size, float max_size);
 
 /* Optimizations */
 
