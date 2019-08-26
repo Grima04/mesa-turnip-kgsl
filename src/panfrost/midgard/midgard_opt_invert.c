@@ -193,6 +193,9 @@ midgard_opt_fuse_dest_invert(compiler_context *ctx, midgard_block *block)
 static bool
 mir_strip_inverted(compiler_context *ctx, unsigned node)
 {
+        if (node >= SSA_FIXED_MINIMUM)
+                return false;
+
        /* Strips and returns the invert off a node */
        mir_foreach_instr_global(ctx, ins) {
                if (ins->compact_branch) continue;
@@ -206,6 +209,12 @@ mir_strip_inverted(compiler_context *ctx, unsigned node)
        unreachable("Invalid node stripped");
 }
 
+static bool
+is_ssa_or_constant(unsigned node)
+{
+        return !(node & IS_REG) || (node == SSA_FIXED_REGISTER(26));
+}
+
 bool
 midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
 {
@@ -217,8 +226,8 @@ midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
                 if (!mir_is_bitwise(ins)) continue;
                 if (ins->invert) continue;
 
-                if (ins->src[0] & IS_REG) continue;
-                if (ins->src[1] & IS_REG) continue;
+                if (!is_ssa_or_constant(ins->src[0])) continue;
+                if (!is_ssa_or_constant(ins->src[1])) continue;
                 if (!mir_single_use(ctx, ins->src[0])) continue;
                 if (!ins->has_inline_constant && !mir_single_use(ctx, ins->src[1])) continue;
 
@@ -252,6 +261,10 @@ midgard_opt_fuse_src_invert(compiler_context *ctx, midgard_block *block)
                                 unsigned temp = ins->src[0];
                                 ins->src[0] = ins->src[1];
                                 ins->src[1] = temp;
+
+                                temp = ins->alu.src1;
+                                ins->alu.src1 = ins->alu.src2;
+                                ins->alu.src2 = temp;
                         }
 
                         ins->alu.op = mir_notright_op(ins->alu.op);

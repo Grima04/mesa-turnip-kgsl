@@ -231,6 +231,10 @@ mir_use_count(compiler_context *ctx, unsigned value)
 bool
 mir_single_use(compiler_context *ctx, unsigned value)
 {
+        /* We can replicate constants in places so who cares */
+        if (value == SSA_FIXED_REGISTER(REGISTER_CONSTANT))
+                return true;
+
         return mir_use_count(ctx, value) <= 1;
 }
 
