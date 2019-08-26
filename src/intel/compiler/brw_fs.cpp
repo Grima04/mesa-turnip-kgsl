@@ -4439,8 +4439,26 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       payload.nr = bld.shader->alloc.allocate(regs_written(load));
       load->dst = payload;
 
-      inst->src[0] = payload;
-      inst->resize_sources(1);
+      uint32_t msg_ctl = brw_fb_write_msg_control(inst, prog_data);
+      uint32_t ex_desc = 0;
+
+      inst->desc =
+         (inst->group / 16) ? (1 << 11) : 0 | /* rt slot group */
+         brw_dp_write_desc(devinfo, inst->target, msg_ctl,
+                           GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE,
+                           inst->last_rt, false);
+
+      inst->opcode = SHADER_OPCODE_SEND;
+      inst->resize_sources(3);
+      inst->sfid = GEN6_SFID_DATAPORT_RENDER_CACHE;
+      inst->src[0] = brw_imm_ud(inst->desc);
+      inst->src[1] = brw_imm_ud(ex_desc);
+      inst->src[2] = payload;
+      inst->mlen = regs_written(load);
+      inst->ex_mlen = 0;
+      inst->header_size = header_size;
+      inst->check_tdr = true;
+      inst->send_has_side_effects = true;
    } else {
       /* Send from the MRF */
       load = bld.LOAD_PAYLOAD(fs_reg(MRF, 1, BRW_REGISTER_TYPE_F),
@@ -4460,11 +4478,10 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          inst->resize_sources(0);
       }
       inst->base_mrf = 1;
+      inst->opcode = FS_OPCODE_FB_WRITE;
+      inst->mlen = regs_written(load);
+      inst->header_size = header_size;
    }
-
-   inst->opcode = FS_OPCODE_FB_WRITE;
-   inst->mlen = regs_written(load);
-   inst->header_size = header_size;
 }
 
 static void
