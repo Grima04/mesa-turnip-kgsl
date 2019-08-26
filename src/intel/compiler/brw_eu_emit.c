@@ -107,8 +107,23 @@ brw_set_dest(struct brw_codegen *p, brw_inst *inst, struct brw_reg dest)
 
    gen7_convert_mrf_to_grf(p, &dest);
 
-   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
-       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
+   if (devinfo->gen >= 12 &&
+       (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
+        brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC)) {
+      assert(dest.file == BRW_GENERAL_REGISTER_FILE ||
+             dest.file == BRW_ARCHITECTURE_REGISTER_FILE);
+      assert(dest.address_mode == BRW_ADDRESS_DIRECT);
+      assert(dest.subnr == 0);
+      assert(brw_inst_exec_size(devinfo, inst) == BRW_EXECUTE_1 ||
+             (dest.hstride == BRW_HORIZONTAL_STRIDE_1 &&
+              dest.vstride == dest.width + 1));
+      assert(!dest.negate && !dest.abs);
+      brw_inst_set_dst_reg_file(devinfo, inst, dest.file);
+      brw_inst_set_dst_da_reg_nr(devinfo, inst, dest.nr);
+
+   } else if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
+              brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
+      assert(devinfo->gen < 12);
       assert(dest.file == BRW_GENERAL_REGISTER_FILE ||
              dest.file == BRW_ARCHITECTURE_REGISTER_FILE);
       assert(dest.address_mode == BRW_ADDRESS_DIRECT);
@@ -214,8 +229,21 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
       assert(reg.address_mode == BRW_ADDRESS_DIRECT);
    }
 
-   if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
-       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
+   if (devinfo->gen >= 12 &&
+       (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
+        brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC)) {
+      assert(reg.file != BRW_IMMEDIATE_VALUE);
+      assert(reg.address_mode == BRW_ADDRESS_DIRECT);
+      assert(reg.subnr == 0);
+      assert(brw_inst_exec_size(devinfo, inst) == BRW_EXECUTE_1 ||
+             (reg.hstride == BRW_HORIZONTAL_STRIDE_1 &&
+              reg.vstride == reg.width + 1));
+      assert(!reg.negate && !reg.abs);
+      brw_inst_set_send_src0_reg_file(devinfo, inst, reg.file);
+      brw_inst_set_src0_da_reg_nr(devinfo, inst, reg.nr);
+
+   } else if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
+              brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
       assert(reg.file == BRW_GENERAL_REGISTER_FILE);
       assert(reg.address_mode == BRW_ADDRESS_DIRECT);
       assert(reg.subnr % 16 == 0);
@@ -319,13 +347,17 @@ brw_set_src1(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
       assert(reg.nr < 128);
 
    if (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDS ||
-       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC) {
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDSC ||
+       (devinfo->gen >= 12 &&
+        (brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
+         brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC))) {
       assert(reg.file == BRW_GENERAL_REGISTER_FILE ||
              reg.file == BRW_ARCHITECTURE_REGISTER_FILE);
       assert(reg.address_mode == BRW_ADDRESS_DIRECT);
       assert(reg.subnr == 0);
-      assert(reg.hstride == BRW_HORIZONTAL_STRIDE_1 &&
-             reg.vstride == reg.width + 1);
+      assert(brw_inst_exec_size(devinfo, inst) == BRW_EXECUTE_1 ||
+             (reg.hstride == BRW_HORIZONTAL_STRIDE_1 &&
+              reg.vstride == reg.width + 1));
       assert(!reg.negate && !reg.abs);
       brw_inst_set_send_src1_reg_nr(devinfo, inst, reg.nr);
       brw_inst_set_send_src1_reg_file(devinfo, inst, reg.file);
