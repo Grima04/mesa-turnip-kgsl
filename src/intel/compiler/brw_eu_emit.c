@@ -2594,7 +2594,8 @@ brw_send_indirect_split_message(struct brw_codegen *p,
       desc = addr;
    }
 
-   if (ex_desc.file == BRW_IMMEDIATE_VALUE) {
+   if (ex_desc.file == BRW_IMMEDIATE_VALUE &&
+       (ex_desc.ud & INTEL_MASK(15, 12)) == 0) {
       ex_desc.ud |= ex_desc_imm;
    } else {
       struct brw_reg addr = retype(brw_address_reg(2), BRW_REGISTER_TYPE_UD);
@@ -2615,7 +2616,16 @@ brw_send_indirect_split_message(struct brw_codegen *p,
        * descriptor which comes from the address register.  If we don't OR
        * those two bits in, the external unit may get confused and hang.
        */
-      brw_OR(p, addr, ex_desc, brw_imm_ud(ex_desc_imm | sfid | eot << 5));
+      unsigned imm_part = ex_desc_imm | sfid | eot << 5;
+
+      if (ex_desc.file == BRW_IMMEDIATE_VALUE) {
+         /* ex_desc bits 15:12 don't exist in the instruction encoding, so
+          * we may have fallen back to an indirect extended descriptor.
+          */
+         brw_MOV(p, addr, brw_imm_ud(ex_desc.ud | imm_part));
+      } else {
+         brw_OR(p, addr, ex_desc, brw_imm_ud(imm_part));
+      }
 
       brw_pop_insn_state(p);
       ex_desc = addr;
