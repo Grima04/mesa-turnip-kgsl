@@ -811,7 +811,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		}
 		break;
 	case nir_op_ffma:
-		result = emit_intrin_3f_param(&ctx->ac, "llvm.fmuladd",
+		/* FMA is better on GFX10, because it has FMA units instead of MUL-ADD units. */
+		result = emit_intrin_3f_param(&ctx->ac, ctx->ac.chip_class >= GFX10 ? "llvm.fma" : "llvm.fmuladd",
 		                              ac_to_float_type(&ctx->ac, def_type), src[0], src[1], src[2]);
 		break;
 	case nir_op_ldexp:

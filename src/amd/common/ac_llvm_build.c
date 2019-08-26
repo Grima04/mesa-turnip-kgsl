@@ -2665,6 +2665,13 @@ LLVMValueRef ac_build_imad(struct ac_llvm_context *ctx, LLVMValueRef s0,
 LLVMValueRef ac_build_fmad(struct ac_llvm_context *ctx, LLVMValueRef s0,
 			   LLVMValueRef s1, LLVMValueRef s2)
 {
+	/* FMA is better on GFX10, because it has FMA units instead of MUL-ADD units. */
+	if (ctx->chip_class >= GFX10) {
+		return ac_build_intrinsic(ctx, "llvm.fma.f32", ctx->f32,
+					  (LLVMValueRef []) {s0, s1, s2}, 3,
+					  AC_FUNC_ATTR_READNONE);
+	}
+
 	return LLVMBuildFAdd(ctx->builder,
 			     LLVMBuildFMul(ctx->builder, s0, s1, ""), s2, "");
 }
