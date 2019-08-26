@@ -53,7 +53,7 @@ enum util_format_layout {
     * Formats with util_format_block::width == util_format_block::height == 1
     * that can be described as an ordinary data structure.
     */
-   UTIL_FORMAT_LAYOUT_PLAIN = 0,
+   UTIL_FORMAT_LAYOUT_PLAIN,
 
    /**
     * Formats with sub-sampled channels.
@@ -61,36 +61,36 @@ enum util_format_layout {
     * This is for formats like YVYU where there is less than one sample per
     * pixel.
     */
-   UTIL_FORMAT_LAYOUT_SUBSAMPLED = 3,
+   UTIL_FORMAT_LAYOUT_SUBSAMPLED,
 
    /**
     * S3 Texture Compression formats.
     */
-   UTIL_FORMAT_LAYOUT_S3TC = 4,
+   UTIL_FORMAT_LAYOUT_S3TC,
 
    /**
     * Red-Green Texture Compression formats.
     */
-   UTIL_FORMAT_LAYOUT_RGTC = 5,
+   UTIL_FORMAT_LAYOUT_RGTC,
 
    /**
     * Ericsson Texture Compression
     */
-   UTIL_FORMAT_LAYOUT_ETC = 6,
+   UTIL_FORMAT_LAYOUT_ETC,
 
    /**
     * BC6/7 Texture Compression
     */
-   UTIL_FORMAT_LAYOUT_BPTC = 7,
+   UTIL_FORMAT_LAYOUT_BPTC,
 
-   UTIL_FORMAT_LAYOUT_ASTC = 8,
+   UTIL_FORMAT_LAYOUT_ASTC,
 
-   UTIL_FORMAT_LAYOUT_ATC = 9,
+   UTIL_FORMAT_LAYOUT_ATC,
 
    /**
     * Everything else that doesn't fit in any of the above layouts.
     */
-   UTIL_FORMAT_LAYOUT_OTHER = 10
+   UTIL_FORMAT_LAYOUT_OTHER,
 };
 
 
