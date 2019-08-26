@@ -240,7 +240,7 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
          else
             brw_inst_set_imm_ud(devinfo, inst, reg.ud);
 
-         if (type_sz(reg.type) < 8) {
+         if (devinfo->gen < 12 && type_sz(reg.type) < 8) {
             brw_inst_set_src1_reg_file(devinfo, inst,
                                        BRW_ARCHITECTURE_REGISTER_FILE);
             brw_inst_set_src1_reg_hw_type(devinfo, inst,
