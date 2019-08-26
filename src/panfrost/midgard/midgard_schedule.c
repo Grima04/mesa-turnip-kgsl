@@ -195,6 +195,47 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
         return true;
 }
 
+/* Helpers for scheudling */
+
+static bool
+mir_is_scalar(midgard_instruction *ains)
+{
+        /* Does the op support scalar units? */
+        if (!(alu_opcode_props[ains->alu.op].props & UNITS_SCALAR))
+                return false;
+
+        /* Do we try to use it as a vector op? */
+        if (!is_single_component_mask(ains->mask))
+                return false;
+
+        /* Otherwise, check mode hazards */
+        bool could_scalar = true;
+
+        /* Only 16/32-bit can run on a scalar unit */
+        could_scalar &= ains->alu.reg_mode != midgard_reg_mode_8;
+        could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
+        could_scalar &= ains->alu.dest_override == midgard_dest_override_none;
+
+        if (ains->alu.reg_mode == midgard_reg_mode_16) {
+                /* If we're running in 16-bit mode, we
+                 * can't have any 8-bit sources on the
+                 * scalar unit (since the scalar unit
+                 * doesn't understand 8-bit) */
+
+                midgard_vector_alu_src s1 =
+                        vector_alu_from_unsigned(ains->alu.src1);
+
+                could_scalar &= !s1.half;
+
+                midgard_vector_alu_src s2 =
+                        vector_alu_from_unsigned(ains->alu.src2);
+
+                could_scalar &= !s2.half;
+        }
+
+        return could_scalar;
+}
+
 /* Schedules, but does not emit, a single basic block. After scheduling, the
  * final tag and size of the block are known, which are necessary for branching
  * */
@@ -270,39 +311,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                         if (!unit) {
                                 int op = ains->alu.op;
                                 int units = alu_opcode_props[op].props;
-
-                                bool scalarable = units & UNITS_SCALAR;
-                                bool could_scalar = is_single_component_mask(ains->mask);
-
-                                /* Only 16/32-bit can run on a scalar unit */
-                                could_scalar &= ains->alu.reg_mode != midgard_reg_mode_8;
-                                could_scalar &= ains->alu.reg_mode != midgard_reg_mode_64;
-                                could_scalar &= ains->alu.dest_override == midgard_dest_override_none;
-
-                                if (ains->alu.reg_mode == midgard_reg_mode_16) {
-                                        /* If we're running in 16-bit mode, we
-                                         * can't have any 8-bit sources on the
-                                         * scalar unit (since the scalar unit
-                                         * doesn't understand 8-bit) */
-
-                                        midgard_vector_alu_src s1 =
-                                                vector_alu_from_unsigned(ains->alu.src1);
-
-                                        could_scalar &= !s1.half;
-
-                                        midgard_vector_alu_src s2 =
-                                                vector_alu_from_unsigned(ains->alu.src2);
-
-                                        could_scalar &= !s2.half;
-                                }
-
-                                bool scalar = could_scalar && scalarable;
-
-                                /* TODO: Check ahead-of-time for other scalar
-                                 * hazards that otherwise get aborted out */
-
-                                if (scalar)
-                                        assert(units & UNITS_SCALAR);
+                                bool scalar = mir_is_scalar(ains);
 
                                 if (!scalar) {
                                         if (last_unit >= UNIT_VADD) {
