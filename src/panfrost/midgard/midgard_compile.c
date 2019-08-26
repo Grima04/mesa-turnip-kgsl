@@ -1416,6 +1416,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 bool conditional = instr->intrinsic == nir_intrinsic_discard_if;
                 struct midgard_instruction discard = v_branch(conditional, false);
                 discard.branch.target_type = TARGET_DISCARD;
+
+                if (conditional)
+                        discard.src[0] = nir_src_index(ctx, &instr->src[0]);
+
                 emit_mir_instruction(ctx, discard);
                 break;
         }
@@ -2318,6 +2322,7 @@ emit_if(struct compiler_context *ctx, nir_if *nif)
         /* Speculatively emit the branch, but we can't fill it in until later */
         EMIT(branch, true, true);
         midgard_instruction *then_branch = mir_last_in_block(ctx->current_block);
+        then_branch->src[0] = nir_src_index(ctx, &nif->condition);
 
         /* Emit the two subblocks. */
         midgard_block *then_block = emit_cf_list(ctx, &nif->then_list);
