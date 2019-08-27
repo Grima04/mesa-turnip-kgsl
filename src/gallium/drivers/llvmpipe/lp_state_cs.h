@@ -81,6 +81,9 @@ struct lp_compute_shader {
    struct lp_cs_variant_list_item variants;
 
    struct lp_tgsi_info info;
+
+   uint32_t req_local_mem;
+
    /* For debugging/profiling purposes */
    unsigned variant_key_size;
    unsigned no;

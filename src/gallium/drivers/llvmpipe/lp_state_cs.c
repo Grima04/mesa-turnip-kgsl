@@ -48,6 +48,7 @@
 struct lp_cs_job_info {
    unsigned grid_size[3];
    unsigned block_size[3];
+   unsigned req_local_mem;
    struct lp_cs_exec *current;
 };
 
@@ -395,6 +396,7 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
    assert(templ->ir_type == PIPE_SHADER_IR_TGSI);
    shader->base.tokens = tgsi_dup_tokens(templ->prog);
 
+   shader->req_local_mem = templ->req_local_mem;
    lp_build_tgsi_info(shader->base.tokens, &shader->info);
    make_empty_list(&shader->variants);
 
@@ -1120,6 +1122,12 @@ cs_exec_fn(void *init_data, int iter_idx, struct lp_cs_local_mem *lmem)
 
    memset(&thread_data, 0, sizeof(thread_data));
 
+   if (lmem->local_size < job_info->req_local_mem) {
+      lmem->local_size = job_info->req_local_mem;
+      lmem->local_mem_ptr = realloc(lmem->local_mem_ptr, lmem->local_size);
+   }
+   thread_data.shared = lmem->local_mem_ptr;
+
    unsigned grid_z = iter_idx / (job_info->grid_size[0] * job_info->grid_size[1]);
    unsigned grid_y = (iter_idx - (grid_z * (job_info->grid_size[0] * job_info->grid_size[1]))) / job_info->grid_size[0];
    unsigned grid_x = (iter_idx - (grid_z * (job_info->grid_size[0] * job_info->grid_size[1])) - (grid_y * job_info->grid_size[0]));
@@ -1175,6 +1183,7 @@ static void llvmpipe_launch_grid(struct pipe_context *pipe,
    job_info.block_size[0] = info->block[0];
    job_info.block_size[1] = info->block[1];
    job_info.block_size[2] = info->block[2];
+   job_info.req_local_mem = llvmpipe->cs->req_local_mem;
    job_info.current = &llvmpipe->csctx->cs.current;
 
    int num_tasks = job_info.grid_size[2] * job_info.grid_size[1] * job_info.grid_size[0];
