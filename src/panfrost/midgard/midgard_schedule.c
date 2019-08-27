@@ -562,6 +562,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
 
         midgard_instruction *uins = ins;
         for (; packed_idx < bundle.instruction_count; ++packed_idx) {
+                assert(&uins->link != &block->instructions);
                 bundle.instructions[packed_idx] = uins;
                 uins = mir_next_op(uins);
         }
