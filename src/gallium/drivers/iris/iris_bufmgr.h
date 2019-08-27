@@ -327,8 +327,6 @@ struct iris_bufmgr *iris_bufmgr_init(struct gen_device_info *devinfo, int fd);
 struct iris_bo *iris_bo_gem_create_from_name(struct iris_bufmgr *bufmgr,
                                              const char *name,
                                              unsigned handle);
-void iris_bufmgr_enable_reuse(struct iris_bufmgr *bufmgr);
-
 int iris_bo_wait(struct iris_bo *bo, int64_t timeout_ns);
 
 uint32_t iris_create_hw_context(struct iris_bufmgr *bufmgr);
