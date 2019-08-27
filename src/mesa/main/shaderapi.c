@@ -3415,6 +3415,31 @@ _mesa_NamedStringARB(GLenum type, GLint namelen, const GLchar *name,
 GLvoid GLAPIENTRY
 _mesa_DeleteNamedStringARB(GLint namelen, const GLchar *name)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const char *caller = "glDeleteNamedStringARB";
+
+   char *name_cp = copy_string(ctx, name, namelen, caller);
+   if (!name_cp)
+      return;
+
+   struct sh_incl_path_ht_entry *shader_include =
+      lookup_shader_include(ctx, name_cp, true);
+
+   if (!shader_include) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(no string associated with path %s)", caller, name_cp);
+      free(name_cp);
+      return;
+   }
+
+   mtx_lock(&ctx->Shared->ShaderIncludeMutex);
+
+   free(shader_include->shader_source);
+   shader_include->shader_source = NULL;
+
+   mtx_unlock(&ctx->Shared->ShaderIncludeMutex);
+
+   free(name_cp);
 }
 
 GLvoid GLAPIENTRY
