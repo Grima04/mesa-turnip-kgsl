@@ -32,6 +32,7 @@
  * @author Jose Fonseca <jfonseca@vmware.com>
  */
 
+#include <llvm/Config/llvm-config.h>
 
 #include "util/u_memory.h"
 #include "gallivm/lp_bld_init.h"
@@ -285,7 +286,7 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
    }
 
    if (gallivm_debug & GALLIVM_DEBUG_IR) {
-#if HAVE_LLVM >= 0x304
+#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4))
       char *str = LLVMPrintModuleToString(gallivm->module);
       fprintf(stderr, "%s", str);
       LLVMDisposeMessage(str);
@@ -399,7 +400,7 @@ lp_jit_create_cs_types(struct lp_compute_shader_variant *lp)
    }
 
    if (gallivm_debug & GALLIVM_DEBUG_IR) {
-#if HAVE_LLVM >= 0x304
+#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4))
       char *str = LLVMPrintModuleToString(gallivm->module);
       fprintf(stderr, "%s", str);
       LLVMDisposeMessage(str);
