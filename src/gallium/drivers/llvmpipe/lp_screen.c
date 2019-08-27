@@ -49,6 +49,7 @@
 #include "lp_public.h"
 #include "lp_limits.h"
 #include "lp_rast.h"
+#include "lp_cs_tpool.h"
 
 #include "state_tracker/sw_winsys.h"
 
@@ -595,6 +596,9 @@ llvmpipe_destroy_screen( struct pipe_screen *_screen )
    struct llvmpipe_screen *screen = llvmpipe_screen(_screen);
    struct sw_winsys *winsys = screen->winsys;
 
+   if (screen->cs_tpool)
+      lp_cs_tpool_destroy(screen->cs_tpool);
+
    if (screen->rast)
       lp_rast_destroy(screen->rast);
 
@@ -604,7 +608,7 @@ llvmpipe_destroy_screen( struct pipe_screen *_screen )
       winsys->destroy(winsys);
 
    mtx_destroy(&screen->rast_mutex);
-
+   mtx_destroy(&screen->cs_mutex);
    FREE(screen);
 }
 
@@ -716,6 +720,15 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
       return NULL;
    }
    (void) mtx_init(&screen->rast_mutex, mtx_plain);
+
+   screen->cs_tpool = lp_cs_tpool_create(screen->num_threads);
+   if (!screen->cs_tpool) {
+      lp_rast_destroy(screen->rast);
+      lp_jit_screen_cleanup(screen);
+      FREE(screen);
+      return NULL;
+   }
+   (void) mtx_init(&screen->cs_mutex, mtx_plain);
 
    return &screen->base;
 }

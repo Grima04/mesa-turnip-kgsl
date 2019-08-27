@@ -33,6 +33,8 @@ files_llvmpipe = files(
   'lp_clear.h',
   'lp_context.c',
   'lp_context.h',
+  'lp_cs_tpool.h',
+  'lp_cs_tpool.c',
   'lp_debug.h',
   'lp_draw_arrays.c',
   'lp_fence.c',
