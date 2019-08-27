@@ -1273,12 +1273,8 @@ if _llvm != 'false'
   with_llvm = dep_llvm.found()
 endif
 if with_llvm
-  _llvm_version = dep_llvm.version().split('.')
-  pre_args += [
-    '-DLLVM_AVAILABLE',
-    '-DHAVE_LLVM=0x0@0@0@1@'.format(_llvm_version[0], _llvm_version[1]),
-    '-DMESA_LLVM_VERSION_STRING="@0@"'.format(dep_llvm.version()),
-  ]
+  pre_args += '-DLLVM_AVAILABLE'
+  pre_args += '-DMESA_LLVM_VERSION_STRING="@0@"'.format(dep_llvm.version())
 
   # LLVM can be built without rtti, turning off rtti changes the ABI of C++
   # programs, so we need to build all C++ code in mesa without rtti as well to

@@ -283,11 +283,7 @@ def generate(env):
     print('scons: Found LLVM version %s' % llvm_version)
     env['LLVM_VERSION'] = llvm_version
 
-    # Define HAVE_LLVM macro with the major/minor version number (e.g., 0x0206 for 2.6)
-    llvm_version_major = int(llvm_version.version[0])
-    llvm_version_minor = int(llvm_version.version[1])
-    llvm_version_hex = '0x%02x%02x' % (llvm_version_major, llvm_version_minor)
-    env.Prepend(CPPDEFINES = [('HAVE_LLVM', llvm_version_hex)])
+    # Define LLVM_AVAILABLE macro to guard code blocks, and MESA_LLVM_VERSION_STRING
     env.Prepend(CPPDEFINES = [('LLVM_AVAILABLE', 1)])
     env.Prepend(CPPDEFINES = [('MESA_LLVM_VERSION_STRING=\\"%s\\"' % llvm_version)])
 
