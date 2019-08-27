@@ -4494,6 +4494,9 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
           * in the extended message descriptor, in lieu of using a header.
           */
          ex_desc = inst->target << 12 | src0_alpha_present << 15;
+
+         if (key->nr_color_regions == 0)
+            ex_desc |= 1 << 20; /* Null Render Target */
       }
 
       inst->opcode = SHADER_OPCODE_SEND;
