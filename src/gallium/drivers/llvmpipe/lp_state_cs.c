@@ -61,6 +61,7 @@ llvmpipe_bind_compute_state(struct pipe_context *pipe,
       return;
 
    llvmpipe->cs = (struct lp_compute_shader *)cs;
+   llvmpipe->cs_dirty |= LP_CSNEW_CS;
 }
 
 /**

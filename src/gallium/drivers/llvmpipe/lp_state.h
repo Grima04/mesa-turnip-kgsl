@@ -59,6 +59,7 @@
 #define LP_NEW_FS_SSBOS      0x80000
 #define LP_NEW_FS_IMAGES    0x100000
 
+#define LP_CSNEW_CS 0x1
 
 struct vertex_info;
 struct pipe_context;
