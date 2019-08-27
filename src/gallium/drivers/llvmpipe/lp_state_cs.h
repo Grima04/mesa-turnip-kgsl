@@ -106,6 +106,11 @@ struct lp_cs_context {
       unsigned stored_size;
       const void *stored_data;
    } constants[LP_MAX_TGSI_CONST_BUFFERS];
+
+   /** compute shader buffers */
+   struct {
+      struct pipe_shader_buffer current;
+   } ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
 };
 
 struct lp_cs_context *lp_csctx_create(struct pipe_context *pipe);

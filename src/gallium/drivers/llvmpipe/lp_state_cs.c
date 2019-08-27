@@ -906,6 +906,24 @@ lp_csctx_set_cs_constants(struct lp_cs_context *csctx,
 }
 
 static void
+lp_csctx_set_cs_ssbos(struct lp_cs_context *csctx,
+                       unsigned num,
+                       struct pipe_shader_buffer *buffers)
+{
+   int i;
+   LP_DBG(DEBUG_SETUP, "%s %p\n", __FUNCTION__, (void *)buffers);
+
+   assert (num <= ARRAY_SIZE(csctx->ssbos));
+
+   for (i = 0; i < num; ++i) {
+      util_copy_shader_buffer(&csctx->ssbos[i].current, &buffers[i]);
+   }
+   for (; i < ARRAY_SIZE(csctx->ssbos); i++) {
+      util_copy_shader_buffer(&csctx->ssbos[i].current, NULL);
+   }
+}
+
+static void
 update_csctx_consts(struct llvmpipe_context *llvmpipe)
 {
    struct lp_cs_context *csctx = llvmpipe->csctx;
@@ -937,6 +955,31 @@ update_csctx_consts(struct llvmpipe_context *llvmpipe)
 }
 
 static void
+update_csctx_ssbo(struct llvmpipe_context *llvmpipe)
+{
+   struct lp_cs_context *csctx = llvmpipe->csctx;
+   int i;
+   for (i = 0; i < ARRAY_SIZE(csctx->ssbos); ++i) {
+      struct pipe_resource *buffer = csctx->ssbos[i].current.buffer;
+      const ubyte *current_data = NULL;
+
+      if (!buffer)
+         continue;
+      /* resource buffer */
+      current_data = (ubyte *) llvmpipe_resource_data(buffer);
+      if (current_data) {
+         current_data += csctx->ssbos[i].current.buffer_offset;
+
+         csctx->cs.current.jit_context.ssbos[i] = (const uint32_t *)current_data;
+         csctx->cs.current.jit_context.num_ssbos[i] = csctx->ssbos[i].current.buffer_size;
+      } else {
+         csctx->cs.current.jit_context.ssbos[i] = NULL;
+         csctx->cs.current.jit_context.num_ssbos[i] = 0;
+      }
+   }
+}
+
+static void
 llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
 {
    if (llvmpipe->cs_dirty & (LP_CSNEW_CS))
@@ -947,6 +990,13 @@ llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
                                 ARRAY_SIZE(llvmpipe->constants[PIPE_SHADER_COMPUTE]),
                                 llvmpipe->constants[PIPE_SHADER_COMPUTE]);
       update_csctx_consts(llvmpipe);
+   }
+
+   if (llvmpipe->cs_dirty & LP_CSNEW_SSBOS) {
+      lp_csctx_set_cs_ssbos(llvmpipe->csctx,
+                            ARRAY_SIZE(llvmpipe->ssbos[PIPE_SHADER_COMPUTE]),
+                            llvmpipe->ssbos[PIPE_SHADER_COMPUTE]);
+      update_csctx_ssbo(llvmpipe);
    }
 
    if (llvmpipe->cs_dirty & LP_CSNEW_SAMPLER_VIEW)
@@ -1056,6 +1106,9 @@ lp_csctx_destroy(struct lp_cs_context *csctx)
    }
    for (i = 0; i < ARRAY_SIZE(csctx->constants); i++) {
       pipe_resource_reference(&csctx->constants[i].current.buffer, NULL);
+   }
+   for (i = 0; i < ARRAY_SIZE(csctx->ssbos); i++) {
+      pipe_resource_reference(&csctx->ssbos[i].current.buffer, NULL);
    }
    FREE(csctx);
 }

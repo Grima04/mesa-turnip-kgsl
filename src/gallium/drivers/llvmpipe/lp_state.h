@@ -63,6 +63,7 @@
 #define LP_CSNEW_CONSTANTS 0x2
 #define LP_CSNEW_SAMPLER 0x4
 #define LP_CSNEW_SAMPLER_VIEW 0x8
+#define LP_CSNEW_SSBOS 0x10
 
 struct vertex_info;
 struct pipe_context;

@@ -3203,6 +3203,8 @@ llvmpipe_set_shader_buffers(struct pipe_context *pipe,
             data += buffer->buffer_offset;
          draw_set_mapped_shader_buffer(llvmpipe->draw, shader,
                                        i, data, size);
+      } else if (shader == PIPE_SHADER_COMPUTE) {
+	 llvmpipe->cs_dirty |= LP_CSNEW_SSBOS;
       } else if (shader == PIPE_SHADER_FRAGMENT) {
          llvmpipe->dirty |= LP_NEW_FS_SSBOS;
       }
