@@ -4185,8 +4185,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 				       AC_FLOAT_MODE_DEFAULT;
 
 	ac_llvm_context_init(&ctx.ac, ac_llvm, options->chip_class,
-			     options->family, float_mode, options->wave_size,
-			     options->wave_size);
+			     options->family, float_mode, options->wave_size, 64);
 	ctx.context = ctx.ac.context;
 
 	radv_nir_shader_info_init(&shader_info->info);
