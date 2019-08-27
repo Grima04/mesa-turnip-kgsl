@@ -3280,9 +3280,9 @@ validate_and_tokenise_sh_incl(struct gl_context *ctx,
    return true;
 }
 
-const char *
-_mesa_lookup_shader_include(struct gl_context *ctx, char *path,
-                            bool error_check)
+static struct sh_incl_path_ht_entry *
+lookup_shader_include(struct gl_context *ctx, char *path,
+                      bool error_check)
 {
    void *mem_ctx = ralloc_context(NULL);
    struct sh_incl_path_entry *path_list;
@@ -3313,7 +3313,17 @@ _mesa_lookup_shader_include(struct gl_context *ctx, char *path,
 
    ralloc_free(mem_ctx);
 
-   return sh_incl_ht_entry ? sh_incl_ht_entry->shader_source : NULL;
+   return sh_incl_ht_entry;
+}
+
+const char *
+_mesa_lookup_shader_include(struct gl_context *ctx, char *path,
+                            bool error_check)
+{
+   struct sh_incl_path_ht_entry *shader_include =
+      lookup_shader_include(ctx, path, error_check);
+
+   return shader_include ? shader_include->shader_source : NULL;
 }
 
 static char *
