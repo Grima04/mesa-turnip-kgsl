@@ -836,7 +836,11 @@ declare_vs_input_vgprs(isel_context *ctx, struct arg_info *args)
 {
    unsigned vgpr_idx = 0;
    add_arg(args, v1, &ctx->vertex_id, vgpr_idx++);
-/* if (!ctx->is_gs_copy_shader) */ {
+   if (ctx->options->chip_class >= GFX10) {
+      add_arg(args, v1, NULL, vgpr_idx++); /* unused */
+      add_arg(args, v1, &ctx->vs_prim_id, vgpr_idx++);
+      add_arg(args, v1, &ctx->instance_id, vgpr_idx++);
+   } else {
       if (ctx->options->key.vs.out.as_ls) {
          add_arg(args, v1, &ctx->rel_auto_id, vgpr_idx++);
          add_arg(args, v1, &ctx->instance_id, vgpr_idx++);
