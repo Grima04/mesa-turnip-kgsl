@@ -477,6 +477,8 @@ nir_dest_index(compiler_context *ctx, nir_dest *dst)
 
 /* MIR manipulation */
 
+unsigned mir_get_swizzle(midgard_instruction *ins, unsigned idx);
+void mir_set_swizzle(midgard_instruction *ins, unsigned idx, unsigned new);
 void mir_rewrite_index(compiler_context *ctx, unsigned old, unsigned new);
 void mir_rewrite_index_src(compiler_context *ctx, unsigned old, unsigned new);
 void mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new);

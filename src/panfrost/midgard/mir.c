@@ -38,7 +38,7 @@ void mir_rewrite_index_dst_single(midgard_instruction *ins, unsigned old, unsign
                 ins->dest = new;
 }
 
-static unsigned
+unsigned
 mir_get_swizzle(midgard_instruction *ins, unsigned idx)
 {
         if (ins->type == TAG_ALU_4) {
@@ -81,7 +81,7 @@ mir_get_swizzle(midgard_instruction *ins, unsigned idx)
         }
 }
 
-static void
+void
 mir_set_swizzle(midgard_instruction *ins, unsigned idx, unsigned new)
 {
         if (ins->type == TAG_ALU_4) {
