@@ -984,9 +984,10 @@ lp_build_store_rgba_soa(struct gallivm_state *gallivm,
                         const LLVMValueRef rgba_in[4])
 {
    enum pipe_format format = format_desc->format;
-   LLVMValueRef packed[4] = {};
+   LLVMValueRef packed[4];
    unsigned num_stores;
 
+   memset(packed, 0, sizeof(LLVMValueRef) * 4);
    if (format_desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
        format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
        format_desc->block.width == 1 &&
