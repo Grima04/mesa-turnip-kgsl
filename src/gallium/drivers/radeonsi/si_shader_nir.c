@@ -777,90 +777,13 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	info->num_inputs = nir->num_inputs;
 	info->num_outputs = nir->num_outputs;
 
-	struct set *ubo_set = _mesa_set_create(NULL, _mesa_hash_pointer,
-					       _mesa_key_pointer_equal);
-	struct set *ssbo_set = _mesa_set_create(NULL, _mesa_hash_pointer,
-						_mesa_key_pointer_equal);
-
-	/* Intialise const_file_max[0] */
-	info->const_file_max[0] = -1;
-
-	/* The first 8 are reserved for atomic counters using ssbo */
-	unsigned ssbo_idx = 8;
-
-	unsigned ubo_idx = 1;
-	nir_foreach_variable(variable, &nir->uniforms) {
-		const struct glsl_type *type = variable->type;
-		enum glsl_base_type base_type =
-			glsl_get_base_type(glsl_without_array(type));
-		unsigned aoa_size = MAX2(1, glsl_get_aoa_size(type));
-		unsigned loc = variable->data.driver_location / 4;
-		int slot_count = glsl_count_attribute_slots(type, false);
-		int max_slot = MAX2(info->const_file_max[0], (int) loc) + slot_count;
-
-		/* Gather buffers declared bitmasks. Note: radeonsi doesn't
-		 * really use the mask (other than ubo_idx == 1 for regular
-		 * uniforms) its really only used for getting the buffer count
-		 * so we don't need to worry about the ordering.
-		 */
-		if (variable->interface_type != NULL) {
-			if (variable->data.mode == nir_var_uniform ||
-			    variable->data.mode == nir_var_mem_ubo ||
-			    variable->data.mode == nir_var_mem_ssbo) {
-
-				struct set *buf_set = variable->data.mode == nir_var_mem_ssbo ?
-					ssbo_set : ubo_set;
-
-				unsigned block_count;
-				if (base_type != GLSL_TYPE_INTERFACE) {
-					struct set_entry *entry =
-						_mesa_set_search(buf_set, variable->interface_type);
-
-					/* Check if we have already processed
-					 * a member from this ubo.
-					 */
-					if (entry)
-						continue;
-
-					block_count = 1;
-				} else {
-					block_count = aoa_size;
-				}
-
-				if (variable->data.mode == nir_var_uniform ||
-				    variable->data.mode == nir_var_mem_ubo) {
-					info->const_buffers_declared |= u_bit_consecutive(ubo_idx, block_count);
-					ubo_idx += block_count;
-				} else {
-					assert(variable->data.mode == nir_var_mem_ssbo);
-
-					info->shader_buffers_declared |= u_bit_consecutive(ssbo_idx, block_count);
-					ssbo_idx += block_count;
-				}
-
-				_mesa_set_add(buf_set, variable->interface_type);
-			}
-
-			continue;
-		}
-
-		/* We rely on the fact that nir_lower_samplers_as_deref has
-		 * eliminated struct dereferences.
-		 */
-		if (base_type == GLSL_TYPE_SAMPLER && !variable->data.bindless) {
-			info->samplers_declared |=
-				u_bit_consecutive(variable->data.binding, aoa_size);
-		} else if (base_type == GLSL_TYPE_IMAGE && !variable->data.bindless) {
-			info->images_declared |=
-				u_bit_consecutive(variable->data.binding, aoa_size);
-		} else if (base_type != GLSL_TYPE_ATOMIC_UINT) {
-			info->const_buffers_declared |= 1;
-			info->const_file_max[0] = max_slot;
-		}
-	}
-
-	_mesa_set_destroy(ubo_set, NULL);
-	_mesa_set_destroy(ssbo_set, NULL);
+	info->const_file_max[0] = nir->num_uniforms - 1;
+	info->shader_buffers_declared = u_bit_consecutive(0, nir->info.num_ssbos);
+	info->const_buffers_declared = u_bit_consecutive(1, nir->info.num_ubos);
+	if (nir->num_uniforms > 0)
+		info->const_buffers_declared |= 1;
+	info->images_declared = u_bit_consecutive(0, nir->info.num_images);
+	info->samplers_declared = u_bit_consecutive(0, nir->info.num_textures);
 
 	info->num_written_clipdistance = nir->info.clip_distance_array_size;
 	info->num_written_culldistance = nir->info.cull_distance_array_size;
