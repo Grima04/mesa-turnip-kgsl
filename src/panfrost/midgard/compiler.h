@@ -333,9 +333,6 @@ mir_next_op(struct midgard_instruction *ins)
 #define mir_foreach_block(ctx, v) \
         list_for_each_entry(struct midgard_block, v, &ctx->blocks, link)
 
-#define mir_foreach_block_safe(ctx, v) \
-        list_for_each_entry_safe(struct midgard_block, v, &ctx->blocks, link)
-
 #define mir_foreach_block_from(ctx, from, v) \
         list_for_each_entry_from(struct midgard_block, v, from, &ctx->blocks, link)
 
@@ -394,15 +391,6 @@ mir_next_op(struct midgard_instruction *ins)
 
 #define mir_foreach_src(ins, v) \
         for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
-
-static inline void mir_remove_block(struct midgard_block *block)
-{
-        mir_foreach_instr_in_block_safe(block, ins)
-                mir_remove_instruction(ins);
-
-        list_del(&block->link);
-        free(block);
-}
 
 static inline midgard_instruction *
 mir_last_in_block(struct midgard_block *block)
