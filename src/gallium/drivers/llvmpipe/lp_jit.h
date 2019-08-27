@@ -45,6 +45,7 @@
 
 struct lp_build_format_cache;
 struct lp_fragment_shader_variant;
+struct lp_compute_shader_variant;
 struct llvmpipe_screen;
 
 
@@ -292,6 +293,94 @@ typedef void
                     unsigned depth_stride);
 
 
+struct lp_jit_cs_thread_data
+{
+   struct lp_build_format_cache *cache;
+   void *shared;
+};
+
+enum {
+   LP_JIT_CS_THREAD_DATA_CACHE = 0,
+   LP_JIT_CS_THREAD_DATA_SHARED = 1,
+   LP_JIT_CS_THREAD_DATA_COUNT
+};
+
+
+#define lp_jit_cs_thread_data_cache(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_THREAD_DATA_CACHE, "cache")
+
+#define lp_jit_cs_thread_data_shared(_gallivm, _ptr) \
+   lp_build_struct_get(_gallivm, _ptr, LP_JIT_CS_THREAD_DATA_SHARED, "shared")
+
+struct lp_jit_cs_context
+{
+   const float *constants[LP_MAX_TGSI_CONST_BUFFERS];
+   int num_constants[LP_MAX_TGSI_CONST_BUFFERS];
+
+   struct lp_jit_texture textures[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct lp_jit_sampler samplers[PIPE_MAX_SAMPLERS];
+   struct lp_jit_image images[PIPE_MAX_SHADER_IMAGES];
+
+   const uint32_t *ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+   int num_ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+
+   uint32_t shared_size;
+};
+
+/**
+ * These enum values must match the position of the fields in the
+ * lp_jit_context struct above.
+ */
+enum {
+   LP_JIT_CS_CTX_CONSTANTS = 0,
+   LP_JIT_CS_CTX_NUM_CONSTANTS,
+   LP_JIT_CS_CTX_TEXTURES, /* must match the LP_JIT_CTX_TEXTURES */
+   LP_JIT_CS_CTX_SAMPLERS,
+   LP_JIT_CS_CTX_IMAGES,
+   LP_JIT_CS_CTX_SSBOS,
+   LP_JIT_CS_CTX_NUM_SSBOS,
+   LP_JIT_CS_CTX_SHARED_SIZE,
+   LP_JIT_CS_CTX_COUNT
+};
+
+#define lp_jit_cs_context_constants(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_CONSTANTS, "constants")
+
+#define lp_jit_cs_context_num_constants(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_NUM_CONSTANTS, "num_constants")
+
+#define lp_jit_cs_context_textures(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_TEXTURES, "textures")
+
+#define lp_jit_cs_context_samplers(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_SAMPLERS, "samplers")
+
+#define lp_jit_cs_context_images(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_IMAGES, "images")
+
+#define lp_jit_cs_context_ssbos(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_SSBOS, "ssbos")
+
+#define lp_jit_cs_context_num_ssbos(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_NUM_SSBOS, "num_ssbos")
+
+#define lp_jit_cs_context_shared_size(_gallivm, _ptr) \
+   lp_build_struct_get_ptr(_gallivm, _ptr, LP_JIT_CS_CTX_SHARED_SIZE, "shared_size")
+
+
+typedef void
+(*lp_jit_cs_func)(const struct lp_jit_cs_context *context,
+                  uint32_t x,
+                  uint32_t y,
+                  uint32_t z,
+                  uint32_t grid_x,
+                  uint32_t grid_y,
+                  uint32_t grid_z,
+                  uint32_t grid_size_x,
+                  uint32_t grid_size_y,
+                  uint32_t grid_size_z,
+                  struct lp_jit_cs_thread_data *thread_data);
+
 void
 lp_jit_screen_cleanup(struct llvmpipe_screen *screen);
 
@@ -303,5 +392,6 @@ lp_jit_screen_init(struct llvmpipe_screen *screen);
 void
 lp_jit_init_types(struct lp_fragment_shader_variant *lp);
 
-
+void
+lp_jit_init_cs_types(struct lp_compute_shader_variant *lp);
 #endif /* LP_JIT_H */

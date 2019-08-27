@@ -30,6 +30,8 @@
 #include "util/u_thread.h"
 #include "pipe/p_state.h"
 
+#include "gallivm/lp_bld.h"
+#include "lp_jit.h"
 struct lp_compute_shader_variant;
 
 struct lp_compute_shader_variant_key
@@ -47,6 +49,9 @@ struct lp_compute_shader_variant
    struct lp_compute_shader_variant_key key;
 
    struct gallivm_state *gallivm;
+
+   LLVMTypeRef jit_cs_context_ptr_type;
+   LLVMTypeRef jit_cs_thread_data_ptr_type;
 };
 
 struct lp_compute_shader {
@@ -56,6 +61,7 @@ struct lp_compute_shader {
 };
 
 struct lp_cs_exec {
+   struct lp_jit_cs_context jit_context;
    struct lp_compute_shader_variant *variant;
 };
 
