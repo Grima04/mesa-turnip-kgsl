@@ -98,7 +98,9 @@ llvmpipe_bind_sampler_states(struct pipe_context *pipe,
                         llvmpipe->samplers[shader],
                         llvmpipe->num_samplers[shader]);
    }
-   else {
+   else if (shader == PIPE_SHADER_COMPUTE) {
+      llvmpipe->cs_dirty |= LP_CSNEW_SAMPLER;
+   } else {
       llvmpipe->dirty |= LP_NEW_SAMPLER;
    }
 }
@@ -150,7 +152,9 @@ llvmpipe_set_sampler_views(struct pipe_context *pipe,
                              llvmpipe->sampler_views[shader],
                              llvmpipe->num_sampler_views[shader]);
    }
-   else {
+   else if (shader == PIPE_SHADER_COMPUTE) {
+      llvmpipe->cs_dirty |= LP_CSNEW_SAMPLER_VIEW;
+   } else {
       llvmpipe->dirty |= LP_NEW_SAMPLER_VIEW;
    }
 }

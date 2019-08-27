@@ -31,13 +31,17 @@
 #include "pipe/p_state.h"
 
 #include "gallivm/lp_bld.h"
-#include "gallivm/lp_bld_tgsi.h" /* for lp_tgsi_info */
+#include "gallivm/lp_bld_sample.h" /* for struct lp_sampler_static_state */
 #include "lp_jit.h"
+#include "lp_state_fs.h"
 
 struct lp_compute_shader_variant;
 
 struct lp_compute_shader_variant_key
 {
+   unsigned nr_samplers:8;
+   unsigned nr_sampler_views:8;
+   struct lp_sampler_static_state state[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 };
 
 struct lp_cs_variant_list_item
@@ -92,6 +96,8 @@ struct lp_cs_context {
 
    struct {
       struct lp_cs_exec current;
+      struct pipe_resource *current_tex[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+      unsigned current_tex_num;
    } cs;
 
    /** compute shader constants */

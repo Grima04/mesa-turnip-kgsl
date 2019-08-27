@@ -25,6 +25,8 @@
 #include "util/u_memory.h"
 #include "util/simple_list.h"
 #include "util/os_time.h"
+#include "util/u_dump.h"
+#include "util/u_string.h"
 #include "tgsi/tgsi_dump.h"
 #include "tgsi/tgsi_parse.h"
 #include "gallivm/lp_bld_const.h"
@@ -39,7 +41,9 @@
 #include "lp_state.h"
 #include "lp_perf.h"
 #include "lp_screen.h"
+#include "lp_memory.h"
 #include "lp_cs_tpool.h"
+#include "state_tracker/sw_winsys.h"
 
 struct lp_cs_job_info {
    unsigned grid_size[3];
@@ -53,6 +57,7 @@ generate_compute(struct llvmpipe_context *lp,
                  struct lp_compute_shader_variant *variant)
 {
    struct gallivm_state *gallivm = variant->gallivm;
+   const struct lp_compute_shader_variant_key *key = &variant->key;
    char func_name[64], func_name_coro[64];
    LLVMTypeRef arg_types[13];
    LLVMTypeRef func_type, coro_func_type;
@@ -64,6 +69,7 @@ generate_compute(struct llvmpipe_context *lp,
    LLVMValueRef thread_data_ptr;
    LLVMBasicBlockRef block;
    LLVMBuilderRef builder;
+   struct lp_build_sampler_soa *sampler;
    LLVMValueRef function, coro;
    struct lp_type cs_type;
    unsigned i;
@@ -149,6 +155,7 @@ generate_compute(struct llvmpipe_context *lp,
    builder = gallivm->builder;
    assert(builder);
    LLVMPositionBuilderAtEnd(builder, block);
+   sampler = lp_llvm_sampler_soa_create(key->state);
 
    struct lp_build_loop_state loop_state[4];
    LLVMValueRef num_x_loop;
@@ -342,6 +349,7 @@ generate_compute(struct llvmpipe_context *lp,
       params.const_sizes_ptr = num_consts_ptr;
       params.system_values = &system_values;
       params.context_ptr = context_ptr;
+      params.sampler = sampler;
       params.info = &shader->info.base;
       params.ssbo_ptr = ssbo_ptr;
       params.ssbo_sizes_ptr = num_ssbo_ptr;
@@ -364,6 +372,8 @@ generate_compute(struct llvmpipe_context *lp,
       LLVMBuildRet(builder, coro_hdl);
    }
 
+   sampler->destroy(sampler);
+
    gallivm_verify_function(gallivm, coro);
    gallivm_verify_function(gallivm, function);
 }
@@ -373,7 +383,7 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
                                      const struct pipe_compute_state *templ)
 {
    struct lp_compute_shader *shader;
-
+   int nr_samplers, nr_sampler_views;
    shader = CALLOC_STRUCT(lp_compute_shader);
    if (!shader)
       return NULL;
@@ -384,6 +394,10 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
    lp_build_tgsi_info(shader->base.tokens, &shader->info);
    make_empty_list(&shader->variants);
 
+   nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
+   nr_sampler_views = shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
+   shader->variant_key_size = Offset(struct lp_compute_shader_variant_key,
+                                     state[MAX2(nr_samplers, nr_sampler_views)]);
    return shader;
 }
 
@@ -455,13 +469,93 @@ make_variant_key(struct llvmpipe_context *lp,
                  struct lp_compute_shader *shader,
                  struct lp_compute_shader_variant_key *key)
 {
+   int i;
+
    memset(key, 0, shader->variant_key_size);
+
+   /* This value will be the same for all the variants of a given shader:
+    */
+   key->nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
+
+   for(i = 0; i < key->nr_samplers; ++i) {
+      if(shader->info.base.file_mask[TGSI_FILE_SAMPLER] & (1 << i)) {
+         lp_sampler_static_sampler_state(&key->state[i].sampler_state,
+                                         lp->samplers[PIPE_SHADER_COMPUTE][i]);
+      }
+   }
+
+   /*
+    * XXX If TGSI_FILE_SAMPLER_VIEW exists assume all texture opcodes
+    * are dx10-style? Can't really have mixed opcodes, at least not
+    * if we want to skip the holes here (without rescanning tgsi).
+    */
+   if (shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] != -1) {
+      key->nr_sampler_views = shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
+      for(i = 0; i < key->nr_sampler_views; ++i) {
+         /*
+          * Note sview may exceed what's representable by file_mask.
+          * This will still work, the only downside is that not actually
+          * used views may be included in the shader key.
+          */
+         if(shader->info.base.file_mask[TGSI_FILE_SAMPLER_VIEW] & (1u << (i & 31))) {
+            lp_sampler_static_texture_state(&key->state[i].texture_state,
+                                            lp->sampler_views[PIPE_SHADER_COMPUTE][i]);
+         }
+      }
+   }
+   else {
+      key->nr_sampler_views = key->nr_samplers;
+      for(i = 0; i < key->nr_sampler_views; ++i) {
+         if(shader->info.base.file_mask[TGSI_FILE_SAMPLER] & (1 << i)) {
+            lp_sampler_static_texture_state(&key->state[i].texture_state,
+                                            lp->sampler_views[PIPE_SHADER_COMPUTE][i]);
+         }
+      }
+   }
+
 }
 
 static void
 dump_cs_variant_key(const struct lp_compute_shader_variant_key *key)
 {
+   int i;
    debug_printf("cs variant %p:\n", (void *) key);
+
+   for (i = 0; i < key->nr_samplers; ++i) {
+      const struct lp_static_sampler_state *sampler = &key->state[i].sampler_state;
+      debug_printf("sampler[%u] = \n", i);
+      debug_printf("  .wrap = %s %s %s\n",
+                   util_str_tex_wrap(sampler->wrap_s, TRUE),
+                   util_str_tex_wrap(sampler->wrap_t, TRUE),
+                   util_str_tex_wrap(sampler->wrap_r, TRUE));
+      debug_printf("  .min_img_filter = %s\n",
+                   util_str_tex_filter(sampler->min_img_filter, TRUE));
+      debug_printf("  .min_mip_filter = %s\n",
+                   util_str_tex_mipfilter(sampler->min_mip_filter, TRUE));
+      debug_printf("  .mag_img_filter = %s\n",
+                   util_str_tex_filter(sampler->mag_img_filter, TRUE));
+      if (sampler->compare_mode != PIPE_TEX_COMPARE_NONE)
+         debug_printf("  .compare_func = %s\n", util_str_func(sampler->compare_func, TRUE));
+      debug_printf("  .normalized_coords = %u\n", sampler->normalized_coords);
+      debug_printf("  .min_max_lod_equal = %u\n", sampler->min_max_lod_equal);
+      debug_printf("  .lod_bias_non_zero = %u\n", sampler->lod_bias_non_zero);
+      debug_printf("  .apply_min_lod = %u\n", sampler->apply_min_lod);
+      debug_printf("  .apply_max_lod = %u\n", sampler->apply_max_lod);
+   }
+   for (i = 0; i < key->nr_sampler_views; ++i) {
+      const struct lp_static_texture_state *texture = &key->state[i].texture_state;
+      debug_printf("texture[%u] = \n", i);
+      debug_printf("  .format = %s\n",
+                   util_format_name(texture->format));
+      debug_printf("  .target = %s\n",
+                   util_str_tex_target(texture->target, TRUE));
+      debug_printf("  .level_zero_only = %u\n",
+                   texture->level_zero_only);
+      debug_printf("  .pot = %u %u %u\n",
+                   texture->pot_width,
+                   texture->pot_height,
+                   texture->pot_depth);
+   }
 }
 
 static void
@@ -622,6 +716,176 @@ llvmpipe_update_cs(struct llvmpipe_context *lp)
    lp_cs_ctx_set_cs_variant(lp->csctx, variant);
 }
 
+/**
+ * Called during state validation when LP_CSNEW_SAMPLER_VIEW is set.
+ */
+static void
+lp_csctx_set_sampler_views(struct lp_cs_context *csctx,
+                           unsigned num,
+                           struct pipe_sampler_view **views)
+{
+   unsigned i, max_tex_num;
+
+   LP_DBG(DEBUG_SETUP, "%s\n", __FUNCTION__);
+
+   assert(num <= PIPE_MAX_SHADER_SAMPLER_VIEWS);
+
+   max_tex_num = MAX2(num, csctx->cs.current_tex_num);
+
+   for (i = 0; i < max_tex_num; i++) {
+      struct pipe_sampler_view *view = i < num ? views[i] : NULL;
+
+      if (view) {
+         struct pipe_resource *res = view->texture;
+         struct llvmpipe_resource *lp_tex = llvmpipe_resource(res);
+         struct lp_jit_texture *jit_tex;
+         jit_tex = &csctx->cs.current.jit_context.textures[i];
+
+         /* We're referencing the texture's internal data, so save a
+          * reference to it.
+          */
+         pipe_resource_reference(&csctx->cs.current_tex[i], res);
+
+         if (!lp_tex->dt) {
+            /* regular texture - csctx array of mipmap level offsets */
+            int j;
+            unsigned first_level = 0;
+            unsigned last_level = 0;
+
+            if (llvmpipe_resource_is_texture(res)) {
+               first_level = view->u.tex.first_level;
+               last_level = view->u.tex.last_level;
+               assert(first_level <= last_level);
+               assert(last_level <= res->last_level);
+               jit_tex->base = lp_tex->tex_data;
+            }
+            else {
+              jit_tex->base = lp_tex->data;
+            }
+            if (LP_PERF & PERF_TEX_MEM) {
+               /* use dummy tile memory */
+               jit_tex->base = lp_dummy_tile;
+               jit_tex->width = TILE_SIZE/8;
+               jit_tex->height = TILE_SIZE/8;
+               jit_tex->depth = 1;
+               jit_tex->first_level = 0;
+               jit_tex->last_level = 0;
+               jit_tex->mip_offsets[0] = 0;
+               jit_tex->row_stride[0] = 0;
+               jit_tex->img_stride[0] = 0;
+            }
+            else {
+               jit_tex->width = res->width0;
+               jit_tex->height = res->height0;
+               jit_tex->depth = res->depth0;
+               jit_tex->first_level = first_level;
+               jit_tex->last_level = last_level;
+
+               if (llvmpipe_resource_is_texture(res)) {
+                  for (j = first_level; j <= last_level; j++) {
+                     jit_tex->mip_offsets[j] = lp_tex->mip_offsets[j];
+                     jit_tex->row_stride[j] = lp_tex->row_stride[j];
+                     jit_tex->img_stride[j] = lp_tex->img_stride[j];
+                  }
+
+                  if (res->target == PIPE_TEXTURE_1D_ARRAY ||
+                      res->target == PIPE_TEXTURE_2D_ARRAY ||
+                      res->target == PIPE_TEXTURE_CUBE ||
+                      res->target == PIPE_TEXTURE_CUBE_ARRAY) {
+                     /*
+                      * For array textures, we don't have first_layer, instead
+                      * adjust last_layer (stored as depth) plus the mip level offsets
+                      * (as we have mip-first layout can't just adjust base ptr).
+                      * XXX For mip levels, could do something similar.
+                      */
+                     jit_tex->depth = view->u.tex.last_layer - view->u.tex.first_layer + 1;
+                     for (j = first_level; j <= last_level; j++) {
+                        jit_tex->mip_offsets[j] += view->u.tex.first_layer *
+                                                   lp_tex->img_stride[j];
+                     }
+                     if (view->target == PIPE_TEXTURE_CUBE ||
+                         view->target == PIPE_TEXTURE_CUBE_ARRAY) {
+                        assert(jit_tex->depth % 6 == 0);
+                     }
+                     assert(view->u.tex.first_layer <= view->u.tex.last_layer);
+                     assert(view->u.tex.last_layer < res->array_size);
+                  }
+               }
+               else {
+                  /*
+                   * For buffers, we don't have "offset", instead adjust
+                   * the size (stored as width) plus the base pointer.
+                   */
+                  unsigned view_blocksize = util_format_get_blocksize(view->format);
+                  /* probably don't really need to fill that out */
+                  jit_tex->mip_offsets[0] = 0;
+                  jit_tex->row_stride[0] = 0;
+                  jit_tex->img_stride[0] = 0;
+
+                  /* everything specified in number of elements here. */
+                  jit_tex->width = view->u.buf.size / view_blocksize;
+                  jit_tex->base = (uint8_t *)jit_tex->base + view->u.buf.offset;
+                  /* XXX Unsure if we need to sanitize parameters? */
+                  assert(view->u.buf.offset + view->u.buf.size <= res->width0);
+               }
+            }
+         }
+         else {
+            /* display target texture/surface */
+            /*
+             * XXX: Where should this be unmapped?
+             */
+            struct llvmpipe_screen *screen = llvmpipe_screen(res->screen);
+            struct sw_winsys *winsys = screen->winsys;
+            jit_tex->base = winsys->displaytarget_map(winsys, lp_tex->dt,
+                                                         PIPE_TRANSFER_READ);
+            jit_tex->row_stride[0] = lp_tex->row_stride[0];
+            jit_tex->img_stride[0] = lp_tex->img_stride[0];
+            jit_tex->mip_offsets[0] = 0;
+            jit_tex->width = res->width0;
+            jit_tex->height = res->height0;
+            jit_tex->depth = res->depth0;
+            jit_tex->first_level = jit_tex->last_level = 0;
+            assert(jit_tex->base);
+         }
+      }
+      else {
+         pipe_resource_reference(&csctx->cs.current_tex[i], NULL);
+      }
+   }
+   csctx->cs.current_tex_num = num;
+}
+
+
+/**
+ * Called during state validation when LP_NEW_SAMPLER is set.
+ */
+static void
+lp_csctx_set_sampler_state(struct lp_cs_context *csctx,
+                           unsigned num,
+                           struct pipe_sampler_state **samplers)
+{
+   unsigned i;
+
+   LP_DBG(DEBUG_SETUP, "%s\n", __FUNCTION__);
+
+   assert(num <= PIPE_MAX_SAMPLERS);
+
+   for (i = 0; i < PIPE_MAX_SAMPLERS; i++) {
+      const struct pipe_sampler_state *sampler = i < num ? samplers[i] : NULL;
+
+      if (sampler) {
+         struct lp_jit_sampler *jit_sam;
+         jit_sam = &csctx->cs.current.jit_context.samplers[i];
+
+         jit_sam->min_lod = sampler->min_lod;
+         jit_sam->max_lod = sampler->max_lod;
+         jit_sam->lod_bias = sampler->lod_bias;
+         COPY_4V(jit_sam->border_color, sampler->border_color.f);
+      }
+   }
+}
+
 static void
 lp_csctx_set_cs_constants(struct lp_cs_context *csctx,
                           unsigned num,
@@ -685,6 +949,15 @@ llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
       update_csctx_consts(llvmpipe);
    }
 
+   if (llvmpipe->cs_dirty & LP_CSNEW_SAMPLER_VIEW)
+      lp_csctx_set_sampler_views(llvmpipe->csctx,
+                                 llvmpipe->num_sampler_views[PIPE_SHADER_COMPUTE],
+                                 llvmpipe->sampler_views[PIPE_SHADER_COMPUTE]);
+
+   if (llvmpipe->cs_dirty & LP_CSNEW_SAMPLER)
+      lp_csctx_set_sampler_state(llvmpipe->csctx,
+                                 llvmpipe->num_samplers[PIPE_SHADER_COMPUTE],
+                                 llvmpipe->samplers[PIPE_SHADER_COMPUTE]);
    llvmpipe->cs_dirty = 0;
 }
 
@@ -778,6 +1051,9 @@ void
 lp_csctx_destroy(struct lp_cs_context *csctx)
 {
    unsigned i;
+   for (i = 0; i < ARRAY_SIZE(csctx->cs.current_tex); i++) {
+      pipe_resource_reference(&csctx->cs.current_tex[i], NULL);
+   }
    for (i = 0; i < ARRAY_SIZE(csctx->constants); i++) {
       pipe_resource_reference(&csctx->constants[i].current.buffer, NULL);
    }
