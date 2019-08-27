@@ -152,6 +152,7 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
 
    make_empty_list(&llvmpipe->setup_variants_list);
 
+   make_empty_list(&llvmpipe->cs_variants_list);
 
    llvmpipe->pipe.screen = screen;
    llvmpipe->pipe.priv = priv;

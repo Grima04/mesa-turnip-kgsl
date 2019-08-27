@@ -49,6 +49,7 @@ struct draw_context;
 struct draw_stage;
 struct draw_vertex_shader;
 struct lp_fragment_shader;
+struct lp_compute_shader;
 struct lp_blend_state;
 struct lp_setup_context;
 struct lp_setup_variant;
@@ -66,6 +67,7 @@ struct llvmpipe_context {
    struct lp_fragment_shader *fs;
    struct draw_vertex_shader *vs;
    const struct lp_geometry_shader *gs;
+   struct lp_compute_shader *cs;
    const struct lp_velems_state *velems;
    const struct lp_so_state *so;
 
@@ -150,6 +152,10 @@ struct llvmpipe_context {
    struct lp_setup_variant_list_item setup_variants_list;
    unsigned nr_setup_variants;
 
+   /** List of all compute shader variants */
+   struct lp_cs_variant_list_item cs_variants_list;
+   unsigned nr_cs_variants;
+   unsigned nr_cs_instrs;
    struct lp_cs_context *csctx;
 
    /** Conditional query object and mode */

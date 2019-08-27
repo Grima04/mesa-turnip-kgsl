@@ -30,8 +30,41 @@
 #include "util/u_thread.h"
 #include "pipe/p_state.h"
 
+struct lp_compute_shader_variant;
+
+struct lp_compute_shader_variant_key
+{
+};
+
+struct lp_cs_variant_list_item
+{
+   struct lp_compute_shader_variant *base;
+   struct lp_cs_variant_list_item *next, *prev;
+};
+
+struct lp_compute_shader_variant
+{
+   struct lp_compute_shader_variant_key key;
+
+   struct gallivm_state *gallivm;
+};
+
+struct lp_compute_shader {
+   struct pipe_shader_state base;
+
+   struct lp_cs_variant_list_item variants;
+};
+
+struct lp_cs_exec {
+   struct lp_compute_shader_variant *variant;
+};
+
 struct lp_cs_context {
    struct pipe_context *pipe;
+
+   struct {
+      struct lp_cs_exec current;
+   } cs;
 };
 
 struct lp_cs_context *lp_csctx_create(struct pipe_context *pipe);
