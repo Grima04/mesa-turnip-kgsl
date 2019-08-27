@@ -39,11 +39,7 @@
 #include <inttypes.h>
 #include <sys/utsname.h>
 
-#ifndef HAVE_LLVM
-#define HAVE_LLVM 0
-#endif
-
-#if HAVE_LLVM
+#ifdef LLVM_AVAILABLE
 #include <llvm-c/TargetMachine.h>
 #endif
 
@@ -1202,7 +1198,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 
 	snprintf(rscreen->renderer_string, sizeof(rscreen->renderer_string),
 		 "%s (%sDRM %i.%i.%i%s"
-#if HAVE_LLVM > 0
+#ifdef LLVM_AVAILABLE
 		 ", LLVM " MESA_LLVM_VERSION_STRING
 #endif
 		 ")",
