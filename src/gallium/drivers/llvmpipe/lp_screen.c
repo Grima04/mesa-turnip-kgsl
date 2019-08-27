@@ -217,7 +217,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
       return 0;
    case PIPE_CAP_COMPUTE:
-      return 0;
+      return GALLIVM_HAVE_CORO;
    case PIPE_CAP_USER_VERTEX_BUFFERS:
       return 1;
    case PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY:
