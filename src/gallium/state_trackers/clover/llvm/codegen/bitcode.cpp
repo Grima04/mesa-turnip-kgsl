@@ -38,7 +38,8 @@
 #include "util/algorithm.hpp"
 
 #include <map>
-#if HAVE_LLVM < 0x0400
+#include <llvm/Config/llvm-config.h>
+#if LLVM_VERSION_MAJOR < 4
 #include <llvm/Bitcode/ReaderWriter.h>
 #else
 #include <llvm/Bitcode/BitcodeReader.h>
