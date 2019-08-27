@@ -353,6 +353,7 @@ test-llvmpipe-gles2:
   extends: .deqp-test
   dependencies:
     - meson-main
+  needs: [meson-main]
 
 test-softpipe-gles2:
   parallel: 4
@@ -365,6 +366,7 @@ test-softpipe-gles2:
   extends: .deqp-test
   dependencies:
     - meson-main
+  needs: [meson-main]
 
 # The GLES2 CTS run takes about 8 minutes of CPU time, while GLES3 is
 # 25 minutes.  Until we can get its runtime down, just do a partial
@@ -381,3 +383,4 @@ test-softpipe-gles3-limited:
   extends: .deqp-test
   dependencies:
     - meson-main
+  needs: [meson-main]
