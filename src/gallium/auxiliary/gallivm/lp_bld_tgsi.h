@@ -67,7 +67,7 @@ struct lp_build_mask_context;
 struct gallivm_state;
 struct lp_derivatives;
 struct lp_build_tgsi_gs_iface;
-
+struct lp_build_coro_suspend_info;
 
 enum lp_build_tex_modifier {
    LP_BLD_TEX_MODIFIER_NONE = 0,
@@ -252,6 +252,7 @@ struct lp_build_tgsi_params {
    LLVMValueRef ssbo_sizes_ptr;
    const struct lp_build_image_soa *image;
    LLVMValueRef shared_ptr;
+   const struct lp_build_coro_suspend_info *coro;
 };
 
 void
@@ -485,6 +486,8 @@ struct lp_build_tgsi_soa_context
    LLVMValueRef ssbo_sizes[LP_MAX_TGSI_SHADER_BUFFERS];
 
    LLVMValueRef shared_ptr;
+
+   const struct lp_build_coro_suspend_info *coro;
 
    const struct lp_build_sampler_soa *sampler;
    const struct lp_build_image_soa *image;

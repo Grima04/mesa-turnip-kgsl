@@ -60,6 +60,7 @@
 #include "lp_bld_misc.h"
 #include "lp_bld_swizzle.h"
 #include "lp_bld_flow.h"
+#include "lp_bld_coro.h"
 #include "lp_bld_quad.h"
 #include "lp_bld_tgsi.h"
 #include "lp_bld_limits.h"
@@ -3896,6 +3897,21 @@ atomic_emit(
 }
 
 static void
+barrier_emit(
+   const struct lp_build_tgsi_action * action,
+   struct lp_build_tgsi_context * bld_base,
+   struct lp_build_emit_data * emit_data)
+{
+   struct lp_build_tgsi_soa_context *bld = lp_soa_context(bld_base);
+   struct gallivm_state * gallivm = bld_base->base.gallivm;
+
+   LLVMBasicBlockRef resume = lp_build_insert_new_block(gallivm, "resume");
+
+   lp_build_coro_suspend_switch(gallivm, bld->coro, resume, false);
+   LLVMPositionBuilderAtEnd(gallivm->builder, resume);
+}
+
+static void
 membar_emit(
    const struct lp_build_tgsi_action * action,
    struct lp_build_tgsi_context * bld_base,
@@ -4413,6 +4429,7 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.thread_data_ptr = params->thread_data_ptr;
    bld.image = params->image;
    bld.shared_ptr = params->shared_ptr;
+   bld.coro = params->coro;
 
    /*
     * If the number of temporaries is rather large then we just
@@ -4513,6 +4530,8 @@ lp_build_tgsi_soa(struct gallivm_state *gallivm,
    bld.bld_base.op_actions[TGSI_OPCODE_ATOMIMAX].emit = atomic_emit;
 
    bld.bld_base.op_actions[TGSI_OPCODE_MEMBAR].emit = membar_emit;
+   bld.bld_base.op_actions[TGSI_OPCODE_BARRIER].emit = barrier_emit;
+
    if (params->gs_iface) {
       /* There's no specific value for this because it should always
        * be set, but apps using ext_geometry_shader4 quite often
