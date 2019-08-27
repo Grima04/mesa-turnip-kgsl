@@ -623,10 +623,67 @@ llvmpipe_update_cs(struct llvmpipe_context *lp)
 }
 
 static void
+lp_csctx_set_cs_constants(struct lp_cs_context *csctx,
+                          unsigned num,
+                          struct pipe_constant_buffer *buffers)
+{
+   unsigned i;
+
+   LP_DBG(DEBUG_SETUP, "%s %p\n", __FUNCTION__, (void *) buffers);
+
+   assert(num <= ARRAY_SIZE(csctx->constants));
+
+   for (i = 0; i < num; ++i) {
+      util_copy_constant_buffer(&csctx->constants[i].current, &buffers[i]);
+   }
+   for (; i < ARRAY_SIZE(csctx->constants); i++) {
+      util_copy_constant_buffer(&csctx->constants[i].current, NULL);
+   }
+}
+
+static void
+update_csctx_consts(struct llvmpipe_context *llvmpipe)
+{
+   struct lp_cs_context *csctx = llvmpipe->csctx;
+   int i;
+
+   for (i = 0; i < ARRAY_SIZE(csctx->constants); ++i) {
+      struct pipe_resource *buffer = csctx->constants[i].current.buffer;
+      const ubyte *current_data = NULL;
+
+      if (buffer) {
+         /* resource buffer */
+         current_data = (ubyte *) llvmpipe_resource_data(buffer);
+      }
+      else if (csctx->constants[i].current.user_buffer) {
+         /* user-space buffer */
+         current_data = (ubyte *) csctx->constants[i].current.user_buffer;
+      }
+
+      if (current_data) {
+         current_data += csctx->constants[i].current.buffer_offset;
+
+         csctx->cs.current.jit_context.constants[i] = (const float *)current_data;
+         csctx->cs.current.jit_context.num_constants[i] = csctx->constants[i].current.buffer_size;
+      } else {
+         csctx->cs.current.jit_context.constants[i] = NULL;
+         csctx->cs.current.jit_context.num_constants[i] = 0;
+      }
+   }
+}
+
+static void
 llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
 {
    if (llvmpipe->cs_dirty & (LP_CSNEW_CS))
       llvmpipe_update_cs(llvmpipe);
+
+   if (llvmpipe->cs_dirty & LP_CSNEW_CONSTANTS) {
+      lp_csctx_set_cs_constants(llvmpipe->csctx,
+                                ARRAY_SIZE(llvmpipe->constants[PIPE_SHADER_COMPUTE]),
+                                llvmpipe->constants[PIPE_SHADER_COMPUTE]);
+      update_csctx_consts(llvmpipe);
+   }
 
    llvmpipe->cs_dirty = 0;
 }
@@ -720,6 +777,10 @@ llvmpipe_init_compute_funcs(struct llvmpipe_context *llvmpipe)
 void
 lp_csctx_destroy(struct lp_cs_context *csctx)
 {
+   unsigned i;
+   for (i = 0; i < ARRAY_SIZE(csctx->constants); i++) {
+      pipe_resource_reference(&csctx->constants[i].current.buffer, NULL);
+   }
    FREE(csctx);
 }
 

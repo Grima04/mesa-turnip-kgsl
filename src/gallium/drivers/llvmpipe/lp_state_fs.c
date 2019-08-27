@@ -3170,9 +3170,10 @@ llvmpipe_set_constant_buffer(struct pipe_context *pipe,
       draw_set_mapped_constant_buffer(llvmpipe->draw, shader,
                                       index, data, size);
    }
-   else {
+   else if (shader == PIPE_SHADER_COMPUTE)
+      llvmpipe->cs_dirty |= LP_CSNEW_CONSTANTS;
+   else
       llvmpipe->dirty |= LP_NEW_FS_CONSTANTS;
-   }
 
    if (cb && cb->user_buffer) {
       pipe_resource_reference(&constants, NULL);
