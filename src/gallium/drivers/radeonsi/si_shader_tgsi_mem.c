@@ -22,6 +22,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <llvm/Config/llvm-config.h>
+
 #include "si_shader_internal.h"
 #include "si_pipe.h"
 #include "sid.h"
@@ -742,7 +744,7 @@ static void atomic_emit_memory(struct si_shader_context *ctx,
 	LLVMBuilderRef builder = ctx->ac.builder;
 	const struct tgsi_full_instruction * inst = emit_data->inst;
 	LLVMValueRef ptr, result, arg;
-	const char *sync_scope = HAVE_LLVM >= 0x0900 ? "workgroup-one-as" : "workgroup";
+	const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "workgroup-one-as" : "workgroup";
 
 	ptr = get_memory_ptr(ctx, inst, ctx->i32, 1);
 

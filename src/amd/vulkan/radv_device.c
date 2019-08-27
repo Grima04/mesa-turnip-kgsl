@@ -29,6 +29,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <llvm/Config/llvm-config.h>
 #include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_shader.h"
@@ -531,7 +532,7 @@ radv_handle_per_app_options(struct radv_instance *instance,
 		 * load/store memory operations.
 		 * See https://reviews.llvm.org/D61313
 		 */
-		if (HAVE_LLVM < 0x900)
+		if (LLVM_VERSION_MAJOR < 9)
 			instance->debug_flags |= RADV_DEBUG_NO_LOAD_STORE_OPT;
 	} else if (!strcmp(name, "Wolfenstein: Youngblood")) {
 		if (!(instance->debug_flags & RADV_DEBUG_NO_SHADER_BALLOT)) {
@@ -857,7 +858,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->storageBuffer16BitAccess = enabled;
 			features->uniformAndStorageBuffer16BitAccess = enabled;
 			features->storagePushConstant16 = enabled;
-			features->storageInputOutput16 = enabled && HAVE_LLVM >= 0x900;
+			features->storageInputOutput16 = enabled && LLVM_VERSION_MAJOR >= 9;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
@@ -963,8 +964,8 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
 			VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *features =
 				(VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *)ext;
-			features->shaderBufferInt64Atomics = HAVE_LLVM >= 0x0900;
-			features->shaderSharedInt64Atomics = HAVE_LLVM >= 0x0900;
+			features->shaderBufferInt64Atomics = LLVM_VERSION_MAJOR >= 9;
+			features->shaderSharedInt64Atomics = LLVM_VERSION_MAJOR >= 9;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {

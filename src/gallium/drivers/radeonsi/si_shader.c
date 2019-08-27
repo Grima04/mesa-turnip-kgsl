@@ -22,6 +22,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <llvm/Config/llvm-config.h>
+
 #include "util/u_memory.h"
 #include "util/u_string.h"
 #include "tgsi/tgsi_build.h"
@@ -5028,7 +5030,7 @@ static void create_function(struct si_shader_context *ctx)
 	shader->info.num_input_vgprs -= num_prolog_vgprs;
 
 	if (shader->key.as_ls || ctx->type == PIPE_SHADER_TESS_CTRL) {
-		if (USE_LDS_SYMBOLS && HAVE_LLVM >= 0x0900) {
+		if (USE_LDS_SYMBOLS && LLVM_VERSION_MAJOR >= 9) {
 			/* The LSHS size is not known until draw time, so we append it
 			 * at the end of whatever LDS use there may be in the rest of
 			 * the shader (currently none, unless LLVM decides to do its
@@ -5085,7 +5087,7 @@ static void preload_ring_buffers(struct si_shader_context *ctx)
 			ctx->esgs_ring =
 				ac_build_load_to_sgpr(&ctx->ac, buf_ptr, offset);
 		} else {
-			if (USE_LDS_SYMBOLS && HAVE_LLVM >= 0x0900) {
+			if (USE_LDS_SYMBOLS && LLVM_VERSION_MAJOR >= 9) {
 				/* Declare the ESGS ring as an explicit LDS symbol. */
 				declare_esgs_ring(ctx);
 			} else {

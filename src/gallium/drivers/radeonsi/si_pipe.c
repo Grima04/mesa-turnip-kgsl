@@ -45,6 +45,8 @@
 #include "gallium/winsys/amdgpu/drm/amdgpu_public.h"
 #include <xf86drm.h>
 
+#include <llvm/Config/llvm-config.h>
+
 static const struct debug_named_value debug_options[] = {
 	/* Shader logging options: */
 	{ "vs", DBG(VS), "Print vertex shaders" },
@@ -924,7 +926,7 @@ radeonsi_screen_create_impl(struct radeon_winsys *ws,
 	sscreen->ws = ws;
 	ws->query_info(ws, &sscreen->info);
 
-	if (sscreen->info.chip_class == GFX10 && HAVE_LLVM < 0x0900) {
+	if (sscreen->info.chip_class == GFX10 && LLVM_VERSION_MAJOR < 9) {
 		fprintf(stderr, "radeonsi: Navi family support requires LLVM 9 or higher\n");
 		FREE(sscreen);
 		return NULL;

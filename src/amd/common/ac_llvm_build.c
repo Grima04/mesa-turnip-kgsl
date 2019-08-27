@@ -26,6 +26,7 @@
 #include "ac_llvm_build.h"
 
 #include <llvm-c/Core.h>
+#include <llvm/Config/llvm-config.h>
 
 #include "c11/threads.h"
 
@@ -443,7 +444,7 @@ ac_build_optimization_barrier(struct ac_llvm_context *ctx,
 LLVMValueRef
 ac_build_shader_clock(struct ac_llvm_context *ctx)
 {
-	const char *intr = HAVE_LLVM >= 0x0900 && ctx->chip_class >= GFX8 ?
+	const char *intr = LLVM_VERSION_MAJOR >= 9 && ctx->chip_class >= GFX8 ?
 				"llvm.amdgcn.s.memrealtime" : "llvm.readcyclecounter";
 	LLVMValueRef tmp = ac_build_intrinsic(ctx, intr, ctx->i64, NULL, 0, 0);
 	return LLVMBuildBitCast(ctx->builder, tmp, ctx->v2i32, "");
@@ -455,7 +456,7 @@ ac_build_ballot(struct ac_llvm_context *ctx,
 {
 	const char *name;
 
-	if (HAVE_LLVM >= 0x900) {
+	if (LLVM_VERSION_MAJOR >= 9) {
 		if (ctx->wave_size == 64)
 			name = "llvm.amdgcn.icmp.i64.i32";
 		else
@@ -485,7 +486,7 @@ ac_build_ballot(struct ac_llvm_context *ctx,
 LLVMValueRef ac_get_i1_sgpr_mask(struct ac_llvm_context *ctx,
 				 LLVMValueRef value)
 {
-	const char *name = HAVE_LLVM >= 0x900 ? "llvm.amdgcn.icmp.i64.i1" : "llvm.amdgcn.icmp.i1";
+	const char *name = LLVM_VERSION_MAJOR >= 9 ? "llvm.amdgcn.icmp.i64.i1" : "llvm.amdgcn.icmp.i1";
 	LLVMValueRef args[3] = {
 		value,
 		ctx->i1false,
@@ -1511,7 +1512,7 @@ ac_build_tbuffer_load_short(struct ac_llvm_context *ctx,
 {
 	LLVMValueRef res;
 
-	if (HAVE_LLVM >= 0x900) {
+	if (LLVM_VERSION_MAJOR >= 9) {
 		voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
 
 		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
@@ -1543,7 +1544,7 @@ ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx,
 {
 	LLVMValueRef res;
 
-	if (HAVE_LLVM >= 0x900) {
+	if (LLVM_VERSION_MAJOR >= 9) {
 		voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
 
 		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
@@ -1685,7 +1686,7 @@ ac_build_opencoded_load_format(struct ac_llvm_context *ctx,
 		load_log_size += -log_recombine;
 	}
 
-	assert(load_log_size >= 2 || HAVE_LLVM >= 0x0900);
+	assert(load_log_size >= 2 || LLVM_VERSION_MAJOR >= 9);
 
 	LLVMValueRef loads[32]; /* up to 32 bytes */
 	for (unsigned i = 0; i < load_num_channels; ++i) {
@@ -1955,7 +1956,7 @@ ac_build_tbuffer_store_short(struct ac_llvm_context *ctx,
 {
 	vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i16, "");
 
-	if (HAVE_LLVM >= 0x900) {
+	if (LLVM_VERSION_MAJOR >= 9) {
 		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
 		ac_build_buffer_store_common(ctx, rsrc, vdata, NULL,
 					     voffset, soffset, 1,
@@ -1982,7 +1983,7 @@ ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx,
 {
 	vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i8, "");
 
-	if (HAVE_LLVM >= 0x900) {
+	if (LLVM_VERSION_MAJOR >= 9) {
 		/* LLVM 9+ supports i8/i16 with struct/raw intrinsics. */
 		ac_build_buffer_store_common(ctx, rsrc, vdata, NULL,
 					     voffset, soffset, 1,

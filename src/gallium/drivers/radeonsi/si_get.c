@@ -33,6 +33,7 @@
 #include "util/u_video.h"
 #include "compiler/nir/nir.h"
 
+#include <llvm/Config/llvm-config.h>
 #include <sys/utsname.h>
 
 static const char *si_get_vendor(struct pipe_screen *pscreen)
@@ -207,7 +208,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_VERTEX_BUFFER_OFFSET_4BYTE_ALIGNED_ONLY:
 	case PIPE_CAP_VERTEX_BUFFER_STRIDE_4BYTE_ALIGNED_ONLY:
 	case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
-		return HAVE_LLVM < 0x0900 && !sscreen->info.has_unaligned_shader_loads;
+		return LLVM_VERSION_MAJOR < 9 && !sscreen->info.has_unaligned_shader_loads;
 
 	case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
 		return sscreen->info.has_sparse_vm_mappings ?
@@ -345,7 +346,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_PCI_FUNCTION:
 		return sscreen->info.pci_func;
 	case PIPE_CAP_TGSI_ATOMINC_WRAP:
-		return HAVE_LLVM >= 0x1000;
+		return LLVM_VERSION_MAJOR >= 10;
 
 	default:
 		return u_pipe_screen_get_param_defaults(pscreen, param);

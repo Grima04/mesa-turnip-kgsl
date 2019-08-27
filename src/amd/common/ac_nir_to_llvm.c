@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <llvm/Config/llvm-config.h>
+
 #include "ac_nir_to_llvm.h"
 #include "ac_llvm_build.h"
 #include "ac_llvm_util.h"
@@ -1806,7 +1808,7 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx,
 	params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[2]), 0);
 	params[arg_count++] = descriptor;
 
-	if (HAVE_LLVM >= 0x900) {
+	if (LLVM_VERSION_MAJOR >= 9) {
 		/* XXX: The new raw/struct atomic intrinsics are buggy with
 		 * LLVM 8, see r358579.
 		 */
@@ -2546,7 +2548,7 @@ static LLVMValueRef get_image_buffer_descriptor(struct ac_nir_context *ctx,
 						bool write, bool atomic)
 {
 	LLVMValueRef rsrc = get_image_descriptor(ctx, instr, AC_DESC_BUFFER, write);
-	if (ctx->ac.chip_class == GFX9 && HAVE_LLVM < 0x900 && atomic) {
+	if (ctx->ac.chip_class == GFX9 && LLVM_VERSION_MAJOR < 9 && atomic) {
 		LLVMValueRef elem_count = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 2, 0), "");
 		LLVMValueRef stride = LLVMBuildExtractElement(ctx->ac.builder, rsrc, LLVMConstInt(ctx->ac.i32, 1, 0), "");
 		stride = LLVMBuildLShr(ctx->ac.builder, stride, LLVMConstInt(ctx->ac.i32, 16, 0), "");
@@ -2791,7 +2793,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 		params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
 								ctx->ac.i32_0, ""); /* vindex */
 		params[param_count++] = ctx->ac.i32_0; /* voffset */
-		if (HAVE_LLVM >= 0x900) {
+		if (LLVM_VERSION_MAJOR >= 9) {
 			/* XXX: The new raw/struct atomic intrinsics are buggy
 			 * with LLVM 8, see r358579.
 			 */
@@ -3052,7 +3054,7 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 	LLVMValueRef result;
 	LLVMValueRef src = get_src(ctx, instr->src[src_idx]);
 
-	const char *sync_scope = HAVE_LLVM >= 0x0900 ? "workgroup-one-as" : "workgroup";
+	const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "workgroup-one-as" : "workgroup";
 
 	if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap ||
 	    instr->intrinsic == nir_intrinsic_deref_atomic_comp_swap) {
@@ -4723,7 +4725,7 @@ setup_constant_data(struct ac_nir_context *ctx,
 	 * the code sections. See https://reviews.llvm.org/D65813.
 	 */
 	unsigned address_space =
-		HAVE_LLVM < 0x1000 ? AC_ADDR_SPACE_GLOBAL : AC_ADDR_SPACE_CONST;
+		LLVM_VERSION_MAJOR < 10 ? AC_ADDR_SPACE_GLOBAL : AC_ADDR_SPACE_CONST;
 
 	LLVMValueRef global =
 		LLVMAddGlobalInAddressSpace(ctx->ac.module, type,
