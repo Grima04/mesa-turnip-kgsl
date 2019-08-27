@@ -1522,8 +1522,15 @@ iris_compile_fs(struct iris_context *ice,
     */
    brw_nir_lower_fs_outputs(nir);
 
+   /* On Gen11+, shader RT write messages have a "Null Render Target" bit
+    * and do not need a binding table entry with a null surface.  Earlier
+    * generations need an entry for a null surface.
+    */
+   int null_rts = devinfo->gen < 11 ? 1 : 0;
+
    struct iris_binding_table bt;
-   iris_setup_binding_table(devinfo, nir, &bt, MAX2(key->nr_color_regions, 1),
+   iris_setup_binding_table(devinfo, nir, &bt,
+                            MAX2(key->nr_color_regions, null_rts),
                             num_system_values, num_cbufs);
 
    brw_nir_analyze_ubo_ranges(compiler, nir, NULL, prog_data->ubo_ranges);

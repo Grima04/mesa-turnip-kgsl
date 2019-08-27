@@ -4337,7 +4337,7 @@ iris_populate_binding_table(struct iris_context *ice,
             }
             push_bt_entry(addr);
          }
-      } else {
+      } else if (GEN_GEN < 11) {
          uint32_t addr = use_null_fb_surface(batch, ice);
          push_bt_entry(addr);
       }
