@@ -46,19 +46,17 @@
  * for a standalone example.
  */
 
+#include <llvm/Config/llvm-config.h>
+
 #include <llvm-c/Core.h>  
 
 
-/** Ensure HAVE_LLVM is set to avoid #ifdef HAVE_LLVM everywhere */
-#ifndef HAVE_LLVM
-#error "HAVE_LLVM should be set with LLVM's version number, e.g. (0x0207 for 2.7)"
-#endif
-#if HAVE_LLVM < 0x303
+#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 3)
 #error "LLVM 3.3 or newer required"
 #endif
 
 
-#if HAVE_LLVM <= 0x0303
+#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR <= 3)
 /* We won't actually use LLVMMCJITMemoryManagerRef, just create a dummy
  * typedef to simplify things elsewhere.
  */
@@ -105,7 +103,7 @@ typedef void *LLVMMCJITMemoryManagerRef;
  * Before LLVM 3.4 LLVMSetAlignment only supported GlobalValue, not
  * LoadInst/StoreInst as we need.
  */
-#if HAVE_LLVM < 0x0304
+#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
 #  ifdef __cplusplus
       extern "C"
 #  endif

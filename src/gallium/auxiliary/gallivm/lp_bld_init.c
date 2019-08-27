@@ -50,7 +50,7 @@
 #endif
 
 /* Only MCJIT is available as of LLVM SVN r216982 */
-#if HAVE_LLVM >= 0x0306
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
 #  define USE_MCJIT 1
 #elif defined(PIPE_ARCH_PPC_64) || defined(PIPE_ARCH_S390) || defined(PIPE_ARCH_ARM) || defined(PIPE_ARCH_AARCH64)
 #  define USE_MCJIT 1
@@ -138,7 +138,7 @@ create_pass_manager(struct gallivm_state *gallivm)
     * simple, or constant propagation into them, etc.
     */
 
-#if HAVE_LLVM < 0x0309
+#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)
    // Old versions of LLVM get the DataLayout from the pass manager.
    LLVMAddTargetData(gallivm->target, gallivm->passmgr);
 #endif
@@ -505,7 +505,7 @@ lp_build_init(void)
       util_cpu_caps.has_f16c = 0;
       util_cpu_caps.has_fma = 0;
    }
-   if (HAVE_LLVM < 0x0304 || !use_mcjit) {
+   if ((LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)) || !use_mcjit) {
       /* AVX2 support has only been tested with LLVM 3.4, and it requires
        * MCJIT. */
       util_cpu_caps.has_avx2 = 0;
@@ -626,7 +626,7 @@ gallivm_compile_module(struct gallivm_state *gallivm)
                    "-sroa -early-cse -simplifycfg -reassociate "
                    "-mem2reg -constprop -instcombine -gvn",
                    filename, gallivm_debug & GALLIVM_PERF_NO_OPT ? 0 : 2,
-                   (HAVE_LLVM >= 0x0305) ? "[-mcpu=<-mcpu option>] " : "",
+                   (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)) ? "[-mcpu=<-mcpu option>] " : "",
                    "[-mattr=<-mattr option(s)>]");
    }
 
@@ -646,7 +646,7 @@ gallivm_compile_module(struct gallivm_state *gallivm)
 
    /* Disable frame pointer omission on debug/profile builds */
    /* XXX: And workaround http://llvm.org/PR21435 */
-#if HAVE_LLVM >= 0x0307 && \
+#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)) && \
     (defined(DEBUG) || defined(PROFILE) || \
      defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64))
       LLVMAddTargetDependentFunctionAttr(func, "no-frame-pointer-elim", "true");

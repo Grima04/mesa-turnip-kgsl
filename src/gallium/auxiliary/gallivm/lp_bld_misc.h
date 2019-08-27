@@ -31,6 +31,7 @@
 
 
 #include "lp_bld.h"
+#include <llvm/Config/llvm-config.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Target.h>
 
@@ -77,7 +78,7 @@ extern bool
 lp_is_function(LLVMValueRef v);
 
 /* LLVM 3.9 introduces this, provide our own for earlier */
-#if HAVE_LLVM < 0x309
+#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)
 LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
                                     LLVMValueRef Cmp, LLVMValueRef New,
                                     LLVMAtomicOrdering SuccessOrdering,
@@ -85,7 +86,7 @@ LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
                                     LLVMBool SingleThread);
 #endif
 
-#if HAVE_LLVM < 0x305
+#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 5)
 LLVMValueRef LLVMBuildFence(LLVMBuilderRef B,
 			    LLVMAtomicOrdering ordering,
 			    LLVMBool singleThread, const char *Name);

@@ -32,6 +32,7 @@
  * @author Jose Fonseca <jfonseca@vmware.com>
  */
 
+#include <llvm/Config/llvm-config.h>
 
 #include "util/u_cpu_detect.h"
 #include "util/u_memory.h"
@@ -317,7 +318,7 @@ lp_build_select(struct lp_build_context *bld,
       mask = LLVMBuildTrunc(builder, mask, LLVMInt1TypeInContext(lc), "");
       res = LLVMBuildSelect(builder, mask, a, b, "");
    }
-   else if (!(HAVE_LLVM == 0x0307) &&
+   else if (!(LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 7) &&
             (LLVMIsConstant(mask) ||
              LLVMGetInstructionOpcode(mask) == LLVMSExt)) {
       /* Generate a vector select.

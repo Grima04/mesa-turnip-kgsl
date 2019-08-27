@@ -30,6 +30,7 @@
 #include <sstream>
 #include <iomanip>
 
+#include <llvm/Config/llvm-config.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Disassembler.h>
 #include <llvm/Support/raw_ostream.h>
@@ -71,7 +72,7 @@ lp_check_alignment(const void *ptr, unsigned alignment)
 extern "C" void
 lp_debug_dump_value(LLVMValueRef value)
 {
-#if HAVE_LLVM >= 0x0304
+#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
    char *str = LLVMPrintValueToString(value);
    if (str) {
       os_log_message(str);
