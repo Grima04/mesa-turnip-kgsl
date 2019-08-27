@@ -3464,6 +3464,34 @@ GLvoid GLAPIENTRY
 _mesa_GetNamedStringivARB(GLint namelen, const GLchar *name,
                           GLenum pname, GLint *params)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const char *caller = "glGetNamedStringivARB";
+
+   char *name_cp = copy_string(ctx, name, namelen, caller);
+   if (!name_cp)
+      return;
+
+   const char *source = _mesa_lookup_shader_include(ctx, name_cp, true);
+   if (!source) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(no string associated with path %s)", caller, name_cp);
+      free(name_cp);
+      return;
+   }
+
+   switch (pname) {
+   case GL_NAMED_STRING_LENGTH_ARB:
+      *params = strlen(source) + 1;
+      break;
+   case GL_NAMED_STRING_TYPE_ARB:
+      *params = GL_SHADER_INCLUDE_ARB;
+      break;
+   default:
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(pname)", caller);
+      break;
+   }
+
+   free(name_cp);
 }
 
 static int
