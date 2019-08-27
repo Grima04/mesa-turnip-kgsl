@@ -3233,7 +3233,9 @@ llvmpipe_set_shader_images(struct pipe_context *pipe,
                       shader,
                       llvmpipe->images[shader],
                       start_slot + count);
-   } else
+   } else if (shader == PIPE_SHADER_COMPUTE)
+      llvmpipe->cs_dirty |= LP_CSNEW_IMAGES;
+   else
       llvmpipe->dirty |= LP_NEW_FS_IMAGES;
 }
 

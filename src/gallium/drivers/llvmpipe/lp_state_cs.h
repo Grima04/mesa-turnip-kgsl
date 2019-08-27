@@ -41,6 +41,8 @@ struct lp_compute_shader_variant_key
 {
    unsigned nr_samplers:8;
    unsigned nr_sampler_views:8;
+   unsigned nr_images:8;
+   struct lp_image_static_state image_state[PIPE_MAX_SHADER_IMAGES];
    struct lp_sampler_static_state state[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 };
 
@@ -111,6 +113,10 @@ struct lp_cs_context {
    struct {
       struct pipe_shader_buffer current;
    } ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+
+   struct {
+      struct pipe_image_view current;
+   } images[LP_MAX_TGSI_SHADER_IMAGES];
 };
 
 struct lp_cs_context *lp_csctx_create(struct pipe_context *pipe);

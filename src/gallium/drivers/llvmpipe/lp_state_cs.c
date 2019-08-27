@@ -70,6 +70,7 @@ generate_compute(struct llvmpipe_context *lp,
    LLVMBasicBlockRef block;
    LLVMBuilderRef builder;
    struct lp_build_sampler_soa *sampler;
+   struct lp_build_image_soa *image;
    LLVMValueRef function, coro;
    struct lp_type cs_type;
    unsigned i;
@@ -156,6 +157,7 @@ generate_compute(struct llvmpipe_context *lp,
    assert(builder);
    LLVMPositionBuilderAtEnd(builder, block);
    sampler = lp_llvm_sampler_soa_create(key->state);
+   image = lp_llvm_image_soa_create(key->image_state);
 
    struct lp_build_loop_state loop_state[4];
    LLVMValueRef num_x_loop;
@@ -353,6 +355,7 @@ generate_compute(struct llvmpipe_context *lp,
       params.info = &shader->info.base;
       params.ssbo_ptr = ssbo_ptr;
       params.ssbo_sizes_ptr = num_ssbo_ptr;
+      params.image = image;
       params.shared_ptr = shared_ptr;
       params.coro = &coro_info;
 
@@ -373,6 +376,7 @@ generate_compute(struct llvmpipe_context *lp,
    }
 
    sampler->destroy(sampler);
+   image->destroy(image);
 
    gallivm_verify_function(gallivm, coro);
    gallivm_verify_function(gallivm, function);
@@ -513,6 +517,13 @@ make_variant_key(struct llvmpipe_context *lp,
       }
    }
 
+   key->nr_images = shader->info.base.file_max[TGSI_FILE_IMAGE] + 1;
+   for (i = 0; i < key->nr_images; ++i) {
+      if (shader->info.base.file_mask[TGSI_FILE_IMAGE] & (1 << i)) {
+         lp_sampler_static_texture_state_image(&key->image_state[i].image_state,
+                                               &lp->images[PIPE_SHADER_COMPUTE][i]);
+      }
+   }
 }
 
 static void
@@ -555,6 +566,20 @@ dump_cs_variant_key(const struct lp_compute_shader_variant_key *key)
                    texture->pot_width,
                    texture->pot_height,
                    texture->pot_depth);
+   }
+   for (i = 0; i < key->nr_images; ++i) {
+      const struct lp_static_texture_state *image = &key->image_state[i].image_state;
+      debug_printf("image[%u] = \n", i);
+      debug_printf("  .format = %s\n",
+                   util_format_name(image->format));
+      debug_printf("  .target = %s\n",
+                   util_str_tex_target(image->target, TRUE));
+      debug_printf("  .level_zero_only = %u\n",
+                   image->level_zero_only);
+      debug_printf("  .pot = %u %u %u\n",
+                   image->pot_width,
+                   image->pot_height,
+                   image->pot_depth);
    }
 }
 
@@ -924,6 +949,76 @@ lp_csctx_set_cs_ssbos(struct lp_cs_context *csctx,
 }
 
 static void
+lp_csctx_set_cs_images(struct lp_cs_context *csctx,
+                       unsigned num,
+                       struct pipe_image_view *images)
+{
+   unsigned i;
+
+   LP_DBG(DEBUG_SETUP, "%s %p\n", __FUNCTION__, (void *) images);
+
+   assert(num <= ARRAY_SIZE(csctx->images));
+
+   for (i = 0; i < num; ++i) {
+      struct pipe_image_view *image = &images[i];
+      util_copy_image_view(&csctx->images[i].current, &images[i]);
+
+      struct pipe_resource *res = image->resource;
+      struct llvmpipe_resource *lp_res = llvmpipe_resource(res);
+      struct lp_jit_image *jit_image;
+
+      jit_image = &csctx->cs.current.jit_context.images[i];
+      if (!lp_res)
+         continue;
+      if (!lp_res->dt) {
+         /* regular texture - csctx array of mipmap level offsets */
+         if (llvmpipe_resource_is_texture(res)) {
+            jit_image->base = lp_res->tex_data;
+         } else
+            jit_image->base = lp_res->data;
+
+         jit_image->width = res->width0;
+         jit_image->height = res->height0;
+         jit_image->depth = res->depth0;
+
+         if (llvmpipe_resource_is_texture(res)) {
+            uint32_t mip_offset = lp_res->mip_offsets[image->u.tex.level];
+
+            jit_image->width = u_minify(jit_image->width, image->u.tex.level);
+            jit_image->height = u_minify(jit_image->height, image->u.tex.level);
+
+            if (res->target == PIPE_TEXTURE_1D_ARRAY ||
+                res->target == PIPE_TEXTURE_2D_ARRAY ||
+                res->target == PIPE_TEXTURE_3D ||
+                res->target == PIPE_TEXTURE_CUBE ||
+                res->target == PIPE_TEXTURE_CUBE_ARRAY) {
+               /*
+                * For array textures, we don't have first_layer, instead
+                * adjust last_layer (stored as depth) plus the mip level offsets
+                * (as we have mip-first layout can't just adjust base ptr).
+                * XXX For mip levels, could do something similar.
+                */
+               jit_image->depth = image->u.tex.last_layer - image->u.tex.first_layer + 1;
+               mip_offset += image->u.tex.first_layer * lp_res->img_stride[image->u.tex.level];
+            } else
+               jit_image->depth = u_minify(jit_image->depth, image->u.tex.level);
+
+            jit_image->row_stride = lp_res->row_stride[image->u.tex.level];
+            jit_image->img_stride = lp_res->img_stride[image->u.tex.level];
+            jit_image->base = (uint8_t *)jit_image->base + mip_offset;
+         } else {
+            unsigned view_blocksize = util_format_get_blocksize(image->format);
+            jit_image->width = image->u.buf.size / view_blocksize;
+            jit_image->base = (uint8_t *)jit_image->base + image->u.buf.offset;
+         }
+      }
+   }
+   for (; i < ARRAY_SIZE(csctx->images); i++) {
+      util_copy_image_view(&csctx->images[i].current, NULL);
+   }
+}
+
+static void
 update_csctx_consts(struct llvmpipe_context *llvmpipe)
 {
    struct lp_cs_context *csctx = llvmpipe->csctx;
@@ -1008,6 +1103,12 @@ llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
       lp_csctx_set_sampler_state(llvmpipe->csctx,
                                  llvmpipe->num_samplers[PIPE_SHADER_COMPUTE],
                                  llvmpipe->samplers[PIPE_SHADER_COMPUTE]);
+
+   if (llvmpipe->cs_dirty & LP_CSNEW_IMAGES)
+      lp_csctx_set_cs_images(llvmpipe->csctx,
+                              ARRAY_SIZE(llvmpipe->images[PIPE_SHADER_COMPUTE]),
+                              llvmpipe->images[PIPE_SHADER_COMPUTE]);
+
    llvmpipe->cs_dirty = 0;
 }
 
