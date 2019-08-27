@@ -427,8 +427,9 @@ mir_exit_block(struct compiler_context *ctx)
         midgard_block *last = list_last_entry(&ctx->blocks,
                         struct midgard_block, link);
 
-        /* The last block must be empty (the exit block) */
-        assert(list_empty(&last->instructions));
+        /* The last block must be empty logically but contains branch writeout
+         * for fragment shaders */
+
         assert(last->nr_successors == 0);
 
         return last;

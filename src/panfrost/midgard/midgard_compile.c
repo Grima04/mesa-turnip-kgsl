@@ -2294,13 +2294,6 @@ emit_block(compiler_context *ctx, nir_block *block)
         midgard_opt_promote_fmov(ctx, ctx->current_block);
         embedded_to_inline_constant(ctx);
 
-        /* Append fragment shader epilogue (value writeout) */
-        if (ctx->stage == MESA_SHADER_FRAGMENT) {
-                if (block == nir_impl_last_block(ctx->func->impl)) {
-                        emit_fragment_epilogue(ctx);
-                }
-        }
-
         /* Allow the next control flow to access us retroactively, for
          * branching etc */
         ctx->current_block = this_block;
@@ -2581,6 +2574,9 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
 
                 struct midgard_block *end =
                         emit_block(ctx, func->impl->end_block);
+
+                if (ctx->stage == MESA_SHADER_FRAGMENT)
+                        emit_fragment_epilogue(ctx);
 
                 midgard_block_add_successor(semi_end, end);
 
