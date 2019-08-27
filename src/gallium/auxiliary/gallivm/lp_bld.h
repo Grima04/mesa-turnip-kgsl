@@ -95,7 +95,7 @@ typedef void *LLVMMCJITMemoryManagerRef;
 #define LLVMInsertBasicBlock ILLEGAL_LLVM_FUNCTION
 #define LLVMCreateBuilder ILLEGAL_LLVM_FUNCTION
 
-#if HAVE_LLVM >= 0x0800
+#if LLVM_VERSION_MAJOR >= 8
 #define GALLIVM_HAVE_CORO 1
 #else
 #define GALLIVM_HAVE_CORO 0

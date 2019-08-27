@@ -31,7 +31,7 @@
 #include "lp_bld_intr.h"
 #include "lp_bld_flow.h"
 
-#if HAVE_LLVM < 0x0600
+#if LLVM_VERSION_MAJOR < 6
 /* not a wrapper, just lets it compile */
 static LLVMTypeRef LLVMTokenTypeInContext(LLVMContextRef C)
 {

@@ -38,9 +38,10 @@
 #include "lp_bld_misc.h"
 #include "lp_bld_init.h"
 
+#include <llvm/Config/llvm-config.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Transforms/Scalar.h>
-#if HAVE_LLVM >= 0x0700
+#if LLVM_VERSION_MAJOR >= 7
 #include <llvm-c/Transforms/Utils.h>
 #endif
 #include <llvm-c/BitWriter.h>

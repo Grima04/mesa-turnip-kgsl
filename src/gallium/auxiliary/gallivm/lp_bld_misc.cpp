@@ -48,6 +48,7 @@
 #  undef DEBUG
 #endif
 
+#include <llvm/Config/llvm-config.h>
 #include <llvm-c/Core.h>
 #if HAVE_LLVM >= 0x0306
 #include <llvm-c/Support.h>
@@ -363,7 +364,7 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
          mgr()->registerEHFrames(SectionData);
       }
 #endif
-#if HAVE_LLVM >= 0x0500
+#if LLVM_VERSION_MAJOR >= 5
       virtual void deregisterEHFrames() {
          mgr()->deregisterEHFrames();
       }
@@ -556,7 +557,7 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
 
    llvm::SmallVector<std::string, 16> MAttrs;
 
-#if HAVE_LLVM >= 0x0400 && (defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64) || defined(PIPE_ARCH_ARM))
+#if LLVM_VERSION_MAJOR >= 4 && (defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64) || defined(PIPE_ARCH_ARM))
    /* llvm-3.3+ implements sys::getHostCPUFeatures for Arm
     * and llvm-3.7+ for x86, which allows us to enable/disable
     * code generation based on the results of cpuid on these
@@ -636,7 +637,7 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
 #if defined(PIPE_ARCH_PPC)
    MAttrs.push_back(util_cpu_caps.has_altivec ? "+altivec" : "-altivec");
 #if (HAVE_LLVM >= 0x0304)
-#if (HAVE_LLVM < 0x0400)
+#if (LLVM_VERSION_MAJOR < 4)
    /*
     * Make sure VSX instructions are disabled
     * See LLVM bugs:
