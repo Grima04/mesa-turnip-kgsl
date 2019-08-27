@@ -36,6 +36,7 @@
 #include "util/u_memory.h"
 
 #include "pipe/p_screen.h"
+#include "state_tracker/winsys_handle.h"
 
 /* These formats are supported by swapping their bytes.
  * The swizzles must be set exactly like their non-swapped counterparts,
@@ -1179,7 +1180,6 @@ struct pipe_resource *r300_texture_from_handle(struct pipe_screen *screen,
     struct r300_screen *rscreen = r300_screen(screen);
     struct radeon_winsys *rws = rscreen->rws;
     struct pb_buffer *buffer;
-    unsigned stride;
     struct radeon_bo_metadata tiling = {};
 
     /* Support only 2D textures without mipmaps */
@@ -1190,7 +1190,7 @@ struct pipe_resource *r300_texture_from_handle(struct pipe_screen *screen,
         return NULL;
     }
 
-    buffer = rws->buffer_from_handle(rws, whandle, 0, &stride, NULL);
+    buffer = rws->buffer_from_handle(rws, whandle, 0);
     if (!buffer)
         return NULL;
 
@@ -1212,7 +1212,7 @@ struct pipe_resource *r300_texture_from_handle(struct pipe_screen *screen,
 
     return (struct pipe_resource*)
            r300_texture_create_object(rscreen, base, tiling.u.legacy.microtile, tiling.u.legacy.macrotile,
-                                      stride, buffer);
+                                      whandle->stride, buffer);
 }
 
 /* Not required to implement u_resource_vtbl, consider moving to another file:

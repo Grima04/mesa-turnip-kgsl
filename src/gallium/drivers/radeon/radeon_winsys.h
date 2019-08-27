@@ -378,12 +378,10 @@ struct radeon_winsys {
      * \param ws        The winsys this function is called from.
      * \param whandle   A winsys handle pointer as was received from a state
      *                  tracker.
-     * \param stride    The returned buffer stride in bytes.
      */
     struct pb_buffer *(*buffer_from_handle)(struct radeon_winsys *ws,
                                             struct winsys_handle *whandle,
-                                            unsigned vm_alignment,
-                                            unsigned *stride, unsigned *offset);
+                                            unsigned vm_alignment);
 
     /**
      * Get a winsys buffer from a user pointer. The resulting buffer can't

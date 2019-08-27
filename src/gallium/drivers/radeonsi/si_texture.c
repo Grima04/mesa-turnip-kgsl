@@ -1792,7 +1792,6 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
 {
 	struct si_screen *sscreen = (struct si_screen*)screen;
 	struct pb_buffer *buf = NULL;
-	unsigned stride = 0, offset = 0;
 
 	/* Support only 2D textures without mipmaps */
 	if ((templ->target != PIPE_TEXTURE_2D && templ->target != PIPE_TEXTURE_RECT &&
@@ -1801,13 +1800,13 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
 		return NULL;
 
 	buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle,
-					      sscreen->info.max_alignment,
-					      &stride, &offset);
+					      sscreen->info.max_alignment);
 	if (!buf)
 		return NULL;
 
-	return si_texture_from_winsys_buffer(sscreen, templ, buf, stride,
-					     offset, usage, true);
+	return si_texture_from_winsys_buffer(sscreen, templ, buf,
+					     whandle->stride, whandle->offset,
+					     usage, true);
 }
 
 bool si_init_flushed_depth_texture(struct pipe_context *ctx,
@@ -2614,14 +2613,12 @@ si_memobj_from_handle(struct pipe_screen *screen,
 	struct si_screen *sscreen = (struct si_screen*)screen;
 	struct si_memory_object *memobj = CALLOC_STRUCT(si_memory_object);
 	struct pb_buffer *buf = NULL;
-	uint32_t stride, offset;
 
 	if (!memobj)
 		return NULL;
 
 	buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle,
-					      sscreen->info.max_alignment,
-					      &stride, &offset);
+					      sscreen->info.max_alignment);
 	if (!buf) {
 		free(memobj);
 		return NULL;
@@ -2629,7 +2626,7 @@ si_memobj_from_handle(struct pipe_screen *screen,
 
 	memobj->b.dedicated = dedicated;
 	memobj->buf = buf;
-	memobj->stride = stride;
+	memobj->stride = whandle->stride;
 
 	return (struct pipe_memory_object *)memobj;
 

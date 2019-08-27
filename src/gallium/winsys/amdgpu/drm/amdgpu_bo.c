@@ -1408,9 +1408,7 @@ amdgpu_buffer_create(struct radeon_winsys *ws,
 
 static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
                                                struct winsys_handle *whandle,
-                                               unsigned vm_alignment,
-                                               unsigned *stride,
-                                               unsigned *offset)
+                                               unsigned vm_alignment)
 {
    struct amdgpu_winsys *ws = amdgpu_winsys(rws);
    struct amdgpu_winsys_bo *bo = NULL;
@@ -1432,11 +1430,6 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    default:
       return NULL;
    }
-
-   if (stride)
-      *stride = whandle->stride;
-   if (offset)
-      *offset = whandle->offset;
 
    r = amdgpu_bo_import(ws->dev, type, whandle->handle, &result);
    if (r)
