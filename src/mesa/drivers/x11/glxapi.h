@@ -143,7 +143,7 @@ struct _glxapi_table {
    /*** GLX_SGIX_pbuffer ***/
    GLXPbufferSGIX (*CreateGLXPbufferSGIX)(Display *, GLXFBConfigSGIX, unsigned int, unsigned int, int *);
    void (*DestroyGLXPbufferSGIX)(Display *, GLXPbufferSGIX);
-   int (*QueryGLXPbufferSGIX)(Display *, GLXPbufferSGIX, int, unsigned int *);
+   void (*QueryGLXPbufferSGIX)(Display *, GLXPbufferSGIX, int, unsigned int *);
    void (*SelectEventSGIX)(Display *, GLXDrawable, unsigned long);
    void (*GetSelectedEventSGIX)(Display *, GLXDrawable, unsigned long *);
 
