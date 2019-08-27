@@ -35,6 +35,7 @@
 #include "util/u_debug.h"
 
 union pipe_color_union;
+struct pipe_screen;
 
 
 #ifdef __cplusplus
@@ -86,6 +87,10 @@ enum util_format_layout {
    UTIL_FORMAT_LAYOUT_ASTC,
 
    UTIL_FORMAT_LAYOUT_ATC,
+
+   /** Formats with 2 or more planes. */
+   UTIL_FORMAT_LAYOUT_PLANAR2,
+   UTIL_FORMAT_LAYOUT_PLANAR3,
 
    /**
     * Everything else that doesn't fit in any of the above layouts.
@@ -1263,6 +1268,79 @@ util_format_luminance_to_red(enum pipe_format format)
       return format;
    }
 }
+
+static inline unsigned
+util_format_get_num_planes(enum pipe_format format)
+{
+   switch (util_format_description(format)->layout) {
+   case UTIL_FORMAT_LAYOUT_PLANAR3:
+      return 3;
+   case UTIL_FORMAT_LAYOUT_PLANAR2:
+      return 2;
+   default:
+      return 1;
+   }
+}
+
+static inline enum pipe_format
+util_format_get_plane_format(enum pipe_format format, unsigned plane)
+{
+   switch (format) {
+   case PIPE_FORMAT_YV12:
+   case PIPE_FORMAT_YV16:
+   case PIPE_FORMAT_IYUV:
+      return PIPE_FORMAT_R8_UNORM;
+   case PIPE_FORMAT_NV12:
+      return !plane ? PIPE_FORMAT_R8_UNORM : PIPE_FORMAT_RG88_UNORM;
+   case PIPE_FORMAT_NV21:
+      return !plane ? PIPE_FORMAT_R8_UNORM : PIPE_FORMAT_GR88_UNORM;
+   case PIPE_FORMAT_P016:
+      return !plane ? PIPE_FORMAT_R16_UNORM : PIPE_FORMAT_R16G16_UNORM;
+   default:
+      return format;
+   }
+}
+
+static inline unsigned
+util_format_get_plane_width(enum pipe_format format, unsigned plane,
+                            unsigned width)
+{
+   switch (format) {
+   case PIPE_FORMAT_YV12:
+   case PIPE_FORMAT_YV16:
+   case PIPE_FORMAT_IYUV:
+   case PIPE_FORMAT_NV12:
+   case PIPE_FORMAT_NV21:
+   case PIPE_FORMAT_P016:
+      return !plane ? width : (width + 1) / 2;
+   default:
+      return width;
+   }
+}
+
+static inline unsigned
+util_format_get_plane_height(enum pipe_format format, unsigned plane,
+                             unsigned height)
+{
+   switch (format) {
+   case PIPE_FORMAT_YV12:
+   case PIPE_FORMAT_IYUV:
+   case PIPE_FORMAT_NV12:
+   case PIPE_FORMAT_NV21:
+   case PIPE_FORMAT_P016:
+      return !plane ? height : (height + 1) / 2;
+   case PIPE_FORMAT_YV16:
+   default:
+      return height;
+   }
+}
+
+bool util_format_planar_is_supported(struct pipe_screen *screen,
+                                     enum pipe_format format,
+                                     enum pipe_texture_target target,
+                                     unsigned sample_count,
+                                     unsigned storage_sample_count,
+                                     unsigned bind);
 
 /**
  * Return the number of components stored.

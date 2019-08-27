@@ -694,7 +694,7 @@ def generate_format_fetch(format, dst_channel, dst_native_type, dst_suffix):
 
 
 def is_format_hand_written(format):
-    return format.layout in ('s3tc', 'rgtc', 'etc', 'bptc', 'astc', 'atc', 'subsampled', 'other') or format.colorspace == ZS
+    return format.layout != PLAIN or format.colorspace == ZS
 
 
 def generate(formats):

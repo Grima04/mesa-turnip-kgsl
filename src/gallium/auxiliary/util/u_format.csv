@@ -356,13 +356,13 @@ PIPE_FORMAT_R10G10B10X2_USCALED     , plain, 1, 1, 1, u10 , u10 , u10  , x2 , xy
 # A.k.a. D3DDECLTYPE_DEC3N
 PIPE_FORMAT_R10G10B10X2_SNORM       , plain, 1, 1, 1, sn10, sn10, sn10 , x2 , xyz1, rgb, x2  , sn10, sn10, sn10, wzy1
 
-PIPE_FORMAT_YV12                    , other, 1, 1, 1, x8  , x8  , x8  , x8  , xyzw, yuv
-PIPE_FORMAT_YV16                    , other, 1, 1, 1, x8  , x8  , x8  , x8  , xyzw, yuv
-PIPE_FORMAT_IYUV                    , other, 1, 1, 1, x8  , x8  , x8  , x8  , xyzw, yuv
-PIPE_FORMAT_NV12                    , other, 1, 1, 1, x8  , x8  , x8  , x8  , xyzw, yuv
-PIPE_FORMAT_NV21                    , other, 1, 1, 1, x8  , x8  , x8  , x8  , xyzw, yuv
+PIPE_FORMAT_YV12                  , planar3, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
+PIPE_FORMAT_YV16                  , planar3, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
+PIPE_FORMAT_IYUV                  , planar3, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
+PIPE_FORMAT_NV12                  , planar2, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
+PIPE_FORMAT_NV21                  , planar2, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
 
-PIPE_FORMAT_P016                    , other, 1, 1, 1, x16 , x16 ,     ,     , xyzw, yuv
+PIPE_FORMAT_P016                  , planar2, 1, 1, 1,     ,     ,     ,     , xyzw, yuv
 
 # Usually used to implement IA44 and AI44 formats in video decoding
 PIPE_FORMAT_A4R4_UNORM              , plain, 1, 1, 1, un4 , un4 ,     ,     , y00x, rgb, un4, un4 ,     ,     , x00y
