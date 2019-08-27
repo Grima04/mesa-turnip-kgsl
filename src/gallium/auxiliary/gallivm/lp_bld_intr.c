@@ -246,8 +246,9 @@ lp_build_intrinsic(LLVMBuilderRef builder,
        * than a call to address zero in the jited code).
        */
       if (LLVMGetIntrinsicID(function) == 0) {
-         _debug_printf("llvm (version 0x%x) found no intrinsic for %s, going to crash...\n",
-                HAVE_LLVM, name);
+         _debug_printf("llvm (version " MESA_LLVM_VERSION_STRING
+                       ") found no intrinsic for %s, going to crash...\n",
+                name);
          abort();
       }
 
