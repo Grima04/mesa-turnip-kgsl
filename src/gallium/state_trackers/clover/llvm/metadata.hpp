@@ -32,6 +32,7 @@
 #include "util/algorithm.hpp"
 
 #include <vector>
+#include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Metadata.h>
 
@@ -57,7 +58,7 @@ namespace clover {
 
          inline bool
          is_kernel(const ::llvm::Function &f) {
-#if HAVE_LLVM >= 0x0309
+#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9))
             return f.getMetadata("kernel_arg_type");
 #else
             return clover::any_of(is_kernel_node_for(f),
@@ -68,7 +69,7 @@ namespace clover {
          inline iterator_range< ::llvm::MDNode::op_iterator>
          get_kernel_metadata_operands(const ::llvm::Function &f,
                                       const std::string &name) {
-#if HAVE_LLVM >= 0x0309
+#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9))
             // On LLVM v3.9+ kernel argument attributes are stored as
             // function metadata.
             const auto data_node = f.getMetadata(name);
