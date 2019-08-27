@@ -657,46 +657,41 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 static void
 midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
 {
+        midgard_instruction *prev_ldst = NULL;
+        int search_distance;
+
         mir_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != TAG_LOAD_STORE_4) continue;
+                if (ins->type != TAG_LOAD_STORE_4 && !prev_ldst) continue;
 
-                /* We've found a load/store op. Check if next is also load/store. */
-                midgard_instruction *next_op = mir_next_op(ins);
-                if (&next_op->link != &block->instructions) {
-                        if (next_op->type == TAG_LOAD_STORE_4) {
-                                /* If so, we're done since we're a pair */
-                                ins = mir_next_op(ins);
-                                continue;
-                        }
-
-                        /* Maximum search distance to pair, to avoid register pressure disasters */
-                        int search_distance = 8;
-
-                        /* Otherwise, we have an orphaned load/store -- search for another load */
-                        mir_foreach_instr_in_block_from(block, c, mir_next_op(ins)) {
-                                /* Terminate search if necessary */
-                                if (!(search_distance--)) break;
-
-                                if (c->type != TAG_LOAD_STORE_4) continue;
-
-                                /* We can only reorder if there are no sources */
-
-                                bool deps = false;
-
-                                for (unsigned s = 0; s < ARRAY_SIZE(ins->src); ++s)
-                                        deps |= (c->src[s] != ~0);
-
-                                if (deps)
-                                        continue;
-
-                                /* We found one! Move it up to pair and remove it from the old location */
-
-                                mir_insert_instruction_before(ctx, ins, *c);
-                                mir_remove_instruction(c);
-
-                                break;
-                        }
+                /* We've found a load/store op. Start searching for another one.
+                 * Maximum search distance to pair, to avoid register pressure disasters
+                 */
+                if (!prev_ldst) {
+                        search_distance = 8;
+                        prev_ldst = ins;
+                        continue;
                 }
+
+                /* Already paired. */
+                if (mir_prev_op(ins) == prev_ldst) {
+                        prev_ldst = NULL;
+                        continue;
+                }
+
+                /* We can only reorder if there are no sources */
+                bool deps = false;
+                for (unsigned s = 0; s < ARRAY_SIZE(ins->src); ++s)
+                        deps |= (ins->src[s] != ~0);
+
+                /* We found one! Move it up to pair */
+                if (!deps) {
+                        list_del(&ins->link);
+                        list_add(&ins->link, &prev_ldst->link);
+                        continue;
+                }
+
+                if (!(search_distance--))
+                        prev_ldst = NULL;
         }
 }
 
