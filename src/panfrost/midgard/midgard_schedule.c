@@ -630,8 +630,13 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 
         block->quadword_count = 0;
 
+        int skip = 0;
         mir_foreach_instr_in_block(block, ins) {
-                int skip;
+                if (skip) {
+                        skip--;
+                        continue;
+                }
+
                 midgard_bundle bundle = schedule_bundle(ctx, block, ins, &skip);
                 util_dynarray_append(&block->bundles, midgard_bundle, bundle);
 
@@ -639,9 +644,6 @@ schedule_block(compiler_context *ctx, midgard_block *block)
                         unsigned offset = ctx->quadword_count + block->quadword_count + quadword_size(bundle.tag) - 1;
                         ctx->blend_constant_offset = offset * 0x10;
                 }
-
-                while(skip--)
-                        ins = mir_next_op(ins);
 
                 block->quadword_count += quadword_size(bundle.tag);
         }
