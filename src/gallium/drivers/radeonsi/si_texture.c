@@ -443,6 +443,13 @@ static bool si_can_disable_dcc(struct si_texture *tex)
 		!(tex->buffer.external_usage & PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
 }
 
+static void si_texture_zero_dcc_fields(struct si_texture *tex)
+{
+	tex->dcc_offset = 0;
+	tex->display_dcc_offset = 0;
+	tex->dcc_retile_map_offset = 0;
+}
+
 static bool si_texture_discard_dcc(struct si_screen *sscreen,
 				   struct si_texture *tex)
 {
@@ -454,9 +461,7 @@ static bool si_texture_discard_dcc(struct si_screen *sscreen,
 	assert(tex->dcc_separate_buffer == NULL);
 
 	/* Disable DCC. */
-	tex->dcc_offset = 0;
-	tex->display_dcc_offset = 0;
-	tex->dcc_retile_map_offset = 0;
+	si_texture_zero_dcc_fields(tex);
 
 	/* Notify all contexts about the change. */
 	p_atomic_inc(&sscreen->dirty_tex_counter);
@@ -755,6 +760,9 @@ static bool si_read_tex_bo_metadata(struct si_screen *sscreen,
 	if (md->size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
 	    md->metadata[0] == 0 || /* invalid version number */
 	    md->metadata[1] != si_get_bo_metadata_word1(sscreen)) /* invalid PCI ID */ {
+		/* Disable DCC because it might not be enabled. */
+		si_texture_zero_dcc_fields(tex);
+
 		/* Don't report an error if the texture comes from an incompatible driver,
 		 * but this might not work.
 		 */
@@ -829,7 +837,7 @@ static bool si_read_tex_bo_metadata(struct si_screen *sscreen,
 		/* Disable DCC. dcc_offset is always set by texture_from_handle
 		 * and must be cleared here.
 		 */
-		tex->dcc_offset = 0;
+		si_texture_zero_dcc_fields(tex);
 	}
 
 	return true;
