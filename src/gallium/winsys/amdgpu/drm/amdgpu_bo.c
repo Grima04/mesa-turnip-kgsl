@@ -1519,8 +1519,6 @@ error:
 
 static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
                                  struct pb_buffer *buffer,
-                                 unsigned stride, unsigned offset,
-                                 unsigned slice_size,
                                  struct winsys_handle *whandle)
 {
    struct amdgpu_screen_winsys *sws = amdgpu_screen_winsys(rws);
@@ -1565,9 +1563,6 @@ static bool amdgpu_bo_get_handle(struct radeon_winsys *rws,
    util_hash_table_set(ws->bo_export_table, bo->bo, bo);
    simple_mtx_unlock(&ws->bo_export_table_lock);
 
-   whandle->stride = stride;
-   whandle->offset = offset;
-   whandle->offset += slice_size * whandle->layer;
    bo->is_shared = true;
    return true;
 }

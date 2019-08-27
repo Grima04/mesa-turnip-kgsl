@@ -570,8 +570,10 @@ static bool r600_texture_get_handle(struct pipe_screen* screen,
 		res->external_usage = usage;
 	}
 
-	return rscreen->ws->buffer_get_handle(rscreen->ws, res->buf, stride,
-					      offset, slice_size, whandle);
+	whandle->stride = stride;
+	whandle->offset = offset + slice_size * whandle->layer;
+
+	return rscreen->ws->buffer_get_handle(rscreen->ws, res->buf, whandle);
 }
 
 static void r600_texture_destroy(struct pipe_screen *screen,

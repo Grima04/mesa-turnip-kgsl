@@ -1274,8 +1274,6 @@ fail:
 
 static bool radeon_winsys_bo_get_handle(struct radeon_winsys *rws,
                                         struct pb_buffer *buffer,
-                                        unsigned stride, unsigned offset,
-                                        unsigned slice_size,
                                         struct winsys_handle *whandle)
 {
     struct drm_gem_flink flink;
@@ -1311,10 +1309,6 @@ static bool radeon_winsys_bo_get_handle(struct radeon_winsys *rws,
         if (drmPrimeHandleToFD(ws->fd, bo->handle, DRM_CLOEXEC, (int*)&whandle->handle))
             return false;
     }
-
-    whandle->stride = stride;
-    whandle->offset = offset;
-    whandle->offset += slice_size * whandle->layer;
 
     return true;
 }

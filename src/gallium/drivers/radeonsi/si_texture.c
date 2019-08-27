@@ -1029,8 +1029,10 @@ static bool si_texture_get_handle(struct pipe_screen* screen,
 		res->external_usage = usage;
 	}
 
-	return sscreen->ws->buffer_get_handle(sscreen->ws, res->buf, stride,
-					      offset, slice_size, whandle);
+	whandle->stride = stride;
+	whandle->offset = offset + slice_size * whandle->layer;
+
+	return sscreen->ws->buffer_get_handle(sscreen->ws, res->buf, whandle);
 }
 
 static void si_texture_destroy(struct pipe_screen *screen,

@@ -1049,8 +1049,10 @@ bool r300_resource_get_handle(struct pipe_screen* screen,
         return false;
     }
 
-    return rws->buffer_get_handle(rws, tex->buf, tex->tex.stride_in_bytes[0],
-                                  0, 0, whandle);
+    whandle->stride = tex->tex.stride_in_bytes[0];
+    whandle->offset = 0;
+
+    return rws->buffer_get_handle(rws, tex->buf, whandle);
 }
 
 static const struct u_resource_vtbl r300_texture_vtbl =
