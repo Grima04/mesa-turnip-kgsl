@@ -481,7 +481,10 @@ def generate(env):
             '-fmessage-length=0', # be nice to Eclipse
         ]
         cflags += [
-            '-Wmissing-prototypes',
+            '-Werror=implicit-function-declaration',
+            '-Werror=missing-prototypes',
+            '-Werror=return-type',
+            '-Werror=incompatible-pointer-types',
             '-std=gnu99',
         ]
     if icc:
