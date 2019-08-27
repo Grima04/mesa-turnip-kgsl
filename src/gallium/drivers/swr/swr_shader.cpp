@@ -25,6 +25,7 @@
 #pragma push_macro("DEBUG")
 #undef DEBUG
 #include "JitManager.h"
+#include <llvm/Config/llvm-config.h>
 #include "llvm-c/Core.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -599,7 +600,7 @@ BuilderSWR::CompileGS(struct swr_context *ctx, swr_jit_gs_key &key)
                                      GlobalValue::ExternalLinkage,
                                      "GS",
                                      JM()->mpCurrentModule);
-#if HAVE_LLVM < 0x0500
+#if LLVM_VERSION_MAJOR < 5
    AttributeSet attrSet = AttributeSet::get(
       JM()->mContext, AttributeSet::FunctionIndex, attrBuilder);
    pFunction->addAttributes(AttributeSet::FunctionIndex, attrSet);
@@ -773,7 +774,7 @@ BuilderSWR::CompileVS(struct swr_context *ctx, swr_jit_vs_key &key)
                                      GlobalValue::ExternalLinkage,
                                      "VS",
                                      JM()->mpCurrentModule);
-#if HAVE_LLVM < 0x0500
+#if LLVM_VERSION_MAJOR < 5
    AttributeSet attrSet = AttributeSet::get(
       JM()->mContext, AttributeSet::FunctionIndex, attrBuilder);
    pFunction->addAttributes(AttributeSet::FunctionIndex, attrSet);
@@ -1059,7 +1060,7 @@ BuilderSWR::CompileFS(struct swr_context *ctx, swr_jit_fs_key &key)
                                      GlobalValue::ExternalLinkage,
                                      "FS",
                                      JM()->mpCurrentModule);
-#if HAVE_LLVM < 0x0500
+#if LLVM_VERSION_MAJOR < 5
    AttributeSet attrSet = AttributeSet::get(
       JM()->mContext, AttributeSet::FunctionIndex, attrBuilder);
    pFunction->addAttributes(AttributeSet::FunctionIndex, attrSet);
