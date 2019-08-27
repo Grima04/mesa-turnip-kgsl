@@ -55,6 +55,9 @@ struct lp_compute_shader_variant
    LLVMTypeRef jit_cs_context_ptr_type;
    LLVMTypeRef jit_cs_thread_data_ptr_type;
 
+   LLVMValueRef function;
+   lp_jit_cs_func jit_function;
+
    /* Total number of LLVM instructions generated */
    unsigned nr_instrs;
 
