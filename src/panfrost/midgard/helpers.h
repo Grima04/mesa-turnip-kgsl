@@ -73,10 +73,14 @@
                 op == midgard_op_ld_ubo_int4 \
         )
 
-#define OP_IS_CSEL(op) ( \
-                op == midgard_alu_op_icsel || \
+#define OP_IS_CSEL_V(op) ( \
                 op == midgard_alu_op_icsel_v || \
-                op == midgard_alu_op_fcsel_v || \
+                op == midgard_alu_op_fcsel_v \
+        )
+
+#define OP_IS_CSEL(op) ( \
+                OP_IS_CSEL_V(op) || \
+                op == midgard_alu_op_icsel || \
                 op == midgard_alu_op_fcsel \
         )
 
