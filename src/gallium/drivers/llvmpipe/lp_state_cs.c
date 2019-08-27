@@ -38,6 +38,14 @@
 #include "lp_debug.h"
 #include "lp_state.h"
 #include "lp_perf.h"
+#include "lp_screen.h"
+#include "lp_cs_tpool.h"
+
+struct lp_cs_job_info {
+   unsigned grid_size[3];
+   unsigned block_size[3];
+   struct lp_cs_exec *current;
+};
 
 static void
 generate_compute(struct llvmpipe_context *lp,
@@ -623,12 +631,80 @@ llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe)
    llvmpipe->cs_dirty = 0;
 }
 
+static void
+cs_exec_fn(void *init_data, int iter_idx, struct lp_cs_local_mem *lmem)
+{
+   struct lp_cs_job_info *job_info = init_data;
+   struct lp_jit_cs_thread_data thread_data;
+
+   memset(&thread_data, 0, sizeof(thread_data));
+
+   unsigned grid_z = iter_idx / (job_info->grid_size[0] * job_info->grid_size[1]);
+   unsigned grid_y = (iter_idx - (grid_z * (job_info->grid_size[0] * job_info->grid_size[1]))) / job_info->grid_size[0];
+   unsigned grid_x = (iter_idx - (grid_z * (job_info->grid_size[0] * job_info->grid_size[1])) - (grid_y * job_info->grid_size[0]));
+   struct lp_compute_shader_variant *variant = job_info->current->variant;
+   variant->jit_function(&job_info->current->jit_context,
+                         job_info->block_size[0], job_info->block_size[1], job_info->block_size[2],
+                         grid_x, grid_y, grid_z,
+                         job_info->grid_size[0], job_info->grid_size[1], job_info->grid_size[2],
+                         &thread_data);
+}
+
+static void
+fill_grid_size(struct pipe_context *pipe,
+               const struct pipe_grid_info *info,
+               uint32_t grid_size[3])
+{
+   struct pipe_transfer *transfer;
+   uint32_t *params;
+   if (!info->indirect) {
+      grid_size[0] = info->grid[0];
+      grid_size[1] = info->grid[1];
+      grid_size[2] = info->grid[2];
+      return;
+   }
+   params = pipe_buffer_map_range(pipe, info->indirect,
+                                  info->indirect_offset,
+                                  3 * sizeof(uint32_t),
+                                  PIPE_TRANSFER_READ,
+                                  &transfer);
+
+   if (!transfer)
+      return;
+
+   grid_size[0] = params[0];
+   grid_size[1] = params[1];
+   grid_size[2] = params[2];
+   pipe_buffer_unmap(pipe, transfer);
+}
+
 static void llvmpipe_launch_grid(struct pipe_context *pipe,
                                  const struct pipe_grid_info *info)
 {
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
+   struct llvmpipe_screen *screen = llvmpipe_screen(pipe->screen);
+   struct lp_cs_job_info job_info;
+
+   memset(&job_info, 0, sizeof(job_info));
 
    llvmpipe_cs_update_derived(llvmpipe);
+
+   fill_grid_size(pipe, info, job_info.grid_size);
+
+   job_info.block_size[0] = info->block[0];
+   job_info.block_size[1] = info->block[1];
+   job_info.block_size[2] = info->block[2];
+   job_info.current = &llvmpipe->csctx->cs.current;
+
+   int num_tasks = job_info.grid_size[2] * job_info.grid_size[1] * job_info.grid_size[0];
+   if (num_tasks) {
+      struct lp_cs_tpool_task *task;
+      mtx_lock(&screen->cs_mutex);
+      task = lp_cs_tpool_queue_task(screen->cs_tpool, cs_exec_fn, &job_info, num_tasks);
+
+      lp_cs_tpool_wait_for_task(screen->cs_tpool, &task);
+      mtx_unlock(&screen->cs_mutex);
+   }
 }
 
 void
