@@ -752,14 +752,8 @@ static unsigned get_max_threads_per_block(struct si_screen *screen,
 	if (ir_type == PIPE_SHADER_IR_NATIVE)
 		return 256;
 
-	/* Only 16 waves per thread-group on gfx9. */
-	if (screen->info.chip_class >= GFX9)
-		return 1024;
-
-	/* Up to 40 waves per thread-group on GCN < gfx9. Expose a nice
-	 * round number.
-	 */
-	return 2048;
+        /* LLVM 10 only supports 1024 threads per block. */
+	return 1024;
 }
 
 static int si_get_compute_param(struct pipe_screen *screen,
