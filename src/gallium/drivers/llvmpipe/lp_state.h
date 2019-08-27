@@ -110,6 +110,9 @@ void
 llvmpipe_init_draw_funcs(struct llvmpipe_context *llvmpipe);
 
 void
+llvmpipe_init_compute_funcs(struct llvmpipe_context *llvmpipe);
+
+void
 llvmpipe_init_clip_funcs(struct llvmpipe_context *llvmpipe);
 
 void

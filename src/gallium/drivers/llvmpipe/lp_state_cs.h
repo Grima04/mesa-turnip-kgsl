@@ -31,7 +31,9 @@
 #include "pipe/p_state.h"
 
 #include "gallivm/lp_bld.h"
+#include "gallivm/lp_bld_tgsi.h" /* for lp_tgsi_info */
 #include "lp_jit.h"
+
 struct lp_compute_shader_variant;
 
 struct lp_compute_shader_variant_key
@@ -52,12 +54,29 @@ struct lp_compute_shader_variant
 
    LLVMTypeRef jit_cs_context_ptr_type;
    LLVMTypeRef jit_cs_thread_data_ptr_type;
+
+   /* Total number of LLVM instructions generated */
+   unsigned nr_instrs;
+
+   struct lp_cs_variant_list_item list_item_global, list_item_local;
+
+   struct lp_compute_shader *shader;
+
+   /* For debugging/profiling purposes */
+   unsigned no;
 };
 
 struct lp_compute_shader {
    struct pipe_shader_state base;
 
    struct lp_cs_variant_list_item variants;
+
+   struct lp_tgsi_info info;
+   /* For debugging/profiling purposes */
+   unsigned variant_key_size;
+   unsigned no;
+   unsigned variants_created;
+   unsigned variants_cached;
 };
 
 struct lp_cs_exec {
