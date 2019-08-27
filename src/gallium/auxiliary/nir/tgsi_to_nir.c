@@ -2456,6 +2456,10 @@ ttn_compile_init(const void *tgsi_tokens,
    s->num_inputs = scan.file_max[TGSI_FILE_INPUT] + 1;
    s->num_uniforms = scan.const_file_max[0] + 1;
    s->num_outputs = scan.file_max[TGSI_FILE_OUTPUT] + 1;
+   s->info.num_ssbos = util_last_bit(scan.shader_buffers_declared);
+   s->info.num_ubos = util_last_bit(scan.const_buffers_declared >> 1);
+   s->info.num_images = util_last_bit(scan.images_declared);
+   s->info.num_textures = util_last_bit(scan.samplers_declared);
 
    for (unsigned i = 0; i < TGSI_PROPERTY_COUNT; i++) {
       unsigned value = scan.properties[i];
