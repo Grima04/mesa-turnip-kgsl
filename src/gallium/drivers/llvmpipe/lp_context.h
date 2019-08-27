@@ -40,6 +40,7 @@
 #include "lp_jit.h"
 #include "lp_setup.h"
 #include "lp_state_fs.h"
+#include "lp_state_cs.h"
 #include "lp_state_setup.h"
 
 
@@ -148,6 +149,8 @@ struct llvmpipe_context {
 
    struct lp_setup_variant_list_item setup_variants_list;
    unsigned nr_setup_variants;
+
+   struct lp_cs_context *csctx;
 
    /** Conditional query object and mode */
    struct pipe_query *render_cond_query;

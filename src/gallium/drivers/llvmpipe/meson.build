@@ -73,6 +73,8 @@ files_llvmpipe = files(
   'lp_state_blend.c',
   'lp_state_clip.c',
   'lp_state_derived.c',
+  'lp_state_cs.c',
+  'lp_state_cs.h',
   'lp_state_fs.c',
   'lp_state_fs.h',
   'lp_state_gs.c',
