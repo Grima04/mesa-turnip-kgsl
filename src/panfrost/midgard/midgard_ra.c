@@ -141,7 +141,7 @@ static struct phys_reg
 index_to_reg(compiler_context *ctx, struct ra_graph *g, unsigned reg)
 {
         /* Check for special cases */
-        if ((reg == ~0) && g)
+        if (reg == ~0)
                 return default_phys_reg(REGISTER_UNUSED);
         else if (reg >= SSA_FIXED_MINIMUM)
                 return default_phys_reg(SSA_REG_FROM_FIXED(reg));
