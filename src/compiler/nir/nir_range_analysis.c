@@ -580,6 +580,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       ASSERT_UNION_OF_DISJOINT_MATCHES_UNKNOWN_1_SOURCE(table);
       ASSERT_UNION_OF_EQ_AND_STRICT_INEQ_MATCHES_NONSTRICT_1_SOURCE(table);
 
+      r.is_integral = r.is_integral && is_not_negative(r.range);
       r.range = table[r.range];
       break;
    }
