@@ -363,6 +363,17 @@ mir_next_op(struct midgard_instruction *ins)
 #define mir_foreach_bundle_in_block(block, v) \
         util_dynarray_foreach(&block->bundles, midgard_bundle, v)
 
+#define mir_foreach_bundle_in_block_rev(block, v) \
+        util_dynarray_foreach_reverse(&block->bundles, midgard_bundle, v)
+
+#define mir_foreach_instr_in_block_scheduled_rev(block, v) \
+        midgard_instruction* v; \
+        signed i = 0; \
+        mir_foreach_bundle_in_block_rev(block, _bundle) \
+                for (i = (_bundle->instruction_count - 1), v = _bundle->instructions[i]; \
+                                i >= 0; \
+                                --i, v = _bundle->instructions[i]) \
+
 #define mir_foreach_instr_global(ctx, v) \
         mir_foreach_block(ctx, v_block) \
                 mir_foreach_instr_in_block(v_block, v)
