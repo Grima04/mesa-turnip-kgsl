@@ -812,8 +812,7 @@ v3d_nir_lower_fs_early(struct v3d_compile *c)
          * enabling early_fragment_tests even if the user didn't.
          */
         if (!(c->s->info.num_images ||
-              c->s->info.num_ssbos ||
-              c->s->info.num_abos)) {
+              c->s->info.num_ssbos)) {
                 c->s->info.fs.early_fragment_tests = true;
         }
 }

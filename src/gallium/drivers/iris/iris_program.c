@@ -691,10 +691,7 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
     */
    bt->sizes[IRIS_SURFACE_GROUP_UBO] = num_cbufs + 1;
 
-   /* The first IRIS_MAX_ABOs indices in the SSBO group are for atomics, real
-    * SSBOs start after that.  Compaction will remove unused ABOs.
-    */
-   bt->sizes[IRIS_SURFACE_GROUP_SSBO] = IRIS_MAX_ABOS + info->num_ssbos;
+   bt->sizes[IRIS_SURFACE_GROUP_SSBO] = info->num_ssbos;
 
    for (int i = 0; i < IRIS_SURFACE_GROUP_COUNT; i++)
       assert(bt->sizes[i] <= SURFACE_GROUP_MAX_ELEMENTS);
