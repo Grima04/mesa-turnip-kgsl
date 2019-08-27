@@ -479,27 +479,71 @@ static bool ppir_regalloc_spill_reg(ppir_compiler *comp, ppir_reg *chosen)
 static ppir_reg *ppir_regalloc_choose_spill_node(ppir_compiler *comp,
                                                  struct ra_graph *g)
 {
-   int i = 0;
-   ppir_reg *chosen = NULL;
+   float spill_costs[list_length(&comp->reg_list)];
+   /* experimentally determined, it seems to be worth scaling cost of
+    * regs in instructions that have used uniform/store_temp slots,
+    * but not too much as to offset the num_components base cost. */
+   const float slot_scale = 1.1f;
 
    list_for_each_entry(ppir_reg, reg, &comp->reg_list, list) {
       if (reg->spilled || reg->live_out == INT_MAX) {
          /* not considered for spilling */
-         ra_set_node_spill_cost(g, i++, 0.0f);
+         spill_costs[reg->regalloc_index] = 0.0f;
          continue;
       }
 
       /* It is beneficial to spill registers with higher component number,
        * so increase the cost of spilling registers with few components */
       float spill_cost = 4.0f / (float)reg->num_components;
-      ra_set_node_spill_cost(g, i++, spill_cost);
+      spill_costs[reg->regalloc_index] = spill_cost;
    }
+
+   list_for_each_entry(ppir_block, block, &comp->block_list, list) {
+      list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
+         if (instr->slots[PPIR_INSTR_SLOT_UNIFORM]) {
+            for (int i = 0; i < PPIR_INSTR_SLOT_NUM; i++) {
+               ppir_node *node = instr->slots[i];
+               if (!node)
+                  continue;
+               for (int j = 0; j < ppir_node_get_src_num(node); j++) {
+                  ppir_src *src = ppir_node_get_src(node, j);
+                  if (!src)
+                     continue;
+                  ppir_reg *reg = ppir_src_get_reg(src);
+                  if (!reg)
+                     continue;
+
+                  spill_costs[reg->regalloc_index] *= slot_scale;
+               }
+            }
+         }
+         if (instr->slots[PPIR_INSTR_SLOT_STORE_TEMP]) {
+            for (int i = 0; i < PPIR_INSTR_SLOT_NUM; i++) {
+               ppir_node *node = instr->slots[i];
+               if (!node)
+                  continue;
+               ppir_dest *dest = ppir_node_get_dest(node);
+               if (!dest)
+                  continue;
+               ppir_reg *reg = ppir_dest_get_reg(dest);
+               if (!reg)
+                  continue;
+
+               spill_costs[reg->regalloc_index] *= slot_scale;
+            }
+         }
+      }
+   }
+
+   for (int i = 0; i < list_length(&comp->reg_list); i++)
+      ra_set_node_spill_cost(g, i, spill_costs[i]);
 
    int r = ra_get_best_spill_node(g);
    if (r == -1)
       return NULL;
 
-   i = 0;
+   ppir_reg *chosen = NULL;
+   int i = 0;
    list_for_each_entry(ppir_reg, reg, &comp->reg_list, list) {
       if (i++ == r) {
          chosen = reg;
