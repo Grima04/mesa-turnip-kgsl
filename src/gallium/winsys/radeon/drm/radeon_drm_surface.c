@@ -432,8 +432,29 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
 	    si_compute_cmask(&ws->info, &config, surf_ws);
     }
 
-    if (ws->gen == DRV_SI)
+    if (ws->gen == DRV_SI) {
         si_compute_htile(&ws->info, surf_ws, util_num_layers(tex, 0));
+
+	/* Determine the memory layout of multiple allocations in one buffer. */
+	surf_ws->total_size = surf_ws->surf_size;
+
+	if (surf_ws->htile_size) {
+		surf_ws->htile_offset = align64(surf_ws->total_size, surf_ws->htile_alignment);
+		surf_ws->total_size = surf_ws->htile_offset + surf_ws->htile_size;
+	}
+
+	if (surf_ws->fmask_size) {
+		assert(tex->nr_samples >= 2);
+		surf_ws->fmask_offset = align64(surf_ws->total_size, surf_ws->fmask_alignment);
+		surf_ws->total_size = surf_ws->fmask_offset + surf_ws->fmask_size;
+	}
+
+	/* Single-sample CMASK is in a separate buffer. */
+	if (surf_ws->cmask_size && tex->nr_samples >= 2) {
+		surf_ws->cmask_offset = align64(surf_ws->total_size, surf_ws->cmask_alignment);
+		surf_ws->total_size = surf_ws->cmask_offset + surf_ws->cmask_size;
+	}
+    }
 
     return 0;
 }

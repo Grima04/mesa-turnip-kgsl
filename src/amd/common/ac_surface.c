@@ -1679,7 +1679,61 @@ int ac_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *info,
 		return r;
 
 	if (info->chip_class >= GFX9)
-		return gfx9_compute_surface(addrlib, info, config, mode, surf);
+		r = gfx9_compute_surface(addrlib, info, config, mode, surf);
 	else
-		return gfx6_compute_surface(addrlib, info, config, mode, surf);
+		r = gfx6_compute_surface(addrlib, info, config, mode, surf);
+
+	if (r)
+		return r;
+
+	/* Determine the memory layout of multiple allocations in one buffer. */
+	surf->total_size = surf->surf_size;
+
+	if (surf->htile_size) {
+		surf->htile_offset = align64(surf->total_size, surf->htile_alignment);
+		surf->total_size = surf->htile_offset + surf->htile_size;
+	}
+
+	if (surf->fmask_size) {
+		assert(config->info.samples >= 2);
+		surf->fmask_offset = align64(surf->total_size, surf->fmask_alignment);
+		surf->total_size = surf->fmask_offset + surf->fmask_size;
+	}
+
+	/* Single-sample CMASK is in a separate buffer. */
+	if (surf->cmask_size && config->info.samples >= 2) {
+		surf->cmask_offset = align64(surf->total_size, surf->cmask_alignment);
+		surf->total_size = surf->cmask_offset + surf->cmask_size;
+	}
+
+	if (surf->dcc_size &&
+	    (info->use_display_dcc_unaligned ||
+	     info->use_display_dcc_with_retile_blit ||
+	     !(surf->flags & RADEON_SURF_SCANOUT))) {
+		surf->dcc_offset = align64(surf->total_size, surf->dcc_alignment);
+		surf->total_size = surf->dcc_offset + surf->dcc_size;
+
+		if (info->chip_class >= GFX9 &&
+		    surf->u.gfx9.dcc_retile_num_elements) {
+			/* Add space for the displayable DCC buffer. */
+			surf->display_dcc_offset =
+				align64(surf->total_size, surf->u.gfx9.display_dcc_alignment);
+			surf->total_size = surf->display_dcc_offset +
+					   surf->u.gfx9.display_dcc_size;
+
+			/* Add space for the DCC retile buffer. (16-bit or 32-bit elements) */
+			surf->dcc_retile_map_offset =
+				align64(surf->total_size, info->tcc_cache_line_size);
+
+			if (surf->u.gfx9.dcc_retile_use_uint16) {
+				surf->total_size = surf->dcc_retile_map_offset +
+						   surf->u.gfx9.dcc_retile_num_elements * 2;
+			} else {
+				surf->total_size = surf->dcc_retile_map_offset +
+						   surf->u.gfx9.dcc_retile_num_elements * 4;
+			}
+		}
+	}
+
+	return 0;
 }

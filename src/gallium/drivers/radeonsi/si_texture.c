@@ -1243,10 +1243,7 @@ si_texture_create_object(struct pipe_screen *screen,
 
 	/* don't include stencil-only formats which we don't support for rendering */
 	tex->is_depth = util_format_has_depth(util_format_description(tex->buffer.b.b.format));
-
 	tex->surface = *surface;
-	tex->size = tex->surface.surf_size;
-
 	tex->tc_compatible_htile = tex->surface.htile_size != 0 &&
 				   (tex->surface.flags &
 				    RADEON_SURF_TC_COMPATIBLE_HTILE);
@@ -1276,6 +1273,15 @@ si_texture_create_object(struct pipe_screen *screen,
 	 */
 	tex->ps_draw_ratio = 0;
 
+	/* TODO: remove these */
+	tex->fmask_offset = tex->surface.fmask_offset;
+	tex->cmask_offset = tex->surface.cmask_offset;
+	tex->htile_offset = tex->surface.htile_offset;
+	tex->dcc_offset = tex->surface.dcc_offset;
+	tex->display_dcc_offset = tex->surface.display_dcc_offset;
+	tex->dcc_retile_map_offset = tex->surface.dcc_retile_map_offset;
+	tex->size = tex->surface.total_size;
+
 	if (tex->is_depth) {
 		if (sscreen->info.chip_class >= GFX9) {
 			tex->can_sample_z = true;
@@ -1294,54 +1300,10 @@ si_texture_create_object(struct pipe_screen *screen,
 		}
 
 		tex->db_compatible = surface->flags & RADEON_SURF_ZBUFFER;
-
-		if (tex->surface.htile_size) {
-			tex->htile_offset = align64(tex->size,
-						    tex->surface.htile_alignment);
-			tex->size = tex->htile_offset + tex->surface.htile_size;
-		}
 	} else {
-		if (tex->surface.fmask_size) {
-			/* Allocate FMASK. */
-			tex->fmask_offset = align64(tex->size,
-						     tex->surface.fmask_alignment);
-			tex->size = tex->fmask_offset + tex->surface.fmask_size;
-
-			/* Allocate CMASK. */
-			tex->cmask_offset = align64(tex->size, tex->surface.cmask_alignment);
-			tex->size = tex->cmask_offset + tex->surface.cmask_size;
+		if (tex->surface.cmask_offset) {
 			tex->cb_color_info |= S_028C70_FAST_CLEAR(1);
 			tex->cmask_buffer = &tex->buffer;
-		}
-
-		if (tex->surface.dcc_size &&
-		    (sscreen->info.use_display_dcc_unaligned ||
-		     sscreen->info.use_display_dcc_with_retile_blit ||
-		     !(tex->surface.flags & RADEON_SURF_SCANOUT))) {
-			/* Add space for the DCC buffer. */
-			tex->dcc_offset = align64(tex->size, tex->surface.dcc_alignment);
-			tex->size = tex->dcc_offset + tex->surface.dcc_size;
-
-			if (sscreen->info.chip_class >= GFX9 &&
-			    tex->surface.u.gfx9.dcc_retile_num_elements) {
-				/* Add space for the displayable DCC buffer. */
-				tex->display_dcc_offset =
-					align64(tex->size, tex->surface.u.gfx9.display_dcc_alignment);
-				tex->size = tex->display_dcc_offset +
-					    tex->surface.u.gfx9.display_dcc_size;
-
-				/* Add space for the DCC retile buffer. (16-bit or 32-bit elements) */
-				tex->dcc_retile_map_offset =
-					align64(tex->size, sscreen->info.tcc_cache_line_size);
-
-				if (tex->surface.u.gfx9.dcc_retile_use_uint16) {
-					tex->size = tex->dcc_retile_map_offset +
-						    tex->surface.u.gfx9.dcc_retile_num_elements * 2;
-				} else {
-					tex->size = tex->dcc_retile_map_offset +
-						    tex->surface.u.gfx9.dcc_retile_num_elements * 4;
-				}
-			}
 		}
 	}
 

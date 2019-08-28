@@ -227,6 +227,15 @@ struct radeon_surf {
     uint32_t                    cmask_slice_size;
     uint32_t                    cmask_alignment;
 
+    /* All buffers combined. */
+    uint64_t                    htile_offset;
+    uint64_t                    fmask_offset;
+    uint64_t                    cmask_offset;
+    uint64_t                    dcc_offset;
+    uint64_t                    display_dcc_offset;
+    uint64_t                    dcc_retile_map_offset;
+    uint64_t                    total_size;
+
     union {
         /* Return values for GFX8 and older.
          *
