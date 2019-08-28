@@ -4298,7 +4298,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		} else if (shaders[i]->info.stage == MESA_SHADER_VERTEX) {
 			ctx.abi.load_base_vertex = radv_load_base_vertex;
 		} else if (shaders[i]->info.stage == MESA_SHADER_FRAGMENT) {
-			shader_info->fs.can_discard = shaders[i]->info.fs.uses_discard;
 			ctx.abi.load_sample_position = load_sample_position;
 			ctx.abi.load_sample_mask_in = load_sample_mask_in;
 			ctx.abi.emit_kill = radv_emit_kill;
@@ -4521,6 +4520,7 @@ ac_fill_shader_info(struct radv_shader_variant_info *shader_info, struct nir_sha
                         shader_info->cs.block_size[i] = nir->info.cs.local_size[i];
                 break;
         case MESA_SHADER_FRAGMENT:
+		shader_info->fs.can_discard = nir->info.fs.uses_discard;
                 shader_info->fs.early_fragment_test = nir->info.fs.early_fragment_tests;
                 shader_info->fs.post_depth_coverage = nir->info.fs.post_depth_coverage;
                 break;
