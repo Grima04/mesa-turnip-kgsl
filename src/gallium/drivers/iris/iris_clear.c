@@ -581,7 +581,7 @@ clear_depth_stencil(struct iris_context *ice,
       return;
    }
 
-   if (z_res) {
+   if (clear_depth && z_res) {
       iris_resource_prepare_depth(ice, batch, z_res, level, box->z, box->depth);
       iris_blorp_surf_for_resource(&ice->vtbl, &z_surf, &z_res->base,
                                    z_res->aux.usage, level, true);
@@ -611,7 +611,7 @@ clear_depth_stencil(struct iris_context *ice,
    iris_flush_and_dirty_for_history(ice, batch, res, 0,
                                     "cache history: post slow ZS clear");
 
-   if (z_res) {
+   if (clear_depth && z_res) {
       iris_resource_finish_depth(ice, z_res, level,
                                  box->z, box->depth, true);
    }
