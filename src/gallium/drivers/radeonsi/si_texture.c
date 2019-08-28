@@ -315,6 +315,8 @@ static int si_init_surface(struct si_screen *sscreen,
 		flags |= RADEON_SURF_IMPORTED | RADEON_SURF_SHAREABLE;
 	if (!(ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING))
 		flags |= RADEON_SURF_OPTIMIZE_FOR_SPACE;
+	if (sscreen->debug_flags & DBG(NO_FMASK))
+		flags |= RADEON_SURF_NO_FMASK;
 
 	if (sscreen->info.chip_class >= GFX10 &&
 	    (ptex->flags & SI_RESOURCE_FLAG_FORCE_MSAA_TILING)) {
@@ -1369,9 +1371,7 @@ si_texture_create_object(struct pipe_screen *screen,
 				si_texture_allocate_htile(sscreen, tex);
 		}
 	} else {
-		if (base->nr_samples > 1 &&
-		    !buf &&
-		    !(sscreen->debug_flags & DBG(NO_FMASK))) {
+		if (tex->surface.fmask_size) {
 			/* Allocate FMASK. */
 			tex->fmask_offset = align64(tex->size,
 						     tex->surface.fmask_alignment);
@@ -1382,9 +1382,6 @@ si_texture_create_object(struct pipe_screen *screen,
 			tex->size = tex->cmask_offset + tex->surface.cmask_size;
 			tex->cb_color_info |= S_028C70_FAST_CLEAR(1);
 			tex->cmask_buffer = &tex->buffer;
-
-			if (!tex->surface.fmask_size || !tex->surface.cmask_size)
-				goto error;
 		}
 
 		/* Shared textures must always set up DCC here.

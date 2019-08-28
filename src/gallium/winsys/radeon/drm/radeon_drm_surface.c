@@ -307,7 +307,7 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
     /* Compute FMASK. */
     if (ws->gen == DRV_SI &&
         tex->nr_samples >= 2 &&
-        !(flags & (RADEON_SURF_Z_OR_SBUFFER | RADEON_SURF_FMASK))) {
+        !(flags & (RADEON_SURF_Z_OR_SBUFFER | RADEON_SURF_FMASK | RADEON_SURF_NO_FMASK))) {
         /* FMASK is allocated like an ordinary texture. */
         struct pipe_resource templ = *tex;
         struct radeon_surf fmask = {};
@@ -351,7 +351,8 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
         surf_ws->u.legacy.fmask.pitch_in_pixels = fmask.u.legacy.level[0].nblk_x;
     }
 
-    if (ws->gen == DRV_SI) {
+    if (ws->gen == DRV_SI &&
+        (tex->nr_samples <= 1 || surf_ws->fmask_size)) {
 	    struct ac_surf_config config;
 
 	    /* Only these fields need to be set for the CMASK computation. */

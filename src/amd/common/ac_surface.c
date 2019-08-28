@@ -488,7 +488,8 @@ static void ac_compute_cmask(const struct radeon_info *info,
 	unsigned num_pipes = info->num_tile_pipes;
 	unsigned cl_width, cl_height;
 
-	if (surf->flags & RADEON_SURF_Z_OR_SBUFFER)
+	if (surf->flags & RADEON_SURF_Z_OR_SBUFFER ||
+	    (config->info.samples >= 2 && !surf->fmask_size))
 		return;
 
 	assert(info->chip_class <= GFX8);
@@ -850,7 +851,8 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib,
 	}
 
 	/* Compute FMASK. */
-	if (config->info.samples >= 2 && AddrSurfInfoIn.flags.color) {
+	if (config->info.samples >= 2 && AddrSurfInfoIn.flags.color &&
+	    !(surf->flags & RADEON_SURF_NO_FMASK)) {
 		ADDR_COMPUTE_FMASK_INFO_INPUT fin = {0};
 		ADDR_COMPUTE_FMASK_INFO_OUTPUT fout = {0};
 		ADDR_TILEINFO fmask_tile_info = {};
@@ -1292,7 +1294,7 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 		}
 
 		/* FMASK */
-		if (in->numSamples > 1) {
+		if (in->numSamples > 1 && !(surf->flags & RADEON_SURF_NO_FMASK)) {
 			ADDR2_COMPUTE_FMASK_INFO_INPUT fin = {0};
 			ADDR2_COMPUTE_FMASK_INFO_OUTPUT fout = {0};
 
@@ -1350,7 +1352,8 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 
 		/* CMASK -- on GFX10 only for FMASK */
 		if (in->swizzleMode != ADDR_SW_LINEAR &&
-		    (info->chip_class <= GFX9 || in->numSamples > 1)) {
+		    ((info->chip_class <= GFX9 && in->numSamples == 1) ||
+		     (surf->fmask_size && in->numSamples >= 2))) {
 			ADDR2_COMPUTE_CMASK_INFO_INPUT cin = {0};
 			ADDR2_COMPUTE_CMASK_INFO_OUTPUT cout = {0};
 
