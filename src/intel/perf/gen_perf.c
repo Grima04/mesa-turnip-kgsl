@@ -583,14 +583,15 @@ kernel_has_dynamic_config_support(struct gen_perf_config *perf, int fd)
                     &invalid_config_id) < 0 && errno == ENOENT;
 }
 
-static bool
-load_metric_id(struct gen_perf_config *perf, const char *guid,
-               uint64_t *metric_id)
+bool
+gen_perf_load_metric_id(struct gen_perf_config *perf_cfg,
+                        const char *guid,
+                        uint64_t *metric_id)
 {
    char config_path[280];
 
    snprintf(config_path, sizeof(config_path), "%s/metrics/%s/id",
-            perf->sysfs_dev_dir, guid);
+            perf_cfg->sysfs_dev_dir, guid);
 
    /* Don't recreate already loaded configs. */
    return read_file_uint64(config_path, metric_id);
@@ -605,7 +606,7 @@ init_oa_configs(struct gen_perf_config *perf, int fd)
       uint64_t config_id;
       int ret;
 
-      if (load_metric_id(perf, query->guid, &config_id)) {
+      if (gen_perf_load_metric_id(perf, query->guid, &config_id)) {
          DBG("metric set: %s (already loaded)\n", query->guid);
          register_oa_config(perf, query, config_id);
          continue;
@@ -964,11 +965,11 @@ gen8_read_report_clock_ratios(const uint32_t *report,
    *unslice_freq_hz = unslice_freq * 16666667ULL;
 }
 
-static void
-query_result_read_frequencies(struct gen_perf_query_result *result,
-                              const struct gen_device_info *devinfo,
-                              const uint32_t *start,
-                              const uint32_t *end)
+void
+gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
+                                       const struct gen_device_info *devinfo,
+                                       const uint32_t *start,
+                                       const uint32_t *end)
 {
    /* Slice/Unslice frequency is only available in the OA reports when the
     * "Disable OA reports due to clock ratio change" field in
@@ -989,11 +990,11 @@ query_result_read_frequencies(struct gen_perf_query_result *result,
                                  &result->unslice_frequency[1]);
 }
 
-static void
-query_result_accumulate(struct gen_perf_query_result *result,
-                        const struct gen_perf_query_info *query,
-                        const uint32_t *start,
-                        const uint32_t *end)
+void
+gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
+                                 const struct gen_perf_query_info *query,
+                                 const uint32_t *start,
+                                 const uint32_t *end)
 {
    int i, idx = 0;
 
@@ -1031,8 +1032,8 @@ query_result_accumulate(struct gen_perf_query_result *result,
 
 }
 
-static void
-query_result_clear(struct gen_perf_query_result *result)
+void
+gen_perf_query_result_clear(struct gen_perf_query_result *result)
 {
    memset(result, 0, sizeof(*result));
    result->hw_id = 0xffffffff; /* invalid */
@@ -1292,8 +1293,8 @@ get_metric_id(struct gen_perf_config *perf,
    }
 
    struct gen_perf_query_info *raw_query = (struct gen_perf_query_info *)query;
-   if (!load_metric_id(perf, query->guid,
-                       &raw_query->oa_metrics_set_id)) {
+   if (!gen_perf_load_metric_id(perf, query->guid,
+                                &raw_query->oa_metrics_set_id)) {
       DBG("Unable to read query guid=%s ID, falling back to test config\n", query->guid);
       raw_query->oa_metrics_set_id = 1ULL;
    } else {
@@ -1735,7 +1736,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
        */
       buf->refcount++;
 
-      query_result_clear(&query->oa.result);
+      gen_perf_query_result_clear(&query->oa.result);
       query->oa.results_accumulated = false;
 
       add_to_unaccumulated_query_list(perf_ctx, query);
@@ -2203,8 +2204,9 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
             }
 
             if (add) {
-               query_result_accumulate(&query->oa.result, query->queryinfo,
-                                       last, report);
+               gen_perf_query_result_accumulate(&query->oa.result,
+                                                query->queryinfo,
+                                                last, report);
             }
 
             last = report;
@@ -2224,8 +2226,8 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
 
 end:
 
-   query_result_accumulate(&query->oa.result, query->queryinfo,
-                           last, end);
+   gen_perf_query_result_accumulate(&query->oa.result, query->queryinfo,
+                                    last, end);
 
    query->oa.results_accumulated = true;
    drop_from_unaccumulated_query_list(perf_ctx, query);
@@ -2412,10 +2414,10 @@ gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
          read_gt_frequency(perf_ctx, query);
          uint32_t *begin_report = query->oa.map;
          uint32_t *end_report = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
-         query_result_read_frequencies(&query->oa.result,
-                                       perf_ctx->devinfo,
-                                       begin_report,
-                                       end_report);
+         gen_perf_query_result_read_frequencies(&query->oa.result,
+                                                perf_ctx->devinfo,
+                                                begin_report,
+                                                end_report);
          accumulate_oa_reports(perf_ctx, query);
          assert(query->oa.results_accumulated);
 

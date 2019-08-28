@@ -255,12 +255,34 @@ struct gen_perf_config {
 struct gen_perf_query_object;
 const struct gen_perf_query_info* gen_perf_query_info(const struct gen_perf_query_object *);
 
-struct gen_perf_context;
-struct gen_perf_context *gen_perf_new_context(void *parent);
-
 void gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
                            const struct gen_device_info *devinfo,
                            int drm_fd);
+
+/** Query i915 for a metric id using guid.
+ */
+bool gen_perf_load_metric_id(struct gen_perf_config *perf_cfg,
+                             const char *guid,
+                             uint64_t *metric_id);
+
+/** Read the slice/unslice frequency from 2 OA reports and store then into
+ *  result.
+ */
+void gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
+                                            const struct gen_device_info *devinfo,
+                                            const uint32_t *start,
+                                            const uint32_t *end);
+/** Accumulate the delta between 2 OA reports into result for a given query.
+ */
+void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
+                                      const struct gen_perf_query_info *query,
+                                      const uint32_t *start,
+                                      const uint32_t *end);
+void gen_perf_query_result_clear(struct gen_perf_query_result *result);
+
+struct gen_perf_context;
+struct gen_perf_context *gen_perf_new_context(void *parent);
+
 void gen_perf_init_context(struct gen_perf_context *perf_ctx,
                            struct gen_perf_config *perf_cfg,
                            void * ctx,  /* driver context (eg, brw_context) */
