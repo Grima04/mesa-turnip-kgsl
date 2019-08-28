@@ -298,6 +298,13 @@ static int si_init_surface(struct si_screen *sscreen,
 	    ptex->nr_storage_samples >= 2)
 		flags |= RADEON_SURF_DISABLE_DCC;
 
+	/* Shared textures must always set up DCC.
+	 * If it's not present, it will be disabled by
+	 * si_get_opaque_metadata later.
+	 */
+	if (!is_imported && (sscreen->debug_flags & DBG(NO_DCC)))
+		flags |= RADEON_SURF_DISABLE_DCC;
+
 	if (ptex->bind & PIPE_BIND_SCANOUT || is_scanout) {
 		/* This should catch bugs in gallium users setting incorrect flags. */
 		assert(ptex->nr_samples <= 1 &&
@@ -1384,12 +1391,7 @@ si_texture_create_object(struct pipe_screen *screen,
 			tex->cmask_buffer = &tex->buffer;
 		}
 
-		/* Shared textures must always set up DCC here.
-		 * If it's not present, it will be disabled by
-		 * si_get_opaque_metadata later.
-		 */
 		if (tex->surface.dcc_size &&
-		    (buf || !(sscreen->debug_flags & DBG(NO_DCC))) &&
 		    (sscreen->info.use_display_dcc_unaligned ||
 		     sscreen->info.use_display_dcc_with_retile_blit ||
 		     !(tex->surface.flags & RADEON_SURF_SCANOUT))) {
