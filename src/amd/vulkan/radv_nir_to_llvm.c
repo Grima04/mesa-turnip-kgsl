@@ -95,9 +95,7 @@ struct radv_shader_context {
 	gl_shader_stage stage;
 
 	LLVMValueRef inputs[RADEON_LLVM_MAX_INPUTS * 4];
-	uint64_t float16_shaded_mask;
 
-	uint64_t input_mask;
 	uint64_t output_mask;
 
 	bool is_gs_copy_shader;
