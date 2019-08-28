@@ -338,11 +338,12 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib,
 		}
 	}
 
-	/* TC-compatible HTILE. */
+	/* HTILE. */
 	if (!is_stencil &&
 	    AddrSurfInfoIn->flags.depth &&
 	    surf_level->mode == RADEON_SURF_MODE_2D &&
-	    level == 0) {
+	    level == 0 &&
+	    !(surf->flags & RADEON_SURF_NO_HTILE)) {
 		AddrHtileIn->flags.tcCompatible = AddrSurfInfoIn->flags.tcCompatible;
 		AddrHtileIn->pitch = AddrSurfInfoOut->pitch;
 		AddrHtileIn->height = AddrSurfInfoOut->height;
@@ -1065,6 +1066,9 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 	if (in->flags.depth) {
 		assert(in->swizzleMode != ADDR_SW_LINEAR);
 
+		if (surf->flags & RADEON_SURF_NO_HTILE)
+			return 0;
+
 		/* HTILE */
 		ADDR2_COMPUTE_HTILE_INFO_INPUT hin = {0};
 		ADDR2_COMPUTE_HTILE_INFO_OUTPUT hout = {0};
@@ -1091,7 +1095,10 @@ static int gfx9_compute_miptree(ADDR_HANDLE addrlib,
 		surf->htile_size = hout.htileBytes;
 		surf->htile_slice_size = hout.sliceSize;
 		surf->htile_alignment = hout.baseAlign;
-	} else {
+		return 0;
+	}
+
+	{
 		/* Compute tile swizzle for the color surface.
 		 * All *_X and *_T modes can use the swizzle.
 		 */

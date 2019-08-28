@@ -253,9 +253,11 @@ static int si_init_surface(struct si_screen *sscreen,
 	if (!is_flushed_depth && is_depth) {
 		flags |= RADEON_SURF_ZBUFFER;
 
-		if (tc_compatible_htile &&
-		    (sscreen->info.chip_class >= GFX9 ||
-		     array_mode == RADEON_SURF_MODE_2D)) {
+		if (sscreen->debug_flags & DBG(NO_HYPERZ)) {
+			flags |= RADEON_SURF_NO_HTILE;
+		} else if (tc_compatible_htile &&
+			   (sscreen->info.chip_class >= GFX9 ||
+			    array_mode == RADEON_SURF_MODE_2D)) {
 			/* TC-compatible HTILE only supports Z32_FLOAT.
 			 * GFX9 also supports Z16_UNORM.
 			 * On GFX8, promote Z16 to Z32. DB->CB copies will convert
@@ -1067,85 +1069,6 @@ static void si_texture_destroy(struct pipe_screen *screen,
 
 static const struct u_resource_vtbl si_texture_vtbl;
 
-static void si_texture_get_htile_size(struct si_screen *sscreen,
-				      struct si_texture *tex)
-{
-	unsigned cl_width, cl_height, width, height;
-	unsigned slice_elements, slice_bytes, pipe_interleave_bytes, base_align;
-	unsigned num_pipes = sscreen->info.num_tile_pipes;
-
-	assert(sscreen->info.chip_class <= GFX8);
-
-	tex->surface.htile_size = 0;
-
-	if (tex->surface.u.legacy.level[0].mode == RADEON_SURF_MODE_1D &&
-	    !sscreen->info.htile_cmask_support_1d_tiling)
-		return;
-
-	/* Overalign HTILE on P2 configs to work around GPU hangs in
-	 * piglit/depthstencil-render-miplevels 585.
-	 *
-	 * This has been confirmed to help Kabini & Stoney, where the hangs
-	 * are always reproducible. I think I have seen the test hang
-	 * on Carrizo too, though it was very rare there.
-	 */
-	if (sscreen->info.chip_class >= GFX7 && num_pipes < 4)
-		num_pipes = 4;
-
-	switch (num_pipes) {
-	case 1:
-		cl_width = 32;
-		cl_height = 16;
-		break;
-	case 2:
-		cl_width = 32;
-		cl_height = 32;
-		break;
-	case 4:
-		cl_width = 64;
-		cl_height = 32;
-		break;
-	case 8:
-		cl_width = 64;
-		cl_height = 64;
-		break;
-	case 16:
-		cl_width = 128;
-		cl_height = 64;
-		break;
-	default:
-		assert(0);
-		return;
-	}
-
-	width = align(tex->surface.u.legacy.level[0].nblk_x, cl_width * 8);
-	height = align(tex->surface.u.legacy.level[0].nblk_y, cl_height * 8);
-
-	slice_elements = (width * height) / (8 * 8);
-	slice_bytes = slice_elements * 4;
-
-	pipe_interleave_bytes = sscreen->info.pipe_interleave_bytes;
-	base_align = num_pipes * pipe_interleave_bytes;
-
-	tex->surface.htile_alignment = base_align;
-	tex->surface.htile_size =
-		util_num_layers(&tex->buffer.b.b, 0) *
-		align(slice_bytes, base_align);
-}
-
-static void si_texture_allocate_htile(struct si_screen *sscreen,
-				      struct si_texture *tex)
-{
-	if (sscreen->info.chip_class <= GFX8 && !tex->tc_compatible_htile)
-		si_texture_get_htile_size(sscreen, tex);
-
-	if (!tex->surface.htile_size)
-		return;
-
-	tex->htile_offset = align(tex->size, tex->surface.htile_alignment);
-	tex->size = tex->htile_offset + tex->surface.htile_size;
-}
-
 void si_print_texture_info(struct si_screen *sscreen,
 			   struct si_texture *tex, struct u_log_context *log)
 {
@@ -1370,12 +1293,12 @@ si_texture_create_object(struct pipe_screen *screen,
 			tex->can_sample_s = !tex->surface.u.legacy.stencil_adjusted;
 		}
 
-		if (!(base->flags & (SI_RESOURCE_FLAG_TRANSFER |
-				     SI_RESOURCE_FLAG_FLUSHED_DEPTH))) {
-			tex->db_compatible = true;
+		tex->db_compatible = surface->flags & RADEON_SURF_ZBUFFER;
 
-			if (!(sscreen->debug_flags & DBG(NO_HYPERZ)))
-				si_texture_allocate_htile(sscreen, tex);
+		if (tex->surface.htile_size) {
+			tex->htile_offset = align64(tex->size,
+						    tex->surface.htile_alignment);
+			tex->size = tex->htile_offset + tex->surface.htile_size;
 		}
 	} else {
 		if (tex->surface.fmask_size) {
@@ -1678,7 +1601,8 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 	}
 
 	struct radeon_surf surface = {0};
-	bool is_flushed_depth = templ->flags & SI_RESOURCE_FLAG_FLUSHED_DEPTH;
+	bool is_flushed_depth = templ->flags & SI_RESOURCE_FLAG_FLUSHED_DEPTH ||
+				templ->flags & SI_RESOURCE_FLAG_TRANSFER;
 	bool tc_compatible_htile =
 		sscreen->info.chip_class >= GFX8 &&
 		/* There are issues with TC-compatible HTILE on Tonga (and
