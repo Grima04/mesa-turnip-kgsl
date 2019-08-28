@@ -272,8 +272,8 @@ static bool gpir_emit_tex(gpir_block *block, nir_instr *ni)
 
 static bool gpir_emit_jump(gpir_block *block, nir_instr *ni)
 {
-   gpir_error("nir_jump_instr not support\n");
-   return false;
+   /* Jumps are emitted at the end of the basic block, so do nothing. */
+   return true;
 }
 
 static bool (*gpir_emit_instr[nir_instr_type_phi])(gpir_block *, nir_instr *) = {
@@ -285,79 +285,61 @@ static bool (*gpir_emit_instr[nir_instr_type_phi])(gpir_block *, nir_instr *) = 
    [nir_instr_type_jump]       = gpir_emit_jump,
 };
 
-static gpir_block *gpir_block_create(gpir_compiler *comp)
+static bool gpir_emit_function(gpir_compiler *comp, nir_function_impl *impl)
 {
-   gpir_block *block = ralloc(comp, gpir_block);
-   if (!block)
-      return NULL;
+   nir_index_blocks(impl);
+   comp->blocks = ralloc_array(comp, gpir_block *, impl->num_blocks);
 
-   list_inithead(&block->node_list);
-   list_inithead(&block->instr_list);
-
-   return block;
-}
-
-static bool gpir_emit_block(gpir_compiler *comp, nir_block *nblock)
-{
-   gpir_block *block = gpir_block_create(comp);
-   if (!block)
-      return false;
-
-   list_addtail(&block->list, &comp->block_list);
-   block->comp = comp;
-
-   nir_foreach_instr(instr, nblock) {
-      assert(instr->type < nir_instr_type_phi);
-      if (!gpir_emit_instr[instr->type](block, instr))
+   nir_foreach_block(block_nir, impl) {
+      gpir_block *block = ralloc(comp, gpir_block);
+      if (!block)
          return false;
+
+      list_inithead(&block->node_list);
+      list_inithead(&block->instr_list);
+
+      list_addtail(&block->list, &comp->block_list);
+      block->comp = comp;
+      comp->blocks[block_nir->index] = block;
    }
 
-   return true;
-}
-
-static bool gpir_emit_if(gpir_compiler *comp, nir_if *nif)
-{
-   gpir_error("if nir_cf_node not support\n");
-   return false;
-}
-
-static bool gpir_emit_loop(gpir_compiler *comp, nir_loop *nloop)
-{
-   gpir_error("loop nir_cf_node not support\n");
-   return false;
-}
-
-static bool gpir_emit_function(gpir_compiler *comp, nir_function_impl *nfunc)
-{
-   gpir_error("function nir_cf_node not support\n");
-   return false;
-}
-
-static bool gpir_emit_cf_list(gpir_compiler *comp, struct exec_list *list)
-{
-   foreach_list_typed(nir_cf_node, node, node, list) {
-      bool ret;
-
-      switch (node->type) {
-      case nir_cf_node_block:
-         ret = gpir_emit_block(comp, nir_cf_node_as_block(node));
-         break;
-      case nir_cf_node_if:
-         ret = gpir_emit_if(comp, nir_cf_node_as_if(node));
-         break;
-      case nir_cf_node_loop:
-         ret = gpir_emit_loop(comp, nir_cf_node_as_loop(node));
-         break;
-      case nir_cf_node_function:
-         ret = gpir_emit_function(comp, nir_cf_node_as_function(node));
-         break;
-      default:
-         gpir_error("unknown NIR node type %d\n", node->type);
-         return false;
+   nir_foreach_block(block_nir, impl) {
+      gpir_block *block = comp->blocks[block_nir->index];
+      nir_foreach_instr(instr, block_nir) {
+         assert(instr->type < nir_instr_type_phi);
+         if (!gpir_emit_instr[instr->type](block, instr))
+            return false;
       }
 
-      if (!ret)
-         return false;
+      if (block_nir->successors[0] == impl->end_block)
+         block->successors[0] = NULL;
+      else
+         block->successors[0] = comp->blocks[block_nir->successors[0]->index];
+      block->successors[1] = NULL;
+
+      if (block_nir->successors[1] != NULL) {
+         nir_if *nif = nir_cf_node_as_if(nir_cf_node_next(&block_nir->cf_node));
+         gpir_alu_node *cond = gpir_node_create(block, gpir_op_not);
+         list_addtail(&cond->node.list, &block->node_list);
+         cond->children[0] = gpir_node_find(block, &cond->node, &nif->condition, 0);
+         gpir_node_add_dep(&cond->node, cond->children[0], GPIR_DEP_INPUT);
+
+         gpir_branch_node *branch = gpir_node_create(block, gpir_op_branch_cond);
+         list_addtail(&branch->node.list, &block->node_list);
+
+         branch->dest = comp->blocks[block_nir->successors[1]->index];
+         block->successors[1] = branch->dest;
+
+         branch->cond = &cond->node;
+         gpir_node_add_dep(&branch->node, &cond->node, GPIR_DEP_INPUT);
+
+         assert(block_nir->successors[0]->index == block_nir->index + 1);
+      } else if (block_nir->successors[0]->index != block_nir->index + 1) {
+         gpir_branch_node *branch = gpir_node_create(block, gpir_op_branch_uncond);
+         list_addtail(&branch->node.list, &block->node_list);
+
+         branch->dest = comp->blocks[block_nir->successors[0]->index];
+      }
    }
 
    return true;
@@ -430,7 +412,7 @@ bool gpir_compile_nir(struct lima_vs_shader_state *prog, struct nir_shader *nir,
    comp->constant_base = nir->num_uniforms;
    prog->uniform_pending_offset = nir->num_uniforms * 16;
 
-   if (!gpir_emit_cf_list(comp, &func->body))
+   if (!gpir_emit_function(comp, func))
       goto err_out0;
 
    gpir_node_print_prog_seq(comp);

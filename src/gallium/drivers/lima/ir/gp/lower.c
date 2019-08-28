@@ -413,6 +413,26 @@ static bool gpir_lower_not(gpir_block *block, gpir_node *node)
    return true;
 }
 
+/* There is no unconditional branch instruction, so we have to lower it to a
+ * conditional branch with a condition of 1.0.
+ */
+
+static bool gpir_lower_branch_uncond(gpir_block *block, gpir_node *node)
+{
+   gpir_branch_node *branch = gpir_node_to_branch(node);
+
+   gpir_node *node_const = gpir_node_create(block, gpir_op_const);
+   gpir_const_node *c = gpir_node_to_const(node_const);
+
+   list_addtail(&c->node.list, &node->list);
+   c->value.f = 1.0f;
+   gpir_node_add_dep(&branch->node, &c->node, GPIR_DEP_INPUT);
+
+   branch->node.op = gpir_op_branch_cond;
+   branch->cond = node_const;
+
+   return true;
+}
 
 static bool (*gpir_pre_rsched_lower_funcs[gpir_op_num])(gpir_block *, gpir_node *) = {
    [gpir_op_not] = gpir_lower_not,
@@ -424,6 +444,7 @@ static bool (*gpir_pre_rsched_lower_funcs[gpir_op_num])(gpir_block *, gpir_node 
    [gpir_op_eq] = gpir_lower_eq_ne,
    [gpir_op_ne] = gpir_lower_eq_ne,
    [gpir_op_abs] = gpir_lower_abs,
+   [gpir_op_branch_uncond] = gpir_lower_branch_uncond,
 };
 
 bool gpir_pre_rsched_lower_prog(gpir_compiler *comp)

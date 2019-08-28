@@ -246,7 +246,6 @@ enum gpir_instr_slot {
    GPIR_INSTR_SLOT_ADD1,
    GPIR_INSTR_SLOT_PASS,
    GPIR_INSTR_SLOT_COMPLEX,
-   GPIR_INSTR_SLOT_BRANCH,
    GPIR_INSTR_SLOT_REG0_LOAD0,
    GPIR_INSTR_SLOT_REG0_LOAD1,
    GPIR_INSTR_SLOT_REG0_LOAD2,
@@ -347,6 +346,13 @@ typedef struct gpir_block {
    struct list_head instr_list;
    struct gpir_compiler *comp;
 
+   struct gpir_block *successors[2];
+   struct list_head predecessors;
+   struct list_head predecessors_node;
+
+   /* For codegen, the offset in the final program. */
+   unsigned instr_offset;
+
    /* for scheduler */
    union {
       struct {
@@ -361,6 +367,7 @@ typedef struct gpir_block {
 typedef struct {
    gpir_node node;
    gpir_block *dest;
+   gpir_node *cond;
 } gpir_branch_node;
 
 struct lima_vs_shader_state;
@@ -375,6 +382,9 @@ typedef struct gpir_compiler {
 
    /* array for searching ssa node */
    gpir_node **var_nodes;
+
+   /* gpir block for NIR block. */
+   gpir_block **blocks;
 
    /* for physical reg */
    struct list_head reg_list;
@@ -433,6 +443,7 @@ static inline bool gpir_node_is_leaf(gpir_node *node)
 #define gpir_node_to_const(node) ((gpir_const_node *)(node))
 #define gpir_node_to_load(node) ((gpir_load_node *)(node))
 #define gpir_node_to_store(node) ((gpir_store_node *)(node))
+#define gpir_node_to_branch(node) ((gpir_branch_node *)(node))
 
 gpir_instr *gpir_instr_create(gpir_block *block);
 bool gpir_instr_try_insert_node(gpir_instr *instr, gpir_node *node);
