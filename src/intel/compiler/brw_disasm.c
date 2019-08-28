@@ -1406,12 +1406,13 @@ static int
 src_sends_da(FILE *file,
              const struct gen_device_info *devinfo,
              enum brw_reg_type type,
+             enum brw_reg_file _reg_file,
              unsigned _reg_nr,
              unsigned _reg_subnr)
 {
    int err = 0;
 
-   err |= reg(file, BRW_GENERAL_REGISTER_FILE, _reg_nr);
+   err |= reg(file, _reg_file, _reg_nr);
    if (err == -1)
       return 0;
    if (_reg_subnr)
@@ -1454,6 +1455,7 @@ src0(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
          return src_sends_da(file,
                              devinfo,
                              BRW_REGISTER_TYPE_UD,
+                             brw_inst_send_src0_reg_file(devinfo, inst),
                              brw_inst_src0_da_reg_nr(devinfo, inst),
                              brw_inst_src0_da16_subreg_nr(devinfo, inst));
       } else {
@@ -1522,6 +1524,7 @@ src1(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
       return src_sends_da(file,
                           devinfo,
                           BRW_REGISTER_TYPE_UD,
+                          brw_inst_send_src1_reg_file(devinfo, inst),
                           brw_inst_send_src1_reg_nr(devinfo, inst),
                           0 /* subreg_nr */);
    } else if (brw_inst_src1_reg_file(devinfo, inst) == BRW_IMMEDIATE_VALUE) {
