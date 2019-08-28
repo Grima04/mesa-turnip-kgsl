@@ -106,11 +106,34 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       case ppir_op_const:
          child = ppir_node_clone(node->block, child);
          break;
-      /* Clone uniforms and load textures for each block */
       case ppir_op_load_texture:
-      case ppir_op_load_uniform:
-      case ppir_op_load_varying:
+         /* Clone texture loads for each block */
          if (child->block != node->block) {
+            child = ppir_node_clone(node->block, child);
+            comp->var_nodes[ns->ssa->index] = child;
+         }
+         break;
+      case ppir_op_load_varying:
+         if ((node->op != ppir_op_load_texture)) {
+            /* Clone varying loads for each block */
+            if (child->block != node->block) {
+               child = ppir_node_clone(node->block, child);
+               comp->var_nodes[ns->ssa->index] = child;
+            }
+            break;
+         }
+         /* At least one successor is load_texture, promote it to load_coords
+          * to ensure that is has exactly one successor */
+         child->op = ppir_op_load_coords;
+         /* Fallthrough */
+      case ppir_op_load_uniform:
+      case ppir_op_load_coords:
+         /* Clone uniform and texture coord loads for each block.
+          * Also ensure that each load has a single successor.
+          * Let's do a fetch each time and hope for a cache hit instead
+          * of increasing reg pressure.
+          */
+         if (child->block != node->block || !ppir_node_is_root(child)) {
             child = ppir_node_clone(node->block, child);
             comp->var_nodes[ns->ssa->index] = child;
          }

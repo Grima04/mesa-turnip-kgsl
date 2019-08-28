@@ -624,12 +624,21 @@ static ppir_node *
 ppir_node_clone_tex(ppir_block *block, ppir_node *node)
 {
    ppir_load_texture_node *tex_node = ppir_node_to_load_texture(node);
-   ppir_load_texture_node *new_tnode = ppir_node_create(block, ppir_op_load_texture, -1, 0);
+   ppir_node *tex_coords = tex_node->src_coords.node;
 
+   ppir_node *new_tex_coords = NULL;
+
+   ppir_load_texture_node *new_tnode = ppir_node_create(block, ppir_op_load_texture, -1, 0);
    if (!new_tnode)
       return NULL;
 
    list_addtail(&new_tnode->node.list, &block->node_list);
+
+   if (tex_coords) {
+      new_tex_coords = ppir_node_clone(block, tex_coords);
+      if (!new_tex_coords)
+         return NULL;
+   }
 
    ppir_dest *dest = ppir_node_get_dest(node);
    new_tnode->dest = *dest;
@@ -644,14 +653,19 @@ ppir_node_clone_tex(ppir_block *block, ppir_node *node)
       ppir_src *new_src = ppir_node_get_src(&new_tnode->node, i);
       switch (src->type) {
       case ppir_target_ssa: {
-         ppir_node_target_assign(new_src, src->node);
-         ppir_node_add_dep(&new_tnode->node, src->node);
+         ppir_node_target_assign(new_src, new_tex_coords);
+         ppir_node_add_dep(&new_tnode->node, new_tex_coords);
          break;
       }
       case ppir_target_register: {
          new_src->type = src->type;
          new_src->reg = src->reg;
          new_src->node = NULL;
+         break;
+      }
+      case ppir_target_pipeline: {
+         new_src->type = src->type;
+         new_src->pipeline = src->pipeline;
          break;
       }
       default:
@@ -693,6 +707,7 @@ ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node)
    case ppir_op_load_uniform:
    case ppir_op_load_varying:
    case ppir_op_load_temp:
+   case ppir_op_load_coords:
       return ppir_node_clone_load(block, node);
    default:
       return NULL;

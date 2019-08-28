@@ -96,12 +96,31 @@ static bool ppir_lower_load(ppir_block *block, ppir_node *node)
       return true;
    }
 
+   assert(ppir_node_has_single_succ(node) || ppir_node_is_root(node));
+   ppir_node *succ = ppir_node_first_succ(node);
+   if (dest->type != ppir_target_register) {
+      switch (succ->type) {
+      case ppir_node_type_alu:
+      case ppir_node_type_branch: {
+         ppir_src *src = ppir_node_get_src_for_pred(succ, node);
+         /* Can consume uniforms directly */
+         src->type = dest->type = ppir_target_pipeline;
+         src->pipeline = dest->pipeline = ppir_pipeline_reg_uniform;
+         return true;
+      }
+      default:
+         /* Create mov for everyone else */
+         break;
+      }
+   }
+
    ppir_node *move = ppir_node_insert_mov(node);
    if (unlikely(!move))
       return false;
 
-   dest->type = ppir_target_pipeline;
-   dest->pipeline = ppir_pipeline_reg_uniform;
+   ppir_src *mov_src = ppir_node_get_src(move, 0);
+   mov_src->type = dest->type = ppir_target_pipeline;
+   mov_src->pipeline = dest->pipeline = ppir_pipeline_reg_uniform;
 
    return true;
 }
@@ -134,28 +153,56 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
       return true;
    }
 
-   /* Create load_coords node */
-   ppir_load_node *load = ppir_node_create(block, ppir_op_load_coords, -1, 0);
-   if (!load)
-      return false;
-   list_addtail(&load->node.list, &node->list);
+   ppir_node *src_coords = ppir_node_get_src(node, 0)->node;
+   ppir_load_node *load = NULL;
+   if (src_coords && ppir_node_has_single_succ(src_coords) &&
+       (src_coords->op == ppir_op_load_coords))
+      load = ppir_node_to_load(src_coords);
+   else {
+      /* Create load_coords node */
+      load = ppir_node_create(block, ppir_op_load_coords, -1, 0);
+      if (!load)
+         return false;
+      list_addtail(&load->node.list, &node->list);
 
-   ppir_debug("%s create load_coords node %d for %d\n",
-              __FUNCTION__, load->node.index, node->index);
+      load->src = load_tex->src_coords;
+      load->num_src = 1;
 
-   load->dest.type = ppir_target_pipeline;
-   load->dest.pipeline = ppir_pipeline_reg_discard;
+      ppir_debug("%s create load_coords node %d for %d\n",
+                 __FUNCTION__, load->node.index, node->index);
 
-   load->src = load_tex->src_coords;
-   load->num_src = 1;
-
-   ppir_node_foreach_pred_safe(node, dep) {
-      ppir_node *pred = dep->pred;
-      ppir_node_remove_dep(dep);
-      ppir_node_add_dep(&load->node, pred);
+      ppir_node_foreach_pred_safe(node, dep) {
+         ppir_node *pred = dep->pred;
+         ppir_node_remove_dep(dep);
+         ppir_node_add_dep(&load->node, pred);
+      }
+      ppir_node_add_dep(node, &load->node);
    }
 
-   ppir_node_add_dep(node, &load->node);
+   assert(load);
+   load_tex->src_coords.type = load->dest.type = ppir_target_pipeline;
+   load_tex->src_coords.pipeline = load->dest.pipeline = ppir_pipeline_reg_discard;
+
+   if (ppir_node_has_single_succ(node)) {
+      ppir_node *succ = ppir_node_first_succ(node);
+      switch (succ->type) {
+      case ppir_node_type_alu:
+      case ppir_node_type_branch: {
+         for (int i = 0; i < ppir_node_get_src_num(succ); i++) {
+            ppir_src *src = ppir_node_get_src(succ, i);
+            if (src->node == node) {
+               /* Can consume samplers directly */
+               src->type = dest->type = ppir_target_pipeline;
+               src->pipeline = dest->pipeline = ppir_pipeline_reg_sampler;
+            }
+         }
+         return true;
+      }
+      default:
+         /* Create mov for everyone else */
+         break;
+      }
+   }
 
    /* Create move node */
    ppir_node *move = ppir_node_insert_mov(node);
