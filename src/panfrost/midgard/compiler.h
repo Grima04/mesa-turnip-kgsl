@@ -288,9 +288,9 @@ typedef struct compiler_context {
 /* Append instruction to end of current block */
 
 static inline midgard_instruction *
-mir_upload_ins(struct midgard_instruction ins)
+mir_upload_ins(struct compiler_context *ctx, struct midgard_instruction ins)
 {
-        midgard_instruction *heap = malloc(sizeof(ins));
+        midgard_instruction *heap = ralloc(ctx, struct midgard_instruction);
         memcpy(heap, &ins, sizeof(ins));
         return heap;
 }
@@ -298,15 +298,17 @@ mir_upload_ins(struct midgard_instruction ins)
 static inline midgard_instruction *
 emit_mir_instruction(struct compiler_context *ctx, struct midgard_instruction ins)
 {
-        midgard_instruction *u = mir_upload_ins(ins);
+        midgard_instruction *u = mir_upload_ins(ctx, ins);
         list_addtail(&u->link, &ctx->current_block->instructions);
         return u;
 }
 
 static inline struct midgard_instruction *
-mir_insert_instruction_before(struct midgard_instruction *tag, struct midgard_instruction ins)
+mir_insert_instruction_before(struct compiler_context *ctx,
+                              struct midgard_instruction *tag,
+                              struct midgard_instruction ins)
 {
-        struct midgard_instruction *u = mir_upload_ins(ins);
+        struct midgard_instruction *u = mir_upload_ins(ctx, ins);
         list_addtail(&u->link, &tag->link);
         return u;
 }
@@ -315,7 +317,6 @@ static inline void
 mir_remove_instruction(struct midgard_instruction *ins)
 {
         list_del(&ins->link);
-        free(ins);
 }
 
 static inline midgard_instruction*

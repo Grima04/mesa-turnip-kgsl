@@ -641,7 +641,7 @@ midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
 
                                 /* We found one! Move it up to pair and remove it from the old location */
 
-                                mir_insert_instruction_before(ins, *c);
+                                mir_insert_instruction_before(ctx, ins, *c);
                                 mir_remove_instruction(c);
 
                                 break;
@@ -805,7 +805,7 @@ static void mir_spill_register(
                         /* Hint: don't rewrite this node */
                         st.hint = true;
 
-                        mir_insert_instruction_before(mir_next_op(ins), st);
+                        mir_insert_instruction_before(ctx, mir_next_op(ins), st);
 
                         if (!is_special)
                                 ctx->spills++;
@@ -873,7 +873,7 @@ static void mir_spill_register(
 
                                 st.mask = read_mask;
 
-                                mir_insert_instruction_before(before, st);
+                                mir_insert_instruction_before(ctx, before, st);
                                // consecutive_skip = true;
                         } else {
                                 /* Special writes already have their move spilled in */

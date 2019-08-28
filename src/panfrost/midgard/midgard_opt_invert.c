@@ -56,7 +56,7 @@ midgard_lower_invert(compiler_context *ctx, midgard_block *block)
 
                 ins->dest = temp;
                 ins->invert = false;
-                mir_insert_instruction_before(mir_next_op(ins), not);
+                mir_insert_instruction_before(ctx, mir_next_op(ins), not);
         }
 }
 

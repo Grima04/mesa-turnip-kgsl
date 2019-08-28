@@ -1962,7 +1962,7 @@ inline_alu_constants(compiler_context *ctx)
                                 alu->src[1] = scratch;
 
                                 /* Inject us -before- the last instruction which set r31 */
-                                mir_insert_instruction_before(mir_prev_op(alu), ins);
+                                mir_insert_instruction_before(ctx, mir_prev_op(alu), ins);
                         }
                 }
         }

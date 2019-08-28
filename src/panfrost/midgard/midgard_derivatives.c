@@ -148,7 +148,7 @@ midgard_lower_derivatives(compiler_context *ctx, midgard_block *block)
                 dup.texture.in_reg_swizzle = SWIZZLE_ZWWW;
 
                 /* Insert the new instruction */
-                mir_insert_instruction_before(mir_next_op(ins), dup);
+                mir_insert_instruction_before(ctx, mir_next_op(ins), dup);
 
                 /* TODO: Set .cont/.last automatically via dataflow analysis */
                 ctx->texture_op_count++;

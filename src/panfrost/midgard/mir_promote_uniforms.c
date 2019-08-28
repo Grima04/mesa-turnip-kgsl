@@ -103,7 +103,7 @@ midgard_promote_uniforms(compiler_context *ctx, unsigned promoted_count)
                 if (needs_move) {
                         midgard_instruction mov = v_mov(promoted, blank_alu_src, ins->dest);
                         mov.mask = ins->mask;
-                        mir_insert_instruction_before(ins, mov);
+                        mir_insert_instruction_before(ctx, ins, mov);
                 } else {
                         mir_rewrite_index_src_swizzle(ctx, ins->dest,
                                         promoted, swizzle_of(nr_components));
