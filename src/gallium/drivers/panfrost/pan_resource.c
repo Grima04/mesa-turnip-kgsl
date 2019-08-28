@@ -47,6 +47,17 @@
 #include "pan_util.h"
 #include "pan_tiling.h"
 
+static void
+panfrost_resource_reset_damage(struct panfrost_resource *pres)
+{
+        /* We set the damage extent to the full resource size but keep the
+         * damage box empty so that the FB content is reloaded by default.
+         */
+        memset(&pres->damage, 0, sizeof(pres->damage));
+        pres->damage.extent.maxx = pres->base.width0;
+        pres->damage.extent.maxy = pres->base.height0;
+}
+
 static struct pipe_resource *
 panfrost_resource_from_handle(struct pipe_screen *pscreen,
                               const struct pipe_resource *templat,
@@ -73,6 +84,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         rsc->bo = panfrost_drm_import_bo(screen, whandle->handle);
         rsc->slices[0].stride = whandle->stride;
         rsc->slices[0].initialized = true;
+        panfrost_resource_reset_damage(rsc);
 
         if (screen->ro) {
                 rsc->scanout =
@@ -401,17 +413,6 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
         /* We create a BO immediately but don't bother mapping, since we don't
          * care to map e.g. FBOs which the CPU probably won't touch */
         pres->bo = panfrost_drm_create_bo(screen, bo_size, PAN_ALLOCATE_DELAY_MMAP);
-}
-
-static void
-panfrost_resource_reset_damage(struct panfrost_resource *pres)
-{
-        /* We set the damage extent to the full resource size but keep the
-         * damage box empty so that the FB content is reloaded by default.
-         */
-        memset(&pres->damage, 0, sizeof(pres->damage));
-        pres->damage.extent.maxx = pres->base.width0;
-        pres->damage.extent.maxy = pres->base.height0;
 }
 
 void
