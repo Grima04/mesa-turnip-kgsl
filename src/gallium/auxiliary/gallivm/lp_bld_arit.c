@@ -1169,8 +1169,13 @@ lp_build_mul_32_lohi_cpu(struct lp_build_context *bld,
     * https://llvm.org/bugs/show_bug.cgi?id=30845
     * So, whip up our own code, albeit only for length 4 and 8 (which
     * should be good enough)...
+    * FIXME: For llvm >= 7.0 we should match the autoupgrade pattern
+    * (bitcast/and/mul/shuffle for unsigned, bitcast/shl/ashr/mul/shuffle
+    * for signed), which the fallback code does not, without this llvm
+    * will likely still produce atrocious code.
     */
-   if ((bld->type.length == 4 || bld->type.length == 8) &&
+   if (HAVE_LLVM < 0x0700 &&
+       (bld->type.length == 4 || bld->type.length == 8) &&
        ((util_cpu_caps.has_sse2 && (bld->type.sign == 0)) ||
         util_cpu_caps.has_sse4_1)) {
       const char *intrinsic = NULL;
