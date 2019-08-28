@@ -3364,6 +3364,12 @@ void evergreen_update_ps_state(struct pipe_context *ctx, struct r600_pipe_shader
 				spi_baryc_cntl |= spi_baryc_enable_bit[k];
 				have_perspective |= k < 3;
 				have_linear |= !(k < 3);
+				if (rshader->input[i].uses_interpolate_at_centroid) {
+					k = eg_get_interpolator_index(
+						rshader->input[i].interpolate,
+						TGSI_INTERPOLATE_LOC_CENTROID);
+					spi_baryc_cntl |= spi_baryc_enable_bit[k];
+				}
 			}
 		}
 
