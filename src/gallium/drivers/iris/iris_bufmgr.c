@@ -1570,7 +1570,7 @@ iris_gtt_size(int fd)
  * \param fd File descriptor of the opened DRM device.
  */
 struct iris_bufmgr *
-iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
+iris_bufmgr_init(struct gen_device_info *devinfo, int fd, bool bo_reuse)
 {
    uint64_t gtt_size = iris_gtt_size(fd);
    if (gtt_size <= IRIS_MEMZONE_OTHER_START)
@@ -1599,6 +1599,7 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
    list_inithead(&bufmgr->zombie_list);
 
    bufmgr->has_llc = devinfo->has_llc;
+   bufmgr->bo_reuse = bo_reuse;
 
    STATIC_ASSERT(IRIS_MEMZONE_SHADER_START == 0ull);
    const uint64_t _4GB = 1ull << 32;
@@ -1621,9 +1622,6 @@ iris_bufmgr_init(struct gen_device_info *devinfo, int fd)
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_OTHER],
                       IRIS_MEMZONE_OTHER_START,
                       (gtt_size - _4GB) - IRIS_MEMZONE_OTHER_START);
-
-   // XXX: driconf
-   bufmgr->bo_reuse = env_var_as_boolean("bo_reuse", true);
 
    init_cache_buckets(bufmgr);
 

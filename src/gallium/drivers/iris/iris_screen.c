@@ -630,7 +630,17 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    if (getenv("INTEL_NO_HW") != NULL)
       screen->no_hw = true;
 
-   screen->bufmgr = iris_bufmgr_init(&screen->devinfo, fd);
+   bool bo_reuse = false;
+   int bo_reuse_mode = driQueryOptioni(config->options, "bo_reuse");
+   switch (bo_reuse_mode) {
+   case DRI_CONF_BO_REUSE_DISABLED:
+      break;
+   case DRI_CONF_BO_REUSE_ALL:
+      bo_reuse = true;
+      break;
+   }
+
+   screen->bufmgr = iris_bufmgr_init(&screen->devinfo, fd, bo_reuse);
    if (!screen->bufmgr)
       return NULL;
 

@@ -53,6 +53,11 @@ enum iris_param_domain {
    BRW_PARAM_DOMAIN_IMAGE,
 };
 
+enum {
+   DRI_CONF_BO_REUSE_DISABLED,
+   DRI_CONF_BO_REUSE_ALL
+};
+
 #define BRW_PARAM(domain, val)   (BRW_PARAM_DOMAIN_##domain << 24 | (val))
 #define BRW_PARAM_DOMAIN(param)  ((uint32_t)(param) >> 24)
 #define BRW_PARAM_VALUE(param)   ((uint32_t)(param) & 0x00ffffff)
