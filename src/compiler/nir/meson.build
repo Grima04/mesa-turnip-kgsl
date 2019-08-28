@@ -152,6 +152,7 @@ files_libnir = files(
   'nir_lower_point_size.c',
   'nir_lower_regs_to_ssa.c',
   'nir_lower_returns.c',
+  'nir_lower_samplers.c',
   'nir_lower_scratch.c',
   'nir_lower_subgroups.c',
   'nir_lower_system_values.c',
