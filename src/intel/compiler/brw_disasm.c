@@ -92,8 +92,11 @@ is_send(unsigned opcode)
 static bool
 is_split_send(UNUSED const struct gen_device_info *devinfo, unsigned opcode)
 {
-   return opcode == BRW_OPCODE_SENDS ||
-          opcode == BRW_OPCODE_SENDSC;
+   if (devinfo->gen >= 12)
+      return is_send(opcode);
+   else
+      return opcode == BRW_OPCODE_SENDS ||
+             opcode == BRW_OPCODE_SENDSC;
 }
 
 const char *const conditional_modifier[16] = {
@@ -748,7 +751,11 @@ dest(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
       /* These are fixed for split sends */
       type = BRW_REGISTER_TYPE_UD;
       elem_size = 4;
-      if (brw_inst_dst_address_mode(devinfo, inst) == BRW_ADDRESS_DIRECT) {
+      if (devinfo->gen >= 12) {
+         err |= reg(file, brw_inst_send_dst_reg_file(devinfo, inst),
+                    brw_inst_dst_da_reg_nr(devinfo, inst));
+         string(file, brw_reg_type_to_letters(type));
+      } else if (brw_inst_dst_address_mode(devinfo, inst) == BRW_ADDRESS_DIRECT) {
          err |= reg(file, brw_inst_send_dst_reg_file(devinfo, inst),
                     brw_inst_dst_da_reg_nr(devinfo, inst));
          unsigned subreg_nr = brw_inst_dst_da16_subreg_nr(devinfo, inst);
@@ -1436,7 +1443,14 @@ static int
 src0(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
 {
    if (is_split_send(devinfo, brw_inst_opcode(devinfo, inst))) {
-      if (brw_inst_send_src0_address_mode(devinfo, inst) == BRW_ADDRESS_DIRECT) {
+      if (devinfo->gen >= 12) {
+         return src_sends_da(file,
+                             devinfo,
+                             BRW_REGISTER_TYPE_UD,
+                             brw_inst_send_src0_reg_file(devinfo, inst),
+                             brw_inst_src0_da_reg_nr(devinfo, inst),
+                             0);
+      } else if (brw_inst_send_src0_address_mode(devinfo, inst) == BRW_ADDRESS_DIRECT) {
          return src_sends_da(file,
                              devinfo,
                              BRW_REGISTER_TYPE_UD,
