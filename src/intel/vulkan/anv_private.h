@@ -1082,6 +1082,7 @@ struct anv_physical_device {
     bool                                        has_syncobj_wait_available;
     bool                                        has_context_priority;
     bool                                        has_context_isolation;
+    bool                                        has_thread_submit;
     bool                                        has_mem_available;
     bool                                        has_mmap_offset;
     uint64_t                                    gtt_size;
@@ -1183,6 +1184,7 @@ struct anv_queue_submit {
    uint32_t                                  fence_count;
    uint32_t                                  fence_array_length;
    struct drm_i915_gem_exec_fence *          fences;
+   uint64_t *                                fence_values;
 
    uint32_t                                  temporary_semaphore_count;
    uint32_t                                  temporary_semaphore_array_length;
@@ -1194,7 +1196,10 @@ struct anv_queue_submit {
    uint32_t                                  sync_fd_semaphore_array_length;
 
    /* Allocated only with non shareable timelines. */
-   struct anv_timeline **                    wait_timelines;
+   union {
+      struct anv_timeline **                 wait_timelines;
+      uint32_t *                             wait_timeline_syncobjs;
+   };
    uint32_t                                  wait_timeline_count;
    uint32_t                                  wait_timeline_array_length;
    uint64_t *                                wait_timeline_values;
@@ -1229,14 +1234,34 @@ struct anv_queue_submit {
 struct anv_queue {
     struct vk_object_base                       base;
 
-    struct anv_device *                         device;
+   struct anv_device *                       device;
 
-    /*
-     * A list of struct anv_queue_submit to be submitted to i915.
-     */
-    struct list_head                            queued_submits;
+   VkDeviceQueueCreateFlags                  flags;
 
-    VkDeviceQueueCreateFlags                    flags;
+   /* Set once from the device api calls. */
+   bool                                      lost_signaled;
+
+   /* Only set once atomically by the queue */
+   int                                       lost;
+   int                                       error_line;
+   const char *                              error_file;
+   char                                      error_msg[80];
+
+   /*
+    * This mutext protects the variables below.
+    */
+   pthread_mutex_t                           mutex;
+
+   pthread_t                                 thread;
+   pthread_cond_t                            cond;
+
+   /*
+    * A list of struct anv_queue_submit to be submitted to i915.
+    */
+   struct list_head                          queued_submits;
+
+   /* Set to true to stop the submission thread */
+   bool                                      quit;
 };
 
 struct anv_pipeline_cache {
@@ -1330,6 +1355,7 @@ struct anv_device {
     int                                         fd;
     bool                                        can_chain_batches;
     bool                                        robust_buffer_access;
+    bool                                        has_thread_submit;
     struct anv_device_extension_table           enabled_extensions;
     struct anv_device_dispatch_table            dispatch;
 
@@ -1382,6 +1408,7 @@ struct anv_device {
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
     int                                         _lost;
+    int                                         lost_reported;
 
     struct gen_batch_decode_ctx                 decoder_ctx;
     /*
@@ -1439,7 +1466,7 @@ anv_mocs_for_bo(const struct anv_device *device, const struct anv_bo *bo)
 void anv_device_init_blorp(struct anv_device *device);
 void anv_device_finish_blorp(struct anv_device *device);
 
-void _anv_device_set_all_queue_lost(struct anv_device *device);
+void _anv_device_report_lost(struct anv_device *device);
 VkResult _anv_device_set_lost(struct anv_device *device,
                               const char *file, int line,
                               const char *msg, ...)
@@ -1451,12 +1478,17 @@ VkResult _anv_queue_set_lost(struct anv_queue *queue,
 #define anv_device_set_lost(dev, ...) \
    _anv_device_set_lost(dev, __FILE__, __LINE__, __VA_ARGS__)
 #define anv_queue_set_lost(queue, ...) \
-   _anv_queue_set_lost(queue, __FILE__, __LINE__, __VA_ARGS__)
+   (queue)->device->has_thread_submit ? \
+   _anv_queue_set_lost(queue, __FILE__, __LINE__, __VA_ARGS__) : \
+   _anv_device_set_lost(queue->device, __FILE__, __LINE__, __VA_ARGS__)
 
 static inline bool
 anv_device_is_lost(struct anv_device *device)
 {
-   return unlikely(p_atomic_read(&device->_lost));
+   int lost = p_atomic_read(&device->_lost);
+   if (unlikely(lost && !device->lost_reported))
+      _anv_device_report_lost(device);
+   return lost;
 }
 
 VkResult anv_device_query_status(struct anv_device *device);
@@ -3176,6 +3208,7 @@ enum anv_semaphore_type {
    ANV_SEMAPHORE_TYPE_SYNC_FILE,
    ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
    ANV_SEMAPHORE_TYPE_TIMELINE,
+   ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ_TIMELINE,
 };
 
 struct anv_timeline_point {

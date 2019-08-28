@@ -1091,6 +1091,8 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
 struct anv_execbuf {
    struct drm_i915_gem_execbuffer2           execbuf;
 
+   struct drm_i915_gem_execbuffer_ext_timeline_fences timeline_fences;
+
    struct drm_i915_gem_exec_object2 *        objects;
    uint32_t                                  bo_count;
    struct anv_bo **                          bos;
@@ -1117,6 +1119,24 @@ anv_execbuf_finish(struct anv_execbuf *exec)
 {
    vk_free(exec->alloc, exec->objects);
    vk_free(exec->alloc, exec->bos);
+}
+
+static void
+anv_execbuf_add_ext(struct anv_execbuf *exec,
+                    uint32_t ext_name,
+                    struct i915_user_extension *ext)
+{
+   __u64 *iter = &exec->execbuf.cliprects_ptr;
+
+   exec->execbuf.flags |= I915_EXEC_USE_EXTENSIONS;
+
+   while (*iter != 0) {
+      iter = (__u64 *) &((struct i915_user_extension *)(uintptr_t)*iter)->next_extension;
+   }
+
+   ext->name = ext_name;
+
+   *iter = (uintptr_t) ext;
 }
 
 static VkResult
@@ -1754,18 +1774,30 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
 
    if (submit->fence_count > 0) {
       assert(device->physical->has_syncobj);
-      execbuf.execbuf.flags |= I915_EXEC_FENCE_ARRAY;
-      execbuf.execbuf.num_cliprects = submit->fence_count;
-      execbuf.execbuf.cliprects_ptr = (uintptr_t)submit->fences;
+      if (device->has_thread_submit) {
+         execbuf.timeline_fences.fence_count = submit->fence_count;
+         execbuf.timeline_fences.handles_ptr = (uintptr_t)submit->fences;
+         execbuf.timeline_fences.values_ptr = (uintptr_t)submit->fence_values;
+         anv_execbuf_add_ext(&execbuf,
+                             DRM_I915_GEM_EXECBUFFER_EXT_TIMELINE_FENCES,
+                             &execbuf.timeline_fences.base);
+      } else {
+         execbuf.execbuf.flags |= I915_EXEC_FENCE_ARRAY;
+         execbuf.execbuf.num_cliprects = submit->fence_count;
+         execbuf.execbuf.cliprects_ptr = (uintptr_t)submit->fences;
+      }
    }
 
    if (submit->in_fence != -1) {
+      assert(!device->has_thread_submit);
       execbuf.execbuf.flags |= I915_EXEC_FENCE_IN;
       execbuf.execbuf.rsvd2 |= (uint32_t)submit->in_fence;
    }
 
-   if (submit->need_out_fence)
+   if (submit->need_out_fence) {
+      assert(!device->has_thread_submit);
       execbuf.execbuf.flags |= I915_EXEC_FENCE_OUT;
+   }
 
    if (has_perf_query) {
       struct anv_query_pool *query_pool = submit->cmd_buffer->perf_query_pool;

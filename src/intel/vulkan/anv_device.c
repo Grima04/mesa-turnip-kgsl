@@ -460,6 +460,9 @@ anv_physical_device_try_create(struct anv_instance *instance,
    if (env_var_as_boolean("ANV_QUEUE_THREAD_DISABLE", false))
       device->has_exec_timeline = false;
 
+   device->has_thread_submit =
+      device->has_syncobj_wait_available && device->has_exec_timeline;
+
    device->always_use_bindless =
       env_var_as_boolean("ANV_ALWAYS_BINDLESS", false);
 
@@ -2821,6 +2824,8 @@ VkResult anv_CreateDevice(
       goto fail_fd;
    }
 
+   device->has_thread_submit = physical_device->has_thread_submit;
+
    result = anv_queue_init(device, &device->queue);
    if (result != VK_SUCCESS)
       goto fail_context_id;
@@ -3111,11 +3116,11 @@ void anv_DestroyDevice(
    if (!device)
       return;
 
+   anv_queue_finish(&device->queue);
+
    anv_device_finish_blorp(device);
 
    anv_pipeline_cache_finish(&device->default_pipeline_cache);
-
-   anv_queue_finish(&device->queue);
 
 #ifdef HAVE_VALGRIND
    /* We only need to free these to prevent valgrind errors.  The backing
@@ -3228,6 +3233,22 @@ void anv_GetDeviceQueue2(
       *pQueue = NULL;
 }
 
+void
+_anv_device_report_lost(struct anv_device *device)
+{
+   assert(p_atomic_read(&device->_lost) > 0);
+
+   device->lost_reported = true;
+
+   struct anv_queue *queue = &device->queue;
+
+   __vk_errorf(device->physical->instance, device,
+               VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
+               VK_ERROR_DEVICE_LOST,
+               queue->error_file, queue->error_line,
+               "%s", queue->error_msg);
+}
+
 VkResult
 _anv_device_set_lost(struct anv_device *device,
                      const char *file, int line,
@@ -3236,7 +3257,11 @@ _anv_device_set_lost(struct anv_device *device,
    VkResult err;
    va_list ap;
 
+   if (p_atomic_read(&device->_lost) > 0)
+      return VK_ERROR_DEVICE_LOST;
+
    p_atomic_inc(&device->_lost);
+   device->lost_reported = true;
 
    va_start(ap, msg);
    err = __vk_errorv(device->physical->instance, device,
@@ -3252,24 +3277,29 @@ _anv_device_set_lost(struct anv_device *device,
 
 VkResult
 _anv_queue_set_lost(struct anv_queue *queue,
-                    const char *file, int line,
-                    const char *msg, ...)
+                     const char *file, int line,
+                     const char *msg, ...)
 {
-   VkResult err;
    va_list ap;
 
-   p_atomic_inc(&queue->device->_lost);
+   if (queue->lost)
+      return VK_ERROR_DEVICE_LOST;
 
+   queue->lost = true;
+
+   queue->error_file = file;
+   queue->error_line = line;
    va_start(ap, msg);
-   err = __vk_errorv(queue->device->physical->instance, queue->device,
-                     VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT,
-                     VK_ERROR_DEVICE_LOST, file, line, msg, ap);
+   vsnprintf(queue->error_msg, sizeof(queue->error_msg),
+             msg, ap);
    va_end(ap);
+
+   p_atomic_inc(&queue->device->_lost);
 
    if (env_var_as_boolean("ANV_ABORT_ON_DEVICE_LOSS", false))
       abort();
 
-   return err;
+   return VK_ERROR_DEVICE_LOST;
 }
 
 VkResult
