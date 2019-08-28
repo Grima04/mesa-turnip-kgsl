@@ -228,7 +228,6 @@ static int si_init_surface(struct si_screen *sscreen,
 			   const struct pipe_resource *ptex,
 			   enum radeon_surf_mode array_mode,
 			   unsigned pitch_in_bytes_override,
-			   unsigned offset,
 			   bool is_imported,
 			   bool is_scanout,
 			   bool is_flushed_depth,
@@ -238,7 +237,7 @@ static int si_init_surface(struct si_screen *sscreen,
 		util_format_description(ptex->format);
 	bool is_depth, is_stencil;
 	int r;
-	unsigned i, bpe, flags = 0;
+	unsigned bpe, flags = 0;
 
 	is_depth = util_format_has_depth(desc);
 	is_stencil = util_format_has_stencil(desc);
@@ -350,16 +349,11 @@ static int si_init_surface(struct si_screen *sscreen,
 			surface->u.gfx9.surf_slice_size =
 				(uint64_t)pitch * surface->u.gfx9.surf_height * bpe;
 		}
-		surface->u.gfx9.surf_offset = offset;
 	} else {
 		if (pitch) {
 			surface->u.legacy.level[0].nblk_x = pitch;
 			surface->u.legacy.level[0].slice_size_dw =
 				((uint64_t)pitch * surface->u.legacy.level[0].nblk_y * bpe) / 4;
-		}
-		if (offset) {
-			for (i = 0; i < ARRAY_SIZE(surface->u.legacy.level); ++i)
-				surface->u.legacy.level[i].offset += offset;
 		}
 	}
 	return 0;
@@ -539,7 +533,7 @@ static void si_reallocate_texture_inplace(struct si_context *sctx,
 
 	templ.bind |= new_bind_flag;
 
-	if (tex->buffer.b.is_shared)
+	if (tex->buffer.b.is_shared || tex->num_planes > 1)
 		return;
 
 	if (new_bind_flag == PIPE_BIND_LINEAR) {
@@ -898,7 +892,7 @@ static bool si_resource_get_param(struct pipe_screen *screen,
 
 	switch (param) {
 	case PIPE_RESOURCE_PARAM_NPLANES:
-		*value = 1;
+		*value = resource->target == PIPE_BUFFER ? 1 : tex->num_planes;
 		return true;
 
 	case PIPE_RESOURCE_PARAM_STRIDE:
@@ -985,6 +979,13 @@ static bool si_texture_get_handle(struct pipe_screen* screen,
 	sctx = (struct si_context*)(ctx ? ctx : sscreen->aux_context);
 
 	if (resource->target != PIPE_BUFFER) {
+		/* Individual planes are chained pipe_resource instances. */
+		for (unsigned i = 0; i < whandle->plane; i++) {
+			resource = resource->next;
+			res = si_resource(resource);
+			tex = (struct si_texture*)resource;
+		}
+
 		/* This is not supported now, but it might be required for OpenCL
 		 * interop in the future.
 		 */
@@ -1276,12 +1277,27 @@ void si_print_texture_info(struct si_screen *sscreen,
 	}
 }
 
-/* Common processing for si_texture_create and si_texture_from_handle */
+/**
+ * Common function for si_texture_create and si_texture_from_handle.
+ *
+ * \param screen	screen
+ * \param base		resource template
+ * \param surface	radeon_surf
+ * \param plane0	if a non-zero plane is being created, this is the first plane
+ * \param imported_buf	from si_texture_from_handle
+ * \param offset	offset for non-zero planes or imported buffers
+ * \param alloc_size	the size to allocate if plane0 != NULL
+ * \param alignment	alignment for the allocation
+ */
 static struct si_texture *
 si_texture_create_object(struct pipe_screen *screen,
 			 const struct pipe_resource *base,
-			 struct pb_buffer *buf,
-			 struct radeon_surf *surface)
+			 const struct radeon_surf *surface,
+			 const struct si_texture *plane0,
+			 struct pb_buffer *imported_buf,
+			 uint64_t offset,
+			 uint64_t alloc_size,
+			 unsigned alignment)
 {
 	struct si_texture *tex;
 	struct si_resource *resource;
@@ -1330,6 +1346,13 @@ si_texture_create_object(struct pipe_screen *screen,
 	 */
 	tex->ps_draw_ratio = 0;
 
+	if (sscreen->info.chip_class >= GFX9) {
+		tex->surface.u.gfx9.surf_offset = offset;
+	} else {
+		for (unsigned i = 0; i < ARRAY_SIZE(surface->u.legacy.level); ++i)
+			tex->surface.u.legacy.level[i].offset += offset;
+	}
+
 	if (tex->is_depth) {
 		if (sscreen->info.chip_class >= GFX9) {
 			tex->can_sample_z = true;
@@ -1355,23 +1378,33 @@ si_texture_create_object(struct pipe_screen *screen,
 		}
 	}
 
-	/* Now create the backing buffer. */
-	if (!buf) {
-		si_init_resource_fields(sscreen, resource, tex->surface.total_size,
-					  tex->surface.surf_alignment);
+	if (plane0) {
+		/* The buffer is shared with the first plane. */
+		resource->bo_size = plane0->buffer.bo_size;
+		resource->bo_alignment = plane0->buffer.bo_alignment;
+		resource->flags = plane0->buffer.flags;
+		resource->domains = plane0->buffer.domains;
+		resource->vram_usage = plane0->buffer.vram_usage;
+		resource->gart_usage = plane0->buffer.gart_usage;
+
+		pb_reference(&resource->buf, plane0->buffer.buf);
+		resource->gpu_address = plane0->buffer.gpu_address;
+	} else if (!(surface->flags & RADEON_SURF_IMPORTED)) {
+		/* Create the backing buffer. */
+		si_init_resource_fields(sscreen, resource, alloc_size, alignment);
 
 		if (!si_alloc_resource(sscreen, resource))
 			goto error;
 	} else {
-		resource->buf = buf;
+		resource->buf = imported_buf;
 		resource->gpu_address = sscreen->ws->buffer_get_virtual_address(resource->buf);
-		resource->bo_size = buf->size;
-		resource->bo_alignment = buf->alignment;
+		resource->bo_size = imported_buf->size;
+		resource->bo_alignment = imported_buf->alignment;
 		resource->domains = sscreen->ws->buffer_get_initial_domain(resource->buf);
 		if (resource->domains & RADEON_DOMAIN_VRAM)
-			resource->vram_usage = buf->size;
+			resource->vram_usage = resource->bo_size;
 		else if (resource->domains & RADEON_DOMAIN_GTT)
-			resource->gart_usage = buf->size;
+			resource->gart_usage = resource->bo_size;
 	}
 
 	if (tex->cmask_buffer) {
@@ -1393,7 +1426,7 @@ si_texture_create_object(struct pipe_screen *screen,
 	}
 
 	/* Initialize DCC only if the texture is not being imported. */
-	if (!buf && tex->surface.dcc_offset) {
+	if (!(surface->flags & RADEON_SURF_IMPORTED) && tex->surface.dcc_offset) {
 		/* Clear DCC to black for all tiles with DCC enabled.
 		 *
 		 * This fixes corruption in 3DMark Slingshot Extreme, which
@@ -1618,7 +1651,6 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 		}
 	}
 
-	struct radeon_surf surface = {0};
 	bool is_flushed_depth = templ->flags & SI_RESOURCE_FLAG_FLUSHED_DEPTH ||
 				templ->flags & SI_RESOURCE_FLAG_TRANSFER;
 	bool tc_compatible_htile =
@@ -1635,18 +1667,65 @@ struct pipe_resource *si_texture_create(struct pipe_screen *screen,
 		!is_flushed_depth &&
 		templ->nr_samples <= 1 && /* TC-compat HTILE is less efficient with MSAA */
 		is_zs;
-	int r;
+	enum radeon_surf_mode tile_mode = si_choose_tiling(sscreen, templ,
+							   tc_compatible_htile);
 
-	r = si_init_surface(sscreen, &surface, templ,
-			    si_choose_tiling(sscreen, templ, tc_compatible_htile),
-			    0, 0, false, false, is_flushed_depth,
-			    tc_compatible_htile);
-	if (r) {
-		return NULL;
+	/* This allocates textures with multiple planes like NV12 in 1 buffer. */
+	enum { SI_TEXTURE_MAX_PLANES = 3 };
+	struct radeon_surf surface[SI_TEXTURE_MAX_PLANES] = {};
+	struct pipe_resource plane_templ[SI_TEXTURE_MAX_PLANES];
+	uint64_t plane_offset[SI_TEXTURE_MAX_PLANES] = {};
+	uint64_t total_size = 0;
+	unsigned max_alignment = 0;
+	unsigned num_planes = util_format_get_num_planes(templ->format);
+	assert(num_planes <= SI_TEXTURE_MAX_PLANES);
+
+	/* Compute texture or plane layouts and offsets. */
+	for (unsigned i = 0; i < num_planes; i++) {
+		plane_templ[i] = *templ;
+		plane_templ[i].format = util_format_get_plane_format(templ->format, i);
+		plane_templ[i].width0 = util_format_get_plane_width(templ->format, i, templ->width0);
+		plane_templ[i].height0 = util_format_get_plane_height(templ->format, i, templ->height0);
+
+		/* Multi-plane allocations need PIPE_BIND_SHARED, because we can't
+		 * reallocate the storage to add PIPE_BIND_SHARED, because it's
+		 * shared by 3 pipe_resources.
+		 */
+		if (num_planes > 1)
+			plane_templ[i].bind |= PIPE_BIND_SHARED;
+
+		if (si_init_surface(sscreen, &surface[i], &plane_templ[i],
+				    tile_mode, 0, false, false,
+				    is_flushed_depth, tc_compatible_htile))
+			return NULL;
+
+		plane_offset[i] = align64(total_size, surface[i].surf_alignment);
+		total_size = plane_offset[i] + surface[i].total_size;
+		max_alignment = MAX2(max_alignment, surface[i].surf_alignment);
 	}
 
-	return (struct pipe_resource *)
-	       si_texture_create_object(screen, templ, NULL, &surface);
+	struct si_texture *plane0 = NULL, *last_plane = NULL;
+
+	for (unsigned i = 0; i < num_planes; i++) {
+		struct si_texture *tex =
+			si_texture_create_object(screen, &plane_templ[i], &surface[i],
+						 plane0, NULL, plane_offset[i],
+						 total_size, max_alignment);
+		if (!tex) {
+			si_texture_reference(&plane0, NULL);
+			return NULL;
+		}
+
+		tex->plane_index = i;
+		tex->num_planes = num_planes;
+
+		if (!last_plane)
+			plane0 = last_plane = tex;
+		else
+			last_plane->buffer.b.b.next = &tex->buffer.b.b;
+	}
+
+	return (struct pipe_resource *)plane0;
 }
 
 static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *sscreen,
@@ -1696,17 +1775,19 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 	}
 
 	r = si_init_surface(sscreen, &surface, templ,
-			    array_mode, stride, offset, true, is_scanout,
+			    array_mode, stride, true, is_scanout,
 			    false, false);
 	if (r)
 		return NULL;
 
-	tex = si_texture_create_object(&sscreen->b, templ, buf, &surface);
+	tex = si_texture_create_object(&sscreen->b, templ, &surface, NULL, buf,
+				       offset, 0, 0);
 	if (!tex)
 		return NULL;
 
 	tex->buffer.b.is_shared = true;
 	tex->buffer.external_usage = usage;
+	tex->num_planes = 1;
 
 	if (!si_read_tex_bo_metadata(sscreen, tex, &metadata)) {
 		si_texture_reference(&tex, NULL);
