@@ -698,3 +698,25 @@ ppir_node *ppir_node_clone(ppir_block *block, ppir_node *node)
       return NULL;
    }
 }
+
+ppir_node *ppir_node_insert_mov(ppir_node *node)
+{
+   ppir_node *move = ppir_node_create(node->block, ppir_op_mov, -1, 0);
+   if (unlikely(!move))
+      return NULL;
+
+   ppir_dest *dest = ppir_node_get_dest(node);
+   ppir_alu_node *alu = ppir_node_to_alu(move);
+   alu->dest = *dest;
+   alu->num_src = 1;
+   ppir_node_target_assign(alu->src, node);
+
+   for (int s = 0; s < 4; s++)
+      alu->src->swizzle[s] = s;
+
+   ppir_node_replace_all_succ(move, node);
+   ppir_node_add_dep(move, node);
+   list_addtail(&move->list, &node->list);
+
+   return move;
+}
