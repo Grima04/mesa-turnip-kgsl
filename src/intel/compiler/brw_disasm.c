@@ -1663,8 +1663,10 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
    }
 
    err |= print_opcode(file, devinfo, opcode);
-   err |= control(file, "saturate", saturate, brw_inst_saturate(devinfo, inst),
-                  NULL);
+
+   if (!is_send(opcode))
+      err |= control(file, "saturate", saturate, brw_inst_saturate(devinfo, inst),
+                     NULL);
 
    err |= control(file, "debug control", debug_ctrl,
                   brw_inst_debug_control(devinfo, inst), NULL);
