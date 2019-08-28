@@ -276,7 +276,7 @@ void schedule_SMEM(sched_ctx& ctx, Block* block,
          continue;
       }
 
-      /* check if register pressure is low enough: the diff is negative if register pressure is decreased */
+      /* check if register pressure is low enough: the diff is negative if register pressure is increased */
       const RegisterDemand candidate_diff = getLiveChanges(candidate);
       const RegisterDemand tempDemand = getTempRegisters(candidate);
       if (RegisterDemand(register_pressure - candidate_diff).exceeds(ctx.max_registers))
@@ -433,9 +433,13 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
 
    /* create the initial set of values which current depends on */
    std::fill(ctx.depends_on.begin(), ctx.depends_on.end(), false);
+   std::fill(ctx.RAR_dependencies.begin(), ctx.RAR_dependencies.end(), false);
    for (const Operand& op : current->operands) {
-      if (op.isTemp())
+      if (op.isTemp()) {
          ctx.depends_on[op.tempId()] = true;
+         if (op.isFirstKill())
+            ctx.RAR_dependencies[op.tempId()] = true;
+      }
    }
 
    /* maintain how many registers remain free when moving instructions */
@@ -467,7 +471,7 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       register_pressure.update(register_demand[candidate_idx]);
 
       /* if current depends on candidate, add additional dependencies and continue */
-      bool can_move_down = true;
+      bool can_move_down = !candidate->isVMEM();
       bool writes_exec = false;
       for (const Definition& def : candidate->definitions) {
          if (def.isTemp() && ctx.depends_on[def.tempId()])
@@ -486,8 +490,11 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       moving_spill |= is_spill_reload(candidate);
       if (!can_move_down) {
          for (const Operand& op : candidate->operands) {
-            if (op.isTemp())
+            if (op.isTemp()) {
                ctx.depends_on[op.tempId()] = true;
+               if (op.isFirstKill())
+                  ctx.RAR_dependencies[op.tempId()] = true;
+            }
          }
          continue;
       }
@@ -495,20 +502,23 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       bool register_pressure_unknown = false;
       /* check if one of candidate's operands is killed by depending instruction */
       for (const Operand& op : candidate->operands) {
-         if (op.isTemp() && ctx.depends_on[op.tempId()]) {
+         if (op.isTemp() && ctx.RAR_dependencies[op.tempId()]) {
             // FIXME: account for difference in register pressure
             register_pressure_unknown = true;
          }
       }
       if (register_pressure_unknown) {
          for (const Operand& op : candidate->operands) {
-            if (op.isTemp())
+            if (op.isTemp()) {
                ctx.depends_on[op.tempId()] = true;
+               if (op.isFirstKill())
+                  ctx.RAR_dependencies[op.tempId()] = true;
+            }
          }
          continue;
       }
 
-      /* check if register pressure is low enough: the diff is negative if register pressure is decreased */
+      /* check if register pressure is low enough: the diff is negative if register pressure is increased */
       const RegisterDemand candidate_diff = getLiveChanges(candidate);
       const RegisterDemand temp = getTempRegisters(candidate);;
       if (RegisterDemand(register_pressure - candidate_diff).exceeds(ctx.max_registers))
@@ -594,6 +604,11 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
             register_pressure = register_demand[insert_idx - 1];
             continue;
          }
+      } else if (candidate->isVMEM()) {
+         for (const Definition& def : candidate->definitions) {
+            if (def.isTemp())
+               ctx.depends_on[def.tempId()] = true;
+         }
       }
 
       /* update register pressure */
@@ -606,13 +621,13 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       bool register_pressure_unknown = false;
       /* check if candidate uses/kills an operand which is used by a dependency */
       for (const Operand& op : candidate->operands) {
-         if (op.isTemp() && ctx.RAR_dependencies[op.tempId()])
+         if (op.isTemp() && op.isFirstKill() && ctx.RAR_dependencies[op.tempId()])
             register_pressure_unknown = true;
       }
       if (register_pressure_unknown) {
          for (const Definition& def : candidate->definitions) {
             if (def.isTemp())
-               ctx.RAR_dependencies[def.tempId()] = true;
+               ctx.depends_on[def.tempId()] = true;
          }
          for (const Operand& op : candidate->operands) {
             if (op.isTemp())
@@ -657,9 +672,13 @@ void schedule_position_export(sched_ctx& ctx, Block* block,
 
    /* create the initial set of values which current depends on */
    std::fill(ctx.depends_on.begin(), ctx.depends_on.end(), false);
-   for (unsigned i = 0; i < current->operands.size(); i++) {
-      if (current->operands[i].isTemp())
-         ctx.depends_on[current->operands[i].tempId()] = true;
+   std::fill(ctx.RAR_dependencies.begin(), ctx.RAR_dependencies.end(), false);
+   for (const Operand& op : current->operands) {
+      if (op.isTemp()) {
+         ctx.depends_on[op.tempId()] = true;
+         if (op.isFirstKill())
+            ctx.RAR_dependencies[op.tempId()] = true;
+      }
    }
 
    /* maintain how many registers remain free when moving instructions */
@@ -705,30 +724,36 @@ void schedule_position_export(sched_ctx& ctx, Block* block,
       moving_interaction |= get_barrier_interaction(candidate.get());
       moving_spill |= is_spill_reload(candidate);
       if (!can_move_down) {
-         for (unsigned i = 0; i < candidate->operands.size(); i++) {
-            if (candidate->operands[i].isTemp())
-               ctx.depends_on[candidate->operands[i].tempId()] = true;
+         for (const Operand& op : candidate->operands) {
+            if (op.isTemp()) {
+               ctx.depends_on[op.tempId()] = true;
+               if (op.isFirstKill())
+                  ctx.RAR_dependencies[op.tempId()] = true;
+            }
          }
          continue;
       }
 
       bool register_pressure_unknown = false;
       /* check if one of candidate's operands is killed by depending instruction */
-      for (unsigned i = 0; i < candidate->operands.size(); i++) {
-         if (candidate->operands[i].isTemp() && ctx.depends_on[candidate->operands[i].tempId()]) {
+      for (const Operand& op : candidate->operands) {
+         if (op.isTemp() && ctx.RAR_dependencies[op.tempId()]) {
             // FIXME: account for difference in register pressure
             register_pressure_unknown = true;
          }
       }
       if (register_pressure_unknown) {
-         for (unsigned i = 0; i < candidate->operands.size(); i++) {
-            if (candidate->operands[i].isTemp())
-               ctx.depends_on[candidate->operands[i].tempId()] = true;
+         for (const Operand& op : candidate->operands) {
+            if (op.isTemp()) {
+               ctx.depends_on[op.tempId()] = true;
+               if (op.isFirstKill())
+                  ctx.RAR_dependencies[op.tempId()] = true;
+            }
          }
          continue;
       }
 
-      /* check if register pressure is low enough: the diff is negative if register pressure is decreased */
+      /* check if register pressure is low enough: the diff is negative if register pressure is increased */
       const RegisterDemand candidate_diff = getLiveChanges(candidate);
       const RegisterDemand temp = getTempRegisters(candidate);;
       if (RegisterDemand(register_pressure - candidate_diff).exceeds(ctx.max_registers))
