@@ -111,6 +111,35 @@ debian:
     - scons $SCONS_TARGET
     - eval $SCONS_CHECK_COMMAND
 
+meson-main:
+  extends: .meson-build
+  variables:
+    UNWIND: "true"
+    DRI_LOADERS: >
+      -D glx=dri
+      -D gbm=true
+      -D egl=true
+      -D platforms=x11,wayland,drm,surfaceless
+    DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
+    GALLIUM_ST: >
+      -D dri3=true
+      -D gallium-extra-hud=true
+      -D gallium-vdpau=true
+      -D gallium-xvmc=true
+      -D gallium-omx=bellagio
+      -D gallium-va=true
+      -D gallium-xa=true
+      -D gallium-nine=true
+      -D gallium-opencl=disabled
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima"
+    LLVM_VERSION: "7"
+    EXTRA_OPTION: >
+      -D osmesa=gallium
+      -D tools=all
+    MESON_SHADERDB: "true"
+    BUILDTYPE: "debugoptimized"
+  <<: *ci-deqp-artifacts
+
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't limit the total run time.
@@ -163,35 +192,6 @@ scons-win64:
   variables:
     SCONS_TARGET: platform=windows machine=x86_64
     SCONS_CHECK_COMMAND: "true"
-
-meson-main:
-  extends: .meson-build
-  variables:
-    UNWIND: "true"
-    DRI_LOADERS: >
-      -D glx=dri
-      -D gbm=true
-      -D egl=true
-      -D platforms=x11,wayland,drm,surfaceless
-    DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
-    GALLIUM_ST: >
-      -D dri3=true
-      -D gallium-extra-hud=true
-      -D gallium-vdpau=true
-      -D gallium-xvmc=true
-      -D gallium-omx=bellagio
-      -D gallium-va=true
-      -D gallium-xa=true
-      -D gallium-nine=true
-      -D gallium-opencl=disabled
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima"
-    LLVM_VERSION: "7"
-    EXTRA_OPTION: >
-      -D osmesa=gallium
-      -D tools=all
-    MESON_SHADERDB: "true"
-    BUILDTYPE: "debugoptimized"
-  <<: *ci-deqp-artifacts
 
 meson-clover:
   extends: .meson-build
