@@ -95,11 +95,14 @@ for test in $FLIP_FLOPS; do sed -i "/$test/d" /tmp/case-list.txt; done
                 --results-file=/tmp/results.txt \
                 --no-passed-results \
                 --regression-file=/deqp/expected-failures.txt \
-                --no-rerun-tests
+                --no-rerun-tests \
+                --print-regression \
+                --no-print-fail \
+                --no-print-quality \
+                --no-colour-term
 
 if [ $? -ne 0 ]; then
-    echo "Regressions detected, printing results:"
-    cat /tmp/results.txt
+    echo "Regressions detected"
     echo "deqp: fail"
 else
     echo "No regressions detected"
