@@ -859,38 +859,6 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	}
 }
 
-static void radv_init_llvm_target()
-{
-	LLVMInitializeAMDGPUTargetInfo();
-	LLVMInitializeAMDGPUTarget();
-	LLVMInitializeAMDGPUTargetMC();
-	LLVMInitializeAMDGPUAsmPrinter();
-
-	/* For inline assembly. */
-	LLVMInitializeAMDGPUAsmParser();
-
-	/* Workaround for bug in llvm 4.0 that causes image intrinsics
-	 * to disappear.
-	 * https://reviews.llvm.org/D26348
-	 *
-	 * Workaround for bug in llvm that causes the GPU to hang in presence
-	 * of nested loops because there is an exec mask issue. The proper
-	 * solution is to fix LLVM but this might require a bunch of work.
-	 * https://bugs.llvm.org/show_bug.cgi?id=37744
-	 *
-	 * "mesa" is the prefix for error messages.
-	 */
-	const char *argv[2] = { "mesa", "-simplifycfg-sink-common=false" };
-	LLVMParseCommandLineOptions(2, argv, NULL);
-}
-
-static once_flag radv_init_llvm_target_once_flag = ONCE_FLAG_INIT;
-
-static void radv_init_llvm_once(void)
-{
-	call_once(&radv_init_llvm_target_once_flag, radv_init_llvm_target);
-}
-
 struct radv_shader_variant *
 radv_shader_variant_create(struct radv_device *device,
 			   const struct radv_shader_binary *binary,
@@ -1103,7 +1071,7 @@ shader_variant_compile(struct radv_device *device,
 		tm_options |= AC_TM_NO_LOAD_STORE_OPT;
 
 	thread_compiler = !(device->instance->debug_flags & RADV_DEBUG_NOTHREADLLVM);
-	radv_init_llvm_once();
+	ac_init_llvm_once();
 	radv_init_llvm_compiler(&ac_llvm,
 				thread_compiler,
 				chip_family, tm_options,
