@@ -453,53 +453,6 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	return nir;
 }
 
-static void mark_16bit_fs_input(struct radv_shader_variant_info *shader_info,
-                                const struct glsl_type *type,
-                                int location)
-{
-	if (glsl_type_is_scalar(type) || glsl_type_is_vector(type) || glsl_type_is_matrix(type)) {
-		unsigned attrib_count = glsl_count_attribute_slots(type, false);
-		if (glsl_type_is_16bit(type)) {
-			shader_info->fs.float16_shaded_mask |= ((1ull << attrib_count) - 1) << location;
-		}
-	} else if (glsl_type_is_array(type)) {
-		unsigned stride = glsl_count_attribute_slots(glsl_get_array_element(type), false);
-		for (unsigned i = 0; i < glsl_get_length(type); ++i) {
-			mark_16bit_fs_input(shader_info, glsl_get_array_element(type), location + i * stride);
-		}
-	} else {
-		assert(glsl_type_is_struct_or_ifc(type));
-		for (unsigned i = 0; i < glsl_get_length(type); i++) {
-			mark_16bit_fs_input(shader_info, glsl_get_struct_field(type, i), location);
-			location += glsl_count_attribute_slots(glsl_get_struct_field(type, i), false);
-		}
-	}
-}
-
-static void
-handle_fs_input_decl(struct radv_shader_variant_info *shader_info,
-		     struct nir_variable *variable)
-{
-	unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
-
-	if (variable->data.compact) {
-		unsigned component_count = variable->data.location_frac +
-		                           glsl_get_length(variable->type);
-		attrib_count = (component_count + 3) / 4;
-	} else {
-		mark_16bit_fs_input(shader_info, variable->type,
-				    variable->data.driver_location);
-	}
-
-	uint64_t mask = ((1ull << attrib_count) - 1);
-
-	if (variable->data.interpolation == INTERP_MODE_FLAT)
-		shader_info->fs.flat_shaded_mask |= mask << variable->data.driver_location;
-
-	if (variable->data.location >= VARYING_SLOT_VAR0)
-		shader_info->fs.input_mask |= mask << (variable->data.location - VARYING_SLOT_VAR0);
-}
-
 static int
 type_size_vec4(const struct glsl_type *type, bool bindless)
 {
@@ -567,27 +520,12 @@ lower_view_index(nir_shader *nir)
 	return progress;
 }
 
-/* Gather information needed to setup the vs<->ps linking registers in
- * radv_pipeline_generate_ps_inputs().
- */
-
 static void
-handle_fs_inputs(nir_shader *nir, struct radv_shader_variant_info *shader_info)
-{
-	shader_info->fs.num_interp = nir->num_inputs;
-	
-	nir_foreach_variable(variable, &nir->inputs)
-		handle_fs_input_decl(shader_info, variable);
-}
-
-static void
-lower_fs_io(nir_shader *nir, struct radv_shader_variant_info *shader_info)
+lower_fs_io(nir_shader *nir)
 {
 	NIR_PASS_V(nir, lower_view_index);
 	nir_assign_io_var_locations(&nir->inputs, &nir->num_inputs,
 				    MESA_SHADER_FRAGMENT);
-
-	handle_fs_inputs(nir, shader_info);
 
 	NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, type_size_vec4, 0);
 
@@ -1135,7 +1073,7 @@ shader_variant_compile(struct radv_device *device,
 	bool thread_compiler;
 
 	if (shaders[0]->info.stage == MESA_SHADER_FRAGMENT)
-		lower_fs_io(shaders[0], &variant_info);
+		lower_fs_io(shaders[0]);
 
 	options->family = chip_family;
 	options->chip_class = device->physical_device->rad_info.chip_class;
@@ -1339,7 +1277,7 @@ radv_get_max_waves(struct radv_device *device,
 
 	if (stage == MESA_SHADER_FRAGMENT) {
 		lds_per_wave = conf->lds_size * lds_increment +
-			       align(variant->info.fs.num_interp * 48,
+			       align(variant->info.info.ps.num_interp * 48,
 				     lds_increment);
 	} else if (stage == MESA_SHADER_COMPUTE) {
 		unsigned max_workgroup_size =

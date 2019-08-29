@@ -4023,11 +4023,11 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs,
 		}
 	}
 
-	for (unsigned i = 0; i < 32 && (1u << i) <= ps->info.fs.input_mask; ++i) {
+	for (unsigned i = 0; i < 32 && (1u << i) <= ps->info.info.ps.input_mask; ++i) {
 		unsigned vs_offset;
 		bool flat_shade;
 		bool float16;
-		if (!(ps->info.fs.input_mask & (1u << i)))
+		if (!(ps->info.info.ps.input_mask & (1u << i)))
 			continue;
 
 		vs_offset = outinfo->vs_output_param_offset[VARYING_SLOT_VAR0 + i];
@@ -4037,8 +4037,8 @@ radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs,
 			continue;
 		}
 
-		flat_shade = !!(ps->info.fs.flat_shaded_mask & (1u << ps_offset));
-		float16 = !!(ps->info.fs.float16_shaded_mask & (1u << ps_offset));
+		flat_shade = !!(ps->info.info.ps.flat_shaded_mask & (1u << ps_offset));
+		float16 = !!(ps->info.info.ps.float16_shaded_mask & (1u << ps_offset));
 
 		ps_input_cntl[ps_offset] = offset_to_ps_input(vs_offset, flat_shade, float16);
 		++ps_offset;
@@ -4113,7 +4113,7 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs,
 			       ps->config.spi_ps_input_addr);
 
 	radeon_set_context_reg(ctx_cs, R_0286D8_SPI_PS_IN_CONTROL,
-			       S_0286D8_NUM_INTERP(ps->info.fs.num_interp) |
+			       S_0286D8_NUM_INTERP(ps->info.info.ps.num_interp) |
 			       S_0286D8_PS_W32_EN(ps->info.info.wave_size == 32));
 
 	radeon_set_context_reg(ctx_cs, R_0286E0_SPI_BARYC_CNTL, pipeline->graphics.spi_baryc_cntl);

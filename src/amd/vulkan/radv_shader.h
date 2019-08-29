@@ -210,6 +210,10 @@ struct radv_shader_info {
 		bool prim_id_input;
 		bool layer_input;
 		uint8_t num_input_clips_culls;
+		uint32_t input_mask;
+		uint32_t flat_shaded_mask;
+		uint32_t float16_shaded_mask;
+		uint32_t num_interp;
 	} ps;
 	struct {
 		bool uses_grid_size;
@@ -270,10 +274,6 @@ struct radv_shader_variant_info {
 			bool export_prim_id;
 		} vs;
 		struct {
-			unsigned num_interp;
-			uint32_t input_mask;
-			uint32_t flat_shaded_mask;
-			uint32_t float16_shaded_mask;
 			bool can_discard;
 			bool early_fragment_test;
 			bool post_depth_coverage;
