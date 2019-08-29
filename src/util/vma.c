@@ -38,12 +38,18 @@ struct util_vma_hole {
 #define util_vma_foreach_hole_safe(_hole, _heap) \
    list_for_each_entry_safe(struct util_vma_hole, _hole, &(_heap)->holes, link)
 
+#define util_vma_foreach_hole_safe_rev(_hole, _heap) \
+   list_for_each_entry_safe_rev(struct util_vma_hole, _hole, &(_heap)->holes, link)
+
 void
 util_vma_heap_init(struct util_vma_heap *heap,
                    uint64_t start, uint64_t size)
 {
    list_inithead(&heap->holes);
    util_vma_heap_free(heap, start, size);
+
+   /* Default to using high addresses */
+   heap->alloc_high = true;
 }
 
 void
@@ -141,29 +147,52 @@ util_vma_heap_alloc(struct util_vma_heap *heap,
 
    util_vma_heap_validate(heap);
 
-   util_vma_foreach_hole_safe(hole, heap) {
-      if (size > hole->size)
-         continue;
+   if (heap->alloc_high) {
+      util_vma_foreach_hole_safe(hole, heap) {
+         if (size > hole->size)
+            continue;
 
-      /* Compute the offset as the highest address where a chunk of the given
-       * size can be without going over the top of the hole.
-       *
-       * This calculation is known to not overflow because we know that
-       * hole->size + hole->offset can only overflow to 0 and size > 0.
-       */
-      uint64_t offset = (hole->size - size) + hole->offset;
+         /* Compute the offset as the highest address where a chunk of the
+          * given size can be without going over the top of the hole.
+          *
+          * This calculation is known to not overflow because we know that
+          * hole->size + hole->offset can only overflow to 0 and size > 0.
+          */
+         uint64_t offset = (hole->size - size) + hole->offset;
 
-      /* Align the offset.  We align down and not up because we are allocating
-       * from the top of the hole and not the bottom.
-       */
-      offset = (offset / alignment) * alignment;
+         /* Align the offset.  We align down and not up because we are
+          * allocating from the top of the hole and not the bottom.
+          */
+         offset = (offset / alignment) * alignment;
 
-      if (offset < hole->offset)
-         continue;
+         if (offset < hole->offset)
+            continue;
 
-      util_vma_hole_alloc(hole, offset, size);
-      util_vma_heap_validate(heap);
-      return offset;
+         util_vma_hole_alloc(hole, offset, size);
+         util_vma_heap_validate(heap);
+         return offset;
+      }
+   } else {
+      util_vma_foreach_hole_safe_rev(hole, heap) {
+         if (size > hole->size)
+            continue;
+
+         uint64_t offset = hole->offset;
+
+         /* Align the offset */
+         uint64_t misalign = offset % alignment;
+         if (misalign) {
+            uint64_t pad = alignment - misalign;
+            if (pad > hole->size - size)
+               continue;
+
+            offset += pad;
+         }
+
+         util_vma_hole_alloc(hole, offset, size);
+         util_vma_heap_validate(heap);
+         return offset;
+      }
    }
 
    /* Failed to allocate */
