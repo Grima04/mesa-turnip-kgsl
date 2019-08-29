@@ -208,9 +208,8 @@ panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
         panfrost_scoreboard_link_batch(job);
 
         bool has_draws = job->last_job.gpu;
-        bool is_scanout = panfrost_is_scanout(ctx);
 
-        ret = panfrost_drm_submit_vs_fs_job(ctx, has_draws, is_scanout);
+        ret = panfrost_drm_submit_vs_fs_job(ctx, has_draws);
 
         if (ret)
                 fprintf(stderr, "panfrost_job_submit failed: %d\n", ret);

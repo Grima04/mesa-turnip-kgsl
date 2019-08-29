@@ -292,7 +292,7 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
 }
 
 int
-panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws, bool is_scanout)
+panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws)
 {
         int ret = 0;
 
