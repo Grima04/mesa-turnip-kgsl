@@ -142,98 +142,6 @@ radv_shader_context_from_abi(struct ac_shader_abi *abi)
 	return container_of(abi, ctx, abi);
 }
 
-struct ac_build_if_state
-{
-	struct radv_shader_context *ctx;
-	LLVMValueRef condition;
-	LLVMBasicBlockRef entry_block;
-	LLVMBasicBlockRef true_block;
-	LLVMBasicBlockRef false_block;
-	LLVMBasicBlockRef merge_block;
-};
-
-static LLVMBasicBlockRef
-ac_build_insert_new_block(struct radv_shader_context *ctx, const char *name)
-{
-	LLVMBasicBlockRef current_block;
-	LLVMBasicBlockRef next_block;
-	LLVMBasicBlockRef new_block;
-
-	/* get current basic block */
-	current_block = LLVMGetInsertBlock(ctx->ac.builder);
-
-	/* chqeck if there's another block after this one */
-	next_block = LLVMGetNextBasicBlock(current_block);
-	if (next_block) {
-		/* insert the new block before the next block */
-		new_block = LLVMInsertBasicBlockInContext(ctx->context, next_block, name);
-	}
-	else {
-		/* append new block after current block */
-		LLVMValueRef function = LLVMGetBasicBlockParent(current_block);
-		new_block = LLVMAppendBasicBlockInContext(ctx->context, function, name);
-	}
-	return new_block;
-}
-
-static void
-ac_nir_build_if(struct ac_build_if_state *ifthen,
-		struct radv_shader_context *ctx,
-		LLVMValueRef condition)
-{
-	LLVMBasicBlockRef block = LLVMGetInsertBlock(ctx->ac.builder);
-
-	memset(ifthen, 0, sizeof *ifthen);
-	ifthen->ctx = ctx;
-	ifthen->condition = condition;
-	ifthen->entry_block = block;
-
-	/* create endif/merge basic block for the phi functions */
-	ifthen->merge_block = ac_build_insert_new_block(ctx, "endif-block");
-
-	/* create/insert true_block before merge_block */
-	ifthen->true_block =
-		LLVMInsertBasicBlockInContext(ctx->context,
-					      ifthen->merge_block,
-					      "if-true-block");
-
-	/* successive code goes into the true block */
-	LLVMPositionBuilderAtEnd(ctx->ac.builder, ifthen->true_block);
-}
-
-/**
- * End a conditional.
- */
-static void
-ac_nir_build_endif(struct ac_build_if_state *ifthen)
-{
-	LLVMBuilderRef builder = ifthen->ctx->ac.builder;
-
-	/* Insert branch to the merge block from current block */
-	LLVMBuildBr(builder, ifthen->merge_block);
-
-	/*
-	 * Now patch in the various branch instructions.
-	 */
-
-	/* Insert the conditional branch instruction at the end of entry_block */
-	LLVMPositionBuilderAtEnd(builder, ifthen->entry_block);
-	if (ifthen->false_block) {
-		/* we have an else clause */
-		LLVMBuildCondBr(builder, ifthen->condition,
-				ifthen->true_block, ifthen->false_block);
-	}
-	else {
-		/* no else clause */
-		LLVMBuildCondBr(builder, ifthen->condition,
-				ifthen->true_block, ifthen->merge_block);
-	}
-
-	/* Resume building code at end of the ifthen->merge_block */
-	LLVMPositionBuilderAtEnd(builder, ifthen->merge_block);
-}
-
-
 static LLVMValueRef get_rel_patch_id(struct radv_shader_context *ctx)
 {
 	switch (ctx->stage) {
@@ -2637,7 +2545,6 @@ radv_emit_stream_output(struct radv_shader_context *ctx,
 static void
 radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 {
-	struct ac_build_if_state if_ctx;
 	int i;
 
 	/* Get bits [22:16], i.e. (so_param >> 16) & 127; */
@@ -2657,7 +2564,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 	 * out-of-bounds buffer access. The hw tells us via the SGPR
 	 * (so_vtx_count) which threads are allowed to emit streamout data.
 	 */
-	ac_nir_build_if(&if_ctx, ctx, can_emit);
+	ac_build_ifcc(&ctx->ac, can_emit, 6501);
 	{
 		/* The buffer offset is computed as follows:
 		 *   ByteOffset = streamout_offset[buffer_id]*4 +
@@ -2719,7 +2626,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 						output, &shader_out);
 		}
 	}
-	ac_nir_build_endif(&if_ctx);
+	ac_build_endif(&ctx->ac, 6501);
 }
 
 static void
@@ -3272,7 +3179,6 @@ static void
 handle_ngg_outputs_post(struct radv_shader_context *ctx)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
-	struct ac_build_if_state if_state;
 	unsigned num_vertices = 3;
 	LLVMValueRef tmp;
 
@@ -3336,7 +3242,7 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 	 * TODO: culling depends on the primitive type, so can have some
 	 * interaction here.
 	 */
-	ac_nir_build_if(&if_state, ctx, is_gs_thread);
+	ac_build_ifcc(&ctx->ac, is_gs_thread, 6001);
 	{
 		struct ngg_prim prim = {};
 
@@ -3352,10 +3258,10 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 
 		build_export_prim(ctx, &prim);
 	}
-	ac_nir_build_endif(&if_state);
+	ac_build_endif(&ctx->ac, 6001);
 
 	/* Export per-vertex data (positions and parameters). */
-	ac_nir_build_if(&if_state, ctx, is_es_thread);
+	ac_build_ifcc(&ctx->ac, is_es_thread, 6002);
 	{
 		struct radv_vs_output_info *outinfo =
 			ctx->stage == MESA_SHADER_TESS_EVAL ? &ctx->shader_info->tes.outinfo : &ctx->shader_info->vs.outinfo;
@@ -3393,7 +3299,7 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 			outinfo->param_exports = param_count;
 		}
 	}
-	ac_nir_build_endif(&if_state);
+	ac_build_endif(&ctx->ac, 6002);
 }
 
 static void gfx10_ngg_gs_emit_prologue(struct radv_shader_context *ctx)
@@ -3787,7 +3693,6 @@ static void
 write_tess_factors(struct radv_shader_context *ctx)
 {
 	unsigned stride, outer_comps, inner_comps;
-	struct ac_build_if_state if_ctx, inner_if_ctx;
 	LLVMValueRef invocation_id = ac_unpack_param(&ctx->ac, ctx->abi.tcs_rel_ids, 8, 5);
 	LLVMValueRef rel_patch_id = ac_unpack_param(&ctx->ac, ctx->abi.tcs_rel_ids, 0, 8);
 	unsigned tess_inner_index = 0, tess_outer_index;
@@ -3816,9 +3721,9 @@ write_tess_factors(struct radv_shader_context *ctx)
 		return;
 	}
 
-	ac_nir_build_if(&if_ctx, ctx,
+	ac_build_ifcc(&ctx->ac,
 			LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ,
-				      invocation_id, ctx->ac.i32_0, ""));
+				      invocation_id, ctx->ac.i32_0, ""), 6503);
 
 	lds_base = get_tcs_out_current_patch_data_offset(ctx);
 
@@ -3873,9 +3778,9 @@ write_tess_factors(struct radv_shader_context *ctx)
 	unsigned tf_offset = 0;
 
 	if (ctx->options->chip_class <= GFX8) {
-		ac_nir_build_if(&inner_if_ctx, ctx,
+		ac_build_ifcc(&ctx->ac,
 		                LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ,
-		                              rel_patch_id, ctx->ac.i32_0, ""));
+		                              rel_patch_id, ctx->ac.i32_0, ""), 6504);
 
 		/* Store the dynamic HS control word. */
 		ac_build_buffer_store_dword(&ctx->ac, buffer,
@@ -3884,7 +3789,7 @@ write_tess_factors(struct radv_shader_context *ctx)
 					    0, ac_glc, false);
 		tf_offset += 4;
 
-		ac_nir_build_endif(&inner_if_ctx);
+		ac_build_endif(&ctx->ac, 6504);
 	}
 
 	/* Store the tessellation factors. */
@@ -3924,7 +3829,8 @@ write_tess_factors(struct radv_shader_context *ctx)
 						    ctx->oc_lds, 0, ac_glc, false);
 		}
 	}
-	ac_nir_build_endif(&if_ctx);
+	
+	ac_build_endif(&ctx->ac, 6503);
 }
 
 static void
