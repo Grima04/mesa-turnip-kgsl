@@ -520,8 +520,8 @@ lower_view_index(nir_shader *nir)
 	return progress;
 }
 
-static void
-lower_fs_io(nir_shader *nir)
+void
+radv_lower_fs_io(nir_shader *nir)
 {
 	NIR_PASS_V(nir, lower_view_index);
 	nir_assign_io_var_locations(&nir->inputs, &nir->num_inputs,
@@ -1071,9 +1071,6 @@ shader_variant_compile(struct radv_device *device,
 	struct radv_shader_binary *binary = NULL;
 	struct radv_shader_variant_info variant_info = {0};
 	bool thread_compiler;
-
-	if (shaders[0]->info.stage == MESA_SHADER_FRAGMENT)
-		lower_fs_io(shaders[0]);
 
 	options->family = chip_family;
 	options->chip_class = device->physical_device->rad_info.chip_class;

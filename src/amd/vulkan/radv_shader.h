@@ -449,4 +449,7 @@ radv_can_dump_shader_stats(struct radv_device *device,
 unsigned
 shader_io_get_unique_index(gl_varying_slot slot);
 
+void
+radv_lower_fs_io(nir_shader *nir);
+
 #endif

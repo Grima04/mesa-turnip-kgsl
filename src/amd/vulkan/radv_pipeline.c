@@ -2578,6 +2578,9 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 			nir_print_shader(nir[i], stderr);
 	}
 
+	if (nir[MESA_SHADER_FRAGMENT])
+		radv_lower_fs_io(nir[MESA_SHADER_FRAGMENT]);
+
 	radv_fill_shader_keys(device, keys, key, nir);
 
 	if (nir[MESA_SHADER_FRAGMENT]) {
