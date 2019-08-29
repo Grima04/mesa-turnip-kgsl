@@ -32,8 +32,8 @@
 #define SMEM_WINDOW_SIZE (350 - ctx.num_waves * 35)
 #define VMEM_WINDOW_SIZE (1024 - ctx.num_waves * 64)
 #define POS_EXP_WINDOW_SIZE 512
-#define SMEM_MAX_MOVES (80 - ctx.num_waves * 8)
-#define VMEM_MAX_MOVES (128 - ctx.num_waves * 4)
+#define SMEM_MAX_MOVES (64 - ctx.num_waves * 4)
+#define VMEM_MAX_MOVES (128 - ctx.num_waves * 8)
 #define POS_EXP_MAX_MOVES 512
 
 namespace aco {
@@ -802,13 +802,19 @@ void schedule_program(Program *program, live& live_vars)
    /* Allowing the scheduler to reduce the number of waves to as low as 5
     * improves performance of Thrones of Britannia significantly and doesn't
     * seem to hurt anything else. */
-   //TODO: maybe use some sort of heuristic instead
-   //TODO: this also increases window-size/max-moves? did I realize that at the time?
-   ctx.num_waves = std::min<uint16_t>(program->num_waves, 5);
-   assert(ctx.num_waves);
-   uint16_t total_sgpr_regs = program->physical_sgprs;
-   uint16_t max_addressible_sgpr = program->sgpr_limit;
-   ctx.max_registers = { int16_t(((256 / ctx.num_waves) & ~3) - 2), std::min<int16_t>(((total_sgpr_regs / ctx.num_waves) & ~program->sgpr_alloc_granule) - 2, max_addressible_sgpr)};
+   if (program->num_waves <= 5)
+      ctx.num_waves = program->num_waves;
+   else if (program->max_reg_demand.vgpr >= 32)
+      ctx.num_waves = 5;
+   else if (program->max_reg_demand.vgpr >= 28)
+      ctx.num_waves = 6;
+   else if (program->max_reg_demand.vgpr >= 24)
+      ctx.num_waves = 7;
+   else
+      ctx.num_waves = 8;
+
+   assert(ctx.num_waves > 0 && ctx.num_waves <= program->num_waves);
+   ctx.max_registers = { int16_t(((256 / ctx.num_waves) & ~3) - 2), int16_t(get_addr_sgpr_from_waves(program, ctx.num_waves))};
 
    for (Block& block : program->blocks)
       schedule_block(ctx, program, &block, live_vars);
