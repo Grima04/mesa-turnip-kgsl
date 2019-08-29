@@ -954,8 +954,7 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *comps = 2;
       return;
 
-   case MESA_FORMAT_L16A16_UNORM:
-   case MESA_FORMAT_A16L16_UNORM:
+   case MESA_FORMAT_LA_UNORM16:
    case MESA_FORMAT_R16G16_UNORM:
    case MESA_FORMAT_G16R16_UNORM:
       *datatype = GL_UNSIGNED_SHORT;

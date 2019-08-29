@@ -42,6 +42,7 @@
 #include <stdbool.h>
 #include "dri_util.h"
 #include "utils.h"
+#include "util/u_endian.h"
 #include "util/xmlpool.h"
 #include "main/mtypes.h"
 #include "main/framebuffer.h"
@@ -959,10 +960,12 @@ static const struct {
       .image_format = __DRI_IMAGE_FORMAT_GR1616,
       .mesa_format  =        MESA_FORMAT_R16G16_UNORM,
    },
+#ifdef PIPE_ARCH_LITTLE_ENDIAN
    {
       .image_format = __DRI_IMAGE_FORMAT_GR1616,
-      .mesa_format  =        MESA_FORMAT_L16A16_UNORM,
+      .mesa_format  =        MESA_FORMAT_LA_UNORM16,
    },
+#endif
 };
 
 uint32_t

@@ -109,10 +109,6 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
       return PIPE_FORMAT_LA88_UNORM;
    case MESA_FORMAT_A8L8_UNORM:
       return PIPE_FORMAT_AL88_UNORM;
-   case MESA_FORMAT_L16A16_UNORM:
-      return PIPE_FORMAT_LA1616_UNORM;
-   case MESA_FORMAT_A16L16_UNORM:
-      return PIPE_FORMAT_AL1616_UNORM;
    case MESA_FORMAT_A_UNORM8:
       return PIPE_FORMAT_A8_UNORM;
    case MESA_FORMAT_A_UNORM16:
@@ -121,6 +117,8 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
       return PIPE_FORMAT_L8_UNORM;
    case MESA_FORMAT_L_UNORM16:
       return PIPE_FORMAT_L16_UNORM;
+   case MESA_FORMAT_LA_UNORM16:
+      return PIPE_FORMAT_L16A16_UNORM;
    case MESA_FORMAT_I_UNORM8:
       return PIPE_FORMAT_I8_UNORM;
    case MESA_FORMAT_I_UNORM16:
@@ -703,10 +701,8 @@ st_pipe_format_to_mesa_format(enum pipe_format format)
       return MESA_FORMAT_L8A8_UNORM;
    case PIPE_FORMAT_AL88_UNORM:
       return MESA_FORMAT_A8L8_UNORM;
-   case PIPE_FORMAT_LA1616_UNORM:
-      return MESA_FORMAT_L16A16_UNORM;
-   case PIPE_FORMAT_AL1616_UNORM:
-      return MESA_FORMAT_A16L16_UNORM;
+   case PIPE_FORMAT_L16A16_UNORM:
+      return MESA_FORMAT_LA_UNORM16;
    case PIPE_FORMAT_A8_UNORM:
       return MESA_FORMAT_A_UNORM8;
    case PIPE_FORMAT_A16_UNORM:

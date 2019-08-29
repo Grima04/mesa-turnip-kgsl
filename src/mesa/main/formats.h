@@ -357,8 +357,6 @@ typedef enum
    MESA_FORMAT_B8G8R8X8_UNORM,   /* xxxx xxxx RRRR RRRR GGGG GGGG BBBB BBBB */
    MESA_FORMAT_A8R8G8B8_UNORM,   /* BBBB BBBB GGGG GGGG RRRR RRRR AAAA AAAA */
    MESA_FORMAT_X8R8G8B8_UNORM,   /* BBBB BBBB GGGG GGGG RRRR RRRR xxxx xxxx */
-   MESA_FORMAT_L16A16_UNORM,     /* AAAA AAAA AAAA AAAA LLLL LLLL LLLL LLLL */
-   MESA_FORMAT_A16L16_UNORM,     /* LLLL LLLL LLLL LLLL AAAA AAAA AAAA AAAA */
    MESA_FORMAT_B5G6R5_UNORM,                         /* RRRR RGGG GGGB BBBB */
    MESA_FORMAT_R5G6B5_UNORM,                         /* BBBB BGGG GGGR RRRR */
    MESA_FORMAT_B4G4R4A4_UNORM,                       /* AAAA RRRR GGGG BBBB */
@@ -404,6 +402,7 @@ typedef enum
    MESA_FORMAT_A_UNORM16,     /* ushort[i] = A */
    MESA_FORMAT_L_UNORM8,      /* ubyte[i] = L */
    MESA_FORMAT_L_UNORM16,     /* ushort[i] = L */
+   MESA_FORMAT_LA_UNORM16,     /* ushort[i * 2] = L, ushort[i*2+1] = A */
    MESA_FORMAT_I_UNORM8,      /* ubyte[i] = I */
    MESA_FORMAT_I_UNORM16,     /* ushort[i] = I */
    MESA_FORMAT_R_UNORM8,      /* ubyte[i] = R */
