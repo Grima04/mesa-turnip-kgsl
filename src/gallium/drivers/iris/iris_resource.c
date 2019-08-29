@@ -628,6 +628,28 @@ supports_ccs(const struct gen_device_info *devinfo,
    return true;
 }
 
+static bool
+want_ccs_e_for_format(const struct gen_device_info *devinfo,
+                      enum isl_format format)
+{
+   if (!isl_format_supports_ccs_e(devinfo, format))
+      return false;
+
+   const struct isl_format_layout *fmtl = isl_format_get_layout(format);
+
+   /* CCS_E seems to significantly hurt performance with 32-bit floating
+    * point formats.  For example, Paraview's "Wavelet Volume" case uses
+    * both R32_FLOAT and R32G32B32A32_FLOAT, and enabling CCS_E for those
+    * formats causes a 62% FPS drop.
+    *
+    * However, many benchmarks seem to use 16-bit float with no issues.
+    */
+   if (fmtl->channels.r.bits == 32 && fmtl->channels.r.type == ISL_SFLOAT)
+      return false;
+
+   return true;
+}
+
 static struct pipe_resource *
 iris_resource_create_for_buffer(struct pipe_screen *pscreen,
                                 const struct pipe_resource *templ)
@@ -765,7 +787,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
    } else if (likely(!(INTEL_DEBUG & DEBUG_NO_RBC)) &&
               supports_ccs(devinfo, &res->surf)) {
-      if (isl_format_supports_ccs_e(devinfo, res->surf.format))
+      if (want_ccs_e_for_format(devinfo, res->surf.format))
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_E;
 
       if (isl_format_supports_ccs_d(devinfo, res->surf.format))
