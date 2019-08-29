@@ -253,7 +253,7 @@ st_bind_egl_image(struct gl_context *ctx,
       break;
    case PIPE_FORMAT_YUYV:
    case PIPE_FORMAT_UYVY:
-      texFormat = MESA_FORMAT_R8G8_UNORM;
+      texFormat = MESA_FORMAT_RG_UNORM8;
       texObj->RequiredTextureImageUnits = 2;
       break;
    case PIPE_FORMAT_AYUV:

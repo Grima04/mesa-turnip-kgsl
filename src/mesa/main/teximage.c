@@ -6089,11 +6089,11 @@ _mesa_get_texbuffer_format(const struct gl_context *ctx, GLenum internalFormat)
       return MESA_FORMAT_RGBA_UINT32;
 
    case GL_RG8:
-      return MESA_FORMAT_R8G8_UNORM;
+      return MESA_FORMAT_RG_UNORM8;
    case GL_RG16:
       if (_mesa_is_gles(ctx) && !_mesa_has_EXT_texture_norm16(ctx))
          return MESA_FORMAT_NONE;
-      return MESA_FORMAT_R16G16_UNORM;
+      return MESA_FORMAT_RG_UNORM16;
    case GL_RG16F:
       return MESA_FORMAT_RG_FLOAT16;
    case GL_RG32F:

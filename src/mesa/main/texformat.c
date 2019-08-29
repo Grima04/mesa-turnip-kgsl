@@ -379,7 +379,7 @@ _mesa_choose_tex_format(struct gl_context *ctx, GLenum target,
       break;
    case GL_RG_SNORM:
    case GL_RG8_SNORM:
-      RETURN_IF_SUPPORTED(MESA_FORMAT_R8G8_SNORM);
+      RETURN_IF_SUPPORTED(MESA_FORMAT_RG_SNORM8);
       break;
    case GL_RGB_SNORM:
    case GL_RGB8_SNORM:
@@ -423,7 +423,7 @@ _mesa_choose_tex_format(struct gl_context *ctx, GLenum target,
       RETURN_IF_SUPPORTED(MESA_FORMAT_R_SNORM16);
       break;
    case GL_RG16_SNORM:
-      RETURN_IF_SUPPORTED(MESA_FORMAT_R16G16_SNORM);
+      RETURN_IF_SUPPORTED(MESA_FORMAT_RG_SNORM16);
       break;
    case GL_RGB16_SNORM:
       RETURN_IF_SUPPORTED(MESA_FORMAT_RGB_SNORM16);
@@ -677,17 +677,17 @@ _mesa_choose_tex_format(struct gl_context *ctx, GLenum target,
 
    case GL_RG:
    case GL_RG8:
-      RETURN_IF_SUPPORTED(MESA_FORMAT_R8G8_UNORM);
+      RETURN_IF_SUPPORTED(MESA_FORMAT_RG_UNORM8);
       break;
 
    case GL_COMPRESSED_RG:
       if (target != GL_TEXTURE_1D && target != GL_TEXTURE_1D_ARRAY)
          RETURN_IF_SUPPORTED(MESA_FORMAT_RG_RGTC2_UNORM);
-      RETURN_IF_SUPPORTED(MESA_FORMAT_R8G8_UNORM);
+      RETURN_IF_SUPPORTED(MESA_FORMAT_RG_UNORM8);
       break;
 
    case GL_RG16:
-      RETURN_IF_SUPPORTED(MESA_FORMAT_R16G16_UNORM);
+      RETURN_IF_SUPPORTED(MESA_FORMAT_RG_UNORM16);
       break;
 
    case GL_R16F:

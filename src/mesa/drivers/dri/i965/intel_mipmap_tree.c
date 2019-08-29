@@ -219,9 +219,9 @@ intel_lower_compressed_format(struct brw_context *brw, mesa_format format)
    case MESA_FORMAT_ETC2_SIGNED_R11_EAC:
       return MESA_FORMAT_R_SNORM16;
    case MESA_FORMAT_ETC2_RG11_EAC:
-      return MESA_FORMAT_R16G16_UNORM;
+      return MESA_FORMAT_RG_UNORM16;
    case MESA_FORMAT_ETC2_SIGNED_RG11_EAC:
-      return MESA_FORMAT_R16G16_SNORM;
+      return MESA_FORMAT_RG_SNORM16;
    default:
       /* Non ETC1 / ETC2 format */
       return format;

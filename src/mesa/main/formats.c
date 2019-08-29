@@ -710,9 +710,9 @@ _mesa_get_uncompressed_format(mesa_format format)
    case MESA_FORMAT_R_RGTC1_SNORM:
       return MESA_FORMAT_R_SNORM8;
    case MESA_FORMAT_RG_RGTC2_UNORM:
-      return MESA_FORMAT_R8G8_UNORM;
+      return MESA_FORMAT_RG_UNORM8;
    case MESA_FORMAT_RG_RGTC2_SNORM:
-      return MESA_FORMAT_R8G8_SNORM;
+      return MESA_FORMAT_RG_SNORM8;
    case MESA_FORMAT_L_LATC1_UNORM:
       return MESA_FORMAT_L_UNORM8;
    case MESA_FORMAT_L_LATC1_SNORM:
@@ -738,7 +738,7 @@ _mesa_get_uncompressed_format(mesa_format format)
       return MESA_FORMAT_R_UNORM16;
    case MESA_FORMAT_ETC2_RG11_EAC:
    case MESA_FORMAT_ETC2_SIGNED_RG11_EAC:
-      return MESA_FORMAT_R16G16_UNORM;
+      return MESA_FORMAT_RG_UNORM16;
    case MESA_FORMAT_BPTC_RGBA_UNORM:
    case MESA_FORMAT_BPTC_SRGB_ALPHA_UNORM:
       return MESA_FORMAT_A8B8G8R8_UNORM;
@@ -947,15 +947,13 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       return;
 
    case MESA_FORMAT_LA_UNORM8:
-   case MESA_FORMAT_R8G8_UNORM:
-   case MESA_FORMAT_G8R8_UNORM:
+   case MESA_FORMAT_RG_UNORM8:
       *datatype = GL_UNSIGNED_BYTE;
       *comps = 2;
       return;
 
    case MESA_FORMAT_LA_UNORM16:
-   case MESA_FORMAT_R16G16_UNORM:
-   case MESA_FORMAT_G16R16_UNORM:
+   case MESA_FORMAT_RG_UNORM16:
       *datatype = GL_UNSIGNED_SHORT;
       *comps = 2;
       return;
@@ -1068,7 +1066,7 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *datatype = GL_BYTE;
       *comps = 1;
       return;
-   case MESA_FORMAT_R8G8_SNORM:
+   case MESA_FORMAT_RG_SNORM8:
    case MESA_FORMAT_LA_SNORM8:
       *datatype = GL_BYTE;
       *comps = 2;
@@ -1092,7 +1090,7 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *datatype = GL_SHORT;
       *comps = 1;
       return;
-   case MESA_FORMAT_R16G16_SNORM:
+   case MESA_FORMAT_RG_SNORM16:
    case MESA_FORMAT_LA_SNORM16:
       *datatype = GL_SHORT;
       *comps = 2;
@@ -1403,16 +1401,6 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
    case MESA_FORMAT_R10G10B10A2_UNORM:
       *datatype = GL_UNSIGNED_INT_2_10_10_10_REV;
       *comps = 4;
-      return;
-
-   case MESA_FORMAT_G8R8_SNORM:
-      *datatype = GL_BYTE;
-      *comps = 2;
-      return;
-
-   case MESA_FORMAT_G16R16_SNORM:
-      *datatype = GL_SHORT;
-      *comps = 2;
       return;
 
    case MESA_FORMAT_B8G8R8X8_SRGB:

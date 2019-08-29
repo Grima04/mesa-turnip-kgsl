@@ -932,11 +932,11 @@ static const struct {
       .image_format = __DRI_IMAGE_FORMAT_R8,
       .mesa_format  =        MESA_FORMAT_L_UNORM8,
    },
+#ifdef PIPE_ARCH_LITTLE_ENDIAN
    {
       .image_format = __DRI_IMAGE_FORMAT_GR88,
-      .mesa_format  =        MESA_FORMAT_R8G8_UNORM,
+      .mesa_format  =        MESA_FORMAT_RG_UNORM8,
    },
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
    {
       .image_format = __DRI_IMAGE_FORMAT_GR88,
       .mesa_format  =        MESA_FORMAT_LA_UNORM8,
@@ -958,11 +958,11 @@ static const struct {
       .image_format = __DRI_IMAGE_FORMAT_R16,
       .mesa_format  =        MESA_FORMAT_L_UNORM16,
    },
+#ifdef PIPE_ARCH_LITTLE_ENDIAN
    {
       .image_format = __DRI_IMAGE_FORMAT_GR1616,
-      .mesa_format  =        MESA_FORMAT_R16G16_UNORM,
+      .mesa_format  =        MESA_FORMAT_RG_UNORM16,
    },
-#ifdef PIPE_ARCH_LITTLE_ENDIAN
    {
       .image_format = __DRI_IMAGE_FORMAT_GR1616,
       .mesa_format  =        MESA_FORMAT_LA_UNORM16,

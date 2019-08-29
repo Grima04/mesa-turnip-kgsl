@@ -367,13 +367,9 @@ typedef enum
    MESA_FORMAT_B5G5R5A1_UNORM,                       /* ARRR RRGG GGGB BBBB */
    MESA_FORMAT_B5G5R5X1_UNORM,                       /* xRRR RRGG GGGB BBBB */
    MESA_FORMAT_A1R5G5B5_UNORM,                       /* BBBB BGGG GGRR RRRA */
-   MESA_FORMAT_R8G8_UNORM,                           /* GGGG GGGG RRRR RRRR */
-   MESA_FORMAT_G8R8_UNORM,                           /* RRRR RRRR GGGG GGGG */
    MESA_FORMAT_L4A4_UNORM,                                     /* AAAA LLLL */
    MESA_FORMAT_B2G3R3_UNORM,                                   /* RRRG GGBB */
 
-   MESA_FORMAT_R16G16_UNORM,     /* GGGG GGGG GGGG GGGG RRRR RRRR RRRR RRRR */
-   MESA_FORMAT_G16R16_UNORM,     /* RRRR RRRR RRRR RRRR GGGG GGGG GGGG GGGG */
    MESA_FORMAT_B10G10R10A2_UNORM,/* AARR RRRR RRRR GGGG GGGG GGBB BBBB BBBB */
    MESA_FORMAT_B10G10R10X2_UNORM,/* xxRR RRRR RRRR GGGG GGGG GGBB BBBB BBBB */
    MESA_FORMAT_R10G10B10A2_UNORM,/* AABB BBBB BBBB GGGG GGGG GGRR RRRR RRRR */
@@ -406,6 +402,8 @@ typedef enum
    MESA_FORMAT_I_UNORM16,     /* ushort[i] = I */
    MESA_FORMAT_R_UNORM8,      /* ubyte[i] = R */
    MESA_FORMAT_R_UNORM16,     /* ushort[i] = R */
+   MESA_FORMAT_RG_UNORM8,     /* ubyte[i * 2] = R, [i * 2 + 1] = G */
+   MESA_FORMAT_RG_UNORM16,    /* ushort[i * 2] = R, [i * 2 + 1] = G */
    MESA_FORMAT_BGR_UNORM8,    /* ubyte[i*3] = B, [i*3+1] = G, [i*3+2] = R */
    MESA_FORMAT_RGB_UNORM8,    /* ubyte[i*3] = R, [i*3+1] = G, [i*3+2] = B */
    MESA_FORMAT_RGBA_UNORM16,  /* ushort[i] = R, [1] = G, [2] = B, [3] = A */
@@ -422,10 +420,6 @@ typedef enum
    MESA_FORMAT_X8B8G8R8_SNORM,   /* RRRR RRRR GGGG GGGG BBBB BBBB xxxx xxxx */
    MESA_FORMAT_R8G8B8A8_SNORM,   /* AAAA AAAA BBBB BBBB GGGG GGGG RRRR RRRR */
    MESA_FORMAT_R8G8B8X8_SNORM,   /* xxxx xxxx BBBB BBBB GGGG GGGG RRRR RRRR */
-   MESA_FORMAT_R16G16_SNORM,     /* GGGG GGGG GGGG GGGG RRRR RRRR RRRR RRRR */
-   MESA_FORMAT_G16R16_SNORM,     /* RRRR RRRR RRRR RRRR GGGG GGGG GGGG GGGG */
-   MESA_FORMAT_R8G8_SNORM,       /*                     GGGG GGGG RRRR RRRR */
-   MESA_FORMAT_G8R8_SNORM,       /*                     RRRR RRRR GGGG GGGG */
 
    /* Array signed/normalized formats */
    MESA_FORMAT_A_SNORM8,      /* byte[i] = A */
@@ -438,6 +432,8 @@ typedef enum
    MESA_FORMAT_R_SNORM16,     /* short[i] = R */
    MESA_FORMAT_LA_SNORM8,     /* byte[i * 2] = L, [i * 2 + 1] = A */
    MESA_FORMAT_LA_SNORM16,    /* short[i * 2] = L, [i * 2 + 1] = A */
+   MESA_FORMAT_RG_SNORM8,     /* byte[i * 2] = R, [i * 2 + 1] = G */
+   MESA_FORMAT_RG_SNORM16,    /* short[i * 2] = R, [i * 2 + 1] = G */
    MESA_FORMAT_RGB_SNORM16,   /* short[i*3] = R, [i*3+1] = G, [i*3+2] = B */
    MESA_FORMAT_RGBA_SNORM16,  /* ... */
    MESA_FORMAT_RGBX_SNORM16,  /* ... */
