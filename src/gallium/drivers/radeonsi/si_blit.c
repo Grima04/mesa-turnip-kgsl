@@ -453,7 +453,7 @@ static void si_blit_decompress_color(struct si_context *sctx,
 	if (need_dcc_decompress) {
 		custom_blend = sctx->custom_blend_dcc_decompress;
 
-		assert(tex->dcc_offset);
+		assert(tex->surface.dcc_offset);
 
 		/* disable levels without DCC */
 		for (int i = first_level; i <= last_level; i++) {
@@ -519,7 +519,7 @@ si_decompress_color_texture(struct si_context *sctx, struct si_texture *tex,
 			    unsigned first_level, unsigned last_level)
 {
 	/* CMASK or DCC can be discarded and we can still end up here. */
-	if (!tex->cmask_buffer && !tex->surface.fmask_size && !tex->dcc_offset)
+	if (!tex->cmask_buffer && !tex->surface.fmask_size && !tex->surface.dcc_offset)
 		return;
 
 	si_blit_decompress_color(sctx, tex, first_level, last_level, 0,
@@ -582,7 +582,7 @@ static void si_check_render_feedback_texture(struct si_context *sctx,
 {
 	bool render_feedback = false;
 
-	if (!tex->dcc_offset)
+	if (!tex->surface.dcc_offset)
 		return;
 
 	for (unsigned j = 0; j < sctx->framebuffer.state.nr_cbufs; ++j) {
@@ -840,7 +840,7 @@ static void si_decompress_subresource(struct pipe_context *ctx,
 		si_decompress_depth(sctx, stex, planes,
 				    level, level,
 				    first_layer, last_layer);
-	} else if (stex->surface.fmask_size || stex->cmask_buffer || stex->dcc_offset) {
+	} else if (stex->surface.fmask_size || stex->cmask_buffer || stex->surface.dcc_offset) {
 		/* If we've rendered into the framebuffer and it's a blitting
 		 * source, make sure the decompression pass is invoked
 		 * by dirtying the framebuffer.
@@ -896,7 +896,7 @@ void si_resource_copy_region(struct pipe_context *ctx,
 	    !util_format_is_compressed(dst->format) &&
 	    !util_format_is_depth_or_stencil(src->format) &&
 	    src->nr_samples <= 1 &&
-	    !sdst->dcc_offset &&
+	    !sdst->surface.dcc_offset &&
 	    !(dst->target != src->target &&
 	      (src->target == PIPE_TEXTURE_1D_ARRAY || dst->target == PIPE_TEXTURE_1D_ARRAY))) {
 		si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz, src_box);
@@ -1288,12 +1288,12 @@ static void si_flush_resource(struct pipe_context *ctx,
 	if (tex->dcc_separate_buffer && !tex->separate_dcc_dirty)
 		return;
 
-	if (!tex->is_depth && (tex->cmask_buffer || tex->dcc_offset)) {
+	if (!tex->is_depth && (tex->cmask_buffer || tex->surface.dcc_offset)) {
 		si_blit_decompress_color(sctx, tex, 0, res->last_level,
 					 0, util_max_layer(res, 0),
 					 tex->dcc_separate_buffer != NULL);
 
-		if (tex->display_dcc_offset)
+		if (tex->surface.display_dcc_offset)
 			si_retile_dcc(sctx, tex);
 	}
 
@@ -1333,7 +1333,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
 	/* If graphics is disabled, we can't decompress DCC, but it shouldn't
 	 * be compressed either. The caller should simply discard it.
 	 */
-	if (!tex->dcc_offset || !sctx->has_graphics)
+	if (!tex->surface.dcc_offset || !sctx->has_graphics)
 		return;
 
 	si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level,

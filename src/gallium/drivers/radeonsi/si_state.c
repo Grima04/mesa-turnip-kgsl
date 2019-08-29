@@ -2535,7 +2535,7 @@ static void si_initialize_color_surface(struct si_context *sctx,
 		color_attrib |= S_028C74_NUM_SAMPLES(log_samples) |
 				S_028C74_NUM_FRAGMENTS(log_fragments);
 
-		if (tex->fmask_offset) {
+		if (tex->surface.fmask_offset) {
 			color_info |= S_028C70_COMPRESSION(1);
 			unsigned fmask_bankh = util_logbase2(tex->surface.u.legacy.fmask.bankh);
 
@@ -2703,7 +2703,7 @@ static void si_init_depth_surface(struct si_context *sctx,
 			}
 
 			surf->db_htile_data_base = (tex->buffer.gpu_address +
-						    tex->htile_offset) >> 8;
+						    tex->surface.htile_offset) >> 8;
 			surf->db_htile_surface = S_028ABC_FULL_CACHE(1) |
 						 S_028ABC_PIPE_ALIGNED(tex->surface.u.gfx9.htile.pipe_aligned);
 			if (sctx->chip_class == GFX9) {
@@ -2784,7 +2784,7 @@ static void si_init_depth_surface(struct si_context *sctx,
 			}
 
 			surf->db_htile_data_base = (tex->buffer.gpu_address +
-						    tex->htile_offset) >> 8;
+						    tex->surface.htile_offset) >> 8;
 			surf->db_htile_surface = S_028ABC_FULL_CACHE(1);
 
 			if (tex->tc_compatible_htile) {
@@ -2828,7 +2828,7 @@ void si_update_fb_dirtiness_after_rendering(struct si_context *sctx)
 		struct pipe_surface *surf = sctx->framebuffer.state.cbufs[i];
 		struct si_texture *tex = (struct si_texture*)surf->texture;
 
-		if (tex->fmask_offset)
+		if (tex->surface.fmask_offset)
 			tex->dirty_level_mask |= 1 << surf->u.tex.level;
 		if (tex->dcc_gather_statistics)
 			tex->separate_dcc_dirty = true;
@@ -3013,7 +3013,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 		if (surf->color_is_int10)
 			sctx->framebuffer.color_is_int10 |= 1 << i;
 
-		if (tex->fmask_offset)
+		if (tex->surface.fmask_offset)
 			sctx->framebuffer.compressed_cb_mask |= 1 << i;
 		else
 			sctx->framebuffer.uncompressed_cb_mask |= 1 << i;
@@ -3206,8 +3206,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 		if (cb->base.u.tex.level > 0)
 			cb_color_info &= C_028C70_FAST_CLEAR;
 
-		if (tex->fmask_offset) {
-			cb_color_fmask = (tex->buffer.gpu_address + tex->fmask_offset) >> 8;
+		if (tex->surface.fmask_offset) {
+			cb_color_fmask = (tex->buffer.gpu_address + tex->surface.fmask_offset) >> 8;
 			cb_color_fmask |= tex->surface.fmask_tile_swizzle;
 		}
 
@@ -3222,7 +3222,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 				cb_color_info |= S_028C70_DCC_ENABLE(1);
 
 			cb_dcc_base = ((!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) +
-				       tex->dcc_offset) >> 8;
+				       tex->surface.dcc_offset) >> 8;
 
 			unsigned dcc_tile_swizzle = tex->surface.tile_swizzle;
 			dcc_tile_swizzle &= (tex->surface.dcc_alignment - 1) >> 8;
@@ -3235,7 +3235,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 			/* Set mutable surface parameters. */
 			cb_color_base += tex->surface.u.gfx9.surf_offset >> 8;
 			cb_color_base |= tex->surface.tile_swizzle;
-			if (!tex->fmask_offset)
+			if (!tex->surface.fmask_offset)
 				cb_color_fmask = cb_color_base;
 			if (cb->base.u.tex.level > 0)
 				cb_color_cmask = cb_color_base;
@@ -3277,7 +3277,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 		} else if (sctx->chip_class == GFX9) {
 			struct gfx9_surf_meta_flags meta;
 
-			if (tex->dcc_offset)
+			if (tex->surface.dcc_offset)
 				meta = tex->surface.u.gfx9.dcc;
 			else
 				meta = tex->surface.u.gfx9.cmask;
@@ -3285,7 +3285,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 			/* Set mutable surface parameters. */
 			cb_color_base += tex->surface.u.gfx9.surf_offset >> 8;
 			cb_color_base |= tex->surface.tile_swizzle;
-			if (!tex->fmask_offset)
+			if (!tex->surface.fmask_offset)
 				cb_color_fmask = cb_color_base;
 			if (cb->base.u.tex.level > 0)
 				cb_color_cmask = cb_color_base;
@@ -3325,7 +3325,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 			if (level_info->mode == RADEON_SURF_MODE_2D)
 				cb_color_base |= tex->surface.tile_swizzle;
 
-			if (!tex->fmask_offset)
+			if (!tex->surface.fmask_offset)
 				cb_color_fmask = cb_color_base;
 			if (cb->base.u.tex.level > 0)
 				cb_color_cmask = cb_color_base;
@@ -3341,7 +3341,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 			cb_color_pitch = S_028C64_TILE_MAX(pitch_tile_max);
 			cb_color_slice = S_028C68_TILE_MAX(slice_tile_max);
 
-			if (tex->fmask_offset) {
+			if (tex->surface.fmask_offset) {
 				if (sctx->chip_class >= GFX7)
 					cb_color_pitch |= S_028C64_FMASK_TILE_MAX(tex->surface.u.legacy.fmask.pitch_in_pixels / 8 - 1);
 				cb_color_attrib |= S_028C74_FMASK_TILE_MODE_INDEX(tex->surface.u.legacy.fmask.tiling_index);
@@ -3996,17 +3996,17 @@ gfx10_make_texture_descriptor(struct si_screen *screen,
 	state[6] = 0;
 	state[7] = 0;
 
-	if (tex->dcc_offset) {
+	if (tex->surface.dcc_offset) {
 		state[6] |= S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
 			    S_00A018_MAX_COMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_128B) |
 			    S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(screen, pipe_format));
 	}
 
 	/* Initialize the sampler view for FMASK. */
-	if (tex->fmask_offset) {
+	if (tex->surface.fmask_offset) {
 		uint32_t format;
 
-		va = tex->buffer.gpu_address + tex->fmask_offset;
+		va = tex->buffer.gpu_address + tex->surface.fmask_offset;
 
 #define FMASK(s,f) (((unsigned)(MAX2(1, s)) * 16) + (MAX2(1, f)))
 		switch (FMASK(res->nr_samples, res->nr_storage_samples)) {
@@ -4279,7 +4279,7 @@ si_make_texture_descriptor(struct si_screen *screen,
 		state[5] |= S_008F24_LAST_ARRAY(last_layer);
 	}
 
-	if (tex->dcc_offset) {
+	if (tex->surface.dcc_offset) {
 		state[6] = S_008F28_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(screen, pipe_format));
 	} else {
 		/* The last dword is unused by hw. The shader uses it to clear
@@ -4294,10 +4294,10 @@ si_make_texture_descriptor(struct si_screen *screen,
 	}
 
 	/* Initialize the sampler view for FMASK. */
-	if (tex->fmask_offset) {
+	if (tex->surface.fmask_offset) {
 		uint32_t data_format, num_format;
 
-		va = tex->buffer.gpu_address + tex->fmask_offset;
+		va = tex->buffer.gpu_address + tex->surface.fmask_offset;
 
 #define FMASK(s,f) (((unsigned)(MAX2(1, s)) * 16) + (MAX2(1, f)))
 		if (screen->info.chip_class == GFX9) {

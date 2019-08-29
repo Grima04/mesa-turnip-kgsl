@@ -451,9 +451,9 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 	unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
 	struct pipe_image_view img[3];
 
-	assert(tex->dcc_retile_map_offset && tex->dcc_retile_map_offset <= UINT_MAX);
-	assert(tex->dcc_offset && tex->dcc_offset <= UINT_MAX);
-	assert(tex->display_dcc_offset && tex->display_dcc_offset <= UINT_MAX);
+	assert(tex->surface.dcc_retile_map_offset && tex->surface.dcc_retile_map_offset <= UINT_MAX);
+	assert(tex->surface.dcc_offset && tex->surface.dcc_offset <= UINT_MAX);
+	assert(tex->surface.display_dcc_offset && tex->surface.display_dcc_offset <= UINT_MAX);
 
 	for (unsigned i = 0; i < 3; i++) {
 		img[i].resource = &tex->buffer.b.b;
@@ -463,15 +463,15 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 
 	img[0].format = use_uint16 ? PIPE_FORMAT_R16G16B16A16_UINT :
 				     PIPE_FORMAT_R32G32B32A32_UINT;
-	img[0].u.buf.offset = tex->dcc_retile_map_offset;
+	img[0].u.buf.offset = tex->surface.dcc_retile_map_offset;
 	img[0].u.buf.size = num_elements * (use_uint16 ? 2 : 4);
 
 	img[1].format = PIPE_FORMAT_R8_UINT;
-	img[1].u.buf.offset = tex->dcc_offset;
+	img[1].u.buf.offset = tex->surface.dcc_offset;
 	img[1].u.buf.size = tex->surface.dcc_size;
 
 	img[2].format = PIPE_FORMAT_R8_UINT;
-	img[2].u.buf.offset = tex->display_dcc_offset;
+	img[2].u.buf.offset = tex->surface.display_dcc_offset;
 	img[2].u.buf.size = tex->surface.u.gfx9.display_dcc_size;
 
 	ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 3, img);

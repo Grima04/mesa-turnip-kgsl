@@ -344,7 +344,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 
 		if (vi_dcc_enabled(tex, first_level)) {
 			meta_va = (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) +
-				  tex->dcc_offset;
+				  tex->surface.dcc_offset;
 
 			if (sscreen->info.chip_class == GFX8) {
 				meta_va += base_level_info->dcc_offset;
@@ -356,7 +356,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 			meta_va |= dcc_tile_swizzle;
 		} else if (vi_tc_compat_htile_enabled(tex, first_level,
 						      is_stencil ? PIPE_MASK_S : PIPE_MASK_Z)) {
-			meta_va = tex->buffer.gpu_address + tex->htile_offset;
+			meta_va = tex->buffer.gpu_address + tex->surface.htile_offset;
 		}
 
 		if (meta_va)
@@ -381,7 +381,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 		if (meta_va) {
 			struct gfx9_surf_meta_flags meta;
 
-			if (tex->dcc_offset)
+			if (tex->surface.dcc_offset)
 				meta = tex->surface.u.gfx9.dcc;
 			else
 				meta = tex->surface.u.gfx9.htile;
@@ -409,7 +409,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen,
 		if (meta_va) {
 			struct gfx9_surf_meta_flags meta;
 
-			if (tex->dcc_offset)
+			if (tex->surface.dcc_offset)
 				meta = tex->surface.u.gfx9.dcc;
 			else
 				meta = tex->surface.u.gfx9.htile;
@@ -498,7 +498,7 @@ static bool color_needs_decompression(struct si_texture *tex)
 {
 	return tex->surface.fmask_size ||
 	       (tex->dirty_level_mask &&
-		(tex->cmask_buffer || tex->dcc_offset));
+		(tex->cmask_buffer || tex->surface.dcc_offset));
 }
 
 static bool depth_needs_decompression(struct si_texture *tex)
@@ -547,7 +547,7 @@ static void si_set_sampler_view(struct si_context *sctx,
 				samplers->needs_color_decompress_mask &= ~(1u << slot);
 			}
 
-			if (tex->dcc_offset &&
+			if (tex->surface.dcc_offset &&
 			    p_atomic_read(&tex->framebuffers_bound))
 				sctx->need_check_render_feedback = true;
 		}
@@ -2532,7 +2532,7 @@ static void si_make_texture_handle_resident(struct pipe_context *ctx,
 					tex_handle);
 			}
 
-			if (tex->dcc_offset &&
+			if (tex->surface.dcc_offset &&
 			    p_atomic_read(&tex->framebuffers_bound))
 				sctx->need_check_render_feedback = true;
 
