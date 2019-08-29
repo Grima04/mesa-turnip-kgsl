@@ -43,6 +43,7 @@ struct ac_nir_context {
 	LLVMValueRef *ssa_defs;
 
 	LLVMValueRef scratch;
+	LLVMValueRef constant_data;
 
 	struct hash_table *defs;
 	struct hash_table *phis;
@@ -3770,6 +3771,25 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		}
 		break;
 	}
+	case nir_intrinsic_load_constant: {
+		LLVMValueRef offset = get_src(ctx, instr->src[0]);
+		LLVMValueRef base = LLVMConstInt(ctx->ac.i32,
+						 nir_intrinsic_base(instr),
+						 false);
+		offset = LLVMBuildAdd(ctx->ac.builder, offset, base, "");
+		LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->constant_data,
+						 offset);
+		LLVMTypeRef comp_type =
+			LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
+		LLVMTypeRef vec_type =
+			instr->dest.ssa.num_components == 1 ? comp_type :
+			LLVMVectorType(comp_type, instr->dest.ssa.num_components);
+		unsigned addr_space = LLVMGetPointerAddressSpace(LLVMTypeOf(ptr));
+		ptr = LLVMBuildBitCast(ctx->ac.builder, ptr,
+				       LLVMPointerType(vec_type, addr_space), "");
+		result = LLVMBuildLoad(ctx->ac.builder, ptr, "");
+		break;
+	}
 	default:
 		fprintf(stderr, "Unknown intrinsic: ");
 		nir_print_instr(&instr->instr, stderr);
@@ -4683,6 +4703,40 @@ setup_scratch(struct ac_nir_context *ctx,
 }
 
 static void
+setup_constant_data(struct ac_nir_context *ctx,
+		    struct nir_shader *shader)
+{
+	if (!shader->constant_data)
+		return;
+
+	LLVMValueRef data =
+		LLVMConstStringInContext(ctx->ac.context,
+					 shader->constant_data,
+					 shader->constant_data_size,
+					 true);
+	LLVMTypeRef type = LLVMArrayType(ctx->ac.i8, shader->constant_data_size);
+
+	/* We want to put the constant data in the CONST address space so that
+	 * we can use scalar loads. However, LLVM versions before 10 put these
+	 * variables in the same section as the code, which is unacceptable
+	 * for RadeonSI as it needs to relocate all the data sections after
+	 * the code sections. See https://reviews.llvm.org/D65813.
+	 */
+	unsigned address_space =
+		HAVE_LLVM < 0x1000 ? AC_ADDR_SPACE_GLOBAL : AC_ADDR_SPACE_CONST;
+
+	LLVMValueRef global =
+		LLVMAddGlobalInAddressSpace(ctx->ac.module, type,
+					    "const_data",
+					    address_space);
+
+	LLVMSetInitializer(global, data);
+	LLVMSetGlobalConstant(global, true);
+	LLVMSetVisibility(global, LLVMHiddenVisibility);
+	ctx->constant_data = global;
+}
+
+static void
 setup_shared(struct ac_nir_context *ctx,
 	     struct nir_shader *nir)
 {
@@ -4728,6 +4782,7 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 
 	setup_locals(&ctx, func);
 	setup_scratch(&ctx, nir);
+	setup_constant_data(&ctx, nir);
 
 	if (gl_shader_stage_is_compute(nir->info.stage))
 		setup_shared(&ctx, nir);
