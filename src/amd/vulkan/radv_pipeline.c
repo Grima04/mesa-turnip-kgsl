@@ -1751,6 +1751,15 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 		if (es_info->info.so.num_outputs)
 			esvert_lds_size = 4 * es_info->info.so.num_outputs + 1;
 		*/
+
+		/* LDS size for passing data from GS to ES.
+		 * GS stores Primitive IDs (one DWORD) into LDS at the address
+		 * corresponding to the ES thread of the provoking vertex. All
+		 * ES threads load and export PrimitiveID for their thread.
+		 */
+		if (!radv_pipeline_has_tess(pipeline) &&
+		    pipeline->shaders[MESA_SHADER_VERTEX]->info.vs.export_prim_id)
+			esvert_lds_size = MAX2(esvert_lds_size, 1);
 	}
 
 	unsigned max_gsprims = max_gsprims_base;
