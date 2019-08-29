@@ -956,8 +956,6 @@ util_format_snorm8_to_sint8(enum pipe_format format)
       return PIPE_FORMAT_R8G8B8X8_SINT;
    case PIPE_FORMAT_R8A8_SNORM:
       return PIPE_FORMAT_R8A8_SINT;
-   case PIPE_FORMAT_A8L8_SNORM:
-      return PIPE_FORMAT_A8L8_SINT;
    case PIPE_FORMAT_G8R8_SNORM:
       return PIPE_FORMAT_G8R8_SINT;
    case PIPE_FORMAT_A8B8G8R8_SNORM:
