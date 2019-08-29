@@ -1037,7 +1037,12 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
                            bld->static_texture_state->target == PIPE_TEXTURE_CUBE_ARRAY) &&
                           bld->static_sampler_state->seamless_cube_map;
 
-   accurate_cube_corners = ACCURATE_CUBE_CORNERS && seamless_cube_filter;
+   /*
+    * Disable accurate cube corners for integer textures, which should only
+    * get here in the gather path.
+    */
+   accurate_cube_corners = ACCURATE_CUBE_CORNERS && seamless_cube_filter &&
+     !util_format_is_pure_integer(bld->static_texture_state->format);
 
    lp_build_extract_image_sizes(bld,
                                 &bld->int_size_bld,
