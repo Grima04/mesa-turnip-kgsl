@@ -1847,7 +1847,8 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_transfer *map = (void *) xfer;
 
-   if (!(xfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
+   if (!(xfer->usage & (PIPE_TRANSFER_FLUSH_EXPLICIT |
+                        PIPE_TRANSFER_COHERENT))) {
       struct pipe_box flush_box = {
          .x = 0, .y = 0, .z = 0,
          .width  = xfer->box.width,
