@@ -350,6 +350,7 @@ struct radv_shader_variant {
 	uint64_t bo_offset;
 	struct ac_shader_config config;
 	uint32_t code_size;
+	uint32_t exec_size;
 	struct radv_shader_variant_info info;
 
 	/* debug only */

@@ -941,10 +941,12 @@ radv_shader_variant_create(struct radv_device *device,
 		}
 
 		variant->code_size = rtld_binary.rx_size;
+		variant->exec_size = rtld_binary.exec_size;
 	} else {
 		assert(binary->type == RADV_BINARY_TYPE_LEGACY);
 		config = ((struct radv_shader_binary_legacy *)binary)->config;
-		variant->code_size  = radv_get_shader_binary_size(((struct radv_shader_binary_legacy *)binary)->code_size);
+		variant->code_size = radv_get_shader_binary_size(((struct radv_shader_binary_legacy *)binary)->code_size);
+		variant->exec_size = variant->code_size;
 	}
 
 	variant->info = binary->variant_info;
@@ -1299,7 +1301,7 @@ generate_shader_stats(struct radv_device *device,
 				   "********************\n\n\n",
 				   conf->num_sgprs, conf->num_vgprs,
 				   conf->spilled_sgprs, conf->spilled_vgprs,
-				   variant->info.private_mem_vgprs, variant->code_size,
+				   variant->info.private_mem_vgprs, variant->exec_size,
 				   conf->lds_size, conf->scratch_bytes_per_wave,
 				   max_simd_waves);
 }

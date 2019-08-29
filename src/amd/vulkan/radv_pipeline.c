@@ -5025,7 +5025,7 @@ VkResult radv_GetPipelineExecutableStatisticsKHR(
 		desc_copy(s->name, "Code size");
 		desc_copy(s->description, "Code size in bytes");
 		s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
-		s->value.u64 = shader->code_size;
+		s->value.u64 = shader->exec_size;
 	}
 	++s;
 
