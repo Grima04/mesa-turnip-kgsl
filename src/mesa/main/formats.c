@@ -1295,10 +1295,6 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *datatype = GL_UNSIGNED_BYTE;
       *comps = 3;
       return;
-   case MESA_FORMAT_RGBA_UINT8:
-      *datatype = GL_UNSIGNED_BYTE;
-      *comps = 4;
-      return;
    case MESA_FORMAT_R_UINT16:
       *datatype = GL_UNSIGNED_SHORT;
       *comps = 1;

@@ -36,6 +36,7 @@
 #include <GL/gl.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "util/u_endian.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -553,7 +554,6 @@ typedef enum
    MESA_FORMAT_RGB_SINT16,
    MESA_FORMAT_RGB_SINT32,
 
-   MESA_FORMAT_RGBA_UINT8,
    MESA_FORMAT_RGBA_UINT16,
    MESA_FORMAT_RGBA_UINT32,
    MESA_FORMAT_RGBA_SINT8,
@@ -674,6 +674,12 @@ typedef enum
    MESA_FORMAT_COUNT
 } mesa_format;
 
+/* Packed to array format adapters */
+#if UTIL_ARCH_LITTLE_ENDIAN
+#define MESA_FORMAT_RGBA_UINT8 MESA_FORMAT_R8G8B8A8_UINT
+#else
+#define MESA_FORMAT_RGBA_UINT8 MESA_FORMAT_A8B8G8R8_UINT
+#endif
 
 extern const char *
 _mesa_get_format_name(mesa_format format);

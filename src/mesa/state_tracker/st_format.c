@@ -328,8 +328,6 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
       return PIPE_FORMAT_R8G8_UINT;
    case MESA_FORMAT_RGB_UINT8:
       return PIPE_FORMAT_R8G8B8_UINT;
-   case MESA_FORMAT_RGBA_UINT8:
-      return PIPE_FORMAT_R8G8B8A8_UINT;
    case MESA_FORMAT_R_UINT16:
       return PIPE_FORMAT_R16_UINT;
    case MESA_FORMAT_RG_UINT16:
@@ -421,6 +419,8 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
    case MESA_FORMAT_R11G11B10_FLOAT:
       return PIPE_FORMAT_R11G11B10_FLOAT;
 
+   case MESA_FORMAT_R8G8B8A8_UINT:
+      return PIPE_FORMAT_RGBA8888_UINT;
    case MESA_FORMAT_B8G8R8A8_UINT:
       return PIPE_FORMAT_BGRA8888_UINT;
    case MESA_FORMAT_A8R8G8B8_UINT:
@@ -973,8 +973,6 @@ st_pipe_format_to_mesa_format(enum pipe_format format)
       return MESA_FORMAT_RG_UINT8;
    case PIPE_FORMAT_R8G8B8_UINT:
       return MESA_FORMAT_RGB_UINT8;
-   case PIPE_FORMAT_R8G8B8A8_UINT:
-      return MESA_FORMAT_RGBA_UINT8;
 
    case PIPE_FORMAT_R16_UINT:
       return MESA_FORMAT_R_UINT16;
@@ -1066,6 +1064,8 @@ st_pipe_format_to_mesa_format(enum pipe_format format)
    case PIPE_FORMAT_R11G11B10_FLOAT:
       return MESA_FORMAT_R11G11B10_FLOAT;
 
+   case PIPE_FORMAT_RGBA8888_UINT:
+      return MESA_FORMAT_R8G8B8A8_UINT;
    case PIPE_FORMAT_BGRA8888_UINT:
       return MESA_FORMAT_B8G8R8A8_UINT;
    case PIPE_FORMAT_ARGB8888_UINT:
