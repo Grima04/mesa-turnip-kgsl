@@ -728,7 +728,7 @@ swr_compile_gs(struct swr_context *ctx, swr_jit_gs_key &key)
       "GS");
    PFN_GS_FUNC func = builder.CompileGS(ctx, key);
 
-   ctx->gs->map.insert(std::make_pair(key, make_unique<VariantGS>(builder.gallivm, func)));
+   ctx->gs->map.insert(std::make_pair(key, std::make_unique<VariantGS>(builder.gallivm, func)));
    return func;
 }
 
@@ -983,7 +983,7 @@ swr_compile_vs(struct swr_context *ctx, swr_jit_vs_key &key)
       "VS");
    PFN_VERTEX_FUNC func = builder.CompileVS(ctx, key);
 
-   ctx->vs->map.insert(std::make_pair(key, make_unique<VariantVS>(builder.gallivm, func)));
+   ctx->vs->map.insert(std::make_pair(key, std::make_unique<VariantVS>(builder.gallivm, func)));
    return func;
 }
 
@@ -1450,6 +1450,6 @@ swr_compile_fs(struct swr_context *ctx, swr_jit_fs_key &key)
       "FS");
    PFN_PIXEL_KERNEL func = builder.CompileFS(ctx, key);
 
-   ctx->fs->map.insert(std::make_pair(key, make_unique<VariantFS>(builder.gallivm, func)));
+   ctx->fs->map.insert(std::make_pair(key, std::make_unique<VariantFS>(builder.gallivm, func)));
    return func;
 }
