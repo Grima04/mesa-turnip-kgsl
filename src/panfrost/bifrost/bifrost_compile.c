@@ -57,7 +57,7 @@ optimize_nir(nir_shader *nir)
                 NIR_PASS(progress, nir, nir_opt_constant_folding);
 
                 NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
-                NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL);
+                NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
                 NIR_PASS(progress, nir, nir_opt_if, true);
 
         } while (progress);

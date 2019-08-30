@@ -110,7 +110,7 @@ lima_program_optimize_vs_nir(struct nir_shader *s)
       progress = false;
 
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
-      NIR_PASS(progress, s, nir_lower_alu_to_scalar, NULL);
+      NIR_PASS(progress, s, nir_lower_alu_to_scalar, NULL, NULL);
       NIR_PASS(progress, s, nir_lower_phis_to_scalar);
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_remove_phis);
@@ -145,24 +145,38 @@ lima_program_optimize_vs_nir(struct nir_shader *s)
    nir_sweep(s);
 }
 
-void
-lima_program_optimize_fs_nir(struct nir_shader *s)
+static bool
+lima_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
 {
-   BITSET_DECLARE(alu_lower, nir_num_opcodes) = {0};
-   bool progress;
+   if (instr->type != nir_instr_type_alu)
+      return false;
 
-   BITSET_SET(alu_lower, nir_op_frcp);
-   BITSET_SET(alu_lower, nir_op_frsq);
-   BITSET_SET(alu_lower, nir_op_flog2);
-   BITSET_SET(alu_lower, nir_op_fexp2);
-   BITSET_SET(alu_lower, nir_op_fsqrt);
-   BITSET_SET(alu_lower, nir_op_fsin);
-   BITSET_SET(alu_lower, nir_op_fcos);
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   switch (alu->op) {
+   case nir_op_frcp:
+   case nir_op_frsq:
+   case nir_op_flog2:
+   case nir_op_fexp2:
+   case nir_op_fsqrt:
+   case nir_op_fsin:
+   case nir_op_fcos:
    /* nir vec4 fcsel assumes that each component of the condition will be
     * used to select the same component from the two options, but lima
     * can't implement that since we only have 1 component condition */
-   BITSET_SET(alu_lower, nir_op_fcsel);
-   BITSET_SET(alu_lower, nir_op_bcsel);
+   case nir_op_fcsel:
+   case nir_op_bcsel:
+      return true;
+   default:
+      break;
+   }
+
+   return false;
+}
+
+void
+lima_program_optimize_fs_nir(struct nir_shader *s)
+{
+   bool progress;
 
    NIR_PASS_V(s, nir_lower_fragcoord_wtrans);
    NIR_PASS_V(s, nir_lower_io, nir_var_all, type_size, 0);
@@ -178,7 +192,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
       progress = false;
 
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
-      NIR_PASS(progress, s, nir_lower_alu_to_scalar, alu_lower);
+      NIR_PASS(progress, s, nir_lower_alu_to_scalar, lima_alu_to_scalar_filter_cb, NULL);
       NIR_PASS(progress, s, nir_lower_phis_to_scalar);
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_remove_phis);

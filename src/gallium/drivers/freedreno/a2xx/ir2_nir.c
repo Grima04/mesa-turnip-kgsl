@@ -1062,6 +1062,29 @@ static void cleanup_binning(struct ir2_context *ctx)
 	ir2_optimize_nir(ctx->nir, false);
 }
 
+static bool
+ir2_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
+{
+	if (instr->type != nir_instr_type_alu)
+		return false;
+
+	nir_alu_instr *alu = nir_instr_as_alu(instr);
+	switch (alu->op) {
+	case nir_op_frsq:
+	case nir_op_frcp:
+	case nir_op_flog2:
+	case nir_op_fexp2:
+	case nir_op_fsqrt:
+	case nir_op_fcos:
+	case nir_op_fsin:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
 void
 ir2_nir_compile(struct ir2_context *ctx, bool binning)
 {
@@ -1085,17 +1108,7 @@ ir2_nir_compile(struct ir2_context *ctx, bool binning)
 	OPT_V(ctx->nir, nir_lower_bool_to_float);
 	OPT_V(ctx->nir, nir_lower_to_source_mods, nir_lower_all_source_mods);
 
-	/* TODO: static bitset ? */
-	BITSET_DECLARE(scalar_ops, nir_num_opcodes);
-	BITSET_ZERO(scalar_ops);
-	BITSET_SET(scalar_ops, nir_op_frsq);
-	BITSET_SET(scalar_ops, nir_op_frcp);
-	BITSET_SET(scalar_ops, nir_op_flog2);
-	BITSET_SET(scalar_ops, nir_op_fexp2);
-	BITSET_SET(scalar_ops, nir_op_fsqrt);
-	BITSET_SET(scalar_ops, nir_op_fcos);
-	BITSET_SET(scalar_ops, nir_op_fsin);
-	OPT_V(ctx->nir, nir_lower_alu_to_scalar, scalar_ops);
+	OPT_V(ctx->nir, nir_lower_alu_to_scalar, ir2_alu_to_scalar_filter_cb, NULL);
 
 	OPT_V(ctx->nir, nir_lower_locals_to_regs);
 

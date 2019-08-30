@@ -208,25 +208,34 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
    }
 }
 
-static void
-etna_lower_alu_to_scalar(nir_shader *shader, const struct etna_specs *specs)
+static bool
+etna_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
 {
-   BITSET_DECLARE(scalar_ops, nir_num_opcodes);
-   BITSET_ZERO(scalar_ops);
+   const struct etna_specs *specs = data;
 
-   BITSET_SET(scalar_ops, nir_op_frsq);
-   BITSET_SET(scalar_ops, nir_op_frcp);
-   BITSET_SET(scalar_ops, nir_op_flog2);
-   BITSET_SET(scalar_ops, nir_op_fexp2);
-   BITSET_SET(scalar_ops, nir_op_fsqrt);
-   BITSET_SET(scalar_ops, nir_op_fcos);
-   BITSET_SET(scalar_ops, nir_op_fsin);
-   BITSET_SET(scalar_ops, nir_op_fdiv);
+   if (instr->type != nir_instr_type_alu)
+      return false;
 
-   if (!specs->has_halti2_instructions)
-      BITSET_SET(scalar_ops, nir_op_fdot2);
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   switch (alu->op) {
+   case nir_op_frsq:
+   case nir_op_frcp:
+   case nir_op_flog2:
+   case nir_op_fexp2:
+   case nir_op_fsqrt:
+   case nir_op_fcos:
+   case nir_op_fsin:
+   case nir_op_fdiv:
+      return true;
+   case nir_op_fdot2:
+      if (!specs->has_halti2_instructions)
+         return true;
+      break;
+   default:
+      break;
+   }
 
-   nir_lower_alu_to_scalar(shader, scalar_ops);
+   return false;
 }
 
 static void
@@ -607,7 +616,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    OPT_V(s, nir_lower_vars_to_ssa);
    OPT_V(s, nir_lower_indirect_derefs, nir_var_all);
    OPT_V(s, nir_lower_tex, &(struct nir_lower_tex_options) { .lower_txp = ~0u });
-   OPT_V(s, etna_lower_alu_to_scalar, specs);
+   OPT_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
 
    etna_optimize_loop(s);
 
@@ -627,7 +636,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       nir_print_shader(s, stdout);
 
    while( OPT(s, nir_opt_vectorize) );
-   OPT_V(s, etna_lower_alu_to_scalar, specs);
+   OPT_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
 
    NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function_temp);
    NIR_PASS_V(s, nir_opt_algebraic_late);

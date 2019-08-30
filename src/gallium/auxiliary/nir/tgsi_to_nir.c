@@ -2559,7 +2559,7 @@ ttn_optimize_nir(nir_shader *nir, bool scalar)
       NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
       if (scalar) {
-         NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL);
+         NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
          NIR_PASS_V(nir, nir_lower_phis_to_scalar);
       }
 
