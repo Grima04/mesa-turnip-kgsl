@@ -896,8 +896,8 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    int num_handles = mod_planes > 0 ? mod_planes : map->nplanes;
 
    switch (fourcc) {
-   case __DRI_IMAGE_FOURCC_YUYV:
-   case __DRI_IMAGE_FOURCC_UYVY:
+   case DRM_FORMAT_YUYV:
+   case DRM_FORMAT_UYVY:
       expected_num_fds = 1;
       break;
    default:
