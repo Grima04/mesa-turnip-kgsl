@@ -99,6 +99,13 @@ mir_print_instruction(midgard_instruction *ins)
                 midgard_alu_op op = ins->alu.op;
                 const char *name = alu_opcode_props[op].name;
 
+                const char *branch_target_names[] = {
+                        "goto", "break", "continue", "discard"
+                };
+
+                if (ins->compact_branch && !ins->prepacked_branch)
+                        name = branch_target_names[ins->branch.target_type];
+
                 if (ins->unit)
                         printf("%s.", mir_get_unit(ins->unit));
 
@@ -124,7 +131,7 @@ mir_print_instruction(midgard_instruction *ins)
                 assert(0);
         }
 
-        if (ins->invert)
+        if (ins->invert || (ins->compact_branch && !ins->prepacked_branch && ins->branch.invert_conditional))
                 printf(".not");
 
         printf(" ");
