@@ -879,36 +879,91 @@ static bool si_has_displayable_dcc(struct si_texture *tex)
 	return false;
 }
 
+static bool si_resource_get_param(struct pipe_screen *screen,
+				  struct pipe_context *context,
+				  struct pipe_resource *resource,
+				  unsigned plane,
+				  unsigned layer,
+				  enum pipe_resource_param param,
+				  unsigned handle_usage,
+				  uint64_t *value)
+{
+	for (unsigned i = 0; i < plane; i++)
+		resource = resource->next;
+
+	struct si_screen *sscreen = (struct si_screen*)screen;
+	struct si_texture *tex = (struct si_texture*)resource;
+	struct winsys_handle whandle;
+
+	switch (param) {
+	case PIPE_RESOURCE_PARAM_NPLANES:
+		*value = 1;
+		return true;
+
+	case PIPE_RESOURCE_PARAM_STRIDE:
+		if (resource->target == PIPE_BUFFER)
+			*value = 0;
+		else if (sscreen->info.chip_class >= GFX9)
+			*value = tex->surface.u.gfx9.surf_pitch * tex->surface.bpe;
+		else
+			*value = tex->surface.u.legacy.level[0].nblk_x * tex->surface.bpe;
+		return true;
+
+	case PIPE_RESOURCE_PARAM_OFFSET:
+		if (resource->target == PIPE_BUFFER)
+			*value = 0;
+		else if (sscreen->info.chip_class >= GFX9)
+			*value = tex->surface.u.gfx9.surf_offset +
+				 layer * tex->surface.u.gfx9.surf_slice_size;
+		else
+			*value = tex->surface.u.legacy.level[0].offset +
+				 layer * (uint64_t)tex->surface.u.legacy.level[0].slice_size_dw * 4;
+		return true;
+
+	case PIPE_RESOURCE_PARAM_MODIFIER:
+		*value = DRM_FORMAT_MOD_INVALID;
+		return true;
+
+	case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
+	case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS:
+	case PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD:
+		memset(&whandle, 0, sizeof(whandle));
+
+		if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED)
+			whandle.type = WINSYS_HANDLE_TYPE_SHARED;
+		else if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS)
+			whandle.type = WINSYS_HANDLE_TYPE_KMS;
+		else if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD)
+			whandle.type = WINSYS_HANDLE_TYPE_FD;
+
+		if (!screen->resource_get_handle(screen, context, resource,
+						 &whandle, handle_usage))
+			return false;
+
+		*value = whandle.handle;
+		return true;
+	}
+	return false;
+}
+
 static void si_texture_get_info(struct pipe_screen* screen,
 				struct pipe_resource *resource,
 				unsigned *pstride,
 				unsigned *poffset)
 {
-	struct si_screen *sscreen = (struct si_screen*)screen;
-	struct si_texture *tex = (struct si_texture*)resource;
-	unsigned stride = 0;
-	unsigned offset = 0;
+	uint64_t value;
 
-	if (!sscreen || !tex)
-		return;
-
-	if (resource->target != PIPE_BUFFER) {
-		if (sscreen->info.chip_class >= GFX9) {
-			offset = tex->surface.u.gfx9.surf_offset;
-			stride = tex->surface.u.gfx9.surf_pitch *
-					tex->surface.bpe;
-		} else {
-			offset = tex->surface.u.legacy.level[0].offset;
-			stride = tex->surface.u.legacy.level[0].nblk_x *
-					tex->surface.bpe;
-		}
+	if (pstride) {
+		si_resource_get_param(screen, NULL, resource, 0, 0,
+				      PIPE_RESOURCE_PARAM_STRIDE, 0, &value);
+		*pstride = value;
 	}
 
-	if (pstride)
-		*pstride = stride;
-
-	if (poffset)
-		*poffset = offset;
+	if (poffset) {
+		si_resource_get_param(screen, NULL, resource, 0, 0,
+				      PIPE_RESOURCE_PARAM_OFFSET, 0, &value);
+		*poffset = value;
+	}
 }
 
 static bool si_texture_get_handle(struct pipe_screen* screen,
@@ -2570,6 +2625,7 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
 {
 	sscreen->b.resource_from_handle = si_texture_from_handle;
 	sscreen->b.resource_get_handle = si_texture_get_handle;
+	sscreen->b.resource_get_param = si_resource_get_param;
 	sscreen->b.resource_get_info = si_texture_get_info;
 	sscreen->b.resource_from_memobj = si_texture_from_memobj;
 	sscreen->b.memobj_create_from_handle = si_memobj_from_handle;
