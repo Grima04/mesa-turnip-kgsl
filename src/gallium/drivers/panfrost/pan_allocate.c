@@ -111,6 +111,8 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
                         bo = panfrost_create_slab(screen, &index);
                 }
 
+                panfrost_job_add_bo(batch, bo);
+
                 /* Remember we created this */
                 util_dynarray_append(&batch->transient_indices, unsigned, index);
 

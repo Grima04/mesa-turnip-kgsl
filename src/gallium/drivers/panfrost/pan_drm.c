@@ -298,7 +298,6 @@ panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws)
 
         struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
 
-        /* TODO: Add here the transient pools */
         panfrost_job_add_bo(job, ctx->scratchpad.bo);
         panfrost_job_add_bo(job, ctx->tiler_heap.bo);
         panfrost_job_add_bo(job, job->polygon_list);
