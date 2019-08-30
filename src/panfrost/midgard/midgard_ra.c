@@ -350,7 +350,7 @@ check_read_class(unsigned *classes, unsigned tag, unsigned node)
         case REG_CLASS_TEXW:
                 return (tag != TAG_LOAD_STORE_4);
         case REG_CLASS_WORK:
-                return (tag == TAG_ALU_4);
+                return IS_ALU(tag);
         default:
                 unreachable("Invalid class");
         }
@@ -372,7 +372,7 @@ check_write_class(unsigned *classes, unsigned tag, unsigned node)
                 return (tag == TAG_TEXTURE_4);
         case REG_CLASS_LDST:
         case REG_CLASS_WORK:
-                return (tag == TAG_ALU_4) || (tag == TAG_LOAD_STORE_4);
+                return IS_ALU(tag) || (tag == TAG_LOAD_STORE_4);
         default:
                 unreachable("Invalid class");
         }
@@ -394,7 +394,8 @@ mir_lower_special_reads(compiler_context *ctx)
 {
         size_t sz = BITSET_WORDS(ctx->temp_count) * sizeof(BITSET_WORD);
 
-        /* Bitfields for the various types of registers we could have */
+        /* Bitfields for the various types of registers we could have. aluw can
+         * be written by either ALU or load/store */
 
         unsigned *alur = calloc(sz, 1);
         unsigned *aluw = calloc(sz, 1);
@@ -410,9 +411,11 @@ mir_lower_special_reads(compiler_context *ctx)
                         mark_node_class(aluw, ins->dest);
                         mark_node_class(alur, ins->src[0]);
                         mark_node_class(alur, ins->src[1]);
+                        mark_node_class(alur, ins->src[2]);
                         break;
 
                 case TAG_LOAD_STORE_4:
+                        mark_node_class(aluw, ins->dest);
                         mark_node_class(ldst, ins->src[0]);
                         mark_node_class(ldst, ins->src[1]);
                         mark_node_class(ldst, ins->src[2]);
@@ -793,7 +796,13 @@ install_registers_instr(
         midgard_instruction *ins)
 {
         switch (ins->type) {
-        case TAG_ALU_4: {
+        case TAG_ALU_4:
+        case TAG_ALU_8:
+        case TAG_ALU_12:
+        case TAG_ALU_16: {
+                 if (ins->compact_branch)
+                         return;
+
                 struct phys_reg src1 = index_to_reg(ctx, g, ins->src[0]);
                 struct phys_reg src2 = index_to_reg(ctx, g, ins->src[1]);
                 struct phys_reg dest = index_to_reg(ctx, g, ins->dest);
@@ -950,10 +959,6 @@ install_registers_instr(
 void
 install_registers(compiler_context *ctx, struct ra_graph *g)
 {
-        mir_foreach_block(ctx, block) {
-                mir_foreach_instr_in_block(block, ins) {
-                        install_registers_instr(ctx, g, ins);
-                }
-        }
-
+        mir_foreach_instr_global(ctx, ins)
+                install_registers_instr(ctx, g, ins);
 }
