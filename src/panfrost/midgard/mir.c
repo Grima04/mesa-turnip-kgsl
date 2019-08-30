@@ -454,4 +454,92 @@ mir_ubo_shift(midgard_load_store_op op)
         }
 }
 
+/* Register allocation occurs after instruction scheduling, which is fine until
+ * we start needing to spill registers and therefore insert instructions into
+ * an already-scheduled program. We don't have to be terribly efficient about
+ * this, since spilling is already slow. So just semantically we need to insert
+ * the instruction into a new bundle before/after the bundle of the instruction
+ * in question */
 
+static midgard_bundle
+mir_bundle_for_op(compiler_context *ctx, midgard_instruction ins)
+{
+        midgard_instruction *u = mir_upload_ins(ctx, ins);
+
+        midgard_bundle bundle = {
+                .tag = ins.type,
+                .instruction_count = 1,
+                .instructions = { u },
+        };
+
+        if (bundle.tag == TAG_ALU_4) {
+                assert(OP_IS_MOVE(u->alu.op));
+                u->unit = UNIT_VMUL;
+
+                size_t bytes_emitted = sizeof(uint32_t) + sizeof(midgard_reg_info) + sizeof(midgard_vector_alu);
+                bundle.padding = ~(bytes_emitted - 1) & 0xF;
+                bundle.control = ins.type | u->unit;
+        }
+
+        return bundle;
+}
+
+static unsigned
+mir_bundle_idx_for_ins(midgard_instruction *tag, midgard_block *block)
+{
+        midgard_bundle *bundles =
+                (midgard_bundle *) block->bundles.data;
+
+        size_t count = (block->bundles.size / sizeof(midgard_bundle));
+
+        for (unsigned i = 0; i < count; ++i) {
+                for (unsigned j = 0; j < bundles[i].instruction_count; ++j) {
+                        if (bundles[i].instructions[j] == tag)
+                                return i;
+                }
+        }
+
+        mir_print_instruction(tag);
+        unreachable("Instruction not scheduled in block");
+}
+
+void
+mir_insert_instruction_before_scheduled(
+        compiler_context *ctx,
+        midgard_block *block,
+        midgard_instruction *tag,
+        midgard_instruction ins)
+{
+        unsigned before = mir_bundle_idx_for_ins(tag, block);
+        size_t count = util_dynarray_num_elements(&block->bundles, midgard_bundle);
+        UNUSED void *unused = util_dynarray_grow(&block->bundles, midgard_bundle, 1);
+
+        midgard_bundle *bundles = (midgard_bundle *) block->bundles.data;
+        memmove(bundles + before + 1, bundles + before, (count - before) * sizeof(midgard_bundle));
+        midgard_bundle *before_bundle = bundles + before + 1;
+
+        midgard_bundle new = mir_bundle_for_op(ctx, ins);
+        memcpy(bundles + before, &new, sizeof(new));
+
+        list_addtail(&new.instructions[0]->link, &before_bundle->instructions[0]->link);
+}
+
+void
+mir_insert_instruction_after_scheduled(
+        compiler_context *ctx,
+        midgard_block *block,
+        midgard_instruction *tag,
+        midgard_instruction ins)
+{
+        unsigned after = mir_bundle_idx_for_ins(tag, block);
+        size_t count = util_dynarray_num_elements(&block->bundles, midgard_bundle);
+        UNUSED void *unused = util_dynarray_grow(&block->bundles, midgard_bundle, 1);
+
+        midgard_bundle *bundles = (midgard_bundle *) block->bundles.data;
+        memmove(bundles + after + 2, bundles + after + 1, (count - after - 1) * sizeof(midgard_bundle));
+        midgard_bundle *after_bundle_1 = bundles + after + 2;
+
+        midgard_bundle new = mir_bundle_for_op(ctx, ins);
+        memcpy(bundles + after + 1, &new, sizeof(new));
+        list_addtail(&new.instructions[0]->link, &after_bundle_1->instructions[0]->link);
+}

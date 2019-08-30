@@ -520,6 +520,9 @@ bool mir_nontrivial_source2_mod_simple(midgard_instruction *ins);
 bool mir_nontrivial_mod(midgard_vector_alu_src src, bool is_int, unsigned mask);
 bool mir_nontrivial_outmod(midgard_instruction *ins);
 
+void mir_insert_instruction_before_scheduled(compiler_context *ctx, midgard_block *block, midgard_instruction *tag, midgard_instruction ins);
+void mir_insert_instruction_after_scheduled(compiler_context *ctx, midgard_block *block, midgard_instruction *tag, midgard_instruction ins);
+
 /* MIR goodies */
 
 static const midgard_vector_alu_src blank_alu_src = {
