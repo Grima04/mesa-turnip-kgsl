@@ -1033,6 +1033,17 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
    boolean seamless_cube_filter, accurate_cube_corners;
    unsigned chan_swiz = bld->static_texture_state->swizzle_r;
 
+   if (is_gather) {
+      switch (bld->gather_comp) {
+      case 0: chan_swiz = bld->static_texture_state->swizzle_r; break;
+      case 1: chan_swiz = bld->static_texture_state->swizzle_g; break;
+      case 2: chan_swiz = bld->static_texture_state->swizzle_b; break;
+      case 3: chan_swiz = bld->static_texture_state->swizzle_a; break;
+      default:
+	 break;
+      }
+   }
+
    seamless_cube_filter = (bld->static_texture_state->target == PIPE_TEXTURE_CUBE ||
                            bld->static_texture_state->target == PIPE_TEXTURE_CUBE_ARRAY) &&
                           bld->static_sampler_state->seamless_cube_map;
@@ -2978,7 +2989,8 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
       bld.num_lods = num_quads;
    }
 
-
+   if (op_is_gather)
+      bld.gather_comp = (sample_key & LP_SAMPLER_GATHER_COMP_MASK) >> LP_SAMPLER_GATHER_COMP_SHIFT;
    bld.lodf_type = type;
    /* we want native vector size to be able to use our intrinsics */
    if (bld.num_lods != type.length) {

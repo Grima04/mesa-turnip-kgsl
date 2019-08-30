@@ -96,6 +96,8 @@ enum lp_sampler_op_type {
 #define LP_SAMPLER_LOD_CONTROL_MASK   (3 << 4)
 #define LP_SAMPLER_LOD_PROPERTY_SHIFT       6
 #define LP_SAMPLER_LOD_PROPERTY_MASK  (3 << 6)
+#define LP_SAMPLER_GATHER_COMP_SHIFT        8
+#define LP_SAMPLER_GATHER_COMP_MASK   (3 << 8)
 
 struct lp_sampler_params
 {
@@ -345,6 +347,7 @@ struct lp_build_sample_context
    /** number of lod values (valid are 1, length/4, length) */
    unsigned num_lods;
 
+   unsigned gather_comp;
    boolean no_quad_lod;
    boolean no_brilinear;
    boolean no_rho_approx;
