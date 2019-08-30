@@ -556,7 +556,7 @@ static int radv_get_instance_extension_index(const char *name)
 
 static const char radv_dri_options_xml[] =
 DRI_CONF_BEGIN
-	DRI_CONF_SECTION_QUALITY
+	DRI_CONF_SECTION_PERFORMANCE
 		DRI_CONF_ADAPTIVE_SYNC("true")
 	DRI_CONF_SECTION_END
 DRI_CONF_END;
