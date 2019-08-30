@@ -349,12 +349,12 @@ panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
-        if (!screen->last_fragment_flushed) {
+        if (!ctx->last_fragment_flushed) {
                 drmSyncobjWait(screen->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
-                screen->last_fragment_flushed = true;
+                ctx->last_fragment_flushed = true;
 
                 /* The job finished up, so we're safe to clean it up now */
-                panfrost_free_job(ctx, screen->last_job);
+                panfrost_free_job(ctx, ctx->last_job);
         }
 
         if (fence) {

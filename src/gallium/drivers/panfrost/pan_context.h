@@ -203,6 +203,12 @@ struct panfrost_context {
         bool is_t6xx;
 
         uint32_t out_sync;
+
+        /* While we're busy building up the job for frame N, the GPU is
+         * still busy executing frame N-1. So hold a reference to
+         * yesterjob */
+        int last_fragment_flushed;
+        struct panfrost_job *last_job;
 };
 
 /* Corresponds to the CSO */

@@ -1329,9 +1329,6 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
                       struct pipe_fence_handle **fence,
                       struct panfrost_job *job)
 {
-        struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
-
         panfrost_job_submit(ctx, job);
 
         /* If visual, we can stall a frame */
@@ -1339,8 +1336,8 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
         if (!flush_immediate)
                 panfrost_drm_force_flush_fragment(ctx, fence);
 
-        screen->last_fragment_flushed = false;
-        screen->last_job = job;
+        ctx->last_fragment_flushed = false;
+        ctx->last_job = job;
 
         /* If readback, flush now (hurts the pipelined performance) */
         if (flush_immediate)
@@ -2855,6 +2852,9 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         assert(ctx->blitter);
         assert(ctx->blitter_wallpaper);
+
+        ctx->last_fragment_flushed = true;
+        ctx->last_job = NULL;
 
         /* Prepare for render! */
 

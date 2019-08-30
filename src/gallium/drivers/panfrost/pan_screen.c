@@ -665,9 +665,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.fence_finish = panfrost_fence_finish;
         screen->base.set_damage_region = panfrost_resource_set_damage_region;
 
-        screen->last_fragment_flushed = true;
-        screen->last_job = NULL;
-
         panfrost_resource_screen_init(screen);
 
         return &screen->base;

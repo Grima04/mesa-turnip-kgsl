@@ -118,12 +118,6 @@ struct panfrost_screen {
          * Each bucket is a linked list of free panfrost_bo objects. */
 
         struct list_head bo_cache[NR_BO_CACHE_BUCKETS];
-
-        /* While we're busy building up the job for frame N, the GPU is
-         * still busy executing frame N-1. So hold a reference to
-         * yesterjob */
-        int last_fragment_flushed;
-        struct panfrost_job *last_job;
 };
 
 static inline struct panfrost_screen *
