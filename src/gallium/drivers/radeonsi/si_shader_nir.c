@@ -986,6 +986,13 @@ void si_lower_nir(struct si_shader_selector *sel)
 	};
 	NIR_PASS_V(sel->nir, nir_lower_subgroups, &subgroups_options);
 
+	/* Lower large variables that are always constant with load_constant
+	 * intrinsics, which get turned into PC-relative loads from a data
+	 * section next to the shader.
+	 */
+	NIR_PASS_V(sel->nir, nir_opt_large_constants,
+		   glsl_get_natural_size_align_bytes, 16);
+
 	ac_lower_indirect_derefs(sel->nir, sel->screen->info.chip_class);
 
 	si_nir_opts(sel->nir);

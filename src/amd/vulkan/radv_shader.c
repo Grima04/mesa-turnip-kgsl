@@ -442,6 +442,13 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	 */
 	nir_lower_var_copies(nir);
 
+	/* Lower large variables that are always constant with load_constant
+	 * intrinsics, which get turned into PC-relative loads from a data
+	 * section next to the shader.
+	 */
+	NIR_PASS_V(nir, nir_opt_large_constants,
+		   glsl_get_natural_size_align_bytes, 16);
+
 	/* Indirect lowering must be called after the radv_optimize_nir() loop
 	 * has been called at least once. Otherwise indirect lowering can
 	 * bloat the instruction count of the loop and cause it to be
