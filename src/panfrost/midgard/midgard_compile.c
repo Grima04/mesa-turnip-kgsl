@@ -1416,13 +1416,14 @@ emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
         /* Next, generate the branch. For R render targets in the writeout, the
          * i'th render target jumps to pseudo-offset [2(R-1) + i] */
 
-        unsigned offset = (2 * (ctx->nir->num_outputs - 1)) + rt;
+        unsigned outputs = ctx->is_blend ? 1 : ctx->nir->num_outputs;
+        unsigned offset = (2 * (outputs - 1)) + rt;
 
         struct midgard_instruction ins =
                 v_alu_br_compact_cond(midgard_jmp_writeout_op_writeout, TAG_ALU_4, offset, midgard_condition_always);
 
         /* Add dependencies */
-        ins.src[0] = move.dest;
+        ins.src[0] = src;
         ins.src[1] = rt_move.dest;
 
         /* Emit the branch */
