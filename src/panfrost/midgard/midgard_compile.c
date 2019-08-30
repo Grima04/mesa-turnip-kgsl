@@ -2800,15 +2800,14 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
 
                 /* Count instructions and bundles */
 
-                mir_foreach_instr_global(ctx, ins) {
-                        nr_ins++;
-                }
-
                 mir_foreach_block(ctx, block) {
                         nr_bundles += util_dynarray_num_elements(
                                               &block->bundles, midgard_bundle);
 
                         nr_quadwords += block->quadword_count;
+
+                        mir_foreach_bundle_in_block(block, bun)
+                                nr_ins += bun->instruction_count;
                 }
 
                 /* Calculate thread count. There are certain cutoffs by
