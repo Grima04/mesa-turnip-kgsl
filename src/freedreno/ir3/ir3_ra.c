@@ -982,7 +982,11 @@ static void fixup_half_instr_dst(struct ir3_instruction *instr)
 	case 3:
 		switch (instr->opc) {
 		case OPC_MAD_F32:
-			instr->opc = OPC_MAD_F16;
+			/* Available for that dest is half and srcs are full.
+			 * eg. mad.f32 hr0, r0.x, r0.y, r0.z
+			 */
+			if (instr->regs[1]->flags & IR3_REG_HALF)
+				instr->opc = OPC_MAD_F16;
 			break;
 		case OPC_SEL_B32:
 			instr->opc = OPC_SEL_B16;
