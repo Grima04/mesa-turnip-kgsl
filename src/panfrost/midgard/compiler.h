@@ -566,6 +566,9 @@ v_mov(unsigned src, midgard_vector_alu_src mod, unsigned dest)
 static inline bool
 mir_has_arg(midgard_instruction *ins, unsigned arg)
 {
+        if (!ins)
+                return false;
+
         for (unsigned i = 0; i < ARRAY_SIZE(ins->src); ++i) {
                 if (ins->src[i] == arg)
                         return true;
