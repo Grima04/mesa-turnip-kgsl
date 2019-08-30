@@ -176,8 +176,17 @@ mir_print_block(midgard_block *block)
 {
         printf("block%d: {\n", block->source_id);
 
-        mir_foreach_instr_in_block(block, ins) {
-                mir_print_instruction(ins);
+        if (block->is_scheduled) {
+                mir_foreach_bundle_in_block(block, bundle) {
+                        for (unsigned i = 0; i < bundle->instruction_count; ++i)
+                                mir_print_instruction(bundle->instructions[i]);
+
+                        printf("\n");
+                }
+        } else {
+                mir_foreach_instr_in_block(block, ins) {
+                        mir_print_instruction(ins);
+                }
         }
 
         printf("}");
