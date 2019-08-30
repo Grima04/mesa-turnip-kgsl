@@ -3209,11 +3209,11 @@ _mesa_destroy_shader_includes(struct gl_shared_state *shared)
 }
 
 static bool
-valid_path_format(const char *str)
+valid_path_format(const char *str, bool relative_path)
 {
    int i = 0;
 
-   if (!str[i] || str[i] != '/')
+   if (!str[i] || (!relative_path && str[i] != '/'))
       return false;
 
    i++;
@@ -3249,7 +3249,9 @@ validate_and_tokenise_sh_incl(struct gl_context *ctx,
                               struct sh_incl_path_entry **path_list,
                               char *full_path, bool error_check)
 {
-   if (!valid_path_format(full_path)) {
+   bool relative_path = ctx->Shared->ShaderIncludes->num_include_paths;
+
+   if (!valid_path_format(full_path, relative_path)) {
       if (error_check) {
          _mesa_error(ctx, GL_INVALID_VALUE,
                      "glNamedStringARB(invalid name %s)", full_path);
@@ -3524,6 +3526,64 @@ GLvoid GLAPIENTRY
 _mesa_CompileShaderIncludeARB(GLuint shader, GLsizei count,
                               const GLchar* const *path, const GLint *length)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   const char *caller = "glCompileShaderIncludeARB";
+
+   if (count > 0 && path == NULL) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(count > 0 && path == NULL)",
+                  caller);
+      return;
+   }
+
+   void *mem_ctx = ralloc_context(NULL);
+
+   mtx_lock(&ctx->Shared->ShaderIncludeMutex);
+
+   ctx->Shared->ShaderIncludes->include_paths =
+      ralloc_array_size(mem_ctx, sizeof(struct sh_incl_path_entry *), count);
+
+   for (size_t i = 0; i < count; i++) {
+      char *path_cp = copy_string(ctx, path[i], length ? length[i] : -1,
+                                  caller);
+      if (!path_cp) {
+         goto exit;
+      }
+
+      struct sh_incl_path_entry *path_list;
+
+      if (!validate_and_tokenise_sh_incl(ctx, mem_ctx, &path_list, path_cp,
+                                         true)) {
+         free(path_cp);
+         goto exit;
+      }
+
+      ctx->Shared->ShaderIncludes->include_paths[i] = path_list;
+
+      free(path_cp);
+   }
+
+   /* We must set this *after* all calls to validate_and_tokenise_sh_incl()
+    * are done as we use this to decide if we need to check the start of the
+    * path for a '/'
+    */
+   ctx->Shared->ShaderIncludes->num_include_paths = count;
+
+   struct gl_shader *sh = _mesa_lookup_shader(ctx, shader);
+   if (!sh) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(shader)", caller);
+      goto exit;
+   }
+
+   _mesa_compile_shader(ctx, sh);
+
+exit:
+   ctx->Shared->ShaderIncludes->num_include_paths = 0;
+   ctx->Shared->ShaderIncludes->relative_path_cursor = 0;
+   ctx->Shared->ShaderIncludes->include_paths = NULL;
+
+   mtx_unlock(&ctx->Shared->ShaderIncludeMutex);
+
+   ralloc_free(mem_ctx);
 }
 
 GLboolean GLAPIENTRY
