@@ -1025,9 +1025,12 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
 
 static bool
 iris_resource_get_param(struct pipe_screen *screen,
+                        struct pipe_context *context,
                         struct pipe_resource *resource,
-                        unsigned int plane,
+                        unsigned plane,
+                        unsigned layer,
                         enum pipe_resource_param param,
+                        unsigned handle_usage,
                         uint64_t *value)
 {
    struct iris_resource *res = (struct iris_resource *)resource;
