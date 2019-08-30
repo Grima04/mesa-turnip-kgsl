@@ -2294,9 +2294,6 @@ emit_block(compiler_context *ctx, nir_block *block)
         this_block->is_scheduled = false;
         ++ctx->block_count;
 
-        ctx->texture_index[0] = ~0;
-        ctx->texture_index[1] = ~0;
-
         /* Set up current block */
         list_inithead(&this_block->instructions);
         ctx->current_block = this_block;

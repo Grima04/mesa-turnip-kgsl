@@ -268,9 +268,6 @@ typedef struct compiler_context {
          * Decrease when a tex op is removed. */
         int texture_op_count;
 
-        /* Mapping of texture register -> SSA index for unaliasing */
-        int texture_index[2];
-
         /* The number of uniforms allowable for the fast path */
         int uniform_cutoff;
 
