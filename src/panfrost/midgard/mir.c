@@ -376,8 +376,8 @@ static unsigned
 mir_source_count(midgard_instruction *ins)
 {
         if (ins->type == TAG_ALU_4) {
-                /* ALU is always binary */
-                return 2;
+                /* ALU is always binary, except csel */
+                return OP_IS_CSEL(ins->alu.op) ? 3 : 2;
         } else if (ins->type == TAG_LOAD_STORE_4) {
                 bool load = !OP_IS_STORE(ins->load_store.op);
                 return (load ? 2 : 3);
@@ -417,6 +417,10 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
         for (unsigned i = 0; i < mir_source_count(ins); ++i) {
                 if (ins->src[i] != node) continue;
 
+                /* Branch writeout uses all components */
+                if (ins->compact_branch && ins->writeout && (i == 0))
+                        return 0xF;
+
                 unsigned swizzle = mir_get_swizzle(ins, i);
                 unsigned m = mir_mask_of_read_components_single(swizzle, ins->mask);
 
@@ -431,6 +435,15 @@ mir_mask_of_read_components(midgard_instruction *ins, unsigned node)
 
                         /* Set the next bit to extend one*/
                         m |= (m << 1);
+                }
+
+                /* Handle dot products and things */
+                if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
+                        unsigned channel_override =
+                                GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props);
+
+                        if (channel_override)
+                                m = mask_of(channel_override);
                 }
 
                 mask |= m;
