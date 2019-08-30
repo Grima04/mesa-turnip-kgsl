@@ -32,6 +32,9 @@
 #include "ir3_compiler.h"
 #include "ir3_shader.h"
 
+#define swap(a, b) \
+	do { __typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
+
 /*
  * Copy Propagate:
  */
@@ -361,6 +364,36 @@ unuse(struct ir3_instruction *instr)
 }
 
 /**
+ * Handles the special case of the 2nd src (n == 1) to "normal" mad
+ * instructions, which cannot reference a constant.  See if it is
+ * possible to swap the 1st and 2nd sources.
+ */
+static bool
+try_swap_mad_two_srcs(struct ir3_instruction *instr, unsigned new_flags)
+{
+	if (!is_mad(instr->opc))
+		return false;
+
+	/* NOTE: pre-swap first two src's before valid_flags(),
+	 * which might try to dereference the n'th src:
+	 */
+	swap(instr->regs[0 + 1], instr->regs[1 + 1]);
+
+	bool valid_swap =
+		/* can we propagate mov if we move 2nd src to first? */
+		valid_flags(instr, 0, new_flags) &&
+		/* and does first src fit in second slot? */
+		valid_flags(instr, 1, instr->regs[1 + 1]->flags);
+
+	if (!valid_swap) {
+		/* put things back the way they were: */
+		swap(instr->regs[0 + 1], instr->regs[1 + 1]);
+	}   /* otherwise leave things swapped */
+
+	return valid_swap;
+}
+
+/**
  * Handle cp for a given src register.  This additionally handles
  * the cases of collapsing immedate/const (which replace the src
  * register with a non-ssa src) or collapsing mov's from relative
@@ -423,15 +456,8 @@ reg_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr,
 			 * src prior to multiply) can swap their first two srcs if
 			 * src[0] is !CONST and src[1] is CONST:
 			 */
-			if ((n == 1) && is_mad(instr->opc) &&
-					!(instr->regs[0 + 1]->flags & (IR3_REG_CONST | IR3_REG_RELATIV)) &&
-					valid_flags(instr, 0, new_flags & ~IR3_REG_IMMED)) {
-				/* swap src[0] and src[1]: */
-				struct ir3_register *tmp;
-				tmp = instr->regs[0 + 1];
-				instr->regs[0 + 1] = instr->regs[1 + 1];
-				instr->regs[1 + 1] = tmp;
-
+			if ((n == 1) && try_swap_mad_two_srcs(instr, new_flags)) {
+				/* we swapped, so now we are dealing with 1st src: */
 				n = 0;
 			} else {
 				return;
