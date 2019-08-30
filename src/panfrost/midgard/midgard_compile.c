@@ -1011,7 +1011,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * needs it, or else we may segfault. */
 
         unsigned src0 = nir_alu_src_index(ctx, &instr->src[0]);
-        unsigned src1 = nr_inputs == 2 ? nir_alu_src_index(ctx, &instr->src[1]) : ~0;
+        unsigned src1 = nr_inputs >= 2 ? nir_alu_src_index(ctx, &instr->src[1]) : ~0;
+        unsigned src2 = nr_inputs == 3 ? nir_alu_src_index(ctx, &instr->src[2]) : ~0;
 
         /* Rather than use the instruction generation helpers, we do it
          * ourselves here to avoid the mess */
@@ -1021,14 +1022,14 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 .src = {
                         quirk_flipped_r24 ? ~0 : src0,
                         quirk_flipped_r24 ? src0       : src1,
-                        ~0
+                        src2,
                 },
                 .dest = dest,
         };
 
-        nir_alu_src *nirmods[2] = { NULL };
+        nir_alu_src *nirmods[3] = { NULL };
 
-        if (nr_inputs == 2) {
+        if (nr_inputs >= 2) {
                 nirmods[0] = &instr->src[0];
                 nirmods[1] = &instr->src[1];
         } else if (nr_inputs == 1) {
@@ -1036,6 +1037,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         } else {
                 assert(0);
         }
+
+        if (nr_inputs == 3)
+                nirmods[2] = &instr->src[2];
 
         /* These were lowered to a move, so apply the corresponding mod */
 
@@ -1062,6 +1066,12 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 .src1 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[0], is_int, broadcast_swizzle, half_1, sext_1)),
                 .src2 = vector_alu_srco_unsigned(vector_alu_modifiers(nirmods[1], is_int, broadcast_swizzle, half_2, sext_2)),
         };
+
+        if (nr_inputs == 3) {
+                ins.csel_swizzle = SWIZZLE_FROM_ARRAY(nirmods[2]->swizzle);
+                assert(!nirmods[2]->abs);
+                assert(!nirmods[2]->negate);
+        }
 
         /* Apply writemask if non-SSA, keeping in mind that we can't write to components that don't exist */
 
