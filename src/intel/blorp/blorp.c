@@ -83,9 +83,6 @@ brw_blorp_surface_info_init(struct blorp_context *blorp,
    if (info->aux_usage != ISL_AUX_USAGE_NONE) {
       info->aux_surf = *surf->aux_surf;
       info->aux_addr = surf->aux_addr;
-      assert(level < info->aux_surf.levels);
-      assert(layer < MAX2(info->aux_surf.logical_level0_px.depth >> level,
-                          info->aux_surf.logical_level0_px.array_len));
    }
 
    info->clear_color = surf->clear_color;
