@@ -798,11 +798,26 @@ static void mir_spill_register(
                 ra_set_node_spill_cost(g, i, 1.0);
         }
 
-        mir_foreach_instr_global(ctx, ins) {
-                if (ins->no_spill &&
-                    ins->dest >= 0 &&
-                    ins->dest < ctx->temp_count)
-                        ra_set_node_spill_cost(g, ins->dest, -1.0);
+        /* We can't spill any bundles that contain unspills. This could be
+         * optimized to allow use of r27 to spill twice per bundle, but if
+         * you're at the point of optimizing spilling, it's too late. */
+
+        mir_foreach_block(ctx, block) {
+                mir_foreach_bundle_in_block(block, bun) {
+                        bool no_spill = false;
+
+                        for (unsigned i = 0; i < bun->instruction_count; ++i)
+                                no_spill |= bun->instructions[i]->no_spill;
+
+                        if (!no_spill)
+                                continue;
+
+                        for (unsigned i = 0; i < bun->instruction_count; ++i) {
+                                unsigned dest = bun->instructions[i]->dest;
+                                if (dest < ctx->temp_count)
+                                        ra_set_node_spill_cost(g, dest, -1.0);
+                        }
+                }
         }
 
         int spill_node = ra_get_best_spill_node(g);
@@ -831,7 +846,8 @@ static void mir_spill_register(
                 if (is_special_w)
                         spill_slot = spill_index++;
 
-                mir_foreach_instr_global_safe(ctx, ins) {
+                mir_foreach_block(ctx, block) {
+                mir_foreach_instr_in_block_safe(block, ins) {
                         if (ins->dest != spill_node) continue;
 
                         midgard_instruction st;
@@ -841,16 +857,18 @@ static void mir_spill_register(
                                 st.no_spill = true;
                         } else {
                                 ins->dest = SSA_FIXED_REGISTER(26);
+                                ins->no_spill = true;
                                 st = v_load_store_scratch(ins->dest, spill_slot, true, ins->mask);
                         }
 
                         /* Hint: don't rewrite this node */
                         st.hint = true;
 
-                        mir_insert_instruction_before(ctx, mir_next_op(ins), st);
+                        mir_insert_instruction_after_scheduled(ctx, block, ins, st);
 
                         if (!is_special)
                                 ctx->spills++;
+                }
                 }
         }
 
@@ -915,7 +933,7 @@ static void mir_spill_register(
 
                                 st.mask = read_mask;
 
-                                mir_insert_instruction_before(ctx, before, st);
+                                mir_insert_instruction_before_scheduled(ctx, block, before, st);
                                // consecutive_skip = true;
                         } else {
                                 /* Special writes already have their move spilled in */
@@ -962,7 +980,10 @@ schedule_program(compiler_context *ctx)
 
         mir_foreach_block(ctx, block) {
                 midgard_opt_dead_move_eliminate(ctx, block);
+                schedule_block(ctx, block);
         }
+
+        mir_create_pipeline_registers(ctx);
 
         do {
                 if (spilled) 
@@ -973,25 +994,6 @@ schedule_program(compiler_context *ctx)
                 g = NULL;
                 g = allocate_registers(ctx, &spilled);
         } while(spilled && ((iter_count--) > 0));
-
-        /* We can simplify a bit after RA */
-
-        mir_foreach_block(ctx, block) {
-                midgard_opt_post_move_eliminate(ctx, block, g);
-        }
-
-        /* After RA finishes, we schedule all at once */
-
-        mir_foreach_block(ctx, block) {
-                schedule_block(ctx, block);
-        }
-
-        /* Finally, we create pipeline registers as a peephole pass after
-         * scheduling. This isn't totally optimal, since there are cases where
-         * the usage of pipeline registers can eliminate spills, but it does
-         * save some power */
-
-        mir_create_pipeline_registers(ctx);
 
         if (iter_count <= 0) {
                 fprintf(stderr, "panfrost: Gave up allocating registers, rendering will be incomplete\n");
