@@ -75,6 +75,20 @@ midgard_is_branch_unit(unsigned unit)
         return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
 }
 
+static midgard_block *
+create_empty_block(compiler_context *ctx)
+{
+        midgard_block *blk = rzalloc(ctx, midgard_block);
+
+        blk->predecessors = _mesa_set_create(blk,
+                        _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+        blk->source_id = ctx->block_source_count++;
+
+        return blk;
+}
+
 static void
 midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 {
@@ -92,6 +106,19 @@ midgard_block_add_successor(midgard_block *block, midgard_block *successor)
 
         /* Note the predecessor in the other direction */
         _mesa_set_add(successor->predecessors, block);
+}
+
+static void
+schedule_barrier(compiler_context *ctx)
+{
+        midgard_block *temp = ctx->after_block;
+        ctx->after_block = create_empty_block(ctx);
+        ctx->block_count++;
+        list_addtail(&ctx->after_block->link, &ctx->blocks);
+        list_inithead(&ctx->after_block->instructions);
+        midgard_block_add_successor(ctx->current_block, ctx->after_block);
+        ctx->current_block = ctx->after_block;
+        ctx->after_block = temp;
 }
 
 /* Helpers to generate midgard_instruction's using macro magic, since every
@@ -1431,6 +1458,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         discard.src[0] = nir_src_index(ctx, &instr->src[0]);
 
                 emit_mir_instruction(ctx, discard);
+                schedule_barrier(ctx);
+
                 break;
         }
 
@@ -1498,6 +1527,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                         midgard_instruction move = v_mov(SSA_FIXED_REGISTER(0), blank_alu_src, reg);
                         emit_mir_instruction(ctx, move);
+                        schedule_barrier(ctx);
                 }  else if (ctx->stage == MESA_SHADER_VERTEX) {
                         midgard_instruction ins = m_ld_attr_32(reg, offset);
                         ins.load_store.arg_1 = 0x1E;
@@ -1938,9 +1968,9 @@ emit_instr(compiler_context *ctx, struct nir_instr *instr)
 }
 
 static void
-inline_alu_constants(compiler_context *ctx)
+inline_alu_constants(compiler_context *ctx, midgard_block *block)
 {
-        mir_foreach_instr(ctx, alu) {
+        mir_foreach_instr_in_block(block, alu) {
                 /* Other instructions cannot inline constants */
                 if (alu->type != TAG_ALU_4) continue;
 
@@ -2023,9 +2053,9 @@ mir_contrapositive(midgard_alu_op op)
  * sometimes a performance boost */
 
 static void
-embedded_to_inline_constant(compiler_context *ctx)
+embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
 {
-        mir_foreach_instr(ctx, ins) {
+        mir_foreach_instr_in_block(block, ins) {
                 if (!ins->has_constants) continue;
                 if (ins->has_inline_constant) continue;
 
@@ -2173,19 +2203,8 @@ midgard_opt_cull_dead_branch(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (!midgard_is_branch_unit(ins->unit)) continue;
 
-                /* We ignore prepacked branches since the fragment epilogue is
-                 * just generally special */
-                if (ins->prepacked_branch) continue;
-
-                /* Discards are similarly special and may not correspond to the
-                 * end of a block */
-
-                if (ins->branch.target_type == TARGET_DISCARD) continue;
-
-                if (branched) {
-                        /* We already branched, so this is dead */
+                if (branched)
                         mir_remove_instruction(ins);
-                }
 
                 branched = true;
         }
@@ -2261,20 +2280,6 @@ emit_fragment_epilogue(compiler_context *ctx)
 }
 
 static midgard_block *
-create_empty_block(compiler_context *ctx)
-{
-        midgard_block *blk = rzalloc(ctx, midgard_block);
-
-        blk->predecessors = _mesa_set_create(blk,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
-
-        blk->source_id = ctx->block_source_count++;
-
-        return blk;
-}
-
-static midgard_block *
 emit_block(compiler_context *ctx, nir_block *block)
 {
         midgard_block *this_block = ctx->after_block;
@@ -2299,14 +2304,6 @@ emit_block(compiler_context *ctx, nir_block *block)
                 emit_instr(ctx, instr);
                 ++ctx->instruction_count;
         }
-
-        inline_alu_constants(ctx);
-        midgard_opt_promote_fmov(ctx, ctx->current_block);
-        embedded_to_inline_constant(ctx);
-
-        /* Allow the next control flow to access us retroactively, for
-         * branching etc */
-        ctx->current_block = this_block;
 
         return this_block;
 }
@@ -2595,6 +2592,13 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
 
         util_dynarray_init(compiled, NULL);
 
+        /* Per-block lowering before opts */
+
+        mir_foreach_block(ctx, block) {
+                inline_alu_constants(ctx, block);
+                midgard_opt_promote_fmov(ctx, block);
+                embedded_to_inline_constant(ctx, block);
+        }
         /* MIR-level optimizations */
 
         bool progress = false;
