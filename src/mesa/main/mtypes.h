@@ -3929,6 +3929,11 @@ struct gl_constants
    bool GLSLOptimizeConservatively;
 
    /**
+    * Whether to call lower_const_arrays_to_uniforms() during linking.
+    */
+   bool GLSLLowerConstArrays;
+
+   /**
     * True if gl_TessLevelInner/Outer[] in the TES should be inputs
     * (otherwise, they're system values).
     */
