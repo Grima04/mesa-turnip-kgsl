@@ -587,13 +587,14 @@ struct ra_graph;
 /* Broad types of register classes so we can handle special
  * registers */
 
-#define NR_REG_CLASSES 5
+#define NR_REG_CLASSES 6
 
 #define REG_CLASS_WORK          0
 #define REG_CLASS_LDST          1
 #define REG_CLASS_LDST27        2
 #define REG_CLASS_TEXR          3
 #define REG_CLASS_TEXW          4
+#define REG_CLASS_FRAGC         5
 
 void mir_lower_special_reads(compiler_context *ctx);
 struct ra_graph* allocate_registers(compiler_context *ctx, bool *spilled);

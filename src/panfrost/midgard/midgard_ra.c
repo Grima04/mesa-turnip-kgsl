@@ -49,6 +49,7 @@
 /* We have overlapping register classes for special registers, handled via
  * shadows */
 
+#define SHADOW_R0  17
 #define SHADOW_R28 18
 #define SHADOW_R29 19
 
@@ -159,6 +160,8 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, unsigned reg)
 
         if (phys >= SHADOW_R28 && phys <= SHADOW_R29)
                 phys += 28 - SHADOW_R28;
+        else if (phys == SHADOW_R0)
+                phys = 0;
 
         struct phys_reg r = {
                 .reg = phys,
@@ -180,12 +183,12 @@ index_to_reg(compiler_context *ctx, struct ra_graph *g, unsigned reg)
  * special register allocation */
 
 static void
-add_shadow_conflicts (struct ra_regs *regs, unsigned base, unsigned shadow)
+add_shadow_conflicts (struct ra_regs *regs, unsigned base, unsigned shadow, unsigned shadow_count)
 {
         for (unsigned a = 0; a < WORK_STRIDE; ++a) {
                 unsigned reg_a = (WORK_STRIDE * base) + a;
 
-                for (unsigned b = 0; b < WORK_STRIDE; ++b) {
+                for (unsigned b = 0; b < shadow_count; ++b) {
                         unsigned reg_b = (WORK_STRIDE * shadow) + b;
 
                         ra_add_reg_conflict(regs, reg_a, reg_b);
@@ -202,7 +205,7 @@ create_register_set(unsigned work_count, unsigned *classes)
         /* First, initialize the RA */
         struct ra_regs *regs = ra_alloc_reg_set(NULL, virtual_count, true);
 
-        for (unsigned c = 0; c < NR_REG_CLASSES; ++c) {
+        for (unsigned c = 0; c < (NR_REG_CLASSES - 1); ++c) {
                 int work_vec4 = ra_alloc_reg_class(regs);
                 int work_vec3 = ra_alloc_reg_class(regs);
                 int work_vec2 = ra_alloc_reg_class(regs);
@@ -253,10 +256,18 @@ create_register_set(unsigned work_count, unsigned *classes)
                 }
         }
 
+        int fragc = ra_alloc_reg_class(regs);
+
+        classes[4*REG_CLASS_FRAGC + 0] = fragc;
+        classes[4*REG_CLASS_FRAGC + 1] = fragc;
+        classes[4*REG_CLASS_FRAGC + 2] = fragc;
+        classes[4*REG_CLASS_FRAGC + 3] = fragc;
+        ra_class_add_reg(regs, fragc, WORK_STRIDE * SHADOW_R0);
 
         /* We have duplicate classes */
-        add_shadow_conflicts(regs, 28, SHADOW_R28);
-        add_shadow_conflicts(regs, 29, SHADOW_R29);
+        add_shadow_conflicts(regs,  0, SHADOW_R0,  1);
+        add_shadow_conflicts(regs, 28, SHADOW_R28, WORK_STRIDE);
+        add_shadow_conflicts(regs, 29, SHADOW_R29, WORK_STRIDE);
 
         /* We're done setting up */
         ra_set_finalize(regs, NULL);
@@ -399,6 +410,7 @@ mir_lower_special_reads(compiler_context *ctx)
 
         unsigned *alur = calloc(sz, 1);
         unsigned *aluw = calloc(sz, 1);
+        unsigned *brar = calloc(sz, 1);
         unsigned *ldst = calloc(sz, 1);
         unsigned *texr = calloc(sz, 1);
         unsigned *texw = calloc(sz, 1);
@@ -412,6 +424,10 @@ mir_lower_special_reads(compiler_context *ctx)
                         mark_node_class(alur, ins->src[0]);
                         mark_node_class(alur, ins->src[1]);
                         mark_node_class(alur, ins->src[2]);
+
+                        if (ins->compact_branch && ins->writeout)
+                                mark_node_class(brar, ins->src[0]);
+
                         break;
 
                 case TAG_LOAD_STORE_4:
@@ -443,6 +459,7 @@ mir_lower_special_reads(compiler_context *ctx)
         for (unsigned i = 0; i < ctx->temp_count; ++i) {
                 bool is_alur = BITSET_TEST(alur, i);
                 bool is_aluw = BITSET_TEST(aluw, i);
+                bool is_brar = BITSET_TEST(brar, i);
                 bool is_ldst = BITSET_TEST(ldst, i);
                 bool is_texr = BITSET_TEST(texr, i);
                 bool is_texw = BITSET_TEST(texw, i);
@@ -457,7 +474,8 @@ mir_lower_special_reads(compiler_context *ctx)
                         (is_alur && (is_ldst || is_texr)) ||
                         (is_ldst && (is_alur || is_texr || is_texw)) ||
                         (is_texr && (is_alur || is_ldst || is_texw)) ||
-                        (is_texw && (is_aluw || is_ldst || is_texr));
+                        (is_texw && (is_aluw || is_ldst || is_texr)) ||
+                        (is_brar && is_texw);
         
                 if (!collision)
                         continue;
@@ -465,8 +483,8 @@ mir_lower_special_reads(compiler_context *ctx)
                 /* Use the index as-is as the work copy. Emit copies for
                  * special uses */
 
-                unsigned classes[] = { TAG_LOAD_STORE_4, TAG_TEXTURE_4, TAG_TEXTURE_4 };
-                bool collisions[] = { is_ldst, is_texr, is_texw && is_aluw };
+                unsigned classes[] = { TAG_LOAD_STORE_4, TAG_TEXTURE_4, TAG_TEXTURE_4, TAG_ALU_4};
+                bool collisions[] = { is_ldst, is_texr, is_texw && is_aluw, is_brar };
 
                 for (unsigned j = 0; j < ARRAY_SIZE(collisions); ++j) {
                         if (!collisions[j]) continue;
@@ -517,6 +535,7 @@ mir_lower_special_reads(compiler_context *ctx)
 
         free(alur);
         free(aluw);
+        free(brar);
         free(ldst);
         free(texr);
         free(texw);
@@ -764,6 +783,12 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                 assert(check_read_class(found_class, ins->type, ins->src[0]));
                 assert(check_read_class(found_class, ins->type, ins->src[1]));
                 assert(check_read_class(found_class, ins->type, ins->src[2]));
+        }
+
+        /* Mark writeout to r0 */
+        mir_foreach_instr_global(ctx, ins) {
+                if (ins->compact_branch && ins->writeout)
+                        set_class(found_class, ins->src[0], REG_CLASS_FRAGC);
         }
 
         for (unsigned i = 0; i < ctx->temp_count; ++i) {

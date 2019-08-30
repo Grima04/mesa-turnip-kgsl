@@ -60,6 +60,13 @@ mir_pipeline_ins(
         for (unsigned i = 0; i < bundle->instruction_count; ++i) {
                 midgard_instruction *q = bundle->instructions[i];
                 read_mask |= mir_mask_of_read_components(q, node);
+
+                /* The fragment colour can't be pipelined (well, it is
+                 * pipelined in r0, but this is a delicate dance with
+                 * scheduling and RA, not for us to worry about) */
+
+                if (q->compact_branch && q->writeout && mir_has_arg(q, node))
+                        return false;
         }
 
         /* Now analyze for a write mask */

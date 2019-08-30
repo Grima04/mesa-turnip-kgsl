@@ -1379,16 +1379,7 @@ compute_builtin_arg(nir_op op)
 static void
 emit_fragment_store(compiler_context *ctx, unsigned src, unsigned rt)
 {
-        /* First, move in whatever we're outputting */
-        midgard_instruction move = v_mov(src, blank_alu_src, SSA_FIXED_REGISTER(0));
-        if (rt != 0) {
-                /* Force a tight schedule. TODO: Make the scheduler MRT aware */
-                move.unit = UNIT_VMUL;
-                move.precede_break = true;
-                move.dont_eliminate = true;
-        }
-
-        emit_mir_instruction(ctx, move);
+        emit_explicit_constant(ctx, src, src);
 
         /* If we're doing MRT, we need to specify the render target */
 
@@ -1974,6 +1965,7 @@ inline_alu_constants(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block(block, alu) {
                 /* Other instructions cannot inline constants */
                 if (alu->type != TAG_ALU_4) continue;
+                if (alu->compact_branch) continue;
 
                 /* If there is already a constant here, we can do nothing */
                 if (alu->has_constants) continue;

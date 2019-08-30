@@ -160,7 +160,7 @@ midgard_has_hazard(
  */
 
 static bool
-can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsigned count, unsigned node_count)
+can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsigned count, unsigned node_count, unsigned r0)
 {
         /* First scan for which components of r0 are written out. Initially
          * none are written */
@@ -176,7 +176,7 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
         for (unsigned i = 0; i < count; ++i) {
                 midgard_instruction *ins = bundle[i];
 
-                if (ins->dest != SSA_FIXED_REGISTER(0))
+                if (ins->dest != r0)
                         continue;
 
                 /* Record written out mask */
@@ -516,7 +516,7 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
                                 /* All of r0 has to be written out along with
                                  * the branch writeout */
 
-                                if (ains->writeout && !can_writeout_fragment(ctx, scheduled, index, ctx->temp_count)) {
+                                if (ains->writeout && !can_writeout_fragment(ctx, scheduled, index, ctx->temp_count, ains->src[0])) {
                                         /* We only work on full moves
                                          * at the beginning. We could
                                          * probably do better */
