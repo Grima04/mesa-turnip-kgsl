@@ -344,6 +344,8 @@ static int si_init_surface(struct si_screen *sscreen,
 	if (sscreen->info.chip_class >= GFX9) {
 		if (pitch) {
 			surface->u.gfx9.surf_pitch = pitch;
+			if (ptex->last_level == 0)
+				surface->u.gfx9.surf.epitch = pitch - 1;
 			surface->u.gfx9.surf_slice_size =
 				(uint64_t)pitch * surface->u.gfx9.surf_height * bpe;
 		}
