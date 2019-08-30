@@ -42,6 +42,9 @@ unsigned
 mir_get_swizzle(midgard_instruction *ins, unsigned idx)
 {
         if (ins->type == TAG_ALU_4) {
+                if (idx == 2)
+                        return ins->csel_swizzle;
+
                 unsigned b = (idx == 0) ? ins->alu.src1 : ins->alu.src2;
 
                 midgard_vector_alu_src s =
