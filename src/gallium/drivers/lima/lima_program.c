@@ -160,15 +160,31 @@ lima_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
    case nir_op_fsqrt:
    case nir_op_fsin:
    case nir_op_fcos:
-   /* nir vec4 fcsel assumes that each component of the condition will be
-    * used to select the same component from the two options, but lima
-    * can't implement that since we only have 1 component condition */
-   case nir_op_fcsel:
-   case nir_op_bcsel:
       return true;
    default:
       break;
    }
+
+   /* nir vec4 fcsel assumes that each component of the condition will be
+    * used to select the same component from the two options, but Utgard PP
+    * has only 1 component condition. If all condition components are not the
+    * same we need to lower it to scalar.
+    */
+   switch (alu->op) {
+   case nir_op_bcsel:
+   case nir_op_fcsel:
+      break;
+   default:
+      return false;
+   }
+
+   int num_components = nir_dest_num_components(alu->dest.dest);
+
+   uint8_t swizzle = alu->src[0].swizzle[0];
+
+   for (int i = 1; i < num_components; i++)
+      if (alu->src[0].swizzle[i] != swizzle)
+         return true;
 
    return false;
 }
