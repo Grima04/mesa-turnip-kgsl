@@ -630,9 +630,8 @@ schedule_block(compiler_context *ctx, midgard_block *block)
                 util_dynarray_append(&block->bundles, midgard_bundle, bundle);
 
                 if (bundle.has_blend_constant) {
-                        /* TODO: Multiblock? */
-                        int quadwords_within_block = block->quadword_count + quadword_size(bundle.tag) - 1;
-                        ctx->blend_constant_offset = quadwords_within_block * 0x10;
+                        unsigned offset = ctx->quadword_count + block->quadword_count + quadword_size(bundle.tag) - 1;
+                        ctx->blend_constant_offset = offset * 0x10;
                 }
 
                 while(skip--)
@@ -642,6 +641,7 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         }
 
         block->is_scheduled = true;
+        ctx->quadword_count += block->quadword_count;
 }
 
 /* The following passes reorder MIR instructions to enable better scheduling */

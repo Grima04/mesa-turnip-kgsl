@@ -280,6 +280,8 @@ typedef struct compiler_context {
         /* Alpha ref value passed in */
         float alpha_ref;
 
+        unsigned quadword_count;
+
         /* The mapping of sysvals to uniforms, the count, and the off-by-one inverse */
         unsigned sysvals[MAX_SYSVAL_COUNT];
         unsigned sysval_count;

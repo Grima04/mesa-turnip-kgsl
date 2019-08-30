@@ -2807,15 +2807,13 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                 disassemble_midgard(program->compiled.data, program->compiled.size);
 
         if (midgard_debug & MIDGARD_DBG_SHADERDB) {
-                unsigned nr_bundles = 0, nr_ins = 0, nr_quadwords = 0;
+                unsigned nr_bundles = 0, nr_ins = 0;
 
                 /* Count instructions and bundles */
 
                 mir_foreach_block(ctx, block) {
                         nr_bundles += util_dynarray_num_elements(
                                               &block->bundles, midgard_bundle);
-
-                        nr_quadwords += block->quadword_count;
 
                         mir_foreach_bundle_in_block(block, bun)
                                 nr_ins += bun->instruction_count;
@@ -2839,7 +2837,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                         "%d:%d spills:fills\n",
                         SHADER_DB_COUNT++,
                         gl_shader_stage_name(ctx->stage),
-                        nr_ins, nr_bundles, nr_quadwords,
+                        nr_ins, nr_bundles, ctx->quadword_count,
                         nr_registers, nr_threads,
                         ctx->loop_count,
                         ctx->spills, ctx->fills);
