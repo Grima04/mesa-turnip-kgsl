@@ -104,6 +104,8 @@ struct panfrost_screen {
 
         struct renderonly *ro;
 
+        pthread_mutex_t transient_lock;
+
         /* Transient memory management is based on borrowing fixed-size slabs
          * off the screen (loaning them out to the batch). Dynamic array
          * container of panfrost_bo */
@@ -112,6 +114,8 @@ struct panfrost_screen {
 
         /* Set of free transient BOs */
         BITSET_DECLARE(free_transient, MAX_TRANSIENT_SLABS);
+
+        pthread_mutex_t bo_cache_lock;
 
         /* The BO cache is a set of buckets with power-of-two sizes ranging
          * from 2^12 (4096, the page size) to 2^(12 + MAX_BO_CACHE_BUCKETS).

@@ -67,10 +67,12 @@ panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job)
         /* Free up the transient BOs we're sitting on */
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
+        pthread_mutex_lock(&screen->transient_lock);
         util_dynarray_foreach(&job->transient_indices, unsigned, index) {
                 /* Mark it free */
                 BITSET_SET(screen->free_transient, *index);
         }
+        pthread_mutex_unlock(&screen->transient_lock);
 
         /* Unreference the polygon list */
         panfrost_bo_unreference(ctx->base.screen, job->polygon_list);
