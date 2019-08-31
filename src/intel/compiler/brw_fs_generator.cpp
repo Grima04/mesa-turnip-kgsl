@@ -85,6 +85,8 @@ brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
          const unsigned phys_width = compressed ? inst->exec_size / 2 :
                                      inst->exec_size;
 
+         const unsigned max_hw_width = 16;
+
          /* XXX - The equation above is strictly speaking not correct on
           *       hardware that supports unbalanced GRF writes -- On Gen9+
           *       each decompressed chunk of the instruction may have a
@@ -97,7 +99,7 @@ brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
             brw_reg = brw_vecn_reg(1, brw_file_from_reg(reg), reg->nr, 0);
             brw_reg = stride(brw_reg, reg->stride, 1, 0);
          } else {
-            const unsigned width = MIN2(reg_width, phys_width);
+            const unsigned width = MIN3(reg_width, phys_width, max_hw_width);
             brw_reg = brw_vecn_reg(width, brw_file_from_reg(reg), reg->nr, 0);
             brw_reg = stride(brw_reg, width * reg->stride, width, reg->stride);
          }
