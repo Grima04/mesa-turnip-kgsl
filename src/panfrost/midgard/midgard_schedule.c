@@ -620,6 +620,28 @@ schedule_bundle(compiler_context *ctx, midgard_block *block, midgard_instruction
         return bundle;
 }
 
+/* We would like to flatten the linked list of midgard_instructions in a bundle
+ * to an array of pointers on the heap for easy indexing */
+
+static midgard_instruction **
+flatten_mir(midgard_block *block, unsigned *len)
+{
+        *len = list_length(&block->instructions);
+
+        if (!(*len))
+                return NULL;
+
+        midgard_instruction **instructions =
+                calloc(sizeof(midgard_instruction *), *len);
+
+        unsigned i = 0;
+
+        mir_foreach_instr_in_block(block, ins)
+                instructions[i++] = ins;
+
+        return instructions;
+}
+
 /* Schedule a single block by iterating its instruction to create bundles.
  * While we go, tally about the bundle sizes to compute the block size. */
 
