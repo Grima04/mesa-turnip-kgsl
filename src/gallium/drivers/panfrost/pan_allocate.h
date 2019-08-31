@@ -69,9 +69,6 @@ struct panfrost_memory {
         int stack_bottom;
 };
 
-/* Functions for the actual Galliumish driver */
-mali_ptr panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz);
-
 struct panfrost_transfer
 panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz);
 

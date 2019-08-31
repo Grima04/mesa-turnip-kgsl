@@ -147,26 +147,3 @@ panfrost_upload_transient(struct panfrost_context *ctx, const void *data, size_t
         memcpy(transfer.cpu, data, sz);
         return transfer.gpu;
 }
-
-/* The code below is exclusively for the use of shader memory and is subject to
- * be rewritten soon enough since it never frees the memory it allocates. Here
- * be dragons, etc. */
-
-mali_ptr
-panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz)
-{
-        size_t aligned_sz = ALIGN_POT(sz, ALIGNMENT);
-
-        /* Bounds check */
-        if ((mem->stack_bottom + aligned_sz) >= mem->bo->size) {
-                printf("Out of memory, tried to upload %zu but only %zu available\n",
-                       sz, mem->bo->size - mem->stack_bottom);
-                assert(0);
-        }
-
-        memcpy((uint8_t *) mem->bo->cpu + mem->stack_bottom, data, sz);
-        mali_ptr gpu = mem->bo->gpu + mem->stack_bottom;
-
-        mem->stack_bottom += aligned_sz;
-        return gpu;
-}
