@@ -931,6 +931,14 @@ iris_init_render_context(struct iris_batch *batch)
 #endif
 
 #if GEN_GEN == 11
+      iris_pack_state(GENX(TCCNTLREG), &reg_val, reg) {
+         reg.L3DataPartialWriteMergingEnable = true;
+         reg.ColorZPartialWriteMergingEnable = true;
+         reg.URBPartialWriteMergingEnable = true;
+         reg.TCDisable = true;
+      }
+      iris_emit_lri(batch, TCCNTLREG, reg_val);
+
       iris_pack_state(GENX(SAMPLER_MODE), &reg_val, reg) {
          reg.HeaderlessMessageforPreemptableContexts = 1;
          reg.HeaderlessMessageforPreemptableContextsMask = 1;
