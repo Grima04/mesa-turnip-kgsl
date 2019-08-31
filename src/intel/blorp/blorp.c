@@ -66,6 +66,7 @@ brw_blorp_surface_info_init(struct blorp_context *blorp,
                             unsigned int level, unsigned int layer,
                             enum isl_format format, bool is_render_target)
 {
+   memset(info, 0, sizeof(*info));
    assert(level < surf->surf->levels);
    assert(layer < MAX2(surf->surf->logical_level0_px.depth >> level,
                        surf->surf->logical_level0_px.array_len));
