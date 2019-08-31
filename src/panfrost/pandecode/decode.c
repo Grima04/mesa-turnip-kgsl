@@ -639,7 +639,10 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
         const struct mali_single_framebuffer *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
 
-        struct pandecode_fbd info;
+        struct pandecode_fbd info = {
+                .has_extra = false,
+                .rt_count = 1
+        };
 
         pandecode_log("struct mali_single_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
@@ -653,7 +656,6 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment)
 
         info.width = s->width + 1;
         info.height = s->height + 1;
-        info.rt_count = 1;
 
         pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", info.width);
         pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", info.height);
@@ -1802,6 +1804,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                 stats.instruction_count = 0;
                 stats.bundle_count = 0;
                 stats.quadword_count = 0;
+                stats.helper_invocations = false;
         } else {
                 stats = disassemble_midgard(code, sz);
         }
