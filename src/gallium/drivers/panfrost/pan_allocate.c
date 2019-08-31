@@ -159,7 +159,7 @@ panfrost_upload(struct panfrost_memory *mem, const void *data, size_t sz)
 
         /* Bounds check */
         if ((mem->stack_bottom + aligned_sz) >= mem->bo->size) {
-                printf("Out of memory, tried to upload %zd but only %zd available\n",
+                printf("Out of memory, tried to upload %zu but only %zu available\n",
                        sz, mem->bo->size - mem->stack_bottom);
                 assert(0);
         }

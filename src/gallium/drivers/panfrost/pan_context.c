@@ -946,7 +946,6 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 COPY(varying_count);
                 COPY(texture_count);
                 COPY(sampler_count);
-                COPY(sampler_count);
                 COPY(midgard1.uniform_count);
                 COPY(midgard1.uniform_buffer_count);
                 COPY(midgard1.work_count);
@@ -1163,10 +1162,10 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 /* The rest are honest-to-goodness UBOs */
 
                 for (unsigned ubo = 1; ubo < ubo_count; ++ubo) {
-                        size_t sz = buf->cb[ubo].buffer_size;
+                        size_t usz = buf->cb[ubo].buffer_size;
 
                         bool enabled = buf->enabled_mask & (1 << ubo);
-                        bool empty = sz == 0;
+                        bool empty = usz == 0;
 
                         if (!enabled || empty) {
                                 /* Stub out disabled UBOs to catch accesses */
@@ -1179,7 +1178,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         mali_ptr gpu = panfrost_map_constant_buffer_gpu(ctx, buf, ubo);
 
                         unsigned bytes_per_field = 16;
-                        unsigned aligned = ALIGN_POT(sz, bytes_per_field);
+                        unsigned aligned = ALIGN_POT(usz, bytes_per_field);
                         unsigned fields = aligned / bytes_per_field;
 
                         ubos[ubo].size = MALI_POSITIVE(fields);
@@ -1566,7 +1565,7 @@ panfrost_statistics_record(
         uint32_t prims = u_prims_for_vertices(info->mode, info->count);
         ctx->prims_generated += prims;
 
-        if (ctx->streamout.num_targets <= 0)
+        if (!ctx->streamout.num_targets)
                 return;
 
         ctx->tf_prims_generated += prims;
@@ -2616,7 +2615,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
                 break;
 
         default:
-                fprintf(stderr, "Skipping query %d\n", query->type);
+                fprintf(stderr, "Skipping query %u\n", query->type);
                 break;
         }
 
@@ -2681,7 +2680,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                 break;
 
         default:
-                DBG("Skipped query get %d\n", query->type);
+                DBG("Skipped query get %u\n", query->type);
                 break;
         }
 
