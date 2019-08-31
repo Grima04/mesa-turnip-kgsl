@@ -170,8 +170,10 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
         /* Simultaneously we scan for the set of dependencies */
 
         size_t sz = sizeof(BITSET_WORD) * BITSET_WORDS(node_count);
-        BITSET_WORD *dependencies = alloca(sz);
+        BITSET_WORD *dependencies = calloc(1, sz);
         memset(dependencies, 0, sz);
+
+        bool success = false;
 
         for (unsigned i = 0; i < count; ++i) {
                 midgard_instruction *ins = bundle[i];
@@ -204,12 +206,12 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
 
                 /* Requirement 2 */
                 if (ins->unit == UNIT_VLUT)
-                        return false;
+                        goto done;
         }
 
         /* Requirement 1 */
         if ((r0_written_mask & 0xF) != 0xF)
-                return false;
+                goto done;
 
         /* Requirement 3 */
 
@@ -217,11 +219,15 @@ can_writeout_fragment(compiler_context *ctx, midgard_instruction **bundle, unsig
                 unsigned dest = bundle[i]->dest;
 
                 if (dest < node_count && BITSET_TEST(dependencies, dest))
-                        return false;
+                        goto done;
         }
 
         /* Otherwise, we're good to go */
-        return true;
+        success = true;
+
+done:
+        free(dependencies);
+        return success;
 }
 
 /* Helpers for scheudling */

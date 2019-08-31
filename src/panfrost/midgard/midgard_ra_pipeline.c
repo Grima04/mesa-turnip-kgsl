@@ -46,7 +46,6 @@ mir_pipeline_ins(
         unsigned pipeline_count)
 {
         midgard_instruction *ins = bundle->instructions[i];
-        unsigned dest = ins->dest;
 
         /* We could be pipelining a register, so we need to make sure that all
          * of the components read in this bundle are written in this bundle,
@@ -99,7 +98,7 @@ mir_pipeline_ins(
 
         /* We're only live in this bundle -- pipeline! */
 
-        mir_rewrite_index(ctx, dest, SSA_FIXED_REGISTER(24 + pipeline_count));
+        mir_rewrite_index(ctx, node, SSA_FIXED_REGISTER(24 + pipeline_count));
 
         return true;
 }

@@ -1264,16 +1264,15 @@ emit_ssbo_access(
         ins.src[is_read ? 0 : 1] = addr;
 
         /* TODO: What is this? It looks superficially like a shift << 5, but
-         * arg_1 doesn't take a shift Should it be E0 or A0? */
-        if (indirect_offset)
+         * arg_1 doesn't take a shift Should it be E0 or A0? We also need the
+         * indirect offset. */
+
+        if (indirect_offset) {
                 ins.load_store.arg_1 |= 0xE0;
-
-        /* We also need to emit the indirect offset */
-
-        if (indirect_offset)
                 ins.src[is_read ? 1 : 2] = nir_src_index(ctx, indirect_offset);
-        else
+        } else {
                 ins.load_store.arg_2 = 0x7E;
+        }
 
         /* TODO: Bounds check */
 
@@ -1558,8 +1557,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(ctx, &instr->dest);
                 assert(ctx->is_blend);
 
-                midgard_instruction ins = m_ld_color_buffer_8(reg, 0);
-                emit_mir_instruction(ctx, ins);
+                midgard_instruction ld = m_ld_color_buffer_8(reg, 0);
+                emit_mir_instruction(ctx, ld);
                 break;
 
         case nir_intrinsic_load_blend_const_color_rgba: {
@@ -2828,7 +2827,7 @@ midgard_compile_shader_nir(struct midgard_screen *screen, nir_shader *nir, midga
                 fprintf(stderr, "shader%d - %s shader: "
                         "%u inst, %u bundles, %u quadwords, "
                         "%u registers, %u threads, %u loops, "
-                        "%d:%d spills:fills\n",
+                        "%u:%u spills:fills\n",
                         SHADER_DB_COUNT++,
                         gl_shader_stage_name(ctx->stage),
                         nr_ins, nr_bundles, ctx->quadword_count,

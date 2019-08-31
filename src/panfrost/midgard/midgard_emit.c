@@ -50,7 +50,6 @@ vector_to_scalar_source(unsigned u, bool is_int, bool is_full,
         /* TODO: Integers */
 
         unsigned component = (v.swizzle >> (2*masked_component)) & 3;
-        bool upper = false; /* TODO */
 
         midgard_scalar_alu_src s = { 0 };
 
@@ -69,8 +68,10 @@ vector_to_scalar_source(unsigned u, bool is_int, bool is_full,
 
         if (s.full)
                 s.component = component << 1;
-        else
+        else {
+                bool upper = false; /* TODO */
                 s.component = component + (upper << 2);
+        }
 
         if (is_int) {
                 /* TODO */
