@@ -580,7 +580,9 @@ decode_ps_kernels(struct gen_batch_decode_ctx *ctx, const uint32_t *p)
       ctx_disassemble_program(ctx, ksp[1], "SIMD16 fragment shader");
    if (enabled[2])
       ctx_disassemble_program(ctx, ksp[2], "SIMD32 fragment shader");
-   fprintf(ctx->fp, "\n");
+
+   if (enabled[0] || enabled[1] || enabled[2])
+      fprintf(ctx->fp, "\n");
 }
 
 static void
@@ -798,6 +800,7 @@ struct custom_decoder {
    { "3DSTATE_DS", decode_single_ksp },
    { "3DSTATE_HS", decode_single_ksp },
    { "3DSTATE_PS", decode_ps_kernels },
+   { "3DSTATE_WM", decode_ps_kernels },
    { "3DSTATE_CONSTANT_VS", decode_3dstate_constant },
    { "3DSTATE_CONSTANT_GS", decode_3dstate_constant },
    { "3DSTATE_CONSTANT_PS", decode_3dstate_constant },
