@@ -214,16 +214,3 @@ mir_print_shader(compiler_context *ctx)
                 mir_print_block(block);
         }
 }
-
-void
-mir_print_bundle(midgard_bundle *bundle)
-{
-        printf("[\n");
-
-        for (unsigned i = 0; i < bundle->instruction_count; ++i) {
-                midgard_instruction *ins = bundle->instructions[i];
-                mir_print_instruction(ins);
-        }
-
-        printf("]\n");
-}
