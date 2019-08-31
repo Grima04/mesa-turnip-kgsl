@@ -23,6 +23,7 @@
  * Authors (Collabora):
  *   Alyssa Rosenzweig <alyssa.rosenzweig@collabora.com>
  */
+#include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <xf86drm.h>
@@ -101,6 +102,63 @@ panfrost_bo_free(struct panfrost_bo *bo)
         ralloc_free(bo);
 }
 
+/* Returns true if the BO is ready, false otherwise.
+ * access_type is encoding the type of access one wants to ensure is done.
+ * Say you want to make sure all writers are done writing, you should pass
+ * PAN_BO_ACCESS_WRITE.
+ * If you want to wait for all users, you should pass PAN_BO_ACCESS_RW.
+ * PAN_BO_ACCESS_READ would work too as waiting for readers implies
+ * waiting for writers as well, but we want to make things explicit and waiting
+ * only for readers is impossible.
+ */
+bool
+panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
+                 uint32_t access_type)
+{
+        struct drm_panfrost_wait_bo req = {
+                .handle = bo->gem_handle,
+		.timeout_ns = timeout_ns,
+        };
+        int ret;
+
+        assert(access_type == PAN_BO_ACCESS_WRITE ||
+               access_type == PAN_BO_ACCESS_RW);
+
+        /* If the BO has been exported or imported we can't rely on the cached
+         * state, we need to call the WAIT_BO ioctl.
+         */
+        if (!(bo->flags & (PAN_BO_IMPORTED | PAN_BO_EXPORTED))) {
+                /* If ->gpu_access is 0, the BO is idle, no need to wait. */
+                if (!bo->gpu_access)
+                        return true;
+
+                /* If the caller only wants to wait for writers and no
+                 * writes are pending, we don't have to wait.
+                 */
+                if (access_type == PAN_BO_ACCESS_WRITE &&
+                    !(bo->gpu_access & PAN_BO_ACCESS_WRITE))
+                        return true;
+        }
+
+        /* The ioctl returns >= 0 value when the BO we are waiting for is ready
+         * -1 otherwise.
+         */
+        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_PANFROST_WAIT_BO, &req);
+        if (ret != -1) {
+                /* Set gpu_access to 0 so that the next call to bo_wait()
+                 * doesn't have to call the WAIT_BO ioctl.
+                 */
+                bo->gpu_access = 0;
+                return true;
+        }
+
+        /* If errno is not ETIMEDOUT or EBUSY that means the handle we passed
+         * is invalid, which shouldn't happen here.
+         */
+        assert(errno == ETIMEDOUT || errno == EBUSY);
+        return false;
+}
+
 /* Helper to calculate the bucket index of a BO */
 
 static unsigned
@@ -137,9 +195,8 @@ pan_bucket(struct panfrost_screen *screen, unsigned size)
  * BO. */
 
 static struct panfrost_bo *
-panfrost_bo_cache_fetch(
-                struct panfrost_screen *screen,
-                size_t size, uint32_t flags)
+panfrost_bo_cache_fetch(struct panfrost_screen *screen,
+                        size_t size, uint32_t flags, bool dontwait)
 {
         pthread_mutex_lock(&screen->bo_cache_lock);
         struct list_head *bucket = pan_bucket(screen, size);
@@ -147,27 +204,30 @@ panfrost_bo_cache_fetch(
 
         /* Iterate the bucket looking for something suitable */
         list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
-                if (entry->size >= size &&
-                    entry->flags == flags) {
-                        int ret;
-                        struct drm_panfrost_madvise madv;
+                if (entry->size < size || entry->flags != flags)
+                        continue;
 
-                        /* This one works, splice it out of the cache */
-                        list_del(&entry->link);
+                if (!panfrost_bo_wait(entry, dontwait ? 0 : INT64_MAX,
+                                      PAN_BO_ACCESS_RW))
+                        continue;
 
-                        madv.handle = entry->gem_handle;
-                        madv.madv = PANFROST_MADV_WILLNEED;
-                        madv.retained = 0;
+                struct drm_panfrost_madvise madv = {
+                        .handle = entry->gem_handle,
+                        .madv = PANFROST_MADV_WILLNEED,
+                };
+                int ret;
 
-                        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
-                        if (!ret && !madv.retained) {
-                                panfrost_bo_free(entry);
-                                continue;
-                        }
-                        /* Let's go! */
-                        bo = entry;
-                        break;
+                /* This one works, splice it out of the cache */
+                list_del(&entry->link);
+
+                ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
+                if (!ret && !madv.retained) {
+                        panfrost_bo_free(entry);
+                        continue;
                 }
+                /* Let's go! */
+                bo = entry;
+                break;
         }
         pthread_mutex_unlock(&screen->bo_cache_lock);
 
@@ -281,12 +341,18 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
         if (flags & PAN_BO_GROWABLE)
                 assert(flags & PAN_BO_INVISIBLE);
 
-        /* Before creating a BO, we first want to check the cache, otherwise,
-         * the cache misses and we need to allocate a BO fresh from the kernel
+        /* Before creating a BO, we first want to check the cache but without
+         * waiting for BO readiness (BOs in the cache can still be referenced
+         * by jobs that are not finished yet).
+         * If the cached allocation fails we fall back on fresh BO allocation,
+         * and if that fails too, we try one more time to allocate from the
+         * cache, but this time we accept to wait.
          */
-        bo = panfrost_bo_cache_fetch(screen, size, flags);
+        bo = panfrost_bo_cache_fetch(screen, size, flags, true);
         if (!bo)
                 bo = panfrost_bo_alloc(screen, size, flags);
+        if (!bo)
+                bo = panfrost_bo_cache_fetch(screen, size, flags, false);
 
         if (!bo)
                 fprintf(stderr, "BO creation failed\n");

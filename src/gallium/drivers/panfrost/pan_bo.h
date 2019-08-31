@@ -100,6 +100,12 @@ struct panfrost_bo {
         int gem_handle;
 
         uint32_t flags;
+
+        /* Combination of PAN_BO_ACCESS_{READ,WRITE} flags encoding pending
+         * GPU accesses to this BO. Useful to avoid calling the WAIT_BO ioctl
+         * when the BO is idle.
+         */
+        uint32_t gpu_access;
 };
 
 static inline uint32_t
@@ -113,6 +119,9 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
                PAN_BO_ACCESS_VERTEX_TILER;
 }
 
+bool
+panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
+                 uint32_t access_type);
 void
 panfrost_bo_reference(struct panfrost_bo *bo);
 void

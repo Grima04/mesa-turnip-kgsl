@@ -810,8 +810,19 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
         hash_table_foreach(batch->bos, entry) {
                 struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+                uint32_t flags = (uintptr_t)entry->data;
+
                 assert(bo->gem_handle > 0);
                 bo_handles[submit.bo_handle_count++] = bo->gem_handle;
+
+                /* Update the BO access flags so that panfrost_bo_wait() knows
+                 * about all pending accesses.
+                 * We only keep the READ/WRITE info since this is all the BO
+                 * wait logic cares about.
+                 * We also preserve existing flags as this batch might not
+                 * be the first one to access the BO.
+                 */
+                bo->gpu_access |= flags & (PAN_BO_ACCESS_RW);
         }
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
