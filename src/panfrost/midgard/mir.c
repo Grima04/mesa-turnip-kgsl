@@ -174,39 +174,12 @@ mir_rewrite_index_src_swizzle(compiler_context *ctx, unsigned old, unsigned new,
 }
 
 void
-mir_rewrite_index_src_tag(compiler_context *ctx, unsigned old, unsigned new, unsigned tag)
-{
-        mir_foreach_instr_global(ctx, ins) {
-                if (ins->type != tag)
-                        continue;
-
-                mir_rewrite_index_src_single(ins, old, new);
-        }
-}
-
-
-
-void
 mir_rewrite_index_dst(compiler_context *ctx, unsigned old, unsigned new)
 {
         mir_foreach_instr_global(ctx, ins) {
                 mir_rewrite_index_dst_single(ins, old, new);
         }
 }
-
-void
-mir_rewrite_index_dst_tag(compiler_context *ctx, unsigned old, unsigned new, unsigned tag)
-{
-        mir_foreach_instr_global(ctx, ins) {
-                if (ins->type != tag)
-                        continue;
-
-                if (ins->dest == old)
-                        ins->dest = new;
-        }
-}
-
-
 
 void
 mir_rewrite_index(compiler_context *ctx, unsigned old, unsigned new)
