@@ -1646,7 +1646,7 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
 
         if (!canonical) {
                 pandecode_msg("XXX: non-canonical workgroups packing\n");
-                pandecode_msg("expected: %X, %d, %d, %d, %d, %d\n",
+                pandecode_msg("expected: %X, %d, %d, %d, %d, %d, %d\n",
                                 ref.invocation_count,
                                 ref.size_y_shift,
                                 ref.size_z_shift,
