@@ -444,7 +444,7 @@ pandecode_special_varying(uint64_t v)
         case MALI_VARYING_POINT_COORD:
                 return "gl_PointCoord";
         default:
-                pandecode_msg("XXX: invalid special varying %X\n", v);
+                pandecode_msg("XXX: invalid special varying %" PRIx64 "\n", v);
                 return "";
         }
 }
