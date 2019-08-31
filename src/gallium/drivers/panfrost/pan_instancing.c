@@ -221,7 +221,7 @@ panfrost_vertex_instanced(
                 unsigned m = m_f;
 
                 /* Default case */
-                unsigned magic_divisor = m, extra_flags = 0;
+                uint32_t magic_divisor = m, extra_flags = 0;
 
                 /* e = 2^(shift + 32) % d */
                 uint64_t e = t % hw_divisor;
@@ -234,8 +234,8 @@ panfrost_vertex_instanced(
                 }
 
                 /* Top flag implicitly set */
-                assert(magic_divisor & (1 << 31));
-                magic_divisor &= ~(1 << 31);
+                assert(magic_divisor & (1u << 31));
+                magic_divisor &= ~(1u << 31);
 
                 /* Upload to two different slots */
 
