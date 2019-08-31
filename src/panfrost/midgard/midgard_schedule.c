@@ -755,6 +755,18 @@ flatten_mir(midgard_block *block, unsigned *len)
         return instructions;
 }
 
+/* The worklist is the set of instructions that can be scheduled now; that is,
+ * the set of instructions with no remaining dependencies */
+
+static void
+mir_initialize_worklist(BITSET_WORD *worklist, midgard_instruction **instructions, unsigned count)
+{
+        for (unsigned i = 0; i < count; ++i) {
+                if (instructions[i]->nr_dependencies == 0)
+                        BITSET_SET(worklist, i);
+        }
+}
+
 /* Schedule a single block by iterating its instruction to create bundles.
  * While we go, tally about the bundle sizes to compute the block size. */
 
@@ -768,6 +780,11 @@ schedule_block(compiler_context *ctx, midgard_block *block)
         /* Calculate dependencies and initial worklist */
         unsigned node_count = ctx->temp_count + 1;
         mir_create_dependency_graph(instructions, len, node_count);
+
+        /* Allocate the worklist */
+        size_t sz = BITSET_WORDS(len) * sizeof(BITSET_WORD);
+        BITSET_WORD *worklist = calloc(sz, 1);
+        mir_initialize_worklist(worklist, instructions, len);
 
         util_dynarray_init(&block->bundles, NULL);
 
