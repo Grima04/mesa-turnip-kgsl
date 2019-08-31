@@ -136,6 +136,16 @@ typedef struct midgard_instruction {
         /* Generic hint for intra-pass use */
         bool hint;
 
+        /* During scheduling, the backwards dependency graph
+         * (DAG). nr_dependencies is the number of unscheduled
+         * instructions that must still be scheduled after
+         * (before) this instruction. dependents are which
+         * instructions need to be scheduled before (after) this
+         * instruction. */
+
+        unsigned nr_dependencies;
+        BITSET_WORD *dependents;
+
         union {
                 midgard_load_store_word load_store;
                 midgard_vector_alu alu;

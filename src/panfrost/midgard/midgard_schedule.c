@@ -55,6 +55,119 @@
  *
  */
 
+/* We create the dependency graph with per-component granularity */
+
+#define COMPONENT_COUNT 8
+
+static void
+add_dependency(struct util_dynarray *table, unsigned index, unsigned mask, midgard_instruction **instructions, unsigned child)
+{
+        for (unsigned i = 0; i < COMPONENT_COUNT; ++i) {
+                if (!(mask & (1 << i)))
+                        continue;
+
+                struct util_dynarray *parents = &table[(COMPONENT_COUNT * index) + i];
+
+                util_dynarray_foreach(parents, unsigned, parent) {
+                        BITSET_WORD *dependents = instructions[*parent]->dependents;
+
+                        /* Already have the dependency */
+                        if (BITSET_TEST(dependents, child))
+                                continue;
+
+                        BITSET_SET(dependents, child);
+                        instructions[child]->nr_dependencies++;
+                }
+        }
+}
+
+static void
+mark_access(struct util_dynarray *table, unsigned index, unsigned mask, unsigned parent)
+{
+        for (unsigned i = 0; i < COMPONENT_COUNT; ++i) {
+                if (!(mask & (1 << i)))
+                        continue;
+
+                util_dynarray_append(&table[(COMPONENT_COUNT * index) + i], unsigned, parent);
+        }
+}
+
+static void
+mir_create_dependency_graph(midgard_instruction **instructions, unsigned count, unsigned node_count)
+{
+        size_t sz = node_count * COMPONENT_COUNT;
+
+        struct util_dynarray *last_read = calloc(sizeof(struct util_dynarray), sz);
+        struct util_dynarray *last_write = calloc(sizeof(struct util_dynarray), sz);
+
+        for (unsigned i = 0; i < sz; ++i) {
+                util_dynarray_init(&last_read[i], NULL);
+                util_dynarray_init(&last_write[i], NULL);
+        }
+
+        /* Initialize dependency graph */
+        for (unsigned i = 0; i < count; ++i) {
+                instructions[i]->dependents =
+                        calloc(BITSET_WORDS(count), sizeof(BITSET_WORD));
+
+                instructions[i]->nr_dependencies = 0;
+        }
+
+        /* Populate dependency graph */
+        for (signed i = count - 1; i >= 0; --i) {
+                if (instructions[i]->compact_branch)
+                        continue;
+
+                unsigned dest = instructions[i]->dest;
+                unsigned mask = instructions[i]->mask;
+
+                mir_foreach_src((*instructions), s) {
+                        unsigned src = instructions[i]->src[s];
+
+                        if (src < node_count) {
+                                unsigned readmask = mir_mask_of_read_components(instructions[i], src);
+                                add_dependency(last_write, src, readmask, instructions, i);
+                        }
+                }
+
+                if (dest < node_count) {
+                        add_dependency(last_read, dest, mask, instructions, i);
+                        add_dependency(last_write, dest, mask, instructions, i);
+                        mark_access(last_write, dest, mask, i);
+                }
+
+                mir_foreach_src((*instructions), s) {
+                        unsigned src = instructions[i]->src[s];
+
+                        if (src < node_count) {
+                                unsigned readmask = mir_mask_of_read_components(instructions[i], src);
+                                mark_access(last_read, src, readmask, i);
+                        }
+                }
+        }
+
+        /* If there is a branch, all instructions depend on it, as interblock
+         * execution must be purely in-order */
+
+        if (instructions[count - 1]->compact_branch) {
+                BITSET_WORD *dependents = instructions[count - 1]->dependents;
+
+                for (signed i = count - 2; i >= 0; --i) {
+                        if (BITSET_TEST(dependents, i))
+                                continue;
+
+                        BITSET_SET(dependents, i);
+                        instructions[i]->nr_dependencies++;
+                }
+        }
+
+        /* Free the intermediate structures */
+        for (unsigned i = 0; i < sz; ++i) {
+                util_dynarray_fini(&last_read[i]);
+                util_dynarray_fini(&last_write[i]);
+        }
+}
+
 /* Create a mask of accessed components from a swizzle to figure out vector
  * dependencies */
 
@@ -648,6 +761,14 @@ flatten_mir(midgard_block *block, unsigned *len)
 static void
 schedule_block(compiler_context *ctx, midgard_block *block)
 {
+        /* Copy list to dynamic array */
+        unsigned len = 0;
+        midgard_instruction **instructions = flatten_mir(block, &len);
+
+        /* Calculate dependencies and initial worklist */
+        unsigned node_count = ctx->temp_count + 1;
+        mir_create_dependency_graph(instructions, len, node_count);
+
         util_dynarray_init(&block->bundles, NULL);
 
         block->quadword_count = 0;
