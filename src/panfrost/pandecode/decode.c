@@ -147,8 +147,8 @@ pandecode_validate_buffer(mali_ptr addr, size_t sz)
 
         if (total > bo->length) {
                 pandecode_msg("XXX: buffer overrun. "
-                                "Chunk of size %d at offset %d in buffer of size %d. "
-                                "Overrun by %d bytes. \n",
+                                "Chunk of size %zu at offset %d in buffer of size %zu. "
+                                "Overrun by %zu bytes. \n",
                                 sz, offset, bo->length, total - bo->length);
                 return;
         }
@@ -571,7 +571,7 @@ pandecode_midgard_tiler_descriptor(
                 /* When tiling is enabled, the heap should be a tight fit */
                 unsigned heap_offset = t->heap_start - heap->gpu_va;
                 if ((heap_offset + heap_size) != heap->length) {
-                        pandecode_msg("XXX: heap size %d (expected %d)\n",
+                        pandecode_msg("XXX: heap size %u (expected %zu)\n",
                                         heap_size, heap->length - heap_offset);
                 }
 
