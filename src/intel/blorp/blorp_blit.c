@@ -1609,9 +1609,9 @@ blorp_surf_convert_to_single_slice(const struct isl_device *isl_dev,
    info->z_offset = 0;
 }
 
-static void
-surf_fake_interleaved_msaa(const struct isl_device *isl_dev,
-                           struct brw_blorp_surface_info *info)
+void
+blorp_surf_fake_interleaved_msaa(const struct isl_device *isl_dev,
+                                 struct brw_blorp_surface_info *info)
 {
    assert(info->surf.msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED);
 
@@ -1639,7 +1639,7 @@ blorp_surf_retile_w_to_y(const struct isl_device *isl_dev,
     */
    if (isl_dev->info->gen > 6 &&
        info->surf.msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
-      surf_fake_interleaved_msaa(isl_dev, info);
+      blorp_surf_fake_interleaved_msaa(isl_dev, info);
    }
 
    if (isl_dev->info->gen == 6) {
@@ -1881,7 +1881,7 @@ try_blorp_blit(struct blorp_batch *batch,
       params->x1 = ALIGN(params->x1, 2) * px_size_sa.width;
       params->y1 = ALIGN(params->y1, 2) * px_size_sa.height;
 
-      surf_fake_interleaved_msaa(batch->blorp->isl_dev, &params->dst);
+      blorp_surf_fake_interleaved_msaa(batch->blorp->isl_dev, &params->dst);
 
       wm_prog_key->use_kill = true;
       wm_prog_key->need_dst_offset = true;
