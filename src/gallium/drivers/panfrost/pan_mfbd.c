@@ -454,9 +454,8 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
          * The exception is ReadPixels, but this is not supported on GLES so we
          * can safely ignore it. */
 
-        if (panfrost_is_scanout(ctx)) {
+        if (panfrost_batch_is_scanout(batch))
                 batch->requirements &= ~PAN_REQ_DEPTH_WRITE;
-        }
 
         /* Actualize the requirements */
 

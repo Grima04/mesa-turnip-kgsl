@@ -189,4 +189,7 @@ panfrost_scoreboard_queue_fused_job_prepend(
 void
 panfrost_scoreboard_link_batch(struct panfrost_batch *batch);
 
+bool
+panfrost_batch_is_scanout(struct panfrost_batch *batch);
+
 #endif

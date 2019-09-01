@@ -315,9 +315,6 @@ panfrost_flush(
         struct pipe_fence_handle **fence,
         unsigned flags);
 
-bool
-panfrost_is_scanout(struct panfrost_context *ctx);
-
 mali_ptr panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws);
 mali_ptr panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws);
 

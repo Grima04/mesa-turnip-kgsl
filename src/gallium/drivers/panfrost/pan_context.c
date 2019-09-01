@@ -151,24 +151,6 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
         return framebuffer;
 }
 
-/* Are we currently rendering to the screen (rather than an FBO)? */
-
-bool
-panfrost_is_scanout(struct panfrost_context *ctx)
-{
-        /* If there is no color buffer, it's an FBO */
-        if (ctx->pipe_framebuffer.nr_cbufs != 1)
-                return false;
-
-        /* If we're too early that no framebuffer was sent, it's scanout */
-        if (!ctx->pipe_framebuffer.cbufs[0])
-                return true;
-
-        return ctx->pipe_framebuffer.cbufs[0]->texture->bind & PIPE_BIND_DISPLAY_TARGET ||
-               ctx->pipe_framebuffer.cbufs[0]->texture->bind & PIPE_BIND_SCANOUT ||
-               ctx->pipe_framebuffer.cbufs[0]->texture->bind & PIPE_BIND_SHARED;
-}
-
 static void
 panfrost_clear(
         struct pipe_context *pipe,
@@ -2396,7 +2378,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
          */
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        bool is_scanout = panfrost_is_scanout(ctx);
+        bool is_scanout = panfrost_batch_is_scanout(batch);
         bool has_draws = batch->last_job.gpu;
 
         /* Bail out early when the current and new states are the same. */
