@@ -199,8 +199,8 @@ namespace {
       const target &target = dev.ir_target();
       const std::string &device_clc_version = dev.device_clc_version();
 
-      if (!clang::CompilerInvocation::CreateFromArgs(
-             c->getInvocation(), copts.data(), copts.data() + copts.size(), diag))
+      if (!compat::create_compiler_invocation_from_args(
+             c->getInvocation(), copts, diag))
          throw invalid_build_options_error();
 
       diag_buffer->FlushDiagnostics(diag);

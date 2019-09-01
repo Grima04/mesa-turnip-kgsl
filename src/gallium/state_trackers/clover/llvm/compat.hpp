@@ -167,6 +167,20 @@ namespace clover {
 #endif
          }
 
+         template<typename T> inline bool
+         create_compiler_invocation_from_args(clang::CompilerInvocation &cinv,
+                                              T copts,
+                                              clang::DiagnosticsEngine &diag)
+         {
+#if HAVE_LLVM >= 0x1000
+            return clang::CompilerInvocation::CreateFromArgs(
+               cinv, copts, diag);
+#else
+            return clang::CompilerInvocation::CreateFromArgs(
+               cinv, copts.data(), copts.data() + copts.size(), diag);
+#endif
+         }
+
          template<typename T, typename M>
          T get_abi_type(const T &arg_type, const M &mod) {
 #if HAVE_LLVM >= 0x0700
