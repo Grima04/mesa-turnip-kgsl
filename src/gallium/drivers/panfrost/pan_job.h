@@ -31,13 +31,6 @@
 #include "pan_allocate.h"
 #include "pan_resource.h"
 
-/* Used as a hash table key */
-
-struct panfrost_batch_key {
-        struct pipe_surface *cbufs[4];
-        struct pipe_surface *zsbuf;
-};
-
 #define PAN_REQ_MSAA            (1 << 0)
 #define PAN_REQ_DEPTH_WRITE     (1 << 1)
 
@@ -46,7 +39,7 @@ struct panfrost_batch_key {
 
 struct panfrost_batch {
         struct panfrost_context *ctx;
-        struct panfrost_batch_key key;
+        struct pipe_framebuffer_state key;
 
         /* Buffers cleared (PIPE_CLEAR_* bitmask) */
         unsigned clear;
@@ -120,15 +113,15 @@ struct panfrost_batch {
 /* Functions for managing the above */
 
 struct panfrost_batch *
-panfrost_create_batch(struct panfrost_context *ctx);
+panfrost_create_batch(struct panfrost_context *ctx,
+                      const struct pipe_framebuffer_state *key);
 
 void
 panfrost_free_batch(struct panfrost_batch *batch);
 
 struct panfrost_batch *
 panfrost_get_batch(struct panfrost_context *ctx,
-                   struct pipe_surface **cbufs,
-                   struct pipe_surface *zsbuf);
+                   const struct pipe_framebuffer_state *key);
 
 struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx);

@@ -32,7 +32,8 @@
 #include "util/u_pack_color.h"
 
 struct panfrost_batch *
-panfrost_create_batch(struct panfrost_context *ctx)
+panfrost_create_batch(struct panfrost_context *ctx,
+                      const struct pipe_framebuffer_state *key)
 {
         struct panfrost_batch *batch = rzalloc(ctx, struct panfrost_batch);
 
@@ -48,6 +49,7 @@ panfrost_create_batch(struct panfrost_context *ctx)
 
         util_dynarray_init(&batch->headers, batch);
         util_dynarray_init(&batch->gpu_headers, batch);
+        util_copy_framebuffer_state(&batch->key, key);
 
         return batch;
 }
@@ -73,37 +75,25 @@ panfrost_free_batch(struct panfrost_batch *batch)
         if (ctx->batch == batch)
                 ctx->batch = NULL;
 
+        util_unreference_framebuffer_state(&batch->key);
         ralloc_free(batch);
 }
 
 struct panfrost_batch *
 panfrost_get_batch(struct panfrost_context *ctx,
-                 struct pipe_surface **cbufs, struct pipe_surface *zsbuf)
+                   const struct pipe_framebuffer_state *key)
 {
         /* Lookup the job first */
-
-        struct panfrost_batch_key key = {
-                .cbufs = {
-                        cbufs[0],
-                        cbufs[1],
-                        cbufs[2],
-                        cbufs[3],
-                },
-                .zsbuf = zsbuf
-        };
-
-        struct hash_entry *entry = _mesa_hash_table_search(ctx->batches, &key);
+        struct hash_entry *entry = _mesa_hash_table_search(ctx->batches, key);
 
         if (entry)
                 return entry->data;
 
         /* Otherwise, let's create a job */
 
-        struct panfrost_batch *batch = panfrost_create_batch(ctx);
+        struct panfrost_batch *batch = panfrost_create_batch(ctx, key);
 
         /* Save the created job */
-
-        memcpy(&batch->key, &key, sizeof(key));
         _mesa_hash_table_insert(ctx->batches, &batch->key, batch);
 
         return batch;
@@ -123,18 +113,14 @@ panfrost_get_batch_for_fbo(struct panfrost_context *ctx)
         /* If we already began rendering, use that */
 
         if (ctx->batch) {
-                assert(ctx->batch->key.zsbuf == ctx->pipe_framebuffer.zsbuf &&
-                       !memcmp(ctx->batch->key.cbufs,
-                               ctx->pipe_framebuffer.cbufs,
-                               sizeof(ctx->batch->key.cbufs)));
+                assert(util_framebuffer_state_equal(&ctx->batch->key,
+                                                    &ctx->pipe_framebuffer));
                 return ctx->batch;
         }
 
         /* If not, look up the job */
-
-        struct pipe_surface **cbufs = ctx->pipe_framebuffer.cbufs;
-        struct pipe_surface *zsbuf = ctx->pipe_framebuffer.zsbuf;
-        struct panfrost_batch *batch = panfrost_get_batch(ctx, cbufs, zsbuf);
+        struct panfrost_batch *batch = panfrost_get_batch(ctx,
+                                                          &ctx->pipe_framebuffer);
 
         /* Set this job as the current FBO job. Will be reset when updating the
          * FB state and when submitting or releasing a job.
@@ -389,13 +375,13 @@ panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
 static bool
 panfrost_batch_compare(const void *a, const void *b)
 {
-        return memcmp(a, b, sizeof(struct panfrost_batch_key)) == 0;
+        return util_framebuffer_state_equal(a, b);
 }
 
 static uint32_t
 panfrost_batch_hash(const void *key)
 {
-        return _mesa_hash_data(key, sizeof(struct panfrost_batch_key));
+        return _mesa_hash_data(key, sizeof(struct pipe_framebuffer_state));
 }
 
 /* Given a new bounding rectangle (scissor), let the job cover the union of the
