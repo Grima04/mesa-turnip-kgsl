@@ -264,24 +264,21 @@ static struct dri_extension_match dri_core_extensions[] = {
    { __DRI2_FLUSH, 1, offsetof(struct gbm_dri_device, flush), false },
    { __DRI_IMAGE, 1, offsetof(struct gbm_dri_device, image), false },
    { __DRI2_FENCE, 1, offsetof(struct gbm_dri_device, fence), true },
-   { NULL, 0, 0 }
 };
 
 static struct dri_extension_match gbm_dri_device_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), false },
    { __DRI_DRI2, 1, offsetof(struct gbm_dri_device, dri2), false },
-   { NULL, 0, 0 }
 };
 
 static struct dri_extension_match gbm_swrast_device_extensions[] = {
    { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), false },
    { __DRI_SWRAST, 1, offsetof(struct gbm_dri_device, swrast), false },
-   { NULL, 0, 0 }
 };
 
 static bool
 dri_bind_extensions(struct gbm_dri_device *dri,
-                    struct dri_extension_match *matches,
+                    struct dri_extension_match *matches, size_t num_matches,
                     const __DRIextension **extensions)
 {
    int i, j;
@@ -289,7 +286,7 @@ dri_bind_extensions(struct gbm_dri_device *dri,
    void *field;
 
    for (i = 0; extensions[i]; i++) {
-      for (j = 0; matches[j].name; j++) {
+      for (j = 0; j < num_matches; j++) {
          if (strcmp(extensions[i]->name, matches[j].name) == 0 &&
              extensions[i]->version >= matches[j].version) {
             field = ((char *) dri + matches[j].offset);
@@ -298,7 +295,7 @@ dri_bind_extensions(struct gbm_dri_device *dri,
       }
    }
 
-   for (j = 0; matches[j].name; j++) {
+   for (j = 0; j < num_matches; j++) {
       field = ((char *) dri + matches[j].offset);
       if ((*(const __DRIextension **) field == NULL) && !matches[j].optional) {
          ret = false;
@@ -342,7 +339,9 @@ dri_load_driver(struct gbm_dri_device *dri)
    if (!extensions)
       return -1;
 
-   if (!dri_bind_extensions(dri, gbm_dri_device_extensions, extensions)) {
+   if (!dri_bind_extensions(dri, gbm_dri_device_extensions,
+                            ARRAY_SIZE(gbm_dri_device_extensions),
+                            extensions)) {
       dlclose(dri->driver);
       fprintf(stderr, "failed to bind extensions\n");
       return -1;
@@ -362,7 +361,9 @@ dri_load_driver_swrast(struct gbm_dri_device *dri)
    if (!extensions)
       return -1;
 
-   if (!dri_bind_extensions(dri, gbm_swrast_device_extensions, extensions)) {
+   if (!dri_bind_extensions(dri, gbm_swrast_device_extensions,
+                            ARRAY_SIZE(gbm_swrast_device_extensions),
+                            extensions)) {
       dlclose(dri->driver);
       fprintf(stderr, "failed to bind extensions\n");
       return -1;
@@ -408,7 +409,9 @@ dri_screen_create_dri2(struct gbm_dri_device *dri, char *driver_name)
       return -1;
 
    extensions = dri->core->getExtensions(dri->screen);
-   if (!dri_bind_extensions(dri, dri_core_extensions, extensions)) {
+   if (!dri_bind_extensions(dri, dri_core_extensions,
+                            ARRAY_SIZE(dri_core_extensions),
+                            extensions)) {
       ret = -1;
       goto free_screen;
    }
