@@ -94,14 +94,15 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
       f->reg.dest = index >> 2;
       f->reg.mask = dest->write_mask << (index & 0x3);
 
-      f->reg.source_type = 1;
-
-      ppir_src *src = &load->src;
-      index = ppir_target_get_src_reg_index(src);
-      f->reg.source = index >> 2;
-      f->reg.negate = src->negate;
-      f->reg.absolute = src->absolute;
-      f->reg.swizzle = encode_swizzle(src->swizzle, index & 0x3, 0);
+      if (load->num_src) {
+         f->reg.source_type = 1;
+         ppir_src *src = &load->src;
+         index = ppir_target_get_src_reg_index(src);
+         f->reg.source = index >> 2;
+         f->reg.negate = src->negate;
+         f->reg.absolute = src->absolute;
+         f->reg.swizzle = encode_swizzle(src->swizzle, index & 0x3, 0);
+      }
    }
 }
 

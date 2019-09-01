@@ -147,6 +147,7 @@ static bool ppir_lower_texture(ppir_block *block, ppir_node *node)
    load->dest.pipeline = ppir_pipeline_reg_discard;
 
    load->src = load_tex->src_coords;
+   load->num_src = 1;
 
    ppir_node_foreach_pred_safe(node, dep) {
       ppir_node *pred = dep->pred;

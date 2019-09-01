@@ -248,6 +248,7 @@ typedef struct {
    int num_components;
    ppir_dest dest;
    ppir_src src;
+   int num_src;
 } ppir_load_node;
 
 typedef struct {
@@ -457,8 +458,9 @@ static inline int ppir_node_get_src_num(ppir_node *node)
       return ppir_node_to_alu(node)->num_src;
    case ppir_node_type_branch:
       return ppir_node_to_branch(node)->num_src;
-   case ppir_node_type_load_texture:
    case ppir_node_type_load:
+      return ppir_node_to_load(node)->num_src;
+   case ppir_node_type_load_texture:
    case ppir_node_type_store:
       return 1;
    default:
