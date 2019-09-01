@@ -315,17 +315,17 @@ panfrost_flush(
         struct pipe_fence_handle **fence,
         unsigned flags);
 
-mali_ptr panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws);
-mali_ptr panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws);
+mali_ptr panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws);
+mali_ptr panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws);
 
 struct bifrost_framebuffer
-panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count);
+panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count);
 
 struct mali_single_framebuffer
-panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count);
+panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count);
 
 mali_ptr
-panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws);
+panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws);
 
 void
 panfrost_shader_compile(

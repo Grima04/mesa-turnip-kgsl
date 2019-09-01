@@ -286,7 +286,7 @@ panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch, bool has_draws)
 
         if (batch->first_tiler.gpu || batch->clear) {
                 ret = panfrost_drm_submit_batch(batch,
-                                                panfrost_fragment_job(ctx, has_draws),
+                                                panfrost_fragment_job(batch, has_draws),
                                                 PANFROST_JD_REQ_FS);
                 assert(!ret);
         }

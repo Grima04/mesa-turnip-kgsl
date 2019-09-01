@@ -51,19 +51,18 @@ panfrost_initialize_surface(
  * presentations, this is supposed to correspond to eglSwapBuffers) */
 
 mali_ptr
-panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
+panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
 
         mali_ptr framebuffer = screen->require_sfbd ?
-                               panfrost_sfbd_fragment(ctx, has_draws) :
-                               panfrost_mfbd_fragment(ctx, has_draws);
+                               panfrost_sfbd_fragment(batch, has_draws) :
+                               panfrost_mfbd_fragment(batch, has_draws);
 
         /* Mark the affected buffers as initialized, since we're writing to it.
          * Also, add the surfaces we're writing to to the batch */
 
-        struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct pipe_framebuffer_state *fb = &batch->key;
 
         for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
                 panfrost_initialize_surface(batch, fb->cbufs[i]);

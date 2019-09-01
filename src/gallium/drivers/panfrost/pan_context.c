@@ -54,14 +54,12 @@
 /* Framebuffer descriptor */
 
 static struct midgard_tiler_descriptor
-panfrost_emit_midg_tiler(
-        struct panfrost_context *ctx,
-        unsigned width,
-        unsigned height,
-        unsigned vertex_count)
+panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 {
+        struct panfrost_context *ctx = batch->ctx;
         struct midgard_tiler_descriptor t = {};
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        unsigned height = batch->key.height;
+        unsigned width = batch->key.width;
 
         t.hierarchy_mask =
                 panfrost_choose_hierarchy_mask(width, height, vertex_count);
@@ -104,10 +102,11 @@ panfrost_emit_midg_tiler(
 }
 
 struct mali_single_framebuffer
-panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count)
+panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
-        unsigned width = ctx->pipe_framebuffer.width;
-        unsigned height = ctx->pipe_framebuffer.height;
+        struct panfrost_context *ctx = batch->ctx;
+        unsigned width = batch->key.width;
+        unsigned height = batch->key.height;
 
         struct mali_single_framebuffer framebuffer = {
                 .width = MALI_POSITIVE(width),
@@ -116,18 +115,18 @@ panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count)
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
                 .unknown_address_0 = ctx->scratchpad->gpu,
-                .tiler = panfrost_emit_midg_tiler(ctx,
-                                                  width, height, vertex_count),
+                .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
         };
 
         return framebuffer;
 }
 
 struct bifrost_framebuffer
-panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
+panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
-        unsigned width = ctx->pipe_framebuffer.width;
-        unsigned height = ctx->pipe_framebuffer.height;
+        struct panfrost_context *ctx = batch->ctx;
+        unsigned width = batch->key.width;
+        unsigned height = batch->key.height;
 
         struct bifrost_framebuffer framebuffer = {
                 .unk0 = 0x1e5, /* 1e4 if no spill */
@@ -138,14 +137,13 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
 
                 .unk1 = 0x1080,
 
-                .rt_count_1 = MALI_POSITIVE(ctx->pipe_framebuffer.nr_cbufs),
+                .rt_count_1 = MALI_POSITIVE(batch->key.nr_cbufs),
                 .rt_count_2 = 4,
 
                 .unknown2 = 0x1f,
 
                 .scratchpad = ctx->scratchpad->gpu,
-                .tiler = panfrost_emit_midg_tiler(ctx,
-                                                  width, height, vertex_count)
+                .tiler = panfrost_emit_midg_tiler(batch, vertex_count)
         };
 
         return framebuffer;
@@ -168,7 +166,7 @@ static mali_ptr
 panfrost_attach_vt_mfbd(struct panfrost_context *ctx)
 {
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        struct bifrost_framebuffer mfbd = panfrost_emit_mfbd(ctx, ~0);
+        struct bifrost_framebuffer mfbd = panfrost_emit_mfbd(batch, ~0);
 
         return panfrost_upload_transient(batch, &mfbd, sizeof(mfbd)) | MALI_MFBD;
 }
@@ -177,7 +175,7 @@ static mali_ptr
 panfrost_attach_vt_sfbd(struct panfrost_context *ctx)
 {
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        struct mali_single_framebuffer sfbd = panfrost_emit_sfbd(ctx, ~0);
+        struct mali_single_framebuffer sfbd = panfrost_emit_sfbd(batch, ~0);
 
         return panfrost_upload_transient(batch, &sfbd, sizeof(sfbd)) | MALI_SFBD;
 }

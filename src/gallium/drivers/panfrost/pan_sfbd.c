@@ -130,19 +130,18 @@ panfrost_sfbd_set_zsbuf(
 /* Creates an SFBD for the FRAGMENT section of the bound framebuffer */
 
 mali_ptr
-panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws)
+panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx, has_draws);
+        struct mali_single_framebuffer fb = panfrost_emit_sfbd(batch, has_draws);
 
         panfrost_sfbd_clear(batch, &fb);
 
         /* SFBD does not support MRT natively; sanity check */
-        assert(ctx->pipe_framebuffer.nr_cbufs == 1);
-        panfrost_sfbd_set_cbuf(&fb, ctx->pipe_framebuffer.cbufs[0]);
+        assert(batch->key.nr_cbufs == 1);
+        panfrost_sfbd_set_cbuf(&fb, batch->key.cbufs[0]);
 
-        if (ctx->pipe_framebuffer.zsbuf)
-                panfrost_sfbd_set_zsbuf(&fb, ctx->pipe_framebuffer.zsbuf);
+        if (batch->key.zsbuf)
+                panfrost_sfbd_set_zsbuf(&fb, batch->key.zsbuf);
 
         if (batch->requirements & PAN_REQ_MSAA)
                 fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
