@@ -257,25 +257,25 @@ struct dri_extension_match {
    const char *name;
    int version;
    int offset;
-   int optional;
+   bool optional;
 };
 
 static struct dri_extension_match dri_core_extensions[] = {
-   { __DRI2_FLUSH, 1, offsetof(struct gbm_dri_device, flush) },
-   { __DRI_IMAGE, 1, offsetof(struct gbm_dri_device, image) },
-   { __DRI2_FENCE, 1, offsetof(struct gbm_dri_device, fence), 1 },
+   { __DRI2_FLUSH, 1, offsetof(struct gbm_dri_device, flush), false },
+   { __DRI_IMAGE, 1, offsetof(struct gbm_dri_device, image), false },
+   { __DRI2_FENCE, 1, offsetof(struct gbm_dri_device, fence), true },
    { NULL, 0, 0 }
 };
 
 static struct dri_extension_match gbm_dri_device_extensions[] = {
-   { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core) },
-   { __DRI_DRI2, 1, offsetof(struct gbm_dri_device, dri2) },
+   { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), false },
+   { __DRI_DRI2, 1, offsetof(struct gbm_dri_device, dri2), false },
    { NULL, 0, 0 }
 };
 
 static struct dri_extension_match gbm_swrast_device_extensions[] = {
-   { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), },
-   { __DRI_SWRAST, 1, offsetof(struct gbm_dri_device, swrast) },
+   { __DRI_CORE, 1, offsetof(struct gbm_dri_device, core), false },
+   { __DRI_SWRAST, 1, offsetof(struct gbm_dri_device, swrast), false },
    { NULL, 0, 0 }
 };
 
