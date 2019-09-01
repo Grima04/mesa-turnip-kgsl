@@ -54,6 +54,7 @@ static const nir_shader_compiler_options vs_nir_options = {
    .lower_bitops = true,
    .lower_rotate = true,
    .lower_sincos = true,
+   .lower_fceil = true,
 };
 
 static const nir_shader_compiler_options fs_nir_options = {
