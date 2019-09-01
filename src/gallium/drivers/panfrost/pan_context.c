@@ -167,17 +167,19 @@ panfrost_clear(
 static mali_ptr
 panfrost_attach_vt_mfbd(struct panfrost_context *ctx)
 {
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct bifrost_framebuffer mfbd = panfrost_emit_mfbd(ctx, ~0);
 
-        return panfrost_upload_transient(ctx, &mfbd, sizeof(mfbd)) | MALI_MFBD;
+        return panfrost_upload_transient(batch, &mfbd, sizeof(mfbd)) | MALI_MFBD;
 }
 
 static mali_ptr
 panfrost_attach_vt_sfbd(struct panfrost_context *ctx)
 {
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct mali_single_framebuffer sfbd = panfrost_emit_sfbd(ctx, ~0);
 
-        return panfrost_upload_transient(ctx, &sfbd, sizeof(sfbd)) | MALI_SFBD;
+        return panfrost_upload_transient(batch, &sfbd, sizeof(sfbd)) | MALI_SFBD;
 }
 
 static void
@@ -434,6 +436,7 @@ panfrost_default_shader_backend(struct panfrost_context *ctx)
 struct panfrost_transfer
 panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler)
 {
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct mali_job_descriptor_header job = {
                 .job_type = is_tiler ? JOB_TYPE_TILER : JOB_TYPE_VERTEX,
                 .job_descriptor_size = 1,
@@ -441,7 +444,7 @@ panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler)
 
         struct midgard_payload_vertex_tiler *payload = is_tiler ? &ctx->payloads[PIPE_SHADER_FRAGMENT] : &ctx->payloads[PIPE_SHADER_VERTEX];
 
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
+        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(*payload));
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
         return transfer;
@@ -471,10 +474,11 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
 static void
 panfrost_stage_attributes(struct panfrost_context *ctx)
 {
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_vertex_state *so = ctx->vertex;
 
         size_t sz = sizeof(struct mali_attr_meta) * so->num_elements;
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sz);
+        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sz);
         struct mali_attr_meta *target = (struct mali_attr_meta *) transfer.cpu;
 
         /* Copy as-is for the first pass */
@@ -527,6 +531,7 @@ panfrost_stage_attributes(struct panfrost_context *ctx)
 static void
 panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
 {
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         size_t desc_size = sizeof(struct mali_sampler_descriptor);
 
         for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
@@ -536,7 +541,7 @@ panfrost_upload_sampler_descriptors(struct panfrost_context *ctx)
                         size_t transfer_size = desc_size * ctx->sampler_count[t];
 
                         struct panfrost_transfer transfer =
-                                panfrost_allocate_transient(ctx, transfer_size);
+                                panfrost_allocate_transient(batch, transfer_size);
 
                         struct mali_sampler_descriptor *desc =
                                 (struct mali_sampler_descriptor *) transfer.cpu;
@@ -626,13 +631,15 @@ panfrost_upload_tex(
                 }
         }
 
-        return panfrost_upload_transient(ctx, &view->hw,
+        return panfrost_upload_transient(batch, &view->hw,
                                          sizeof(struct mali_texture_descriptor));
 }
 
 static void
 panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
 {
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
         for (int t = 0; t <= PIPE_SHADER_FRAGMENT; ++t) {
                 mali_ptr trampoline = 0;
 
@@ -643,7 +650,7 @@ panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
                                 trampolines[i] =
                                         panfrost_upload_tex(ctx, ctx->sampler_views[t][i]);
 
-                        trampoline = panfrost_upload_transient(ctx, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
+                        trampoline = panfrost_upload_transient(batch, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
                 }
 
                 ctx->payloads[t].postfix.texture_trampoline = trampoline;
@@ -789,12 +796,14 @@ panfrost_map_constant_buffer_gpu(
         struct pipe_constant_buffer *cb = &buf->cb[index];
         struct panfrost_resource *rsrc = pan_resource(cb->buffer);
 
-        if (rsrc)
+        if (rsrc) {
                 return rsrc->bo->gpu;
-        else if (cb->user_buffer)
-                return panfrost_upload_transient(ctx, cb->user_buffer, cb->buffer_size);
-        else
+	} else if (cb->user_buffer) {
+                struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+                return panfrost_upload_transient(batch, cb->user_buffer, cb->buffer_size);
+	} else {
                 unreachable("No constant buffer");
+        }
 }
 
 /* Compute number of UBOs active (more specifically, compute the highest UBO
@@ -831,9 +840,10 @@ panfrost_patch_shader_state(
          * transient uploaded */
 
         if (should_upload) {
-                return panfrost_upload_transient(ctx,
-                                ss->tripipe,
-                                sizeof(struct mali_shader_meta));
+                struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+                return panfrost_upload_transient(batch, ss->tripipe,
+                                                 sizeof(struct mali_shader_meta));
         }
 
         /* If we don't need an upload, don't bother */
@@ -1020,7 +1030,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 }
 
                 size_t size = sizeof(struct mali_shader_meta) + (sizeof(struct midgard_blend_rt) * rt_count);
-                struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
+                struct panfrost_transfer transfer = panfrost_allocate_transient(batch, size);
                 memcpy(transfer.cpu, &ctx->fragment_shader_core, sizeof(struct mali_shader_meta));
 
                 ctx->payloads[PIPE_SHADER_FRAGMENT].postfix._shader_upper = (transfer.gpu) >> 4;
@@ -1111,7 +1121,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 size_t sys_size = sizeof(float) * 4 * ss->sysval_count;
                 size_t uniform_size = has_uniforms ? (buf->cb[0].buffer_size) : 0;
                 size_t size = sys_size + uniform_size;
-                struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, size);
+                struct panfrost_transfer transfer = panfrost_allocate_transient(batch, size);
 
                 /* Upload sysvals requested by the shader */
                 panfrost_upload_sysvals(ctx, transfer.cpu, ss, i);
@@ -1167,7 +1177,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                         ubos[ubo].ptr = gpu >> 2;
                 }
 
-                mali_ptr ubufs = panfrost_upload_transient(ctx, ubos, sz);
+                mali_ptr ubufs = panfrost_upload_transient(batch, ubos, sz);
                 postfix->uniforms = transfer.gpu;
                 postfix->uniform_buffers = ubufs;
 
@@ -1267,7 +1277,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         view.clip_maxz = maxz;
 
         ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.viewport =
-                panfrost_upload_transient(ctx,
+                panfrost_upload_transient(batch,
                                           &view,
                                           sizeof(struct mali_viewport));
 
@@ -1517,7 +1527,7 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
         } else {
                 /* Otherwise, we need to upload to transient memory */
                 const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
-                return panfrost_upload_transient(ctx, ibuf8 + offset, info->count * info->index_size);
+                return panfrost_upload_transient(batch, ibuf8 + offset, info->count * info->index_size);
         }
 }
 
@@ -2577,13 +2587,14 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_query *query = (struct panfrost_query *) q;
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         switch (query->type) {
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
                 /* Allocate a word for the query results to be stored */
-                query->transfer = panfrost_allocate_transient(ctx, sizeof(unsigned));
+                query->transfer = panfrost_allocate_transient(batch, sizeof(unsigned));
                 ctx->occlusion_query = query;
                 break;
 

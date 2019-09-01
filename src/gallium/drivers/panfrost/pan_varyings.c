@@ -38,8 +38,9 @@ panfrost_emit_varyings(
         slot->size = stride * count;
         slot->shift = slot->extra_flags = 0;
 
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_transfer transfer =
-                panfrost_allocate_transient(ctx, slot->size);
+                panfrost_allocate_transient(batch, slot->size);
 
         slot->elements = transfer.gpu | MALI_ATTR_LINEAR;
 
@@ -179,7 +180,8 @@ panfrost_emit_varying_descriptor(
         size_t vs_size = sizeof(struct mali_attr_meta) * vs->tripipe->varying_count;
         size_t fs_size = sizeof(struct mali_attr_meta) * fs->tripipe->varying_count;
 
-        struct panfrost_transfer trans = panfrost_allocate_transient(ctx,
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct panfrost_transfer trans = panfrost_allocate_transient(batch,
                                          vs_size + fs_size);
 
         struct pipe_stream_output_info so = vs->stream_output;
@@ -398,7 +400,7 @@ panfrost_emit_varying_descriptor(
                 }
         }
 
-        mali_ptr varyings_p = panfrost_upload_transient(ctx, &varyings, idx * sizeof(union mali_attr));
+        mali_ptr varyings_p = panfrost_upload_transient(batch, &varyings, idx * sizeof(union mali_attr));
         ctx->payloads[PIPE_SHADER_VERTEX].postfix.varyings = varyings_p;
         ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.varyings = varyings_p;
 

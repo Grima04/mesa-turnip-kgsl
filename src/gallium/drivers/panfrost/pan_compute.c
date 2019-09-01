@@ -87,6 +87,9 @@ panfrost_launch_grid(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
 
+        /* TODO: Do we want a special compute-only batch? */
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
         ctx->compute_grid = info;
 
         struct mali_job_descriptor_header job = {
@@ -113,7 +116,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         };
 
         payload->postfix.framebuffer =
-                panfrost_upload_transient(ctx, &compute_fbd, sizeof(compute_fbd));
+                panfrost_upload_transient(batch, &compute_fbd, sizeof(compute_fbd));
 
         /* Invoke according to the grid info */
 
@@ -123,12 +126,9 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* Upload the payload */
 
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(*payload));
+        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(*payload));
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
-
-        /* TODO: Do we want a special compute-only batch? */
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* Queue the job */
         panfrost_scoreboard_queue_compute_job(batch, transfer);

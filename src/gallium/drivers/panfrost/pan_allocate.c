@@ -39,10 +39,9 @@
  * into the pool and copy there */
 
 struct panfrost_transfer
-panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
+panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
 
         /* Pad the size */
         sz = ALIGN_POT(sz, ALIGNMENT);
@@ -89,9 +88,10 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
 }
 
 mali_ptr
-panfrost_upload_transient(struct panfrost_context *ctx, const void *data, size_t sz)
+panfrost_upload_transient(struct panfrost_batch *batch, const void *data,
+                          size_t sz)
 {
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sz);
+        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sz);
         memcpy(transfer.cpu, data, sz);
         return transfer.gpu;
 }

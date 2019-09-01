@@ -364,8 +364,9 @@ panfrost_mfbd_upload(
                 (has_extra ? sizeof(struct bifrost_fb_extra) : 0) +
                 sizeof(struct bifrost_render_target) * 4;
 
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_transfer m_f_trans =
-                panfrost_allocate_transient(ctx, total_sz);
+                panfrost_allocate_transient(batch, total_sz);
 
         /* Do the transfer */
 

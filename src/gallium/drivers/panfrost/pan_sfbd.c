@@ -147,5 +147,5 @@ panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         if (batch->requirements & PAN_REQ_MSAA)
                 fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
 
-        return panfrost_upload_transient(ctx, &fb, sizeof(fb)) | MALI_SFBD;
+        return panfrost_upload_transient(batch, &fb, sizeof(fb)) | MALI_SFBD;
 }

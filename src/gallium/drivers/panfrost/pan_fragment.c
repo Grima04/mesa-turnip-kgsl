@@ -108,7 +108,7 @@ panfrost_fragment_job(struct panfrost_context *ctx, bool has_draws)
          * shared with 64-bit Bifrost systems, and accordingly there is 4-bytes
          * of zero padding in between. */
 
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(header) + sizeof(payload));
+        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(header) + sizeof(payload));
         memcpy(transfer.cpu, &header, sizeof(header));
         memcpy(transfer.cpu + sizeof(header), &payload, sizeof(payload));
         return transfer.gpu;

@@ -33,7 +33,7 @@
 
 #include "util/list.h"
 
-struct panfrost_context;
+struct panfrost_batch;
 
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
  * allocator and not used for much else */
@@ -64,9 +64,10 @@ struct panfrost_bo {
 };
 
 struct panfrost_transfer
-panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz);
+panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz);
 
 mali_ptr
-panfrost_upload_transient(struct panfrost_context *ctx, const void *data, size_t sz);
+panfrost_upload_transient(struct panfrost_batch *batch, const void *data,
+                          size_t sz);
 
 #endif /* __PAN_ALLOCATE_H__ */

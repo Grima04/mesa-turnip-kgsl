@@ -282,7 +282,8 @@ panfrost_set_value_job(struct panfrost_context *ctx, mali_ptr polygon_list)
                 .unknown = 0x3,
         };
 
-        struct panfrost_transfer transfer = panfrost_allocate_transient(ctx, sizeof(job) + sizeof(payload));
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(payload));
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
 
