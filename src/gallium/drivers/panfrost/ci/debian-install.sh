@@ -111,20 +111,20 @@ rm -rf /VK-GL-CTS-opengl-es-cts-3.2.5.0
 ############### Cross-build Volt dEQP runner
 mkdir -p /battery
 cd /battery
-wget https://github.com/VoltLang/Battery/releases/download/v0.1.22/battery-0.1.22-x86_64-linux.tar.gz
-tar xzvf battery-0.1.22-x86_64-linux.tar.gz
-rm battery-0.1.22-x86_64-linux.tar.gz
+wget https://github.com/VoltLang/Battery/releases/download/v0.1.23/battery-0.1.23-x86_64-linux.tar.gz
+tar xzvf battery-0.1.23-x86_64-linux.tar.gz
+rm battery-0.1.23-x86_64-linux.tar.gz
 mv battery /usr/local/bin
 rm -rf /battery
 
 mkdir -p /volt
 cd /volt
 git clone --depth=1 https://github.com/VoltLang/Watt.git
-git clone --depth=1 https://github.com/VoltLang/Volta.git
+git clone --depth=1 https://github.com/VoltLang/Volta.git --branch go-go-gadget-armhf
 git clone --depth=1 https://github.com/Wallbraker/dEQP.git
 battery config --release --lto Volta Watt
 battery build
-battery config --arch aarch64 --cmd-volta Volta/volta Volta/rt Watt dEQP
+battery config --arch ${VOLT_ARCH} --cmd-volta Volta/volta Volta/rt Watt dEQP
 battery build
 cp dEQP/deqp /artifacts/rootfs/deqp/deqp-volt
 rm -rf /volt

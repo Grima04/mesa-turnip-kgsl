@@ -12,6 +12,9 @@ export LD_LIBRARY_PATH=/mesa/lib/
 export XDG_CONFIG_HOME=$(pwd)
 export MESA_GLES_VERSION_OVERRIDE=3.0
 
+DEVFREQ_GOVERNOR=`echo /sys/devices/platform/*.gpu/devfreq/devfreq0/governor`
+echo performance > $DEVFREQ_GOVERNOR
+
 echo "[core]\nidle-time=0\nrequire-input=false\n[shell]\nlocking=false" > weston.ini
 
 cd /deqp/modules/gles2

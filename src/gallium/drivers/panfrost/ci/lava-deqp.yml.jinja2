@@ -51,7 +51,6 @@ actions:
           - mkdir -p /dev/pts
           - mount -t devpts devpts /dev/pts
           - echo 3 > /proc/sys/kernel/printk
-          - echo performance > /sys/devices/platform/ff9a0000.gpu/devfreq/devfreq0/governor
           - sh /deqp/deqp-runner.sh
           - cat /proc/loadavg
         parse:
