@@ -219,6 +219,11 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 			return 1;
 		return 0;
 
+	case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
+		if (sscreen->options.enable_nir)
+			return 0;
+		return 1;
+
 	/* Unsupported features. */
 	case PIPE_CAP_BUFFER_SAMPLER_VIEW_RGBA_ONLY:
 	case PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT:
