@@ -596,26 +596,10 @@ st_nir_link_shaders(nir_shader **producer, nir_shader **consumer, bool scalar)
       NIR_PASS_V(*producer, nir_lower_global_vars_to_local);
       NIR_PASS_V(*consumer, nir_lower_global_vars_to_local);
 
-      /* The backend might not be able to handle indirects on
-       * temporaries so we need to lower indirects on any of the
-       * varyings we have demoted here.
-       *
-       * TODO: radeonsi shouldn't need to do this, however LLVM isn't
-       * currently smart enough to handle indirects without causing excess
-       * spilling causing the gpu to hang.
-       *
-       * See the following thread for more details of the problem:
-       * https://lists.freedesktop.org/archives/mesa-dev/2017-July/162106.html
-       */
-      nir_variable_mode indirect_mask = nir_var_function_temp;
-
-      NIR_PASS_V(*producer, nir_lower_indirect_derefs, indirect_mask);
-      NIR_PASS_V(*consumer, nir_lower_indirect_derefs, indirect_mask);
-
       st_nir_opts(*producer, scalar);
       st_nir_opts(*consumer, scalar);
 
-      /* Lowering indirects can cause varying to become unused.
+      /* Optimizations can cause varyings to become unused.
        * nir_compact_varyings() depends on all dead varyings being removed so
        * we need to call nir_remove_dead_variables() again here.
        */
