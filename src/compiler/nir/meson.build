@@ -336,4 +336,16 @@ if with_tests
     ),
     suite : ['compiler', 'nir'],
   )
+
+  test(
+    'load_store_vectorizer',
+    executable(
+      'load_store_vectorizer',
+      files('tests/load_store_vectorizer_tests.cpp'),
+      cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
+      include_directories : [inc_common],
+      dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
+    ),
+    suite : ['compiler', 'nir'],
+  )
 endif
