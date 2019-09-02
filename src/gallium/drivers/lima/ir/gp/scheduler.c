@@ -441,8 +441,9 @@ static void schedule_insert_ready_list(sched_ctx *ctx,
 
    struct list_head *insert_pos = &ctx->ready_list;
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
-      if (insert_node->sched.dist > node->sched.dist ||
-          gpir_op_infos[insert_node->op].schedule_first) {
+      if ((insert_node->sched.dist > node->sched.dist ||
+          gpir_op_infos[insert_node->op].schedule_first) &&
+          !gpir_op_infos[node->op].schedule_first) {
          insert_pos = &node->list;
          break;
       }
