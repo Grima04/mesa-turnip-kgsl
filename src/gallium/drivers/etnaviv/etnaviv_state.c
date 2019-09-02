@@ -52,10 +52,12 @@ etna_set_stencil_ref(struct pipe_context *pctx, const struct pipe_stencil_ref *s
 
    ctx->stencil_ref_s = *sr;
 
-   cs->PE_STENCIL_CONFIG = VIVS_PE_STENCIL_CONFIG_REF_FRONT(sr->ref_value[0]);
-   /* rest of bits weaved in from depth_stencil_alpha */
-   cs->PE_STENCIL_CONFIG_EXT =
-      VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK(sr->ref_value[0]);
+   for (unsigned i = 0; i < 2; i++) {
+      cs->PE_STENCIL_CONFIG[i] =
+         VIVS_PE_STENCIL_CONFIG_REF_FRONT(sr->ref_value[i]);
+      cs->PE_STENCIL_CONFIG_EXT[i] =
+         VIVS_PE_STENCIL_CONFIG_EXT_REF_BACK(sr->ref_value[!i]);
+   }
    ctx->dirty |= ETNA_DIRTY_STENCIL_REF;
 }
 

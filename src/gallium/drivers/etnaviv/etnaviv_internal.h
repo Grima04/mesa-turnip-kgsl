@@ -152,8 +152,8 @@ struct compiled_blend_color {
 
 /* Compiled pipe_stencil_ref */
 struct compiled_stencil_ref {
-   uint32_t PE_STENCIL_CONFIG;
-   uint32_t PE_STENCIL_CONFIG_EXT;
+   uint32_t PE_STENCIL_CONFIG[2];
+   uint32_t PE_STENCIL_CONFIG_EXT[2];
 };
 
 /* Compiled pipe_scissor_state */
