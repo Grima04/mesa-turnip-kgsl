@@ -709,6 +709,7 @@ split_addr(struct ir3_sched_ctx *ctx)
 				/* original addr is scheduled, but new one isn't: */
 				new_addr->flags &= ~IR3_INSTR_MARK;
 			}
+			indirect->address = NULL;
 			ir3_instr_set_address(indirect, new_addr);
 		}
 	}

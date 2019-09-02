@@ -1041,6 +1041,10 @@ ir3_instr_set_address(struct ir3_instruction *instr,
 {
 	if (instr->address != addr) {
 		struct ir3 *ir = instr->block->shader;
+
+		debug_assert(!instr->address);
+		debug_assert(instr->block == addr->block);
+
 		instr->address = addr;
 		array_insert(ir, ir->indirects, instr);
 	}
