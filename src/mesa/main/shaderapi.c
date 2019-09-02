@@ -3310,19 +3310,84 @@ lookup_shader_include(struct gl_context *ctx, char *path,
    struct hash_table *path_ht =
       ctx->Shared->ShaderIncludes->shader_include_tree;
 
-   struct sh_incl_path_entry *entry;
-   foreach(entry, path_list) {
-      struct hash_entry *ht_entry =
-         _mesa_hash_table_search(path_ht, entry->path);
+   size_t count = ctx->Shared->ShaderIncludes->num_include_paths;
+   bool relative_path = path[0] != '/';
 
-      if (!ht_entry) {
-         return NULL;
-      } else {
-         sh_incl_ht_entry = (struct sh_incl_path_ht_entry *) ht_entry->data;
+   size_t i = ctx->Shared->ShaderIncludes->relative_path_cursor;
+   bool use_cursor = ctx->Shared->ShaderIncludes->relative_path_cursor;
+
+   do {
+      struct sh_incl_path_entry *entry;
+
+      if (relative_path) {
+next_relative_path:
+         {
+            struct sh_incl_path_entry *rel_path_list =
+               ctx->Shared->ShaderIncludes->include_paths[i];
+            foreach(entry, rel_path_list) {
+               struct hash_entry *ht_entry =
+                  _mesa_hash_table_search(path_ht, entry->path);
+
+               if (!ht_entry) {
+                  /* Reset search path and skip to the next include path */
+                  path_ht = ctx->Shared->ShaderIncludes->shader_include_tree;
+                  sh_incl_ht_entry = NULL;
+                  if (use_cursor) {
+                     i = 0;
+                     use_cursor = false;
+
+                     goto next_relative_path;
+                  }
+                  i++;
+                  if (i < count)
+                     goto next_relative_path;
+                  else
+                     break;
+               } else {
+                  sh_incl_ht_entry =
+                    (struct sh_incl_path_ht_entry *) ht_entry->data;
+               }
+
+               path_ht = sh_incl_ht_entry->path;
+            }
+         }
       }
 
-      path_ht = sh_incl_ht_entry->path;
-   }
+      foreach(entry, path_list) {
+         struct hash_entry *ht_entry =
+            _mesa_hash_table_search(path_ht, entry->path);
+
+         if (!ht_entry) {
+            /* Reset search path and skip to the next include path */
+            path_ht = ctx->Shared->ShaderIncludes->shader_include_tree;
+            sh_incl_ht_entry = NULL;
+            if (use_cursor) {
+               i = 0;
+               use_cursor = false;
+
+               break;
+            }
+            i++;
+            break;
+         } else {
+
+            sh_incl_ht_entry =
+               (struct sh_incl_path_ht_entry *) ht_entry->data;
+         }
+
+         path_ht = sh_incl_ht_entry->path;
+      }
+
+      if (i < count &&
+          (sh_incl_ht_entry == NULL || !sh_incl_ht_entry->shader_source))
+         continue;
+
+      /* If we get here then we have found a matching path or exahusted our
+       * relative search paths.
+       */
+      ctx->Shared->ShaderIncludes->relative_path_cursor = i;
+      break;
+   } while (i < count);
 
    ralloc_free(mem_ctx);
 
