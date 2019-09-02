@@ -4447,7 +4447,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       uint32_t ex_desc = 0;
 
       inst->desc =
-         (inst->group / 16) ? (1 << 11) : 0 | /* rt slot group */
+         (inst->group / 16) << 11 | /* rt slot group */
          brw_dp_write_desc(devinfo, inst->target, msg_ctl,
                            GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE,
                            inst->last_rt, false);
