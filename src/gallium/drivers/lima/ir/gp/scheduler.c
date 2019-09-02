@@ -1154,7 +1154,8 @@ static bool can_use_complex(gpir_node *node)
          continue;
 
       gpir_node *succ = dep->succ;
-      if (succ->type != gpir_node_type_alu)
+      if (succ->type != gpir_node_type_alu ||
+          !succ->sched.instr)
          continue;
 
       /* Note: this must be consistent with gpir_codegen_{mul,add}_slot{0,1}
