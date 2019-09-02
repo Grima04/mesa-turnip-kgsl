@@ -36,6 +36,12 @@ const char *
 _mesa_lookup_shader_include(struct gl_context *ctx, char *path,
                             bool error_check);
 
+size_t
+_mesa_get_shader_include_cursor(struct gl_shared_state *shared);
+
+void
+_mesa_set_shader_include_cursor(struct gl_shared_state *shared, size_t cursor);
+
 static void
 yyerror(YYLTYPE *locp, glcpp_parser_t *parser, const char *error);
 
@@ -344,10 +350,14 @@ control_line_success:
 		}
 	}
 |	HASH_TOKEN INCLUDE NEWLINE {
+		size_t include_cursor = _mesa_get_shader_include_cursor(parser->gl_ctx->Shared);
+
 		/* Remove leading and trailing "" or <> */
 		char *start = strchr($2, '"');
-		if (!start)
+		if (!start) {
+			_mesa_set_shader_include_cursor(parser->gl_ctx->Shared, 0);
 			start = strchr($2, '<');
+		}
 		char *path = strndup(start + 1, strlen(start + 1) - 1);
 
 		const char *shader =
@@ -410,6 +420,8 @@ control_line_success:
 			glcpp_lex_destroy(tmp_parser->scanner);
 			_mesa_hash_table_destroy(tmp_parser->defines, NULL);
 		}
+
+		_mesa_set_shader_include_cursor(parser->gl_ctx->Shared, include_cursor);
 	}
 |	HASH_TOKEN IF pp_tokens NEWLINE {
 		/* Be careful to only evaluate the 'if' expression if

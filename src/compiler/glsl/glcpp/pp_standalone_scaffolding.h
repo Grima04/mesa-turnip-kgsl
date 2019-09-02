@@ -37,4 +37,11 @@ const char *
 _mesa_lookup_shader_include(struct gl_context *ctx, char *path,
                             bool error_check);
 
+size_t
+_mesa_get_shader_include_cursor(struct gl_shared_state *shared);
+
+void
+_mesa_set_shader_include_cursor(struct gl_shared_state *shared,
+                                size_t cursor);
+
 #endif /* PP_STANDALONE_SCAFFOLDING_H */

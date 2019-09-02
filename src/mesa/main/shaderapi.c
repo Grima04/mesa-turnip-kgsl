@@ -3162,6 +3162,7 @@ struct shader_includes {
    /* Array to hold include paths given to glCompileShaderIncludeARB() */
    struct sh_incl_path_entry **include_paths;
    size_t num_include_paths;
+   size_t relative_path_cursor;
 
    /* Root hash table holding the shader include tree */
    struct hash_table *shader_include_tree;
@@ -3174,6 +3175,18 @@ _mesa_init_shader_includes(struct gl_shared_state *shared)
    shared->ShaderIncludes->shader_include_tree =
       _mesa_hash_table_create(NULL, _mesa_hash_string,
                               _mesa_key_string_equal);
+}
+
+size_t
+_mesa_get_shader_include_cursor(struct gl_shared_state *shared)
+{
+   return shared->ShaderIncludes->relative_path_cursor;
+}
+
+void
+_mesa_set_shader_include_cursor(struct gl_shared_state *shared, size_t cursor)
+{
+   shared->ShaderIncludes->relative_path_cursor = cursor;
 }
 
 static void

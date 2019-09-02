@@ -412,6 +412,12 @@ _mesa_dump_shader_source(const gl_shader_stage stage, const char *source);
 void
 _mesa_init_shader_includes(struct gl_shared_state *shared);
 
+size_t
+_mesa_get_shader_include_cursor(struct gl_shared_state *shared);
+
+void
+_mesa_set_shader_include_cursor(struct gl_shared_state *shared, size_t cusor);
+
 void
 _mesa_destroy_shader_includes(struct gl_shared_state *shared);
 
