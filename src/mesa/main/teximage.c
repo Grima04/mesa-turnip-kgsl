@@ -2205,6 +2205,15 @@ texsubimage_error_check(struct gl_context *ctx, GLuint dimensions,
       return GL_TRUE;
    }
 
+   if (!texture_formats_agree(texImage->InternalFormat, format)) {
+      _mesa_error(ctx, GL_INVALID_OPERATION,
+                  "%s(incompatible internalFormat = %s, format = %s)",
+                  callerName,
+                  _mesa_enum_to_string(texImage->InternalFormat),
+                  _mesa_enum_to_string(format));
+      return GL_TRUE;
+   }
+
    GLenum internalFormat = _mesa_is_gles(ctx) ?
       oes_float_internal_format(ctx, texImage->InternalFormat, type) :
       texImage->InternalFormat;
