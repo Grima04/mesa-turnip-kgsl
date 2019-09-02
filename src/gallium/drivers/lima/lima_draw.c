@@ -1693,10 +1693,8 @@ lima_pipe_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
                 unsigned flags)
 {
    struct lima_context *ctx = lima_context(pctx);
-   if (!lima_ctx_dirty(ctx))
-      return;
-
-   _lima_flush(ctx, flags & PIPE_FLUSH_END_OF_FRAME);
+   if (lima_ctx_dirty(ctx))
+      _lima_flush(ctx, flags & PIPE_FLUSH_END_OF_FRAME);
 
    if (fence) {
       int fd;
