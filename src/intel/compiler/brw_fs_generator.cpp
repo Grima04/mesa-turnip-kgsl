@@ -795,7 +795,7 @@ fs_generator::generate_linterp(fs_inst *inst,
     */
    struct brw_reg delta_x = src[0];
    struct brw_reg delta_y = offset(src[0], inst->exec_size / 8);
-   struct brw_reg interp = stride(src[1], 0, 1, 0);
+   struct brw_reg interp = src[1];
    brw_inst *i[2];
 
    /* nir_lower_interpolation() will do the lowering to MAD instructions for
