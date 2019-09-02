@@ -105,6 +105,9 @@ _eglGetNativePlatformFromEnv(void)
       }
    }
 
+   if (plat == _EGL_INVALID_PLATFORM)
+      _eglLog(_EGL_WARNING, "invalid EGL_PLATFORM given");
+
    return plat;
 }
 
