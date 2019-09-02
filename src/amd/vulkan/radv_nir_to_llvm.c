@@ -5042,7 +5042,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 		LLVMBasicBlockRef bb;
 		unsigned offset;
 
-		if (!num_components)
+		if (stream > 0 && !num_components)
 			continue;
 
 		if (stream > 0 && !ctx->shader_info->so.num_outputs)
