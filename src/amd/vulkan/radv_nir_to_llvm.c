@@ -4145,12 +4145,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			     options->family, float_mode, options->wave_size, 64);
 	ctx.context = ctx.ac.context;
 
-	radv_nir_shader_info_init(shader_info);
-
-	for(int i = 0; i < shader_count; ++i)
-		radv_nir_shader_info_pass(shaders[i], options->layout,
-					  &options->key, shader_info);
-
 	for (i = 0; i < MAX_SETS; i++)
 		shader_info->user_sgprs_locs.descriptor_sets[i].sgpr_idx = -1;
 	for (i = 0; i < AC_UD_MAX_UD; i++)
@@ -4591,9 +4585,6 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 	ctx.is_gs_copy_shader = true;
 	ctx.stage = MESA_SHADER_VERTEX;
 	ctx.shader = geom_shader;
-
-	radv_nir_shader_info_pass(geom_shader, options->layout, &options->key,
-				  shader_info);
 
 	create_function(&ctx, MESA_SHADER_VERTEX, false, MESA_SHADER_VERTEX);
 

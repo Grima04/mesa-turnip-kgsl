@@ -1039,6 +1039,7 @@ shader_variant_compile(struct radv_device *device,
 		       struct nir_shader * const *shaders,
 		       int shader_count,
 		       gl_shader_stage stage,
+		       struct radv_shader_info *info,
 		       struct radv_nir_compiler_options *options,
 		       bool gs_copy_shader,
 		       bool keep_shader_info,
@@ -1048,7 +1049,6 @@ shader_variant_compile(struct radv_device *device,
 	enum ac_target_machine_options tm_options = 0;
 	struct ac_llvm_compiler ac_llvm;
 	struct radv_shader_binary *binary = NULL;
-	struct radv_shader_info info = {0};
 	bool thread_compiler;
 
 	options->family = chip_family;
@@ -1090,12 +1090,12 @@ shader_variant_compile(struct radv_device *device,
 	if (gs_copy_shader) {
 		assert(shader_count == 1);
 		radv_compile_gs_copy_shader(&ac_llvm, *shaders, &binary,
-					    &info, options);
+					    info, options);
 	} else {
-		radv_compile_nir_shader(&ac_llvm, &binary, &info,
+		radv_compile_nir_shader(&ac_llvm, &binary, info,
 					shaders, shader_count, options);
 	}
-	binary->info = info;
+	binary->info = *info;
 
 	radv_destroy_llvm_compiler(&ac_llvm, thread_compiler);
 
@@ -1134,6 +1134,7 @@ radv_shader_variant_compile(struct radv_device *device,
 			   int shader_count,
 			   struct radv_pipeline_layout *layout,
 			   const struct radv_shader_variant_key *key,
+			   struct radv_shader_info *info,
 			   bool keep_shader_info,
 			   struct radv_shader_binary **binary_out)
 {
@@ -1147,13 +1148,14 @@ radv_shader_variant_compile(struct radv_device *device,
 	options.supports_spill = true;
 	options.robust_buffer_access = device->robust_buffer_access;
 
-	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage,
+	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage, info,
 				     &options, false, keep_shader_info, binary_out);
 }
 
 struct radv_shader_variant *
 radv_create_gs_copy_shader(struct radv_device *device,
 			   struct nir_shader *shader,
+			   struct radv_shader_info *info,
 			   struct radv_shader_binary **binary_out,
 			   bool keep_shader_info,
 			   bool multiview)
@@ -1163,7 +1165,7 @@ radv_create_gs_copy_shader(struct radv_device *device,
 	options.key.has_multiview_view_index = multiview;
 
 	return shader_variant_compile(device, NULL, &shader, 1, MESA_SHADER_VERTEX,
-				     &options, true, keep_shader_info, binary_out);
+				      info, &options, true, keep_shader_info, binary_out);
 }
 
 void
