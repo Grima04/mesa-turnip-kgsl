@@ -225,7 +225,7 @@ radv_bind_streamout_state(struct radv_cmd_buffer *cmd_buffer,
 	if (!pipeline->streamout_shader)
 		return;
 
-	info = &pipeline->streamout_shader->info.info;
+	info = &pipeline->streamout_shader->info;
 	for (int i = 0; i < MAX_SO_BUFFERS; i++)
 		so->stride_in_dw[i] = info->so.strides[i];
 
@@ -863,7 +863,7 @@ radv_update_multisample_state(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_multisample_state *ms = &pipeline->graphics.ms;
 	struct radv_pipeline *old_pipeline = cmd_buffer->state.emitted_pipeline;
 
-	if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.info.ps.needs_sample_positions)
+	if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.needs_sample_positions)
 		cmd_buffer->sample_positions_needed = true;
 
 	if (old_pipeline && num_samples == old_pipeline->graphics.ms.num_samples)
@@ -2312,11 +2312,11 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer,
 		if (!pipeline->shaders[stage])
 			continue;
 
-		need_push_constants |= pipeline->shaders[stage]->info.info.loads_push_constants;
-		need_push_constants |= pipeline->shaders[stage]->info.info.loads_dynamic_offsets;
+		need_push_constants |= pipeline->shaders[stage]->info.loads_push_constants;
+		need_push_constants |= pipeline->shaders[stage]->info.loads_dynamic_offsets;
 
-		uint8_t base = pipeline->shaders[stage]->info.info.base_inline_push_consts;
-		uint8_t count = pipeline->shaders[stage]->info.info.num_inline_push_consts;
+		uint8_t base = pipeline->shaders[stage]->info.base_inline_push_consts;
+		uint8_t count = pipeline->shaders[stage]->info.num_inline_push_consts;
 
 		radv_emit_inline_push_consts(cmd_buffer, pipeline, stage,
 					     AC_UD_INLINE_PUSH_CONSTANTS,
@@ -2367,7 +2367,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 	if ((pipeline_is_dirty ||
 	    (cmd_buffer->state.dirty & RADV_CMD_DIRTY_VERTEX_BUFFER)) &&
 	    cmd_buffer->state.pipeline->num_vertex_bindings &&
-	    radv_get_shader(cmd_buffer->state.pipeline, MESA_SHADER_VERTEX)->info.info.vs.has_vertex_buffers) {
+	    radv_get_shader(cmd_buffer->state.pipeline, MESA_SHADER_VERTEX)->info.vs.has_vertex_buffers) {
 		struct radv_vertex_elements_info *velems = &cmd_buffer->state.pipeline->vertex_elements;
 		unsigned vb_offset;
 		void *vb_ptr;
@@ -4297,7 +4297,7 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer,
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	unsigned di_src_sel = indexed ? V_0287F0_DI_SRC_SEL_DMA
 	                              : V_0287F0_DI_SRC_SEL_AUTO_INDEX;
-	bool draw_id_enable = radv_get_shader(cmd_buffer->state.pipeline, MESA_SHADER_VERTEX)->info.info.vs.needs_draw_id;
+	bool draw_id_enable = radv_get_shader(cmd_buffer->state.pipeline, MESA_SHADER_VERTEX)->info.vs.needs_draw_id;
 	uint32_t base_reg = cmd_buffer->state.pipeline->graphics.vtx_base_sgpr;
 	bool predicating = cmd_buffer->state.predicating;
 	assert(base_reg);
