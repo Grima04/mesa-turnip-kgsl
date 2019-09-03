@@ -687,6 +687,23 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 		}
 	}
 
+	/* Make sure to export the PrimitiveID if the fragment shader needs it. */
+	if (options->key.vs_common_out.export_prim_id) {
+		switch (nir->info.stage) {
+		case MESA_SHADER_VERTEX:
+			info->vs.outinfo.export_prim_id = true;
+			break;
+		case MESA_SHADER_TESS_EVAL:
+			info->tes.outinfo.export_prim_id = true;
+			break;
+		case MESA_SHADER_GEOMETRY:
+			info->vs.outinfo.export_prim_id = true;
+			break;
+		default:
+			break;
+		}
+	}
+
 	if (nir->info.stage == MESA_SHADER_FRAGMENT)
 		info->ps.num_interp = nir->num_inputs;
 

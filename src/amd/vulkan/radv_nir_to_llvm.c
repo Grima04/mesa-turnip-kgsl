@@ -2828,8 +2828,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 
 	/* Export PrimitiveID. */
 	if (export_prim_id) {
-		outinfo->export_prim_id = true;
-
 		outputs[noutput].slot_name = VARYING_SLOT_PRIMITIVE_ID;
 		outputs[noutput].slot_index = 0;
 		outputs[noutput].usage_mask = 0x1;
@@ -3256,7 +3254,6 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 			radv_export_param(ctx, param_count, values, 0x1);
 
 			outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = param_count++;
-			outinfo->export_prim_id = true;
 			outinfo->param_exports = param_count;
 		}
 	}
