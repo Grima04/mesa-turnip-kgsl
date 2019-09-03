@@ -568,6 +568,9 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 				(1 << nir->info.cull_distance_array_size) - 1;
 			vs_info->cull_dist_mask <<= nir->info.clip_distance_array_size;
 			break;
+		case VARYING_SLOT_PSIZ:
+			vs_info->writes_pointsize = true;
+			break;
 		default:
 			break;
 		}

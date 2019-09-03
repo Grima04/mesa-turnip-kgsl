@@ -2788,10 +2788,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 	       sizeof(outinfo->vs_output_param_offset));
 	outinfo->pos_exports = 0;
 
-	if (ctx->output_mask & (1ull << VARYING_SLOT_PSIZ)) {
-		outinfo->writes_pointsize = true;
-	}
-
 	if (ctx->output_mask & (1ull << VARYING_SLOT_LAYER)) {
 		outinfo->writes_layer = true;
 	}
@@ -3513,10 +3509,6 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 		tmp = LLVMBuildLoad(builder, tmp, "");
 		tmp = LLVMBuildZExt(builder, tmp, ctx->ac.i32, "");
 		const LLVMValueRef vertexptr = ngg_gs_vertex_ptr(ctx, tmp);
-
-		if (ctx->output_mask & (1ull << VARYING_SLOT_PSIZ)) {
-			outinfo->writes_pointsize = true;
-		}
 
 		if (ctx->output_mask & (1ull << VARYING_SLOT_LAYER)) {
 			outinfo->writes_layer = true;
