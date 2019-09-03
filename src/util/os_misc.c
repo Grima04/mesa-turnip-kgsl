@@ -48,7 +48,11 @@
 #endif
 
 
-#if DETECT_OS_LINUX || DETECT_OS_CYGWIN || DETECT_OS_SOLARIS || DETECT_OS_HURD
+#if DETECT_OS_ANDROID
+#  define LOG_TAG "MESA"
+#  include <unistd.h>
+#  include <log/log.h>
+#elif DETECT_OS_LINUX || DETECT_OS_CYGWIN || DETECT_OS_SOLARIS || DETECT_OS_HURD
 #  include <unistd.h>
 #elif DETECT_OS_APPLE || DETECT_OS_BSD
 #  include <sys/sysctl.h>
@@ -104,6 +108,9 @@ os_log_message(const char *message)
    fflush(stdout);
    fputs(message, fout);
    fflush(fout);
+#  if DETECT_OS_ANDROID
+   LOG_PRI(ANDROID_LOG_ERROR, LOG_TAG, "%s", message);
+#  endif
 #endif
 }
 

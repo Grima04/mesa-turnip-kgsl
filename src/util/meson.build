@@ -134,11 +134,23 @@ format_srgb = custom_target(
   capture : true,
 )
 
+deps_for_libmesa_util = [
+  dep_zlib,
+  dep_clock,
+  dep_thread,
+  dep_atomic,
+  dep_m,
+]
+
+if with_platform_android
+  deps_for_libmesa_util += dep_android
+endif
+
 _libmesa_util = static_library(
   'mesa_util',
   [files_mesa_util, format_srgb],
   include_directories : inc_common,
-  dependencies : [dep_zlib, dep_clock, dep_thread, dep_atomic, dep_m],
+  dependencies : deps_for_libmesa_util,
   c_args : [c_msvc_compat_args, c_vis_args],
   build_by_default : false
 )
