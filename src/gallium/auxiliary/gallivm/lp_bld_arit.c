@@ -144,7 +144,7 @@ lp_build_min_simple(struct lp_build_context *bld,
          intrinsic = "llvm.ppc.altivec.vminfp";
          intr_size = 128;
       }
-   } else if ((LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)) &&
+   } else if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9 &&
               util_cpu_caps.has_avx2 && type.length > 4) {
       intr_size = 256;
       switch (type.width) {
@@ -158,7 +158,7 @@ lp_build_min_simple(struct lp_build_context *bld,
          intrinsic = type.sign ? "llvm.x86.avx2.pmins.d" : "llvm.x86.avx2.pminu.d";
          break;
       }
-   } else if ((LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)) &&
+   } else if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9 &&
               util_cpu_caps.has_sse2 && type.length >= 2) {
       intr_size = 128;
       if ((type.width == 8 || type.width == 16) &&
@@ -287,7 +287,7 @@ lp_build_fmuladd(LLVMBuilderRef builder,
    LLVMTypeRef type = LLVMTypeOf(a);
    assert(type == LLVMTypeOf(b));
    assert(type == LLVMTypeOf(c));
-   if (LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)) {
+   if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4) {
       /* XXX: LLVM 3.3 does not breakdown llvm.fmuladd into mul+add when FMA is
        * not supported, and instead it falls-back to a C function.
        */
@@ -362,7 +362,7 @@ lp_build_max_simple(struct lp_build_context *bld,
          intrinsic = "llvm.ppc.altivec.vmaxfp";
          intr_size = 128;
       }
-   } else if ((LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)) &&
+   } else if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9 &&
               util_cpu_caps.has_avx2 && type.length > 4) {
       intr_size = 256;
       switch (type.width) {
@@ -376,7 +376,7 @@ lp_build_max_simple(struct lp_build_context *bld,
          intrinsic = type.sign ? "llvm.x86.avx2.pmaxs.d" : "llvm.x86.avx2.pmaxu.d";
          break;
       }
-   } else if ((LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)) &&
+   } else if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9 &&
               util_cpu_caps.has_sse2 && type.length >= 2) {
       intr_size = 128;
       if ((type.width == 8 || type.width == 16) &&
@@ -1837,7 +1837,7 @@ lp_build_abs(struct lp_build_context *bld,
       return a;
 
    if(type.floating) {
-      if ((LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR > 6)) && (LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9))) {
+      if ((LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR > 6)) && (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)) {
          /* Workaround llvm.org/PR27332 */
          LLVMTypeRef int_vec_type = lp_build_int_vec_type(bld->gallivm, type);
          unsigned long long absMask = ~(1ULL << (type.width - 1));

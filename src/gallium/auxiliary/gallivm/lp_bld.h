@@ -51,12 +51,7 @@
 #include <llvm-c/Core.h>  
 
 
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 3)
-#error "LLVM 3.3 or newer required"
-#endif
-
-
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR <= 3)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 3
 /* We won't actually use LLVMMCJITMemoryManagerRef, just create a dummy
  * typedef to simplify things elsewhere.
  */
@@ -103,7 +98,7 @@ typedef void *LLVMMCJITMemoryManagerRef;
  * Before LLVM 3.4 LLVMSetAlignment only supported GlobalValue, not
  * LoadInst/StoreInst as we need.
  */
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
 #  ifdef __cplusplus
       extern "C"
 #  endif

@@ -64,7 +64,7 @@
 #else
 #include <llvm/Target/TargetLibraryInfo.h>
 #endif
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
 #include <llvm/ExecutionEngine/JITMemoryManager.h>
 #else
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
@@ -153,7 +153,7 @@ static void init_native_targets()
 extern "C" void
 lp_set_target_options(void)
 {
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
    /*
     * By default LLVM adds a signal handler to output a pretty stack trace.
     * This signal handler is never removed, causing problems when unloading the
@@ -177,7 +177,7 @@ LLVMTargetLibraryInfoRef
 gallivm_create_target_library_info(const char *triple)
 {
    return reinterpret_cast<LLVMTargetLibraryInfoRef>(
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
    new llvm::TargetLibraryInfo(
 #else
    new llvm::TargetLibraryInfoImpl(
@@ -190,7 +190,7 @@ void
 gallivm_dispose_target_library_info(LLVMTargetLibraryInfoRef library_info)
 {
    delete reinterpret_cast<
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
    llvm::TargetLibraryInfo
 #else
    llvm::TargetLibraryInfoImpl
@@ -199,7 +199,7 @@ gallivm_dispose_target_library_info(LLVMTargetLibraryInfoRef library_info)
 }
 
 
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
 
 extern "C"
 void
@@ -222,7 +222,7 @@ LLVMSetAlignmentBackport(LLVMValueRef V,
 #endif
 
 
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
 typedef llvm::JITMemoryManager BaseMemoryManager;
 #else
 typedef llvm::RTDyldMemoryManager BaseMemoryManager;
@@ -240,7 +240,7 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
       virtual BaseMemoryManager *mgr() const = 0;
 
    public:
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
       /*
        * From JITMemoryManager
        */
@@ -287,7 +287,7 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
       virtual void deallocateFunctionBody(void *Body) {
          mgr()->deallocateFunctionBody(Body);
       }
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
       virtual uint8_t *startExceptionTable(const llvm::Function *F,
                                            uintptr_t &ActualSize) {
          return mgr()->startExceptionTable(F, ActualSize);
@@ -379,7 +379,7 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
                                               bool AbortOnFailure=true) {
          return mgr()->getPointerToNamedFunction(Name, AbortOnFailure);
       }
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR <= 3)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 3
       virtual bool applyPermissions(std::string *ErrMsg = 0) {
          return mgr()->applyPermissions(ErrMsg);
       }
@@ -420,17 +420,17 @@ class ShaderMemoryManager : public DelegatingJITMemoryManager {
           * Deallocate things as previously requested and
           * free shared manager when no longer used.
           */
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
          Vec::iterator i;
 
          assert(TheMM);
          for ( i = FunctionBody.begin(); i != FunctionBody.end(); ++i )
             TheMM->deallocateFunctionBody(*i);
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
          for ( i = ExceptionTable.begin(); i != ExceptionTable.end(); ++i )
             TheMM->deallocateExceptionTable(*i);
-#endif /* LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4) */
-#endif /* LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6) */
+#endif /* LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4 */
+#endif /* LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6 */
       }
    };
 
@@ -462,7 +462,7 @@ class ShaderMemoryManager : public DelegatingJITMemoryManager {
          delete (GeneratedCode *) code;
       }
 
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
       virtual void deallocateExceptionTable(void *ET) {
          // remember for later deallocation
          code->ExceptionTable.push_back(ET);
@@ -512,22 +512,21 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    TargetOptions options;
 #if defined(PIPE_ARCH_X86)
    options.StackAlignmentOverride = 4;
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
    options.RealignStack = true;
 #endif
 #endif
 
-#if defined(DEBUG) && (LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7))
+#if defined(DEBUG) && (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
    options.JITEmitDebugInfo = true;
 #endif
 
    /* XXX: Workaround http://llvm.org/PR21435 */
-#if defined(DEBUG) || defined(PROFILE) || \
-    ((LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 3)) && (defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)))
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)
+#if defined(DEBUG) || defined(PROFILE) || defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
    options.NoFramePointerElimNonLeaf = true;
 #endif
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
    options.NoFramePointerElim = true;
 #endif
 #endif
@@ -538,7 +537,7 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
           .setOptLevel((CodeGenOpt::Level)OptLevel);
 
    if (useMCJIT) {
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
        builder.setUseMCJIT(true);
 #endif
 #ifdef _WIN32
@@ -729,7 +728,7 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
        builder.setJITMemoryManager(MM);
 #endif
    } else {
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
        BaseMemoryManager* JMM = reinterpret_cast<BaseMemoryManager*>(CMM);
        MM = new ShaderMemoryManager(JMM);
        *OutCode = MM->getGeneratedCode();
@@ -771,7 +770,7 @@ LLVMMCJITMemoryManagerRef
 lp_get_default_memory_manager()
 {
    BaseMemoryManager *mm;
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
    mm = llvm::JITMemoryManager::CreateDefaultMemManager();
 #else
    mm = new llvm::SectionMemoryManager();
@@ -808,7 +807,7 @@ lp_is_function(LLVMValueRef v)
 #endif
 }
 
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9
 static llvm::AtomicOrdering mapFromLLVMOrdering(LLVMAtomicOrdering Ordering) {
    switch (Ordering) {
    case LLVMAtomicOrderingNotAtomic: return llvm::AtomicOrdering::NotAtomic;
@@ -840,7 +839,7 @@ LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
 }
 #endif
 
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 5)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 5
 LLVMValueRef LLVMBuildFence(LLVMBuilderRef B,
 			    LLVMAtomicOrdering ordering,
 			    LLVMBool singleThread,

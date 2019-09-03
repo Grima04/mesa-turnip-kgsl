@@ -138,7 +138,7 @@ create_pass_manager(struct gallivm_state *gallivm)
     * simple, or constant propagation into them, etc.
     */
 
-#if LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)
+#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9
    // Old versions of LLVM get the DataLayout from the pass manager.
    LLVMAddTargetData(gallivm->target, gallivm->passmgr);
 #endif
@@ -505,7 +505,7 @@ lp_build_init(void)
       util_cpu_caps.has_f16c = 0;
       util_cpu_caps.has_fma = 0;
    }
-   if ((LLVM_VERSION_MAJOR < 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4)) || !use_mcjit) {
+   if ((LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4) || !use_mcjit) {
       /* AVX2 support has only been tested with LLVM 3.4, and it requires
        * MCJIT. */
       util_cpu_caps.has_avx2 = 0;
