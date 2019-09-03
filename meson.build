@@ -1123,10 +1123,8 @@ if cc.links('int main() { return 0; }',
             name : 'dynamic-list')
   with_ld_dynamic_list = true
 endif
-ld_args_build_id = []
-if build_machine.system() != 'darwin'
-   ld_args_build_id += '-Wl,--build-id=sha1'
-endif
+
+ld_args_build_id = cc.get_supported_link_arguments('-Wl,--build-id=sha1')
 
 # check for dl support
 dep_dl = null_dep
