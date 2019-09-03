@@ -4498,48 +4498,6 @@ static void ac_compile_llvm_module(struct ac_llvm_compiler *ac_llvm,
 	free(elf_buffer);
 }
 
-static void
-ac_fill_shader_info(struct radv_shader_info *shader_info, struct nir_shader *nir, const struct radv_nir_compiler_options *options)
-{
-        switch (nir->info.stage) {
-        case MESA_SHADER_COMPUTE:
-                for (int i = 0; i < 3; ++i)
-                        shader_info->cs.block_size[i] = nir->info.cs.local_size[i];
-                break;
-        case MESA_SHADER_FRAGMENT:
-		shader_info->ps.can_discard = nir->info.fs.uses_discard;
-                shader_info->ps.early_fragment_test = nir->info.fs.early_fragment_tests;
-                shader_info->ps.post_depth_coverage = nir->info.fs.post_depth_coverage;
-                break;
-        case MESA_SHADER_GEOMETRY:
-                shader_info->gs.vertices_in = nir->info.gs.vertices_in;
-                shader_info->gs.vertices_out = nir->info.gs.vertices_out;
-                shader_info->gs.output_prim = nir->info.gs.output_primitive;
-                shader_info->gs.invocations = nir->info.gs.invocations;
-                break;
-        case MESA_SHADER_TESS_EVAL:
-                shader_info->tes.primitive_mode = nir->info.tess.primitive_mode;
-                shader_info->tes.spacing = nir->info.tess.spacing;
-                shader_info->tes.ccw = nir->info.tess.ccw;
-                shader_info->tes.point_mode = nir->info.tess.point_mode;
-                shader_info->tes.as_es = options->key.vs_common_out.as_es;
-                shader_info->tes.export_prim_id = options->key.vs_common_out.export_prim_id;
-                shader_info->is_ngg = options->key.vs_common_out.as_ngg;
-                break;
-        case MESA_SHADER_TESS_CTRL:
-                shader_info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
-                break;
-        case MESA_SHADER_VERTEX:
-                shader_info->vs.as_es = options->key.vs_common_out.as_es;
-                shader_info->vs.as_ls = options->key.vs_common_out.as_ls;
-                shader_info->vs.export_prim_id = options->key.vs_common_out.export_prim_id;
-                shader_info->is_ngg = options->key.vs_common_out.as_ngg;
-                break;
-        default:
-                break;
-        }
-}
-
 void
 radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 			struct radv_shader_binary **rbinary,
@@ -4559,9 +4517,6 @@ radv_compile_nir_shader(struct ac_llvm_compiler *ac_llvm,
 			       radv_get_shader_name(shader_info,
 						    nir[nir_count - 1]->info.stage),
 			       options);
-
-	for (int i = 0; i < nir_count; ++i)
-		ac_fill_shader_info(shader_info, nir[i], options);
 
 	/* Determine the ES type (VS or TES) for the GS on GFX9. */
 	if (options->chip_class >= GFX9) {

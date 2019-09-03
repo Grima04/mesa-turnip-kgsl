@@ -638,4 +638,42 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 
 	if (nir->info.stage == MESA_SHADER_FRAGMENT)
 		info->ps.num_interp = nir->num_inputs;
+
+	switch (nir->info.stage) {
+        case MESA_SHADER_COMPUTE:
+                for (int i = 0; i < 3; ++i)
+                        info->cs.block_size[i] = nir->info.cs.local_size[i];
+                break;
+        case MESA_SHADER_FRAGMENT:
+		info->ps.can_discard = nir->info.fs.uses_discard;
+                info->ps.early_fragment_test = nir->info.fs.early_fragment_tests;
+                info->ps.post_depth_coverage = nir->info.fs.post_depth_coverage;
+                break;
+        case MESA_SHADER_GEOMETRY:
+                info->gs.vertices_in = nir->info.gs.vertices_in;
+                info->gs.vertices_out = nir->info.gs.vertices_out;
+                info->gs.output_prim = nir->info.gs.output_primitive;
+                info->gs.invocations = nir->info.gs.invocations;
+                break;
+        case MESA_SHADER_TESS_EVAL:
+                info->tes.primitive_mode = nir->info.tess.primitive_mode;
+                info->tes.spacing = nir->info.tess.spacing;
+                info->tes.ccw = nir->info.tess.ccw;
+                info->tes.point_mode = nir->info.tess.point_mode;
+                info->tes.as_es = options->key.vs_common_out.as_es;
+                info->tes.export_prim_id = options->key.vs_common_out.export_prim_id;
+                info->is_ngg = options->key.vs_common_out.as_ngg;
+                break;
+        case MESA_SHADER_TESS_CTRL:
+                info->tcs.tcs_vertices_out = nir->info.tess.tcs_vertices_out;
+                break;
+        case MESA_SHADER_VERTEX:
+                info->vs.as_es = options->key.vs_common_out.as_es;
+                info->vs.as_ls = options->key.vs_common_out.as_ls;
+                info->vs.export_prim_id = options->key.vs_common_out.export_prim_id;
+                info->is_ngg = options->key.vs_common_out.as_ngg;
+                break;
+        default:
+                break;
+        }
 }
