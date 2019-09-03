@@ -2845,21 +2845,7 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 		       struct radv_es_output_info *outinfo)
 {
 	int j;
-	uint64_t max_output_written = 0;
 	LLVMValueRef lds_base = NULL;
-
-	for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
-		int param_index;
-
-		if (!(ctx->output_mask & (1ull << i)))
-			continue;
-
-		param_index = shader_io_get_unique_index(i);
-
-		max_output_written = MAX2(param_index, max_output_written);
-	}
-
-	outinfo->esgs_itemsize = (max_output_written + 1) * 16;
 
 	if (ctx->ac.chip_class  >= GFX9) {
 		unsigned itemsize_dw = outinfo->esgs_itemsize / 4;
