@@ -191,6 +191,8 @@ device_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
       int rgba_shifts[4];
       unsigned int rgba_sizes[4];
    } visuals[] = {
+      { "A2RGB10",  { 20, 10, 0, 30 }, { 10, 10, 10, 2 } },
+      { "X2RGB10",  { 20, 10, 0, -1 }, { 10, 10, 10, 0 } },
       { "ARGB8888", { 16, 8, 0, 24 }, { 8, 8, 8, 8 } },
       { "RGB888",   { 16, 8, 0, -1 }, { 8, 8, 8, 0 } },
       { "RGB565",   { 11, 5, 0, -1 }, { 5, 6, 5, 0 } },
