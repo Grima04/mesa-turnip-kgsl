@@ -459,6 +459,15 @@ loader_get_driver_for_fd(int fd)
       return driver;
 #endif
 
+   driver = loader_get_kernel_driver_name(fd);
+   bool is_amdgpu = driver && strcmp(driver, "amdgpu") == 0;
+   free(driver);
+
+   if (is_amdgpu) {
+      driver = strdup("radeonsi");
+      goto out;
+   }
+
    if (!loader_get_pci_id_for_fd(fd, &vendor_id, &chip_id)) {
       driver = loader_get_kernel_driver_name(fd);
       if (driver)
