@@ -195,6 +195,13 @@ struct radv_es_output_info {
        uint32_t esgs_itemsize;
 };
 
+struct gfx9_gs_info {
+	uint32_t vgt_gs_onchip_cntl;
+	uint32_t vgt_gs_max_prims_per_subgroup;
+	uint32_t vgt_esgs_ring_itemsize;
+	uint32_t lds_size;
+};
+
 struct radv_shader_info {
 	bool loads_push_constants;
 	bool loads_dynamic_offsets;
@@ -288,6 +295,8 @@ struct radv_shader_info {
 	} tcs;
 
 	struct radv_streamout_info so;
+
+	struct gfx9_gs_info gs_ring_info;
 };
 
 enum radv_shader_binary_type {

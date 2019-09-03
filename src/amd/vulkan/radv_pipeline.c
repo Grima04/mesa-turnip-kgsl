@@ -90,13 +90,6 @@ struct radv_tessellation_state {
 	uint32_t tf_param;
 };
 
-struct radv_gs_state {
-	uint32_t vgt_gs_onchip_cntl;
-	uint32_t vgt_gs_max_prims_per_subgroup;
-	uint32_t vgt_esgs_ring_itemsize;
-	uint32_t lds_size;
-};
-
 struct radv_ngg_state {
 	uint16_t ngg_emit_size; /* in dwords */
 	uint32_t hw_max_esverts;
@@ -1510,11 +1503,11 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 	pipeline->dynamic_state.mask = states;
 }
 
-static struct radv_gs_state
-calculate_gs_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                       const struct radv_pipeline *pipeline)
+static void
+gfx9_get_gs_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                 const struct radv_pipeline *pipeline,
+		 struct gfx9_gs_info *out)
 {
-	struct radv_gs_state gs = {0};
 	struct radv_shader_info *gs_info = &pipeline->shaders[MESA_SHADER_GEOMETRY]->info;
 	struct radv_es_output_info *es_info;
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9)
@@ -1621,15 +1614,13 @@ calculate_gs_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 	uint32_t gs_prims_per_subgroup = gs_prims;
 	uint32_t gs_inst_prims_in_subgroup = gs_prims * gs_num_invocations;
 	uint32_t max_prims_per_subgroup = gs_inst_prims_in_subgroup * gs_info->gs.vertices_out;
-	gs.lds_size = align(esgs_lds_size, 128) / 128;
-	gs.vgt_gs_onchip_cntl = S_028A44_ES_VERTS_PER_SUBGRP(es_verts_per_subgroup) |
+	out->lds_size = align(esgs_lds_size, 128) / 128;
+	out->vgt_gs_onchip_cntl = S_028A44_ES_VERTS_PER_SUBGRP(es_verts_per_subgroup) |
 	                        S_028A44_GS_PRIMS_PER_SUBGRP(gs_prims_per_subgroup) |
 	                        S_028A44_GS_INST_PRIMS_IN_SUBGRP(gs_inst_prims_in_subgroup);
-	gs.vgt_gs_max_prims_per_subgroup = S_028A94_MAX_PRIMS_PER_SUBGROUP(max_prims_per_subgroup);
-	gs.vgt_esgs_ring_itemsize  = esgs_itemsize;
+	out->vgt_gs_max_prims_per_subgroup = S_028A94_MAX_PRIMS_PER_SUBGROUP(max_prims_per_subgroup);
+	out->vgt_esgs_ring_itemsize  = esgs_itemsize;
 	assert(max_prims_per_subgroup <= max_out_prims);
-
-	return gs;
 }
 
 static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts,
@@ -1867,7 +1858,8 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 }
 
 static void
-calculate_gs_ring_sizes(struct radv_pipeline *pipeline, const struct radv_gs_state *gs)
+calculate_gs_ring_sizes(struct radv_pipeline *pipeline,
+			const struct gfx9_gs_info *gs)
 {
 	struct radv_device *device = pipeline->device;
 	unsigned num_se = device->physical_device->rad_info.max_se;
@@ -3974,9 +3966,9 @@ static void
 radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs,
 			     struct radeon_cmdbuf *cs,
 			     struct radv_pipeline *pipeline,
-			     struct radv_shader_variant *gs,
-			     const struct radv_gs_state *gs_state)
+			     struct radv_shader_variant *gs)
 {
+	const struct gfx9_gs_info *gs_state = &gs->info.gs_ring_info;
 	unsigned gs_max_out_vertices;
 	uint8_t *num_components;
 	uint8_t max_stream;
@@ -4049,7 +4041,6 @@ static void
 radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 				       struct radeon_cmdbuf *cs,
 				       struct radv_pipeline *pipeline,
-				       const struct radv_gs_state *gs_state,
 				       const struct radv_ngg_state *ngg_state)
 {
 	struct radv_shader_variant *gs;
@@ -4061,7 +4052,7 @@ radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 	if (gs->info.is_ngg)
 		radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, gs, ngg_state);
 	else
-		radv_pipeline_generate_hw_gs(ctx_cs, cs, pipeline, gs, gs_state);
+		radv_pipeline_generate_hw_gs(ctx_cs, cs, pipeline, gs);
 
 	radeon_set_context_reg(ctx_cs, R_028B38_VGT_GS_MAX_VERT_OUT,
 			      gs->info.gs.vertices_out);
@@ -4357,8 +4348,7 @@ radv_compute_cliprect_rule(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 static void
 gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs,
 				struct radv_pipeline *pipeline,
-				const struct radv_tessellation_state *tess,
-				const struct radv_gs_state *gs_state)
+				const struct radv_tessellation_state *tess)
 {
 	bool break_wave_at_eoi = false;
 	unsigned primgroup_size;
@@ -4368,6 +4358,8 @@ gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs,
 		primgroup_size = tess->num_patches; /* must be a multiple of NUM_PATCHES */
 		vertgroup_size = 0;
 	} else if (radv_pipeline_has_gs(pipeline)) {
+		const struct gfx9_gs_info *gs_state =
+			&pipeline->shaders[MESA_SHADER_GEOMETRY]->info.gs_ring_info;
 		unsigned vgt_gs_onchip_cntl = gs_state->vgt_gs_onchip_cntl;
 		primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
 		vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
@@ -4395,7 +4387,6 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const struct radv_graphics_pipeline_create_info *extra,
                            const struct radv_blend_state *blend,
                            const struct radv_tessellation_state *tess,
-                           const struct radv_gs_state *gs,
                            const struct radv_ngg_state *ngg,
                            unsigned prim, unsigned gs_out)
 {
@@ -4414,14 +4405,14 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_vgt_gs_mode(ctx_cs, pipeline);
 	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline, tess, ngg);
 	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess, ngg);
-	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline, gs, ngg);
+	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline, ngg);
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
 	radv_pipeline_generate_binning_state(ctx_cs, pipeline, pCreateInfo);
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 && !radv_pipeline_has_ngg(pipeline))
-		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess, gs);
+		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess);
 
 	radeon_set_context_reg(ctx_cs, R_0286E8_SPI_TMPRING_SIZE,
 			       S_0286E8_WAVES(pipeline->max_waves) |
@@ -4705,13 +4696,15 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	}
 
 	struct radv_ngg_state ngg = {0};
-	struct radv_gs_state gs = {0};
 
 	if (radv_pipeline_has_ngg(pipeline)) {
 		ngg = calculate_ngg_info(pCreateInfo, pipeline);
 	} else if (radv_pipeline_has_gs(pipeline)) {
-		gs = calculate_gs_info(pCreateInfo, pipeline);
-		calculate_gs_ring_sizes(pipeline, &gs);
+		struct radv_shader_variant *gs =
+			pipeline->shaders[MESA_SHADER_GEOMETRY];
+
+		gfx9_get_gs_info(pCreateInfo, pipeline, &gs->info.gs_ring_info);
+		calculate_gs_ring_sizes(pipeline, &gs->info.gs_ring_info);
 	}
 
 	struct radv_tessellation_state tess = {0};
@@ -4745,7 +4738,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
 	result = radv_pipeline_scratch_init(device, pipeline);
-	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &tess, &gs, &ngg, prim, gs_out);
+	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &tess, &ngg, prim, gs_out);
 
 	return result;
 }
