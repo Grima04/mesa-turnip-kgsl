@@ -181,7 +181,6 @@ iris_init_batch(struct iris_batch *batch,
                 struct hash_table_u64 *state_sizes,
                 struct iris_batch *all_batches,
                 enum iris_batch_name name,
-                uint8_t engine,
                 int priority)
 {
    batch->screen = screen;
@@ -190,11 +189,6 @@ iris_init_batch(struct iris_batch *batch,
    batch->reset = reset;
    batch->state_sizes = state_sizes;
    batch->name = name;
-
-   /* engine should be one of I915_EXEC_RENDER, I915_EXEC_BLT, etc. */
-   assert((engine & ~I915_EXEC_RING_MASK) == 0);
-   assert(util_bitcount(engine) == 1);
-   batch->engine = engine;
 
    batch->hw_ctx_id = iris_create_hw_context(screen->bufmgr);
    assert(batch->hw_ctx_id);
@@ -587,7 +581,7 @@ submit_batch(struct iris_batch *batch)
       .batch_start_offset = 0,
       /* This must be QWord aligned. */
       .batch_len = ALIGN(batch->primary_batch_size, 8),
-      .flags = batch->engine |
+      .flags = I915_EXEC_RENDER |
                I915_EXEC_NO_RELOC |
                I915_EXEC_BATCH_FIRST |
                I915_EXEC_HANDLE_LUT,
