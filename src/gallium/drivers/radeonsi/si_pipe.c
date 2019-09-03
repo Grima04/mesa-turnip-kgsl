@@ -294,6 +294,7 @@ static void si_destroy_context(struct pipe_context *context)
 	util_dynarray_fini(&sctx->resident_img_needs_color_decompress);
 	util_dynarray_fini(&sctx->resident_tex_needs_depth_decompress);
 	si_unref_sdma_uploads(sctx);
+	free(sctx->sdma_uploads);
 	FREE(sctx);
 }
 
