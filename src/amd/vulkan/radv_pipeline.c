@@ -90,16 +90,6 @@ struct radv_tessellation_state {
 	uint32_t tf_param;
 };
 
-struct radv_ngg_state {
-	uint16_t ngg_emit_size; /* in dwords */
-	uint32_t hw_max_esverts;
-	uint32_t max_gsprims;
-	uint32_t max_out_verts;
-	uint32_t prim_amp_factor;
-	uint32_t vgt_esgs_ring_itemsize;
-	bool max_vert_out_per_gs_instance;
-};
-
 bool radv_pipeline_has_ngg(const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *variant = NULL;
@@ -1655,11 +1645,11 @@ radv_get_num_input_vertices(struct radv_pipeline *pipeline)
 	return 3;
 }
 
-static struct radv_ngg_state
-calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
-		   struct radv_pipeline *pipeline)
+static void
+gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
+		   struct radv_pipeline *pipeline,
+		   struct gfx10_ngg_info *ngg)
 {
-	struct radv_ngg_state ngg = {0};
 	struct radv_shader_info *gs_info = &pipeline->shaders[MESA_SHADER_GEOMETRY]->info;
 	struct radv_es_output_info *es_info =
 		radv_pipeline_has_tess(pipeline) ? &gs_info->tes.es_info : &gs_info->vs.es_info;
@@ -1837,24 +1827,22 @@ calculate_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 	 * this check passes, there is enough space for a full primitive without
 	 * vertex reuse.
 	 */
-	ngg.hw_max_esverts = max_esverts - max_verts_per_prim + 1;
-	ngg.max_gsprims = max_gsprims;
-	ngg.max_out_verts = max_out_vertices;
-	ngg.prim_amp_factor = prim_amp_factor;
-	ngg.max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
-	ngg.ngg_emit_size = max_gsprims * gsprim_lds_size;
+	ngg->hw_max_esverts = max_esverts - max_verts_per_prim + 1;
+	ngg->max_gsprims = max_gsprims;
+	ngg->max_out_verts = max_out_vertices;
+	ngg->prim_amp_factor = prim_amp_factor;
+	ngg->max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
+	ngg->ngg_emit_size = max_gsprims * gsprim_lds_size;
 
 	if (gs_type == MESA_SHADER_GEOMETRY) {
-		ngg.vgt_esgs_ring_itemsize = es_info->esgs_itemsize / 4;
+		ngg->vgt_esgs_ring_itemsize = es_info->esgs_itemsize / 4;
 	} else {
-		ngg.vgt_esgs_ring_itemsize = 1;
+		ngg->vgt_esgs_ring_itemsize = 1;
 	}
 
 	pipeline->graphics.esgs_ring_size = 4 * max_esverts * esvert_lds_size;
 
-	assert(ngg.hw_max_esverts >= 24); /* HW limitation */
-
-	return ngg;
+	assert(ngg->hw_max_esverts >= 24); /* HW limitation */
 }
 
 static void
@@ -3720,14 +3708,14 @@ static void
 radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			      struct radeon_cmdbuf *cs,
 			      struct radv_pipeline *pipeline,
-			      struct radv_shader_variant *shader,
-			      const struct radv_ngg_state *ngg_state)
+			      struct radv_shader_variant *shader)
 {
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
 	gl_shader_stage es_type =
 		radv_pipeline_has_tess(pipeline) ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
 	struct radv_shader_variant *es =
 		es_type == MESA_SHADER_TESS_EVAL ? pipeline->shaders[MESA_SHADER_TESS_EVAL] : pipeline->shaders[MESA_SHADER_VERTEX];
+	const struct gfx10_ngg_info *ngg_state = &shader->info.ngg_info;
 
 	radeon_set_sh_reg_seq(cs, R_00B320_SPI_SHADER_PGM_LO_ES, 2);
 	radeon_emit(cs, va >> 8);
@@ -3897,8 +3885,7 @@ static void
 radv_pipeline_generate_vertex_shader(struct radeon_cmdbuf *ctx_cs,
 				     struct radeon_cmdbuf *cs,
 				     struct radv_pipeline *pipeline,
-				     const struct radv_tessellation_state *tess,
-				     const struct radv_ngg_state *ngg)
+				     const struct radv_tessellation_state *tess)
 {
 	struct radv_shader_variant *vs;
 
@@ -3912,7 +3899,7 @@ radv_pipeline_generate_vertex_shader(struct radeon_cmdbuf *ctx_cs,
 	else if (vs->info.vs.as_es)
 		radv_pipeline_generate_hw_es(cs, pipeline, vs);
 	else if (vs->info.is_ngg)
-		radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, vs, ngg);
+		radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, vs);
 	else
 		radv_pipeline_generate_hw_vs(ctx_cs, cs, pipeline, vs);
 }
@@ -3921,8 +3908,7 @@ static void
 radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 				    struct radeon_cmdbuf *cs,
 				    struct radv_pipeline *pipeline,
-				    const struct radv_tessellation_state *tess,
-				    const struct radv_ngg_state *ngg)
+				    const struct radv_tessellation_state *tess)
 {
 	if (!radv_pipeline_has_tess(pipeline))
 		return;
@@ -3934,7 +3920,7 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 
 	if (tes) {
 		if (tes->info.is_ngg) {
-			radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, tes, ngg);
+			radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, tes);
 		} else if (tes->info.tes.as_es)
 			radv_pipeline_generate_hw_es(cs, pipeline, tes);
 		else
@@ -4040,8 +4026,7 @@ radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 				       struct radeon_cmdbuf *cs,
-				       struct radv_pipeline *pipeline,
-				       const struct radv_ngg_state *ngg_state)
+				       struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *gs;
 
@@ -4050,7 +4035,7 @@ radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 		return;
 
 	if (gs->info.is_ngg)
-		radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, gs, ngg_state);
+		radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, gs);
 	else
 		radv_pipeline_generate_hw_gs(ctx_cs, cs, pipeline, gs);
 
@@ -4387,7 +4372,6 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const struct radv_graphics_pipeline_create_info *extra,
                            const struct radv_blend_state *blend,
                            const struct radv_tessellation_state *tess,
-                           const struct radv_ngg_state *ngg,
                            unsigned prim, unsigned gs_out)
 {
 	struct radeon_cmdbuf *ctx_cs = &pipeline->ctx_cs;
@@ -4403,9 +4387,9 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_raster_state(ctx_cs, pipeline, pCreateInfo);
 	radv_pipeline_generate_multisample_state(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_gs_mode(ctx_cs, pipeline);
-	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline, tess, ngg);
-	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess, ngg);
-	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline, ngg);
+	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline, tess);
+	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess);
+	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
@@ -4695,10 +4679,17 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		}
 	}
 
-	struct radv_ngg_state ngg = {0};
-
 	if (radv_pipeline_has_ngg(pipeline)) {
-		ngg = calculate_ngg_info(pCreateInfo, pipeline);
+		struct radv_shader_variant *ngg;
+
+		if (radv_pipeline_has_gs(pipeline))
+			ngg = pipeline->shaders[MESA_SHADER_GEOMETRY];
+		else if (radv_pipeline_has_tess(pipeline))
+			ngg = pipeline->shaders[MESA_SHADER_TESS_EVAL];
+		else
+			ngg = pipeline->shaders[MESA_SHADER_VERTEX];
+
+		gfx10_get_ngg_info(pCreateInfo, pipeline, &ngg->info.ngg_info);
 	} else if (radv_pipeline_has_gs(pipeline)) {
 		struct radv_shader_variant *gs =
 			pipeline->shaders[MESA_SHADER_GEOMETRY];
@@ -4738,7 +4729,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
 	result = radv_pipeline_scratch_init(device, pipeline);
-	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &tess, &ngg, prim, gs_out);
+	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &tess, prim, gs_out);
 
 	return result;
 }

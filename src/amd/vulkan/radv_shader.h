@@ -202,6 +202,16 @@ struct gfx9_gs_info {
 	uint32_t lds_size;
 };
 
+struct gfx10_ngg_info {
+	uint16_t ngg_emit_size; /* in dwords */
+	uint32_t hw_max_esverts;
+	uint32_t max_gsprims;
+	uint32_t max_out_verts;
+	uint32_t prim_amp_factor;
+	uint32_t vgt_esgs_ring_itemsize;
+	bool max_vert_out_per_gs_instance;
+};
+
 struct radv_shader_info {
 	bool loads_push_constants;
 	bool loads_dynamic_offsets;
@@ -297,6 +307,7 @@ struct radv_shader_info {
 	struct radv_streamout_info so;
 
 	struct gfx9_gs_info gs_ring_info;
+	struct gfx10_ngg_info ngg_info;
 };
 
 enum radv_shader_binary_type {
