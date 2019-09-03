@@ -497,6 +497,10 @@ v3d_job_submit(struct v3d_context *v3d, struct v3d_job *job)
         job->submit.bcl_end = job->bcl.bo->offset + cl_offset(&job->bcl);
         job->submit.rcl_end = job->rcl.bo->offset + cl_offset(&job->rcl);
 
+        job->submit.flags = 0;
+        if (job->tmu_dirty_rcl && screen->has_cache_flush)
+                job->submit.flags |= DRM_V3D_SUBMIT_CL_FLUSH_CACHE;
+
         /* On V3D 4.1, the tile alloc/state setup moved to register writes
          * instead of binner packets.
          */
