@@ -533,19 +533,44 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 			struct radv_shader_info *info,
 			const struct radv_nir_compiler_options *options)
 {
+	struct radv_vs_output_info *vs_info = NULL;
+
 	switch (nir->info.stage) {
 	case MESA_SHADER_FRAGMENT:
 		gather_info_output_decl_ps(nir, var, info);
 		break;
 	case MESA_SHADER_VERTEX:
+		if (!options->key.vs_common_out.as_ls &&
+		    !options->key.vs_common_out.as_es)
+			vs_info = &info->vs.outinfo;
+
 		if (options->key.vs_common_out.as_ls)
 			gather_info_output_decl_ls(nir, var, info);
 		break;
 	case MESA_SHADER_GEOMETRY:
+		vs_info = &info->vs.outinfo;
 		gather_info_output_decl_gs(nir, var, info);
+		break;
+	case MESA_SHADER_TESS_EVAL:
+		if (!options->key.vs_common_out.as_es)
+			vs_info = &info->tes.outinfo;
 		break;
 	default:
 		break;
+	}
+
+	if (vs_info) {
+		switch (var->data.location) {
+		case VARYING_SLOT_CLIP_DIST0:
+			vs_info->clip_dist_mask =
+				(1 << nir->info.clip_distance_array_size) - 1;
+			vs_info->cull_dist_mask =
+				(1 << nir->info.cull_distance_array_size) - 1;
+			vs_info->cull_dist_mask <<= nir->info.clip_distance_array_size;
+			break;
+		default:
+			break;
+		}
 	}
 }
 

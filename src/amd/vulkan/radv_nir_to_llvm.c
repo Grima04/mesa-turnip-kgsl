@@ -2277,27 +2277,6 @@ scan_shader_output_decl(struct radv_shader_context *ctx,
 	}
 
 	mask_attribs = ((1ull << attrib_count) - 1) << idx;
-	if (stage == MESA_SHADER_VERTEX ||
-	    stage == MESA_SHADER_TESS_EVAL ||
-	    stage == MESA_SHADER_GEOMETRY) {
-		if (idx == VARYING_SLOT_CLIP_DIST0) {
-			if (stage == MESA_SHADER_VERTEX) {
-				ctx->shader_info->vs.outinfo.clip_dist_mask = (1 << shader->info.clip_distance_array_size) - 1;
-				ctx->shader_info->vs.outinfo.cull_dist_mask = (1 << shader->info.cull_distance_array_size) - 1;
-				ctx->shader_info->vs.outinfo.cull_dist_mask <<= shader->info.clip_distance_array_size;
-			}
-			if (stage == MESA_SHADER_TESS_EVAL) {
-				ctx->shader_info->tes.outinfo.clip_dist_mask = (1 << shader->info.clip_distance_array_size) - 1;
-				ctx->shader_info->tes.outinfo.cull_dist_mask = (1 << shader->info.cull_distance_array_size) - 1;
-				ctx->shader_info->tes.outinfo.cull_dist_mask <<= shader->info.clip_distance_array_size;
-			}
-			if (stage == MESA_SHADER_GEOMETRY) {
-				ctx->shader_info->vs.outinfo.clip_dist_mask = (1 << shader->info.clip_distance_array_size) - 1;
-				ctx->shader_info->vs.outinfo.cull_dist_mask = (1 << shader->info.cull_distance_array_size) - 1;
-				ctx->shader_info->vs.outinfo.cull_dist_mask <<= shader->info.clip_distance_array_size;
-			}
-		}
-	}
 
 	ctx->output_mask |= mask_attribs;
 }
