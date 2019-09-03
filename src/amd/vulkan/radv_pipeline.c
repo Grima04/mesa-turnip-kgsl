@@ -1833,6 +1833,7 @@ gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 	ngg->prim_amp_factor = prim_amp_factor;
 	ngg->max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
 	ngg->ngg_emit_size = max_gsprims * gsprim_lds_size;
+	ngg->esgs_ring_size = 4 * max_esverts * esvert_lds_size;
 
 	if (gs_type == MESA_SHADER_GEOMETRY) {
 		ngg->vgt_esgs_ring_itemsize = es_info->esgs_itemsize / 4;
@@ -1840,7 +1841,7 @@ gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 		ngg->vgt_esgs_ring_itemsize = 1;
 	}
 
-	pipeline->graphics.esgs_ring_size = 4 * max_esverts * esvert_lds_size;
+	pipeline->graphics.esgs_ring_size = ngg->esgs_ring_size;
 
 	assert(ngg->hw_max_esverts >= 24); /* HW limitation */
 }
