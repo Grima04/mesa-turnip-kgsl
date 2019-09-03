@@ -2792,10 +2792,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 		outinfo->writes_layer = true;
 	}
 
-	if (ctx->output_mask & (1ull << VARYING_SLOT_VIEWPORT)) {
-		outinfo->writes_viewport_index = true;
-	}
-
 	if (ctx->shader_info->so.num_outputs &&
 	    !ctx->is_gs_copy_shader) {
 		/* The GS copy shader emission already emits streamout. */
@@ -3512,10 +3508,6 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 
 		if (ctx->output_mask & (1ull << VARYING_SLOT_LAYER)) {
 			outinfo->writes_layer = true;
-		}
-
-		if (ctx->output_mask & (1ull << VARYING_SLOT_VIEWPORT)) {
-			outinfo->writes_viewport_index = true;
 		}
 
 		unsigned out_idx = 0;

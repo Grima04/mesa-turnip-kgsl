@@ -571,6 +571,9 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 		case VARYING_SLOT_PSIZ:
 			vs_info->writes_pointsize = true;
 			break;
+		case VARYING_SLOT_VIEWPORT:
+			vs_info->writes_viewport_index = true;
+			break;
 		default:
 			break;
 		}
