@@ -574,6 +574,9 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 		case VARYING_SLOT_VIEWPORT:
 			vs_info->writes_viewport_index = true;
 			break;
+		case VARYING_SLOT_LAYER:
+			vs_info->writes_layer = true;
+			break;
 		default:
 			break;
 		}
@@ -661,6 +664,23 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
 			break;
 		case MESA_SHADER_GEOMETRY:
 			info->gs.output_usage_mask[VARYING_SLOT_LAYER] |= 0x1;
+			break;
+		default:
+			break;
+		}
+	}
+
+	/* Make sure to export the LayerID if the subpass has multiviews. */
+	if (options->key.has_multiview_view_index) {
+		switch (nir->info.stage) {
+		case MESA_SHADER_VERTEX:
+			info->vs.outinfo.writes_layer = true;
+			break;
+		case MESA_SHADER_TESS_EVAL:
+			info->tes.outinfo.writes_layer = true;
+			break;
+		case MESA_SHADER_GEOMETRY:
+			info->vs.outinfo.writes_layer = true;
 			break;
 		default:
 			break;

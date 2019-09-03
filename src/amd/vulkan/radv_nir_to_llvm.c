@@ -2788,10 +2788,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 	       sizeof(outinfo->vs_output_param_offset));
 	outinfo->pos_exports = 0;
 
-	if (ctx->output_mask & (1ull << VARYING_SLOT_LAYER)) {
-		outinfo->writes_layer = true;
-	}
-
 	if (ctx->shader_info->so.num_outputs &&
 	    !ctx->is_gs_copy_shader) {
 		/* The GS copy shader emission already emits streamout. */
@@ -3506,10 +3502,6 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 		tmp = LLVMBuildZExt(builder, tmp, ctx->ac.i32, "");
 		const LLVMValueRef vertexptr = ngg_gs_vertex_ptr(ctx, tmp);
 
-		if (ctx->output_mask & (1ull << VARYING_SLOT_LAYER)) {
-			outinfo->writes_layer = true;
-		}
-
 		unsigned out_idx = 0;
 		gep_idx[1] = ctx->ac.i32_0;
 		for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
@@ -3544,8 +3536,6 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 
 		/* Export ViewIndex. */
 		if (export_view_index) {
-			outinfo->writes_layer = true;
-
 			outputs[noutput].slot_name = VARYING_SLOT_LAYER;
 			outputs[noutput].slot_index = 0;
 			outputs[noutput].usage_mask = 0x1;
