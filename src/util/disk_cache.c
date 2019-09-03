@@ -1037,7 +1037,7 @@ disk_cache_put(struct disk_cache *cache, const cache_key key,
    if (dc_job) {
       util_queue_fence_init(&dc_job->fence);
       util_queue_add_job(&cache->cache_queue, dc_job, &dc_job->fence,
-                         cache_put, destroy_put_job, 0);
+                         cache_put, destroy_put_job, dc_job->size);
    }
 }
 
