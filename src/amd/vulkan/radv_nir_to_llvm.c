@@ -4213,9 +4213,10 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 				LLVMSetInitializer(ctx.gs_ngg_scratch, LLVMGetUndef(ai32));
 				LLVMSetAlignment(ctx.gs_ngg_scratch, 4);
 
-				ctx.gs_ngg_emit = LLVMBuildIntToPtr(ctx.ac.builder, ctx.ac.i32_0,
-					LLVMPointerType(LLVMArrayType(ctx.ac.i32, 0), AC_ADDR_SPACE_LDS),
-					"ngg_emit");
+				ctx.gs_ngg_emit = LLVMAddGlobalInAddressSpace(ctx.ac.module,
+					LLVMArrayType(ctx.ac.i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
+				LLVMSetLinkage(ctx.gs_ngg_emit, LLVMExternalLinkage);
+				LLVMSetAlignment(ctx.gs_ngg_emit, 4);
 			}
 
 			ctx.abi.load_inputs = load_gs_input;

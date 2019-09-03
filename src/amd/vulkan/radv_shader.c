@@ -882,44 +882,33 @@ radv_shader_variant_create(struct radv_device *device,
 	variant->ref_count = 1;
 
 	if (binary->type == RADV_BINARY_TYPE_RTLD) {
-		struct ac_rtld_symbol lds_symbols[1];
+		struct ac_rtld_symbol lds_symbols[2];
 		unsigned num_lds_symbols = 0;
 		const char *elf_data = (const char *)((struct radv_shader_binary_rtld *)binary)->data;
 		size_t elf_size = ((struct radv_shader_binary_rtld *)binary)->elf_size;
-		unsigned esgs_ring_size = 0;
 
 		if (device->physical_device->rad_info.chip_class >= GFX9 &&
-		    binary->stage == MESA_SHADER_GEOMETRY && !binary->is_gs_copy_shader) {
-			/* TODO: Do not hardcode this value */
-			esgs_ring_size = 32 * 1024;
-		}
-
-		if (binary->info.is_ngg) {
-			/* GS stores Primitive IDs into LDS at the address
-			 * corresponding to the ES thread of the provoking
-			 * vertex. All ES threads load and export PrimitiveID
-			 * for their thread.
-			 */
-			if (binary->stage == MESA_SHADER_VERTEX &&
-			    binary->info.vs.export_prim_id) {
-				/* TODO: Do not harcode this value */
-				esgs_ring_size = 256 /* max_out_verts */ * 4;
-			}
-		}
-
-		if (esgs_ring_size) {
+		    (binary->stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg) &&
+		    !binary->is_gs_copy_shader) {
 			/* We add this symbol even on LLVM <= 8 to ensure that
 			 * shader->config.lds_size is set correctly below.
 			 */
+			/* TODO: For some reasons, using the computed ESGS ring
+			 * size randomly hangs with CTS. Just use the maximum
+			 * possible LDS size for now.
+			 */
 			struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
 			sym->name = "esgs_ring";
-			sym->size = esgs_ring_size;
+			sym->size = (32 * 1024) - (binary->info.ngg_info.ngg_emit_size * 4) - 32; /* 32 is NGG scratch */
 			sym->align = 64 * 1024;
+		}
 
-			/* Make sure to have LDS space for NGG scratch. */
-			/* TODO: Compute this correctly somehow? */
-			if (binary->info.is_ngg)
-				sym->size -= 32;
+		if (binary->info.is_ngg &&
+		    binary->stage == MESA_SHADER_GEOMETRY) {
+			struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
+			sym->name = "ngg_emit";
+			sym->size = binary->info.ngg_info.ngg_emit_size * 4;
+			sym->align = 4;
 		}
 
 		struct ac_rtld_open_info open_info = {

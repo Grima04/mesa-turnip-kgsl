@@ -2338,9 +2338,6 @@ radv_fill_shader_keys(struct radv_device *device,
 		 * issues still:
 		 *   * GS primitives in pipeline statistic queries do not get
 		 *     updates. See dEQP-VK.query_pool.statistics_query.geometry_shader_primitives
-		 *   * dEQP-VK.clipping.user_defined.clip_cull_distance_dynamic_index.*geom* failures
-		 *   * Interactions with tessellation failing:
-		 *     dEQP-VK.tessellation.geometry_interaction.passthrough.tessellate_isolines_passthrough_geometry_no_change
 		 *   * General issues with the last primitive missing/corrupt:
 		 *     https://bugs.freedesktop.org/show_bug.cgi?id=111248
 		 *
