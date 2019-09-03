@@ -1496,16 +1496,18 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 static void
 gfx9_get_gs_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
                  const struct radv_pipeline *pipeline,
+		 nir_shader **nir,
+		 struct radv_shader_info *infos,
 		 struct gfx9_gs_info *out)
 {
-	struct radv_shader_info *gs_info = &pipeline->shaders[MESA_SHADER_GEOMETRY]->info;
+	struct radv_shader_info *gs_info = &infos[MESA_SHADER_GEOMETRY];
 	struct radv_es_output_info *es_info;
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9)
-		es_info = radv_pipeline_has_tess(pipeline) ? &gs_info->tes.es_info : &gs_info->vs.es_info;
+		es_info = nir[MESA_SHADER_TESS_CTRL] ? &gs_info->tes.es_info : &gs_info->vs.es_info;
 	else
-		es_info = radv_pipeline_has_tess(pipeline) ?
-			&pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.es_info :
-			&pipeline->shaders[MESA_SHADER_VERTEX]->info.vs.es_info;
+		es_info = nir[MESA_SHADER_TESS_CTRL] ?
+                       &infos[MESA_SHADER_TESS_EVAL].tes.es_info :
+                       &infos[MESA_SHADER_VERTEX].vs.es_info;
 
 	unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
 	bool uses_adjacency;
@@ -1623,21 +1625,20 @@ static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts
 }
 
 static unsigned
-radv_get_num_input_vertices(struct radv_pipeline *pipeline)
+radv_get_num_input_vertices(nir_shader **nir)
 {
-	if (radv_pipeline_has_gs(pipeline)) {
-		struct radv_shader_variant *gs =
-			radv_get_shader(pipeline, MESA_SHADER_GEOMETRY);
+	if (nir[MESA_SHADER_GEOMETRY]) {
+		nir_shader *gs = nir[MESA_SHADER_GEOMETRY];
 
 		return gs->info.gs.vertices_in;
 	}
 
-	if (radv_pipeline_has_tess(pipeline)) {
-		struct radv_shader_variant *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
+	if (nir[MESA_SHADER_TESS_CTRL]) {
+		nir_shader *tes = nir[MESA_SHADER_TESS_EVAL];
 
-		if (tes->info.tes.point_mode)
+		if (tes->info.tess.point_mode)
 			return 1;
-		if (tes->info.tes.primitive_mode == GL_ISOLINES)
+		if (tes->info.tess.primitive_mode == GL_ISOLINES)
 			return 2;
 		return 3;
 	}
@@ -1648,16 +1649,18 @@ radv_get_num_input_vertices(struct radv_pipeline *pipeline)
 static void
 gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 		   struct radv_pipeline *pipeline,
+		   nir_shader **nir,
+		   struct radv_shader_info *infos,
 		   struct gfx10_ngg_info *ngg)
 {
-	struct radv_shader_info *gs_info = &pipeline->shaders[MESA_SHADER_GEOMETRY]->info;
+	struct radv_shader_info *gs_info = &infos[MESA_SHADER_GEOMETRY];
 	struct radv_es_output_info *es_info =
-		radv_pipeline_has_tess(pipeline) ? &gs_info->tes.es_info : &gs_info->vs.es_info;
-	unsigned gs_type = radv_pipeline_has_gs(pipeline) ? MESA_SHADER_GEOMETRY : MESA_SHADER_VERTEX;
-	unsigned max_verts_per_prim = radv_get_num_input_vertices(pipeline);
+		nir[MESA_SHADER_TESS_CTRL] ? &gs_info->tes.es_info : &gs_info->vs.es_info;
+	unsigned gs_type = nir[MESA_SHADER_GEOMETRY] ? MESA_SHADER_GEOMETRY : MESA_SHADER_VERTEX;
+	unsigned max_verts_per_prim = radv_get_num_input_vertices(nir);
 	unsigned min_verts_per_prim =
 		gs_type == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
-	unsigned gs_num_invocations = radv_pipeline_has_gs(pipeline) ? MAX2(gs_info->gs.invocations, 1) : 1;
+	unsigned gs_num_invocations = nir[MESA_SHADER_GEOMETRY] ? MAX2(gs_info->gs.invocations, 1) : 1;
 	bool uses_adjacency;
 	switch(pCreateInfo->pInputAssemblyState->topology) {
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
@@ -1738,8 +1741,8 @@ gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 		 * corresponding to the ES thread of the provoking vertex. All
 		 * ES threads load and export PrimitiveID for their thread.
 		 */
-		if (!radv_pipeline_has_tess(pipeline) &&
-		    pipeline->shaders[MESA_SHADER_VERTEX]->info.vs.export_prim_id)
+		if (!nir[MESA_SHADER_TESS_CTRL] &&
+		    infos[MESA_SHADER_VERTEX].vs.outinfo.export_prim_id)
 			esvert_lds_size = MAX2(esvert_lds_size, 1);
 	}
 
@@ -2562,6 +2565,7 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
                          const struct radv_pipeline_key *key,
                          const VkPipelineShaderStageCreateInfo **pStages,
                          const VkPipelineCreateFlags flags,
+                         const VkGraphicsPipelineCreateInfo *pCreateInfo,
                          VkPipelineCreationFeedbackEXT *pipeline_feedback,
                          VkPipelineCreationFeedbackEXT **stage_feedbacks)
 {
@@ -2667,6 +2671,27 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 	radv_fill_shader_keys(device, keys, key, nir);
 
 	radv_fill_shader_info(pipeline, keys, infos, nir);
+
+	if ((nir[MESA_SHADER_VERTEX] &&
+	     keys[MESA_SHADER_VERTEX].vs_common_out.as_ngg) ||
+	    (nir[MESA_SHADER_TESS_EVAL] &&
+	     keys[MESA_SHADER_TESS_EVAL].vs_common_out.as_ngg)) {
+		struct gfx10_ngg_info *ngg_info;
+
+		if (nir[MESA_SHADER_GEOMETRY])
+			ngg_info = &infos[MESA_SHADER_GEOMETRY].ngg_info;
+		else if (nir[MESA_SHADER_TESS_CTRL])
+			ngg_info = &infos[MESA_SHADER_TESS_EVAL].ngg_info;
+		else
+			ngg_info = &infos[MESA_SHADER_VERTEX].ngg_info;
+
+		gfx10_get_ngg_info(pCreateInfo, pipeline, nir, infos, ngg_info);
+	} else if (nir[MESA_SHADER_GEOMETRY]) {
+		struct gfx9_gs_info *gs_info =
+			&infos[MESA_SHADER_GEOMETRY].gs_ring_info;
+
+		gfx9_get_gs_info(pCreateInfo, pipeline, nir, infos, gs_info);
+	}
 
 	if (nir[MESA_SHADER_FRAGMENT]) {
 		if (!pipeline->shaders[MESA_SHADER_FRAGMENT]) {
@@ -4615,7 +4640,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	}
 
 	struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &blend, has_view_index);
-	radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
+	radv_create_shaders(pipeline, device, cache, &key, pStages, pCreateInfo->flags, pCreateInfo, pipeline_feedback, stage_feedbacks);
 
 	pipeline->graphics.spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
 	radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo);
@@ -4680,22 +4705,10 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		}
 	}
 
-	if (radv_pipeline_has_ngg(pipeline)) {
-		struct radv_shader_variant *ngg;
-
-		if (radv_pipeline_has_gs(pipeline))
-			ngg = pipeline->shaders[MESA_SHADER_GEOMETRY];
-		else if (radv_pipeline_has_tess(pipeline))
-			ngg = pipeline->shaders[MESA_SHADER_TESS_EVAL];
-		else
-			ngg = pipeline->shaders[MESA_SHADER_VERTEX];
-
-		gfx10_get_ngg_info(pCreateInfo, pipeline, &ngg->info.ngg_info);
-	} else if (radv_pipeline_has_gs(pipeline)) {
+	if (radv_pipeline_has_gs(pipeline) && !radv_pipeline_has_ngg(pipeline)) {
 		struct radv_shader_variant *gs =
 			pipeline->shaders[MESA_SHADER_GEOMETRY];
 
-		gfx9_get_gs_info(pCreateInfo, pipeline, &gs->info.gs_ring_info);
 		calculate_gs_ring_sizes(pipeline, &gs->info.gs_ring_info);
 	}
 
@@ -4882,7 +4895,7 @@ static VkResult radv_compute_pipeline_create(
 		stage_feedbacks[MESA_SHADER_COMPUTE] = &creation_feedback->pPipelineStageCreationFeedbacks[0];
 
 	pStages[MESA_SHADER_COMPUTE] = &pCreateInfo->stage;
-	radv_create_shaders(pipeline, device, cache, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, pipeline_feedback, stage_feedbacks);
+	radv_create_shaders(pipeline, device, cache, &(struct radv_pipeline_key) {0}, pStages, pCreateInfo->flags, NULL, pipeline_feedback, stage_feedbacks);
 
 	pipeline->user_data_0[MESA_SHADER_COMPUTE] = radv_pipeline_stage_to_user_data_0(pipeline, MESA_SHADER_COMPUTE, device->physical_device->rad_info.chip_class);
 	pipeline->need_indirect_descriptor_sets |= pipeline->shaders[MESA_SHADER_COMPUTE]->info.need_indirect_descriptor_sets;
