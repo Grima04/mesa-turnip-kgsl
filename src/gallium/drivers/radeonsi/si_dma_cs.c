@@ -103,13 +103,16 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, ui
       return;
    }
 
-   /* The following code is for Sea Islands and later. */
+   /* The following code is for CI and later. */
    /* the same maximum size as for copying */
-   ncopy = DIV_ROUND_UP(size, CIK_SDMA_COPY_MAX_SIZE);
+   unsigned max_size_per_packet = sctx->chip_class >= GFX10_3 ?
+                                     GFX103_SDMA_COPY_MAX_SIZE :
+                                     CIK_SDMA_COPY_MAX_SIZE;
+   ncopy = DIV_ROUND_UP(size, max_size_per_packet);
    si_need_dma_space(sctx, ncopy * 5, sdst, NULL);
 
    for (i = 0; i < ncopy; i++) {
-      csize = MIN2(size, CIK_SDMA_COPY_MAX_SIZE);
+      csize = MIN2(size, max_size_per_packet);
       radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_PACKET_CONSTANT_FILL, 0, 0x8000 /* dword copy */));
       radeon_emit(cs, offset);
       radeon_emit(cs, offset >> 32);
@@ -176,8 +179,11 @@ void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
    }
 
    /* The following code is for CI and later. */
+   unsigned max_size_per_packet = sctx->chip_class >= GFX10_3 ?
+                                     GFX103_SDMA_COPY_MAX_SIZE :
+                                     CIK_SDMA_COPY_MAX_SIZE;
    unsigned align = ~0u;
-   ncopy = DIV_ROUND_UP(size, CIK_SDMA_COPY_MAX_SIZE);
+   ncopy = DIV_ROUND_UP(size, max_size_per_packet);
 
    /* Align copy size to dw if src/dst address are dw aligned */
    if ((src_offset & 0x3) == 0 && (dst_offset & 0x3) == 0 && size > 4 && (size & 3) != 0) {
@@ -188,7 +194,7 @@ void si_sdma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
    si_need_dma_space(sctx, ncopy * 7, sdst, ssrc);
 
    for (i = 0; i < ncopy; i++) {
-      csize = size >= 4 ? MIN2(size & align, CIK_SDMA_COPY_MAX_SIZE) : size;
+      csize = size >= 4 ? MIN2(size & align, max_size_per_packet) : size;
       radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_LINEAR,
                                       (sctx->ws->cs_is_secure(cs) ? 1u : 0) << 2));
       radeon_emit(cs, sctx->chip_class >= GFX9 ? csize - 1 : csize);
