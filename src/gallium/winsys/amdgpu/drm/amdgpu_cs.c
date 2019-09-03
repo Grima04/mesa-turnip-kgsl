@@ -1756,7 +1756,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
 
       /* Submit. */
       util_queue_add_job(&ws->cs_queue, cs, &cs->flush_completed,
-                         amdgpu_cs_submit_ib, NULL);
+                         amdgpu_cs_submit_ib, NULL, 0);
       /* The submission has been queued, unlock the fence now. */
       simple_mtx_unlock(&ws->bo_fence_lock);
 

@@ -116,7 +116,7 @@ tc_batch_flush(struct threaded_context *tc)
    }
 
    util_queue_add_job(&tc->queue, next, &next->fence, tc_batch_execute,
-                      NULL);
+                      NULL, 0);
    tc->last = tc->next;
    tc->next = (tc->next + 1) % TC_MAX_BATCHES;
 }

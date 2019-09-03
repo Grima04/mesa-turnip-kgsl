@@ -2358,7 +2358,8 @@ current_not_ready:
 		/* Compile it asynchronously. */
 		util_queue_add_job(&sscreen->shader_compiler_queue_low_priority,
 				   shader, &shader->ready,
-				   si_build_shader_variant_low_priority, NULL);
+				   si_build_shader_variant_low_priority, NULL,
+				   0);
 
 		/* Add only after the ready fence was reset, to guard against a
 		 * race with si_bind_XX_shader. */
@@ -2615,7 +2616,7 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 	}
 
 	util_queue_add_job(&sctx->screen->shader_compiler_queue, job,
-			   ready_fence, execute, NULL);
+			   ready_fence, execute, NULL, 0);
 
 	if (debug) {
 		util_queue_fence_wait(ready_fence);
