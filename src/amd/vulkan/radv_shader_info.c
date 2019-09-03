@@ -744,4 +744,13 @@ radv_nir_shader_info_pass(const struct nir_shader *nir,
         default:
                 break;
         }
+
+	if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+		unsigned add_clip = nir->info.clip_distance_array_size +
+				    nir->info.cull_distance_array_size > 4;
+		info->gs.gsvs_vertex_size =
+			(util_bitcount64(nir->info.outputs_written) + add_clip) * 16;
+		info->gs.max_gsvs_emit_size =
+			info->gs.gsvs_vertex_size * nir->info.gs.vertices_out;
+	}
 }

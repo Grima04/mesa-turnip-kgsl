@@ -108,8 +108,6 @@ struct radv_shader_context {
 
 	uint32_t tcs_num_inputs;
 	uint32_t tcs_num_patches;
-	uint32_t max_gsvs_emit_size;
-	uint32_t gsvs_vertex_size;
 
 	LLVMValueRef vertexptr; /* GFX10 only */
 };
@@ -3605,7 +3603,7 @@ static void gfx10_ngg_gs_emit_vertex(struct radv_shader_context *ctx,
 			LLVMBuildStore(builder, out_val, ptr);
 		}
 	}
-	assert(out_idx * 4 <= ctx->gsvs_vertex_size);
+	assert(out_idx * 4 <= ctx->shader_info->gs.gsvs_vertex_size);
 
 	/* Determine and store whether this vertex completed a primitive. */
 	const LLVMValueRef curverts = LLVMBuildLoad(builder, ctx->gs_curprim_verts[stream], "");
@@ -4282,14 +4280,6 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		nir_foreach_variable(variable, &shaders[i]->outputs)
 			scan_shader_output_decl(&ctx, variable, shaders[i], shaders[i]->info.stage);
 
-		if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY) {
-			unsigned addclip = shaders[i]->info.clip_distance_array_size +
-					shaders[i]->info.cull_distance_array_size > 4;
-			ctx.gsvs_vertex_size = (util_bitcount64(ctx.output_mask) + addclip) * 16;
-			ctx.max_gsvs_emit_size = ctx.gsvs_vertex_size *
-				shaders[i]->info.gs.vertices_out;
-		}
-
 		ac_setup_rings(&ctx);
 
 		LLVMBasicBlockRef merge_block;
@@ -4332,10 +4322,7 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			gfx10_ngg_gs_emit_epilogue_2(&ctx);
 		}
 
-		if (shaders[i]->info.stage == MESA_SHADER_GEOMETRY) {
-			shader_info->gs.gsvs_vertex_size = ctx.gsvs_vertex_size;
-			shader_info->gs.max_gsvs_emit_size = ctx.max_gsvs_emit_size;
-		} else if (shaders[i]->info.stage == MESA_SHADER_TESS_CTRL) {
+		if (shaders[i]->info.stage == MESA_SHADER_TESS_CTRL) {
 			shader_info->tcs.num_patches = ctx.tcs_num_patches;
 			shader_info->tcs.lds_size = calculate_tess_lds_size(&ctx);
 		}
