@@ -678,7 +678,8 @@ fs_generator::generate_urb_read(fs_inst *inst,
    brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
    brw_set_dest(p, send, retype(dst, BRW_REGISTER_TYPE_UD));
    brw_set_src0(p, send, header);
-   brw_set_src1(p, send, brw_imm_ud(0u));
+   if (devinfo->gen < 12)
+      brw_set_src1(p, send, brw_imm_ud(0u));
 
    brw_inst_set_sfid(p->devinfo, send, BRW_SFID_URB);
    brw_inst_set_urb_opcode(p->devinfo, send, GEN8_URB_OPCODE_SIMD8_READ);
@@ -714,7 +715,8 @@ fs_generator::generate_urb_write(fs_inst *inst, struct brw_reg payload)
 
    brw_set_dest(p, insn, brw_null_reg());
    brw_set_src0(p, insn, payload);
-   brw_set_src1(p, insn, brw_imm_ud(0u));
+   if (devinfo->gen < 12)
+      brw_set_src1(p, insn, brw_imm_ud(0u));
 
    brw_inst_set_sfid(p->devinfo, insn, BRW_SFID_URB);
    brw_inst_set_urb_opcode(p->devinfo, insn, GEN8_URB_OPCODE_SIMD8_WRITE);
@@ -743,7 +745,8 @@ fs_generator::generate_cs_terminate(fs_inst *inst, struct brw_reg payload)
 
    brw_set_dest(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_UW));
    brw_set_src0(p, insn, retype(payload, BRW_REGISTER_TYPE_UW));
-   brw_set_src1(p, insn, brw_imm_ud(0u));
+   if (devinfo->gen < 12)
+      brw_set_src1(p, insn, brw_imm_ud(0u));
 
    /* Terminate a compute shader by sending a message to the thread spawner.
     */

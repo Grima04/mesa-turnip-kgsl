@@ -455,8 +455,9 @@ brw_set_desc_ex(struct brw_codegen *p, brw_inst *inst,
    const struct gen_device_info *devinfo = p->devinfo;
    assert(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SEND ||
           brw_inst_opcode(devinfo, inst) == BRW_OPCODE_SENDC);
-   brw_inst_set_src1_file_type(devinfo, inst,
-                               BRW_IMMEDIATE_VALUE, BRW_REGISTER_TYPE_UD);
+   if (devinfo->gen < 12)
+      brw_inst_set_src1_file_type(devinfo, inst,
+                                  BRW_IMMEDIATE_VALUE, BRW_REGISTER_TYPE_UD);
    brw_inst_set_send_desc(devinfo, inst, desc);
    if (devinfo->gen >= 9)
       brw_inst_set_send_ex_desc(devinfo, inst, ex_desc);
@@ -2598,7 +2599,11 @@ brw_send_indirect_message(struct brw_codegen *p,
 
       send = next_insn(p, BRW_OPCODE_SEND);
       brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
-      brw_set_src1(p, send, addr);
+
+      if (devinfo->gen >= 12)
+         brw_inst_set_send_sel_reg32_desc(devinfo, send, true);
+      else
+         brw_set_src1(p, send, addr);
    }
 
    brw_set_dest(p, send, dst);
