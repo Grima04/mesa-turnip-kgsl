@@ -75,6 +75,7 @@
 #include "perf/gen_perf.h"
 #include "perf/gen_perf_regs.h"
 #include "perf/gen_perf_mdapi.h"
+#include "perf/gen_perf_query.h"
 
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
 

@@ -51,6 +51,7 @@
 #include "intel_screen.h"
 #include "intel_tex_obj.h"
 #include "perf/gen_perf.h"
+#include "perf/gen_perf_query.h"
 
 #ifdef __cplusplus
 extern "C" {

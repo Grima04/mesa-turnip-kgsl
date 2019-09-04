@@ -22,7 +22,6 @@
 
 #include "iris_perf.h"
 #include "iris_context.h"
-#include "perf/gen_perf_regs.h"
 
 static void *
 iris_oa_bo_alloc(void *bufmgr, const char *name, uint64_t size)

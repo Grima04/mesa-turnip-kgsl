@@ -17,6 +17,7 @@ endforeach
 
 gen_perf_sources = [
   'gen_perf.c',
+  'gen_perf_query.c',
   'gen_perf_mdapi.c',
 ]
 
