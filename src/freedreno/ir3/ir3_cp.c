@@ -643,7 +643,7 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			instr->opc   = cond->opc;
 			instr->flags = cond->flags;
 			instr->cat2  = cond->cat2;
-			instr->address = cond->address;
+			ir3_instr_set_address(instr, cond->address);
 			instr->regs[1] = cond->regs[1];
 			instr->regs[2] = cond->regs[2];
 			instr->barrier_class |= cond->barrier_class;
