@@ -3556,7 +3556,6 @@ brw_barrier(struct brw_codegen *p, struct brw_reg src)
    brw_set_desc(p, inst, brw_message_desc(devinfo, 1, 0, false));
 
    brw_inst_set_sfid(devinfo, inst, BRW_SFID_MESSAGE_GATEWAY);
-   brw_inst_set_gateway_notify(devinfo, inst, 1);
    brw_inst_set_gateway_subfuncid(devinfo, inst,
                                   BRW_MESSAGE_GATEWAY_SFID_BARRIER_MSG);
 
