@@ -847,10 +847,13 @@ gen_perf_query_result_clear(struct gen_perf_query_result *result)
 void
 gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
                       const struct gen_device_info *devinfo,
-                      int drm_fd)
+                      int drm_fd,
+                      bool include_pipeline_statistics)
 {
-   load_pipeline_statistic_metrics(perf_cfg, devinfo);
-   gen_perf_register_mdapi_statistic_query(perf_cfg, devinfo);
+   if (include_pipeline_statistics) {
+      load_pipeline_statistic_metrics(perf_cfg, devinfo);
+      gen_perf_register_mdapi_statistic_query(perf_cfg, devinfo);
+   }
    if (load_oa_metrics(perf_cfg, drm_fd, devinfo))
       gen_perf_register_mdapi_oa_query(perf_cfg, devinfo);
 }

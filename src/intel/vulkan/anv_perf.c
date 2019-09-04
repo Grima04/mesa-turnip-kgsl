@@ -35,7 +35,7 @@ anv_get_perf(const struct gen_device_info *devinfo, int fd)
 {
    struct gen_perf_config *perf = gen_perf_new(NULL);
 
-   gen_perf_init_metrics(perf, devinfo, fd);
+   gen_perf_init_metrics(perf, devinfo, fd, false /* pipeline statistics */);
 
    /* We need DRM_I915_PERF_PROP_HOLD_PREEMPTION support, only available in
     * perf revision 2.

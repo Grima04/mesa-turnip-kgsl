@@ -252,7 +252,8 @@ struct gen_perf_config {
 
 void gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
                            const struct gen_device_info *devinfo,
-                           int drm_fd);
+                           int drm_fd,
+                           bool include_pipeline_statistics);
 
 /** Query i915 for a metric id using guid.
  */
