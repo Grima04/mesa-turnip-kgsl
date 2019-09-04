@@ -761,8 +761,8 @@ if with_platform_x11
     endif
   endif
 else
-  pre_args += '-DMESA_EGL_NO_X11_HEADERS'
-  gl_pkgconfig_c_flags += '-DMESA_EGL_NO_X11_HEADERS'
+  pre_args += '-DEGL_NO_X11'
+  gl_pkgconfig_c_flags += '-DEGL_NO_X11'
 endif
 if with_platform_drm
   if with_egl and not with_gbm
