@@ -232,6 +232,16 @@ st_nir_opts(nir_shader *nir, bool scalar)
       progress = false;
 
       NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+      
+      /* Linking deals with unused inputs/outputs, but here we can remove
+       * things local to the shader in the hopes that we can cleanup other
+       * things. This pass will also remove variables with only stores, so we
+       * might be able to make progress after it.
+       */
+      NIR_PASS(progress, nir, nir_remove_dead_variables,
+               (nir_variable_mode)(nir_var_function_temp |
+                                   nir_var_shader_temp |
+                                   nir_var_mem_shared));
 
       NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
       NIR_PASS(progress, nir, nir_opt_dead_write_vars);
