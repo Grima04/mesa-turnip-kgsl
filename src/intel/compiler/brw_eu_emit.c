@@ -1271,9 +1271,11 @@ void brw_NOP(struct brw_codegen *p)
    brw_inst_set_opcode(p->devinfo, insn, BRW_OPCODE_NOP);
 }
 
-
-
-
+void brw_SYNC(struct brw_codegen *p, enum tgl_sync_function func)
+{
+   brw_inst *insn = next_insn(p, BRW_OPCODE_SYNC);
+   brw_inst_set_cond_modifier(p->devinfo, insn, func);
+}
 
 /***********************************************************************
  * Comparisons, if/else/endif

@@ -1080,6 +1080,8 @@ void brw_NOP(struct brw_codegen *p);
 
 void brw_WAIT(struct brw_codegen *p);
 
+void brw_SYNC(struct brw_codegen *p, enum tgl_sync_function func);
+
 /* Special case: there is never a destination, execution size will be
  * taken from src0:
  */

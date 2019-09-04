@@ -1755,6 +1755,10 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       assert(inst->mlen <= BRW_MAX_MSG_LENGTH);
 
       switch (inst->opcode) {
+      case BRW_OPCODE_SYNC:
+         assert(src[0].file == BRW_IMMEDIATE_VALUE);
+         brw_SYNC(p, tgl_sync_function(src[0].ud));
+         break;
       case BRW_OPCODE_MOV:
 	 brw_MOV(p, dst, src[0]);
 	 break;
