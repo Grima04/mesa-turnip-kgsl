@@ -920,6 +920,7 @@ fs_visitor::emit_barrier()
    case 10:
       barrier_id_mask = 0x8f000000u; break;
    case 11:
+   case 12:
       barrier_id_mask = 0x7f000000u; break;
    default:
       unreachable("barrier is only available on gen >= 7");

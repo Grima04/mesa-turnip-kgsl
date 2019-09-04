@@ -783,8 +783,12 @@ void
 fs_generator::generate_barrier(fs_inst *, struct brw_reg src)
 {
    brw_barrier(p, src);
-   brw_set_default_swsb(p, tgl_swsb_null());
-   brw_WAIT(p);
+   if (devinfo->gen >= 12) {
+      brw_set_default_swsb(p, tgl_swsb_null());
+      brw_SYNC(p, TGL_SYNC_BAR);
+   } else {
+      brw_WAIT(p);
+   }
 }
 
 bool
