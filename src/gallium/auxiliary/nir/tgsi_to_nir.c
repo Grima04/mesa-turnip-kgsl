@@ -28,8 +28,6 @@
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_control_flow.h"
 #include "compiler/nir/nir_builder.h"
-#include "compiler/glsl/gl_nir.h"
-#include "compiler/glsl/list.h"
 #include "compiler/shader_enums.h"
 
 #include "tgsi_to_nir.h"
@@ -1307,7 +1305,8 @@ get_sampler_var(struct ttn_compile *c, int binding,
                 enum glsl_sampler_dim dim,
                 bool is_shadow,
                 bool is_array,
-                enum glsl_base_type base_type)
+                enum glsl_base_type base_type,
+                nir_texop op)
 {
    nir_variable *var = c->samplers[binding];
    if (!var) {
@@ -1318,6 +1317,14 @@ get_sampler_var(struct ttn_compile *c, int binding,
       var->data.binding = binding;
       var->data.explicit_binding = true;
       c->samplers[binding] = var;
+
+      /* Record textures used */
+      unsigned mask = 1 << binding;
+      c->build.shader->info.textures_used |= mask;
+      if (op == nir_texop_txf ||
+          op == nir_texop_txf_ms ||
+          op == nir_texop_txf_ms_mcs)
+         c->build.shader->info.textures_used_by_txf |= mask;
    }
 
    return var;
@@ -1502,7 +1509,8 @@ ttn_tex(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       get_sampler_var(c, sview, instr->sampler_dim,
                       instr->is_shadow,
                       instr->is_array,
-                      base_type_for_alu_type(instr->dest_type));
+                      base_type_for_alu_type(instr->dest_type),
+                      op);
 
    nir_deref_instr *deref = nir_build_deref_var(b, var);
 
@@ -1666,7 +1674,8 @@ ttn_txq(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
       get_sampler_var(c, tex_index, txs->sampler_dim,
                       txs->is_shadow,
                       txs->is_array,
-                      base_type_for_alu_type(txs->dest_type));
+                      base_type_for_alu_type(txs->dest_type),
+                      nir_texop_txs);
 
    nir_deref_instr *deref = nir_build_deref_var(b, var);
 
@@ -2616,10 +2625,8 @@ ttn_finalize_nir(struct ttn_compile *c)
    if (c->cap_packed_uniforms)
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
 
-   if (c->cap_samplers_as_deref)
-      NIR_PASS_V(nir, gl_nir_lower_samplers_as_deref, NULL);
-   else
-      NIR_PASS_V(nir, gl_nir_lower_samplers, NULL);
+   if (!c->cap_samplers_as_deref)
+      NIR_PASS_V(nir, nir_lower_samplers);
 
    ttn_optimize_nir(nir, c->cap_scalar);
    nir_shader_gather_info(nir, c->build.impl);

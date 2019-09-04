@@ -527,12 +527,9 @@ libgallium = static_library(
   cpp_args : [cpp_vis_args, cpp_msvc_compat_args],
   dependencies : [
     dep_libdrm, dep_llvm, dep_unwind, dep_dl, dep_m, dep_thread, dep_lmsensors,
-    idep_nir_headers,
+    idep_nir, idep_nir_headers, idep_mesautil,
   ],
-  build_by_default : false,
-  link_with: [
-    libglsl
-  ]
+  build_by_default : false
 )
 
 libgalliumvl_stub = static_library(
