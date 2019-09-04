@@ -35,6 +35,8 @@
 struct constant_fold_state {
    nir_shader *shader;
    unsigned execution_mode;
+   bool has_load_constant;
+   bool has_indirect_load_const;
 };
 
 static bool
@@ -134,6 +136,50 @@ constant_fold_intrinsic_instr(struct constant_fold_state *state, nir_intrinsic_i
          nir_instr_remove(&instr->instr);
          progress = true;
       }
+   } else if (instr->intrinsic == nir_intrinsic_load_constant) {
+      state->has_load_constant = true;
+
+      if (!nir_src_is_const(instr->src[0])) {
+         state->has_indirect_load_const = true;
+         return progress;
+      }
+
+      unsigned offset = nir_src_as_uint(instr->src[0]);
+      unsigned base = nir_intrinsic_base(instr);
+      unsigned range = nir_intrinsic_range(instr);
+      assert(base + range <= state->shader->constant_data_size);
+
+      nir_instr *new_instr = NULL;
+      if (offset >= range) {
+         nir_ssa_undef_instr *undef =
+            nir_ssa_undef_instr_create(state->shader,
+                                       instr->num_components,
+                                       instr->dest.ssa.bit_size);
+
+         nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&undef->def));
+         new_instr = &undef->instr;
+      } else {
+         nir_load_const_instr *load_const =
+            nir_load_const_instr_create(state->shader,
+                                        instr->num_components,
+                                        instr->dest.ssa.bit_size);
+
+         uint8_t *data = (uint8_t*)state->shader->constant_data + base;
+         for (unsigned i = 0; i < instr->num_components; i++) {
+            unsigned bytes = instr->dest.ssa.bit_size / 8;
+            bytes = MIN2(bytes, range - offset);
+
+            memcpy(&load_const->value[i].u64, data + offset, bytes);
+            offset += bytes;
+         }
+
+         nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&load_const->def));
+         new_instr = &load_const->instr;
+      }
+
+      nir_instr_insert_before(&instr->instr, new_instr);
+      nir_instr_remove(&instr->instr);
+      progress = true;
    }
 
    return progress;
@@ -190,10 +236,22 @@ nir_opt_constant_folding(nir_shader *shader)
    struct constant_fold_state state;
    state.shader = shader;
    state.execution_mode = shader->info.float_controls_execution_mode;
+   state.has_load_constant = false;
+   state.has_indirect_load_const = false;
 
    nir_foreach_function(function, shader) {
       if (function->impl)
          progress |= nir_opt_constant_folding_impl(&state, function->impl);
+   }
+
+   /* This doesn't free the constant data if there are no constant loads because
+    * the data might still be used but the loads have been lowered to load_ubo
+    */
+   if (state.has_load_constant && !state.has_indirect_load_const &&
+       shader->constant_data_size) {
+      ralloc_free(shader->constant_data);
+      shader->constant_data = NULL;
+      shader->constant_data_size = 0;
    }
 
    return progress;
