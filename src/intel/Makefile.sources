@@ -359,6 +359,7 @@ GEN_PERF_FILES = \
 	perf/gen_perf.h \
 	perf/gen_perf_mdapi.c \
 	perf/gen_perf_mdapi.h \
+	perf/gen_perf_private.h \
 	perf/gen_perf_query.h \
 	perf/gen_perf_query.c
 
