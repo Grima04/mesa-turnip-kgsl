@@ -265,6 +265,9 @@ def generate(env):
             else:
                components = ['engine', 'mcjit', 'bitwriter', 'mcdisassembler', 'irreader']
 
+            if llvm_version >= distutils.version.LooseVersion('8.0'):
+                components.append('coroutines')
+
             env.ParseConfig('%s --libs ' % llvm_config + ' '.join(components))
             env.ParseConfig('%s --ldflags' % llvm_config)
             if llvm_version >= distutils.version.LooseVersion('3.5'):
