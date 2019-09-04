@@ -170,6 +170,7 @@ read_sysfs_drm_device_file_uint64(struct gen_perf_config *perf,
 
 static void
 register_oa_config(struct gen_perf_config *perf,
+                   const struct gen_device_info *devinfo,
                    const struct gen_perf_query_info *query,
                    uint64_t config_id)
 {
@@ -177,13 +178,16 @@ register_oa_config(struct gen_perf_config *perf,
       gen_perf_append_query_info(perf, 0);
 
    *registered_query = *query;
+   registered_query->oa_format = devinfo->gen >= 8 ?
+      I915_OA_FORMAT_A32u40_A4u32_B8_C8 : I915_OA_FORMAT_A45_B8_C8;
    registered_query->oa_metrics_set_id = config_id;
    DBG("metric set registered: id = %" PRIu64", guid = %s\n",
        registered_query->oa_metrics_set_id, query->guid);
 }
 
 static void
-enumerate_sysfs_metrics(struct gen_perf_config *perf)
+enumerate_sysfs_metrics(struct gen_perf_config *perf,
+                        const struct gen_device_info *devinfo)
 {
    DIR *metricsdir = NULL;
    struct dirent *metric_entry;
@@ -218,7 +222,8 @@ enumerate_sysfs_metrics(struct gen_perf_config *perf)
             continue;
          }
 
-         register_oa_config(perf, (const struct gen_perf_query_info *)entry->data, id);
+         register_oa_config(perf, devinfo,
+                            (const struct gen_perf_query_info *)entry->data, id);
       } else
          DBG("metric set not known by mesa (skipping)\n");
    }
@@ -322,7 +327,8 @@ i915_add_config(struct gen_perf_config *perf, int fd,
 }
 
 static void
-init_oa_configs(struct gen_perf_config *perf, int fd)
+init_oa_configs(struct gen_perf_config *perf, int fd,
+                const struct gen_device_info *devinfo)
 {
    hash_table_foreach(perf->oa_metrics_table, entry) {
       const struct gen_perf_query_info *query = entry->data;
@@ -330,7 +336,7 @@ init_oa_configs(struct gen_perf_config *perf, int fd)
 
       if (gen_perf_load_metric_id(perf, query->guid, &config_id)) {
          DBG("metric set: %s (already loaded)\n", query->guid);
-         register_oa_config(perf, query, config_id);
+         register_oa_config(perf, devinfo, query, config_id);
          continue;
       }
 
@@ -341,7 +347,7 @@ init_oa_configs(struct gen_perf_config *perf, int fd)
          continue;
       }
 
-      register_oa_config(perf, query, ret);
+      register_oa_config(perf, devinfo, query, ret);
       DBG("metric set: %s (added)\n", query->guid);
    }
 }
@@ -617,9 +623,9 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
 
    if (likely((INTEL_DEBUG & DEBUG_NO_OACONFIG) == 0) &&
        kernel_has_dynamic_config_support(perf, fd))
-      init_oa_configs(perf, fd);
+      init_oa_configs(perf, fd, devinfo);
    else
-      enumerate_sysfs_metrics(perf);
+      enumerate_sysfs_metrics(perf, devinfo);
 
    return true;
 }
