@@ -605,6 +605,35 @@ etna_resource_get_handle(struct pipe_screen *pscreen,
    }
 }
 
+enum etna_resource_status
+etna_resource_get_status(struct etna_context *ctx, struct etna_resource *rsc)
+{
+   enum etna_resource_status newstatus = 0;
+
+   set_foreach(rsc->pending_ctx, entry) {
+      struct etna_context *extctx = (struct etna_context *)entry->key;
+      struct pipe_context *pctx = &extctx->base;
+
+      set_foreach(extctx->used_resources_read, entry2) {
+         struct etna_resource *rsc2 = (struct etna_resource *)entry2->key;
+         if (ctx == extctx || rsc2 != rsc)
+            continue;
+
+         newstatus |= ETNA_PENDING_READ;
+      }
+
+      set_foreach(extctx->used_resources_write, entry2) {
+         struct etna_resource *rsc2 = (struct etna_resource *)entry2->key;
+         if (ctx == extctx || rsc2 != rsc)
+            continue;
+
+         newstatus |= ETNA_PENDING_WRITE;
+      }
+   }
+
+   return newstatus;
+}
+
 void
 etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
                    enum etna_resource_status status)
@@ -616,40 +645,40 @@ etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
    if (!prsc)
       return;
 
-   rsc = etna_resource(prsc);
-
    mtx_lock(&screen->lock);
 
-   /*
-    * if we are pending read or write by any other context or
-    * if reading a resource pending a write, then
-    * flush all the contexts to maintain coherency
-    */
-   if (((status & ETNA_PENDING_WRITE) && rsc->status) ||
-       ((status & ETNA_PENDING_READ) && (rsc->status & ETNA_PENDING_WRITE))) {
-      set_foreach(rsc->pending_ctx, entry) {
-         struct etna_context *extctx = (struct etna_context *)entry->key;
-         struct pipe_context *pctx = &extctx->base;
+   rsc = etna_resource(prsc);
 
-         if (extctx == ctx)
+   enum etna_resource_status newstatus = 0;
+
+   set_foreach(rsc->pending_ctx, entry) {
+      struct etna_context *extctx = (struct etna_context *)entry->key;
+      struct pipe_context *pctx = &extctx->base;
+
+      set_foreach(extctx->used_resources_read, entry2) {
+         struct etna_resource *rsc2 = (struct etna_resource *)entry2->key;
+         if (ctx == extctx || rsc2 != rsc)
+            continue;
+
+         if (status & ETNA_PENDING_WRITE)
+            pctx->flush(pctx, NULL, 0);
+      }
+
+      set_foreach(extctx->used_resources_write, entry2) {
+         struct etna_resource *rsc2 = (struct etna_resource *)entry2->key;
+         if (ctx == extctx || rsc2 != rsc)
             continue;
 
          pctx->flush(pctx, NULL, 0);
-         /* It's safe to clear the status here. If we need to flush it means
-          * either another context had the resource in exclusive (write) use,
-          * or we transition the resource to exclusive use in our context.
-          * In both cases the new status accurately reflects the resource use
-          * after the flush.
-          */
-         rsc->status = 0;
       }
    }
 
-   rsc->status |= status;
+   rsc->status = status;
 
    if (!_mesa_set_search(rsc->pending_ctx, ctx)) {
       pipe_resource_reference(&referenced, prsc);
-      _mesa_set_add(ctx->used_resources, rsc);
+      _mesa_set_add((status & ETNA_PENDING_READ) ?
+                    ctx->used_resources_read : ctx->used_resources_write, rsc);
       _mesa_set_add(rsc->pending_ctx, ctx);
    }
 
