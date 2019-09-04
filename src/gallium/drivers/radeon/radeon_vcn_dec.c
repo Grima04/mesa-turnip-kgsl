@@ -1607,6 +1607,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
 		dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
 		dec->reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
 		dec->reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
+		dec->jpg.direct_reg = true;
 	} else if (sctx->family >= CHIP_NAVI10 || sctx->family == CHIP_RENOIR) {
 		dec->reg.data0 = RDECODE_VCN2_GPCOM_VCPU_DATA0;
 		dec->reg.data1 = RDECODE_VCN2_GPCOM_VCPU_DATA1;
