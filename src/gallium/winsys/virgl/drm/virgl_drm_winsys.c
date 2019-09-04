@@ -467,10 +467,10 @@ static void virgl_drm_resource_wait(struct virgl_winsys *qws,
 
    memset(&waitcmd, 0, sizeof(waitcmd));
    waitcmd.handle = res->bo_handle;
- again:
+
    ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_WAIT, &waitcmd);
-   if (ret == -EAGAIN)
-      goto again;
+   if (ret)
+      _debug_printf("waiting got error - %d, slow gpu or hang?\n", errno);
 
    p_atomic_set(&res->maybe_busy, false);
 }
