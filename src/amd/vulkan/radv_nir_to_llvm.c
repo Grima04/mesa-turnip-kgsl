@@ -3125,7 +3125,6 @@ static void
 handle_ngg_outputs_post(struct radv_shader_context *ctx)
 {
 	LLVMBuilderRef builder = ctx->ac.builder;
-	unsigned num_vertices = 3;
 	LLVMValueRef tmp;
 
 	assert((ctx->stage == MESA_SHADER_VERTEX ||
@@ -3142,6 +3141,22 @@ handle_ngg_outputs_post(struct radv_shader_context *ctx)
 		ac_unpack_param(&ctx->ac, ctx->gs_vtx_offset[0], 16, 16),
 		ac_unpack_param(&ctx->ac, ctx->gs_vtx_offset[2], 0, 16),
 	};
+
+	/* Determine the number of vertices per primitive. */
+	unsigned num_vertices;
+
+	if (ctx->stage == MESA_SHADER_VERTEX) {
+		num_vertices = 3; /* TODO: optimize for points & lines */
+	} else {
+		assert(ctx->stage == MESA_SHADER_TESS_EVAL);
+
+		if (ctx->shader->info.tess.point_mode)
+			num_vertices = 1;
+		else if (ctx->shader->info.tess.primitive_mode == GL_ISOLINES)
+			num_vertices = 2;
+		else
+			num_vertices = 3;
+	}
 
 	/* TODO: streamout */
 
