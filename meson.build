@@ -1254,6 +1254,8 @@ if with_gallium_opencl
     'all-targets', 'linker', 'coverage', 'instrumentation', 'ipo', 'irreader',
     'lto', 'option', 'objcarcopts', 'profiledata',
   ]
+endif
+if with_gallium_opencl or with_gallium_softpipe
   llvm_optional_modules += ['coroutines']
 endif
 
