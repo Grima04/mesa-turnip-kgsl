@@ -83,16 +83,15 @@ panfrost_emit_midg_tiler(
 
 
                 /* Allow the entire tiler heap */
-                t.heap_start = ctx->tiler_heap.bo->gpu;
-                t.heap_end =
-                        ctx->tiler_heap.bo->gpu + ctx->tiler_heap.bo->size;
+                t.heap_start = ctx->tiler_heap->gpu;
+                t.heap_end = ctx->tiler_heap->gpu + ctx->tiler_heap->size;
         } else {
                 /* The tiler is disabled, so don't allow the tiler heap */
-                t.heap_start = ctx->tiler_heap.bo->gpu;
+                t.heap_start = ctx->tiler_heap->gpu;
                 t.heap_end = t.heap_start;
 
                 /* Use a dummy polygon list */
-                t.polygon_list = ctx->tiler_dummy.bo->gpu;
+                t.polygon_list = ctx->tiler_dummy->gpu;
 
                 /* Disable the tiler */
                 t.hierarchy_mask |= MALI_TILER_DISABLED;
@@ -116,7 +115,7 @@ panfrost_emit_sfbd(struct panfrost_context *ctx, unsigned vertex_count)
                 .unknown2 = 0x1f,
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
-                .unknown_address_0 = ctx->scratchpad.bo->gpu,
+                .unknown_address_0 = ctx->scratchpad->gpu,
                 .tiler = panfrost_emit_midg_tiler(ctx,
                                                   width, height, vertex_count),
         };
@@ -144,7 +143,7 @@ panfrost_emit_mfbd(struct panfrost_context *ctx, unsigned vertex_count)
 
                 .unknown2 = 0x1f,
 
-                .scratchpad = ctx->scratchpad.bo->gpu,
+                .scratchpad = ctx->scratchpad->gpu,
                 .tiler = panfrost_emit_midg_tiler(ctx,
                                                   width, height, vertex_count)
         };
@@ -2565,9 +2564,9 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter_wallpaper)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
-        panfrost_drm_free_slab(screen, &panfrost->scratchpad);
-        panfrost_drm_free_slab(screen, &panfrost->tiler_heap);
-        panfrost_drm_free_slab(screen, &panfrost->tiler_dummy);
+        panfrost_drm_release_bo(screen, panfrost->scratchpad, false);
+        panfrost_drm_release_bo(screen, panfrost->tiler_heap, false);
+        panfrost_drm_release_bo(screen, panfrost->tiler_dummy, false);
 
         ralloc_free(pipe);
 }
@@ -2750,9 +2749,13 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
-        panfrost_drm_allocate_slab(screen, &ctx->scratchpad, 64*4, false, 0, 0, 0);
-        panfrost_drm_allocate_slab(screen, &ctx->tiler_heap, 4096, false, PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_GROWABLE, 1, 128);
-        panfrost_drm_allocate_slab(screen, &ctx->tiler_dummy, 1, false, PAN_ALLOCATE_INVISIBLE, 0, 0);
+        ctx->scratchpad = panfrost_drm_create_bo(screen, 64 * 4 * 4096, 0);
+        ctx->tiler_heap = panfrost_drm_create_bo(screen, 4096 * 4096,
+                                                 PAN_ALLOCATE_INVISIBLE |
+                                                 PAN_ALLOCATE_GROWABLE);
+        ctx->tiler_dummy = panfrost_drm_create_bo(screen, 4096,
+                                                  PAN_ALLOCATE_INVISIBLE);
+        assert(ctx->scratchpad && ctx->tiler_heap && ctx->tiler_dummy);
 }
 
 /* New context creation, which also does hardware initialisation since I don't

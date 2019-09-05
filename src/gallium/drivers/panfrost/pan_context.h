@@ -126,10 +126,10 @@ struct panfrost_context {
         struct pipe_framebuffer_state pipe_framebuffer;
         struct panfrost_streamout streamout;
 
+        struct panfrost_bo *scratchpad;
+        struct panfrost_bo *tiler_heap;
+        struct panfrost_bo *tiler_dummy;
         struct panfrost_memory cmdstream_persistent;
-        struct panfrost_memory scratchpad;
-        struct panfrost_memory tiler_heap;
-        struct panfrost_memory tiler_dummy;
         struct panfrost_memory depth_stencil_buffer;
 
         bool active_queries;
