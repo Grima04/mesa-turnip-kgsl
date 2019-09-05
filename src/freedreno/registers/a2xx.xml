@@ -1387,6 +1387,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x2357" name="A225_GRAS_UCP5W"/>
 	<reg32 offset="0x2360" name="A225_GRAS_UCP_ENABLED"/>
 	<reg32 offset="0x2380" name="PA_SU_POLY_OFFSET_FRONT_SCALE"/>
+	<reg32 offset="0x2381" name="PA_SU_POLY_OFFSET_FRONT_OFFSET"/>
+	<reg32 offset="0x2382" name="PA_SU_POLY_OFFSET_BACK_SCALE"/>
 	<reg32 offset="0x2383" name="PA_SU_POLY_OFFSET_BACK_OFFSET"/>
 	<reg32 offset="0x4000" name="SQ_CONSTANT_0"/>
 	<reg32 offset="0x4800" name="SQ_FETCH_0"/>

@@ -301,6 +301,18 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 		OUT_RING(ring, fui(1.0));                /* PA_CL_GB_VERT_DISC_ADJ */
 		OUT_RING(ring, fui(1.0));                /* PA_CL_GB_HORZ_CLIP_ADJ */
 		OUT_RING(ring, fui(1.0));                /* PA_CL_GB_HORZ_DISC_ADJ */
+
+		if (rasterizer->base.offset_tri) {
+			/* TODO: why multiply scale by 2 ? without it deqp test fails
+			 * deqp/piglit tests aren't very precise
+			 */
+			OUT_PKT3(ring, CP_SET_CONSTANT, 5);
+			OUT_RING(ring, CP_REG(REG_A2XX_PA_SU_POLY_OFFSET_FRONT_SCALE));
+			OUT_RING(ring, fui(rasterizer->base.offset_scale * 2.0f)); /* FRONT_SCALE */
+			OUT_RING(ring, fui(rasterizer->base.offset_units));        /* FRONT_OFFSET */
+			OUT_RING(ring, fui(rasterizer->base.offset_scale * 2.0f)); /* BACK_SCALE */
+			OUT_RING(ring, fui(rasterizer->base.offset_units));        /* BACK_OFFSET */
+		}
 	}
 
 	/* NOTE: scissor enabled bit is part of rasterizer state: */
