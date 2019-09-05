@@ -120,17 +120,6 @@ pan_screen(struct pipe_screen *p)
         return (struct panfrost_screen *)p;
 }
 
-void
-panfrost_drm_allocate_slab(struct panfrost_screen *screen,
-                           struct panfrost_memory *mem,
-                           size_t pages,
-                           bool same_va,
-                           int extra_flags,
-                           int commit_count,
-                           int extent);
-void
-panfrost_drm_free_slab(struct panfrost_screen *screen,
-                       struct panfrost_memory *mem);
 struct panfrost_bo *
 panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
                        uint32_t flags);

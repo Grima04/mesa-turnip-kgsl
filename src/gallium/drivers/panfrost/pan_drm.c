@@ -183,29 +183,6 @@ panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo, 
         ralloc_free(bo);
 }
 
-void
-panfrost_drm_allocate_slab(struct panfrost_screen *screen,
-                           struct panfrost_memory *mem,
-                           size_t pages,
-                           bool same_va,
-                           int extra_flags,
-                           int commit_count,
-                           int extent)
-{
-        // TODO cache allocations
-        // TODO properly handle errors
-        // TODO take into account extra_flags
-        mem->bo = panfrost_drm_create_bo(screen, pages * 4096, extra_flags);
-        mem->stack_bottom = 0;
-}
-
-void
-panfrost_drm_free_slab(struct panfrost_screen *screen, struct panfrost_memory *mem)
-{
-        panfrost_bo_unreference(&screen->base, mem->bo);
-        mem->bo = NULL;
-}
-
 struct panfrost_bo *
 panfrost_drm_import_bo(struct panfrost_screen *screen, int fd)
 {

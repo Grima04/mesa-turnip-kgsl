@@ -63,23 +63,10 @@ struct panfrost_bo {
         uint32_t flags;
 };
 
-struct panfrost_memory {
-        /* Backing for the slab in memory */
-        struct panfrost_bo *bo;
-        int stack_bottom;
-};
-
 struct panfrost_transfer
 panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz);
 
 mali_ptr
 panfrost_upload_transient(struct panfrost_context *ctx, const void *data, size_t sz);
-
-static inline mali_ptr
-panfrost_reserve(struct panfrost_memory *mem, size_t sz)
-{
-        mem->stack_bottom += sz;
-        return mem->bo->gpu + (mem->stack_bottom - sz);
-}
 
 #endif /* __PAN_ALLOCATE_H__ */
