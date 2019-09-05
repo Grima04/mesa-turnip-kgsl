@@ -34,27 +34,6 @@
 /* TODO: What does this actually have to be? */
 #define ALIGNMENT 128
 
-/* Allocate a new transient slab */
-
-static struct panfrost_bo *
-panfrost_create_slab(struct panfrost_screen *screen, unsigned *index)
-{
-        /* Allocate a new slab on the screen */
-
-        struct panfrost_bo **new =
-                util_dynarray_grow(&screen->transient_bo,
-                                struct panfrost_bo *, 1);
-
-        struct panfrost_bo *alloc = panfrost_drm_create_bo(screen, TRANSIENT_SLAB_SIZE, 0);
-
-        *new = alloc;
-
-        /* Return the BO as well as the index we just added */
-
-        *index = util_dynarray_num_elements(&screen->transient_bo, void *) - 1;
-        return alloc;
-}
-
 /* Transient command stream pooling: command stream uploads try to simply copy
  * into whereever we left off. If there isn't space, we allocate a new entry
  * into the pool and copy there */
@@ -72,69 +51,38 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
         struct panfrost_bo *bo = NULL;
 
         unsigned offset = 0;
-        bool update_offset = false;
 
-        pthread_mutex_lock(&screen->transient_lock);
-        bool has_current = batch->transient_indices.size;
         bool fits_in_current = (batch->transient_offset + sz) < TRANSIENT_SLAB_SIZE;
 
-        if (likely(has_current && fits_in_current)) {
-                /* We can reuse the topmost BO, so get it */
-                unsigned idx = util_dynarray_top(&batch->transient_indices, unsigned);
-                bo = pan_bo_for_index(screen, idx);
+        if (likely(batch->transient_bo && fits_in_current)) {
+                /* We can reuse the current BO, so get it */
+                bo = batch->transient_bo;
 
                 /* Use the specified offset */
                 offset = batch->transient_offset;
-                update_offset = true;
-        } else if (sz < TRANSIENT_SLAB_SIZE) {
-                /* We can't reuse the topmost BO, but we can get a new one.
-                 * First, look for a free slot */
-
-                unsigned count = util_dynarray_num_elements(&screen->transient_bo, void *);
-                unsigned index = 0;
-
-                unsigned free = __bitset_ffs(
-                                screen->free_transient,
-                                count / BITSET_WORDBITS);
-
-                if (likely(free)) {
-                        /* Use this one */
-                        index = free - 1;
-
-                        /* It's ours, so no longer free */
-                        BITSET_CLEAR(screen->free_transient, index);
-
-                        /* Grab the BO */
-                        bo = pan_bo_for_index(screen, index);
-                } else {
-                        /* Otherwise, create a new BO */
-                        bo = panfrost_create_slab(screen, &index);
-                }
-
-                panfrost_batch_add_bo(batch, bo);
-
-                /* Remember we created this */
-                util_dynarray_append(&batch->transient_indices, unsigned, index);
-
-                update_offset = true;
+                batch->transient_offset = offset + sz;
         } else {
-                /* Create a new BO and reference it */
-                bo = panfrost_drm_create_bo(screen, ALIGN_POT(sz, 4096), 0);
+                size_t bo_sz = sz < TRANSIENT_SLAB_SIZE ?
+                               TRANSIENT_SLAB_SIZE : ALIGN_POT(sz, 4096);
+
+                /* We can't reuse the current BO, but we can create a new one. */
+                bo = panfrost_drm_create_bo(screen, bo_sz, 0);
                 panfrost_batch_add_bo(batch, bo);
 
                 /* Creating a BO adds a reference, and then the job adds a
                  * second one. So we need to pop back one reference */
                 panfrost_bo_unreference(&screen->base, bo);
+
+                if (sz < TRANSIENT_SLAB_SIZE) {
+                        batch->transient_bo = bo;
+                        batch->transient_offset = offset + sz;
+                }
         }
 
         struct panfrost_transfer ret = {
                 .cpu = bo->cpu + offset,
                 .gpu = bo->gpu + offset,
         };
-
-        if (update_offset)
-                batch->transient_offset = offset + sz;
-        pthread_mutex_unlock(&screen->transient_lock);
 
         return ret;
 

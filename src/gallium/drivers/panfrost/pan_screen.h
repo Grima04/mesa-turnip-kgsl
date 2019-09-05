@@ -105,17 +105,6 @@ struct panfrost_screen {
 
         struct renderonly *ro;
 
-        pthread_mutex_t transient_lock;
-
-        /* Transient memory management is based on borrowing fixed-size slabs
-         * off the screen (loaning them out to the batch). Dynamic array
-         * container of panfrost_bo */
-
-        struct util_dynarray transient_bo;
-
-        /* Set of free transient BOs */
-        BITSET_DECLARE(free_transient, MAX_TRANSIENT_SLABS);
-
         pthread_mutex_t bo_cache_lock;
 
         /* The BO cache is a set of buckets with power-of-two sizes ranging
@@ -129,16 +118,6 @@ static inline struct panfrost_screen *
 pan_screen(struct pipe_screen *p)
 {
         return (struct panfrost_screen *)p;
-}
-
-/* Get a transient BO off the screen given a
- * particular index */
-
-static inline struct panfrost_bo *
-pan_bo_for_index(struct panfrost_screen *screen, unsigned index)
-{
-        return *(util_dynarray_element(&screen->transient_bo,
-                                struct panfrost_bo *, index));
 }
 
 void

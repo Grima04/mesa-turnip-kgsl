@@ -543,7 +543,6 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         struct panfrost_screen *screen = pan_screen(pscreen);
         panfrost_bo_cache_evict_all(screen);
         pthread_mutex_destroy(&screen->bo_cache_lock);
-        pthread_mutex_destroy(&screen->transient_lock);
         drmFreeVersion(screen->kernel_version);
         ralloc_free(screen);
 }
@@ -640,9 +639,6 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                              screen->gpu_id);
                 return NULL;
         }
-
-        pthread_mutex_init(&screen->transient_lock, NULL);
-        util_dynarray_init(&screen->transient_bo, screen);
 
         pthread_mutex_init(&screen->bo_cache_lock, NULL);
         for (unsigned i = 0; i < ARRAY_SIZE(screen->bo_cache); ++i)

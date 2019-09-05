@@ -48,7 +48,6 @@ panfrost_create_batch(struct panfrost_context *ctx)
 
         util_dynarray_init(&batch->headers, batch);
         util_dynarray_init(&batch->gpu_headers, batch);
-        util_dynarray_init(&batch->transient_indices, batch);
 
         return batch;
 }
@@ -65,16 +64,6 @@ panfrost_free_batch(struct panfrost_batch *batch)
                 struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
                 panfrost_bo_unreference(ctx->base.screen, bo);
         }
-
-        /* Free up the transient BOs we're sitting on */
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-
-        pthread_mutex_lock(&screen->transient_lock);
-        util_dynarray_foreach(&batch->transient_indices, unsigned, index) {
-                /* Mark it free */
-                BITSET_SET(screen->free_transient, *index);
-        }
-        pthread_mutex_unlock(&screen->transient_lock);
 
         /* Unreference the polygon list */
         panfrost_bo_unreference(ctx->base.screen, batch->polygon_list);

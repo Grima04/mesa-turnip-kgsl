@@ -107,8 +107,8 @@ struct panfrost_batch {
         /* BOs referenced -- will be used for flushing logic */
         struct set *bos;
 
-        /* Indices of transient BOs referenced */
-        struct util_dynarray transient_indices;
+        /* Current transient BO */
+	struct panfrost_bo *transient_bo;
 
         /* Within the topmost transient BO, how much has been used? */
         unsigned transient_offset;
