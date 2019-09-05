@@ -1577,9 +1577,6 @@ panfrost_draw_vbo(
         if (panfrost_scissor_culls_everything(ctx))
                 return;
 
-        ctx->payloads[PIPE_SHADER_VERTEX].offset_start = info->start;
-        ctx->payloads[PIPE_SHADER_FRAGMENT].offset_start = info->start;
-
         int mode = info->mode;
 
         /* Fallback unsupported restart index */
@@ -1609,6 +1606,9 @@ panfrost_draw_vbo(
                         return;
                 }
         }
+
+        ctx->payloads[PIPE_SHADER_VERTEX].offset_start = info->start;
+        ctx->payloads[PIPE_SHADER_FRAGMENT].offset_start = info->start;
 
         /* Now that we have a guaranteed terminating path, find the job.
          * Assignment commented out to prevent unused warning */
