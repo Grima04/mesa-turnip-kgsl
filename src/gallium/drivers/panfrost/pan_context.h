@@ -110,9 +110,9 @@ struct panfrost_context {
         /* Compiler context */
         struct midgard_screen compiler;
 
-        /* Bound job and map of panfrost_job_key to jobs */
-        struct panfrost_job *job;
-        struct hash_table *jobs;
+        /* Bound job batch and map of panfrost_batch_key to job batches */
+        struct panfrost_batch *batch;
+        struct hash_table *batches;
 
         /* panfrost_resource -> panfrost_job */
         struct hash_table *write_jobs;
@@ -189,7 +189,7 @@ struct panfrost_context {
          * errors due to unsupported reucrsion */
 
         struct blitter_context *blitter_wallpaper;
-        struct panfrost_job *wallpaper_batch;
+        struct panfrost_batch *wallpaper_batch;
 
         struct panfrost_blend_state *blend;
 
@@ -208,7 +208,7 @@ struct panfrost_context {
          * still busy executing frame N-1. So hold a reference to
          * yesterjob */
         int last_fragment_flushed;
-        struct panfrost_job *last_job;
+        struct panfrost_batch *last_batch;
 };
 
 /* Corresponds to the CSO */
@@ -353,7 +353,7 @@ mali_ptr
 panfrost_vertex_buffer_address(struct panfrost_context *ctx, unsigned i);
 
 void
-panfrost_emit_vertex_data(struct panfrost_job *batch);
+panfrost_emit_vertex_data(struct panfrost_batch *batch);
 
 struct pan_shift_odd {
         unsigned shift;

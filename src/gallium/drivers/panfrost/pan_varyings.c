@@ -65,9 +65,9 @@ panfrost_emit_streamout(
         slot->size = MIN2(max_size, expected_size);
 
         /* Grab the BO and bind it to the batch */
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_bo *bo = pan_resource(target->buffer)->bo;
-        panfrost_job_add_bo(batch, bo);
+        panfrost_batch_add_bo(batch, bo);
 
         mali_ptr addr = bo->gpu + target->buffer_offset + (offset * slot->stride);
         slot->elements = addr;

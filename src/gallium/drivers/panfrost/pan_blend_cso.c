@@ -227,7 +227,7 @@ struct panfrost_blend_final
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 {
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* Grab the format, falling back gracefully if called invalidly (which
          * has to happen for no-color-attachment FBOs, for instance)  */
@@ -276,7 +276,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         memcpy(final.shader.bo->cpu, shader->buffer, shader->size);
 
         /* Pass BO ownership to job */
-        panfrost_job_add_bo(job, final.shader.bo);
+        panfrost_batch_add_bo(batch, final.shader.bo);
         panfrost_bo_unreference(ctx->base.screen, final.shader.bo);
 
         if (shader->patch_index) {

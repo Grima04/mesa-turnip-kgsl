@@ -163,7 +163,7 @@ panfrost_drm_import_bo(struct panfrost_screen *screen, int fd);
 int
 panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo *bo);
 int
-panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws);
+panfrost_drm_submit_vs_fs_batch(struct panfrost_context *ctx, bool has_draws);
 void
 panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
                                   struct pipe_fence_handle **fence);

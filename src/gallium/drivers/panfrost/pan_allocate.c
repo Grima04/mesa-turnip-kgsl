@@ -63,7 +63,7 @@ struct panfrost_transfer
 panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
 {
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* Pad the size */
         sz = ALIGN_POT(sz, ALIGNMENT);
@@ -111,7 +111,7 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
                         bo = panfrost_create_slab(screen, &index);
                 }
 
-                panfrost_job_add_bo(batch, bo);
+                panfrost_batch_add_bo(batch, bo);
 
                 /* Remember we created this */
                 util_dynarray_append(&batch->transient_indices, unsigned, index);
@@ -120,7 +120,7 @@ panfrost_allocate_transient(struct panfrost_context *ctx, size_t sz)
         } else {
                 /* Create a new BO and reference it */
                 bo = panfrost_drm_create_bo(screen, ALIGN_POT(sz, 4096), 0);
-                panfrost_job_add_bo(batch, bo);
+                panfrost_batch_add_bo(batch, bo);
 
                 /* Creating a BO adds a reference, and then the job adds a
                  * second one. So we need to pop back one reference */

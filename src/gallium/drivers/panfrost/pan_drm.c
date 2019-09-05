@@ -248,11 +248,12 @@ panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo 
 }
 
 static int
-panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
+panfrost_drm_submit_batch(struct panfrost_context *ctx, u64 first_job_desc,
+                          int reqs)
 {
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct drm_panfrost_submit submit = {0,};
         int *bo_handles, ret;
 
@@ -261,13 +262,13 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
 
         submit.out_sync = ctx->out_sync;
 
-        submit.jc = job_desc;
+        submit.jc = first_job_desc;
         submit.requirements = reqs;
 
-        bo_handles = calloc(job->bos->entries, sizeof(*bo_handles));
+        bo_handles = calloc(batch->bos->entries, sizeof(*bo_handles));
         assert(bo_handles);
 
-        set_foreach(job->bos, entry) {
+        set_foreach(batch->bos, entry) {
                 struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
                 assert(bo->gem_handle > 0);
                 bo_handles[submit.bo_handle_count++] = bo->gem_handle;
@@ -292,23 +293,25 @@ panfrost_drm_submit_job(struct panfrost_context *ctx, u64 job_desc, int reqs)
 }
 
 int
-panfrost_drm_submit_vs_fs_job(struct panfrost_context *ctx, bool has_draws)
+panfrost_drm_submit_vs_fs_batch(struct panfrost_context *ctx, bool has_draws)
 {
         int ret = 0;
 
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        panfrost_job_add_bo(job, ctx->scratchpad.bo);
-        panfrost_job_add_bo(job, ctx->tiler_heap.bo);
-        panfrost_job_add_bo(job, job->polygon_list);
+        panfrost_batch_add_bo(batch, ctx->scratchpad.bo);
+        panfrost_batch_add_bo(batch, ctx->tiler_heap.bo);
+        panfrost_batch_add_bo(batch, batch->polygon_list);
 
-        if (job->first_job.gpu) {
-                ret = panfrost_drm_submit_job(ctx, job->first_job.gpu, 0);
+        if (batch->first_job.gpu) {
+                ret = panfrost_drm_submit_batch(ctx, batch->first_job.gpu, 0);
                 assert(!ret);
         }
 
-        if (job->first_tiler.gpu || job->clear) {
-                ret = panfrost_drm_submit_job(ctx, panfrost_fragment_job(ctx, has_draws), PANFROST_JD_REQ_FS);
+        if (batch->first_tiler.gpu || batch->clear) {
+                ret = panfrost_drm_submit_batch(ctx,
+                                                panfrost_fragment_job(ctx, has_draws),
+                                                PANFROST_JD_REQ_FS);
                 assert(!ret);
         }
 
@@ -353,7 +356,7 @@ panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
                 ctx->last_fragment_flushed = true;
 
                 /* The job finished up, so we're safe to clean it up now */
-                panfrost_free_job(ctx, ctx->last_job);
+                panfrost_free_batch(ctx, ctx->last_batch);
         }
 
         if (fence) {

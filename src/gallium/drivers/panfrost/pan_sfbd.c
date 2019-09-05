@@ -37,39 +37,39 @@ panfrost_sfbd_format(struct pipe_surface *surf)
 
 static void
 panfrost_sfbd_clear(
-        struct panfrost_job *job,
+        struct panfrost_batch *batch,
         struct mali_single_framebuffer *sfbd)
 {
-        if (job->clear & PIPE_CLEAR_COLOR) {
-                sfbd->clear_color_1 = job->clear_color[0][0];
-                sfbd->clear_color_2 = job->clear_color[0][1];
-                sfbd->clear_color_3 = job->clear_color[0][2];
-                sfbd->clear_color_4 = job->clear_color[0][3];
+        if (batch->clear & PIPE_CLEAR_COLOR) {
+                sfbd->clear_color_1 = batch->clear_color[0][0];
+                sfbd->clear_color_2 = batch->clear_color[0][1];
+                sfbd->clear_color_3 = batch->clear_color[0][2];
+                sfbd->clear_color_4 = batch->clear_color[0][3];
         }
 
-        if (job->clear & PIPE_CLEAR_DEPTH) {
-                sfbd->clear_depth_1 = job->clear_depth;
-                sfbd->clear_depth_2 = job->clear_depth;
-                sfbd->clear_depth_3 = job->clear_depth;
-                sfbd->clear_depth_4 = job->clear_depth;
+        if (batch->clear & PIPE_CLEAR_DEPTH) {
+                sfbd->clear_depth_1 = batch->clear_depth;
+                sfbd->clear_depth_2 = batch->clear_depth;
+                sfbd->clear_depth_3 = batch->clear_depth;
+                sfbd->clear_depth_4 = batch->clear_depth;
         }
 
-        if (job->clear & PIPE_CLEAR_STENCIL) {
-                sfbd->clear_stencil = job->clear_stencil;
+        if (batch->clear & PIPE_CLEAR_STENCIL) {
+                sfbd->clear_stencil = batch->clear_stencil;
         }
 
         /* Set flags based on what has been cleared, for the SFBD case */
         /* XXX: What do these flags mean? */
         int clear_flags = 0x101100;
 
-        if (!(job->clear & ~(PIPE_CLEAR_COLOR | PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
+        if (!(batch->clear & ~(PIPE_CLEAR_COLOR | PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))) {
                 /* On a tiler like this, it's fastest to clear all three buffers at once */
 
                 clear_flags |= MALI_CLEAR_FAST;
         } else {
                 clear_flags |= MALI_CLEAR_SLOW;
 
-                if (job->clear & PIPE_CLEAR_STENCIL)
+                if (batch->clear & PIPE_CLEAR_STENCIL)
                         clear_flags |= MALI_CLEAR_SLOW_STENCIL;
         }
 
@@ -132,10 +132,10 @@ panfrost_sfbd_set_zsbuf(
 mali_ptr
 panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws)
 {
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct mali_single_framebuffer fb = panfrost_emit_sfbd(ctx, has_draws);
 
-        panfrost_sfbd_clear(job, &fb);
+        panfrost_sfbd_clear(batch, &fb);
 
         /* SFBD does not support MRT natively; sanity check */
         assert(ctx->pipe_framebuffer.nr_cbufs == 1);
@@ -144,7 +144,7 @@ panfrost_sfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         if (ctx->pipe_framebuffer.zsbuf)
                 panfrost_sfbd_set_zsbuf(&fb, ctx->pipe_framebuffer.zsbuf);
 
-        if (job->requirements & PAN_REQ_MSAA)
+        if (batch->requirements & PAN_REQ_MSAA)
                 fb.format |= MALI_FRAMEBUFFER_MSAA_A | MALI_FRAMEBUFFER_MSAA_B;
 
         return panfrost_upload_transient(ctx, &fb, sizeof(fb)) | MALI_SFBD;

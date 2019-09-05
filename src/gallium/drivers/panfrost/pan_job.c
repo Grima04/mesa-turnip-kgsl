@@ -31,35 +31,35 @@
 #include "util/u_format.h"
 #include "util/u_pack_color.h"
 
-struct panfrost_job *
-panfrost_create_job(struct panfrost_context *ctx)
+struct panfrost_batch *
+panfrost_create_batch(struct panfrost_context *ctx)
 {
-        struct panfrost_job *job = rzalloc(ctx, struct panfrost_job);
+        struct panfrost_batch *batch = rzalloc(ctx, struct panfrost_batch);
 
-        job->ctx = ctx;
+        batch->ctx = ctx;
 
-        job->bos = _mesa_set_create(job,
-                                    _mesa_hash_pointer,
-                                    _mesa_key_pointer_equal);
+        batch->bos = _mesa_set_create(batch,
+                                      _mesa_hash_pointer,
+                                      _mesa_key_pointer_equal);
 
-        job->minx = job->miny = ~0;
-        job->maxx = job->maxy = 0;
-        job->transient_offset = 0;
+        batch->minx = batch->miny = ~0;
+        batch->maxx = batch->maxy = 0;
+        batch->transient_offset = 0;
 
-        util_dynarray_init(&job->headers, job);
-        util_dynarray_init(&job->gpu_headers, job);
-        util_dynarray_init(&job->transient_indices, job);
+        util_dynarray_init(&batch->headers, batch);
+        util_dynarray_init(&batch->gpu_headers, batch);
+        util_dynarray_init(&batch->transient_indices, batch);
 
-        return job;
+        return batch;
 }
 
 void
-panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job)
+panfrost_free_batch(struct panfrost_context *ctx, struct panfrost_batch *batch)
 {
-        if (!job)
+        if (!batch)
                 return;
 
-        set_foreach(job->bos, entry) {
+        set_foreach(batch->bos, entry) {
                 struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
                 panfrost_bo_unreference(ctx->base.screen, bo);
         }
@@ -68,30 +68,30 @@ panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job)
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
         pthread_mutex_lock(&screen->transient_lock);
-        util_dynarray_foreach(&job->transient_indices, unsigned, index) {
+        util_dynarray_foreach(&batch->transient_indices, unsigned, index) {
                 /* Mark it free */
                 BITSET_SET(screen->free_transient, *index);
         }
         pthread_mutex_unlock(&screen->transient_lock);
 
         /* Unreference the polygon list */
-        panfrost_bo_unreference(ctx->base.screen, job->polygon_list);
+        panfrost_bo_unreference(ctx->base.screen, batch->polygon_list);
 
-        _mesa_hash_table_remove_key(ctx->jobs, &job->key);
+        _mesa_hash_table_remove_key(ctx->batches, &batch->key);
 
-        if (ctx->job == job)
-                ctx->job = NULL;
+        if (ctx->batch == batch)
+                ctx->batch = NULL;
 
-        ralloc_free(job);
+        ralloc_free(batch);
 }
 
-struct panfrost_job *
-panfrost_get_job(struct panfrost_context *ctx,
+struct panfrost_batch *
+panfrost_get_batch(struct panfrost_context *ctx,
                  struct pipe_surface **cbufs, struct pipe_surface *zsbuf)
 {
         /* Lookup the job first */
 
-        struct panfrost_job_key key = {
+        struct panfrost_batch_key key = {
                 .cbufs = {
                         cbufs[0],
                         cbufs[1],
@@ -101,27 +101,27 @@ panfrost_get_job(struct panfrost_context *ctx,
                 .zsbuf = zsbuf
         };
 
-        struct hash_entry *entry = _mesa_hash_table_search(ctx->jobs, &key);
+        struct hash_entry *entry = _mesa_hash_table_search(ctx->batches, &key);
 
         if (entry)
                 return entry->data;
 
         /* Otherwise, let's create a job */
 
-        struct panfrost_job *job = panfrost_create_job(ctx);
+        struct panfrost_batch *batch = panfrost_create_batch(ctx);
 
         /* Save the created job */
 
-        memcpy(&job->key, &key, sizeof(key));
-        _mesa_hash_table_insert(ctx->jobs, &job->key, job);
+        memcpy(&batch->key, &key, sizeof(key));
+        _mesa_hash_table_insert(ctx->batches, &batch->key, batch);
 
-        return job;
+        return batch;
 }
 
 /* Get the job corresponding to the FBO we're currently rendering into */
 
-struct panfrost_job *
-panfrost_get_job_for_fbo(struct panfrost_context *ctx)
+struct panfrost_batch *
+panfrost_get_batch_for_fbo(struct panfrost_context *ctx)
 {
         /* If we're wallpapering, we special case to workaround
          * u_blitter abuse */
@@ -131,38 +131,38 @@ panfrost_get_job_for_fbo(struct panfrost_context *ctx)
 
         /* If we already began rendering, use that */
 
-        if (ctx->job) {
-                assert(ctx->job->key.zsbuf == ctx->pipe_framebuffer.zsbuf &&
-                       !memcmp(ctx->job->key.cbufs,
+        if (ctx->batch) {
+                assert(ctx->batch->key.zsbuf == ctx->pipe_framebuffer.zsbuf &&
+                       !memcmp(ctx->batch->key.cbufs,
                                ctx->pipe_framebuffer.cbufs,
-                               sizeof(ctx->job->key.cbufs)));
-                return ctx->job;
+                               sizeof(ctx->batch->key.cbufs)));
+                return ctx->batch;
         }
 
         /* If not, look up the job */
 
         struct pipe_surface **cbufs = ctx->pipe_framebuffer.cbufs;
         struct pipe_surface *zsbuf = ctx->pipe_framebuffer.zsbuf;
-        struct panfrost_job *job = panfrost_get_job(ctx, cbufs, zsbuf);
+        struct panfrost_batch *batch = panfrost_get_batch(ctx, cbufs, zsbuf);
 
         /* Set this job as the current FBO job. Will be reset when updating the
          * FB state and when submitting or releasing a job.
          */
-        ctx->job = job;
-        return job;
+        ctx->batch = batch;
+        return batch;
 }
 
 void
-panfrost_job_add_bo(struct panfrost_job *job, struct panfrost_bo *bo)
+panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo)
 {
         if (!bo)
                 return;
 
-        if (_mesa_set_search(job->bos, bo))
+        if (_mesa_set_search(batch->bos, bo))
                 return;
 
         panfrost_bo_reference(bo);
-        _mesa_set_add(job->bos, bo);
+        _mesa_set_add(batch->bos, bo);
 }
 
 /* Returns the polygon list's GPU address if available, or otherwise allocates
@@ -170,7 +170,7 @@ panfrost_job_add_bo(struct panfrost_job *job, struct panfrost_bo *bo)
  * since we'll hit the BO cache and this is one-per-batch anyway. */
 
 mali_ptr
-panfrost_job_get_polygon_list(struct panfrost_job *batch, unsigned size)
+panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
 {
         if (batch->polygon_list) {
                 assert(batch->polygon_list->size >= size);
@@ -194,52 +194,52 @@ panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
         struct hash_entry *entry = _mesa_hash_table_search(panfrost->write_jobs,
                                    prsc);
         if (entry) {
-                struct panfrost_job *job = entry->data;
-                panfrost_job_submit(panfrost, job);
+                struct panfrost_batch *batch = entry->data;
+                panfrost_batch_submit(panfrost, job);
         }
 #endif
         /* TODO stub */
 }
 
 void
-panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job)
+panfrost_batch_submit(struct panfrost_context *ctx, struct panfrost_batch *batch)
 {
         int ret;
 
-        assert(job);
-        panfrost_scoreboard_link_batch(job);
+        assert(batch);
+        panfrost_scoreboard_link_batch(batch);
 
-        bool has_draws = job->last_job.gpu;
+        bool has_draws = batch->last_job.gpu;
 
-        ret = panfrost_drm_submit_vs_fs_job(ctx, has_draws);
+        ret = panfrost_drm_submit_vs_fs_batch(ctx, has_draws);
 
         if (ret)
-                fprintf(stderr, "panfrost_job_submit failed: %d\n", ret);
+                fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
 
         /* The job has been submitted, let's invalidate the current FBO job
          * cache.
 	 */
-        assert(!ctx->job || job == ctx->job);
-        ctx->job = NULL;
+        assert(!ctx->batch || batch == ctx->batch);
+        ctx->batch = NULL;
 
-        /* Remove the job from the ctx->jobs set so that future
-         * panfrost_get_job() calls don't see it.
+        /* Remove the job from the ctx->batches set so that future
+         * panfrost_get_batch() calls don't see it.
          * We must reset the job key to avoid removing another valid entry when
          * the job is freed.
          */
-        _mesa_hash_table_remove_key(ctx->jobs, &job->key);
-        memset(&job->key, 0, sizeof(job->key));
+        _mesa_hash_table_remove_key(ctx->batches, &batch->key);
+        memset(&batch->key, 0, sizeof(batch->key));
 }
 
 void
-panfrost_job_set_requirements(struct panfrost_context *ctx,
-                              struct panfrost_job *job)
+panfrost_batch_set_requirements(struct panfrost_context *ctx,
+                                struct panfrost_batch *batch)
 {
         if (ctx->rasterizer && ctx->rasterizer->base.multisample)
-                job->requirements |= PAN_REQ_MSAA;
+                batch->requirements |= PAN_REQ_MSAA;
 
         if (ctx->depth_stencil && ctx->depth_stencil->depth.writemask)
-                job->requirements |= PAN_REQ_DEPTH_WRITE;
+                batch->requirements |= PAN_REQ_DEPTH_WRITE;
 }
 
 /* Helper to smear a 32-bit color across 128-bit components */
@@ -336,11 +336,11 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
 }
 
 void
-panfrost_job_clear(struct panfrost_context *ctx,
-                   struct panfrost_job *job,
-                   unsigned buffers,
-                   const union pipe_color_union *color,
-                   double depth, unsigned stencil)
+panfrost_batch_clear(struct panfrost_context *ctx,
+                     struct panfrost_batch *batch,
+                     unsigned buffers,
+                     const union pipe_color_union *color,
+                     double depth, unsigned stencil)
 
 {
         if (buffers & PIPE_CLEAR_COLOR) {
@@ -349,28 +349,28 @@ panfrost_job_clear(struct panfrost_context *ctx,
                                 continue;
 
                         enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
-                        pan_pack_color(job->clear_color[i], color, format);
+                        pan_pack_color(batch->clear_color[i], color, format);
                 }
         }
 
         if (buffers & PIPE_CLEAR_DEPTH) {
-                job->clear_depth = depth;
+                batch->clear_depth = depth;
         }
 
         if (buffers & PIPE_CLEAR_STENCIL) {
-                job->clear_stencil = stencil;
+                batch->clear_stencil = stencil;
         }
 
-        job->clear |= buffers;
+        batch->clear |= buffers;
 
         /* Clearing affects the entire framebuffer (by definition -- this is
          * the Gallium clear callback, which clears the whole framebuffer. If
          * the scissor test were enabled from the GL side, the state tracker
          * would emit a quad instead and we wouldn't go down this code path) */
 
-        panfrost_job_union_scissor(job, 0, 0,
-                                   ctx->pipe_framebuffer.width,
-                                   ctx->pipe_framebuffer.height);
+        panfrost_batch_union_scissor(batch, 0, 0,
+                                     ctx->pipe_framebuffer.width,
+                                     ctx->pipe_framebuffer.height);
 }
 
 void
@@ -381,60 +381,60 @@ panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
 
         panfrost_flush_jobs_writing_resource(panfrost, prsc);
 
-        hash_table_foreach(panfrost->jobs, entry) {
-                struct panfrost_job *job = entry->data;
+        hash_table_foreach(panfrost->batches, entry) {
+                struct panfrost_batch *batch = entry->data;
 
-                if (_mesa_set_search(job->bos, rsc->bo)) {
+                if (_mesa_set_search(batch->bos, rsc->bo)) {
                         printf("TODO: submit job for flush\n");
-                        //panfrost_job_submit(panfrost, job);
+                        //panfrost_batch_submit(panfrost, job);
                         continue;
                 }
         }
 }
 
 static bool
-panfrost_job_compare(const void *a, const void *b)
+panfrost_batch_compare(const void *a, const void *b)
 {
-        return memcmp(a, b, sizeof(struct panfrost_job_key)) == 0;
+        return memcmp(a, b, sizeof(struct panfrost_batch_key)) == 0;
 }
 
 static uint32_t
-panfrost_job_hash(const void *key)
+panfrost_batch_hash(const void *key)
 {
-        return _mesa_hash_data(key, sizeof(struct panfrost_job_key));
+        return _mesa_hash_data(key, sizeof(struct panfrost_batch_key));
 }
 
 /* Given a new bounding rectangle (scissor), let the job cover the union of the
  * new and old bounding rectangles */
 
 void
-panfrost_job_union_scissor(struct panfrost_job *job,
-                           unsigned minx, unsigned miny,
-                           unsigned maxx, unsigned maxy)
+panfrost_batch_union_scissor(struct panfrost_batch *batch,
+                             unsigned minx, unsigned miny,
+                             unsigned maxx, unsigned maxy)
 {
-        job->minx = MIN2(job->minx, minx);
-        job->miny = MIN2(job->miny, miny);
-        job->maxx = MAX2(job->maxx, maxx);
-        job->maxy = MAX2(job->maxy, maxy);
+        batch->minx = MIN2(batch->minx, minx);
+        batch->miny = MIN2(batch->miny, miny);
+        batch->maxx = MAX2(batch->maxx, maxx);
+        batch->maxy = MAX2(batch->maxy, maxy);
 }
 
 void
-panfrost_job_intersection_scissor(struct panfrost_job *job,
+panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
                                   unsigned minx, unsigned miny,
                                   unsigned maxx, unsigned maxy)
 {
-        job->minx = MAX2(job->minx, minx);
-        job->miny = MAX2(job->miny, miny);
-        job->maxx = MIN2(job->maxx, maxx);
-        job->maxy = MIN2(job->maxy, maxy);
+        batch->minx = MAX2(batch->minx, minx);
+        batch->miny = MAX2(batch->miny, miny);
+        batch->maxx = MIN2(batch->maxx, maxx);
+        batch->maxy = MIN2(batch->maxy, maxy);
 }
 
 void
-panfrost_job_init(struct panfrost_context *ctx)
+panfrost_batch_init(struct panfrost_context *ctx)
 {
-        ctx->jobs = _mesa_hash_table_create(ctx,
-                                            panfrost_job_hash,
-                                            panfrost_job_compare);
+        ctx->batches = _mesa_hash_table_create(ctx,
+                                               panfrost_batch_hash,
+                                               panfrost_batch_compare);
 
         ctx->write_jobs = _mesa_hash_table_create(ctx,
                           _mesa_hash_pointer,

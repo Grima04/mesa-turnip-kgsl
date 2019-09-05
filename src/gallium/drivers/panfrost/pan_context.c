@@ -61,7 +61,7 @@ panfrost_emit_midg_tiler(
         unsigned vertex_count)
 {
         struct midgard_tiler_descriptor t = {};
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         t.hierarchy_mask =
                 panfrost_choose_hierarchy_mask(width, height, vertex_count);
@@ -77,8 +77,9 @@ panfrost_emit_midg_tiler(
         /* Sanity check */
 
         if (t.hierarchy_mask) {
-                t.polygon_list = panfrost_job_get_polygon_list(batch,
-                                header_size + t.polygon_list_size);
+                t.polygon_list = panfrost_batch_get_polygon_list(batch,
+                                                                 header_size +
+                                                                 t.polygon_list_size);
 
 
                 /* Allow the entire tiler heap */
@@ -177,9 +178,9 @@ panfrost_clear(
         double depth, unsigned stencil)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        panfrost_job_clear(ctx, job, buffers, color, depth, stencil);
+        panfrost_batch_clear(ctx, batch, buffers, color, depth, stencil);
 }
 
 static mali_ptr
@@ -617,8 +618,8 @@ panfrost_upload_tex(
         unsigned afbc_bit = (is_afbc && !is_zs) ? 1 : 0;
 
         /* Add the BO to the job so it's retained until the job is done. */
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
-        panfrost_job_add_bo(job, rsrc->bo);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        panfrost_batch_add_bo(batch, rsrc->bo);
 
         /* Add the usage flags in, since they can change across the CSO
          * lifetime due to layout switches */
@@ -732,10 +733,10 @@ static void panfrost_upload_ssbo_sysval(
         struct pipe_shader_buffer sb = ctx->ssbo[st][ssbo_id];
 
         /* Compute address */
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_bo *bo = pan_resource(sb.buffer)->bo;
 
-        panfrost_job_add_bo(batch, bo);
+        panfrost_batch_add_bo(batch, bo);
 
         /* Upload address and size as sysval */
         uniform->du[0] = bo->gpu + sb.buffer_offset;
@@ -883,13 +884,13 @@ panfrost_patch_shader_state_compute(
 void
 panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 {
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
         panfrost_attach_vt_framebuffer(ctx);
 
         if (with_vertex_data) {
-                panfrost_emit_vertex_data(job);
+                panfrost_emit_vertex_data(batch);
 
                 /* Varyings emitted for -all- geometry */
                 unsigned total_count = ctx->padded_count * ctx->instance_count;
@@ -906,7 +907,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_MSAA, !msaa);
         }
 
-        panfrost_job_set_requirements(ctx, job);
+        panfrost_batch_set_requirements(ctx, batch);
 
         if (ctx->occlusion_query) {
                 ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables |= MALI_OCCLUSION_QUERY | MALI_OCCLUSION_PRECISE;
@@ -937,7 +938,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
 
                 panfrost_patch_shader_state(ctx, variant, PIPE_SHADER_FRAGMENT, false);
 
-                panfrost_job_add_bo(job, variant->bo);
+                panfrost_batch_add_bo(batch, variant->bo);
 
 #define COPY(name) ctx->fragment_shader_core.name = variant->tripipe->name
 
@@ -1271,7 +1272,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
          * just... be faster :) */
 
         if (!ctx->wallpaper_batch)
-                panfrost_job_union_scissor(job, minx, miny, maxx, maxy);
+                panfrost_batch_union_scissor(batch, minx, miny, maxx, maxy);
 
         /* Upload */
 
@@ -1311,7 +1312,7 @@ panfrost_queue_draw(struct panfrost_context *ctx)
         if (!rasterizer_discard)
                 tiler = panfrost_vertex_tiler_job(ctx, true);
 
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         if (rasterizer_discard)
                 panfrost_scoreboard_queue_vertex_job(batch, vertex, FALSE);
@@ -1326,9 +1327,9 @@ panfrost_queue_draw(struct panfrost_context *ctx)
 static void
 panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
                       struct pipe_fence_handle **fence,
-                      struct panfrost_job *job)
+                      struct panfrost_batch *batch)
 {
-        panfrost_job_submit(ctx, job);
+        panfrost_batch_submit(ctx, batch);
 
         /* If visual, we can stall a frame */
 
@@ -1336,7 +1337,7 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
                 panfrost_drm_force_flush_fragment(ctx, fence);
 
         ctx->last_fragment_flushed = false;
-        ctx->last_job = job;
+        ctx->last_batch = batch;
 
         /* If readback, flush now (hurts the pipelined performance) */
         if (flush_immediate)
@@ -1362,7 +1363,7 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
                 return;
 
         /* Save the batch */
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         ctx->wallpaper_batch = batch;
 
@@ -1374,10 +1375,11 @@ panfrost_draw_wallpaper(struct pipe_context *pipe)
         unsigned damage_height = (rsrc->damage.extent.maxy - rsrc->damage.extent.miny);
 
         if (damage_width && damage_height) {
-                panfrost_job_intersection_scissor(batch, rsrc->damage.extent.minx,
-                                                  rsrc->damage.extent.miny,
-                                                  rsrc->damage.extent.maxx,
-                                                  rsrc->damage.extent.maxy);
+                panfrost_batch_intersection_scissor(batch,
+                                                    rsrc->damage.extent.minx,
+                                                    rsrc->damage.extent.miny,
+                                                    rsrc->damage.extent.maxx,
+                                                    rsrc->damage.extent.maxy);
         }
 
         /* FIXME: Looks like aligning on a tile is not enough, but
@@ -1454,12 +1456,12 @@ panfrost_flush(
         unsigned flags)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* Nothing to do! */
-        if (!job->last_job.gpu && !job->clear) return;
+        if (!batch->last_job.gpu && !batch->clear) return;
 
-        if (!job->clear && job->last_tiler.gpu)
+        if (!batch->clear && batch->last_tiler.gpu)
                 panfrost_draw_wallpaper(&ctx->base);
 
         /* Whether to stall the pipeline for immediately correct results. Since
@@ -1468,7 +1470,7 @@ panfrost_flush(
         bool flush_immediate = /*flags & PIPE_FLUSH_END_OF_FRAME*/true;
 
         /* Submit the frame itself */
-        panfrost_submit_frame(ctx, flush_immediate, fence, job);
+        panfrost_submit_frame(ctx, flush_immediate, fence, batch);
 
         /* Prepare for the next frame */
         panfrost_invalidate_frame(ctx);
@@ -1525,11 +1527,11 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
         struct panfrost_resource *rsrc = (struct panfrost_resource *) (info->index.resource);
 
         off_t offset = info->start * info->index_size;
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
-                panfrost_job_add_bo(batch, rsrc->bo);
+                panfrost_batch_add_bo(batch, rsrc->bo);
                 return rsrc->bo->gpu + offset;
         } else {
                 /* Otherwise, we need to upload to transient memory */
@@ -1621,7 +1623,7 @@ panfrost_draw_vbo(
         /* Now that we have a guaranteed terminating path, find the job.
          * Assignment commented out to prevent unused warning */
 
-        /* struct panfrost_job *job = */ panfrost_get_job_for_fbo(ctx);
+        /* struct panfrost_batch *batch = */ panfrost_get_batch_for_fbo(ctx);
 
         ctx->payloads[PIPE_SHADER_FRAGMENT].prefix.draw_mode = g2m_draw_mode(mode);
 
@@ -2394,9 +2396,9 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
          * state is being restored by u_blitter
          */
 
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         bool is_scanout = panfrost_is_scanout(ctx);
-        bool has_draws = job->last_job.gpu;
+        bool has_draws = batch->last_job.gpu;
 
         /* Bail out early when the current and new states are the same. */
         if (util_framebuffer_state_equal(&ctx->pipe_framebuffer, fb))
@@ -2424,7 +2426,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         /* Invalidate the FBO job cache since we've just been assigned a new
          * FB state.
          */
-        ctx->job = NULL;
+        ctx->batch = NULL;
 
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
 
@@ -2853,11 +2855,11 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         assert(ctx->blitter_wallpaper);
 
         ctx->last_fragment_flushed = true;
-        ctx->last_job = NULL;
+        ctx->last_batch = NULL;
 
         /* Prepare for render! */
 
-        panfrost_job_init(ctx);
+        panfrost_batch_init(ctx);
         panfrost_emit_vertex_payload(ctx);
         panfrost_emit_tiler_payload(ctx);
         panfrost_invalidate_frame(ctx);

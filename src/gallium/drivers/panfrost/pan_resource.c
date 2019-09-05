@@ -770,8 +770,8 @@ panfrost_generate_mipmap(
          * reorder-type optimizations in place. But for now prioritize
          * correctness. */
 
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
-        bool has_draws = job->last_job.gpu;
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        bool has_draws = batch->last_job.gpu;
 
         if (has_draws)
                 panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);

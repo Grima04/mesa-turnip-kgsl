@@ -128,7 +128,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         memcpy(transfer.cpu + sizeof(job), payload, sizeof(*payload));
 
         /* TODO: Do we want a special compute-only batch? */
-        struct panfrost_job *batch = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* Queue the job */
         panfrost_scoreboard_queue_compute_job(batch, transfer);

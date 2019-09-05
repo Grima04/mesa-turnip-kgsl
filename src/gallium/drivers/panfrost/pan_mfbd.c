@@ -179,28 +179,28 @@ panfrost_mfbd_format(struct pipe_surface *surf)
 
 static void
 panfrost_mfbd_clear(
-        struct panfrost_job *job,
+        struct panfrost_batch *batch,
         struct bifrost_framebuffer *fb,
         struct bifrost_fb_extra *fbx,
         struct bifrost_render_target *rts,
         unsigned rt_count)
 {
         for (unsigned i = 0; i < rt_count; ++i) {
-                if (!(job->clear & (PIPE_CLEAR_COLOR0 << i)))
+                if (!(batch->clear & (PIPE_CLEAR_COLOR0 << i)))
                         continue;
 
-                rts[i].clear_color_1 = job->clear_color[i][0];
-                rts[i].clear_color_2 = job->clear_color[i][1];
-                rts[i].clear_color_3 = job->clear_color[i][2];
-                rts[i].clear_color_4 = job->clear_color[i][3];
+                rts[i].clear_color_1 = batch->clear_color[i][0];
+                rts[i].clear_color_2 = batch->clear_color[i][1];
+                rts[i].clear_color_3 = batch->clear_color[i][2];
+                rts[i].clear_color_4 = batch->clear_color[i][3];
         }
 
-        if (job->clear & PIPE_CLEAR_DEPTH) {
-                fb->clear_depth = job->clear_depth;
+        if (batch->clear & PIPE_CLEAR_DEPTH) {
+                fb->clear_depth = batch->clear_depth;
         }
 
-        if (job->clear & PIPE_CLEAR_STENCIL) {
-                fb->clear_stencil = job->clear_stencil;
+        if (batch->clear & PIPE_CLEAR_STENCIL) {
+                fb->clear_stencil = batch->clear_stencil;
         }
 }
 
@@ -394,7 +394,7 @@ panfrost_mfbd_upload(
 mali_ptr
 panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
 {
-        struct panfrost_job *job = panfrost_get_job_for_fbo(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         struct bifrost_framebuffer fb = panfrost_emit_mfbd(ctx, has_draws);
         struct bifrost_fb_extra fbx = {};
@@ -410,7 +410,7 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
         fb.mfbd_flags = 0x100;
 
         /* TODO: MRT clear */
-        panfrost_mfbd_clear(job, &fb, &fbx, rts, fb.rt_count_2);
+        panfrost_mfbd_clear(batch, &fb, &fbx, rts, fb.rt_count_2);
 
 
         /* Upload either the render target or a dummy GL_NONE target */
@@ -455,12 +455,12 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
          * can safely ignore it. */
 
         if (panfrost_is_scanout(ctx)) {
-                job->requirements &= ~PAN_REQ_DEPTH_WRITE;
+                batch->requirements &= ~PAN_REQ_DEPTH_WRITE;
         }
 
         /* Actualize the requirements */
 
-        if (job->requirements & PAN_REQ_MSAA) {
+        if (batch->requirements & PAN_REQ_MSAA) {
                 rts[0].format.flags |= MALI_MFBD_FORMAT_MSAA;
 
                 /* XXX */
@@ -468,7 +468,7 @@ panfrost_mfbd_fragment(struct panfrost_context *ctx, bool has_draws)
                 fb.rt_count_2 = 4;
         }
 
-        if (job->requirements & PAN_REQ_DEPTH_WRITE)
+        if (batch->requirements & PAN_REQ_DEPTH_WRITE)
                 fb.mfbd_flags |= MALI_MFBD_DEPTH_WRITE;
 
         /* Checksumming only works with a single render target */

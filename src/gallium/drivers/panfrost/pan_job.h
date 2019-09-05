@@ -33,7 +33,7 @@
 
 /* Used as a hash table key */
 
-struct panfrost_job_key {
+struct panfrost_batch_key {
         struct pipe_surface *cbufs[4];
         struct pipe_surface *zsbuf;
 };
@@ -41,12 +41,12 @@ struct panfrost_job_key {
 #define PAN_REQ_MSAA            (1 << 0)
 #define PAN_REQ_DEPTH_WRITE     (1 << 1)
 
-/* A panfrost_job corresponds to a bound FBO we're rendering to,
+/* A panfrost_batch corresponds to a bound FBO we're rendering to,
  * collecting over multiple draws. */
 
-struct panfrost_job {
+struct panfrost_batch {
         struct panfrost_context *ctx;
-        struct panfrost_job_key key;
+        struct panfrost_batch_key key;
 
         /* Buffers cleared (PIPE_CLEAR_* bitmask) */
         unsigned clear;
@@ -119,24 +119,26 @@ struct panfrost_job {
 
 /* Functions for managing the above */
 
-struct panfrost_job *
-panfrost_create_job(struct panfrost_context *ctx);
+struct panfrost_batch *
+panfrost_create_batch(struct panfrost_context *ctx);
 
 void
-panfrost_free_job(struct panfrost_context *ctx, struct panfrost_job *job);
+panfrost_free_batch(struct panfrost_context *ctx,
+                    struct panfrost_batch *batch);
 
-struct panfrost_job *
-panfrost_get_job(struct panfrost_context *ctx,
-                 struct pipe_surface **cbufs, struct pipe_surface *zsbuf);
+struct panfrost_batch *
+panfrost_get_batch(struct panfrost_context *ctx,
+                   struct pipe_surface **cbufs,
+                   struct pipe_surface *zsbuf);
 
-struct panfrost_job *
-panfrost_get_job_for_fbo(struct panfrost_context *ctx);
+struct panfrost_batch *
+panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
 
 void
-panfrost_job_init(struct panfrost_context *ctx);
+panfrost_batch_init(struct panfrost_context *ctx);
 
 void
-panfrost_job_add_bo(struct panfrost_job *job, struct panfrost_bo *bo);
+panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo);
 
 void
 panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
@@ -147,62 +149,62 @@ panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
                                      struct pipe_resource *prsc);
 
 void
-panfrost_job_submit(struct panfrost_context *ctx, struct panfrost_job *job);
+panfrost_batch_submit(struct panfrost_context *ctx, struct panfrost_batch *batch);
 
 void
-panfrost_job_set_requirements(struct panfrost_context *ctx,
-                              struct panfrost_job *job);
+panfrost_batch_set_requirements(struct panfrost_context *ctx,
+                                struct panfrost_batch *batch);
 
 mali_ptr
-panfrost_job_get_polygon_list(struct panfrost_job *batch, unsigned size);
+panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size);
 
 void
-panfrost_job_clear(struct panfrost_context *ctx,
-                   struct panfrost_job *job,
-                   unsigned buffers,
-                   const union pipe_color_union *color,
-                   double depth, unsigned stencil);
+panfrost_batch_clear(struct panfrost_context *ctx,
+                     struct panfrost_batch *batch,
+                     unsigned buffers,
+                     const union pipe_color_union *color,
+                     double depth, unsigned stencil);
 
 void
-panfrost_job_union_scissor(struct panfrost_job *job,
-                           unsigned minx, unsigned miny,
-                           unsigned maxx, unsigned maxy);
+panfrost_batch_union_scissor(struct panfrost_batch *batch,
+                             unsigned minx, unsigned miny,
+                             unsigned maxx, unsigned maxy);
 
 void
-panfrost_job_intersection_scissor(struct panfrost_job *job,
-                                  unsigned minx, unsigned miny,
-                                  unsigned maxx, unsigned maxy);
+panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
+                                    unsigned minx, unsigned miny,
+                                    unsigned maxx, unsigned maxy);
 
 /* Scoreboarding */
 
 void
 panfrost_scoreboard_queue_compute_job(
-        struct panfrost_job *batch,
+        struct panfrost_batch *batch,
         struct panfrost_transfer job);
 
 void
 panfrost_scoreboard_queue_vertex_job(
-        struct panfrost_job *batch,
+        struct panfrost_batch *batch,
         struct panfrost_transfer vertex,
         bool requires_tiling);
 
 void
 panfrost_scoreboard_queue_tiler_job(
-        struct panfrost_job *batch,
+        struct panfrost_batch *batch,
         struct panfrost_transfer tiler);
 
 void
 panfrost_scoreboard_queue_fused_job(
-        struct panfrost_job *batch,
+        struct panfrost_batch *batch,
         struct panfrost_transfer vertex,
         struct panfrost_transfer tiler);
 void
 panfrost_scoreboard_queue_fused_job_prepend(
-        struct panfrost_job *batch,
+        struct panfrost_batch *batch,
         struct panfrost_transfer vertex,
         struct panfrost_transfer tiler);
 
 void
-panfrost_scoreboard_link_batch(struct panfrost_job *batch);
+panfrost_scoreboard_link_batch(struct panfrost_batch *batch);
 
 #endif
