@@ -422,6 +422,9 @@ GALLIVM_SOURCES := \
 	gallivm/lp_bld_logic.h \
 	gallivm/lp_bld_misc.cpp \
 	gallivm/lp_bld_misc.h \
+	gallivm/lp_bld_nir.c \
+	gallivm/lp_bld_nir.h \
+	gallivm/lp_bld_nir_soa.c \
 	gallivm/lp_bld_pack.c \
 	gallivm/lp_bld_pack.h \
 	gallivm/lp_bld_printf.c \
