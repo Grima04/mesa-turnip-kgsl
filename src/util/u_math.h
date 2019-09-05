@@ -45,6 +45,7 @@
 #include <stdarg.h>
 
 #include "bitscan.h"
+#include "u_endian.h" /* for PIPE_ARCH_BIG_ENDIAN */
 
 #ifdef __cplusplus
 extern "C" {
