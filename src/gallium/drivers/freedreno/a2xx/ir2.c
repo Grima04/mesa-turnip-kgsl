@@ -258,6 +258,22 @@ static int sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
 				is_ok &= !ctx->instr[src->num].need_emit;
 			}
 		}
+		/* don't reorder non-ssa write before read */
+		if (!instr->is_ssa) {
+			ir2_foreach_instr(p, ctx) {
+				if (!p->need_emit || p->idx >= instr->idx)
+					continue;
+
+				ir2_foreach_src(src, p) {
+					if (get_reg_src(ctx, src) == instr->reg)
+						is_ok = false;
+				}
+			}
+		}
+		/* don't reorder across predicates */
+		if (avail_count && instr->pred != avail[0]->pred)
+			is_ok = false;
+
 		if (!is_ok)
 			continue;
 
