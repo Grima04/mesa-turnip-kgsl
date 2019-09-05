@@ -488,12 +488,13 @@ static void tex_emit_cs(struct gl_context *ctx, struct radeon_state_atom *atom)
 	    OUT_BATCH_RELOC(lvl->faces[5].offset, t->mt->bo, lvl->faces[5].offset,
 			RADEON_GEM_DOMAIN_GTT|RADEON_GEM_DOMAIN_VRAM, 0, 0);
         } else {
-           OUT_BATCH_RELOC(t->tile_bits, t->mt->bo, get_base_teximage_offset(t),
+           OUT_BATCH_RELOC(t->tile_bits, t->mt->bo,
+                           get_base_teximage_offset(t) | t->tile_bits,
 		     RADEON_GEM_DOMAIN_GTT|RADEON_GEM_DOMAIN_VRAM, 0, 0);
         }
       } else {
 	if (t->bo)
-            OUT_BATCH_RELOC(t->tile_bits, t->bo, 0,
+            OUT_BATCH_RELOC(t->tile_bits, t->bo, t->tile_bits,
                             RADEON_GEM_DOMAIN_GTT|RADEON_GEM_DOMAIN_VRAM, 0, 0);
       }
    }

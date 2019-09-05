@@ -581,11 +581,11 @@ static void tex_emit_mm(struct gl_context *ctx, struct radeon_state_atom *atom)
    if (dwords > atom->cmd_size) {
      OUT_BATCH(CP_PACKET0(R200_PP_TXOFFSET_0 + (24 * i), 0));
      if (t->mt && !t->image_override) {
-        OUT_BATCH_RELOC(t->tile_bits, t->mt->bo, 0,
+        OUT_BATCH_RELOC(t->tile_bits, t->mt->bo, t->tile_bits,
 		  RADEON_GEM_DOMAIN_GTT|RADEON_GEM_DOMAIN_VRAM, 0, 0);
       } else {
 	if (t->bo)
-            OUT_BATCH_RELOC(t->tile_bits, t->bo, 0,
+            OUT_BATCH_RELOC(t->tile_bits, t->bo, t->tile_bits,
                             RADEON_GEM_DOMAIN_GTT|RADEON_GEM_DOMAIN_VRAM, 0, 0);
       }
    }
