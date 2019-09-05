@@ -173,7 +173,7 @@ static const struct fd_query_funcs acc_query_funcs = {
 
 struct fd_query *
 fd_acc_create_query2(struct fd_context *ctx, unsigned query_type,
-		const struct fd_acc_sample_provider *provider)
+		unsigned index, const struct fd_acc_sample_provider *provider)
 {
 	struct fd_acc_query *aq;
 	struct fd_query *q;
@@ -192,19 +192,21 @@ fd_acc_create_query2(struct fd_context *ctx, unsigned query_type,
 	q = &aq->base;
 	q->funcs = &acc_query_funcs;
 	q->type = query_type;
+	q->index = index;
 
 	return q;
 }
 
 struct fd_query *
-fd_acc_create_query(struct fd_context *ctx, unsigned query_type)
+fd_acc_create_query(struct fd_context *ctx, unsigned query_type,
+		unsigned index)
 {
 	int idx = pidx(query_type);
 
 	if ((idx < 0) || !ctx->acc_sample_providers[idx])
 		return NULL;
 
-	return fd_acc_create_query2(ctx, query_type,
+	return fd_acc_create_query2(ctx, query_type, index,
 			ctx->acc_sample_providers[idx]);
 }
 

@@ -266,7 +266,7 @@ static const struct fd_query_funcs hw_query_funcs = {
 };
 
 struct fd_query *
-fd_hw_create_query(struct fd_context *ctx, unsigned query_type)
+fd_hw_create_query(struct fd_context *ctx, unsigned query_type, unsigned index)
 {
 	struct fd_hw_query *hq;
 	struct fd_query *q;
@@ -289,6 +289,7 @@ fd_hw_create_query(struct fd_context *ctx, unsigned query_type)
 	q = &hq->base;
 	q->funcs = &hw_query_funcs;
 	q->type = query_type;
+	q->index = index;
 
 	return q;
 }

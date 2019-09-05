@@ -2394,6 +2394,10 @@ to upconvert to 32b float internally?
 		<bitfield name="B_OFF" low="14" high="22" shr="2" type="uint"/>
 		<bitfield name="B_EN" pos="23" type="boolean"/>
 	</reg32>
+
+	<reg32 offset="0x9218" name="VPC_SO_STREAM_COUNTS_LO"/>
+	<reg32 offset="0x9219" name="VPC_SO_STREAM_COUNTS_HI"/>
+
 	<array offset="0x921a" name="VPC_SO" stride="7" length="4">
 		<reg32 offset="0" name="BUFFER_BASE_LO"/>
 		<reg32 offset="1" name="BUFFER_BASE_HI"/>

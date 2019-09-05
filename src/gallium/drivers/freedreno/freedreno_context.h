@@ -331,7 +331,7 @@ struct fd_context {
 	void (*launch_grid)(struct fd_context *ctx, const struct pipe_grid_info *info);
 
 	/* query: */
-	struct fd_query * (*create_query)(struct fd_context *ctx, unsigned query_type);
+	struct fd_query * (*create_query)(struct fd_context *ctx, unsigned query_type, unsigned index);
 	void (*query_prepare)(struct fd_batch *batch, uint32_t num_tiles);
 	void (*query_prepare_tile)(struct fd_batch *batch, uint32_t n,
 			struct fd_ringbuffer *ring);

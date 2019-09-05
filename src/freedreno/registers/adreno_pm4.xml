@@ -15,6 +15,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="VIZQUERY_START" value="7"/> <!-- on a2xx (??) -->
 	<value name="VIZQUERY_END" value="8"/>
 	<value name="SC_WAIT_WC" value="9"/>
+	<value name="WRITE_PRIMITIVE_COUNTS" value="9" variants="A6XX"/>
 	<value name="RST_PIX_CNT" value="13"/>
 	<value name="RST_VTX_CNT" value="14"/>
 	<value name="TILE_FLUSH" value="15"/>
