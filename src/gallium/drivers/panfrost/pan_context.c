@@ -163,18 +163,16 @@ panfrost_clear(
 }
 
 static mali_ptr
-panfrost_attach_vt_mfbd(struct panfrost_context *ctx)
+panfrost_attach_vt_mfbd(struct panfrost_batch *batch)
 {
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct bifrost_framebuffer mfbd = panfrost_emit_mfbd(batch, ~0);
 
         return panfrost_upload_transient(batch, &mfbd, sizeof(mfbd)) | MALI_MFBD;
 }
 
 static mali_ptr
-panfrost_attach_vt_sfbd(struct panfrost_context *ctx)
+panfrost_attach_vt_sfbd(struct panfrost_batch *batch)
 {
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct mali_single_framebuffer sfbd = panfrost_emit_sfbd(batch, ~0);
 
         return panfrost_upload_transient(batch, &sfbd, sizeof(sfbd)) | MALI_SFBD;
@@ -191,12 +189,15 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
         }
 
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-        mali_ptr framebuffer = screen->require_sfbd ?
-                               panfrost_attach_vt_sfbd(ctx) :
-                               panfrost_attach_vt_mfbd(ctx);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        if (!batch->framebuffer)
+                batch->framebuffer = screen->require_sfbd ?
+                                     panfrost_attach_vt_sfbd(batch) :
+                                     panfrost_attach_vt_mfbd(batch);
 
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
-                ctx->payloads[i].postfix.framebuffer = framebuffer;
+                ctx->payloads[i].postfix.framebuffer = batch->framebuffer;
 }
 
 /* Reset per-frame context, called on context initialisation as well as after

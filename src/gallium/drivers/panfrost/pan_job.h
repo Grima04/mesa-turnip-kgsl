@@ -108,6 +108,9 @@ struct panfrost_batch {
 
         /* Polygon list bound to the batch, or NULL if none bound yet */
         struct panfrost_bo *polygon_list;
+
+        /* Framebuffer descriptor. */
+        mali_ptr framebuffer;
 };
 
 /* Functions for managing the above */
