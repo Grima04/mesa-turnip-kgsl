@@ -32,7 +32,7 @@ files_panfrost = files(
 
   'pan_context.c',
   'pan_afbc.c',
-  'pan_bo_cache.c',
+  'pan_bo.c',
   'pan_blit.c',
   'pan_job.c',
   'pan_drm.c',
