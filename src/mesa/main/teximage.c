@@ -6006,7 +6006,7 @@ _mesa_get_texbuffer_format(const struct gl_context *ctx, GLenum internalFormat)
       case GL_LUMINANCE32UI_EXT:
          return MESA_FORMAT_L_UINT32;
       case GL_LUMINANCE8_ALPHA8:
-         return MESA_FORMAT_L8A8_UNORM;
+         return MESA_FORMAT_LA_UNORM8;
       case GL_LUMINANCE16_ALPHA16:
          return MESA_FORMAT_LA_UNORM16;
       case GL_LUMINANCE_ALPHA16F_ARB:

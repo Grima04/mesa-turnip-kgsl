@@ -367,8 +367,6 @@ typedef enum
    MESA_FORMAT_B5G5R5A1_UNORM,                       /* ARRR RRGG GGGB BBBB */
    MESA_FORMAT_B5G5R5X1_UNORM,                       /* xRRR RRGG GGGB BBBB */
    MESA_FORMAT_A1R5G5B5_UNORM,                       /* BBBB BGGG GGRR RRRA */
-   MESA_FORMAT_L8A8_UNORM,                           /* AAAA AAAA LLLL LLLL */
-   MESA_FORMAT_A8L8_UNORM,                           /* LLLL LLLL AAAA AAAA */
    MESA_FORMAT_R8G8_UNORM,                           /* GGGG GGGG RRRR RRRR */
    MESA_FORMAT_G8R8_UNORM,                           /* RRRR RRRR GGGG GGGG */
    MESA_FORMAT_L4A4_UNORM,                                     /* AAAA LLLL */
@@ -402,7 +400,8 @@ typedef enum
    MESA_FORMAT_A_UNORM16,     /* ushort[i] = A */
    MESA_FORMAT_L_UNORM8,      /* ubyte[i] = L */
    MESA_FORMAT_L_UNORM16,     /* ushort[i] = L */
-   MESA_FORMAT_LA_UNORM16,     /* ushort[i * 2] = L, ushort[i*2+1] = A */
+   MESA_FORMAT_LA_UNORM8,     /* ubyte[i * 2] = L, ubyte[*2+1] = A */
+   MESA_FORMAT_LA_UNORM16,    /* ushort[i * 2] = L, ushort[i*2+1] = A */
    MESA_FORMAT_I_UNORM8,      /* ubyte[i] = I */
    MESA_FORMAT_I_UNORM16,     /* ushort[i] = I */
    MESA_FORMAT_R_UNORM8,      /* ubyte[i] = R */
@@ -427,8 +426,6 @@ typedef enum
    MESA_FORMAT_G16R16_SNORM,     /* RRRR RRRR RRRR RRRR GGGG GGGG GGGG GGGG */
    MESA_FORMAT_R8G8_SNORM,       /*                     GGGG GGGG RRRR RRRR */
    MESA_FORMAT_G8R8_SNORM,       /*                     RRRR RRRR GGGG GGGG */
-   MESA_FORMAT_L8A8_SNORM,       /*                     AAAA AAAA LLLL LLLL */
-   MESA_FORMAT_A8L8_SNORM,       /*                     LLLL LLLL AAAA AAAA */
 
    /* Array signed/normalized formats */
    MESA_FORMAT_A_SNORM8,      /* byte[i] = A */
@@ -439,6 +436,7 @@ typedef enum
    MESA_FORMAT_I_SNORM16,     /* short[i] = I */
    MESA_FORMAT_R_SNORM8,      /* byte[i] = R */
    MESA_FORMAT_R_SNORM16,     /* short[i] = R */
+   MESA_FORMAT_LA_SNORM8,     /* byte[i * 2] = L, [i * 2 + 1] = A */
    MESA_FORMAT_LA_SNORM16,    /* short[i * 2] = L, [i * 2 + 1] = A */
    MESA_FORMAT_RGB_SNORM16,   /* short[i*3] = R, [i*3+1] = G, [i*3+2] = B */
    MESA_FORMAT_RGBA_SNORM16,  /* ... */
@@ -453,12 +451,11 @@ typedef enum
    MESA_FORMAT_R8G8B8A8_SRGB,    /* AAAA AAAA BBBB BBBB GGGG GGGG RRRR RRRR */
    MESA_FORMAT_R8G8B8X8_SRGB,    /* xxxx xxxx BBBB BBBB GGGG GGGG RRRR RRRR */
    MESA_FORMAT_X8B8G8R8_SRGB,    /* RRRR RRRR GGGG GGGG BBBB BBBB xxxx xxxx */
-   MESA_FORMAT_L8A8_SRGB,                            /* AAAA AAAA LLLL LLLL */
-   MESA_FORMAT_A8L8_SRGB,                            /* LLLL LLLL AAAA AAAA */
    MESA_FORMAT_R_SRGB8,          /* RRRR RRRR */
 
    /* Array sRGB formats */
    MESA_FORMAT_L_SRGB8,       /* ubyte[i] = L */
+   MESA_FORMAT_LA_SRGB8,      /* ubyte[i*2] = L, [i*2+1] = A */
    MESA_FORMAT_BGR_SRGB8,     /* ubyte[i*3] = B, [i*3+1] = G, [i*3+2] = R */
 
    /* Packed float formats */

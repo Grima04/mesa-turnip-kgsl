@@ -718,9 +718,9 @@ _mesa_get_uncompressed_format(mesa_format format)
    case MESA_FORMAT_L_LATC1_SNORM:
       return MESA_FORMAT_L_SNORM8;
    case MESA_FORMAT_LA_LATC2_UNORM:
-      return MESA_FORMAT_L8A8_UNORM;
+      return MESA_FORMAT_LA_UNORM8;
    case MESA_FORMAT_LA_LATC2_SNORM:
-      return MESA_FORMAT_L8A8_SNORM;
+      return MESA_FORMAT_LA_SNORM8;
    case MESA_FORMAT_ETC1_RGB8:
    case MESA_FORMAT_ETC2_RGB8:
    case MESA_FORMAT_ETC2_SRGB8:
@@ -946,8 +946,7 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *comps = 2;
       return;
 
-   case MESA_FORMAT_L8A8_UNORM:
-   case MESA_FORMAT_A8L8_UNORM:
+   case MESA_FORMAT_LA_UNORM8:
    case MESA_FORMAT_R8G8_UNORM:
    case MESA_FORMAT_G8R8_UNORM:
       *datatype = GL_UNSIGNED_BYTE;
@@ -1070,8 +1069,7 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *comps = 1;
       return;
    case MESA_FORMAT_R8G8_SNORM:
-   case MESA_FORMAT_L8A8_SNORM:
-   case MESA_FORMAT_A8L8_SNORM:
+   case MESA_FORMAT_LA_SNORM8:
       *datatype = GL_BYTE;
       *comps = 2;
       return;
@@ -1124,8 +1122,7 @@ _mesa_uncompressed_format_to_type_and_comps(mesa_format format,
       *datatype = GL_UNSIGNED_BYTE;
       *comps = 1;
       return;
-   case MESA_FORMAT_L8A8_SRGB:
-   case MESA_FORMAT_A8L8_SRGB:
+   case MESA_FORMAT_LA_SRGB8:
       *datatype = GL_UNSIGNED_BYTE;
       *comps = 2;
       return;
