@@ -317,7 +317,9 @@ C_SOURCES := \
 
 NIR_SOURCES := \
 	nir/tgsi_to_nir.c \
-	nir/tgsi_to_nir.h
+	nir/tgsi_to_nir.h \
+	nir/nir_to_tgsi_info.c \
+	nir/nir_to_tgsi_info.h
 
 VL_SOURCES := \
 	vl/vl_bicubic_filter.c \

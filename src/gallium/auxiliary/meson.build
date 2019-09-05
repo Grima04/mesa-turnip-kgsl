@@ -417,6 +417,8 @@ if with_llvm
     'draw/draw_llvm_sample.c',
     'draw/draw_pt_fetch_shade_pipeline_llvm.c',
     'draw/draw_vs_llvm.c',
+    'nir/nir_to_tgsi_info.c',
+    'nir/nir_to_tgsi_info.h',
   )
 endif
 

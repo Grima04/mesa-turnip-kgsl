@@ -6,6 +6,8 @@ env.Append(CPPPATH = [
     '#src',
     'indices',
     'util',
+    '#src/compiler/nir',
+    '../../compiler/nir',
 ])
 
 env = env.Clone()
@@ -34,6 +36,7 @@ source = env.ParseSourceList('Makefile.sources', [
 
 if env['llvm']:
     source += env.ParseSourceList('Makefile.sources', [
+        'NIR_SOURCES',
         'GALLIVM_SOURCES',
     ])
 
