@@ -1673,7 +1673,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    struct lp_bld_tgsi_system_values system_values;
 
    memset(&system_values, 0, sizeof(system_values));
-
+   memset(&outputs, 0, sizeof(outputs));
    snprintf(func_name, sizeof(func_name), "draw_llvm_vs_variant%u",
             variant->shader->variants_cached);
 
@@ -2416,6 +2416,7 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    unsigned vector_length = variant->shader->base.vector_length;
 
    memset(&system_values, 0, sizeof(system_values));
+   memset(&outputs, 0, sizeof(outputs));
 
    snprintf(func_name, sizeof(func_name), "draw_llvm_gs_variant%u",
             variant->shader->variants_cached);
