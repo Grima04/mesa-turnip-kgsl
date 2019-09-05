@@ -381,6 +381,8 @@ if with_llvm
     'gallivm/lp_bld_init.h',
     'gallivm/lp_bld_intr.c',
     'gallivm/lp_bld_intr.h',
+    'gallivm/lp_bld_ir_common.c',
+    'gallivm/lp_bld_ir_common.h',
     'gallivm/lp_bld_limits.h',
     'gallivm/lp_bld_logic.c',
     'gallivm/lp_bld_logic.h',
