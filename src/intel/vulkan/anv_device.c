@@ -1270,6 +1270,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
+         VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *features = (void *)ext;
+         features->vulkanMemoryModel = true;
+         features->vulkanMemoryModelDeviceScope = true;
+         features->vulkanMemoryModelAvailabilityVisibilityChains = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT: {
          VkPhysicalDeviceYcbcrImageArraysFeaturesEXT *features =
             (VkPhysicalDeviceYcbcrImageArraysFeaturesEXT *)ext;

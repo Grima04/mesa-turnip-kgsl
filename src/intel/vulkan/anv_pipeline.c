@@ -168,6 +168,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    };
    struct spirv_to_nir_options spirv_options = {
       .frag_coord_is_sysval = true,
+      .use_scoped_memory_barrier = true,
       .caps = {
          .demote_to_helper_invocation = true,
          .derivative_group = true,
@@ -206,6 +207,8 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .tessellation = true,
          .transform_feedback = pdevice->info.gen >= 8,
          .variable_pointers = true,
+         .vk_memory_model = true,
+         .vk_memory_model_device_scope = true,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format =
