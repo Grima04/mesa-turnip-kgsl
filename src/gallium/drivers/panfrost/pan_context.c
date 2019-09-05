@@ -180,7 +180,7 @@ panfrost_clear(
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        panfrost_batch_clear(ctx, batch, buffers, color, depth, stencil);
+        panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
 static mali_ptr
@@ -907,7 +907,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 SET_BIT(ctx->fragment_shader_core.unknown2_4, MALI_NO_MSAA, !msaa);
         }
 
-        panfrost_batch_set_requirements(ctx, batch);
+        panfrost_batch_set_requirements(batch);
 
         if (ctx->occlusion_query) {
                 ctx->payloads[PIPE_SHADER_FRAGMENT].gl_enables |= MALI_OCCLUSION_QUERY | MALI_OCCLUSION_PRECISE;
@@ -1329,7 +1329,7 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
                       struct pipe_fence_handle **fence,
                       struct panfrost_batch *batch)
 {
-        panfrost_batch_submit(ctx, batch);
+        panfrost_batch_submit(batch);
 
         /* If visual, we can stall a frame */
 

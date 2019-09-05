@@ -123,8 +123,7 @@ struct panfrost_batch *
 panfrost_create_batch(struct panfrost_context *ctx);
 
 void
-panfrost_free_batch(struct panfrost_context *ctx,
-                    struct panfrost_batch *batch);
+panfrost_free_batch(struct panfrost_batch *batch);
 
 struct panfrost_batch *
 panfrost_get_batch(struct panfrost_context *ctx,
@@ -149,18 +148,16 @@ panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
                                      struct pipe_resource *prsc);
 
 void
-panfrost_batch_submit(struct panfrost_context *ctx, struct panfrost_batch *batch);
+panfrost_batch_submit(struct panfrost_batch *batch);
 
 void
-panfrost_batch_set_requirements(struct panfrost_context *ctx,
-                                struct panfrost_batch *batch);
+panfrost_batch_set_requirements(struct panfrost_batch *batch);
 
 mali_ptr
 panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size);
 
 void
-panfrost_batch_clear(struct panfrost_context *ctx,
-                     struct panfrost_batch *batch,
+panfrost_batch_clear(struct panfrost_batch *batch,
                      unsigned buffers,
                      const union pipe_color_union *color,
                      double depth, unsigned stencil);

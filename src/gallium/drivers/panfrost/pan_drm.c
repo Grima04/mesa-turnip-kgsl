@@ -355,7 +355,7 @@ panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
                 ctx->last_fragment_flushed = true;
 
                 /* The job finished up, so we're safe to clean it up now */
-                panfrost_free_batch(ctx, ctx->last_batch);
+                panfrost_free_batch(ctx->last_batch);
         }
 
         if (fence) {

@@ -54,10 +54,12 @@ panfrost_create_batch(struct panfrost_context *ctx)
 }
 
 void
-panfrost_free_batch(struct panfrost_context *ctx, struct panfrost_batch *batch)
+panfrost_free_batch(struct panfrost_batch *batch)
 {
         if (!batch)
                 return;
+
+        struct panfrost_context *ctx = batch->ctx;
 
         set_foreach(batch->bos, entry) {
                 struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
@@ -195,18 +197,20 @@ panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
                                    prsc);
         if (entry) {
                 struct panfrost_batch *batch = entry->data;
-                panfrost_batch_submit(panfrost, job);
+                panfrost_batch_submit(job);
         }
 #endif
         /* TODO stub */
 }
 
 void
-panfrost_batch_submit(struct panfrost_context *ctx, struct panfrost_batch *batch)
+panfrost_batch_submit(struct panfrost_batch *batch)
 {
+        assert(batch);
+
+        struct panfrost_context *ctx = batch->ctx;
         int ret;
 
-        assert(batch);
         panfrost_scoreboard_link_batch(batch);
 
         bool has_draws = batch->last_job.gpu;
@@ -232,9 +236,10 @@ panfrost_batch_submit(struct panfrost_context *ctx, struct panfrost_batch *batch
 }
 
 void
-panfrost_batch_set_requirements(struct panfrost_context *ctx,
-                                struct panfrost_batch *batch)
+panfrost_batch_set_requirements(struct panfrost_batch *batch)
 {
+        struct panfrost_context *ctx = batch->ctx;
+
         if (ctx->rasterizer && ctx->rasterizer->base.multisample)
                 batch->requirements |= PAN_REQ_MSAA;
 
@@ -336,13 +341,13 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
 }
 
 void
-panfrost_batch_clear(struct panfrost_context *ctx,
-                     struct panfrost_batch *batch,
+panfrost_batch_clear(struct panfrost_batch *batch,
                      unsigned buffers,
                      const union pipe_color_union *color,
                      double depth, unsigned stencil)
-
 {
+        struct panfrost_context *ctx = batch->ctx;
+
         if (buffers & PIPE_CLEAR_COLOR) {
                 for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
                         if (!(buffers & (PIPE_CLEAR_COLOR0 << i)))
@@ -386,7 +391,7 @@ panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
 
                 if (_mesa_set_search(batch->bos, rsc->bo)) {
                         printf("TODO: submit job for flush\n");
-                        //panfrost_batch_submit(panfrost, job);
+                        //panfrost_batch_submit(job);
                         continue;
                 }
         }
