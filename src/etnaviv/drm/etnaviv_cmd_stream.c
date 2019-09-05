@@ -25,6 +25,7 @@
  */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "etnaviv_drmif.h"
 #include "etnaviv_priv.h"
@@ -48,6 +49,35 @@ static void *grow(void *ptr, uint32_t nr, uint32_t *max, uint32_t sz)
 	(x)->name = grow((x)->name, (x)->nr_ ## name, &(x)->max_ ## name, sizeof((x)->name[0])); \
 	(x)->nr_ ## name ++; \
 })
+
+void etna_cmd_stream_realloc(struct etna_cmd_stream *stream, size_t n)
+{
+	size_t size;
+	void *buffer;
+
+	/*
+	 * Increase the command buffer size by 1 kiB. Here we pick 1 kiB
+	 * increment to prevent it from growing too much too quickly.
+	 */
+	size = ALIGN(stream->size + n, 1024);
+
+	/* Command buffer is too big for older kernel versions */
+	if (size >= 32768)
+		goto error;
+
+	buffer = realloc(stream->buffer, size * 4);
+	if (!buffer)
+		goto error;
+
+	stream->buffer = buffer;
+	stream->size = size;
+
+	return;
+
+error:
+	WARN_MSG("command buffer too long, forcing flush.");
+	etna_cmd_stream_force_flush(stream);
+}
 
 static inline struct etna_cmd_stream_priv *
 etna_cmd_stream_priv(struct etna_cmd_stream *stream)

@@ -154,10 +154,12 @@ static inline uint32_t etna_cmd_stream_avail(struct etna_cmd_stream *stream)
 	return stream->size - stream->offset - END_CLEARANCE;
 }
 
+void etna_cmd_stream_realloc(struct etna_cmd_stream *stream, size_t n);
+
 static inline void etna_cmd_stream_reserve(struct etna_cmd_stream *stream, size_t n)
 {
 	if (etna_cmd_stream_avail(stream) < n)
-		etna_cmd_stream_force_flush(stream);
+		etna_cmd_stream_realloc(stream, n);
 }
 
 static inline void etna_cmd_stream_emit(struct etna_cmd_stream *stream, uint32_t data)
