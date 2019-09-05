@@ -1316,7 +1316,6 @@ panfrost_queue_draw(struct panfrost_context *ctx)
 
 static void
 panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
-                      struct pipe_fence_handle **fence,
                       struct panfrost_batch *batch)
 {
         panfrost_batch_submit(batch);
@@ -1324,14 +1323,14 @@ panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
         /* If visual, we can stall a frame */
 
         if (!flush_immediate)
-                panfrost_drm_force_flush_fragment(ctx, fence);
+                panfrost_drm_force_flush_fragment(ctx);
 
         ctx->last_fragment_flushed = false;
         ctx->last_batch = batch;
 
         /* If readback, flush now (hurts the pipelined performance) */
         if (flush_immediate)
-                panfrost_drm_force_flush_fragment(ctx, fence);
+                panfrost_drm_force_flush_fragment(ctx);
 }
 
 static void
@@ -1460,7 +1459,13 @@ panfrost_flush(
         bool flush_immediate = /*flags & PIPE_FLUSH_END_OF_FRAME*/true;
 
         /* Submit the frame itself */
-        panfrost_submit_frame(ctx, flush_immediate, fence, batch);
+        panfrost_submit_frame(ctx, flush_immediate, batch);
+
+        if (fence) {
+                struct panfrost_fence *f = panfrost_fence_create(ctx);
+                pipe->screen->fence_reference(pipe->screen, fence, NULL);
+                *fence = (struct pipe_fence_handle *)f;
+        }
 
         /* Prepare for the next frame */
         panfrost_invalidate_frame(ctx);

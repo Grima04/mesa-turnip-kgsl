@@ -294,7 +294,7 @@ panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch, bool has_draws)
         return ret;
 }
 
-static struct panfrost_fence *
+struct panfrost_fence *
 panfrost_fence_create(struct panfrost_context *ctx)
 {
         struct pipe_context *gallium = (struct pipe_context *) ctx;
@@ -321,8 +321,7 @@ panfrost_fence_create(struct panfrost_context *ctx)
 }
 
 void
-panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
-                                  struct pipe_fence_handle **fence)
+panfrost_drm_force_flush_fragment(struct panfrost_context *ctx)
 {
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
@@ -333,12 +332,6 @@ panfrost_drm_force_flush_fragment(struct panfrost_context *ctx,
 
                 /* The job finished up, so we're safe to clean it up now */
                 panfrost_free_batch(ctx->last_batch);
-        }
-
-        if (fence) {
-                struct panfrost_fence *f = panfrost_fence_create(ctx);
-                gallium->screen->fence_reference(gallium->screen, fence, NULL);
-                *fence = (struct pipe_fence_handle *)f;
         }
 }
 
