@@ -42,6 +42,7 @@ static const nir_shader_compiler_options options = {
 	.lower_bitops = true,
 	.lower_rotate = true,
 	.lower_vector_cmp = true,
+	.lower_fdph = true,
 };
 
 const nir_shader_compiler_options *
