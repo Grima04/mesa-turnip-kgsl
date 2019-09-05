@@ -52,7 +52,6 @@ static uint32_t fmt2swap(enum pipe_format format)
 	case PIPE_FORMAT_B5G5R5X1_UNORM:
 	case PIPE_FORMAT_B4G4R4A4_UNORM:
 	case PIPE_FORMAT_B4G4R4X4_UNORM:
-	/* TODO probably some more.. */
 		return 1;
 	default:
 		return 0;

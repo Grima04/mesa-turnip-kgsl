@@ -1561,11 +1561,11 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<value name="SQ_TEX_BORDER_COLOR_ACBCRY_BLACK" value="3"/>
 	</enum>
 	<enum name="sq_tex_sign">
-		<value name="SQ_TEX_SIGN_UNISIGNED" value="0"/>
+		<value name="SQ_TEX_SIGN_UNSIGNED" value="0"/>
 		<value name="SQ_TEX_SIGN_SIGNED" value="1"/>
 		<!-- biased: 2*color-1 (range -1,1 when sampling) -->
-		<value name="SQ_TEX_SIGN_UNISIGNED_BIASED" value="2"/>
-		<!-- gamma: sRGB to linear? -->
+		<value name="SQ_TEX_SIGN_UNSIGNED_BIASED" value="2"/>
+		<!-- gamma: sRGB to linear - doesn't seem to work on adreno? -->
 		<value name="SQ_TEX_SIGN_GAMMA" value="3"/>
 	</enum>
 	<enum name="sq_tex_endian">

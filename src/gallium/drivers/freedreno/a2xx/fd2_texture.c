@@ -180,7 +180,16 @@ fd2_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	so->base.reference.count = 1;
 	so->base.context = pctx;
 
+	enum sq_tex_sign sign = SQ_TEX_SIGN_UNSIGNED;
+	if (util_format_is_snorm(cso->format))
+		sign = SQ_TEX_SIGN_SIGNED;
+	/* note: SQ_TEX_SIGN_GAMMA same as SQ_TEX_SIGN_UNSIGNED (a200) */
+
 	so->tex0 =
+		A2XX_SQ_TEX_0_SIGN_X(sign) |
+		A2XX_SQ_TEX_0_SIGN_Y(sign) |
+		A2XX_SQ_TEX_0_SIGN_Z(sign) |
+		A2XX_SQ_TEX_0_SIGN_W(sign) |
 		A2XX_SQ_TEX_0_PITCH(rsc->slices[0].pitch) |
 		COND(rsc->tile_mode, A2XX_SQ_TEX_0_TILED);
 	so->tex1 =
