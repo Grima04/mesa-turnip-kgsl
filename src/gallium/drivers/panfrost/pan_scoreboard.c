@@ -270,7 +270,7 @@ panfrost_scoreboard_queue_fused_job_prepend(
 /* Generates a set value job, used below as part of TILER job scheduling. */
 
 static struct panfrost_transfer
-panfrost_set_value_job(struct panfrost_context *ctx, mali_ptr polygon_list)
+panfrost_set_value_job(struct panfrost_batch *batch, mali_ptr polygon_list)
 {
         struct mali_job_descriptor_header job = {
                 .job_type = JOB_TYPE_SET_VALUE,
@@ -282,7 +282,6 @@ panfrost_set_value_job(struct panfrost_context *ctx, mali_ptr polygon_list)
                 .unknown = 0x3,
         };
 
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(payload));
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
@@ -303,11 +302,10 @@ panfrost_scoreboard_set_value(struct panfrost_batch *batch)
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
 
-        struct panfrost_context *ctx = batch->ctx;
         mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch, 0);
 
         struct panfrost_transfer job =
-                panfrost_set_value_job(ctx, polygon_list);
+                panfrost_set_value_job(batch, polygon_list);
 
         /* Queue it */
         panfrost_scoreboard_queue_compute_job(batch, job);
