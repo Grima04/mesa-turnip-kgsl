@@ -86,6 +86,9 @@ struct fd_vertex_stateobj {
 
 struct fd_streamout_stateobj {
 	struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
+	/* Bitmask of stream that should be reset. */
+	unsigned reset;
+
 	unsigned num_targets;
 	/* Track offset from vtxcnt for streamout data.  This counter
 	 * is just incremented by # of vertices on each draw until

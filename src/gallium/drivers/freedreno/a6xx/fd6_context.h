@@ -107,13 +107,19 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 struct fd6_control {
 	uint32_t seqno;          /* seqno for async CP_EVENT_WRITE, etc */
 	uint32_t _pad0;
-	uint32_t flush_base;     /* dummy address for VPC_SO[i].FLUSH_BASE_LO/HI */
+	volatile uint32_t vsc_overflow;
 	uint32_t _pad1;
 	/* flag set from cmdstream when VSC overflow detected: */
-	volatile uint32_t vsc_overflow;
-	uint32_t _pad2;
 	uint32_t vsc_scratch;
+	uint32_t _pad2;
 	uint32_t _pad3;
+	uint32_t _pad4;
+
+	/* scratch space for VPC_SO[i].FLUSH_BASE_LO/HI, start on 32 byte boundary. */
+	struct {
+		uint32_t offset;
+		uint32_t pad[7];
+	} flush_base[4];
 };
 
 #define control_ptr(fd6_ctx, member)  \

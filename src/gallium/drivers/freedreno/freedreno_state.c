@@ -499,12 +499,14 @@ fd_set_stream_output_targets(struct pipe_context *pctx,
 
 	for (i = 0; i < num_targets; i++) {
 		boolean changed = targets[i] != so->targets[i];
-		boolean append = (offsets[i] == (unsigned)-1);
+		boolean reset = (offsets[i] != (unsigned)-1);
 
-		if (!changed && append)
+		so->reset |= (reset << i);
+
+		if (!changed && !reset)
 			continue;
 
-		if (!append)
+		if (reset)
 			so->offsets[i] = offsets[i];
 
 		pipe_so_target_reference(&so->targets[i], targets[i]);

@@ -712,21 +712,27 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 		if (!target)
 			continue;
 
-		unsigned offset = (so->offsets[i] * info->stride[i] * 4) +
-				target->buffer_offset;
-
 		OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_BASE_LO(i), 3);
 		/* VPC_SO[i].BUFFER_BASE_LO: */
-		OUT_RELOCW(ring, fd_resource(target->buffer)->bo, 0, 0, 0);
-		OUT_RING(ring, target->buffer_size + offset);
+		OUT_RELOCW(ring, fd_resource(target->buffer)->bo, target->buffer_offset, 0, 0);
+		OUT_RING(ring, target->buffer_size - target->buffer_offset);
 
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_OFFSET(i), 3);
-		OUT_RING(ring, offset);
-		/* VPC_SO[i].FLUSH_BASE_LO/HI: */
-		// TODO just give hw a dummy addr for now.. we should
-		// be using this an then CP_MEM_TO_REG to set the
-		// VPC_SO[i].BUFFER_OFFSET for the next draw..
-		OUT_RELOCW(ring, control_ptr(fd6_context(ctx), flush_base));
+		if (so->reset & (1 << i)) {
+			unsigned offset = (so->offsets[i] * info->stride[i] * 4);
+			OUT_PKT4(ring, REG_A6XX_VPC_SO_BUFFER_OFFSET(i), 1);
+			OUT_RING(ring, offset);
+		} else {
+			OUT_PKT7(ring, CP_MEM_TO_REG, 3);
+			OUT_RING(ring, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(i)) |
+					CP_MEM_TO_REG_0_64B | CP_MEM_TO_REG_0_ACCUMULATE |
+					CP_MEM_TO_REG_0_CNT(1 - 1));
+			OUT_RELOC(ring, control_ptr(fd6_context(ctx), flush_base[i].offset));
+		}
+
+		OUT_PKT4(ring, REG_A6XX_VPC_SO_FLUSH_BASE_LO(i), 2);
+		OUT_RELOCW(ring, control_ptr(fd6_context(ctx), flush_base[i]));
+
+		so->reset &= ~(1 << i);
 
 		emit->streamout_mask |= (1 << i);
 	}
