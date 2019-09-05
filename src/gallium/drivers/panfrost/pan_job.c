@@ -164,21 +164,6 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
 }
 
 void
-panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
-                                     struct pipe_resource *prsc)
-{
-#if 0
-        struct hash_entry *entry = _mesa_hash_table_search(panfrost->write_jobs,
-                                   prsc);
-        if (entry) {
-                struct panfrost_batch *batch = entry->data;
-                panfrost_batch_submit(job);
-        }
-#endif
-        /* TODO stub */
-}
-
-void
 panfrost_batch_submit(struct panfrost_batch *batch)
 {
         assert(batch);
@@ -353,25 +338,6 @@ panfrost_batch_clear(struct panfrost_batch *batch,
                                      ctx->pipe_framebuffer.height);
 }
 
-void
-panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
-                                     struct pipe_resource *prsc)
-{
-        struct panfrost_resource *rsc = pan_resource(prsc);
-
-        panfrost_flush_jobs_writing_resource(panfrost, prsc);
-
-        hash_table_foreach(panfrost->batches, entry) {
-                struct panfrost_batch *batch = entry->data;
-
-                if (_mesa_set_search(batch->bos, rsc->bo)) {
-                        printf("TODO: submit job for flush\n");
-                        //panfrost_batch_submit(job);
-                        continue;
-                }
-        }
-}
-
 static bool
 panfrost_batch_compare(const void *a, const void *b)
 {
@@ -415,8 +381,4 @@ panfrost_batch_init(struct panfrost_context *ctx)
         ctx->batches = _mesa_hash_table_create(ctx,
                                                panfrost_batch_hash,
                                                panfrost_batch_compare);
-
-        ctx->write_jobs = _mesa_hash_table_create(ctx,
-                          _mesa_hash_pointer,
-                          _mesa_key_pointer_equal);
 }

@@ -133,14 +133,6 @@ void
 panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo);
 
 void
-panfrost_flush_jobs_writing_resource(struct panfrost_context *panfrost,
-                                     struct pipe_resource *prsc);
-
-void
-panfrost_flush_jobs_reading_resource(struct panfrost_context *panfrost,
-                                     struct pipe_resource *prsc);
-
-void
 panfrost_batch_submit(struct panfrost_batch *batch);
 
 void
