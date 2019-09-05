@@ -308,6 +308,8 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        * illegal snoop <-> snoop transfers.
        */
       return devinfo->has_llc;
+   case PIPE_CAP_MAX_FRAMES_IN_FLIGHT:
+      return screen->driconf.disable_throttling ? 0 : 1;
 
    case PIPE_CAP_CONTEXT_PRIORITY_MASK:
       return PIPE_CONTEXT_PRIORITY_LOW |
@@ -653,6 +655,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    screen->driconf.dual_color_blend_by_location =
       driQueryOptionb(config->options, "dual_color_blend_by_location");
+   screen->driconf.disable_throttling =
+      driQueryOptionb(config->options, "disable_throttling");
 
    screen->precompile = env_var_as_boolean("shader_precompile", true);
 
