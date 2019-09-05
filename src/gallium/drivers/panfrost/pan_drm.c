@@ -248,12 +248,12 @@ panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo 
 }
 
 static int
-panfrost_drm_submit_batch(struct panfrost_context *ctx, u64 first_job_desc,
+panfrost_drm_submit_batch(struct panfrost_batch *batch, u64 first_job_desc,
                           int reqs)
 {
+        struct panfrost_context *ctx = batch->ctx;
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct drm_panfrost_submit submit = {0,};
         int *bo_handles, ret;
 
@@ -293,23 +293,22 @@ panfrost_drm_submit_batch(struct panfrost_context *ctx, u64 first_job_desc,
 }
 
 int
-panfrost_drm_submit_vs_fs_batch(struct panfrost_context *ctx, bool has_draws)
+panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch, bool has_draws)
 {
+        struct panfrost_context *ctx = batch->ctx;
         int ret = 0;
-
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         panfrost_batch_add_bo(batch, ctx->scratchpad.bo);
         panfrost_batch_add_bo(batch, ctx->tiler_heap.bo);
         panfrost_batch_add_bo(batch, batch->polygon_list);
 
         if (batch->first_job.gpu) {
-                ret = panfrost_drm_submit_batch(ctx, batch->first_job.gpu, 0);
+                ret = panfrost_drm_submit_batch(batch, batch->first_job.gpu, 0);
                 assert(!ret);
         }
 
         if (batch->first_tiler.gpu || batch->clear) {
-                ret = panfrost_drm_submit_batch(ctx,
+                ret = panfrost_drm_submit_batch(batch,
                                                 panfrost_fragment_job(ctx, has_draws),
                                                 PANFROST_JD_REQ_FS);
                 assert(!ret);

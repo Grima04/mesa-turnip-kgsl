@@ -211,7 +211,7 @@ panfrost_batch_submit(struct panfrost_context *ctx, struct panfrost_batch *batch
 
         bool has_draws = batch->last_job.gpu;
 
-        ret = panfrost_drm_submit_vs_fs_batch(ctx, has_draws);
+        ret = panfrost_drm_submit_vs_fs_batch(batch, has_draws);
 
         if (ret)
                 fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
