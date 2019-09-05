@@ -192,6 +192,8 @@ bool
 lp_build_nir_llvm(struct lp_build_nir_context *bld_base,
                   struct nir_shader *nir);
 
+void lp_build_opt_nir(struct nir_shader *nir);
+
 static inline LLVMValueRef
 lp_nir_array_build_gather_values(LLVMBuilderRef builder,
                                  LLVMValueRef * values,

@@ -1650,3 +1650,15 @@ bool lp_build_nir_llvm(
    ralloc_free(bld_base->regs);
    return true;
 }
+
+/* do some basic opts to remove some things we don't want to see. */
+void lp_build_opt_nir(struct nir_shader *nir)
+{
+   bool progress;
+   do {
+      progress = false;
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+      NIR_PASS_V(nir, nir_opt_algebraic);
+   } while (progress);
+   nir_lower_bool_to_int32(nir);
+}

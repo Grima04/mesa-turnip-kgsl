@@ -35,6 +35,7 @@
 #include "gallivm/lp_bld_flow.h"
 #include "gallivm/lp_bld_gather.h"
 #include "gallivm/lp_bld_coro.h"
+#include "gallivm/lp_bld_nir.h"
 #include "lp_state_cs.h"
 #include "lp_context.h"
 #include "lp_debug.h"
@@ -44,6 +45,7 @@
 #include "lp_memory.h"
 #include "lp_cs_tpool.h"
 #include "state_tracker/sw_winsys.h"
+#include "nir/nir_to_tgsi_info.h"
 
 struct lp_cs_job_info {
    unsigned grid_size[3];
@@ -272,7 +274,6 @@ generate_compute(struct llvmpipe_context *lp,
    block = LLVMAppendBasicBlockInContext(gallivm->context, coro, "entry");
    LLVMPositionBuilderAtEnd(builder, block);
    {
-      const struct tgsi_token *tokens = shader->base.tokens;
       LLVMValueRef consts_ptr, num_consts_ptr;
       LLVMValueRef ssbo_ptr, num_ssbo_ptr;
       LLVMValueRef shared_ptr;
@@ -360,7 +361,11 @@ generate_compute(struct llvmpipe_context *lp,
       params.shared_ptr = shared_ptr;
       params.coro = &coro_info;
 
-      lp_build_tgsi_soa(gallivm, tokens, &params, NULL);
+      if (shader->base.type == PIPE_SHADER_IR_TGSI)
+         lp_build_tgsi_soa(gallivm, shader->base.tokens, &params, NULL);
+      else
+         lp_build_nir_soa(gallivm, shader->base.ir.nir, &params,
+                          NULL);
 
       mask_val = lp_build_mask_end(&mask);
 
@@ -393,11 +398,19 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
    if (!shader)
       return NULL;
 
-   assert(templ->ir_type == PIPE_SHADER_IR_TGSI);
-   shader->base.tokens = tgsi_dup_tokens(templ->prog);
+   shader->base.type = templ->ir_type;
+   if (templ->ir_type == PIPE_SHADER_IR_TGSI) {
+      /* get/save the summary info for this shader */
+      lp_build_tgsi_info(templ->prog, &shader->info);
+
+      /* we need to keep a local copy of the tokens */
+      shader->base.tokens = tgsi_dup_tokens(templ->prog);
+   } else {
+      shader->base.ir.nir = (struct nir_shader *)templ->prog;
+      nir_tgsi_scan_shader(templ->prog, &shader->info.base, false);
+   }
 
    shader->req_local_mem = templ->req_local_mem;
-   lp_build_tgsi_info(shader->base.tokens, &shader->info);
    make_empty_list(&shader->variants);
 
    nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
@@ -590,7 +603,10 @@ lp_debug_cs_variant(const struct lp_compute_shader_variant *variant)
 {
    debug_printf("llvmpipe: Compute shader #%u variant #%u:\n",
                 variant->shader->no, variant->no);
-   tgsi_dump(variant->shader->base.tokens, 0);
+   if (variant->shader->base.type == PIPE_SHADER_IR_TGSI)
+      tgsi_dump(variant->shader->base.tokens, 0);
+   else
+      nir_print_shader(variant->shader->base.ir.nir, stderr);
    dump_cs_variant_key(&variant->key);
    debug_printf("\n");
 }

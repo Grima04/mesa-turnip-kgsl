@@ -37,6 +37,7 @@
 #include "pipe/p_screen.h"
 #include "draw/draw_context.h"
 #include "gallivm/lp_bld_type.h"
+#include "gallivm/lp_bld_nir.h"
 
 #include "util/os_misc.h"
 #include "util/os_time.h"
@@ -52,6 +53,8 @@
 #include "lp_cs_tpool.h"
 
 #include "state_tracker/sw_winsys.h"
+
+#include "nir.h"
 
 #ifdef DEBUG
 int LP_DEBUG = 0;
@@ -70,6 +73,7 @@ static const struct debug_named_value lp_debug_flags[] = {
    { "mem", DEBUG_MEM, NULL },
    { "fs", DEBUG_FS, NULL },
    { "cs", DEBUG_CS, NULL },
+   { "nir", DEBUG_NIR, NULL },
    DEBUG_NAMED_VALUE_END
 };
 #endif
@@ -366,7 +370,6 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_BINDLESS_TEXTURE:
    case PIPE_CAP_NIR_SAMPLERS_AS_DEREF:
    case PIPE_CAP_MEMOBJ:
-   case PIPE_CAP_LOAD_CONSTBUF:
    case PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS:
    case PIPE_CAP_TILE_RASTER_ORDER:
    case PIPE_CAP_MAX_COMBINED_SHADER_OUTPUT_RESOURCES:
@@ -375,7 +378,6 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_CONTEXT_PRIORITY_MASK:
    case PIPE_CAP_FENCE_SIGNAL:
    case PIPE_CAP_CONSTBUF0_FLAGS:
-   case PIPE_CAP_PACKED_UNIFORMS:
    case PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_TRIANGLES:
    case PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_POINTS_LINES:
    case PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_TRIANGLES:
@@ -391,6 +393,9 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE:
       return 1;
+   case PIPE_CAP_LOAD_CONSTBUF:
+   case PIPE_CAP_PACKED_UNIFORMS:
+      return !!(LP_DEBUG & DEBUG_NIR);
    default:
       return u_pipe_screen_get_param_defaults(screen, param);
    }
@@ -407,10 +412,15 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
    case PIPE_SHADER_COMPUTE:
       switch (param) {
       default:
+         if ((LP_DEBUG & DEBUG_NIR) && param == PIPE_SHADER_CAP_PREFERRED_IR)
+            return PIPE_SHADER_IR_NIR;
          return gallivm_get_shader_param(param);
       }
    case PIPE_SHADER_VERTEX:
    case PIPE_SHADER_GEOMETRY:
+      if ((LP_DEBUG & DEBUG_NIR) && param == PIPE_SHADER_CAP_PREFERRED_IR)
+         return PIPE_SHADER_IR_NIR;
+
       switch (param) {
       case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
          /* At this time, the draw module and llvmpipe driver only
@@ -513,6 +523,51 @@ llvmpipe_get_compute_param(struct pipe_screen *_screen,
       break;
    }
    return 0;
+}
+
+static const struct nir_shader_compiler_options gallivm_nir_options = {
+   .lower_scmp = true,
+   .lower_flrp32 = true,
+   .lower_flrp64 = true,
+   .lower_fsat = true,
+   .lower_bitfield_insert_to_bitfield_select = true,
+   .lower_bitfield_extract = true,
+   .lower_sub = true,
+   .lower_ffma = true,
+   .lower_fmod = true,
+   .lower_pack_snorm_2x16 = true,
+   .lower_pack_snorm_4x8 = true,
+   .lower_pack_unorm_2x16 = true,
+   .lower_pack_unorm_4x8 = true,
+   .lower_unpack_snorm_2x16 = true,
+   .lower_unpack_snorm_4x8 = true,
+   .lower_unpack_unorm_2x16 = true,
+   .lower_unpack_unorm_4x8 = true,
+   .lower_extract_byte = true,
+   .lower_extract_word = true,
+   .lower_rotate = true,
+   .optimize_sample_mask_in = true,
+   .max_unroll_iterations = 32,
+   .use_interpolated_input_intrinsics = true,
+   .lower_to_scalar = true,
+};
+
+static void
+llvmpipe_finalize_nir(struct pipe_screen *screen,
+                      void *nirptr,
+                      bool optimize)
+{
+   struct nir_shader *nir = (struct nir_shader *)nirptr;
+   lp_build_opt_nir(nir);
+}
+
+static inline const void *
+llvmpipe_get_compiler_options(struct pipe_screen *screen,
+                              enum pipe_shader_ir ir,
+                              enum pipe_shader_type shader)
+{
+   assert(ir == PIPE_SHADER_IR_NIR);
+   return &gallivm_nir_options;
 }
 
 /**
@@ -752,6 +807,7 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    screen->base.get_shader_param = llvmpipe_get_shader_param;
    screen->base.get_compute_param = llvmpipe_get_compute_param;
    screen->base.get_paramf = llvmpipe_get_paramf;
+   screen->base.get_compiler_options = llvmpipe_get_compiler_options;
    screen->base.is_format_supported = llvmpipe_is_format_supported;
 
    screen->base.context_create = llvmpipe_create_context;
@@ -761,6 +817,7 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
 
    screen->base.get_timestamp = llvmpipe_get_timestamp;
 
+   screen->base.finalize_nir = llvmpipe_finalize_nir;
    llvmpipe_init_screen_resource_funcs(&screen->base);
 
    screen->num_threads = util_cpu_caps.nr_cpus > 1 ? util_cpu_caps.nr_cpus : 0;
