@@ -129,8 +129,6 @@ struct panfrost_context {
         struct panfrost_bo *scratchpad;
         struct panfrost_bo *tiler_heap;
         struct panfrost_bo *tiler_dummy;
-        struct panfrost_memory cmdstream_persistent;
-        struct panfrost_memory depth_stencil_buffer;
 
         bool active_queries;
         uint64_t prims_generated;
@@ -156,8 +154,6 @@ struct panfrost_context {
         /* If instancing is enabled, vertex count padded for instance; if
          * it is disabled, just equal to plain vertex count */
         unsigned padded_count;
-
-        union mali_attr attributes[PIPE_MAX_ATTRIBS];
 
         /* TODO: Multiple uniform buffers (index =/= 0), finer updates? */
 
