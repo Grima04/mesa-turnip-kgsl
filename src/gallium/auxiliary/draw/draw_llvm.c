@@ -43,6 +43,7 @@
 #include "gallivm/lp_bld_flow.h"
 #include "gallivm/lp_bld_debug.h"
 #include "gallivm/lp_bld_tgsi.h"
+#include "gallivm/lp_bld_nir.h"
 #include "gallivm/lp_bld_printf.h"
 #include "gallivm/lp_bld_intr.h"
 #include "gallivm/lp_bld_init.h"
@@ -646,7 +647,10 @@ draw_llvm_create_variant(struct draw_llvm *llvm,
    memcpy(&variant->key, key, shader->variant_key_size);
 
    if (gallivm_debug & (GALLIVM_DEBUG_TGSI | GALLIVM_DEBUG_IR)) {
-      tgsi_dump(llvm->draw->vs.vertex_shader->state.tokens, 0);
+      if (llvm->draw->vs.vertex_shader->state.type == PIPE_SHADER_IR_TGSI)
+         tgsi_dump(llvm->draw->vs.vertex_shader->state.tokens, 0);
+      else
+         nir_print_shader(llvm->draw->vs.vertex_shader->state.ir.nir, stderr);
       draw_llvm_dump_variant_key(&variant->key);
    }
 
@@ -712,10 +716,17 @@ generate_vs(struct draw_llvm_variant *variant,
    params.ssbo_sizes_ptr = num_ssbos_ptr;
    params.image = draw_image;
 
-   lp_build_tgsi_soa(variant->gallivm,
-                     tokens,
-                     &params,
-                     outputs);
+   if (llvm->draw->vs.vertex_shader->state.ir.nir &&
+       llvm->draw->vs.vertex_shader->state.type == PIPE_SHADER_IR_NIR)
+      lp_build_nir_soa(variant->gallivm,
+                       llvm->draw->vs.vertex_shader->state.ir.nir,
+                       &params,
+                       outputs);
+   else
+      lp_build_tgsi_soa(variant->gallivm,
+                        tokens,
+                        &params,
+                        outputs);
 
    {
       LLVMValueRef out;
@@ -2495,7 +2506,10 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    }
 
    if (gallivm_debug & (GALLIVM_DEBUG_TGSI | GALLIVM_DEBUG_IR)) {
-      tgsi_dump(tokens, 0);
+      if (llvm->draw->gs.geometry_shader->state.type == PIPE_SHADER_IR_TGSI)
+         tgsi_dump(tokens, 0);
+      else
+         nir_print_shader(llvm->draw->gs.geometry_shader->state.ir.nir, stderr);
       draw_gs_llvm_dump_variant_key(&variant->key);
    }
 
@@ -2515,10 +2529,16 @@ draw_gs_llvm_generate(struct draw_llvm *llvm,
    params.ssbo_sizes_ptr = num_ssbos_ptr;
    params.image = image;
 
-   lp_build_tgsi_soa(variant->gallivm,
-                     tokens,
-                     &params,
-                     outputs);
+   if (llvm->draw->gs.geometry_shader->state.type == PIPE_SHADER_IR_TGSI)
+      lp_build_tgsi_soa(variant->gallivm,
+                        tokens,
+                        &params,
+                        outputs);
+   else
+      lp_build_nir_soa(variant->gallivm,
+                       llvm->draw->gs.geometry_shader->state.ir.nir,
+                       &params,
+                       outputs);
 
    sampler->destroy(sampler);
    image->destroy(image);
