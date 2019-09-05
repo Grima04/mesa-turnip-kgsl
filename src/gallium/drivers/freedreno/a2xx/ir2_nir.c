@@ -504,12 +504,10 @@ load_input(struct ir2_context *ctx, nir_dest *dst, unsigned idx)
 
 	switch (slot) {
 	case VARYING_SLOT_PNTC:
-		/* need to extract with abs and invert y */
-		instr = instr_create_alu_dest(ctx, nir_op_ffma, dst);
+		/* need to extract with abs */
+		instr = instr_create_alu_dest(ctx, nir_op_mov, dst);
 		instr->src[0] = ir2_src(ctx->f->inputs_count, IR2_SWIZZLE_ZW, IR2_SRC_INPUT);
 		instr->src[0].abs = true;
-		instr->src[1] = load_const(ctx, (float[]) {1.0f, -1.0f}, 2);
-		instr->src[2] = load_const(ctx, (float[]) {0.0f, 1.0f}, 2);
 		break;
 	case VARYING_SLOT_POS:
 		/* need to extract xy with abs and add tile offset on a20x
