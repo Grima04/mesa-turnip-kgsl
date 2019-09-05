@@ -133,6 +133,12 @@ insert(struct ir2_context *ctx, unsigned block_idx, unsigned reg_idx,
 		sched = s;
 	}
 	*comp = ffs(mask) - 1;
+
+	if (sched) {
+		for (s = sched; s != &ctx->instr_sched[ctx->instr_sched_count]; s++)
+			s->reg_state[reg_idx/8] |= 1 << (*comp+reg_idx%8*4);
+	}
+
 	return sched;
 }
 
