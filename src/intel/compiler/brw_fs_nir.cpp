@@ -4208,6 +4208,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
+   case nir_intrinsic_scoped_memory_barrier:
    case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier_shared:
    case nir_intrinsic_memory_barrier_atomic_counter:
@@ -4215,15 +4216,25 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_memory_barrier_image:
    case nir_intrinsic_memory_barrier: {
       bool l3_fence, slm_fence;
-      if (devinfo->gen >= 11) {
-         l3_fence = instr->intrinsic != nir_intrinsic_memory_barrier_shared;
-         slm_fence = instr->intrinsic == nir_intrinsic_group_memory_barrier ||
-                     instr->intrinsic == nir_intrinsic_memory_barrier ||
-                     instr->intrinsic == nir_intrinsic_memory_barrier_shared;
-      } else {
+      if (instr->intrinsic == nir_intrinsic_scoped_memory_barrier) {
+         nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
+         l3_fence = modes & (nir_var_shader_out |
+                             nir_var_mem_ssbo |
+                             nir_var_mem_global);
          /* Prior to gen11, we only have one kind of fence. */
-         l3_fence = true;
-         slm_fence = false;
+         slm_fence = devinfo->gen >= 11 && (modes & nir_var_mem_shared);
+         l3_fence |= devinfo->gen < 11 && (modes & nir_var_mem_shared);
+      } else {
+         if (devinfo->gen >= 11) {
+            l3_fence = instr->intrinsic != nir_intrinsic_memory_barrier_shared;
+            slm_fence = instr->intrinsic == nir_intrinsic_group_memory_barrier ||
+                        instr->intrinsic == nir_intrinsic_memory_barrier ||
+                        instr->intrinsic == nir_intrinsic_memory_barrier_shared;
+         } else {
+            /* Prior to gen11, we only have one kind of fence. */
+            l3_fence = true;
+            slm_fence = false;
+         }
       }
 
       /* Be conservative in Gen11+ and always stall in a fence.  Since there
