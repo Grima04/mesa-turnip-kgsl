@@ -84,8 +84,6 @@ etna_screen_destroy(struct pipe_screen *pscreen)
 {
    struct etna_screen *screen = etna_screen(pscreen);
 
-   mtx_destroy(&screen->lock);
-
    if (screen->perfmon)
       etna_perfmon_del(screen->perfmon);
 
@@ -955,8 +953,6 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
 
    if (screen->drm_version >= ETNA_DRM_VERSION_PERFMON)
       etna_pm_query_setup(screen);
-
-   mtx_init(&screen->lock, mtx_recursive);
 
    return pscreen;
 

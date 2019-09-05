@@ -355,7 +355,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
        * current GPU usage (reads must wait for GPU writes, writes must have
        * exclusive access to the buffer).
        */
-      mtx_lock(&screen->lock);
+      mtx_lock(&ctx->lock);
 
       if ((trans->rsc && (etna_resource(trans->rsc)->status & ETNA_PENDING_WRITE)) ||
           (!trans->rsc &&
@@ -369,7 +369,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
          }
       }
 
-      mtx_unlock(&screen->lock);
+      mtx_unlock(&ctx->lock);
 
       if (usage & PIPE_TRANSFER_READ)
          prep_flags |= DRM_ETNA_PREP_READ;

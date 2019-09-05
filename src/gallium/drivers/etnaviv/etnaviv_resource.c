@@ -645,7 +645,7 @@ etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
    if (!prsc)
       return;
 
-   mtx_lock(&screen->lock);
+   mtx_lock(&ctx->lock);
 
    rsc = etna_resource(prsc);
 
@@ -682,7 +682,7 @@ etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
       _mesa_set_add(rsc->pending_ctx, ctx);
    }
 
-   mtx_unlock(&screen->lock);
+   mtx_unlock(&ctx->lock);
 }
 
 bool

@@ -194,6 +194,8 @@ struct etna_context {
    /* set of resources used by currently-unsubmitted renders */
    struct set *used_resources_read;
    struct set *used_resources_write;
+
+   mtx_t lock;
 };
 
 static inline struct etna_context *

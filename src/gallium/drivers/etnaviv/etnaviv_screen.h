@@ -85,8 +85,6 @@ struct etna_screen {
 
    uint32_t drm_version;
 
-   mtx_t lock;
-
    nir_shader_compiler_options options;
 };
 

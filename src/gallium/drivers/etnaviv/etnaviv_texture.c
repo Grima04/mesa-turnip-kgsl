@@ -310,7 +310,9 @@ etna_texture_barrier(struct pipe_context *pctx, unsigned flags)
    struct etna_context *ctx = etna_context(pctx);
    /* clear color and texture cache to make sure that texture unit reads
     * what has been written */
+   mtx_lock(&ctx->lock);
    etna_set_state(ctx->stream, VIVS_GL_FLUSH_CACHE, VIVS_GL_FLUSH_CACHE_COLOR | VIVS_GL_FLUSH_CACHE_TEXTURE);
+   mtx_unlock(&ctx->lock);
 }
 
 uint32_t

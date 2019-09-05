@@ -63,7 +63,7 @@ etna_context_destroy(struct pipe_context *pctx)
    struct etna_context *ctx = etna_context(pctx);
    struct etna_screen *screen = ctx->screen;
 
-   mtx_lock(&screen->lock);
+   mtx_lock(&ctx->lock);
    if (ctx->used_resources_read) {
 
       /*
@@ -94,7 +94,7 @@ etna_context_destroy(struct pipe_context *pctx)
       _mesa_set_destroy(ctx->used_resources_write, NULL);
 
    }
-   mtx_unlock(&screen->lock);
+   mtx_unlock(&ctx->lock);
 
    if (ctx->dummy_rt)
       etna_bo_del(ctx->dummy_rt);
@@ -117,6 +117,8 @@ etna_context_destroy(struct pipe_context *pctx)
 
    if (ctx->in_fence_fd != -1)
       close(ctx->in_fence_fd);
+
+   mtx_destroy(&ctx->lock);
 
    FREE(pctx);
 }
@@ -265,6 +267,8 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    if (!etna_state_update(ctx))
       return;
 
+   mtx_lock(&ctx->lock);
+
    /*
     * Figure out the buffers/features we need:
     */
@@ -339,6 +343,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
        * draw op has caused the hang. */
       etna_stall(ctx->stream, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
    }
+   mtx_unlock(&ctx->lock);
 
    if (DBG_ENABLED(ETNA_DBG_FLUSH_ALL))
       pctx->flush(pctx, NULL, 0);
@@ -414,7 +419,7 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
    struct etna_screen *screen = ctx->screen;
    int out_fence_fd = -1;
 
-   mtx_lock(&screen->lock);
+   mtx_lock(&ctx->lock);
 
    list_for_each_entry(struct etna_hw_query, hq, &ctx->active_hw_queries, node)
       etna_hw_query_suspend(hq, ctx);
@@ -452,9 +457,8 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
    }
    _mesa_set_clear(ctx->used_resources_write, NULL);
 
-   mtx_unlock(&screen->lock);
-
    etna_reset_gpu_state(ctx);
+   mtx_unlock(&ctx->lock);
 }
 
 static void
@@ -511,6 +515,8 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                           _mesa_key_pointer_equal);
    if (!ctx->used_resources_write)
       goto fail;
+
+   mtx_init(&ctx->lock, mtx_recursive);
 
    /* context ctxate setup */
    ctx->specs = screen->specs;
