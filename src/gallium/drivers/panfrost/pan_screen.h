@@ -133,8 +133,6 @@ int
 panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo *bo);
 int
 panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch, bool has_draws);
-void
-panfrost_drm_force_flush_fragment(struct panfrost_context *ctx);
 unsigned
 panfrost_drm_query_gpu_version(struct panfrost_screen *screen);
 int

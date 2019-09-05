@@ -320,21 +320,6 @@ panfrost_fence_create(struct panfrost_context *ctx)
         return f;
 }
 
-void
-panfrost_drm_force_flush_fragment(struct panfrost_context *ctx)
-{
-        struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
-
-        if (!ctx->last_fragment_flushed) {
-                drmSyncobjWait(screen->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
-                ctx->last_fragment_flushed = true;
-
-                /* The job finished up, so we're safe to clean it up now */
-                panfrost_free_batch(ctx->last_batch);
-        }
-}
-
 unsigned
 panfrost_drm_query_gpu_version(struct panfrost_screen *screen)
 {

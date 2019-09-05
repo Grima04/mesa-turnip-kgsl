@@ -203,7 +203,7 @@ panfrost_attach_vt_framebuffer(struct panfrost_context *ctx)
 /* Reset per-frame context, called on context initialisation as well as after
  * flushing a frame */
 
-static void
+void
 panfrost_invalidate_frame(struct panfrost_context *ctx)
 {
         for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
@@ -1314,130 +1314,6 @@ panfrost_queue_draw(struct panfrost_context *ctx)
 
 /* The entire frame is in memory -- send it off to the kernel! */
 
-static void
-panfrost_submit_frame(struct panfrost_context *ctx, bool flush_immediate,
-                      struct panfrost_batch *batch)
-{
-        panfrost_batch_submit(batch);
-
-        /* If visual, we can stall a frame */
-
-        if (!flush_immediate)
-                panfrost_drm_force_flush_fragment(ctx);
-
-        ctx->last_fragment_flushed = false;
-        ctx->last_batch = batch;
-
-        /* If readback, flush now (hurts the pipelined performance) */
-        if (flush_immediate)
-                panfrost_drm_force_flush_fragment(ctx);
-}
-
-static void
-panfrost_draw_wallpaper(struct pipe_context *pipe)
-{
-        struct panfrost_context *ctx = pan_context(pipe);
-
-        /* Nothing to reload? TODO: MRT wallpapers */
-        if (ctx->pipe_framebuffer.cbufs[0] == NULL)
-                return;
-
-        /* Check if the buffer has any content on it worth preserving */
-
-        struct pipe_surface *surf = ctx->pipe_framebuffer.cbufs[0];
-        struct panfrost_resource *rsrc = pan_resource(surf->texture);
-        unsigned level = surf->u.tex.level;
-
-        if (!rsrc->slices[level].initialized)
-                return;
-
-        /* Save the batch */
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        ctx->wallpaper_batch = batch;
-
-        /* Clamp the rendering area to the damage extent. The
-         * KHR_partial_update() spec states that trying to render outside of
-         * the damage region is "undefined behavior", so we should be safe.
-         */
-        unsigned damage_width = (rsrc->damage.extent.maxx - rsrc->damage.extent.minx);
-        unsigned damage_height = (rsrc->damage.extent.maxy - rsrc->damage.extent.miny);
-
-        if (damage_width && damage_height) {
-                panfrost_batch_intersection_scissor(batch,
-                                                    rsrc->damage.extent.minx,
-                                                    rsrc->damage.extent.miny,
-                                                    rsrc->damage.extent.maxx,
-                                                    rsrc->damage.extent.maxy);
-        }
-
-        /* FIXME: Looks like aligning on a tile is not enough, but
-         * aligning on twice the tile size seems to works. We don't
-         * know exactly what happens here but this deserves extra
-         * investigation to figure it out.
-         */
-        batch->minx = batch->minx & ~((MALI_TILE_LENGTH * 2) - 1);
-        batch->miny = batch->miny & ~((MALI_TILE_LENGTH * 2) - 1);
-        batch->maxx = MIN2(ALIGN_POT(batch->maxx, MALI_TILE_LENGTH * 2),
-                           rsrc->base.width0);
-        batch->maxy = MIN2(ALIGN_POT(batch->maxy, MALI_TILE_LENGTH * 2),
-                           rsrc->base.height0);
-
-        struct pipe_scissor_state damage;
-        struct pipe_box rects[4];
-
-        /* Clamp the damage box to the rendering area. */
-        damage.minx = MAX2(batch->minx, rsrc->damage.biggest_rect.x);
-        damage.miny = MAX2(batch->miny, rsrc->damage.biggest_rect.y);
-        damage.maxx = MIN2(batch->maxx,
-                           rsrc->damage.biggest_rect.x +
-                           rsrc->damage.biggest_rect.width);
-        damage.maxy = MIN2(batch->maxy,
-                           rsrc->damage.biggest_rect.y +
-                           rsrc->damage.biggest_rect.height);
-
-        /* One damage rectangle means we can end up with at most 4 reload
-         * regions:
-         * 1: left region, only exists if damage.x > 0
-         * 2: right region, only exists if damage.x + damage.width < fb->width
-         * 3: top region, only exists if damage.y > 0. The intersection with
-         *    the left and right regions are dropped
-         * 4: bottom region, only exists if damage.y + damage.height < fb->height.
-         *    The intersection with the left and right regions are dropped
-         *
-         *                    ____________________________
-         *                    |       |     3     |      |
-         *                    |       |___________|      |
-         *                    |       |   damage  |      |
-         *                    |   1   |    rect   |   2  |
-         *                    |       |___________|      |
-         *                    |       |     4     |      |
-         *                    |_______|___________|______|
-         */
-        u_box_2d(batch->minx, batch->miny, damage.minx - batch->minx,
-                 batch->maxy - batch->miny, &rects[0]);
-        u_box_2d(damage.maxx, batch->miny, batch->maxx - damage.maxx,
-                 batch->maxy - batch->miny, &rects[1]);
-        u_box_2d(damage.minx, batch->miny, damage.maxx - damage.minx,
-                 damage.miny - batch->miny, &rects[2]);
-        u_box_2d(damage.minx, damage.maxy, damage.maxx - damage.minx,
-                 batch->maxy - damage.maxy, &rects[3]);
-
-        for (unsigned i = 0; i < 4; i++) {
-                /* Width and height are always >= 0 even if width is declared as a
-                 * signed integer: u_box_2d() helper takes unsigned args and
-                 * panfrost_set_damage_region() is taking care of clamping
-                 * negative values.
-                 */
-                if (!rects[i].width || !rects[i].height)
-                        continue;
-
-                /* Blit the wallpaper in */
-                panfrost_blit_wallpaper(ctx, &rects[i]);
-        }
-        ctx->wallpaper_batch = NULL;
-}
-
 void
 panfrost_flush(
         struct pipe_context *pipe,
@@ -1447,28 +1323,14 @@ panfrost_flush(
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        /* Nothing to do! */
-        if (!batch->last_job.gpu && !batch->clear) return;
-
-        if (!batch->clear && batch->last_tiler.gpu)
-                panfrost_draw_wallpaper(&ctx->base);
-
-        /* Whether to stall the pipeline for immediately correct results. Since
-         * pipelined rendering is quite broken right now (to be fixed by the
-         * panfrost_job refactor, just take the perf hit for correctness) */
-        bool flush_immediate = /*flags & PIPE_FLUSH_END_OF_FRAME*/true;
-
         /* Submit the frame itself */
-        panfrost_submit_frame(ctx, flush_immediate, batch);
+        panfrost_batch_submit(batch);
 
         if (fence) {
                 struct panfrost_fence *f = panfrost_fence_create(ctx);
                 pipe->screen->fence_reference(pipe->screen, fence, NULL);
                 *fence = (struct pipe_fence_handle *)f;
         }
-
-        /* Prepare for the next frame */
-        panfrost_invalidate_frame(ctx);
 }
 
 #define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_##c;
@@ -2853,9 +2715,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         assert(ctx->blitter);
         assert(ctx->blitter_wallpaper);
-
-        ctx->last_fragment_flushed = true;
-        ctx->last_batch = NULL;
 
         /* Prepare for render! */
 

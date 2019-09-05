@@ -163,6 +163,106 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
         return batch->polygon_list->gpu;
 }
 
+static void
+panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
+{
+        /* Nothing to reload? TODO: MRT wallpapers */
+        if (batch->key.cbufs[0] == NULL)
+                return;
+
+        /* Check if the buffer has any content on it worth preserving */
+
+        struct pipe_surface *surf = batch->key.cbufs[0];
+        struct panfrost_resource *rsrc = pan_resource(surf->texture);
+        unsigned level = surf->u.tex.level;
+
+        if (!rsrc->slices[level].initialized)
+                return;
+
+        batch->ctx->wallpaper_batch = batch;
+
+        /* Clamp the rendering area to the damage extent. The
+         * KHR_partial_update() spec states that trying to render outside of
+         * the damage region is "undefined behavior", so we should be safe.
+         */
+        unsigned damage_width = (rsrc->damage.extent.maxx - rsrc->damage.extent.minx);
+        unsigned damage_height = (rsrc->damage.extent.maxy - rsrc->damage.extent.miny);
+
+        if (damage_width && damage_height) {
+                panfrost_batch_intersection_scissor(batch,
+                                                    rsrc->damage.extent.minx,
+                                                    rsrc->damage.extent.miny,
+                                                    rsrc->damage.extent.maxx,
+                                                    rsrc->damage.extent.maxy);
+        }
+
+        /* FIXME: Looks like aligning on a tile is not enough, but
+         * aligning on twice the tile size seems to works. We don't
+         * know exactly what happens here but this deserves extra
+         * investigation to figure it out.
+         */
+        batch->minx = batch->minx & ~((MALI_TILE_LENGTH * 2) - 1);
+        batch->miny = batch->miny & ~((MALI_TILE_LENGTH * 2) - 1);
+        batch->maxx = MIN2(ALIGN_POT(batch->maxx, MALI_TILE_LENGTH * 2),
+                           rsrc->base.width0);
+        batch->maxy = MIN2(ALIGN_POT(batch->maxy, MALI_TILE_LENGTH * 2),
+                           rsrc->base.height0);
+
+        struct pipe_scissor_state damage;
+        struct pipe_box rects[4];
+
+        /* Clamp the damage box to the rendering area. */
+        damage.minx = MAX2(batch->minx, rsrc->damage.biggest_rect.x);
+        damage.miny = MAX2(batch->miny, rsrc->damage.biggest_rect.y);
+        damage.maxx = MIN2(batch->maxx,
+                           rsrc->damage.biggest_rect.x +
+                           rsrc->damage.biggest_rect.width);
+        damage.maxy = MIN2(batch->maxy,
+                           rsrc->damage.biggest_rect.y +
+                           rsrc->damage.biggest_rect.height);
+
+        /* One damage rectangle means we can end up with at most 4 reload
+         * regions:
+         * 1: left region, only exists if damage.x > 0
+         * 2: right region, only exists if damage.x + damage.width < fb->width
+         * 3: top region, only exists if damage.y > 0. The intersection with
+         *    the left and right regions are dropped
+         * 4: bottom region, only exists if damage.y + damage.height < fb->height.
+         *    The intersection with the left and right regions are dropped
+         *
+         *                    ____________________________
+         *                    |       |     3     |      |
+         *                    |       |___________|      |
+         *                    |       |   damage  |      |
+         *                    |   1   |    rect   |   2  |
+         *                    |       |___________|      |
+         *                    |       |     4     |      |
+         *                    |_______|___________|______|
+         */
+        u_box_2d(batch->minx, batch->miny, damage.minx - batch->minx,
+                 batch->maxy - batch->miny, &rects[0]);
+        u_box_2d(damage.maxx, batch->miny, batch->maxx - damage.maxx,
+                 batch->maxy - batch->miny, &rects[1]);
+        u_box_2d(damage.minx, batch->miny, damage.maxx - damage.minx,
+                 damage.miny - batch->miny, &rects[2]);
+        u_box_2d(damage.minx, damage.maxy, damage.maxx - damage.minx,
+                 batch->maxy - damage.maxy, &rects[3]);
+
+        for (unsigned i = 0; i < 4; i++) {
+                /* Width and height are always >= 0 even if width is declared as a
+                 * signed integer: u_box_2d() helper takes unsigned args and
+                 * panfrost_set_damage_region() is taking care of clamping
+                 * negative values.
+                 */
+                if (!rects[i].width || !rects[i].height)
+                        continue;
+
+                /* Blit the wallpaper in */
+                panfrost_blit_wallpaper(batch->ctx, &rects[i]);
+        }
+        batch->ctx->wallpaper_batch = NULL;
+}
+
 void
 panfrost_batch_submit(struct panfrost_batch *batch)
 {
@@ -170,6 +270,13 @@ panfrost_batch_submit(struct panfrost_batch *batch)
 
         struct panfrost_context *ctx = batch->ctx;
         int ret;
+
+        /* Nothing to do! */
+        if (!batch->last_job.gpu && !batch->clear)
+                goto out;
+
+        if (!batch->clear && batch->last_tiler.gpu)
+                panfrost_batch_draw_wallpaper(batch);
 
         panfrost_scoreboard_link_batch(batch);
 
@@ -180,19 +287,28 @@ panfrost_batch_submit(struct panfrost_batch *batch)
         if (ret)
                 fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
 
+out:
+        /* If this is the bound batch, the panfrost_context parameters are
+         * relevant so submitting it invalidates those paramaters, but if it's
+         * not bound, the context parameters are for some other batch so we
+         * can't invalidate them.
+         */
+        if (ctx->batch == batch)
+                panfrost_invalidate_frame(ctx);
+
         /* The job has been submitted, let's invalidate the current FBO job
          * cache.
 	 */
         assert(!ctx->batch || batch == ctx->batch);
         ctx->batch = NULL;
 
-        /* Remove the job from the ctx->batches set so that future
-         * panfrost_get_batch() calls don't see it.
-         * We must reset the job key to avoid removing another valid entry when
-         * the job is freed.
+        /* We always stall the pipeline for correct results since pipelined
+         * rendering is quite broken right now (to be fixed by the panfrost_job
+         * refactor, just take the perf hit for correctness)
          */
-        _mesa_hash_table_remove_key(ctx->batches, &batch->key);
-        memset(&batch->key, 0, sizeof(batch->key));
+        drmSyncobjWait(pan_screen(ctx->base.screen)->fd, &ctx->out_sync, 1,
+                       INT64_MAX, 0, NULL);
+        panfrost_free_batch(batch);
 }
 
 void

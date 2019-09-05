@@ -196,12 +196,6 @@ struct panfrost_context {
         bool is_t6xx;
 
         uint32_t out_sync;
-
-        /* While we're busy building up the job for frame N, the GPU is
-         * still busy executing frame N-1. So hold a reference to
-         * yesterjob */
-        int last_fragment_flushed;
-        struct panfrost_batch *last_batch;
 };
 
 /* Corresponds to the CSO */
@@ -302,6 +296,9 @@ panfrost_fence_create(struct panfrost_context *ctx);
 
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
+
+void
+panfrost_invalidate_frame(struct panfrost_context *ctx);
 
 void
 panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data);
