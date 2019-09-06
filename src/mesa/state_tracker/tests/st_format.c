@@ -82,16 +82,7 @@ int main(int argc, char **argv)
                     _mesa_get_format_name(mf));
             return 1;
          }
-      }
-   }
 
-   /* Test all Gallium formats */
-   for (i = 1; i < PIPE_FORMAT_COUNT; i++) {
-      mesa_format mf = st_pipe_format_to_mesa_format(i);
-      if (st_compressed_format_fallback(st, mf))
-         continue;
-
-      if (mf != MESA_FORMAT_NONE) {
          const struct util_format_description *desc = util_format_description(i);
 
          /* Make sure that gallium and Mesa agree on whether the format is an
@@ -113,16 +104,6 @@ int main(int argc, char **argv)
                        mesa_array ? "" : "not ");
                return 1;
             }
-         }
-
-         enum pipe_format pf =
-            st_mesa_format_to_pipe_format(st, mf);
-         if (pf != i) {
-            fprintf(stderr, "Round-tripping %s -> %s -> %s failed\n",
-                    util_format_short_name(i),
-                    _mesa_get_format_name(mf),
-                    util_format_short_name(pf));
-            return 1;
          }
       }
    }
