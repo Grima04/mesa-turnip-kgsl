@@ -56,6 +56,9 @@ int main(int argc, char **argv)
    };
    struct st_context local_st = {
       .pipe = &pctx,
+      .has_etc1 = true,
+      .has_etc2 = true,
+      .has_astc_2d_ldr = true,
    };
    struct st_context *st = &local_st;
 
@@ -65,8 +68,7 @@ int main(int argc, char **argv)
    for (i = 1; i < MESA_FORMAT_COUNT; i++) {
       enum pipe_format pf;
 
-      if (st_compressed_format_fallback(st, i))
-         continue;
+      assert(!st_compressed_format_fallback(st, i));
 
       pf = st_mesa_format_to_pipe_format(st, i);
       if (pf != PIPE_FORMAT_NONE) {
