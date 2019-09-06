@@ -88,6 +88,7 @@ for arch in $CROSS_ARCHITECTURES; do
     apt-get install -y \
             libdrm-dev:${arch} \
             libexpat1-dev:${arch} \
+            linux-libc-dev:${arch}/stretch-backports \
             libelf-dev:${arch}
 done
 apt-get install -y \
