@@ -95,14 +95,9 @@ MESA_ENABLE_LLVM := true
 endif
 
 define mesa-build-with-llvm
-  $(if $(filter $(MESA_ANDROID_MAJOR_VERSION), 4 5 6), \
+  $(if $(filter $(MESA_ANDROID_MAJOR_VERSION), 4 5 6 7), \
     $(warning Unsupported LLVM version in Android $(MESA_ANDROID_MAJOR_VERSION)),) \
-  $(if $(filter 7,$(MESA_ANDROID_MAJOR_VERSION)), \
-    $(eval LOCAL_CFLAGS += -DLLVM_AVAILABLE -DMESA_LLVM_VERSION_STRING=\"3.8\")) \
-  $(if $(filter 8,$(MESA_ANDROID_MAJOR_VERSION)), \
-    $(eval LOCAL_CFLAGS += -DLLVM_AVAILABLE -DMESA_LLVM_VERSION_STRING=\"3.9\")) \
-  $(if $(filter P,$(MESA_ANDROID_MAJOR_VERSION)), \
-    $(eval LOCAL_CFLAGS += -DLLVM_AVAILABLE -DMESA_LLVM_VERSION_STRING=\"3.9\")) \
+  $(eval LOCAL_CFLAGS += -DLLVM_AVAILABLE -DMESA_LLVM_VERSION_STRING=\"3.9\")
   $(eval LOCAL_SHARED_LIBRARIES += libLLVM)
 endef
 

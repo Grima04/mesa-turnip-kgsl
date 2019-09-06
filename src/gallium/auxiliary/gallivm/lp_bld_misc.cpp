@@ -509,49 +509,11 @@ lp_free_memory_manager(LLVMMCJITMemoryManagerRef memorymgr)
 extern "C" LLVMValueRef
 lp_get_called_value(LLVMValueRef call)
 {
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9)
 	return LLVMGetCalledValue(call);
-#else
-	return llvm::wrap(llvm::CallSite(llvm::unwrap<llvm::Instruction>(call)).getCalledValue());
-#endif
 }
 
 extern "C" bool
 lp_is_function(LLVMValueRef v)
 {
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9)
 	return LLVMGetValueKind(v) == LLVMFunctionValueKind;
-#else
-	return llvm::isa<llvm::Function>(llvm::unwrap(v));
-#endif
 }
-
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9
-static llvm::AtomicOrdering mapFromLLVMOrdering(LLVMAtomicOrdering Ordering) {
-   switch (Ordering) {
-   case LLVMAtomicOrderingNotAtomic: return llvm::AtomicOrdering::NotAtomic;
-   case LLVMAtomicOrderingUnordered: return llvm::AtomicOrdering::Unordered;
-   case LLVMAtomicOrderingMonotonic: return llvm::AtomicOrdering::Monotonic;
-   case LLVMAtomicOrderingAcquire: return llvm::AtomicOrdering::Acquire;
-   case LLVMAtomicOrderingRelease: return llvm::AtomicOrdering::Release;
-   case LLVMAtomicOrderingAcquireRelease:
-      return llvm::AtomicOrdering::AcquireRelease;
-   case LLVMAtomicOrderingSequentiallyConsistent:
-      return llvm::AtomicOrdering::SequentiallyConsistent;
-   }
-
-   llvm_unreachable("Invalid LLVMAtomicOrdering value!");
-}
-
-LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
-                                    LLVMValueRef Cmp, LLVMValueRef New,
-                                    LLVMAtomicOrdering SuccessOrdering,
-                                    LLVMAtomicOrdering FailureOrdering,
-                                    LLVMBool SingleThread)
-{
-   return llvm::wrap(llvm::unwrap(B)->CreateAtomicCmpXchg(llvm::unwrap(Ptr), llvm::unwrap(Cmp),
-                                                          llvm::unwrap(New), mapFromLLVMOrdering(SuccessOrdering),
-                                                          mapFromLLVMOrdering(FailureOrdering),
-                                                          SingleThread ? llvm::SynchronizationScope::SingleThread : llvm::SynchronizationScope::CrossThread));
-}
-#endif

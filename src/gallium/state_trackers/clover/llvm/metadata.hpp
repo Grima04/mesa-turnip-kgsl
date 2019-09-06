@@ -58,44 +58,14 @@ namespace clover {
 
          inline bool
          is_kernel(const ::llvm::Function &f) {
-#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9))
             return f.getMetadata("kernel_arg_type");
-#else
-            return clover::any_of(is_kernel_node_for(f),
-                                  get_kernel_nodes(*f.getParent()));
-#endif
          }
 
          inline iterator_range< ::llvm::MDNode::op_iterator>
          get_kernel_metadata_operands(const ::llvm::Function &f,
                                       const std::string &name) {
-#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9))
-            // On LLVM v3.9+ kernel argument attributes are stored as
-            // function metadata.
             const auto data_node = f.getMetadata(name);
             return range(data_node->op_begin(), data_node->op_end());
-#else
-            using ::llvm::cast;
-            using ::llvm::dyn_cast;
-            const auto kernel_node = find(is_kernel_node_for(f),
-                                          get_kernel_nodes(*f.getParent()));
-
-            const auto data_node = cast< ::llvm::MDNode>(
-               find([&](const ::llvm::MDOperand &op) {
-                     if (auto m = dyn_cast< ::llvm::MDNode>(op))
-                        if (m->getNumOperands())
-                           if (auto m_name = dyn_cast< ::llvm::MDString>(
-                                  m->getOperand(0).get()))
-                              return m_name->getString() == name;
-
-                     return false;
-                  },
-                  kernel_node->operands()));
-
-            // Skip the first operand node which is just the metadata
-            // attribute name.
-            return range(data_node->op_begin() + 1, data_node->op_end());
-#endif
          }
       }
 

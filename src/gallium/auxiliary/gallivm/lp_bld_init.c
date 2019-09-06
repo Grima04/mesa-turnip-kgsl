@@ -125,11 +125,6 @@ create_pass_manager(struct gallivm_state *gallivm)
     * simple, or constant propagation into them, etc.
     */
 
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9
-   // Old versions of LLVM get the DataLayout from the pass manager.
-   LLVMAddTargetData(gallivm->target, gallivm->passmgr);
-#endif
-
    {
       char *td_str;
       // New ones from the Module.
