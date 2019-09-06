@@ -287,12 +287,7 @@ lp_build_fmuladd(LLVMBuilderRef builder,
    LLVMTypeRef type = LLVMTypeOf(a);
    assert(type == LLVMTypeOf(b));
    assert(type == LLVMTypeOf(c));
-   if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4) {
-      /* XXX: LLVM 3.3 does not breakdown llvm.fmuladd into mul+add when FMA is
-       * not supported, and instead it falls-back to a C function.
-       */
-      return LLVMBuildFAdd(builder, LLVMBuildFMul(builder, a, b, ""), c, "");
-   }
+
    char intrinsic[32];
    lp_format_intrinsic(intrinsic, sizeof intrinsic, "llvm.fmuladd", type);
    LLVMValueRef args[] = { a, b, c };

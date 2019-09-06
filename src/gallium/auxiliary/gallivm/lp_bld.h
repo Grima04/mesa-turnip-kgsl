@@ -51,13 +51,6 @@
 #include <llvm-c/Core.h>  
 
 
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 3
-/* We won't actually use LLVMMCJITMemoryManagerRef, just create a dummy
- * typedef to simplify things elsewhere.
- */
-typedef void *LLVMMCJITMemoryManagerRef;
-#endif
-
 
 /**
  * Redefine these LLVM entrypoints as invalid macros to make sure we
@@ -92,18 +85,6 @@ typedef void *LLVMMCJITMemoryManagerRef;
 #define GALLIVM_HAVE_CORO 1
 #else
 #define GALLIVM_HAVE_CORO 0
-#endif
-
-/*
- * Before LLVM 3.4 LLVMSetAlignment only supported GlobalValue, not
- * LoadInst/StoreInst as we need.
- */
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-#  ifdef __cplusplus
-      extern "C"
-#  endif
-   void LLVMSetAlignmentBackport(LLVMValueRef V, unsigned Bytes);
-#  define LLVMSetAlignment LLVMSetAlignmentBackport
 #endif
 
 #endif /* LP_BLD_H */

@@ -153,15 +153,6 @@ static void init_native_targets()
 extern "C" void
 lp_set_target_options(void)
 {
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-   /*
-    * By default LLVM adds a signal handler to output a pretty stack trace.
-    * This signal handler is never removed, causing problems when unloading the
-    * shared object where the gallium driver resides.
-    */
-   llvm::DisablePrettyStackTrace = true;
-#endif
-
    /* The llvm target registry is not thread-safe, so drivers and state-trackers
     * that want to initialize targets should use the lp_set_target_options()
     * function to safely initialize targets.
@@ -197,29 +188,6 @@ gallivm_dispose_target_library_info(LLVMTargetLibraryInfoRef library_info)
 #endif
    *>(library_info);
 }
-
-
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-
-extern "C"
-void
-LLVMSetAlignmentBackport(LLVMValueRef V,
-                         unsigned Bytes)
-{
-   switch (LLVMGetInstructionOpcode(V)) {
-   case LLVMLoad:
-      llvm::unwrap<llvm::LoadInst>(V)->setAlignment(Bytes);
-      break;
-   case LLVMStore:
-      llvm::unwrap<llvm::StoreInst>(V)->setAlignment(Bytes);
-      break;
-   default:
-      assert(0);
-      break;
-   }
-}
-
-#endif
 
 
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
@@ -287,22 +255,6 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
       virtual void deallocateFunctionBody(void *Body) {
          mgr()->deallocateFunctionBody(Body);
       }
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-      virtual uint8_t *startExceptionTable(const llvm::Function *F,
-                                           uintptr_t &ActualSize) {
-         return mgr()->startExceptionTable(F, ActualSize);
-      }
-      virtual void endExceptionTable(const llvm::Function *F,
-                                     uint8_t *TableStart,
-                                     uint8_t *TableEnd,
-                                     uint8_t *FrameRegister) {
-         mgr()->endExceptionTable(F, TableStart, TableEnd,
-                                  FrameRegister);
-      }
-      virtual void deallocateExceptionTable(void *ET) {
-         mgr()->deallocateExceptionTable(ET);
-      }
-#endif
       virtual bool CheckInvariants(std::string &s) {
          return mgr()->CheckInvariants(s);
       }
@@ -329,7 +281,6 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
       /*
        * From RTDyldMemoryManager
        */
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
       virtual uint8_t *allocateCodeSection(uintptr_t Size,
                                            unsigned Alignment,
                                            unsigned SectionID,
@@ -337,40 +288,23 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
          return mgr()->allocateCodeSection(Size, Alignment, SectionID,
                                            SectionName);
       }
-#else
-      virtual uint8_t *allocateCodeSection(uintptr_t Size,
-                                           unsigned Alignment,
-                                           unsigned SectionID) {
-         return mgr()->allocateCodeSection(Size, Alignment, SectionID);
-      }
-#endif
       virtual uint8_t *allocateDataSection(uintptr_t Size,
                                            unsigned Alignment,
                                            unsigned SectionID,
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
                                            llvm::StringRef SectionName,
-#endif
                                            bool IsReadOnly) {
          return mgr()->allocateDataSection(Size, Alignment, SectionID,
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
                                            SectionName,
-#endif
                                            IsReadOnly);
       }
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
       virtual void registerEHFrames(uint8_t *Addr, uint64_t LoadAddr, size_t Size) {
          mgr()->registerEHFrames(Addr, LoadAddr, Size);
       }
-#else
-      virtual void registerEHFrames(llvm::StringRef SectionData) {
-         mgr()->registerEHFrames(SectionData);
-      }
-#endif
 #if LLVM_VERSION_MAJOR >= 5
       virtual void deregisterEHFrames() {
          mgr()->deregisterEHFrames();
       }
-#elif LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
+#else
       virtual void deregisterEHFrames(uint8_t *Addr, uint64_t LoadAddr, size_t Size) {
          mgr()->deregisterEHFrames(Addr, LoadAddr, Size);
       }
@@ -379,15 +313,9 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
                                               bool AbortOnFailure=true) {
          return mgr()->getPointerToNamedFunction(Name, AbortOnFailure);
       }
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR == 3
-      virtual bool applyPermissions(std::string *ErrMsg = 0) {
-         return mgr()->applyPermissions(ErrMsg);
-      }
-#else
       virtual bool finalizeMemory(std::string *ErrMsg = 0) {
          return mgr()->finalizeMemory(ErrMsg);
       }
-#endif
 };
 
 
@@ -426,11 +354,7 @@ class ShaderMemoryManager : public DelegatingJITMemoryManager {
          assert(TheMM);
          for ( i = FunctionBody.begin(); i != FunctionBody.end(); ++i )
             TheMM->deallocateFunctionBody(*i);
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-         for ( i = ExceptionTable.begin(); i != ExceptionTable.end(); ++i )
-            TheMM->deallocateExceptionTable(*i);
-#endif /* LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4 */
-#endif /* LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6 */
+#endif
       }
    };
 
@@ -461,13 +385,6 @@ class ShaderMemoryManager : public DelegatingJITMemoryManager {
       static void freeGeneratedCode(struct lp_generated_code *code) {
          delete (GeneratedCode *) code;
       }
-
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-      virtual void deallocateExceptionTable(void *ET) {
-         // remember for later deallocation
-         code->ExceptionTable.push_back(ET);
-      }
-#endif
 
       virtual void deallocateFunctionBody(void *Body) {
          // remember for later deallocation
@@ -512,9 +429,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    TargetOptions options;
 #if defined(PIPE_ARCH_X86)
    options.StackAlignmentOverride = 4;
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-   options.RealignStack = true;
-#endif
 #endif
 
 #if defined(DEBUG) && (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
@@ -523,9 +437,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
 
    /* XXX: Workaround http://llvm.org/PR21435 */
 #if defined(DEBUG) || defined(PROFILE) || defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 4
-   options.NoFramePointerElimNonLeaf = true;
-#endif
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
    options.NoFramePointerElim = true;
 #endif
@@ -586,16 +497,8 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    MAttrs.push_back(util_cpu_caps.has_sse2   ? "+sse2"   : "-sse2"  );
    MAttrs.push_back(util_cpu_caps.has_sse3   ? "+sse3"   : "-sse3"  );
    MAttrs.push_back(util_cpu_caps.has_ssse3  ? "+ssse3"  : "-ssse3" );
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
    MAttrs.push_back(util_cpu_caps.has_sse4_1 ? "+sse4.1" : "-sse4.1");
-#else
-   MAttrs.push_back(util_cpu_caps.has_sse4_1 ? "+sse41"  : "-sse41" );
-#endif
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
    MAttrs.push_back(util_cpu_caps.has_sse4_2 ? "+sse4.2" : "-sse4.2");
-#else
-   MAttrs.push_back(util_cpu_caps.has_sse4_2 ? "+sse42"  : "-sse42" );
-#endif
    /*
     * AVX feature is not automatically detected from CPUID by the X86 target
     * yet, because the old (yet default) JIT engine is not capable of
@@ -604,23 +507,13 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
     */
    MAttrs.push_back(util_cpu_caps.has_avx  ? "+avx"  : "-avx");
    MAttrs.push_back(util_cpu_caps.has_f16c ? "+f16c" : "-f16c");
-   if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)) {
-      MAttrs.push_back(util_cpu_caps.has_fma  ? "+fma"  : "-fma");
-   } else {
-      /*
-       * The old JIT in LLVM 3.3 has a bug encoding llvm.fmuladd.f32 and
-       * llvm.fmuladd.v2f32 intrinsics when FMA is available.
-       */
-      MAttrs.push_back("-fma");
-   }
+   MAttrs.push_back(util_cpu_caps.has_fma  ? "+fma"  : "-fma");
    MAttrs.push_back(util_cpu_caps.has_avx2 ? "+avx2" : "-avx2");
    /* disable avx512 and all subvariants */
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
    MAttrs.push_back("-avx512cd");
    MAttrs.push_back("-avx512er");
    MAttrs.push_back("-avx512f");
    MAttrs.push_back("-avx512pf");
-#endif
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
    MAttrs.push_back("-avx512bw");
    MAttrs.push_back("-avx512dq");
@@ -637,7 +530,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
 
 #if defined(PIPE_ARCH_PPC)
    MAttrs.push_back(util_cpu_caps.has_altivec ? "+altivec" : "-altivec");
-#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4))
 #if (LLVM_VERSION_MAJOR < 4)
    /*
     * Make sure VSX instructions are disabled
@@ -650,21 +542,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    if (util_cpu_caps.has_altivec) {
       MAttrs.push_back("-vsx");
    }
-#else
-   /*
-    * Bug 25503 is fixed, by the same fix that fixed
-    * bug 26775, in versions of LLVM later than 3.8 (starting with 3.8.1).
-    * BZ 33531 actually comprises more than one bug, all of
-    * which are fixed in LLVM 4.0.
-    *
-    * With LLVM 4.0 or higher:
-    * Make sure VSX instructions are ENABLED (if supported), unless
-    * VSX instructions are explicitly enabled/disabled via GALLIVM_VSX=1 or 0.
-    */
-   if (util_cpu_caps.has_altivec) {
-      MAttrs.push_back(util_cpu_caps.has_vsx ? "+vsx" : "-vsx");
-   }
-#endif
 #endif
 #endif
 
@@ -722,10 +599,8 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
        builder.setMCJITMemoryManager(std::unique_ptr<RTDyldMemoryManager>(MM));
        MM = NULL; // ownership taken by std::unique_ptr
-#elif LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR > 3)
-       builder.setMCJITMemoryManager(MM);
 #else
-       builder.setJITMemoryManager(MM);
+       builder.setMCJITMemoryManager(MM);
 #endif
    } else {
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6

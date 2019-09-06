@@ -286,13 +286,9 @@ lp_jit_create_types(struct lp_fragment_shader_variant *lp)
    }
 
    if (gallivm_debug & GALLIVM_DEBUG_IR) {
-#if (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4))
       char *str = LLVMPrintModuleToString(gallivm->module);
       fprintf(stderr, "%s", str);
       LLVMDisposeMessage(str);
-#else
-      LLVMDumpModule(gallivm->module);
-#endif
    }
 }
 

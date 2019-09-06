@@ -72,20 +72,11 @@ lp_check_alignment(const void *ptr, unsigned alignment)
 extern "C" void
 lp_debug_dump_value(LLVMValueRef value)
 {
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 4)
    char *str = LLVMPrintValueToString(value);
    if (str) {
       os_log_message(str);
       LLVMDisposeMessage(str);
    }
-#elif defined(PIPE_OS_WINDOWS) || defined(PIPE_OS_EMBEDDED)
-   std::string str;
-   llvm::raw_string_ostream os(str);
-   llvm::unwrap(value)->print(os);
-   os_log_message(str.c_str());
-#else
-   LLVMDumpValue(value);
-#endif
 }
 
 
