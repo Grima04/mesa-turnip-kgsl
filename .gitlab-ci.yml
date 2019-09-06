@@ -23,7 +23,7 @@ variables:
 
 include:
   - project: 'wayland/ci-templates'
-    ref: 1f7f57c6
+    ref: 1f7f57c64ff4ebbf7292e3b7a13600518b8cb24c
     file: '/templates/debian.yml'
 
 stages:
