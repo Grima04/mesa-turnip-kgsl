@@ -482,7 +482,6 @@ _mesa_update_framebuffer_visual(struct gl_context *ctx,
       const struct gl_renderbuffer *rb =
          fb->Attachment[BUFFER_DEPTH].Renderbuffer;
       const mesa_format fmt = rb->Format;
-      fb->Visual.haveDepthBuffer = GL_TRUE;
       fb->Visual.depthBits = _mesa_get_format_bits(fmt, GL_DEPTH_BITS);
    }
 
@@ -490,7 +489,6 @@ _mesa_update_framebuffer_visual(struct gl_context *ctx,
       const struct gl_renderbuffer *rb =
          fb->Attachment[BUFFER_STENCIL].Renderbuffer;
       const mesa_format fmt = rb->Format;
-      fb->Visual.haveStencilBuffer = GL_TRUE;
       fb->Visual.stencilBits = _mesa_get_format_bits(fmt, GL_STENCIL_BITS);
    }
 
@@ -498,7 +496,6 @@ _mesa_update_framebuffer_visual(struct gl_context *ctx,
       const struct gl_renderbuffer *rb =
          fb->Attachment[BUFFER_ACCUM].Renderbuffer;
       const mesa_format fmt = rb->Format;
-      fb->Visual.haveAccumBuffer = GL_TRUE;
       fb->Visual.accumRedBits = _mesa_get_format_bits(fmt, GL_RED_BITS);
       fb->Visual.accumGreenBits = _mesa_get_format_bits(fmt, GL_GREEN_BITS);
       fb->Visual.accumBlueBits = _mesa_get_format_bits(fmt, GL_BLUE_BITS);

@@ -338,9 +338,9 @@ create_xmesa_buffer(XMesaDrawable d, BufferType type,
     */
    _swrast_add_soft_renderbuffers(&b->mesa_buffer,
                                   GL_FALSE,  /* color */
-                                  vis->mesa_visual.haveDepthBuffer,
-                                  vis->mesa_visual.haveStencilBuffer,
-                                  vis->mesa_visual.haveAccumBuffer,
+                                  vis->mesa_visual.depthBits > 0,
+                                  vis->mesa_visual.stencilBits > 0,
+                                  vis->mesa_visual.accumRedBits > 0,
                                   GL_FALSE,  /* software alpha buffer */
                                   vis->mesa_visual.numAuxBuffers > 0 );
 

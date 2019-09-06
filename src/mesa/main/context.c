@@ -305,10 +305,6 @@ _mesa_initialize_visual( struct gl_config *vis,
    vis->accumBlueBits  = accumBlueBits;
    vis->accumAlphaBits = accumAlphaBits;
 
-   vis->haveAccumBuffer   = accumRedBits > 0;
-   vis->haveDepthBuffer   = depthBits > 0;
-   vis->haveStencilBuffer = stencilBits > 0;
-
    vis->numAuxBuffers = 0;
    vis->level = 0;
    vis->sampleBuffers = numSamples > 0 ? 1 : 0;

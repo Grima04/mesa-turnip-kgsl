@@ -426,7 +426,7 @@ dri_fill_st_visual(struct st_visual *stvis,
       break;
    }
 
-   stvis->accum_format = (mode->haveAccumBuffer) ?
+   stvis->accum_format = (mode->accumRedBits > 0) ?
       PIPE_FORMAT_R16G16B16A16_SNORM : PIPE_FORMAT_NONE;
 
    stvis->buffer_mask |= ST_ATTACHMENT_FRONT_LEFT_MASK;
@@ -441,7 +441,7 @@ dri_fill_st_visual(struct st_visual *stvis,
          stvis->buffer_mask |= ST_ATTACHMENT_BACK_RIGHT_MASK;
    }
 
-   if (mode->haveDepthBuffer || mode->haveStencilBuffer)
+   if (mode->depthBits > 0 || mode->stencilBits > 0)
       stvis->buffer_mask |= ST_ATTACHMENT_DEPTH_STENCIL_MASK;
    /* let the state tracker allocate the accum buffer */
 }

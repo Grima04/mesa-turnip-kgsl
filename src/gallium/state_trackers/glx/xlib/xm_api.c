@@ -866,10 +866,6 @@ XMesaVisual XMesaCreateVisual( Display *display,
       vis->accumBlueBits  = accum_blue_size;
       vis->accumAlphaBits = accum_alpha_size;
 
-      vis->haveAccumBuffer   = accum_red_size > 0;
-      vis->haveDepthBuffer   = depth_size > 0;
-      vis->haveStencilBuffer = stencil_size > 0;
-
       vis->numAuxBuffers = 0;
       vis->level = 0;
       vis->sampleBuffers = num_samples > 1;

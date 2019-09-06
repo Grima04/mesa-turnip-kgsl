@@ -164,10 +164,6 @@ struct gl_config
    GLuint doubleBufferMode;
    GLuint stereoMode;
 
-   GLboolean haveAccumBuffer;
-   GLboolean haveDepthBuffer;
-   GLboolean haveStencilBuffer;
-
    GLint redBits, greenBits, blueBits, alphaBits;	/* bits per comp */
    GLuint redMask, greenMask, blueMask, alphaMask;
    GLint redShift, greenShift, blueShift, alphaShift;
