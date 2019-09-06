@@ -626,7 +626,7 @@ gallivm_compile_module(struct gallivm_state *gallivm)
                    "-sroa -early-cse -simplifycfg -reassociate "
                    "-mem2reg -constprop -instcombine -gvn",
                    filename, gallivm_debug & GALLIVM_PERF_NO_OPT ? 0 : 2,
-                   (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)) ? "[-mcpu=<-mcpu option>] " : "",
+                   "[-mcpu=<-mcpu option>] ",
                    "[-mattr=<-mattr option(s)>]");
    }
 

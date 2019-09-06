@@ -86,11 +86,6 @@ LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
                                     LLVMBool SingleThread);
 #endif
 
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 5
-LLVMValueRef LLVMBuildFence(LLVMBuilderRef B,
-			    LLVMAtomicOrdering ordering,
-			    LLVMBool singleThread, const char *Name);
-#endif
 #ifdef __cplusplus
 }
 #endif

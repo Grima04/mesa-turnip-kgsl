@@ -37,7 +37,7 @@ import SCons.Errors
 import SCons.Util
 
 
-required_llvm_version = '3.4'
+required_llvm_version = '3.5'
 
 
 def generate(env):
@@ -183,7 +183,7 @@ def generate(env):
                 'LLVMRuntimeDyld', 'LLVMObject', 'LLVMMCParser',
                 'LLVMBitReader', 'LLVMMC', 'LLVMCore', 'LLVMSupport'
             ])
-        elif llvm_version >= distutils.version.LooseVersion('3.5'):
+        else:
             env.Prepend(LIBS = [
                 'LLVMMCDisassembler',
                 'LLVMBitWriter', 'LLVMMCJIT', 'LLVMRuntimeDyld',
@@ -195,18 +195,6 @@ def generate(env):
                 'LLVMInstCombine', 'LLVMTransformUtils', 'LLVMipa',
                 'LLVMAnalysis', 'LLVMTarget', 'LLVMMC', 'LLVMCore',
                 'LLVMSupport'
-            ])
-        else:
-            env.Prepend(LIBS = [
-                'LLVMMCDisassembler',
-                'LLVMBitWriter', 'LLVMX86Disassembler', 'LLVMX86AsmParser',
-                'LLVMX86CodeGen', 'LLVMX86Desc', 'LLVMSelectionDAG',
-                'LLVMAsmPrinter', 'LLVMMCParser', 'LLVMX86AsmPrinter',
-                'LLVMX86Utils', 'LLVMX86Info', 'LLVMMCJIT', 'LLVMJIT',
-                'LLVMExecutionEngine', 'LLVMCodeGen', 'LLVMScalarOpts',
-                'LLVMInstCombine', 'LLVMTransformUtils', 'LLVMipa',
-                'LLVMAnalysis', 'LLVMTarget', 'LLVMMC', 'LLVMCore',
-                'LLVMSupport', 'LLVMRuntimeDyld', 'LLVMObject'
             ])
         env.Append(LIBS = [
             'imagehlp',
@@ -270,9 +258,8 @@ def generate(env):
 
             env.ParseConfig('%s --libs ' % llvm_config + ' '.join(components))
             env.ParseConfig('%s --ldflags' % llvm_config)
-            if llvm_version >= distutils.version.LooseVersion('3.5'):
-                env.ParseConfig('%s --system-libs' % llvm_config)
-                env.Append(CXXFLAGS = ['-std=c++14'])
+            env.ParseConfig('%s --system-libs' % llvm_config)
+            env.Append(CXXFLAGS = ['-std=c++14'])
         except OSError:
             print('scons: llvm-config version %s failed' % llvm_version)
             return

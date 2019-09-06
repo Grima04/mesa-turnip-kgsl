@@ -14,7 +14,7 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-08-09"
+  DEBIAN_TAG: "2019-09-11"
   DEBIAN_VERSION: stretch-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
 
@@ -321,9 +321,7 @@ scons-llvm:
   variables:
     SCONS_TARGET: "llvm=1"
     SCONS_CHECK_COMMAND: "scons llvm=1 check"
-    LLVM_VERSION: "3.4"
-    # LLVM 3.4 packages were built with an old libstdc++ ABI
-    CXX: "g++ -D_GLIBCXX_USE_CXX11_ABI=0"
+    LLVM_VERSION: "3.9"
 
 .deqp-test:
   <<: *ci-run-policy

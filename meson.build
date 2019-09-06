@@ -1264,7 +1264,7 @@ elif with_gallium_swr
 elif with_gallium_opencl or with_gallium_r600
   _llvm_version = '>= 3.9.0'
 else
-  _llvm_version = '>= 3.4.0'
+  _llvm_version = '>= 3.5.0'
 endif
 
 _shared_llvm = get_option('shared-llvm')

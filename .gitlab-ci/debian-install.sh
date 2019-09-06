@@ -24,11 +24,9 @@ echo "deb [trusted=yes] https://apt.llvm.org/stretch/ llvm-toolchain-stretch-8 m
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
-echo 'deb https://deb.debian.org/debian jessie main' >/etc/apt/sources.list.d/jessie.list
 
 apt-get update
 apt-get install -y -t stretch-backports \
-      llvm-3.4-dev \
       llvm-3.9-dev \
       libclang-3.9-dev \
       llvm-4.0-dev \

@@ -75,9 +75,7 @@
 
 #include <llvm/Support/TargetSelect.h>
 
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
 #include <llvm/IR/CallSite.h>
-#endif
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CBindingWrapping.h>
@@ -514,11 +512,9 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    MAttrs.push_back("-avx512er");
    MAttrs.push_back("-avx512f");
    MAttrs.push_back("-avx512pf");
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
    MAttrs.push_back("-avx512bw");
    MAttrs.push_back("-avx512dq");
    MAttrs.push_back("-avx512vl");
-#endif
 #endif
 #if defined(PIPE_ARCH_ARM)
    if (!util_cpu_caps.has_neon) {
@@ -557,7 +553,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
       }
    }
 
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
    StringRef MCPU = llvm::sys::getHostCPUName();
    /*
     * The cpu bits are no longer set automatically, so need to set mcpu manually.
@@ -588,7 +583,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    if (gallivm_debug & (GALLIVM_DEBUG_IR | GALLIVM_DEBUG_ASM | GALLIVM_DEBUG_DUMP_BC)) {
       debug_printf("llc -mcpu option: %s\n", MCPU.str().c_str());
    }
-#endif
 
    ShaderMemoryManager *MM = NULL;
    if (useMCJIT) {
@@ -665,10 +659,8 @@ lp_get_called_value(LLVMValueRef call)
 {
 #if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 9)
 	return LLVMGetCalledValue(call);
-#elif LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
-	return llvm::wrap(llvm::CallSite(llvm::unwrap<llvm::Instruction>(call)).getCalledValue());
 #else
-	return NULL; /* radeonsi doesn't support so old LLVM. */
+	return llvm::wrap(llvm::CallSite(llvm::unwrap<llvm::Instruction>(call)).getCalledValue());
 #endif
 }
 
@@ -707,20 +699,7 @@ LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Ptr,
 {
    return llvm::wrap(llvm::unwrap(B)->CreateAtomicCmpXchg(llvm::unwrap(Ptr), llvm::unwrap(Cmp),
                                                           llvm::unwrap(New), mapFromLLVMOrdering(SuccessOrdering),
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 5)
                                                           mapFromLLVMOrdering(FailureOrdering),
-#endif
                                                           SingleThread ? llvm::SynchronizationScope::SingleThread : llvm::SynchronizationScope::CrossThread));
-}
-#endif
-
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 5
-LLVMValueRef LLVMBuildFence(LLVMBuilderRef B,
-			    LLVMAtomicOrdering ordering,
-			    LLVMBool singleThread,
-			    const char *Name)
-{
-  return llvm::wrap(llvm::unwrap(B)->CreateFence(mapFromLLVMOrdering(ordering),
-						 singleThread ? llvm::SynchronizationScope::SingleThread : llvm::SynchronizationScope::CrossThread));
 }
 #endif
