@@ -1249,7 +1249,8 @@ st_create_fp_variant(struct st_context *st,
 
       /* This pass needs to happen *after* nir_lower_sampler */
       if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
-                   key->external.lower_xy_uxvx || key->external.lower_yx_xuxv)) {
+                   key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
+                   key->external.lower_ayuv || key->external.lower_xyuv)) {
          NIR_PASS_V(state.ir.nir, st_nir_lower_tex_src_plane,
                     ~stfp->Base.SamplersUsed,
                     key->external.lower_nv12 || key->external.lower_xy_uxvx ||
