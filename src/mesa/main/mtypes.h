@@ -159,7 +159,6 @@ _mesa_varying_slot_in_fs(gl_varying_slot slot)
  */
 struct gl_config
 {
-   GLboolean rgbMode;
    GLboolean floatMode;
    GLuint doubleBufferMode;
    GLuint stereoMode;

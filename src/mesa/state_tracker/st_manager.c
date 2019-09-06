@@ -380,8 +380,6 @@ st_visual_to_context_mode(const struct st_visual *visual,
       mode->stereoMode = GL_TRUE;
 
    if (visual->color_format != PIPE_FORMAT_NONE) {
-      mode->rgbMode = GL_TRUE;
-
       mode->redBits =
          util_format_get_component_bits(visual->color_format,
                UTIL_FORMAT_COLORSPACE_RGB, 0);

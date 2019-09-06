@@ -435,7 +435,6 @@ _mesa_update_framebuffer_visual(struct gl_context *ctx,
 				struct gl_framebuffer *fb)
 {
    memset(&fb->Visual, 0, sizeof(fb->Visual));
-   fb->Visual.rgbMode = GL_TRUE; /* assume this */
 
    /* find first RGB renderbuffer */
    for (unsigned i = 0; i < BUFFER_COUNT; i++) {

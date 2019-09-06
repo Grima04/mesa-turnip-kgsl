@@ -355,7 +355,6 @@ driCreateConfigs(mesa_format format,
 		    modes->transparentBlue = GLX_DONT_CARE;
 		    modes->transparentAlpha = GLX_DONT_CARE;
 		    modes->transparentIndex = GLX_DONT_CARE;
-		    modes->rgbMode = GL_TRUE;
 
 		    if (db_modes[i] == __DRI_ATTRIB_SWAP_NONE) {
 		    	modes->doubleBufferMode = GL_FALSE;

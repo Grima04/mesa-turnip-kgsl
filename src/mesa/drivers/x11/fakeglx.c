@@ -1551,12 +1551,7 @@ get_config( XMesaVisual xmvis, int attrib, int *value, GLboolean fbconfig )
       case GLX_RGBA:
          if (fbconfig)
             return GLX_BAD_ATTRIBUTE;
-	 if (xmvis->mesa_visual.rgbMode) {
-	    *value = True;
-	 }
-	 else {
-	    *value = False;
-	 }
+         *value = True;
 	 return 0;
       case GLX_DOUBLEBUFFER:
 	 *value = (int) xmvis->mesa_visual.doubleBufferMode;
@@ -1618,12 +1613,7 @@ get_config( XMesaVisual xmvis, int attrib, int *value, GLboolean fbconfig )
          }
          else if (xmvis->mesa_visual.level>0) {
             /* overlay */
-            if (xmvis->mesa_visual.rgbMode) {
-               *value = GLX_TRANSPARENT_RGB_EXT;
-            }
-            else {
-               *value = GLX_TRANSPARENT_INDEX_EXT;
-            }
+            *value = GLX_TRANSPARENT_RGB_EXT;
          }
          else if (xmvis->mesa_visual.level<0) {
             /* underlay */
@@ -1691,10 +1681,8 @@ get_config( XMesaVisual xmvis, int attrib, int *value, GLboolean fbconfig )
             return GLX_BAD_ATTRIBUTE;
          if (xmvis->mesa_visual.floatMode)
             *value = GLX_RGBA_FLOAT_BIT_ARB;
-         else if (xmvis->mesa_visual.rgbMode)
-            *value = GLX_RGBA_BIT;
          else
-            *value = GLX_COLOR_INDEX_BIT;
+            *value = GLX_RGBA_BIT;
          break;
       case GLX_X_RENDERABLE_SGIX:
          if (!fbconfig)

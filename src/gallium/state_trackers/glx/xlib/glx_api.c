@@ -191,6 +191,9 @@ save_glx_visual( Display *dpy, XVisualInfo *vinfo,
    GLint i;
    GLboolean comparePointers;
 
+   if (!rgbFlag)
+      return NULL;
+
    if (dbFlag) {
       /* Check if the MESA_BACK_BUFFER env var is set */
       char *backbuffer = getenv("MESA_BACK_BUFFER");
@@ -234,7 +237,6 @@ save_glx_visual( Display *dpy, XVisualInfo *vinfo,
           && v->mesa_visual.numAuxBuffers == numAuxBuffers
           && v->mesa_visual.samples == num_samples
           && v->ximage_flag == ximageFlag
-          && v->mesa_visual.rgbMode == rgbFlag
           && v->mesa_visual.doubleBufferMode == dbFlag
           && v->mesa_visual.stereoMode == stereoFlag
           && (v->mesa_visual.alphaBits > 0) == alphaFlag
@@ -1522,12 +1524,7 @@ get_config( XMesaVisual xmvis, int attrib, int *value, GLboolean fbconfig )
       case GLX_RGBA:
          if (fbconfig)
             return GLX_BAD_ATTRIBUTE;
-	 if (xmvis->mesa_visual.rgbMode) {
-	    *value = True;
-	 }
-	 else {
-	    *value = False;
-	 }
+         *value = True;
 	 return 0;
       case GLX_DOUBLEBUFFER:
 	 *value = (int) xmvis->mesa_visual.doubleBufferMode;
@@ -1639,10 +1636,7 @@ get_config( XMesaVisual xmvis, int attrib, int *value, GLboolean fbconfig )
       case GLX_RENDER_TYPE_SGIX:
          if (!fbconfig)
             return GLX_BAD_ATTRIBUTE;
-         if (xmvis->mesa_visual.rgbMode)
-            *value = GLX_RGBA_BIT;
-         else
-            *value = GLX_COLOR_INDEX_BIT;
+         *value = GLX_RGBA_BIT;
          break;
       case GLX_X_RENDERABLE_SGIX:
          if (!fbconfig)
@@ -2222,10 +2216,7 @@ glXQueryContext( Display *dpy, GLXContext ctx, int attribute, int *value )
       *value = xmctx->xm_visual->visinfo->visualid;
       break;
    case GLX_RENDER_TYPE:
-      if (xmctx->xm_visual->mesa_visual.rgbMode)
-         *value = GLX_RGBA_TYPE;
-      else
-         *value = GLX_COLOR_INDEX_TYPE;
+      *value = GLX_RGBA_TYPE;
       break;
    case GLX_SCREEN:
       *value = 0;
