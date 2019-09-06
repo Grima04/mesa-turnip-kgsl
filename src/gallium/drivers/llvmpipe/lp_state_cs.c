@@ -1123,8 +1123,9 @@ cs_exec_fn(void *init_data, int iter_idx, struct lp_cs_local_mem *lmem)
    memset(&thread_data, 0, sizeof(thread_data));
 
    if (lmem->local_size < job_info->req_local_mem) {
+      lmem->local_mem_ptr = REALLOC(lmem->local_mem_ptr, lmem->local_size,
+                                    job_info->req_local_mem);
       lmem->local_size = job_info->req_local_mem;
-      lmem->local_mem_ptr = realloc(lmem->local_mem_ptr, lmem->local_size);
    }
    thread_data.shared = lmem->local_mem_ptr;
 

@@ -65,7 +65,7 @@ lp_cs_tpool_worker(void *data)
          cnd_broadcast(&task->finish);
    }
    mtx_unlock(&pool->m);
-   free(lmem.local_mem_ptr);
+   FREE(lmem.local_mem_ptr);
    return 0;
 }
 
@@ -105,7 +105,7 @@ lp_cs_tpool_destroy(struct lp_cs_tpool *pool)
 
    cnd_destroy(&pool->new_work);
    mtx_destroy(&pool->m);
-   free(pool);
+   FREE(pool);
 }
 
 struct lp_cs_tpool_task *
@@ -148,6 +148,6 @@ lp_cs_tpool_wait_for_task(struct lp_cs_tpool *pool,
    mtx_unlock(&pool->m);
 
    cnd_destroy(&task->finish);
-   free(task);
+   FREE(task);
    *task_handle = NULL;
 }
