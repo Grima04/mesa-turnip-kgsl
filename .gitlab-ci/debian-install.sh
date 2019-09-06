@@ -92,6 +92,7 @@ for arch in $CROSS_ARCHITECTURES; do
             libelf-dev:${arch}
 done
 apt-get install -y \
+        g++/stretch \
         dpkg-dev \
         gcc-aarch64-linux-gnu \
         g++-aarch64-linux-gnu \
