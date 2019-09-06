@@ -2435,6 +2435,9 @@ st_choose_matching_format(struct st_context *st, unsigned bind,
    mesa_format mesa_format;
 
    for (mesa_format = 1; mesa_format < MESA_FORMAT_COUNT; mesa_format++) {
+      if (!_mesa_get_format_name(mesa_format))
+         continue;
+
       if (_mesa_is_format_srgb(mesa_format)) {
          continue;
       }

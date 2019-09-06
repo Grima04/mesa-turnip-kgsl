@@ -66,6 +66,9 @@ int main(int argc, char **argv)
 
    /* test all Mesa formats */
    for (i = 1; i < MESA_FORMAT_COUNT; i++) {
+      if (!_mesa_get_format_name(i))
+         continue;
+
       enum pipe_format pf;
 
       assert(!st_compressed_format_fallback(st, i));
