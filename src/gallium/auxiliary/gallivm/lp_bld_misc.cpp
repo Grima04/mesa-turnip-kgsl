@@ -45,10 +45,8 @@
 #include <llvm/Config/llvm-config.h>
 
 // Workaround http://llvm.org/PR23628
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)
-#  pragma push_macro("DEBUG")
-#  undef DEBUG
-#endif
+#pragma push_macro("DEBUG")
+#undef DEBUG
 
 #include <llvm/Config/llvm-config.h>
 #include <llvm-c/Core.h>
@@ -57,11 +55,7 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ADT/Triple.h>
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)
 #include <llvm/Analysis/TargetLibraryInfo.h>
-#else
-#include <llvm/Target/TargetLibraryInfo.h>
-#endif
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Host.h>
@@ -80,9 +74,7 @@
 #endif
 
 // Workaround http://llvm.org/PR23628
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 7)
-#  pragma pop_macro("DEBUG")
-#endif
+#pragma pop_macro("DEBUG")
 
 #include "c11/threads.h"
 #include "os/os_thread.h"
@@ -160,11 +152,7 @@ LLVMTargetLibraryInfoRef
 gallivm_create_target_library_info(const char *triple)
 {
    return reinterpret_cast<LLVMTargetLibraryInfoRef>(
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
-   new llvm::TargetLibraryInfo(
-#else
    new llvm::TargetLibraryInfoImpl(
-#endif
    llvm::Triple(triple)));
 }
 
@@ -173,11 +161,7 @@ void
 gallivm_dispose_target_library_info(LLVMTargetLibraryInfoRef library_info)
 {
    delete reinterpret_cast<
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
-   llvm::TargetLibraryInfo
-#else
    llvm::TargetLibraryInfoImpl
-#endif
    *>(library_info);
 }
 
@@ -331,17 +315,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    TargetOptions options;
 #if defined(PIPE_ARCH_X86)
    options.StackAlignmentOverride = 4;
-#endif
-
-#if defined(DEBUG) && (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
-   options.JITEmitDebugInfo = true;
-#endif
-
-   /* XXX: Workaround http://llvm.org/PR21435 */
-#if defined(DEBUG) || defined(PROFILE) || defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
-   options.NoFramePointerElim = true;
-#endif
 #endif
 
    builder.setEngineKind(EngineKind::JIT)
