@@ -11,28 +11,16 @@ for arch in $CROSS_ARCHITECTURES; do
 done
 
 apt-get install -y \
-      apt-transport-https \
       ca-certificates \
-      curl \
       wget \
-      unzip \
-      gnupg
-
-curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-echo "deb [trusted=yes] https://apt.llvm.org/stretch/ llvm-toolchain-stretch-7 main" >/etc/apt/sources.list.d/llvm7.list
-echo "deb [trusted=yes] https://apt.llvm.org/stretch/ llvm-toolchain-stretch-8 main" >/etc/apt/sources.list.d/llvm8.list
+      unzip
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
-echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
+echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
 
 apt-get update
-apt-get install -y --no-remove -t stretch-backports \
-      llvm-3.9-dev \
-      libclang-3.9-dev \
-      llvm-4.0-dev \
-      libclang-4.0-dev \
-      llvm-5.0-dev \
-      libclang-5.0-dev \
+
+apt-get install -y --no-remove \
       llvm-6.0-dev \
       libclang-6.0-dev \
       llvm-7-dev \
@@ -40,13 +28,7 @@ apt-get install -y --no-remove -t stretch-backports \
       llvm-8-dev \
       libclang-8-dev \
       g++ \
-      clang-8
-
-# Install remaining packages from Debian buster to get newer versions
-echo "deb https://deb.debian.org/debian/ buster main" >/etc/apt/sources.list.d/buster.list
-echo "deb https://deb.debian.org/debian/ buster-updates main" >/etc/apt/sources.list.d/buster-updates.list
-apt-get update
-apt-get install -y --no-remove \
+      clang-8 \
       git \
       bzip2 \
       zlib1g-dev \
@@ -273,10 +255,8 @@ rm -rf /VK-GL-CTS
 ############### Uninstall the build software
 
 apt-get purge -y \
-      git \
-      curl \
+      wget \
       unzip \
-      gnupg \
       cmake \
       git \
       libgles2-mesa-dev \

@@ -14,12 +14,14 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-09-11"
+  DEBIAN_TAG: "2019-09-18"
   DEBIAN_ARM64_TAG: "arm64v8-2019-08-09"
-  DEBIAN_VERSION: stretch-slim
-  DEBIAN_ARM64_VERSION: buster-slim
+  STRETCH_TAG: "2019-09-18"
+  DEBIAN_VERSION: buster-slim
+  STRETCH_VERSION: stretch-slim
   DEBIAN_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_TAG"
-  DEBIAN_ARM64_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_ARM64_VERSION:$DEBIAN_ARM64_TAG"
+  DEBIAN_ARM64_IMAGE: "$CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:$DEBIAN_ARM64_TAG"
+  STRETCH_IMAGE: "$CI_REGISTRY_IMAGE/debian/$STRETCH_VERSION:$STRETCH_TAG"
 
 include:
   - project: 'wayland/ci-templates'
@@ -52,8 +54,9 @@ stages:
       # https://gitlab.com/gitlab-org/gitlab-ce/commit/8788fb925706cad594adf6917a6c5f6587dd1521
       - artifacts
 
-# Builds the normal CI native and cross-build docker image.
-debian:
+# Build the normal CI native and cross-build docker images.
+
+debian-10:
   extends:
     - .debian@container-ifnot-exists
     - .ci-run-policy
@@ -61,6 +64,14 @@ debian:
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-install.sh'
+
+debian-9:
+  extends: debian-10
+  variables:
+    DEBIAN_TAG: $STRETCH_TAG
+    DEBIAN_VERSION: $STRETCH_VERSION
+    DEBIAN_IMAGE: $STRETCH_IMAGE
+    DEBIAN_EXEC: 'bash .gitlab-ci/debian-stretch-install.sh'
 
 # Builds a Docker image with the native environment and VK-GL-CTS for testing.
 test-container:arm64:
@@ -70,7 +81,6 @@ test-container:arm64:
   stage: containers
   variables:
     DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
-    DEBIAN_VERSION: "$DEBIAN_ARM64_VERSION"
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-test-install.sh'
 
@@ -231,11 +241,6 @@ meson-clang:
     VULKAN_DRIVERS: intel,amd,freedreno
     CC: "ccache clang-8"
     CXX: "ccache clang++-8"
-  before_script:
-    - export CCACHE_BASEDIR="$PWD" CCACHE_DIR="$PWD/ccache"
-    - ccache --zero-stats --show-stats || true
-     # clang++ breaks if it picks up the GCC 8 directory without libstdc++.so
-    - apt-get remove -y libgcc-8-dev
 
 scons-swr:
   extends: .scons-build
@@ -272,11 +277,24 @@ meson-clover:
     - .gitlab-ci/meson-build.sh
     - LLVM_VERSION=8 .gitlab-ci/meson-build.sh
     - export GALLIUM_DRIVERS="i915,r600"
+    - LLVM_VERSION=6.0 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
+
+meson-clover-old-llvm:
+  extends: meson-clover
+  image: $STRETCH_IMAGE
+  variables:
+    UNWIND: "false"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D egl=false
+      -D gbm=false
+      -D platforms=drm,surfaceless
+    GALLIUM_DRIVERS: "i915,r600"
+  script:
     - LLVM_VERSION=3.9 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=4.0 .gitlab-ci/meson-build.sh
     - LLVM_VERSION=5.0 .gitlab-ci/meson-build.sh
-    - LLVM_VERSION=6.0 .gitlab-ci/meson-build.sh
-    - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
 
 meson-vulkan:
   extends: .meson-build
@@ -328,6 +346,12 @@ scons-llvm:
   variables:
     SCONS_TARGET: "llvm=1"
     SCONS_CHECK_COMMAND: "scons llvm=1 check"
+    LLVM_VERSION: "6.0"
+
+scons-old-llvm:
+  extends: scons-llvm
+  image: $STRETCH_IMAGE
+  variables:
     LLVM_VERSION: "3.9"
 
 .deqp-test:
