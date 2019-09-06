@@ -199,14 +199,6 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
    /* slab_alloc() doesn't zero */
    memset(trans, 0, sizeof(*trans));
 
-   ptrans = &trans->base;
-   pipe_resource_reference(&ptrans->resource, prsc);
-   ptrans->level = level;
-   ptrans->usage = usage;
-   ptrans->box = *box;
-
-   assert(level <= prsc->last_level);
-
    /* Upgrade DISCARD_RANGE to WHOLE_RESOURCE if the whole resource is
     * being mapped. If we add buffer reallocation to avoid CPU/GPU sync this
     * check needs to be extended to coherent mappings and shared resources.
@@ -220,6 +212,14 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
        prsc->array_size == 1) {
       usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
    }
+
+   ptrans = &trans->base;
+   pipe_resource_reference(&ptrans->resource, prsc);
+   ptrans->level = level;
+   ptrans->usage = usage;
+   ptrans->box = *box;
+
+   assert(level <= prsc->last_level);
 
    if (rsc->texture && !etna_resource_newer(rsc, etna_resource(rsc->texture))) {
       /* We have a texture resource which is the same age or newer than the
