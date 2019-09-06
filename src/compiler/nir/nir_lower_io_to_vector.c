@@ -81,6 +81,9 @@ variables_can_merge(const nir_shader *shader,
                     const nir_variable *a, const nir_variable *b,
                     bool same_array_structure)
 {
+   if (a->data.compact || b->data.compact)
+      return false;
+
    const struct glsl_type *a_type_tail = a->type;
    const struct glsl_type *b_type_tail = b->type;
 
