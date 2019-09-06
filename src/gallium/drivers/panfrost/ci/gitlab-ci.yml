@@ -148,19 +148,11 @@ build:arm64:
 .test:
   stage: test
   tags:
-    - idle-jobs
+    - idle-lava
   image: $CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:arm64-${IMAGE_TAG}  # Any of the images will be fine
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for submitting the job
   script:
-    - mkdir -p ~/.config/
-    - |
-      echo "default:
-        uri: https://lava.collabora.co.uk/RPC2
-        timeout: 120
-        username: jenkins-fdo
-        token: $LAVA_TOKEN
-      " > ~/.config/lavacli.yaml
     - lava_job_id=`lavacli jobs submit $CI_PROJECT_DIR/results/lava-deqp.yml`
     - echo $lava_job_id
     - lavacli jobs logs $lava_job_id | grep -a -v "{'case':" | tee results/lava-deqp-$lava_job_id.log
