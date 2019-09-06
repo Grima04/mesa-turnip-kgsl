@@ -37,7 +37,7 @@ import SCons.Errors
 import SCons.Util
 
 
-required_llvm_version = '3.7'
+required_llvm_version = '3.8'
 
 
 def generate(env):
