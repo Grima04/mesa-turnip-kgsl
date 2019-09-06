@@ -384,6 +384,8 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
       return PIPE_FORMAT_R16_SNORM;
    case MESA_FORMAT_RG_SNORM16:
       return PIPE_FORMAT_R16G16_SNORM;
+   case MESA_FORMAT_RGB_SNORM16:
+      return PIPE_FORMAT_R16G16B16_SNORM;
    case MESA_FORMAT_RGBA_SNORM16:
       return PIPE_FORMAT_R16G16B16A16_SNORM;
 
@@ -969,6 +971,8 @@ st_pipe_format_to_mesa_format(enum pipe_format format)
       return MESA_FORMAT_R_SNORM16;
    case PIPE_FORMAT_R16G16_SNORM:
       return MESA_FORMAT_RG_SNORM16;
+   case PIPE_FORMAT_R16G16B16_SNORM:
+      return MESA_FORMAT_RGB_SNORM16;
    case PIPE_FORMAT_R16G16B16A16_SNORM:
       return MESA_FORMAT_RGBA_SNORM16;
 
