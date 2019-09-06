@@ -26,7 +26,7 @@ sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/sources.list.d/backports.list
 
 apt-get update
-apt-get install -y -t stretch-backports \
+apt-get install -y --no-remove -t stretch-backports \
       llvm-3.9-dev \
       libclang-3.9-dev \
       llvm-4.0-dev \
@@ -46,7 +46,7 @@ apt-get install -y -t stretch-backports \
 echo "deb https://deb.debian.org/debian/ buster main" >/etc/apt/sources.list.d/buster.list
 echo "deb https://deb.debian.org/debian/ buster-updates main" >/etc/apt/sources.list.d/buster-updates.list
 apt-get update
-apt-get install -y \
+apt-get install -y --no-remove \
       git \
       bzip2 \
       zlib1g-dev \
@@ -83,13 +83,13 @@ apt-get install -y \
 
 # Cross-build Mesa deps
 for arch in $CROSS_ARCHITECTURES; do
-    apt-get install -y \
+    apt-get install -y --no-remove \
             libdrm-dev:${arch} \
             libexpat1-dev:${arch} \
             linux-libc-dev:${arch}/stretch-backports \
             libelf-dev:${arch}
 done
-apt-get install -y \
+apt-get install -y --no-remove \
         g++/stretch \
         dpkg-dev \
         gcc-aarch64-linux-gnu \
@@ -100,7 +100,7 @@ apt-get install -y \
         g++-i686-linux-gnu
 
 # for 64bit windows cross-builds
-apt-get install -y mingw-w64
+apt-get install -y --no-remove mingw-w64
 
 # for the vulkan overlay layer
 wget https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-linux-Release.zip
@@ -207,10 +207,10 @@ make
 popd
 
 # Use ccache to speed up builds
-apt-get install -y ccache
+apt-get install -y --no-remove ccache
 
 # We need xmllint to validate the XML files in Mesa
-apt-get install -y libxml2-utils
+apt-get install -y --no-remove libxml2-utils
 
 
 # Generate cross build files for Meson
