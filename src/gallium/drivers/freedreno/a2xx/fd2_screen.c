@@ -59,13 +59,13 @@ fd2_screen_is_format_supported(struct pipe_screen *pscreen,
 	}
 
 	if ((usage & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_VERTEX_BUFFER)) &&
-	    !util_format_is_srgb(format)) {
-		enum a2xx_sq_surfaceformat fmt = fd2_pipe2surface(format);
-		unsigned block_size = util_format_get_blocksize(format);
-		if (fmt != ~0)
-			retval |= usage & PIPE_BIND_VERTEX_BUFFER;
-		if (fmt != ~0 && block_size != 3 && block_size != 6 &&
-		    (block_size != 12 || format == PIPE_FORMAT_R32G32B32_FLOAT))
+			!util_format_is_srgb(format) &&
+			!util_format_is_pure_integer(format) &&
+			fd2_pipe2surface(format).format != FMT_INVALID) {
+		retval |= usage & PIPE_BIND_VERTEX_BUFFER;
+		/* the only npot blocksize supported texture format is R32G32B32_FLOAT */
+		if (util_is_power_of_two_or_zero(util_format_get_blocksize(format)) ||
+				format == PIPE_FORMAT_R32G32B32_FLOAT)
 			retval |= usage & PIPE_BIND_SAMPLER_VIEW;
 	}
 
