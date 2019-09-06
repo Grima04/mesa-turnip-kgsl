@@ -33,6 +33,7 @@
 #include "util/list.h"
 #include "util/set.h"
 #include "util/u_helpers.h"
+#include "util/u_range.h"
 
 struct etna_context;
 struct pipe_screen;
@@ -83,6 +84,9 @@ struct etna_resource {
    struct etna_bo *ts_bo; /* Tile status video memory */
 
    struct etna_resource_level levels[ETNA_NUM_LOD];
+
+   /* buffer range that has been initialized */
+   struct util_range valid_buffer_range;
 
    /* for when TE doesn't support the base layout */
    struct pipe_resource *texture;
