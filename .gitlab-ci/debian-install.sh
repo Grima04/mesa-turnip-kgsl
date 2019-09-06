@@ -77,18 +77,9 @@ for arch in $CROSS_ARCHITECTURES; do
     apt-get install -y --no-remove \
             libdrm-dev:${arch} \
             libexpat1-dev:${arch} \
-            linux-libc-dev:${arch}/stretch-backports \
-            libelf-dev:${arch}
+            libelf-dev:${arch} \
+            crossbuild-essential-${arch}
 done
-apt-get install -y --no-remove \
-        g++/stretch \
-        dpkg-dev \
-        gcc-aarch64-linux-gnu \
-        g++-aarch64-linux-gnu \
-        gcc-arm-linux-gnueabihf \
-        g++-arm-linux-gnueabihf \
-        gcc-i686-linux-gnu \
-        g++-i686-linux-gnu
 
 # for 64bit windows cross-builds
 apt-get install -y --no-remove mingw-w64
