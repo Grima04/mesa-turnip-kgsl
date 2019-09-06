@@ -37,7 +37,7 @@ import SCons.Errors
 import SCons.Util
 
 
-required_llvm_version = '3.5'
+required_llvm_version = '3.6'
 
 
 def generate(env):
@@ -171,7 +171,7 @@ def generate(env):
                 'LLVMRuntimeDyld', 'LLVMObject', 'LLVMMCParser',
                 'LLVMBitReader', 'LLVMMC', 'LLVMCore', 'LLVMSupport'
             ])
-        elif llvm_version >= distutils.version.LooseVersion('3.6'):
+        else:
             env.Prepend(LIBS = [
                 'LLVMBitWriter', 'LLVMX86Disassembler', 'LLVMX86AsmParser',
                 'LLVMX86CodeGen', 'LLVMSelectionDAG', 'LLVMAsmPrinter',
@@ -182,19 +182,6 @@ def generate(env):
                 'LLVMMCJIT', 'LLVMTarget', 'LLVMExecutionEngine',
                 'LLVMRuntimeDyld', 'LLVMObject', 'LLVMMCParser',
                 'LLVMBitReader', 'LLVMMC', 'LLVMCore', 'LLVMSupport'
-            ])
-        else:
-            env.Prepend(LIBS = [
-                'LLVMMCDisassembler',
-                'LLVMBitWriter', 'LLVMMCJIT', 'LLVMRuntimeDyld',
-                'LLVMX86Disassembler', 'LLVMX86AsmParser', 'LLVMX86CodeGen',
-                'LLVMSelectionDAG', 'LLVMAsmPrinter', 'LLVMX86Desc',
-                'LLVMObject', 'LLVMMCParser', 'LLVMBitReader', 'LLVMX86Info',
-                'LLVMX86AsmPrinter', 'LLVMX86Utils', 'LLVMJIT',
-                'LLVMExecutionEngine', 'LLVMCodeGen', 'LLVMScalarOpts',
-                'LLVMInstCombine', 'LLVMTransformUtils', 'LLVMipa',
-                'LLVMAnalysis', 'LLVMTarget', 'LLVMMC', 'LLVMCore',
-                'LLVMSupport'
             ])
         env.Append(LIBS = [
             'imagehlp',

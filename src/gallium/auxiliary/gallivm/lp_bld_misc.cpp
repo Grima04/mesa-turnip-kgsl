@@ -52,9 +52,7 @@
 
 #include <llvm/Config/llvm-config.h>
 #include <llvm-c/Core.h>
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
 #include <llvm-c/Support.h>
-#endif
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -64,11 +62,7 @@
 #else
 #include <llvm/Target/TargetLibraryInfo.h>
 #endif
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
-#include <llvm/ExecutionEngine/JITMemoryManager.h>
-#else
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
-#endif
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/PrettyStackTrace.h>
@@ -126,7 +120,7 @@ static void init_native_targets()
    llvm::InitializeNativeTargetAsmPrinter();
 
    llvm::InitializeNativeTargetDisassembler();
-#if DEBUG && (LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6))
+#if DEBUG
    {
       char *env_llc_options = getenv("GALLIVM_LLC_OPTIONS");
       if (env_llc_options) {
@@ -188,11 +182,7 @@ gallivm_dispose_target_library_info(LLVMTargetLibraryInfoRef library_info)
 }
 
 
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
-typedef llvm::JITMemoryManager BaseMemoryManager;
-#else
 typedef llvm::RTDyldMemoryManager BaseMemoryManager;
-#endif
 
 
 /*
@@ -206,76 +196,6 @@ class DelegatingJITMemoryManager : public BaseMemoryManager {
       virtual BaseMemoryManager *mgr() const = 0;
 
    public:
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
-      /*
-       * From JITMemoryManager
-       */
-      virtual void setMemoryWritable() {
-         mgr()->setMemoryWritable();
-      }
-      virtual void setMemoryExecutable() {
-         mgr()->setMemoryExecutable();
-      }
-      virtual void setPoisonMemory(bool poison) {
-         mgr()->setPoisonMemory(poison);
-      }
-      virtual void AllocateGOT() {
-         mgr()->AllocateGOT();
-         /*
-          * isManagingGOT() is not virtual in base class so we can't delegate.
-          * Instead we mirror the value of HasGOT in our instance.
-          */
-         HasGOT = mgr()->isManagingGOT();
-      }
-      virtual uint8_t *getGOTBase() const {
-         return mgr()->getGOTBase();
-      }
-      virtual uint8_t *startFunctionBody(const llvm::Function *F,
-                                         uintptr_t &ActualSize) {
-         return mgr()->startFunctionBody(F, ActualSize);
-      }
-      virtual uint8_t *allocateStub(const llvm::GlobalValue *F,
-                                    unsigned StubSize,
-                                    unsigned Alignment) {
-         return mgr()->allocateStub(F, StubSize, Alignment);
-      }
-      virtual void endFunctionBody(const llvm::Function *F,
-                                   uint8_t *FunctionStart,
-                                   uint8_t *FunctionEnd) {
-         mgr()->endFunctionBody(F, FunctionStart, FunctionEnd);
-      }
-      virtual uint8_t *allocateSpace(intptr_t Size, unsigned Alignment) {
-         return mgr()->allocateSpace(Size, Alignment);
-      }
-      virtual uint8_t *allocateGlobal(uintptr_t Size, unsigned Alignment) {
-         return mgr()->allocateGlobal(Size, Alignment);
-      }
-      virtual void deallocateFunctionBody(void *Body) {
-         mgr()->deallocateFunctionBody(Body);
-      }
-      virtual bool CheckInvariants(std::string &s) {
-         return mgr()->CheckInvariants(s);
-      }
-      virtual size_t GetDefaultCodeSlabSize() {
-         return mgr()->GetDefaultCodeSlabSize();
-      }
-      virtual size_t GetDefaultDataSlabSize() {
-         return mgr()->GetDefaultDataSlabSize();
-      }
-      virtual size_t GetDefaultStubSlabSize() {
-         return mgr()->GetDefaultStubSlabSize();
-      }
-      virtual unsigned GetNumCodeSlabs() {
-         return mgr()->GetNumCodeSlabs();
-      }
-      virtual unsigned GetNumDataSlabs() {
-         return mgr()->GetNumDataSlabs();
-      }
-      virtual unsigned GetNumStubSlabs() {
-         return mgr()->GetNumStubSlabs();
-      }
-#endif
-
       /*
        * From RTDyldMemoryManager
        */
@@ -342,17 +262,6 @@ class ShaderMemoryManager : public DelegatingJITMemoryManager {
       }
 
       ~GeneratedCode() {
-         /*
-          * Deallocate things as previously requested and
-          * free shared manager when no longer used.
-          */
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
-         Vec::iterator i;
-
-         assert(TheMM);
-         for ( i = FunctionBody.begin(); i != FunctionBody.end(); ++i )
-            TheMM->deallocateFunctionBody(*i);
-#endif
       }
    };
 
@@ -408,17 +317,12 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
                                         LLVMModuleRef M,
                                         LLVMMCJITMemoryManagerRef CMM,
                                         unsigned OptLevel,
-                                        int useMCJIT,
                                         char **OutError)
 {
    using namespace llvm;
 
    std::string Error;
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
    EngineBuilder builder(std::unique_ptr<Module>(unwrap(M)));
-#else
-   EngineBuilder builder(unwrap(M));
-#endif
 
    /**
     * LLVM 3.1+ haven't more "extern unsigned llvm::StackAlignmentOverride" and
@@ -445,25 +349,20 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
           .setTargetOptions(options)
           .setOptLevel((CodeGenOpt::Level)OptLevel);
 
-   if (useMCJIT) {
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
-       builder.setUseMCJIT(true);
-#endif
 #ifdef _WIN32
-       /*
-        * MCJIT works on Windows, but currently only through ELF object format.
-        *
-        * XXX: We could use `LLVM_HOST_TRIPLE "-elf"` but LLVM_HOST_TRIPLE has
-        * different strings for MinGW/MSVC, so better play it safe and be
-        * explicit.
-        */
+    /*
+     * MCJIT works on Windows, but currently only through ELF object format.
+     *
+     * XXX: We could use `LLVM_HOST_TRIPLE "-elf"` but LLVM_HOST_TRIPLE has
+     * different strings for MinGW/MSVC, so better play it safe and be
+     * explicit.
+     */
 #  ifdef _WIN64
-       LLVMSetTarget(M, "x86_64-pc-win32-elf");
+    LLVMSetTarget(M, "x86_64-pc-win32-elf");
 #  else
-       LLVMSetTarget(M, "i686-pc-win32-elf");
+    LLVMSetTarget(M, "i686-pc-win32-elf");
 #  endif
 #endif
-   }
 
    llvm::SmallVector<std::string, 16> MAttrs;
 
@@ -585,28 +484,12 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    }
 
    ShaderMemoryManager *MM = NULL;
-   if (useMCJIT) {
-       BaseMemoryManager* JMM = reinterpret_cast<BaseMemoryManager*>(CMM);
-       MM = new ShaderMemoryManager(JMM);
-       *OutCode = MM->getGeneratedCode();
+   BaseMemoryManager* JMM = reinterpret_cast<BaseMemoryManager*>(CMM);
+   MM = new ShaderMemoryManager(JMM);
+   *OutCode = MM->getGeneratedCode();
 
-#if LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR >= 6)
-       builder.setMCJITMemoryManager(std::unique_ptr<RTDyldMemoryManager>(MM));
-       MM = NULL; // ownership taken by std::unique_ptr
-#else
-       builder.setMCJITMemoryManager(MM);
-#endif
-   } else {
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
-       BaseMemoryManager* JMM = reinterpret_cast<BaseMemoryManager*>(CMM);
-       MM = new ShaderMemoryManager(JMM);
-       *OutCode = MM->getGeneratedCode();
-
-       builder.setJITMemoryManager(MM);
-#else
-       assert(0);
-#endif
-   }
+   builder.setMCJITMemoryManager(std::unique_ptr<RTDyldMemoryManager>(MM));
+   MM = NULL; // ownership taken by std::unique_ptr
 
    ExecutionEngine *JIT;
 
@@ -639,11 +522,7 @@ LLVMMCJITMemoryManagerRef
 lp_get_default_memory_manager()
 {
    BaseMemoryManager *mm;
-#if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 6
-   mm = llvm::JITMemoryManager::CreateDefaultMemManager();
-#else
    mm = new llvm::SectionMemoryManager();
-#endif
    return reinterpret_cast<LLVMMCJITMemoryManagerRef>(mm);
 }
 

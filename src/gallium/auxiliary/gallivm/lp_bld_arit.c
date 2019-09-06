@@ -1832,7 +1832,7 @@ lp_build_abs(struct lp_build_context *bld,
       return a;
 
    if(type.floating) {
-      if ((LLVM_VERSION_MAJOR > 3 || (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR > 6)) && (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9)) {
+      if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 9) {
          /* Workaround llvm.org/PR27332 */
          LLVMTypeRef int_vec_type = lp_build_int_vec_type(bld->gallivm, type);
          unsigned long long absMask = ~(1ULL << (type.width - 1));

@@ -59,7 +59,6 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
                                         LLVMModuleRef M,
                                         LLVMMCJITMemoryManagerRef MM,
                                         unsigned OptLevel,
-                                        int useMCJIT,
                                         char **OutError);
 
 extern void
