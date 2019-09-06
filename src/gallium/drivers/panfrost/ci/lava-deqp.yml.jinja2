@@ -13,7 +13,7 @@ visibility: public
 actions:
 - deploy:
     timeout:
-      minutes: 2
+      minutes: 10
     to: tftp
     kernel:
       url: {{ base_artifacts_url }}/{{ kernel_image_name }}
@@ -32,7 +32,7 @@ actions:
       - '#' 
 - test:
     timeout:
-      minutes: 40
+      minutes: 60
     definitions:
     - repository:
         metadata:
