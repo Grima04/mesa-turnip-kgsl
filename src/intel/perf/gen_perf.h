@@ -25,6 +25,7 @@
 #define GEN_PERF_H
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -266,6 +267,12 @@ struct gen_perf_config {
     * runtime
     */
    struct hash_table *oa_metrics_table;
+
+   /* Whether we have support for this platform. If true && n_queries == 0,
+    * this means we will not be able to use i915-perf because of it is in
+    * paranoid mode.
+    */
+   bool platform_supported;
 
    /* Location of the device's sysfs entry. */
    char sysfs_dev_dir[256];

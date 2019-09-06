@@ -662,6 +662,8 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
       }
    }
 
+   perf->platform_supported = oa_register != NULL;
+
    if (!i915_perf_oa_available ||
        !oa_register ||
        !get_sysfs_dev_dir(perf, fd) ||
