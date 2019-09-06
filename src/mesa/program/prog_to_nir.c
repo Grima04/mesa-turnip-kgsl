@@ -456,7 +456,10 @@ ptn_lrp(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src)
 static void
 ptn_kil(nir_builder *b, nir_ssa_def **src)
 {
+   /* flt must be exact, because NaN shouldn't discard. (apps rely on this) */
+   b->exact = true;
    nir_ssa_def *cmp = nir_bany(b, nir_flt(b, src[0], nir_imm_float(b, 0.0)));
+   b->exact = false;
 
    nir_intrinsic_instr *discard =
       nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard_if);
