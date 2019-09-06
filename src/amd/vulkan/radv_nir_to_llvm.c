@@ -2981,6 +2981,9 @@ ngg_gs_get_vertex_storage(struct radv_shader_context *ctx)
 {
 	unsigned num_outputs = util_bitcount64(ctx->output_mask);
 
+	if (ctx->options->key.has_multiview_view_index)
+		num_outputs++;
+
 	LLVMTypeRef elements[2] = {
 		LLVMArrayType(ctx->ac.i32, 4 * num_outputs),
 		LLVMArrayType(ctx->ac.i8, 4),
