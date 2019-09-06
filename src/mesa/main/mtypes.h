@@ -172,7 +172,6 @@ struct gl_config
    GLuint redMask, greenMask, blueMask, alphaMask;
    GLint redShift, greenShift, blueShift, alphaShift;
    GLint rgbBits;		/* total bits for rgb */
-   GLint indexBits;		/* total bits for colorindex */
 
    GLint accumRedBits, accumGreenBits, accumBlueBits, accumAlphaBits;
    GLint depthBits;

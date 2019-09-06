@@ -582,7 +582,6 @@ initialize_visual_and_buffer(XMesaVisual v, XMesaBuffer b,
       _mesa_warning(NULL, "XMesa: RGB mode rendering not supported in given visual.\n");
       return GL_FALSE;
    }
-   v->mesa_visual.indexBits = 0;
 
    if (getenv("MESA_NO_DITHER")) {
       v->dithered_pf = v->undithered_pf;

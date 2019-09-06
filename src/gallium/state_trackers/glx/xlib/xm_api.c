@@ -666,7 +666,6 @@ initialize_visual_and_buffer(XMesaVisual v, XMesaBuffer b,
             "XMesa: RGB mode rendering not supported in given visual.\n");
 	 return GL_FALSE;
       }
-      v->mesa_visual.indexBits = 0;
 
       if (v->BitsPerPixel == 32) {
          /* We use XImages for all front/back buffers.  If an X Window or
@@ -859,7 +858,6 @@ XMesaVisual XMesaCreateVisual( Display *display,
       vis->alphaBits        = alpha_bits;
       vis->rgbBits          = red_bits + green_bits + blue_bits;
 
-      vis->indexBits      = 0;
       vis->depthBits      = depth_size;
       vis->stencilBits    = stencil_size;
 
