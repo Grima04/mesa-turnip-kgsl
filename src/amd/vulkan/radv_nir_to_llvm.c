@@ -3489,16 +3489,21 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 		unsigned out_idx = 0;
 		gep_idx[1] = ctx->ac.i32_0;
 		for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
+			unsigned output_usage_mask =
+				ctx->shader_info->gs.output_usage_mask[i];
+			int length = util_last_bit(output_usage_mask);
+
 			if (!(ctx->output_mask & (1ull << i)))
 				continue;
 
 			outputs[noutput].slot_name = i;
 			outputs[noutput].slot_index = i == VARYING_SLOT_CLIP_DIST1;
-
-			outputs[noutput].usage_mask = ctx->shader_info->gs.output_usage_mask[i];
-			int length = util_last_bit(outputs[noutput].usage_mask);
+			outputs[noutput].usage_mask = output_usage_mask;
 
 			for (unsigned j = 0; j < length; j++, out_idx++) {
+				if (!(output_usage_mask & (1 << j)))
+					continue;
+
 				gep_idx[2] = LLVMConstInt(ctx->ac.i32, out_idx, false);
 				tmp = LLVMBuildGEP(builder, vertexptr, gep_idx, 3, "");
 				tmp = LLVMBuildLoad(builder, tmp, "");
