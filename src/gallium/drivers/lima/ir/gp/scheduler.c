@@ -1572,6 +1572,29 @@ static bool schedule_block(gpir_block *block)
    return true;
 }
 
+static void add_fake_dep(gpir_node *node, gpir_node *dep_node,
+                         gpir_node *last_written[])
+{
+      gpir_node_foreach_pred(node, dep) {
+         if (dep->type == GPIR_DEP_INPUT) {
+            int index = dep->pred->value_reg;
+            if (index >= 0 && last_written[index]) {
+               gpir_node_add_dep(last_written[index], dep_node,
+                                 GPIR_DEP_WRITE_AFTER_READ);
+            }
+            if (gpir_op_infos[dep->pred->op].schedule_first) {
+               /* Insert fake dependencies for any schedule_first children on
+                * this node as well. This guarantees that as soon as
+                * "dep_node" is ready to schedule, all of its schedule_first
+                * children, grandchildren, etc. are ready so that they can be
+                * scheduled as soon as possible.
+                */
+               add_fake_dep(dep->pred, dep_node, last_written);
+            }
+         }
+      }
+}
+
 static void schedule_build_dependency(gpir_block *block)
 {
    gpir_node *last_written[GPIR_VALUE_REG_NUM + GPIR_PHYSICAL_REG_NUM] = {0};
@@ -1625,15 +1648,7 @@ static void schedule_build_dependency(gpir_block *block)
             gpir_node_add_dep(last_written[index], node, GPIR_DEP_WRITE_AFTER_READ);
          }
       } else {
-         gpir_node_foreach_pred(node, dep) {
-            if (dep->type == GPIR_DEP_INPUT) {
-               int index = dep->pred->value_reg;
-               if (index >= 0 && last_written[index]) {
-                  gpir_node_add_dep(last_written[index], node,
-                                    GPIR_DEP_WRITE_AFTER_READ);
-               }
-            }
-         }
+         add_fake_dep(node, node, last_written);
       }
 
       if (node->value_reg >= 0)

@@ -107,7 +107,12 @@ static void schedule_insert_ready_list(struct list_head *ready_list,
    struct list_head *insert_pos = ready_list;
 
    list_for_each_entry(gpir_node, node, ready_list, list) {
-      if (insert_node->rsched.parent_index < node->rsched.parent_index ||
+      if (gpir_op_infos[node->op].schedule_first) {
+         continue;
+      }
+
+      if (gpir_op_infos[insert_node->op].schedule_first ||
+          insert_node->rsched.parent_index < node->rsched.parent_index ||
           (insert_node->rsched.parent_index == node->rsched.parent_index &&
            (insert_node->rsched.reg_pressure < node->rsched.reg_pressure ||
             (insert_node->rsched.reg_pressure == node->rsched.reg_pressure &&
