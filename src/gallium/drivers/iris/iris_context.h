@@ -800,6 +800,11 @@ void iris_emit_pipe_control_write(struct iris_batch *batch,
                                   uint64_t imm);
 void iris_emit_end_of_pipe_sync(struct iris_batch *batch,
                                 const char *reason, uint32_t flags);
+void iris_flush_all_caches(struct iris_batch *batch);
+
+#define iris_handle_always_flush_cache(batch) \
+   if (unlikely(batch->screen->driconf.always_flush_cache)) \
+      iris_flush_all_caches(batch);
 
 void iris_init_flush_functions(struct pipe_context *ctx);
 

@@ -241,10 +241,14 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 
    ice->vtbl.update_surface_base_address(batch, &ice->state.binder);
 
+   iris_handle_always_flush_cache(batch);
+
    if (info->indirect)
       iris_indirect_draw_vbo(ice, info);
    else
       iris_simple_draw_vbo(ice, info);
+
+   iris_handle_always_flush_cache(batch);
 
    iris_postdraw_update_resolve_tracking(ice, batch);
 
@@ -342,7 +346,11 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
       ice->state.compute_predicate = NULL;
    }
 
+   iris_handle_always_flush_cache(batch);
+
    ice->vtbl.upload_compute_state(ice, batch, grid);
+
+   iris_handle_always_flush_cache(batch);
 
    ice->state.dirty &= ~IRIS_ALL_DIRTY_FOR_COMPUTE;
 

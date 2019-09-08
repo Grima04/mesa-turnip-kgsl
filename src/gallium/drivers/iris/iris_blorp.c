@@ -313,7 +313,11 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                               params->y1 - params->y0, scale);
    }
 
+   iris_handle_always_flush_cache(batch);
+
    blorp_exec(blorp_batch, params);
+
+   iris_handle_always_flush_cache(batch);
 
    /* We've smashed all state compared to what the normal 3D pipeline
     * rendering tracks for GL.

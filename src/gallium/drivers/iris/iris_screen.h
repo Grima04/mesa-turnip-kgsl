@@ -67,6 +67,7 @@ struct iris_screen {
       /** Dual color blend by location instead of index (for broken apps) */
       bool dual_color_blend_by_location;
       bool disable_throttling;
+      bool always_flush_cache;
    } driconf;
 
    unsigned subslice_total;
