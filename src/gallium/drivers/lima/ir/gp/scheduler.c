@@ -1332,10 +1332,14 @@ static void place_move(sched_ctx *ctx, gpir_node *node)
 /* For next-max nodes, not every node can be offloaded to a move in the
  * complex slot. If we run out of non-complex slots, then such nodes cannot
  * have moves placed for them. There should always be sufficient
- * complex-capable nodes so that this isn't a problem.
+ * complex-capable nodes so that this isn't a problem. We also disallow moves
+ * for schedule_first nodes here.
  */
 static bool can_place_move(sched_ctx *ctx, gpir_node *node)
 {
+   if (gpir_op_infos[node->op].schedule_first)
+      return false;
+
    if (!node->sched.next_max_node)
       return true;
 
