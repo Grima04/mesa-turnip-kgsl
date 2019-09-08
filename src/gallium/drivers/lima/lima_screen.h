@@ -37,6 +37,7 @@
 #define LIMA_DEBUG_PP      (1 << 1)
 #define LIMA_DEBUG_DUMP    (1 << 2)
 #define LIMA_DEBUG_SHADERDB (1 << 3)
+#define LIMA_DEBUG_NO_BO_CACHE (1 << 4)
 
 extern uint32_t lima_debug;
 extern FILE *lima_dump_command_stream;
@@ -45,6 +46,11 @@ extern int lima_plb_max_blk;
 extern int lima_ppir_force_spilling;
 
 struct ra_regs;
+
+#define MIN_BO_CACHE_BUCKET (12) /* 2^12 = 4KB */
+#define MAX_BO_CACHE_BUCKET (22) /* 2^22 = 4MB */
+
+#define NR_BO_CACHE_BUCKETS (MAX_BO_CACHE_BUCKET - MIN_BO_CACHE_BUCKET + 1)
 
 struct lima_screen {
    struct pipe_screen base;
@@ -60,8 +66,11 @@ struct lima_screen {
 
    /* bo table */
    mtx_t bo_table_lock;
+   mtx_t bo_cache_lock;
    struct util_hash_table *bo_handles;
    struct util_hash_table *bo_flink_names;
+   struct list_head bo_cache_buckets[NR_BO_CACHE_BUCKETS];
+   struct list_head bo_cache_time;
 
    struct slab_parent_pool transfer_pool;
 

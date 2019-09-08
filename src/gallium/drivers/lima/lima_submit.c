@@ -145,7 +145,7 @@ bool lima_submit_start(struct lima_submit *submit, void *frame, uint32_t size)
    bool ret = drmIoctl(submit->screen->fd, DRM_IOCTL_LIMA_GEM_SUBMIT, &req) == 0;
 
    util_dynarray_foreach(&submit->bos, struct lima_bo *, bo) {
-      lima_bo_free(*bo);
+      lima_bo_unreference(*bo);
    }
 
    util_dynarray_clear(&submit->gem_bos);

@@ -259,7 +259,7 @@ lima_resource_destroy(struct pipe_screen *pscreen, struct pipe_resource *pres)
    struct lima_resource *res = lima_resource(pres);
 
    if (res->bo)
-      lima_bo_free(res->bo);
+      lima_bo_unreference(res->bo);
 
    if (res->scanout)
       renderonly_scanout_destroy(res->scanout, screen->ro);
@@ -528,7 +528,7 @@ lima_surface_destroy(struct pipe_context *pctx, struct pipe_surface *psurf)
          struct lima_ctx_plb_pp_stream *s = entry->data;
          if (--s->refcnt == 0) {
             if (s->bo)
-               lima_bo_free(s->bo);
+               lima_bo_unreference(s->bo);
             _mesa_hash_table_remove(ctx->plb_pp_stream, entry);
             ralloc_free(s);
          }

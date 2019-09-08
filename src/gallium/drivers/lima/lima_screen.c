@@ -61,8 +61,9 @@ lima_screen_destroy(struct pipe_screen *pscreen)
       free(screen->ro);
 
    if (screen->pp_buffer)
-      lima_bo_free(screen->pp_buffer);
+      lima_bo_unreference(screen->pp_buffer);
 
+   lima_bo_cache_fini(screen);
    lima_bo_table_fini(screen);
    ralloc_free(screen);
 }
@@ -418,6 +419,8 @@ static const struct debug_named_value debug_options[] = {
           "dump GPU command stream to $PWD/lima.dump" },
         { "shaderdb", LIMA_DEBUG_SHADERDB,
           "print shader information for shaderdb" },
+        { "nobocache", LIMA_DEBUG_NO_BO_CACHE,
+          "disable BO cache" },
         { NULL }
 };
 
@@ -478,16 +481,20 @@ lima_screen_create(int fd, struct renderonly *ro)
    if (!lima_screen_query_info(screen))
       goto err_out0;
 
-   if (!lima_bo_table_init(screen))
+   if (!lima_bo_cache_init(screen))
       goto err_out0;
+
+   if (!lima_bo_table_init(screen))
+      goto err_out1;
 
    screen->pp_ra = ppir_regalloc_init(screen);
    if (!screen->pp_ra)
-      goto err_out1;
+      goto err_out2;
 
    screen->pp_buffer = lima_bo_create(screen, pp_buffer_size, 0);
    if (!screen->pp_buffer)
-      goto err_out1;
+      goto err_out2;
+   screen->pp_buffer->cacheable = false;
 
    /* fs program for clear buffer?
     * const0 1 0 0 -1.67773, mov.v0 $0 ^const0.xxxx, stop
@@ -534,7 +541,7 @@ lima_screen_create(int fd, struct renderonly *ro)
       screen->ro = renderonly_dup(ro);
       if (!screen->ro) {
          fprintf(stderr, "Failed to dup renderonly object\n");
-         goto err_out2;
+         goto err_out3;
       }
    }
 
@@ -559,10 +566,12 @@ lima_screen_create(int fd, struct renderonly *ro)
 
    return &screen->base;
 
+err_out3:
+   lima_bo_unreference(screen->pp_buffer);
 err_out2:
-   lima_bo_free(screen->pp_buffer);
-err_out1:
    lima_bo_table_fini(screen);
+err_out1:
+   lima_bo_cache_fini(screen);
 err_out0:
    ralloc_free(screen);
    return NULL;

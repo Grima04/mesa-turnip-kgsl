@@ -302,7 +302,7 @@ lima_delete_fs_state(struct pipe_context *pctx, void *hwcso)
    struct lima_fs_shader_state *so = hwcso;
 
    if (so->bo)
-      lima_bo_free(so->bo);
+      lima_bo_unreference(so->bo);
 
    ralloc_free(so);
 }
@@ -396,7 +396,7 @@ lima_delete_vs_state(struct pipe_context *pctx, void *hwcso)
    struct lima_vs_shader_state *so = hwcso;
 
    if (so->bo)
-      lima_bo_free(so->bo);
+      lima_bo_unreference(so->bo);
 
    ralloc_free(so);
 }
