@@ -588,6 +588,13 @@ VkResult radv_CreateInstance(
 		client_version = VK_API_VERSION_1_0;
 	}
 
+	const char *engine_name = NULL;
+	uint32_t engine_version = 0;
+	if (pCreateInfo->pApplicationInfo) {
+		engine_name = pCreateInfo->pApplicationInfo->pEngineName;
+		engine_version = pCreateInfo->pApplicationInfo->engineVersion;
+	}
+
 	instance = vk_zalloc2(&default_alloc, pAllocator, sizeof(*instance), 8,
 			      VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 	if (!instance)
@@ -631,6 +638,10 @@ VkResult radv_CreateInstance(
 		return vk_error(instance, result);
 	}
 
+	instance->engineName = vk_strdup(&instance->alloc, engine_name,
+					 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+	instance->engineVersion = engine_version;
+
 	_mesa_locale_init();
 	glsl_type_singleton_init_or_ref();
 
@@ -656,6 +667,8 @@ void radv_DestroyInstance(
 	for (int i = 0; i < instance->physicalDeviceCount; ++i) {
 		radv_physical_device_finish(instance->physicalDevices + i);
 	}
+
+	vk_free(&instance->alloc, instance->engineName);
 
 	VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
