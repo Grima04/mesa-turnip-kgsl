@@ -1746,6 +1746,10 @@ iris_transfer_map(struct pipe_context *ctx,
    xfer->box = *box;
    *ptransfer = xfer;
 
+   map->dest_had_defined_contents =
+      util_ranges_intersect(&res->valid_buffer_range, box->x,
+                            box->x + box->width);
+
    if (usage & PIPE_TRANSFER_WRITE)
       util_range_add(&res->valid_buffer_range, box->x, box->x + box->width);
 
@@ -1826,8 +1830,13 @@ iris_transfer_flush_region(struct pipe_context *ctx,
    uint32_t history_flush = 0;
 
    if (res->base.target == PIPE_BUFFER) {
-      history_flush |= iris_flush_bits_for_history(res) |
-                       (map->staging ? PIPE_CONTROL_RENDER_TARGET_FLUSH : 0);
+      if (map->staging)
+         history_flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
+
+      if (map->dest_had_defined_contents)
+         history_flush |= iris_flush_bits_for_history(res);
+
+      util_range_add(&res->valid_buffer_range, box->x, box->x + box->width);
    }
 
    if (history_flush & ~PIPE_CONTROL_CS_STALL) {
