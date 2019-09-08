@@ -567,7 +567,9 @@ static void  radv_init_dri_options(struct radv_instance *instance)
 	driParseOptionInfo(&instance->available_dri_options, radv_dri_options_xml);
 	driParseConfigFiles(&instance->dri_options,
 	                    &instance->available_dri_options,
-	                    0, "radv", NULL);
+	                    0, "radv", NULL,
+	                    instance->engineName,
+	                    instance->engineVersion);
 }
 
 VkResult radv_CreateInstance(

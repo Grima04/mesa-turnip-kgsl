@@ -780,7 +780,9 @@ VkResult anv_CreateInstance(
 
    driParseOptionInfo(&instance->available_dri_options, anv_dri_options_xml);
    driParseConfigFiles(&instance->dri_options, &instance->available_dri_options,
-                       0, "anv", NULL);
+                       0, "anv", NULL,
+                       instance->app_info.engine_name,
+                       instance->app_info.engine_version);
 
    *pInstance = anv_instance_to_handle(instance);
 
