@@ -1419,9 +1419,11 @@ iris_create_rasterizer_state(struct pipe_context *ctx,
    const unsigned line_stipple_factor = state->line_stipple_factor + 1;
 
    iris_pack_command(GENX(3DSTATE_LINE_STIPPLE), cso->line_stipple, line) {
-      line.LineStipplePattern = state->line_stipple_pattern;
-      line.LineStippleInverseRepeatCount = 1.0f / line_stipple_factor;
-      line.LineStippleRepeatCount = line_stipple_factor;
+      if (state->line_stipple_enable) {
+         line.LineStipplePattern = state->line_stipple_pattern;
+         line.LineStippleInverseRepeatCount = 1.0f / line_stipple_factor;
+         line.LineStippleRepeatCount = line_stipple_factor;
+      }
    }
 
    return cso;
