@@ -1606,11 +1606,17 @@ iris_bind_sampler_states(struct pipe_context *ctx,
 
    assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
 
+   bool dirty = false;
+
    for (int i = 0; i < count; i++) {
-      shs->samplers[start + i] = states[i];
+      if (shs->samplers[start + i] != states[i]) {
+         shs->samplers[start + i] = states[i];
+         dirty = true;
+      }
    }
 
-   ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
+   if (dirty)
+      ice->state.dirty |= IRIS_DIRTY_SAMPLER_STATES_VS << stage;
 }
 
 /**
