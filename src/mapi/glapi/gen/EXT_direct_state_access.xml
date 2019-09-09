@@ -903,6 +903,11 @@
       <param name="length" type="GLsizeiptr" />
    </function>
 
+   <!-- OpenGL 2.0 -->
+   <!--
+      ProgramUniform* functions are already declared in EXT_separate_shader_objects.xml
+   -->
+
    <!-- OpenGL 3.0 -->
 
    <function name="MapNamedBufferRangeEXT">
