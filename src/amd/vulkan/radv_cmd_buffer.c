@@ -2495,9 +2495,18 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
 			 * the buffer will be considered not bound and store
 			 * instructions will be no-ops.
 			 */
+			uint32_t size = 0xffffffff;
+
+			/* Compute the correct buffer size for NGG streamout
+			 * because it's used to determine the max emit per
+			 * buffer.
+			 */
+			if (cmd_buffer->device->physical_device->use_ngg_streamout)
+				size = buffer->size - sb[i].offset;
+
 			desc[0] = va;
 			desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
-			desc[2] = 0xffffffff;
+			desc[2] = size;
 			desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
 				  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
 				  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
