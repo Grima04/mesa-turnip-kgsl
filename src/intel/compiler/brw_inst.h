@@ -1397,6 +1397,18 @@ FC(swsb,            /* 4+ */ -1, -1, /* 12+ */ 15,  8, devinfo->gen >= 12)
 F(debug_control,    /* 4+ */  7,  7, /* 12+ */  7,  7)
 F(hw_opcode,        /* 4+ */  6,  0, /* 12+ */  6,  0) /* Same location as brw_inst */
 
+static inline unsigned
+brw_compact_inst_imm(const struct gen_device_info *devinfo,
+                     const brw_compact_inst *inst)
+{
+   if (devinfo->gen >= 12) {
+      return brw_compact_inst_bits(inst, 63, 52);
+   } else {
+      return (brw_compact_inst_bits(inst, 39, 35) << 8) |
+             (brw_compact_inst_bits(inst, 63, 56));
+   }
+}
+
 /**
  * (Gen8+) Compacted three-source instructions:
  *  @{
