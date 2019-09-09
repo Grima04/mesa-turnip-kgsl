@@ -782,6 +782,7 @@ optimizations.extend([
    (('ine', ('ineg', ('b2i', 'a@1')), 0), a),
    (('ine', ('ineg', ('b2i', 'a@1')), -1), ('inot', a)),
    (('iand', ('ineg', ('b2i', a)), 1.0), ('b2f', a)),
+   (('iand', ('ineg', ('b2i', a)), 1),   ('b2i', a)),
 
    # SM5 32-bit shifts are defined to use the 5 least significant bits
    (('ishl', 'a@32', ('iand', 31, b)), ('ishl', a, b)),
