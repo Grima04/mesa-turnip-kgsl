@@ -4190,6 +4190,28 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 	    shaders[shader_count - 1]->info.stage == MESA_SHADER_TESS_CTRL)
 		ac_nir_fixup_ls_hs_input_vgprs(&ctx);
 
+	if (shaders[shader_count - 1]->info.stage != MESA_SHADER_GEOMETRY &&
+	    (ctx.options->key.vs_common_out.as_ngg &&
+	     !ctx.options->key.vs_common_out.as_es)) {
+		/* Unconditionally declare scratch space base for streamout and
+		 * vertex compaction. Whether space is actually allocated is
+		 * determined during linking / PM4 creation.
+		 *
+		 * Add an extra dword per vertex to ensure an odd stride, which
+		 * avoids bank conflicts for SoA accesses.
+		 */
+		declare_esgs_ring(&ctx);
+
+		/* This is really only needed when streamout and / or vertex
+		 * compaction is enabled.
+		 */
+		LLVMTypeRef asi32 = LLVMArrayType(ctx.ac.i32, 8);
+		ctx.gs_ngg_scratch = LLVMAddGlobalInAddressSpace(ctx.ac.module,
+			asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
+		LLVMSetInitializer(ctx.gs_ngg_scratch, LLVMGetUndef(asi32));
+		LLVMSetAlignment(ctx.gs_ngg_scratch, 4);
+	}
+
 	for(int i = 0; i < shader_count; ++i) {
 		ctx.stage = shaders[i]->info.stage;
 		ctx.shader = shaders[i];
