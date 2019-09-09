@@ -1085,5 +1085,19 @@
       <param name="params" type="GLint*" />
   </function>
 
+   <!-- EXT_texture_buffer_object -->
+   <function name="TextureBufferEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="internalformat" type="GLenum" />
+      <param name="buffer" type="GLuint" />
+   </function>
+
+   <function name="MultiTexBufferEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="internalformat" type="GLenum" />
+      <param name="buffer" type="GLuint" />
+   </function>
 </category>
 </OpenGLAPI>

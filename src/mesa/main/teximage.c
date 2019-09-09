@@ -6429,6 +6429,65 @@ _mesa_TextureBuffer(GLuint texture, GLenum internalFormat, GLuint buffer)
 }
 
 void GLAPIENTRY
+_mesa_TextureBufferEXT(GLuint texture, GLenum target,
+                       GLenum internalFormat, GLuint buffer)
+{
+   struct gl_texture_object *texObj;
+   struct gl_buffer_object *bufObj;
+
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (buffer) {
+      bufObj = _mesa_lookup_bufferobj_err(ctx, buffer, "glTextureBuffer");
+      if (!bufObj)
+         return;
+   } else
+      bufObj = NULL;
+
+   /* Get the texture object by Name. */
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture,
+                                           false, true,
+                                           "glTextureBufferEXT");
+
+   if (!texObj ||
+       !check_texture_buffer_target(ctx, texObj->Target, "glTextureBufferEXT"))
+      return;
+
+   texture_buffer_range(ctx, texObj, internalFormat,
+                        bufObj, 0, buffer ? -1 : 0, "glTextureBufferEXT");
+}
+
+void GLAPIENTRY
+_mesa_MultiTexBufferEXT(GLenum texunit, GLenum target,
+                        GLenum internalFormat, GLuint buffer)
+{
+   struct gl_texture_object *texObj;
+   struct gl_buffer_object *bufObj;
+
+   GET_CURRENT_CONTEXT(ctx);
+
+   if (buffer) {
+      bufObj = _mesa_lookup_bufferobj_err(ctx, buffer, "glMultiTexBufferEXT");
+      if (!bufObj)
+         return;
+   } else
+      bufObj = NULL;
+
+   /* Get the texture object */
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glMultiTexBufferEXT");
+
+   if (!texObj ||
+       !check_texture_buffer_target(ctx, texObj->Target, "glMultiTexBufferEXT"))
+      return;
+
+   texture_buffer_range(ctx, texObj, internalFormat,
+                        bufObj, 0, buffer ? -1 : 0, "glMultiTexBufferEXT");
+}
+
+void GLAPIENTRY
 _mesa_TextureBufferRange(GLuint texture, GLenum internalFormat, GLuint buffer,
                          GLintptr offset, GLsizeiptr size)
 {

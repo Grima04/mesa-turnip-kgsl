@@ -1137,8 +1137,8 @@ const struct function common_desktop_functions_possible[] = {
    /* GL_EXT_direct_state_access - GL 2.1 */
    /* Added glProgramUniformMAtrix*EXT functions are aliases */
    /* GL_EXT_direct_state_access - EXT_texture_buffer_object */
-   //{ "glTextureBufferEXT", 10, -1 },
-   //{ "glMultiTexBufferEXT", 10, -1 },
+   { "glTextureBufferEXT", 10, -1 },
+   { "glMultiTexBufferEXT", 10, -1 },
    /* GL_EXT_direct_state_access - EXT_texture_integer */
    //{ "glTextureParameterIivEXT", 10, -1 },
    //{ "glTextureParameterIuivEXT", 10, -1 },

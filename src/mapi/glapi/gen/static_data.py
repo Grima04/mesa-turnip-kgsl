@@ -1582,6 +1582,8 @@ offsets = {
     "NamedProgramLocalParameter4dvEXT": 1546,
     "GetNamedProgramLocalParameterdvEXT": 1547,
     "GetNamedProgramivEXT": 1548,
+    "TextureBufferEXT": 1549,
+    "MultiTexBufferEXT": 1550,
 }
 
 functions = [
