@@ -437,6 +437,10 @@ ttn_emit_declaration(struct ttn_compile *c)
             } else {
                var->data.location =
                   tgsi_varying_semantic_to_slot(semantic_name, semantic_index);
+               if (var->data.location == VARYING_SLOT_FOGC ||
+                   var->data.location == VARYING_SLOT_PSIZ) {
+                  var->type = glsl_float_type();
+               }
             }
 
             if (is_array) {
@@ -2373,6 +2377,12 @@ ttn_add_output_stores(struct ttn_compile *c)
             store_value = nir_channel(b, store_value, 2);
          else if (var->data.location == FRAG_RESULT_STENCIL)
             store_value = nir_channel(b, store_value, 1);
+      } else {
+         /* FOGC and PSIZ are scalar values */
+         if (var->data.location == VARYING_SLOT_FOGC ||
+             var->data.location == VARYING_SLOT_PSIZ) {
+            store_value = nir_channel(b, store_value, 0);
+         }
       }
 
       nir_store_deref(b, nir_build_deref_var(b, var), store_value,
