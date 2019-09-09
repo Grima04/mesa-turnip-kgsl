@@ -897,6 +897,8 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                 cl_emit(&job->bcl, TRANSFORM_FEEDBACK_FLUSH_AND_COUNT, flush);
 
         job->draw_calls_queued++;
+        if (v3d->streamout.num_targets)
+           job->tf_draw_calls_queued++;
 
         /* Increment the TF offsets by how many verts we wrote.  XXX: This
          * needs some clamping to the buffer size.

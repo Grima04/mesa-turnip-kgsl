@@ -413,6 +413,12 @@ struct v3d_job {
          */
         uint32_t draw_calls_queued;
 
+        /**
+         * Number of draw calls (not counting full buffer clears) queued in
+         * the current job during active transform feedback.
+         */
+        uint32_t tf_draw_calls_queued;
+
         struct v3d_job_key key;
 };
 
