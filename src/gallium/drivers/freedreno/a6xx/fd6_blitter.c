@@ -718,6 +718,12 @@ fd6_blitter_init(struct pipe_context *pctx)
 unsigned
 fd6_tile_mode(const struct pipe_resource *tmpl)
 {
+	/* if the mipmap level 0 is still too small to be tiled, then don't
+	 * bother pretending:
+	 */
+	if (fd_resource_level_linear(tmpl, 0))
+		return TILE6_LINEAR;
+
 	/* basically just has to be a format we can blit, so uploads/downloads
 	 * via linear staging buffer works:
 	 */

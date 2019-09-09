@@ -977,15 +977,15 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
 	allow_ubwc &= !(fd_mesa_debug & FD_DBG_NOUBWC);
 
-	if (screen->tile_mode &&
-			(tmpl->target != PIPE_BUFFER) &&
-			!linear) {
-		rsc->tile_mode = screen->tile_mode(tmpl);
-	}
-
 	pipe_reference_init(&prsc->reference, 1);
 
 	prsc->screen = pscreen;
+
+	if (screen->tile_mode &&
+			(tmpl->target != PIPE_BUFFER) &&
+			!linear) {
+		rsc->tile_mode = screen->tile_mode(prsc);
+	}
 
 	util_range_init(&rsc->valid_buffer_range);
 
