@@ -1584,6 +1584,14 @@ offsets = {
     "GetNamedProgramivEXT": 1548,
     "TextureBufferEXT": 1549,
     "MultiTexBufferEXT": 1550,
+    "TextureParameterIivEXT": 1551,
+    "TextureParameterIuivEXT": 1552,
+    "GetTextureParameterIivEXT": 1553,
+    "GetTextureParameterIuivEXT": 1554,
+    "MultiTexParameterIivEXT": 1555,
+    "MultiTexParameterIuivEXT": 1556,
+    "GetMultiTexParameterIivEXT": 1557,
+    "GetMultiTexParameterIuivEXT": 1558,
 }
 
 functions = [

@@ -570,6 +570,8 @@ typedef enum
    OPCODE_MATRIX_POP,
    OPCODE_TEXTUREPARAMETER_F,
    OPCODE_TEXTUREPARAMETER_I,
+   OPCODE_TEXTUREPARAMETER_II,
+   OPCODE_TEXTUREPARAMETER_IUI,
    OPCODE_TEXTURE_IMAGE1D,
    OPCODE_TEXTURE_IMAGE2D,
    OPCODE_TEXTURE_IMAGE3D,
@@ -584,6 +586,8 @@ typedef enum
    OPCODE_BIND_MULTITEXTURE,
    OPCODE_MULTITEXPARAMETER_F,
    OPCODE_MULTITEXPARAMETER_I,
+   OPCODE_MULTITEXPARAMETER_II,
+   OPCODE_MULTITEXPARAMETER_IUI,
    OPCODE_MULTITEX_IMAGE1D,
    OPCODE_MULTITEX_IMAGE2D,
    OPCODE_MULTITEX_IMAGE3D,
@@ -9617,6 +9621,49 @@ save_TextureParameteriEXT(GLuint texture, GLenum target, GLenum pname, GLint par
 }
 
 static void GLAPIENTRY
+save_TextureParameterIivEXT(GLuint texture, GLenum target, GLenum pname, const GLint* params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_TEXTUREPARAMETER_II, 7);
+   if (n) {
+      n[1].ui = texture;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].i = params[0];
+      n[5].i = params[1];
+      n[6].i = params[2];
+      n[7].i = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_TextureParameterIivEXT(ctx->Exec, (texture, target, pname, params));
+   }
+}
+
+static void GLAPIENTRY
+save_TextureParameterIuivEXT(GLuint texture, GLenum target, GLenum pname, const GLuint* params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_TEXTUREPARAMETER_IUI, 7);
+   if (n) {
+      n[1].ui = texture;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].ui = params[0];
+      n[5].ui = params[1];
+      n[6].ui = params[2];
+      n[7].ui = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_TextureParameterIuivEXT(ctx->Exec, (texture, target, pname, params));
+   }
+}
+
+
+static void GLAPIENTRY
 save_TextureImage1DEXT(GLuint texture, GLenum target,
                        GLint level, GLint components,
                        GLsizei width, GLint border,
@@ -10034,6 +10081,48 @@ save_MultiTexParameterivEXT(GLenum texunit, GLenum target, GLenum pname, const G
    }
    if (ctx->ExecuteFlag) {
       CALL_MultiTexParameterivEXT(ctx->Exec, (texunit, target, pname, params));
+   }
+}
+
+static void GLAPIENTRY
+save_MultiTexParameterIivEXT(GLenum texunit, GLenum target, GLenum pname, const GLint *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_MULTITEXPARAMETER_II, 7);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].i = params[0];
+      n[5].i = params[1];
+      n[6].i = params[2];
+      n[7].i = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexParameterIivEXT(ctx->Exec, (texunit, target, pname, params));
+   }
+}
+
+static void GLAPIENTRY
+save_MultiTexParameterIuivEXT(GLenum texunit, GLenum target, GLenum pname, const GLuint *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_MULTITEXPARAMETER_IUI, 7);
+   if (n) {
+      n[1].e = texunit;
+      n[2].e = target;
+      n[3].e = pname;
+      n[4].ui = params[0];
+      n[5].ui = params[1];
+      n[6].ui = params[2];
+      n[7].ui = params[3];
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_MultiTexParameterIuivEXT(ctx->Exec, (texunit, target, pname, params));
    }
 }
 
@@ -12575,6 +12664,26 @@ execute_list(struct gl_context *ctx, GLuint list)
                CALL_TextureParameterivEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].e, params));
             }
             break;
+         case OPCODE_TEXTUREPARAMETER_II:
+            {
+               GLint params[4];
+               params[0] = n[4].i;
+               params[1] = n[5].i;
+               params[2] = n[6].i;
+               params[3] = n[7].i;
+               CALL_TextureParameterIivEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].e, params));
+            }
+            break;
+         case OPCODE_TEXTUREPARAMETER_IUI:
+            {
+               GLuint params[4];
+               params[0] = n[4].ui;
+               params[1] = n[5].ui;
+               params[2] = n[6].ui;
+               params[3] = n[7].ui;
+               CALL_TextureParameterIuivEXT(ctx->Exec, (n[1].ui, n[2].e, n[3].e, params));
+            }
+            break;
          case OPCODE_TEXTURE_IMAGE1D:
             {
                const struct gl_pixelstore_attrib save = ctx->Unpack;
@@ -12706,6 +12815,26 @@ execute_list(struct gl_context *ctx, GLuint list)
                params[2] = n[6].i;
                params[3] = n[7].i;
                CALL_MultiTexParameterivEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
+            }
+            break;
+         case OPCODE_MULTITEXPARAMETER_II:
+            {
+               GLint params[4];
+               params[0] = n[4].i;
+               params[1] = n[5].i;
+               params[2] = n[6].i;
+               params[3] = n[7].i;
+               CALL_MultiTexParameterIivEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
+            }
+            break;
+         case OPCODE_MULTITEXPARAMETER_IUI:
+            {
+               GLuint params[4];
+               params[0] = n[4].ui;
+               params[1] = n[5].ui;
+               params[2] = n[6].ui;
+               params[3] = n[7].ui;
+               CALL_MultiTexParameterIuivEXT(ctx->Exec, (n[1].e, n[2].e, n[3].e, params));
             }
             break;
          case OPCODE_MULTITEX_IMAGE1D:
@@ -13906,6 +14035,8 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_TextureParameterivEXT(table, save_TextureParameterivEXT);
    SET_TextureParameterfEXT(table, save_TextureParameterfEXT);
    SET_TextureParameterfvEXT(table, save_TextureParameterfvEXT);
+   SET_TextureParameterIivEXT(table, save_TextureParameterIivEXT);
+   SET_TextureParameterIuivEXT(table, save_TextureParameterIuivEXT);
    SET_TextureImage1DEXT(table, save_TextureImage1DEXT);
    SET_TextureImage2DEXT(table, save_TextureImage2DEXT);
    SET_TextureImage3DEXT(table, save_TextureImage3DEXT);
@@ -13920,6 +14051,8 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_BindMultiTextureEXT(table, save_BindMultiTextureEXT);
    SET_MultiTexParameteriEXT(table, save_MultiTexParameteriEXT);
    SET_MultiTexParameterivEXT(table, save_MultiTexParameterivEXT);
+   SET_MultiTexParameterIivEXT(table, save_MultiTexParameterIivEXT);
+   SET_MultiTexParameterIuivEXT(table, save_MultiTexParameterIuivEXT);
    SET_MultiTexParameterfEXT(table, save_MultiTexParameterfEXT);
    SET_MultiTexParameterfvEXT(table, save_MultiTexParameterfvEXT);
    SET_MultiTexImage1DEXT(table, save_MultiTexImage1DEXT);

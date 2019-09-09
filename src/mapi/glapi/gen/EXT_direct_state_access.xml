@@ -1099,5 +1099,62 @@
       <param name="internalformat" type="GLenum" />
       <param name="buffer" type="GLuint" />
    </function>
+
+   <!-- EXT_texture_integer -->
+   <function name="TextureParameterIivEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="const GLint*" />
+   </function>
+
+   <function name="TextureParameterIuivEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="const GLuint*" />
+   </function>
+
+   <function name="GetTextureParameterIivEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLint*" />
+   </function>
+
+   <function name="GetTextureParameterIuivEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLuint*" />
+   </function>
+
+   <function name="MultiTexParameterIivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="const GLint*" />
+   </function>
+
+   <function name="MultiTexParameterIuivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="const GLuint*" />
+   </function>
+
+   <function name="GetMultiTexParameterIivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLint*" />
+   </function>
+
+   <function name="GetMultiTexParameterIuivEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+      <param name="pname" type="GLenum" />
+      <param name="params" type="GLuint*" />
+   </function>
 </category>
 </OpenGLAPI>
