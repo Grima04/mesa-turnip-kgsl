@@ -771,6 +771,9 @@ declare_streamout_sgprs(struct radv_shader_context *ctx, gl_shader_stage stage,
 {
 	int i;
 
+	if (ctx->options->use_ngg_streamout)
+		return;
+
 	/* Streamout SGPRs. */
 	if (ctx->shader_info->so.num_outputs) {
 		assert(stage == MESA_SHADER_VERTEX ||
@@ -2786,7 +2789,8 @@ handle_vs_outputs_post(struct radv_shader_context *ctx,
 	       sizeof(outinfo->vs_output_param_offset));
 	outinfo->pos_exports = 0;
 
-	if (ctx->shader_info->so.num_outputs &&
+	if (!ctx->options->use_ngg_streamout &&
+	    ctx->shader_info->so.num_outputs &&
 	    !ctx->is_gs_copy_shader) {
 		/* The GS copy shader emission already emits streamout. */
 		radv_emit_streamout(ctx, 0);
@@ -4479,7 +4483,8 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 	LLVMValueRef stream_id;
 
 	/* Fetch the vertex stream ID. */
-	if (ctx->shader_info->so.num_outputs) {
+	if (!ctx->options->use_ngg_streamout &&
+	    ctx->shader_info->so.num_outputs) {
 		stream_id =
 			ac_unpack_param(&ctx->ac, ctx->streamout_config, 24, 2);
 	} else {
@@ -4550,7 +4555,8 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
 			}
 		}
 
-		if (ctx->shader_info->so.num_outputs)
+		if (!ctx->options->use_ngg_streamout &&
+		    ctx->shader_info->so.num_outputs)
 			radv_emit_streamout(ctx, stream);
 
 		if (stream == 0) {

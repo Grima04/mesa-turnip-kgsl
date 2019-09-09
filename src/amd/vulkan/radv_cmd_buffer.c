@@ -222,7 +222,8 @@ radv_bind_streamout_state(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_streamout_state *so = &cmd_buffer->state.streamout;
 	struct radv_shader_info *info;
 
-	if (!pipeline->streamout_shader)
+	if (!pipeline->streamout_shader ||
+	    cmd_buffer->device->physical_device->use_ngg_streamout)
 		return;
 
 	info = &pipeline->streamout_shader->info;
@@ -5810,8 +5811,9 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
 			      (so->enabled_mask << 8) |
 			      (so->enabled_mask << 12);
 
-	if ((old_streamout_enabled != so->streamout_enabled) ||
-	    (old_hw_enabled_mask != so->hw_enabled_mask))
+	if (!cmd_buffer->device->physical_device->use_ngg_streamout &&
+	    ((old_streamout_enabled != so->streamout_enabled) ||
+	     (old_hw_enabled_mask != so->hw_enabled_mask)))
 		radv_emit_streamout_enable(cmd_buffer);
 }
 

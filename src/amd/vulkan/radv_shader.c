@@ -683,12 +683,15 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	config_out->float_mode |= V_00B028_FP_64_DENORMS;
 
 	config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
-			    S_00B12C_SCRATCH_EN(scratch_enabled) |
-			    S_00B12C_SO_BASE0_EN(!!info->so.strides[0]) |
-			    S_00B12C_SO_BASE1_EN(!!info->so.strides[1]) |
-			    S_00B12C_SO_BASE2_EN(!!info->so.strides[2]) |
-			    S_00B12C_SO_BASE3_EN(!!info->so.strides[3]) |
-			    S_00B12C_SO_EN(!!info->so.num_outputs);
+			    S_00B12C_SCRATCH_EN(scratch_enabled);
+
+	if (!pdevice->use_ngg_streamout) {
+		config_out->rsrc2 |= S_00B12C_SO_BASE0_EN(!!info->so.strides[0]) |
+				     S_00B12C_SO_BASE1_EN(!!info->so.strides[1]) |
+				     S_00B12C_SO_BASE2_EN(!!info->so.strides[2]) |
+				     S_00B12C_SO_BASE3_EN(!!info->so.strides[3]) |
+				     S_00B12C_SO_EN(!!info->so.num_outputs);
+	}
 
 	config_out->rsrc1 = S_00B848_VGPRS((num_vgprs - 1) /
 					   (info->wave_size == 32 ? 8 : 4)) |
@@ -1050,6 +1053,7 @@ shader_variant_compile(struct radv_device *device,
 	options->tess_offchip_block_dw_size = device->tess_offchip_block_dw_size;
 	options->address32_hi = device->physical_device->rad_info.address32_hi;
 	options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
+	options->use_ngg_streamout = device->physical_device->use_ngg_streamout;
 
 	if ((stage == MESA_SHADER_GEOMETRY && !options->key.vs_common_out.as_ngg) ||
 	    gs_copy_shader)
