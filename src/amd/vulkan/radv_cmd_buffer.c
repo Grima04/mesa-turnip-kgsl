@@ -5908,6 +5908,54 @@ radv_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer,
 	radv_set_streamout_enable(cmd_buffer, true);
 }
 
+static void
+gfx10_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer,
+			   uint32_t firstCounterBuffer,
+			   uint32_t counterBufferCount,
+			   const VkBuffer *pCounterBuffers,
+			   const VkDeviceSize *pCounterBufferOffsets)
+{
+	struct radv_streamout_state *so = &cmd_buffer->state.streamout;
+	unsigned last_target = util_last_bit(so->enabled_mask) - 1;
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	uint32_t i;
+
+	assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
+	assert(firstCounterBuffer + counterBufferCount <= MAX_SO_BUFFERS);
+
+	for_each_bit(i, so->enabled_mask) {
+		int32_t counter_buffer_idx = i - firstCounterBuffer;
+		if (counter_buffer_idx >= 0 && counter_buffer_idx >= counterBufferCount)
+			counter_buffer_idx = -1;
+
+		bool append = counter_buffer_idx >= 0 &&
+			      pCounterBuffers && pCounterBuffers[counter_buffer_idx];
+		uint64_t va = 0;
+
+		if (append) {
+			RADV_FROM_HANDLE(radv_buffer, buffer, pCounterBuffers[counter_buffer_idx]);
+
+			va += radv_buffer_get_va(buffer->bo);
+			va += buffer->offset + pCounterBufferOffsets[counter_buffer_idx];
+
+			radv_cs_add_buffer(cmd_buffer->device->ws, cs, buffer->bo);
+		}
+
+		radeon_emit(cs, PKT3(PKT3_DMA_DATA, 5, 0));
+		radeon_emit(cs, S_411_SRC_SEL(append ? V_411_SRC_ADDR_TC_L2 : V_411_DATA) |
+				S_411_DST_SEL(V_411_GDS) |
+				S_411_CP_SYNC(i == last_target));
+		radeon_emit(cs, va);
+		radeon_emit(cs, va >> 32);
+		radeon_emit(cs, 4 * i); /* destination in GDS */
+		radeon_emit(cs, 0);
+		radeon_emit(cs, S_414_BYTE_COUNT_GFX9(4) |
+				S_414_DISABLE_WR_CONFIRM_GFX9(i != last_target));
+	}
+
+	radv_set_streamout_enable(cmd_buffer, true);
+}
+
 void radv_CmdBeginTransformFeedbackEXT(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    firstCounterBuffer,
@@ -5917,9 +5965,15 @@ void radv_CmdBeginTransformFeedbackEXT(
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-	radv_emit_streamout_begin(cmd_buffer,
-				  firstCounterBuffer, counterBufferCount,
-				  pCounterBuffers, pCounterBufferOffsets);
+	if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+		gfx10_emit_streamout_begin(cmd_buffer,
+					   firstCounterBuffer, counterBufferCount,
+					   pCounterBuffers, pCounterBufferOffsets);
+	} else {
+		radv_emit_streamout_begin(cmd_buffer,
+					  firstCounterBuffer, counterBufferCount,
+					  pCounterBuffers, pCounterBufferOffsets);
+	}
 }
 
 static void
@@ -5974,6 +6028,45 @@ radv_emit_streamout_end(struct radv_cmd_buffer *cmd_buffer,
 	radv_set_streamout_enable(cmd_buffer, false);
 }
 
+static void
+gfx10_emit_streamout_end(struct radv_cmd_buffer *cmd_buffer,
+			 uint32_t firstCounterBuffer,
+			 uint32_t counterBufferCount,
+			 const VkBuffer *pCounterBuffers,
+			 const VkDeviceSize *pCounterBufferOffsets)
+{
+	struct radv_streamout_state *so = &cmd_buffer->state.streamout;
+	struct radeon_cmdbuf *cs = cmd_buffer->cs;
+	uint32_t i;
+
+	assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
+	assert(firstCounterBuffer + counterBufferCount <= MAX_SO_BUFFERS);
+
+	for_each_bit(i, so->enabled_mask) {
+		int32_t counter_buffer_idx = i - firstCounterBuffer;
+		if (counter_buffer_idx >= 0 && counter_buffer_idx >= counterBufferCount)
+			counter_buffer_idx = -1;
+
+		if (counter_buffer_idx >= 0 && pCounterBuffers && pCounterBuffers[counter_buffer_idx]) {
+			/* The array of counters buffer is optional. */
+			RADV_FROM_HANDLE(radv_buffer, buffer, pCounterBuffers[counter_buffer_idx]);
+			uint64_t va = radv_buffer_get_va(buffer->bo);
+
+			va += buffer->offset + pCounterBufferOffsets[counter_buffer_idx];
+
+			si_cs_emit_write_event_eop(cs,
+						   cmd_buffer->device->physical_device->rad_info.chip_class,
+						   radv_cmd_buffer_uses_mec(cmd_buffer),
+						   V_028A90_PS_DONE, 0,
+						   EOP_DST_SEL_TC_L2,
+						   EOP_DATA_SEL_GDS,
+						   va, EOP_DATA_GDS(i, 1), 0);
+		}
+	}
+
+	radv_set_streamout_enable(cmd_buffer, false);
+}
+
 void radv_CmdEndTransformFeedbackEXT(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    firstCounterBuffer,
@@ -5983,9 +6076,15 @@ void radv_CmdEndTransformFeedbackEXT(
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-	radv_emit_streamout_end(cmd_buffer,
-				firstCounterBuffer, counterBufferCount,
-				pCounterBuffers, pCounterBufferOffsets);
+	if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+		gfx10_emit_streamout_end(cmd_buffer,
+					 firstCounterBuffer, counterBufferCount,
+					 pCounterBuffers, pCounterBufferOffsets);
+	} else {
+		radv_emit_streamout_end(cmd_buffer,
+					firstCounterBuffer, counterBufferCount,
+					pCounterBuffers, pCounterBufferOffsets);
+	}
 }
 
 void radv_CmdDrawIndirectByteCountEXT(
