@@ -4208,9 +4208,11 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 						ac_build_alloca(&ctx.ac, ctx.ac.i32, "");
 				}
 
-				/* TODO: streamout */
+				unsigned scratch_size = 8;
+				if (ctx.shader_info->so.num_outputs)
+					scratch_size = 44;
 
-				LLVMTypeRef ai32 = LLVMArrayType(ctx.ac.i32, 8);
+				LLVMTypeRef ai32 = LLVMArrayType(ctx.ac.i32, scratch_size);
 				ctx.gs_ngg_scratch =
 					LLVMAddGlobalInAddressSpace(ctx.ac.module,
 								    ai32, "ngg_scratch", AC_ADDR_SPACE_LDS);

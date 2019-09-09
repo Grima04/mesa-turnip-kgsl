@@ -900,9 +900,23 @@ radv_shader_variant_create(struct radv_device *device,
 			 * size randomly hangs with CTS. Just use the maximum
 			 * possible LDS size for now.
 			 */
+			unsigned ngg_scratch_size = 8 * 4;
+			if (binary->info.so.num_outputs) {
+				/* Memory layout of NGG streamout scratch:
+				 * [0-3]: number of generated primitives
+				 * [4-7]: number of emitted primitives
+				 * [8-11]: streamout offsets
+				 * [12:19]: primitive offsets for stream 0
+				 * [20:27]: primitive offsets for stream 1
+				 * [28:35]: primitive offsets for stream 2
+				 * [36:43]: primitive offsets for stream 3
+				 */
+				ngg_scratch_size = 44 * 4;
+			}
+
 			struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
 			sym->name = "esgs_ring";
-			sym->size = (32 * 1024) - (binary->info.ngg_info.ngg_emit_size * 4) - 32; /* 32 is NGG scratch */
+			sym->size = (32 * 1024) - (binary->info.ngg_info.ngg_emit_size * 4) - ngg_scratch_size;
 			sym->align = 64 * 1024;
 		}
 
