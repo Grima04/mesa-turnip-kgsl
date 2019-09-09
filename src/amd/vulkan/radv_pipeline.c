@@ -1729,15 +1729,16 @@ gfx10_get_ngg_info(const VkGraphicsPipelineCreateInfo *pCreateInfo,
 		esvert_lds_size = es_info->esgs_itemsize / 4;
 		gsprim_lds_size = (gs_info->gs.gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
 	} else {
-		/* TODO: This needs to be adjusted once LDS use for compaction
-		 * after culling is implemented. */
-		/*
-		if (es_info->info.so.num_outputs)
-			esvert_lds_size = 4 * es_info->info.so.num_outputs + 1;
-		*/
+		/* VS and TES. */
+		/* LDS size for passing data from GS to ES. */
+		struct radv_streamout_info *so_info = nir[MESA_SHADER_TESS_CTRL]
+			? &infos[MESA_SHADER_TESS_EVAL].so
+			: &infos[MESA_SHADER_VERTEX].so;
 
-		/* LDS size for passing data from GS to ES.
-		 * GS stores Primitive IDs (one DWORD) into LDS at the address
+		if (so_info->num_outputs)
+			esvert_lds_size = 4 * so_info->num_outputs + 1;
+
+		/* GS stores Primitive IDs (one DWORD) into LDS at the address
 		 * corresponding to the ES thread of the provoking vertex. All
 		 * ES threads load and export PrimitiveID for their thread.
 		 */
