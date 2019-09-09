@@ -86,6 +86,7 @@ modifier_is_supported(const struct gen_device_info *devinfo,
          return false;
       break;
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
+   case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
       if (devinfo->gen != 12)
          return false;
       break;
@@ -96,6 +97,20 @@ modifier_is_supported(const struct gen_device_info *devinfo,
 
    /* Check remaining requirements. */
    switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
+      if (pfmt != PIPE_FORMAT_BGRA8888_UNORM &&
+          pfmt != PIPE_FORMAT_RGBA8888_UNORM &&
+          pfmt != PIPE_FORMAT_BGRX8888_UNORM &&
+          pfmt != PIPE_FORMAT_RGBX8888_UNORM &&
+          pfmt != PIPE_FORMAT_NV12 &&
+          pfmt != PIPE_FORMAT_P010 &&
+          pfmt != PIPE_FORMAT_P012 &&
+          pfmt != PIPE_FORMAT_P016 &&
+          pfmt != PIPE_FORMAT_YUYV &&
+          pfmt != PIPE_FORMAT_UYVY) {
+         return false;
+      }
+      break;
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS: {
       if (unlikely(INTEL_DEBUG & DEBUG_NO_RBC))
@@ -192,6 +207,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
       I915_FORMAT_MOD_Y_TILED,
       I915_FORMAT_MOD_Y_TILED_CCS,
       I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
+      I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS,
    };
 
    int supported_mods = 0;
@@ -204,8 +220,17 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
          if (modifiers)
             modifiers[supported_mods] = all_modifiers[i];
 
-         if (external_only)
-            external_only[supported_mods] = util_format_is_yuv(pfmt);
+         if (external_only) {
+            /* Only allow external usage for the following cases: YUV formats
+             * and the media-compression modifier. The render engine lacks
+             * support for rendering to a media-compressed surface if the
+             * compression ratio is large enough. By requiring external usage
+             * of media-compressed surfaces, resolves are avoided.
+             */
+            external_only[supported_mods] =
+               util_format_is_yuv(pfmt) ||
+               all_modifiers[i] == I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS;
+         }
       }
 
       supported_mods++;
@@ -559,7 +584,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
    assert(!res->mod_info ||
           res->mod_info->aux_usage == ISL_AUX_USAGE_NONE ||
           res->mod_info->aux_usage == ISL_AUX_USAGE_CCS_E ||
-          res->mod_info->aux_usage == ISL_AUX_USAGE_GEN12_CCS_E);
+          res->mod_info->aux_usage == ISL_AUX_USAGE_GEN12_CCS_E ||
+          res->mod_info->aux_usage == ISL_AUX_USAGE_MC);
 
    const bool has_mcs = !res->mod_info &&
       isl_surf_get_mcs_surf(&screen->isl_dev, &res->surf, &res->aux.surf);
@@ -660,6 +686,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_GEN12_CCS_E:
    case ISL_AUX_USAGE_STC_CCS:
+   case ISL_AUX_USAGE_MC:
       /* When CCS_E is used, we need to ensure that the CCS starts off in
        * a valid state.  From the Sky Lake PRM, "MCS Buffer for Render
        * Target(s)":
@@ -681,7 +708,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
          initial_state = ISL_AUX_STATE_PASS_THROUGH;
       }
       break;
-   case ISL_AUX_USAGE_MC:
    default:
       unreachable("Unsupported aux mode");
    }

@@ -838,6 +838,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_STC_CCS:
+   case ISL_AUX_USAGE_MC:
       return res->aux.usage;
 
    case ISL_AUX_USAGE_CCS_E:
