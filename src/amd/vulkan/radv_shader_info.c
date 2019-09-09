@@ -546,6 +546,8 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 
 		if (key->vs_common_out.as_ls)
 			gather_info_output_decl_ls(nir, var, info);
+		else if (key->vs_common_out.as_ngg)
+			gather_info_output_decl_gs(nir, var, info);
 		break;
 	case MESA_SHADER_GEOMETRY:
 		vs_info = &info->vs.outinfo;
