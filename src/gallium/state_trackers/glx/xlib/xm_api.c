@@ -661,7 +661,7 @@ initialize_visual_and_buffer(XMesaVisual v, XMesaBuffer b,
        * We support RGB rendering into almost any kind of visual.
        */
       const int xclass = v->visualType;
-      if (xclass != GLX_TRUE_COLOR && xclass == !GLX_DIRECT_COLOR) {
+      if (xclass != GLX_TRUE_COLOR && xclass != GLX_DIRECT_COLOR) {
 	 _mesa_warning(NULL,
             "XMesa: RGB mode rendering not supported in given visual.\n");
 	 return GL_FALSE;
