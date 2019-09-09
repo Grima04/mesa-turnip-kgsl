@@ -680,37 +680,64 @@ _mesa_NamedProgramLocalParameter4fvEXT(GLuint program, GLenum target, GLuint ind
 }
 
 
-void GLAPIENTRY
-_mesa_ProgramLocalParameters4fvEXT(GLenum target, GLuint index, GLsizei count,
-				   const GLfloat *params)
+static void
+program_local_parameters4fv(struct gl_program* prog, GLuint index, GLsizei count,
+                            const GLfloat *params, const char* caller)
 {
    GET_CURRENT_CONTEXT(ctx);
    GLfloat *dest;
-   struct gl_program* prog = get_current_program(ctx, target, "glProgramLocalParameters4fv");
-   if (!prog) {
-      return;
-   }
-
-   flush_vertices_for_program_constants(ctx, target);
+   flush_vertices_for_program_constants(ctx, prog->Target);
 
    if (count <= 0) {
-      _mesa_error(ctx, GL_INVALID_VALUE, "glProgramLocalParameters4fv(count)");
+      _mesa_error(ctx, GL_INVALID_VALUE, "%s(count)", caller);
    }
 
-   if (get_local_param_pointer(ctx, "glProgramLocalParameters4fvEXT",
-                               prog, target, index, &dest)) {
-      GLuint maxParams = target == GL_FRAGMENT_PROGRAM_ARB ?
+   if (get_local_param_pointer(ctx, caller,
+                               prog, prog->Target, index, &dest)) {
+      GLuint maxParams = prog->Target == GL_FRAGMENT_PROGRAM_ARB ?
          ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxLocalParams :
          ctx->Const.Program[MESA_SHADER_VERTEX].MaxLocalParams;
 
       if ((index + count) > maxParams) {
          _mesa_error(ctx, GL_INVALID_VALUE,
-                     "glProgramLocalParameters4fvEXT(index + count)");
+                     "%s(index + count)",
+                     caller);
          return;
       }
 
       memcpy(dest, params, count * 4 * sizeof(GLfloat));
    }
+}
+
+
+void GLAPIENTRY
+_mesa_ProgramLocalParameters4fvEXT(GLenum target, GLuint index, GLsizei count,
+				   const GLfloat *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct gl_program* prog = get_current_program(ctx, target,
+                                                 "glProgramLocalParameters4fv");
+   if (!prog) {
+      return;
+   }
+
+   program_local_parameters4fv(prog, index, count, params,
+                               "glProgramLocalParameters4fv");
+}
+
+void GLAPIENTRY
+_mesa_NamedProgramLocalParameters4fvEXT(GLuint program, GLenum target, GLuint index,
+                                        GLsizei count, const GLfloat *params)
+{
+   struct gl_program* prog =
+      lookup_or_create_program(program, target,
+                               "glNamedProgramLocalParameters4fvEXT");
+   if (!prog) {
+      return;
+   }
+
+   program_local_parameters4fv(prog, index, count, params,
+                               "glNamedProgramLocalParameters4fvEXT");
 }
 
 

@@ -1592,6 +1592,7 @@ offsets = {
     "MultiTexParameterIuivEXT": 1556,
     "GetMultiTexParameterIivEXT": 1557,
     "GetMultiTexParameterIuivEXT": 1558,
+    "NamedProgramLocalParameters4fvEXT": 1559,
 }
 
 functions = [

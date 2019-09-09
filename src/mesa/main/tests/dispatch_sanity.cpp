@@ -1151,7 +1151,7 @@ const struct function common_desktop_functions_possible[] = {
    /* GL_EXT_direct_state_access - EXT_gpu_shader4 */
    /* Added glProgramUniform*u*EXT functions are aliases */
    /* GL_EXT_direct_state_access - EXT_gpu_program_parameters */
-   //{ "glNamedProgramLocalParameters4fvEXT", 10, -1 },
+   { "glNamedProgramLocalParameters4fvEXT", 10, -1 },
    /* GL_EXT_direct_state_access - GL 3.0 */
    //{ "glGetFloati_vEXT", 30, -1 },
    //{ "glGetDoublei_vEXT", 30, -1 },

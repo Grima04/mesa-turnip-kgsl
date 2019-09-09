@@ -121,6 +121,9 @@ extern void GLAPIENTRY
 _mesa_ProgramLocalParameters4fvEXT(GLenum target, GLuint index, GLsizei count,
 				   const GLfloat *params);
 
+extern void GLAPIENTRY
+_mesa_NamedProgramLocalParameters4fvEXT(GLuint program, GLenum target, GLuint index,
+                                        GLsizei count, const GLfloat *params);
 
 extern void GLAPIENTRY
 _mesa_GetProgramEnvParameterdvARB(GLenum target, GLuint index,

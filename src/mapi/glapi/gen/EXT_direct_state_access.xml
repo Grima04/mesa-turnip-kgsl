@@ -1162,5 +1162,15 @@
       ProgramUniform*EXT functions are added in EXT_separate_shader_objects.xml
    -->
 
+   <!-- EXT_gpu_program_parameters -->
+
+   <function name="NamedProgramLocalParameters4fvEXT">
+      <param name="program" type="GLuint" />
+      <param name="target" type="GLenum" />
+      <param name="index" type="GLuint" />
+      <param name="count" type="GLsizei" />
+      <param name="params" type="const GLfloat*" />
+   </function>
+
 </category>
 </OpenGLAPI>
