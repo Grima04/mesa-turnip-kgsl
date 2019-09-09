@@ -222,6 +222,12 @@ struct st_context
    GLboolean vertdata_edgeflags;
    GLboolean edgeflag_culls_prims;
 
+   /**
+    * The number of currently active queries (excluding timer queries).
+    * This is used to know if we need to pause any queries for meta ops.
+    */
+   unsigned active_queries;
+
    struct st_vertex_program *vp;    /**< Currently bound vertex program */
    struct st_fragment_program *fp;  /**< Currently bound fragment program */
    struct st_common_program *gp;  /**< Currently bound geometry program */
