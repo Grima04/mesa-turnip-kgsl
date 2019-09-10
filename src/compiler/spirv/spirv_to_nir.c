@@ -1935,6 +1935,82 @@ vtn_storage_class_to_memory_semantics(SpvStorageClass sc)
    }
 }
 
+static void
+vtn_split_barrier_semantics(struct vtn_builder *b,
+                            SpvMemorySemanticsMask semantics,
+                            SpvMemorySemanticsMask *before,
+                            SpvMemorySemanticsMask *after)
+{
+   /* For memory semantics embedded in operations, we split them into up to
+    * two barriers, to be added before and after the operation.  This is less
+    * strict than if we propagated until the final backend stage, but still
+    * result in correct execution.
+    *
+    * A further improvement could be pipe this information (and use!) into the
+    * next compiler layers, at the expense of making the handling of barriers
+    * more complicated.
+    */
+
+   *before = SpvMemorySemanticsMaskNone;
+   *after = SpvMemorySemanticsMaskNone;
+
+   const SpvMemorySemanticsMask order_semantics =
+      semantics & (SpvMemorySemanticsAcquireMask |
+                   SpvMemorySemanticsReleaseMask |
+                   SpvMemorySemanticsAcquireReleaseMask |
+                   SpvMemorySemanticsSequentiallyConsistentMask);
+
+   const SpvMemorySemanticsMask av_vis_semantics =
+      semantics & (SpvMemorySemanticsMakeAvailableMask |
+                   SpvMemorySemanticsMakeVisibleMask);
+
+   const SpvMemorySemanticsMask storage_semantics =
+      semantics & (SpvMemorySemanticsUniformMemoryMask |
+                   SpvMemorySemanticsSubgroupMemoryMask |
+                   SpvMemorySemanticsWorkgroupMemoryMask |
+                   SpvMemorySemanticsCrossWorkgroupMemoryMask |
+                   SpvMemorySemanticsAtomicCounterMemoryMask |
+                   SpvMemorySemanticsImageMemoryMask |
+                   SpvMemorySemanticsOutputMemoryMask);
+
+   const SpvMemorySemanticsMask other_semantics =
+      semantics & ~(order_semantics | av_vis_semantics | storage_semantics);
+
+   if (other_semantics)
+      vtn_warn("Ignoring unhandled memory semantics: %u\n", other_semantics);
+
+   vtn_fail_if(util_bitcount(order_semantics) > 1,
+               "Multiple memory ordering bits specified");
+
+   /* SequentiallyConsistent is treated as AcquireRelease. */
+
+   /* The RELEASE barrier happens BEFORE the operation, and it is usually
+    * associated with a Store.  All the write operations with a matching
+    * semantics will not be reordered after the Store.
+    */
+   if (order_semantics & (SpvMemorySemanticsReleaseMask |
+                          SpvMemorySemanticsAcquireReleaseMask |
+                          SpvMemorySemanticsSequentiallyConsistentMask)) {
+      *before |= SpvMemorySemanticsReleaseMask | storage_semantics;
+   }
+
+   /* The ACQUIRE barrier happens AFTER the operation, and it is usually
+    * associated with a Load.  All the operations with a matching semantics
+    * will not be reordered before the Load.
+    */
+   if (order_semantics & (SpvMemorySemanticsAcquireMask |
+                          SpvMemorySemanticsAcquireReleaseMask |
+                          SpvMemorySemanticsSequentiallyConsistentMask)) {
+      *after |= SpvMemorySemanticsAcquireMask | storage_semantics;
+   }
+
+   if (av_vis_semantics & SpvMemorySemanticsMakeVisibleMask)
+      *before |= SpvMemorySemanticsMakeVisibleMask | storage_semantics;
+
+   if (av_vis_semantics & SpvMemorySemanticsMakeAvailableMask)
+      *after |= SpvMemorySemanticsMakeAvailableMask | storage_semantics;
+}
+
 struct vtn_ssa_value *
 vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 {
@@ -2580,6 +2656,13 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    /* Image operations implicitly have the Image storage memory semantics. */
    semantics |= SpvMemorySemanticsImageMemoryMask;
 
+   SpvMemorySemanticsMask before_semantics;
+   SpvMemorySemanticsMask after_semantics;
+   vtn_split_barrier_semantics(b, semantics, &before_semantics, &after_semantics);
+
+   if (before_semantics)
+      vtn_emit_memory_barrier(b, scope, before_semantics);
+
    if (opcode != SpvOpImageWrite && opcode != SpvOpAtomicStore) {
       struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
 
@@ -2603,6 +2686,9 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    } else {
       nir_builder_instr_insert(&b->nb, &intrin->instr);
    }
+
+   if (after_semantics)
+      vtn_emit_memory_barrier(b, scope, after_semantics);
 }
 
 static nir_intrinsic_op
@@ -2876,6 +2962,13 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
     */
    semantics |= vtn_storage_class_to_memory_semantics(ptr->ptr_type->storage_class);
 
+   SpvMemorySemanticsMask before_semantics;
+   SpvMemorySemanticsMask after_semantics;
+   vtn_split_barrier_semantics(b, semantics, &before_semantics, &after_semantics);
+
+   if (before_semantics)
+      vtn_emit_memory_barrier(b, scope, before_semantics);
+
    if (opcode != SpvOpAtomicStore) {
       struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
 
@@ -2890,6 +2983,9 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    }
 
    nir_builder_instr_insert(&b->nb, &atomic->instr);
+
+   if (after_semantics)
+      vtn_emit_memory_barrier(b, scope, after_semantics);
 }
 
 static nir_alu_instr *
@@ -3195,7 +3291,7 @@ vtn_emit_barrier(struct vtn_builder *b, nir_intrinsic_op op)
    nir_builder_instr_insert(&b->nb, &intrin->instr);
 }
 
-static void
+void
 vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
                         SpvMemorySemanticsMask semantics)
 {
