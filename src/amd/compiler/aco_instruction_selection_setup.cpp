@@ -887,11 +887,12 @@ static bool needs_view_index_sgpr(isel_context *ctx)
    case tess_eval_vs:
       return ctx->program->info->needs_multiview_view_index && ctx->options->key.has_multiview_view_index;
    case vertex_ls:
-   case vertex_tess_control_ls:
-   case vertex_geometry_es:
+   case vertex_es:
+   case vertex_tess_control_hs:
+   case vertex_geometry_gs:
    case tess_control_hs:
    case tess_eval_es:
-   case tess_eval_geometry_es:
+   case tess_eval_geometry_gs:
    case geometry_gs:
       return ctx->program->info->needs_multiview_view_index;
    default:

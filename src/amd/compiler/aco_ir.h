@@ -1029,10 +1029,10 @@ static constexpr Stage sw_mask = 0x3f;
 
 /* hardware stages (can't be OR'd, just a mask for convenience when testing multiple) */
 static constexpr Stage hw_vs = 1 << 6;
-static constexpr Stage hw_es = 1 << 7;
-static constexpr Stage hw_gs = 1 << 8; /* not on GFX9. combined into ES on GFX9 (and GFX10/legacy). */
-static constexpr Stage hw_ls = 1 << 9;
-static constexpr Stage hw_hs = 1 << 10; /* not on GFX9. combined into LS on GFX9 (and GFX10/legacy). */
+static constexpr Stage hw_es = 1 << 7; /* not on GFX9. combined into GS on GFX9 (and GFX10/legacy). */
+static constexpr Stage hw_gs = 1 << 8;
+static constexpr Stage hw_ls = 1 << 9; /* not on GFX9. combined into HS on GFX9 (and GFX10/legacy). */
+static constexpr Stage hw_hs = 1 << 10;
 static constexpr Stage hw_fs = 1 << 11;
 static constexpr Stage hw_cs = 1 << 12;
 static constexpr Stage hw_mask = 0x7f << 6;
@@ -1048,13 +1048,14 @@ static constexpr Stage ngg_vertex_geometry_gs = sw_vs | sw_gs | hw_gs;
 static constexpr Stage ngg_tess_eval_geometry_gs = sw_tes | sw_gs | hw_gs;
 static constexpr Stage ngg_vertex_tess_control_hs = sw_vs | sw_tcs | hw_hs;
 /* GFX9 (and GFX10 if NGG isn't used) */
-static constexpr Stage vertex_geometry_es = sw_vs | sw_gs | hw_es;
-static constexpr Stage vertex_tess_control_ls = sw_vs | sw_tcs | hw_ls;
-static constexpr Stage tess_eval_geometry_es = sw_tes | sw_gs | hw_es;
+static constexpr Stage vertex_geometry_gs = sw_vs | sw_gs | hw_gs;
+static constexpr Stage vertex_tess_control_hs = sw_vs | sw_tcs | hw_hs;
+static constexpr Stage tess_eval_geometry_gs = sw_tes | sw_gs | hw_gs;
 /* pre-GFX9 */
 static constexpr Stage vertex_ls = sw_vs | hw_ls; /* vertex before tesselation control */
+static constexpr Stage vertex_es = sw_vs | hw_es; /* vertex before geometry */
 static constexpr Stage tess_control_hs = sw_tcs | hw_hs;
-static constexpr Stage tess_eval_es = sw_tes | hw_gs; /* tesselation evaluation before GS */
+static constexpr Stage tess_eval_es = sw_tes | hw_gs; /* tesselation evaluation before geometry */
 static constexpr Stage geometry_gs = sw_gs | hw_gs;
 
 class Program final {
