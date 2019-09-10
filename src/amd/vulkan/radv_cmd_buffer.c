@@ -3615,6 +3615,13 @@ VkResult radv_EndCommandBuffer(
 		 */
 		cmd_buffer->state.flush_bits |= cmd_buffer->active_query_flush_bits;
 
+		/* Since NGG streamout uses GDS, we need to make GDS idle when
+		 * we leave the IB, otherwise another process might overwrite
+		 * it while our shaders are busy.
+		 */
+		if (cmd_buffer->gds_needed)
+			cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH;
+
 		si_emit_cache_flush(cmd_buffer);
 	}
 
