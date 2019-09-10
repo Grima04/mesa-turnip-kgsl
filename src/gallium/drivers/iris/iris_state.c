@@ -6051,7 +6051,8 @@ iris_rebind_buffer(struct iris_context *ice,
 
             if (res->bo == iris_resource_bo(cbuf->buffer)) {
                iris_upload_ubo_ssbo_surf_state(ice, cbuf, surf_state, false);
-               ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << s;
+               ice->state.dirty |=
+                  (IRIS_DIRTY_CONSTANTS_VS | IRIS_DIRTY_BINDINGS_VS) << s;
             }
          }
       }
