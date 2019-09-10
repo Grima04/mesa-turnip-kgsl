@@ -812,19 +812,32 @@ dri2_wl_flush_front_buffer(__DRIdrawable * driDrawable, void *loaderPrivate)
    (void) loaderPrivate;
 }
 
+static unsigned
+dri2_wl_get_capability(void *loaderPrivate, enum dri_loader_cap cap)
+{
+   switch (cap) {
+   case DRI_LOADER_CAP_FP16:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
 static const __DRIdri2LoaderExtension dri2_loader_extension = {
-   .base = { __DRI_DRI2_LOADER, 3 },
+   .base = { __DRI_DRI2_LOADER, 4 },
 
    .getBuffers           = dri2_wl_get_buffers,
    .flushFrontBuffer     = dri2_wl_flush_front_buffer,
    .getBuffersWithFormat = dri2_wl_get_buffers_with_format,
+   .getCapability        = dri2_wl_get_capability,
 };
 
 static const __DRIimageLoaderExtension image_loader_extension = {
-   .base = { __DRI_IMAGE_LOADER, 1 },
+   .base = { __DRI_IMAGE_LOADER, 2 },
 
    .getBuffers          = image_get_buffers,
    .flushFrontBuffer    = dri2_wl_flush_front_buffer,
+   .getCapability       = dri2_wl_get_capability,
 };
 
 static void
