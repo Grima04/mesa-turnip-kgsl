@@ -1258,6 +1258,9 @@ xmesa_check_buffer_size(XMesaBuffer b)
 {
    GLuint old_width, old_height;
 
+   if (!b)
+      return;
+
    if (b->type == PBUFFER)
       return;
 
@@ -1287,8 +1290,9 @@ GLboolean XMesaMakeCurrent2( XMesaContext c, XMesaBuffer drawBuffer,
    }
 
    if (c) {
-      if (!drawBuffer || !readBuffer)
-         return GL_FALSE;  /* must specify buffers! */
+      if (!drawBuffer != !readBuffer) {
+         return GL_FALSE;  /* must specify zero or two buffers! */
+      }
 
       if (c == old_ctx &&
 	  c->xm_buffer == drawBuffer &&
@@ -1302,10 +1306,13 @@ GLboolean XMesaMakeCurrent2( XMesaContext c, XMesaBuffer drawBuffer,
       c->xm_buffer = drawBuffer;
       c->xm_read_buffer = readBuffer;
 
-      stapi->make_current(stapi, c->st, drawBuffer->stfb, readBuffer->stfb);
+      stapi->make_current(stapi, c->st,
+                          drawBuffer ? drawBuffer->stfb : NULL,
+                          readBuffer ? readBuffer->stfb : NULL);
 
       /* Solution to Stephane Rehel's problem with glXReleaseBuffersMESA(): */
-      drawBuffer->wasCurrent = GL_TRUE;
+      if (drawBuffer)
+         drawBuffer->wasCurrent = GL_TRUE;
    }
    else {
       /* Detach */

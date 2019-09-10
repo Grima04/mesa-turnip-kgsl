@@ -1188,33 +1188,41 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
       firsttime = 0;
    }
 
-   if (ctx && draw && read) {
-      XMesaBuffer drawBuffer, readBuffer;
+   if (ctx) {
+      XMesaBuffer drawBuffer = NULL, readBuffer = NULL;
       XMesaContext xmctx = glxCtx->xmesaContext;
 
-      /* Find the XMesaBuffer which corresponds to the GLXDrawable 'draw' */
-      if (ctx == current) {
-         drawBuffer = XMesaFindBuffer( dpy, draw );
-      }
-      if (!drawBuffer) {
-         /* drawable must be a new window! */
-         drawBuffer = XMesaCreateWindowBuffer( xmctx->xm_visual, draw );
+      /* either both must be null, or both must be non-null */
+      if (!draw != !read)
+         return False;
+
+      if (draw) {
+         /* Find the XMesaBuffer which corresponds to 'draw' */
+         if (ctx == current) {
+            drawBuffer = XMesaFindBuffer( dpy, draw );
+         }
          if (!drawBuffer) {
-            /* Out of memory, or context/drawable depth mismatch */
-            return False;
+            /* drawable must be a new window! */
+            drawBuffer = XMesaCreateWindowBuffer( xmctx->xm_visual, draw );
+            if (!drawBuffer) {
+               /* Out of memory, or context/drawable depth mismatch */
+               return False;
+            }
          }
       }
 
-      /* Find the XMesaBuffer which corresponds to the GLXDrawable 'read' */
-      if (ctx == current) {
-         readBuffer = XMesaFindBuffer( dpy, read );
-      }
-      if (!readBuffer) {
-         /* drawable must be a new window! */
-         readBuffer = XMesaCreateWindowBuffer( xmctx->xm_visual, read );
+      if (read) {
+         /* Find the XMesaBuffer which corresponds to 'read' */
+         if (ctx == current) {
+            readBuffer = XMesaFindBuffer( dpy, read );
+         }
          if (!readBuffer) {
-            /* Out of memory, or context/drawable depth mismatch */
-            return False;
+            /* drawable must be a new window! */
+            readBuffer = XMesaCreateWindowBuffer( xmctx->xm_visual, read );
+            if (!readBuffer) {
+               /* Out of memory, or context/drawable depth mismatch */
+               return False;
+            }
          }
       }
 
@@ -1240,9 +1248,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
       return True;
    }
    else {
-      /* The args must either all be non-zero or all zero.
-       * This is an error.
-       */
+      /* We were given an invalid set of arguments */
       return False;
    }
 }
