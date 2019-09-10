@@ -1,4 +1,5 @@
-#include <map>
+#include <vector>
+#include <algorithm>
 
 #include "aco_ir.h"
 #include "common/sid.h"
@@ -9,7 +10,7 @@ namespace aco {
 struct asm_context {
    Program *program;
    enum chip_class chip_class;
-   std::map<int, SOPP_instruction*> branches;
+   std::vector<std::pair<int, SOPP_instruction*>> branches;
    std::vector<unsigned> constaddrs;
    const int16_t* opcode;
    // TODO: keep track of branch instructions referring blocks
@@ -135,7 +136,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       encoding |= opcode << 16;
       encoding |= (uint16_t) sopp->imm;
       if (sopp->block != -1)
-         ctx.branches.insert({out.size(), sopp});
+         ctx.branches.emplace_back(out.size(), sopp);
       out.push_back(encoding);
       break;
    }
@@ -605,10 +606,43 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
    }
 }
 
+static void fix_branches_gfx10(asm_context& ctx, std::vector<uint32_t>& out)
+{
+   /* Branches with an offset of 0x3f are buggy on GFX10, we workaround by inserting NOPs if needed. */
+   bool gfx10_3f_bug = false;
+
+   do {
+      auto buggy_branch_it = std::find_if(ctx.branches.begin(), ctx.branches.end(), [&ctx](const auto &branch) -> bool {
+         return ((int)ctx.program->blocks[branch.second->block].offset - branch.first - 1) == 0x3f;
+      });
+
+      gfx10_3f_bug = buggy_branch_it != ctx.branches.end();
+
+      if (gfx10_3f_bug) {
+         /* Insert an s_nop after the branch */
+         constexpr uint32_t s_nop_0 = 0xbf800000u;
+         auto out_pos = std::next(out.begin(), buggy_branch_it->first + 1);
+         out.insert(out_pos, s_nop_0);
+
+         /* Update the offset of each affected block */
+         for (Block& block : ctx.program->blocks) {
+            if (block.offset > (unsigned)buggy_branch_it->first)
+               block.offset++;
+         }
+
+         /* Update the branches following the current one */
+         for (auto branch_it = std::next(buggy_branch_it); branch_it != ctx.branches.end(); ++branch_it)
+            branch_it->first++;
+      }
+   } while (gfx10_3f_bug);
+}
+
 void fix_branches(asm_context& ctx, std::vector<uint32_t>& out)
 {
-   for (std::pair<int, SOPP_instruction*> branch : ctx.branches)
-   {
+   if (ctx.chip_class >= GFX10)
+      fix_branches_gfx10(ctx, out);
+
+   for (std::pair<int, SOPP_instruction*> &branch : ctx.branches) {
       int offset = (int)ctx.program->blocks[branch.second->block].offset - branch.first - 1;
       out[branch.first] |= (uint16_t) offset;
    }
