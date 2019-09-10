@@ -1921,6 +1921,20 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
    vtn_foreach_decoration(b, val, handle_workgroup_size_decoration_cb, NULL);
 }
 
+SpvMemorySemanticsMask
+vtn_storage_class_to_memory_semantics(SpvStorageClass sc)
+{
+   switch (sc) {
+   case SpvStorageClassStorageBuffer:
+   case SpvStorageClassPhysicalStorageBufferEXT:
+      return SpvMemorySemanticsUniformMemoryMask;
+   case SpvStorageClassWorkgroup:
+      return SpvMemorySemanticsWorkgroupMemoryMask;
+   default:
+      return SpvMemorySemanticsMaskNone;
+   }
+}
+
 struct vtn_ssa_value *
 vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 {
@@ -2417,6 +2431,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    }
 
    struct vtn_image_pointer image;
+   SpvScope scope = SpvScopeInvocation;
+   SpvMemorySemanticsMask semantics = 0;
 
    switch (opcode) {
    case SpvOpAtomicExchange:
@@ -2435,10 +2451,14 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
       image = *vtn_value(b, w[3], vtn_value_type_image_pointer)->image;
+      scope = vtn_constant_uint(b, w[4]);
+      semantics = vtn_constant_uint(b, w[5]);
       break;
 
    case SpvOpAtomicStore:
       image = *vtn_value(b, w[1], vtn_value_type_image_pointer)->image;
+      scope = vtn_constant_uint(b, w[2]);
+      semantics = vtn_constant_uint(b, w[3]);
       break;
 
    case SpvOpImageQuerySize:
@@ -2556,6 +2576,9 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    default:
       vtn_fail_with_opcode("Invalid image opcode", opcode);
    }
+
+   /* Image operations implicitly have the Image storage memory semantics. */
+   semantics |= SpvMemorySemanticsImageMemoryMask;
 
    if (opcode != SpvOpImageWrite && opcode != SpvOpAtomicStore) {
       struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
@@ -2676,6 +2699,9 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    struct vtn_pointer *ptr;
    nir_intrinsic_instr *atomic;
 
+   SpvScope scope = SpvScopeInvocation;
+   SpvMemorySemanticsMask semantics = 0;
+
    switch (opcode) {
    case SpvOpAtomicLoad:
    case SpvOpAtomicExchange:
@@ -2693,20 +2719,19 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    case SpvOpAtomicOr:
    case SpvOpAtomicXor:
       ptr = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
+      scope = vtn_constant_uint(b, w[4]);
+      semantics = vtn_constant_uint(b, w[5]);
       break;
 
    case SpvOpAtomicStore:
       ptr = vtn_value(b, w[1], vtn_value_type_pointer)->pointer;
+      scope = vtn_constant_uint(b, w[2]);
+      semantics = vtn_constant_uint(b, w[3]);
       break;
 
    default:
       vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
    }
-
-   /*
-   SpvScope scope = w[4];
-   SpvMemorySemanticsMask semantics = w[5];
-   */
 
    /* uniform as "atomic counter uniform" */
    if (ptr->mode == vtn_variable_mode_uniform) {
@@ -2845,6 +2870,11 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
          vtn_fail_with_opcode("Invalid SPIR-V atomic", opcode);
       }
    }
+
+   /* Atomic ordering operations will implicitly apply to the atomic operation
+    * storage class, so include that too.
+    */
+   semantics |= vtn_storage_class_to_memory_semantics(ptr->ptr_type->storage_class);
 
    if (opcode != SpvOpAtomicStore) {
       struct vtn_type *type = vtn_value(b, w[1], vtn_value_type_type)->type;
