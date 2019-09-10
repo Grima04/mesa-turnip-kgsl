@@ -420,6 +420,22 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
          base.BindToTextureRGBA = bind_to_texture_rgba;
    }
 
+   if (double_buffer) {
+      surface_type &= ~EGL_PIXMAP_BIT;
+   }
+
+   /* No support for pbuffer + MSAA for now.
+    *
+    * XXX TODO: pbuffer + MSAA does not work and causes crashes.
+    * See QT bugreport: https://bugreports.qt.io/browse/QTBUG-47509
+    */
+   if (base.Samples) {
+      surface_type &= ~EGL_PBUFFER_BIT;
+   }
+
+   if (!surface_type)
+      return NULL;
+
    base.RenderableType = disp->ClientAPIs;
    base.Conformant = disp->ClientAPIs;
 
@@ -462,19 +478,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
    else {
       unreachable("duplicates should not be possible");
       return NULL;
-   }
-
-   if (double_buffer) {
-      surface_type &= ~EGL_PIXMAP_BIT;
-   }
-
-   /* No support for pbuffer + MSAA for now.
-    *
-    * XXX TODO: pbuffer + MSAA does not work and causes crashes.
-    * See QT bugreport: https://bugreports.qt.io/browse/QTBUG-47509
-    */
-   if (base.Samples) {
-      surface_type &= ~EGL_PBUFFER_BIT;
    }
 
    conf->base.SurfaceType |= surface_type;
