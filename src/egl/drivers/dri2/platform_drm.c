@@ -739,6 +739,21 @@ dri2_initialize_drm(_EGLDriver *drv, _EGLDisplay *disp)
    disp->Device = dev;
 
    dri2_dpy->driver_name = strdup(dri2_dpy->gbm_dri->driver_name);
+   dri2_dpy->is_render_node = drmGetNodeTypeFromFd(dri2_dpy->fd) == DRM_NODE_RENDER;
+
+   /* render nodes cannot use Gem names, and thus do not support
+    * the __DRI_DRI2_LOADER extension */
+   if (!dri2_dpy->is_render_node) {
+      if (!dri2_load_driver(disp)) {
+         err = "DRI2: failed to load driver";
+         goto cleanup;
+      }
+   } else {
+      if (!dri2_load_driver_dri3(disp)) {
+         err = "DRI3: failed to load driver";
+         goto cleanup;
+      }
+   }
 
    dri2_dpy->dri_screen = dri2_dpy->gbm_dri->screen;
    dri2_dpy->core = dri2_dpy->gbm_dri->core;
