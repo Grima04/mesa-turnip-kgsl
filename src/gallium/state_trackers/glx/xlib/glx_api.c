@@ -1174,16 +1174,13 @@ glXCreateContext( Display *dpy, XVisualInfo *visinfo,
 }
 
 
-/* XXX these may have to be removed due to thread-safety issues. */
-static GLXContext MakeCurrent_PrevContext = 0;
-
-
 /* GLX 1.3 and later */
 PUBLIC Bool
 glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
                        GLXDrawable read, GLXContext ctx )
 {
    GLXContext glxCtx = ctx;
+   GLXContext current = GetCurrentContext();
    static boolean firsttime = 1, no_rast = 0;
 
    if (firsttime) {
@@ -1196,7 +1193,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
       XMesaContext xmctx = glxCtx->xmesaContext;
 
       /* Find the XMesaBuffer which corresponds to the GLXDrawable 'draw' */
-      if (ctx == MakeCurrent_PrevContext) {
+      if (ctx == current) {
          drawBuffer = XMesaFindBuffer( dpy, draw );
       }
       if (!drawBuffer) {
@@ -1209,7 +1206,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
       }
 
       /* Find the XMesaBuffer which corresponds to the GLXDrawable 'read' */
-      if (ctx == MakeCurrent_PrevContext) {
+      if (ctx == current) {
          readBuffer = XMesaFindBuffer( dpy, read );
       }
       if (!readBuffer) {
@@ -1221,11 +1218,9 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
          }
       }
 
-      if (no_rast && MakeCurrent_PrevContext == ctx)
+      if (no_rast && current == ctx)
          return True;
           
-      MakeCurrent_PrevContext = ctx;
-
       /* Now make current! */
       if (XMesaMakeCurrent2(xmctx, drawBuffer, readBuffer)) {
          ctx->currentDpy = dpy;
@@ -1241,7 +1236,6 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
    else if (!ctx && !draw && !read) {
       /* release current context w/out assigning new one. */
       XMesaMakeCurrent2( NULL, NULL, NULL );
-      MakeCurrent_PrevContext = 0;
       SetCurrentContext(NULL);
       return True;
    }
@@ -1376,7 +1370,7 @@ glXCopyContext( Display *dpy, GLXContext src, GLXContext dst,
    XMesaContext xm_src = src->xmesaContext;
    XMesaContext xm_dst = dst->xmesaContext;
    (void) dpy;
-   if (MakeCurrent_PrevContext == src) {
+   if (GetCurrentContext() == src) {
       glFlush();
    }
    XMesaCopyContext(xm_src, xm_dst, mask);
@@ -1404,7 +1398,6 @@ glXDestroyContext( Display *dpy, GLXContext ctx )
    if (ctx) {
       GLXContext glxCtx = ctx;
       (void) dpy;
-      MakeCurrent_PrevContext = 0;
       XMesaDestroyContext( glxCtx->xmesaContext );
       XMesaGarbageCollect();
       free(glxCtx);
