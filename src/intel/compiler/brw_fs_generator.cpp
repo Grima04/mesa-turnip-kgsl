@@ -1702,8 +1702,15 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
    this->dispatch_width = dispatch_width;
 
    int start_offset = p->next_insn_offset;
+
+   /* `send_count` explicitly does not include spills or fills, as we'd
+    * like to use it as a metric for intentional memory access or other
+    * shared function use.  Otherwise, subtle changes to scheduling or
+    * register allocation could cause it to fluctuate wildly - and that
+    * effect is already counted in spill/fill counts.
+    */
    int spill_count = 0, fill_count = 0;
-   int loop_count = 0;
+   int loop_count = 0, send_count = 0;
 
    struct disasm_info *disasm_info = disasm_initialize(devinfo, cfg);
 
@@ -2017,6 +2024,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                       brw_math_function(inst->opcode),
                       inst->base_mrf, src[0],
                       BRW_MATH_PRECISION_FULL);
+            send_count++;
 	 }
 	 break;
       case SHADER_OPCODE_INT_QUOTIENT:
@@ -2034,6 +2042,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
             gen4_math(p, dst, brw_math_function(inst->opcode),
                       inst->base_mrf, src[0],
                       BRW_MATH_PRECISION_FULL);
+            send_count++;
 	 }
 	 break;
       case FS_OPCODE_LINTERP:
@@ -2053,10 +2062,12 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case SHADER_OPCODE_SEND:
          generate_send(inst, dst, src[0], src[1], src[2],
                        inst->ex_mlen > 0 ? src[3] : brw_null_reg());
+         send_count++;
          break;
 
       case SHADER_OPCODE_GET_BUFFER_SIZE:
          generate_get_buffer_size(inst, dst, src[0], src[1]);
+         send_count++;
          break;
       case SHADER_OPCODE_TEX:
       case FS_OPCODE_TXB:
@@ -2070,6 +2081,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case SHADER_OPCODE_SAMPLEINFO:
          assert(inst->src[0].file == BAD_FILE);
          generate_tex(inst, dst, src[1], src[2]);
+         send_count++;
          break;
 
       case FS_OPCODE_DDX_COARSE:
@@ -2103,6 +2115,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case SHADER_OPCODE_URB_READ_SIMD8:
       case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
          generate_urb_read(inst, dst, src[0]);
+         send_count++;
          break;
 
       case SHADER_OPCODE_URB_WRITE_SIMD8:
@@ -2110,29 +2123,35 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
       case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
 	 generate_urb_write(inst, src[0]);
+         send_count++;
 	 break;
 
       case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
          assert(inst->force_writemask_all);
 	 generate_uniform_pull_constant_load(inst, dst, src[0], src[1]);
+         send_count++;
 	 break;
 
       case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
          assert(inst->force_writemask_all);
 	 generate_uniform_pull_constant_load_gen7(inst, dst, src[0], src[1]);
+         send_count++;
 	 break;
 
       case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
 	 generate_varying_pull_constant_load_gen4(inst, dst, src[0]);
+         send_count++;
 	 break;
 
       case FS_OPCODE_REP_FB_WRITE:
       case FS_OPCODE_FB_WRITE:
 	 generate_fb_write(inst, src[0]);
+         send_count++;
 	 break;
 
       case FS_OPCODE_FB_READ:
          generate_fb_read(inst, dst, src[0]);
+         send_count++;
          break;
 
       case FS_OPCODE_DISCARD_JUMP:
@@ -2147,6 +2166,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          assert(src[1].file == BRW_IMMEDIATE_VALUE);
          assert(src[2].file == BRW_IMMEDIATE_VALUE);
          brw_memory_fence(p, dst, src[0], BRW_OPCODE_SEND, src[1].ud, src[2].ud);
+         send_count++;
          break;
 
       case SHADER_OPCODE_INTERLOCK:
@@ -2260,24 +2280,29 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
          generate_pixel_interpolator_query(inst, dst, src[0], src[1],
                                            GEN7_PIXEL_INTERPOLATOR_LOC_SAMPLE);
+         send_count++;
          break;
 
       case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
          generate_pixel_interpolator_query(inst, dst, src[0], src[1],
                                            GEN7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET);
+         send_count++;
          break;
 
       case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
          generate_pixel_interpolator_query(inst, dst, src[0], src[1],
                                            GEN7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET);
+         send_count++;
          break;
 
       case CS_OPCODE_CS_TERMINATE:
          generate_cs_terminate(inst, src[0]);
+         send_count++;
          break;
 
       case SHADER_OPCODE_BARRIER:
 	 generate_barrier(inst, src[0]);
+         send_count++;
 	 break;
 
       case BRW_OPCODE_DIM:
@@ -2360,14 +2385,14 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       fprintf(stderr, "Native code for %s (sha1 %s)\n"
               "SIMD%d shader: %d instructions. %d loops. %u cycles. "
-              "%d:%d spills:fills. "
+              "%d:%d spills:fills, %u sends, "
               "scheduled with mode %s. "
               "Promoted %u constants. "
               "Compacted %d to %d bytes (%.0f%%)\n",
               shader_name, sha1buf,
               dispatch_width, before_size / 16,
               loop_count, cfg->cycle_count,
-              spill_count, fill_count,
+              spill_count, fill_count, send_count,
               shader_stats.scheduler_mode,
               shader_stats.promoted_constants,
               before_size, after_size,
@@ -2385,14 +2410,14 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
    compiler->shader_debug_log(log_data,
                               "%s SIMD%d shader: %d inst, %d loops, %u cycles, "
-                              "%d:%d spills:fills, "
+                              "%d:%d spills:fills, %u sends, "
                               "scheduled with mode %s, "
                               "Promoted %u constants, "
                               "compacted %d to %d bytes.",
                               _mesa_shader_stage_to_abbrev(stage),
                               dispatch_width, before_size / 16,
                               loop_count, cfg->cycle_count,
-                              spill_count, fill_count,
+                              spill_count, fill_count, send_count,
                               shader_stats.scheduler_mode,
                               shader_stats.promoted_constants,
                               before_size, after_size);
