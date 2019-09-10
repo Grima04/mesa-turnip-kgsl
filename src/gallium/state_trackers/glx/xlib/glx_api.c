@@ -1176,10 +1176,6 @@ glXCreateContext( Display *dpy, XVisualInfo *visinfo,
 
 /* XXX these may have to be removed due to thread-safety issues. */
 static GLXContext MakeCurrent_PrevContext = 0;
-static GLXDrawable MakeCurrent_PrevDrawable = 0;
-static GLXDrawable MakeCurrent_PrevReadable = 0;
-static XMesaBuffer MakeCurrent_PrevDrawBuffer = 0;
-static XMesaBuffer MakeCurrent_PrevReadBuffer = 0;
 
 
 /* GLX 1.3 and later */
@@ -1200,11 +1196,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
       XMesaContext xmctx = glxCtx->xmesaContext;
 
       /* Find the XMesaBuffer which corresponds to the GLXDrawable 'draw' */
-      if (ctx == MakeCurrent_PrevContext
-          && draw == MakeCurrent_PrevDrawable) {
-         drawBuffer = MakeCurrent_PrevDrawBuffer;
-      }
-      else {
+      if (ctx == MakeCurrent_PrevContext) {
          drawBuffer = XMesaFindBuffer( dpy, draw );
       }
       if (!drawBuffer) {
@@ -1217,11 +1209,7 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
       }
 
       /* Find the XMesaBuffer which corresponds to the GLXDrawable 'read' */
-      if (ctx == MakeCurrent_PrevContext
-          && read == MakeCurrent_PrevReadable) {
-         readBuffer = MakeCurrent_PrevReadBuffer;
-      }
-      else {
+      if (ctx == MakeCurrent_PrevContext) {
          readBuffer = XMesaFindBuffer( dpy, read );
       }
       if (!readBuffer) {
@@ -1233,19 +1221,10 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
          }
       }
 
-      if (no_rast &&
-          MakeCurrent_PrevContext == ctx &&
-          MakeCurrent_PrevDrawable == draw &&
-          MakeCurrent_PrevReadable == read &&
-          MakeCurrent_PrevDrawBuffer == drawBuffer &&
-          MakeCurrent_PrevReadBuffer == readBuffer)
+      if (no_rast && MakeCurrent_PrevContext == ctx)
          return True;
           
       MakeCurrent_PrevContext = ctx;
-      MakeCurrent_PrevDrawable = draw;
-      MakeCurrent_PrevReadable = read;
-      MakeCurrent_PrevDrawBuffer = drawBuffer;
-      MakeCurrent_PrevReadBuffer = readBuffer;
 
       /* Now make current! */
       if (XMesaMakeCurrent2(xmctx, drawBuffer, readBuffer)) {
@@ -1263,10 +1242,6 @@ glXMakeContextCurrent( Display *dpy, GLXDrawable draw,
       /* release current context w/out assigning new one. */
       XMesaMakeCurrent2( NULL, NULL, NULL );
       MakeCurrent_PrevContext = 0;
-      MakeCurrent_PrevDrawable = 0;
-      MakeCurrent_PrevReadable = 0;
-      MakeCurrent_PrevDrawBuffer = 0;
-      MakeCurrent_PrevReadBuffer = 0;
       SetCurrentContext(NULL);
       return True;
    }
@@ -1430,10 +1405,6 @@ glXDestroyContext( Display *dpy, GLXContext ctx )
       GLXContext glxCtx = ctx;
       (void) dpy;
       MakeCurrent_PrevContext = 0;
-      MakeCurrent_PrevDrawable = 0;
-      MakeCurrent_PrevReadable = 0;
-      MakeCurrent_PrevDrawBuffer = 0;
-      MakeCurrent_PrevReadBuffer = 0;
       XMesaDestroyContext( glxCtx->xmesaContext );
       XMesaGarbageCollect();
       free(glxCtx);
