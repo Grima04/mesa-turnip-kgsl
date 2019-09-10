@@ -5,23 +5,18 @@ DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-log-images=disable"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-watchdog=enable"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-crashhandler=enable"
+DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=pbuffer"
 
-export XDG_RUNTIME_DIR=/tmp
 export LIBGL_DRIVERS_PATH=/mesa/lib/dri/
 export LD_LIBRARY_PATH=/mesa/lib/
-export XDG_CONFIG_HOME=$(pwd)
 export MESA_GLES_VERSION_OVERRIDE=3.0
 
 DEVFREQ_GOVERNOR=`echo /sys/devices/platform/*.gpu/devfreq/devfreq0/governor`
 echo performance > $DEVFREQ_GOVERNOR
 
-echo "[core]\nidle-time=0\nrequire-input=false\n[shell]\nlocking=false" > weston.ini
-
 cd /deqp/modules/gles2
 
 # Generate test case list file
-weston --tty=7 &
-sleep 1  # Give some time for Weston to start up
 ./deqp-gles2 $DEQP_OPTIONS --deqp-runmode=stdout-caselist | grep "TEST: dEQP-GLES2" | cut -d ' ' -f 2 > /tmp/case-list.txt
 
 # Disable for now tests that are very slow, either by just using lots of CPU or by crashing
@@ -102,7 +97,8 @@ for test in $FLIP_FLOPS; do sed -i "/$test/d" /tmp/case-list.txt; done
                 --print-regression \
                 --no-print-fail \
                 --no-print-quality \
-                --no-colour-term
+                --no-colour-term \
+                 $DEQP_OPTIONS
 
 if [ $? -ne 0 ]; then
     echo "Regressions detected"

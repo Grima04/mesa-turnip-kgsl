@@ -2,7 +2,7 @@
 
 set -ex
 
-apt-get -y install --no-install-recommends initramfs-tools libpng16-16 weston strace libsensors5
+apt-get -y install --no-install-recommends initramfs-tools libpng16-16 strace libsensors5 libexpat1 libdrm2
 passwd root -d
 chsh -s /bin/sh
 ln -s /bin/sh /init

@@ -16,7 +16,7 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_VERSION: testing-slim
-  IMAGE_TAG: "2019-09-02-2"
+  IMAGE_TAG: "2019-09-10-1"
 
 include:
   - project: 'wayland/ci-templates'
@@ -95,9 +95,22 @@ container:arm64:
         --cross-file /tmp/cross_file.txt
         --libdir /artifacts/rootfs/mesa/lib/
         --buildtype release
-        -Dgallium-drivers=kmsro,panfrost
-        -Ddri-drivers=
-        -Dprefix=/artifacts/rootfs/mesa
+        -D gallium-drivers=kmsro,panfrost
+        -D dri-drivers=
+        -D prefix=/artifacts/rootfs/mesa
+        -D glx=disabled
+        -D gbm=false
+        -D egl=true
+        -D platforms=surfaceless
+        -D osmesa=none
+        -D dri3=false
+        -D gallium-vdpau=false
+        -D gallium-xvmc=false
+        -D gallium-omx=disabled
+        -D gallium-va=false
+        -D gallium-xa=false
+        -D gallium-nine=false
+        -D llvm=false
     - ninja -C mesa-build install
     - du -sh /artifacts/rootfs/mesa/*
     - rm -rf /artifacts/rootfs/mesa/include

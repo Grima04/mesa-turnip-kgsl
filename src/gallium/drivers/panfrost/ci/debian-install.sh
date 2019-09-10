@@ -28,7 +28,6 @@ apt-get -y install --no-install-recommends \
 	python3-jinja2 \
 	bison \
 	flex \
-	libwayland-dev \
 	gettext \
 	cmake \
 	bc \
@@ -49,6 +48,7 @@ apt-get -y install --no-install-recommends \
 	gdc-9 \
 	lld-8 \
 	nasm \
+	libegl1-mesa-dev \
 	\
 	libdrm-dev:${DEBIAN_ARCH} \
 	libx11-dev:${DEBIAN_ARCH} \
@@ -70,31 +70,42 @@ apt-get -y install --no-install-recommends \
 	libxrandr-dev:${DEBIAN_ARCH} \
 	libxshmfence-dev:${DEBIAN_ARCH} \
 	libelf-dev:${DEBIAN_ARCH} \
-	libwayland-dev:${DEBIAN_ARCH} \
-	libwayland-egl-backend-dev:${DEBIAN_ARCH} \
 	zlib1g-dev:${DEBIAN_ARCH} \
 	libglvnd-core-dev:${DEBIAN_ARCH} \
-	wayland-protocols:${DEBIAN_ARCH} \
+	libgles2-mesa-dev:${DEBIAN_ARCH} \
+	libegl1-mesa-dev:${DEBIAN_ARCH} \
 	libpng-dev:${DEBIAN_ARCH}
-
 
 ############### Cross-build dEQP
 mkdir -p /artifacts/rootfs/deqp
 
-wget https://github.com/KhronosGroup/VK-GL-CTS/archive/opengl-es-cts-3.2.5.0.zip
-unzip -q opengl-es-cts-3.2.5.0.zip -d /
-rm opengl-es-cts-3.2.5.0.zip
+git config --global user.email "mesa@example.com"
+git config --global user.name "Mesa CI"
+# XXX: Use --depth 1 once we can drop the cherry-picks.
+git clone \
+    https://github.com/KhronosGroup/VK-GL-CTS.git \
+    -b opengl-es-cts-3.2.5.1 \
+    /VK-GL-CTS
+cd /VK-GL-CTS
+# Fix surfaceless build
+git cherry-pick -x 22f41e5e321c6dcd8569c4dad91bce89f06b3670
+git cherry-pick -x 1daa8dff73161ea60ead965bd6c9f2a0a2165648
 
-cd /VK-GL-CTS-opengl-es-cts-3.2.5.0
+# surfaceless links against libkms and such despite not using it.
+sed -i '/gbm/d' targets/surfaceless/surfaceless.cmake
+sed -i '/libkms/d' targets/surfaceless/surfaceless.cmake
+sed -i '/libgbm/d' targets/surfaceless/surfaceless.cmake
+
 python3 external/fetch_sources.py
 
 cd /artifacts/rootfs/deqp
-cmake -DDEQP_TARGET=wayland                   \
+cmake -G Ninja                                \
+      -DDEQP_TARGET=surfaceless               \
       -DCMAKE_BUILD_TYPE=Release              \
       -DCMAKE_C_COMPILER=${GCC_ARCH}-gcc      \
       -DCMAKE_CXX_COMPILER=${GCC_ARCH}-g++    \
-      /VK-GL-CTS-opengl-es-cts-3.2.5.0
-make -j$(nproc)
+      /VK-GL-CTS
+ninja
 rm -rf /artifacts/rootfs/deqp/external
 rm -rf /artifacts/rootfs/deqp/modules/gles31
 rm -rf /artifacts/rootfs/deqp/modules/internal
