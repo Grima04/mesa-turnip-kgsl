@@ -2659,31 +2659,62 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       image.sample = NULL;
       break;
 
-   case SpvOpImageRead:
+   case SpvOpImageRead: {
       image.image = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
       image.coord = get_image_coord(b, w[4]);
 
-      if (count > 5 && (w[5] & SpvImageOperandsSampleMask)) {
-         vtn_assert(w[5] == SpvImageOperandsSampleMask);
-         image.sample = vtn_ssa_value(b, w[6])->def;
+      const SpvImageOperandsMask operands =
+         count > 5 ? w[5] : SpvImageOperandsMaskNone;
+
+      int idx = 6;
+      if (operands & SpvImageOperandsSampleMask) {
+         image.sample = vtn_ssa_value(b, w[idx])->def;
+         idx++;
       } else {
          image.sample = nir_ssa_undef(&b->nb, 1, 32);
       }
-      break;
 
-   case SpvOpImageWrite:
+      if (operands & SpvImageOperandsMakeTexelVisibleMask) {
+         vtn_fail_if((operands & SpvImageOperandsNonPrivateTexelMask) == 0,
+                     "MakeTexelVisible requires NonPrivateTexel to also be set.");
+         semantics = SpvMemorySemanticsMakeVisibleMask;
+         scope = vtn_constant_uint(b, w[idx]);
+         idx++;
+      }
+
+      /* TODO: Volatile. */
+
+      break;
+   }
+
+   case SpvOpImageWrite: {
       image.image = vtn_value(b, w[1], vtn_value_type_pointer)->pointer;
       image.coord = get_image_coord(b, w[2]);
 
       /* texel = w[3] */
 
-      if (count > 4 && (w[4] & SpvImageOperandsSampleMask)) {
-         vtn_assert(w[4] == SpvImageOperandsSampleMask);
-         image.sample = vtn_ssa_value(b, w[5])->def;
+      const SpvImageOperandsMask operands =
+         count > 4 ? w[4] : SpvImageOperandsMaskNone;
+
+      int idx = 5;
+      if (operands & SpvImageOperandsSampleMask) {
+         image.sample = vtn_ssa_value(b, w[idx])->def;
+         idx++;
       } else {
          image.sample = nir_ssa_undef(&b->nb, 1, 32);
       }
+
+      if (operands & SpvImageOperandsMakeTexelAvailableMask) {
+         vtn_fail_if((operands & SpvImageOperandsNonPrivateTexelMask) == 0,
+                     "MakeTexelAvailable requires NonPrivateTexel to also be set.");
+         semantics = SpvMemorySemanticsMakeAvailableMask;
+         scope = vtn_constant_uint(b, w[idx]);
+      }
+
+      /* TODO: Volatile. */
+
       break;
+   }
 
    default:
       vtn_fail_with_opcode("Invalid image opcode", opcode);
