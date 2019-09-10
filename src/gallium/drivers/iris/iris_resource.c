@@ -1899,8 +1899,7 @@ iris_dirty_for_history(struct iris_context *ice,
                IRIS_DIRTY_CONSTANTS_TES |
                IRIS_DIRTY_CONSTANTS_GS |
                IRIS_DIRTY_CONSTANTS_FS |
-               IRIS_DIRTY_CONSTANTS_CS |
-               IRIS_ALL_DIRTY_BINDINGS;
+               IRIS_DIRTY_CONSTANTS_CS;
    }
 
    ice->state.dirty |= dirty;
