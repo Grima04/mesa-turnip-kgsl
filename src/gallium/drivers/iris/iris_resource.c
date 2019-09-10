@@ -1894,12 +1894,7 @@ iris_dirty_for_history(struct iris_context *ice,
    uint64_t dirty = 0ull;
 
    if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
-      dirty |= IRIS_DIRTY_CONSTANTS_VS |
-               IRIS_DIRTY_CONSTANTS_TCS |
-               IRIS_DIRTY_CONSTANTS_TES |
-               IRIS_DIRTY_CONSTANTS_GS |
-               IRIS_DIRTY_CONSTANTS_FS |
-               IRIS_DIRTY_CONSTANTS_CS;
+      dirty |= ((uint64_t)res->bind_stages) << IRIS_SHIFT_FOR_DIRTY_CONSTANTS;
    }
 
    ice->state.dirty |= dirty;

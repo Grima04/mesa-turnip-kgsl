@@ -110,6 +110,7 @@ enum {
 #define IRIS_DIRTY_FS                       (1ull << 32)
 #define IRIS_DIRTY_CS                       (1ull << 33)
 #define IRIS_DIRTY_URB                      (1ull << 34)
+#define IRIS_SHIFT_FOR_DIRTY_CONSTANTS      35
 #define IRIS_DIRTY_CONSTANTS_VS             (1ull << 35)
 #define IRIS_DIRTY_CONSTANTS_TCS            (1ull << 36)
 #define IRIS_DIRTY_CONSTANTS_TES            (1ull << 37)

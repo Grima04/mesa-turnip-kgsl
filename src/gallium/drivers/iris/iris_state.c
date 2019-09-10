@@ -2305,6 +2305,7 @@ iris_set_shader_images(struct pipe_context *ctx,
          shs->bound_image_views |= 1 << (start_slot + i);
 
          res->bind_history |= PIPE_BIND_SHADER_IMAGE;
+         res->bind_stages |= 1 << stage;
 
          isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
          enum isl_format isl_fmt =
@@ -2409,6 +2410,8 @@ iris_set_sampler_views(struct pipe_context *ctx,
       struct iris_sampler_view *view = (void *) pview;
       if (view) {
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
+         view->res->bind_stages |= 1 << stage;
+
          shs->bound_sampler_views |= 1 << (start + i);
       }
    }
@@ -2756,6 +2759,7 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 
       struct iris_resource *res = (void *) cbuf->buffer;
       res->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
+      res->bind_stages |= 1 << stage;
 
       iris_upload_ubo_ssbo_surf_state(ice, cbuf,
                                       &shs->constbuf_surf_state[index],
@@ -2888,6 +2892,7 @@ iris_set_shader_buffers(struct pipe_context *ctx,
          iris_upload_ubo_ssbo_surf_state(ice, ssbo, surf_state, true);
 
          res->bind_history |= PIPE_BIND_SHADER_BUFFER;
+         res->bind_stages |= 1 << stage;
 
          util_range_add(&res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
@@ -6045,6 +6050,9 @@ iris_rebind_buffer(struct iris_context *ice,
    for (int s = MESA_SHADER_VERTEX; s < MESA_SHADER_STAGES; s++) {
       struct iris_shader_state *shs = &ice->state.shaders[s];
       enum pipe_shader_type p_stage = stage_to_pipe(s);
+
+      if (!(res->bind_stages & (1 << s)))
+         continue;
 
       if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
          /* Skip constant buffer 0, it's for regular uniforms, not UBOs */
