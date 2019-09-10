@@ -16,7 +16,7 @@
 variables:
   UPSTREAM_REPO: mesa/mesa
   DEBIAN_VERSION: testing-slim
-  IMAGE_TAG: "2019-09-10-2"
+  IMAGE_TAG: "2019-09-10-3"
 
 include:
   - project: 'wayland/ci-templates'

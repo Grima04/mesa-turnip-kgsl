@@ -130,13 +130,15 @@ rm -rf /battery
 
 mkdir -p /volt
 cd /volt
-git clone --depth=1 https://github.com/VoltLang/Watt.git
-git clone --depth=1 https://github.com/VoltLang/Volta.git --branch go-go-gadget-armhf
-git clone --depth=1 https://github.com/Wallbraker/dEQP.git
+mkdir -p Watt Volta dEQP
+wget -qO- https://github.com/VoltLang/Watt/archive/v0.1.3.tar.gz | tar -xz --strip-components=1 -C ./Watt
+wget -qO- https://github.com/VoltLang/Volta/archive/v0.1.3.tar.gz | tar -xz --strip-components=1 -C ./Volta
+wget -qO- https://github.com/Wallbraker/dEQP/archive/v0.1.4.tar.gz | tar -xz --strip-components=1 -C ./dEQP
 battery config --release --lto Volta Watt
 battery build
 battery config --arch ${VOLT_ARCH} --cmd-volta Volta/volta Volta/rt Watt dEQP
 battery build
+rm /usr/local/bin/battery
 cp dEQP/deqp /artifacts/rootfs/deqp/deqp-volt
 rm -rf /volt
 
