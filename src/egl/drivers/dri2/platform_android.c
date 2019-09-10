@@ -1388,7 +1388,7 @@ static const __DRIextension *droid_image_loader_extensions[] = {
 static EGLBoolean
 droid_load_driver(_EGLDisplay *disp, bool swrast)
 {
-   struct dri2_egl_display *dri2_dpy = disp->DriverData;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    const char *err;
 
    dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd);

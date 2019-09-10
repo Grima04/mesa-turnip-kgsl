@@ -252,7 +252,7 @@ device_get_fd(_EGLDisplay *disp, _EGLDevice *dev)
 static bool
 device_probe_device(_EGLDisplay *disp)
 {
-   struct dri2_egl_display *dri2_dpy = disp->DriverData;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    bool request_software = env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
 
    if (request_software)
@@ -298,7 +298,7 @@ err_name:
 static bool
 device_probe_device_sw(_EGLDisplay *disp)
 {
-   struct dri2_egl_display *dri2_dpy = disp->DriverData;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
 
    dri2_dpy->fd = -1;
    dri2_dpy->driver_name = strdup("swrast");

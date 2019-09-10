@@ -226,7 +226,7 @@ surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
 {
 #define MAX_DRM_DEVICES 64
    const unsigned node_type = swrast ? DRM_NODE_PRIMARY : DRM_NODE_RENDER;
-   struct dri2_egl_display *dri2_dpy = disp->DriverData;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    drmDevicePtr device, devices[MAX_DRM_DEVICES] = { NULL };
    int i, num_devices;
 
@@ -292,7 +292,7 @@ surfaceless_probe_device(_EGLDisplay *disp, bool swrast)
 static bool
 surfaceless_probe_device_sw(_EGLDisplay *disp)
 {
-   struct dri2_egl_display *dri2_dpy = disp->DriverData;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
 
    dri2_dpy->fd = -1;
    disp->Device = _eglAddDevice(dri2_dpy->fd, true);
