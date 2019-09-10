@@ -3792,6 +3792,14 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
 
       case SpvCapabilityShaderClockKHR:
          spv_check_supported(shader_clock, cap);
+	 break;
+
+      case SpvCapabilityVulkanMemoryModel:
+         spv_check_supported(vk_memory_model, cap);
+         break;
+
+      case SpvCapabilityVulkanMemoryModelDeviceScope:
+         spv_check_supported(vk_memory_model_device_scope, cap);
          break;
 
       default:
@@ -3842,9 +3850,20 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
       }
 
-      vtn_assert(w[2] == SpvMemoryModelSimple ||
-                 w[2] == SpvMemoryModelGLSL450 ||
-                 w[2] == SpvMemoryModelOpenCL);
+      switch (w[2]) {
+      case SpvMemoryModelSimple:
+      case SpvMemoryModelGLSL450:
+      case SpvMemoryModelOpenCL:
+         break;
+      case SpvMemoryModelVulkan:
+         vtn_fail_if(!b->options->caps.vk_memory_model,
+                     "Vulkan memory model is unsupported by this driver");
+         break;
+      default:
+         vtn_fail("Unsupported memory model: %s",
+                  spirv_memorymodel_to_string(w[2]));
+         break;
+      }
       break;
 
    case SpvOpEntryPoint:

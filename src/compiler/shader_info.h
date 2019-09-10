@@ -75,6 +75,8 @@ struct spirv_supported_capabilities {
    bool tessellation;
    bool transform_feedback;
    bool variable_pointers;
+   bool vk_memory_model;
+   bool vk_memory_model_device_scope;
    bool float16;
    bool amd_gcn_shader;
    bool amd_shader_ballot;
