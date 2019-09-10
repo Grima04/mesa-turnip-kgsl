@@ -654,6 +654,9 @@ struct brw_stage_prog_data {
 
    unsigned program_size;
 
+   /** Does this program pull from any UBO or other constant buffers? */
+   bool has_ubo_pull;
+
    /**
     * Register where the thread expects to find input data from the URB
     * (typically uniforms, followed by vertex or fragment attributes).
