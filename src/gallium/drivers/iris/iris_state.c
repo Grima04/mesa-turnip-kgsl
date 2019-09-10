@@ -2739,10 +2739,11 @@ iris_set_constant_buffer(struct pipe_context *ctx,
          pipe_resource_reference(&cbuf->buffer, input->buffer);
 
          cbuf->buffer_offset = input->buffer_offset;
-         cbuf->buffer_size =
-            MIN2(input->buffer_size,
-                 iris_resource_bo(cbuf->buffer)->size - cbuf->buffer_offset);
       }
+
+      cbuf->buffer_size =
+         MIN2(input->buffer_size,
+              iris_resource_bo(cbuf->buffer)->size - cbuf->buffer_offset);
 
       struct iris_resource *res = (void *) cbuf->buffer;
       res->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
