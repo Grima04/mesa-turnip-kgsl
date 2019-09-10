@@ -2011,6 +2011,122 @@ vtn_split_barrier_semantics(struct vtn_builder *b,
       *after |= SpvMemorySemanticsMakeAvailableMask | storage_semantics;
 }
 
+static void
+vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
+                               SpvMemorySemanticsMask semantics)
+{
+   nir_memory_semantics nir_semantics = 0;
+   switch (semantics & (SpvMemorySemanticsAcquireMask |
+                        SpvMemorySemanticsReleaseMask |
+                        SpvMemorySemanticsAcquireReleaseMask |
+                        SpvMemorySemanticsSequentiallyConsistentMask)) {
+   case 0:
+      /* Not an ordering barrier. */
+      break;
+
+   case SpvMemorySemanticsAcquireMask:
+      nir_semantics = NIR_MEMORY_ACQUIRE;
+      break;
+
+   case SpvMemorySemanticsReleaseMask:
+      nir_semantics = NIR_MEMORY_RELEASE;
+      break;
+
+   case SpvMemorySemanticsSequentiallyConsistentMask:
+      /* Fall through.  Treated as AcquireRelease in Vulkan. */
+   case SpvMemorySemanticsAcquireReleaseMask:
+      nir_semantics = NIR_MEMORY_ACQUIRE | NIR_MEMORY_RELEASE;
+      break;
+
+   default:
+      vtn_fail("Multiple memory ordering bits specified");
+   }
+
+   if (semantics & SpvMemorySemanticsMakeAvailableMask) {
+      vtn_fail_if(!b->options->caps.vk_memory_model,
+                  "To use MakeAvailable memory semantics the VulkanMemoryModel "
+                  "capability must be declared.");
+      nir_semantics |= NIR_MEMORY_MAKE_AVAILABLE;
+   }
+
+   if (semantics & SpvMemorySemanticsMakeVisibleMask) {
+      vtn_fail_if(!b->options->caps.vk_memory_model,
+                  "To use MakeVisible memory semantics the VulkanMemoryModel "
+                  "capability must be declared.");
+      nir_semantics |= NIR_MEMORY_MAKE_VISIBLE;
+   }
+
+   /* Vulkan Environment for SPIR-V says "SubgroupMemory, CrossWorkgroupMemory,
+    * and AtomicCounterMemory are ignored".
+    */
+   semantics &= ~(SpvMemorySemanticsSubgroupMemoryMask |
+                  SpvMemorySemanticsCrossWorkgroupMemoryMask |
+                  SpvMemorySemanticsAtomicCounterMemoryMask);
+
+   /* TODO: Consider adding nir_var_mem_image mode to NIR so it can be used
+    * for SpvMemorySemanticsImageMemoryMask.
+    */
+
+   nir_variable_mode modes = 0;
+   if (semantics & (SpvMemorySemanticsUniformMemoryMask |
+                    SpvMemorySemanticsImageMemoryMask))
+      modes |= nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_uniform;
+   if (semantics & SpvMemorySemanticsWorkgroupMemoryMask)
+      modes |= nir_var_mem_shared;
+   if (semantics & SpvMemorySemanticsOutputMemoryMask) {
+      vtn_fail_if(!b->options->caps.vk_memory_model,
+                  "To use Output memory semantics, the VulkanMemoryModel "
+                  "capability must be declared.");
+      modes |= nir_var_shader_out;
+   }
+
+   /* No barrier to add. */
+   if (nir_semantics == 0 || modes == 0)
+      return;
+
+   nir_scope nir_scope;
+   switch (scope) {
+   case SpvScopeDevice:
+      vtn_fail_if(b->options->caps.vk_memory_model &&
+                  !b->options->caps.vk_memory_model_device_scope,
+                  "If the Vulkan memory model is declared and any instruction "
+                  "uses Device scope, the VulkanMemoryModelDeviceScope "
+                  "capability must be declared.");
+      nir_scope = NIR_SCOPE_DEVICE;
+      break;
+
+   case SpvScopeQueueFamily:
+      vtn_fail_if(!b->options->caps.vk_memory_model,
+                  "To use Queue Family scope, the VulkanMemoryModel capability "
+                  "must be declared.");
+      nir_scope = NIR_SCOPE_QUEUE_FAMILY;
+      break;
+
+   case SpvScopeWorkgroup:
+      nir_scope = NIR_SCOPE_WORKGROUP;
+      break;
+
+   case SpvScopeSubgroup:
+      nir_scope = NIR_SCOPE_SUBGROUP;
+      break;
+
+   case SpvScopeInvocation:
+      nir_scope = NIR_SCOPE_INVOCATION;
+      break;
+
+   default:
+      vtn_fail("Invalid memory scope");
+   }
+
+   nir_intrinsic_instr *intrin =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_scoped_memory_barrier);
+   nir_intrinsic_set_memory_semantics(intrin, nir_semantics);
+
+   nir_intrinsic_set_memory_modes(intrin, modes);
+   nir_intrinsic_set_memory_scope(intrin, nir_scope);
+   nir_builder_instr_insert(&b->nb, &intrin->instr);
+}
+
 struct vtn_ssa_value *
 vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
 {
@@ -3295,6 +3411,11 @@ void
 vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
                         SpvMemorySemanticsMask semantics)
 {
+   if (b->options->use_scoped_memory_barrier) {
+      vtn_emit_scoped_memory_barrier(b, scope, semantics);
+      return;
+   }
+
    static const SpvMemorySemanticsMask all_memory_semantics =
       SpvMemorySemanticsUniformMemoryMask |
       SpvMemorySemanticsWorkgroupMemoryMask |
