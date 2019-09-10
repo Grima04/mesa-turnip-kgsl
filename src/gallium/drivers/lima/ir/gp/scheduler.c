@@ -706,7 +706,7 @@ static int _schedule_try_node(sched_ctx *ctx, gpir_node *node, bool speculative)
    int score = 0;
 
    gpir_node_foreach_pred(node, dep) {
-      if (!gpir_is_input_node(dep->pred))
+      if (dep->type != GPIR_DEP_INPUT)
          continue;
 
       int pred_score = INT_MIN;
