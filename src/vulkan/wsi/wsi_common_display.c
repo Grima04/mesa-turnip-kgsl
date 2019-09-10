@@ -1687,6 +1687,15 @@ _wsi_display_queue_next(struct wsi_swapchain *drv_chain)
                               &connector->id, 1,
                               &connector->current_drm_mode);
          if (ret == 0) {
+            /* Disable the HW cursor as the app doesn't have a mechanism
+             * to control it.
+             * Refer to question 12 of the VK_KHR_display spec.
+             */
+            ret = drmModeSetCursor(wsi->fd, connector->crtc_id, 0, 0, 0 );
+            if (ret != 0) {
+               wsi_display_debug("failed to hide cursor err %d %s\n", ret, strerror(-ret));
+            }
+
             /* Assume that the mode set is synchronous and that any
              * previous image is now idle.
              */
