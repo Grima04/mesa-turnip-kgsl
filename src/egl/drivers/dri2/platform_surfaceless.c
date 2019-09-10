@@ -185,6 +185,8 @@ surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
       int rgba_shifts[4];
       unsigned int rgba_sizes[4];
    } visuals[] = {
+      { "ABGR16F",  { 0, 16, 32, 48 }, { 16, 16, 16, 16 } },
+      { "XBGR16F",  { 0, 16, 32, -1 }, { 16, 16, 16, 0 } },
       { "A2RGB10",  { 20, 10, 0, 30 }, { 10, 10, 10, 2 } },
       { "X2RGB10",  { 20, 10, 0, -1 }, { 10, 10, 10, 0 } },
       { "ARGB8888", { 16, 8, 0, 24 }, { 8, 8, 8, 8 } },
@@ -239,10 +241,23 @@ surfaceless_flush_front_buffer(__DRIdrawable *driDrawable, void *loaderPrivate)
 {
 }
 
+static unsigned
+surfaceless_get_capability(void *loaderPrivate, enum dri_loader_cap cap)
+{
+   /* Note: loaderPrivate is _EGLDisplay* */
+   switch (cap) {
+   case DRI_LOADER_CAP_FP16:
+      return 1;
+   default:
+      return 0;
+   }
+}
+
 static const __DRIimageLoaderExtension image_loader_extension = {
-   .base             = { __DRI_IMAGE_LOADER, 1 },
+   .base             = { __DRI_IMAGE_LOADER, 2 },
    .getBuffers       = surfaceless_image_get_buffers,
    .flushFrontBuffer = surfaceless_flush_front_buffer,
+   .getCapability    = surfaceless_get_capability,
 };
 
 static const __DRIextension *image_loader_extensions[] = {
