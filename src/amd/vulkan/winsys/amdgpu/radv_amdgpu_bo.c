@@ -356,6 +356,10 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 		request.preferred_heap |= AMDGPU_GEM_DOMAIN_VRAM;
 	if (initial_domain & RADEON_DOMAIN_GTT)
 		request.preferred_heap |= AMDGPU_GEM_DOMAIN_GTT;
+	if (initial_domain & RADEON_DOMAIN_GDS)
+		request.preferred_heap |= AMDGPU_GEM_DOMAIN_GDS;
+	if (initial_domain & RADEON_DOMAIN_OA)
+		request.preferred_heap |= AMDGPU_GEM_DOMAIN_OA;
 
 	if (flags & RADEON_FLAG_CPU_ACCESS) {
 		bo->base.vram_cpu_access = initial_domain & RADEON_DOMAIN_VRAM;
