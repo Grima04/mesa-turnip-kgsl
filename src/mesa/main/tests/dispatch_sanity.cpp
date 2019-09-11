@@ -1155,7 +1155,7 @@ const struct function common_desktop_functions_possible[] = {
    /* GL_EXT_direct_state_access - GL 3.0 */
    { "glNamedRenderbufferStorageEXT", 30, -1 },
    { "glGetNamedRenderbufferParameterivEXT", 30, -1 },
-   //{ "glNamedRenderbufferStorageMultisampleEXT", 30, -1 },
+   { "glNamedRenderbufferStorageMultisampleEXT", 30, -1 },
    { "glCheckNamedFramebufferStatusEXT", 30, -1 },
    { "glNamedFramebufferTexture1DEXT", 30, -1 },
    { "glNamedFramebufferTexture2DEXT", 30, -1 },
@@ -1168,7 +1168,7 @@ const struct function common_desktop_functions_possible[] = {
    { "glFramebufferDrawBuffersEXT", 30, -1 },
    { "glFramebufferReadBufferEXT", 30, -1 },
    { "glGetFramebufferParameterivEXT", 30, -1 },
-   //{ "glNamedCopyBufferSubDataEXT", 30, -1 },
+   { "glNamedCopyBufferSubDataEXT", 30, -1 },
    //{ "glVertexArrayVertexOffsetEXT", 30, -1 },
    //{ "glVertexArrayColorOffsetEXT", 30, -1 },
    //{ "glVertexArrayEdgeFlagOffsetEXT", 30, -1 },

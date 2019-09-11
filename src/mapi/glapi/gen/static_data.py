@@ -1596,6 +1596,7 @@ offsets = {
     "GenerateTextureMipmapEXT": 1560,
     "GenerateMultiTexMipmapEXT": 1561,
     "NamedRenderbufferStorageMultisampleEXT": 1562,
+    "NamedCopyBufferSubDataEXT": 1563,
 }
 
 functions = [

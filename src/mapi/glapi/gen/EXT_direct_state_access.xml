@@ -1044,6 +1044,14 @@
       <param name="height" type="GLsizei" />
    </function>
 
+   <function name="NamedCopyBufferSubDataEXT">
+      <param name="readBuffer" type="GLuint" />
+      <param name="writeBuffer" type="GLuint" />
+      <param name="readOffset" type="GLintptr" />
+      <param name="writeOffset" type="GLintptr" />
+      <param name="size" type="GLsizeiptr" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />
