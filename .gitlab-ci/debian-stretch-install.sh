@@ -14,6 +14,15 @@ echo 'deb https://deb.debian.org/debian stretch-backports main' >/etc/apt/source
 
 apt-get update
 
+# Use newer packages from backports by default
+cat >/etc/apt/preferences <<EOF
+Package: *
+Pin: release a=stretch-backports
+Pin-Priority: 500
+EOF
+
+apt-get dist-upgrade -y
+
 apt-get install -y --no-remove \
       llvm-3.9-dev \
       libclang-3.9-dev \
