@@ -5943,6 +5943,14 @@ gfx10_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer,
 	assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10);
 	assert(firstCounterBuffer + counterBufferCount <= MAX_SO_BUFFERS);
 
+	/* Sync because the next streamout operation will overwrite GDS and we
+	 * have to make sure it's idle.
+	 * TODO: Improve by tracking if there is a streamout operation in
+	 * flight.
+	 */
+	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VS_PARTIAL_FLUSH;
+	si_emit_cache_flush(cmd_buffer);
+
 	for_each_bit(i, so->enabled_mask) {
 		int32_t counter_buffer_idx = i - firstCounterBuffer;
 		if (counter_buffer_idx >= 0 && counter_buffer_idx >= counterBufferCount)
