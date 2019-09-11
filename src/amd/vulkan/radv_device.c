@@ -929,7 +929,7 @@ void radv_GetPhysicalDeviceFeatures2(
 			VkPhysicalDeviceTransformFeedbackFeaturesEXT *features =
 				(VkPhysicalDeviceTransformFeedbackFeaturesEXT*)ext;
 			features->transformFeedback = true;
-			features->geometryStreams = true;
+			features->geometryStreams = !pdevice->use_ngg_streamout;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
@@ -1415,8 +1415,8 @@ void radv_GetPhysicalDeviceProperties2(
 			properties->maxTransformFeedbackStreamDataSize = 512;
 			properties->maxTransformFeedbackBufferDataSize = UINT32_MAX;
 			properties->maxTransformFeedbackBufferDataStride = 512;
-			properties->transformFeedbackQueries = true;
-			properties->transformFeedbackStreamsLinesTriangles = true;
+			properties->transformFeedbackQueries = !pdevice->use_ngg_streamout;
+			properties->transformFeedbackStreamsLinesTriangles = !pdevice->use_ngg_streamout;
 			properties->transformFeedbackRasterizationStreamSelect = false;
 			properties->transformFeedbackDraw = true;
 			break;
