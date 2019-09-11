@@ -847,9 +847,10 @@ dri2_get_modifier_num_planes(uint64_t modifier, int fourcc)
       return 0;
 
    switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS:
-      return 2;
+      return 2 * util_format_get_num_planes(map->pipe_format);
    case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
    case DRM_FORMAT_MOD_ARM_AFBC(
                         AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
