@@ -1036,6 +1036,14 @@
       <param name="target" type="GLenum" />
    </function>
 
+   <function name="NamedRenderbufferStorageMultisampleEXT">
+      <param name="renderbuffer" type="GLuint" />
+      <param name="samples" type="GLsizei" />
+      <param name="internalformat" type="GLenum" />
+      <param name="width" type="GLsizei" />
+      <param name="height" type="GLsizei" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />

@@ -200,6 +200,11 @@ _mesa_NamedRenderbufferStorageMultisample(GLuint renderbuffer, GLsizei samples,
                                           GLsizei width, GLsizei height);
 
 extern void GLAPIENTRY
+_mesa_NamedRenderbufferStorageMultisampleEXT(GLuint renderbuffer, GLsizei samples,
+                                             GLenum internalformat,
+                                             GLsizei width, GLsizei height);
+
+extern void GLAPIENTRY
 _mesa_NamedRenderbufferStorageMultisampleAdvancedAMD(
       GLuint renderbuffer, GLsizei samples, GLsizei storageSamples,
       GLenum internalformat, GLsizei width, GLsizei height);

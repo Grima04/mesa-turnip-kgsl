@@ -1595,6 +1595,7 @@ offsets = {
     "NamedProgramLocalParameters4fvEXT": 1559,
     "GenerateTextureMipmapEXT": 1560,
     "GenerateMultiTexMipmapEXT": 1561,
+    "NamedRenderbufferStorageMultisampleEXT": 1562,
 }
 
 functions = [
