@@ -1,5 +1,5 @@
 # This is the tag of the docker image used for the build jobs. If the
-# image doesn't exist yet, the containers-build stage generates it.
+# image doesn't exist yet, the containers stage generates it.
 #
 # In order to generate a new image, one should generally change the tag.
 # While removing the image from the registry would also work, that's not
@@ -27,8 +27,8 @@ include:
     file: '/templates/debian.yml'
 
 stages:
-  - containers-build
-  - build+test
+  - containers
+  - build
   - test
 
 
@@ -55,7 +55,7 @@ stages:
 # Builds the normal CI native and cross-build docker image.
 debian:
   extends: .debian@container-ifnot-exists
-  stage: containers-build
+  stage: containers
   <<: *ci-run-policy
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
@@ -65,7 +65,7 @@ debian:
 test-container:arm64:
   extends: .debian@container-ifnot-exists@arm64v8
   <<: *ci-run-policy
-  stage: containers-build
+  stage: containers
   variables:
     DEBIAN_TAG: "$DEBIAN_ARM64_TAG"
     DEBIAN_VERSION: "$DEBIAN_ARM64_VERSION"
@@ -77,7 +77,7 @@ test-container:arm64:
 .build:
   <<: *ci-run-policy
   image: $DEBIAN_IMAGE
-  stage: build+test
+  stage: build
   cache:
     paths:
       - ccache
