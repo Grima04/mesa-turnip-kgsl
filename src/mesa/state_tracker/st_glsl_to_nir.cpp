@@ -113,13 +113,57 @@ st_nir_assign_vs_in_locations(nir_shader *nir)
 static int
 st_nir_lookup_parameter_index(struct gl_program *prog, nir_variable *var)
 {
+   struct gl_program_parameter_list *params = prog->Parameters;
+
    /* Lookup the first parameter that the uniform storage that match the
     * variable location.
     */
-   for (unsigned i = 0; i < prog->Parameters->NumParameters; i++) {
-      int index = prog->Parameters->Parameters[i].MainUniformStorageIndex;
+   for (unsigned i = 0; i < params->NumParameters; i++) {
+      int index = params->Parameters[i].MainUniformStorageIndex;
       if (index == var->data.location)
          return i;
+   }
+
+   /* TODO: Handle this fallback for SPIR-V.  We need this for GLSL e.g. in
+    * dEQP-GLES2.functional.uniform_api.random.3
+    */
+
+   /* is there a better way to do this?  If we have something like:
+    *
+    *    struct S {
+    *           float f;
+    *           vec4 v;
+    *    };
+    *    uniform S color;
+    *
+    * Then what we get in prog->Parameters looks like:
+    *
+    *    0: Name=color.f, Type=6, DataType=1406, Size=1
+    *    1: Name=color.v, Type=6, DataType=8b52, Size=4
+    *
+    * So the name doesn't match up and _mesa_lookup_parameter_index()
+    * fails.  In this case just find the first matching "color.*"..
+    *
+    * Note for arrays you could end up w/ color[n].f, for example.
+    *
+    * glsl_to_tgsi works slightly differently in this regard.  It is
+    * emitting something more low level, so it just translates the
+    * params list 1:1 to CONST[] regs.  Going from GLSL IR to TGSI,
+    * it just calculates the additional offset of struct field members
+    * in glsl_to_tgsi_visitor::visit(ir_dereference_record *ir) or
+    * glsl_to_tgsi_visitor::visit(ir_dereference_array *ir).  It never
+    * needs to work backwards to get base var loc from the param-list
+    * which already has them separated out.
+    */
+   if (!prog->sh.data->spirv) {
+      int namelen = strlen(var->name);
+      for (unsigned i = 0; i < params->NumParameters; i++) {
+         struct gl_program_parameter *p = &params->Parameters[i];
+         if ((strncmp(p->Name, var->name, namelen) == 0) &&
+             ((p->Name[namelen] == '.') || (p->Name[namelen] == '['))) {
+            return i;
+         }
+      }
    }
 
    return -1;
