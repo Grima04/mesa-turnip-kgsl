@@ -596,7 +596,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
          unsigned idx = var->data.driver_location;
          sf->reg[idx].reg = idx;
          sf->reg[idx].slot = var->data.location;
-         sf->reg[idx].num_components = 4; /* TODO */
+         sf->reg[idx].num_components = glsl_get_components(var->type);
          sf->num_reg = MAX2(sf->num_reg, idx+1);
       }
    } else {
@@ -605,7 +605,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
          unsigned idx = var->data.driver_location;
          sf->reg[idx].reg = idx + 1;
          sf->reg[idx].slot = var->data.location;
-         sf->reg[idx].num_components = 4; /* TODO */
+         sf->reg[idx].num_components = glsl_get_components(var->type);
          sf->num_reg = MAX2(sf->num_reg, idx+1);
          count++;
       }
@@ -740,7 +740,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
 
       sf->reg[sf->num_reg].reg = native;
       sf->reg[sf->num_reg].slot = var->data.location;
-      sf->reg[sf->num_reg].num_components = 4; /* TODO */
+      sf->reg[sf->num_reg].num_components = glsl_get_components(var->type);
       sf->num_reg++;
    }
 
