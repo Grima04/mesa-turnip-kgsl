@@ -77,8 +77,7 @@ endforeach
 
 libiris = static_library(
   'iris',
-  [files_libiris, gen_xml_pack, nir_opcodes_h, nir_builder_opcodes_h,
-   iris_driinfo_h],
+  [files_libiris, gen_xml_pack, iris_driinfo_h],
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_intel, inc_nir,
     inc_gallium_drivers,
@@ -87,7 +86,7 @@ libiris = static_library(
   ],
   c_args : [c_vis_args, c_sse2_args],
   cpp_args : [cpp_vis_args, c_sse2_args],
-  dependencies : [dep_libdrm, dep_valgrind, idep_genxml, idep_libintel_common],
+  dependencies : [dep_libdrm, dep_valgrind, idep_genxml, idep_libintel_common, idep_nir_headers],
   link_with : [
     iris_gen_libs, libintel_compiler, libintel_dev, libisl,
     libblorp, libintel_perf
