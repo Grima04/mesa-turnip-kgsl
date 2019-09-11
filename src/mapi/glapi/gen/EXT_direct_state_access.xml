@@ -1014,6 +1014,18 @@
       <param name="params" type="GLint *" />
    </function>
 
+   <function name="GetFloati_vEXT" alias="GetFloati_v">
+      <param name="target" type="GLenum" />
+      <param name="index" type="GLuint" />
+      <param name="params" type="GLfloat*" />
+   </function>
+
+   <function name="GetDoublei_vEXT" alias="GetDoublei_v">
+      <param name="target" type="GLenum" />
+      <param name="index" type="GLuint" />
+      <param name="params" type="GLdouble*" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />
