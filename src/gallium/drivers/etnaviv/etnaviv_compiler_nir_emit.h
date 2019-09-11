@@ -157,6 +157,9 @@ enum {
    REG_CLASS_VEC4,
    /* special vec2 class for fast transcendentals, limited to XY or ZW */
    REG_CLASS_VIRT_VEC2T,
+   /* special classes for LOAD - contiguous components */
+   REG_CLASS_VIRT_VEC2C,
+   REG_CLASS_VIRT_VEC3C,
    NUM_REG_CLASSES,
 } reg_class;
 
@@ -178,6 +181,11 @@ enum {
    REG_TYPE_VIRT_SCALAR_W,
    REG_TYPE_VIRT_VEC2T_XY,
    REG_TYPE_VIRT_VEC2T_ZW,
+   REG_TYPE_VIRT_VEC2C_XY,
+   REG_TYPE_VIRT_VEC2C_YZ,
+   REG_TYPE_VIRT_VEC2C_ZW,
+   REG_TYPE_VIRT_VEC3C_XYZ,
+   REG_TYPE_VIRT_VEC3C_YZW,
    NUM_REG_TYPES,
 } reg_type;
 
@@ -189,18 +197,23 @@ reg_writemask[NUM_REG_TYPES] = {
    [REG_TYPE_VIRT_SCALAR_Y] = 0x2,
    [REG_TYPE_VIRT_VEC2_XY] = 0x3,
    [REG_TYPE_VIRT_VEC2T_XY] = 0x3,
+   [REG_TYPE_VIRT_VEC2C_XY] = 0x3,
    [REG_TYPE_VIRT_SCALAR_Z] = 0x4,
    [REG_TYPE_VIRT_VEC2_XZ] = 0x5,
    [REG_TYPE_VIRT_VEC2_YZ] = 0x6,
+   [REG_TYPE_VIRT_VEC2C_YZ] = 0x6,
    [REG_TYPE_VIRT_VEC3_XYZ] = 0x7,
+   [REG_TYPE_VIRT_VEC3C_XYZ] = 0x7,
    [REG_TYPE_VIRT_SCALAR_W] = 0x8,
    [REG_TYPE_VIRT_VEC2_XW] = 0x9,
    [REG_TYPE_VIRT_VEC2_YW] = 0xa,
    [REG_TYPE_VIRT_VEC3_XYW] = 0xb,
    [REG_TYPE_VIRT_VEC2_ZW] = 0xc,
    [REG_TYPE_VIRT_VEC2T_ZW] = 0xc,
+   [REG_TYPE_VIRT_VEC2C_ZW] = 0xc,
    [REG_TYPE_VIRT_VEC3_XZW] = 0xd,
    [REG_TYPE_VIRT_VEC3_YZW] = 0xe,
+   [REG_TYPE_VIRT_VEC3C_YZW] = 0xe,
 };
 
 /* how to swizzle when used as a src */
@@ -211,18 +224,23 @@ reg_swiz[NUM_REG_TYPES] = {
    [REG_TYPE_VIRT_SCALAR_Y] = SWIZZLE(Y, Y, Y, Y),
    [REG_TYPE_VIRT_VEC2_XY] = INST_SWIZ_IDENTITY,
    [REG_TYPE_VIRT_VEC2T_XY] = INST_SWIZ_IDENTITY,
+   [REG_TYPE_VIRT_VEC2C_XY] = INST_SWIZ_IDENTITY,
    [REG_TYPE_VIRT_SCALAR_Z] = SWIZZLE(Z, Z, Z, Z),
    [REG_TYPE_VIRT_VEC2_XZ] = SWIZZLE(X, Z, X, Z),
    [REG_TYPE_VIRT_VEC2_YZ] = SWIZZLE(Y, Z, Y, Z),
+   [REG_TYPE_VIRT_VEC2C_YZ] = SWIZZLE(Y, Z, Y, Z),
    [REG_TYPE_VIRT_VEC3_XYZ] = INST_SWIZ_IDENTITY,
+   [REG_TYPE_VIRT_VEC3C_XYZ] = INST_SWIZ_IDENTITY,
    [REG_TYPE_VIRT_SCALAR_W] = SWIZZLE(W, W, W, W),
    [REG_TYPE_VIRT_VEC2_XW] = SWIZZLE(X, W, X, W),
    [REG_TYPE_VIRT_VEC2_YW] = SWIZZLE(Y, W, Y, W),
    [REG_TYPE_VIRT_VEC3_XYW] = SWIZZLE(X, Y, W, X),
    [REG_TYPE_VIRT_VEC2_ZW] = SWIZZLE(Z, W, Z, W),
    [REG_TYPE_VIRT_VEC2T_ZW] = SWIZZLE(Z, W, Z, W),
+   [REG_TYPE_VIRT_VEC2C_ZW] = SWIZZLE(Z, W, Z, W),
    [REG_TYPE_VIRT_VEC3_XZW] = SWIZZLE(X, Z, W, X),
    [REG_TYPE_VIRT_VEC3_YZW] = SWIZZLE(Y, Z, W, X),
+   [REG_TYPE_VIRT_VEC3C_YZW] = SWIZZLE(Y, Z, W, X),
 };
 
 /* how to swizzle when used as a dest */
@@ -233,18 +251,23 @@ reg_dst_swiz[NUM_REG_TYPES] = {
    [REG_TYPE_VIRT_SCALAR_Y] = SWIZZLE(X, X, X, X),
    [REG_TYPE_VIRT_VEC2_XY] = INST_SWIZ_IDENTITY,
    [REG_TYPE_VIRT_VEC2T_XY] = INST_SWIZ_IDENTITY,
+   [REG_TYPE_VIRT_VEC2C_XY] = INST_SWIZ_IDENTITY,
    [REG_TYPE_VIRT_SCALAR_Z] = SWIZZLE(X, X, X, X),
    [REG_TYPE_VIRT_VEC2_XZ] = SWIZZLE(X, X, Y, Y),
    [REG_TYPE_VIRT_VEC2_YZ] = SWIZZLE(X, X, Y, Y),
+   [REG_TYPE_VIRT_VEC2C_YZ] = SWIZZLE(X, X, Y, Y),
    [REG_TYPE_VIRT_VEC3_XYZ] = INST_SWIZ_IDENTITY,
+   [REG_TYPE_VIRT_VEC3C_XYZ] = INST_SWIZ_IDENTITY,
    [REG_TYPE_VIRT_SCALAR_W] = SWIZZLE(X, X, X, X),
    [REG_TYPE_VIRT_VEC2_XW] = SWIZZLE(X, X, Y, Y),
    [REG_TYPE_VIRT_VEC2_YW] = SWIZZLE(X, X, Y, Y),
    [REG_TYPE_VIRT_VEC3_XYW] = SWIZZLE(X, Y, Z, Z),
    [REG_TYPE_VIRT_VEC2_ZW] = SWIZZLE(X, X, X, Y),
    [REG_TYPE_VIRT_VEC2T_ZW] = SWIZZLE(X, X, X, Y),
+   [REG_TYPE_VIRT_VEC2C_ZW] = SWIZZLE(X, X, X, Y),
    [REG_TYPE_VIRT_VEC3_XZW] = SWIZZLE(X, Y, Y, Z),
    [REG_TYPE_VIRT_VEC3_YZW] = SWIZZLE(X, X, Y, Z),
+   [REG_TYPE_VIRT_VEC3C_YZW] = SWIZZLE(X, X, Y, Z),
 };
 
 static inline int reg_get_type(int virt_reg)
@@ -285,6 +308,13 @@ static inline int reg_get_class(int virt_reg)
    case REG_TYPE_VIRT_VEC2T_XY:
    case REG_TYPE_VIRT_VEC2T_ZW:
       return REG_CLASS_VIRT_VEC2T;
+   case REG_TYPE_VIRT_VEC2C_XY:
+   case REG_TYPE_VIRT_VEC2C_YZ:
+   case REG_TYPE_VIRT_VEC2C_ZW:
+      return REG_CLASS_VIRT_VEC2C;
+   case REG_TYPE_VIRT_VEC3C_XYZ:
+   case REG_TYPE_VIRT_VEC3C_YZW:
+      return REG_CLASS_VIRT_VEC3C;
    }
 
    assert(false);
@@ -775,11 +805,13 @@ live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_map)
 
 /* precomputed by register_allocate  */
 static unsigned int *q_values[] = {
-   (unsigned int[]) { 1, 2, 3, 4, 2 },
-   (unsigned int[]) { 3, 5, 6, 6, 5 },
-   (unsigned int[]) { 3, 4, 4, 4, 4 },
-   (unsigned int[]) { 1, 1, 1, 1, 1 },
-   (unsigned int[]) { 1, 2, 2, 2, 1 },
+   (unsigned int[]) {1, 2, 3, 4, 2, 2, 3, },
+   (unsigned int[]) {3, 5, 6, 6, 5, 5, 6, },
+   (unsigned int[]) {3, 4, 4, 4, 4, 4, 4, },
+   (unsigned int[]) {1, 1, 1, 1, 1, 1, 1, },
+   (unsigned int[]) {1, 2, 2, 2, 1, 2, 2, },
+   (unsigned int[]) {2, 3, 3, 3, 2, 3, 3, },
+   (unsigned int[]) {2, 2, 2, 2, 2, 2, 2, },
 };
 
 static void
@@ -835,8 +867,7 @@ ra_assign(struct state *state, nir_shader *shader)
    for (unsigned i = 0; i < num_nodes; i++) {
       nir_instr *instr = defs[i].instr;
       nir_dest *dest = defs[i].dest;
-
-      ra_set_node_class(g, i, nir_dest_num_components(*dest) - 1);
+      unsigned c = nir_dest_num_components(*dest) - 1;
 
       if (instr->type == nir_instr_type_alu && option(etna_new_transcendentals)) {
          switch (nir_instr_as_alu(instr)->op) {
@@ -845,11 +876,25 @@ ra_assign(struct state *state, nir_shader *shader)
          case nir_op_fsin:
          case nir_op_fcos:
             assert(dest->is_ssa);
-            ra_set_node_class(g, i, REG_CLASS_VIRT_VEC2T);
+            c = REG_CLASS_VIRT_VEC2T;
          default:
             break;
          }
       }
+
+      if (instr->type == nir_instr_type_intrinsic) {
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         if (intr->intrinsic == nir_intrinsic_load_uniform) {
+            /* make sure there isn't any reswizzling */
+            assert(dest == &intr->dest);
+            if (dest->ssa.num_components == 2)
+               c = REG_CLASS_VIRT_VEC2C;
+            if (dest->ssa.num_components == 3)
+               c = REG_CLASS_VIRT_VEC3C;
+         }
+      }
+
+      ra_set_node_class(g, i, c);
    }
 
    nir_foreach_block(block, impl) {
