@@ -214,7 +214,10 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
    }
    ctx->dirty |= ETNA_DIRTY_INDEX_BUFFER;
 
-   struct etna_shader_key key = {};
+   struct etna_shader_key key = {
+      .front_ccw = ctx->rasterizer->front_ccw,
+   };
+
    if (pfb->cbufs[0])
       key.frag_rb_swap = !!translate_rs_format_rb_swap(pfb->cbufs[0]->format);
 

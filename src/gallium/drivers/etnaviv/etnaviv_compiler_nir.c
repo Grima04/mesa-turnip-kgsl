@@ -98,6 +98,9 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
 
                switch (intr->intrinsic) {
                case nir_intrinsic_load_front_face: {
+                  if (!v->key.front_ccw)
+                     break;
+
                   /* front face inverted (run after int_to_float, so invert as float) */
                   b.cursor = nir_after_instr(instr);
 
