@@ -1305,15 +1305,13 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd)
       bo->size = ret;
 
    bo->bufmgr = bufmgr;
-
-   bo->gem_handle = handle;
-   _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
-
    bo->name = "prime";
    bo->reusable = false;
    bo->external = true;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
    bo->gtt_offset = vma_alloc(bufmgr, IRIS_MEMZONE_OTHER, bo->size, 1);
+   bo->gem_handle = handle;
+   _mesa_hash_table_insert(bufmgr->handle_table, &bo->gem_handle, bo);
 
    struct drm_i915_gem_get_tiling get_tiling = { .handle = bo->gem_handle };
    if (gen_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_GET_TILING, &get_tiling))
