@@ -852,8 +852,6 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info)
                         }
                 }
 
-                job->draw_calls_queued++;
-
                 if (info->has_user_indices)
                         pipe_resource_reference(&prsc, NULL);
         } else {
