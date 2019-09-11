@@ -297,16 +297,9 @@ meson-armhf:
       -D vulkan-overlay-layer=true
 
 meson-arm64:
-  extends: .meson-cross
+  extends: meson-armhf
   variables:
     CROSS: arm64
-    VULKAN_DRIVERS: freedreno
-    GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
-    # Disable the tests since we're cross compiling.
-    EXTRA_OPTION: >
-      -D build-tests=false
-      -D I-love-half-baked-turnips=true
-      -D vulkan-overlay-layer=true
     BUILDTYPE: "debugoptimized"
 
 # While the main point of this build is testing the i386 cross build,
@@ -371,17 +364,11 @@ test-llvmpipe-gles2:
   needs: [meson-main]
 
 test-softpipe-gles2:
-  parallel: 4
+  extends: test-llvmpipe-gles2
   variables:
-    DEQP_VER: gles2
     DEQP_EXPECTED_FAILS: deqp-softpipe-fails.txt
-    LIBGL_ALWAYS_SOFTWARE: "true"
     DEQP_RENDERER_MATCH: "softpipe"
     GALLIUM_DRIVER: "softpipe"
-  extends: .deqp-test
-  dependencies:
-    - meson-main
-  needs: [meson-main]
 
 # The GLES2 CTS run takes about 8 minutes of CPU time, while GLES3 is
 # 25 minutes.  Until we can get its runtime down, just do a partial
@@ -400,25 +387,11 @@ test-softpipe-gles3-limited:
     - meson-main
   needs: [meson-main]
 
-arm64_a306_gles2:
+arm64_a630_gles2:
   extends: .deqp-test
-  parallel: 4
   image: $DEBIAN_ARM64_IMAGE
   variables:
     DEQP_VER: gles2
-    DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
-    NIR_VALIDATE: 0
-    DEQP_RENDERER_MATCH: "FD307"
-  tags:
-    - db410c
-  dependencies:
-    - meson-arm64
-  needs: [ meson-arm64 ]
-
-.cheza-test:
-  image: $DEBIAN_ARM64_IMAGE
-  extends: .deqp-test
-  variables:
     DEQP_RENDERER_MATCH: "FD630"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
     DEQP_SKIPS: deqp-freedreno-a630-skips.txt
@@ -429,19 +402,24 @@ arm64_a306_gles2:
     - meson-arm64
   needs: [ meson-arm64 ]
 
-arm64_a630_gles2:
-  extends: .cheza-test
+arm64_a630_gles31:
+  extends: arm64_a630_gles2
+  parallel: 4
   variables:
-    DEQP_VER: gles2
+    DEQP_VER: gles31
 
 arm64_a630_gles3:
   parallel: 6
-  extends: .cheza-test
+  extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles3
 
-arm64_a630_gles31:
+arm64_a306_gles2:
   parallel: 4
-  extends: .cheza-test
+  extends: arm64_a630_gles2
   variables:
-    DEQP_VER: gles31
+    DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
+    DEQP_SKIPS: deqp-default-skips.txt
+    DEQP_RENDERER_MATCH: "FD307"
+  tags:
+    - db410c
