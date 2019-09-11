@@ -63,7 +63,7 @@ static void ac_init_llvm_target()
 		"mesa",
 		"-simplifycfg-sink-common=false",
 		"-global-isel-abort=2",
-#if HAVE_LLVM >= 0x1000
+#if LLVM_VERSION_MAJOR >= 10
 		/* Atomic optimizations require LLVM 10.0 for gfx10 support. */
 		"-amdgpu-atomic-optimizations=true",
 #endif
