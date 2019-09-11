@@ -1337,6 +1337,7 @@ iris_bo_make_external_locked(struct iris_bo *bo)
    if (!bo->external) {
       _mesa_hash_table_insert(bo->bufmgr->handle_table, &bo->gem_handle, bo);
       bo->external = true;
+      bo->reusable = false;
    }
 }
 
@@ -1345,8 +1346,10 @@ iris_bo_make_external(struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
-   if (bo->external)
+   if (bo->external) {
+      assert(!bo->reusable);
       return;
+   }
 
    mtx_lock(&bufmgr->lock);
    iris_bo_make_external_locked(bo);
@@ -1363,8 +1366,6 @@ iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd)
    if (drmPrimeHandleToFD(bufmgr->fd, bo->gem_handle,
                           DRM_CLOEXEC, prime_fd) != 0)
       return -errno;
-
-   bo->reusable = false;
 
    return 0;
 }
@@ -1395,8 +1396,6 @@ iris_bo_flink(struct iris_bo *bo, uint32_t *name)
          _mesa_hash_table_insert(bufmgr->name_table, &bo->global_name, bo);
       }
       mtx_unlock(&bufmgr->lock);
-
-      bo->reusable = false;
    }
 
    *name = bo->global_name;
