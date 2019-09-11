@@ -688,7 +688,7 @@ st_link_nir(struct gl_context *ctx,
     */
    if (shader_program->data->spirv) {
       static const gl_nir_linker_options opts = {
-         .fill_parameters = true,
+         true /*fill_parameters */
       };
       if (!gl_nir_link(ctx, shader_program, &opts))
          return GL_FALSE;
