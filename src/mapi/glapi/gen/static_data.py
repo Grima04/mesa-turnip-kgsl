@@ -1593,6 +1593,8 @@ offsets = {
     "GetMultiTexParameterIivEXT": 1557,
     "GetMultiTexParameterIuivEXT": 1558,
     "NamedProgramLocalParameters4fvEXT": 1559,
+    "GenerateTextureMipmapEXT": 1560,
+    "GenerateMultiTexMipmapEXT": 1561,
 }
 
 functions = [

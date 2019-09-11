@@ -240,3 +240,30 @@ _mesa_GenerateTextureMipmap(GLuint texture)
    texObj = _mesa_lookup_texture_err(ctx, texture, "glGenerateTextureMipmap");
    validate_params_and_generate_mipmap(texObj, "glGenerateTextureMipmap");
 }
+
+void GLAPIENTRY
+_mesa_GenerateTextureMipmapEXT(GLuint texture, GLenum target)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_lookup_or_create_texture(ctx, target, texture,
+                                           false, true,
+                                           "glGenerateTextureMipmapEXT");
+   validate_params_and_generate_mipmap(texObj,
+                                       "glGenerateTextureMipmapEXT");
+}
+
+void GLAPIENTRY
+_mesa_GenerateMultiTexMipmapEXT(GLenum texunit, GLenum target)
+{
+   struct gl_texture_object *texObj;
+   GET_CURRENT_CONTEXT(ctx);
+
+   texObj = _mesa_get_texobj_by_target_and_texunit(ctx, target,
+                                                   texunit - GL_TEXTURE0,
+                                                   true,
+                                                   "glGenerateMultiTexMipmapEXT");
+   validate_params_and_generate_mipmap(texObj,
+                                       "glGenerateMultiTexMipmapEXT");
+}

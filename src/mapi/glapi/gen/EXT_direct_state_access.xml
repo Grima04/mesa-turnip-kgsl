@@ -1026,6 +1026,16 @@
       <param name="params" type="GLdouble*" />
    </function>
 
+   <function name="GenerateTextureMipmapEXT">
+      <param name="texture" type="GLuint" />
+      <param name="target" type="GLenum" />
+   </function>
+
+   <function name="GenerateMultiTexMipmapEXT">
+      <param name="texunit" type="GLenum" />
+      <param name="target" type="GLenum" />
+   </function>
+
    <!-- ARB_vertex_program -->
    <function name="NamedProgramStringEXT">
       <param name="program" type="GLuint" />
