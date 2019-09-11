@@ -928,7 +928,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 
 	if (ctx->dirty_shader[PIPE_SHADER_VERTEX] & DIRTY_CONST) {
 		struct fd_ringbuffer *vsconstobj = fd_submit_new_ringbuffer(
-				ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
+				ctx->batch->submit, vp->shader->ubo_state.cmdstream_size,
+				FD_RINGBUFFER_STREAMING);
 
 		ir3_emit_user_consts(ctx->screen, vp, vsconstobj,
 				&ctx->constbuf[PIPE_SHADER_VERTEX]);
@@ -940,7 +941,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & DIRTY_CONST) {
 		struct fd_ringbuffer *fsconstobj = fd_submit_new_ringbuffer(
-				ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
+				ctx->batch->submit, fp->shader->ubo_state.cmdstream_size,
+				FD_RINGBUFFER_STREAMING);
 
 		ir3_emit_user_consts(ctx->screen, fp, fsconstobj,
 				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);

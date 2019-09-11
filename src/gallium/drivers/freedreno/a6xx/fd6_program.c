@@ -45,7 +45,21 @@ create_shader_stateobj(struct pipe_context *pctx, const struct pipe_shader_state
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct ir3_compiler *compiler = ctx->screen->compiler;
-	return ir3_shader_create(compiler, cso, type, &ctx->debug, pctx->screen);
+	struct ir3_shader *shader =
+		ir3_shader_create(compiler, cso, type, &ctx->debug, pctx->screen);
+	unsigned packets, size;
+
+	/* pre-calculate size required for userconst stateobj: */
+	ir3_user_consts_size(&shader->ubo_state, &packets, &size);
+
+	/* also account for UBO addresses: */
+	packets += 1;
+	size += 2 * shader->const_state.num_ubos;
+
+	unsigned sizedwords = (4 * packets) + size;
+	shader->ubo_state.cmdstream_size = sizedwords * 4;
+
+	return shader;
 }
 
 static void *

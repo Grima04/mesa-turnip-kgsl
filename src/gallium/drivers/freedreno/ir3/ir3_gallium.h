@@ -51,6 +51,8 @@ struct fd_constbuf_stateobj;
 struct fd_shaderbuf_stateobj;
 struct fd_shaderimg_stateobj;
 
+void ir3_user_consts_size(struct ir3_ubo_analysis_state *state,
+		unsigned *packets, unsigned *size);
 void ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf);
 void ir3_emit_ubos(struct fd_screen *screen, const struct ir3_shader_variant *v,

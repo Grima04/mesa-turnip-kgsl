@@ -211,6 +211,29 @@ emit_const(struct fd_screen *screen, struct fd_ringbuffer *ring,
 			offset, size, user_buffer, buffer);
 }
 
+/**
+ * Indirectly calculates size of cmdstream needed for ir3_emit_user_consts().
+ * Returns number of packets, and total size of all the payload.
+ *
+ * The value can be a worst-case, ie. some shader variants may not read all
+ * consts, etc.
+ *
+ * Returns size in dwords.
+ */
+void
+ir3_user_consts_size(struct ir3_ubo_analysis_state *state,
+		unsigned *packets, unsigned *size)
+{
+	*packets = *size = 0;
+
+	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
+		if (state->range[i].start < state->range[i].end) {
+			*size += state->range[i].end - state->range[i].start;
+			(*packets)++;
+		}
+	}
+}
+
 void
 ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *v,
 		struct fd_ringbuffer *ring, struct fd_constbuf_stateobj *constbuf)
