@@ -98,13 +98,17 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
 
                switch (intr->intrinsic) {
                case nir_intrinsic_load_front_face: {
-                  if (!v->key.front_ccw)
-                     break;
+                  /* HW front_face is 0.0/1.0, not 0/~0u for bool
+                   * lower with a comparison with 0
+                   */
+                  intr->dest.ssa.bit_size = 32;
 
-                  /* front face inverted (run after int_to_float, so invert as float) */
                   b.cursor = nir_after_instr(instr);
 
-                  nir_ssa_def *ssa = nir_seq(&b, &intr->dest.ssa, nir_imm_float(&b, 0.0));
+                  nir_ssa_def *ssa = nir_ine(&b, &intr->dest.ssa, nir_imm_int(&b, 0));
+                  if (v->key.front_ccw)
+                     nir_instr_as_alu(ssa->parent_instr)->op = nir_op_ieq;
+
                   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
                                                  nir_src_for_ssa(ssa),
                                                  ssa->parent_instr);
@@ -120,18 +124,10 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                   alu->src[0].swizzle[2] = 0;
                   nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(ssa));
                } break;
-               case nir_intrinsic_load_instance_id: {
-                  b.cursor = nir_after_instr(instr);
-                  nir_ssa_def *ssa = nir_i2f32(&b, &intr->dest.ssa);
-                  nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
-                                                 nir_src_for_ssa(ssa),
-                                                 ssa->parent_instr);
-               } break;
                case nir_intrinsic_load_uniform: {
                   /* multiply by 16 and convert to int */
                   b.cursor = nir_before_instr(instr);
-                  nir_ssa_def *ssa = nir_f2u32(&b, nir_fmul(&b, intr->src[0].ssa,
-                                                                nir_imm_float(&b, 16.0f)));
+                  nir_ssa_def *ssa = nir_imul(&b, intr->src[0].ssa, nir_imm_int(&b, 16));
                   nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(ssa));
                } break;
                default:
@@ -229,6 +225,21 @@ etna_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)
    case nir_op_fcos:
    case nir_op_fsin:
    case nir_op_fdiv:
+   case nir_op_imul:
+      return true;
+   /* TODO: can do better than alu_to_scalar for vector compares */
+   case nir_op_b32all_fequal2:
+   case nir_op_b32all_fequal3:
+   case nir_op_b32all_fequal4:
+   case nir_op_b32any_fnequal2:
+   case nir_op_b32any_fnequal3:
+   case nir_op_b32any_fnequal4:
+   case nir_op_b32all_iequal2:
+   case nir_op_b32all_iequal3:
+   case nir_op_b32all_iequal4:
+   case nir_op_b32any_inequal2:
+   case nir_op_b32any_inequal3:
+   case nir_op_b32any_inequal4:
       return true;
    case nir_op_fdot2:
       if (!specs->has_halti2_instructions)
@@ -344,7 +355,11 @@ static const struct etna_op_info etna_ops[] = {
    INST_TYPE_##type \
 }
 #define OPC(nir, op, src, cond) OPCT(nir, op, src, cond, F32)
+#define IOPC(nir, op, src, cond) OPCT(nir, op, src, cond, S32)
+#define UOPC(nir, op, src, cond) OPCT(nir, op, src, cond, U32)
 #define OP(nir, op, src) OPC(nir, op, src, TRUE)
+#define IOP(nir, op, src) IOPC(nir, op, src, TRUE)
+#define UOP(nir, op, src) UOPC(nir, op, src, TRUE)
    OP(mov, MOV, X_X_0), OP(fneg, MOV, X_X_0), OP(fabs, MOV, X_X_0), OP(fsat, MOV, X_X_0),
    OP(fmul, MUL, 0_1_X), OP(fadd, ADD, 0_X_1), OP(ffma, MAD, 0_1_2),
    OP(fdot2, DP2, 0_1_X), OP(fdot3, DP3, 0_1_X), OP(fdot4, DP4, 0_1_X),
@@ -358,9 +373,51 @@ static const struct etna_op_info etna_ops[] = {
    OP(fdiv, DIV, 0_1_X),
    OP(fddx, DSX, 0_X_0), OP(fddy, DSY, 0_X_0),
 
-   /* integer opcodes */
-   OPCT(i2f32, I2F, 0_X_X, TRUE, S32),
-   OPCT(f2u32, F2I, 0_X_X, TRUE, U32),
+   /* type convert */
+   IOP(i2f32, I2F, 0_X_X),
+   UOP(u2f32, I2F, 0_X_X),
+   IOP(f2i32, F2I, 0_X_X),
+   UOP(f2u32, F2I, 0_X_X),
+   UOP(b2f32, AND, 0_X_X), /* AND with fui(1.0f) */
+   UOP(b2i32, AND, 0_X_X), /* AND with 1 */
+   OPC(f2b32, CMP, 0_X_X, NE), /* != 0.0 */
+   UOPC(i2b32, CMP, 0_X_X, NE), /* != 0 */
+
+   /* arithmetic */
+   IOP(iadd, ADD, 0_X_1),
+   IOP(imul, IMULLO0, 0_1_X),
+   /* IOP(imad, IMADLO0, 0_1_2), */
+   IOP(ineg, ADD, X_X_0), /* ADD 0, -x */
+   IOP(iabs, IABS, X_X_0),
+   IOP(isign, SIGN, X_X_0),
+   IOPC(imin, SELECT, 0_1_0, GT),
+   IOPC(imax, SELECT, 0_1_0, LT),
+   UOPC(umin, SELECT, 0_1_0, GT),
+   UOPC(umax, SELECT, 0_1_0, LT),
+
+   /* select */
+   UOPC(b32csel, SELECT, 0_1_2, NZ),
+
+   /* compare with int result */
+    OPC(feq32, CMP, 0_1_X, EQ),
+    OPC(fne32, CMP, 0_1_X, NE),
+    OPC(fge32, CMP, 0_1_X, GE),
+    OPC(flt32, CMP, 0_1_X, LT),
+   IOPC(ieq32, CMP, 0_1_X, EQ),
+   IOPC(ine32, CMP, 0_1_X, NE),
+   IOPC(ige32, CMP, 0_1_X, GE),
+   IOPC(ilt32, CMP, 0_1_X, LT),
+   UOPC(uge32, CMP, 0_1_X, GE),
+   UOPC(ult32, CMP, 0_1_X, LT),
+
+   /* bit ops */
+   IOP(ior,  OR,  0_X_1),
+   IOP(iand, AND, 0_X_1),
+   IOP(ixor, XOR, 0_X_1),
+   IOP(inot, NOT, X_X_0),
+   IOP(ishl, LSHIFT, 0_X_1),
+   IOP(ishr, RSHIFT, 0_X_1),
+   UOP(ushr, RSHIFT, 0_X_1),
 };
 
 static void
@@ -374,6 +431,7 @@ etna_emit_alu(struct etna_compile *c, nir_op op, struct etna_inst_dst dst,
               struct etna_inst_src src[3], bool saturate)
 {
    struct etna_op_info ei = etna_ops[op];
+   unsigned swiz_scalar = INST_SWIZ_BROADCAST(ffs(dst.write_mask) - 1);
 
    assert(ei.opcode != 0xff);
 
@@ -397,16 +455,35 @@ etna_emit_alu(struct etna_compile *c, nir_op op, struct etna_inst_dst dst,
    case nir_op_frcp:
    case nir_op_fexp2:
    case nir_op_fsqrt:
-   case nir_op_i2f32:
-   case nir_op_f2u32:
-      /* for these instructions we want src to be in x component
-       * note: on HALTI2+ i2f/f2u are not scalar but we only use them this way currently
-       */
-      src[0].swiz = inst_swiz_compose(src[0].swiz,
-                                      INST_SWIZ_BROADCAST(ffs(inst.dst.write_mask)-1));
+   case nir_op_imul:
+      /* scalar instructions we want src to be in x component */
+      src[0].swiz = inst_swiz_compose(src[0].swiz, swiz_scalar);
+      src[1].swiz = inst_swiz_compose(src[1].swiz, swiz_scalar);
+      break;
+   /* deal with instructions which don't have 1:1 mapping */
+   case nir_op_b2f32:
+      inst.src[2] = etna_immediate_float(1.0f);
+      break;
+   case nir_op_b2i32:
+      inst.src[2] = etna_immediate_int(1);
+      break;
+   case nir_op_f2b32:
+      inst.src[1] = etna_immediate_float(0.0f);
+      break;
+   case nir_op_i2b32:
+      inst.src[1] = etna_immediate_int(0);
+      break;
+   case nir_op_ineg:
+      inst.src[0] = etna_immediate_int(0);
+      src[0].neg = 1;
+      break;
    default:
       break;
    }
+
+   /* set the "true" value for CMP instructions */
+   if (inst.opcode == INST_OPCODE_CMP)
+      inst.src[2] = etna_immediate_int(-1);
 
    for (unsigned j = 0; j < 3; j++) {
       unsigned i = ((ei.src >> j*2) & 3);
@@ -472,7 +549,8 @@ etna_emit_discard(struct etna_compile *c, struct etna_inst_src condition)
 
    struct etna_inst inst = {
       .opcode = INST_OPCODE_TEXKILL,
-      .cond = INST_CONDITION_GZ,
+      .cond = INST_CONDITION_NZ,
+      .type = (c->specs->halti < 2) ? INST_TYPE_F32 : INST_TYPE_U32,
       .src[0] = condition,
    };
    inst.src[0].swiz = INST_SWIZ_BROADCAST(inst.src[0].swiz & 3);
@@ -489,6 +567,31 @@ static void
 etna_emit_load_ubo(struct etna_compile *c, struct etna_inst_dst dst,
                    struct etna_inst_src src, struct etna_inst_src base)
 {
+   /* convert float offset back to integer */
+   if (c->specs->halti < 2) {
+      emit_inst(c, &(struct etna_inst) {
+         .opcode = INST_OPCODE_F2I,
+         .type = INST_TYPE_U32,
+         .dst = dst,
+         .src[0] = src,
+      });
+
+      emit_inst(c, &(struct etna_inst) {
+         .opcode = INST_OPCODE_LOAD,
+         .type = INST_TYPE_U32,
+         .dst = dst,
+         .src[0] = {
+            .use = 1,
+            .rgroup = INST_RGROUP_TEMP,
+            .reg = dst.reg,
+            .swiz = INST_SWIZ_BROADCAST(ffs(dst.write_mask) - 1)
+         },
+         .src[1] = base,
+      });
+
+      return;
+   }
+
    emit_inst(c, &(struct etna_inst) {
       .opcode = INST_OPCODE_LOAD,
       .type = INST_TYPE_U32,
@@ -623,15 +726,20 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
 
    etna_optimize_loop(s);
 
-   /* use opt_algebraic between int_to_float and boot_to_float because
-    * int_to_float emits ftrunc, and ftrunc lowering generates bool ops
-    */
-   OPT_V(s, nir_lower_int_to_float);
-   OPT_V(s, nir_opt_algebraic);
-   OPT_V(s, nir_lower_bool_to_float);
-
-   /* after int to float because insert i2f for instance_id */
    OPT_V(s, etna_lower_io, v);
+
+   /* lower pre-halti2 to float (halti0 has integers, but only scalar..) */
+   if (c->specs->halti < 2) {
+      /* use opt_algebraic between int_to_float and boot_to_float because
+       * int_to_float emits ftrunc, and ftrunc lowering generates bool ops
+       */
+      OPT_V(s, nir_lower_int_to_float);
+      OPT_V(s, nir_opt_algebraic);
+      OPT_V(s, nir_lower_bool_to_float);
+   } else {
+      OPT_V(s, nir_lower_idiv);
+      OPT_V(s, nir_lower_bool_to_int32);
+   }
 
    etna_optimize_loop(s);
 
@@ -646,6 +754,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
 
    NIR_PASS_V(s, nir_move_vec_src_uses_to_dest);
    NIR_PASS_V(s, nir_copy_prop);
+   /* only HW supported integer source mod is ineg for iadd instruction (?) */
    NIR_PASS_V(s, nir_lower_to_source_mods, ~nir_lower_int_source_mods);
    /* need copy prop after uses_to_dest, and before src mods: see
     * dEQP-GLES2.functional.shaders.random.all_features.fragment.95
@@ -668,6 +777,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       .id_reg = sf->num_reg,
       .single_const_src = c->specs->halti < 5,
       .etna_new_transcendentals = c->specs->has_new_transcendentals,
+      .no_integers = c->specs->halti < 2,
       .user = c,
       .consts = consts,
    };

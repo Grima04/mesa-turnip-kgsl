@@ -38,6 +38,7 @@ struct emit_options {
    unsigned id_reg; /* register with vertex/instance id */
    bool single_const_src : 1; /* limited to 1 vec4 const src */
    bool etna_new_transcendentals : 1;
+   bool no_integers : 1;
    void *user;
    uint64_t *consts;
 };
@@ -1403,7 +1404,12 @@ emit_shader(nir_shader *shader, const struct emit_options *options,
             if (!off || off[0].u64 >> 32 != ETNA_IMMEDIATE_CONSTANT)
                break;
 
-            unsigned base = nir_intrinsic_base(intr) + off[0].u32 / 16;
+            unsigned base = nir_intrinsic_base(intr);
+            if (options->no_integers)
+               base += (unsigned) off[0].f32 / 16;
+            else
+               base += off[0].u32 / 16;
+
             nir_const_value value[4];
 
             for (unsigned i = 0; i < intr->dest.ssa.num_components; i++) {
