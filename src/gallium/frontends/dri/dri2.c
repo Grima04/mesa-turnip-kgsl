@@ -847,6 +847,7 @@ dri2_get_modifier_num_planes(uint64_t modifier, int fourcc)
       return 0;
 
    switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS:
       return 2;
    case DRM_FORMAT_MOD_BROADCOM_UIF:
