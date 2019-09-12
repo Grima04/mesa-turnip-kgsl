@@ -32,24 +32,12 @@
 #include "compiler/nir/nir_worklist.h"
 #include "util/register_allocate.h"
 
-struct emit_options {
-   unsigned max_temps; /* max # of vec4 registers */
-   unsigned max_consts; /* max # of vec4 consts */
-   unsigned id_reg; /* register with vertex/instance id */
-   bool single_const_src : 1; /* limited to 1 vec4 const src */
-   bool etna_new_transcendentals : 1;
-   bool no_integers : 1;
-   void *user;
-   uint64_t *consts;
-};
-
 #define ALU_SWIZ(s) INST_SWIZ((s)->swizzle[0], (s)->swizzle[1], (s)->swizzle[2], (s)->swizzle[3])
 #define SRC_DISABLE ((hw_src){})
 #define SRC_CONST(idx, s) ((hw_src){.use=1, .rgroup = INST_RGROUP_UNIFORM_0, .reg=idx, .swiz=s})
 #define SRC_REG(idx, s) ((hw_src){.use=1, .rgroup = INST_RGROUP_TEMP, .reg=idx, .swiz=s})
 
-#define option(name) (state->options->name)
-#define emit(type, args...) etna_emit_##type(state->options->user, args)
+#define emit(type, args...) etna_emit_##type(state->c, args)
 
 typedef struct etna_inst_dst hw_dst;
 typedef struct etna_inst_src hw_src;
@@ -60,7 +48,8 @@ enum {
 };
 
 struct state {
-   const struct emit_options *options;
+   struct etna_compile *c;
+
    unsigned const_count;
 
    nir_shader *shader;
@@ -138,7 +127,7 @@ const_src(struct state *state, nir_const_value *value, unsigned num_components)
    unsigned i;
    int swiz = -1;
    for (i = 0; swiz < 0; i++) {
-      uint64_t *a = &option(consts)[i*4];
+      uint64_t *a = &state->c->consts[i*4];
       uint64_t save[4];
       memcpy(save, a, sizeof(save));
       swiz = 0;
@@ -153,7 +142,7 @@ const_src(struct state *state, nir_const_value *value, unsigned num_components)
       }
    }
 
-   assert(i <= option(max_consts));
+   assert(i <= ETNA_MAX_IMM / 4);
    state->const_count = MAX2(state->const_count, i);
 
    return SRC_CONST(i - 1, swiz);
@@ -840,7 +829,7 @@ static unsigned int *q_values[] = {
 static void
 ra_assign(struct state *state, nir_shader *shader)
 {
-   struct ra_regs *regs = ra_alloc_reg_set(NULL, option(max_temps) *
+   struct ra_regs *regs = ra_alloc_reg_set(NULL, ETNA_MAX_TEMPS *
                   NUM_REG_TYPES, false);
 
    /* classes always be created from index 0, so equal to the class enum
@@ -849,10 +838,10 @@ ra_assign(struct state *state, nir_shader *shader)
    for (int c = 0; c < NUM_REG_CLASSES; c++)
       ra_alloc_reg_class(regs);
    /* add each register of each class */
-   for (int r = 0; r < NUM_REG_TYPES * option(max_temps); r++)
+   for (int r = 0; r < NUM_REG_TYPES * ETNA_MAX_TEMPS; r++)
       ra_class_add_reg(regs, reg_get_class(r), r);
    /* set conflicts */
-   for (int r = 0; r < option(max_temps); r++) {
+   for (int r = 0; r < ETNA_MAX_TEMPS; r++) {
       for (int i = 0; i < NUM_REG_TYPES; i++) {
          for (int j = 0; j < i; j++) {
             if (reg_writemask[i] & reg_writemask[j]) {
@@ -892,7 +881,8 @@ ra_assign(struct state *state, nir_shader *shader)
       nir_dest *dest = defs[i].dest;
       unsigned c = nir_dest_num_components(*dest) - 1;
 
-      if (instr->type == nir_instr_type_alu && option(etna_new_transcendentals)) {
+      if (instr->type == nir_instr_type_alu &&
+          state->c->specs->has_new_transcendentals) {
          switch (nir_instr_as_alu(instr)->op) {
          case nir_op_fdiv:
          case nir_op_flog2:
@@ -945,7 +935,7 @@ ra_assign(struct state *state, nir_shader *shader)
             }[nir_dest_num_components(*dest) - 1];
             break;
          case nir_intrinsic_load_instance_id:
-            reg = option(id_reg) * NUM_REG_TYPES + REG_TYPE_VIRT_SCALAR_Y;
+            reg = state->c->variant->infile.num_reg * NUM_REG_TYPES + REG_TYPE_VIRT_SCALAR_Y;
             break;
          default:
             continue;
@@ -1280,10 +1270,10 @@ lower_alu(struct state *state, nir_alu_instr *alu)
       }
    } break;
    default: {
-      if (!option(single_const_src))
+      /* pre-GC7000L can only have 1 uniform src per instruction */
+      if (state->c->specs->halti >= 5)
          return;
 
-      /* pre-GC7000L can only have 1 uniform src per instruction */
       nir_const_value value[4] = {};
       uint8_t swizzle[4][4] = {};
       unsigned swiz_max = 0, num_const = 0;
@@ -1374,11 +1364,12 @@ lower_alu(struct state *state, nir_alu_instr *alu)
 }
 
 static bool
-emit_shader(nir_shader *shader, const struct emit_options *options,
-            unsigned *num_temps, unsigned *num_consts)
+emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
 {
+   nir_shader *shader = c->nir;
+
    struct state state = {
-      .options = options,
+      .c = c,
       .shader = shader,
       .impl = nir_shader_get_entrypoint(shader),
    };
@@ -1408,7 +1399,8 @@ emit_shader(nir_shader *shader, const struct emit_options *options,
                break;
 
             unsigned base = nir_intrinsic_base(intr);
-            if (options->no_integers)
+            /* pre halti2 uniform offset will be float */
+            if (c->specs->halti < 2)
                base += (unsigned) off[0].f32 / 16;
             else
                base += off[0].u32 / 16;

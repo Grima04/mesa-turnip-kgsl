@@ -56,6 +56,9 @@ struct etna_compile {
    int inst_ptr; /* current instruction pointer */
    struct etna_inst code[ETNA_MAX_INSTRUCTIONS * ETNA_INST_SIZE];
 
+   /* constants */
+   uint64_t consts[ETNA_MAX_IMM];
+
    /* There was an error during compilation */
    bool error;
 };
@@ -790,23 +793,11 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS))
       nir_print_shader(s, stdout);
 
-   uint64_t consts[ETNA_MAX_IMM] = {};
-
    unsigned block_ptr[nir_shader_get_entrypoint(s)->num_blocks];
    c->block_ptr = block_ptr;
-   struct emit_options options = {
-      .max_temps = ETNA_MAX_TEMPS,
-      .max_consts = ETNA_MAX_IMM / 4,
-      .id_reg = sf->num_reg,
-      .single_const_src = c->specs->halti < 5,
-      .etna_new_transcendentals = c->specs->has_new_transcendentals,
-      .no_integers = c->specs->halti < 2,
-      .user = c,
-      .consts = consts,
-   };
 
    unsigned num_consts;
-   ASSERTED bool ok = emit_shader(c->nir, &options, &v->num_temps, &num_consts);
+   ASSERTED bool ok = emit_shader(c, &v->num_temps, &num_consts);
    assert(ok);
 
    /* empty shader, emit NOP */
@@ -828,7 +819,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    v->code = code;
    v->needs_icache = c->inst_ptr > specs->max_instructions;
 
-   copy_uniform_state_to_shader(v, consts, num_consts);
+   copy_uniform_state_to_shader(v, c->consts, num_consts);
 
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
       v->input_count_unk8 = 31; /* XXX what is this */
