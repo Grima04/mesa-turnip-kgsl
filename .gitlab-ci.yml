@@ -331,24 +331,19 @@ meson-i386:
       -D llvm=false
       -D osmesa=classic
 
-scons-nollvm:
-  extends: .scons-build
-  variables:
-    SCONS_TARGET: "llvm=0"
-    SCONS_CHECK_COMMAND: "scons llvm=0 check"
-
-scons-llvm:
+scons:
   extends: .scons-build
   variables:
     SCONS_TARGET: "llvm=1"
     SCONS_CHECK_COMMAND: "scons llvm=1 check"
   script:
+    - SCONS_TARGET="" SCONS_CHECK_COMMAND="scons check" .gitlab-ci/scons-build.sh
     - LLVM_VERSION=6.0 .gitlab-ci/scons-build.sh
     - LLVM_VERSION=7 .gitlab-ci/scons-build.sh
     - LLVM_VERSION=8 .gitlab-ci/scons-build.sh
 
 scons-old-llvm:
-  extends: scons-llvm
+  extends: scons
   image: $STRETCH_IMAGE
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
