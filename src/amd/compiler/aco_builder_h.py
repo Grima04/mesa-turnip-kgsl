@@ -287,6 +287,8 @@ public:
 
       if (!carry_in.op.isUndefined())
          return vop2(aco_opcode::v_addc_co_u32, Definition(dst), hint_vcc(def(s2)), a, b, carry_in);
+      else if (program->chip_class >= GFX10 && carry_out)
+         return vop3(aco_opcode::v_add_co_u32_e64, Definition(dst), def(s2), a, b);
       else if (program->chip_class < GFX9 || carry_out)
          return vop2(aco_opcode::v_add_co_u32, Definition(dst), hint_vcc(def(s2)), a, b);
       else
@@ -314,10 +316,22 @@ public:
       } else {
          op = reverse ? aco_opcode::v_subrev_u32 : aco_opcode::v_sub_u32;
       }
+      bool vop3 = false;
+      if (program->chip_class >= GFX10 && op == aco_opcode::v_subrev_co_u32) {
+        vop3 = true;
+        op = aco_opcode::v_subrev_co_u32_e64;
+      } else if (program->chip_class >= GFX10 && op == aco_opcode::v_sub_co_u32) {
+        vop3 = true;
+        op = aco_opcode::v_sub_co_u32_e64;
+      }
 
       int num_ops = borrow.op.isUndefined() ? 2 : 3;
       int num_defs = carry_out ? 2 : 1;
-      aco_ptr<Instruction> sub{create_instruction<VOP2_instruction>(op, Format::VOP2, num_ops, num_defs)};
+      aco_ptr<Instruction> sub;
+      if (vop3)
+        sub.reset(create_instruction<VOP3A_instruction>(op, Format::VOP3B, num_ops, num_defs));
+      else
+        sub.reset(create_instruction<VOP2_instruction>(op, Format::VOP2, num_ops, num_defs));
       sub->operands[0] = a.op;
       sub->operands[1] = b.op;
       if (!borrow.op.isUndefined())
