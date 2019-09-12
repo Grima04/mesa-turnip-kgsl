@@ -584,6 +584,8 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		}
 	}
 
+	info->max_wave64_per_simd = info->family >= CHIP_POLARIS10 &&
+				    info->family <= CHIP_VEGAM ? 8 : 10;
 	return true;
 }
 

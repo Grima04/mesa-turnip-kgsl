@@ -1258,7 +1258,7 @@ radv_get_max_waves(struct radv_device *device,
 	unsigned max_simd_waves;
 	unsigned lds_per_wave = 0;
 
-	max_simd_waves = ac_get_max_wave64_per_simd(device->physical_device->rad_info.family);
+	max_simd_waves = device->physical_device->rad_info.max_wave64_per_simd;
 
 	if (stage == MESA_SHADER_FRAGMENT) {
 		lds_per_wave = conf->lds_size * lds_increment +

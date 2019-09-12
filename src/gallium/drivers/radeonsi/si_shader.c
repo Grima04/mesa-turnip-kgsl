@@ -5420,7 +5420,7 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 	unsigned lds_per_wave = 0;
 	unsigned max_simd_waves;
 
-	max_simd_waves = ac_get_max_wave64_per_simd(sscreen->info.family);
+	max_simd_waves = sscreen->info.max_wave64_per_simd;
 
 	/* Compute LDS usage for PS. */
 	switch (shader->selector->type) {
