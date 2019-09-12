@@ -580,7 +580,7 @@ dest_for_instr(nir_instr *instr)
       dest = &nir_instr_as_alu(instr)->dest.dest;
       break;
    case nir_instr_type_tex:
-      dest =&nir_instr_as_tex(instr)->dest;
+      dest = &nir_instr_as_tex(instr)->dest;
       break;
    case nir_instr_type_intrinsic: {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
@@ -588,7 +588,9 @@ dest_for_instr(nir_instr *instr)
           intr->intrinsic == nir_intrinsic_load_input ||
           intr->intrinsic == nir_intrinsic_load_instance_id)
          dest = &intr->dest;
-   }
+   } break;
+   case nir_instr_type_deref:
+      return NULL;
    default:
       break;
    }
@@ -649,7 +651,7 @@ set_src_live(nir_src *src, void *void_state)
    if (src->is_ssa) {
       nir_instr *instr = src->ssa->parent_instr;
 
-      if (is_sysval(instr))
+      if (is_sysval(instr) || instr->type == nir_instr_type_deref)
          return true;
 
       switch (instr->type) {
@@ -784,7 +786,7 @@ live_defs(nir_function_impl *impl, struct live_def *defs, unsigned *live_map)
          /* output live till the end */
          if (instr->type == nir_instr_type_intrinsic) {
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic == nir_intrinsic_store_output)
+            if (intr->intrinsic == nir_intrinsic_store_deref)
                state.index = ~0u;
          }
 
@@ -928,11 +930,11 @@ ra_assign(struct state *state, nir_shader *shader)
          unsigned reg;
 
          switch (intr->intrinsic) {
-         case nir_intrinsic_store_output: {
+         case nir_intrinsic_store_deref: {
             /* don't want output to be swizzled
              * TODO: better would be to set the type to X/XY/XYZ/XYZW
              */
-            ra_set_node_class(g, live_map[src_index(impl, &intr->src[0])], REG_CLASS_VEC4);
+            ra_set_node_class(g, live_map[src_index(impl, &intr->src[1])], REG_CLASS_VEC4);
          } continue;
          case nir_intrinsic_load_input:
             reg = nir_intrinsic_base(intr) * NUM_REG_TYPES + (unsigned[]) {
@@ -1075,12 +1077,12 @@ static void
 emit_intrinsic(struct state *state, nir_intrinsic_instr * intr)
 {
    switch (intr->intrinsic) {
-   case nir_intrinsic_store_output:
-      emit(output, nir_intrinsic_base(intr), get_src(state, &intr->src[0]));
+   case nir_intrinsic_store_deref:
+      emit(output, nir_src_as_deref(intr->src[0])->var, get_src(state, &intr->src[1]));
       break;
    case nir_intrinsic_discard_if:
       emit(discard, get_src(state, &intr->src[0]));
-   break;
+      break;
    case nir_intrinsic_discard:
       emit(discard, SRC_DISABLE);
       break;
@@ -1119,6 +1121,7 @@ emit_instr(struct state *state, nir_instr * instr)
       assert(nir_instr_is_last(instr));
    case nir_instr_type_load_const:
    case nir_instr_type_ssa_undef:
+   case nir_instr_type_deref:
       break;
    default:
       assert(0);
@@ -1440,8 +1443,8 @@ emit_shader(nir_shader *shader, const struct emit_options *options,
          nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
          switch (intr->intrinsic) {
-         case nir_intrinsic_store_output: {
-            nir_src *src = &intr->src[0];
+         case nir_intrinsic_store_deref: {
+            nir_src *src = &intr->src[1];
             if (nir_src_is_const(*src) || is_sysval(src->ssa->parent_instr)) {
                b.cursor = nir_before_instr(instr);
                nir_instr_rewrite_src(instr, src, nir_src_for_ssa(nir_mov(&b, src->ssa)));

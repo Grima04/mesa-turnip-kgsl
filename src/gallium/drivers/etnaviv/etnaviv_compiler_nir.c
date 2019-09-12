@@ -49,9 +49,6 @@ struct etna_compile {
    const struct etna_specs *specs;
    struct etna_shader_variant *variant;
 
-   /* register assigned to each output, indexed by driver_location */
-   unsigned output_reg[ETNA_NUM_INPUTS];
-
    /* block # to instr index */
    unsigned *block_ptr;
 
@@ -75,18 +72,6 @@ struct etna_compile {
 static void
 etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
 {
-   bool rb_swap = shader->info.stage == MESA_SHADER_FRAGMENT && v->key.frag_rb_swap;
-
-   unsigned color_location = 0;
-   nir_foreach_variable(var, &shader->outputs) {
-      switch (var->data.location) {
-      case FRAG_RESULT_COLOR:
-      case FRAG_RESULT_DATA0:
-         color_location = var->data.driver_location;
-         break;
-      }
-   }
-
    nir_foreach_function(function, shader) {
       nir_builder b;
       nir_builder_init(&b, function->impl);
@@ -113,16 +98,24 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                                                  nir_src_for_ssa(ssa),
                                                  ssa->parent_instr);
                } break;
-               case nir_intrinsic_store_output: {
-                  if (!rb_swap || nir_intrinsic_base(intr) != color_location)
+               case nir_intrinsic_store_deref: {
+                  if (shader->info.stage != MESA_SHADER_FRAGMENT || !v->key.frag_rb_swap)
                      break;
+
+                  nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+                  assert(deref->deref_type == nir_deref_type_var);
+
+                  if (deref->var->data.location != FRAG_RESULT_COLOR &&
+                      deref->var->data.location != FRAG_RESULT_DATA0)
+                      break;
+
                   b.cursor = nir_before_instr(instr);
 
-                  nir_ssa_def *ssa = nir_mov(&b, intr->src[0].ssa);
+                  nir_ssa_def *ssa = nir_mov(&b, intr->src[1].ssa);
                   nir_alu_instr *alu = nir_instr_as_alu(ssa->parent_instr);
                   alu->src[0].swizzle[0] = 2;
                   alu->src[0].swizzle[2] = 0;
-                  nir_instr_rewrite_src(instr, &intr->src[0], nir_src_for_ssa(ssa));
+                  nir_instr_rewrite_src(instr, &intr->src[1], nir_src_for_ssa(ssa));
                } break;
                case nir_intrinsic_load_uniform: {
                   /* multiply by 16 and convert to int */
@@ -558,9 +551,39 @@ etna_emit_discard(struct etna_compile *c, struct etna_inst_src condition)
 }
 
 static void
-etna_emit_output(struct etna_compile *c, unsigned index, struct etna_inst_src src)
+etna_emit_output(struct etna_compile *c, nir_variable *var, struct etna_inst_src src)
 {
-   c->output_reg[index] = src.reg;
+   struct etna_shader_io_file *sf = &c->variant->outfile;
+
+   if (is_fs(c)) {
+      switch (var->data.location) {
+      case FRAG_RESULT_COLOR:
+      case FRAG_RESULT_DATA0: /* DATA0 is used by gallium shaders for color */
+         c->variant->ps_color_out_reg = src.reg;
+         break;
+      case FRAG_RESULT_DEPTH:
+         c->variant->ps_depth_out_reg = src.reg;
+         break;
+      default:
+         unreachable("Unsupported fs output");
+      }
+      return;
+   }
+
+   switch (var->data.location) {
+   case VARYING_SLOT_POS:
+      c->variant->vs_pos_out_reg = src.reg;
+      break;
+   case VARYING_SLOT_PSIZ:
+      c->variant->vs_pointsize_out_reg = src.reg;
+      break;
+   default:
+      sf->reg[sf->num_reg].reg = src.reg;
+      sf->reg[sf->num_reg].slot = var->data.location;
+      sf->reg[sf->num_reg].num_components = glsl_get_components(var->type);
+      sf->num_reg++;
+      break;
+   }
 }
 
 static void
@@ -715,7 +738,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       assert(sf->num_reg == count);
    }
 
-   NIR_PASS_V(s, nir_lower_io, nir_var_all, etna_glsl_type_size,
+   NIR_PASS_V(s, nir_lower_io, ~nir_var_shader_out, etna_glsl_type_size,
             (nir_lower_io_options)0);
 
    OPT_V(s, nir_lower_regs_to_ssa);
@@ -809,50 +832,13 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
 
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
       v->input_count_unk8 = 31; /* XXX what is this */
-
-      nir_foreach_variable(var, &s->outputs) {
-         unsigned reg = c->output_reg[var->data.driver_location];
-         switch (var->data.location) {
-         case FRAG_RESULT_COLOR:
-         case FRAG_RESULT_DATA0: /* DATA0 is used by gallium shaders for color */
-            v->ps_color_out_reg = reg;
-            break;
-         case FRAG_RESULT_DEPTH:
-            v->ps_depth_out_reg = reg;
-            break;
-         default:
-            compile_error(c, "Unsupported fs output %s\n", gl_frag_result_name(var->data.location));
-         }
-      }
       assert(v->ps_depth_out_reg <= 0);
-      v->outfile.num_reg = 0;
       ralloc_free(c->nir);
       FREE(c);
       return true;
    }
 
    v->input_count_unk8 = DIV_ROUND_UP(v->infile.num_reg + 4, 16); /* XXX what is this */
-
-   sf = &v->outfile;
-   sf->num_reg = 0;
-   nir_foreach_variable(var, &s->outputs) {
-      unsigned native = c->output_reg[var->data.driver_location];
-
-      if (var->data.location == VARYING_SLOT_POS) {
-         v->vs_pos_out_reg = native;
-         continue;
-      }
-
-      if (var->data.location == VARYING_SLOT_PSIZ) {
-         v->vs_pointsize_out_reg = native;
-         continue;
-      }
-
-      sf->reg[sf->num_reg].reg = native;
-      sf->reg[sf->num_reg].slot = var->data.location;
-      sf->reg[sf->num_reg].num_components = glsl_get_components(var->type);
-      sf->num_reg++;
-   }
 
    /* fill in "mystery meat" load balancing value. This value determines how
     * work is scheduled between VS and PS
