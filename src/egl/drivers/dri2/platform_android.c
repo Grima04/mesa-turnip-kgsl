@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <sync/sync.h>
 #include <sys/types.h>
+#include <drm-uapi/drm_fourcc.h>
 
 #include "loader.h"
 #include "egl_dri2.h"
