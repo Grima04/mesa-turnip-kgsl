@@ -597,6 +597,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	else
 		info->num_physical_sgprs_per_simd = 512;
 
+	info->num_physical_wave64_vgprs_per_simd = info->chip_class >= GFX10 ? 512 : 256;
 	return true;
 }
 

@@ -143,6 +143,7 @@ struct radeon_info {
 	uint32_t                    max_sh_per_se; /* shader arrays per shader engine */
 	uint32_t                    max_wave64_per_simd;
 	uint32_t                    num_physical_sgprs_per_simd;
+	uint32_t                    num_physical_wave64_vgprs_per_simd;
 
 	/* Render backends (color + depth blocks). */
 	uint32_t                    r300_num_gb_pipes;
@@ -190,16 +191,6 @@ unsigned ac_get_compute_resource_limits(struct radeon_info *info,
 					unsigned waves_per_threadgroup,
 					unsigned max_waves_per_sh,
 					unsigned threadgroups_per_cu);
-
-static inline unsigned ac_get_num_physical_vgprs(enum chip_class chip_class,
-						 unsigned wave_size)
-{
-	/* The number is per SIMD. */
-	if (chip_class >= GFX10)
-		return wave_size == 32 ? 1024 : 512;
-	else
-		return 256;
-}
 
 #ifdef __cplusplus
 }
