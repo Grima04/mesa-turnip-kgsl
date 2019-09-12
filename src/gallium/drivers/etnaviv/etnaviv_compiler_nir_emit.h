@@ -1054,8 +1054,7 @@ emit_tex(struct state *state, nir_tex_instr * tex)
 {
    unsigned dst_swiz;
    hw_dst dst = ra_dest(state, &tex->dest, &dst_swiz);
-   nir_src *coord = NULL;
-   nir_src *lod_bias = NULL;
+   nir_src *coord = NULL, *lod_bias = NULL, *compare = NULL;
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -1067,6 +1066,9 @@ emit_tex(struct state *state, nir_tex_instr * tex)
          assert(!lod_bias);
          lod_bias = &tex->src[i].src;
          break;
+      case nir_tex_src_comparator:
+         compare = &tex->src[i].src;
+         break;
       default:
          assert(0);
          break;
@@ -1074,7 +1076,8 @@ emit_tex(struct state *state, nir_tex_instr * tex)
    }
 
    emit(tex, tex->op, tex->sampler_index, dst_swiz, dst, get_src(state, coord),
-        lod_bias ? get_src(state, lod_bias) : SRC_DISABLE);
+        lod_bias ? get_src(state, lod_bias) : SRC_DISABLE,
+        compare ? get_src(state, compare) : SRC_DISABLE);
 }
 
 static void

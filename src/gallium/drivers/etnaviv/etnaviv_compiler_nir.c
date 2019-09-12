@@ -152,6 +152,8 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                   lod_bias = &tex->src[i].src;
                   lod_bias_idx = i;
                   break;
+               case nir_tex_src_comparator:
+                  break;
                default:
                   assert(0);
                   break;
@@ -493,7 +495,7 @@ etna_emit_alu(struct etna_compile *c, nir_op op, struct etna_inst_dst dst,
 static void
 etna_emit_tex(struct etna_compile *c, nir_texop op, unsigned texid, unsigned dst_swiz,
               struct etna_inst_dst dst, struct etna_inst_src coord,
-              struct etna_inst_src lod_bias)
+              struct etna_inst_src lod_bias, struct etna_inst_src compare)
 {
    struct etna_inst inst = {
       .dst = dst,
@@ -504,6 +506,9 @@ etna_emit_tex(struct etna_compile *c, nir_texop op, unsigned texid, unsigned dst
 
    if (lod_bias.use)
       inst.src[1] = lod_bias;
+
+   if (compare.use)
+      inst.src[2] = compare;
 
    switch (op) {
    case nir_texop_tex: inst.opcode = INST_OPCODE_TEXLD; break;

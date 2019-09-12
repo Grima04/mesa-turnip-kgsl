@@ -86,6 +86,10 @@ etna_create_sampler_state_state(struct pipe_context *pipe,
     */
    cs->max_lod_min = (ss->min_img_filter != ss->mag_img_filter) ? 1 : 0;
 
+   cs->NTE_SAMPLER_BASELOD =
+      COND(ss->compare_mode, VIVS_NTE_SAMPLER_BASELOD_COMPARE_ENABLE) |
+      VIVS_NTE_SAMPLER_BASELOD_COMPARE_FUNC(translate_texture_compare(ss->compare_func));
+
    return cs;
 }
 
@@ -362,6 +366,14 @@ etna_emit_texture_state(struct etna_context *ctx)
          if ((1 << x) & active_samplers) {
             struct etna_sampler_view *sv = etna_sampler_view(ctx->sampler_view[x]);
             /*10500*/ EMIT_STATE(NTE_SAMPLER_ASTC0(x), sv->TE_SAMPLER_ASTC0);
+         }
+      }
+   }
+   if (unlikely(ctx->specs.halti >= 1 && (dirty & (ETNA_DIRTY_SAMPLER_VIEWS)))) {
+      for (int x = 0; x < VIVS_TE_SAMPLER__LEN; ++x) {
+         if ((1 << x) & active_samplers) {
+            struct etna_sampler_state *ss = etna_sampler_state(ctx->sampler[x]);
+            /*10700*/ EMIT_STATE(NTE_SAMPLER_BASELOD(x), ss->NTE_SAMPLER_BASELOD);
          }
       }
    }
