@@ -502,7 +502,6 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          for (unsigned i = 0; i < 3; i++)
             encoding |= vop3->neg[i] << (29+i);
          out.push_back(encoding);
-         return;
 
       } else if (instr->isDPP()){
          /* first emit the instruction without the DPP operand */
@@ -525,6 +524,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
       } else {
          unreachable("unimplemented instruction format");
       }
+      break;
    }
 
    /* append literal dword */
