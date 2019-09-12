@@ -342,13 +342,18 @@ scons-llvm:
   variables:
     SCONS_TARGET: "llvm=1"
     SCONS_CHECK_COMMAND: "scons llvm=1 check"
-    LLVM_VERSION: "6.0"
+  script:
+    - LLVM_VERSION=6.0 .gitlab-ci/scons-build.sh
+    - LLVM_VERSION=7 .gitlab-ci/scons-build.sh
+    - LLVM_VERSION=8 .gitlab-ci/scons-build.sh
 
 scons-old-llvm:
   extends: scons-llvm
   image: $STRETCH_IMAGE
-  variables:
-    LLVM_VERSION: "3.9"
+  script:
+    - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
+    - LLVM_VERSION=4.0 .gitlab-ci/scons-build.sh
+    - LLVM_VERSION=5.0 .gitlab-ci/scons-build.sh
 
 .deqp-test:
   extends: .ci-run-policy
