@@ -75,7 +75,9 @@ struct state {
 static inline hw_src
 src_swizzle(hw_src src, unsigned swizzle)
 {
-   src.swiz = inst_swiz_compose(src.swiz, swizzle);
+   if (src.rgroup != INST_RGROUP_IMMEDIATE)
+      src.swiz = inst_swiz_compose(src.swiz, swizzle);
+
    return src;
 }
 
@@ -114,6 +116,24 @@ const_add(uint64_t *c, uint64_t value)
 static hw_src
 const_src(struct state *state, nir_const_value *value, unsigned num_components)
 {
+   /* use inline immediates if possible */
+   if (state->c->specs->halti >= 2 && num_components == 1 &&
+       value[0].u64 >> 32 == ETNA_IMMEDIATE_CONSTANT) {
+      uint32_t bits = value[0].u32;
+
+      /* "float" - shifted by 12 */
+      if ((bits & 0xfff) == 0)
+         return etna_immediate_src(0, bits >> 12);
+
+      /* "unsigned" - raw 20 bit value */
+      if (bits < (1 << 20))
+         return etna_immediate_src(2, bits);
+
+      /* "signed" - sign extended 20-bit (sign included) value */
+      if (bits >= 0xfff80000)
+         return etna_immediate_src(1, bits);
+   }
+
    unsigned i;
    int swiz = -1;
    for (i = 0; swiz < 0; i++) {
