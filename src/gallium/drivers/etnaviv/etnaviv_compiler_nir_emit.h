@@ -289,9 +289,14 @@ static inline int reg_get_base(struct state *state, int virt_reg)
 {
    /* offset by 1 to avoid reserved position register */
    if (state->shader->info.stage == MESA_SHADER_FRAGMENT)
-      return virt_reg / NUM_REG_TYPES + 1;
+      return (virt_reg / NUM_REG_TYPES + 1) % ETNA_MAX_TEMPS;
    return virt_reg / NUM_REG_TYPES;
 }
+
+/* use "r63.z" for depth reg, it will wrap around to r0.z by reg_get_base
+ * (fs registers are offset by 1 to avoid reserving r0)
+ */
+#define REG_FRAG_DEPTH ((ETNA_MAX_TEMPS - 1) * NUM_REG_TYPES + REG_TYPE_VIRT_SCALAR_Z)
 
 static inline int reg_get_class(int virt_reg)
 {
@@ -921,10 +926,19 @@ ra_assign(struct state *state, nir_shader *shader)
 
          switch (intr->intrinsic) {
          case nir_intrinsic_store_deref: {
-            /* don't want output to be swizzled
+            /* don't want outputs to be swizzled
              * TODO: better would be to set the type to X/XY/XYZ/XYZW
+             * TODO: what if fragcoord.z is read after writing fragdepth?
              */
-            ra_set_node_class(g, live_map[src_index(impl, &intr->src[1])], REG_CLASS_VEC4);
+            nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+            unsigned index = live_map[src_index(impl, &intr->src[1])];
+
+            if (shader->info.stage == MESA_SHADER_FRAGMENT &&
+                deref->var->data.location == FRAG_RESULT_DEPTH) {
+               ra_set_node_reg(g, index, REG_FRAG_DEPTH);
+            } else {
+               ra_set_node_class(g, index, REG_CLASS_VEC4);
+            }
          } continue;
          case nir_intrinsic_load_input:
             reg = nir_intrinsic_base(intr) * NUM_REG_TYPES + (unsigned[]) {
