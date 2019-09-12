@@ -40,7 +40,7 @@ struct lower_context {
    std::vector<aco_ptr<Instruction>> instructions;
 };
 
-void emit_dpp_op(lower_context *ctx, PhysReg dst, PhysReg src0, PhysReg src1, PhysReg vtmp, PhysReg wrtmp,
+void emit_dpp_op(lower_context *ctx, PhysReg dst, PhysReg src0, PhysReg src1, PhysReg vtmp,
                  aco_opcode op, Format format, bool clobber_vcc, unsigned dpp_ctrl,
                  unsigned row_mask, unsigned bank_mask, bool bound_ctrl_zero, unsigned size,
                  Operand *identity=NULL) /* for VOP3 with sparse writes */
@@ -241,8 +241,6 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
 
    Builder bld(ctx->program, &ctx->instructions);
 
-   PhysReg wrtmp{0}; /* should never be needed */
-
    Format format;
    bool should_clobber_vcc;
    aco_opcode reduce_opcode = get_reduction_opcode(ctx, reduce_op, &should_clobber_vcc, &format);
@@ -280,16 +278,16 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
    switch (op) {
    case aco_opcode::p_reduce:
       if (cluster_size == 1) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_quad_perm(1, 0, 3, 2), 0xf, 0xf, false, src.size());
       if (cluster_size == 2) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_quad_perm(2, 3, 0, 1), 0xf, 0xf, false, src.size());
       if (cluster_size == 4) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_row_half_mirror, 0xf, 0xf, false, src.size());
       if (cluster_size == 8) break;
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_row_mirror, 0xf, 0xf, false, src.size());
       if (cluster_size == 16) break;
       if (cluster_size == 32) {
@@ -311,9 +309,9 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          emit_op(ctx, tmp, sitmp, tmp, reduce_opcode, format, should_clobber_vcc, src.size());
       } else {
          assert(cluster_size == 64);
-         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                      dpp_row_bcast15, 0xa, 0xf, false, src.size());
-         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                      dpp_row_bcast31, 0xc, 0xf, false, src.size());
       }
       break;
@@ -343,7 +341,7 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          }
          std::swap(tmp, vtmp);
       } else {
-         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, aco_opcode::v_mov_b32, Format::VOP1, false,
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, aco_opcode::v_mov_b32, Format::VOP1, false,
                      dpp_wf_sr1, 0xf, 0xf, true, src.size());
       }
       for (unsigned i = 0; i < src.size(); i++) {
@@ -357,13 +355,13 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
       /* fall through */
    case aco_opcode::p_inclusive_scan:
       assert(cluster_size == 64);
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_row_sr(1), 0xf, 0xf, false, src.size(), identity);
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_row_sr(2), 0xf, 0xf, false, src.size(), identity);
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_row_sr(4), 0xf, 0xf, false, src.size(), identity);
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_row_sr(8), 0xf, 0xf, false, src.size(), identity);
       if (ctx->program->chip_class >= GFX10) {
          bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand(0xffff0000u));
@@ -383,9 +381,9 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
             bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
          emit_op(ctx, tmp, sitmp, tmp, reduce_opcode, format, should_clobber_vcc, src.size());
       } else {
-         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                      dpp_row_bcast15, 0xa, 0xf, false, src.size(), identity);
-         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc,
                      dpp_row_bcast31, 0xc, 0xf, false, src.size(), identity);
       }
       break;
