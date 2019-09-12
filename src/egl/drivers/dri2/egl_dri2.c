@@ -65,6 +65,7 @@
 #include "util/u_atomic.h"
 #include "util/u_vector.h"
 #include "mapi/glapi/glapi.h"
+#include "util/bitscan.h"
 
 /* Additional definitions not yet in the drm_fourcc.h.
  */
