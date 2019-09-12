@@ -805,7 +805,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       emit_inst(c, &(struct etna_inst) { .opcode = INST_OPCODE_NOP });
 
    /* assemble instructions, fixing up labels */
-   uint32_t *code = MALLOC(c->inst_ptr * 16 + 1024);
+   uint32_t *code = MALLOC(c->inst_ptr * 16);
    for (unsigned i = 0; i < c->inst_ptr; i++) {
       struct etna_inst *inst = &c->code[i];
       if (inst->opcode == INST_OPCODE_BRANCH)
