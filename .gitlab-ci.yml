@@ -129,11 +129,7 @@ test-container:arm64:
   variables:
     SCONSFLAGS: "-j4"
   script:
-    - if test -n "$LLVM_VERSION"; then
-        export LLVM_CONFIG="llvm-config-${LLVM_VERSION}";
-      fi
-    - scons $SCONS_TARGET
-    - eval $SCONS_CHECK_COMMAND
+    - .gitlab-ci/scons-build.sh
 
 meson-main:
   extends:
