@@ -28,12 +28,18 @@ namespace aco {
 namespace {
 
 struct NOP_ctx {
+   enum chip_class chip_class;
+   unsigned vcc_physical;
+
+   /* pre-GFX10 */
    /* just initialize these with something less than max NOPs */
    int VALU_wrexec = -10;
    int VALU_wrvcc = -10;
    int VALU_wrsgpr = -10;
-   enum chip_class chip_class;
-   unsigned vcc_physical;
+
+   /* GFX10 */
+   int last_VMEM_since_scalar_write = -1;
+
    NOP_ctx(Program* program) : chip_class(program->chip_class) {
       vcc_physical = program->config->num_sgprs - 2;
    }
@@ -57,6 +63,45 @@ bool regs_intersect(PhysReg a_reg, unsigned a_size, PhysReg b_reg, unsigned b_si
           (b_reg - a_reg < a_size);
 }
 
+unsigned handle_SMEM_clause(aco_ptr<Instruction>& instr, int new_idx,
+                            std::vector<aco_ptr<Instruction>>& new_instructions)
+{
+   //TODO: s_dcache_inv needs to be in it's own group on GFX10 (and previous versions?)
+   const bool is_store = instr->definitions.empty();
+   for (int pred_idx = new_idx - 1; pred_idx >= 0; pred_idx--) {
+      aco_ptr<Instruction>& pred = new_instructions[pred_idx];
+      if (pred->format != Format::SMEM)
+         break;
+
+      /* Don't allow clauses with store instructions since the clause's
+       * instructions may use the same address. */
+      if (is_store || pred->definitions.empty())
+         return 1;
+
+      Definition& instr_def = instr->definitions[0];
+      Definition& pred_def = pred->definitions[0];
+
+      /* ISA reference doesn't say anything about this, but best to be safe */
+      if (regs_intersect(instr_def.physReg(), instr_def.size(), pred_def.physReg(), pred_def.size()))
+         return 1;
+
+      for (const Operand& op : pred->operands) {
+         if (op.isConstant() || !op.isFixed())
+            continue;
+         if (regs_intersect(instr_def.physReg(), instr_def.size(), op.physReg(), op.size()))
+            return 1;
+      }
+      for (const Operand& op : instr->operands) {
+         if (op.isConstant() || !op.isFixed())
+            continue;
+         if (regs_intersect(pred_def.physReg(), pred_def.size(), op.physReg(), op.size()))
+            return 1;
+      }
+   }
+
+   return 0;
+}
+
 int handle_instruction(NOP_ctx& ctx, aco_ptr<Instruction>& instr,
                        std::vector<aco_ptr<Instruction>>& old_instructions,
                        std::vector<aco_ptr<Instruction>>& new_instructions)
@@ -68,37 +113,7 @@ int handle_instruction(NOP_ctx& ctx, aco_ptr<Instruction>& instr,
 
    /* break off from prevous SMEM clause if needed */
    if (instr->format == Format::SMEM && ctx.chip_class >= GFX8) {
-      const bool is_store = instr->definitions.empty();
-      for (int pred_idx = new_idx - 1; pred_idx >= 0; pred_idx--) {
-         aco_ptr<Instruction>& pred = new_instructions[pred_idx];
-         if (pred->format != Format::SMEM)
-            break;
-
-         /* Don't allow clauses with store instructions since the clause's
-          * instructions may use the same address. */
-         if (is_store || pred->definitions.empty())
-            return 1;
-
-         Definition& instr_def = instr->definitions[0];
-         Definition& pred_def = pred->definitions[0];
-
-         /* ISA reference doesn't say anything about this, but best to be safe */
-         if (regs_intersect(instr_def.physReg(), instr_def.size(), pred_def.physReg(), pred_def.size()))
-            return 1;
-
-         for (const Operand& op : pred->operands) {
-            if (op.isConstant() || !op.isFixed())
-               continue;
-            if (regs_intersect(instr_def.physReg(), instr_def.size(), op.physReg(), op.size()))
-               return 1;
-         }
-         for (const Operand& op : instr->operands) {
-            if (op.isConstant() || !op.isFixed())
-               continue;
-            if (regs_intersect(pred_def.physReg(), pred_def.size(), op.physReg(), op.size()))
-               return 1;
-         }
-      }
+      return handle_SMEM_clause(instr, new_idx, new_instructions);
    } else if (instr->isVALU() || instr->format == Format::VINTRP) {
       int NOPs = 0;
 
@@ -239,6 +254,38 @@ int handle_instruction(NOP_ctx& ctx, aco_ptr<Instruction>& instr,
    return 0;
 }
 
+std::pair<int, int> handle_instruction_gfx10(NOP_ctx& ctx, aco_ptr<Instruction>& instr,
+                                             std::vector<aco_ptr<Instruction>>& old_instructions,
+                                             std::vector<aco_ptr<Instruction>>& new_instructions)
+{
+   int new_idx = new_instructions.size();
+   unsigned vNOPs = 0;
+   unsigned sNOPs = 0;
+
+   /* break off from prevous SMEM group ("clause" seems to mean something different in RDNA) if needed */
+   if (instr->format == Format::SMEM)
+      sNOPs = std::max(sNOPs, handle_SMEM_clause(instr, new_idx, new_instructions));
+
+   /* handle EXEC/M0/SGPR write following a VMEM instruction without a VALU or "waitcnt vmcnt(0)" in-between */
+   if (instr->isSALU() || instr->format == Format::SMEM) {
+      if (!instr->definitions.empty() && ctx.last_VMEM_since_scalar_write != -1) {
+         ctx.last_VMEM_since_scalar_write = -1;
+         vNOPs = 1;
+      }
+   } else if (instr->isVMEM() || instr->isFlatOrGlobal()) {
+      ctx.last_VMEM_since_scalar_write = new_idx;
+   } else if (instr->opcode == aco_opcode::s_waitcnt) {
+      uint16_t imm = static_cast<SOPP_instruction*>(instr.get())->imm;
+      unsigned vmcnt = (imm & 0xF) | ((imm & (0x3 << 14)) >> 10);
+      if (vmcnt == 0)
+         ctx.last_VMEM_since_scalar_write = -1;
+   } else if (instr->isVALU()) {
+      ctx.last_VMEM_since_scalar_write = -1;
+   }
+
+   return std::make_pair(sNOPs, vNOPs);
+}
+
 
 void handle_block(NOP_ctx& ctx, Block& block)
 {
@@ -265,17 +312,49 @@ void handle_block(NOP_ctx& ctx, Block& block)
    block.instructions = std::move(instructions);
 }
 
+void handle_block_gfx10(NOP_ctx& ctx, Block& block)
+{
+   std::vector<aco_ptr<Instruction>> instructions;
+   instructions.reserve(block.instructions.size());
+   for (unsigned i = 0; i < block.instructions.size(); i++) {
+      aco_ptr<Instruction>& instr = block.instructions[i];
+      std::pair<int, int> NOPs = handle_instruction_gfx10(ctx, instr, block.instructions, instructions);
+      for (int i = 0; i < NOPs.second; i++) {
+         // TODO: try to move the instruction down
+         /* create NOP */
+         aco_ptr<VOP1_instruction> nop{create_instruction<VOP1_instruction>(aco_opcode::v_nop, Format::VOP1, 0, 0)};
+         instructions.emplace_back(std::move(nop));
+      }
+      if (NOPs.first) {
+         // TODO: try to move the instruction down
+         /* create NOP */
+         aco_ptr<SOPP_instruction> nop{create_instruction<SOPP_instruction>(aco_opcode::s_nop, Format::SOPP, 0, 0)};
+         nop->imm = NOPs.first - 1;
+         nop->block = -1;
+         instructions.emplace_back(std::move(nop));
+      }
+
+      instructions.emplace_back(std::move(instr));
+   }
+
+   block.instructions = std::move(instructions);
+}
+
 } /* end namespace */
 
 
 void insert_NOPs(Program* program)
 {
    NOP_ctx ctx(program);
+
    for (Block& block : program->blocks) {
       if (block.instructions.empty())
          continue;
 
-      handle_block(ctx, block);
+      if (ctx.chip_class >= GFX10)
+         handle_block_gfx10(ctx, block);
+      else
+         handle_block(ctx, block);
    }
 }
 

@@ -221,9 +221,11 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    }
    case Format::VOP1: {
       uint32_t encoding = (0b0111111 << 25);
-      encoding |= (0xFF & instr->definitions[0].physReg().reg) << 17;
+      if (!instr->definitions.empty())
+         encoding |= (0xFF & instr->definitions[0].physReg().reg) << 17;
       encoding |= opcode << 9;
-      encoding |= instr->operands[0].physReg().reg;
+      if (!instr->operands.empty())
+         encoding |= instr->operands[0].physReg().reg;
       out.push_back(encoding);
       break;
    }
