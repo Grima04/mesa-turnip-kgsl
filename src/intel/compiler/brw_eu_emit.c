@@ -3476,37 +3476,27 @@ brw_WAIT(struct brw_codegen *p)
    brw_inst_set_mask_control(devinfo, insn, BRW_MASK_DISABLE);
 }
 
-/**
- * Changes the floating point rounding mode updating the control register
- * field defined at cr0.0[5-6] bits. This function supports the changes to
- * RTNE (00), RU (01), RD (10) and RTZ (11) rounding using bitwise operations.
- * Only RTNE and RTZ rounding are enabled at nir.
- */
 void
-brw_rounding_mode(struct brw_codegen *p,
-                  enum brw_rnd_mode mode)
+brw_float_controls_mode(struct brw_codegen *p,
+                        unsigned mode, unsigned mask)
 {
-   const unsigned bits = mode << BRW_CR0_RND_MODE_SHIFT;
+   brw_inst *inst = brw_AND(p, brw_cr0_reg(0), brw_cr0_reg(0),
+                            brw_imm_ud(~mask));
+   brw_inst_set_exec_size(p->devinfo, inst, BRW_EXECUTE_1);
 
-   if (bits != BRW_CR0_RND_MODE_MASK) {
-      brw_inst *inst = brw_AND(p, brw_cr0_reg(0), brw_cr0_reg(0),
-                               brw_imm_ud(~BRW_CR0_RND_MODE_MASK));
-      brw_inst_set_exec_size(p->devinfo, inst, BRW_EXECUTE_1);
+   /* From the Skylake PRM, Volume 7, page 760:
+    *  "Implementation Restriction on Register Access: When the control
+    *   register is used as an explicit source and/or destination, hardware
+    *   does not ensure execution pipeline coherency. Software must set the
+    *   thread control field to ‘switch’ for an instruction that uses
+    *   control register as an explicit operand."
+    */
+   brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
 
-      /* From the Skylake PRM, Volume 7, page 760:
-       *  "Implementation Restriction on Register Access: When the control
-       *   register is used as an explicit source and/or destination, hardware
-       *   does not ensure execution pipeline coherency. Software must set the
-       *   thread control field to ‘switch’ for an instruction that uses
-       *   control register as an explicit operand."
-       */
-      brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
-    }
-
-   if (bits) {
-      brw_inst *inst = brw_OR(p, brw_cr0_reg(0), brw_cr0_reg(0),
-                              brw_imm_ud(bits));
-      brw_inst_set_exec_size(p->devinfo, inst, BRW_EXECUTE_1);
-      brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
+   if (mode) {
+      brw_inst *inst_or = brw_OR(p, brw_cr0_reg(0), brw_cr0_reg(0),
+                                 brw_imm_ud(mode));
+      brw_inst_set_exec_size(p->devinfo, inst_or, BRW_EXECUTE_1);
+      brw_inst_set_thread_control(p->devinfo, inst_or, BRW_THREAD_SWITCH);
    }
 }
