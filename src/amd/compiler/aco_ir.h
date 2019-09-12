@@ -665,7 +665,7 @@ struct VOPC_instruction : public Instruction {
 
 struct VOP3A_instruction : public Instruction {
    bool abs[3];
-   bool opsel[3];
+   bool opsel[4];
    bool clamp;
    unsigned omod;
    bool neg[3];
