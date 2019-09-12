@@ -410,6 +410,20 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
    if (util_cpu_caps.has_altivec) {
       MAttrs.push_back("-vsx");
    }
+#else
+   /*
+    * Bug 25503 is fixed, by the same fix that fixed
+    * bug 26775, in versions of LLVM later than 3.8 (starting with 3.8.1).
+    * BZ 33531 actually comprises more than one bug, all of
+    * which are fixed in LLVM 4.0.
+    *
+    * With LLVM 4.0 or higher:
+    * Make sure VSX instructions are ENABLED (if supported), unless
+    * VSX instructions are explicitly enabled/disabled via GALLIVM_VSX=1 or 0.
+    */
+   if (util_cpu_caps.has_altivec) {
+      MAttrs.push_back(util_cpu_caps.has_vsx ? "+vsx" : "-vsx");
+   }
 #endif
 #endif
 
