@@ -2230,6 +2230,12 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       }
          break;
 
+      case SHADER_OPCODE_FLOAT_CONTROL_MODE:
+         assert(src[0].file == BRW_IMMEDIATE_VALUE);
+         assert(src[1].file == BRW_IMMEDIATE_VALUE);
+         brw_float_controls_mode(p, src[0].d, src[1].d);
+         break;
+
       default:
          unreachable("Unsupported opcode");
 

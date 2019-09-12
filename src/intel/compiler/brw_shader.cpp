@@ -519,6 +519,8 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
 
    case SHADER_OPCODE_RND_MODE:
       return "rnd_mode";
+   case SHADER_OPCODE_FLOAT_CONTROL_MODE:
+      return "float_control_mode";
    }
 
    unreachable("not reached");
@@ -1067,6 +1069,7 @@ backend_instruction::has_side_effects() const
    case TCS_OPCODE_URB_WRITE:
    case TCS_OPCODE_RELEASE_INPUT:
    case SHADER_OPCODE_RND_MODE:
+   case SHADER_OPCODE_FLOAT_CONTROL_MODE:
       return true;
    default:
       return eot;

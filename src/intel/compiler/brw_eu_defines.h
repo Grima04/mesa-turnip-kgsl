@@ -441,6 +441,7 @@ enum opcode {
    SHADER_OPCODE_TYPED_SURFACE_WRITE_LOGICAL,
 
    SHADER_OPCODE_RND_MODE,
+   SHADER_OPCODE_FLOAT_CONTROL_MODE,
 
    /**
     * Byte scattered write/read opcodes.
@@ -1382,6 +1383,15 @@ enum PACKED brw_rnd_mode {
    BRW_RND_MODE_RTZ = 3,   /* Round Toward Zero */
    BRW_RND_MODE_UNSPECIFIED,  /* Unspecified rounding mode */
 };
+
+#define BRW_CR0_FP64_DENORM_PRESERVE (1 << 6)
+#define BRW_CR0_FP32_DENORM_PRESERVE (1 << 7)
+#define BRW_CR0_FP16_DENORM_PRESERVE (1 << 10)
+
+#define BRW_CR0_FP_MODE_MASK (BRW_CR0_FP64_DENORM_PRESERVE | \
+                              BRW_CR0_FP32_DENORM_PRESERVE | \
+                              BRW_CR0_FP16_DENORM_PRESERVE | \
+                              BRW_CR0_RND_MODE_MASK)
 
 /* MDC_DS - Data Size Message Descriptor Control Field
  * Skylake PRM, Volume 2d, page 129
