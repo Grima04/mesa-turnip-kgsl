@@ -311,8 +311,8 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    uint32_t handle = whandle->handle;
 
    if (whandle->offset != 0) {
-      fprintf(stderr, "attempt to import unsupported winsys offset %u\n",
-              whandle->offset);
+      _debug_printf("attempt to import unsupported winsys offset %u\n",
+                    whandle->offset);
       return NULL;
    }
 
@@ -539,7 +539,7 @@ static void virgl_drm_add_res(struct virgl_drm_winsys *qdws,
                               cbuf->nres * sizeof(struct virgl_hw_buf*),
                               new_nres * sizeof(struct virgl_hw_buf*));
       if (!new_ptr) {
-          fprintf(stderr,"failure to add relocation %d, %d\n", cbuf->cres, new_nres);
+          _debug_printf("failure to add relocation %d, %d\n", cbuf->cres, new_nres);
           return;
       }
       cbuf->res_bo = new_ptr;
@@ -548,7 +548,7 @@ static void virgl_drm_add_res(struct virgl_drm_winsys *qdws,
                         cbuf->nres * sizeof(uint32_t),
                         new_nres * sizeof(uint32_t));
       if (!new_ptr) {
-          fprintf(stderr,"failure to add hlist relocation %d, %d\n", cbuf->cres, cbuf->nres);
+          _debug_printf("failure to add hlist relocation %d, %d\n", cbuf->cres, cbuf->nres);
           return;
       }
       cbuf->res_hlist = new_ptr;
@@ -734,7 +734,7 @@ static int virgl_drm_winsys_submit_cmd(struct virgl_winsys *qws,
 
    ret = drmIoctl(qdws->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &eb);
    if (ret == -1)
-      fprintf(stderr,"got error from kernel - expect bad rendering %d\n", errno);
+      _debug_printf("got error from kernel - expect bad rendering %d\n", errno);
    cbuf->base.cdw = 0;
 
    if (qws->supports_fences) {
