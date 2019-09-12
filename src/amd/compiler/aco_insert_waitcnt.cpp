@@ -378,7 +378,7 @@ wait_imm kill(Instruction* instr, wait_ctx& ctx)
             bar.vs = wait_imm::unset_counter;
       }
 
-      /* remove all vgprs with higher counter from map */
+      /* remove all gprs with higher counter from map */
       std::map<PhysReg,wait_entry>::iterator it = ctx.gpr_map.begin();
       while (it != ctx.gpr_map.end())
       {
@@ -616,7 +616,8 @@ void emit_waitcnt(wait_ctx& ctx, std::vector<aco_ptr<Instruction>>& instructions
 {
    if (imm.vs != wait_imm::unset_counter) {
       assert(ctx.chip_class >= GFX10);
-      SOPK_instruction* waitcnt_vs = create_instruction<SOPK_instruction>(aco_opcode::s_waitcnt_vscnt, Format::SOPK, 0, 0);
+      SOPK_instruction* waitcnt_vs = create_instruction<SOPK_instruction>(aco_opcode::s_waitcnt_vscnt, Format::SOPK, 0, 1);
+      waitcnt_vs->definitions[0] = Definition(sgpr_null, s1);
       waitcnt_vs->imm = imm.vs;
       instructions.emplace_back(waitcnt_vs);
       imm.vs = wait_imm::unset_counter;
