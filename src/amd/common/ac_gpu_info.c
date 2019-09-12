@@ -570,6 +570,20 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		}
 	}
 
+	if (info->chip_class >= GFX10) {
+		switch (info->family) {
+		case CHIP_NAVI10:
+		case CHIP_NAVI12:
+			info->num_sdp_interfaces = 16;
+			break;
+		case CHIP_NAVI14:
+			info->num_sdp_interfaces = 8;
+			break;
+		default:
+			assert(0);
+		}
+	}
+
 	return true;
 }
 

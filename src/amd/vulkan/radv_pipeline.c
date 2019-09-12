@@ -3170,20 +3170,6 @@ radv_gfx10_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipe
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 	VkExtent2D extent = {512, 512};
 
-	unsigned sdp_interface_count;
-
-	switch(pipeline->device->physical_device->rad_info.family) {
-	case CHIP_NAVI10:
-	case CHIP_NAVI12:
-		sdp_interface_count = 16;
-		break;
-	case CHIP_NAVI14:
-		sdp_interface_count = 8;
-		break;
-	default:
-		unreachable("Unhandled GFX10 chip");
-	}
-
 	const unsigned db_tag_size = 64;
 	const unsigned db_tag_count = 312;
 	const unsigned color_tag_size = 1024;
@@ -3192,7 +3178,7 @@ radv_gfx10_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipe
 	const unsigned fmask_tag_count = 44;
 
 	const unsigned rb_count = pipeline->device->physical_device->rad_info.num_render_backends;
-	const unsigned pipe_count = MAX2(rb_count, sdp_interface_count);
+	const unsigned pipe_count = MAX2(rb_count, pipeline->device->physical_device->rad_info.num_sdp_interfaces);
 
 	const unsigned db_tag_part = (db_tag_count * rb_count / pipe_count) * db_tag_size * pipe_count;
 	const unsigned color_tag_part = (color_tag_count * rb_count / pipe_count) * color_tag_size * pipe_count;
