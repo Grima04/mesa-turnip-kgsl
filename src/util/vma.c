@@ -22,6 +22,7 @@
  */
 
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include "util/u_math.h"
 #include "util/vma.h"
@@ -303,4 +304,23 @@ util_vma_heap_free(struct util_vma_heap *heap,
    }
 
    util_vma_heap_validate(heap);
+}
+
+void
+util_vma_heap_print(struct util_vma_heap *heap, FILE *fp,
+                    const char *tab, uint64_t total_size)
+{
+   fprintf(fp, "%sutil_vma_heap:\n", tab);
+
+   uint64_t total_free = 0;
+   util_vma_foreach_hole(hole, heap) {
+      fprintf(fp, "%s    hole: offset = %"PRIu64" (0x%"PRIx64", "
+              "size = %"PRIu64" (0x%"PRIx64")\n",
+              tab, hole->offset, hole->offset, hole->size, hole->size);
+      total_free += hole->size;
+   }
+   assert(total_free <= total_size);
+   fprintf(fp, "%s%"PRIu64"B (0x%"PRIx64") free (%.2f%% full)\n",
+           tab, total_free, total_free,
+           ((double)(total_size - total_free) / (double)total_size) * 100);
 }
