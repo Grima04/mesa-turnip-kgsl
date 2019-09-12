@@ -1274,7 +1274,7 @@ radv_get_max_waves(struct radv_device *device,
 	if (conf->num_sgprs)
 		max_simd_waves =
 			MIN2(max_simd_waves,
-			     ac_get_num_physical_sgprs(&device->physical_device->rad_info) /
+			     device->physical_device->rad_info.num_physical_sgprs_per_simd /
 			     conf->num_sgprs);
 
 	if (conf->num_vgprs)
@@ -1372,7 +1372,7 @@ radv_GetShaderInfoAMD(VkDevice _device,
 			VkShaderStatisticsInfoAMD statistics = {};
 			statistics.shaderStageMask = shaderStage;
 			statistics.numPhysicalVgprs = RADV_NUM_PHYSICAL_VGPRS;
-			statistics.numPhysicalSgprs = ac_get_num_physical_sgprs(&device->physical_device->rad_info);
+			statistics.numPhysicalSgprs = device->physical_device->rad_info.num_physical_sgprs_per_simd;
 			statistics.numAvailableSgprs = statistics.numPhysicalSgprs;
 
 			if (stage == MESA_SHADER_COMPUTE) {

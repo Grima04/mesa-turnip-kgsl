@@ -586,6 +586,17 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 
 	info->max_wave64_per_simd = info->family >= CHIP_POLARIS10 &&
 				    info->family <= CHIP_VEGAM ? 8 : 10;
+
+	/* The number is per SIMD. There is enough SGPRs for the maximum number
+	 * of Wave32, which is double the number for Wave64.
+	 */
+	if (info->chip_class >= GFX10)
+		info->num_physical_sgprs_per_simd = 128 * info->max_wave64_per_simd * 2;
+	else if (info->chip_class >= GFX8)
+		info->num_physical_sgprs_per_simd = 800;
+	else
+		info->num_physical_sgprs_per_simd = 512;
+
 	return true;
 }
 

@@ -5454,7 +5454,7 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
 	if (conf->num_sgprs) {
 		max_simd_waves =
 			MIN2(max_simd_waves,
-			     ac_get_num_physical_sgprs(&sscreen->info) / conf->num_sgprs);
+			     sscreen->info.num_physical_sgprs_per_simd / conf->num_sgprs);
 	}
 
 	if (conf->num_vgprs) {
@@ -7178,7 +7178,7 @@ int si_compile_tgsi_shader(struct si_screen *sscreen,
 		unsigned wave_size = sscreen->compute_wave_size;
 		unsigned max_vgprs = ac_get_num_physical_vgprs(sscreen->info.chip_class,
 							       wave_size);
-		unsigned max_sgprs = ac_get_num_physical_sgprs(&sscreen->info);
+		unsigned max_sgprs = sscreen->info.num_physical_sgprs_per_simd;
 		unsigned max_sgprs_per_wave = 128;
 		unsigned simds_per_tg = 4; /* assuming WGP mode on gfx10 */
 		unsigned threads_per_tg = si_get_max_workgroup_size(shader);

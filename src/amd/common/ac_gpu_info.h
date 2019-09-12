@@ -142,6 +142,7 @@ struct radeon_info {
 	uint32_t                    max_se; /* shader engines */
 	uint32_t                    max_sh_per_se; /* shader arrays per shader engine */
 	uint32_t                    max_wave64_per_simd;
+	uint32_t                    num_physical_sgprs_per_simd;
 
 	/* Render backends (color + depth blocks). */
 	uint32_t                    r300_num_gb_pipes;
@@ -198,18 +199,6 @@ static inline unsigned ac_get_num_physical_vgprs(enum chip_class chip_class,
 		return wave_size == 32 ? 1024 : 512;
 	else
 		return 256;
-}
-
-static inline uint32_t
-ac_get_num_physical_sgprs(const struct radeon_info *info)
-{
-	/* The number is per SIMD. There is enough SGPRs for the maximum number
-	 * of Wave32, which is double the number for Wave64.
-	 */
-	if (info->chip_class >= GFX10)
-		return 128 * info->max_wave64_per_simd * 2;
-
-	return info->chip_class >= GFX8 ? 800 : 512;
 }
 
 #ifdef __cplusplus
