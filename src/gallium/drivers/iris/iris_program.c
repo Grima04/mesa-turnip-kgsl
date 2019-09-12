@@ -1564,11 +1564,11 @@ iris_compile_fs(struct iris_context *ice,
 static void
 iris_update_compiled_fs(struct iris_context *ice)
 {
+   struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_FRAGMENT];
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
-      struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-      const struct gen_device_info *devinfo = &screen->devinfo;
    struct brw_wm_prog_key key = { KEY_INIT(devinfo->gen) };
    ice->vtbl.populate_fs_key(ice, &ish->nir->info, &key);
 
