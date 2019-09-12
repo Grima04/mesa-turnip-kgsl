@@ -123,3 +123,14 @@ if [ -s /tmp/new-fails.txt ]; then
 else
     echo "No new failures"
 fi
+
+sort /tmp/case-list.txt > /tmp/sorted-case-list.txt
+comm -12 /tmp/sorted-case-list.txt /tmp/expected-fails.txt > /tmp/expected-fails-in-caselist.txt
+comm -13 $RESULTS/fails.txt /tmp/expected-fails-in-caselist.txt > /tmp/new-passes.txt
+if [ -s /tmp/new-passes.txt ]; then
+    echo "Unexpected passes, please update $DEQP_EXPECTED_FAILS (or add flaky tests to $DEQP_SKIPS):"
+    cat /tmp/new-passes.txt
+    exit 1
+else
+    echo "No new passes"
+fi
