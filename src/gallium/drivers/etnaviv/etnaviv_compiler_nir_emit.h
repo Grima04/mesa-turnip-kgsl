@@ -1239,37 +1239,9 @@ lower_alu(struct state *state, nir_alu_instr *alu)
    switch (alu->op) {
    case nir_op_vec2:
    case nir_op_vec3:
-   case nir_op_vec4: {
-      nir_const_value value[4];
-      unsigned num_components = 0;
-
-      for (unsigned i = 0; i < info->num_inputs; i++) {
-         nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
-         if (cv)
-            value[num_components++] = cv[alu->src[i].swizzle[0]];
-      }
-
-      if (num_components <= 1) /* nothing to do */
-         break;
-
-      nir_ssa_def *def = nir_build_imm(&b, num_components, 32, value);
-
-      if (num_components == info->num_inputs) {
-         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(def));
-         nir_instr_remove(&alu->instr);
-         return;
-      }
-
-      for (unsigned i = 0, j = 0; i < info->num_inputs; i++) {
-         nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
-         if (!cv)
-            continue;
-
-         nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(def));
-         alu->src[i].swizzle[0] = j++;
-      }
-   } break;
-   default: {
+   case nir_op_vec4:
+      break;
+   default:
       /* pre-GC7000L can only have 1 uniform src per instruction */
       if (state->c->specs->halti >= 5)
          return;
@@ -1327,7 +1299,39 @@ lower_alu(struct state *state, nir_alu_instr *alu)
          nir_ssa_def *mov = nir_mov(&b, alu->src[i].src.ssa);
          nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(mov));
       }
-   } return;
+      return;
+   }
+
+   nir_const_value value[4];
+   unsigned num_components = 0;
+
+   for (unsigned i = 0; i < info->num_inputs; i++) {
+      nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
+      if (cv)
+         value[num_components++] = cv[alu->src[i].swizzle[0]];
+   }
+
+   /* if there is more than one constant source to the vecN, combine them
+    * into a single load_const (removing the vecN completely if all components
+    * are constant)
+    */
+   if (num_components > 1) {
+      nir_ssa_def *def = nir_build_imm(&b, num_components, 32, value);
+
+      if (num_components == info->num_inputs) {
+         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(def));
+         nir_instr_remove(&alu->instr);
+         return;
+      }
+
+      for (unsigned i = 0, j = 0; i < info->num_inputs; i++) {
+         nir_const_value *cv = nir_src_as_const_value(alu->src[i].src);
+         if (!cv)
+            continue;
+
+         nir_instr_rewrite_src(&alu->instr, &alu->src[i].src, nir_src_for_ssa(def));
+         alu->src[i].swizzle[0] = j++;
+      }
    }
 
    unsigned finished_write_mask = 0;
