@@ -333,6 +333,14 @@ brw_urb_desc(const struct gen_device_info *devinfo,
    }
 }
 
+static inline uint32_t
+brw_urb_desc_msg_type(ASSERTED const struct gen_device_info *devinfo,
+                      uint32_t desc)
+{
+   assert(devinfo->gen >= 7);
+   return GET_BITS(desc, 3, 0);
+}
+
 /**
  * Construct a message descriptor immediate with the specified sampler
  * function controls.
