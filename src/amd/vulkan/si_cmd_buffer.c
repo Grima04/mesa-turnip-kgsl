@@ -427,38 +427,8 @@ si_emit_graphics(struct radv_physical_device *physical_device,
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX9) {
-		unsigned num_se = physical_device->rad_info.max_se;
-		unsigned pc_lines = 0;
-		unsigned max_alloc_count = 0;
-
-		switch (physical_device->rad_info.family) {
-		case CHIP_VEGA10:
-		case CHIP_VEGA12:
-		case CHIP_VEGA20:
-			pc_lines = 4096;
-			break;
-		case CHIP_RAVEN:
-		case CHIP_RAVEN2:
-		case CHIP_RENOIR:
-		case CHIP_NAVI10:
-		case CHIP_NAVI12:
-			pc_lines = 1024;
-			break;
-		case CHIP_NAVI14:
-			pc_lines = 512;
-			break;
-		default:
-			assert(0);
-		}
-
-		if (physical_device->rad_info.chip_class >= GFX10) {
-			max_alloc_count = pc_lines / 3;
-		} else {
-			max_alloc_count = MIN2(128, pc_lines / (4 * num_se));
-		}
-
 		radeon_set_context_reg(cs, R_028C48_PA_SC_BINNER_CNTL_1,
-				       S_028C48_MAX_ALLOC_COUNT(max_alloc_count - 1) |
+				       S_028C48_MAX_ALLOC_COUNT(physical_device->rad_info.pbb_max_alloc_count - 1) |
 				       S_028C48_MAX_PRIM_PER_BATCH(1023));
 		radeon_set_context_reg(cs, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
 				       S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1));

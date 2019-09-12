@@ -538,6 +538,38 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 
 	info->has_gds_ordered_append = info->chip_class >= GFX7 &&
 				       info->drm_minor >= 29;
+
+	if (info->chip_class >= GFX9) {
+		unsigned pc_lines = 0;
+
+		switch (info->family) {
+		case CHIP_VEGA10:
+		case CHIP_VEGA12:
+		case CHIP_VEGA20:
+			pc_lines = 2048;
+			break;
+		case CHIP_RAVEN:
+		case CHIP_RAVEN2:
+		case CHIP_RENOIR:
+		case CHIP_NAVI10:
+		case CHIP_NAVI12:
+			pc_lines = 1024;
+			break;
+		case CHIP_NAVI14:
+			pc_lines = 512;
+			break;
+		default:
+			assert(0);
+		}
+
+		if (info->chip_class >= GFX10) {
+			info->pbb_max_alloc_count = pc_lines / 3;
+		} else {
+			info->pbb_max_alloc_count =
+				MIN2(128, pc_lines / (4 * info->max_se));
+		}
+	}
+
 	return true;
 }
 

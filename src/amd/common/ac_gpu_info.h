@@ -66,6 +66,7 @@ struct radeon_info {
 	bool                        has_load_ctx_reg_pkt;
 	bool                        has_out_of_order_rast;
 	bool                        cpdma_prefetch_writes_memory;
+	uint32_t                    pbb_max_alloc_count;
 
 	/* There are 2 display DCC codepaths, because display expects unaligned DCC. */
 	/* Disable RB and pipe alignment to skip the retile blit. (1 RB chips only) */
