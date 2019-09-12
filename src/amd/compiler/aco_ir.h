@@ -841,7 +841,7 @@ enum ReduceOp {
  * Operand(2): vector temporary
  * Definition(0): result
  * Definition(1): scalar temporary
- * Definition(2): scalar identity temporary
+ * Definition(2): scalar identity temporary (not used to store identity on GFX10)
  * Definition(3): scc clobber
  * Definition(4): vcc clobber
  *

@@ -85,6 +85,22 @@ void emit_dpp_op(lower_context *ctx, PhysReg dst, PhysReg src0, PhysReg src1, Ph
    }
 }
 
+void emit_op(lower_context *ctx, PhysReg dst, PhysReg src0, PhysReg src1,
+             aco_opcode op, Format format, bool clobber_vcc, unsigned size)
+{
+   aco_ptr<Instruction> instr;
+   if (format == Format::VOP3)
+      instr.reset(create_instruction<VOP3A_instruction>(op, format, 2, clobber_vcc ? 2 : 1));
+   else
+      instr.reset(create_instruction<VOP2_instruction>(op, format, 2, clobber_vcc ? 2 : 1));
+   instr->operands[0] = Operand(src0, src0.reg >= 256 ? v1 : s1);
+   instr->operands[1] = Operand(src1, v1);
+   instr->definitions[0] = Definition(dst, v1);
+   if (clobber_vcc)
+      instr->definitions[1] = Definition(vcc, s2);
+   ctx->instructions.emplace_back(std::move(instr));
+}
+
 uint32_t get_reduction_identity(ReduceOp op, unsigned idx)
 {
    switch (op) {
@@ -236,12 +252,12 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
    Operand vcndmask_identity[2] = {identity[0], identity[1]};
 
    /* First, copy the source to tmp and set inactive lanes to the identity */
-   // note: this clobbers SCC!
    bld.sop1(aco_opcode::s_or_saveexec_b64, Definition(stmp, s2), Definition(scc, s1), Definition(exec, s2), Operand(UINT64_MAX), Operand(exec, s2));
 
    for (unsigned i = 0; i < src.size(); i++) {
-      /* p_exclusive_scan needs it to be a sgpr or inline constant for the v_writelane_b32 */
-      if (identity[i].isLiteral() && op == aco_opcode::p_exclusive_scan) {
+      /* p_exclusive_scan needs it to be a sgpr or inline constant for the v_writelane_b32
+       * except on GFX10, where v_writelane_b32 can take a literal. */
+      if (identity[i].isLiteral() && op == aco_opcode::p_exclusive_scan && ctx->program->chip_class < GFX10) {
          bld.sop1(aco_opcode::s_mov_b32, Definition(PhysReg{sitmp+i}, s1), identity[i]);
          identity[i] = Operand(PhysReg{sitmp+i}, s1);
 
@@ -283,6 +299,16 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
          exec_restored = true;
          emit_vopn(ctx, dst.physReg(), vtmp, tmp, src.regClass(), reduce_opcode, format, should_clobber_vcc);
          dst_written = true;
+      } else if (ctx->program->chip_class >= GFX10) {
+         assert(cluster_size == 64);
+         /* GFX10+ doesn't support row_bcast15 and row_bcast31 */
+         for (unsigned i = 0; i < src.size(); i++)
+            bld.vop3(aco_opcode::v_permlanex16_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{tmp+i}, v1), Operand(0u), Operand(0u));
+         emit_op(ctx, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc, src.size());
+
+         for (unsigned i = 0; i < src.size(); i++)
+            bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+         emit_op(ctx, tmp, sitmp, tmp, reduce_opcode, format, should_clobber_vcc, src.size());
       } else {
          assert(cluster_size == 64);
          emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
@@ -292,11 +318,38 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
       }
       break;
    case aco_opcode::p_exclusive_scan:
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, aco_opcode::v_mov_b32, Format::VOP1, false,
-                  dpp_wf_sr1, 0xf, 0xf, true, src.size());
+      if (ctx->program->chip_class >= GFX10) { /* gfx10 doesn't support wf_sr1, so emulate it */
+         /* shift rows right */
+         for (unsigned i = 0; i < src.size(); i++) {
+            bld.vop1_dpp(aco_opcode::v_mov_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{tmp+i}, s1), dpp_row_sr(1), 0xf, 0xf, true);
+         }
+
+         /* fill in the gaps in rows 1 and 3 */
+         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand(0x10000u));
+         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand(0x10000u));
+         for (unsigned i = 0; i < src.size(); i++) {
+            Instruction *perm = bld.vop3(aco_opcode::v_permlanex16_b32,
+                                         Definition(PhysReg{vtmp+i}, v1),
+                                         Operand(PhysReg{tmp+i}, v1),
+                                         Operand(0xffffffffu), Operand(0xffffffffu)).instr;
+            static_cast<VOP3A_instruction*>(perm)->opsel[0] = true; /* FI (Fetch Inactive) */
+         }
+         bld.sop1(aco_opcode::s_mov_b64, Definition(exec, s2), Operand(UINT64_MAX));
+
+         /* fill in the gap in row 2 */
+         for (unsigned i = 0; i < src.size(); i++) {
+            bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+            bld.vop3(aco_opcode::v_writelane_b32, Definition(PhysReg{vtmp+i}, v1), Operand(PhysReg{sitmp+i}, s1), Operand(32u));
+         }
+         std::swap(tmp, vtmp);
+      } else {
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, aco_opcode::v_mov_b32, Format::VOP1, false,
+                     dpp_wf_sr1, 0xf, 0xf, true, src.size());
+      }
       for (unsigned i = 0; i < src.size(); i++) {
          if (!identity[i].isConstant() || identity[i].constantValue()) { /* bound_ctrl should take case of this overwise */
-            assert((identity[i].isConstant() && !identity[i].isLiteral()) || identity[i].physReg() == PhysReg{sitmp+i});
+            if (ctx->program->chip_class < GFX10)
+               assert((identity[i].isConstant() && !identity[i].isLiteral()) || identity[i].physReg() == PhysReg{sitmp+i});
             bld.vop3(aco_opcode::v_writelane_b32, Definition(PhysReg{tmp+i}, v1),
                      identity[i], Operand(0u));
          }
@@ -312,10 +365,29 @@ void emit_reduction(lower_context *ctx, aco_opcode op, ReduceOp reduce_op, unsig
                   dpp_row_sr(4), 0xf, 0xf, false, src.size(), identity);
       emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
                   dpp_row_sr(8), 0xf, 0xf, false, src.size(), identity);
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
-                  dpp_row_bcast15, 0xa, 0xf, false, src.size(), identity);
-      emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
-                  dpp_row_bcast31, 0xc, 0xf, false, src.size(), identity);
+      if (ctx->program->chip_class >= GFX10) {
+         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand(0xffff0000u));
+         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand(0xffff0000u));
+         for (unsigned i = 0; i < src.size(); i++) {
+            Instruction *perm = bld.vop3(aco_opcode::v_permlanex16_b32,
+                                         Definition(PhysReg{vtmp+i}, v1),
+                                         Operand(PhysReg{tmp+i}, v1),
+                                         Operand(0xffffffffu), Operand(0xffffffffu)).instr;
+            static_cast<VOP3A_instruction*>(perm)->opsel[0] = true; /* FI (Fetch Inactive) */
+         }
+         emit_op(ctx, tmp, tmp, vtmp, reduce_opcode, format, should_clobber_vcc, src.size());
+
+         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_lo, s1), Operand(0u));
+         bld.sop1(aco_opcode::s_mov_b32, Definition(exec_hi, s1), Operand(0xffffffffu));
+         for (unsigned i = 0; i < src.size(); i++)
+            bld.vop3(aco_opcode::v_readlane_b32, Definition(PhysReg{sitmp+i}, s1), Operand(PhysReg{tmp+i}, v1), Operand(31u));
+         emit_op(ctx, tmp, sitmp, tmp, reduce_opcode, format, should_clobber_vcc, src.size());
+      } else {
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+                     dpp_row_bcast15, 0xa, 0xf, false, src.size(), identity);
+         emit_dpp_op(ctx, tmp, tmp, tmp, vtmp, wrtmp, reduce_opcode, format, should_clobber_vcc,
+                     dpp_row_bcast31, 0xc, 0xf, false, src.size(), identity);
+      }
       break;
    default:
       unreachable("Invalid reduction mode");
