@@ -6974,6 +6974,7 @@ genX(init_state)(struct iris_context *ice)
 
    ice->state.sample_mask = 0xffff;
    ice->state.num_viewports = 1;
+   ice->state.prim_mode = PIPE_PRIM_MAX;
    ice->state.genx = calloc(1, sizeof(struct iris_genx_state));
 
    /* Make a 1x1x1 null surface for unbound textures */
