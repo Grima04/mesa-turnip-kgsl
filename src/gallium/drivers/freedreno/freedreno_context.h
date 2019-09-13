@@ -66,6 +66,7 @@ struct fd_constbuf_stateobj {
 struct fd_shaderbuf_stateobj {
 	struct pipe_shader_buffer sb[PIPE_MAX_SHADER_BUFFERS];
 	uint32_t enabled_mask;
+	uint32_t writable_mask;
 };
 
 struct fd_shaderimg_stateobj {
