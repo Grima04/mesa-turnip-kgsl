@@ -2266,6 +2266,13 @@ st_choose_format(struct st_context *st, GLenum internalFormat,
          internalFormat = GL_RGB10_A2;
    }
 
+   if (type == GL_UNSIGNED_SHORT_5_5_5_1) {
+      if (internalFormat == GL_RGB)
+         internalFormat = GL_RGB5;
+      else if (internalFormat == GL_RGBA)
+         internalFormat = GL_RGB5_A1;
+   }
+
    /* search table for internalFormat */
    for (i = 0; i < ARRAY_SIZE(format_map); i++) {
       const struct format_mapping *mapping = &format_map[i];
