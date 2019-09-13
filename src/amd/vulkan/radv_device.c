@@ -1270,6 +1270,17 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->subgroupBroadcastDynamicId = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+			VkPhysicalDeviceLineRasterizationFeaturesEXT *features =
+				(VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
+			features->rectangularLines = false;
+			features->bresenhamLines = true;
+			features->smoothLines = false;
+			features->stippledRectangularLines = false;
+			features->stippledBresenhamLines = true;
+			features->stippledSmoothLines = false;
+			break;
+		}
 		default:
 			break;
 		}
@@ -1889,6 +1900,12 @@ void radv_GetPhysicalDeviceProperties2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
 			radv_get_physical_device_properties_1_2(pdevice, (void *)ext);
 			break;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+			VkPhysicalDeviceLineRasterizationPropertiesEXT *props =
+				(VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
+			props->lineSubPixelPrecisionBits = 4;
+			break;
+		}
 		default:
 			break;
 		}

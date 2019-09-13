@@ -1242,6 +1242,23 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 	ms->pa_sc_mode_cntl_0 = S_028A48_ALTERNATE_RBS_PER_TILE(pipeline->device->physical_device->rad_info.chip_class >= GFX9) |
 	                        S_028A48_VPORT_SCISSOR_ENABLE(1);
 
+	const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line =
+		vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
+				     PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
+	if (rast_line) {
+		ms->pa_sc_mode_cntl_0 |= S_028A48_LINE_STIPPLE_ENABLE(rast_line->stippledLineEnable);
+		if (rast_line->lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT) {
+			/* From the Vulkan spec 1.1.129:
+			 *
+			 * "When VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT lines
+			 *  are being rasterized, sample locations may all be
+			 *  treated as being at the pixel center (this may
+			 *  affect attribute and depth interpolation)."
+			 */
+			ms->num_samples = 1;
+		}
+	}
+
 	if (ms->num_samples > 1) {
 		RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 		struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
@@ -1397,6 +1414,8 @@ static unsigned radv_dynamic_state_mask(VkDynamicState state)
 		return RADV_DYNAMIC_DISCARD_RECTANGLE;
 	case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
 		return RADV_DYNAMIC_SAMPLE_LOCATIONS;
+	case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
+		return RADV_DYNAMIC_LINE_STIPPLE;
 	default:
 		unreachable("Unhandled dynamic state");
 	}
@@ -1431,6 +1450,11 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 	    !vk_find_struct_const(pCreateInfo->pMultisampleState->pNext,
 				  PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT))
 		states &= ~RADV_DYNAMIC_SAMPLE_LOCATIONS;
+
+	if (!pCreateInfo->pRasterizationState ||
+	    !vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
+				  PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT))
+		states &= ~RADV_DYNAMIC_LINE_STIPPLE;
 
 	/* TODO: blend constants & line width. */
 
@@ -1582,6 +1606,14 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 				     pSampleLocationsInfo->pSampleLocations,
 				     pSampleLocationsInfo->sampleLocationsCount);
 		}
+	}
+
+	const VkPipelineRasterizationLineStateCreateInfoEXT *rast_line_info =
+		vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
+				     PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT);
+	if (needed_states & RADV_DYNAMIC_LINE_STIPPLE) {
+		dynamic->line_stipple.factor = rast_line_info->lineStippleFactor;
+		dynamic->line_stipple.pattern = rast_line_info->lineStipplePattern;
 	}
 
 	pipeline->dynamic_state.mask = states;
@@ -5019,6 +5051,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	uint32_t gs_out;
 	uint32_t prim = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
 
+	pipeline->graphics.topology = pCreateInfo->pInputAssemblyState->topology;
 	pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(pCreateInfo->pInputAssemblyState->topology);
 
 	if (radv_pipeline_has_gs(pipeline)) {

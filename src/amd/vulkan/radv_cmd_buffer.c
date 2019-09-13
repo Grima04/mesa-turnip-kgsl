@@ -92,6 +92,10 @@ const struct radv_dynamic_state default_dynamic_state = {
 		.front = 0u,
 		.back = 0u,
 	},
+	.line_stipple = {
+		.factor = 0u,
+		.pattern = 0u,
+	},
 };
 
 static void
@@ -209,6 +213,14 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 				     src->sample_location.locations,
 				     src->sample_location.count);
 			dest_mask |= RADV_DYNAMIC_SAMPLE_LOCATIONS;
+		}
+	}
+
+	if (copy_mask & RADV_DYNAMIC_LINE_STIPPLE) {
+		if (memcmp(&dest->line_stipple, &src->line_stipple,
+			   sizeof(src->line_stipple))) {
+			dest->line_stipple = src->line_stipple;
+			dest_mask |= RADV_DYNAMIC_LINE_STIPPLE;
 		}
 	}
 
@@ -1318,6 +1330,22 @@ radv_emit_depth_bias(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
+{
+	struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+	uint32_t auto_reset_cntl = 1;
+
+	if (pipeline->graphics.topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
+		auto_reset_cntl = 2;
+
+	radeon_set_context_reg(cmd_buffer->cs, R_028A0C_PA_SC_LINE_STIPPLE,
+			       S_028A0C_LINE_PATTERN(d->line_stipple.pattern) |
+			       S_028A0C_REPEAT_COUNT(d->line_stipple.factor - 1) |
+			       S_028A0C_AUTO_RESET_CNTL(auto_reset_cntl));
+}
+
+static void
 radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 			 int index,
 			 struct radv_color_buffer_info *cb,
@@ -2201,6 +2229,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
 	if (states & RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)
 		radv_emit_sample_locations(cmd_buffer);
+
+	if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE)
+		radv_emit_line_stipple(cmd_buffer);
 
 	cmd_buffer->state.dirty &= ~states;
 }
@@ -4105,6 +4136,20 @@ void radv_CmdSetSampleLocationsEXT(
 		     pSampleLocationsInfo->sampleLocationsCount);
 
 	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
+}
+
+void radv_CmdSetLineStippleEXT(
+	VkCommandBuffer                             commandBuffer,
+	uint32_t                                    lineStippleFactor,
+	uint16_t                                    lineStipplePattern)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	struct radv_cmd_state *state = &cmd_buffer->state;
+
+	state->dynamic.line_stipple.factor = lineStippleFactor;
+	state->dynamic.line_stipple.pattern = lineStipplePattern;
+
+	state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
 }
 
 void radv_CmdExecuteCommands(
