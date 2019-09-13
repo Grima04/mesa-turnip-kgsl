@@ -128,11 +128,13 @@ fd_set_shader_buffers(struct pipe_context *pctx,
 	struct fd_shaderbuf_stateobj *so = &ctx->shaderbuf[shader];
 	const unsigned modified_bits = u_bit_consecutive(start, count);
 
-	if (buffers) {
-		for (unsigned i = 0; i < count; i++) {
-			unsigned n = i + start;
-			struct pipe_shader_buffer *buf = &so->sb[n];
+	so->enabled_mask &= ~modified_bits;
 
+	for (unsigned i = 0; i < count; i++) {
+		unsigned n = i + start;
+		struct pipe_shader_buffer *buf = &so->sb[n];
+
+		if (buffers && buffers[i].buffer) {
 			if ((buf->buffer == buffers[i].buffer) &&
 					(buf->buffer_offset == buffers[i].buffer_offset) &&
 					(buf->buffer_size == buffers[i].buffer_size))
@@ -142,20 +144,10 @@ fd_set_shader_buffers(struct pipe_context *pctx,
 			buf->buffer_size = buffers[i].buffer_size;
 			pipe_resource_reference(&buf->buffer, buffers[i].buffer);
 
-			if (buf->buffer)
-				so->enabled_mask |= BIT(n);
-			else
-				so->enabled_mask &= ~BIT(n);
-		}
-	} else {
-		for (unsigned i = 0; i < count; i++) {
-			unsigned n = i + start;
-			struct pipe_shader_buffer *buf = &so->sb[n];
-
+			so->enabled_mask |= BIT(n);
+		} else {
 			pipe_resource_reference(&buf->buffer, NULL);
 		}
-
-		so->enabled_mask &= ~modified_bits;
 	}
 
 	ctx->dirty_shader[shader] |= FD_DIRTY_SHADER_SSBO;
