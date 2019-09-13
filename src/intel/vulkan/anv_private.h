@@ -3233,8 +3233,15 @@ anv_image_aux_levels(const struct anv_image * const image,
                      VkImageAspectFlagBits aspect)
 {
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
+
+   /* The Gen12 CCS aux surface is represented with only one level. */
+   const uint8_t aux_logical_levels =
+      image->planes[plane].aux_surface.isl.tiling == ISL_TILING_GEN12_CCS ?
+      image->planes[plane].surface.isl.levels :
+      image->planes[plane].aux_surface.isl.levels;
+
    return image->planes[plane].aux_surface.isl.size_B > 0 ?
-          image->planes[plane].aux_surface.isl.levels : 0;
+          aux_logical_levels : 0;
 }
 
 /* Returns the number of auxiliary buffer layers attached to an image. */
@@ -3255,8 +3262,15 @@ anv_image_aux_layers(const struct anv_image * const image,
       return 0;
    } else {
       uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-      return MAX2(image->planes[plane].aux_surface.isl.logical_level0_px.array_len,
-                  image->planes[plane].aux_surface.isl.logical_level0_px.depth >> miplevel);
+
+      /* The Gen12 CCS aux surface is represented with only one layer. */
+      const struct isl_extent4d *aux_logical_level0_px =
+         image->planes[plane].aux_surface.isl.tiling == ISL_TILING_GEN12_CCS ?
+         &image->planes[plane].surface.isl.logical_level0_px :
+         &image->planes[plane].aux_surface.isl.logical_level0_px;
+
+      return MAX2(aux_logical_level0_px->array_len,
+                  aux_logical_level0_px->depth >> miplevel);
    }
 }
 
