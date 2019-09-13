@@ -409,6 +409,7 @@ arm64_a306_gles2:
     - db410c
   dependencies:
     - meson-arm64
+  needs: [ meson-arm64 ]
 
 .cheza-test:
   image: $DEBIAN_ARM64_IMAGE
