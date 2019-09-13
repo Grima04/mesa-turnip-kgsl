@@ -155,6 +155,48 @@ meson-main:
     MESON_SHADERDB: "true"
     BUILDTYPE: "debugoptimized"
 
+.meson-cross:
+  extends:
+    - .meson-build
+    - .ci-deqp-artifacts
+  variables:
+    UNWIND: "false"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D gbm=false
+      -D egl=true
+      -D platforms=surfaceless
+      -D osmesa=none
+    GALLIUM_ST: >
+      -D dri3=false
+      -D gallium-vdpau=false
+      -D gallium-xvmc=false
+      -D gallium-omx=disabled
+      -D gallium-va=false
+      -D gallium-xa=false
+      -D gallium-nine=false
+      -D llvm=false
+  script:
+    - .gitlab-ci/meson-build.sh
+
+meson-armhf:
+  extends: .meson-cross
+  variables:
+    CROSS: armhf
+    VULKAN_DRIVERS: freedreno
+    GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
+    # Disable the tests since we're cross compiling.
+    EXTRA_OPTION: >
+      -D build-tests=false
+      -D I-love-half-baked-turnips=true
+      -D vulkan-overlay-layer=true
+
+meson-arm64:
+  extends: meson-armhf
+  variables:
+    CROSS: arm64
+    BUILDTYPE: "debugoptimized"
+
 # NOTE: Building SWR is 2x (yes two) times slower than all the other
 # gallium drivers combined.
 # Start this early so that it doesn't limit the total run time.
@@ -259,48 +301,6 @@ meson-vulkan:
     LLVM_VERSION: "8"
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
-
-.meson-cross:
-  extends:
-    - .meson-build
-    - .ci-deqp-artifacts
-  variables:
-    UNWIND: "false"
-    DRI_LOADERS: >
-      -D glx=disabled
-      -D gbm=false
-      -D egl=true
-      -D platforms=surfaceless
-      -D osmesa=none
-    GALLIUM_ST: >
-      -D dri3=false
-      -D gallium-vdpau=false
-      -D gallium-xvmc=false
-      -D gallium-omx=disabled
-      -D gallium-va=false
-      -D gallium-xa=false
-      -D gallium-nine=false
-      -D llvm=false
-  script:
-    - .gitlab-ci/meson-build.sh
-
-meson-armhf:
-  extends: .meson-cross
-  variables:
-    CROSS: armhf
-    VULKAN_DRIVERS: freedreno
-    GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,tegra,v3d,vc4"
-    # Disable the tests since we're cross compiling.
-    EXTRA_OPTION: >
-      -D build-tests=false
-      -D I-love-half-baked-turnips=true
-      -D vulkan-overlay-layer=true
-
-meson-arm64:
-  extends: meson-armhf
-  variables:
-    CROSS: arm64
-    BUILDTYPE: "debugoptimized"
 
 # While the main point of this build is testing the i386 cross build,
 # we also use this one to test some other options that are exclusive
