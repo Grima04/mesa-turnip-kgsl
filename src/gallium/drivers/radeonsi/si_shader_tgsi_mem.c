@@ -176,6 +176,8 @@ static LLVMValueRef force_dcc_off(struct si_shader_context *ctx,
 	}
 }
 
+/* AC_DESC_FMASK is handled exactly like AC_DESC_IMAGE. The caller should
+ * adjust "index" to point to FMASK. */
 LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 				LLVMValueRef list, LLVMValueRef index,
 				enum ac_descriptor_type desc_type,
@@ -190,7 +192,8 @@ LLVMValueRef si_load_image_desc(struct si_shader_context *ctx,
 		list = LLVMBuildPointerCast(builder, list,
 					    ac_array_in_const32_addr_space(ctx->v4i32), "");
 	} else {
-		assert(desc_type == AC_DESC_IMAGE);
+		assert(desc_type == AC_DESC_IMAGE ||
+		       desc_type == AC_DESC_FMASK);
 	}
 
 	if (bindless)
@@ -210,7 +213,7 @@ static void
 image_fetch_rsrc(
 	struct lp_build_tgsi_context *bld_base,
 	const struct tgsi_full_src_register *image,
-	bool is_store, unsigned target,
+	bool fmask, bool is_store, unsigned target,
 	LLVMValueRef *rsrc)
 {
 	struct si_shader_context *ctx = si_shader_context(bld_base);
@@ -228,6 +231,9 @@ image_fetch_rsrc(
 		/* Bindless image descriptors use 16-dword slots. */
 		index = LLVMBuildMul(ctx->ac.builder, index,
 				     LLVMConstInt(ctx->i32, 2, 0), "");
+		/* FMASK is right after the image. */
+		if (fmask)
+			index = LLVMBuildAdd(ctx->ac.builder, index, ctx->i32_1, "");
 	} else {
 		rsrc_ptr = LLVMGetParam(ctx->main_fn, ctx->param_samplers_and_images);
 
@@ -247,12 +253,18 @@ image_fetch_rsrc(
 							      image->Register.Index,
 							      ctx->num_images);
 		}
+		/* FMASKs are separate from images. */
+		if (fmask) {
+			index = LLVMBuildAdd(ctx->ac.builder, index,
+					     LLVMConstInt(ctx->i32, SI_NUM_IMAGES, 0), "");
+		}
 		index = LLVMBuildSub(ctx->ac.builder,
 				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
 				     index, "");
 	}
 
 	*rsrc = si_load_image_desc(ctx, rsrc_ptr, index,
+				   fmask ? AC_DESC_FMASK :
 				   target == TGSI_TEXTURE_BUFFER ? AC_DESC_BUFFER : AC_DESC_IMAGE,
 				   is_store, bindless);
 }
@@ -500,8 +512,18 @@ static void load_emit(
 	} else {
 		unsigned target = inst->Memory.Texture;
 
-		image_fetch_rsrc(bld_base, &inst->Src[0], false, target, &args.resource);
+		image_fetch_rsrc(bld_base, &inst->Src[0], false, false, target, &args.resource);
 		image_fetch_coords(bld_base, inst, 1, args.resource, args.coords);
+
+		if ((inst->Memory.Texture == TGSI_TEXTURE_2D_MSAA ||
+		     inst->Memory.Texture == TGSI_TEXTURE_2D_ARRAY_MSAA) &&
+		    !(ctx->screen->debug_flags & DBG(NO_FMASK))) {
+			LLVMValueRef fmask;
+
+			image_fetch_rsrc(bld_base, &inst->Src[0], true, false, target, &fmask);
+			ac_apply_fmask_to_sample(&ctx->ac, fmask, args.coords,
+						 inst->Memory.Texture == TGSI_TEXTURE_2D_ARRAY_MSAA);
+		}
 		vindex = args.coords[0]; /* for buffers only */
 	}
 
@@ -693,7 +715,7 @@ static void store_emit(
 		args.resource = shader_buffer_fetch_rsrc(ctx, &resource_reg, false);
 		voffset = ac_to_integer(&ctx->ac, lp_build_emit_fetch(bld_base, inst, 0, 0));
 	} else {
-		image_fetch_rsrc(bld_base, &resource_reg, true, target, &args.resource);
+		image_fetch_rsrc(bld_base, &resource_reg, false, true, target, &args.resource);
 		image_fetch_coords(bld_base, inst, 0, args.resource, args.coords);
 		vindex = args.coords[0]; /* for buffers only */
 	}
@@ -831,7 +853,7 @@ static void atomic_emit(
 		args.resource = shader_buffer_fetch_rsrc(ctx, &inst->Src[0], false);
 		voffset = ac_to_integer(&ctx->ac, lp_build_emit_fetch(bld_base, inst, 1, 0));
 	} else {
-		image_fetch_rsrc(bld_base, &inst->Src[0], true,
+		image_fetch_rsrc(bld_base, &inst->Src[0], false, true,
 				inst->Memory.Texture, &args.resource);
 		image_fetch_coords(bld_base, inst, 1, args.resource, args.coords);
 		vindex = args.coords[0]; /* for buffers only */
@@ -977,7 +999,7 @@ static void resq_emit(
 	    inst->Memory.Texture == TGSI_TEXTURE_BUFFER) {
 		LLVMValueRef rsrc;
 
-		image_fetch_rsrc(bld_base, reg, false, inst->Memory.Texture, &rsrc);
+		image_fetch_rsrc(bld_base, reg, false, false, inst->Memory.Texture, &rsrc);
 		emit_data->output[emit_data->chan] =
 			get_buffer_size(bld_base, rsrc);
 		return;
@@ -1004,7 +1026,7 @@ static void resq_emit(
 		tex_fetch_ptrs(bld_base, emit_data, &args.resource, NULL, NULL);
 		args.lod = lp_build_emit_fetch(bld_base, inst, 0, TGSI_CHAN_X);
 	} else {
-		image_fetch_rsrc(bld_base, reg, false, target, &args.resource);
+		image_fetch_rsrc(bld_base, reg, false, false, target, &args.resource);
 		args.lod = ctx->i32_0;
 	}
 

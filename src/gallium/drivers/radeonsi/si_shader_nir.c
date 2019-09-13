@@ -783,6 +783,7 @@ void si_nir_scan_shader(const struct nir_shader *nir,
 	if (nir->num_uniforms > 0)
 		info->const_buffers_declared |= 1;
 	info->images_declared = u_bit_consecutive(0, nir->info.num_images);
+	info->msaa_images_declared = u_bit_consecutive(0, nir->info.last_msaa_image + 1);
 	info->samplers_declared = nir->info.textures_used;
 
 	info->num_written_clipdistance = nir->info.clip_distance_array_size;
@@ -1062,7 +1063,7 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 	unsigned const_index = base_index + constant_index;
 
 	assert(!descriptor_set);
-	assert(!image || desc_type == AC_DESC_IMAGE || desc_type == AC_DESC_BUFFER);
+	assert(desc_type <= AC_DESC_BUFFER);
 
 	if (bindless) {
 		LLVMValueRef list =
@@ -1070,11 +1071,14 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 
 		/* dynamic_index is the bindless handle */
 		if (image) {
-			/* For simplicity, bindless image descriptors use fixed
-			 * 16-dword slots for now.
-			 */
+			/* Bindless image descriptors use 16-dword slots. */
 			dynamic_index = LLVMBuildMul(ctx->ac.builder, dynamic_index,
 					     LLVMConstInt(ctx->i64, 2, 0), "");
+			/* FMASK is right after the image. */
+			if (desc_type == AC_DESC_FMASK) {
+				dynamic_index = LLVMBuildAdd(ctx->ac.builder, dynamic_index,
+							     ctx->i32_1, "");
+			}
 
 			return si_load_image_desc(ctx, list, dynamic_index, desc_type,
 						  write, true);
@@ -1113,6 +1117,11 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 	}
 
 	if (image) {
+		/* FMASKs are separate from images. */
+		if (desc_type == AC_DESC_FMASK) {
+			index = LLVMBuildAdd(ctx->ac.builder, index,
+					     LLVMConstInt(ctx->i32, SI_NUM_IMAGES, 0), "");
+		}
 		index = LLVMBuildSub(ctx->ac.builder,
 				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
 				     index, "");
