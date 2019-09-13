@@ -34,6 +34,7 @@
 
 #include "aco_ir.h"
 #include "sid.h"
+#include "util/u_math.h"
 
 namespace aco {
 namespace {
@@ -1914,12 +1915,11 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
    }
 
    /* num_gpr = rnd_up(max_used_gpr + 1) */
-   program->config->num_vgprs = (ctx.max_used_vgpr + 1 + 3) & ~3;
-   if (program->family == CHIP_TONGA || program->family == CHIP_ICELAND) {
-      assert(ctx.max_used_sgpr <= 93);
-      ctx.max_used_sgpr = 93; /* workaround hardware bug */
-   }
-   program->config->num_sgprs = (ctx.max_used_sgpr + 1 + 2 + 7) & ~7; /* + 2 sgprs for vcc */
+   program->config->num_vgprs = align(ctx.max_used_vgpr + 1, 4);
+   if (program->family == CHIP_TONGA || program->family == CHIP_ICELAND) /* workaround hardware bug */
+      program->config->num_sgprs = get_sgpr_alloc(program, program->sgpr_limit);
+   else
+      program->config->num_sgprs = align(ctx.max_used_sgpr + 1 + get_extra_sgprs(program), 8);
 }
 
 }

@@ -806,9 +806,9 @@ void schedule_program(Program *program, live& live_vars)
    //TODO: this also increases window-size/max-moves? did I realize that at the time?
    ctx.num_waves = std::min<uint16_t>(program->num_waves, 5);
    assert(ctx.num_waves);
-   uint16_t total_sgpr_regs = program->chip_class >= GFX8 ? 800 : 512;
+   uint16_t total_sgpr_regs = program->physical_sgprs;
    uint16_t max_addressible_sgpr = program->sgpr_limit;
-   ctx.max_registers = { int16_t(((256 / ctx.num_waves) & ~3) - 2), std::min<int16_t>(((total_sgpr_regs / ctx.num_waves) & ~7) - 2, max_addressible_sgpr)};
+   ctx.max_registers = { int16_t(((256 / ctx.num_waves) & ~3) - 2), std::min<int16_t>(((total_sgpr_regs / ctx.num_waves) & ~program->sgpr_alloc_granule) - 2, max_addressible_sgpr)};
 
    for (Block& block : program->blocks)
       schedule_block(ctx, program, &block, live_vars);

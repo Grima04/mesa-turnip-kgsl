@@ -1062,7 +1062,6 @@ class Program final {
 public:
    std::vector<Block> blocks;
    RegisterDemand max_reg_demand = RegisterDemand();
-   uint16_t sgpr_limit = 0;
    uint16_t num_waves = 0;
    ac_shader_config* config;
    struct radv_shader_info *info;
@@ -1075,6 +1074,13 @@ public:
    bool wb_smem_l1_on_end = false;
 
    std::vector<uint8_t> constant_data;
+
+   uint16_t physical_sgprs;
+   uint16_t sgpr_alloc_granule; /* minus one. must be power of two */
+   uint16_t sgpr_limit;
+   bool needs_vcc = false;
+   bool needs_xnack_mask = false;
+   bool needs_flat_scr = false;
 
    uint32_t allocateId()
    {
@@ -1153,6 +1159,15 @@ void perfwarn(bool cond, const char *msg, Instruction *instr=NULL);
 
 void aco_print_instr(Instruction *instr, FILE *output);
 void aco_print_program(Program *program, FILE *output);
+
+/* number of sgprs that need to be allocated but might notbe addressable as s0-s105 */
+uint16_t get_extra_sgprs(Program *program);
+
+/* get number of sgprs allocated required to address a number of sgprs */
+uint16_t get_sgpr_alloc(Program *program, uint16_t addressable_sgprs);
+
+/* return number of addressable SGPRs for max_waves */
+uint16_t get_addr_sgpr_from_waves(Program *program, uint16_t max_waves);
 
 typedef struct {
    const int16_t opcode_gfx9[static_cast<int>(aco_opcode::num_opcodes)];

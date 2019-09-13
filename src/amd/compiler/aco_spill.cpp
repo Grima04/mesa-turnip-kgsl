@@ -1568,8 +1568,6 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
       return;
 
    /* else, we check if we can improve things a bit */
-   uint16_t total_sgpr_regs = options->chip_class >= GFX8 ? 800 : 512;
-   uint16_t max_addressible_sgpr = program->sgpr_limit;
 
    /* calculate target register demand */
    RegisterDemand max_reg_demand;
@@ -1577,14 +1575,14 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
       max_reg_demand.update(block.register_demand);
    }
 
-   RegisterDemand target_pressure = {256, int16_t(max_addressible_sgpr)};
+   RegisterDemand target_pressure = {256, int16_t(program->sgpr_limit)};
    unsigned num_waves = 1;
-   int spills_to_vgpr = (max_reg_demand.sgpr - max_addressible_sgpr + 63) / 64;
+   int spills_to_vgpr = (max_reg_demand.sgpr - program->sgpr_limit + 63) / 64;
 
    /* test if it possible to increase occupancy with little spilling */
    for (unsigned num_waves_next = 2; num_waves_next <= 8; num_waves_next++) {
       RegisterDemand target_pressure_next = {int16_t((256 / num_waves_next) & ~3),
-                                             int16_t(std::min<uint16_t>(((total_sgpr_regs / num_waves_next) & ~7) - 2, max_addressible_sgpr))};
+                                             int16_t(get_addr_sgpr_from_waves(program, num_waves_next))};
 
       /* Currently no vgpr spilling supported.
        * Spill as many sgprs as necessary to not hinder occupancy */

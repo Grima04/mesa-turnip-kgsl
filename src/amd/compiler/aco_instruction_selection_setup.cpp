@@ -1254,9 +1254,25 @@ setup_isel_context(Program* program,
    program->chip_class = options->chip_class;
    program->family = options->family;
    program->wave_size = options->wave_size;
-   program->sgpr_limit = options->chip_class >= GFX8 ? 102 : 104;
-   if (options->family == CHIP_TONGA || options->family == CHIP_ICELAND)
-      program->sgpr_limit = 94; /* workaround hardware bug */
+
+   if (options->chip_class >= GFX10) {
+      program->physical_sgprs = 2560; /* doesn't matter as long as it's at least 128 * 20 */
+      program->sgpr_alloc_granule = 127;
+      program->sgpr_limit = 106;
+   } else if (program->chip_class >= GFX8) {
+      program->physical_sgprs = 800;
+      program->sgpr_alloc_granule = 15;
+      program->sgpr_limit = 102;
+   } else {
+      program->physical_sgprs = 512;
+      program->sgpr_alloc_granule = 7;
+      if (options->family == CHIP_TONGA || options->family == CHIP_ICELAND)
+         program->sgpr_limit = 94; /* workaround hardware bug */
+      else
+         program->sgpr_limit = 104;
+   }
+   /* TODO: we don't have to allocate VCC if we don't need it */
+   program->needs_vcc = true;
 
    for (unsigned i = 0; i < MAX_SETS; ++i)
       program->info->user_sgprs_locs.descriptor_sets[i].sgpr_idx = -1;
