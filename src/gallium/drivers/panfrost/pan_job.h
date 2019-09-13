@@ -116,17 +116,6 @@ struct panfrost_batch {
 /* Functions for managing the above */
 
 struct panfrost_batch *
-panfrost_create_batch(struct panfrost_context *ctx,
-                      const struct pipe_framebuffer_state *key);
-
-void
-panfrost_free_batch(struct panfrost_batch *batch);
-
-struct panfrost_batch *
-panfrost_get_batch(struct panfrost_context *ctx,
-                   const struct pipe_framebuffer_state *key);
-
-struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
 
 void

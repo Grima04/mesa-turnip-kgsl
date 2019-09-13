@@ -31,7 +31,7 @@
 #include "util/u_format.h"
 #include "util/u_pack_color.h"
 
-struct panfrost_batch *
+static struct panfrost_batch *
 panfrost_create_batch(struct panfrost_context *ctx,
                       const struct pipe_framebuffer_state *key)
 {
@@ -54,7 +54,7 @@ panfrost_create_batch(struct panfrost_context *ctx,
         return batch;
 }
 
-void
+static void
 panfrost_free_batch(struct panfrost_batch *batch)
 {
         if (!batch)
@@ -79,7 +79,7 @@ panfrost_free_batch(struct panfrost_batch *batch)
         ralloc_free(batch);
 }
 
-struct panfrost_batch *
+static struct panfrost_batch *
 panfrost_get_batch(struct panfrost_context *ctx,
                    const struct pipe_framebuffer_state *key)
 {
