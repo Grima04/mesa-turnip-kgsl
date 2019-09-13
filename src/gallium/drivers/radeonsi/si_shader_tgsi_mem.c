@@ -214,48 +214,42 @@ image_fetch_rsrc(
 	LLVMValueRef *rsrc)
 {
 	struct si_shader_context *ctx = si_shader_context(bld_base);
-	LLVMValueRef rsrc_ptr = LLVMGetParam(ctx->main_fn,
-					     ctx->param_samplers_and_images);
-	LLVMValueRef index;
+	bool bindless = image->Register.File != TGSI_FILE_IMAGE;
+	LLVMValueRef rsrc_ptr, index;
 
-	if (!image->Register.Indirect) {
-		index = LLVMConstInt(ctx->i32,
-				     si_get_image_slot(image->Register.Index), 0);
-	} else {
-		/* From the GL_ARB_shader_image_load_store extension spec:
-		 *
-		 *    If a shader performs an image load, store, or atomic
-		 *    operation using an image variable declared as an array,
-		 *    and if the index used to select an individual element is
-		 *    negative or greater than or equal to the size of the
-		 *    array, the results of the operation are undefined but may
-		 *    not lead to termination.
-		 */
-		index = si_get_bounded_indirect_index(ctx, &image->Indirect,
-						      image->Register.Index,
-						      ctx->num_images);
-		index = LLVMBuildSub(ctx->ac.builder,
-				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
-				     index, "");
-	}
-
-	bool bindless = false;
-
-	if (image->Register.File != TGSI_FILE_IMAGE) {
+	if (bindless) {
 		/* Bindless descriptors are accessible from a different pair of
 		 * user SGPR indices.
 		 */
 		rsrc_ptr = LLVMGetParam(ctx->main_fn,
 					ctx->param_bindless_samplers_and_images);
-		index = lp_build_emit_fetch_src(bld_base, image,
-						TGSI_TYPE_UNSIGNED, 0);
+		index = lp_build_emit_fetch_src(bld_base, image, TGSI_TYPE_UNSIGNED, 0);
 
-		/* For simplicity, bindless image descriptors use fixed
-		 * 16-dword slots for now.
-		 */
+		/* Bindless image descriptors use 16-dword slots. */
 		index = LLVMBuildMul(ctx->ac.builder, index,
 				     LLVMConstInt(ctx->i32, 2, 0), "");
-		bindless = true;
+	} else {
+		rsrc_ptr = LLVMGetParam(ctx->main_fn, ctx->param_samplers_and_images);
+
+		if (!image->Register.Indirect) {
+			index = LLVMConstInt(ctx->i32, image->Register.Index, 0);
+		} else {
+			/* From the GL_ARB_shader_image_load_store extension spec:
+			 *
+			 *    If a shader performs an image load, store, or atomic
+			 *    operation using an image variable declared as an array,
+			 *    and if the index used to select an individual element is
+			 *    negative or greater than or equal to the size of the
+			 *    array, the results of the operation are undefined but may
+			 *    not lead to termination.
+			 */
+			index = si_get_bounded_indirect_index(ctx, &image->Indirect,
+							      image->Register.Index,
+							      ctx->num_images);
+		}
+		index = LLVMBuildSub(ctx->ac.builder,
+				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
+				     index, "");
 	}
 
 	*rsrc = si_load_image_desc(ctx, rsrc_ptr, index,
