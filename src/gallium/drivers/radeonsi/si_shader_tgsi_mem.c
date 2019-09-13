@@ -235,7 +235,7 @@ image_fetch_rsrc(
 						      image->Register.Index,
 						      ctx->num_images);
 		index = LLVMBuildSub(ctx->ac.builder,
-				     LLVMConstInt(ctx->i32, SI_NUM_IMAGES - 1, 0),
+				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
 				     index, "");
 	}
 
@@ -1126,7 +1126,7 @@ static void tex_fetch_ptrs(struct lp_build_tgsi_context *bld_base,
 						      reg->Register.Index,
 						      ctx->num_samplers);
 		index = LLVMBuildAdd(ctx->ac.builder, index,
-				     LLVMConstInt(ctx->i32, SI_NUM_IMAGES / 2, 0), "");
+				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS / 2, 0), "");
 	} else {
 		index = LLVMConstInt(ctx->i32,
 				     si_get_sampler_slot(reg->Register.Index), 0);

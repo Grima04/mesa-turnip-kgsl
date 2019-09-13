@@ -2633,12 +2633,13 @@ void si_get_active_slot_masks(const struct tgsi_shader_info *info,
 			      uint32_t *const_and_shader_buffers,
 			      uint64_t *samplers_and_images)
 {
-	unsigned start, num_shaderbufs, num_constbufs, num_images, num_samplers;
+	unsigned start, num_shaderbufs, num_constbufs, num_images, num_msaa_images, num_samplers;
 
 	num_shaderbufs = util_last_bit(info->shader_buffers_declared);
 	num_constbufs = util_last_bit(info->const_buffers_declared);
 	/* two 8-byte images share one 16-byte slot */
 	num_images = align(util_last_bit(info->images_declared), 2);
+	num_msaa_images = align(util_last_bit(info->msaa_images_declared), 2);
 	num_samplers = util_last_bit(info->samplers_declared);
 
 	/* The layout is: sb[last] ... sb[0], cb[0] ... cb[last] */
@@ -2646,7 +2647,18 @@ void si_get_active_slot_masks(const struct tgsi_shader_info *info,
 	*const_and_shader_buffers =
 		u_bit_consecutive(start, num_shaderbufs + num_constbufs);
 
-	/* The layout is: image[last] ... image[0], sampler[0] ... sampler[last] */
+	/* The layout is:
+	 *   - fmask[last] ... fmask[0]     go to [15-last .. 15]
+	 *   - image[last] ... image[0]     go to [31-last .. 31]
+	 *   - sampler[0] ... sampler[last] go to [32 .. 32+last*2]
+	 *
+	 * FMASKs for images are placed separately, because MSAA images are rare,
+	 * and so we can benefit from a better cache hit rate if we keep image
+	 * descriptors together.
+	 */
+	if (num_msaa_images)
+		num_images = SI_NUM_IMAGES + num_msaa_images; /* add FMASK descriptors */
+
 	start = si_get_image_slot(num_images - 1) / 2;
 	*samplers_and_images =
 		u_bit_consecutive64(start, num_images / 2 + num_samplers);

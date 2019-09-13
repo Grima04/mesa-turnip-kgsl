@@ -1114,13 +1114,13 @@ si_nir_load_sampler_desc(struct ac_shader_abi *abi,
 
 	if (image) {
 		index = LLVMBuildSub(ctx->ac.builder,
-				     LLVMConstInt(ctx->i32, SI_NUM_IMAGES - 1, 0),
+				     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS - 1, 0),
 				     index, "");
 		return si_load_image_desc(ctx, list, index, desc_type, write, false);
 	}
 
 	index = LLVMBuildAdd(ctx->ac.builder, index,
-			     LLVMConstInt(ctx->i32, SI_NUM_IMAGES / 2, 0), "");
+			     LLVMConstInt(ctx->i32, SI_NUM_IMAGE_SLOTS / 2, 0), "");
 	return si_load_sampler_desc(ctx, list, index, desc_type);
 }
 
