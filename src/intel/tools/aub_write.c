@@ -188,6 +188,8 @@ aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, co
                                      "GGTT PT");
    dword_out(aub, 1);
    dword_out(aub, 0);
+
+   aub->next_context_handle = 1;
 }
 
 void
@@ -609,6 +611,66 @@ aub_write_default_setup(struct aub_file *aub)
       write_legacy_default_setup(aub);
 
    aub->has_default_setup = true;
+}
+
+static struct aub_context *
+aub_context_new(struct aub_file *aub, uint32_t new_id)
+{
+   assert(aub->num_contexts < MAX_CONTEXT_COUNT);
+
+   struct aub_context *ctx = &aub->contexts[aub->num_contexts++];
+
+   ctx->id = new_id;
+   memset(ctx, 0, sizeof(*ctx));
+
+   return ctx;
+}
+
+uint32_t
+aub_write_context_create(struct aub_file *aub, uint32_t *ctx_id)
+{
+   uint32_t new_id = ctx_id ? *ctx_id : aub->next_context_handle;
+
+   aub_context_new(aub, new_id);
+
+   if (!ctx_id)
+      aub->next_context_handle++;
+
+   return new_id;
+}
+
+static struct aub_context *
+aub_context_find(struct aub_file *aub, uint32_t id)
+{
+   for (int i = 0; i < aub->num_contexts; i++) {
+      if (aub->contexts[i].id == id)
+         return &aub->contexts[i];
+   }
+
+   return NULL;
+}
+
+static struct aub_hw_context *
+aub_write_ensure_context(struct aub_file *aub, uint32_t ctx_id,
+                         enum drm_i915_gem_engine_class engine_class)
+{
+   struct aub_context *ctx = aub_context_find(aub, ctx_id);
+   assert(ctx != NULL);
+
+   struct aub_hw_context *hw_ctx = &ctx->hw_contexts[engine_class];
+   if (!hw_ctx->initialized) {
+      /* TODO: initialize context here */
+   }
+
+   return hw_ctx;
+}
+
+static uint64_t
+get_context_descriptor(struct aub_file *aub,
+                       const struct engine *cs,
+                       struct aub_hw_context *hw_ctx)
+{
+   return cs->hw_class | hw_ctx->pphwsp_addr | CONTEXT_FLAGS;
 }
 
 /**

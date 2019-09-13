@@ -336,6 +336,23 @@ remove_bo(int fd, int handle)
    bo->map = NULL;
 }
 
+static uint32_t
+dump_create_context(int fd, uint32_t *ctx_id)
+{
+   if (!aub_file.file) {
+      aub_file_init(&aub_file, output_file,
+                    verbose == 2 ? stdout : NULL,
+                    device, program_invocation_short_name);
+      aub_write_default_setup(&aub_file);
+
+      if (verbose)
+         printf("[running, output file %s, chipset id 0x%04x, gen %d]\n",
+                output_filename, device, devinfo.gen);
+   }
+
+   return aub_write_context_create(&aub_file, ctx_id);
+}
+
 __attribute__ ((visibility ("default"))) int
 close(int fd)
 {
@@ -456,6 +473,21 @@ ioctl(int fd, unsigned long request, ...)
             return 0;
 
          return libc_ioctl(fd, request, argp);
+      }
+
+      case DRM_IOCTL_I915_GEM_CONTEXT_CREATE: {
+         uint32_t *ctx_id = NULL;
+         struct drm_i915_gem_context_create *create = argp;
+         ret = 0;
+         if (!device_override) {
+            ret = libc_ioctl(fd, request, argp);
+            ctx_id = &create->ctx_id;
+         }
+
+         if (ret == 0)
+            create->ctx_id = dump_create_context(fd, ctx_id);
+
+         return ret;
       }
 
       case DRM_IOCTL_I915_GEM_CREATE: {
