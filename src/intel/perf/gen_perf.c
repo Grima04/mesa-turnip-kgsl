@@ -939,7 +939,7 @@ gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                                  const uint32_t *start,
                                  const uint32_t *end)
 {
-   int i, idx = 0;
+   int i;
 
    if (result->hw_id == OA_REPORT_INVALID_CTX_ID &&
        start[2] != OA_REPORT_INVALID_CTX_ID)
@@ -950,27 +950,43 @@ gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
 
    switch (query->oa_format) {
    case I915_OA_FORMAT_A32u40_A4u32_B8_C8:
-      accumulate_uint32(start + 1, end + 1, result->accumulator + idx++); /* timestamp */
-      accumulate_uint32(start + 3, end + 3, result->accumulator + idx++); /* clock */
+      accumulate_uint32(start + 1, end + 1,
+                        result->accumulator + query->gpu_time_offset); /* timestamp */
+      accumulate_uint32(start + 3, end + 3,
+                        result->accumulator + query->gpu_clock_offset); /* clock */
 
       /* 32x 40bit A counters... */
-      for (i = 0; i < 32; i++)
-         accumulate_uint40(i, start, end, result->accumulator + idx++);
+      for (i = 0; i < 32; i++) {
+         accumulate_uint40(i, start, end,
+                           result->accumulator + query->a_offset + i);
+      }
 
       /* 4x 32bit A counters... */
-      for (i = 0; i < 4; i++)
-         accumulate_uint32(start + 36 + i, end + 36 + i, result->accumulator + idx++);
+      for (i = 0; i < 4; i++) {
+         accumulate_uint32(start + 36 + i, end + 36 + i,
+                           result->accumulator + query->a_offset + 32 + i);
+      }
 
-      /* 8x 32bit B counters + 8x 32bit C counters... */
-      for (i = 0; i < 16; i++)
-         accumulate_uint32(start + 48 + i, end + 48 + i, result->accumulator + idx++);
+      /* 8x 32bit B counters */
+      for (i = 0; i < 8; i++) {
+         accumulate_uint32(start + 48 + i, end + 48 + i,
+                           result->accumulator + query->b_offset + i);
+      }
+
+      /* 8x 32bit C counters... */
+      for (i = 0; i < 8; i++) {
+         accumulate_uint32(start + 56 + i, end + 56 + i,
+                           result->accumulator + query->c_offset + i);
+      }
       break;
 
    case I915_OA_FORMAT_A45_B8_C8:
       accumulate_uint32(start + 1, end + 1, result->accumulator); /* timestamp */
 
-      for (i = 0; i < 61; i++)
-         accumulate_uint32(start + 3 + i, end + 3 + i, result->accumulator + 1 + i);
+      for (i = 0; i < 61; i++) {
+         accumulate_uint32(start + 3 + i, end + 3 + i,
+                           result->accumulator + query->a_offset + i);
+      }
       break;
 
    default:
