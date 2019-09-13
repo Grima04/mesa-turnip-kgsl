@@ -2423,7 +2423,7 @@ to upconvert to 32b float internally?
 			hw streamout (rather than stg instructions in shader)
 		</doc>
 		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
-		<bitfield name="NUMNONPOSVAR" low="8" high="15" type="uint"/>
+		<bitfield name="POSITIONLOC" low="8" high="15" type="uint"/>
 		<!--
 		This seems to be the OUTLOC for the psize output.  It could possibly
 		be the max-OUTLOC position, but it is only set when VS writes psize
@@ -2434,14 +2434,10 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9303" name="VPC_PACK_3">
 		<doc>
-		  domain shader version
-
-			num of varyings plus four for gl_Position (plus one if gl_PointSize)
-			plus # of transform-feedback (streamout) varyings if using the
-			hw streamout (rather than stg instructions in shader)
+			domain shader version of VPC_PACK
 		</doc>
 		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
-		<bitfield name="NUMNONPOSVAR" low="8" high="15" type="uint"/>
+		<bitfield name="POSITIONLOC" low="8" high="15" type="uint"/>
 		<!--
 		This seems to be the OUTLOC for the psize output.  It could possibly
 		be the max-OUTLOC position, but it is only set when VS writes psize

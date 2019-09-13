@@ -275,7 +275,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	uint32_t vertex_regid, instance_regid;
 	uint32_t ij_pix_regid, ij_samp_regid, ij_cent_regid, ij_size_regid;
 	enum a3xx_threadsize fssz;
-	uint8_t psize_loc = ~0;
+	uint8_t psize_loc = ~0, pos_loc = ~0;
 	int i, j;
 
 	static const struct ir3_shader_variant dummy_fs = {0};
@@ -393,8 +393,10 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_RING(ring, ~varmask[3]);  /* VPC_VAR[3].DISABLE */
 
 	/* a6xx appends pos/psize to end of the linkage map: */
-	if (VALIDREG(pos_regid))
+	if (VALIDREG(pos_regid)) {
+		pos_loc = l.max_loc;
 		ir3_link_add(&l, pos_regid, 0xf, l.max_loc);
+	}
 
 	if (VALIDREG(psize_regid)) {
 		psize_loc = l.max_loc;
@@ -551,7 +553,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VPC_PACK, 1);
-	OUT_RING(ring, A6XX_VPC_PACK_NUMNONPOSVAR(fs->total_in) |
+	OUT_RING(ring, A6XX_VPC_PACK_POSITIONLOC(pos_loc) |
 			 A6XX_VPC_PACK_PSIZELOC(psize_loc) |
 			 A6XX_VPC_PACK_STRIDE_IN_VPC(l.max_loc));
 
