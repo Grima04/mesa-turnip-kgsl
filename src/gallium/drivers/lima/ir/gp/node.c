@@ -433,17 +433,6 @@ void gpir_node_delete(gpir_node *node)
       ralloc_free(dep);
    }
 
-   if (node->type == gpir_node_type_store) {
-      gpir_store_node *store = gpir_node_to_store(node);
-      if (store->reg)
-         list_del(&store->reg_link);
-   }
-   else if (node->type == gpir_node_type_load) {
-      gpir_load_node *load = gpir_node_to_load(node);
-      if (load->reg)
-         list_del(&load->reg_link);
-   }
-
    list_del(&node->list);
    ralloc_free(node);
 }

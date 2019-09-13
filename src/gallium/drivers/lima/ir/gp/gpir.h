@@ -211,11 +211,6 @@ typedef struct {
 typedef struct {
    int index;
    struct list_head list;
-
-   struct list_head defs_list;
-   struct list_head uses_list;
-
-   int start, end;
 } gpir_reg;
 
 typedef struct {
@@ -236,7 +231,6 @@ typedef struct gpir_store_node {
    gpir_node *child;
 
    gpir_reg *reg;
-   struct list_head reg_link;
 } gpir_store_node;
 
 enum gpir_instr_slot {
@@ -350,6 +344,26 @@ typedef struct gpir_block {
    struct list_head predecessors;
    struct list_head predecessors_node;
 
+   /* for regalloc */
+
+   /* The set of live registers, i.e. registers whose value may be used
+    * eventually, at the beginning of the block.
+    */
+   BITSET_WORD *live_in;
+
+   /* Set of live registers at the end of the block. */
+   BITSET_WORD *live_out;
+
+   /* Set of registers that may have a value defined at the end of the
+    * block.
+    */
+   BITSET_WORD *def_out;
+
+   /* After register allocation, the set of live physical registers at the end
+    * of the block. Needed for scheduling.
+    */
+   uint64_t live_out_phys;
+
    /* For codegen, the offset in the final program. */
    unsigned instr_offset;
 
@@ -380,8 +394,17 @@ typedef struct gpir_compiler {
    struct list_head block_list;
    int cur_index;
 
-   /* array for searching ssa node */
-   gpir_node **var_nodes;
+   /* Find the gpir node for a given NIR SSA def. */
+   gpir_node **node_for_ssa;
+
+   /* Find the gpir node for a given NIR register. */
+   gpir_node **node_for_reg;
+
+   /* Find the gpir register for a given NIR SSA def. */
+   gpir_reg **reg_for_ssa;
+
+   /* Find the gpir register for a given NIR register. */
+   gpir_reg **reg_for_reg;
 
    /* gpir block for NIR block. */
    gpir_block **blocks;

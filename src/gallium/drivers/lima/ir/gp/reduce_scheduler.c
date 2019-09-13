@@ -190,21 +190,47 @@ static void schedule_block(gpir_block *block)
    schedule_ready_list(block, &ready_list);
 }
 
+/* Due to how we translate from NIR, we never read a register written in the
+ * same block (we just pass the node through instead), so we don't have to
+ * worry about read-after-write dependencies. We do have to worry about
+ * write-after-read though, so we add those dependencies now. For example in a
+ * loop like this we need a dependency between the write and the read of i:
+ *
+ * i = ...
+ * while (...) {
+ *    ... = i;
+ *    i = i + 1;
+ * }
+ */
+
+static void add_false_dependencies(gpir_compiler *comp)
+{
+   /* Make sure we allocate this only once, in case there are many values and
+    * many blocks.
+    */
+   gpir_node **last_written = calloc(comp->cur_reg, sizeof(gpir_node *));
+
+   list_for_each_entry(gpir_block, block, &comp->block_list, list) {
+      list_for_each_entry_rev(gpir_node, node, &block->node_list, list) {
+         if (node->op == gpir_op_load_reg) {
+            gpir_load_node *load = gpir_node_to_load(node);
+            gpir_node *store = last_written[load->reg->index];
+            if (store && store->block == block) {
+               gpir_node_add_dep(store, node, GPIR_DEP_WRITE_AFTER_READ);
+            }
+         } else if (node->op == gpir_op_store_reg) {
+            gpir_store_node *store = gpir_node_to_store(node);
+            last_written[store->reg->index] = node;
+         }
+      }
+   }
+
+   free(last_written);
+}
+
 bool gpir_reduce_reg_pressure_schedule_prog(gpir_compiler *comp)
 {
-   /* No need to build physical reg load/store dependency here,
-    * because we just exit SSA form, there should be at most
-    * one load and one store pair for a physical reg within a
-    * block, and the store must be after load with the output
-    * of load as input after some calculation. So we don't need to
-    * insert extra write-after-read or read-after-write dependecy
-    * for load/store nodes to maintain the right sequence before
-    * scheduling.
-    *
-    * Also no need to handle SSA def/use in difference block,
-    * because we'll load/store SSA to a physical reg if def/use
-    * are not in the same block.
-    */
+   add_false_dependencies(comp);
 
    list_for_each_entry(gpir_block, block, &comp->block_list, list) {
       block->rsched.node_index = 0;

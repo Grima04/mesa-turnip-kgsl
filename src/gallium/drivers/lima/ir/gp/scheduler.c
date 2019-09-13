@@ -215,6 +215,14 @@ typedef struct {
     * schedule the instruction.
     */
    int total_spill_needed;
+
+   /* For each physical register, a linked list of loads associated with it in
+    * this block. When we spill a value to a given register, and there are
+    * existing loads associated with it that haven't been scheduled yet, we
+    * have to make sure that the corresponding unspill happens after the last
+    * original use has happened, i.e. is scheduled before.
+    */
+   struct list_head physreg_reads[GPIR_PHYSICAL_REG_NUM];
 } sched_ctx;
 
 static int gpir_min_dist_alu(gpir_dep *dep)
@@ -533,6 +541,19 @@ static bool _try_place_node(sched_ctx *ctx, gpir_instr *instr, gpir_node *node)
          node->sched.pos = load->sched.pos;
          return true;
       }
+   }
+
+   if (node->op == gpir_op_store_reg) {
+      /* This register may be loaded in the next basic block, in which case
+       * there still needs to be a 2 instruction gap. We do what the blob
+       * seems to do and simply disable stores in the last two instructions of
+       * the basic block.
+       *
+       * TODO: We may be able to do better than this, but we have to check
+       * first if storing a register works across branches.
+       */
+      if (instr->index < 2)
+         return false;
    }
 
    node->sched.instr = instr;
@@ -1009,10 +1030,6 @@ static bool try_spill_node(sched_ctx *ctx, gpir_node *node)
 
       ctx->live_physregs |= (1ull << physreg);
 
-      /* TODO: when we support multiple basic blocks, there may be register
-       * loads/stores to this register other than this one that haven't been
-       * scheduled yet so we may need to insert write-after-read dependencies.
-       */
       gpir_store_node *store = gpir_node_create(ctx->block, gpir_op_store_reg);
       store->index = physreg / 4;
       store->component = physreg % 4;
@@ -1030,6 +1047,16 @@ static bool try_spill_node(sched_ctx *ctx, gpir_node *node)
       }
       node->sched.physreg_store = store;
       gpir_node_add_dep(&store->node, node, GPIR_DEP_INPUT);
+
+      list_for_each_entry(gpir_load_node, load,
+                          &ctx->physreg_reads[physreg], reg_link) {
+         gpir_node_add_dep(&store->node, &load->node, GPIR_DEP_WRITE_AFTER_READ);
+         if (load->node.sched.ready) {
+            list_del(&load->node.list);
+            load->node.sched.ready = false;
+         }
+      }
+
       node->sched.ready = false;
       schedule_insert_ready_list(ctx, &store->node);
    }
@@ -1556,13 +1583,21 @@ static bool schedule_block(gpir_block *block)
    list_inithead(&ctx.ready_list);
    ctx.block = block;
    ctx.ready_list_slots = 0;
-   /* TODO initialize with block live out once we have proper liveness
-    * tracking
-    */
-   ctx.live_physregs = 0;
+   ctx.live_physregs = block->live_out_phys;
+
+   for (unsigned i = 0; i < GPIR_PHYSICAL_REG_NUM; i++) {
+      list_inithead(&ctx.physreg_reads[i]);
+   }
 
    /* construct the ready list from root nodes */
    list_for_each_entry_safe(gpir_node, node, &block->node_list, list) {
+      /* Add to physreg_reads */
+      if (node->op == gpir_op_load_reg) {
+         gpir_load_node *load = gpir_node_to_load(node);
+         unsigned index = 4 * load->index + load->component;
+         list_addtail(&load->reg_link, &ctx.physreg_reads[index]);
+      }
+
       if (gpir_node_is_root(node))
          schedule_insert_ready_list(&ctx, node);
    }
@@ -1623,22 +1658,6 @@ static void schedule_build_dependency(gpir_block *block)
       }
    }
 
-   /* Forward dependencies. We only need to add these for register loads,
-    * since value registers already have an input dependency.
-    */
-   list_for_each_entry(gpir_node, node, &block->node_list, list) {
-      if (node->op == gpir_op_load_reg) {
-         gpir_load_node *load = gpir_node_to_load(node);
-         unsigned index = 4 * load->index + load->component;
-         if (last_written[index]) {
-            gpir_node_add_dep(node, last_written[index], GPIR_DEP_READ_AFTER_WRITE);
-         }
-      }
-
-      if (node->value_reg >= 0)
-         last_written[node->value_reg] = node;
-   }
-
    memset(last_written, 0, sizeof(last_written));
 
    /* False dependencies. For value registers, these exist only to make sure
@@ -1651,6 +1670,10 @@ static void schedule_build_dependency(gpir_block *block)
          if (last_written[index]) {
             gpir_node_add_dep(last_written[index], node, GPIR_DEP_WRITE_AFTER_READ);
          }
+      } else if (node->op == gpir_op_store_reg) {
+         gpir_store_node *store = gpir_node_to_store(node);
+         unsigned index = 4 * store->index + store->component;
+         last_written[index] = node;
       } else {
          add_fake_dep(node, node, last_written);
       }

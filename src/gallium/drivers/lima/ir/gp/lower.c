@@ -109,10 +109,7 @@ static bool gpir_lower_load(gpir_compiler *comp)
                gpir_load_node *nload = gpir_node_to_load(new);
                nload->index = load->index;
                nload->component = load->component;
-               if (load->reg) {
-                  nload->reg = load->reg;
-                  list_addtail(&nload->reg_link, &load->reg->uses_list);
-               }
+               nload->reg = load->reg;
 
                gpir_node_replace_pred(dep, new);
                gpir_node_replace_child(succ, node, new);
