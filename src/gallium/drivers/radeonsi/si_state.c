@@ -2252,9 +2252,6 @@ static bool si_is_format_supported(struct pipe_screen *screen,
 		if (!screen->get_param(screen, PIPE_CAP_TEXTURE_MULTISAMPLE))
 			return false;
 
-		if (usage & PIPE_BIND_SHADER_IMAGE)
-			return false;
-
 		/* Only power-of-two sample counts are supported. */
 		if (!util_is_power_of_two_or_zero(sample_count) ||
 		    !util_is_power_of_two_or_zero(storage_sample_count))
