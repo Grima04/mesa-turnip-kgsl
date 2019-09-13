@@ -350,6 +350,9 @@ scons-llvm:
     name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
     paths:
       - results/
+  dependencies:
+    - meson-main
+  needs: [meson-main]
 
 test-llvmpipe-gles2:
   parallel: 4
@@ -359,9 +362,6 @@ test-llvmpipe-gles2:
     LIBGL_ALWAYS_SOFTWARE: "true"
     DEQP_RENDERER_MATCH: "llvmpipe"
   extends: .deqp-test
-  dependencies:
-    - meson-main
-  needs: [meson-main]
 
 test-softpipe-gles2:
   extends: test-llvmpipe-gles2
@@ -383,9 +383,6 @@ test-softpipe-gles3-limited:
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 10
   extends: .deqp-test
-  dependencies:
-    - meson-main
-  needs: [meson-main]
 
 arm64_a630_gles2:
   extends: .deqp-test
