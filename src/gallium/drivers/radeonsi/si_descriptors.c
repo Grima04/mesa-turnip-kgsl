@@ -725,21 +725,11 @@ static void si_set_shader_image_desc(struct si_context *ctx,
 		bool uses_dcc = vi_dcc_enabled(tex, level);
 		unsigned access = view->access;
 
-		/* Clear the write flag when writes can't occur.
-		 * Note that DCC_DECOMPRESS for MSAA doesn't work in some cases,
-		 * so we don't wanna trigger it.
-		 */
-		if (tex->is_depth ||
-		    (!fmask_desc && tex->surface.fmask_size != 0)) {
-			assert(!"Z/S and MSAA image stores are not supported");
-			access &= ~PIPE_IMAGE_ACCESS_WRITE;
-		}
-
 		assert(!tex->is_depth);
-		assert(fmask_desc || tex->surface.fmask_size == 0);
+		assert(fmask_desc || tex->surface.fmask_offset == 0);
 
 		if (uses_dcc && !skip_decompress &&
-		    (view->access & PIPE_IMAGE_ACCESS_WRITE ||
+		    (access & PIPE_IMAGE_ACCESS_WRITE ||
 		     !vi_dcc_formats_compatible(screen, res->b.b.format, view->format))) {
 			/* If DCC can't be disabled, at least decompress it.
 			 * The decompression is relatively cheap if the surface

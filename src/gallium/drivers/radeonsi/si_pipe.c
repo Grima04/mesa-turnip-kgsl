@@ -233,6 +233,15 @@ static void si_destroy_context(struct pipe_context *context)
 	if (sctx->cs_dcc_retile)
 		sctx->b.delete_compute_state(&sctx->b, sctx->cs_dcc_retile);
 
+	for (unsigned i = 0; i < ARRAY_SIZE(sctx->cs_fmask_expand); i++) {
+		for (unsigned j = 0; j < ARRAY_SIZE(sctx->cs_fmask_expand[i]); j++) {
+			if (sctx->cs_fmask_expand[i][j]) {
+				sctx->b.delete_compute_state(&sctx->b,
+							     sctx->cs_fmask_expand[i][j]);
+			}
+		}
+	}
+
 	if (sctx->blitter)
 		util_blitter_destroy(sctx->blitter);
 

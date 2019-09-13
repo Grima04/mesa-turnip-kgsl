@@ -432,7 +432,8 @@ static void si_blit_decompress_color(struct si_context *sctx,
 				     struct si_texture *tex,
 				     unsigned first_level, unsigned last_level,
 				     unsigned first_layer, unsigned last_layer,
-				     bool need_dcc_decompress)
+				     bool need_dcc_decompress,
+				     bool need_fmask_expand)
 {
 	void* custom_blend;
 	unsigned layer, checked_last_layer, max_layer;
@@ -512,11 +513,17 @@ static void si_blit_decompress_color(struct si_context *sctx,
 	si_make_CB_shader_coherent(sctx, tex->buffer.b.b.nr_samples,
 				   vi_dcc_enabled(tex, first_level),
 				   tex->surface.u.gfx9.dcc.pipe_aligned);
+
+	if (need_fmask_expand && tex->surface.fmask_offset && tex->fmask_is_not_identity) {
+		si_compute_expand_fmask(&sctx->b, &tex->buffer.b.b);
+		tex->fmask_is_not_identity = false;
+	}
 }
 
 static void
 si_decompress_color_texture(struct si_context *sctx, struct si_texture *tex,
-			    unsigned first_level, unsigned last_level)
+			    unsigned first_level, unsigned last_level,
+			    bool need_fmask_expand)
 {
 	/* CMASK or DCC can be discarded and we can still end up here. */
 	if (!tex->cmask_buffer && !tex->surface.fmask_size && !tex->surface.dcc_offset)
@@ -524,7 +531,7 @@ si_decompress_color_texture(struct si_context *sctx, struct si_texture *tex,
 
 	si_blit_decompress_color(sctx, tex, first_level, last_level, 0,
 				 util_max_layer(&tex->buffer.b.b, first_level),
-				 false);
+				 false, need_fmask_expand);
 }
 
 static void
@@ -546,7 +553,7 @@ si_decompress_sampler_color_textures(struct si_context *sctx,
 		tex = (struct si_texture *)view->texture;
 
 		si_decompress_color_texture(sctx, tex, view->u.tex.first_level,
-					    view->u.tex.last_level);
+					    view->u.tex.last_level, false);
 	}
 }
 
@@ -569,7 +576,8 @@ si_decompress_image_color_textures(struct si_context *sctx,
 		tex = (struct si_texture *)view->resource;
 
 		si_decompress_color_texture(sctx, tex, view->u.tex.level,
-					    view->u.tex.level);
+					    view->u.tex.level,
+					    view->access & PIPE_IMAGE_ACCESS_WRITE);
 	}
 }
 
@@ -729,7 +737,7 @@ static void si_decompress_resident_textures(struct si_context *sctx)
 		struct si_texture *tex = (struct si_texture *)view->texture;
 
 		si_decompress_color_texture(sctx, tex, view->u.tex.first_level,
-					    view->u.tex.last_level);
+					    view->u.tex.last_level, false);
 	}
 
 	util_dynarray_foreach(&sctx->resident_tex_needs_depth_decompress,
@@ -753,7 +761,8 @@ static void si_decompress_resident_images(struct si_context *sctx)
 		struct si_texture *tex = (struct si_texture *)view->resource;
 
 		si_decompress_color_texture(sctx, tex, view->u.tex.level,
-					    view->u.tex.level);
+					    view->u.tex.level,
+					    view->access & PIPE_IMAGE_ACCESS_WRITE);
 	}
 }
 
@@ -798,7 +807,7 @@ void si_decompress_textures(struct si_context *sctx, unsigned shader_mask)
 			si_decompress_color_texture(sctx,
 						    (struct si_texture*)cb0->texture,
 						    cb0->u.tex.first_layer,
-						    cb0->u.tex.last_layer);
+						    cb0->u.tex.last_layer, false);
 		}
 
 		si_check_render_feedback(sctx);
@@ -855,7 +864,7 @@ static void si_decompress_subresource(struct pipe_context *ctx,
 		}
 
 		si_blit_decompress_color(sctx, stex, level, level,
-					 first_layer, last_layer, false);
+					 first_layer, last_layer, false, false);
 	}
 }
 
@@ -1291,7 +1300,7 @@ static void si_flush_resource(struct pipe_context *ctx,
 	if (!tex->is_depth && (tex->cmask_buffer || tex->surface.dcc_offset)) {
 		si_blit_decompress_color(sctx, tex, 0, res->last_level,
 					 0, util_max_layer(res, 0),
-					 tex->dcc_separate_buffer != NULL);
+					 tex->dcc_separate_buffer != NULL, false);
 
 		if (tex->surface.display_dcc_offset)
 			si_retile_dcc(sctx, tex);
@@ -1338,7 +1347,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
 
 	si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level,
 				 0, util_max_layer(&tex->buffer.b.b, 0),
-				 true);
+				 true, false);
 }
 
 void si_init_blit_functions(struct si_context *sctx)
