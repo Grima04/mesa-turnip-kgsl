@@ -4125,7 +4125,7 @@ static void gfx10_ngg_gs_emit_vertex(struct radv_shader_context *ctx,
 	const LLVMValueRef can_emit =
 		LLVMBuildICmp(builder, LLVMIntULT, vertexidx,
 			      LLVMConstInt(ctx->ac.i32, ctx->shader->info.gs.vertices_out, false), "");
-	ac_build_kill_if_false(&ctx->ac, can_emit);
+	ac_build_ifcc(&ctx->ac, can_emit, 9001);
 
 	tmp = LLVMBuildAdd(builder, vertexidx, ctx->ac.i32_1, "");
 	tmp = LLVMBuildSelect(builder, can_emit, tmp, vertexidx, "");
@@ -4191,6 +4191,8 @@ static void gfx10_ngg_gs_emit_vertex(struct radv_shader_context *ctx,
 	tmp = LLVMBuildLoad(builder, ctx->gs_generated_prims[stream], "");
 	tmp = LLVMBuildAdd(builder, tmp, LLVMBuildZExt(builder, iscompleteprim, ctx->ac.i32, ""), "");
 	LLVMBuildStore(builder, tmp, ctx->gs_generated_prims[stream]);
+
+	ac_build_endif(&ctx->ac, 9001);
 }
 
 static void
