@@ -4831,8 +4831,8 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 	unsigned max_waves_per_sh = 0;
 	uint64_t va;
 
-	pipeline->cs.buf = malloc(20 * 4);
-	pipeline->cs.max_dw = 20;
+	pipeline->cs.max_dw = device->physical_device->rad_info.chip_class >= GFX10 ? 22 : 20;
+	pipeline->cs.buf = malloc(pipeline->cs.max_dw * 4);
 
 	compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
 	va = radv_buffer_get_va(compute_shader->bo) + compute_shader->bo_offset;
@@ -4844,6 +4844,9 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 	radeon_set_sh_reg_seq(&pipeline->cs, R_00B848_COMPUTE_PGM_RSRC1, 2);
 	radeon_emit(&pipeline->cs, compute_shader->config.rsrc1);
 	radeon_emit(&pipeline->cs, compute_shader->config.rsrc2);
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_sh_reg(&pipeline->cs, R_00B8A0_COMPUTE_PGM_RSRC3, compute_shader->config.rsrc3);
+	}
 
 	radeon_set_sh_reg(&pipeline->cs, R_00B860_COMPUTE_TMPRING_SIZE,
 			  S_00B860_WAVES(pipeline->max_waves) |

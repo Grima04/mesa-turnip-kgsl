@@ -701,10 +701,16 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 	unsigned num_vgprs = MAX2(config_in->num_vgprs, num_input_vgprs);
 	/* +3 for scratch wave offset and VCC */
 	unsigned num_sgprs = MAX2(config_in->num_sgprs, info->num_input_sgprs + 3);
+	unsigned num_shared_vgprs = config_in->num_shared_vgprs;
+	/* shared VGPRs are introduced in Navi and are allocated in blocks of 8 (RDNA ref 3.6.5) */
+	assert((pdevice->rad_info.chip_class >= GFX10 && num_shared_vgprs % 8 == 0)
+	       || (pdevice->rad_info.chip_class < GFX10 && num_shared_vgprs == 0));
+	unsigned num_shared_vgpr_blocks = num_shared_vgprs / 8;
 
 	*config_out = *config_in;
 	config_out->num_vgprs = num_vgprs;
 	config_out->num_sgprs = num_sgprs;
+	config_out->num_shared_vgprs = num_shared_vgprs;
 
 	/* Enable 64-bit and 16-bit denormals, because there is no performance
 	 * cost.
@@ -760,6 +766,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			config_out->rsrc1 |= S_00B128_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
 		}
+		config_out->rsrc2 |= S_00B22C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 		break;
 	case MESA_SHADER_TESS_CTRL:
 		if (pdevice->rad_info.chip_class >= GFX9) {
@@ -777,6 +784,7 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 		}
 		config_out->rsrc1 |= S_00B428_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
 				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
+		config_out->rsrc2 |= S_00B42C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 		break;
 	case MESA_SHADER_VERTEX:
 		if (info->is_ngg) {
@@ -808,14 +816,17 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			}
 
 			config_out->rsrc1 |= S_00B128_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+			config_out->rsrc2 |= S_00B12C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 		}
 		break;
 	case MESA_SHADER_FRAGMENT:
 		config_out->rsrc1 |= S_00B028_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
+		config_out->rsrc2 |= S_00B02C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 		break;
 	case MESA_SHADER_GEOMETRY:
 		config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
 				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
+		config_out->rsrc2 |= S_00B22C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 		break;
 	case MESA_SHADER_COMPUTE:
 		config_out->rsrc1 |= S_00B848_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
@@ -828,6 +839,8 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 						info->cs.uses_thread_id[1] ? 1 : 0) |
 			S_00B84C_TG_SIZE_EN(info->cs.uses_local_invocation_idx) |
 			S_00B84C_LDS_SIZE(config_in->lds_size);
+		config_out->rsrc3 |= S_00B8A0_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
+
 		break;
 	default:
 		unreachable("unsupported shader type");
