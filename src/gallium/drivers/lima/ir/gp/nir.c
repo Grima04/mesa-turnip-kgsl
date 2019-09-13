@@ -246,7 +246,7 @@ static bool gpir_emit_load_const(gpir_block *block, nir_instr *ni)
 {
    nir_load_const_instr *instr = nir_instr_as_load_const(ni);
    gpir_const_node *node =
-      gpir_node_create_ssa(block, gpir_op_const, &instr->def);
+      gpir_node_to_const(gpir_node_create_ssa(block, gpir_op_const, &instr->def));
    if (unlikely(!node))
       return false;
 
