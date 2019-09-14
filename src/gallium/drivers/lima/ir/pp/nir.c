@@ -319,6 +319,12 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
 
       lnode->num_components = instr->num_components;
       lnode->index = nir_intrinsic_base(instr) * 4 + nir_intrinsic_component(instr);
+      if (nir_src_is_const(instr->src[0]))
+         lnode->index += (uint32_t)(nir_src_as_float(instr->src[0]) * 4);
+      else {
+         lnode->num_src = 1;
+         ppir_node_add_src(block->comp, &lnode->node, &lnode->src, instr->src, 1);
+      }
       return &lnode->node;
 
    case nir_intrinsic_load_frag_coord:
@@ -360,7 +366,12 @@ static ppir_node *ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
 
       lnode->num_components = instr->num_components;
       lnode->index = nir_intrinsic_base(instr);
-      lnode->index += (uint32_t)nir_src_as_float(instr->src[0]);
+      if (nir_src_is_const(instr->src[0]))
+         lnode->index += (uint32_t)nir_src_as_float(instr->src[0]);
+      else {
+         lnode->num_src = 1;
+         ppir_node_add_src(block->comp, &lnode->node, &lnode->src, instr->src, 1);
+      }
 
       return &lnode->node;
 

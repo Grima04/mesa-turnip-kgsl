@@ -65,7 +65,13 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
 
       int alignment = num_components == 3 ? 3 : num_components - 1;
       f->imm.alignment = alignment;
-      f->imm.offset_vector = 0xf;
+
+      if (load->num_src) {
+         index = ppir_target_get_src_reg_index(&load->src);
+         f->imm.offset_vector = index >> 2;
+         f->imm.offset_scalar = index & 0x3;
+      } else
+         f->imm.offset_vector = 0xf;
 
       if (alignment == 3)
          f->imm.index = load->index >> 2;
@@ -134,13 +140,14 @@ static void ppir_codegen_encode_uniform(ppir_node *node, void *code)
          assert(0);
    }
 
-   int num_components = load->num_components;
-   int alignment = num_components == 4 ? 2 : num_components - 1;
+   /* Uniforms are always aligned to vec4 boundary */
+   f->alignment = 2;
+   f->index = load->index;
 
-   f->alignment = alignment;
-
-   /* TODO: uniform can be also combined like varying */
-   f->index = load->index << (2 - alignment);
+   if (load->num_src) {
+      f->offset_en = 1;
+      f->offset_reg = ppir_target_get_src_reg_index(&load->src);
+   }
 }
 
 static unsigned shift_to_op(int shift)

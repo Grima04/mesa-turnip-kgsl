@@ -318,7 +318,7 @@ print_uniform(void *code, unsigned offset)
    }
 
    if (uniform->offset_en) {
-      printf(" ");
+      printf("+");
       print_source_scalar(uniform->offset_reg, NULL, false, false);
    }
 }

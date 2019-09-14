@@ -229,6 +229,14 @@ get_fragment_shader_param(struct lima_screen *screen,
    case PIPE_SHADER_CAP_MAX_TEMPS:
       return 256; /* need investigate */
 
+   case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
+   case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
+      return 1;
+
+   case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
+   case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
+      return 0;
+
    default:
       return 0;
    }

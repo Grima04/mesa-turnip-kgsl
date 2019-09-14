@@ -96,9 +96,12 @@ static bool ppir_lower_load(ppir_block *block, ppir_node *node)
       return true;
    }
 
-   assert(ppir_node_has_single_src_succ(node) || ppir_node_is_root(node));
-   ppir_node *succ = ppir_node_first_succ(node);
-   if (dest->type != ppir_target_register) {
+   /* load can have multiple successors in case if we duplicated load node
+    * that has load node in source
+    */
+   if ((ppir_node_has_single_src_succ(node) || ppir_node_is_root(node)) &&
+      dest->type != ppir_target_register) {
+      ppir_node *succ = ppir_node_first_succ(node);
       switch (succ->type) {
       case ppir_node_type_alu:
       case ppir_node_type_branch: {

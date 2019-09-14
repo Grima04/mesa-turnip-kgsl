@@ -703,6 +703,25 @@ ppir_node_clone_load(ppir_block *block, ppir_node *node)
    ppir_dest *dest = ppir_node_get_dest(node);
    new_lnode->dest = *dest;
 
+   ppir_src *src = ppir_node_get_src(node, 0);
+   if (src) {
+      new_lnode->num_src = 1;
+      switch (src->type) {
+      case ppir_target_ssa:
+         ppir_node_target_assign(&new_lnode->src, src->node);
+         ppir_node_add_dep(&new_lnode->node, src->node, ppir_dep_src);
+         break;
+      case ppir_target_register:
+         new_lnode->src.type = src->type;
+         new_lnode->src.reg = src->reg;
+         new_lnode->src.node = NULL;
+         break;
+      default:
+         /* Load nodes can't consume pipeline registers */
+         assert(0);
+      }
+   }
+
    return &new_lnode->node;
 }
 
