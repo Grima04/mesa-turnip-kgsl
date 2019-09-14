@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <panfrost-misc.h>
 #include <panfrost-job.h>
+#include "pan_bo.h"
 #include "pan_context.h"
 
 /* TODO: What does this actually have to be? */

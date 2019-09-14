@@ -29,6 +29,7 @@
 #include "util/u_memory.h"
 #include "pan_blend_shaders.h"
 #include "pan_blending.h"
+#include "pan_bo.h"
 
 /* A given Gallium blend state can be encoded to the hardware in numerous,
  * dramatically divergent ways due to the interactions of blending with

@@ -43,6 +43,7 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "drm-uapi/panfrost_drm.h"
 
+#include "pan_bo.h"
 #include "pan_screen.h"
 #include "pan_resource.h"
 #include "pan_public.h"

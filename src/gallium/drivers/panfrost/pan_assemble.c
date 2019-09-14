@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "pan_bo.h"
 #include "pan_context.h"
 
 #include "compiler/nir/nir.h"

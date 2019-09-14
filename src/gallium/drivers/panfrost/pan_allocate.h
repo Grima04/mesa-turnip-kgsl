@@ -43,26 +43,6 @@ struct panfrost_transfer {
         mali_ptr gpu;
 };
 
-struct panfrost_bo {
-        /* Must be first for casting */
-        struct list_head link;
-
-        struct pipe_reference reference;
-
-        /* Mapping for the entire object (all levels) */
-        uint8_t *cpu;
-
-        /* GPU address for the object */
-        mali_ptr gpu;
-
-        /* Size of all entire trees */
-        size_t size;
-
-        int gem_handle;
-
-        uint32_t flags;
-};
-
 struct panfrost_transfer
 panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz);
 

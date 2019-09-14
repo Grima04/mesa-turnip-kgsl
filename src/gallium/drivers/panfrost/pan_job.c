@@ -27,6 +27,7 @@
 
 #include "drm-uapi/panfrost_drm.h"
 
+#include "pan_bo.h"
 #include "pan_context.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"

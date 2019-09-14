@@ -47,26 +47,6 @@ struct panfrost_screen;
 /* Driver limits */
 #define PAN_MAX_CONST_BUFFERS 16
 
-/* Flags for allocated memory */
-
-/* This memory region is executable */
-#define PAN_BO_EXECUTE            (1 << 0)
-
-/* This memory region should be lazily allocated and grow-on-page-fault. Must
- * be used in conjunction with INVISIBLE */
-#define PAN_BO_GROWABLE           (1 << 1)
-
-/* This memory region should not be mapped to the CPU */
-#define PAN_BO_INVISIBLE          (1 << 2)
-
-/* This memory region will be used for varyings and needs to have the cache
- * bits twiddled accordingly */
-#define PAN_BO_COHERENT_LOCAL     (1 << 3)
-
-/* This region may not be used immediately and will not mmap on allocate
- * (semantically distinct from INVISIBLE, which cannot never be mmaped) */
-#define PAN_BO_DELAY_MMAP         (1 << 4)
-
 /* Transient slab size. This is a balance between fragmentation against cache
  * locality and ease of bookkeeping */
 
@@ -122,32 +102,5 @@ pan_screen(struct pipe_screen *p)
 
 struct panfrost_fence *
 panfrost_fence_create(struct panfrost_context *ctx);
-
-struct panfrost_bo *
-panfrost_bo_create(struct panfrost_screen *screen, size_t size,
-                       uint32_t flags);
-void
-panfrost_bo_mmap(struct panfrost_screen *screen, struct panfrost_bo *bo);
-void
-panfrost_bo_release(struct panfrost_screen *screen, struct panfrost_bo *bo,
-                    bool cacheable);
-struct panfrost_bo *
-panfrost_bo_import(struct panfrost_screen *screen, int fd);
-int
-panfrost_bo_export(struct panfrost_screen *screen, const struct panfrost_bo *bo);
-
-struct panfrost_bo *
-panfrost_bo_cache_fetch(
-                struct panfrost_screen *screen,
-                size_t size, uint32_t flags);
-
-bool
-panfrost_bo_cache_put(
-                struct panfrost_screen *screen,
-                struct panfrost_bo *bo);
-
-void
-panfrost_bo_cache_evict_all(
-                struct panfrost_screen *screen);
 
 #endif /* PAN_SCREEN_H */

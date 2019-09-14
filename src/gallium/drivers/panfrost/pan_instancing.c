@@ -23,6 +23,7 @@
  *
  */
 
+#include "pan_bo.h"
 #include "pan_context.h"
 
 /* See mali_job for notes on how this works. But basically, for small vertex

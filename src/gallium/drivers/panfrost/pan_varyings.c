@@ -23,6 +23,7 @@
  *
  */
 
+#include "pan_bo.h"
 #include "pan_context.h"
 #include "util/u_prim.h"
 
