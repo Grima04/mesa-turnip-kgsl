@@ -278,7 +278,6 @@ panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch, bool has_draws)
 
         panfrost_batch_add_bo(batch, ctx->scratchpad);
         panfrost_batch_add_bo(batch, ctx->tiler_heap);
-        panfrost_batch_add_bo(batch, batch->polygon_list);
 
         if (batch->first_job.gpu) {
                 ret = panfrost_drm_submit_batch(batch, batch->first_job.gpu, 0);

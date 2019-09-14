@@ -67,9 +67,6 @@ panfrost_free_batch(struct panfrost_batch *batch)
                 panfrost_bo_unreference(ctx->base.screen, bo);
         }
 
-        /* Unreference the polygon list */
-        panfrost_bo_unreference(ctx->base.screen, batch->polygon_list);
-
         _mesa_hash_table_remove_key(ctx->batches, &batch->key);
 
         if (ctx->batch == batch)
@@ -158,6 +155,13 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
 
                 batch->polygon_list = panfrost_drm_create_bo(screen,
                                 size, PAN_ALLOCATE_INVISIBLE);
+                panfrost_batch_add_bo(batch, batch->polygon_list);
+
+                /* A BO reference has been retained by panfrost_batch_add_bo(),
+                 * so we need to unreference it here if we want the BO to be
+                 * automatically released when the batch is destroyed.
+                 */
+                panfrost_bo_unreference(&screen->base, batch->polygon_list);
         }
 
         return batch->polygon_list->gpu;
