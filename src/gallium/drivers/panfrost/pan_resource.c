@@ -839,7 +839,7 @@ panfrost_resource_hint_layout(
 
         /* If we grew in size, reallocate the BO */
         if (new_size > rsrc->bo->size) {
-                panfrost_bo_release(rsrc->bo, true);
+                panfrost_bo_unreference(rsrc->bo);
                 rsrc->bo = panfrost_bo_create(screen, new_size, PAN_BO_DELAY_MMAP);
         }
 }

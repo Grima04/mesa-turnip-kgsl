@@ -84,6 +84,9 @@ pan_bucket(struct panfrost_screen *screen, unsigned size)
         return &screen->bo_cache[pan_bucket_index(size)];
 }
 
+static void
+panfrost_bo_release(struct panfrost_bo *bo, bool cacheable);
+
 /* Tries to fetch a BO of sufficient size with the appropriate flags from the
  * BO cache. If it succeeds, it returns that BO and removes the BO from the
  * cache. If it fails, it returns NULL signaling the caller to allocate a new
@@ -287,7 +290,7 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
         return bo;
 }
 
-void
+static void
 panfrost_bo_release(struct panfrost_bo *bo, bool cacheable)
 {
         if (!bo)

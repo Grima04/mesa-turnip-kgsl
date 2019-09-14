@@ -2425,9 +2425,9 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter_wallpaper)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
-        panfrost_bo_release(panfrost->scratchpad, false);
-        panfrost_bo_release(panfrost->tiler_heap, false);
-        panfrost_bo_release(panfrost->tiler_dummy, false);
+        panfrost_bo_unreference(panfrost->scratchpad);
+        panfrost_bo_unreference(panfrost->tiler_heap);
+        panfrost_bo_unreference(panfrost->tiler_dummy);
 
         ralloc_free(pipe);
 }

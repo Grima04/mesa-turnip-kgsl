@@ -83,8 +83,6 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
                    uint32_t flags);
 void
 panfrost_bo_mmap(struct panfrost_bo *bo);
-void
-panfrost_bo_release(struct panfrost_bo *bo, bool cacheable);
 struct panfrost_bo *
 panfrost_bo_import(struct panfrost_screen *screen, int fd);
 int
