@@ -3573,6 +3573,8 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(storage_16bit, cap);
          break;
 
+      case SpvCapabilityShaderLayer:
+      case SpvCapabilityShaderViewportIndex:
       case SpvCapabilityShaderViewportIndexLayerEXT:
          spv_check_supported(shader_viewport_index_layer, cap);
          break;
