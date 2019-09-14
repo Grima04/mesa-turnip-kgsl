@@ -561,11 +561,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
         *out_transfer = &transfer->base;
 
         /* If we haven't already mmaped, now's the time */
-
-        if (!bo->cpu) {
-                struct panfrost_screen *screen = pan_screen(pctx->screen);
-                panfrost_bo_mmap(screen, bo);
-        }
+        panfrost_bo_mmap(pan_screen(pctx->screen), bo);
 
         /* Check if we're bound for rendering and this is a read pixels. If so,
          * we need to flush */
