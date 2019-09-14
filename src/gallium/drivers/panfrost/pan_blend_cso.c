@@ -227,7 +227,6 @@ panfrost_blend_constant(float *out, float *in, unsigned mask)
 struct panfrost_blend_final
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 {
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* Grab the format, falling back gracefully if called invalidly (which
@@ -273,12 +272,9 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         final.shader.first_tag = shader->first_tag;
 
         /* Upload the shader */
-        final.shader.bo = panfrost_bo_create(screen, shader->size, PAN_BO_EXECUTE);
+        final.shader.bo = panfrost_batch_create_bo(batch, shader->size,
+                                                   PAN_BO_EXECUTE);
         memcpy(final.shader.bo->cpu, shader->buffer, shader->size);
-
-        /* Pass BO ownership to job */
-        panfrost_batch_add_bo(batch, final.shader.bo);
-        panfrost_bo_unreference(final.shader.bo);
 
         if (shader->patch_index) {
                 /* We have to specialize the blend shader to use constants, so

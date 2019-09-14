@@ -144,6 +144,25 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo)
         _mesa_set_add(batch->bos, bo);
 }
 
+struct panfrost_bo *
+panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
+                         uint32_t create_flags)
+{
+        struct panfrost_bo *bo;
+
+        bo = panfrost_bo_create(pan_screen(batch->ctx->base.screen), size,
+                                create_flags);
+        panfrost_batch_add_bo(batch, bo);
+
+        /* panfrost_batch_add_bo() has retained a reference and
+         * panfrost_bo_create() initialize the refcnt to 1, so let's
+         * unreference the BO here so it gets released when the batch is
+         * destroyed (unless it's retained by someone else in the meantime).
+         */
+        panfrost_bo_unreference(bo);
+        return bo;
+}
+
 /* Returns the polygon list's GPU address if available, or otherwise allocates
  * the polygon list.  It's perfectly fast to use allocate/free BO directly,
  * since we'll hit the BO cache and this is one-per-batch anyway. */
@@ -154,19 +173,10 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
         if (batch->polygon_list) {
                 assert(batch->polygon_list->size >= size);
         } else {
-                struct panfrost_screen *screen = pan_screen(batch->ctx->base.screen);
-
                 /* Create the BO as invisible, as there's no reason to map */
 
-                batch->polygon_list = panfrost_bo_create(screen, size,
-                                                         PAN_BO_INVISIBLE);
-                panfrost_batch_add_bo(batch, batch->polygon_list);
-
-                /* A BO reference has been retained by panfrost_batch_add_bo(),
-                 * so we need to unreference it here if we want the BO to be
-                 * automatically released when the batch is destroyed.
-                 */
-                panfrost_bo_unreference(&screen->base, batch->polygon_list);
+                batch->polygon_list = panfrost_batch_create_bo(batch, size,
+				                               PAN_BO_INVISIBLE);
         }
 
         return batch->polygon_list->gpu;
