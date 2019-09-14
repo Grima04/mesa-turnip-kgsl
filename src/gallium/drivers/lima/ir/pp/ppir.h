@@ -136,8 +136,15 @@ typedef struct {
 
 extern const ppir_op_info ppir_op_infos[];
 
+typedef enum {
+   ppir_dep_src,
+   ppir_dep_write_after_read,
+   ppir_dep_sequence,
+} ppir_dep_type;
+
 typedef struct {
    void *pred, *succ;
+   ppir_dep_type type;
    struct list_head pred_link;
    struct list_head succ_link;
 } ppir_dep;
@@ -377,7 +384,7 @@ typedef struct ppir_compiler {
 } ppir_compiler;
 
 void *ppir_node_create(ppir_block *block, ppir_op op, int index, unsigned mask);
-void ppir_node_add_dep(ppir_node *succ, ppir_node *pred);
+void ppir_node_add_dep(ppir_node *succ, ppir_node *pred, ppir_dep_type type);
 void ppir_node_remove_dep(ppir_dep *dep);
 void ppir_node_delete(ppir_node *node);
 void ppir_node_print_prog(ppir_compiler *comp);
@@ -403,6 +410,8 @@ static inline bool ppir_node_has_single_succ(ppir_node *node)
 {
    return list_is_singular(&node->succ_list);
 }
+
+bool ppir_node_has_single_src_succ(ppir_node *node);
 
 static inline ppir_node *ppir_node_first_succ(ppir_node *node)
 {

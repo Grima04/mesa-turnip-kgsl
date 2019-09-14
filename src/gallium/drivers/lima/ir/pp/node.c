@@ -387,7 +387,8 @@ void *ppir_node_create(ppir_block *block, ppir_op op, int index, unsigned mask)
    return node;
 }
 
-void ppir_node_add_dep(ppir_node *succ, ppir_node *pred)
+void ppir_node_add_dep(ppir_node *succ, ppir_node *pred,
+                       ppir_dep_type type)
 {
    /* don't add dep for two nodes from different block */
    if (succ->block != pred->block)
@@ -402,6 +403,7 @@ void ppir_node_add_dep(ppir_node *succ, ppir_node *pred)
    ppir_dep *dep = ralloc(succ, ppir_dep);
    dep->pred = pred;
    dep->succ = succ;
+   dep->type = type;
    list_addtail(&dep->pred_link, &succ->pred_list);
    list_addtail(&dep->succ_link, &pred->succ_list);
 }
@@ -661,7 +663,7 @@ ppir_node_clone_tex(ppir_block *block, ppir_node *node)
       switch (src->type) {
       case ppir_target_ssa: {
          ppir_node_target_assign(new_src, new_tex_coords);
-         ppir_node_add_dep(&new_tnode->node, new_tex_coords);
+         ppir_node_add_dep(&new_tnode->node, new_tex_coords, ppir_dep_src);
          break;
       }
       case ppir_target_register: {
@@ -737,8 +739,25 @@ ppir_node *ppir_node_insert_mov(ppir_node *node)
       alu->src->swizzle[s] = s;
 
    ppir_node_replace_all_succ(move, node);
-   ppir_node_add_dep(move, node);
+   ppir_node_add_dep(move, node, ppir_dep_src);
    list_addtail(&move->list, &node->list);
 
    return move;
+}
+
+bool ppir_node_has_single_src_succ(ppir_node *node)
+{
+   if (list_is_singular(&node->succ_list) &&
+       list_first_entry(&node->succ_list,
+                        ppir_dep, succ_link)->type == ppir_dep_src)
+      return true;
+
+   int cnt = 0;
+   ppir_node_foreach_succ(node, dep) {
+      if (dep->type != ppir_dep_src)
+         continue;
+      cnt++;
+   }
+
+   return cnt == 1;
 }

@@ -324,10 +324,10 @@ static bool ppir_update_spilled_src(ppir_compiler *comp, ppir_block *block,
    ppir_node_foreach_pred_safe(node, dep) {
       ppir_node *pred = dep->pred;
       ppir_node_remove_dep(dep);
-      ppir_node_add_dep(load_node, pred);
+      ppir_node_add_dep(load_node, pred, ppir_dep_src);
    }
-   ppir_node_add_dep(node, move_node);
-   ppir_node_add_dep(move_node, load_node);
+   ppir_node_add_dep(node, move_node, ppir_dep_src);
+   ppir_node_add_dep(move_node, load_node, ppir_dep_src);
 
    *fill_node = move_node;
 
@@ -392,10 +392,10 @@ static bool ppir_update_spilled_dest_load(ppir_compiler *comp, ppir_block *block
    ppir_node_foreach_pred_safe(node, dep) {
       ppir_node *pred = dep->pred;
       ppir_node_remove_dep(dep);
-      ppir_node_add_dep(load_node, pred);
+      ppir_node_add_dep(load_node, pred, ppir_dep_src);
    }
-   ppir_node_add_dep(node, move_node);
-   ppir_node_add_dep(move_node, load_node);
+   ppir_node_add_dep(node, move_node, ppir_dep_src);
+   ppir_node_add_dep(move_node, load_node, ppir_dep_src);
 
    return true;
 }
@@ -426,9 +426,9 @@ static bool ppir_update_spilled_dest(ppir_compiler *comp, ppir_block *block,
    ppir_node_foreach_succ_safe(node, dep) {
       ppir_node *succ = dep->succ;
       ppir_node_remove_dep(dep);
-      ppir_node_add_dep(succ, store_node);
+      ppir_node_add_dep(succ, store_node, ppir_dep_src);
    }
-   ppir_node_add_dep(store_node, node);
+   ppir_node_add_dep(store_node, node, ppir_dep_src);
 
    /* If the store temp slot is empty, we can insert the store_temp
     * there and use it directly. Exceptionally, if the node is in the

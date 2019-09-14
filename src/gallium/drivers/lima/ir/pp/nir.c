@@ -143,7 +143,7 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       }
 
       if (child->op != ppir_op_undef)
-         ppir_node_add_dep(node, child);
+         ppir_node_add_dep(node, child, ppir_dep_src);
    }
    else {
       nir_register *reg = ns->reg.reg;
@@ -158,7 +158,7 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
          }
          /* Don't add dummies or recursive deps for ops like r1 = r1 + ssa1 */
          if (child && node != child && child->op != ppir_op_undef)
-            ppir_node_add_dep(node, child);
+            ppir_node_add_dep(node, child, ppir_dep_src);
       }
    }
 
@@ -750,7 +750,7 @@ static void ppir_add_ordering_deps(ppir_compiler *comp)
       ppir_node *prev_node = NULL;
       list_for_each_entry_rev(ppir_node, node, &block->node_list, list) {
          if (prev_node && ppir_node_is_root(node) && node->op != ppir_op_const) {
-            ppir_node_add_dep(prev_node, node);
+            ppir_node_add_dep(prev_node, node, ppir_dep_sequence);
          }
          if (node->op == ppir_op_discard ||
              node->op == ppir_op_store_color ||
@@ -793,8 +793,10 @@ static void ppir_add_write_after_read_deps(ppir_compiler *comp)
                ppir_src *src = ppir_node_get_src(node, i);
                if (src && src->type == ppir_target_register &&
                    src->reg == reg &&
-                   write)
-                  ppir_node_add_dep(write, node);
+                   write) {
+                  ppir_debug("Adding dep %d for write %d\n", node->index, write->index);
+                  ppir_node_add_dep(write, node, ppir_dep_write_after_read);
+               }
             }
             ppir_dest *dest = ppir_node_get_dest(node);
             if (dest && dest->type == ppir_target_register &&
