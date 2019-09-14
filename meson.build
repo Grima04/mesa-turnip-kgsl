@@ -1052,9 +1052,14 @@ elif host_machine.cpu_family().startswith('ppc64') and host_machine.endian() == 
 endif
 
 # Check for standard headers and functions
-if cc.has_header_symbol('sys/sysmacros.h', 'major')
+if (cc.has_header_symbol('sys/sysmacros.h', 'major') and
+  cc.has_header_symbol('sys/sysmacros.h', 'minor') and
+  cc.has_header_symbol('sys/sysmacros.h', 'makedev'))
   pre_args += '-DMAJOR_IN_SYSMACROS'
-elif cc.has_header_symbol('sys/mkdev.h', 'major')
+endif
+if (cc.has_header_symbol('sys/mkdev.h', 'major') and
+  cc.has_header_symbol('sys/mkdev.h', 'minor') and
+  cc.has_header_symbol('sys/mkdev.h', 'makedev'))
   pre_args += '-DMAJOR_IN_MKDEV'
 endif
 
