@@ -284,9 +284,7 @@ panfrost_batch_submit(struct panfrost_batch *batch)
 
         panfrost_scoreboard_link_batch(batch);
 
-        bool has_draws = batch->last_job.gpu;
-
-        ret = panfrost_drm_submit_vs_fs_batch(batch, has_draws);
+        ret = panfrost_drm_submit_vs_fs_batch(batch);
 
         if (ret)
                 fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);

@@ -271,9 +271,10 @@ panfrost_drm_submit_batch(struct panfrost_batch *batch, u64 first_job_desc,
 }
 
 int
-panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch, bool has_draws)
+panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
+        bool has_draws = batch->last_job.gpu;
         int ret = 0;
 
         panfrost_batch_add_bo(batch, ctx->scratchpad);
