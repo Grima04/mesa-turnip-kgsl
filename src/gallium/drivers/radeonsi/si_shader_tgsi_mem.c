@@ -276,16 +276,17 @@ static void image_fetch_coords(
 	LLVMValueRef tmp;
 	int chan;
 
-	if (target == TGSI_TEXTURE_2D_MSAA ||
-	    target == TGSI_TEXTURE_2D_ARRAY_MSAA) {
-		/* Need the sample index as well. */
-		num_coords++;
-	}
-
 	for (chan = 0; chan < num_coords; ++chan) {
 		tmp = lp_build_emit_fetch(bld_base, inst, src, chan);
 		tmp = ac_to_integer(&ctx->ac, tmp);
 		coords[chan] = tmp;
+	}
+
+	if (target == TGSI_TEXTURE_2D_MSAA ||
+	    target == TGSI_TEXTURE_2D_ARRAY_MSAA) {
+		/* Need the sample index as well. */
+		tmp = lp_build_emit_fetch(bld_base, inst, src, TGSI_SWIZZLE_W);
+		coords[chan] = ac_to_integer(&ctx->ac, tmp);
 	}
 
 	if (ctx->screen->info.chip_class == GFX9) {
