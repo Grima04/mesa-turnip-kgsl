@@ -1751,7 +1751,7 @@ panfrost_delete_shader_state(
 
         for (unsigned i = 0; i < cso->variant_count; ++i) {
                 struct panfrost_shader_state *shader_state = &cso->variants[i];
-                panfrost_bo_unreference(pctx->screen, shader_state->bo);
+                panfrost_bo_unreference(shader_state->bo);
                 shader_state->bo = NULL;
         }
 
@@ -2418,7 +2418,6 @@ static void
 panfrost_destroy(struct pipe_context *pipe)
 {
         struct panfrost_context *panfrost = pan_context(pipe);
-        struct panfrost_screen *screen = pan_screen(pipe->screen);
 
         if (panfrost->blitter)
                 util_blitter_destroy(panfrost->blitter);
@@ -2426,9 +2425,9 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter_wallpaper)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
-        panfrost_bo_release(screen, panfrost->scratchpad, false);
-        panfrost_bo_release(screen, panfrost->tiler_heap, false);
-        panfrost_bo_release(screen, panfrost->tiler_dummy, false);
+        panfrost_bo_release(panfrost->scratchpad, false);
+        panfrost_bo_release(panfrost->tiler_heap, false);
+        panfrost_bo_release(panfrost->tiler_dummy, false);
 
         ralloc_free(pipe);
 }

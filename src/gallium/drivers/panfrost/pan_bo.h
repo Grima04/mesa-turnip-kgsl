@@ -58,6 +58,8 @@ struct panfrost_bo {
 
         struct pipe_reference reference;
 
+        struct panfrost_screen *screen;
+
         /* Mapping for the entire object (all levels) */
         uint8_t *cpu;
 
@@ -75,19 +77,18 @@ struct panfrost_bo {
 void
 panfrost_bo_reference(struct panfrost_bo *bo);
 void
-panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo);
+panfrost_bo_unreference(struct panfrost_bo *bo);
 struct panfrost_bo *
 panfrost_bo_create(struct panfrost_screen *screen, size_t size,
                    uint32_t flags);
 void
-panfrost_bo_mmap(struct panfrost_screen *screen, struct panfrost_bo *bo);
+panfrost_bo_mmap(struct panfrost_bo *bo);
 void
-panfrost_bo_release(struct panfrost_screen *screen, struct panfrost_bo *bo,
-                    bool cacheable);
+panfrost_bo_release(struct panfrost_bo *bo, bool cacheable);
 struct panfrost_bo *
 panfrost_bo_import(struct panfrost_screen *screen, int fd);
 int
-panfrost_bo_export(struct panfrost_screen *screen, const struct panfrost_bo *bo);
+panfrost_bo_export(struct panfrost_bo *bo);
 void
 panfrost_bo_cache_evict_all(struct panfrost_screen *screen);
 

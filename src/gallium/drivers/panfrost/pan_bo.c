@@ -114,7 +114,7 @@ panfrost_bo_cache_fetch(
 
                         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
                         if (!ret && !madv.retained) {
-                                panfrost_bo_release(screen, entry, false);
+                                panfrost_bo_release(entry, false);
                                 continue;
                         }
                         /* Let's go! */
@@ -131,10 +131,10 @@ panfrost_bo_cache_fetch(
  * successful */
 
 static bool
-panfrost_bo_cache_put(
-                struct panfrost_screen *screen,
-                struct panfrost_bo *bo)
+panfrost_bo_cache_put(struct panfrost_bo *bo)
 {
+        struct panfrost_screen *screen = bo->screen;
+
         pthread_mutex_lock(&screen->bo_cache_lock);
         struct list_head *bucket = pan_bucket(screen, bo->size);
         struct drm_panfrost_madvise madv;
@@ -168,14 +168,14 @@ panfrost_bo_cache_evict_all(
 
                 list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
                         list_del(&entry->link);
-                        panfrost_bo_release(screen, entry, false);
+                        panfrost_bo_release(entry, false);
                 }
         }
         pthread_mutex_unlock(&screen->bo_cache_lock);
 }
 
 void
-panfrost_bo_mmap(struct panfrost_screen *screen, struct panfrost_bo *bo)
+panfrost_bo_mmap(struct panfrost_bo *bo)
 {
         struct drm_panfrost_mmap_bo mmap_bo = { .handle = bo->gem_handle };
         int ret;
@@ -183,14 +183,14 @@ panfrost_bo_mmap(struct panfrost_screen *screen, struct panfrost_bo *bo)
         if (bo->cpu)
                 return;
 
-        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
+        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_PANFROST_MMAP_BO, &mmap_bo);
         if (ret) {
                 fprintf(stderr, "DRM_IOCTL_PANFROST_MMAP_BO failed: %m\n");
                 assert(0);
         }
 
         bo->cpu = os_mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                          screen->fd, mmap_bo.offset);
+                          bo->screen->fd, mmap_bo.offset);
         if (bo->cpu == MAP_FAILED) {
                 fprintf(stderr, "mmap failed: %p %m\n", bo->cpu);
                 assert(0);
@@ -202,7 +202,7 @@ panfrost_bo_mmap(struct panfrost_screen *screen, struct panfrost_bo *bo)
 }
 
 static void
-panfrost_bo_munmap(struct panfrost_screen *screen, struct panfrost_bo *bo)
+panfrost_bo_munmap(struct panfrost_bo *bo)
 {
         if (!bo->cpu)
                 return;
@@ -277,7 +277,7 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
          * for GPU-internal use. But we do trace them anyway. */
 
         if (!(flags & (PAN_BO_INVISIBLE | PAN_BO_DELAY_MMAP)))
-                panfrost_bo_mmap(screen, bo);
+                panfrost_bo_mmap(bo);
         else if (flags & PAN_BO_INVISIBLE) {
                 if (pan_debug & PAN_DBG_TRACE)
                         pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
@@ -288,8 +288,7 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
 }
 
 void
-panfrost_bo_release(struct panfrost_screen *screen, struct panfrost_bo *bo,
-                    bool cacheable)
+panfrost_bo_release(struct panfrost_bo *bo, bool cacheable)
 {
         if (!bo)
                 return;
@@ -300,10 +299,10 @@ panfrost_bo_release(struct panfrost_screen *screen, struct panfrost_bo *bo,
         /* Rather than freeing the BO now, we'll cache the BO for later
          * allocations if we're allowed to */
 
-        panfrost_bo_munmap(screen, bo);
+        panfrost_bo_munmap(bo);
 
         if (cacheable) {
-                bool cached = panfrost_bo_cache_put(screen, bo);
+                bool cached = panfrost_bo_cache_put(bo);
 
                 if (cached)
                         return;
@@ -311,7 +310,7 @@ panfrost_bo_release(struct panfrost_screen *screen, struct panfrost_bo *bo,
 
         /* Otherwise, if the BO wasn't cached, we'll legitimately free the BO */
 
-        ret = drmIoctl(screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
         if (ret) {
                 fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %m\n");
                 assert(0);
@@ -328,7 +327,7 @@ panfrost_bo_reference(struct panfrost_bo *bo)
 }
 
 void
-panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo)
+panfrost_bo_unreference(struct panfrost_bo *bo)
 {
         if (!bo)
                 return;
@@ -336,7 +335,7 @@ panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo)
         /* When the reference count goes to zero, we need to cleanup */
 
         if (pipe_reference(&bo->reference, NULL))
-                panfrost_bo_release(pan_screen(screen), bo, true);
+                panfrost_bo_release(bo, true);
 }
 
 struct panfrost_bo *
@@ -354,6 +353,7 @@ panfrost_bo_import(struct panfrost_screen *screen, int fd)
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_BO_OFFSET, &get_bo_offset);
         assert(!ret);
 
+        bo->screen = screen;
         bo->gem_handle = gem_handle;
         bo->gpu = (mali_ptr) get_bo_offset.offset;
         bo->size = lseek(fd, 0, SEEK_END);
@@ -361,19 +361,19 @@ panfrost_bo_import(struct panfrost_screen *screen, int fd)
         pipe_reference_init(&bo->reference, 1);
 
         // TODO map and unmap on demand?
-        panfrost_bo_mmap(screen, bo);
+        panfrost_bo_mmap(bo);
         return bo;
 }
 
 int
-panfrost_bo_export(struct panfrost_screen *screen, const struct panfrost_bo *bo)
+panfrost_bo_export(struct panfrost_bo *bo)
 {
         struct drm_prime_handle args = {
                 .handle = bo->gem_handle,
                 .flags = DRM_CLOEXEC,
         };
 
-        int ret = drmIoctl(screen->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
+        int ret = drmIoctl(bo->screen->fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
         if (ret == -1)
                 return -1;
 

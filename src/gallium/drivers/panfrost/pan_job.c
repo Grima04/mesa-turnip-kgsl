@@ -69,7 +69,7 @@ panfrost_free_batch(struct panfrost_batch *batch)
 
         set_foreach(batch->bos, entry) {
                 struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
-                panfrost_bo_unreference(ctx->base.screen, bo);
+                panfrost_bo_unreference(bo);
         }
 
         _mesa_hash_table_remove_key(ctx->batches, &batch->key);

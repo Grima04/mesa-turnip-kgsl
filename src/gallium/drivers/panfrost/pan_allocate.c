@@ -71,7 +71,7 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
 
                 /* Creating a BO adds a reference, and then the job adds a
                  * second one. So we need to pop back one reference */
-                panfrost_bo_unreference(&screen->base, bo);
+                panfrost_bo_unreference(bo);
 
                 if (sz < TRANSIENT_SLAB_SIZE) {
                         batch->transient_bo = bo;

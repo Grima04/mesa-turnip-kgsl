@@ -278,7 +278,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 
         /* Pass BO ownership to job */
         panfrost_batch_add_bo(batch, final.shader.bo);
-        panfrost_bo_unreference(ctx->base.screen, final.shader.bo);
+        panfrost_bo_unreference(final.shader.bo);
 
         if (shader->patch_index) {
                 /* We have to specialize the blend shader to use constants, so

@@ -134,7 +134,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 
                         return true;
                 } else {
-                        int fd = panfrost_bo_export(screen, rsrc->bo);
+                        int fd = panfrost_bo_export(rsrc->bo);
 
                         if (fd < 0)
                                 return false;
@@ -533,7 +533,7 @@ panfrost_resource_destroy(struct pipe_screen *screen,
                 renderonly_scanout_destroy(rsrc->scanout, pscreen->ro);
 
         if (rsrc->bo)
-                panfrost_bo_unreference(screen, rsrc->bo);
+                panfrost_bo_unreference(rsrc->bo);
 
         util_range_destroy(&rsrc->valid_buffer_range);
         ralloc_free(rsrc);
@@ -561,7 +561,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
         *out_transfer = &transfer->base;
 
         /* If we haven't already mmaped, now's the time */
-        panfrost_bo_mmap(pan_screen(pctx->screen), bo);
+        panfrost_bo_mmap(bo);
 
         /* Check if we're bound for rendering and this is a read pixels. If so,
          * we need to flush */
@@ -839,7 +839,7 @@ panfrost_resource_hint_layout(
 
         /* If we grew in size, reallocate the BO */
         if (new_size > rsrc->bo->size) {
-                panfrost_bo_release(screen, rsrc->bo, true);
+                panfrost_bo_release(rsrc->bo, true);
                 rsrc->bo = panfrost_bo_create(screen, new_size, PAN_BO_DELAY_MMAP);
         }
 }
