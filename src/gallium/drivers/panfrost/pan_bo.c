@@ -29,6 +29,7 @@
 #include <pthread.h>
 #include "drm-uapi/panfrost_drm.h"
 
+#include "pan_resource.h"
 #include "pan_screen.h"
 #include "pan_util.h"
 #include "pandecode/decode.h"
@@ -317,6 +318,25 @@ panfrost_bo_release(struct panfrost_screen *screen, struct panfrost_bo *bo,
         }
 
         ralloc_free(bo);
+}
+
+void
+panfrost_bo_reference(struct panfrost_bo *bo)
+{
+        if (bo)
+                pipe_reference(NULL, &bo->reference);
+}
+
+void
+panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo)
+{
+        if (!bo)
+                return;
+
+        /* When the reference count goes to zero, we need to cleanup */
+
+        if (pipe_reference(&bo->reference, NULL))
+                panfrost_bo_release(pan_screen(screen), bo, true);
 }
 
 struct panfrost_bo *
