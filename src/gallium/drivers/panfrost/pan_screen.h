@@ -120,32 +120,22 @@ pan_screen(struct pipe_screen *p)
         return (struct panfrost_screen *)p;
 }
 
+struct panfrost_fence *
+panfrost_fence_create(struct panfrost_context *ctx);
+
 struct panfrost_bo *
-panfrost_drm_create_bo(struct panfrost_screen *screen, size_t size,
+panfrost_bo_create(struct panfrost_screen *screen, size_t size,
                        uint32_t flags);
 void
-panfrost_drm_mmap_bo(struct panfrost_screen *screen, struct panfrost_bo *bo);
+panfrost_bo_mmap(struct panfrost_screen *screen, struct panfrost_bo *bo);
 void
-panfrost_drm_release_bo(struct panfrost_screen *screen, struct panfrost_bo *bo, bool cacheable);
+panfrost_bo_release(struct panfrost_screen *screen, struct panfrost_bo *bo,
+                    bool cacheable);
 struct panfrost_bo *
-panfrost_drm_import_bo(struct panfrost_screen *screen, int fd);
+panfrost_bo_import(struct panfrost_screen *screen, int fd);
 int
-panfrost_drm_export_bo(struct panfrost_screen *screen, const struct panfrost_bo *bo);
-int
-panfrost_drm_submit_vs_fs_batch(struct panfrost_batch *batch);
-unsigned
-panfrost_drm_query_gpu_version(struct panfrost_screen *screen);
-int
-panfrost_drm_init_context(struct panfrost_context *ctx);
-void
-panfrost_drm_fence_reference(struct pipe_screen *screen,
-                             struct pipe_fence_handle **ptr,
-                             struct pipe_fence_handle *fence);
-boolean
-panfrost_drm_fence_finish(struct pipe_screen *pscreen,
-                          struct pipe_context *ctx,
-                          struct pipe_fence_handle *fence,
-                          uint64_t timeout);
+panfrost_bo_export(struct panfrost_screen *screen, const struct panfrost_bo *bo);
+
 struct panfrost_bo *
 panfrost_bo_cache_fetch(
                 struct panfrost_screen *screen,

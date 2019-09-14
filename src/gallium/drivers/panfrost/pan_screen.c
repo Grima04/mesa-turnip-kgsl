@@ -41,6 +41,7 @@
 #include <fcntl.h>
 
 #include "drm-uapi/drm_fourcc.h"
+#include "drm-uapi/panfrost_drm.h"
 
 #include "pan_screen.h"
 #include "pan_resource.h"
@@ -568,7 +569,15 @@ panfrost_fence_reference(struct pipe_screen *pscreen,
                          struct pipe_fence_handle **ptr,
                          struct pipe_fence_handle *fence)
 {
-        panfrost_drm_fence_reference(pscreen, ptr, fence);
+        struct panfrost_fence **p = (struct panfrost_fence **)ptr;
+        struct panfrost_fence *f = (struct panfrost_fence *)fence;
+        struct panfrost_fence *old = *p;
+
+        if (pipe_reference(&(*p)->reference, &f->reference)) {
+                close(old->fd);
+                free(old);
+        }
+        *p = f;
 }
 
 static bool
@@ -577,7 +586,57 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
                       struct pipe_fence_handle *fence,
                       uint64_t timeout)
 {
-        return panfrost_drm_fence_finish(pscreen, ctx, fence, timeout);
+        struct panfrost_screen *screen = pan_screen(pscreen);
+        struct panfrost_fence *f = (struct panfrost_fence *)fence;
+        int ret;
+
+        unsigned syncobj;
+        ret = drmSyncobjCreate(screen->fd, 0, &syncobj);
+        if (ret) {
+                fprintf(stderr, "Failed to create syncobj to wait on: %m\n");
+                return false;
+        }
+
+        ret = drmSyncobjImportSyncFile(screen->fd, syncobj, f->fd);
+        if (ret) {
+                fprintf(stderr, "Failed to import fence to syncobj: %m\n");
+                return false;
+        }
+
+        uint64_t abs_timeout = os_time_get_absolute_timeout(timeout);
+        if (abs_timeout == OS_TIMEOUT_INFINITE)
+                abs_timeout = INT64_MAX;
+
+        ret = drmSyncobjWait(screen->fd, &syncobj, 1, abs_timeout, 0, NULL);
+
+        drmSyncobjDestroy(screen->fd, syncobj);
+
+        return ret >= 0;
+}
+
+struct panfrost_fence *
+panfrost_fence_create(struct panfrost_context *ctx)
+{
+        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
+        struct panfrost_fence *f = calloc(1, sizeof(*f));
+        if (!f)
+                return NULL;
+
+        /* Snapshot the last Panfrost's rendering's out fence.  We'd rather have
+         * another syncobj instead of a sync file, but this is all we get.
+         * (HandleToFD/FDToHandle just gives you another syncobj ID for the
+         * same syncobj).
+         */
+        drmSyncobjExportSyncFile(screen->fd, ctx->out_sync, &f->fd);
+        if (f->fd == -1) {
+                fprintf(stderr, "export failed: %m\n");
+                free(f);
+                return NULL;
+        }
+
+        pipe_reference_init(&f->reference, 1);
+
+        return f;
 }
 
 static const void *
@@ -586,6 +645,19 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
                                      enum pipe_shader_type shader)
 {
         return &midgard_nir_options;
+}
+
+static unsigned
+panfrost_query_gpu_version(struct panfrost_screen *screen)
+{
+        struct drm_panfrost_get_param get_param = {0,};
+        ASSERTED int ret;
+
+        get_param.param = DRM_PANFROST_PARAM_GPU_PROD_ID;
+        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_GET_PARAM, &get_param);
+        assert(!ret);
+
+        return get_param.value;
 }
 
 struct pipe_screen *
@@ -622,7 +694,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         screen->fd = fd;
 
-        screen->gpu_id = panfrost_drm_query_gpu_version(screen);
+        screen->gpu_id = panfrost_query_gpu_version(screen);
         screen->require_sfbd = screen->gpu_id < 0x0750; /* T760 is the first to support MFBD */
         screen->kernel_version = drmGetVersion(fd);
 

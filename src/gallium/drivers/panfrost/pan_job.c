@@ -25,11 +25,15 @@
 
 #include <assert.h>
 
+#include "drm-uapi/panfrost_drm.h"
+
 #include "pan_context.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 #include "util/u_format.h"
 #include "util/u_pack_color.h"
+#include "pan_util.h"
+#include "pandecode/decode.h"
 
 static struct panfrost_batch *
 panfrost_create_batch(struct panfrost_context *ctx,
@@ -153,8 +157,8 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
 
                 /* Create the BO as invisible, as there's no reason to map */
 
-                batch->polygon_list = panfrost_drm_create_bo(screen,
-                                size, PAN_ALLOCATE_INVISIBLE);
+                batch->polygon_list = panfrost_bo_create(screen, size,
+                                                         PAN_ALLOCATE_INVISIBLE);
                 panfrost_batch_add_bo(batch, batch->polygon_list);
 
                 /* A BO reference has been retained by panfrost_batch_add_bo(),
@@ -267,6 +271,78 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
         batch->ctx->wallpaper_batch = NULL;
 }
 
+static int
+panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
+                            mali_ptr first_job_desc,
+                            uint32_t reqs)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct pipe_context *gallium = (struct pipe_context *) ctx;
+        struct panfrost_screen *screen = pan_screen(gallium->screen);
+        struct drm_panfrost_submit submit = {0,};
+        uint32_t *bo_handles;
+        int ret;
+
+        submit.in_syncs = (u64) (uintptr_t) &ctx->out_sync;
+        submit.in_sync_count = 1;
+
+        submit.out_sync = ctx->out_sync;
+
+        submit.jc = first_job_desc;
+        submit.requirements = reqs;
+
+        bo_handles = calloc(batch->bos->entries, sizeof(*bo_handles));
+        assert(bo_handles);
+
+        set_foreach(batch->bos, entry) {
+                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+                assert(bo->gem_handle > 0);
+                bo_handles[submit.bo_handle_count++] = bo->gem_handle;
+        }
+
+        submit.bo_handles = (u64) (uintptr_t) bo_handles;
+        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
+        free(bo_handles);
+        if (ret) {
+                fprintf(stderr, "Error submitting: %m\n");
+                return errno;
+        }
+
+        /* Trace the job if we're doing that */
+        if (pan_debug & PAN_DBG_TRACE) {
+                /* Wait so we can get errors reported back */
+                drmSyncobjWait(screen->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
+                pandecode_jc(submit.jc, FALSE);
+        }
+
+        return 0;
+}
+
+static int
+panfrost_batch_submit_jobs(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        bool has_draws = batch->first_job.gpu;
+        int ret = 0;
+
+        panfrost_batch_add_bo(batch, ctx->scratchpad);
+        panfrost_batch_add_bo(batch, ctx->tiler_heap);
+
+        if (has_draws) {
+                ret = panfrost_batch_submit_ioctl(batch, batch->first_job.gpu, 0);
+                assert(!ret);
+        }
+
+        if (batch->first_tiler.gpu || batch->clear) {
+                mali_ptr fragjob = panfrost_fragment_job(batch, has_draws);
+
+                ret = panfrost_batch_submit_ioctl(batch, fragjob, PANFROST_JD_REQ_FS);
+                assert(!ret);
+        }
+
+        return ret;
+}
+
 void
 panfrost_batch_submit(struct panfrost_batch *batch)
 {
@@ -284,7 +360,7 @@ panfrost_batch_submit(struct panfrost_batch *batch)
 
         panfrost_scoreboard_link_batch(batch);
 
-        ret = panfrost_drm_submit_vs_fs_batch(batch);
+        ret = panfrost_batch_submit_jobs(batch);
 
         if (ret)
                 fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);

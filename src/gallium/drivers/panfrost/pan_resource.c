@@ -81,7 +81,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         pipe_reference_init(&prsc->reference, 1);
         prsc->screen = pscreen;
 
-        rsc->bo = panfrost_drm_import_bo(screen, whandle->handle);
+        rsc->bo = panfrost_bo_import(screen, whandle->handle);
         rsc->slices[0].stride = whandle->stride;
         rsc->slices[0].initialized = true;
         panfrost_resource_reset_damage(rsc);
@@ -133,7 +133,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 
                         return true;
                 } else {
-                        int fd = panfrost_drm_export_bo(screen, rsrc->bo);
+                        int fd = panfrost_bo_export(screen, rsrc->bo);
 
                         if (fd < 0)
                                 return false;
@@ -412,7 +412,7 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
 
         /* We create a BO immediately but don't bother mapping, since we don't
          * care to map e.g. FBOs which the CPU probably won't touch */
-        pres->bo = panfrost_drm_create_bo(screen, bo_size, PAN_ALLOCATE_DELAY_MMAP);
+        pres->bo = panfrost_bo_create(screen, bo_size, PAN_ALLOCATE_DELAY_MMAP);
 }
 
 void
@@ -537,7 +537,7 @@ panfrost_bo_unreference(struct pipe_screen *screen, struct panfrost_bo *bo)
         /* When the reference count goes to zero, we need to cleanup */
 
         if (pipe_reference(&bo->reference, NULL))
-                panfrost_drm_release_bo(pan_screen(screen), bo, true);
+                panfrost_bo_release(pan_screen(screen), bo, true);
 }
 
 static void
@@ -582,7 +582,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
         if (!bo->cpu) {
                 struct panfrost_screen *screen = pan_screen(pctx->screen);
-                panfrost_drm_mmap_bo(screen, bo);
+                panfrost_bo_mmap(screen, bo);
         }
 
         /* Check if we're bound for rendering and this is a read pixels. If so,
@@ -861,8 +861,8 @@ panfrost_resource_hint_layout(
 
         /* If we grew in size, reallocate the BO */
         if (new_size > rsrc->bo->size) {
-                panfrost_drm_release_bo(screen, rsrc->bo, true);
-                rsrc->bo = panfrost_drm_create_bo(screen, new_size, PAN_ALLOCATE_DELAY_MMAP);
+                panfrost_bo_release(screen, rsrc->bo, true);
+                rsrc->bo = panfrost_bo_create(screen, new_size, PAN_ALLOCATE_DELAY_MMAP);
         }
 }
 

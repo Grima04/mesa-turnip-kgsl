@@ -2425,9 +2425,9 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter_wallpaper)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
-        panfrost_drm_release_bo(screen, panfrost->scratchpad, false);
-        panfrost_drm_release_bo(screen, panfrost->tiler_heap, false);
-        panfrost_drm_release_bo(screen, panfrost->tiler_dummy, false);
+        panfrost_bo_release(screen, panfrost->scratchpad, false);
+        panfrost_bo_release(screen, panfrost->tiler_heap, false);
+        panfrost_bo_release(screen, panfrost->tiler_dummy, false);
 
         ralloc_free(pipe);
 }
@@ -2611,11 +2611,11 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
 
-        ctx->scratchpad = panfrost_drm_create_bo(screen, 64 * 4 * 4096, 0);
-        ctx->tiler_heap = panfrost_drm_create_bo(screen, 4096 * 4096,
+        ctx->scratchpad = panfrost_bo_create(screen, 64 * 4 * 4096, 0);
+        ctx->tiler_heap = panfrost_bo_create(screen, 4096 * 4096,
                                                  PAN_ALLOCATE_INVISIBLE |
                                                  PAN_ALLOCATE_GROWABLE);
-        ctx->tiler_dummy = panfrost_drm_create_bo(screen, 4096,
+        ctx->tiler_dummy = panfrost_bo_create(screen, 4096,
                                                   PAN_ALLOCATE_INVISIBLE);
         assert(ctx->scratchpad && ctx->tiler_heap && ctx->tiler_dummy);
 }
@@ -2698,7 +2698,11 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         panfrost_blend_context_init(gallium);
         panfrost_compute_context_init(gallium);
 
-        panfrost_drm_init_context(ctx);
+        ASSERTED int ret;
+
+        ret = drmSyncobjCreate(pscreen->fd, DRM_SYNCOBJ_CREATE_SIGNALED,
+                               &ctx->out_sync);
+        assert(!ret);
 
         panfrost_setup_hardware(ctx);
 

@@ -291,9 +291,6 @@ pan_context(struct pipe_context *pcontext)
         return (struct panfrost_context *) pcontext;
 }
 
-struct panfrost_fence *
-panfrost_fence_create(struct panfrost_context *ctx);
-
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 

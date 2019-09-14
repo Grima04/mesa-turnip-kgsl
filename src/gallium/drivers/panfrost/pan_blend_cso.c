@@ -272,7 +272,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         final.shader.first_tag = shader->first_tag;
 
         /* Upload the shader */
-        final.shader.bo = panfrost_drm_create_bo(screen, shader->size, PAN_ALLOCATE_EXECUTE);
+        final.shader.bo = panfrost_bo_create(screen, shader->size, PAN_ALLOCATE_EXECUTE);
         memcpy(final.shader.bo->cpu, shader->buffer, shader->size);
 
         /* Pass BO ownership to job */
