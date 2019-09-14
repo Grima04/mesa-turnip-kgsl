@@ -195,6 +195,43 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
         return batch->polygon_list->gpu;
 }
 
+struct panfrost_bo *
+panfrost_batch_get_scratchpad(struct panfrost_batch *batch)
+{
+        if (batch->scratchpad)
+                return batch->scratchpad;
+
+        batch->scratchpad = panfrost_batch_create_bo(batch, 64 * 4 * 4096,
+                                                     PAN_BO_INVISIBLE);
+        assert(batch->scratchpad);
+        return batch->scratchpad;
+}
+
+struct panfrost_bo *
+panfrost_batch_get_tiler_heap(struct panfrost_batch *batch)
+{
+        if (batch->tiler_heap)
+                return batch->tiler_heap;
+
+        batch->tiler_heap = panfrost_batch_create_bo(batch, 4096 * 4096,
+                                                     PAN_BO_INVISIBLE |
+                                                     PAN_BO_GROWABLE);
+        assert(batch->tiler_heap);
+        return batch->tiler_heap;
+}
+
+struct panfrost_bo *
+panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch)
+{
+        if (batch->tiler_dummy)
+                return batch->tiler_dummy;
+
+        batch->tiler_dummy = panfrost_batch_create_bo(batch, 4096,
+                                                      PAN_BO_INVISIBLE);
+        assert(batch->tiler_dummy);
+        return batch->tiler_dummy;
+}
+
 static void
 panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
 {
@@ -345,12 +382,8 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 static int
 panfrost_batch_submit_jobs(struct panfrost_batch *batch)
 {
-        struct panfrost_context *ctx = batch->ctx;
         bool has_draws = batch->first_job.gpu;
         int ret = 0;
-
-        panfrost_batch_add_bo(batch, ctx->scratchpad);
-        panfrost_batch_add_bo(batch, ctx->tiler_heap);
 
         if (has_draws) {
                 ret = panfrost_batch_submit_ioctl(batch, batch->first_job.gpu, 0);

@@ -57,7 +57,6 @@
 static struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 {
-        struct panfrost_context *ctx = batch->ctx;
         struct midgard_tiler_descriptor t = {};
         unsigned height = batch->key.height;
         unsigned width = batch->key.width;
@@ -76,21 +75,28 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
         /* Sanity check */
 
         if (t.hierarchy_mask) {
+                struct panfrost_bo *tiler_heap;
+
+                tiler_heap = panfrost_batch_get_tiler_heap(batch);
                 t.polygon_list = panfrost_batch_get_polygon_list(batch,
                                                                  header_size +
                                                                  t.polygon_list_size);
 
 
                 /* Allow the entire tiler heap */
-                t.heap_start = ctx->tiler_heap->gpu;
-                t.heap_end = ctx->tiler_heap->gpu + ctx->tiler_heap->size;
+                t.heap_start = tiler_heap->gpu;
+                t.heap_end = tiler_heap->gpu + tiler_heap->size;
         } else {
+                struct panfrost_bo *tiler_dummy;
+
+                tiler_dummy = panfrost_batch_get_tiler_dummy(batch);
+
                 /* The tiler is disabled, so don't allow the tiler heap */
-                t.heap_start = ctx->tiler_heap->gpu;
+                t.heap_start = tiler_dummy->gpu;
                 t.heap_end = t.heap_start;
 
                 /* Use a dummy polygon list */
-                t.polygon_list = ctx->tiler_dummy->gpu;
+                t.polygon_list = tiler_dummy->gpu;
 
                 /* Disable the tiler */
                 t.hierarchy_mask |= MALI_TILER_DISABLED;
@@ -105,7 +111,6 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
 struct mali_single_framebuffer
 panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
-        struct panfrost_context *ctx = batch->ctx;
         unsigned width = batch->key.width;
         unsigned height = batch->key.height;
 
@@ -115,7 +120,7 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 .unknown2 = 0x1f,
                 .format = 0x30000000,
                 .clear_flags = 0x1000,
-                .unknown_address_0 = ctx->scratchpad->gpu,
+                .unknown_address_0 = panfrost_batch_get_scratchpad(batch)->gpu,
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
         };
 
@@ -125,7 +130,6 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
 struct bifrost_framebuffer
 panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 {
-        struct panfrost_context *ctx = batch->ctx;
         unsigned width = batch->key.width;
         unsigned height = batch->key.height;
 
@@ -143,7 +147,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 
                 .unknown2 = 0x1f,
 
-                .scratchpad = ctx->scratchpad->gpu,
+                .scratchpad = panfrost_batch_get_scratchpad(batch)->gpu,
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count)
         };
 
@@ -2427,10 +2431,6 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter_wallpaper)
                 util_blitter_destroy(panfrost->blitter_wallpaper);
 
-        panfrost_bo_unreference(panfrost->scratchpad);
-        panfrost_bo_unreference(panfrost->tiler_heap);
-        panfrost_bo_unreference(panfrost->tiler_dummy);
-
         ralloc_free(pipe);
 }
 
@@ -2607,24 +2607,6 @@ panfrost_set_stream_output_targets(struct pipe_context *pctx,
         so->num_targets = num_targets;
 }
 
-static void
-panfrost_setup_hardware(struct panfrost_context *ctx)
-{
-        struct pipe_context *gallium = (struct pipe_context *) ctx;
-        struct panfrost_screen *screen = pan_screen(gallium->screen);
-
-        ctx->scratchpad = panfrost_bo_create(screen, 64 * 4 * 4096, 0);
-        ctx->tiler_heap = panfrost_bo_create(screen, 4096 * 4096,
-                                                 PAN_BO_INVISIBLE |
-                                                 PAN_BO_GROWABLE);
-        ctx->tiler_dummy = panfrost_bo_create(screen, 4096,
-                                                  PAN_BO_INVISIBLE);
-        assert(ctx->scratchpad && ctx->tiler_heap && ctx->tiler_dummy);
-}
-
-/* New context creation, which also does hardware initialisation since I don't
- * know the better way to structure this :smirk: */
-
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 {
@@ -2705,8 +2687,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         ret = drmSyncobjCreate(pscreen->fd, DRM_SYNCOBJ_CREATE_SIGNALED,
                                &ctx->out_sync);
         assert(!ret);
-
-        panfrost_setup_hardware(ctx);
 
         /* XXX: leaks */
         gallium->stream_uploader = u_upload_create_default(gallium);

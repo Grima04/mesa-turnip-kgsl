@@ -123,10 +123,6 @@ struct panfrost_context {
         struct pipe_framebuffer_state pipe_framebuffer;
         struct panfrost_streamout streamout;
 
-        struct panfrost_bo *scratchpad;
-        struct panfrost_bo *tiler_heap;
-        struct panfrost_bo *tiler_dummy;
-
         bool active_queries;
         uint64_t prims_generated;
         uint64_t tf_prims_generated;
