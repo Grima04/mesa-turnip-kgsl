@@ -88,12 +88,6 @@ struct panfrost_bo *
 panfrost_bo_import(struct panfrost_screen *screen, int fd);
 int
 panfrost_bo_export(struct panfrost_screen *screen, const struct panfrost_bo *bo);
-struct panfrost_bo *
-panfrost_bo_cache_fetch(struct panfrost_screen *screen,
-		        size_t size, uint32_t flags);
-bool
-panfrost_bo_cache_put(struct panfrost_screen *screen,
-                      struct panfrost_bo *bo);
 void
 panfrost_bo_cache_evict_all(struct panfrost_screen *screen);
 

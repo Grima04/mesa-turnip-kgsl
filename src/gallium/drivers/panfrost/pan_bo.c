@@ -89,7 +89,7 @@ pan_bucket(struct panfrost_screen *screen, unsigned size)
  * cache. If it fails, it returns NULL signaling the caller to allocate a new
  * BO. */
 
-struct panfrost_bo *
+static struct panfrost_bo *
 panfrost_bo_cache_fetch(
                 struct panfrost_screen *screen,
                 size_t size, uint32_t flags)
@@ -130,7 +130,7 @@ panfrost_bo_cache_fetch(
 /* Tries to add a BO to the cache. Returns if it was
  * successful */
 
-bool
+static bool
 panfrost_bo_cache_put(
                 struct panfrost_screen *screen,
                 struct panfrost_bo *bo)
