@@ -794,11 +794,12 @@ panfrost_map_constant_buffer_gpu(
 {
         struct pipe_constant_buffer *cb = &buf->cb[index];
         struct panfrost_resource *rsrc = pan_resource(cb->buffer);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         if (rsrc) {
+                panfrost_batch_add_bo(batch, rsrc->bo);
                 return rsrc->bo->gpu;
 	} else if (cb->user_buffer) {
-                struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
                 return panfrost_upload_transient(batch, cb->user_buffer, cb->buffer_size);
 	} else {
                 unreachable("No constant buffer");
@@ -1112,6 +1113,8 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                 struct panfrost_constant_buffer *buf = &ctx->constant_buffer[i];
 
                 struct panfrost_shader_state *ss = &all->variants[all->active_variant];
+
+                panfrost_batch_add_bo(batch, ss->bo);
 
                 /* Uniforms are implicitly UBO #0 */
                 bool has_uniforms = buf->enabled_mask & (1 << 0);
