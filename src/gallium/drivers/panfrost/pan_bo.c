@@ -355,7 +355,7 @@ panfrost_bo_import(struct panfrost_screen *screen, int fd)
         bo->gem_handle = gem_handle;
         bo->gpu = (mali_ptr) get_bo_offset.offset;
         bo->size = lseek(fd, 0, SEEK_END);
-        bo->flags |= PAN_BO_DONT_REUSE;
+        bo->flags |= PAN_BO_DONT_REUSE | PAN_BO_IMPORTED;
         assert(bo->size > 0);
         pipe_reference_init(&bo->reference, 1);
 
@@ -376,7 +376,7 @@ panfrost_bo_export(struct panfrost_bo *bo)
         if (ret == -1)
                 return -1;
 
-        bo->flags |= PAN_BO_DONT_REUSE;
+        bo->flags |= PAN_BO_DONT_REUSE | PAN_BO_EXPORTED;
         return args.fd;
 }
 

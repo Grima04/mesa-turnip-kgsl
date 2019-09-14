@@ -56,6 +56,12 @@ struct panfrost_screen;
  * let the BO logic know about this contraint. */
 #define PAN_BO_DONT_REUSE         (1 << 5)
 
+/* BO has been imported */
+#define PAN_BO_IMPORTED           (1 << 6)
+
+/* BO has been exported */
+#define PAN_BO_EXPORTED           (1 << 7)
+
 /* GPU access flags */
 
 /* BO is either shared (can be accessed by more than one GPU batch) or private
