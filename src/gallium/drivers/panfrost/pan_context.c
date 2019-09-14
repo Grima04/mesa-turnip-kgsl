@@ -160,6 +160,7 @@ panfrost_clear(
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
+        panfrost_batch_add_fbo_bos(batch);
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
@@ -879,6 +880,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
 
+        panfrost_batch_add_fbo_bos(batch);
         panfrost_attach_vt_framebuffer(ctx);
 
         if (with_vertex_data) {

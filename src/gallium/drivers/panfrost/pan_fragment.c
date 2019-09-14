@@ -42,9 +42,6 @@ panfrost_initialize_surface(
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
         rsrc->slices[level].initialized = true;
-
-        assert(rsrc->bo);
-        panfrost_batch_add_bo(batch, rsrc->bo);
 }
 
 /* Generate a fragment job. This should be called once per frame. (According to

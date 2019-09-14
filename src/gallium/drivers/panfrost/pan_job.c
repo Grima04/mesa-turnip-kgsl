@@ -144,6 +144,19 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo)
         _mesa_set_add(batch->bos, bo);
 }
 
+void panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
+{
+        for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+                struct panfrost_resource *rsrc = pan_resource(batch->key.cbufs[i]->texture);
+                panfrost_batch_add_bo(batch, rsrc->bo);
+        }
+
+        if (batch->key.zsbuf) {
+                struct panfrost_resource *rsrc = pan_resource(batch->key.zsbuf->texture);
+                panfrost_batch_add_bo(batch, rsrc->bo);
+        }
+}
+
 struct panfrost_bo *
 panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
                          uint32_t create_flags)
