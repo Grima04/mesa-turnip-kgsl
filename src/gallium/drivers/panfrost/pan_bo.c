@@ -54,6 +54,53 @@
  * around the linked list.
  */
 
+static struct panfrost_bo *
+panfrost_bo_alloc(struct panfrost_screen *screen, size_t size,
+                  uint32_t flags)
+{
+        struct drm_panfrost_create_bo create_bo = { .size = size };
+        struct panfrost_bo *bo;
+        int ret;
+
+        if (screen->kernel_version->version_major > 1 ||
+            screen->kernel_version->version_minor >= 1) {
+                if (flags & PAN_BO_GROWABLE)
+                        create_bo.flags |= PANFROST_BO_HEAP;
+                if (!(flags & PAN_BO_EXECUTE))
+                        create_bo.flags |= PANFROST_BO_NOEXEC;
+        }
+
+        ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
+        if (ret) {
+                fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
+                return NULL;
+        }
+
+        bo = rzalloc(screen, struct panfrost_bo);
+        assert(bo);
+        bo->size = create_bo.size;
+        bo->gpu = create_bo.offset;
+        bo->gem_handle = create_bo.handle;
+        bo->flags = flags;
+        bo->screen = screen;
+        return bo;
+}
+
+static void
+panfrost_bo_free(struct panfrost_bo *bo)
+{
+        struct drm_gem_close gem_close = { .handle = bo->gem_handle };
+        int ret;
+
+        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+        if (ret) {
+                fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %m\n");
+                assert(0);
+        }
+
+        ralloc_free(bo);
+}
+
 /* Helper to calculate the bucket index of a BO */
 
 static unsigned
@@ -83,9 +130,6 @@ pan_bucket(struct panfrost_screen *screen, unsigned size)
 {
         return &screen->bo_cache[pan_bucket_index(size)];
 }
-
-static void
-panfrost_bo_release(struct panfrost_bo *bo, bool cacheable);
 
 /* Tries to fetch a BO of sufficient size with the appropriate flags from the
  * BO cache. If it succeeds, it returns that BO and removes the BO from the
@@ -117,7 +161,7 @@ panfrost_bo_cache_fetch(
 
                         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_MADVISE, &madv);
                         if (!ret && !madv.retained) {
-                                panfrost_bo_release(entry, false);
+                                panfrost_bo_free(entry);
                                 continue;
                         }
                         /* Let's go! */
@@ -171,7 +215,7 @@ panfrost_bo_cache_evict_all(
 
                 list_for_each_entry_safe(struct panfrost_bo, entry, bucket, link) {
                         list_del(&entry->link);
-                        panfrost_bo_release(entry, false);
+                        panfrost_bo_free(entry);
                 }
         }
         pthread_mutex_unlock(&screen->bo_cache_lock);
@@ -234,46 +278,17 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
         if (flags & PAN_BO_GROWABLE)
                 assert(flags & PAN_BO_INVISIBLE);
 
-        unsigned translated_flags = 0;
-
-        if (screen->kernel_version->version_major > 1 ||
-            screen->kernel_version->version_minor >= 1) {
-                if (flags & PAN_BO_GROWABLE)
-                        translated_flags |= PANFROST_BO_HEAP;
-                if (!(flags & PAN_BO_EXECUTE))
-                        translated_flags |= PANFROST_BO_NOEXEC;
-        }
-
-        struct drm_panfrost_create_bo create_bo = {
-                .size = size,
-                .flags = translated_flags,
-        };
-
-        /* Before creating a BO, we first want to check the cache */
-
+        /* Before creating a BO, we first want to check the cache, otherwise,
+         * the cache misses and we need to allocate a BO fresh from the kernel
+         */
         bo = panfrost_bo_cache_fetch(screen, size, flags);
+        if (!bo)
+                bo = panfrost_bo_alloc(screen, size, flags);
 
-        if (bo == NULL) {
-                /* Otherwise, the cache misses and we need to allocate a BO fresh from
-                 * the kernel */
+        if (!bo)
+                fprintf(stderr, "BO creation failed\n");
 
-                int ret;
-
-                ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_CREATE_BO, &create_bo);
-                if (ret) {
-                        fprintf(stderr, "DRM_IOCTL_PANFROST_CREATE_BO failed: %m\n");
-                        assert(0);
-                }
-
-                /* We have a BO allocated from the kernel; fill in the userspace
-                 * version */
-
-                bo = rzalloc(screen, struct panfrost_bo);
-                bo->size = create_bo.size;
-                bo->gpu = create_bo.offset;
-                bo->gem_handle = create_bo.handle;
-                bo->flags = flags;
-        }
+        assert(bo);
 
         /* Only mmap now if we know we need to. For CPU-invisible buffers, we
          * never map since we don't care about their contents; they're purely
@@ -290,38 +305,6 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
         return bo;
 }
 
-static void
-panfrost_bo_release(struct panfrost_bo *bo, bool cacheable)
-{
-        if (!bo)
-                return;
-
-        struct drm_gem_close gem_close = { .handle = bo->gem_handle };
-        int ret;
-
-        /* Rather than freeing the BO now, we'll cache the BO for later
-         * allocations if we're allowed to */
-
-        panfrost_bo_munmap(bo);
-
-        if (cacheable) {
-                bool cached = panfrost_bo_cache_put(bo);
-
-                if (cached)
-                        return;
-        }
-
-        /* Otherwise, if the BO wasn't cached, we'll legitimately free the BO */
-
-        ret = drmIoctl(bo->screen->fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
-        if (ret) {
-                fprintf(stderr, "DRM_IOCTL_GEM_CLOSE failed: %m\n");
-                assert(0);
-        }
-
-        ralloc_free(bo);
-}
-
 void
 panfrost_bo_reference(struct panfrost_bo *bo)
 {
@@ -335,10 +318,19 @@ panfrost_bo_unreference(struct panfrost_bo *bo)
         if (!bo)
                 return;
 
-        /* When the reference count goes to zero, we need to cleanup */
+        if (!pipe_reference(&bo->reference, NULL))
+                return;
 
-        if (pipe_reference(&bo->reference, NULL))
-                panfrost_bo_release(bo, true);
+        /* When the reference count goes to zero, we need to cleanup */
+        panfrost_bo_munmap(bo);
+
+        /* Rather than freeing the BO now, we'll cache the BO for later
+         * allocations if we're allowed to.
+         */
+        if (panfrost_bo_cache_put(bo))
+                return;
+
+        panfrost_bo_free(bo);
 }
 
 struct panfrost_bo *
