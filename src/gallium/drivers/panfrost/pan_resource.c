@@ -412,7 +412,7 @@ panfrost_resource_create_bo(struct panfrost_screen *screen, struct panfrost_reso
 
         /* We create a BO immediately but don't bother mapping, since we don't
          * care to map e.g. FBOs which the CPU probably won't touch */
-        pres->bo = panfrost_bo_create(screen, bo_size, PAN_ALLOCATE_DELAY_MMAP);
+        pres->bo = panfrost_bo_create(screen, bo_size, PAN_BO_DELAY_MMAP);
 }
 
 void
@@ -843,7 +843,7 @@ panfrost_resource_hint_layout(
         /* If we grew in size, reallocate the BO */
         if (new_size > rsrc->bo->size) {
                 panfrost_bo_release(screen, rsrc->bo, true);
-                rsrc->bo = panfrost_bo_create(screen, new_size, PAN_ALLOCATE_DELAY_MMAP);
+                rsrc->bo = panfrost_bo_create(screen, new_size, PAN_BO_DELAY_MMAP);
         }
 }
 

@@ -228,16 +228,16 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
         size = MAX2(size, 4096);
 
         /* GROWABLE BOs cannot be mmapped */
-        if (flags & PAN_ALLOCATE_GROWABLE)
-                assert(flags & PAN_ALLOCATE_INVISIBLE);
+        if (flags & PAN_BO_GROWABLE)
+                assert(flags & PAN_BO_INVISIBLE);
 
         unsigned translated_flags = 0;
 
         if (screen->kernel_version->version_major > 1 ||
             screen->kernel_version->version_minor >= 1) {
-                if (flags & PAN_ALLOCATE_GROWABLE)
+                if (flags & PAN_BO_GROWABLE)
                         translated_flags |= PANFROST_BO_HEAP;
-                if (!(flags & PAN_ALLOCATE_EXECUTE))
+                if (!(flags & PAN_BO_EXECUTE))
                         translated_flags |= PANFROST_BO_NOEXEC;
         }
 
@@ -276,9 +276,9 @@ panfrost_bo_create(struct panfrost_screen *screen, size_t size,
          * never map since we don't care about their contents; they're purely
          * for GPU-internal use. But we do trace them anyway. */
 
-        if (!(flags & (PAN_ALLOCATE_INVISIBLE | PAN_ALLOCATE_DELAY_MMAP)))
+        if (!(flags & (PAN_BO_INVISIBLE | PAN_BO_DELAY_MMAP)))
                 panfrost_bo_mmap(screen, bo);
-        else if (flags & PAN_ALLOCATE_INVISIBLE) {
+        else if (flags & PAN_BO_INVISIBLE) {
                 if (pan_debug & PAN_DBG_TRACE)
                         pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
         }

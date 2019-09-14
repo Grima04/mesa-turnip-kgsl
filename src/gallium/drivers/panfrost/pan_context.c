@@ -2613,10 +2613,10 @@ panfrost_setup_hardware(struct panfrost_context *ctx)
 
         ctx->scratchpad = panfrost_bo_create(screen, 64 * 4 * 4096, 0);
         ctx->tiler_heap = panfrost_bo_create(screen, 4096 * 4096,
-                                                 PAN_ALLOCATE_INVISIBLE |
-                                                 PAN_ALLOCATE_GROWABLE);
+                                                 PAN_BO_INVISIBLE |
+                                                 PAN_BO_GROWABLE);
         ctx->tiler_dummy = panfrost_bo_create(screen, 4096,
-                                                  PAN_ALLOCATE_INVISIBLE);
+                                                  PAN_BO_INVISIBLE);
         assert(ctx->scratchpad && ctx->tiler_heap && ctx->tiler_dummy);
 }
 

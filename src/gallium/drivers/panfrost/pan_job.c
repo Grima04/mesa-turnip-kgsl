@@ -158,7 +158,7 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
                 /* Create the BO as invisible, as there's no reason to map */
 
                 batch->polygon_list = panfrost_bo_create(screen, size,
-                                                         PAN_ALLOCATE_INVISIBLE);
+                                                         PAN_BO_INVISIBLE);
                 panfrost_batch_add_bo(batch, batch->polygon_list);
 
                 /* A BO reference has been retained by panfrost_batch_add_bo(),

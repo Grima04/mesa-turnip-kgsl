@@ -50,22 +50,22 @@ struct panfrost_screen;
 /* Flags for allocated memory */
 
 /* This memory region is executable */
-#define PAN_ALLOCATE_EXECUTE            (1 << 0)
+#define PAN_BO_EXECUTE            (1 << 0)
 
 /* This memory region should be lazily allocated and grow-on-page-fault. Must
  * be used in conjunction with INVISIBLE */
-#define PAN_ALLOCATE_GROWABLE           (1 << 1)
+#define PAN_BO_GROWABLE           (1 << 1)
 
 /* This memory region should not be mapped to the CPU */
-#define PAN_ALLOCATE_INVISIBLE          (1 << 2)
+#define PAN_BO_INVISIBLE          (1 << 2)
 
 /* This memory region will be used for varyings and needs to have the cache
  * bits twiddled accordingly */
-#define PAN_ALLOCATE_COHERENT_LOCAL     (1 << 3)
+#define PAN_BO_COHERENT_LOCAL     (1 << 3)
 
 /* This region may not be used immediately and will not mmap on allocate
  * (semantically distinct from INVISIBLE, which cannot never be mmaped) */
-#define PAN_ALLOCATE_DELAY_MMAP         (1 << 4)
+#define PAN_BO_DELAY_MMAP         (1 << 4)
 
 /* Transient slab size. This is a balance between fragmentation against cache
  * locality and ease of bookkeeping */
