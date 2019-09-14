@@ -182,6 +182,9 @@ panfrost_bo_cache_put(struct panfrost_bo *bo)
 {
         struct panfrost_screen *screen = bo->screen;
 
+        if (bo->flags & PAN_BO_DONT_REUSE)
+                return false;
+
         pthread_mutex_lock(&screen->bo_cache_lock);
         struct list_head *bucket = pan_bucket(screen, bo->size);
         struct drm_panfrost_madvise madv;
@@ -352,6 +355,7 @@ panfrost_bo_import(struct panfrost_screen *screen, int fd)
         bo->gem_handle = gem_handle;
         bo->gpu = (mali_ptr) get_bo_offset.offset;
         bo->size = lseek(fd, 0, SEEK_END);
+        bo->flags |= PAN_BO_DONT_REUSE;
         assert(bo->size > 0);
         pipe_reference_init(&bo->reference, 1);
 
@@ -372,6 +376,7 @@ panfrost_bo_export(struct panfrost_bo *bo)
         if (ret == -1)
                 return -1;
 
+        bo->flags |= PAN_BO_DONT_REUSE;
         return args.fd;
 }
 

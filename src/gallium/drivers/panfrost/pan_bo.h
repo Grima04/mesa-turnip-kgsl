@@ -52,6 +52,10 @@ struct panfrost_screen;
  * (semantically distinct from INVISIBLE, which cannot never be mmaped) */
 #define PAN_BO_DELAY_MMAP         (1 << 4)
 
+/* Some BOs shouldn't be returned back to the reuse BO cache, use this flag to
+ * let the BO logic know about this contraint. */
+#define PAN_BO_DONT_REUSE         (1 << 5)
+
 struct panfrost_bo {
         /* Must be first for casting */
         struct list_head link;
