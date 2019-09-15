@@ -2730,6 +2730,9 @@ iris_set_constant_buffer(struct pipe_context *ctx,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    struct pipe_shader_buffer *cbuf = &shs->constbuf[index];
 
+   /* TODO: Only do this if the buffer changes? */
+   pipe_resource_reference(&shs->constbuf_surf_state[index].res, NULL);
+
    if (input && input->buffer_size && (input->buffer || input->user_buffer)) {
       shs->bound_cbufs |= 1u << index;
 
@@ -2760,21 +2763,12 @@ iris_set_constant_buffer(struct pipe_context *ctx,
       struct iris_resource *res = (void *) cbuf->buffer;
       res->bind_history |= PIPE_BIND_CONSTANT_BUFFER;
       res->bind_stages |= 1 << stage;
-
-      iris_upload_ubo_ssbo_surf_state(ice, cbuf,
-                                      &shs->constbuf_surf_state[index],
-                                      false);
    } else {
       shs->bound_cbufs &= ~(1u << index);
       pipe_resource_reference(&cbuf->buffer, NULL);
-      pipe_resource_reference(&shs->constbuf_surf_state[index].res, NULL);
    }
 
    ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << stage;
-   // XXX: maybe not necessary all the time...?
-   // XXX: we need 3DS_BTP to commit these changes, and if we fell back to
-   // XXX: pull model we may need actual new bindings...
-   ice->state.dirty |= IRIS_DIRTY_BINDINGS_VS << stage;
 }
 
 static void
@@ -4245,7 +4239,7 @@ use_ubo_ssbo(struct iris_batch *batch,
              struct iris_state_ref *surf_state,
              bool writable)
 {
-   if (!buf->buffer)
+   if (!buf->buffer || !surf_state->res)
       return use_null_surface(batch, ice);
 
    iris_use_pinned_bo(batch, iris_resource_bo(buf->buffer), writable);
@@ -6063,9 +6057,8 @@ iris_rebind_buffer(struct iris_context *ice,
             struct iris_state_ref *surf_state = &shs->constbuf_surf_state[i];
 
             if (res->bo == iris_resource_bo(cbuf->buffer)) {
-               iris_upload_ubo_ssbo_surf_state(ice, cbuf, surf_state, false);
-               ice->state.dirty |=
-                  (IRIS_DIRTY_CONSTANTS_VS | IRIS_DIRTY_BINDINGS_VS) << s;
+               pipe_resource_reference(&surf_state->res, NULL);
+               ice->state.dirty |= IRIS_DIRTY_CONSTANTS_VS << s;
             }
          }
       }

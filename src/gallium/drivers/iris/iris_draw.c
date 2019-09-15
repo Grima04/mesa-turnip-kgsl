@@ -332,8 +332,7 @@ iris_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info *grid)
 
    iris_batch_maybe_flush(batch, 1500);
 
-   if (ice->state.dirty & IRIS_DIRTY_UNCOMPILED_CS)
-      iris_update_compiled_compute_shader(ice);
+   iris_update_compiled_compute_shader(ice);
 
    iris_update_grid_size_resource(ice, grid);
 
