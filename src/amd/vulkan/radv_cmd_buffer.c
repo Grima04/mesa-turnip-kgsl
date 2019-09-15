@@ -2019,7 +2019,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 				       S_028424_DISABLE_CONSTANT_ENCODE_REG(disable_constant_encode));
 	}
 
-	if (cmd_buffer->device->pbb_allowed) {
+	if (cmd_buffer->device->dfsm_allowed) {
 		radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
 	}
