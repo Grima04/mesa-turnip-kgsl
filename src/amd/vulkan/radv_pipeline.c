@@ -3300,7 +3300,8 @@ radv_pipeline_generate_disabled_binning_state(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 				     struct radv_pipeline *pipeline,
-				     const VkGraphicsPipelineCreateInfo *pCreateInfo)
+				     const VkGraphicsPipelineCreateInfo *pCreateInfo,
+				     const struct radv_blend_state *blend)
 {
 	if (pipeline->device->physical_device->rad_info.chip_class < GFX9)
 		return;
@@ -3330,6 +3331,19 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 			fpovs_per_batch = 63;
 		}
 
+		bool disable_start_of_prim = true;
+		uint32_t db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF);
+
+		const struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+
+		if (pipeline->device->dfsm_allowed && ps &&
+		    !ps->info.ps.can_discard &&
+		    !ps->info.ps.writes_memory &&
+		    blend->cb_target_enabled_4bit) {
+			db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_AUTO);
+			disable_start_of_prim = (blend->blend_enable_4bit & blend->cb_target_enabled_4bit) != 0;
+		}
+
 		const uint32_t pa_sc_binner_cntl_0 =
 	                S_028C44_BINNING_MODE(V_028C44_BINNING_ALLOWED) |
 	                S_028C44_BIN_SIZE_X(bin_size.width == 16) |
@@ -3338,11 +3352,9 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 	                S_028C44_BIN_SIZE_Y_EXTEND(util_logbase2(MAX2(bin_size.height, 32)) - 5) |
 	                S_028C44_CONTEXT_STATES_PER_BIN(context_states_per_bin - 1) |
 	                S_028C44_PERSISTENT_STATES_PER_BIN(persistent_states_per_bin - 1) |
-	                S_028C44_DISABLE_START_OF_PRIM(1) |
+	                S_028C44_DISABLE_START_OF_PRIM(disable_start_of_prim) |
 	                S_028C44_FPOVS_PER_BATCH(fpovs_per_batch) |
 	                S_028C44_OPTIMAL_BIN_SELECTION(1);
-
-		uint32_t db_dfsm_control = S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF);
 
 		pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
 		pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
@@ -4400,7 +4412,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
-	radv_pipeline_generate_binning_state(ctx_cs, pipeline, pCreateInfo);
+	radv_pipeline_generate_binning_state(ctx_cs, pipeline, pCreateInfo, blend);
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 && !radv_pipeline_has_ngg(pipeline))
 		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess);
