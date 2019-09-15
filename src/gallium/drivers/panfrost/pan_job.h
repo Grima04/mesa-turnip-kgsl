@@ -153,6 +153,9 @@ struct panfrost_batch {
 
         /* Output sync object. Only valid when submitted is true. */
         struct panfrost_batch_fence *out_sync;
+
+        /* Batch dependencies */
+        struct util_dynarray dependencies;
 };
 
 /* Functions for managing the above */

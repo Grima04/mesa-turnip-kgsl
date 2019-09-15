@@ -114,6 +114,9 @@ struct panfrost_context {
         struct panfrost_batch *batch;
         struct hash_table *batches;
 
+        /* panfrost_bo -> panfrost_bo_access */
+        struct hash_table *accessed_bos;
+
         /* Within a launch_grid call.. */
         const struct pipe_grid_info *compute_grid;
 
