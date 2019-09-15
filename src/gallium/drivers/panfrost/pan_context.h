@@ -191,7 +191,8 @@ struct panfrost_context {
         /* True for t6XX, false for t8xx. */
         bool is_t6xx;
 
-        uint32_t out_sync;
+        /* The out sync fence of the last submitted batch. */
+        struct panfrost_batch_fence *last_out_sync;
 };
 
 /* Corresponds to the CSO */

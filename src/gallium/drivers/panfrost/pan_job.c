@@ -425,11 +425,13 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         uint32_t *bo_handles;
         int ret;
 
-        submit.in_syncs = (u64) (uintptr_t) &ctx->out_sync;
-        submit.in_sync_count = 1;
 
-        submit.out_sync = ctx->out_sync;
+        if (ctx->last_out_sync) {
+                submit.in_sync_count = 1;
+                submit.in_syncs = (uintptr_t)&ctx->last_out_sync->syncobj;
+        }
 
+        submit.out_sync = batch->out_sync->syncobj;
         submit.jc = first_job_desc;
         submit.requirements = reqs;
 
@@ -445,6 +447,14 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
         ret = drmIoctl(screen->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
         free(bo_handles);
+
+        /* Release the last batch fence if any, and retain the new one */
+        if (ctx->last_out_sync)
+                panfrost_batch_fence_unreference(ctx->last_out_sync);
+
+        panfrost_batch_fence_reference(batch->out_sync);
+        ctx->last_out_sync = batch->out_sync;
+
         if (ret) {
                 fprintf(stderr, "Error submitting: %m\n");
                 return errno;
@@ -453,7 +463,8 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         /* Trace the job if we're doing that */
         if (pan_debug & PAN_DBG_TRACE) {
                 /* Wait so we can get errors reported back */
-                drmSyncobjWait(screen->fd, &ctx->out_sync, 1, INT64_MAX, 0, NULL);
+                drmSyncobjWait(screen->fd, &batch->out_sync->syncobj, 1,
+                               INT64_MAX, 0, NULL);
                 pandecode_jc(submit.jc, FALSE);
         }
 
@@ -495,6 +506,15 @@ panfrost_batch_submit(struct panfrost_batch *batch)
                  * to wait on it.
                  */
                 batch->out_sync->signaled = true;
+
+                /* Release the last batch fence if any, and set ->last_out_sync
+                 * to NULL
+                 */
+                if (ctx->last_out_sync) {
+                        panfrost_batch_fence_unreference(ctx->last_out_sync);
+                        ctx->last_out_sync = NULL;
+                }
+
                 goto out;
         }
 
@@ -527,8 +547,11 @@ out:
          * rendering is quite broken right now (to be fixed by the panfrost_job
          * refactor, just take the perf hit for correctness)
          */
-        drmSyncobjWait(pan_screen(ctx->base.screen)->fd, &ctx->out_sync, 1,
-                       INT64_MAX, 0, NULL);
+        if (!batch->out_sync->signaled)
+                drmSyncobjWait(pan_screen(ctx->base.screen)->fd,
+                               &batch->out_sync->syncobj, 1, INT64_MAX, 0,
+                               NULL);
+
         panfrost_free_batch(batch);
 }
 

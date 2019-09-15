@@ -590,8 +590,12 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
         struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_fence *f = (struct panfrost_fence *)fence;
         int ret;
-
         unsigned syncobj;
+
+        /* The fence was already signaled */
+        if (f->fd == -1)
+                return true;
+
         ret = drmSyncobjCreate(screen->fd, 0, &syncobj);
         if (ret) {
                 fprintf(stderr, "Failed to create syncobj to wait on: %m\n");
@@ -623,18 +627,28 @@ panfrost_fence_create(struct panfrost_context *ctx)
         if (!f)
                 return NULL;
 
+        f->fd = -1;
+
+        /* There was no job flushed yet or the batch fence was already
+         * signaled, let's return a dummy fence object that returns true
+         * directly when ->fence_finish() is called.
+         */
+        if (!ctx->last_out_sync || ctx->last_out_sync->signaled)
+                goto out;
+
         /* Snapshot the last Panfrost's rendering's out fence.  We'd rather have
          * another syncobj instead of a sync file, but this is all we get.
          * (HandleToFD/FDToHandle just gives you another syncobj ID for the
          * same syncobj).
          */
-        drmSyncobjExportSyncFile(screen->fd, ctx->out_sync, &f->fd);
+        drmSyncobjExportSyncFile(screen->fd, ctx->last_out_sync->syncobj, &f->fd);
         if (f->fd == -1) {
                 fprintf(stderr, "export failed: %m\n");
                 free(f);
                 return NULL;
         }
 
+out:
         pipe_reference_init(&f->reference, 1);
 
         return f;

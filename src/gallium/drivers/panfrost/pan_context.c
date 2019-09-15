@@ -2696,12 +2696,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         panfrost_blend_context_init(gallium);
         panfrost_compute_context_init(gallium);
 
-        ASSERTED int ret;
-
-        ret = drmSyncobjCreate(pscreen->fd, DRM_SYNCOBJ_CREATE_SIGNALED,
-                               &ctx->out_sync);
-        assert(!ret);
-
         /* XXX: leaks */
         gallium->stream_uploader = u_upload_create_default(gallium);
         gallium->const_uploader = gallium->stream_uploader;
