@@ -99,20 +99,57 @@ panfrost_create_batch(struct panfrost_context *ctx,
 }
 
 static void
+panfrost_freeze_batch(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct hash_entry *entry;
+
+        /* Remove the entry in the FBO -> batch hash table if the batch
+         * matches. This way, next draws/clears targeting this FBO will trigger
+         * the creation of a new batch.
+         */
+        entry = _mesa_hash_table_search(ctx->batches, &batch->key);
+        if (entry && entry->data == batch)
+                _mesa_hash_table_remove(ctx->batches, entry);
+
+        /* If this is the bound batch, the panfrost_context parameters are
+         * relevant so submitting it invalidates those parameters, but if it's
+         * not bound, the context parameters are for some other batch so we
+         * can't invalidate them.
+         */
+        if (ctx->batch == batch) {
+                panfrost_invalidate_frame(ctx);
+                ctx->batch = NULL;
+        }
+}
+
+#ifndef NDEBUG
+static bool panfrost_batch_is_frozen(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct hash_entry *entry;
+
+        entry = _mesa_hash_table_search(ctx->batches, &batch->key);
+        if (entry && entry->data == batch)
+                return false;
+
+        if (ctx->batch == batch)
+                return false;
+
+        return true;
+}
+#endif
+
+static void
 panfrost_free_batch(struct panfrost_batch *batch)
 {
         if (!batch)
                 return;
 
-        struct panfrost_context *ctx = batch->ctx;
+        assert(panfrost_batch_is_frozen(batch));
 
         hash_table_foreach(batch->bos, entry)
                 panfrost_bo_unreference((struct panfrost_bo *)entry->key);
-
-        _mesa_hash_table_remove_key(ctx->batches, &batch->key);
-
-        if (ctx->batch == batch)
-                ctx->batch = NULL;
 
         /* The out_sync fence lifetime is different from the the batch one
          * since other batches might want to wait on a fence of already
@@ -529,19 +566,8 @@ panfrost_batch_submit(struct panfrost_batch *batch)
                 fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
 
 out:
-        /* If this is the bound batch, the panfrost_context parameters are
-         * relevant so submitting it invalidates those paramaters, but if it's
-         * not bound, the context parameters are for some other batch so we
-         * can't invalidate them.
-         */
-        if (ctx->batch == batch)
-                panfrost_invalidate_frame(ctx);
-
-        /* The job has been submitted, let's invalidate the current FBO job
-         * cache.
-	 */
+        panfrost_freeze_batch(batch);
         assert(!ctx->batch || batch == ctx->batch);
-        ctx->batch = NULL;
 
         /* We always stall the pipeline for correct results since pipelined
          * rendering is quite broken right now (to be fixed by the panfrost_job
