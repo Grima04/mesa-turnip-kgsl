@@ -1342,7 +1342,6 @@ panfrost_flush(
         unsigned flags)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct util_dynarray fences;
 
         /* We must collect the fences before the flush is done, otherwise we'll
@@ -1350,13 +1349,18 @@ panfrost_flush(
          */
         if (fence) {
                 util_dynarray_init(&fences, NULL);
-                panfrost_batch_fence_reference(batch->out_sync);
-                util_dynarray_append(&fences, struct panfrost_batch_fence *,
-                                     batch->out_sync);
+                hash_table_foreach(ctx->batches, hentry) {
+                        struct panfrost_batch *batch = hentry->data;
+
+                        panfrost_batch_fence_reference(batch->out_sync);
+                        util_dynarray_append(&fences,
+                                             struct panfrost_batch_fence *,
+                                             batch->out_sync);
+                }
         }
 
-        /* Submit the frame itself */
-        panfrost_batch_submit(batch);
+        /* Submit all pending jobs */
+        panfrost_flush_all_batches(ctx, false);
 
         if (fence) {
                 struct panfrost_fence *f = panfrost_fence_create(ctx, &fences);
@@ -2315,7 +2319,7 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         }
 
         if (!is_scanout || has_draws)
-                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+                panfrost_flush_all_batches(ctx, true);
         else
                 assert(!ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer &&
                        !ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer);
@@ -2547,6 +2551,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                           union pipe_query_result *vresult)
 {
         struct panfrost_query *query = (struct panfrost_query *) q;
+        struct panfrost_context *ctx = pan_context(pipe);
 
 
         switch (query->type) {
@@ -2554,7 +2559,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
                 /* Flush first */
-                panfrost_flush(pipe, NULL, PIPE_FLUSH_END_OF_FRAME);
+                panfrost_flush_all_batches(ctx, true);
 
                 /* Read back the query results */
                 unsigned *result = (unsigned *) query->transfer.cpu;
@@ -2570,7 +2575,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
         case PIPE_QUERY_PRIMITIVES_GENERATED:
         case PIPE_QUERY_PRIMITIVES_EMITTED:
-                panfrost_flush(pipe, NULL, PIPE_FLUSH_END_OF_FRAME);
+                panfrost_flush_all_batches(ctx, true);
                 vresult->u64 = query->end - query->start;
                 break;
 

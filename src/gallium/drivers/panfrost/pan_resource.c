@@ -580,7 +580,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
         if (is_bound && (usage & PIPE_TRANSFER_READ)) {
                 assert(level == 0);
-                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+                panfrost_flush_all_batches(ctx, true);
         }
 
         /* TODO: Respect usage flags */
@@ -752,7 +752,7 @@ panfrost_generate_mipmap(
         bool has_draws = batch->last_job.gpu;
 
         if (has_draws)
-                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+                panfrost_flush_all_batches(ctx, true);
 
         /* We've flushed the original buffer if needed, now trigger a blit */
 
@@ -766,7 +766,7 @@ panfrost_generate_mipmap(
          * the state tracker deal with it. */
 
         if (blit_res)
-                panfrost_flush(pctx, NULL, PIPE_FLUSH_END_OF_FRAME);
+                panfrost_flush_all_batches(ctx, true);
 
         return blit_res;
 }
