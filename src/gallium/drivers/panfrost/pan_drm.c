@@ -232,7 +232,8 @@ panfrost_drm_submit_batch(struct panfrost_batch *batch, u64 first_job_desc,
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_screen *screen = pan_screen(gallium->screen);
         struct drm_panfrost_submit submit = {0,};
-        int *bo_handles, ret;
+        uint32_t *bo_handles;
+        int ret;
 
         submit.in_syncs = (u64) (uintptr_t) &ctx->out_sync;
         submit.in_sync_count = 1;
