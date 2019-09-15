@@ -132,7 +132,8 @@ panfrost_get_batch_for_fbo(struct panfrost_context *ctx)
 }
 
 void
-panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo)
+panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
+                      uint32_t flags)
 {
         if (!bo)
                 return;
@@ -146,26 +147,30 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo)
 
 void panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
 {
+        uint32_t flags = PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_WRITE |
+                         PAN_BO_ACCESS_VERTEX_TILER |
+                         PAN_BO_ACCESS_FRAGMENT;
+
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
                 struct panfrost_resource *rsrc = pan_resource(batch->key.cbufs[i]->texture);
-                panfrost_batch_add_bo(batch, rsrc->bo);
+                panfrost_batch_add_bo(batch, rsrc->bo, flags);
         }
 
         if (batch->key.zsbuf) {
                 struct panfrost_resource *rsrc = pan_resource(batch->key.zsbuf->texture);
-                panfrost_batch_add_bo(batch, rsrc->bo);
+                panfrost_batch_add_bo(batch, rsrc->bo, flags);
         }
 }
 
 struct panfrost_bo *
 panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
-                         uint32_t create_flags)
+                         uint32_t create_flags, uint32_t access_flags)
 {
         struct panfrost_bo *bo;
 
         bo = panfrost_bo_create(pan_screen(batch->ctx->base.screen), size,
                                 create_flags);
-        panfrost_batch_add_bo(batch, bo);
+        panfrost_batch_add_bo(batch, bo, access_flags);
 
         /* panfrost_batch_add_bo() has retained a reference and
          * panfrost_bo_create() initialize the refcnt to 1, so let's
@@ -189,7 +194,11 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
                 /* Create the BO as invisible, as there's no reason to map */
 
                 batch->polygon_list = panfrost_batch_create_bo(batch, size,
-				                               PAN_BO_INVISIBLE);
+                                                               PAN_BO_INVISIBLE,
+                                                               PAN_BO_ACCESS_PRIVATE |
+                                                               PAN_BO_ACCESS_RW |
+                                                               PAN_BO_ACCESS_VERTEX_TILER |
+                                                               PAN_BO_ACCESS_FRAGMENT);
         }
 
         return batch->polygon_list->gpu;
@@ -202,7 +211,11 @@ panfrost_batch_get_scratchpad(struct panfrost_batch *batch)
                 return batch->scratchpad;
 
         batch->scratchpad = panfrost_batch_create_bo(batch, 64 * 4 * 4096,
-                                                     PAN_BO_INVISIBLE);
+                                                     PAN_BO_INVISIBLE,
+                                                     PAN_BO_ACCESS_PRIVATE |
+                                                     PAN_BO_ACCESS_RW |
+                                                     PAN_BO_ACCESS_VERTEX_TILER |
+                                                     PAN_BO_ACCESS_FRAGMENT);
         assert(batch->scratchpad);
         return batch->scratchpad;
 }
@@ -215,7 +228,11 @@ panfrost_batch_get_tiler_heap(struct panfrost_batch *batch)
 
         batch->tiler_heap = panfrost_batch_create_bo(batch, 4096 * 4096,
                                                      PAN_BO_INVISIBLE |
-                                                     PAN_BO_GROWABLE);
+                                                     PAN_BO_GROWABLE,
+                                                     PAN_BO_ACCESS_PRIVATE |
+                                                     PAN_BO_ACCESS_RW |
+                                                     PAN_BO_ACCESS_VERTEX_TILER |
+                                                     PAN_BO_ACCESS_FRAGMENT);
         assert(batch->tiler_heap);
         return batch->tiler_heap;
 }
@@ -227,7 +244,11 @@ panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch)
                 return batch->tiler_dummy;
 
         batch->tiler_dummy = panfrost_batch_create_bo(batch, 4096,
-                                                      PAN_BO_INVISIBLE);
+                                                      PAN_BO_INVISIBLE,
+                                                      PAN_BO_ACCESS_PRIVATE |
+                                                      PAN_BO_ACCESS_RW |
+                                                      PAN_BO_ACCESS_VERTEX_TILER |
+                                                      PAN_BO_ACCESS_FRAGMENT);
         assert(batch->tiler_dummy);
         return batch->tiler_dummy;
 }

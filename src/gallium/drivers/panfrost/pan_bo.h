@@ -56,6 +56,24 @@ struct panfrost_screen;
  * let the BO logic know about this contraint. */
 #define PAN_BO_DONT_REUSE         (1 << 5)
 
+/* GPU access flags */
+
+/* BO is either shared (can be accessed by more than one GPU batch) or private
+ * (reserved by a specific GPU job). */
+#define PAN_BO_ACCESS_PRIVATE         (0 << 0)
+#define PAN_BO_ACCESS_SHARED          (1 << 0)
+
+/* BO is being read/written by the GPU */
+#define PAN_BO_ACCESS_READ            (1 << 1)
+#define PAN_BO_ACCESS_WRITE           (1 << 2)
+#define PAN_BO_ACCESS_RW              (PAN_BO_ACCESS_READ | PAN_BO_ACCESS_WRITE)
+
+/* BO is accessed by the vertex/tiler job. */
+#define PAN_BO_ACCESS_VERTEX_TILER    (1 << 3)
+
+/* BO is accessed by the fragment job. */
+#define PAN_BO_ACCESS_FRAGMENT        (1 << 4)
+
 struct panfrost_bo {
         /* Must be first for casting */
         struct list_head link;
@@ -77,6 +95,17 @@ struct panfrost_bo {
 
         uint32_t flags;
 };
+
+static inline uint32_t
+panfrost_bo_access_for_stage(enum pipe_shader_type stage)
+{
+        assert(stage == PIPE_SHADER_FRAGMENT ||
+               stage == PIPE_SHADER_VERTEX);
+
+        return stage == PIPE_SHADER_FRAGMENT ?
+               PAN_BO_ACCESS_FRAGMENT :
+               PAN_BO_ACCESS_VERTEX_TILER;
+}
 
 void
 panfrost_bo_reference(struct panfrost_bo *bo);

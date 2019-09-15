@@ -583,6 +583,7 @@ panfrost_layout_for_texture(struct panfrost_resource *rsrc)
 static mali_ptr
 panfrost_upload_tex(
         struct panfrost_context *ctx,
+        enum pipe_shader_type st,
         struct panfrost_sampler_view *view)
 {
         if (!view)
@@ -610,7 +611,9 @@ panfrost_upload_tex(
 
         /* Add the BO to the job so it's retained until the job is done. */
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        panfrost_batch_add_bo(batch, rsrc->bo);
+        panfrost_batch_add_bo(batch, rsrc->bo,
+                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
+                              panfrost_bo_access_for_stage(st));
 
         /* Add the usage flags in, since they can change across the CSO
          * lifetime due to layout switches */
@@ -653,7 +656,7 @@ panfrost_upload_texture_descriptors(struct panfrost_context *ctx)
 
                         for (int i = 0; i < ctx->sampler_view_count[t]; ++i)
                                 trampolines[i] =
-                                        panfrost_upload_tex(ctx, ctx->sampler_views[t][i]);
+                                        panfrost_upload_tex(ctx, t, ctx->sampler_views[t][i]);
 
                         trampoline = panfrost_upload_transient(batch, trampolines, sizeof(uint64_t) * ctx->sampler_view_count[t]);
                 }
@@ -729,7 +732,9 @@ static void panfrost_upload_ssbo_sysval(
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_bo *bo = pan_resource(sb.buffer)->bo;
 
-        panfrost_batch_add_bo(batch, bo);
+        panfrost_batch_add_bo(batch, bo,
+                              PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW |
+                              panfrost_bo_access_for_stage(st));
 
         /* Upload address and size as sysval */
         uniform->du[0] = bo->gpu + sb.buffer_offset;
@@ -795,6 +800,7 @@ panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf, unsigned 
 static mali_ptr
 panfrost_map_constant_buffer_gpu(
         struct panfrost_context *ctx,
+        enum pipe_shader_type st,
         struct panfrost_constant_buffer *buf,
         unsigned index)
 {
@@ -803,7 +809,10 @@ panfrost_map_constant_buffer_gpu(
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         if (rsrc) {
-                panfrost_batch_add_bo(batch, rsrc->bo);
+                panfrost_batch_add_bo(batch, rsrc->bo,
+                                      PAN_BO_ACCESS_SHARED |
+                                      PAN_BO_ACCESS_READ |
+                                      panfrost_bo_access_for_stage(st));
                 return rsrc->bo->gpu;
 	} else if (cb->user_buffer) {
                 return panfrost_upload_transient(batch, cb->user_buffer, cb->buffer_size);
@@ -845,7 +854,10 @@ panfrost_patch_shader_state(
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         /* Add the shader BO to the batch. */
-        panfrost_batch_add_bo(batch, ss->bo);
+        panfrost_batch_add_bo(batch, ss->bo,
+                              PAN_BO_ACCESS_PRIVATE |
+                              PAN_BO_ACCESS_READ |
+			      panfrost_bo_access_for_stage(stage));
 
         /* We can't reuse over frames; that's not safe. The descriptor must be
          * transient uploaded */
@@ -1175,7 +1187,7 @@ panfrost_emit_for_draw(struct panfrost_context *ctx, bool with_vertex_data)
                                 continue;
                         }
 
-                        mali_ptr gpu = panfrost_map_constant_buffer_gpu(ctx, buf, ubo);
+                        mali_ptr gpu = panfrost_map_constant_buffer_gpu(ctx, i, buf, ubo);
 
                         unsigned bytes_per_field = 16;
                         unsigned aligned = ALIGN_POT(usz, bytes_per_field);
@@ -1397,7 +1409,10 @@ panfrost_get_index_buffer_mapped(struct panfrost_context *ctx, const struct pipe
 
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
-                panfrost_batch_add_bo(batch, rsrc->bo);
+                panfrost_batch_add_bo(batch, rsrc->bo,
+                                      PAN_BO_ACCESS_SHARED |
+                                      PAN_BO_ACCESS_READ |
+                                      PAN_BO_ACCESS_VERTEX_TILER);
                 return rsrc->bo->gpu + offset;
         } else {
                 /* Otherwise, we need to upload to transient memory */

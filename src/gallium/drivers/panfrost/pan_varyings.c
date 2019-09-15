@@ -69,7 +69,15 @@ panfrost_emit_streamout(
         /* Grab the BO and bind it to the batch */
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         struct panfrost_bo *bo = pan_resource(target->buffer)->bo;
-        panfrost_batch_add_bo(batch, bo);
+
+        /* Varyings are WRITE from the perspective of the VERTEX but READ from
+         * the perspective of the TILER and FRAGMENT.
+         */
+        panfrost_batch_add_bo(batch, bo,
+                              PAN_BO_ACCESS_SHARED |
+                              PAN_BO_ACCESS_RW |
+                              PAN_BO_ACCESS_VERTEX_TILER |
+                              PAN_BO_ACCESS_FRAGMENT);
 
         mali_ptr addr = bo->gpu + target->buffer_offset + (offset * slot->stride);
         slot->elements = addr;

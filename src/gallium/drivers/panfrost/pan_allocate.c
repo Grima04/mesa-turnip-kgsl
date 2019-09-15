@@ -63,8 +63,18 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
                 size_t bo_sz = sz < TRANSIENT_SLAB_SIZE ?
                                TRANSIENT_SLAB_SIZE : ALIGN_POT(sz, 4096);
 
-                /* We can't reuse the current BO, but we can create a new one. */
-                bo = panfrost_batch_create_bo(batch, bo_sz, 0);
+                /* We can't reuse the current BO, but we can create a new one.
+                 * We don't know what the BO will be used for, so let's flag it
+                 * RW and attach it to both the fragment and vertex/tiler jobs.
+                 * TODO: if we want fine grained BO assignment we should pass
+                 * flags to this function and keep the read/write,
+                 * fragment/vertex+tiler pools separate.
+                 */
+                bo = panfrost_batch_create_bo(batch, bo_sz, 0,
+                                              PAN_BO_ACCESS_PRIVATE |
+                                              PAN_BO_ACCESS_RW |
+                                              PAN_BO_ACCESS_VERTEX_TILER |
+                                              PAN_BO_ACCESS_FRAGMENT);
 
                 if (sz < TRANSIENT_SLAB_SIZE) {
                         batch->transient_bo = bo;

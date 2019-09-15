@@ -298,7 +298,10 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch)
                 unsigned chopped_addr = raw_addr - addr;
 
                 /* Add a dependency of the batch on the vertex buffer */
-                panfrost_batch_add_bo(batch, rsrc->bo);
+                panfrost_batch_add_bo(batch, rsrc->bo,
+                                      PAN_BO_ACCESS_SHARED |
+                                      PAN_BO_ACCESS_READ |
+                                      PAN_BO_ACCESS_VERTEX_TILER);
 
                 /* Set common fields */
                 attrs[k].elements = addr;

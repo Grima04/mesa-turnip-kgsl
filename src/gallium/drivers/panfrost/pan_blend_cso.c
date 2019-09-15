@@ -273,7 +273,11 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 
         /* Upload the shader */
         final.shader.bo = panfrost_batch_create_bo(batch, shader->size,
-                                                   PAN_BO_EXECUTE);
+                                                   PAN_BO_EXECUTE,
+                                                   PAN_BO_ACCESS_PRIVATE |
+                                                   PAN_BO_ACCESS_READ |
+                                                   PAN_BO_ACCESS_VERTEX_TILER |
+                                                   PAN_BO_ACCESS_FRAGMENT);
         memcpy(final.shader.bo->cpu, shader->buffer, shader->size);
 
         if (shader->patch_index) {
