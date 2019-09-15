@@ -879,7 +879,6 @@ panfrost_batch_submit(struct panfrost_batch *batch)
                         panfrost_batch_submit((*dep)->batch);
         }
 
-        struct panfrost_context *ctx = batch->ctx;
         int ret;
 
         /* Nothing to do! */
@@ -903,18 +902,7 @@ panfrost_batch_submit(struct panfrost_batch *batch)
 
 out:
         panfrost_freeze_batch(batch);
-
-        /* We always stall the pipeline for correct results since pipelined
-         * rendering is quite broken right now (to be fixed by the panfrost_job
-         * refactor, just take the perf hit for correctness)
-         */
-        if (!batch->out_sync->signaled)
-                drmSyncobjWait(pan_screen(ctx->base.screen)->fd,
-                               &batch->out_sync->syncobj, 1, INT64_MAX, 0,
-                               NULL);
-
         panfrost_free_batch(batch);
-
 }
 
 void
