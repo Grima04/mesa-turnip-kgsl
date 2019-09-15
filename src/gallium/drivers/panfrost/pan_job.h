@@ -31,6 +31,36 @@
 #include "pan_allocate.h"
 #include "pan_resource.h"
 
+/* panfrost_batch_fence is the out fence of a batch that users or other batches
+ * might want to wait on. The batch fence lifetime is different from the batch
+ * one as want will certainly want to wait upon the fence after the batch has
+ * been submitted (which is when panfrost_batch objects are freed).
+ */
+struct panfrost_batch_fence {
+        /* Refcounting object for the fence. */
+        struct pipe_reference reference;
+
+        /* Batch that created this fence object. Will become NULL at batch
+         * submission time. This field is mainly here to know whether the
+         * batch has been flushed or not.
+         */
+        struct panfrost_batch *batch;
+
+        /* Context this fence is attached to. We need both ctx and batch, as
+         * the batch will go away after it's been submitted, but the fence
+         * will stay a bit longer.
+         */
+        struct panfrost_context *ctx;
+
+        /* Sync object backing this fence. */
+        uint32_t syncobj;
+
+        /* Cached value of the signaled state to avoid calling WAIT_SYNCOBJs
+         * when we know the fence has already been signaled.
+         */
+        bool signaled;
+};
+
 #define PAN_REQ_MSAA            (1 << 0)
 #define PAN_REQ_DEPTH_WRITE     (1 << 1)
 
@@ -120,9 +150,18 @@ struct panfrost_batch {
 
         /* Framebuffer descriptor. */
         mali_ptr framebuffer;
+
+        /* Output sync object. Only valid when submitted is true. */
+        struct panfrost_batch_fence *out_sync;
 };
 
 /* Functions for managing the above */
+
+void
+panfrost_batch_fence_unreference(struct panfrost_batch_fence *fence);
+
+void
+panfrost_batch_fence_reference(struct panfrost_batch_fence *batch);
 
 struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx);

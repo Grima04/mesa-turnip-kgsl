@@ -36,6 +36,45 @@
 #include "pan_util.h"
 #include "pandecode/decode.h"
 
+static struct panfrost_batch_fence *
+panfrost_create_batch_fence(struct panfrost_batch *batch)
+{
+        struct panfrost_batch_fence *fence;
+        ASSERTED int ret;
+
+        fence = rzalloc(NULL, struct panfrost_batch_fence);
+        assert(fence);
+        pipe_reference_init(&fence->reference, 1);
+        fence->ctx = batch->ctx;
+        fence->batch = batch;
+        ret = drmSyncobjCreate(pan_screen(batch->ctx->base.screen)->fd, 0,
+                               &fence->syncobj);
+        assert(!ret);
+
+        return fence;
+}
+
+static void
+panfrost_free_batch_fence(struct panfrost_batch_fence *fence)
+{
+        drmSyncobjDestroy(pan_screen(fence->ctx->base.screen)->fd,
+                          fence->syncobj);
+        ralloc_free(fence);
+}
+
+void
+panfrost_batch_fence_unreference(struct panfrost_batch_fence *fence)
+{
+        if (pipe_reference(&fence->reference, NULL))
+                 panfrost_free_batch_fence(fence);
+}
+
+void
+panfrost_batch_fence_reference(struct panfrost_batch_fence *fence)
+{
+        pipe_reference(NULL, &fence->reference);
+}
+
 static struct panfrost_batch *
 panfrost_create_batch(struct panfrost_context *ctx,
                       const struct pipe_framebuffer_state *key)
@@ -53,6 +92,7 @@ panfrost_create_batch(struct panfrost_context *ctx,
 
         util_dynarray_init(&batch->headers, batch);
         util_dynarray_init(&batch->gpu_headers, batch);
+        batch->out_sync = panfrost_create_batch_fence(batch);
         util_copy_framebuffer_state(&batch->key, key);
 
         return batch;
@@ -73,6 +113,15 @@ panfrost_free_batch(struct panfrost_batch *batch)
 
         if (ctx->batch == batch)
                 ctx->batch = NULL;
+
+        /* The out_sync fence lifetime is different from the the batch one
+         * since other batches might want to wait on a fence of already
+         * submitted/signaled batch. All we need to do here is make sure the
+         * fence does not point to an invalid batch, which the core will
+         * interpret as 'batch is already submitted'.
+         */
+        batch->out_sync->batch = NULL;
+        panfrost_batch_fence_unreference(batch->out_sync);
 
         util_unreference_framebuffer_state(&batch->key);
         ralloc_free(batch);
@@ -441,8 +490,13 @@ panfrost_batch_submit(struct panfrost_batch *batch)
         int ret;
 
         /* Nothing to do! */
-        if (!batch->last_job.gpu && !batch->clear)
+        if (!batch->last_job.gpu && !batch->clear) {
+                /* Mark the fence as signaled so the fence logic does not try
+                 * to wait on it.
+                 */
+                batch->out_sync->signaled = true;
                 goto out;
+        }
 
         if (!batch->clear && batch->last_tiler.gpu)
                 panfrost_batch_draw_wallpaper(batch);
