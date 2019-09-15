@@ -98,7 +98,7 @@ struct panfrost_batch {
         unsigned job_index;
 
         /* BOs referenced -- will be used for flushing logic */
-        struct set *bos;
+        struct hash_table *bos;
 
         /* Current transient BO */
 	struct panfrost_bo *transient_bo;

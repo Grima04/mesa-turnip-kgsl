@@ -44,9 +44,8 @@ panfrost_create_batch(struct panfrost_context *ctx,
 
         batch->ctx = ctx;
 
-        batch->bos = _mesa_set_create(batch,
-                                      _mesa_hash_pointer,
-                                      _mesa_key_pointer_equal);
+        batch->bos = _mesa_hash_table_create(batch, _mesa_hash_pointer,
+                                             _mesa_key_pointer_equal);
 
         batch->minx = batch->miny = ~0;
         batch->maxx = batch->maxy = 0;
@@ -67,10 +66,8 @@ panfrost_free_batch(struct panfrost_batch *batch)
 
         struct panfrost_context *ctx = batch->ctx;
 
-        set_foreach(batch->bos, entry) {
-                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
-                panfrost_bo_unreference(bo);
-        }
+        hash_table_foreach(batch->bos, entry)
+                panfrost_bo_unreference((struct panfrost_bo *)entry->key);
 
         _mesa_hash_table_remove_key(ctx->batches, &batch->key);
 
@@ -138,11 +135,25 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
         if (!bo)
                 return;
 
-        if (_mesa_set_search(batch->bos, bo))
+        struct hash_entry *entry;
+        uint32_t old_flags = 0;
+
+        entry = _mesa_hash_table_search(batch->bos, bo);
+        if (!entry) {
+                entry = _mesa_hash_table_insert(batch->bos, bo,
+                                                (void *)(uintptr_t)flags);
+                panfrost_bo_reference(bo);
+	} else {
+                old_flags = (uintptr_t)entry->data;
+        }
+
+        assert(entry);
+
+        if (old_flags == flags)
                 return;
 
-        panfrost_bo_reference(bo);
-        _mesa_set_add(batch->bos, bo);
+        flags |= old_flags;
+        entry->data = (void *)(uintptr_t)flags;
 }
 
 void panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
@@ -376,7 +387,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         bo_handles = calloc(batch->bos->entries, sizeof(*bo_handles));
         assert(bo_handles);
 
-        set_foreach(batch->bos, entry) {
+        hash_table_foreach(batch->bos, entry) {
                 struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
                 assert(bo->gem_handle > 0);
                 bo_handles[submit.bo_handle_count++] = bo->gem_handle;
