@@ -186,6 +186,10 @@ void
 panfrost_flush_all_batches(struct panfrost_context *ctx, bool wait);
 
 void
+panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
+                                    struct panfrost_bo *bo, uint32_t flags);
+
+void
 panfrost_batch_set_requirements(struct panfrost_batch *batch);
 
 mali_ptr

@@ -953,6 +953,37 @@ panfrost_flush_all_batches(struct panfrost_context *ctx, bool wait)
 }
 
 void
+panfrost_flush_batches_accessing_bo(struct panfrost_context *ctx,
+                                    struct panfrost_bo *bo,
+                                    uint32_t access_type)
+{
+        struct panfrost_bo_access *access;
+        struct hash_entry *hentry;
+
+        /* It doesn't make any to flush only the readers. */
+        assert(access_type == PAN_BO_ACCESS_WRITE ||
+               access_type == PAN_BO_ACCESS_RW);
+
+        hentry = _mesa_hash_table_search(ctx->accessed_bos, bo);
+        access = hentry ? hentry->data : NULL;
+        if (!access)
+                return;
+
+        if (access_type & PAN_BO_ACCESS_WRITE && access->writer &&
+            access->writer->batch)
+                panfrost_batch_submit(access->writer->batch);
+
+        if (!(access_type & PAN_BO_ACCESS_READ))
+                return;
+
+        util_dynarray_foreach(&access->readers, struct panfrost_batch_fence *,
+                              reader) {
+                if (*reader && (*reader)->batch)
+                        panfrost_batch_submit((*reader)->batch);
+        }
+}
+
+void
 panfrost_batch_set_requirements(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
