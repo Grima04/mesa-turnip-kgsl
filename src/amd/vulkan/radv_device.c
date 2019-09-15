@@ -499,6 +499,7 @@ static const struct debug_control radv_perftest_options[] = {
 	{"cswave32", RADV_PERFTEST_CS_WAVE_32},
 	{"pswave32", RADV_PERFTEST_PS_WAVE_32},
 	{"gewave32", RADV_PERFTEST_GE_WAVE_32},
+	{"dfsm", RADV_PERFTEST_DFSM},
 	{NULL, 0}
 };
 
@@ -1960,10 +1961,9 @@ VkResult radv_CreateDevice(
 	device->pbb_allowed = device->physical_device->rad_info.chip_class >= GFX9 &&
 			      !(device->instance->debug_flags & RADV_DEBUG_NOBINNING);
 
+	/* Disable DFSM by default. As of 2019-09-15 Talos on Low is still 3% slower on Raven. */
 	device->dfsm_allowed = device->pbb_allowed &&
-	                       (device->physical_device->rad_info.family == CHIP_RAVEN ||
-	                        device->physical_device->rad_info.family == CHIP_RAVEN2 ||
-	                        device->physical_device->rad_info.family == CHIP_RENOIR);
+	                       (device->instance->perftest_flags & RADV_PERFTEST_DFSM);
 
 #ifdef ANDROID
 	device->always_use_syncobj = device->physical_device->rad_info.has_syncobj_wait_for_submit;
