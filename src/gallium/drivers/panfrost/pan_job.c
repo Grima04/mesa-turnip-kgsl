@@ -819,13 +819,6 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         free(bo_handles);
         free(in_syncs);
 
-        /* Release the last batch fence if any, and retain the new one */
-        if (ctx->last_out_sync)
-                panfrost_batch_fence_unreference(ctx->last_out_sync);
-
-        panfrost_batch_fence_reference(batch->out_sync);
-        ctx->last_out_sync = batch->out_sync;
-
         if (ret) {
                 fprintf(stderr, "Error submitting: %m\n");
                 return errno;
@@ -884,15 +877,6 @@ panfrost_batch_submit(struct panfrost_batch *batch)
                  * to wait on it.
                  */
                 batch->out_sync->signaled = true;
-
-                /* Release the last batch fence if any, and set ->last_out_sync
-                 * to NULL
-                 */
-                if (ctx->last_out_sync) {
-                        panfrost_batch_fence_unreference(ctx->last_out_sync);
-                        ctx->last_out_sync = NULL;
-                }
-
                 goto out;
         }
 

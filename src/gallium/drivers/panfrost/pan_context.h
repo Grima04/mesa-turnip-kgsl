@@ -94,7 +94,7 @@ struct panfrost_query {
 
 struct panfrost_fence {
         struct pipe_reference reference;
-        int fd;
+        struct util_dynarray syncfds;
 };
 
 struct panfrost_streamout {
@@ -193,9 +193,6 @@ struct panfrost_context {
 
         /* True for t6XX, false for t8xx. */
         bool is_t6xx;
-
-        /* The out sync fence of the last submitted batch. */
-        struct panfrost_batch_fence *last_out_sync;
 };
 
 /* Corresponds to the CSO */

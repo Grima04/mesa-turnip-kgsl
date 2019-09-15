@@ -575,7 +575,9 @@ panfrost_fence_reference(struct pipe_screen *pscreen,
         struct panfrost_fence *old = *p;
 
         if (pipe_reference(&(*p)->reference, &f->reference)) {
-                close(old->fd);
+                util_dynarray_foreach(&old->syncfds, int, fd)
+                        close(*fd);
+                util_dynarray_fini(&old->syncfds);
                 free(old);
         }
         *p = f;
@@ -589,66 +591,67 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_fence *f = (struct panfrost_fence *)fence;
+        struct util_dynarray syncobjs;
         int ret;
-        unsigned syncobj;
 
-        /* The fence was already signaled */
-        if (f->fd == -1)
+        /* All fences were already signaled */
+        if (!util_dynarray_num_elements(&f->syncfds, int))
                 return true;
 
-        ret = drmSyncobjCreate(screen->fd, 0, &syncobj);
-        if (ret) {
-                fprintf(stderr, "Failed to create syncobj to wait on: %m\n");
-                return false;
-        }
+        util_dynarray_init(&syncobjs, NULL);
+        util_dynarray_foreach(&f->syncfds, int, fd) {
+                uint32_t syncobj;
 
-        ret = drmSyncobjImportSyncFile(screen->fd, syncobj, f->fd);
-        if (ret) {
-                fprintf(stderr, "Failed to import fence to syncobj: %m\n");
-                return false;
+                ret = drmSyncobjCreate(screen->fd, 0, &syncobj);
+                assert(!ret);
+
+                ret = drmSyncobjImportSyncFile(screen->fd, syncobj, *fd);
+                assert(!ret);
+                util_dynarray_append(&syncobjs, uint32_t, syncobj);
         }
 
         uint64_t abs_timeout = os_time_get_absolute_timeout(timeout);
         if (abs_timeout == OS_TIMEOUT_INFINITE)
                 abs_timeout = INT64_MAX;
 
-        ret = drmSyncobjWait(screen->fd, &syncobj, 1, abs_timeout, 0, NULL);
+        ret = drmSyncobjWait(screen->fd, util_dynarray_begin(&syncobjs),
+                             util_dynarray_num_elements(&syncobjs, uint32_t),
+                             abs_timeout, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL,
+                             NULL);
 
-        drmSyncobjDestroy(screen->fd, syncobj);
+        util_dynarray_foreach(&syncobjs, uint32_t, syncobj)
+                drmSyncobjDestroy(screen->fd, *syncobj);
 
         return ret >= 0;
 }
 
 struct panfrost_fence *
-panfrost_fence_create(struct panfrost_context *ctx)
+panfrost_fence_create(struct panfrost_context *ctx,
+                      struct util_dynarray *fences)
 {
         struct panfrost_screen *screen = pan_screen(ctx->base.screen);
         struct panfrost_fence *f = calloc(1, sizeof(*f));
         if (!f)
                 return NULL;
 
-        f->fd = -1;
+        util_dynarray_init(&f->syncfds, NULL);
 
-        /* There was no job flushed yet or the batch fence was already
-         * signaled, let's return a dummy fence object that returns true
-         * directly when ->fence_finish() is called.
-         */
-        if (!ctx->last_out_sync || ctx->last_out_sync->signaled)
-                goto out;
+        /* Export fences from all pending batches. */
+        util_dynarray_foreach(fences, struct panfrost_batch_fence *, fence) {
+                int fd = -1;
 
-        /* Snapshot the last Panfrost's rendering's out fence.  We'd rather have
-         * another syncobj instead of a sync file, but this is all we get.
-         * (HandleToFD/FDToHandle just gives you another syncobj ID for the
-         * same syncobj).
-         */
-        drmSyncobjExportSyncFile(screen->fd, ctx->last_out_sync->syncobj, &f->fd);
-        if (f->fd == -1) {
-                fprintf(stderr, "export failed: %m\n");
-                free(f);
-                return NULL;
+                /* The fence is already signaled, no need to export it. */
+                if ((*fence)->signaled)
+                        continue;
+
+                drmSyncobjExportSyncFile(screen->fd, (*fence)->syncobj, &fd);
+                if (fd == -1)
+                        fprintf(stderr, "export failed: %m\n");
+
+                assert(fd != -1);
+                util_dynarray_append(&f->syncfds, int, fd);
         }
 
-out:
         pipe_reference_init(&f->reference, 1);
 
         return f;

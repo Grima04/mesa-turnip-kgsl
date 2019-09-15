@@ -1343,14 +1343,30 @@ panfrost_flush(
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct util_dynarray fences;
+
+        /* We must collect the fences before the flush is done, otherwise we'll
+         * lose track of them.
+         */
+        if (fence) {
+                util_dynarray_init(&fences, NULL);
+                panfrost_batch_fence_reference(batch->out_sync);
+                util_dynarray_append(&fences, struct panfrost_batch_fence *,
+                                     batch->out_sync);
+        }
 
         /* Submit the frame itself */
         panfrost_batch_submit(batch);
 
         if (fence) {
-                struct panfrost_fence *f = panfrost_fence_create(ctx);
+                struct panfrost_fence *f = panfrost_fence_create(ctx, &fences);
                 pipe->screen->fence_reference(pipe->screen, fence, NULL);
                 *fence = (struct pipe_fence_handle *)f;
+
+                util_dynarray_foreach(&fences, struct panfrost_batch_fence *, fence)
+                        panfrost_batch_fence_unreference(*fence);
+
+                util_dynarray_fini(&fences);
         }
 }
 
