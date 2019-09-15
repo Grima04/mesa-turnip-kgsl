@@ -2293,50 +2293,10 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        /* Flush when switching framebuffers, but not if the framebuffer
-         * state is being restored by u_blitter
-         */
-
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        bool is_scanout = panfrost_batch_is_scanout(batch);
-        bool has_draws = batch->last_job.gpu;
-
-        /* Bail out early when the current and new states are the same. */
-        if (util_framebuffer_state_equal(&ctx->pipe_framebuffer, fb))
-                return;
-
-        /* The wallpaper logic sets a new FB state before doing the blit and
-         * restore the old one when it's done. Those FB states are reported to
-         * be different because the surface they are pointing to are different,
-         * but those surfaces actually point to the same cbufs/zbufs. In that
-         * case we definitely don't want new FB descs to be emitted/attached
-         * since the job is expected to be flushed just after the blit is done,
-         * so let's just copy the new state and return here.
-         */
-        if (ctx->wallpaper_batch) {
-                util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
-                return;
-        }
-
-        if (!is_scanout || has_draws)
-                panfrost_flush_all_batches(ctx, true);
-        else
-                assert(!ctx->payloads[PIPE_SHADER_VERTEX].postfix.framebuffer &&
-                       !ctx->payloads[PIPE_SHADER_FRAGMENT].postfix.framebuffer);
-
-        /* Invalidate the FBO job cache since we've just been assigned a new
-         * FB state.
-         */
-        ctx->batch = NULL;
-
+        panfrost_hint_afbc(pan_screen(pctx->screen), fb);
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
-
-        /* Given that we're rendering, we'd love to have compression */
-        struct panfrost_screen *screen = pan_screen(ctx->base.screen);
-
-        panfrost_hint_afbc(screen, &ctx->pipe_framebuffer);
-        for (unsigned i = 0; i < PIPE_SHADER_TYPES; ++i)
-                ctx->payloads[i].postfix.framebuffer = 0;
+        ctx->batch = NULL;
+        panfrost_invalidate_frame(ctx);
 }
 
 static void *
