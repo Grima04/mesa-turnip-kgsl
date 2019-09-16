@@ -556,16 +556,16 @@ UNUSED static void dump_value(const nir_search_value *val)
       const nir_search_constant *sconst = nir_search_value_as_constant(val);
       switch (sconst->type) {
       case nir_type_float:
-         printf("%f", sconst->data.d);
+         fprintf(stderr, "%f", sconst->data.d);
          break;
       case nir_type_int:
-         printf("%"PRId64, sconst->data.i);
+         fprintf(stderr, "%"PRId64, sconst->data.i);
          break;
       case nir_type_uint:
-         printf("0x%"PRIx64, sconst->data.u);
+         fprintf(stderr, "0x%"PRIx64, sconst->data.u);
          break;
       case nir_type_bool:
-         printf("%s", sconst->data.u != 0 ? "True" : "False");
+         fprintf(stderr, "%s", sconst->data.u != 0 ? "True" : "False");
          break;
       default:
          unreachable("bad const type");
@@ -576,19 +576,19 @@ UNUSED static void dump_value(const nir_search_value *val)
    case nir_search_value_variable: {
       const nir_search_variable *var = nir_search_value_as_variable(val);
       if (var->is_constant)
-         printf("#");
-      printf("%c", var->variable + 'a');
+         fprintf(stderr, "#");
+      fprintf(stderr, "%c", var->variable + 'a');
       break;
    }
 
    case nir_search_value_expression: {
       const nir_search_expression *expr = nir_search_value_as_expression(val);
-      printf("(");
+      fprintf(stderr, "(");
       if (expr->inexact)
-         printf("~");
+         fprintf(stderr, "~");
       switch (expr->opcode) {
 #define CASE(n) \
-      case nir_search_op_##n: printf(#n); break;
+      case nir_search_op_##n: fprintf(stderr, #n); break;
       CASE(f2b)
       CASE(b2f)
       CASE(b2i)
@@ -598,7 +598,7 @@ UNUSED static void dump_value(const nir_search_value *val)
       CASE(i2f)
 #undef CASE
       default:
-         printf("%s", nir_op_infos[expr->opcode].name);
+         fprintf(stderr, "%s", nir_op_infos[expr->opcode].name);
       }
 
       unsigned num_srcs = 1;
@@ -606,17 +606,17 @@ UNUSED static void dump_value(const nir_search_value *val)
          num_srcs = nir_op_infos[expr->opcode].num_inputs;
 
       for (unsigned i = 0; i < num_srcs; i++) {
-         printf(" ");
+         fprintf(stderr, " ");
          dump_value(expr->srcs[i]);
       }
 
-      printf(")");
+      fprintf(stderr, ")");
       break;
    }
    }
 
    if (val->bit_size > 0)
-      printf("@%d", val->bit_size);
+      fprintf(stderr, "@%d", val->bit_size);
 }
 
 nir_ssa_def *
@@ -659,11 +659,11 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
       return NULL;
 
 #if 0
-   printf("matched: ");
+   fprintf(stderr, "matched: ");
    dump_value(&search->value);
-   printf(" -> ");
+   fprintf(stderr, " -> ");
    dump_value(replace);
-   printf(" ssa_%d\n", instr->dest.dest.ssa.index);
+   fprintf(stderr, " ssa_%d\n", instr->dest.dest.ssa.index);
 #endif
 
    build->cursor = nir_before_instr(&instr->instr);
