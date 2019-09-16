@@ -1252,7 +1252,6 @@ rbug_context_create(struct pipe_screen *_screen, struct pipe_context *pipe)
    rb_pipe->base.set_stream_output_targets = rbug_set_stream_output_targets;
    rb_pipe->base.resource_copy_region = rbug_resource_copy_region;
    rb_pipe->base.blit = rbug_blit;
-   rb_pipe->base.flush_resource = rbug_flush_resource;
    rb_pipe->base.clear = rbug_clear;
    rb_pipe->base.clear_render_target = rbug_clear_render_target;
    rb_pipe->base.clear_depth_stencil = rbug_clear_depth_stencil;
@@ -1266,6 +1265,7 @@ rbug_context_create(struct pipe_screen *_screen, struct pipe_context *pipe)
    rb_pipe->base.transfer_flush_region = rbug_context_transfer_flush_region;
    rb_pipe->base.buffer_subdata = rbug_context_buffer_subdata;
    rb_pipe->base.texture_subdata = rbug_context_texture_subdata;
+   rb_pipe->base.flush_resource = rbug_flush_resource;
 
    rb_pipe->pipe = pipe;
 
