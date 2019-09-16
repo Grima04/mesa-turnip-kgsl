@@ -152,6 +152,17 @@ rbug_screen_context_create(struct pipe_screen *_screen,
    return NULL;
 }
 
+static bool
+rbug_screen_can_create_resource(struct pipe_screen *_screen,
+                                const struct pipe_resource *templat)
+{
+   struct rbug_screen *rb_screen = rbug_screen(_screen);
+   struct pipe_screen *screen = rb_screen->screen;
+
+   return screen->can_create_resource(screen,
+                                      templat);
+}
+
 static struct pipe_resource *
 rbug_screen_resource_create(struct pipe_screen *_screen,
                             const struct pipe_resource *templat)
@@ -361,6 +372,7 @@ rbug_screen_create(struct pipe_screen *screen)
    rb_screen->base.get_paramf = rbug_screen_get_paramf;
    rb_screen->base.is_format_supported = rbug_screen_is_format_supported;
    rb_screen->base.context_create = rbug_screen_context_create;
+   SCR_INIT(can_create_resource);
    rb_screen->base.resource_create = rbug_screen_resource_create;
    rb_screen->base.resource_from_handle = rbug_screen_resource_from_handle;
    SCR_INIT(check_resource_capability);
