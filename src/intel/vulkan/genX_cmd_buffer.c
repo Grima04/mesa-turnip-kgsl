@@ -3494,7 +3494,7 @@ emit_draw_count_predicate_with_conditional_render(
 }
 #endif
 
-void genX(CmdDrawIndirectCountKHR)(
+void genX(CmdDrawIndirectCount)(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    _buffer,
     VkDeviceSize                                offset,
@@ -3560,7 +3560,7 @@ void genX(CmdDrawIndirectCountKHR)(
    }
 }
 
-void genX(CmdDrawIndexedIndirectCountKHR)(
+void genX(CmdDrawIndexedIndirectCount)(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    _buffer,
     VkDeviceSize                                offset,
@@ -5249,7 +5249,7 @@ void genX(CmdBeginRenderPass)(
    cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
 
-void genX(CmdBeginRenderPass2KHR)(
+void genX(CmdBeginRenderPass2)(
     VkCommandBuffer                             commandBuffer,
     const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
     const VkSubpassBeginInfoKHR*                pSubpassBeginInfo)
@@ -5274,7 +5274,7 @@ void genX(CmdNextSubpass)(
    cmd_buffer_begin_subpass(cmd_buffer, prev_subpass + 1);
 }
 
-void genX(CmdNextSubpass2KHR)(
+void genX(CmdNextSubpass2)(
     VkCommandBuffer                             commandBuffer,
     const VkSubpassBeginInfoKHR*                pSubpassBeginInfo,
     const VkSubpassEndInfoKHR*                  pSubpassEndInfo)
@@ -5306,7 +5306,7 @@ void genX(CmdEndRenderPass)(
    cmd_buffer->state.subpass = NULL;
 }
 
-void genX(CmdEndRenderPass2KHR)(
+void genX(CmdEndRenderPass2)(
     VkCommandBuffer                             commandBuffer,
     const VkSubpassEndInfoKHR*                  pSubpassEndInfo)
 {

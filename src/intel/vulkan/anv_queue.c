@@ -2145,7 +2145,7 @@ VkResult anv_GetSemaphoreFdKHR(
    return VK_SUCCESS;
 }
 
-VkResult anv_GetSemaphoreCounterValueKHR(
+VkResult anv_GetSemaphoreCounterValue(
     VkDevice                                    _device,
     VkSemaphore                                 _semaphore,
     uint64_t*                                   pValue)
@@ -2277,7 +2277,7 @@ anv_timelines_wait(struct anv_device *device,
    }
 }
 
-VkResult anv_WaitSemaphoresKHR(
+VkResult anv_WaitSemaphores(
     VkDevice                                    _device,
     const VkSemaphoreWaitInfoKHR*               pWaitInfo,
     uint64_t                                    timeout)
@@ -2329,7 +2329,7 @@ VkResult anv_WaitSemaphoresKHR(
    return result;
 }
 
-VkResult anv_SignalSemaphoreKHR(
+VkResult anv_SignalSemaphore(
     VkDevice                                    _device,
     const VkSemaphoreSignalInfoKHR*             pSignalInfo)
 {

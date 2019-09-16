@@ -54,6 +54,7 @@ API_PATCH_VERSION = 131
 API_VERSIONS = [
     ApiVersion('1.0',   True),
     ApiVersion('1.1',   True),
+    ApiVersion('1.2',   True),
 ]
 
 MAX_API_VERSION = None # Computed later

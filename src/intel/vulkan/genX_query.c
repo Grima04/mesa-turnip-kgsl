@@ -544,7 +544,7 @@ void genX(CmdResetQueryPool)(
    }
 }
 
-void genX(ResetQueryPoolEXT)(
+void genX(ResetQueryPool)(
     VkDevice                                    _device,
     VkQueryPool                                 queryPool,
     uint32_t                                    firstQuery,

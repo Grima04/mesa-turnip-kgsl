@@ -1614,8 +1614,8 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
    p->conformanceVersion = (VkConformanceVersionKHR) {
       .major = 1,
-      .minor = 1,
-      .subminor = 2,
+      .minor = 2,
+      .subminor = 0,
       .patch = 0,
    };
 
@@ -4189,7 +4189,7 @@ void anv_DestroyBuffer(
    vk_free2(&device->alloc, pAllocator, buffer);
 }
 
-VkDeviceAddress anv_GetBufferDeviceAddressKHR(
+VkDeviceAddress anv_GetBufferDeviceAddress(
     VkDevice                                    device,
     const VkBufferDeviceAddressInfoKHR*         pInfo)
 {
@@ -4201,14 +4201,14 @@ VkDeviceAddress anv_GetBufferDeviceAddressKHR(
    return anv_address_physical(buffer->address);
 }
 
-uint64_t anv_GetBufferOpaqueCaptureAddressKHR(
+uint64_t anv_GetBufferOpaqueCaptureAddress(
     VkDevice                                    device,
     const VkBufferDeviceAddressInfoKHR*         pInfo)
 {
    return 0;
 }
 
-uint64_t anv_GetDeviceMemoryOpaqueCaptureAddressKHR(
+uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
     VkDevice                                    device,
     const VkDeviceMemoryOpaqueCaptureAddressInfoKHR* pInfo)
 {

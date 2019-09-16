@@ -446,9 +446,9 @@ VkResult genX(CreateSampler)(
          break;
       }
 #if GEN_GEN >= 9
-      case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT: {
-         VkSamplerReductionModeCreateInfoEXT *sampler_reduction =
-            (VkSamplerReductionModeCreateInfoEXT *) ext;
+      case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: {
+         VkSamplerReductionModeCreateInfo *sampler_reduction =
+            (VkSamplerReductionModeCreateInfo *) ext;
          sampler_reduction_mode =
             vk_to_gen_sampler_reduction_mode[sampler_reduction->reductionMode];
          enable_sampler_reduction = true;
