@@ -60,6 +60,9 @@
 #include <sys/auxv.h>
 #define HAVE_ELF_AUX_INFO
 #endif
+#if defined(PIPE_ARCH_PPC)
+#include <machine/cpu.h>
+#endif
 #endif
 
 #if defined(PIPE_OS_LINUX)
@@ -96,7 +99,7 @@ static int has_cpuid(void);
 #endif
 
 
-#if defined(PIPE_ARCH_PPC) && !defined(PIPE_OS_APPLE) && !defined(PIPE_OS_LINUX)
+#if defined(PIPE_ARCH_PPC) && !defined(PIPE_OS_APPLE) && !defined(PIPE_OS_BSD) && !defined(PIPE_OS_LINUX)
 static jmp_buf  __lv_powerpc_jmpbuf;
 static volatile sig_atomic_t __lv_powerpc_canjump = 0;
 
@@ -125,8 +128,12 @@ check_os_altivec_support(void)
 #endif
 #if defined(__ALTIVEC__) && defined(__VSX__)
 /* Do nothing */
-#elif defined(PIPE_OS_APPLE)
+#elif defined(PIPE_OS_APPLE) || defined(PIPE_OS_NETBSD) || defined(PIPE_OS_OPENBSD)
+#ifdef HW_VECTORUNIT
    int sels[2] = {CTL_HW, HW_VECTORUNIT};
+#else
+   int sels[2] = {CTL_MACHDEP, CPU_ALTIVEC};
+#endif
    int has_vu = 0;
    int len = sizeof (has_vu);
    int err;
@@ -138,7 +145,19 @@ check_os_altivec_support(void)
          util_cpu_caps.has_altivec = 1;
       }
    }
-#elif defined(PIPE_OS_LINUX) /* !PIPE_OS_APPLE */
+#elif defined(PIPE_OS_FREEBSD) /* !PIPE_OS_APPLE && !PIPE_OS_NETBSD && !PIPE_OS_OPENBSD */
+   unsigned long hwcap = 0;
+#ifdef HAVE_ELF_AUX_INFO
+   elf_aux_info(AT_HWCAP, &hwcap, sizeof(hwcap));
+#else
+   size_t len = sizeof(hwcap);
+   sysctlbyname("hw.cpu_features", &hwcap, &len, NULL, 0);
+#endif
+   if (hwcap & PPC_FEATURE_HAS_ALTIVEC)
+      util_cpu_caps.has_altivec = 1;
+   if (hwcap & PPC_FEATURE_HAS_VSX)
+      util_cpu_caps.has_vsx = 1;
+#elif defined(PIPE_OS_LINUX) /* !PIPE_OS_FREEBSD */
 #if defined(PIPE_ARCH_PPC_64)
     Elf64_auxv_t aux;
 #else
@@ -159,7 +178,7 @@ check_os_altivec_support(void)
        }
        close(fd);
     }
-#else /* !PIPE_OS_APPLE && !PIPE_OS_LINUX */
+#else /* !PIPE_OS_APPLE && !PIPE_OS_BSD && !PIPE_OS_LINUX */
    /* not on Apple/Darwin or Linux, do it the brute-force way */
    /* this is borrowed from the libmpeg2 library */
    signal(SIGILL, sigill_handler);
