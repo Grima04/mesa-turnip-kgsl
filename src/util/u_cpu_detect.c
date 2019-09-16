@@ -117,7 +117,15 @@ sigill_handler(int sig)
 static void
 check_os_altivec_support(void)
 {
-#if defined(PIPE_OS_APPLE)
+#if defined(__ALTIVEC__)
+   util_cpu_caps.has_altivec = 1;
+#endif
+#if defined(__VSX__)
+   util_cpu_caps.has_vsx = 1;
+#endif
+#if defined(__ALTIVEC__) && defined(__VSX__)
+/* Do nothing */
+#elif defined(PIPE_OS_APPLE)
    int sels[2] = {CTL_HW, HW_VECTORUNIT};
    int has_vu = 0;
    int len = sizeof (has_vu);
