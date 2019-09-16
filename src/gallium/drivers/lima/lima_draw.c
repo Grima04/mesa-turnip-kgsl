@@ -848,6 +848,8 @@ lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 static void
 lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
+   struct lima_context_framebuffer *fb = &ctx->framebuffer;
+
    lima_pack_head_plbu_cmd(ctx);
 
    /* If it's zero scissor, we skip adding all other commands */
@@ -890,6 +892,8 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
    if (ctx->rasterizer->base.scissor) {
       struct pipe_scissor_state *scissor = &ctx->scissor;
       PLBU_CMD_SCISSORS(scissor->minx, scissor->maxx, scissor->miny, scissor->maxy);
+   } else {
+      PLBU_CMD_SCISSORS(0, fb->base.width, 0, fb->base.height);
    }
 
    PLBU_CMD_UNKNOWN1();
