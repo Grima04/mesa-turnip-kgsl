@@ -56,6 +56,10 @@
 #if defined(PIPE_OS_FREEBSD) || defined(PIPE_OS_DRAGONFLY)
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#if __has_include(<sys/auxv.h>)
+#include <sys/auxv.h>
+#define HAVE_ELF_AUX_INFO
+#endif
 #endif
 
 #if defined(PIPE_OS_LINUX)
@@ -362,6 +366,11 @@ check_os_arm_support(void)
     */
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
    util_cpu_caps.has_neon = 1;
+#elif defined(PIPE_OS_FREEBSD) && defined(HAVE_ELF_AUX_INFO)
+   unsigned long hwcap = 0;
+   elf_aux_info(AT_HWCAP, &hwcap, sizeof(hwcap));
+   if (hwcap & HWCAP_NEON)
+      util_cpu_caps.has_neon = 1;
 #elif defined(HAS_ANDROID_CPUFEATURES)
    AndroidCpuFamily cpu_family = android_getCpuFamily();
    uint64_t cpu_features = android_getCpuFeatures();
