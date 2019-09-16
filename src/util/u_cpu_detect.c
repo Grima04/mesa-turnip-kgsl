@@ -47,21 +47,16 @@
 #endif
 #endif
 
-#if defined(PIPE_OS_NETBSD) || defined(PIPE_OS_OPENBSD)
+#if defined(PIPE_OS_BSD)
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <machine/cpu.h>
 #endif
 
-#if defined(PIPE_OS_FREEBSD) || defined(PIPE_OS_DRAGONFLY)
-#include <sys/types.h>
-#include <sys/sysctl.h>
+#if defined(PIPE_OS_FREEBSD)
 #if __has_include(<sys/auxv.h>)
 #include <sys/auxv.h>
 #define HAVE_ELF_AUX_INFO
-#endif
-#if defined(PIPE_ARCH_PPC)
-#include <machine/cpu.h>
 #endif
 #endif
 
