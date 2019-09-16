@@ -21,13 +21,20 @@
  * IN THE SOFTWARE.
  ***************************************************************************/
 
+#include <llvm/Config/llvm-config.h>
+
+#if LLVM_VERSION_MAJOR < 7
 // llvm redefines DEBUG
 #pragma push_macro("DEBUG")
 #undef DEBUG
+#endif
 
 #include <rasterizer/core/state.h>
 #include "JitManager.h"
+
+#if LLVM_VERSION_MAJOR < 7
 #pragma pop_macro("DEBUG")
+#endif
 
 #include "common/os.h"
 #include "jit_api.h"

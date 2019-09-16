@@ -21,15 +21,22 @@
  * IN THE SOFTWARE.
  ***************************************************************************/
 
+#include <llvm/Config/llvm-config.h>
+
+#if LLVM_VERSION_MAJOR < 7
 // llvm redefines DEBUG
 #pragma push_macro("DEBUG")
 #undef DEBUG
+#endif
+
 #include "JitManager.h"
-#include <llvm/Config/llvm-config.h>
 #include "llvm-c/Core.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/IR/LegacyPassManager.h"
+
+#if LLVM_VERSION_MAJOR < 7
 #pragma pop_macro("DEBUG")
+#endif
 
 #include "state.h"
 #include "gen_state_llvm.h"
