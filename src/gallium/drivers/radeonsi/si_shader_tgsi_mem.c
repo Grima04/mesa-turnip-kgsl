@@ -1015,6 +1015,19 @@ static void resq_emit(
 
 	emit_data->output[emit_data->chan] =
 		fix_resinfo(ctx, target, ac_build_image_opcode(&ctx->ac, &args));
+
+	if (inst->Instruction.Opcode == TGSI_OPCODE_RESQ &&
+	    (target == TGSI_TEXTURE_2D_MSAA ||
+	     target == TGSI_TEXTURE_2D_ARRAY_MSAA)) {
+		LLVMValueRef samples =
+			ac_build_image_get_sample_count(&ctx->ac, args.resource);
+
+		emit_data->output[emit_data->chan] =
+			LLVMBuildInsertElement(ctx->ac.builder,
+					       emit_data->output[emit_data->chan],
+					       samples,
+					       LLVMConstInt(ctx->i32, 3, 0), "");
+	}
 }
 
 /**
