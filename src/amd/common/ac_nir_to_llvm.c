@@ -2778,29 +2778,11 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx,
 }
 
 static LLVMValueRef visit_image_samples(struct ac_nir_context *ctx,
-					const nir_intrinsic_instr *instr,
-					bool bindless)
+					const nir_intrinsic_instr *instr)
 {
-	enum glsl_sampler_dim dim;
-	bool is_array;
-	if (bindless) {
-		dim = nir_intrinsic_image_dim(instr);
-		is_array = nir_intrinsic_image_array(instr);
-	} else {
-		const struct glsl_type *type = get_image_deref(instr)->type;
-		dim = glsl_get_sampler_dim(type);
-		is_array = glsl_sampler_type_is_array(type);
-	}
+	LLVMValueRef rsrc = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, false);
 
-	struct ac_image_args args = { 0 };
-	args.dim = ac_get_sampler_dim(ctx->ac.chip_class, dim, is_array);
-	args.dmask = 0xf;
-	args.resource = get_image_descriptor(ctx, instr, AC_DESC_IMAGE, false);
-	args.opcode = ac_image_get_resinfo;
-	args.lod = ctx->ac.i32_0;
-	args.attributes = AC_FUNC_ATTR_READNONE;
-
-	return ac_build_image_opcode(&ctx->ac, &args);
+	return ac_build_image_get_sample_count(&ctx->ac, rsrc);
 }
 
 static LLVMValueRef visit_image_size(struct ac_nir_context *ctx,
@@ -3446,10 +3428,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 		visit_store_shared(ctx, instr);
 		break;
 	case nir_intrinsic_bindless_image_samples:
-		result = visit_image_samples(ctx, instr, true);
-		break;
 	case nir_intrinsic_image_deref_samples:
-		result = visit_image_samples(ctx, instr, false);
+		result = visit_image_samples(ctx, instr);
 		break;
 	case nir_intrinsic_bindless_image_load:
 		result = visit_image_load(ctx, instr, true);
