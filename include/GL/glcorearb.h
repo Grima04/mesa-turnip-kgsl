@@ -4026,6 +4026,10 @@ GLAPI void APIENTRY glEGLImageTargetTextureStorageEXT (GLuint texture, GLeglImag
 #endif
 #endif /* GL_EXT_EGL_image_storage */
 
+#ifndef GL_EXT_EGL_sync
+#define GL_EXT_EGL_sync 1
+#endif /* GL_EXT_EGL_sync */
+
 #ifndef GL_EXT_debug_label
 #define GL_EXT_debug_label 1
 #define GL_PROGRAM_PIPELINE_OBJECT_EXT    0x8A4F
@@ -4763,11 +4767,13 @@ GLAPI void APIENTRY glGetPerfQueryInfoINTEL (GLuint queryId, GLuint queryNameLen
 #ifndef GL_MESA_framebuffer_flip_y
 #define GL_MESA_framebuffer_flip_y 1
 #define GL_FRAMEBUFFER_FLIP_Y_MESA        0x8BBB
+typedef void (APIENTRYP PFNGLFRAMEBUFFERPARAMETERIMESAPROC) (GLenum target, GLenum pname, GLint param);
+typedef void (APIENTRYP PFNGLGETFRAMEBUFFERPARAMETERIVMESAPROC) (GLenum target, GLenum pname, GLint *params);
+#ifdef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glFramebufferParameteriMESA (GLenum target, GLenum pname, GLint param);
+GLAPI void APIENTRY glGetFramebufferParameterivMESA (GLenum target, GLenum pname, GLint *params);
+#endif
 #endif /* GL_MESA_framebuffer_flip_y */
-
-#ifndef GL_MESA_EGL_sync
-#define GL_MESA_EGL_sync 1
-#endif /* GL_MESA_EGL_sync */
 
 #ifndef GL_NV_bindless_multi_draw_indirect
 #define GL_NV_bindless_multi_draw_indirect 1
