@@ -673,9 +673,8 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
                                      instr->dest.dest.ssa.bit_size,
                                      &state, &instr->instr);
 
-   /* Inserting a mov may be unnecessary.  However, it's much easier to
-    * simply let copy propagation clean this up than to try to go through
-    * and rewrite swizzles ourselves.
+   /* Note that NIR builder will elide the MOV if it's a no-op, which may
+    * allow more work to be done in a single pass through algebraic.
     */
    nir_ssa_def *ssa_val =
       nir_mov_alu(build, val, instr->dest.dest.ssa.num_components);
