@@ -6094,6 +6094,8 @@ gfx10_emit_streamout_end(struct radv_cmd_buffer *cmd_buffer,
 						   EOP_DST_SEL_TC_L2,
 						   EOP_DATA_SEL_GDS,
 						   va, EOP_DATA_GDS(i, 1), 0);
+
+			radv_cs_add_buffer(cmd_buffer->device->ws, cs, buffer->bo);
 		}
 	}
 
