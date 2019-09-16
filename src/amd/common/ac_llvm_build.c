@@ -2492,6 +2492,25 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 	return result;
 }
 
+LLVMValueRef ac_build_image_get_sample_count(struct ac_llvm_context *ctx,
+					     LLVMValueRef rsrc)
+{
+	LLVMValueRef samples;
+
+	/* Read the samples from the descriptor directly.
+	 * Hardware doesn't have any instruction for this.
+	 */
+	samples = LLVMBuildExtractElement(ctx->builder, rsrc,
+					  LLVMConstInt(ctx->i32, 3, 0), "");
+	samples = LLVMBuildLShr(ctx->builder, samples,
+				LLVMConstInt(ctx->i32, 16, 0), "");
+	samples = LLVMBuildAnd(ctx->builder, samples,
+			       LLVMConstInt(ctx->i32, 0xf, 0), "");
+	samples = LLVMBuildShl(ctx->builder, ctx->i32_1,
+			       samples, "");
+	return samples;
+}
+
 LLVMValueRef ac_build_cvt_pkrtz_f16(struct ac_llvm_context *ctx,
 				    LLVMValueRef args[2])
 {

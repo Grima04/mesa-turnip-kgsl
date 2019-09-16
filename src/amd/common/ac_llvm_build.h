@@ -552,6 +552,8 @@ struct ac_image_args {
 
 LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx,
 				   struct ac_image_args *a);
+LLVMValueRef ac_build_image_get_sample_count(struct ac_llvm_context *ctx,
+					     LLVMValueRef rsrc);
 LLVMValueRef ac_build_cvt_pkrtz_f16(struct ac_llvm_context *ctx,
 				    LLVMValueRef args[2]);
 LLVMValueRef ac_build_cvt_pknorm_i16(struct ac_llvm_context *ctx,

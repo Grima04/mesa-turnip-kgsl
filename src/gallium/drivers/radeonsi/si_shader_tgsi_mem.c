@@ -1685,23 +1685,13 @@ static void si_llvm_emit_txqs(
 	struct lp_build_emit_data *emit_data)
 {
 	struct si_shader_context *ctx = si_shader_context(bld_base);
-	LLVMValueRef res, samples;
-	LLVMValueRef res_ptr, samp_ptr, fmask_ptr = NULL;
+	LLVMValueRef rsrc;
 
-	tex_fetch_ptrs(bld_base, emit_data, &res_ptr, &samp_ptr, &fmask_ptr);
+	tex_fetch_ptrs(bld_base, emit_data, &rsrc, NULL, NULL);
 
-	/* Read the samples from the descriptor directly. */
-	res = LLVMBuildBitCast(ctx->ac.builder, res_ptr, ctx->v8i32, "");
-	samples = LLVMBuildExtractElement(ctx->ac.builder, res,
-					  LLVMConstInt(ctx->i32, 3, 0), "");
-	samples = LLVMBuildLShr(ctx->ac.builder, samples,
-				LLVMConstInt(ctx->i32, 16, 0), "");
-	samples = LLVMBuildAnd(ctx->ac.builder, samples,
-			       LLVMConstInt(ctx->i32, 0xf, 0), "");
-	samples = LLVMBuildShl(ctx->ac.builder, ctx->i32_1,
-			       samples, "");
-
-	emit_data->output[emit_data->chan] = samples;
+	rsrc = LLVMBuildBitCast(ctx->ac.builder, rsrc, ctx->v8i32, "");
+	emit_data->output[emit_data->chan] =
+		ac_build_image_get_sample_count(&ctx->ac, rsrc);
 }
 
 static LLVMValueRef si_llvm_emit_fbfetch(struct si_shader_context *ctx)
