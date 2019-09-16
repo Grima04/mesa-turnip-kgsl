@@ -314,6 +314,16 @@ rbug_screen_fence_finish(struct pipe_screen *_screen,
    return screen->fence_finish(screen, ctx, fence, timeout);
 }
 
+static int
+rbug_screen_fence_get_fd(struct pipe_screen *_screen,
+                         struct pipe_fence_handle *fence)
+{
+   struct rbug_screen *rb_screen = rbug_screen(_screen);
+   struct pipe_screen *screen = rb_screen->screen;
+
+   return screen->fence_get_fd(screen, fence);
+}
+
 bool
 rbug_enabled()
 {
@@ -362,6 +372,7 @@ rbug_screen_create(struct pipe_screen *screen)
    rb_screen->base.flush_frontbuffer = rbug_screen_flush_frontbuffer;
    rb_screen->base.fence_reference = rbug_screen_fence_reference;
    rb_screen->base.fence_finish = rbug_screen_fence_finish;
+   rb_screen->base.fence_get_fd = rbug_screen_fence_get_fd;
 
    rb_screen->screen = screen;
 
