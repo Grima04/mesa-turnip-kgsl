@@ -659,6 +659,9 @@ virgl_is_format_supported( struct pipe_screen *screen,
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
 
+   if (!util_is_power_of_two_or_zero(sample_count))
+      return false;
+
    assert(target == PIPE_BUFFER ||
           target == PIPE_TEXTURE_1D ||
           target == PIPE_TEXTURE_1D_ARRAY ||
