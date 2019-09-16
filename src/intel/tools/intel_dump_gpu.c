@@ -291,7 +291,9 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
          free(data);
    }
 
-   aub_write_exec(&aub_file,
+   uint32_t ctx_id = execbuffer2->rsvd1;
+
+   aub_write_exec(&aub_file, ctx_id,
                   batch_bo->offset + execbuffer2->batch_start_offset,
                   offset, engine_class_from_ring_flag(ring_flag));
 

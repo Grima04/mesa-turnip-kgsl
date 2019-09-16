@@ -540,8 +540,12 @@ main(int argc, char *argv[])
    if (aub_use_execlists(&aub)) {
       fail_if(!hwsp_bo, "Failed to find Context buffer.\n");
       aub_write_context_execlists(&aub, hwsp_bo->addr + 4096 /* skip GuC page */, hwsp_bo->engine_class);
-   } else
-      aub_write_exec(&aub, batch_bo->addr, 0, I915_ENGINE_CLASS_RENDER);
+   } else {
+      /* Use context id 0 -- if we are not using execlists it doesn't matter
+       * anyway
+       */
+      aub_write_exec(&aub, 0, batch_bo->addr, 0, I915_ENGINE_CLASS_RENDER);
+   }
 
    /* Cleanup */
    list_for_each_entry_safe(struct bo, bo_entry, &bo_list, link) {
