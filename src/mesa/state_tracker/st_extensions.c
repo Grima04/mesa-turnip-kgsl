@@ -1445,7 +1445,6 @@ void st_init_extensions(struct pipe_screen *screen,
     */
    if (GLSLVersion >= 130 &&
        extensions->ARB_uniform_buffer_object &&
-       extensions->ARB_shader_bit_encoding &&
        extensions->NV_primitive_restart &&
        screen->get_shader_param(screen, PIPE_SHADER_VERTEX,
                                 PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS) >= 16 &&
