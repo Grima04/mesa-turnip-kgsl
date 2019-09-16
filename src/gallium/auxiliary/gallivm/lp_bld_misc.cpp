@@ -44,9 +44,11 @@
 
 #include <llvm/Config/llvm-config.h>
 
+#if LLVM_VERSION_MAJOR < 7
 // Workaround http://llvm.org/PR23628
 #pragma push_macro("DEBUG")
 #undef DEBUG
+#endif
 
 #include <llvm/Config/llvm-config.h>
 #include <llvm-c/Core.h>
@@ -73,8 +75,10 @@
 #include <llvm/ExecutionEngine/JITEventListener.h>
 #endif
 
+#if LLVM_VERSION_MAJOR < 7
 // Workaround http://llvm.org/PR23628
 #pragma pop_macro("DEBUG")
+#endif
 
 #include "c11/threads.h"
 #include "os/os_thread.h"
