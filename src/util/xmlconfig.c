@@ -794,7 +794,7 @@ parseEngineAttr(struct OptConfData *data, const XML_Char **attr)
     if (engine_name_match) {
        regex_t re;
 
-       if (regcomp (&re, engine_name_match, REG_EXTENDED|REG_NOSUB) != 0) {
+       if (regcomp (&re, engine_name_match, REG_EXTENDED|REG_NOSUB) == 0) {
           if (regexec (&re, data->engineName, 0, NULL, 0) == REG_NOMATCH)
              data->ignoringApp = data->inApp;
           regfree (&re);
