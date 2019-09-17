@@ -312,10 +312,7 @@ meson-i386:
     VULKAN_DRIVERS: intel
     DRI_DRIVERS: "swrast"
     GALLIUM_DRIVERS: "iris"
-    # Disable i386 tests, because u_format_tests gets precision
-    # failures in dxtn unpacking
     EXTRA_OPTION: >
-      -D build-tests=false
       -D vulkan-overlay-layer=true
       -D llvm=false
       -D osmesa=classic

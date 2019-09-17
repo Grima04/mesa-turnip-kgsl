@@ -14,9 +14,32 @@ else
     touch native.file
 fi
 
+CROSS_FILE=/cross_file-"$CROSS".txt
+
+# cross-xfail-$CROSS, if it exists, contains a list of tests that are expected
+# to fail for the $CROSS configuration, one per line. you can then mark those
+# tests in their meson.build with:
+#
+# test(...,
+#      should_fail: meson.get_cross_property('xfail', '').contains(t),
+#     )
+#
+# where t is the name of the test, and the '' is the string to search when
+# not cross-compiling (which is empty, because for amd64 everything is
+# expected to pass).
+if [ -n "$CROSS" ]; then
+    CROSS_XFAIL=.gitlab-ci/cross-xfail-"$CROSS"
+    if [ -s "$CROSS_XFAIL" ]; then
+        sed -i \
+            -e '/\[properties\]/a\' \
+            -e "xfail = '$(tr '\n' , < $CROSS_XFAIL)'" \
+            "$CROSS_FILE"
+    fi
+fi
+
 rm -rf _build
 meson _build --native-file=native.file \
-      ${CROSS+--cross /cross_file-$CROSS.txt} \
+      ${CROSS+--cross "$CROSS_FILE"} \
       -D prefix=`pwd`/install \
       -D libdir=lib \
       -D buildtype=${BUILDTYPE:-debug} \
@@ -45,7 +68,7 @@ rm -rf install/include
 
 # Strip the drivers in the artifacts to cut 80% of the artifacts size.
 if [ -n "$CROSS" ]; then
-    STRIP=`sed -n -E "s/strip\s*=\s*'(.*)'/\1/p" /cross_file-$CROSS.txt`
+    STRIP=`sed -n -E "s/strip\s*=\s*'(.*)'/\1/p" "$CROSS_FILE"`
     if [ -z "$STRIP" ]; then
         echo "Failed to find strip command in cross file"
         exit 1
