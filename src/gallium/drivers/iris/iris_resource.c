@@ -814,7 +814,6 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    assert(iris_resource_unfinished_aux_import(res));
-   assert(!res->mod_info->supports_clear_color);
 
    /* Create an array of resources. Combining main and aux planes is easier
     * with indexing as opposed to scanning the linked list.
@@ -843,6 +842,26 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
    if (num_main_planes == 1 && num_planes == 2) {
       import_aux_info(r[0], r[1]);
       map_aux_addresses(screen, r[0], format, 0);
+
+      /* Add on a clear color BO. */
+      if (iris_get_aux_clear_color_state_size(screen) > 0) {
+         res->aux.clear_color_bo =
+            iris_bo_alloc_tiled(screen->bufmgr, "clear color_buffer",
+                                iris_get_aux_clear_color_state_size(screen),
+                                1, IRIS_MEMZONE_OTHER, I915_TILING_NONE, 0,
+                                BO_ALLOC_ZEROED);
+      }
+   } else if (num_main_planes == 1 && num_planes == 3) {
+      import_aux_info(r[0], r[1]);
+      map_aux_addresses(screen, r[0], format, 0);
+
+      /* Import the clear color BO. */
+      iris_bo_reference(r[2]->aux.clear_color_bo);
+      r[0]->aux.clear_color_bo = r[2]->aux.clear_color_bo;
+      r[0]->aux.clear_color_offset = r[2]->aux.clear_color_offset;
+      memcpy(res->aux.clear_color.f32,
+             iris_bo_map(NULL, res->aux.clear_color_bo, MAP_READ|MAP_RAW) +
+             res->aux.clear_color_offset, sizeof(res->aux.clear_color.f32));
    } else if (num_main_planes == 2 && num_planes == 4) {
       import_aux_info(r[0], r[2]);
       import_aux_info(r[1], r[3]);
@@ -855,18 +874,6 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
       import_aux_info(r[0], r[2]);
       import_aux_info(r[1], r[2]);
       map_aux_addresses(screen, r[0], format, 0);
-   }
-
-   /* Add on a clear color BO. */
-   assert(res->aux.clear_color_bo == NULL);
-   unsigned clear_color_state_size =
-      iris_get_aux_clear_color_state_size(screen);
-
-   if (clear_color_state_size > 0) {
-      res->aux.clear_color_bo =
-         iris_bo_alloc_tiled(screen->bufmgr, "clear color_buffer",
-                             clear_color_state_size, 1, IRIS_MEMZONE_OTHER,
-                             I915_TILING_NONE, 0, BO_ALLOC_ZEROED);
    }
 }
 
@@ -1067,6 +1074,23 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
    return &res->base.b;
 }
 
+static bool
+mod_plane_is_clear_color(uint64_t modifier, uint32_t plane)
+{
+   ASSERTED const struct isl_drm_modifier_info *mod_info =
+      isl_drm_modifier_get_info(modifier);
+   assert(mod_info);
+
+   switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
+      assert(mod_info->supports_clear_color);
+      return plane == 2;
+   default:
+      assert(!mod_info->supports_clear_color);
+      return false;
+   }
+}
+
 static struct pipe_resource *
 iris_resource_from_handle(struct pipe_screen *pscreen,
                           const struct pipe_resource *templ,
@@ -1119,6 +1143,10 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
        * aux image. iris_resource_finish_aux_import will merge the separate aux
        * parameters back into a single iris_resource.
        */
+   } else if (mod_plane_is_clear_color(whandle->modifier, whandle->plane)) {
+      res->aux.clear_color_offset = whandle->offset;
+      res->aux.clear_color_bo = res->bo;
+      res->bo = NULL;
    } else {
       /* Save modifier import information to reconstruct later. After import,
        * this will be available under a second image accessible from the main
