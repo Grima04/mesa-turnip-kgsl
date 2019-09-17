@@ -3202,12 +3202,11 @@ static void build_streamout_vertex(struct radv_shader_context *ctx,
 		if (stream != output->stream)
 			continue;
 
-		unsigned loc = output->location;
 		struct radv_shader_output_values out = {};
 
 		for (unsigned comp = 0; comp < 4; comp++) {
 			tmp = ac_build_gep0(&ctx->ac, vertexptr,
-					    LLVMConstInt(ctx->ac.i32, 4 * loc + comp, false));
+					    LLVMConstInt(ctx->ac.i32, 4 * i + comp, false));
 			out.values[comp] = LLVMBuildLoad(builder, tmp, "");
 		}
 
@@ -3576,6 +3575,7 @@ static LLVMValueRef ngg_nogs_vertex_ptr(struct radv_shader_context *ctx,
 static void
 handle_ngg_outputs_post_1(struct radv_shader_context *ctx)
 {
+	struct radv_streamout_info *so = &ctx->shader_info->so;
 	LLVMBuilderRef builder = ctx->ac.builder;
 	LLVMValueRef vertex_ptr = NULL;
 	LLVMValueRef tmp, tmp2;
@@ -3588,15 +3588,17 @@ handle_ngg_outputs_post_1(struct radv_shader_context *ctx)
 
 	vertex_ptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
-	for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
-		if (!(ctx->output_mask & (1ull << i)))
-			continue;
+	for (unsigned i = 0; i < so->num_outputs; ++i) {
+		struct radv_stream_output *output =
+			&ctx->shader_info->so.outputs[i];
 
-		for (unsigned j = 0; j < 4; j++) {
+		unsigned loc = output->location;
+
+		for (unsigned comp = 0; comp < 4; comp++) {
 			tmp = ac_build_gep0(&ctx->ac, vertex_ptr,
-					    LLVMConstInt(ctx->ac.i32, 4 * i + j, false));
+					    LLVMConstInt(ctx->ac.i32, 4 * i + comp, false));
 			tmp2 = LLVMBuildLoad(builder,
-					     ctx->abi.outputs[4 * i + j], "");
+					     ctx->abi.outputs[4 * loc + comp], "");
 			tmp2 = ac_to_integer(&ctx->ac, tmp2);
 			LLVMBuildStore(builder, tmp2, tmp);
 		}
