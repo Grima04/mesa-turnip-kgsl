@@ -199,6 +199,9 @@ etna_link_shaders(struct etna_context *ctx, struct compiled_shader_state *cs,
       VIVS_GL_HALTI5_SH_SPECIALS_PS_PCOORD_IN((link.pcoord_varying_comp_ofs != -1) ?
                                               link.pcoord_varying_comp_ofs : 0x7f);
 
+   /* mask out early Z bit when frag depth is written */
+   cs->PE_DEPTH_CONFIG = ~COND(fs->ps_depth_out_reg >= 0, VIVS_PE_DEPTH_CONFIG_EARLY_Z);
+
    /* reference instruction memory */
    cs->vs_inst_mem_size = vs->code_size;
    cs->VS_INST_MEM = vs->code;
