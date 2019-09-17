@@ -228,10 +228,11 @@ static const __DRIdri2LoaderExtension dri2_loader_extension = {
 };
 
 static const __DRIimageLoaderExtension image_loader_extension = {
-   .base = { __DRI_IMAGE_LOADER, 1 },
+   .base = { __DRI_IMAGE_LOADER, 2 },
 
    .getBuffers          = image_get_buffers,
    .flushFrontBuffer    = dri_flush_front_buffer,
+   .getCapability       = dri_get_capability,
 };
 
 static const __DRIswrastLoaderExtension swrast_loader_extension = {
