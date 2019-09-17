@@ -566,19 +566,29 @@ static void
 get_copy_region_aux_settings(const struct gen_device_info *devinfo,
                              struct iris_resource *res,
                              enum isl_aux_usage *out_aux_usage,
-                             bool *out_clear_supported)
+                             bool *out_clear_supported,
+                             bool is_render_target)
 {
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_CCS_E:
-      *out_aux_usage = res->aux.usage;
-      /* Prior to Gen9, fast-clear only supported 0/1 clear colors.  Since
-       * we're going to re-interpret the format as an integer format possibly
-       * with a different number of components, we can't handle clear colors
-       * until Gen9.
+      /* A stencil resolve operation must be performed prior to doing resource
+       * copies or used by CPU.
+       * (see HSD 1209978162)
        */
-      *out_clear_supported = devinfo->gen >= 9;
+      if (is_render_target && isl_surf_usage_is_stencil(res->surf.usage)) {
+         *out_aux_usage = ISL_AUX_USAGE_NONE;
+         *out_clear_supported = false;
+      } else {
+         *out_aux_usage = res->aux.usage;
+         /* Prior to Gen9, fast-clear only supported 0/1 clear colors.  Since
+          * we're going to re-interpret the format as an integer format possibly
+          * with a different number of components, we can't handle clear colors
+          * until Gen9.
+          */
+         *out_clear_supported = devinfo->gen >= 9;
+      }
       break;
    default:
       *out_aux_usage = ISL_AUX_USAGE_NONE;
@@ -615,9 +625,9 @@ iris_copy_region(struct blorp_context *blorp,
    enum isl_aux_usage src_aux_usage, dst_aux_usage;
    bool src_clear_supported, dst_clear_supported;
    get_copy_region_aux_settings(devinfo, src_res, &src_aux_usage,
-                                &src_clear_supported);
+                                &src_clear_supported, false);
    get_copy_region_aux_settings(devinfo, dst_res, &dst_aux_usage,
-                                &dst_clear_supported);
+                                &dst_clear_supported, true);
 
    if (iris_batch_references(batch, src_res->bo))
       tex_cache_flush_hack(batch, ISL_FORMAT_UNSUPPORTED, src_res->surf.format);
