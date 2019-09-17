@@ -176,6 +176,7 @@ const char *ac_get_llvm_processor_name(enum radeon_family family)
       return "gfx1012";
    case CHIP_SIENNA_CICHLID:
    case CHIP_NAVY_FLOUNDER:
+   case CHIP_DIMGREY_CAVEFISH:
       return "gfx1030";
    default:
       return "";

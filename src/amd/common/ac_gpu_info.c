@@ -400,6 +400,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       identify_chip(NAVI14);
       identify_chip(SIENNA_CICHLID);
       identify_chip(NAVY_FLOUNDER);
+      identify_chip(DIMGREY_CAVEFISH);
       break;
    }
 
@@ -706,6 +707,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       case CHIP_NAVI12:
       case CHIP_SIENNA_CICHLID:
       case CHIP_NAVY_FLOUNDER:
+      case CHIP_DIMGREY_CAVEFISH:
          pc_lines = 1024;
          break;
       case CHIP_NAVI14:
