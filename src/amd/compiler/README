@@ -109,6 +109,11 @@ Stores and atomics always bypass the L1 cache, so they don't support the DLC bit
 and it shouldn't be set in these cases. Setting the DLC for these cases can result
 in graphical glitches.
 
+## RDNA S_DCACHE_WB
+
+The S_DCACHE_WB is not mentioned in the RDNA ISA doc, but it is needed in order
+to achieve correct behavior in some SSBO CTS tests.
+
 ## RDNA subvector mode
 
 The documentation of S_SUBVECTOR_LOOP_BEGIN and S_SUBVECTOR_LOOP_END is not clear
