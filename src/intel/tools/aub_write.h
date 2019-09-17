@@ -57,6 +57,7 @@ struct aub_file {
 
    struct aub_ppgtt_table pml4;
    uint64_t phys_addrs_allocator;
+   uint64_t ggtt_addrs_allocator;
 
    struct {
       uint64_t ring_addr;

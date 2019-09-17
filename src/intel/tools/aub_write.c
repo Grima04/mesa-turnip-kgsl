@@ -179,9 +179,10 @@ aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, co
    aub_write_header(aub, app_name);
 
    aub->phys_addrs_allocator = 0;
+   aub->ggtt_addrs_allocator = 0;
    aub->pml4.phys_addr = aub->phys_addrs_allocator++ << 12;
 
-   mem_trace_memory_write_header_out(aub, 0,
+   mem_trace_memory_write_header_out(aub, aub->ggtt_addrs_allocator++,
                                      GEN8_PTE_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT_ENTRY,
                                      "GGTT PT");
@@ -495,6 +496,18 @@ get_context_init(const struct gen_device_info *devinfo,
       gen10_contexts[engine_class](params, data, size);
 }
 
+static uint64_t
+alloc_ggtt_address(struct aub_file *aub, uint64_t size)
+{
+   uint32_t ggtt_ptes = DIV_ROUND_UP(size, 4096);
+   uint64_t addr = aub->ggtt_addrs_allocator << 12;
+
+   aub->ggtt_addrs_allocator += ggtt_ptes;
+   aub_map_ggtt(aub, addr, size);
+
+   return addr;
+}
+
 static uint32_t
 write_engine_execlist_setup(struct aub_file *aub,
                             enum drm_i915_gem_engine_class engine_class)
@@ -505,39 +518,27 @@ write_engine_execlist_setup(struct aub_file *aub,
    get_context_init(&aub->devinfo, NULL, engine_class, NULL, &context_size);
 
    /* GGTT PT */
-   uint64_t phys_addr = aub->phys_addrs_allocator << 12;
    uint32_t total_size = RING_SIZE + PPHWSP_SIZE + context_size;
-   uint32_t ggtt_ptes = DIV_ROUND_UP(total_size, 4096);
    char name[80];
-
-   aub->phys_addrs_allocator += ggtt_ptes;
+   uint64_t ggtt_addr = alloc_ggtt_address(aub, total_size);
 
    snprintf(name, sizeof(name), "%s GGTT PT", cs->name);
-   mem_trace_memory_write_header_out(aub,
-                                     sizeof(uint64_t) * (phys_addr >> 12),
-                                     ggtt_ptes * GEN8_PTE_SIZE,
-                                     AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT_ENTRY,
-                                     name);
-   for (uint32_t i = 0; i < ggtt_ptes; i++) {
-      dword_out(aub, 1 + 0x1000 * i + phys_addr);
-      dword_out(aub, 0);
-   }
 
    /* RING */
-   aub->engine_setup[engine_class].ring_addr = phys_addr;
+   aub->engine_setup[engine_class].ring_addr = ggtt_addr;
    snprintf(name, sizeof(name), "%s RING", cs->name);
-   mem_trace_memory_write_header_out(aub, phys_addr, RING_SIZE,
+   mem_trace_memory_write_header_out(aub, ggtt_addr, RING_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      name);
    for (uint32_t i = 0; i < RING_SIZE; i += sizeof(uint32_t))
       dword_out(aub, 0);
-   phys_addr += RING_SIZE;
+   ggtt_addr += RING_SIZE;
 
    /* PPHWSP */
-   aub->engine_setup[engine_class].pphwsp_addr = phys_addr;
-   aub->engine_setup[engine_class].descriptor = cs->hw_class | phys_addr | CONTEXT_FLAGS;
+   aub->engine_setup[engine_class].pphwsp_addr = ggtt_addr;
+   aub->engine_setup[engine_class].descriptor = cs->hw_class | ggtt_addr | CONTEXT_FLAGS;
    snprintf(name, sizeof(name), "%s PPHWSP", cs->name);
-   mem_trace_memory_write_header_out(aub, phys_addr,
+   mem_trace_memory_write_header_out(aub, ggtt_addr,
                                      PPHWSP_SIZE + context_size,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT,
                                      name);
