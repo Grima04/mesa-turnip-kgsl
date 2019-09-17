@@ -587,12 +587,13 @@ fs_generator::generate_shuffle(fs_inst *inst,
             struct brw_reg gdst = suboffset(dst, group);
             struct brw_reg dst_d = retype(spread(gdst, 2),
                                           BRW_REGISTER_TYPE_D);
+            assert(dst.hstride == 1);
             brw_MOV(p, dst_d,
                     retype(brw_VxH_indirect(0, 0), BRW_REGISTER_TYPE_D));
             brw_MOV(p, byte_offset(dst_d, 4),
                     retype(brw_VxH_indirect(0, 4), BRW_REGISTER_TYPE_D));
          } else {
-            brw_MOV(p, suboffset(dst, group),
+            brw_MOV(p, suboffset(dst, group * dst.hstride),
                     retype(brw_VxH_indirect(0, 0), src.type));
          }
       }
