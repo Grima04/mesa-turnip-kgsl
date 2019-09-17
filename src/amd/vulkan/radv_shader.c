@@ -425,7 +425,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			NIR_PASS_V(nir, nir_lower_input_attachments, true);
 
 		NIR_PASS_V(nir, nir_remove_dead_variables,
-		           nir_var_shader_in | nir_var_shader_out | nir_var_system_value);
+		           nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared);
 
 		NIR_PASS_V(nir, nir_propagate_invariant);
 
