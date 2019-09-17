@@ -1746,6 +1746,9 @@ static GLenum
 get_image_format(struct tgsi_full_instruction *tgsi_inst)
 {
    switch (tgsi_inst->Memory.Format) {
+   case PIPE_FORMAT_NONE:
+      return GL_NONE;
+
    case PIPE_FORMAT_R8_UNORM:
       return GL_R8;
    case PIPE_FORMAT_R8G8_UNORM:
