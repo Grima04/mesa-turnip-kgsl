@@ -1448,9 +1448,17 @@ si_texture_create_object(struct pipe_screen *screen,
 			}
 		}
 
-		/* Upload the DCC retile map. */
+		/* Initialize displayable DCC that requires the retile blit. */
 		if (tex->surface.dcc_retile_map_offset) {
-			/* Use a staging buffer for the upload, because
+			/* Uninitialized DCC can hang the display hw.
+			 * Clear to white to indicate that. */
+			si_screen_clear_buffer(sscreen, &tex->buffer.b.b,
+					       tex->surface.display_dcc_offset,
+					       tex->surface.u.gfx9.display_dcc_size,
+					       DCC_CLEAR_COLOR_1111);
+
+			/* Upload the DCC retile map.
+			 * Use a staging buffer for the upload, because
 			 * the buffer backing the texture is unmappable.
 			 */
 			bool use_uint16 = tex->surface.u.gfx9.dcc_retile_use_uint16;
