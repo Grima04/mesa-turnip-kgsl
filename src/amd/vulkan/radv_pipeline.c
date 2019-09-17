@@ -2263,6 +2263,9 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 	if (pipeline->device->physical_device->rad_info.chip_class < GFX8)
 		radv_pipeline_compute_get_int_clamp(pCreateInfo, &key.is_int8, &key.is_int10);
 
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10)
+		key.topology = pCreateInfo->pInputAssemblyState->topology;
+
 	return key;
 }
 
@@ -2292,6 +2295,7 @@ radv_fill_shader_keys(struct radv_device *device,
 		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_offsets[i] = key->vertex_attribute_offsets[i];
 		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_strides[i] = key->vertex_attribute_strides[i];
 	}
+	keys[MESA_SHADER_VERTEX].vs.outprim = si_conv_prim_to_gs_out(key->topology);
 
 	if (nir[MESA_SHADER_TESS_CTRL]) {
 		keys[MESA_SHADER_VERTEX].vs_common_out.as_ls = true;

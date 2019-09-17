@@ -3702,7 +3702,11 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 	LLVMValueRef num_vertices_val;
 
 	if (ctx->stage == MESA_SHADER_VERTEX) {
-		num_vertices_val = LLVMConstInt(ctx->ac.i32, 1, false);
+		LLVMValueRef outprim_val =
+			LLVMConstInt(ctx->ac.i32,
+				     ctx->options->key.vs.outprim, false);
+		num_vertices_val = LLVMBuildAdd(builder, outprim_val,
+						ctx->ac.i32_1, "");
 		num_vertices = 3; /* TODO: optimize for points & lines */
 	} else {
 		assert(ctx->stage == MESA_SHADER_TESS_EVAL);

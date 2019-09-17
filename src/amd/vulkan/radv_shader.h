@@ -76,6 +76,9 @@ struct radv_vs_variant_key {
 
 	/* For some formats the channels have to be shuffled. */
 	uint32_t post_shuffle;
+
+	/* Output primitive type. */
+	uint8_t outprim;
 };
 
 struct radv_tes_variant_key {
