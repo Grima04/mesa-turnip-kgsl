@@ -587,7 +587,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    }
 #endif
 
-#if GEN_GEN >= 8
+#if GEN_GEN >= 8 && GEN_GEN < 11
    /* From the CHV PRM, Volume 2d, page 321 (RENDER_SURFACE_STATE dword 0
     * bit 9 "Sampler L2 Bypass Mode Disable" Programming Notes):
     *
