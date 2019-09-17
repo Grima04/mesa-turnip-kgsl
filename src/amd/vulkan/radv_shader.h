@@ -333,6 +333,7 @@ struct radv_shader_binary_legacy {
 	struct radv_shader_binary base;
 	struct ac_shader_config config;
 	unsigned code_size;
+	unsigned exec_size;
 	unsigned llvm_ir_size;
 	unsigned disasm_size;
 	
@@ -390,7 +391,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   gl_shader_stage stage,
 			   const VkSpecializationInfo *spec_info,
 			   const VkPipelineCreateFlags flags,
-			   const struct radv_pipeline_layout *layout);
+			   const struct radv_pipeline_layout *layout,
+			   bool use_aco);
 
 void *
 radv_alloc_shader_memory(struct radv_device *device,
@@ -412,6 +414,7 @@ radv_shader_variant_compile(struct radv_device *device,
 			    const struct radv_shader_variant_key *key,
 			    struct radv_shader_info *info,
 			    bool keep_shader_info,
+			    bool use_aco,
 			    struct radv_shader_binary **binary_out);
 
 struct radv_shader_variant *

@@ -296,6 +296,9 @@ struct radv_physical_device {
 	uint8_t cs_wave_size;
 	uint8_t ge_wave_size;
 
+	/* Whether to use the experimental compiler backend */
+	bool use_aco;
+
 	/* This is the drivers on-disk cache used as a fallback as opposed to
 	 * the pipeline cache defined by apps.
 	 */
@@ -1421,6 +1424,7 @@ struct radv_shader_module;
 #define RADV_HASH_SHADER_CS_WAVE32           (1 << 4)
 #define RADV_HASH_SHADER_PS_WAVE32           (1 << 5)
 #define RADV_HASH_SHADER_GE_WAVE32           (1 << 6)
+#define RADV_HASH_SHADER_ACO                 (1 << 7)
 
 void
 radv_hash_shaders(unsigned char *hash,

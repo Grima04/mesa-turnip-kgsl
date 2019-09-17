@@ -86,41 +86,41 @@ radv_get_device_uuid(struct radeon_info *info, void *uuid)
 }
 
 static void
-radv_get_device_name(enum radeon_family family, char *name, size_t name_len)
+radv_get_device_name(enum radeon_family family, char *name, size_t name_len, bool aco)
 {
 	const char *chip_string;
 
 	switch (family) {
-	case CHIP_TAHITI: chip_string = "AMD RADV TAHITI"; break;
-	case CHIP_PITCAIRN: chip_string = "AMD RADV PITCAIRN"; break;
-	case CHIP_VERDE: chip_string = "AMD RADV CAPE VERDE"; break;
-	case CHIP_OLAND: chip_string = "AMD RADV OLAND"; break;
-	case CHIP_HAINAN: chip_string = "AMD RADV HAINAN"; break;
-	case CHIP_BONAIRE: chip_string = "AMD RADV BONAIRE"; break;
-	case CHIP_KAVERI: chip_string = "AMD RADV KAVERI"; break;
-	case CHIP_KABINI: chip_string = "AMD RADV KABINI"; break;
-	case CHIP_HAWAII: chip_string = "AMD RADV HAWAII"; break;
-	case CHIP_TONGA: chip_string = "AMD RADV TONGA"; break;
-	case CHIP_ICELAND: chip_string = "AMD RADV ICELAND"; break;
-	case CHIP_CARRIZO: chip_string = "AMD RADV CARRIZO"; break;
-	case CHIP_FIJI: chip_string = "AMD RADV FIJI"; break;
-	case CHIP_POLARIS10: chip_string = "AMD RADV POLARIS10"; break;
-	case CHIP_POLARIS11: chip_string = "AMD RADV POLARIS11"; break;
-	case CHIP_POLARIS12: chip_string = "AMD RADV POLARIS12"; break;
-	case CHIP_STONEY: chip_string = "AMD RADV STONEY"; break;
-	case CHIP_VEGAM: chip_string = "AMD RADV VEGA M"; break;
-	case CHIP_VEGA10: chip_string = "AMD RADV VEGA10"; break;
-	case CHIP_VEGA12: chip_string = "AMD RADV VEGA12"; break;
-	case CHIP_VEGA20: chip_string = "AMD RADV VEGA20"; break;
-	case CHIP_RAVEN: chip_string = "AMD RADV RAVEN"; break;
-	case CHIP_RAVEN2: chip_string = "AMD RADV RAVEN2"; break;
-	case CHIP_NAVI10: chip_string = "AMD RADV NAVI10"; break;
-	case CHIP_NAVI12: chip_string = "AMD RADV NAVI12"; break;
-	case CHIP_NAVI14: chip_string = "AMD RADV NAVI14"; break;
-	default: chip_string = "AMD RADV unknown"; break;
+	case CHIP_TAHITI: chip_string = "TAHITI"; break;
+	case CHIP_PITCAIRN: chip_string = "PITCAIRN"; break;
+	case CHIP_VERDE: chip_string = "CAPE VERDE"; break;
+	case CHIP_OLAND: chip_string = "OLAND"; break;
+	case CHIP_HAINAN: chip_string = "HAINAN"; break;
+	case CHIP_BONAIRE: chip_string = "BONAIRE"; break;
+	case CHIP_KAVERI: chip_string = "KAVERI"; break;
+	case CHIP_KABINI: chip_string = "KABINI"; break;
+	case CHIP_HAWAII: chip_string = "HAWAII"; break;
+	case CHIP_TONGA: chip_string = "TONGA"; break;
+	case CHIP_ICELAND: chip_string = "ICELAND"; break;
+	case CHIP_CARRIZO: chip_string = "CARRIZO"; break;
+	case CHIP_FIJI: chip_string = "FIJI"; break;
+	case CHIP_POLARIS10: chip_string = "POLARIS10"; break;
+	case CHIP_POLARIS11: chip_string = "POLARIS11"; break;
+	case CHIP_POLARIS12: chip_string = "POLARIS12"; break;
+	case CHIP_STONEY: chip_string = "STONEY"; break;
+	case CHIP_VEGAM: chip_string = "VEGA M"; break;
+	case CHIP_VEGA10: chip_string = "VEGA10"; break;
+	case CHIP_VEGA12: chip_string = "VEGA12"; break;
+	case CHIP_VEGA20: chip_string = "VEGA20"; break;
+	case CHIP_RAVEN: chip_string = "RAVEN"; break;
+	case CHIP_RAVEN2: chip_string = "RAVEN2"; break;
+	case CHIP_NAVI10: chip_string = "NAVI10"; break;
+	case CHIP_NAVI12: chip_string = "NAVI12"; break;
+	case CHIP_NAVI14: chip_string = "NAVI14"; break;
+	default: chip_string = "unknown"; break;
 	}
 
-	snprintf(name, name_len, "%s (LLVM " MESA_LLVM_VERSION_STRING ")", chip_string);
+	snprintf(name, name_len, "AMD RADV%s %s (LLVM " MESA_LLVM_VERSION_STRING ")", aco ? "/ACO" : "", chip_string);
 }
 
 static uint64_t
@@ -327,7 +327,14 @@ radv_physical_device_init(struct radv_physical_device *device,
 
 	radv_handle_env_var_force_family(device);
 
-	radv_get_device_name(device->rad_info.family, device->name, sizeof(device->name));
+	device->use_aco = instance->perftest_flags & RADV_PERFTEST_ACO;
+	if ((device->rad_info.chip_class < GFX8 ||
+	     device->rad_info.chip_class > GFX9) && device->use_aco) {
+		fprintf(stderr, "WARNING: disabling ACO on unsupported GPUs.\n");
+		device->use_aco = false;
+	}
+
+	radv_get_device_name(device->rad_info.family, device->name, sizeof(device->name), device->use_aco);
 
 	if (radv_device_get_cache_uuid(device->rad_info.family, device->cache_uuid)) {
 		device->ws->destroy(device->ws);
@@ -339,7 +346,8 @@ radv_physical_device_init(struct radv_physical_device *device,
 	/* These flags affect shader compilation. */
 	uint64_t shader_env_flags =
 		(device->instance->perftest_flags & RADV_PERFTEST_SISCHED ? 0x1 : 0) |
-		(device->instance->debug_flags & RADV_DEBUG_UNSAFE_MATH ? 0x2 : 0);
+		(device->instance->debug_flags & RADV_DEBUG_UNSAFE_MATH ? 0x2 : 0) |
+		(device->use_aco ? 0x4 : 0);
 
 	/* The gpu id is already embedded in the uuid so we just pass "radv"
 	 * when creating the cache.
@@ -362,9 +370,10 @@ radv_physical_device_init(struct radv_physical_device *device,
 		(device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
 	device->use_shader_ballot = device->rad_info.chip_class >= GFX8 &&
-				    device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT;
+				    (device->use_aco || device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
 
 	device->use_ngg_streamout = false;
+	device->use_aco = device->instance->perftest_flags & RADV_PERFTEST_ACO;
 
 	/* Determine the number of threads per wave for all stages. */
 	device->cs_wave_size = 64;
@@ -500,6 +509,7 @@ static const struct debug_control radv_perftest_options[] = {
 	{"pswave32", RADV_PERFTEST_PS_WAVE_32},
 	{"gewave32", RADV_PERFTEST_GE_WAVE_32},
 	{"dfsm", RADV_PERFTEST_DFSM},
+	{"aco", RADV_PERFTEST_ACO},
 	{NULL, 0}
 };
 
@@ -622,6 +632,8 @@ VkResult radv_CreateInstance(
 	instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"),
 						   radv_perftest_options);
 
+	if (instance->perftest_flags & RADV_PERFTEST_ACO)
+		fprintf(stderr, "WARNING: Experimental compiler backend enabled. Here be dragons! Incorrect rendering, GPU hangs and/or resets are likely\n");
 
 	if (instance->debug_flags & RADV_DEBUG_STARTUP)
 		radv_logi("Created an instance");
@@ -832,7 +844,7 @@ void radv_GetPhysicalDeviceFeatures(
 		.shaderCullDistance                       = true,
 		.shaderFloat64                            = true,
 		.shaderInt64                              = true,
-		.shaderInt16                              = pdevice->rad_info.chip_class >= GFX9,
+		.shaderInt16                              = pdevice->rad_info.chip_class >= GFX9 && !pdevice->use_aco,
 		.sparseBinding                            = true,
 		.variableMultisampleRate                  = true,
 		.inheritedQueries                         = true,
@@ -874,7 +886,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
 			VkPhysicalDevice16BitStorageFeatures *features =
 			    (VkPhysicalDevice16BitStorageFeatures*)ext;
-			bool enabled = pdevice->rad_info.chip_class >= GFX8;
+			bool enabled = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
 			features->storageBuffer16BitAccess = enabled;
 			features->uniformAndStorageBuffer16BitAccess = enabled;
 			features->storagePushConstant16 = enabled;
@@ -968,7 +980,7 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
 			VkPhysicalDevice8BitStorageFeaturesKHR *features =
 			    (VkPhysicalDevice8BitStorageFeaturesKHR*)ext;
-			bool enabled = pdevice->rad_info.chip_class >= GFX8;
+			bool enabled = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
 			features->storageBuffer8BitAccess = enabled;
 			features->uniformAndStorageBuffer8BitAccess = enabled;
 			features->storagePushConstant8 = enabled;
@@ -977,8 +989,8 @@ void radv_GetPhysicalDeviceFeatures2(
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
 			VkPhysicalDeviceFloat16Int8FeaturesKHR *features =
 				(VkPhysicalDeviceFloat16Int8FeaturesKHR*)ext;
-			features->shaderFloat16 = pdevice->rad_info.chip_class >= GFX8;
-			features->shaderInt8 = true;
+			features->shaderFloat16 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_aco;
+			features->shaderInt8 = !pdevice->use_aco;
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR: {
