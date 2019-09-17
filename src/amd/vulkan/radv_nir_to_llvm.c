@@ -3175,6 +3175,17 @@ static void build_export_prim(struct radv_shader_context *ctx,
 	ac_build_export(&ctx->ac, &args);
 }
 
+static struct radv_stream_output *
+radv_get_stream_output_by_loc(struct radv_streamout_info *so, unsigned location)
+{
+	for (unsigned i = 0; i < so->num_outputs; ++i) {
+		if (so->outputs[i].location == location)
+			return &so->outputs[i];
+	}
+
+	return NULL;
+}
+
 static void build_streamout_vertex(struct radv_shader_context *ctx,
 				   LLVMValueRef *so_buffer, LLVMValueRef *wg_offset_dw,
 				   unsigned stream, LLVMValueRef offset_vtx,
@@ -3195,25 +3206,79 @@ static void build_streamout_vertex(struct radv_shader_context *ctx,
 		offset[buffer] = LLVMBuildShl(builder, tmp, LLVMConstInt(ctx->ac.i32, 2, false), "");
 	}
 
-	for (unsigned i = 0; i < so->num_outputs; ++i) {
-		struct radv_stream_output *output =
-			&ctx->shader_info->so.outputs[i];
+	if (ctx->stage == MESA_SHADER_GEOMETRY) {
+		struct radv_shader_output_values outputs[AC_LLVM_MAX_OUTPUTS];
+		unsigned noutput = 0;
+		unsigned out_idx = 0;
 
-		if (stream != output->stream)
-			continue;
+		for (unsigned i = 0; i < AC_LLVM_MAX_OUTPUTS; ++i) {
+			unsigned output_usage_mask =
+				ctx->shader_info->gs.output_usage_mask[i];
+			uint8_t output_stream =
+				output_stream = ctx->shader_info->gs.output_streams[i];
 
-		struct radv_shader_output_values out = {};
-
-		for (unsigned comp = 0; comp < 4; comp++) {
-			if (!(output->component_mask & (1 << comp)))
+			if (!(ctx->output_mask & (1ull << i)) ||
+			    output_stream != stream)
 				continue;
 
-			tmp = ac_build_gep0(&ctx->ac, vertexptr,
-					    LLVMConstInt(ctx->ac.i32, 4 * i + comp, false));
-			out.values[comp] = LLVMBuildLoad(builder, tmp, "");
+			outputs[noutput].slot_name = i;
+			outputs[noutput].slot_index = i == VARYING_SLOT_CLIP_DIST1;
+			outputs[noutput].usage_mask = output_usage_mask;
+
+			int length = util_last_bit(output_usage_mask);
+
+			for (unsigned j = 0; j < length; j++, out_idx++) {
+				if (!(output_usage_mask & (1 << j)))
+					continue;
+
+				tmp = ac_build_gep0(&ctx->ac, vertexptr,
+						    LLVMConstInt(ctx->ac.i32, out_idx, false));
+				outputs[noutput].values[j] = LLVMBuildLoad(builder, tmp, "");
+			}
+
+			for (unsigned j = length; j < 4; j++)
+				outputs[noutput].values[j] = LLVMGetUndef(ctx->ac.f32);
+
+			noutput++;
 		}
 
-		radv_emit_stream_output(ctx, so_buffer, offset, output, &out);
+		for (unsigned i = 0; i < noutput; i++) {
+			struct radv_stream_output *output =
+				radv_get_stream_output_by_loc(so, outputs[i].slot_name);
+
+			if (!output ||
+			    output->stream != stream)
+				continue;
+
+			struct radv_shader_output_values out = {};
+
+			for (unsigned j = 0; j < 4; j++) {
+				out.values[j] = outputs[i].values[j];
+			}
+
+			radv_emit_stream_output(ctx, so_buffer, offset, output, &out);
+		}
+	} else {
+		for (unsigned i = 0; i < so->num_outputs; ++i) {
+			struct radv_stream_output *output =
+				&ctx->shader_info->so.outputs[i];
+
+			if (stream != output->stream)
+				continue;
+
+			struct radv_shader_output_values out = {};
+
+			for (unsigned comp = 0; comp < 4; comp++) {
+				if (!(output->component_mask & (1 << comp)))
+					continue;
+
+				tmp = ac_build_gep0(&ctx->ac, vertexptr,
+						    LLVMConstInt(ctx->ac.i32, 4 * i + comp, false));
+				out.values[comp] = LLVMBuildLoad(builder, tmp, "");
+			}
+
+			radv_emit_stream_output(ctx, so_buffer, offset, output, &out);
+		}
 	}
 }
 
