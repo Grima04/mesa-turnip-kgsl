@@ -642,7 +642,8 @@ make_texture(struct st_context *st,
 
       pipeFormat = st_choose_format(st, intFormat, format, type,
                                     st->internal_target, 0, 0,
-                                    PIPE_BIND_SAMPLER_VIEW, FALSE);
+                                    PIPE_BIND_SAMPLER_VIEW,
+                                    false, false);
       assert(pipeFormat != PIPE_FORMAT_NONE);
    }
 
@@ -1772,7 +1773,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
       if (type == GL_DEPTH) {
          srcFormat = st_choose_format(st, GL_DEPTH_COMPONENT, GL_NONE,
                                       GL_NONE, st->internal_target, 0, 0,
-                                      srcBind, FALSE);
+                                      srcBind, false, false);
       }
       else {
          assert(type == GL_COLOR);
@@ -1780,27 +1781,27 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
          if (util_format_is_float(srcFormat)) {
             srcFormat = st_choose_format(st, GL_RGBA32F, GL_NONE,
                                          GL_NONE, st->internal_target, 0, 0,
-                                         srcBind, FALSE);
+                                         srcBind, false, false);
          }
          else if (util_format_is_pure_sint(srcFormat)) {
             srcFormat = st_choose_format(st, GL_RGBA32I, GL_NONE,
                                          GL_NONE, st->internal_target, 0, 0,
-                                         srcBind, FALSE);
+                                         srcBind, false, false);
          }
          else if (util_format_is_pure_uint(srcFormat)) {
             srcFormat = st_choose_format(st, GL_RGBA32UI, GL_NONE,
                                          GL_NONE, st->internal_target, 0, 0,
-                                         srcBind, FALSE);
+                                         srcBind, false, false);
          }
          else if (util_format_is_snorm(srcFormat)) {
             srcFormat = st_choose_format(st, GL_RGBA16_SNORM, GL_NONE,
                                          GL_NONE, st->internal_target, 0, 0,
-                                         srcBind, FALSE);
+                                         srcBind, false, false);
          }
          else {
             srcFormat = st_choose_format(st, GL_RGBA, GL_NONE,
                                          GL_NONE, st->internal_target, 0, 0,
-                                         srcBind, FALSE);
+                                         srcBind, false, false);
          }
       }
 
