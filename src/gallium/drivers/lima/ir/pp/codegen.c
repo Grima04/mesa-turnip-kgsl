@@ -90,6 +90,10 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
             f->imm.source_type = 3;
             f->imm.perspective = 1;
             break;
+         case ppir_op_load_coords:
+            /* num_components == 3 implies cubemap as we don't support 3D textures */
+            f->imm.source_type = num_components == 3 ? 2 : 0;
+            break;
          default:
             break;
       }
@@ -99,7 +103,13 @@ static void ppir_codegen_encode_varying(ppir_node *node, void *code)
       f->reg.mask = dest->write_mask << (index & 0x3);
 
       if (load->num_src) {
-         f->reg.source_type = 1;
+         /* num_components == 3 implies cubemap as we don't support 3D textures */
+         if (num_components == 3) {
+            f->reg.source_type = 2;
+            f->reg.perspective = 1;
+         } else {
+            f->reg.source_type = 1;
+         }
          ppir_src *src = &load->src;
          index = ppir_target_get_src_reg_index(src);
          f->reg.source = index >> 2;
@@ -117,7 +127,20 @@ static void ppir_codegen_encode_texld(ppir_node *node, void *code)
 
    f->index = ldtex->sampler;
    f->lod_bias_en = 0;
-   f->type = ppir_codegen_sampler_type_2d;
+
+   switch (ldtex->sampler_dim) {
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_RECT:
+   case GLSL_SAMPLER_DIM_EXTERNAL:
+      f->type = ppir_codegen_sampler_type_2d;
+      break;
+   case GLSL_SAMPLER_DIM_CUBE:
+      f->type = ppir_codegen_sampler_type_cube;
+      break;
+   default:
+      break;
+   }
+
    f->offset_en = 0;
    f->unknown_2 = 0x39001;
 }

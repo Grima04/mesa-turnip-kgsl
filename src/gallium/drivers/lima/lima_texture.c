@@ -124,8 +124,17 @@ lima_update_tex_desc(struct lima_context *ctx, struct lima_sampler_state *sample
 
    memset(desc, 0, desc_size);
 
-   /* 2D texture */
-   desc->texture_2d = 1;
+   switch (texture->base.target) {
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_RECT:
+      desc->texture_type = LIMA_TEXTURE_TYPE_2D;
+      break;
+   case PIPE_TEXTURE_CUBE:
+      desc->texture_type = LIMA_TEXTURE_TYPE_CUBE;
+      break;
+   default:
+      break;
+   }
 
    if (!sampler->base.normalized_coords)
       desc->unnorm_coords = 1;

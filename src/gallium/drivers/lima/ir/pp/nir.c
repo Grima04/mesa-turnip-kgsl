@@ -461,6 +461,7 @@ static ppir_node *ppir_emit_tex(ppir_block *block, nir_instr *ni)
 
    switch (instr->sampler_dim) {
    case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_CUBE:
    case GLSL_SAMPLER_DIM_RECT:
    case GLSL_SAMPLER_DIM_EXTERNAL:
       break;

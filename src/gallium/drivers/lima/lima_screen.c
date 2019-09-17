@@ -273,6 +273,7 @@ lima_screen_is_format_supported(struct pipe_screen *pscreen,
    case PIPE_TEXTURE_1D:
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_CUBE:
       break;
    default:
       return false;
