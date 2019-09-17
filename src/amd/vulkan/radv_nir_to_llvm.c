@@ -3205,6 +3205,9 @@ static void build_streamout_vertex(struct radv_shader_context *ctx,
 		struct radv_shader_output_values out = {};
 
 		for (unsigned comp = 0; comp < 4; comp++) {
+			if (!(output->component_mask & (1 << comp)))
+				continue;
+
 			tmp = ac_build_gep0(&ctx->ac, vertexptr,
 					    LLVMConstInt(ctx->ac.i32, 4 * i + comp, false));
 			out.values[comp] = LLVMBuildLoad(builder, tmp, "");
@@ -3595,6 +3598,9 @@ handle_ngg_outputs_post_1(struct radv_shader_context *ctx)
 		unsigned loc = output->location;
 
 		for (unsigned comp = 0; comp < 4; comp++) {
+			if (!(output->component_mask & (1 << comp)))
+				continue;
+
 			tmp = ac_build_gep0(&ctx->ac, vertex_ptr,
 					    LLVMConstInt(ctx->ac.i32, 4 * i + comp, false));
 			tmp2 = LLVMBuildLoad(builder,
