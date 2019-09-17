@@ -322,8 +322,7 @@ radv_physical_device_init(struct radv_physical_device *device,
 	radv_handle_env_var_force_family(device);
 
 	device->use_aco = instance->perftest_flags & RADV_PERFTEST_ACO;
-	if ((device->rad_info.chip_class < GFX8 ||
-	     device->rad_info.chip_class > GFX9) && device->use_aco) {
+	if (device->rad_info.chip_class < GFX8 && device->use_aco) {
 		fprintf(stderr, "WARNING: disabling ACO on unsupported GPUs.\n");
 		device->use_aco = false;
 	}
