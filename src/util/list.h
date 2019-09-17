@@ -241,6 +241,13 @@ static inline void list_validate(const struct list_head *list)
 	&pos->member != (head);                                         \
 	pos = LIST_ENTRY(type, pos->member.next, member))
 
+#define list_for_each_entry_from_safe(type, pos, start, head, member)   \
+   for (type *pos = LIST_ENTRY(type, (start), member),                  \
+	     *__next = LIST_ENTRY(type, pos->member.next, member);      \
+	&pos->member != (head);                                         \
+	pos = __next,                                                   \
+	__next = LIST_ENTRY(type, __next->member.next, member))
+
 #define list_for_each_entry_from_rev(type, pos, start, head, member)    \
    for (type *pos = LIST_ENTRY(type, (start), member);                  \
 	&pos->member != (head);                                         \
