@@ -1439,8 +1439,9 @@ iris_resource_render_aux_usage(struct iris_context *ice,
           format_ccs_e_compat_with_resource(devinfo, res, render_format))
          return ISL_AUX_USAGE_CCS_E;
 
-      /* Otherwise, we have to fall back to CCS_D */
-      return ISL_AUX_USAGE_CCS_D;
+      /* Otherwise, we try to fall back to CCS_D */
+      if (isl_format_supports_ccs_d(devinfo, render_format))
+         return ISL_AUX_USAGE_CCS_D;
 
    default:
       return ISL_AUX_USAGE_NONE;
