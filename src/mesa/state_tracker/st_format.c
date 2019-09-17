@@ -1277,36 +1277,20 @@ st_choose_matching_format(struct st_context *st, unsigned bind,
                           GLenum format, GLenum type, GLboolean swapBytes)
 {
    struct pipe_screen *screen = st->pipe->screen;
-   mesa_format mesa_format;
 
-   for (mesa_format = 1; mesa_format < MESA_FORMAT_COUNT; mesa_format++) {
-      if (!_mesa_get_format_name(mesa_format))
-         continue;
+   if (swapBytes && !_mesa_swap_bytes_in_type_enum(&type))
+      return PIPE_FORMAT_NONE;
 
-      if (_mesa_is_format_srgb(mesa_format)) {
-         continue;
-      }
-      if (_mesa_get_format_bits(mesa_format, GL_TEXTURE_INTENSITY_SIZE) > 0) {
-         /* If `format` is GL_RED/GL_RED_INTEGER, then we might match some
-          * intensity formats, which we don't want.
-          */
-         continue;
-      }
-
-      if (_mesa_format_matches_format_and_type(mesa_format, format, type,
-                                               swapBytes, NULL)) {
-         enum pipe_format format =
-            st_mesa_format_to_pipe_format(st, mesa_format);
-
-         if (format &&
-             screen->is_format_supported(screen, format, PIPE_TEXTURE_2D,
-                                         0, 0, bind)) {
-            return format;
-         }
-         /* It's unlikely to find 2 matching Mesa formats. */
-         break;
-      }
+   mesa_format mesa_format = _mesa_format_from_format_and_type(format, type);
+   if (_mesa_format_is_mesa_array_format(mesa_format))
+      mesa_format = _mesa_format_from_array_format(mesa_format);
+   if (mesa_format != MESA_FORMAT_NONE) {
+      enum pipe_format format = st_mesa_format_to_pipe_format(st, mesa_format);
+      if (format != PIPE_FORMAT_NONE &&
+          screen->is_format_supported(screen, format, PIPE_TEXTURE_2D, 0, 0, bind))
+         return format;
    }
+
    return PIPE_FORMAT_NONE;
 }
 
