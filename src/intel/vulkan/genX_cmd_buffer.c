@@ -288,7 +288,8 @@ color_attachment_compute_aux_usage(struct anv_device * device,
        * In other words, we can only sample from a fast-cleared image if it
        * also supports color compression.
        */
-      if (isl_format_supports_ccs_e(&device->info, iview->planes[0].isl.format)) {
+      if (isl_format_supports_ccs_e(&device->info, iview->planes[0].isl.format) &&
+          isl_format_supports_ccs_d(&device->info, iview->planes[0].isl.format)) {
          att_state->input_aux_usage = ISL_AUX_USAGE_CCS_D;
 
          /* While fast-clear resolves and partial resolves are fairly cheap in the
