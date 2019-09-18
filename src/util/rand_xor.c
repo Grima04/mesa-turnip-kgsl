@@ -23,6 +23,9 @@
  */
 
 #if defined(__linux__)
+#if defined(HAVE_GETRANDOM)
+#include <sys/random.h>
+#endif
 #include <sys/file.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -58,11 +61,18 @@ s_rand_xorshift128plus(uint64_t *seed, bool randomised_seed)
       goto fixed_seed;
 
 #if defined(__linux__)
+   size_t seed_size = sizeof(uint64_t) * 2;
+
+#if defined(HAVE_GETRANDOM)
+   ssize_t ret = getrandom(seed, seed_size, GRND_NONBLOCK);
+   if (ret == seed_size)
+      return;
+#endif
+
    int fd = open("/dev/urandom", O_RDONLY);
    if (fd < 0)
       goto fixed_seed;
 
-   size_t seed_size = sizeof(uint64_t) * 2;
    if (read(fd, seed, seed_size) != seed_size) {
       close(fd);
       goto fixed_seed;
