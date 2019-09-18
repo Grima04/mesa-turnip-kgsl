@@ -1848,12 +1848,8 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
    if (aux_surf->usage & ISL_SURF_USAGE_CCS_BIT)
       return false;
 
-   /* Only multisampled depth buffers with HiZ can have CCS. */
-   if (surf->samples > 1 && !(aux_surf->usage & ISL_SURF_USAGE_HIZ_BIT))
+   if (ISL_DEV_GEN(dev) < 12 && surf->samples > 1)
       return false;
-
-   assert(surf->msaa_layout == ISL_MSAA_LAYOUT_NONE ||
-          surf->msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED);
 
    /* CCS support does not exist prior to Gen7 */
    if (ISL_DEV_GEN(dev) <= 6)
