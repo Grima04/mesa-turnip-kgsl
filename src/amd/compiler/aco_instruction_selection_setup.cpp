@@ -1328,7 +1328,7 @@ setup_isel_context(Program* program,
                                                       nir_lower_iabs64));
 
       nir_opt_idiv_const(nir, 32);
-      nir_lower_idiv(nir, nir_lower_idiv_fast); // TODO: use the LLVM path once !1239 is merged
+      nir_lower_idiv(nir, nir_lower_idiv_precise);
 
       /* optimize the lowered ALU operations */
       nir_copy_prop(nir);
