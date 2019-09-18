@@ -137,3 +137,25 @@ TEST(MesaFormatsTest, FormatSanity)
 
    }
 }
+
+static mesa_format fffat_wrap(GLenum format, GLenum type)
+{
+   uint32_t f = _mesa_format_from_format_and_type(format, type);
+   if (_mesa_format_is_mesa_array_format(f))
+      f = _mesa_format_from_array_format((mesa_array_format)f);
+   return (mesa_format)f;
+}
+
+TEST(MesaFormatsTest, FormatFromFormatAndType)
+{
+   EXPECT_EQ(fffat_wrap(GL_RGBA, GL_SHORT),
+             MESA_FORMAT_RGBA_SNORM16);
+   EXPECT_EQ(fffat_wrap(GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT),
+             MESA_FORMAT_Z_UNORM16);
+   EXPECT_EQ(fffat_wrap(GL_STENCIL_INDEX, GL_UNSIGNED_BYTE),
+             MESA_FORMAT_S_UINT8);
+
+   /* Should return an array format, but not a proper MESA_FORMAT. */
+   EXPECT_TRUE(_mesa_format_is_mesa_array_format(_mesa_format_from_format_and_type(GL_DEPTH_COMPONENT,
+                                                                                   GL_BYTE)));
+}

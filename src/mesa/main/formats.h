@@ -109,6 +109,12 @@ enum mesa_array_format_datatype {
    MESA_ARRAY_FORMAT_TYPE_FLOAT = 0xe,
 };
 
+enum mesa_array_format_base_format {
+   MESA_ARRAY_FORMAT_BASE_FORMAT_RGBA_VARIANTS = 0x0,
+   MESA_ARRAY_FORMAT_BASE_FORMAT_DEPTH = 0x1,
+   MESA_ARRAY_FORMAT_BASE_FORMAT_STENCIL = 0x2,
+};
+
 /**
  * An enum useful to encode/decode information stored in a mesa_array_format
  */
@@ -124,11 +130,12 @@ enum {
    MESA_ARRAY_FORMAT_SWIZZLE_Y_MASK = 0x03800,
    MESA_ARRAY_FORMAT_SWIZZLE_Z_MASK = 0x1c000,
    MESA_ARRAY_FORMAT_SWIZZLE_W_MASK = 0xe0000,
+   MESA_ARRAY_FORMAT_BASE_FORMAT_MASK = 0x300000,
    MESA_ARRAY_FORMAT_BIT = 0x80000000
 };
 
-#define MESA_ARRAY_FORMAT(SIZE, SIGNED, IS_FLOAT, NORM, NUM_CHANS, \
-      SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W) (                \
+#define MESA_ARRAY_FORMAT(BASE_FORMAT, SIZE, SIGNED, IS_FLOAT, NORM, NUM_CHANS, \
+                          SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W) ( \
    (((SIZE >> 1)      ) & MESA_ARRAY_FORMAT_TYPE_SIZE_MASK) |      \
    (((SIGNED)    << 2 ) & MESA_ARRAY_FORMAT_TYPE_IS_SIGNED) |      \
    (((IS_FLOAT)  << 3 ) & MESA_ARRAY_FORMAT_TYPE_IS_FLOAT) |       \
@@ -138,6 +145,7 @@ enum {
    (((SWIZZLE_Y) << 11) & MESA_ARRAY_FORMAT_SWIZZLE_Y_MASK) |      \
    (((SWIZZLE_Z) << 14) & MESA_ARRAY_FORMAT_SWIZZLE_Z_MASK) |      \
    (((SWIZZLE_W) << 17) & MESA_ARRAY_FORMAT_SWIZZLE_W_MASK) |      \
+   (((BASE_FORMAT) << 20) & MESA_ARRAY_FORMAT_BASE_FORMAT_MASK) |  \
    MESA_ARRAY_FORMAT_BIT)
 
 /**
@@ -159,6 +167,13 @@ static inline bool
 _mesa_array_format_is_normalized(mesa_array_format f)
 {
    return (f & MESA_ARRAY_FORMAT_TYPE_NORMALIZED) !=0;
+}
+
+static inline enum mesa_array_format_base_format
+_mesa_array_format_get_base_format(mesa_array_format f)
+{
+   return (enum mesa_array_format_base_format)
+      ((f & MESA_ARRAY_FORMAT_BASE_FORMAT_MASK) >> 20);
 }
 
 static inline enum mesa_array_format_datatype

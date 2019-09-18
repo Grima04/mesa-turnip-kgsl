@@ -232,6 +232,15 @@ get_base_format_for_array_format(mesa_array_format format)
    uint8_t swizzle[4];
    int num_channels;
 
+   switch (_mesa_array_format_get_base_format(format)) {
+   case MESA_ARRAY_FORMAT_BASE_FORMAT_DEPTH:
+      return GL_DEPTH_COMPONENT;
+   case MESA_ARRAY_FORMAT_BASE_FORMAT_STENCIL:
+      return GL_STENCIL_INDEX;
+   case MESA_ARRAY_FORMAT_BASE_FORMAT_RGBA_VARIANTS:
+      break;
+   }
+
    _mesa_array_format_get_swizzle(format, swizzle);
    num_channels = _mesa_array_format_get_num_channels(format);
 

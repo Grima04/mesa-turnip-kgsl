@@ -3501,6 +3501,12 @@ get_swizzle_from_gl_format(GLenum format, uint8_t *swizzle)
    case GL_INTENSITY:
       set_swizzle(swizzle, 0, 0, 0, 0);
       return true;
+   case GL_DEPTH_COMPONENT:
+      set_swizzle(swizzle, 0, 6, 6, 6);
+      return true;
+   case GL_STENCIL_INDEX:
+      set_swizzle(swizzle, 6, 0, 6, 6);
+      return true;
    default:
       return false;
    }
@@ -3577,10 +3583,24 @@ _mesa_format_from_format_and_type(GLenum format, GLenum type)
     * create the array format
     */
    if (is_array_format) {
-      normalized = !_mesa_is_enum_format_integer(format);
+      enum mesa_array_format_base_format bf;
+      switch (format) {
+      case GL_DEPTH_COMPONENT:
+         bf = MESA_ARRAY_FORMAT_BASE_FORMAT_DEPTH;
+         break;
+      case GL_STENCIL_INDEX:
+         bf = MESA_ARRAY_FORMAT_BASE_FORMAT_STENCIL;
+         break;
+      default:
+         bf = MESA_ARRAY_FORMAT_BASE_FORMAT_RGBA_VARIANTS;
+         break;
+      }
+
+      normalized = !(_mesa_is_enum_format_integer(format) ||
+                     format == GL_STENCIL_INDEX);
       num_channels = _mesa_components_in_format(format);
 
-      return MESA_ARRAY_FORMAT(type_size, is_signed, is_float,
+      return MESA_ARRAY_FORMAT(bf, type_size, is_signed, is_float,
                                normalized, num_channels,
                                swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
    }
