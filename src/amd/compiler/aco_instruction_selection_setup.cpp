@@ -608,23 +608,38 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
    *align = comp_size;
 }
 
-int
-get_align(nir_variable_mode mode, bool is_store, unsigned bit_size, unsigned num_components)
+static bool
+mem_vectorize_callback(unsigned align, unsigned bit_size,
+                       unsigned num_components, unsigned high_offset,
+                       nir_intrinsic_instr *low, nir_intrinsic_instr *high)
 {
-   /* TODO: ACO doesn't have good support for non-32-bit reads/writes yet */
-   if (bit_size != 32)
-      return -1;
+   if ((bit_size != 32 && bit_size != 64) || num_components > 4)
+      return false;
 
-   switch (mode) {
-   case nir_var_mem_ubo:
-   case nir_var_mem_ssbo:
-   //case nir_var_mem_push_const: enable with 1240!
-   case nir_var_mem_shared:
-      /* TODO: what are the alignment requirements for LDS? */
-      return num_components <= 4 ? 4 : -1;
+   /* >128 bit loads are split except with SMEM */
+   if (bit_size * num_components > 128)
+      return false;
+
+   switch (low->intrinsic) {
+   case nir_intrinsic_load_ubo:
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_load_push_constant:
+      return align % 4 == 0;
+   case nir_intrinsic_load_deref:
+   case nir_intrinsic_store_deref:
+      assert(nir_src_as_deref(low->src[0])->mode == nir_var_mem_shared);
+      /* fallthrough */
+   case nir_intrinsic_load_shared:
+   case nir_intrinsic_store_shared:
+      if (bit_size * num_components > 64) /* 96 and 128 bit loads require 128 bit alignment and are split otherwise */
+         return align % 16 == 0;
+      else
+         return align % 4 == 0;
    default:
-      return -1;
+      return false;
    }
+   return false;
 }
 
 void
@@ -816,14 +831,13 @@ setup_isel_context(Program* program,
       /* optimize and lower memory operations */
       bool lower_to_scalar = false;
       bool lower_pack = false;
-      // TODO: uncomment this once !1240 is merged
-      /*if (nir_opt_load_store_vectorize(nir,
+      if (nir_opt_load_store_vectorize(nir,
                                        (nir_variable_mode)(nir_var_mem_ssbo | nir_var_mem_ubo |
                                                            nir_var_mem_push_const | nir_var_mem_shared),
-                                       get_align)) {
+                                       mem_vectorize_callback)) {
          lower_to_scalar = true;
          lower_pack = true;
-      }*/
+      }
       if (nir->info.stage == MESA_SHADER_COMPUTE)
          lower_to_scalar |= nir_lower_explicit_io(nir, nir_var_mem_shared, nir_address_format_32bit_offset);
       else
