@@ -24,6 +24,7 @@
  */
 
 #include "ac_gpu_info.h"
+#include "addrlib/src/amdgpu_asic_addr.h"
 #include "sid.h"
 
 #include "util/macros.h"
@@ -304,24 +305,66 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->pci_id = amdinfo->asic_id; /* TODO: is this correct? */
 	info->vce_harvest_config = amdinfo->vce_harvest_config;
 
-	switch (info->pci_id) {
-#define CHIPSET(pci_id, cfamily) \
-	case pci_id: \
-		info->family = CHIP_##cfamily; \
-		info->name = #cfamily; \
-		break;
-#include "pci_ids/radeonsi_pci_ids.h"
-#undef CHIPSET
+#define identify_chip2(asic, chipname) \
+	if (ASICREV_IS(amdinfo->chip_external_rev, asic)) { \
+		info->family = CHIP_##chipname; \
+		info->name = #chipname; \
+	}
+#define identify_chip(chipname) identify_chip2(chipname, chipname)
 
-	default:
-		fprintf(stderr, "amdgpu: Invalid PCI ID.\n");
-		return false;
+	switch (amdinfo->family_id) {
+	case AMDGPU_FAMILY_SI:
+		identify_chip(TAHITI);
+		identify_chip(PITCAIRN);
+		identify_chip2(CAPEVERDE, VERDE);
+		identify_chip(OLAND);
+		identify_chip(HAINAN);
+		break;
+	case AMDGPU_FAMILY_CI:
+		identify_chip(BONAIRE);
+		identify_chip(HAWAII);
+		break;
+	case AMDGPU_FAMILY_KV:
+		identify_chip2(SPECTRE, KAVERI);
+		identify_chip2(SPOOKY, KAVERI);
+		identify_chip2(KALINDI, KABINI);
+		identify_chip2(GODAVARI, KABINI);
+		break;
+	case AMDGPU_FAMILY_VI:
+		identify_chip(ICELAND);
+		identify_chip(TONGA);
+		identify_chip(FIJI);
+		identify_chip(POLARIS10);
+		identify_chip(POLARIS11);
+		identify_chip(POLARIS12);
+		identify_chip(VEGAM);
+		break;
+	case AMDGPU_FAMILY_CZ:
+		identify_chip(CARRIZO);
+		identify_chip(STONEY);
+		break;
+	case AMDGPU_FAMILY_AI:
+		identify_chip(VEGA10);
+		identify_chip(VEGA12);
+		identify_chip(VEGA20);
+		identify_chip(ARCTURUS);
+		break;
+	case AMDGPU_FAMILY_RV:
+		identify_chip(RAVEN);
+		identify_chip(RAVEN2);
+		identify_chip(RENOIR);
+		break;
+	case AMDGPU_FAMILY_NV:
+		identify_chip(NAVI10);
+		identify_chip(NAVI12);
+		identify_chip(NAVI14);
+		break;
 	}
 
-	/* Raven2 uses the same PCI IDs as Raven1, but different revision IDs. */
-	if (info->family == CHIP_RAVEN && amdinfo->chip_rev >= 0x8) {
-		info->family = CHIP_RAVEN2;
-		info->name = "RAVEN2";
+	if (!info->name) {
+		fprintf(stderr, "amdgpu: unknown (family_id, chip_external_rev): (%u, %u)\n",
+			amdinfo->family_id, amdinfo->chip_external_rev);
+		return false;
 	}
 
 	if (info->family >= CHIP_NAVI10)
