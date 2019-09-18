@@ -94,6 +94,8 @@ test-container:arm64:
 .build:
   extends: .ci-run-policy
   image: $DEBIAN_IMAGE
+  needs:
+    - debian-10
   stage: build
   cache:
     paths:
