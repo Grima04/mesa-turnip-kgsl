@@ -29,7 +29,7 @@ include:
     file: '/templates/debian.yml'
 
 include:
-  - local: '/src/gallium/drivers/panfrost/ci/gitlab-ci.yml'
+  - local: '/.gitlab-ci/lava-gitlab-ci.yml'
 
 stages:
   - containers

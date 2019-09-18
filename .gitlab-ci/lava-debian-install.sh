@@ -3,8 +3,6 @@
 set -e
 set -o xtrace
 
-PANFROST_CI_DIR=/tmp/clone/src/gallium/drivers/panfrost/ci
-
 ############### Install packages for building
 dpkg --add-architecture ${DEBIAN_ARCH}
 echo 'deb-src https://deb.debian.org/debian testing main' > /etc/apt/sources.list.d/deb-src.list
@@ -32,7 +30,7 @@ apt-get -y install --no-install-recommends \
 	cmake \
 	bc \
 	libssl-dev \
-	lavacli \
+	lqa \
 	csvkit \
 	curl \
 	unzip \
@@ -75,6 +73,15 @@ apt-get -y install --no-install-recommends \
 	libgles2-mesa-dev:${DEBIAN_ARCH} \
 	libegl1-mesa-dev:${DEBIAN_ARCH} \
 	libpng-dev:${DEBIAN_ARCH}
+
+
+############### Install lavacli (remove after it's back into Debian testing)
+mkdir -p lavacli
+wget -qO- https://git.lavasoftware.org/lava/lavacli/-/archive/v0.9.8/lavacli-v0.9.8.tar.gz | tar -xz --strip-components=1 -C lavacli
+pushd lavacli
+python3 ./setup.py install
+popd
+
 
 ############### Cross-build dEQP
 mkdir -p /artifacts/rootfs/deqp
@@ -155,7 +162,7 @@ export CROSS_COMPILE="${GCC_ARCH}-"
 mkdir -p /kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C /kernel
 cd /kernel
-./scripts/kconfig/merge_config.sh ${DEFCONFIG} ${PANFROST_CI_DIR}/${KERNEL_ARCH}.config
+./scripts/kconfig/merge_config.sh ${DEFCONFIG} /tmp/clone/.gitlab-ci/${KERNEL_ARCH}.config
 make -j12 ${KERNEL_IMAGE_NAME} dtbs
 cp arch/${KERNEL_ARCH}/boot/${KERNEL_IMAGE_NAME} /artifacts/.
 cp ${DEVICE_TREES} /artifacts/.
@@ -163,7 +170,7 @@ rm -rf /kernel
 
 
 ############### Create rootfs
-cp ${PANFROST_CI_DIR}/create-rootfs.sh /artifacts/rootfs/.
+cp /tmp/clone/.gitlab-ci/create-rootfs.sh /artifacts/rootfs/.
 mkdir -p /artifacts/rootfs/bin
 cp /usr/bin/qemu-aarch64-static /artifacts/rootfs/bin
 cp /usr/bin/qemu-arm-static /artifacts/rootfs/bin

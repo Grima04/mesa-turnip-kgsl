@@ -1,5 +1,7 @@
 #!/bin/sh
 
+GPU_VERSION="$1"
+
 DEQP_OPTIONS="--deqp-surface-width=256 --deqp-surface-height=256"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-log-images=disable"
@@ -92,7 +94,7 @@ for test in $FLIP_FLOPS; do sed -i "/$test/d" /tmp/case-list.txt; done
                 --test-names-file=/tmp/case-list.txt \
                 --results-file=/tmp/results.txt \
                 --no-passed-results \
-                --regression-file=/deqp/expected-failures.txt \
+                --regression-file=/deqp/deqp-panfrost-$GPU_VERSION-fails.txt \
                 --no-rerun-tests \
                 --print-regression \
                 --no-print-fail \

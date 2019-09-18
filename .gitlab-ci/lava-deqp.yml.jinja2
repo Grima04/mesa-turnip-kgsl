@@ -1,4 +1,4 @@
-job_name: panfrost-deqp
+job_name: panfrost-deqp-{{ gpu_version }}
 device_type: {{ device_type }}
 timeouts:
   job:
@@ -37,8 +37,8 @@ actions:
     - repository:
         metadata:
           format: Lava-Test Test Definition 1.0
-          name: igt
-          description: "IGT test plan"
+          name: deqp
+          description: "Mesa dEQP test plan"
           os:
           - oe
           scope:
@@ -51,7 +51,7 @@ actions:
           - mkdir -p /dev/pts
           - mount -t devpts devpts /dev/pts
           - echo 3 > /proc/sys/kernel/printk
-          - sh /deqp/deqp-runner.sh
+          - sh /deqp/lava-deqp-runner.sh {{ gpu_version }}
           - cat /proc/loadavg
         parse:
           pattern: '(?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'

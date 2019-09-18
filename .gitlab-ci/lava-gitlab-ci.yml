@@ -1,6 +1,6 @@
 variables:
     LAVA_DEBIAN_VERSION: testing-slim
-    LAVA_IMAGE_TAG: "lava-2019-09-18-1"
+    LAVA_IMAGE_TAG: "lava-2019-09-20-1"
 
 include:
   - project: 'wayland/ci-templates'
@@ -34,7 +34,7 @@ include:
                   DEFCONFIG=${DEFCONFIG}
                   DEVICE_TREES=${DEVICE_TREES}
                   KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
-                  bash src/gallium/drivers/panfrost/ci/debian-install.sh'
+                  bash .gitlab-ci/lava-debian-install.sh'
     DEBIAN_VERSION: ${LAVA_DEBIAN_VERSION}
 
 lava-container:armhf:
@@ -62,24 +62,31 @@ lava-container:arm64:
 .lava-build:
   stage: build
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:$DEBIAN_ARCH-$LAVA_IMAGE_TAG
+  extends:
+    - .ci-run-policy
   cache:
+    key: ${CI_JOB_NAME}
     paths:
       - ccache
+  variables:
+    CCACHE_COMPILERCHECK: "content"
+  # Use ccache transparently, and print stats before/after
   before_script:
     - mkdir -p results mesa-build
     - mkdir -p ccache
-  script:
-    - export CCACHE_BASEDIR=$CI_PROJECT_DIR
-    - export CCACHE_DIR=$CI_PROJECT_DIR/ccache
     - export PATH="/usr/lib/ccache:$PATH"
-    - ccache -s
-
+    - export CCACHE_BASEDIR="$PWD"
+    - export CCACHE_DIR="$PWD/ccache"
+    - ccache --max-size=1500M
+    - ccache --zero-stats || true
+    - ccache --show-stats || true
+  script:
     # Build Mesa
     - /usr/share/meson/debcrossgen --arch ${DEBIAN_ARCH} -o /tmp/cross_file.txt
     - meson . mesa-build
         --cross-file /tmp/cross_file.txt
         --libdir /artifacts/rootfs/mesa/lib/
-        --buildtype release
+        --buildtype debugoptimized
         -D gallium-drivers=kmsro,panfrost
         -D dri-drivers=
         -D prefix=/artifacts/rootfs/mesa
@@ -96,30 +103,36 @@ lava-container:arm64:
         -D gallium-xa=false
         -D gallium-nine=false
         -D llvm=false
+    - ninja -C mesa-build -j4
     - ninja -C mesa-build install
+    - find /artifacts/rootfs/mesa/lib -name \*.so -exec ${GCC_ARCH}-strip {} \;
+
     - du -sh /artifacts/rootfs/mesa/*
     - rm -rf /artifacts/rootfs/mesa/include
 
     # Pack rootfs
-    - cp src/gallium/drivers/panfrost/ci/deqp-runner.sh /artifacts/rootfs/deqp/.
-    - cp src/gallium/drivers/panfrost/ci/expected-failures.txt /artifacts/rootfs/deqp/.
+    - cp .gitlab-ci/lava-deqp-runner.sh /artifacts/rootfs/deqp/.
+    - cp .gitlab-ci/deqp-*-fails.txt /artifacts/rootfs/deqp/.
     - du -sh /artifacts/rootfs/deqp/*
     - find /artifacts/rootfs/ -type f -printf "%s\t%p\n" | sort -n
-    - cd /artifacts/rootfs/ ; find -H  |  cpio -H newc -v -o | gzip -c - > $CI_PROJECT_DIR/results/panfrost-rootfs-${DEBIAN_ARCH}.cpio.gz
+    - pushd /artifacts/rootfs/ ; find -H  |  cpio -H newc -v -o | gzip -c - > $CI_PROJECT_DIR/results/panfrost-rootfs-${DEBIAN_ARCH}.cpio.gz; popd
 
     # Copy kernel and DT
     - cp /artifacts/${KERNEL_IMAGE_NAME} /artifacts/*.dtb $CI_PROJECT_DIR/results/.
 
     # Generate LAVA job
     - cd $CI_PROJECT_DIR
-    - src/gallium/drivers/panfrost/ci/generate_lava.py
-        --template src/gallium/drivers/panfrost/ci/lava-deqp.yml.jinja2
+    - .gitlab-ci/generate_lava.py
+        --template .gitlab-ci/lava-deqp.yml.jinja2
         --arch ${DEBIAN_ARCH}
         --base-artifacts-url $CI_PROJECT_URL/-/jobs/$CI_JOB_ID/artifacts/raw/results
         --device-type ${DEVICE_TYPE}
         --kernel-image-name ${KERNEL_IMAGE_NAME}
+        --gpu-version ${GPU_VERSION}
         > results/lava-deqp.yml
-    - cp src/gallium/drivers/panfrost/ci/expected-failures.txt results/.
+  after_script:
+    - export CCACHE_DIR="$PWD/ccache"
+    - ccache --show-stats
   artifacts:
     when: always
     paths:
@@ -133,6 +146,7 @@ lava-build:armhf:
     GCC_ARCH: "arm-linux-gnueabihf"
     DEVICE_TYPE: "rk3288-veyron-jaq"
     KERNEL_IMAGE_NAME: "zImage"
+    GPU_VERSION: "t760"
 
 lava-build:arm64:
   extends: .lava-build
@@ -142,12 +156,13 @@ lava-build:arm64:
     GCC_ARCH: "aarch64-linux-gnu"
     DEVICE_TYPE: "rk3399-gru-kevin"
     KERNEL_IMAGE_NAME: "Image"
+    GPU_VERSION: "t860"
 
 .lava-test:
   stage: test
-  tags:
-    - idle-lava
   image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:arm64-$LAVA_IMAGE_TAG  # Any of the images will be fine
+  extends:
+    - .ci-run-policy
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for submitting the job
   script:
@@ -157,23 +172,25 @@ lava-build:arm64:
     - lavacli jobs show $lava_job_id
     - result=`lavacli results $lava_job_id 0_deqp deqp | head -1`
     - echo $result
-
-    # Don't error out on RK3288
-    - '[[ "$result" == "pass" || -f results/rk3288-veyron-jaq.dtb ]]'
+    - '[[ "$result" == "pass" ]]'
   artifacts:
     when: always
     paths:
       - results/
 
-lava-test:armhf:
+panfrost-t760-test:armhf:
   extends: .lava-test
   needs: ["lava-build:armhf"]
   dependencies:
     - lava-build:armhf
+  tags:
+    - lava-rk3288-veyron-jaq
 
-lava-test:arm64:
+panfrost-t860-test:arm64:
   extends: .lava-test
   needs: ["lava-build:arm64"]
   dependencies:
     - lava-build:arm64
+  tags:
+    - lava-rk3399-gru-kevin
 
