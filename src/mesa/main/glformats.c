@@ -3747,6 +3747,10 @@ _mesa_format_from_format_and_type(GLenum format, GLenum type)
       break;
    }
 
+   fprintf(stderr, "Unsupported format/type: %s/%s\n",
+           _mesa_enum_to_string(format),
+           _mesa_enum_to_string(type));
+
    /* If we got here it means that we could not find a Mesa format that
     * matches the GL format/type provided. We may need to add a new Mesa
     * format in that case.
