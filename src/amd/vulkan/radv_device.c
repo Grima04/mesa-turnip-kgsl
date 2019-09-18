@@ -372,6 +372,10 @@ radv_physical_device_init(struct radv_physical_device *device,
 	device->use_shader_ballot = device->rad_info.chip_class >= GFX8 &&
 				    (device->use_aco || device->instance->perftest_flags & RADV_PERFTEST_SHADER_BALLOT);
 
+	device->use_ngg = device->rad_info.chip_class >= GFX10 &&
+			  device->rad_info.family != CHIP_NAVI14 &&
+			  !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
+
 	device->use_ngg_streamout = false;
 
 	/* Determine the number of threads per wave for all stages. */

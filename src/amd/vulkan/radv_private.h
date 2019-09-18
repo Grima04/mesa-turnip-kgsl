@@ -288,6 +288,9 @@ struct radv_physical_device {
 	/* Whether to enable the AMD_shader_ballot extension */
 	bool use_shader_ballot;
 
+	/* Whether to enable NGG. */
+	bool use_ngg;
+
 	/* Whether to enable NGG streamout. */
 	bool use_ngg_streamout;
 
