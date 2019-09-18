@@ -4266,8 +4266,10 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 			args.dmask = 1 << instr->component;
 	}
 
-	if (instr->sampler_dim != GLSL_SAMPLER_DIM_BUF)
+	if (instr->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
 		args.dim = get_ac_sampler_dim(&ctx->ac, instr->sampler_dim, instr->is_array);
+		args.unorm = instr->sampler_dim == GLSL_SAMPLER_DIM_RECT;
+	}
 	result = build_tex_intrinsic(ctx, instr, &args);
 
 	if (instr->op == nir_texop_query_levels)
