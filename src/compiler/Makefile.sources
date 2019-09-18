@@ -1,6 +1,4 @@
 LIBCOMPILER_FILES = \
-	blob.c \
-	blob.h \
 	builtin_type_macros.h \
 	glsl_types.cpp \
 	glsl_types.h \

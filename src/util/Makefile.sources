@@ -5,6 +5,8 @@ MESA_UTIL_FILES := \
 	bitscan.c \
 	bitscan.h \
 	bitset.h \
+	blob.c \
+	blob.h \
 	build_id.c \
 	build_id.h \
 	crc32.c \

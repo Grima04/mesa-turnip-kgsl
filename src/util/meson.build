@@ -29,6 +29,8 @@ files_mesa_util = files(
   'bitscan.c',
   'bitscan.h',
   'bitset.h',
+  'blob.c',
+  'blob.h',
   'build_id.c',
   'build_id.h',
   'crc32.c',
@@ -144,6 +146,7 @@ deps_for_libmesa_util = [
   dep_thread,
   dep_atomic,
   dep_m,
+  dep_valgrind,
 ]
 
 if with_platform_android
@@ -195,6 +198,18 @@ if with_tests
     executable(
       'u_atomic_test',
       files('u_atomic_test.c'),
+      include_directories : inc_common,
+      dependencies : idep_mesautil,
+      c_args : [c_msvc_compat_args],
+    ),
+    suite : ['util'],
+  )
+
+  test(
+    'blob',
+    executable(
+      'blob_test',
+      files('blob_test.c'),
       include_directories : inc_common,
       dependencies : idep_mesautil,
       c_args : [c_msvc_compat_args],

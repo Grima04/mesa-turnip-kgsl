@@ -24,8 +24,6 @@ inc_glsl = include_directories('glsl')
 inc_spirv = include_directories('spirv')
 
 files_libcompiler = files(
-  'blob.c',
-  'blob.h',
   'builtin_type_macros.h',
   'glsl_types.cpp',
   'glsl_types.h',

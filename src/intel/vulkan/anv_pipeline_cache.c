@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "compiler/blob.h"
+#include "util/blob.h"
 #include "util/hash_table.h"
 #include "util/debug.h"
 #include "util/disk_cache.h"
