@@ -1,5 +1,3 @@
-dEQP-GLES2.functional.buffer.write.use.index_array.array Fail
-dEQP-GLES2.functional.buffer.write.use.index_array.element_array Fail
 dEQP-GLES2.functional.color_clear.masked_rgba Fail
 dEQP-GLES2.functional.color_clear.masked_rgb Fail
 dEQP-GLES2.functional.color_clear.masked_scissored_rgba Fail
