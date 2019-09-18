@@ -486,15 +486,21 @@ build_depthstencil_shader(struct nir_shader **out_vs, struct nir_shader **out_fs
 				    "gl_Position");
 	vs_out_pos->data.location = VARYING_SLOT_POS;
 
-	nir_intrinsic_instr *in_color_load = nir_intrinsic_instr_create(vs_b.shader, nir_intrinsic_load_push_constant);
+	nir_intrinsic_instr *in_color_load = nir_intrinsic_instr_create(fs_b.shader, nir_intrinsic_load_push_constant);
 	nir_intrinsic_set_base(in_color_load, 0);
 	nir_intrinsic_set_range(in_color_load, 4);
-	in_color_load->src[0] = nir_src_for_ssa(nir_imm_int(&vs_b, 0));
+	in_color_load->src[0] = nir_src_for_ssa(nir_imm_int(&fs_b, 0));
 	in_color_load->num_components = 1;
 	nir_ssa_dest_init(&in_color_load->instr, &in_color_load->dest, 1, 32, "depth value");
-	nir_builder_instr_insert(&vs_b, &in_color_load->instr);
+	nir_builder_instr_insert(&fs_b, &in_color_load->instr);
 
-	nir_ssa_def *outvec = radv_meta_gen_rect_vertices_comp2(&vs_b, &in_color_load->dest.ssa);
+	nir_variable *fs_out_depth =
+		nir_variable_create(fs_b.shader, nir_var_shader_out,
+				    glsl_int_type(), "f_depth");
+	fs_out_depth->data.location = FRAG_RESULT_DEPTH;
+	nir_store_var(&fs_b, fs_out_depth, &in_color_load->dest.ssa, 0x1);
+
+	nir_ssa_def *outvec = radv_meta_gen_rect_vertices(&vs_b);
 	nir_store_var(&vs_b, vs_out_pos, outvec, 0xf);
 
 	const struct glsl_type *layer_type = glsl_int_type();
@@ -751,7 +757,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
 			      device->meta_state.clear_depth_p_layout,
-			      VK_SHADER_STAGE_VERTEX_BIT, 0, 4,
+			      VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4,
 			      &clear_value.depth);
 
 	uint32_t prev_reference = cmd_buffer->state.dynamic.stencil_reference.front;
@@ -1239,7 +1245,7 @@ radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand)
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.setLayoutCount = 0,
 		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_VERTEX_BIT, 0, 4},
+		.pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4},
 	};
 
 	res = radv_CreatePipelineLayout(radv_device_to_handle(device),
