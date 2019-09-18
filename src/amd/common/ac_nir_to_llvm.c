@@ -4019,8 +4019,10 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 		case nir_tex_src_projector:
 			break;
 		case nir_tex_src_comparator:
-			if (instr->is_shadow)
+			if (instr->is_shadow) {
 				args.compare = get_src(ctx, instr->src[i].src);
+				args.compare = ac_to_float(&ctx->ac, args.compare);
+			}
 			break;
 		case nir_tex_src_offset:
 			args.offset = get_src(ctx, instr->src[i].src);
@@ -4104,19 +4106,33 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 		args.offset = pack;
 	}
 
-	/* TC-compatible HTILE on radeonsi promotes Z16 and Z24 to Z32_FLOAT,
-	 * so the depth comparison value isn't clamped for Z16 and
-	 * Z24 anymore. Do it manually here for GFX8-9; GFX10 has an explicitly
-	 * clamped 32-bit float format.
+	/* Section 8.23.1 (Depth Texture Comparison Mode) of the
+	 * OpenGL 4.5 spec says:
 	 *
-	 * It's unnecessary if the original texture format was
-	 * Z32_FLOAT, but we don't know that here.
+	 *    "If the texture’s internal format indicates a fixed-point
+	 *     depth texture, then D_t and D_ref are clamped to the
+	 *     range [0, 1]; otherwise no clamping is performed."
+	 *
+	 * TC-compatible HTILE promotes Z16 and Z24 to Z32_FLOAT,
+	 * so the depth comparison value isn't clamped for Z16 and
+	 * Z24 anymore. Do it manually here for GFX8-9; GFX10 has
+	 * an explicitly clamped 32-bit float format.
 	 */
 	if (args.compare &&
 	    ctx->ac.chip_class >= GFX8 &&
 	    ctx->ac.chip_class <= GFX9 &&
-	    ctx->abi->clamp_shadow_reference)
-		args.compare = ac_build_clamp(&ctx->ac, ac_to_float(&ctx->ac, args.compare));
+	    ctx->abi->clamp_shadow_reference) {
+		LLVMValueRef upgraded, clamped;
+
+		upgraded = LLVMBuildExtractElement(ctx->ac.builder, args.sampler,
+						   LLVMConstInt(ctx->ac.i32, 3, false), "");
+		upgraded = LLVMBuildLShr(ctx->ac.builder, upgraded,
+					 LLVMConstInt(ctx->ac.i32, 29, false), "");
+		upgraded = LLVMBuildTrunc(ctx->ac.builder, upgraded, ctx->ac.i1, "");
+		clamped = ac_build_clamp(&ctx->ac, args.compare);
+		args.compare = LLVMBuildSelect(ctx->ac.builder, upgraded, clamped,
+					       args.compare, "");
+	}
 
 	/* pack derivatives */
 	if (ddx || ddy) {
