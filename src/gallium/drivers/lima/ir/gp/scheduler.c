@@ -861,12 +861,12 @@ static uint64_t get_available_regs(sched_ctx *ctx, gpir_node *node,
          if (instr->reg0_use_count == 0)
             use_available = ~0ull;
          else if (!instr->reg0_is_attr)
-            use_available = 0xf << (4 * instr->reg0_index);
+            use_available = 0xfull << (4 * instr->reg0_index);
 
          if (instr->reg1_use_count == 0)
             use_available = ~0ull;
          else
-            use_available |= 0xf << (4 * instr->reg1_index);
+            use_available |= 0xfull << (4 * instr->reg1_index);
 
          available &= use_available;
       }
