@@ -73,6 +73,11 @@ debian-9:
     DEBIAN_IMAGE: $STRETCH_IMAGE
     DEBIAN_EXEC: 'bash .gitlab-ci/debian-stretch-install.sh'
 
+.use-debian-9:
+  image: $STRETCH_IMAGE
+  needs:
+    - debian-9
+
 # Builds a Docker image with the native environment and VK-GL-CTS for testing.
 test-container:arm64:
   extends:
@@ -277,8 +282,9 @@ meson-clover:
     - LLVM_VERSION=7 .gitlab-ci/meson-build.sh
 
 meson-clover-old-llvm:
-  extends: meson-clover
-  image: $STRETCH_IMAGE
+  extends:
+    - meson-clover
+    - .use-debian-9
   variables:
     UNWIND: "false"
     DRI_LOADERS: >
@@ -343,8 +349,9 @@ scons:
     - LLVM_VERSION=8 .gitlab-ci/scons-build.sh
 
 scons-old-llvm:
-  extends: scons
-  image: $STRETCH_IMAGE
+  extends:
+    - scons
+    - .use-debian-9
   script:
     - LLVM_VERSION=3.9 .gitlab-ci/scons-build.sh
     - LLVM_VERSION=4.0 .gitlab-ci/scons-build.sh
