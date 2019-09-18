@@ -1342,6 +1342,17 @@ static bool try_node(sched_ctx *ctx)
 
 static void place_move(sched_ctx *ctx, gpir_node *node)
 {
+   /* For complex1 that is consumed by a postlog2, we cannot allow any moves
+    * in between. Convert the postlog2 to a move and insert a new postlog2,
+    * and try to schedule it again in try_node().
+    */
+   gpir_node *postlog2 = consuming_postlog2(node);
+   if (postlog2) {
+      postlog2->op = gpir_op_mov;
+      create_postlog2(ctx, node);
+      return;
+   }
+
    gpir_node *move = create_move(ctx, node);
    gpir_node_foreach_succ_safe(move, dep) {
       gpir_node *succ = dep->succ;
@@ -1380,17 +1391,7 @@ static bool sched_move(sched_ctx *ctx)
 {
    list_for_each_entry(gpir_node, node, &ctx->ready_list, list) {
       if (node->sched.max_node) {
-         /* For complex1 that is consumed by a postlog2, we cannot allow any
-          * moves in between. Convert the postlog2 to a move and insert a new
-          * postlog2, and try to schedule it again in try_node().
-          */
-         gpir_node *postlog2 = consuming_postlog2(node);
-         if (postlog2) {
-            postlog2->op = gpir_op_mov;
-            create_postlog2(ctx, node);
-         } else {
-            place_move(ctx, node);
-         }
+         place_move(ctx, node);
          return true;
       }
    }
