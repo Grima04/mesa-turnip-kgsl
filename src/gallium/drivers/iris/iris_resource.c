@@ -518,6 +518,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       initial_state = ISL_AUX_STATE_AUX_INVALID;
       break;
    case ISL_AUX_USAGE_MCS:
+   case ISL_AUX_USAGE_MCS_CCS:
       /* The Ivybridge PRM, Vol 2 Part 1 p326 says:
        *
        *    "When MCS buffer is enabled and bound to MSRT, it is required

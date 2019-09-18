@@ -522,7 +522,7 @@ iris_mcs_partial_resolve(struct iris_context *ice,
    //DBG("%s to mt %p layers %u-%u\n", __FUNCTION__, mt,
        //start_layer, start_layer + num_layers - 1);
 
-   assert(res->aux.usage == ISL_AUX_USAGE_MCS);
+   assert(isl_aux_usage_has_mcs(res->aux.usage));
 
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&ice->vtbl, &surf, &res->base, res->aux.usage,
@@ -989,7 +989,7 @@ iris_resource_prepare_mcs_access(struct iris_context *ice,
                                  enum isl_aux_usage aux_usage,
                                  bool fast_clear_supported)
 {
-   assert(aux_usage == ISL_AUX_USAGE_MCS);
+   assert(isl_aux_usage_has_mcs(aux_usage));
 
    switch (iris_resource_get_aux_state(res, 0, layer)) {
    case ISL_AUX_STATE_CLEAR:
@@ -1018,7 +1018,7 @@ iris_resource_finish_mcs_write(struct iris_context *ice,
                                uint32_t layer,
                                enum isl_aux_usage aux_usage)
 {
-   assert(aux_usage == ISL_AUX_USAGE_MCS);
+   assert(isl_aux_usage_has_mcs(aux_usage));
 
    switch (iris_resource_get_aux_state(res, 0, layer)) {
    case ISL_AUX_STATE_CLEAR:
@@ -1162,6 +1162,7 @@ iris_resource_prepare_access(struct iris_context *ice,
       break;
 
    case ISL_AUX_USAGE_MCS:
+   case ISL_AUX_USAGE_MCS_CCS:
       assert(start_level == 0 && num_levels == 1);
       const uint32_t level_layers =
          miptree_layer_range_length(res, 0, start_layer, num_layers);
@@ -1220,6 +1221,7 @@ iris_resource_finish_write(struct iris_context *ice,
       break;
 
    case ISL_AUX_USAGE_MCS:
+   case ISL_AUX_USAGE_MCS_CCS:
       for (uint32_t a = 0; a < num_layers; a++) {
          iris_resource_finish_mcs_write(ice, res, start_layer + a,
                                         aux_usage);
@@ -1360,7 +1362,8 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
       break;
 
    case ISL_AUX_USAGE_MCS:
-      return ISL_AUX_USAGE_MCS;
+   case ISL_AUX_USAGE_MCS_CCS:
+      return res->aux.usage;
 
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
@@ -1441,7 +1444,8 @@ iris_resource_render_aux_usage(struct iris_context *ice,
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_MCS:
-      return ISL_AUX_USAGE_MCS;
+   case ISL_AUX_USAGE_MCS_CCS:
+      return res->aux.usage;
 
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
