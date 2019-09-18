@@ -1939,8 +1939,7 @@ ttn_mem(struct ttn_compile *c, nir_alu_dest dest, nir_ssa_def **src)
 
 
    if (tgsi_inst->Instruction.Opcode == TGSI_OPCODE_LOAD) {
-      nir_ssa_dest_init(&instr->instr, &instr->dest,
-                        util_last_bit(tgsi_inst->Dst[0].Register.WriteMask),
+      nir_ssa_dest_init(&instr->instr, &instr->dest, instr->num_components,
                         32, NULL);
       nir_builder_instr_insert(b, &instr->instr);
       ttn_move_dest(b, dest, &instr->dest.ssa);
