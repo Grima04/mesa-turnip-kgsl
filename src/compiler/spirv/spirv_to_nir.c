@@ -3617,6 +3617,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
 
       case SpvCapabilitySampleMaskPostDepthCoverage:
          spv_check_supported(post_depth_coverage, cap);
+         break;
 
       case SpvCapabilityDenormFlushToZero:
       case SpvCapabilityDenormPreserve:
