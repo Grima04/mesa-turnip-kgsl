@@ -476,7 +476,8 @@ iris_resource_configure_aux(struct iris_screen *screen,
       /* Only allow a CCS modifier if the aux was created successfully. */
       res->aux.possible_usages |= 1 << res->mod_info->aux_usage;
    } else if (has_mcs) {
-      res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS;
+      res->aux.possible_usages |=
+         1 << (has_ccs ? ISL_AUX_USAGE_MCS_CCS : ISL_AUX_USAGE_MCS);
    } else if (has_hiz) {
       res->aux.possible_usages |=
          1 << (has_ccs ? ISL_AUX_USAGE_HIZ_CCS : ISL_AUX_USAGE_HIZ);
