@@ -767,6 +767,61 @@ mir_initialize_worklist(BITSET_WORD *worklist, midgard_instruction **instruction
         }
 }
 
+/* While scheduling, we need to choose instructions satisfying certain
+ * criteria. As we schedule backwards, we choose the *last* instruction in the
+ * worklist to simulate in-order scheduling. Chosen instructions must satisfy a
+ * given predicate. */
+
+struct midgard_predicate {
+        /* TAG or ~0 for dont-care */
+        unsigned tag;
+
+        /* True if we want to pop off the chosen instruction */
+        bool destructive;
+};
+
+static midgard_instruction *
+mir_choose_instruction(
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned count,
+                struct midgard_predicate *predicate)
+{
+        /* Parse the predicate */
+        unsigned tag = predicate->tag;
+
+        /* Iterate to find the best instruction satisfying the predicate */
+        unsigned i;
+        BITSET_WORD tmp;
+
+        signed best_index = -1;
+
+        BITSET_FOREACH_SET(i, tmp, worklist, count) {
+                if (tag != ~0 && instructions[i]->type != tag)
+                        continue;
+
+                /* Simulate in-order scheduling */
+                if ((signed) i < best_index)
+                        continue;
+
+                best_index = i;
+        }
+
+
+        /* Did we find anything?  */
+
+        if (best_index < 0)
+                return NULL;
+
+        /* If we found something, remove it from the worklist */
+        assert(best_index < count);
+
+        if (predicate->destructive) {
+                BITSET_CLEAR(worklist, best_index);
+        }
+
+        return instructions[best_index];
+}
+
 /* Schedule a single block by iterating its instruction to create bundles.
  * While we go, tally about the bundle sizes to compute the block size. */
 
