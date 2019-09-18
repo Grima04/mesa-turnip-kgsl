@@ -3738,6 +3738,8 @@ _mesa_format_from_format_and_type(GLenum format, GLenum type)
    case GL_UNSIGNED_INT_24_8:
       if (format == GL_DEPTH_STENCIL)
          return MESA_FORMAT_S8_UINT_Z24_UNORM;
+      else if (format == GL_DEPTH_COMPONENT)
+         return MESA_FORMAT_X8_UINT_Z24_UNORM;
       break;
    case GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
       if (format == GL_DEPTH_STENCIL)
