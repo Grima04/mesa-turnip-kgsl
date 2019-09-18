@@ -1585,8 +1585,8 @@ radv_set_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 	uint64_t va = radv_get_ds_clear_value_va(image, range->baseMipLevel);
 	uint32_t level_count = radv_get_levelCount(image, range);
 
-	if (aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-		       VK_IMAGE_ASPECT_STENCIL_BIT)) {
+	if (aspects == (VK_IMAGE_ASPECT_DEPTH_BIT |
+		        VK_IMAGE_ASPECT_STENCIL_BIT)) {
 		/* Use the fastest way when both aspects are used. */
 		radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + 2 * level_count, cmd_buffer->state.predicating));
 		radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
@@ -1605,10 +1605,11 @@ radv_set_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 			uint64_t va = radv_get_ds_clear_value_va(image, range->baseMipLevel + l);
 			unsigned value;
 
-			if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+			if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
 				value = fui(ds_clear_value.depth);
 				va += 4;
 			} else {
+				assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
 				value = ds_clear_value.stencil;
 			}
 
