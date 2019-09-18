@@ -423,7 +423,9 @@ arm64_a630_gles2:
     - mesa-cheza
   dependencies:
     - meson-arm64
-  needs: [ meson-arm64 ]
+  needs:
+    - meson-arm64
+    - test-container:arm64
 
 arm64_a630_gles31:
   extends: arm64_a630_gles2
