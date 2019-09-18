@@ -659,7 +659,9 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          unreachable("bad system value");
       }
 
-      if (load->num_components == 3)
+      if (load->num_components == 2)
+         load = nir_swizzle(b, load, SWIZ(X, Y, Y, Y), 4);
+      else if (load->num_components == 3)
          load = nir_swizzle(b, load, SWIZ(X, Y, Z, Z), 4);
 
       src = nir_src_for_ssa(load);
