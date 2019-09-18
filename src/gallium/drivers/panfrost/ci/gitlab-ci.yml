@@ -1,48 +1,32 @@
-# IMAGE_TAG is the tag of the docker image used for the build jobs. If the
-# image doesn't exist yet, the docker-image stage generates it.
-#
-# In order to generate a new image, one should generally change the tag.
-# While removing the image from the registry would also work, that's not
-# recommended except for ephemeral images during development: Replacing an
-# image after a significant amount of time might pull in newer versions of
-# gcc/clang or other packages, which might break the build with older commits
-# using the same tag.
-#
-# After merging a change resulting in generating a new image to the main
-# repository, it's recommended to remove the image from the source repository's
-# container registry, so that the image from the main repository's registry
-# will be used there as well.  You can manage your images on your fork of:
-# https://gitlab.freedesktop.org/xorg/xserver/container_registry
 variables:
-  UPSTREAM_REPO: mesa/mesa
-  DEBIAN_VERSION: testing-slim
-  IMAGE_TAG: "2019-09-10-3"
+    LAVA_DEBIAN_VERSION: testing-slim
+    LAVA_IMAGE_TAG: "lava-2019-09-18-1"
 
 include:
   - project: 'wayland/ci-templates'
-    ref: c73dae8b84697ef18e2dbbf4fed7386d9652b0cd
+    ref: 1f7f57c64ff4ebbf7292e3b7a13600518b8cb24c
     file: '/templates/debian.yml'
 
-stages:
-  - containers
-  - build
-  - test
-
-# Retry jobs after runner system failures
-.retry: &retry
+# When to automatically run the CI
+.ci-run-policy:
+  only:
+    - branches@mesa/mesa
+    - merge_requests
+    - /^ci([-/].*)?$/
   retry:
     max: 2
     when:
       - runner_system_failure
 
 # Build Docker image with deqp, the rootfs and the build deps for Mesa
-.container:
-  extends: .debian@container-ifnot-exists
+.lava-container:
+  extends:
+    - .debian@container-ifnot-exists
+    - .ci-run-policy
   stage: containers
-  <<: *retry
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for rebuilding the image
-    DEBIAN_TAG: '${DEBIAN_ARCH}-${IMAGE_TAG}'
+    DEBIAN_TAG: '${DEBIAN_ARCH}-${LAVA_IMAGE_TAG}'
     DEBIAN_EXEC: 'DEBIAN_ARCH=${DEBIAN_ARCH}
                   GCC_ARCH=${GCC_ARCH}
                   KERNEL_ARCH=${KERNEL_ARCH}
@@ -51,9 +35,10 @@ stages:
                   DEVICE_TREES=${DEVICE_TREES}
                   KERNEL_IMAGE_NAME=${KERNEL_IMAGE_NAME}
                   bash src/gallium/drivers/panfrost/ci/debian-install.sh'
+    DEBIAN_VERSION: ${LAVA_DEBIAN_VERSION}
 
-container:armhf:
-  extends: .container
+lava-container:armhf:
+  extends: .lava-container
   variables:
     DEBIAN_ARCH: "armhf"
     GCC_ARCH: "arm-linux-gnueabihf"
@@ -63,8 +48,8 @@ container:armhf:
     DEVICE_TREES: "arch/arm/boot/dts/rk3288-veyron-jaq.dtb"
     KERNEL_IMAGE_NAME: "zImage"
 
-container:arm64:
-  extends: .container
+lava-container:arm64:
+  extends: .lava-container
   variables:
     DEBIAN_ARCH: "arm64"
     GCC_ARCH: "aarch64-linux-gnu"
@@ -74,9 +59,9 @@ container:arm64:
     DEVICE_TREES: "arch/arm64/boot/dts/rockchip/rk3399-gru-kevin.dtb"
     KERNEL_IMAGE_NAME: "Image"
 
-.build:
+.lava-build:
   stage: build
-  image: $CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:${DEBIAN_ARCH}-${IMAGE_TAG}
+  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:$DEBIAN_ARCH-$LAVA_IMAGE_TAG
   cache:
     paths:
       - ccache
@@ -140,29 +125,29 @@ container:arm64:
     paths:
       - results/
 
-build:armhf:
-  extends: .build
-  needs: ["container:armhf"]
+lava-build:armhf:
+  extends: .lava-build
+  needs: ["lava-container:armhf"]
   variables:
     DEBIAN_ARCH: "armhf"
     GCC_ARCH: "arm-linux-gnueabihf"
     DEVICE_TYPE: "rk3288-veyron-jaq"
     KERNEL_IMAGE_NAME: "zImage"
 
-build:arm64:
-  extends: .build
-  needs: ["container:arm64"]
+lava-build:arm64:
+  extends: .lava-build
+  needs: ["lava-container:arm64"]
   variables:
     DEBIAN_ARCH: "arm64"
     GCC_ARCH: "aarch64-linux-gnu"
     DEVICE_TYPE: "rk3399-gru-kevin"
     KERNEL_IMAGE_NAME: "Image"
 
-.test:
+.lava-test:
   stage: test
   tags:
     - idle-lava
-  image: $CI_REGISTRY_IMAGE/debian/$DEBIAN_VERSION:arm64-${IMAGE_TAG}  # Any of the images will be fine
+  image: $CI_REGISTRY_IMAGE/debian/$LAVA_DEBIAN_VERSION:arm64-$LAVA_IMAGE_TAG  # Any of the images will be fine
   variables:
     GIT_STRATEGY: none # no need to pull the whole tree for submitting the job
   script:
@@ -180,15 +165,15 @@ build:arm64:
     paths:
       - results/
 
-test:armhf:
-  extends: .test
-  needs: ["build:armhf"]
+lava-test:armhf:
+  extends: .lava-test
+  needs: ["lava-build:armhf"]
   dependencies:
-    - build:armhf
+    - lava-build:armhf
 
-test:arm64:
-  extends: .test
-  needs: ["build:arm64"]
+lava-test:arm64:
+  extends: .lava-test
+  needs: ["lava-build:arm64"]
   dependencies:
-    - build:arm64
+    - lava-build:arm64
 

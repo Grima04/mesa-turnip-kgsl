@@ -28,6 +28,9 @@ include:
     ref: 1f7f57c64ff4ebbf7292e3b7a13600518b8cb24c
     file: '/templates/debian.yml'
 
+include:
+  - local: '/src/gallium/drivers/panfrost/ci/gitlab-ci.yml'
+
 stages:
   - containers
   - build
