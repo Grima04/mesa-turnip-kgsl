@@ -63,7 +63,39 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="DI_PT_LINESTRIP_ADJ" value="0xb"/>
 	<value name="DI_PT_TRI_ADJ" value="0xc"/>
 	<value name="DI_PT_TRISTRIP_ADJ" value="0xd"/>
-	<value name="DI_PT_PATCHES" value="0x29"/>
+
+	<value name="DI_PT_PATCHES0" value="0x1f"/>
+	<value name="DI_PT_PATCHES1" value="0x20"/>
+	<value name="DI_PT_PATCHES2" value="0x21"/>
+	<value name="DI_PT_PATCHES3" value="0x22"/>
+	<value name="DI_PT_PATCHES4" value="0x23"/>
+	<value name="DI_PT_PATCHES5" value="0x24"/>
+	<value name="DI_PT_PATCHES6" value="0x25"/>
+	<value name="DI_PT_PATCHES7" value="0x26"/>
+	<value name="DI_PT_PATCHES8" value="0x27"/>
+	<value name="DI_PT_PATCHES9" value="0x28"/>
+	<value name="DI_PT_PATCHES10" value="0x29"/>
+	<value name="DI_PT_PATCHES11" value="0x2a"/>
+	<value name="DI_PT_PATCHES12" value="0x2b"/>
+	<value name="DI_PT_PATCHES13" value="0x2c"/>
+	<value name="DI_PT_PATCHES14" value="0x2d"/>
+	<value name="DI_PT_PATCHES15" value="0x2e"/>
+	<value name="DI_PT_PATCHES16" value="0x2f"/>
+	<value name="DI_PT_PATCHES17" value="0x30"/>
+	<value name="DI_PT_PATCHES18" value="0x31"/>
+	<value name="DI_PT_PATCHES19" value="0x32"/>
+	<value name="DI_PT_PATCHES20" value="0x33"/>
+	<value name="DI_PT_PATCHES21" value="0x34"/>
+	<value name="DI_PT_PATCHES22" value="0x35"/>
+	<value name="DI_PT_PATCHES23" value="0x36"/>
+	<value name="DI_PT_PATCHES24" value="0x37"/>
+	<value name="DI_PT_PATCHES25" value="0x38"/>
+	<value name="DI_PT_PATCHES26" value="0x39"/>
+	<value name="DI_PT_PATCHES27" value="0x3a"/>
+	<value name="DI_PT_PATCHES28" value="0x3b"/>
+	<value name="DI_PT_PATCHES29" value="0x3c"/>
+	<value name="DI_PT_PATCHES30" value="0x3d"/>
+	<value name="DI_PT_PATCHES31" value="0x3e"/>
 </enum>
 
 <enum name="pc_di_src_sel">

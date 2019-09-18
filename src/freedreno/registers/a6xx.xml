@@ -2478,10 +2478,16 @@ to upconvert to 32b float internally?
 	  <value value="0x3" name="TESS_FRACTIONAL_EVEN"/>
 	</enum>
 
+	<enum name="a6xx_tess_output">
+	  <value value="0x0" name="TESS_POINTS"/>
+	  <value value="0x1" name="TESS_LINES"/>
+	  <value value="0x2" name="TESS_CW_TRIS"/>
+	  <value value="0x3" name="TESS_CCW_TRIS"/>
+	</enum>
+
 	<reg32 offset="0x9802" name="PC_TESS_CNTL">
 	  <bitfield name="SPACING" low="0" high="1" type="a6xx_tess_spacing"/>
-	  <bitfield name="CCW" pos="2" type="boolean"/>
-	  <bitfield name="PRIMITIVES" pos="3" type="boolean"/>
+	  <bitfield name="OUTPUT" low="2" high="3" type="a6xx_tess_output"/>
 	</reg32>
 
 	<!-- probably: -->
