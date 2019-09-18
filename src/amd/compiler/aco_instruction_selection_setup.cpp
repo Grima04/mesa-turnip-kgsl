@@ -1343,7 +1343,7 @@ setup_isel_context(Program* program,
       nir_opt_shrink_load(nir);
       nir_move_options move_opts = (nir_move_options)(
          nir_move_const_undef | nir_move_load_ubo | nir_move_load_input | nir_move_comparisons);
-      //nir_opt_sink(nir, move_opts); // TODO: enable this once !1664 is merged
+      nir_opt_sink(nir, move_opts);
       nir_opt_move(nir, move_opts);
       nir_convert_to_lcssa(nir, true, false);
       nir_lower_phis_to_scalar(nir);
