@@ -1601,7 +1601,7 @@ panfrost_draw_vbo(
 
                 ctx->padded_count = pan_expand_shift_odd(so);
         } else {
-                ctx->padded_count = ctx->vertex_count;
+                ctx->padded_count = vertex_count;
 
                 /* Reset instancing state */
                 ctx->payloads[PIPE_SHADER_VERTEX].instance_shift = 0;
