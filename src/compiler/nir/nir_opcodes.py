@@ -217,8 +217,8 @@ for src_t in [tint, tuint, tfloat, tbool]:
       dst_types = [tint, tuint, tfloat, tbool]
 
    for dst_t in dst_types:
-      for bit_size in type_sizes(dst_t):
-          if bit_size == 16 and dst_t == tfloat and src_t == tfloat:
+      for dst_bit_size in type_sizes(dst_t):
+          if dst_bit_size == 16 and dst_t == tfloat and src_t == tfloat:
               rnd_modes = ['_rtne', '_rtz', '']
               for rnd_mode in rnd_modes:
                   if rnd_mode == '_rtne':
@@ -240,10 +240,13 @@ for src_t in [tint, tuint, tfloat, tbool]:
                   else:
                       conv_expr = "src0"
 
-                  unop_numeric_convert("{0}2{1}{2}{3}".format(src_t[0], dst_t[0],
-                                                              bit_size, rnd_mode),
-                                       dst_t + str(bit_size), src_t, conv_expr)
-          elif bit_size == 32 and dst_t == tfloat and src_t == tfloat:
+                  unop_numeric_convert("{0}2{1}{2}{3}".format(src_t[0],
+                                                              dst_t[0],
+                                                              dst_bit_size,
+                                                              rnd_mode),
+                                       dst_t + str(dst_bit_size),
+                                       src_t, conv_expr)
+          elif dst_bit_size == 32 and dst_t == tfloat and src_t == tfloat:
               conv_expr = """
               if (bit_size > 32 && nir_is_rounding_mode_rtz(execution_mode, 32)) {
                  dst = _mesa_double_to_float_rtz(src0);
@@ -251,12 +254,14 @@ for src_t in [tint, tuint, tfloat, tbool]:
                  dst = src0;
               }
               """
-              unop_numeric_convert("{0}2{1}{2}".format(src_t[0], dst_t[0], bit_size),
-                                   dst_t + str(bit_size), src_t, conv_expr)
+              unop_numeric_convert("{0}2{1}{2}".format(src_t[0], dst_t[0],
+                                                       dst_bit_size),
+                                   dst_t + str(dst_bit_size), src_t, conv_expr)
           else:
               conv_expr = "src0 != 0" if dst_t == tbool else "src0"
-              unop_numeric_convert("{0}2{1}{2}".format(src_t[0], dst_t[0], bit_size),
-                                   dst_t + str(bit_size), src_t, conv_expr)
+              unop_numeric_convert("{0}2{1}{2}".format(src_t[0], dst_t[0],
+                                                       dst_bit_size),
+                                   dst_t + str(dst_bit_size), src_t, conv_expr)
 
 
 # Unary floating-point rounding operations.
