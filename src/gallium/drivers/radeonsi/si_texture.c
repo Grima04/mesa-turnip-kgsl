@@ -38,6 +38,7 @@
 #include "state_tracker/drm_driver.h"
 #include "sid.h"
 #include "amd/addrlib/inc/addrinterface.h"
+#include "drm-uapi/drm_fourcc.h"
 
 static enum radeon_surf_mode
 si_choose_tiling(struct si_screen *sscreen,
