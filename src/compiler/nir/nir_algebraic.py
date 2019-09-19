@@ -1169,6 +1169,10 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
          continue;
 
       unsigned bit_size = alu->dest.dest.ssa.bit_size;
+      const bool ignore_inexact =
+         nir_is_float_control_signed_zero_inf_nan_preserve(execution_mode, bit_size) ||
+         nir_is_denorm_flush_to_zero(execution_mode, bit_size);
+
       switch (states[alu->dest.dest.ssa.index]) {
 % for i in range(len(automaton.state_patterns)):
       case ${i}:
@@ -1176,9 +1180,7 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
          for (unsigned i = 0; i < ARRAY_SIZE(${pass_name}_state${i}_xforms); i++) {
             const struct transform *xform = &${pass_name}_state${i}_xforms[i];
             if (condition_flags[xform->condition_offset] &&
-                !(xform->search->inexact &&
-                  (nir_is_float_control_signed_zero_inf_nan_preserve(execution_mode, bit_size) ||
-                   nir_is_denorm_flush_to_zero(execution_mode, bit_size))) &&
+                !(xform->search->inexact && ignore_inexact) &&
                 nir_replace_instr(build, alu, xform->search, xform->replace)) {
                progress = true;
                break;
