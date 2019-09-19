@@ -555,8 +555,7 @@ struct iris_context {
        * buffer or to the buffer that stures the previous values for non
        * indirect draws.
        */
-      struct pipe_resource *draw_params_res;
-      uint32_t draw_params_offset;
+      struct iris_state_ref draw_params;
 
       struct {
          /**
@@ -577,8 +576,7 @@ struct iris_context {
        * contains parameters that are not present in the indirect buffer as
        * drawid and is_indexed_draw. They will go in their own vertex element.
        */
-      struct pipe_resource *derived_draw_params_res;
-      uint32_t derived_draw_params_offset;
+      struct iris_state_ref derived_draw_params;
 
       bool is_indirect;
    } draw;

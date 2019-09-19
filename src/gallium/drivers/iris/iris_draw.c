@@ -114,9 +114,9 @@ iris_update_draw_parameters(struct iris_context *ice,
                             const struct pipe_draw_info *info)
 {
    if (info->indirect) {
-      pipe_resource_reference(&ice->draw.draw_params_res,
+      pipe_resource_reference(&ice->draw.draw_params.res,
                               info->indirect->buffer);
-      ice->draw.draw_params_offset = info->indirect->offset +
+      ice->draw.draw_params.offset = info->indirect->offset +
                                      (info->index_size ? 12 : 8);
       ice->draw.params.firstvertex = 0;
       ice->draw.params.baseinstance = 0;
@@ -127,8 +127,8 @@ iris_update_draw_parameters(struct iris_context *ice,
               ice->draw.params.firstvertex !=
               (info->index_size ? info->index_bias : info->start) ||
               (ice->draw.params.baseinstance != info->start_instance)) {
-      pipe_resource_reference(&ice->draw.draw_params_res, NULL);
-      ice->draw.draw_params_offset = 0;
+      pipe_resource_reference(&ice->draw.draw_params.res, NULL);
+      ice->draw.draw_params.offset = 0;
       ice->draw.params.firstvertex =
          info->index_size ? info->index_bias : info->start;
       ice->draw.params.baseinstance = info->start_instance;

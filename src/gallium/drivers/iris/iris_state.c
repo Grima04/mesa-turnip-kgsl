@@ -5293,26 +5293,26 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       int dynamic_bound = ice->state.bound_vertex_buffers;
 
       if (ice->state.vs_uses_draw_params) {
-         if (ice->draw.draw_params_offset == 0) {
+         if (ice->draw.draw_params.offset == 0) {
             u_upload_data(ice->ctx.stream_uploader, 0, sizeof(ice->draw.params),
-                          4, &ice->draw.params, &ice->draw.draw_params_offset,
-                          &ice->draw.draw_params_res);
+                          4, &ice->draw.params, &ice->draw.draw_params.offset,
+                          &ice->draw.draw_params.res);
          }
-         assert(ice->draw.draw_params_res);
+         assert(ice->draw.draw_params.res);
 
          struct iris_vertex_buffer_state *state =
             &(ice->state.genx->vertex_buffers[count]);
-         pipe_resource_reference(&state->resource, ice->draw.draw_params_res);
+         pipe_resource_reference(&state->resource, ice->draw.draw_params.res);
          struct iris_resource *res = (void *) state->resource;
 
          iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
             vb.VertexBufferIndex = count;
             vb.AddressModifyEnable = true;
             vb.BufferPitch = 0;
-            vb.BufferSize = res->bo->size - ice->draw.draw_params_offset;
+            vb.BufferSize = res->bo->size - ice->draw.draw_params.offset;
             vb.BufferStartingAddress =
                ro_bo(NULL, res->bo->gtt_offset +
-                           (int) ice->draw.draw_params_offset);
+                           (int) ice->draw.draw_params.offset);
             vb.MOCS = mocs(res->bo);
          }
          dynamic_bound |= 1ull << count;
@@ -5323,24 +5323,24 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          u_upload_data(ice->ctx.stream_uploader, 0,
                        sizeof(ice->draw.derived_params), 4,
                        &ice->draw.derived_params,
-                       &ice->draw.derived_draw_params_offset,
-                       &ice->draw.derived_draw_params_res);
+                       &ice->draw.derived_draw_params.offset,
+                       &ice->draw.derived_draw_params.res);
 
          struct iris_vertex_buffer_state *state =
             &(ice->state.genx->vertex_buffers[count]);
          pipe_resource_reference(&state->resource,
-                                 ice->draw.derived_draw_params_res);
-         struct iris_resource *res = (void *) ice->draw.derived_draw_params_res;
+                                 ice->draw.derived_draw_params.res);
+         struct iris_resource *res = (void *) ice->draw.derived_draw_params.res;
 
          iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
              vb.VertexBufferIndex = count;
             vb.AddressModifyEnable = true;
             vb.BufferPitch = 0;
             vb.BufferSize =
-               res->bo->size - ice->draw.derived_draw_params_offset;
+               res->bo->size - ice->draw.derived_draw_params.offset;
             vb.BufferStartingAddress =
                ro_bo(NULL, res->bo->gtt_offset +
-                           (int) ice->draw.derived_draw_params_offset);
+                           (int) ice->draw.derived_draw_params.offset);
             vb.MOCS = mocs(res->bo);
          }
          dynamic_bound |= 1ull << count;
@@ -5930,8 +5930,8 @@ iris_destroy_state(struct iris_context *ice)
 {
    struct iris_genx_state *genx = ice->state.genx;
 
-   pipe_resource_reference(&ice->draw.draw_params_res, NULL);
-   pipe_resource_reference(&ice->draw.derived_draw_params_res, NULL);
+   pipe_resource_reference(&ice->draw.draw_params.res, NULL);
+   pipe_resource_reference(&ice->draw.derived_draw_params.res, NULL);
 
    uint64_t bound_vbs = ice->state.bound_vertex_buffers;
    while (bound_vbs) {
