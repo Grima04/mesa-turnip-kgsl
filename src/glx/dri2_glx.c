@@ -1018,7 +1018,7 @@ dri2InvalidateBuffers(Display *dpy, XID drawable)
 
    psc = (struct dri2_screen *) pdraw->psc;
 
-   if (pdraw && psc->f && psc->f->base.version >= 3 && psc->f->invalidate)
+   if (psc->f && psc->f->base.version >= 3 && psc->f->invalidate)
        psc->f->invalidate(pdp->driDrawable);
 }
 
