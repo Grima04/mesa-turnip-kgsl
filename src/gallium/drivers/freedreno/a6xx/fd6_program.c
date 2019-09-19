@@ -399,7 +399,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_1, 1);
 	OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_1_STRIDE_IN_VPC(l.max_loc) |
-			 CONDREG(psize_regid, 0x100));
+			 CONDREG(psize_regid, A6XX_PC_PRIMITIVE_CNTL_1_PSIZE));
 
 	if (binning_pass) {
 		OUT_PKT4(ring, REG_A6XX_SP_FS_OBJ_START_LO, 2);
