@@ -31,15 +31,6 @@
 #include "freedreno_context.h"
 
 static void
-fd_fs_state_bind(struct pipe_context *pctx, void *hwcso)
-{
-	struct fd_context *ctx = fd_context(pctx);
-	ctx->prog.fs = hwcso;
-	ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= FD_DIRTY_SHADER_PROG;
-	ctx->dirty |= FD_DIRTY_PROG;
-}
-
-static void
 fd_vs_state_bind(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd_context *ctx = fd_context(pctx);
@@ -72,6 +63,15 @@ fd_gs_state_bind(struct pipe_context *pctx, void *hwcso)
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->prog.gs = hwcso;
 	ctx->dirty_shader[PIPE_SHADER_GEOMETRY] |= FD_DIRTY_SHADER_PROG;
+	ctx->dirty |= FD_DIRTY_PROG;
+}
+
+static void
+fd_fs_state_bind(struct pipe_context *pctx, void *hwcso)
+{
+	struct fd_context *ctx = fd_context(pctx);
+	ctx->prog.fs = hwcso;
+	ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= FD_DIRTY_SHADER_PROG;
 	ctx->dirty |= FD_DIRTY_PROG;
 }
 
@@ -154,10 +154,10 @@ void fd_prog_init(struct pipe_context *pctx)
 	int i;
 
 	pctx->bind_vs_state = fd_vs_state_bind;
-	pctx->bind_fs_state = fd_fs_state_bind;
 	pctx->bind_tcs_state = fd_tcs_state_bind;
 	pctx->bind_tes_state = fd_tes_state_bind;
 	pctx->bind_gs_state = fd_gs_state_bind;
+	pctx->bind_fs_state = fd_fs_state_bind;
 
 	ctx->solid_prog.fs = assemble_tgsi(pctx, solid_fs, true);
 	ctx->solid_prog.vs = assemble_tgsi(pctx, solid_vs, false);
