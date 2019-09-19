@@ -218,6 +218,18 @@ if with_tests
   )
 
   test(
+    'rb_tree',
+    executable(
+      'rb_tree_test',
+      files('rb_tree_test.c'),
+      include_directories : inc_common,
+      dependencies : idep_mesautil,
+      c_args : [c_msvc_compat_args],
+    ),
+    suite : ['util'],
+  )
+
+  test(
     'roundeven',
     executable(
       'roundeven_test',
