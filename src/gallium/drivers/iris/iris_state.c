@@ -5293,11 +5293,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       int dynamic_bound = ice->state.bound_vertex_buffers;
 
       if (ice->state.vs_uses_draw_params) {
-         if (ice->draw.draw_params.offset == 0) {
-            u_upload_data(ice->ctx.stream_uploader, 0, sizeof(ice->draw.params),
-                          4, &ice->draw.params, &ice->draw.draw_params.offset,
-                          &ice->draw.draw_params.res);
-         }
          assert(ice->draw.draw_params.res);
 
          struct iris_vertex_buffer_state *state =
@@ -5320,12 +5315,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       if (ice->state.vs_uses_derived_draw_params) {
-         u_upload_data(ice->ctx.stream_uploader, 0,
-                       sizeof(ice->draw.derived_params), 4,
-                       &ice->draw.derived_params,
-                       &ice->draw.derived_draw_params.offset,
-                       &ice->draw.derived_draw_params.res);
-
          struct iris_vertex_buffer_state *state =
             &(ice->state.genx->vertex_buffers[count]);
          pipe_resource_reference(&state->resource,
@@ -6983,6 +6972,7 @@ genX(init_state)(struct iris_context *ice)
    ice->state.num_viewports = 1;
    ice->state.prim_mode = PIPE_PRIM_MAX;
    ice->state.genx = calloc(1, sizeof(struct iris_genx_state));
+   ice->draw.derived_params.drawid = -1;
 
    /* Make a 1x1x1 null surface for unbound textures */
    void *null_surf_map =

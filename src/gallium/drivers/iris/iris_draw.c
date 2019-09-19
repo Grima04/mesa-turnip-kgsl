@@ -113,35 +113,56 @@ static void
 iris_update_draw_parameters(struct iris_context *ice,
                             const struct pipe_draw_info *info)
 {
-   if (info->indirect) {
-      pipe_resource_reference(&ice->draw.draw_params.res,
-                              info->indirect->buffer);
-      ice->draw.draw_params.offset = info->indirect->offset +
-                                     (info->index_size ? 12 : 8);
-      ice->draw.params.firstvertex = 0;
-      ice->draw.params.baseinstance = 0;
-      ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
-                          IRIS_DIRTY_VERTEX_ELEMENTS |
-                          IRIS_DIRTY_VF_SGVS;
-   } else if (ice->draw.is_indirect ||
-              ice->draw.params.firstvertex !=
-              (info->index_size ? info->index_bias : info->start) ||
-              (ice->draw.params.baseinstance != info->start_instance)) {
-      pipe_resource_reference(&ice->draw.draw_params.res, NULL);
-      ice->draw.draw_params.offset = 0;
-      ice->draw.params.firstvertex =
-         info->index_size ? info->index_bias : info->start;
-      ice->draw.params.baseinstance = info->start_instance;
-      ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
-                          IRIS_DIRTY_VERTEX_ELEMENTS |
-                          IRIS_DIRTY_VF_SGVS;
-   }
-   ice->draw.is_indirect = info->indirect;
+   bool changed = false;
 
-   if (ice->draw.derived_params.drawid != info->drawid ||
-       ice->draw.derived_params.is_indexed_draw != (info->index_size ? ~0 : 0)) {
-      ice->draw.derived_params.drawid = info->drawid;
-      ice->draw.derived_params.is_indexed_draw = info->index_size ? ~0 : 0;
+   if (ice->state.vs_uses_draw_params) {
+      struct iris_state_ref *draw_params = &ice->draw.draw_params;
+
+      if (info->indirect) {
+         pipe_resource_reference(&draw_params->res, info->indirect->buffer);
+         draw_params->offset =
+            info->indirect->offset + (info->index_size ? 12 : 8);
+
+         changed = true;
+         ice->draw.params_valid = false;
+      } else {
+         int firstvertex = info->index_size ? info->index_bias : info->start;
+
+         if (!ice->draw.params_valid ||
+             ice->draw.params.firstvertex != firstvertex ||
+             ice->draw.params.baseinstance != info->start_instance) {
+
+            changed = true;
+            ice->draw.params.firstvertex = firstvertex;
+            ice->draw.params.baseinstance = info->start_instance;
+            ice->draw.params_valid = true;
+
+            u_upload_data(ice->ctx.stream_uploader, 0,
+                          sizeof(ice->draw.params), 4, &ice->draw.params,
+                          &draw_params->offset, &draw_params->res);
+         }
+      }
+   }
+
+   if (ice->state.vs_uses_derived_draw_params) {
+      struct iris_state_ref *derived_params = &ice->draw.derived_draw_params;
+      int is_indexed_draw = info->index_size ? -1 : 0;
+
+      if (ice->draw.derived_params.drawid != info->drawid ||
+          ice->draw.derived_params.is_indexed_draw != is_indexed_draw) {
+
+         changed = true;
+         ice->draw.derived_params.drawid = info->drawid;
+         ice->draw.derived_params.is_indexed_draw = is_indexed_draw;
+
+         u_upload_data(ice->ctx.stream_uploader, 0,
+                       sizeof(ice->draw.derived_params), 4,
+                       &ice->draw.derived_params,
+                       &derived_params->offset, &derived_params->res);
+      }
+   }
+
+   if (changed) {
       ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
                           IRIS_DIRTY_VERTEX_ELEMENTS |
                           IRIS_DIRTY_VF_SGVS;
