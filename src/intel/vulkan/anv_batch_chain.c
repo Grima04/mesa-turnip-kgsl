@@ -517,8 +517,10 @@ anv_batch_bo_list_clone(const struct list_head *list,
    }
 
    if (result != VK_SUCCESS) {
-      list_for_each_entry_safe(struct anv_batch_bo, bbo, new_list, link)
+      list_for_each_entry_safe(struct anv_batch_bo, bbo, new_list, link) {
+         list_del(&bbo->link);
          anv_batch_bo_destroy(bbo, cmd_buffer);
+      }
    }
 
    return result;
@@ -843,6 +845,7 @@ anv_cmd_buffer_fini_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    /* Destroy all of the batch buffers */
    list_for_each_entry_safe(struct anv_batch_bo, bbo,
                             &cmd_buffer->batch_bos, link) {
+      list_del(&bbo->link);
       anv_batch_bo_destroy(bbo, cmd_buffer);
    }
 }
