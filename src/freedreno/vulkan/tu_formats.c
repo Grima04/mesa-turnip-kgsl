@@ -614,15 +614,26 @@ tu_physical_device_get_format_properties(
    const struct vk_format_description *desc = vk_format_description(format);
    const struct tu_native_format *native_fmt = tu6_get_native_format(format);
    if (!desc || !native_fmt) {
-      out_properties->linearTilingFeatures = linear;
-      out_properties->optimalTilingFeatures = tiled;
-      out_properties->bufferFeatures = buffer;
-      return;
+      goto end;
    }
 
-   linear |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
-   tiled |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
    buffer |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+   if (native_fmt->vtx >= 0) {
+      buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
+   }
+
+   /*
+    * The non-power-of-two formats cannot be copied, so to make sure nothing
+    * broken is allowed don't allow these formats at all.
+    */
+   if (!util_is_power_of_two_or_zero(vk_format_get_blocksizebits(format))) {
+      goto end;
+   }
+
+   if (native_fmt->tex >= 0 || native_fmt->rb >= 0) {
+      linear |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+      tiled |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+   }
 
    if (native_fmt->tex >= 0) {
       linear |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
@@ -635,10 +646,7 @@ tu_physical_device_get_format_properties(
       tiled |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
    }
 
-   if (native_fmt->vtx >= 0) {
-      buffer |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
-   }
-
+end:
    out_properties->linearTilingFeatures = linear;
    out_properties->optimalTilingFeatures = tiled;
    out_properties->bufferFeatures = buffer;
