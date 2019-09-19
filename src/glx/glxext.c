@@ -714,7 +714,8 @@ static GLboolean
    LockDisplay(dpy);
 
    psc->configs = NULL;
-   if (atof(priv->serverGLXversion) >= 1.3) {
+   if (priv->majorVersion > 1 ||
+       (priv->majorVersion == 1 && priv->minorVersion >= 3)) {
       GetReq(GLXGetFBConfigs, fb_req);
       fb_req->reqType = priv->majorOpcode;
       fb_req->glxCode = X_GLXGetFBConfigs;
