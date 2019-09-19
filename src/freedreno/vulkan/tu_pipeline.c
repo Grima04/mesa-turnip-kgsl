@@ -1882,7 +1882,7 @@ tu_CreateGraphicsPipelines(VkDevice device,
       tu_pipeline_builder_init_graphics(&builder, dev, cache,
                                         &pCreateInfos[i], pAllocator);
 
-      struct tu_pipeline *pipeline;
+      struct tu_pipeline *pipeline = NULL;
       VkResult result = tu_pipeline_builder_build(&builder, &pipeline);
       tu_pipeline_builder_finish(&builder);
 
