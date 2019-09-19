@@ -575,8 +575,6 @@ RADV driver environment variables
 ``RADV_PERFTEST``
    a comma-separated list of named flags, which do various things:
 
-   ``aco``
-      enable ACO experimental compiler
    ``bolist``
       enable the global BO list
    ``cswave32``

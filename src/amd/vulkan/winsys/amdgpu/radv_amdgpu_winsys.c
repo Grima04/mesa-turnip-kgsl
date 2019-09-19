@@ -46,13 +46,13 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
 		return false;
 
 	/* LLVM 11 is required for GFX10.3. */
-	if (ws->info.chip_class == GFX10_3 && !ws->use_aco && LLVM_VERSION_MAJOR < 11) {
+	if (ws->info.chip_class == GFX10_3 && ws->use_llvm && LLVM_VERSION_MAJOR < 11) {
 		fprintf(stderr, "radv: GFX 10.3 requires LLVM 11 or higher\n");
 		return false;
 	}
 
 	/* LLVM 9.0 is required for GFX10. */
-	if (ws->info.chip_class == GFX10 && !ws->use_aco && LLVM_VERSION_MAJOR < 9) {
+	if (ws->info.chip_class == GFX10 && ws->use_llvm && LLVM_VERSION_MAJOR < 9) {
 		fprintf(stderr, "radv: Navi family support requires LLVM 9 or higher\n");
 		return false;
 	}
@@ -194,7 +194,7 @@ radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags)
 
 	ws->use_local_bos = perftest_flags & RADV_PERFTEST_LOCAL_BOS;
 	ws->zero_all_vram_allocs = debug_flags & RADV_DEBUG_ZERO_VRAM;
-	ws->use_aco = perftest_flags & RADV_PERFTEST_ACO;
+	ws->use_llvm = debug_flags & RADV_DEBUG_LLVM;
 	list_inithead(&ws->global_bo_list);
 	pthread_mutex_init(&ws->global_bo_list_lock, NULL);
 	ws->base.query_info = radv_amdgpu_winsys_query_info;

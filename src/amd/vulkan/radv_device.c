@@ -338,7 +338,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	device->local_fd = fd;
 	device->ws->query_info(device->ws, &device->rad_info);
 
-	device->use_llvm = !(instance->perftest_flags & RADV_PERFTEST_ACO);
+	device->use_llvm = instance->debug_flags & RADV_DEBUG_LLVM;
 
 	snprintf(device->name, sizeof(device->name),
 		 "AMD RADV %s (%s)",
@@ -360,7 +360,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 	disk_cache_format_hex_id(buf, device->cache_uuid, VK_UUID_SIZE * 2);
 	device->disk_cache = disk_cache_create(device->name, buf, shader_env_flags);
 
-	if (device->rad_info.chip_class < GFX8)
+	if (device->rad_info.chip_class < GFX8 || !device->use_llvm)
 		fprintf(stderr, "WARNING: radv is not a conformant vulkan implementation, testing use only.\n");
 
 	radv_get_driver_uuid(&device->driver_uuid);
@@ -528,7 +528,6 @@ static const struct debug_control radv_perftest_options[] = {
 	{"pswave32", RADV_PERFTEST_PS_WAVE_32},
 	{"gewave32", RADV_PERFTEST_GE_WAVE_32},
 	{"dfsm", RADV_PERFTEST_DFSM},
-	{"aco", RADV_PERFTEST_ACO},
 	{NULL, 0}
 };
 
@@ -559,7 +558,7 @@ radv_handle_per_app_options(struct radv_instance *instance,
 				instance->debug_flags |= RADV_DEBUG_NO_LOAD_STORE_OPT;
 		} else if (!strcmp(name, "Wolfenstein: Youngblood")) {
 			if (!(instance->debug_flags & RADV_DEBUG_NO_SHADER_BALLOT) &&
-			    !(instance->perftest_flags & RADV_PERFTEST_ACO)) {
+			    (instance->debug_flags & RADV_DEBUG_LLVM)) {
 				/* Force enable VK_AMD_shader_ballot because it looks
 				 * safe and it gives a nice boost (+20% on Vega 56 at
 				 * this time). It also prevents corruption on LLVM.
@@ -677,13 +676,6 @@ VkResult radv_CreateInstance(
 
 	instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"),
 						   radv_perftest_options);
-
-	if (instance->debug_flags & RADV_DEBUG_LLVM) {
-		instance->perftest_flags &= ~RADV_PERFTEST_ACO;
-	}
-
-	if (instance->perftest_flags & RADV_PERFTEST_ACO)
-		fprintf(stderr, "WARNING: Experimental compiler backend enabled. Here be dragons! Incorrect rendering, GPU hangs and/or resets are likely\n");
 
 	if (instance->debug_flags & RADV_DEBUG_STARTUP)
 		radv_logi("Created an instance");

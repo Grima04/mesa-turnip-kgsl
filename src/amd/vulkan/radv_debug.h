@@ -70,7 +70,6 @@ enum {
 	RADV_PERFTEST_PS_WAVE_32      =   0x40,
 	RADV_PERFTEST_GE_WAVE_32      =   0x80,
 	RADV_PERFTEST_DFSM            =  0x100,
-	RADV_PERFTEST_ACO             =  0x200,
 };
 
 bool
