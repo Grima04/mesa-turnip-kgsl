@@ -55,7 +55,7 @@ struct fd_texture_stateobj {
 };
 
 struct fd_program_stateobj {
-	void *vs, *fs;
+	void *vs, *hs, *ds, *gs, *fs;
 };
 
 struct fd_constbuf_stateobj {

@@ -48,6 +48,33 @@ fd_vs_state_bind(struct pipe_context *pctx, void *hwcso)
 	ctx->dirty |= FD_DIRTY_PROG;
 }
 
+static void
+fd_tcs_state_bind(struct pipe_context *pctx, void *hwcso)
+{
+	struct fd_context *ctx = fd_context(pctx);
+	ctx->prog.hs = hwcso;
+	ctx->dirty_shader[PIPE_SHADER_TESS_CTRL] |= FD_DIRTY_SHADER_PROG;
+	ctx->dirty |= FD_DIRTY_PROG;
+}
+
+static void
+fd_tes_state_bind(struct pipe_context *pctx, void *hwcso)
+{
+	struct fd_context *ctx = fd_context(pctx);
+	ctx->prog.ds = hwcso;
+	ctx->dirty_shader[PIPE_SHADER_TESS_EVAL] |= FD_DIRTY_SHADER_PROG;
+	ctx->dirty |= FD_DIRTY_PROG;
+}
+
+static void
+fd_gs_state_bind(struct pipe_context *pctx, void *hwcso)
+{
+	struct fd_context *ctx = fd_context(pctx);
+	ctx->prog.gs = hwcso;
+	ctx->dirty_shader[PIPE_SHADER_GEOMETRY] |= FD_DIRTY_SHADER_PROG;
+	ctx->dirty |= FD_DIRTY_PROG;
+}
+
 static const char *solid_fs =
 	"FRAG                                        \n"
 	"PROPERTY FS_COLOR0_WRITES_ALL_CBUFS 1       \n"
@@ -128,6 +155,9 @@ void fd_prog_init(struct pipe_context *pctx)
 
 	pctx->bind_vs_state = fd_vs_state_bind;
 	pctx->bind_fs_state = fd_fs_state_bind;
+	pctx->bind_tcs_state = fd_tcs_state_bind;
+	pctx->bind_tes_state = fd_tes_state_bind;
+	pctx->bind_gs_state = fd_gs_state_bind;
 
 	ctx->solid_prog.fs = assemble_tgsi(pctx, solid_fs, true);
 	ctx->solid_prog.vs = assemble_tgsi(pctx, solid_vs, false);
