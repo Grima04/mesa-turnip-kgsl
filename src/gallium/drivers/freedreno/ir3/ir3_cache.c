@@ -102,7 +102,7 @@ ir3_cache_lookup(struct ir3_cache *cache, const struct ir3_cache_key *key,
 	}
 
 	struct ir3_program_state *state =
-		cache->funcs->create_state(cache->data, bs, vs, fs, &key->key);
+		cache->funcs->create_state(cache->data, bs, vs, NULL, NULL, NULL, fs, &key->key);
 	state->key = *key;
 
 	/* NOTE: uses copy of key in state obj, because pointer passed by caller

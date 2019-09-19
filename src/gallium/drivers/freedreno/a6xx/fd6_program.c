@@ -159,15 +159,23 @@ setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *stat
 	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
 	OUT_RING(ring, 0xff);        /* XXX */
 
-	debug_assert(state->vs->constlen >= state->bs->constlen);
+	if (state->ds)
+		debug_assert(state->ds->constlen >= state->bs->constlen);
+	else
+		debug_assert(state->vs->constlen >= state->bs->constlen);
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_VS_CNTL, 4);
 	OUT_RING(ring, A6XX_HLSQ_VS_CNTL_CONSTLEN(align(state->vs->constlen, 4)) |
 			A6XX_HLSQ_VS_CNTL_ENABLED);
-	OUT_RING(ring, A6XX_HLSQ_HS_CNTL_CONSTLEN(0));
-	OUT_RING(ring, A6XX_HLSQ_DS_CNTL_CONSTLEN(0));
-	OUT_RING(ring, A6XX_HLSQ_GS_CNTL_CONSTLEN(0));
-
+	OUT_RING(ring, COND(state->hs,
+					A6XX_HLSQ_HS_CNTL_ENABLED |
+					A6XX_HLSQ_HS_CNTL_CONSTLEN(align(state->hs->constlen, 4))));
+	OUT_RING(ring, COND(state->ds,
+					A6XX_HLSQ_DS_CNTL_ENABLED |
+					A6XX_HLSQ_DS_CNTL_CONSTLEN(align(state->ds->constlen, 4))));
+	OUT_RING(ring, COND(state->gs,
+					A6XX_HLSQ_GS_CNTL_ENABLED |
+					A6XX_HLSQ_GS_CNTL_CONSTLEN(align(state->gs->constlen, 4))));
 	OUT_PKT4(ring, REG_A6XX_HLSQ_FS_CNTL, 1);
 	OUT_RING(ring, A6XX_HLSQ_FS_CNTL_CONSTLEN(align(state->fs->constlen, 4)) |
 			A6XX_HLSQ_FS_CNTL_ENABLED);
@@ -178,20 +186,32 @@ setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *stat
 			A6XX_SP_VS_CONFIG_NTEX(state->vs->num_samp) |
 			A6XX_SP_VS_CONFIG_NSAMP(state->vs->num_samp));
 
+	OUT_PKT4(ring, REG_A6XX_SP_HS_CONFIG, 1);
+	OUT_RING(ring, COND(state->hs,
+					A6XX_SP_HS_CONFIG_ENABLED |
+					A6XX_SP_HS_CONFIG_NIBO(state->hs->image_mapping.num_ibo) |
+					A6XX_SP_HS_CONFIG_NTEX(state->hs->num_samp) |
+					A6XX_SP_HS_CONFIG_NSAMP(state->hs->num_samp)));
+
+	OUT_PKT4(ring, REG_A6XX_SP_DS_CONFIG, 1);
+	OUT_RING(ring, COND(state->ds,
+					A6XX_SP_DS_CONFIG_ENABLED |
+					A6XX_SP_DS_CONFIG_NIBO(state->ds->image_mapping.num_ibo) |
+					A6XX_SP_DS_CONFIG_NTEX(state->ds->num_samp) |
+					A6XX_SP_DS_CONFIG_NSAMP(state->ds->num_samp)));
+
+	OUT_PKT4(ring, REG_A6XX_SP_GS_CONFIG, 1);
+	OUT_RING(ring, COND(state->gs,
+					A6XX_SP_GS_CONFIG_ENABLED |
+					A6XX_SP_GS_CONFIG_NIBO(state->gs->image_mapping.num_ibo) |
+					A6XX_SP_GS_CONFIG_NTEX(state->gs->num_samp) |
+					A6XX_SP_GS_CONFIG_NSAMP(state->gs->num_samp)));
+
 	OUT_PKT4(ring, REG_A6XX_SP_FS_CONFIG, 1);
 	OUT_RING(ring, COND(state->fs, A6XX_SP_FS_CONFIG_ENABLED) |
 			A6XX_SP_FS_CONFIG_NIBO(state->fs->image_mapping.num_ibo) |
 			A6XX_SP_FS_CONFIG_NTEX(state->fs->num_samp) |
 			A6XX_SP_FS_CONFIG_NSAMP(state->fs->num_samp));
-
-	OUT_PKT4(ring, REG_A6XX_SP_HS_CONFIG, 1);
-	OUT_RING(ring, COND(false, A6XX_SP_HS_CONFIG_ENABLED));
-
-	OUT_PKT4(ring, REG_A6XX_SP_DS_CONFIG, 1);
-	OUT_RING(ring, COND(false, A6XX_SP_DS_CONFIG_ENABLED));
-
-	OUT_PKT4(ring, REG_A6XX_SP_GS_CONFIG, 1);
-	OUT_RING(ring, COND(false, A6XX_SP_GS_CONFIG_ENABLED));
 
 	OUT_PKT4(ring, REG_A6XX_SP_IBO_COUNT, 1);
 	OUT_RING(ring, state->fs->image_mapping.num_ibo);
@@ -225,6 +245,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	static const struct ir3_shader_variant dummy_fs = {0};
 	const struct ir3_shader_variant *vs = binning_pass ? state->bs : state->vs;
+	const struct ir3_shader_variant *hs = state->hs;
+	const struct ir3_shader_variant *ds = state->ds;
+	const struct ir3_shader_variant *gs = state->gs;
 	const struct ir3_shader_variant *fs = binning_pass ? &dummy_fs : state->fs;
 
 	bool sample_shading = fs->per_samp | key->sample_shading;
@@ -548,6 +571,16 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_RING(ring, COND(fragz, A6XX_GRAS_SU_DEPTH_PLANE_CNTL_FRAG_WRITES_Z));
 
 	ir3_emit_immediates(screen, vs, ring);
+
+	if (hs) {
+		ir3_emit_immediates(screen, hs, ring);
+		ir3_emit_immediates(screen, ds, ring);
+	}
+
+	if (gs) {
+		ir3_emit_immediates(screen, gs, ring);
+	}
+
 	if (!binning_pass)
 		ir3_emit_immediates(screen, fs, ring);
 }
@@ -650,6 +683,9 @@ fd6_program_emit(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 static struct ir3_program_state *
 fd6_program_create(void *data, struct ir3_shader_variant *bs,
 		struct ir3_shader_variant *vs,
+		struct ir3_shader_variant *hs,
+		struct ir3_shader_variant *ds,
+		struct ir3_shader_variant *gs,
 		struct ir3_shader_variant *fs,
 		const struct ir3_shader_key *key)
 {
@@ -662,16 +698,21 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	 */
 	state->bs = vs->shader->stream_output.num_outputs ? vs : bs;
 	state->vs = vs;
+	state->hs = hs;
+	state->ds = ds;
+	state->gs = gs;
 	state->fs = fs;
 	state->config_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->binning_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 
 #ifdef DEBUG
-	for (unsigned i = 0; i < bs->inputs_count; i++) {
-		if (vs->inputs[i].sysval)
-			continue;
-		debug_assert(bs->inputs[i].regid == vs->inputs[i].regid);
+	if (!ds) {
+		for (unsigned i = 0; i < bs->inputs_count; i++) {
+			if (vs->inputs[i].sysval)
+				continue;
+			debug_assert(bs->inputs[i].regid == vs->inputs[i].regid);
+		}
 	}
 #endif
 
@@ -737,6 +778,15 @@ fd6_prog_init(struct pipe_context *pctx)
 
 	pctx->create_vs_state = fd6_shader_state_create;
 	pctx->delete_vs_state = fd6_shader_state_delete;
+
+	pctx->create_tcs_state = fd6_shader_state_create;
+	pctx->delete_tcs_state = fd6_shader_state_delete;
+
+	pctx->create_tes_state = fd6_shader_state_create;
+	pctx->delete_tes_state = fd6_shader_state_delete;
+
+	pctx->create_gs_state = fd6_shader_state_create;
+	pctx->delete_gs_state = fd6_shader_state_delete;
 
 	pctx->create_fs_state = fd6_shader_state_create;
 	pctx->delete_fs_state = fd6_shader_state_delete;
