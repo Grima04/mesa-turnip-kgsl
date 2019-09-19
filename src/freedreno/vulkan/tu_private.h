@@ -44,7 +44,6 @@
 #endif
 
 #include "c11/threads.h"
-#include "compiler/shader_enums.h"
 #include "main/macros.h"
 #include "util/list.h"
 #include "util/macros.h"
