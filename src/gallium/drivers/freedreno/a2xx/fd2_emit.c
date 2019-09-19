@@ -199,7 +199,7 @@ fd2_emit_state_binning(struct fd_context *ctx, const enum fd_dirty_3d_state dirt
 	if (dirty & (FD_DIRTY_PROG | FD_DIRTY_CONST)) {
 		emit_constants(ring,  VS_CONST_BASE * 4,
 				&ctx->constbuf[PIPE_SHADER_VERTEX],
-				(dirty & FD_DIRTY_PROG) ? ctx->prog.vp : NULL);
+				(dirty & FD_DIRTY_PROG) ? ctx->prog.vs : NULL);
 	}
 
 	if (dirty & FD_DIRTY_VIEWPORT) {
@@ -242,7 +242,7 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 {
 	struct fd2_blend_stateobj *blend = fd2_blend_stateobj(ctx->blend);
 	struct fd2_zsa_stateobj *zsa = fd2_zsa_stateobj(ctx->zsa);
-	struct fd2_shader_stateobj *fp = ctx->prog.fp;
+	struct fd2_shader_stateobj *fs = ctx->prog.fs;
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 
 	/* NOTE: we probably want to eventually refactor this so each state
@@ -262,7 +262,7 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 		struct pipe_stencil_ref *sr = &ctx->stencil_ref;
 		uint32_t val = zsa->rb_depthcontrol;
 
-		if (fp->has_kill)
+		if (fs->has_kill)
 			val &= ~A2XX_RB_DEPTHCONTROL_EARLY_Z_ENABLE;
 
 		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
@@ -363,10 +363,10 @@ fd2_emit_state(struct fd_context *ctx, const enum fd_dirty_3d_state dirty)
 	if (dirty & (FD_DIRTY_PROG | FD_DIRTY_CONST)) {
 		emit_constants(ring,  VS_CONST_BASE * 4,
 				&ctx->constbuf[PIPE_SHADER_VERTEX],
-				(dirty & FD_DIRTY_PROG) ? ctx->prog.vp : NULL);
+				(dirty & FD_DIRTY_PROG) ? ctx->prog.vs : NULL);
 		emit_constants(ring, PS_CONST_BASE * 4,
 				&ctx->constbuf[PIPE_SHADER_FRAGMENT],
-				(dirty & FD_DIRTY_PROG) ? ctx->prog.fp : NULL);
+				(dirty & FD_DIRTY_PROG) ? ctx->prog.fs : NULL);
 	}
 
 	if (dirty & (FD_DIRTY_BLEND | FD_DIRTY_ZSA)) {

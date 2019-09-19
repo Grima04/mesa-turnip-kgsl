@@ -790,8 +790,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	struct fd_context *ctx = emit->ctx;
 	struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
 	const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
-	const struct ir3_shader_variant *vp = emit->vs;
-	const struct ir3_shader_variant *fp = emit->fs;
+	const struct ir3_shader_variant *vs = emit->vs;
+	const struct ir3_shader_variant *fs = emit->fs;
 	const enum fd_dirty_3d_state dirty = emit->dirty;
 	bool needs_border = false;
 
@@ -801,7 +801,7 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 	 * we might at some point decide to do sysmem in some cases when
 	 * blend is enabled:
 	 */
-	if (fp->fb_read)
+	if (fs->fb_read)
 		ctx->batch->gmem_reason |= FD_GMEM_FB_READ;
 
 	if (emit->dirty & (FD_DIRTY_VTXBUF | FD_DIRTY_VTXSTATE)) {
@@ -926,8 +926,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 			nr = 0;
 
 		OUT_PKT4(ring, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
-		OUT_RING(ring, COND(fp->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
-				COND(fp->writes_smask && pfb->samples > 1,
+		OUT_RING(ring, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
+				COND(fs->writes_smask && pfb->samples > 1,
 						A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK));
 		OUT_RING(ring, A6XX_RB_FS_OUTPUT_CNTL1_MRT(nr));
 
@@ -935,20 +935,20 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL1_MRT(nr));
 	}
 
-	fd6_emit_consts(emit, vp, PIPE_SHADER_VERTEX, FD6_GROUP_VS_CONST, 0x7);
-	fd6_emit_consts(emit, fp, PIPE_SHADER_FRAGMENT, FD6_GROUP_FS_CONST, 0x6);
+	fd6_emit_consts(emit, vs, PIPE_SHADER_VERTEX, FD6_GROUP_VS_CONST, 0x7);
+	fd6_emit_consts(emit, fs, PIPE_SHADER_FRAGMENT, FD6_GROUP_FS_CONST, 0x6);
 
 	/* if driver-params are needed, emit each time: */
-	if (ir3_needs_vs_driver_params(vp)) {
+	if (ir3_needs_vs_driver_params(vs)) {
 		struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
-		ir3_emit_vs_driver_params(vp, dpconstobj, ctx, emit->info);
+		ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info);
 		fd6_emit_take_group(emit, dpconstobj, FD6_GROUP_VS_DRIVER_PARAMS, 0x7);
 	} else {
 		fd6_emit_take_group(emit, NULL, FD6_GROUP_VS_DRIVER_PARAMS, 0x7);
 	}
 
-	struct ir3_stream_output_info *info = &vp->shader->stream_output;
+	struct ir3_stream_output_info *info = &vs->shader->stream_output;
 	if (info->num_outputs)
 		fd6_emit_streamout(ring, emit, info);
 
@@ -1007,8 +1007,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_RING(ring, A6XX_RB_BLEND_ALPHA_F32(bcolor->color[3]));
 	}
 
-	needs_border |= fd6_emit_combined_textures(ring, emit, PIPE_SHADER_VERTEX, vp);
-	needs_border |= fd6_emit_combined_textures(ring, emit, PIPE_SHADER_FRAGMENT, fp);
+	needs_border |= fd6_emit_combined_textures(ring, emit, PIPE_SHADER_VERTEX, vs);
+	needs_border |= fd6_emit_combined_textures(ring, emit, PIPE_SHADER_FRAGMENT, fs);
 
 	if (needs_border)
 		emit_border_color(ctx, ring);
@@ -1017,10 +1017,10 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				   FD_DIRTY_SHADER_PROG)
 	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & DIRTY_IBO) {
 		struct fd_ringbuffer *state =
-			fd6_build_ibo_state(ctx, fp, PIPE_SHADER_FRAGMENT);
+			fd6_build_ibo_state(ctx, fs, PIPE_SHADER_FRAGMENT);
 		struct fd_ringbuffer *obj = fd_submit_new_ringbuffer(
 			ctx->batch->submit, 0x100, FD_RINGBUFFER_STREAMING);
-		const struct ir3_ibo_mapping *mapping = &fp->image_mapping;
+		const struct ir3_ibo_mapping *mapping = &fs->image_mapping;
 
 		OUT_PKT7(obj, CP_LOAD_STATE6, 3);
 		OUT_RING(obj, CP_LOAD_STATE6_0_DST_OFF(0) |
@@ -1039,9 +1039,9 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_PKT4(obj, REG_A6XX_SP_IBO_COUNT, 1);
 		OUT_RING(obj, mapping->num_ibo);
 
-		ir3_emit_ssbo_sizes(ctx->screen, fp, obj,
+		ir3_emit_ssbo_sizes(ctx->screen, fs, obj,
 				&ctx->shaderbuf[PIPE_SHADER_FRAGMENT]);
-		ir3_emit_image_dims(ctx->screen, fp, obj,
+		ir3_emit_image_dims(ctx->screen, fs, obj,
 				&ctx->shaderimg[PIPE_SHADER_FRAGMENT]);
 
 		fd6_emit_take_group(emit, obj, FD6_GROUP_IBO, 0x6);

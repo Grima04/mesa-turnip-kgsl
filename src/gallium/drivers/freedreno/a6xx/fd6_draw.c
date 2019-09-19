@@ -128,8 +128,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.vtx  = &ctx->vtx,
 		.info = info,
 		.key = {
-			.vs = ctx->prog.vp,
-			.fs = ctx->prog.fp,
+			.vs = ctx->prog.vs,
+			.fs = ctx->prog.fs,
 			.key = {
 				.color_two_side = ctx->rasterizer->light_twoside,
 				.vclamp_color = ctx->rasterizer->clamp_vertex_color,

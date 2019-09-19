@@ -667,7 +667,7 @@ fd3_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 
 	if (fd_gmem_needs_restore(batch, tile, FD_BUFFER_COLOR)) {
 		emit.prog = &ctx->blit_prog[pfb->nr_cbufs - 1];
-		emit.fp = NULL;      /* frag shader changed so clear cache */
+		emit.fs = NULL;      /* frag shader changed so clear cache */
 		fd3_program_emit(ring, &emit, pfb->nr_cbufs, pfb->cbufs);
 		emit_mem2gmem_surf(batch, gmem->cbuf_base, pfb->cbufs, pfb->nr_cbufs, bin_w);
 	}
@@ -688,7 +688,7 @@ fd3_emit_tile_mem2gmem(struct fd_batch *batch, struct fd_tile *tile)
 				emit.prog = &ctx->blit_zs;
 			emit.key.half_precision = false;
 		}
-		emit.fp = NULL;      /* frag shader changed so clear cache */
+		emit.fs = NULL;      /* frag shader changed so clear cache */
 		fd3_program_emit(ring, &emit, 1, &pfb->zsbuf);
 		emit_mem2gmem_surf(batch, gmem->zsbuf_base, &pfb->zsbuf, 1, bin_w);
 	}

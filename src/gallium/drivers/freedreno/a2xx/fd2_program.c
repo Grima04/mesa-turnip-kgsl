@@ -225,11 +225,11 @@ fd2_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	bool binning = (ctx->batch && ring == ctx->batch->binning);
 	unsigned variant = 0;
 
-	vp = prog->vp;
+	vp = prog->vs;
 
 	/* find variant matching the linked fragment shader */
 	if (!binning) {
-		fp = prog->fp;
+		fp = prog->fs;
 		for (variant = 1; variant < ARRAY_SIZE(vp->variant); variant++) {
 			/* if checked all variants, compile a new variant */
 			if (!vp->variant[variant].info.sizedwords) {
@@ -311,8 +311,8 @@ fd2_prog_init(struct pipe_context *pctx)
 	/* XXX maybe its possible to reuse patch_vtx_fetch somehow? */
 
 	prog = &ctx->solid_prog;
-	so = prog->vp;
-	ir2_compile(prog->vp, 1, prog->fp);
+	so = prog->vs;
+	ir2_compile(prog->vs, 1, prog->fs);
 
 #define IR2_FETCH_SWIZ_XY01 0xb08
 #define IR2_FETCH_SWIZ_XYZ1 0xa88
@@ -329,8 +329,8 @@ fd2_prog_init(struct pipe_context *pctx)
 	instr->dst_swiz = IR2_FETCH_SWIZ_XYZ1;
 
 	prog = &ctx->blit_prog[0];
-	so = prog->vp;
-	ir2_compile(prog->vp, 1, prog->fp);
+	so = prog->vs;
+	ir2_compile(prog->vs, 1, prog->fs);
 
 	info = &so->variant[1].info;
 
