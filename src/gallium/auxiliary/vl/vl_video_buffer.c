@@ -455,3 +455,43 @@ vl_video_buffer_create_ex2(struct pipe_context *pipe,
 
    return &buffer->base;
 }
+
+/* Create pipe_video_buffer by using resource_create with planar formats. */
+struct pipe_video_buffer *
+vl_video_buffer_create_as_resource(struct pipe_context *pipe,
+                                   const struct pipe_video_buffer *tmpl)
+{
+   struct pipe_resource templ, *resources[VL_NUM_COMPONENTS] = {};
+   unsigned array_size =  tmpl->interlaced ? 2 : 1;
+
+   memset(&templ, 0, sizeof(templ));
+   templ.target = array_size > 1 ? PIPE_TEXTURE_2D_ARRAY : PIPE_TEXTURE_2D;
+   templ.width0 = align(tmpl->width, VL_MACROBLOCK_WIDTH);
+   templ.height0 = align(tmpl->height / array_size, VL_MACROBLOCK_HEIGHT);
+   templ.depth0 = 1;
+   templ.array_size = array_size;
+   templ.bind = PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_RENDER_TARGET | tmpl->bind;
+   templ.usage = PIPE_USAGE_DEFAULT;
+
+   if (tmpl->buffer_format == PIPE_FORMAT_YUYV)
+      templ.format = PIPE_FORMAT_R8G8_R8B8_UNORM;
+   else if (tmpl->buffer_format == PIPE_FORMAT_UYVY)
+      templ.format = PIPE_FORMAT_G8R8_B8R8_UNORM;
+   else
+      templ.format = tmpl->buffer_format;
+
+   resources[0] = pipe->screen->resource_create(pipe->screen, &templ);
+   if (!resources[0])
+      return NULL;
+
+   if (resources[0]->next) {
+      pipe_resource_reference(&resources[1], resources[0]->next);
+      if (resources[1]->next)
+         pipe_resource_reference(&resources[2], resources[1]->next);
+   }
+
+   struct pipe_video_buffer vidtemplate = *tmpl;
+   vidtemplate.width = templ.width0;
+   vidtemplate.height = templ.height0 * array_size;
+   return vl_video_buffer_create_ex2(pipe, &vidtemplate, resources);
+}

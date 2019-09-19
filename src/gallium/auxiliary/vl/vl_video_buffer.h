@@ -145,4 +145,9 @@ vl_video_buffer_create_ex2(struct pipe_context *pipe,
                            const struct pipe_video_buffer *templat,
                            struct pipe_resource *resources[VL_NUM_COMPONENTS]);
 
+/* Create pipe_video_buffer by using resource_create with planar formats. */
+struct pipe_video_buffer *
+vl_video_buffer_create_as_resource(struct pipe_context *pipe,
+                                   const struct pipe_video_buffer *tmpl);
+
 #endif /* vl_video_buffer_h */
