@@ -14,7 +14,7 @@
 # repository's registry will be used there as well.
 variables:
   UPSTREAM_REPO: mesa/mesa
-  DEBIAN_TAG: "2019-09-30"
+  DEBIAN_TAG: "2019-10-07_1"
   DEBIAN_ARM64_TAG: "arm64v8-2019-08-09"
   STRETCH_TAG: "2019-09-18"
   DEBIAN_VERSION: buster-slim
@@ -343,6 +343,17 @@ meson-i386:
       -D vulkan-overlay-layer=true
       -D llvm=false
       -D osmesa=classic
+
+meson-mingw32-x86_64:
+  extends: .meson-build
+  variables:
+    UNWIND: "false"
+    DRI_DRIVERS: ""
+    GALLIUM_DRIVERS: "swrast"
+    EXTRA_OPTION: >
+      -Dllvm=false
+      -Dosmesa=gallium
+      --cross-file=.gitlab-ci/x86_64-w64-mingw32
 
 scons:
   extends: .scons-build
