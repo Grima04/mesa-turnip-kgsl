@@ -69,8 +69,9 @@ vl_video_buffer_adjust_size(unsigned *width, unsigned *height, unsigned plane,
 /**
  * get subformats for each plane
  */
-const enum pipe_format *
-vl_video_buffer_formats(struct pipe_screen *screen, enum pipe_format format);
+void
+vl_get_video_buffer_formats(struct pipe_screen *screen, enum pipe_format format,
+                            enum pipe_format out_format[VL_NUM_COMPONENTS]);
 
 /**
  * get YUV plane order

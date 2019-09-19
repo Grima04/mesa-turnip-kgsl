@@ -44,7 +44,7 @@ struct pipe_video_buffer *si_video_buffer_create(struct pipe_context *pipe,
 	struct si_texture *resources[VL_NUM_COMPONENTS] = {};
 	struct radeon_surf *surfaces[VL_NUM_COMPONENTS] = {};
 	struct pb_buffer **pbs[VL_NUM_COMPONENTS] = {};
-	const enum pipe_format *resource_formats;
+	enum pipe_format resource_formats[VL_NUM_COMPONENTS];
 	struct pipe_video_buffer vidtemplate;
 	struct pipe_resource templ;
 	unsigned i, array_size;
@@ -52,9 +52,7 @@ struct pipe_video_buffer *si_video_buffer_create(struct pipe_context *pipe,
 	assert(pipe);
 
 	/* first create the needed resources as "normal" textures */
-	resource_formats = vl_video_buffer_formats(pipe->screen, tmpl->buffer_format);
-	if (!resource_formats)
-		return NULL;
+	vl_get_video_buffer_formats(pipe->screen, tmpl->buffer_format, resource_formats);
 
 	array_size = tmpl->interlaced ? 2 : 1;
 	vidtemplate = *tmpl;
