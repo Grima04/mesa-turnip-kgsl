@@ -340,74 +340,6 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
 }
 
 static void
-lima_pack_clear_plbu_cmd(struct lima_context *ctx)
-{
-   #define lima_clear_render_state_offset 0x0000
-   #define lima_clear_shader_offset       0x0040
-   #define lima_clear_buffer_size         0x0080
-
-   void *cpu;
-   unsigned offset;
-   struct pipe_resource *pres = NULL;
-   u_upload_alloc(ctx->uploader, 0, lima_clear_buffer_size,
-                  0x40, &offset, &pres, &cpu);
-
-   struct lima_resource *res = lima_resource(pres);
-   uint32_t va = res->bo->va + offset;
-
-   struct lima_screen *screen = lima_screen(ctx->base.screen);
-   uint32_t gl_pos_va = screen->pp_buffer->va + pp_clear_gl_pos_offset;
-
-   /* const0 clear_color, mov.v1 $0 ^const0.xxxx, stop */
-   uint32_t clear_shader[] = {
-      0x00021025, 0x0000000c,
-      (ctx->clear.color_16pc << 12) | 0x000007cf,
-      ctx->clear.color_16pc >> 12,
-      ctx->clear.color_16pc >> 44,
-   };
-   memcpy(cpu + lima_clear_shader_offset, &clear_shader,
-          sizeof(clear_shader));
-
-   uint32_t clear_shader_va = va + lima_clear_shader_offset;
-   uint32_t clear_shader_first_instr_size = clear_shader[0] & 0x1f;
-
-   struct lima_render_state clear_render_state = {
-      .blend_color_bg = 0x00800080,
-      .blend_color_ra = 0x00ff0080,
-      .alpha_blend = 0xfc321892,
-      .depth_test = 0x0000003e,
-      .depth_range = 0xffff0000,
-      .stencil_front = 0x00000007,
-      .stencil_back = 0x00000007,
-      .multi_sample = 0x0000f007,
-      .shader_address = clear_shader_va | clear_shader_first_instr_size,
-   };
-   memcpy(cpu + lima_clear_render_state_offset, &clear_render_state,
-          sizeof(clear_render_state));
-
-   PLBU_CMD_BEGIN(22);
-
-   PLBU_CMD_VIEWPORT_LEFT(0);
-   PLBU_CMD_VIEWPORT_RIGHT(0x45800000);
-   PLBU_CMD_VIEWPORT_TOP(0);
-   PLBU_CMD_VIEWPORT_BOTTOM(0x45800000);
-
-   struct pipe_scissor_state *scissor = &ctx->scissor;
-   PLBU_CMD_SCISSORS(scissor->minx, scissor->maxx, scissor->miny, scissor->maxy);
-
-   PLBU_CMD_RSW_VERTEX_ARRAY(va + lima_clear_render_state_offset, gl_pos_va);
-
-   PLBU_CMD_UNKNOWN2();
-   PLBU_CMD_UNKNOWN1();
-
-   PLBU_CMD_INDICES(screen->pp_buffer->va + pp_shared_index_offset);
-   PLBU_CMD_INDEXED_DEST(gl_pos_va);
-   PLBU_CMD_DRAW_ELEMENTS(0xf, 0, 3);
-
-   PLBU_CMD_END();
-}
-
-static void
 lima_pack_head_plbu_cmd(struct lima_context *ctx)
 {
    /* first draw need create a PLBU command header */
@@ -443,19 +375,6 @@ lima_is_scissor_zero(struct lima_context *ctx)
    return
       scissor->minx == scissor->maxx
       && scissor->miny == scissor->maxy;
-}
-
-static bool
-lima_is_scissor_full_fb(struct lima_context *ctx)
-{
-   if (!ctx->rasterizer || !ctx->rasterizer->base.scissor)
-      return true;
-
-   struct pipe_scissor_state *scissor = &ctx->scissor;
-   struct lima_context_framebuffer *fb = &ctx->framebuffer;
-   return
-      scissor->minx == 0 && scissor->maxx == fb->base.width &&
-      scissor->miny == 0 && scissor->maxy == fb->base.height;
 }
 
 static void
@@ -702,16 +621,13 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
            const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct lima_context *ctx = lima_context(pctx);
-   bool full_fb_clear = lima_is_scissor_full_fb(ctx);
 
-   if (full_fb_clear) {
-      lima_flush(ctx);
+   lima_flush(ctx);
 
-      /* no need to reload if cleared */
-      if (ctx->framebuffer.base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0)) {
-         struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
-         surf->reload = false;
-      }
+   /* no need to reload if cleared */
+   if (ctx->framebuffer.base.nr_cbufs && (buffers & PIPE_CLEAR_COLOR0)) {
+      struct lima_surface *surf = lima_surface(ctx->framebuffer.base.cbufs[0]);
+      surf->reload = false;
    }
 
    struct lima_context_clear *clear = &ctx->clear;
@@ -740,10 +656,6 @@ lima_clear(struct pipe_context *pctx, unsigned buffers,
    lima_update_submit_bo(ctx);
 
    lima_pack_head_plbu_cmd(ctx);
-
-   /* partial clear */
-   if (!full_fb_clear)
-      lima_pack_clear_plbu_cmd(ctx);
 
    ctx->dirty |= LIMA_CONTEXT_DIRTY_CLEAR;
 }
