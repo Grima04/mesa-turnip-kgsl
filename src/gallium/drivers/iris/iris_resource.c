@@ -611,13 +611,24 @@ iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
       }
 
       if (iris_resource_get_aux_state(res, 0, 0) != ISL_AUX_STATE_AUX_INVALID) {
-         uint8_t memset_value = res->aux.usage == ISL_AUX_USAGE_MCS ? 0xFF : 0;
+         uint8_t memset_value = isl_aux_usage_has_mcs(res->aux.usage) ? 0xFF : 0;
          memset((char*)map + res->aux.offset, memset_value,
                 res->aux.surf.size_B);
       }
 
-      /* Resolved is usually a safe state for CCS_E. */
-      memset((char*)map + res->aux.extra_aux.offset, 0,
+      /* Bspec section titled : MCS/CCS Buffers for Render Target(s) states:
+       *    - If Software wants to enable Color Compression without Fast clear,
+       *      Software needs to initialize MCS with zeros.
+       *    - Lossless compression and CCS initialized to all F (using HW Fast
+       *      Clear or SW direct Clear)
+       *
+       * We think, the first bullet point above is referring to CCS aux
+       * surface. Since we initialize the MCS in the clear state, we also
+       * initialize the CCS in the clear state (via SW direct clear) to keep
+       * the two in sync.
+       */
+      memset((char*)map + res->aux.extra_aux.offset,
+             isl_aux_usage_has_mcs(res->aux.usage) ? 0xFF : 0,
              res->aux.extra_aux.surf.size_B);
 
       /* Zero the indirect clear color to match ::fast_clear_color. */
