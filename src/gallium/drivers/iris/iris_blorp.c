@@ -342,6 +342,23 @@ iris_blorp_exec(struct blorp_batch *blorp_batch,
                          IRIS_DIRTY_SAMPLER_STATES_TES |
                          IRIS_DIRTY_SAMPLER_STATES_GS);
 
+   if (!ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL]) {
+      /* BLORP disabled tessellation, that's fine for the next draw */
+      skip_bits |= IRIS_DIRTY_TCS |
+                   IRIS_DIRTY_TES |
+                   IRIS_DIRTY_CONSTANTS_TCS |
+                   IRIS_DIRTY_CONSTANTS_TES |
+                   IRIS_DIRTY_BINDINGS_TCS |
+                   IRIS_DIRTY_BINDINGS_TES;
+   }
+
+   if (!ice->shaders.uncompiled[MESA_SHADER_GEOMETRY]) {
+      /* BLORP disabled geometry shaders, that's fine for the next draw */
+      skip_bits |= IRIS_DIRTY_GS |
+                   IRIS_DIRTY_CONSTANTS_GS |
+                   IRIS_DIRTY_BINDINGS_GS;
+   }
+
    /* we can skip flagging IRIS_DIRTY_DEPTH_BUFFER, if
     * BLORP_BATCH_NO_EMIT_DEPTH_STENCIL is set.
     */
