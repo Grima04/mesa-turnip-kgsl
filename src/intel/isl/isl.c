@@ -1773,6 +1773,9 @@ isl_surf_get_mcs_surf(const struct isl_device *dev,
    if (surf->msaa_layout != ISL_MSAA_LAYOUT_ARRAY)
       return false;
 
+   if (mcs_surf->size_B > 0)
+      return false;
+
    /* The following are true of all multisampled surfaces */
    assert(surf->samples > 1);
    assert(surf->dim == ISL_SURF_DIM_2D);
