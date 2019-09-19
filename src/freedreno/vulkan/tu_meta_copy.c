@@ -33,7 +33,6 @@
 
 /*
  * TODO:
- *   - image -> image copies
  *   - 3D textures
  *   - compressed image formats (need to divide offset/extent)
  */
@@ -605,6 +604,168 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmdbuf,
    tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_FLUSH_TS, true);
 }
 
+static void
+tu_copy_image_to_image_step(struct tu_cmd_buffer *cmdbuf,
+                            struct tu_image *src_image,
+                            struct tu_image *dst_image,
+                            const VkImageCopy *copy_info,
+                            VkFormat format,
+                            uint32_t layer_offset)
+{
+   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
+
+   unsigned src_layer =
+      copy_info->srcSubresource.baseArrayLayer + layer_offset;
+   uint64_t src_va =
+      src_image->bo->iova + src_image->bo_offset +
+      src_image->layer_size * src_layer +
+      src_image->levels[copy_info->srcSubresource.mipLevel].offset;
+   unsigned src_pitch =
+      src_image->levels[copy_info->srcSubresource.mipLevel].pitch *
+      vk_format_get_blocksize(format);
+
+   unsigned dst_layer =
+      copy_info->dstSubresource.baseArrayLayer + layer_offset;
+   uint64_t dst_va =
+      dst_image->bo->iova + dst_image->bo_offset +
+      dst_image->layer_size * dst_layer +
+      dst_image->levels[copy_info->dstSubresource.mipLevel].offset;
+   unsigned dst_pitch =
+      src_image->levels[copy_info->dstSubresource.mipLevel].pitch *
+      vk_format_get_blocksize(format);
+
+   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 48);
+
+   /*
+    * Emit source:
+    */
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_PS_2D_SRC_INFO, 13);
+   tu_cs_emit(&cmdbuf->cs,
+              A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT(rb_fmt) |
+                 A6XX_SP_PS_2D_SRC_INFO_TILE_MODE(src_image->tile_mode) |
+                 A6XX_SP_PS_2D_SRC_INFO_COLOR_SWAP(WZYX) | 0x500000);
+   tu_cs_emit(&cmdbuf->cs,
+              A6XX_SP_PS_2D_SRC_SIZE_WIDTH(src_image->extent.width) |
+                 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(
+                    src_image->extent.height)); /* SP_PS_2D_SRC_SIZE */
+   tu_cs_emit_qw(&cmdbuf->cs, src_va);
+   tu_cs_emit(&cmdbuf->cs, A6XX_SP_PS_2D_SRC_PITCH_PITCH(src_pitch));
+
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+
+   /*
+    * Emit destination:
+    */
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_DST_INFO, 9);
+   tu_cs_emit(&cmdbuf->cs,
+              A6XX_RB_2D_DST_INFO_COLOR_FORMAT(rb_fmt) |
+                 A6XX_RB_2D_DST_INFO_TILE_MODE(dst_image->tile_mode) |
+                 A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
+   tu_cs_emit_qw(&cmdbuf->cs, dst_va);
+   tu_cs_emit(&cmdbuf->cs, A6XX_RB_2D_DST_SIZE_PITCH(dst_pitch));
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+   tu_cs_emit(&cmdbuf->cs, 0x00000000);
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
+   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_X_X(copy_info->srcOffset.x));
+   tu_cs_emit(&cmdbuf->cs,
+              A6XX_GRAS_2D_SRC_BR_X_X(copy_info->srcOffset.x +
+                                      copy_info->extent.width - 1));
+   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_SRC_TL_Y_Y(copy_info->srcOffset.y));
+   tu_cs_emit(&cmdbuf->cs,
+              A6XX_GRAS_2D_SRC_BR_Y_Y(copy_info->srcOffset.y +
+                                      copy_info->extent.height - 1));
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_DST_TL, 2);
+   tu_cs_emit(&cmdbuf->cs, A6XX_GRAS_2D_DST_TL_X(copy_info->dstOffset.x) |
+                              A6XX_GRAS_2D_DST_TL_Y(copy_info->dstOffset.y));
+   tu_cs_emit(&cmdbuf->cs,
+              A6XX_GRAS_2D_DST_BR_X(copy_info->dstOffset.x +
+                                    copy_info->extent.width - 1) |
+                 A6XX_GRAS_2D_DST_BR_Y(copy_info->dstOffset.y +
+                                       copy_info->extent.height - 1));
+
+   tu_cs_emit_pkt7(&cmdbuf->cs, CP_EVENT_WRITE, 1);
+   tu_cs_emit(&cmdbuf->cs, 0x3f);
+   tu_cs_emit_wfi(&cmdbuf->cs);
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
+   tu_cs_emit(&cmdbuf->cs, 0);
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_SP_2D_SRC_FORMAT, 1);
+   tu_cs_emit(&cmdbuf->cs, tu6_sp_2d_src_format(format));
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
+   tu_cs_emit(&cmdbuf->cs, 0x01000000);
+
+   tu_cs_emit_pkt7(&cmdbuf->cs, CP_BLIT, 1);
+   tu_cs_emit(&cmdbuf->cs, CP_BLIT_0_OP(BLIT_OP_SCALE));
+
+   tu_cs_emit_wfi(&cmdbuf->cs);
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_UNKNOWN_8E04, 1);
+   tu_cs_emit(&cmdbuf->cs, 0);
+}
+
+static void
+tu_copy_image_to_image(struct tu_cmd_buffer *cmdbuf,
+                       struct tu_image *src_image,
+                       struct tu_image *dst_image,
+                       const VkImageCopy *copy_info)
+{
+   /* TODO:
+    *  - Handle 3D images.
+    *  - In some cases where src and dst format are different this may
+    *    have tiling implications. Not sure if things happen correctly
+    *    in that case.
+    */
+
+   tu_bo_list_add(&cmdbuf->bo_list, src_image->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmdbuf->bo_list, dst_image->bo, MSM_SUBMIT_BO_WRITE);
+
+   /* general setup */
+   tu_dma_prepare(cmdbuf);
+
+   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 6);
+
+   /* buffer copy setup */
+   tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
+   tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
+
+   VkFormat format = src_image->vk_format;
+   const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
+   const uint32_t blit_cntl = blit_control(rb_fmt) | 0x20000000;
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_RB_2D_BLIT_CNTL, 1);
+   tu_cs_emit(&cmdbuf->cs, blit_cntl);
+
+   tu_cs_emit_pkt4(&cmdbuf->cs, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
+   tu_cs_emit(&cmdbuf->cs, blit_cntl);
+
+   for (unsigned layer_offset = 0;
+        layer_offset < copy_info->srcSubresource.layerCount; ++layer_offset) {
+      tu_copy_image_to_image_step(cmdbuf, src_image, dst_image, copy_info,
+                                  format, layer_offset);
+   }
+
+   tu_cs_reserve_space(cmdbuf->device, &cmdbuf->cs, 15);
+
+   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, 0x1d, true);
+   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, FACENESS_FLUSH, true);
+   tu6_emit_event_write(cmdbuf, &cmdbuf->cs, CACHE_FLUSH_TS, true);
+}
+
 void
 tu_CmdCopyBuffer(VkCommandBuffer commandBuffer,
                  VkBuffer srcBuffer,
@@ -661,17 +822,6 @@ tu_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    }
 }
 
-static void
-meta_copy_image(struct tu_cmd_buffer *cmd_buffer,
-                struct tu_image *src_image,
-                VkImageLayout src_image_layout,
-                struct tu_image *dest_image,
-                VkImageLayout dest_image_layout,
-                uint32_t regionCount,
-                const VkImageCopy *pRegions)
-{
-}
-
 void
 tu_CmdCopyImage(VkCommandBuffer commandBuffer,
                 VkImage srcImage,
@@ -685,6 +835,7 @@ tu_CmdCopyImage(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_image, src_image, srcImage);
    TU_FROM_HANDLE(tu_image, dest_image, destImage);
 
-   meta_copy_image(cmd_buffer, src_image, srcImageLayout, dest_image,
-                   destImageLayout, regionCount, pRegions);
+   for (uint32_t i = 0; i < regionCount; ++i) {
+      tu_copy_image_to_image(cmd_buffer, src_image, dest_image, pRegions + i);
+   }
 }
