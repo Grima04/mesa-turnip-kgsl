@@ -169,6 +169,9 @@ panfrost_batch_fence_reference(struct panfrost_batch_fence *batch);
 struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
 
+struct panfrost_batch *
+panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx);
+
 void
 panfrost_batch_init(struct panfrost_context *ctx);
 

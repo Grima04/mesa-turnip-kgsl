@@ -293,6 +293,27 @@ panfrost_get_batch_for_fbo(struct panfrost_context *ctx)
         return batch;
 }
 
+struct panfrost_batch *
+panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
+{
+        struct panfrost_batch *batch;
+
+        batch = panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
+
+        /* The batch has no draw/clear queued, let's return it directly.
+         * Note that it's perfectly fine to re-use a batch with an
+         * existing clear, we'll just update it with the new clear request.
+         */
+        if (!batch->last_job.gpu)
+                return batch;
+
+        /* Otherwise, we need to freeze the existing one and instantiate a new
+         * one.
+         */
+        panfrost_freeze_batch(batch);
+        return panfrost_get_batch(ctx, &ctx->pipe_framebuffer);
+}
+
 static bool
 panfrost_batch_fence_is_signaled(struct panfrost_batch_fence *fence)
 {

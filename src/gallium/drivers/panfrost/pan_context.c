@@ -162,7 +162,14 @@ panfrost_clear(
         double depth, unsigned stencil)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+
+        /* TODO: panfrost_get_fresh_batch_for_fbo() instantiates a new batch if
+         * the existing batch targeting this FBO has draws. We could probably
+         * avoid that by replacing plain clears by quad-draws with a specific
+         * color/depth/stencil value, thus avoiding the generation of extra
+         * fragment/set_value jobs.
+         */
+        struct panfrost_batch *batch = panfrost_get_fresh_batch_for_fbo(ctx);
 
         panfrost_batch_add_fbo_bos(batch);
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
