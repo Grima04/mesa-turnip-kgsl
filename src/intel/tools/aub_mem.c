@@ -87,9 +87,9 @@ static inline int
 cmp_uint64(uint64_t a, uint64_t b)
 {
    if (a < b)
-      return -1;
-   if (a > b)
       return 1;
+   if (a > b)
+      return -1;
    return 0;
 }
 

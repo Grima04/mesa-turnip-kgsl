@@ -56,7 +56,7 @@ static int
 rb_test_node_cmp_void(const struct rb_node *n, const void *v)
 {
     struct rb_test_node *tn = rb_node_data(struct rb_test_node, n, node);
-    return tn->key - *(int *)v;
+    return *(int *)v - tn->key;
 }
 
 static int
@@ -65,7 +65,7 @@ rb_test_node_cmp(const struct rb_node *a, const struct rb_node *b)
     struct rb_test_node *ta = rb_node_data(struct rb_test_node, a, node);
     struct rb_test_node *tb = rb_node_data(struct rb_test_node, b, node);
 
-    return ta->key - tb->key;
+    return tb->key - ta->key;
 }
 
 static void
