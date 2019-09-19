@@ -1876,6 +1876,7 @@ tu_CreateGraphicsPipelines(VkDevice device,
 {
    TU_FROM_HANDLE(tu_device, dev, device);
    TU_FROM_HANDLE(tu_pipeline_cache, cache, pipelineCache);
+   VkResult final_result = VK_SUCCESS;
 
    for (uint32_t i = 0; i < count; i++) {
       struct tu_pipeline_builder builder;
@@ -1886,19 +1887,15 @@ tu_CreateGraphicsPipelines(VkDevice device,
       VkResult result = tu_pipeline_builder_build(&builder, &pipeline);
       tu_pipeline_builder_finish(&builder);
 
-      if (result != VK_SUCCESS) {
-         for (uint32_t j = 0; j < i; j++) {
-            tu_DestroyPipeline(device, pPipelines[j], pAllocator);
-            pPipelines[j] = VK_NULL_HANDLE;
-         }
-
-         return result;
+      if (result == VK_SUCCESS) {
+         pPipelines[i] = tu_pipeline_to_handle(pipeline);
+      } else {
+         pPipelines[i] = NULL;
+         final_result = result;
       }
-
-      pPipelines[i] = tu_pipeline_to_handle(pipeline);
    }
 
-   return VK_SUCCESS;
+   return final_result;
 }
 
 static VkResult
