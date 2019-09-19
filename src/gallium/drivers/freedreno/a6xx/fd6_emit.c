@@ -766,6 +766,24 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 	}
 }
 
+
+static void
+fd6_emit_consts(struct fd6_emit *emit, const struct ir3_shader_variant *v,
+		enum pipe_shader_type type, enum fd6_state_id id, unsigned enable_mask)
+{
+	struct fd_context *ctx = emit->ctx;
+
+	if (v && ctx->dirty_shader[type] & (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_CONST)) {
+		struct fd_ringbuffer *constobj = fd_submit_new_ringbuffer(
+				ctx->batch->submit, v->shader->ubo_state.cmdstream_size,
+				FD_RINGBUFFER_STREAMING);
+
+		ir3_emit_user_consts(ctx->screen, v, constobj, &ctx->constbuf[type]);
+		ir3_emit_ubos(ctx->screen, v, constobj, &ctx->constbuf[type]);
+		fd6_emit_take_group(emit, constobj, id, enable_mask);
+	}
+}
+
 void
 fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 {
@@ -917,33 +935,8 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL1_MRT(nr));
 	}
 
-#define DIRTY_CONST (FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_CONST)
-
-	if (ctx->dirty_shader[PIPE_SHADER_VERTEX] & DIRTY_CONST) {
-		struct fd_ringbuffer *vsconstobj = fd_submit_new_ringbuffer(
-				ctx->batch->submit, vp->shader->ubo_state.cmdstream_size,
-				FD_RINGBUFFER_STREAMING);
-
-		ir3_emit_user_consts(ctx->screen, vp, vsconstobj,
-				&ctx->constbuf[PIPE_SHADER_VERTEX]);
-		ir3_emit_ubos(ctx->screen, vp, vsconstobj,
-				&ctx->constbuf[PIPE_SHADER_VERTEX]);
-
-		fd6_emit_take_group(emit, vsconstobj, FD6_GROUP_VS_CONST, 0x7);
-	}
-
-	if (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & DIRTY_CONST) {
-		struct fd_ringbuffer *fsconstobj = fd_submit_new_ringbuffer(
-				ctx->batch->submit, fp->shader->ubo_state.cmdstream_size,
-				FD_RINGBUFFER_STREAMING);
-
-		ir3_emit_user_consts(ctx->screen, fp, fsconstobj,
-				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
-		ir3_emit_ubos(ctx->screen, fp, fsconstobj,
-				&ctx->constbuf[PIPE_SHADER_FRAGMENT]);
-
-		fd6_emit_take_group(emit, fsconstobj, FD6_GROUP_FS_CONST, 0x6);
-	}
+	fd6_emit_consts(emit, vp, PIPE_SHADER_VERTEX, FD6_GROUP_VS_CONST, 0x7);
+	fd6_emit_consts(emit, fp, PIPE_SHADER_FRAGMENT, FD6_GROUP_FS_CONST, 0x6);
 
 	/* if driver-params are needed, emit each time: */
 	if (ir3_needs_vs_driver_params(vp)) {
