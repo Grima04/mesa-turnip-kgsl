@@ -27,7 +27,9 @@
 #define SHADER_ENUMS_H
 
 #include <stdbool.h>
-#include "mesa/main/config.h"
+
+/* Project-wide (GL and Vulkan) maximum. */
+#define MAX_DRAW_BUFFERS 8
 
 #ifdef __cplusplus
 extern "C" {
