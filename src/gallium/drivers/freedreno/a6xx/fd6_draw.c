@@ -129,6 +129,9 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.info = info,
 		.key = {
 			.vs = ctx->prog.vs,
+			.hs = ctx->prog.hs,
+			.ds = ctx->prog.ds,
+			.gs = ctx->prog.gs,
 			.fs = ctx->prog.fs,
 			.key = {
 				.color_two_side = ctx->rasterizer->light_twoside,
@@ -169,18 +172,21 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	emit.dirty = ctx->dirty;      /* *after* fixup_shader_state() */
 	emit.bs = fd6_emit_get_prog(&emit)->bs;
 	emit.vs = fd6_emit_get_prog(&emit)->vs;
+	emit.hs = fd6_emit_get_prog(&emit)->hs;
+	emit.ds = fd6_emit_get_prog(&emit)->ds;
+	emit.gs = fd6_emit_get_prog(&emit)->gs;
 	emit.fs = fd6_emit_get_prog(&emit)->fs;
 
-	const struct ir3_shader_variant *vp = emit.vs;
-	const struct ir3_shader_variant *fp = emit.fs;
-
-	ctx->stats.vs_regs += ir3_shader_halfregs(vp);
-	ctx->stats.fs_regs += ir3_shader_halfregs(fp);
+	ctx->stats.vs_regs += ir3_shader_halfregs(emit.vs);
+	ctx->stats.hs_regs += COND(emit.hs, ir3_shader_halfregs(emit.hs));
+	ctx->stats.ds_regs += COND(emit.ds, ir3_shader_halfregs(emit.ds));
+	ctx->stats.gs_regs += COND(emit.gs, ir3_shader_halfregs(emit.gs));
+	ctx->stats.fs_regs += ir3_shader_halfregs(emit.fs);
 
 	/* figure out whether we need to disable LRZ write for binning
-	 * pass using draw pass's fp:
+	 * pass using draw pass's fs:
 	 */
-	emit.no_lrz_write = fp->writes_pos || fp->no_earlyz;
+	emit.no_lrz_write = emit.fs->writes_pos || emit.fs->no_earlyz;
 
 	struct fd_ringbuffer *ring = ctx->batch->draw;
 	enum pc_di_primtype primtype = ctx->primtypes[info->mode];
