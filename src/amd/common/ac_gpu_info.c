@@ -630,19 +630,9 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		}
 	}
 
-	if (info->chip_class >= GFX10) {
-		switch (info->family) {
-		case CHIP_NAVI10:
-		case CHIP_NAVI12:
-			info->num_sdp_interfaces = 16;
-			break;
-		case CHIP_NAVI14:
-			info->num_sdp_interfaces = 8;
-			break;
-		default:
-			assert(0);
-		}
-	}
+	/* The number of SDPs is the same as the number of TCCs for now. */
+	if (info->chip_class >= GFX10)
+		info->num_sdp_interfaces = device_info.num_tcc_blocks;
 
 	info->max_wave64_per_simd = info->family >= CHIP_POLARIS10 &&
 				    info->family <= CHIP_VEGAM ? 8 : 10;
