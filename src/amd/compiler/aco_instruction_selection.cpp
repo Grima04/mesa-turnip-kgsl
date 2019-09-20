@@ -4045,6 +4045,8 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
          tmp = {ctx->program->allocateId(), RegClass(RegType::vgpr, num_channels)};
       load->definitions[0] = Definition(tmp);
       load->idxen = true;
+      load->glc = var->data.access & (ACCESS_VOLATILE | ACCESS_COHERENT);
+      load->dlc = load->glc && ctx->options->chip_class >= GFX10;
       load->barrier = barrier_image;
       ctx->block->instructions.emplace_back(std::move(load));
 
@@ -4068,6 +4070,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    load->operands[1] = Operand(resource);
    load->definitions[0] = Definition(tmp);
    load->glc = var->data.access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
+   load->dlc = load->glc && ctx->options->chip_class >= GFX10;
    load->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
    load->dmask = dmask;
    load->unrm = true;
