@@ -271,7 +271,9 @@ if with_tests
   subdir('tests/fast_urem_by_const')
   subdir('tests/hash_table')
   subdir('tests/string_buffer')
-  subdir('tests/timespec')
+  if cc.has_header('sys/time.h')  # MinGW has this, but Vanilla windows doesn't
+    subdir('tests/timespec')
+  endif
   subdir('tests/vma')
   subdir('tests/set')
 endif
