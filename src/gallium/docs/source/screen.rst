@@ -557,6 +557,7 @@ The integer capabilities:
   efficient manner.
 * ``PIPE_CAP_GL_SPIRV``: True if the driver supports ARB_gl_spirv extension.
 * ``PIPE_CAP_GL_SPIRV_VARIABLE_POINTERS``: True if the driver supports Variable Pointers in SPIR-V shaders.
+* ``PIPE_CAP_DEMOTE_TO_HELPER_INVOCATION``: True if driver supports demote keyword in GLSL programs.
 
 .. _pipe_capf:
 
