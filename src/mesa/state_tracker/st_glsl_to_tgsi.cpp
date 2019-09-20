@@ -284,6 +284,7 @@ public:
    virtual void visit(ir_call *);
    virtual void visit(ir_return *);
    virtual void visit(ir_discard *);
+   virtual void visit(ir_demote *);
    virtual void visit(ir_texture *);
    virtual void visit(ir_if *);
    virtual void visit(ir_emit_vertex *);
@@ -4624,6 +4625,12 @@ glsl_to_tgsi_visitor::visit(ir_discard *ir)
       /* unconditional kil */
       emit_asm(ir, TGSI_OPCODE_KILL);
    }
+}
+
+void
+glsl_to_tgsi_visitor::visit(ir_demote *ir)
+{
+   assert(!"demote statement unsupported");
 }
 
 void

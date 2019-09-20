@@ -63,6 +63,7 @@ public:
    virtual void visit(ir_loop *);
    virtual void visit(ir_if *);
    virtual void visit(ir_discard *);
+   virtual void visit(ir_demote *);
    virtual void visit(ir_loop_jump *);
    virtual void visit(ir_return *);
    virtual void visit(ir_call *);
@@ -773,6 +774,15 @@ nir_visitor::visit(ir_discard *ir)
    }
 
    nir_builder_instr_insert(&b, &discard->instr);
+}
+
+void
+nir_visitor::visit(ir_demote *ir)
+{
+   nir_intrinsic_instr *demote =
+      nir_intrinsic_instr_create(this->shader, nir_intrinsic_demote);
+
+   nir_builder_instr_insert(&b, &demote->instr);
 }
 
 void

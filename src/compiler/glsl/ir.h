@@ -74,6 +74,7 @@ enum ir_node_type {
    ir_type_loop_jump,
    ir_type_return,
    ir_type_discard,
+   ir_type_demote,
    ir_type_emit_vertex,
    ir_type_end_primitive,
    ir_type_barrier,
@@ -1802,6 +1803,28 @@ public:
    ir_rvalue *condition;
 };
 /*@}*/
+
+
+/**
+ * IR instruction representing demote statements from
+ * GL_EXT_demote_to_helper_invocation.
+ */
+class ir_demote : public ir_instruction {
+public:
+   ir_demote()
+      : ir_instruction(ir_type_demote)
+   {
+   }
+
+   virtual ir_demote *clone(void *mem_ctx, struct hash_table *ht) const;
+
+   virtual void accept(ir_visitor *v)
+   {
+      v->visit(this);
+   }
+
+   virtual ir_visitor_status accept(ir_hierarchical_visitor *);
+};
 
 
 /**
