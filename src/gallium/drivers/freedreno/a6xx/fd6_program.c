@@ -44,6 +44,45 @@ fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
 {
 	enum a6xx_state_block sb = fd6_stage2shadersb(so->type);
 
+	uint32_t obj_start;
+	uint32_t instrlen;
+
+	switch (so->type) {
+	case MESA_SHADER_VERTEX:
+		obj_start = REG_A6XX_SP_VS_OBJ_START_LO;
+		instrlen = REG_A6XX_SP_VS_INSTRLEN;
+		break;
+	case MESA_SHADER_TESS_CTRL:
+		obj_start = REG_A6XX_SP_HS_OBJ_START_LO;
+		instrlen = REG_A6XX_SP_HS_INSTRLEN;
+		break;
+	case MESA_SHADER_TESS_EVAL:
+		obj_start = REG_A6XX_SP_DS_OBJ_START_LO;
+		instrlen = REG_A6XX_SP_DS_INSTRLEN;
+		break;
+	case MESA_SHADER_GEOMETRY:
+		obj_start = REG_A6XX_SP_GS_OBJ_START_LO;
+		instrlen = REG_A6XX_SP_GS_INSTRLEN;
+		break;
+	case MESA_SHADER_FRAGMENT:
+		obj_start = REG_A6XX_SP_FS_OBJ_START_LO;
+		instrlen = REG_A6XX_SP_FS_INSTRLEN;
+		break;
+	case MESA_SHADER_COMPUTE:
+	case MESA_SHADER_KERNEL:
+		obj_start = REG_A6XX_SP_CS_OBJ_START_LO;
+		instrlen = REG_A6XX_SP_CS_INSTRLEN;
+		break;
+	case MESA_SHADER_NONE:
+		unreachable("");
+	}
+
+	OUT_PKT4(ring, instrlen, 1);
+	OUT_RING(ring, so->instrlen);
+
+	OUT_PKT4(ring, obj_start, 2);
+	OUT_RELOC(ring, so->bo, 0, 0, 0);
+
 	OUT_PKT7(ring, fd6_stage2opcode(so->type), 3);
 	OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
 			CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
@@ -296,23 +335,14 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
 	 */
 
-	OUT_PKT4(ring, REG_A6XX_SP_VS_INSTRLEN, 1);
-	OUT_RING(ring, vs->instrlen);							/* SP_VS_INSTRLEN */
-
 	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
 	OUT_RING(ring, 0);
 
-	OUT_PKT4(ring, REG_A6XX_SP_HS_INSTRLEN, 1);
-	OUT_RING(ring, 0);										/* SP_HS_INSTRLEN */
-
-	OUT_PKT4(ring, REG_A6XX_SP_DS_INSTRLEN, 1);
-	OUT_RING(ring, 0);										/* SP_DS_INSTRLEN */
+	OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A833, 1);
+	OUT_RING(ring, 0x0);
 
 	OUT_PKT4(ring, REG_A6XX_SP_GS_UNKNOWN_A871, 1);
 	OUT_RING(ring, 0);
-
-	OUT_PKT4(ring, REG_A6XX_SP_GS_INSTRLEN, 1);
-	OUT_RING(ring, 0);										/* SP_GS_INSTRLEN */
 
 	/* I believe this is related to pre-dispatch texture fetch.. we probably
 	 * should't turn it on by accident:
@@ -325,9 +355,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_AB00, 1);
 	OUT_RING(ring, 0x5);
-
-	OUT_PKT4(ring, REG_A6XX_SP_FS_INSTRLEN, 1);
-	OUT_RING(ring, fs->instrlen);							  /* SP_FS_INSTRLEN */
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL0, 1);
 	OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
@@ -403,12 +430,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_RING(ring, reg);
 	}
 
-	OUT_PKT4(ring, REG_A6XX_SP_VS_OBJ_START_LO, 2);
-	OUT_RELOC(ring, vs->bo, 0, 0, 0);  /* SP_VS_OBJ_START_LO/HI */
-
-	if (vs->instrlen)
-		fd6_emit_shader(ring, vs);
-
+	fd6_emit_shader(ring, vs);
 
 	OUT_PKT4(ring, REG_A6XX_SP_PRIMITIVE_CNTL, 1);
 	OUT_RING(ring, A6XX_SP_PRIMITIVE_CNTL_VSOUT(l.cnt));
@@ -423,15 +445,6 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_1, 1);
 	OUT_RING(ring, A6XX_PC_PRIMITIVE_CNTL_1_STRIDE_IN_VPC(l.max_loc) |
 			 CONDREG(psize_regid, A6XX_PC_PRIMITIVE_CNTL_1_PSIZE));
-
-	if (binning_pass) {
-		OUT_PKT4(ring, REG_A6XX_SP_FS_OBJ_START_LO, 2);
-		OUT_RING(ring, 0x00000000);    /* SP_FS_OBJ_START_LO */
-		OUT_RING(ring, 0x00000000);    /* SP_FS_OBJ_START_HI */
-	} else {
-		OUT_PKT4(ring, REG_A6XX_SP_FS_OBJ_START_LO, 2);
-		OUT_RELOC(ring, fs->bo, 0, 0, 0);  /* SP_FS_OBJ_START_LO/HI */
-	}
 
 	OUT_PKT4(ring, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
 	OUT_RING(ring, 0x7);                /* XXX */
@@ -548,9 +561,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		}
 	}
 
-	if (!binning_pass)
-		if (fs->instrlen)
-			fd6_emit_shader(ring, fs);
+	if (fs->instrlen)
+		fd6_emit_shader(ring, fs);
 
 	OUT_PKT4(ring, REG_A6XX_VFD_CONTROL_1, 6);
 	OUT_RING(ring, A6XX_VFD_CONTROL_1_REGID4VTX(vertex_regid) |
