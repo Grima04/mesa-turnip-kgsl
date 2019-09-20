@@ -554,6 +554,12 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 	info->num_good_cu_per_sh = info->num_good_compute_units /
 				   (info->max_se * info->max_sh_per_se);
 
+	/* Round down to the nearest multiple of 2, because the hw can't
+	 * disable CUs. It can only disable whole WGPs (dual-CUs).
+	 */
+	if (info->chip_class >= GFX10)
+		info->num_good_cu_per_sh -= info->num_good_cu_per_sh % 2;
+
 	memcpy(info->si_tile_mode_array, amdinfo->gb_tile_mode,
 		sizeof(amdinfo->gb_tile_mode));
 	info->enabled_rb_mask = amdinfo->enabled_rb_pipes_mask;
