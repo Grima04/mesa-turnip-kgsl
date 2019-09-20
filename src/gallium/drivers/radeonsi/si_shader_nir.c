@@ -986,6 +986,11 @@ void si_lower_nir(struct si_shader_selector *sel)
 	};
 	NIR_PASS_V(sel->nir, nir_lower_subgroups, &subgroups_options);
 
+	/* Lower load constants to scalar and then clean up the mess */
+	NIR_PASS_V(sel->nir, nir_lower_load_const_to_scalar);
+	NIR_PASS_V(sel->nir, nir_lower_var_copies);
+	si_nir_opts(sel->nir);
+
 	/* Lower large variables that are always constant with load_constant
 	 * intrinsics, which get turned into PC-relative loads from a data
 	 * section next to the shader.
