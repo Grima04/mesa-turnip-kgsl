@@ -685,16 +685,35 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    pci (domain:bus:dev.func): %04x:%02x:%02x.%x\n",
 	       info->pci_domain, info->pci_bus,
 	       info->pci_dev, info->pci_func);
+
+	printf("    name = %s\n", info->name);
+	printf("    marketing_name = %s\n", info->marketing_name);
+	printf("    is_pro_graphics = %u\n", info->is_pro_graphics);
 	printf("    pci_id = 0x%x\n", info->pci_id);
 	printf("    family = %i\n", info->family);
 	printf("    chip_class = %i\n", info->chip_class);
+	printf("    family_id = %i\n", info->family_id);
 	printf("    chip_external_rev = %i\n", info->chip_external_rev);
+	printf("    clock_crystal_freq = %i\n", info->clock_crystal_freq);
+
+	printf("Features:\n");
+	printf("    has_graphics = %i\n", info->has_graphics);
 	printf("    num_compute_rings = %u\n", info->num_compute_rings);
 	printf("    num_sdma_rings = %i\n", info->num_sdma_rings);
-	printf("    clock_crystal_freq = %i\n", info->clock_crystal_freq);
-	printf("    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
-	printf("    tcc_harvested = %u\n", info->tcc_harvested);
+	printf("    has_clear_state = %u\n", info->has_clear_state);
+	printf("    has_distributed_tess = %u\n", info->has_distributed_tess);
+	printf("    has_dcc_constant_encode = %u\n", info->has_dcc_constant_encode);
+	printf("    has_rbplus = %u\n", info->has_rbplus);
+	printf("    rbplus_allowed = %u\n", info->rbplus_allowed);
+	printf("    has_load_ctx_reg_pkt = %u\n", info->has_load_ctx_reg_pkt);
+	printf("    has_out_of_order_rast = %u\n", info->has_out_of_order_rast);
+	printf("    cpdma_prefetch_writes_memory = %u\n", info->cpdma_prefetch_writes_memory);
+	printf("    has_gfx9_scissor_bug = %i\n", info->has_gfx9_scissor_bug);
+	printf("    has_tc_compat_zrange_bug = %i\n", info->has_tc_compat_zrange_bug);
+	printf("    has_msaa_sample_loc_bug = %i\n", info->has_msaa_sample_loc_bug);
+	printf("    has_ls_vgpr_init_bug = %i\n", info->has_ls_vgpr_init_bug);
 
+	printf("Display features:\n");
 	printf("    use_display_dcc_unaligned = %u\n", info->use_display_dcc_unaligned);
 	printf("    use_display_dcc_with_retile_blit = %u\n", info->use_display_dcc_with_retile_blit);
 
@@ -711,6 +730,10 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    min_alloc_size = %u\n", info->min_alloc_size);
 	printf("    address32_hi = %u\n", info->address32_hi);
 	printf("    has_dedicated_vram = %u\n", info->has_dedicated_vram);
+	printf("    num_sdp_interfaces = %u\n", info->num_sdp_interfaces);
+	printf("    num_tcc_blocks = %i\n", info->num_tcc_blocks);
+	printf("    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
+	printf("    tcc_harvested = %u\n", info->tcc_harvested);
 
 	printf("CP info:\n");
 	printf("    gfx_ib_pad_with_type2 = %i\n", info->gfx_ib_pad_with_type2);
@@ -758,9 +781,11 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    max_shader_clock = %i\n", info->max_shader_clock);
 	printf("    num_good_compute_units = %i\n", info->num_good_compute_units);
 	printf("    num_good_cu_per_sh = %i\n", info->num_good_cu_per_sh);
-	printf("    num_tcc_blocks = %i\n", info->num_tcc_blocks);
 	printf("    max_se = %i\n", info->max_se);
 	printf("    max_sh_per_se = %i\n", info->max_sh_per_se);
+	printf("    max_wave64_per_simd = %i\n", info->max_wave64_per_simd);
+	printf("    num_physical_sgprs_per_simd = %i\n", info->num_physical_sgprs_per_simd);
+	printf("    num_physical_wave64_vgprs_per_simd = %i\n", info->num_physical_wave64_vgprs_per_simd);
 
 	printf("Render backend info:\n");
 	printf("    pa_sc_tile_steering_override = 0x%x\n", info->pa_sc_tile_steering_override);
@@ -769,9 +794,17 @@ void ac_print_gpu_info(struct radeon_info *info)
 	printf("    pipe_interleave_bytes = %i\n", info->pipe_interleave_bytes);
 	printf("    enabled_rb_mask = 0x%x\n", info->enabled_rb_mask);
 	printf("    max_alignment = %u\n", (unsigned)info->max_alignment);
+	printf("    pbb_max_alloc_count = %u\n", info->pbb_max_alloc_count);
 
-	printf("GB_ADDR_CONFIG:\n");
-	if (info->chip_class >= GFX9) {
+	printf("GB_ADDR_CONFIG: 0x%08x\n", info->gb_addr_config);
+	if (info->chip_class >= GFX10) {
+		printf("    num_pipes = %u\n",
+		       1 << G_0098F8_NUM_PIPES(info->gb_addr_config));
+		printf("    pipe_interleave_size = %u\n",
+		       256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config));
+		printf("    max_compressed_frags = %u\n",
+		       1 << G_0098F8_MAX_COMPRESSED_FRAGS(info->gb_addr_config));
+	} else if (info->chip_class == GFX9) {
 		printf("    num_pipes = %u\n",
 		       1 << G_0098F8_NUM_PIPES(info->gb_addr_config));
 		printf("    pipe_interleave_size = %u\n",
