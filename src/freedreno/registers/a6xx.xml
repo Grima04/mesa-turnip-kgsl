@@ -963,6 +963,7 @@ to upconvert to 32b float internally?
 	<value value="0x4"  name="R2D_FLOAT32"/>
 	<value value="0x3"  name="R2D_FLOAT16"/>
 	<value value="0x1"  name="R2D_UNORM8_SRGB"/>
+	<value value="0x0"  name="R2D_RAW"/>
 </enum>
 
 <domain name="A6XX" width="32">
@@ -2009,6 +2010,9 @@ to upconvert to 32b float internally?
 		<bitfield name="SOLID_COLOR" pos="7" type="boolean"/>
 		<bitfield name="COLOR_FORMAT" low="8" high="15" type="a6xx_color_fmt"/>
 		<bitfield name="SCISSOR" pos="16" type="boolean"/>
+
+		<bitfield name="UNK" low="17" high="18" type="uint"/>
+
 		<!-- required when blitting D24S8/D24X8 -->
 		<bitfield name="D24S8" pos="19" type="boolean"/>
 		<!-- some sort of channel mask, disabled channels are set to zero ? -->

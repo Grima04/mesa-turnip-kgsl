@@ -37,6 +37,7 @@
 #include "freedreno_state.h"
 #include "freedreno_resource.h"
 
+#include "fd6_blitter.h"
 #include "fd6_gmem.h"
 #include "fd6_context.h"
 #include "fd6_draw.h"
@@ -1446,12 +1447,72 @@ fd6_emit_tile_fini(struct fd_batch *batch)
 }
 
 static void
+emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
+{
+	struct fd_context *ctx = batch->ctx;
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+
+	uint32_t buffers = batch->fast_cleared;
+
+	if (buffers & PIPE_CLEAR_COLOR) {
+		for (int i = 0; i < pfb->nr_cbufs; i++) {
+			union pipe_color_union *color = &batch->clear_color[i];
+
+			if (!pfb->cbufs[i])
+				continue;
+
+			if (!(buffers & (PIPE_CLEAR_COLOR0 << i)))
+				continue;
+
+			fd6_clear_surface(ctx, ring,
+					pfb->cbufs[i], pfb->width, pfb->height, color);
+		}
+	}
+	if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
+		union pipe_color_union value = {};
+
+		const bool has_depth = pfb->zsbuf;
+		struct pipe_resource *separate_stencil =
+			has_depth && fd_resource(pfb->zsbuf->texture)->stencil ?
+			&fd_resource(pfb->zsbuf->texture)->stencil->base : NULL;
+
+		if ((has_depth && (buffers & PIPE_CLEAR_DEPTH)) ||
+				(!separate_stencil && (buffers & PIPE_CLEAR_STENCIL))) {
+			value.f[0] = batch->clear_depth;
+			value.ui[1] = batch->clear_stencil;
+			fd6_clear_surface(ctx, ring,
+					pfb->zsbuf, pfb->width, pfb->height, &value);
+		}
+
+		if (separate_stencil && (buffers & PIPE_CLEAR_STENCIL)) {
+			value.ui[0] = batch->clear_stencil;
+
+			struct pipe_surface stencil_surf = *pfb->zsbuf;
+			stencil_surf.texture = separate_stencil;
+
+			fd6_clear_surface(ctx, ring,
+					&stencil_surf, pfb->width, pfb->height, &value);
+		}
+	}
+
+	fd6_event_write(batch, ring, 0x1d, true);
+}
+
+static void
 fd6_emit_sysmem_prep(struct fd_batch *batch)
 {
 	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_ringbuffer *ring = batch->gmem;
 
 	fd6_emit_restore(batch, ring);
+
+	set_scissor(ring, 0, 0, pfb->width - 1, pfb->height - 1);
+
+	set_window_offset(ring, 0, 0);
+
+	set_bin_size(ring, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
+
+	emit_sysmem_clears(batch, ring);
 
 	fd6_emit_lrz_flush(ring);
 
@@ -1473,12 +1534,6 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	/* enable stream-out, with sysmem there is only one pass: */
 	OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
 	OUT_RING(ring, 0);
-
-	set_scissor(ring, 0, 0, pfb->width - 1, pfb->height - 1);
-
-	set_window_offset(ring, 0, 0);
-
-	set_bin_size(ring, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
 
 	OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
 	OUT_RING(ring, 0x1);

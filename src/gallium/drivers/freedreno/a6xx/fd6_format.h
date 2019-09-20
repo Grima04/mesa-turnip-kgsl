@@ -102,21 +102,20 @@ fd6_ifmt(enum a6xx_color_fmt fmt)
 	case RB6_R16_FLOAT:
 	case RB6_R16G16_FLOAT:
 	case RB6_R16G16B16A16_FLOAT:
+	case RB6_R11G11B10_FLOAT:
 		return R2D_FLOAT16;
 
+	case RB6_R10G10B10A2_UNORM:
 	case RB6_R4G4B4A4_UNORM:
 	case RB6_R5G5B5A1_UNORM:
 	case RB6_R5G6B5_UNORM:
-	case RB6_R10G10B10A2_UNORM:
 	case RB6_R10G10B10A2_UINT:
-	case RB6_R11G11B10_FLOAT:
 	case RB6_X8Z24_UNORM:
-		// ???
-		return 0;
+	case RB6_Z24_UNORM_S8_UINT:
+		return R2D_RAW;
 	default:
 		unreachable("bad format");
 		return 0;
 	}
 }
-
 #endif /* FD6_UTIL_H_ */
