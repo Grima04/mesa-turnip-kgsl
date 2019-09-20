@@ -35,6 +35,7 @@
  * TODO:
  *   - 3D textures
  *   - compressed image formats (need to divide offset/extent)
+ *   - Fix d24_unorm_s8_uint support & aspects
  */
 
 static uint32_t
