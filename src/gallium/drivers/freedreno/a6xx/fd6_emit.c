@@ -757,20 +757,13 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 			OUT_RING(ring, REG_A6XX_VPC_SO_PROG);
 			OUT_RING(ring, tf->prog[i]);
 		}
-
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, 0x0);
 	} else {
 		OUT_PKT7(ring, CP_CONTEXT_REG_BUNCH, 4);
 		OUT_RING(ring, REG_A6XX_VPC_SO_CNTL);
 		OUT_RING(ring, 0);
 		OUT_RING(ring, REG_A6XX_VPC_SO_BUF_CNTL);
 		OUT_RING(ring, 0);
-
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
 	}
-
 }
 
 void

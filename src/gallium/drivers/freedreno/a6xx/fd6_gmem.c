@@ -762,10 +762,18 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	patch_fb_read(batch);
 
 	if (use_hw_binning(batch)) {
+		/* enable stream-out during binning pass: */
+		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
+		OUT_RING(ring, 0);
+
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h,
 				A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
 		update_render_cntl(batch, pfb, true);
 		emit_binning_pass(batch);
+
+		/* and disable stream-out for draw pass: */
+		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
+		OUT_RING(ring, A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
 
 		/*
 		 * NOTE: even if we detect VSC overflow and disable use of
@@ -788,6 +796,10 @@ fd6_emit_tile_init(struct fd_batch *batch)
 		OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 		OUT_RING(ring, 0x1);
 	} else {
+		/* no binning pass, so enable stream-out for draw pass:: */
+		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
+		OUT_RING(ring, 0);
+
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h, 0x6000000);
 	}
 
@@ -833,9 +845,6 @@ fd6_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 	uint32_t y2 = tile->yoff + tile->bin_h - 1;
 
 	set_scissor(ring, x1, y1, x2, y2);
-
-	OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-	OUT_RING(ring, A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
 
 	if (use_hw_binning(batch)) {
 		struct fd_vsc_pipe *pipe = &ctx->vsc_pipe[tile->p];
@@ -885,9 +894,6 @@ fd6_emit_tile_prep(struct fd_batch *batch, struct fd_tile *tile)
 
 		struct fd_gmem_stateobj *gmem = &batch->ctx->gmem;
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h, 0x6000000);
-
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
 
 		OUT_PKT7(ring, CP_SET_MODE, 1);
 		OUT_RING(ring, 0x0);
@@ -1449,6 +1455,10 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	fd_wfi(batch, ring);
 	OUT_PKT4(ring, REG_A6XX_RB_CCU_CNTL, 1);
 	OUT_RING(ring, 0x10000000);   /* RB_CCU_CNTL */
+
+	/* enable stream-out, with sysmem there is only one pass: */
+	OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
+	OUT_RING(ring, 0);
 
 	set_scissor(ring, 0, 0, pfb->width - 1, pfb->height - 1);
 
