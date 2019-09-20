@@ -270,6 +270,8 @@ iris_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier,
    unsigned int planes = util_format_get_num_planes(format);
 
    switch (modifier) {
+   case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS_CC:
+      return 3;
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS:
@@ -1241,7 +1243,9 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    switch (param) {
    case PIPE_RESOURCE_PARAM_NPLANES:
       if (mod_with_aux) {
-         *value = 2 * util_format_get_num_planes(res->external_format);
+         *value = iris_get_dmabuf_modifier_planes(pscreen,
+                                                  res->mod_info->modifier,
+                                                  res->external_format);
       } else {
          unsigned count = 0;
          for (struct pipe_resource *cur = resource; cur; cur = cur->next)
@@ -1253,7 +1257,9 @@ iris_resource_get_param(struct pipe_screen *pscreen,
       *value = wants_aux ? res->aux.surf.row_pitch_B : res->surf.row_pitch_B;
       return true;
    case PIPE_RESOURCE_PARAM_OFFSET:
-      *value = wants_aux ? res->aux.offset : 0;
+      *value = wants_aux ?
+               mod_plane_is_clear_color(res->mod_info->modifier, plane) ?
+               res->aux.clear_color_offset : res->aux.offset : 0;
       return true;
    case PIPE_RESOURCE_PARAM_MODIFIER:
       *value = res->mod_info ? res->mod_info->modifier :
@@ -1304,8 +1310,11 @@ iris_resource_get_handle(struct pipe_screen *pscreen,
    iris_resource_disable_aux_on_first_query(resource, usage);
 
    struct iris_bo *bo;
-   if (mod_with_aux && whandle->plane > 0) {
-      assert(res->aux.bo);
+   if (res->mod_info &&
+       mod_plane_is_clear_color(res->mod_info->modifier, whandle->plane)) {
+      bo = res->aux.clear_color_bo;
+      whandle->offset = res->aux.clear_color_offset;
+   } else if (mod_with_aux && whandle->plane > 0) {
       bo = res->aux.bo;
       whandle->stride = res->aux.surf.row_pitch_B;
       whandle->offset = res->aux.offset;
