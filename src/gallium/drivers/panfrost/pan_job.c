@@ -686,8 +686,21 @@ panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch)
 static void
 panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
 {
+        /* Color 0 is cleared, no need to draw the wallpaper.
+         * TODO: MRT wallpapers.
+         */
+        if (batch->clear & PIPE_CLEAR_COLOR0)
+                return;
+
         /* Nothing to reload? TODO: MRT wallpapers */
         if (batch->key.cbufs[0] == NULL)
+                return;
+
+        /* No draw calls, and no clear on the depth/stencil bufs.
+         * Drawing the wallpaper would be useless.
+         */
+        if (!batch->last_tiler.gpu &&
+            !(batch->clear & PIPE_CLEAR_DEPTHSTENCIL))
                 return;
 
         /* Check if the buffer has any content on it worth preserving */
@@ -911,8 +924,7 @@ panfrost_batch_submit(struct panfrost_batch *batch)
                 goto out;
         }
 
-        if (!batch->clear && batch->last_tiler.gpu)
-                panfrost_batch_draw_wallpaper(batch);
+        panfrost_batch_draw_wallpaper(batch);
 
         panfrost_scoreboard_link_batch(batch);
 

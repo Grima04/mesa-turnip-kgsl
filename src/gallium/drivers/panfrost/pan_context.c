@@ -1334,7 +1334,7 @@ panfrost_queue_draw(struct panfrost_context *ctx)
 
         if (rasterizer_discard)
                 panfrost_scoreboard_queue_vertex_job(batch, vertex, FALSE);
-        else if (ctx->wallpaper_batch)
+        else if (ctx->wallpaper_batch && batch->first_tiler.gpu)
                 panfrost_scoreboard_queue_fused_job_prepend(batch, vertex, tiler);
         else
                 panfrost_scoreboard_queue_fused_job(batch, vertex, tiler);
