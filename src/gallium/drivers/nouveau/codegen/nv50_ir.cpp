@@ -905,10 +905,8 @@ Instruction::isCommutationLegal(const Instruction *i) const
 }
 
 TexInstruction::TexInstruction(Function *fn, operation op)
-   : Instruction(fn, op, TYPE_F32)
+   : Instruction(fn, op, TYPE_F32), tex()
 {
-   memset(&tex, 0, sizeof(tex));
-
    tex.rIndirectSrc = -1;
    tex.sIndirectSrc = -1;
 

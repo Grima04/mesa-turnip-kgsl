@@ -463,7 +463,7 @@ CodeEmitter::addInterp(int ipa, int reg, FixupApply apply)
       if (!fixupInfo)
          return false;
       if (n == 0)
-         memset(fixupInfo, 0, sizeof(FixupInfo));
+         fixupInfo->count = 0;
    }
    ++fixupInfo->count;
 
