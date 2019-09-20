@@ -51,18 +51,6 @@ using namespace clover;
 using namespace clover::llvm;
 
 namespace {
-   std::map<std::string, unsigned>
-   get_symbol_offsets(const ::llvm::Module &mod) {
-      std::map<std::string, unsigned> offsets;
-      unsigned i = 0;
-
-      for (const auto &name : map(std::mem_fn(&::llvm::Function::getName),
-                                  get_kernels(mod)))
-         offsets[name] = i++;
-
-      return offsets;
-   }
-
    std::vector<char>
    emit_code(const ::llvm::Module &mod) {
       ::llvm::SmallVector<char, 1024> data;
