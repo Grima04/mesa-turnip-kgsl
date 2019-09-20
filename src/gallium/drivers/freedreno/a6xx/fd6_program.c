@@ -321,7 +321,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	struct ir3_shader_linkage l = {0};
 	ir3_link_shaders(&l, vs, fs);
 
-	if ((vs->shader->stream_output.num_outputs > 0) && !binning_pass)
+	if (vs->shader->stream_output.num_outputs > 0)
 		link_stream_out(&l, vs);
 
 	BITSET_DECLARE(varbs, 128) = {0};
@@ -348,7 +348,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		ir3_link_add(&l, psize_regid, 0x1, l.max_loc);
 	}
 
-	if ((vs->shader->stream_output.num_outputs > 0) && !binning_pass) {
+	if (vs->shader->stream_output.num_outputs > 0) {
 		setup_stream_out(state, vs, &l);
 	}
 
@@ -656,7 +656,11 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	struct fd_context *ctx = data;
 	struct fd6_program_state *state = CALLOC_STRUCT(fd6_program_state);
 
-	state->bs = bs;
+	/* if we have streamout, use full VS in binning pass, as the
+	 * binning pass VS will have outputs on other than position/psize
+	 * stripped out:
+	 */
+	state->bs = vs->shader->stream_output.num_outputs ? vs : bs;
 	state->vs = vs;
 	state->fs = fs;
 	state->config_stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
