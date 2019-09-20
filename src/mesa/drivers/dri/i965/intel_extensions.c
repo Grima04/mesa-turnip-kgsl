@@ -372,4 +372,6 @@ intelInitExtensions(struct gl_context *ctx)
    ctx->Extensions.EXT_texture_compression_s3tc = true;
    ctx->Extensions.EXT_texture_compression_s3tc_srgb = true;
    ctx->Extensions.ANGLE_texture_compression_dxt = true;
+
+   ctx->Extensions.EXT_demote_to_helper_invocation = true;
 }
