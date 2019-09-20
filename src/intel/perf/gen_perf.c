@@ -789,6 +789,8 @@ get_register_queries_function(const struct gen_device_info *devinfo)
       return gen_oa_register_queries_cnl;
    if (devinfo->gen == 11)
       return gen_oa_register_queries_icl;
+   if (devinfo->gen == 12)
+      return gen_oa_register_queries_tgl;
 
    return NULL;
 }
@@ -2252,6 +2254,14 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
    if (end[0] != (query->oa.begin_report_id + 1)) {
       DBG("Spurious end report id=%"PRIu32"\n", end[0]);
       goto error;
+   }
+
+   /* On Gen12+ OA reports are sourced from per context counters, so we don't
+    * ever have to look at the global OA buffer. Yey \o/
+    */
+   if (perf_ctx->devinfo->gen >= 12) {
+      last = start;
+      goto end;
    }
 
    /* See if we have any periodic reports to accumulate too... */
