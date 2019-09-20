@@ -1513,6 +1513,13 @@ ast_jump_statement::ast_jump_statement(int mode, ast_expression *return_value)
 
 
 void
+ast_demote_statement::print(void) const
+{
+   printf("demote; ");
+}
+
+
+void
 ast_selection_statement::print(void) const
 {
    printf("if ( ");
