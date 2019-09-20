@@ -2863,6 +2863,42 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 		gfx9_get_gs_info(key, pipeline, nir, infos, gs_info);
 	}
 
+	if(modules[MESA_SHADER_GEOMETRY]) {
+		struct radv_shader_binary *gs_copy_binary = NULL;
+		if (!pipeline->gs_copy_shader &&
+		    !radv_pipeline_has_ngg(pipeline)) {
+			struct radv_shader_info info = {};
+			struct radv_shader_variant_key key = {};
+
+			key.has_multiview_view_index =
+				keys[MESA_SHADER_GEOMETRY].has_multiview_view_index;
+
+			radv_nir_shader_info_pass(nir[MESA_SHADER_GEOMETRY],
+						  pipeline->layout, &key,
+						  &info);
+			info.wave_size = 64; /* Wave32 not supported. */
+
+			pipeline->gs_copy_shader = radv_create_gs_copy_shader(
+					device, nir[MESA_SHADER_GEOMETRY], &info,
+					&gs_copy_binary, keep_executable_info,
+					keys[MESA_SHADER_GEOMETRY].has_multiview_view_index);
+		}
+
+		if (!keep_executable_info && pipeline->gs_copy_shader) {
+			struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
+			struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
+
+			binaries[MESA_SHADER_GEOMETRY] = gs_copy_binary;
+			variants[MESA_SHADER_GEOMETRY] = pipeline->gs_copy_shader;
+
+			radv_pipeline_cache_insert_shaders(device, cache,
+							   gs_copy_hash,
+							   variants,
+							   binaries);
+		}
+		free(gs_copy_binary);
+	}
+
 	if (nir[MESA_SHADER_FRAGMENT]) {
 		if (!pipeline->shaders[MESA_SHADER_FRAGMENT]) {
 			radv_start_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT]);
@@ -2936,42 +2972,6 @@ void radv_create_shaders(struct radv_pipeline *pipeline,
 
 			radv_stop_feedback(stage_feedbacks[i], false);
 		}
-	}
-
-	if(modules[MESA_SHADER_GEOMETRY]) {
-		struct radv_shader_binary *gs_copy_binary = NULL;
-		if (!pipeline->gs_copy_shader &&
-		    !radv_pipeline_has_ngg(pipeline)) {
-			struct radv_shader_info info = {};
-			struct radv_shader_variant_key key = {};
-
-			key.has_multiview_view_index =
-				keys[MESA_SHADER_GEOMETRY].has_multiview_view_index;
-
-			radv_nir_shader_info_pass(nir[MESA_SHADER_GEOMETRY],
-						  pipeline->layout, &key,
-						  &info);
-			info.wave_size = 64; /* Wave32 not supported. */
-
-			pipeline->gs_copy_shader = radv_create_gs_copy_shader(
-					device, nir[MESA_SHADER_GEOMETRY], &info,
-					&gs_copy_binary, keep_executable_info,
-					keys[MESA_SHADER_GEOMETRY].has_multiview_view_index);
-		}
-
-		if (!keep_executable_info && pipeline->gs_copy_shader) {
-			struct radv_shader_binary *binaries[MESA_SHADER_STAGES] = {NULL};
-			struct radv_shader_variant *variants[MESA_SHADER_STAGES] = {0};
-
-			binaries[MESA_SHADER_GEOMETRY] = gs_copy_binary;
-			variants[MESA_SHADER_GEOMETRY] = pipeline->gs_copy_shader;
-
-			radv_pipeline_cache_insert_shaders(device, cache,
-							   gs_copy_hash,
-							   variants,
-							   binaries);
-		}
-		free(gs_copy_binary);
 	}
 
 	if (!keep_executable_info) {
