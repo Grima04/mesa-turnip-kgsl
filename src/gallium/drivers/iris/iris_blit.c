@@ -525,6 +525,7 @@ get_copy_region_aux_settings(const struct gen_device_info *devinfo,
 {
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_MCS:
+   case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_CCS_E:
       *out_aux_usage = res->aux.usage;
       /* Prior to Gen9, fast-clear only supported 0/1 clear colors.  Since
