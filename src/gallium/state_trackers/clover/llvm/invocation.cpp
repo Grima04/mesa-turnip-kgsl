@@ -376,7 +376,7 @@ namespace {
             throw build_error();
       }
 
-      return std::move(mod);
+      return mod;
    }
 }
 
