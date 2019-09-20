@@ -89,6 +89,32 @@ tu_dma_prepare(struct tu_cmd_buffer *cmdbuf)
    tu_cs_emit(&cmdbuf->cs, 0x10000000);
 }
 
+/* Always use UINT formats to avoid precision issues.
+ *
+ * Example failure it avoids:
+ *   - dEQP-VK.api.copy_and_blit.core.image_to_image.all_formats.color.r16_unorm.r16_unorm.general_general
+ */
+static VkFormat
+tu_canonical_copy_format(VkFormat format)
+{
+   switch (vk_format_get_blocksizebits(format)) {
+   case 8:
+      return VK_FORMAT_R8_UINT;
+   case 16:
+      return VK_FORMAT_R16_UINT;
+   case 32:
+      return VK_FORMAT_R32_UINT;
+   case 64:
+      return VK_FORMAT_R32G32_UINT;
+   case 96:
+      return VK_FORMAT_R32G32B32_UINT;
+   case 128:
+      return VK_FORMAT_R32G32B32A32_UINT;
+   default:
+      unreachable("unhandled format size");
+   }
+}
+
 static void
 tu_copy_buffer(struct tu_cmd_buffer *cmdbuf,
                struct tu_bo *src_bo,
@@ -357,7 +383,7 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmdbuf,
    tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
    tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-   VkFormat format = dst_image->vk_format;
+   VkFormat format = tu_canonical_copy_format(dst_image->vk_format);
    const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
 
    const uint32_t blit_cntl = blit_control(rb_fmt) | 0x20000000;
@@ -547,7 +573,7 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmdbuf,
    tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
    tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-   VkFormat format = src_image->vk_format;
+   VkFormat format = tu_canonical_copy_format(src_image->vk_format);
    const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
 
    unsigned dst_pixel_stride = copy_info->bufferRowLength
@@ -743,7 +769,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmdbuf,
    tu_cs_emit_pkt7(&cmdbuf->cs, CP_SET_MARKER, 1);
    tu_cs_emit(&cmdbuf->cs, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-   VkFormat format = src_image->vk_format;
+   VkFormat format = tu_canonical_copy_format(src_image->vk_format);
    const enum a6xx_color_fmt rb_fmt = tu6_get_native_format(format)->rb;
    const uint32_t blit_cntl = blit_control(rb_fmt) | 0x20000000;
 
