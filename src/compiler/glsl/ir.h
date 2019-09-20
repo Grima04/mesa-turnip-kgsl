@@ -2047,6 +2047,12 @@ public:
     */
    virtual ir_variable *variable_referenced() const = 0;
 
+   /**
+    * Get the precision. This can either come from the eventual variable that
+    * is dereferenced, or from a record member.
+    */
+   virtual int precision() const = 0;
+
 protected:
    ir_dereference(enum ir_node_type t)
       : ir_rvalue(t)
@@ -2074,6 +2080,11 @@ public:
    virtual ir_variable *variable_referenced() const
    {
       return this->var;
+   }
+
+   virtual int precision() const
+   {
+      return this->var->data.precision;
    }
 
    virtual ir_variable *whole_variable_referenced()
@@ -2124,6 +2135,16 @@ public:
       return this->array->variable_referenced();
    }
 
+   virtual int precision() const
+   {
+      ir_dereference *deref = this->array->as_dereference();
+
+      if (deref == NULL)
+         return GLSL_PRECISION_NONE;
+      else
+         return deref->precision();
+   }
+
    virtual void accept(ir_visitor *v)
    {
       v->visit(this);
@@ -2157,6 +2178,13 @@ public:
    virtual ir_variable *variable_referenced() const
    {
       return this->record->variable_referenced();
+   }
+
+   virtual int precision() const
+   {
+      glsl_struct_field *field = record->type->fields.structure + field_idx;
+
+      return field->precision;
    }
 
    virtual void accept(ir_visitor *v)
