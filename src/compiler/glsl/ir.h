@@ -1138,6 +1138,8 @@ enum ir_intrinsic_id {
    ir_intrinsic_read_invocation,
    ir_intrinsic_read_first_invocation,
 
+   ir_intrinsic_helper_invocation,
+
    ir_intrinsic_shared_load,
    ir_intrinsic_shared_store = MAKE_INTRINSIC_FOR_TYPE(store, shared),
    ir_intrinsic_shared_atomic_add = MAKE_INTRINSIC_FOR_TYPE(atomic_add, shared),

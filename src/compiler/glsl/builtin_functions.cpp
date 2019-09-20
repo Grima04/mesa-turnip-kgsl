@@ -819,6 +819,13 @@ shader_atomic_float_minmax(const _mesa_glsl_parse_state *state)
 {
    return state->INTEL_shader_atomic_float_minmax_enable;
 }
+
+static bool
+demote_to_helper_invocation(const _mesa_glsl_parse_state *state)
+{
+   return state->EXT_demote_to_helper_invocation_enable;
+}
+
 /** @} */
 
 /******************************************************************************/
@@ -1182,6 +1189,9 @@ private:
    ir_function_signature *_vote(const char *intrinsic_name,
                                 builtin_available_predicate avail);
 
+   ir_function_signature *_helper_invocation_intrinsic();
+   ir_function_signature *_helper_invocation();
+
 #undef B0
 #undef B1
 #undef B2
@@ -1491,6 +1501,8 @@ builtin_builder::create_intrinsics()
                 _read_first_invocation_intrinsic(glsl_type::uvec4_type),
                 NULL);
 
+   add_function("__intrinsic_helper_invocation",
+                _helper_invocation_intrinsic(), NULL);
 }
 
 /**
@@ -4229,6 +4241,8 @@ builtin_builder::create_builtins()
    add_function("allInvocationsEqual",
                 _vote("__intrinsic_vote_eq", v460_desktop),
                 NULL);
+
+   add_function("helperInvocationEXT", _helper_invocation(), NULL);
 
    add_function("__builtin_idiv64",
                 generate_ir::idiv64(mem_ctx, integer_functions_supported),
@@ -7271,6 +7285,28 @@ builtin_builder::_vote(const char *intrinsic_name,
    body.emit(call(shader->symbols->get_function(intrinsic_name),
                   retval, sig->parameters));
    body.emit(ret(retval));
+   return sig;
+}
+
+ir_function_signature *
+builtin_builder::_helper_invocation_intrinsic()
+{
+   MAKE_INTRINSIC(glsl_type::bool_type, ir_intrinsic_helper_invocation,
+                  demote_to_helper_invocation, 0);
+   return sig;
+}
+
+ir_function_signature *
+builtin_builder::_helper_invocation()
+{
+   MAKE_SIG(glsl_type::bool_type, demote_to_helper_invocation, 0);
+
+   ir_variable *retval = body.make_temp(glsl_type::bool_type, "retval");
+
+   body.emit(call(shader->symbols->get_function("__intrinsic_helper_invocation"),
+                  retval, sig->parameters));
+   body.emit(ret(retval));
+
    return sig;
 }
 
