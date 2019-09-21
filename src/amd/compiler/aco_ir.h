@@ -831,6 +831,7 @@ enum ReduceOp {
    iand32, iand64,
    ior32, ior64,
    ixor32, ixor64,
+   gfx10_wave64_bpermute
 };
 
 /**

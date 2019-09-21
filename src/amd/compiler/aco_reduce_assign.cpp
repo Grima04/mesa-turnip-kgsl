@@ -118,10 +118,12 @@ void setup_reduce_temp(Program* program)
          unsigned cluster_size = static_cast<Pseudo_reduction_instruction *>(instr)->cluster_size;
          bool need_vtmp = op == imul32 || op == fadd64 || op == fmul64 ||
                           op == fmin64 || op == fmax64;
-         if (program->chip_class >= GFX10 && cluster_size == 64)
+
+         if (program->chip_class >= GFX10 && cluster_size == 64 && op != gfx10_wave64_bpermute)
             need_vtmp = true;
 
          need_vtmp |= cluster_size == 32;
+
          vtmp_in_loop |= need_vtmp && block.loop_nest_depth > 0;
          if (need_vtmp && (int)last_top_level_block_idx != vtmp_inserted_at) {
             vtmp = {program->allocateId(), vtmp.regClass()};
