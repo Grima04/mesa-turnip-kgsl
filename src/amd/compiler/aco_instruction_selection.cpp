@@ -2932,7 +2932,9 @@ Temp load_desc_ptr(isel_context *ctx, unsigned desc_set)
 void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
-   Temp index = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+   Temp index = get_ssa_temp(ctx, instr->src[0].ssa);
+   if (!ctx->divergent_vals[instr->dest.ssa.index])
+      index = bld.as_uniform(index);
    unsigned desc_set = nir_intrinsic_desc_set(instr);
    unsigned binding = nir_intrinsic_binding(instr);
 
@@ -2957,6 +2959,9 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
    if (stride != 1) {
       if (nir_const_index) {
          const_index = const_index * stride;
+      } else if (index.type() == RegType::vgpr) {
+         bool index24bit = layout->binding[binding].array_size <= 0x1000000;
+         index = bld.v_mul_imm(bld.def(v1), index, stride, index24bit);
       } else {
          index = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(stride), Operand(index));
       }
@@ -2964,6 +2969,8 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
    if (offset) {
       if (nir_const_index) {
          const_index = const_index + offset;
+      } else if (index.type() == RegType::vgpr) {
+         index = bld.vadd32(bld.def(v1), Operand(offset), index);
       } else {
          index = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand(offset), Operand(index));
       }
@@ -2971,14 +2978,17 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
 
    if (nir_const_index && const_index == 0) {
       index = desc_ptr;
+   } else if (index.type() == RegType::vgpr) {
+      index = bld.vadd32(bld.def(v1),
+                         nir_const_index ? Operand(const_index) : Operand(index),
+                         Operand(desc_ptr));
    } else {
       index = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
                        nir_const_index ? Operand(const_index) : Operand(index),
                        Operand(desc_ptr));
    }
 
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   bld.sop1(aco_opcode::s_mov_b32, Definition(dst), index);
+   bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), index);
 }
 
 void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc, Temp offset, bool glc=false)

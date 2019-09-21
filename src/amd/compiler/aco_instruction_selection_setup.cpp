@@ -365,7 +365,6 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_read_first_invocation:
                   case nir_intrinsic_read_invocation:
                   case nir_intrinsic_first_invocation:
-                  case nir_intrinsic_vulkan_resource_index:
                      type = RegType::sgpr;
                      break;
                   case nir_intrinsic_ballot:
@@ -467,6 +466,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_ubo:
                   case nir_intrinsic_load_ssbo:
                   case nir_intrinsic_load_global:
+                  case nir_intrinsic_vulkan_resource_index:
                      type = ctx->divergent_vals[intrinsic->dest.ssa.index] ? RegType::vgpr : RegType::sgpr;
                      break;
                   /* due to copy propagation, the swizzled imov is removed if num dest components == 1 */
