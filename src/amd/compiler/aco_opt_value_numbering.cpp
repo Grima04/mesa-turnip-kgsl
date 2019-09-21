@@ -82,6 +82,10 @@ struct InstrPred {
          return false;
       if (a->operands.size() != b->operands.size() || a->definitions.size() != b->definitions.size())
          return false; /* possible with pseudo-instructions */
+      /* We can't value number v_readlane_b32 across control flow or discards
+       * because of the possibility of live-range splits. */
+      if (a->opcode == aco_opcode::v_readfirstlane_b32 || a->opcode == aco_opcode::v_readlane_b32)
+         return false;
       for (unsigned i = 0; i < a->operands.size(); i++) {
          if (a->operands[i].isConstant()) {
             if (!b->operands[i].isConstant())
