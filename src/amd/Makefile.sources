@@ -71,3 +71,35 @@ AMD_DEBUG_FILES = \
 AMD_GENERATED_FILES = \
 	common/amdgfxregs.h \
 	common/sid_tables.h
+
+ACO_FILES = \
+	compiler/aco_dead_code_analysis.cpp \
+	compiler/aco_dominance.cpp \
+	compiler/aco_instruction_selection.cpp \
+	compiler/aco_instruction_selection_setup.cpp \
+	compiler/aco_interface.cpp \
+	compiler/aco_interface.h \
+	compiler/aco_ir.h \
+	compiler/aco_assembler.cpp \
+	compiler/aco_insert_exec_mask.cpp \
+	compiler/aco_insert_NOPs.cpp \
+	compiler/aco_insert_waitcnt.cpp \
+	compiler/aco_reduce_assign.cpp \
+	compiler/aco_register_allocation.cpp \
+	compiler/aco_live_var_analysis.cpp \
+	compiler/aco_lower_bool_phis.cpp \
+	compiler/aco_lower_to_hw_instr.cpp \
+	compiler/aco_optimizer.cpp \
+	compiler/aco_opt_value_numbering.cpp \
+	compiler/aco_print_asm.cpp \
+	compiler/aco_print_ir.cpp \
+	compiler/aco_scheduler.cpp \
+	compiler/aco_ssa_elimination.cpp \
+	compiler/aco_spill.cpp \
+	compiler/aco_util.h \
+	compiler/aco_validate.cpp
+
+ACO_GENERATED_FILES = \
+	compiler/aco_builder.h \
+	compiler/aco_opcodes.cpp \
+	compiler/aco_opcodes.h
