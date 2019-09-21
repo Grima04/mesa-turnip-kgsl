@@ -1,4 +1,4 @@
-
+#include <array>
 #include <iomanip>
 #include "aco_ir.h"
 #include "llvm-c/Disassembler.h"

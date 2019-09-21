@@ -24,6 +24,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <map>
 
 #include "aco_ir.h"

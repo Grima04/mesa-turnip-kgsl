@@ -22,6 +22,7 @@
  *
  */
 
+#include <array>
 #include <unordered_map>
 #include "aco_ir.h"
 #include "nir.h"
