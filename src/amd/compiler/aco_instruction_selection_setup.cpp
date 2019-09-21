@@ -1241,6 +1241,7 @@ setup_isel_context(Program* program,
    program->info = info;
    program->chip_class = options->chip_class;
    program->family = options->family;
+   program->wave_size = options->wave_size;
    program->sgpr_limit = options->chip_class >= GFX8 ? 102 : 104;
    if (options->family == CHIP_TONGA || options->family == CHIP_ICELAND)
       program->sgpr_limit = 94; /* workaround hardware bug */

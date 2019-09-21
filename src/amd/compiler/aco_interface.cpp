@@ -147,7 +147,7 @@ void aco_compile_shader(unsigned shader_count,
    std::string disasm;
    if (get_disasm) {
       std::ostringstream stream;
-      aco::print_asm(program.get(), code, exec_size / 4u, options->family, stream);
+      aco::print_asm(program.get(), code, exec_size / 4u, stream);
       stream << '\0';
       disasm = stream.str();
       size += disasm.size();

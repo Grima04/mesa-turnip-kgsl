@@ -1069,6 +1069,7 @@ public:
    struct radv_shader_info *info;
    enum chip_class chip_class;
    enum radeon_family family;
+   unsigned wave_size;
    Stage stage; /* Stage */
    bool needs_exact = false; /* there exists an instruction with disable_wqm = true */
    bool needs_wqm = false; /* there exists a p_wqm instruction */
@@ -1141,8 +1142,8 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
 void insert_wait_states(Program* program);
 void insert_NOPs(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
-void print_asm(Program *program, std::vector<uint32_t>& binary, unsigned exec_size,
-               enum radeon_family family, std::ostream& out);
+void print_asm(Program *program, std::vector<uint32_t>& binary,
+               unsigned exec_size, std::ostream& out);
 void validate(Program* program, FILE *output);
 bool validate_ra(Program* program, const struct radv_nir_compiler_options *options, FILE *output);
 #ifndef NDEBUG
