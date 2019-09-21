@@ -369,6 +369,8 @@ Temp convert_pointer_to_64_bit(isel_context *ctx, Temp ptr)
    if (ptr.size() == 2)
       return ptr;
    Builder bld(ctx->program, ctx->block);
+   if (ptr.type() == RegType::vgpr)
+      ptr = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), ptr);
    return bld.pseudo(aco_opcode::p_create_vector, bld.def(s2),
                      ptr, Operand((unsigned)ctx->options->address32_hi));
 }
