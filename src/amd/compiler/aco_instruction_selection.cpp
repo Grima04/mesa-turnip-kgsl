@@ -3242,7 +3242,7 @@ void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
                    S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
    }
 
-   unsigned base = nir_intrinsic_base(instr) + ctx->constant_data_offset;
+   unsigned base = nir_intrinsic_base(instr);
    unsigned range = nir_intrinsic_range(instr);
 
    Temp offset = get_ssa_temp(ctx, instr->src[0].ssa);
@@ -3252,8 +3252,8 @@ void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
       offset = bld.vadd32(bld.def(v1), Operand(base), offset);
 
    Temp rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4),
-                          bld.sop1(aco_opcode::p_constaddr, bld.def(s2), bld.def(s1, scc), Operand(0u)),
-                          Operand(MIN2(range, ctx->shader->constant_data_size - nir_intrinsic_base(instr))),
+                          bld.sop1(aco_opcode::p_constaddr, bld.def(s2), bld.def(s1, scc), Operand(ctx->constant_data_offset)),
+                          Operand(MIN2(base + range, ctx->shader->constant_data_size)),
                           Operand(desc_type));
 
    load_buffer(ctx, instr->num_components, dst, rsrc, offset);
