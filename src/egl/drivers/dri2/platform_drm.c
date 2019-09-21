@@ -122,11 +122,13 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
    if (shifts[0] != visual->rgba_shifts.red ||
        shifts[1] != visual->rgba_shifts.green ||
        shifts[2] != visual->rgba_shifts.blue ||
-       (shifts[3] > -1 && shifts[3] != visual->rgba_shifts.alpha) ||
+       (shifts[3] > -1 && visual->rgba_shifts.alpha > -1 &&
+        shifts[3] != visual->rgba_shifts.alpha) ||
        sizes[0] != visual->rgba_sizes.red ||
        sizes[1] != visual->rgba_sizes.green ||
        sizes[2] != visual->rgba_sizes.blue ||
-       (sizes[3] > 0 && sizes[3] != visual->rgba_sizes.alpha) ||
+       (sizes[3] > 0 && visual->rgba_sizes.alpha > 0 &&
+        sizes[3] != visual->rgba_sizes.alpha) ||
        is_float != visual->is_float) {
       return false;
    }
