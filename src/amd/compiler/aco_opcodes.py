@@ -294,7 +294,7 @@ SOP2 = {
    (  -1,   -1,   -1, 0x33, 0x33, "s_pack_lh_b32_b16"),
    (  -1,   -1,   -1, 0x34, 0x34, "s_pack_hh_b32_b16"),
    (  -1,   -1,   -1, 0x2c, 0x35, "s_mul_hi_u32"),
-   (  -1,   -1,   -1, 0x2c, 0x35, "s_mul_hi_i32"),
+   (  -1,   -1,   -1, 0x2d, 0x36, "s_mul_hi_i32"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOP2:
     opcode(name, gfx9, gfx10, Format.SOP2)
