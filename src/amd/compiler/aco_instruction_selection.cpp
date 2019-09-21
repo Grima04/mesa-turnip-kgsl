@@ -3439,7 +3439,9 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
          if (const_value) {
             constant_index += array_size * const_value->u32;
          } else {
-            Temp indirect = bld.as_uniform(get_ssa_temp(ctx, deref_instr->arr.index.ssa));
+            Temp indirect = get_ssa_temp(ctx, deref_instr->arr.index.ssa);
+            if (indirect.type() == RegType::vgpr)
+               indirect = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), indirect);
 
             if (array_size != 1)
                indirect = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(array_size), indirect);
