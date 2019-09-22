@@ -767,6 +767,45 @@ mir_initialize_worklist(BITSET_WORD *worklist, midgard_instruction **instruction
         }
 }
 
+/* Update the worklist after an instruction terminates. Remove its edges from
+ * the graph and if that causes any node to have no dependencies, add it to the
+ * worklist */
+
+static void
+mir_update_worklist(
+                BITSET_WORD *worklist, unsigned count,
+                midgard_instruction **instructions, midgard_instruction *done)
+{
+        /* Sanity check: if no instruction terminated, there is nothing to do.
+         * If the instruction that terminated had dependencies, that makes no
+         * sense and means we messed up the worklist. Finally, as the purpose
+         * of this routine is to update dependents, we abort early if there are
+         * no dependents defined. */
+
+        if (!done)
+                return;
+
+        assert(done->nr_dependencies == 0);
+
+        if (!done->dependents)
+                return;
+
+        /* We have an instruction with dependents. Iterate each dependent to
+         * remove one dependency (`done`), adding dependents to the worklist
+         * where possible. */
+
+        unsigned i;
+        BITSET_WORD tmp;
+        BITSET_FOREACH_SET(i, tmp, done->dependents, count) {
+                assert(instructions[i]->nr_dependencies);
+
+                if (!(--instructions[i]->nr_dependencies))
+                        BITSET_SET(worklist, i);
+        }
+
+        free(done->dependents);
+}
+
 /* While scheduling, we need to choose instructions satisfying certain
  * criteria. As we schedule backwards, we choose the *last* instruction in the
  * worklist to simulate in-order scheduling. Chosen instructions must satisfy a
