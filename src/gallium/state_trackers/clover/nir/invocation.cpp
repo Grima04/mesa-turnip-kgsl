@@ -61,16 +61,13 @@ dev_get_nir_compiler_options(const device &dev)
 module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                                  std::string &r_log)
 {
-   const struct spirv_to_nir_options spirv_options = {
-      .caps = {
-         .address = true,
-         .float64 = true,
-         .int8 = true,
-         .int16 = true,
-         .int64 = true,
-         .kernel = true,
-      },
-   };
+   struct spirv_to_nir_options spirv_options = {};
+   spirv_options.caps.address = true;
+   spirv_options.caps.float64 = true;
+   spirv_options.caps.int8 = true;
+   spirv_options.caps.int16 = true;
+   spirv_options.caps.int64 = true;
+   spirv_options.caps.kernel = true;
 
    module m;
    // We only insert one section.
