@@ -107,7 +107,7 @@ struct lima_context_vertex_buffer {
 
 struct lima_context_viewport_state {
    struct pipe_viewport_state transform;
-   float x, y, width, height;
+   float left, right, bottom, top;
    float near, far;
 };
 

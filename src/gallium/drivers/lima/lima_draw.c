@@ -141,10 +141,10 @@ struct lima_render_state {
 #define PLBU_CMD_BLOCK_STRIDE(block_w) PLBU_CMD((block_w) & 0xff, 0x30000000)
 #define PLBU_CMD_ARRAY_ADDRESS(gp_stream, block_num) \
    PLBU_CMD(gp_stream, 0x28000000 | ((block_num) - 1) | 1)
-#define PLBU_CMD_VIEWPORT_X(v) PLBU_CMD(v, 0x10000107)
-#define PLBU_CMD_VIEWPORT_W(v) PLBU_CMD(v, 0x10000108)
-#define PLBU_CMD_VIEWPORT_Y(v) PLBU_CMD(v, 0x10000105)
-#define PLBU_CMD_VIEWPORT_H(v) PLBU_CMD(v, 0x10000106)
+#define PLBU_CMD_VIEWPORT_LEFT(v) PLBU_CMD(v, 0x10000107)
+#define PLBU_CMD_VIEWPORT_RIGHT(v) PLBU_CMD(v, 0x10000108)
+#define PLBU_CMD_VIEWPORT_BOTTOM(v) PLBU_CMD(v, 0x10000105)
+#define PLBU_CMD_VIEWPORT_TOP(v) PLBU_CMD(v, 0x10000106)
 #define PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN() PLBU_CMD(0x00010002, 0x60000000)
 #define PLBU_CMD_ARRAYS_SEMAPHORE_END() PLBU_CMD(0x00010001, 0x60000000)
 #define PLBU_CMD_PRIMITIVE_SETUP(low_prim, cull, index_size) \
@@ -307,10 +307,10 @@ lima_pack_reload_plbu_cmd(struct lima_context *ctx)
 
    PLBU_CMD_BEGIN(20);
 
-   PLBU_CMD_VIEWPORT_X(0);
-   PLBU_CMD_VIEWPORT_W(fui(fb->base.width));
-   PLBU_CMD_VIEWPORT_Y(0);
-   PLBU_CMD_VIEWPORT_H(fui(fb->base.height));
+   PLBU_CMD_VIEWPORT_LEFT(0);
+   PLBU_CMD_VIEWPORT_RIGHT(fui(fb->base.width));
+   PLBU_CMD_VIEWPORT_BOTTOM(0);
+   PLBU_CMD_VIEWPORT_TOP(fui(fb->base.height));
 
    PLBU_CMD_RSW_VERTEX_ARRAY(
       va + lima_reload_render_state_offset,
@@ -374,10 +374,10 @@ lima_pack_clear_plbu_cmd(struct lima_context *ctx)
 
    PLBU_CMD_BEGIN(22);
 
-   PLBU_CMD_VIEWPORT_X(0);
-   PLBU_CMD_VIEWPORT_W(0x45800000);
-   PLBU_CMD_VIEWPORT_Y(0);
-   PLBU_CMD_VIEWPORT_H(0x45800000);
+   PLBU_CMD_VIEWPORT_LEFT(0);
+   PLBU_CMD_VIEWPORT_RIGHT(0x45800000);
+   PLBU_CMD_VIEWPORT_TOP(0);
+   PLBU_CMD_VIEWPORT_BOTTOM(0x45800000);
 
    struct pipe_scissor_state *scissor = &ctx->scissor;
    PLBU_CMD_SCISSORS(scissor->minx, scissor->maxx, scissor->miny, scissor->maxy);
@@ -858,10 +858,10 @@ lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 
    PLBU_CMD_BEGIN(30);
 
-   PLBU_CMD_VIEWPORT_X(fui(ctx->viewport.x));
-   PLBU_CMD_VIEWPORT_W(fui(ctx->viewport.width));
-   PLBU_CMD_VIEWPORT_Y(fui(ctx->viewport.y));
-   PLBU_CMD_VIEWPORT_H(fui(ctx->viewport.height));
+   PLBU_CMD_VIEWPORT_LEFT(fui(ctx->viewport.left));
+   PLBU_CMD_VIEWPORT_RIGHT(fui(ctx->viewport.right));
+   PLBU_CMD_VIEWPORT_BOTTOM(fui(ctx->viewport.bottom));
+   PLBU_CMD_VIEWPORT_TOP(fui(ctx->viewport.top));
 
    if (!info->index_size)
       PLBU_CMD_ARRAYS_SEMAPHORE_BEGIN();
