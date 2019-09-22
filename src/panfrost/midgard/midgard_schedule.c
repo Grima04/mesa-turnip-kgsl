@@ -886,8 +886,198 @@ mir_choose_bundle(
                 return ~0;
 }
 
+/* Schedules a single bundle of the given type */
+
+static midgard_bundle
+mir_schedule_texture(
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned len)
+{
+        struct midgard_predicate predicate = {
+                .tag = TAG_TEXTURE_4,
+                .destructive = true
+        };
+
+        midgard_instruction *ins =
+                mir_choose_instruction(instructions, worklist, len, &predicate);
+
+        mir_update_worklist(worklist, len, instructions, ins);
+
+        struct midgard_bundle out = {
+                .tag = TAG_TEXTURE_4,
+                .instruction_count = 1,
+                .instructions = { ins }
+        };
+
+        return out;
+}
+
+static midgard_bundle
+mir_schedule_ldst(
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned len)
+{
+        struct midgard_predicate predicate = {
+                .tag = TAG_LOAD_STORE_4,
+                .destructive = true
+        };
+
+        midgard_instruction *ins =
+                mir_choose_instruction(instructions, worklist, len, &predicate);
+
+        mir_update_worklist(worklist, len, instructions, ins);
+
+        struct midgard_bundle out = {
+                .tag = TAG_LOAD_STORE_4,
+                .instruction_count = 1,
+                .instructions = { ins }
+        };
+
+        return out;
+}
+
+static midgard_bundle
+mir_schedule_alu(
+                compiler_context *ctx,
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned len)
+{
+        struct midgard_bundle bundle = {};
+
+        unsigned bytes_emitted = sizeof(bundle.control);
+
+        struct midgard_predicate predicate = {
+                .tag = TAG_ALU_4,
+                .destructive = true
+        };
+
+        midgard_instruction *ins =
+                mir_choose_instruction(instructions, worklist, len, &predicate);
+
+        midgard_instruction *vmul = NULL;
+        midgard_instruction *vadd = NULL;
+        midgard_instruction *vlut = NULL;
+        midgard_instruction *smul = NULL;
+        midgard_instruction *sadd = NULL;
+        midgard_instruction *branch = NULL;
+
+        mir_update_worklist(worklist, len, instructions, ins);
+
+        if (ins->compact_branch) {
+                branch = ins;
+        } else if (!ins->unit) {
+                unsigned units = alu_opcode_props[ins->alu.op].props;
+
+                if (units & UNIT_VMUL) {
+                        ins->unit = UNIT_VMUL;
+                        vmul = ins;
+                } else if (units & UNIT_VADD) {
+                        ins->unit = UNIT_VADD;
+                        vadd = ins;
+                } else if (units & UNIT_VLUT) {
+                        ins->unit = UNIT_VLUT;
+                        vlut = ins;
+                } else
+                        assert(0);
+        }
+
+        bundle.has_embedded_constants = ins->has_constants;
+        bundle.has_blend_constant = ins->has_blend_constant;
+
+        if (ins->alu.reg_mode == midgard_reg_mode_16) {
+              /* TODO: Fix packing XXX */
+                uint16_t *bundles = (uint16_t *) bundle.constants;
+                uint32_t *constants = (uint32_t *) ins->constants;
+
+                /* Copy them wholesale */
+                for (unsigned i = 0; i < 4; ++i)
+                        bundles[i] = constants[i];
+        } else {
+                memcpy(bundle.constants, ins->constants, sizeof(bundle.constants));
+        }
+
+        if (ins->writeout) {
+                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : branch->src[0];
+                unsigned temp = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(0) : make_compiler_temp(ctx);
+                midgard_instruction mov = v_mov(src, blank_alu_src, temp);
+                vmul = mem_dup(&mov, sizeof(midgard_instruction));
+                vmul->unit = UNIT_VMUL;
+                vmul->mask = 0xF;
+                /* TODO: Don't leak */
+
+                /* Rewrite to use our temp */
+                midgard_instruction *stages[] = { sadd, vadd, smul };
+
+                for (unsigned i = 0; i < ARRAY_SIZE(stages); ++i) {
+                        if (stages[i])
+                                mir_rewrite_index_dst_single(stages[i], src, temp);
+                }
+
+                mir_rewrite_index_src_single(branch, src, temp);
+        }
+
+        if ((vadd && OP_IS_CSEL(vadd->alu.op)) || (smul && OP_IS_CSEL(smul->alu.op)) || (ins->compact_branch && !ins->prepacked_branch && ins->branch.conditional)) {
+                midgard_instruction *cond = mir_choose_instruction(instructions, worklist, len, &predicate);
+                mir_update_worklist(worklist, len, instructions, cond);
+
+                if (!cond->unit) {
+                        unsigned units = alu_opcode_props[cond->alu.op].props;
+
+                        if (units & UNIT_VMUL) {
+                                cond->unit = UNIT_VMUL;
+                        } else if (units & UNIT_VADD) {
+                                cond->unit = UNIT_VADD;
+                        } else
+                                assert(0);
+                }
+
+                if (cond->unit & UNIT_VMUL)
+                        vmul = cond;
+                else if (cond->unit & UNIT_SADD)
+                        sadd = cond;
+                else if (cond->unit & UNIT_VADD)
+                        vadd = cond;
+                else if (cond->unit & UNIT_SMUL)
+                        smul = cond;
+                else
+                        unreachable("Bad condition");
+        }
+
+        unsigned padding = 0;
+
+        /* Now that we have finished scheduling, build up the bundle */
+        midgard_instruction *stages[] = { vmul, sadd, vadd, smul, vlut, branch };
+
+        for (unsigned i = 0; i < ARRAY_SIZE(stages); ++i) {
+                if (stages[i]) {
+                        bundle.control |= stages[i]->unit;
+                        bytes_emitted += bytes_for_instruction(stages[i]);
+                        bundle.instructions[bundle.instruction_count++] = stages[i];
+                }
+        }
+
+        /* Pad ALU op to nearest word */
+
+        if (bytes_emitted & 15) {
+                padding = 16 - (bytes_emitted & 15);
+                bytes_emitted += padding;
+        }
+
+        /* Constants must always be quadwords */
+        if (bundle.has_embedded_constants)
+                bytes_emitted += 16;
+
+        /* Size ALU instruction for tag */
+        bundle.tag = (TAG_ALU_4) + (bytes_emitted / 16) - 1;
+        bundle.padding = padding;
+        bundle.control |= bundle.tag;
+
+        return bundle;
+}
+
 /* Schedule a single block by iterating its instruction to create bundles.
  * While we go, tally about the bundle sizes to compute the block size. */
+
 
 static void
 schedule_block(compiler_context *ctx, midgard_block *block)
