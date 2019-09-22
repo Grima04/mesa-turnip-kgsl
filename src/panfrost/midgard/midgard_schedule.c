@@ -861,6 +861,31 @@ mir_choose_instruction(
         return instructions[best_index];
 }
 
+/* Still, we don't choose instructions in a vacuum. We need a way to choose the
+ * best bundle type (ALU, load/store, texture). Nondestructive. */
+
+static unsigned
+mir_choose_bundle(
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned count)
+{
+        /* At the moment, our algorithm is very simple - use the bundle of the
+         * best instruction, regardless of what else could be scheduled
+         * alongside it. This is not optimal but it works okay for in-order */
+
+        struct midgard_predicate predicate = {
+                .tag = ~0,
+                .destructive = false
+        };
+
+        midgard_instruction *chosen = mir_choose_instruction(instructions, worklist, count, &predicate);
+
+        if (chosen)
+                return chosen->type;
+        else
+                return ~0;
+}
+
 /* Schedule a single block by iterating its instruction to create bundles.
  * While we go, tally about the bundle sizes to compute the block size. */
 
