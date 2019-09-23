@@ -36,10 +36,8 @@
 
 static unsigned
 radv_choose_tiling(struct radv_device *device,
-		   const struct radv_image_create_info *create_info)
+		   const VkImageCreateInfo *pCreateInfo)
 {
-	const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
-
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR) {
 		assert(pCreateInfo->samples <= 1);
 		return RADEON_SURF_MODE_LINEAR_ALIGNED;
@@ -145,7 +143,6 @@ radv_surface_has_scanout(struct radv_device *device, const struct radv_image_cre
 static bool
 radv_use_dcc_for_image(struct radv_device *device,
 		       const struct radv_image *image,
-		       const struct radv_image_create_info *create_info,
 		       const VkImageCreateInfo *pCreateInfo)
 {
 	bool dcc_compatible_formats;
@@ -180,9 +177,6 @@ radv_use_dcc_for_image(struct radv_device *device,
 
 	/* Do not enable DCC for mipmapped arrays because performance is worse. */
 	if (pCreateInfo->arrayLayers > 1 && pCreateInfo->mipLevels > 1)
-		return false;
-
-	if (radv_surface_has_scanout(device, create_info))
 		return false;
 
 	/* FIXME: DCC for MSAA with 4x and 8x samples doesn't work yet, while
@@ -251,11 +245,12 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device,
 }
 
 static void
-radv_prefill_surface_from_metadata(struct radv_device *device,
-                                   struct radeon_surf *surface,
-                                   const struct radv_image_create_info *create_info)
+radv_patch_surface_from_metadata(struct radv_device *device,
+                                 struct radeon_surf *surface,
+                                 const struct radeon_bo_metadata *md)
 {
-	const struct radeon_bo_metadata *md = create_info->bo_metadata;
+	surface->flags = RADEON_SURF_CLR(surface->flags, MODE);
+
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
 		if (md->u.gfx9.swizzle_mode > 0)
 			surface->flags |= RADEON_SURF_SET(RADEON_SURF_MODE_2D, MODE);
@@ -281,15 +276,34 @@ radv_prefill_surface_from_metadata(struct radv_device *device,
 	}
 }
 
+static void
+radv_patch_image_from_extra_info(struct radv_device *device,
+                                 struct radv_image *image,
+                                 const struct radv_image_create_info *create_info)
+{
+	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
+		if (create_info->bo_metadata) {
+			radv_patch_surface_from_metadata(device, &image->planes[plane].surface,
+							 create_info->bo_metadata);
+		}
+
+		if (radv_surface_has_scanout(device, create_info)) {
+			image->planes[plane].surface.flags |= RADEON_SURF_SCANOUT;
+			image->planes[plane].surface.flags |= RADEON_SURF_DISABLE_DCC;
+
+			image->info.surf_index = NULL;
+		}
+	}
+}
+
 static int
 radv_init_surface(struct radv_device *device,
 		  const struct radv_image *image,
 		  struct radeon_surf *surface,
 		  unsigned plane_id,
-		  const struct radv_image_create_info *create_info)
+		  const VkImageCreateInfo *pCreateInfo)
 {
-	const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
-	unsigned array_mode = radv_choose_tiling(device, create_info);
+	unsigned array_mode = radv_choose_tiling(device, pCreateInfo);
 	VkFormat format = vk_format_get_plane_format(pCreateInfo->format, plane_id);
 	const struct vk_format_description *desc = vk_format_description(format);
 	bool is_depth, is_stencil;
@@ -305,11 +319,8 @@ radv_init_surface(struct radv_device *device,
 	if (surface->bpe == 3) {
 		surface->bpe = 4;
 	}
-	if (create_info->bo_metadata) {
-		radv_prefill_surface_from_metadata(device, surface, create_info);
-	} else {
-		surface->flags = RADEON_SURF_SET(array_mode, MODE);
-	}
+
+	surface->flags = RADEON_SURF_SET(array_mode, MODE);
 
 	switch (pCreateInfo->imageType){
 	case VK_IMAGE_TYPE_1D:
@@ -348,11 +359,8 @@ radv_init_surface(struct radv_device *device,
 
 	surface->flags |= RADEON_SURF_OPTIMIZE_FOR_SPACE;
 
-	if (!radv_use_dcc_for_image(device, image, create_info, pCreateInfo))
+	if (!radv_use_dcc_for_image(device, image, pCreateInfo))
 		surface->flags |= RADEON_SURF_DISABLE_DCC;
-
-	if (radv_surface_has_scanout(device, create_info))
-		surface->flags |= RADEON_SURF_SCANOUT;
 
 	return 0;
 }
@@ -1263,6 +1271,8 @@ radv_image_create_layout(struct radv_device *device,
 	/* Check that we did not initialize things earlier */
 	assert(!image->planes[0].surface.surf_size);
 
+	radv_patch_image_from_extra_info(device, image, create_info);
+
 	image->size = 0;
 	image->alignment = 1;
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
@@ -1383,13 +1393,12 @@ radv_image_create(VkDevice _device,
 
 	image->shareable = vk_find_struct_const(pCreateInfo->pNext,
 	                                        EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
-	if (!vk_format_is_depth_or_stencil(pCreateInfo->format) &&
-	    !radv_surface_has_scanout(device, create_info) && !image->shareable) {
+	if (!vk_format_is_depth_or_stencil(pCreateInfo->format) && !image->shareable) {
 		image->info.surf_index = &device->image_mrt_offset_counter;
 	}
 
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
-		radv_init_surface(device, image, &image->planes[plane].surface, plane, create_info);
+		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo);
 	}
 
 	radv_image_create_layout(device, create_info, image);
