@@ -85,7 +85,12 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    rast_state.depthBiasConstantFactor = 0.0;
    rast_state.depthBiasClamp = 0.0;
    rast_state.depthBiasSlopeFactor = 0.0;
-   rast_state.lineWidth = state->line_width;
+   if (screen->feats.wideLines)
+      rast_state.lineWidth = state->line_width;
+   else {
+      debug_printf("BUG: wide lines not supported, needs fallback!");
+      rast_state.lineWidth = 1.0f;
+   }
 
    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
    depth_stencil_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
