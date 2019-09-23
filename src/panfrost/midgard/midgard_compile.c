@@ -1991,9 +1991,6 @@ inline_alu_constants(compiler_context *ctx, midgard_block *block)
                                 midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), blank_alu_src, scratch);
                                 attach_constants(ctx, &ins, entry, alu->src[1] + 1);
 
-                                /* Force a break XXX Defer r31 writes */
-                                ins.unit = UNIT_VLUT;
-
                                 /* Set the source */
                                 alu->src[1] = scratch;
 
