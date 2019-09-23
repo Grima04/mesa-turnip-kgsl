@@ -5089,6 +5089,86 @@ genX(emit_aux_map_state)(struct iris_batch *batch)
 }
 #endif
 
+struct push_bos {
+   struct {
+      struct iris_address addr;
+      uint32_t length;
+   } buffers[4];
+   int buffer_count;
+};
+
+static void
+setup_constant_buffers(struct iris_context *ice,
+                       struct iris_batch *batch,
+                       int stage,
+                       struct push_bos *push_bos)
+{
+   struct iris_shader_state *shs = &ice->state.shaders[stage];
+   struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+   struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
+
+   int n = 0;
+   for (int i = 0; i < 4; i++) {
+      const struct brw_ubo_range *range = &prog_data->ubo_ranges[i];
+
+      if (range->length == 0)
+         continue;
+
+      /* Range block is a binding table index, map back to UBO index. */
+      unsigned block_index = iris_bti_to_group_index(
+         &shader->bt, IRIS_SURFACE_GROUP_UBO, range->block);
+      assert(block_index != IRIS_SURFACE_NOT_USED);
+
+      struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
+      struct iris_resource *res = (void *) cbuf->buffer;
+
+      assert(cbuf->buffer_offset % 32 == 0);
+
+      push_bos->buffers[n].length = range->length;
+      push_bos->buffers[n].addr =
+         res ? ro_bo(res->bo, range->start * 32 + cbuf->buffer_offset)
+         : ro_bo(batch->screen->workaround_bo, 0);
+      n++;
+   }
+
+   push_bos->buffer_count = n;
+}
+
+static void
+emit_push_constant_packets(struct iris_context *ice,
+                           struct iris_batch *batch,
+                           int stage,
+                           const struct push_bos *push_bos)
+{
+   struct iris_compiled_shader *shader = ice->shaders.prog[stage];
+   struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
+
+   iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
+      pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
+      if (prog_data) {
+         /* The Skylake PRM contains the following restriction:
+          *
+          *    "The driver must ensure The following case does not occur
+          *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
+          *     buffer 3 read length equal to zero committed followed by a
+          *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
+          *     zero committed."
+          *
+          * To avoid this, we program the buffers in the highest slots.
+          * This way, slot 0 is only used if slot 3 is also used.
+          */
+         int n = push_bos->buffer_count;
+         assert(n <= 4);
+         const unsigned shift = 4 - n;
+         for (int i = 0; i < n; i++) {
+            pkt.ConstantBody.ReadLength[i + shift] =
+               push_bos->buffers[i].length;
+            pkt.ConstantBody.Buffer[i + shift] = push_bos->buffers[i].addr;
+         }
+      }
+   }
+}
+
 static void
 iris_upload_dirty_render_state(struct iris_context *ice,
                                struct iris_batch *batch,
@@ -5280,48 +5360,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       if (shs->sysvals_need_upload)
          upload_sysvals(ice, stage);
 
-      struct brw_stage_prog_data *prog_data = (void *) shader->prog_data;
-
-      iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_VS), pkt) {
-         pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
-         if (prog_data) {
-            /* The Skylake PRM contains the following restriction:
-             *
-             *    "The driver must ensure The following case does not occur
-             *     without a flush to the 3D engine: 3DSTATE_CONSTANT_* with
-             *     buffer 3 read length equal to zero committed followed by a
-             *     3DSTATE_CONSTANT_* with buffer 0 read length not equal to
-             *     zero committed."
-             *
-             * To avoid this, we program the buffers in the highest slots.
-             * This way, slot 0 is only used if slot 3 is also used.
-             */
-            int n = 3;
-
-            for (int i = 3; i >= 0; i--) {
-               const struct brw_ubo_range *range = &prog_data->ubo_ranges[i];
-
-               if (range->length == 0)
-                  continue;
-
-               /* Range block is a binding table index, map back to UBO index. */
-               unsigned block_index = iris_bti_to_group_index(
-                  &shader->bt, IRIS_SURFACE_GROUP_UBO, range->block);
-               assert(block_index != IRIS_SURFACE_NOT_USED);
-
-               struct pipe_shader_buffer *cbuf = &shs->constbuf[block_index];
-               struct iris_resource *res = (void *) cbuf->buffer;
-
-               assert(cbuf->buffer_offset % 32 == 0);
-
-               pkt.ConstantBody.ReadLength[n] = range->length;
-               pkt.ConstantBody.Buffer[n] =
-                  res ? ro_bo(res->bo, range->start * 32 + cbuf->buffer_offset)
-                      : ro_bo(batch->screen->workaround_bo, 0);
-               n--;
-            }
-         }
-      }
+      struct push_bos push_bos = {};
+      setup_constant_buffers(ice, batch, stage, &push_bos);
+      emit_push_constant_packets(ice, batch, stage, &push_bos);
    }
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
