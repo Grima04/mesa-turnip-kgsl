@@ -957,6 +957,152 @@ mir_choose_bundle(
                 return ~0;
 }
 
+/* When we are scheduling a branch/csel, we need the consumed condition in the
+ * same block as a pipeline register. There are two options to enable this:
+ *
+ *  - Move the conditional into the bundle. Preferred, but only works if the
+ *    conditional is used only once and is from this block.
+ *  - Copy the conditional.
+ *
+ * We search for the conditional. If it's in this block, single-use, and
+ * without embedded constants, we schedule it immediately. Otherwise, we
+ * schedule a move for it.
+ *
+ * mir_comparison_mobile is a helper to find the moveable condition.
+ */
+
+static unsigned
+mir_comparison_mobile(
+                compiler_context *ctx,
+                midgard_instruction **instructions,
+                unsigned count,
+                unsigned cond)
+{
+        if (!mir_single_use(ctx, cond))
+                return ~0;
+
+        unsigned ret = ~0;
+
+        for (unsigned i = 0; i < count; ++i) {
+                if (instructions[i]->dest != cond)
+                        continue;
+
+                /* Must fit in an ALU bundle */
+                if (instructions[i]->type != TAG_ALU_4)
+                        return ~0;
+
+                /* We'll need to rewrite to .w but that doesn't work for vector
+                 * ops that don't replicate (ball/bany), so bail there */
+
+                if (GET_CHANNEL_COUNT(alu_opcode_props[instructions[i]->alu.op].props))
+                        return ~0;
+
+                /* TODO: moving conditionals with constants */
+
+                if (instructions[i]->has_constants)
+                        return ~0;
+
+                /* Ensure it is written only once */
+
+                if (ret != ~0)
+                        return ~0;
+                else
+                        ret = i;
+        }
+
+        return ret;
+}
+
+/* Using the information about the moveable conditional itself, we either pop
+ * that condition off the worklist for use now, or create a move to
+ * artificially schedule instead as a fallback */
+
+static midgard_instruction *
+mir_schedule_comparison(
+                compiler_context *ctx,
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned count,
+                unsigned cond, bool vector, unsigned swizzle,
+                midgard_instruction *user)
+{
+        /* TODO: swizzle when scheduling */
+        unsigned comp_i =
+                (!vector && (swizzle == 0)) ?
+                mir_comparison_mobile(ctx, instructions, count, cond) : ~0;
+
+        /* If we can, schedule the condition immediately */
+        if ((comp_i != ~0) && BITSET_TEST(worklist, comp_i)) {
+                assert(comp_i < count);
+                BITSET_CLEAR(worklist, comp_i);
+                return instructions[comp_i];
+        }
+
+        /* Otherwise, we insert a move */
+        midgard_vector_alu_src csel = {
+                .swizzle = swizzle
+        };
+
+        midgard_instruction mov = v_mov(cond, csel, cond);
+        mov.mask = vector ? 0xF : 0x1;
+
+        return mir_insert_instruction_before(ctx, user, mov);
+}
+
+/* Most generally, we need instructions writing to r31 in the appropriate
+ * components */
+
+static midgard_instruction *
+mir_schedule_condition(compiler_context *ctx,
+                struct midgard_predicate *predicate,
+                BITSET_WORD *worklist, unsigned count,
+                midgard_instruction **instructions,
+                midgard_instruction *last)
+{
+        /* For a branch, the condition is the only argument; for csel, third */
+        bool branch = last->compact_branch;
+        unsigned condition_index = branch ? 0 : 2;
+
+        /* csel_v is vector; otherwise, conditions are scalar */
+        bool vector = !branch && OP_IS_CSEL_V(last->alu.op);
+
+        /* Grab the conditional instruction */
+
+        midgard_instruction *cond = mir_schedule_comparison(
+                        ctx, instructions, worklist, count, last->src[condition_index],
+                        vector, last->cond_swizzle, last);
+
+        /* We have exclusive reign over this (possibly move) conditional
+         * instruction. We can rewrite into a pipeline conditional register */
+
+        predicate->exclude = cond->dest;
+        cond->dest = SSA_FIXED_REGISTER(31);
+
+        if (!vector) {
+                cond->mask = (1 << COMPONENT_W);
+
+                mir_foreach_src(cond, s) {
+                        if (cond->src[s] == ~0)
+                                continue;
+
+                        mir_set_swizzle(cond, s, (mir_get_swizzle(cond, s) << (2*3)) & 0xFF);
+                }
+        }
+
+        /* Schedule the unit: csel is always in the latter pipeline, so a csel
+         * condition must be in the former pipeline stage (vmul/sadd),
+         * depending on scalar/vector of the instruction itself. A branch must
+         * be written from the latter pipeline stage and a branch condition is
+         * always scalar, so it is always in smul (exception: ball/bany, which
+         * will be vadd) */
+
+        if (branch)
+                cond->unit = UNIT_SMUL;
+        else
+                cond->unit = vector ? UNIT_VMUL : UNIT_SADD;
+
+        return cond;
+}
+
 /* Schedules a single bundle of the given type */
 
 static midgard_bundle
