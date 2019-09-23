@@ -224,6 +224,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s)
                nir_var_shader_in |
                nir_var_shader_out |
                nir_var_function_temp);
+      NIR_PASS(progress, s, lima_nir_split_load_input);
    } while (progress);
 
    NIR_PASS_V(s, nir_lower_int_to_float);
