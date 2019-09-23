@@ -88,7 +88,7 @@ modifier_is_supported(const struct gen_device_info *devinfo,
       if (!isl_format_supports_ccs_e(devinfo, linear_format))
          return false;
 
-      return true;
+      return devinfo->gen >= 9 && devinfo->gen <= 11;
    }
    case I915_FORMAT_MOD_Y_TILED:
    case I915_FORMAT_MOD_X_TILED:
