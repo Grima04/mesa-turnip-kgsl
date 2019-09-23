@@ -817,7 +817,62 @@ struct midgard_predicate {
 
         /* True if we want to pop off the chosen instruction */
         bool destructive;
+
+        /* State for bundle constants. constants is the actual constants
+         * for the bundle. constant_count is the number of bytes (up to
+         * 16) currently in use for constants. When picking in destructive
+         * mode, the constants array will be updated, and the instruction
+         * will be adjusted to index into the constants array */
+
+        uint8_t *constants;
+        unsigned constant_count;
+        bool blend_constant;
 };
+
+/* For an instruction that can fit, adjust it to fit and update the constants
+ * array, in destructive mode. Returns whether the fitting was successful. */
+
+static bool
+mir_adjust_constants(midgard_instruction *ins,
+                struct midgard_predicate *pred,
+                bool destructive)
+{
+        /* Blend constants dominate */
+        if (ins->has_blend_constant) {
+                if (pred->constant_count)
+                        return false;
+                else if (destructive) {
+                        pred->blend_constant = true;
+                        pred->constant_count = 16;
+                        return true;
+                }
+        }
+
+        /* No constant, nothing to adjust */
+        if (!ins->has_constants)
+                return true;
+
+        /* TODO: Deduplicate; permit multiple constants within a bundle */
+
+        if (destructive && !pred->constant_count) {
+                if (ins->alu.reg_mode == midgard_reg_mode_16) {
+                      /* TODO: Fix packing XXX */
+                        uint16_t *bundles = (uint16_t *) pred->constants;
+                        uint32_t *constants = (uint32_t *) ins->constants;
+
+                        /* Copy them wholesale */
+                        for (unsigned i = 0; i < 4; ++i)
+                                bundles[i] = constants[i];
+                } else {
+                        memcpy(pred->constants, ins->constants, 16);
+                }
+
+                pred->constant_count = 16;
+                return true;
+        }
+
+        return !pred->constant_count;
+}
 
 static midgard_instruction *
 mir_choose_instruction(
