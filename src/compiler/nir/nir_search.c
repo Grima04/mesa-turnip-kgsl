@@ -39,6 +39,7 @@ struct match_state {
    uint8_t comm_op_direction;
    unsigned variables_seen;
    nir_alu_src variables[NIR_SEARCH_MAX_VARIABLES];
+   struct hash_table *range_ht;
 };
 
 static bool
@@ -297,7 +298,8 @@ match_value(const nir_search_value *value, nir_alu_instr *instr, unsigned src,
              instr->src[src].src.ssa->parent_instr->type != nir_instr_type_load_const)
             return false;
 
-         if (var->cond && !var->cond(instr, src, num_components, new_swizzle))
+         if (var->cond && !var->cond(state->range_ht, instr,
+                                     src, num_components, new_swizzle))
             return false;
 
          if (var->type != nir_type_invalid &&
@@ -621,6 +623,7 @@ UNUSED static void dump_value(const nir_search_value *val)
 
 nir_ssa_def *
 nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
+                  struct hash_table *range_ht,
                   const nir_search_expression *search,
                   const nir_search_value *replace)
 {
@@ -634,6 +637,7 @@ nir_replace_instr(nir_builder *build, nir_alu_instr *instr,
    struct match_state state;
    state.inexact_match = false;
    state.has_exact_alu = false;
+   state.range_ht = range_ht;
 
    STATIC_ASSERT(sizeof(state.comm_op_direction) * 8 >= NIR_SEARCH_MAX_COMM_OPS);
 

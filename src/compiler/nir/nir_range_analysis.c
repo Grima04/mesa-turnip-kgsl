@@ -1028,14 +1028,9 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
 #undef _______
 
 struct ssa_result_range
-nir_analyze_range(const nir_alu_instr *instr, unsigned src)
+nir_analyze_range(struct hash_table *range_ht,
+                  const nir_alu_instr *instr, unsigned src)
 {
-   struct hash_table *ht = _mesa_pointer_hash_table_create(NULL);
-
-   const struct ssa_result_range r =
-      analyze_expression(instr, src, ht, nir_alu_src_type(instr, src));
-
-   _mesa_hash_table_destroy(ht, NULL);
-
-   return r;
+   return analyze_expression(instr, src, range_ht,
+                             nir_alu_src_type(instr, src));
 }

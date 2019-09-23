@@ -1155,6 +1155,7 @@ ${pass_name}_pre_block(nir_block *block, uint16_t *states)
 
 static bool
 ${pass_name}_block(nir_builder *build, nir_block *block,
+                   struct hash_table *range_ht,
                    const uint16_t *states, const bool *condition_flags)
 {
    bool progress = false;
@@ -1181,7 +1182,8 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
             const struct transform *xform = &${pass_name}_state${i}_xforms[i];
             if (condition_flags[xform->condition_offset] &&
                 !(xform->search->inexact && ignore_inexact) &&
-                nir_replace_instr(build, alu, xform->search, xform->replace)) {
+                nir_replace_instr(build, alu, range_ht, xform->search, xform->replace)) {
+               _mesa_hash_table_clear(range_ht, NULL);
                progress = true;
                break;
             }
@@ -1210,14 +1212,17 @@ ${pass_name}_impl(nir_function_impl *impl, const bool *condition_flags)
     */
    uint16_t *states = calloc(impl->ssa_alloc, sizeof(*states));
 
+   struct hash_table *range_ht = _mesa_pointer_hash_table_create(NULL);
+
    nir_foreach_block(block, impl) {
       ${pass_name}_pre_block(block, states);
    }
 
    nir_foreach_block_reverse(block, impl) {
-      progress |= ${pass_name}_block(&build, block, states, condition_flags);
+      progress |= ${pass_name}_block(&build, block, range_ht, states, condition_flags);
    }
 
+   ralloc_free(range_ht);
    free(states);
 
    if (progress) {
