@@ -561,6 +561,7 @@ class Block;
 struct Instruction {
    aco_opcode opcode;
    Format format;
+   uint32_t pass_flags;
 
    aco::span<Operand> operands;
    aco::span<Definition> definitions;

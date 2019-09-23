@@ -83,9 +83,15 @@ struct InstrPred {
       if (a->operands.size() != b->operands.size() || a->definitions.size() != b->definitions.size())
          return false; /* possible with pseudo-instructions */
       /* We can't value number v_readlane_b32 across control flow or discards
-       * because of the possibility of live-range splits. */
-      if (a->opcode == aco_opcode::v_readfirstlane_b32 || a->opcode == aco_opcode::v_readlane_b32)
-         return false;
+       * because of the possibility of live-range splits.
+       * We can't value number permutes for the same reason as
+       * v_readlane_b32 and because discards affect the result */
+      if (a->opcode == aco_opcode::v_readfirstlane_b32 || a->opcode == aco_opcode::v_readlane_b32 ||
+          a->opcode == aco_opcode::ds_bpermute_b32 || a->opcode == aco_opcode::ds_permute_b32 ||
+          a->opcode == aco_opcode::ds_swizzle_b32 || a->format == Format::PSEUDO_REDUCTION) {
+         if (a->pass_flags != b->pass_flags)
+            return false;
+      }
       for (unsigned i = 0; i < a->operands.size(); i++) {
          if (a->operands[i].isConstant()) {
             if (!b->operands[i].isConstant())
@@ -176,8 +182,11 @@ struct InstrPred {
                return false;
             return true;
          }
-         case Format::PSEUDO_REDUCTION:
-            return false;
+         case Format::PSEUDO_REDUCTION: {
+            Pseudo_reduction_instruction *aR = static_cast<Pseudo_reduction_instruction*>(a);
+            Pseudo_reduction_instruction *bR = static_cast<Pseudo_reduction_instruction*>(b);
+            return aR->reduce_op == bR->reduce_op && aR->cluster_size == bR->cluster_size;
+         }
          case Format::MTBUF: {
             /* this is fine since they are only used for vertex input fetches */
             MTBUF_instruction* aM = static_cast<MTBUF_instruction *>(a);
@@ -197,8 +206,17 @@ struct InstrPred {
          case Format::FLAT:
          case Format::GLOBAL:
          case Format::SCRATCH:
-         case Format::DS:
             return false;
+         case Format::DS: {
+            /* we already handle potential issue with permute/swizzle above */
+            DS_instruction* aD = static_cast<DS_instruction *>(a);
+            DS_instruction* bD = static_cast<DS_instruction *>(b);
+            if (a->opcode != aco_opcode::ds_bpermute_b32 &&
+                a->opcode != aco_opcode::ds_permute_b32 &&
+                a->opcode != aco_opcode::ds_swizzle_b32)
+               return false;
+            return aD->gds == bD->gds && aD->offset0 == bD->offset0 && aD->offset1 == bD->offset1;
+         }
          case Format::MIMG: {
             MIMG_instruction* aM = static_cast<MIMG_instruction*>(a);
             MIMG_instruction* bM = static_cast<MIMG_instruction*>(b);
@@ -226,7 +244,8 @@ typedef std::unordered_set<Instruction*, InstrHash, InstrPred> expr_set;
 
 void process_block(Block& block,
                    expr_set& expr_values,
-                   std::map<uint32_t, Temp>& renames)
+                   std::map<uint32_t, Temp>& renames,
+                   uint32_t *exec_id)
 {
    bool run = false;
    std::vector<aco_ptr<Instruction>>::iterator it = block.instructions.begin();
@@ -271,6 +290,12 @@ void process_block(Block& block,
          renames[instr->definitions[0].tempId()] = instr->operands[0].getTemp();
       }
 
+      if (instr->opcode == aco_opcode::p_discard_if ||
+          instr->opcode == aco_opcode::p_demote_to_helper)
+         (*exec_id)++;
+
+      instr->pass_flags = *exec_id;
+
       std::pair<expr_set::iterator, bool> res = expr_values.emplace(instr.get());
 
       /* if there was already an expression with the same value number */
@@ -312,16 +337,18 @@ void value_numbering(Program* program)
 {
    std::vector<expr_set> expr_values(program->blocks.size());
    std::map<uint32_t, Temp> renames;
+   uint32_t exec_id = 0;
 
    for (Block& block : program->blocks) {
       if (block.logical_idom != -1) {
          /* initialize expr_values from idom */
          expr_values[block.index] = expr_values[block.logical_idom];
-         process_block(block, expr_values[block.index], renames);
+         process_block(block, expr_values[block.index], renames, &exec_id);
       } else {
          expr_set empty;
-         process_block(block, empty, renames);
+         process_block(block, empty, renames, &exec_id);
       }
+      exec_id++;
    }
 
    for (Block& block : program->blocks)
