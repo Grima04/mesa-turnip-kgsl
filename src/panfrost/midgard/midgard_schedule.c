@@ -1141,16 +1141,25 @@ mir_schedule_ldst(
                 .exclude = ~0
         };
 
+        /* Try to pick two load/store ops. Second not gauranteed to exist */
+
         midgard_instruction *ins =
                 mir_choose_instruction(instructions, worklist, len, &predicate);
 
-        mir_update_worklist(worklist, len, instructions, ins);
+        midgard_instruction *pair =
+                mir_choose_instruction(instructions, worklist, len, &predicate);
 
         struct midgard_bundle out = {
                 .tag = TAG_LOAD_STORE_4,
-                .instruction_count = 1,
-                .instructions = { ins }
+                .instruction_count = pair ? 2 : 1,
+                .instructions = { ins, pair }
         };
+
+        /* We have to update the worklist atomically, since the two
+         * instructions run concurrently (TODO: verify it's not pipelined) */
+
+        mir_update_worklist(worklist, len, instructions, ins);
+        mir_update_worklist(worklist, len, instructions, pair);
 
         return out;
 }
@@ -1339,54 +1348,6 @@ schedule_block(compiler_context *ctx, midgard_block *block)
 
         block->is_scheduled = true;
         ctx->quadword_count += block->quadword_count;
-}
-
-/* The following passes reorder MIR instructions to enable better scheduling */
-
-static void
-midgard_pair_load_store(compiler_context *ctx, midgard_block *block)
-{
-        mir_foreach_instr_in_block_safe(block, ins) {
-                if (ins->type != TAG_LOAD_STORE_4) continue;
-
-                /* We've found a load/store op. Check if next is also load/store. */
-                midgard_instruction *next_op = mir_next_op(ins);
-                if (&next_op->link != &block->instructions) {
-                        if (next_op->type == TAG_LOAD_STORE_4) {
-                                /* If so, we're done since we're a pair */
-                                ins = mir_next_op(ins);
-                                continue;
-                        }
-
-                        /* Maximum search distance to pair, to avoid register pressure disasters */
-                        int search_distance = 8;
-
-                        /* Otherwise, we have an orphaned load/store -- search for another load */
-                        mir_foreach_instr_in_block_from(block, c, mir_next_op(ins)) {
-                                /* Terminate search if necessary */
-                                if (!(search_distance--)) break;
-
-                                if (c->type != TAG_LOAD_STORE_4) continue;
-
-                                /* We can only reorder if there are no sources */
-
-                                bool deps = false;
-
-                                for (unsigned s = 0; s < ARRAY_SIZE(ins->src); ++s)
-                                        deps |= (c->src[s] != ~0);
-
-                                if (deps)
-                                        continue;
-
-                                /* We found one! Move it up to pair and remove it from the old location */
-
-                                mir_insert_instruction_before(ctx, ins, *c);
-                                mir_remove_instruction(c);
-
-                                break;
-                        }
-                }
-        }
 }
 
 /* When we're 'squeezing down' the values in the IR, we maintain a hash
@@ -1664,10 +1625,6 @@ schedule_program(compiler_context *ctx)
         unsigned spill_count = 0;
 
         midgard_promote_uniforms(ctx, 16);
-
-        mir_foreach_block(ctx, block) {
-                midgard_pair_load_store(ctx, block);
-        }
 
         /* Must be lowered right before RA */
         mir_squeeze_index(ctx);
