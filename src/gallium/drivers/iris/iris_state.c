@@ -824,15 +824,6 @@ iris_init_render_context(struct iris_screen *screen,
       iris_upload_slice_hashing_state(batch);
 #endif
 
-#if GEN_GEN >= 11
-      /* WA_220160979: Enable Hardware filtering of Semi-Pipelined State in WM */
-      iris_pack_state(GENX(COMMON_SLICE_CHICKEN4), &reg_val, reg) {
-         reg.EnableHardwareFilteringinWM = true;
-         reg.EnableHardwareFilteringinWMMask = true;
-      }
-      iris_emit_lri(batch, COMMON_SLICE_CHICKEN4, reg_val);
-#endif
-
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
     * changing it dynamically.  We set it to the maximum size here, and
     * instead include the render target dimensions in the viewport, so

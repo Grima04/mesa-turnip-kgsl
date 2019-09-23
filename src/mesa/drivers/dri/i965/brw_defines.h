@@ -1660,10 +1660,6 @@ enum brw_pixel_shader_coverage_mask_mode {
 # define GLK_SCEC_BARRIER_MODE_MASK        REG_MASK(1 << 7)
 # define GEN11_STATE_CACHE_REDIRECT_TO_CS_SECTION_ENABLE (1 << 11)
 
-
-#define COMMON_SLICE_CHICKEN4                               0x7300
-# define GEN11_ENABLE_HARDWARE_FILTERING_IN_WM              (1 << 5)
-
 #define HALF_SLICE_CHICKEN7                0xE194
 # define TEXEL_OFFSET_FIX_ENABLE           (1 << 1)
 # define TEXEL_OFFSET_FIX_MASK             REG_MASK(1 << 1)

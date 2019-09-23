@@ -292,17 +292,6 @@ genX(init_device_state)(struct anv_device *device)
          lri.DataDWord      = cache_mode_0;
       }
    }
-
-   /* WA_220160979: Enable Hardware filtering of Semi-Pipelined State in WM. */
-   uint32_t common_slice_chicken4;
-   anv_pack_struct(&common_slice_chicken4, GENX(COMMON_SLICE_CHICKEN4),
-                   .EnableHardwareFilteringinWM = true,
-                   .EnableHardwareFilteringinWMMask = true);
-
-   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = GENX(COMMON_SLICE_CHICKEN4_num);
-      lri.DataDWord      = common_slice_chicken4;
-   }
 #endif
 
    /* Set the "CONSTANT_BUFFER Address Offset Disable" bit, so
