@@ -179,12 +179,8 @@ resource_create(struct pipe_screen *pscreen,
           templ->target == PIPE_TEXTURE_CUBE_ARRAY)
          ici.arrayLayers *= 6;
 
-      if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
-                         PIPE_BIND_SCANOUT |
-                         PIPE_BIND_SHARED)) {
-         // assert(ici.tiling == VK_IMAGE_TILING_LINEAR);
+      if (templ->bind & PIPE_BIND_SHARED)
          ici.tiling = VK_IMAGE_TILING_LINEAR;
-      }
 
       if (templ->usage == PIPE_USAGE_STAGING)
          ici.tiling = VK_IMAGE_TILING_LINEAR;
