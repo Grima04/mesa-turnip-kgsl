@@ -97,12 +97,6 @@ typedef struct midgard_instruction {
         /* I.e. (1 << alu_bit) */
         int unit;
 
-        /* When emitting bundle, should this instruction have a break forced
-         * before it? Used for r31 writes which are valid only within a single
-         * bundle and *need* to happen as early as possible... this is a hack,
-         * TODO remove when we have a scheduler */
-        bool precede_break;
-
         bool has_constants;
         uint32_t constants[4];
         uint16_t inline_constant;
