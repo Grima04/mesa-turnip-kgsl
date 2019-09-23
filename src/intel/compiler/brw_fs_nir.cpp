@@ -1258,6 +1258,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          }
       }
 
+      /* We emit the rounding mode after the previous fsign optimization since
+       * it won't result in a MUL, but will try to negate the value by other
+       * means.
+       */
       if (nir_has_any_rounding_mode_enabled(execution_mode)) {
          brw_rnd_mode rnd =
             brw_rnd_mode_from_execution_mode(execution_mode);
