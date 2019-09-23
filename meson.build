@@ -939,6 +939,7 @@ else
     '-Werror=implicit-function-declaration',
     '-Werror=missing-prototypes',
     '-Werror=return-type',
+    '-Werror=empty-body',
     '-Werror=incompatible-pointer-types',
     '-Wno-missing-field-initializers',
     '-Wno-format-truncation',
@@ -958,6 +959,7 @@ else
 
   _trial = [
     '-Werror=return-type',
+    '-Werror=empty-body',
     '-Wno-non-virtual-dtor',
     '-Wno-missing-field-initializers',
     '-Wno-format-truncation',
