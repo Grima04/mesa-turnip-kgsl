@@ -34,7 +34,8 @@
 #include "util/u_prim.h"
 
 VkPipeline
-zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
+zink_create_gfx_pipeline(struct zink_screen *screen,
+                         struct zink_gfx_program *prog,
                          struct zink_gfx_pipeline_state *state,
                          VkPrimitiveTopology primitive_topology)
 {
@@ -144,7 +145,8 @@ zink_create_gfx_pipeline(VkDevice dev, struct zink_gfx_program *prog,
    pci.stageCount = num_stages;
 
    VkPipeline pipeline;
-   if (vkCreateGraphicsPipelines(dev, VK_NULL_HANDLE, 1, &pci, NULL, &pipeline) != VK_SUCCESS) {
+   if (vkCreateGraphicsPipelines(screen->dev, VK_NULL_HANDLE, 1, &pci,
+                                 NULL, &pipeline) != VK_SUCCESS) {
       debug_printf("vkCreateGraphicsPipelines failed\n");
       return VK_NULL_HANDLE;
    }

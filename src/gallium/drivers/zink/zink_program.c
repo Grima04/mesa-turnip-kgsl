@@ -229,7 +229,7 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
    struct hash_entry *entry = _mesa_hash_table_search(prog->pipelines[mode], state);
    if (!entry) {
       VkPrimitiveTopology vkmode = primitive_topology(mode);
-      VkPipeline pipeline = zink_create_gfx_pipeline(screen->dev, prog,
+      VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog,
                                                      state, vkmode);
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
