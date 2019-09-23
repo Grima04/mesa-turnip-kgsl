@@ -84,7 +84,7 @@ validate_tree_order(struct rb_tree *tree, unsigned expected_count)
              * show up in the list in order of insertion.  We insert them
              * in the order they are in in the array.
              */
-            if (prev == NULL || prev < n);
+            assert(prev == NULL || prev < n);
         }
 
         prev = n;
@@ -105,7 +105,7 @@ validate_tree_order(struct rb_tree *tree, unsigned expected_count)
              * show up in the list in order of insertion.  We insert them
              * in the order they are in in the array.
              */
-            if (prev == NULL || prev > n);
+            assert(prev == NULL || prev > n);
         }
 
         prev = n;
