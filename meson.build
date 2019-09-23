@@ -893,16 +893,12 @@ foreach a : ['-Werror=implicit-function-declaration',
              '-Werror=incompatible-pointer-types',
              '-Werror=format',
              '-Wformat-security',
+             '-Wno-missing-field-initializers',
+             '-Wno-format-truncation',
              '-fno-math-errno',
              '-fno-trapping-math', '-Qunused-arguments']
   if cc.has_argument(a)
     c_args += a
-  endif
-endforeach
-
-foreach a : ['missing-field-initializers', 'format-truncation']
-  if cc.has_argument('-W' + a)
-    c_args += '-Wno-' + a
   endif
 endforeach
 
@@ -916,6 +912,9 @@ cpp_args = []
 foreach a : ['-Werror=return-type',
              '-Werror=format',
              '-Wformat-security',
+             '-Wno-non-virtual-dtor',
+             '-Wno-missing-field-initializers',
+             '-Wno-format-truncation',
              '-fno-math-errno', '-fno-trapping-math',
              '-Qunused-arguments']
   if cpp.has_argument(a)
@@ -923,19 +922,11 @@ foreach a : ['-Werror=return-type',
   endif
 endforeach
 
-# For some reason, the test for -Wno-foo always succeeds with gcc, even if the
-# option is not supported. Hence, check for -Wfoo instead.
-
-foreach a : ['non-virtual-dtor', 'missing-field-initializers', 'format-truncation']
-  if cpp.has_argument('-W' + a)
-    cpp_args += '-Wno-' + a
-  endif
-endforeach
-
 no_override_init_args = []
-foreach a : ['override-init', 'initializer-overrides']
-  if cc.has_argument('-W' + a)
-    no_override_init_args += '-Wno-' + a
+foreach a : ['-Wno-override-init',
+             '-Wno-initializer-overrides']
+  if cc.has_argument(a)
+    no_override_init_args += a
   endif
 endforeach
 
