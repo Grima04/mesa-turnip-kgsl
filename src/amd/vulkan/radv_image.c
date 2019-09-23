@@ -1255,73 +1255,21 @@ static void radv_image_disable_htile(struct radv_image *image)
 		image->planes[i].surface.htile_size = 0;
 }
 
-VkResult
-radv_image_create(VkDevice _device,
-		  const struct radv_image_create_info *create_info,
-		  const VkAllocationCallbacks* alloc,
-		  VkImage *pImage)
+static void
+radv_image_create_layout(struct radv_device *device,
+                         const struct radv_image_create_info *create_info,
+                         struct radv_image *image)
 {
-	RADV_FROM_HANDLE(radv_device, device, _device);
-	const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
-	struct radv_image *image = NULL;
-	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+	/* Check that we did not initialize things earlier */
+	assert(!image->planes[0].surface.surf_size);
 
-	const unsigned plane_count = vk_format_get_plane_count(pCreateInfo->format);
-	const size_t image_struct_size = sizeof(*image) + sizeof(struct radv_image_plane) * plane_count;
-
-	radv_assert(pCreateInfo->mipLevels > 0);
-	radv_assert(pCreateInfo->arrayLayers > 0);
-	radv_assert(pCreateInfo->samples > 0);
-	radv_assert(pCreateInfo->extent.width > 0);
-	radv_assert(pCreateInfo->extent.height > 0);
-	radv_assert(pCreateInfo->extent.depth > 0);
-
-	image = vk_zalloc2(&device->alloc, alloc, image_struct_size, 8,
-			   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-	if (!image)
-		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-	image->type = pCreateInfo->imageType;
-	image->info.width = pCreateInfo->extent.width;
-	image->info.height = pCreateInfo->extent.height;
-	image->info.depth = pCreateInfo->extent.depth;
-	image->info.samples = pCreateInfo->samples;
-	image->info.storage_samples = pCreateInfo->samples;
-	image->info.array_size = pCreateInfo->arrayLayers;
-	image->info.levels = pCreateInfo->mipLevels;
-	image->info.num_channels = vk_format_get_nr_components(pCreateInfo->format);
-
-	image->vk_format = pCreateInfo->format;
-	image->tiling = pCreateInfo->tiling;
-	image->usage = pCreateInfo->usage;
-	image->flags = pCreateInfo->flags;
-
-	image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
-	if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
-		for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; ++i)
-			if (pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_EXTERNAL ||
-			    pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_FOREIGN_EXT)
-				image->queue_family_mask |= (1u << RADV_MAX_QUEUE_FAMILIES) - 1u;
-			else
-				image->queue_family_mask |= 1u << pCreateInfo->pQueueFamilyIndices[i];
-	}
-
-	image->shareable = vk_find_struct_const(pCreateInfo->pNext,
-	                                        EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
-	if (!vk_format_is_depth_or_stencil(pCreateInfo->format) &&
-	    !radv_surface_has_scanout(device, create_info) && !image->shareable) {
-		image->info.surf_index = &device->image_mrt_offset_counter;
-	}
-
-	image->plane_count = plane_count;
 	image->size = 0;
 	image->alignment = 1;
-	for (unsigned plane = 0; plane < plane_count; ++plane) {
+	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
 		struct ac_surf_info info = image->info;
-		radv_init_surface(device, image, &image->planes[plane].surface, plane, create_info);
 
 		if (plane) {
-			const struct vk_format_description *desc = vk_format_description(pCreateInfo->format);
+			const struct vk_format_description *desc = vk_format_description(image->vk_format);
 			assert(info.width % desc->width_divisor == 0);
 			assert(info.height % desc->height_divisor == 0);
 
@@ -1378,7 +1326,75 @@ radv_image_create(VkDevice _device,
 		radv_image_disable_htile(image);
 	}
 
-	if (pCreateInfo->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) {
+	assert(image->planes[0].surface.surf_size);
+}
+
+VkResult
+radv_image_create(VkDevice _device,
+		  const struct radv_image_create_info *create_info,
+		  const VkAllocationCallbacks* alloc,
+		  VkImage *pImage)
+{
+	RADV_FROM_HANDLE(radv_device, device, _device);
+	const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
+	struct radv_image *image = NULL;
+	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+
+	const unsigned plane_count = vk_format_get_plane_count(pCreateInfo->format);
+	const size_t image_struct_size = sizeof(*image) + sizeof(struct radv_image_plane) * plane_count;
+
+	radv_assert(pCreateInfo->mipLevels > 0);
+	radv_assert(pCreateInfo->arrayLayers > 0);
+	radv_assert(pCreateInfo->samples > 0);
+	radv_assert(pCreateInfo->extent.width > 0);
+	radv_assert(pCreateInfo->extent.height > 0);
+	radv_assert(pCreateInfo->extent.depth > 0);
+
+	image = vk_zalloc2(&device->alloc, alloc, image_struct_size, 8,
+			   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+	if (!image)
+		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+	image->type = pCreateInfo->imageType;
+	image->info.width = pCreateInfo->extent.width;
+	image->info.height = pCreateInfo->extent.height;
+	image->info.depth = pCreateInfo->extent.depth;
+	image->info.samples = pCreateInfo->samples;
+	image->info.storage_samples = pCreateInfo->samples;
+	image->info.array_size = pCreateInfo->arrayLayers;
+	image->info.levels = pCreateInfo->mipLevels;
+	image->info.num_channels = vk_format_get_nr_components(pCreateInfo->format);
+
+	image->vk_format = pCreateInfo->format;
+	image->tiling = pCreateInfo->tiling;
+	image->usage = pCreateInfo->usage;
+	image->flags = pCreateInfo->flags;
+	image->plane_count = plane_count;
+
+	image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
+	if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
+		for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; ++i)
+			if (pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_EXTERNAL ||
+			    pCreateInfo->pQueueFamilyIndices[i] == VK_QUEUE_FAMILY_FOREIGN_EXT)
+				image->queue_family_mask |= (1u << RADV_MAX_QUEUE_FAMILIES) - 1u;
+			else
+				image->queue_family_mask |= 1u << pCreateInfo->pQueueFamilyIndices[i];
+	}
+
+	image->shareable = vk_find_struct_const(pCreateInfo->pNext,
+	                                        EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
+	if (!vk_format_is_depth_or_stencil(pCreateInfo->format) &&
+	    !radv_surface_has_scanout(device, create_info) && !image->shareable) {
+		image->info.surf_index = &device->image_mrt_offset_counter;
+	}
+
+	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
+		radv_init_surface(device, image, &image->planes[plane].surface, plane, create_info);
+	}
+
+	radv_image_create_layout(device, create_info, image);
+
+	if (image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) {
 		image->alignment = MAX2(image->alignment, 4096);
 		image->size = align64(image->size, image->alignment);
 		image->offset = 0;
