@@ -127,6 +127,7 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
                 }
                 var = scan_var;
         }
+        assert(var);
 
         /* Save off the components of the position for the setup of VPM inputs
          * read by fixed function HW.
