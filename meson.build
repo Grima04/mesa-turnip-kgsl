@@ -888,7 +888,8 @@ endif
 # Check for generic C arguments
 c_args = []
 foreach a : ['-Werror=implicit-function-declaration',
-             '-Werror=missing-prototypes', '-Werror=return-type',
+             '-Werror=missing-prototypes',
+             '-Werror=return-type',
              '-Werror=incompatible-pointer-types',
              '-Werror=format',
              '-Wformat-security',
