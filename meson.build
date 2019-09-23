@@ -896,7 +896,8 @@ foreach a : ['-Werror=implicit-function-declaration',
              '-Wno-missing-field-initializers',
              '-Wno-format-truncation',
              '-fno-math-errno',
-             '-fno-trapping-math', '-Qunused-arguments']
+             '-fno-trapping-math',
+             '-Qunused-arguments']
   if cc.has_argument(a)
     c_args += a
   endif
@@ -915,7 +916,8 @@ foreach a : ['-Werror=return-type',
              '-Wno-non-virtual-dtor',
              '-Wno-missing-field-initializers',
              '-Wno-format-truncation',
-             '-fno-math-errno', '-fno-trapping-math',
+             '-fno-math-errno',
+             '-fno-trapping-math',
              '-Qunused-arguments']
   if cpp.has_argument(a)
     cpp_args += a
