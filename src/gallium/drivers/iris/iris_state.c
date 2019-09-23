@@ -5095,6 +5095,7 @@ struct push_bos {
       uint32_t length;
    } buffers[4];
    int buffer_count;
+   uint32_t max_length;
 };
 
 static void
@@ -5113,6 +5114,9 @@ setup_constant_buffers(struct iris_context *ice,
 
       if (range->length == 0)
          continue;
+
+      if (range->length > push_bos->max_length)
+         push_bos->max_length = range->length;
 
       /* Range block is a binding table index, map back to UBO index. */
       unsigned block_index = iris_bti_to_group_index(
@@ -5168,6 +5172,45 @@ emit_push_constant_packets(struct iris_context *ice,
       }
    }
 }
+
+#if GEN_GEN >= 12
+static void
+emit_push_constant_packet_all(struct iris_context *ice,
+                              struct iris_batch *batch,
+                              uint32_t shader_mask,
+                              const struct push_bos *push_bos)
+{
+   if (!push_bos) {
+      iris_emit_cmd(batch, GENX(3DSTATE_CONSTANT_ALL), pc) {
+         pc.ShaderUpdateEnable = shader_mask;
+      }
+      return;
+   }
+
+   const uint32_t n = push_bos->buffer_count;
+   const uint32_t max_pointers = 4;
+   const uint32_t num_dwords = 2 + 2 * n;
+   uint32_t const_all[2 + 2 * max_pointers];
+   uint32_t *dw = &const_all[0];
+
+   assert(n <= max_pointers);
+   iris_pack_command(GENX(3DSTATE_CONSTANT_ALL), dw, all) {
+      all.DWordLength = num_dwords - 2;
+      all.ShaderUpdateEnable = shader_mask;
+      all.PointerBufferMask = (1 << n) - 1;
+   }
+   dw += 2;
+
+   for (int i = 0; i < n; i++) {
+      _iris_pack_state(batch, GENX(3DSTATE_CONSTANT_ALL_DATA),
+                       dw + i * 2, data) {
+         data.PointerToConstantBuffer = push_bos->buffers[i].addr;
+         data.ConstantBufferReadLength = push_bos->buffers[i].length;
+      }
+   }
+   iris_batch_emit(batch, const_all, sizeof(uint32_t) * num_dwords);
+}
+#endif
 
 static void
 iris_upload_dirty_render_state(struct iris_context *ice,
@@ -5347,6 +5390,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
+#if GEN_GEN >= 12
+   uint32_t nobuffer_stages = 0;
+#endif
+
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       if (!(dirty & (IRIS_DIRTY_CONSTANTS_VS << stage)))
          continue;
@@ -5362,8 +5409,32 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       struct push_bos push_bos = {};
       setup_constant_buffers(ice, batch, stage, &push_bos);
+
+#if GEN_GEN >= 12
+      /* If this stage doesn't have any push constants, emit it later in a
+       * single CONSTANT_ALL packet with all the other stages.
+       */
+      if (push_bos.buffer_count == 0) {
+         nobuffer_stages |= 1 << stage;
+         continue;
+      }
+
+      /* The Constant Buffer Read Length field from 3DSTATE_CONSTANT_ALL
+       * contains only 5 bits, so we can only use it for buffers smaller than
+       * 32.
+       */
+      if (push_bos.max_length < 32) {
+         emit_push_constant_packet_all(ice, batch, 1 << stage, &push_bos);
+         continue;
+      }
+#endif
       emit_push_constant_packets(ice, batch, stage, &push_bos);
    }
+
+#if GEN_GEN >= 12
+   if (nobuffer_stages)
+      emit_push_constant_packet_all(ice, batch, nobuffer_stages, NULL);
+#endif
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       /* Gen9 requires 3DSTATE_BINDING_TABLE_POINTERS_XS to be re-emitted
