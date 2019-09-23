@@ -1817,6 +1817,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       break;
 
    case nir_op_flrp:
+      if (nir_has_any_rounding_mode_enabled(execution_mode)) {
+         brw_rnd_mode rnd =
+            brw_rnd_mode_from_execution_mode(execution_mode);
+         bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+                  brw_imm_d(rnd));
+      }
+
       inst = bld.LRP(result, op[0], op[1], op[2]);
       inst->saturate = instr->dest.saturate;
       break;
